@@ -84,11 +84,35 @@ export async function getPermalink(
   channel: string,
   messageTs: string,
 ): Promise<string | null> {
-  const result = await callSlackApi<{ permalink?: string }>(
+  const result = await callSlackApiGet<{ permalink?: string }>(
     "chat.getPermalink",
     { channel, message_ts: messageTs },
   );
   return result.ok ? (result.permalink ?? null) : null;
+}
+
+/** Slack's GET-family methods (`chat.getPermalink` among them) read their
+ * arguments from the query string — POSTing them as a JSON body gets an
+ * `invalid_arguments` back, since Slack sees no `channel`/`message_ts` at
+ * all. Those methods go through here instead of `callSlackApi`. */
+async function callSlackApiGet<T extends Record<string, unknown>>(
+  method: string,
+  params: Record<string, string>,
+): Promise<T & { ok: boolean; error?: string }> {
+  const token = process.env.SLACK_BOT_TOKEN;
+  if (!token) throw new Error("SLACK_BOT_TOKEN is not set");
+
+  const url = `https://slack.com/api/${method}?${new URLSearchParams(params)}`;
+  const res = await fetch(url, {
+    method: "GET",
+    headers: { authorization: `Bearer ${token}` },
+  });
+
+  const data = (await res.json()) as T & { ok: boolean; error?: string };
+  if (!res.ok || !data.ok) {
+    console.error(`Slack API ${method} failed: ${data.error ?? res.status}`);
+  }
+  return data;
 }
 
 let botUserId: string | null = null;

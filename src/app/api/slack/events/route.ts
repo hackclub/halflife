@@ -39,14 +39,14 @@ async function handleHelpMessage(event: SlackEvent) {
   if (event.subtype || event.bot_id || event.thread_ts) return;
   if (!event.user || !event.ts || !event.channel) return;
 
+  const permalink = await getPermalink(event.channel, event.ts);
+
   const ref: TicketRef = {
     helpChannel: event.channel,
     helpTs: event.ts,
     authorId: event.user,
-    text: event.text ?? "",
+    permalink,
   };
-
-  const permalink = await getPermalink(ref.helpChannel, ref.helpTs);
 
   const ticketBlocks: SlackBlock[] = [
     ticketSection(ref),
@@ -65,10 +65,9 @@ async function handleHelpMessage(event: SlackEvent) {
     },
   ];
 
-  // Slack unfurls text-based links only in the top-level message text, not
-  // inside blocks — a permalink in the section block renders as a raw URL,
-  // which is why tickets looked "quoted, not forwarded". The permalink rides
-  // in the text so it unfurls into the original message's preview.
+  // The permalink rides in the top-level text as well as the section block:
+  // Slack unfurls text-based links only there, never inside blocks, so this
+  // is what gets the original message previewed under the ticket.
   const ticketMessage = await postMessage(
     ticketsChannel,
     permalink

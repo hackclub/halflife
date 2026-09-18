@@ -98,7 +98,7 @@ async function handleSelfResolve(payload: InteractionPayload, action: BlockActio
     resolveBlocks(payload.message.blocks, payload.user.id),
   );
 
-  if (ref.ticketsChannel && ref.ticketsTs && ref.helpChannel && ref.text !== undefined) {
+  if (ref.ticketsChannel && ref.ticketsTs && ref.helpChannel) {
     try {
       await updateMessage(
         ref.ticketsChannel,
@@ -136,7 +136,7 @@ async function handleThreadMarkHelped(payload: InteractionPayload, action: Block
     resolveBlocks(payload.message.blocks, payload.user.id),
   );
 
-  if (ref.ticketsChannel && ref.ticketsTs && ref.helpChannel && ref.text !== undefined) {
+  if (ref.ticketsChannel && ref.ticketsTs && ref.helpChannel) {
     try {
       await updateMessage(
         ref.ticketsChannel,

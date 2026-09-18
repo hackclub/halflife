@@ -10,23 +10,27 @@ export type TicketRef = {
   helpChannel: string;
   helpTs: string;
   authorId: string;
-  text: string;
+  /** null when the permalink lookup failed — the ticket still posts, just
+   * without a jump link. */
+  permalink: string | null;
 };
 
 export const TICKET_ACTIONS_BLOCK_ID = "ticket_actions";
 export const SELF_RESOLVE_ACTIONS_BLOCK_ID = "self_resolve_actions";
 
-/** Always quotes the original text: Slack only unfurls links in a message's
- * top-level `text`, never inside blocks, so the forward-style preview comes
- * from the permalink the caller puts in the message text — this block is the
- * guaranteed-readable copy when the unfurl doesn't render (or the permalink
- * lookup failed and there is nothing to unfurl). */
+/** Links to the original rather than copying it: a quoted copy can't be
+ * replied to, so the useful thing to hand a helper is a jump link into the
+ * thread. The permalink also rides in the message's top-level `text` (Slack
+ * only unfurls links there, never inside blocks) so it previews the original
+ * message where unfurling is available. */
 export function ticketSection(ref: TicketRef): SlackBlock {
   return {
     type: "section",
     text: {
       type: "mrkdwn",
-      text: `*Ticket* from <@${ref.authorId}> in <#${ref.helpChannel}>\n>${ref.text}`,
+      text: ref.permalink
+        ? `*Ticket* from <@${ref.authorId}> in <#${ref.helpChannel}> — <${ref.permalink}|open the thread>`
+        : `*Ticket* from <@${ref.authorId}> in <#${ref.helpChannel}>`,
     },
   };
 }
