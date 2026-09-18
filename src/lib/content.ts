@@ -56,7 +56,7 @@ export const BRAND = {
  * which is sentence case everywhere else here too.
  */
 export const ANNOUNCEMENT = {
-  lead: "Warm Up Week 1 starts on",
+  lead: "Warm Up Week 1 started on",
   date: "September 14th",
   tail: "!",
 } as const;
