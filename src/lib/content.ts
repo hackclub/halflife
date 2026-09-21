@@ -56,8 +56,8 @@ export const BRAND = {
  * which is sentence case everywhere else here too.
  */
 export const ANNOUNCEMENT = {
-  lead: "Warm Up Week 1 started on",
-  date: "September 14th",
+  lead: "Warm Up Week 2 started on",
+  date: "September 21st",
   tail: "!",
 } as const;
 
@@ -233,7 +233,7 @@ export const FAQS: Faq[] = [
   },
   {
     q: "When does this start?",
-    a: "Half Life is running for 10 weeks! September 14th to 25th will be warmup weeks (where you can submit any hardware project and get funding from up $100), and then PCB Week will start!",
+    a: "Half Life is running for 10 weeks! September 14th to October 4th will be warmup weeks 1-3 (where you can submit any hardware project and get funding from up $100), and then PCB Week will start!",
   },
   {
     q: "What's Hack Club?",
