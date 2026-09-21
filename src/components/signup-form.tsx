@@ -78,6 +78,31 @@ export default function SignupForm({
 
   useEffect(() => clearTimers, [clearTimers]);
 
+  /**
+   * Prefill from the address bar: `?email=someone@example.com`. A link sent
+   * out with the address already in it lands on a field that is filled in and
+   * one click from done, which is the whole point of sending it that way.
+   *
+   * Read off `window.location` in an effect rather than through
+   * `useSearchParams`, for the same reason the submit handler reads it that
+   * way: the hook would pull this component — and so the hero above it — out
+   * of the prerender and behind a Suspense boundary, to save a value that
+   * only matters once the field is interactive anyway. The input is
+   * uncontrolled, so writing straight onto the node after mount costs no
+   * render and cannot mismatch hydration.
+   *
+   * It never overwrites: if someone has already typed, or the browser has
+   * restored a value on a back-navigation, what is in the field wins.
+   */
+  useEffect(() => {
+    const prefill = new URLSearchParams(window.location.search)
+      .get("email")
+      ?.trim();
+    if (prefill && inputRef.current && !inputRef.current.value) {
+      inputRef.current.value = prefill;
+    }
+  }, []);
+
   /** Wipes the plate off to the right and re-arms the field behind it. */
   const dismiss = useCallback(() => {
     clearTimers();
