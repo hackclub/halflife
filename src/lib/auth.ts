@@ -35,6 +35,15 @@ function encryptedFieldsFrom(profile: Record<string, unknown>): Record<string, s
   return out
 }
 
+/**
+ * The email a link-only provider reports: unique per identity, and on the
+ * reserved .invalid TLD, so it can never equal a real user's address. See
+ * `trustedProviders` for why that matters.
+ */
+function linkOnlyEmail(provider: "hackatime" | "lapse", id: string): string {
+  return `${provider}-${id.replace(/[^A-Za-z0-9_-]/g, "")}@link.invalid`
+}
+
 export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,
   baseURL: process.env.BETTER_AUTH_URL,
@@ -50,13 +59,23 @@ export const auth = betterAuth({
       // simply did nothing. This only affects the explicit linkSocial path,
       // where the actor already holds the target session.
       allowDifferentEmails: true,
-      // ONLY hca. Marking a provider trusted waives better-auth's
-      // email-verification requirement when linking an OAuth identity onto an
-      // existing account by email match. Hackatime does not prove email
-      // ownership — our own getUserInfo hardcodes emailVerified: false — so
-      // trusting it would let anyone who registers a Hackatime account under
-      // someone else's address sign in as them.
-      trustedProviders: ["hca"],
+      // Trust does two things in better-auth, and only one of them is wanted.
+      //
+      // 1. It lets the explicit link flow (linkSocial, from a signed-in
+      //    session) attach the identity at all. Without it, a provider that
+      //    reports emailVerified: false is refused with "untrusted provider",
+      //    which is what broke Sign in with Lapse and Link Hackatime.
+      // 2. It lets a sign-in through that provider attach itself to an
+      //    EXISTING user whose email matches. For a provider that does not
+      //    prove email ownership that is an account takeover: register
+      //    Hackatime under someone else's address, sign in, become them.
+      //
+      // Hackatime and Lapse are trusted for (1) and defused for (2): their
+      // getUserInfo reports a per-identity address on the reserved .invalid
+      // TLD (linkOnlyEmail, above) that no real user can hold, so the email
+      // match in (2) can never find anyone. Nothing reads those addresses —
+      // a user's email comes from HCA, and Account rows store no email.
+      trustedProviders: ["hca", "hackatime", "lapse"],
     },
   },
 
@@ -198,7 +217,7 @@ export const auth = betterAuth({
             }
             return {
               id: String(data.id),
-              email: data.emails?.[0] ?? "",
+              email: linkOnlyEmail("hackatime", String(data.id)),
               name: data.github_username || data.slack_id || String(data.id),
               emailVerified: false,
               createdAt: new Date(),
@@ -247,7 +266,7 @@ export const auth = betterAuth({
             if (!user) return null
             return {
               id: user.id,
-              email: "",
+              email: linkOnlyEmail("lapse", user.id),
               name: user.displayName || user.handle,
               image: user.profilePictureUrl,
               emailVerified: false,
