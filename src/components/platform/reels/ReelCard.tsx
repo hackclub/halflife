@@ -1,29 +1,14 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { FoxMark, ReelScene } from "@/components/platform/art";
-import { IconComment, IconEye, IconHeart, IconPlay } from "@/components/platform/icons";
+import { FoxMark } from "@/components/platform/art";
+import { IconComment, IconEye, IconFilm, IconHeart, IconPlay } from "@/components/platform/icons";
 import { cx } from "@/components/platform/ui";
 import type { FeedItem } from "@/lib/feed";
 
 function compact(n: number) {
   return n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k` : `${n}`;
 }
-
-/**
- * The backdrop behind a reel that has no video to show.
- *
- * A post can sit in PROCESSING with no playable file, and the author's own
- * theme is a better stand-in than an empty black rectangle — it at least says
- * what the reel is about.
- */
-const SCENE: Record<string, "pcb" | "cad" | "synth" | "display" | "bread"> = {
-  PCB: "pcb",
-  CAD: "cad",
-  SYNTH: "synth",
-  DISPLAYS: "display",
-  BREADBOARD_COMPUTER: "bread",
-};
 
 /**
  * One reel. The rail stacks these in a snap column, the Doomscroller page lays
@@ -49,7 +34,6 @@ export function ReelCard({
   const counted = useRef(false);
 
   const announcement = reel.pinned || reel.kind === "ANNOUNCEMENT";
-  const scene = reel.project ? (SCENE[reel.project.theme] ?? "pcb") : "hq";
 
   async function play() {
     if (!reel.videoUrl) return;
@@ -99,19 +83,32 @@ export function ReelCard({
 
   return (
     <article className={cx("relative w-full overflow-hidden rounded-xl", className)}>
+      {/* Nothing generates thumbnails yet, so most reels have no poster, and
+          with `preload="none"` that left a blank box with a play button on
+          it. Without a poster the card fetches only the metadata and asks for
+          the frame at 0.1s — the clip's own first frame, for a few kilobytes,
+          rather than the whole video for every card in the feed. */}
       {reel.videoUrl ? (
         <video
           ref={video}
-          src={reel.videoUrl}
+          src={reel.thumbnailUrl ? reel.videoUrl : `${reel.videoUrl}#t=0.1`}
           poster={reel.thumbnailUrl ?? undefined}
           playsInline
           loop
-          preload="none"
+          preload={reel.thumbnailUrl ? "none" : "metadata"}
           onEnded={() => setPlaying(false)}
-          className="absolute inset-0 size-full object-cover"
+          className="absolute inset-0 size-full bg-navy object-cover"
         />
       ) : (
-        <ReelScene scene={scene} className="absolute inset-0 size-full" />
+        // No URL is a deployment without a public bucket URL, not a reel
+        // without a video. Saying so beats standing an illustration in for
+        // somebody's footage.
+        <div className="absolute inset-0 grid place-items-center bg-navy px-6 text-center">
+          <p className="flex flex-col items-center gap-2 text-[0.8rem] leading-snug text-white/80">
+            <IconFilm className="text-2xl text-white" />
+            This video is not available right now.
+          </p>
+        </div>
       )}
 
       {announcement ? (
