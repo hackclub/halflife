@@ -62,6 +62,13 @@ two disagreeing would mean the trail asking for different hours than the
 reviewer paid for. Banking is paced by the printer you are saving for rather
 than by your tier; see `docs/ARCHITECTURE.md`.
 
+The project page carries the tier picker: every tier stays pickable until the
+design week is submitted, and each one quotes its submit floor (`submitFloorFor`
+— the funded block plus the banking the cheapest printer needs), not just the
+funded hours. It writes `requestedTier`; the route refuses the change once
+design is approved, or on a starter project. The same page links Hackatime
+projects, which is how code hours reach a week's total.
+
 ## Where the data comes from
 
 `lib/queries/store.ts` reads one snapshot per navigation — projects, checkpoint
