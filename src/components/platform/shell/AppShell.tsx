@@ -23,7 +23,7 @@ import { Overlays } from "@/components/platform/onboarding/Overlays";
 import { PLATFORM_HOME } from "@/lib/routes";
 
 const MOBILE_ICONS = {
-  "/": IconHome,
+  [PLATFORM_HOME]: IconHome,
   "/projects": IconPencil,
   "/explore": IconCompass,
   "/shop": IconBag,
