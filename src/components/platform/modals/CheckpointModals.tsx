@@ -36,6 +36,8 @@ import { ReelCapture } from "@/components/platform/reels/ReelCapture";
 import { linkLapse } from "@/lib/auth-client";
 import { LapsePicker, fmtDuration, type LapseTimelapse } from "./LapsePicker";
 import { RepoInput, repoIsValid } from "@/components/platform/RepoField";
+import { RepoChecks } from "./RepoChecks";
+import type { RepoCheckResult } from "@/lib/repo-checks";
 import { normalizeRepo } from "@/lib/repo";
 import type { Checkpoint } from "@/lib/types";
 import { Modal, ModalTitle } from "./Modal";
@@ -770,6 +772,11 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
   const [clip, setClip] = useState<string | null>(null);
   const [works, setWorks] = useState<"yes" | "no" | null>(null);
   const [writeup, setWriteup] = useState("");
+  // Null while checking. The server runs the same checks at submit, so this
+  // only decides whether the sheet lets you get that far.
+  const [repoResult, setRepoResult] = useState<RepoCheckResult | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // The closing reel is a reel like any other and goes on the trail under its
   // own key, so the week's timeline shows it where it happened rather than
@@ -806,9 +813,11 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
   const selectedTier = TIERS.find((t) => t.id === tier) ?? TIERS[0];
   const tierBlocked = !isBuild && tierShort(selectedTier.fundingHours) > 0;
 
+  const repoReady = repoResult?.canSubmit ?? false;
+
   const canAdvance =
     step === 1
-      ? allChecked
+      ? allChecked && repoReady
       : isBuild
         ? clip && (works === "yes" || (works === "no" && writeup.trim().length >= 40))
         : step === 2
@@ -822,13 +831,20 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
    * Then the closing reel, so the submission a reviewer opens already has the
    * video attached rather than one arriving behind it. The submission last.
    */
-  function submit() {
+  async function submit() {
+    setSubmitting(true);
+    setSubmitError(null);
     if (project) setProjectTier(project.id, tier);
     if (clip) postReel(reelCheckpointId, closingCaption, clip);
-    submitPhase(checkpoint.id, {
+    const refused = await submitPhase(checkpoint.id, {
       notes: isBuild ? buildNotes : undefined,
       attachmentKeys: cart ? [cart] : [],
     });
+    setSubmitting(false);
+    if (refused) {
+      setSubmitError(refused);
+      return;
+    }
     setOpenCheckpoint(null);
   }
 
@@ -845,13 +861,23 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
           <Button variant="outline" onClick={() => (step === 1 ? setOpenCheckpoint(null) : setStep((s) => s - 1))}>
             {step === 1 ? "Not yet" : "Back"}
           </Button>
+          {submitError && (
+            <p role="alert" className="hand mr-auto min-w-0 flex-1 text-[0.78rem] leading-snug text-coral-deep">
+              {submitError}
+            </p>
+          )}
+          {step === 1 && !submitError && allChecked && !repoReady && repoResult && (
+            <p className="hand mr-auto min-w-0 flex-1 text-[0.78rem] leading-snug text-coral-deep">
+              Fix the repo checks above to carry on.
+            </p>
+          )}
           {step < total ? (
             <Button variant="solid" disabled={!canAdvance} onClick={() => setStep((s) => s + 1)}>
               Next <IconArrowRight className="text-base" />
             </Button>
           ) : (
-            <Button variant="coral" disabled={!canAdvance} onClick={submit}>
-              {owed > 0 ? "Submit anyway" : `Submit week ${week.id}`}{" "}
+            <Button variant="coral" disabled={!canAdvance || submitting} onClick={() => void submit()}>
+              {submitting ? "Submitting…" : owed > 0 ? "Submit anyway" : `Submit week ${week.id}`}{" "}
               <IconCheck className="text-base" />
             </Button>
           )}
@@ -895,6 +921,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
           >
             Check all files are included
           </ModalTitle>
+          {project && <RepoChecks project={project} onResult={setRepoResult} />}
           <ul className="grid gap-2.5">
             {files.map((f) => {
               const on = checked.includes(f.id);

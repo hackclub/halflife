@@ -150,10 +150,11 @@ interface Ctx {
   /** Post the reel a checkpoint is asking for. The video is already uploaded. */
   postReel: (id: string, caption: string, objectKey: string) => void;
   /** Hand a week in, with its notes and whatever evidence it collected. */
+  /** Resolves to null once submitted, or the server's reason for refusing. */
   submitPhase: (
     id: string,
     extra?: { notes?: string; attachmentKeys?: string[] },
-  ) => void;
+  ) => Promise<string | null>;
   /**
    * Resolves to null once the entry is saved, or to the server's reason for
    * refusing it — Lapse may say a timelapse is not yours, is still processing,
@@ -556,16 +557,37 @@ export function StoreProvider({
     [patchCheckpoint, routeOf, router],
   );
 
+  // Server first, like logSession: the submit route runs the repo checks and
+  // can refuse, and a week shown as handed in that then quietly reopens on the
+  // next refresh is worse than a sheet that says what is wrong.
   const submitPhase = useCallback(
-    (id: string, extra: { notes?: string; attachmentKeys?: string[] } = {}) => {
-      patchCheckpoint(id, {});
+    async (
+      id: string,
+      extra: { notes?: string; attachmentKeys?: string[] } = {},
+    ): Promise<string | null> => {
       const route = routeOf(id);
-      if (!route) return;
-      void send(`/api/projects/${route.projectId}/submit`, {
-        phase: route.phase,
-        ...(extra.notes ? { notes: extra.notes } : {}),
-        attachmentKeys: extra.attachmentKeys ?? [],
-      }).finally(() => router.refresh());
+      if (!route) return "This week has no project to submit.";
+      let res: Response;
+      try {
+        res = await fetch(`/api/projects/${route.projectId}/submit`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            phase: route.phase,
+            ...(extra.notes ? { notes: extra.notes } : {}),
+            attachmentKeys: extra.attachmentKeys ?? [],
+          }),
+        });
+      } catch {
+        return "Could not reach the server. Nothing was submitted — try again.";
+      }
+      if (!res.ok) {
+        const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+        return err?.error?.message ?? "The week was not submitted. Try again.";
+      }
+      patchCheckpoint(id, {});
+      router.refresh();
+      return null;
     },
     [patchCheckpoint, routeOf, router],
   );

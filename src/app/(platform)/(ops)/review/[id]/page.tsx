@@ -6,6 +6,7 @@ import { getSubmissionDetail } from "@/lib/queries/review"
 import { submitFloorFor } from "@/lib/config/printers"
 import { TIERS } from "@/lib/config/tiers"
 import { lapseTimelapseUrl } from "@/lib/lapse"
+import type { RepoCheckResult } from "@/lib/repo-checks"
 import {
   Badge,
   Callout,
@@ -121,6 +122,42 @@ export default async function ReviewDetailPage({ params }: Props) {
             <strong>Submission note:</strong> {submission.notes}
           </Callout>
         ) : null}
+      </Panel>
+
+      {/* As the repo stood when this was handed in, not as it is now: a push
+          after submitting should not change what the maker was held to. */}
+      <Panel title="Repo checks at submission">
+        {submission.repoChecks ? (
+          (() => {
+            const result = submission.repoChecks as unknown as RepoCheckResult
+            return (
+              <>
+                {result.unavailable ? (
+                  <Callout tone="warning">
+                    GitHub could not be reached when this was submitted, so nothing was checked.
+                    Open the repo and look by hand.
+                  </Callout>
+                ) : null}
+                <Table head={["Check", "Result", "Detail"]}>
+                  {result.checks.map((c) => (
+                    <tr key={c.key}>
+                      <td>{c.label}</td>
+                      <td>
+                        <Badge tone={c.status === "pass" ? "success" : c.status === "fail" ? "danger" : "warning"}>
+                          {c.status === "pass" ? "pass" : c.blocking ? "missing" : "recommended"}
+                        </Badge>
+                      </td>
+                      <td className="hl-hint">{c.detail ?? ""}</td>
+                    </tr>
+                  ))}
+                </Table>
+                <p className="hl-hint">Checked {new Date(result.checkedAt).toLocaleString()}</p>
+              </>
+            )
+          })()
+        ) : (
+          <p className="hl-hint">Submitted before repo checks existed.</p>
+        )}
       </Panel>
 
       <Panel title="Work log">
