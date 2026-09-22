@@ -63,7 +63,7 @@ export const DOCS: DocArticle[] = [
       {
         heading: "Timelapses",
         paragraphs: [
-          "Every session needs a screen recording or a camera pointed at the bench. The recorder speeds it up for you. A session with no timelapse still logs, but it does not count toward the hour target.",
+          "Every session is backed by a timelapse, and every timelapse is recorded on Hack Club's Lapse (lapse.hackclub.com): a screen recording for software, or a camera pointed at the bench. When you finish, publish it on Lapse as public or unlisted, then pick it on the timelapse tab of your journal entry. Sign in with Lapse once and everything you publish shows up there. One timelapse backs one entry.",
         ],
         list: [
           "Screen recording for CAD, KiCad, and code.",

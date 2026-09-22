@@ -141,7 +141,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
           hoursSource: true,
           createdAt: true,
           media: { select: { objectKey: true } },
-          timelapses: { select: { objectKey: true } },
+          timelapses: { select: { objectKey: true, externalId: true } },
         },
       }),
       prisma.hackatimeLink.findMany({
@@ -232,7 +232,10 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
               minutes: minutesOf(session),
               body: session.content ?? session.title,
               at: session.createdAt.getTime(),
-              clips: session.timelapses.flatMap((t) => (t.objectKey ? [t.objectKey] : [])),
+              clips: session.timelapses.flatMap((t) => {
+                const ref = t.externalId ?? t.objectKey
+                return ref ? [ref] : []
+              }),
             },
           ],
         }

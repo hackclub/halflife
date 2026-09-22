@@ -21,3 +21,8 @@ export function signInWith(providerId: "hca" | "hackatime", callbackURL = "/dash
 export function linkHackatime(callbackURL = "/dashboard") {
   return authClient.linkSocial({ provider: "hackatime", callbackURL })
 }
+
+/** Timelapses are recorded on Lapse; linking is what lets us list them. */
+export function linkLapse(callbackURL = "/dashboard") {
+  return authClient.linkSocial({ provider: "lapse", callbackURL })
+}

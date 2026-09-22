@@ -140,12 +140,17 @@ interface Ctx {
     id: string,
     extra?: { notes?: string; attachmentKeys?: string[] },
   ) => void;
+  /**
+   * Resolves to null once the entry is saved, or to the server's reason for
+   * refusing it — Lapse may say a timelapse is not yours, is still processing,
+   * or already backs another entry, and the sheet has to stay open to say so.
+   */
   logSession: (
     id: string,
     minutes: number,
     body: string,
     evidence?: Pick<SessionLog, "clips">,
-  ) => void;
+  ) => Promise<string | null>;
   stateOf: (id: string) => CheckpointState;
   isUnlocked: (id: string) => boolean;
   /** Why a locked checkpoint is locked, phrased for the trail. Null if open. */
@@ -585,12 +590,44 @@ export function StoreProvider({
    * node is the entry rather than the payment.
    */
   const logSession = useCallback(
-    (
+    async (
       id: string,
       minutes: number,
       body: string,
       evidence: Pick<SessionLog, "clips"> = { clips: [] },
-    ) => {
+    ): Promise<string | null> => {
+      // Server first, unlike the other writes here. An entry's timelapses are
+      // checked against Lapse, and a refusal is something the maker has to
+      // fix in the sheet — patching the trail first would show a node done
+      // for an entry that was never saved.
+      const route = routeOf(id);
+      if (route) {
+        let res: Response;
+        try {
+          res = await fetch(`/api/projects/${route.projectId}/sessions`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              phase: route.phase,
+              // The journal's first line stands in for a title. The form asks
+              // for one piece of writing, and inventing a second field to
+              // satisfy the column would put a box on screen that exists only
+              // because of the schema.
+              title: body.trim().split("\n")[0]?.slice(0, 200) || "Work session",
+              content: body,
+              hoursClaimed: Math.round((minutes / 60) * 100) / 100,
+              timelapses: evidence.clips.map((lapseId) => ({ lapseId })),
+            }),
+          });
+        } catch {
+          return "Could not reach the server. Your entry is still here — try again.";
+        }
+        if (!res.ok) {
+          const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+          return err?.error?.message ?? "The entry was not saved. Try again.";
+        }
+      }
+
       setFacts((f) => {
         const prev = { ...EMPTY, ...f.progress[id] };
         const entry: SessionLog = {
@@ -614,19 +651,8 @@ export function StoreProvider({
           },
         };
       });
-
-      const route = routeOf(id);
-      if (!route) return;
-      void send(`/api/projects/${route.projectId}/sessions`, {
-        phase: route.phase,
-        // The journal's first line stands in for a title. The form asks for one
-        // piece of writing, and inventing a second field to satisfy the column
-        // would put a box on screen that exists only because of the schema.
-        title: body.trim().split("\n")[0]?.slice(0, 200) || "Work session",
-        content: body,
-        hoursClaimed: Math.round((minutes / 60) * 100) / 100,
-        timelapses: evidence.clips.map((objectKey) => ({ objectKey })),
-      }).finally(() => router.refresh());
+      router.refresh();
+      return null;
     },
     [routeOf, router],
   );

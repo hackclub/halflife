@@ -14,6 +14,11 @@ Coolify.
 
    and at Hackatime, `https://<host>/api/auth/callback/hackatime`.
 
+   At Lapse (Developer Apps), `https://<host>/api/auth/callback/lapse`, with
+   scopes `user:read timelapse:read`; set `LAPSE_CLIENT_ID` and
+   `LAPSE_CLIENT_SECRET`. Every timelapse is recorded on Lapse and picked in
+   the journal, so without this app nobody can finish a journal entry.
+
    Generic OAuth providers register as first-class social providers in
    better-auth 1.7, so the callback path is `/api/auth/callback/<providerId>` —
    **not** an `oauth2`-prefixed one. The URI must match `BETTER_AUTH_URL`

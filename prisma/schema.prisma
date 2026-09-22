@@ -628,8 +628,13 @@ model SessionTimelapse {
   workSessionId String
   workSession   WorkSession @relation(fields: [workSessionId], references: [id], onDelete: Cascade)
 
+  /// "lapse" for everything recorded since timelapses moved to Lapse; "r2"
+  /// for the uploads that came before.
   provider     String  @default("r2")
   objectKey    String?
+  /// The timelapse's id on its provider. For Lapse, what the session was
+  /// checked against at attach time: owned by the claimant, and published.
+  externalId   String?
   playbackUrl  String?
   thumbnailUrl String?
   /// Wall-clock seconds the timelapse REPRESENTS. A 30x timelapse of two hours
@@ -643,6 +648,7 @@ model SessionTimelapse {
   createdAt DateTime @default(now())
 
   @@index([workSessionId])
+  @@index([provider, externalId])
   @@map("session_timelapse")
 }
 

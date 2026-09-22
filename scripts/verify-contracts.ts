@@ -60,8 +60,9 @@ function routeTable(): Map<string, Set<string>> {
     }
     const url =
       "/" +
-      relative("src/app", file.replace(/\/route\.ts$/, ""))
-        .split("/")
+      // Either separator: `relative` hands back backslashes on Windows.
+      relative("src/app", file.replace(/[\\/]route\.ts$/, ""))
+        .split(/[\\/]/)
         .filter((segment) => !segment.startsWith("("))
         .join("/")
     table.set(url, found)
@@ -139,7 +140,7 @@ async function bodies() {
     ["onboarding · tracking", onboardingStepSchema, { step: "tracking", dismissed: false }],
     ["addProject", projectUpdateSchema, { title: "Macropad", description: "Three keys.", requestedTier: 1 }],
     ["setProjectTier", projectUpdateSchema, { requestedTier: 3 }],
-    ["logSession", sessionCreateSchema, { phase: "DESIGN", title: "Routed it", content: journal, hoursClaimed: 1.5, timelapses: [{ objectKey: "timelapses/u/a.mp4" }] }],
+    ["logSession", sessionCreateSchema, { phase: "DESIGN", title: "Routed it", content: journal, hoursClaimed: 1.5, timelapses: [{ lapseId: "cm1lapse0000timelapse" }] }],
     ["logSession · no clips", sessionCreateSchema, { phase: "BUILD", title: "Soldered", content: journal, hoursClaimed: 2, timelapses: [] }],
     ["postReel · idea", createPostSchema, { kind: "IDEA", caption: "hello there", objectKey: "posts/u/a.mp4", checkpointKey: "w1-reel-idea", themeProjectId: "cmxxxxxxxxxxxxxxxxxxxxxxx" }],
     ["postReel · progress", createPostSchema, { kind: "PROGRESS", caption: "ten hours in", objectKey: "posts/u/a.mp4", checkpointKey: "w3-reel-2", themeProjectId: null }],

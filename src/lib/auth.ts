@@ -7,6 +7,7 @@ import { Role } from "@/app/generated/prisma/enums"
 import { encryptPII, isPiiConfigured } from "@/lib/pii"
 import { materializeThemeProjects } from "@/lib/provisioning"
 import { bufferRsvpForUser } from "@/lib/airtable/rsvp"
+import { LAPSE_API_BASE } from "@/lib/lapse"
 
 const PULL_PII = process.env.PULL_HCA_PII === "true" && isPiiConfigured()
 
@@ -199,6 +200,56 @@ export const auth = betterAuth({
               id: String(data.id),
               email: data.emails?.[0] ?? "",
               name: data.github_username || data.slack_id || String(data.id),
+              emailVerified: false,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            }
+          },
+        },
+        {
+          // Where timelapses live. Link-only for the same reason as Hackatime:
+          // Lapse is not an identity we trust to create accounts, it is a
+          // library of recordings attached to one we already have.
+          //
+          // Lapse issues 30-day access tokens and no refresh tokens, so an
+          // expired token is handled as "not linked" (see lib/lapse.ts) and
+          // the timelapse tab offers Sign in with Lapse again.
+          providerId: "lapse",
+          authorizationUrl: `${LAPSE_API_BASE}/auth/authorize`,
+          tokenUrl: `${LAPSE_API_BASE}/auth/token`,
+          clientId: process.env.LAPSE_CLIENT_ID ?? "",
+          clientSecret: process.env.LAPSE_CLIENT_SECRET ?? "",
+          scopes: ["user:read", "timelapse:read"],
+          pkce: true,
+          // Lapse's token endpoint reads the secret from the form body, as its
+          // reference client sends it.
+          authentication: "post",
+          disableSignUp: true,
+          disableImplicitSignUp: true,
+          getUserInfo: async ({ accessToken }) => {
+            const res = await fetch(`${LAPSE_API_BASE}/user/myself`, {
+              headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
+              signal: AbortSignal.timeout(10_000),
+            })
+            if (!res.ok) return null
+            const body = (await res.json()) as {
+              ok: boolean
+              data?: {
+                user: {
+                  id: string
+                  handle: string
+                  displayName: string
+                  profilePictureUrl?: string
+                } | null
+              }
+            }
+            const user = body.ok ? body.data?.user : null
+            if (!user) return null
+            return {
+              id: user.id,
+              email: "",
+              name: user.displayName || user.handle,
+              image: user.profilePictureUrl,
               emailVerified: false,
               createdAt: new Date(),
               updatedAt: new Date(),

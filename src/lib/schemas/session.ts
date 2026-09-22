@@ -1,6 +1,6 @@
 import { z } from "zod"
 import { HoursSource, MediaType } from "@/app/generated/prisma/enums"
-import { boundedText, httpsUrl, phaseSchema } from "@/lib/schemas/common"
+import { boundedText, phaseSchema } from "@/lib/schemas/common"
 
 const mediaSchema = z.object({
   type: z.enum(MediaType),
@@ -9,14 +9,17 @@ const mediaSchema = z.object({
   byteSize: z.number().int().positive().optional(),
 })
 
-const timelapseSchema = z.object({
-  objectKey: z.string().max(500).optional(),
-  playbackUrl: httpsUrl.optional(),
-  /** Wall-clock seconds the timelapse represents, not the video's runtime. */
-  coveredSeconds: z.number().int().min(0).max(86_400).optional(),
-  runtimeSeconds: z.number().int().min(0).max(86_400).optional(),
-  speedupFactor: z.number().positive().max(10_000).optional(),
-})
+/**
+ * A timelapse is a Lapse timelapse, named by its id. Everything else about it —
+ * owner, runtime, playback URL — is read back from Lapse by the route rather
+ * than taken from the request, because those are the facts a reviewer relies
+ * on and the client is the one party with a reason to overstate them.
+ */
+const timelapseSchema = z
+  .object({
+    lapseId: z.string().min(1).max(100),
+  })
+  .strict()
 
 export const sessionCreateSchema = z
   .object({

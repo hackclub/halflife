@@ -12,6 +12,7 @@ import { stampSessionTiming } from "@/lib/submissions"
 import { getSubmissionAccess, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
 import { publicUrlFor } from "@/lib/uploads/r2"
 import { AuditAction, logAudit } from "@/lib/audit"
+import { verifyOwnTimelapses } from "@/lib/lapse"
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -76,12 +77,31 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
   //
   // Rejected rather than quietly dropped: a participant who thinks they
   // attached a clip and finds it missing at review has been failed silently.
-  const foreign = [
-    ...data.media.map((m) => m.objectKey),
-    ...data.timelapses.flatMap((t) => (t.objectKey ? [t.objectKey] : [])),
-  ].filter((key) => !isOwnedKey(gate.user.id, key))
+  const foreign = data.media
+    .map((m) => m.objectKey)
+    .filter((key) => !isOwnedKey(gate.user.id, key))
   if (foreign.length > 0) {
     return fail("VALIDATION_FAILED", "Those uploads are not yours")
+  }
+
+  // Timelapses are the same rule asked of Lapse: each must be the caller's
+  // own, published, and done processing. And one recording backs one session —
+  // otherwise the same footage could be offered as proof twice.
+  const lapseIds = [...new Set(data.timelapses.map((t) => t.lapseId))]
+  const timelapses = await verifyOwnTimelapses(gate.user.id, lapseIds)
+  if (lapseIds.length > 0) {
+    const taken = await prisma.sessionTimelapse.findFirst({
+      where: {
+        provider: "lapse",
+        externalId: { in: lapseIds },
+        workSession: { deletedAt: null },
+      },
+      select: { externalId: true },
+    })
+    if (taken) {
+      const title = timelapses.find((t) => t.id === taken.externalId)?.title ?? "That timelapse"
+      return fail("CONFLICT", `"${title}" already backs another journal entry`)
+    }
   }
 
   const timing = await stampSessionTiming(new Date())
@@ -109,12 +129,14 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
           })),
         },
         timelapses: {
-          create: data.timelapses.map((t) => ({
-            objectKey: t.objectKey ?? null,
-            playbackUrl: t.playbackUrl ?? null,
-            coveredSeconds: t.coveredSeconds ?? null,
-            runtimeSeconds: t.runtimeSeconds ?? null,
-            speedupFactor: t.speedupFactor ?? null,
+          create: timelapses.map((t) => ({
+            provider: "lapse",
+            externalId: t.id,
+            playbackUrl: t.playbackUrl,
+            thumbnailUrl: t.thumbnailUrl,
+            // Lapse's duration is wall-clock time recorded, which is exactly
+            // what coverage is measured in.
+            coveredSeconds: t.durationSeconds,
           })),
         },
       },

@@ -34,6 +34,8 @@ import {
 } from "@/lib/config/printers";
 import { useStore } from "@/lib/store";
 import { ReelCapture } from "@/components/platform/reels/ReelCapture";
+import { linkLapse } from "@/lib/auth-client";
+import { LapsePicker, fmtDuration, type LapseTimelapse } from "./LapsePicker";
 import type { Checkpoint } from "@/lib/types";
 import { Modal, ModalTitle } from "./Modal";
 
@@ -52,6 +54,37 @@ function fmtH(h: number) {
   return `${to2(h)}h`;
 }
 
+interface JournalDraft {
+  tab: "journal" | "timelapse";
+  body: string;
+  hoursText: string;
+  picked: LapseTimelapse[];
+}
+
+const draftKey = (checkpointId: string) => `halflife.journal-draft.${checkpointId}`;
+
+/** Held for the sign-in round trip to Lapse, which leaves the page. */
+function stashJournalDraft(checkpointId: string, draft: JournalDraft) {
+  try {
+    window.sessionStorage.setItem(draftKey(checkpointId), JSON.stringify(draft));
+  } catch {
+    // Private mode or storage off: the trip still works, the draft just
+    // does not survive it.
+  }
+}
+
+function takeJournalDraft(checkpointId: string): JournalDraft | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(draftKey(checkpointId));
+    if (!raw) return null;
+    window.sessionStorage.removeItem(draftKey(checkpointId));
+    return JSON.parse(raw) as JournalDraft;
+  } catch {
+    return null;
+  }
+}
+
 export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
   const { setOpenCheckpoint, logSession, complete, projects, weekOf, weekHours } = useStore();
 
@@ -60,14 +93,19 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
   // Every journal node is one entry: write it and it is done. The week's clock
   // is what decides whether wrapping up is on the table yet.
 
-  const [tab, setTab] = useState<"journal" | "timelapse">("journal");
-  // R2 object keys for the timelapses backing this session.
-  const [picked, setPicked] = useState<string[]>([]);
-  const [body, setBody] = useState("");
+  // A draft survives exactly one trip: out to Lapse to sign in, and back. It
+  // is read once and cleared, so it cannot resurrect an entry days later.
+  const [draft] = useState(() => takeJournalDraft(checkpoint.id));
+  const [tab, setTab] = useState<"journal" | "timelapse">(draft?.tab ?? "journal");
+  // The Lapse timelapses backing this session.
+  const [picked, setPicked] = useState<LapseTimelapse[]>(draft?.picked ?? []);
+  const [body, setBody] = useState(draft?.body ?? "");
   const [preview, setPreview] = useState(false);
   // Free text, not a number: a controlled number input that coerces as you
   // type eats the decimal point the moment you reach for "1.5".
-  const [hoursText, setHoursText] = useState("");
+  const [hoursText, setHoursText] = useState(draft?.hoursText ?? "");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const project = projects.find((p) => p.weekId === (week.phase === "build" ? week.id - 5 : week.id))
     ?? projects[0];
@@ -94,7 +132,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
         ? `${200 - body.trim().length} more characters in your entry.`
         : !enoughPhotos
           ? `${needPhotos - shots} more ${needPhotos - shots === 1 ? "image" : "images"} in your entry for ${fmtH(claimed)}.`
-          : "Add the timelapse that backs this session."
+          : "Pick the Lapse timelapse that backs this session."
     : null;
 
   const hours = weekHours(week.id);
@@ -106,11 +144,27 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
    * may have brought a reel due, or opened the fork at the end of the week,
    * and a modal that reopens itself would march past both.
    */
-  function save() {
-    logSession(checkpoint.id, sessionMinutes, body.trim(), { clips: picked });
+  async function save() {
+    setSaving(true);
+    setSaveError(null);
+    const refused = await logSession(checkpoint.id, sessionMinutes, body.trim(), {
+      clips: picked.map((t) => t.id),
+    });
+    setSaving(false);
+    if (refused) {
+      setSaveError(refused);
+      return;
+    }
     complete(checkpoint.id);
     setOpenCheckpoint(null);
   }
+
+  function signInWithLapse() {
+    stashJournalDraft(checkpoint.id, { tab: "timelapse", body, hoursText, picked });
+    void linkLapse(`${window.location.pathname}?journal=${encodeURIComponent(checkpoint.id)}`);
+  }
+
+  const coveredSeconds = picked.reduce((sum, t) => sum + t.durationSeconds, 0);
 
   return (
     <Modal
@@ -123,7 +177,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
       footer={
         <>
           <div className="mr-auto flex min-w-[min(100%,16rem)] flex-1 items-center gap-3">
-            {missing ? (
+            {missing || saveError ? (
               <IconWarning className="shrink-0 text-lg text-coral" />
             ) : (
               <IconClock className="shrink-0 text-lg text-navy-soft" />
@@ -131,10 +185,13 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
             <p
               className={cx(
                 "hand min-w-0 flex-1 text-[0.76rem] leading-snug",
-                missing ? "text-coral-deep" : "text-navy-soft",
+                missing || saveError ? "text-coral-deep" : "text-navy-soft",
               )}
+              role={saveError ? "alert" : undefined}
             >
-              {missing
+              {saveError
+                ? saveError
+                : missing
                 ? missing
                 : toFloor > 0
                   ? `${fmtH(toFloor)} more before you can wrap up the week.`
@@ -142,8 +199,8 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
             </p>
           </div>
 
-          <Button variant="solid" onClick={save} disabled={!ok}>
-            Finish <IconArrowRight className="text-base" />
+          <Button variant="solid" onClick={() => void save()} disabled={!ok || saving}>
+            {saving ? "Saving…" : "Finish"} <IconArrowRight className="text-base" />
           </Button>
         </>
       }
@@ -288,52 +345,24 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
         </div>
       ) : (
         <div>
-          <ModalTitle sub="A timelapse is what turns the hours you claimed into something anyone can check. Film it on the machine you are working at, or scan a code and record on your phone.">
-            Add your timelapses
+          <ModalTitle sub="A timelapse is what turns the hours you claimed into something anyone can check. Record the session on Lapse, publish it, then pick it here.">
+            Select your timelapses
           </ModalTitle>
 
-          <div className="grid gap-2.5">
-            {picked.map((key, index) => (
-              <div
-                key={key}
-                className="sketch flex items-center gap-3.5 rounded-2xl bg-violet-pale p-2.5"
-                style={
-                  {
-                    "--sk-color": "var(--color-violet)",
-                    "--sk-radius": "16px",
-                  } as React.CSSProperties
-                }
-              >
-                <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-violet text-white">
-                  <IconCheck className="text-[0.9rem]" strokeWidth={3.4} />
-                </span>
-                <span className="hand min-w-0 flex-1 truncate text-[0.9rem] font-semibold text-navy">
-                  Timelapse {index + 1}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setPicked((p) => p.filter((x) => x !== key))}
-                  className="label text-navy-soft transition-colors hover:text-coral-deep"
-                >
-                  Remove
-                </button>
-              </div>
-            ))}
-
-            <ReelCapture
-              objectKey={null}
-              folder="timelapses"
-              label="This timelapse"
-              onCaptured={(key) => {
-                if (key) setPicked((p) => (p.includes(key) ? p : [...p, key]));
-              }}
-            />
-          </div>
+          <LapsePicker
+            picked={picked}
+            onSignIn={signInWithLapse}
+            onToggle={(t) =>
+              setPicked((p) => (p.some((x) => x.id === t.id) ? p.filter((x) => x.id !== t.id) : [...p, t]))
+            }
+          />
 
           <p className="mt-4 text-center text-[0.82rem] text-navy-soft tabular-nums">
             {picked.length === 0
-              ? "Nothing added yet."
-              : `${picked.length === 1 ? "1 timelapse" : `${picked.length} timelapses`} attached.`}
+              ? "Nothing picked yet."
+              : `${picked.length === 1 ? "1 timelapse" : `${picked.length} timelapses`} picked · ${fmtDuration(coveredSeconds)} recorded${
+                  claimed > 0 ? ` for ${fmtH(claimed)} claimed` : ""
+                }`}
           </p>
         </div>
       )}

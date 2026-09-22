@@ -112,6 +112,19 @@ export function Overlays() {
     if (phase === "checkpoint" && !openCheckpoint) setPhase("aim");
   }, [phase, openCheckpoint, setPhase]);
 
+  // Coming back from signing in with Lapse: reopen the entry that sent you,
+  // on the tab you left from. The param is dropped straight away so a refresh
+  // or a shared link does not keep reopening it.
+  useEffect(() => {
+    if (!hydrated) return;
+    const url = new URL(window.location.href);
+    const journal = url.searchParams.get("journal");
+    if (!journal) return;
+    url.searchParams.delete("journal");
+    window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+    setOpenCheckpoint(journal);
+  }, [hydrated, setOpenCheckpoint]);
+
   if (!hydrated) return null;
 
   if (phase === "cinematic") return <Cinematic />;

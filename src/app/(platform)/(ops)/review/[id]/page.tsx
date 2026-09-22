@@ -5,6 +5,7 @@ import { Permission } from "@/lib/permissions"
 import { getSubmissionDetail } from "@/lib/queries/review"
 import { submitFloorFor } from "@/lib/config/printers"
 import { TIERS } from "@/lib/config/tiers"
+import { lapseTimelapseUrl } from "@/lib/lapse"
 import {
   Badge,
   Callout,
@@ -152,8 +153,18 @@ export default async function ReviewDetailPage({ params }: Props) {
                     </a>
                   ))}
                   {session.timelapses.map((t) => (
-                    <a key={t.id} href={t.playbackUrl ?? "#"} style={{ marginRight: "0.5rem" }}>
-                      timelapse
+                    <a
+                      key={t.id}
+                      href={
+                        t.provider === "lapse" && t.externalId
+                          ? lapseTimelapseUrl(t.externalId)
+                          : (t.playbackUrl ?? "#")
+                      }
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ marginRight: "0.5rem" }}
+                    >
+                      {t.provider === "lapse" ? "lapse" : "timelapse"}
                       {t.coveredSeconds ? ` (${Math.round(t.coveredSeconds / 60)}m)` : ""}
                     </a>
                   ))}
