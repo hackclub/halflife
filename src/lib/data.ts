@@ -63,7 +63,7 @@ export const DOCS: DocArticle[] = [
       {
         heading: "Timelapses",
         paragraphs: [
-          "Every session is backed by a timelapse, and every timelapse is recorded on Hack Club's Lapse (lapse.hackclub.com): a screen recording for software, or a camera pointed at the bench. When you finish, publish it on Lapse as public or unlisted, then pick it on the timelapse tab of your journal entry. Sign in with Lapse once and everything you publish shows up there. One timelapse backs one entry.",
+          "Every session needs its hours backed by one of two things: a written journal entry, or a timelapse. You do not need both. Timelapses are recorded on Hack Club's Lapse (lapse.hackclub.com): a screen recording for software, or a camera pointed at the bench. When you finish, publish it on Lapse as public or unlisted, then pick it on the timelapse tab of your entry. Sign in with Lapse once and everything you publish shows up there. One timelapse backs one entry.",
         ],
         list: [
           "Screen recording for CAD, KiCad, and code.",
@@ -74,7 +74,7 @@ export const DOCS: DocArticle[] = [
       {
         heading: "Writing the entry",
         paragraphs: [
-          "Minimum is 200 characters. Say what you did, what broke, and what you are doing next. The best entries read like a note to yourself three weeks from now, because that is exactly who ends up reading them.",
+          "If you are writing the entry rather than picking a timelapse, the minimum is 200 characters, and images do not count toward it. Say what you did, what broke, and what you are doing next. The best entries read like a note to yourself three weeks from now, because that is exactly who ends up reading them.",
         ],
       },
     ],

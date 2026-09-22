@@ -15,7 +15,7 @@ import {
   IconMic,
   IconWarning,
 } from "@/components/platform/icons";
-import { countImages, Markdown } from "@/components/platform/Markdown";
+import { countImages, Markdown, proseLength } from "@/components/platform/Markdown";
 import { Button, Chip, Field, OptionRow, Panel, cx, inputClass } from "@/components/platform/ui";
 import {
   BOM_ROWS,
@@ -117,21 +117,29 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
   const sessionMinutes = Math.round(claimed * 60);
   const needPhotos = photosRequired(claimed);
   const shots = countImages(body);
+  // Words only: the images are counted above, not twice.
+  const written = proseLength(body);
 
-  const longEnough = body.trim().length >= 200;
+  const longEnough = written >= 200;
   const enoughPhotos = shots >= needPhotos;
-  const ok = longEnough && enoughPhotos && claimed > 0 && picked.length > 0;
+  // A session is backed by a journal entry OR a Lapse timelapse, not both:
+  // either one is evidence a reviewer can check the hours against. The hours
+  // themselves are always the claim, so they are always asked for.
+  const journalled = longEnough && enoughPhotos;
+  const recorded = picked.length > 0;
+  const ok = claimed > 0 && (journalled || recorded);
 
-  // One thing at a time, in the order the tabs are laid out — a list of four
-  // faults reads as a wall, and only the first one is actionable anyway.
+  // One thing at a time — a list of four faults reads as a wall, and only the
+  // first one is actionable anyway. Once the hours are in, the entry's next
+  // shortfall is named with the other way out beside it, so nobody is told to
+  // write 200 characters they could skip with a timelapse.
+  const orLapse = " Or pick a Lapse timelapse instead.";
   const missing = !ok
     ? claimed <= 0
       ? "Add the hours you spent on this session."
       : !longEnough
-        ? `${200 - body.trim().length} more characters in your entry.`
-        : !enoughPhotos
-          ? `${needPhotos - shots} more ${needPhotos - shots === 1 ? "image" : "images"} in your entry for ${fmtH(claimed)}.`
-          : "Pick the Lapse timelapse that backs this session."
+        ? `${200 - written} more characters in your entry, not counting images.${orLapse}`
+        : `${needPhotos - shots} more ${needPhotos - shots === 1 ? "image" : "images"} in your entry for ${fmtH(claimed)}.${orLapse}`
     : null;
 
   const hours = weekHours(week.id);
@@ -228,7 +236,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
       {tab === "journal" ? (
         <div>
-          <ModalTitle sub="Start with the hours, because everything under it is the evidence for them: 200 characters at least, and an image in the entry for each hour (minimum of 2). Markdown works, images included.">
+          <ModalTitle sub="Start with the hours, then back them up: either write the entry here, or pick a Lapse timelapse on the other tab. An entry is 200 characters at least (images do not count toward it), with an image for each hour (minimum of 2). Markdown works, images included.">
             What did you do this session?
           </ModalTitle>
 
@@ -332,13 +340,13 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
                 longEnough ? "text-teal-deep" : "text-navy-soft",
               )}
             >
-              {body.trim().length} / 200 characters
+              {written} / 200 characters
             </p>
           </div>
         </div>
       ) : (
         <div>
-          <ModalTitle sub="A timelapse is what turns the hours you claimed into something anyone can check. Record the session on Lapse, publish it, then pick it here.">
+          <ModalTitle sub="A timelapse can back your hours on its own, in place of a written entry. Record the session on Lapse, publish it, then pick it here.">
             Select your timelapses
           </ModalTitle>
 

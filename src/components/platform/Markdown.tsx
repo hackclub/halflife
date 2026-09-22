@@ -41,6 +41,19 @@ export function countImages(source: string): number {
 }
 
 /**
+ * How much an entry actually says, for the 200-character floor.
+ *
+ * Images are the evidence half of an entry and are counted by `countImages`;
+ * counting their markdown here too would let a pasted CDN URL — often a
+ * hundred characters on its own — write most of the minimum. So every image,
+ * alt text included, comes out before the length is taken: alt text is not
+ * prose, and leaving it in would only move the padding into the brackets.
+ */
+export function proseLength(source: string): number {
+  return source.replace(/!\[[^\]]*\]\([^)]*\)/g, "").trim().length;
+}
+
+/**
  * Images lead the alternation. `[alt](src)` would otherwise match the link
  * form first and leave a stray "!" sitting in front of it.
  *
