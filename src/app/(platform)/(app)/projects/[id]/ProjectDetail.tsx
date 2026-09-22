@@ -11,6 +11,7 @@ import { submitFloorFor, tierBankedFloor } from "@/lib/config/printers";
 import { fmtDate, fmtHours, projectEvents, projectStats, type ProjectEvent } from "@/lib/projects";
 import { useStore } from "@/lib/store";
 import { HackatimeLinks } from "./HackatimeLinks";
+import { RepoEditor } from "@/components/platform/RepoField";
 import type { Project } from "@/lib/types";
 
 /**
@@ -242,7 +243,7 @@ export function ProjectDetail({ id }: { id: string }) {
         </div>
 
         <div className="px-5 py-5 sm:px-7 sm:py-6">
-          <h1 className="text-[1.5rem] leading-tight font-extrabold tracking-[-0.03em] text-navy sm:text-[1.9rem]">
+          <h1 className="text-[1.5rem] leading-tight font-extrabold tracking-[-0.03em] [overflow-wrap:anywhere] text-navy sm:text-[1.9rem]">
             {project.name}
           </h1>
 
@@ -265,7 +266,7 @@ export function ProjectDetail({ id }: { id: string }) {
             )}
           </p>
 
-          <p className="mt-3.5 max-w-[62ch] text-[0.95rem] leading-relaxed text-navy-soft">
+          <p className="mt-3.5 max-w-[62ch] text-[0.95rem] leading-relaxed [overflow-wrap:anywhere] text-navy-soft">
             {project.description}
           </p>
 
@@ -273,6 +274,11 @@ export function ProjectDetail({ id }: { id: string }) {
             <Chip tone="muted">{week.fullName}</Chip>
             <Chip tone="muted">Week {week.id}</Chip>
             {project.starter && <Chip tone="gold">Starter project</Chip>}
+          </div>
+
+          <div className="mt-4">
+            <p className="label mb-1.5 text-violet-deep">Repo</p>
+            <RepoEditor project={project} className="max-w-[520px]" />
           </div>
 
           {/* A starter project is scoped to tier 1 funding, so its tier is

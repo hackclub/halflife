@@ -35,6 +35,8 @@ import { useStore } from "@/lib/store";
 import { ReelCapture } from "@/components/platform/reels/ReelCapture";
 import { linkLapse } from "@/lib/auth-client";
 import { LapsePicker, fmtDuration, type LapseTimelapse } from "./LapsePicker";
+import { RepoInput, repoIsValid } from "@/components/platform/RepoField";
+import { normalizeRepo } from "@/lib/repo";
 import type { Checkpoint } from "@/lib/types";
 import { Modal, ModalTitle } from "./Modal";
 
@@ -581,8 +583,9 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
     experience === "lots" ? 3 : experience === "some" ? 2 : 1,
   );
   const [showExamples, setShowExamples] = useState(false);
+  const [repo, setRepo] = useState("");
 
-  const ok = name.trim().length > 1 && desc.trim().length > 4;
+  const ok = name.trim().length > 1 && desc.trim().length > 4 && repoIsValid(repo);
 
   return (
     <Modal
@@ -603,7 +606,14 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
             variant="solid"
             disabled={!ok}
             onClick={() => {
-              addProject({ name: name.trim(), description: desc.trim(), weekId: week.id, tier, starter: false });
+              addProject({
+                name: name.trim(),
+                description: desc.trim(),
+                weekId: week.id,
+                tier,
+                starter: false,
+                githubRepo: normalizeRepo(repo).url,
+              });
               complete(checkpoint.id, { artefacts: 1 });
               setOpenCheckpoint(null);
             }}
@@ -636,6 +646,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
               className={cx(inputClass, "resize-none")}
             />
           </Field>
+          <RepoInput id="np-repo" value={repo} onChange={setRepo} />
 
           <button
             type="button"

@@ -129,6 +129,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
           tier: true,
           requestedTier: true,
           starterProjectId: true,
+          githubRepo: true,
           designStatus: true,
           buildStatus: true,
           designApprovedHours: true,
@@ -308,6 +309,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
           weekId: weekOf(themeIndex, Phase.DESIGN),
           tier: clampTier(tier),
           starter: project.starterProjectId !== null,
+          githubRepo: project.githubRepo,
         },
       ]
     }),

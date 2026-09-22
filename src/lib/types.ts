@@ -103,6 +103,8 @@ export interface Project {
   weekId: number;
   tier: 1 | 2 | 3;
   starter: boolean;
+  /** Where the code, schematics and CAD live. Optional, editable any time. */
+  githubRepo?: string | null;
 }
 
 export type Experience = "first" | "little" | "some" | "lots";

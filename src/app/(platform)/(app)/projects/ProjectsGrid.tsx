@@ -4,6 +4,7 @@ import Link from "next/link";
 import { WeekScene } from "@/components/platform/art";
 import { IconArrowRight, IconClock, IconFilm, IconPencil } from "@/components/platform/icons";
 import { Chip, Panel } from "@/components/platform/ui";
+import { RepoEditor } from "@/components/platform/RepoField";
 import { fmtDate, fmtHours, projectEvents, projectStats } from "@/lib/projects";
 import { useStore } from "@/lib/store";
 import { PLATFORM_HOME } from "@/lib/routes";
@@ -61,13 +62,13 @@ export function ProjectsGrid() {
 
               <span className="flex flex-1 flex-col px-4 py-4">
                 <span className="flex items-start justify-between gap-2">
-                  <span className="min-w-0 text-[1.05rem] leading-tight font-extrabold text-navy group-hover:underline group-hover:decoration-2 group-hover:underline-offset-4">
+                  <span className="min-w-0 text-[1.05rem] leading-tight font-extrabold [overflow-wrap:anywhere] text-navy group-hover:underline group-hover:decoration-2 group-hover:underline-offset-4">
                     {project.name}
                   </span>
                   <Chip tone="violet">Tier {project.tier}</Chip>
                 </span>
 
-                <span className="mt-1.5 line-clamp-2 text-[0.85rem] leading-snug text-navy-soft">
+                <span className="mt-1.5 line-clamp-2 text-[0.85rem] leading-snug [overflow-wrap:anywhere] text-navy-soft">
                   {project.description}
                 </span>
 
@@ -89,6 +90,10 @@ export function ProjectsGrid() {
                 </span>
               </span>
             </Link>
+            {/* Outside the card's link, so editing the repo is not a click
+                through to the project page and the link inside it is not a
+                link nested in a link. */}
+            <RepoEditor project={project} className="border-t border-line/70 px-4 py-2.5" />
           </Panel>
         );
       })}

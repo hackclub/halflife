@@ -10,6 +10,8 @@ import { fmtHours } from "@/lib/projects";
 import { recommendedTier, useStore } from "@/lib/store";
 import type { Experience } from "@/lib/types";
 import { Modal, ModalTitle } from "./Modal";
+import { RepoInput, repoIsValid } from "@/components/platform/RepoField";
+import { normalizeRepo } from "@/lib/repo";
 
 const GOLD = "var(--color-gold-deep)";
 
@@ -46,6 +48,7 @@ export function FirstCheckpoint() {
   const [exp, setExp] = useState<Experience | null>(experience);
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
+  const [repo, setRepo] = useState("");
   const [starter, setStarter] = useState<string | null>(null);
   const [pickedTier, setPickedTier] = useState<1 | 2 | 3 | null>(null);
   const [spin, setSpin] = useState(0);
@@ -69,10 +72,10 @@ export function FirstCheckpoint() {
 
   const canAdvance = useMemo(() => {
     if (step === 1) return exp !== null;
-    if (step === 4) return name.trim().length > 1 && desc.trim().length > 4;
+    if (step === 4) return name.trim().length > 1 && desc.trim().length > 4 && repoIsValid(repo);
     if (step === 5) return tier !== null;
     return true;
-  }, [step, exp, name, desc, tier]);
+  }, [step, exp, name, desc, tier, repo]);
 
   function finish() {
     if (!exp) return;
@@ -84,6 +87,9 @@ export function FirstCheckpoint() {
       // Null is legal only when a starter project has already locked the choice
       // to tier 1; the server rejects it from anyone who could still choose.
       requestedTier: tierLocked ? null : tier,
+      // Only asked of someone past their first board; a beginner's is added
+      // later from the project page, so nothing is sent for them here.
+      githubRepo: exp === "first" ? null : normalizeRepo(repo).url,
     });
     setOpenCheckpoint(null);
     setPhase("tour");
@@ -250,6 +256,11 @@ export function FirstCheckpoint() {
                 className={cx(inputClass, "resize-none")}
               />
             </Field>
+            {/* Not asked of someone on their first ever board: a repo is one
+                more unfamiliar thing on a screen that should only be asking
+                what they want to make. It is on the project page when they
+                get there. */}
+            {exp !== "first" && <RepoInput id="p-repo" value={repo} onChange={setRepo} />}
           </div>
 
           <p className="mt-6 text-[0.95rem] font-bold text-navy">Or try one of these guided projects!</p>

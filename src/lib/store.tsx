@@ -136,9 +136,16 @@ interface Ctx {
     description: string;
     starterProjectId: string | null;
     requestedTier: 1 | 2 | 3 | null;
+    githubRepo?: string | null;
   }) => void;
   addProject: (p: Omit<Project, "id">) => void;
   setProjectTier: (id: string, tier: 1 | 2 | 3) => void;
+  /**
+   * Set or clear a project's repo link. Resolves to null once saved, or to the
+   * server's reason for refusing (a phase in review, say), so an inline editor
+   * can say so instead of quietly reverting.
+   */
+  setProjectRepo: (id: string, url: string | null) => Promise<string | null>;
   complete: (id: string, patch?: Partial<CheckpointState>) => void;
   /** Post the reel a checkpoint is asking for. The video is already uploaded. */
   postReel: (id: string, caption: string, objectKey: string) => void;
@@ -308,6 +315,7 @@ export function StoreProvider({
       description: string;
       starterProjectId: string | null;
       requestedTier: 1 | 2 | 3 | null;
+      githubRepo?: string | null;
     }) => {
       // Setup can only be answered once; the server refuses a replay step by
       // step. Reopening the finished node must not fire six doomed requests.
@@ -343,6 +351,7 @@ export function StoreProvider({
                   weekId: 1,
                   tier: answers.requestedTier ?? 1,
                   starter: answers.starterProjectId !== null,
+                  githubRepo: answers.githubRepo ?? null,
                 },
               ]
             : f.projects,
@@ -369,6 +378,12 @@ export function StoreProvider({
         // The tutorial is the one step the comp marks dismissible, and this is
         // the finish button rather than the dismiss link — so it was read.
         await send("/api/onboarding", { step: "tracking", dismissed: false });
+        // The repo is not an onboarding step — it is an ordinary project field
+        // the server's state machine knows nothing about — so it goes through
+        // the project route once the project it belongs to has been named.
+        if (answers.githubRepo && projectId) {
+          await send(`/api/projects/${projectId}`, { githubRepo: answers.githubRepo }, "PATCH");
+        }
       })().finally(() => router.refresh());
     },
     [facts.onboardingDone, facts.projectIdByWeek, router],
@@ -394,7 +409,12 @@ export function StoreProvider({
       );
       void send(
         `/api/projects/${id}`,
-        { title: p.name, description: p.description, requestedTier: p.tier },
+        {
+          title: p.name,
+          description: p.description,
+          requestedTier: p.tier,
+          ...(p.githubRepo ? { githubRepo: p.githubRepo } : {}),
+        },
         "PATCH",
       ).finally(() => router.refresh());
     },
@@ -408,6 +428,32 @@ export function StoreProvider({
    * is parts money. This is the participant saying which one they are aiming
    * at, and the API refuses to write anything else.
    */
+  const setProjectRepo = useCallback(
+    async (id: string, url: string | null): Promise<string | null> => {
+      let res: Response;
+      try {
+        res = await fetch(`/api/projects/${id}`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ githubRepo: url }),
+        });
+      } catch {
+        return "Could not reach the server. Try again.";
+      }
+      if (!res.ok) {
+        const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+        return err?.error?.message ?? "That did not save. Try again.";
+      }
+      setFacts((f) => ({
+        ...f,
+        projects: f.projects.map((p) => (p.id === id ? { ...p, githubRepo: url } : p)),
+      }));
+      router.refresh();
+      return null;
+    },
+    [router],
+  );
+
   const setProjectTier = useCallback(
     (id: string, tier: 1 | 2 | 3) => {
       setFacts((f) => ({
@@ -874,6 +920,7 @@ export function StoreProvider({
     completeOnboarding,
     addProject,
     setProjectTier,
+    setProjectRepo,
     complete,
     postReel,
     submitPhase,
