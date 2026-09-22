@@ -3,7 +3,7 @@ import { PageSign } from "@/components/platform/PageSign";
 import { ProjectsGrid } from "./ProjectsGrid";
 
 export const metadata: Metadata = {
-  title: "Projects — Half Life",
+  title: "Half Life Projects",
   description: "Every project you have started, and everything you logged against it.",
 };
 

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { ProjectDetail } from "./ProjectDetail";
 
 export const metadata: Metadata = {
-  title: "Project — Half Life",
+  title: "Half Life Project",
   description: "Everything logged against one project, newest first.",
 };
 

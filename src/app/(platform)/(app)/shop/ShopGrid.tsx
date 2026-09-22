@@ -109,14 +109,6 @@ export function ShopGrid({ items: all }: { items: readonly ShopItemView[] }) {
         {items.map((item) => {
           const has = item.ownedCount > 0;
           const out = item.stock !== null && item.stock <= 0;
-          // Banked coins are legal tender for a printer and for nothing else, so
-          // what you can afford depends on what you are buying. Without this the
-          // shop would offer to sell someone a hoodie out of their printer fund.
-          //
-          // Keyed on the artwork because this grid is still on dummy items, and
-          // their "Grants" category covers the parts grants as well as the
-          // machines. Once it reads the real catalogue this becomes the
-          // ShopItemCategory.PRINTER the ledger already enforces.
           // Banked coins are legal tender for a printer and for nothing else,
           // so what you can afford depends on what you are buying. Without this
           // the shop would offer to sell someone a hoodie out of their savings.

@@ -10,6 +10,7 @@ import { TIERS } from "@/lib/curriculum";
 import { submitFloorFor, tierBankedFloor } from "@/lib/config/printers";
 import { fmtDate, fmtHours, projectEvents, projectStats, type ProjectEvent } from "@/lib/projects";
 import { useStore } from "@/lib/store";
+import { HackatimeLinks } from "./HackatimeLinks";
 import type { Project } from "@/lib/types";
 
 /**
@@ -198,9 +199,8 @@ export function ProjectDetail({ id }: { id: string }) {
   const { projects, weeks, stateOf, weekOf, weekHours, hydrated, viewer } = useStore();
   const project = projects.find((p) => p.id === id);
 
-  // The save is read from localStorage after mount, so on the server and on
-  // the first paint there are no projects at all. Saying "not found" then
-  // would be a lie that corrects itself a frame later.
+  // Projects come from the server snapshot, so a miss here is real: the id is
+  // someone else's, or the project was deleted.
   if (!project) {
     return (
       <div className="mx-auto w-full max-w-[880px] px-4 pt-6 sm:px-8">
@@ -211,7 +211,7 @@ export function ProjectDetail({ id }: { id: string }) {
           </p>
           {hydrated && (
             <p className="hand mx-auto mt-2 max-w-[40ch] text-[0.9rem] text-navy-soft">
-              it may have been made on another device. this one only knows what is saved here.
+              it may have been deleted, or it belongs to someone else.
             </p>
           )}
         </Panel>
@@ -295,6 +295,8 @@ export function ProjectDetail({ id }: { id: string }) {
           )}
         </div>
       </Panel>
+
+      <HackatimeLinks projectId={project.id} phase={week.phase} />
 
       {/* ---------- what happened, newest first ---------- */}
       <h2 className="label mt-8 mb-3 text-violet-deep">Journal</h2>

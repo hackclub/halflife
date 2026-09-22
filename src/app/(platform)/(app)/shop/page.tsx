@@ -5,7 +5,7 @@ import { requireSessionPage } from "@/lib/page-guards";
 import { getShopItemsFor } from "@/lib/shop";
 
 export const metadata: Metadata = {
-  title: "Shop — Half Life",
+  title: "Half Life Shop",
   description: "Spend the coins you banked on grants, tools, parts and swag.",
 };
 
