@@ -32,9 +32,16 @@ import { ANNOUNCEMENT } from "@/lib/site/content";
  * viewport below, and the two do not compete: the button is a filled block
  * and this is 90px of type at the top edge.
  *
- * Static, like everything else here, and not a link — there is nowhere for it
- * to go, and an invented destination is worse than a sentence that tells you
- * the date.
+ * The plate now carries a second fact — where to submit — and it is marked by
+ * an underline rather than a second block of accent, so the one-accent rule
+ * survives the sentence growing. The anchor is the footer's link idiom
+ * unchanged (paper, a quarter-opacity rule, cyan on hover), which is the same
+ * ink ground, so a link reads the same in both places.
+ *
+ * It was static and not a link for as long as there was nowhere for it to go.
+ * The submission form is a real destination, so the last word is an anchor;
+ * the rest of the sentence stays plain, because the date is still something
+ * you read rather than something you click.
  */
 export default function AnnouncementBanner() {
   return (
@@ -48,8 +55,8 @@ export default function AnnouncementBanner() {
     // the Hack Club flag — which is a link — at exactly the rows the flag
     // occupies. Without it the flag's lower two thirds stop being clickable.
     // The plate takes its events back so the sentence stays selectable.
-    <div className="pointer-events-none absolute inset-x-0 top-[3.25rem] z-20 flex justify-center px-3 md:top-3">
-      {/* Two vertical positions, because below about 620px of viewport the
+    <div className="pointer-events-none absolute inset-x-0 top-[3.25rem] z-20 flex justify-center px-3 min-[830px]:top-3">
+      {/* Two vertical positions, because below about 830px of viewport the
           plate and the flag want the same row and the plate is too wide to
           move sideways out of the way.
 
@@ -60,36 +67,57 @@ export default function AnnouncementBanner() {
           bottom edge at 2.52rem. 3.25rem clears it by 11.6px at every width
           this branch covers.
 
-          The switch is at `md` rather than at the 620px where the collision
-          actually ends: at 640 the plate clears the flag by 17px, which is a
-          near miss rather than a decision, and at 768 it clears by 81. */}
-      <div className="pointer-events-auto bg-hl-ink px-5 py-2.5">
-        {/* Measured, not guessed: set in Open Sans the sentence is 21.86em
-            wide — 13.56 for the prose, 8.06 for the date, plus about 3% on
-            the date for the 600 weight. The box's 12 and the plate's 20
-            either side take 64px off the screen, so the line holds at one
-            from about 350px of viewport up, which is every phone in current
-            use.
+          The switch is at 830px, and it is the one-line plate that puts it
+          there. On the flag's own rows the only thing keeping the two apart
+          is the plate being narrow enough to centre clear of it, and set on
+          one line the plate is 578px wide — 33.62em of sentence at the 16px
+          ceiling, plus 40px of padding. Below 945 the flag is pinned at its
+          6.5rem floor, so its right edge is a constant 108px and
+          (vw - 578) / 2 >= 108 first holds at 794, which is a near miss
+          rather than a decision. 830 makes it an 18px gap. Above 945 the flag
+          grows with the viewport at 11vw while the ground either side of the
+          plate grows at 50vw, so the clearance only opens from there. */}
+      <div className="pointer-events-auto max-w-[24.375rem] bg-hl-ink px-5 py-2.5 min-[624px]:max-w-none">
+        {/* One line wherever the sentence fits, two where it cannot.
 
-            The size is fluid rather than fixed because that threshold is the
-            fluidity: at a flat 14px the line would wrap on a 360px Android,
-            and at a flat 13px it would be a size smaller than it needs to be
-            on every other screen. `3.6vw` tracks the width it has to fit
-            into, so the plate is one line at 360 and the type is at its 16px
-            ceiling by 444, where the plate stops growing at 390 x 42.
+            The whole sentence measures 33.62em set in Open Sans — 13.40 for
+            the lead, 7.59 for the date at its 600 weight, 10.48 for the tail
+            and 2.15 for the link — so at the 16px ceiling it wants 538px of
+            text, 578 with the plate's padding and 602 with the gutter either
+            side. `min-[624px]` is that number with 22px of slack, which is
+            there for the fallback face being a shade wider than Open Sans
+            while the real one loads: a `nowrap` plate that outgrew the gutter
+            would scroll the whole page sideways for a frame.
 
-            Below 350 it takes two lines, and `text-balance` makes that a
-            break before "starts" rather than one word stranded under a full
-            line. */}
+            Below that width the 390px cap stands and the sentence takes two
+            lines. Uncapped it would be a strip spanning the phone to carry
+            one sentence, which is the cookie-bar reading the plate exists to
+            avoid, and `text-balance` is what keeps the second line a fair
+            share of the sentence rather than "here" stranded under a full
+            one.
+
+            The fluid size is what holds that branch at two lines rather than
+            three: the plate is content-sized below 414px of viewport, where
+            the type shrinking is what keeps the count down, and `3.6vw`
+            reaches the 16px ceiling by 444 — well inside the capped branch,
+            so the one-line branch is always set at the full 16. */}
         <p
-          className="text-balance text-center leading-snug text-hl-paper"
+          className="text-balance text-center leading-snug text-hl-paper min-[624px]:whitespace-nowrap"
           style={{ fontSize: "clamp(0.8125rem, 3.6vw, 1rem)" }}
         >
           {ANNOUNCEMENT.lead}{" "}
           <span className="font-semibold text-hl-cyan">
             {ANNOUNCEMENT.date}
           </span>
-          {ANNOUNCEMENT.tail}
+          {ANNOUNCEMENT.tail}{" "}
+          <a
+            href={ANNOUNCEMENT.submitHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-hl-paper underline decoration-hl-paper/25 decoration-2 underline-offset-4 transition-colors hover:text-hl-cyan hover:decoration-hl-cyan focus-visible:text-hl-cyan"
+          >
+            {ANNOUNCEMENT.submitLabel}
+          </a>
         </p>
       </div>
     </div>
