@@ -60,7 +60,7 @@ export const BRAND = {
 export const ANNOUNCEMENT = {
   lead: "Warm Up Week 2 started on",
   date: "September 21st",
-  tail: "! Submit ",
+  tail: "! Submit projects ",
   submitLabel: "here",
   submitHref: "https://forms.hackclub.com/halflifesubmit",
 } as const;
