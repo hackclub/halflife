@@ -43,12 +43,14 @@ export const BRAND = {
  *
  * The one dated claim on the site, and the only place a calendar date is
  * written down, so it is the one thing here that goes stale on its own. Change
- * `date` when the start moves; nothing else reads it.
+ * `date` when the start moves; nothing else reads it. `submitHref` is the
+ * project submission form, and goes stale on the same terms.
  *
- * It is split rather than stored as one sentence because the date is the fact
- * the strip exists to carry and is the only thing set in the page's accent
- * colour — see `announcement-banner.tsx`. Splitting it in the data keeps the
- * component free of string surgery on copy it does not own.
+ * It is split rather than stored as one sentence because two of its pieces are
+ * not plain text: the date is the fact the strip exists to carry and is the
+ * only thing set in the page's accent colour, and `submitLabel` is the word
+ * the anchor wraps — see `announcement-banner.tsx`. Splitting them in the data
+ * keeps the component free of string surgery on copy it does not own.
  *
  * "Warm Up Week 1" is the programme's own pre-season phase and is not the
  * `week 1` of `DESIGN_WEEKS`, which is PCBs. Capitals are the phase's name,
@@ -58,7 +60,9 @@ export const BRAND = {
 export const ANNOUNCEMENT = {
   lead: "Warm Up Week 2 started on",
   date: "September 21st",
-  tail: "!",
+  tail: "! Submit ",
+  submitLabel: "here",
+  submitHref: "https://forms.hackclub.com/halflifesubmit",
 } as const;
 
 export type DesignWeek = {
