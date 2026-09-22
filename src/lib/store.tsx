@@ -13,8 +13,8 @@ import {
 import { BUILD_HOURS, TIERS, WEEK_META, checkpointsFor } from "./curriculum";
 import { DESIGN_WEEKS } from "./config/program";
 import {
-  MIN_HOURS_PER_WEEK,
   printerById,
+  submitFloorFor,
   weekAsk,
 } from "./config/printers";
 import type { StoreSnapshot } from "./queries/store";
@@ -544,7 +544,7 @@ export function StoreProvider({
         const target = build ? BUILD_HOURS : weekAsk(goal.hoursPerWeek, tier.fundingHours);
         // The same ask at the cheapest machine's pace: the least a week can be
         // worth and still leave a printer at the end of the season.
-        const submitHours = build ? BUILD_HOURS : weekAsk(MIN_HOURS_PER_WEEK, tier.fundingHours);
+        const submitHours = build ? BUILD_HOURS : submitFloorFor(tier.fundingHours);
         // The trail is as long as the work was: every finished entry is a node,
         // and one more waits at the end for the entry about to be written. The
         // minutes come along because reels are placed where the clock crossed.

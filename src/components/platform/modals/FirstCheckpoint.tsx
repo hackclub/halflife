@@ -5,6 +5,8 @@ import { WeekScene } from "@/components/platform/art";
 import { IconArrowRight, IconCheck, IconClock, IconFilm, IconLock, IconSparkle } from "@/components/platform/icons";
 import { Button, Chip, Field, OptionRow, Panel, cx, inputClass } from "@/components/platform/ui";
 import { STARTER_IDEAS, TIERS, WEEK_META } from "@/lib/curriculum";
+import { submitFloorFor } from "@/lib/config/printers";
+import { fmtHours } from "@/lib/projects";
 import { recommendedTier, useStore } from "@/lib/store";
 import type { Experience } from "@/lib/types";
 import { Modal, ModalTitle } from "./Modal";
@@ -102,7 +104,7 @@ export function FirstCheckpoint() {
           <p className="hand mr-auto hidden text-[0.78rem] text-navy-soft sm:block">
             {step === 5 && tierLocked
               ? "Starter projects are locked to tier 1."
-              : "Nothing here is final — you can change all of it later."}
+              : "Nothing here is final! You can change all of it later."}
           </p>
           <Button variant="outline" onClick={() => setStep((s) => Math.max(1, s - 1))} disabled={step === 1}>
             Back
@@ -113,7 +115,7 @@ export function FirstCheckpoint() {
             </Button>
           ) : (
             <Button variant="gold" onClick={finish}>
-              Let us go <IconSparkle className="text-base" />
+              Let&apos;s go! <IconSparkle className="text-base" />
             </Button>
           )}
         </>
@@ -322,14 +324,18 @@ export function FirstCheckpoint() {
                   hint={
                     <>
                       {t.detail}
-                      <span className="mt-1 block text-navy-soft/90">{t.toBank}</span>
+                      <span className="mt-1 block text-navy-soft/90">
+                        {t.toBank} towards your 3D printer!
+                      </span>
                     </>
                   }
                 >
                   <span className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
                     <span className="text-[1rem] font-extrabold text-navy">Tier {t.id}</span>
-                    <span className="hand text-[0.88rem] text-teal-deep">${t.grantUsd} funded</span>
-                    <span className="hand text-[0.82rem] text-navy-soft">· {t.hours}</span>
+                    <span className="hand text-[0.88rem] text-teal-deep">${t.grantUsd} funding</span>
+                    <span className="hand text-[0.82rem] text-navy-soft">
+                      · {fmtHours(submitFloorFor(t.fundingHours))} per design week
+                    </span>
                     {isSuggested && <Chip tone="gold">Suggested for you</Chip>}
                     {locked && <Chip tone="muted">Locked</Chip>}
                   </span>
@@ -362,12 +368,12 @@ export function FirstCheckpoint() {
             {[
               {
                 icon: IconFilm,
-                title: "Record while you work",
-                body: "Screen recording for KiCad and CAD, a phone on a stand for soldering. The uploader speeds it up for you.",
+                title: "Timelapses",
+                body: "Track time using Hack Club's Lapse! It'll record your chosen windows on your computer and track your time for you. After each session, make the session unlisted (or public!) and select it when making an entry to your project.",
               },
               {
                 icon: IconClock,
-                title: "Stop the timer for breaks",
+                title: "Journal",
                 body: "A session is one unbroken block. Reviewers can tell when four logged hours produced eleven minutes of footage.",
               },
               {
@@ -389,8 +395,7 @@ export function FirstCheckpoint() {
             style={{ "--sk-color": "var(--color-teal)", "--sk-radius": "16px" } as React.CSSProperties}
           >
             <p className="text-[0.95rem] leading-snug font-bold text-teal-deep">
-              That is the whole system. Ten hours a week, a reel when you hit each block, and a submit
-              at the end of the week.
+              That&apos;s it! Log hours, make some reels for other Hack Clubbers to see, and submit each week!
             </p>
           </div>
         </div>

@@ -8,7 +8,7 @@ import { requireSessionPage } from "@/lib/page-guards";
 import { getLeaderboard } from "@/lib/queries/community";
 
 export const metadata: Metadata = {
-  title: "Leaderboard — Half Life",
+  title: "Half Life Leaderboard",
   description: "Hours logged and weeks shipped across the whole program.",
 };
 

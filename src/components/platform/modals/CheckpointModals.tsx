@@ -25,7 +25,13 @@ import {
   SUBMIT_FILES_DESIGN,
   TIERS,
 } from "@/lib/curriculum";
-import { MIN_HOURS_PER_WEEK, paceTarget, printerById, weekAsk } from "@/lib/config/printers";
+import {
+  paceTarget,
+  printerById,
+  submitFloorFor,
+  tierBankedFloor,
+  weekAsk,
+} from "@/lib/config/printers";
 import { useStore } from "@/lib/store";
 import { ReelCapture } from "@/components/platform/reels/ReelCapture";
 import type { Checkpoint } from "@/lib/types";
@@ -166,12 +172,12 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
       {tab === "journal" ? (
         <div>
-          <ModalTitle sub="Start with the hours, because everything under it is the evidence for them: 200 characters at least, and an image in the entry for each hour — two at minimum. Markdown works, images included.">
+          <ModalTitle sub="Start with the hours, because everything under it is the evidence for them: 200 characters at least, and an image in the entry for each hour (minimum of 2). Markdown works, images included.">
             What did you do this session?
           </ModalTitle>
 
           <div className="mb-4 max-w-[220px]">
-            <Field label="Hours this session" hint="Decimals are fine — 1.5 is an hour and a half.">
+            <Field label="Hours this session" hint="(9.5 is 9 and a half hours)">
               <input
                 value={hoursText}
                 onChange={(e) => setHoursText(e.target.value.replace(/[^\d.]/g, ""))}
@@ -533,15 +539,37 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
           <div className="mt-2">
             <p className="label mb-2 text-violet-deep">Funding tier</p>
+            {/* The hours quoted here are the ones the submit gate will hold
+                you to, not the funded block. A tier that advertises its
+                funding alone advertises the smaller of two numbers: the funded
+                hours bank nothing, so the printer money has to be worked on
+                top of them. */}
             <div className="grid gap-2.5">
               {TIERS.map((t) => (
-                <OptionRow key={t.id} selected={tier === t.id} onClick={() => setTier(t.id)} hint={t.detail}>
+                <OptionRow
+                  key={t.id}
+                  selected={tier === t.id}
+                  onClick={() => setTier(t.id)}
+                  hint={
+                    <>
+                      {t.detail}
+                      <span className="mt-1 block text-navy-soft/90">
+                        About {t.hours}. {fmtH(t.fundingHours)} of that funds the project and banks
+                        nothing, so the least you can hand in on tier {t.id} is{" "}
+                        {fmtH(submitFloorFor(t.fundingHours))} — the other{" "}
+                        {fmtH(tierBankedFloor(t.fundingHours))} banks toward your printer.
+                      </span>
+                    </>
+                  }
+                >
                   <span className="flex flex-wrap items-baseline gap-x-2.5">
                     <span className="text-[0.98rem] font-extrabold text-navy">
                       Tier {t.id}
                     </span>
-                    <span className="hand text-[0.86rem] text-teal-deep">${t.grantUsd}+ funding</span>
-                    <span className="hand text-[0.8rem] text-navy-soft">· {t.hours}+ </span>
+                    <span className="hand text-[0.86rem] text-teal-deep">${t.grantUsd} funded</span>
+                    <span className="hand text-[0.8rem] text-navy-soft">
+                      · {fmtH(submitFloorFor(t.fundingHours))} to submit
+                    </span>
                   </span>
                 </OptionRow>
               ))}
@@ -628,7 +656,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
    * sheet already gives; missing the floor is a refusal.
    */
   const hours = weekHours(week.id);
-  const tierFloor = (fundingHours: number) => weekAsk(MIN_HOURS_PER_WEEK, fundingHours);
+  const tierFloor = submitFloorFor;
   const tierTarget = (fundingHours: number) => weekAsk(goal.hoursPerWeek, fundingHours);
   const tierShort = (fundingHours: number) => Math.max(0, tierFloor(fundingHours) - hours);
   const selectedTier = TIERS.find((t) => t.id === tier) ?? TIERS[0];
@@ -828,10 +856,8 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
           <div className="mt-6">
             <p className="label mb-2 text-magenta">Finalise your tier</p>
             <p className="mb-3 text-[0.82rem] leading-snug text-navy-soft">
-              A tier funds its own block of hours — {fmtH(TIERS[0].fundingHours)} on tier 1,{" "}
-              {fmtH(TIERS[1].fundingHours)} on tier 2, {fmtH(TIERS[2].fundingHours)} on tier 3 — and
-              only the hours above that block bank toward a{" "}
-              <span className="font-bold text-navy">{goal.name}</span>. You have{" "}
+              Find out which tier you&apos;re eligible for! Your current goal is a{" "}
+              <span className="font-bold text-navy">{goal.name}</span> and you have{" "}
               <span className="font-bold text-navy tabular-nums">{fmtH(hours)}</span> this week.
             </p>
             <div className="grid gap-2.5 sm:grid-cols-3">
@@ -878,7 +904,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
                         short > 0 ? "text-navy-soft" : "text-teal-deep",
                       )}
                     >
-                      ${t.grantUsd} funded · {fmtH(t.fundingHours)}
+                      ${t.grantUsd} of funding
                     </span>
 
                     {/* The hours are the gate, so they lead. The cart only
@@ -891,10 +917,10 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
                       )}
                     >
                       {short > 0
-                        ? `${fmtH(short)} short — tier ${t.id} needs ${fmtH(tierFloor(t.fundingHours))}`
+                        ? `${fmtH(short)} short, tier ${t.id} needs ${fmtH(tierFloor(t.fundingHours))}`
                         : behind > 0
-                          ? `${fmtH(tierTarget(t.fundingHours))} for a ${goal.name} — ${fmtH(behind)} to go`
-                          : `${fmtH(tierTarget(t.fundingHours))} for a ${goal.name} — you have ${fmtH(hours)}`}
+                          ? `${fmtH(tierTarget(t.fundingHours))} for a ${goal.name}, ${fmtH(behind)} to go`
+                          : `${fmtH(tierTarget(t.fundingHours))} for a ${goal.name}, you have ${fmtH(hours)}`}
                     </span>
                     {short === 0 && over && (
                       <span className="hand mt-1 block text-[0.74rem] leading-snug text-coral-deep">

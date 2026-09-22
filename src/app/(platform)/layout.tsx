@@ -26,7 +26,7 @@ const hand = Shantell_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Half Life — ten weeks of hardware",
+  title: "Half Life: become a hardware expert in 10 weeks",
   description:
     "Design five hardware projects, then build all five. Ten weeks, real funding, and a 3D printer at the end.",
 };

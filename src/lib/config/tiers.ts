@@ -68,7 +68,7 @@ export const TIERS = [
   {
     id: 3,
     name: "Tier 3",
-    grantUsd: 120,
+    grantUsd: 100,
     fundingHours: 24,
     hours: "24+ hours of work",
     toBank: "24 hours fund the project, the rest banks at 5 coins an hour",

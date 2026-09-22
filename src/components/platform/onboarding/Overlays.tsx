@@ -13,11 +13,35 @@ import { useStore } from "@/lib/store";
 import { Cinematic } from "./Cinematic";
 import { Spotlight } from "./Spotlight";
 
+/**
+ * The tour walks the left rail from top to bottom, one tab per step, in the
+ * order the nav itself is written — so the highlight travels down the list the
+ * way a finger would, and finishing the tour has covered every door out of the
+ * page rather than the five somebody thought to mention.
+ *
+ * The Doomscroller is the one step that names two things: the tab, and the
+ * player the tab opens. It carries `also` for the rail feed, which is what
+ * lights both at once and draws the line between them. Where the rail is not on
+ * screen — below xl, or with the feed closed — the step falls back to the tab
+ * alone, and below lg `selector` finds the header link instead, since the phone
+ * tab bar has no Doomscroller cell.
+ */
 const TOUR = [
   {
-    selector: '[data-tour="doomscroller"], [data-tour="doomscroller-button"]',
+    selector: '[data-tour="nav-home"]',
+    title: "Home",
+    body: "The trail. Ten weeks of checkpoints, and the only one you can open is the one you are on — everything you log happens here.",
+  },
+  {
+    selector: '[data-tour="nav-doomscroller"], [data-tour="doomscroller-button"]',
+    also: '[data-tour="doomscroller"]',
     title: "The Doomscroller",
-    body: "Every reel anyone posts lands here, newest first. It is the fastest way to see what the rest of the program is building this week.",
+    body: "Every reel anyone posts lands here, newest first — in the rail on the right while you work, or full screen from the tab.",
+  },
+  {
+    selector: '[data-tour="nav-projects"]',
+    title: "Projects",
+    body: "Everything you have started, each with its journal, its reels and its tier. The tier stays changeable here until you submit the week.",
   },
   {
     selector: '[data-tour="nav-explore"]',
@@ -114,7 +138,12 @@ export function Overlays() {
 
       {phase === "tour" && !openCheckpoint && (
         <Spotlight
+          // Deliberately not keyed on the step: one instance living across all
+          // seven is what lets the window travel down the rail instead of
+          // blinking out and back. The two-target sequence resets on its own,
+          // off the second target appearing rather than off a remount.
           selector={TOUR[tourStep]?.selector ?? ""}
+          also={TOUR[tourStep]?.also}
           title={TOUR[tourStep]?.title ?? ""}
           body={TOUR[tourStep]?.body ?? ""}
           step={tourStep + 1}

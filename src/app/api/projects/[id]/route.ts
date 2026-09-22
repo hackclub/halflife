@@ -77,6 +77,19 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
   }
 
   const data = parsed.data
+
+  // The project page promises the tier is final once the design week is handed
+  // in, and a starter project is scoped to tier 1 from the start. Hold the
+  // server to the same promise rather than trusting the picker to be hidden.
+  if (data.requestedTier !== undefined && data.requestedTier !== project.requestedTier) {
+    if (project.designStatus === PhaseStatus.approved) {
+      return fail("PHASE_LOCKED", "The design week is approved, so the tier is final")
+    }
+    if (project.starterProjectId !== null && data.requestedTier !== 1) {
+      return fail("VALIDATION_FAILED", "Starter projects are scoped to tier 1")
+    }
+  }
+
   const updated = await prisma.themeProject.update({
     where: { id },
     data: {
@@ -87,7 +100,7 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
       ...(data.githubRepo !== undefined ? { githubRepo: data.githubRepo } : {}),
       // `requestedTier`, never `tier`. The assigned tier is a reviewer's call at
       // design approval because it decides parts money, and letting this route
-      // write it would let anyone grant themselves $120.
+      // write it would let anyone grant themselves $100.
       ...(data.requestedTier !== undefined ? { requestedTier: data.requestedTier } : {}),
       ...(data.coverImageKey !== undefined ? { coverImageKey: data.coverImageKey } : {}),
       ...(data.artifactLinks !== undefined

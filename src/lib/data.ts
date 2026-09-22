@@ -41,7 +41,7 @@ export const DOCS: DocArticle[] = [
       {
         heading: "What you get",
         paragraphs: [
-          "Every project is funded up to its tier — $30, $65 or $120 — paid straight onto a card you can spend at real vendors. Hours beyond the funded block bank as coins at five an hour, and coins buy things in the shop.",
+          "Every project is funded up to its tier — $30, $65 or $100 — paid straight onto a card you can spend at real vendors. Hours beyond the funded block bank as coins at five an hour, and coins buy things in the shop.",
           "Finish all ten weeks and a printer is yours, shipped to you. Which one is up to you: you pick a goal, and the coins you bank buy it. Hit the hours every week and the cheapest machine is guaranteed — bank faster and you can aim higher.",
         ],
       },
@@ -89,7 +89,8 @@ export const DOCS: DocArticle[] = [
       {
         heading: "Picking a tier",
         paragraphs: [
-          "You choose a tier when you create a project, and you can change it any time before you submit that week. Tier 1 funds $30 and expects six to eight hours. Tier 2 funds $65 and expects thirteen to fifteen. Tier 3 funds $120 and expects twenty-four or more.",
+          "You choose a tier when you create a project, and you can change it any time before you submit that week — the tier sits on the project page, and it stays editable until that week is handed in. Tier 1 funds $30 and expects six to eight hours. Tier 2 funds $65 and expects thirteen to fifteen. Tier 3 funds $100 and expects twenty-four or more.",
+          "Those are the funded hours, and they are not the number that lets you submit. A funded hour banks nothing — it has already been spent on your project — so the printer money has to be worked on top of the block. Four banked hours a week is the least that still ends the season in a machine, which puts the floor at ten hours on tier 1, seventeen on tier 2 and twenty-eight on tier 3. Under that, the week cannot be handed in at that tier; the submit sheet will offer you the tiers your hours do cover.",
           "If you picked one of the starter projects during onboarding, your first week is locked to tier 1. That is on purpose — the starter projects are scoped so a $30 budget is genuinely enough.",
         ],
       },

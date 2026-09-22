@@ -1,12 +1,115 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { FoxAvatar, WeekScene } from "@/components/platform/art";
 import { IconChevronLeft, IconClock, IconFilm, IconPencil } from "@/components/platform/icons";
 import { Markdown } from "@/components/platform/Markdown";
-import { Chip, Panel } from "@/components/platform/ui";
+import { Chip, OptionRow, Panel, cx } from "@/components/platform/ui";
+import { TIERS } from "@/lib/curriculum";
+import { submitFloorFor, tierBankedFloor } from "@/lib/config/printers";
 import { fmtDate, fmtHours, projectEvents, projectStats, type ProjectEvent } from "@/lib/projects";
 import { useStore } from "@/lib/store";
+import type { Project } from "@/lib/types";
+
+/**
+ * The tier, and the one place it can be changed.
+ *
+ * It has to live out here rather than only inside the submit sheet, because
+ * the sheet is gated on the tier's own floor: a tier 3 week stalled at 20h
+ * cannot be handed in (28h) and cannot reach the picker that would drop it to
+ * tier 2 (17h), which it has already cleared. Onboarding promises the tier can
+ * be changed right up until submission, and this is what keeps that promise.
+ *
+ * Every tier stays pickable while the week is open, including ones the hours
+ * do not cover yet — until you submit, a tier is a plan rather than a claim,
+ * and raising it early is how you commit to the hours. The line under each one
+ * says what that commitment costs. The refusal stays where the claim is made,
+ * in the submit sheet. Raising the tier past your hours will shut Submit again,
+ * which is the same rule read backwards rather than a second one.
+ */
+function TierPicker({
+  project,
+  hours,
+  locked,
+  weekId,
+}: {
+  project: Project;
+  hours: number;
+  locked: boolean;
+  weekId: number;
+}) {
+  const { setProjectTier } = useStore();
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="mt-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <Chip tone="violet">Tier {project.tier}</Chip>
+        {!locked && (
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+            className="hand text-[0.8rem] text-violet-deep underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
+          >
+            {open ? "done" : "change tier"}
+          </button>
+        )}
+      </div>
+
+      {open && !locked && (
+        <div className="mt-3 grid gap-2.5">
+          <p className="text-[0.82rem] leading-snug text-navy-soft">
+            A tier funds its own block of hours and those hours bank nothing, so the printer money
+            has to be worked on top of them. You have{" "}
+            <span className="font-bold text-navy tabular-nums">{fmtHours(hours)}</span> in week{" "}
+            {weekId}.
+          </p>
+          {TIERS.map((t) => {
+            const floor = submitFloorFor(t.fundingHours);
+            const short = Math.max(0, floor - hours);
+            return (
+              <OptionRow
+                key={t.id}
+                selected={project.tier === t.id}
+                onClick={() => setProjectTier(project.id, t.id)}
+                hint={
+                  <span className="block">
+                    {fmtHours(t.fundingHours)} funds the project ·{" "}
+                    {fmtHours(tierBankedFloor(t.fundingHours))} banks toward your printer
+                  </span>
+                }
+              >
+                <span className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+                  <span className="text-[0.98rem] font-extrabold text-navy">Tier {t.id}</span>
+                  <span className="hand text-[0.86rem] text-teal-deep">${t.grantUsd} funding</span>
+                  <span className="hand text-[0.82rem] text-navy-soft">
+                    · {fmtHours(floor)} per design week
+                  </span>
+                  <span
+                    className={cx(
+                      "hand text-[0.8rem] tabular-nums",
+                      short > 0 ? "text-coral-deep" : "text-teal-deep",
+                    )}
+                  >
+                    {short > 0 ? `${fmtHours(short)} to go` : "hours covered"}
+                  </span>
+                </span>
+              </OptionRow>
+            );
+          })}
+        </div>
+      )}
+
+      {locked && (
+        <p className="hand mt-2 text-[0.8rem] text-navy-soft">
+          Week {weekId} is submitted, so the tier is final.
+        </p>
+      )}
+    </div>
+  );
+}
 
 function BackLink() {
   return (
@@ -92,7 +195,7 @@ function EventRow({
 }
 
 export function ProjectDetail({ id }: { id: string }) {
-  const { projects, weeks, stateOf, weekOf, hydrated, viewer } = useStore();
+  const { projects, weeks, stateOf, weekOf, weekHours, hydrated, viewer } = useStore();
   const project = projects.find((p) => p.id === id);
 
   // The save is read from localStorage after mount, so on the server and on
@@ -119,6 +222,11 @@ export function ProjectDetail({ id }: { id: string }) {
   const week = weekOf(project.weekId);
   const events = projectEvents(project, weeks, stateOf);
   const stats = projectStats(events);
+
+  // The tier stops being editable the moment the design week is handed in —
+  // that submission is what claimed it, and the build week only inherits it.
+  const submit = week.checkpoints.find((c) => c.kind === "submit");
+  const submitted = submit ? stateOf(submit.id).done : false;
 
   return (
     <div className="mx-auto w-full max-w-[880px] px-4 pt-6 pb-4 sm:px-8">
@@ -162,11 +270,29 @@ export function ProjectDetail({ id }: { id: string }) {
           </p>
 
           <div className="mt-4 flex flex-wrap gap-2">
-            <Chip tone="violet">Tier {project.tier}</Chip>
             <Chip tone="muted">{week.fullName}</Chip>
             <Chip tone="muted">Week {week.id}</Chip>
             {project.starter && <Chip tone="gold">Starter project</Chip>}
           </div>
+
+          {/* A starter project is scoped to tier 1 funding, so its tier is
+              derived from the idea rather than chosen — the same reason the
+              onboarding picker locks it. */}
+          {project.starter ? (
+            <div className="mt-4">
+              <Chip tone="violet">Tier {project.tier}</Chip>
+              <p className="hand mt-2 text-[0.8rem] text-navy-soft">
+                Starter projects are scoped to tier 1, so the tier is fixed.
+              </p>
+            </div>
+          ) : (
+            <TierPicker
+              project={project}
+              hours={weekHours(project.weekId)}
+              locked={submitted}
+              weekId={project.weekId}
+            />
+          )}
         </div>
       </Panel>
 

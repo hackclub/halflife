@@ -9,7 +9,7 @@ import { getJournalFeed, type JournalRow } from "@/lib/queries/community";
 import { getProgramSettings, effectiveDateFor } from "@/lib/program";
 
 export const metadata: Metadata = {
-  title: "Explore — Half Life",
+  title: "Half Life Explore",
   description: "Journal entries from everyone building hardware this week.",
 };
 

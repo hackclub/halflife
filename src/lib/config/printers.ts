@@ -255,16 +255,27 @@ export function weeksToGo(goal: PrinterGoal, coins: number): number {
 }
 
 /**
- * The least a design week at this tier can be worth and still leave a printer
- * reachable — the ask at the cheapest machine's pace.
+ * The least a week can be on a tier and still be handed in: the tier's funded
+ * block, plus the banking the cheapest machine needs sitting on top of it.
  *
- * This is the gate on submitting a design week. Handing one in below it is not
- * "a slightly thinner week", it is a week that has put the season out of reach
- * of every machine in the catalogue, which is the one outcome the program does
- * not offer.
+ * The two halves are not the same kind of hour, which is the whole reason this
+ * exists. Tier 2 funds thirteen, and not one of those thirteen banks a coin —
+ * so a tier 2 week is not seventeen hours of one thing, it is thirteen that
+ * pay for the project and four that pay for the printer. A tier picker that
+ * quotes only the funded block is quoting the smaller of two numbers as though
+ * it were the gate.
+ *
+ * This is that gate: the submit node opens here, and the submit sheet refuses
+ * a tier below it. Every screen that names a tier's hours reads it from here,
+ * so the number you pick against is the number you are held to.
  */
 export function submitFloorFor(fundingHours: number): number {
   return weekAsk(MIN_HOURS_PER_WEEK, fundingHours);
+}
+
+/** Of that floor, the part that banks toward the goal rather than the project. */
+export function tierBankedFloor(fundingHours: number): number {
+  return submitFloorFor(fundingHours) - fundingHours;
 }
 
 /** What a design week at this tier asks of someone saving for this machine. */
