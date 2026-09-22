@@ -703,12 +703,6 @@ model PhaseSubmission {
   /// or none of it.
   attachmentKeys String[] @default([])
 
-  /// The repo checks as they stood when this was handed in (lib/repo-checks):
-  /// what the maker was shown, frozen so the reviewer reads the repo as it was
-  /// rather than as it is after a later push. Null for submissions made before
-  /// the checks existed.
-  repoChecks Json?
-
   /// Frozen at submit time. Together with the theme's scheduled week this
   /// answers "did they do week 3's theme in week 5". Analytics only — no gate
   /// reads these.

@@ -1,7 +1,7 @@
 import "server-only"
 import prisma from "@/lib/prisma"
 import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
-import type { Prisma, ThemeProject } from "@/app/generated/prisma/client"
+import type { ThemeProject } from "@/app/generated/prisma/client"
 import { checkRepo } from "@/lib/repo-checks"
 import { HttpError } from "@/lib/errors"
 import { getHoursBreakdown } from "@/lib/hours"
@@ -157,9 +157,10 @@ export async function submitPhase(
   }
 
   // The repo checks, run here rather than trusted from the sheet: what the
-  // maker was shown a minute ago is not an authorisation. A blocking failure
-  // refuses with its own reason; GitHub being unreachable does not, and the
-  // result says so for the reviewer.
+  // maker was shown a minute ago is not an authorisation. They exist so a
+  // maker fixes what would get the week rejected before it is handed in, so a
+  // blocking failure refuses with its own reason. GitHub being unreachable
+  // never blocks.
   const repoChecks = await checkRepo(project.githubRepo, project.theme)
   if (!repoChecks.canSubmit) {
     const first = repoChecks.checks.find((c) => c.blocking && c.status === "fail")
@@ -182,7 +183,6 @@ export async function submitPhase(
         phase,
         notes,
         attachmentKeys: ownKeys,
-        repoChecks: repoChecks as unknown as Prisma.InputJsonValue,
         submittedInWeek,
         scheduledWeek,
         // Analytics only. Nothing gates on lateness — a late joiner has to be

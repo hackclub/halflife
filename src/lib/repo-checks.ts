@@ -9,11 +9,11 @@ import {
 /**
  * Pre-submission repo checks, ported from Hack Club Stasis (lib/github-checks).
  *
- * Run twice: from the submit sheet so the maker sees what is missing while
- * they can still fix it, and again inside the submit itself, because a
- * checklist rendered a minute ago is not an authorisation. The second run is
- * frozen onto the submission so the reviewer sees what the repo held when it
- * was handed in.
+ * For the maker, not the reviewer: they say what to change in the repo before
+ * handing a week in, so it is not rejected for something a script could have
+ * spotted. Run from the submit sheet so the maker sees it while they can still
+ * fix it, and again inside the submit itself, because a checklist rendered a
+ * minute ago is not an authorisation.
  *
  * GitHub is reached through Hack Club's gh-proxy when GH_PROXY_API_KEY is set
  * (as Stasis does), else the GitHub API with GITHUB_TOKEN, else the GitHub API
