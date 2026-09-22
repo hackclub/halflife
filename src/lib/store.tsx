@@ -719,7 +719,7 @@ export function StoreProvider({
         const hours = weekHours(week.id);
         // Unwritten entries never block a milestone — the clock does. Neither
         // does a milestone that is not due yet: the reel waiting at 30h cannot
-        // hold up a Submit that opened at 24h.
+        // hold up a Submit that opened at 23.76h.
         //
         // "Keep working" rides this rule too, at atHours 0. A reel that has
         // come due is the cadence asking to be paid before the week runs on;

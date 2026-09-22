@@ -18,7 +18,7 @@ import type { Project } from "@/lib/types";
  *
  * It has to live out here rather than only inside the submit sheet, because
  * the sheet is gated on the tier's own floor: a tier 3 week stalled at 20h
- * cannot be handed in (28h) and cannot reach the picker that would drop it to
+ * cannot be handed in (23.76h) and cannot reach the picker that would drop it to
  * tier 2 (17h), which it has already cleared. Onboarding promises the tier can
  * be changed right up until submission, and this is what keeps that promise.
  *

@@ -215,9 +215,9 @@ async function main() {
   check("design pays the rest as spendable", design.spendable, 6)
 
   // Banking is paced by the machine, not the tier: the same goal banks the same
-  // amount whatever tier is underneath it. Tier 3 funds 24h, so the equivalent
-  // week is 24 + 3.76 + 1.24.
-  const tier3 = designCoinsFor(3, ender, 29)
+  // amount whatever tier is underneath it. Tier 3 funds 20h, so the equivalent
+  // week is 20 + 3.76 + 1.24.
+  const tier3 = designCoinsFor(3, ender, 25)
   check("tier does not change what banks", tier3.banked, design.banked)
   check("tier only moves the funded block", tier3.spendable, design.spendable)
 

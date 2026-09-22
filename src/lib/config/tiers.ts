@@ -69,9 +69,9 @@ export const TIERS = [
     id: 3,
     name: "Tier 3",
     grantUsd: 100,
-    fundingHours: 24,
-    hours: "24+ hours of work",
-    toBank: "24 hours fund the project, the rest banks at 5 coins an hour",
+    fundingHours: 20,
+    hours: "20+ hours of work",
+    toBank: "20 hours fund the project, the rest banks at 5 coins an hour",
     blurb: "An ambitious build with novel engineering.",
     detail:
       "Four-layer boards, motorised anything, or a build that needs two revisions to work. Pick this only if you have shipped something before.",
