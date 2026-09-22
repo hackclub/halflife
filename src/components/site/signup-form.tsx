@@ -320,7 +320,7 @@ export default function SignupForm({
                 }}
                 // Display face, not the body one it inherited. The control is
                 // one object — a slot cut into the plate and the word beside it
-                // — and "sign up!" is set in the display face, so the field's
+                // — and "sign up/log in" is set in the display face, so the field's
                 // own type belongs to the same voice. Set on the input rather
                 // than scoped to `::placeholder`, so the address someone types
                 // does not change face out from under them mid-word.
@@ -350,20 +350,30 @@ export default function SignupForm({
                 button's width even while hidden and a submit cannot resize the
                 row under the pointer. `invisible` and not `opacity-0` because
                 visibility:hidden also takes the label out of the accessibility
-                tree, which lets the pending name be the only one there. */}
+                tree, which lets the pending name be the only one there.
+
+                "sign up/log in" is nearly twice the word "sign up!" was, and on
+                a phone the swash's inset leaves the row about 175px at 320: on one
+                line it left the field 58px there and 108 at 390, against the
+                ~120 "email address" needs. Below 520 it stacks at the slash
+                instead, and the button's side padding tightens to match a word half
+                as wide. Two lines at 0.85em and `leading-none`, plus the gap,
+                are 1.82em of the button's 2.1667, so the row keeps its height
+                and the field gets back the second half's width. */}
             <button
               type="submit"
               disabled={pending}
-              className="grid shrink-0 place-items-center bg-hl-cyan text-hl-ink transition-colors hover:bg-white focus-visible:bg-white disabled:cursor-progress disabled:bg-hl-blue"
-              style={{ height: "2.1667em", paddingInline: "0.9em" }}
+              className="grid shrink-0 place-items-center bg-hl-cyan px-[0.6em] text-hl-ink transition-colors hover:bg-white focus-visible:bg-white disabled:cursor-progress disabled:bg-hl-blue min-[520px]:px-[0.9em]"
+              style={{ height: "2.1667em" }}
             >
               <span
-                className={`[grid-area:1/1] whitespace-nowrap font-display font-bold leading-none ${
+                className={`[grid-area:1/1] flex flex-col items-center gap-[0.12em] font-display font-bold leading-none min-[520px]:flex-row min-[520px]:gap-0 ${
                   pending ? "invisible" : ""
                 }`}
                 style={{ fontSize: "0.85em" }}
               >
-                sign up!
+                <span className="whitespace-nowrap">sign up/</span>
+                <span className="whitespace-nowrap">log in</span>
               </span>
               {pending ? (
                 <>
