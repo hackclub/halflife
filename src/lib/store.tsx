@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { BUILD_HOURS, TIERS, WEEK_META, checkpointsFor } from "./curriculum";
-import { DESIGN_WEEKS } from "./config/program";
+import { DESIGN_WEEKS, ONBOARDING_CHECKPOINT_ID } from "./config/program";
 import {
   printerById,
   submitFloorFor,
@@ -302,7 +302,44 @@ export function StoreProvider({
       starterProjectId: string | null;
       requestedTier: 1 | 2 | 3 | null;
     }) => {
-      setFacts((f) => ({ ...f, experience: answers.experience, onboardingDone: true }));
+      // Setup can only be answered once; the server refuses a replay step by
+      // step. Reopening the finished node must not fire six doomed requests.
+      if (facts.onboardingDone) return;
+
+      // The trail moves now, not when the six requests below come back. They
+      // run one after another and take seconds; until they land, a trail
+      // still showing "Get started" open would lock every node behind it and
+      // offer the questionnaire again — which is exactly what anyone who
+      // skipped the tab tour walked straight into.
+      const projectId = facts.projectIdByWeek[1];
+      setFacts((f) => ({
+        ...f,
+        experience: answers.experience,
+        onboardingDone: true,
+        progress: {
+          ...f.progress,
+          [ONBOARDING_CHECKPOINT_ID]: {
+            ...EMPTY,
+            ...f.progress[ONBOARDING_CHECKPOINT_ID],
+            done: true,
+            at: Date.now(),
+          },
+        },
+        projects:
+          projectId && !f.projects.some((p) => p.id === projectId)
+            ? [
+                ...f.projects,
+                {
+                  id: projectId,
+                  name: answers.title,
+                  description: answers.description,
+                  weekId: 1,
+                  tier: answers.requestedTier ?? 1,
+                  starter: answers.starterProjectId !== null,
+                },
+              ]
+            : f.projects,
+      }));
       void (async () => {
         await send("/api/onboarding", {
           step: "experience",
@@ -327,7 +364,7 @@ export function StoreProvider({
         await send("/api/onboarding", { step: "tracking", dismissed: false });
       })().finally(() => router.refresh());
     },
-    [router],
+    [facts.onboardingDone, facts.projectIdByWeek, router],
   );
 
   /**

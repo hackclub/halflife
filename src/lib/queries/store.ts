@@ -6,7 +6,7 @@ import { getProgramSettings, effectiveDateFor, weekNumberForDate } from "@/lib/p
 import { streakAsOf } from "@/lib/streak"
 import { rollUpHours } from "@/lib/hours"
 import { DEFAULT_GOAL_ID } from "@/lib/config/printers"
-import { DESIGN_WEEKS, THEMES } from "@/lib/config/program"
+import { DESIGN_WEEKS, ONBOARDING_CHECKPOINT_ID, THEMES } from "@/lib/config/program"
 import type { Experience, Project, SessionLog } from "@/lib/types"
 
 /**
@@ -181,7 +181,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
   }
 
   if (user.onboardingCompletedAt) {
-    progress["w1-onboard"] = {
+    progress[ONBOARDING_CHECKPOINT_ID] = {
       done: true,
       at: user.onboardingCompletedAt.getTime(),
       minutes: 0,

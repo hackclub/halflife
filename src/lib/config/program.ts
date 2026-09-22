@@ -54,6 +54,13 @@ export const TOTAL_WEEKS = 10
 export const DESIGN_WEEKS = 5
 
 /**
+ * The trail's first node, the setup questionnaire. The server marks it done
+ * from onboardingCompletedAt and the client marks it done the moment setup is
+ * finished; both have to name the same node.
+ */
+export const ONBOARDING_CHECKPOINT_ID = "w1-onboard"
+
+/**
  * Streaks.
  *
  * A day counts when the participant logs a work session with that day as its
