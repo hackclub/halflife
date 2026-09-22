@@ -13,7 +13,6 @@ import {
   IconFile,
   IconFilm,
   IconMic,
-  IconPlus,
   IconWarning,
 } from "@/components/platform/icons";
 import { countImages, Markdown } from "@/components/platform/Markdown";
@@ -251,12 +250,6 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
             <span className="label inline-flex items-center gap-1.5 rounded-full bg-orange px-3 py-1.5 text-navy">
               {project?.name ?? `${week.theme} project`}
             </span>
-            <button
-              type="button"
-              className="label inline-flex items-center gap-1.5 rounded-full border-2 border-line px-3 py-1.5 text-navy-soft transition-colors hover:border-violet hover:text-navy"
-            >
-              New project <IconPlus className="text-base" />
-            </button>
             <Link
               href="/docs/journalling"
               className="hand ml-auto text-[0.78rem] text-navy-soft underline decoration-dashed underline-offset-4 hover:text-navy"
