@@ -15,9 +15,14 @@ import { uploadFile, useHandoff } from "@/lib/use-handoff";
  * sign-in on the phone: the QR carries a single-use token that expires in
  * minutes, so nobody has to type a Hack Club password into a borrowed handset.
  *
- * Either way what comes back is an R2 object key, never a URL. URLs are minted
+ * Either way what is stored is an R2 object key, never a URL. URLs are minted
  * at read time so the bucket or the CDN in front of it can move without
  * rewriting a single stored row.
+ *
+ * `onCaptured` also hands back something playable, for previewing the clip
+ * before it is posted: a local blob URL when the file came from this machine
+ * (instant, and it works on a deployment with no public bucket URL), or the
+ * bucket's URL when it came from the phone. It is null when neither exists.
  */
 export function ReelCapture({
   objectKey,
@@ -26,7 +31,7 @@ export function ReelCapture({
   label = "Your reel",
 }: {
   objectKey: string | null;
-  onCaptured: (objectKey: string | null) => void;
+  onCaptured: (objectKey: string | null, previewUrl?: string | null) => void;
   folder?: string;
   label?: string;
 }) {
@@ -35,8 +40,8 @@ export function ReelCapture({
   const [showQr, setShowQr] = useState(false);
   const input = useRef<HTMLInputElement>(null);
 
-  const handoff = useHandoff((key) => {
-    onCaptured(key);
+  const handoff = useHandoff((key, url) => {
+    onCaptured(key, url);
     setShowQr(false);
   });
 
@@ -45,7 +50,8 @@ export function ReelCapture({
     setBusy(true);
     setError(null);
     try {
-      onCaptured(await uploadFile(file, folder));
+      const { objectKey: key, url } = await uploadFile(file, folder);
+      onCaptured(key, file.type.startsWith("video/") ? URL.createObjectURL(file) : url);
     } catch (err) {
       setError(err instanceof Error ? err.message : "That did not upload");
     } finally {

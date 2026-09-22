@@ -5,6 +5,7 @@ import { HttpError } from "@/lib/errors"
 import {
   buildObjectKey,
   isUploadConfigured,
+  publicUrlFor,
   putObject,
   validateUpload,
   MAX_UPLOAD_BYTES,
@@ -172,7 +173,7 @@ export async function completeHandoff(
 export type HandoffStatus =
   | { state: "waiting"; expiresAt: Date }
   | { state: "expired" }
-  | { state: "ready"; objectKey: string; contentType: string | null }
+  | { state: "ready"; objectKey: string; contentType: string | null; url: string | null }
 
 /** What the desktop polls. Scoped to the owner, so ids are not guessable keys. */
 export async function getHandoffStatus(
@@ -186,7 +187,14 @@ export async function getHandoffStatus(
   if (!row) return null
 
   if (row.objectKey) {
-    return { state: "ready", objectKey: row.objectKey, contentType: row.contentType }
+    // The URL comes along so the desktop can play what the phone filmed before
+    // it is posted; it is minted here, at read time, like every other one.
+    return {
+      state: "ready",
+      objectKey: row.objectKey,
+      contentType: row.contentType,
+      url: publicUrlFor(row.objectKey),
+    }
   }
   // Expiry only ends the wait while nothing has been uploaded; a video that
   // landed a second before the deadline is still the user's.

@@ -37,7 +37,7 @@ export type HandoffStatus = "idle" | "minting" | "waiting" | "ready" | "expired"
 
 const POLL_MS = 2500
 
-export function useHandoff(onReady: (objectKey: string) => void) {
+export function useHandoff(onReady: (objectKey: string, url: string | null) => void) {
   const [minted, setMinted] = useState<MintedHandoff | null>(null)
   const [status, setStatus] = useState<HandoffStatus>("idle")
   const [error, setError] = useState<string | null>(null)
@@ -68,11 +68,15 @@ export function useHandoff(onReady: (objectKey: string) => void) {
         try {
           const res = await fetch(`/api/handoff/${id}`)
           if (!res.ok) return
-          const status = (await res.json()) as { state: string; objectKey?: string }
+          const status = (await res.json()) as {
+            state: string
+            objectKey?: string
+            url?: string | null
+          }
           if (status.state === "ready" && status.objectKey) {
             stop()
             setStatus("ready")
-            ready.current(status.objectKey)
+            ready.current(status.objectKey, status.url ?? null)
             // Tell the server we have it, so nothing keeps this row live.
             void fetch(`/api/handoff/${id}`, { method: "POST" })
           } else if (status.state === "expired") {
@@ -125,7 +129,10 @@ export function useHandoff(onReady: (objectKey: string) => void) {
  * Returns the R2 object key. Keys rather than URLs everywhere: the bucket or
  * the CDN in front of it can move without rewriting a single stored row.
  */
-export async function uploadFile(file: File, folder: string): Promise<string> {
+export async function uploadFile(
+  file: File,
+  folder: string,
+): Promise<{ objectKey: string; url: string | null }> {
   const body = new FormData()
   body.set("file", file)
   body.set("folder", folder)
@@ -134,6 +141,6 @@ export async function uploadFile(file: File, folder: string): Promise<string> {
     const payload = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
     throw new Error(payload.error?.message ?? `Upload failed (${res.status})`)
   }
-  const payload = (await res.json()) as { objectKey: string }
-  return payload.objectKey
+  const payload = (await res.json()) as { objectKey: string; url: string | null }
+  return { objectKey: payload.objectKey, url: payload.url ?? null }
 }

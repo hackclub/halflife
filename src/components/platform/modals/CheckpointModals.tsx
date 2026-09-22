@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { FoxMark, ReelScene, WeekScene } from "@/components/platform/art";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { FoxMark, WeekScene } from "@/components/platform/art";
 import {
   IconArrowRight,
   IconCamera,
@@ -373,12 +373,73 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 /* ================================================================== *
  * Reel
  * ================================================================== */
+interface ReelDraft {
+  clip: string;
+  /** The bucket's URL for the clip, never a blob URL: those die with the page. */
+  url: string | null;
+  caption: string;
+}
+
+const reelDraftKey = (checkpointId: string) => `halflife.reel-draft.${checkpointId}`;
+
+/**
+ * A reel's draft is the clip already sitting in the bucket plus its caption.
+ * The upload is the expensive half and it has already happened by the time
+ * Save draft is on offer, so keeping the draft is keeping a key and a line of
+ * text — in this browser, like the rest of the ceremony, and cleared on post.
+ */
+function readReelDraft(checkpointId: string): ReelDraft | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(reelDraftKey(checkpointId));
+    return raw ? (JSON.parse(raw) as ReelDraft) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeReelDraft(checkpointId: string, draft: ReelDraft | null) {
+  try {
+    if (draft) window.localStorage.setItem(reelDraftKey(checkpointId), JSON.stringify(draft));
+    else window.localStorage.removeItem(reelDraftKey(checkpointId));
+  } catch {
+    // Storage off: Save draft still closes the sheet, it just cannot keep it.
+  }
+}
+
 export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
   const { setOpenCheckpoint, postReel, stateOf, weekOf } = useStore();
   const week = weekOf(checkpoint.weekId);
   const done = stateOf(checkpoint.id).done;
-  const [clip, setClip] = useState<string | null>(null);
-  const [caption, setCaption] = useState("");
+  const [draft] = useState(() => readReelDraft(checkpoint.id));
+  const [clip, setClip] = useState<string | null>(draft?.clip ?? null);
+  // What the preview plays: a blob URL for a file picked on this machine, the
+  // bucket's URL for one filmed on the phone or restored from a draft.
+  const [previewUrl, setPreviewUrl] = useState<string | null>(draft?.url ?? null);
+  // Kept apart from the preview because a blob URL cannot outlive the page,
+  // so it is never what a draft remembers.
+  const [clipUrl, setClipUrl] = useState<string | null>(draft?.url ?? null);
+  const [caption, setCaption] = useState(draft?.caption ?? "");
+
+  // `autoPlay` alone is a request the browser may defer (a tab that was not
+  // focused when the clip arrived, say), so the preview asks once more itself.
+  const previewVideo = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    void previewVideo.current?.play().catch(() => undefined);
+  }, [previewUrl]);
+
+  // A blob URL holds the whole video in memory until it is revoked.
+  useEffect(() => {
+    return () => {
+      if (previewUrl?.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  function capture(key: string | null, url?: string | null) {
+    setClip(key);
+    setPreviewUrl(url ?? null);
+    setClipUrl(url && !url.startsWith("blob:") ? url : null);
+  }
 
   return (
     <Modal
@@ -392,7 +453,16 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
           <p className="hand mr-auto hidden text-[0.78rem] text-navy-soft sm:block">
             Reels post straight to the Doomscroller.
           </p>
-          <Button variant="outline" onClick={() => setOpenCheckpoint(null)}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              writeReelDraft(
+                checkpoint.id,
+                clip || caption.trim() ? { clip: clip ?? "", url: clipUrl, caption } : null,
+              );
+              setOpenCheckpoint(null);
+            }}
+          >
             Save draft
           </Button>
           <Button
@@ -401,6 +471,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
             onClick={() => {
               if (!clip) return;
               postReel(checkpoint.id, caption.trim(), clip);
+              writeReelDraft(checkpoint.id, null);
               setOpenCheckpoint(null);
             }}
           >
@@ -431,7 +502,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
               Vertical, 30 to 60 seconds, filmed on whatever you have. No editing
               required.
             </p>
-            <ReelCapture objectKey={clip} onCaptured={setClip} />
+            <ReelCapture objectKey={clip} onCaptured={capture} />
           </div>
 
           <Field label="Caption" hint="One line. Say what changed." id="reel-caption">
@@ -450,8 +521,31 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
           <div className="relative overflow-hidden rounded-xl" style={{ aspectRatio: "9 / 16" }}>
             {clip ? (
               <>
-                <ReelScene scene={week.theme === "CAD" ? "cad" : "pcb"} className="absolute inset-0 size-full" />
-                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2.5 pt-8">
+                {/* The clip itself, muted and looping, the way the Doomscroller
+                    will show it. Without a URL (a draft on a deployment with
+                    no public bucket URL) it says so rather than standing a
+                    stock illustration in for someone's footage. */}
+                {previewUrl ? (
+                  <video
+                    ref={previewVideo}
+                    key={previewUrl}
+                    src={previewUrl}
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    aria-label="Preview of your reel"
+                    className="absolute inset-0 size-full bg-navy object-cover"
+                  />
+                ) : (
+                  <div className="absolute inset-0 grid place-items-center bg-navy px-4 text-center">
+                    <p className="flex flex-col items-center gap-2 text-[0.78rem] leading-snug text-white/85">
+                      <IconFilm className="text-2xl text-white" />
+                      Uploaded. The preview plays once it is posted.
+                    </p>
+                  </div>
+                )}
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2.5 pt-8">
                   <p className="text-[0.7rem] leading-snug font-semibold text-white">
                     {caption || "your caption here"}
                   </p>
