@@ -13,8 +13,8 @@ pnpm install
 pnpm dev     # http://localhost:3000
 ```
 
-Signed out, `/` is the marketing page. Signed in, `proxy.ts` rewrites it to the
-trail — two route groups cannot both define `/`, and the landing page has its
+Signed out, `/` is the marketing page. Signed in, `proxy.ts` redirects it to the
+trail at `/dashboard` — two route groups cannot both define `/`, and the landing page has its
 own root layout and stylesheet.
 
 To replay the first-run experience, clear the ceremony:
@@ -30,7 +30,7 @@ those are facts on the server, and only the ceremony lives in the browser.
 
 | Route | What it is |
 | --- | --- |
-| `/` | The checkpoint trail: 10 weeks, week banners, grand prize |
+| `/dashboard` | The checkpoint trail: 10 weeks, week banners, grand prize |
 | `/explore` | Journal feed grouped by day |
 | `/shop` | Coin shop, priced from the budget sheet |
 | `/docs`, `/docs/[slug]` | Five short reference pages |

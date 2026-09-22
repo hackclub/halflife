@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server"
+import { PLATFORM_HOME } from "@/lib/routes"
 
 /**
  * Security headers, and an optional HTTP basic auth gate for pre-launch.
@@ -76,11 +77,12 @@ export function proxy(request: NextRequest) {
   }
 
   /**
-   * `/` is the landing page to a stranger and the trail to a participant.
+   * `/` is the landing page; the platform lives at /dashboard.
    *
-   * A rewrite rather than a redirect, so the trail keeps the bare URL: the
-   * sidebar links home to `/`, and its active-tab styling reads `usePathname`,
-   * which a redirect to /dashboard would leave pointing at the wrong tab.
+   * A signed-in visitor who lands on `/` is sent there with a redirect, not a
+   * rewrite, so the trail has one URL: the shell's Home tab, logo and
+   * first-run intro all point at /dashboard and read it back from
+   * `usePathname`, which a rewrite would leave reporting `/`.
    *
    * Two route groups cannot both define `/` — the landing page lives in
    * `(site)` with its own root layout and stylesheet, the trail in `(app)`
@@ -88,8 +90,8 @@ export function proxy(request: NextRequest) {
    */
   if (request.nextUrl.pathname === "/" && looksSignedIn(request)) {
     const url = request.nextUrl.clone()
-    url.pathname = "/dashboard"
-    return securityHeaders(NextResponse.rewrite(url))
+    url.pathname = PLATFORM_HOME
+    return securityHeaders(NextResponse.redirect(url))
   }
 
   return securityHeaders(NextResponse.next())

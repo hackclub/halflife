@@ -22,8 +22,9 @@ better-auth against Hack Club Auth. One repo, four worlds:
 | `(platform)/(ops)` | Admin, review, login. Carries `ops.css`, the earlier design system. |
 | `(handoff)` | One public page: the phone upload a QR code opens. |
 
-`proxy.ts` rewrites `/` to `/dashboard` when a session cookie is present, so a
-stranger gets the landing page and a participant gets the trail at the same URL.
+`proxy.ts` redirects `/` to `/dashboard` when a session cookie is present, so a
+stranger gets the landing page and a participant lands on the trail, which has
+its own URL.
 That cookie check is optimistic and decides nothing — `(app)` runs
 `requireSessionPage()`.
 

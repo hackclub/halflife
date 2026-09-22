@@ -6,6 +6,7 @@ import { IconArrowRight, IconClock, IconFilm, IconPencil } from "@/components/pl
 import { Chip, Panel } from "@/components/platform/ui";
 import { fmtDate, fmtHours, projectEvents, projectStats } from "@/lib/projects";
 import { useStore } from "@/lib/store";
+import { PLATFORM_HOME } from "@/lib/routes";
 
 export function ProjectsGrid() {
   const { projects, weeks, stateOf, weekOf } = useStore();
@@ -20,7 +21,7 @@ export function ProjectsGrid() {
           collects here.
         </p>
         <Link
-          href="/"
+          href={PLATFORM_HOME}
           className="label mt-6 inline-flex items-center gap-1.5 rounded-full border-2 border-line px-4 py-2 text-navy-soft transition-colors hover:border-navy hover:text-navy"
         >
           Go to the trail <IconArrowRight className="text-base" />

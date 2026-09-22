@@ -20,6 +20,7 @@ import { DoomscrollerFeed } from "./Doomscroller";
 import { GoalTracker } from "./GoalTracker";
 import { Sidebar, TAB_NAV } from "./Sidebar";
 import { Overlays } from "@/components/platform/onboarding/Overlays";
+import { PLATFORM_HOME } from "@/lib/routes";
 
 const MOBILE_ICONS = {
   "/": IconHome,
@@ -87,7 +88,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {/* ---------- centre + feed ---------- */}
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-dashed border-line/70 bg-cream/85 px-4 backdrop-blur-md sm:px-6 lg:border-b-0 lg:bg-transparent lg:backdrop-blur-none">
-            <Link href="/" aria-label="Half Life home" className="w-11 shrink-0 lg:hidden">
+            <Link href={PLATFORM_HOME} aria-label="Half Life home" className="w-11 shrink-0 lg:hidden">
               <FoxMark className="sticker-shadow w-full" />
             </Link>
             <div className="min-w-0 flex-1" />
@@ -157,7 +158,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <ul className="mx-auto flex max-w-lg">
           {TAB_NAV.map((item) => {
             const Icon = MOBILE_ICONS[item.href as keyof typeof MOBILE_ICONS];
-            const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+            const active = item.href === PLATFORM_HOME ? pathname === PLATFORM_HOME : pathname.startsWith(item.href);
             return (
               <li key={item.href} data-tour={item.tourId} className="min-w-0 flex-1">
                 <Link

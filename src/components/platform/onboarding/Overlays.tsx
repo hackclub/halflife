@@ -12,6 +12,7 @@ import { FirstCheckpoint } from "@/components/platform/modals/FirstCheckpoint";
 import { useStore } from "@/lib/store";
 import { Cinematic } from "./Cinematic";
 import { Spotlight } from "./Spotlight";
+import { PLATFORM_HOME } from "@/lib/routes";
 
 /**
  * The tour walks the left rail from top to bottom, one tab per step, in the
@@ -103,7 +104,7 @@ export function Overlays() {
   const needsHome = phase === "aim" || phase === "cinematic";
 
   useEffect(() => {
-    if (hydrated && needsHome && pathname !== "/") router.push("/");
+    if (hydrated && needsHome && pathname !== PLATFORM_HOME) router.push(PLATFORM_HOME);
   }, [hydrated, needsHome, pathname, router]);
 
   // Closing the setup modal without finishing drops you back to the prompt
@@ -133,7 +134,7 @@ export function Overlays() {
     <>
       {openCheckpoint && <CheckpointModal id={openCheckpoint} />}
 
-      {phase === "aim" && !openCheckpoint && pathname === "/" && (
+      {phase === "aim" && !openCheckpoint && pathname === PLATFORM_HOME && (
         <Spotlight
           selector='[data-tour="first-checkpoint"]'
           title="Start here"

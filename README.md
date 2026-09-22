@@ -10,8 +10,8 @@ meant to look nothing alike:
   Duolingo-style trail of checkpoints, a journal, a shop, and the Doomscroller.
   Documented in [docs/platform-ui.md](./docs/platform-ui.md).
 
-Signed out, `/` is the landing page. Signed in, `proxy.ts` rewrites it to the
-trail: two route groups cannot both define `/`, and each has its own root layout
+Signed out, `/` is the landing page. Signed in, `proxy.ts` redirects it to the
+trail at `/dashboard`: two route groups cannot both define `/`, and each has its own root layout
 and stylesheet. The cookie check there is optimistic and decides nothing that
 matters — the real session guard is a server component.
 

@@ -9,9 +9,10 @@ import { IconLogout } from "@/components/platform/icons";
 import { Panel, cx } from "@/components/platform/ui";
 import { useStore } from "@/lib/store";
 import { GoalTracker } from "./GoalTracker";
+import { PLATFORM_HOME } from "@/lib/routes";
 
 export const NAV = [
-  { href: "/", label: "Home", tourId: "nav-home" },
+  { href: PLATFORM_HOME, label: "Home", tourId: "nav-home" },
   { href: "/doomscroller", label: "Doomscroller", tourId: "nav-doomscroller" },
   { href: "/projects", label: "Projects", tourId: "nav-projects" },
   { href: "/explore", label: "Explore", tourId: "nav-explore" },
@@ -39,7 +40,7 @@ export function Sidebar({ className }: { className?: string }) {
 
   return (
     <div className={cx("flex flex-col gap-5", className)}>
-      <Link href="/" aria-label="Half Life home" className="block w-[88px] shrink-0">
+      <Link href={PLATFORM_HOME} aria-label="Half Life home" className="block w-[88px] shrink-0">
         <FoxMark className="sticker-shadow w-full" />
       </Link>
 
@@ -51,7 +52,7 @@ export function Sidebar({ className }: { className?: string }) {
         <nav className="relative px-5">
           <ul>
             {NAV.map((item) => {
-              const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+              const active = item.href === PLATFORM_HOME ? pathname === PLATFORM_HOME : pathname.startsWith(item.href);
               return (
                 <li key={item.href} data-tour={item.tourId} className="relative">
                   <Link
