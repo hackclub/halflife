@@ -74,6 +74,15 @@ export interface StoreSnapshot {
    * wrote.
    */
   offBookHours: Record<number, number>
+  /**
+   * Where each week's phase stands with review, by trail week.
+   *
+   * Coins are minted when a reviewer approves a phase, not when hours are
+   * logged, so the balance below trails the work by a review. Anything that
+   * asks "is this week on pace" has to add back what the unreviewed weeks will
+   * bank — and to know which weeks those are, it needs this.
+   */
+  phaseStatusByWeek: Record<number, PhaseStatus>
   /** Ordinary coins. */
   coins: number
   /** The printer fund. Spendable on a printer and nothing else. */
@@ -165,6 +174,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
   const byTheme = new Map(projects.map((p) => [p.theme, p]))
   const progress: Record<string, CheckpointSnapshot> = {}
   const offBookHours: Record<number, number> = {}
+  const phaseStatusByWeek: Record<number, PhaseStatus> = {}
 
   // A reel posted twice for the same node keeps the newest caption; the rows are
   // ordered oldest-first, so the last write through this loop is the newest.
@@ -245,6 +255,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
         (s) => s.themeProjectId === project.id && s.phase === phase,
       )
       const status = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
+      phaseStatusByWeek[week] = status
       if (submission || status !== PhaseStatus.draft) {
         progress[id("submit")] = {
           done: true,
@@ -303,6 +314,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
     projectIdByWeek,
     progress,
     offBookHours,
+    phaseStatusByWeek,
     coins: balances.spendable,
     bankedCoins: balances.banked,
     streak: streakAsOf(user, effectiveDateFor(new Date(), settings.programTimezone)),

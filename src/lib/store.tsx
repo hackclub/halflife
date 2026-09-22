@@ -13,6 +13,7 @@ import {
 import { BUILD_HOURS, TIERS, WEEK_META, checkpointsFor } from "./curriculum";
 import { DESIGN_WEEKS, ONBOARDING_CHECKPOINT_ID } from "./config/program";
 import {
+  COINS_PER_HOUR,
   printerById,
   submitFloorFor,
   weekAsk,
@@ -108,6 +109,12 @@ interface Ctx {
   bankedCoins: number;
   /** Both pots. A printer can be paid for out of either, so this is the goal. */
   printerFund: number;
+  /**
+   * Coins the logged hours of weeks 1..weekId will bank once reviewed, that
+   * are not in `printerFund` yet. Coins are minted at approval, so the fund
+   * alone says a week nobody has reviewed banked nothing; pacing reads both.
+   */
+  pendingCoins: (weekId: number) => number;
   streak: number;
   /** The printer every banked coin is aimed at. See config/printers. */
   goalId: string;
@@ -728,6 +735,26 @@ export function StoreProvider({
   );
 
   /**
+   * What the unreviewed weeks are on course to bank, at the ledger's own rule:
+   * every hour past the week's funded block (all of a build week's) at
+   * COINS_PER_HOUR. Approved weeks are skipped because their coins are already
+   * in the fund, rejected ones because they will never mint. It is a
+   * projection — a reviewer can still adjust the hours — which is why it only
+   * feeds the pace warning and never the balance anyone can spend.
+   */
+  const pendingCoins = useCallback(
+    (weekId: number) =>
+      weeks
+        .filter((w) => w.id <= weekId)
+        .reduce((n, w) => {
+          const status = facts.phaseStatusByWeek[w.id];
+          if (status === "approved" || status === "rejected") return n;
+          return n + Math.max(0, weekHours(w.id) - w.bankedFrom) * COINS_PER_HOUR;
+        }, 0),
+    [weeks, facts.phaseStatusByWeek, weekHours],
+  );
+
+  /**
    * Three rules, and only three break the sequence:
    *  - anything on the clock (the milestone reels, and Submit itself) opens on
    *    the week's hours, so a half-written entry never traps you and the choice
@@ -863,6 +890,7 @@ export function StoreProvider({
     allCheckpoints,
     weekOf,
     weekHours,
+    pendingCoins,
   };
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

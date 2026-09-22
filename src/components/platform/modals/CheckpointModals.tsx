@@ -725,6 +725,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
     weekOf,
     weekHours,
     printerFund,
+    pendingCoins,
     goalId,
   } = useStore();
   const week = weekOf(checkpoint.weekId);
@@ -736,8 +737,16 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
   // long enough for the machine actually on the wall. A surplus banked in an
   // earlier week pays for a thin one, so this reads the running total against
   // the pace rather than this week against its target.
+  //
+  // The running total is the fund plus what unreviewed weeks will bank. Coins
+  // are minted at approval, so the fund alone reads this very week — the one
+  // being handed in, which nobody can have reviewed yet — as banking nothing,
+  // and warned everyone on every submit.
   const goal = printerById(goalId);
-  const owed = Math.max(0, Math.ceil(paceTarget(goal, week.id) - printerFund));
+  const owed = Math.max(
+    0,
+    Math.ceil(paceTarget(goal, week.id) - printerFund - pendingCoins(week.id)),
+  );
 
   const project = projects.find((p) => p.weekId === (isBuild ? week.id - 5 : week.id)) ?? projects[0];
 
