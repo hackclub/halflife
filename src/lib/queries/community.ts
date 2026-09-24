@@ -33,6 +33,7 @@ export interface JournalRow {
   author: string
   authorImage: string | null
   streak: number
+  projectId: string
   project: string
   body: string
   minutes: number
@@ -56,7 +57,9 @@ export async function getJournalFeed(): Promise<JournalRow[]> {
   const [sessions, settings] = await Promise.all([
     prisma.workSession.findMany({
       where: { deletedAt: null, themeProject: { deletedAt: null } },
-      orderBy: { createdAt: "desc" },
+      // The id breaks ties, so two entries saved in the same millisecond keep
+      // one order between loads.
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: FEED_LIMIT,
       select: {
         id: true,
@@ -68,6 +71,7 @@ export async function getJournalFeed(): Promise<JournalRow[]> {
         createdAt: true,
         themeProject: {
           select: {
+            id: true,
             title: true,
             theme: true,
             user: { select: { name: true, image: true, currentStreak: true } },
@@ -85,6 +89,7 @@ export async function getJournalFeed(): Promise<JournalRow[]> {
       author: project.user.name ?? "A maker",
       authorImage: project.user.image,
       streak: project.user.currentStreak,
+      projectId: project.id,
       project: project.title || getThemeDef(project.theme).label,
       body: session.content ?? session.title,
       minutes: Math.round((session.hoursApproved ?? session.hoursClaimed) * 60),

@@ -6,7 +6,7 @@ import { Button, Chip, OptionRow, cx } from "@/components/platform/ui";
 import { TIERS } from "@/lib/curriculum";
 import { submitFloorFor, tierBankedFloor } from "@/lib/config/printers";
 import { fmtHours } from "@/lib/projects";
-import { displayRepo, normalizeRepo } from "@/lib/repo";
+import { normalizeRepo } from "@/lib/repo";
 import { useStore } from "@/lib/store";
 import type { Project } from "@/lib/types";
 
@@ -33,8 +33,8 @@ export function ProjectDetails({
   hours,
   tierLocked,
   locked,
-  stats,
-  chips,
+  meta,
+  unsubmit,
 }: {
   project: Project;
   /** Hours logged in the design week, for what each tier would ask. */
@@ -43,12 +43,28 @@ export function ProjectDetails({
   tierLocked: boolean;
   /** Why nothing here can change right now, or null when it can. */
   locked: string | null;
-  /** The stat line, shown under the name while reading. */
-  stats: React.ReactNode;
-  /** The week chips, shown under the description while reading. */
-  chips: React.ReactNode;
+  /** The facts under the description while reading: progress, then what it is. */
+  meta: React.ReactNode;
+  /** Take the week in review back out of it, when one is. */
+  unsubmit?: { week: number; run: () => Promise<string | null> };
 }) {
   const [editing, setEditing] = useState(false);
+  const lockedId = useId();
+  // Two steps, in place: unsubmitting pulls the week out of the review queue,
+  // so the first press asks, and the second does it.
+  const [confirming, setConfirming] = useState(false);
+  const [unsubmitting, setUnsubmitting] = useState(false);
+  const [unsubmitError, setUnsubmitError] = useState<string | null>(null);
+
+  async function takeBack() {
+    if (!unsubmit) return;
+    setUnsubmitting(true);
+    setUnsubmitError(null);
+    const refused = await unsubmit.run();
+    setUnsubmitting(false);
+    if (refused) setUnsubmitError(refused);
+    else setConfirming(false);
+  }
 
   if (editing) {
     return (
@@ -67,59 +83,66 @@ export function ProjectDetails({
         <h1 className="min-w-0 flex-1 text-[1.5rem] leading-tight font-extrabold tracking-[-0.03em] text-balance [overflow-wrap:anywhere] text-navy sm:text-[1.9rem]">
           {project.name}
         </h1>
-        {!locked && (
-          <Button variant="outline" size="sm" onClick={() => setEditing(true)} className="mt-1">
+        {/* Always where it lives, even while it cannot be used: a control that
+            disappears sends the reader looking for it. Shut, it says why
+            right underneath, instead of at the foot of the block. */}
+        <div className="mt-1 flex shrink-0 flex-col items-end gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setEditing(true)}
+            disabled={!!locked}
+            aria-describedby={locked ? lockedId : undefined}
+            title={locked ?? undefined}
+          >
             <IconPencil className="text-sm" /> Edit details
           </Button>
-        )}
+          {locked && (
+            <p id={lockedId} className="hand max-w-[14rem] text-right text-[0.78rem] leading-snug text-navy-soft">
+              {locked}.
+            </p>
+          )}
+          {unsubmit &&
+            (confirming ? (
+              <div className="flex max-w-[16rem] flex-col items-end gap-1.5 text-right">
+                <p className="text-[0.82rem] leading-snug text-navy">
+                  Take week {unsubmit.week} out of review? You can hand it in again when you&apos;re done.
+                </p>
+                <div className="flex gap-1.5">
+                  <Button variant="ghost" size="sm" onClick={() => setConfirming(false)} disabled={unsubmitting}>
+                    Keep it in
+                  </Button>
+                  <Button variant="solid" size="sm" onClick={() => void takeBack()} disabled={unsubmitting}>
+                    {unsubmitting ? "Unsubmitting…" : "Unsubmit"}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setUnsubmitError(null);
+                  setConfirming(true);
+                }}
+                className="-mr-3.5"
+              >
+                Unsubmit week {unsubmit.week}
+              </Button>
+            ))}
+          {unsubmitError && (
+            <p role="alert" className="hand max-w-[16rem] text-right text-[0.78rem] leading-snug text-coral-deep">
+              {unsubmitError}
+            </p>
+          )}
+        </div>
       </div>
 
-      {stats}
-
-      <p className="mt-3.5 max-w-[62ch] text-[0.95rem] leading-relaxed whitespace-pre-line [overflow-wrap:anywhere] text-navy-soft">
+      <p className="mt-3 max-w-[62ch] text-[0.95rem] leading-relaxed whitespace-pre-line [overflow-wrap:anywhere] text-navy-soft">
         {project.description || <span className="hand">no description yet.</span>}
       </p>
 
-      {chips}
-
-      <dl className="mt-5 grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-8">
-        <div className="min-w-0">
-          <dt className="label mb-1.5 text-violet-deep">GitHub repo</dt>
-          <dd className="min-w-0">
-            {project.githubRepo ? (
-              <a
-                href={project.githubRepo}
-                target="_blank"
-                rel="noopener noreferrer"
-                title={project.githubRepo}
-                className="block truncate text-[0.88rem] font-semibold text-navy underline decoration-line-strong decoration-2 underline-offset-4 transition-colors hover:decoration-violet"
-              >
-                {displayRepo(project.githubRepo)}
-              </a>
-            ) : (
-              <span className="hand text-[0.86rem] text-navy-soft">none yet</span>
-            )}
-          </dd>
-        </div>
-        <div>
-          <dt className="label mb-1.5 text-violet-deep">Tier</dt>
-          <dd>
-            <Chip tone="violet">Tier {project.tier}</Chip>
-          </dd>
-        </div>
-      </dl>
-
-      {project.starter ? (
-        <p className="hand mt-2 text-[0.8rem] text-navy-soft">
-          Starter projects are scoped to tier 1, so the tier is fixed.
-        </p>
-      ) : tierLocked ? (
-        <p className="hand mt-2 text-[0.8rem] text-navy-soft">
-          Week {project.weekId} is submitted, so the tier is final.
-        </p>
-      ) : null}
-
-      {locked && <p className="hand mt-4 text-[0.82rem] text-navy-soft">{locked}.</p>}
+      {meta}
     </div>
   );
 }

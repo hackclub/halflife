@@ -11,6 +11,10 @@ export const userFlagsSchema = z
   })
   .strict()
 
+export const projectExtensionSchema = z
+  .object({ submissionExtensionUntil: z.coerce.date().nullable() })
+  .strict()
+
 export const creditAdjustSchema = z
   .object({
     userId: cuid,

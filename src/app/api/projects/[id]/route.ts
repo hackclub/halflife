@@ -9,6 +9,7 @@ import { getThemeDef } from "@/lib/config/program"
 import { publicUrlFor } from "@/lib/uploads/r2"
 import { getSubmissionAccess, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
 import { AuditAction, logAudit } from "@/lib/audit"
+import { markProjectCreated } from "@/lib/analytics"
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -119,6 +120,10 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
         : {}),
     },
   })
+
+  // A project counts as started once it has a description and a tier; the row
+  // itself has existed since sign-up.
+  await markProjectCreated(id, gate.user.id)
 
   await logAudit({
     action: AuditAction.USER_UPDATE_PROJECT,

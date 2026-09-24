@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FoxMark } from "@/components/platform/art";
 import { IconComment, IconEye, IconFilm, IconHeart, IconPlay } from "@/components/platform/icons";
 import { cx } from "@/components/platform/ui";
@@ -11,78 +11,227 @@ function compact(n: number) {
 }
 
 /**
+ * How much of a card has to be on screen for it to be the current reel. With
+ * every card at least the height of its column, two can never both clear this,
+ * so "current" is always one card or none.
+ */
+const CURRENT = 0.6;
+
+/**
+ * The one reel allowed to be making noise, across every feed on the page. Every
+ * way into playback goes through `start`, which silences this one first, so
+ * scrolling on, pressing play on another card, or the rail and the full page
+ * both being mounted can never leave two soundtracks talking over each other.
+ */
+let playingNow: HTMLVideoElement | null = null;
+
+function start(el: HTMLVideoElement) {
+  claim(el);
+  // Autoplay with sound is the browser's call, not ours: without a click on the
+  // page first it is refused, and the card simply keeps its play button.
+  return el.play().catch(() => undefined);
+}
+
+/** Make `el` the one reel allowed to play, silencing whichever was. */
+function claim(el: HTMLVideoElement) {
+  if (playingNow && playingNow !== el) playingNow.pause();
+  playingNow = el;
+}
+
+/**
+ * Play `el` as the only reel making noise, for players with their own
+ * controls (the full-page stage). Resolves to whether it is playing — false
+ * when the browser refused, which is the caller's cue to retry muted.
+ */
+export function playExclusive(el: HTMLVideoElement): Promise<boolean> {
+  claim(el);
+  return el.play().then(
+    () => true,
+    () => false,
+  );
+}
+
+/** For a video that started some other way — the element's own play event. */
+export function notePlaying(el: HTMLVideoElement) {
+  claim(el);
+}
+
+export function noteStopped(el: HTMLVideoElement) {
+  if (playingNow === el) playingNow = null;
+}
+
+/** Silence whichever reel is playing, for a feed that is being put away. */
+export function pauseReels() {
+  playingNow?.pause();
+}
+
+/**
+ * Like or unlike a reel: optimistic, then corrected. The count the server
+ * returns is the truth, because someone else may have liked it meanwhile.
+ *
+ * PUT, not POST: a like is idempotent — the body says which state you want,
+ * not "add one" — and the route is declared that way. Sending POST got a
+ * silent 405 and left the optimistic count standing until the next refresh.
+ */
+export function sendLike(
+  reel: FeedItem,
+  next: boolean,
+  onPatch?: (id: string, patch: Partial<FeedItem>) => void,
+) {
+  if (reel.likedByMe === next) return;
+  onPatch?.(reel.id, { likedByMe: next, likeCount: reel.likeCount + (next ? 1 : -1) });
+  void fetch(`/api/posts/${reel.id}/like`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ liked: next }),
+  })
+    .then(async (res) => {
+      if (!res.ok) {
+        // Refused: put it back as it was.
+        onPatch?.(reel.id, { likedByMe: reel.likedByMe, likeCount: reel.likeCount });
+        return;
+      }
+      const payload = (await res.json()) as { likeCount?: number };
+      if (typeof payload.likeCount === "number") onPatch?.(reel.id, { likeCount: payload.likeCount });
+    })
+    .catch(() => onPatch?.(reel.id, { likedByMe: reel.likedByMe, likeCount: reel.likeCount }));
+}
+
+function prefersStill() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+/**
+ * The reel that has just taken the frame says so: its author, caption and
+ * counts rise into place a beat behind the video, the way a feed hands over
+ * from one clip to the next. Played by the Web Animations API rather than a
+ * class, because it has to restart on every arrival and a card scrolled back
+ * to is arriving again. It only ever animates FROM hidden: the resting state
+ * is fully visible, so a browser that never runs it shows everything.
+ */
+const ARRIVE: Keyframe[] = [
+  { opacity: 0, transform: "translateY(12px)" },
+  { opacity: 1, transform: "none" },
+];
+const ARRIVE_TIMING: KeyframeAnimationOptions = {
+  duration: 420,
+  delay: 90,
+  easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+  fill: "backwards",
+};
+
+/**
  * One reel. The rail stacks these in a snap column, the Doomscroller page lays
  * them out as a wall — the sizing comes in through `className` so the artwork,
  * the counts and the gradient read identically in both.
  *
- * Nothing autoplays. A column of videos all playing at once is how a feed
- * burns a phone's battery and a hotel's wifi, and the play control is also what
- * tells the server the reel was actually watched.
+ * Only the current reel plays. A card pauses the moment it scrolls out of the
+ * current slot, and with `autoplay` the card that takes the slot starts on its
+ * own — one video at a time, never a column of them burning a phone's battery
+ * and a hotel's wifi. Anyone who has asked for less motion gets the pausing but
+ * not the starting.
  */
 export function ReelCard({
   reel,
   className,
   onPatch,
+  autoplay = false,
+  onPlayPress,
 }: {
   reel: FeedItem;
   className?: string;
   /** Apply a change to this row after the server has taken it. */
   onPatch?: (id: string, next: Partial<FeedItem>) => void;
+  /** Start playing when this card becomes the current reel. */
+  autoplay?: boolean;
+  /** The reader pressed play themselves. */
+  onPlayPress?: () => void;
 }) {
+  const card = useRef<HTMLElement>(null);
   const video = useRef<HTMLVideoElement>(null);
+  const meta = useRef<HTMLDivElement>(null);
   const [playing, setPlaying] = useState(false);
   const counted = useRef(false);
+  // Whether this card holds the current slot. Playback is only ever changed as
+  // a card enters or leaves it, never while it stays there — so a reel the
+  // reader paused stays paused until they scroll away and back.
+  const current = useRef(false);
+  // Read by the observer at the moment a card arrives, so a feed switching
+  // autoplay on does not tear the observer down (and pause the video) to do it.
+  const wantsAutoplay = useRef(autoplay);
 
   const announcement = reel.pinned || reel.kind === "ANNOUNCEMENT";
 
-  async function play() {
-    if (!reel.videoUrl) return;
+  useEffect(() => {
+    wantsAutoplay.current = autoplay;
+  }, [autoplay]);
+
+  // Rooted on the viewport rather than the feed's own scroller: the rail is
+  // closed by collapsing and clipping the panels AROUND that scroller, which an
+  // observer rooted inside it never sees. Measured against the viewport, a
+  // closing rail, a rail hidden at narrow widths and a reel scrolled past all
+  // read the same way — the card is no longer on screen, so it stops.
+  useEffect(() => {
+    const box = card.current;
     const el = video.current;
-    if (!el) return;
-    if (playing) {
+    if (!box || !el) return;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        const now = !!entry?.isIntersecting && entry.intersectionRatio >= CURRENT;
+        if (now === current.current) return;
+        current.current = now;
+        if (!now) {
+          el.pause();
+          return;
+        }
+        // Only in a feed being watched. The rail sits idle beside every page,
+        // and replaying an arrival on each navigation would be motion for its
+        // own sake.
+        if (!wantsAutoplay.current || prefersStill()) return;
+        meta.current?.animate?.(ARRIVE, ARRIVE_TIMING);
+        void start(el);
+      },
+      { threshold: CURRENT },
+    );
+    io.observe(box);
+    return () => {
+      io.disconnect();
+      current.current = false;
       el.pause();
-      setPlaying(false);
+    };
+  }, [reel.videoUrl]);
+
+  function toggle() {
+    const el = video.current;
+    if (!reel.videoUrl || !el) return;
+    if (!el.paused) {
+      el.pause();
       return;
     }
-    await el.play().catch(() => undefined);
-    setPlaying(true);
+    onPlayPress?.();
+    void start(el);
+  }
 
-    // A view is counted once per card, and the server counts it once per person
-    // by unique row — so neither a replay nor a retried request can inflate it.
-    if (!counted.current) {
-      counted.current = true;
-      void fetch(`/api/posts/${reel.id}/view`, { method: "POST" });
-    }
+  // A view is a second of actual playback, not a press or an autoplay that a
+  // quick flick scrolled straight past. It is counted once per card, and the
+  // server counts it once per person by unique row — so neither a replay nor a
+  // retried request can inflate it.
+  function countView() {
+    const el = video.current;
+    if (counted.current || !el) return;
+    let watched = 0;
+    for (let i = 0; i < el.played.length; i++) watched += el.played.end(i) - el.played.start(i);
+    if (watched < 1) return;
+    counted.current = true;
+    void fetch(`/api/posts/${reel.id}/view`, { method: "POST" });
   }
 
   function like() {
-    const next = !reel.likedByMe;
-    // Optimistic, then corrected: the count the server returns is the truth,
-    // because someone else may have liked it in the meantime.
-    onPatch?.(reel.id, {
-      likedByMe: next,
-      likeCount: reel.likeCount + (next ? 1 : -1),
-    });
-    // PUT, not POST: a like is idempotent — the body says which state you want,
-    // not "add one" — and the route is declared that way. Sending POST got a
-    // silent 405 and left the optimistic count standing until the next refresh.
-    void fetch(`/api/posts/${reel.id}/like`, {
-      method: "PUT",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ liked: next }),
-    })
-      .then(async (res) => {
-        if (!res.ok) return;
-        const payload = (await res.json()) as { likeCount?: number };
-        if (typeof payload.likeCount === "number") {
-          onPatch?.(reel.id, { likeCount: payload.likeCount });
-        }
-      })
-      .catch(() => undefined);
+    sendLike(reel, !reel.likedByMe, onPatch);
   }
 
   return (
-    <article className={cx("relative w-full overflow-hidden rounded-xl", className)}>
+    <article ref={card} className={cx("relative w-full overflow-hidden rounded-xl", className)}>
       {/* Nothing generates thumbnails yet, so most reels have no poster, and
           with `preload="none"` that left a blank box with a play button on
           it. Without a poster the card fetches only the metadata and asks for
@@ -96,7 +245,18 @@ export function ReelCard({
           playsInline
           loop
           preload={reel.thumbnailUrl ? "none" : "metadata"}
-          onEnded={() => setPlaying(false)}
+          // The element is the truth about whether it is playing: it can be
+          // paused by the observer, by another card starting, or by the browser
+          // refusing autoplay, none of which pass through the button.
+          onPlay={(e) => {
+            notePlaying(e.currentTarget);
+            setPlaying(true);
+          }}
+          onPause={(e) => {
+            noteStopped(e.currentTarget);
+            setPlaying(false);
+          }}
+          onTimeUpdate={countView}
           className="absolute inset-0 size-full bg-navy object-cover"
         />
       ) : (
@@ -124,7 +284,7 @@ export function ReelCard({
 
       <button
         type="button"
-        onClick={() => void play()}
+        onClick={toggle}
         disabled={!reel.videoUrl}
         aria-label={
           reel.videoUrl
@@ -145,7 +305,7 @@ export function ReelCard({
       </button>
 
       <div className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/80 via-black/45 to-transparent px-3.5 pt-10 pb-3.5">
-        <div className="flex items-end gap-3">
+        <div ref={meta} className="flex items-end gap-3">
           <div className="min-w-0 flex-1">
             <p className="text-[0.86rem] leading-tight font-extrabold text-white">
               {reel.author.name ?? "A maker"}

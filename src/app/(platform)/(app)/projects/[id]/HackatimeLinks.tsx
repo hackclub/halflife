@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { IconClock, IconPlus, IconWarning, IconX } from "@/components/platform/icons";
-import { Button, Chip, Panel, cx, inputClass } from "@/components/platform/ui";
+import { Button, Panel, cx, inputClass } from "@/components/platform/ui";
 import { linkHackatime } from "@/lib/auth-client";
 import { fmtHours } from "@/lib/projects";
 import type { Phase } from "@/lib/types";
@@ -124,9 +124,7 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
       <h2 className="label mt-8 mb-3 text-violet-deep">Hackatime</h2>
       <Panel tone="line" radius={18} className="bg-paper px-5 py-5 sm:px-6">
         <p className="max-w-[62ch] text-[0.9rem] leading-snug text-navy-soft">
-          Firmware and code hours count too. Link the Hackatime project you wrote them in and the
-          time joins this week&apos;s total. Your journal entries are still what reviewers check it
-          against.
+          Code hours count too: link the Hackatime project you wrote them in.
         </p>
 
         {error && (
@@ -139,7 +137,7 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
         )}
 
         {links === null || account.state === "loading" ? (
-          <p className="hand mt-4 text-[0.85rem] text-navy-soft" aria-live="polite">
+          <p className="hand mt-4 text-[0.84rem] text-navy-soft" aria-live="polite">
             checking hackatime…
           </p>
         ) : (
@@ -152,7 +150,6 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
                     className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl bg-cream px-3.5 py-2.5"
                   >
                     <span className="min-w-0 flex-1 truncate font-bold text-navy">{l.hackatimeProject}</span>
-                    <Chip tone={l.phase === "BUILD" ? "teal" : "sky"}>{l.phase.toLowerCase()}</Chip>
                     <span className="hand inline-flex items-center gap-1.5 text-[0.84rem] text-teal-deep tabular-nums">
                       <IconClock className="text-sm" /> {fmtHours(l.hours)}
                       {l.hoursApproved !== null && " approved"}
@@ -194,7 +191,7 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
                 >
                   {busy === "account" ? "Redirecting…" : "Connect Hackatime"}
                 </Button>
-                <span className="hand text-[0.8rem] text-navy-soft">
+                <span className="hand text-[0.84rem] text-navy-soft">
                   optional, and only matters for code hours.
                 </span>
               </div>

@@ -9,9 +9,16 @@ import { recomputeStreak } from "@/lib/streak"
 import { isOwnedKey } from "@/lib/uploads/r2"
 import { paginationQuery, cursorArgs, pageResult } from "@/lib/pagination"
 import { stampSessionTiming } from "@/lib/submissions"
-import { getSubmissionAccess, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
+import {
+  getSubmissionAccess,
+  isWeekOpen,
+  SUBMISSIONS_CLOSED_MESSAGE,
+  WEEK_CLOSED_MESSAGE,
+} from "@/lib/program"
+import { scheduledWeekFor } from "@/lib/config/program"
 import { publicUrlFor } from "@/lib/uploads/r2"
 import { AuditAction, logAudit } from "@/lib/audit"
+import { recomputeWeek } from "@/lib/analytics"
 import { verifyOwnTimelapses } from "@/lib/lapse"
 
 type Params = { params: Promise<{ id: string }> }
@@ -63,6 +70,10 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 
   const access = await getSubmissionAccess(gate.user.id, id)
   if (!access.open) return fail("SUBMISSIONS_CLOSED", SUBMISSIONS_CLOSED_MESSAGE)
+
+  if (!(await isWeekOpen(gate.user.id, id, scheduledWeekFor(project.theme, data.phase)))) {
+    return fail("WEEK_CLOSED", WEEK_CLOSED_MESSAGE)
+  }
 
   const phaseStatus =
     data.phase === "DESIGN" ? project.designStatus : project.buildStatus
@@ -159,6 +170,8 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
       hoursSource: data.hoursSource,
     },
   })
+
+  await recomputeWeek(gate.user.id, session.weekNumber)
 
   return ok({ session }, { status: 201 })
 })

@@ -14,8 +14,22 @@ export const authClient = createAuthClient({
 
 export const { signOut, useSession } = authClient
 
-export function signInWith(providerId: "hca" | "hackatime", callbackURL = "/dashboard") {
-  return authClient.signIn.social({ provider: providerId, callbackURL })
+/**
+ * `loginHint` is the address to start the sign-in with. Hack Club Auth reads
+ * it as the standard `login_hint` and pre-fills its email box — the one both a
+ * returning user and a newcomer start from — so an address typed on the
+ * landing page is not asked for twice.
+ */
+export function signInWith(
+  providerId: "hca" | "hackatime",
+  callbackURL = "/dashboard",
+  loginHint?: string,
+) {
+  return authClient.signIn.social({
+    provider: providerId,
+    callbackURL,
+    ...(loginHint ? { loginHint } : {}),
+  })
 }
 
 export function linkHackatime(callbackURL = "/dashboard") {

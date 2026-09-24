@@ -56,7 +56,8 @@ const fmtH = (h: number) => `${Math.round(h * 100) / 100}h`;
  */
 const ONE_TIME: Checkpoint["kind"][] = ["onboarding", "project"];
 
-function nodeTone(kind: Checkpoint["kind"], done: boolean, unlocked: boolean) {
+function nodeTone(kind: Checkpoint["kind"], done: boolean, unlocked: boolean, passed: boolean) {
+  if (passed) return "puck-passed";
   if (!unlocked) return "puck-locked";
   // The onboarding puck keeps its gold once it is finished. It is the landmark
   // for where the trail started; the check is what says it is done.
@@ -80,13 +81,45 @@ function CheckpointNode({
   /** One half of a fork: both arms are live, and neither is the recommendation. */
   choice?: boolean;
 }) {
-  const { stateOf, isUnlocked, lockReason, setOpenCheckpoint, phase } = useStore();
+  const { stateOf, isUnlocked, isPassed, lockReason, setOpenCheckpoint, phase, weekSubmitted, phaseStatusOf } =
+    useStore();
   const st = stateOf(checkpoint.id);
   const unlocked = isUnlocked(checkpoint.id);
+  // Its week ran out of time. Done or not, it is the record now: no redo, no
+  // more entries, and the tooltip says only that.
+  const passed = isPassed(checkpoint.id);
   // Done and not for doing again. It keeps its finished colours rather than
   // taking the locked ones: this is a thing achieved, not a thing withheld.
-  const settled = st.done && ONE_TIME.includes(checkpoint.kind);
+  // A finished entry opens for editing — until its week is handed in, when
+  // the entries are what the review reads and they stop changing.
+  const final = st.done && checkpoint.kind === "journal" && weekSubmitted(checkpoint.weekId);
+  // A handed-in week's Submit opens to unsubmit it while it waits for review,
+  // and to hand it in again once it is sent back. Decided, there is nothing
+  // left to do from it, so it stops opening.
+  const handIn = checkpoint.kind === "submit" || checkpoint.kind === "demo";
+  const reviewStatus = handIn && st.done ? phaseStatusOf(checkpoint.weekId) : null;
+  const decided = reviewStatus === "approved" || reviewStatus === "rejected";
+  const settled = (st.done && ONE_TIME.includes(checkpoint.kind)) || final || decided;
+  const doneNote =
+    checkpoint.kind === "reel"
+      ? "click to post another reel."
+      : checkpoint.kind === "journal"
+        ? final
+          ? "this week is submitted, so the entry is final."
+          : "click to edit your entry."
+        : reviewStatus === "in_review"
+          ? "waiting for review. click to unsubmit it."
+          : reviewStatus === "update_requested"
+            ? "sent back for changes. click to hand it in again."
+            : reviewStatus === "approved"
+              ? "approved — this week is done."
+              : reviewStatus === "rejected"
+                ? "this week has been reviewed."
+                : null;
   const locked = !unlocked ? lockReason(checkpoint.id) : null;
+  // Finished and still reachable: hovering says so, and says what a click
+  // does now — edit the entry, or post another reel.
+  const doneTip = st.done && unlocked && !passed;
   const Icon = st.done ? IconCheck : unlocked ? KIND_ICON[checkpoint.kind] : IconLock;
   // Gold stays gold after completion, so the icon on it has to stay navy.
   const gold = checkpoint.kind === "onboarding";
@@ -153,16 +186,52 @@ function CheckpointNode({
               } as React.CSSProperties
             }
           >
-            <p className="text-[0.74rem] leading-snug font-semibold text-navy">
-              {checkpoint.blurb}
-            </p>
-            <p className="hand mt-1.5 flex items-start gap-1.5 text-[0.72rem] leading-snug text-navy-soft">
-              <IconLock className="mt-px shrink-0 text-[0.8rem]" />
-              {locked}
-            </p>
+            {passed ? (
+              <p className="text-[0.78rem] leading-snug font-semibold whitespace-nowrap text-navy">
+                {locked}
+              </p>
+            ) : (
+              <>
+                <p className="text-[0.74rem] leading-snug font-semibold text-navy">
+                  {checkpoint.blurb}
+                </p>
+                <p className="hand mt-1.5 flex items-start gap-1.5 text-[0.72rem] leading-snug text-navy-soft">
+                  <IconLock className="mt-px shrink-0 text-[0.8rem]" />
+                  {locked}
+                </p>
+              </>
+            )}
             <span
               aria-hidden="true"
               className="absolute top-full left-1/2 -ml-2 size-0 border-x-8 border-t-[9px] border-x-transparent border-t-sand"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* The same bubble in the done colours: mint and teal, a check where the
+          lock would be. A finished entry adds what clicking it does now. */}
+      {doneTip && (
+        <div className="pointer-events-none absolute bottom-[calc(100%_+_10px)] z-20 w-max max-w-[min(13rem,42vw)] opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100">
+          <div
+            className="sketch rounded-2xl bg-mint px-3.5 py-2.5 text-left"
+            style={
+              {
+                "--sk-color": "var(--color-teal-deep)",
+                "--sk-radius": "14px",
+              } as React.CSSProperties
+            }
+          >
+            <p className="flex items-start gap-1.5 text-[0.74rem] leading-snug font-semibold text-navy">
+              <IconCheck className="mt-px shrink-0 text-[0.8rem] text-teal-deep" strokeWidth={3} />
+              You&apos;ve already completed this checkpoint!
+            </p>
+            {doneNote && (
+              <p className="hand mt-1 pl-5 text-[0.72rem] leading-snug text-navy-soft">{doneNote}</p>
+            )}
+            <span
+              aria-hidden="true"
+              className="absolute top-full left-1/2 -ml-2 size-0 border-x-8 border-t-[9px] border-x-transparent border-t-mint"
             />
           </div>
         </div>
@@ -174,11 +243,15 @@ function CheckpointNode({
         disabled={!unlocked || settled}
         onClick={() => setOpenCheckpoint(checkpoint.id)}
         aria-label={
-          locked ? `${checkpoint.title} — ${status}. ${locked}` : `${checkpoint.title} — ${status}`
+          locked
+            ? `${checkpoint.title} — ${status}. ${locked}`
+            : doneTip && doneNote
+              ? `${checkpoint.title} — ${status}. ${doneNote.charAt(0).toUpperCase()}${doneNote.slice(1)}`
+              : `${checkpoint.title} — ${status}`
         }
         className={cx(
           "puck",
-          nodeTone(checkpoint.kind, st.done, unlocked),
+          nodeTone(checkpoint.kind, st.done, unlocked, passed),
           // The puck's own disabled rule reads as refusal. A finished
           // checkpoint is not refusing anything.
           settled && "cursor-default",
@@ -193,7 +266,7 @@ function CheckpointNode({
               isBeat(checkpoint)
                 ? "text-[clamp(0.95rem,2.8vw,1.25rem)]"
                 : "text-[clamp(1.5rem,4.4vw,2rem)]",
-              !unlocked ? "text-sand-deep" : gold ? "text-navy" : "text-white",
+              passed ? "text-white" : !unlocked ? "text-sand-deep" : gold ? "text-navy" : "text-white",
             )}
             strokeWidth={st.done ? 3 : 2}
           />
@@ -209,7 +282,7 @@ function CheckpointNode({
       >
         {checkpoint.title}
       </p>
-      {unlocked && st.done && st.minutes > 0 && (
+      {(unlocked || passed) && st.done && st.minutes > 0 && (
         <p className="hand text-[0.66rem] leading-tight text-navy-soft tabular-nums">
           {fmtH(st.minutes / 60)}
         </p>

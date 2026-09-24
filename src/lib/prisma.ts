@@ -10,7 +10,19 @@ function createClient(): PrismaClient {
   const connectionString =
     process.env.DATABASE_URL ??
     "postgresql://placeholder:placeholder@localhost:5432/placeholder"
-  return new PrismaClient({ adapter: new PrismaPg({ connectionString }) })
+  return new PrismaClient({
+    adapter: new PrismaPg({
+      connectionString,
+      // pg's default closes an idle connection after 10 seconds, and opening
+      // one to this database is a TLS handshake that took ~900ms from a dev
+      // machine — so any page opened after a short pause paid it before its
+      // first query ran. Kept for 5 minutes, a warm connection is reused and
+      // the layout's queries take ~115ms instead of ~1s.
+      idleTimeoutMillis: 300_000,
+      // A bound per process, well under the database's connection limit.
+      max: 10,
+    }),
+  })
 }
 
 const prisma = globalForPrisma.prisma ?? createClient()

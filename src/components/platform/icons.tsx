@@ -106,6 +106,44 @@ export const IconPlay = (p: P) => (
   </Ico>
 );
 
+export const IconPause = (p: P) => (
+  <Ico {...p}>
+    <path d="M8.2 5.6v12.8M15.8 5.6v12.8" strokeWidth={2.6} />
+  </Ico>
+);
+
+export const IconVolume = (p: P) => (
+  <Ico {...p}>
+    <path d="M4.4 9.4h3.2l4.6-3.8v12.8l-4.6-3.8H4.4Z" />
+    <path d="M15.6 9.2a4 4 0 0 1 0 5.6M18.2 6.6a7.6 7.6 0 0 1 0 10.8" />
+  </Ico>
+);
+
+export const IconVolumeOff = (p: P) => (
+  <Ico {...p}>
+    <path d="M4.4 9.4h3.2l4.6-3.8v12.8l-4.6-3.8H4.4Z" />
+    <path d="m15.4 9.6 4.8 4.8M20.2 9.6l-4.8 4.8" />
+  </Ico>
+);
+
+export const IconArrowUp = (p: P) => (
+  <Ico {...p}>
+    <path d="M12 19.2V4.8M6 10.8l6-6 6 6" />
+  </Ico>
+);
+
+export const IconArrowDown = (p: P) => (
+  <Ico {...p}>
+    <path d="M12 4.8v14.4M6 13.2l6 6 6-6" />
+  </Ico>
+);
+
+export const IconSend = (p: P) => (
+  <Ico {...p}>
+    <path d="M12 18.6V5.8M6.6 11.2 12 5.8l5.4 5.4" strokeWidth={2.2} />
+  </Ico>
+);
+
 export const IconFilm = (p: P) => (
   <Ico {...p}>
     <rect x="3.4" y="5.4" width="17.2" height="13.2" rx="2.2" />

@@ -7,6 +7,7 @@ export type SyncKey =
   | "hackatime"
   | "airtable_ysws"
   | "airtable_rsvp"
+  | "airtable_loops"
   | "claim_sweep"
   | "printer_reconcile"
 

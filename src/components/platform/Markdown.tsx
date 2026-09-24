@@ -41,6 +41,79 @@ export function countImages(source: string): number {
 }
 
 /**
+ * The images an entry shows, in the order it shows them. Pasted data URIs are
+ * left out: they render inline, but as a thumbnail URL they would ship a whole
+ * picture inside every payload that lists the project.
+ */
+export function imageSources(source: string): string[] {
+  const out: string[] = [];
+  for (const m of source.matchAll(/!\[[^\]]*\]\(([^)\s]+)\)/g)) {
+    const src = m[1] !== undefined ? safeSrc(m[1]) : undefined;
+    if (src && !/^data:/i.test(src)) out.push(src);
+  }
+  return out;
+}
+
+/**
+ * The opening of an entry, cut to about `limit` characters of what it says.
+ *
+ * Cut as Markdown rather than as a string: slicing through `![a](url)` or
+ * `**bold**` would leave a half-token that renders as literal syntax, so
+ * tokens are kept whole and the cut falls on a word boundary between them.
+ * Images cost nothing against the limit, but only the first one is kept — an
+ * excerpt that is mostly photographs is not an excerpt.
+ */
+export function excerpt(source: string, limit: number): { text: string; cut: boolean } {
+  const text = source.replace(/\r\n/g, "\n");
+  let used = 0;
+  let images = 0;
+  let last = 0;
+  // Where the excerpt would end if it stopped right here.
+  let end = text.length;
+  let cut = false;
+
+  const spend = (from: number, to: number): boolean => {
+    const plain = text.slice(from, to);
+    if (used + plain.length <= limit) {
+      used += plain.length;
+      return false;
+    }
+    const room = limit - used;
+    const space = plain.lastIndexOf(" ", room);
+    end = from + (space > room / 2 ? space : room);
+    return true;
+  };
+
+  INLINE.lastIndex = 0;
+  for (let m = INLINE.exec(text); m !== null; m = INLINE.exec(text)) {
+    if (spend(last, m.index)) {
+      cut = true;
+      break;
+    }
+    if (m[2] !== undefined) {
+      images += 1;
+      if (images > 1) {
+        end = m.index;
+        cut = true;
+        break;
+      }
+    } else {
+      const shown = (m[3] ?? m[4] ?? m[5] ?? m[6] ?? m[7] ?? m[8] ?? "").length;
+      if (used + shown > limit) {
+        end = m.index;
+        cut = true;
+        break;
+      }
+      used += shown;
+    }
+    last = m.index + m[0].length;
+  }
+  if (!cut && spend(last, text.length)) cut = true;
+
+  return cut ? { text: `${text.slice(0, end).trimEnd()}…`, cut } : { text, cut };
+}
+
+/**
  * How much an entry actually says, for the 200-character floor.
  *
  * Images are the evidence half of an entry and are counted by `countImages`;

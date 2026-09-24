@@ -148,32 +148,8 @@ body {
    full from the first paint: every connector band is complete
    whether you have scrolled to it or not, because the line is a
    diagram of the programme, not a reward for scrolling. The one
-   authored moment lives in the carousel belt, and the one piece
-   of feedback is the confirmation check below.
+   authored moment lives in the carousel belt.
    ───────────────────────────────────────────────────────────── */
-
-/* The confirmation check draws itself in the bands' own grammar —
-   the one place a real state change earns motion. */
-@keyframes hl-stroke {
-  from {
-    stroke-dashoffset: 60;
-  }
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-.hl-stroke {
-  stroke-dasharray: 60;
-  animation: hl-stroke 460ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hl-stroke {
-    animation: none;
-    stroke-dasharray: none;
-  }
-}
 
 /* The email field, drawn as one of the page's own reserved slots.
 
@@ -195,51 +171,6 @@ body {
 .hl-field ::selection {
   background-color: var(--color-hl-cyan);
   color: var(--color-hl-ink);
-}
-
-/* Signup confirmation. The plate is a part passing down the line: it arrives
-   from the left, and when its time is up it carries on off the right rather
-   than retreating the way it came. One material — a clip-path cut, in the
-   grammar of a page whose containers are flat plates with hard square corners
-   and no shadow to fade. It leaves faster than it arrives; by then the reader
-   has read it and wants the field back. */
-@keyframes hl-confirm-in {
-  from {
-    clip-path: inset(0 100% 0 0);
-  }
-  to {
-    clip-path: inset(0 0 0 0);
-  }
-}
-
-@keyframes hl-confirm-out {
-  from {
-    clip-path: inset(0 0 0 0);
-  }
-  to {
-    clip-path: inset(0 0 0 100%);
-  }
-}
-
-.hl-confirm-in {
-  animation: hl-confirm-in 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.hl-confirm-out {
-  animation: hl-confirm-out 220ms cubic-bezier(0.4, 0, 1, 1) both;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hl-confirm-in,
-  .hl-confirm-out {
-    animation: none;
-  }
-
-  /* With no wipe to carry it off, the plate is simply gone for the 220ms the
-     component still needs before it re-arms the field. */
-  .hl-confirm-out {
-    visibility: hidden;
-  }
 }
 
 /* The scroll cue. The belt says there is more sideways; this says there is

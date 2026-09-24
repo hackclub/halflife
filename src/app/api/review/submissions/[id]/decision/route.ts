@@ -1,13 +1,9 @@
-import { after } from "next/server"
 import { ok, fail, parseBody, withRoute } from "@/lib/api"
 import { requirePermission } from "@/lib/guards"
 import { hasPermission, Permission } from "@/lib/permissions"
 import { decisionSchema } from "@/lib/schemas/review"
 import { sanitize, sanitizeOptional } from "@/lib/sanitize"
 import { finalizeReview } from "@/lib/review"
-import { ReviewResult } from "@/app/generated/prisma/enums"
-import { syncThemeProjectToYsws } from "@/lib/airtable/sync"
-import { trackSideEffect } from "@/lib/side-effects"
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -46,30 +42,9 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
     grantUsdOverride: "grantUsdOverride" in body ? (body.grantUsdOverride ?? null) : null,
   })
 
-  // The grant row is written after the response, so a slow Airtable does not
-  // hold the reviewer's request open. Failures land in the audit log and are
-  // replayable from /admin/theme-projects/unsynced.
-  if (body.result === ReviewResult.APPROVED) {
-    const reviewerName = gate.user.name
-    const reviewerNote = "reason" in body ? (body.reason ?? null) : null
-    after(async () => {
-      await trackSideEffect(
-        "airtable",
-        {
-          actorId: gate.user.id,
-          actorEmail: gate.user.email,
-          targetType: "ThemeProject",
-          targetId: outcome.themeProjectId,
-          metadata: { phase: outcome.phase },
-        },
-        () =>
-          syncThemeProjectToYsws(outcome.themeProjectId, outcome.phase, {
-            reviewerName,
-            reviewerNote,
-          }),
-      )
-    })
-  }
+  // No Airtable write here. Review happens on ari.hackclub.com, which owns the
+  // YSWS row's status from the moment Half Life writes it at submit; a decision
+  // made in this console is recorded locally only.
 
   return ok({ outcome })
 })

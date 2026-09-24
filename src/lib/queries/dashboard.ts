@@ -11,7 +11,6 @@ import {
   weekDateRange,
 } from "@/lib/program"
 import { THEMES, getThemeDef, scheduleForWeek } from "@/lib/config/program"
-import { materializeThemeProjects } from "@/lib/provisioning"
 import { streakAsOf } from "@/lib/streak"
 
 export interface ThemeCard {
@@ -47,9 +46,6 @@ export interface DashboardData {
 }
 
 export async function getDashboard(userId: string): Promise<DashboardData> {
-  // Self-heal: anyone whose signup hook failed still gets a working dashboard.
-  await materializeThemeProjects(userId)
-
   const [settings, currentWeek, projects, user, balances, earned, printer] = await Promise.all([
     getProgramSettings(),
     currentWeekNumber(),

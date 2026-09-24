@@ -187,7 +187,7 @@ export function LapsePicker({
             const selected = pickedIds.has(t.id);
             const blocked = !selected && (t.processing || t.attached || t.visibility === "FAILED_PROCESSING");
             const why = t.attached
-              ? "already backs another entry"
+              ? "already added to project"
               : t.visibility === "FAILED_PROCESSING"
                 ? "failed processing on Lapse"
                 : t.processing

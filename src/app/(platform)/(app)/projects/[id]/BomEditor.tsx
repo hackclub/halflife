@@ -343,7 +343,7 @@ export function BomEditor({
           </span>{" "}
           of <span className="font-bold text-navy tabular-nums">${grantUsd}</span> tier {tier} funding
           {over && (
-            <span className="hand block text-[0.82rem] text-coral-deep">
+            <span className="hand block text-[0.84rem] text-coral-deep">
               {usd(total - grantUsd)} over. Cut parts, or ask for a higher tier.
             </span>
           )}
@@ -355,7 +355,7 @@ export function BomEditor({
         )}
       </div>
 
-      {locked && <p className="hand mt-2 text-[0.82rem] text-navy-soft">{locked}.</p>}
+      {locked && <p className="hand mt-2 text-[0.84rem] text-navy-soft">{locked}.</p>}
 
       {!locked && editing !== null && (
         <form

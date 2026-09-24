@@ -1,5 +1,6 @@
 import "server-only"
 import prisma from "@/lib/prisma"
+import { markReel } from "@/lib/analytics"
 import { PostKind, PostStatus } from "@/app/generated/prisma/enums"
 import type { Prisma } from "@/app/generated/prisma/client"
 import { HttpError } from "@/lib/errors"
@@ -245,6 +246,9 @@ export async function createPost(input: CreatePostInput): Promise<FeedItem> {
     },
     include: feedInclude,
   })
+
+  // A participant's own reel, not a staff announcement.
+  if (input.kind !== PostKind.ANNOUNCEMENT) await markReel(input.userId, post.createdAt)
 
   return toFeedItem(post, new Set())
 }

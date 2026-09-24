@@ -1,4 +1,5 @@
 import "server-only"
+import { cache } from "react"
 import prisma from "@/lib/prisma"
 import { Phase } from "@/app/generated/prisma/enums"
 import type { ProgramSettings } from "@/app/generated/prisma/client"
@@ -14,8 +15,12 @@ const WEEK_MS = 7 * DAY_MS
 /**
  * The settings row is created on demand so a fresh database is usable without a
  * seed step having run first.
+ *
+ * Read once per server render: the layout's snapshot, the page, the week
+ * number and the access gates all ask for it, and each asking was a round
+ * trip. Nothing writes the row and then reads it back in the same render.
  */
-export async function getProgramSettings(): Promise<ProgramSettings> {
+export const getProgramSettings = cache(async (): Promise<ProgramSettings> => {
   const existing = await prisma.programSettings.findUnique({ where: { id: "singleton" } })
   if (existing) return existing
   return prisma.programSettings.create({
@@ -25,7 +30,7 @@ export async function getProgramSettings(): Promise<ProgramSettings> {
       programTimezone: DEFAULT_PROGRAM_TIMEZONE,
     },
   })
-}
+})
 
 /**
  * Program week for a date. Week 1 is the seven days from eventStartDate.
@@ -46,6 +51,99 @@ export function weekDateRange(start: Date, week: number): { start: Date; end: Da
   // label reads correctly.
   const weekEnd = new Date(weekStart.getTime() + WEEK_MS - 1)
   return { start: weekStart, end: weekEnd }
+}
+
+/**
+ * The moment a program week stops taking work: midnight after its Sunday, in
+ * the program's timezone, so "the week ends Sunday at 11:59pm" means the same
+ * thing in New York as it does on a server in Frankfurt.
+ *
+ * `eventStartDate` is stored as UTC midnight of the calendar day the program
+ * opens (the admin form reads it back with `toISOString().slice(0, 10)`), so
+ * its UTC date is the program's first day, and week N's last day is 7N - 1
+ * days after it.
+ */
+export function weekClosesAt(
+  settings: Pick<ProgramSettings, "eventStartDate" | "programTimezone">,
+  week: number,
+): Date {
+  const start = settings.eventStartDate
+  // The Monday after the week, as a wall-clock midnight in the program zone.
+  const wall = Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate() + week * 7)
+  // Correct by the zone's offset at that instant, then once more in case the
+  // first guess landed on the other side of a daylight-saving change.
+  const first = wall - zoneOffsetMs(wall, settings.programTimezone)
+  return new Date(wall - zoneOffsetMs(first, settings.programTimezone))
+}
+
+/** How far ahead of UTC a timezone's wall clock is at an instant, in ms. */
+function zoneOffsetMs(at: number, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    second: "numeric",
+  }).formatToParts(new Date(at))
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(parts.find((p) => p.type === type)?.value ?? 0)
+  const wall = Date.UTC(
+    part("year"),
+    part("month") - 1,
+    part("day"),
+    part("hour"),
+    part("minute"),
+    part("second"),
+  )
+  return wall - (at - (at % 1000))
+}
+
+/**
+ * When a week closes for one participant's project: its scheduled close, or
+ * later if either extension column says so. The same two overrides that
+ * reopen submissions reopen a passed week, so an admin granting more time
+ * has one lever to pull rather than two.
+ */
+export function effectiveWeekClose(
+  closesAt: Date,
+  ...extensions: (Date | null | undefined)[]
+): Date {
+  return extensions.reduce<Date>((latest, ext) => (ext && ext > latest ? ext : latest), closesAt)
+}
+
+export const WEEK_CLOSED_MESSAGE =
+  "This week has passed! Submit what you have. If you need more time, ask in the Slack channel."
+
+/**
+ * Whether work can still be logged against a project's week. Passed weeks can
+ * still be submitted — that is the whole point of closing them — but not
+ * added to, edited or trimmed.
+ */
+export async function isWeekOpen(
+  userId: string,
+  themeProjectId: string,
+  week: number,
+): Promise<boolean> {
+  const [settings, user, project] = await Promise.all([
+    getProgramSettings(),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { submissionExtensionUntil: true },
+    }),
+    prisma.themeProject.findUnique({
+      where: { id: themeProjectId },
+      select: { submissionExtensionUntil: true },
+    }),
+  ])
+  const closesAt = effectiveWeekClose(
+    weekClosesAt(settings, week),
+    user?.submissionExtensionUntil,
+    project?.submissionExtensionUntil,
+  )
+  return new Date() < closesAt
 }
 
 export async function currentWeekNumber(): Promise<number> {

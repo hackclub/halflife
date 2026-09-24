@@ -25,16 +25,45 @@ export function Timeline({
   /** The trail week a phase of this project ran in, for the "Week 3" labels. */
   weekFor: (phase: "DESIGN" | "BUILD") => number;
 }) {
+  // Which week each moment belongs to is said once, where that week starts,
+  // rather than on every entry — and only once there are two weeks to tell
+  // apart. A reel carries no phase, so it sits in whichever week is running
+  // when it comes up.
+  const phaseOf = (item: TimelineItem) => (item.kind === "reel" ? null : item.phase);
+  const split = new Set(items.map(phaseOf).filter(Boolean)).size > 1;
+  let running: "DESIGN" | "BUILD" | null = null;
+  const rows: React.ReactNode[] = [];
+  items.forEach((item, i) => {
+    const phase = phaseOf(item) ?? running ?? items.slice(i).map(phaseOf).find(Boolean) ?? null;
+    if (split && phase && phase !== running) {
+      running = phase;
+      rows.push(
+        <li key={`week-${phase}`} className="relative grid grid-cols-[32px_minmax(0,1fr)] gap-x-4">
+          <span aria-hidden="true" className="relative z-10 mx-auto mt-1.5 size-2.5 rounded-full bg-violet ring-4 ring-paper" />
+          <p className="flex items-center gap-3">
+            <span className="label shrink-0 text-violet-deep">
+              {PHASE[phase]} · week {weekFor(phase)}
+            </span>
+            <span aria-hidden="true" className="h-0 flex-1 border-t border-dashed border-line" />
+          </p>
+        </li>,
+      );
+    }
+    rows.push(
+      // The id is the anchor Explore's "See more" links to, so the entry
+      // someone was reading is the one they land on.
+      <li key={item.id} id={item.id} className="relative grid scroll-mt-24 grid-cols-[32px_minmax(0,1fr)] gap-x-4">
+        <Marker item={item} />
+        <div className="min-w-0 pt-1">
+          <Body item={item} />
+        </div>
+      </li>,
+    );
+  });
+
   return (
     <ol className="relative grid gap-6 before:absolute before:top-2 before:bottom-2 before:left-[15px] before:w-0.5 before:rounded-full before:bg-line">
-      {items.map((item) => (
-        <li key={item.id} className="relative grid grid-cols-[32px_minmax(0,1fr)] gap-x-4">
-          <Marker item={item} />
-          <div className="min-w-0 pt-1">
-            <Body item={item} weekFor={weekFor} />
-          </div>
-        </li>
-      ))}
+      {rows}
     </ol>
   );
 }
@@ -65,28 +94,19 @@ function Marker({ item }: { item: TimelineItem }) {
 
 function When({ at }: { at: number }) {
   return (
-    <span className="hand ml-auto shrink-0 text-[0.76rem] text-navy-soft tabular-nums">{fmtDate(at)}</span>
+    <span className="hand ml-auto shrink-0 text-[0.84rem] text-navy-soft tabular-nums">{fmtDate(at)}</span>
   );
 }
 
 const PHASE = { DESIGN: "design", BUILD: "build" } as const;
 
-function Body({
-  item,
-  weekFor,
-}: {
-  item: TimelineItem;
-  weekFor: (phase: "DESIGN" | "BUILD") => number;
-}) {
+function Body({ item }: { item: TimelineItem }) {
   if (item.kind === "session") {
     return (
       <article>
         <header className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
           <h3 className="text-[0.95rem] font-extrabold text-navy">Journal entry</h3>
-          <Chip tone="muted">
-            Week {weekFor(item.phase)} · {PHASE[item.phase]}
-          </Chip>
-          <span className="hand text-[0.82rem] text-teal-deep tabular-nums">
+          <span className="hand text-[0.84rem] text-teal-deep tabular-nums">
             {fmtHours(item.hours)} logged
             {item.approvedHours !== null && (
               <span className="text-navy-soft"> · {fmtHours(item.approvedHours)} approved</span>
@@ -133,10 +153,9 @@ function Body({
   if (item.kind === "submitted") {
     return (
       <p className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-        <span className="text-[0.92rem] font-bold text-navy">
+        <span className="text-[0.95rem] font-extrabold text-navy">
           Handed in the {PHASE[item.phase]} week for review
         </span>
-        <span className="hand text-[0.82rem] text-navy-soft">week {weekFor(item.phase)}</span>
         <When at={item.at} />
       </p>
     );
@@ -150,7 +169,7 @@ function Body({
   return (
     <div>
       <p className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-        <span className={cx("text-[0.92rem] font-bold", verdict.tone)}>
+        <span className={cx("text-[0.95rem] font-extrabold", verdict.tone)}>
           The {PHASE[item.phase]} week was {verdict.text}
         </span>
         <When at={item.at} />
@@ -200,7 +219,7 @@ function EntryBody({ source }: { source: string }) {
           type="button"
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
-          className="hand mt-1.5 text-[0.82rem] text-violet-deep underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
+          className="hand mt-1.5 text-[0.84rem] text-violet-deep underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
         >
           {open ? "fold it back up" : "show the whole entry"}
         </button>
@@ -236,7 +255,7 @@ function Lapses({ lapses }: { lapses: TimelineLapse[] }) {
                 </span>
               </span>
             </span>
-            <span className="hand mt-1 block text-[0.76rem] text-navy-soft tabular-nums">
+            <span className="hand mt-1 block text-[0.84rem] text-navy-soft tabular-nums">
               Timelapse {lapses.length > 1 ? i + 1 : ""}
               {footage(l.coveredSeconds) && ` · ${footage(l.coveredSeconds)} of work`}
             </span>

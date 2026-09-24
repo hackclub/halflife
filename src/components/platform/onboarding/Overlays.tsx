@@ -7,6 +7,7 @@ import {
   ProjectModal,
   ReelModal,
   SubmitModal,
+  UnsubmitModal,
 } from "@/components/platform/modals/CheckpointModals";
 import { FirstCheckpoint } from "@/components/platform/modals/FirstCheckpoint";
 import { useStore } from "@/lib/store";
@@ -67,9 +68,14 @@ const TOUR = [
 ];
 
 function CheckpointModal({ id }: { id: string }) {
-  const { allCheckpoints } = useStore();
+  const { allCheckpoints, phaseStatusOf } = useStore();
   const cp = allCheckpoints.find((c) => c.id === id);
   if (!cp) return null;
+  // Handed in and waiting: the checkpoint's job now is to let it be taken
+  // back, not to walk the hand-in again over the top of the one in review.
+  if ((cp.kind === "submit" || cp.kind === "demo") && phaseStatusOf(cp.weekId) === "in_review") {
+    return <UnsubmitModal checkpoint={cp} />;
+  }
   switch (cp.kind) {
     case "onboarding":
       return <FirstCheckpoint />;
@@ -97,6 +103,7 @@ export function Overlays() {
     tourStep,
     setTourStep,
     currentCheckpointId,
+    isPassed,
   } = useStore();
   const pathname = usePathname();
   const router = useRouter();
@@ -123,8 +130,10 @@ export function Overlays() {
     if (!journal) return;
     url.searchParams.delete("journal");
     window.history.replaceState(null, "", url.pathname + url.search + url.hash);
-    setOpenCheckpoint(journal);
-  }, [hydrated, setOpenCheckpoint]);
+    // The week may have closed while they were away signing in; its entry
+    // stays shut then, exactly as the trail keeps it.
+    if (!isPassed(journal)) setOpenCheckpoint(journal);
+  }, [hydrated, setOpenCheckpoint, isPassed]);
 
   if (!hydrated) return null;
 

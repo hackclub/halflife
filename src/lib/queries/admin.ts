@@ -1,6 +1,7 @@
 import "server-only"
 import prisma from "@/lib/prisma"
-import { ShopOrderStatus } from "@/app/generated/prisma/enums"
+import { PhaseStatus, ShopOrderStatus, Theme } from "@/app/generated/prisma/enums"
+import type { Prisma } from "@/app/generated/prisma/client"
 import { getBalances } from "@/lib/currency"
 import { getPrinterQualification } from "@/lib/printer"
 
@@ -27,6 +28,90 @@ export async function listUsers(opts: { q?: string; cursor?: string; limit: numb
       fraudFlagged: true,
       createdAt: true,
       roles: { select: { role: true } },
+    },
+  })
+  const hasMore = rows.length > opts.limit
+  const items = hasMore ? rows.slice(0, opts.limit) : rows
+  const last = items[items.length - 1]
+  return { items, nextCursor: hasMore && last ? last.id : null }
+}
+
+export interface ProjectFilters {
+  /** Matches the project's title, description or repo, or its owner's name, email or Slack ID. */
+  q?: string
+  theme?: Theme
+  designStatus?: PhaseStatus
+  buildStatus?: PhaseStatus
+  tier?: number
+  /** Only projects, or owners, with an extension still running. */
+  extended?: boolean
+  /**
+   * Include rows nobody has started. Every theme's row is made at sign-up, so
+   * without this the list is five placeholders per participant.
+   */
+  unstarted?: boolean
+}
+
+export async function listProjects(opts: ProjectFilters & { cursor?: string; limit: number }) {
+  const now = new Date()
+  const q = opts.q?.trim()
+  const where: Prisma.ThemeProjectWhereInput = {
+    deletedAt: null,
+    ...(opts.unstarted ? {} : { namedAt: { not: null } }),
+    ...(opts.theme ? { theme: opts.theme } : {}),
+    ...(opts.designStatus ? { designStatus: opts.designStatus } : {}),
+    ...(opts.buildStatus ? { buildStatus: opts.buildStatus } : {}),
+    ...(opts.tier ? { OR: [{ tier: opts.tier }, { tier: null, requestedTier: opts.tier }] } : {}),
+    AND: [
+      q
+        ? {
+            OR: [
+              { id: q },
+              { title: { contains: q, mode: "insensitive" } },
+              { description: { contains: q, mode: "insensitive" } },
+              { githubRepo: { contains: q, mode: "insensitive" } },
+              { user: { name: { contains: q, mode: "insensitive" } } },
+              { user: { email: { contains: q, mode: "insensitive" } } },
+              { user: { slackId: { contains: q, mode: "insensitive" } } },
+            ],
+          }
+        : {},
+      opts.extended
+        ? {
+            OR: [
+              { submissionExtensionUntil: { gt: now } },
+              { user: { submissionExtensionUntil: { gt: now } } },
+            ],
+          }
+        : {},
+    ],
+  }
+
+  const rows = await prisma.themeProject.findMany({
+    where,
+    orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+    take: opts.limit + 1,
+    ...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
+    select: {
+      id: true,
+      theme: true,
+      title: true,
+      githubRepo: true,
+      designStatus: true,
+      buildStatus: true,
+      tier: true,
+      requestedTier: true,
+      submissionExtensionUntil: true,
+      updatedAt: true,
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          slackId: true,
+          submissionExtensionUntil: true,
+        },
+      },
     },
   })
   const hasMore = rows.length > opts.limit
@@ -65,6 +150,7 @@ export async function getUserDetail(userId: string) {
           designBankedCoins: true,
           designSpendableCoins: true,
           buildCoins: true,
+          submissionExtensionUntil: true,
         },
       },
       printerAward: true,

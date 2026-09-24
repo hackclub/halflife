@@ -105,6 +105,8 @@ export interface Project {
   starter: boolean;
   /** Where the code, schematics and CAD live. Optional, editable any time. */
   githubRepo?: string | null;
+  /** The chosen thumbnail, else the newest journal image. See lib/thumbnail. */
+  thumbnailUrl?: string | null;
 }
 
 export type Experience = "first" | "little" | "some" | "lots";

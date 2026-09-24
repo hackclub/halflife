@@ -13,24 +13,30 @@ const COVER_TYPES = "image/png,image/jpeg,image/webp,image/gif";
 /**
  * The project's thumbnail — what its card and the review queue show.
  *
- * Until one is uploaded the week's own scene stands in, on the week's colour,
- * so an empty project still looks like the week it belongs to rather than a
- * grey box. Changing it is one button on the image itself: pick a file, it
+ * Until one is uploaded the newest picture in the journal stands in, and
+ * before there is one of those, the week's own scene on the week's colour, so
+ * an empty project still looks like the week it belongs to rather than a grey
+ * box. Changing it is one button on the image itself: pick a file, it
  * uploads, the page re-reads.
  */
 export function CoverImage({
   projectId,
   url,
+  fallbackUrl,
   theme,
   accent,
   locked,
 }: {
   projectId: string;
+  /** The one the maker chose. */
   url: string | null;
+  /** The newest journal image, shown until they choose one. */
+  fallbackUrl: string | null;
   theme: string;
   accent: string;
   locked: string | null;
 }) {
+  const shown = url ?? fallbackUrl;
   const { updateProject } = useStore();
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -70,11 +76,11 @@ export function CoverImage({
     <div>
       <div
         className="relative grid aspect-[21/9] place-items-center overflow-hidden rounded-2xl @3xl:aspect-[4/3]"
-        style={{ background: url ? "var(--color-navy)" : accent }}
+        style={{ background: shown ? "var(--color-navy)" : accent }}
       >
-        {url ? (
-          // eslint-disable-next-line @next/next/no-img-element -- R2's public URL, sized by the uploader
-          <img src={url} alt="" className="h-full w-full object-cover" />
+        {shown ? (
+          // eslint-disable-next-line @next/next/no-img-element -- R2's public URL, or one pasted into a journal
+          <img src={shown} alt="" className="h-full w-full object-cover" />
         ) : (
           <WeekScene theme={theme} className="h-full w-auto max-w-full p-5 drop-shadow-lg" />
         )}

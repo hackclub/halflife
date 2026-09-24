@@ -17,6 +17,7 @@ import {
 import { RoleEditor } from "@/app/components/forms/RoleEditor"
 import { CreditGrantForm } from "@/app/components/forms/CreditGrantForm"
 import { ActionButton } from "@/app/components/forms/ActionButton"
+import { ExtensionForm } from "@/app/components/forms/ExtensionForm"
 
 export const dynamic = "force-dynamic"
 
@@ -71,6 +72,19 @@ export default async function AdminUserPage({ params }: Props) {
         </Panel>
       ) : null}
 
+      {canManageUsers ? (
+        <Panel title="Extension">
+          <p className="hl-hint" style={{ marginTop: 0 }}>
+            Covers every project they own: passed weeks take journal entries again, and work can be
+            submitted past a global close. For one project only, use its row below.
+          </p>
+          <ExtensionForm
+            url={`/api/admin/users/${id}`}
+            current={user.submissionExtensionUntil?.toISOString() ?? null}
+          />
+        </Panel>
+      ) : null}
+
       {canManageRoles ? (
         <Panel title="Roles">
           <RoleEditor userId={id} current={user.roles.map((r) => r.role)} />
@@ -78,10 +92,24 @@ export default async function AdminUserPage({ params }: Props) {
       ) : null}
 
       <Panel title="Themed projects">
-        <Table head={["Theme", "Design", "Build", "Tier", "Grant", "Hours", canOverride ? "" : null].filter(Boolean)}>
+        <Table
+          head={[
+            "Theme",
+            "Design",
+            "Build",
+            "Tier",
+            "Grant",
+            "Hours",
+            canManageUsers ? "Extension" : null,
+            canOverride ? "" : null,
+          ].filter(Boolean)}
+        >
           {user.themeProjects.map((project) => (
-            <tr key={project.id}>
-              <td>{getThemeDef(project.theme).label}</td>
+            <tr key={project.id} id={`project-${project.id}`}>
+              <td>
+                {getThemeDef(project.theme).label}
+                <div className="hl-hint">{project.title}</div>
+              </td>
               <td>
                 <Badge tone={statusTone(project.designStatus)}>
                   {statusLabel(project.designStatus)}
@@ -95,6 +123,14 @@ export default async function AdminUserPage({ params }: Props) {
               <td>{project.tier ?? "—"}</td>
               <td>{project.grantUsd !== null ? `$${project.grantUsd}` : "—"}</td>
               <td className="hl-mono">{project.approvedHours ?? "—"}</td>
+              {canManageUsers ? (
+                <td style={{ minWidth: "18rem" }}>
+                  <ExtensionForm
+                    url={`/api/admin/theme-projects/${project.id}`}
+                    current={project.submissionExtensionUntil?.toISOString() ?? null}
+                  />
+                </td>
+              ) : null}
               {canOverride ? (
                 <td>
                   {project.designStatus === "approved" ? (

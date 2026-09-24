@@ -1,40 +1,167 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { IconChevronDown, IconChevronUp } from "@/components/platform/icons";
-import { ReelCard } from "@/components/platform/reels/ReelCard";
-import { cx } from "@/components/platform/ui";
+import {
+  IconChevronDown,
+  IconChevronUp,
+  IconComment,
+  IconEye,
+  IconHeart,
+  IconVolumeOff,
+} from "@/components/platform/icons";
+import { Panel, cx } from "@/components/platform/ui";
+import type { FeedItem } from "@/lib/feed";
+import { useStore } from "@/lib/store";
+import { compact } from "./format";
+import { sendLike } from "./ReelCard";
+import { ReelComments, StageAvatar } from "./ReelComments";
+import { StageSlide, type SlideHandle } from "./StageSlide";
 import { useFeed } from "./useFeed";
+import { RATES, usePlayerPrefs } from "./usePlayerPrefs";
 
 /**
- * One reel at a time, snapping. The scroll lives in this container rather than
- * the document so the app chrome stays put and every slide is exactly the
- * height of the frame. Wheel, trackpad, arrow keys and the side controls all
- * drive the same thing: which slide is centred.
+ * The glide between reels: quick off the mark and settling into place, so the
+ * next reel arrives rather than appears. Long enough to read as one card
+ * handing over to the next, short enough that flicking through a dozen never
+ * feels like waiting on the page.
+ */
+const GLIDE_MS = 360;
+const glideEase = (t: number) => 1 - (1 - t) ** 4;
+
+/** How far a wheel has to travel, in pixels, before it counts as a flick. */
+const WHEEL_FLICK = 24;
+/**
+ * A trackpad keeps sending wheel events for a second or so after the fingers
+ * lift. One gesture is everything up to a gap this long, and it moves one reel
+ * however much momentum it carries — the way a swipe on a phone does.
+ */
+const WHEEL_GESTURE_GAP_MS = 180;
+
+/** How close to the end of what is loaded the next page is asked for. */
+const PREFETCH_AHEAD = 3;
+
+/**
+ * Slides this far either side of the current one are real players; the rest
+ * are empty frames of the same height. A feed that has paged in sixty reels
+ * then holds five video elements, not sixty.
+ */
+const MOUNTED_EITHER_SIDE = 2;
+
+/** Where the comments stop being a column beside the reel and become a sheet over it. */
+const COMMENTS_BESIDE = "(min-width: 80rem)";
+
+function prefersStill() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+/**
+ * The Doomscroller: one reel at a time, as a page of the platform.
+ *
+ * Laid out after the reel player people already know — the reel in a tall
+ * column with its player underneath, the arrows and the actions beside it,
+ * and the conversation in a panel alongside — but drawn in the field
+ * notebook's hand: cream ground, drawn round buttons, paper panels. What is
+ * on a slide moves with the slide when you scroll; the actions stay where
+ * your hand is and change to the reel in front of you.
+ *
+ * Touch keeps the browser's own swipe: mandatory snap with `scroll-snap-stop`
+ * already moves one reel per flick with the platform's momentum, and nothing
+ * scripted feels as right under a thumb. Everything without a thumb — wheel,
+ * trackpad, arrow keys, the arrows on screen — goes through `step`, which
+ * glides exactly one reel and cannot be made to skip.
  */
 export function ReelViewer() {
+  const { viewer } = useStore();
+  const stage = useRef<HTMLElement>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const slides = useRef<(HTMLElement | null)[]>([]);
   const [index, setIndex] = useState(0);
   // The observer reports asynchronously, so two quick presses would both read
   // the same stale index. Navigation moves this cursor immediately instead.
   const cursor = useRef(0);
+  // The glide in progress, if any. While it runs the scroll position is ours,
+  // not the reader's, so the scroll handler leaves the cursor alone.
+  const glide = useRef<number | null>(null);
+
+  const [prefs, setPrefs] = usePlayerPrefs();
+  // Muted because the browser refused sound, as opposed to by choice. Kept
+  // apart so a refusal on one visit is not remembered as a preference.
+  const [autoMuted, setAutoMuted] = useState(false);
+  const muted = prefs.muted || autoMuted;
+  const [sheetOpen, setSheetOpen] = useState(false);
+  // Kept mounted through the slide down, so it does not empty as it goes.
+  const [sheetShown, setSheetShown] = useState(false);
+  // Whether the comments have room to stand beside the reel. Only one of the
+  // two homes for them is ever mounted, so only one ever fetches.
+  const [wide, setWide] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(COMMENTS_BESIDE);
+    const sync = () => setWide(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+  // The current slide's own controls, for the keyboard.
+  const active = useRef<SlideHandle | null>(null);
+  const register = useCallback((handle: SlideHandle | null) => {
+    active.current = handle;
+  }, []);
+  const onAutoMuted = useCallback(() => setAutoMuted(true), []);
 
   const feed = useFeed();
-  // The reels plus the sign-off slide at the end.
+  // The reels plus the slide at the end: the sign-off, or "loading more".
   const last = feed.items.length;
+  const current: FeedItem | undefined = feed.items[index];
 
-  // Assigning scrollTop rather than asking for `behavior: "smooth"`: inside a
-  // mandatory-snap container the animated form is dropped outright by some
-  // engines, which leaves the controls doing nothing at all. A cut always lands.
-  const goTo = useCallback((i: number) => {
-    const target = slides.current[i];
+  // Animated by hand rather than with `behavior: "smooth"`: inside a
+  // mandatory-snap container the smooth form is dropped outright by some
+  // engines, which left the controls doing nothing at all. Snapping is lifted
+  // for the length of the glide — otherwise the container fights every frame
+  // back to the nearest slide — and restored once it lands on one.
+  const glideTo = useCallback((to: number) => {
     const box = scroller.current;
-    if (!target || !box) return;
-    cursor.current = i;
-    setIndex(i);
-    box.scrollTop = target.offsetTop;
+    if (!box) return;
+    if (glide.current !== null) cancelAnimationFrame(glide.current);
+    const from = box.scrollTop;
+    if (prefersStill() || Math.abs(to - from) < 1) {
+      glide.current = null;
+      box.style.scrollSnapType = "";
+      box.scrollTop = to;
+      return;
+    }
+    box.style.scrollSnapType = "none";
+    const t0 = performance.now();
+    const frame = (now: number) => {
+      const t = Math.min(1, (now - t0) / GLIDE_MS);
+      box.scrollTop = from + (to - from) * glideEase(t);
+      if (t < 1) {
+        glide.current = requestAnimationFrame(frame);
+        return;
+      }
+      glide.current = null;
+      box.style.scrollSnapType = "";
+    };
+    glide.current = requestAnimationFrame(frame);
   }, []);
+
+  useEffect(
+    () => () => {
+      if (glide.current !== null) cancelAnimationFrame(glide.current);
+    },
+    [],
+  );
+
+  const goTo = useCallback(
+    (i: number) => {
+      const target = slides.current[i];
+      if (!target) return;
+      cursor.current = i;
+      setIndex(i);
+      glideTo(target.offsetTop);
+    },
+    [glideTo],
+  );
 
   const step = useCallback(
     (dir: 1 | -1) => goTo(Math.max(0, Math.min(slides.current.length - 1, cursor.current + dir))),
@@ -48,22 +175,110 @@ export function ReelViewer() {
     const box = scroller.current;
     if (!box) return;
     const onScroll = () => {
+      if (glide.current !== null) return;
       const n = Math.max(0, Math.min(last, Math.round(box.scrollTop / box.clientHeight)));
       if (n === cursor.current) return;
       cursor.current = n;
       setIndex(n);
     };
+    // A thumb landing mid-glide takes over from it on the spot, rather than
+    // wrestling the animation for the next few frames.
+    const onTouch = () => {
+      if (glide.current === null) return;
+      cancelAnimationFrame(glide.current);
+      glide.current = null;
+      box.style.scrollSnapType = "";
+    };
     box.addEventListener("scroll", onScroll, { passive: true });
-    return () => box.removeEventListener("scroll", onScroll);
+    box.addEventListener("touchstart", onTouch, { passive: true });
+    return () => {
+      box.removeEventListener("scroll", onScroll);
+      box.removeEventListener("touchstart", onTouch);
+    };
   }, [last]);
+
+  // One flick, one reel. Left to itself a mouse wheel lurches between snap
+  // points and a trackpad's momentum sails past three reels at once; taking
+  // the wheel over is what makes a desktop feel like a thumb on a phone.
+  // Heard on the whole stage, not just the scroller, so a flick over the
+  // arrows or the actions moves the reel too.
+  useEffect(() => {
+    const box = stage.current;
+    if (!box) return;
+    let travelled = 0;
+    let spent = false;
+    let quiet = 0;
+    const onWheel = (e: WheelEvent) => {
+      // Pinch-zoom arrives as a ctrl-wheel, and sideways is somebody else's.
+      if (e.ctrlKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+      // An opened caption scrolls itself.
+      if (e.target instanceof Element && e.target.closest("[data-own-scroll]")) return;
+      e.preventDefault();
+      window.clearTimeout(quiet);
+      quiet = window.setTimeout(() => {
+        spent = false;
+        travelled = 0;
+      }, WHEEL_GESTURE_GAP_MS);
+      if (spent) return;
+      // Line-mode wheels (Firefox on some mice) report lines, not pixels.
+      travelled += e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+      if (Math.abs(travelled) < WHEEL_FLICK) return;
+      spent = true;
+      step(travelled > 0 ? 1 : -1);
+    };
+    box.addEventListener("wheel", onWheel, { passive: false });
+    return () => {
+      box.removeEventListener("wheel", onWheel);
+      window.clearTimeout(quiet);
+    };
+  }, [step]);
+
+  // Endless, the way a reel feed is: the next page is asked for a few reels
+  // before the end, so the reader scrolls into it rather than up to a wall.
+  const { more, done, loading, error } = feed;
+  useEffect(() => {
+    if (!done && !loading && !error && last > 0 && index >= last - PREFETCH_AHEAD) more();
+  }, [index, last, done, loading, error, more]);
+
+  const toggleMute = useCallback(() => {
+    if (muted) {
+      setAutoMuted(false);
+      setPrefs({ muted: false });
+    } else setPrefs({ muted: true });
+  }, [muted, setPrefs]);
+
+  const openComments = useCallback(() => {
+    if (wide) {
+      setPrefs({ comments: !prefs.comments });
+      return;
+    }
+    setSheetShown(true);
+    setSheetOpen(true);
+  }, [wide, prefs.comments, setPrefs]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === "Escape" && sheetOpen) {
+        setSheetOpen(false);
+        return;
+      }
       // A checkpoint modal can open over any route, and typing is typing.
       if (document.querySelector("[role='dialog']")) return;
       const el = e.target;
       if (el instanceof Element && el.closest("input, textarea, select, [contenteditable='true']")) {
+        return;
+      }
+
+      // Space is a button's own key when one has focus; anywhere else it is
+      // the player's.
+      if (e.key === " " && !(el instanceof Element && el.closest("button, a, [role='slider']"))) {
+        e.preventDefault();
+        active.current?.toggle();
+        return;
+      }
+      if (e.key === "m" || e.key === "M") {
+        toggleMute();
         return;
       }
 
@@ -75,23 +290,37 @@ export function ReelViewer() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [step]);
+  }, [step, toggleMute, sheetOpen]);
+
+  const cycleRate = useCallback(() => {
+    const at = RATES.indexOf(prefs.rate as (typeof RATES)[number]);
+    setPrefs({ rate: RATES[(at + 1) % RATES.length] ?? 1 });
+  }, [prefs.rate, setPrefs]);
+  const toggleAutoScroll = useCallback(() => setPrefs({ autoScroll: !prefs.autoScroll }), [prefs.autoScroll, setPrefs]);
+  const advance = useCallback(() => step(1), [step]);
+
+  const commentsBeside = wide && prefs.comments && current !== undefined;
 
   return (
     // The frame is the viewport minus the app header and the bottom padding
-    // main already reserves for the phone tab bar.
-    <div className="relative h-[var(--frame)] px-4 [--frame:calc(100dvh-4rem-7rem)] sm:px-0 lg:[--frame:calc(100dvh-4rem-2.5rem)]">
-      {/* A reel is portrait, so the column is only ever as wide as a 9:16 card
-          fits in the frame. The side controls then hug the reel, not the page. */}
-      <div className="relative mx-auto h-full w-[min(100%,26rem,calc((var(--frame)-1.5rem)*9/16))]">
+    // main already reserves for the phone tab bar — the Doomscroller is a page
+    // of the platform, and the rest of the platform stays around it.
+    <div className="flex h-[var(--frame)] justify-center gap-6 px-4 [--frame:calc(100dvh-4rem-7rem)] sm:px-6 lg:[--frame:calc(100dvh-4rem-2.5rem)]">
+      <section
+        ref={stage}
+        aria-label="Reels"
+        // A reel is portrait, so the column is only ever as wide as a 9:16
+        // card fits in the frame, less the player strip under it. From md the
+        // actions hang off its right side, so that much room is kept for them.
+        className="doom-stage relative h-full w-[min(100%,26rem,calc((var(--frame)-4.25rem)*9/16))] shrink-0 md:mr-[4.75rem] md:w-[min(26rem,calc((var(--frame)-4.25rem)*9/16))]"
+      >
         <div
           ref={scroller}
-          // `overflow-anchor: none` because the sign-off slide renders before
-          // the first page arrives, and the reels are then inserted ABOVE it.
-          // Scroll anchoring reads that as content growing over the reader and
-          // helpfully holds their position — which meant opening the
-          // Doomscroller landed on "that is everything" instead of the newest
-          // reel, with the feed sitting unseen above it.
+          // `overflow-anchor: none` because the end slide renders before the
+          // next page arrives, and the reels are then inserted ABOVE it. Scroll
+          // anchoring reads that as content growing over the reader and holds
+          // their position — which meant landing on "that is everything"
+          // instead of the newest reel, with the feed sitting unseen above it.
           style={{ overflowAnchor: "none" }}
           className="snap-y-feed no-scrollbar h-full overflow-y-auto overscroll-contain"
         >
@@ -102,18 +331,36 @@ export function ReelViewer() {
               ref={(el) => {
                 slides.current[i] = el;
               }}
-              className="snap-item flex h-full items-center justify-center py-3"
+              aria-hidden={i !== index || undefined}
+              inert={i !== index}
+              className="snap-item h-full"
             >
-              <div className="aspect-9/16 w-full">
-                <ReelCard reel={reel} onPatch={feed.patch} className="lift-shadow h-full" />
-              </div>
+              {Math.abs(i - index) <= MOUNTED_EITHER_SIDE ? (
+                <StageSlide
+                  reel={reel}
+                  active={i === index}
+                  muted={muted}
+                  rate={prefs.rate}
+                  autoScroll={prefs.autoScroll}
+                  onAutoMuted={onAutoMuted}
+                  onToggleMute={toggleMute}
+                  onCycleRate={cycleRate}
+                  onToggleAutoScroll={toggleAutoScroll}
+                  onEnded={advance}
+                  onPatch={feed.patch}
+                  register={register}
+                />
+              ) : null}
             </div>
           ))}
 
           {/* Only once there is something to be at the end OF. Rendering it
               while the first page is still in the air is what let the reels
-              arrive above the reader. */}
-          {!feed.loading && (
+              arrive above the reader. After that it is always there: the
+              sign-off once the feed has run out, and until then the slot the
+              next page arrives into — anyone who outruns the prefetch lands
+              here, and the next reel slides in where they already are. */}
+          {(feed.items.length > 0 || !feed.loading) && (
             <div
               data-slide={last}
               ref={(el) => {
@@ -121,50 +368,183 @@ export function ReelViewer() {
               }}
               className="snap-item flex h-full flex-col items-center justify-center gap-2 py-3 text-center"
             >
-              <p className="hand text-[1.05rem] text-navy">
-                {feed.items.length === 0 ? "nothing here yet." : "that is everything."}
-              </p>
-              <p className="hand text-[0.9rem] text-navy-soft">
-                {feed.items.length === 0 ? "post the first reel." : "go build something."}
-              </p>
+              {feed.error ? (
+                <>
+                  <p className="hand text-[1.05rem] text-coral-deep">{feed.error}</p>
+                  <button
+                    type="button"
+                    onClick={feed.more}
+                    className="label mt-1 rounded-full border-2 border-line px-4 py-2 text-navy-soft transition-colors hover:border-navy hover:text-navy"
+                  >
+                    Try again
+                  </button>
+                </>
+              ) : !feed.done ? (
+                <p className="hand text-[0.95rem] text-navy-soft motion-safe:animate-pulse">
+                  loading more reels…
+                </p>
+              ) : (
+                <>
+                  <p className="hand text-[1.05rem] text-navy">
+                    {feed.items.length === 0 ? "nothing here yet." : "that is everything."}
+                  </p>
+                  <p className="hand text-[0.9rem] text-navy-soft">
+                    {feed.items.length === 0 ? "post the first reel." : "go build something."}
+                  </p>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* The first page in the air: the shape of a reel, not an end slide. */}
+          {feed.items.length === 0 && feed.loading && (
+            <div className="flex h-full flex-col py-3">
+              <span className="min-h-0 flex-1 rounded-2xl bg-black/[.06] motion-safe:animate-pulse" />
+              <span className="mt-2.5 hidden h-10 md:block" />
             </div>
           )}
         </div>
 
-        {/* Hugging the frame rather than the page edge, so the controls read as
-            belonging to the reel. Touch gets the native swipe instead. */}
-        <div className="absolute top-1/2 left-full ml-4 hidden -translate-y-1/2 flex-col items-center gap-2.5 md:flex">
-          <NavButton
-            label="Previous reel"
-            onClick={() => step(-1)}
-            disabled={index === 0}
-            icon={<IconChevronUp className="text-xl" />}
+        {/* The browser refused sound on arrival. One tap is the permission it
+            wanted, so the offer is the whole fix. It speaks the way the trail's
+            "Start here" callout does. */}
+        {autoMuted && !prefs.muted && current && (
+          <button
+            type="button"
+            onClick={toggleMute}
+            className="sketch label absolute top-6 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-2xl bg-navy px-3.5 py-2 whitespace-nowrap text-white transition-transform hover:scale-[1.03] motion-safe:animate-[hl-pop_320ms_cubic-bezier(.16,1,.3,1)]"
+            style={{ "--sk-color": "var(--color-navy)", "--sk-radius": "14px" } as React.CSSProperties}
+          >
+            <IconVolumeOff className="text-[1rem]" /> Tap for sound
+          </button>
+        )}
+
+        {/* ---------- what stays put ---------- */}
+        {/* Hugging the reel rather than the page edge, so the actions read as
+            belonging to it. Over the picture on a phone, where there is no
+            room beside it — white, as on the rail's card. */}
+        {current && (
+          <div className="absolute right-2.5 bottom-[4.75rem] z-20 flex flex-col items-center md:right-auto md:bottom-[4.25rem] md:left-full md:ml-5">
+            {/* Only where the column is tall enough to hold them above the
+                actions (see .doom-stage); the wheel and the keys still move
+                the reel when it is not. */}
+            <div className="doom-arrows mb-6 hidden flex-col gap-2.5 md:flex">
+              <NavButton label="Previous reel" disabled={index === 0} onClick={() => step(-1)}>
+                <IconChevronUp className="text-xl" />
+              </NavButton>
+              <NavButton label="Next reel" disabled={index >= last} onClick={() => step(1)}>
+                <IconChevronDown className="text-xl" />
+              </NavButton>
+            </div>
+
+            <div className="flex flex-col items-center gap-3.5">
+              {current.project ? (
+                <Link
+                  href={`/projects/${current.project.id}`}
+                  aria-label={`${current.author.name ?? "A maker"}'s project: ${current.project.title || current.project.theme}`}
+                  className="mb-1 rounded-full ring-2 ring-white transition-transform hover:scale-105 md:ring-navy"
+                >
+                  <StageAvatar name={current.author.name} image={current.author.image} className="size-11 text-[1.05rem]" />
+                </Link>
+              ) : (
+                <span className="mb-1 rounded-full ring-2 ring-white md:ring-navy">
+                  <StageAvatar name={current.author.name} image={current.author.image} className="size-11 text-[1.05rem]" />
+                </span>
+              )}
+
+              <Action
+                label={current.likedByMe ? "Unlike" : "Like"}
+                pressed={current.likedByMe}
+                tone="coral"
+                count={current.likeCount}
+                onClick={() => sendLike(current, !current.likedByMe, feed.patch)}
+                pop={current.likedByMe}
+                popKey={current.id}
+              >
+                <IconHeart className="text-[1.35rem]" fill={current.likedByMe ? "currentColor" : "none"} />
+              </Action>
+              <Action
+                label={`Comments (${current.commentCount})`}
+                pressed={wide ? commentsBeside : sheetOpen}
+                tone="violet"
+                count={current.commentCount}
+                onClick={openComments}
+              >
+                <IconComment className="text-[1.3rem]" />
+              </Action>
+              <Action label={`${current.viewCount} views`} count={current.viewCount}>
+                <IconEye className="text-[1.3rem]" />
+              </Action>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* ---------- the conversation, beside the reel ---------- */}
+      {commentsBeside && (
+        <Panel tone="line" radius={18} as="aside" className="my-3 flex w-[21rem] shrink-0 flex-col bg-paper 2xl:w-[24rem]">
+          <ReelComments
+            reel={current ?? null}
+            viewer={viewer}
+            onPatch={feed.patch}
+            onClose={() => setPrefs({ comments: false })}
+            className="h-full w-full"
           />
-          <p className="hand text-[0.72rem] leading-none text-navy-soft tabular-nums">
-            {Math.min(index + 1, feed.items.length)}/{feed.items.length}
-          </p>
-          <NavButton
-            label="Next reel"
-            onClick={() => step(1)}
-            disabled={index === last}
-            icon={<IconChevronDown className="text-xl" />}
-          />
+        </Panel>
+      )}
+
+      {/* ---------- the conversation, over it ---------- */}
+      <div inert={!sheetOpen} className={cx("fixed inset-0 z-[60]", !sheetOpen && "pointer-events-none")}>
+        <div
+          aria-hidden="true"
+          onClick={() => setSheetOpen(false)}
+          className={cx(
+            "absolute inset-0 bg-navy/30 backdrop-blur-[2px] transition-opacity duration-300",
+            sheetOpen ? "opacity-100" : "opacity-0",
+          )}
+        />
+        <div
+          role={sheetOpen ? "dialog" : undefined}
+          aria-modal={sheetOpen || undefined}
+          aria-label="Comments"
+          className={cx(
+            "sketch absolute inset-x-0 bottom-0 flex h-[72dvh] flex-col rounded-t-3xl bg-cream",
+            "transition-transform duration-[380ms] ease-[cubic-bezier(.16,1,.3,1)] motion-reduce:transition-none",
+            "md:inset-x-auto md:right-6 md:bottom-6 md:h-[min(42rem,calc(100dvh-3rem))] md:w-[24rem] md:rounded-3xl",
+            sheetOpen ? "translate-y-0" : "translate-y-[calc(100%+3rem)]",
+          )}
+          style={{ "--sk-color": "var(--color-navy)", "--sk-radius": "24px" } as React.CSSProperties}
+          onTransitionEnd={(e) => {
+            if (e.target === e.currentTarget && !sheetOpen) setSheetShown(false);
+          }}
+        >
+          <span aria-hidden="true" className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-line md:hidden" />
+          {sheetShown && (
+            <ReelComments
+              reel={current ?? null}
+              viewer={viewer}
+              onPatch={feed.patch}
+              onClose={() => setSheetOpen(false)}
+              className="min-h-0 flex-1"
+            />
+          )}
         </div>
       </div>
     </div>
   );
 }
 
+/** The drawn round button the Doomscroller has always stepped with. */
 function NavButton({
   label,
   onClick,
   disabled,
-  icon,
+  children,
 }: {
   label: string;
   onClick: () => void;
   disabled: boolean;
-  icon: React.ReactNode;
+  children: React.ReactNode;
 }) {
   return (
     <button
@@ -174,9 +554,7 @@ function NavButton({
       aria-label={label}
       className={cx(
         "sketch grid size-11 place-items-center rounded-full bg-paper transition-colors",
-        disabled
-          ? "cursor-not-allowed text-line-strong/60"
-          : "text-navy hover:bg-mint hover:text-teal-deep",
+        disabled ? "cursor-not-allowed text-line-strong/60" : "text-navy hover:bg-mint hover:text-teal-deep",
       )}
       style={
         {
@@ -185,7 +563,95 @@ function NavButton({
         } as React.CSSProperties
       }
     >
-      {icon}
+      {children}
     </button>
+  );
+}
+
+/**
+ * One of the reel's actions: an icon in a drawn disc, its count underneath.
+ * Pressed, the disc takes the action's own colour — coral for a like, violet
+ * for the open conversation. Over the picture on a phone the disc is dropped
+ * and the icon carries a shadow instead, so it reads on any frame without
+ * boxing off the video.
+ */
+function Action({
+  label,
+  count,
+  pressed,
+  tone,
+  onClick,
+  pop,
+  popKey,
+  children,
+}: {
+  label: string;
+  count: number;
+  pressed?: boolean;
+  tone?: "coral" | "violet";
+  onClick?: () => void;
+  /** Plays the acknowledgement when this turns true — a like landing. */
+  pop?: boolean;
+  /** Which reel it belongs to, so arriving on an already-liked reel does not play it. */
+  popKey?: string;
+  children: React.ReactNode;
+}) {
+  const disc = useRef<HTMLSpanElement>(null);
+  const seen = useRef<{ key?: string; on?: boolean }>({ key: popKey, on: pop });
+
+  useEffect(() => {
+    const prev = seen.current;
+    seen.current = { key: popKey, on: pop };
+    if (!pop || prev.key !== popKey || prev.on) return;
+    if (prefersStill()) return;
+    disc.current?.animate(
+      [
+        { transform: "scale(1)" },
+        { transform: "scale(1.28)", offset: 0.35 },
+        { transform: "scale(0.94)", offset: 0.7 },
+        { transform: "scale(1)" },
+      ],
+      { duration: 420, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
+    );
+  }, [pop, popKey]);
+
+  const on = pressed && tone;
+  const ring = on === "coral" ? "var(--color-coral-deep)" : on === "violet" ? "var(--color-violet-deep)" : "var(--color-line-strong)";
+
+  const body = (
+    <>
+      <span
+        ref={disc}
+        className={cx(
+          // The drawn outline is always there, but only inked from md: over the
+          // picture on a phone a ring would box off the video.
+          "sketch grid size-11 place-items-center rounded-full transition-colors [--sk-color:transparent] md:[--sk-color:var(--ring)]",
+          // Phone: an icon over the picture.
+          "text-white drop-shadow-[0_1px_4px_rgb(0_0_0/0.55)]",
+          on === "coral" && "text-coral",
+          // From md: a drawn paper disc beside the reel.
+          "md:bg-paper md:text-navy md:drop-shadow-none",
+          on === "coral" && "md:bg-coral/15 md:text-coral-deep",
+          on === "violet" && "md:bg-violet-pale md:text-violet-deep",
+          onClick && !on && "md:group-hover:bg-mint md:group-hover:text-teal-deep",
+        )}
+        style={{ "--ring": ring, "--sk-radius": "999px" } as React.CSSProperties}
+      >
+        {children}
+      </span>
+      <span className="label text-white tabular-nums [text-shadow:0_1px_3px_rgb(0_0_0/0.6)] md:text-navy md:[text-shadow:none]">
+        {compact(count)}
+      </span>
+    </>
+  );
+
+  return onClick ? (
+    <button type="button" onClick={onClick} aria-label={label} aria-pressed={pressed} className="group flex flex-col items-center gap-1">
+      {body}
+    </button>
+  ) : (
+    <span role="img" aria-label={label} className="flex flex-col items-center gap-1">
+      {body}
+    </span>
   );
 }

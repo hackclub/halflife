@@ -20,7 +20,10 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
         <strong>Half-Life admin</strong>
         <Link href="/admin">Overview</Link>
         {hasPermission(roles, Permission.VIEW_USERS) ? (
-          <Link href="/admin/users">Users</Link>
+          <>
+            <Link href="/admin/users">Users</Link>
+            <Link href="/admin/projects">Projects</Link>
+          </>
         ) : null}
         {hasPermission(roles, Permission.MANAGE_SHOP) ? (
           <Link href="/admin/shop">Shop</Link>

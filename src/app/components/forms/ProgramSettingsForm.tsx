@@ -7,7 +7,6 @@ export function ProgramSettingsForm({
   initial,
 }: Readonly<{
   initial: {
-    eventStartDate: string
     programTimezone: string
     submissionsOpen: boolean
     shopOpen: boolean
@@ -31,8 +30,9 @@ export function ProgramSettingsForm({
       const res = await fetch("/api/admin/program", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
+        // The start date has its own form (ProgramStartForm): moving it moves
+        // every week's lock, so it is not something to change in passing.
         body: JSON.stringify({
-          eventStartDate: form.eventStartDate,
           programTimezone: form.programTimezone,
           submissionsOpen: form.submissionsOpen,
           shopOpen: form.shopOpen,
@@ -57,18 +57,6 @@ export function ProgramSettingsForm({
     <form onSubmit={submit} className="hl-stack hl-stack--tight">
       {error ? <Callout tone="danger">{error}</Callout> : null}
       {saved ? <Callout>Saved.</Callout> : null}
-
-      <Field
-        label="Program start date"
-        hint="Week 1, day 1. Every week number on every page derives from this."
-      >
-        <input
-          className="hl-input"
-          type="date"
-          value={form.eventStartDate}
-          onChange={(e) => setForm({ ...form, eventStartDate: e.target.value })}
-        />
-      </Field>
 
       <Field label="Timezone" hint="Used for week boundaries and journal dates.">
         <input

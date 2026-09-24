@@ -37,7 +37,13 @@ export function FirstCheckpoint() {
     experience,
     completeOnboarding,
     setPhase,
+    ensureProject,
   } = useStore();
+  // "Get started" is week one's "create a project" checkpoint, so opening it
+  // makes the PCB project row.
+  useEffect(() => {
+    void ensureProject(1);
+  }, [ensureProject]);
 
   // The first checkpoint only ever runs in week one, so this is the week it
   // introduces. Guarded rather than asserted because an empty curriculum would

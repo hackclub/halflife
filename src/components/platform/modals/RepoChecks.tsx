@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import { IconCheck, IconWarning } from "@/components/platform/icons";
 import { RepoEditor } from "@/components/platform/RepoField";
 import { Button, cx } from "@/components/platform/ui";
-import { displayRepo } from "@/lib/repo";
 import type { RepoCheck, RepoCheckResult } from "@/lib/repo-checks";
 import type { Project } from "@/lib/types";
 
@@ -77,21 +76,13 @@ export function RepoChecks({
           {loading ? "Checking…" : "Check again"}
         </Button>
       </div>
-      {editable ? (
-        <RepoEditor project={project} className="mt-1" />
-      ) : project.githubRepo ? (
-        <a
-          href={project.githubRepo}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-1 block truncate text-[0.85rem] font-semibold text-navy underline decoration-line-strong decoration-2 underline-offset-4 transition-colors hover:decoration-violet"
-        >
-          {displayRepo(project.githubRepo)}
-        </a>
-      ) : null}
+      {/* Where the link can be changed, it sits here with its editor. Where it
+          cannot — the project page — it is already in the page's heading, and
+          saying it twice a few lines apart only makes the reader compare them. */}
+      {editable && <RepoEditor project={project} className="mt-1" />}
 
       {loading && !data ? (
-        <p className="hand mt-2 text-[0.85rem] text-navy-soft" aria-live="polite">
+        <p className="hand mt-2 text-[0.84rem] text-navy-soft" aria-live="polite">
           reading your repo on GitHub…
         </p>
       ) : error ? (
@@ -100,7 +91,7 @@ export function RepoChecks({
         </p>
       ) : data ? (
         <>
-          <p className="mt-1 text-[0.85rem] leading-snug text-navy-soft" aria-live="polite">
+          <p className="mt-1 text-[0.9rem] leading-snug text-navy-soft" aria-live="polite">
             {blocking > 0
               ? `${blocking} ${blocking === 1 ? "thing needs" : "things need"} fixing before you can hand this in.`
               : data.unavailable

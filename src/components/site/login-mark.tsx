@@ -1,3 +1,9 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { signInWith, useSession } from "@/lib/auth-client";
+
 /**
  * The way back in, pinned to the painting's top-right corner.
  *
@@ -22,15 +28,41 @@
  *   what the flag does instead: hangs at `top-1` and stays under 2.52rem tall,
  *   so the dateline clears it by the same 11.6px it clears the flag by.
  *
- * A plain anchor, not `next/link`: /dashboard is under a different root
- * layout, so the navigation is a full page load either way. Signed out,
- * /dashboard sends you to sign in; signed in, straight to the trail.
+ * Pressing it goes straight to Hack Club's sign-in and comes back to the trail,
+ * rather than stopping at the platform's own sign-in page to ask the same
+ * question again. Someone already signed in has nothing to sign in to, so for
+ * them it is just the way to the trail. It stays a real link to /dashboard
+ * underneath — without script, or if the sign-in could not start, that page
+ * still gets you in (and says what went wrong).
  */
 export default function LoginMark() {
+  const router = useRouter();
+  const { data: session } = useSession();
+  const [starting, setStarting] = useState(false);
+
+  async function signIn(e: React.MouseEvent<HTMLAnchorElement>) {
+    // Signed in already, or a modified click (new tab, and so on): let the
+    // link do what links do.
+    if (session || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    e.preventDefault();
+    if (starting) return;
+    setStarting(true);
+    try {
+      // better-auth reports a refusal in the result rather than throwing, and
+      // on success the page is already on its way to Hack Club.
+      const result = await signInWith("hca", "/dashboard");
+      if (result?.error) router.push("/login");
+    } catch {
+      router.push("/login");
+    }
+  }
+
   return (
     <a
       href="/dashboard"
-      className="absolute top-1 right-1 z-20 bg-hl-ink px-3.5 py-1.5 font-display font-bold leading-snug text-hl-paper transition-colors hover:text-hl-cyan focus-visible:text-hl-cyan min-[830px]:top-3 min-[830px]:right-3 min-[830px]:px-5 min-[830px]:py-2.5"
+      onClick={(e) => void signIn(e)}
+      aria-busy={starting || undefined}
+      className="absolute top-1 right-1 z-20 bg-hl-ink px-3.5 py-1.5 font-display font-bold leading-snug text-hl-paper transition-colors hover:text-hl-cyan focus-visible:text-hl-cyan aria-busy:text-hl-cyan min-[830px]:top-3 min-[830px]:right-3 min-[830px]:px-5 min-[830px]:py-2.5"
       style={{ fontSize: "clamp(0.875rem, 3.6vw, 1rem)" }}
     >
       log in

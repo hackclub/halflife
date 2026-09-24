@@ -8,12 +8,12 @@ import path from "node:path";
  * production without a code change:
  *
  *   AIRTABLE_API_KEY +   Write straight to the "Half Life" base
- *   AIRTABLE_BASE_ID     (appVGSvooOShD3qtC), table AIRTABLE_TABLE_NAME
- *                        (defaults to "Table 1"), which has `email`, `ip`,
- *                        `signed_up_at`, `referral_code`, `referred_by`,
- *                        `utm_source`, `utm_medium`, and `utm_campaign`
- *                        fields. The token needs data.records:read/write
- *                        scope on that base.
+ *   AIRTABLE_BASE_ID     (appVGSvooOShD3qtC), table AIRTABLE_TABLE_NAME,
+ *                        else AIRTABLE_RSVP_TABLE_ID — the Signups table,
+ *                        which has `email`, `ip`, `referred_by`,
+ *                        `utm_source`, `utm_medium`, `utm_campaign` and
+ *                        `Loops - halfLifeReferralNumber` (text). The token
+ *                        needs data.records:read/write scope on that base.
  *   SIGNUP_WEBHOOK_URL   POST the full entry (email, ip, source, at,
  *                        referralCode, ref, utmSource, utmMedium,
  *                        utmCampaign) to your list provider, form endpoint,
@@ -107,8 +107,11 @@ export async function recordSignup(
   const airtableBase = process.env.AIRTABLE_BASE_ID;
 
   if (airtableToken && airtableBase) {
+    // The Signups table. It used to default to "Table 1", which is not in
+    // the base, so any deployment without AIRTABLE_TABLE_NAME failed every
+    // signup; the platform already names this table in AIRTABLE_RSVP_TABLE_ID.
     const table = encodeURIComponent(
-      process.env.AIRTABLE_TABLE_NAME ?? "Table 1",
+      process.env.AIRTABLE_TABLE_NAME ?? process.env.AIRTABLE_RSVP_TABLE_ID ?? "Signups",
     );
     const url = `https://api.airtable.com/v0/${airtableBase}/${table}`;
     const headers = {
@@ -136,13 +139,16 @@ export async function recordSignup(
     }
 
     const found = (await lookup.json()) as {
-      records?: Array<{ fields?: { referral_code?: string } }>;
+      records?: Array<{ fields?: Record<string, unknown> }>;
     };
     if ((found.records?.length ?? 0) > 0) {
+      // The column the number is written to below; there is no
+      // `referral_code`, so reading that handed returning people a blank.
+      const existing = found.records?.[0]?.fields?.["Loops - halfLifeReferralNumber"];
       return {
         ok: true,
         duplicate: true,
-        referralCode: found.records?.[0]?.fields?.referral_code ?? "",
+        referralCode: existing == null ? "" : String(existing),
       };
     }
 

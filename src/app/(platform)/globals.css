@@ -20,6 +20,9 @@
   --color-teal-deep: #048372;
   --color-teal-mid: #75d0c9;
   --color-mint: #aef2dd;
+  /* Teal with the life drained out: a week whose time has run out. */
+  --color-teal-grey: #b3c7c3;
+  --color-teal-grey-deep: #86a09b;
 
   --color-magenta: #b21b9b;
   --color-coral: #f35757;
@@ -235,6 +238,15 @@ body::before {
     --puck-rim: var(--color-teal-deep);
   }
 
+  /* Its week has passed. Sits lower than a live puck, like a locked one, but
+     keeps the trail's teal underneath: this is time that ran out, not a step
+     still waiting its turn. */
+  .puck-passed {
+    --puck-face: var(--color-teal-grey);
+    --puck-rim: var(--color-teal-grey-deep);
+    --puck-lift: 7px;
+  }
+
   .puck-gold {
     --puck-face: var(--color-gold);
     --puck-rim: var(--color-gold-deep);
@@ -334,6 +346,14 @@ body::before {
 .lift-shadow { box-shadow: 0 3px 6px rgba(28, 26, 89, 0.08), 0 18px 40px -16px rgba(28, 26, 89, 0.38); }
 .sticker-shadow {
   filter: drop-shadow(0 3px 2px rgba(28, 26, 89, 0.16)) drop-shadow(0 9px 13px rgba(28, 26, 89, 0.13));
+}
+
+/* The Doomscroller's reel column measures its own height, so the arrows
+   beside it can step aside when it is too short to hold them above the
+   actions — which depends on the frame, not on the window. */
+.doom-stage { container: doom-stage / size; }
+@container doom-stage (max-height: 30.5rem) {
+  .doom-arrows { display: none !important; }
 }
 
 .snap-y-feed { scroll-snap-type: y mandatory; }

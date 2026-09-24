@@ -1,12 +1,13 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 import brushstroke from "../../../public/art/brushstroke.png";
+import { signInWith, useSession } from "@/lib/auth-client";
 import { BRAND } from "@/lib/site/content";
 import { SWASH_INSET_X, SWASH_INSET_Y } from "@/lib/site/stage";
 import {
-  useCallback,
   useEffect,
   useId,
   useRef,
@@ -15,26 +16,30 @@ import {
   type ReactNode,
 } from "react";
 
-type Status = "idle" | "pending" | "done" | "error";
+type Status = "idle" | "pending" | "error";
 
 /**
- * The confirmation is a part passing down the line, not a terminus: it wipes
- * in over the field, holds long enough to read its ~10 words, then clears off
- * to the right and hands the empty field back. Signing up a second address is
- * the common case here — one student, a friend, a sibling — so the form must
- * never be spent.
+ * How long the sign-up record may hold up the way in. It is attribution — who
+ * referred this visitor, which campaign brought them — and worth waiting a
+ * moment for, but never worth making someone stare at a spinner: past this,
+ * the sign-in goes ahead and the request is left to finish on its own.
  */
-const CONFIRM_HOLD_MS = 3000;
-const CONFIRM_EXIT_MS = 220;
+const SUBSCRIBE_WAIT_MS = 2500;
 
 /**
- * Email capture. Sizing is entirely `em`-relative, so the caller sets one
+ * The way in. Sizing is entirely `em`-relative, so the caller sets one
  * font-size and the field, the button and the paddings all follow — the comp
  * stage passes a `cqw` value, the stacked mobile layout passes a `clamp()`.
  *
- * The check is the exported comp vector (Figma 275:208), path data verbatim.
- * It is the confirmation's tick only; the submit control carries its own
- * label.
+ * "sign up/log in" does exactly that now: it signs in with Hack Club, the
+ * account the platform runs on, carrying the address typed here as the
+ * sign-in's `login_hint`. Hack Club Auth pre-fills its email box from that, and
+ * that box is where a returning user logs in and where a newcomer starts the
+ * account they do not have yet — so nobody types their address twice. Someone
+ * already signed in has nothing to sign in to and goes straight to the trail.
+ *
+ * The address is still recorded as a sign-up on the way, because the referral
+ * code and campaign in this page's own URL exist nowhere else.
  */
 export default function SignupForm({
   className = "",
@@ -60,23 +65,11 @@ export default function SignupForm({
   intro?: ReactNode;
 }) {
   const id = useId();
+  const router = useRouter();
+  const { data: session } = useSession();
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("");
-  const [leaving, setLeaving] = useState(false);
-  const [referralLink, setReferralLink] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const holdRef = useRef<number | null>(null);
-  const exitRef = useRef<number | null>(null);
-
-  const clearTimers = useCallback(() => {
-    if (holdRef.current !== null) window.clearTimeout(holdRef.current);
-    if (exitRef.current !== null) window.clearTimeout(exitRef.current);
-    holdRef.current = null;
-    exitRef.current = null;
-  }, []);
-
-  useEffect(() => clearTimers, [clearTimers]);
 
   /**
    * Prefill from the address bar: `?email=someone@example.com`. A link sent
@@ -103,47 +96,39 @@ export default function SignupForm({
     }
   }, []);
 
-  /** Wipes the plate off to the right and re-arms the field behind it. */
-  const dismiss = useCallback(() => {
-    clearTimers();
-    setLeaving(true);
-    exitRef.current = window.setTimeout(() => {
-      setLeaving(false);
-      setStatus("idle");
-      setMessage("");
-    }, CONFIRM_EXIT_MS);
-  }, [clearTimers]);
+  function fail(text: string) {
+    setStatus("error");
+    setMessage(text);
+    inputRef.current?.focus();
+  }
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    // A second submit supersedes a confirmation still on screen: the user
-    // acted, so the new state replaces the old one outright rather than
-    // playing an exit nobody is waiting for.
-    clearTimers();
-    setLeaving(false);
-    setReferralLink(null);
-    setCopied(false);
-    const email = inputRef.current?.value.trim() ?? "";
+    const field = inputRef.current;
+    const email = field?.value.trim() ?? "";
 
-    if (!email) {
-      setStatus("error");
-      setMessage("Enter your email so we can send you the details.");
-      inputRef.current?.focus();
-      return;
-    }
+    // Checked here rather than by the browser (`noValidate`), so the message
+    // lands on the line under the field in this page's voice instead of in a
+    // native bubble.
+    if (!email) return fail("Enter your email to sign up or log in.");
+    if (field && !field.checkValidity()) return fail("That doesn't look like an email address.");
 
     setStatus("pending");
-    setMessage("");
+    setMessage("Taking you to Hack Club to sign in…");
 
     // Whoever sent this visitor here — a referral link or a campaign URL —
     // is only present in this page's own address bar, so it's read fresh at
-    // submit time rather than threaded in from anywhere else.
+    // submit time and sent before the page leaves. `keepalive` lets it finish
+    // even if the sign-in navigates away first; its answer is not needed.
     const params = new URLSearchParams(window.location.search);
-
+    const abort = new AbortController();
+    const timer = window.setTimeout(() => abort.abort(), SUBSCRIBE_WAIT_MS);
     try {
-      const response = await fetch("/api/subscribe", {
+      await fetch("/api/subscribe", {
         method: "POST",
         headers: { "content-type": "application/json" },
+        keepalive: true,
+        signal: abort.signal,
         body: JSON.stringify({
           email,
           ref: params.get("ref") || undefined,
@@ -152,55 +137,29 @@ export default function SignupForm({
           utmCampaign: params.get("utm_campaign") || undefined,
         }),
       });
-      const payload: {
-        ok?: boolean;
-        error?: string;
-        referralCode?: string;
-      } = await response.json().catch(() => ({}));
-
-      if (!response.ok || !payload.ok) {
-        setStatus("error");
-        setMessage(
-          payload.error ??
-            "That didn't go through. Give it another try in a moment.",
-        );
-        inputRef.current?.focus();
-        return;
-      }
-
-      setStatus("done");
-      setMessage(
-        "You're signed up! Copy your referral link to get friends building!",
-      );
-      if (payload.referralCode) {
-        const url = new URL(window.location.href);
-        url.search = `?ref=${payload.referralCode}`;
-        setReferralLink(url.toString());
-      }
-      if (inputRef.current) inputRef.current.value = "";
-      holdRef.current = window.setTimeout(dismiss, CONFIRM_HOLD_MS);
     } catch {
-      setStatus("error");
-      setMessage("You look offline. Reconnect and try again.");
-      inputRef.current?.focus();
+      // Slow, offline or refused: none of it should stand between someone and
+      // signing in. The sign-in below says so if the network is really gone.
+    } finally {
+      window.clearTimeout(timer);
     }
-  }
 
-  async function copyReferralLink() {
-    if (!referralLink) return;
+    if (session) {
+      router.push("/dashboard");
+      return;
+    }
+
     try {
-      await navigator.clipboard.writeText(referralLink);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
+      // better-auth reports a refusal in the result rather than throwing; on
+      // success the page is already on its way to Hack Club.
+      const result = await signInWith("hca", "/dashboard", email);
+      if (result?.error) fail("Hack Club sign-in didn't open. Give it another try in a moment.");
     } catch {
-      // Clipboard permission denied or unavailable — the link is still
-      // visible and selectable, so this is a silent no-op rather than an
-      // error state.
+      fail("You look offline. Reconnect and try again.");
     }
   }
 
   const pending = status === "pending";
-  const confirming = status === "done";
 
   return (
     <div className={className} style={{ ...style, fontSize }}>
@@ -306,13 +265,7 @@ export default function SignupForm({
                 // accessibility tree.
                 aria-describedby={`${id}-msg`}
                 aria-invalid={status === "error" || undefined}
-                onFocus={() => {
-                  // Reaching the field is the clearest signal the confirmation has
-                  // been read; clear the plate ahead of its own timer.
-                  if (confirming && !leaving) dismiss();
-                }}
                 onChange={() => {
-                  if (confirming && !leaving) dismiss();
                   if (status === "error") {
                     setStatus("idle");
                     setMessage("");
@@ -378,27 +331,11 @@ export default function SignupForm({
               {pending ? (
                 <>
                   <Spinner className="h-[0.9em] w-[0.9em] animate-spin [grid-area:1/1]" />
-                  <span className="sr-only">Signing you up</span>
+                  <span className="sr-only">Taking you to Hack Club to sign in</span>
                 </>
               ) : null}
             </button>
           </form>
-
-          {/* Set at 0.75em so the full sentence holds one line on the comp stage
-              and, where it wraps on a narrow phone, two lines still sit inside
-              the field's own height. */}
-          {confirming ? (
-            <p
-              aria-hidden
-              className={`pointer-events-none absolute inset-0 flex items-center gap-[0.6em] bg-hl-cyan px-[0.8em] font-semibold leading-tight text-hl-ink ${
-                leaving ? "hl-confirm-out" : "hl-confirm-in"
-              }`}
-              style={{ fontSize: "0.75em" }}
-            >
-              <Check draw className="h-[0.95em] w-[0.98em] shrink-0" />
-              <span>{message}</span>
-            </p>
-          ) : null}
         </div>
       </div>
 
@@ -409,10 +346,6 @@ export default function SignupForm({
           either — the error takes a line that is already lit rather than
           opening a new one, and the note is what the field is described by
           the rest of the time.
-
-          The confirmation is not repeated here: it is already on the plate,
-          and a second copy at 0.6em would wrap on a phone and push the page
-          around under it.
 
           Paper, not the soft tint the placeholder uses: this sits on the
           hero plate rather than in the field's own ink slot, and the plate is
@@ -429,56 +362,13 @@ export default function SignupForm({
         {status === "error" ? message : BRAND.eligibility}
       </p>
 
-      {/* Persists past the confirmation plate's own dismiss timer: unlike
-          the wipe-in message, this is worth keeping on screen so the link is
-          still there to copy after the "you're on the list" plate is gone. */}
-      {referralLink ? (
-        <p className="mt-[0.3em] text-hl-paper" style={{ fontSize: "0.6em" }}>
-          Refer a friend:{" "}
-          <button
-            type="button"
-            onClick={copyReferralLink}
-            className="underline decoration-hl-cyan/60 underline-offset-2 hover:text-hl-cyan"
-          >
-            {copied ? "Link copied!" : "Copy your referral link"}
-          </button>
-        </p>
-      ) : null}
-
-      {/* One persistent live region does all the announcing. The confirmation
-          plate mounts with its text already in it, and a live region created
-          that way is unreliably announced; this one is always in the tree, so
-          every status change is a change to it. It carries no layout, which is
-          what lets the visible confirmation live on the plate alone. */}
+      {/* One persistent live region does all the announcing — "taking you to
+          Hack Club", or what went wrong. It is always in the tree, so every
+          status change is a change to it, and it carries no layout. */}
       <p role="status" aria-live="polite" className="sr-only">
         {message}
       </p>
     </div>
-  );
-}
-
-function Check({
-  className,
-  draw = false,
-}: {
-  className?: string;
-  /** Strokes the tick in, for the one moment the state really changes. */
-  draw?: boolean;
-}) {
-  return (
-    <svg
-      viewBox="0 0 39.4045 38.2329"
-      fill="none"
-      aria-hidden
-      className={className}
-    >
-      <path
-        d="M1.28624 25.8278L16.2862 34.8278L37.2862 1.32784"
-        stroke="currentColor"
-        strokeWidth={5}
-        className={draw ? "hl-stroke" : undefined}
-      />
-    </svg>
   );
 }
 

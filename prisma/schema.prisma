@@ -334,6 +334,23 @@ model User {
   longestStreak Int     @default(0)
   /// YYYY-MM-DD in the program timezone of the last day that counted.
   lastStreakDate String?
+
+  // ─── Analytics time markers ────────────────────────────────────────────────
+  // When each step of the funnel first happened for this person, kept on the
+  // row so a per-user export (Loops, Airtable) is one read. Signing up is
+  // `createdAt` and onboarding is `onboardingCompletedAt`; these are the rest.
+  // Each "first" is written once and never moved; "last" ones move forward.
+  // See lib/analytics.ts, which is the only writer.
+  firstProjectAt    DateTime?
+  firstReelAt       DateTime?
+  firstSubmissionAt DateTime?
+  lastSubmissionAt  DateTime?
+  /// The last sign-in — a new session, not a page view.
+  lastLoginAt       DateTime?
+  /// The last page view, to within a few minutes (writes are throttled).
+  lastActiveAt      DateTime?
+  /// Distinct program-timezone days with any activity; the count of UserDay.
+  activeDays        Int       @default(0)
   /// While now() is before this, the global submission gate does not apply to
   /// any of this user's phases. Stasis added per-user and per-project override
   /// columns after doing manual database surgery for every extension request.
@@ -346,6 +363,8 @@ model User {
 
   sessions       Session[]
   accounts       Account[]
+  activityDays   UserDay[]
+  activityWeeks  UserWeek[]
   roles          UserRole[]
   themeProjects  ThemeProject[]
   posts          Post[]
@@ -544,6 +563,12 @@ model ThemeProject {
   /// Either being in the future opens the gate.
   submissionExtensionUntil DateTime?
 
+  /// When the participant actually started it: first given a description and
+  /// a tier. The row itself is made at sign-up, already titled with its theme
+  /// (all five exist from the start), so neither `createdAt` nor a title says
+  /// when a project began. See lib/analytics.ts (markProjectCreated).
+  namedAt DateTime?
+
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
@@ -593,6 +618,41 @@ model BomItem {
 
   @@index([themeProjectId, sortOrder])
   @@map("bom_item")
+}
+
+/// One row per person per day they used the platform, in the program timezone.
+/// DAU for a day is the count of its rows; retention is a join over them.
+model UserDay {
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// YYYY-MM-DD in the program timezone.
+  day         String
+  firstSeenAt DateTime @default(now())
+
+  @@id([userId, day])
+  @@index([day])
+  @@map("user_day")
+}
+
+/// One row per person per program week they logged hours in: the week's
+/// total, and when each milestone was first crossed. A milestone keeps its
+/// time once set, so an edit that drops the total below it later does not
+/// erase the fact that it was reached.
+model UserWeek {
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  week        Int
+  /// Journal hours claimed in the week, from WorkSession.weekNumber.
+  hours       Float     @default(0)
+  reached1hAt  DateTime?
+  reached5hAt  DateTime?
+  reached10hAt DateTime?
+  reached20hAt DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  @@id([userId, week])
+  @@index([week])
+  @@map("user_week")
 }
 
 model WorkSession {

@@ -1,12 +1,14 @@
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
-import { getProgramSettings, currentWeekNumber } from "@/lib/program"
-import { findUnsyncedApprovals } from "@/lib/airtable/sync"
-import { THEMES, TOTAL_WEEKS } from "@/lib/config/program"
+import { getProgramSettings, currentWeekNumber, weekClosesAt, weekDateRange } from "@/lib/program"
+import { findUnsyncedSubmissions } from "@/lib/airtable/sync"
+import { TOTAL_WEEKS, scheduleForWeek } from "@/lib/config/program"
+import { Phase } from "@/app/generated/prisma/enums"
 import { TIERS } from "@/lib/config/tiers"
 import { PRINTERS, submitFloorFor } from "@/lib/config/printers"
-import { EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
+import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
 import { ProgramSettingsForm } from "@/app/components/forms/ProgramSettingsForm"
+import { ProgramStartForm } from "@/app/components/forms/ProgramStartForm"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 
 export const dynamic = "force-dynamic"
@@ -17,12 +19,75 @@ export default async function AdminProgramPage() {
   const [settings, week, unsynced] = await Promise.all([
     getProgramSettings(),
     currentWeekNumber(),
-    findUnsyncedApprovals(),
+    findUnsyncedSubmissions(),
   ])
+
+  const startYmd = settings.eventStartDate.toISOString().slice(0, 10)
+  const now = new Date()
+  const inZone = (d: Date, opts: Intl.DateTimeFormatOptions) =>
+    d.toLocaleString("en-US", { timeZone: settings.programTimezone, ...opts })
+  const schedule = Array.from({ length: TOTAL_WEEKS }, (_, i) => {
+    const n = i + 1
+    const slot = scheduleForWeek(n)
+    const range = weekDateRange(settings.eventStartDate, n)
+    const closesAt = weekClosesAt(settings, n)
+    // A week opens as the one before it closes; "week 0" closing is midnight
+    // on the start date itself, in the program's timezone.
+    const opensAt = weekClosesAt(settings, n - 1)
+    const day = { timeZone: "UTC", weekday: "short", month: "short", day: "numeric" } as const
+    return {
+      week: n,
+      label: slot ? `${slot.theme.label} · ${slot.phase === Phase.DESIGN ? "design" : "build"}` : "—",
+      runs: range
+        ? `${range.start.toLocaleDateString("en-US", day)} – ${new Date(range.start.getTime() + 6 * 86_400_000).toLocaleDateString("en-US", day)}`
+        : "—",
+      closes: inZone(closesAt, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }),
+      state: now >= closesAt ? "passed" : now >= opensAt ? "current" : "upcoming",
+    }
+  })
 
   return (
     <div className="hl-stack">
-      <PageHeader title="Program settings" subtitle={`Currently week ${week} of ${TOTAL_WEEKS}.`} />
+      <PageHeader
+        title="Program settings"
+        subtitle={
+          week < 1
+            ? "The program has not started yet."
+            : week > TOTAL_WEEKS
+              ? "The program is over."
+              : `Currently week ${week} of ${TOTAL_WEEKS}.`
+        }
+      />
+
+      <Panel title="Program start">
+        <ProgramStartForm
+          initial={startYmd}
+          timezone={settings.programTimezone}
+          weeks={schedule.map((w) => w.label)}
+        />
+      </Panel>
+
+      <Panel title="Schedule">
+        <Table head={["Week", "Theme", "Runs", "Closes", ""]}>
+          {schedule.map((w) => (
+            <tr key={w.week}>
+              <td className="hl-mono">{w.week}</td>
+              <td>{w.label}</td>
+              <td>{w.runs}</td>
+              <td className="hl-mono">{w.closes}</td>
+              <td>
+                <Badge tone={w.state === "passed" ? "muted" : w.state === "current" ? "success" : "warning"}>
+                  {w.state}
+                </Badge>
+              </td>
+            </tr>
+          ))}
+        </Table>
+        <p className="hl-hint">
+          A passed week is shut on the trail: no more journal entries, only its Submit. An
+          extension on the user or the project reopens it for them.
+        </p>
+      </Panel>
 
       <Panel title="Settings">
         {/* These live in the database rather than env vars on purpose: stasis
@@ -30,7 +95,6 @@ export default async function AdminProgramPage() {
             submissions stayed open for two weeks after the event ended. */}
         <ProgramSettingsForm
           initial={{
-            eventStartDate: settings.eventStartDate.toISOString().slice(0, 10),
             programTimezone: settings.programTimezone,
             submissionsOpen: settings.submissionsOpen,
             shopOpen: settings.shopOpen,
@@ -41,9 +105,9 @@ export default async function AdminProgramPage() {
         />
       </Panel>
 
-      <Panel title="Grant rows that never reached Airtable">
+      <Panel title="Submissions that never reached Airtable">
         {unsynced.length === 0 ? (
-          <EmptyState>Everything approved has been pushed upstream.</EmptyState>
+          <EmptyState>Every submission awaiting review is in the YSWS table.</EmptyState>
         ) : (
           <Table head={["Project", "Phase", ""]}>
             {unsynced.map((item) => (
@@ -61,18 +125,6 @@ export default async function AdminProgramPage() {
             ))}
           </Table>
         )}
-      </Panel>
-
-      <Panel title="Schedule">
-        <Table head={["Theme", "Design week", "Build week"]}>
-          {THEMES.map((theme) => (
-            <tr key={theme.slug}>
-              <td>{theme.label}</td>
-              <td>{theme.designWeek}</td>
-              <td>{theme.buildWeek}</td>
-            </tr>
-          ))}
-        </Table>
       </Panel>
 
       <Panel title="Tiers">

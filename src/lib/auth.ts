@@ -4,12 +4,18 @@ import { prismaAdapter } from "better-auth/adapters/prisma"
 import { genericOAuth } from "better-auth/plugins"
 import prisma from "@/lib/prisma"
 import { Role } from "@/app/generated/prisma/enums"
-import { PULL_PII, syncHcaProfile } from "@/lib/hca-profile"
-import { materializeThemeProjects } from "@/lib/provisioning"
+import { PULL_PII, fetchHcaIdentity, syncHcaProfile } from "@/lib/hca-profile"
+import { markLogin } from "@/lib/analytics"
 import { bufferRsvpForUser } from "@/lib/airtable/rsvp"
 import { LAPSE_API_BASE } from "@/lib/lapse"
 
-const hcaScopes = ["openid", "profile", "email", "slack_id", "verification_status"]
+// Exactly the scopes enabled on Half Life's HCA app. HCA refuses the whole
+// sign-in ("The requested scope is invalid") if any one is not, so this list
+// has to match the app's settings, not HCA's docs. `basic_info` carries name
+// and verification_status; `email` is asked for on its own so the standard
+// `email_verified` claim comes with it, which the superadmin bootstrap below
+// trusts. Asking for `verification_status` by name is refused.
+const hcaScopes = ["openid", "profile", "email", "basic_info", "slack_id"]
 if (PULL_PII) hcaScopes.push("address", "birthdate")
 
 /**
@@ -84,19 +90,15 @@ export const auth = betterAuth({
         // current. Not awaited: signing in must not wait on, or fail with, HCA.
         after: async (session) => {
           void syncHcaProfile(session.userId)
+          void markLogin(session.userId)
         },
       },
     },
     user: {
       create: {
         after: async (user) => {
-          // Create the five themed project rows up front. Because the program
-          // shape is fixed, doing it here means every page below is a plain
-          // findMany and every route can 404 honestly instead of lazily
-          // creating rows mid-request.
-          await materializeThemeProjects(user.id).catch((err) =>
-            console.error("[auth] materializeThemeProjects failed:", err),
-          )
+          // No project rows here: each is created when its week's "create a
+          // project" checkpoint is opened (lib/provisioning).
 
           await prisma.user
             .update({ where: { id: user.id }, data: { joinedProgramAt: new Date() } })
@@ -163,6 +165,31 @@ export const auth = betterAuth({
           clientSecret: process.env.HCA_CLIENT_SECRET ?? "",
           scopes: hcaScopes,
           overrideUserInfo: true,
+          // Read from both of HCA's endpoints, not just OIDC userinfo: under
+          // `basic_info` the email is only on /api/v1/me, and without it
+          // better-auth refuses the sign-in with "email_not_found".
+          getUserInfo: async ({ accessToken }) => {
+            if (!accessToken) return null
+            const identity = await fetchHcaIdentity(accessToken)
+            if (!identity.sub || !identity.email) {
+              console.error("[auth] HCA returned no subject or email; check the app's scopes")
+              return null
+            }
+            return {
+              id: identity.sub,
+              // HCA is configured from discovery, so better-auth treats it as
+              // OIDC and keys the account on `sub`, not `id`. Without it the
+              // sign-in fails with OAUTH_ACCOUNT_SUBJECT_INVALID. Same value as
+              // before, so existing accounts are still found.
+              sub: identity.sub,
+              email: identity.email,
+              emailVerified: identity.emailVerified,
+              name: identity.name ?? identity.email,
+              image: identity.image ?? undefined,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            }
+          },
           // Core fields only. The verification status, Slack id and PII are
           // `input: false`, and better-auth drops those from a provider profile
           // — so they are written by syncHcaProfile at sign-in instead. Mapping
@@ -170,7 +197,7 @@ export const auth = betterAuth({
           mapProfileToUser: (profile: Record<string, unknown>) => ({
             email: profile.email as string,
             name: profile.name as string | undefined,
-            image: profile.picture as string | undefined,
+            image: profile.image as string | undefined,
           }),
         },
         {

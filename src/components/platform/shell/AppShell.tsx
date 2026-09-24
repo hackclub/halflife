@@ -199,7 +199,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     rail ? "mt-4 flex-1 opacity-100" : "mt-0 flex-[0_1_0%] opacity-0",
                   )}
                 >
-                  <DoomscrollerFeed className="min-h-0 w-full" onClose={() => setDoomscroller(false)} />
+                  {/* Not even mounted under the full-page player: hidden, its
+                      cards would still fetch every reel's opening seconds a
+                      second time for nobody to see. */}
+                  {!onDoomscroller && (
+                    <DoomscrollerFeed className="min-h-0 w-full" onClose={() => setDoomscroller(false)} />
+                  )}
                 </div>
               </div>
             </aside>

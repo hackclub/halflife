@@ -3,7 +3,8 @@ import prisma from "@/lib/prisma"
 import { HardwareExperience, PhaseStatus, Theme } from "@/app/generated/prisma/enums"
 import { HttpError } from "@/lib/errors"
 import { sanitize, sanitizeHtml } from "@/lib/sanitize"
-import { materializeThemeProjects } from "@/lib/provisioning"
+import { ensureThemeProject } from "@/lib/provisioning"
+import { markProjectCreated } from "@/lib/analytics"
 import { isTierId, type TierId } from "@/lib/config/tiers"
 import {
   ONBOARDING_STEPS,
@@ -59,10 +60,9 @@ export interface OnboardingState {
 }
 
 export async function getOnboardingState(userId: string): Promise<OnboardingState> {
-  // Self-heal, exactly as the dashboard does: someone whose signup hook failed
-  // has no PCB project to onboard into, and the first checkpoint is the first
-  // place that would be noticed.
-  await materializeThemeProjects(userId)
+  // Onboarding is week one's "create a project" checkpoint, so it is where the
+  // PCB project comes into being — the only one it makes.
+  await ensureThemeProject(userId, ONBOARDING_THEME)
 
   const [user, project] = await Promise.all([
     prisma.user.findUniqueOrThrow({
@@ -246,6 +246,8 @@ export async function submitStep(
       },
     })
   })
+
+  if (Object.keys(projectData).length > 0) await markProjectCreated(before.project.id, userId)
 
   return { state: await getOnboardingState(userId), completed: finishing }
 }

@@ -1,18 +1,17 @@
+import { z } from "zod"
 import prisma from "@/lib/prisma"
-import { ok, withRoute } from "@/lib/api"
+import { fail, ok, parseBody, withRoute } from "@/lib/api"
 import { requireSession } from "@/lib/guards"
 import { Phase } from "@/app/generated/prisma/enums"
 import { getHoursBreakdown } from "@/lib/hours"
 import { getThemeDef } from "@/lib/config/program"
-import { materializeThemeProjects } from "@/lib/provisioning"
+import { ensureThemeProject, themeForDesignWeek } from "@/lib/provisioning"
 
 export const dynamic = "force-dynamic"
 
 export const GET = withRoute(async () => {
   const gate = await requireSession()
   if (gate.error) return gate.error
-
-  await materializeThemeProjects(gate.user.id)
 
   const projects = await prisma.themeProject.findMany({
     where: { userId: gate.user.id, deletedAt: null },
@@ -45,4 +44,25 @@ export const GET = withRoute(async () => {
   // Program order, not insertion order.
   items.sort((a, b) => a.designWeek - b.designWeek)
   return ok({ projects: items })
+})
+
+const createSchema = z.object({ weekId: z.number().int().min(1).max(10) }).strict()
+
+/**
+ * Create the project for a design week — called when its "create a project"
+ * checkpoint is opened, which is the only moment a project row is made (see
+ * lib/provisioning). Opening it again returns the same row.
+ */
+export const POST = withRoute(async (req: Request) => {
+  const gate = await requireSession()
+  if (gate.error) return gate.error
+
+  const parsed = await parseBody(req, createSchema)
+  if (parsed.error) return parsed.error
+
+  const theme = themeForDesignWeek(parsed.data.weekId)
+  if (!theme) return fail("VALIDATION_FAILED", "That week does not start a project")
+
+  const project = await ensureThemeProject(gate.user.id, theme)
+  return ok({ id: project.id }, { status: 201 })
 })

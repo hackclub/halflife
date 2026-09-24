@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-17T18:46:40.775011+00:00",
+  "generatedAt": "2026-09-24T19:56:34.309Z",
   "title": "Design System: Half Life",
   "extensions": {
     "colorMeta": {
@@ -10,12 +10,12 @@
         "canonical": "#31222c",
         "tonalRamp": [
           "#2d1f29",
-          "#503747",
-          "#724f66",
-          "#946785",
-          "#ad89a1",
+          "#4e3646",
+          "#6f4d64",
+          "#916482",
+          "#ab879f",
           "#c5abbc",
-          "#ddced8",
+          "#decfd9",
           "#f5f0f3"
         ]
       },
@@ -24,14 +24,14 @@
         "displayName": "Plate Paper",
         "canonical": "#ededed",
         "tonalRamp": [
-          "#262626",
-          "#434343",
-          "#616161",
-          "#7e7e7e",
-          "#9b9b9b",
-          "#b8b8b8",
-          "#d5d5d5",
-          "#f2f2f2"
+          "#292323",
+          "#483d3d",
+          "#665757",
+          "#847171",
+          "#a19191",
+          "#bdb2b2",
+          "#d9d3d3",
+          "#f3f1f1"
         ]
       },
       "hl-cyan": {
@@ -40,13 +40,28 @@
         "canonical": "#8ed3dc",
         "tonalRamp": [
           "#12363a",
-          "#205f67",
-          "#2e8893",
-          "#3bb1c0",
-          "#66c3d0",
-          "#93d5dd",
-          "#bfe6eb",
+          "#1f5d65",
+          "#2d8590",
+          "#3aacbb",
+          "#63c2cf",
+          "#92d5dd",
+          "#c1e7ec",
           "#ecf7f9"
+        ]
+      },
+      "hl-blue-deep": {
+        "role": "secondary",
+        "displayName": "Hero Blue",
+        "canonical": "#0E86B9",
+        "tonalRamp": [
+          "#053447",
+          "#09597b",
+          "#0d7faf",
+          "#11a5e4",
+          "#41bcf1",
+          "#7ad0f5",
+          "#b3e4f9",
+          "#e7f7fd"
         ]
       },
       "hl-periwinkle": {
@@ -55,12 +70,12 @@
         "canonical": "#a39bd6",
         "tonalRamp": [
           "#1b1636",
-          "#2f2760",
-          "#433889",
-          "#5749b2",
-          "#7c71c5",
-          "#a29ad6",
-          "#c8c4e7",
+          "#2e275e",
+          "#423786",
+          "#5547ae",
+          "#7a6ec4",
+          "#a29ad5",
+          "#cac5e7",
           "#eeedf8"
         ]
       },
@@ -70,12 +85,12 @@
         "canonical": "#c9c7ec",
         "tonalRamp": [
           "#151339",
-          "#262265",
-          "#363190",
-          "#4640bc",
-          "#6f69cc",
-          "#9995db",
-          "#c3c0ea",
+          "#252263",
+          "#35308d",
+          "#453eb7",
+          "#6c67cb",
+          "#9894db",
+          "#c4c2ea",
           "#edecf9"
         ]
       },
@@ -85,28 +100,13 @@
         "canonical": "#34316c",
         "tonalRamp": [
           "#191835",
-          "#2d2a5d",
-          "#403c85",
-          "#534ead",
-          "#7975c0",
-          "#a09dd3",
-          "#c7c5e5",
+          "#2c295b",
+          "#3e3b82",
+          "#514ca8",
+          "#7773bf",
+          "#9f9dd2",
+          "#c8c7e6",
           "#eeedf7"
-        ]
-      },
-      "hl-blue-deep": {
-        "role": "secondary",
-        "displayName": "Hero Blue",
-        "canonical": "#0E86B9",
-        "tonalRamp": [
-          "#053447",
-          "#095b7d",
-          "#0e82b3",
-          "#12a9ea",
-          "#45bef1",
-          "#7bd1f5",
-          "#b1e4f9",
-          "#e7f7fd"
         ]
       },
       "hl-yellow": {
@@ -115,12 +115,12 @@
         "canonical": "#A2C4DA",
         "tonalRamp": [
           "#162a37",
-          "#264a60",
-          "#37698a",
-          "#4889b4",
-          "#70a4c6",
-          "#99bfd7",
-          "#c3d9e7",
+          "#26485f",
+          "#366787",
+          "#4686af",
+          "#6da2c5",
+          "#99bed6",
+          "#c5dae8",
           "#edf3f8"
         ]
       },
@@ -129,119 +129,134 @@
         "displayName": "Carousel Blue Pale (misnamed yellow)",
         "canonical": "#EBF7FF",
         "tonalRamp": [
-          "#002e4c",
-          "#005187",
-          "#0074c1",
-          "#0097fb",
-          "#37afff",
-          "#71c6ff",
-          "#abddff",
+          "#002e4d",
+          "#005085",
+          "#0071bd",
+          "#0093f5",
+          "#33adff",
+          "#70c6ff",
+          "#addeff",
           "#e5f5ff"
         ]
       },
-      "surface": {
+      "cream": {
         "role": "neutral",
         "displayName": "Warm Paper Ground",
         "canonical": "#fcf7f7",
         "tonalRamp": [
           "#381515",
-          "#622525",
-          "#8c3535",
-          "#b74545",
-          "#c86d6d",
-          "#d89898",
-          "#e8c2c2",
+          "#602424",
+          "#893333",
+          "#b24343",
+          "#c76b6b",
+          "#d89797",
+          "#e9c4c4",
           "#f8ecec"
         ]
       },
-      "border": {
+      "paper": {
         "role": "neutral",
-        "displayName": "Drawn Line",
-        "canonical": "#cacedd",
+        "displayName": "Panel White",
+        "canonical": "#ffffff",
         "tonalRamp": [
-          "#1e212f",
-          "#353b52",
-          "#4b5476",
-          "#626e99",
-          "#858eb1",
-          "#a8afc7",
-          "#ccd0de",
-          "#eff1f5"
+          "#292323",
+          "#483d3d",
+          "#665757",
+          "#847171",
+          "#a19191",
+          "#bdb2b2",
+          "#d9d3d3",
+          "#f3f1f1"
         ]
       },
-      "ink": {
-        "role": "neutral",
-        "displayName": "Platform Ink",
-        "canonical": "#100f30",
-        "tonalRamp": [
-          "#13123a",
-          "#222067",
-          "#312e93",
-          "#403cc0",
-          "#6a66cf",
-          "#9593dd",
-          "#c0bfeb",
-          "#ececf9"
-        ]
-      },
-      "ink-strong": {
+      "navy": {
         "role": "secondary",
         "displayName": "Deep Ink Navy",
         "canonical": "#1c1a59",
         "tonalRamp": [
           "#13113b",
-          "#211e68",
-          "#2f2c95",
-          "#3d39c3",
-          "#6764d2",
-          "#9491df",
-          "#c0beec",
+          "#201e67",
+          "#2e2b92",
+          "#3c37bd",
+          "#6561d1",
+          "#9390df",
+          "#c1c0ed",
           "#ecebf9"
         ]
       },
-      "ink-muted": {
+      "navy-soft": {
         "role": "neutral",
-        "displayName": "Tinted Secondary",
-        "canonical": "#696e82",
+        "displayName": "Second Voice Navy",
+        "canonical": "#4a4785",
         "tonalRamp": [
-          "#22242a",
-          "#3c3f4b",
-          "#565a6b",
-          "#70768b",
-          "#9094a5",
-          "#b0b3c0",
-          "#d1d2da",
-          "#f1f1f4"
+          "#1c1b32",
+          "#302e56",
+          "#44427b",
+          "#5955a0",
+          "#7d7ab8",
+          "#a4a2cd",
+          "#cbcae3",
+          "#efeef6"
         ]
       },
-      "accent": {
+      "line": {
+        "role": "neutral",
+        "displayName": "Drawn Line",
+        "canonical": "#c8c3d6",
+        "tonalRamp": [
+          "#231f2d",
+          "#3c364f",
+          "#564d70",
+          "#6f6391",
+          "#9086ac",
+          "#b1aac5",
+          "#d3cfde",
+          "#f1f0f5"
+        ]
+      },
+      "line-strong": {
+        "role": "neutral",
+        "displayName": "Control Outline",
+        "canonical": "#9a94b4",
+        "tonalRamp": [
+          "#22202d",
+          "#3b374e",
+          "#544e6f",
+          "#6d6590",
+          "#8e87ab",
+          "#b0abc4",
+          "#d2cfdd",
+          "#f1f0f4"
+        ]
+      },
+      "violet": {
         "role": "primary",
-        "displayName": "Signal Blue",
+        "displayName": "Action Violet",
+        "canonical": "#a47cc0",
+        "tonalRamp": [
+          "#291934",
+          "#462b5a",
+          "#643d7f",
+          "#824fa5",
+          "#9f75bd",
+          "#bc9fd1",
+          "#d9c8e5",
+          "#f3eef7"
+        ]
+      },
+      "sky": {
+        "role": "primary",
+        "displayName": "Open Sky",
         "canonical": "#52b4d5",
         "tonalRamp": [
           "#0f323e",
-          "#1a586c",
-          "#267e9b",
-          "#31a4ca",
-          "#5eb9d8",
-          "#8dcde3",
-          "#bce2ef",
+          "#1a566b",
+          "#257b98",
+          "#309fc5",
+          "#5bb8d7",
+          "#8ccde3",
+          "#bde3ef",
           "#eaf6fa"
-        ]
-      },
-      "accent-bright": {
-        "role": "primary",
-        "displayName": "Sign Blue",
-        "canonical": "#61cdf1",
-        "tonalRamp": [
-          "#063646",
-          "#0b607c",
-          "#1089b1",
-          "#14b2e7",
-          "#47c5ef",
-          "#7cd6f3",
-          "#b2e7f8",
-          "#e8f8fd"
         ]
       },
       "teal": {
@@ -250,12 +265,12 @@
         "canonical": "#06ae97",
         "tonalRamp": [
           "#034a40",
-          "#048271",
-          "#06bba2",
-          "#08f3d3",
-          "#3df8df",
-          "#76fae8",
-          "#aefcf2",
+          "#04806f",
+          "#06b69e",
+          "#08edcd",
+          "#3af8de",
+          "#75fae8",
+          "#b0fcf2",
           "#e6fefb"
         ]
       },
@@ -265,50 +280,125 @@
         "canonical": "#aef2dd",
         "tonalRamp": [
           "#0b4231",
-          "#137456",
-          "#1ba67b",
-          "#23d9a0",
-          "#52e3b7",
-          "#85ebcc",
-          "#b7f3e1",
+          "#127255",
+          "#1aa378",
+          "#22d39c",
+          "#4fe3b5",
+          "#84ebcb",
+          "#b9f4e1",
           "#e9fbf6"
         ]
       },
-      "coin": {
+      "magenta": {
+        "role": "secondary",
+        "displayName": "Hand-in Magenta",
+        "canonical": "#b21b9b",
+        "tonalRamp": [
+          "#420a3a",
+          "#731164",
+          "#a4198f",
+          "#d520b9",
+          "#e44ecd",
+          "#ec83dc",
+          "#f4b8eb",
+          "#fce9f9"
+        ]
+      },
+      "coral": {
+        "role": "tertiary",
+        "displayName": "Streak Coral",
+        "canonical": "#f35757",
+        "tonalRamp": [
+          "#470505",
+          "#7c0909",
+          "#b00d0d",
+          "#e41010",
+          "#f14141",
+          "#f57a7a",
+          "#fab3b3",
+          "#fde7e7"
+        ]
+      },
+      "orange": {
         "role": "tertiary",
         "displayName": "Coin Orange",
         "canonical": "#fba62f",
         "tonalRamp": [
           "#4b2c01",
-          "#844e03",
-          "#bd7004",
-          "#f79205",
-          "#fbab3a",
-          "#fcc374",
-          "#fddcad",
+          "#824d03",
+          "#b96d04",
+          "#f08e05",
+          "#fba937",
+          "#fcc373",
+          "#fdddaf",
           "#fff4e6"
         ]
       },
-      "flame": {
+      "gold": {
         "role": "tertiary",
-        "displayName": "Streak Red",
-        "canonical": "#f35757",
+        "displayName": "Setup Gold",
+        "canonical": "#f6c63f",
         "tonalRamp": [
-          "#470505",
-          "#7e0909",
-          "#b40d0d",
-          "#eb1111",
-          "#f24444",
-          "#f67a7a",
-          "#f9b1b1",
-          "#fde7e7"
+          "#493703",
+          "#7f5f06",
+          "#b48708",
+          "#eaaf0b",
+          "#f6c53c",
+          "#f9d777",
+          "#fbe8b1",
+          "#fef8e7"
+        ]
+      },
+      "sand": {
+        "role": "tertiary",
+        "displayName": "Locked Sand",
+        "canonical": "#f4dfc6",
+        "tonalRamp": [
+          "#40280c",
+          "#6f4615",
+          "#9e641f",
+          "#cd8228",
+          "#de9f54",
+          "#e8bc87",
+          "#f2d9bb",
+          "#fbf3ea"
+        ]
+      },
+      "teal-grey": {
+        "role": "tertiary",
+        "displayName": "Passed Teal Grey",
+        "canonical": "#b3c7c3",
+        "tonalRamp": [
+          "#202c2a",
+          "#384c48",
+          "#506d67",
+          "#688d86",
+          "#8aa8a2",
+          "#adc2be",
+          "#d0dcda",
+          "#f0f4f3"
+        ]
+      },
+      "ops-accent-bright": {
+        "role": "primary",
+        "displayName": "Sign Blue (staff console)",
+        "canonical": "#61cdf1",
+        "tonalRamp": [
+          "#063646",
+          "#0b5e7a",
+          "#0f86ad",
+          "#14aee1",
+          "#44c4ee",
+          "#7cd5f3",
+          "#b4e7f8",
+          "#e8f8fd"
         ]
       }
     },
     "typographyMeta": {
       "site-display": {
         "displayName": "Landing Display",
-        "purpose": "Every landing header: section titles, step titles, FAQ questions."
+        "purpose": "Every landing header: section titles, step titles, FAQ questions. Ubuntu."
       },
       "site-body": {
         "displayName": "Landing Body",
@@ -316,61 +406,107 @@
       },
       "site-hand": {
         "displayName": "Brush",
-        "purpose": "Identity only \u2014 the wordmark and the footer's column labels. Never bold."
+        "purpose": "Identity only: the wordmark. Never bold."
+      },
+      "site-tagline": {
+        "displayName": "Tagline",
+        "purpose": "The landing's tagline lines."
       },
       "app-display": {
         "displayName": "Platform Display",
-        "purpose": "The page title on its hanging board. One per screen."
+        "purpose": "The page title on its hanging sign. One per screen."
+      },
+      "app-headline": {
+        "displayName": "Platform Headline",
+        "purpose": "The week banner headline; a project's name on its page."
       },
       "app-title": {
         "displayName": "Platform Title",
-        "purpose": "Nav items, participant names, reel authors."
+        "purpose": "Timeline headlines, reel authors, card names."
       },
       "app-body": {
         "displayName": "Platform Body",
-        "purpose": "Everything structural on the platform."
+        "purpose": "Descriptions, journal entries, comments. 68ch measure for entries."
+      },
+      "app-hand": {
+        "displayName": "Margin Hand",
+        "purpose": "Asides, timestamps, hours logged. Never a requirement someone must read."
       },
       "app-label": {
-        "displayName": "Accent Label",
-        "purpose": "Small uppercase labels: VIEW MORE, LOG OUT, YESTERDAY, timestamps."
-      },
-      "app-counter": {
-        "displayName": "Counter",
-        "purpose": "The coin and streak numerals only."
+        "displayName": "Label",
+        "purpose": "Section headings, chips, button text. Uppercase."
       }
     },
     "shadows": [
       {
-        "name": "node-drop",
-        "value": "0 6px 0 currentColor-dark",
-        "purpose": "The checkpoint node's second ellipse, drawn as a solid zero-blur drop. The only depth cue in the platform, and reserved for that component."
+        "name": "stack",
+        "value": "0 2px 4px rgba(28,26,89,.06), 0 10px 26px -12px rgba(28,26,89,.28)",
+        "purpose": "The lowest lift."
       },
       {
-        "name": "rail-recess",
-        "value": "inset 0 1px 1px rgb(0 0 0 / 0.1)",
-        "purpose": "The Doomscroller's inner panel. A recess, not a lift."
+        "name": "lift",
+        "value": "0 3px 6px rgba(28,26,89,.08), 0 18px 40px -16px rgba(28,26,89,.38)",
+        "purpose": "Reel cards: a video is an object on the desk."
+      },
+      {
+        "name": "tape",
+        "value": "0 3px 6px rgba(28,26,89,.1), 0 14px 30px -14px rgba(28,26,89,.4)",
+        "purpose": "Torn week banners and page signs."
+      },
+      {
+        "name": "sticker",
+        "value": "drop-shadow(0 3px 2px rgba(28,26,89,.16)) drop-shadow(0 9px 13px rgba(28,26,89,.13))",
+        "purpose": "Die-cut art."
+      },
+      {
+        "name": "puck",
+        "value": "0 10px 18px -6px rgba(28,26,89,.34)",
+        "purpose": "Under a checkpoint's rim disc, which itself sits 9px below the face (7px locked or passed, 11px for setup)."
       }
     ],
     "motion": [
       {
-        "name": "node-press",
-        "value": "transform 0.12s ease, box-shadow 0.12s ease",
-        "purpose": "The checkpoint node settles 2px on hover as its drop shortens. Disabled under prefers-reduced-motion."
+        "name": "ease-out-expo",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Arrivals: rail folds, sheets, bubbles, switches."
       },
       {
-        "name": "scroll-snap",
-        "value": "scroll-snap-type: y mandatory",
-        "purpose": "The feed clicks one reel into place at a time. Dropped under prefers-reduced-motion."
+        "name": "ease-spring",
+        "value": "cubic-bezier(0.22, 1.18, 0.36, 1)",
+        "purpose": "Small pops."
+      },
+      {
+        "name": "reel-glide",
+        "value": "360ms, 1-(1-t)^4",
+        "purpose": "One flick moves one reel on the Doomscroller; an instant cut under reduced motion."
+      },
+      {
+        "name": "puck-press",
+        "value": "transform 0.16s ease-out-expo",
+        "purpose": "The face lifts 3px on hover and sinks onto its rim on press."
+      },
+      {
+        "name": "callout-bob",
+        "value": "hl-bob 2.4s ease-in-out infinite",
+        "purpose": "The navy 'Start here' callout above the next checkpoint. Motion-safe only."
       }
     ],
     "breakpoints": [
       {
-        "name": "platform-rail",
-        "value": "1400px"
+        "name": "md",
+        "value": "768px"
       },
       {
-        "name": "platform-stack",
-        "value": "900px"
+        "name": "lg (sidebar appears)",
+        "value": "1024px"
+      },
+      {
+        "name": "xl (status rail, comments beside reel)",
+        "value": "1280px"
+      },
+      {
+        "name": "2xl",
+        "value": "1536px"
       },
       {
         "name": "site-stage",
@@ -378,160 +514,208 @@
       }
     ],
     "wobble": {
-      "border": "feTurbulence baseFrequency 0.05, numOctaves 3, seed 7; feDisplacementMap scale 2.5",
-      "rule": "feTurbulence baseFrequency 0.06, numOctaves 3, seed 3; feDisplacementMap scale 1.8, filterUnits userSpaceOnUse",
-      "note": "A horizontal rule has a zero-height bounding box, so its filter region must be stated in user space or it renders nothing."
+      "platform": "hl-wobble: feTurbulence baseFrequency 0.018, numOctaves 3, seed 7; feDisplacementMap scale 4.2. hl-wobble-2 (0.022, seed 21, scale 5) and hl-wobble-3 (0.034, 2 octaves, seed 43, scale 3.4) vary neighbours.",
+      "tear": "hl-tear: baseFrequency 0.02 0.11, seed 11, scale 9 (week banners, signs). hl-tear-soft: 0.03 0.09, seed 31, scale 5.",
+      "staffConsole": "WobbleBorder: baseFrequency 0.05, 3 octaves, seed 7, scale 2.5; rules 0.06 / scale 1.8 in userSpaceOnUse (a zero-height box needs a user-space filter region)."
     }
   },
   "components": [
     {
-      "name": "Primary Button",
+      "name": "Solid Button",
       "kind": "button",
-      "refersTo": "button-primary",
-      "description": "The committing action on any platform screen.",
-      "html": "<button class=\"ds-btn ds-btn-primary\">Post reel</button>",
-      "css": ".ds-btn{font:700 1rem/1.3 'Plus Jakarta Sans',system-ui,sans-serif;display:inline-flex;align-items:center;gap:.4rem;padding:.5rem 1.1rem;border-radius:8px;border:2px solid #1c1a59;cursor:pointer;transition:background .15s ease}.ds-btn-primary{background:#61cdf1;color:#1c1a59}.ds-btn-primary:hover{background:#52b4d5}.ds-btn-primary:focus-visible{outline:3px solid #52b4d5;outline-offset:2px}"
+      "refersTo": "button-solid",
+      "description": "The committing action on a platform screen. White on violet is 3.37:1 — a known failure awaiting a brand decision.",
+      "html": "<button class=\"ds-btn ds-btn-solid\">Save entry</button>",
+      "css": ".ds-btn{font:700 .85rem/1 'Shantell Sans','Plus Jakarta Sans',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.11em;display:inline-flex;align-items:center;justify-content:center;gap:.5rem;height:2.75rem;padding:0 1.25rem;border-radius:12px;border:2px solid;cursor:pointer;transition:background-color .15s,color .15s,transform .15s}.ds-btn:active{transform:translateY(1px)}.ds-btn:focus-visible{outline:3px solid #b21b9b;outline-offset:3px}.ds-btn-solid{background:#a47cc0;color:#fff;border-color:#7b519b}.ds-btn-solid:hover{background:#7b519b}"
     },
     {
-      "name": "Default Button",
+      "name": "Outline Button",
       "kind": "button",
-      "refersTo": "button-default",
-      "description": "Secondary actions. Same outline weight as primary, so it still reads as a control.",
-      "html": "<button class=\"ds-btn ds-btn-default\">Record on my phone</button>",
-      "css": ".ds-btn{font:700 1rem/1.3 'Plus Jakarta Sans',system-ui,sans-serif;display:inline-flex;align-items:center;padding:.5rem 1.1rem;border-radius:8px;border:2px solid #1c1a59;cursor:pointer;transition:background .15s ease}.ds-btn-default{background:#fff;color:#1c1a59}.ds-btn-default:hover{background:#aef2dd}.ds-btn-default:focus-visible{outline:3px solid #52b4d5;outline-offset:2px}"
+      "refersTo": "button-outline",
+      "description": "Secondary actions.",
+      "html": "<button class=\"ds-btn ds-btn-outline\">Edit details</button>",
+      "css": ".ds-btn{font:700 .85rem/1 'Shantell Sans','Plus Jakarta Sans',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.11em;display:inline-flex;align-items:center;justify-content:center;gap:.5rem;height:2.75rem;padding:0 1.25rem;border-radius:12px;border:2px solid;cursor:pointer;transition:background-color .15s,color .15s,transform .15s}.ds-btn:active{transform:translateY(1px)}.ds-btn:focus-visible{outline:3px solid #b21b9b;outline-offset:3px}.ds-btn-outline{background:transparent;color:#1c1a59;border-color:#a47cc0}.ds-btn-outline:hover{background:#ece2f2}"
     },
     {
-      "name": "Danger Button",
+      "name": "Ghost Button",
       "kind": "button",
-      "refersTo": "button-danger",
-      "description": "Destructive actions only \u2014 delete, reject.",
-      "html": "<button class=\"ds-btn ds-btn-danger\">Delete</button>",
-      "css": ".ds-btn{font:700 1rem/1.3 'Plus Jakarta Sans',system-ui,sans-serif;display:inline-flex;padding:.5rem 1.1rem;border-radius:8px;border:2px solid #1c1a59;cursor:pointer}.ds-btn-danger{background:#f35757;color:#fff}.ds-btn-danger:hover{filter:brightness(.94)}.ds-btn-danger:focus-visible{outline:3px solid #52b4d5;outline-offset:2px}"
+      "refersTo": "button-ghost",
+      "description": "Tertiary actions and dismissals.",
+      "html": "<button class=\"ds-btn ds-btn-ghost\">Cancel</button>",
+      "css": ".ds-btn{font:700 .85rem/1 'Shantell Sans','Plus Jakarta Sans',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.11em;display:inline-flex;align-items:center;justify-content:center;gap:.5rem;height:2.75rem;padding:0 1.25rem;border-radius:12px;border:2px solid;cursor:pointer;transition:background-color .15s,color .15s,transform .15s}.ds-btn:active{transform:translateY(1px)}.ds-btn:focus-visible{outline:3px solid #b21b9b;outline-offset:3px}.ds-btn-ghost{background:transparent;color:#4a4785;border-color:transparent}.ds-btn-ghost:hover{color:#1c1a59;background:rgba(0,0,0,.05)}"
+    },
+    {
+      "name": "Chips",
+      "kind": "chip",
+      "refersTo": "chip-violet",
+      "description": "A fact about the thing it sits on. Two per header at most.",
+      "html": "<span class=\"ds-chips\"><span class=\"ds-chip ds-chip-muted\">PCB</span><span class=\"ds-chip ds-chip-violet\">Tier 2</span></span>",
+      "css": ".ds-chips{display:inline-flex;gap:.5rem}.ds-chip{font:700 .78rem/1.25 'Shantell Sans','Plus Jakarta Sans',sans-serif;text-transform:uppercase;letter-spacing:.11em;border-radius:999px;padding:.25rem .625rem}.ds-chip-violet{background:#ece2f2;color:#7b519b}.ds-chip-muted{background:rgba(0,0,0,.05);color:#4a4785}"
     },
     {
       "name": "Text Field",
       "kind": "input",
       "refersTo": "input",
-      "description": "Label above, hint below, accent caret.",
-      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Project name</span><input class=\"ds-input\" placeholder=\"Give it a cool name!\"><span class=\"ds-field-hint\">You can always edit this later.</span></label>",
-      "css": ".ds-field{display:flex;flex-direction:column;gap:.35rem;font-family:'Plus Jakarta Sans',system-ui,sans-serif;max-width:22rem}.ds-field-label{font-weight:700;font-size:.95rem;color:#100f30}.ds-input{font:400 1rem 'Plus Jakarta Sans',system-ui,sans-serif;color:#100f30;background:#fff;border:2px solid #cacedd;border-radius:8px;padding:.6rem .75rem;caret-color:#52b4d5}.ds-input::placeholder{color:#696e82}.ds-input:focus-visible{outline:3px solid #52b4d5;outline-offset:2px}.ds-field-hint{font-size:.875rem;color:#696e82}"
+      "description": "A real 2px border: .sketch cannot draw on a form control.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Project name</span><input class=\"ds-input\" placeholder=\"Give it a name\"></label>",
+      "css": ".ds-field{display:grid;gap:.375rem;max-width:22rem;font-family:'Plus Jakarta Sans',system-ui,sans-serif}.ds-field-label{font:700 .78rem/1.25 'Shantell Sans','Plus Jakarta Sans',sans-serif;text-transform:uppercase;letter-spacing:.11em;color:#7b519b}.ds-input{font:400 .95rem 'Plus Jakarta Sans',system-ui,sans-serif;color:#1c1a59;background:rgba(0,0,0,.02);border:2px solid #c8c3d6;border-radius:12px;padding:.75rem 1rem;outline:none;transition:border-color .15s,background-color .15s}.ds-input::placeholder{color:#8b87a8}.ds-input:hover{border-color:#9a94b4}.ds-input:focus{border-color:#a47cc0;background:#fff}"
     },
     {
-      "name": "Drawn Card",
+      "name": "Drawn Panel",
       "kind": "card",
-      "refersTo": "card",
-      "description": "The platform's container. Its border is a displaced SVG stroke, not a CSS border \u2014 vary the filter seed between neighbouring cards.",
-      "html": "<div class=\"ds-card\"><svg class=\"ds-card-edge\" aria-hidden=\"true\" preserveAspectRatio=\"none\"><defs><filter id=\"dsWob\" x=\"-5%\" y=\"-5%\" width=\"110%\" height=\"110%\"><feTurbulence type=\"fractalNoise\" baseFrequency=\"0.05\" numOctaves=\"3\" seed=\"7\" result=\"n\"/><feDisplacementMap in=\"SourceGraphic\" in2=\"n\" scale=\"2.5\" xChannelSelector=\"R\" yChannelSelector=\"G\"/></filter></defs><rect rx=\"10\" ry=\"10\" fill=\"none\" stroke=\"#cacedd\" stroke-width=\"2\" filter=\"url(#dsWob)\"/></svg><p class=\"ds-card-body\">You&rsquo;re on track to get a <strong>Bambu A1 Mini</strong>!</p></div>",
-      "css": ".ds-card{position:relative;padding:1.4rem 1.5rem;border-radius:10px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#100f30;max-width:20rem}.ds-card-edge{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}.ds-card-edge rect{x:2px;y:2px;width:calc(100% - 4px);height:calc(100% - 4px)}.ds-card-body{margin:0}"
+      "refersTo": "panel-sketch",
+      "description": "The platform's container: white, outlined by a displaced stroke on a pseudo-element. Never shadowed, never nested.",
+      "html": "<svg width=\"0\" height=\"0\" style=\"position:absolute\" aria-hidden=\"true\"><filter id=\"dsWob\" x=\"-12%\" y=\"-12%\" width=\"124%\" height=\"124%\"><feTurbulence type=\"fractalNoise\" baseFrequency=\"0.018\" numOctaves=\"3\" seed=\"7\" result=\"n\"/><feDisplacementMap in=\"SourceGraphic\" in2=\"n\" scale=\"4.2\" xChannelSelector=\"R\" yChannelSelector=\"G\"/></filter></svg><div class=\"ds-panel\"><p class=\"ds-panel-label\">Timeline</p><p class=\"ds-panel-body\">Soldered the USB-C port today. The first board shorted, the second one lit up.</p></div>",
+      "css": ".ds-panel{position:relative}.ds-panel::before{content:\"\";position:absolute;inset:0;border:2px solid #c8c3d6;border-radius:16px;filter:url(#dsWob);pointer-events:none}.ds-panel{background:#fff;border-radius:16px;padding:1.25rem 1.5rem;max-width:22rem;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#1c1a59}.ds-panel-label{margin:0 0 .5rem;font:700 .78rem/1.25 'Shantell Sans','Plus Jakarta Sans',sans-serif;text-transform:uppercase;letter-spacing:.11em;color:#7b519b}.ds-panel-body{margin:0;font-size:.9rem;line-height:1.5}"
     },
     {
       "name": "Sidebar Nav",
       "kind": "nav",
-      "refersTo": "nav-item",
-      "description": "The current page is DIMMED to 40%, not highlighted. Rules between items are drawn, not bordered.",
-      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-item ds-nav-current\" href=\"#\">Home</a><svg class=\"ds-rule\" viewBox=\"0 0 300 10\" preserveAspectRatio=\"none\" aria-hidden=\"true\"><defs><filter id=\"dsWobR\" filterUnits=\"userSpaceOnUse\" x=\"-5\" y=\"-5\" width=\"310\" height=\"20\"><feTurbulence type=\"fractalNoise\" baseFrequency=\"0.06\" numOctaves=\"3\" seed=\"3\" result=\"n\"/><feDisplacementMap in=\"SourceGraphic\" in2=\"n\" scale=\"1.8\" xChannelSelector=\"R\" yChannelSelector=\"G\"/></filter></defs><path d=\"M2 5 H298\" fill=\"none\" stroke=\"#cacedd\" stroke-width=\"2\" stroke-linecap=\"round\" filter=\"url(#dsWobR)\"/></svg><a class=\"ds-nav-item\" href=\"#\">Explore</a></nav>",
-      "css": ".ds-nav{display:flex;flex-direction:column;font-family:'Plus Jakarta Sans',system-ui,sans-serif;max-width:18rem}.ds-nav-item{font-weight:700;font-size:1.375rem;color:#100f30;text-decoration:none;padding:.55rem .25rem}.ds-nav-item:hover{color:#52b4d5}.ds-nav-current{opacity:.4}.ds-rule{display:block;width:100%;height:10px;overflow:visible}"
+      "refersTo": "nav",
+      "description": "The current page is extra-bold navy with a coral dot; the rest semibold navy-soft; dashed dividers.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-item ds-nav-current\" href=\"#\" aria-current=\"page\"><span>Home</span><span class=\"ds-dot\" aria-hidden=\"true\"></span></a><a class=\"ds-nav-item\" href=\"#\"><span>Projects</span></a><a class=\"ds-nav-item\" href=\"#\"><span>Explore</span></a></nav>",
+      "css": ".ds-nav{display:flex;flex-direction:column;max-width:14rem;font-family:'Plus Jakarta Sans',system-ui,sans-serif}.ds-nav-item{display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.75rem 0;border-bottom:1px dashed #c8c3d6;font-size:1.02rem;font-weight:600;color:#4a4785;text-decoration:none;transition:color .15s}.ds-nav-item:hover{color:#1c1a59}.ds-nav-current{font-weight:800;color:#1c1a59}.ds-dot{width:8px;height:8px;border-radius:50%;background:#f35757}.ds-nav-item:focus-visible{outline:3px solid #b21b9b;outline-offset:3px;border-radius:6px}"
     },
     {
-      "name": "Checkpoint Node \u2014 current",
+      "name": "Checkpoint — open",
       "kind": "custom",
-      "refersTo": "checkpoint-node-current",
-      "description": "The platform's signature. Fills from the bottom in a deeper tone of its own hue, so it reads as one thing partly filled.",
-      "html": "<a class=\"ds-node\" href=\"#\"><span class=\"ds-node-disc\"><span class=\"ds-node-fill\"></span><svg class=\"ds-node-glyph\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M9 5l9 7-9 7z\" fill=\"currentColor\"/></svg></span><span class=\"ds-node-label\">Reach 8 hours</span></a>",
-      "css": ".ds-node{display:inline-flex;flex-direction:column;align-items:center;gap:.5rem;text-decoration:none;font-family:'Plus Jakarta Sans',system-ui,sans-serif}.ds-node-disc{position:relative;display:grid;place-items:center;width:119px;height:104px;border-radius:50%;overflow:hidden;background:#b21b9b;color:#fff;box-shadow:0 6px 0 #7d1370;transition:transform .12s ease,box-shadow .12s ease}.ds-node:hover .ds-node-disc{transform:translateY(2px);box-shadow:0 4px 0 #7d1370}.ds-node:focus-visible .ds-node-disc{outline:3px solid #52b4d5;outline-offset:3px}.ds-node-fill{position:absolute;left:0;right:0;bottom:0;height:68%;background:#7d1370}.ds-node-glyph{position:relative;z-index:1;width:40px;height:40px}.ds-node-label{font-weight:700;font-size:1.05rem;color:#100f30}"
+      "refersTo": "puck-open",
+      "description": "A checkpoint you can open: sky face on a sky-deep rim.",
+      "html": "<button class=\"ds-puck ds-open\" aria-label=\"Checkpoint\"><span class=\"ds-puck-face\"><svg viewBox=\"0 0 24 24\" width=\"30\" height=\"30\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"8.6\"/><path d=\"M12 7v5.4l3.4 2\"/></svg></span></button>",
+      "css": ".ds-puck{position:relative;display:grid;place-items:center;width:84px;aspect-ratio:1;border:0;background:none;padding:0;cursor:pointer;transition:transform .16s cubic-bezier(.16,1,.3,1)}.ds-puck::after{content:\"\";position:absolute;inset:0;border-radius:50%;background:#2e8cae;transform:translateY(9px);box-shadow:0 10px 18px -6px rgba(28,26,89,.34)}.ds-puck-face{position:relative;z-index:1;display:grid;place-items:center;width:100%;height:100%;border-radius:50%;background:#52b4d5;box-shadow:inset 0 -3px 0 rgba(255,255,255,.2)}.ds-puck:hover{transform:translateY(-3px)}.ds-puck:focus-visible{outline:3px solid #b21b9b;outline-offset:3px;border-radius:50%}"
     },
     {
-      "name": "Checkpoint Node \u2014 locked",
+      "name": "Checkpoint — done",
       "kind": "custom",
-      "refersTo": "checkpoint-node-locked",
-      "description": "Unlinked on purpose: offering a link to something the path says you cannot do yet makes the track untrustworthy.",
-      "html": "<span class=\"ds-node ds-node-locked\" aria-disabled=\"true\"><span class=\"ds-node-disc\"><svg class=\"ds-node-glyph\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M7 10V8a5 5 0 0110 0v2h1.5v10h-13V10zm2 0h6V8a3 3 0 00-6 0z\" fill=\"currentColor\"/></svg></span><span class=\"ds-node-label\">Submit for review</span></span>",
-      "css": ".ds-node{display:inline-flex;flex-direction:column;align-items:center;gap:.5rem;font-family:'Plus Jakarta Sans',system-ui,sans-serif}.ds-node-locked .ds-node-disc{position:relative;display:grid;place-items:center;width:119px;height:104px;border-radius:50%;background:#f2ecec;color:#696e82;box-shadow:0 6px 0 #cacedd}.ds-node-glyph{width:40px;height:40px}.ds-node-locked .ds-node-label{font-weight:700;font-size:1.05rem;color:#696e82}"
+      "refersTo": "puck-done",
+      "description": "Finished: teal face with a check.",
+      "html": "<button class=\"ds-puck ds-done\" aria-label=\"Checkpoint\"><span class=\"ds-puck-face\"><svg viewBox=\"0 0 24 24\" width=\"30\" height=\"30\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12.5l4.5 4.5L19 7.5\"/></svg></span></button>",
+      "css": ".ds-puck{position:relative;display:grid;place-items:center;width:84px;aspect-ratio:1;border:0;background:none;padding:0;cursor:pointer;transition:transform .16s cubic-bezier(.16,1,.3,1)}.ds-puck::after{content:\"\";position:absolute;inset:0;border-radius:50%;background:#048372;transform:translateY(9px);box-shadow:0 10px 18px -6px rgba(28,26,89,.34)}.ds-puck-face{position:relative;z-index:1;display:grid;place-items:center;width:100%;height:100%;border-radius:50%;background:#06ae97;box-shadow:inset 0 -3px 0 rgba(255,255,255,.2)}.ds-puck:hover{transform:translateY(-3px)}.ds-puck:focus-visible{outline:3px solid #b21b9b;outline-offset:3px;border-radius:50%}"
     },
     {
-      "name": "Counters",
+      "name": "Checkpoint — locked",
       "kind": "custom",
-      "refersTo": "app-counter",
-      "description": "Coins and streak. The two saturated hues in the platform's chrome \u2014 and both currently fail contrast as text on the page ground.",
-      "html": "<div class=\"ds-counters\"><span class=\"ds-counter ds-counter-coin\">1240</span><span class=\"ds-counter ds-counter-flame\">7</span></div>",
-      "css": ".ds-counters{display:flex;gap:2rem;align-items:center}.ds-counter{font-family:'Comico','Comic Sans MS','Chalkboard SE',sans-serif;font-size:1.875rem;line-height:1}.ds-counter-coin{color:#fba62f}.ds-counter-flame{color:#f35757}"
+      "refersTo": "puck-locked",
+      "description": "Not reachable yet: sand, padlock, sunk to a 7px rim. The hover bubble names the one thing in the way.",
+      "html": "<button class=\"ds-puck ds-locked\" aria-label=\"Checkpoint\"><span class=\"ds-puck-face\"><svg viewBox=\"0 0 24 24\" width=\"30\" height=\"30\" fill=\"none\" stroke=\"#cdae8a\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"5.5\" y=\"10.5\" width=\"13\" height=\"9.5\" rx=\"2\"/><path d=\"M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5\"/></svg></span></button>",
+      "css": ".ds-puck{position:relative;display:grid;place-items:center;width:84px;aspect-ratio:1;border:0;background:none;padding:0;cursor:pointer;transition:transform .16s cubic-bezier(.16,1,.3,1)}.ds-puck::after{content:\"\";position:absolute;inset:0;border-radius:50%;background:#cdae8a;transform:translateY(7px);box-shadow:0 10px 18px -6px rgba(28,26,89,.34)}.ds-puck-face{position:relative;z-index:1;display:grid;place-items:center;width:100%;height:100%;border-radius:50%;background:#f4dfc6;box-shadow:inset 0 -3px 0 rgba(255,255,255,.2)}.ds-puck:hover{transform:translateY(-3px)}.ds-puck:focus-visible{outline:3px solid #b21b9b;outline-offset:3px;border-radius:50%}"
+    },
+    {
+      "name": "Checkpoint — passed",
+      "kind": "custom",
+      "refersTo": "puck-passed",
+      "description": "Its week's Sunday has gone: teal grey, sunk to a 7px rim. 'This week has passed!'",
+      "html": "<button class=\"ds-puck ds-passed\" aria-label=\"Checkpoint\"><span class=\"ds-puck-face\"><svg viewBox=\"0 0 24 24\" width=\"30\" height=\"30\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12.5l4.5 4.5L19 7.5\"/></svg></span></button>",
+      "css": ".ds-puck{position:relative;display:grid;place-items:center;width:84px;aspect-ratio:1;border:0;background:none;padding:0;cursor:pointer;transition:transform .16s cubic-bezier(.16,1,.3,1)}.ds-puck::after{content:\"\";position:absolute;inset:0;border-radius:50%;background:#86a09b;transform:translateY(7px);box-shadow:0 10px 18px -6px rgba(28,26,89,.34)}.ds-puck-face{position:relative;z-index:1;display:grid;place-items:center;width:100%;height:100%;border-radius:50%;background:#b3c7c3;box-shadow:inset 0 -3px 0 rgba(255,255,255,.2)}.ds-puck:hover{transform:translateY(-3px)}.ds-puck:focus-visible{outline:3px solid #b21b9b;outline-offset:3px;border-radius:50%}"
+    },
+    {
+      "name": "Hover Bubble — done",
+      "kind": "custom",
+      "refersTo": "bubble-done",
+      "description": "The mint bubble over a finished checkpoint. Same shape as the navy 'Start here' callout and the sand lock bubble.",
+      "html": "<svg width=\"0\" height=\"0\" style=\"position:absolute\" aria-hidden=\"true\"><filter id=\"dsWob\" x=\"-12%\" y=\"-12%\" width=\"124%\" height=\"124%\"><feTurbulence type=\"fractalNoise\" baseFrequency=\"0.018\" numOctaves=\"3\" seed=\"7\" result=\"n\"/><feDisplacementMap in=\"SourceGraphic\" in2=\"n\" scale=\"4.2\" xChannelSelector=\"R\" yChannelSelector=\"G\"/></filter></svg><div class=\"ds-bubble\"><p class=\"ds-bubble-main\"><svg viewBox=\"0 0 24 24\" width=\"13\" height=\"13\" fill=\"none\" stroke=\"#048372\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12.5l4.5 4.5L19 7.5\"/></svg>You've already completed this checkpoint!</p><p class=\"ds-bubble-note\">click to edit your entry.</p><span class=\"ds-bubble-tail\" aria-hidden=\"true\"></span></div>",
+      "css": ".ds-bubble{position:relative}.ds-bubble::before{content:\"\";position:absolute;inset:0;border:2px solid #048372;border-radius:14px;filter:url(#dsWob);pointer-events:none}.ds-bubble{background:#aef2dd;border-radius:14px;padding:.625rem .875rem;max-width:13rem;font-family:'Plus Jakarta Sans',system-ui,sans-serif}.ds-bubble-main{display:flex;gap:.375rem;align-items:flex-start;margin:0;font-size:.74rem;font-weight:600;line-height:1.35;color:#1c1a59}.ds-bubble-note{margin:.25rem 0 0;padding-left:1.25rem;font:500 .72rem/1.35 'Shantell Sans','Plus Jakarta Sans',sans-serif;letter-spacing:.04em;color:#4a4785}.ds-bubble-tail{position:absolute;top:100%;left:50%;margin-left:-8px;border:8px solid transparent;border-top:9px solid #aef2dd;border-bottom:0}"
     }
   ],
   "narrative": {
     "northStar": "Two worlds: \"The Production Line\" (landing) and \"The Field Notebook\" (platform)",
-    "overview": "Half Life runs two visual worlds on purpose. The marketing site sells a ten-week hardware programme to teenagers who have never soldered anything; the platform is where those teenagers then work, for ten weeks, most days. The landing page is a production line drawn as the line itself: flat plates, hard square corners, no shadows, an ink ground, and a thick band welding each stage to the next. The platform is a field notebook: every outline a drawn ink stroke, the week arriving as torn painted paper, structure expressed as a path you walk rather than a page you read.",
+    "overview": "Half Life runs two visual worlds on purpose. The marketing site sells a ten-week hardware programme to teenagers who have never soldered anything; the platform is where those teenagers then work, for ten weeks, most days. The landing page is a production line drawn as the line itself: flat plates, square-cut bands, no shadows, an ink ground, and a thick band welding each stage to the next. The platform is a field notebook: every outline a drawn ink stroke, the week arriving as torn painted paper, structure expressed as a path you walk rather than a page you read. Even the Doomscroller's reel player is drawn in the notebook's hand rather than as a dark cinema.",
     "keyCharacteristics": [
-      "Two grounds, never mixed: #31222c ink for the landing, #fcf7f7 warm paper for the platform.",
-      "The landing has no shadows and no rounded corners; the platform has drawn edges and one solid drop.",
+      "Two grounds, never mixed: #31222c ink for the landing, #fcf7f7 warm paper for the platform, with a faint 28px graph-paper tooth so the cream reads as paper rather than dimmed white.",
+      "The landing is flat and mostly square; the platform has drawn edges, pucks that sit on a rim, and a few stickers lifted off the page.",
+      "The platform's borders are drawn, not declared: .sketch puts a wobbling marker outline on a pseudo-element so the line never touches the content it frames, and .torn applies the same displacement to a filled shape.",
+      "Its checkpoint token is the .puck: a rim disc offset beneath a face disc, an ambient shadow under both, and a press that sinks the face onto the rim.",
       "The platform's primary structure is a progress path, not a dashboard of cards.",
-      "Illustration is the programme's own: gato characters and five theme paintings, all die-cut stickers.",
-      "Secondary text is tinted from its surface, never neutral grey."
+      "Illustration is the programme's own: a cast of fox and gato characters and five theme paintings, all die-cut stickers with a pale outline.",
+      "Text is navy and navy-soft, never neutral grey; the hand face writes the asides in the margin."
     ],
     "rules": [
       {
         "name": "The Two Worlds Rule",
-        "body": "A token from one world never appears in the other. The two palettes do not share a single value.",
+        "body": "A token from one world never appears in the other. If a platform screen needs an accent, it is sky, not hl-cyan. The two palettes do not share a single value, and a screen that mixes them belongs to neither.",
         "section": "colors"
       },
       {
         "name": "The Tinted Secondary Rule",
-        "body": "Secondary text is tinted from its own surface, never neutral grey.",
+        "body": "Secondary text is tinted from its own surface, never neutral grey. The landing derives hl-ink-soft as ink at 80% over paper and hl-paper-soft as paper at 78% over ink. The platform's secondary text is navy-soft, the navy hue lifted until it reads as a second voice.",
+        "section": "colors"
+      },
+      {
+        "name": "The State Colour Rule",
+        "body": "On the trail a puck's colour is its state, and each state owns one hue: sky open, teal done, magenta hand-in, gold setup, sand locked, teal-grey passed. Don't reuse these hues on a puck for anything else.",
         "section": "colors"
       },
       {
         "name": "The Misnamed Yellow Rule",
-        "body": "--color-hl-yellow and --color-hl-yellow-pale are blue. The landing was recoloured and the names were never updated. Trust the value, not the name.",
+        "body": "--color-hl-yellow (#A2C4DA) and --color-hl-yellow-pale (#EBF7FF) are blue. The landing was recoloured after those variables were named and the names were never updated. Trust the value, not the name — and rename them before adding anything new that uses them.",
         "section": "colors"
       },
       {
-        "name": "The Brush Bookends Rule",
-        "body": "Masterpiece is identity, never voice: the wordmark and the footer's column labels, and never bold.",
+        "name": "The One Size Per Role Rule",
+        "body": "Each role above has one size on a screen. Five near-identical hand sizes (12.2, 12.8, 13.1, 13.4, 13.8px) read as untidiness, not hierarchy; asides are 0.84rem, body 0.9rem, timeline titles 0.95rem.",
         "section": "typography"
       },
       {
-        "name": "The Comico Is Not Body Rule",
-        "body": "The accent face is for uppercase labels and numerals. No licensed file ships yet, so it falls back through one variable.",
+        "name": "The Hand Is Not Body Rule",
+        "body": "The platform's hand-lettered face sets labels, asides and nothing longer — never a requirement or an instruction someone has to read to finish a task. Shantell Sans stands in for the comp's COMICO, reached everywhere through --font-hand.",
+        "section": "typography"
+      },
+      {
+        "name": "The Brush Bookends Rule",
+        "body": "On the landing, Masterpiece is identity, never voice. It sets the wordmark and nothing else, and it is never bold: font-synthesis-weight: none is set for that reason.",
+        "section": "typography"
+      },
+      {
+        "name": "The Metric Drift Rule",
+        "body": "Ubuntu is not a drop-in for Open Sans: it sets about 3% smaller at the same font-size, and its declared ink box is 1.0984em against Open Sans's 1.2951em. Size the two independently.",
         "section": "typography"
       },
       {
         "name": "The Outline-Not-Shadow Rule",
-        "body": "Depth on the platform comes from a drawn outline and the ground showing through, never from a shadow.",
+        "body": "A panel, card, button or field is separated by a drawn outline and the page ground showing through, never by a shadow. If something needs separating, give it a border and a gap.",
         "section": "elevation"
       },
       {
-        "name": "The One Solid Drop Rule",
-        "body": "The zero-blur drop belongs to the checkpoint node and nothing else.",
+        "name": "The Paper-On-Paper Rule",
+        "body": "A shadow means an object sitting on the notebook — a puck, a sticker, a strip of tape, a reel. If it isn't something you could pick up, it doesn't get one.",
         "section": "elevation"
       },
       {
         "name": "The Drawn Edge Rule",
-        "body": "A platform border is drawn, not stroked. Vary the seed between adjacent cards.",
+        "body": "A platform border is drawn, not stroked. Use .sketch (or .sketch-2 / .sketch-3, which carry different seeds) rather than a CSS border, and vary which one between adjacent cards. In the staff console the equivalent is .hl-wobbly plus <WobbleBorder/> with a seed prop.",
         "section": "shapes"
       },
       {
         "name": "The Filter Applies To The Edge Rule",
-        "body": "The displacement filter goes on the border element only. Filtering an element that holds text turns the text to mush.",
+        "body": "The displacement filter goes on the border element only, never on a container. Filtering an element that holds text drags the text through the same displacement and turns it to mush.",
+        "section": "shapes"
+      },
+      {
+        "name": "The No Sketch On Fields Rule",
+        "body": ".sketch draws on a pseudo-element, and <input>, <select> and <textarea> cannot hold one — the outline silently never renders and the field is a white box on a white panel. Fields take a real 2px border instead.",
         "section": "shapes"
       }
     ],
     "dos": [
-      "Do pick the world first \u2014 palette, type, edge treatment and radius all follow from it.",
-      "Do draw platform borders with WobbleBorder and vary the seed between neighbouring cards.",
-      "Do tint secondary text from its surface.",
-      "Do dim the current nav item rather than highlighting it.",
-      "Do give every focusable surface the shared 3px accent ring at 2px offset.",
-      "Do put the content column first when the platform collapses to one column.",
-      "Do state a checkpoint's next action on the current node only, and leave locked nodes unlinked."
+      "Do pick the world first. A platform screen uses the platform palette, Plus Jakarta, drawn edges and 16px panels; a landing section uses ink, Ubuntu, Open Sans and square plates.",
+      "Do draw platform borders with .sketch / .sketch-2 / .sketch-3 and vary them between neighbouring panels.",
+      "Do keep a disabled control in place and say why next to it; never hide a control because it can't be used right now.",
+      "Do let a puck's colour say its state, and say the rest in the bubble that hangs above it.",
+      "Do give every focusable surface the ring: magenta, 3px, 3px offset on the platform; accent, 3px, 2px offset in the staff console.",
+      "Do keep one size per text role on a screen: asides 0.84rem, body 0.9rem, timeline titles 0.95rem.",
+      "Do put the content first when the platform collapses; below lg the chrome moves to a header and a bottom tab bar."
     ],
     "donts": [
       "Don't mix the two palettes, or put a platform component on a landing page.",
-      "Don't add a shadow to a platform card.",
-      "Don't use teal, coin or flame for body-size text until their contrast is resolved (2.64:1, 1.87:1, 3.13:1 on the page ground).",
+      "Don't shadow a panel, card, button or field. Shadows belong to things sitting on the paper — pucks, stickers, tape, reels.",
+      "Don't set text a participant must read in line-strong, teal, gold-deep, orange-deep, coral or sky-deep on cream, or white on sky, teal, orange or teal-grey — all below 4.5:1 (see Measured contrast).",
+      "Don't put .sketch on an <input>, <select> or <textarea>; it cannot render there.",
       "Don't trust --color-hl-yellow*: those variables hold blues.",
-      "Don't set Masterpiece in bold.",
+      "Don't set Masterpiece in bold, or use it for anything but the wordmark.",
       "Don't apply the wobble filter to anything containing text.",
-      "Don't nest cards.",
-      "Don't use a Unicode glyph as an icon."
+      "Don't nest panels, and don't reach for a panel when the content is a path, a feed or a form.",
+      "Don't stack chips as a page's structure; a fact that needs no emphasis goes in the quiet hand-text line.",
+      "Don't use a Unicode glyph as an icon. Icons are drawn SVG on a 24px grid at a 1.8px round stroke."
     ]
   }
 }

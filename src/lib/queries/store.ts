@@ -2,11 +2,24 @@ import "server-only"
 import prisma from "@/lib/prisma"
 import { HardwareExperience, Phase, PhaseStatus } from "@/app/generated/prisma/enums"
 import { getBalances } from "@/lib/currency"
-import { getProgramSettings, effectiveDateFor, weekNumberForDate } from "@/lib/program"
+import {
+  getProgramSettings,
+  effectiveDateFor,
+  effectiveWeekClose,
+  weekClosesAt,
+} from "@/lib/program"
 import { streakAsOf } from "@/lib/streak"
 import { rollUpHours } from "@/lib/hours"
+import { projectThumbnail } from "@/lib/thumbnail"
+import { publicUrlFor } from "@/lib/uploads/r2"
 import { DEFAULT_GOAL_ID } from "@/lib/config/printers"
-import { DESIGN_WEEKS, ONBOARDING_CHECKPOINT_ID, THEMES } from "@/lib/config/program"
+import {
+  DESIGN_WEEKS,
+  ONBOARDING_CHECKPOINT_ID,
+  THEMES,
+  TOTAL_WEEKS,
+  scheduleForWeek,
+} from "@/lib/config/program"
 import type { Experience, Project, SessionLog } from "@/lib/types"
 
 /**
@@ -46,19 +59,20 @@ export interface CheckpointSnapshot {
 
 export interface StoreSnapshot {
   /** Who is signed in. Display fields only — never an email or a Slack id. */
-  viewer: { name: string; image: string | null; joinedWeek: number | null }
+  viewer: { name: string; image: string | null }
   experience: Experience | null
   /** Whether the first checkpoint has been completed. */
   onboardingDone: boolean
   projects: Project[]
   /**
    * Every theme project's id, by the design week it belongs to — including the
-   * ones nobody has named yet.
+   * ones not named yet.
    *
-   * The five rows exist from signup, so "creating" a project on the trail is
-   * really naming one. `projects` deliberately leaves the unnamed ones out, or
-   * the trail would claim credit for four weeks that have not happened, which
-   * means the client would have no id to write to when a week finally starts.
+   * A row is made when its week's "create a project" checkpoint is opened
+   * (lib/provisioning), so a week that has not started has no id here; the
+   * client asks for one (ensureProject) when that checkpoint opens. `projects`
+   * leaves the unnamed ones out, or the trail would claim credit for a week
+   * that has only been looked at.
    */
   projectIdByWeek: Record<number, string>
   progress: Record<string, CheckpointSnapshot>
@@ -83,6 +97,15 @@ export interface StoreSnapshot {
    * bank — and to know which weeks those are, it needs this.
    */
   phaseStatusByWeek: Record<number, PhaseStatus>
+  /**
+   * When each trail week stops taking work, epoch ms: midnight after its
+   * Sunday in the program timezone, pushed later by any extension on the
+   * participant or on that week's project. The server refuses journal writes
+   * past it, so the trail greys the week out at the same moment.
+   */
+  weekClosesAt: Record<number, number>
+  /** The server's clock when this was read, so the first paint agrees with it. */
+  now: number
   /** Ordinary coins. */
   coins: number
   /** The printer fund. Spendable on a printer and nothing else. */
@@ -111,12 +134,12 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
         select: {
           name: true,
           image: true,
-          joinedProgramAt: true,
           hardwareExperience: true,
           onboardingCompletedAt: true,
           printerGoalId: true,
           currentStreak: true,
           lastStreakDate: true,
+          submissionExtensionUntil: true,
         },
       }),
       prisma.themeProject.findMany({
@@ -130,10 +153,12 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
           requestedTier: true,
           starterProjectId: true,
           githubRepo: true,
+          coverImageKey: true,
           designStatus: true,
           buildStatus: true,
           designApprovedHours: true,
           approvedHours: true,
+          submissionExtensionUntil: true,
         },
       }),
       // Ordered, because the trail's Nth entry node IS the Nth session written.
@@ -168,7 +193,11 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
         orderBy: { createdAt: "asc" },
         select: { themeProjectId: true, phase: true, createdAt: true },
       }),
-      prisma.$transaction((tx) => getBalances(tx, userId)),
+      // Not in a transaction: this is a read for display, and BEGIN and COMMIT
+      // are two more round trips to a database ~110ms away from a laptop —
+      // the slowest part of the whole snapshot. Spending still reads its
+      // balance inside the transaction that spends it.
+      getBalances(prisma, userId),
       getProgramSettings(),
     ])
 
@@ -179,11 +208,14 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 
   // A reel posted twice for the same node keeps the newest caption; the rows are
   // ordered oldest-first, so the last write through this loop is the newest.
+  // The node keeps the FIRST post's date, though, as the client's own patch
+  // does: posting another reel adds to the timeline, it does not move the
+  // checkpoint up it.
   for (const post of posts) {
     if (!post.checkpointKey) continue
     progress[post.checkpointKey] = {
       done: true,
-      at: post.createdAt.getTime(),
+      at: progress[post.checkpointKey]?.at ?? post.createdAt.getTime(),
       caption: post.caption,
       minutes: 0,
       artefacts: 1,
@@ -252,12 +284,16 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
         }
       })
 
-      const submission = submissions.find(
-        (s) => s.themeProjectId === project.id && s.phase === phase,
-      )
+      // The newest hand-in dates the node; the status says whether it stands.
+      // A week taken back out of review (or reopened by an admin) is draft
+      // again with its old submission rows still there, and it has to read as
+      // not handed in, or the trail would hide the Submit it needs again.
+      const submission = submissions
+        .filter((s) => s.themeProjectId === project.id && s.phase === phase)
+        .at(-1)
       const status = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
       phaseStatusByWeek[week] = status
-      if (submission || status !== PhaseStatus.draft) {
+      if (status !== PhaseStatus.draft) {
         progress[id("submit")] = {
           done: true,
           at: submission?.createdAt.getTime(),
@@ -284,22 +320,30 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
     if (themeIndex !== -1) projectIdByWeek[weekOf(themeIndex, Phase.DESIGN)] = project.id
   }
 
+  const closes: Record<number, number> = {}
+  for (let week = 1; week <= TOTAL_WEEKS; week += 1) {
+    const theme = scheduleForWeek(week)?.theme.id
+    const project = theme ? byTheme.get(theme) : undefined
+    closes[week] = effectiveWeekClose(
+      weekClosesAt(settings, week),
+      user.submissionExtensionUntil,
+      project?.submissionExtensionUntil,
+    ).getTime()
+  }
+
   return {
     viewer: {
       name: user.name ?? "You",
       image: user.image,
-      joinedWeek: user.joinedProgramAt
-        ? weekNumberForDate(settings.eventStartDate, user.joinedProgramAt)
-        : null,
     },
     experience: user.hardwareExperience ? EXPERIENCE[user.hardwareExperience] : null,
     onboardingDone: user.onboardingCompletedAt !== null,
     projects: projects.flatMap((project) => {
       const themeIndex = THEMES.findIndex((t) => t.id === project.theme)
       const tier = project.tier ?? project.requestedTier
-      // A project nobody has named yet is not one the trail should list: the
-      // five rows exist from signup, and showing them all would claim credit
-      // for four weeks that have not happened.
+      // A project whose checkpoint was opened but never finished is not one
+      // the trail should list: the row exists from the moment "create a
+      // project" is opened, before anything has been decided about it.
       if (themeIndex === -1 || !project.title || !tier) return []
       return [
         {
@@ -310,6 +354,10 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
           tier: clampTier(tier),
           starter: project.starterProjectId !== null,
           githubRepo: project.githubRepo,
+          thumbnailUrl: projectThumbnail(
+            publicUrlFor(project.coverImageKey),
+            sessions.filter((s) => s.themeProjectId === project.id),
+          ),
         },
       ]
     }),
@@ -317,6 +365,8 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
     progress,
     offBookHours,
     phaseStatusByWeek,
+    weekClosesAt: closes,
+    now: Date.now(),
     coins: balances.spendable,
     bankedCoins: balances.banked,
     streak: streakAsOf(user, effectiveDateFor(new Date(), settings.programTimezone)),

@@ -39,7 +39,8 @@ function check(label: string, actual: unknown, expected: unknown) {
 
 async function main() {
   const { getStoreSnapshot } = await import("../src/lib/queries/store")
-  const { materializeThemeProjects } = await import("../src/lib/provisioning")
+  const { ensureThemeProject } = await import("../src/lib/provisioning")
+  const { THEMES } = await import("../src/lib/config/program")
 
   const stamp = Date.now()
   const user = await prisma.user.create({
@@ -51,8 +52,12 @@ async function main() {
     },
   })
 
-  const made = await materializeThemeProjects(user.id)
-  check("signup provisions every theme", made, 5)
+  // Projects are created one at a time as their checkpoints are opened; opening
+  // one twice must still leave one row.
+  for (const t of THEMES) await ensureThemeProject(user.id, t.id)
+  for (const t of THEMES) await ensureThemeProject(user.id, t.id)
+  const made = await prisma.themeProject.count({ where: { userId: user.id } })
+  check("creating a project is idempotent", made, 5)
 
   const pcb = await prisma.themeProject.findFirstOrThrow({
     where: { userId: user.id, theme: Theme.PCB },
@@ -163,7 +168,8 @@ async function main() {
       joinedProgramAt: new Date(),
     },
   })
-  await materializeThemeProjects(fresh.id)
+  // No project yet: onboarding is week one's "create a project" checkpoint and
+  // makes the PCB row itself.
 
   await submitStep(fresh.id, { step: "experience", experience: "A_LITTLE" })
   await submitStep(fresh.id, { step: "week" })

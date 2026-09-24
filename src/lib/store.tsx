@@ -1,15 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode, useRef } from "react";
 import { BUILD_HOURS, TIERS, WEEK_META, checkpointsFor } from "./curriculum";
 import { DESIGN_WEEKS, ONBOARDING_CHECKPOINT_ID } from "./config/program";
 import {
@@ -91,6 +83,9 @@ const KEY = "halflife.ceremony.v4";
 
 const EMPTY: CheckpointState = { done: false, minutes: 0, artefacts: 0, log: [] };
 
+/** What a checkpoint on a passed week says when it is hovered. */
+export const PASSED_REASON = "This week has passed!";
+
 function seededCeremony(): Ceremony {
   return { version: 4, phase: "cinematic", doomscrollerOpen: true };
 }
@@ -148,6 +143,12 @@ interface Ctx {
     githubRepo?: string | null;
   }) => void;
   addProject: (p: Omit<Project, "id">) => void;
+  /**
+   * Make the project row for a design week, if there is none yet, and resolve
+   * to its id (null if the server refused). Called when a "create a project"
+   * checkpoint is opened, which is the only moment a project row is made.
+   */
+  ensureProject: (weekId: number) => Promise<string | null>;
   setProjectTier: (id: string, tier: 1 | 2 | 3) => void;
   /**
    * Set or clear a project's repo link. Resolves to null once saved, or to the
@@ -177,8 +178,20 @@ interface Ctx {
     body: string,
     evidence?: Pick<SessionLog, "clips">,
   ) => Promise<string | null>;
+  /** Correct a finished entry's words and hours. Null once saved, or why it was refused. */
+  editSession: (id: string, minutes: number, body: string) => Promise<string | null>;
   stateOf: (id: string) => CheckpointState;
   isUnlocked: (id: string) => boolean;
+  /** Whether a checkpoint is shut because its week's time ran out. */
+  isPassed: (id: string) => boolean;
+  /** Whether a week's Sunday-midnight close (or its extension) is behind us. */
+  weekPassed: (weekId: number) => boolean;
+  /** Whether a week is handed in — in review, approved or rejected — so its entries are final. */
+  weekSubmitted: (weekId: number) => boolean;
+  /** Where a week stands with review. "draft" when nothing is recorded. */
+  phaseStatusOf: (weekId: number) => string;
+  /** Take a week in review back out of it. Null once done, or the server's reason. */
+  unsubmitPhase: (submitCheckpointId: string) => Promise<string | null>;
   /** Why a locked checkpoint is locked, phrased for the trail. Null if open. */
   lockReason: (id: string) => string | null;
   currentCheckpointId: string | null;
@@ -239,10 +252,50 @@ export function StoreProvider({
   // effect would paint one frame of stale data every time a refresh lands.
   const [facts, setFacts] = useState<StoreSnapshot>(snapshot);
   const [seen, setSeen] = useState<StoreSnapshot>(snapshot);
+  // The clock the week locks read. Seeded from the server's, so the first
+  // paint matches the server render, and moved on only when a week closes.
+  const [now, setNow] = useState(snapshot.now);
   if (seen !== snapshot) {
     setSeen(snapshot);
     setFacts(snapshot);
+    setNow(snapshot.now);
   }
+
+  // A trail left open over Sunday midnight greys its week out on the stroke
+  // of it, rather than on the next navigation. Timers top out at about 24.8
+  // days, so a close further off than that just re-arms when this one fires.
+  useEffect(() => {
+    const next = Object.values(facts.weekClosesAt)
+      .filter((at) => at > now)
+      .sort((a, b) => a - b)[0];
+    if (next === undefined) return;
+    const t = window.setTimeout(() => setNow(Date.now()), Math.min(next - now, 2 ** 31 - 1));
+    return () => window.clearTimeout(t);
+  }, [facts.weekClosesAt, now]);
+
+  const weekPassed = useCallback(
+    (weekId: number) => {
+      const closesAt = facts.weekClosesAt[weekId];
+      return closesAt !== undefined && now >= closesAt;
+    },
+    [facts.weekClosesAt, now],
+  );
+
+  /** Where a week stands with review: draft, in_review, update_requested, approved or rejected. */
+  const phaseStatusOf = useCallback(
+    (weekId: number) => facts.phaseStatusByWeek[weekId] ?? "draft",
+    [facts.phaseStatusByWeek],
+  );
+
+  // Handed in — in review, or decided. A week sent back for changes is open
+  // again, because fixing it is the point of sending it back.
+  const weekSubmitted = useCallback(
+    (weekId: number) => {
+      const status = facts.phaseStatusByWeek[weekId];
+      return status === "in_review" || status === "approved" || status === "rejected";
+    },
+    [facts.phaseStatusByWeek],
+  );
 
   const [ceremony, setCeremony] = useState<Ceremony>(seededCeremony);
   const [hydrated, setHydrated] = useState(false);
@@ -306,6 +359,38 @@ export function StoreProvider({
       }).finally(() => router.refresh());
     },
     [router],
+  );
+
+  // In flight per week, so a checkpoint opened twice in a row asks once.
+  const ensuring = useRef(new Map<number, Promise<string | null>>());
+
+  const ensureProject = useCallback(
+    (weekId: number): Promise<string | null> => {
+      const known = facts.projectIdByWeek[weekId];
+      if (known) return Promise.resolve(known);
+      const pending = ensuring.current.get(weekId);
+      if (pending) return pending;
+      const request = (async () => {
+        try {
+          const res = await fetch("/api/projects", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ weekId }),
+          });
+          if (!res.ok) return null;
+          const { id } = (await res.json()) as { id: string };
+          setFacts((f) => ({ ...f, projectIdByWeek: { ...f.projectIdByWeek, [weekId]: id } }));
+          return id;
+        } catch {
+          return null;
+        } finally {
+          ensuring.current.delete(weekId);
+        }
+      })();
+      ensuring.current.set(weekId, request);
+      return request;
+    },
+    [facts.projectIdByWeek],
   );
 
   /**
@@ -393,44 +478,45 @@ export function StoreProvider({
         // The repo is not an onboarding step — it is an ordinary project field
         // the server's state machine knows nothing about — so it goes through
         // the project route once the project it belongs to has been named.
-        if (answers.githubRepo && projectId) {
-          await send(`/api/projects/${projectId}`, { githubRepo: answers.githubRepo }, "PATCH");
+        const weekOneId = projectId ?? (await ensureProject(1));
+        if (answers.githubRepo && weekOneId) {
+          await send(`/api/projects/${weekOneId}`, { githubRepo: answers.githubRepo }, "PATCH");
         }
       })().finally(() => router.refresh());
     },
-    [facts.onboardingDone, facts.projectIdByWeek, router],
+    [facts.onboardingDone, facts.projectIdByWeek, ensureProject, router],
   );
 
   /**
-   * Naming a week's project.
-   *
-   * Not creating one: all five theme projects exist from the moment someone
-   * signs up, because the review queue, the grant pipeline and the hours
-   * rollup all key off them. So this fills in the row that is already there —
-   * which is also why a second project for the same week is refused rather
-   * than queued up behind the first where nothing would ever read it.
+   * Naming a week's project — filling in the row its checkpoint made when it
+   * was opened (ensureProject). A second project for the same week is refused
+   * rather than queued behind the first, where nothing would ever read it.
    */
   const addProject = useCallback(
     (p: Omit<Project, "id">) => {
-      const id = facts.projectIdByWeek[p.weekId];
-      if (!id) return;
-      setFacts((f) =>
-        f.projects.some((existing) => existing.weekId === p.weekId)
-          ? f
-          : { ...f, projects: [...f.projects, { ...p, id }] },
-      );
-      void send(
-        `/api/projects/${id}`,
-        {
-          title: p.name,
-          description: p.description,
-          requestedTier: p.tier,
-          ...(p.githubRepo ? { githubRepo: p.githubRepo } : {}),
-        },
-        "PATCH",
-      ).finally(() => router.refresh());
+      void (async () => {
+        // Normally made when the checkpoint opened; made here if that request
+        // had not landed yet, so a quick "Create project" still has a row.
+        const id = await ensureProject(p.weekId);
+        if (!id) return;
+        setFacts((f) =>
+          f.projects.some((existing) => existing.weekId === p.weekId)
+            ? f
+            : { ...f, projects: [...f.projects, { ...p, id }] },
+        );
+        await send(
+          `/api/projects/${id}`,
+          {
+            title: p.name,
+            description: p.description,
+            requestedTier: p.tier,
+            ...(p.githubRepo ? { githubRepo: p.githubRepo } : {}),
+          },
+          "PATCH",
+        );
+      })().finally(() => router.refresh());
     },
-    [facts.projectIdByWeek, router],
+    [ensureProject, router],
   );
 
   /**
@@ -645,6 +731,41 @@ export function StoreProvider({
     [patchCheckpoint, routeOf, router],
   );
 
+  /**
+   * Take a handed-in week back out of review, so it can be changed and handed
+   * in again. Only a week still waiting for a reviewer can be — the server
+   * refuses once a decision is made, or while a reviewer has it open.
+   */
+  const unsubmitPhase = useCallback(
+    async (id: string): Promise<string | null> => {
+      const route = routeOf(id);
+      const weekId = Number(/^w(\d+)-/.exec(id)?.[1]);
+      if (!route || !weekId) return "This week has no project to unsubmit.";
+      let res: Response;
+      try {
+        res = await fetch(`/api/projects/${route.projectId}/unsubmit`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ phase: route.phase }),
+        });
+      } catch {
+        return "Could not reach the server. Nothing changed — try again.";
+      }
+      if (!res.ok) {
+        const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+        return err?.error?.message ?? "The week was not unsubmitted. Try again.";
+      }
+      setFacts((f) => ({
+        ...f,
+        phaseStatusByWeek: { ...f.phaseStatusByWeek, [weekId]: "draft" },
+        progress: { ...f.progress, [id]: { ...EMPTY, ...f.progress[id], done: false } },
+      }));
+      router.refresh();
+      return null;
+    },
+    [routeOf, router],
+  );
+
   const setDoomscroller = useCallback(
     (doomscrollerOpen: boolean) => setCeremony((c) => ({ ...c, doomscrollerOpen })),
     [],
@@ -822,6 +943,59 @@ export function StoreProvider({
     [routeOf, router],
   );
 
+  /**
+   * Change a finished entry's words and hours. The node stays where it is —
+   * this is the same session, corrected, not another one — and its timelapses
+   * stay attached, because the server does not re-home evidence.
+   *
+   * Server first, like logSession: the server can refuse (an entry a reviewer
+   * has already put hours on, a week in review or passed), and an edit shown as
+   * saved that quietly reverts on the next refresh is worse than a sheet that
+   * says why it did not take.
+   */
+  const editSession = useCallback(
+    async (id: string, minutes: number, body: string): Promise<string | null> => {
+      const route = routeOf(id);
+      const entry = facts.progress[id]?.log[0];
+      if (!route || !entry) return "That entry could not be found. Refresh and try again.";
+      let res: Response;
+      try {
+        res = await fetch(`/api/projects/${route.projectId}/sessions/${entry.id}`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            title: body.trim().split("\n")[0]?.slice(0, 200) || "Work session",
+            content: body,
+            hoursClaimed: Math.round((minutes / 60) * 100) / 100,
+          }),
+        });
+      } catch {
+        return "Could not reach the server. Your changes are still here — try again.";
+      }
+      if (!res.ok) {
+        const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+        return err?.error?.message ?? "The entry was not saved. Try again.";
+      }
+      setFacts((f) => {
+        const prev = { ...EMPTY, ...f.progress[id] };
+        return {
+          ...f,
+          progress: {
+            ...f.progress,
+            [id]: {
+              ...prev,
+              minutes,
+              log: prev.log.map((l, i) => (i === 0 ? { ...l, minutes, body } : l)),
+            },
+          },
+        };
+      });
+      router.refresh();
+      return null;
+    },
+    [routeOf, facts.progress, router],
+  );
+
   const weekOf = useCallback(
     (weekId: number): Week => {
       const week = weeks.find((w) => w.id === weekId) ?? weeks[0];
@@ -876,7 +1050,46 @@ export function StoreProvider({
   );
 
   /**
-   * Three rules, and only three break the sequence:
+   * Whether a checkpoint is shut because its week ran out of time.
+   *
+   * Every node on a passed week is, done or not, with two exceptions: the
+   * Submit that still owes the week's hand-in, and a setup nobody has done
+   * yet — a late joiner still has to come in through the front door. A Submit
+   * with nothing logged behind it passes with the rest, because the server
+   * refuses an empty hand-in and there is nothing left to do about that.
+   */
+  const isPassed = useCallback(
+    (id: string): boolean => {
+      const week = weeks.find((w) => w.checkpoints.some((c) => c.id === id));
+      const self = week?.checkpoints.find((c) => c.id === id);
+      if (!week || !self || !weekPassed(week.id)) return false;
+      const done = save.progress[id]?.done ?? false;
+      if (self.kind === "onboarding" && !done) return false;
+      if (self.kind === "submit" && !done && weekHours(week.id) > 0) return false;
+      return true;
+    },
+    [weeks, weekPassed, save.progress, weekHours],
+  );
+
+  /**
+   * Whether a week still stands between the trail and the week after it. A
+   * week holds the next one shut until it is handed in — except a week that
+   * passed with nothing in it, which can never be handed in and would
+   * otherwise dead-end the rest of the season.
+   */
+  const owesSubmit = useCallback(
+    (week: Week): boolean => {
+      const submit = week.checkpoints.find((c) => c.kind === "submit");
+      if (!submit || (save.progress[submit.id]?.done ?? false)) return false;
+      return !(weekPassed(week.id) && weekHours(week.id) === 0);
+    },
+    [save.progress, weekPassed, weekHours],
+  );
+
+  /**
+   * Four rules, and only four break the sequence:
+   *  - a week that has passed is shut, all but the Submit it still owes —
+   *    which opens whatever the hours say, since no more can be logged;
    *  - anything on the clock (the milestone reels, and Submit itself) opens on
    *    the week's hours, so a half-written entry never traps you and the choice
    *    to wrap up is always live.
@@ -884,21 +1097,21 @@ export function StoreProvider({
    */
   const isUnlocked = useCallback(
     (id: string): boolean => {
+      if (isPassed(id)) return false;
       const done = (c: Checkpoint) => save.progress[c.id]?.done ?? false;
       const wi = weeks.findIndex((w) => w.checkpoints.some((c) => c.id === id));
       if (wi === -1) return false;
 
       const prev = weeks[wi - 1];
-      if (prev) {
-        const prevSubmit = prev.checkpoints.find((c) => c.kind === "submit");
-        if (prevSubmit && !done(prevSubmit)) return false;
-      }
+      if (prev && owesSubmit(prev)) return false;
 
       const week = weeks[wi];
       const list = week?.checkpoints ?? [];
       const i = list.findIndex((c) => c.id === id);
       const self = list[i];
       if (!week || !self) return false;
+
+      if (self.kind === "submit" && weekPassed(week.id)) return true;
 
       if (self.atHours !== undefined) {
         const hours = weekHours(week.id);
@@ -918,7 +1131,7 @@ export function StoreProvider({
 
       return list.slice(0, i).every(done);
     },
-    [weeks, save.progress, weekHours],
+    [isPassed, owesSubmit, weekPassed, weeks, save.progress, weekHours],
   );
 
   /**
@@ -938,16 +1151,14 @@ export function StoreProvider({
         c.kind === "reel" ? `Post ${c.title} first.` : `Finish ${c.title} first.`;
 
       if (isUnlocked(id)) return null;
+      if (isPassed(id)) return PASSED_REASON;
 
       const done = (c: Checkpoint) => save.progress[c.id]?.done ?? false;
       const wi = weeks.findIndex((w) => w.checkpoints.some((c) => c.id === id));
       if (wi === -1) return null;
 
       const prev = weeks[wi - 1];
-      if (prev) {
-        const prevSubmit = prev.checkpoints.find((c) => c.kind === "submit");
-        if (prevSubmit && !done(prevSubmit)) return `Submit week ${prev.id} first.`;
-      }
+      if (prev && owesSubmit(prev)) return `Submit week ${prev.id} first.`;
 
       const week = weeks[wi];
       const list = week?.checkpoints ?? [];
@@ -968,7 +1179,7 @@ export function StoreProvider({
       const blocker = list.slice(0, i).find((c) => !done(c));
       return blocker ? firstFinish(blocker) : null;
     },
-    [isUnlocked, weeks, save.progress, weekHours],
+    [isUnlocked, isPassed, owesSubmit, weeks, save.progress, weekHours],
   );
 
   const currentCheckpointId = useMemo(() => {
@@ -994,6 +1205,7 @@ export function StoreProvider({
     setExperience,
     completeOnboarding,
     addProject,
+    ensureProject,
     setProjectTier,
     setProjectRepo,
     updateProject,
@@ -1001,8 +1213,14 @@ export function StoreProvider({
     postReel,
     submitPhase,
     logSession,
+    editSession,
     stateOf,
     isUnlocked,
+    isPassed,
+    weekPassed,
+    weekSubmitted,
+    phaseStatusOf,
+    unsubmitPhase,
     lockReason,
     currentCheckpointId,
     setOpenCheckpoint,

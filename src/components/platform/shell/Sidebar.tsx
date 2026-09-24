@@ -94,9 +94,6 @@ export function Sidebar({ className }: { className?: string }) {
         <FoxAvatar variant="fox-blueprint" className="size-[66px] shrink-0 rounded-lg" />
         <div className="min-w-0">
           <p className="truncate text-[1rem] leading-tight font-extrabold text-navy">{viewer.name}</p>
-          <p className="hand truncate text-[0.8rem] text-navy-soft">
-            {viewer.joinedWeek ? `Joined week ${viewer.joinedWeek}` : "Half Life"}
-          </p>
           <button
             type="button"
             disabled={signingOut}

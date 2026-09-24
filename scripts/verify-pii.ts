@@ -106,7 +106,8 @@ const STAFF_SURFACES: [string, string][] = [
 ]
 
 async function main() {
-  const { materializeThemeProjects } = await import("../src/lib/provisioning")
+  const { ensureThemeProject } = await import("../src/lib/provisioning")
+  const { THEMES } = await import("../src/lib/config/program")
 
   for (const email of [S.viewerEmail, S.otherEmail, S.probeEmail]) {
     await prisma.user.deleteMany({ where: { email } })
@@ -114,7 +115,8 @@ async function main() {
 
   const viewer = await makeUser(S.viewerEmail, "Viewer Person", S.viewerSlack)
   const other = await makeUser(S.otherEmail, "Other Person", S.otherSlack)
-  for (const u of [viewer, other]) await materializeThemeProjects(u.id)
+  // Fixtures: every theme's project, as if each checkpoint had been opened.
+  for (const u of [viewer, other]) for (const t of THEMES) await ensureThemeProject(u.id, t.id)
 
   // The other participant needs work, or they appear on none of these pages and
   // the whole exercise passes by having nothing to leak.

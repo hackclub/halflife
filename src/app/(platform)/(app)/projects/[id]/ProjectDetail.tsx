@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { IconChevronLeft, IconClock, IconFilm, IconPencil, IconPlay } from "@/components/platform/icons";
+import { IconChevronLeft, IconClock } from "@/components/platform/icons";
 import { RepoChecks } from "@/components/platform/modals/RepoChecks";
 import { Chip, Panel } from "@/components/platform/ui";
 import { TIERS } from "@/lib/curriculum";
 import { DESIGN_WEEKS } from "@/lib/config/printers";
 import { fmtDate, fmtHours } from "@/lib/projects";
+import { displayRepo } from "@/lib/repo";
 import type { ProjectPageData } from "@/lib/queries/project-page";
 import { useStore } from "@/lib/store";
 import { BomEditor } from "./BomEditor";
@@ -62,7 +63,7 @@ function Section({
  * and the parts list are only ever wanted here.
  */
 export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData | null }) {
-  const { projects, stateOf, weekOf, weekHours, hydrated } = useStore();
+  const { projects, stateOf, weekOf, weekHours, hydrated, unsubmitPhase } = useStore();
   const project = projects.find((p) => p.id === id);
 
   // A miss here is real: the id is someone else's, or the project was deleted.
@@ -88,8 +89,6 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
   const weekFor = (phase: "DESIGN" | "BUILD") => (phase === "DESIGN" ? project.weekId : buildWeekId);
 
   const sessions = data.timeline.flatMap((t) => (t.kind === "session" ? [t] : []));
-  const lapses = sessions.reduce((n, s) => n + s.lapses.length, 0);
-  const reels = data.timeline.filter((t) => t.kind === "reel").length;
   const hours = sessions.reduce((n, s) => n + (s.approvedHours ?? s.hours), 0);
   const started = data.timeline.at(-1)?.at ?? 0;
 
@@ -114,6 +113,7 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
           <CoverImage
             projectId={project.id}
             url={data.coverImageUrl}
+            fallbackUrl={data.journalImageUrl}
             theme={week.theme}
             accent={week.accent}
             locked={data.editLocked}
@@ -124,35 +124,56 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
               hours={weekHours(project.weekId)}
               tierLocked={submitted}
               locked={data.editLocked}
-              stats={
-                <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                  <span className="hand inline-flex items-center gap-1.5 text-[0.84rem] text-teal-deep tabular-nums">
-                    <IconClock className="text-sm" /> {fmtHours(hours)} logged
-                  </span>
-                  <span className="hand inline-flex items-center gap-1.5 text-[0.84rem] text-navy-soft tabular-nums">
-                    <IconPencil className="text-sm" />
-                    {sessions.length === 1 ? "1 journal entry" : `${sessions.length} journal entries`}
-                  </span>
-                  <span className="hand inline-flex items-center gap-1.5 text-[0.84rem] text-navy-soft tabular-nums">
-                    <IconPlay className="text-sm" />
-                    {lapses === 1 ? "1 timelapse" : `${lapses} timelapses`}
-                  </span>
-                  <span className="hand inline-flex items-center gap-1.5 text-[0.84rem] text-navy-soft tabular-nums">
-                    <IconFilm className="text-sm" />
-                    {reels === 1 ? "1 reel" : `${reels} reels`}
-                  </span>
-                  {started > 0 && (
-                    <span className="hand text-[0.84rem] text-navy-soft">started {fmtDate(started)}</span>
-                  )}
-                </p>
+              unsubmit={
+                data.inReview
+                  ? {
+                      week: weekFor(data.inReview),
+                      run: () => unsubmitPhase(`w${weekFor(data.inReview ?? "DESIGN")}-submit`),
+                    }
+                  : undefined
               }
-              chips={
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Chip tone="muted">{week.fullName}</Chip>
-                  <Chip tone="muted">
-                    Weeks {project.weekId} and {buildWeekId}
-                  </Chip>
-                  {project.starter && <Chip tone="gold">Starter project</Chip>}
+              // Two lines, one voice: how far it has got, then what it is.
+              // Everything else the page knows about it is further down, where
+              // it can be acted on.
+              meta={
+                <div className="hand mt-4 grid gap-1 text-[0.84rem] text-navy-soft">
+                  <p className="flex flex-wrap items-center gap-x-2 tabular-nums">
+                    <span className="inline-flex items-center gap-1.5 text-teal-deep">
+                      <IconClock className="text-sm" /> {fmtHours(hours)} logged
+                    </span>
+                    <Dot />
+                    <span>{sessions.length === 1 ? "1 entry" : `${sessions.length} entries`}</span>
+                    {started > 0 && (
+                      <>
+                        <Dot />
+                        <span>started {fmtDate(started)}</span>
+                      </>
+                    )}
+                  </p>
+                  <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
+                    <Chip tone="muted">{week.theme}</Chip>
+                    <Chip tone="violet">
+                      Tier {project.tier}
+                      {project.starter && " · starter"}
+                    </Chip>
+                    <span>
+                      weeks {project.weekId} &amp; {buildWeekId}
+                    </span>
+                    {project.githubRepo && (
+                      <>
+                        <Dot />
+                        <a
+                          href={project.githubRepo}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={project.githubRepo}
+                          className="min-w-0 truncate text-navy underline decoration-line-strong decoration-dashed underline-offset-4 transition-colors hover:decoration-violet"
+                        >
+                          {displayRepo(project.githubRepo)}
+                        </a>
+                      </>
+                    )}
+                  </p>
                 </div>
               }
             />
@@ -182,13 +203,7 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
       </Section>
 
       {/* ---------- what happened, newest first ---------- */}
-      <Section
-        id="timeline-title"
-        title="Timeline"
-        aside={
-          data.timeline.length > 0 && <span className="hand text-[0.84rem] text-navy-soft">newest first</span>
-        }
-      >
+      <Section id="timeline-title" title="Timeline">
         <Panel tone="line" radius={20} className="bg-paper px-5 py-6 sm:px-6">
           {data.timeline.length === 0 ? (
             <p className="hand py-8 text-center text-[0.9rem] text-navy-soft">
@@ -205,3 +220,11 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 
 // Stable, so the repo checks do not re-run on every render of the page.
 function noop() {}
+
+function Dot() {
+  return (
+    <span aria-hidden="true" className="text-line-strong">
+      ·
+    </span>
+  );
+}

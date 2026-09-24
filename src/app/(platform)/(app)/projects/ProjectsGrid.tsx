@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { WeekScene } from "@/components/platform/art";
 import { IconArrowRight, IconClock, IconFilm, IconPencil } from "@/components/platform/icons";
-import { Chip, Panel } from "@/components/platform/ui";
+import { Chip, Panel, cx } from "@/components/platform/ui";
 import { RepoEditor } from "@/components/platform/RepoField";
 import { fmtDate, fmtHours, projectEvents, projectStats } from "@/lib/projects";
 import { useStore } from "@/lib/store";
@@ -48,13 +48,26 @@ export function ProjectsGrid() {
           >
             <Link href={`/projects/${project.id}`} className="group flex flex-1 flex-col">
               <span
-                className="relative grid aspect-[16/9] place-items-center p-4"
-                style={{ background: week.accent }}
+                className={cx(
+                  "relative grid aspect-[16/9] place-items-center overflow-hidden",
+                  !project.thumbnailUrl && "p-4",
+                )}
+                style={{ background: project.thumbnailUrl ? "var(--color-navy)" : week.accent }}
               >
-                <WeekScene
-                  theme={week.theme}
-                  className="h-full w-auto max-w-full drop-shadow-md transition-transform duration-300 group-hover:scale-[1.04]"
-                />
+                {project.thumbnailUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- R2 or a URL the maker pasted into a journal
+                  <img
+                    src={project.thumbnailUrl}
+                    alt=""
+                    loading="lazy"
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.04]"
+                  />
+                ) : (
+                  <WeekScene
+                    theme={week.theme}
+                    className="h-full w-auto max-w-full drop-shadow-md transition-transform duration-300 group-hover:scale-[1.04]"
+                  />
+                )}
                 <span className="label absolute top-2.5 left-2.5 rounded-full bg-white/90 px-2.5 py-1 text-navy">
                   Week {week.id}
                 </span>

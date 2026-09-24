@@ -1,8 +1,11 @@
+import { after } from "next/server"
 import { ok, parseBody, withRoute } from "@/lib/api"
 import { requireSession } from "@/lib/guards"
 import { unsubmitSchema } from "@/lib/schemas/project"
 import { unsubmitPhase } from "@/lib/submissions"
 import { AuditAction, logAudit } from "@/lib/audit"
+import { removeSubmissionFromYsws } from "@/lib/airtable/sync"
+import { trackSideEffect } from "@/lib/side-effects"
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -23,6 +26,23 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
     targetType: "ThemeProject",
     targetId: id,
     metadata: { phase: parsed.data.phase },
+  })
+
+  // Taken back before review, so its row goes too — otherwise reviewers on ari
+  // would see a hand-in that no longer exists. `removed` marks the row gone, so
+  // the next submission of this phase writes a fresh one.
+  after(async () => {
+    await trackSideEffect(
+      "airtable",
+      {
+        actorId: gate.user.id,
+        actorEmail: gate.user.email,
+        targetType: "ThemeProject",
+        targetId: id,
+        metadata: { phase: parsed.data.phase, removed: true },
+      },
+      () => removeSubmissionFromYsws(id, parsed.data.phase),
+    )
   })
 
   return ok({ ok: true })

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { FoxMark, WeekScene } from "@/components/platform/art";
 import {
   IconArrowRight,
@@ -87,24 +87,36 @@ function takeJournalDraft(checkpointId: string): JournalDraft | null {
 }
 
 export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
-  const { setOpenCheckpoint, logSession, complete, projects, weekOf, weekHours } = useStore();
+  const { setOpenCheckpoint, logSession, editSession, complete, projects, stateOf, weekOf, weekHours } =
+    useStore();
 
   const week = weekOf(checkpoint.weekId);
 
   // Every journal node is one entry: write it and it is done. The week's clock
-  // is what decides whether wrapping up is on the table yet.
+  // is what decides whether wrapping up is on the table yet. Opened again once
+  // it is done, the same sheet is that entry, to correct — not a new one.
+  const [existing] = useState(() => {
+    const saved = stateOf(checkpoint.id);
+    return saved.done ? saved.log[0] : undefined;
+  });
+  const editing = existing !== undefined;
+  // Timelapses cannot be re-homed after the fact, so an edit keeps whatever
+  // the entry was saved with — and it still counts as the entry's evidence.
+  const kept = existing?.clips.length ?? 0;
 
   // A draft survives exactly one trip: out to Lapse to sign in, and back. It
   // is read once and cleared, so it cannot resurrect an entry days later.
   const [draft] = useState(() => takeJournalDraft(checkpoint.id));
-  const [tab, setTab] = useState<"journal" | "timelapse">(draft?.tab ?? "journal");
+  const [tab, setTab] = useState<"journal" | "timelapse">(editing ? "journal" : (draft?.tab ?? "journal"));
   // The Lapse timelapses backing this session.
   const [picked, setPicked] = useState<LapseTimelapse[]>(draft?.picked ?? []);
-  const [body, setBody] = useState(draft?.body ?? "");
+  const [body, setBody] = useState(draft?.body ?? existing?.body ?? "");
   const [preview, setPreview] = useState(false);
   // Free text, not a number: a controlled number input that coerces as you
   // type eats the decimal point the moment you reach for "1.5".
-  const [hoursText, setHoursText] = useState(draft?.hoursText ?? "");
+  const [hoursText, setHoursText] = useState(
+    draft?.hoursText ?? (existing ? String(to2(existing.minutes / 60)) : ""),
+  );
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -115,8 +127,16 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
   // claim rather than a number, which is why the bar rises with it — and they
   // are counted out of the entry itself, so every picture sits in the sentence
   // that explains it instead of in a tray underneath.
-  const claimed = Math.max(0, Number(hoursText) || 0);
-  const sessionMinutes = Math.round(claimed * 60);
+  const typed = Math.max(0, Number(hoursText) || 0);
+  // Lapse knows how long a recorded session was, so with a timelapse picked
+  // and nothing typed, that is the claim — the maker is not asked to retype a
+  // number Lapse already has. Typed hours still win when given.
+  const coveredSeconds = picked.reduce((sum, t) => sum + t.durationSeconds, 0);
+  const fromLapse = typed <= 0 && picked.length > 0 && coveredSeconds > 0;
+  const claimed = fromLapse ? Math.round((coveredSeconds / 3600) * 100) / 100 : typed;
+  // At least a minute once there is a claim, so a short recording is not
+  // rounded down to nothing.
+  const sessionMinutes = claimed > 0 ? Math.max(1, Math.round(claimed * 60)) : 0;
   const needPhotos = photosRequired(claimed);
   const shots = countImages(body);
   // Words only: the images are counted above, not twice.
@@ -125,20 +145,21 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
   const longEnough = written >= 200;
   const enoughPhotos = shots >= needPhotos;
   // A session is backed by a journal entry OR a Lapse timelapse, not both:
-  // either one is evidence a reviewer can check the hours against. The hours
-  // themselves are always the claim, so they are always asked for.
+  // either one is evidence a reviewer can check the hours against. A written
+  // entry needs its hours typed; a timelapse brings its own.
   const journalled = longEnough && enoughPhotos;
-  const recorded = picked.length > 0;
+  const recorded = picked.length > 0 || kept > 0;
   const ok = claimed > 0 && (journalled || recorded);
 
   // One thing at a time — a list of four faults reads as a wall, and only the
   // first one is actionable anyway. Once the hours are in, the entry's next
   // shortfall is named with the other way out beside it, so nobody is told to
-  // write 200 characters they could skip with a timelapse.
-  const orLapse = " Or pick a Lapse timelapse instead.";
+  // write 200 characters they could skip with a timelapse. An edit cannot add
+  // one, so it is not offered there.
+  const orLapse = editing ? "" : " Or pick a Lapse timelapse instead.";
   const missing = !ok
     ? claimed <= 0
-      ? "Add the hours you spent on this session."
+      ? "Add the hours you spent on this session, or pick a Lapse timelapse."
       : !longEnough
         ? `${200 - written} more characters in your entry, not counting images.${orLapse}`
         : `${needPhotos - shots} more ${needPhotos - shots === 1 ? "image" : "images"} in your entry for ${fmtH(claimed)}.${orLapse}`
@@ -156,6 +177,13 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
   async function save() {
     setSaving(true);
     setSaveError(null);
+    if (editing) {
+      const refused = await editSession(checkpoint.id, sessionMinutes, body.trim());
+      setSaving(false);
+      if (refused) setSaveError(refused);
+      else setOpenCheckpoint(null);
+      return;
+    }
     const refused = await logSession(checkpoint.id, sessionMinutes, body.trim(), {
       clips: picked.map((t) => t.id),
     });
@@ -172,8 +200,6 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
     stashJournalDraft(checkpoint.id, { tab: "timelapse", body, hoursText, picked });
     void linkLapse(`${window.location.pathname}?journal=${encodeURIComponent(checkpoint.id)}`);
   }
-
-  const coveredSeconds = picked.reduce((sum, t) => sum + t.durationSeconds, 0);
 
   return (
     <Modal
@@ -202,19 +228,23 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
                 ? saveError
                 : missing
                 ? missing
-                : toFloor > 0
+                : editing
+                  ? "Saving replaces this entry. It keeps its place on the trail."
+                  : toFloor > 0
                   ? `${fmtH(toFloor)} more before you can wrap up the week.`
                   : "Submit your project when it's done!"}
             </p>
           </div>
 
           <Button variant="solid" onClick={() => void save()} disabled={!ok || saving}>
-            {saving ? "Saving…" : "Finish"} <IconArrowRight className="text-base" />
+            {saving ? "Saving…" : editing ? "Save changes" : "Finish"}{" "}
+            {editing ? <IconCheck className="text-base" /> : <IconArrowRight className="text-base" />}
           </Button>
         </>
       }
     >
-      <div className="mb-5 flex justify-center">
+      {/* No tab switch in an edit: the timelapses are fixed to the entry. */}
+      <div className={cx("mb-5 flex justify-center", editing && "hidden")}>
         <div
           className="sketch flex gap-1 rounded-full bg-white p-1"
           style={{ "--sk-radius": "999px" } as React.CSSProperties}
@@ -238,9 +268,21 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
       {tab === "journal" ? (
         <div>
-          <ModalTitle sub="Start with the hours, then back them up: either write the entry here, or pick a Lapse timelapse on the other tab. An entry is 200 characters at least (images do not count toward it), with an image for each hour (minimum of 2). Markdown works, images included.">
-            What did you do this session?
-          </ModalTitle>
+          {editing ? (
+            <ModalTitle
+              sub={
+                kept > 0
+                  ? `Fix what it says or how long it took. Its ${kept === 1 ? "timelapse stays" : `${kept} timelapses stay`} attached and still back the hours.`
+                  : "Fix what it says or how long it took. The same rules hold: 200 characters at least, and an image for each hour (minimum of 2)."
+              }
+            >
+              Edit this entry
+            </ModalTitle>
+          ) : (
+            <ModalTitle sub="Start with the hours, then back them up: either write the entry here, or pick a Lapse timelapse on the other tab. An entry is 200 characters at least (images do not count toward it), with an image for each hour (minimum of 2). Markdown works, images included.">
+              What did you do this session?
+            </ModalTitle>
+          )}
 
           <div className="mb-4 max-w-[220px]">
             <Field label="Hours this session" hint="(9.5 is 9 and a half hours)">
@@ -348,7 +390,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
         </div>
       ) : (
         <div>
-          <ModalTitle sub="A timelapse can back your hours on its own, in place of a written entry. Record the session on Lapse, publish it, then pick it here.">
+          <ModalTitle sub="A timelapse can back your hours on its own, in place of a written entry, and its recorded time becomes the session's hours. Record the session on Lapse, publish it, then pick it here.">
             Select your timelapses
           </ModalTitle>
 
@@ -362,9 +404,13 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
           <p className="mt-4 text-center text-[0.82rem] text-navy-soft tabular-nums">
             {picked.length === 0
-              ? "Nothing picked yet."
+              ? " "
               : `${picked.length === 1 ? "1 timelapse" : `${picked.length} timelapses`} picked · ${fmtDuration(coveredSeconds)} recorded${
-                  claimed > 0 ? ` for ${fmtH(claimed)} claimed` : ""
+                  fromLapse
+                    ? `, logged as ${fmtH(claimed)}`
+                    : claimed > 0
+                      ? ` for ${fmtH(claimed)} claimed`
+                      : ""
                 }`}
           </p>
         </div>
@@ -478,7 +524,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
               setOpenCheckpoint(null);
             }}
           >
-            {done ? "Replace reel" : "Post reel"} <IconFilm className="text-base" />
+            {done ? "Post another reel" : "Post reel"} <IconFilm className="text-base" />
           </Button>
         </>
       }
@@ -575,8 +621,13 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
  * Project creation (weeks 2–5)
  * ================================================================== */
 export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
-  const { setOpenCheckpoint, complete, addProject, experience, weekOf } = useStore();
+  const { setOpenCheckpoint, complete, addProject, ensureProject, experience, weekOf } = useStore();
   const week = weekOf(checkpoint.weekId);
+  // Opening "create a project" is what makes the week's project row — not
+  // signing up, when nobody knows yet whether they will get this far.
+  useEffect(() => {
+    void ensureProject(checkpoint.weekId);
+  }, [checkpoint.weekId, ensureProject]);
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
   const [tier, setTier] = useState<1 | 2 | 3>(
@@ -726,6 +777,65 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 /* ================================================================== *
  * Submit gate
  * ================================================================== */
+/**
+ * A Submit checkpoint whose week is already handed in and waiting for review.
+ *
+ * Opening it again is almost always "I need to change something", so it says
+ * where the week stands and offers the one thing that allows a change: taking
+ * it back out of review. Nothing is lost by it — the entries, parts list and
+ * details stay as they are, and this same checkpoint hands it in again.
+ */
+export function UnsubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
+  const { setOpenCheckpoint, unsubmitPhase, weekOf, stateOf } = useStore();
+  const week = weekOf(checkpoint.weekId);
+  const handedIn = stateOf(checkpoint.id).at;
+  const titleId = useId();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function unsubmit() {
+    setBusy(true);
+    setError(null);
+    const refused = await unsubmitPhase(checkpoint.id);
+    setBusy(false);
+    if (refused) setError(refused);
+    else setOpenCheckpoint(null);
+  }
+
+  return (
+    <Modal
+      open
+      onClose={() => setOpenCheckpoint(null)}
+      accent="var(--color-violet)"
+      size="md"
+      labelledBy={titleId}
+      eyebrow={`Week ${week.id} · ${checkpoint.title}`}
+      footer={
+        <>
+          {error && (
+            <p role="alert" className="hand mr-auto min-w-0 flex-1 text-[0.84rem] leading-snug text-coral-deep">
+              {error}
+            </p>
+          )}
+          <Button variant="outline" onClick={() => setOpenCheckpoint(null)} disabled={busy}>
+            Keep it in review
+          </Button>
+          <Button variant="solid" onClick={() => void unsubmit()} disabled={busy}>
+            {busy ? "Unsubmitting…" : `Unsubmit week ${week.id}`}
+          </Button>
+        </>
+      }
+    >
+      <ModalTitle
+        id={titleId}
+        sub={`${handedIn ? `Handed in ${new Date(handedIn).toLocaleDateString("en-US", { month: "short", day: "numeric" })}. ` : ""}Unsubmitting takes it out of the review queue so you can change your entries, parts list or project details. Hand it in again from this checkpoint when you're done.`}
+      >
+        This week is waiting for review
+      </ModalTitle>
+    </Modal>
+  );
+}
+
 export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
   const {
     setOpenCheckpoint,

@@ -1,12 +1,18 @@
 "use client";
 
+import { useState } from "react";
 import { IconX } from "@/components/platform/icons";
-import { ReelCard } from "@/components/platform/reels/ReelCard";
+import { ReelCard, pauseReels } from "@/components/platform/reels/ReelCard";
 import { Panel, cx } from "@/components/platform/ui";
 import { useFeed } from "@/components/platform/reels/useFeed";
 
 export function DoomscrollerFeed({ onClose, className }: { onClose?: () => void; className?: string }) {
   const feed = useFeed();
+  // The rail sits beside every page in the app, so it does not start talking
+  // unprompted. Once the reader has pressed play on one reel they are watching
+  // the feed, and from then on scrolling hands playback to the next reel the way
+  // the full-page Doomscroller does from the start.
+  const [watching, setWatching] = useState(false);
 
   return (
     <Panel
@@ -20,7 +26,13 @@ export function DoomscrollerFeed({ onClose, className }: { onClose?: () => void;
         {onClose && (
           <button
             type="button"
-            onClick={onClose}
+            // Closing collapses the rail over a few hundred milliseconds, and
+            // the observer only lets go once the reel has shrunk out of view.
+            // Silencing it on the press is what makes the close feel instant.
+            onClick={() => {
+              pauseReels();
+              onClose();
+            }}
             aria-label="Hide the Doomscroller"
             className="grid size-7 place-items-center rounded-full text-line-strong transition-colors hover:bg-black/5 hover:text-navy"
           >
@@ -34,6 +46,8 @@ export function DoomscrollerFeed({ onClose, className }: { onClose?: () => void;
             key={r.id}
             reel={r}
             onPatch={feed.patch}
+            autoplay={watching}
+            onPlayPress={() => setWatching(true)}
             className="snap-item h-full min-h-[380px] shrink-0"
           />
         ))}

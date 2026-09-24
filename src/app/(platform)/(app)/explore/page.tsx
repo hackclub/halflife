@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { FoxAvatar } from "@/components/platform/art";
-import { Markdown } from "@/components/platform/Markdown";
-import { IconClock, IconFlame } from "@/components/platform/icons";
+import { Markdown, excerpt } from "@/components/platform/Markdown";
+import { IconArrowRight, IconClock, IconFlame } from "@/components/platform/icons";
 import { PageSign } from "@/components/platform/PageSign";
 import { Panel } from "@/components/platform/ui";
 import { requireSessionPage } from "@/lib/page-guards";
@@ -46,7 +47,12 @@ function fmtMinutes(m: number) {
   return h > 0 ? `${h}h ${rest.toString().padStart(2, "0")}m` : `${rest}m`;
 }
 
+/** Roughly a long tweet: enough to know what the session was, not the whole of it. */
+const EXCERPT_CHARS = 280;
+
 function Entry({ entry }: { entry: JournalRow }) {
+  const { text, cut } = excerpt(entry.body, EXCERPT_CHARS);
+  const href = `/projects/${entry.projectId}#${entry.id}`;
   return (
     <Panel tone="line" radius={20} as="article" className="bg-paper px-5 py-5 sm:px-7 sm:py-6">
       <header className="flex flex-wrap items-start gap-3.5">
@@ -55,7 +61,9 @@ function Entry({ entry }: { entry: JournalRow }) {
           <p className="text-[1.02rem] leading-tight font-extrabold text-navy">
             {entry.author}{" "}
             <span className="font-semibold text-navy-soft">on</span>{" "}
-            <span className="text-navy">{entry.project}</span>
+            <Link href={href} className="text-navy hover:underline hover:decoration-2 hover:underline-offset-4">
+              {entry.project}
+            </Link>
           </p>
           <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
             <span className="hand inline-flex items-center gap-1 text-[0.82rem] text-coral-deep tabular-nums">
@@ -73,11 +81,21 @@ function Entry({ entry }: { entry: JournalRow }) {
 
       {/* Journals are written in Markdown, images included — the pictures that
           back a session live inside the sentence that explains them, so the
-          entry renders whole rather than with a tray of photos underneath. */}
+          entry renders as written rather than with a tray of photos
+          underneath. Only its opening, though: the feed is for finding work,
+          and the whole entry is on the project's page. */}
       <Markdown
-        source={entry.body}
+        source={text}
         className="mt-4 grid max-w-[68ch] gap-3 text-[0.95rem] leading-relaxed text-navy"
       />
+      {cut && (
+        <Link
+          href={href}
+          className="hand mt-2 inline-flex items-center gap-1 text-[0.86rem] text-sky-deep underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
+        >
+          See more <IconArrowRight className="text-sm" />
+        </Link>
+      )}
     </Panel>
   );
 }

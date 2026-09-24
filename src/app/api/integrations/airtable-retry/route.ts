@@ -1,23 +1,24 @@
 import type { NextRequest } from "next/server"
 import { ok, withRoute } from "@/lib/api"
 import { requireIntegrationAuth } from "@/lib/integration-auth"
-import { findUnsyncedApprovals, syncThemeProjectToYsws } from "@/lib/airtable/sync"
+import { findUnsyncedSubmissions, syncSubmissionToYsws } from "@/lib/airtable/sync"
 import { trackSideEffect } from "@/lib/side-effects"
 import { recordSyncRun } from "@/lib/sync-run-log"
 
 export const maxDuration = 300
 
 /**
- * Replays grant-row writes that failed. Approval is the moment money is
- * decided; the row reaching Airtable is a separate, retryable step, and this is
- * what keeps a transient outage from turning into an unpaid participant.
+ * Replays submission rows that never reached the YSWS table. Reviewers work
+ * from that table on ari.hackclub.com, so a row that failed to write is a
+ * submission nobody can see — this is what keeps an Airtable outage from
+ * turning into a project that is never reviewed.
  */
 export const POST = withRoute(async (req: NextRequest) => {
   const denied = requireIntegrationAuth(req)
   if (denied) return denied
 
   const dryRun = req.nextUrl.searchParams.get("dryRun") === "true"
-  const pending = await findUnsyncedApprovals()
+  const pending = await findUnsyncedSubmissions()
 
   if (dryRun) return ok({ dryRun: true, pending })
 
@@ -32,7 +33,7 @@ export const POST = withRoute(async (req: NextRequest) => {
         targetId: item.themeProjectId,
         metadata: { phase: item.phase, retry: true },
       },
-      () => syncThemeProjectToYsws(item.themeProjectId, item.phase),
+      () => syncSubmissionToYsws(item.themeProjectId, item.phase),
     )
     if (result) synced++
     else failed++

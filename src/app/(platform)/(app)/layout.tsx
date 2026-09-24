@@ -1,4 +1,6 @@
+import { after } from "next/server"
 import { requireSessionPage } from "@/lib/page-guards"
+import { touchActivity } from "@/lib/analytics"
 import { getStoreSnapshot } from "@/lib/queries/store"
 import { AppShell } from "@/components/platform/shell/AppShell"
 import { StoreProvider } from "@/lib/store"
@@ -23,6 +25,8 @@ import { StoreProvider } from "@/lib/store"
 export const dynamic = "force-dynamic"
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { user } = await requireSessionPage()
+  // After the response: counting a page view must never slow one down.
+  after(() => touchActivity(user.id))
   const snapshot = await getStoreSnapshot(user.id)
 
   return (
