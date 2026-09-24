@@ -48,6 +48,8 @@ export const API_ERROR_STATUS = {
   RATE_LIMITED: 429,
   INTERNAL: 500,
   NOT_CONFIGURED: 503,
+  /** A service this depends on (the signup list, say) did not answer. */
+  UNAVAILABLE: 503,
 } as const
 
 export type ApiErrorCode = keyof typeof API_ERROR_STATUS

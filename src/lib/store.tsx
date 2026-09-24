@@ -159,8 +159,11 @@ interface Ctx {
   /** Change any of a project's own details in one save. Null once saved, or why it was refused. */
   updateProject: (id: string, patch: ProjectPatch) => Promise<string | null>;
   complete: (id: string, patch?: Partial<CheckpointState>) => void;
-  /** Post the reel a checkpoint is asking for. The video is already uploaded. */
-  postReel: (id: string, caption: string, objectKey: string) => void;
+  /**
+   * Post the reel a checkpoint is asking for. The video is already uploaded.
+   * Resolves to the new post's id, or null if it did not land.
+   */
+  postReel: (id: string, caption: string, objectKey: string) => Promise<string | null>;
   /** Hand a week in, with its notes and whatever evidence it collected. */
   /** Resolves to null once submitted, or the server's reason for refusing. */
   submitPhase: (
@@ -674,24 +677,40 @@ export function StoreProvider({
    * and the 20h reel are both PROGRESS, so counting posts by kind would tick
    * the 20h node the moment the 10h one landed.
    */
+  // Resolves to the new post's id — what a public link gets attached to — or
+  // null if the post did not land. The node is patched first either way, and
+  // the refresh puts the truth back if the write failed.
   const postReel = useCallback(
-    (id: string, caption: string, objectKey: string) => {
+    async (id: string, caption: string, objectKey: string): Promise<string | null> => {
       patchCheckpoint(id, { caption, artefacts: 1 });
       const route = routeOf(id);
-      void send("/api/posts", {
-        // Three occasions, three kinds: the pitch at the start of a design
-        // week, the ones that mark ten hours, and the one that closes a week
-        // inside Submit.
-        kind: id.endsWith("-reel-idea")
-          ? "IDEA"
-          : id.endsWith("-reel-submission")
-            ? "SUBMISSION"
-            : "PROGRESS",
-        caption,
-        objectKey,
-        checkpointKey: id,
-        themeProjectId: route?.projectId ?? null,
-      }).finally(() => router.refresh());
+      try {
+        const res = await fetch("/api/posts", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            // Three occasions, three kinds: the pitch at the start of a design
+            // week, the ones that mark ten hours, and the one that closes a
+            // week inside Submit.
+            kind: id.endsWith("-reel-idea")
+              ? "IDEA"
+              : id.endsWith("-reel-submission")
+                ? "SUBMISSION"
+                : "PROGRESS",
+            caption,
+            objectKey,
+            checkpointKey: id,
+            themeProjectId: route?.projectId ?? null,
+          }),
+        });
+        if (!res.ok) return null;
+        const { post } = (await res.json()) as { post?: { id?: string } };
+        return post?.id ?? null;
+      } catch {
+        return null;
+      } finally {
+        router.refresh();
+      }
     },
     [patchCheckpoint, routeOf, router],
   );

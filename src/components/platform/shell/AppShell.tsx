@@ -16,7 +16,6 @@ import {
   IconFlame,
   IconHome,
   IconPencil,
-  IconTrophy,
 } from "@/components/platform/icons";
 import { cx } from "@/components/platform/ui";
 import { useStore } from "@/lib/store";
@@ -32,7 +31,7 @@ const MOBILE_ICONS = {
   "/explore": IconCompass,
   "/shop": IconBag,
   "/docs": IconBook,
-  "/leaderboard": IconTrophy,
+  "/reels": IconFilm,
 } as const;
 
 function StatCluster() {
@@ -233,7 +232,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 >
                   <Icon className="text-[1.45rem]" />
                   <span className="label w-full truncate text-center text-[0.6rem] tracking-[0.06em]">
-                    {"short" in item ? item.short : item.label}
+                    {item.label}
                   </span>
                   <span
                     aria-hidden="true"

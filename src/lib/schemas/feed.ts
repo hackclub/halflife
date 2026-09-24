@@ -41,6 +41,30 @@ export const createPostSchema = z
 
 export const likeSchema = z.object({ liked: z.boolean() }).strict()
 
+/**
+ * The public links for one reel, one per platform at most. The URL is only
+ * length-checked here; whether it is really a link to that platform, and its
+ * tidy stored form, is lib/public-reels.ts's call, shared with the dialog.
+ */
+export const publicReelLinksSchema = z
+  .object({
+    links: z
+      .array(
+        z
+          .object({
+            platform: z.enum(["INSTAGRAM", "TIKTOK", "X", "YOUTUBE"]),
+            url: z.string().trim().min(1).max(500),
+          })
+          .strict(),
+      )
+      .min(1, "Add at least one link")
+      .max(4)
+      .refine((links) => new Set(links.map((l) => l.platform)).size === links.length, {
+        message: "One link per platform",
+      }),
+  })
+  .strict()
+
 export const commentSchema = z.object({ body: boundedText(1000, 1) }).strict()
 
 export const moderatePostSchema = z

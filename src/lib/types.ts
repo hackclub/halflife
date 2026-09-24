@@ -155,13 +155,3 @@ export interface DocArticle {
   summary: string;
   body: { heading: string; paragraphs: string[]; list?: string[] }[];
 }
-
-export interface LeaderRow {
-  rank: number;
-  name: string;
-  handle: string;
-  hours: number;
-  ships: number;
-  streak: number;
-  you?: boolean;
-}

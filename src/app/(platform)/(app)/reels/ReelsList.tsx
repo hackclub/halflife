@@ -1,0 +1,181 @@
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { IconArrowRight, IconFilm, IconPlus, IconX } from "@/components/platform/icons";
+import { PublicReelModal } from "@/components/platform/modals/CheckpointModals";
+import { Button, Chip, Panel } from "@/components/platform/ui";
+import { fmtDate } from "@/lib/projects";
+import { PLATFORM_INFO } from "@/lib/public-reels";
+import type { MyReel, MyReelGroup } from "@/lib/queries/reels";
+import { PLATFORM_HOME } from "@/lib/routes";
+
+/**
+ * The Reels page's list: one section per project, one row per reel, and under
+ * each reel the places it has been posted publicly.
+ *
+ * Adding a link opens the same sheet a reel offers right after it is posted,
+ * started on the links — pressing "Add where you posted it" has already said
+ * yes. Everything here changes on the server, so every change ends in a
+ * refresh rather than a local patch.
+ */
+export function ReelsList({ groups }: { groups: MyReelGroup[] }) {
+  const router = useRouter();
+  const [adding, setAdding] = useState<MyReel | null>(null);
+
+  if (groups.length === 0) {
+    return (
+      <Panel tone="line" radius={20} className="bg-paper px-6 py-14 text-center">
+        <p className="text-[1.05rem] font-extrabold text-navy">No reels yet</p>
+        <p className="hand mx-auto mt-2 max-w-[44ch] text-[0.9rem] leading-relaxed text-navy-soft">
+          reels are posted from the checkpoints on your trail: an idea reel to start each design
+          week, and one every ten hours after that.
+        </p>
+        <Link
+          href={PLATFORM_HOME}
+          className="label mt-6 inline-flex items-center gap-1.5 rounded-full border-2 border-line px-4 py-2 text-navy-soft transition-colors hover:border-navy hover:text-navy"
+        >
+          Go to the trail <IconArrowRight className="text-base" />
+        </Link>
+      </Panel>
+    );
+  }
+
+  return (
+    <>
+      <div className="grid gap-8">
+        {groups.map((group) => (
+          <section key={group.project?.id ?? "none"} aria-labelledby={`reels-${group.project?.id ?? "none"}`}>
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <h2 id={`reels-${group.project?.id ?? "none"}`} className="label text-violet-deep">
+                {group.project ? (
+                  <Link href={`/projects/${group.project.id}`} className="hover:underline hover:decoration-2 hover:underline-offset-4">
+                    {group.project.title}
+                  </Link>
+                ) : (
+                  "Other reels"
+                )}
+              </h2>
+              {group.project && <Chip tone="muted">{group.project.theme}</Chip>}
+            </div>
+            <ul className="grid gap-3">
+              {group.reels.map((reel) => (
+                <ReelRow key={reel.id} reel={reel} onAdd={() => setAdding(reel)} onChanged={() => router.refresh()} />
+              ))}
+            </ul>
+          </section>
+        ))}
+      </div>
+
+      {adding && (
+        <PublicReelModal
+          postId={adding.id}
+          eyebrow={adding.title}
+          videoUrl={adding.videoUrl}
+          start="links"
+          onClose={() => {
+            setAdding(null);
+            router.refresh();
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+function ReelRow({ reel, onAdd, onChanged }: { reel: MyReel; onAdd: () => void; onChanged: () => void }) {
+  const [removing, setRemoving] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function remove(id: string) {
+    setRemoving(id);
+    setError(null);
+    try {
+      const res = await fetch(`/api/public-reels/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(String(res.status));
+      onChanged();
+    } catch {
+      setError("That link didn't remove. Try again.");
+    } finally {
+      setRemoving(null);
+    }
+  }
+
+  return (
+    <Panel tone="line" radius={18} as="li" className="flex gap-4 bg-paper p-3.5 sm:gap-5 sm:p-4">
+      {/* The reel itself, small and playable. Metadata only until played, so
+          a page of reels is not a page of downloads. */}
+      <div className="w-[84px] shrink-0 sm:w-[96px]">
+        <div className="relative overflow-hidden rounded-xl bg-navy" style={{ aspectRatio: "9 / 16" }}>
+          {reel.videoUrl ? (
+            <video
+              src={reel.thumbnailUrl ? reel.videoUrl : `${reel.videoUrl}#t=0.1`}
+              poster={reel.thumbnailUrl ?? undefined}
+              preload="metadata"
+              controls
+              playsInline
+              aria-label={`${reel.title}: ${reel.caption}`}
+              className="absolute inset-0 size-full object-cover"
+            />
+          ) : (
+            <div className="absolute inset-0 grid place-items-center">
+              <IconFilm className="text-xl text-white/80" />
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <p className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+          <span className="text-[0.95rem] font-extrabold text-navy">{reel.title}</span>
+          <span className="hand text-[0.84rem] text-navy-soft">{fmtDate(reel.at)}</span>
+          {reel.status === "PROCESSING" && <Chip tone="gold">Processing</Chip>}
+          {reel.status === "HIDDEN" && <Chip tone="coral">Hidden from the feed</Chip>}
+        </p>
+        {reel.caption && (
+          <p className="mt-1 line-clamp-2 text-[0.9rem] leading-snug [overflow-wrap:anywhere] text-navy-soft">{reel.caption}</p>
+        )}
+
+        <div className="mt-3">
+          {reel.links.length > 0 ? (
+            <ul className="grid gap-1.5" aria-label="Posted publicly on">
+              {reel.links.map((link) => (
+                <li key={link.id} className="flex min-w-0 items-center gap-2">
+                  <span className="label shrink-0 text-violet-deep">{PLATFORM_INFO[link.platform].label}</span>
+                  <a
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="min-w-0 truncate text-[0.86rem] text-navy underline decoration-line-strong decoration-dashed underline-offset-4 transition-colors hover:decoration-violet"
+                  >
+                    {link.url.replace(/^https:\/\//, "")}
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => void remove(link.id)}
+                    disabled={removing !== null}
+                    aria-label={`Remove the ${PLATFORM_INFO[link.platform].label} link`}
+                    className="grid size-8 shrink-0 place-items-center rounded-full text-navy-soft transition-colors hover:bg-coral/10 hover:text-coral-deep disabled:opacity-50"
+                  >
+                    <IconX className="text-sm" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="hand text-[0.84rem] text-navy-soft">not posted anywhere else yet.</p>
+          )}
+          {error && (
+            <p role="alert" className="hand mt-1 text-[0.84rem] text-coral-deep">
+              {error}
+            </p>
+          )}
+          <Button variant="ghost" size="sm" onClick={onAdd} className="mt-1.5 -ml-3.5">
+            <IconPlus className="text-sm" /> Add where you posted it
+          </Button>
+        </div>
+      </div>
+    </Panel>
+  );
+}

@@ -164,6 +164,14 @@ enum PostStatus {
   REMOVED
 }
 
+/// Where a participant posted their reel outside Half Life.
+enum PublicReelPlatform {
+  INSTAGRAM
+  TIKTOK
+  X
+  YOUTUBE
+}
+
 enum ShopOrderStatus {
   PENDING
   ON_HOLD
@@ -368,6 +376,7 @@ model User {
   roles          UserRole[]
   themeProjects  ThemeProject[]
   posts          Post[]
+  publicReels    PublicReel[]
   postViews      PostView[]
   uploadHandoffs UploadHandoff[]
   postLikes      PostLike[]
@@ -580,6 +589,7 @@ model ThemeProject {
   ledgerEntries  LedgerEntry[]
   posts          Post[]
   bomItems       BomItem[]
+  publicReels    PublicReel[]
 
   /// One themed project per theme per person. This makes "five themed
   /// projects" a schema invariant rather than a convention, which is what lets
@@ -981,9 +991,10 @@ model Post {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  views    PostView[]
-  likes    PostLike[]
-  comments PostComment[]
+  views       PostView[]
+  likes       PostLike[]
+  comments    PostComment[]
+  publicReels PublicReel[]
 
   /// The feed's hot path: published posts, newest first.
   @@index([status, publishedAt(sort: Desc)])
@@ -1361,6 +1372,42 @@ model SyncRunLog {
 /// a marketing-page signup never fails because a third party is having a bad
 /// day. Stasis writes through to Airtable synchronously and only falls back to
 /// Postgres when someone flips an env var by hand.
+/// "Public Reels": a Half Life reel a participant has also posted publicly —
+/// one row per link, so an Instagram post and a TikTok of the same reel are
+/// two rows. Kept so a post that goes viral can be found and paid for; the
+/// views themselves are read on the platform, not stored here.
+///
+/// `email` is the account's address at the moment the link was added, copied
+/// rather than joined: it is what staff reach the person by when a post takes
+/// off, and it should still say who claimed the link if the account changes.
+model PublicReel {
+  id       String             @id @default(cuid())
+  /// The link as shared, tidied: https, lower-case host, tracking query and
+  /// fragment dropped. Unique, so one public post can only ever be claimed once.
+  url      String             @unique @db.Text
+  platform PublicReelPlatform
+  email    String
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// The Half Life reel it is a copy of.
+  postId String?
+  post   Post?   @relation(fields: [postId], references: [id], onDelete: SetNull)
+
+  /// The project the reel belongs to, if it belongs to one.
+  themeProjectId String?
+  themeProject   ThemeProject? @relation(fields: [themeProjectId], references: [id], onDelete: SetNull)
+
+  /// When the link was added here.
+  postedAt DateTime @default(now())
+
+  @@index([userId, postedAt])
+  @@index([postId])
+  @@index([themeProjectId])
+  @@map("public_reels")
+}
+
 model RsvpBuffer {
   id    String @id @default(cuid())
   email String @unique

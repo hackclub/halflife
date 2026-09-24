@@ -163,7 +163,7 @@ function Stage({ goal }: { goal: PrinterGoal }) {
       <div className="absolute top-[40px] left-[40px] flex w-[300px] flex-col gap-5">
         <FoxMark className="w-[86px]" />
         <MiniPanel className="px-5 py-4">
-          {["Home", "Explore", "Shop", "Docs", "Leaderboard"].map((l, i) => (
+          {["Home", "Projects", "Reels", "Explore", "Shop"].map((l, i) => (
             <p
               key={l}
               className={cx(

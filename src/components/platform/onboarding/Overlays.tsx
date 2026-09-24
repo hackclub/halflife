@@ -46,6 +46,11 @@ const TOUR = [
     body: "Everything you have started, each with its journal, its reels and its tier. The tier stays changeable here until you submit the week.",
   },
   {
+    selector: '[data-tour="nav-reels"]',
+    title: "Reels",
+    body: "Every reel you have posted, by project. Post one on Instagram, TikTok, X or YouTube too, add the link here, and a post that goes viral earns you coins.",
+  },
+  {
     selector: '[data-tour="nav-explore"]',
     title: "Explore",
     body: "The long-form side: everyone's journal entries, with the photos and the parts that did not work.",
@@ -59,11 +64,6 @@ const TOUR = [
     selector: '[data-tour="nav-docs"]',
     title: "Docs",
     body: "How tiers work, what counts as a session, and the checklist reviewers actually use when they read your submission.",
-  },
-  {
-    selector: '[data-tour="nav-leaderboard"]',
-    title: "Leaderboard",
-    body: "Hours logged and weeks shipped across the program. Entirely cosmetic, entirely motivating.",
   },
 ];
 

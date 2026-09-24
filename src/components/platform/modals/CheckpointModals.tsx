@@ -38,6 +38,13 @@ import type { BomLine } from "@/lib/bom";
 import type { RepoCheckResult } from "@/lib/repo-checks";
 import { normalizeRepo } from "@/lib/repo";
 import type { Checkpoint } from "@/lib/types";
+import {
+  PLATFORM_INFO,
+  PUBLIC_REEL_HASHTAG,
+  PUBLIC_REEL_PLATFORMS,
+  readPublicReelLink,
+  type PublicReelPlatform,
+} from "@/lib/public-reels";
 import { Modal, ModalTitle } from "./Modal";
 
 /* ================================================================== *
@@ -456,6 +463,299 @@ function writeReelDraft(checkpointId: string, draft: ReelDraft | null) {
   }
 }
 
+/**
+ * After a reel posts: would they like to post it online too?
+ *
+ * Asked once, as a yes-or-no, so saying no costs one click. Yes opens the
+ * links — one field per platform, all optional but at least one — with the
+ * reminder that makes the post count at the top, because it has to be in the
+ * caption *before* they post it: their referral link and the programme's
+ * hashtag. Each link is saved as its own Public Reels row against this reel.
+ */
+export function PublicReelModal({
+  postId,
+  eyebrow,
+  videoUrl,
+  onClose,
+  start = "ask",
+}: {
+  postId: string;
+  eyebrow: string;
+  /** The clip, so it can be saved and uploaded elsewhere. */
+  videoUrl: string | null;
+  onClose: () => void;
+  /**
+   * "links" skips the question — for the Reels page, where pressing "Add
+   * where you posted it" has already answered it.
+   */
+  start?: "ask" | "links";
+}) {
+  const [step, setStep] = useState<"ask" | "links" | "saved">(start);
+  const titleId = useId();
+  const [values, setValues] = useState<Record<PublicReelPlatform, string>>({
+    INSTAGRAM: "",
+    TIKTOK: "",
+    X: "",
+    YOUTUBE: "",
+  });
+  const [errors, setErrors] = useState<Partial<Record<PublicReelPlatform, string>>>({});
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [referral, setReferral] = useState<
+    { state: "loading" } | { state: "ready"; link: string } | { state: "error" }
+  >({ state: "loading" });
+  const [copied, setCopied] = useState<"link" | "caption" | null>(null);
+
+  // Asked for only once they say yes: most people will not, and the lookup
+  // reaches the signup list.
+  useEffect(() => {
+    if (step !== "links" || referral.state !== "loading") return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/me/referral", { cache: "no-store" });
+        const body = (await res.json().catch(() => null)) as { link?: string } | null;
+        if (cancelled) return;
+        setReferral(res.ok && body?.link ? { state: "ready", link: body.link } : { state: "error" });
+      } catch {
+        if (!cancelled) setReferral({ state: "error" });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [step, referral.state]);
+
+  async function copy(text: string, which: "link" | "caption") {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(which);
+      window.setTimeout(() => setCopied((c) => (c === which ? null : c)), 2000);
+    } catch {
+      // Clipboard refused: the text is on screen and selectable.
+    }
+  }
+
+  const filled = PUBLIC_REEL_PLATFORMS.filter((p) => values[p].trim());
+
+  async function save() {
+    // The same check the server runs, so a wrong link is named on its field
+    // before anything is sent.
+    const found: Partial<Record<PublicReelPlatform, string>> = {};
+    for (const p of filled) {
+      const read = readPublicReelLink(p, values[p]);
+      if ("error" in read) found[p] = read.error;
+    }
+    setErrors(found);
+    setSaveError(null);
+    if (Object.keys(found).length > 0) return;
+
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/posts/${postId}/public-links`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ links: filled.map((platform) => ({ platform, url: values[platform] })) }),
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as {
+          error?: { message?: string; details?: { fields?: Partial<Record<PublicReelPlatform, string>> } };
+        } | null;
+        const fields = body?.error?.details?.fields;
+        if (fields && Object.keys(fields).length > 0) setErrors(fields);
+        else setSaveError(body?.error?.message ?? "Your links didn't save. Try again.");
+        return;
+      }
+      setStep("saved");
+    } catch {
+      setSaveError("Could not reach the server. Your links are still here — try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (step === "ask") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        accent="var(--color-violet)"
+        size="md"
+        labelledBy={titleId}
+        eyebrow={eyebrow}
+        footer={
+          <>
+            <Button variant="outline" onClick={onClose}>
+              Not now
+            </Button>
+            <Button variant="solid" onClick={() => setStep("links")}>
+              Yes, post it online <IconArrowRight className="text-base" />
+            </Button>
+          </>
+        }
+      >
+        <ModalTitle id={titleId} sub="You'll earn coins if your post goes viral!">
+          Would you like to post your reel online?
+        </ModalTitle>
+        <p className="hand text-[0.84rem] text-navy-soft">
+          Your reel is already on the Doomscroller. This is for Instagram, TikTok, X or YouTube too.
+        </p>
+      </Modal>
+    );
+  }
+
+  if (step === "saved") {
+    return (
+      <Modal
+        open
+        onClose={onClose}
+        accent="var(--color-teal)"
+        size="md"
+        labelledBy={titleId}
+        eyebrow={eyebrow}
+        footer={
+          <Button variant="solid" onClick={onClose}>
+            Done <IconCheck className="text-base" />
+          </Button>
+        }
+      >
+        <ModalTitle
+          id={titleId}
+          sub={`${filled.length === 1 ? "Your link is" : `All ${filled.length} links are`} saved. If a post takes off, we'll be in touch about your coins.`}
+        >
+          Good luck going viral
+        </ModalTitle>
+      </Modal>
+    );
+  }
+
+  const captionLine = referral.state === "ready" ? `${referral.link} ${PUBLIC_REEL_HASHTAG}` : PUBLIC_REEL_HASHTAG;
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      accent="var(--color-violet)"
+      size="lg"
+      labelledBy={titleId}
+      eyebrow={eyebrow}
+      footer={
+        <>
+          <p
+            role={saveError ? "alert" : undefined}
+            className={cx(
+              "hand mr-auto min-w-0 flex-1 text-[0.84rem] leading-snug",
+              saveError ? "text-coral-deep" : "text-navy-soft",
+            )}
+          >
+            {saveError ?? (filled.length === 0 ? "Paste at least one link to save." : " ")}
+          </p>
+          <Button variant="outline" onClick={onClose} disabled={saving}>
+            Skip
+          </Button>
+          <Button variant="solid" onClick={() => void save()} disabled={filled.length === 0 || saving}>
+            {saving ? "Saving…" : "Save links"}
+          </Button>
+        </>
+      }
+    >
+      {/* First, because it has to be in the caption before the post goes up. */}
+      <div
+        className="sketch mb-5 rounded-2xl bg-sky-pale px-5 py-4"
+        style={{ "--sk-color": "var(--color-sky)", "--sk-radius": "16px" } as React.CSSProperties}
+      >
+        <p className="label text-navy">Before you post</p>
+        <p className="mt-1.5 text-[0.9rem] leading-snug text-navy">
+          Put your referral link and <span className="font-bold">{PUBLIC_REEL_HASHTAG}</span> in the caption, so we can
+          find your post and anyone who joins from it counts for you.
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {referral.state === "loading" ? (
+            <p className="hand text-[0.84rem] text-navy-soft" aria-live="polite">
+              getting your referral link…
+            </p>
+          ) : referral.state === "error" ? (
+            <p className="hand text-[0.84rem] text-coral-deep">
+              Your referral link isn&apos;t available right now. The hashtag still counts.
+            </p>
+          ) : (
+            <code className="min-w-0 flex-1 truncate rounded-lg bg-white px-3 py-2 font-mono text-[0.84rem] text-navy">
+              {referral.link}
+            </code>
+          )}
+          {referral.state === "ready" && (
+            <Button variant="outline" size="sm" onClick={() => void copy(referral.link, "link")}>
+              {copied === "link" ? "Copied!" : "Copy link"}
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={() => void copy(captionLine, "caption")}>
+            {copied === "caption"
+              ? "Copied!"
+              : referral.state === "ready"
+                ? "Copy link + hashtag"
+                : "Copy hashtag"}
+          </Button>
+        </div>
+        {videoUrl && (
+          <a
+            href={videoUrl}
+            download="half-life-reel.mp4"
+            className="hand mt-3 inline-block text-[0.84rem] text-sky-deep underline decoration-dashed underline-offset-4 hover:text-navy"
+          >
+            save your reel to upload it
+          </a>
+        )}
+      </div>
+
+      <ModalTitle
+        id={titleId}
+        sub="Paste the link from each post's Share button. Fill in the ones you posted to, and leave the rest blank."
+      >
+        Where did you post it?
+      </ModalTitle>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        {PUBLIC_REEL_PLATFORMS.map((p) => {
+          const info = PLATFORM_INFO[p];
+          const fieldId = `${titleId}-${p}`;
+          const error = errors[p];
+          return (
+            <div key={p} className="grid gap-1.5">
+              <label htmlFor={fieldId} className="label text-violet-deep">
+                {info.label}
+              </label>
+              <input
+                id={fieldId}
+                value={values[p]}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setValues((prev) => ({ ...prev, [p]: v }));
+                  if (errors[p]) setErrors(({ [p]: _, ...rest }) => rest);
+                }}
+                inputMode="url"
+                autoComplete="off"
+                spellCheck={false}
+                placeholder={info.example}
+                aria-invalid={error ? true : undefined}
+                aria-describedby={error ? `${fieldId}-error` : undefined}
+                className={cx(
+                  "block w-full rounded-xl border-2 bg-black/[.02] px-4 py-2.5 text-[0.9rem] text-navy outline-none transition-colors placeholder:text-navy-soft/70 hover:border-line-strong focus:border-violet focus:bg-white",
+                  error ? "border-coral-deep bg-coral/5" : "border-line",
+                )}
+              />
+              {error && (
+                <p id={`${fieldId}-error`} className="text-[0.8rem] leading-snug font-semibold text-coral-deep">
+                  {error}
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </Modal>
+  );
+}
+
 export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
   const { setOpenCheckpoint, postReel, stateOf, weekOf } = useStore();
   const week = weekOf(checkpoint.weekId);
@@ -490,6 +790,76 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
     setClipUrl(url && !url.startsWith("blob:") ? url : null);
   }
 
+  // Posting waits for the server, so there is a post to hang public links on
+  // and so a failure says so instead of closing on a reel that never landed.
+  const [posting, setPosting] = useState(false);
+  const [postError, setPostError] = useState<string | null>(null);
+  const [postedId, setPostedId] = useState<string | null>(null);
+
+  async function post() {
+    if (!clip) return;
+    setPosting(true);
+    setPostError(null);
+    const id = await postReel(checkpoint.id, caption.trim(), clip);
+    setPosting(false);
+    if (!id) {
+      setPostError("Your reel didn't post. Check your connection and try again.");
+      return;
+    }
+    writeReelDraft(checkpoint.id, null);
+    setPostedId(id);
+  }
+
+  // A finished reel asks before it opens the recorder: the checkpoint is done,
+  // and another reel is an extra, so reopening one should say that rather
+  // than look like the checkpoint asking for its reel again. A draft already
+  // under way for it means that question was answered last time.
+  const [again, setAgain] = useState(!done || draft !== null);
+  const titleId = useId();
+
+  // Posted: the same sheet now asks whether it is going anywhere else. The
+  // clip's URL comes along so it can be saved and uploaded there.
+  if (postedId) {
+    return (
+      <PublicReelModal
+        postId={postedId}
+        eyebrow={`Week ${week.id} · ${checkpoint.title}`}
+        videoUrl={previewUrl}
+        onClose={() => setOpenCheckpoint(null)}
+      />
+    );
+  }
+
+  if (!again) {
+    return (
+      <Modal
+        open
+        onClose={() => setOpenCheckpoint(null)}
+        accent="var(--color-teal)"
+        size="md"
+        labelledBy={titleId}
+        eyebrow={`Week ${week.id} · ${checkpoint.title}`}
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setOpenCheckpoint(null)}>
+              Not now
+            </Button>
+            <Button variant="solid" onClick={() => setAgain(true)}>
+              Post another reel <IconFilm className="text-base" />
+            </Button>
+          </>
+        }
+      >
+        <ModalTitle
+          id={titleId}
+          sub="Your first one stays up. A new one is added to your project's timeline, after your latest entry or reel."
+        >
+          You&apos;ve completed this checkpoint! Would you like to post another reel?
+        </ModalTitle>
+      </Modal>
+    );
+  }
+
   return (
     <Modal
       open
@@ -499,9 +869,15 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
       eyebrow={`Week ${week.id} · ${checkpoint.title}`}
       footer={
         <>
-          <p className="hand mr-auto hidden text-[0.78rem] text-navy-soft sm:block">
-            Reels post straight to the Doomscroller.
-          </p>
+          {postError ? (
+            <p role="alert" className="hand mr-auto min-w-0 flex-1 text-[0.84rem] leading-snug text-coral-deep">
+              {postError}
+            </p>
+          ) : (
+            <p className="hand mr-auto hidden text-[0.78rem] text-navy-soft sm:block">
+              Reels post straight to the Doomscroller.
+            </p>
+          )}
           <Button
             variant="outline"
             onClick={() => {
@@ -512,24 +888,28 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
               setOpenCheckpoint(null);
             }}
           >
-            Save draft
+            {/* On a finished checkpoint with nothing started there is no
+                draft to keep — it is just the answer to "another one?" */}
+            {done && !clip && !caption.trim() ? "Not now" : "Save draft"}
           </Button>
           <Button
             variant="solid"
-            disabled={!clip || caption.trim().length < 8}
-            onClick={() => {
-              if (!clip) return;
-              postReel(checkpoint.id, caption.trim(), clip);
-              writeReelDraft(checkpoint.id, null);
-              setOpenCheckpoint(null);
-            }}
+            disabled={!clip || caption.trim().length < 8 || posting}
+            onClick={() => void post()}
           >
-            {done ? "Post another reel" : "Post reel"} <IconFilm className="text-base" />
+            {posting ? "Posting…" : done ? "Post another reel" : "Post reel"} <IconFilm className="text-base" />
           </Button>
         </>
       }
     >
-      <ModalTitle sub={checkpoint.blurb}>Make your {checkpoint.title.toLowerCase()}</ModalTitle>
+      {/* Past the question: this is an extra reel, not the checkpoint's own. */}
+      {done ? (
+        <ModalTitle sub="Your first one stays up, and this one joins it on your project.">
+          Post another reel
+        </ModalTitle>
+      ) : (
+        <ModalTitle sub={checkpoint.blurb}>Make your {checkpoint.title.toLowerCase()}</ModalTitle>
+      )}
 
       <div className="grid gap-6 md:grid-cols-[1fr_200px]">
         <div className="grid gap-4">
@@ -878,6 +1258,15 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
   const [carts, setCarts] = useState<UploadedImage[]>([]);
   const [tier, setTier] = useState<1 | 2 | 3>(project?.tier ?? 1);
   const [clip, setClip] = useState<string | null>(null);
+  // The bucket URL of the closing clip, when there is one, so it can be saved
+  // and posted elsewhere afterwards.
+  const [clipUrl, setClipUrl] = useState<string | null>(null);
+  // The closing reel once it is posted. A hand-in that fails after the reel
+  // went up reuses it on the retry rather than posting the same clip twice;
+  // a new clip clears it.
+  const [closingPostId, setClosingPostId] = useState<string | null>(null);
+  // Handed in: the reel that closed the week is offered for posting online.
+  const [shareId, setShareId] = useState<string | null>(null);
   const [works, setWorks] = useState<"yes" | "no" | null>(null);
   const [writeup, setWriteup] = useState("");
   // Null while checking. The server runs the same checks at submit, so this
@@ -958,14 +1347,21 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
    * Handing a week in, in the order the pieces depend on each other.
    *
    * The tier first, because it is what the reviewer will be deciding against.
-   * Then the closing reel, so the submission a reviewer opens already has the
-   * video attached rather than one arriving behind it. The submission last.
+   * Then the closing reel, awaited, so the submission a reviewer opens — and
+   * the YSWS row written just after it, which looks the reel up — already has
+   * the video rather than one arriving behind it. It is posted once: a retry
+   * after a refused hand-in reuses it. The submission last, and only once it
+   * has gone through is the reel offered for posting online.
    */
   async function submit() {
     setSubmitting(true);
     setSubmitError(null);
     if (project) setProjectTier(project.id, tier);
-    if (clip) postReel(reelCheckpointId, closingCaption, clip);
+    let postId = closingPostId;
+    if (clip && !postId) {
+      postId = await postReel(reelCheckpointId, closingCaption, clip);
+      if (postId) setClosingPostId(postId);
+    }
     const refused = await submitPhase(checkpoint.id, {
       notes: isBuild ? buildNotes : undefined,
       attachmentKeys: carts.map((c) => c.objectKey),
@@ -975,7 +1371,19 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
       setSubmitError(refused);
       return;
     }
-    setOpenCheckpoint(null);
+    if (postId) setShareId(postId);
+    else setOpenCheckpoint(null);
+  }
+
+  if (shareId) {
+    return (
+      <PublicReelModal
+        postId={shareId}
+        eyebrow={`Week ${week.id} · Submitted`}
+        videoUrl={clipUrl}
+        onClose={() => setOpenCheckpoint(null)}
+      />
+    );
   }
 
   return (
@@ -1279,7 +1687,14 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
                 ? "Point the camera at the thing, turn it on, and talk over it."
                 : "Pan across the schematic, the layout, and the render."}
             </p>
-            <ReelCapture objectKey={clip} onCaptured={setClip} />
+            <ReelCapture
+              objectKey={clip}
+              onCaptured={(key, url) => {
+                setClip(key);
+                setClipUrl(url ?? null);
+                setClosingPostId(null);
+              }}
+            />
           </div>
 
           {isBuild && (

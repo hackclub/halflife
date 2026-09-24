@@ -34,7 +34,7 @@ those are facts on the server, and only the ceremony lives in the browser.
 | `/explore` | Journal feed grouped by day |
 | `/shop` | Coin shop, priced from the budget sheet |
 | `/docs`, `/docs/[slug]` | Five short reference pages |
-| `/leaderboard` | Hours logged and weeks shipped |
+| `/reels` | Your own reels by project, and where you have posted them publicly |
 | `/doomscroller` | Every reel anyone has posted |
 
 ## The curriculum

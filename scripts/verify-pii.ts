@@ -85,7 +85,7 @@ async function cookieFor(userId: string): Promise<string> {
 }
 
 /** Surfaces a participant is signed in for. */
-const PARTICIPANT_PAGES = ["/", "/explore", "/leaderboard", "/doomscroller", "/shop", "/projects", "/docs"]
+const PARTICIPANT_PAGES = ["/", "/explore", "/reels", "/doomscroller", "/shop", "/projects", "/docs"]
 const PARTICIPANT_APIS = ["/api/feed", "/api/me", "/api/shop/items", "/api/program", "/api/projects"]
 
 /** Everything that shows another person's data or moves money. */
