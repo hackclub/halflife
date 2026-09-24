@@ -35,3 +35,26 @@ export const hackatimeLinkSchema = z
   .strict()
 
 export type ProjectUpdateInput = z.infer<typeof projectUpdateSchema>
+
+/** One line of a bill of materials, as the maker writes it. */
+export const bomItemSchema = z
+  .object({
+    name: boundedText(120, 1),
+    // Every field is required: a reviewer prices the tier from this list, and
+    // a line without a vendor, a link or a price is one they cannot check.
+    purpose: boundedText(200, 1),
+    quantity: z.number().int().min(1).max(10_000),
+    unitCostUsd: z.number().positive().max(10_000),
+    vendor: boundedText(80, 1),
+    link: httpsUrl,
+  })
+  .strict()
+
+export const bomItemUpdateSchema = bomItemSchema.partial().strict()
+
+export type BomItemInput = z.infer<typeof bomItemSchema>
+
+/** A bill of materials' tax and shipping total. Null clears it back to zero. */
+export const bomExtrasSchema = z
+  .object({ taxShippingUsd: z.number().min(0).max(10_000).nullable() })
+  .strict()

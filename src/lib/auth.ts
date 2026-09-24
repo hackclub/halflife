@@ -4,36 +4,13 @@ import { prismaAdapter } from "better-auth/adapters/prisma"
 import { genericOAuth } from "better-auth/plugins"
 import prisma from "@/lib/prisma"
 import { Role } from "@/app/generated/prisma/enums"
-import { encryptPII, isPiiConfigured } from "@/lib/pii"
+import { PULL_PII, syncHcaProfile } from "@/lib/hca-profile"
 import { materializeThemeProjects } from "@/lib/provisioning"
 import { bufferRsvpForUser } from "@/lib/airtable/rsvp"
 import { LAPSE_API_BASE } from "@/lib/lapse"
 
-const PULL_PII = process.env.PULL_HCA_PII === "true" && isPiiConfigured()
-
 const hcaScopes = ["openid", "profile", "email", "slack_id", "verification_status"]
 if (PULL_PII) hcaScopes.push("address", "birthdate")
-
-interface HcaAddress {
-  street_address?: string
-  locality?: string
-  region?: string
-  postal_code?: string
-  country?: string
-}
-
-function encryptedFieldsFrom(profile: Record<string, unknown>): Record<string, string> {
-  if (!PULL_PII) return {}
-  const out: Record<string, string> = {}
-  const addr = profile.address as HcaAddress | undefined
-  if (addr?.street_address) out.encryptedAddressStreet = encryptPII(addr.street_address)
-  if (addr?.locality) out.encryptedAddressCity = encryptPII(addr.locality)
-  if (addr?.region) out.encryptedAddressState = encryptPII(addr.region)
-  if (addr?.postal_code) out.encryptedAddressZip = encryptPII(addr.postal_code)
-  if (addr?.country) out.encryptedAddressCountry = encryptPII(addr.country)
-  if (typeof profile.birthdate === "string") out.encryptedBirthday = encryptPII(profile.birthdate)
-  return out
-}
 
 /**
  * The email a link-only provider reports: unique per identity, and on the
@@ -100,6 +77,16 @@ export const auth = betterAuth({
   },
 
   databaseHooks: {
+    session: {
+      create: {
+        // Every sign-in re-reads the HCA profile, so a status that changed
+        // since the last one — most often "pending" becoming "verified" — is
+        // current. Not awaited: signing in must not wait on, or fail with, HCA.
+        after: async (session) => {
+          void syncHcaProfile(session.userId)
+        },
+      },
+    },
     user: {
       create: {
         after: async (user) => {
@@ -176,13 +163,14 @@ export const auth = betterAuth({
           clientSecret: process.env.HCA_CLIENT_SECRET ?? "",
           scopes: hcaScopes,
           overrideUserInfo: true,
+          // Core fields only. The verification status, Slack id and PII are
+          // `input: false`, and better-auth drops those from a provider profile
+          // — so they are written by syncHcaProfile at sign-in instead. Mapping
+          // them here did nothing, which is how every user ended up unverified.
           mapProfileToUser: (profile: Record<string, unknown>) => ({
             email: profile.email as string,
             name: profile.name as string | undefined,
             image: profile.picture as string | undefined,
-            slackId: profile.slack_id as string | undefined,
-            verificationStatus: profile.verification_status as string | undefined,
-            ...encryptedFieldsFrom(profile),
           }),
         },
         {

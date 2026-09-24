@@ -1,0 +1,105 @@
+import prisma from "@/lib/prisma"
+import { ok, fail, parseBody, withRoute } from "@/lib/api"
+import { requireSession } from "@/lib/guards"
+import { MAX_BOM_ITEMS, bomData, bomLockReason, listBom } from "@/lib/bom"
+import { bomExtrasSchema, bomItemSchema } from "@/lib/schemas/project"
+import { getSubmissionAccess, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
+
+export const dynamic = "force-dynamic"
+
+type Params = { params: Promise<{ id: string }> }
+
+async function ownProject(userId: string, id: string) {
+  return prisma.themeProject.findFirst({
+    where: { id, userId, deletedAt: null },
+    select: { id: true, designStatus: true, buildStatus: true, bomTaxShippingUsd: true },
+  })
+}
+
+export const GET = withRoute(async (_req: Request, { params }: Params) => {
+  const gate = await requireSession()
+  if (gate.error) return gate.error
+  const { id } = await params
+
+  const project = await ownProject(gate.user.id, id)
+  if (!project) return fail("NOT_FOUND", "Project not found")
+
+  return ok({
+    items: await listBom(project.id),
+    taxShippingUsd: project.bomTaxShippingUsd ?? 0,
+    locked: bomLockReason(project),
+  })
+})
+
+/** Add a line to the end of the list. */
+export const POST = withRoute(async (req: Request, { params }: Params) => {
+  const gate = await requireSession()
+  if (gate.error) return gate.error
+  const { id } = await params
+
+  const parsed = await parseBody(req, bomItemSchema)
+  if (parsed.error) return parsed.error
+
+  const project = await ownProject(gate.user.id, id)
+  if (!project) return fail("NOT_FOUND", "Project not found")
+
+  const access = await getSubmissionAccess(gate.user.id, id)
+  if (!access.open) return fail("SUBMISSIONS_CLOSED", SUBMISSIONS_CLOSED_MESSAGE)
+  const locked = bomLockReason(project)
+  if (locked) return fail("PHASE_LOCKED", locked)
+
+  const last = await prisma.bomItem.aggregate({
+    where: { themeProjectId: id },
+    _count: true,
+    _max: { sortOrder: true },
+  })
+  if (last._count >= MAX_BOM_ITEMS) {
+    return fail("VALIDATION_FAILED", `A parts list can have at most ${MAX_BOM_ITEMS} lines`)
+  }
+
+  const input = parsed.data
+  await prisma.bomItem.create({
+    data: {
+      themeProjectId: id,
+      sortOrder: (last._max.sortOrder ?? -1) + 1,
+      name: input.name,
+      quantity: input.quantity,
+      unitCostUsd: input.unitCostUsd,
+      ...bomData(input),
+    },
+  })
+
+  return ok({ items: await listBom(id) }, { status: 201 })
+})
+
+const cents = (n: number | null) => (n === null ? null : Math.round(n * 100) / 100)
+
+/**
+ * Set the order's tax and shipping total. It is a field on the project rather
+ * than a line in the list, which is what keeps it from being removed: there is
+ * no row to delete, only an amount to set.
+ */
+export const PATCH = withRoute(async (req: Request, { params }: Params) => {
+  const gate = await requireSession()
+  if (gate.error) return gate.error
+  const { id } = await params
+
+  const parsed = await parseBody(req, bomExtrasSchema)
+  if (parsed.error) return parsed.error
+
+  const project = await ownProject(gate.user.id, id)
+  if (!project) return fail("NOT_FOUND", "Project not found")
+
+  const access = await getSubmissionAccess(gate.user.id, id)
+  if (!access.open) return fail("SUBMISSIONS_CLOSED", SUBMISSIONS_CLOSED_MESSAGE)
+  const locked = bomLockReason(project)
+  if (locked) return fail("PHASE_LOCKED", locked)
+
+  const updated = await prisma.themeProject.update({
+    where: { id },
+    data: { bomTaxShippingUsd: cents(parsed.data.taxShippingUsd) },
+    select: { bomTaxShippingUsd: true },
+  })
+
+  return ok({ taxShippingUsd: updated.bomTaxShippingUsd ?? 0 })
+})

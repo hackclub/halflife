@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { Button, Panel, cx } from "@/components/platform/ui";
 import { IconFilm } from "@/components/platform/icons";
 import { uploadFile, useHandoff } from "@/lib/use-handoff";
+import { UploadProgress } from "@/components/platform/UploadProgress";
 
 /**
  * Getting a video out of someone and into the bucket.
@@ -36,6 +37,7 @@ export function ReelCapture({
   label?: string;
 }) {
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showQr, setShowQr] = useState(false);
   const input = useRef<HTMLInputElement>(null);
@@ -48,9 +50,10 @@ export function ReelCapture({
   async function pick(file: File | undefined) {
     if (!file) return;
     setBusy(true);
+    setProgress(null);
     setError(null);
     try {
-      const { objectKey: key, url } = await uploadFile(file, folder);
+      const { objectKey: key, url } = await uploadFile(file, folder, setProgress);
       onCaptured(key, file.type.startsWith("video/") ? URL.createObjectURL(file) : url);
     } catch (err) {
       setError(err instanceof Error ? err.message : "That did not upload");
@@ -86,6 +89,10 @@ export function ReelCapture({
           {error}
         </p>
       )}
+
+      {/* A reel is the biggest thing anyone uploads here, often over school
+          wifi — without a bar, a minute of sending looks like a hang. */}
+      {busy && <UploadProgress progress={progress} name="Your video" className="max-w-[420px]" />}
 
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" disabled={busy} onClick={() => input.current?.click()}>

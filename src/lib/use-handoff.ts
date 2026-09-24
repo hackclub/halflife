@@ -1,5 +1,6 @@
 "use client"
 import { useCallback, useEffect, useRef, useState } from "react"
+import { postForm } from "@/lib/upload-progress"
 
 /**
  * The desktop half of the phone handoff.
@@ -132,15 +133,17 @@ export function useHandoff(onReady: (objectKey: string, url: string | null) => v
 export async function uploadFile(
   file: File,
   folder: string,
+  /** The fraction sent, 0 to 1. 1 means sent, not yet stored. */
+  onProgress?: (fraction: number) => void,
 ): Promise<{ objectKey: string; url: string | null }> {
   const body = new FormData()
   body.set("file", file)
   body.set("folder", folder)
-  const res = await fetch("/api/upload", { method: "POST", body })
+  const res = await postForm("/api/upload", body, onProgress)
   if (!res.ok) {
-    const payload = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
+    const payload = (res.json ?? {}) as { error?: { message?: string } }
     throw new Error(payload.error?.message ?? `Upload failed (${res.status})`)
   }
-  const payload = (await res.json()) as { objectKey: string; url: string | null }
+  const payload = res.json as { objectKey: string; url: string | null }
   return { objectKey: payload.objectKey, url: payload.url ?? null }
 }

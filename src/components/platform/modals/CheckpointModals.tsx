@@ -10,7 +10,6 @@ import {
   IconCheck,
   IconClock,
   IconEye,
-  IconFile,
   IconFilm,
   IconMic,
   IconWarning,
@@ -18,10 +17,7 @@ import {
 import { countImages, Markdown, proseLength } from "@/components/platform/Markdown";
 import { Button, Chip, Field, OptionRow, Panel, cx, inputClass } from "@/components/platform/ui";
 import {
-  BOM_ROWS,
   photosRequired,
-  SUBMIT_FILES_BUILD,
-  SUBMIT_FILES_DESIGN,
   TIERS,
 } from "@/lib/curriculum";
 import {
@@ -36,7 +32,9 @@ import { ReelCapture } from "@/components/platform/reels/ReelCapture";
 import { linkLapse } from "@/lib/auth-client";
 import { LapsePicker, fmtDuration, type LapseTimelapse } from "./LapsePicker";
 import { RepoInput, repoIsValid } from "@/components/platform/RepoField";
+import { ImageUploads, type UploadedImage } from "./ImageUploads";
 import { RepoChecks } from "./RepoChecks";
+import type { BomLine } from "@/lib/bom";
 import type { RepoCheckResult } from "@/lib/repo-checks";
 import { normalizeRepo } from "@/lib/repo";
 import type { Checkpoint } from "@/lib/types";
@@ -743,7 +741,6 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
   } = useStore();
   const week = weekOf(checkpoint.weekId);
   const isBuild = week.phase === "build";
-  const files = isBuild ? SUBMIT_FILES_BUILD : SUBMIT_FILES_DESIGN;
 
   // The week is long enough to hand in — that gate is the trail's, and this
   // node would be locked otherwise. What is left to say is whether it was
@@ -764,10 +761,11 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
   const project = projects.find((p) => p.weekId === (isBuild ? week.id - 5 : week.id)) ?? projects[0];
 
   const [step, setStep] = useState(1);
-  const [checked, setChecked] = useState<string[]>([]);
   // R2 object keys, not flags: what these ask for is evidence, and a boolean
   // was letting the form take a file and drop it on the floor.
-  const [cart, setCart] = useState<string | null>(null);
+  // Several screenshots, because one order is often split across vendors and
+  // one checkout page is not always one screen tall.
+  const [carts, setCarts] = useState<UploadedImage[]>([]);
   const [tier, setTier] = useState<1 | 2 | 3>(project?.tier ?? 1);
   const [clip, setClip] = useState<string | null>(null);
   const [works, setWorks] = useState<"yes" | "no" | null>(null);
@@ -788,8 +786,30 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
   const buildNotes = works === "no" && writeup.trim() ? writeup.trim() : undefined;
 
   const total = isBuild ? 2 : 3;
-  const bomTotal = useMemo(() => BOM_ROWS.reduce((n, r) => n + r.qty * r.unit, 0), []);
-  const allChecked = checked.length === files.length;
+  // The project's own parts list, as kept on its page — read fresh when the
+  // sheet opens, because it is edited there and this is the moment it is
+  // handed in. Null while it loads; the cart total reads zero until then.
+  const [bom, setBom] = useState<{ items: BomLine[]; taxShippingUsd: number } | null>(null);
+  const [bomError, setBomError] = useState<string | null>(null);
+  useEffect(() => {
+    if (isBuild || !project) return;
+    let live = true;
+    fetch(`/api/projects/${project.id}/bom`, { cache: "no-store" })
+      .then(async (res) => {
+        const body = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(body?.error?.message ?? "Could not load the parts list");
+        if (live) setBom({ items: body.items, taxShippingUsd: body.taxShippingUsd ?? 0 });
+      })
+      .catch((err: Error) => live && setBomError(err.message));
+    return () => {
+      live = false;
+    };
+  }, [isBuild, project?.id]); // eslint-disable-line react-hooks/exhaustive-deps -- the id is the input
+  const bomTotal = useMemo(
+    () =>
+      (bom?.items.reduce((n, l) => n + l.quantity * l.unitCostUsd, 0) ?? 0) + (bom?.taxShippingUsd ?? 0),
+    [bom],
+  );
 
   /**
    * A tier is a claim about hours as much as about money: its funded block has
@@ -817,11 +837,11 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
   const canAdvance =
     step === 1
-      ? allChecked && repoReady
+      ? repoReady
       : isBuild
         ? clip && (works === "yes" || (works === "no" && writeup.trim().length >= 40))
         : step === 2
-          ? cart && !tierBlocked
+          ? carts.length > 0 && !tierBlocked
           : clip && !tierBlocked;
 
   /**
@@ -838,7 +858,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
     if (clip) postReel(reelCheckpointId, closingCaption, clip);
     const refused = await submitPhase(checkpoint.id, {
       notes: isBuild ? buildNotes : undefined,
-      attachmentKeys: cart ? [cart] : [],
+      attachmentKeys: carts.map((c) => c.objectKey),
     });
     setSubmitting(false);
     if (refused) {
@@ -866,7 +886,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
               {submitError}
             </p>
           )}
-          {step === 1 && !submitError && allChecked && !repoReady && repoResult && (
+          {step === 1 && !submitError && !repoReady && repoResult && (
             <p className="hand mr-auto min-w-0 flex-1 text-[0.78rem] leading-snug text-coral-deep">
               Fix the repo checks above to carry on.
             </p>
@@ -922,51 +942,6 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
             Check all files are included
           </ModalTitle>
           {project && <RepoChecks project={project} onResult={setRepoResult} />}
-          <ul className="grid gap-2.5">
-            {files.map((f) => {
-              const on = checked.includes(f.id);
-              return (
-                <li key={f.id}>
-                  <button
-                    type="button"
-                    onClick={() => setChecked((c) => (on ? c.filter((x) => x !== f.id) : [...c, f.id]))}
-                    aria-pressed={on}
-                    className={cx(
-                      "sketch flex w-full items-start gap-3 rounded-2xl px-4 py-3 text-left transition-colors",
-                      on ? "bg-mint" : "bg-white hover:bg-black/[.03]",
-                    )}
-                    style={
-                      {
-                        "--sk-color": on ? "var(--color-teal)" : "var(--color-line)",
-                        "--sk-radius": "16px",
-                      } as React.CSSProperties
-                    }
-                  >
-                    <span
-                      className={cx(
-                        "mt-0.5 grid size-5 shrink-0 place-items-center rounded-md border-2",
-                        on ? "border-teal bg-teal text-white" : "border-line-strong text-transparent",
-                      )}
-                    >
-                      <IconCheck className="text-[0.7rem]" strokeWidth={3.6} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-center gap-2 text-[0.95rem] font-bold text-navy">
-                        <IconFile className="shrink-0 text-base text-navy-soft" />
-                        {f.label}
-                      </span>
-                      <span className="mt-0.5 block text-[0.82rem] leading-snug text-navy-soft">{f.hint}</span>
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-          {!allChecked && (
-            <p className="hand mt-4 flex items-center gap-2 text-[0.82rem] text-coral-deep">
-              <IconWarning className="text-base" /> Tick every line before you can continue.
-            </p>
-          )}
         </div>
       )}
 
@@ -977,54 +952,120 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
           </ModalTitle>
 
           <Panel tone="line" radius={18} className="overflow-hidden bg-white">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[520px] text-left text-[0.86rem]">
-                <thead>
-                  <tr className="border-b border-dashed border-line">
-                    {["Ref", "Part", "Qty", "Unit", "Vendor"].map((h) => (
-                      <th key={h} className="label px-4 py-2.5 text-navy-soft">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {BOM_ROWS.map((r) => (
-                    <tr key={r.part} className="border-b border-dashed border-line/60 last:border-0">
-                      <td className="hand px-4 py-2.5 whitespace-nowrap text-navy-soft">{r.ref}</td>
-                      <td className="px-4 py-2.5 font-semibold text-navy">{r.part}</td>
-                      <td className="px-4 py-2.5 tabular-nums">{r.qty}</td>
-                      <td className="px-4 py-2.5 tabular-nums">${r.unit.toFixed(2)}</td>
-                      <td className="hand px-4 py-2.5 whitespace-nowrap text-navy-soft">{r.vendor}</td>
+            {bomError ? (
+              <p role="alert" className="px-4 py-5 text-[0.86rem] font-semibold text-coral-deep">
+                {bomError}
+              </p>
+            ) : !bom ? (
+              <p className="hand px-4 py-5 text-[0.88rem] text-navy-soft" aria-live="polite">
+                reading your parts list…
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[480px] text-left text-[0.86rem]">
+                  <thead>
+                    <tr className="border-b border-dashed border-line">
+                      {["Part", "Qty", "Unit", "Total", "Vendor"].map((h) => (
+                        <th key={h} scope="col" className="label px-4 py-2.5 text-navy-soft">
+                          {h}
+                        </th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="flex items-center justify-between gap-4 bg-cream px-4 py-3">
+                  </thead>
+                  <tbody>
+                    {bom.items.length === 0 && (
+                      <tr className="border-b border-dashed border-line/60">
+                        <td colSpan={5} className="hand px-4 py-3.5 text-[0.88rem] text-coral-deep">
+                          no parts listed yet. Add them on the project page before you hand this in.
+                        </td>
+                      </tr>
+                    )}
+                    {bom.items.map((l) => (
+                      <tr key={l.id} className="border-b border-dashed border-line/60 align-top">
+                        <td className="px-4 py-2.5">
+                          <span className="block font-semibold [overflow-wrap:anywhere] text-navy">{l.name}</span>
+                          {l.purpose && (
+                            <span className="block text-[0.8rem] leading-snug text-navy-soft">{l.purpose}</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5 tabular-nums">{l.quantity}</td>
+                        <td className="px-4 py-2.5 tabular-nums">${l.unitCostUsd.toFixed(2)}</td>
+                        <td className="px-4 py-2.5 font-semibold text-navy tabular-nums">
+                          ${(l.quantity * l.unitCostUsd).toFixed(2)}
+                        </td>
+                        <td className="hand px-4 py-2.5 text-navy-soft">
+                          {l.link ? (
+                            <a
+                              href={l.link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="underline decoration-line-strong underline-offset-4 hover:text-navy"
+                            >
+                              {l.vendor || "link"}
+                            </a>
+                          ) : (
+                            l.vendor || "—"
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    <tr>
+                      <td className="px-4 py-2.5">
+                        <span className="block font-semibold text-navy">Tax &amp; shipping</span>
+                        <span className="block text-[0.8rem] leading-snug text-navy-soft">for the whole order</span>
+                      </td>
+                      <td className="px-4 py-2.5 text-navy-soft">—</td>
+                      <td className="px-4 py-2.5 text-navy-soft">—</td>
+                      <td className="px-4 py-2.5 font-semibold text-navy tabular-nums">
+                        ${bom.taxShippingUsd.toFixed(2)}
+                      </td>
+                      <td />
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 bg-cream px-4 py-3">
               <span className="label text-navy-soft">Cart total</span>
               <span className="text-[1.05rem] font-extrabold text-navy tabular-nums">${bomTotal.toFixed(2)}</span>
             </div>
           </Panel>
+          {/* One place to change the list: the project page. The sheet reads
+              it, so what is handed in is what the maker kept there. */}
+          {project && (
+            <p className="hand mt-2 text-[0.82rem] text-navy-soft">
+              Something wrong?{" "}
+              <Link
+                href={`/projects/${project.id}#bom-title`}
+                onClick={() => setOpenCheckpoint(null)}
+                className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
+              >
+                Edit the parts list on the project page
+              </Link>
+              .
+            </p>
+          )}
 
-          <div className="mt-4">
+          <div className="mt-8 border-t border-dashed border-line pt-6">
             <div className="grid gap-2">
               <p className="label flex items-center gap-2 text-navy-soft">
-                <IconCart className="text-base" /> Screenshot of your cart
+                <IconCart className="text-base" /> Screenshots of your cart
               </p>
               <p className="text-[0.88rem] leading-snug text-navy-soft">
-                The checkout page with the total visible. Any vendor.
+                The checkout page with the total visible. Any vendor — add one per cart if the
+                order is split.
               </p>
-              <ReelCapture
-                objectKey={cart}
-                onCaptured={setCart}
+              <ImageUploads
+                images={carts}
+                onChange={setCarts}
                 folder="sessions"
-                label="Your cart screenshot"
+                max={10}
+                label="Cart screenshot"
               />
             </div>
           </div>
 
-          <div className="mt-6">
+          <div className="mt-8 border-t border-dashed border-line pt-6">
             <p className="label mb-2 text-magenta">Finalise your tier</p>
             <p className="mb-3 text-[0.82rem] leading-snug text-navy-soft">
               Find out which tier you&apos;re eligible for! Your current goal is a{" "}

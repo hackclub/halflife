@@ -286,6 +286,24 @@ body::before {
 }
 
 .halo-gold { border-color: var(--color-gold); }
+
+/* A file that has finished sending and is being stored: the full bar keeps
+   moving, so a wait with no size to measure still reads as work. */
+.upload-storing {
+  background-image: linear-gradient(
+    110deg,
+    transparent 0 35%,
+    color-mix(in oklab, white 55%, transparent) 50%,
+    transparent 65% 100%
+  );
+  background-size: 220% 100%;
+  animation: hl-storing 1.1s linear infinite;
+}
+}
+
+@keyframes hl-storing {
+  from { background-position: 110% 0; }
+  to { background-position: -110% 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -95,6 +95,15 @@ function seededCeremony(): Ceremony {
   return { version: 4, phase: "cinematic", doomscrollerOpen: true };
 }
 
+/** The details a maker can change on their own project, all optional. */
+export interface ProjectPatch {
+  name?: string;
+  description?: string;
+  coverImageKey?: string | null;
+  githubRepo?: string | null;
+  tier?: 1 | 2 | 3;
+}
+
 interface Ctx {
   /** Who is signed in. Display fields only. */
   viewer: StoreSnapshot["viewer"];
@@ -146,6 +155,8 @@ interface Ctx {
    * can say so instead of quietly reverting.
    */
   setProjectRepo: (id: string, url: string | null) => Promise<string | null>;
+  /** Change any of a project's own details in one save. Null once saved, or why it was refused. */
+  updateProject: (id: string, patch: ProjectPatch) => Promise<string | null>;
   complete: (id: string, patch?: Partial<CheckpointState>) => void;
   /** Post the reel a checkpoint is asking for. The video is already uploaded. */
   postReel: (id: string, caption: string, objectKey: string) => void;
@@ -448,6 +459,48 @@ export function StoreProvider({
       setFacts((f) => ({
         ...f,
         projects: f.projects.map((p) => (p.id === id ? { ...p, githubRepo: url } : p)),
+      }));
+      router.refresh();
+      return null;
+    },
+    [router],
+  );
+
+  const updateProject = useCallback(
+    async (id: string, patch: ProjectPatch): Promise<string | null> => {
+      let res: Response;
+      try {
+        res = await fetch(`/api/projects/${id}`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            ...(patch.name !== undefined ? { title: patch.name } : {}),
+            ...(patch.description !== undefined ? { description: patch.description } : {}),
+            ...(patch.coverImageKey !== undefined ? { coverImageKey: patch.coverImageKey } : {}),
+            ...(patch.githubRepo !== undefined ? { githubRepo: patch.githubRepo } : {}),
+            ...(patch.tier !== undefined ? { requestedTier: patch.tier } : {}),
+          }),
+        });
+      } catch {
+        return "Could not reach the server. Try again.";
+      }
+      if (!res.ok) {
+        const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+        return err?.error?.message ?? "That did not save. Try again.";
+      }
+      setFacts((f) => ({
+        ...f,
+        projects: f.projects.map((p) =>
+          p.id === id
+            ? {
+                ...p,
+                ...(patch.name !== undefined ? { name: patch.name.trim() } : {}),
+                ...(patch.description !== undefined ? { description: patch.description.trim() } : {}),
+                ...(patch.githubRepo !== undefined ? { githubRepo: patch.githubRepo } : {}),
+                ...(patch.tier !== undefined ? { tier: patch.tier } : {}),
+              }
+            : p,
+        ),
       }));
       router.refresh();
       return null;
@@ -943,6 +996,7 @@ export function StoreProvider({
     addProject,
     setProjectTier,
     setProjectRepo,
+    updateProject,
     complete,
     postReel,
     submitPhase,

@@ -1,176 +1,135 @@
 import "server-only"
 import {
   airtableFetch,
-  escapeAirtableValue,
   getAirtableConfig,
   withRateLimitRetry,
   AirtableError,
   type AirtableRecord,
 } from "@/lib/airtable/client"
-import { YSWS_SUBMISSION, fieldKey, formulaRef, toFields } from "@/lib/airtable/schema"
+import { YSWS_SUBMISSION } from "@/lib/airtable/schema"
 
-export type YswsStage = "Design" | "Build"
+/**
+ * Writes to the `YSWS Project Submission` table.
+ *
+ * Rows are addressed by their Airtable record id, which Half Life keeps from
+ * the moment it creates one (see lib/airtable/sync). The table has no column
+ * of ours to match on, and none of its own is unique per submission — Code URL
+ * is shared by every project in a monorepo — so a match-on-fields upsert would
+ * sooner or later update someone else's row.
+ *
+ * `typecast: false` is deliberate: with typecast on, a single-select value we
+ * did not create is silently added as a new option, so a typo in a status or a
+ * tier quietly invents one in the base.
+ */
 
-export interface YswsSubmissionPayload {
-  halfLifeId: string
-  stage: YswsStage
-  theme: string
-  firstName: string
-  lastName: string
-  email: string
-  slackId: string | null
-  codeUrl: string | null
-  description: string | null
-  /** Public R2 URL. Airtable fetches it into the attachment field. */
-  screenshotUrl: string | null
-  addressLine1: string | null
-  addressLine2: string | null
-  city: string | null
-  state: string | null
-  country: string | null
-  zip: string | null
-  birthday: string | null
-  totalHours: number
-  hoursJustification: string | null
-  grantUsd: number
-  complexityTier: string
-  weekSubmitted: number | null
-  onTime: boolean
-  approvedAt: string | null
-  reviewerName: string | null
-}
+/** How many columns a write may shed before giving up. */
+const MAX_DROPPED_FIELDS = 6
 
-function fieldsFor(p: YswsSubmissionPayload): Record<string, unknown> {
-  const fields = toFields(YSWS_SUBMISSION.fields, {
-    firstName: p.firstName,
-    lastName: p.lastName,
-    email: p.email,
-    codeUrl: p.codeUrl ?? "",
-    // The pipeline expects a playable URL. Hardware has none, so stasis sends
-    // the repo for both and we match that.
-    playableUrl: p.codeUrl ?? "",
-    description: p.description ?? "",
-    addressLine1: p.addressLine1 ?? "",
-    addressLine2: p.addressLine2 ?? "",
-    city: p.city ?? "",
-    state: p.state ?? "",
-    country: p.country ?? "",
-    zip: p.zip ?? "",
-    ...(p.birthday ? { birthday: p.birthday } : {}),
-    overrideHours: p.totalHours,
-    ...(p.hoursJustification ? { overrideHoursReason: p.hoursJustification } : {}),
-    grantAmount: p.grantUsd,
-    complexityTier: p.complexityTier,
-    slackId: p.slackId ?? "",
-    halfLifeId: p.halfLifeId,
-    stage: p.stage,
-    theme: p.theme,
-    ...(p.weekSubmitted !== null ? { weekSubmitted: p.weekSubmitted } : {}),
-    onTime: p.onTime,
-    ...(p.approvedAt ? { approvedAt: p.approvedAt } : {}),
-    reviewer: p.reviewerName ?? "",
-  })
-  // Attachments are written as a URL Airtable fetches, so the bytes live in R2
-  // and Airtable only references them.
-  if (p.screenshotUrl) {
-    fields[fieldKey(YSWS_SUBMISSION.fields.screenshot)] = [{ url: p.screenshotUrl }]
+/**
+ * The fields Airtable says it cannot take, from its error message: a column
+ * that does not exist, a value a column rejects, or a select option that is
+ * not defined. Airtable names the column in the first two and only the value
+ * in the third, so both are looked for.
+ */
+function rejectedFields(err: AirtableError, fields: Record<string, unknown>): string[] {
+  let message = err.body
+  try {
+    message = (JSON.parse(err.body) as { error?: { message?: string } }).error?.message ?? err.body
+  } catch {
+    // Not JSON; search the raw text.
   }
-  return fields
+  const byName = Object.keys(fields).filter((k) => message.includes(`"${k}"`))
+  if (byName.length > 0) return byName
+  return Object.keys(fields).filter((k) => {
+    const v = fields[k]
+    return (typeof v === "string" && v.length > 0 && message.includes(v)) ||
+      (typeof v === "number" && message.includes(`"${v}"`))
+  })
 }
 
 /**
- * Upsert the grant row for one (themed project, stage).
+ * Create the row, or update it when its record id is known.
  *
- * Uses Airtable's native atomic `performUpsert` rather than the read-then-write
- * that stasis does. Two concurrent approvals of the same project — an admin
- * double-click, a retried request — both read zero rows and both create,
- * putting duplicate grant rows into the payout sink. `performUpsert` is one
- * call and cannot race with itself.
- *
- * `typecast: false` is deliberate: with typecast on, a single-select value we
- * did not create is silently added as a new option, so a typo in a theme name
- * quietly invents a sixth theme in the base.
+ * If Airtable refuses a column, the row is written without it and the column
+ * is logged: a submission reaching the table with one blank field is
+ * recoverable, and one that never arrives is not. Resolves to the record id,
+ * and the columns that had to be left out.
  */
-export async function upsertYswsSubmission(
-  payload: YswsSubmissionPayload,
-): Promise<{ recordId: string } | { skipped: "not_configured" }> {
+export async function writeYswsRecord(
+  fields: Record<string, unknown>,
+  recordId: string | null,
+): Promise<{ recordId: string; dropped: string[] } | { skipped: "not_configured" }> {
   const config = getAirtableConfig()
   if (!config) {
-    console.warn("[airtable] not configured; skipping YSWS submission upsert")
+    console.warn("[airtable] not configured; skipping YSWS submission write")
     return { skipped: "not_configured" }
   }
 
-  const body = {
-    performUpsert: {
-      fieldsToMergeOn: [
-        fieldKey(YSWS_SUBMISSION.fields.halfLifeId),
-        fieldKey(YSWS_SUBMISSION.fields.stage),
-      ],
-    },
-    records: [{ fields: fieldsFor(payload) }],
-    typecast: false,
-  }
+  const send = (f: Record<string, unknown>, id: string | null) =>
+    withRateLimitRetry(id ? "updateYswsSubmission" : "createYswsSubmission", () =>
+      airtableFetch<{ records: AirtableRecord[] }>(config, YSWS_SUBMISSION.tableId, {
+        method: id ? "PATCH" : "POST",
+        body: JSON.stringify({ records: [id ? { id, fields: f } : { fields: f }], typecast: false }),
+      }),
+    )
 
-  const result = await withRateLimitRetry("upsertYswsSubmission", () =>
-    airtableFetch<{ records: AirtableRecord[] }>(config, YSWS_SUBMISSION.tableId, {
-      method: "PATCH",
-      body: JSON.stringify(body),
-    }),
-  )
-  const record = result.records[0]
-  if (!record) throw new Error("Airtable upsert returned no record")
-  return { recordId: record.id }
+  let current = { ...fields }
+  let id = recordId
+  const dropped: string[] = []
+  for (;;) {
+    try {
+      const result = await send(current, id)
+      const record = result.records[0]
+      if (!record) throw new Error("Airtable write returned no record")
+      return { recordId: record.id, dropped }
+    } catch (err) {
+      if (!(err instanceof AirtableError)) throw err
+      // The row was deleted in the base since we wrote it: start a new one.
+      if (id && (err.status === 404 || err.body.includes("ROW_DOES_NOT_EXIST"))) {
+        console.warn(`[airtable] YSWS row ${id} is gone; creating a new one`)
+        id = null
+        continue
+      }
+      const bad = err.status === 422 ? rejectedFields(err, current) : []
+      if (bad.length === 0 || dropped.length + bad.length > MAX_DROPPED_FIELDS) throw err
+      console.warn(`[airtable] YSWS refused ${bad.map((b) => `"${b}"`).join(", ")}; writing without: ${err.body.slice(0, 200)}`)
+      for (const b of bad) delete current[b]
+      dropped.push(...bad)
+      current = { ...current }
+    }
+  }
 }
 
 /**
- * Remove the grant rows for a (themed project, stage) and report the unified
- * base record ids they carried, so those can be deleted by exact id.
- *
- * Deleting from the unified base by Code URL would be wrong twice over: the URL
- * is not unique across programs, and here all five of a participant's themed
- * projects may live in one monorepo.
+ * Delete one row by record id, reporting its unified-base twin (if the
+ * pipeline has made one) so that can be removed by exact id too.
  */
-export async function deleteYswsSubmission(
-  halfLifeId: string,
-  stage: YswsStage,
-): Promise<{ deleted: string[]; unifiedRecordIds: string[]; skipped?: string; error?: string }> {
+export async function deleteYswsRecord(
+  recordId: string,
+): Promise<{ deleted: boolean; unifiedRecordId: string | null; skipped?: string }> {
   const config = getAirtableConfig()
-  if (!config) return { deleted: [], unifiedRecordIds: [], skipped: "not_configured" }
-
-  const formula = `AND(${formulaRef(YSWS_SUBMISSION.fields.halfLifeId)} = '${escapeAirtableValue(halfLifeId)}', ${formulaRef(YSWS_SUBMISSION.fields.stage)} = '${escapeAirtableValue(stage)}')`
-
+  if (!config) return { deleted: false, unifiedRecordId: null, skipped: "not_configured" }
   try {
-    const found = await withRateLimitRetry("findYswsSubmission", () =>
-      airtableFetch<{ records: AirtableRecord[] }>(
-        config,
-        `${YSWS_SUBMISSION.tableId}?filterByFormula=${encodeURIComponent(formula)}&maxRecords=10`,
-      ),
+    const row = await withRateLimitRetry("readYswsSubmission", () =>
+      airtableFetch<AirtableRecord>(config, `${YSWS_SUBMISSION.tableId}/${encodeURIComponent(recordId)}`),
     )
-    if (found.records.length === 0) return { deleted: [], unifiedRecordIds: [] }
-
-    const unifiedRecordIds = found.records
-      .map((r) => r.fields[YSWS_SUBMISSION.fields.unifiedRecordId.name])
-      .filter((v): v is string => typeof v === "string" && v.length > 0)
-
-    const query = found.records.map((r) => `records[]=${encodeURIComponent(r.id)}`).join("&")
+    const twin = row.fields[YSWS_SUBMISSION.fields.unifiedRecordId.name]
     await withRateLimitRetry("deleteYswsSubmission", () =>
-      airtableFetch<{ records: { id: string }[] }>(
+      airtableFetch<{ deleted: boolean }>(
         config,
-        `${YSWS_SUBMISSION.tableId}?${query}`,
+        `${YSWS_SUBMISSION.tableId}/${encodeURIComponent(recordId)}`,
         { method: "DELETE" },
       ),
     )
-    return { deleted: found.records.map((r) => r.id), unifiedRecordIds }
+    return { deleted: true, unifiedRecordId: typeof twin === "string" && twin ? twin : null }
   } catch (err) {
+    if (err instanceof AirtableError && (err.status === 404 || err.body.includes("ROW_DOES_NOT_EXIST"))) {
+      return { deleted: false, unifiedRecordId: null, skipped: "already_gone" }
+    }
     // A missing write grant is an ops problem, not a reason to fail the
-    // un-approval that the admin is in the middle of.
+    // participant's unsubmit.
     if (err instanceof AirtableError && err.isPermission) {
-      return {
-        deleted: [],
-        unifiedRecordIds: [],
-        skipped: "no_write_access",
-        error: err.message,
-      }
+      return { deleted: false, unifiedRecordId: null, skipped: "no_write_access" }
     }
     throw err
   }

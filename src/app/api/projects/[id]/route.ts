@@ -90,6 +90,12 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
     }
   }
 
+  // A cover is a key, and a key is a path into the bucket: only one this user
+  // uploaded as a cover, or a project could point its cover at anyone's file.
+  if (data.coverImageKey && !data.coverImageKey.startsWith(`covers/${gate.user.id}/`)) {
+    return fail("VALIDATION_FAILED", "Upload the cover image first")
+  }
+
   const updated = await prisma.themeProject.update({
     where: { id },
     data: {

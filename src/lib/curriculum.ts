@@ -362,12 +362,3 @@ export const SUBMIT_FILES_BUILD = [
   { id: "photos", label: "Three photos of the finished build", hint: "Front, back, and one detail shot." },
   { id: "notes", label: "Assembly notes", hint: "What you got wrong the first time." },
 ];
-
-export const BOM_ROWS = [
-  { ref: "U1", part: "RP2040 microcontroller", qty: 1, unit: 1.1, vendor: "DigiKey" },
-  { ref: "D1–D3", part: "1N4148 diode (SOD-123)", qty: 3, unit: 0.09, vendor: "DigiKey" },
-  { ref: "SW1–SW3", part: "Kailh hot-swap socket", qty: 3, unit: 0.35, vendor: "LCSC" },
-  { ref: "J1", part: "USB-C receptacle, 16-pin", qty: 1, unit: 0.62, vendor: "LCSC" },
-  { ref: "—", part: "PCB fabrication, 4 boards", qty: 1, unit: 12.4, vendor: "JLCPCB" },
-  { ref: "—", part: "Keycaps, blank PBT", qty: 3, unit: 0.9, vendor: "AliExpress" },
-];

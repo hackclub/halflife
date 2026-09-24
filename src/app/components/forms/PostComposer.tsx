@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation"
 import { useRef, useState } from "react"
 import { Button, Callout, Field, Panel } from "@/app/components/ui"
 import { PhoneHandoff } from "@/app/components/forms/PhoneHandoff"
+import { postForm } from "@/lib/upload-progress"
 
 interface ApiError {
   error?: { message?: string }
@@ -41,6 +42,7 @@ export function PostComposer({
   const [kind, setKind] = useState<string>("FREEFORM")
   const [projectId, setProjectId] = useState<string>("")
   const [stage, setStage] = useState<"idle" | "uploading" | "posting">("idle")
+  const [progress, setProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
   /**
    * An object key that arrived from a phone. When set it stands in for the
@@ -68,19 +70,20 @@ export function PostComposer({
       // still has to be sent.
       if (!objectKey && file) {
         setStage("uploading")
+        setProgress(0)
         const form = new FormData()
         form.append("file", file)
         form.append("folder", "posts")
 
-        const uploaded = await fetch("/api/upload", { method: "POST", body: form })
+        const uploaded = await postForm("/api/upload", form, setProgress)
         if (!uploaded.ok) {
-          const payload = (await uploaded.json().catch(() => ({}))) as ApiError
+          const payload = (uploaded.json ?? {}) as ApiError
           setError(payload.error?.message ?? `Upload failed (${uploaded.status})`)
           return
         }
         // No `data` envelope: ok() returns the payload itself, and only a
         // failure is wrapped. See lib/api.ts.
-        const data = (await uploaded.json()) as { objectKey: string }
+        const data = uploaded.json as { objectKey: string }
         objectKey = data.objectKey
       }
 
@@ -180,6 +183,20 @@ export function PostComposer({
           ))}
         </select>
       </Field>
+
+      {stage === "uploading" ? (
+        <div>
+          <progress
+            max={1}
+            value={progress < 1 ? progress : undefined}
+            aria-label="Uploading the video"
+            style={{ width: "100%", height: "0.6rem" }}
+          />
+          <p className="hl-hint">
+            {progress < 1 ? `Uploading… ${Math.round(progress * 100)}%` : "Sent. Storing it…"}
+          </p>
+        </div>
+      ) : null}
 
       <div>
         <Button type="submit" variant="primary" disabled={busy}>

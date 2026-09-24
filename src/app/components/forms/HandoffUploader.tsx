@@ -1,6 +1,7 @@
 "use client"
 import { useRef, useState } from "react"
 import { Button, Callout, Field } from "@/app/components/ui"
+import { postForm } from "@/lib/upload-progress"
 
 interface ApiError {
   error?: { message?: string }
@@ -23,6 +24,8 @@ export function HandoffUploader({ token }: Readonly<{ token: string }>) {
   const [state, setState] = useState<"idle" | "uploading" | "done">("idle")
   const [error, setError] = useState<string | null>(null)
   const [fileName, setFileName] = useState<string | null>(null)
+  // Fraction sent. The phone is where the wait is longest, so it shows here.
+  const [progress, setProgress] = useState(0)
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -35,14 +38,15 @@ export function HandoffUploader({ token }: Readonly<{ token: string }>) {
     }
 
     setState("uploading")
+    setProgress(0)
     try {
       const form = new FormData()
       form.append("token", token)
       form.append("file", file)
 
-      const res = await fetch("/api/handoff/upload", { method: "POST", body: form })
+      const res = await postForm("/api/handoff/upload", form, setProgress)
       if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as ApiError
+        const payload = (res.json ?? {}) as ApiError
         setError(payload.error?.message ?? `Upload failed (${res.status})`)
         setState("idle")
         return
@@ -79,6 +83,22 @@ export function HandoffUploader({ token }: Readonly<{ token: string }>) {
       </Field>
 
       {fileName ? <p className="hl-hint">{fileName}</p> : null}
+
+      {state === "uploading" ? (
+        <div>
+          <progress
+            max={1}
+            // No value once everything is sent: the browser draws its own
+            // "working" state while the server stores the video.
+            value={progress < 1 ? progress : undefined}
+            aria-label="Sending your video"
+            style={{ width: "100%", height: "0.6rem" }}
+          />
+          <p className="hl-hint">
+            {progress < 1 ? `Sending… ${Math.round(progress * 100)}%` : "Sent. Saving it…"}
+          </p>
+        </div>
+      ) : null}
 
       <div>
         <Button type="submit" variant="primary" disabled={state === "uploading"}>

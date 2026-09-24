@@ -4,7 +4,9 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { signOut } from "@/lib/auth-client";
-import { FoxAvatar, FoxMark } from "@/components/platform/art";
+import Image from "next/image";
+import { FoxAvatar } from "@/components/platform/art";
+import logoArt from "../../../../public/art/logo.png";
 import { IconLogout } from "@/components/platform/icons";
 import { Panel, cx } from "@/components/platform/ui";
 import { useStore } from "@/lib/store";
@@ -40,8 +42,18 @@ export function Sidebar({ className }: { className?: string }) {
 
   return (
     <div className={cx("flex flex-col gap-5", className)}>
-      <Link href={PLATFORM_HOME} aria-label="Half Life home" className="block w-[88px] shrink-0">
-        <FoxMark className="sticker-shadow w-full" />
+      {/* The same artwork the landing page leads with, so the platform reads as
+          the place the site sent you. Sized to the rail, not to its own pixels:
+          the file is drawn large, and priority because it is above the fold on
+          every page. */}
+      <Link href={PLATFORM_HOME} aria-label="Half Life home" className="block w-[176px] shrink-0 xl:w-[200px]">
+        <Image
+          src={logoArt}
+          alt=""
+          priority
+          sizes="200px"
+          className="h-auto w-full drop-shadow-[0_3px_6px_rgb(28_26_89/0.18)]"
+        />
       </Link>
 
       <Panel tone="line" radius={18} className="relative bg-cream/60 pt-7 pb-5">

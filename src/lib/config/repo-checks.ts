@@ -52,8 +52,10 @@ export const REPO_FILE_KINDS: Record<
   },
   pcbFab: {
     label: "Fabrication files",
-    missing: "No Gerber or drill files found",
-    extensions: [".gbr", ".gbl", ".gtl", ".gbs", ".gts", ".gbo", ".gto", ".gko", ".drl"],
+    missing: "No Gerber or drill files (or a zip of them) found",
+    // A .zip counts, as in Stasis: most fab houses take the Gerbers as one
+    // zipped export, and that is often all a repo carries.
+    extensions: [".gbr", ".gbl", ".gtl", ".gbs", ".gts", ".gbo", ".gto", ".gko", ".drl", ".zip"],
   },
   cadSource: {
     label: "CAD source files",

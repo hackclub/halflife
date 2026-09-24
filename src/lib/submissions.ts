@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma"
 import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
 import type { ThemeProject } from "@/app/generated/prisma/client"
 import { checkRepo } from "@/lib/repo-checks"
+import { syncHcaProfile } from "@/lib/hca-profile"
 import { HttpError } from "@/lib/errors"
 import { getHoursBreakdown } from "@/lib/hours"
 import { isOwnedKey } from "@/lib/uploads/r2"
@@ -146,9 +147,16 @@ export async function submitPhase(
   if (user?.fraudFlagged) {
     throw new HttpError("FORBIDDEN", "Your account is under review. Reach out in Slack.")
   }
+  // The stored status is from the last sign-in. Someone who finished verifying
+  // since then is verified now, so HCA is asked again before anyone is turned
+  // away — and only then, so a verified maker's submit costs no extra call.
+  let verificationStatus = user?.verificationStatus ?? null
+  if (process.env.SKIP_YSWS_VERIFICATION_CHECK !== "true" && verificationStatus !== "verified") {
+    verificationStatus = (await syncHcaProfile(userId)) ?? verificationStatus
+  }
   if (
     process.env.SKIP_YSWS_VERIFICATION_CHECK !== "true" &&
-    user?.verificationStatus !== "verified"
+    verificationStatus !== "verified"
   ) {
     throw new HttpError(
       "NOT_VERIFIED",

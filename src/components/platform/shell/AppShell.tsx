@@ -2,10 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FoxMark } from "@/components/platform/art";
+import { useState } from "react";
+import Image from "next/image";
+import logoArt from "../../../../public/art/logo.png";
 import {
   IconBag,
   IconBook,
+  IconChevronLeft,
+  IconChevronRight,
   IconCoin,
   IconCompass,
   IconFilm,
@@ -62,7 +66,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // alongside it would put the same six reels on screen twice, so the route
   // wins — without touching the reader's own open/closed preference.
   const onDoomscroller = pathname.startsWith("/doomscroller");
-  const rail = doomscrollerOpen && !onDoomscroller;
+
+  // The status rail is the map's companion: open on the trail, where the goal
+  // is what the whole page is measured against, and folded away everywhere
+  // else so a project, the shop or the docs get the width. A toggle holds only
+  // for the page it was pressed on — the next page starts from its own
+  // default, so opening it once on the shop does not squeeze every page after.
+  const [railChoice, setRailChoice] = useState<{ path: string; open: boolean } | null>(null);
+  const railOpen = railChoice?.path === pathname ? railChoice.open : pathname === PLATFORM_HOME;
+  const setRailOpen = (open: boolean) => setRailChoice({ path: pathname, open });
+
+  const rail = railOpen && doomscrollerOpen && !onDoomscroller;
 
   return (
     <>
@@ -88,21 +102,52 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {/* ---------- centre + feed ---------- */}
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-dashed border-line/70 bg-cream/85 px-4 backdrop-blur-md sm:px-6 lg:border-b-0 lg:bg-transparent lg:backdrop-blur-none">
-            <Link href={PLATFORM_HOME} aria-label="Half Life home" className="w-11 shrink-0 lg:hidden">
-              <FoxMark className="sticker-shadow w-full" />
+            <Link href={PLATFORM_HOME} aria-label="Half Life home" className="w-[84px] shrink-0 lg:hidden">
+              <Image src={logoArt} alt="" priority sizes="84px" className="h-auto w-full" />
             </Link>
             <div className="min-w-0 flex-1" />
 
             {/* Puts the rail back, under the product's own name for it. A
                 second control labelled "Reels" would compete with the nav
                 item while doing something different. */}
-            {!rail && !onDoomscroller && (
+            {railOpen && !rail && !onDoomscroller && (
               <button
                 type="button"
                 onClick={() => setDoomscroller(true)}
                 className="label hidden items-center gap-1.5 rounded-full border-2 border-line px-3 py-1.5 text-navy-soft transition-colors hover:border-sky hover:text-navy xl:inline-flex"
               >
                 <IconFilm className="text-base" /> Doomscroller
+              </button>
+            )}
+
+            {/* Folds the whole status rail, goal and feed together. Named in
+                full while it is folded, because then it is the only sign the
+                goal exists on this page; an arrow once it is open, because the
+                rail itself is showing what it hides. */}
+            {railOpen ? (
+              <button
+                type="button"
+                onClick={() => setRailOpen(false)}
+                aria-expanded="true"
+                aria-controls="status-rail"
+                aria-label="Hide the goal and Doomscroller"
+                title="Hide the goal and Doomscroller"
+                className="hidden size-9 place-items-center rounded-full border-2 border-line text-navy-soft transition-colors hover:border-violet hover:text-navy xl:grid"
+              >
+                <IconChevronRight className="text-base" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setRailOpen(true);
+                  if (!onDoomscroller) setDoomscroller(true);
+                }}
+                aria-expanded="false"
+                aria-controls="status-rail"
+                className="label hidden items-center gap-1.5 rounded-full border-2 border-line px-3 py-1.5 text-navy-soft transition-colors hover:border-violet hover:text-navy xl:inline-flex"
+              >
+                <IconChevronLeft className="text-base" /> Goal &amp; Doomscroller
               </button>
             )}
 
@@ -125,25 +170,37 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               {children}
             </main>
 
-            {/* The status rail. Its width is fixed so the trail down the middle
-                never reflows underneath the reader — only the feed inside it
-                opens and closes, and the goal stays up whatever it does. */}
-            <aside className="sticky top-16 hidden h-[calc(100dvh_-_4rem)] w-[316px] shrink-0 flex-col overflow-hidden py-4 pr-5 pl-1 xl:flex 2xl:w-[352px] 2xl:pr-7">
-              <GoalTracker className="shrink-0" />
+            {/* The status rail. Open, its width is fixed so the trail down the
+                middle never reflows underneath the reader while the feed inside
+                opens and closes. Folded, it slides to nothing and the page takes
+                the room; the content keeps its full width while it goes, so it
+                is clipped away rather than squashed. */}
+            <aside
+              id="status-rail"
+              inert={!railOpen}
+              className={cx(
+                "sticky top-16 hidden h-[calc(100dvh_-_4rem)] shrink-0 justify-end overflow-hidden xl:flex",
+                "transition-[width,opacity] duration-[420ms] ease-[cubic-bezier(.16,1,.3,1)] motion-reduce:transition-none",
+                railOpen ? "w-[316px] opacity-100 2xl:w-[352px]" : "w-0 opacity-0",
+              )}
+            >
+              <div className="flex h-full w-[316px] shrink-0 flex-col py-4 pr-5 pl-1 2xl:w-[352px] 2xl:pr-7">
+                <GoalTracker className="shrink-0" />
 
-              {/* Stays mounted through the close so the feed slides shut
-                  rather than vanishing — closing is often something the page
-                  did, not something the reader asked for. */}
-              <div
-                data-tour={rail ? "doomscroller" : undefined}
-                inert={!rail}
-                className={cx(
-                  "flex min-h-0 overflow-hidden",
-                  "transition-[flex-grow,margin,opacity] duration-[420ms] ease-[cubic-bezier(.16,1,.3,1)]",
-                  rail ? "mt-4 flex-1 opacity-100" : "mt-0 flex-[0_1_0%] opacity-0",
-                )}
-              >
-                <DoomscrollerFeed className="min-h-0 w-full" onClose={() => setDoomscroller(false)} />
+                {/* Stays mounted through the close so the feed slides shut
+                    rather than vanishing — closing is often something the page
+                    did, not something the reader asked for. */}
+                <div
+                  data-tour={rail ? "doomscroller" : undefined}
+                  inert={!rail}
+                  className={cx(
+                    "flex min-h-0 overflow-hidden",
+                    "transition-[flex-grow,margin,opacity] duration-[420ms] ease-[cubic-bezier(.16,1,.3,1)]",
+                    rail ? "mt-4 flex-1 opacity-100" : "mt-0 flex-[0_1_0%] opacity-0",
+                  )}
+                >
+                  <DoomscrollerFeed className="min-h-0 w-full" onClose={() => setDoomscroller(false)} />
+                </div>
               </div>
             </aside>
           </div>

@@ -519,6 +519,11 @@ model ThemeProject {
   /// their receipts. Converts 1:1 into spendable coins.
   bomSavingsUsd Int?
 
+  /// Tax and shipping for the whole parts order, as one total: a cart charges
+  /// them once for the order rather than per part. Null until entered, and
+  /// read as zero. Part of the BOM, so it locks with it.
+  bomTaxShippingUsd Float?
+
   /// The tier the PARTICIPANT asked for, set during onboarding and editable
   /// until the design is submitted.
   ///
@@ -549,6 +554,7 @@ model ThemeProject {
   submissions    PhaseSubmission[]
   ledgerEntries  LedgerEntry[]
   posts          Post[]
+  bomItems       BomItem[]
 
   /// One themed project per theme per person. This makes "five themed
   /// projects" a schema invariant rather than a convention, which is what lets
@@ -559,6 +565,34 @@ model ThemeProject {
   @@index([designStatus])
   @@index([buildStatus])
   @@map("theme_project")
+}
+
+/// One line of a project's bill of materials, as the maker wrote it.
+///
+/// This is the parts list the tier's funding is asked against, so it is the
+/// maker's own claim: nothing here is priced or checked by the app, and a
+/// reviewer reads it next to the cart screenshot handed in with the design.
+/// Editable until the design week is approved, then frozen with the grant.
+model BomItem {
+  id             String       @id @default(cuid())
+  themeProjectId String
+  themeProject   ThemeProject @relation(fields: [themeProjectId], references: [id], onDelete: Cascade)
+
+  name        String
+  /// What it is for on this board — "USB-C power in", not the part number.
+  purpose     String?
+  quantity    Int     @default(1)
+  unitCostUsd Float   @default(0)
+  vendor      String?
+  link        String?
+  /// The maker's order. New lines go to the end.
+  sortOrder   Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([themeProjectId, sortOrder])
+  @@map("bom_item")
 }
 
 model WorkSession {

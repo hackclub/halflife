@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { IconCheck, IconWarning } from "@/components/platform/icons";
 import { RepoEditor } from "@/components/platform/RepoField";
 import { Button, cx } from "@/components/platform/ui";
+import { displayRepo } from "@/lib/repo";
 import type { RepoCheck, RepoCheckResult } from "@/lib/repo-checks";
 import type { Project } from "@/lib/types";
 
@@ -13,17 +14,24 @@ import type { Project } from "@/lib/types";
  *
  * Failures that block are coral and say how to fix them; recommendations are
  * amber and never block; GitHub being unreachable is amber too, because that
- * is ours to absorb. When the problem is the link itself (none, not GitHub,
- * not found) the repo editor is right here, so fixing it does not mean
- * leaving the sheet. Otherwise the fix is a push, and "Check again" is how
- * the sheet finds out.
+ * is ours to absorb. The repo being checked sits under the heading with its
+ * editor, so a wrong or missing link is fixed without leaving the sheet, and
+ * a new link re-runs the checks. Otherwise the fix is a push, and "Check
+ * again" is how the sheet finds out.
  */
 export function RepoChecks({
   project,
   onResult,
+  editable = true,
 }: {
   project: Project;
   onResult: (result: RepoCheckResult | null) => void;
+  /**
+   * Whether the link can be changed from here. The submit sheet says yes, so a
+   * wrong link is fixed without leaving it; the project page says no, because
+   * its own details editor already owns the link.
+   */
+  editable?: boolean;
 }) {
   const [data, setData] = useState<RepoCheckResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -53,7 +61,6 @@ export function RepoChecks({
     void run();
   }, [run]);
 
-  const linkProblem = data?.checks.some((c) => c.key === "repo" && c.status === "fail") ?? false;
   const blocking = data?.checks.filter((c) => c.blocking && c.status === "fail").length ?? 0;
 
   return (
@@ -70,6 +77,18 @@ export function RepoChecks({
           {loading ? "Checking…" : "Check again"}
         </Button>
       </div>
+      {editable ? (
+        <RepoEditor project={project} className="mt-1" />
+      ) : project.githubRepo ? (
+        <a
+          href={project.githubRepo}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-1 block truncate text-[0.85rem] font-semibold text-navy underline decoration-line-strong decoration-2 underline-offset-4 transition-colors hover:decoration-violet"
+        >
+          {displayRepo(project.githubRepo)}
+        </a>
+      ) : null}
 
       {loading && !data ? (
         <p className="hand mt-2 text-[0.85rem] text-navy-soft" aria-live="polite">
@@ -93,11 +112,6 @@ export function RepoChecks({
               <CheckRow key={c.key} check={c} />
             ))}
           </ul>
-          {linkProblem && (
-            <div className="mt-3 border-t border-line/70 pt-3">
-              <RepoEditor project={project} />
-            </div>
-          )}
         </>
       ) : null}
     </section>

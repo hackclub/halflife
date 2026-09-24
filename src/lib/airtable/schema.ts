@@ -43,53 +43,58 @@ export function formulaRef(field: FieldDef): string {
 }
 
 /**
- * The `YSWS Project Submission` table.
+ * The `YSWS Project Submission` table, column for column.
  *
- * The names below are NOT ours to choose. Hack Club's payout pipeline reads
- * them, and they are copied verbatim from stasis's submitYSWSProjectSubmission
- * (lib/airtable.ts). A typo here means someone does not get paid.
+ * The names are NOT ours to choose: they are the base's own, copied verbatim
+ * from its field list, and Hack Club's pipeline reads them. A typo here means
+ * a field silently goes unfilled (see the drop-and-retry in lib/airtable/ysws).
+ *
+ * Every row is written by Half Life at submit time, as "Pending Review";
+ * review itself happens on ari.hackclub.com, which moves the row on from there.
+ * The `Automation - …` columns belong to the pipeline and are never written
+ * here — `Automation - Submit to Unified YSWS` in particular is what sends a
+ * row onward, and that is a reviewer's call, not a submitter's.
  */
 export const YSWS_SUBMISSION = {
   tableId: process.env.AIRTABLE_YSWS_TABLE_ID ?? "YSWS Project Submission",
   fields: {
+    codeUrl: f<string>("fldYswsCodeUrl", "Code URL"),
     firstName: f<string>("fldYswsFirstName", "First Name"),
     lastName: f<string>("fldYswsLastName", "Last Name"),
     email: f<string>("fldYswsEmail", "Email"),
-    codeUrl: f<string>("fldYswsCodeUrl", "Code URL"),
+    birthday: f<string>("fldYswsBirthday", "Birthday"),
+    slackId: f<string>("fldYswsSlackId", "Slack ID"),
+    stage: f<"Design" | "Build">("fldYswsStage", "Design or build"),
+    requestedFunding: f<number>("fldYswsRequestedFunding", "Requested funding"),
+    hoursSelfReported: f<number>("fldYswsHoursSelfReported", "Hours spent (self reported)"),
     playableUrl: f<string>("fldYswsPlayableUrl", "Playable URL"),
     description: f<string>("fldYswsDescription", "Description"),
     screenshot: f<{ url: string }[]>("fldYswsScreenshot", "Screenshot"),
+    journalUrl: f<string>("fldYswsJournalUrl", "Link to JOURNAL.md"),
+    lapseLinks: f<string>("fldYswsLapseLinks", "Justification - Lapse Links, comma-separated"),
+    githubUsername: f<string>("fldYswsGithubUsername", "GitHub Username"),
     addressLine1: f<string>("fldYswsAddress1", "Address (Line 1)"),
     addressLine2: f<string>("fldYswsAddress2", "Address (Line 2)"),
     city: f<string>("fldYswsCity", "City"),
+    zip: f<string>("fldYswsZip", "ZIP / Postal Code"),
     state: f<string>("fldYswsState", "State / Province"),
     country: f<string>("fldYswsCountry", "Country"),
-    zip: f<string>("fldYswsZip", "ZIP / Postal Code"),
-    birthday: f<string>("fldYswsBirthday", "Birthday"),
-    overrideHours: f<number>("fldYswsOverrideHours", "Optional - Override Hours Spent"),
-    overrideHoursReason: f<string>(
-      "fldYswsOverrideHoursReason",
-      "Optional - Override Hours Spent Justification",
+    hackatimeProjects: f<string>(
+      "fldYswsHackatimeProjects",
+      "Justification - Hackatime Project Name(s) + Date Range(s)",
     ),
-    grantAmount: f<number>("fldYswsGrantAmount", "Requested Grant Amount"),
-    complexityTier: f<string>("fldYswsComplexityTier", "Complexity Tier"),
-    slackId: f<string>("fldYswsSlackId", "Slack ID"),
-    // Written by the pipeline's automation, read by us: it is the only safe way
-    // to remove the matching row in the unified base, because Code URL is not
-    // unique across programs and all five of a participant's themed projects
-    // may share one monorepo URL.
+    hackatimeId: f<string>("fldYswsHackatimeId", "Justification - Submitter Hackatime ID"),
+    projectName: f<string>("fldYswsProjectName", "Project name"),
+    reviewStatus: f<string>("fldYswsReviewStatus", "Review Status"),
+    tier: f<string>("fldYswsTier", "Tier"),
+    // Written by the pipeline's automation, read by us: it identifies the row's
+    // twin in the unified base, which is the only safe way to remove it.
     unifiedRecordId: f<string>("fldYswsUnifiedRecordId", "Automation - YSWS Record ID"),
-
-    // Program-local fields. The pipeline ignores these.
-    halfLifeId: f<string>("fldHalfLifeId", "Half-Life ID"),
-    stage: f<"Design" | "Build">("fldHalfLifeStage", "Stage"),
-    theme: f<string>("fldHalfLifeTheme", "Theme"),
-    weekSubmitted: f<number>("fldHalfLifeWeek", "Week Submitted"),
-    onTime: f<boolean>("fldHalfLifeOnTime", "On Time"),
-    approvedAt: f<string>("fldHalfLifeApprovedAt", "Approved At"),
-    reviewer: f<string>("fldHalfLifeReviewer", "Reviewer"),
   },
 } as const
+
+/** What every row says when Half Life writes it; ari.hackclub.com takes it from there. */
+export const YSWS_PENDING_REVIEW = "Pending Review"
 
 export const RSVP = {
   tableId: process.env.AIRTABLE_RSVP_TABLE_ID ?? "RSVPs",
