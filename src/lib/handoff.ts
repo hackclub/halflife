@@ -6,6 +6,7 @@ import prisma from "@/lib/prisma"
 import {
   buildObjectKey,
   isUploadConfigured,
+  isVideoBytes,
   MAX_UPLOAD_BYTES,
   publicUrlFor,
   putObject,
@@ -137,6 +138,11 @@ export async function completeHandoff(
   const check = validateUpload(file.name, file.type, file.size)
   if (!check.ok) throw new HttpError("VALIDATION_FAILED", check.reason)
 
+  const bytes = await file.bytes()
+  if (!isVideoBytes(bytes)) {
+    throw new HttpError("VALIDATION_FAILED", "That file does not look like a video")
+  }
+
   // Claim first. Losing this race means another phone already used the code.
   const claimed = await prisma.uploadHandoff.updateMany({
     where: { id: target.id, usedAt: null, expiresAt: { gt: new Date() } },
@@ -151,7 +157,7 @@ export async function completeHandoff(
   const key = buildObjectKey(target.userId, POST_UPLOAD_FOLDER, check.ext)
 
   try {
-    await putObject(key, await file.bytes(), file.type)
+    await putObject(key, bytes, file.type)
   } catch (err) {
     // Give the code back — the user did nothing wrong and should be able to
     // retry without generating a new QR.

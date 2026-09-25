@@ -62,6 +62,10 @@ export function PostComposer({
       setError("Record or pick a video first.")
       return
     }
+    if (file && !file.type.startsWith("video/")) {
+      setError("Choose a video file (MP4, WebM, or MOV).")
+      return
+    }
 
     try {
       let objectKey = handoffKey

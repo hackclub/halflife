@@ -29,6 +29,21 @@ const EXTENSION_MIME: Record<string, string[]> = {
   mov: ["video/quicktime"],
 }
 
+/**
+ * A MIME type and filename are only claims. These are the container signatures
+ * for the video formats the app accepts, so a renamed image or text file cannot
+ * become a reel by lying about its extension.
+ */
+export function isVideoBytes(bytes: Uint8Array): boolean {
+  if (bytes.length < 12) return false
+
+  // ISO base media (MP4/MOV): `....ftyp` at byte 4.
+  if (String.fromCharCode(...bytes.slice(4, 8)) === "ftyp") return true
+
+  // Matroska/WebM: EBML header 1A 45 DF A3.
+  return bytes[0] === 0x1a && bytes[1] === 0x45 && bytes[2] === 0xdf && bytes[3] === 0xa3
+}
+
 export function isUploadConfigured(): boolean {
   return !!(
     process.env.S3_ACCESS_KEY_ID &&

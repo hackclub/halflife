@@ -36,6 +36,10 @@ export function HandoffUploader({ token }: Readonly<{ token: string }>) {
       setError("Record or choose a video first.")
       return
     }
+    if (!file.type.startsWith("video/")) {
+      setError("Choose a video file (MP4, WebM, or MOV).")
+      return
+    }
 
     setState("uploading")
     setProgress(0)
