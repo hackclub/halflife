@@ -1,27 +1,27 @@
-"use client";
+"use client"
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { IconSend, IconX } from "@/components/platform/icons";
-import { cx } from "@/components/platform/ui";
-import type { FeedItem } from "@/lib/feed";
-import { ago, compact } from "./format";
+import { useCallback, useEffect, useRef, useState } from "react"
+import { IconSend, IconX } from "@/components/platform/icons"
+import { cx } from "@/components/platform/ui"
+import type { FeedItem } from "@/lib/feed"
+import { ago, compact } from "./format"
 
 interface Comment {
-  id: string;
-  body: string;
-  createdAt: string;
-  author: { id: string; name: string | null; image: string | null };
-  mine: boolean;
+  id: string
+  body: string
+  createdAt: string
+  author: { id: string; name: string | null; image: string | null }
+  mine: boolean
 }
 
 interface Thread {
-  items: Comment[];
-  nextCursor: string | null;
-  status: "loading" | "ready" | "error";
+  items: Comment[]
+  nextCursor: string | null
+  status: "loading" | "ready" | "error"
 }
 
-const PAGE = 20;
-const MAX_LENGTH = 1000;
+const PAGE = 20
+const MAX_LENGTH = 1000
 
 /** A face for a name: the picture if there is one, else its initial on a colour of its own. */
 export function StageAvatar({
@@ -29,14 +29,14 @@ export function StageAvatar({
   image,
   className,
 }: {
-  name: string | null;
-  image: string | null;
-  className?: string;
+  name: string | null
+  image: string | null
+  className?: string
 }) {
-  const label = (name ?? "?").trim();
-  const TONES = ["bg-coral", "bg-violet", "bg-teal", "bg-sky-deep", "bg-orange-deep"];
-  let n = 0;
-  for (const ch of label) n = (n + ch.charCodeAt(0)) % TONES.length;
+  const label = (name ?? "?").trim()
+  const TONES = ["bg-coral", "bg-violet", "bg-teal", "bg-sky-deep", "bg-orange-deep"]
+  let n = 0
+  for (const ch of label) n = (n + ch.charCodeAt(0)) % TONES.length
   return image ? (
     // eslint-disable-next-line @next/next/no-img-element -- avatars come from the identity provider's CDN
     <img src={image} alt="" className={cx("shrink-0 rounded-full bg-sky-pale object-cover", className)} />
@@ -51,7 +51,7 @@ export function StageAvatar({
     >
       {label.charAt(0).toUpperCase()}
     </span>
-  );
+  )
 }
 
 /**
@@ -68,56 +68,56 @@ export function ReelComments({
   onClose,
   className,
 }: {
-  reel: FeedItem | null;
-  viewer: { name: string; image: string | null };
-  onPatch: (id: string, next: Partial<FeedItem>) => void;
-  onClose: () => void;
-  className?: string;
+  reel: FeedItem | null
+  viewer: { name: string; image: string | null }
+  onPatch: (id: string, next: Partial<FeedItem>) => void
+  onClose: () => void
+  className?: string
 }) {
-  const [threads, setThreads] = useState<Record<string, Thread>>({});
-  const [draft, setDraft] = useState("");
-  const [sending, setSending] = useState(false);
-  const [sendError, setSendError] = useState<string | null>(null);
-  const list = useRef<HTMLOListElement>(null);
+  const [threads, setThreads] = useState<Record<string, Thread>>({})
+  const [draft, setDraft] = useState("")
+  const [sending, setSending] = useState(false)
+  const [sendError, setSendError] = useState<string | null>(null)
+  const list = useRef<HTMLOListElement>(null)
 
-  const reelId = reel?.id ?? null;
+  const reelId = reel?.id ?? null
   // No entry yet reads as loading: the first fetch for a reel is started by
   // the effect below, which must not set state before its await.
-  const thread = reelId ? threads[reelId] : undefined;
+  const thread = reelId ? threads[reelId] : undefined
 
   const patchThread = useCallback((id: string, next: (prev: Thread | undefined) => Thread) => {
-    setThreads((all) => ({ ...all, [id]: next(all[id]) }));
-  }, []);
+    setThreads((all) => ({ ...all, [id]: next(all[id]) }))
+  }, [])
 
   // Everything it sets lands after the await, so it is safe to start from an
   // effect. Callers that want the "loading" state shown mark it themselves.
   const load = useCallback(
     async (id: string, cursor: string | null) => {
       try {
-        const query = new URLSearchParams({ limit: String(PAGE) });
-        if (cursor) query.set("cursor", cursor);
-        const res = await fetch(`/api/posts/${id}/comments?${query}`);
-        if (!res.ok) throw new Error(String(res.status));
-        const page = (await res.json()) as { items: Comment[]; nextCursor: string | null };
+        const query = new URLSearchParams({ limit: String(PAGE) })
+        if (cursor) query.set("cursor", cursor)
+        const res = await fetch(`/api/posts/${id}/comments?${query}`)
+        if (!res.ok) throw new Error(String(res.status))
+        const page = (await res.json()) as { items: Comment[]; nextCursor: string | null }
         patchThread(id, (prev) => {
-          const had = cursor ? (prev?.items ?? []) : [];
-          const seen = new Set(had.map((c) => c.id));
+          const had = cursor ? (prev?.items ?? []) : []
+          const seen = new Set(had.map((c) => c.id))
           return {
             items: [...had, ...page.items.filter((c) => !seen.has(c.id))],
             nextCursor: page.nextCursor,
             status: "ready",
-          };
-        });
+          }
+        })
       } catch {
         patchThread(id, (prev) => ({
           items: prev?.items ?? [],
           nextCursor: prev?.nextCursor ?? null,
           status: "error",
-        }));
+        }))
       }
     },
     [patchThread],
-  );
+  )
 
   /** A fetch the reader asked for — retry, or the next page — shows that it is working. */
   function fetchAgain(id: string, cursor: string | null) {
@@ -125,89 +125,89 @@ export function ReelComments({
       items: prev?.items ?? [],
       nextCursor: prev?.nextCursor ?? null,
       status: "loading",
-    }));
-    void load(id, cursor);
+    }))
+    void load(id, cursor)
   }
 
   // Fetching the thread for whichever reel is current is exactly the
   // external-system sync an effect is for. Once asked, a reel keeps its
   // thread for the visit, so scrolling back does not ask again.
-  const asked = thread !== undefined;
+  const asked = thread !== undefined
   useEffect(() => {
-    if (!reelId || asked) return;
+    if (!reelId || asked) return
     // eslint-disable-next-line react-hooks/set-state-in-effect -- every update in `load` lands after its await
-    void load(reelId, null);
-  }, [reelId, asked, load]);
+    void load(reelId, null)
+  }, [reelId, asked, load])
 
   // A different reel is a different conversation: whatever was half-typed for
   // the last one is not an answer to this one.
-  const [draftFor, setDraftFor] = useState(reelId);
+  const [draftFor, setDraftFor] = useState(reelId)
   if (draftFor !== reelId) {
-    setDraftFor(reelId);
-    setDraft("");
-    setSendError(null);
+    setDraftFor(reelId)
+    setDraft("")
+    setSendError(null)
   }
 
   async function send(e: React.FormEvent) {
-    e.preventDefault();
-    const body = draft.trim();
-    if (!reel || !body || sending) return;
-    setSending(true);
-    setSendError(null);
+    e.preventDefault()
+    const body = draft.trim()
+    if (!reel || !body || sending) return
+    setSending(true)
+    setSendError(null)
     try {
       const res = await fetch(`/api/posts/${reel.id}/comments`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ body }),
-      });
+      })
       if (!res.ok) {
-        const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
-        setSendError(err?.error?.message ?? "That comment did not post. Try again.");
-        return;
+        const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
+        setSendError(err?.error?.message ?? "That comment did not post. Try again.")
+        return
       }
-      const { comment } = (await res.json()) as { comment: Comment };
+      const { comment } = (await res.json()) as { comment: Comment }
       patchThread(reel.id, (prev) => ({
         items: [...(prev?.items ?? []), comment],
         nextCursor: prev?.nextCursor ?? null,
         status: "ready",
-      }));
-      onPatch(reel.id, { commentCount: reel.commentCount + 1 });
-      setDraft("");
+      }))
+      onPatch(reel.id, { commentCount: reel.commentCount + 1 })
+      setDraft("")
       // The new comment is at the end of the thread; take the reader to it.
-      requestAnimationFrame(() => list.current?.lastElementChild?.scrollIntoView({ block: "nearest" }));
+      requestAnimationFrame(() => list.current?.lastElementChild?.scrollIntoView({ block: "nearest" }))
     } catch {
-      setSendError("Could not reach the server. Your comment is still here — try again.");
+      setSendError("Could not reach the server. Your comment is still here — try again.")
     } finally {
-      setSending(false);
+      setSending(false)
     }
   }
 
   async function remove(c: Comment) {
-    if (!reel) return;
-    const id = reel.id;
-    const count = reel.commentCount;
+    if (!reel) return
+    const id = reel.id
+    const count = reel.commentCount
     // Gone at once; put back where it was if the server says no.
-    let at = -1;
+    let at = -1
     patchThread(id, (prev) => {
-      const items = prev?.items ?? [];
-      at = items.findIndex((x) => x.id === c.id);
-      return { items: items.filter((x) => x.id !== c.id), nextCursor: prev?.nextCursor ?? null, status: "ready" };
-    });
-    onPatch(id, { commentCount: Math.max(0, count - 1) });
+      const items = prev?.items ?? []
+      at = items.findIndex((x) => x.id === c.id)
+      return { items: items.filter((x) => x.id !== c.id), nextCursor: prev?.nextCursor ?? null, status: "ready" }
+    })
+    onPatch(id, { commentCount: Math.max(0, count - 1) })
     try {
-      const res = await fetch(`/api/comments/${c.id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error(String(res.status));
+      const res = await fetch(`/api/comments/${c.id}`, { method: "DELETE" })
+      if (!res.ok) throw new Error(String(res.status))
     } catch {
       patchThread(id, (prev) => {
-        const items = [...(prev?.items ?? [])];
-        items.splice(at < 0 ? items.length : at, 0, c);
-        return { items, nextCursor: prev?.nextCursor ?? null, status: "ready" };
-      });
-      onPatch(id, { commentCount: count });
+        const items = [...(prev?.items ?? [])]
+        items.splice(at < 0 ? items.length : at, 0, c)
+        return { items, nextCursor: prev?.nextCursor ?? null, status: "ready" }
+      })
+      onPatch(id, { commentCount: count })
     }
   }
 
-  const count = reel?.commentCount ?? 0;
+  const count = reel?.commentCount ?? 0
 
   return (
     <section aria-labelledby="reel-comments-title" className={cx("flex min-h-0 flex-col text-navy", className)}>
@@ -339,5 +339,5 @@ export function ReelComments({
         )}
       </form>
     </section>
-  );
+  )
 }

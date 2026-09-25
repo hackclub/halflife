@@ -1,9 +1,9 @@
 import { ok, parseBody, withRoute } from "@/lib/api"
+import { AuditAction, logAudit } from "@/lib/audit"
+import { hidePost, restorePost } from "@/lib/feed"
 import { requirePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import { moderatePostSchema } from "@/lib/schemas/feed"
-import { hidePost, restorePost } from "@/lib/feed"
-import { AuditAction, logAudit } from "@/lib/audit"
 
 export const dynamic = "force-dynamic"
 

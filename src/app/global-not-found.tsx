@@ -1,6 +1,6 @@
-import type { Metadata, Viewport } from "next";
-import { NotFoundScene } from "@/components/site/not-found-scene";
-import "./(site)/globals.css";
+import type { Metadata, Viewport } from "next"
+import { NotFoundScene } from "@/components/site/not-found-scene"
+import "./(site)/globals.css"
 
 /**
  * A URL that matches no route at all. There are two root layouts, `(site)`
@@ -11,12 +11,12 @@ import "./(site)/globals.css";
  */
 export const metadata: Metadata = {
   title: "Page not found · Half Life by Hack Club",
-};
+}
 
 export const viewport: Viewport = {
   themeColor: "#31222c",
   colorScheme: "dark",
-};
+}
 
 export default function GlobalNotFound() {
   return (
@@ -25,5 +25,5 @@ export default function GlobalNotFound() {
         <NotFoundScene />
       </body>
     </html>
-  );
+  )
 }

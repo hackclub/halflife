@@ -7,9 +7,7 @@ import { PrismaClient } from "@/app/generated/prisma/client"
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient }
 
 function createClient(): PrismaClient {
-  const connectionString =
-    process.env.DATABASE_URL ??
-    "postgresql://placeholder:placeholder@localhost:5432/placeholder"
+  const connectionString = process.env.DATABASE_URL ?? "postgresql://placeholder:placeholder@localhost:5432/placeholder"
   return new PrismaClient({
     adapter: new PrismaPg({
       connectionString,

@@ -1,10 +1,9 @@
-"use client";
+"use client"
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
-import Image from "next/image";
-import logoArt from "../../../../public/art/logo.png";
+import Image from "next/image"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { useState } from "react"
 import {
   IconBag,
   IconBook,
@@ -16,14 +15,15 @@ import {
   IconFlame,
   IconHome,
   IconPencil,
-} from "@/components/platform/icons";
-import { cx } from "@/components/platform/ui";
-import { useStore } from "@/lib/store";
-import { DoomscrollerFeed } from "./Doomscroller";
-import { GoalTracker } from "./GoalTracker";
-import { Sidebar, TAB_NAV } from "./Sidebar";
-import { Overlays } from "@/components/platform/onboarding/Overlays";
-import { PLATFORM_HOME } from "@/lib/routes";
+} from "@/components/platform/icons"
+import { Overlays } from "@/components/platform/onboarding/Overlays"
+import { cx } from "@/components/platform/ui"
+import { PLATFORM_HOME } from "@/lib/routes"
+import { useStore } from "@/lib/store"
+import logoArt from "../../../../public/art/logo.png"
+import { DoomscrollerFeed } from "./Doomscroller"
+import { GoalTracker } from "./GoalTracker"
+import { Sidebar, TAB_NAV } from "./Sidebar"
 
 const MOBILE_ICONS = {
   [PLATFORM_HOME]: IconHome,
@@ -32,50 +32,46 @@ const MOBILE_ICONS = {
   "/shop": IconBag,
   "/docs": IconBook,
   "/reels": IconFilm,
-} as const;
+} as const
 
 function StatCluster() {
-  const { coins, streak } = useStore();
+  const { coins, streak } = useStore()
   return (
     <div className="flex items-center gap-4 sm:gap-6">
       <span className="flex items-center gap-1.5" title={`${coins} coins banked`}>
         <IconCoin className="text-[1.45rem] text-orange" />
-        <span className="text-[1.15rem] leading-none font-extrabold tabular-nums text-orange-deep">
-          {coins}
-        </span>
+        <span className="text-[1.15rem] leading-none font-extrabold tabular-nums text-orange-deep">{coins}</span>
         <span className="sr-only">coins</span>
       </span>
       <span className="flex items-center gap-1.5" title={`${streak} day streak`}>
         <IconFlame className="text-[1.45rem] text-coral" />
-        <span className="text-[1.15rem] leading-none font-extrabold tabular-nums text-coral-deep">
-          {streak}
-        </span>
+        <span className="text-[1.15rem] leading-none font-extrabold tabular-nums text-coral-deep">{streak}</span>
         <span className="sr-only">day streak</span>
       </span>
     </div>
-  );
+  )
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const { doomscrollerOpen, setDoomscroller, phase } = useStore();
+  const pathname = usePathname()
+  const { doomscrollerOpen, setDoomscroller, phase } = useStore()
 
-  const cinematic = phase === "cinematic";
+  const cinematic = phase === "cinematic"
   // The Doomscroller page is this feed at full size. Running the rail feed
   // alongside it would put the same six reels on screen twice, so the route
   // wins — without touching the reader's own open/closed preference.
-  const onDoomscroller = pathname.startsWith("/doomscroller");
+  const onDoomscroller = pathname.startsWith("/doomscroller")
 
   // The status rail is the map's companion: open on the trail, where the goal
   // is what the whole page is measured against, and folded away everywhere
   // else so a project, the shop or the docs get the width. A toggle holds only
   // for the page it was pressed on — the next page starts from its own
   // default, so opening it once on the shop does not squeeze every page after.
-  const [railChoice, setRailChoice] = useState<{ path: string; open: boolean } | null>(null);
-  const railOpen = railChoice?.path === pathname ? railChoice.open : pathname === PLATFORM_HOME;
-  const setRailOpen = (open: boolean) => setRailChoice({ path: pathname, open });
+  const [railChoice, setRailChoice] = useState<{ path: string; open: boolean } | null>(null)
+  const railOpen = railChoice?.path === pathname ? railChoice.open : pathname === PLATFORM_HOME
+  const setRailOpen = (open: boolean) => setRailChoice({ path: pathname, open })
 
-  const rail = railOpen && doomscrollerOpen && !onDoomscroller;
+  const rail = railOpen && doomscrollerOpen && !onDoomscroller
 
   return (
     <>
@@ -139,8 +135,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <button
                 type="button"
                 onClick={() => {
-                  setRailOpen(true);
-                  if (!onDoomscroller) setDoomscroller(true);
+                  setRailOpen(true)
+                  if (!onDoomscroller) setDoomscroller(true)
                 }}
                 aria-expanded="false"
                 aria-controls="status-rail"
@@ -218,8 +214,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       >
         <ul className="mx-auto flex max-w-lg">
           {TAB_NAV.map((item) => {
-            const Icon = MOBILE_ICONS[item.href as keyof typeof MOBILE_ICONS];
-            const active = item.href === PLATFORM_HOME ? pathname === PLATFORM_HOME : pathname.startsWith(item.href);
+            const Icon = MOBILE_ICONS[item.href as keyof typeof MOBILE_ICONS]
+            const active = item.href === PLATFORM_HOME ? pathname === PLATFORM_HOME : pathname.startsWith(item.href)
             return (
               <li key={item.href} data-tour={item.tourId} className="min-w-0 flex-1">
                 <Link
@@ -240,12 +236,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   />
                 </Link>
               </li>
-            );
+            )
           })}
         </ul>
       </nav>
 
       <Overlays />
     </>
-  );
+  )
 }

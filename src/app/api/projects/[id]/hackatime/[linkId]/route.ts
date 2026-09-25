@@ -1,7 +1,7 @@
-import prisma from "@/lib/prisma"
-import { ok, fail, withRoute } from "@/lib/api"
-import { requireSession } from "@/lib/guards"
+import { fail, ok, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
+import { requireSession } from "@/lib/guards"
+import prisma from "@/lib/prisma"
 
 type Params = { params: Promise<{ id: string; linkId: string }> }
 

@@ -4,10 +4,7 @@ import { useState } from "react"
 import { Button, Callout } from "@/app/components/ui"
 
 /** Set what one unit of an item costs Hack Club, from the catalogue row. */
-export function ItemCostField({
-  itemId,
-  costUsd,
-}: Readonly<{ itemId: string; costUsd: number | null }>) {
+export function ItemCostField({ itemId, costUsd }: Readonly<{ itemId: string; costUsd: number | null }>) {
   const router = useRouter()
   const [value, setValue] = useState(costUsd === null ? "" : String(costUsd))
   const [busy, setBusy] = useState(false)

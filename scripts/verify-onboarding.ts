@@ -178,19 +178,13 @@ async function main() {
       effectiveDate: "2026-09-10",
     },
   })
-  check(
-    "an existing participant is not sent through onboarding",
-    await needsOnboarding(veteran.id),
-    false,
-  )
+  check("an existing participant is not sent through onboarding", await needsOnboarding(veteran.id), false)
   check("starter lookup round-trips", getStarterProject(starter.id)?.id, starter.id)
 
   await prisma.user.delete({ where: { id: user.id } })
   await prisma.user.delete({ where: { id: veteran.id } })
 
-  console.log(
-    failures === 0 ? "\nAll onboarding checks passed." : `\n${failures} check(s) failed.`,
-  )
+  console.log(failures === 0 ? "\nAll onboarding checks passed." : `\n${failures} check(s) failed.`)
   process.exit(failures === 0 ? 0 : 1)
 }
 

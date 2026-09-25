@@ -1,28 +1,21 @@
-"use client";
+"use client"
 
-import {
-  useCallback,
-  useEffect,
-  useId,
-  useRef,
-  useSyncExternalStore,
-  type ReactNode,
-} from "react";
-import { createPortal } from "react-dom";
-import { IconX } from "@/components/platform/icons";
-import { cx } from "@/components/platform/ui";
+import { type ReactNode, useCallback, useEffect, useId, useRef, useSyncExternalStore } from "react"
+import { createPortal } from "react-dom"
+import { IconX } from "@/components/platform/icons"
+import { cx } from "@/components/platform/ui"
 
 const FOCUSABLE =
-  'a[href],button:not([disabled]),textarea:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])';
+  'a[href],button:not([disabled]),textarea:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])'
 
 /* The server has no body to portal into, and no effect is needed to find that out. */
-const neverChanges = () => () => {};
+const neverChanges = () => () => {}
 const useIsClient = () =>
   useSyncExternalStore(
     neverChanges,
     () => true,
     () => false,
-  );
+  )
 
 export function Modal({
   open,
@@ -36,76 +29,76 @@ export function Modal({
   dismissible = true,
   scrollKey,
 }: {
-  open: boolean;
-  onClose: () => void;
+  open: boolean
+  onClose: () => void
   /** Step counter or section name, rendered in the accent colour. */
-  eyebrow?: ReactNode;
-  accent?: string;
-  children: ReactNode;
-  footer?: ReactNode;
-  size?: "md" | "lg" | "xl";
-  labelledBy?: string;
-  dismissible?: boolean;
+  eyebrow?: ReactNode
+  accent?: string
+  children: ReactNode
+  footer?: ReactNode
+  size?: "md" | "lg" | "xl"
+  labelledBy?: string
+  dismissible?: boolean
   /** Change this when the content swaps so the body scrolls back to the top. */
-  scrollKey?: string | number;
+  scrollKey?: string | number
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const body = useRef<HTMLDivElement>(null);
-  const restoreTo = useRef<HTMLElement | null>(null);
-  const titleId = useId();
-  const isClient = useIsClient();
+  const ref = useRef<HTMLDivElement>(null)
+  const body = useRef<HTMLDivElement>(null)
+  const restoreTo = useRef<HTMLElement | null>(null)
+  const titleId = useId()
+  const isClient = useIsClient()
 
   const close = useCallback(() => {
-    if (dismissible) onClose();
-  }, [dismissible, onClose]);
+    if (dismissible) onClose()
+  }, [dismissible, onClose])
 
   useEffect(() => {
-    if (!open) return;
-    restoreTo.current = document.activeElement as HTMLElement | null;
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    if (!open) return
+    restoreTo.current = document.activeElement as HTMLElement | null
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
 
-    const node = ref.current;
-    const first = node?.querySelector<HTMLElement>(FOCUSABLE);
-    (first ?? node)?.focus();
+    const node = ref.current
+    const first = node?.querySelector<HTMLElement>(FOCUSABLE)
+    ;(first ?? node)?.focus()
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        e.stopPropagation();
-        close();
-        return;
+        e.stopPropagation()
+        close()
+        return
       }
-      if (e.key !== "Tab" || !node) return;
+      if (e.key !== "Tab" || !node) return
       const items = Array.from(node.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
         (el) => el.offsetParent !== null || el === document.activeElement,
-      );
-      const firstEl = items[0];
-      const lastEl = items[items.length - 1];
-      if (!firstEl || !lastEl) return;
+      )
+      const firstEl = items[0]
+      const lastEl = items[items.length - 1]
+      if (!firstEl || !lastEl) return
       if (e.shiftKey && document.activeElement === firstEl) {
-        e.preventDefault();
-        lastEl.focus();
+        e.preventDefault()
+        lastEl.focus()
       } else if (!e.shiftKey && document.activeElement === lastEl) {
-        e.preventDefault();
-        firstEl.focus();
+        e.preventDefault()
+        firstEl.focus()
       }
-    };
+    }
 
-    window.addEventListener("keydown", onKey, true);
+    window.addEventListener("keydown", onKey, true)
     return () => {
-      window.removeEventListener("keydown", onKey, true);
-      document.body.style.overflow = prevOverflow;
-      restoreTo.current?.focus?.();
-    };
-  }, [open, close]);
+      window.removeEventListener("keydown", onKey, true)
+      document.body.style.overflow = prevOverflow
+      restoreTo.current?.focus?.()
+    }
+  }, [open, close])
 
   useEffect(() => {
-    body.current?.scrollTo({ top: 0 });
-  }, [scrollKey]);
+    body.current?.scrollTo({ top: 0 })
+  }, [scrollKey])
 
-  if (!open || !isClient) return null;
+  if (!open || !isClient) return null
 
-  const width = { md: "max-w-[720px]", lg: "max-w-[880px]", xl: "max-w-[1020px]" }[size];
+  const width = { md: "max-w-[720px]", lg: "max-w-[880px]", xl: "max-w-[1020px]" }[size]
 
   // Straight onto the body: several callers sit inside sticky panels, and a
   // sticky ancestor is its own stacking context that a z-index cannot escape.
@@ -128,9 +121,7 @@ export function Modal({
           "rounded-t-3xl sm:rounded-3xl",
           width,
         )}
-        style={
-          { "--sk-color": accent, "--sk-radius": "26px" } as React.CSSProperties
-        }
+        style={{ "--sk-color": accent, "--sk-radius": "26px" } as React.CSSProperties}
       >
         <div className="flex shrink-0 items-start justify-between gap-4 px-5 pt-4 sm:px-8 sm:pt-6">
           <span className="label pt-1" style={{ color: accent }}>
@@ -149,10 +140,7 @@ export function Modal({
           )}
         </div>
 
-        <div
-          ref={body}
-          className="thin-scroll min-h-0 flex-1 overflow-y-auto px-5 pt-3 pb-6 sm:px-8 sm:pt-5"
-        >
+        <div ref={body} className="thin-scroll min-h-0 flex-1 overflow-y-auto px-5 pt-3 pb-6 sm:px-8 sm:pt-5">
           {children}
         </div>
 
@@ -164,7 +152,7 @@ export function Modal({
       </div>
     </div>,
     document.body,
-  );
+  )
 }
 
 export function ModalTitle({
@@ -173,9 +161,9 @@ export function ModalTitle({
   sub,
   subWide = false,
 }: {
-  children: ReactNode;
-  id?: string;
-  sub?: ReactNode;
+  children: ReactNode
+  id?: string
+  sub?: ReactNode
   /**
    * Let the subtitle run the whole content width instead of holding a reading
    * measure. For a wide modal whose body is a full-width grid, the capped line
@@ -183,7 +171,7 @@ export function ModalTitle({
    * a sentence short enough to stay near one line would rather square up with
    * it. Long copy still wants the cap — that is why this is opt-in.
    */
-  subWide?: boolean;
+  subWide?: boolean
 }) {
   return (
     <div className="mb-5">
@@ -191,15 +179,8 @@ export function ModalTitle({
         {children}
       </h2>
       {sub && (
-        <p
-          className={cx(
-            "mt-1.5 text-[0.88rem] leading-relaxed text-navy-soft",
-            !subWide && "max-w-[62ch]",
-          )}
-        >
-          {sub}
-        </p>
+        <p className={cx("mt-1.5 text-[0.88rem] leading-relaxed text-navy-soft", !subWide && "max-w-[62ch]")}>{sub}</p>
       )}
     </div>
-  );
+  )
 }

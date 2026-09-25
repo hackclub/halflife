@@ -1,16 +1,16 @@
-"use client";
+"use client"
 
-import Link from "next/link";
-import { WeekScene } from "@/components/platform/art";
-import { IconArrowRight, IconClock, IconFilm, IconPencil } from "@/components/platform/icons";
-import { Chip, Panel, cx } from "@/components/platform/ui";
-import { RepoEditor } from "@/components/platform/RepoField";
-import { fmtDate, fmtHours, projectEvents, projectStats } from "@/lib/projects";
-import { useStore } from "@/lib/store";
-import { PLATFORM_HOME } from "@/lib/routes";
+import Link from "next/link"
+import { WeekScene } from "@/components/platform/art"
+import { IconArrowRight, IconClock, IconFilm, IconPencil } from "@/components/platform/icons"
+import { RepoEditor } from "@/components/platform/RepoField"
+import { Chip, cx, Panel } from "@/components/platform/ui"
+import { fmtDate, fmtHours, projectEvents, projectStats } from "@/lib/projects"
+import { PLATFORM_HOME } from "@/lib/routes"
+import { useStore } from "@/lib/store"
 
 export function ProjectsGrid() {
-  const { projects, weeks, stateOf, weekOf } = useStore();
+  const { projects, weeks, stateOf, weekOf } = useStore()
 
   if (projects.length === 0) {
     return (
@@ -18,8 +18,7 @@ export function ProjectsGrid() {
         <WeekScene theme="PCB" className="mx-auto h-24 w-auto opacity-40" />
         <p className="mt-5 text-[1.05rem] font-extrabold text-navy">Nothing here yet</p>
         <p className="hand mx-auto mt-2 max-w-[44ch] text-[0.9rem] leading-relaxed text-navy-soft">
-          your first project gets made at the yellow checkpoint. everything you log against it
-          collects here.
+          your first project gets made at the yellow checkpoint. everything you log against it collects here.
         </p>
         <Link
           href={PLATFORM_HOME}
@@ -28,24 +27,18 @@ export function ProjectsGrid() {
           Go to the trail <IconArrowRight className="text-base" />
         </Link>
       </Panel>
-    );
+    )
   }
 
   return (
     <ul className="grid gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-3">
       {projects.map((project) => {
-        const week = weekOf(project.weekId);
-        const events = projectEvents(project, weeks, stateOf);
-        const stats = projectStats(events);
+        const week = weekOf(project.weekId)
+        const events = projectEvents(project, weeks, stateOf)
+        const stats = projectStats(events)
 
         return (
-          <Panel
-            key={project.id}
-            as="li"
-            tone="line"
-            radius={20}
-            className="flex flex-col overflow-hidden bg-paper"
-          >
+          <Panel key={project.id} as="li" tone="line" radius={20} className="flex flex-col overflow-hidden bg-paper">
             <Link href={`/projects/${project.id}`} className="group flex flex-1 flex-col">
               <span
                 className={cx(
@@ -96,9 +89,7 @@ export function ProjectsGrid() {
                     <IconFilm className="text-sm" /> {stats.reels}
                   </span>
                   {stats.started > 0 && (
-                    <span className="hand ml-auto text-[0.76rem] text-line-strong">
-                      {fmtDate(stats.started)}
-                    </span>
+                    <span className="hand ml-auto text-[0.76rem] text-line-strong">{fmtDate(stats.started)}</span>
                   )}
                 </span>
               </span>
@@ -108,8 +99,8 @@ export function ProjectsGrid() {
                 link nested in a link. */}
             <RepoEditor project={project} className="border-t border-line/70 px-4 py-2.5" />
           </Panel>
-        );
+        )
       })}
     </ul>
-  );
+  )
 }

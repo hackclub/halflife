@@ -155,10 +155,30 @@
   pointer-events: none;
 }
 
-.tl { top: 0; left: 0; border-top-width: 2px; border-left-width: 2px; }
-.tr { top: 0; right: 0; border-top-width: 2px; border-right-width: 2px; }
-.bl { bottom: 0; left: 0; border-bottom-width: 2px; border-left-width: 2px; }
-.br { bottom: 0; right: 0; border-bottom-width: 2px; border-right-width: 2px; }
+.tl {
+  top: 0;
+  left: 0;
+  border-top-width: 2px;
+  border-left-width: 2px;
+}
+.tr {
+  top: 0;
+  right: 0;
+  border-top-width: 2px;
+  border-right-width: 2px;
+}
+.bl {
+  bottom: 0;
+  left: 0;
+  border-bottom-width: 2px;
+  border-left-width: 2px;
+}
+.br {
+  bottom: 0;
+  right: 0;
+  border-bottom-width: 2px;
+  border-right-width: 2px;
+}
 
 .body {
   position: relative;
@@ -238,7 +258,9 @@
   text-decoration-color: color-mix(in srgb, var(--paper) 25%, transparent);
   text-decoration-thickness: 2px;
   text-underline-offset: 4px;
-  transition: color 150ms, text-decoration-color 150ms;
+  transition:
+    color 150ms,
+    text-decoration-color 150ms;
 }
 
 .secondary:hover,

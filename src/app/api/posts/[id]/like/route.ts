@@ -1,7 +1,7 @@
 import { ok, parseBody, withRoute } from "@/lib/api"
+import { setLike } from "@/lib/feed"
 import { requireSession } from "@/lib/guards"
 import { likeSchema } from "@/lib/schemas/feed"
-import { setLike } from "@/lib/feed"
 
 export const dynamic = "force-dynamic"
 

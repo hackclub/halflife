@@ -5,10 +5,7 @@ import { Button, Callout } from "@/app/components/ui"
 
 const ROLES = ["ADMIN", "REVIEWER", "FULFILLER", "AUDITOR"] as const
 
-export function RoleEditor({
-  userId,
-  current,
-}: Readonly<{ userId: string; current: string[] }>) {
+export function RoleEditor({ userId, current }: Readonly<{ userId: string; current: string[] }>) {
   const router = useRouter()
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)

@@ -1,11 +1,11 @@
-"use client";
+"use client"
 
-import { IconCheck, IconFilm, IconPencil, IconPlay, IconWarning } from "@/components/platform/icons";
-import { useLayoutEffect, useRef, useState } from "react";
-import { Markdown } from "@/components/platform/Markdown";
-import { Chip, cx } from "@/components/platform/ui";
-import { fmtDate, fmtHours } from "@/lib/projects";
-import type { TimelineItem, TimelineLapse } from "@/lib/queries/project-page";
+import { useLayoutEffect, useRef, useState } from "react"
+import { IconCheck, IconFilm, IconPencil, IconPlay, IconWarning } from "@/components/platform/icons"
+import { Markdown } from "@/components/platform/Markdown"
+import { Chip, cx } from "@/components/platform/ui"
+import { fmtDate, fmtHours } from "@/lib/projects"
+import type { TimelineItem, TimelineLapse } from "@/lib/queries/project-page"
 
 /**
  * The whole record of a project, newest first: every journal entry with the
@@ -21,25 +21,28 @@ export function Timeline({
   items,
   weekFor,
 }: {
-  items: TimelineItem[];
+  items: TimelineItem[]
   /** The trail week a phase of this project ran in, for the "Week 3" labels. */
-  weekFor: (phase: "DESIGN" | "BUILD") => number;
+  weekFor: (phase: "DESIGN" | "BUILD") => number
 }) {
   // Which week each moment belongs to is said once, where that week starts,
   // rather than on every entry — and only once there are two weeks to tell
   // apart. A reel carries no phase, so it sits in whichever week is running
   // when it comes up.
-  const phaseOf = (item: TimelineItem) => (item.kind === "reel" ? null : item.phase);
-  const split = new Set(items.map(phaseOf).filter(Boolean)).size > 1;
-  let running: "DESIGN" | "BUILD" | null = null;
-  const rows: React.ReactNode[] = [];
+  const phaseOf = (item: TimelineItem) => (item.kind === "reel" ? null : item.phase)
+  const split = new Set(items.map(phaseOf).filter(Boolean)).size > 1
+  let running: "DESIGN" | "BUILD" | null = null
+  const rows: React.ReactNode[] = []
   items.forEach((item, i) => {
-    const phase = phaseOf(item) ?? running ?? items.slice(i).map(phaseOf).find(Boolean) ?? null;
+    const phase = phaseOf(item) ?? running ?? items.slice(i).map(phaseOf).find(Boolean) ?? null
     if (split && phase && phase !== running) {
-      running = phase;
+      running = phase
       rows.push(
         <li key={`week-${phase}`} className="relative grid grid-cols-[32px_minmax(0,1fr)] gap-x-4">
-          <span aria-hidden="true" className="relative z-10 mx-auto mt-1.5 size-2.5 rounded-full bg-violet ring-4 ring-paper" />
+          <span
+            aria-hidden="true"
+            className="relative z-10 mx-auto mt-1.5 size-2.5 rounded-full bg-violet ring-4 ring-paper"
+          />
           <p className="flex items-center gap-3">
             <span className="label shrink-0 text-violet-deep">
               {PHASE[phase]} · week {weekFor(phase)}
@@ -47,7 +50,7 @@ export function Timeline({
             <span aria-hidden="true" className="h-0 flex-1 border-t border-dashed border-line" />
           </p>
         </li>,
-      );
+      )
     }
     rows.push(
       // The id is the anchor Explore's "See more" links to, so the entry
@@ -58,14 +61,14 @@ export function Timeline({
           <Body item={item} />
         </div>
       </li>,
-    );
-  });
+    )
+  })
 
   return (
     <ol className="relative grid gap-6 before:absolute before:top-2 before:bottom-2 before:left-[15px] before:w-0.5 before:rounded-full before:bg-line">
       {rows}
     </ol>
-  );
+  )
 }
 
 function Marker({ item }: { item: TimelineItem }) {
@@ -78,27 +81,22 @@ function Marker({ item }: { item: TimelineItem }) {
           ? { tone: "bg-gold-pale text-gold-deep", icon: <IconCheck className="text-[0.8rem]" strokeWidth={3} /> }
           : item.result === "APPROVED"
             ? { tone: "bg-mint text-teal-deep", icon: <IconCheck className="text-[0.8rem]" strokeWidth={3} /> }
-            : { tone: "bg-coral/15 text-coral-deep", icon: <IconWarning className="text-[0.85rem]" /> };
+            : { tone: "bg-coral/15 text-coral-deep", icon: <IconWarning className="text-[0.85rem]" /> }
   return (
     <span
       aria-hidden="true"
-      className={cx(
-        "relative z-10 grid size-8 place-items-center rounded-full ring-4 ring-paper",
-        look.tone,
-      )}
+      className={cx("relative z-10 grid size-8 place-items-center rounded-full ring-4 ring-paper", look.tone)}
     >
       {look.icon}
     </span>
-  );
+  )
 }
 
 function When({ at }: { at: number }) {
-  return (
-    <span className="hand ml-auto shrink-0 text-[0.84rem] text-navy-soft tabular-nums">{fmtDate(at)}</span>
-  );
+  return <span className="hand ml-auto shrink-0 text-[0.84rem] text-navy-soft tabular-nums">{fmtDate(at)}</span>
 }
 
-const PHASE = { DESIGN: "design", BUILD: "build" } as const;
+const PHASE = { DESIGN: "design", BUILD: "build" } as const
 
 function Body({ item }: { item: TimelineItem }) {
   if (item.kind === "session") {
@@ -117,7 +115,7 @@ function Body({ item }: { item: TimelineItem }) {
         <EntryBody source={item.body} />
         {item.lapses.length > 0 && <Lapses lapses={item.lapses} />}
       </article>
-    );
+    )
   }
 
   if (item.kind === "reel") {
@@ -147,7 +145,7 @@ function Body({ item }: { item: TimelineItem }) {
           />
         )}
       </article>
-    );
+    )
   }
 
   if (item.kind === "submitted") {
@@ -158,14 +156,14 @@ function Body({ item }: { item: TimelineItem }) {
         </span>
         <When at={item.at} />
       </p>
-    );
+    )
   }
 
   const verdict = {
     APPROVED: { text: "approved", tone: "text-teal-deep" },
     RETURNED: { text: "sent back for changes", tone: "text-coral-deep" },
     REJECTED: { text: "rejected", tone: "text-coral-deep" },
-  }[item.result];
+  }[item.result]
   return (
     <div>
       <p className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
@@ -180,7 +178,7 @@ function Body({ item }: { item: TimelineItem }) {
         </blockquote>
       )}
     </div>
-  );
+  )
 }
 
 /**
@@ -190,14 +188,14 @@ function Body({ item }: { item: TimelineItem }) {
  * fades out behind a toggle, and the whole of it is one click away.
  */
 function EntryBody({ source }: { source: string }) {
-  const box = useRef<HTMLDivElement>(null);
-  const [long, setLong] = useState(false);
-  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null)
+  const [long, setLong] = useState(false)
+  const [open, setOpen] = useState(false)
 
   useLayoutEffect(() => {
-    const el = box.current;
-    if (el) setLong(el.scrollHeight > el.clientHeight + 4);
-  }, [source]);
+    const el = box.current
+    if (el) setLong(el.scrollHeight > el.clientHeight + 4)
+  }, [source])
 
   return (
     <>
@@ -225,13 +223,13 @@ function EntryBody({ source }: { source: string }) {
         </button>
       )}
     </>
-  );
+  )
 }
 
 function footage(seconds: number | null) {
-  if (!seconds) return null;
-  const m = Math.round(seconds / 60);
-  return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
+  if (!seconds) return null
+  const m = Math.round(seconds / 60)
+  return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`
 }
 
 /**
@@ -260,7 +258,7 @@ function Lapses({ lapses }: { lapses: TimelineLapse[] }) {
               {footage(l.coveredSeconds) && ` · ${footage(l.coveredSeconds)} of work`}
             </span>
           </>
-        );
+        )
         return (
           <li key={l.id}>
             {l.href ? (
@@ -276,8 +274,8 @@ function Lapses({ lapses }: { lapses: TimelineLapse[] }) {
               inner
             )}
           </li>
-        );
+        )
       })}
     </ul>
-  );
+  )
 }

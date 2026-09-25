@@ -1,11 +1,11 @@
-"use client";
+"use client"
 
-import { useId, useState } from "react";
-import { IconPencil } from "@/components/platform/icons";
-import { Button, Field, cx, inputClass } from "@/components/platform/ui";
-import { displayRepo, normalizeRepo } from "@/lib/repo";
-import { useStore } from "@/lib/store";
-import type { Project } from "@/lib/types";
+import { useId, useState } from "react"
+import { IconPencil } from "@/components/platform/icons"
+import { Button, cx, Field, inputClass } from "@/components/platform/ui"
+import { displayRepo, normalizeRepo } from "@/lib/repo"
+import { useStore } from "@/lib/store"
+import type { Project } from "@/lib/types"
 
 /**
  * The repo field in a project-creation form. Optional on purpose: a first
@@ -16,17 +16,9 @@ import type { Project } from "@/lib/types";
  * while it is still being typed. The form reads the same check back through
  * `repoIsValid` to hold its own submit button.
  */
-export function RepoInput({
-  value,
-  onChange,
-  id,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  id: string;
-}) {
-  const [touched, setTouched] = useState(false);
-  const { error } = normalizeRepo(value);
+export function RepoInput({ value, onChange, id }: { value: string; onChange: (value: string) => void; id: string }) {
+  const [touched, setTouched] = useState(false)
+  const { error } = normalizeRepo(value)
   return (
     <Field
       label="GitHub repo"
@@ -52,12 +44,12 @@ export function RepoInput({
         </p>
       )}
     </Field>
-  );
+  )
 }
 
 /** Whether a creation form may submit with this in its repo field. */
 export function repoIsValid(value: string) {
-  return normalizeRepo(value).error === null;
+  return normalizeRepo(value).error === null
 }
 
 /**
@@ -70,31 +62,31 @@ export function repoIsValid(value: string) {
  * (a phase in review is locked) is said right there rather than lost.
  */
 export function RepoEditor({ project, className }: { project: Project; className?: string }) {
-  const { setProjectRepo } = useStore();
-  const id = useId();
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(project.githubRepo ?? "");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { setProjectRepo } = useStore()
+  const id = useId()
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(project.githubRepo ?? "")
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const current = project.githubRepo ?? null;
+  const current = project.githubRepo ?? null
 
   async function save() {
-    const { url, error: invalid } = normalizeRepo(draft);
+    const { url, error: invalid } = normalizeRepo(draft)
     if (invalid) {
-      setError(invalid);
-      return;
+      setError(invalid)
+      return
     }
     if (url === current) {
-      setEditing(false);
-      return;
+      setEditing(false)
+      return
     }
-    setSaving(true);
-    setError(null);
-    const refused = await setProjectRepo(project.id, url);
-    setSaving(false);
-    if (refused) setError(refused);
-    else setEditing(false);
+    setSaving(true)
+    setError(null)
+    const refused = await setProjectRepo(project.id, url)
+    setSaving(false)
+    if (refused) setError(refused)
+    else setEditing(false)
   }
 
   if (!editing) {
@@ -114,9 +106,9 @@ export function RepoEditor({ project, className }: { project: Project; className
             <button
               type="button"
               onClick={() => {
-                setDraft(current);
-                setError(null);
-                setEditing(true);
+                setDraft(current)
+                setError(null)
+                setEditing(true)
               }}
               aria-label="Change the repo link"
               className="grid size-7 shrink-0 place-items-center rounded-full text-navy-soft transition-colors hover:bg-black/5 hover:text-navy"
@@ -128,9 +120,9 @@ export function RepoEditor({ project, className }: { project: Project; className
           <button
             type="button"
             onClick={() => {
-              setDraft("");
-              setError(null);
-              setEditing(true);
+              setDraft("")
+              setError(null)
+              setEditing(true)
             }}
             className="hand text-[0.82rem] text-violet-deep underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
           >
@@ -138,15 +130,15 @@ export function RepoEditor({ project, className }: { project: Project; className
           </button>
         )}
       </div>
-    );
+    )
   }
 
   return (
     <form
       className={cx("grid gap-2", className)}
       onSubmit={(e) => {
-        e.preventDefault();
-        void save();
+        e.preventDefault()
+        void save()
       }}
     >
       <label htmlFor={id} className="sr-only">
@@ -156,11 +148,11 @@ export function RepoEditor({ project, className }: { project: Project; className
         id={id}
         value={draft}
         onChange={(e) => {
-          setDraft(e.target.value);
-          if (error) setError(null);
+          setDraft(e.target.value)
+          if (error) setError(null)
         }}
         onKeyDown={(e) => {
-          if (e.key === "Escape") setEditing(false);
+          if (e.key === "Escape") setEditing(false)
         }}
         autoFocus
         inputMode="url"
@@ -191,14 +183,14 @@ export function RepoEditor({ project, className }: { project: Project; className
             disabled={saving}
             className="ml-auto"
             onClick={() => {
-              setDraft("");
+              setDraft("")
               void (async () => {
-                setSaving(true);
-                const refused = await setProjectRepo(project.id, null);
-                setSaving(false);
-                if (refused) setError(refused);
-                else setEditing(false);
-              })();
+                setSaving(true)
+                const refused = await setProjectRepo(project.id, null)
+                setSaving(false)
+                if (refused) setError(refused)
+                else setEditing(false)
+              })()
             }}
           >
             Remove
@@ -206,5 +198,5 @@ export function RepoEditor({ project, className }: { project: Project; className
         )}
       </div>
     </form>
-  );
+  )
 }

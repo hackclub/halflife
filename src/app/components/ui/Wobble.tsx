@@ -46,14 +46,7 @@ export function WobbleDefs() {
           nothing at all. The rule's coordinate space is the 0 0 300 10 viewBox
           every WobbleRule uses, so the region can be stated outright.
         */}
-        <filter
-          id={WOBBLE_FILTER_SOFT_ID}
-          filterUnits="userSpaceOnUse"
-          x="-5"
-          y="-5"
-          width="310"
-          height="20"
-        >
+        <filter id={WOBBLE_FILTER_SOFT_ID} filterUnits="userSpaceOnUse" x="-5" y="-5" width="310" height="20">
           <feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="3" seed="3" result="noise" />
           <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.8" xChannelSelector="R" yChannelSelector="G" />
         </filter>
@@ -62,14 +55,7 @@ export function WobbleDefs() {
           because the curve lives in a 0 0 100 60 viewBox rather than the
           rule's 300 x 10 one, and a region sized for the rule clips it.
         */}
-        <filter
-          id={WOBBLE_FILTER_PATH_ID}
-          filterUnits="userSpaceOnUse"
-          x="-20"
-          y="-20"
-          width="140"
-          height="100"
-        >
+        <filter id={WOBBLE_FILTER_PATH_ID} filterUnits="userSpaceOnUse" x="-20" y="-20" width="140" height="100">
           <feTurbulence type="fractalNoise" baseFrequency="0.08" numOctaves="2" seed="11" result="noise" />
           <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.6" xChannelSelector="R" yChannelSelector="G" />
         </filter>
@@ -96,13 +82,7 @@ export function WobbleBorder({
     seed === undefined ? undefined : { transform: `translateX(${(seed % 5) * 0.7}px)` }
 
   return (
-    <svg
-      aria-hidden="true"
-      focusable="false"
-      className="hl-wobble-svg"
-      preserveAspectRatio="none"
-      style={style}
-    >
+    <svg aria-hidden="true" focusable="false" className="hl-wobble-svg" preserveAspectRatio="none" style={style}>
       {/* Geometry comes from CSS — see .hl-wobble-svg rect in globals.css.
           SVG attributes cannot take calc(), and silently collapse if given it. */}
       <rect

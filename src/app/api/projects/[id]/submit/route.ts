@@ -1,15 +1,15 @@
 import { after } from "next/server"
+import { syncSubmissionToYsws } from "@/lib/airtable/sync"
+import { markSubmission } from "@/lib/analytics"
 import { ok, parseBody, withRoute } from "@/lib/api"
+import { AuditAction, logAudit } from "@/lib/audit"
 import { requireSession } from "@/lib/guards"
-import { submitSchema } from "@/lib/schemas/project"
-import { sanitizeOptional } from "@/lib/sanitize"
-import { submitPhase } from "@/lib/submissions"
 import { refreshLinkCache } from "@/lib/hackatime"
 import prisma from "@/lib/prisma"
-import { AuditAction, logAudit } from "@/lib/audit"
-import { markSubmission } from "@/lib/analytics"
-import { syncSubmissionToYsws } from "@/lib/airtable/sync"
+import { sanitizeOptional } from "@/lib/sanitize"
+import { submitSchema } from "@/lib/schemas/project"
 import { trackSideEffect } from "@/lib/side-effects"
+import { submitPhase } from "@/lib/submissions"
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -66,9 +66,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
       select: { id: true },
     })
     for (const link of links) {
-      await refreshLinkCache(link.id).catch((err) =>
-        console.error("[submit] hackatime refresh failed:", err),
-      )
+      await refreshLinkCache(link.id).catch((err) => console.error("[submit] hackatime refresh failed:", err))
     }
   })
 

@@ -25,20 +25,15 @@ function check(label: string, ok: boolean, detail = "") {
 }
 
 /** A 1x1 transparent PNG. Small enough to be free, real enough to be a file. */
-const PNG_BASE64 =
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+const PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
 
 async function main() {
-  const { isUploadConfigured, putObject, publicUrlFor, deleteObject, MAX_UPLOAD_BYTES } =
-    await import("../src/lib/uploads/r2")
+  const { isUploadConfigured, putObject, publicUrlFor, deleteObject, MAX_UPLOAD_BYTES } = await import(
+    "../src/lib/uploads/r2"
+  )
 
   // ── Configuration ──────────────────────────────────────────────────────────
-  const required = [
-    "S3_ACCESS_KEY_ID",
-    "S3_SECRET_ACCESS_KEY",
-    "S3_BUCKET_NAME",
-    "S3_ENDPOINT",
-  ] as const
+  const required = ["S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY", "S3_BUCKET_NAME", "S3_ENDPOINT"] as const
   for (const name of required) {
     check(`${name} is set`, !!process.env[name])
   }
@@ -134,11 +129,7 @@ async function main() {
     console.log(`  Leftover object to remove by hand: ${key}`)
   }
 
-  console.log(
-    failures === 0
-      ? "\nR2 is wired up correctly."
-      : `\n${failures} check(s) failed.`,
-  )
+  console.log(failures === 0 ? "\nR2 is wired up correctly." : `\n${failures} check(s) failed.`)
   process.exit(failures === 0 ? 0 : 1)
 }
 

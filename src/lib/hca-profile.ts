@@ -1,6 +1,6 @@
 import "server-only"
-import prisma from "@/lib/prisma"
 import { encryptPII, isPiiConfigured } from "@/lib/pii"
+import prisma from "@/lib/prisma"
 
 /**
  * Everything this app learns from Hack Club Auth, and the one way it is read.
@@ -27,8 +27,7 @@ import { encryptPII, isPiiConfigured } from "@/lib/pii"
 
 export const PULL_PII = process.env.PULL_HCA_PII === "true" && isPiiConfigured()
 
-const DISCOVERY_URL =
-  process.env.HCA_DISCOVERY_URL ?? "https://auth.hackclub.com/.well-known/openid-configuration"
+const DISCOVERY_URL = process.env.HCA_DISCOVERY_URL ?? "https://auth.hackclub.com/.well-known/openid-configuration"
 const ME_URL = process.env.HCA_ME_URL ?? "https://auth.hackclub.com/api/v1/me"
 
 const TIMEOUT_MS = 10_000
@@ -89,10 +88,7 @@ async function getJson(url: string, accessToken: string): Promise<Record<string,
 const str = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v.trim() : null)
 
 /** The address to ship to: the one marked primary, else the first. */
-function addressFrom(
-  me: Record<string, unknown> | null,
-  userinfo: Record<string, unknown> | null,
-): HcaAddress | null {
+function addressFrom(me: Record<string, unknown> | null, userinfo: Record<string, unknown> | null): HcaAddress | null {
   const list = Array.isArray(me?.addresses) ? (me.addresses as Record<string, unknown>[]) : []
   const a = list.find((x) => x?.primary === true) ?? list[0]
   if (a) {
@@ -131,16 +127,14 @@ export async function fetchHcaIdentity(accessToken: string): Promise<HcaIdentity
 
   const email = str(userinfo?.email) ?? str(me?.primary_email)
   const name =
-    str(userinfo?.name) ??
-    ([str(userinfo?.given_name), str(userinfo?.family_name)].filter(Boolean).join(" ") || null)
+    str(userinfo?.name) ?? ([str(userinfo?.given_name), str(userinfo?.family_name)].filter(Boolean).join(" ") || null)
 
   return {
     sub: str(userinfo?.sub) ?? str(me?.id),
     email,
     // HCA signs people in by emailing them a code, so the address it holds is
     // one they have proven they read. The explicit claim wins when present.
-    emailVerified:
-      typeof userinfo?.email_verified === "boolean" ? userinfo.email_verified : email !== null,
+    emailVerified: typeof userinfo?.email_verified === "boolean" ? userinfo.email_verified : email !== null,
     name,
     image: str(userinfo?.picture),
     slackId: str(userinfo?.slack_id) ?? str(me?.slack_id),

@@ -1,32 +1,28 @@
-import type { Metadata } from "next";
-import Link from "next/link";
-import { notFound } from "next/navigation";
-import { ArticleLink } from "@/components/platform/docs/ArticleLink";
-import { IconArrowRight, IconChevronLeft } from "@/components/platform/icons";
-import { Panel } from "@/components/platform/ui";
-import { DOCS } from "@/lib/data";
+import type { Metadata } from "next"
+import Link from "next/link"
+import { notFound } from "next/navigation"
+import { ArticleLink } from "@/components/platform/docs/ArticleLink"
+import { IconArrowRight, IconChevronLeft } from "@/components/platform/icons"
+import { Panel } from "@/components/platform/ui"
+import { DOCS } from "@/lib/data"
 
 export function generateStaticParams() {
-  return DOCS.map((d) => ({ slug: d.slug }));
+  return DOCS.map((d) => ({ slug: d.slug }))
 }
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}): Promise<Metadata> {
-  const { slug } = await params;
-  const doc = DOCS.find((d) => d.slug === slug);
-  return { title: doc ? `${doc.title} — Half Life docs` : "Docs — Half Life" };
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params
+  const doc = DOCS.find((d) => d.slug === slug)
+  return { title: doc ? `${doc.title} — Half Life docs` : "Docs — Half Life" }
 }
 
 export default async function DocPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  const doc = DOCS.find((d) => d.slug === slug);
-  if (!doc) notFound();
+  const { slug } = await params
+  const doc = DOCS.find((d) => d.slug === slug)
+  if (!doc) notFound()
 
-  const i = DOCS.findIndex((d) => d.slug === slug);
-  const next = DOCS[i + 1];
+  const i = DOCS.findIndex((d) => d.slug === slug)
+  const next = DOCS[i + 1]
 
   return (
     <div className="mx-auto w-full max-w-[1000px] px-4 pt-6 sm:px-8">
@@ -44,8 +40,7 @@ export default async function DocPage({ params }: { params: Promise<{ slug: stri
             {doc.title}
           </h1>
           <p className="mt-3 max-w-[60ch] text-[1.05rem] leading-relaxed text-navy-soft">{doc.summary}</p>
-          <p className="hand mt-3 inline-flex items-center gap-1.5 text-[0.8rem] text-line-strong">
-          </p>
+          <p className="hand mt-3 inline-flex items-center gap-1.5 text-[0.8rem] text-line-strong" />
 
           <div className="mt-9 grid gap-9">
             {doc.body.map((block) => (
@@ -76,10 +71,7 @@ export default async function DocPage({ params }: { params: Promise<{ slug: stri
 
           {next && (
             <Panel tone="teal" radius={18} className="mt-12 bg-mint">
-              <ArticleLink
-                href={`/docs/${next.slug}`}
-                className="group flex items-center gap-4 px-5 py-4"
-              >
+              <ArticleLink href={`/docs/${next.slug}`} className="group flex items-center gap-4 px-5 py-4">
                 <span className="min-w-0 flex-1">
                   <span className="label block text-teal-deep">Next</span>
                   <span className="mt-0.5 block text-[1.05rem] leading-tight font-extrabold text-navy">
@@ -111,5 +103,5 @@ export default async function DocPage({ params }: { params: Promise<{ slug: stri
 
       <div className="h-16" />
     </div>
-  );
+  )
 }

@@ -1,11 +1,11 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { PrinterArt } from "@/components/platform/art";
-import { GoalModal } from "@/components/platform/modals/GoalModal";
-import { Meter, Panel, cx } from "@/components/platform/ui";
-import { printerById } from "@/lib/config/printers";
-import { useStore } from "@/lib/store";
+import { useState } from "react"
+import { PrinterArt } from "@/components/platform/art"
+import { GoalModal } from "@/components/platform/modals/GoalModal"
+import { cx, Meter, Panel } from "@/components/platform/ui"
+import { printerById } from "@/lib/config/printers"
+import { useStore } from "@/lib/store"
 
 /**
  * What every coin is aimed at. It rides whichever rail the viewport hands it —
@@ -18,9 +18,9 @@ export function GoalTracker({ className }: { className?: string }) {
   // either, and most of what is aimed at it is banked — a meter reading the
   // spendable pot alone would sit near zero all season while the money for the
   // machine piled up out of sight.
-  const { printerFund, goalId } = useStore();
-  const [open, setOpen] = useState(false);
-  const goal = printerById(goalId);
+  const { printerFund, goalId } = useStore()
+  const [open, setOpen] = useState(false)
+  const goal = printerById(goalId)
 
   return (
     <Panel
@@ -56,5 +56,5 @@ export function GoalTracker({ className }: { className?: string }) {
 
       <GoalModal open={open} onClose={() => setOpen(false)} />
     </Panel>
-  );
+  )
 }

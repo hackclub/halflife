@@ -1,21 +1,21 @@
-"use client";
+"use client"
 
-import { useId, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { IconPencil, IconPlus, IconX } from "@/components/platform/icons";
-import { Button, cx, inputClass } from "@/components/platform/ui";
-import type { BomLine } from "@/lib/bom";
+import { useRouter } from "next/navigation"
+import { useId, useRef, useState } from "react"
+import { IconPencil, IconPlus, IconX } from "@/components/platform/icons"
+import { Button, cx, inputClass } from "@/components/platform/ui"
+import type { BomLine } from "@/lib/bom"
 
-const usd = (n: number) => `$${n.toFixed(2)}`;
+const usd = (n: number) => `$${n.toFixed(2)}`
 
 type Draft = {
-  name: string;
-  purpose: string;
-  quantity: string;
-  unitCostUsd: string;
-  vendor: string;
-  link: string;
-};
+  name: string
+  purpose: string
+  quantity: string
+  unitCostUsd: string
+  vendor: string
+  link: string
+}
 
 const FIELD_NAMES: Record<keyof Draft, string> = {
   name: "Part",
@@ -24,14 +24,14 @@ const FIELD_NAMES: Record<keyof Draft, string> = {
   unitCostUsd: "Unit $",
   vendor: "Vendor",
   link: "Link",
-};
+}
 
 /** "Fill out the required fields", naming the ones that are missing. */
 function requiredMessage(fields: (keyof Draft)[]) {
-  return `Fill out the required fields: ${fields.map((k) => FIELD_NAMES[k]).join(", ")}.`;
+  return `Fill out the required fields: ${fields.map((k) => FIELD_NAMES[k]).join(", ")}.`
 }
 
-const EMPTY: Draft = { name: "", purpose: "", quantity: "1", unitCostUsd: "", vendor: "", link: "" };
+const EMPTY: Draft = { name: "", purpose: "", quantity: "1", unitCostUsd: "", vendor: "", link: "" }
 
 function draftOf(line: BomLine): Draft {
   return {
@@ -41,7 +41,7 @@ function draftOf(line: BomLine): Draft {
     unitCostUsd: line.unitCostUsd ? String(line.unitCostUsd) : "",
     vendor: line.vendor ?? "",
     link: line.link ?? "",
-  };
+  }
 }
 
 /**
@@ -65,49 +65,49 @@ export function BomEditor({
   tier,
   grantUsd,
 }: {
-  projectId: string;
-  items: BomLine[];
-  taxShippingUsd: number;
+  projectId: string
+  items: BomLine[]
+  taxShippingUsd: number
   /** Why the list cannot change, or null when it can. */
-  locked: string | null;
-  tier: number;
-  grantUsd: number;
+  locked: string | null
+  tier: number
+  grantUsd: number
 }) {
-  const router = useRouter();
-  const id = useId();
-  const [items, setItems] = useState(initial);
+  const router = useRouter()
+  const id = useId()
+  const [items, setItems] = useState(initial)
   // null: form closed. "new": adding. Otherwise the id of the line being edited.
-  const [editing, setEditing] = useState<string | null>(null);
-  const [draft, setDraft] = useState<Draft>(EMPTY);
-  const nameInput = useRef<HTMLInputElement>(null);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState<string | null>(null)
+  const [draft, setDraft] = useState<Draft>(EMPTY)
+  const nameInput = useRef<HTMLInputElement>(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   // The fields the last save found missing, outlined until they are filled.
-  const [invalid, setInvalid] = useState<Set<keyof Draft>>(new Set());
+  const [invalid, setInvalid] = useState<Set<keyof Draft>>(new Set())
 
-  const [taxShipping, setTaxShipping] = useState(initialExtra);
+  const [taxShipping, setTaxShipping] = useState(initialExtra)
 
-  const parts = items.reduce((n, l) => n + l.quantity * l.unitCostUsd, 0);
-  const total = parts + taxShipping;
-  const over = total > grantUsd;
+  const parts = items.reduce((n, l) => n + l.quantity * l.unitCostUsd, 0)
+  const total = parts + taxShipping
+  const over = total > grantUsd
 
   function open(target: "new" | BomLine) {
-    setEditing(target === "new" ? "new" : target.id);
-    setDraft(target === "new" ? EMPTY : draftOf(target));
-    setError(null);
-    setInvalid(new Set());
+    setEditing(target === "new" ? "new" : target.id)
+    setDraft(target === "new" ? EMPTY : draftOf(target))
+    setError(null)
+    setInvalid(new Set())
   }
 
   async function send(method: "POST" | "PATCH" | "DELETE", path: string, body?: unknown) {
-    setSaving(true);
-    setError(null);
+    setSaving(true)
+    setError(null)
     try {
       const res = await fetch(path, {
         method,
         headers: body ? { "content-type": "application/json" } : undefined,
         body: body ? JSON.stringify(body) : undefined,
-      });
-      const payload = await res.json().catch(() => null);
+      })
+      const payload = await res.json().catch(() => null)
       if (!res.ok) {
         // The server's field check says which fields, not just "Invalid
         // request": outline those and say it the way the form's own check
@@ -115,49 +115,49 @@ export function BomEditor({
         // running an older copy of it.
         const fields = Object.keys(payload?.error?.details?.properties ?? {}).filter(
           (k): k is keyof Draft => k in FIELD_NAMES,
-        );
+        )
         if (payload?.error?.code === "VALIDATION_FAILED" && fields.length > 0) {
-          setInvalid(new Set(fields));
-          setError(requiredMessage(fields));
+          setInvalid(new Set(fields))
+          setError(requiredMessage(fields))
         } else {
-          setError(payload?.error?.message ?? "That did not save. Try again.");
+          setError(payload?.error?.message ?? "That did not save. Try again.")
         }
-        return false;
+        return false
       }
-      setItems(payload.items as BomLine[]);
-      router.refresh();
-      return true;
+      setItems(payload.items as BomLine[])
+      router.refresh()
+      return true
     } catch {
-      setError("Could not reach the server. Try again.");
-      return false;
+      setError("Could not reach the server. Try again.")
+      return false
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
   }
 
   async function save() {
     // Every field, because a reviewer prices the tier from this list: a line
     // without a vendor, a link or a price is one they cannot check.
-    const quantity = /^\d+$/.test(draft.quantity.trim()) ? Number(draft.quantity) : NaN;
-    const unitCostUsd = draft.unitCostUsd.trim() ? Number(draft.unitCostUsd) : NaN;
-    let link = draft.link.trim();
-    if (link && !/^https?:\/\//i.test(link)) link = `https://${link}`;
-    let linkOk = false;
+    const quantity = /^\d+$/.test(draft.quantity.trim()) ? Number(draft.quantity) : Number.NaN
+    const unitCostUsd = draft.unitCostUsd.trim() ? Number(draft.unitCostUsd) : Number.NaN
+    let link = draft.link.trim()
+    if (link && !/^https?:\/\//i.test(link)) link = `https://${link}`
+    let linkOk = false
     try {
-      linkOk = !!link && new URL(link).hostname.includes(".");
+      linkOk = !!link && new URL(link).hostname.includes(".")
     } catch {
-      linkOk = false;
+      linkOk = false
     }
 
-    const bad = new Set<keyof Draft>();
-    if (!draft.name.trim()) bad.add("name");
-    if (!draft.purpose.trim()) bad.add("purpose");
-    if (!(quantity >= 1)) bad.add("quantity");
-    if (!(unitCostUsd > 0)) bad.add("unitCostUsd");
-    if (!draft.vendor.trim()) bad.add("vendor");
-    if (!linkOk) bad.add("link");
-    setInvalid(bad);
-    if (bad.size > 0) return setError(requiredMessage([...bad]));
+    const bad = new Set<keyof Draft>()
+    if (!draft.name.trim()) bad.add("name")
+    if (!draft.purpose.trim()) bad.add("purpose")
+    if (!(quantity >= 1)) bad.add("quantity")
+    if (!(unitCostUsd > 0)) bad.add("unitCostUsd")
+    if (!draft.vendor.trim()) bad.add("vendor")
+    if (!linkOk) bad.add("link")
+    setInvalid(bad)
+    if (bad.size > 0) return setError(requiredMessage([...bad]))
 
     const body = {
       name: draft.name.trim(),
@@ -166,49 +166,49 @@ export function BomEditor({
       unitCostUsd,
       vendor: draft.vendor.trim(),
       link,
-    };
+    }
     const done =
       editing === "new"
         ? await send("POST", `/api/projects/${projectId}/bom`, body)
-        : await send("PATCH", `/api/projects/${projectId}/bom/${editing}`, body);
+        : await send("PATCH", `/api/projects/${projectId}/bom/${editing}`, body)
     if (done) {
       // Adding is usually several parts in a row, so the form stays open
       // and the cursor goes back to the first field.
       if (editing === "new") {
-        setDraft(EMPTY);
-        nameInput.current?.focus();
-      } else setEditing(null);
+        setDraft(EMPTY)
+        nameInput.current?.focus()
+      } else setEditing(null)
     }
   }
 
   async function remove(line: BomLine) {
-    const done = await send("DELETE", `/api/projects/${projectId}/bom/${line.id}`);
-    if (done && editing === line.id) setEditing(null);
+    const done = await send("DELETE", `/api/projects/${projectId}/bom/${line.id}`)
+    if (done && editing === line.id) setEditing(null)
   }
 
   async function saveTaxShipping(value: number) {
-    if (value === taxShipping) return true;
-    setSaving(true);
-    setError(null);
+    if (value === taxShipping) return true
+    setSaving(true)
+    setError(null)
     try {
       const res = await fetch(`/api/projects/${projectId}/bom`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ taxShippingUsd: value }),
-      });
-      const payload = await res.json().catch(() => null);
+      })
+      const payload = await res.json().catch(() => null)
       if (!res.ok) {
-        setError(payload?.error?.message ?? "That did not save. Try again.");
-        return false;
+        setError(payload?.error?.message ?? "That did not save. Try again.")
+        return false
       }
-      setTaxShipping(payload.taxShippingUsd);
-      router.refresh();
-      return true;
+      setTaxShipping(payload.taxShippingUsd)
+      router.refresh()
+      return true
     } catch {
-      setError("Could not reach the server. Try again.");
-      return false;
+      setError("Could not reach the server. Try again.")
+      return false
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
   }
 
@@ -218,14 +218,14 @@ export function BomEditor({
     required: true,
     "aria-invalid": invalid.has(key) || undefined,
     onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
-      setDraft((d) => ({ ...d, [key]: e.target.value }));
-      if (error) setError(null);
+      setDraft((d) => ({ ...d, [key]: e.target.value }))
+      if (error) setError(null)
       if (invalid.has(key)) {
         setInvalid((s) => {
-          const next = new Set(s);
-          next.delete(key);
-          return next;
-        });
+          const next = new Set(s)
+          next.delete(key)
+          return next
+        })
       }
     },
     // A red border rather than a ring: the drawn outline inputClass relies on
@@ -236,104 +236,100 @@ export function BomEditor({
       "border-2 py-2 text-[0.88rem]",
       invalid.has(key) ? "border-coral-deep bg-coral/5" : "border-transparent",
     ),
-  });
+  })
 
   return (
     <div>
-        <div className="-mx-1 overflow-x-auto px-1">
-          <table className="w-full min-w-[480px] text-left text-[0.86rem]">
-            <thead>
-              <tr className="border-b border-dashed border-line">
-                {["Part", "Qty", "Unit", "Total", "Vendor"].map((h) => (
-                  <th key={h} scope="col" className="label px-3 py-2 text-navy-soft first:pl-0">
-                    {h}
-                  </th>
-                ))}
+      <div className="-mx-1 overflow-x-auto px-1">
+        <table className="w-full min-w-[480px] text-left text-[0.86rem]">
+          <thead>
+            <tr className="border-b border-dashed border-line">
+              {["Part", "Qty", "Unit", "Total", "Vendor"].map((h) => (
+                <th key={h} scope="col" className="label px-3 py-2 text-navy-soft first:pl-0">
+                  {h}
+                </th>
+              ))}
+              {!locked && (
+                <th scope="col" className="w-0 px-0 py-2">
+                  <span className="sr-only">Actions</span>
+                </th>
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {items.length === 0 && (
+              <tr className="border-b border-dashed border-line/60">
+                <td colSpan={locked ? 5 : 6} className="hand py-4 text-[0.88rem] text-navy-soft">
+                  no parts listed yet. Add what the build needs, with a real vendor and price.
+                </td>
+              </tr>
+            )}
+            {items.map((l) => (
+              <tr
+                key={l.id}
+                className={cx(
+                  "border-b border-dashed border-line/60 align-top",
+                  editing === l.id && "bg-violet-pale/50",
+                )}
+              >
+                <td className="py-2.5 pr-3">
+                  <span className="block font-semibold [overflow-wrap:anywhere] text-navy">{l.name}</span>
+                  {l.purpose && <span className="block text-[0.8rem] leading-snug text-navy-soft">{l.purpose}</span>}
+                </td>
+                <td className="px-3 py-2.5 tabular-nums">{l.quantity}</td>
+                <td className="px-3 py-2.5 tabular-nums">{usd(l.unitCostUsd)}</td>
+                <td className="px-3 py-2.5 font-semibold text-navy tabular-nums">{usd(l.quantity * l.unitCostUsd)}</td>
+                <td className="hand px-3 py-2.5 text-navy-soft">
+                  {l.link ? (
+                    <a
+                      href={l.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline decoration-line-strong underline-offset-4 hover:text-navy hover:decoration-violet"
+                    >
+                      {l.vendor || "link"}
+                    </a>
+                  ) : (
+                    l.vendor || "—"
+                  )}
+                </td>
                 {!locked && (
-                  <th scope="col" className="w-0 px-0 py-2">
-                    <span className="sr-only">Actions</span>
-                  </th>
+                  <td className="py-1.5 pl-2 whitespace-nowrap">
+                    <button
+                      type="button"
+                      onClick={() => open(l)}
+                      disabled={saving}
+                      aria-label={`Edit ${l.name}`}
+                      className="inline-grid size-8 place-items-center rounded-full text-navy-soft transition-colors hover:bg-black/5 hover:text-navy"
+                    >
+                      <IconPencil className="text-sm" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void remove(l)}
+                      disabled={saving}
+                      aria-label={`Remove ${l.name}`}
+                      className="inline-grid size-8 place-items-center rounded-full text-navy-soft transition-colors hover:bg-coral/10 hover:text-coral-deep"
+                    >
+                      <IconX className="text-sm" />
+                    </button>
+                  </td>
                 )}
               </tr>
-            </thead>
-            <tbody>
-              {items.length === 0 && (
-                <tr className="border-b border-dashed border-line/60">
-                  <td colSpan={locked ? 5 : 6} className="hand py-4 text-[0.88rem] text-navy-soft">
-                    no parts listed yet. Add what the build needs, with a real vendor and price.
-                  </td>
-                </tr>
-              )}
-              {items.map((l) => (
-                <tr
-                  key={l.id}
-                  className={cx(
-                    "border-b border-dashed border-line/60 align-top",
-                    editing === l.id && "bg-violet-pale/50",
-                  )}
-                >
-                  <td className="py-2.5 pr-3">
-                    <span className="block font-semibold [overflow-wrap:anywhere] text-navy">{l.name}</span>
-                    {l.purpose && (
-                      <span className="block text-[0.8rem] leading-snug text-navy-soft">{l.purpose}</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2.5 tabular-nums">{l.quantity}</td>
-                  <td className="px-3 py-2.5 tabular-nums">{usd(l.unitCostUsd)}</td>
-                  <td className="px-3 py-2.5 font-semibold text-navy tabular-nums">
-                    {usd(l.quantity * l.unitCostUsd)}
-                  </td>
-                  <td className="hand px-3 py-2.5 text-navy-soft">
-                    {l.link ? (
-                      <a
-                        href={l.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="underline decoration-line-strong underline-offset-4 hover:text-navy hover:decoration-violet"
-                      >
-                        {l.vendor || "link"}
-                      </a>
-                    ) : (
-                      l.vendor || "—"
-                    )}
-                  </td>
-                  {!locked && (
-                    <td className="py-1.5 pl-2 whitespace-nowrap">
-                      <button
-                        type="button"
-                        onClick={() => open(l)}
-                        disabled={saving}
-                        aria-label={`Edit ${l.name}`}
-                        className="inline-grid size-8 place-items-center rounded-full text-navy-soft transition-colors hover:bg-black/5 hover:text-navy"
-                      >
-                        <IconPencil className="text-sm" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void remove(l)}
-                        disabled={saving}
-                        aria-label={`Remove ${l.name}`}
-                        className="inline-grid size-8 place-items-center rounded-full text-navy-soft transition-colors hover:bg-coral/10 hover:text-coral-deep"
-                      >
-                        <IconX className="text-sm" />
-                      </button>
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <ExtraRow
-                label="Tax & shipping"
-                hint="for the whole order"
-                value={taxShipping}
-                locked={locked}
-                disabled={saving}
-                onSave={saveTaxShipping}
-              />
-            </tfoot>
-          </table>
-        </div>
+            ))}
+          </tbody>
+          <tfoot>
+            <ExtraRow
+              label="Tax & shipping"
+              hint="for the whole order"
+              value={taxShipping}
+              locked={locked}
+              disabled={saving}
+              onSave={saveTaxShipping}
+            />
+          </tfoot>
+        </table>
+      </div>
 
       <div className="mt-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
         <p className="text-[0.9rem] text-navy-soft">
@@ -362,11 +358,11 @@ export function BomEditor({
           noValidate
           className="mt-4 grid gap-3 rounded-2xl bg-black/[.03] p-4"
           onSubmit={(e) => {
-            e.preventDefault();
-            void save();
+            e.preventDefault()
+            void save()
           }}
           onKeyDown={(e) => {
-            if (e.key === "Escape") setEditing(null);
+            if (e.key === "Escape") setEditing(null)
           }}
         >
           <p className="text-[0.9rem] font-extrabold text-navy">
@@ -422,7 +418,7 @@ export function BomEditor({
         </p>
       )}
     </div>
-  );
+  )
 }
 
 /**
@@ -438,26 +434,26 @@ function ExtraRow({
   disabled,
   onSave,
 }: {
-  label: string;
-  hint: string;
-  value: number;
-  locked: string | null;
-  disabled: boolean;
-  onSave: (value: number) => Promise<boolean>;
+  label: string
+  hint: string
+  value: number
+  locked: string | null
+  disabled: boolean
+  onSave: (value: number) => Promise<boolean>
 }) {
-  const id = useId();
-  const [draft, setDraft] = useState(value ? value.toFixed(2) : "");
-  const [invalid, setInvalid] = useState(false);
+  const id = useId()
+  const [draft, setDraft] = useState(value ? value.toFixed(2) : "")
+  const [invalid, setInvalid] = useState(false)
 
   async function commit() {
-    const n = draft.trim() === "" ? 0 : Number.parseFloat(draft);
+    const n = draft.trim() === "" ? 0 : Number.parseFloat(draft)
     if (!Number.isFinite(n) || n < 0) {
-      setInvalid(true);
-      return;
+      setInvalid(true)
+      return
     }
-    setInvalid(false);
-    const cents = Math.round(n * 100) / 100;
-    if (await onSave(cents)) setDraft(cents ? cents.toFixed(2) : "");
+    setInvalid(false)
+    const cents = Math.round(n * 100) / 100
+    if (await onSave(cents)) setDraft(cents ? cents.toFixed(2) : "")
   }
 
   return (
@@ -484,14 +480,14 @@ function ExtraRow({
               disabled={disabled}
               aria-invalid={invalid || undefined}
               onChange={(e) => {
-                setDraft(e.target.value);
-                if (invalid) setInvalid(false);
+                setDraft(e.target.value)
+                if (invalid) setInvalid(false)
               }}
               onBlur={() => void commit()}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
-                  e.preventDefault();
-                  e.currentTarget.blur();
+                  e.preventDefault()
+                  e.currentTarget.blur()
                 }
               }}
               // Its own look rather than inputClass: a white field on the white
@@ -506,5 +502,5 @@ function ExtraRow({
         )}
       </td>
     </tr>
-  );
+  )
 }

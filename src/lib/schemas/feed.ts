@@ -33,7 +33,12 @@ export const createPostSchema = z
       .nullish(),
     contentType: boundedText(100).nullish(),
     byteSize: z.number().int().min(0).nullish(),
-    durationSeconds: z.number().int().min(0).max(24 * 3600).nullish(),
+    durationSeconds: z
+      .number()
+      .int()
+      .min(0)
+      .max(24 * 3600)
+      .nullish(),
     width: z.number().int().min(0).max(20000).nullish(),
     height: z.number().int().min(0).max(20000).nullish(),
   })
@@ -67,6 +72,4 @@ export const publicReelLinksSchema = z
 
 export const commentSchema = z.object({ body: boundedText(1000, 1) }).strict()
 
-export const moderatePostSchema = z
-  .object({ reason: boundedText(1000, 1) })
-  .strict()
+export const moderatePostSchema = z.object({ reason: boundedText(1000, 1) }).strict()

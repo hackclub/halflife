@@ -1,19 +1,19 @@
-"use client";
+"use client"
 
-import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation"
+import { useEffect } from "react"
 import {
   JournalModal,
   ProjectModal,
   ReelModal,
   SubmitModal,
   UnsubmitModal,
-} from "@/components/platform/modals/CheckpointModals";
-import { FirstCheckpoint } from "@/components/platform/modals/FirstCheckpoint";
-import { useStore } from "@/lib/store";
-import { Cinematic } from "./Cinematic";
-import { Spotlight } from "./Spotlight";
-import { PLATFORM_HOME } from "@/lib/routes";
+} from "@/components/platform/modals/CheckpointModals"
+import { FirstCheckpoint } from "@/components/platform/modals/FirstCheckpoint"
+import { PLATFORM_HOME } from "@/lib/routes"
+import { useStore } from "@/lib/store"
+import { Cinematic } from "./Cinematic"
+import { Spotlight } from "./Spotlight"
 
 /**
  * The tour walks the left rail from top to bottom, one tab per step, in the
@@ -65,31 +65,31 @@ const TOUR = [
     title: "Docs",
     body: "How tiers work, what counts as a session, and the checklist reviewers actually use when they read your submission.",
   },
-];
+]
 
 function CheckpointModal({ id }: { id: string }) {
-  const { allCheckpoints, phaseStatusOf } = useStore();
-  const cp = allCheckpoints.find((c) => c.id === id);
-  if (!cp) return null;
+  const { allCheckpoints, phaseStatusOf } = useStore()
+  const cp = allCheckpoints.find((c) => c.id === id)
+  if (!cp) return null
   // Handed in and waiting: the checkpoint's job now is to let it be taken
   // back, not to walk the hand-in again over the top of the one in review.
   if ((cp.kind === "submit" || cp.kind === "demo") && phaseStatusOf(cp.weekId) === "in_review") {
-    return <UnsubmitModal checkpoint={cp} />;
+    return <UnsubmitModal checkpoint={cp} />
   }
   switch (cp.kind) {
     case "onboarding":
-      return <FirstCheckpoint />;
+      return <FirstCheckpoint />
     case "journal":
-      return <JournalModal checkpoint={cp} />;
+      return <JournalModal checkpoint={cp} />
     case "reel":
-      return <ReelModal checkpoint={cp} />;
+      return <ReelModal checkpoint={cp} />
     case "project":
-      return <ProjectModal checkpoint={cp} />;
+      return <ProjectModal checkpoint={cp} />
     case "submit":
     case "demo":
-      return <SubmitModal checkpoint={cp} />;
+      return <SubmitModal checkpoint={cp} />
     default:
-      return null;
+      return null
   }
 }
 
@@ -104,40 +104,40 @@ export function Overlays() {
     setTourStep,
     currentCheckpointId,
     isPassed,
-  } = useStore();
-  const pathname = usePathname();
-  const router = useRouter();
+  } = useStore()
+  const pathname = usePathname()
+  const router = useRouter()
 
-  const needsHome = phase === "aim" || phase === "cinematic";
+  const needsHome = phase === "aim" || phase === "cinematic"
 
   useEffect(() => {
-    if (hydrated && needsHome && pathname !== PLATFORM_HOME) router.push(PLATFORM_HOME);
-  }, [hydrated, needsHome, pathname, router]);
+    if (hydrated && needsHome && pathname !== PLATFORM_HOME) router.push(PLATFORM_HOME)
+  }, [hydrated, needsHome, pathname, router])
 
   // Closing the setup modal without finishing drops you back to the prompt
   // rather than into a half-onboarded state with no way back.
   useEffect(() => {
-    if (phase === "checkpoint" && !openCheckpoint) setPhase("aim");
-  }, [phase, openCheckpoint, setPhase]);
+    if (phase === "checkpoint" && !openCheckpoint) setPhase("aim")
+  }, [phase, openCheckpoint, setPhase])
 
   // Coming back from signing in with Lapse: reopen the entry that sent you,
   // on the tab you left from. The param is dropped straight away so a refresh
   // or a shared link does not keep reopening it.
   useEffect(() => {
-    if (!hydrated) return;
-    const url = new URL(window.location.href);
-    const journal = url.searchParams.get("journal");
-    if (!journal) return;
-    url.searchParams.delete("journal");
-    window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+    if (!hydrated) return
+    const url = new URL(window.location.href)
+    const journal = url.searchParams.get("journal")
+    if (!journal) return
+    url.searchParams.delete("journal")
+    window.history.replaceState(null, "", url.pathname + url.search + url.hash)
     // The week may have closed while they were away signing in; its entry
     // stays shut then, exactly as the trail keeps it.
-    if (!isPassed(journal)) setOpenCheckpoint(journal);
-  }, [hydrated, setOpenCheckpoint, isPassed]);
+    if (!isPassed(journal)) setOpenCheckpoint(journal)
+  }, [hydrated, setOpenCheckpoint, isPassed])
 
-  if (!hydrated) return null;
+  if (!hydrated) return null
 
-  if (phase === "cinematic") return <Cinematic />;
+  if (phase === "cinematic") return <Cinematic />
 
   return (
     <>
@@ -152,8 +152,8 @@ export function Overlays() {
           pad={14}
           radius={999}
           onNext={() => {
-            setPhase("checkpoint");
-            setOpenCheckpoint(currentCheckpointId);
+            setPhase("checkpoint")
+            setOpenCheckpoint(currentCheckpointId)
           }}
           onSkip={() => setPhase("done")}
         />
@@ -175,18 +175,18 @@ export function Overlays() {
           cta={tourStep === TOUR.length - 1 ? "Start week 1" : "Next"}
           onNext={() => {
             if (tourStep >= TOUR.length - 1) {
-              setPhase("done");
-              setTourStep(0);
+              setPhase("done")
+              setTourStep(0)
             } else {
-              setTourStep(tourStep + 1);
+              setTourStep(tourStep + 1)
             }
           }}
           onSkip={() => {
-            setPhase("done");
-            setTourStep(0);
+            setPhase("done")
+            setTourStep(0)
           }}
         />
       )}
     </>
-  );
+  )
 }

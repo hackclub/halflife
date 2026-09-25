@@ -1,16 +1,16 @@
 import "server-only"
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto"
-import prisma from "@/lib/prisma"
 import { HttpError } from "@/lib/errors"
+import { POST_UPLOAD_FOLDER } from "@/lib/feed"
+import prisma from "@/lib/prisma"
 import {
   buildObjectKey,
   isUploadConfigured,
+  MAX_UPLOAD_BYTES,
   publicUrlFor,
   putObject,
   validateUpload,
-  MAX_UPLOAD_BYTES,
 } from "@/lib/uploads/r2"
-import { POST_UPLOAD_FOLDER } from "@/lib/feed"
 
 /**
  * Handing recording off to a phone.
@@ -176,10 +176,7 @@ export type HandoffStatus =
   | { state: "ready"; objectKey: string; contentType: string | null; url: string | null }
 
 /** What the desktop polls. Scoped to the owner, so ids are not guessable keys. */
-export async function getHandoffStatus(
-  id: string,
-  userId: string,
-): Promise<HandoffStatus | null> {
+export async function getHandoffStatus(id: string, userId: string): Promise<HandoffStatus | null> {
   const row = await prisma.uploadHandoff.findFirst({
     where: { id, userId },
     select: { expiresAt: true, usedAt: true, objectKey: true, contentType: true },

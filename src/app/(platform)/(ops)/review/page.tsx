@@ -1,9 +1,9 @@
 import Link from "next/link"
+import { Badge, EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
+import { Phase } from "@/app/generated/prisma/enums"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import { getReviewQueue } from "@/lib/queries/review"
-import { Phase } from "@/app/generated/prisma/enums"
-import { Badge, EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
 
 export const dynamic = "force-dynamic"
 
@@ -13,8 +13,7 @@ export default async function ReviewQueuePage({ searchParams }: Props) {
   const { user } = await requirePermissionPage(Permission.REVIEW_SUBMISSIONS)
   const { phase, cursor } = await searchParams
 
-  const selected =
-    phase === "DESIGN" ? Phase.DESIGN : phase === "BUILD" ? Phase.BUILD : undefined
+  const selected = phase === "DESIGN" ? Phase.DESIGN : phase === "BUILD" ? Phase.BUILD : undefined
 
   const queue = await getReviewQueue({
     reviewerId: user.id,
@@ -50,45 +49,37 @@ export default async function ReviewQueuePage({ searchParams }: Props) {
         ) : (
           <Table head={["Theme", "Phase", "Participant", "Waiting since", "Claim", ""]}>
             {queue.items.map((item) => (
-                <tr key={item.id}>
-                  <td>
-                    {item.themeLabel}
-                    <div className="hl-hint">{item.projectTitle}</div>
-                  </td>
-                  <td>
-                    {item.phase.toLowerCase()}
-                    {!item.onTime ? (
-                      <div className="hl-hint">
-                        submitted week {item.submittedInWeek ?? "?"}
-                      </div>
-                    ) : null}
-                  </td>
-                  <td>
-                    {item.participant.name ?? item.participant.email}
-                    <div className="hl-hint">{item.participant.email}</div>
-                  </td>
-                  <td className="hl-mono">{item.submittedAt.toDateString()}</td>
-                  <td>
-                    {item.claimLive ? (
-                      <Badge tone="warning">{item.claimedBy?.name ?? "claimed"}</Badge>
-                    ) : (
-                      <Badge tone="muted">free</Badge>
-                    )}
-                  </td>
-                  <td>
-                    <Link href={`/review/${item.id}`}>Open</Link>
-                  </td>
-                </tr>
+              <tr key={item.id}>
+                <td>
+                  {item.themeLabel}
+                  <div className="hl-hint">{item.projectTitle}</div>
+                </td>
+                <td>
+                  {item.phase.toLowerCase()}
+                  {!item.onTime ? <div className="hl-hint">submitted week {item.submittedInWeek ?? "?"}</div> : null}
+                </td>
+                <td>
+                  {item.participant.name ?? item.participant.email}
+                  <div className="hl-hint">{item.participant.email}</div>
+                </td>
+                <td className="hl-mono">{item.submittedAt.toDateString()}</td>
+                <td>
+                  {item.claimLive ? (
+                    <Badge tone="warning">{item.claimedBy?.name ?? "claimed"}</Badge>
+                  ) : (
+                    <Badge tone="muted">free</Badge>
+                  )}
+                </td>
+                <td>
+                  <Link href={`/review/${item.id}`}>Open</Link>
+                </td>
+              </tr>
             ))}
           </Table>
         )}
         {queue.nextCursor ? (
           <p>
-            <Link
-              href={`/review?${selected ? `phase=${selected}&` : ""}cursor=${queue.nextCursor}`}
-            >
-              Next page
-            </Link>
+            <Link href={`/review?${selected ? `phase=${selected}&` : ""}cursor=${queue.nextCursor}`}>Next page</Link>
           </p>
         ) : null}
       </Panel>

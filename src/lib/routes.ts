@@ -4,4 +4,4 @@
  * and every "home" in the shell — the logo, the Home tab, the first-run intro —
  * means the same place.
  */
-export const PLATFORM_HOME = "/dashboard";
+export const PLATFORM_HOME = "/dashboard"

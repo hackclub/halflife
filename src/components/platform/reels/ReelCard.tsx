@@ -1,13 +1,13 @@
-"use client";
+"use client"
 
-import { useEffect, useRef, useState } from "react";
-import { FoxMark } from "@/components/platform/art";
-import { IconComment, IconEye, IconFilm, IconHeart, IconPlay } from "@/components/platform/icons";
-import { cx } from "@/components/platform/ui";
-import type { FeedItem } from "@/lib/feed";
+import { useEffect, useRef, useState } from "react"
+import { FoxMark } from "@/components/platform/art"
+import { IconComment, IconEye, IconFilm, IconHeart, IconPlay } from "@/components/platform/icons"
+import { cx } from "@/components/platform/ui"
+import type { FeedItem } from "@/lib/feed"
 
 function compact(n: number) {
-  return n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k` : `${n}`;
+  return n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k` : `${n}`
 }
 
 /**
@@ -15,7 +15,7 @@ function compact(n: number) {
  * every card at least the height of its column, two can never both clear this,
  * so "current" is always one card or none.
  */
-const CURRENT = 0.6;
+const CURRENT = 0.6
 
 /**
  * The one reel allowed to be making noise, across every feed on the page. Every
@@ -23,19 +23,19 @@ const CURRENT = 0.6;
  * scrolling on, pressing play on another card, or the rail and the full page
  * both being mounted can never leave two soundtracks talking over each other.
  */
-let playingNow: HTMLVideoElement | null = null;
+let playingNow: HTMLVideoElement | null = null
 
 function start(el: HTMLVideoElement) {
-  claim(el);
+  claim(el)
   // Autoplay with sound is the browser's call, not ours: without a click on the
   // page first it is refused, and the card simply keeps its play button.
-  return el.play().catch(() => undefined);
+  return el.play().catch(() => undefined)
 }
 
 /** Make `el` the one reel allowed to play, silencing whichever was. */
 function claim(el: HTMLVideoElement) {
-  if (playingNow && playingNow !== el) playingNow.pause();
-  playingNow = el;
+  if (playingNow && playingNow !== el) playingNow.pause()
+  playingNow = el
 }
 
 /**
@@ -44,25 +44,25 @@ function claim(el: HTMLVideoElement) {
  * when the browser refused, which is the caller's cue to retry muted.
  */
 export function playExclusive(el: HTMLVideoElement): Promise<boolean> {
-  claim(el);
+  claim(el)
   return el.play().then(
     () => true,
     () => false,
-  );
+  )
 }
 
 /** For a video that started some other way — the element's own play event. */
 export function notePlaying(el: HTMLVideoElement) {
-  claim(el);
+  claim(el)
 }
 
 export function noteStopped(el: HTMLVideoElement) {
-  if (playingNow === el) playingNow = null;
+  if (playingNow === el) playingNow = null
 }
 
 /** Silence whichever reel is playing, for a feed that is being put away. */
 export function pauseReels() {
-  playingNow?.pause();
+  playingNow?.pause()
 }
 
 /**
@@ -73,13 +73,9 @@ export function pauseReels() {
  * not "add one" — and the route is declared that way. Sending POST got a
  * silent 405 and left the optimistic count standing until the next refresh.
  */
-export function sendLike(
-  reel: FeedItem,
-  next: boolean,
-  onPatch?: (id: string, patch: Partial<FeedItem>) => void,
-) {
-  if (reel.likedByMe === next) return;
-  onPatch?.(reel.id, { likedByMe: next, likeCount: reel.likeCount + (next ? 1 : -1) });
+export function sendLike(reel: FeedItem, next: boolean, onPatch?: (id: string, patch: Partial<FeedItem>) => void) {
+  if (reel.likedByMe === next) return
+  onPatch?.(reel.id, { likedByMe: next, likeCount: reel.likeCount + (next ? 1 : -1) })
   void fetch(`/api/posts/${reel.id}/like`, {
     method: "PUT",
     headers: { "content-type": "application/json" },
@@ -88,17 +84,17 @@ export function sendLike(
     .then(async (res) => {
       if (!res.ok) {
         // Refused: put it back as it was.
-        onPatch?.(reel.id, { likedByMe: reel.likedByMe, likeCount: reel.likeCount });
-        return;
+        onPatch?.(reel.id, { likedByMe: reel.likedByMe, likeCount: reel.likeCount })
+        return
       }
-      const payload = (await res.json()) as { likeCount?: number };
-      if (typeof payload.likeCount === "number") onPatch?.(reel.id, { likeCount: payload.likeCount });
+      const payload = (await res.json()) as { likeCount?: number }
+      if (typeof payload.likeCount === "number") onPatch?.(reel.id, { likeCount: payload.likeCount })
     })
-    .catch(() => onPatch?.(reel.id, { likedByMe: reel.likedByMe, likeCount: reel.likeCount }));
+    .catch(() => onPatch?.(reel.id, { likedByMe: reel.likedByMe, likeCount: reel.likeCount }))
 }
 
 function prefersStill() {
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches
 }
 
 /**
@@ -112,13 +108,13 @@ function prefersStill() {
 const ARRIVE: Keyframe[] = [
   { opacity: 0, transform: "translateY(12px)" },
   { opacity: 1, transform: "none" },
-];
+]
 const ARRIVE_TIMING: KeyframeAnimationOptions = {
   duration: 420,
   delay: 90,
   easing: "cubic-bezier(0.16, 1, 0.3, 1)",
   fill: "backwards",
-};
+}
 
 /**
  * One reel. The rail stacks these in a snap column, the Doomscroller page lays
@@ -138,33 +134,33 @@ export function ReelCard({
   autoplay = false,
   onPlayPress,
 }: {
-  reel: FeedItem;
-  className?: string;
+  reel: FeedItem
+  className?: string
   /** Apply a change to this row after the server has taken it. */
-  onPatch?: (id: string, next: Partial<FeedItem>) => void;
+  onPatch?: (id: string, next: Partial<FeedItem>) => void
   /** Start playing when this card becomes the current reel. */
-  autoplay?: boolean;
+  autoplay?: boolean
   /** The reader pressed play themselves. */
-  onPlayPress?: () => void;
+  onPlayPress?: () => void
 }) {
-  const card = useRef<HTMLElement>(null);
-  const video = useRef<HTMLVideoElement>(null);
-  const meta = useRef<HTMLDivElement>(null);
-  const [playing, setPlaying] = useState(false);
-  const counted = useRef(false);
+  const card = useRef<HTMLElement>(null)
+  const video = useRef<HTMLVideoElement>(null)
+  const meta = useRef<HTMLDivElement>(null)
+  const [playing, setPlaying] = useState(false)
+  const counted = useRef(false)
   // Whether this card holds the current slot. Playback is only ever changed as
   // a card enters or leaves it, never while it stays there — so a reel the
   // reader paused stays paused until they scroll away and back.
-  const current = useRef(false);
+  const current = useRef(false)
   // Read by the observer at the moment a card arrives, so a feed switching
   // autoplay on does not tear the observer down (and pause the video) to do it.
-  const wantsAutoplay = useRef(autoplay);
+  const wantsAutoplay = useRef(autoplay)
 
-  const announcement = reel.pinned || reel.kind === "ANNOUNCEMENT";
+  const announcement = reel.pinned || reel.kind === "ANNOUNCEMENT"
 
   useEffect(() => {
-    wantsAutoplay.current = autoplay;
-  }, [autoplay]);
+    wantsAutoplay.current = autoplay
+  }, [autoplay])
 
   // Rooted on the viewport rather than the feed's own scroller: the rail is
   // closed by collapsing and clipping the panels AROUND that scroller, which an
@@ -172,44 +168,44 @@ export function ReelCard({
   // closing rail, a rail hidden at narrow widths and a reel scrolled past all
   // read the same way — the card is no longer on screen, so it stops.
   useEffect(() => {
-    const box = card.current;
-    const el = video.current;
-    if (!box || !el) return;
+    const box = card.current
+    const el = video.current
+    if (!box || !el) return
     const io = new IntersectionObserver(
       ([entry]) => {
-        const now = !!entry?.isIntersecting && entry.intersectionRatio >= CURRENT;
-        if (now === current.current) return;
-        current.current = now;
+        const now = !!entry?.isIntersecting && entry.intersectionRatio >= CURRENT
+        if (now === current.current) return
+        current.current = now
         if (!now) {
-          el.pause();
-          return;
+          el.pause()
+          return
         }
         // Only in a feed being watched. The rail sits idle beside every page,
         // and replaying an arrival on each navigation would be motion for its
         // own sake.
-        if (!wantsAutoplay.current || prefersStill()) return;
-        meta.current?.animate?.(ARRIVE, ARRIVE_TIMING);
-        void start(el);
+        if (!wantsAutoplay.current || prefersStill()) return
+        meta.current?.animate?.(ARRIVE, ARRIVE_TIMING)
+        void start(el)
       },
       { threshold: CURRENT },
-    );
-    io.observe(box);
+    )
+    io.observe(box)
     return () => {
-      io.disconnect();
-      current.current = false;
-      el.pause();
-    };
-  }, [reel.videoUrl]);
+      io.disconnect()
+      current.current = false
+      el.pause()
+    }
+  }, [reel.videoUrl])
 
   function toggle() {
-    const el = video.current;
-    if (!reel.videoUrl || !el) return;
+    const el = video.current
+    if (!reel.videoUrl || !el) return
     if (!el.paused) {
-      el.pause();
-      return;
+      el.pause()
+      return
     }
-    onPlayPress?.();
-    void start(el);
+    onPlayPress?.()
+    void start(el)
   }
 
   // A view is a second of actual playback, not a press or an autoplay that a
@@ -217,17 +213,17 @@ export function ReelCard({
   // server counts it once per person by unique row — so neither a replay nor a
   // retried request can inflate it.
   function countView() {
-    const el = video.current;
-    if (counted.current || !el) return;
-    let watched = 0;
-    for (let i = 0; i < el.played.length; i++) watched += el.played.end(i) - el.played.start(i);
-    if (watched < 1) return;
-    counted.current = true;
-    void fetch(`/api/posts/${reel.id}/view`, { method: "POST" });
+    const el = video.current
+    if (counted.current || !el) return
+    let watched = 0
+    for (let i = 0; i < el.played.length; i++) watched += el.played.end(i) - el.played.start(i)
+    if (watched < 1) return
+    counted.current = true
+    void fetch(`/api/posts/${reel.id}/view`, { method: "POST" })
   }
 
   function like() {
-    sendLike(reel, !reel.likedByMe, onPatch);
+    sendLike(reel, !reel.likedByMe, onPatch)
   }
 
   return (
@@ -249,12 +245,12 @@ export function ReelCard({
           // paused by the observer, by another card starting, or by the browser
           // refusing autoplay, none of which pass through the button.
           onPlay={(e) => {
-            notePlaying(e.currentTarget);
-            setPlaying(true);
+            notePlaying(e.currentTarget)
+            setPlaying(true)
           }}
           onPause={(e) => {
-            noteStopped(e.currentTarget);
-            setPlaying(false);
+            noteStopped(e.currentTarget)
+            setPlaying(false)
           }}
           onTimeUpdate={countView}
           className="absolute inset-0 size-full bg-navy object-cover"
@@ -307,12 +303,8 @@ export function ReelCard({
       <div className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/80 via-black/45 to-transparent px-3.5 pt-10 pb-3.5">
         <div ref={meta} className="flex items-end gap-3">
           <div className="min-w-0 flex-1">
-            <p className="text-[0.86rem] leading-tight font-extrabold text-white">
-              {reel.author.name ?? "A maker"}
-            </p>
-            <p className="mt-1 line-clamp-3 text-[0.78rem] leading-snug text-white/85">
-              {reel.caption}
-            </p>
+            <p className="text-[0.86rem] leading-tight font-extrabold text-white">{reel.author.name ?? "A maker"}</p>
+            <p className="mt-1 line-clamp-3 text-[0.78rem] leading-snug text-white/85">{reel.caption}</p>
           </div>
           <div className="flex shrink-0 flex-col items-center gap-2.5 pb-0.5">
             <button
@@ -346,5 +338,5 @@ export function ReelCard({
         </div>
       </div>
     </article>
-  );
+  )
 }

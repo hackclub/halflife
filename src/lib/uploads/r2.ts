@@ -96,11 +96,7 @@ export function isOwnedKey(userId: string, key: string): boolean {
   return key.split("/")[1] === userId
 }
 
-export async function putObject(
-  key: string,
-  body: Buffer,
-  contentType: string,
-): Promise<void> {
+export async function putObject(key: string, body: Buffer, contentType: string): Promise<void> {
   try {
     await client().send(
       new PutObjectCommand({
@@ -153,9 +149,7 @@ function asConfigError(err: unknown): unknown {
  * path.
  */
 export async function deleteObject(key: string): Promise<void> {
-  await client().send(
-    new DeleteObjectCommand({ Bucket: process.env.S3_BUCKET_NAME, Key: key }),
-  )
+  await client().send(new DeleteObjectCommand({ Bucket: process.env.S3_BUCKET_NAME, Key: key }))
 }
 
 /**

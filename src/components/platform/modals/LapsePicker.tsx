@@ -1,47 +1,47 @@
-"use client";
+"use client"
 
-import { useCallback, useEffect, useState } from "react";
-import { IconArrowRight, IconCheck, IconClock, IconFilm, IconWarning } from "@/components/platform/icons";
-import { Button, Chip, cx } from "@/components/platform/ui";
+import { useCallback, useEffect, useState } from "react"
+import { IconArrowRight, IconCheck, IconClock, IconFilm, IconWarning } from "@/components/platform/icons"
+import { Button, Chip, cx } from "@/components/platform/ui"
 
 export interface LapseTimelapse {
-  id: string;
-  title: string;
-  durationSeconds: number;
-  visibility: "PUBLIC" | "UNLISTED" | "FAILED_PROCESSING";
-  createdAt: number;
-  thumbnailUrl: string | null;
-  hackatimeProject: string | null;
-  processing: boolean;
-  attached: boolean;
+  id: string
+  title: string
+  durationSeconds: number
+  visibility: "PUBLIC" | "UNLISTED" | "FAILED_PROCESSING"
+  createdAt: number
+  thumbnailUrl: string | null
+  hackatimeProject: string | null
+  processing: boolean
+  attached: boolean
 }
 
 type Load =
   | { state: "loading" }
   | { state: "unlinked" }
   | { state: "error"; message: string }
-  | { state: "ready"; items: LapseTimelapse[]; nextCursor: string | null };
+  | { state: "ready"; items: LapseTimelapse[]; nextCursor: string | null }
 
-const LAPSE_URL = "https://lapse.hackclub.com";
+const LAPSE_URL = "https://lapse.hackclub.com"
 
 /** Recorded time, the way a person says it: 45m, 1h 20m, 2h. */
 export function fmtDuration(seconds: number) {
-  const m = Math.round(seconds / 60);
-  if (m < 60) return `${m}m`;
-  const h = Math.floor(m / 60);
-  return m % 60 ? `${h}h ${m % 60}m` : `${h}h`;
+  const m = Math.round(seconds / 60)
+  if (m < 60) return `${m}m`
+  const h = Math.floor(m / 60)
+  return m % 60 ? `${h}h ${m % 60}m` : `${h}h`
 }
 
 async function fetchPage(cursor?: string) {
-  const query = new URLSearchParams(cursor ? { cursor } : {});
-  const res = await fetch(`/api/lapse/timelapses?${query}`, { cache: "no-store" });
-  const body = await res.json().catch(() => null);
+  const query = new URLSearchParams(cursor ? { cursor } : {})
+  const res = await fetch(`/api/lapse/timelapses?${query}`, { cache: "no-store" })
+  const body = await res.json().catch(() => null)
   if (!res.ok) {
-    const code = body?.error?.code as string | undefined;
-    if (code === "LAPSE_NOT_LINKED") return { unlinked: true as const };
-    throw new Error(body?.error?.message ?? "Could not load your timelapses");
+    const code = body?.error?.code as string | undefined
+    if (code === "LAPSE_NOT_LINKED") return { unlinked: true as const }
+    throw new Error(body?.error?.message ?? "Could not load your timelapses")
   }
-  return body as { timelapses: LapseTimelapse[]; nextCursor: string | null };
+  return body as { timelapses: LapseTimelapse[]; nextCursor: string | null }
 }
 
 /**
@@ -58,47 +58,47 @@ export function LapsePicker({
   onToggle,
   onSignIn,
 }: {
-  picked: LapseTimelapse[];
-  onToggle: (t: LapseTimelapse) => void;
+  picked: LapseTimelapse[]
+  onToggle: (t: LapseTimelapse) => void
   /** Leaves the page for Lapse; the caller stashes the draft first. */
-  onSignIn: () => void;
+  onSignIn: () => void
 }) {
-  const [load, setLoad] = useState<Load>({ state: "loading" });
-  const [more, setMore] = useState(false);
-  const [leaving, setLeaving] = useState(false);
+  const [load, setLoad] = useState<Load>({ state: "loading" })
+  const [more, setMore] = useState(false)
+  const [leaving, setLeaving] = useState(false)
 
   const refresh = useCallback(async () => {
-    setLoad({ state: "loading" });
+    setLoad({ state: "loading" })
     try {
-      const page = await fetchPage();
-      if ("unlinked" in page) setLoad({ state: "unlinked" });
-      else setLoad({ state: "ready", items: page.timelapses, nextCursor: page.nextCursor });
+      const page = await fetchPage()
+      if ("unlinked" in page) setLoad({ state: "unlinked" })
+      else setLoad({ state: "ready", items: page.timelapses, nextCursor: page.nextCursor })
     } catch (err) {
-      setLoad({ state: "error", message: (err as Error).message });
+      setLoad({ state: "error", message: (err as Error).message })
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- fetching on mount
-    void refresh();
-  }, [refresh]);
+    void refresh()
+  }, [refresh])
 
   async function loadMore() {
-    if (load.state !== "ready" || !load.nextCursor) return;
-    setMore(true);
+    if (load.state !== "ready" || !load.nextCursor) return
+    setMore(true)
     try {
-      const page = await fetchPage(load.nextCursor);
-      if ("unlinked" in page) setLoad({ state: "unlinked" });
+      const page = await fetchPage(load.nextCursor)
+      if ("unlinked" in page) setLoad({ state: "unlinked" })
       else
         setLoad({
           state: "ready",
           items: [...load.items, ...page.timelapses],
           nextCursor: page.nextCursor,
-        });
+        })
     } catch (err) {
-      setLoad({ state: "error", message: (err as Error).message });
+      setLoad({ state: "error", message: (err as Error).message })
     } finally {
-      setMore(false);
+      setMore(false)
     }
   }
 
@@ -107,7 +107,7 @@ export function LapsePicker({
       <p className="hand py-10 text-center text-[0.9rem] text-navy-soft" aria-live="polite">
         looking for your timelapses on Lapse…
       </p>
-    );
+    )
   }
 
   if (load.state === "unlinked") {
@@ -120,15 +120,15 @@ export function LapsePicker({
           <IconFilm className="text-xl" />
         </span>
         <p className="max-w-[40ch] text-[0.92rem] leading-snug text-navy">
-          Timelapses are recorded on Lapse. Sign in once and every timelapse you publish there shows
-          up here to pick from.
+          Timelapses are recorded on Lapse. Sign in once and every timelapse you publish there shows up here to pick
+          from.
         </p>
         <Button
           variant="solid"
           disabled={leaving}
           onClick={() => {
-            setLeaving(true);
-            onSignIn();
+            setLeaving(true)
+            onSignIn()
           }}
         >
           {leaving ? "Opening Lapse…" : "Sign in with Lapse"} <IconArrowRight className="text-base" />
@@ -137,7 +137,7 @@ export function LapsePicker({
           you&apos;ll come straight back here, with your entry as you left it.
         </p>
       </div>
-    );
+    )
   }
 
   if (load.state === "error") {
@@ -150,10 +150,10 @@ export function LapsePicker({
           Try again
         </Button>
       </div>
-    );
+    )
   }
 
-  const pickedIds = new Set(picked.map((p) => p.id));
+  const pickedIds = new Set(picked.map((p) => p.id))
 
   return (
     <div>
@@ -184,15 +184,15 @@ export function LapsePicker({
       ) : (
         <ul className="grid gap-2.5 sm:grid-cols-2">
           {load.items.map((t) => {
-            const selected = pickedIds.has(t.id);
-            const blocked = !selected && (t.processing || t.attached || t.visibility === "FAILED_PROCESSING");
+            const selected = pickedIds.has(t.id)
+            const blocked = !selected && (t.processing || t.attached || t.visibility === "FAILED_PROCESSING")
             const why = t.attached
               ? "already added to project"
               : t.visibility === "FAILED_PROCESSING"
                 ? "failed processing on Lapse"
                 : t.processing
                   ? "still processing on Lapse"
-                  : null;
+                  : null
             return (
               <li key={t.id}>
                 <button
@@ -235,7 +235,9 @@ export function LapsePicker({
                       <span className="inline-flex items-center gap-1 text-teal-deep">
                         <IconClock className="text-xs" /> {fmtDuration(t.durationSeconds)}
                       </span>
-                      <span>{new Date(t.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
+                      <span>
+                        {new Date(t.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                      </span>
                       {t.visibility === "UNLISTED" && <span>unlisted</span>}
                     </span>
                     {why ? (
@@ -248,7 +250,7 @@ export function LapsePicker({
                   </span>
                 </button>
               </li>
-            );
+            )
           })}
         </ul>
       )}
@@ -261,5 +263,5 @@ export function LapsePicker({
         </div>
       )}
     </div>
-  );
+  )
 }

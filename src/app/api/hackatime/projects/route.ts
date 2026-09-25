@@ -1,7 +1,7 @@
-import prisma from "@/lib/prisma"
-import { ok, fail, withRoute } from "@/lib/api"
+import { fail, ok, withRoute } from "@/lib/api"
 import { requireSession } from "@/lib/guards"
 import { listUserProjects } from "@/lib/hackatime"
+import prisma from "@/lib/prisma"
 
 export const dynamic = "force-dynamic"
 

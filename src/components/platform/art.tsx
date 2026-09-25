@@ -5,18 +5,14 @@
  * a light is actually emitting.
  */
 
-const INK = "#1c1a59";
+const INK = "#1c1a59"
 
 /* ------------------------------------------------------------------ *
  * Filters. Mounted once, referenced by .sketch / .torn in globals.css
  * ------------------------------------------------------------------ */
 export function SketchDefs() {
   return (
-    <svg
-      aria-hidden="true"
-      focusable="false"
-      style={{ position: "absolute", width: 0, height: 0, overflow: "hidden" }}
-    >
+    <svg aria-hidden="true" focusable="false" style={{ position: "absolute", width: 0, height: 0, overflow: "hidden" }}>
       <defs>
         <filter id="hl-wobble" x="-12%" y="-12%" width="124%" height="124%">
           <feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="3" seed="7" result="n" />
@@ -40,7 +36,7 @@ export function SketchDefs() {
         </filter>
       </defs>
     </svg>
-  );
+  )
 }
 
 /* ------------------------------------------------------------------ *
@@ -48,36 +44,29 @@ export function SketchDefs() {
  * ------------------------------------------------------------------ */
 
 const FOX_PATH =
-  "M60 15 L30 2 L34 44 L12 39 L25 62 L5 72 L27 80 L34 97 L49 86 L52 105 L72 105 L75 86 L90 97 L97 80 L119 72 L99 62 L112 39 L90 44 L94 2 Z";
+  "M60 15 L30 2 L34 44 L12 39 L25 62 L5 72 L27 80 L34 97 L49 86 L52 105 L72 105 L75 86 L90 97 L97 80 L119 72 L99 62 L112 39 L90 44 L94 2 Z"
 
 export function FoxMark({
   className,
   sticker = true,
   face = "#fdfbfa",
 }: {
-  className?: string;
-  sticker?: boolean;
-  face?: string;
+  className?: string
+  sticker?: boolean
+  face?: string
 }) {
   return (
     <svg viewBox="-6 -6 136 122" className={className} role="img" aria-label="Half Life fox">
-      {sticker && (
-        <path d={FOX_PATH} fill="none" stroke="#e5e0dc" strokeWidth={22} strokeLinejoin="round" />
-      )}
+      {sticker && <path d={FOX_PATH} fill="none" stroke="#e5e0dc" strokeWidth={22} strokeLinejoin="round" />}
       <path d={FOX_PATH} fill={face} stroke={INK} strokeWidth={5.5} strokeLinejoin="round" />
       {/* X eye */}
-      <path
-        d="M36 52 L52 68 M52 52 L36 68"
-        stroke={INK}
-        strokeWidth={6}
-        strokeLinecap="round"
-      />
+      <path d="M36 52 L52 68 M52 52 L36 68" stroke={INK} strokeWidth={6} strokeLinecap="round" />
       {/* winking slash */}
       <path d="M74 64 L92 50" stroke={INK} strokeWidth={7} strokeLinecap="round" />
       {/* nose */}
       <path d="M56 78 h11 v13 a5.5 5.5 0 0 1 -11 0 Z" fill={INK} />
     </svg>
-  );
+  )
 }
 
 const AVATAR_BG: Record<string, string> = {
@@ -86,10 +75,10 @@ const AVATAR_BG: Record<string, string> = {
   "fox-solder": "#b21b9b",
   "fox-plain": "#fba62f",
   "fox-cap": "#a47cc0",
-};
+}
 
 export function FoxAvatar({ variant, className }: { variant: string; className?: string }) {
-  const bg = AVATAR_BG[variant] ?? "#52b4d5";
+  const bg = AVATAR_BG[variant] ?? "#52b4d5"
   return (
     <svg viewBox="0 0 120 120" className={className} role="img" aria-label="Avatar">
       <rect width="120" height="120" rx="10" fill={bg} />
@@ -102,12 +91,7 @@ export function FoxAvatar({ variant, className }: { variant: string; className?:
       {variant === "fox-blueprint" && (
         <g>
           <rect x="22" y="76" width="76" height="40" rx="4" fill="#2b5fd9" stroke={INK} strokeWidth={4} />
-          <path
-            d="M32 88h26M32 96h18M32 104h30M70 86v24"
-            stroke="#cfe3ff"
-            strokeWidth={3}
-            strokeLinecap="round"
-          />
+          <path d="M32 88h26M32 96h18M32 104h30M70 86v24" stroke="#cfe3ff" strokeWidth={3} strokeLinecap="round" />
         </g>
       )}
       {variant === "fox-goggles" && (
@@ -132,7 +116,7 @@ export function FoxAvatar({ variant, className }: { variant: string; className?:
         </g>
       )}
     </svg>
-  );
+  )
 }
 
 /* ------------------------------------------------------------------ *
@@ -162,7 +146,7 @@ function ScenePCB() {
       <circle cx="36" cy="120" r="5" fill="#f35757" stroke={INK} strokeWidth={2.6} />
       <rect x="48" y="102" width="30" height="16" rx="2" fill="#262a2d" stroke={INK} strokeWidth={2.6} />
     </g>
-  );
+  )
 }
 
 function SceneCAD() {
@@ -177,16 +161,11 @@ function SceneCAD() {
       />
       <path d="M52 56 L100 80 L148 56 M100 80 v52" stroke={INK} strokeWidth={3.4} fill="none" />
       <circle cx="100" cy="80" r="14" fill="#fcf7f7" stroke={INK} strokeWidth={3.4} />
-      <path
-        d="M36 56 v52 M30 56 h12 M30 108 h12"
-        stroke="#b21b9b"
-        strokeWidth={2.6}
-        strokeLinecap="round"
-      />
+      <path d="M36 56 v52 M30 56 h12 M30 108 h12" stroke="#b21b9b" strokeWidth={2.6} strokeLinecap="round" />
       <path d="M52 24 h96 M52 18 v12 M148 18 v12" stroke="#b21b9b" strokeWidth={2.6} strokeLinecap="round" />
       <path d="M160 44 l16 -12 M176 32 l-2 8 M176 32 l-8 2" stroke={INK} strokeWidth={2.6} strokeLinecap="round" />
     </g>
-  );
+  )
 }
 
 function SceneSynth() {
@@ -200,39 +179,22 @@ function SceneSynth() {
       </g>
       <path d="M52 66 l0 -11 M94 66 l8 -8 M136 66 l-9 -7" stroke={INK} strokeWidth={3} strokeLinecap="round" />
       <rect x="38" y="94" width="124" height="16" rx="4" fill="#0e0a1c" stroke={INK} strokeWidth={2.6} />
-      <path
-        d="M44 102 q8 -8 16 0 t16 0 t16 0 t16 0 t16 0 t16 0"
-        stroke="#75d0c9"
-        strokeWidth={2.6}
-        fill="none"
-      />
-      <path
-        d="M34 44 q-16 -26 22 -22"
-        stroke="#f35757"
-        strokeWidth={4.5}
-        fill="none"
-        strokeLinecap="round"
-      />
-      <path
-        d="M166 44 q16 -30 -26 -24"
-        stroke="#52b4d5"
-        strokeWidth={4.5}
-        fill="none"
-        strokeLinecap="round"
-      />
+      <path d="M44 102 q8 -8 16 0 t16 0 t16 0 t16 0 t16 0 t16 0" stroke="#75d0c9" strokeWidth={2.6} fill="none" />
+      <path d="M34 44 q-16 -26 22 -22" stroke="#f35757" strokeWidth={4.5} fill="none" strokeLinecap="round" />
+      <path d="M166 44 q16 -30 -26 -24" stroke="#52b4d5" strokeWidth={4.5} fill="none" strokeLinecap="round" />
     </g>
-  );
+  )
 }
 
 function SceneDisplay() {
-  const on = new Set([9, 10, 13, 14, 18, 21, 25, 26, 27, 28]);
+  const on = new Set([9, 10, 13, 14, 18, 21, 25, 26, 27, 28])
   return (
     <g>
       <rect x="34" y="30" width="132" height="100" rx="8" fill="#141b2e" stroke={INK} strokeWidth={4} />
       <g>
         {Array.from({ length: 36 }, (_, i) => {
-          const c = i % 6;
-          const r = Math.floor(i / 6);
+          const c = i % 6
+          const r = Math.floor(i / 6)
           return (
             <rect
               key={i}
@@ -243,14 +205,14 @@ function SceneDisplay() {
               rx={2}
               fill={on.has(i) ? "#fba62f" : "#26314f"}
             />
-          );
+          )
         })}
       </g>
       <rect x="86" y="130" width="28" height="12" rx="3" fill="#262a2d" stroke={INK} strokeWidth={3} />
       <path d="M22 62 l-12 -8 M22 80 l-14 2" stroke="#fba62f" strokeWidth={3} strokeLinecap="round" />
       <path d="M178 62 l12 -8 M178 80 l14 2" stroke="#fba62f" strokeWidth={3} strokeLinecap="round" />
     </g>
-  );
+  )
 }
 
 function SceneBread() {
@@ -274,7 +236,7 @@ function SceneBread() {
       <circle cx="160" cy="54" r="6" fill="#f35757" stroke={INK} strokeWidth={2.6} />
       <circle cx="160" cy="110" r="6" fill="#aef2dd" stroke={INK} strokeWidth={2.6} />
     </g>
-  );
+  )
 }
 
 export function WeekScene({ theme, className }: { theme: string; className?: string }) {
@@ -289,12 +251,12 @@ export function WeekScene({ theme, className }: { theme: string; className?: str
       <SceneBread />
     ) : (
       <ScenePCB />
-    );
+    )
   return (
     <svg viewBox="0 0 200 160" className={className} role="img" aria-label={`${theme} illustration`}>
       {scene}
     </svg>
-  );
+  )
 }
 
 /* ------------------------------------------------------------------ *
@@ -316,13 +278,7 @@ const PRINTER_BODY: Record<string, React.ReactNode> = {
       <circle cx="110" cy="14" r="22" fill="#aef2dd" stroke={INK} strokeWidth={4} />
       <circle cx="110" cy="14" r="7" fill="#fcf7f7" stroke={INK} strokeWidth={3.4} />
       <path d="M110 36 q-26 22 -4 46" stroke="#06ae97" strokeWidth={3.4} fill="none" strokeLinecap="round" />
-      <path
-        d="M92 166 q0 -24 18 -24 t18 24 Z"
-        fill="#fba62f"
-        stroke={INK}
-        strokeWidth={4}
-        strokeLinejoin="round"
-      />
+      <path d="M92 166 q0 -24 18 -24 t18 24 Z" fill="#fba62f" stroke={INK} strokeWidth={4} strokeLinejoin="round" />
       <path d="M97 154 h26" stroke={INK} strokeWidth={2.4} opacity="0.5" />
       <path d="M100 148 h20" stroke={INK} strokeWidth={2.4} opacity="0.5" />
       <rect x="140" y="188" width="44" height="16" rx="3" fill="#aef2dd" stroke={INK} strokeWidth={3.4} />
@@ -340,13 +296,7 @@ const PRINTER_BODY: Record<string, React.ReactNode> = {
       <rect x="96" y="68" width="34" height="27" rx="4" fill="#f35757" stroke={INK} strokeWidth={3.4} />
       <path d="M113 95 l-6 12 h12 Z" fill="#262a2d" stroke={INK} strokeWidth={3} strokeLinejoin="round" />
       <rect x="58" y="150" width="104" height="13" rx="3" fill="#52b4d5" stroke={INK} strokeWidth={4} />
-      <path
-        d="M96 150 q0 -22 17 -22 t17 22 Z"
-        fill="#fba62f"
-        stroke={INK}
-        strokeWidth={3.4}
-        strokeLinejoin="round"
-      />
+      <path d="M96 150 q0 -22 17 -22 t17 22 Z" fill="#fba62f" stroke={INK} strokeWidth={3.4} strokeLinejoin="round" />
       <path d="M60 168 L150 70" stroke="#ffffff" strokeWidth={11} opacity="0.4" strokeLinecap="round" />
       <path d="M168 104 v32" stroke={INK} strokeWidth={5} strokeLinecap="round" />
       <rect x="132" y="186" width="48" height="14" rx="3" fill="#aef2dd" stroke={INK} strokeWidth={3.4} />
@@ -420,14 +370,14 @@ const PRINTER_BODY: Record<string, React.ReactNode> = {
       <path d="M94 128 l-7 -9 M128 128 l8 -9" stroke={INK} strokeWidth={3} strokeLinecap="round" opacity="0.55" />
     </g>
   ),
-};
+}
 
 const PRINTER_LABEL: Record<string, string> = {
   bedslinger: "Open-frame 3D printer",
   corexy: "Enclosed CoreXY 3D printer",
   resin: "Resin 3D printer",
   cnc: "Benchtop CNC router",
-};
+}
 
 export function PrinterArt({ kind, className }: { kind: string; className?: string }) {
   return (
@@ -439,12 +389,12 @@ export function PrinterArt({ kind, className }: { kind: string; className?: stri
     >
       {PRINTER_BODY[kind] ?? PRINTER_BODY.bedslinger}
     </svg>
-  );
+  )
 }
 
 /** The open-frame machine, kept under its own name for scenes that always draw one. */
 export function EnderPrinter({ className }: { className?: string }) {
-  return <PrinterArt kind="bedslinger" className={className} />;
+  return <PrinterArt kind="bedslinger" className={className} />
 }
 
 /* ------------------------------------------------------------------ *
@@ -479,12 +429,7 @@ export function ShopArt({ art, className }: { art: string; className?: string })
       <g>
         <rect x="22" y="40" width="116" height="80" rx="8" fill="#3a3f4a" stroke={INK} strokeWidth={4} />
         <rect x="32" y="50" width="78" height="60" rx="4" fill="#0d1a14" stroke={INK} strokeWidth={3} />
-        <path
-          d="M36 80 q8 -22 16 0 t16 0 t16 0 t16 0"
-          stroke="#5cf2a8"
-          strokeWidth={3}
-          fill="none"
-        />
+        <path d="M36 80 q8 -22 16 0 t16 0 t16 0 t16 0" stroke="#5cf2a8" strokeWidth={3} fill="none" />
         <circle cx="124" cy="62" r="7" fill="#fba62f" stroke={INK} strokeWidth={3} />
         <circle cx="124" cy="86" r="7" fill="#f35757" stroke={INK} strokeWidth={3} />
         <rect x="118" y="102" width="14" height="8" rx="2" fill="#aef2dd" stroke={INK} strokeWidth={2.6} />
@@ -517,8 +462,28 @@ export function ShopArt({ art, className }: { art: string; className?: string })
     ),
     sticker: (
       <g>
-        <rect x="26" y="50" width="52" height="52" rx="8" fill="#fba62f" stroke={INK} strokeWidth={4} transform="rotate(-8 52 76)" />
-        <rect x="62" y="62" width="52" height="52" rx="8" fill="#52b4d5" stroke={INK} strokeWidth={4} transform="rotate(6 88 88)" />
+        <rect
+          x="26"
+          y="50"
+          width="52"
+          height="52"
+          rx="8"
+          fill="#fba62f"
+          stroke={INK}
+          strokeWidth={4}
+          transform="rotate(-8 52 76)"
+        />
+        <rect
+          x="62"
+          y="62"
+          width="52"
+          height="52"
+          rx="8"
+          fill="#52b4d5"
+          stroke={INK}
+          strokeWidth={4}
+          transform="rotate(6 88 88)"
+        />
         <g transform="translate(70 70) scale(0.3)">
           <path d={FOX_PATH} fill="#fdfbfa" stroke={INK} strokeWidth={9} strokeLinejoin="round" />
         </g>
@@ -528,20 +493,25 @@ export function ShopArt({ art, className }: { art: string; className?: string })
       <g>
         <rect x="34" y="34" width="92" height="94" rx="9" fill="#fba62f" stroke={INK} strokeWidth={4} />
         <rect x="44" y="44" width="72" height="30" rx="4" fill="#1c2b22" stroke={INK} strokeWidth={3} />
-        <path d="M52 62 h10 M68 54 v14 M76 62 h10 M94 54 v14" stroke="#5cf2a8" strokeWidth={3.4} strokeLinecap="round" />
+        <path
+          d="M52 62 h10 M68 54 v14 M76 62 h10 M94 54 v14"
+          stroke="#5cf2a8"
+          strokeWidth={3.4}
+          strokeLinecap="round"
+        />
         <circle cx="80" cy="100" r="18" fill="#fcf7f7" stroke={INK} strokeWidth={3.4} />
         <path d="M80 100 l10 -12" stroke={INK} strokeWidth={3.4} strokeLinecap="round" />
         <path d="M44 138 q18 14 36 0" stroke="#f35757" strokeWidth={4} fill="none" strokeLinecap="round" />
         <path d="M80 138 q18 14 36 0" stroke="#262a2d" strokeWidth={4} fill="none" strokeLinecap="round" />
       </g>
     ),
-  };
+  }
 
   return (
     <svg viewBox="0 0 160 160" className={className} role="img" aria-label="">
       {body[art] ?? body.grant}
     </svg>
-  );
+  )
 }
 
 function EnderInline() {
@@ -556,7 +526,7 @@ function EnderInline() {
       <rect x="92" y="84" width="40" height="32" rx="4" fill="#f35757" stroke={INK} strokeWidth={6} />
       <path d="M92 166 q0 -24 18 -24 t18 24 Z" fill="#fba62f" stroke={INK} strokeWidth={6} strokeLinejoin="round" />
     </g>
-  );
+  )
 }
 
 /* ------------------------------------------------------------------ *
@@ -572,13 +542,48 @@ export function ReelScene({ scene, className }: { scene: string; className?: str
         </g>
       ),
     },
-    pcb: { bg: "#0f5f4c", inner: <g transform="translate(40 130) scale(1.4)"><ScenePCB /></g> },
-    cad: { bg: "#0d5f78", inner: <g transform="translate(40 130) scale(1.4)"><SceneCAD /></g> },
-    synth: { bg: "#3c1050", inner: <g transform="translate(40 130) scale(1.4)"><SceneSynth /></g> },
-    display: { bg: "#7a4a07", inner: <g transform="translate(40 130) scale(1.4)"><SceneDisplay /></g> },
-    bread: { bg: "#4a3d6b", inner: <g transform="translate(40 130) scale(1.4)"><SceneBread /></g> },
-  } satisfies Record<string, { bg: string; inner: React.ReactNode }>;
-  const s = map[scene as keyof typeof map] ?? map.pcb;
+    pcb: {
+      bg: "#0f5f4c",
+      inner: (
+        <g transform="translate(40 130) scale(1.4)">
+          <ScenePCB />
+        </g>
+      ),
+    },
+    cad: {
+      bg: "#0d5f78",
+      inner: (
+        <g transform="translate(40 130) scale(1.4)">
+          <SceneCAD />
+        </g>
+      ),
+    },
+    synth: {
+      bg: "#3c1050",
+      inner: (
+        <g transform="translate(40 130) scale(1.4)">
+          <SceneSynth />
+        </g>
+      ),
+    },
+    display: {
+      bg: "#7a4a07",
+      inner: (
+        <g transform="translate(40 130) scale(1.4)">
+          <SceneDisplay />
+        </g>
+      ),
+    },
+    bread: {
+      bg: "#4a3d6b",
+      inner: (
+        <g transform="translate(40 130) scale(1.4)">
+          <SceneBread />
+        </g>
+      ),
+    },
+  } satisfies Record<string, { bg: string; inner: React.ReactNode }>
+  const s = map[scene as keyof typeof map] ?? map.pcb
   return (
     <svg viewBox="0 0 360 560" className={className} preserveAspectRatio="xMidYMid slice" aria-hidden="true">
       <rect width="360" height="560" fill={s.bg} />
@@ -596,7 +601,7 @@ export function ReelScene({ scene, className }: { scene: string; className?: str
         </radialGradient>
       </defs>
     </svg>
-  );
+  )
 }
 
 /* ------------------------------------------------------------------ *
@@ -608,12 +613,12 @@ export function JournalMedia({ kind, className }: { kind: string; className?: st
     cad: { bg: "#06ae97", art: <SceneCAD /> },
     scope: { bg: "#262a2d", art: <SceneSynth /> },
     bench: { bg: "#fba62f", art: <SceneBread /> },
-  } satisfies Record<string, { bg: string; art: React.ReactNode }>;
-  const m = map[kind as keyof typeof map] ?? map.board;
+  } satisfies Record<string, { bg: string; art: React.ReactNode }>
+  const m = map[kind as keyof typeof map] ?? map.board
   return (
     <svg viewBox="0 0 200 160" className={className} preserveAspectRatio="xMidYMid slice" aria-hidden="true">
       <rect width="200" height="160" fill={m.bg} />
       <g transform="translate(10 8) scale(0.9)">{m.art}</g>
     </svg>
-  );
+  )
 }

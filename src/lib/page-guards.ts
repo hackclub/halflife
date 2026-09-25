@@ -1,10 +1,10 @@
 import "server-only"
-import { cache } from "react"
 import { headers } from "next/headers"
 import { notFound, redirect } from "next/navigation"
+import { cache } from "react"
 import { auth } from "@/lib/auth"
-import { getUserRoles, hasPermission, hasAnyPermission, Permission, Role } from "@/lib/permissions"
 import type { SessionUser } from "@/lib/guards"
+import { getUserRoles, hasAnyPermission, hasPermission, type Permission, type Role } from "@/lib/permissions"
 
 export interface PageContext {
   user: SessionUser
@@ -44,9 +44,7 @@ export async function requirePermissionPage(permission: Permission): Promise<Pag
   return ctx
 }
 
-export async function requireAnyPermissionPage(
-  ...permissions: Permission[]
-): Promise<PageContext> {
+export async function requireAnyPermissionPage(...permissions: Permission[]): Promise<PageContext> {
   const ctx = await requireSessionPage()
   if (!hasAnyPermission(ctx.roles, permissions)) notFound()
   return ctx

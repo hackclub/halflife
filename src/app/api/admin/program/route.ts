@@ -1,10 +1,10 @@
-import prisma from "@/lib/prisma"
 import { ok, parseBody, withRoute } from "@/lib/api"
+import { AuditAction, logAudit } from "@/lib/audit"
 import { requirePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
-import { programSettingsSchema } from "@/lib/schemas/admin"
+import prisma from "@/lib/prisma"
 import { getProgramSettings } from "@/lib/program"
-import { AuditAction, logAudit } from "@/lib/audit"
+import { programSettingsSchema } from "@/lib/schemas/admin"
 
 export const dynamic = "force-dynamic"
 

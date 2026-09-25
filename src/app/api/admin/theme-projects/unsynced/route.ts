@@ -1,7 +1,7 @@
+import { findUnsyncedSubmissions } from "@/lib/airtable/sync"
 import { ok, withRoute } from "@/lib/api"
 import { requirePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
-import { findUnsyncedSubmissions } from "@/lib/airtable/sync"
 
 export const dynamic = "force-dynamic"
 

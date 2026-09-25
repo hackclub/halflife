@@ -1,35 +1,35 @@
-"use client";
+"use client"
 
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
-import { IconClock, IconPlus, IconWarning, IconX } from "@/components/platform/icons";
-import { Button, Panel, cx, inputClass } from "@/components/platform/ui";
-import { linkHackatime } from "@/lib/auth-client";
-import { fmtHours } from "@/lib/projects";
-import type { Phase } from "@/lib/types";
+import { useRouter } from "next/navigation"
+import { useCallback, useEffect, useState } from "react"
+import { IconClock, IconPlus, IconWarning, IconX } from "@/components/platform/icons"
+import { Button, cx, inputClass, Panel } from "@/components/platform/ui"
+import { linkHackatime } from "@/lib/auth-client"
+import { fmtHours } from "@/lib/projects"
+import type { Phase } from "@/lib/types"
 
 interface Link {
-  id: string;
-  hackatimeProject: string;
-  phase: "DESIGN" | "BUILD";
-  hours: number;
-  hoursApproved: number | null;
-  lastFetchError: string | null;
+  id: string
+  hackatimeProject: string
+  phase: "DESIGN" | "BUILD"
+  hours: number
+  hoursApproved: number | null
+  lastFetchError: string | null
 }
 
 type Account =
   | { state: "loading" }
   | { state: "unlinked" }
-  | { state: "linked"; projects: { name: string; totalSeconds: number }[] };
+  | { state: "linked"; projects: { name: string; totalSeconds: number }[] }
 
 async function read<T>(res: Response): Promise<T> {
-  const body = await res.json().catch(() => null);
+  const body = await res.json().catch(() => null)
   if (!res.ok) {
     throw Object.assign(new Error(body?.error?.message ?? "Something went wrong"), {
       code: body?.error?.code as string | undefined,
-    });
+    })
   }
-  return body as T;
+  return body as T
 }
 
 /**
@@ -44,54 +44,52 @@ async function read<T>(res: Response): Promise<T> {
  * are part of a decision, and the route refuses it, so the button does too.
  */
 export function HackatimeLinks({ projectId, phase }: { projectId: string; phase: Phase }) {
-  const router = useRouter();
-  const [links, setLinks] = useState<Link[] | null>(null);
-  const [account, setAccount] = useState<Account>({ state: "loading" });
-  const [picked, setPicked] = useState("");
-  const [busy, setBusy] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const router = useRouter()
+  const [links, setLinks] = useState<Link[] | null>(null)
+  const [account, setAccount] = useState<Account>({ state: "loading" })
+  const [picked, setPicked] = useState("")
+  const [busy, setBusy] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     const [linksRes, projectsRes] = await Promise.all([
       fetch(`/api/projects/${projectId}/hackatime`, { cache: "no-store" }),
-      fetch(`/api/hackatime/projects`, { cache: "no-store" }),
-    ]);
+      fetch("/api/hackatime/projects", { cache: "no-store" }),
+    ])
     try {
-      setLinks((await read<{ links: Link[] }>(linksRes)).links);
+      setLinks((await read<{ links: Link[] }>(linksRes)).links)
     } catch (err) {
-      setError((err as Error).message);
-      setLinks([]);
+      setError((err as Error).message)
+      setLinks([])
     }
     try {
-      const { projects } = await read<{ projects: { name: string; totalSeconds: number }[] }>(
-        projectsRes,
-      );
-      setAccount({ state: "linked", projects });
+      const { projects } = await read<{ projects: { name: string; totalSeconds: number }[] }>(projectsRes)
+      setAccount({ state: "linked", projects })
     } catch (err) {
-      if ((err as { code?: string }).code === "HACKATIME_NOT_LINKED") setAccount({ state: "unlinked" });
+      if ((err as { code?: string }).code === "HACKATIME_NOT_LINKED") setAccount({ state: "unlinked" })
       else {
-        setAccount({ state: "linked", projects: [] });
-        setError((err as Error).message);
+        setAccount({ state: "linked", projects: [] })
+        setError((err as Error).message)
       }
     }
-  }, [projectId]);
+  }, [projectId])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- fetching on mount
-    void load();
-  }, [load]);
+    void load()
+  }, [load])
 
   async function run(key: string, fn: () => Promise<void>) {
-    setBusy(key);
-    setError(null);
+    setBusy(key)
+    setError(null)
     try {
-      await fn();
-      await load();
-      router.refresh();
+      await fn()
+      await load()
+      router.refresh()
     } catch (err) {
-      setError((err as Error).message);
+      setError((err as Error).message)
     } finally {
-      setBusy(null);
+      setBusy(null)
     }
   }
 
@@ -106,18 +104,17 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
             phase: phase === "build" ? "BUILD" : "DESIGN",
           }),
         }),
-      );
-      setPicked("");
-    });
+      )
+      setPicked("")
+    })
 
   const unlink = (id: string) =>
     run(id, async () => {
-      await read(await fetch(`/api/projects/${projectId}/hackatime/${id}`, { method: "DELETE" }));
-    });
+      await read(await fetch(`/api/projects/${projectId}/hackatime/${id}`, { method: "DELETE" }))
+    })
 
-  const linkedNames = new Set(links?.map((l) => l.hackatimeProject));
-  const available =
-    account.state === "linked" ? account.projects.filter((p) => !linkedNames.has(p.name)) : [];
+  const linkedNames = new Set(links?.map((l) => l.hackatimeProject))
+  const available = account.state === "linked" ? account.projects.filter((p) => !linkedNames.has(p.name)) : []
 
   return (
     <>
@@ -165,9 +162,7 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
                       onClick={() => unlink(l.id)}
                       disabled={busy !== null || l.hoursApproved !== null}
                       title={
-                        l.hoursApproved !== null
-                          ? "A reviewer has set hours on this link, so it stays"
-                          : undefined
+                        l.hoursApproved !== null ? "A reviewer has set hours on this link, so it stays" : undefined
                       }
                       aria-label={`Unlink ${l.hackatimeProject}`}
                     >
@@ -185,15 +180,13 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
                   disabled={busy !== null}
                   onClick={() =>
                     run("account", async () => {
-                      await linkHackatime(`/projects/${projectId}`);
+                      await linkHackatime(`/projects/${projectId}`)
                     })
                   }
                 >
                   {busy === "account" ? "Redirecting…" : "Connect Hackatime"}
                 </Button>
-                <span className="hand text-[0.84rem] text-navy-soft">
-                  optional, and only matters for code hours.
-                </span>
+                <span className="hand text-[0.84rem] text-navy-soft">optional, and only matters for code hours.</span>
               </div>
             ) : (
               <div className="mt-4 flex flex-col gap-2.5 sm:flex-row sm:items-center">
@@ -208,9 +201,7 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
                   className={cx(inputClass, "min-w-0 flex-1 py-2.5 disabled:text-navy-soft")}
                 >
                   <option value="">
-                    {available.length === 0
-                      ? "No other Hackatime projects yet"
-                      : "Pick a Hackatime project…"}
+                    {available.length === 0 ? "No other Hackatime projects yet" : "Pick a Hackatime project…"}
                   </option>
                   {available.map((p) => (
                     <option key={p.name} value={p.name}>
@@ -227,5 +218,5 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
         )}
       </Panel>
     </>
-  );
+  )
 }

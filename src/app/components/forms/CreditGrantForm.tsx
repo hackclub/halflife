@@ -37,13 +37,7 @@ export function CreditGrantForm({ userId }: Readonly<{ userId: string }>) {
     <form onSubmit={submit} className="hl-stack hl-stack--tight">
       {error ? <Callout tone="danger">{error}</Callout> : null}
       <Field label="Amount" hint="Negative to claw back.">
-        <input
-          className="hl-input"
-          type="number"
-          value={amount}
-          required
-          onChange={(e) => setAmount(e.target.value)}
-        />
+        <input className="hl-input" type="number" value={amount} required onChange={(e) => setAmount(e.target.value)} />
       </Field>
       <Field label="Reason" hint="Recorded in the ledger and the audit log.">
         <input

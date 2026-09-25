@@ -1,6 +1,6 @@
 import { ok, withRoute } from "@/lib/api"
-import { requireSession } from "@/lib/guards"
 import { recordView } from "@/lib/feed"
+import { requireSession } from "@/lib/guards"
 
 export const dynamic = "force-dynamic"
 

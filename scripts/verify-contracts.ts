@@ -1,5 +1,5 @@
 import "dotenv/config"
-import { readFileSync, readdirSync, statSync } from "node:fs"
+import { readdirSync, readFileSync, statSync } from "node:fs"
 import { join, relative } from "node:path"
 import { z } from "zod"
 
@@ -101,7 +101,10 @@ const STORE_CALLS: { path: string; methods: string[] }[] = [
 const routes = routeTable()
 
 function routeFor(path: string): Set<string> | null {
-  const clean = path.split("?")[0]!.replace(/\$\{[^}]*\}/g, "X").replace(/\/$/, "")
+  const clean = path
+    .split("?")[0]!
+    .replace(/\$\{[^}]*\}/g, "X")
+    .replace(/\/$/, "")
   for (const [url, methods] of routes) {
     if (new RegExp("^" + url.replace(/\[[^\]]+\]/g, "[^/]+") + "$").test(clean)) return methods
   }
@@ -140,11 +143,55 @@ async function bodies() {
     ["onboarding · tracking", onboardingStepSchema, { step: "tracking", dismissed: false }],
     ["addProject", projectUpdateSchema, { title: "Macropad", description: "Three keys.", requestedTier: 1 }],
     ["setProjectTier", projectUpdateSchema, { requestedTier: 3 }],
-    ["logSession", sessionCreateSchema, { phase: "DESIGN", title: "Routed it", content: journal, hoursClaimed: 1.5, timelapses: [{ lapseId: "cm1lapse0000timelapse" }] }],
-    ["logSession · no clips", sessionCreateSchema, { phase: "BUILD", title: "Soldered", content: journal, hoursClaimed: 2, timelapses: [] }],
-    ["postReel · idea", createPostSchema, { kind: "IDEA", caption: "hello there", objectKey: "posts/u/a.mp4", checkpointKey: "w1-reel-idea", themeProjectId: "cmxxxxxxxxxxxxxxxxxxxxxxx" }],
-    ["postReel · progress", createPostSchema, { kind: "PROGRESS", caption: "ten hours in", objectKey: "posts/u/a.mp4", checkpointKey: "w3-reel-2", themeProjectId: null }],
-    ["postReel · closing", createPostSchema, { kind: "SUBMISSION", caption: "week done", objectKey: "posts/u/a.mp4", checkpointKey: "w10-reel-submission", themeProjectId: null }],
+    [
+      "logSession",
+      sessionCreateSchema,
+      {
+        phase: "DESIGN",
+        title: "Routed it",
+        content: journal,
+        hoursClaimed: 1.5,
+        timelapses: [{ lapseId: "cm1lapse0000timelapse" }],
+      },
+    ],
+    [
+      "logSession · no clips",
+      sessionCreateSchema,
+      { phase: "BUILD", title: "Soldered", content: journal, hoursClaimed: 2, timelapses: [] },
+    ],
+    [
+      "postReel · idea",
+      createPostSchema,
+      {
+        kind: "IDEA",
+        caption: "hello there",
+        objectKey: "posts/u/a.mp4",
+        checkpointKey: "w1-reel-idea",
+        themeProjectId: "cmxxxxxxxxxxxxxxxxxxxxxxx",
+      },
+    ],
+    [
+      "postReel · progress",
+      createPostSchema,
+      {
+        kind: "PROGRESS",
+        caption: "ten hours in",
+        objectKey: "posts/u/a.mp4",
+        checkpointKey: "w3-reel-2",
+        themeProjectId: null,
+      },
+    ],
+    [
+      "postReel · closing",
+      createPostSchema,
+      {
+        kind: "SUBMISSION",
+        caption: "week done",
+        objectKey: "posts/u/a.mp4",
+        checkpointKey: "w10-reel-submission",
+        themeProjectId: null,
+      },
+    ],
     ["submitPhase", submitSchema, { phase: "DESIGN", notes: "it works", attachmentKeys: ["sessions/u/cart.png"] }],
     ["submitPhase · no notes", submitSchema, { phase: "BUILD", attachmentKeys: [] }],
     ["setGoal", meSchema, { printerGoalId: "bambu-a1-mini" }],

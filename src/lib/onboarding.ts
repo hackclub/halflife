@@ -1,24 +1,24 @@
 import "server-only"
-import prisma from "@/lib/prisma"
-import { HardwareExperience, PhaseStatus, Theme } from "@/app/generated/prisma/enums"
-import { HttpError } from "@/lib/errors"
-import { sanitize, sanitizeHtml } from "@/lib/sanitize"
-import { ensureThemeProject } from "@/lib/provisioning"
+import { type HardwareExperience, PhaseStatus, Theme } from "@/app/generated/prisma/enums"
 import { markProjectCreated } from "@/lib/analytics"
-import { isTierId, type TierId } from "@/lib/config/tiers"
 import {
-  ONBOARDING_STEPS,
-  ONBOARDING_STEP_COUNT,
-  STARTER_PROJECT_TIER,
   getStarterProject,
+  ONBOARDING_STEP_COUNT,
+  ONBOARDING_STEPS,
+  type OnboardingStep,
+  type OnboardingStepId,
+  STARTER_PROJECT_TIER,
+  type StarterProject,
   starterProjectsFor,
   stepAt,
   stepIndexOf,
   suggestedTierFor,
-  type OnboardingStep,
-  type OnboardingStepId,
-  type StarterProject,
 } from "@/lib/config/onboarding"
+import { isTierId, type TierId } from "@/lib/config/tiers"
+import { HttpError } from "@/lib/errors"
+import prisma from "@/lib/prisma"
+import { ensureThemeProject } from "@/lib/provisioning"
+import { sanitize, sanitizeHtml } from "@/lib/sanitize"
 
 /**
  * The first checkpoint's state machine.
@@ -130,10 +130,7 @@ export interface AdvanceResult {
  * at once (the project row and the progress marker), and a half-applied answer
  * strands someone on a step they have already completed.
  */
-export async function submitStep(
-  userId: string,
-  answer: OnboardingAnswer,
-): Promise<AdvanceResult> {
+export async function submitStep(userId: string, answer: OnboardingAnswer): Promise<AdvanceResult> {
   const before = await getOnboardingState(userId)
 
   if (before.completed) {

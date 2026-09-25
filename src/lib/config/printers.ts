@@ -18,34 +18,34 @@
  * Those banked hours are the same whatever tier you are on — the tier decides
  * how many funded hours sit underneath them, not how much you bank.
  */
-import { BUILD_HOURS, COINS_PER_HOUR, DESIGN_WEEKS, TOTAL_WEEKS } from "./program";
-import { ENTRY_TIER } from "./tiers";
+import { BUILD_HOURS, COINS_PER_HOUR, DESIGN_WEEKS, TOTAL_WEEKS } from "./program"
+import { ENTRY_TIER } from "./tiers"
 
-export type PrinterKind = "bedslinger" | "corexy" | "resin" | "cnc";
+export type PrinterKind = "bedslinger" | "corexy" | "resin" | "cnc"
 
 export interface PrinterGoal {
-  id: string;
-  name: string;
+  id: string
+  name: string
   /** Sticker price, before anyone ships anything. */
-  price: number;
+  price: number
   /** What it actually costs us — shipping and tax included. */
-  shopPrice: number;
+  shopPrice: number
   /** What it costs in the shop. One coin is one dollar. */
-  coins: number;
+  coins: number
   /** Hours a design week asks on tier 1 to land this by the end of the season. */
-  hoursPerWeek: number;
+  hoursPerWeek: number
   /** Of those hours, the ones that bank instead of funding your project. */
-  bankedHours: number;
+  bankedHours: number
   /**
    * Coins a design week earns at that pace — banked hours at $5 each. A build
    * week does not use this; it banks BUILD_WEEK_COINS / BUILD_WEEKS flat.
    */
-  coinsPerWeek: number;
-  kind: PrinterKind;
-  link: string;
+  coinsPerWeek: number
+  kind: PrinterKind
+  link: string
   /** Short flag for anything that is not a plain FDM printer. */
-  note?: string;
-  blurb: string;
+  note?: string
+  blurb: string
 }
 
 /**
@@ -53,10 +53,10 @@ export interface PrinterGoal {
  * machine works out at 9.76 on the budget sheet, so it is held here at the
  * floor; every other goal already clears it on its own.
  */
-export const TIER1_MIN_HOURS = 10;
+export const TIER1_MIN_HOURS = 10
 
 /** The sheet as typed, minus the one column that is derived from another. */
-type SheetRow = Omit<PrinterGoal, "coinsPerWeek">;
+type SheetRow = Omit<PrinterGoal, "coinsPerWeek">
 
 const SHEET: SheetRow[] = [
   {
@@ -157,19 +157,19 @@ const SHEET: SheetRow[] = [
     link: "https://us.store.bambulab.com/products/p1s",
     blurb: "Enclosed CoreXY, filters, the lot. The one people stop upgrading from.",
   },
-];
+]
 
 /**
  * The coins one banked hour is worth — the sheet's $5, at a coin to the dollar.
  * Re-exported rather than restated so the catalogue and the ledger cannot
  * disagree about what an hour is worth.
  */
-export { COINS_PER_HOUR };
+export { COINS_PER_HOUR }
 
 /** The season, counted off the program schedule rather than restated here. */
-export const SEASON_WEEKS = TOTAL_WEEKS;
-export const BUILD_WEEKS = TOTAL_WEEKS - DESIGN_WEEKS;
-export { DESIGN_WEEKS };
+export const SEASON_WEEKS = TOTAL_WEEKS
+export const BUILD_WEEKS = TOTAL_WEEKS - DESIGN_WEEKS
+export { DESIGN_WEEKS }
 
 /**
  * What the build half banks for everyone, whichever machine is on the wall:
@@ -177,7 +177,7 @@ export { DESIGN_WEEKS };
  * `5 hours * 5 build weeks * $5` term the sheet subtracts before it works out
  * column 4, so it is money the projection may count on rather than ask for.
  */
-export const BUILD_WEEK_COINS = BUILD_HOURS * COINS_PER_HOUR * BUILD_WEEKS;
+export const BUILD_WEEK_COINS = BUILD_HOURS * COINS_PER_HOUR * BUILD_WEEKS
 
 /**
  * Column 4 is the economy and is left exactly as the sheet has it — every tier
@@ -189,12 +189,12 @@ export const PRINTERS: PrinterGoal[] = SHEET.map((p) => ({
   ...p,
   hoursPerWeek: Math.max(TIER1_MIN_HOURS, p.hoursPerWeek),
   coinsPerWeek: p.bankedHours * COINS_PER_HOUR,
-}));
+}))
 
-export const DEFAULT_GOAL_ID = "bambu-a1-mini";
+export const DEFAULT_GOAL_ID = "bambu-a1-mini"
 
 /** The steepest weekly commitment on the board — the scale everything else reads against. */
-export const MAX_HOURS_PER_WEEK = Math.max(...PRINTERS.map((p) => p.hoursPerWeek));
+export const MAX_HOURS_PER_WEEK = Math.max(...PRINTERS.map((p) => p.hoursPerWeek))
 
 /**
  * The gentlest, which is the cheapest machine's pace — and so the floor under
@@ -206,7 +206,7 @@ export const MAX_HOURS_PER_WEEK = Math.max(...PRINTERS.map((p) => p.hoursPerWeek
  * cheapest machine to ten, but it is read off the board rather than restated
  * so that repricing the catalogue moves the gate with it.
  */
-export const MIN_HOURS_PER_WEEK = Math.min(...PRINTERS.map((p) => p.hoursPerWeek));
+export const MIN_HOURS_PER_WEEK = Math.min(...PRINTERS.map((p) => p.hoursPerWeek))
 
 /**
  * What a design week asks of you, for a weekly banking pace and a tier.
@@ -221,7 +221,7 @@ export const MIN_HOURS_PER_WEEK = Math.min(...PRINTERS.map((p) => p.hoursPerWeek
  * on the trail and another in the submit sheet.
  */
 export function weekAsk(pace: number, fundingHours: number): number {
-  return pace + (fundingHours - ENTRY_TIER.fundingHours);
+  return pace + (fundingHours - ENTRY_TIER.fundingHours)
 }
 
 /**
@@ -232,13 +232,13 @@ export function weekAsk(pace: number, fundingHours: number): number {
  * early week pay for a thin later one without anybody being warned twice.
  */
 export function paceTarget(goal: PrinterGoal, weekId: number): number {
-  const design = Math.min(weekId, DESIGN_WEEKS);
-  const build = Math.max(0, weekId - DESIGN_WEEKS);
-  return design * goal.coinsPerWeek + build * BUILD_HOURS * COINS_PER_HOUR;
+  const design = Math.min(weekId, DESIGN_WEEKS)
+  const build = Math.max(0, weekId - DESIGN_WEEKS)
+  return design * goal.coinsPerWeek + build * BUILD_HOURS * COINS_PER_HOUR
 }
 
 export function printerById(id: string): PrinterGoal {
-  return PRINTERS.find((p) => p.id === id) ?? PRINTERS.find((p) => p.id === DEFAULT_GOAL_ID)!;
+  return PRINTERS.find((p) => p.id === id) ?? PRINTERS.find((p) => p.id === DEFAULT_GOAL_ID)!
 }
 
 /**
@@ -250,8 +250,8 @@ export function printerById(id: string): PrinterGoal {
  * them to run past the end of a season that is only SEASON_WEEKS long.
  */
 export function weeksToGo(goal: PrinterGoal, coins: number): number {
-  const fromDesign = Math.max(0, goal.coins - coins - BUILD_WEEK_COINS);
-  return Math.min(DESIGN_WEEKS, Math.ceil(fromDesign / goal.coinsPerWeek));
+  const fromDesign = Math.max(0, goal.coins - coins - BUILD_WEEK_COINS)
+  return Math.min(DESIGN_WEEKS, Math.ceil(fromDesign / goal.coinsPerWeek))
 }
 
 /**
@@ -270,15 +270,15 @@ export function weeksToGo(goal: PrinterGoal, coins: number): number {
  * so the number you pick against is the number you are held to.
  */
 export function submitFloorFor(fundingHours: number): number {
-  return weekAsk(MIN_HOURS_PER_WEEK, fundingHours);
+  return weekAsk(MIN_HOURS_PER_WEEK, fundingHours)
 }
 
 /** Of that floor, the part that banks toward the goal rather than the project. */
 export function tierBankedFloor(fundingHours: number): number {
-  return submitFloorFor(fundingHours) - fundingHours;
+  return submitFloorFor(fundingHours) - fundingHours
 }
 
 /** What a design week at this tier asks of someone saving for this machine. */
 export function weekAskFor(goal: PrinterGoal, fundingHours: number): number {
-  return weekAsk(goal.hoursPerWeek, fundingHours);
+  return weekAsk(goal.hoursPerWeek, fundingHours)
 }

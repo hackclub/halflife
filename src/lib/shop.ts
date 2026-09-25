@@ -1,16 +1,10 @@
 import "server-only"
-import prisma from "@/lib/prisma"
-import { CoinBucket, LedgerKind, ShopItemCategory, ShopOrderStatus } from "@/app/generated/prisma/enums"
 import type { ShopItem, ShopOrder } from "@/app/generated/prisma/client"
+import { CoinBucket, LedgerKind, ShopItemCategory, ShopOrderStatus } from "@/app/generated/prisma/enums"
+import { appendLedgerEntry, type Balances, getBalances, lockUserCredit, spendableFor } from "@/lib/currency"
 import { HttpError } from "@/lib/errors"
-import {
-  appendLedgerEntry,
-  getBalances,
-  lockUserCredit,
-  spendableFor,
-  type Balances,
-} from "@/lib/currency"
 import { getPrinterQualification } from "@/lib/printer"
+import prisma from "@/lib/prisma"
 import { getShopAccess, SHOP_CLOSED_MESSAGE } from "@/lib/program"
 
 export interface ShopItemView extends ShopItem {
@@ -83,11 +77,7 @@ export async function getShopItemsFor(userId: string): Promise<{
  * nothing, so without the lock ten parallel requests all read the same balance
  * and all succeed.
  */
-export async function purchase(
-  userId: string,
-  shopItemId: string,
-  quantity: number,
-): Promise<ShopOrder> {
+export async function purchase(userId: string, shopItemId: string, quantity: number): Promise<ShopOrder> {
   const access = await getShopAccess(userId)
   if (!access.open) throw new HttpError("SHOP_CLOSED", SHOP_CLOSED_MESSAGE)
 
@@ -97,10 +87,7 @@ export async function purchase(
   if (item.requiresPrinterQualified) {
     const qualification = await getPrinterQualification(userId)
     if (!qualification.qualified) {
-      throw new HttpError(
-        "ITEM_LOCKED",
-        `Ship all ${qualification.required} themes to unlock this`,
-      )
+      throw new HttpError("ITEM_LOCKED", `Ship all ${qualification.required} themes to unlock this`)
     }
   }
 
@@ -132,10 +119,7 @@ export async function purchase(
     const balances = await getBalances(tx, userId)
     const payableFrom = spendableFor(balances, fresh.category)
     if (payableFrom < totalCredits) {
-      throw new HttpError(
-        "INSUFFICIENT_CREDIT",
-        `You need ${totalCredits - payableFrom} more to buy this`,
-      )
+      throw new HttpError("INSUFFICIENT_CREDIT", `You need ${totalCredits - payableFrom} more to buy this`)
     }
 
     // Spend the printer fund FIRST on a printer, and only then reach for
@@ -143,10 +127,7 @@ export async function purchase(
     // drain the spendable balance someone was saving for upgrades while
     // leaving banked coins sitting in an account where they can never be
     // spent on anything else.
-    const fromBanked =
-      fresh.category === ShopItemCategory.PRINTER
-        ? Math.min(balances.banked, totalCredits)
-        : 0
+    const fromBanked = fresh.category === ShopItemCategory.PRINTER ? Math.min(balances.banked, totalCredits) : 0
     const fromSpendable = totalCredits - fromBanked
 
     const order = await tx.shopOrder.create({
@@ -207,11 +188,7 @@ export async function purchase(
  * ledger is append-only, and the history of a rejected order is part of the
  * record.
  */
-export async function rejectOrder(
-  orderId: string,
-  adminId: string,
-  reason: string,
-): Promise<ShopOrder> {
+export async function rejectOrder(orderId: string, adminId: string, reason: string): Promise<ShopOrder> {
   const target = await prisma.shopOrder.findUnique({
     where: { id: orderId },
     select: { userId: true },

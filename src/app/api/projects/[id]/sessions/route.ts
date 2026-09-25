@@ -1,25 +1,19 @@
-import prisma from "@/lib/prisma"
-import { ok, fail, parseBody, parseQuery, withRoute } from "@/lib/api"
 import type { NextRequest } from "next/server"
-import { requireSession } from "@/lib/guards"
 import { PhaseStatus } from "@/app/generated/prisma/enums"
-import { sessionCreateSchema } from "@/lib/schemas/session"
-import { sanitize, sanitizeHtml } from "@/lib/sanitize"
-import { recomputeStreak } from "@/lib/streak"
-import { isOwnedKey } from "@/lib/uploads/r2"
-import { paginationQuery, cursorArgs, pageResult } from "@/lib/pagination"
-import { stampSessionTiming } from "@/lib/submissions"
-import {
-  getSubmissionAccess,
-  isWeekOpen,
-  SUBMISSIONS_CLOSED_MESSAGE,
-  WEEK_CLOSED_MESSAGE,
-} from "@/lib/program"
-import { scheduledWeekFor } from "@/lib/config/program"
-import { publicUrlFor } from "@/lib/uploads/r2"
-import { AuditAction, logAudit } from "@/lib/audit"
 import { recomputeWeek } from "@/lib/analytics"
+import { fail, ok, parseBody, parseQuery, withRoute } from "@/lib/api"
+import { AuditAction, logAudit } from "@/lib/audit"
+import { scheduledWeekFor } from "@/lib/config/program"
+import { requireSession } from "@/lib/guards"
 import { verifyOwnTimelapses } from "@/lib/lapse"
+import { cursorArgs, pageResult, paginationQuery } from "@/lib/pagination"
+import prisma from "@/lib/prisma"
+import { getSubmissionAccess, isWeekOpen, SUBMISSIONS_CLOSED_MESSAGE, WEEK_CLOSED_MESSAGE } from "@/lib/program"
+import { sanitize, sanitizeHtml } from "@/lib/sanitize"
+import { sessionCreateSchema } from "@/lib/schemas/session"
+import { recomputeStreak } from "@/lib/streak"
+import { stampSessionTiming } from "@/lib/submissions"
+import { isOwnedKey, publicUrlFor } from "@/lib/uploads/r2"
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -75,8 +69,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
     return fail("WEEK_CLOSED", WEEK_CLOSED_MESSAGE)
   }
 
-  const phaseStatus =
-    data.phase === "DESIGN" ? project.designStatus : project.buildStatus
+  const phaseStatus = data.phase === "DESIGN" ? project.designStatus : project.buildStatus
   if (phaseStatus === PhaseStatus.in_review) {
     return fail("PHASE_LOCKED", "This phase is in review — unsubmit before logging more work")
   }
@@ -88,9 +81,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
   //
   // Rejected rather than quietly dropped: a participant who thinks they
   // attached a clip and finds it missing at review has been failed silently.
-  const foreign = data.media
-    .map((m) => m.objectKey)
-    .filter((key) => !isOwnedKey(gate.user.id, key))
+  const foreign = data.media.map((m) => m.objectKey).filter((key) => !isOwnedKey(gate.user.id, key))
   if (foreign.length > 0) {
     return fail("VALIDATION_FAILED", "Those uploads are not yours")
   }

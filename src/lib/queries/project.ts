@@ -1,9 +1,9 @@
 import "server-only"
-import prisma from "@/lib/prisma"
 import { Phase } from "@/app/generated/prisma/enums"
-import { getHoursBreakdown, type HoursBreakdown } from "@/lib/hours"
-import { getSubmitReadiness, canSubmitPhase, type ReadinessCheck } from "@/lib/submissions"
 import { getThemeDef, themeDefBySlug } from "@/lib/config/program"
+import { getHoursBreakdown, type HoursBreakdown } from "@/lib/hours"
+import prisma from "@/lib/prisma"
+import { canSubmitPhase, getSubmitReadiness, type ReadinessCheck } from "@/lib/submissions"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
 export async function getProjectBySlug(userId: string, slug: string) {
@@ -47,23 +47,19 @@ export async function listHackatimeLinks(themeProjectId: string) {
   })
 }
 
-export async function getProjectDetail(
-  userId: string,
-  slug: string,
-): Promise<ProjectDetail | null> {
+export async function getProjectDetail(userId: string, slug: string): Promise<ProjectDetail | null> {
   const project = await getProjectBySlug(userId, slug)
   if (!project) return null
   const def = getThemeDef(project.theme)
 
-  const [design, build, designReadiness, buildReadiness, sessions, hackatimeLinks] =
-    await Promise.all([
-      getHoursBreakdown(project.id, Phase.DESIGN),
-      getHoursBreakdown(project.id, Phase.BUILD),
-      getSubmitReadiness(project, Phase.DESIGN),
-      getSubmitReadiness(project, Phase.BUILD),
-      listSessions(project.id),
-      listHackatimeLinks(project.id),
-    ])
+  const [design, build, designReadiness, buildReadiness, sessions, hackatimeLinks] = await Promise.all([
+    getHoursBreakdown(project.id, Phase.DESIGN),
+    getHoursBreakdown(project.id, Phase.BUILD),
+    getSubmitReadiness(project, Phase.DESIGN),
+    getSubmitReadiness(project, Phase.BUILD),
+    listSessions(project.id),
+    listHackatimeLinks(project.id),
+  ])
 
   return {
     project,

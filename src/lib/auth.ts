@@ -2,12 +2,12 @@ import "server-only"
 import { betterAuth } from "better-auth"
 import { prismaAdapter } from "better-auth/adapters/prisma"
 import { genericOAuth } from "better-auth/plugins"
-import prisma from "@/lib/prisma"
 import { Role } from "@/app/generated/prisma/enums"
-import { PULL_PII, fetchHcaIdentity, syncHcaProfile } from "@/lib/hca-profile"
-import { markLogin } from "@/lib/analytics"
 import { bufferRsvpForUser } from "@/lib/airtable/rsvp"
+import { markLogin } from "@/lib/analytics"
+import { fetchHcaIdentity, PULL_PII, syncHcaProfile } from "@/lib/hca-profile"
 import { LAPSE_API_BASE } from "@/lib/lapse"
+import prisma from "@/lib/prisma"
 
 // Exactly the scopes enabled on Half Life's HCA app. HCA refuses the whole
 // sign-in ("The requested scope is invalid") if any one is not, so this list
@@ -100,9 +100,7 @@ export const auth = betterAuth({
           // No project rows here: each is created when its week's "create a
           // project" checkpoint is opened (lib/provisioning).
 
-          await prisma.user
-            .update({ where: { id: user.id }, data: { joinedProgramAt: new Date() } })
-            .catch(() => {})
+          await prisma.user.update({ where: { id: user.id }, data: { joinedProgramAt: new Date() } }).catch(() => {})
 
           // Buffered, never a synchronous Airtable call: a signup must not fail
           // because a third party is rate-limiting us.
@@ -158,9 +156,7 @@ export const auth = betterAuth({
       config: [
         {
           providerId: "hca",
-          discoveryUrl:
-            process.env.HCA_DISCOVERY_URL ??
-            "https://auth.hackclub.com/.well-known/openid-configuration",
+          discoveryUrl: process.env.HCA_DISCOVERY_URL ?? "https://auth.hackclub.com/.well-known/openid-configuration",
           clientId: process.env.HCA_CLIENT_ID ?? "",
           clientSecret: process.env.HCA_CLIENT_SECRET ?? "",
           scopes: hcaScopes,

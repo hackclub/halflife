@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode } from "react"
 
 /**
  * The hanging shop sign. Two straps run up out of the header, a torn plaque
@@ -11,11 +11,11 @@ export function PageSign({
   ink = "var(--color-navy)",
   stripe = "rgba(0,0,0,.075)",
 }: {
-  label: string;
-  sub?: ReactNode;
-  color?: string;
-  ink?: string;
-  stripe?: string;
+  label: string
+  sub?: ReactNode
+  color?: string
+  ink?: string
+  stripe?: string
 }) {
   return (
     <div className="relative flex flex-col items-center pt-0 pb-6">
@@ -42,11 +42,7 @@ export function PageSign({
         </h1>
       </div>
 
-      {sub && (
-        <p className="hand mt-4 max-w-[46ch] text-center text-[0.86rem] leading-relaxed text-navy-soft">
-          {sub}
-        </p>
-      )}
+      {sub && <p className="hand mt-4 max-w-[46ch] text-center text-[0.86rem] leading-relaxed text-navy-soft">{sub}</p>}
     </div>
-  );
+  )
 }

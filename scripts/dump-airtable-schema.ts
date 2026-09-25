@@ -35,9 +35,7 @@ async function main() {
       console.log(`  ${field.id}  ${field.type.padEnd(20)} ${field.name}`)
     }
   }
-  console.log(
-    "\nPaste these ids into lib/airtable/schema.ts, then set AIRTABLE_USE_FIELD_IDS=true.",
-  )
+  console.log("\nPaste these ids into lib/airtable/schema.ts, then set AIRTABLE_USE_FIELD_IDS=true.")
 }
 
 main().catch((err) => {

@@ -35,10 +35,7 @@ export function decryptPII(payload: string): string {
   if (!ivB64 || !tagB64 || !dataB64) throw new Error("Malformed PII payload")
   const decipher = createDecipheriv("aes-256-gcm", deriveKey(), Buffer.from(ivB64, "base64"))
   decipher.setAuthTag(Buffer.from(tagB64, "base64"))
-  return Buffer.concat([
-    decipher.update(Buffer.from(dataB64, "base64")),
-    decipher.final(),
-  ]).toString("utf8")
+  return Buffer.concat([decipher.update(Buffer.from(dataB64, "base64")), decipher.final()]).toString("utf8")
 }
 
 /**

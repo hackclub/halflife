@@ -1,5 +1,4 @@
-import { Theme } from "@/app/generated/prisma/enums"
-import { HardwareExperience } from "@/app/generated/prisma/enums"
+import { HardwareExperience, Theme } from "@/app/generated/prisma/enums"
 import type { TierId } from "@/lib/config/tiers"
 
 /**
@@ -21,13 +20,7 @@ import type { TierId } from "@/lib/config/tiers"
  * rest needs the feed first, since every later checkpoint is a reel.
  */
 
-export type OnboardingStepId =
-  | "experience"
-  | "week"
-  | "project"
-  | "idea"
-  | "tier"
-  | "tracking"
+export type OnboardingStepId = "experience" | "week" | "project" | "idea" | "tier" | "tracking"
 
 export interface OnboardingStep {
   readonly id: OnboardingStepId
@@ -79,10 +72,26 @@ export function suggestedTierFor(experience: HardwareExperience | null): TierId 
 }
 
 export const EXPERIENCE_OPTIONS = [
-  { value: HardwareExperience.FIRST_TIME, label: "This is my first time!" },
-  { value: HardwareExperience.A_LITTLE, label: "just a little..." },
-  { value: HardwareExperience.A_GOOD_AMOUNT, label: "Yeah, i've built a good amount" },
-  { value: HardwareExperience.ITS_LIFE, label: "hardware... is life..." },
+  {
+    value: HardwareExperience.FIRST_TIME,
+    label: "This is my first time!",
+    hint: "Never touched a soldering iron. Perfect.",
+  },
+  {
+    value: HardwareExperience.A_LITTLE,
+    label: "just a little...",
+    hint: "A kit or two, maybe an Arduino blink.",
+  },
+  {
+    value: HardwareExperience.A_GOOD_AMOUNT,
+    label: "Yeah, i've built a good amount",
+    hint: "You have shipped a project that works.",
+  },
+  {
+    value: HardwareExperience.ITS_LIFE,
+    label: "hardware... is life...",
+    hint: "You own more multimeters than mugs.",
+  },
 ] as const
 
 /**
@@ -184,8 +193,6 @@ export function weekIntroFor(theme: Theme): WeekIntro | undefined {
 /** Whether step two should show the primer rather than the examples. */
 export function isBeginner(experience: HardwareExperience | null): boolean {
   return (
-    experience === HardwareExperience.FIRST_TIME ||
-    experience === HardwareExperience.A_LITTLE ||
-    experience === null
+    experience === HardwareExperience.FIRST_TIME || experience === HardwareExperience.A_LITTLE || experience === null
   )
 }

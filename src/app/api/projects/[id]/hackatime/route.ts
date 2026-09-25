@@ -1,9 +1,9 @@
-import prisma from "@/lib/prisma"
-import { ok, fail, parseBody, withRoute } from "@/lib/api"
-import { requireSession } from "@/lib/guards"
-import { hackatimeLinkSchema } from "@/lib/schemas/project"
-import { fetchProjectSeconds } from "@/lib/hackatime"
+import { fail, ok, parseBody, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
+import { requireSession } from "@/lib/guards"
+import { fetchProjectSeconds } from "@/lib/hackatime"
+import prisma from "@/lib/prisma"
+import { hackatimeLinkSchema } from "@/lib/schemas/project"
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -46,10 +46,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
   if (!project) return fail("NOT_FOUND", "Project not found")
 
   if (!project.user.hackatimeUserId) {
-    return fail(
-      "HACKATIME_NOT_LINKED",
-      "Link your Hackatime account before linking a project to it",
-    )
+    return fail("HACKATIME_NOT_LINKED", "Link your Hackatime account before linking a project to it")
   }
 
   const existing = await prisma.hackatimeLink.findUnique({
@@ -62,10 +59,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
   })
   if (existing) return fail("CONFLICT", "That Hackatime project is already linked here")
 
-  const fetched = await fetchProjectSeconds(
-    project.user.hackatimeUserId,
-    parsed.data.hackatimeProject,
-  )
+  const fetched = await fetchProjectSeconds(project.user.hackatimeUserId, parsed.data.hackatimeProject)
 
   const link = await prisma.hackatimeLink.create({
     data: {

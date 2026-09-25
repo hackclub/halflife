@@ -1,10 +1,10 @@
 import "server-only"
 import {
+  AirtableError,
+  type AirtableRecord,
   airtableFetch,
   getAirtableConfig,
   withRateLimitRetry,
-  AirtableError,
-  type AirtableRecord,
 } from "@/lib/airtable/client"
 import { YSWS_SUBMISSION } from "@/lib/airtable/schema"
 
@@ -42,8 +42,10 @@ function rejectedFields(err: AirtableError, fields: Record<string, unknown>): st
   if (byName.length > 0) return byName
   return Object.keys(fields).filter((k) => {
     const v = fields[k]
-    return (typeof v === "string" && v.length > 0 && message.includes(v)) ||
+    return (
+      (typeof v === "string" && v.length > 0 && message.includes(v)) ||
       (typeof v === "number" && message.includes(`"${v}"`))
+    )
   })
 }
 
@@ -92,7 +94,9 @@ export async function writeYswsRecord(
       }
       const bad = err.status === 422 ? rejectedFields(err, current) : []
       if (bad.length === 0 || dropped.length + bad.length > MAX_DROPPED_FIELDS) throw err
-      console.warn(`[airtable] YSWS refused ${bad.map((b) => `"${b}"`).join(", ")}; writing without: ${err.body.slice(0, 200)}`)
+      console.warn(
+        `[airtable] YSWS refused ${bad.map((b) => `"${b}"`).join(", ")}; writing without: ${err.body.slice(0, 200)}`,
+      )
       for (const b of bad) delete current[b]
       dropped.push(...bad)
       current = { ...current }
@@ -115,11 +119,9 @@ export async function deleteYswsRecord(
     )
     const twin = row.fields[YSWS_SUBMISSION.fields.unifiedRecordId.name]
     await withRateLimitRetry("deleteYswsSubmission", () =>
-      airtableFetch<{ deleted: boolean }>(
-        config,
-        `${YSWS_SUBMISSION.tableId}/${encodeURIComponent(recordId)}`,
-        { method: "DELETE" },
-      ),
+      airtableFetch<{ deleted: boolean }>(config, `${YSWS_SUBMISSION.tableId}/${encodeURIComponent(recordId)}`, {
+        method: "DELETE",
+      }),
     )
     return { deleted: true, unifiedRecordId: typeof twin === "string" && twin ? twin : null }
   } catch (err) {
@@ -148,11 +150,7 @@ export async function deleteUnifiedRecords(
   const query = recordIds.map((id) => `records[]=${encodeURIComponent(id)}`).join("&")
   try {
     const result = await withRateLimitRetry("deleteUnifiedRecords", () =>
-      airtableFetch<{ records: { id: string }[] }>(
-        { apiKey, baseId },
-        `${table}?${query}`,
-        { method: "DELETE" },
-      ),
+      airtableFetch<{ records: { id: string }[] }>({ apiKey, baseId }, `${table}?${query}`, { method: "DELETE" }),
     )
     return { deleted: result.records.map((r) => r.id) }
   } catch (err) {

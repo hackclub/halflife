@@ -1,10 +1,10 @@
-import prisma from "@/lib/prisma"
-import { requirePermissionPage } from "@/lib/page-guards"
-import { Permission } from "@/lib/permissions"
-import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
-import { ShopItemForm } from "@/app/components/forms/ShopItemForm"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { ItemCostField } from "@/app/components/forms/ItemCostField"
+import { ShopItemForm } from "@/app/components/forms/ShopItemForm"
+import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
+import { requirePermissionPage } from "@/lib/page-guards"
+import { Permission } from "@/lib/permissions"
+import prisma from "@/lib/prisma"
 
 export const dynamic = "force-dynamic"
 
@@ -34,9 +34,7 @@ export default async function AdminShopPage() {
                 <td>{item.stock ?? "∞"}</td>
                 <td>{item.requiresPrinterQualified ? "all 5 themes" : "no"}</td>
                 <td>
-                  <Badge tone={item.active ? "success" : "muted"}>
-                    {item.active ? "active" : "retired"}
-                  </Badge>
+                  <Badge tone={item.active ? "success" : "muted"}>{item.active ? "active" : "retired"}</Badge>
                 </td>
                 <td>
                   {item.active ? (

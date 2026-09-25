@@ -1,15 +1,15 @@
-import { requirePermissionPage } from "@/lib/page-guards"
-import { Permission } from "@/lib/permissions"
-import { getProgramSettings, currentWeekNumber, weekClosesAt, weekDateRange } from "@/lib/program"
-import { findUnsyncedSubmissions } from "@/lib/airtable/sync"
-import { TOTAL_WEEKS, scheduleForWeek } from "@/lib/config/program"
-import { Phase } from "@/app/generated/prisma/enums"
-import { TIERS } from "@/lib/config/tiers"
-import { PRINTERS, submitFloorFor } from "@/lib/config/printers"
-import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
+import { ActionButton } from "@/app/components/forms/ActionButton"
 import { ProgramSettingsForm } from "@/app/components/forms/ProgramSettingsForm"
 import { ProgramStartForm } from "@/app/components/forms/ProgramStartForm"
-import { ActionButton } from "@/app/components/forms/ActionButton"
+import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
+import { Phase } from "@/app/generated/prisma/enums"
+import { findUnsyncedSubmissions } from "@/lib/airtable/sync"
+import { PRINTERS, submitFloorFor } from "@/lib/config/printers"
+import { scheduleForWeek, TOTAL_WEEKS } from "@/lib/config/program"
+import { TIERS } from "@/lib/config/tiers"
+import { requirePermissionPage } from "@/lib/page-guards"
+import { Permission } from "@/lib/permissions"
+import { currentWeekNumber, getProgramSettings, weekClosesAt, weekDateRange } from "@/lib/program"
 
 export const dynamic = "force-dynamic"
 
@@ -41,7 +41,13 @@ export default async function AdminProgramPage() {
       runs: range
         ? `${range.start.toLocaleDateString("en-US", day)} – ${new Date(range.start.getTime() + 6 * 86_400_000).toLocaleDateString("en-US", day)}`
         : "—",
-      closes: inZone(closesAt, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }),
+      closes: inZone(closesAt, {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      }),
       state: now >= closesAt ? "passed" : now >= opensAt ? "current" : "upcoming",
     }
   })
@@ -60,11 +66,7 @@ export default async function AdminProgramPage() {
       />
 
       <Panel title="Program start">
-        <ProgramStartForm
-          initial={startYmd}
-          timezone={settings.programTimezone}
-          weeks={schedule.map((w) => w.label)}
-        />
+        <ProgramStartForm initial={startYmd} timezone={settings.programTimezone} weeks={schedule.map((w) => w.label)} />
       </Panel>
 
       <Panel title="Schedule">
@@ -84,8 +86,8 @@ export default async function AdminProgramPage() {
           ))}
         </Table>
         <p className="hl-hint">
-          A passed week is shut on the trail: no more journal entries, only its Submit. An
-          extension on the user or the project reopens it for them.
+          A passed week is shut on the trail: no more journal entries, only its Submit. An extension on the user or the
+          project reopens it for them.
         </p>
       </Panel>
 
@@ -142,10 +144,9 @@ export default async function AdminProgramPage() {
           ))}
         </Table>
         <p className="hl-hint">
-          Edit these in <code>lib/config/tiers.ts</code>. Funded hours buy parts.
-          The submit floor is the funded hours plus enough banking to keep the
-          cheapest machine reachable — hand a week in under it and the season
-          cannot end in a printer.
+          Edit these in <code>lib/config/tiers.ts</code>. Funded hours buy parts. The submit floor is the funded hours
+          plus enough banking to keep the cheapest machine reachable — hand a week in under it and the season cannot end
+          in a printer.
         </p>
 
         <h2>Printer goals</h2>
@@ -160,10 +161,9 @@ export default async function AdminProgramPage() {
           ))}
         </Table>
         <p className="hl-hint">
-          Banking is paced by the machine, not the tier: every tier banks the
-          same hours for the same printer. Edit these in{" "}
-          <code>lib/config/printers.ts</code>, which is the budget spreadsheet
-          transcribed — the season lands exactly on each price.
+          Banking is paced by the machine, not the tier: every tier banks the same hours for the same printer. Edit
+          these in <code>lib/config/printers.ts</code>, which is the budget spreadsheet transcribed — the season lands
+          exactly on each price.
         </p>
       </Panel>
     </div>

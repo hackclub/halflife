@@ -1,13 +1,13 @@
 import "server-only"
-import prisma from "@/lib/prisma"
 import {
+  type AirtableRecord,
   airtableFetch,
   escapeAirtableValue,
   getAirtableConfig,
   withRateLimitRetry,
-  type AirtableRecord,
 } from "@/lib/airtable/client"
-import { RSVP, fieldKey, formulaRef, toFields } from "@/lib/airtable/schema"
+import { fieldKey, formulaRef, RSVP, toFields } from "@/lib/airtable/schema"
+import prisma from "@/lib/prisma"
 
 export interface RsvpInput {
   email: string
@@ -55,11 +55,7 @@ export async function bufferRsvp(input: RsvpInput): Promise<{ buffered: true }> 
 }
 
 /** Called from the signup hook once a real account exists. */
-export async function bufferRsvpForUser(
-  userId: string,
-  email: string,
-  name: string | null,
-): Promise<void> {
+export async function bufferRsvpForUser(userId: string, email: string, name: string | null): Promise<void> {
   const [firstName, ...rest] = (name ?? "").trim().split(/\s+/)
   await prisma.rsvpBuffer.upsert({
     where: { email: email.trim().toLowerCase() },
@@ -88,10 +84,7 @@ export interface DrainResult {
  * the index on (syncedToAirtable, syncAttempts, createdAt) makes finding them
  * a single scan.
  */
-export async function drainRsvpBuffer(
-  limit = 50,
-  opts: { dryRun?: boolean } = {},
-): Promise<DrainResult> {
+export async function drainRsvpBuffer(limit = 50, opts: { dryRun?: boolean } = {}): Promise<DrainResult> {
   const config = getAirtableConfig()
   if (!config) return { attempted: 0, created: 0, updated: 0, failed: 0, skipped: "not_configured" }
 
@@ -132,18 +125,14 @@ export async function drainRsvpBuffer(
         result.updated++
       } else {
         const upserted = await withRateLimitRetry("upsertRsvp", () =>
-          airtableFetch<{ records: AirtableRecord[]; updatedRecords?: string[] }>(
-            config,
-            RSVP.tableId,
-            {
-              method: "PATCH",
-              body: JSON.stringify({
-                performUpsert: { fieldsToMergeOn: [fieldKey(RSVP.fields.email)] },
-                records: [{ fields }],
-                typecast: false,
-              }),
-            },
-          ),
+          airtableFetch<{ records: AirtableRecord[]; updatedRecords?: string[] }>(config, RSVP.tableId, {
+            method: "PATCH",
+            body: JSON.stringify({
+              performUpsert: { fieldsToMergeOn: [fieldKey(RSVP.fields.email)] },
+              records: [{ fields }],
+              typecast: false,
+            }),
+          }),
         )
         recordId = upserted.records[0]?.id ?? null
         if (upserted.updatedRecords?.length) result.updated++

@@ -1,13 +1,13 @@
 import Link from "next/link"
-import { requirePermissionPage } from "@/lib/page-guards"
-import { Permission } from "@/lib/permissions"
-import { listFulfillmentOrders, type FulfillmentFilters } from "@/lib/queries/admin"
-import { formatUsd } from "@/lib/money"
+import { OrderDecision } from "@/app/components/forms/OrderDecision"
+import { OrderFulfillment } from "@/app/components/forms/OrderFulfillment"
+import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
 import { ShopFulfillmentMethod, ShopFulfillmentStage } from "@/app/generated/prisma/enums"
 import { METHOD_LABELS, STAGE_LABELS } from "@/lib/fulfillment"
-import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
-import { OrderFulfillment } from "@/app/components/forms/OrderFulfillment"
-import { OrderDecision } from "@/app/components/forms/OrderDecision"
+import { formatUsd } from "@/lib/money"
+import { requirePermissionPage } from "@/lib/page-guards"
+import { Permission } from "@/lib/permissions"
+import { type FulfillmentFilters, listFulfillmentOrders } from "@/lib/queries/admin"
 
 export const dynamic = "force-dynamic"
 
@@ -36,10 +36,7 @@ function filtersFrom(s: Search): FulfillmentFilters {
     placedFrom: utcDay(s.from),
     // The "to" day is inclusive, so the bound is the midnight after it.
     placedBefore: to ? new Date(to.getTime() + DAY_MS) : undefined,
-    method:
-      s.method === "NONE"
-        ? "NONE"
-        : Object.values(ShopFulfillmentMethod).find((m) => m === s.method),
+    method: s.method === "NONE" ? "NONE" : Object.values(ShopFulfillmentMethod).find((m) => m === s.method),
     stage: Object.values(ShopFulfillmentStage).find((x) => x === s.stage),
   }
 }
@@ -81,12 +78,7 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
             <span className="hl-label-text">Placed to</span>
             <input className="hl-input" type="date" name="to" defaultValue={search.to ?? ""} />
           </label>
-          <select
-            className="hl-input"
-            name="method"
-            defaultValue={filters.method ?? ""}
-            style={{ maxWidth: "14rem" }}
-          >
+          <select className="hl-input" name="method" defaultValue={filters.method ?? ""} style={{ maxWidth: "14rem" }}>
             <option value="">Any method</option>
             <option value="NONE">Method not chosen</option>
             {Object.entries(METHOD_LABELS).map(([value, label]) => (
@@ -95,12 +87,7 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
               </option>
             ))}
           </select>
-          <select
-            className="hl-input"
-            name="stage"
-            defaultValue={filters.stage ?? ""}
-            style={{ maxWidth: "14rem" }}
-          >
+          <select className="hl-input" name="stage" defaultValue={filters.stage ?? ""} style={{ maxWidth: "14rem" }}>
             <option value="">Any stage</option>
             {Object.entries(STAGE_LABELS).map(([value, label]) => (
               <option key={value} value={value}>
@@ -127,9 +114,7 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
               <tr key={order.id}>
                 <td className="hl-mono">{order.orderNumber}</td>
                 <td>
-                  <Link href={`/admin/users/${order.user.id}`}>
-                    {order.user.name ?? order.user.email}
-                  </Link>
+                  <Link href={`/admin/users/${order.user.id}`}>{order.user.name ?? order.user.email}</Link>
                   {order.status === "PENDING" || order.status === "ON_HOLD" ? (
                     <div>
                       <Badge tone="warning">{order.status.toLowerCase().replace("_", " ")}</Badge>
@@ -145,11 +130,7 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
                   {order.quantity > 1 ? <span className="hl-hint"> ×{order.quantity}</span> : null}
                 </td>
                 <td className="hl-mono">
-                  {order.totalUsd === null ? (
-                    <span className="hl-hint">not set</span>
-                  ) : (
-                    formatUsd(order.totalUsd)
-                  )}
+                  {order.totalUsd === null ? <span className="hl-hint">not set</span> : formatUsd(order.totalUsd)}
                 </td>
                 <td>{order.country ?? <span className="hl-hint">unknown</span>}</td>
                 <td className="hl-mono">{placedFormat.format(order.placedAt)}</td>

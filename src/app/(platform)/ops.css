@@ -175,7 +175,9 @@ h4 {
      * first means scrolling past the whole nav, the printer card and the
      * account card to reach the thing you opened the app for.
      */
-    .hl-main { order: -1; }
+    .hl-main {
+      order: -1;
+    }
   }
 
   /* ── Cards ─────────────────────────────────────────────────────────────── */
@@ -259,8 +261,12 @@ h4 {
     font-size: 1.875rem;
     line-height: 1;
   }
-  .hl-counter--coin { color: var(--color-coin); }
-  .hl-counter--flame { color: var(--color-flame); }
+  .hl-counter--coin {
+    color: var(--color-coin);
+  }
+  .hl-counter--flame {
+    color: var(--color-flame);
+  }
   .hl-counter-icon {
     width: 1.75rem;
     height: 1.75rem;
@@ -304,8 +310,12 @@ h4 {
     border-bottom-left-radius: var(--radius-control);
     border-bottom-right-radius: var(--radius-control);
   }
-  .hl-sign-strap--left { left: calc(50% - 130px); }
-  .hl-sign-strap--right { right: calc(50% - 130px); }
+  .hl-sign-strap--left {
+    left: calc(50% - 130px);
+  }
+  .hl-sign-strap--right {
+    right: calc(50% - 130px);
+  }
   .hl-sign-sub {
     text-align: center;
     color: var(--color-ink-muted);
@@ -329,7 +339,10 @@ h4 {
     pointer-events: none;
   }
   @media (max-width: 900px) {
-    .hl-card-mascot { right: 0.5rem; width: 84px; }
+    .hl-card-mascot {
+      right: 0.5rem;
+      width: 84px;
+    }
   }
 
   /* An empty state that says something, rather than a line of grey text. */
@@ -411,7 +424,9 @@ h4 {
     color: var(--color-accent);
     text-decoration: none;
   }
-  .hl-label--muted { color: var(--color-ink-muted); }
+  .hl-label--muted {
+    color: var(--color-ink-muted);
+  }
 
   /* ── Buttons ───────────────────────────────────────────────────────────── */
   .hl-btn {
@@ -514,7 +529,9 @@ h4 {
     font-size: 0.875rem;
     margin: 0;
   }
-  .hl-muted { color: var(--color-ink-muted); }
+  .hl-muted {
+    color: var(--color-ink-muted);
+  }
   .hl-mono {
     font-family: var(--font-mono);
     font-size: 0.85rem;
@@ -530,10 +547,18 @@ h4 {
     border: 2px solid currentColor;
     line-height: 1.4;
   }
-  .hl-badge--success { color: var(--color-teal); }
-  .hl-badge--warning { color: var(--color-coin); }
-  .hl-badge--danger  { color: var(--color-flame); }
-  .hl-badge--muted   { color: var(--color-ink-muted); }
+  .hl-badge--success {
+    color: var(--color-teal);
+  }
+  .hl-badge--warning {
+    color: var(--color-coin);
+  }
+  .hl-badge--danger {
+    color: var(--color-flame);
+  }
+  .hl-badge--muted {
+    color: var(--color-ink-muted);
+  }
 
   .hl-callout {
     border: 2px solid var(--color-accent);
@@ -541,8 +566,12 @@ h4 {
     padding: 0.85rem 1rem;
     border-radius: var(--radius-button);
   }
-  .hl-callout--danger { border-color: var(--color-flame); }
-  .hl-callout--warning { border-color: var(--color-coin); }
+  .hl-callout--danger {
+    border-color: var(--color-flame);
+  }
+  .hl-callout--warning {
+    border-color: var(--color-coin);
+  }
 
   /* ── Stats ─────────────────────────────────────────────────────────────── */
   .hl-stat {
@@ -647,7 +676,9 @@ h4 {
   }
   @media (max-width: 700px) {
     /* At this width the headline needs the whole band. */
-    .hl-banner-art { display: none; }
+    .hl-banner-art {
+      display: none;
+    }
   }
   .hl-banner-title {
     font-size: clamp(1.5rem, 2.6vw, 2.5rem);
@@ -777,7 +808,9 @@ h4 {
     background: var(--color-border);
     color: var(--color-surface-raised);
     box-shadow: 0 6px 0 rgb(16 15 48 / 0.18);
-    transition: transform 0.12s ease, box-shadow 0.12s ease;
+    transition:
+      transform 0.12s ease,
+      box-shadow 0.12s ease;
   }
   .hl-node--done .hl-node-disc {
     background: var(--color-accent);
@@ -843,10 +876,14 @@ h4 {
     .hl-node {
       margin-inline-start: 0 !important;
     }
-    .hl-connector-row { height: 40px; }
+    .hl-connector-row {
+      height: 40px;
+    }
   }
   @media (prefers-reduced-motion: reduce) {
-    .hl-node-disc { transition: none; }
+    .hl-node-disc {
+      transition: none;
+    }
   }
 
   /* ── Staff top bar ─────────────────────────────────────────────────────── */
@@ -885,7 +922,9 @@ h4 {
     flex-direction: column;
     gap: 1.5rem;
   }
-  .hl-stack--tight { gap: 0.75rem; }
+  .hl-stack--tight {
+    gap: 0.75rem;
+  }
   .hl-row {
     display: flex;
     gap: 1rem;
@@ -897,7 +936,9 @@ h4 {
     grid-template-columns: repeat(auto-fill, minmax(261px, 1fr));
     gap: 1.5rem;
   }
-  .hl-scroll { overflow-x: auto; }
+  .hl-scroll {
+    overflow-x: auto;
+  }
 
   /* ── Tables ────────────────────────────────────────────────────────────── */
   .hl-table {
@@ -1043,6 +1084,8 @@ h4 {
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .hl-feed { scroll-snap-type: none; }
+    .hl-feed {
+      scroll-snap-type: none;
+    }
   }
 }

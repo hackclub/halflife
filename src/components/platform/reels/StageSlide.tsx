@@ -1,28 +1,28 @@
-"use client";
+"use client"
 
-import Link from "next/link";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { FoxMark } from "@/components/platform/art";
-import { IconFilm, IconPause, IconPlay, IconVolume, IconVolumeOff } from "@/components/platform/icons";
-import { cx } from "@/components/platform/ui";
-import type { FeedItem } from "@/lib/feed";
-import { ago, clock } from "./format";
-import { noteStopped, notePlaying, playExclusive, sendLike } from "./ReelCard";
+import Link from "next/link"
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
+import { FoxMark } from "@/components/platform/art"
+import { IconFilm, IconPause, IconPlay, IconVolume, IconVolumeOff } from "@/components/platform/icons"
+import { cx } from "@/components/platform/ui"
+import type { FeedItem } from "@/lib/feed"
+import { ago, clock } from "./format"
+import { notePlaying, noteStopped, playExclusive, sendLike } from "./ReelCard"
 
 function prefersStill() {
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches
 }
 
 /** Two taps closer together than this, and near enough each other, are one like. */
-const DOUBLE_TAP_MS = 280;
-const DOUBLE_TAP_PX = 44;
+const DOUBLE_TAP_MS = 280
+const DOUBLE_TAP_PX = 44
 
 /** A heart, drawn once as markup: it is stamped into the burst layer by hand. */
 const HEART_SVG =
-  '<svg viewBox="0 0 24 24" width="100%" height="100%" aria-hidden="true"><path d="M12 21s-8.6-5-8.6-10.6A4.8 4.8 0 0 1 12 7.8a4.8 4.8 0 0 1 8.6 2.6C20.6 16 12 21 12 21Z" fill="currentColor" stroke="#ffffff" stroke-width="1.4" stroke-linejoin="round"/></svg>';
+  '<svg viewBox="0 0 24 24" width="100%" height="100%" aria-hidden="true"><path d="M12 21s-8.6-5-8.6-10.6A4.8 4.8 0 0 1 12 7.8a4.8 4.8 0 0 1 8.6 2.6C20.6 16 12 21 12 21Z" fill="currentColor" stroke="#ffffff" stroke-width="1.4" stroke-linejoin="round"/></svg>'
 
 export interface SlideHandle {
-  toggle: () => void;
+  toggle: () => void
 }
 
 /**
@@ -53,148 +53,148 @@ export function StageSlide({
   onPatch,
   register,
 }: {
-  reel: FeedItem;
-  active: boolean;
-  muted: boolean;
-  rate: number;
-  autoScroll: boolean;
+  reel: FeedItem
+  active: boolean
+  muted: boolean
+  rate: number
+  autoScroll: boolean
   /** The browser refused sound; the slide went on muted. */
-  onAutoMuted: () => void;
-  onToggleMute: () => void;
-  onCycleRate: () => void;
-  onToggleAutoScroll: () => void;
+  onAutoMuted: () => void
+  onToggleMute: () => void
+  onCycleRate: () => void
+  onToggleAutoScroll: () => void
   /** Reached the end with auto scroll on. */
-  onEnded: () => void;
-  onPatch: (id: string, next: Partial<FeedItem>) => void;
+  onEnded: () => void
+  onPatch: (id: string, next: Partial<FeedItem>) => void
   /** Hands the page this slide's controls while it is the current one. */
-  register: (handle: SlideHandle | null) => void;
+  register: (handle: SlideHandle | null) => void
 }) {
-  const video = useRef<HTMLVideoElement>(null);
-  const fill = useRef<HTMLDivElement>(null);
-  const bursts = useRef<HTMLDivElement>(null);
-  const caption = useRef<HTMLParagraphElement>(null);
-  const [playing, setPlaying] = useState(false);
-  const [time, setTime] = useState({ now: 0, total: reel.durationSeconds ?? 0 });
-  const [expanded, setExpanded] = useState(false);
-  const [clamped, setClamped] = useState(false);
-  const counted = useRef(false);
-  const tap = useRef<{ t: number; x: number; y: number } | null>(null);
-  const pendingToggle = useRef(0);
+  const video = useRef<HTMLVideoElement>(null)
+  const fill = useRef<HTMLDivElement>(null)
+  const bursts = useRef<HTMLDivElement>(null)
+  const caption = useRef<HTMLParagraphElement>(null)
+  const [playing, setPlaying] = useState(false)
+  const [time, setTime] = useState({ now: 0, total: reel.durationSeconds ?? 0 })
+  const [expanded, setExpanded] = useState(false)
+  const [clamped, setClamped] = useState(false)
+  const counted = useRef(false)
+  const tap = useRef<{ t: number; x: number; y: number } | null>(null)
+  const pendingToggle = useRef(0)
 
-  const announcement = reel.pinned || reel.kind === "ANNOUNCEMENT";
+  const announcement = reel.pinned || reel.kind === "ANNOUNCEMENT"
   // Portrait fills the card edge to edge; anything wider is letterboxed in it,
   // so a landscape clip is shown whole rather than cropped to a strip.
-  const portrait = !reel.width || !reel.height || reel.height >= reel.width;
+  const portrait = !reel.width || !reel.height || reel.height >= reel.width
 
   // `muted` as a prop is not reflected after mount in React, so both are set
   // on the element directly.
   useEffect(() => {
-    const el = video.current;
-    if (!el) return;
-    el.muted = muted;
-    el.playbackRate = rate;
-  }, [muted, rate]);
+    const el = video.current
+    if (!el) return
+    el.muted = muted
+    el.playbackRate = rate
+  }, [muted, rate])
 
   useEffect(() => {
-    const el = video.current;
-    if (!el) return;
+    const el = video.current
+    if (!el) return
     if (!active) {
-      el.pause();
-      return;
+      el.pause()
+      return
     }
     // Arriving is asking to watch — except for anyone who has asked for less
     // motion, who gets the play button instead of a video that starts moving.
-    if (prefersStill()) return;
-    el.currentTime = 0;
-    let cancelled = false;
+    if (prefersStill()) return
+    el.currentTime = 0
+    let cancelled = false
     void playExclusive(el).then(async (ok) => {
-      if (ok || cancelled || el.muted) return;
+      if (ok || cancelled || el.muted) return
       // Sound before the reader has touched the page is the browser's to
       // refuse, and it does. Muted playback it always allows, so the reel
       // plays silently and the page offers the sound back.
-      el.muted = true;
-      onAutoMuted();
-      await playExclusive(el);
-    });
+      el.muted = true
+      onAutoMuted()
+      await playExclusive(el)
+    })
     return () => {
-      cancelled = true;
-    };
-  }, [active, onAutoMuted]);
+      cancelled = true
+    }
+  }, [active, onAutoMuted])
 
   // Smooth rather than stepped: `timeupdate` fires four times a second, which
   // makes a thin bar visibly tick. Only the playing slide pays for a frame loop.
   useEffect(() => {
-    if (!active || !playing) return;
-    let raf = 0;
+    if (!active || !playing) return
+    let raf = 0
     const tick = () => {
-      const el = video.current;
+      const el = video.current
       if (el && fill.current && el.duration) {
-        fill.current.style.transform = `scaleX(${el.currentTime / el.duration})`;
+        fill.current.style.transform = `scaleX(${el.currentTime / el.duration})`
       }
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [active, playing]);
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [active, playing])
 
   const toggle = useCallback(() => {
-    const el = video.current;
-    if (!el || !reel.videoUrl) return;
-    if (el.paused) void playExclusive(el);
-    else el.pause();
-  }, [reel.videoUrl]);
+    const el = video.current
+    if (!el || !reel.videoUrl) return
+    if (el.paused) void playExclusive(el)
+    else el.pause()
+  }, [reel.videoUrl])
 
   useEffect(() => {
-    if (!active) return;
-    register({ toggle });
-    return () => register(null);
-  }, [active, register, toggle]);
+    if (!active) return
+    register({ toggle })
+    return () => register(null)
+  }, [active, register, toggle])
 
   // Whether the caption runs past its lines, so "more" only appears when there
   // is more. Measured, because a character count cannot know the font.
   useLayoutEffect(() => {
-    const el = caption.current;
-    if (!el || expanded) return;
-    const measure = () => setClamped(el.scrollHeight > el.clientHeight + 1);
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [reel.caption, expanded]);
+    const el = caption.current
+    if (!el || expanded) return
+    const measure = () => setClamped(el.scrollHeight > el.clientHeight + 1)
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [reel.caption, expanded])
 
   // The clock, the bar while it is not being driven by the frame loop, and the
   // view. A view is a second of actual playback, not an arrival that a quick
   // flick scrolled straight past — once per slide; the server counts once per
   // person.
   function onTime() {
-    const el = video.current;
-    if (!el) return;
-    setTime({ now: el.currentTime, total: el.duration || reel.durationSeconds || 0 });
+    const el = video.current
+    if (!el) return
+    setTime({ now: el.currentTime, total: el.duration || reel.durationSeconds || 0 })
     if (!playing && fill.current && el.duration) {
-      fill.current.style.transform = `scaleX(${el.currentTime / el.duration})`;
+      fill.current.style.transform = `scaleX(${el.currentTime / el.duration})`
     }
-    if (counted.current) return;
-    let watched = 0;
-    for (let i = 0; i < el.played.length; i++) watched += el.played.end(i) - el.played.start(i);
-    if (watched < 1) return;
-    counted.current = true;
-    void fetch(`/api/posts/${reel.id}/view`, { method: "POST" });
+    if (counted.current) return
+    let watched = 0
+    for (let i = 0; i < el.played.length; i++) watched += el.played.end(i) - el.played.start(i)
+    if (watched < 1) return
+    counted.current = true
+    void fetch(`/api/posts/${reel.id}/view`, { method: "POST" })
   }
 
   /** The heart that says a double tap landed, where it landed. */
   function burst(clientX: number, clientY: number) {
-    const host = bursts.current;
-    if (!host || prefersStill()) return;
-    const box = host.getBoundingClientRect();
-    const heart = document.createElement("span");
-    const tilt = Math.round(Math.random() * 30 - 15);
-    heart.innerHTML = HEART_SVG;
-    heart.className = "absolute size-24 text-coral drop-shadow-[0_6px_12px_rgb(28_26_89/0.35)]";
-    heart.style.left = `${clientX - box.left}px`;
-    heart.style.top = `${clientY - box.top}px`;
-    host.appendChild(heart);
+    const host = bursts.current
+    if (!host || prefersStill()) return
+    const box = host.getBoundingClientRect()
+    const heart = document.createElement("span")
+    const tilt = Math.round(Math.random() * 30 - 15)
+    heart.innerHTML = HEART_SVG
+    heart.className = "absolute size-24 text-coral drop-shadow-[0_6px_12px_rgb(28_26_89/0.35)]"
+    heart.style.left = `${clientX - box.left}px`
+    heart.style.top = `${clientY - box.top}px`
+    host.appendChild(heart)
     const at = (lift: number, scale: number) =>
-      `translate(-50%, calc(-50% - ${lift}px)) rotate(${tilt}deg) scale(${scale})`;
+      `translate(-50%, calc(-50% - ${lift}px)) rotate(${tilt}deg) scale(${scale})`
     heart
       .animate(
         [
@@ -207,7 +207,7 @@ export function StageSlide({
         { duration: 900, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
       )
       .finished.catch(() => undefined)
-      .finally(() => heart.remove());
+      .finally(() => heart.remove())
   }
 
   // One tap pauses, two like — the same surface does both. The single tap
@@ -216,39 +216,39 @@ export function StageSlide({
   // they toggle at once.
   function onSurfaceClick(e: React.MouseEvent<HTMLButtonElement>) {
     if (e.detail === 0) {
-      toggle();
-      return;
+      toggle()
+      return
     }
-    const now = performance.now();
-    const prev = tap.current;
+    const now = performance.now()
+    const prev = tap.current
     if (prev && now - prev.t < DOUBLE_TAP_MS && Math.hypot(e.clientX - prev.x, e.clientY - prev.y) < DOUBLE_TAP_PX) {
-      window.clearTimeout(pendingToggle.current);
-      tap.current = null;
-      burst(e.clientX, e.clientY);
-      sendLike(reel, true, onPatch);
-      return;
+      window.clearTimeout(pendingToggle.current)
+      tap.current = null
+      burst(e.clientX, e.clientY)
+      sendLike(reel, true, onPatch)
+      return
     }
-    tap.current = { t: now, x: e.clientX, y: e.clientY };
-    window.clearTimeout(pendingToggle.current);
+    tap.current = { t: now, x: e.clientX, y: e.clientY }
+    window.clearTimeout(pendingToggle.current)
     pendingToggle.current = window.setTimeout(() => {
-      tap.current = null;
-      toggle();
-    }, DOUBLE_TAP_MS);
+      tap.current = null
+      toggle()
+    }, DOUBLE_TAP_MS)
   }
 
-  useEffect(() => () => window.clearTimeout(pendingToggle.current), []);
+  useEffect(() => () => window.clearTimeout(pendingToggle.current), [])
 
   function seekTo(clientX: number, track: HTMLElement) {
-    const el = video.current;
-    if (!el || !el.duration) return;
-    const box = track.getBoundingClientRect();
-    const f = Math.min(1, Math.max(0, (clientX - box.left) / box.width));
-    el.currentTime = f * el.duration;
-    if (fill.current) fill.current.style.transform = `scaleX(${f})`;
-    setTime({ now: el.currentTime, total: el.duration });
+    const el = video.current
+    if (!el || !el.duration) return
+    const box = track.getBoundingClientRect()
+    const f = Math.min(1, Math.max(0, (clientX - box.left) / box.width))
+    el.currentTime = f * el.duration
+    if (fill.current) fill.current.style.transform = `scaleX(${f})`
+    setTime({ now: el.currentTime, total: el.duration })
   }
 
-  const who = reel.author.name ?? "A maker";
+  const who = reel.author.name ?? "A maker"
 
   return (
     <div className="flex h-full flex-col py-3">
@@ -266,19 +266,17 @@ export function StageSlide({
             // what makes a swipe land on a picture rather than a blank card.
             preload={active ? "auto" : "metadata"}
             onPlay={(e) => {
-              notePlaying(e.currentTarget);
-              setPlaying(true);
+              notePlaying(e.currentTarget)
+              setPlaying(true)
             }}
             onPause={(e) => {
-              noteStopped(e.currentTarget);
-              setPlaying(false);
+              noteStopped(e.currentTarget)
+              setPlaying(false)
             }}
             onEnded={() => {
-              if (autoScroll && active) onEnded();
+              if (autoScroll && active) onEnded()
             }}
-            onLoadedMetadata={(e) =>
-              setTime({ now: e.currentTarget.currentTime, total: e.currentTarget.duration })
-            }
+            onLoadedMetadata={(e) => setTime({ now: e.currentTarget.currentTime, total: e.currentTarget.duration })}
             onTimeUpdate={onTime}
             className={cx("absolute inset-0 size-full", portrait ? "object-cover" : "object-contain")}
           />
@@ -386,18 +384,18 @@ export function StageSlide({
           aria-valuenow={Math.round(time.now)}
           aria-valuetext={`${clock(time.now)} of ${clock(time.total)}`}
           onPointerDown={(e) => {
-            e.currentTarget.setPointerCapture(e.pointerId);
-            seekTo(e.clientX, e.currentTarget);
+            e.currentTarget.setPointerCapture(e.pointerId)
+            seekTo(e.clientX, e.currentTarget)
           }}
           onPointerMove={(e) => {
-            if (e.currentTarget.hasPointerCapture(e.pointerId)) seekTo(e.clientX, e.currentTarget);
+            if (e.currentTarget.hasPointerCapture(e.pointerId)) seekTo(e.clientX, e.currentTarget)
           }}
           onKeyDown={(e) => {
-            const el = video.current;
-            if (!el || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
+            const el = video.current
+            if (!el || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return
             // Claimed here so the page's own arrow-key navigation leaves it be.
-            e.preventDefault();
-            el.currentTime = Math.max(0, Math.min(el.duration || 0, el.currentTime + (e.key === "ArrowRight" ? 5 : -5)));
+            e.preventDefault()
+            el.currentTime = Math.max(0, Math.min(el.duration || 0, el.currentTime + (e.key === "ArrowRight" ? 5 : -5)))
           }}
           className="group/seek absolute inset-x-0 bottom-0 z-[5] flex h-3.5 cursor-pointer touch-none items-end focus-visible:outline-none"
         >
@@ -458,7 +456,7 @@ export function StageSlide({
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 /** A small drawn round button, the player strip's one control shape. */
@@ -469,11 +467,11 @@ function RoundControl({
   pressed,
   children,
 }: {
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-  pressed?: boolean;
-  children: React.ReactNode;
+  label: string
+  onClick: () => void
+  disabled?: boolean
+  pressed?: boolean
+  children: React.ReactNode
 }) {
   return (
     <button
@@ -487,5 +485,5 @@ function RoundControl({
     >
       {children}
     </button>
-  );
+  )
 }

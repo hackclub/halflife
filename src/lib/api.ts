@@ -1,6 +1,6 @@
-import { NextResponse, type NextRequest } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
-import { API_ERROR_STATUS, HttpError, type ApiErrorCode } from "@/lib/errors"
+import { API_ERROR_STATUS, type ApiErrorCode, HttpError } from "@/lib/errors"
 
 export interface ApiErrorBody {
   error: { code: ApiErrorCode; message: string; details?: unknown }
@@ -26,11 +26,7 @@ export function ok<T>(data: T, init?: ResponseInit): NextResponse<T> {
  * The only way to build an error response. The status comes from the code, so
  * the two can never disagree.
  */
-export function fail(
-  code: ApiErrorCode,
-  message: string,
-  details?: unknown,
-): NextResponse<ApiErrorBody> {
+export function fail(code: ApiErrorCode, message: string, details?: unknown): NextResponse<ApiErrorBody> {
   return NextResponse.json(
     { error: { code, message, ...(details === undefined ? {} : { details }) } },
     { status: API_ERROR_STATUS[code] },
@@ -44,10 +40,7 @@ type Parsed<T> = { data: T; error?: never } | { data?: never; error: NextRespons
  * unvalidated object — that is how `undefined` reaches Prisma and becomes a
  * confusing runtime error three layers down.
  */
-export async function parseBody<S extends z.ZodType>(
-  request: Request,
-  schema: S,
-): Promise<Parsed<z.output<S>>> {
+export async function parseBody<S extends z.ZodType>(request: Request, schema: S): Promise<Parsed<z.output<S>>> {
   let raw: unknown
   try {
     raw = await request.json()
@@ -64,10 +57,7 @@ export async function parseBody<S extends z.ZodType>(
   return { data: result.data }
 }
 
-export function parseQuery<S extends z.ZodType>(
-  request: NextRequest,
-  schema: S,
-): Parsed<z.output<S>> {
+export function parseQuery<S extends z.ZodType>(request: NextRequest, schema: S): Parsed<z.output<S>> {
   const raw = Object.fromEntries(request.nextUrl.searchParams.entries())
   const result = schema.safeParse(raw)
   if (!result.success) {

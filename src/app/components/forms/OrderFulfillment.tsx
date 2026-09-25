@@ -51,9 +51,7 @@ export function OrderFulfillment({
         aria-label="Shipping method"
         value={method ?? ""}
         disabled={busy}
-        onChange={(e) =>
-          save({ method: e.target.value === "" ? null : (e.target.value as ShopFulfillmentMethod) })
-        }
+        onChange={(e) => save({ method: e.target.value === "" ? null : (e.target.value as ShopFulfillmentMethod) })}
       >
         <option value="">Method not chosen</option>
         {Object.entries(METHOD_LABELS).map(([value, label]) => (

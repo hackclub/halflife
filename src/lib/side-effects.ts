@@ -1,6 +1,6 @@
 import "server-only"
-import { AuditAction, logAudit } from "@/lib/audit"
 import type { Prisma } from "@/app/generated/prisma/client"
+import { AuditAction, logAudit } from "@/lib/audit"
 
 export interface SideEffectContext {
   actorId: string | null
@@ -54,10 +54,7 @@ export async function trackSideEffect<T>(
     const message = err instanceof Error ? err.message : String(err)
     console.error(`[side-effect] ${kind} failed for ${ctx.targetType}:${ctx.targetId}:`, err)
     await logAudit({
-      action:
-        kind === "airtable"
-          ? AuditAction.AIRTABLE_SYNC_FAILURE
-          : AuditAction.NOTIFICATION_FAILURE,
+      action: kind === "airtable" ? AuditAction.AIRTABLE_SYNC_FAILURE : AuditAction.NOTIFICATION_FAILURE,
       actorId: ctx.actorId,
       actorEmail: ctx.actorEmail,
       targetType: ctx.targetType,

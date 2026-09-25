@@ -1,16 +1,12 @@
-import { resolveHandoff, HANDOFF_TTL_MINUTES } from "@/lib/handoff"
-import { Callout, PageHeader, Panel } from "@/app/components/ui"
 import { HandoffUploader } from "@/app/components/forms/HandoffUploader"
+import { Callout, PageHeader, Panel } from "@/app/components/ui"
+import { HANDOFF_TTL_MINUTES, resolveHandoff } from "@/lib/handoff"
 
 // Never cached: the token is single-use and its validity changes the moment a
 // phone claims it.
 export const dynamic = "force-dynamic"
 
-export default async function HandoffPage({
-  params,
-}: {
-  params: Promise<{ token: string }>
-}) {
+export default async function HandoffPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
   const target = await resolveHandoff(token)
 
@@ -19,8 +15,7 @@ export default async function HandoffPage({
       <div className="hl-stack">
         <PageHeader title="This link has expired" />
         <Callout tone="warning">
-          Codes last {HANDOFF_TTL_MINUTES} minutes and work once. Generate a new one on your
-          computer and scan it again.
+          Codes last {HANDOFF_TTL_MINUTES} minutes and work once. Generate a new one on your computer and scan it again.
         </Callout>
       </div>
     )

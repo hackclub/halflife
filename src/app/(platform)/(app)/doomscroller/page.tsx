@@ -1,10 +1,10 @@
-import type { Metadata } from "next";
-import { ReelViewer } from "@/components/platform/reels/ReelViewer";
+import type { Metadata } from "next"
+import { ReelViewer } from "@/components/platform/reels/ReelViewer"
 
 export const metadata: Metadata = {
   title: "Half Life Doomscroller",
   description: "Every reel anyone posts, newest first. The fastest way to see what the program is building this week.",
-};
+}
 
 export default function DoomscrollerPage() {
   return (
@@ -14,5 +14,5 @@ export default function DoomscrollerPage() {
       <h1 className="sr-only">Doomscroller</h1>
       <ReelViewer />
     </>
-  );
+  )
 }

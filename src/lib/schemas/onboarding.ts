@@ -12,42 +12,52 @@ import { boundedText } from "@/lib/schemas/common"
  * that step is for.
  */
 export const onboardingStepSchema = z.discriminatedUnion("step", [
-  z.object({
-    step: z.literal("experience"),
-    experience: z.enum(HardwareExperience),
-  }).strict(),
+  z
+    .object({
+      step: z.literal("experience"),
+      experience: z.enum(HardwareExperience),
+    })
+    .strict(),
 
   z.object({ step: z.literal("week") }).strict(),
 
-  z.object({
-    step: z.literal("project"),
-    title: boundedText(120, 1),
-    // Matches the session journal's ceiling; the field is sanitized as HTML
-    // on the way in, same as a journal entry.
-    description: boundedText(5000),
-  }).strict(),
+  z
+    .object({
+      step: z.literal("project"),
+      title: boundedText(120, 1),
+      // Matches the session journal's ceiling; the field is sanitized as HTML
+      // on the way in, same as a journal entry.
+      description: boundedText(5000),
+    })
+    .strict(),
 
-  z.object({
-    step: z.literal("idea"),
-    /** Null means "none of these, I'll write my own". */
-    starterProjectId: z.string().trim().min(1).max(64).nullable(),
-  }).strict(),
+  z
+    .object({
+      step: z.literal("idea"),
+      /** Null means "none of these, I'll write my own". */
+      starterProjectId: z.string().trim().min(1).max(64).nullable(),
+    })
+    .strict(),
 
-  z.object({
-    step: z.literal("tier"),
-    /**
-     * Null means "move on without choosing", which is only legal when the
-     * choice is already locked to Tier 1 by a starter project. The state
-     * machine enforces that — a null here from someone who can choose is
-     * rejected rather than silently skipping the question.
-     */
-    requestedTier: z.number().int().min(1).max(3).nullable(),
-  }).strict(),
+  z
+    .object({
+      step: z.literal("tier"),
+      /**
+       * Null means "move on without choosing", which is only legal when the
+       * choice is already locked to Tier 1 by a starter project. The state
+       * machine enforces that — a null here from someone who can choose is
+       * rejected rather than silently skipping the question.
+       */
+      requestedTier: z.number().int().min(1).max(3).nullable(),
+    })
+    .strict(),
 
-  z.object({
-    step: z.literal("tracking"),
-    dismissed: z.boolean(),
-  }).strict(),
+  z
+    .object({
+      step: z.literal("tracking"),
+      dismissed: z.boolean(),
+    })
+    .strict(),
 ])
 
 export type OnboardingStepInput = z.infer<typeof onboardingStepSchema>

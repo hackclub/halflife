@@ -1,8 +1,8 @@
 "use client"
 import { useRouter } from "next/navigation"
 import { useRef, useState } from "react"
-import { Button, Callout, Field, Panel } from "@/app/components/ui"
 import { PhoneHandoff } from "@/app/components/forms/PhoneHandoff"
+import { Button, Callout, Field, Panel } from "@/app/components/ui"
 import { postForm } from "@/lib/upload-progress"
 
 interface ApiError {
@@ -153,12 +153,7 @@ export function PostComposer({
       </Field>
 
       <Field label="What kind of reel is this?">
-        <select
-          className="hl-select"
-          value={kind}
-          disabled={busy}
-          onChange={(e) => setKind(e.target.value)}
-        >
+        <select className="hl-select" value={kind} disabled={busy} onChange={(e) => setKind(e.target.value)}>
           {KIND_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
@@ -169,12 +164,7 @@ export function PostComposer({
       </Field>
 
       <Field label="About a project?" hint="Optional. Idea and progress reels usually are.">
-        <select
-          className="hl-select"
-          value={projectId}
-          disabled={busy}
-          onChange={(e) => setProjectId(e.target.value)}
-        >
+        <select className="hl-select" value={projectId} disabled={busy} onChange={(e) => setProjectId(e.target.value)}>
           <option value="">Not about a project</option>
           {projects.map((project) => (
             <option key={project.id} value={project.id}>
@@ -192,9 +182,7 @@ export function PostComposer({
             aria-label="Uploading the video"
             style={{ width: "100%", height: "0.6rem" }}
           />
-          <p className="hl-hint">
-            {progress < 1 ? `Uploading… ${Math.round(progress * 100)}%` : "Sent. Storing it…"}
-          </p>
+          <p className="hl-hint">{progress < 1 ? `Uploading… ${Math.round(progress * 100)}%` : "Sent. Storing it…"}</p>
         </div>
       ) : null}
 

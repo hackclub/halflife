@@ -1,19 +1,14 @@
-import prisma from "@/lib/prisma"
-import { ok, fail, parseBody, withRoute } from "@/lib/api"
-import { requireSession } from "@/lib/guards"
-import { sessionUpdateSchema } from "@/lib/schemas/session"
-import { sanitize, sanitizeHtml } from "@/lib/sanitize"
-import { recomputeStreak } from "@/lib/streak"
-import {
-  getSubmissionAccess,
-  isWeekOpen,
-  SUBMISSIONS_CLOSED_MESSAGE,
-  WEEK_CLOSED_MESSAGE,
-} from "@/lib/program"
-import { scheduledWeekFor } from "@/lib/config/program"
-import { PhaseStatus, type Phase, type Theme } from "@/app/generated/prisma/enums"
-import { AuditAction, logAudit } from "@/lib/audit"
+import { type Phase, PhaseStatus, type Theme } from "@/app/generated/prisma/enums"
 import { recomputeWeek } from "@/lib/analytics"
+import { fail, ok, parseBody, withRoute } from "@/lib/api"
+import { AuditAction, logAudit } from "@/lib/audit"
+import { scheduledWeekFor } from "@/lib/config/program"
+import { requireSession } from "@/lib/guards"
+import prisma from "@/lib/prisma"
+import { getSubmissionAccess, isWeekOpen, SUBMISSIONS_CLOSED_MESSAGE, WEEK_CLOSED_MESSAGE } from "@/lib/program"
+import { sanitize, sanitizeHtml } from "@/lib/sanitize"
+import { sessionUpdateSchema } from "@/lib/schemas/session"
+import { recomputeStreak } from "@/lib/streak"
 
 type Params = { params: Promise<{ id: string; sessionId: string }> }
 
@@ -30,11 +25,7 @@ async function loadOwned(userId: string, projectId: string, sessionId: string) {
 }
 
 /** A passed week's entries are the record it is judged on, so they stay put. */
-function weekOpenFor(
-  userId: string,
-  projectId: string,
-  session: { phase: Phase; themeProject: { theme: Theme } },
-) {
+function weekOpenFor(userId: string, projectId: string, session: { phase: Phase; themeProject: { theme: Theme } }) {
   return isWeekOpen(userId, projectId, scheduledWeekFor(session.themeProject.theme, session.phase))
 }
 
@@ -58,8 +49,7 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
   // on: in review, a reviewer is reading them; decided, they are the record
   // the decision was made against. Only a week that is still open or has been
   // sent back for changes can have its entries corrected.
-  const phaseStatus =
-    session.phase === "DESIGN" ? session.themeProject.designStatus : session.themeProject.buildStatus
+  const phaseStatus = session.phase === "DESIGN" ? session.themeProject.designStatus : session.themeProject.buildStatus
   if (phaseStatus === PhaseStatus.in_review) {
     return fail("PHASE_LOCKED", "This week is in review — unsubmit it before editing its entries")
   }
@@ -77,9 +67,7 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
     where: { id: sessionId },
     data: {
       ...(data.title !== undefined ? { title: sanitize(data.title) } : {}),
-      ...(data.content !== undefined
-        ? { content: data.content ? sanitizeHtml(data.content) : null }
-        : {}),
+      ...(data.content !== undefined ? { content: data.content ? sanitizeHtml(data.content) : null } : {}),
       ...(data.hoursClaimed !== undefined ? { hoursClaimed: data.hoursClaimed } : {}),
       ...(data.hoursSource !== undefined ? { hoursSource: data.hoursSource } : {}),
     },

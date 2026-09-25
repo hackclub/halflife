@@ -1,7 +1,7 @@
-import type { Metadata, Viewport } from "next";
-import { Plus_Jakarta_Sans, Shantell_Sans } from "next/font/google";
-import { SketchDefs } from "@/components/platform/art";
-import "./globals.css";
+import type { Metadata, Viewport } from "next"
+import { Plus_Jakarta_Sans, Shantell_Sans } from "next/font/google"
+import { SketchDefs } from "@/components/platform/art"
+import "./globals.css"
 
 /**
  * The platform's root layout: fonts, tokens, and the filter definitions every
@@ -16,27 +16,27 @@ const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
   variable: "--font-jakarta",
   display: "swap",
-});
+})
 
 const hand = Shantell_Sans({
   subsets: ["latin"],
   variable: "--font-hand",
   weight: ["400", "500", "600", "700"],
   display: "swap",
-});
+})
 
 export const metadata: Metadata = {
   title: "Half Life: become a hardware expert in 10 weeks",
   description:
     "Design five hardware projects, then build all five. Ten weeks, real funding, and a 3D printer at the end.",
-};
+}
 
 export const viewport: Viewport = {
   themeColor: "#fcf7f7",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-};
+}
 
 export default function PlatformLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -46,5 +46,5 @@ export default function PlatformLayout({ children }: { children: React.ReactNode
         {children}
       </body>
     </html>
-  );
+  )
 }

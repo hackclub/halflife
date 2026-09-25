@@ -1,6 +1,6 @@
 import "server-only"
-import prisma from "@/lib/prisma"
 import { Role } from "@/app/generated/prisma/enums"
+import prisma from "@/lib/prisma"
 
 export { Role }
 

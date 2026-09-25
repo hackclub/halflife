@@ -1,11 +1,14 @@
 import { z } from "zod"
 import { ReviewResult } from "@/app/generated/prisma/enums"
-import { boundedText, cuid, phaseSchema } from "@/lib/schemas/common"
 import { TIER_IDS } from "@/lib/config/tiers"
+import { boundedText, cuid, phaseSchema } from "@/lib/schemas/common"
 
-const tierSchema = z.number().int().refine((n) => (TIER_IDS as readonly number[]).includes(n), {
-  message: `Tier must be one of ${TIER_IDS.join(", ")}`,
-})
+const tierSchema = z
+  .number()
+  .int()
+  .refine((n) => (TIER_IDS as readonly number[]).includes(n), {
+    message: `Tier must be one of ${TIER_IDS.join(", ")}`,
+  })
 
 /**
  * A discriminated union rather than one flat object with an `if`: it makes
@@ -76,6 +79,4 @@ export const reviewQueueQuery = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(25),
 })
 
-export const overrideSchema = z
-  .object({ phase: phaseSchema, reason: boundedText(2000, 1) })
-  .strict()
+export const overrideSchema = z.object({ phase: phaseSchema, reason: boundedText(2000, 1) }).strict()

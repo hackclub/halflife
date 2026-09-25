@@ -1,17 +1,17 @@
-"use client";
+"use client"
 
-import { useRef, useState } from "react";
-import { IconUpload, IconX } from "@/components/platform/icons";
-import { Button } from "@/components/platform/ui";
-import { UploadProgress } from "@/components/platform/UploadProgress";
-import { uploadFile } from "@/lib/use-handoff";
+import { useRef, useState } from "react"
+import { IconUpload, IconX } from "@/components/platform/icons"
+import { UploadProgress } from "@/components/platform/UploadProgress"
+import { Button } from "@/components/platform/ui"
+import { uploadFile } from "@/lib/use-handoff"
 
-const IMAGE_TYPES = "image/png,image/jpeg,image/webp,image/gif";
+const IMAGE_TYPES = "image/png,image/jpeg,image/webp,image/gif"
 
 export interface UploadedImage {
-  objectKey: string;
+  objectKey: string
   /** A local preview, so the thumbnail shows before the bucket serves it. */
-  previewUrl: string;
+  previewUrl: string
 }
 
 /**
@@ -29,60 +29,60 @@ export function ImageUploads({
   max,
   label,
 }: {
-  images: UploadedImage[];
-  onChange: (next: UploadedImage[]) => void;
-  folder: string;
+  images: UploadedImage[]
+  onChange: (next: UploadedImage[]) => void
+  folder: string
   /** The server takes at most this many attachments with a submission. */
-  max: number;
+  max: number
   /** What the pictures are, for the thumbnails' alt text. */
-  label: string;
+  label: string
 }) {
-  const input = useRef<HTMLInputElement>(null);
+  const input = useRef<HTMLInputElement>(null)
   // One row per file still on its way up, in the order they were picked.
-  const [pending, setPending] = useState<{ id: string; name: string; progress: number | null }[]>([]);
-  const busy = pending.length;
-  const [errors, setErrors] = useState<string[]>([]);
+  const [pending, setPending] = useState<{ id: string; name: string; progress: number | null }[]>([])
+  const busy = pending.length
+  const [errors, setErrors] = useState<string[]>([])
   // The newest list, for uploads that finish after another has changed it.
-  const latest = useRef(images);
-  latest.current = images;
+  const latest = useRef(images)
+  latest.current = images
 
-  const room = max - images.length;
+  const room = max - images.length
 
   async function pick(files: FileList | null) {
-    if (!files?.length) return;
-    const chosen = Array.from(files);
-    const taken = chosen.slice(0, Math.max(0, room));
-    const problems: string[] = [];
+    if (!files?.length) return
+    const chosen = Array.from(files)
+    const taken = chosen.slice(0, Math.max(0, room))
+    const problems: string[] = []
     if (chosen.length > taken.length) {
-      problems.push(`Only ${max} screenshots fit, so ${chosen.length - taken.length} were left out.`);
+      problems.push(`Only ${max} screenshots fit, so ${chosen.length - taken.length} were left out.`)
     }
-    setErrors(problems);
-    const batch = taken.map((file) => ({ file, id: crypto.randomUUID() }));
-    setPending((p) => [...p, ...batch.map(({ file, id }) => ({ id, name: file.name, progress: null }))]);
+    setErrors(problems)
+    const batch = taken.map((file) => ({ file, id: crypto.randomUUID() }))
+    setPending((p) => [...p, ...batch.map(({ file, id }) => ({ id, name: file.name, progress: null }))])
 
     await Promise.all(
       batch.map(async ({ file, id }) => {
         try {
           const { objectKey } = await uploadFile(file, folder, (progress) =>
             setPending((p) => p.map((row) => (row.id === id ? { ...row, progress } : row))),
-          );
-          const next = [...latest.current, { objectKey, previewUrl: URL.createObjectURL(file) }];
-          latest.current = next;
-          onChange(next);
+          )
+          const next = [...latest.current, { objectKey, previewUrl: URL.createObjectURL(file) }]
+          latest.current = next
+          onChange(next)
         } catch (err) {
-          setErrors((e) => [...e, `${file.name}: ${err instanceof Error ? err.message : "did not upload"}`]);
+          setErrors((e) => [...e, `${file.name}: ${err instanceof Error ? err.message : "did not upload"}`])
         } finally {
-          setPending((p) => p.filter((row) => row.id !== id));
+          setPending((p) => p.filter((row) => row.id !== id))
         }
       }),
-    );
-    if (input.current) input.current.value = "";
+    )
+    if (input.current) input.current.value = ""
   }
 
   function remove(key: string) {
-    const target = images.find((i) => i.objectKey === key);
-    if (target) URL.revokeObjectURL(target.previewUrl);
-    onChange(images.filter((i) => i.objectKey !== key));
+    const target = images.find((i) => i.objectKey === key)
+    if (target) URL.revokeObjectURL(target.previewUrl)
+    onChange(images.filter((i) => i.objectKey !== key))
   }
 
   return (
@@ -126,9 +126,7 @@ export function ImageUploads({
           {busy > 0 ? "Uploading…" : images.length > 0 ? "Add more files" : "Select files"}
         </Button>
         <span className="hand text-[0.8rem] text-navy-soft tabular-nums">
-          {images.length > 0
-            ? `${images.length} of ${max} added`
-            : `PNG, JPG, WebP or GIF · up to ${max}`}
+          {images.length > 0 ? `${images.length} of ${max} added` : `PNG, JPG, WebP or GIF · up to ${max}`}
         </span>
       </div>
 
@@ -149,5 +147,5 @@ export function ImageUploads({
         </p>
       ))}
     </div>
-  );
+  )
 }

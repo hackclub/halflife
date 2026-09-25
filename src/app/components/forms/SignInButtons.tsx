@@ -1,7 +1,7 @@
 "use client"
 import { useState } from "react"
-import { linkHackatime, signInWith } from "@/lib/auth-client"
 import { Button, Callout } from "@/app/components/ui"
+import { linkHackatime, signInWith } from "@/lib/auth-client"
 
 export function SignInButtons({ hasSession }: Readonly<{ hasSession: boolean }>) {
   const [busy, setBusy] = useState<string | null>(null)
@@ -22,11 +22,7 @@ export function SignInButtons({ hasSession }: Readonly<{ hasSession: boolean }>)
   return (
     <div className="hl-stack hl-stack--tight">
       {error ? <Callout tone="danger">{error}</Callout> : null}
-      <Button
-        variant="primary"
-        disabled={busy !== null}
-        onClick={() => run("hca", () => signInWith("hca"))}
-      >
+      <Button variant="primary" disabled={busy !== null} onClick={() => run("hca", () => signInWith("hca"))}>
         {busy === "hca" ? "Redirecting…" : "Continue with Hack Club"}
       </Button>
       {hasSession ? (

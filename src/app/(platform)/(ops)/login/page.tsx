@@ -1,8 +1,8 @@
 import { headers } from "next/headers"
 import Link from "next/link"
-import { auth } from "@/lib/auth"
-import { Panel } from "@/app/components/ui"
 import { SignInButtons } from "@/app/components/forms/SignInButtons"
+import { Panel } from "@/app/components/ui"
+import { auth } from "@/lib/auth"
 
 export const dynamic = "force-dynamic"
 
@@ -14,8 +14,8 @@ export default async function LoginPage() {
       <h1 style={{ marginBottom: 0 }}>Sign in</h1>
       <Panel>
         <p className="hl-muted" style={{ marginTop: 0 }}>
-          Half-Life uses your Hack Club account. Linking Hackatime is optional and only matters
-          for firmware and code hours.
+          Half-Life uses your Hack Club account. Linking Hackatime is optional and only matters for firmware and code
+          hours.
         </p>
         <SignInButtons hasSession={!!session} />
       </Panel>

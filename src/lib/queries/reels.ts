@@ -1,7 +1,7 @@
 import "server-only"
-import prisma from "@/lib/prisma"
 import { PostStatus, type PublicReelPlatform } from "@/app/generated/prisma/enums"
 import { THEMES } from "@/lib/config/program"
+import prisma from "@/lib/prisma"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
 /**
@@ -80,7 +80,11 @@ export async function getMyReels(userId: string): Promise<MyReelGroup[]> {
       const theme = project ? THEMES.find((t) => t.id === project.theme) : undefined
       groups.set(key, {
         project: project
-          ? { id: project.id, title: project.title || theme?.label || "Untitled project", theme: theme?.label ?? project.theme }
+          ? {
+              id: project.id,
+              title: project.title || theme?.label || "Untitled project",
+              theme: theme?.label ?? project.theme,
+            }
           : null,
         reels: [],
       })

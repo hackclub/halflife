@@ -1,5 +1,5 @@
-import { DESIGN_WEEKS } from "./config/printers";
-import type { Project, SessionLog, Week } from "./types";
+import { DESIGN_WEEKS } from "./config/printers"
+import type { Project, SessionLog, Week } from "./types"
 
 /**
  * A project is one theme carried across two weeks — designed in week N, built
@@ -9,37 +9,37 @@ import type { Project, SessionLog, Week } from "./types";
 
 /** What the timeline needs to read out of a checkpoint. Structural on purpose: * the store owns this shape, and this file has no business importing it. */
 export interface CheckpointRead {
-  done: boolean;
-  at?: number;
-  caption?: string;
-  minutes: number;
-  log: SessionLog[];
+  done: boolean
+  at?: number
+  caption?: string
+  minutes: number
+  log: SessionLog[]
 }
 
 export type ProjectEvent =
   | {
-      kind: "session";
-      id: string;
-      at: number;
-      weekId: number;
-      minutes: number;
-      body: string;
-      clips: string[];
+      kind: "session"
+      id: string
+      at: number
+      weekId: number
+      minutes: number
+      body: string
+      clips: string[]
     }
   | {
-      kind: "reel";
-      id: string;
-      at: number;
-      weekId: number;
-      title: string;
-      caption: string;
-      brief: string;
-    };
+      kind: "reel"
+      id: string
+      at: number
+      weekId: number
+      title: string
+      caption: string
+      brief: string
+    }
 
 /** The design week that owns a project, and the build week that finishes it. */
 export function projectWeeks(project: Project, weeks: Week[]): Week[] {
-  const ids = [project.weekId, project.weekId + DESIGN_WEEKS];
-  return weeks.filter((w) => ids.includes(w.id));
+  const ids = [project.weekId, project.weekId + DESIGN_WEEKS]
+  return weeks.filter((w) => ids.includes(w.id))
 }
 
 /**
@@ -50,16 +50,12 @@ export function projectWeeks(project: Project, weeks: Week[]): Week[] {
  * middle of a week's work rather than at the end of it. Ties break on the id
  * so the order is stable when two land in the same millisecond.
  */
-export function projectEvents(
-  project: Project,
-  weeks: Week[],
-  read: (id: string) => CheckpointRead,
-): ProjectEvent[] {
-  const out: ProjectEvent[] = [];
+export function projectEvents(project: Project, weeks: Week[], read: (id: string) => CheckpointRead): ProjectEvent[] {
+  const out: ProjectEvent[] = []
 
   for (const week of projectWeeks(project, weeks)) {
     for (const cp of week.checkpoints) {
-      const state = read(cp.id);
+      const state = read(cp.id)
 
       if (cp.kind === "journal") {
         for (const entry of state.log) {
@@ -74,7 +70,7 @@ export function projectEvents(
             minutes: entry.minutes,
             body: entry.body,
             clips: entry.clips ?? [],
-          });
+          })
         }
       } else if (cp.kind === "reel" && state.done) {
         out.push({
@@ -88,31 +84,28 @@ export function projectEvents(
           title: cp.title,
           caption: state.caption ?? "",
           brief: cp.reelBrief ?? "",
-        });
+        })
       }
     }
   }
 
-  return out.sort((a, b) => b.at - a.at || b.id.localeCompare(a.id));
+  return out.sort((a, b) => b.at - a.at || b.id.localeCompare(a.id))
 }
 
 /** The running totals a project card and its header both want. */
 export function projectStats(events: ProjectEvent[]) {
-  const sessions = events.filter((e) => e.kind === "session");
-  const minutes = sessions.reduce((n, e) => n + (e.kind === "session" ? e.minutes : 0), 0);
-  const started = events[events.length - 1]?.at ?? 0;
+  const sessions = events.filter((e) => e.kind === "session")
+  const minutes = sessions.reduce((n, e) => n + (e.kind === "session" ? e.minutes : 0), 0)
+  const started = events[events.length - 1]?.at ?? 0
   return {
     sessions: sessions.length,
     reels: events.length - sessions.length,
     hours: minutes / 60,
     started,
-  };
+  }
 }
 
-const MONTHS = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 /**
  * Dates are written out by hand rather than handed to toLocaleDateString,
@@ -120,12 +113,12 @@ const MONTHS = [
  * so can disagree between the server render and the browser's.
  */
 export function fmtDate(at: number): string {
-  if (!at) return "undated";
-  const d = new Date(at);
-  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  if (!at) return "undated"
+  const d = new Date(at)
+  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`
 }
 
 /** Hours, two decimals at most and never a trailing zero. */
 export function fmtHours(h: number): string {
-  return `${Math.round(h * 100) / 100}h`;
+  return `${Math.round(h * 100) / 100}h`
 }

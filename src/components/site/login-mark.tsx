@@ -1,7 +1,7 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { signInWith, useSession } from "@/lib/auth-client";
+import { useState } from "react"
+import { signInWith, useSession } from "@/lib/auth-client"
 
 /**
  * The way back in, pinned to the painting's top-right corner.
@@ -36,32 +36,32 @@ import { signInWith, useSession } from "@/lib/auth-client";
  * page stays where it is: nothing on the site sends anyone to /login.
  */
 export default function LoginMark() {
-  const { data: session } = useSession();
-  const [starting, setStarting] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const { data: session } = useSession()
+  const [starting, setStarting] = useState(false)
+  const [failed, setFailed] = useState(false)
 
   async function signIn(e: React.MouseEvent<HTMLAnchorElement>) {
     // Signed in already, or a modified click (new tab, and so on): let the
     // link do what links do.
-    if (session || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
-    e.preventDefault();
-    if (starting) return;
-    setStarting(true);
+    if (session || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
+    e.preventDefault()
+    if (starting) return
+    setStarting(true)
     try {
       // better-auth reports a refusal in the result rather than throwing, and
       // on success the page is already on its way to Hack Club.
-      const result = await signInWith("hca", "/dashboard");
-      if (result?.error) fail();
+      const result = await signInWith("hca", "/dashboard")
+      if (result?.error) fail()
     } catch {
-      fail();
+      fail()
     }
   }
 
   // Stays on the landing page and says so on the mark itself, rather than
   // sending anyone to a separate sign-in page.
   function fail() {
-    setStarting(false);
-    setFailed(true);
+    setStarting(false)
+    setFailed(true)
   }
 
   return (
@@ -74,5 +74,5 @@ export default function LoginMark() {
     >
       {failed ? "try again" : "log in"}
     </a>
-  );
+  )
 }

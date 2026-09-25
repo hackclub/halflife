@@ -80,7 +80,9 @@ async function cookieFor(userId: string): Promise<string> {
       expiresAt: new Date(Date.now() + 864e5),
     },
   })
-  const sig = createHmac("sha256", process.env.BETTER_AUTH_SECRET ?? "").update(token).digest("base64")
+  const sig = createHmac("sha256", process.env.BETTER_AUTH_SECRET ?? "")
+    .update(token)
+    .digest("base64")
   return `better-auth.session_token=${token}.${sig}`
 }
 
@@ -197,9 +199,7 @@ async function main() {
     })
     const text = await res.text()
     const refused =
-      [401, 403, 404, 503].includes(res.status) ||
-      (res.status >= 300 && res.status < 400) ||
-      text.includes("/login")
+      [401, 403, 404, 503].includes(res.status) || (res.status >= 300 && res.status < 400) || text.includes("/login")
     check(`${method} ${path} refuses a participant`, refused, `got ${res.status}`)
   }
 

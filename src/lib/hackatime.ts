@@ -20,10 +20,7 @@ export interface HackatimeFetch {
  * difference between "genuinely zero" and "we don't know", and the approval
  * path refuses to finalise on "we don't know".
  */
-export async function fetchProjectSeconds(
-  hackatimeUserId: string,
-  project: string,
-): Promise<HackatimeFetch> {
+export async function fetchProjectSeconds(hackatimeUserId: string, project: string): Promise<HackatimeFetch> {
   try {
     const url = new URL(`${BASE}/api/v1/users/${encodeURIComponent(hackatimeUserId)}/stats`)
     url.searchParams.set("features", "projects")
@@ -43,9 +40,7 @@ export async function fetchProjectSeconds(
   }
 }
 
-export async function listUserProjects(
-  hackatimeUserId: string,
-): Promise<{ name: string; totalSeconds: number }[]> {
+export async function listUserProjects(hackatimeUserId: string): Promise<{ name: string; totalSeconds: number }[]> {
   try {
     const url = new URL(`${BASE}/api/v1/users/${encodeURIComponent(hackatimeUserId)}/stats`)
     url.searchParams.set("features", "projects")

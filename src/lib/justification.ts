@@ -1,8 +1,8 @@
 import "server-only"
-import prisma from "@/lib/prisma"
 import { HoursSource, Phase } from "@/app/generated/prisma/enums"
-import { getHoursBreakdown } from "@/lib/hours"
 import { getThemeDef } from "@/lib/config/program"
+import { getHoursBreakdown } from "@/lib/hours"
+import prisma from "@/lib/prisma"
 
 /**
  * The text that lands in `Optional - Override Hours Spent Justification` on the
@@ -39,9 +39,7 @@ export async function buildHoursJustification(input: {
   )
   if (project.tier) lines.push(`Reviewed at Tier ${project.tier}.`)
   lines.push("")
-  lines.push(
-    `Journal: ${breakdown.journalHours}h across ${breakdown.journalEntryCount} entries.`,
-  )
+  lines.push(`Journal: ${breakdown.journalHours}h across ${breakdown.journalEntryCount} entries.`)
   if (breakdown.hackatimeHours > 0) {
     lines.push(`Hackatime (firmware/code): ${breakdown.hackatimeHours}h.`)
   }
@@ -49,9 +47,7 @@ export async function buildHoursJustification(input: {
     // Coverage, not "hours of lapse". A 30x timelapse of eight hours has a
     // four-minute runtime; reporting that as hours makes it look like the
     // participant did almost nothing.
-    lines.push(
-      `Timelapse evidence covers ${Math.round(breakdown.timelapseCoverage * 100)}% of claimed time.`,
-    )
+    lines.push(`Timelapse evidence covers ${Math.round(breakdown.timelapseCoverage * 100)}% of claimed time.`)
   }
   lines.push(`Total approved: ${breakdown.effectiveHours}h.`)
   lines.push("")
@@ -60,9 +56,7 @@ export async function buildHoursJustification(input: {
     const hours = s.hoursApproved ?? s.hoursClaimed
     const tracked = s.hoursSource === HoursSource.HACKATIME_TRACKED ? " (counted via Hackatime)" : ""
     const adjusted =
-      s.hoursApproved !== null && s.hoursApproved !== s.hoursClaimed
-        ? ` [claimed ${s.hoursClaimed}h]`
-        : ""
+      s.hoursApproved !== null && s.hoursApproved !== s.hoursClaimed ? ` [claimed ${s.hoursClaimed}h]` : ""
     lines.push(`- ${s.effectiveDate ?? "undated"}: ${s.title} — ${hours}h${adjusted}${tracked}`)
   }
 

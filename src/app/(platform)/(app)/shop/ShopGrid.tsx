@@ -1,12 +1,12 @@
-"use client";
+"use client"
 
-import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
-import { ShopArt } from "@/components/platform/art";
-import { IconCheck, IconCoin } from "@/components/platform/icons";
-import { Panel, cx } from "@/components/platform/ui";
-import { useStore } from "@/lib/store";
-import type { ShopItemView } from "@/lib/shop";
+import { useRouter } from "next/navigation"
+import { useMemo, useState } from "react"
+import { ShopArt } from "@/components/platform/art"
+import { IconCheck, IconCoin } from "@/components/platform/icons"
+import { cx, Panel } from "@/components/platform/ui"
+import type { ShopItemView } from "@/lib/shop"
+import { useStore } from "@/lib/store"
 
 /**
  * The shelves, in the order they read on screen, mapped to the categories the
@@ -20,7 +20,7 @@ const CATEGORIES = [
   { label: "Upgrades", match: "PRINTER_UPGRADE" },
   { label: "Consumables", match: "CONSUMABLE" },
   { label: "Everything else", match: "MISC" },
-] as const;
+] as const
 
 /** The drawn object that stands in for an item, since the rows carry no art. */
 const ART: Record<string, string> = {
@@ -28,19 +28,19 @@ const ART: Record<string, string> = {
   PRINTER_UPGRADE: "iron",
   CONSUMABLE: "kit",
   MISC: "sticker",
-};
+}
 
 export function ShopGrid({ items: all }: { items: readonly ShopItemView[] }) {
-  const router = useRouter();
-  const { coins, printerFund } = useStore();
-  const [cat, setCat] = useState<string>("All");
-  const [busy, setBusy] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const router = useRouter()
+  const { coins, printerFund } = useStore()
+  const [cat, setCat] = useState<string>("All")
+  const [busy, setBusy] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const items = useMemo(() => {
-    const shelf = CATEGORIES.find((c) => c.label === cat);
-    return !shelf?.match ? all : all.filter((i) => i.category === shelf.match);
-  }, [all, cat]);
+    const shelf = CATEGORIES.find((c) => c.label === cat)
+    return !shelf?.match ? all : all.filter((i) => i.category === shelf.match)
+  }, [all, cat])
 
   /**
    * Buying is a request, not a transaction the browser can settle.
@@ -51,27 +51,27 @@ export function ShopGrid({ items: all }: { items: readonly ShopItemView[] }) {
    * the air is how somebody ends up with two printers.
    */
   async function buy(item: ShopItemView) {
-    if (busy) return;
-    setBusy(item.id);
-    setError(null);
+    if (busy) return
+    setBusy(item.id)
+    setError(null)
     try {
       const res = await fetch("/api/shop/orders", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ shopItemId: item.id, quantity: 1 }),
-      });
+      })
       if (!res.ok) {
         const payload = (await res.json().catch(() => ({}))) as {
-          error?: { message?: string };
-        };
-        setError(payload.error?.message ?? `That did not go through (${res.status})`);
-        return;
+          error?: { message?: string }
+        }
+        setError(payload.error?.message ?? `That did not go through (${res.status})`)
+        return
       }
-      router.refresh();
+      router.refresh()
     } catch {
-      setError("That did not go through");
+      setError("That did not go through")
     } finally {
-      setBusy(null);
+      setBusy(null)
     }
   }
 
@@ -107,13 +107,13 @@ export function ShopGrid({ items: all }: { items: readonly ShopItemView[] }) {
 
       <ul className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-3">
         {items.map((item) => {
-          const has = item.ownedCount > 0;
-          const out = item.stock !== null && item.stock <= 0;
+          const has = item.ownedCount > 0
+          const out = item.stock !== null && item.stock <= 0
           // Banked coins are legal tender for a printer and for nothing else,
           // so what you can afford depends on what you are buying. Without this
           // the shop would offer to sell someone a hoodie out of their savings.
-          const purse = item.category === "PRINTER" ? printerFund : coins;
-          const afford = purse >= item.priceCredits;
+          const purse = item.category === "PRINTER" ? printerFund : coins
+          const afford = purse >= item.priceCredits
           return (
             <Panel
               key={item.id}
@@ -184,14 +184,14 @@ export function ShopGrid({ items: all }: { items: readonly ShopItemView[] }) {
                 </p>
               </div>
             </Panel>
-          );
+          )
         })}
       </ul>
 
       <p className="hand mt-8 text-center text-[0.86rem] text-navy-soft">
-        you have <span className="font-bold text-orange-deep tabular-nums">{coins}</span> coins. every
-        hour you log past your tier banks five more.
+        you have <span className="font-bold text-orange-deep tabular-nums">{coins}</span> coins. every hour you log past
+        your tier banks five more.
       </p>
     </>
-  );
+  )
 }

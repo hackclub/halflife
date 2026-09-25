@@ -1,6 +1,6 @@
-"use client";
+"use client"
 
-import { cx } from "@/components/platform/ui";
+import { cx } from "@/components/platform/ui"
 
 /**
  * How far a file has got on its way up.
@@ -21,14 +21,14 @@ export function UploadProgress({
   className,
 }: {
   /** 0 to 1. Null before the first byte is reported. */
-  progress: number | null;
+  progress: number | null
   /** The file, when there is room to say which one. */
-  name?: string;
-  className?: string;
+  name?: string
+  className?: string
 }) {
-  const sent = progress ?? 0;
-  const storing = sent >= 1;
-  const pct = Math.round(sent * 100);
+  const sent = progress ?? 0
+  const storing = sent >= 1
+  const pct = Math.round(sent * 100)
 
   return (
     <div className={cx("grid gap-1", className)}>
@@ -54,5 +54,5 @@ export function UploadProgress({
         {storing && <div aria-hidden="true" className="upload-storing absolute inset-0 rounded-full" />}
       </div>
     </div>
-  );
+  )
 }

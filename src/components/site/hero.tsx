@@ -1,17 +1,15 @@
-import type { CSSProperties } from "react";
-
-import Image from "next/image";
-
-import bgArt from "../../../public/art/bg.png";
-import AnnouncementBanner from "@/components/site/announcement-banner";
+import Image from "next/image"
+import type { CSSProperties } from "react"
+import AnnouncementBanner from "@/components/site/announcement-banner"
+import LoginMark from "@/components/site/login-mark"
+import SignupForm from "@/components/site/signup-form"
+import Wordmark from "@/components/site/wordmark"
+import { BRAND } from "@/lib/site/content"
+import { swashBoxWidth, u } from "@/lib/site/stage"
+import bgArt from "../../../public/art/bg.png"
 // Parked: the corner decals, to be placed later.
 // import CornerDecal from "@/components/site/corner-decal";
-import flagArt from "../../../public/art/hackclub-flag.svg";
-import LoginMark from "@/components/site/login-mark";
-import SignupForm from "@/components/site/signup-form";
-import Wordmark from "@/components/site/wordmark";
-import { BRAND } from "@/lib/site/content";
-import { swashBoxWidth, u } from "@/lib/site/stage";
+import flagArt from "../../../public/art/hackclub-flag.svg"
 
 /**
  * The hero plate, taken to half the grid.
@@ -38,10 +36,10 @@ import { swashBoxWidth, u } from "@/lib/site/stage";
  * plate origin, and only where that origin lands has changed. Every number
  * below is still the literal Figma pixel DESIGN.md says it is.
  */
-const PLATE = { x: 276, y: 98, w: 1256, h: 677 } as const;
-const PLATE_SCALE = 864 / PLATE.w;
-const PLATE_W = PLATE.w * PLATE_SCALE;
-const PLATE_H = PLATE.h * PLATE_SCALE;
+const PLATE = { x: 276, y: 98, w: 1256, h: 677 } as const
+const PLATE_SCALE = 864 / PLATE.w
+const PLATE_W = PLATE.w * PLATE_SCALE
+const PLATE_H = PLATE.h * PLATE_SCALE
 
 /* bg.png is 1920x1080; the art layer's `aspect-[1920/1080]` is that, written
    out because Tailwind reads class names from the source as literal text. */
@@ -78,7 +76,7 @@ const ART_FADE = [
   "rgb(0 0 0/.20) 92%",
   "rgb(0 0 0/.06) 96%",
   "transparent 100%)",
-].join(",");
+].join(",")
 
 /**
  * The plate is centred in the fold, not at a fixed y on the comp grid.
@@ -115,7 +113,7 @@ const ART_FADE = [
  * for the cue — 685 against a 16:9 fold's 972, so anything squarer than 2.5:1
  * fits outright and `min-h` grows the block rather than clipping it.
  */
-const LOGO_STAGE_W = u(604.8);
+const LOGO_STAGE_W = u(604.8)
 
 /**
  * How far the tagline runs, in comp units, set in Ubuntu 400 at `u(32.8)`.
@@ -140,7 +138,7 @@ const LOGO_STAGE_W = u(604.8);
  * column edge energy, so the swash stops 190 short of the left pipe column and
  * 86 short of the right.
  */
-const TAGLINE_RUN = 830;
+const TAGLINE_RUN = 830
 
 /*
  * The stacked layout's own width, also taken down 30% — 60 to 42, and the
@@ -176,11 +174,11 @@ const TAGLINE_RUN = 830;
 const PLATE_SIZE = {
   width: u(PLATE_W),
   minHeight: u(PLATE_H),
-} as const;
+} as const
 
 /** A comp length on the plate. */
 function onPlateU(px: number) {
-  return u(px * PLATE_SCALE);
+  return u(px * PLATE_SCALE)
 }
 
 /**
@@ -253,23 +251,14 @@ export default function Hero() {
             `text-center` is set here rather than per-child so it reaches the
             signup form's own status line too, and does not reach the stacked
             layout, which stays left-aligned in its column. */}
-        <div
-          className="row-start-2 flex flex-col items-center justify-center text-center"
-          style={PLATE_SIZE}
-        >
+        <div className="row-start-2 flex flex-col items-center justify-center text-center" style={PLATE_SIZE}>
           {/* `cqw` rather than `vw`: the stage caps at 1728 and centres, so a
               real `vw` would keep growing the mark on a wider monitor while
               everything around it had stopped. Against the stage it is 35vw up
               to the cap and 35% of the composition after it. `fontSize` is
               still here for the live-type branch, which renders if LOGO_SRC is
               ever cleared again. */}
-          <Wordmark
-            as="h1"
-            art
-            artWidth={LOGO_STAGE_W}
-            fontSize={onPlateU(226.768)}
-            className="w-full"
-          />
+          <Wordmark as="h1" art artWidth={LOGO_STAGE_W} fontSize={onPlateU(226.768)} className="w-full" />
 
           {/* One line, and sized so it stays one line.
 
@@ -332,11 +321,7 @@ export default function Hero() {
           />
         </div>
 
-        <ScrollCue
-          className="row-start-3 self-end"
-          style={{ marginBottom: u(56) }}
-          fontSize={u(22)}
-        />
+        <ScrollCue className="row-start-3 self-end" style={{ marginBottom: u(56) }} fontSize={u(22)} />
       </div>
 
       {/* ── Stacked layout, below 1180px ───────────────────────────────── */}
@@ -417,7 +402,7 @@ export default function Hero() {
         </div>
       </div>
     </section>
-  );
+  )
 }
 
 /**
@@ -469,10 +454,10 @@ function ScrollCue({
   style,
   fontSize,
 }: {
-  className?: string;
-  style?: CSSProperties;
+  className?: string
+  style?: CSSProperties
   /** The label's size, as a CSS length. */
-  fontSize?: string;
+  fontSize?: string
 }) {
   return (
     <a
@@ -492,7 +477,7 @@ function ScrollCue({
           adds after the final L, which would otherwise push the word half a
           space left of the centre it is being centred on. */}
     </a>
-  );
+  )
 }
 
 /**
@@ -523,7 +508,7 @@ function HackClubFlag() {
     >
       <Image src={flagArt} alt="Hack Club" priority className="w-full" />
     </a>
-  );
+  )
 }
 
 /**
@@ -600,5 +585,5 @@ function HeroArt() {
         />
       </div>
     </div>
-  );
+  )
 }

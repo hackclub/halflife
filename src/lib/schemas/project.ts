@@ -7,7 +7,10 @@ export const projectUpdateSchema = z
     description: boundedText(4000).optional(),
     githubRepo: httpsUrl.nullable().optional(),
     coverImageKey: z.string().max(500).nullable().optional(),
-    artifactLinks: z.array(z.object({ label: boundedText(80, 1), url: httpsUrl })).max(10).optional(),
+    artifactLinks: z
+      .array(z.object({ label: boundedText(80, 1), url: httpsUrl }))
+      .max(10)
+      .optional(),
     /**
      * The tier the participant is ASKING for. Never the assigned one: that is
      * a reviewer's decision at design approval, because it is parts money.
@@ -55,6 +58,4 @@ export const bomItemUpdateSchema = bomItemSchema.partial().strict()
 export type BomItemInput = z.infer<typeof bomItemSchema>
 
 /** A bill of materials' tax and shipping total. Null clears it back to zero. */
-export const bomExtrasSchema = z
-  .object({ taxShippingUsd: z.number().min(0).max(10_000).nullable() })
-  .strict()
+export const bomExtrasSchema = z.object({ taxShippingUsd: z.number().min(0).max(10_000).nullable() }).strict()

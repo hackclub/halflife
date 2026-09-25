@@ -1,16 +1,16 @@
 import "server-only"
-import prisma from "@/lib/prisma"
+import type { Prisma } from "@/app/generated/prisma/client"
 import {
-  PhaseStatus,
-  ShopFulfillmentMethod,
+  type PhaseStatus,
+  type ShopFulfillmentMethod,
   ShopFulfillmentStage,
   ShopOrderStatus,
-  Theme,
+  type Theme,
 } from "@/app/generated/prisma/enums"
-import type { Prisma } from "@/app/generated/prisma/client"
 import { getBalances } from "@/lib/currency"
-import { getPrinterQualification } from "@/lib/printer"
 import { safeDecrypt } from "@/lib/pii"
+import { getPrinterQualification } from "@/lib/printer"
+import prisma from "@/lib/prisma"
 
 export async function listUsers(opts: { q?: string; cursor?: string; limit: number }) {
   const rows = await prisma.user.findMany({
@@ -85,10 +85,7 @@ export async function listProjects(opts: ProjectFilters & { cursor?: string; lim
         : {},
       opts.extended
         ? {
-            OR: [
-              { submissionExtensionUntil: { gt: now } },
-              { user: { submissionExtensionUntil: { gt: now } } },
-            ],
+            OR: [{ submissionExtensionUntil: { gt: now } }, { user: { submissionExtensionUntil: { gt: now } } }],
           }
         : {},
     ],
@@ -183,11 +180,7 @@ export async function getUserDetail(userId: string) {
   return { user, balances, ledger, orders, printer }
 }
 
-export async function listOrders(opts: {
-  status?: ShopOrderStatus
-  cursor?: string
-  limit: number
-}) {
+export async function listOrders(opts: { status?: ShopOrderStatus; cursor?: string; limit: number }) {
   const rows = await prisma.shopOrder.findMany({
     where: opts.status ? { status: opts.status } : undefined,
     orderBy: [{ placedAt: "desc" }, { id: "desc" }],
@@ -220,9 +213,7 @@ export const fulfillmentStageOf = (order: {
   status: ShopOrderStatus
   fulfillmentStage: ShopFulfillmentStage
 }): ShopFulfillmentStage =>
-  order.status === ShopOrderStatus.CANCELLED
-    ? ShopFulfillmentStage.CANCELLED
-    : order.fulfillmentStage
+  order.status === ShopOrderStatus.CANCELLED ? ShopFulfillmentStage.CANCELLED : order.fulfillmentStage
 
 export interface FulfillmentFilters {
   /** Inclusive, from the start of this instant. */
@@ -241,10 +232,7 @@ export interface FulfillmentFilters {
  * what the parcel will actually be addressed to. It is decrypted here and only
  * the plain country leaves this function — never the ciphertext.
  */
-export async function listFulfillmentOrders(
-  filters: FulfillmentFilters,
-  opts: { cursor?: string; limit: number },
-) {
+export async function listFulfillmentOrders(filters: FulfillmentFilters, opts: { cursor?: string; limit: number }) {
   const where: Prisma.ShopOrderWhereInput = {
     status: { in: FULFILLMENT_ORDER_STATUSES },
     ...(filters.placedFrom || filters.placedBefore
@@ -262,10 +250,7 @@ export async function listFulfillmentOrders(
         : {}),
     ...(filters.stage === ShopFulfillmentStage.CANCELLED
       ? {
-          OR: [
-            { status: ShopOrderStatus.CANCELLED },
-            { fulfillmentStage: ShopFulfillmentStage.CANCELLED },
-          ],
+          OR: [{ status: ShopOrderStatus.CANCELLED }, { fulfillmentStage: ShopFulfillmentStage.CANCELLED }],
         }
       : filters.stage
         ? {
@@ -315,12 +300,7 @@ export async function listFulfillmentOrders(
   return { items, nextCursor: hasMore && last ? last.id : null }
 }
 
-export async function listAuditLog(opts: {
-  action?: string
-  targetId?: string
-  cursor?: string
-  limit: number
-}) {
+export async function listAuditLog(opts: { action?: string; targetId?: string; cursor?: string; limit: number }) {
   const rows = await prisma.auditLog.findMany({
     where: {
       ...(opts.action ? { action: opts.action as never } : {}),

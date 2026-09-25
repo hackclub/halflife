@@ -26,6 +26,9 @@ export const GET = withRoute(async (req: Request) => {
     return fail("UNAVAILABLE", "Your referral link isn't available right now")
   }
 
-  const origin = (process.env.NEXT_PUBLIC_APP_URL ?? process.env.BETTER_AUTH_URL ?? new URL(req.url).origin).replace(/\/$/, "")
+  const origin = (process.env.NEXT_PUBLIC_APP_URL ?? process.env.BETTER_AUTH_URL ?? new URL(req.url).origin).replace(
+    /\/$/,
+    "",
+  )
   return ok({ link: `${origin}/?ref=${encodeURIComponent(result.referralCode)}` })
 })

@@ -14,8 +14,7 @@
   /* The comp's brush face. Now the wordmark and the footer's column labels
      only: "how does it work?" moved to the display face with the other
      headers, so the brush is the page's signature rather than its voice. */
-  --font-hand: var(--font-masterpiece), var(--font-ubuntu), ui-sans-serif,
-    system-ui, sans-serif;
+  --font-hand: var(--font-masterpiece), var(--font-ubuntu), ui-sans-serif, system-ui, sans-serif;
   --font-body: var(--font-open-sans), ui-sans-serif, system-ui, sans-serif;
   /* The hero tagline alone. Named for its role rather than its face, like the
      three above it — the utility is `font-tagline`, not `font-ubuntu`. */
@@ -24,9 +23,9 @@
   --color-hl-ink: #31222c;
   --color-hl-paper: #ededed;
   --color-hl-cyan: #8ed3dc;
-  --color-hl-blue: #88BCDF;
-  --color-hl-blue-deep: #0E86B9;
-  --color-hl-blue-pale: #9AB5D8;
+  --color-hl-blue: #88bcdf;
+  --color-hl-blue-deep: #0e86b9;
+  --color-hl-blue-pale: #9ab5d8;
   --color-hl-periwinkle: #a39bd6;
   /**
    * The page's ground from the hero through "how does it work?".
@@ -45,13 +44,13 @@
    * It is not `hl-ink` renamed. Ink is still the page's ground below the
    * carousel and behind the footer, and still the interior of an image slot.
    */
-  --color-hl-teal: #2E96A3;
-  --color-hl-teal-deep: #11616B;
+  --color-hl-teal: #2e96a3;
+  --color-hl-teal-deep: #11616b;
   /* The carousel's own pair, from the reworked "what can I build" frames
      (301:56). Yellow is the ground the project photographs sit on; pale
      yellow is the card's border and its caption band. */
-  --color-hl-yellow: #A2C4DA;
-  --color-hl-yellow-pale: #EBF7FF;
+  --color-hl-yellow: #a2c4da;
+  --color-hl-yellow-pale: #ebf7ff;
   --color-hl-lavender: #c9c7ec;
   /* The asides' own text colour. A deep indigo out of the same family as the
      lavender it sits on, so the two plates read as one material rather than
@@ -83,7 +82,7 @@
    * paper's 12.85 and 7.07 — so nothing set on a plate needed revisiting.
    * 12.63:1 against the ground behind it.
    */
-  --color-hl-lavender-pale: #E6E5FC;
+  --color-hl-lavender-pale: #e6e5fc;
 
   /* text tinted from the surface it sits on — never gray */
   --color-hl-ink-soft: color-mix(in srgb, var(--color-hl-ink) 80%, #ededed);
@@ -199,7 +198,6 @@ body {
   }
 }
 
-
 /* ─────────────────────────────────────────────────────────────
    Section grounds
 
@@ -272,7 +270,7 @@ body {
      it at roughly two and a half across at any width. The 500px ceiling keeps
      the desktop tile exactly the size it already was, and the 200px floor
      stops it dissolving into noise on the narrowest phones. */
-  background-size:  1000px auto;
+  background-size: 1000px auto;
 
   /* Black and white, and quiet. A pseudo-element is what buys these: `filter`
      and `opacity` apply to an element, never to a `background-image`, so on

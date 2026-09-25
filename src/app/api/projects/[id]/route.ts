@@ -1,15 +1,15 @@
-import prisma from "@/lib/prisma"
-import { ok, fail, parseBody, withRoute } from "@/lib/api"
-import { requireSession } from "@/lib/guards"
 import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
-import { projectUpdateSchema } from "@/lib/schemas/project"
-import { sanitize, sanitizeOptional } from "@/lib/sanitize"
-import { getHoursBreakdown } from "@/lib/hours"
-import { getThemeDef } from "@/lib/config/program"
-import { publicUrlFor } from "@/lib/uploads/r2"
-import { getSubmissionAccess, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
-import { AuditAction, logAudit } from "@/lib/audit"
 import { markProjectCreated } from "@/lib/analytics"
+import { fail, ok, parseBody, withRoute } from "@/lib/api"
+import { AuditAction, logAudit } from "@/lib/audit"
+import { getThemeDef } from "@/lib/config/program"
+import { requireSession } from "@/lib/guards"
+import { getHoursBreakdown } from "@/lib/hours"
+import prisma from "@/lib/prisma"
+import { getSubmissionAccess, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
+import { sanitize, sanitizeOptional } from "@/lib/sanitize"
+import { projectUpdateSchema } from "@/lib/schemas/project"
+import { publicUrlFor } from "@/lib/uploads/r2"
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -70,10 +70,7 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 
   // Editing the thing a reviewer is currently reading changes what they are
   // deciding on halfway through.
-  if (
-    project.designStatus === PhaseStatus.in_review ||
-    project.buildStatus === PhaseStatus.in_review
-  ) {
+  if (project.designStatus === PhaseStatus.in_review || project.buildStatus === PhaseStatus.in_review) {
     return fail("PHASE_LOCKED", "Unsubmit before editing — a phase is in review")
   }
 
@@ -101,9 +98,7 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
     where: { id },
     data: {
       ...(data.title !== undefined ? { title: sanitize(data.title) } : {}),
-      ...(data.description !== undefined
-        ? { description: sanitizeOptional(data.description) }
-        : {}),
+      ...(data.description !== undefined ? { description: sanitizeOptional(data.description) } : {}),
       ...(data.githubRepo !== undefined ? { githubRepo: data.githubRepo } : {}),
       // `requestedTier`, never `tier`. The assigned tier is a reviewer's call at
       // design approval because it decides parts money, and letting this route

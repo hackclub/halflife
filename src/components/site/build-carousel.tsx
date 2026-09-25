@@ -1,10 +1,10 @@
-"use client";
+"use client"
 
-import Image from "next/image";
-import type { CSSProperties } from "react";
-import { useCallback, useEffect, useRef } from "react";
-import ImageSlot from "@/components/site/image-slot";
-import { BUILD_CARDS } from "@/lib/site/content";
+import Image from "next/image"
+import type { CSSProperties } from "react"
+import { useCallback, useEffect, useRef } from "react"
+import ImageSlot from "@/components/site/image-slot"
+import { BUILD_CARDS } from "@/lib/site/content"
 
 /**
  * The belt carries one card past you every this many seconds — at every
@@ -12,11 +12,11 @@ import { BUILD_CARDS } from "@/lib/site/content";
  * in pixels, so the pace reads identically on a phone and on the comp stage.
  * Averaged across the set, because a card is only as wide as its own credit.
  */
-const SECONDS_PER_CARD = 8;
+const SECONDS_PER_CARD = 8
 
 /** A loaded belt has mass: it drops to a stop faster than it winds back up. */
-const STOP_TAU = 0.11;
-const START_TAU = 0.34;
+const STOP_TAU = 0.11
+const START_TAU = 0.34
 
 /**
  * Enough repeats of the set that the wrap point is never in view.
@@ -30,15 +30,15 @@ const START_TAU = 0.34;
  * display's 5120, where three copies would carry 4500 and run out. The margin
  * survived halving the gutter: at the comp's 514 it was 7710.
  */
-const COPIES = 4;
+const COPIES = 4
 
 /** Comp pixels on the 1728 grid, as the `cqw` fraction of it. */
-const CARD_W = "clamp(13rem, 22.338cqw, 386px)";
-const CARD_RATIO = "386 / 368";
-const CARD_BORDER = "clamp(0.55rem, 1.157cqw, 20px)";
-const CARD_RADIUS = "clamp(0.9rem, 1.736cqw, 30px)";
+const CARD_W = "clamp(13rem, 22.338cqw, 386px)"
+const CARD_RATIO = "386 / 368"
+const CARD_BORDER = "clamp(0.55rem, 1.157cqw, 20px)"
+const CARD_RADIUS = "clamp(0.9rem, 1.736cqw, 30px)"
 /** The caption band is 105 of the card's 328 of content height. */
-const BAND_H = "32.012%";
+const BAND_H = "32.012%"
 /**
  * The comp's 128 gutter, halved.
  *
@@ -53,13 +53,13 @@ const BAND_H = "32.012%";
  * 208px cards and read as a seam. 1.5rem is 11.5% of that card, near the 12.4%
  * the full-size pair keeps.
  */
-const GAP_PX = 64;
-const GAP = `clamp(1.5rem, ${+((GAP_PX / 1728) * 100).toFixed(3)}cqw, ${GAP_PX}px)`;
-const INSET = "clamp(1rem, 4.514cqw, 78px)";
-const LABEL = "clamp(0.95rem, 1.447cqw, 25px)";
-const CREDIT = "clamp(0.7rem, 0.984cqw, 17px)";
+const GAP_PX = 64
+const GAP = `clamp(1.5rem, ${+((GAP_PX / 1728) * 100).toFixed(3)}cqw, ${GAP_PX}px)`
+const INSET = "clamp(1rem, 4.514cqw, 78px)"
+const LABEL = "clamp(0.95rem, 1.447cqw, 25px)"
+const CREDIT = "clamp(0.7rem, 0.984cqw, 17px)"
 /** Card content is the card less its two borders: 22.338 - 2 x 1.157. */
-const PHOTO_SIZES = "(min-width: 1728px) 346px, 20vw";
+const PHOTO_SIZES = "(min-width: 1728px) 346px, 20vw"
 
 /**
  * The belt, from the reworked "what can I build" frames.
@@ -76,8 +76,7 @@ const PHOTO_SIZES = "(min-width: 1728px) 346px, 20vw";
  * the yellow above it.
  */
 
-
-type Metrics = { cycle: number; speed: number };
+type Metrics = { cycle: number; speed: number }
 
 /**
  * Position within one set.
@@ -94,53 +93,52 @@ type Metrics = { cycle: number; speed: number };
  * be brought back into range, not merely nudged one set at a time.
  */
 function norm(x: number, cycle: number) {
-  if (!(cycle > 0)) return x;
-  const m = x % cycle;
-  return m < 0 ? m + cycle : m;
+  if (!(cycle > 0)) return x
+  const m = x % cycle
+  return m < 0 ? m + cycle : m
 }
 
 export default function BuildCarousel() {
-  const sectionRef = useRef<HTMLElement>(null);
-  const railRef = useRef<HTMLUListElement>(null);
+  const sectionRef = useRef<HTMLElement>(null)
+  const railRef = useRef<HTMLUListElement>(null)
 
-  const metricsRef = useRef<Metrics>({ cycle: 0, speed: 0 });
-  const posRef = useRef(0);
-  const velocityRef = useRef(0);
+  const metricsRef = useRef<Metrics>({ cycle: 0, speed: 0 })
+  const posRef = useRef(0)
+  const velocityRef = useRef(0)
 
-  const hoverRef = useRef(false);
-  const focusRef = useRef(false);
-  const onscreenRef = useRef(false);
-  const reducedRef = useRef(false);
-  const wakeRef = useRef<() => void>(undefined);
+  const hoverRef = useRef(false)
+  const focusRef = useRef(false)
+  const onscreenRef = useRef(false)
+  const reducedRef = useRef(false)
+  const wakeRef = useRef<() => void>(undefined)
 
   const stop = useCallback((which: "hover" | "focus") => {
-    if (which === "hover") hoverRef.current = true;
-    else focusRef.current = true;
-  }, []);
+    if (which === "hover") hoverRef.current = true
+    else focusRef.current = true
+  }, [])
 
   const start = useCallback((which: "hover" | "focus") => {
-    if (which === "hover") hoverRef.current = false;
-    else focusRef.current = false;
-    wakeRef.current?.();
-  }, []);
+    if (which === "hover") hoverRef.current = false
+    else focusRef.current = false
+    wakeRef.current?.()
+  }, [])
 
   useEffect(() => {
-    const section = sectionRef.current;
-    const rail = railRef.current;
-    if (!section || !rail) return;
+    const section = sectionRef.current
+    const rail = railRef.current
+    if (!section || !rail) return
 
     const measure = () => {
-      const items = rail.children;
-      const head = items[0] as HTMLElement | undefined;
-      const wrap = items[BUILD_CARDS.length] as HTMLElement | undefined;
-      if (!head || !wrap) return;
+      const items = rail.children
+      const head = items[0] as HTMLElement | undefined
+      const wrap = items[BUILD_CARDS.length] as HTMLElement | undefined
+      if (!head || !wrap) return
 
       // Measured off rects, not `offsetLeft`. `offsetLeft` is rounded to whole
       // pixels, and one set here is 1490.67 wide: wrapping by 1491 drops a
       // third of a pixel every time round, which on a belt this slow is a
       // visible tick roughly twice a minute.
-      const cycle =
-        wrap.getBoundingClientRect().left - head.getBoundingClientRect().left;
+      const cycle = wrap.getBoundingClientRect().left - head.getBoundingClientRect().left
 
       metricsRef.current = {
         cycle,
@@ -150,88 +148,82 @@ export default function BuildCarousel() {
         // of 372.67, which ran the belt 2% slow and made "a card every eight
         // seconds" mean nothing in particular.
         speed: cycle / (SECONDS_PER_CARD * BUILD_CARDS.length),
-      };
-      posRef.current = norm(rail.scrollLeft, cycle);
-    };
+      }
+      posRef.current = norm(rail.scrollLeft, cycle)
+    }
 
-    let frame = 0;
-    let last = 0;
+    let frame = 0
+    let last = 0
 
-    const running = () =>
-      onscreenRef.current &&
-      !reducedRef.current &&
-      !hoverRef.current &&
-      !focusRef.current;
+    const running = () => onscreenRef.current && !reducedRef.current && !hoverRef.current && !focusRef.current
 
     const tick = (now: number) => {
-      frame = 0;
+      frame = 0
       // Clamp dt so a backgrounded tab does not resume with a lurch.
-      const dt = Math.min(0.05, (now - last) / 1000);
-      last = now;
+      const dt = Math.min(0.05, (now - last) / 1000)
+      last = now
 
-      const { cycle, speed } = metricsRef.current;
-      const target = running() ? speed : 0;
-      const tau = target > 0 ? START_TAU : STOP_TAU;
+      const { cycle, speed } = metricsRef.current
+      const target = running() ? speed : 0
+      const tau = target > 0 ? START_TAU : STOP_TAU
 
-      let v =
-        velocityRef.current +
-        (target - velocityRef.current) * (1 - Math.exp(-dt / tau));
-      if (target === 0 && v < 0.5) v = 0;
-      velocityRef.current = v;
+      let v = velocityRef.current + (target - velocityRef.current) * (1 - Math.exp(-dt / tau))
+      if (target === 0 && v < 0.5) v = 0
+      velocityRef.current = v
 
       if (v > 0 && cycle > 0) {
         // Our own fractional position is authoritative; resync only when the
         // reader has taken the belt somewhere themselves.
         if (Math.abs(rail.scrollLeft - posRef.current) > 1.5) {
-          posRef.current = norm(rail.scrollLeft, cycle);
+          posRef.current = norm(rail.scrollLeft, cycle)
         }
-        posRef.current = norm(posRef.current + v * dt, cycle);
-        rail.scrollLeft = posRef.current;
+        posRef.current = norm(posRef.current + v * dt, cycle)
+        rail.scrollLeft = posRef.current
       }
 
-      if (v > 0 || target > 0) frame = requestAnimationFrame(tick);
-    };
+      if (v > 0 || target > 0) frame = requestAnimationFrame(tick)
+    }
 
     const wake = () => {
-      if (frame || !running()) return;
-      last = performance.now();
-      frame = requestAnimationFrame(tick);
-    };
-    wakeRef.current = wake;
+      if (frame || !running()) return
+      last = performance.now()
+      frame = requestAnimationFrame(tick)
+    }
+    wakeRef.current = wake
 
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)")
     const onReduce = () => {
-      reducedRef.current = reduce.matches;
-      wake();
-    };
-    onReduce();
+      reducedRef.current = reduce.matches
+      wake()
+    }
+    onReduce()
 
     // A decorative loop has no business running off-screen.
     const observer = new IntersectionObserver(
       (entries) => {
-        const entry = entries[entries.length - 1];
-        if (!entry) return;
-        onscreenRef.current = entry.isIntersecting;
-        wake();
+        const entry = entries[entries.length - 1]
+        if (!entry) return
+        onscreenRef.current = entry.isIntersecting
+        wake()
       },
       { threshold: 0 },
-    );
-    observer.observe(section);
+    )
+    observer.observe(section)
 
-    const resize = new ResizeObserver(measure);
-    resize.observe(rail);
-    measure();
+    const resize = new ResizeObserver(measure)
+    resize.observe(rail)
+    measure()
 
-    reduce.addEventListener("change", onReduce);
+    reduce.addEventListener("change", onReduce)
 
     return () => {
-      cancelAnimationFrame(frame);
-      observer.disconnect();
-      resize.disconnect();
-      reduce.removeEventListener("change", onReduce);
-      wakeRef.current = undefined;
-    };
-  }, []);
+      cancelAnimationFrame(frame)
+      observer.disconnect()
+      resize.disconnect()
+      reduce.removeEventListener("change", onReduce)
+      wakeRef.current = undefined
+    }
+  }, [])
 
   return (
     <section
@@ -304,11 +296,7 @@ export default function BuildCarousel() {
                 }
                 role={copy === 0 ? "group" : undefined}
                 aria-roledescription={copy === 0 ? "slide" : undefined}
-                aria-label={
-                  copy === 0
-                    ? `${index + 1} of ${BUILD_CARDS.length}`
-                    : undefined
-                }
+                aria-label={copy === 0 ? `${index + 1} of ${BUILD_CARDS.length}` : undefined}
                 aria-hidden={copy === 0 ? undefined : true}
               >
                 <div className="flex h-full w-full flex-col">
@@ -347,20 +335,12 @@ export default function BuildCarousel() {
                     className="flex flex-col items-center justify-center bg-hl-yellow-pale text-center"
                     style={{ flex: `0 0 ${BAND_H}` }}
                   >
-                    <p
-                      className="font-body whitespace-nowrap text-hl-ink"
-                      style={{ fontSize: LABEL, lineHeight: 1.1 }}
-                    >
+                    <p className="font-body whitespace-nowrap text-hl-ink" style={{ fontSize: LABEL, lineHeight: 1.1 }}>
                       {card.label}
                     </p>
 
-                    <div
-                      className="flex items-center gap-[0.7em]"
-                      style={{ fontSize: CREDIT, marginTop: "0.55em" }}
-                    >
-                      <p className="font-body whitespace-nowrap text-hl-ink/80">
-                        {card.credit}
-                      </p>
+                    <div className="flex items-center gap-[0.7em]" style={{ fontSize: CREDIT, marginTop: "0.55em" }}>
+                      <p className="font-body whitespace-nowrap text-hl-ink/80">{card.credit}</p>
 
                       {card.repo ? (
                         <a
@@ -389,9 +369,7 @@ export default function BuildCarousel() {
                           // yellow, where it would read as a disabled control.
                           className="grid h-[1.7em] w-[1.7em] shrink-0 place-items-center rounded-full text-hl-ink transition-colors after:absolute after:[inset:calc(-1*var(--hl-card-frame))] group-hover:bg-hl-ink group-hover:text-hl-yellow-pale focus-visible:bg-hl-ink focus-visible:text-hl-yellow-pale focus-visible:outline-hl-ink"
                         >
-                          <span className="sr-only">
-                            {`${card.label} on GitHub (opens in a new tab)`}
-                          </span>
+                          <span className="sr-only">{`${card.label} on GitHub (opens in a new tab)`}</span>
                           <GithubMark className="h-[1.15em] w-[1.15em]" />
                         </a>
                       ) : null}
@@ -404,7 +382,7 @@ export default function BuildCarousel() {
         </ul>
       </div>
     </section>
-  );
+  )
 }
 
 /**
@@ -424,5 +402,5 @@ function GithubMark({ className }: { className?: string }) {
         d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5c.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34c-.46-1.16-1.11-1.47-1.11-1.47c-.91-.62.07-.6.07-.6c1 .07 1.53 1.03 1.53 1.03c.87 1.52 2.34 1.07 2.91.83c.09-.65.35-1.09.63-1.34c-2.22-.25-4.55-1.11-4.55-4.92c0-1.11.38-2 1.03-2.71c-.1-.25-.45-1.29.1-2.64c0 0 .84-.27 2.75 1.02c.79-.22 1.65-.33 2.5-.33s1.71.11 2.5.33c1.91-1.29 2.75-1.02 2.75-1.02c.55 1.35.2 2.39.1 2.64c.65.71 1.03 1.6 1.03 2.71c0 3.82-2.34 4.66-4.57 4.91c.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2"
       />
     </svg>
-  );
+  )
 }

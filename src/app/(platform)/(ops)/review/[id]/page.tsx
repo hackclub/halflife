@@ -1,11 +1,7 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { requirePermissionPage } from "@/lib/page-guards"
-import { Permission } from "@/lib/permissions"
-import { getSubmissionDetail } from "@/lib/queries/review"
-import { submitFloorFor } from "@/lib/config/printers"
-import { TIERS } from "@/lib/config/tiers"
-import { lapseTimelapseUrl } from "@/lib/lapse"
+import { ActionButton } from "@/app/components/forms/ActionButton"
+import { DecisionPanel } from "@/app/components/forms/DecisionPanel"
 import {
   Badge,
   Callout,
@@ -13,12 +9,16 @@ import {
   PageHeader,
   Panel,
   Stat,
-  Table,
   statusLabel,
   statusTone,
+  Table,
 } from "@/app/components/ui"
-import { ActionButton } from "@/app/components/forms/ActionButton"
-import { DecisionPanel } from "@/app/components/forms/DecisionPanel"
+import { submitFloorFor } from "@/lib/config/printers"
+import { TIERS } from "@/lib/config/tiers"
+import { lapseTimelapseUrl } from "@/lib/lapse"
+import { requirePermissionPage } from "@/lib/page-guards"
+import { Permission } from "@/lib/permissions"
+import { getSubmissionDetail } from "@/lib/queries/review"
 
 export const dynamic = "force-dynamic"
 
@@ -57,8 +57,8 @@ export default async function ReviewDetailPage({ params }: Props) {
       ) : null}
       {breakdown.hackatimeStale ? (
         <Callout tone="warning">
-          Hackatime hours could not be refreshed and may be stale. Approving will be refused
-          until they resolve, or set an explicit hours override.
+          Hackatime hours could not be refreshed and may be stale. Approving will be refused until they resolve, or set
+          an explicit hours override.
         </Callout>
       ) : null}
 
@@ -77,17 +77,9 @@ export default async function ReviewDetailPage({ params }: Props) {
       >
         <div className="hl-row">
           {!claimedByMe ? (
-            <ActionButton
-              url={`/api/review/submissions/${id}/claim`}
-              label="Claim"
-              variant="primary"
-            />
+            <ActionButton url={`/api/review/submissions/${id}/claim`} label="Claim" variant="primary" />
           ) : (
-            <ActionButton
-              url={`/api/review/submissions/${id}/claim`}
-              method="DELETE"
-              label="Release"
-            />
+            <ActionButton url={`/api/review/submissions/${id}/claim`} method="DELETE" label="Release" />
           )}
         </div>
       </Panel>
@@ -96,10 +88,7 @@ export default async function ReviewDetailPage({ params }: Props) {
         <Stat label="Journal" value={`${breakdown.journalHours}h`} />
         <Stat label="Hackatime" value={`${breakdown.hackatimeHours}h`} />
         <Stat label="Total" value={`${breakdown.computedTotal}h`} />
-        <Stat
-          label="Timelapse coverage"
-          value={`${Math.round(breakdown.timelapseCoverage * 100)}%`}
-        />
+        <Stat label="Timelapse coverage" value={`${Math.round(breakdown.timelapseCoverage * 100)}%`} />
       </div>
 
       <Panel title="Project">
@@ -139,9 +128,7 @@ export default async function ReviewDetailPage({ params }: Props) {
                     </div>
                   ) : null}
                   {session.hoursSource === "HACKATIME_TRACKED" ? (
-                    <div className="hl-hint">
-                      counted via Hackatime — contributes 0 to the journal total
-                    </div>
+                    <div className="hl-hint">counted via Hackatime — contributes 0 to the journal total</div>
                   ) : null}
                 </td>
                 <td className="hl-mono">{session.hoursClaimed}h</td>

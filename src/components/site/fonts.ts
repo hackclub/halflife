@@ -1,5 +1,5 @@
-import { Open_Sans, Ubuntu } from "next/font/google";
-import localFont from "next/font/local";
+import { Open_Sans, Ubuntu } from "next/font/google"
+import localFont from "next/font/local"
 
 /**
  * The landing's three faces, declared once so every document drawn in the
@@ -21,13 +21,13 @@ export const masterpiece = localFont({
   weight: "400",
   style: "normal",
   display: "swap",
-});
+})
 
 export const openSans = Open_Sans({
   subsets: ["latin"],
   variable: "--font-open-sans",
   display: "swap",
-});
+})
 
 /**
  * Every heading and every line of display type on the page, and the tagline
@@ -50,7 +50,7 @@ export const ubuntu = Ubuntu({
   weight: ["400", "700"],
   variable: "--font-ubuntu",
   display: "swap",
-});
+})
 
 /** All three variables, for the element a landing-world document hangs them on. */
-export const siteFontVariables = `${openSans.variable} ${ubuntu.variable} ${masterpiece.variable}`;
+export const siteFontVariables = `${openSans.variable} ${ubuntu.variable} ${masterpiece.variable}`

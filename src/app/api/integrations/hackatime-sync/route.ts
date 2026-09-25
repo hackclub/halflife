@@ -1,8 +1,8 @@
 import type { NextRequest } from "next/server"
-import prisma from "@/lib/prisma"
 import { ok, withRoute } from "@/lib/api"
-import { requireIntegrationAuth } from "@/lib/integration-auth"
 import { refreshLinkCache } from "@/lib/hackatime"
+import { requireIntegrationAuth } from "@/lib/integration-auth"
+import prisma from "@/lib/prisma"
 import { recordSyncRun } from "@/lib/sync-run-log"
 
 export const maxDuration = 300
