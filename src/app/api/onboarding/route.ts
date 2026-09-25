@@ -2,6 +2,7 @@ import { ok, parseBody, withRoute } from "@/lib/api"
 import { requireSession } from "@/lib/guards"
 import { onboardingStepSchema } from "@/lib/schemas/onboarding"
 import { getOnboardingState, submitStep, type OnboardingAnswer } from "@/lib/onboarding"
+import { toOnboardingView } from "@/lib/onboarding-view"
 import { AuditAction, logAudit } from "@/lib/audit"
 
 export const dynamic = "force-dynamic"
@@ -10,7 +11,7 @@ export const GET = withRoute(async () => {
   const gate = await requireSession()
   if (gate.error) return gate.error
 
-  return ok({ onboarding: await getOnboardingState(gate.user.id) })
+  return ok({ onboarding: toOnboardingView(await getOnboardingState(gate.user.id)) })
 })
 
 export const POST = withRoute(async (req: Request) => {
@@ -34,5 +35,5 @@ export const POST = withRoute(async (req: Request) => {
     metadata: { step: parsed.data.step, reached: result.state.reached },
   })
 
-  return ok({ onboarding: result.state })
+  return ok({ onboarding: toOnboardingView(result.state) })
 })

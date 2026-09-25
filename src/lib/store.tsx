@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation"
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode, useRef } from "react"
 import { BUILD_HOURS, TIERS, WEEK_META, checkpointsFor } from "./curriculum"
-import { DESIGN_WEEKS, ONBOARDING_CHECKPOINT_ID } from "./config/program"
+import { DESIGN_WEEKS } from "./config/program"
 import { COINS_PER_HOUR, printerById, submitFloorFor, weekAsk } from "./config/printers"
 import type { StoreSnapshot } from "./queries/store"
 import type { Checkpoint, Experience, Project, SessionLog, Week } from "./types"
@@ -127,16 +127,6 @@ interface Ctx {
 
   setPhase: (p: IntroPhase) => void
   setTourStep: (n: number) => void
-  setExperience: (e: Experience) => void
-  /** Walk the whole first checkpoint through the onboarding state machine. */
-  completeOnboarding: (answers: {
-    experience: Experience
-    title: string
-    description: string
-    starterProjectId: string | null
-    requestedTier: 1 | 2 | 3 | null
-    githubRepo?: string | null
-  }) => void
   addProject: (p: Omit<Project, "id">) => void
   /**
    * Make the project row for a design week, if there is none yet, and resolve
@@ -224,14 +214,6 @@ async function send(path: string, body: unknown, method = "POST"): Promise<boole
     return false
   }
 }
-
-/** The hardware-experience answer, in the enum the API speaks. */
-const EXPERIENCE_ANSWER = {
-  first: "FIRST_TIME",
-  little: "A_LITTLE",
-  some: "A_GOOD_AMOUNT",
-  lots: "ITS_LIFE",
-} as const
 
 export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot; children: ReactNode }) {
   const router = useRouter()
@@ -335,17 +317,6 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 
   const setPhase = useCallback((next: IntroPhase) => setCeremony((c) => ({ ...c, phase: next })), [])
 
-  const setExperience = useCallback(
-    (experience: Experience) => {
-      setFacts((f) => ({ ...f, experience }))
-      void send("/api/onboarding", {
-        step: "experience",
-        experience: EXPERIENCE_ANSWER[experience],
-      }).finally(() => router.refresh())
-    },
-    [router],
-  )
-
   // In flight per week, so a checkpoint opened twice in a row asks once.
   const ensuring = useRef(new Map<number, Promise<string | null>>())
 
@@ -376,100 +347,6 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
       return request
     },
     [facts.projectIdByWeek],
-  )
-
-  /**
-   * Finishing the first checkpoint.
-   *
-   * The server's onboarding flow is a state machine that refuses a step ahead
-   * of the furthest one reached — that refusal is what stops anyone arriving at
-   * a funded project without having been asked what they are building. So the
-   * six answers the modal collected have to be replayed in order, one request
-   * each, rather than posted as a single blob.
-   *
-   * Sequential rather than parallel for the same reason: fired together they
-   * would race, and every one but the first would be rejected as out of turn.
-   */
-  const completeOnboarding = useCallback(
-    (answers: {
-      experience: Experience
-      title: string
-      description: string
-      starterProjectId: string | null
-      requestedTier: 1 | 2 | 3 | null
-      githubRepo?: string | null
-    }) => {
-      // Setup can only be answered once; the server refuses a replay step by
-      // step. Reopening the finished node must not fire six doomed requests.
-      if (facts.onboardingDone) return
-
-      // The trail moves now, not when the six requests below come back. They
-      // run one after another and take seconds; until they land, a trail
-      // still showing "Get started" open would lock every node behind it and
-      // offer the questionnaire again — which is exactly what anyone who
-      // skipped the tab tour walked straight into.
-      const projectId = facts.projectIdByWeek[1]
-      setFacts((f) => ({
-        ...f,
-        experience: answers.experience,
-        onboardingDone: true,
-        progress: {
-          ...f.progress,
-          [ONBOARDING_CHECKPOINT_ID]: {
-            ...EMPTY,
-            ...f.progress[ONBOARDING_CHECKPOINT_ID],
-            done: true,
-            at: Date.now(),
-          },
-        },
-        projects:
-          projectId && !f.projects.some((p) => p.id === projectId)
-            ? [
-                ...f.projects,
-                {
-                  id: projectId,
-                  name: answers.title,
-                  description: answers.description,
-                  weekId: 1,
-                  tier: answers.requestedTier ?? 1,
-                  starter: answers.starterProjectId !== null,
-                  githubRepo: answers.githubRepo ?? null,
-                },
-              ]
-            : f.projects,
-      }))
-      void (async () => {
-        await send("/api/onboarding", {
-          step: "experience",
-          experience: EXPERIENCE_ANSWER[answers.experience],
-        })
-        await send("/api/onboarding", { step: "week" })
-        await send("/api/onboarding", {
-          step: "project",
-          title: answers.title,
-          description: answers.description,
-        })
-        await send("/api/onboarding", {
-          step: "idea",
-          starterProjectId: answers.starterProjectId,
-        })
-        await send("/api/onboarding", {
-          step: "tier",
-          requestedTier: answers.requestedTier,
-        })
-        // The tutorial is the one step the comp marks dismissible, and this is
-        // the finish button rather than the dismiss link — so it was read.
-        await send("/api/onboarding", { step: "tracking", dismissed: false })
-        // The repo is not an onboarding step — it is an ordinary project field
-        // the server's state machine knows nothing about — so it goes through
-        // the project route once the project it belongs to has been named.
-        const weekOneId = projectId ?? (await ensureProject(1))
-        if (answers.githubRepo && weekOneId) {
-          await send(`/api/projects/${weekOneId}`, { githubRepo: answers.githubRepo }, "PATCH")
-        }
-      })().finally(() => router.refresh())
-    },
-    [facts.onboardingDone, facts.projectIdByWeek, ensureProject, router],
   )
 
   /**
@@ -1174,8 +1051,6 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
     reducedMotion,
     setPhase,
     setTourStep,
-    setExperience,
-    completeOnboarding,
     addProject,
     ensureProject,
     setProjectTier,

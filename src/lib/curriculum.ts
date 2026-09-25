@@ -319,33 +319,6 @@ export function checkpointsFor(
   return out
 }
 
-export const STARTER_IDEAS = [
-  {
-    id: "macropad",
-    name: "Three-key macropad",
-    blurb: "Three switches, one microcontroller, zero surprises.",
-    art: "pcb" as const,
-  },
-  {
-    id: "badge",
-    name: "Blinky name badge",
-    blurb: "Your handle in copper with two LEDs for eyes.",
-    art: "badge" as const,
-  },
-  {
-    id: "usb",
-    name: "USB-C breakout",
-    blurb: "Break a USB-C port out to pins you can actually probe.",
-    art: "usb" as const,
-  },
-  {
-    id: "sensor",
-    name: "Desk air monitor",
-    blurb: "One sensor, one display, one small board.",
-    art: "sensor" as const,
-  },
-]
-
 export const SUBMIT_FILES_DESIGN = [
   { id: "schematic", label: "Schematic (.kicad_sch or PDF)", hint: "Every net named, no floating pins." },
   { id: "layout", label: "Board layout (.kicad_pcb)", hint: "Source file, not just an export." },
