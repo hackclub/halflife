@@ -11,6 +11,13 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactCompiler: true,
 
+  experimental: {
+    // Two root layouts, `(site)` and `(platform)`, leave Next no single layout
+    // to build an ordinary 404 from, so a URL that matches nothing got the
+    // framework's unstyled default. This turns on `app/global-not-found.tsx`.
+    globalNotFound: true,
+  },
+
   images: {
     /**
      * AVIF first, WebP behind it.

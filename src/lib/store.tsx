@@ -72,6 +72,13 @@ interface Ceremony {
   version: 4
   phase: IntroPhase
   doomscrollerOpen: boolean
+  /**
+   * Set by "Replay the intro". Without it the server's word that onboarding
+   * is done forces the phase straight back to "done", so the replay cleared
+   * the ceremony and then showed nothing. Optional so saves written before it
+   * existed read as false.
+   */
+  replaying?: boolean
 }
 
 const KEY = "halflife.ceremony.v4"
@@ -312,10 +319,31 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 
   // Someone who has already finished the first checkpoint must never be shown
   // the intro again, whatever a stale or cleared localStorage says. The server
-  // is what knows, so it gets the final word.
-  const phase: IntroPhase = facts.onboardingDone && ceremony.phase !== "tour" ? "done" : ceremony.phase
+  // is what knows, so it gets the final word — unless they asked for it back.
+  // A replay plays the cinematic and the tab tour and goes nowhere near the
+  // setup checkpoint: its answers are taken once, and the server refuses a
+  // second set, so "aim" and "checkpoint" go straight on to the tour.
+  const phase: IntroPhase = !facts.onboardingDone
+    ? ceremony.phase
+    : ceremony.replaying
+      ? ceremony.phase === "aim" || ceremony.phase === "checkpoint"
+        ? "tour"
+        : ceremony.phase
+      : ceremony.phase === "tour"
+        ? "tour"
+        : "done"
 
-  const setPhase = useCallback((next: IntroPhase) => setCeremony((c) => ({ ...c, phase: next })), [])
+  const setPhase = useCallback(
+    (next: IntroPhase) =>
+      setCeremony((c) => ({
+        ...c,
+        phase: next,
+        // Finishing or skipping ends the replay, so a later sign-in does not
+        // start it again.
+        replaying: next === "done" ? false : c.replaying,
+      })),
+    [],
+  )
 
   // In flight per week, so a checkpoint opened twice in a row asks once.
   const ensuring = useRef(new Map<number, Promise<string | null>>())
@@ -659,7 +687,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
     } catch {
       /* nothing to clear */
     }
-    setCeremony(seededCeremony())
+    setCeremony({ ...seededCeremony(), replaying: true })
     setTourStep(0)
     setOpenCheckpoint(null)
   }, [])

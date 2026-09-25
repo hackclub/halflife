@@ -41,8 +41,8 @@ const PLATE_SCALE = 864 / PLATE.w
 const PLATE_W = PLATE.w * PLATE_SCALE
 const PLATE_H = PLATE.h * PLATE_SCALE
 
-/** bg.png's own pixels, driving the art layer's box. */
-const ART = { w: 1920, h: 1080 } as const
+/* bg.png is 1920x1080; the art layer's `aspect-[1920/1080]` is that, written
+   out because Tailwind reads class names from the source as literal text. */
 
 /**
  * The painting's dissolve, as a mask on the picture rather than a scrim over
@@ -140,7 +140,7 @@ const LOGO_STAGE_W = u(604.8)
  */
 const TAGLINE_RUN = 830
 
-/**
+/*
  * The stacked layout's own width, also taken down 30% — 60 to 42, and the
  * ceiling below from 24rem to 16.8rem.
  *
@@ -151,8 +151,14 @@ const TAGLINE_RUN = 830
  * and a wordmark narrower than its own tagline stops reading as the page's
  * h1. It was 60 for that reason. 55 is roughly where the mark and the tagline
  * come level, if this wants pulling back.
+ *
+ * From 640 up only. On a phone the mark runs 95vw instead — see the stacked
+ * `Wordmark` — wider than the column's own padding allows, and centred on the
+ * screen rather than on the column.
+ *
+ * It lives in the stacked `Wordmark`'s class list as `min(42vw,16.8rem)`,
+ * written out there because Tailwind reads class names as literal text.
  */
-const LOGO_FLOW_VW = 42
 
 /**
  * The plate is a content column, not a box with a ground, so it is sized to
@@ -322,26 +328,62 @@ export default function Hero() {
       <div className="min-[1180px]:hidden">
         {/* pb leaves the cue its own room; without it `justify-center` centres
             the plate against the cue and the two crowd each other. */}
-        <div className="relative flex min-h-[100svh] flex-col justify-center px-4 pt-16 pb-28 sm:px-8">
-          <div className="bg-hl-blue-deep px-5 pt-7 pb-8 sm:px-9 sm:pt-10 sm:pb-11">
+        {/* On a phone the block is as tall as what it holds, not the fold.
+            As a full-height fold with the group centred in it, an 844px
+            screen put ~97px of empty painting under the field, then the cue's
+            112px, then the next section's 80 before "how does it work?" —
+            about 290px of nothing between the thing you type into and the
+            thing that explains it. Content-sized, the group starts at a fixed
+            `pt-32` and the header plate follows the cue.
+
+            `pt-32` clears the announcement banner rather than the flag: on a
+            phone the banner is two lines hung at 3.25rem, so it ends near
+            111px, and 128 keeps 17px between them.
+
+            From `sm` up it is the full fold again, centred, as before. */}
+        <div className="relative flex flex-col px-4 pt-32 pb-20 sm:min-h-[100svh] sm:justify-center sm:px-8 sm:pb-28">
+          {/* On the painting, as the stage's plate is. This used to be a solid
+              `hl-blue-deep` box, which on a phone was the only thing the logo
+              ever stood on: the art layer kept its 16:9 box, so at 390 wide the
+              painting was a 219px strip under the flag and the dateline while
+              this sat centred in the fold well below it. The art layer covers
+              the whole fold below 1180 now, and the tagline and field already
+              carry their own ground in the swash, so the box had nothing left
+              to do but hide the picture.
+
+              Centred, like the stage's plate: the painting is framed on both
+              edges and open through the middle, and a phone's crop of it is
+              that open middle. `max-w-xl` keeps the group a column on a tablet
+              rather than letting the swash run the width of the screen. */}
+          <div className="mx-auto w-full max-w-xl text-center">
             {/* 42vw here, with a ceiling. Uncapped it is right on a phone and
                 wrong by 768, where even 42vw is 323 across for a mark sitting
                 above a form — the stacked layout runs to 1180, and 16.8rem
                 holds it at a wordmark's size rather than a splash screen's.
                 Both numbers are the old 60 and 24rem less 30%. */}
+            {/* 95vw on a phone. The column is the screen less 16px a side, so
+                95vw (2.5vw a side) is wider than it: the tag takes the width
+                itself and is centred on the screen with the left/translate
+                pair, which lands on the column's own centre because the
+                column's padding is symmetric. From `sm` the tag is the
+                column again and the art goes back to its capped width. The
+                width is a custom property because `artWidth` is an inline
+                style, which cannot change at a breakpoint. */}
             <Wordmark
               as="h1"
               art
-              artWidth={`min(${LOGO_FLOW_VW}vw, 16.8rem)`}
+              artWidth="var(--logo-w)"
+              sizes="(min-width: 640px) 269px, 95vw"
               fontSize="clamp(3.2rem, 15vw, 7.5rem)"
-              className="w-full"
+              // The 42vw / 16.8rem is the tablet width argued for above.
+              className="left-1/2 w-[95vw] -translate-x-1/2 [--logo-w:100%] sm:left-auto sm:w-full sm:translate-x-0 sm:[--logo-w:min(42vw,16.8rem)]"
             />
             <SignupForm
               className="mt-4"
               fontSize="clamp(1rem, 4.2vw, 1.375rem)"
               intro={
                 <p
-                  className="max-w-[34ch] font-tagline text-hl-paper"
+                  className="mx-auto max-w-[34ch] font-tagline text-hl-paper"
                   style={{
                     fontSize: "clamp(1.05rem, 4.1vw, 1.5rem)",
                     lineHeight: 1.25,
@@ -353,7 +395,10 @@ export default function Hero() {
             />
           </div>
 
-          <ScrollCue className="absolute bottom-10 left-1/2 -translate-x-1/2" fontSize="clamp(0.8rem, 3vw, 1rem)" />
+          <ScrollCue
+            className="absolute bottom-5 left-1/2 -translate-x-1/2 sm:bottom-10"
+            fontSize="clamp(0.8rem, 3vw, 1rem)"
+          />
         </div>
       </div>
     </section>
@@ -504,7 +549,15 @@ function HackClubFlag() {
 function HeroArt() {
   return (
     <div aria-hidden className="absolute inset-0 -z-10 overflow-hidden">
-      <div className="relative w-full" style={{ aspectRatio: `${ART.w} / ${ART.h}`, maxHeight: "100%" }}>
+      {/* The painting's own ratio from 1180 up, where the stage was composed
+          against it. Below that it fills the fold instead: a 16:9 box on a
+          portrait phone is a strip across the top of the screen, and the
+          stacked plate is centred in the fold, so it landed on bare ground
+          under the picture rather than on it. Filling the section, `cover`
+          takes the painting's open middle on a phone and a little off each
+          framed edge on a tablet, and the dissolve still lands on the fold's
+          bottom edge. */}
+      <div className="relative h-full w-full min-[1180px]:aspect-[1920/1080] min-[1180px]:h-auto min-[1180px]:max-h-full">
         {/* The scene dissolves at its own lower edge rather than at a fixed
             distance from the bottom of the section, so the fade scales with
             the picture instead of eating a third of it on a phone.

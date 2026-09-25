@@ -18,7 +18,7 @@ export function LogOutButton() {
         setBusy(true)
         try {
           await signOut()
-          router.push("/login")
+          router.push("/")
           router.refresh()
         } finally {
           setBusy(false)

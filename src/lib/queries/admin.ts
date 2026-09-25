@@ -1,7 +1,14 @@
 import "server-only"
 import type { Prisma } from "@/app/generated/prisma/client"
-import { type PhaseStatus, ShopOrderStatus, type Theme } from "@/app/generated/prisma/enums"
+import {
+  type PhaseStatus,
+  type ShopFulfillmentMethod,
+  ShopFulfillmentStage,
+  ShopOrderStatus,
+  type Theme,
+} from "@/app/generated/prisma/enums"
 import { getBalances } from "@/lib/currency"
+import { safeDecrypt } from "@/lib/pii"
 import { getPrinterQualification } from "@/lib/printer"
 import prisma from "@/lib/prisma"
 
@@ -187,6 +194,109 @@ export async function listOrders(opts: { status?: ShopOrderStatus; cursor?: stri
   const hasMore = rows.length > opts.limit
   const items = hasMore ? rows.slice(0, opts.limit) : rows
   const last = items[items.length - 1]
+  return { items, nextCursor: hasMore && last ? last.id : null }
+}
+
+/**
+ * What the fulfilment sheet lists. Rejected orders were refunded and never
+ * ship; cancelled ones stay, since one may already be on its way to HQ.
+ */
+export const FULFILLMENT_ORDER_STATUSES: ShopOrderStatus[] = [
+  ShopOrderStatus.PENDING,
+  ShopOrderStatus.ON_HOLD,
+  ShopOrderStatus.FULFILLED,
+  ShopOrderStatus.CANCELLED,
+]
+
+/** A participant's cancellation wins over whatever stage was marked before it. */
+export const fulfillmentStageOf = (order: {
+  status: ShopOrderStatus
+  fulfillmentStage: ShopFulfillmentStage
+}): ShopFulfillmentStage =>
+  order.status === ShopOrderStatus.CANCELLED ? ShopFulfillmentStage.CANCELLED : order.fulfillmentStage
+
+export interface FulfillmentFilters {
+  /** Inclusive, from the start of this instant. */
+  placedFrom?: Date
+  /** Exclusive. */
+  placedBefore?: Date
+  /** `"NONE"` is an order nobody has chosen a method for yet. */
+  method?: ShopFulfillmentMethod | "NONE"
+  stage?: ShopFulfillmentStage
+}
+
+/**
+ * Orders for the fulfilment sheet, with each buyer's country.
+ *
+ * The country is the one on their HCA profile now, not at order time: it is
+ * what the parcel will actually be addressed to. It is decrypted here and only
+ * the plain country leaves this function — never the ciphertext.
+ */
+export async function listFulfillmentOrders(filters: FulfillmentFilters, opts: { cursor?: string; limit: number }) {
+  const where: Prisma.ShopOrderWhereInput = {
+    status: { in: FULFILLMENT_ORDER_STATUSES },
+    ...(filters.placedFrom || filters.placedBefore
+      ? {
+          placedAt: {
+            ...(filters.placedFrom ? { gte: filters.placedFrom } : {}),
+            ...(filters.placedBefore ? { lt: filters.placedBefore } : {}),
+          },
+        }
+      : {}),
+    ...(filters.method === "NONE"
+      ? { fulfillmentMethod: null }
+      : filters.method
+        ? { fulfillmentMethod: filters.method }
+        : {}),
+    ...(filters.stage === ShopFulfillmentStage.CANCELLED
+      ? {
+          OR: [{ status: ShopOrderStatus.CANCELLED }, { fulfillmentStage: ShopFulfillmentStage.CANCELLED }],
+        }
+      : filters.stage
+        ? {
+            fulfillmentStage: filters.stage,
+            // A cancelled order shows as cancelled, so it matches no other stage.
+            AND: [{ status: { not: ShopOrderStatus.CANCELLED } }],
+          }
+        : {}),
+  }
+
+  const rows = await prisma.shopOrder.findMany({
+    where,
+    orderBy: [{ placedAt: "desc" }, { id: "desc" }],
+    take: opts.limit + 1,
+    ...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
+    select: {
+      id: true,
+      orderNumber: true,
+      quantity: true,
+      itemNameSnapshot: true,
+      unitCostUsd: true,
+      status: true,
+      fulfillmentMethod: true,
+      fulfillmentStage: true,
+      placedAt: true,
+      shopItem: { select: { costUsd: true } },
+      user: {
+        select: { id: true, name: true, email: true, encryptedAddressCountry: true },
+      },
+    },
+  })
+  const hasMore = rows.length > opts.limit
+  const page = hasMore ? rows.slice(0, opts.limit) : rows
+  const last = page[page.length - 1]
+
+  const items = page.map(({ shopItem, user, unitCostUsd, ...order }) => {
+    // Orders from before the item had a cost fall back to today's.
+    const unit = unitCostUsd ?? shopItem.costUsd
+    return {
+      ...order,
+      fulfillmentStage: fulfillmentStageOf(order),
+      totalUsd: unit === null ? null : unit * order.quantity,
+      country: safeDecrypt(user.encryptedAddressCountry),
+      user: { id: user.id, name: user.name, email: user.email },
+    }
+  })
   return { items, nextCursor: hasMore && last ? last.id : null }
 }
 

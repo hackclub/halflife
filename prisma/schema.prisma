@@ -180,6 +180,23 @@ enum ShopOrderStatus {
   CANCELLED
 }
 
+/// How an order gets to the participant: straight from the vendor, or bought
+/// in bulk to HQ and shipped on from there.
+enum ShopFulfillmentMethod {
+  DIRECT_SHIP
+  BULK_TO_HQ
+}
+
+/// Where an order is in fulfilment. Separate from ShopOrderStatus, which is
+/// the approve/reject decision and the refund that hangs off it. An order the
+/// participant cancelled always reads as CANCELLED, whatever is stored here.
+enum ShopFulfillmentStage {
+  UNFULFILLED
+  ORDERED_TO_HQ
+  SENT_FOR_DELIVERY
+  CANCELLED
+}
+
 enum PrinterAwardStatus {
   QUALIFIED
   ADDRESS_LOCKED
@@ -240,6 +257,7 @@ enum AuditAction {
   ADMIN_RETIRE_SHOP_ITEM
   ADMIN_FULFILL_ORDER
   ADMIN_REJECT_ORDER
+  ADMIN_UPDATE_ORDER_FULFILLMENT
   ADMIN_UPDATE_PROGRAM_SETTINGS
   ADMIN_HIDE_POST
   ADMIN_RESTORE_POST
@@ -1137,6 +1155,9 @@ model ShopItem {
   category        ShopItemCategory @default(PRINTER_UPGRADE)
 
   priceCredits Int
+  /// What Hack Club pays for one, tax and shipping included. Null until an
+  /// admin sets it.
+  costUsd      Float?
   /// 0 means unlimited.
   maxPerUser   Int  @default(1)
   /// Null means unlimited.
@@ -1172,6 +1193,8 @@ model ShopOrder {
   totalCredits  Int
   /// The catalogue changes; order history must not.
   itemNameSnapshot String
+  /// ShopItem.costUsd at order time. Null when the item had no cost set yet.
+  unitCostUsd      Float?
 
   status          ShopOrderStatus @default(PENDING)
   holdReason      String?
@@ -1183,6 +1206,10 @@ model ShopOrder {
 
   trackingNumber  String?
   trackingCarrier String?
+
+  fulfillmentMethod    ShopFulfillmentMethod?
+  fulfillmentStage     ShopFulfillmentStage   @default(UNFULFILLED)
+  fulfillmentUpdatedAt DateTime?
 
   placedAt    DateTime  @default(now())
   heldAt      DateTime?

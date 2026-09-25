@@ -10,6 +10,7 @@ export function ShopItemForm() {
     name: "",
     description: "",
     priceCredits: "50",
+    costUsd: "",
     maxPerUser: "1",
     stock: "",
     requiresPrinterQualified: true,
@@ -30,6 +31,7 @@ export function ShopItemForm() {
           name: form.name,
           description: form.description,
           priceCredits: Number(form.priceCredits),
+          costUsd: form.costUsd === "" ? null : Number(form.costUsd),
           maxPerUser: Number(form.maxPerUser),
           stock: form.stock === "" ? null : Number(form.stock),
           requiresPrinterQualified: form.requiresPrinterQualified,
@@ -40,7 +42,7 @@ export function ShopItemForm() {
         setError(payload.error?.message ?? `Failed (${res.status})`)
         return
       }
-      setForm({ ...form, id: "", name: "", description: "" })
+      setForm({ ...form, id: "", name: "", description: "", costUsd: "" })
       router.refresh()
     } finally {
       setBusy(false)
@@ -82,6 +84,16 @@ export function ShopItemForm() {
           min="0"
           value={form.priceCredits}
           onChange={(e) => setForm({ ...form, priceCredits: e.target.value })}
+        />
+      </Field>
+      <Field label="Cost to us (USD)" hint="Per unit, tax and shipping included. Shown on the fulfillment sheet.">
+        <input
+          className="hl-input"
+          type="number"
+          min="0"
+          step="0.01"
+          value={form.costUsd}
+          onChange={(e) => setForm({ ...form, costUsd: e.target.value })}
         />
       </Field>
       <Field label="Max per person" hint="0 for unlimited.">

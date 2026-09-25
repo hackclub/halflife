@@ -24,7 +24,9 @@ export interface PageContext {
 // answer to one server render, so a sign-out still takes effect on the next.
 export const requireSessionPage = cache(async (): Promise<PageContext> => {
   const session = await auth.api.getSession({ headers: await headers() })
-  if (!session) redirect("/login")
+  // Via /signed-out, which clears a dead session cookie on the way to the
+  // landing page; see that route for why it cannot be `/` directly.
+  if (!session) redirect("/signed-out")
   const u = session.user
   return {
     user: { id: u.id, email: u.email, name: u.name ?? null, image: u.image ?? null },

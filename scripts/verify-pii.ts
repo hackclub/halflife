@@ -96,7 +96,7 @@ const STAFF_SURFACES: [string, string][] = [
   ["GET", "/admin/users"],
   ["GET", "/admin/audit"],
   ["GET", "/admin/feed"],
-  ["GET", "/admin/shop/orders"],
+  ["GET", "/admin/fulfillment"],
   ["GET", "/review"],
   ["GET", "/api/admin/users"],
   ["GET", "/api/admin/audit"],

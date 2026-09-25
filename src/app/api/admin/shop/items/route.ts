@@ -1,6 +1,7 @@
 import { fail, ok, parseBody, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { requirePermission } from "@/lib/guards"
+import { dollars } from "@/lib/money"
 import { Permission } from "@/lib/permissions"
 import prisma from "@/lib/prisma"
 import { sanitize } from "@/lib/sanitize"
@@ -33,6 +34,7 @@ export const POST = withRoute(async (req: Request) => {
       name: sanitize(data.name),
       description: sanitize(data.description),
       imageUrl: data.imageUrl ?? null,
+      costUsd: dollars(data.costUsd ?? null),
     },
   })
 
@@ -42,7 +44,7 @@ export const POST = withRoute(async (req: Request) => {
     actorEmail: gate.user.email,
     targetType: "ShopItem",
     targetId: item.id,
-    metadata: { after: { name: item.name, priceCredits: item.priceCredits } },
+    metadata: { after: { name: item.name, priceCredits: item.priceCredits, costUsd: item.costUsd } },
   })
 
   return ok({ item }, { status: 201 })

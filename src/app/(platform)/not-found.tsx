@@ -1,13 +1,15 @@
-import Link from "next/link"
+import { NotFoundScene } from "@/components/site/not-found-scene"
 
+/**
+ * A platform page that called `notFound()`: a project that does not exist, or
+ * is not yours. The same page as an unmatched URL (`app/global-not-found.tsx`),
+ * so a dead link reads the same wherever it leads.
+ */
 export default function NotFound() {
   return (
-    <main className="hl-shell hl-stack">
-      <h1>Not found</h1>
-      <p className="hl-muted">That page does not exist, or you cannot see it.</p>
-      <p>
-        <Link href="/">Back to the start</Link>
-      </p>
-    </main>
+    <>
+      <title>Page not found · Half Life by Hack Club</title>
+      <NotFoundScene />
+    </>
   )
 }
