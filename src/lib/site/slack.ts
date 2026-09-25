@@ -4,7 +4,7 @@ import crypto from "node:crypto"
  * Slack Web API + request verification.
  *
  * Auth is a single bot token (`SLACK_BOT_TOKEN`) with `chat:write`,
- * `channels:manage`, `groups:write`, `channels:read`, `groups:read`,
+ * `channels:write.invites`, `groups:write`, `channels:read`, `groups:read`,
  * `channels:history`, and `groups:history` scopes — see
  * `slack-app-manifest.yml` at the repo root for the exact manifest to paste
  * into api.slack.com when creating the app.
@@ -26,6 +26,10 @@ async function callSlackApi<T extends Record<string, unknown>>(
       authorization: `Bearer ${token}`,
     },
     body: JSON.stringify(params),
+    // Callers run inside `after` callbacks on the Events API path, where a
+    // hung request holds the callback open until the platform kills it. Cap it
+    // so a stalled call surfaces as a log line instead.
+    signal: AbortSignal.timeout(10_000),
   })
 
   const data = (await res.json()) as T & { ok: boolean; error?: string }
@@ -95,6 +99,7 @@ async function callSlackApiGet<T extends Record<string, unknown>>(
   const res = await fetch(url, {
     method: "GET",
     headers: { authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(10_000),
   })
 
   const data = (await res.json()) as T & { ok: boolean; error?: string }
