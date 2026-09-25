@@ -37,6 +37,10 @@ import type { Checkpoint } from "@/lib/types"
 import { uploadFile } from "@/lib/use-handoff"
 import { ImageUploads, type UploadedImage } from "./ImageUploads"
 import { fmtDuration, LapsePicker, type LapseTimelapse } from "./LapsePicker"
+
+const journalInputClass =
+  "block w-full rounded-xl border-2 border-line bg-black/[.02] px-4 py-2.5 text-[0.9rem] text-navy outline-none transition-colors placeholder:text-navy-soft/70 hover:border-line-strong focus:border-violet focus:bg-white"
+
 import { Modal, ModalTitle } from "./Modal"
 import { RepoChecks } from "./RepoChecks"
 
@@ -316,7 +320,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
                 inputMode="decimal"
                 placeholder="0"
                 aria-label="Hours spent on this session"
-                className={cx(inputClass, "tabular-nums")}
+                className={cx(journalInputClass, "tabular-nums")}
               />
             </Field>
           </div>
@@ -367,7 +371,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
                 rows={9}
                 placeholder="Start typing… What did you work on? What worked and what didn't? &#10;&#10; Markdown styling enabled! Drop images in with ![alt text](src url)."
                 aria-label="Journal entry"
-                className={cx(inputClass, "relative h-full resize-none bg-white/70")}
+                className={cx(journalInputClass, "relative h-full resize-none")}
               />
             </div>
 
