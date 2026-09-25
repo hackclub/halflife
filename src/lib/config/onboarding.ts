@@ -72,10 +72,26 @@ export function suggestedTierFor(experience: HardwareExperience | null): TierId 
 }
 
 export const EXPERIENCE_OPTIONS = [
-  { value: HardwareExperience.FIRST_TIME, label: "This is my first time!" },
-  { value: HardwareExperience.A_LITTLE, label: "just a little..." },
-  { value: HardwareExperience.A_GOOD_AMOUNT, label: "Yeah, i've built a good amount" },
-  { value: HardwareExperience.ITS_LIFE, label: "hardware... is life..." },
+  {
+    value: HardwareExperience.FIRST_TIME,
+    label: "This is my first time!",
+    hint: "Never touched a soldering iron. Perfect.",
+  },
+  {
+    value: HardwareExperience.A_LITTLE,
+    label: "just a little...",
+    hint: "A kit or two, maybe an Arduino blink.",
+  },
+  {
+    value: HardwareExperience.A_GOOD_AMOUNT,
+    label: "Yeah, i've built a good amount",
+    hint: "You have shipped a project that works.",
+  },
+  {
+    value: HardwareExperience.ITS_LIFE,
+    label: "hardware... is life...",
+    hint: "You own more multimeters than mugs.",
+  },
 ] as const
 
 /**

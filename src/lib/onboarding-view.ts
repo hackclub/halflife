@@ -28,7 +28,7 @@ export interface OnboardingView {
   suggestedTier: number
   beginner: boolean
   steps: readonly { id: string; number: number; heading: string; skippable: boolean }[]
-  experienceOptions: readonly { value: HardwareExperience; label: string }[]
+  experienceOptions: readonly { value: HardwareExperience; label: string; hint: string }[]
   weekIntro: {
     kicker: string
     headline: string
@@ -50,6 +50,8 @@ export interface OnboardingView {
     fundingHours: number
     submitFloorHours: number
     blurb: string
+    detail: string
+    toBank: string
   }[]
 }
 
@@ -93,6 +95,8 @@ export function toOnboardingView(state: OnboardingStateData): OnboardingView {
       fundingHours: tier.fundingHours,
       submitFloorHours: submitFloorFor(tier.fundingHours),
       blurb: tier.blurb,
+      detail: tier.detail,
+      toBank: tier.toBank,
     })),
   }
 }

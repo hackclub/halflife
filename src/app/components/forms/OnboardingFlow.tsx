@@ -114,6 +114,7 @@ export function OnboardingFlow({
                 tone="gold"
                 selected={view.experience === option.value}
                 disabled={busy}
+                hint={option.hint}
                 onClick={() => void send({ step: "experience", experience: option.value })}
               >
                 <span className="text-[0.95rem] font-extrabold text-navy">{option.label}</span>
@@ -240,6 +241,10 @@ export function OnboardingFlow({
                           {tier.name} — ${tier.grantUsd}
                         </h3>
                         <p className="mt-1 text-[0.84rem] leading-relaxed text-navy-soft">{tier.blurb}</p>
+                        <p className="mt-1 text-[0.8rem] leading-relaxed text-navy-soft">{tier.detail}</p>
+                        <p className="mt-1 text-[0.8rem] leading-relaxed text-navy-soft">
+                          {tier.toBank} towards your 3D printer.
+                        </p>
                       </div>
                       {chosen ? (
                         <Chip tone="teal">Chosen</Chip>
