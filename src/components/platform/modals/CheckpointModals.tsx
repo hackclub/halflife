@@ -784,6 +784,12 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
   // under way for it means that question was answered last time.
   const [again, setAgain] = useState(!done || draft !== null)
   const titleId = useId()
+  const captionLength = caption.trim().length
+  const captionReady = captionLength >= 8
+  const captionBlocker = captionReady
+    ? null
+    : `Caption needs ${8 - captionLength} more character${8 - captionLength === 1 ? "" : "s"} (${captionLength}/8).`
+  const postBlocker = !clip ? "Add a clip before posting this reel." : captionBlocker
 
   // Posted: the same sheet now asks whether it is going anywhere else. The
   // clip's URL comes along so it can be saved and uploaded there.
@@ -841,6 +847,10 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
             <p role="alert" className="hand mr-auto min-w-0 flex-1 text-[0.84rem] leading-snug text-coral-deep">
               {postError}
             </p>
+          ) : postBlocker ? (
+            <p role="status" className="hand mr-auto min-w-0 flex-1 text-[0.84rem] leading-snug text-coral-deep">
+              {postBlocker}
+            </p>
           ) : (
             <p className="hand mr-auto hidden text-[0.78rem] text-navy-soft sm:block">
               Reels post straight to the Doomscroller.
@@ -857,7 +867,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
                 draft to keep — it is just the answer to "another one?" */}
             {done && !clip && !caption.trim() ? "Not now" : "Save draft"}
           </Button>
-          <Button variant="solid" disabled={!clip || caption.trim().length < 8 || posting} onClick={() => void post()}>
+          <Button variant="solid" disabled={Boolean(postBlocker) || posting} onClick={() => void post()}>
             {posting ? "Posting…" : done ? "Post another reel" : "Post reel"} <IconFilm className="text-base" />
           </Button>
         </>
@@ -892,10 +902,15 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
             <ReelCapture objectKey={clip} onCaptured={capture} />
           </div>
 
-          <Field label="Caption" hint="One line. Say what changed." id="reel-caption">
+          <Field
+            label="Caption"
+            hint={captionReady ? "One line. Say what changed." : `At least 8 characters (${captionLength}/8).`}
+            id="reel-caption"
+          >
             <input
               id="reel-caption"
               value={caption}
+              aria-invalid={!captionReady || undefined}
               onChange={(e) => setCaption(e.target.value)}
               placeholder="routed the whole board without a single ratline left"
               className={inputClass}
