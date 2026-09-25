@@ -48,9 +48,17 @@ export function Modal({
   const titleId = useId()
   const isClient = useIsClient()
 
+  // Parents commonly pass an inline onClose. Keep the latest callback in a
+  // ref so a re-render caused by typing does not restart the focus-trap effect
+  // (its cleanup restores focus and its setup focuses the first control again).
+  const onCloseRef = useRef(onClose)
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
+
   const close = useCallback(() => {
-    if (dismissible) onClose()
-  }, [dismissible, onClose])
+    if (dismissible) onCloseRef.current()
+  }, [dismissible])
 
   useEffect(() => {
     if (!open) return

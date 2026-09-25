@@ -12,6 +12,7 @@ import {
   IconEye,
   IconFilm,
   IconMic,
+  IconUpload,
   IconWarning,
 } from "@/components/platform/icons"
 import { countImages, Markdown, proseLength } from "@/components/platform/Markdown"
@@ -33,6 +34,7 @@ import { normalizeRepo } from "@/lib/repo"
 import type { RepoCheckResult } from "@/lib/repo-checks"
 import { useStore } from "@/lib/store"
 import type { Checkpoint } from "@/lib/types"
+import { uploadFile } from "@/lib/use-handoff"
 import { ImageUploads, type UploadedImage } from "./ImageUploads"
 import { fmtDuration, LapsePicker, type LapseTimelapse } from "./LapsePicker"
 import { Modal, ModalTitle } from "./Modal"
@@ -114,6 +116,9 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
   const [hoursText, setHoursText] = useState(draft?.hoursText ?? (existing ? String(to2(existing.minutes / 60)) : ""))
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const imageInput = useRef<HTMLInputElement>(null)
+  const [imageBusy, setImageBusy] = useState(false)
+  const [imageError, setImageError] = useState<string | null>(null)
 
   const project = projects.find((p) => p.weekId === (week.phase === "build" ? week.id - 5 : week.id)) ?? projects[0]
 
@@ -193,6 +198,31 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
   async function signInWithLapse() {
     stashJournalDraft(checkpoint.id, { tab: "timelapse", body, hoursText, picked })
     await linkLapse(`${window.location.pathname}?journal=${encodeURIComponent(checkpoint.id)}`)
+  }
+
+  async function addJournalImages(files: FileList | null) {
+    const selected = Array.from(files ?? [])
+    if (selected.length === 0) return
+
+    setImageBusy(true)
+    setImageError(null)
+    try {
+      for (const file of selected) {
+        const { url } = await uploadFile(file, "sessions")
+        if (!url) throw new Error("Image uploads need a public URL before they can be added here")
+        const alt =
+          file.name
+            .replace(/\.[^.]+$/, "")
+            .replace(/[[\]]/g, "")
+            .trim() || "Journal image"
+        setBody((current) => `${current}${current.trim() ? "\n\n" : ""}![${alt}](${url})`)
+      }
+    } catch (err) {
+      setImageError(err instanceof Error ? err.message : "The image did not upload")
+    } finally {
+      setImageBusy(false)
+      if (imageInput.current) imageInput.current.value = ""
+    }
   }
 
   return (
@@ -357,7 +387,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
             )}
           </div>
 
-          <div className="mt-2 flex flex-wrap items-baseline justify-end gap-x-4 gap-y-1">
+          <div className="mt-2 flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
             <p
               className={cx(
                 "hand text-[0.76rem] tabular-nums",
@@ -366,10 +396,35 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
             >
               {shots} / {needPhotos} images
             </p>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={imageBusy}
+              onClick={() => imageInput.current?.click()}
+              aria-label="Add images to your journal entry"
+            >
+              <IconUpload className="text-base" />
+              {imageBusy ? "Uploading…" : "Add images"}
+            </Button>
+            <input
+              ref={imageInput}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              multiple
+              className="sr-only"
+              tabIndex={-1}
+              aria-hidden="true"
+              onChange={(event) => void addJournalImages(event.target.files)}
+            />
             <p className={cx("hand text-[0.76rem] tabular-nums", longEnough ? "text-teal-deep" : "text-navy-soft")}>
               {written} / 200 characters
             </p>
           </div>
+          {imageError ? (
+            <p role="alert" className="mt-2 text-right text-[0.8rem] font-semibold text-coral-deep">
+              {imageError}
+            </p>
+          ) : null}
         </div>
       ) : (
         <div>
