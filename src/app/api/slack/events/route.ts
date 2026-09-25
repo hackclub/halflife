@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server"
+import { after, NextResponse } from "next/server"
 import {
   getBotUserId,
   getPermalink,
@@ -196,11 +196,25 @@ export async function POST(request: Request) {
 
   if (body.type === "event_callback" && body.event) {
     const event = body.event
-    if (event.type === "member_joined_channel") {
-      await handleMainChannelJoin(event)
-    } else if (event.type === "message" && event.channel === process.env.SLACK_HELP_CHANNEL_ID) {
-      await handleHelpMessage(event)
-    }
+    // Ack first, work second. Slack abandons a delivery it hasn't seen a 200
+    // for within 3s and retries, and the guard above drops every retry — so if
+    // a slow Slack call held the response open past that window, the retry
+    // carrying the same work would be discarded and the invite lost with
+    // nothing in the logs. `after` keeps the response instant so the retry
+    // path stays a genuine safety net rather than a silent failure.
+    after(async () => {
+      try {
+        if (event.type === "member_joined_channel") {
+          await handleMainChannelJoin(event)
+        } else if (event.type === "message" && event.channel === process.env.SLACK_HELP_CHANNEL_ID) {
+          await handleHelpMessage(event)
+        }
+      } catch (err) {
+        // Nothing above this frame can observe a failure — the response is
+        // already sent and Slack has its 200 — so the log is the only trace.
+        console.error("[slack] event handler threw:", err)
+      }
+    })
   }
 
   return NextResponse.json({ ok: true })
