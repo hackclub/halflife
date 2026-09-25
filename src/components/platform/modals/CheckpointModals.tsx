@@ -190,9 +190,9 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
     setOpenCheckpoint(null)
   }
 
-  function signInWithLapse() {
+  async function signInWithLapse() {
     stashJournalDraft(checkpoint.id, { tab: "timelapse", body, hoursText, picked })
-    void linkLapse(`${window.location.pathname}?journal=${encodeURIComponent(checkpoint.id)}`)
+    await linkLapse(`${window.location.pathname}?journal=${encodeURIComponent(checkpoint.id)}`)
   }
 
   return (
