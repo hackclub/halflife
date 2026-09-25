@@ -1,17 +1,17 @@
-"use client";
+"use client"
 
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
-import { signOut } from "@/lib/auth-client";
-import Image from "next/image";
-import { FoxAvatar } from "@/components/platform/art";
-import logoArt from "../../../../public/art/logo.png";
-import { IconLogout } from "@/components/platform/icons";
-import { Panel, cx } from "@/components/platform/ui";
-import { useStore } from "@/lib/store";
-import { GoalTracker } from "./GoalTracker";
-import { PLATFORM_HOME } from "@/lib/routes";
+import Link from "next/link"
+import { usePathname, useRouter } from "next/navigation"
+import { useState } from "react"
+import { signOut } from "@/lib/auth-client"
+import Image from "next/image"
+import { FoxAvatar } from "@/components/platform/art"
+import logoArt from "../../../../public/art/logo.png"
+import { IconLogout } from "@/components/platform/icons"
+import { Panel, cx } from "@/components/platform/ui"
+import { useStore } from "@/lib/store"
+import { GoalTracker } from "./GoalTracker"
+import { PLATFORM_HOME } from "@/lib/routes"
 
 export const NAV = [
   { href: PLATFORM_HOME, label: "Home", tourId: "nav-home" },
@@ -21,20 +21,20 @@ export const NAV = [
   { href: "/explore", label: "Explore", tourId: "nav-explore" },
   { href: "/shop", label: "Shop", tourId: "nav-shop" },
   { href: "/docs", label: "Docs", tourId: "nav-docs" },
-] as const;
+] as const
 
 /**
  * The phone tab bar divides into equal cells, six at most: six 60px cells is
  * what a 360px screen holds with the uppercase labels still readable. The
  * Doomscroller gets in through the header link below lg instead of taking one.
  */
-export const TAB_NAV = NAV.filter((item) => item.href !== "/doomscroller");
+export const TAB_NAV = NAV.filter((item) => item.href !== "/doomscroller")
 
 export function Sidebar({ className }: { className?: string }) {
-  const pathname = usePathname();
-  const { reset, viewer } = useStore();
-  const router = useRouter();
-  const [signingOut, setSigningOut] = useState(false);
+  const pathname = usePathname()
+  const { reset, viewer } = useStore()
+  const router = useRouter()
+  const [signingOut, setSigningOut] = useState(false)
 
   return (
     <div className={cx("flex flex-col gap-5", className)}>
@@ -53,14 +53,11 @@ export function Sidebar({ className }: { className?: string }) {
       </Link>
 
       <Panel tone="line" radius={18} className="relative bg-cream/60 pt-7 pb-5">
-        <span
-          aria-hidden="true"
-          className="torn-soft absolute -top-3.5 left-8 h-8 w-20 rounded-t-lg bg-coral"
-        />
+        <span aria-hidden="true" className="torn-soft absolute -top-3.5 left-8 h-8 w-20 rounded-t-lg bg-coral" />
         <nav className="relative px-5">
           <ul>
             {NAV.map((item) => {
-              const active = item.href === PLATFORM_HOME ? pathname === PLATFORM_HOME : pathname.startsWith(item.href);
+              const active = item.href === PLATFORM_HOME ? pathname === PLATFORM_HOME : pathname.startsWith(item.href)
               return (
                 <li key={item.href} data-tour={item.tourId} className="relative">
                   <Link
@@ -75,7 +72,7 @@ export function Sidebar({ className }: { className?: string }) {
                     {active && <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-coral" />}
                   </Link>
                 </li>
-              );
+              )
             })}
           </ul>
         </nav>
@@ -94,13 +91,13 @@ export function Sidebar({ className }: { className?: string }) {
             type="button"
             disabled={signingOut}
             onClick={async () => {
-              setSigningOut(true);
+              setSigningOut(true)
               try {
-                await signOut();
-                router.push("/login");
-                router.refresh();
+                await signOut()
+                router.push("/login")
+                router.refresh()
               } finally {
-                setSigningOut(false);
+                setSigningOut(false)
               }
             }}
             className="label mt-2 inline-flex items-center gap-1.5 text-sky-deep transition-colors hover:text-coral"
@@ -118,5 +115,5 @@ export function Sidebar({ className }: { className?: string }) {
         Replay the intro
       </button>
     </div>
-  );
+  )
 }

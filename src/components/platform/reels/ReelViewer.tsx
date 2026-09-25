@@ -1,7 +1,7 @@
-"use client";
+"use client"
 
-import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link"
+import { useCallback, useEffect, useRef, useState } from "react"
 import {
   IconChevronDown,
   IconChevronUp,
@@ -9,16 +9,16 @@ import {
   IconEye,
   IconHeart,
   IconVolumeOff,
-} from "@/components/platform/icons";
-import { Panel, cx } from "@/components/platform/ui";
-import type { FeedItem } from "@/lib/feed";
-import { useStore } from "@/lib/store";
-import { compact } from "./format";
-import { sendLike } from "./ReelCard";
-import { ReelComments, StageAvatar } from "./ReelComments";
-import { StageSlide, type SlideHandle } from "./StageSlide";
-import { useFeed } from "./useFeed";
-import { RATES, usePlayerPrefs } from "./usePlayerPrefs";
+} from "@/components/platform/icons"
+import { Panel, cx } from "@/components/platform/ui"
+import type { FeedItem } from "@/lib/feed"
+import { useStore } from "@/lib/store"
+import { compact } from "./format"
+import { sendLike } from "./ReelCard"
+import { ReelComments, StageAvatar } from "./ReelComments"
+import { StageSlide, type SlideHandle } from "./StageSlide"
+import { useFeed } from "./useFeed"
+import { RATES, usePlayerPrefs } from "./usePlayerPrefs"
 
 /**
  * The glide between reels: quick off the mark and settling into place, so the
@@ -26,33 +26,33 @@ import { RATES, usePlayerPrefs } from "./usePlayerPrefs";
  * handing over to the next, short enough that flicking through a dozen never
  * feels like waiting on the page.
  */
-const GLIDE_MS = 360;
-const glideEase = (t: number) => 1 - (1 - t) ** 4;
+const GLIDE_MS = 360
+const glideEase = (t: number) => 1 - (1 - t) ** 4
 
 /** How far a wheel has to travel, in pixels, before it counts as a flick. */
-const WHEEL_FLICK = 24;
+const WHEEL_FLICK = 24
 /**
  * A trackpad keeps sending wheel events for a second or so after the fingers
  * lift. One gesture is everything up to a gap this long, and it moves one reel
  * however much momentum it carries — the way a swipe on a phone does.
  */
-const WHEEL_GESTURE_GAP_MS = 180;
+const WHEEL_GESTURE_GAP_MS = 180
 
 /** How close to the end of what is loaded the next page is asked for. */
-const PREFETCH_AHEAD = 3;
+const PREFETCH_AHEAD = 3
 
 /**
  * Slides this far either side of the current one are real players; the rest
  * are empty frames of the same height. A feed that has paged in sixty reels
  * then holds five video elements, not sixty.
  */
-const MOUNTED_EITHER_SIDE = 2;
+const MOUNTED_EITHER_SIDE = 2
 
 /** Where the comments stop being a column beside the reel and become a sheet over it. */
-const COMMENTS_BESIDE = "(min-width: 80rem)";
+const COMMENTS_BESIDE = "(min-width: 80rem)"
 
 function prefersStill() {
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches
 }
 
 /**
@@ -72,47 +72,47 @@ function prefersStill() {
  * glides exactly one reel and cannot be made to skip.
  */
 export function ReelViewer() {
-  const { viewer } = useStore();
-  const stage = useRef<HTMLElement>(null);
-  const scroller = useRef<HTMLDivElement>(null);
-  const slides = useRef<(HTMLElement | null)[]>([]);
-  const [index, setIndex] = useState(0);
+  const { viewer } = useStore()
+  const stage = useRef<HTMLElement>(null)
+  const scroller = useRef<HTMLDivElement>(null)
+  const slides = useRef<(HTMLElement | null)[]>([])
+  const [index, setIndex] = useState(0)
   // The observer reports asynchronously, so two quick presses would both read
   // the same stale index. Navigation moves this cursor immediately instead.
-  const cursor = useRef(0);
+  const cursor = useRef(0)
   // The glide in progress, if any. While it runs the scroll position is ours,
   // not the reader's, so the scroll handler leaves the cursor alone.
-  const glide = useRef<number | null>(null);
+  const glide = useRef<number | null>(null)
 
-  const [prefs, setPrefs] = usePlayerPrefs();
+  const [prefs, setPrefs] = usePlayerPrefs()
   // Muted because the browser refused sound, as opposed to by choice. Kept
   // apart so a refusal on one visit is not remembered as a preference.
-  const [autoMuted, setAutoMuted] = useState(false);
-  const muted = prefs.muted || autoMuted;
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [autoMuted, setAutoMuted] = useState(false)
+  const muted = prefs.muted || autoMuted
+  const [sheetOpen, setSheetOpen] = useState(false)
   // Kept mounted through the slide down, so it does not empty as it goes.
-  const [sheetShown, setSheetShown] = useState(false);
+  const [sheetShown, setSheetShown] = useState(false)
   // Whether the comments have room to stand beside the reel. Only one of the
   // two homes for them is ever mounted, so only one ever fetches.
-  const [wide, setWide] = useState(false);
+  const [wide, setWide] = useState(false)
   useEffect(() => {
-    const mq = window.matchMedia(COMMENTS_BESIDE);
-    const sync = () => setWide(mq.matches);
-    sync();
-    mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
-  }, []);
+    const mq = window.matchMedia(COMMENTS_BESIDE)
+    const sync = () => setWide(mq.matches)
+    sync()
+    mq.addEventListener("change", sync)
+    return () => mq.removeEventListener("change", sync)
+  }, [])
   // The current slide's own controls, for the keyboard.
-  const active = useRef<SlideHandle | null>(null);
+  const active = useRef<SlideHandle | null>(null)
   const register = useCallback((handle: SlideHandle | null) => {
-    active.current = handle;
-  }, []);
-  const onAutoMuted = useCallback(() => setAutoMuted(true), []);
+    active.current = handle
+  }, [])
+  const onAutoMuted = useCallback(() => setAutoMuted(true), [])
 
-  const feed = useFeed();
+  const feed = useFeed()
   // The reels plus the slide at the end: the sign-off, or "loading more".
-  const last = feed.items.length;
-  const current: FeedItem | undefined = feed.items[index];
+  const last = feed.items.length
+  const current: FeedItem | undefined = feed.items[index]
 
   // Animated by hand rather than with `behavior: "smooth"`: inside a
   // mandatory-snap container the smooth form is dropped outright by some
@@ -120,82 +120,82 @@ export function ReelViewer() {
   // for the length of the glide — otherwise the container fights every frame
   // back to the nearest slide — and restored once it lands on one.
   const glideTo = useCallback((to: number) => {
-    const box = scroller.current;
-    if (!box) return;
-    if (glide.current !== null) cancelAnimationFrame(glide.current);
-    const from = box.scrollTop;
+    const box = scroller.current
+    if (!box) return
+    if (glide.current !== null) cancelAnimationFrame(glide.current)
+    const from = box.scrollTop
     if (prefersStill() || Math.abs(to - from) < 1) {
-      glide.current = null;
-      box.style.scrollSnapType = "";
-      box.scrollTop = to;
-      return;
+      glide.current = null
+      box.style.scrollSnapType = ""
+      box.scrollTop = to
+      return
     }
-    box.style.scrollSnapType = "none";
-    const t0 = performance.now();
+    box.style.scrollSnapType = "none"
+    const t0 = performance.now()
     const frame = (now: number) => {
-      const t = Math.min(1, (now - t0) / GLIDE_MS);
-      box.scrollTop = from + (to - from) * glideEase(t);
+      const t = Math.min(1, (now - t0) / GLIDE_MS)
+      box.scrollTop = from + (to - from) * glideEase(t)
       if (t < 1) {
-        glide.current = requestAnimationFrame(frame);
-        return;
+        glide.current = requestAnimationFrame(frame)
+        return
       }
-      glide.current = null;
-      box.style.scrollSnapType = "";
-    };
-    glide.current = requestAnimationFrame(frame);
-  }, []);
+      glide.current = null
+      box.style.scrollSnapType = ""
+    }
+    glide.current = requestAnimationFrame(frame)
+  }, [])
 
   useEffect(
     () => () => {
-      if (glide.current !== null) cancelAnimationFrame(glide.current);
+      if (glide.current !== null) cancelAnimationFrame(glide.current)
     },
     [],
-  );
+  )
 
   const goTo = useCallback(
     (i: number) => {
-      const target = slides.current[i];
-      if (!target) return;
-      cursor.current = i;
-      setIndex(i);
-      glideTo(target.offsetTop);
+      const target = slides.current[i]
+      if (!target) return
+      cursor.current = i
+      setIndex(i)
+      glideTo(target.offsetTop)
     },
     [glideTo],
-  );
+  )
 
   const step = useCallback(
     (dir: 1 | -1) => goTo(Math.max(0, Math.min(slides.current.length - 1, cursor.current + dir))),
     [goTo],
-  );
+  )
 
   // Scrolling by hand is the other way the cursor moves. Every slide is exactly
   // the height of the frame, so the scroll position is the index — no observer
   // needed, and no threshold to get wrong.
   useEffect(() => {
-    const box = scroller.current;
-    if (!box) return;
+    const box = scroller.current
+    if (!box) return
     const onScroll = () => {
-      if (glide.current !== null) return;
-      const n = Math.max(0, Math.min(last, Math.round(box.scrollTop / box.clientHeight)));
-      if (n === cursor.current) return;
-      cursor.current = n;
-      setIndex(n);
-    };
+      if (glide.current !== null) return
+      const n = Math.max(0, Math.min(last, Math.round(box.scrollTop / box.clientHeight)))
+      if (n === cursor.current) return
+      cursor.current = n
+      setIndex(n)
+    }
     // A thumb landing mid-glide takes over from it on the spot, rather than
     // wrestling the animation for the next few frames.
     const onTouch = () => {
-      if (glide.current === null) return;
-      cancelAnimationFrame(glide.current);
-      glide.current = null;
-      box.style.scrollSnapType = "";
-    };
-    box.addEventListener("scroll", onScroll, { passive: true });
-    box.addEventListener("touchstart", onTouch, { passive: true });
+      if (glide.current === null) return
+      cancelAnimationFrame(glide.current)
+      glide.current = null
+      box.style.scrollSnapType = ""
+    }
+    box.addEventListener("scroll", onScroll, { passive: true })
+    box.addEventListener("touchstart", onTouch, { passive: true })
     return () => {
-      box.removeEventListener("scroll", onScroll);
-      box.removeEventListener("touchstart", onTouch);
-    };
-  }, [last]);
+      box.removeEventListener("scroll", onScroll)
+      box.removeEventListener("touchstart", onTouch)
+    }
+  }, [last])
 
   // One flick, one reel. Left to itself a mouse wheel lurches between snap
   // points and a trackpad's momentum sails past three reels at once; taking
@@ -203,103 +203,103 @@ export function ReelViewer() {
   // Heard on the whole stage, not just the scroller, so a flick over the
   // arrows or the actions moves the reel too.
   useEffect(() => {
-    const box = stage.current;
-    if (!box) return;
-    let travelled = 0;
-    let spent = false;
-    let quiet = 0;
+    const box = stage.current
+    if (!box) return
+    let travelled = 0
+    let spent = false
+    let quiet = 0
     const onWheel = (e: WheelEvent) => {
       // Pinch-zoom arrives as a ctrl-wheel, and sideways is somebody else's.
-      if (e.ctrlKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+      if (e.ctrlKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return
       // An opened caption scrolls itself.
-      if (e.target instanceof Element && e.target.closest("[data-own-scroll]")) return;
-      e.preventDefault();
-      window.clearTimeout(quiet);
+      if (e.target instanceof Element && e.target.closest("[data-own-scroll]")) return
+      e.preventDefault()
+      window.clearTimeout(quiet)
       quiet = window.setTimeout(() => {
-        spent = false;
-        travelled = 0;
-      }, WHEEL_GESTURE_GAP_MS);
-      if (spent) return;
+        spent = false
+        travelled = 0
+      }, WHEEL_GESTURE_GAP_MS)
+      if (spent) return
       // Line-mode wheels (Firefox on some mice) report lines, not pixels.
-      travelled += e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
-      if (Math.abs(travelled) < WHEEL_FLICK) return;
-      spent = true;
-      step(travelled > 0 ? 1 : -1);
-    };
-    box.addEventListener("wheel", onWheel, { passive: false });
+      travelled += e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY
+      if (Math.abs(travelled) < WHEEL_FLICK) return
+      spent = true
+      step(travelled > 0 ? 1 : -1)
+    }
+    box.addEventListener("wheel", onWheel, { passive: false })
     return () => {
-      box.removeEventListener("wheel", onWheel);
-      window.clearTimeout(quiet);
-    };
-  }, [step]);
+      box.removeEventListener("wheel", onWheel)
+      window.clearTimeout(quiet)
+    }
+  }, [step])
 
   // Endless, the way a reel feed is: the next page is asked for a few reels
   // before the end, so the reader scrolls into it rather than up to a wall.
-  const { more, done, loading, error } = feed;
+  const { more, done, loading, error } = feed
   useEffect(() => {
-    if (!done && !loading && !error && last > 0 && index >= last - PREFETCH_AHEAD) more();
-  }, [index, last, done, loading, error, more]);
+    if (!done && !loading && !error && last > 0 && index >= last - PREFETCH_AHEAD) more()
+  }, [index, last, done, loading, error, more])
 
   const toggleMute = useCallback(() => {
     if (muted) {
-      setAutoMuted(false);
-      setPrefs({ muted: false });
-    } else setPrefs({ muted: true });
-  }, [muted, setPrefs]);
+      setAutoMuted(false)
+      setPrefs({ muted: false })
+    } else setPrefs({ muted: true })
+  }, [muted, setPrefs])
 
   const openComments = useCallback(() => {
     if (wide) {
-      setPrefs({ comments: !prefs.comments });
-      return;
+      setPrefs({ comments: !prefs.comments })
+      return
     }
-    setSheetShown(true);
-    setSheetOpen(true);
-  }, [wide, prefs.comments, setPrefs]);
+    setSheetShown(true)
+    setSheetOpen(true)
+  }, [wide, prefs.comments, setPrefs])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return
       if (e.key === "Escape" && sheetOpen) {
-        setSheetOpen(false);
-        return;
+        setSheetOpen(false)
+        return
       }
       // A checkpoint modal can open over any route, and typing is typing.
-      if (document.querySelector("[role='dialog']")) return;
-      const el = e.target;
+      if (document.querySelector("[role='dialog']")) return
+      const el = e.target
       if (el instanceof Element && el.closest("input, textarea, select, [contenteditable='true']")) {
-        return;
+        return
       }
 
       // Space is a button's own key when one has focus; anywhere else it is
       // the player's.
       if (e.key === " " && !(el instanceof Element && el.closest("button, a, [role='slider']"))) {
-        e.preventDefault();
-        active.current?.toggle();
-        return;
+        e.preventDefault()
+        active.current?.toggle()
+        return
       }
       if (e.key === "m" || e.key === "M") {
-        toggleMute();
-        return;
+        toggleMute()
+        return
       }
 
-      const back = e.key === "ArrowUp" || e.key === "ArrowLeft";
-      const fwd = e.key === "ArrowDown" || e.key === "ArrowRight";
-      if (!back && !fwd) return;
-      e.preventDefault();
-      step(fwd ? 1 : -1);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [step, toggleMute, sheetOpen]);
+      const back = e.key === "ArrowUp" || e.key === "ArrowLeft"
+      const fwd = e.key === "ArrowDown" || e.key === "ArrowRight"
+      if (!back && !fwd) return
+      e.preventDefault()
+      step(fwd ? 1 : -1)
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [step, toggleMute, sheetOpen])
 
   const cycleRate = useCallback(() => {
-    const at = RATES.indexOf(prefs.rate as (typeof RATES)[number]);
-    setPrefs({ rate: RATES[(at + 1) % RATES.length] ?? 1 });
-  }, [prefs.rate, setPrefs]);
-  const toggleAutoScroll = useCallback(() => setPrefs({ autoScroll: !prefs.autoScroll }), [prefs.autoScroll, setPrefs]);
-  const advance = useCallback(() => step(1), [step]);
+    const at = RATES.indexOf(prefs.rate as (typeof RATES)[number])
+    setPrefs({ rate: RATES[(at + 1) % RATES.length] ?? 1 })
+  }, [prefs.rate, setPrefs])
+  const toggleAutoScroll = useCallback(() => setPrefs({ autoScroll: !prefs.autoScroll }), [prefs.autoScroll, setPrefs])
+  const advance = useCallback(() => step(1), [step])
 
-  const commentsBeside = wide && prefs.comments && current !== undefined;
+  const commentsBeside = wide && prefs.comments && current !== undefined
 
   return (
     // The frame is the viewport minus the app header and the bottom padding
@@ -329,7 +329,7 @@ export function ReelViewer() {
               key={reel.id}
               data-slide={i}
               ref={(el) => {
-                slides.current[i] = el;
+                slides.current[i] = el
               }}
               aria-hidden={i !== index || undefined}
               inert={i !== index}
@@ -364,7 +364,7 @@ export function ReelViewer() {
             <div
               data-slide={last}
               ref={(el) => {
-                slides.current[last] = el;
+                slides.current[last] = el
               }}
               className="snap-item flex h-full flex-col items-center justify-center gap-2 py-3 text-center"
             >
@@ -380,9 +380,7 @@ export function ReelViewer() {
                   </button>
                 </>
               ) : !feed.done ? (
-                <p className="hand text-[0.95rem] text-navy-soft motion-safe:animate-pulse">
-                  loading more reels…
-                </p>
+                <p className="hand text-[0.95rem] text-navy-soft motion-safe:animate-pulse">loading more reels…</p>
               ) : (
                 <>
                   <p className="hand text-[1.05rem] text-navy">
@@ -444,11 +442,19 @@ export function ReelViewer() {
                   aria-label={`${current.author.name ?? "A maker"}'s project: ${current.project.title || current.project.theme}`}
                   className="mb-1 rounded-full ring-2 ring-white transition-transform hover:scale-105 md:ring-navy"
                 >
-                  <StageAvatar name={current.author.name} image={current.author.image} className="size-11 text-[1.05rem]" />
+                  <StageAvatar
+                    name={current.author.name}
+                    image={current.author.image}
+                    className="size-11 text-[1.05rem]"
+                  />
                 </Link>
               ) : (
                 <span className="mb-1 rounded-full ring-2 ring-white md:ring-navy">
-                  <StageAvatar name={current.author.name} image={current.author.image} className="size-11 text-[1.05rem]" />
+                  <StageAvatar
+                    name={current.author.name}
+                    image={current.author.image}
+                    className="size-11 text-[1.05rem]"
+                  />
                 </span>
               )}
 
@@ -482,7 +488,12 @@ export function ReelViewer() {
 
       {/* ---------- the conversation, beside the reel ---------- */}
       {commentsBeside && (
-        <Panel tone="line" radius={18} as="aside" className="my-3 flex w-[21rem] shrink-0 flex-col bg-paper 2xl:w-[24rem]">
+        <Panel
+          tone="line"
+          radius={18}
+          as="aside"
+          className="my-3 flex w-[21rem] shrink-0 flex-col bg-paper 2xl:w-[24rem]"
+        >
           <ReelComments
             reel={current ?? null}
             viewer={viewer}
@@ -515,7 +526,7 @@ export function ReelViewer() {
           )}
           style={{ "--sk-color": "var(--color-navy)", "--sk-radius": "24px" } as React.CSSProperties}
           onTransitionEnd={(e) => {
-            if (e.target === e.currentTarget && !sheetOpen) setSheetShown(false);
+            if (e.target === e.currentTarget && !sheetOpen) setSheetShown(false)
           }}
         >
           <span aria-hidden="true" className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-line md:hidden" />
@@ -531,7 +542,7 @@ export function ReelViewer() {
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 /** The drawn round button the Doomscroller has always stepped with. */
@@ -541,10 +552,10 @@ function NavButton({
   disabled,
   children,
 }: {
-  label: string;
-  onClick: () => void;
-  disabled: boolean;
-  children: React.ReactNode;
+  label: string
+  onClick: () => void
+  disabled: boolean
+  children: React.ReactNode
 }) {
   return (
     <button
@@ -565,7 +576,7 @@ function NavButton({
     >
       {children}
     </button>
-  );
+  )
 }
 
 /**
@@ -585,25 +596,25 @@ function Action({
   popKey,
   children,
 }: {
-  label: string;
-  count: number;
-  pressed?: boolean;
-  tone?: "coral" | "violet";
-  onClick?: () => void;
+  label: string
+  count: number
+  pressed?: boolean
+  tone?: "coral" | "violet"
+  onClick?: () => void
   /** Plays the acknowledgement when this turns true — a like landing. */
-  pop?: boolean;
+  pop?: boolean
   /** Which reel it belongs to, so arriving on an already-liked reel does not play it. */
-  popKey?: string;
-  children: React.ReactNode;
+  popKey?: string
+  children: React.ReactNode
 }) {
-  const disc = useRef<HTMLSpanElement>(null);
-  const seen = useRef<{ key?: string; on?: boolean }>({ key: popKey, on: pop });
+  const disc = useRef<HTMLSpanElement>(null)
+  const seen = useRef<{ key?: string; on?: boolean }>({ key: popKey, on: pop })
 
   useEffect(() => {
-    const prev = seen.current;
-    seen.current = { key: popKey, on: pop };
-    if (!pop || prev.key !== popKey || prev.on) return;
-    if (prefersStill()) return;
+    const prev = seen.current
+    seen.current = { key: popKey, on: pop }
+    if (!pop || prev.key !== popKey || prev.on) return
+    if (prefersStill()) return
     disc.current?.animate(
       [
         { transform: "scale(1)" },
@@ -612,11 +623,16 @@ function Action({
         { transform: "scale(1)" },
       ],
       { duration: 420, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
-    );
-  }, [pop, popKey]);
+    )
+  }, [pop, popKey])
 
-  const on = pressed && tone;
-  const ring = on === "coral" ? "var(--color-coral-deep)" : on === "violet" ? "var(--color-violet-deep)" : "var(--color-line-strong)";
+  const on = pressed && tone
+  const ring =
+    on === "coral"
+      ? "var(--color-coral-deep)"
+      : on === "violet"
+        ? "var(--color-violet-deep)"
+        : "var(--color-line-strong)"
 
   const body = (
     <>
@@ -643,15 +659,21 @@ function Action({
         {compact(count)}
       </span>
     </>
-  );
+  )
 
   return onClick ? (
-    <button type="button" onClick={onClick} aria-label={label} aria-pressed={pressed} className="group flex flex-col items-center gap-1">
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      aria-pressed={pressed}
+      className="group flex flex-col items-center gap-1"
+    >
       {body}
     </button>
   ) : (
     <span role="img" aria-label={label} className="flex flex-col items-center gap-1">
       {body}
     </span>
-  );
+  )
 }

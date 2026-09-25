@@ -1,15 +1,15 @@
-"use client";
+"use client"
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { IconArrowRight, IconFilm, IconPlus, IconX } from "@/components/platform/icons";
-import { PublicReelModal } from "@/components/platform/modals/CheckpointModals";
-import { Button, Chip, Panel } from "@/components/platform/ui";
-import { fmtDate } from "@/lib/projects";
-import { PLATFORM_INFO } from "@/lib/public-reels";
-import type { MyReel, MyReelGroup } from "@/lib/queries/reels";
-import { PLATFORM_HOME } from "@/lib/routes";
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useState } from "react"
+import { IconArrowRight, IconFilm, IconPlus, IconX } from "@/components/platform/icons"
+import { PublicReelModal } from "@/components/platform/modals/CheckpointModals"
+import { Button, Chip, Panel } from "@/components/platform/ui"
+import { fmtDate } from "@/lib/projects"
+import { PLATFORM_INFO } from "@/lib/public-reels"
+import type { MyReel, MyReelGroup } from "@/lib/queries/reels"
+import { PLATFORM_HOME } from "@/lib/routes"
 
 /**
  * The Reels page's list: one section per project, one row per reel, and under
@@ -21,16 +21,16 @@ import { PLATFORM_HOME } from "@/lib/routes";
  * refresh rather than a local patch.
  */
 export function ReelsList({ groups }: { groups: MyReelGroup[] }) {
-  const router = useRouter();
-  const [adding, setAdding] = useState<MyReel | null>(null);
+  const router = useRouter()
+  const [adding, setAdding] = useState<MyReel | null>(null)
 
   if (groups.length === 0) {
     return (
       <Panel tone="line" radius={20} className="bg-paper px-6 py-14 text-center">
         <p className="text-[1.05rem] font-extrabold text-navy">No reels yet</p>
         <p className="hand mx-auto mt-2 max-w-[44ch] text-[0.9rem] leading-relaxed text-navy-soft">
-          reels are posted from the checkpoints on your trail: an idea reel to start each design
-          week, and one every ten hours after that.
+          reels are posted from the checkpoints on your trail: an idea reel to start each design week, and one every ten
+          hours after that.
         </p>
         <Link
           href={PLATFORM_HOME}
@@ -39,7 +39,7 @@ export function ReelsList({ groups }: { groups: MyReelGroup[] }) {
           Go to the trail <IconArrowRight className="text-base" />
         </Link>
       </Panel>
-    );
+    )
   }
 
   return (
@@ -50,7 +50,10 @@ export function ReelsList({ groups }: { groups: MyReelGroup[] }) {
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <h2 id={`reels-${group.project?.id ?? "none"}`} className="label text-violet-deep">
                 {group.project ? (
-                  <Link href={`/projects/${group.project.id}`} className="hover:underline hover:decoration-2 hover:underline-offset-4">
+                  <Link
+                    href={`/projects/${group.project.id}`}
+                    className="hover:underline hover:decoration-2 hover:underline-offset-4"
+                  >
                     {group.project.title}
                   </Link>
                 ) : (
@@ -75,30 +78,30 @@ export function ReelsList({ groups }: { groups: MyReelGroup[] }) {
           videoUrl={adding.videoUrl}
           start="links"
           onClose={() => {
-            setAdding(null);
-            router.refresh();
+            setAdding(null)
+            router.refresh()
           }}
         />
       )}
     </>
-  );
+  )
 }
 
 function ReelRow({ reel, onAdd, onChanged }: { reel: MyReel; onAdd: () => void; onChanged: () => void }) {
-  const [removing, setRemoving] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [removing, setRemoving] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   async function remove(id: string) {
-    setRemoving(id);
-    setError(null);
+    setRemoving(id)
+    setError(null)
     try {
-      const res = await fetch(`/api/public-reels/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error(String(res.status));
-      onChanged();
+      const res = await fetch(`/api/public-reels/${id}`, { method: "DELETE" })
+      if (!res.ok) throw new Error(String(res.status))
+      onChanged()
     } catch {
-      setError("That link didn't remove. Try again.");
+      setError("That link didn't remove. Try again.")
     } finally {
-      setRemoving(null);
+      setRemoving(null)
     }
   }
 
@@ -134,7 +137,9 @@ function ReelRow({ reel, onAdd, onChanged }: { reel: MyReel; onAdd: () => void; 
           {reel.status === "HIDDEN" && <Chip tone="coral">Hidden from the feed</Chip>}
         </p>
         {reel.caption && (
-          <p className="mt-1 line-clamp-2 text-[0.9rem] leading-snug [overflow-wrap:anywhere] text-navy-soft">{reel.caption}</p>
+          <p className="mt-1 line-clamp-2 text-[0.9rem] leading-snug [overflow-wrap:anywhere] text-navy-soft">
+            {reel.caption}
+          </p>
         )}
 
         <div className="mt-3">
@@ -177,5 +182,5 @@ function ReelRow({ reel, onAdd, onChanged }: { reel: MyReel; onAdd: () => void; 
         </div>
       </div>
     </Panel>
-  );
+  )
 }

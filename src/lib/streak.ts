@@ -91,9 +91,7 @@ export async function recomputeStreak(tx: Tx, userId: string): Promise<StreakSta
     orderBy: { effectiveDate: "desc" },
   })
 
-  const days = rows
-    .map((r) => r.effectiveDate)
-    .filter((d): d is string => d !== null)
+  const days = rows.map((r) => r.effectiveDate).filter((d): d is string => d !== null)
 
   const state = streakFromDays(days)
 
@@ -117,10 +115,7 @@ export async function recomputeStreak(tx: Tx, userId: string): Promise<StreakSta
  * the column a week later. Displays must go through this, which expires a
  * stale run against today's date.
  */
-export function streakAsOf(
-  stored: { currentStreak: number; lastStreakDate: string | null },
-  today: string,
-): number {
+export function streakAsOf(stored: { currentStreak: number; lastStreakDate: string | null }, today: string): number {
   if (!stored.lastStreakDate) return 0
   const gap = daysBetween(stored.lastStreakDate, today)
   if (gap < 0) return stored.currentStreak

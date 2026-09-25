@@ -21,13 +21,7 @@ import type { TierId } from "@/lib/config/tiers"
  * rest needs the feed first, since every later checkpoint is a reel.
  */
 
-export type OnboardingStepId =
-  | "experience"
-  | "week"
-  | "project"
-  | "idea"
-  | "tier"
-  | "tracking"
+export type OnboardingStepId = "experience" | "week" | "project" | "idea" | "tier" | "tracking"
 
 export interface OnboardingStep {
   readonly id: OnboardingStepId
@@ -184,8 +178,6 @@ export function weekIntroFor(theme: Theme): WeekIntro | undefined {
 /** Whether step two should show the primer rather than the examples. */
 export function isBeginner(experience: HardwareExperience | null): boolean {
   return (
-    experience === HardwareExperience.FIRST_TIME ||
-    experience === HardwareExperience.A_LITTLE ||
-    experience === null
+    experience === HardwareExperience.FIRST_TIME || experience === HardwareExperience.A_LITTLE || experience === null
   )
 }

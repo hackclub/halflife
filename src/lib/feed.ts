@@ -125,10 +125,7 @@ export interface FeedPage {
  * feed starts skipping or repeating items — the pinned set is small, bounded,
  * and only needed on the first page.
  */
-export async function getFeed(
-  viewerId: string,
-  opts: { cursor?: string; limit: number },
-): Promise<FeedPage> {
+export async function getFeed(viewerId: string, opts: { cursor?: string; limit: number }): Promise<FeedPage> {
   const rows = await prisma.post.findMany({
     where: { ...visible, pinnedAt: null },
     include: feedInclude,
@@ -350,11 +347,7 @@ export async function getComments(
   }
 }
 
-export async function addComment(
-  postId: string,
-  userId: string,
-  body: string,
-): Promise<CommentView> {
+export async function addComment(postId: string, userId: string, body: string): Promise<CommentView> {
   const clean = sanitize(body)
   if (!clean) throw new HttpError("VALIDATION_FAILED", "Say something")
 
@@ -408,11 +401,7 @@ export async function deleteOwnPost(postId: string, userId: string): Promise<voi
 
 // ─── Moderation ──────────────────────────────────────────────────────────────
 
-export async function hidePost(
-  postId: string,
-  moderatorId: string,
-  reason: string,
-): Promise<void> {
+export async function hidePost(postId: string, moderatorId: string, reason: string): Promise<void> {
   const { count } = await prisma.post.updateMany({
     where: { id: postId, deletedAt: null },
     data: {
@@ -433,11 +422,7 @@ export async function restorePost(postId: string): Promise<void> {
   if (count === 0) throw new HttpError("NOT_FOUND", "Post not found")
 }
 
-export async function hideComment(
-  commentId: string,
-  moderatorId: string,
-  reason: string,
-): Promise<void> {
+export async function hideComment(commentId: string, moderatorId: string, reason: string): Promise<void> {
   await prisma.$transaction(async (tx) => {
     const { count } = await tx.postComment.updateMany({
       where: { id: commentId, hiddenAt: null, deletedAt: null },

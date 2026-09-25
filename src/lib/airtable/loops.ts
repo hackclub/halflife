@@ -2,12 +2,7 @@ import "server-only"
 import prisma from "@/lib/prisma"
 import { Phase } from "@/app/generated/prisma/enums"
 import { THEMES } from "@/lib/config/program"
-import {
-  airtableFetch,
-  getAirtableConfig,
-  withRateLimitRetry,
-  type AirtableRecord,
-} from "@/lib/airtable/client"
+import { airtableFetch, getAirtableConfig, withRateLimitRetry, type AirtableRecord } from "@/lib/airtable/client"
 
 /**
  * The Loops properties on the `Signups` table: what Loops emails people from.
@@ -82,8 +77,7 @@ async function loopsValues(): Promise<LoopsValues[]> {
     const weeks: Record<number, boolean> = {}
     for (const def of THEMES) {
       const project = u.themeProjects.find((p) => p.theme === def.id)
-      weeks[def.designWeek] =
-        def.designWeek === 1 ? u.onboardingCompletedAt !== null : project?.namedAt != null
+      weeks[def.designWeek] = def.designWeek === 1 ? u.onboardingCompletedAt !== null : project?.namedAt != null
       weeks[def.buildWeek] = project?.workSessions.some((s) => s.phase === Phase.BUILD) ?? false
     }
     const lastEntryAt = u.themeProjects
@@ -158,7 +152,9 @@ export interface LoopsSyncResult {
  * values changed, ten per request (Airtable's limit), so an hourly run costs a
  * listing and a handful of writes.
  */
-export async function syncLoopsProperties(opts: { dryRun?: boolean } = {}): Promise<LoopsSyncResult | { skipped: string }> {
+export async function syncLoopsProperties(
+  opts: { dryRun?: boolean } = {},
+): Promise<LoopsSyncResult | { skipped: string }> {
   const config = getAirtableConfig()
   if (!config) return { skipped: "not_configured" }
 

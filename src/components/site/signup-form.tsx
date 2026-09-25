@@ -1,22 +1,15 @@
-"use client";
+"use client"
 
-import Image from "next/image";
-import { useRouter } from "next/navigation";
+import Image from "next/image"
+import { useRouter } from "next/navigation"
 
-import brushstroke from "../../../public/art/brushstroke.png";
-import { signInWith, useSession } from "@/lib/auth-client";
-import { BRAND } from "@/lib/site/content";
-import { SWASH_INSET_X, SWASH_INSET_Y } from "@/lib/site/stage";
-import {
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  type CSSProperties,
-  type ReactNode,
-} from "react";
+import brushstroke from "../../../public/art/brushstroke.png"
+import { signInWith, useSession } from "@/lib/auth-client"
+import { BRAND } from "@/lib/site/content"
+import { SWASH_INSET_X, SWASH_INSET_Y } from "@/lib/site/stage"
+import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from "react"
 
-type Status = "idle" | "pending" | "error";
+type Status = "idle" | "pending" | "error"
 
 /**
  * How long the sign-up record may hold up the way in. It is attribution — who
@@ -24,7 +17,7 @@ type Status = "idle" | "pending" | "error";
  * moment for, but never worth making someone stare at a spinner: past this,
  * the sign-in goes ahead and the request is left to finish on its own.
  */
-const SUBSCRIBE_WAIT_MS = 2500;
+const SUBSCRIBE_WAIT_MS = 2500
 
 /**
  * The way in. Sizing is entirely `em`-relative, so the caller sets one
@@ -47,9 +40,9 @@ export default function SignupForm({
   style,
   intro,
 }: {
-  className?: string;
-  fontSize?: string;
-  style?: CSSProperties;
+  className?: string
+  fontSize?: string
+  style?: CSSProperties
   /**
    * Anything that belongs inside the field's own box — in practice the hero's
    * tagline.
@@ -62,14 +55,14 @@ export default function SignupForm({
    * around the caption and the field but not around it is for the box to be
    * drawn in here too.
    */
-  intro?: ReactNode;
+  intro?: ReactNode
 }) {
-  const id = useId();
-  const router = useRouter();
-  const { data: session } = useSession();
-  const [status, setStatus] = useState<Status>("idle");
-  const [message, setMessage] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
+  const id = useId()
+  const router = useRouter()
+  const { data: session } = useSession()
+  const [status, setStatus] = useState<Status>("idle")
+  const [message, setMessage] = useState("")
+  const inputRef = useRef<HTMLInputElement>(null)
 
   /**
    * Prefill from the address bar: `?email=someone@example.com`. A link sent
@@ -88,41 +81,39 @@ export default function SignupForm({
    * restored a value on a back-navigation, what is in the field wins.
    */
   useEffect(() => {
-    const prefill = new URLSearchParams(window.location.search)
-      .get("email")
-      ?.trim();
+    const prefill = new URLSearchParams(window.location.search).get("email")?.trim()
     if (prefill && inputRef.current && !inputRef.current.value) {
-      inputRef.current.value = prefill;
+      inputRef.current.value = prefill
     }
-  }, []);
+  }, [])
 
   function fail(text: string) {
-    setStatus("error");
-    setMessage(text);
-    inputRef.current?.focus();
+    setStatus("error")
+    setMessage(text)
+    inputRef.current?.focus()
   }
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const field = inputRef.current;
-    const email = field?.value.trim() ?? "";
+    event.preventDefault()
+    const field = inputRef.current
+    const email = field?.value.trim() ?? ""
 
     // Checked here rather than by the browser (`noValidate`), so the message
     // lands on the line under the field in this page's voice instead of in a
     // native bubble.
-    if (!email) return fail("Enter your email to sign up or log in.");
-    if (field && !field.checkValidity()) return fail("That doesn't look like an email address.");
+    if (!email) return fail("Enter your email to sign up or log in.")
+    if (field && !field.checkValidity()) return fail("That doesn't look like an email address.")
 
-    setStatus("pending");
-    setMessage("Taking you to Hack Club to sign in…");
+    setStatus("pending")
+    setMessage("Taking you to Hack Club to sign in…")
 
     // Whoever sent this visitor here — a referral link or a campaign URL —
     // is only present in this page's own address bar, so it's read fresh at
     // submit time and sent before the page leaves. `keepalive` lets it finish
     // even if the sign-in navigates away first; its answer is not needed.
-    const params = new URLSearchParams(window.location.search);
-    const abort = new AbortController();
-    const timer = window.setTimeout(() => abort.abort(), SUBSCRIBE_WAIT_MS);
+    const params = new URLSearchParams(window.location.search)
+    const abort = new AbortController()
+    const timer = window.setTimeout(() => abort.abort(), SUBSCRIBE_WAIT_MS)
     try {
       await fetch("/api/subscribe", {
         method: "POST",
@@ -136,30 +127,30 @@ export default function SignupForm({
           utmMedium: params.get("utm_medium") || undefined,
           utmCampaign: params.get("utm_campaign") || undefined,
         }),
-      });
+      })
     } catch {
       // Slow, offline or refused: none of it should stand between someone and
       // signing in. The sign-in below says so if the network is really gone.
     } finally {
-      window.clearTimeout(timer);
+      window.clearTimeout(timer)
     }
 
     if (session) {
-      router.push("/dashboard");
-      return;
+      router.push("/dashboard")
+      return
     }
 
     try {
       // better-auth reports a refusal in the result rather than throwing; on
       // success the page is already on its way to Hack Club.
-      const result = await signInWith("hca", "/dashboard", email);
-      if (result?.error) fail("Hack Club sign-in didn't open. Give it another try in a moment.");
+      const result = await signInWith("hca", "/dashboard", email)
+      if (result?.error) fail("Hack Club sign-in didn't open. Give it another try in a moment.")
     } catch {
-      fail("You look offline. Reconnect and try again.");
+      fail("You look offline. Reconnect and try again.")
     }
   }
 
-  const pending = status === "pending";
+  const pending = status === "pending"
 
   return (
     <div className={className} style={{ ...style, fontSize }}>
@@ -244,9 +235,7 @@ export default function SignupForm({
                 instrument. One surface, one boundary, one accent does the job
                 the five of them were failing to. */}
             <div
-              className={`hl-field relative min-w-0 flex-1 bg-hl-ink ${
-                pending ? "opacity-70" : ""
-              }`}
+              className={`hl-field relative min-w-0 flex-1 bg-hl-ink ${pending ? "opacity-70" : ""}`}
               style={{ height: "2.1667em" }}
             >
               <input
@@ -267,8 +256,8 @@ export default function SignupForm({
                 aria-invalid={status === "error" || undefined}
                 onChange={() => {
                   if (status === "error") {
-                    setStatus("idle");
-                    setMessage("");
+                    setStatus("idle")
+                    setMessage("")
                   }
                 }}
                 // Display face, not the body one it inherited. The control is
@@ -354,9 +343,7 @@ export default function SignupForm({
           semibold, so the two read apart at a glance as well as by colour. */}
       <p
         id={`${id}-msg`}
-        className={`mt-[0.45em] ${
-          status === "error" ? "font-semibold text-hl-cyan" : "text-hl-paper"
-        }`}
+        className={`mt-[0.45em] ${status === "error" ? "font-semibold text-hl-cyan" : "text-hl-paper"}`}
         style={{ fontSize: "0.6em", minHeight: "1.4em" }}
       >
         {status === "error" ? message : BRAND.eligibility}
@@ -369,26 +356,14 @@ export default function SignupForm({
         {message}
       </p>
     </div>
-  );
+  )
 }
 
 function Spinner({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>
-      <circle
-        cx={12}
-        cy={12}
-        r={9}
-        stroke="currentColor"
-        strokeWidth={3}
-        strokeOpacity={0.3}
-      />
-      <path
-        d="M21 12a9 9 0 0 0-9-9"
-        stroke="currentColor"
-        strokeWidth={3}
-        strokeLinecap="square"
-      />
+      <circle cx={12} cy={12} r={9} stroke="currentColor" strokeWidth={3} strokeOpacity={0.3} />
+      <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth={3} strokeLinecap="square" />
     </svg>
-  );
+  )
 }

@@ -1,4 +1,4 @@
-import type { Checkpoint, Phase, WeekMeta } from "./types";
+import type { Checkpoint, Phase, WeekMeta } from "./types"
 
 /**
  * Tiers and the build-week ask are program configuration, not curriculum, and
@@ -6,9 +6,9 @@ import type { Checkpoint, Phase, WeekMeta } from "./types";
  * on the trail already reaches for them through this module, and one of the
  * two copies that used to exist would eventually have drifted from the other.
  */
-export { BUILD_BLOCKS, BUILD_HOURS } from "./config/program";
-export { TIERS } from "./config/tiers";
-export type { Tier } from "./config/tiers";
+export { BUILD_BLOCKS, BUILD_HOURS } from "./config/program"
+export { TIERS } from "./config/tiers"
+export type { Tier } from "./config/tiers"
 
 /**
  * Ten weeks: five design weeks, then the same five themes built for real.
@@ -19,15 +19,15 @@ export type { Tier } from "./config/tiers";
  */
 
 interface ThemeSeed {
-  theme: string;
-  designHeadline: string;
-  buildHeadline: string;
-  fullName: string;
-  summary: string;
-  primer: string;
-  examples: string[];
-  accent: string;
-  accentDeep: string;
+  theme: string
+  designHeadline: string
+  buildHeadline: string
+  fullName: string
+  summary: string
+  primer: string
+  examples: string[]
+  accent: string
+  accentDeep: string
 }
 
 const THEMES: ThemeSeed[] = [
@@ -116,9 +116,9 @@ const THEMES: ThemeSeed[] = [
     accent: "var(--color-violet)",
     accentDeep: "var(--color-violet-deep)",
   },
-];
+]
 
-const cp = (c: Checkpoint): Checkpoint => c;
+const cp = (c: Checkpoint): Checkpoint => c
 
 /** Every week's fixed half — everything that does not depend on the tier. */
 export const WEEK_META: WeekMeta[] = [
@@ -146,10 +146,10 @@ export const WEEK_META: WeekMeta[] = [
     accent: seed.accent,
     accentDeep: seed.accentDeep,
   })),
-];
+]
 
 /** Progress reels land on the clock: one every ten hours logged, indefinitely. */
-export const REEL_EVERY = 10;
+export const REEL_EVERY = 10
 
 /**
  * A session has to be backed by photographs. Two is the floor whatever the
@@ -157,8 +157,8 @@ export const REEL_EVERY = 10;
  * more of itself than a short one, which is the only thing standing between a
  * self-reported number and a made-up one.
  */
-export const MIN_PHOTOS = 2;
-export const photosRequired = (hours: number) => Math.max(MIN_PHOTOS, Math.ceil(hours));
+export const MIN_PHOTOS = 2
+export const photosRequired = (hours: number) => Math.max(MIN_PHOTOS, Math.ceil(hours))
 
 /**
  * The week's checkpoints.
@@ -194,8 +194,8 @@ export function checkpointsFor(
    */
   submitHours: number,
 ): Checkpoint[] {
-  const id = (n: string) => `w${meta.id}-${n}`;
-  const out: Checkpoint[] = [];
+  const id = (n: string) => `w${meta.id}-${n}`
+  const out: Checkpoint[] = []
 
   const entry = (n: number, branch?: "keep") =>
     cp({
@@ -211,7 +211,7 @@ export function checkpointsFor(
       // it holds Submit shut. Zero, because carrying on is never gated on
       // hours of its own — only on what the hours have already earned.
       atHours: branch ? 0 : undefined,
-    });
+    })
 
   const milestoneReel = (k: number) =>
     cp({
@@ -220,36 +220,33 @@ export function checkpointsFor(
       kind: "reel",
       atHours: k * REEL_EVERY,
       title: `${k * REEL_EVERY}h progress reel`,
-      blurb:
-        k === 1
-          ? "Ten hours in. Show where the work actually got to."
-          : "What has changed since the last one.",
+      blurb: k === 1 ? "Ten hours in. Show where the work actually got to." : "What has changed since the last one.",
       reelBrief:
         k === 1
           ? "Screen-share what you have and narrate one decision you reversed."
           : "Put the last version next to this one and say what moved.",
-    });
+    })
 
   // Past the submit floor the live entry leaves the chain and pairs with Submit
   // as a fork, so the walk stops one short of it. A submitted week has no live
   // entry at all — the route is settled and the trail shows only what happened.
-  const submitted = isDone(id("submit"));
-  const floorHours = submitHours;
-  const loggedHours = entryMinutes.reduce((n, m) => n + m, 0) / 60;
-  const forked = !submitted && loggedHours >= floorHours;
+  const submitted = isDone(id("submit"))
+  const floorHours = submitHours
+  const loggedHours = entryMinutes.reduce((n, m) => n + m, 0) / 60
+  const forked = !submitted && loggedHours >= floorHours
 
   // Walk the entries, dropping a reel in wherever the clock crosses ten hours.
-  let hours = 0;
-  let reels = 0;
-  const live = submitted || forked ? entryMinutes.length : entryMinutes.length + 1;
+  let hours = 0
+  let reels = 0
+  const live = submitted || forked ? entryMinutes.length : entryMinutes.length + 1
   const pushEntry = (n: number) => {
-    out.push(entry(n));
-    hours += (entryMinutes[n - 1] ?? 0) / 60;
+    out.push(entry(n))
+    hours += (entryMinutes[n - 1] ?? 0) / 60
     while (Math.floor(hours / REEL_EVERY) > reels) {
-      reels += 1;
-      out.push(milestoneReel(reels));
+      reels += 1
+      out.push(milestoneReel(reels))
     }
-  };
+  }
 
   if (meta.phase === "design") {
     const ideaReel = cp({
@@ -259,7 +256,7 @@ export function checkpointsFor(
       title: "Idea reel",
       blurb: "30 seconds on what you are making and why anyone should care.",
       reelBrief: "Hold up a sketch, say the idea out loud, name one thing you are unsure about.",
-    });
+    })
 
     // Every design week opens the same way: say what you are making, then
     // start logging the making of it. Week one differs only in how the
@@ -282,10 +279,10 @@ export function checkpointsFor(
             blurb: `Name your ${meta.theme.toLowerCase()} project and pick a funding tier.`,
           }),
       ideaReel,
-    );
-    for (let n = 1; n <= live; n += 1) pushEntry(n);
+    )
+    for (let n = 1; n <= live; n += 1) pushEntry(n)
   } else {
-    for (let n = 1; n <= live; n += 1) pushEntry(n);
+    for (let n = 1; n <= live; n += 1) pushEntry(n)
   }
 
   // The next one on the clock, so the cadence is visible before you get there.
@@ -296,7 +293,7 @@ export function checkpointsFor(
   // as a step you have to clear first, when in truth it gates nothing and only
   // belongs to one of the two answers. It comes back the moment the hours
   // earn it.
-  if (!submitted && !forked) out.push(milestoneReel(reels + 1));
+  if (!submitted && !forked) out.push(milestoneReel(reels + 1))
 
   const submit = cp({
     id: id("submit"),
@@ -311,15 +308,15 @@ export function checkpointsFor(
         ? "A working demo, or an honest write-up of what still needs changing."
         : "Files, bill of materials, your tier, and the reel that closes the week.",
     branch: forked ? "submit" : undefined,
-  });
+  })
 
   // The fork. Both halves are the last row of the week and the renderer lays
   // them side by side; ordering them keep-then-submit is what puts carrying on
   // on the left, which is the one the trail has been travelling towards.
-  if (forked) out.push(entry(live + 1, "keep"), submit);
-  else out.push(submit);
+  if (forked) out.push(entry(live + 1, "keep"), submit)
+  else out.push(submit)
 
-  return out;
+  return out
 }
 
 export const STARTER_IDEAS = [
@@ -347,7 +344,7 @@ export const STARTER_IDEAS = [
     blurb: "One sensor, one display, one small board.",
     art: "sensor" as const,
   },
-];
+]
 
 export const SUBMIT_FILES_DESIGN = [
   { id: "schematic", label: "Schematic (.kicad_sch or PDF)", hint: "Every net named, no floating pins." },
@@ -355,10 +352,10 @@ export const SUBMIT_FILES_DESIGN = [
   { id: "gerbers", label: "Gerbers + drill files (.zip)", hint: "The exact zip you would hand a fab." },
   { id: "readme", label: "README with build notes", hint: "What it does, what you would change." },
   { id: "photos", label: "Renders or screenshots", hint: "At least one 3D view of the board." },
-];
+]
 
 export const SUBMIT_FILES_BUILD = [
   { id: "demo", label: "30–60 second working demo", hint: "Show it doing the thing, with your voice over it." },
   { id: "photos", label: "Three photos of the finished build", hint: "Front, back, and one detail shot." },
   { id: "notes", label: "Assembly notes", hint: "What you got wrong the first time." },
-];
+]

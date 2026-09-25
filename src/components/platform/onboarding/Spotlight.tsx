@@ -1,30 +1,24 @@
-"use client";
+"use client"
 
-import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { IconArrowRight } from "@/components/platform/icons";
-import { Button, cx } from "@/components/platform/ui";
+import { useCallback, useEffect, useId, useRef, useState } from "react"
+import { IconArrowRight } from "@/components/platform/icons"
+import { Button, cx } from "@/components/platform/ui"
 
 export interface Rect {
-  top: number;
-  left: number;
-  width: number;
-  height: number;
+  top: number
+  left: number
+  width: number
+  height: number
 }
 
 function firstVisible(selector: string): HTMLElement | null {
-  if (!selector) return null;
-  const nodes = Array.from(document.querySelectorAll<HTMLElement>(selector));
-  return nodes.find((n) => n.getBoundingClientRect().width > 0) ?? null;
+  if (!selector) return null
+  const nodes = Array.from(document.querySelectorAll<HTMLElement>(selector))
+  return nodes.find((n) => n.getBoundingClientRect().width > 0) ?? null
 }
 
 const same = (a: Rect | null, b: Rect | null) =>
-  a === b ||
-  (!!a &&
-    !!b &&
-    a.top === b.top &&
-    a.left === b.left &&
-    a.width === b.width &&
-    a.height === b.height);
+  a === b || (!!a && !!b && a.top === b.top && a.left === b.left && a.width === b.width && a.height === b.height)
 
 /**
  * The line drawn between a step's two targets, from the near edge of one to the
@@ -33,15 +27,15 @@ const same = (a: Rect | null, b: Rect | null) =>
  * diagonal someone forgot to straighten.
  */
 function tether(a: Rect, b: Rect) {
-  const rightward = b.left + b.width / 2 >= a.left + a.width / 2;
-  const from = { x: rightward ? a.left + a.width : a.left, y: a.top + a.height / 2 };
-  const to = { x: rightward ? b.left : b.left + b.width, y: b.top + b.height / 2 };
-  const bend = (to.x - from.x) * 0.5;
+  const rightward = b.left + b.width / 2 >= a.left + a.width / 2
+  const from = { x: rightward ? a.left + a.width : a.left, y: a.top + a.height / 2 }
+  const to = { x: rightward ? b.left : b.left + b.width, y: b.top + b.height / 2 }
+  const bend = (to.x - from.x) * 0.5
   return {
     d: `M ${from.x} ${from.y} C ${from.x + bend} ${from.y}, ${to.x - bend} ${to.y}, ${to.x} ${to.y}`,
     from,
     to,
-  };
+  }
 }
 
 /**
@@ -74,62 +68,62 @@ export function Spotlight({
   pad = 10,
   radius = 20,
 }: {
-  selector: string;
-  also?: string;
-  title: string;
-  body: string;
-  cta?: string;
-  onNext: () => void;
-  onSkip?: () => void;
-  step?: number;
-  total?: number;
-  clickAnywhere?: boolean;
-  pad?: number;
-  radius?: number;
+  selector: string
+  also?: string
+  title: string
+  body: string
+  cta?: string
+  onNext: () => void
+  onSkip?: () => void
+  step?: number
+  total?: number
+  clickAnywhere?: boolean
+  pad?: number
+  radius?: number
 }) {
-  const [rect, setRect] = useState<Rect | null>(null);
-  const [alsoRect, setAlsoRect] = useState<Rect | null>(null);
-  const [travelling, setTravelling] = useState(false);
-  const [revealed, setRevealed] = useState(false);
-  const raf = useRef(0);
-  const until = useRef(0);
-  const placed = useRef(false);
-  const uid = useId().replace(/:/g, "");
+  const [rect, setRect] = useState<Rect | null>(null)
+  const [alsoRect, setAlsoRect] = useState<Rect | null>(null)
+  const [travelling, setTravelling] = useState(false)
+  const [revealed, setRevealed] = useState(false)
+  const raf = useRef(0)
+  const until = useRef(0)
+  const placed = useRef(false)
+  const uid = useId().replace(/:/g, "")
 
   const measure = useCallback(() => {
-    const el = firstVisible(selector);
+    const el = firstVisible(selector)
     // Hold the last known position rather than blanking: a step whose target is
     // missing at this breakpoint should not make the highlight disappear and
     // re-enter, it should just stay put.
     if (el) {
-      const r = el.getBoundingClientRect();
+      const r = el.getBoundingClientRect()
       const next = {
         top: Math.round(r.top - pad),
         left: Math.round(r.left - pad),
         width: Math.round(r.width + pad * 2),
         height: Math.round(r.height + pad * 2),
-      };
-      setRect((prev) => (same(prev, next) ? prev : next));
+      }
+      setRect((prev) => (same(prev, next) ? prev : next))
     }
 
     // The second target is cleared when it goes, unlike the first. It is a
     // panel that can be closed and a rail that disappears with the viewport,
     // so a stale hole would sit over live page rather than over the thing it
     // was cut for.
-    const other = also ? firstVisible(also) : null;
+    const other = also ? firstVisible(also) : null
     if (!other) {
-      setAlsoRect((prev) => (prev === null ? prev : null));
-      return;
+      setAlsoRect((prev) => (prev === null ? prev : null))
+      return
     }
-    const r = other.getBoundingClientRect();
+    const r = other.getBoundingClientRect()
     const next = {
       top: Math.round(r.top - pad),
       left: Math.round(r.left - pad),
       width: Math.round(r.width + pad * 2),
       height: Math.round(r.height + pad * 2),
-    };
-    setAlsoRect((prev) => (same(prev, next) ? prev : next));
-  }, [selector, also, pad]);
+    }
+    setAlsoRect((prev) => (same(prev, next) ? prev : next))
+  }, [selector, also, pad])
 
   /**
    * Follow the target for a bounded window rather than forever. A permanent
@@ -137,37 +131,37 @@ export function Spotlight({
    * at time zero and leaves the highlight stranded between two steps.
    */
   const follow = useCallback(() => {
-    until.current = performance.now() + 900;
-    if (raf.current) return;
+    until.current = performance.now() + 900
+    if (raf.current) return
     const loop = (now: number) => {
-      measure();
-      raf.current = now < until.current ? window.requestAnimationFrame(loop) : 0;
-    };
-    raf.current = window.requestAnimationFrame(loop);
-  }, [measure]);
+      measure()
+      raf.current = now < until.current ? window.requestAnimationFrame(loop) : 0
+    }
+    raf.current = window.requestAnimationFrame(loop)
+  }, [measure])
 
   useEffect(() => {
-    firstVisible(selector)?.scrollIntoView({ block: "center", behavior: "smooth" });
-    follow();
-    const onMove = () => follow();
-    window.addEventListener("scroll", onMove, true);
-    window.addEventListener("resize", onMove);
+    firstVisible(selector)?.scrollIntoView({ block: "center", behavior: "smooth" })
+    follow()
+    const onMove = () => follow()
+    window.addEventListener("scroll", onMove, true)
+    window.addEventListener("resize", onMove)
     return () => {
-      window.removeEventListener("scroll", onMove, true);
-      window.removeEventListener("resize", onMove);
-      window.cancelAnimationFrame(raf.current);
-      raf.current = 0;
-    };
-  }, [selector, follow]);
+      window.removeEventListener("scroll", onMove, true)
+      window.removeEventListener("resize", onMove)
+      window.cancelAnimationFrame(raf.current)
+      raf.current = 0
+    }
+  }, [selector, follow])
 
   // The first position is placed without a transition; every step after that
   // travels from wherever the highlight already is, so the eye can follow it.
   useEffect(() => {
-    if (!rect || placed.current) return;
-    placed.current = true;
-    const id = window.requestAnimationFrame(() => setTravelling(true));
-    return () => window.cancelAnimationFrame(id);
-  }, [rect]);
+    if (!rect || placed.current) return
+    placed.current = true
+    const id = window.requestAnimationFrame(() => setTravelling(true))
+    return () => window.cancelAnimationFrame(id)
+  }, [rect])
 
   // The second window is closed for one frame after its target is found, so
   // the line has something to draw towards and the opening has somewhere to
@@ -176,73 +170,71 @@ export function Spotlight({
   // the target moves, and an effect keyed on it would cancel its own pending
   // frame for as long as the page was still settling — which is exactly the
   // window the reveal is supposed to run in, so it could be starved outright.
-  const hasAlso = alsoRect !== null;
+  const hasAlso = alsoRect !== null
 
   useEffect(() => {
     // A frame late on purpose, both ways: the closed geometry has to be
     // committed before the open geometry can transition away from it.
-    const id = window.requestAnimationFrame(() => setRevealed(hasAlso));
-    return () => window.cancelAnimationFrame(id);
-  }, [hasAlso]);
+    const id = window.requestAnimationFrame(() => setRevealed(hasAlso))
+    return () => window.cancelAnimationFrame(id)
+  }, [hasAlso])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && onSkip) onSkip();
+      if (e.key === "Escape" && onSkip) onSkip()
       if ((e.key === "Enter" || e.key === " ") && clickAnywhere) {
-        e.preventDefault();
-        onNext();
+        e.preventDefault()
+        onNext()
       }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onNext, onSkip, clickAnywhere]);
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [onNext, onSkip, clickAnywhere])
 
-  const vw = typeof window === "undefined" ? 1200 : window.innerWidth;
-  const vh = typeof window === "undefined" ? 800 : window.innerHeight;
+  const vw = typeof window === "undefined" ? 1200 : window.innerWidth
+  const vh = typeof window === "undefined" ? 800 : window.innerHeight
 
   // Park the card on whichever side actually has room. A tall target (the feed
   // rail) gets the card beside it; a wide one gets it above or below. It reads
   // only the first target: on a two-target step the card belongs with the
   // control being named, at the near end of the line rather than straddling it.
-  const cardW = Math.min(340, vw - 32);
-  const cardH = 190;
-  const gap = 14;
-  const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi);
+  const cardW = Math.min(340, vw - 32)
+  const cardH = 190
+  const gap = 14
+  const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi)
 
-  let cardTop: number;
-  let cardLeft: number;
+  let cardTop: number
+  let cardLeft: number
 
   if (!rect) {
     // Target not on screen at this breakpoint — still show the card so the
     // tour can be finished rather than trapping the user behind a dim layer.
-    cardLeft = clamp(vw / 2 - cardW / 2, 16, vw - cardW - 16);
-    cardTop = vh - cardH - 32;
+    cardLeft = clamp(vw / 2 - cardW / 2, 16, vw - cardW - 16)
+    cardTop = vh - cardH - 32
   } else if (rect.top + rect.height + gap + cardH < vh) {
-    cardTop = rect.top + rect.height + gap;
-    cardLeft = clamp(rect.left + rect.width / 2 - cardW / 2, 16, vw - cardW - 16);
+    cardTop = rect.top + rect.height + gap
+    cardLeft = clamp(rect.left + rect.width / 2 - cardW / 2, 16, vw - cardW - 16)
   } else if (rect.top - gap - cardH > 0) {
-    cardTop = rect.top - gap - cardH;
-    cardLeft = clamp(rect.left + rect.width / 2 - cardW / 2, 16, vw - cardW - 16);
+    cardTop = rect.top - gap - cardH
+    cardLeft = clamp(rect.left + rect.width / 2 - cardW / 2, 16, vw - cardW - 16)
   } else if (rect.left - gap - cardW > 0) {
-    cardLeft = rect.left - gap - cardW;
-    cardTop = clamp(rect.top + rect.height / 2 - cardH / 2, 16, vh - cardH - 16);
+    cardLeft = rect.left - gap - cardW
+    cardTop = clamp(rect.top + rect.height / 2 - cardH / 2, 16, vh - cardH - 16)
   } else if (rect.left + rect.width + gap + cardW < vw) {
-    cardLeft = rect.left + rect.width + gap;
-    cardTop = clamp(rect.top + rect.height / 2 - cardH / 2, 16, vh - cardH - 16);
+    cardLeft = rect.left + rect.width + gap
+    cardTop = clamp(rect.top + rect.height / 2 - cardH / 2, 16, vh - cardH - 16)
   } else {
-    cardLeft = clamp(rect.left + rect.width / 2 - cardW / 2, 16, vw - cardW - 16);
-    cardTop = vh - cardH - 24;
+    cardLeft = clamp(rect.left + rect.width / 2 - cardW / 2, 16, vw - cardW - 16)
+    cardTop = vh - cardH - 24
   }
 
-  const EASE = "cubic-bezier(.16,1,.3,1)";
-  const line = rect && alsoRect ? tether(rect, alsoRect) : null;
+  const EASE = "cubic-bezier(.16,1,.3,1)"
+  const line = rect && alsoRect ? tether(rect, alsoRect) : null
 
   // Position moves on transform, which every engine animates on SVG; only the
   // size rides the geometry properties. Where those are not animated the window
   // still glides to its target and only snaps its dimensions.
-  const travel = travelling
-    ? `transform 520ms ${EASE}, width 520ms ${EASE}, height 520ms ${EASE}`
-    : undefined;
+  const travel = travelling ? `transform 520ms ${EASE}, width 520ms ${EASE}, height 520ms ${EASE}` : undefined
 
   // Closed, the second window is a point at the middle of where it will be, so
   // it opens outward from its own centre instead of unrolling from a corner.
@@ -253,9 +245,9 @@ export function Spotlight({
           transform: `translate(${r.left + r.width / 2}px, ${r.top + r.height / 2}px)`,
           width: 0,
           height: 0,
-        };
+        }
 
-  const open = `transform 420ms 760ms ${EASE}, width 420ms 760ms ${EASE}, height 420ms 760ms ${EASE}`;
+  const open = `transform 420ms 760ms ${EASE}, width 420ms 760ms ${EASE}, height 420ms 760ms ${EASE}`
 
   // The line is a dashed marker stroke revealed by a wipe rather than by a
   // marching dash pattern, so it reads as being drawn rather than as traffic.
@@ -266,17 +258,12 @@ export function Spotlight({
         w: Math.abs(line.to.x - line.from.x) + 12,
         h: Math.abs(line.to.y - line.from.y) + 16,
       }
-    : null;
+    : null
 
   return (
     <div className="fixed inset-0 z-[80]">
       {clickAnywhere && (
-        <button
-          type="button"
-          aria-label="Next"
-          onClick={onNext}
-          className="absolute inset-0 cursor-pointer"
-        />
+        <button type="button" aria-label="Next" onClick={onNext} className="absolute inset-0 cursor-pointer" />
       )}
 
       <svg
@@ -414,5 +401,5 @@ export function Spotlight({
         </div>
       </div>
     </div>
-  );
+  )
 }

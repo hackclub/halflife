@@ -176,10 +176,7 @@ export type HandoffStatus =
   | { state: "ready"; objectKey: string; contentType: string | null; url: string | null }
 
 /** What the desktop polls. Scoped to the owner, so ids are not guessable keys. */
-export async function getHandoffStatus(
-  id: string,
-  userId: string,
-): Promise<HandoffStatus | null> {
+export async function getHandoffStatus(id: string, userId: string): Promise<HandoffStatus | null> {
   const row = await prisma.uploadHandoff.findFirst({
     where: { id, userId },
     select: { expiresAt: true, usedAt: true, objectKey: true, contentType: true },

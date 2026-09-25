@@ -4,16 +4,7 @@ import { hasPermission, Permission } from "@/lib/permissions"
 import { getUserDetail } from "@/lib/queries/admin"
 import { getThemeDef } from "@/lib/config/program"
 import { CREDIT_NAME_PLURAL } from "@/lib/config/program"
-import {
-  Badge,
-  EmptyState,
-  PageHeader,
-  Panel,
-  Stat,
-  Table,
-  statusLabel,
-  statusTone,
-} from "@/app/components/ui"
+import { Badge, EmptyState, PageHeader, Panel, Stat, Table, statusLabel, statusTone } from "@/app/components/ui"
 import { RoleEditor } from "@/app/components/forms/RoleEditor"
 import { CreditGrantForm } from "@/app/components/forms/CreditGrantForm"
 import { ActionButton } from "@/app/components/forms/ActionButton"
@@ -41,9 +32,7 @@ export default async function AdminUserPage({ params }: Props) {
       <PageHeader
         title={user.name ?? user.email}
         subtitle={user.email}
-        actions={
-          user.fraudFlagged ? <Badge tone="danger">flagged</Badge> : null
-        }
+        actions={user.fraudFlagged ? <Badge tone="danger">flagged</Badge> : null}
       />
 
       <div className="hl-row">
@@ -63,9 +52,7 @@ export default async function AdminUserPage({ params }: Props) {
               label={user.fraudFlagged ? "Clear the flag" : "Flag this account"}
               variant={user.fraudFlagged ? "default" : "danger"}
               confirm={
-                user.fraudFlagged
-                  ? "Let this account submit again?"
-                  : "Flagging blocks all submissions. Continue?"
+                user.fraudFlagged ? "Let this account submit again?" : "Flagging blocks all submissions. Continue?"
               }
             />
           </div>
@@ -75,8 +62,8 @@ export default async function AdminUserPage({ params }: Props) {
       {canManageUsers ? (
         <Panel title="Extension">
           <p className="hl-hint" style={{ marginTop: 0 }}>
-            Covers every project they own: passed weeks take journal entries again, and work can be
-            submitted past a global close. For one project only, use its row below.
+            Covers every project they own: passed weeks take journal entries again, and work can be submitted past a
+            global close. For one project only, use its row below.
           </p>
           <ExtensionForm
             url={`/api/admin/users/${id}`}
@@ -111,14 +98,10 @@ export default async function AdminUserPage({ params }: Props) {
                 <div className="hl-hint">{project.title}</div>
               </td>
               <td>
-                <Badge tone={statusTone(project.designStatus)}>
-                  {statusLabel(project.designStatus)}
-                </Badge>
+                <Badge tone={statusTone(project.designStatus)}>{statusLabel(project.designStatus)}</Badge>
               </td>
               <td>
-                <Badge tone={statusTone(project.buildStatus)}>
-                  {statusLabel(project.buildStatus)}
-                </Badge>
+                <Badge tone={statusTone(project.buildStatus)}>{statusLabel(project.buildStatus)}</Badge>
               </td>
               <td>{project.tier ?? "—"}</td>
               <td>{project.grantUsd !== null ? `$${project.grantUsd}` : "—"}</td>
@@ -180,9 +163,7 @@ export default async function AdminUserPage({ params }: Props) {
                 <td className="hl-mono">{entry.createdAt.toLocaleString()}</td>
                 <td className="hl-mono">{entry.kind}</td>
                 <td>{entry.note ?? "—"}</td>
-                <td className="hl-mono">
-                  {entry.amount > 0 ? `+${entry.amount}` : entry.amount}
-                </td>
+                <td className="hl-mono">{entry.amount > 0 ? `+${entry.amount}` : entry.amount}</td>
                 <td className="hl-mono">{entry.balanceAfter}</td>
               </tr>
             ))}

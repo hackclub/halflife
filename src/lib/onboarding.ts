@@ -130,10 +130,7 @@ export interface AdvanceResult {
  * at once (the project row and the progress marker), and a half-applied answer
  * strands someone on a step they have already completed.
  */
-export async function submitStep(
-  userId: string,
-  answer: OnboardingAnswer,
-): Promise<AdvanceResult> {
+export async function submitStep(userId: string, answer: OnboardingAnswer): Promise<AdvanceResult> {
   const before = await getOnboardingState(userId)
 
   if (before.completed) {

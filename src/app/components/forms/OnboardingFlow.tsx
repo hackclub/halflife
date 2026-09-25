@@ -114,9 +114,7 @@ export function OnboardingFlow({ initial }: Readonly<{ initial: OnboardingView }
                 {option.label}
               </Button>
             ))}
-            <p className="hl-hint">
-              this will have no effect on your experience, it&rsquo;s just for us! :)
-            </p>
+            <p className="hl-hint">this will have no effect on your experience, it&rsquo;s just for us! :)</p>
           </div>
         ) : null}
 
@@ -156,12 +154,7 @@ export function OnboardingFlow({ initial }: Readonly<{ initial: OnboardingView }
           >
             <p className="hl-hint">Tell us about your project! You can always edit this later.</p>
             <Field label="Project name" hint="Give it a cool name!">
-              <input
-                className="hl-input"
-                value={title}
-                maxLength={120}
-                onChange={(e) => setTitle(e.target.value)}
-              />
+              <input className="hl-input" value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} />
             </Field>
             <Field label="Project description">
               <textarea
@@ -182,34 +175,23 @@ export function OnboardingFlow({ initial }: Readonly<{ initial: OnboardingView }
         {step.id === "idea" ? (
           <div className="hl-stack hl-stack--tight">
             <p className="hl-hint">
-              Taking one of these sets your project to Tier 1, since they are all scoped to be
-              Tier 1 work. Write your own idea instead if you want a bigger tier.
+              Taking one of these sets your project to Tier 1, since they are all scoped to be Tier 1 work. Write your
+              own idea instead if you want a bigger tier.
             </p>
             {initial.starterProjects.map((starter) => (
               <Panel
                 key={starter.id}
                 title={starter.title}
-                actions={
-                  initial.project.starterProjectId === starter.id ? (
-                    <Badge tone="success">Chosen</Badge>
-                  ) : null
-                }
+                actions={initial.project.starterProjectId === starter.id ? <Badge tone="success">Chosen</Badge> : null}
               >
                 <p style={{ marginTop: 0 }}>{starter.description}</p>
-                <Button
-                  disabled={busy}
-                  onClick={() => send({ step: "idea", starterProjectId: starter.id })}
-                >
+                <Button disabled={busy} onClick={() => send({ step: "idea", starterProjectId: starter.id })}>
                   Build this one
                 </Button>
               </Panel>
             ))}
             <div>
-              <Button
-                variant="primary"
-                disabled={busy}
-                onClick={() => send({ step: "idea", starterProjectId: null })}
-              >
+              <Button variant="primary" disabled={busy} onClick={() => send({ step: "idea", starterProjectId: null })}>
                 I&rsquo;ll stick with my own idea
               </Button>
             </div>
@@ -219,13 +201,13 @@ export function OnboardingFlow({ initial }: Readonly<{ initial: OnboardingView }
         {step.id === "tier" ? (
           <div className="hl-stack hl-stack--tight">
             <p className="hl-hint">
-              This is what we will fund your parts with. You can change it any time before you
-              submit your design, and your reviewer decides the final tier when they approve it.
+              This is what we will fund your parts with. You can change it any time before you submit your design, and
+              your reviewer decides the final tier when they approve it.
             </p>
             {initial.project.tierLocked ? (
               <Callout>
-                You picked a starter project, so this one is Tier 1. Go back and write your own
-                idea if you want to choose.
+                You picked a starter project, so this one is Tier 1. Go back and write your own idea if you want to
+                choose.
               </Callout>
             ) : null}
             {initial.tiers.map((tier) => {
@@ -244,9 +226,8 @@ export function OnboardingFlow({ initial }: Readonly<{ initial: OnboardingView }
                 >
                   <p style={{ marginTop: 0 }}>{tier.blurb}</p>
                   <p className="hl-hint">
-                    {tier.fundingHours}h of work funds the parts. Everything above
-                    that banks toward your printer, so a week is {tier.submitFloorHours}h
-                    before you can hand it in.
+                    {tier.fundingHours}h of work funds the parts. Everything above that banks toward your printer, so a
+                    week is {tier.submitFloorHours}h before you can hand it in.
                   </p>
                   <Button
                     variant={chosen ? "primary" : "default"}
@@ -271,27 +252,19 @@ export function OnboardingFlow({ initial }: Readonly<{ initial: OnboardingView }
         {step.id === "tracking" ? (
           <div className="hl-stack hl-stack--tight">
             <p style={{ margin: 0 }}>
-              Your hours are what get your project funded, and you log them two ways. A{" "}
-              <strong>journal</strong> entry says what you did in a session. A{" "}
-              <strong>timelapse</strong> is the video of you doing it — it is evidence for your
-              reviewer, not extra hours, so it never counts twice.
+              Your hours are what get your project funded, and you log them two ways. A <strong>journal</strong> entry
+              says what you did in a session. A <strong>timelapse</strong> is the video of you doing it — it is evidence
+              for your reviewer, not extra hours, so it never counts twice.
             </p>
             <p className="hl-hint">
-              Log both from your project page as you go. Logging on the day is worth doing: your
-              streak counts days you journalled.
+              Log both from your project page as you go. Logging on the day is worth doing: your streak counts days you
+              journalled.
             </p>
             <div className="hl-row">
-              <Button
-                variant="primary"
-                disabled={busy}
-                onClick={() => send({ step: "tracking", dismissed: false })}
-              >
+              <Button variant="primary" disabled={busy} onClick={() => send({ step: "tracking", dismissed: false })}>
                 Finish
               </Button>
-              <Button
-                disabled={busy}
-                onClick={() => send({ step: "tracking", dismissed: true })}
-              >
+              <Button disabled={busy} onClick={() => send({ step: "tracking", dismissed: true })}>
                 I&rsquo;ve journalled before, skip this
               </Button>
             </div>

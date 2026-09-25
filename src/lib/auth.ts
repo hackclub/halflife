@@ -100,9 +100,7 @@ export const auth = betterAuth({
           // No project rows here: each is created when its week's "create a
           // project" checkpoint is opened (lib/provisioning).
 
-          await prisma.user
-            .update({ where: { id: user.id }, data: { joinedProgramAt: new Date() } })
-            .catch(() => {})
+          await prisma.user.update({ where: { id: user.id }, data: { joinedProgramAt: new Date() } }).catch(() => {})
 
           // Buffered, never a synchronous Airtable call: a signup must not fail
           // because a third party is rate-limiting us.
@@ -158,9 +156,7 @@ export const auth = betterAuth({
       config: [
         {
           providerId: "hca",
-          discoveryUrl:
-            process.env.HCA_DISCOVERY_URL ??
-            "https://auth.hackclub.com/.well-known/openid-configuration",
+          discoveryUrl: process.env.HCA_DISCOVERY_URL ?? "https://auth.hackclub.com/.well-known/openid-configuration",
           clientId: process.env.HCA_CLIENT_ID ?? "",
           clientSecret: process.env.HCA_CLIENT_SECRET ?? "",
           scopes: hcaScopes,

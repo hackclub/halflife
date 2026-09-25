@@ -26,9 +26,7 @@ export const POST = withRoute(async (req: Request) => {
   const result = await submitStep(gate.user.id, parsed.data as OnboardingAnswer)
 
   await logAudit({
-    action: result.completed
-      ? AuditAction.USER_COMPLETE_ONBOARDING
-      : AuditAction.USER_ADVANCE_ONBOARDING,
+    action: result.completed ? AuditAction.USER_COMPLETE_ONBOARDING : AuditAction.USER_ADVANCE_ONBOARDING,
     actorId: gate.user.id,
     actorEmail: gate.user.email,
     targetType: "User",

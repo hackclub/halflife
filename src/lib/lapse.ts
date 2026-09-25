@@ -16,9 +16,7 @@ import { HttpError } from "@/lib/errors"
  * sign in with Lapse again.
  */
 
-export const LAPSE_API_BASE = (
-  process.env.LAPSE_API_BASE ?? "https://api.lapse.hackclub.com/api"
-).replace(/\/$/, "")
+export const LAPSE_API_BASE = (process.env.LAPSE_API_BASE ?? "https://api.lapse.hackclub.com/api").replace(/\/$/, "")
 
 /** Where people watch a timelapse — Lapse's own page, not the raw stream. */
 const LAPSE_WEB_BASE = (process.env.LAPSE_WEB_BASE ?? "https://lapse.hackclub.com").replace(/\/$/, "")
@@ -69,8 +67,7 @@ function toTimelapse(t: RawTimelapse): LapseTimelapse {
   }
 }
 
-const NOT_LINKED = () =>
-  new HttpError("LAPSE_NOT_LINKED", "Sign in with Lapse to pick your timelapses")
+const NOT_LINKED = () => new HttpError("LAPSE_NOT_LINKED", "Sign in with Lapse to pick your timelapses")
 
 /** The user's Lapse identity and a token that is still good, or a refusal. */
 export async function lapseCredentials(userId: string) {
@@ -150,9 +147,7 @@ export async function verifyOwnTimelapses(userId: string, ids: readonly string[]
 
   const found = await Promise.all(
     ids.map(async (id) =>
-      toTimelapse(
-        (await call<{ timelapse: RawTimelapse }>(accessToken, "/timelapse/query", { id })).timelapse,
-      ),
+      toTimelapse((await call<{ timelapse: RawTimelapse }>(accessToken, "/timelapse/query", { id })).timelapse),
     ),
   )
 

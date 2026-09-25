@@ -1,4 +1,4 @@
-import { FAQS } from "@/lib/site/content";
+import { FAQS } from "@/lib/site/content"
 
 /**
  * Comp geometry: a 1615-wide field of 725 × 323 plates, two up, 56px apart
@@ -8,8 +8,8 @@ import { FAQS } from "@/lib/site/content";
  */
 
 /** The comp's plate and the gutter between two of them. */
-const PLATE_W = 725;
-const GUTTER = 56;
+const PLATE_W = 725
+const GUTTER = 56
 
 /**
  * Every measurement of a plate is the comp's own, scaled by this.
@@ -25,7 +25,7 @@ const GUTTER = 56;
  * because a uniform scale cannot change a ratio. It sits at 43 characters
  * either way, which is the measure the comp's own numbers describe.
  */
-const CARD_SCALE = 0.75;
+const CARD_SCALE = 0.75
 
 /**
  * A comp size as a clamp. Only the fluid slope and the ceiling take the
@@ -33,9 +33,7 @@ const CARD_SCALE = 0.75;
  * column reading correctly and 0.75 of 16px body copy would be 12px.
  */
 const size = (floorRem: number, vw: number, maxPx: number) =>
-  `clamp(${floorRem}rem, ${+(vw * CARD_SCALE).toFixed(4)}vw, ${+(
-    maxPx * CARD_SCALE
-  ).toFixed(2)}px)`;
+  `clamp(${floorRem}rem, ${+(vw * CARD_SCALE).toFixed(4)}vw, ${+(maxPx * CARD_SCALE).toFixed(2)}px)`
 
 const FIELD = {
   /** Two scaled plates and the gutter between them, and nothing wider. The
@@ -45,18 +43,12 @@ const FIELD = {
   padding: size(1.25, 2.37, 41),
   question: size(1.35, 2.32, 40),
   answer: size(1, 1.74, 30),
-} as const;
+} as const
 
 export default function Faq() {
   return (
-    <section
-      id="faq"
-      aria-labelledby="faq-heading"
-      className="hl-ground-hatch bg-hl-blue text-hl-ink"
-    >
-      <div
-        className="mx-auto max-w-[1615px] px-4 py-20 sm:px-8 min-[1180px]:px-[3.4vw] min-[1180px]:py-28"
-      >
+    <section id="faq" aria-labelledby="faq-heading" className="hl-ground-hatch bg-hl-blue text-hl-ink">
+      <div className="mx-auto max-w-[1615px] px-4 py-20 sm:px-8 min-[1180px]:px-[3.4vw] min-[1180px]:py-28">
         <h2
           id="faq-heading"
           className="text-center font-display font-bold tracking-[-0.025em]"
@@ -82,16 +74,10 @@ export default function Faq() {
               className="flex flex-col bg-hl-ink text-hl-blue rounded-md"
               style={{ padding: FIELD.padding }}
             >
-              <dt
-                className="font-display font-bold"
-                style={{ fontSize: FIELD.question, lineHeight: 1.1 }}
-              >
+              <dt className="font-display font-bold" style={{ fontSize: FIELD.question, lineHeight: 1.1 }}>
                 {faq.q}
               </dt>
-              <dd
-                className="mt-[0.85em] text-hl-paper"
-                style={{ fontSize: FIELD.answer, lineHeight: 1.45 }}
-              >
+              <dd className="mt-[0.85em] text-hl-paper" style={{ fontSize: FIELD.answer, lineHeight: 1.45 }}>
                 {faq.a}
               </dd>
             </div>
@@ -99,5 +85,5 @@ export default function Faq() {
         </dl>
       </div>
     </section>
-  );
+  )
 }

@@ -1,13 +1,7 @@
 import "dotenv/config"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { PrismaClient } from "../src/app/generated/prisma/client"
-import {
-  Phase,
-  PhaseStatus,
-  ReviewResult,
-  ShopItemCategory,
-  Theme,
-} from "../src/app/generated/prisma/enums"
+import { Phase, PhaseStatus, ReviewResult, ShopItemCategory, Theme } from "../src/app/generated/prisma/enums"
 
 /**
  * End-to-end check of the money path.
@@ -27,7 +21,9 @@ let failures = 0
 function check(label: string, actual: unknown, expected: unknown) {
   const pass = JSON.stringify(actual) === JSON.stringify(expected)
   if (!pass) failures++
-  console.log(`${pass ? "PASS" : "FAIL"}  ${label}: got ${JSON.stringify(actual)}, expected ${JSON.stringify(expected)}`)
+  console.log(
+    `${pass ? "PASS" : "FAIL"}  ${label}: got ${JSON.stringify(actual)}, expected ${JSON.stringify(expected)}`,
+  )
 }
 
 async function main() {
@@ -98,10 +94,8 @@ async function main() {
     })
   }
 
-  const spendable = async () =>
-    (await prisma.$transaction((tx) => getBalances(tx, participant.id))).spendable
-  const banked = async () =>
-    (await prisma.$transaction((tx) => getBalances(tx, participant.id))).banked
+  const spendable = async () => (await prisma.$transaction((tx) => getBalances(tx, participant.id))).spendable
+  const banked = async () => (await prisma.$transaction((tx) => getBalances(tx, participant.id))).banked
 
   check("starting balance", await spendable(), 0)
 
@@ -189,9 +183,7 @@ async function main() {
     },
   })
 
-  const attempts = await Promise.allSettled(
-    Array.from({ length: 8 }, () => purchase(participant.id, item.id, 1)),
-  )
+  const attempts = await Promise.allSettled(Array.from({ length: 8 }, () => purchase(participant.id, item.id, 1)))
   const succeeded = attempts.filter((a) => a.status === "fulfilled").length
   check("only one of eight concurrent purchases succeeds", succeeded, 1)
 
@@ -203,8 +195,9 @@ async function main() {
   // forced-savings rule rests on: banked coins are legal tender for a printer
   // and for nothing else. If this ever passes by accident, the rule is decor.
   const { designCoinsFor } = await import("../src/lib/hours")
-  const { PRINTERS, printerById, DEFAULT_GOAL_ID, DESIGN_WEEKS, BUILD_WEEKS } =
-    await import("../src/lib/config/printers")
+  const { PRINTERS, printerById, DEFAULT_GOAL_ID, DESIGN_WEEKS, BUILD_WEEKS } = await import(
+    "../src/lib/config/printers"
+  )
   const { BUILD_HOURS } = await import("../src/lib/config/program")
 
   // Tier 1 funds 6h. Saving for an Ender the goal asks 3.76h of banking on top,
@@ -242,10 +235,8 @@ async function main() {
       verificationStatus: "verified",
     },
   })
-  const saverSpendable = async () =>
-    (await prisma.$transaction((tx) => getBalances(tx, saver.id))).spendable
-  const saverBanked = async () =>
-    (await prisma.$transaction((tx) => getBalances(tx, saver.id))).banked
+  const saverSpendable = async () => (await prisma.$transaction((tx) => getBalances(tx, saver.id))).spendable
+  const saverBanked = async () => (await prisma.$transaction((tx) => getBalances(tx, saver.id))).banked
 
   const designProject = await prisma.themeProject.create({
     data: {

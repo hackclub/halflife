@@ -35,9 +35,7 @@ async function quietly(label: string, fn: () => Promise<unknown>): Promise<void>
 
 /** A new sign-in. */
 export function markLogin(userId: string, at = new Date()): Promise<void> {
-  return quietly("markLogin", () =>
-    prisma.user.update({ where: { id: userId }, data: { lastLoginAt: at } }),
-  )
+  return quietly("markLogin", () => prisma.user.update({ where: { id: userId }, data: { lastLoginAt: at } }))
 }
 
 // Per process, so a burst of page views costs one write, not one each. The
@@ -165,7 +163,11 @@ export async function backfillAnalytics(): Promise<Record<string, number>> {
         where: { userId, deletedAt: null },
         select: { id: true, namedAt: true, updatedAt: true, description: true, tier: true, requestedTier: true },
       }),
-      prisma.post.findMany({ where: { userId, deletedAt: null }, select: { createdAt: true }, orderBy: { createdAt: "asc" } }),
+      prisma.post.findMany({
+        where: { userId, deletedAt: null },
+        select: { createdAt: true },
+        orderBy: { createdAt: "asc" },
+      }),
       prisma.phaseSubmission.findMany({
         where: { themeProject: { userId } },
         select: { createdAt: true },
@@ -252,7 +254,8 @@ export async function backfillAnalytics(): Promise<Record<string, number>> {
       const reached: Partial<Record<ReturnType<typeof milestoneField>, Date>> = {}
       for (const s of list) {
         running += s.hours
-        for (const h of HOUR_MILESTONES) if (running >= h && !reached[milestoneField(h)]) reached[milestoneField(h)] = s.at
+        for (const h of HOUR_MILESTONES)
+          if (running >= h && !reached[milestoneField(h)]) reached[milestoneField(h)] = s.at
       }
       const hours = Math.round(running * 100) / 100
       await prisma.userWeek.upsert({
@@ -287,7 +290,14 @@ export interface UserAnalyticsRow {
   bankedCoins: number
   currentStreak: number
   longestStreak: number
-  weeks: { week: number; hours: number; reached1hAt: Date | null; reached5hAt: Date | null; reached10hAt: Date | null; reached20hAt: Date | null }[]
+  weeks: {
+    week: number
+    hours: number
+    reached1hAt: Date | null
+    reached5hAt: Date | null
+    reached10hAt: Date | null
+    reached20hAt: Date | null
+  }[]
 }
 
 /** Per-person rows, for the Loops/Airtable sync and for export. */
@@ -353,11 +363,18 @@ export async function getAnalyticsSummary(days = 30) {
   const since = effectiveDateFor(new Date(Date.now() - days * 86_400_000), programTimezone)
 
   const [dau, people, weeks] = await Promise.all([
-    prisma.userDay.groupBy({ by: ["day"], where: { day: { gte: since } }, _count: { _all: true }, orderBy: { day: "asc" } }),
+    prisma.userDay.groupBy({
+      by: ["day"],
+      where: { day: { gte: since } },
+      _count: { _all: true },
+      orderBy: { day: "asc" },
+    }),
     prisma.user.findMany({
       select: { onboardingCompletedAt: true, firstProjectAt: true, firstReelAt: true, firstSubmissionAt: true },
     }),
-    prisma.userWeek.findMany({ select: { week: true, reached1hAt: true, reached5hAt: true, reached10hAt: true, reached20hAt: true } }),
+    prisma.userWeek.findMany({
+      select: { week: true, reached1hAt: true, reached5hAt: true, reached10hAt: true, reached20hAt: true },
+    }),
   ])
 
   // A strict funnel: each step counts only people who also did every step

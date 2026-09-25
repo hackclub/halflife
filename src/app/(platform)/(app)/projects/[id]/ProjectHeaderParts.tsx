@@ -1,14 +1,14 @@
-"use client";
+"use client"
 
-import { useRef, useState } from "react";
-import { WeekScene } from "@/components/platform/art";
-import { IconCamera } from "@/components/platform/icons";
-import { Button } from "@/components/platform/ui";
-import { UploadProgress } from "@/components/platform/UploadProgress";
-import { useStore } from "@/lib/store";
-import { uploadFile } from "@/lib/use-handoff";
+import { useRef, useState } from "react"
+import { WeekScene } from "@/components/platform/art"
+import { IconCamera } from "@/components/platform/icons"
+import { Button } from "@/components/platform/ui"
+import { UploadProgress } from "@/components/platform/UploadProgress"
+import { useStore } from "@/lib/store"
+import { uploadFile } from "@/lib/use-handoff"
 
-const COVER_TYPES = "image/png,image/jpeg,image/webp,image/gif";
+const COVER_TYPES = "image/png,image/jpeg,image/webp,image/gif"
 
 /**
  * The project's thumbnail — what its card and the review queue show.
@@ -27,49 +27,49 @@ export function CoverImage({
   accent,
   locked,
 }: {
-  projectId: string;
+  projectId: string
   /** The one the maker chose. */
-  url: string | null;
+  url: string | null
   /** The newest journal image, shown until they choose one. */
-  fallbackUrl: string | null;
-  theme: string;
-  accent: string;
-  locked: string | null;
+  fallbackUrl: string | null
+  theme: string
+  accent: string
+  locked: string | null
 }) {
-  const shown = url ?? fallbackUrl;
-  const { updateProject } = useStore();
-  const input = useRef<HTMLInputElement>(null);
-  const [busy, setBusy] = useState(false);
+  const shown = url ?? fallbackUrl
+  const { updateProject } = useStore()
+  const input = useRef<HTMLInputElement>(null)
+  const [busy, setBusy] = useState(false)
   // How much of a new thumbnail has gone up; null when none is uploading.
-  const [progress, setProgress] = useState<number | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<number | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   async function pick(file: File | undefined) {
-    if (!file) return;
-    setBusy(true);
-    setUploading(true);
-    setProgress(null);
-    setError(null);
+    if (!file) return
+    setBusy(true)
+    setUploading(true)
+    setProgress(null)
+    setError(null)
     try {
-      const { objectKey } = await uploadFile(file, "covers", setProgress);
-      const refused = await updateProject(projectId, { coverImageKey: objectKey });
-      if (refused) setError(refused);
+      const { objectKey } = await uploadFile(file, "covers", setProgress)
+      const refused = await updateProject(projectId, { coverImageKey: objectKey })
+      if (refused) setError(refused)
     } catch (err) {
-      setError((err as Error).message);
+      setError((err as Error).message)
     } finally {
-      setBusy(false);
-      setUploading(false);
-      if (input.current) input.current.value = "";
+      setBusy(false)
+      setUploading(false)
+      if (input.current) input.current.value = ""
     }
   }
 
   async function clear() {
-    setBusy(true);
-    setError(null);
-    const refused = await updateProject(projectId, { coverImageKey: null });
-    if (refused) setError(refused);
-    setBusy(false);
+    setBusy(true)
+    setError(null)
+    const refused = await updateProject(projectId, { coverImageKey: null })
+    if (refused) setError(refused)
+    setBusy(false)
   }
 
   return (
@@ -132,5 +132,5 @@ export function CoverImage({
         </p>
       )}
     </div>
-  );
+  )
 }

@@ -113,17 +113,14 @@ const POST_SELECT = {
   publishedAt: true,
 } satisfies Prisma.PostSelect
 
-function sessionItem(
-  s: Prisma.WorkSessionGetPayload<{ select: typeof SESSION_SELECT }>,
-): TimelineItem {
+function sessionItem(s: Prisma.WorkSessionGetPayload<{ select: typeof SESSION_SELECT }>): TimelineItem {
   return {
     kind: "session",
     id: s.id,
     at: s.createdAt.getTime(),
     phase: s.phase,
     hours: s.hoursClaimed,
-    approvedHours:
-      s.hoursApproved !== null && s.hoursApproved !== s.hoursClaimed ? s.hoursApproved : null,
+    approvedHours: s.hoursApproved !== null && s.hoursApproved !== s.hoursClaimed ? s.hoursApproved : null,
     body: s.content ?? s.title,
     lapses: s.timelapses.map((t) => ({
       id: t.id,
@@ -174,10 +171,7 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
   })
   if (!project) return null
 
-  const timeline: TimelineItem[] = [
-    ...project.workSessions.map(sessionItem),
-    ...project.posts.map(reelItem),
-  ]
+  const timeline: TimelineItem[] = [...project.workSessions.map(sessionItem), ...project.posts.map(reelItem)]
 
   // A resolved submission is two moments — handed in, then decided — and the
   // gap between them is part of the story. Only the latest decision per phase

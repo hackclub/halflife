@@ -1,4 +1,4 @@
-import type { DocArticle } from "./types";
+import type { DocArticle } from "./types"
 
 /**
  * Reference content, written rather than recorded.
@@ -150,4 +150,4 @@ export const DOCS: DocArticle[] = [
       },
     ],
   },
-];
+]

@@ -1,29 +1,19 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties } from "react"
 
-import Image from "next/image";
+import Image from "next/image"
 
-import gatoandspirit from "../../../public/art/extras/gatoandspirit.png";
-import gatohead from "../../../public/art/extras/gatohead.png";
-import gatointube from "../../../public/art/extras/gatointube.png";
-import gatoycaja from "../../../public/art/extras/gatoycaja.png";
-import hammer from "../../../public/art/extras/hammer.png";
-import spiritguy from "../../../public/art/extras/spiritguy.png";
+import gatoandspirit from "../../../public/art/extras/gatoandspirit.png"
+import gatohead from "../../../public/art/extras/gatohead.png"
+import gatointube from "../../../public/art/extras/gatointube.png"
+import gatoycaja from "../../../public/art/extras/gatoycaja.png"
+import hammer from "../../../public/art/extras/hammer.png"
+import spiritguy from "../../../public/art/extras/spiritguy.png"
 // Parked: the corner decals, to be placed later.
 // import CornerDecal, { type DecalName } from "@/components/site/corner-decal";
-import ImageSlot from "@/components/site/image-slot";
-import type { Step } from "@/lib/site/content";
-import { ASIDES, DESIGN_WEEKS, STEPS } from "@/lib/site/content";
-import {
-  COMP_WIDTH,
-  STACK_VIEW,
-  at,
-  box,
-  plate,
-  plateBox,
-  stackWeld,
-  u,
-  weld,
-} from "@/lib/site/stage";
+import ImageSlot from "@/components/site/image-slot"
+import type { Step } from "@/lib/site/content"
+import { ASIDES, DESIGN_WEEKS, STEPS } from "@/lib/site/content"
+import { COMP_WIDTH, STACK_VIEW, at, box, plate, plateBox, stackWeld, u, weld } from "@/lib/site/stage"
 
 /**
  * The header plate — "how does it work?".
@@ -45,8 +35,8 @@ import {
  * It also puts the section's own heading inside the section the skip link
  * targets, which it was not before.
  */
-const HEADER_LEAD = 96;
-const HEADER = plate(474, HEADER_LEAD, 918, 201);
+const HEADER_LEAD = 96
+const HEADER = plate(474, HEADER_LEAD, 918, 201)
 
 /**
  * The header's weld — comp node 275:181, and the first of the page's four.
@@ -56,7 +46,7 @@ const HEADER = plate(474, HEADER_LEAD, 918, 201);
  * is the header's own height plus this band's run, less the ends it buries in
  * each. Change the run and the programme moves to suit it.
  */
-const LEAD_WELD = { run: 106, rise: 6, drop: 15, mean: 70.6 } as const;
+const LEAD_WELD = { run: 106, rise: 6, drop: 15, mean: 70.6 } as const
 
 /**
  * How much step 1 grew when its heading came back, and therefore how far
@@ -77,7 +67,7 @@ const LEAD_WELD = { run: 106, rise: 6, drop: 15, mean: 70.6 } as const;
  * 2-4, both asides, and the five extras that sit beside them — and the three
  * welds between them now follow the plates rather than being re-counted.
  */
-const STEP_ONE_GROWTH = 105;
+const STEP_ONE_GROWTH = 105
 
 /**
  * How far the programme moved down when the header joined it.
@@ -88,13 +78,7 @@ const STEP_ONE_GROWTH = 105;
  * comes to 218, and every plate, aside and extra below carries it, so every
  * clearance measured in here is still the number it was.
  */
-const SHIFT =
-  HEADER.y +
-  HEADER.h -
-  LEAD_WELD.rise +
-  LEAD_WELD.run -
-  LEAD_WELD.drop -
-  (59 + STEP_ONE_GROWTH);
+const SHIFT = HEADER.y + HEADER.h - LEAD_WELD.rise + LEAD_WELD.run - LEAD_WELD.drop - (59 + STEP_ONE_GROWTH)
 
 /**
  * The plates, and the only place their geometry is written.
@@ -112,7 +96,7 @@ const PLATES = {
   funding: plate(812, 836 + STEP_ONE_GROWTH + SHIFT, 823, 445),
   build: plate(57, 1406 + STEP_ONE_GROWTH + SHIFT, 958, 582),
   printer: plate(731, 2143 + STEP_ONE_GROWTH + SHIFT, 943, 458),
-} as const;
+} as const
 
 /**
  * The welds, derived from the plates they join.
@@ -164,7 +148,7 @@ const WELDS = [
     entry: { plate: PLATES.printer, at: 178.5 / PLATES.printer.w, drop: 22 },
     mean: 120.3,
   },
-] as const;
+] as const
 
 /**
  * Which corner each plate's decal goes in — PARKED, not yet applied.
@@ -220,14 +204,14 @@ const WELDS = [
  * Stage: 736 comp units at the 1180 cap is 502.6px. Stacked: the plate runs
  * the full `max-w-2xl` column, the same 608px the lead week pairing gets.
  */
-const HOW_LABEL = "how does it work?";
+const HOW_LABEL = "how does it work?"
 
 const STEP_ART_SIZES = {
   stage: "510px",
   /** Step 1's picture runs its plate's full 975 units, 666px at the 1180 cap. */
   weeks: "670px",
   stacked: "(min-width: 640px) 610px, 100vw",
-} as const;
+} as const
 
 /**
  * The width the composition stops scaling at — and with it, the one number
@@ -257,14 +241,14 @@ const STEP_ART_SIZES = {
  * band between the two where the height moves again — 1280 gives 16px week
  * labels and 151px of travel, 1400 gives 16.2px and 331px.
  */
-const STAGE_CAP = 1180;
+const STAGE_CAP = 1180
 
 /**
  * The bottom edge of the lowest plate, so the stage is exactly its own content
  * and nothing more. Read off `PLATES` rather than restated: it was a literal
  * that had already been re-counted twice by hand as the artwork moved things.
  */
-const STAGE_H = PLATES.printer.y + PLATES.printer.h;
+const STAGE_H = PLATES.printer.y + PLATES.printer.h
 
 /**
  * A step's artwork: the picture where there is one, the drawn footprint where
@@ -293,25 +277,19 @@ function StepArt({
   scale,
   sizes,
 }: {
-  step: Step;
-  className?: string;
-  style?: CSSProperties;
+  step: Step
+  className?: string
+  style?: CSSProperties
   /** Only reaches the drawn fallback; a photograph has no fittings to scale. */
-  scale?: number;
-  sizes: string;
+  scale?: number
+  sizes: string
 }) {
-  if (!step.slot) return null;
+  if (!step.slot) return null
 
   if (!step.art) {
     return (
-      <ImageSlot
-        label={step.slot.label}
-        ratio={step.slot.ratio}
-        className={className}
-        style={style}
-        scale={scale}
-      />
-    );
+      <ImageSlot label={step.slot.label} ratio={step.slot.ratio} className={className} style={style} scale={scale} />
+    )
   }
 
   return (
@@ -327,16 +305,9 @@ function StepArt({
           footprint label. If either picture turns out to carry information the
           heading does not — an order-flow diagram would — it wants real alt
           text rather than this. */}
-      <Image
-        src={step.art}
-        alt=""
-        fill
-        sizes={sizes}
-        quality={90}
-        className="object-cover"
-      />
+      <Image src={step.art} alt="" fill sizes={sizes} quality={90} className="object-cover" />
     </div>
-  );
+  )
 }
 
 /**
@@ -379,10 +350,10 @@ const EXTRAS = [
   { src: gatoycaja, x: 1180, y: 1425, w: 170, h: 172 },
   { src: hammer, x: 1120, y: 1937, w: 310, h: 271 },
   { src: gatohead, x: 180, y: 2131, w: 230, h: 198 },
-] as const;
+] as const
 
 /** The widest of them is 310 comp units, 212px at the 1180 cap. */
-const EXTRA_SIZES = "220px";
+const EXTRA_SIZES = "220px"
 
 /**
  * The five design weeks, for anything that cannot see the picture.
@@ -399,19 +370,15 @@ function WeekList() {
         <li key={week.subject}>{`${week.week}: ${week.subject}`}</li>
       ))}
     </ul>
-  );
+  )
 }
 
 export default function Process() {
-  const [design, funding, build, printer] = STEPS;
-  const [viral, community] = ASIDES;
+  const [design, funding, build, printer] = STEPS
+  const [viral, community] = ASIDES
 
   return (
-    <section
-      id="how-it-works"
-      aria-label="How Half Life works"
-      className="relative z-0 isolate min-[1180px]:pb-[10vh]"
-    >
+    <section id="how-it-works" aria-label="How Half Life works" className="relative z-0 isolate min-[1180px]:pb-[10vh]">
       {/* ── Comp reproduction, 1180px and up ───────────────────────────── */}
       {/* Every child here is absolutely positioned, so the stage has no
           intrinsic height and has to be told one — as a ratio of its own
@@ -452,10 +419,7 @@ export default function Process() {
             `grid place-items-center` rather than the comp's own offset: the
             line is a label for the plate, so it is centred by the box and
             stays centred if the copy changes. */}
-        <h2
-          className="absolute grid place-items-center rounded-xl bg-hl-lavender-pale"
-          style={plateBox(PLATES.header)}
-        >
+        <h2 className="absolute grid place-items-center rounded-xl bg-hl-lavender-pale" style={plateBox(PLATES.header)}>
           <span
             className="whitespace-nowrap font-display font-bold text-hl-ink"
             style={{
@@ -482,14 +446,7 @@ export default function Process() {
             className="absolute"
             style={box(extra.x, extra.y + SHIFT, extra.w, extra.h)}
           >
-            <Image
-              src={extra.src}
-              alt=""
-              fill
-              sizes={EXTRA_SIZES}
-              quality={90}
-              className="object-contain"
-            />
+            <Image src={extra.src} alt="" fill sizes={EXTRA_SIZES} quality={90} className="object-contain" />
           </div>
         ))}
 
@@ -541,14 +498,7 @@ export default function Process() {
           </h3>
           {design.art ? (
             <div className="absolute" style={box(0, 92, 975, 548)}>
-              <Image
-                src={design.art}
-                alt=""
-                fill
-                sizes={STEP_ART_SIZES.weeks}
-                quality={90}
-                className="object-cover"
-              />
+              <Image src={design.art} alt="" fill sizes={STEP_ART_SIZES.weeks} quality={90} className="object-cover" />
             </div>
           ) : null}
           <WeekList />
@@ -556,10 +506,7 @@ export default function Process() {
         </div>
 
         {/* Step 2 — funding */}
-        <div
-          className="absolute rounded-xl bg-hl-lavender-pale text-hl-ink"
-          style={plateBox(PLATES.funding)}
-        >
+        <div className="absolute rounded-xl bg-hl-lavender-pale text-hl-ink" style={plateBox(PLATES.funding)}>
           <h3
             className="absolute font-display font-bold"
             style={{
@@ -588,10 +535,7 @@ export default function Process() {
         </div>
 
         {/* Step 3 — build */}
-        <div
-          className="absolute rounded-xl bg-hl-lavender-pale text-hl-ink"
-          style={plateBox(PLATES.build)}
-        >
+        <div className="absolute rounded-xl bg-hl-lavender-pale text-hl-ink" style={plateBox(PLATES.build)}>
           <h3
             className="absolute font-display font-bold"
             style={{
@@ -613,10 +557,7 @@ export default function Process() {
         </div>
 
         {/* Step 4 — the printer */}
-        <div
-          className="absolute rounded-xl bg-hl-lavender-pale text-hl-ink"
-          style={plateBox(PLATES.printer)}
-        >
+        <div className="absolute rounded-xl bg-hl-lavender-pale text-hl-ink" style={plateBox(PLATES.printer)}>
           <h3
             className="absolute font-display font-bold"
             style={{
@@ -644,7 +585,7 @@ export default function Process() {
 
         {/* The welds, drawn last so they ride over the plates they join */}
         {WELDS.map((w) => {
-          const b = weld(w.exit, w.entry, w.mean);
+          const b = weld(w.exit, w.entry, w.mean)
           return (
             <svg
               key={w.id}
@@ -660,7 +601,7 @@ export default function Process() {
                   in any other colour reads as a weld in a second metal. */}
               <path d={b.d} fill="var(--color-hl-lavender-pale)" />
             </svg>
-          );
+          )
         })}
       </div>
 
@@ -720,9 +661,7 @@ export default function Process() {
                   middle of it rather than ranged against an edge the drawing
                   does not have. Steps 2-4 keep their left rank — their
                   pictures are single objects sitting inside the plate. */}
-                <h3 className="text-center font-display text-2xl font-bold text-balance sm:text-3xl">
-                  {design.title}
-                </h3>
+                <h3 className="text-center font-display text-2xl font-bold text-balance sm:text-3xl">{design.title}</h3>
                 {design.art ? (
                   <div className="relative mt-6 aspect-[1920/1080] w-full overflow-hidden">
                     <Image
@@ -743,14 +682,8 @@ export default function Process() {
 
             <li>
               <Plate>
-                <h3 className="font-display text-2xl font-bold sm:text-3xl">
-                  {funding.title}
-                </h3>
-                <StepArt
-                  step={funding}
-                  className="mt-6 aspect-[11876/3790] w-full"
-                  sizes={STEP_ART_SIZES.stacked}
-                />
+                <h3 className="font-display text-2xl font-bold sm:text-3xl">{funding.title}</h3>
+                <StepArt step={funding} className="mt-6 aspect-[11876/3790] w-full" sizes={STEP_ART_SIZES.stacked} />
                 <p className="mt-4 font-semibold">{funding.caption}</p>
               </Plate>
             </li>
@@ -759,14 +692,8 @@ export default function Process() {
 
             <li>
               <Plate>
-                <h3 className="font-display text-2xl font-bold sm:text-3xl">
-                  {build.title}
-                </h3>
-                <StepArt
-                  step={build}
-                  className="mt-6 aspect-[9673/4315] w-full"
-                  sizes={STEP_ART_SIZES.stacked}
-                />
+                <h3 className="font-display text-2xl font-bold sm:text-3xl">{build.title}</h3>
+                <StepArt step={build} className="mt-6 aspect-[9673/4315] w-full" sizes={STEP_ART_SIZES.stacked} />
               </Plate>
             </li>
 
@@ -774,14 +701,8 @@ export default function Process() {
 
             <li>
               <Plate>
-                <h3 className="font-display text-2xl font-bold sm:text-3xl">
-                  {printer.title}
-                </h3>
-                <StepArt
-                  step={printer}
-                  className="mt-6 aspect-[8439/2948] w-full"
-                  sizes={STEP_ART_SIZES.stacked}
-                />
+                <h3 className="font-display text-2xl font-bold sm:text-3xl">{printer.title}</h3>
+                <StepArt step={printer} className="mt-6 aspect-[8439/2948] w-full" sizes={STEP_ART_SIZES.stacked} />
               </Plate>
             </li>
           </ol>
@@ -803,7 +724,7 @@ export default function Process() {
         </div>
       </div>
     </section>
-  );
+  )
 }
 
 function Plate({ children }: { children: React.ReactNode }) {
@@ -818,7 +739,7 @@ function Plate({ children }: { children: React.ReactNode }) {
       {children}
       {/* Parked: corner decals, to be placed later. <CornerDecal decal={decal} /> */}
     </div>
-  );
+  )
 }
 
 /**
@@ -847,22 +768,18 @@ function StackWeld({
   lean,
   anchor = false,
 }: {
-  lean: "left" | "right";
+  lean: "left" | "right"
   /**
    * Leave the *parent's* own width at the stage's own 383.5/918 instead of
    * centring in the column — for the header plate, which is only as wide as
    * its line. Also renders a `div` rather than an `li`, since that weld sits
    * above the list rather than inside it.
    */
-  anchor?: boolean;
+  anchor?: boolean
 }) {
-  const Tag = anchor ? "div" : "li";
+  const Tag = anchor ? "div" : "li"
   return (
-    <Tag
-      role="presentation"
-      aria-hidden
-      className={anchor ? "flex" : "flex justify-center"}
-    >
+    <Tag role="presentation" aria-hidden className={anchor ? "flex" : "flex justify-center"}>
       <svg
         viewBox={`0 0 ${STACK_VIEW.w} ${STACK_VIEW.h}`}
         preserveAspectRatio="none"
@@ -885,7 +802,7 @@ function StackWeld({
         <path d={stackWeld(lean)} fill="var(--color-hl-lavender-pale)" />
       </svg>
     </Tag>
-  );
+  )
 }
 
 /**
@@ -914,7 +831,7 @@ const ASIDE = {
   gap: 18,
   titleSize: 30.833,
   bodySize: 22.269,
-} as const;
+} as const
 
 /**
  * Stacked takes no origin and the stage plate cannot do without one, so the
@@ -924,23 +841,19 @@ type AsideProps = { aside: (typeof ASIDES)[number] } & (
   | { stacked: true; origin?: never }
   /** Where the plate sits on the stage, in comp pixels. */
   | { stacked?: false; origin: readonly [number, number] }
-);
+)
 
 function Aside(props: AsideProps) {
-  const { aside } = props;
+  const { aside } = props
 
   if (props.stacked) {
     return (
       <div className="rounded-xl bg-hl-lavender px-5 py-7 text-center text-hl-indigo sm:px-7">
-        <h3 className="font-display text-xl font-bold sm:text-2xl">
-          {aside.title}
-        </h3>
-        <p className="mt-4 text-[0.975rem] leading-relaxed sm:text-base">
-          {aside.body}
-        </p>
+        <h3 className="font-display text-xl font-bold sm:text-2xl">{aside.title}</h3>
+        <p className="mt-4 text-[0.975rem] leading-relaxed sm:text-base">{aside.body}</p>
         {/* Parked: corner decals, to be placed later. <CornerDecal decal={decal} /> */}
       </div>
-    );
+    )
   }
 
   return (
@@ -953,10 +866,7 @@ function Aside(props: AsideProps) {
         padding: `${u(ASIDE.padY)} ${u(ASIDE.padX)}`,
       }}
     >
-      <h3
-        className="font-display font-bold"
-        style={{ fontSize: u(ASIDE.titleSize), lineHeight: 1.15 }}
-      >
+      <h3 className="font-display font-bold" style={{ fontSize: u(ASIDE.titleSize), lineHeight: 1.15 }}>
         {aside.title}
       </h3>
       <p
@@ -970,5 +880,5 @@ function Aside(props: AsideProps) {
       </p>
       {/* Parked: corner decals, to be placed later. <CornerDecal decal={decal} /> */}
     </div>
-  );
+  )
 }

@@ -37,9 +37,7 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
   const updated = await prisma.user.update({
     where: { id },
     data: {
-      ...(parsed.data.fraudFlagged !== undefined
-        ? { fraudFlagged: parsed.data.fraudFlagged }
-        : {}),
+      ...(parsed.data.fraudFlagged !== undefined ? { fraudFlagged: parsed.data.fraudFlagged } : {}),
       ...(parsed.data.submissionExtensionUntil !== undefined
         ? { submissionExtensionUntil: parsed.data.submissionExtensionUntil }
         : {}),
@@ -49,9 +47,7 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 
   if (parsed.data.fraudFlagged !== undefined && parsed.data.fraudFlagged !== before.fraudFlagged) {
     await logAudit({
-      action: parsed.data.fraudFlagged
-        ? AuditAction.ADMIN_FLAG_FRAUD
-        : AuditAction.ADMIN_UNFLAG_FRAUD,
+      action: parsed.data.fraudFlagged ? AuditAction.ADMIN_FLAG_FRAUD : AuditAction.ADMIN_UNFLAG_FRAUD,
       actorId: gate.user.id,
       actorEmail: gate.user.email,
       targetType: "User",

@@ -1,9 +1,9 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from "next"
 
 // `output: "standalone"` traces the whole dependency graph, which is what the
 // container image needs and pure overhead for a local `pnpm build`. Gate it on
 // the two env vars that only ever appear in CI or a Docker build.
-const isDeployBuild = !!(process.env.CI || process.env.DOCKER_BUILD);
+const isDeployBuild = !!(process.env.CI || process.env.DOCKER_BUILD)
 
 const nextConfig: NextConfig = {
   ...(isDeployBuild && { output: "standalone" }),
@@ -50,6 +50,6 @@ const nextConfig: NextConfig = {
         : []),
     ],
   },
-};
+}
 
-export default nextConfig;
+export default nextConfig

@@ -110,9 +110,7 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
     )
     .filter((u): u is string => !!u)
 
-  const hackatime = project.hackatimeLinks.map(
-    (l) => `${l.hackatimeProject} (${ymd(weekStart)} to ${ymd(weekEnd)})`,
-  )
+  const hackatime = project.hackatimeLinks.map((l) => `${l.hackatimeProject} (${ymd(weekStart)} to ${ymd(weekEnd)})`)
 
   const [firstName, ...rest] = (user.name ?? "").trim().split(/\s+/)
   const tier = project.tier ?? project.requestedTier

@@ -14,17 +14,17 @@
  * with it, which invalidates every cache between here and the browser without
  * anyone having to remember to clear one.
  */
-import type { StaticImageData } from "next/image";
+import type { StaticImageData } from "next/image"
 
-import buildArt from "../../../public/art/build.png";
-import getFundingArt from "../../../public/art/getfunding.png";
-import prizesArt from "../../../public/art/prizes.png";
-import allWeeksArt from "../../../public/art/weeks/allweeks.png";
-import flightControllerPhoto from "../../../public/projects/flightcontroller.png";
-import hexapodPhoto from "../../../public/projects/hexapod.png";
-import icepiPhoto from "../../../public/projects/icepi.png";
-import jukeboxPhoto from "../../../public/projects/jukebox.png";
-import macropadPhoto from "../../../public/projects/macropad.png";
+import buildArt from "../../../public/art/build.png"
+import getFundingArt from "../../../public/art/getfunding.png"
+import prizesArt from "../../../public/art/prizes.png"
+import allWeeksArt from "../../../public/art/weeks/allweeks.png"
+import flightControllerPhoto from "../../../public/projects/flightcontroller.png"
+import hexapodPhoto from "../../../public/projects/hexapod.png"
+import icepiPhoto from "../../../public/projects/icepi.png"
+import jukeboxPhoto from "../../../public/projects/jukebox.png"
+import macropadPhoto from "../../../public/projects/macropad.png"
 
 export const BRAND = {
   name: "Half Life",
@@ -36,7 +36,7 @@ export const BRAND = {
    * above it; en dash because 13-18 is a range.
    */
   eligibility: "teens 13-18. no experience necessary. free to participate.",
-} as const;
+} as const
 
 /**
  * The dateline strip across the top of the page.
@@ -63,11 +63,11 @@ export const ANNOUNCEMENT = {
   tail: "! Submit projects ",
   submitLabel: "here",
   submitHref: "https://forms.hackclub.com/halflifesubmit",
-} as const;
+} as const
 
 export type DesignWeek = {
-  subject: string;
-  week: string;
+  subject: string
+  week: string
   /**
    * The artwork behind this pairing, as a path under `public/`. Optional on
    * the same terms as a `BuildCard`'s photo: a week without one falls back to
@@ -78,8 +78,8 @@ export type DesignWeek = {
    * Week 3 has none yet — `public/art/weeks` ships PCB, cad, display and
    * breadboard, and no synth.
    */
-  art?: string;
-};
+  art?: string
+}
 
 /** Week 1 leads at display scale; weeks 2–5 sit beneath it. */
 export const DESIGN_WEEKS: { lead: DesignWeek; rest: DesignWeek[] } = {
@@ -94,22 +94,22 @@ export const DESIGN_WEEKS: { lead: DesignWeek; rest: DesignWeek[] } = {
       art: "/art/weeks/breadboard.png",
     },
   ],
-};
+}
 
 export type Step = {
-  id: string;
-  title: string;
+  id: string
+  title: string
   /**
    * The step's artwork, on the same terms as a `DesignWeek`'s `art` and a
    * `BuildCard`'s `photo`: an optional path, with `slot` drawn as the fallback
    * while a step is still waiting for its picture. `slot` stays on a step that
    * has its art — it is the in-source record of the footprint the comp drew.
    */
-  art?: StaticImageData;
+  art?: StaticImageData
   /** Slot the user drops a real photo into. */
-  slot?: { label: string; ratio: string };
-  caption?: string;
-};
+  slot?: { label: string; ratio: string }
+  caption?: string
+}
 
 /** Exactly four, in comp order: design, funding, build, printer. The
  *  arity is load-bearing — `process.tsx` destructures these positionally
@@ -139,9 +139,9 @@ export const STEPS: [Step, Step, Step, Step] = [
     art: prizesArt,
     slot: { label: "prize lineup", ratio: "736 × 269" },
   },
-];
+]
 
-export type Aside = { id: string; title: string; body: string };
+export type Aside = { id: string; title: string; body: string }
 
 /** Exactly two; each is placed at its own offset on the process band. */
 export const ASIDES: [Aside, Aside] = [
@@ -155,19 +155,19 @@ export const ASIDES: [Aside, Aside] = [
     title: "there are thousands of us!",
     body: "Hack Club has a community of over 100,000 teenagers from around the globe, who all love building projects and learning how to build projects. Join now at hackclub.com/slack!",
   },
-];
+]
 
 export type BuildCard = {
-  id: string;
+  id: string
   /** Names the project. Not drawn -- it is the photograph's alt text. */
-  label: string;
-  credit: string;
+  label: string
+  credit: string
   /**
    * The project photograph, as a path under `public/`. Optional on purpose: a
    * card without one falls back to the drawn slot, so the belt fills up one
    * project at a time instead of needing the whole set before it renders.
    */
-  photo?: StaticImageData;
+  photo?: StaticImageData
   /**
    * ── PUT THE GITHUB LINK HERE ──────────────────────────────────────────
    * Full URL to the project's repo, e.g.
@@ -175,10 +175,10 @@ export type BuildCard = {
    * Optional: a card left empty here simply shows no button, so the repos
    * can be filled in one project at a time.
    */
-  repo?: string;
+  repo?: string
   /** The drawn footprint, standing in until `photo` lands. */
-  slot: { label: string; ratio: string };
-};
+  slot: { label: string; ratio: string }
+}
 
 export const BUILD_CARDS: BuildCard[] = [
   {
@@ -221,10 +221,9 @@ export const BUILD_CARDS: BuildCard[] = [
     repo: "https://github.com/cheyao/icepi-zero",
     slot: { label: "project photo", ratio: "329 x 377" },
   },
-];
+]
 
-
-export type Faq = { q: string; a: string };
+export type Faq = { q: string; a: string }
 
 export const FAQS: Faq[] = [
   {
@@ -251,7 +250,7 @@ export const FAQS: Faq[] = [
     q: "What do I get?",
     a: "Up to $100 of funding per project, a 3D printer for finishing all ten weeks, and extra prizes (like plushies, drawing tablets, and iPads) if you log more hours.",
   },
-];
+]
 
 /**
  * The one group shot under "here's what you'll make!" — every project in a
@@ -266,7 +265,7 @@ export const MAKE_PHOTO = {
   label: "every project",
   /** Footprint on the comp's 1728px grid; supply the art at 2x. */
   ratio: "380 × 214",
-} as const;
+} as const
 
 export const FOOTER_COLUMNS = [
   {
@@ -295,4 +294,4 @@ export const FOOTER_COLUMNS = [
       { label: "Conduct", href: "https://hackclub.com/conduct" },
     ],
   },
-] as const;
+] as const

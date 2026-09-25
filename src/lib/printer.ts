@@ -52,10 +52,7 @@ export async function getPrinterQualification(userId: string): Promise<PrinterQu
  * Create the award row the first time someone qualifies. Idempotent, and safe
  * to call inside the review transaction.
  */
-export async function ensurePrinterAward(
-  tx: Prisma.TransactionClient,
-  userId: string,
-): Promise<PrinterAward | null> {
+export async function ensurePrinterAward(tx: Prisma.TransactionClient, userId: string): Promise<PrinterAward | null> {
   const projects = await tx.themeProject.findMany({
     where: {
       userId,
@@ -88,9 +85,7 @@ export async function ensurePrinterAward(
  * Awards whose holder no longer qualifies. Reports only — never auto-revokes,
  * because the printer may already have shipped.
  */
-export async function findPrinterAwardMismatches(): Promise<
-  { userId: string; email: string; shippedCount: number }[]
-> {
+export async function findPrinterAwardMismatches(): Promise<{ userId: string; email: string; shippedCount: number }[]> {
   const awards = await prisma.printerAward.findMany({
     where: { revokedAt: null },
     select: { userId: true, user: { select: { email: true } } },

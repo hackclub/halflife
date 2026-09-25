@@ -1,10 +1,10 @@
-import Image, { type StaticImageData } from "next/image";
+import Image, { type StaticImageData } from "next/image"
 
-import bottomLeft from "../../../public/art/borders/bottomleftcorner.png";
-import bottomRight from "../../../public/art/borders/bottomrightcorner.png";
-import bottomRight2 from "../../../public/art/borders/bottomrightcorner2.png";
-import topLeft from "../../../public/art/borders/topleftcorner.png";
-import topLeft2 from "../../../public/art/borders/topleftcorner2.png";
+import bottomLeft from "../../../public/art/borders/bottomleftcorner.png"
+import bottomRight from "../../../public/art/borders/bottomrightcorner.png"
+import bottomRight2 from "../../../public/art/borders/bottomrightcorner2.png"
+import topLeft from "../../../public/art/borders/topleftcorner.png"
+import topLeft2 from "../../../public/art/borders/topleftcorner2.png"
 
 /**
  * The corner decals, placed by their ink rather than by their frames.
@@ -67,14 +67,14 @@ const DECALS = {
 } as const satisfies Record<
   string,
   {
-    src: StaticImageData;
-    corner: "top-left" | "bottom-left" | "bottom-right";
-    pad: { left: number; top: number; right: number; bottom: number };
-    inkW: number;
+    src: StaticImageData
+    corner: "top-left" | "bottom-left" | "bottom-right"
+    pad: { left: number; top: number; right: number; bottom: number }
+    inkW: number
   }
->;
+>
 
-export type DecalName = keyof typeof DECALS;
+export type DecalName = keyof typeof DECALS
 
 /**
  * How far the ink runs along the plate's edge, as a fraction of the plate's
@@ -87,7 +87,7 @@ export type DecalName = keyof typeof DECALS;
  * breakpoint and no `u()` — a percentage on an absolutely positioned child is
  * already a fraction of the plate, so it scales with the stage for free.
  */
-const INK = 0.12;
+const INK = 0.12
 
 /**
  * How far the ink is held off the corner.
@@ -102,7 +102,7 @@ const INK = 0.12;
  * cut `rounded-md`. A decal held off by less than the radius rides out over
  * the arc and reads as a printing error.
  */
-const INSET = "12px";
+const INSET = "12px"
 
 /**
  * How strongly the decals print.
@@ -131,7 +131,7 @@ const INSET = "12px";
  * margin and still texture rather than content — and the green, which is a
  * hue this palette does not otherwise have, arrives screened rather than raw.
  */
-const PRINT = 0.3;
+const PRINT = 0.3
 
 /**
  * A decal in one corner of the plate it is placed in.
@@ -156,7 +156,7 @@ export default function CornerDecal({
   decal,
   over = false,
 }: {
-  decal: DecalName;
+  decal: DecalName
   /**
    * Print the decal over the plate's content instead of under it.
    *
@@ -165,20 +165,20 @@ export default function CornerDecal({
    * the one plate whose content is a full-bleed picture — under it, the decal
    * is not screened back, it is simply not there.
    */
-  over?: boolean;
+  over?: boolean
 }) {
-  const { src, corner, pad, inkW } = DECALS[decal];
+  const { src, corner, pad, inkW } = DECALS[decal]
 
   // The rendered file, as a fraction of the plate — the ink's promised share
   // divided back out through how much of its file the ink actually occupies.
-  const size = INK / inkW;
+  const size = INK / inkW
 
-  const [vertical, horizontal] = corner.split("-");
-  const fromLeft = horizontal === "left";
-  const fromTop = vertical === "top";
+  const [vertical, horizontal] = corner.split("-")
+  const fromLeft = horizontal === "left"
+  const fromTop = vertical === "top"
 
-  const shiftX = (fromLeft ? -pad.left : pad.right) * 100;
-  const shiftY = (fromTop ? -pad.top : pad.bottom) * 100;
+  const shiftX = (fromLeft ? -pad.left : pad.right) * 100
+  const shiftY = (fromTop ? -pad.top : pad.bottom) * 100
 
   return (
     <Image
@@ -202,5 +202,5 @@ export default function CornerDecal({
         transform: `translate(${shiftX.toFixed(2)}%, ${shiftY.toFixed(2)}%)`,
       }}
     />
-  );
+  )
 }

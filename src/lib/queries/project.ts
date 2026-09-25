@@ -47,23 +47,19 @@ export async function listHackatimeLinks(themeProjectId: string) {
   })
 }
 
-export async function getProjectDetail(
-  userId: string,
-  slug: string,
-): Promise<ProjectDetail | null> {
+export async function getProjectDetail(userId: string, slug: string): Promise<ProjectDetail | null> {
   const project = await getProjectBySlug(userId, slug)
   if (!project) return null
   const def = getThemeDef(project.theme)
 
-  const [design, build, designReadiness, buildReadiness, sessions, hackatimeLinks] =
-    await Promise.all([
-      getHoursBreakdown(project.id, Phase.DESIGN),
-      getHoursBreakdown(project.id, Phase.BUILD),
-      getSubmitReadiness(project, Phase.DESIGN),
-      getSubmitReadiness(project, Phase.BUILD),
-      listSessions(project.id),
-      listHackatimeLinks(project.id),
-    ])
+  const [design, build, designReadiness, buildReadiness, sessions, hackatimeLinks] = await Promise.all([
+    getHoursBreakdown(project.id, Phase.DESIGN),
+    getHoursBreakdown(project.id, Phase.BUILD),
+    getSubmitReadiness(project, Phase.DESIGN),
+    getSubmitReadiness(project, Phase.BUILD),
+    listSessions(project.id),
+    listHackatimeLinks(project.id),
+  ])
 
   return {
     project,

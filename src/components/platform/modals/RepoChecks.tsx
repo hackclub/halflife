@@ -1,11 +1,11 @@
-"use client";
+"use client"
 
-import { useCallback, useEffect, useState } from "react";
-import { IconCheck, IconWarning } from "@/components/platform/icons";
-import { RepoEditor } from "@/components/platform/RepoField";
-import { Button, cx } from "@/components/platform/ui";
-import type { RepoCheck, RepoCheckResult } from "@/lib/repo-checks";
-import type { Project } from "@/lib/types";
+import { useCallback, useEffect, useState } from "react"
+import { IconCheck, IconWarning } from "@/components/platform/icons"
+import { RepoEditor } from "@/components/platform/RepoField"
+import { Button, cx } from "@/components/platform/ui"
+import type { RepoCheck, RepoCheckResult } from "@/lib/repo-checks"
+import type { Project } from "@/lib/types"
 
 /**
  * What the repo has, checked against what this week needs — before the maker
@@ -23,44 +23,44 @@ export function RepoChecks({
   onResult,
   editable = true,
 }: {
-  project: Project;
-  onResult: (result: RepoCheckResult | null) => void;
+  project: Project
+  onResult: (result: RepoCheckResult | null) => void
   /**
    * Whether the link can be changed from here. The submit sheet says yes, so a
    * wrong link is fixed without leaving it; the project page says no, because
    * its own details editor already owns the link.
    */
-  editable?: boolean;
+  editable?: boolean
 }) {
-  const [data, setData] = useState<RepoCheckResult | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<RepoCheckResult | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const run = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    onResult(null);
+    setLoading(true)
+    setError(null)
+    onResult(null)
     try {
-      const res = await fetch(`/api/projects/${project.id}/preflight`, { cache: "no-store" });
-      const body = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(body?.error?.message ?? "Could not check the repo");
-      setData(body as RepoCheckResult);
-      onResult(body as RepoCheckResult);
+      const res = await fetch(`/api/projects/${project.id}/preflight`, { cache: "no-store" })
+      const body = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(body?.error?.message ?? "Could not check the repo")
+      setData(body as RepoCheckResult)
+      onResult(body as RepoCheckResult)
     } catch (err) {
-      setError((err as Error).message);
+      setError((err as Error).message)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
     // The link is the input: a new one means a fresh check.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [project.id, project.githubRepo]);
+  }, [project.id, project.githubRepo])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- fetching on mount and on a new link
-    void run();
-  }, [run]);
+    void run()
+  }, [run])
 
-  const blocking = data?.checks.filter((c) => c.blocking && c.status === "fail").length ?? 0;
+  const blocking = data?.checks.filter((c) => c.blocking && c.status === "fail").length ?? 0
 
   return (
     <section
@@ -106,16 +106,12 @@ export function RepoChecks({
         </>
       ) : null}
     </section>
-  );
+  )
 }
 
 function CheckRow({ check }: { check: RepoCheck }) {
   const tone =
-    check.status === "pass"
-      ? "text-teal-deep"
-      : check.status === "fail"
-        ? "text-coral-deep"
-        : "text-orange-deep";
+    check.status === "pass" ? "text-teal-deep" : check.status === "fail" ? "text-coral-deep" : "text-orange-deep"
   return (
     <li className="flex items-start gap-2.5">
       <span
@@ -146,5 +142,5 @@ function CheckRow({ check }: { check: RepoCheck }) {
         )}
       </span>
     </li>
-  );
+  )
 }

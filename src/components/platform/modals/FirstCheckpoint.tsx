@@ -1,28 +1,28 @@
-"use client";
+"use client"
 
-import { useEffect, useMemo, useState } from "react";
-import { WeekScene } from "@/components/platform/art";
-import { IconArrowRight, IconCheck, IconClock, IconFilm, IconLock, IconSparkle } from "@/components/platform/icons";
-import { Button, Chip, Field, OptionRow, Panel, cx, inputClass } from "@/components/platform/ui";
-import { STARTER_IDEAS, TIERS, WEEK_META } from "@/lib/curriculum";
-import { submitFloorFor } from "@/lib/config/printers";
-import { fmtHours } from "@/lib/projects";
-import { recommendedTier, useStore } from "@/lib/store";
-import type { Experience } from "@/lib/types";
-import { Modal, ModalTitle } from "./Modal";
-import { RepoInput, repoIsValid } from "@/components/platform/RepoField";
-import { normalizeRepo } from "@/lib/repo";
+import { useEffect, useMemo, useState } from "react"
+import { WeekScene } from "@/components/platform/art"
+import { IconArrowRight, IconCheck, IconClock, IconFilm, IconLock, IconSparkle } from "@/components/platform/icons"
+import { Button, Chip, Field, OptionRow, Panel, cx, inputClass } from "@/components/platform/ui"
+import { STARTER_IDEAS, TIERS, WEEK_META } from "@/lib/curriculum"
+import { submitFloorFor } from "@/lib/config/printers"
+import { fmtHours } from "@/lib/projects"
+import { recommendedTier, useStore } from "@/lib/store"
+import type { Experience } from "@/lib/types"
+import { Modal, ModalTitle } from "./Modal"
+import { RepoInput, repoIsValid } from "@/components/platform/RepoField"
+import { normalizeRepo } from "@/lib/repo"
 
-const GOLD = "var(--color-gold-deep)";
+const GOLD = "var(--color-gold-deep)"
 
 const EXPERIENCE: { id: Experience; label: string; hint: string }[] = [
   { id: "first", label: "This is my first time!", hint: "Never touched a soldering iron. Perfect." },
   { id: "little", label: "Just a little…", hint: "A kit or two, maybe an Arduino blink." },
   { id: "some", label: "Yeah, I have built a good amount", hint: "You have shipped a project that works." },
   { id: "lots", label: "Hardware… is life…", hint: "You own more multimeters than mugs." },
-];
+]
 
-const TOTAL = 6;
+const TOTAL = 6
 
 /**
  * The first checkpoint.
@@ -32,59 +32,53 @@ const TOTAL = 6;
  * nothing here to name.
  */
 export function FirstCheckpoint() {
-  const {
-    setOpenCheckpoint,
-    experience,
-    completeOnboarding,
-    setPhase,
-    ensureProject,
-  } = useStore();
+  const { setOpenCheckpoint, experience, completeOnboarding, setPhase, ensureProject } = useStore()
   // "Get started" is week one's "create a project" checkpoint, so opening it
   // makes the PCB project row.
   useEffect(() => {
-    void ensureProject(1);
-  }, [ensureProject]);
+    void ensureProject(1)
+  }, [ensureProject])
 
   // The first checkpoint only ever runs in week one, so this is the week it
   // introduces. Guarded rather than asserted because an empty curriculum would
   // otherwise surface as a blank modal instead of a loud failure.
-  const week = WEEK_META[0];
-  if (!week) throw new Error("The curriculum has no weeks in it");
-  const [step, setStep] = useState(1);
-  const [exp, setExp] = useState<Experience | null>(experience);
-  const [name, setName] = useState("");
-  const [desc, setDesc] = useState("");
-  const [repo, setRepo] = useState("");
-  const [starter, setStarter] = useState<string | null>(null);
-  const [pickedTier, setPickedTier] = useState<1 | 2 | 3 | null>(null);
-  const [spin, setSpin] = useState(0);
+  const week = WEEK_META[0]
+  if (!week) throw new Error("The curriculum has no weeks in it")
+  const [step, setStep] = useState(1)
+  const [exp, setExp] = useState<Experience | null>(experience)
+  const [name, setName] = useState("")
+  const [desc, setDesc] = useState("")
+  const [repo, setRepo] = useState("")
+  const [starter, setStarter] = useState<string | null>(null)
+  const [pickedTier, setPickedTier] = useState<1 | 2 | 3 | null>(null)
+  const [spin, setSpin] = useState(0)
 
-  const beginner = exp === "first" || exp === "little";
-  const suggested = recommendedTier(exp);
-  const tierLocked = starter !== null;
+  const beginner = exp === "first" || exp === "little"
+  const suggested = recommendedTier(exp)
+  const tierLocked = starter !== null
   // A starter project is scoped to tier 1, so the choice is derived, not stored.
-  const tier: 1 | 2 | 3 | null = tierLocked ? 1 : pickedTier;
+  const tier: 1 | 2 | 3 | null = tierLocked ? 1 : pickedTier
 
   useEffect(() => {
-    if (step !== 2) return;
-    let n = 0;
+    if (step !== 2) return
+    let n = 0
     const id = window.setInterval(() => {
-      n += 1;
-      setSpin(n);
-      if (n > 11) window.clearInterval(id);
-    }, 120);
-    return () => window.clearInterval(id);
-  }, [step]);
+      n += 1
+      setSpin(n)
+      if (n > 11) window.clearInterval(id)
+    }, 120)
+    return () => window.clearInterval(id)
+  }, [step])
 
   const canAdvance = useMemo(() => {
-    if (step === 1) return exp !== null;
-    if (step === 4) return name.trim().length > 1 && desc.trim().length > 4 && repoIsValid(repo);
-    if (step === 5) return tier !== null;
-    return true;
-  }, [step, exp, name, desc, tier, repo]);
+    if (step === 1) return exp !== null
+    if (step === 4) return name.trim().length > 1 && desc.trim().length > 4 && repoIsValid(repo)
+    if (step === 5) return tier !== null
+    return true
+  }, [step, exp, name, desc, tier, repo])
 
   function finish() {
-    if (!exp) return;
+    if (!exp) return
     completeOnboarding({
       experience: exp,
       title: name.trim(),
@@ -96,12 +90,12 @@ export function FirstCheckpoint() {
       // Only asked of someone past their first board; a beginner's is added
       // later from the project page, so nothing is sent for them here.
       githubRepo: exp === "first" ? null : normalizeRepo(repo).url,
-    });
-    setOpenCheckpoint(null);
-    setPhase("tour");
+    })
+    setOpenCheckpoint(null)
+    setPhase("tour")
   }
 
-  const spinIndex = spin > 11 ? 0 : spin % WEEK_META.slice(0, 5).length;
+  const spinIndex = spin > 11 ? 0 : spin % WEEK_META.slice(0, 5).length
 
   return (
     <Modal
@@ -157,8 +151,8 @@ export function FirstCheckpoint() {
           </ModalTitle>
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-5">
             {WEEK_META.slice(0, 5).map((w, i) => {
-              const landed = spin > 11;
-              const lit = landed ? i === 0 : i === spinIndex;
+              const landed = spin > 11
+              const lit = landed ? i === 0 : i === spinIndex
               return (
                 <div
                   key={w.id}
@@ -177,12 +171,12 @@ export function FirstCheckpoint() {
                   <p className="hand mt-1.5 text-[0.74rem] leading-tight font-semibold text-navy">{w.theme}</p>
                   <p className="hand text-[0.64rem] text-navy-soft">Week {w.id}</p>
                 </div>
-              );
+              )
             })}
           </div>
           <p className="mt-5 text-[0.9rem] leading-relaxed text-navy-soft">
-            Weeks 6 to 10 repeat those same five themes as build weeks. On week six the PCB you draw
-            this week arrives as a real board, and you solder it.
+            Weeks 6 to 10 repeat those same five themes as build weeks. On week six the PCB you draw this week arrives
+            as a real board, and you solder it.
           </p>
         </div>
       )}
@@ -199,8 +193,8 @@ export function FirstCheckpoint() {
                   <Chip tone="sky">New to this? Read on</Chip>
                   <p className="mt-3 max-w-[64ch] text-[0.95rem] leading-relaxed text-navy">{week.primer}</p>
                   <p className="mt-3 max-w-[64ch] text-[0.9rem] leading-relaxed text-navy-soft">
-                    You will not do this alone. The Docs tab has a walkthrough for your first board, and
-                    every reel in the Doomscroller is someone else figuring out the same thing.
+                    You will not do this alone. The Docs tab has a walkthrough for your first board, and every reel in
+                    the Doomscroller is someone else figuring out the same thing.
                   </p>
                 </>
               ) : (
@@ -233,17 +227,15 @@ export function FirstCheckpoint() {
       {/* ---------------- 4 — project creation ---------------- */}
       {step === 4 && (
         <div>
-          <ModalTitle sub="You can always edit this later — the name especially.">
-            Make your first project!
-          </ModalTitle>
+          <ModalTitle sub="You can always edit this later — the name especially.">Make your first project!</ModalTitle>
           <div className="grid gap-4">
             <Field label="Project name" hint="Give it a cool name." id="p-name">
               <input
                 id="p-name"
                 value={name}
                 onChange={(e) => {
-                  setName(e.target.value);
-                  setStarter(null);
+                  setName(e.target.value)
+                  setStarter(null)
                 }}
                 placeholder="Hackpad"
                 className={inputClass}
@@ -254,8 +246,8 @@ export function FirstCheckpoint() {
                 id="p-desc"
                 value={desc}
                 onChange={(e) => {
-                  setDesc(e.target.value);
-                  setStarter(null);
+                  setDesc(e.target.value)
+                  setStarter(null)
                 }}
                 rows={3}
                 placeholder="A three-key macropad with hot-swap sockets, so I can paste things without moving my hand."
@@ -275,15 +267,15 @@ export function FirstCheckpoint() {
           </p>
           <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
             {STARTER_IDEAS.map((idea) => {
-              const picked = starter === idea.id;
+              const picked = starter === idea.id
               return (
                 <button
                   key={idea.id}
                   type="button"
                   onClick={() => {
-                    setStarter(idea.id);
-                    setName(idea.name);
-                    setDesc(idea.blurb);
+                    setStarter(idea.id)
+                    setName(idea.name)
+                    setDesc(idea.blurb)
                   }}
                   aria-pressed={picked}
                   className={cx(
@@ -303,7 +295,7 @@ export function FirstCheckpoint() {
                   </span>
                   <span className="mt-0.5 block text-[0.82rem] leading-snug text-navy-soft">{idea.blurb}</span>
                 </button>
-              );
+              )
             })}
           </div>
         </div>
@@ -322,15 +314,15 @@ export function FirstCheckpoint() {
             >
               <IconLock className="mt-0.5 shrink-0 text-lg text-gold-deep" />
               <p className="text-[0.86rem] leading-snug text-navy">
-                You picked a starter project, so this week is locked to tier 1. Pick your own idea on
-                step 4 if you want a bigger budget.
+                You picked a starter project, so this week is locked to tier 1. Pick your own idea on step 4 if you want
+                a bigger budget.
               </p>
             </div>
           )}
           <div className="grid gap-2.5">
             {TIERS.map((t) => {
-              const locked = tierLocked && t.id !== 1;
-              const isSuggested = !tierLocked && t.id === suggested;
+              const locked = tierLocked && t.id !== 1
+              const isSuggested = !tierLocked && t.id === suggested
               return (
                 <OptionRow
                   key={t.id}
@@ -341,9 +333,7 @@ export function FirstCheckpoint() {
                   hint={
                     <>
                       {t.detail}
-                      <span className="mt-1 block text-navy-soft/90">
-                        {t.toBank} towards your 3D printer!
-                      </span>
+                      <span className="mt-1 block text-navy-soft/90">{t.toBank} towards your 3D printer!</span>
                     </>
                   }
                 >
@@ -357,7 +347,7 @@ export function FirstCheckpoint() {
                     {locked && <Chip tone="muted">Locked</Chip>}
                   </span>
                 </OptionRow>
-              );
+              )
             })}
           </div>
         </div>
@@ -418,5 +408,5 @@ export function FirstCheckpoint() {
         </div>
       )}
     </Modal>
-  );
+  )
 }

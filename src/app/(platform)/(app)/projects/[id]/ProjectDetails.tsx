@@ -1,14 +1,14 @@
-"use client";
+"use client"
 
-import { useId, useState } from "react";
-import { IconPencil } from "@/components/platform/icons";
-import { Button, Chip, OptionRow, cx } from "@/components/platform/ui";
-import { TIERS } from "@/lib/curriculum";
-import { submitFloorFor, tierBankedFloor } from "@/lib/config/printers";
-import { fmtHours } from "@/lib/projects";
-import { normalizeRepo } from "@/lib/repo";
-import { useStore } from "@/lib/store";
-import type { Project } from "@/lib/types";
+import { useId, useState } from "react"
+import { IconPencil } from "@/components/platform/icons"
+import { Button, Chip, OptionRow, cx } from "@/components/platform/ui"
+import { TIERS } from "@/lib/curriculum"
+import { submitFloorFor, tierBankedFloor } from "@/lib/config/printers"
+import { fmtHours } from "@/lib/projects"
+import { normalizeRepo } from "@/lib/repo"
+import { useStore } from "@/lib/store"
+import type { Project } from "@/lib/types"
 
 /**
  * The project's own details — name, description, repo and tier — read as the
@@ -36,45 +36,38 @@ export function ProjectDetails({
   meta,
   unsubmit,
 }: {
-  project: Project;
+  project: Project
   /** Hours logged in the design week, for what each tier would ask. */
-  hours: number;
+  hours: number
   /** The design week is handed in, so the tier is final. */
-  tierLocked: boolean;
+  tierLocked: boolean
   /** Why nothing here can change right now, or null when it can. */
-  locked: string | null;
+  locked: string | null
   /** The facts under the description while reading: progress, then what it is. */
-  meta: React.ReactNode;
+  meta: React.ReactNode
   /** Take the week in review back out of it, when one is. */
-  unsubmit?: { week: number; run: () => Promise<string | null> };
+  unsubmit?: { week: number; run: () => Promise<string | null> }
 }) {
-  const [editing, setEditing] = useState(false);
-  const lockedId = useId();
+  const [editing, setEditing] = useState(false)
+  const lockedId = useId()
   // Two steps, in place: unsubmitting pulls the week out of the review queue,
   // so the first press asks, and the second does it.
-  const [confirming, setConfirming] = useState(false);
-  const [unsubmitting, setUnsubmitting] = useState(false);
-  const [unsubmitError, setUnsubmitError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false)
+  const [unsubmitting, setUnsubmitting] = useState(false)
+  const [unsubmitError, setUnsubmitError] = useState<string | null>(null)
 
   async function takeBack() {
-    if (!unsubmit) return;
-    setUnsubmitting(true);
-    setUnsubmitError(null);
-    const refused = await unsubmit.run();
-    setUnsubmitting(false);
-    if (refused) setUnsubmitError(refused);
-    else setConfirming(false);
+    if (!unsubmit) return
+    setUnsubmitting(true)
+    setUnsubmitError(null)
+    const refused = await unsubmit.run()
+    setUnsubmitting(false)
+    if (refused) setUnsubmitError(refused)
+    else setConfirming(false)
   }
 
   if (editing) {
-    return (
-      <DetailsForm
-        project={project}
-        hours={hours}
-        tierLocked={tierLocked}
-        onDone={() => setEditing(false)}
-      />
-    );
+    return <DetailsForm project={project} hours={hours} tierLocked={tierLocked} onDone={() => setEditing(false)} />
   }
 
   return (
@@ -122,8 +115,8 @@ export function ProjectDetails({
                 variant="ghost"
                 size="sm"
                 onClick={() => {
-                  setUnsubmitError(null);
-                  setConfirming(true);
+                  setUnsubmitError(null)
+                  setConfirming(true)
                 }}
                 className="-mr-3.5"
               >
@@ -144,13 +137,13 @@ export function ProjectDetails({
 
       {meta}
     </div>
-  );
+  )
 }
 
 // Not inputClass: its drawn outline cannot render on a field, which leaves a
 // white box on the white panel that reads as plain text rather than an input.
 const field =
-  "block w-full rounded-xl border-2 border-line bg-black/[.02] px-4 py-3 text-navy outline-none placeholder:text-navy-soft/70 transition-colors hover:border-line-strong focus:border-violet focus:bg-white aria-invalid:border-coral";
+  "block w-full rounded-xl border-2 border-line bg-black/[.02] px-4 py-3 text-navy outline-none placeholder:text-navy-soft/70 transition-colors hover:border-line-strong focus:border-violet focus:bg-white aria-invalid:border-coral"
 
 function DetailsForm({
   project,
@@ -158,26 +151,26 @@ function DetailsForm({
   tierLocked,
   onDone,
 }: {
-  project: Project;
-  hours: number;
-  tierLocked: boolean;
-  onDone: () => void;
+  project: Project
+  hours: number
+  tierLocked: boolean
+  onDone: () => void
 }) {
-  const { updateProject } = useStore();
-  const id = useId();
-  const [name, setName] = useState(project.name);
-  const [description, setDescription] = useState(project.description);
-  const [repo, setRepo] = useState(project.githubRepo ?? "");
-  const [tier, setTier] = useState<1 | 2 | 3>(project.tier);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<{ field: "name" | "repo" | null; message: string } | null>(null);
+  const { updateProject } = useStore()
+  const id = useId()
+  const [name, setName] = useState(project.name)
+  const [description, setDescription] = useState(project.description)
+  const [repo, setRepo] = useState(project.githubRepo ?? "")
+  const [tier, setTier] = useState<1 | 2 | 3>(project.tier)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<{ field: "name" | "repo" | null; message: string } | null>(null)
 
-  const tierEditable = !project.starter && !tierLocked;
+  const tierEditable = !project.starter && !tierLocked
 
   async function save() {
-    if (!name.trim()) return setError({ field: "name", message: "A project needs a name." });
-    const { url, error: repoError } = normalizeRepo(repo);
-    if (repoError) return setError({ field: "repo", message: repoError });
+    if (!name.trim()) return setError({ field: "name", message: "A project needs a name." })
+    const { url, error: repoError } = normalizeRepo(repo)
+    if (repoError) return setError({ field: "repo", message: repoError })
 
     // Only what changed, so an untouched tier is never re-sent against a
     // server rule it does not need to meet.
@@ -186,15 +179,15 @@ function DetailsForm({
       ...(description.trim() !== project.description.trim() ? { description: description.trim() } : {}),
       ...(url !== (project.githubRepo ?? null) ? { githubRepo: url } : {}),
       ...(tierEditable && tier !== project.tier ? { tier } : {}),
-    };
-    if (Object.keys(patch).length === 0) return onDone();
+    }
+    if (Object.keys(patch).length === 0) return onDone()
 
-    setSaving(true);
-    setError(null);
-    const refused = await updateProject(project.id, patch);
-    setSaving(false);
-    if (refused) setError({ field: null, message: refused });
-    else onDone();
+    setSaving(true)
+    setError(null)
+    const refused = await updateProject(project.id, patch)
+    setSaving(false)
+    if (refused) setError({ field: null, message: refused })
+    else onDone()
   }
 
   return (
@@ -202,11 +195,11 @@ function DetailsForm({
       aria-label="Edit project details"
       className="grid gap-4"
       onSubmit={(e) => {
-        e.preventDefault();
-        void save();
+        e.preventDefault()
+        void save()
       }}
       onKeyDown={(e) => {
-        if (e.key === "Escape" && !saving) onDone();
+        if (e.key === "Escape" && !saving) onDone()
       }}
     >
       <div className="grid gap-1.5">
@@ -217,8 +210,8 @@ function DetailsForm({
           id={`${id}-name`}
           value={name}
           onChange={(e) => {
-            setName(e.target.value);
-            if (error) setError(null);
+            setName(e.target.value)
+            if (error) setError(null)
           }}
           maxLength={120}
           autoFocus
@@ -250,8 +243,8 @@ function DetailsForm({
           id={`${id}-repo`}
           value={repo}
           onChange={(e) => {
-            setRepo(e.target.value);
-            if (error) setError(null);
+            setRepo(e.target.value)
+            if (error) setError(null)
           }}
           inputMode="url"
           autoComplete="url"
@@ -267,14 +260,13 @@ function DetailsForm({
         {tierEditable ? (
           <>
             <p className="text-[0.82rem] leading-snug text-navy-soft">
-              A tier funds its own block of hours and those hours bank nothing, so the printer money
-              has to be worked on top of them. You have{" "}
-              <span className="font-bold text-navy tabular-nums">{fmtHours(hours)}</span> in week{" "}
+              A tier funds its own block of hours and those hours bank nothing, so the printer money has to be worked on
+              top of them. You have <span className="font-bold text-navy tabular-nums">{fmtHours(hours)}</span> in week{" "}
               {project.weekId}.
             </p>
             {TIERS.map((t) => {
-              const floor = submitFloorFor(t.fundingHours);
-              const short = Math.max(0, floor - hours);
+              const floor = submitFloorFor(t.fundingHours)
+              const short = Math.max(0, floor - hours)
               return (
                 <OptionRow
                   key={t.id}
@@ -282,17 +274,15 @@ function DetailsForm({
                   onClick={() => setTier(t.id)}
                   hint={
                     <span className="block">
-                      {fmtHours(t.fundingHours)} funds the project ·{" "}
-                      {fmtHours(tierBankedFloor(t.fundingHours))} banks toward your printer
+                      {fmtHours(t.fundingHours)} funds the project · {fmtHours(tierBankedFloor(t.fundingHours))} banks
+                      toward your printer
                     </span>
                   }
                 >
                   <span className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
                     <span className="text-[0.98rem] font-extrabold text-navy">Tier {t.id}</span>
                     <span className="hand text-[0.86rem] text-teal-deep">${t.grantUsd} funding</span>
-                    <span className="hand text-[0.82rem] text-navy-soft">
-                      · {fmtHours(floor)} per design week
-                    </span>
+                    <span className="hand text-[0.82rem] text-navy-soft">· {fmtHours(floor)} per design week</span>
                     <span
                       className={cx(
                         "hand text-[0.8rem] tabular-nums",
@@ -303,7 +293,7 @@ function DetailsForm({
                     </span>
                   </span>
                 </OptionRow>
-              );
+              )
             })}
           </>
         ) : (
@@ -333,5 +323,5 @@ function DetailsForm({
         </Button>
       </div>
     </form>
-  );
+  )
 }

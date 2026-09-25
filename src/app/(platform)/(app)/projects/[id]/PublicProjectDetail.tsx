@@ -1,14 +1,14 @@
-"use client";
+"use client"
 
-import Link from "next/link";
-import { WeekScene } from "@/components/platform/art";
-import { IconChevronLeft, IconClock } from "@/components/platform/icons";
-import { Chip, Panel } from "@/components/platform/ui";
-import { WEEK_META } from "@/lib/curriculum";
-import { DESIGN_WEEKS } from "@/lib/config/printers";
-import { fmtHours } from "@/lib/projects";
-import type { PublicProjectData } from "@/lib/queries/project-page";
-import { Timeline } from "./Timeline";
+import Link from "next/link"
+import { WeekScene } from "@/components/platform/art"
+import { IconChevronLeft, IconClock } from "@/components/platform/icons"
+import { Chip, Panel } from "@/components/platform/ui"
+import { WEEK_META } from "@/lib/curriculum"
+import { DESIGN_WEEKS } from "@/lib/config/printers"
+import { fmtHours } from "@/lib/projects"
+import type { PublicProjectData } from "@/lib/queries/project-page"
+import { Timeline } from "./Timeline"
 
 /**
  * Someone else's project: what it is, and the story of it, and nothing to
@@ -17,12 +17,12 @@ import { Timeline } from "./Timeline";
  * on it comes from the server in `data`.
  */
 export function PublicProjectDetail({ data }: { data: PublicProjectData }) {
-  const week = WEEK_META.find((w) => w.id === data.weekId) ?? WEEK_META[0];
-  const buildWeekId = data.weekId + DESIGN_WEEKS;
-  const weekFor = (phase: "DESIGN" | "BUILD") => (phase === "DESIGN" ? data.weekId : buildWeekId);
+  const week = WEEK_META.find((w) => w.id === data.weekId) ?? WEEK_META[0]
+  const buildWeekId = data.weekId + DESIGN_WEEKS
+  const weekFor = (phase: "DESIGN" | "BUILD") => (phase === "DESIGN" ? data.weekId : buildWeekId)
 
-  const sessions = data.timeline.flatMap((t) => (t.kind === "session" ? [t] : []));
-  const hours = sessions.reduce((n, s) => n + (s.approvedHours ?? s.hours), 0);
+  const sessions = data.timeline.flatMap((t) => (t.kind === "session" ? [t] : []))
+  const hours = sessions.reduce((n, s) => n + (s.approvedHours ?? s.hours), 0)
 
   return (
     <div className="mx-auto w-full max-w-[960px] px-4 pt-6 pb-10 sm:px-8">
@@ -62,7 +62,9 @@ export function PublicProjectDetail({ data }: { data: PublicProjectData }) {
                 <span className="inline-flex items-center gap-1.5 text-teal-deep">
                   <IconClock className="text-sm" /> {fmtHours(hours)} logged
                 </span>
-                <span aria-hidden="true" className="text-line-strong">·</span>
+                <span aria-hidden="true" className="text-line-strong">
+                  ·
+                </span>
                 <span>{sessions.length === 1 ? "1 entry" : `${sessions.length} entries`}</span>
               </p>
               {week && (
@@ -94,5 +96,5 @@ export function PublicProjectDetail({ data }: { data: PublicProjectData }) {
         </Panel>
       </section>
     </div>
-  );
+  )
 }

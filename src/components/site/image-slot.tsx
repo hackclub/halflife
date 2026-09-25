@@ -1,26 +1,26 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties } from "react"
 
 type Props = {
-  label: string;
+  label: string
   /** Native size of the artwork the comp expects, e.g. "736 × 269". */
-  ratio: string;
-  className?: string;
-  style?: CSSProperties;
+  ratio: string
+  className?: string
+  style?: CSSProperties
   /** Scales the interior fittings so a small card and a wide banner match. */
-  scale?: number;
+  scale?: number
   /**
    * Ground the slot sits on. `ink` is the default dark plate; `light` is for
    * slots that land on paper and carry the page's own ink text over them.
    */
-  tone?: "ink" | "light";
+  tone?: "ink" | "light"
   /**
    * A backdrop sits *behind* content rather than standing in for it. It drops
    * the centred caption, which would collide with whatever is set over it, and
    * leaves the accessibility tree, because a background image is decorative.
    * `label` and `ratio` still record, in source, what artwork belongs here.
    */
-  backdrop?: boolean;
-};
+  backdrop?: boolean
+}
 
 const TONES = {
   ink: {
@@ -44,7 +44,7 @@ const TONES = {
     title: "text-hl-ink",
     caption: "text-hl-ink-soft",
   },
-} as const;
+} as const
 
 /**
  * Reserved artwork slot.
@@ -63,8 +63,8 @@ export default function ImageSlot({
   tone = "ink",
   backdrop = false,
 }: Props) {
-  const tick = `${1.25 * scale}rem`;
-  const t = TONES[tone];
+  const tick = `${1.25 * scale}rem`
+  const t = TONES[tone]
 
   return (
     <div
@@ -75,9 +75,7 @@ export default function ImageSlot({
       // stylesheet order decides — which silently drops positioned slots into
       // flow. Callers that place a slot pass `position` here instead.
       style={{ position: "relative", ...style }}
-      {...(backdrop
-        ? { "aria-hidden": true }
-        : { role: "img", "aria-label": `Placeholder for ${label}` })}
+      {...(backdrop ? { "aria-hidden": true } : { role: "img", "aria-label": `Placeholder for ${label}` })}
     >
       {/* measured grid */}
       <div
@@ -86,18 +84,12 @@ export default function ImageSlot({
         style={{
           backgroundImage: `repeating-linear-gradient(to right, ${t.rule} 0 1px, transparent 1px ${
             2.25 * scale
-          }rem), repeating-linear-gradient(to bottom, ${t.rule} 0 1px, transparent 1px ${
-            2.25 * scale
-          }rem)`,
-          maskImage:
-            "radial-gradient(120% 120% at 50% 50%, #000 25%, transparent 78%)",
+          }rem), repeating-linear-gradient(to bottom, ${t.rule} 0 1px, transparent 1px ${2.25 * scale}rem)`,
+          maskImage: "radial-gradient(120% 120% at 50% 50%, #000 25%, transparent 78%)",
         }}
       />
       {/* registration ticks */}
-      <span
-        aria-hidden
-        className={`pointer-events-none absolute inset-0 border-2 ${t.edge}`}
-      />
+      <span aria-hidden className={`pointer-events-none absolute inset-0 border-2 ${t.edge}`} />
       {(
         [
           ["top-0 left-0", "border-t-2 border-l-2"],
@@ -139,5 +131,5 @@ export default function ImageSlot({
         </div>
       )}
     </div>
-  );
+  )
 }

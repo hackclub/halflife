@@ -20,11 +20,7 @@ export const { signOut, useSession } = authClient
  * returning user and a newcomer start from — so an address typed on the
  * landing page is not asked for twice.
  */
-export function signInWith(
-  providerId: "hca" | "hackatime",
-  callbackURL = "/dashboard",
-  loginHint?: string,
-) {
+export function signInWith(providerId: "hca" | "hackatime", callbackURL = "/dashboard", loginHint?: string) {
   return authClient.signIn.social({
     provider: providerId,
     callbackURL,

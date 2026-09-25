@@ -4,12 +4,7 @@ import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
 import { getBalances, getEarnedCredit, type Balances } from "@/lib/currency"
 import { getHoursBreakdown } from "@/lib/hours"
 import { getPrinterQualification } from "@/lib/printer"
-import {
-  currentWeekNumber,
-  effectiveDateFor,
-  getProgramSettings,
-  weekDateRange,
-} from "@/lib/program"
+import { currentWeekNumber, effectiveDateFor, getProgramSettings, weekDateRange } from "@/lib/program"
 import { THEMES, getThemeDef, scheduleForWeek } from "@/lib/config/program"
 import { streakAsOf } from "@/lib/streak"
 
@@ -84,9 +79,7 @@ export async function getDashboard(userId: string): Promise<DashboardData> {
       grantUsd: project.grantUsd,
       designHours: design.effectiveHours,
       buildHours: build.effectiveHours,
-      shipped:
-        project.designStatus === PhaseStatus.approved &&
-        project.buildStatus === PhaseStatus.approved,
+      shipped: project.designStatus === PhaseStatus.approved && project.buildStatus === PhaseStatus.approved,
     })
   }
 
@@ -95,9 +88,7 @@ export async function getDashboard(userId: string): Promise<DashboardData> {
   return {
     currentWeek,
     weekRange: weekDateRange(settings.eventStartDate, currentWeek),
-    focus: scheduled
-      ? { themeLabel: getThemeDef(scheduled.theme.id).label, phase: scheduled.phase }
-      : null,
+    focus: scheduled ? { themeLabel: getThemeDef(scheduled.theme.id).label, phase: scheduled.phase } : null,
     timezone: settings.programTimezone,
     balances,
     earned,

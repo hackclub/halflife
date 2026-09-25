@@ -83,11 +83,8 @@ export async function getJournalFeed(): Promise<JournalRow[]> {
       project: project.title || getThemeDef(project.theme).label,
       body: session.content ?? session.title,
       minutes: Math.round((session.hoursApproved ?? session.hoursClaimed) * 60),
-      day:
-        session.effectiveDate ??
-        effectiveDateFor(session.createdAt, settings.programTimezone),
+      day: session.effectiveDate ?? effectiveDateFor(session.createdAt, settings.programTimezone),
       when: session.createdAt.toISOString(),
     }
   })
 }
-

@@ -3,11 +3,7 @@ import { cache } from "react"
 import prisma from "@/lib/prisma"
 import { Phase } from "@/app/generated/prisma/enums"
 import type { ProgramSettings } from "@/app/generated/prisma/client"
-import {
-  DEFAULT_EVENT_START_DATE,
-  DEFAULT_PROGRAM_TIMEZONE,
-  TOTAL_WEEKS,
-} from "@/lib/config/program"
+import { DEFAULT_EVENT_START_DATE, DEFAULT_PROGRAM_TIMEZONE, TOTAL_WEEKS } from "@/lib/config/program"
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const WEEK_MS = 7 * DAY_MS
@@ -88,16 +84,8 @@ function zoneOffsetMs(at: number, timeZone: string): number {
     minute: "numeric",
     second: "numeric",
   }).formatToParts(new Date(at))
-  const part = (type: Intl.DateTimeFormatPartTypes) =>
-    Number(parts.find((p) => p.type === type)?.value ?? 0)
-  const wall = Date.UTC(
-    part("year"),
-    part("month") - 1,
-    part("day"),
-    part("hour"),
-    part("minute"),
-    part("second"),
-  )
+  const part = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find((p) => p.type === type)?.value ?? 0)
+  const wall = Date.UTC(part("year"), part("month") - 1, part("day"), part("hour"), part("minute"), part("second"))
   return wall - (at - (at % 1000))
 }
 
@@ -107,10 +95,7 @@ function zoneOffsetMs(at: number, timeZone: string): number {
  * reopen submissions reopen a passed week, so an admin granting more time
  * has one lever to pull rather than two.
  */
-export function effectiveWeekClose(
-  closesAt: Date,
-  ...extensions: (Date | null | undefined)[]
-): Date {
+export function effectiveWeekClose(closesAt: Date, ...extensions: (Date | null | undefined)[]): Date {
   return extensions.reduce<Date>((latest, ext) => (ext && ext > latest ? ext : latest), closesAt)
 }
 
@@ -122,11 +107,7 @@ export const WEEK_CLOSED_MESSAGE =
  * still be submitted — that is the whole point of closing them — but not
  * added to, edited or trimmed.
  */
-export async function isWeekOpen(
-  userId: string,
-  themeProjectId: string,
-  week: number,
-): Promise<boolean> {
+export async function isWeekOpen(userId: string, themeProjectId: string, week: number): Promise<boolean> {
   const [settings, user, project] = await Promise.all([
     getProgramSettings(),
     prisma.user.findUnique({
@@ -178,12 +159,7 @@ export function formatProgramDate(date: Date, timeZone: string): string {
 
 // ─── Access gates ────────────────────────────────────────────────────────────
 
-export type SubmissionAccessReason =
-  | "OPEN"
-  | "USER_EXTENSION"
-  | "PROJECT_EXTENSION"
-  | "CLOSED"
-  | "NOT_STARTED"
+export type SubmissionAccessReason = "OPEN" | "USER_EXTENSION" | "PROJECT_EXTENSION" | "CLOSED" | "NOT_STARTED"
 
 export interface SubmissionAccess {
   open: boolean
@@ -199,10 +175,7 @@ export interface SubmissionAccess {
  * a per-user one covering everything they do, and a per-project one. Either
  * being in the future opens the gate.
  */
-export async function getSubmissionAccess(
-  userId: string,
-  themeProjectId?: string,
-): Promise<SubmissionAccess> {
+export async function getSubmissionAccess(userId: string, themeProjectId?: string): Promise<SubmissionAccess> {
   const now = new Date()
   const [settings, user, project] = await Promise.all([
     getProgramSettings(),
@@ -221,9 +194,7 @@ export async function getSubmissionAccess(
   const userExt = user?.submissionExtensionUntil ?? null
   const projectExt = project?.submissionExtensionUntil ?? null
 
-  const globallyOpen =
-    settings.submissionsOpen &&
-    (!settings.submissionsCloseAt || settings.submissionsCloseAt > now)
+  const globallyOpen = settings.submissionsOpen && (!settings.submissionsCloseAt || settings.submissionsCloseAt > now)
 
   if (globallyOpen) {
     return {
@@ -257,8 +228,7 @@ export async function getSubmissionAccess(
   }
 }
 
-export const SUBMISSIONS_CLOSED_MESSAGE =
-  "Submissions are closed. If you need an extension, ask in the Slack channel."
+export const SUBMISSIONS_CLOSED_MESSAGE = "Submissions are closed. If you need an extension, ask in the Slack channel."
 
 export type ShopAccessReason = "OPEN" | "PENDING_REVIEW" | "GRACE_PERIOD" | "CLOSED"
 

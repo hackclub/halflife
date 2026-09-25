@@ -1,20 +1,20 @@
-"use client";
+"use client"
 
-import Link from "next/link";
-import { IconChevronLeft, IconClock } from "@/components/platform/icons";
-import { RepoChecks } from "@/components/platform/modals/RepoChecks";
-import { Chip, Panel } from "@/components/platform/ui";
-import { TIERS } from "@/lib/curriculum";
-import { DESIGN_WEEKS } from "@/lib/config/printers";
-import { fmtDate, fmtHours } from "@/lib/projects";
-import { displayRepo } from "@/lib/repo";
-import type { ProjectPageData } from "@/lib/queries/project-page";
-import { useStore } from "@/lib/store";
-import { BomEditor } from "./BomEditor";
-import { HackatimeLinks } from "./HackatimeLinks";
-import { CoverImage } from "./ProjectHeaderParts";
-import { ProjectDetails } from "./ProjectDetails";
-import { Timeline } from "./Timeline";
+import Link from "next/link"
+import { IconChevronLeft, IconClock } from "@/components/platform/icons"
+import { RepoChecks } from "@/components/platform/modals/RepoChecks"
+import { Chip, Panel } from "@/components/platform/ui"
+import { TIERS } from "@/lib/curriculum"
+import { DESIGN_WEEKS } from "@/lib/config/printers"
+import { fmtDate, fmtHours } from "@/lib/projects"
+import { displayRepo } from "@/lib/repo"
+import type { ProjectPageData } from "@/lib/queries/project-page"
+import { useStore } from "@/lib/store"
+import { BomEditor } from "./BomEditor"
+import { HackatimeLinks } from "./HackatimeLinks"
+import { CoverImage } from "./ProjectHeaderParts"
+import { ProjectDetails } from "./ProjectDetails"
+import { Timeline } from "./Timeline"
 
 function BackLink() {
   return (
@@ -24,7 +24,7 @@ function BackLink() {
     >
       <IconChevronLeft className="text-base" /> All projects
     </Link>
-  );
+  )
 }
 
 /** A titled section of the page. */
@@ -34,10 +34,10 @@ function Section({
   children,
   id,
 }: {
-  title: string;
-  aside?: React.ReactNode;
-  children: React.ReactNode;
-  id: string;
+  title: string
+  aside?: React.ReactNode
+  children: React.ReactNode
+  id: string
 }) {
   return (
     <section aria-labelledby={id} className="mt-8">
@@ -49,7 +49,7 @@ function Section({
       </div>
       {children}
     </section>
-  );
+  )
 }
 
 /**
@@ -63,12 +63,12 @@ function Section({
  * and the parts list are only ever wanted here.
  */
 export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData | null }) {
-  const { projects, stateOf, weekOf, weekHours, hydrated, unsubmitPhase } = useStore();
-  const project = projects.find((p) => p.id === id);
+  const { projects, stateOf, weekOf, weekHours, hydrated, unsubmitPhase } = useStore()
+  const project = projects.find((p) => p.id === id)
 
   // A miss here is real: the id is someone else's, or the project was deleted.
   if (!project || !data) {
-    const missing = hydrated || !data;
+    const missing = hydrated || !data
     return (
       <div className="mx-auto w-full max-w-[960px] px-4 pt-6 sm:px-8">
         <BackLink />
@@ -81,22 +81,22 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
           )}
         </Panel>
       </div>
-    );
+    )
   }
 
-  const week = weekOf(project.weekId);
-  const buildWeekId = project.weekId + DESIGN_WEEKS;
-  const weekFor = (phase: "DESIGN" | "BUILD") => (phase === "DESIGN" ? project.weekId : buildWeekId);
+  const week = weekOf(project.weekId)
+  const buildWeekId = project.weekId + DESIGN_WEEKS
+  const weekFor = (phase: "DESIGN" | "BUILD") => (phase === "DESIGN" ? project.weekId : buildWeekId)
 
-  const sessions = data.timeline.flatMap((t) => (t.kind === "session" ? [t] : []));
-  const hours = sessions.reduce((n, s) => n + (s.approvedHours ?? s.hours), 0);
-  const started = data.timeline.at(-1)?.at ?? 0;
+  const sessions = data.timeline.flatMap((t) => (t.kind === "session" ? [t] : []))
+  const hours = sessions.reduce((n, s) => n + (s.approvedHours ?? s.hours), 0)
+  const started = data.timeline.at(-1)?.at ?? 0
 
   // The tier stops being editable the moment the design week is handed in —
   // that submission is what claimed it, and the build week only inherits it.
-  const submit = week.checkpoints.find((c) => c.kind === "submit");
-  const submitted = submit ? stateOf(submit.id).done : false;
-  const grantUsd = TIERS.find((t) => t.id === project.tier)?.grantUsd ?? 0;
+  const submit = week.checkpoints.find((c) => c.kind === "submit")
+  const submitted = submit ? stateOf(submit.id).done : false
+  const grantUsd = TIERS.find((t) => t.id === project.tier)?.grantUsd ?? 0
 
   return (
     <div className="mx-auto w-full max-w-[960px] px-4 pt-6 pb-10 sm:px-8">
@@ -215,7 +215,7 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
         </Panel>
       </Section>
     </div>
-  );
+  )
 }
 
 // Stable, so the repo checks do not re-run on every render of the page.
@@ -226,5 +226,5 @@ function Dot() {
     <span aria-hidden="true" className="text-line-strong">
       ·
     </span>
-  );
+  )
 }

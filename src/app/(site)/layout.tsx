@@ -1,7 +1,7 @@
-import type { Metadata, Viewport } from "next";
-import { Open_Sans, Ubuntu } from "next/font/google";
-import localFont from "next/font/local";
-import "./globals.css";
+import type { Metadata, Viewport } from "next"
+import { Open_Sans, Ubuntu } from "next/font/google"
+import localFont from "next/font/local"
+import "./globals.css"
 
 /**
  * The comp's own display face (Figma 275:8), self-hosted from `public/fonts`.
@@ -18,13 +18,13 @@ const masterpiece = localFont({
   weight: "400",
   style: "normal",
   display: "swap",
-});
+})
 
 const openSans = Open_Sans({
   subsets: ["latin"],
   variable: "--font-open-sans",
   display: "swap",
-});
+})
 
 /**
  * Every heading and every line of display type on the page, and the tagline
@@ -47,7 +47,7 @@ const ubuntu = Ubuntu({
   weight: ["400", "700"],
   variable: "--font-ubuntu",
   display: "swap",
-});
+})
 
 export const metadata: Metadata = {
   title: "Half Life by Hack Club",
@@ -55,16 +55,15 @@ export const metadata: Metadata = {
     "Ten weeks. Five projects designed, five projects built. Hack Club funds your parts and ships you a 3D printer at the end. Ages 13-18, no experience needed.",
   openGraph: {
     title: "Half Life by Hack Club",
-    description:
-      "Design five hardware projects, then build all five. Hack Club funds the parts and ships the prizes.",
+    description: "Design five hardware projects, then build all five. Hack Club funds the parts and ships the prizes.",
     type: "website",
   },
-};
+}
 
 export const viewport: Viewport = {
   themeColor: "#31222c",
   colorScheme: "dark",
-};
+}
 
 const DIRECTION_CONTRACT = `<!--
 IMPECCABLE DIRECTION CONTRACT
@@ -93,18 +92,15 @@ FORM: Reproduction of the user's approved comp (Figma 275:8) — brief-pinned, s
 no concept roll was dealt. seed: brief-pinned/figma-275-8.
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
--->`;
+-->`
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html
-      lang="en"
-      className={`${openSans.variable} ${ubuntu.variable} ${masterpiece.variable} h-full antialiased`}
-    >
+    <html lang="en" className={`${openSans.variable} ${ubuntu.variable} ${masterpiece.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-hl-ink text-hl-paper">
         <div hidden dangerouslySetInnerHTML={{ __html: DIRECTION_CONTRACT }} />
         {children}
       </body>
     </html>
-  );
+  )
 }

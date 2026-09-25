@@ -61,9 +61,7 @@ function fakeVideo() {
 }
 
 async function main() {
-  const { createHandoff, resolveHandoff, completeHandoff, getHandoffStatus } = await import(
-    "../src/lib/handoff"
-  )
+  const { createHandoff, resolveHandoff, completeHandoff, getHandoffStatus } = await import("../src/lib/handoff")
   const { isUploadConfigured, deleteObject } = await import("../src/lib/uploads/r2")
 
   const stamp = Date.now()
@@ -86,11 +84,7 @@ async function main() {
     select: { tokenHash: true, userId: true, usedAt: true, objectKey: true },
   })
   check("token is not stored in plaintext", row.tokenHash === handoff.token, false)
-  check(
-    "what is stored is its SHA-256",
-    row.tokenHash,
-    createHash("sha256").update(handoff.token).digest("hex"),
-  )
+  check("what is stored is its SHA-256", row.tokenHash, createHash("sha256").update(handoff.token).digest("hex"))
   const anywhere = await prisma.uploadHandoff.count({
     where: { tokenHash: handoff.token },
   })
@@ -114,9 +108,7 @@ async function main() {
     data: { expiresAt: new Date(Date.now() - 1000) },
   })
   check("an expired token does not resolve", await resolveHandoff(expiring.token), null)
-  await refused("an expired token cannot upload", () =>
-    completeHandoff(expiring.token, fakeVideo()),
-  )
+  await refused("an expired token cannot upload", () => completeHandoff(expiring.token, fakeVideo()))
 
   // ── Status is scoped to the owner ──────────────────────────────────────────
   const live = await createHandoff(owner.id)
@@ -133,11 +125,7 @@ async function main() {
       bytes: async () => Buffer.from("plain text"),
     }),
   )
-  check(
-    "a rejected upload does not spend the code",
-    (await resolveHandoff(live.token))?.id,
-    live.id,
-  )
+  check("a rejected upload does not spend the code", (await resolveHandoff(live.token))?.id, live.id)
 
   // ── The round trip ─────────────────────────────────────────────────────────
   if (uploadsReady) {
@@ -145,30 +133,16 @@ async function main() {
 
     // The whole security model in one assertion: the key is derived from the
     // handoff's owner, so a token cannot write anywhere but its own prefix.
-    check(
-      "the object key is under the OWNER's prefix",
-      result.objectKey.startsWith(`posts/${owner.id}/`),
-      true,
-    )
-    check(
-      "and not the stranger's",
-      result.objectKey.includes(stranger.id),
-      false,
-    )
+    check("the object key is under the OWNER's prefix", result.objectKey.startsWith(`posts/${owner.id}/`), true)
+    check("and not the stranger's", result.objectKey.includes(stranger.id), false)
 
     const ready = await getHandoffStatus(live.id, owner.id)
     check("status flips to ready", ready?.state, "ready")
-    check(
-      "and carries the key",
-      ready?.state === "ready" ? ready.objectKey : null,
-      result.objectKey,
-    )
+    check("and carries the key", ready?.state === "ready" ? ready.objectKey : null, result.objectKey)
 
     // Single use, which is what stops a photographed QR being replayed.
     check("the spent token no longer resolves", await resolveHandoff(live.token), null)
-    await refused("a spent token cannot upload again", () =>
-      completeHandoff(live.token, fakeVideo()),
-    )
+    await refused("a spent token cannot upload again", () => completeHandoff(live.token, fakeVideo()))
 
     await deleteObject(result.objectKey)
     console.log(`      (cleaned up ${result.objectKey})`)

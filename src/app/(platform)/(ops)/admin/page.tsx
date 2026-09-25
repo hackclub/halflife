@@ -18,13 +18,7 @@ export default async function AdminOverviewPage() {
 
   const [counters, syncs] = await Promise.all([
     getAdminCounters(),
-    getLatestSyncRuns([
-      "hackatime",
-      "airtable_ysws",
-      "airtable_rsvp",
-      "claim_sweep",
-      "printer_reconcile",
-    ]),
+    getLatestSyncRuns(["hackatime", "airtable_ysws", "airtable_rsvp", "claim_sweep", "printer_reconcile"]),
   ])
 
   return (
@@ -43,9 +37,7 @@ export default async function AdminOverviewPage() {
         actions={<Link href="/admin/audit?action=AIRTABLE_SYNC_FAILURE">Sync failures</Link>}
       >
         {syncs.length === 0 ? (
-          <EmptyState>
-            No job has completed yet. Run them by hand from Orchard to check the wiring.
-          </EmptyState>
+          <EmptyState>No job has completed yet. Run them by hand from Orchard to check the wiring.</EmptyState>
         ) : (
           <Table head={["Job", "Last success", "Result"]}>
             {syncs.map((run) => (

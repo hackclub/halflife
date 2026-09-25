@@ -1,10 +1,10 @@
-"use client";
+"use client"
 
-import { useRef, useState } from "react";
-import { Button, Panel, cx } from "@/components/platform/ui";
-import { IconFilm } from "@/components/platform/icons";
-import { uploadFile, useHandoff } from "@/lib/use-handoff";
-import { UploadProgress } from "@/components/platform/UploadProgress";
+import { useRef, useState } from "react"
+import { Button, Panel, cx } from "@/components/platform/ui"
+import { IconFilm } from "@/components/platform/icons"
+import { uploadFile, useHandoff } from "@/lib/use-handoff"
+import { UploadProgress } from "@/components/platform/UploadProgress"
 
 /**
  * Getting a video out of someone and into the bucket.
@@ -31,34 +31,34 @@ export function ReelCapture({
   folder = "posts",
   label = "Your reel",
 }: {
-  objectKey: string | null;
-  onCaptured: (objectKey: string | null, previewUrl?: string | null) => void;
-  folder?: string;
-  label?: string;
+  objectKey: string | null
+  onCaptured: (objectKey: string | null, previewUrl?: string | null) => void
+  folder?: string
+  label?: string
 }) {
-  const [busy, setBusy] = useState(false);
-  const [progress, setProgress] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [showQr, setShowQr] = useState(false);
-  const input = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false)
+  const [progress, setProgress] = useState<number | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [showQr, setShowQr] = useState(false)
+  const input = useRef<HTMLInputElement>(null)
 
   const handoff = useHandoff((key, url) => {
-    onCaptured(key, url);
-    setShowQr(false);
-  });
+    onCaptured(key, url)
+    setShowQr(false)
+  })
 
   async function pick(file: File | undefined) {
-    if (!file) return;
-    setBusy(true);
-    setProgress(null);
-    setError(null);
+    if (!file) return
+    setBusy(true)
+    setProgress(null)
+    setError(null)
     try {
-      const { objectKey: key, url } = await uploadFile(file, folder, setProgress);
-      onCaptured(key, file.type.startsWith("video/") ? URL.createObjectURL(file) : url);
+      const { objectKey: key, url } = await uploadFile(file, folder, setProgress)
+      onCaptured(key, file.type.startsWith("video/") ? URL.createObjectURL(file) : url)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "That did not upload");
+      setError(err instanceof Error ? err.message : "That did not upload")
     } finally {
-      setBusy(false);
+      setBusy(false)
     }
   }
 
@@ -72,14 +72,14 @@ export function ReelCapture({
         <Button
           variant="outline"
           onClick={() => {
-            onCaptured(null);
-            handoff.cancel();
+            onCaptured(null)
+            handoff.cancel()
           }}
         >
           Replace
         </Button>
       </Panel>
-    );
+    )
   }
 
   return (
@@ -102,8 +102,8 @@ export function ReelCapture({
           variant="outline"
           disabled={handoff.status === "minting"}
           onClick={() => {
-            setShowQr(true);
-            void handoff.mint();
+            setShowQr(true)
+            void handoff.mint()
           }}
         >
           {handoff.status === "minting" ? "Making a code…" : "Record on my phone"}
@@ -142,9 +142,7 @@ export function ReelCapture({
       )}
 
       {handoff.status === "expired" && (
-        <p className={cx("hand text-[0.85rem] text-coral-deep")}>
-          That code expired. Make another one.
-        </p>
+        <p className={cx("hand text-[0.85rem] text-coral-deep")}>That code expired. Make another one.</p>
       )}
       {handoff.error && (
         <p className="text-[0.85rem] font-semibold text-coral-deep" role="alert">
@@ -152,5 +150,5 @@ export function ReelCapture({
         </p>
       )}
     </div>
-  );
+  )
 }

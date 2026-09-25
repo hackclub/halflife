@@ -75,17 +75,7 @@ export const REPO_FILE_KINDS: Record<
   logicSchematic: {
     label: "Schematic",
     missing: "No schematic found — KiCad, Logisim (.circ) or Digital (.dig) files all count",
-    extensions: [
-      ".kicad_sch",
-      ".kicad_pro",
-      ".kicad_pcb",
-      ".sch",
-      ".schdoc",
-      ".esch",
-      ".fzz",
-      ".circ",
-      ".dig",
-    ],
+    extensions: [".kicad_sch", ".kicad_pro", ".kicad_pcb", ".sch", ".schdoc", ".esch", ".fzz", ".circ", ".dig"],
   },
   bom: {
     label: "BOM CSV",

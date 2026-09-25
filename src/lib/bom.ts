@@ -46,10 +46,7 @@ export function listBom(themeProjectId: string): Promise<BomLine[]> {
  * final once the design is approved, because that approval is what paid the
  * tier out against this list.
  */
-export function bomLockReason(project: {
-  designStatus: PhaseStatus
-  buildStatus: PhaseStatus
-}): string | null {
+export function bomLockReason(project: { designStatus: PhaseStatus; buildStatus: PhaseStatus }): string | null {
   if (project.designStatus === PhaseStatus.in_review || project.buildStatus === PhaseStatus.in_review) {
     return "Unsubmit before editing — a phase is in review"
   }
@@ -65,9 +62,7 @@ export function bomData(input: Partial<BomItemInput>) {
     ...(input.name !== undefined ? { name: sanitize(input.name) } : {}),
     ...(input.purpose !== undefined ? { purpose: sanitizeOptional(input.purpose) } : {}),
     ...(input.quantity !== undefined ? { quantity: input.quantity } : {}),
-    ...(input.unitCostUsd !== undefined
-      ? { unitCostUsd: Math.round(input.unitCostUsd * 100) / 100 }
-      : {}),
+    ...(input.unitCostUsd !== undefined ? { unitCostUsd: Math.round(input.unitCostUsd * 100) / 100 } : {}),
     ...(input.vendor !== undefined ? { vendor: sanitizeOptional(input.vendor) } : {}),
     ...(input.link !== undefined ? { link: input.link || null } : {}),
   }

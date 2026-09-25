@@ -16,10 +16,7 @@ export default async function AdminAuditPage({ searchParams }: Props) {
 
   return (
     <div className="hl-stack">
-      <PageHeader
-        title="Audit log"
-        subtitle="Every mutation, with what it changed from and to."
-      />
+      <PageHeader title="Audit log" subtitle="Every mutation, with what it changed from and to." />
 
       <Panel>
         <form method="get" className="hl-row">
@@ -55,9 +52,7 @@ export default async function AdminAuditPage({ searchParams }: Props) {
                 <td className="hl-hint">{entry.actorEmail ?? entry.actorId ?? "system"}</td>
                 <td className="hl-mono">
                   {entry.targetType}
-                  {entry.targetId ? (
-                    <div className="hl-hint">{entry.targetId}</div>
-                  ) : null}
+                  {entry.targetId ? <div className="hl-hint">{entry.targetId}</div> : null}
                 </td>
                 <td className="hl-hint" style={{ maxWidth: "28rem", wordBreak: "break-word" }}>
                   {entry.metadata ? JSON.stringify(entry.metadata) : ""}

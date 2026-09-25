@@ -1,8 +1,8 @@
-"use client";
+"use client"
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { signInWith, useSession } from "@/lib/auth-client";
+import { useRouter } from "next/navigation"
+import { useState } from "react"
+import { signInWith, useSession } from "@/lib/auth-client"
 
 /**
  * The way back in, pinned to the painting's top-right corner.
@@ -36,24 +36,24 @@ import { signInWith, useSession } from "@/lib/auth-client";
  * still gets you in (and says what went wrong).
  */
 export default function LoginMark() {
-  const router = useRouter();
-  const { data: session } = useSession();
-  const [starting, setStarting] = useState(false);
+  const router = useRouter()
+  const { data: session } = useSession()
+  const [starting, setStarting] = useState(false)
 
   async function signIn(e: React.MouseEvent<HTMLAnchorElement>) {
     // Signed in already, or a modified click (new tab, and so on): let the
     // link do what links do.
-    if (session || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
-    e.preventDefault();
-    if (starting) return;
-    setStarting(true);
+    if (session || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
+    e.preventDefault()
+    if (starting) return
+    setStarting(true)
     try {
       // better-auth reports a refusal in the result rather than throwing, and
       // on success the page is already on its way to Hack Club.
-      const result = await signInWith("hca", "/dashboard");
-      if (result?.error) router.push("/login");
+      const result = await signInWith("hca", "/dashboard")
+      if (result?.error) router.push("/login")
     } catch {
-      router.push("/login");
+      router.push("/login")
     }
   }
 
@@ -67,5 +67,5 @@ export default function LoginMark() {
     >
       log in
     </a>
-  );
+  )
 }

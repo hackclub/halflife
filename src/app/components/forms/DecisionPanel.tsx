@@ -83,17 +83,11 @@ export function DecisionPanel({
     <form onSubmit={submit} className="hl-stack hl-stack--tight">
       {error ? <Callout tone="danger">{error}</Callout> : null}
       {!claimedByMe ? (
-        <Callout tone="warning">
-          You have not claimed this. Claim it first so nobody duplicates your work.
-        </Callout>
+        <Callout tone="warning">You have not claimed this. Claim it first so nobody duplicates your work.</Callout>
       ) : null}
 
       <Field label="Decision">
-        <select
-          className="hl-select"
-          value={result}
-          onChange={(e) => setResult(e.target.value as typeof result)}
-        >
+        <select className="hl-select" value={result} onChange={(e) => setResult(e.target.value as typeof result)}>
           <option value="APPROVED">Approve</option>
           <option value="RETURNED">Send back for changes</option>
           <option value="REJECTED">Reject</option>
@@ -101,16 +95,8 @@ export function DecisionPanel({
       </Field>
 
       {approvingDesign ? (
-        <Field
-          label="Funding tier"
-          hint="This sets the parts budget. Required when approving a design."
-        >
-          <select
-            className="hl-select"
-            value={tier}
-            required
-            onChange={(e) => setTier(e.target.value)}
-          >
+        <Field label="Funding tier" hint="This sets the parts budget. Required when approving a design.">
+          <select className="hl-select" value={tier} required onChange={(e) => setTier(e.target.value)}>
             <option value="">Choose a tier…</option>
             {tiers.map((t) => (
               <option key={t.id} value={t.id}>
@@ -122,10 +108,7 @@ export function DecisionPanel({
       ) : null}
 
       {result === "APPROVED" ? (
-        <Field
-          label="Hours override"
-          hint={`Leave blank to accept the computed ${computedHours}h.`}
-        >
+        <Field label="Hours override" hint={`Leave blank to accept the computed ${computedHours}h.`}>
           <input
             className="hl-input"
             type="number"
@@ -148,10 +131,7 @@ export function DecisionPanel({
         />
       </Field>
 
-      <Field
-        label="Internal note"
-        hint="Never shown to the participant. Feeds the grant record's justification."
-      >
+      <Field label="Internal note" hint="Never shown to the participant. Feeds the grant record's justification.">
         <textarea
           className="hl-textarea"
           value={reason}

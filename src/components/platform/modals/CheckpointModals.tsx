@@ -1,8 +1,8 @@
-"use client";
+"use client"
 
-import Link from "next/link";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { FoxMark, WeekScene } from "@/components/platform/art";
+import Link from "next/link"
+import { useEffect, useId, useMemo, useRef, useState } from "react"
+import { FoxMark, WeekScene } from "@/components/platform/art"
 import {
   IconArrowRight,
   IconCamera,
@@ -13,39 +13,30 @@ import {
   IconFilm,
   IconMic,
   IconWarning,
-} from "@/components/platform/icons";
-import { countImages, Markdown, proseLength } from "@/components/platform/Markdown";
-import { Button, Chip, Field, OptionRow, Panel, cx, inputClass } from "@/components/platform/ui";
-import {
-  photosRequired,
-  TIERS,
-} from "@/lib/curriculum";
-import {
-  paceTarget,
-  printerById,
-  submitFloorFor,
-  tierBankedFloor,
-  weekAsk,
-} from "@/lib/config/printers";
-import { useStore } from "@/lib/store";
-import { ReelCapture } from "@/components/platform/reels/ReelCapture";
-import { linkLapse } from "@/lib/auth-client";
-import { LapsePicker, fmtDuration, type LapseTimelapse } from "./LapsePicker";
-import { RepoInput, repoIsValid } from "@/components/platform/RepoField";
-import { ImageUploads, type UploadedImage } from "./ImageUploads";
-import { RepoChecks } from "./RepoChecks";
-import type { BomLine } from "@/lib/bom";
-import type { RepoCheckResult } from "@/lib/repo-checks";
-import { normalizeRepo } from "@/lib/repo";
-import type { Checkpoint } from "@/lib/types";
+} from "@/components/platform/icons"
+import { countImages, Markdown, proseLength } from "@/components/platform/Markdown"
+import { Button, Chip, Field, OptionRow, Panel, cx, inputClass } from "@/components/platform/ui"
+import { photosRequired, TIERS } from "@/lib/curriculum"
+import { paceTarget, printerById, submitFloorFor, tierBankedFloor, weekAsk } from "@/lib/config/printers"
+import { useStore } from "@/lib/store"
+import { ReelCapture } from "@/components/platform/reels/ReelCapture"
+import { linkLapse } from "@/lib/auth-client"
+import { LapsePicker, fmtDuration, type LapseTimelapse } from "./LapsePicker"
+import { RepoInput, repoIsValid } from "@/components/platform/RepoField"
+import { ImageUploads, type UploadedImage } from "./ImageUploads"
+import { RepoChecks } from "./RepoChecks"
+import type { BomLine } from "@/lib/bom"
+import type { RepoCheckResult } from "@/lib/repo-checks"
+import { normalizeRepo } from "@/lib/repo"
+import type { Checkpoint } from "@/lib/types"
 import {
   PLATFORM_INFO,
   PUBLIC_REEL_HASHTAG,
   PUBLIC_REEL_PLATFORMS,
   readPublicReelLink,
   type PublicReelPlatform,
-} from "@/lib/public-reels";
-import { Modal, ModalTitle } from "./Modal";
+} from "@/lib/public-reels"
+import { Modal, ModalTitle } from "./Modal"
 
 /* ================================================================== *
  * Journal + timelapse
@@ -55,26 +46,26 @@ import { Modal, ModalTitle } from "./Modal";
  * than truncated because binary floats land on 44.799999999999955, and cutting
  * that gives 44.79 for a remainder that is really 44.8.
  */
-const to2 = (n: number) => Math.round(n * 100) / 100;
+const to2 = (n: number) => Math.round(n * 100) / 100
 
 /** Hours, written the way a person says them. */
 function fmtH(h: number) {
-  return `${to2(h)}h`;
+  return `${to2(h)}h`
 }
 
 interface JournalDraft {
-  tab: "journal" | "timelapse";
-  body: string;
-  hoursText: string;
-  picked: LapseTimelapse[];
+  tab: "journal" | "timelapse"
+  body: string
+  hoursText: string
+  picked: LapseTimelapse[]
 }
 
-const draftKey = (checkpointId: string) => `halflife.journal-draft.${checkpointId}`;
+const draftKey = (checkpointId: string) => `halflife.journal-draft.${checkpointId}`
 
 /** Held for the sign-in round trip to Lapse, which leaves the page. */
 function stashJournalDraft(checkpointId: string, draft: JournalDraft) {
   try {
-    window.sessionStorage.setItem(draftKey(checkpointId), JSON.stringify(draft));
+    window.sessionStorage.setItem(draftKey(checkpointId), JSON.stringify(draft))
   } catch {
     // Private mode or storage off: the trip still works, the draft just
     // does not survive it.
@@ -82,98 +73,94 @@ function stashJournalDraft(checkpointId: string, draft: JournalDraft) {
 }
 
 function takeJournalDraft(checkpointId: string): JournalDraft | null {
-  if (typeof window === "undefined") return null;
+  if (typeof window === "undefined") return null
   try {
-    const raw = window.sessionStorage.getItem(draftKey(checkpointId));
-    if (!raw) return null;
-    window.sessionStorage.removeItem(draftKey(checkpointId));
-    return JSON.parse(raw) as JournalDraft;
+    const raw = window.sessionStorage.getItem(draftKey(checkpointId))
+    if (!raw) return null
+    window.sessionStorage.removeItem(draftKey(checkpointId))
+    return JSON.parse(raw) as JournalDraft
   } catch {
-    return null;
+    return null
   }
 }
 
 export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
-  const { setOpenCheckpoint, logSession, editSession, complete, projects, stateOf, weekOf, weekHours } =
-    useStore();
+  const { setOpenCheckpoint, logSession, editSession, complete, projects, stateOf, weekOf, weekHours } = useStore()
 
-  const week = weekOf(checkpoint.weekId);
+  const week = weekOf(checkpoint.weekId)
 
   // Every journal node is one entry: write it and it is done. The week's clock
   // is what decides whether wrapping up is on the table yet. Opened again once
   // it is done, the same sheet is that entry, to correct — not a new one.
   const [existing] = useState(() => {
-    const saved = stateOf(checkpoint.id);
-    return saved.done ? saved.log[0] : undefined;
-  });
-  const editing = existing !== undefined;
+    const saved = stateOf(checkpoint.id)
+    return saved.done ? saved.log[0] : undefined
+  })
+  const editing = existing !== undefined
   // Timelapses cannot be re-homed after the fact, so an edit keeps whatever
   // the entry was saved with — and it still counts as the entry's evidence.
-  const kept = existing?.clips.length ?? 0;
+  const kept = existing?.clips.length ?? 0
 
   // A draft survives exactly one trip: out to Lapse to sign in, and back. It
   // is read once and cleared, so it cannot resurrect an entry days later.
-  const [draft] = useState(() => takeJournalDraft(checkpoint.id));
-  const [tab, setTab] = useState<"journal" | "timelapse">(editing ? "journal" : (draft?.tab ?? "journal"));
+  const [draft] = useState(() => takeJournalDraft(checkpoint.id))
+  const [tab, setTab] = useState<"journal" | "timelapse">(editing ? "journal" : (draft?.tab ?? "journal"))
   // The Lapse timelapses backing this session.
-  const [picked, setPicked] = useState<LapseTimelapse[]>(draft?.picked ?? []);
-  const [body, setBody] = useState(draft?.body ?? existing?.body ?? "");
-  const [preview, setPreview] = useState(false);
+  const [picked, setPicked] = useState<LapseTimelapse[]>(draft?.picked ?? [])
+  const [body, setBody] = useState(draft?.body ?? existing?.body ?? "")
+  const [preview, setPreview] = useState(false)
   // Free text, not a number: a controlled number input that coerces as you
   // type eats the decimal point the moment you reach for "1.5".
-  const [hoursText, setHoursText] = useState(
-    draft?.hoursText ?? (existing ? String(to2(existing.minutes / 60)) : ""),
-  );
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const [hoursText, setHoursText] = useState(draft?.hoursText ?? (existing ? String(to2(existing.minutes / 60)) : ""))
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
-  const project = projects.find((p) => p.weekId === (week.phase === "build" ? week.id - 5 : week.id))
-    ?? projects[0];
+  const project = projects.find((p) => p.weekId === (week.phase === "build" ? week.id - 5 : week.id)) ?? projects[0]
 
   // The claim is what the maker types. The photographs are what makes it a
   // claim rather than a number, which is why the bar rises with it — and they
   // are counted out of the entry itself, so every picture sits in the sentence
   // that explains it instead of in a tray underneath.
-  const typed = Math.max(0, Number(hoursText) || 0);
+  const typed = Math.max(0, Number(hoursText) || 0)
   // Lapse knows how long a recorded session was, so with a timelapse picked
   // and nothing typed, that is the claim — the maker is not asked to retype a
   // number Lapse already has. Typed hours still win when given.
-  const coveredSeconds = picked.reduce((sum, t) => sum + t.durationSeconds, 0);
-  const fromLapse = typed <= 0 && picked.length > 0 && coveredSeconds > 0;
-  const claimed = fromLapse ? Math.round((coveredSeconds / 3600) * 100) / 100 : typed;
+  const coveredSeconds = picked.reduce((sum, t) => sum + t.durationSeconds, 0)
+  const fromLapse = typed <= 0 && picked.length > 0 && coveredSeconds > 0
+  const claimed = fromLapse ? Math.round((coveredSeconds / 3600) * 100) / 100 : typed
   // At least a minute once there is a claim, so a short recording is not
   // rounded down to nothing.
-  const sessionMinutes = claimed > 0 ? Math.max(1, Math.round(claimed * 60)) : 0;
-  const needPhotos = photosRequired(claimed);
-  const shots = countImages(body);
+  const sessionMinutes = claimed > 0 ? Math.max(1, Math.round(claimed * 60)) : 0
+  const needPhotos = photosRequired(claimed)
+  const shots = countImages(body)
   // Words only: the images are counted above, not twice.
-  const written = proseLength(body);
+  const written = proseLength(body)
 
-  const longEnough = written >= 200;
-  const enoughPhotos = shots >= needPhotos;
+  const longEnough = written >= 200
+  const enoughPhotos = shots >= needPhotos
   // A session is backed by a journal entry OR a Lapse timelapse, not both:
   // either one is evidence a reviewer can check the hours against. A written
   // entry needs its hours typed; a timelapse brings its own.
-  const journalled = longEnough && enoughPhotos;
-  const recorded = picked.length > 0 || kept > 0;
-  const ok = claimed > 0 && (journalled || recorded);
+  const journalled = longEnough && enoughPhotos
+  const recorded = picked.length > 0 || kept > 0
+  const ok = claimed > 0 && (journalled || recorded)
 
   // One thing at a time — a list of four faults reads as a wall, and only the
   // first one is actionable anyway. Once the hours are in, the entry's next
   // shortfall is named with the other way out beside it, so nobody is told to
   // write 200 characters they could skip with a timelapse. An edit cannot add
   // one, so it is not offered there.
-  const orLapse = editing ? "" : " Or pick a Lapse timelapse instead.";
+  const orLapse = editing ? "" : " Or pick a Lapse timelapse instead."
   const missing = !ok
     ? claimed <= 0
       ? "Add the hours you spent on this session, or pick a Lapse timelapse."
       : !longEnough
         ? `${200 - written} more characters in your entry, not counting images.${orLapse}`
         : `${needPhotos - shots} more ${needPhotos - shots === 1 ? "image" : "images"} in your entry for ${fmtH(claimed)}.${orLapse}`
-    : null;
+    : null
 
-  const hours = weekHours(week.id);
-  const toFloor = Math.max(0, week.submitHours - hours);
+  const hours = weekHours(week.id)
+  const toFloor = Math.max(0, week.submitHours - hours)
 
   /**
    * Finishing hands the maker back to the trail rather than straight into
@@ -182,30 +169,30 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
    * and a modal that reopens itself would march past both.
    */
   async function save() {
-    setSaving(true);
-    setSaveError(null);
+    setSaving(true)
+    setSaveError(null)
     if (editing) {
-      const refused = await editSession(checkpoint.id, sessionMinutes, body.trim());
-      setSaving(false);
-      if (refused) setSaveError(refused);
-      else setOpenCheckpoint(null);
-      return;
+      const refused = await editSession(checkpoint.id, sessionMinutes, body.trim())
+      setSaving(false)
+      if (refused) setSaveError(refused)
+      else setOpenCheckpoint(null)
+      return
     }
     const refused = await logSession(checkpoint.id, sessionMinutes, body.trim(), {
       clips: picked.map((t) => t.id),
-    });
-    setSaving(false);
+    })
+    setSaving(false)
     if (refused) {
-      setSaveError(refused);
-      return;
+      setSaveError(refused)
+      return
     }
-    complete(checkpoint.id);
-    setOpenCheckpoint(null);
+    complete(checkpoint.id)
+    setOpenCheckpoint(null)
   }
 
   function signInWithLapse() {
-    stashJournalDraft(checkpoint.id, { tab: "timelapse", body, hoursText, picked });
-    void linkLapse(`${window.location.pathname}?journal=${encodeURIComponent(checkpoint.id)}`);
+    stashJournalDraft(checkpoint.id, { tab: "timelapse", body, hoursText, picked })
+    void linkLapse(`${window.location.pathname}?journal=${encodeURIComponent(checkpoint.id)}`)
   }
 
   return (
@@ -234,12 +221,12 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
               {saveError
                 ? saveError
                 : missing
-                ? missing
-                : editing
-                  ? "Saving replaces this entry. It keeps its place on the trail."
-                  : toFloor > 0
-                  ? `${fmtH(toFloor)} more before you can wrap up the week.`
-                  : "Submit your project when it's done!"}
+                  ? missing
+                  : editing
+                    ? "Saving replaces this entry. It keeps its place on the trail."
+                    : toFloor > 0
+                      ? `${fmtH(toFloor)} more before you can wrap up the week.`
+                      : "Submit your project when it's done!"}
             </p>
           </div>
 
@@ -357,19 +344,13 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
             {preview && (
               <div
                 className="sketch thin-scroll max-h-[15rem] min-h-[8rem] overflow-y-auto rounded-xl bg-white px-4 py-3 md:max-h-none"
-                style={
-                  { "--sk-color": "var(--color-violet)", "--sk-radius": "12px" } as React.CSSProperties
-                }
+                style={{ "--sk-color": "var(--color-violet)", "--sk-radius": "12px" } as React.CSSProperties}
               >
                 {body.trim() ? (
-                  <Markdown
-                    source={body}
-                    className="grid gap-2.5 text-[0.9rem] leading-relaxed text-navy"
-                  />
+                  <Markdown source={body} className="grid gap-2.5 text-[0.9rem] leading-relaxed text-navy" />
                 ) : (
                   <p className="hand text-[0.85rem] text-navy-soft">
-                    nothing to preview yet. headings, **bold**, lists, `code` and
-                    ![images](url) all work.
+                    nothing to preview yet. headings, **bold**, lists, `code` and ![images](url) all work.
                   </p>
                 )}
               </div>
@@ -385,12 +366,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
             >
               {shots} / {needPhotos} images
             </p>
-            <p
-              className={cx(
-                "hand text-[0.76rem] tabular-nums",
-                longEnough ? "text-teal-deep" : "text-navy-soft",
-              )}
-            >
+            <p className={cx("hand text-[0.76rem] tabular-nums", longEnough ? "text-teal-deep" : "text-navy-soft")}>
               {written} / 200 characters
             </p>
           </div>
@@ -413,30 +389,26 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
             {picked.length === 0
               ? " "
               : `${picked.length === 1 ? "1 timelapse" : `${picked.length} timelapses`} picked · ${fmtDuration(coveredSeconds)} recorded${
-                  fromLapse
-                    ? `, logged as ${fmtH(claimed)}`
-                    : claimed > 0
-                      ? ` for ${fmtH(claimed)} claimed`
-                      : ""
+                  fromLapse ? `, logged as ${fmtH(claimed)}` : claimed > 0 ? ` for ${fmtH(claimed)} claimed` : ""
                 }`}
           </p>
         </div>
       )}
     </Modal>
-  );
+  )
 }
 
 /* ================================================================== *
  * Reel
  * ================================================================== */
 interface ReelDraft {
-  clip: string;
+  clip: string
   /** The bucket's URL for the clip, never a blob URL: those die with the page. */
-  url: string | null;
-  caption: string;
+  url: string | null
+  caption: string
 }
 
-const reelDraftKey = (checkpointId: string) => `halflife.reel-draft.${checkpointId}`;
+const reelDraftKey = (checkpointId: string) => `halflife.reel-draft.${checkpointId}`
 
 /**
  * A reel's draft is the clip already sitting in the bucket plus its caption.
@@ -445,19 +417,19 @@ const reelDraftKey = (checkpointId: string) => `halflife.reel-draft.${checkpoint
  * text — in this browser, like the rest of the ceremony, and cleared on post.
  */
 function readReelDraft(checkpointId: string): ReelDraft | null {
-  if (typeof window === "undefined") return null;
+  if (typeof window === "undefined") return null
   try {
-    const raw = window.localStorage.getItem(reelDraftKey(checkpointId));
-    return raw ? (JSON.parse(raw) as ReelDraft) : null;
+    const raw = window.localStorage.getItem(reelDraftKey(checkpointId))
+    return raw ? (JSON.parse(raw) as ReelDraft) : null
   } catch {
-    return null;
+    return null
   }
 }
 
 function writeReelDraft(checkpointId: string, draft: ReelDraft | null) {
   try {
-    if (draft) window.localStorage.setItem(reelDraftKey(checkpointId), JSON.stringify(draft));
-    else window.localStorage.removeItem(reelDraftKey(checkpointId));
+    if (draft) window.localStorage.setItem(reelDraftKey(checkpointId), JSON.stringify(draft))
+    else window.localStorage.removeItem(reelDraftKey(checkpointId))
   } catch {
     // Storage off: Save draft still closes the sheet, it just cannot keep it.
   }
@@ -479,98 +451,98 @@ export function PublicReelModal({
   onClose,
   start = "ask",
 }: {
-  postId: string;
-  eyebrow: string;
+  postId: string
+  eyebrow: string
   /** The clip, so it can be saved and uploaded elsewhere. */
-  videoUrl: string | null;
-  onClose: () => void;
+  videoUrl: string | null
+  onClose: () => void
   /**
    * "links" skips the question — for the Reels page, where pressing "Add
    * where you posted it" has already answered it.
    */
-  start?: "ask" | "links";
+  start?: "ask" | "links"
 }) {
-  const [step, setStep] = useState<"ask" | "links" | "saved">(start);
-  const titleId = useId();
+  const [step, setStep] = useState<"ask" | "links" | "saved">(start)
+  const titleId = useId()
   const [values, setValues] = useState<Record<PublicReelPlatform, string>>({
     INSTAGRAM: "",
     TIKTOK: "",
     X: "",
     YOUTUBE: "",
-  });
-  const [errors, setErrors] = useState<Partial<Record<PublicReelPlatform, string>>>({});
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
+  })
+  const [errors, setErrors] = useState<Partial<Record<PublicReelPlatform, string>>>({})
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [referral, setReferral] = useState<
     { state: "loading" } | { state: "ready"; link: string } | { state: "error" }
-  >({ state: "loading" });
-  const [copied, setCopied] = useState<"link" | "caption" | null>(null);
+  >({ state: "loading" })
+  const [copied, setCopied] = useState<"link" | "caption" | null>(null)
 
   // Asked for only once they say yes: most people will not, and the lookup
   // reaches the signup list.
   useEffect(() => {
-    if (step !== "links" || referral.state !== "loading") return;
-    let cancelled = false;
+    if (step !== "links" || referral.state !== "loading") return
+    let cancelled = false
     void (async () => {
       try {
-        const res = await fetch("/api/me/referral", { cache: "no-store" });
-        const body = (await res.json().catch(() => null)) as { link?: string } | null;
-        if (cancelled) return;
-        setReferral(res.ok && body?.link ? { state: "ready", link: body.link } : { state: "error" });
+        const res = await fetch("/api/me/referral", { cache: "no-store" })
+        const body = (await res.json().catch(() => null)) as { link?: string } | null
+        if (cancelled) return
+        setReferral(res.ok && body?.link ? { state: "ready", link: body.link } : { state: "error" })
       } catch {
-        if (!cancelled) setReferral({ state: "error" });
+        if (!cancelled) setReferral({ state: "error" })
       }
-    })();
+    })()
     return () => {
-      cancelled = true;
-    };
-  }, [step, referral.state]);
+      cancelled = true
+    }
+  }, [step, referral.state])
 
   async function copy(text: string, which: "link" | "caption") {
     try {
-      await navigator.clipboard.writeText(text);
-      setCopied(which);
-      window.setTimeout(() => setCopied((c) => (c === which ? null : c)), 2000);
+      await navigator.clipboard.writeText(text)
+      setCopied(which)
+      window.setTimeout(() => setCopied((c) => (c === which ? null : c)), 2000)
     } catch {
       // Clipboard refused: the text is on screen and selectable.
     }
   }
 
-  const filled = PUBLIC_REEL_PLATFORMS.filter((p) => values[p].trim());
+  const filled = PUBLIC_REEL_PLATFORMS.filter((p) => values[p].trim())
 
   async function save() {
     // The same check the server runs, so a wrong link is named on its field
     // before anything is sent.
-    const found: Partial<Record<PublicReelPlatform, string>> = {};
+    const found: Partial<Record<PublicReelPlatform, string>> = {}
     for (const p of filled) {
-      const read = readPublicReelLink(p, values[p]);
-      if ("error" in read) found[p] = read.error;
+      const read = readPublicReelLink(p, values[p])
+      if ("error" in read) found[p] = read.error
     }
-    setErrors(found);
-    setSaveError(null);
-    if (Object.keys(found).length > 0) return;
+    setErrors(found)
+    setSaveError(null)
+    if (Object.keys(found).length > 0) return
 
-    setSaving(true);
+    setSaving(true)
     try {
       const res = await fetch(`/api/posts/${postId}/public-links`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ links: filled.map((platform) => ({ platform, url: values[platform] })) }),
-      });
+      })
       if (!res.ok) {
         const body = (await res.json().catch(() => null)) as {
-          error?: { message?: string; details?: { fields?: Partial<Record<PublicReelPlatform, string>> } };
-        } | null;
-        const fields = body?.error?.details?.fields;
-        if (fields && Object.keys(fields).length > 0) setErrors(fields);
-        else setSaveError(body?.error?.message ?? "Your links didn't save. Try again.");
-        return;
+          error?: { message?: string; details?: { fields?: Partial<Record<PublicReelPlatform, string>> } }
+        } | null
+        const fields = body?.error?.details?.fields
+        if (fields && Object.keys(fields).length > 0) setErrors(fields)
+        else setSaveError(body?.error?.message ?? "Your links didn't save. Try again.")
+        return
       }
-      setStep("saved");
+      setStep("saved")
     } catch {
-      setSaveError("Could not reach the server. Your links are still here — try again.");
+      setSaveError("Could not reach the server. Your links are still here — try again.")
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
   }
 
@@ -601,7 +573,7 @@ export function PublicReelModal({
           Your reel is already on the Doomscroller. This is for Instagram, TikTok, X or YouTube too.
         </p>
       </Modal>
-    );
+    )
   }
 
   if (step === "saved") {
@@ -626,10 +598,10 @@ export function PublicReelModal({
           Good luck going viral
         </ModalTitle>
       </Modal>
-    );
+    )
   }
 
-  const captionLine = referral.state === "ready" ? `${referral.link} ${PUBLIC_REEL_HASHTAG}` : PUBLIC_REEL_HASHTAG;
+  const captionLine = referral.state === "ready" ? `${referral.link} ${PUBLIC_REEL_HASHTAG}` : PUBLIC_REEL_HASHTAG
 
   return (
     <Modal
@@ -689,11 +661,7 @@ export function PublicReelModal({
             </Button>
           )}
           <Button variant="outline" size="sm" onClick={() => void copy(captionLine, "caption")}>
-            {copied === "caption"
-              ? "Copied!"
-              : referral.state === "ready"
-                ? "Copy link + hashtag"
-                : "Copy hashtag"}
+            {copied === "caption" ? "Copied!" : referral.state === "ready" ? "Copy link + hashtag" : "Copy hashtag"}
           </Button>
         </div>
         {videoUrl && (
@@ -716,9 +684,9 @@ export function PublicReelModal({
 
       <div className="grid gap-4 sm:grid-cols-2">
         {PUBLIC_REEL_PLATFORMS.map((p) => {
-          const info = PLATFORM_INFO[p];
-          const fieldId = `${titleId}-${p}`;
-          const error = errors[p];
+          const info = PLATFORM_INFO[p]
+          const fieldId = `${titleId}-${p}`
+          const error = errors[p]
           return (
             <div key={p} className="grid gap-1.5">
               <label htmlFor={fieldId} className="label text-violet-deep">
@@ -728,9 +696,9 @@ export function PublicReelModal({
                 id={fieldId}
                 value={values[p]}
                 onChange={(e) => {
-                  const v = e.target.value;
-                  setValues((prev) => ({ ...prev, [p]: v }));
-                  if (errors[p]) setErrors(({ [p]: _, ...rest }) => rest);
+                  const v = e.target.value
+                  setValues((prev) => ({ ...prev, [p]: v }))
+                  if (errors[p]) setErrors(({ [p]: _, ...rest }) => rest)
                 }}
                 inputMode="url"
                 autoComplete="off"
@@ -749,73 +717,73 @@ export function PublicReelModal({
                 </p>
               )}
             </div>
-          );
+          )
         })}
       </div>
     </Modal>
-  );
+  )
 }
 
 export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
-  const { setOpenCheckpoint, postReel, stateOf, weekOf } = useStore();
-  const week = weekOf(checkpoint.weekId);
-  const done = stateOf(checkpoint.id).done;
-  const [draft] = useState(() => readReelDraft(checkpoint.id));
-  const [clip, setClip] = useState<string | null>(draft?.clip ?? null);
+  const { setOpenCheckpoint, postReel, stateOf, weekOf } = useStore()
+  const week = weekOf(checkpoint.weekId)
+  const done = stateOf(checkpoint.id).done
+  const [draft] = useState(() => readReelDraft(checkpoint.id))
+  const [clip, setClip] = useState<string | null>(draft?.clip ?? null)
   // What the preview plays: a blob URL for a file picked on this machine, the
   // bucket's URL for one filmed on the phone or restored from a draft.
-  const [previewUrl, setPreviewUrl] = useState<string | null>(draft?.url ?? null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(draft?.url ?? null)
   // Kept apart from the preview because a blob URL cannot outlive the page,
   // so it is never what a draft remembers.
-  const [clipUrl, setClipUrl] = useState<string | null>(draft?.url ?? null);
-  const [caption, setCaption] = useState(draft?.caption ?? "");
+  const [clipUrl, setClipUrl] = useState<string | null>(draft?.url ?? null)
+  const [caption, setCaption] = useState(draft?.caption ?? "")
 
   // `autoPlay` alone is a request the browser may defer (a tab that was not
   // focused when the clip arrived, say), so the preview asks once more itself.
-  const previewVideo = useRef<HTMLVideoElement>(null);
+  const previewVideo = useRef<HTMLVideoElement>(null)
   useEffect(() => {
-    void previewVideo.current?.play().catch(() => undefined);
-  }, [previewUrl]);
+    void previewVideo.current?.play().catch(() => undefined)
+  }, [previewUrl])
 
   // A blob URL holds the whole video in memory until it is revoked.
   useEffect(() => {
     return () => {
-      if (previewUrl?.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
-    };
-  }, [previewUrl]);
+      if (previewUrl?.startsWith("blob:")) URL.revokeObjectURL(previewUrl)
+    }
+  }, [previewUrl])
 
   function capture(key: string | null, url?: string | null) {
-    setClip(key);
-    setPreviewUrl(url ?? null);
-    setClipUrl(url && !url.startsWith("blob:") ? url : null);
+    setClip(key)
+    setPreviewUrl(url ?? null)
+    setClipUrl(url && !url.startsWith("blob:") ? url : null)
   }
 
   // Posting waits for the server, so there is a post to hang public links on
   // and so a failure says so instead of closing on a reel that never landed.
-  const [posting, setPosting] = useState(false);
-  const [postError, setPostError] = useState<string | null>(null);
-  const [postedId, setPostedId] = useState<string | null>(null);
+  const [posting, setPosting] = useState(false)
+  const [postError, setPostError] = useState<string | null>(null)
+  const [postedId, setPostedId] = useState<string | null>(null)
 
   async function post() {
-    if (!clip) return;
-    setPosting(true);
-    setPostError(null);
-    const id = await postReel(checkpoint.id, caption.trim(), clip);
-    setPosting(false);
+    if (!clip) return
+    setPosting(true)
+    setPostError(null)
+    const id = await postReel(checkpoint.id, caption.trim(), clip)
+    setPosting(false)
     if (!id) {
-      setPostError("Your reel didn't post. Check your connection and try again.");
-      return;
+      setPostError("Your reel didn't post. Check your connection and try again.")
+      return
     }
-    writeReelDraft(checkpoint.id, null);
-    setPostedId(id);
+    writeReelDraft(checkpoint.id, null)
+    setPostedId(id)
   }
 
   // A finished reel asks before it opens the recorder: the checkpoint is done,
   // and another reel is an extra, so reopening one should say that rather
   // than look like the checkpoint asking for its reel again. A draft already
   // under way for it means that question was answered last time.
-  const [again, setAgain] = useState(!done || draft !== null);
-  const titleId = useId();
+  const [again, setAgain] = useState(!done || draft !== null)
+  const titleId = useId()
 
   // Posted: the same sheet now asks whether it is going anywhere else. The
   // clip's URL comes along so it can be saved and uploaded there.
@@ -827,7 +795,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
         videoUrl={previewUrl}
         onClose={() => setOpenCheckpoint(null)}
       />
-    );
+    )
   }
 
   if (!again) {
@@ -857,7 +825,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
           You&apos;ve completed this checkpoint! Would you like to post another reel?
         </ModalTitle>
       </Modal>
-    );
+    )
   }
 
   return (
@@ -881,22 +849,15 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
           <Button
             variant="outline"
             onClick={() => {
-              writeReelDraft(
-                checkpoint.id,
-                clip || caption.trim() ? { clip: clip ?? "", url: clipUrl, caption } : null,
-              );
-              setOpenCheckpoint(null);
+              writeReelDraft(checkpoint.id, clip || caption.trim() ? { clip: clip ?? "", url: clipUrl, caption } : null)
+              setOpenCheckpoint(null)
             }}
           >
             {/* On a finished checkpoint with nothing started there is no
                 draft to keep — it is just the answer to "another one?" */}
             {done && !clip && !caption.trim() ? "Not now" : "Save draft"}
           </Button>
-          <Button
-            variant="solid"
-            disabled={!clip || caption.trim().length < 8 || posting}
-            onClick={() => void post()}
-          >
+          <Button variant="solid" disabled={!clip || caption.trim().length < 8 || posting} onClick={() => void post()}>
             {posting ? "Posting…" : done ? "Post another reel" : "Post reel"} <IconFilm className="text-base" />
           </Button>
         </>
@@ -904,9 +865,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
     >
       {/* Past the question: this is an extra reel, not the checkpoint's own. */}
       {done ? (
-        <ModalTitle sub="Your first one stays up, and this one joins it on your project.">
-          Post another reel
-        </ModalTitle>
+        <ModalTitle sub="Your first one stays up, and this one joins it on your project.">Post another reel</ModalTitle>
       ) : (
         <ModalTitle sub={checkpoint.blurb}>Make your {checkpoint.title.toLowerCase()}</ModalTitle>
       )}
@@ -928,8 +887,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
               <IconCamera className="text-base" /> Your clip
             </p>
             <p className="text-[0.88rem] leading-snug text-navy-soft">
-              Vertical, 30 to 60 seconds, filmed on whatever you have. No editing
-              required.
+              Vertical, 30 to 60 seconds, filmed on whatever you have. No editing required.
             </p>
             <ReelCapture objectKey={clip} onCaptured={capture} />
           </div>
@@ -985,38 +943,34 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
                 className="sketch grid size-full place-items-center rounded-xl bg-white px-3 text-center"
                 style={{ "--sk-radius": "12px" } as React.CSSProperties}
               >
-                <p className="hand text-[0.78rem] leading-snug text-navy-soft">
-                  nothing here yet
-                </p>
+                <p className="hand text-[0.78rem] leading-snug text-navy-soft">nothing here yet</p>
               </div>
             )}
           </div>
         </div>
       </div>
     </Modal>
-  );
+  )
 }
 
 /* ================================================================== *
  * Project creation (weeks 2–5)
  * ================================================================== */
 export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
-  const { setOpenCheckpoint, complete, addProject, ensureProject, experience, weekOf } = useStore();
-  const week = weekOf(checkpoint.weekId);
+  const { setOpenCheckpoint, complete, addProject, ensureProject, experience, weekOf } = useStore()
+  const week = weekOf(checkpoint.weekId)
   // Opening "create a project" is what makes the week's project row — not
   // signing up, when nobody knows yet whether they will get this far.
   useEffect(() => {
-    void ensureProject(checkpoint.weekId);
-  }, [checkpoint.weekId, ensureProject]);
-  const [name, setName] = useState("");
-  const [desc, setDesc] = useState("");
-  const [tier, setTier] = useState<1 | 2 | 3>(
-    experience === "lots" ? 3 : experience === "some" ? 2 : 1,
-  );
-  const [showExamples, setShowExamples] = useState(false);
-  const [repo, setRepo] = useState("");
+    void ensureProject(checkpoint.weekId)
+  }, [checkpoint.weekId, ensureProject])
+  const [name, setName] = useState("")
+  const [desc, setDesc] = useState("")
+  const [tier, setTier] = useState<1 | 2 | 3>(experience === "lots" ? 3 : experience === "some" ? 2 : 1)
+  const [showExamples, setShowExamples] = useState(false)
+  const [repo, setRepo] = useState("")
 
-  const ok = name.trim().length > 1 && desc.trim().length > 4 && repoIsValid(repo);
+  const ok = name.trim().length > 1 && desc.trim().length > 4 && repoIsValid(repo)
 
   return (
     <Modal
@@ -1044,9 +998,9 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
                 tier,
                 starter: false,
                 githubRepo: normalizeRepo(repo).url,
-              });
-              complete(checkpoint.id, { artefacts: 1 });
-              setOpenCheckpoint(null);
+              })
+              complete(checkpoint.id, { artefacts: 1 })
+              setOpenCheckpoint(null)
             }}
           >
             Create project <IconArrowRight className="text-base" />
@@ -1120,18 +1074,15 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
                     <>
                       {t.detail}
                       <span className="mt-1 block text-navy-soft/90">
-                        About {t.hours}. {fmtH(t.fundingHours)} of that funds the project and banks
-                        nothing, so the least you can hand in on tier {t.id} is{" "}
-                        {fmtH(submitFloorFor(t.fundingHours))} — the other{" "}
+                        About {t.hours}. {fmtH(t.fundingHours)} of that funds the project and banks nothing, so the
+                        least you can hand in on tier {t.id} is {fmtH(submitFloorFor(t.fundingHours))} — the other{" "}
                         {fmtH(tierBankedFloor(t.fundingHours))} banks toward your printer.
                       </span>
                     </>
                   }
                 >
                   <span className="flex flex-wrap items-baseline gap-x-2.5">
-                    <span className="text-[0.98rem] font-extrabold text-navy">
-                      Tier {t.id}
-                    </span>
+                    <span className="text-[0.98rem] font-extrabold text-navy">Tier {t.id}</span>
                     <span className="hand text-[0.86rem] text-teal-deep">${t.grantUsd} funded</span>
                     <span className="hand text-[0.8rem] text-navy-soft">
                       · {fmtH(submitFloorFor(t.fundingHours))} to submit
@@ -1151,7 +1102,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
         </div>
       </div>
     </Modal>
-  );
+  )
 }
 
 /* ================================================================== *
@@ -1166,20 +1117,20 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
  * details stay as they are, and this same checkpoint hands it in again.
  */
 export function UnsubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
-  const { setOpenCheckpoint, unsubmitPhase, weekOf, stateOf } = useStore();
-  const week = weekOf(checkpoint.weekId);
-  const handedIn = stateOf(checkpoint.id).at;
-  const titleId = useId();
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { setOpenCheckpoint, unsubmitPhase, weekOf, stateOf } = useStore()
+  const week = weekOf(checkpoint.weekId)
+  const handedIn = stateOf(checkpoint.id).at
+  const titleId = useId()
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   async function unsubmit() {
-    setBusy(true);
-    setError(null);
-    const refused = await unsubmitPhase(checkpoint.id);
-    setBusy(false);
-    if (refused) setError(refused);
-    else setOpenCheckpoint(null);
+    setBusy(true)
+    setError(null)
+    const refused = await unsubmitPhase(checkpoint.id)
+    setBusy(false)
+    if (refused) setError(refused)
+    else setOpenCheckpoint(null)
   }
 
   return (
@@ -1213,7 +1164,7 @@ export function UnsubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
         This week is waiting for review
       </ModalTitle>
     </Modal>
-  );
+  )
 }
 
 export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
@@ -1228,9 +1179,9 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
     printerFund,
     pendingCoins,
     goalId,
-  } = useStore();
-  const week = weekOf(checkpoint.weekId);
-  const isBuild = week.phase === "build";
+  } = useStore()
+  const week = weekOf(checkpoint.weekId)
+  const isBuild = week.phase === "build"
 
   // The week is long enough to hand in — that gate is the trail's, and this
   // node would be locked otherwise. What is left to say is whether it was
@@ -1242,73 +1193,67 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
   // are minted at approval, so the fund alone reads this very week — the one
   // being handed in, which nobody can have reviewed yet — as banking nothing,
   // and warned everyone on every submit.
-  const goal = printerById(goalId);
-  const owed = Math.max(
-    0,
-    Math.ceil(paceTarget(goal, week.id) - printerFund - pendingCoins(week.id)),
-  );
+  const goal = printerById(goalId)
+  const owed = Math.max(0, Math.ceil(paceTarget(goal, week.id) - printerFund - pendingCoins(week.id)))
 
-  const project = projects.find((p) => p.weekId === (isBuild ? week.id - 5 : week.id)) ?? projects[0];
+  const project = projects.find((p) => p.weekId === (isBuild ? week.id - 5 : week.id)) ?? projects[0]
 
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(1)
   // R2 object keys, not flags: what these ask for is evidence, and a boolean
   // was letting the form take a file and drop it on the floor.
   // Several screenshots, because one order is often split across vendors and
   // one checkout page is not always one screen tall.
-  const [carts, setCarts] = useState<UploadedImage[]>([]);
-  const [tier, setTier] = useState<1 | 2 | 3>(project?.tier ?? 1);
-  const [clip, setClip] = useState<string | null>(null);
+  const [carts, setCarts] = useState<UploadedImage[]>([])
+  const [tier, setTier] = useState<1 | 2 | 3>(project?.tier ?? 1)
+  const [clip, setClip] = useState<string | null>(null)
   // The bucket URL of the closing clip, when there is one, so it can be saved
   // and posted elsewhere afterwards.
-  const [clipUrl, setClipUrl] = useState<string | null>(null);
+  const [clipUrl, setClipUrl] = useState<string | null>(null)
   // The closing reel once it is posted. A hand-in that fails after the reel
   // went up reuses it on the retry rather than posting the same clip twice;
   // a new clip clears it.
-  const [closingPostId, setClosingPostId] = useState<string | null>(null);
+  const [closingPostId, setClosingPostId] = useState<string | null>(null)
   // Handed in: the reel that closed the week is offered for posting online.
-  const [shareId, setShareId] = useState<string | null>(null);
-  const [works, setWorks] = useState<"yes" | "no" | null>(null);
-  const [writeup, setWriteup] = useState("");
+  const [shareId, setShareId] = useState<string | null>(null)
+  const [works, setWorks] = useState<"yes" | "no" | null>(null)
+  const [writeup, setWriteup] = useState("")
   // Null while checking. The server runs the same checks at submit, so this
   // only decides whether the sheet lets you get that far.
-  const [repoResult, setRepoResult] = useState<RepoCheckResult | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [repoResult, setRepoResult] = useState<RepoCheckResult | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   // The closing reel is a reel like any other and goes on the trail under its
   // own key, so the week's timeline shows it where it happened rather than
   // swallowing it inside the submission.
-  const reelCheckpointId = `w${week.id}-reel-submission`;
-  const closingCaption = isBuild
-    ? `Week ${week.id}: ${week.theme} built.`
-    : `Week ${week.id}: ${week.theme} designed.`;
-  const buildNotes = works === "no" && writeup.trim() ? writeup.trim() : undefined;
+  const reelCheckpointId = `w${week.id}-reel-submission`
+  const closingCaption = isBuild ? `Week ${week.id}: ${week.theme} built.` : `Week ${week.id}: ${week.theme} designed.`
+  const buildNotes = works === "no" && writeup.trim() ? writeup.trim() : undefined
 
-  const total = isBuild ? 2 : 3;
+  const total = isBuild ? 2 : 3
   // The project's own parts list, as kept on its page — read fresh when the
   // sheet opens, because it is edited there and this is the moment it is
   // handed in. Null while it loads; the cart total reads zero until then.
-  const [bom, setBom] = useState<{ items: BomLine[]; taxShippingUsd: number } | null>(null);
-  const [bomError, setBomError] = useState<string | null>(null);
+  const [bom, setBom] = useState<{ items: BomLine[]; taxShippingUsd: number } | null>(null)
+  const [bomError, setBomError] = useState<string | null>(null)
   useEffect(() => {
-    if (isBuild || !project) return;
-    let live = true;
+    if (isBuild || !project) return
+    let live = true
     fetch(`/api/projects/${project.id}/bom`, { cache: "no-store" })
       .then(async (res) => {
-        const body = await res.json().catch(() => null);
-        if (!res.ok) throw new Error(body?.error?.message ?? "Could not load the parts list");
-        if (live) setBom({ items: body.items, taxShippingUsd: body.taxShippingUsd ?? 0 });
+        const body = await res.json().catch(() => null)
+        if (!res.ok) throw new Error(body?.error?.message ?? "Could not load the parts list")
+        if (live) setBom({ items: body.items, taxShippingUsd: body.taxShippingUsd ?? 0 })
       })
-      .catch((err: Error) => live && setBomError(err.message));
+      .catch((err: Error) => live && setBomError(err.message))
     return () => {
-      live = false;
-    };
-  }, [isBuild, project?.id]); // eslint-disable-line react-hooks/exhaustive-deps -- the id is the input
+      live = false
+    }
+  }, [isBuild, project?.id]) // eslint-disable-line react-hooks/exhaustive-deps -- the id is the input
   const bomTotal = useMemo(
-    () =>
-      (bom?.items.reduce((n, l) => n + l.quantity * l.unitCostUsd, 0) ?? 0) + (bom?.taxShippingUsd ?? 0),
+    () => (bom?.items.reduce((n, l) => n + l.quantity * l.unitCostUsd, 0) ?? 0) + (bom?.taxShippingUsd ?? 0),
     [bom],
-  );
+  )
 
   /**
    * A tier is a claim about hours as much as about money: its funded block has
@@ -1325,14 +1270,14 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
    * of a tier 2 week than an Ender does. Missing the target is a warning the
    * sheet already gives; missing the floor is a refusal.
    */
-  const hours = weekHours(week.id);
-  const tierFloor = submitFloorFor;
-  const tierTarget = (fundingHours: number) => weekAsk(goal.hoursPerWeek, fundingHours);
-  const tierShort = (fundingHours: number) => Math.max(0, tierFloor(fundingHours) - hours);
-  const selectedTier = TIERS.find((t) => t.id === tier) ?? TIERS[0];
-  const tierBlocked = !isBuild && tierShort(selectedTier.fundingHours) > 0;
+  const hours = weekHours(week.id)
+  const tierFloor = submitFloorFor
+  const tierTarget = (fundingHours: number) => weekAsk(goal.hoursPerWeek, fundingHours)
+  const tierShort = (fundingHours: number) => Math.max(0, tierFloor(fundingHours) - hours)
+  const selectedTier = TIERS.find((t) => t.id === tier) ?? TIERS[0]
+  const tierBlocked = !isBuild && tierShort(selectedTier.fundingHours) > 0
 
-  const repoReady = repoResult?.canSubmit ?? false;
+  const repoReady = repoResult?.canSubmit ?? false
 
   const canAdvance =
     step === 1
@@ -1341,7 +1286,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
         ? clip && (works === "yes" || (works === "no" && writeup.trim().length >= 40))
         : step === 2
           ? carts.length > 0 && !tierBlocked
-          : clip && !tierBlocked;
+          : clip && !tierBlocked
 
   /**
    * Handing a week in, in the order the pieces depend on each other.
@@ -1354,25 +1299,25 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
    * has gone through is the reel offered for posting online.
    */
   async function submit() {
-    setSubmitting(true);
-    setSubmitError(null);
-    if (project) setProjectTier(project.id, tier);
-    let postId = closingPostId;
+    setSubmitting(true)
+    setSubmitError(null)
+    if (project) setProjectTier(project.id, tier)
+    let postId = closingPostId
     if (clip && !postId) {
-      postId = await postReel(reelCheckpointId, closingCaption, clip);
-      if (postId) setClosingPostId(postId);
+      postId = await postReel(reelCheckpointId, closingCaption, clip)
+      if (postId) setClosingPostId(postId)
     }
     const refused = await submitPhase(checkpoint.id, {
       notes: isBuild ? buildNotes : undefined,
       attachmentKeys: carts.map((c) => c.objectKey),
-    });
-    setSubmitting(false);
+    })
+    setSubmitting(false)
     if (refused) {
-      setSubmitError(refused);
-      return;
+      setSubmitError(refused)
+      return
     }
-    if (postId) setShareId(postId);
-    else setOpenCheckpoint(null);
+    if (postId) setShareId(postId)
+    else setOpenCheckpoint(null)
   }
 
   if (shareId) {
@@ -1383,7 +1328,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
         videoUrl={clipUrl}
         onClose={() => setOpenCheckpoint(null)}
       />
-    );
+    )
   }
 
   return (
@@ -1437,12 +1382,11 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
               You won&apos;t be banking enough coins if you submit the project.
             </p>
             <p className="mt-1 text-[0.85rem] leading-snug text-navy-soft">
-              Spend some more time on it! You are{" "}
-              <span className="font-bold text-navy tabular-nums">{owed}</span>{" "}
+              Spend some more time on it! You are <span className="font-bold text-navy tabular-nums">{owed}</span>{" "}
               {owed === 1 ? "coin" : "coins"} behind the pace for a{" "}
               <span className="font-bold text-navy">{goal.name}</span> — every hour past{" "}
-              <span className="font-bold text-navy tabular-nums">{fmtH(week.bankedFrom)}</span> this
-              week banks 5 more. You can still hand it in, and a bigger week later makes it up.
+              <span className="font-bold text-navy tabular-nums">{fmtH(week.bankedFrom)}</span> this week banks 5 more.
+              You can still hand it in, and a bigger week later makes it up.
             </p>
           </div>
         </div>
@@ -1570,16 +1514,9 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
                 <IconCart className="text-base" /> Screenshots of your cart
               </p>
               <p className="text-[0.88rem] leading-snug text-navy-soft">
-                The checkout page with the total visible. Any vendor — add one per cart if the
-                order is split.
+                The checkout page with the total visible. Any vendor — add one per cart if the order is split.
               </p>
-              <ImageUploads
-                images={carts}
-                onChange={setCarts}
-                folder="sessions"
-                max={10}
-                label="Cart screenshot"
-              />
+              <ImageUploads images={carts} onChange={setCarts} folder="sessions" max={10} label="Cart screenshot" />
             </div>
           </div>
 
@@ -1592,10 +1529,10 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
             </p>
             <div className="grid gap-2.5 sm:grid-cols-3">
               {TIERS.map((t) => {
-                const on = tier === t.id;
-                const over = bomTotal > t.grantUsd;
-                const short = tierShort(t.fundingHours);
-                const behind = Math.max(0, tierTarget(t.fundingHours) - hours);
+                const on = tier === t.id
+                const over = bomTotal > t.grantUsd
+                const short = tierShort(t.fundingHours)
+                const behind = Math.max(0, tierTarget(t.fundingHours) - hours)
                 return (
                   <button
                     key={t.id}
@@ -1621,19 +1558,11 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
                     }
                   >
                     <span
-                      className={cx(
-                        "block text-[0.95rem] font-extrabold",
-                        short > 0 ? "text-navy-soft" : "text-navy",
-                      )}
+                      className={cx("block text-[0.95rem] font-extrabold", short > 0 ? "text-navy-soft" : "text-navy")}
                     >
                       Tier {t.id}
                     </span>
-                    <span
-                      className={cx(
-                        "hand block text-[0.86rem]",
-                        short > 0 ? "text-navy-soft" : "text-teal-deep",
-                      )}
-                    >
+                    <span className={cx("hand block text-[0.86rem]", short > 0 ? "text-navy-soft" : "text-teal-deep")}>
                       ${t.grantUsd} of funding
                     </span>
 
@@ -1658,7 +1587,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
                       </span>
                     )}
                   </button>
-                );
+                )
               })}
             </div>
           </div>
@@ -1679,8 +1608,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
           <div className="grid gap-2">
             <p className="label flex items-center gap-2 text-navy-soft">
-              <IconCamera className="text-base" />{" "}
-              {isBuild ? "Your demo video" : "Your closing reel"}
+              <IconCamera className="text-base" /> {isBuild ? "Your demo video" : "Your closing reel"}
             </p>
             <p className="text-[0.88rem] leading-snug text-navy-soft">
               {isBuild
@@ -1690,9 +1618,9 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
             <ReelCapture
               objectKey={clip}
               onCaptured={(key, url) => {
-                setClip(key);
-                setClipUrl(url ?? null);
-                setClosingPostId(null);
+                setClip(key)
+                setClipUrl(url ?? null)
+                setClosingPostId(null)
               }}
             />
           </div>
@@ -1755,5 +1683,5 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
         </div>
       )}
     </Modal>
-  );
+  )
 }

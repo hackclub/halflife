@@ -30,9 +30,7 @@ export default async function AdminShopPage() {
                 <td>{item.stock ?? "∞"}</td>
                 <td>{item.requiresPrinterQualified ? "all 5 themes" : "no"}</td>
                 <td>
-                  <Badge tone={item.active ? "success" : "muted"}>
-                    {item.active ? "active" : "retired"}
-                  </Badge>
+                  <Badge tone={item.active ? "success" : "muted"}>{item.active ? "active" : "retired"}</Badge>
                 </td>
                 <td>
                   {item.active ? (

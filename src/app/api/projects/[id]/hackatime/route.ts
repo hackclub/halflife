@@ -46,10 +46,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
   if (!project) return fail("NOT_FOUND", "Project not found")
 
   if (!project.user.hackatimeUserId) {
-    return fail(
-      "HACKATIME_NOT_LINKED",
-      "Link your Hackatime account before linking a project to it",
-    )
+    return fail("HACKATIME_NOT_LINKED", "Link your Hackatime account before linking a project to it")
   }
 
   const existing = await prisma.hackatimeLink.findUnique({
@@ -62,10 +59,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
   })
   if (existing) return fail("CONFLICT", "That Hackatime project is already linked here")
 
-  const fetched = await fetchProjectSeconds(
-    project.user.hackatimeUserId,
-    parsed.data.hackatimeProject,
-  )
+  const fetched = await fetchProjectSeconds(project.user.hackatimeUserId, parsed.data.hackatimeProject)
 
   const link = await prisma.hackatimeLink.create({
     data: {

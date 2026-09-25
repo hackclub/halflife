@@ -4,15 +4,7 @@ import { hasPermission, Permission } from "@/lib/permissions"
 import { listProjects, type ProjectFilters } from "@/lib/queries/admin"
 import { THEMES, getThemeDef } from "@/lib/config/program"
 import { PhaseStatus, Theme } from "@/app/generated/prisma/enums"
-import {
-  Badge,
-  EmptyState,
-  PageHeader,
-  Panel,
-  Table,
-  statusLabel,
-  statusTone,
-} from "@/app/components/ui"
+import { Badge, EmptyState, PageHeader, Panel, Table, statusLabel, statusTone } from "@/app/components/ui"
 import { ExtensionForm } from "@/app/components/forms/ExtensionForm"
 
 export const dynamic = "force-dynamic"
@@ -86,7 +78,12 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
               </option>
             ))}
           </select>
-          <select className="hl-input" name="design" defaultValue={filters.designStatus ?? ""} style={{ maxWidth: "12rem" }}>
+          <select
+            className="hl-input"
+            name="design"
+            defaultValue={filters.designStatus ?? ""}
+            style={{ maxWidth: "12rem" }}
+          >
             <option value="">Design: any</option>
             {STATUSES.map((s) => (
               <option key={s} value={s}>
@@ -94,7 +91,12 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
               </option>
             ))}
           </select>
-          <select className="hl-input" name="build" defaultValue={filters.buildStatus ?? ""} style={{ maxWidth: "12rem" }}>
+          <select
+            className="hl-input"
+            name="build"
+            defaultValue={filters.buildStatus ?? ""}
+            style={{ maxWidth: "12rem" }}
+          >
             <option value="">Build: any</option>
             {STATUSES.map((s) => (
               <option key={s} value={s}>
@@ -102,7 +104,12 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
               </option>
             ))}
           </select>
-          <select className="hl-input" name="tier" defaultValue={filters.tier ? String(filters.tier) : ""} style={{ maxWidth: "9rem" }}>
+          <select
+            className="hl-input"
+            name="tier"
+            defaultValue={filters.tier ? String(filters.tier) : ""}
+            style={{ maxWidth: "9rem" }}
+          >
             <option value="">Any tier</option>
             <option value="1">Tier 1</option>
             <option value="2">Tier 2</option>
@@ -145,7 +152,9 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
                     </Link>
                     <div className="hl-hint hl-mono">{project.id}</div>
                     {project.githubRepo ? (
-                      <div className="hl-hint hl-mono">{project.githubRepo.replace(/^https:\/\/github\.com\//, "")}</div>
+                      <div className="hl-hint hl-mono">
+                        {project.githubRepo.replace(/^https:\/\/github\.com\//, "")}
+                      </div>
                     ) : null}
                   </td>
                   <td>
@@ -159,9 +168,7 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
                   <td>
                     <Badge tone={statusTone(project.buildStatus)}>{statusLabel(project.buildStatus)}</Badge>
                   </td>
-                  <td>
-                    {project.tier ?? (project.requestedTier ? `${project.requestedTier} (asked)` : "—")}
-                  </td>
+                  <td>{project.tier ?? (project.requestedTier ? `${project.requestedTier} (asked)` : "—")}</td>
                   <td style={{ minWidth: "18rem" }}>
                     {canExtend ? (
                       <ExtensionForm
@@ -173,9 +180,7 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
                     ) : (
                       "—"
                     )}
-                    {userExt ? (
-                      <div className="hl-hint">Owner extended until {userExt.toLocaleString()}</div>
-                    ) : null}
+                    {userExt ? <div className="hl-hint">Owner extended until {userExt.toLocaleString()}</div> : null}
                   </td>
                 </tr>
               )

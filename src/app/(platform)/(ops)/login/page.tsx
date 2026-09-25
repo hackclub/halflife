@@ -14,8 +14,8 @@ export default async function LoginPage() {
       <h1 style={{ marginBottom: 0 }}>Sign in</h1>
       <Panel>
         <p className="hl-muted" style={{ marginTop: 0 }}>
-          Half-Life uses your Hack Club account. Linking Hackatime is optional and only matters
-          for firmware and code hours.
+          Half-Life uses your Hack Club account. Linking Hackatime is optional and only matters for firmware and code
+          hours.
         </p>
         <SignInButtons hasSession={!!session} />
       </Panel>

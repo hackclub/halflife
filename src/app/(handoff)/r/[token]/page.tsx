@@ -6,11 +6,7 @@ import { HandoffUploader } from "@/app/components/forms/HandoffUploader"
 // phone claims it.
 export const dynamic = "force-dynamic"
 
-export default async function HandoffPage({
-  params,
-}: {
-  params: Promise<{ token: string }>
-}) {
+export default async function HandoffPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
   const target = await resolveHandoff(token)
 
@@ -19,8 +15,7 @@ export default async function HandoffPage({
       <div className="hl-stack">
         <PageHeader title="This link has expired" />
         <Callout tone="warning">
-          Codes last {HANDOFF_TTL_MINUTES} minutes and work once. Generate a new one on your
-          computer and scan it again.
+          Codes last {HANDOFF_TTL_MINUTES} minutes and work once. Generate a new one on your computer and scan it again.
         </Callout>
       </div>
     )

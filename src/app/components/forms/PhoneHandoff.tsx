@@ -9,9 +9,7 @@ import { useHandoff } from "@/lib/use-handoff"
  * live in `useHandoff`, because the platform's reel modal needs exactly the
  * same ones wearing completely different clothes. Only the markup is here.
  */
-export function PhoneHandoff({
-  onReady,
-}: Readonly<{ onReady: (objectKey: string) => void }>) {
+export function PhoneHandoff({ onReady }: Readonly<{ onReady: (objectKey: string) => void }>) {
   const { minted, status, error, mint } = useHandoff(onReady)
   const busy = status === "minting"
 
@@ -22,8 +20,7 @@ export function PhoneHandoff({
       {!minted ? (
         <>
           <p className="hl-hint" style={{ margin: 0 }}>
-            Record on your phone instead — scan a code, film it, and the video lands here. No
-            signing in on the phone.
+            Record on your phone instead — scan a code, film it, and the video lands here. No signing in on the phone.
           </p>
           <div>
             <Button onClick={mint} disabled={busy}>
@@ -55,9 +52,7 @@ export function PhoneHandoff({
         </div>
       ) : null}
 
-      {status === "ready" ? (
-        <Callout>Got the video from your phone. Add a caption below and post it.</Callout>
-      ) : null}
+      {status === "ready" ? <Callout>Got the video from your phone. Add a caption below and post it.</Callout> : null}
 
       {status === "expired" ? (
         <div className="hl-stack hl-stack--tight">

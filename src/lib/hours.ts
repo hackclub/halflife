@@ -119,8 +119,7 @@ export async function getHoursBreakdown(
   // Each phase freezes its own hours. Reading the build's column for a design
   // breakdown would report a design as already-frozen the moment its build was
   // approved, and hand the reviewer the wrong phase's number.
-  const frozenTotal =
-    (phase === Phase.DESIGN ? project?.designApprovedHours : project?.approvedHours) ?? null
+  const frozenTotal = (phase === Phase.DESIGN ? project?.designApprovedHours : project?.approvedHours) ?? null
 
   return {
     journalHours: round2(journalHours),
@@ -129,8 +128,7 @@ export async function getHoursBreakdown(
     hackatimeHours: round2(hackatimeHours),
     hackatimeStale,
     timelapseSeconds,
-    timelapseCoverage:
-      claimedSeconds > 0 ? Math.min(1, timelapseSeconds / claimedSeconds) : 0,
+    timelapseCoverage: claimedSeconds > 0 ? Math.min(1, timelapseSeconds / claimedSeconds) : 0,
     computedTotal,
     frozenTotal,
     effectiveHours: frozenTotal ?? computedTotal,
@@ -223,11 +221,7 @@ export type CoinSplit = {
  * coins. Banked coins are not: they are bounded by `goal.bankedHours` already,
  * and they cannot buy anything but a printer.
  */
-export function designCoinsFor(
-  tierId: TierId | number,
-  goal: PrinterGoal,
-  approvedHours: number,
-): CoinSplit {
+export function designCoinsFor(tierId: TierId | number, goal: PrinterGoal, approvedHours: number): CoinSplit {
   const tier = getTierOrThrow(tierId)
   const beyondFunding = Math.max(0, approvedHours - tier.fundingHours)
   const bankedHours = Math.min(beyondFunding, goal.bankedHours)

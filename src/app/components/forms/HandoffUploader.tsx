@@ -94,9 +94,7 @@ export function HandoffUploader({ token }: Readonly<{ token: string }>) {
             aria-label="Sending your video"
             style={{ width: "100%", height: "0.6rem" }}
           />
-          <p className="hl-hint">
-            {progress < 1 ? `Sending… ${Math.round(progress * 100)}%` : "Sent. Saving it…"}
-          </p>
+          <p className="hl-hint">{progress < 1 ? `Sending… ${Math.round(progress * 100)}%` : "Sent. Saving it…"}</p>
         </div>
       ) : null}
 
@@ -106,9 +104,7 @@ export function HandoffUploader({ token }: Readonly<{ token: string }>) {
         </Button>
       </div>
 
-      <p className="hl-hint">
-        This link works once, and only for the next few minutes.
-      </p>
+      <p className="hl-hint">This link works once, and only for the next few minutes.</p>
     </form>
   )
 }

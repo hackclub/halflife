@@ -38,10 +38,7 @@ function unauthorized(): NextResponse {
  * the base URL is https, so the deployed cookie is not the one seen locally.
  */
 function looksSignedIn(request: NextRequest): boolean {
-  return (
-    request.cookies.has("better-auth.session_token") ||
-    request.cookies.has("__Secure-better-auth.session_token")
-  )
+  return request.cookies.has("better-auth.session_token") || request.cookies.has("__Secure-better-auth.session_token")
 }
 
 export function proxy(request: NextRequest) {
@@ -53,10 +50,9 @@ export function proxy(request: NextRequest) {
     // through and serve the site, which is the exact opposite of what the
     // operator who flipped the flag asked for.
     if (!expectedUser || !expectedPass) {
-      return new NextResponse(
-        "Basic auth is enabled but BASICAUTH_USERNAME/BASICAUTH_PASSWORD are not set",
-        { status: 503 },
-      )
+      return new NextResponse("Basic auth is enabled but BASICAUTH_USERNAME/BASICAUTH_PASSWORD are not set", {
+        status: 503,
+      })
     }
 
     const header = request.headers.get("authorization") ?? ""

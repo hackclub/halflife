@@ -1,4 +1,4 @@
-import { ANNOUNCEMENT } from "@/lib/site/content";
+import { ANNOUNCEMENT } from "@/lib/site/content"
 
 /**
  * The dateline, laid on the painting.
@@ -105,10 +105,7 @@ export default function AnnouncementBanner() {
           className="text-balance text-center leading-snug text-hl-paper min-[624px]:whitespace-nowrap"
           style={{ fontSize: "clamp(0.8125rem, 3.6vw, 1rem)" }}
         >
-          {ANNOUNCEMENT.lead}{" "}
-          <span className="font-semibold text-hl-cyan">
-            {ANNOUNCEMENT.date}
-          </span>
+          {ANNOUNCEMENT.lead} <span className="font-semibold text-hl-cyan">{ANNOUNCEMENT.date}</span>
           {ANNOUNCEMENT.tail}{" "}
           <a
             href={ANNOUNCEMENT.submitHref}
@@ -121,5 +118,5 @@ export default function AnnouncementBanner() {
         </p>
       </div>
     </div>
-  );
+  )
 }

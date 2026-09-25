@@ -70,10 +70,7 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 
   // Editing the thing a reviewer is currently reading changes what they are
   // deciding on halfway through.
-  if (
-    project.designStatus === PhaseStatus.in_review ||
-    project.buildStatus === PhaseStatus.in_review
-  ) {
+  if (project.designStatus === PhaseStatus.in_review || project.buildStatus === PhaseStatus.in_review) {
     return fail("PHASE_LOCKED", "Unsubmit before editing — a phase is in review")
   }
 
@@ -101,9 +98,7 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
     where: { id },
     data: {
       ...(data.title !== undefined ? { title: sanitize(data.title) } : {}),
-      ...(data.description !== undefined
-        ? { description: sanitizeOptional(data.description) }
-        : {}),
+      ...(data.description !== undefined ? { description: sanitizeOptional(data.description) } : {}),
       ...(data.githubRepo !== undefined ? { githubRepo: data.githubRepo } : {}),
       // `requestedTier`, never `tier`. The assigned tier is a reviewer's call at
       // design approval because it decides parts money, and letting this route

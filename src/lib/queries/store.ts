@@ -2,24 +2,13 @@ import "server-only"
 import prisma from "@/lib/prisma"
 import { HardwareExperience, Phase, PhaseStatus } from "@/app/generated/prisma/enums"
 import { getBalances } from "@/lib/currency"
-import {
-  getProgramSettings,
-  effectiveDateFor,
-  effectiveWeekClose,
-  weekClosesAt,
-} from "@/lib/program"
+import { getProgramSettings, effectiveDateFor, effectiveWeekClose, weekClosesAt } from "@/lib/program"
 import { streakAsOf } from "@/lib/streak"
 import { rollUpHours } from "@/lib/hours"
 import { projectThumbnail } from "@/lib/thumbnail"
 import { publicUrlFor } from "@/lib/uploads/r2"
 import { DEFAULT_GOAL_ID } from "@/lib/config/printers"
-import {
-  DESIGN_WEEKS,
-  ONBOARDING_CHECKPOINT_ID,
-  THEMES,
-  TOTAL_WEEKS,
-  scheduleForWeek,
-} from "@/lib/config/program"
+import { DESIGN_WEEKS, ONBOARDING_CHECKPOINT_ID, THEMES, TOTAL_WEEKS, scheduleForWeek } from "@/lib/config/program"
 import type { Experience, Project, SessionLog } from "@/lib/types"
 
 /**
@@ -127,79 +116,78 @@ function weekOf(themeIndex: number, phase: Phase): number {
 }
 
 export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
-  const [user, projects, sessions, links, posts, submissions, balances, settings] =
-    await Promise.all([
-      prisma.user.findUniqueOrThrow({
-        where: { id: userId },
-        select: {
-          name: true,
-          image: true,
-          hardwareExperience: true,
-          onboardingCompletedAt: true,
-          printerGoalId: true,
-          currentStreak: true,
-          lastStreakDate: true,
-          submissionExtensionUntil: true,
-        },
-      }),
-      prisma.themeProject.findMany({
-        where: { userId, deletedAt: null },
-        select: {
-          id: true,
-          theme: true,
-          title: true,
-          description: true,
-          tier: true,
-          requestedTier: true,
-          starterProjectId: true,
-          githubRepo: true,
-          coverImageKey: true,
-          designStatus: true,
-          buildStatus: true,
-          designApprovedHours: true,
-          approvedHours: true,
-          submissionExtensionUntil: true,
-        },
-      }),
-      // Ordered, because the trail's Nth entry node IS the Nth session written.
-      prisma.workSession.findMany({
-        where: { themeProject: { userId, deletedAt: null }, deletedAt: null },
-        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-        select: {
-          id: true,
-          themeProjectId: true,
-          phase: true,
-          content: true,
-          title: true,
-          hoursClaimed: true,
-          hoursApproved: true,
-          hoursSource: true,
-          createdAt: true,
-          media: { select: { objectKey: true } },
-          timelapses: { select: { objectKey: true, externalId: true } },
-        },
-      }),
-      prisma.hackatimeLink.findMany({
-        where: { themeProject: { userId, deletedAt: null } },
-        select: { themeProjectId: true, phase: true, hoursApproved: true, cachedSeconds: true },
-      }),
-      prisma.post.findMany({
-        where: { userId, deletedAt: null, checkpointKey: { not: null } },
-        orderBy: { createdAt: "asc" },
-        select: { checkpointKey: true, caption: true, createdAt: true },
-      }),
-      prisma.phaseSubmission.findMany({
-        where: { themeProject: { userId, deletedAt: null } },
-        orderBy: { createdAt: "asc" },
-        select: { themeProjectId: true, phase: true, createdAt: true },
-      }),
-      // Not in a transaction: this is a read for display, and BEGIN and COMMIT
-      // are two more round trips to a database ~110ms away from a laptop —
-      // the slowest part of the whole snapshot. Spending still reads its
-      // balance inside the transaction that spends it.
-      getBalances(prisma, userId),
-      getProgramSettings(),
-    ])
+  const [user, projects, sessions, links, posts, submissions, balances, settings] = await Promise.all([
+    prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: {
+        name: true,
+        image: true,
+        hardwareExperience: true,
+        onboardingCompletedAt: true,
+        printerGoalId: true,
+        currentStreak: true,
+        lastStreakDate: true,
+        submissionExtensionUntil: true,
+      },
+    }),
+    prisma.themeProject.findMany({
+      where: { userId, deletedAt: null },
+      select: {
+        id: true,
+        theme: true,
+        title: true,
+        description: true,
+        tier: true,
+        requestedTier: true,
+        starterProjectId: true,
+        githubRepo: true,
+        coverImageKey: true,
+        designStatus: true,
+        buildStatus: true,
+        designApprovedHours: true,
+        approvedHours: true,
+        submissionExtensionUntil: true,
+      },
+    }),
+    // Ordered, because the trail's Nth entry node IS the Nth session written.
+    prisma.workSession.findMany({
+      where: { themeProject: { userId, deletedAt: null }, deletedAt: null },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      select: {
+        id: true,
+        themeProjectId: true,
+        phase: true,
+        content: true,
+        title: true,
+        hoursClaimed: true,
+        hoursApproved: true,
+        hoursSource: true,
+        createdAt: true,
+        media: { select: { objectKey: true } },
+        timelapses: { select: { objectKey: true, externalId: true } },
+      },
+    }),
+    prisma.hackatimeLink.findMany({
+      where: { themeProject: { userId, deletedAt: null } },
+      select: { themeProjectId: true, phase: true, hoursApproved: true, cachedSeconds: true },
+    }),
+    prisma.post.findMany({
+      where: { userId, deletedAt: null, checkpointKey: { not: null } },
+      orderBy: { createdAt: "asc" },
+      select: { checkpointKey: true, caption: true, createdAt: true },
+    }),
+    prisma.phaseSubmission.findMany({
+      where: { themeProject: { userId, deletedAt: null } },
+      orderBy: { createdAt: "asc" },
+      select: { themeProjectId: true, phase: true, createdAt: true },
+    }),
+    // Not in a transaction: this is a read for display, and BEGIN and COMMIT
+    // are two more round trips to a database ~110ms away from a laptop —
+    // the slowest part of the whole snapshot. Spending still reads its
+    // balance inside the transaction that spends it.
+    getBalances(prisma, userId),
+    getProgramSettings(),
+  ])
 
   const byTheme = new Map(projects.map((p) => [p.theme, p]))
   const progress: Record<string, CheckpointSnapshot> = {}
@@ -241,12 +229,8 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
       const week = weekOf(themeIndex, phase)
       const id = (suffix: string) => `w${week}-${suffix}`
 
-      const phaseSessions = sessions.filter(
-        (s) => s.themeProjectId === project.id && s.phase === phase,
-      )
-      const phaseLinks = links.filter(
-        (l) => l.themeProjectId === project.id && l.phase === phase,
-      )
+      const phaseSessions = sessions.filter((s) => s.themeProjectId === project.id && s.phase === phase)
+      const phaseLinks = links.filter((l) => l.themeProjectId === project.id && l.phase === phase)
 
       // Week one's project comes into existence through the first checkpoint
       // rather than a project form, so the node that stands for it is different
@@ -288,9 +272,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
       // A week taken back out of review (or reopened by an admin) is draft
       // again with its old submission rows still there, and it has to read as
       // not handed in, or the trail would hide the Submit it needs again.
-      const submission = submissions
-        .filter((s) => s.themeProjectId === project.id && s.phase === phase)
-        .at(-1)
+      const submission = submissions.filter((s) => s.themeProjectId === project.id && s.phase === phase).at(-1)
       const status = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
       phaseStatusByWeek[week] = status
       if (status !== PhaseStatus.draft) {
@@ -306,8 +288,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
       // What the phase is worth, minus what its entries already account for.
       // `rollUpHours` is the function the ledger uses, so the trail's gates and
       // the reviewer's totals cannot answer this differently.
-      const frozen =
-        phase === Phase.DESIGN ? project.designApprovedHours : project.approvedHours
+      const frozen = phase === Phase.DESIGN ? project.designApprovedHours : project.approvedHours
       const { effectiveHours } = rollUpHours(phaseSessions, phaseLinks, frozen)
       const entryHours = phaseSessions.reduce((n, s) => n + minutesOf(s) / 60, 0)
       offBookHours[week] = Math.max(0, round2(effectiveHours - entryHours))

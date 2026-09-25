@@ -267,55 +267,87 @@ body::before {
 
 /* ---------- motion ---------- */
 @keyframes hl-bob {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-7px); }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
 }
 
 @keyframes hl-halo {
-  0% { transform: scale(0.94); opacity: 0.6; }
-  70% { transform: scale(1.34); opacity: 0; }
-  100% { transform: scale(1.34); opacity: 0; }
+  0% {
+    transform: scale(0.94);
+    opacity: 0.6;
+  }
+  70% {
+    transform: scale(1.34);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.34);
+    opacity: 0;
+  }
 }
 
 @keyframes hl-rise {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: none; }
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @keyframes hl-pop {
-  from { opacity: 0; transform: scale(0.86); }
-  to { opacity: 1; transform: none; }
+  from {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @layer components {
-.halo {
-  position: absolute;
-  inset: -7%;
-  border-radius: 50%;
-  border: 3px solid var(--color-sky);
-  animation: hl-halo 2.1s var(--ease-out-expo) infinite;
-  pointer-events: none;
-}
+  .halo {
+    position: absolute;
+    inset: -7%;
+    border-radius: 50%;
+    border: 3px solid var(--color-sky);
+    animation: hl-halo 2.1s var(--ease-out-expo) infinite;
+    pointer-events: none;
+  }
 
-.halo-gold { border-color: var(--color-gold); }
+  .halo-gold {
+    border-color: var(--color-gold);
+  }
 
-/* A file that has finished sending and is being stored: the full bar keeps
+  /* A file that has finished sending and is being stored: the full bar keeps
    moving, so a wait with no size to measure still reads as work. */
-.upload-storing {
-  background-image: linear-gradient(
-    110deg,
-    transparent 0 35%,
-    color-mix(in oklab, white 55%, transparent) 50%,
-    transparent 65% 100%
-  );
-  background-size: 220% 100%;
-  animation: hl-storing 1.1s linear infinite;
-}
+  .upload-storing {
+    background-image: linear-gradient(
+      110deg,
+      transparent 0 35%,
+      color-mix(in oklab, white 55%, transparent) 50%,
+      transparent 65% 100%
+    );
+    background-size: 220% 100%;
+    animation: hl-storing 1.1s linear infinite;
+  }
 }
 
 @keyframes hl-storing {
-  from { background-position: 110% 0; }
-  to { background-position: -110% 0; }
+  from {
+    background-position: 110% 0;
+  }
+  to {
+    background-position: -110% 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -334,16 +366,36 @@ body::before {
   scrollbar-color: var(--color-line) transparent;
 }
 
-.thin-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
-.thin-scroll::-webkit-scrollbar-thumb { background: var(--color-line); border-radius: 99px; }
-.thin-scroll::-webkit-scrollbar-track { background: transparent; }
+.thin-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.thin-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-line);
+  border-radius: 99px;
+}
+.thin-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
 
-.no-scrollbar { scrollbar-width: none; }
-.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
 
 /* ---------- depth ---------- */
-.stack-shadow { box-shadow: 0 2px 4px rgba(28, 26, 89, 0.06), 0 10px 26px -12px rgba(28, 26, 89, 0.28); }
-.lift-shadow { box-shadow: 0 3px 6px rgba(28, 26, 89, 0.08), 0 18px 40px -16px rgba(28, 26, 89, 0.38); }
+.stack-shadow {
+  box-shadow:
+    0 2px 4px rgba(28, 26, 89, 0.06),
+    0 10px 26px -12px rgba(28, 26, 89, 0.28);
+}
+.lift-shadow {
+  box-shadow:
+    0 3px 6px rgba(28, 26, 89, 0.08),
+    0 18px 40px -16px rgba(28, 26, 89, 0.38);
+}
 .sticker-shadow {
   filter: drop-shadow(0 3px 2px rgba(28, 26, 89, 0.16)) drop-shadow(0 9px 13px rgba(28, 26, 89, 0.13));
 }
@@ -351,11 +403,19 @@ body::before {
 /* The Doomscroller's reel column measures its own height, so the arrows
    beside it can step aside when it is too short to hold them above the
    actions — which depends on the frame, not on the window. */
-.doom-stage { container: doom-stage / size; }
+.doom-stage {
+  container: doom-stage / size;
+}
 @container doom-stage (max-height: 30.5rem) {
-  .doom-arrows { display: none !important; }
+  .doom-arrows {
+    display: none !important;
+  }
 }
 
-.snap-y-feed { scroll-snap-type: y mandatory; }
-.snap-item { scroll-snap-align: center; scroll-snap-stop: always; }
-
+.snap-y-feed {
+  scroll-snap-type: y mandatory;
+}
+.snap-item {
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+}

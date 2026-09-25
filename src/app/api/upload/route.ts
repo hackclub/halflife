@@ -27,9 +27,7 @@ export const POST = withRoute(async (req: Request) => {
   if (!(file instanceof File)) return fail("INVALID_BODY", "Expected a `file` field")
 
   const folderRaw = form?.get("folder")
-  const folder = typeof folderRaw === "string" && ALLOWED_FOLDERS.has(folderRaw)
-    ? folderRaw
-    : "sessions"
+  const folder = typeof folderRaw === "string" && ALLOWED_FOLDERS.has(folderRaw) ? folderRaw : "sessions"
 
   if (file.size > MAX_UPLOAD_BYTES) {
     return fail("VALIDATION_FAILED", `Files must be under ${MAX_UPLOAD_BYTES} bytes`)

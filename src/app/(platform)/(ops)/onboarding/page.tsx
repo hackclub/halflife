@@ -1,12 +1,7 @@
 import { redirect } from "next/navigation"
 import { requireSessionPage } from "@/lib/page-guards"
 import { getOnboardingState, ONBOARDING_THEME } from "@/lib/onboarding"
-import {
-  EXPERIENCE_OPTIONS,
-  ONBOARDING_STEPS,
-  isBeginner,
-  weekIntroFor,
-} from "@/lib/config/onboarding"
+import { EXPERIENCE_OPTIONS, ONBOARDING_STEPS, isBeginner, weekIntroFor } from "@/lib/config/onboarding"
 import { submitFloorFor } from "@/lib/config/printers"
 import { TIERS } from "@/lib/config/tiers"
 import { PageHeader } from "@/app/components/ui"

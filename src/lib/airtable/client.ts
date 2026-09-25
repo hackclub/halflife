@@ -91,13 +91,10 @@ export async function withRateLimitRetry<T>(
       return await fn()
     } catch (err) {
       const isRateLimit = err instanceof AirtableError && err.isRateLimit
-      const isTransient =
-        isRateLimit || (err instanceof AirtableError && err.status >= 500)
+      const isTransient = isRateLimit || (err instanceof AirtableError && err.status >= 500)
       if (!isTransient || attempt >= maxAttempts) throw err
 
-      const wait = isRateLimit
-        ? 30_000
-        : baseSleepMs * 2 ** (attempt - 1) + Math.random() * 500
+      const wait = isRateLimit ? 30_000 : baseSleepMs * 2 ** (attempt - 1) + Math.random() * 500
       console.warn(
         `[airtable] ${operation} attempt ${attempt} failed (${err instanceof Error ? err.message : err}); retrying in ${Math.round(wait)}ms`,
       )
@@ -106,11 +103,7 @@ export async function withRateLimitRetry<T>(
   }
 }
 
-export async function airtableFetch<T>(
-  config: AirtableConfig,
-  path: string,
-  init: RequestInit = {},
-): Promise<T> {
+export async function airtableFetch<T>(config: AirtableConfig, path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_BASE}/${config.baseId}/${path}`, {
     ...init,
     headers: {

@@ -14,8 +14,7 @@ export default async function AdminOrdersPage({ searchParams }: Props) {
   await requirePermissionPage(Permission.FULFILL_ORDERS)
   const { status, cursor } = await searchParams
 
-  const parsedStatus =
-    status && status in ShopOrderStatus ? (status as ShopOrderStatus) : undefined
+  const parsedStatus = status && status in ShopOrderStatus ? (status as ShopOrderStatus) : undefined
   const { items, nextCursor } = await listOrders({ status: parsedStatus, cursor, limit: 50 })
 
   return (
@@ -43,21 +42,13 @@ export default async function AdminOrdersPage({ searchParams }: Props) {
               <tr key={order.id}>
                 <td className="hl-mono">{order.orderNumber}</td>
                 <td>
-                  <Link href={`/admin/users/${order.user.id}`}>
-                    {order.user.name ?? order.user.email}
-                  </Link>
+                  <Link href={`/admin/users/${order.user.id}`}>{order.user.name ?? order.user.email}</Link>
                 </td>
                 <td>{order.itemNameSnapshot}</td>
                 <td>{order.totalCredits}</td>
                 <td>
                   <Badge
-                    tone={
-                      order.status === "FULFILLED"
-                        ? "success"
-                        : order.status === "REJECTED"
-                          ? "danger"
-                          : "warning"
-                    }
+                    tone={order.status === "FULFILLED" ? "success" : order.status === "REJECTED" ? "danger" : "warning"}
                   >
                     {order.status.toLowerCase()}
                   </Badge>
@@ -75,11 +66,7 @@ export default async function AdminOrdersPage({ searchParams }: Props) {
         )}
         {nextCursor ? (
           <p>
-            <Link
-              href={`/admin/shop/orders?${status ? `status=${status}&` : ""}cursor=${nextCursor}`}
-            >
-              Next page
-            </Link>
+            <Link href={`/admin/shop/orders?${status ? `status=${status}&` : ""}cursor=${nextCursor}`}>Next page</Link>
           </p>
         ) : null}
       </Panel>

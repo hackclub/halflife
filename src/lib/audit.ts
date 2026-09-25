@@ -25,11 +25,7 @@ async function requestInfo(): Promise<{ ip: string | null; userAgent: string | n
   try {
     const h = await headers()
     const forwarded = h.get("x-forwarded-for")
-    const ip =
-      forwarded?.split(",")[0]?.trim() ||
-      h.get("x-real-ip") ||
-      h.get("cf-connecting-ip") ||
-      null
+    const ip = forwarded?.split(",")[0]?.trim() || h.get("x-real-ip") || h.get("cf-connecting-ip") || null
     return { ip, userAgent: h.get("user-agent") }
   } catch {
     // Called outside a request scope (a cron script). Not an error.

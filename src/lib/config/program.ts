@@ -45,10 +45,8 @@ export const BUILD_HOURS: number = BUILD_BLOCKS.reduce((n, h) => n + h, 0)
 export const THEMES_REQUIRED_FOR_PRINTER = 5
 
 /** Fallbacks used only when seeding a fresh ProgramSettings row. */
-export const DEFAULT_EVENT_START_DATE =
-  process.env.PROGRAM_START_DATE ?? "2026-09-07"
-export const DEFAULT_PROGRAM_TIMEZONE =
-  process.env.PROGRAM_TIMEZONE ?? "America/New_York"
+export const DEFAULT_EVENT_START_DATE = process.env.PROGRAM_START_DATE ?? "2026-09-07"
+export const DEFAULT_PROGRAM_TIMEZONE = process.env.PROGRAM_TIMEZONE ?? "America/New_York"
 
 export const TOTAL_WEEKS = 10
 export const DESIGN_WEEKS = 5
@@ -144,9 +142,7 @@ export function themeDefBySlug(slug: string): ThemeDef | undefined {
 }
 
 /** The theme and phase a given program week is scheduled for. */
-export function scheduleForWeek(
-  week: number,
-): { theme: ThemeDef; phase: Phase } | null {
+export function scheduleForWeek(week: number): { theme: ThemeDef; phase: Phase } | null {
   const design = THEMES.find((t) => t.designWeek === week)
   if (design) return { theme: design, phase: Phase.DESIGN }
   const build = THEMES.find((t) => t.buildWeek === week)

@@ -1,9 +1,9 @@
-"use client";
+"use client"
 
-import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
+import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react"
 
-export { cx } from "@/lib/cx";
-import { cx } from "@/lib/cx";
+export { cx } from "@/lib/cx"
+import { cx } from "@/lib/cx"
 
 /* ------------------------------------------------------------------ *
  * Panel — the cream card with a wobbling marker outline
@@ -16,12 +16,12 @@ export function Panel({
   variant = 1,
   as: As = "div",
 }: {
-  children: ReactNode;
-  className?: string;
-  tone?: "line" | "violet" | "sky" | "teal" | "gold" | "coral" | "navy";
-  radius?: number;
-  variant?: 1 | 2 | 3;
-  as?: "div" | "section" | "article" | "aside" | "li";
+  children: ReactNode
+  className?: string
+  tone?: "line" | "violet" | "sky" | "teal" | "gold" | "coral" | "navy"
+  radius?: number
+  variant?: 1 | 2 | 3
+  as?: "div" | "section" | "article" | "aside" | "li"
 }) {
   const color = {
     line: "var(--color-line)",
@@ -31,7 +31,7 @@ export function Panel({
     gold: "var(--color-gold-deep)",
     coral: "var(--color-coral)",
     navy: "var(--color-navy)",
-  }[tone];
+  }[tone]
 
   return (
     <As
@@ -50,17 +50,17 @@ export function Panel({
     >
       {children}
     </As>
-  );
+  )
 }
 
 /* ------------------------------------------------------------------ *
  * Button
  * ------------------------------------------------------------------ */
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "solid" | "outline" | "ghost" | "gold" | "teal" | "coral";
-  size?: "sm" | "md" | "lg";
-  full?: boolean;
-};
+  variant?: "solid" | "outline" | "ghost" | "gold" | "teal" | "coral"
+  size?: "sm" | "md" | "lg"
+  full?: boolean
+}
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
   { variant = "solid", size = "md", full, className, children, ...rest },
@@ -70,21 +70,19 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     sm: "h-9 px-3.5 text-[0.76rem]",
     md: "h-11 px-5 text-[0.85rem]",
     lg: "h-13 px-7 text-[0.95rem]",
-  }[size];
+  }[size]
 
   const variants = {
     solid:
       "bg-violet text-white border-violet-deep hover:bg-violet-deep active:translate-y-px disabled:bg-line disabled:border-line-strong",
-    gold:
-      "bg-gold text-navy border-gold-deep hover:brightness-105 active:translate-y-px disabled:bg-line disabled:border-line-strong disabled:text-navy-soft",
-    teal:
-      "bg-teal text-white border-teal-deep hover:bg-teal-deep active:translate-y-px disabled:bg-line disabled:border-line-strong",
+    gold: "bg-gold text-navy border-gold-deep hover:brightness-105 active:translate-y-px disabled:bg-line disabled:border-line-strong disabled:text-navy-soft",
+    teal: "bg-teal text-white border-teal-deep hover:bg-teal-deep active:translate-y-px disabled:bg-line disabled:border-line-strong",
     coral:
       "bg-coral text-white border-coral-deep hover:bg-coral-deep active:translate-y-px disabled:bg-line disabled:border-line-strong",
     outline:
       "bg-transparent text-navy border-violet hover:bg-violet-pale active:translate-y-px disabled:text-navy-soft disabled:border-line",
     ghost: "bg-transparent text-navy-soft border-transparent hover:text-navy hover:bg-black/5",
-  }[variant];
+  }[variant]
 
   return (
     <button
@@ -102,8 +100,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     >
       {children}
     </button>
-  );
-});
+  )
+})
 
 /* ------------------------------------------------------------------ *
  * Torn tape — the week banner / page signs
@@ -114,10 +112,10 @@ export function Tape({
   color = "var(--color-sky)",
   soft = false,
 }: {
-  children?: ReactNode;
-  className?: string;
-  color?: string;
-  soft?: boolean;
+  children?: ReactNode
+  className?: string
+  color?: string
+  soft?: boolean
 }) {
   return (
     <div className={cx("relative", className)}>
@@ -132,7 +130,7 @@ export function Tape({
       />
       <div className="relative">{children}</div>
     </div>
-  );
+  )
 }
 
 /* ------------------------------------------------------------------ *
@@ -146,23 +144,23 @@ export function OptionRow({
   tone = "violet",
   hint,
 }: {
-  children: ReactNode;
-  selected?: boolean;
-  onClick?: () => void;
-  disabled?: boolean;
-  tone?: "violet" | "gold" | "sky";
-  hint?: ReactNode;
+  children: ReactNode
+  selected?: boolean
+  onClick?: () => void
+  disabled?: boolean
+  tone?: "violet" | "gold" | "sky"
+  hint?: ReactNode
 }) {
   const ring = {
     violet: "var(--color-violet)",
     gold: "var(--color-gold-deep)",
     sky: "var(--color-sky-deep)",
-  }[tone];
+  }[tone]
   const fill = {
     violet: "var(--color-violet-pale)",
     gold: "var(--color-gold-pale)",
     sky: "var(--color-sky-pale)",
-  }[tone];
+  }[tone]
 
   return (
     <button
@@ -197,7 +195,7 @@ export function OptionRow({
       </span>
       {hint && <span className="mt-1.5 block pl-8 text-[0.78rem] leading-snug text-navy-soft">{hint}</span>}
     </button>
-  );
+  )
 }
 
 /* ------------------------------------------------------------------ *
@@ -210,15 +208,15 @@ export function Meter({
   tone = "teal",
   className,
 }: {
-  value: number;
-  max: number;
-  label?: string;
-  tone?: "teal" | "gold" | "sky";
-  className?: string;
+  value: number
+  max: number
+  label?: string
+  tone?: "teal" | "gold" | "sky"
+  className?: string
 }) {
-  const pct = max <= 0 ? 0 : Math.min(100, Math.round((value / max) * 100));
-  const fill = { teal: "var(--color-teal)", gold: "var(--color-gold)", sky: "var(--color-sky)" }[tone];
-  const track = { teal: "var(--color-mint)", gold: "var(--color-gold-pale)", sky: "var(--color-sky-pale)" }[tone];
+  const pct = max <= 0 ? 0 : Math.min(100, Math.round((value / max) * 100))
+  const fill = { teal: "var(--color-teal)", gold: "var(--color-gold)", sky: "var(--color-sky)" }[tone]
+  const track = { teal: "var(--color-mint)", gold: "var(--color-gold-pale)", sky: "var(--color-sky-pale)" }[tone]
   return (
     <div
       className={cx("relative h-5 w-full overflow-hidden rounded-full", className)}
@@ -239,7 +237,7 @@ export function Meter({
         </span>
       )}
     </div>
-  );
+  )
 }
 
 /* ------------------------------------------------------------------ *
@@ -250,9 +248,9 @@ export function Chip({
   tone = "sky",
   className,
 }: {
-  children: ReactNode;
-  tone?: "sky" | "teal" | "gold" | "coral" | "violet" | "muted";
-  className?: string;
+  children: ReactNode
+  tone?: "sky" | "teal" | "gold" | "coral" | "violet" | "muted"
+  className?: string
 }) {
   const tones = {
     sky: "bg-sky-pale text-sky-deep",
@@ -261,12 +259,12 @@ export function Chip({
     coral: "bg-coral/15 text-coral-deep",
     violet: "bg-violet-pale text-violet-deep",
     muted: "bg-black/5 text-navy-soft",
-  }[tone];
+  }[tone]
   return (
     <span className={cx("label inline-flex items-center gap-1.5 rounded-full px-2.5 py-1", tones, className)}>
       {children}
     </span>
-  );
+  )
 }
 
 /* ------------------------------------------------------------------ *
@@ -278,10 +276,10 @@ export function Field({
   children,
   id,
 }: {
-  label: string;
-  hint?: string;
-  children: ReactNode;
-  id?: string;
+  label: string
+  hint?: string
+  children: ReactNode
+  id?: string
 }) {
   return (
     <div>
@@ -291,8 +289,8 @@ export function Field({
       {hint && <p className="mt-0.5 text-[0.78rem] text-navy-soft">{hint}</p>}
       <div className="mt-2">{children}</div>
     </div>
-  );
+  )
 }
 
 export const inputClass =
-  "sketch block w-full rounded-xl bg-white px-4 py-3 text-[0.95rem] text-navy placeholder:text-navy-soft/70 outline-none";
+  "sketch block w-full rounded-xl bg-white px-4 py-3 text-[0.95rem] text-navy placeholder:text-navy-soft/70 outline-none"

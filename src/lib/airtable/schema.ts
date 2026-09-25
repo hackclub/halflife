@@ -23,15 +23,14 @@ export interface FieldDef<T = unknown> {
   readonly __type?: T
 }
 
-const f = <T,>(id: string, name: string): FieldDef<T> => ({ id, name })
+const f = <T>(id: string, name: string): FieldDef<T> => ({ id, name })
 
 /**
  * Writing by id requires the ids to actually be filled in. Until someone runs
  * the schema dump against the real base, fall back to names so the integration
  * works out of the box rather than 422-ing on every field.
  */
-export const FIELD_MODE: "id" | "name" =
-  process.env.AIRTABLE_USE_FIELD_IDS === "true" ? "id" : "name"
+export const FIELD_MODE: "id" | "name" = process.env.AIRTABLE_USE_FIELD_IDS === "true" ? "id" : "name"
 
 export function fieldKey(field: FieldDef): string {
   return FIELD_MODE === "id" ? field.id : field.name
@@ -107,10 +106,7 @@ export const RSVP = {
     utmSource: f<string>("fldRsvpUtmSource", "UTM Source"),
     referredBy: f<string>("fldRsvpReferredBy", "Referred By"),
     signupPage: f<string>("fldRsvpSignupPage", "Loops - halfLifeSignUpPage"),
-    finishedAccountCreation: f<boolean>(
-      "fldRsvpFinished",
-      "Finished Account Creation",
-    ),
+    finishedAccountCreation: f<boolean>("fldRsvpFinished", "Finished Account Creation"),
     // Stasis joins RSVPs to users on email alone, which breaks when someone
     // RSVPs with a personal address and signs in through HCA with a school one.
     userId: f<string>("fldRsvpUserId", "Half-Life User ID"),
@@ -124,10 +120,7 @@ type ValuesFor<S extends FieldMap> = Partial<{
 }>
 
 /** Build an Airtable `fields` payload, keyed however FIELD_MODE says. */
-export function toFields<S extends FieldMap>(
-  schema: S,
-  values: ValuesFor<S>,
-): Record<string, unknown> {
+export function toFields<S extends FieldMap>(schema: S, values: ValuesFor<S>): Record<string, unknown> {
   const out: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(values)) {
     if (value === undefined) continue

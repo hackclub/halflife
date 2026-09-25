@@ -42,9 +42,7 @@ export async function requirePermissionPage(permission: Permission): Promise<Pag
   return ctx
 }
 
-export async function requireAnyPermissionPage(
-  ...permissions: Permission[]
-): Promise<PageContext> {
+export async function requireAnyPermissionPage(...permissions: Permission[]): Promise<PageContext> {
   const ctx = await requireSessionPage()
   if (!hasAnyPermission(ctx.roles, permissions)) notFound()
   return ctx

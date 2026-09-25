@@ -78,10 +78,7 @@ export async function listProjects(opts: ProjectFilters & { cursor?: string; lim
         : {},
       opts.extended
         ? {
-            OR: [
-              { submissionExtensionUntil: { gt: now } },
-              { user: { submissionExtensionUntil: { gt: now } } },
-            ],
+            OR: [{ submissionExtensionUntil: { gt: now } }, { user: { submissionExtensionUntil: { gt: now } } }],
           }
         : {},
     ],
@@ -176,11 +173,7 @@ export async function getUserDetail(userId: string) {
   return { user, balances, ledger, orders, printer }
 }
 
-export async function listOrders(opts: {
-  status?: ShopOrderStatus
-  cursor?: string
-  limit: number
-}) {
+export async function listOrders(opts: { status?: ShopOrderStatus; cursor?: string; limit: number }) {
   const rows = await prisma.shopOrder.findMany({
     where: opts.status ? { status: opts.status } : undefined,
     orderBy: [{ placedAt: "desc" }, { id: "desc" }],
@@ -197,12 +190,7 @@ export async function listOrders(opts: {
   return { items, nextCursor: hasMore && last ? last.id : null }
 }
 
-export async function listAuditLog(opts: {
-  action?: string
-  targetId?: string
-  cursor?: string
-  limit: number
-}) {
+export async function listAuditLog(opts: { action?: string; targetId?: string; cursor?: string; limit: number }) {
   const rows = await prisma.auditLog.findMany({
     where: {
       ...(opts.action ? { action: opts.action as never } : {}),

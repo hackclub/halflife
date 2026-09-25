@@ -11,14 +11,15 @@ export const userFlagsSchema = z
   })
   .strict()
 
-export const projectExtensionSchema = z
-  .object({ submissionExtensionUntil: z.coerce.date().nullable() })
-  .strict()
+export const projectExtensionSchema = z.object({ submissionExtensionUntil: z.coerce.date().nullable() }).strict()
 
 export const creditAdjustSchema = z
   .object({
     userId: cuid,
-    amount: z.number().int().refine((n) => n !== 0, "Amount cannot be zero"),
+    amount: z
+      .number()
+      .int()
+      .refine((n) => n !== 0, "Amount cannot be zero"),
     reason: boundedText(1000, 1),
     /**
      * Which pot to move. Defaults to spendable — an admin correcting someone's

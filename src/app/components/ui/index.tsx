@@ -90,10 +90,7 @@ export function Badge({ tone = "muted", children }: Readonly<{ tone?: BadgeTone;
   return <span className={`hl-badge hl-badge--${tone}`}>{children}</span>
 }
 
-export function Callout({
-  tone,
-  children,
-}: Readonly<{ tone?: "danger" | "warning"; children: ReactNode }>) {
+export function Callout({ tone, children }: Readonly<{ tone?: "danger" | "warning"; children: ReactNode }>) {
   return <div className={`hl-callout ${tone ? `hl-callout--${tone}` : ""}`}>{children}</div>
 }
 
@@ -167,11 +164,7 @@ export function EmptyState({ children }: Readonly<{ children: ReactNode }>) {
   )
 }
 
-export function Field({
-  label,
-  hint,
-  children,
-}: Readonly<{ label: string; hint?: ReactNode; children: ReactNode }>) {
+export function Field({ label, hint, children }: Readonly<{ label: string; hint?: ReactNode; children: ReactNode }>) {
   return (
     <label className="hl-stack hl-stack--tight" style={{ gap: "0.25rem" }}>
       <span className="hl-label-text">{label}</span>

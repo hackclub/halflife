@@ -16,9 +16,7 @@ export type Guard =
   | { error: NextResponse<ApiErrorBody>; user?: never; roles?: never }
   | { error?: never; user: SessionUser; roles: Role[] }
 
-async function resolve(): Promise<
-  { user: SessionUser; roles: Role[] } | null
-> {
+async function resolve(): Promise<{ user: SessionUser; roles: Role[] } | null> {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) return null
   const u = session.user

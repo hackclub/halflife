@@ -169,9 +169,7 @@ async function main() {
   })
   check("deleting a comment decrements", afterDelete.commentCount, 1)
 
-  await refused("cannot delete someone else's comment", () =>
-    deleteOwnComment(commentA.id, author.id),
-  )
+  await refused("cannot delete someone else's comment", () => deleteOwnComment(commentA.id, author.id))
 
   await hideComment(commentA.id, author.id, "off topic")
   const afterHide = await prisma.post.findUniqueOrThrow({

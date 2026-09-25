@@ -1,7 +1,7 @@
-"use client";
+"use client"
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { FoxAvatar, FoxMark, PrinterArt, ReelScene, WeekScene } from "@/components/platform/art";
+import { useEffect, useMemo, useRef, useState } from "react"
+import { FoxAvatar, FoxMark, PrinterArt, ReelScene, WeekScene } from "@/components/platform/art"
 import {
   IconCheck,
   IconCoin,
@@ -10,10 +10,10 @@ import {
   IconLock,
   IconSparkle,
   IconUpload,
-} from "@/components/platform/icons";
-import { Button, cx } from "@/components/platform/ui";
-import { BUILD_HOURS, WEEK_META, checkpointsFor } from "@/lib/curriculum";
-import { MIN_HOURS_PER_WEEK } from "@/lib/config/printers";
+} from "@/components/platform/icons"
+import { Button, cx } from "@/components/platform/ui"
+import { BUILD_HOURS, WEEK_META, checkpointsFor } from "@/lib/curriculum"
+import { MIN_HOURS_PER_WEEK } from "@/lib/config/printers"
 
 /**
  * The fly-through plays before anyone has picked a tier, so it previews the
@@ -21,15 +21,10 @@ import { MIN_HOURS_PER_WEEK } from "@/lib/config/printers";
  */
 const WEEKS = WEEK_META.map((meta) => ({
   ...meta,
-  checkpoints: checkpointsFor(
-    meta,
-    [],
-    () => false,
-    meta.phase === "build" ? BUILD_HOURS : MIN_HOURS_PER_WEEK,
-  ),
-}));
-import { printerById, type PrinterGoal } from "@/lib/config/printers";
-import { useStore } from "@/lib/store";
+  checkpoints: checkpointsFor(meta, [], () => false, meta.phase === "build" ? BUILD_HOURS : MIN_HOURS_PER_WEEK),
+}))
+import { printerById, type PrinterGoal } from "@/lib/config/printers"
+import { useStore } from "@/lib/store"
 
 /**
  * The first thing anyone sees: a single unbroken fall down the trail.
@@ -45,44 +40,44 @@ import { useStore } from "@/lib/store";
 /* ------------------------------------------------------------------ *
  * Stage layout — computed once, shared by the markup and the camera
  * ------------------------------------------------------------------ */
-const STAGE_W = 1520;
-const COL_X = 760; // centre of the trail column
-const TOP_PAD = 150;
-const BANNER_H = 96;
-const BANNER_GAP = 30;
-const PUCK = 66;
-const STEP = 88;
-const WEEK_GAP = 44;
-const AMP = 140;
-const PRIZE_H = 560;
+const STAGE_W = 1520
+const COL_X = 760 // centre of the trail column
+const TOP_PAD = 150
+const BANNER_H = 96
+const BANNER_GAP = 30
+const PUCK = 66
+const STEP = 88
+const WEEK_GAP = 44
+const AMP = 140
+const PRIZE_H = 560
 /** Where a week banner parks once its block reaches the top of the frame. */
-const STICK = 18;
+const STICK = 18
 
-const nodeX = (i: number) => COL_X + AMP * Math.sin(i * 1.02);
+const nodeX = (i: number) => COL_X + AMP * Math.sin(i * 1.02)
 
 interface Block {
-  top: number;
-  trailTop: number;
-  height: number;
+  top: number
+  trailTop: number
+  height: number
 }
 
-const BLOCKS: Block[] = [];
+const BLOCKS: Block[] = []
 {
-  let y = TOP_PAD;
+  let y = TOP_PAD
   for (const w of WEEKS) {
-    const trailH = (w.checkpoints.length - 1) * STEP + PUCK;
-    const height = BANNER_H + BANNER_GAP + trailH + WEEK_GAP;
-    BLOCKS.push({ top: y, trailTop: y + BANNER_H + BANNER_GAP, height });
-    y += height;
+    const trailH = (w.checkpoints.length - 1) * STEP + PUCK
+    const height = BANNER_H + BANNER_GAP + trailH + WEEK_GAP
+    BLOCKS.push({ top: y, trailTop: y + BANNER_H + BANNER_GAP, height })
+    y += height
   }
 }
 
 // BLOCKS is built above, one entry per week, so it is never empty; the
 // fallback keeps that a compile-time fact rather than an assertion.
-const LAST = BLOCKS[BLOCKS.length - 1] ?? { top: 0, trailTop: 0, height: 0 };
-const PRIZE_TOP = LAST.top + LAST.height + 40;
-const PRIZE_CENTRE = PRIZE_TOP + PRIZE_H / 2;
-const STAGE_H = PRIZE_TOP + PRIZE_H + 140;
+const LAST = BLOCKS[BLOCKS.length - 1] ?? { top: 0, trailTop: 0, height: 0 }
+const PRIZE_TOP = LAST.top + LAST.height + 40
+const PRIZE_CENTRE = PRIZE_TOP + PRIZE_H / 2
+const STAGE_H = PRIZE_TOP + PRIZE_H + 140
 
 /* ------------------------------------------------------------------ *
  * Timeline
@@ -93,13 +88,13 @@ const T = {
   dropIn: 900, // close on the trail column
   descent: 7200, // the fall, week 1 to the prize
   settle: 900,
-};
+}
 
-const T_PLATFORM = T.titleHold;
-const T_TRAIL = T_PLATFORM + T.titleOut;
-const T_DESCENT = T_TRAIL + T.dropIn;
-const T_SETTLE = T_DESCENT + T.descent;
-const T_END = T_SETTLE + T.settle;
+const T_PLATFORM = T.titleHold
+const T_TRAIL = T_PLATFORM + T.titleOut
+const T_DESCENT = T_TRAIL + T.dropIn
+const T_SETTLE = T_DESCENT + T.descent
+const T_END = T_SETTLE + T.settle
 
 const SCRIPT: { at: number; kicker: string; line: string | ((goal: string) => string) }[] = [
   {
@@ -132,18 +127,18 @@ const SCRIPT: { at: number; kicker: string; line: string | ((goal: string) => st
     kicker: "And at the bottom",
     line: (goal: string) => `A ${goal}, shipped to your door.`,
   },
-];
+]
 
-const easeInOutSine = (t: number) => -(Math.cos(Math.PI * t) - 1) / 2;
-const easeOutExpo = (t: number) => (t >= 1 ? 1 : 1 - Math.pow(2, -10 * t));
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-const clamp01 = (t: number) => (t < 0 ? 0 : t > 1 ? 1 : t);
+const easeInOutSine = (t: number) => -(Math.cos(Math.PI * t) - 1) / 2
+const easeOutExpo = (t: number) => (t >= 1 ? 1 : 1 - Math.pow(2, -10 * t))
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t
+const clamp01 = (t: number) => (t < 0 ? 0 : t > 1 ? 1 : t)
 
 /* ------------------------------------------------------------------ *
  * Stage
  * ------------------------------------------------------------------ */
 function MiniPanel({ className, children }: { className?: string; children?: React.ReactNode }) {
-  return <div className={cx("rounded-2xl border-2 border-line bg-cream", className)}>{children}</div>;
+  return <div className={cx("rounded-2xl border-2 border-line bg-cream", className)}>{children}</div>
 }
 
 const KIND_ICON = {
@@ -154,7 +149,7 @@ const KIND_ICON = {
   submit: IconUpload,
   demo: IconUpload,
   bonus: IconCoin,
-} as const;
+} as const
 
 function Stage({ goal }: { goal: PrinterGoal }) {
   return (
@@ -215,15 +210,15 @@ function Stage({ goal }: { goal: PrinterGoal }) {
 
       {/* ---- the trail: every week, in order ---- */}
       {WEEKS.map((week, wi) => {
-        const b = BLOCKS[wi];
-        if (!b) return null;
+        const b = BLOCKS[wi]
+        if (!b) return null
         return (
           <div key={week.id}>
             {week.checkpoints.map((cp, i) => {
-              const done = wi === 0 && i === 0;
-              const live = wi === 0 && i <= 2;
-              const gate = cp.kind === "submit" || cp.kind === "demo";
-              const Icon = done ? IconCheck : live ? KIND_ICON[cp.kind] : IconLock;
+              const done = wi === 0 && i === 0
+              const live = wi === 0 && i <= 2
+              const gate = cp.kind === "submit" || cp.kind === "demo"
+              const Icon = done ? IconCheck : live ? KIND_ICON[cp.kind] : IconLock
               return (
                 <div
                   key={cp.id}
@@ -239,13 +234,11 @@ function Stage({ goal }: { goal: PrinterGoal }) {
                     )}
                   >
                     <span className="puck-face">
-                      <Icon
-                        className={cx("text-[1.35rem]", done || live ? "text-white" : "text-sand-deep")}
-                      />
+                      <Icon className={cx("text-[1.35rem]", done || live ? "text-white" : "text-sand-deep")} />
                     </span>
                   </div>
                 </div>
-              );
+              )
             })}
 
             {week.checkpoints.slice(0, -1).map((_, i) =>
@@ -261,7 +254,7 @@ function Stage({ goal }: { goal: PrinterGoal }) {
               )),
             )}
           </div>
-        );
+        )
       })}
 
       {/* ---- the prize, at the bottom of the run ---- */}
@@ -271,13 +264,11 @@ function Stage({ goal }: { goal: PrinterGoal }) {
       >
         <span className="label rounded-full bg-gold px-3 py-1.5 text-navy">Grand prize</span>
         <PrinterArt kind={goal.kind} className="mt-3 h-[280px] w-auto" />
-        <p className="mt-3 text-[2rem] leading-none font-extrabold tracking-[-0.03em] text-navy">
-          {goal.name}
-        </p>
+        <p className="mt-3 text-[2rem] leading-none font-extrabold tracking-[-0.03em] text-navy">{goal.name}</p>
         <p className="hand mt-2 text-[1rem] text-navy-soft">finish all ten weeks</p>
       </div>
     </div>
-  );
+  )
 }
 
 /**
@@ -294,7 +285,7 @@ function WeekBanners({ refs }: { refs: React.RefObject<(HTMLDivElement | null)[]
         <div
           key={week.id}
           ref={(el) => {
-            refs.current[i] = el;
+            refs.current[i] = el
           }}
           className="absolute top-0 left-1/2"
           style={{
@@ -311,11 +302,7 @@ function WeekBanners({ refs }: { refs: React.RefObject<(HTMLDivElement | null)[]
               camera, which rasterises the filtered result at one size and
               stretches it to another. The real trail's banner separates them
               the same way. */}
-          <span
-            aria-hidden="true"
-            className="torn absolute inset-0 rounded"
-            style={{ background: week.accent }}
-          />
+          <span aria-hidden="true" className="torn absolute inset-0 rounded" style={{ background: week.accent }} />
           <div className="relative flex h-full items-center gap-4 px-6">
             <div className="min-w-0 flex-1">
               <p className="label text-white/85">
@@ -330,184 +317,184 @@ function WeekBanners({ refs }: { refs: React.RefObject<(HTMLDivElement | null)[]
         </div>
       ))}
     </div>
-  );
+  )
 }
 
 /* ------------------------------------------------------------------ *
  * Cinematic
  * ------------------------------------------------------------------ */
 export function Cinematic() {
-  const { setPhase, reducedMotion, goalId } = useStore();
-  const goal = printerById(goalId);
-  const camera = useRef<HTMLDivElement>(null);
-  const banners = useRef<(HTMLDivElement | null)[]>([]);
-  const landing = useRef<(() => void) | null>(null);
-  const skipped = useRef(false);
-  const [ended, setEnded] = useState(reducedMotion);
-  const [beat, setBeat] = useState(reducedMotion ? SCRIPT.length - 1 : -1);
-  const [week, setWeek] = useState(reducedMotion ? WEEKS.length : 1);
+  const { setPhase, reducedMotion, goalId } = useStore()
+  const goal = printerById(goalId)
+  const camera = useRef<HTMLDivElement>(null)
+  const banners = useRef<(HTMLDivElement | null)[]>([])
+  const landing = useRef<(() => void) | null>(null)
+  const skipped = useRef(false)
+  const [ended, setEnded] = useState(reducedMotion)
+  const [beat, setBeat] = useState(reducedMotion ? SCRIPT.length - 1 : -1)
+  const [week, setWeek] = useState(reducedMotion ? WEEKS.length : 1)
   /** Depth, in whole percent, so the gauge re-renders ~100 times, not 800. */
-  const [depth, setDepth] = useState(reducedMotion ? 100 : 0);
+  const [depth, setDepth] = useState(reducedMotion ? 100 : 0)
   /** Last painted camera position, so a skip can land from where it is. */
-  const here = useRef({ fy: (BLOCKS[0]?.top ?? 0) + 250, scale: 0.6 });
+  const here = useRef({ fy: (BLOCKS[0]?.top ?? 0) + 250, scale: 0.6 })
 
   // The diorama is built once and kept out of every re-render the readouts
   // trigger, so the fall stays a pure transform on a stable layer.
-  const stage = useMemo(() => <Stage goal={goal} />, [goal]);
+  const stage = useMemo(() => <Stage goal={goal} />, [goal])
 
   useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const prev = document.body.style.overflow
+    document.body.style.overflow = "hidden"
     return () => {
-      document.body.style.overflow = prev;
-    };
-  }, []);
+      document.body.style.overflow = prev
+    }
+  }, [])
 
   useEffect(() => {
-    const node = camera.current;
-    if (!node) return;
+    const node = camera.current
+    if (!node) return
 
     // Wide enough to take in rail, trail and feed at once.
-    const platformScale = () => Math.min(window.innerWidth / 1620, window.innerHeight / 940);
+    const platformScale = () => Math.min(window.innerWidth / 1620, window.innerHeight / 940)
     // Close enough that the trail column and one banner fill the frame.
-    const trailScale = () => Math.min(window.innerWidth / 940, window.innerHeight / 620, 1.05);
+    const trailScale = () => Math.min(window.innerWidth / 940, window.innerHeight / 620, 1.05)
     // The closing frame has to hold the whole prize card above the CTA.
-    const CTA_ROOM = 190;
+    const CTA_ROOM = 190
     const prizeScale = () =>
-      Math.min(Math.max(Math.min(window.innerWidth / 720, (window.innerHeight - CTA_ROOM) / 600), 0.3), 1);
-    const prizeFocus = () => PRIZE_CENTRE + CTA_ROOM / 2 / prizeScale();
+      Math.min(Math.max(Math.min(window.innerWidth / 720, (window.innerHeight - CTA_ROOM) / 600), 0.3), 1)
+    const prizeFocus = () => PRIZE_CENTRE + CTA_ROOM / 2 / prizeScale()
 
     const apply = (fy: number, scale: number) => {
       node.style.transform =
         `translate(-50%, -50%) scale(${scale.toFixed(4)}) ` +
-        `translate(${STAGE_W / 2 - COL_X}px, ${STAGE_H / 2 - fy}px)`;
-    };
+        `translate(${STAGE_W / 2 - COL_X}px, ${STAGE_H / 2 - fy}px)`
+    }
 
     /**
      * Sticky, by hand: a banner tracks its block until the block reaches the
      * top of the frame, holds there, then gets pushed up by the next one.
      */
     const pinBanners = (fy: number, scale: number) => {
-      const vh = window.innerHeight;
-      const h = BANNER_H * scale;
+      const vh = window.innerHeight
+      const h = BANNER_H * scale
       // The counter reports the top-most banner still on screen, so the number
       // and the header a viewer is reading always name the same week.
-      let pinned = -1;
+      let pinned = -1
       for (let i = 0; i < BLOCKS.length; i += 1) {
-        const el = banners.current[i];
-        const natural = ((BLOCKS[i]?.top ?? 0) - fy) * scale + vh / 2;
-        const nextTop = BLOCKS[i + 1]?.top ?? PRIZE_TOP;
-        const nextNatural = (nextTop - fy) * scale + vh / 2;
-        const y = Math.min(Math.max(natural, STICK), nextNatural - h);
-        if (pinned < 0 && y + h > 0) pinned = i;
-        if (!el) continue;
+        const el = banners.current[i]
+        const natural = ((BLOCKS[i]?.top ?? 0) - fy) * scale + vh / 2
+        const nextTop = BLOCKS[i + 1]?.top ?? PRIZE_TOP
+        const nextNatural = (nextTop - fy) * scale + vh / 2
+        const y = Math.min(Math.max(natural, STICK), nextNatural - h)
+        if (pinned < 0 && y + h > 0) pinned = i
+        if (!el) continue
         if (y + h < -24 || natural > vh + 48) {
-          if (el.style.display !== "none") el.style.display = "none";
-          continue;
+          if (el.style.display !== "none") el.style.display = "none"
+          continue
         }
-        if (el.style.display === "none") el.style.display = "";
-        el.style.transform = `translateY(${y.toFixed(1)}px) scale(${scale.toFixed(4)})`;
+        if (el.style.display === "none") el.style.display = ""
+        el.style.transform = `translateY(${y.toFixed(1)}px) scale(${scale.toFixed(4)})`
       }
-      return pinned < 0 ? WEEKS.length : pinned + 1;
-    };
+      return pinned < 0 ? WEEKS.length : pinned + 1
+    }
 
-    const startY = (BLOCKS[0]?.top ?? 0) + 250;
-    const endY = PRIZE_CENTRE;
+    const startY = (BLOCKS[0]?.top ?? 0) + 250
+    const endY = PRIZE_CENTRE
 
     if (reducedMotion) {
-      apply(prizeFocus(), prizeScale());
-      pinBanners(prizeFocus(), prizeScale());
-      return;
+      apply(prizeFocus(), prizeScale())
+      pinBanners(prizeFocus(), prizeScale())
+      return
     }
 
     // A skip plays its own short landing so the camera and the banners stay in
     // step instead of the banners freezing mid-flight.
     landing.current = () => {
-      const from = here.current;
-      const toFy = prizeFocus();
-      const toScale = prizeScale();
-      const t1 = performance.now();
+      const from = here.current
+      const toFy = prizeFocus()
+      const toScale = prizeScale()
+      const t1 = performance.now()
       const land = (now: number) => {
-        const k = easeOutExpo(clamp01((now - t1) / 700));
-        const fy = lerp(from.fy, toFy, k);
-        const sc = lerp(from.scale, toScale, k);
-        apply(fy, sc);
-        pinBanners(fy, sc);
-        if (k < 1) window.requestAnimationFrame(land);
-      };
-      window.requestAnimationFrame(land);
-    };
+        const k = easeOutExpo(clamp01((now - t1) / 700))
+        const fy = lerp(from.fy, toFy, k)
+        const sc = lerp(from.scale, toScale, k)
+        apply(fy, sc)
+        pinBanners(fy, sc)
+        if (k < 1) window.requestAnimationFrame(land)
+      }
+      window.requestAnimationFrame(land)
+    }
 
-    let raf = 0;
-    const t0 = performance.now();
+    let raf = 0
+    const t0 = performance.now()
 
     const frame = (now: number) => {
-      if (skipped.current) return;
-      const t = now - t0;
+      if (skipped.current) return
+      const t = now - t0
 
-      let fy: number;
-      let scale: number;
+      let fy: number
+      let scale: number
 
       if (t < T_PLATFORM) {
         // Held close on the head of the trail while the title card sits over it.
-        fy = startY;
-        scale = platformScale() * 1.55;
+        fy = startY
+        scale = platformScale() * 1.55
       } else if (t < T_TRAIL) {
-        const k = easeOutExpo(clamp01((t - T_PLATFORM) / T.titleOut));
-        fy = lerp(startY, 460, k);
-        scale = lerp(platformScale() * 1.55, platformScale(), k);
+        const k = easeOutExpo(clamp01((t - T_PLATFORM) / T.titleOut))
+        fy = lerp(startY, 460, k)
+        scale = lerp(platformScale() * 1.55, platformScale(), k)
       } else if (t < T_DESCENT) {
-        const k = easeInOutSine(clamp01((t - T_TRAIL) / T.dropIn));
-        fy = lerp(460, startY, k);
-        scale = lerp(platformScale(), trailScale(), k);
+        const k = easeInOutSine(clamp01((t - T_TRAIL) / T.dropIn))
+        fy = lerp(460, startY, k)
+        scale = lerp(platformScale(), trailScale(), k)
       } else if (t < T_SETTLE) {
         // The fall: one unbroken move, slow away and slow in. The camera also
         // pulls back where it is moving fastest, so two banners are in frame at
         // the speed where one would be a blur.
-        const k = easeInOutSine(clamp01((t - T_DESCENT) / T.descent));
-        fy = lerp(startY, endY - 90, k);
-        scale = trailScale() * (1 - 0.2 * Math.sin(Math.PI * k));
+        const k = easeInOutSine(clamp01((t - T_DESCENT) / T.descent))
+        fy = lerp(startY, endY - 90, k)
+        scale = trailScale() * (1 - 0.2 * Math.sin(Math.PI * k))
       } else {
-        const k = easeOutExpo(clamp01((t - T_SETTLE) / T.settle));
-        fy = lerp(endY - 90, prizeFocus(), k);
-        scale = lerp(trailScale(), prizeScale(), k);
+        const k = easeOutExpo(clamp01((t - T_SETTLE) / T.settle))
+        fy = lerp(endY - 90, prizeFocus(), k)
+        scale = lerp(trailScale(), prizeScale(), k)
       }
 
-      apply(fy, scale);
-      const pinned = pinBanners(fy, scale);
-      here.current = { fy, scale };
+      apply(fy, scale)
+      const pinned = pinBanners(fy, scale)
+      here.current = { fy, scale }
 
       // Readouts come from where the camera actually is, not from the clock.
-      const pct = Math.round(clamp01((fy - startY) / (endY - startY)) * 100);
-      setDepth((d) => (d === pct ? d : pct));
-      setWeek((w) => (w === pinned ? w : pinned));
+      const pct = Math.round(clamp01((fy - startY) / (endY - startY)) * 100)
+      setDepth((d) => (d === pct ? d : pct))
+      setWeek((w) => (w === pinned ? w : pinned))
 
-      let idx = -1;
-      for (let i = 0; i < SCRIPT.length; i += 1) if (t >= (SCRIPT[i]?.at ?? 0)) idx = i;
-      setBeat((b) => (b === idx ? b : idx));
+      let idx = -1
+      for (let i = 0; i < SCRIPT.length; i += 1) if (t >= (SCRIPT[i]?.at ?? 0)) idx = i
+      setBeat((b) => (b === idx ? b : idx))
 
       if (t >= T_END) {
-        setEnded(true);
-        return;
+        setEnded(true)
+        return
       }
-      raf = window.requestAnimationFrame(frame);
-    };
+      raf = window.requestAnimationFrame(frame)
+    }
 
-    raf = window.requestAnimationFrame(frame);
-    return () => window.cancelAnimationFrame(raf);
-  }, [reducedMotion]);
+    raf = window.requestAnimationFrame(frame)
+    return () => window.cancelAnimationFrame(raf)
+  }, [reducedMotion])
 
   function skip() {
-    skipped.current = true;
-    landing.current?.();
-    setDepth(100);
-    setWeek(WEEKS.length);
-    setBeat(SCRIPT.length - 1);
-    setEnded(true);
+    skipped.current = true
+    landing.current?.()
+    setDepth(100)
+    setWeek(WEEKS.length)
+    setBeat(SCRIPT.length - 1)
+    setEnded(true)
   }
 
-  const title = beat < 0;
-  const line = beat >= 0 ? SCRIPT[beat] : null;
+  const title = beat < 0
+  const line = beat >= 0 ? SCRIPT[beat] : null
 
   return (
     <div className="fixed inset-0 z-[90] overflow-hidden bg-cream">
@@ -589,9 +576,7 @@ export function Cinematic() {
         <div className="absolute inset-x-0 bottom-0 z-20 flex justify-center px-5 pb-8 sm:pb-10">
           <div
             className="sketch sketch-2 w-full max-w-md rounded-3xl bg-cream px-6 py-4 text-center lift-shadow motion-safe:animate-[hl-rise_.5s_cubic-bezier(.16,1,.3,1)_both]"
-            style={
-              { "--sk-color": "var(--color-gold-deep)", "--sk-radius": "26px" } as React.CSSProperties
-            }
+            style={{ "--sk-color": "var(--color-gold-deep)", "--sk-radius": "26px" } as React.CSSProperties}
           >
             <p className="label text-gold-deep">Ten weeks · fifty-nine checkpoints</p>
             <h2 className="mt-1.5 text-[clamp(1.2rem,3.2vw,1.6rem)] leading-tight font-extrabold tracking-[-0.03em] text-navy">
@@ -614,5 +599,5 @@ export function Cinematic() {
         </button>
       )}
     </div>
-  );
+  )
 }

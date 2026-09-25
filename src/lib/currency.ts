@@ -76,9 +76,7 @@ export async function getBalances(tx: Tx, userId: string): Promise<Balances> {
  * that, and `purchase()` is its only caller that matters.
  */
 export function spendableFor(balances: Balances, category: ShopItemCategory): number {
-  return category === ShopItemCategory.PRINTER
-    ? balances.total
-    : balances.spendable
+  return category === ShopItemCategory.PRINTER ? balances.total : balances.spendable
 }
 
 /** Lifetime earnings, ignoring spending. For progress displays. */
@@ -105,10 +103,7 @@ export interface LedgerEntryParams {
  * insert cannot interleave with a concurrent write and record a
  * balanceBefore/balanceAfter pair that was never true.
  */
-export async function appendLedgerEntry(
-  tx: Tx,
-  params: LedgerEntryParams,
-): Promise<LedgerEntry> {
+export async function appendLedgerEntry(tx: Tx, params: LedgerEntryParams): Promise<LedgerEntry> {
   const bucket = params.bucket ?? CoinBucket.SPENDABLE
   // Scoped to the bucket: a combined figure here would make the audit columns
   // disagree with the balance the participant was actually shown and spent
@@ -164,10 +159,7 @@ export interface ReconcileParams {
  *
  * Must run inside a transaction, for the same reason as appendLedgerEntry.
  */
-export async function reconcileGrant(
-  tx: Tx,
-  params: ReconcileParams,
-): Promise<LedgerEntry | null> {
+export async function reconcileGrant(tx: Tx, params: ReconcileParams): Promise<LedgerEntry | null> {
   const current = await sumFor(tx, {
     userId: params.userId,
     themeProjectId: params.themeProjectId,

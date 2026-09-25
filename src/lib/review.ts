@@ -1,13 +1,6 @@
 import "server-only"
 import prisma from "@/lib/prisma"
-import {
-  CoinBucket,
-  LedgerKind,
-  Phase,
-  PhaseStatus,
-  ReviewPass,
-  ReviewResult,
-} from "@/app/generated/prisma/enums"
+import { CoinBucket, LedgerKind, Phase, PhaseStatus, ReviewPass, ReviewResult } from "@/app/generated/prisma/enums"
 import type { Prisma } from "@/app/generated/prisma/client"
 import { HttpError } from "@/lib/errors"
 import { buildCoinsFor, designCoinsFor, getHoursBreakdown, type CoinSplit } from "@/lib/hours"
@@ -32,10 +25,7 @@ export type ClaimResult =
  * collides. Never implement claiming as read-then-write: two reviewers opening
  * the queue at the same moment both read "unclaimed" and both proceed.
  */
-export async function claimSubmission(
-  submissionId: string,
-  reviewerId: string,
-): Promise<ClaimResult> {
+export async function claimSubmission(submissionId: string, reviewerId: string): Promise<ClaimResult> {
   const owner = await prisma.phaseSubmission.findUnique({
     where: { id: submissionId },
     select: { themeProject: { select: { userId: true } } },
@@ -150,11 +140,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
   if (submission.resolvedAt) {
     throw new HttpError("ALREADY_RESOLVED", "This submission has already been decided")
   }
-  if (
-    submission.claim &&
-    submission.claim.reviewerId !== input.reviewerId &&
-    submission.claim.expiresAt > new Date()
-  ) {
+  if (submission.claim && submission.claim.reviewerId !== input.reviewerId && submission.claim.expiresAt > new Date()) {
     throw new HttpError("CLAIMED_BY_OTHER", "Another reviewer holds the claim on this submission")
   }
 
@@ -165,10 +151,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
   // A build cannot be approved before its design is. Submitting out of order is
   // fine — see canSubmitPhase — but paying out of order is not.
   if (approving && phase === Phase.BUILD && project.designStatus !== PhaseStatus.approved) {
-    throw new HttpError(
-      "DESIGN_NOT_APPROVED",
-      "Approve the design phase for this theme before approving the build",
-    )
+    throw new HttpError("DESIGN_NOT_APPROVED", "Approve the design phase for this theme before approving the build")
   }
 
   let tier = project.tier
@@ -193,9 +176,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
     )
   }
 
-  const approvedHours = approving
-    ? (input.hoursOverride ?? breakdown.computedTotal)
-    : null
+  const approvedHours = approving ? (input.hoursOverride ?? breakdown.computedTotal) : null
 
   const grantUsd =
     approving && phase === Phase.DESIGN && tier
@@ -332,9 +313,10 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
         kind: LedgerKind.DESIGN_BANKED_HOURS,
         bucket: CoinBucket.BANKED,
         target: approving ? (coins?.banked ?? 0) : 0,
-        note: approving && tierDef
-          ? `${approvedHours}h approved: ${tierDef.fundingHours}h funded at $${tierDef.grantUsd}, ${goal.bankedHours}h to the ${goal.name} fund`
-          : "Design approval withdrawn",
+        note:
+          approving && tierDef
+            ? `${approvedHours}h approved: ${tierDef.fundingHours}h funded at $${tierDef.grantUsd}, ${goal.bankedHours}h to the ${goal.name} fund`
+            : "Design approval withdrawn",
         createdById: input.reviewerId,
       })
       await reconcileGrant(tx, {
@@ -342,9 +324,10 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
         themeProjectId: project.id,
         kind: LedgerKind.DESIGN_EXCESS_HOURS,
         target: approving ? (coins?.spendable ?? 0) : 0,
-        note: approving && tierDef
-          ? `Hours beyond Tier ${tier}'s ${tierDef.fundingHours}h funded and ${goal.bankedHours}h banked`
-          : "Design approval withdrawn",
+        note:
+          approving && tierDef
+            ? `Hours beyond Tier ${tier}'s ${tierDef.fundingHours}h funded and ${goal.bankedHours}h banked`
+            : "Design approval withdrawn",
         createdById: input.reviewerId,
       })
     }
@@ -359,9 +342,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
         kind: LedgerKind.BUILD_BANKED_HOURS,
         bucket: CoinBucket.BANKED,
         target: approving ? (coins?.banked ?? 0) : 0,
-        note: approving
-          ? `${BUILD_HOURS}h of build work to the ${goal.name} fund`
-          : "Build approval withdrawn",
+        note: approving ? `${BUILD_HOURS}h of build work to the ${goal.name} fund` : "Build approval withdrawn",
         createdById: input.reviewerId,
       })
       await reconcileGrant(tx, {

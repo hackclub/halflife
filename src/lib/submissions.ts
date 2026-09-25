@@ -32,10 +32,7 @@ export interface ReadinessCheck {
  * recomputes eligibility server-side, because a checklist rendered five minutes
  * ago is not an authorisation.
  */
-export async function getSubmitReadiness(
-  project: ThemeProject,
-  phase: Phase,
-): Promise<ReadinessCheck[]> {
+export async function getSubmitReadiness(project: ThemeProject, phase: Phase): Promise<ReadinessCheck[]> {
   const breakdown = await getHoursBreakdown(project.id, phase)
   const checks: ReadinessCheck[] = [
     {
@@ -61,10 +58,7 @@ export async function getSubmitReadiness(
       key: "design",
       label: "Design phase submitted",
       ok: project.designStatus !== PhaseStatus.draft,
-      detail:
-        project.designStatus === PhaseStatus.draft
-          ? "Submit your design before submitting the build"
-          : undefined,
+      detail: project.designStatus === PhaseStatus.draft ? "Submit your design before submitting the build" : undefined,
     })
   }
   return checks
@@ -132,10 +126,7 @@ export async function submitPhase(
 
   const breakdown = await getHoursBreakdown(themeProjectId, phase)
   if (breakdown.journalEntryCount === 0 && breakdown.hackatimeHours === 0) {
-    throw new HttpError(
-      "UNPROCESSABLE",
-      "Log at least one work session before submitting this phase",
-    )
+    throw new HttpError("UNPROCESSABLE", "Log at least one work session before submitting this phase")
   }
 
   // Identity verification is gated here rather than at signup, so people can
@@ -154,10 +145,7 @@ export async function submitPhase(
   if (process.env.SKIP_YSWS_VERIFICATION_CHECK !== "true" && verificationStatus !== "verified") {
     verificationStatus = (await syncHcaProfile(userId)) ?? verificationStatus
   }
-  if (
-    process.env.SKIP_YSWS_VERIFICATION_CHECK !== "true" &&
-    verificationStatus !== "verified"
-  ) {
+  if (process.env.SKIP_YSWS_VERIFICATION_CHECK !== "true" && verificationStatus !== "verified") {
     throw new HttpError(
       "NOT_VERIFIED",
       "Identity verification is required before submitting. Verify at identity.hackclub.com.",
@@ -200,10 +188,7 @@ export async function submitPhase(
     })
     await tx.themeProject.update({
       where: { id: themeProjectId },
-      data:
-        phase === Phase.DESIGN
-          ? { designStatus: PhaseStatus.in_review }
-          : { buildStatus: PhaseStatus.in_review },
+      data: phase === Phase.DESIGN ? { designStatus: PhaseStatus.in_review } : { buildStatus: PhaseStatus.in_review },
     })
     return submission
   })
@@ -236,18 +221,13 @@ export async function unsubmitPhase(userId: string, themeProjectId: string, phas
     await tx.phaseSubmission.delete({ where: { id: open.id } })
     await tx.themeProject.update({
       where: { id: themeProjectId },
-      data:
-        phase === Phase.DESIGN
-          ? { designStatus: PhaseStatus.draft }
-          : { buildStatus: PhaseStatus.draft },
+      data: phase === Phase.DESIGN ? { designStatus: PhaseStatus.draft } : { buildStatus: PhaseStatus.draft },
     })
   })
 }
 
 /** Stamp a session with the day and program week it belongs to. */
-export async function stampSessionTiming(
-  date: Date,
-): Promise<{ effectiveDate: string; weekNumber: number }> {
+export async function stampSessionTiming(date: Date): Promise<{ effectiveDate: string; weekNumber: number }> {
   const settings = await getProgramSettings()
   return {
     effectiveDate: effectiveDateFor(date, settings.programTimezone),

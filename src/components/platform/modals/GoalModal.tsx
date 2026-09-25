@@ -1,21 +1,15 @@
-"use client";
+"use client"
 
-import { useId, useState } from "react";
-import { PrinterArt } from "@/components/platform/art";
-import { IconCheck, IconClock, IconCoin } from "@/components/platform/icons";
-import { Button, cx } from "@/components/platform/ui";
-import { BUILD_HOURS } from "@/lib/curriculum";
-import {
-  MAX_HOURS_PER_WEEK,
-  PRINTERS,
-  printerById,
-  weeksToGo,
-  type PrinterGoal,
-} from "@/lib/config/printers";
-import { useStore } from "@/lib/store";
-import { Modal, ModalTitle } from "./Modal";
+import { useId, useState } from "react"
+import { PrinterArt } from "@/components/platform/art"
+import { IconCheck, IconClock, IconCoin } from "@/components/platform/icons"
+import { Button, cx } from "@/components/platform/ui"
+import { BUILD_HOURS } from "@/lib/curriculum"
+import { MAX_HOURS_PER_WEEK, PRINTERS, printerById, weeksToGo, type PrinterGoal } from "@/lib/config/printers"
+import { useStore } from "@/lib/store"
+import { Modal, ModalTitle } from "./Modal"
 
-const TEAL = "var(--color-teal-deep)";
+const TEAL = "var(--color-teal-deep)"
 
 /**
  * Picking the machine at the end of the season. Eight of them, and the only
@@ -23,26 +17,26 @@ const TEAL = "var(--color-teal-deep)";
  * hours a week on tier 1 that price actually asks of you.
  */
 export function GoalModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { goalId, setGoal, coins } = useStore();
-  const [picked, setPicked] = useState(goalId);
-  const titleId = useId();
+  const { goalId, setGoal, coins } = useStore()
+  const [picked, setPicked] = useState(goalId)
+  const titleId = useId()
 
   // Reopening should start from whatever is taped up now, including a goal that
   // changed elsewhere — adjusting during render beats an effect that repaints.
-  const [seenGoal, setSeenGoal] = useState(goalId);
+  const [seenGoal, setSeenGoal] = useState(goalId)
   if (seenGoal !== goalId) {
-    setSeenGoal(goalId);
-    setPicked(goalId);
+    setSeenGoal(goalId)
+    setPicked(goalId)
   }
 
-  const goal = printerById(picked);
-  const unchanged = picked === goalId;
-  const toGo = Math.max(0, goal.coins - coins);
-  const weeks = weeksToGo(goal, coins);
+  const goal = printerById(picked)
+  const unchanged = picked === goalId
+  const toGo = Math.max(0, goal.coins - coins)
+  const weeks = weeksToGo(goal, coins)
 
   function commit() {
-    setGoal(picked);
-    onClose();
+    setGoal(picked)
+    onClose()
   }
 
   return (
@@ -67,8 +61,8 @@ export function GoalModal({ open, onClose }: { open: boolean; onClose: () => voi
               ) : (
                 <>
                   {" — "}
-                  <span className="tabular-nums">{toGo.toLocaleString()}</span> coins to go, and the
-                  build weeks cover it at {BUILD_HOURS} hours a week.{" "}
+                  <span className="tabular-nums">{toGo.toLocaleString()}</span> coins to go, and the build weeks cover
+                  it at {BUILD_HOURS} hours a week.{" "}
                 </>
               )
             ) : (
@@ -112,7 +106,7 @@ export function GoalModal({ open, onClose }: { open: boolean; onClose: () => voi
         ))}
       </div>
     </Modal>
-  );
+  )
 }
 
 /* A button, so every child below has to be phrasing content — spans, not divs. */
@@ -122,12 +116,12 @@ function GoalCard({
   current,
   onSelect,
 }: {
-  goal: PrinterGoal;
-  selected: boolean;
-  current: boolean;
-  onSelect: () => void;
+  goal: PrinterGoal
+  selected: boolean
+  current: boolean
+  onSelect: () => void
 }) {
-  const load = Math.round((goal.hoursPerWeek / MAX_HOURS_PER_WEEK) * 100);
+  const load = Math.round((goal.hoursPerWeek / MAX_HOURS_PER_WEEK) * 100)
 
   return (
     <button
@@ -143,9 +137,7 @@ function GoalCard({
         {
           "--sk-color": selected ? "var(--color-teal-deep)" : "var(--color-line)",
           "--sk-radius": "16px",
-          background: selected
-            ? "color-mix(in srgb, var(--color-mint) 52%, #fff)"
-            : "var(--color-paper)",
+          background: selected ? "color-mix(in srgb, var(--color-mint) 52%, #fff)" : "var(--color-paper)",
         } as React.CSSProperties
       }
     >
@@ -178,14 +170,8 @@ function GoalCard({
               {selected && <span className="size-[7px] rounded-full bg-white" />}
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-[1.02rem] leading-tight font-extrabold text-navy">
-                {goal.name}
-              </span>
-              {current && (
-                <span className="hand mt-0.5 block text-[0.72rem] text-teal-deep">
-                  your goal right now
-                </span>
-              )}
+              <span className="block text-[1.02rem] leading-tight font-extrabold text-navy">{goal.name}</span>
+              {current && <span className="hand mt-0.5 block text-[0.72rem] text-teal-deep">your goal right now</span>}
             </span>
             {goal.note && (
               <span
@@ -199,9 +185,7 @@ function GoalCard({
             )}
           </span>
 
-          <span className="mt-1.5 block text-[0.79rem] leading-snug text-navy-soft">
-            {goal.blurb}
-          </span>
+          <span className="mt-1.5 block text-[0.79rem] leading-snug text-navy-soft">{goal.blurb}</span>
         </span>
       </span>
 
@@ -232,5 +216,5 @@ function GoalCard({
         </span>
       </span>
     </button>
-  );
+  )
 }

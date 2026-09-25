@@ -1,10 +1,6 @@
 import "server-only"
 import type { Theme } from "@/app/generated/prisma/enums"
-import {
-  REPO_FILE_KINDS,
-  THEME_REPO_REQUIREMENTS,
-  type RepoFileKind,
-} from "@/lib/config/repo-checks"
+import { REPO_FILE_KINDS, THEME_REPO_REQUIREMENTS, type RepoFileKind } from "@/lib/config/repo-checks"
 import { GitHubUnavailable, gh } from "@/lib/github"
 
 /**
@@ -206,7 +202,10 @@ function matches(kind: RepoFileKind, paths: readonly string[]): string[] {
 }
 
 function sample(found: readonly string[]): string {
-  const shown = found.slice(0, 3).map((p) => p.split("/").pop()).join(", ")
+  const shown = found
+    .slice(0, 3)
+    .map((p) => p.split("/").pop())
+    .join(", ")
   return found.length > 3 ? `${shown} and ${found.length - 3} more` : shown
 }
 

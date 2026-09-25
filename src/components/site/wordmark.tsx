@@ -1,11 +1,11 @@
-import type { StaticImageData } from "next/image";
+import type { StaticImageData } from "next/image"
 
-import Image from "next/image";
+import Image from "next/image"
 
-import logoArt from "../../../public/art/logo.png";
-import { BRAND } from "@/lib/site/content";
+import logoArt from "../../../public/art/logo.png"
+import { BRAND } from "@/lib/site/content"
 
-const LOGO_SRC: StaticImageData | null = logoArt;
+const LOGO_SRC: StaticImageData | null = logoArt
 
 /**
  * The box the artwork is laid into — the file's own aspect, read off the file.
@@ -23,14 +23,14 @@ const LOGO_SRC: StaticImageData | null = logoArt;
  * takes its ratio from the import rather than from anything typed here. A
  * replacement logo of any shape gets a box of that shape.
  */
-const LOGO_ASPECT = LOGO_SRC ? LOGO_SRC.width / LOGO_SRC.height : 1;
+const LOGO_ASPECT = LOGO_SRC ? LOGO_SRC.width / LOGO_SRC.height : 1
 
 type Props = {
   /** Renders as the page's h1 in the hero, plain text elsewhere. */
-  as?: "h1" | "p" | "span";
-  className?: string;
+  as?: "h1" | "p" | "span"
+  className?: string
   /** Font size for the live-type fallback, as a CSS length. */
-  fontSize?: string;
+  fontSize?: string
   /**
    * Renders `LOGO_SRC` instead of live type. The hero opts in; the footer does
    * not, because it recolours its wordmark to cyan with `text-hl-cyan!` and a
@@ -38,7 +38,7 @@ type Props = {
    * its 853 paths — so no `color` can reach them. Live Masterpiece stays the
    * only wordmark that can take a colour.
    */
-  art?: boolean;
+  art?: boolean
   /**
    * How wide the artwork runs, as a CSS length. Height follows from the file's
    * own aspect, so a caller never has to know it.
@@ -48,17 +48,11 @@ type Props = {
    * how much height that buys: the ink is 1125 x 787, so every unit of width
    * brings 0.7 of height with it, and the callers say where that lands.
    */
-  artWidth?: string;
-};
+  artWidth?: string
+}
 
-export default function Wordmark({
-  as = "span",
-  className = "",
-  fontSize,
-  art = false,
-  artWidth,
-}: Props) {
-  const Tag = as;
+export default function Wordmark({ as = "span", className = "", fontSize, art = false, artWidth }: Props) {
+  const Tag = as
 
   if (art && LOGO_SRC) {
     return (
@@ -67,10 +61,7 @@ export default function Wordmark({
         {/* `mx-auto` so the box still centres when a caller hands the tag a
             full-width class: the artwork is narrower than the tag now, and a
             block child does not answer to the plate's `text-center`. */}
-        <span
-          className="relative mx-auto block"
-          style={{ width: artWidth, aspectRatio: String(LOGO_ASPECT) }}
-        >
+        <span className="relative mx-auto block" style={{ width: artWidth, aspectRatio: String(LOGO_ASPECT) }}>
           {/* Contain, not cover. Cover was there to trim transparent air off a
               file that had some; with the box now cut from the file's own
               proportions the two agree, so neither fits differently — and
@@ -92,15 +83,12 @@ export default function Wordmark({
           />
         </span>
       </Tag>
-    );
+    )
   }
 
   return (
-    <Tag
-      className={`font-hand leading-[0.86] text-white ${className}`}
-      style={{ fontSize, letterSpacing: "-0.045em" }}
-    >
+    <Tag className={`font-hand leading-[0.86] text-white ${className}`} style={{ fontSize, letterSpacing: "-0.045em" }}>
       {BRAND.name.toLowerCase()}
     </Tag>
-  );
+  )
 }

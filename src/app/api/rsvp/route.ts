@@ -13,11 +13,7 @@ export const POST = withRoute(async (req: Request) => {
   if (parsed.error) return parsed.error
 
   const h = await headers()
-  const ip =
-    h.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    h.get("x-real-ip") ??
-    h.get("cf-connecting-ip") ??
-    null
+  const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? h.get("x-real-ip") ?? h.get("cf-connecting-ip") ?? null
 
   // Buffered in Postgres and drained to Airtable by a job. A signup must not
   // fail because a third party is rate-limiting us.
