@@ -2,8 +2,11 @@
 
 import { useState, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
-import { Button, Chip, Field, OptionRow, Panel, inputClass } from "@/components/platform/ui"
+import { Button, Chip, Field, OptionRow, Panel } from "@/components/platform/ui"
 import type { OnboardingView } from "@/lib/onboarding-view"
+
+const projectInputClass =
+  "block w-full rounded-xl border-2 border-line bg-black/[.02] px-4 py-2.5 text-[0.9rem] text-navy outline-none transition-colors placeholder:text-navy-soft/70 hover:border-line-strong focus:border-violet focus:bg-white"
 
 interface OnboardingResponse {
   onboarding?: OnboardingView
@@ -147,7 +150,7 @@ export function OnboardingFlow({
             <Field id="onboarding-project-name" label="Project name" hint="Give it a cool name!">
               <input
                 id="onboarding-project-name"
-                className={inputClass}
+                className={projectInputClass}
                 value={title}
                 maxLength={120}
                 onChange={(event) => setTitle(event.target.value)}
@@ -156,7 +159,7 @@ export function OnboardingFlow({
             <Field id="onboarding-project-description" label="Project description">
               <textarea
                 id="onboarding-project-description"
-                className={`${inputClass} min-h-28 resize-y`}
+                className={`${projectInputClass} min-h-28 resize-y`}
                 value={description}
                 maxLength={5000}
                 onChange={(event) => setDescription(event.target.value)}
