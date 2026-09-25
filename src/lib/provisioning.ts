@@ -1,7 +1,7 @@
 import "server-only"
-import prisma from "@/lib/prisma"
 import type { Theme } from "@/app/generated/prisma/enums"
 import { THEMES } from "@/lib/config/program"
+import prisma from "@/lib/prisma"
 
 /**
  * Create one themed project row, when its week's "create a project" checkpoint

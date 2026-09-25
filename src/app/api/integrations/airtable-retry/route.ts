@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server"
+import { findUnsyncedSubmissions, syncSubmissionToYsws } from "@/lib/airtable/sync"
 import { ok, withRoute } from "@/lib/api"
 import { requireIntegrationAuth } from "@/lib/integration-auth"
-import { findUnsyncedSubmissions, syncSubmissionToYsws } from "@/lib/airtable/sync"
 import { trackSideEffect } from "@/lib/side-effects"
 import { recordSyncRun } from "@/lib/sync-run-log"
 

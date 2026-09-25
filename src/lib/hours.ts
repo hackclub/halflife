@@ -1,10 +1,10 @@
 import "server-only"
-import prisma from "@/lib/prisma"
 import { HoursSource, Phase } from "@/app/generated/prisma/enums"
-import { fetchProjectSeconds } from "@/lib/hackatime"
-import { getTierOrThrow, type TierId } from "@/lib/config/tiers"
-import { BUILD_HOURS, COINS_PER_HOUR, MAX_COINS_PER_PROJECT } from "@/lib/config/program"
 import type { PrinterGoal } from "@/lib/config/printers"
+import { BUILD_HOURS, COINS_PER_HOUR, MAX_COINS_PER_PROJECT } from "@/lib/config/program"
+import { getTierOrThrow, type TierId } from "@/lib/config/tiers"
+import { fetchProjectSeconds } from "@/lib/hackatime"
+import prisma from "@/lib/prisma"
 
 export interface HoursBreakdown {
   /** Sum over MANUAL sessions of (hoursApproved ?? hoursClaimed). */

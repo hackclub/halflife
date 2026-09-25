@@ -1,7 +1,7 @@
 import "server-only"
 import { timingSafeEqual } from "node:crypto"
 import type { NextRequest, NextResponse } from "next/server"
-import { fail, type ApiErrorBody } from "@/lib/api"
+import { type ApiErrorBody, fail } from "@/lib/api"
 
 function matches(presented: string, expected: string): boolean {
   const a = Buffer.from(presented)

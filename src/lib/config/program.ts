@@ -1,4 +1,4 @@
-import { Theme, Phase } from "@/app/generated/prisma/enums"
+import { Phase, Theme } from "@/app/generated/prisma/enums"
 
 /**
  * Every tunable program number lives in this file and ./tiers.ts. If you are

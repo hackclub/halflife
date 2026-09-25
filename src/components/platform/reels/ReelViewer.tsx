@@ -10,13 +10,13 @@ import {
   IconHeart,
   IconVolumeOff,
 } from "@/components/platform/icons"
-import { Panel, cx } from "@/components/platform/ui"
+import { cx, Panel } from "@/components/platform/ui"
 import type { FeedItem } from "@/lib/feed"
 import { useStore } from "@/lib/store"
 import { compact } from "./format"
 import { sendLike } from "./ReelCard"
 import { ReelComments, StageAvatar } from "./ReelComments"
-import { StageSlide, type SlideHandle } from "./StageSlide"
+import { type SlideHandle, StageSlide } from "./StageSlide"
 import { useFeed } from "./useFeed"
 import { RATES, usePlayerPrefs } from "./usePlayerPrefs"
 

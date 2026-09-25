@@ -4,14 +4,14 @@ import {
   getPermalink,
   inviteToChannel,
   postMessage,
-  verifySlackRequest,
   type SlackBlock,
+  verifySlackRequest,
 } from "@/lib/site/slack"
 import {
   SELF_RESOLVE_ACTIONS_BLOCK_ID,
   TICKET_ACTIONS_BLOCK_ID,
-  ticketSection,
   type TicketRef,
+  ticketSection,
 } from "@/lib/site/tickets"
 
 // Signature verification needs Node's crypto, not the edge runtime.

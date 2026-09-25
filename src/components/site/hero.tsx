@@ -1,17 +1,15 @@
-import type { CSSProperties } from "react"
-
 import Image from "next/image"
-
-import bgArt from "../../../public/art/bg.png"
+import type { CSSProperties } from "react"
 import AnnouncementBanner from "@/components/site/announcement-banner"
-// Parked: the corner decals, to be placed later.
-// import CornerDecal from "@/components/site/corner-decal";
-import flagArt from "../../../public/art/hackclub-flag.svg"
 import LoginMark from "@/components/site/login-mark"
 import SignupForm from "@/components/site/signup-form"
 import Wordmark from "@/components/site/wordmark"
 import { BRAND } from "@/lib/site/content"
 import { swashBoxWidth, u } from "@/lib/site/stage"
+import bgArt from "../../../public/art/bg.png"
+// Parked: the corner decals, to be placed later.
+// import CornerDecal from "@/components/site/corner-decal";
+import flagArt from "../../../public/art/hackclub-flag.svg"
 
 /**
  * The hero plate, taken to half the grid.

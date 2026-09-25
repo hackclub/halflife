@@ -1,9 +1,9 @@
-import prisma from "@/lib/prisma"
+import { ActionButton } from "@/app/components/forms/ActionButton"
+import { ShopItemForm } from "@/app/components/forms/ShopItemForm"
+import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
-import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
-import { ShopItemForm } from "@/app/components/forms/ShopItemForm"
-import { ActionButton } from "@/app/components/forms/ActionButton"
+import prisma from "@/lib/prisma"
 
 export const dynamic = "force-dynamic"
 

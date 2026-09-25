@@ -4,9 +4,9 @@ import { useRouter } from "next/navigation"
 import { useMemo, useState } from "react"
 import { ShopArt } from "@/components/platform/art"
 import { IconCheck, IconCoin } from "@/components/platform/icons"
-import { Panel, cx } from "@/components/platform/ui"
-import { useStore } from "@/lib/store"
+import { cx, Panel } from "@/components/platform/ui"
 import type { ShopItemView } from "@/lib/shop"
+import { useStore } from "@/lib/store"
 
 /**
  * The shelves, in the order they read on screen, mapped to the categories the

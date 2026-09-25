@@ -1,9 +1,9 @@
 import { ok, parseBody, withRoute } from "@/lib/api"
-import { requireSession } from "@/lib/guards"
-import { onboardingStepSchema } from "@/lib/schemas/onboarding"
-import { getOnboardingState, submitStep, type OnboardingAnswer } from "@/lib/onboarding"
-import { toOnboardingView } from "@/lib/onboarding-view"
 import { AuditAction, logAudit } from "@/lib/audit"
+import { requireSession } from "@/lib/guards"
+import { getOnboardingState, type OnboardingAnswer, submitStep } from "@/lib/onboarding"
+import { toOnboardingView } from "@/lib/onboarding-view"
+import { onboardingStepSchema } from "@/lib/schemas/onboarding"
 
 export const dynamic = "force-dynamic"
 

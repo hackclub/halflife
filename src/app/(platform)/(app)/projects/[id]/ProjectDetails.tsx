@@ -2,9 +2,9 @@
 
 import { useId, useState } from "react"
 import { IconPencil } from "@/components/platform/icons"
-import { Button, Chip, OptionRow, cx } from "@/components/platform/ui"
-import { TIERS } from "@/lib/curriculum"
+import { Button, Chip, cx, OptionRow } from "@/components/platform/ui"
 import { submitFloorFor, tierBankedFloor } from "@/lib/config/printers"
+import { TIERS } from "@/lib/curriculum"
 import { fmtHours } from "@/lib/projects"
 import { normalizeRepo } from "@/lib/repo"
 import { useStore } from "@/lib/store"

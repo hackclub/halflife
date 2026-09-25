@@ -1,8 +1,8 @@
 import Link from "next/link"
+import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import { listUsers } from "@/lib/queries/admin"
-import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
 
 export const dynamic = "force-dynamic"
 

@@ -1,9 +1,9 @@
-import prisma from "@/lib/prisma"
-import { ok, fail, parseBody, withRoute } from "@/lib/api"
-import { requireSession } from "@/lib/guards"
-import { hackatimeLinkSchema } from "@/lib/schemas/project"
-import { fetchProjectSeconds } from "@/lib/hackatime"
+import { fail, ok, parseBody, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
+import { requireSession } from "@/lib/guards"
+import { fetchProjectSeconds } from "@/lib/hackatime"
+import prisma from "@/lib/prisma"
+import { hackatimeLinkSchema } from "@/lib/schemas/project"
 
 type Params = { params: Promise<{ id: string }> }
 

@@ -1,7 +1,7 @@
 import "server-only"
-import prisma from "@/lib/prisma"
-import { getProgramSettings, effectiveDateFor } from "@/lib/program"
 import { getThemeDef } from "@/lib/config/program"
+import prisma from "@/lib/prisma"
+import { effectiveDateFor, getProgramSettings } from "@/lib/program"
 
 /**
  * The page that is about everyone else: Explore.

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
-import { postMessage, updateMessage, verifySlackRequest, type SlackBlock } from "@/lib/site/slack"
-import { resolveBlocks, ticketSection, type TicketRef } from "@/lib/site/tickets"
+import { postMessage, type SlackBlock, updateMessage, verifySlackRequest } from "@/lib/site/slack"
+import { resolveBlocks, type TicketRef, ticketSection } from "@/lib/site/tickets"
 
 export const runtime = "nodejs"
 

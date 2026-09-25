@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
+import { type ReactNode, useState } from "react"
 import { Button, Chip, Field, OptionRow, Panel } from "@/components/platform/ui"
 import type { OnboardingView } from "@/lib/onboarding-view"
 
@@ -80,13 +80,20 @@ export function OnboardingFlow({
     <Panel tone="gold" radius={20} className="bg-paper p-5 sm:p-7">
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <p className="label text-gold-deep">GETTING STARTED: {step.number}/{view.stepCount}</p>
+          <p className="label text-gold-deep">
+            GETTING STARTED: {step.number}/{view.stepCount}
+          </p>
           <h2 className="mt-1 text-[1.45rem] font-extrabold tracking-[-0.02em] text-navy sm:text-[1.7rem]">
             {step.heading}
           </h2>
         </div>
         {viewing > 0 ? (
-          <Button variant="outline" size="sm" onClick={() => setViewing((current) => Math.max(0, current - 1))} disabled={busy}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setViewing((current) => Math.max(0, current - 1))}
+            disabled={busy}
+          >
             Back
           </Button>
         ) : null}
@@ -112,7 +119,9 @@ export function OnboardingFlow({
                 <span className="text-[0.95rem] font-extrabold text-navy">{option.label}</span>
               </OptionRow>
             ))}
-            <p className="hand text-[0.8rem] text-navy-soft">This helps us suggest the right funding tier. It does not affect your experience.</p>
+            <p className="hand text-[0.8rem] text-navy-soft">
+              This helps us suggest the right funding tier. It does not affect your experience.
+            </p>
           </div>
         ) : null}
 
@@ -146,7 +155,9 @@ export function OnboardingFlow({
               void send({ step: "project", title, description })
             }}
           >
-            <p className="text-[0.9rem] leading-relaxed text-navy-soft">Tell us about your project! You can always edit this later.</p>
+            <p className="text-[0.9rem] leading-relaxed text-navy-soft">
+              Tell us about your project! You can always edit this later.
+            </p>
             <Field id="onboarding-project-name" label="Project name" hint="Give it a cool name!">
               <input
                 id="onboarding-project-name"
@@ -174,7 +185,8 @@ export function OnboardingFlow({
         {step.id === "idea" ? (
           <div className="space-y-4">
             <p className="text-[0.9rem] leading-relaxed text-navy-soft">
-              Taking one of these sets your project to Tier 1, since they are all scoped to Tier 1 work. Write your own idea instead if you want a bigger tier.
+              Taking one of these sets your project to Tier 1, since they are all scoped to Tier 1 work. Write your own
+              idea instead if you want a bigger tier.
             </p>
             <div className="grid gap-3 sm:grid-cols-2">
               {view.starterProjects.map((starter) => {
@@ -208,10 +220,14 @@ export function OnboardingFlow({
         {step.id === "tier" ? (
           <div className="space-y-4">
             <p className="text-[0.9rem] leading-relaxed text-navy-soft">
-              This is what we will fund your parts with. You can change it any time before you submit your design, and your reviewer decides the final tier when they approve it.
+              This is what we will fund your parts with. You can change it any time before you submit your design, and
+              your reviewer decides the final tier when they approve it.
             </p>
             {view.project.tierLocked ? (
-              <Note>You picked a starter project, so this one is Tier 1. Go back and write your own idea if you want to choose.</Note>
+              <Note>
+                You picked a starter project, so this one is Tier 1. Go back and write your own idea if you want to
+                choose.
+              </Note>
             ) : null}
             <div className="grid gap-3">
               {view.tiers.map((tier) => {
@@ -225,10 +241,15 @@ export function OnboardingFlow({
                         </h3>
                         <p className="mt-1 text-[0.84rem] leading-relaxed text-navy-soft">{tier.blurb}</p>
                       </div>
-                      {chosen ? <Chip tone="teal">Chosen</Chip> : tier.id === view.suggestedTier ? <Chip tone="gold">Suggested</Chip> : null}
+                      {chosen ? (
+                        <Chip tone="teal">Chosen</Chip>
+                      ) : tier.id === view.suggestedTier ? (
+                        <Chip tone="gold">Suggested</Chip>
+                      ) : null}
                     </div>
                     <p className="mt-3 text-[0.8rem] leading-relaxed text-navy-soft">
-                      {tier.fundingHours}h of work funds the project. Everything above that banks toward your printer, so a week is {tier.submitFloorHours}h before you can hand it in.
+                      {tier.fundingHours}h of work funds the project. Everything above that banks toward your printer,
+                      so a week is {tier.submitFloorHours}h before you can hand it in.
                     </p>
                     <Button
                       className="mt-4"
@@ -254,7 +275,10 @@ export function OnboardingFlow({
         {step.id === "tracking" ? (
           <div className="space-y-4">
             <p className="text-[0.92rem] leading-relaxed text-navy-soft">
-              Your hours are what get your project funded, and you log them two ways. A <strong className="text-navy">journal</strong> entry says what you did in a session. A <strong className="text-navy">timelapse</strong> is evidence for your reviewer, not extra hours, so it never counts twice.
+              Your hours are what get your project funded, and you log them two ways. A{" "}
+              <strong className="text-navy">journal</strong> entry says what you did in a session. A{" "}
+              <strong className="text-navy">timelapse</strong> is evidence for your reviewer, not extra hours, so it
+              never counts twice.
             </p>
             <div className="grid gap-3 sm:grid-cols-3">
               {[
@@ -272,7 +296,11 @@ export function OnboardingFlow({
               <Button variant="gold" disabled={busy} onClick={() => void send({ step: "tracking", dismissed: false })}>
                 Finish
               </Button>
-              <Button variant="outline" disabled={busy} onClick={() => void send({ step: "tracking", dismissed: true })}>
+              <Button
+                variant="outline"
+                disabled={busy}
+                onClick={() => void send({ step: "tracking", dismissed: true })}
+              >
                 I&rsquo;ve journalled before, skip this
               </Button>
             </div>

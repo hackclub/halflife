@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useState } from "react"
 import { IconClock, IconPlus, IconWarning, IconX } from "@/components/platform/icons"
-import { Button, Panel, cx, inputClass } from "@/components/platform/ui"
+import { Button, cx, inputClass, Panel } from "@/components/platform/ui"
 import { linkHackatime } from "@/lib/auth-client"
 import { fmtHours } from "@/lib/projects"
 import type { Phase } from "@/lib/types"
@@ -54,7 +54,7 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
   const load = useCallback(async () => {
     const [linksRes, projectsRes] = await Promise.all([
       fetch(`/api/projects/${projectId}/hackatime`, { cache: "no-store" }),
-      fetch(`/api/hackatime/projects`, { cache: "no-store" }),
+      fetch("/api/hackatime/projects", { cache: "no-store" }),
     ])
     try {
       setLinks((await read<{ links: Link[] }>(linksRes)).links)

@@ -1,9 +1,9 @@
 import "server-only"
-import prisma from "@/lib/prisma"
 import { Phase } from "@/app/generated/prisma/enums"
-import { getHoursBreakdown, type HoursBreakdown } from "@/lib/hours"
-import { getSubmitReadiness, canSubmitPhase, type ReadinessCheck } from "@/lib/submissions"
 import { getThemeDef, themeDefBySlug } from "@/lib/config/program"
+import { getHoursBreakdown, type HoursBreakdown } from "@/lib/hours"
+import prisma from "@/lib/prisma"
+import { canSubmitPhase, getSubmitReadiness, type ReadinessCheck } from "@/lib/submissions"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
 export async function getProjectBySlug(userId: string, slug: string) {

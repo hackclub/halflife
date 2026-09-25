@@ -1,9 +1,9 @@
 import "server-only"
 import { cache } from "react"
-import prisma from "@/lib/prisma"
-import { Phase } from "@/app/generated/prisma/enums"
 import type { ProgramSettings } from "@/app/generated/prisma/client"
+import { Phase } from "@/app/generated/prisma/enums"
 import { DEFAULT_EVENT_START_DATE, DEFAULT_PROGRAM_TIMEZONE, TOTAL_WEEKS } from "@/lib/config/program"
+import prisma from "@/lib/prisma"
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const WEEK_MS = 7 * DAY_MS

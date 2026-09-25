@@ -1,7 +1,7 @@
 "use client"
 
-import { IconCheck, IconFilm, IconPencil, IconPlay, IconWarning } from "@/components/platform/icons"
 import { useLayoutEffect, useRef, useState } from "react"
+import { IconCheck, IconFilm, IconPencil, IconPlay, IconWarning } from "@/components/platform/icons"
 import { Markdown } from "@/components/platform/Markdown"
 import { Chip, cx } from "@/components/platform/ui"
 import { fmtDate, fmtHours } from "@/lib/projects"

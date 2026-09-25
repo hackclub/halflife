@@ -2,12 +2,11 @@
 
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-
-import brushstroke from "../../../public/art/brushstroke.png"
+import { type CSSProperties, type ReactNode, useEffect, useId, useRef, useState } from "react"
 import { signInWith, useSession } from "@/lib/auth-client"
 import { BRAND } from "@/lib/site/content"
 import { SWASH_INSET_X, SWASH_INSET_Y } from "@/lib/site/stage"
-import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from "react"
+import brushstroke from "../../../public/art/brushstroke.png"
 
 type Status = "idle" | "pending" | "error"
 

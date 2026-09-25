@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server"
+import { drainRsvpBuffer } from "@/lib/airtable/rsvp"
 import { ok, withRoute } from "@/lib/api"
 import { requireIntegrationAuth } from "@/lib/integration-auth"
-import { drainRsvpBuffer } from "@/lib/airtable/rsvp"
 import { recordSyncRun } from "@/lib/sync-run-log"
 
 export const maxDuration = 300

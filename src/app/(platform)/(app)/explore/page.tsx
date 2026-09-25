@@ -1,13 +1,13 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { FoxAvatar } from "@/components/platform/art"
-import { Markdown, excerpt } from "@/components/platform/Markdown"
 import { IconArrowRight, IconClock, IconFlame } from "@/components/platform/icons"
+import { excerpt, Markdown } from "@/components/platform/Markdown"
 import { PageSign } from "@/components/platform/PageSign"
 import { Panel } from "@/components/platform/ui"
 import { requireSessionPage } from "@/lib/page-guards"
+import { effectiveDateFor, getProgramSettings } from "@/lib/program"
 import { getJournalFeed, type JournalRow } from "@/lib/queries/community"
-import { getProgramSettings, effectiveDateFor } from "@/lib/program"
 
 export const metadata: Metadata = {
   title: "Half Life Explore",

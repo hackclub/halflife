@@ -1,10 +1,10 @@
 import "server-only"
-import prisma from "@/lib/prisma"
-import { CoinBucket, LedgerKind, ShopItemCategory, ShopOrderStatus } from "@/app/generated/prisma/enums"
 import type { ShopItem, ShopOrder } from "@/app/generated/prisma/client"
+import { CoinBucket, LedgerKind, ShopItemCategory, ShopOrderStatus } from "@/app/generated/prisma/enums"
+import { appendLedgerEntry, type Balances, getBalances, lockUserCredit, spendableFor } from "@/lib/currency"
 import { HttpError } from "@/lib/errors"
-import { appendLedgerEntry, getBalances, lockUserCredit, spendableFor, type Balances } from "@/lib/currency"
 import { getPrinterQualification } from "@/lib/printer"
+import prisma from "@/lib/prisma"
 import { getShopAccess, SHOP_CLOSED_MESSAGE } from "@/lib/program"
 
 export interface ShopItemView extends ShopItem {

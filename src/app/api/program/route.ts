@@ -1,8 +1,8 @@
 import { ok, withRoute } from "@/lib/api"
-import { currentWeekNumber, getProgramSettings, weekDateRange } from "@/lib/program"
-import { THEMES, TOTAL_WEEKS, scheduleForWeek } from "@/lib/config/program"
 import { submitFloorFor } from "@/lib/config/printers"
+import { scheduleForWeek, THEMES, TOTAL_WEEKS } from "@/lib/config/program"
 import { TIERS } from "@/lib/config/tiers"
+import { currentWeekNumber, getProgramSettings, weekDateRange } from "@/lib/program"
 
 export const dynamic = "force-dynamic"
 

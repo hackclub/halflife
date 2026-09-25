@@ -1,8 +1,8 @@
 import { headers } from "next/headers"
-import { ok, parseBody, withRoute } from "@/lib/api"
-import { rsvpSchema } from "@/lib/schemas/admin"
 import { bufferRsvp, getRsvpCount } from "@/lib/airtable/rsvp"
+import { ok, parseBody, withRoute } from "@/lib/api"
 import { sanitizeOptional } from "@/lib/sanitize"
+import { rsvpSchema } from "@/lib/schemas/admin"
 
 export const dynamic = "force-dynamic"
 

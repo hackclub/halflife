@@ -1,17 +1,17 @@
 "use client"
 
+import Image from "next/image"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useState } from "react"
-import { signOut } from "@/lib/auth-client"
-import Image from "next/image"
 import { FoxAvatar } from "@/components/platform/art"
-import logoArt from "../../../../public/art/logo.png"
 import { IconLogout } from "@/components/platform/icons"
-import { Panel, cx } from "@/components/platform/ui"
-import { useStore } from "@/lib/store"
-import { GoalTracker } from "./GoalTracker"
+import { cx, Panel } from "@/components/platform/ui"
+import { signOut } from "@/lib/auth-client"
 import { PLATFORM_HOME } from "@/lib/routes"
+import { useStore } from "@/lib/store"
+import logoArt from "../../../../public/art/logo.png"
+import { GoalTracker } from "./GoalTracker"
 
 export const NAV = [
   { href: PLATFORM_HOME, label: "Home", tourId: "nav-home" },

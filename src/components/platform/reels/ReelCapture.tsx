@@ -1,10 +1,10 @@
 "use client"
 
 import { useRef, useState } from "react"
-import { Button, Panel, cx } from "@/components/platform/ui"
 import { IconFilm } from "@/components/platform/icons"
-import { uploadFile, useHandoff } from "@/lib/use-handoff"
 import { UploadProgress } from "@/components/platform/UploadProgress"
+import { Button, cx, Panel } from "@/components/platform/ui"
+import { uploadFile, useHandoff } from "@/lib/use-handoff"
 
 /**
  * Getting a video out of someone and into the bucket.

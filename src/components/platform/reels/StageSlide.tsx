@@ -7,7 +7,7 @@ import { IconFilm, IconPause, IconPlay, IconVolume, IconVolumeOff } from "@/comp
 import { cx } from "@/components/platform/ui"
 import type { FeedItem } from "@/lib/feed"
 import { ago, clock } from "./format"
-import { noteStopped, notePlaying, playExclusive, sendLike } from "./ReelCard"
+import { notePlaying, noteStopped, playExclusive, sendLike } from "./ReelCard"
 
 function prefersStill() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches

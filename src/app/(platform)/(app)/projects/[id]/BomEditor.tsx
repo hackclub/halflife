@@ -1,7 +1,7 @@
 "use client"
 
-import { useId, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
+import { useId, useRef, useState } from "react"
 import { IconPencil, IconPlus, IconX } from "@/components/platform/icons"
 import { Button, cx, inputClass } from "@/components/platform/ui"
 import type { BomLine } from "@/lib/bom"
@@ -138,8 +138,8 @@ export function BomEditor({
   async function save() {
     // Every field, because a reviewer prices the tier from this list: a line
     // without a vendor, a link or a price is one they cannot check.
-    const quantity = /^\d+$/.test(draft.quantity.trim()) ? Number(draft.quantity) : NaN
-    const unitCostUsd = draft.unitCostUsd.trim() ? Number(draft.unitCostUsd) : NaN
+    const quantity = /^\d+$/.test(draft.quantity.trim()) ? Number(draft.quantity) : Number.NaN
+    const unitCostUsd = draft.unitCostUsd.trim() ? Number(draft.unitCostUsd) : Number.NaN
     let link = draft.link.trim()
     if (link && !/^https?:\/\//i.test(link)) link = `https://${link}`
     let linkOk = false

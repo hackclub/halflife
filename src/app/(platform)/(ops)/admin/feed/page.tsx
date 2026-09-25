@@ -1,8 +1,8 @@
-import prisma from "@/lib/prisma"
+import { type ComposerProject, PostComposer } from "@/app/components/forms/PostComposer"
+import { getThemeDef } from "@/lib/config/program"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { hasPermission, Permission } from "@/lib/permissions"
-import { getThemeDef } from "@/lib/config/program"
-import { PostComposer, type ComposerProject } from "@/app/components/forms/PostComposer"
+import prisma from "@/lib/prisma"
 
 export const dynamic = "force-dynamic"
 

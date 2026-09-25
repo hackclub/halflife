@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server"
-import prisma from "@/lib/prisma"
 import { ok, withRoute } from "@/lib/api"
 import { requireIntegrationAuth } from "@/lib/integration-auth"
+import prisma from "@/lib/prisma"
 import { sweepExpiredClaims } from "@/lib/review"
 import { recordSyncRun } from "@/lib/sync-run-log"
 

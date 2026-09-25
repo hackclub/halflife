@@ -1,12 +1,12 @@
-import prisma from "@/lib/prisma"
 import { z } from "zod"
 import { fail, ok, parseBody, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { PRINTERS } from "@/lib/config/printers"
+import { getBalances, getEarnedCredit } from "@/lib/currency"
 import { requireSession } from "@/lib/guards"
 import { permissionsFor } from "@/lib/permissions"
-import { getBalances, getEarnedCredit } from "@/lib/currency"
 import { getPrinterQualification } from "@/lib/printer"
+import prisma from "@/lib/prisma"
 
 export const dynamic = "force-dynamic"
 

@@ -10,10 +10,10 @@ import {
   UnsubmitModal,
 } from "@/components/platform/modals/CheckpointModals"
 import { FirstCheckpoint } from "@/components/platform/modals/FirstCheckpoint"
+import { PLATFORM_HOME } from "@/lib/routes"
 import { useStore } from "@/lib/store"
 import { Cinematic } from "./Cinematic"
 import { Spotlight } from "./Spotlight"
-import { PLATFORM_HOME } from "@/lib/routes"
 
 /**
  * The tour walks the left rail from top to bottom, one tab per step, in the

@@ -1,10 +1,10 @@
 import "server-only"
-import { cache } from "react"
 import { headers } from "next/headers"
 import { notFound, redirect } from "next/navigation"
+import { cache } from "react"
 import { auth } from "@/lib/auth"
-import { getUserRoles, hasPermission, hasAnyPermission, Permission, Role } from "@/lib/permissions"
 import type { SessionUser } from "@/lib/guards"
+import { getUserRoles, hasAnyPermission, hasPermission, type Permission, type Role } from "@/lib/permissions"
 
 export interface PageContext {
   user: SessionUser

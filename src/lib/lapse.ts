@@ -1,6 +1,6 @@
 import "server-only"
-import prisma from "@/lib/prisma"
 import { HttpError } from "@/lib/errors"
+import prisma from "@/lib/prisma"
 
 /**
  * Lapse — where every timelapse is recorded.

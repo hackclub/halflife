@@ -1,6 +1,6 @@
-import { resolveHandoff, HANDOFF_TTL_MINUTES } from "@/lib/handoff"
-import { Callout, PageHeader, Panel } from "@/app/components/ui"
 import { HandoffUploader } from "@/app/components/forms/HandoffUploader"
+import { Callout, PageHeader, Panel } from "@/app/components/ui"
+import { HANDOFF_TTL_MINUTES, resolveHandoff } from "@/lib/handoff"
 
 // Never cached: the token is single-use and its validity changes the moment a
 // phone claims it.

@@ -1,8 +1,8 @@
 import type { Metadata } from "next"
 import { PageSign } from "@/components/platform/PageSign"
-import { ShopGrid } from "./ShopGrid"
 import { requireSessionPage } from "@/lib/page-guards"
 import { getShopItemsFor } from "@/lib/shop"
+import { ShopGrid } from "./ShopGrid"
 
 export const metadata: Metadata = {
   title: "Half Life Shop",

@@ -3,11 +3,11 @@
 import Link from "next/link"
 import { WeekScene } from "@/components/platform/art"
 import { IconArrowRight, IconClock, IconFilm, IconPencil } from "@/components/platform/icons"
-import { Chip, Panel, cx } from "@/components/platform/ui"
 import { RepoEditor } from "@/components/platform/RepoField"
+import { Chip, cx, Panel } from "@/components/platform/ui"
 import { fmtDate, fmtHours, projectEvents, projectStats } from "@/lib/projects"
-import { useStore } from "@/lib/store"
 import { PLATFORM_HOME } from "@/lib/routes"
+import { useStore } from "@/lib/store"
 
 export function ProjectsGrid() {
   const { projects, weeks, stateOf, weekOf } = useStore()

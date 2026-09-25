@@ -1,7 +1,7 @@
 import { ok, withRoute } from "@/lib/api"
-import { requireSession } from "@/lib/guards"
-import { deleteOwnComment } from "@/lib/feed"
 import { AuditAction, logAudit } from "@/lib/audit"
+import { deleteOwnComment } from "@/lib/feed"
+import { requireSession } from "@/lib/guards"
 
 export const dynamic = "force-dynamic"
 

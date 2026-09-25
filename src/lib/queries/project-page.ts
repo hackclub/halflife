@@ -1,12 +1,12 @@
 import "server-only"
-import prisma from "@/lib/prisma"
-import { Phase, PhaseStatus, PostStatus, type ReviewResult } from "@/app/generated/prisma/enums"
 import type { Prisma } from "@/app/generated/prisma/client"
+import { Phase, PhaseStatus, PostStatus, type ReviewResult } from "@/app/generated/prisma/enums"
+import { type BomLine, bomLockReason, listBom } from "@/lib/bom"
 import { THEMES } from "@/lib/config/program"
-import { bomLockReason, listBom, type BomLine } from "@/lib/bom"
 import { lapseTimelapseUrl } from "@/lib/lapse"
-import { publicUrlFor } from "@/lib/uploads/r2"
+import prisma from "@/lib/prisma"
 import { latestJournalImage, projectThumbnail } from "@/lib/thumbnail"
+import { publicUrlFor } from "@/lib/uploads/r2"
 
 /**
  * Everything the project page shows that the trail's store does not carry:

@@ -1,5 +1,5 @@
-import { HardwareExperience, Theme } from "@/app/generated/prisma/enums"
-import { EXPERIENCE_OPTIONS, ONBOARDING_STEPS, isBeginner, weekIntroFor } from "@/lib/config/onboarding"
+import { type HardwareExperience, Theme } from "@/app/generated/prisma/enums"
+import { EXPERIENCE_OPTIONS, isBeginner, ONBOARDING_STEPS, weekIntroFor } from "@/lib/config/onboarding"
 import { submitFloorFor } from "@/lib/config/printers"
 import { TIERS } from "@/lib/config/tiers"
 

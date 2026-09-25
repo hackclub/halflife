@@ -1,6 +1,6 @@
 import "server-only"
-import prisma from "@/lib/prisma"
 import { encryptPII, isPiiConfigured } from "@/lib/pii"
+import prisma from "@/lib/prisma"
 
 /**
  * Everything this app learns from Hack Club Auth, and the one way it is read.

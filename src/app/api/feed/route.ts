@@ -1,7 +1,7 @@
 import { ok, withRoute } from "@/lib/api"
+import { getFeed } from "@/lib/feed"
 import { requireSession } from "@/lib/guards"
 import { paginationQuery } from "@/lib/pagination"
-import { getFeed } from "@/lib/feed"
 
 export const dynamic = "force-dynamic"
 

@@ -1,9 +1,9 @@
 import "server-only"
-import prisma from "@/lib/prisma"
-import { PhaseStatus, ShopOrderStatus, Theme } from "@/app/generated/prisma/enums"
 import type { Prisma } from "@/app/generated/prisma/client"
+import { type PhaseStatus, ShopOrderStatus, type Theme } from "@/app/generated/prisma/enums"
 import { getBalances } from "@/lib/currency"
 import { getPrinterQualification } from "@/lib/printer"
+import prisma from "@/lib/prisma"
 
 export async function listUsers(opts: { q?: string; cursor?: string; limit: number }) {
   const rows = await prisma.user.findMany({

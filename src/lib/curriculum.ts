@@ -7,8 +7,8 @@ import type { Checkpoint, Phase, WeekMeta } from "./types"
  * two copies that used to exist would eventually have drifted from the other.
  */
 export { BUILD_BLOCKS, BUILD_HOURS } from "./config/program"
-export { TIERS } from "./config/tiers"
 export type { Tier } from "./config/tiers"
+export { TIERS } from "./config/tiers"
 
 /**
  * Ten weeks: five design weeks, then the same five themes built for real.

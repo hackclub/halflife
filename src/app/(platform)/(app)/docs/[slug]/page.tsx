@@ -40,7 +40,7 @@ export default async function DocPage({ params }: { params: Promise<{ slug: stri
             {doc.title}
           </h1>
           <p className="mt-3 max-w-[60ch] text-[1.05rem] leading-relaxed text-navy-soft">{doc.summary}</p>
-          <p className="hand mt-3 inline-flex items-center gap-1.5 text-[0.8rem] text-line-strong"></p>
+          <p className="hand mt-3 inline-flex items-center gap-1.5 text-[0.8rem] text-line-strong" />
 
           <div className="mt-9 grid gap-9">
             {doc.body.map((block) => (

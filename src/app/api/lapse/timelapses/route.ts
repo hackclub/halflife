@@ -1,8 +1,8 @@
-import prisma from "@/lib/prisma"
 import type { NextRequest } from "next/server"
 import { ok, withRoute } from "@/lib/api"
 import { requireSession } from "@/lib/guards"
 import { listMyTimelapses } from "@/lib/lapse"
+import prisma from "@/lib/prisma"
 
 export const dynamic = "force-dynamic"
 

@@ -1,7 +1,7 @@
 import { ok, withRoute } from "@/lib/api"
 import { requireSession } from "@/lib/guards"
-import { getShopItemsFor } from "@/lib/shop"
 import { getShopAccess } from "@/lib/program"
+import { getShopItemsFor } from "@/lib/shop"
 
 export const dynamic = "force-dynamic"
 

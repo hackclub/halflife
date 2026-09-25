@@ -1,10 +1,9 @@
 "use client"
 
+import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState } from "react"
-import Image from "next/image"
-import logoArt from "../../../../public/art/logo.png"
 import {
   IconBag,
   IconBook,
@@ -17,13 +16,14 @@ import {
   IconHome,
   IconPencil,
 } from "@/components/platform/icons"
+import { Overlays } from "@/components/platform/onboarding/Overlays"
 import { cx } from "@/components/platform/ui"
+import { PLATFORM_HOME } from "@/lib/routes"
 import { useStore } from "@/lib/store"
+import logoArt from "../../../../public/art/logo.png"
 import { DoomscrollerFeed } from "./Doomscroller"
 import { GoalTracker } from "./GoalTracker"
 import { Sidebar, TAB_NAV } from "./Sidebar"
-import { Overlays } from "@/components/platform/onboarding/Overlays"
-import { PLATFORM_HOME } from "@/lib/routes"
 
 const MOBILE_ICONS = {
   [PLATFORM_HOME]: IconHome,

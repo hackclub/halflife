@@ -1,13 +1,13 @@
 import "server-only"
-import prisma from "@/lib/prisma"
 import {
+  type AirtableRecord,
   airtableFetch,
   escapeAirtableValue,
   getAirtableConfig,
   withRateLimitRetry,
-  type AirtableRecord,
 } from "@/lib/airtable/client"
-import { RSVP, fieldKey, formulaRef, toFields } from "@/lib/airtable/schema"
+import { fieldKey, formulaRef, RSVP, toFields } from "@/lib/airtable/schema"
+import prisma from "@/lib/prisma"
 
 export interface RsvpInput {
   email: string

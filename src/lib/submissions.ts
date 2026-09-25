@@ -1,12 +1,11 @@
 import "server-only"
-import prisma from "@/lib/prisma"
-import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
 import type { ThemeProject } from "@/app/generated/prisma/client"
-import { checkRepo } from "@/lib/repo-checks"
-import { syncHcaProfile } from "@/lib/hca-profile"
+import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
+import { scheduledWeekFor } from "@/lib/config/program"
 import { HttpError } from "@/lib/errors"
+import { syncHcaProfile } from "@/lib/hca-profile"
 import { getHoursBreakdown } from "@/lib/hours"
-import { isOwnedKey } from "@/lib/uploads/r2"
+import prisma from "@/lib/prisma"
 import {
   effectiveDateFor,
   getProgramSettings,
@@ -14,7 +13,8 @@ import {
   SUBMISSIONS_CLOSED_MESSAGE,
   weekNumberForDate,
 } from "@/lib/program"
-import { scheduledWeekFor } from "@/lib/config/program"
+import { checkRepo } from "@/lib/repo-checks"
+import { isOwnedKey } from "@/lib/uploads/r2"
 
 export function statusFor(project: ThemeProject, phase: Phase): PhaseStatus {
   return phase === Phase.DESIGN ? project.designStatus : project.buildStatus

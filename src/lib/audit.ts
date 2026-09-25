@@ -1,8 +1,8 @@
 import "server-only"
 import { headers } from "next/headers"
-import prisma from "@/lib/prisma"
-import { AuditAction } from "@/app/generated/prisma/enums"
 import type { Prisma } from "@/app/generated/prisma/client"
+import { AuditAction } from "@/app/generated/prisma/enums"
+import prisma from "@/lib/prisma"
 
 export { AuditAction }
 

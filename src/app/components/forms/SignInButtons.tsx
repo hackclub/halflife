@@ -1,7 +1,7 @@
 "use client"
 import { useState } from "react"
-import { linkHackatime, signInWith } from "@/lib/auth-client"
 import { Button, Callout } from "@/app/components/ui"
+import { linkHackatime, signInWith } from "@/lib/auth-client"
 
 export function SignInButtons({ hasSession }: Readonly<{ hasSession: boolean }>) {
   const [busy, setBusy] = useState<string | null>(null)

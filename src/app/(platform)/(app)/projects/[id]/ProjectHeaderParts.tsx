@@ -3,8 +3,8 @@
 import { useRef, useState } from "react"
 import { WeekScene } from "@/components/platform/art"
 import { IconCamera } from "@/components/platform/icons"
-import { Button } from "@/components/platform/ui"
 import { UploadProgress } from "@/components/platform/UploadProgress"
+import { Button } from "@/components/platform/ui"
 import { useStore } from "@/lib/store"
 import { uploadFile } from "@/lib/use-handoff"
 

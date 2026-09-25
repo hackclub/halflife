@@ -1,8 +1,8 @@
 import { after } from "next/server"
-import { requireSessionPage } from "@/lib/page-guards"
-import { touchActivity } from "@/lib/analytics"
-import { getStoreSnapshot } from "@/lib/queries/store"
 import { AppShell } from "@/components/platform/shell/AppShell"
+import { touchActivity } from "@/lib/analytics"
+import { requireSessionPage } from "@/lib/page-guards"
+import { getStoreSnapshot } from "@/lib/queries/store"
 import { StoreProvider } from "@/lib/store"
 
 /**

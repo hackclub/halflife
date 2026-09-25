@@ -1,8 +1,8 @@
 import "server-only"
-import prisma from "@/lib/prisma"
-import { PhaseStatus, Theme } from "@/app/generated/prisma/enums"
 import type { PrinterAward, Prisma } from "@/app/generated/prisma/client"
+import { PhaseStatus, type Theme } from "@/app/generated/prisma/enums"
 import { THEMES, THEMES_REQUIRED_FOR_PRINTER } from "@/lib/config/program"
+import prisma from "@/lib/prisma"
 
 export interface ThemeProgress {
   theme: Theme

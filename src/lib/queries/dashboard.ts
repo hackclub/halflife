@@ -1,11 +1,11 @@
 import "server-only"
-import prisma from "@/lib/prisma"
 import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
-import { getBalances, getEarnedCredit, type Balances } from "@/lib/currency"
+import { getThemeDef, scheduleForWeek, THEMES } from "@/lib/config/program"
+import { type Balances, getBalances, getEarnedCredit } from "@/lib/currency"
 import { getHoursBreakdown } from "@/lib/hours"
 import { getPrinterQualification } from "@/lib/printer"
+import prisma from "@/lib/prisma"
 import { currentWeekNumber, effectiveDateFor, getProgramSettings, weekDateRange } from "@/lib/program"
-import { THEMES, getThemeDef, scheduleForWeek } from "@/lib/config/program"
 import { streakAsOf } from "@/lib/streak"
 
 export interface ThemeCard {

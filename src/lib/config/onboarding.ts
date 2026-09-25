@@ -1,5 +1,4 @@
-import { Theme } from "@/app/generated/prisma/enums"
-import { HardwareExperience } from "@/app/generated/prisma/enums"
+import { HardwareExperience, Theme } from "@/app/generated/prisma/enums"
 import type { TierId } from "@/lib/config/tiers"
 
 /**

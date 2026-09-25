@@ -2,7 +2,7 @@
 
 import { useId, useState } from "react"
 import { IconPencil } from "@/components/platform/icons"
-import { Button, Field, cx, inputClass } from "@/components/platform/ui"
+import { Button, cx, Field, inputClass } from "@/components/platform/ui"
 import { displayRepo, normalizeRepo } from "@/lib/repo"
 import { useStore } from "@/lib/store"
 import type { Project } from "@/lib/types"

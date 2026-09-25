@@ -13,7 +13,7 @@ import {
   IconSparkle,
   IconUpload,
 } from "@/components/platform/icons"
-import { Chip, Panel, cx } from "@/components/platform/ui"
+import { Chip, cx, Panel } from "@/components/platform/ui"
 import { printerById } from "@/lib/config/printers"
 import { useStore } from "@/lib/store"
 import type { Checkpoint, Week } from "@/lib/types"

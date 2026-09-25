@@ -2,8 +2,8 @@
 
 import { useRef, useState } from "react"
 import { IconUpload, IconX } from "@/components/platform/icons"
-import { Button } from "@/components/platform/ui"
 import { UploadProgress } from "@/components/platform/UploadProgress"
+import { Button } from "@/components/platform/ui"
 import { uploadFile } from "@/lib/use-handoff"
 
 const IMAGE_TYPES = "image/png,image/jpeg,image/webp,image/gif"

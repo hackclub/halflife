@@ -2,8 +2,8 @@ import type { NextRequest } from "next/server"
 import { ok, parseQuery, withRoute } from "@/lib/api"
 import { requirePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
-import { reviewQueueQuery } from "@/lib/schemas/review"
 import { getReviewQueue } from "@/lib/queries/review"
+import { reviewQueueQuery } from "@/lib/schemas/review"
 
 export const dynamic = "force-dynamic"
 

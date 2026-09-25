@@ -2,9 +2,9 @@
 
 import { useState } from "react"
 import { IconX } from "@/components/platform/icons"
-import { ReelCard, pauseReels } from "@/components/platform/reels/ReelCard"
-import { Panel, cx } from "@/components/platform/ui"
+import { pauseReels, ReelCard } from "@/components/platform/reels/ReelCard"
 import { useFeed } from "@/components/platform/reels/useFeed"
+import { cx, Panel } from "@/components/platform/ui"
 
 export function DoomscrollerFeed({ onClose, className }: { onClose?: () => void; className?: string }) {
   const feed = useFeed()

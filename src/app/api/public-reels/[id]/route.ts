@@ -1,6 +1,6 @@
-import prisma from "@/lib/prisma"
 import { fail, ok, withRoute } from "@/lib/api"
 import { requireSession } from "@/lib/guards"
+import prisma from "@/lib/prisma"
 
 export const dynamic = "force-dynamic"
 

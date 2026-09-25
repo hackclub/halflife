@@ -1,19 +1,17 @@
-import type { CSSProperties } from "react"
-
 import Image from "next/image"
-
+import type { CSSProperties } from "react"
+// Parked: the corner decals, to be placed later.
+// import CornerDecal, { type DecalName } from "@/components/site/corner-decal";
+import ImageSlot from "@/components/site/image-slot"
+import type { Step } from "@/lib/site/content"
+import { ASIDES, DESIGN_WEEKS, STEPS } from "@/lib/site/content"
+import { at, box, COMP_WIDTH, plate, plateBox, STACK_VIEW, stackWeld, u, weld } from "@/lib/site/stage"
 import gatoandspirit from "../../../public/art/extras/gatoandspirit.png"
 import gatohead from "../../../public/art/extras/gatohead.png"
 import gatointube from "../../../public/art/extras/gatointube.png"
 import gatoycaja from "../../../public/art/extras/gatoycaja.png"
 import hammer from "../../../public/art/extras/hammer.png"
 import spiritguy from "../../../public/art/extras/spiritguy.png"
-// Parked: the corner decals, to be placed later.
-// import CornerDecal, { type DecalName } from "@/components/site/corner-decal";
-import ImageSlot from "@/components/site/image-slot"
-import type { Step } from "@/lib/site/content"
-import { ASIDES, DESIGN_WEEKS, STEPS } from "@/lib/site/content"
-import { COMP_WIDTH, STACK_VIEW, at, box, plate, plateBox, stackWeld, u, weld } from "@/lib/site/stage"
 
 /**
  * The header plate — "how does it work?".

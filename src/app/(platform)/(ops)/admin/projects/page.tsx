@@ -1,11 +1,11 @@
 import Link from "next/link"
+import { ExtensionForm } from "@/app/components/forms/ExtensionForm"
+import { Badge, EmptyState, PageHeader, Panel, statusLabel, statusTone, Table } from "@/app/components/ui"
+import { PhaseStatus, Theme } from "@/app/generated/prisma/enums"
+import { getThemeDef, THEMES } from "@/lib/config/program"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { hasPermission, Permission } from "@/lib/permissions"
 import { listProjects, type ProjectFilters } from "@/lib/queries/admin"
-import { THEMES, getThemeDef } from "@/lib/config/program"
-import { PhaseStatus, Theme } from "@/app/generated/prisma/enums"
-import { Badge, EmptyState, PageHeader, Panel, Table, statusLabel, statusTone } from "@/app/components/ui"
-import { ExtensionForm } from "@/app/components/forms/ExtensionForm"
 
 export const dynamic = "force-dynamic"
 

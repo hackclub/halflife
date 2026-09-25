@@ -1,15 +1,15 @@
 import "server-only"
-import prisma from "@/lib/prisma"
 import { HardwareExperience, Phase, PhaseStatus } from "@/app/generated/prisma/enums"
-import { getBalances } from "@/lib/currency"
-import { getProgramSettings, effectiveDateFor, effectiveWeekClose, weekClosesAt } from "@/lib/program"
-import { streakAsOf } from "@/lib/streak"
-import { rollUpHours } from "@/lib/hours"
-import { projectThumbnail } from "@/lib/thumbnail"
-import { publicUrlFor } from "@/lib/uploads/r2"
 import { DEFAULT_GOAL_ID } from "@/lib/config/printers"
-import { DESIGN_WEEKS, ONBOARDING_CHECKPOINT_ID, THEMES, TOTAL_WEEKS, scheduleForWeek } from "@/lib/config/program"
+import { DESIGN_WEEKS, ONBOARDING_CHECKPOINT_ID, scheduleForWeek, THEMES, TOTAL_WEEKS } from "@/lib/config/program"
+import { getBalances } from "@/lib/currency"
+import { rollUpHours } from "@/lib/hours"
+import prisma from "@/lib/prisma"
+import { effectiveDateFor, effectiveWeekClose, getProgramSettings, weekClosesAt } from "@/lib/program"
+import { streakAsOf } from "@/lib/streak"
+import { projectThumbnail } from "@/lib/thumbnail"
 import type { Experience, Project, SessionLog } from "@/lib/types"
+import { publicUrlFor } from "@/lib/uploads/r2"
 
 /**
  * Everything the trail needs, read out of the database in one pass.

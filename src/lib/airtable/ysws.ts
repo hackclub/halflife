@@ -1,10 +1,10 @@
 import "server-only"
 import {
+  AirtableError,
+  type AirtableRecord,
   airtableFetch,
   getAirtableConfig,
   withRateLimitRetry,
-  AirtableError,
-  type AirtableRecord,
 } from "@/lib/airtable/client"
 import { YSWS_SUBMISSION } from "@/lib/airtable/schema"
 

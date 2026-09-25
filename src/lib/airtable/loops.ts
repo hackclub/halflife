@@ -1,8 +1,8 @@
 import "server-only"
-import prisma from "@/lib/prisma"
 import { Phase } from "@/app/generated/prisma/enums"
+import { type AirtableRecord, airtableFetch, getAirtableConfig, withRateLimitRetry } from "@/lib/airtable/client"
 import { THEMES } from "@/lib/config/program"
-import { airtableFetch, getAirtableConfig, withRateLimitRetry, type AirtableRecord } from "@/lib/airtable/client"
+import prisma from "@/lib/prisma"
 
 /**
  * The Loops properties on the `Signups` table: what Loops emails people from.

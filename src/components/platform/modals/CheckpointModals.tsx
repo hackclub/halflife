@@ -15,28 +15,28 @@ import {
   IconWarning,
 } from "@/components/platform/icons"
 import { countImages, Markdown, proseLength } from "@/components/platform/Markdown"
-import { Button, Chip, Field, OptionRow, Panel, cx, inputClass } from "@/components/platform/ui"
-import { photosRequired, TIERS } from "@/lib/curriculum"
-import { paceTarget, printerById, submitFloorFor, tierBankedFloor, weekAsk } from "@/lib/config/printers"
-import { useStore } from "@/lib/store"
-import { ReelCapture } from "@/components/platform/reels/ReelCapture"
-import { linkLapse } from "@/lib/auth-client"
-import { LapsePicker, fmtDuration, type LapseTimelapse } from "./LapsePicker"
 import { RepoInput, repoIsValid } from "@/components/platform/RepoField"
-import { ImageUploads, type UploadedImage } from "./ImageUploads"
-import { RepoChecks } from "./RepoChecks"
+import { ReelCapture } from "@/components/platform/reels/ReelCapture"
+import { Button, Chip, cx, Field, inputClass, OptionRow, Panel } from "@/components/platform/ui"
+import { linkLapse } from "@/lib/auth-client"
 import type { BomLine } from "@/lib/bom"
-import type { RepoCheckResult } from "@/lib/repo-checks"
-import { normalizeRepo } from "@/lib/repo"
-import type { Checkpoint } from "@/lib/types"
+import { paceTarget, printerById, submitFloorFor, tierBankedFloor, weekAsk } from "@/lib/config/printers"
+import { photosRequired, TIERS } from "@/lib/curriculum"
 import {
   PLATFORM_INFO,
   PUBLIC_REEL_HASHTAG,
   PUBLIC_REEL_PLATFORMS,
-  readPublicReelLink,
   type PublicReelPlatform,
+  readPublicReelLink,
 } from "@/lib/public-reels"
+import { normalizeRepo } from "@/lib/repo"
+import type { RepoCheckResult } from "@/lib/repo-checks"
+import { useStore } from "@/lib/store"
+import type { Checkpoint } from "@/lib/types"
+import { ImageUploads, type UploadedImage } from "./ImageUploads"
+import { fmtDuration, LapsePicker, type LapseTimelapse } from "./LapsePicker"
 import { Modal, ModalTitle } from "./Modal"
+import { RepoChecks } from "./RepoChecks"
 
 /* ================================================================== *
  * Journal + timelapse

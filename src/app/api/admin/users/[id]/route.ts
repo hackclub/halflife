@@ -1,10 +1,10 @@
-import prisma from "@/lib/prisma"
-import { ok, fail, parseBody, withRoute } from "@/lib/api"
+import { fail, ok, parseBody, withRoute } from "@/lib/api"
+import { AuditAction, logAudit } from "@/lib/audit"
 import { requirePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
-import { userFlagsSchema } from "@/lib/schemas/admin"
+import prisma from "@/lib/prisma"
 import { getUserDetail } from "@/lib/queries/admin"
-import { AuditAction, logAudit } from "@/lib/audit"
+import { userFlagsSchema } from "@/lib/schemas/admin"
 
 type Params = { params: Promise<{ id: string }> }
 

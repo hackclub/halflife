@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server"
+import { getAnalyticsSummary, getUserAnalytics } from "@/lib/analytics"
 import { ok, withRoute } from "@/lib/api"
 import { requireIntegrationAuth } from "@/lib/integration-auth"
-import { getAnalyticsSummary, getUserAnalytics } from "@/lib/analytics"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 120

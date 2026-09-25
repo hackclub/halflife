@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useId, useRef, useSyncExternalStore, type ReactNode } from "react"
+import { type ReactNode, useCallback, useEffect, useId, useRef, useSyncExternalStore } from "react"
 import { createPortal } from "react-dom"
 import { IconX } from "@/components/platform/icons"
 import { cx } from "@/components/platform/ui"

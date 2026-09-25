@@ -33,7 +33,7 @@ export default function DocsIndex() {
                         {doc.title}
                       </span>
                       <span className="mt-1 block text-[0.88rem] leading-snug text-navy-soft">{doc.summary}</span>
-                      <span className="hand mt-2 inline-flex items-center gap-1.5 text-[0.76rem] text-line-strong"></span>
+                      <span className="hand mt-2 inline-flex items-center gap-1.5 text-[0.76rem] text-line-strong" />
                     </span>
                     <IconArrowRight className="shrink-0 text-xl text-line-strong transition-transform duration-200 group-hover:translate-x-1 group-hover:text-teal-deep" />
                   </ArticleLink>

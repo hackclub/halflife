@@ -4,16 +4,16 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { FoxAvatar, FoxMark, PrinterArt, ReelScene, WeekScene } from "@/components/platform/art"
 import {
   IconCheck,
-  IconCoin,
   IconClock,
+  IconCoin,
   IconFilm,
   IconLock,
   IconSparkle,
   IconUpload,
 } from "@/components/platform/icons"
 import { Button, cx } from "@/components/platform/ui"
-import { BUILD_HOURS, WEEK_META, checkpointsFor } from "@/lib/curriculum"
 import { MIN_HOURS_PER_WEEK } from "@/lib/config/printers"
+import { BUILD_HOURS, checkpointsFor, WEEK_META } from "@/lib/curriculum"
 
 /**
  * The fly-through plays before anyone has picked a tier, so it previews the
@@ -23,7 +23,8 @@ const WEEKS = WEEK_META.map((meta) => ({
   ...meta,
   checkpoints: checkpointsFor(meta, [], () => false, meta.phase === "build" ? BUILD_HOURS : MIN_HOURS_PER_WEEK),
 }))
-import { printerById, type PrinterGoal } from "@/lib/config/printers"
+
+import { type PrinterGoal, printerById } from "@/lib/config/printers"
 import { useStore } from "@/lib/store"
 
 /**
@@ -130,7 +131,7 @@ const SCRIPT: { at: number; kicker: string; line: string | ((goal: string) => st
 ]
 
 const easeInOutSine = (t: number) => -(Math.cos(Math.PI * t) - 1) / 2
-const easeOutExpo = (t: number) => (t >= 1 ? 1 : 1 - Math.pow(2, -10 * t))
+const easeOutExpo = (t: number) => (t >= 1 ? 1 : 1 - 2 ** (-10 * t))
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 const clamp01 = (t: number) => (t < 0 ? 0 : t > 1 ? 1 : t)
 

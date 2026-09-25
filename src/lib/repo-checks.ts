@@ -1,6 +1,6 @@
 import "server-only"
 import type { Theme } from "@/app/generated/prisma/enums"
-import { REPO_FILE_KINDS, THEME_REPO_REQUIREMENTS, type RepoFileKind } from "@/lib/config/repo-checks"
+import { REPO_FILE_KINDS, type RepoFileKind, THEME_REPO_REQUIREMENTS } from "@/lib/config/repo-checks"
 import { GitHubUnavailable, gh } from "@/lib/github"
 
 /**

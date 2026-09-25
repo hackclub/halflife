@@ -1,7 +1,7 @@
 import "server-only"
-import prisma from "@/lib/prisma"
 import type { Prisma } from "@/app/generated/prisma/client"
 import { STREAK_GRACE_DAYS } from "@/lib/config/program"
+import prisma from "@/lib/prisma"
 
 type Tx = Prisma.TransactionClient
 

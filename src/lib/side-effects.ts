@@ -1,6 +1,6 @@
 import "server-only"
-import { AuditAction, logAudit } from "@/lib/audit"
 import type { Prisma } from "@/app/generated/prisma/client"
+import { AuditAction, logAudit } from "@/lib/audit"
 
 export interface SideEffectContext {
   actorId: string | null

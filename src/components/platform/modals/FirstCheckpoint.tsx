@@ -1,11 +1,11 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 import { OnboardingFlow } from "@/app/components/forms/OnboardingFlow"
+import { Button, Panel } from "@/components/platform/ui"
 import type { OnboardingView } from "@/lib/onboarding-view"
 import { useStore } from "@/lib/store"
-import { Button, Panel } from "@/components/platform/ui"
 import { Modal, ModalTitle } from "./Modal"
 
 /**

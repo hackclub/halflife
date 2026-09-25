@@ -1,9 +1,9 @@
 import "server-only"
 import { headers } from "next/headers"
 import type { NextResponse } from "next/server"
+import { type ApiErrorBody, fail } from "@/lib/api"
 import { auth } from "@/lib/auth"
-import { fail, type ApiErrorBody } from "@/lib/api"
-import { getUserRoles, hasPermission, hasAnyPermission, hasRole, Permission, Role } from "@/lib/permissions"
+import { getUserRoles, hasAnyPermission, hasPermission, hasRole, type Permission, type Role } from "@/lib/permissions"
 
 export interface SessionUser {
   id: string

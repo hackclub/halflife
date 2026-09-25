@@ -1,10 +1,10 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode, useRef } from "react"
-import { BUILD_HOURS, TIERS, WEEK_META, checkpointsFor } from "./curriculum"
-import { DESIGN_WEEKS } from "./config/program"
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
 import { COINS_PER_HOUR, printerById, submitFloorFor, weekAsk } from "./config/printers"
+import { DESIGN_WEEKS } from "./config/program"
+import { BUILD_HOURS, checkpointsFor, TIERS, WEEK_META } from "./curriculum"
 import type { StoreSnapshot } from "./queries/store"
 import type { Checkpoint, Experience, Project, SessionLog, Week } from "./types"
 

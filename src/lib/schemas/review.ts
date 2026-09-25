@@ -1,7 +1,7 @@
 import { z } from "zod"
 import { ReviewResult } from "@/app/generated/prisma/enums"
-import { boundedText, cuid, phaseSchema } from "@/lib/schemas/common"
 import { TIER_IDS } from "@/lib/config/tiers"
+import { boundedText, cuid, phaseSchema } from "@/lib/schemas/common"
 
 const tierSchema = z
   .number()

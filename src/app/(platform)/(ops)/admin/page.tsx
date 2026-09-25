@@ -1,9 +1,9 @@
 import Link from "next/link"
+import { EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
 import { requireAnyPermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import { getAdminCounters } from "@/lib/queries/admin"
 import { getLatestSyncRuns } from "@/lib/sync-run-log"
-import { EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
 
 export const dynamic = "force-dynamic"
 

@@ -1,8 +1,8 @@
 import { headers } from "next/headers"
 import Link from "next/link"
-import { auth } from "@/lib/auth"
-import { Panel } from "@/app/components/ui"
 import { SignInButtons } from "@/app/components/forms/SignInButtons"
+import { Panel } from "@/app/components/ui"
+import { auth } from "@/lib/auth"
 
 export const dynamic = "force-dynamic"
 

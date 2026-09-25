@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server"
+import { syncLoopsProperties } from "@/lib/airtable/loops"
 import { ok, withRoute } from "@/lib/api"
 import { requireIntegrationAuth } from "@/lib/integration-auth"
-import { syncLoopsProperties } from "@/lib/airtable/loops"
 import { recordSyncRun } from "@/lib/sync-run-log"
 
 export const maxDuration = 300

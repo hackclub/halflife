@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { PrinterArt } from "@/components/platform/art"
 import { GoalModal } from "@/components/platform/modals/GoalModal"
-import { Meter, Panel, cx } from "@/components/platform/ui"
+import { cx, Meter, Panel } from "@/components/platform/ui"
 import { printerById } from "@/lib/config/printers"
 import { useStore } from "@/lib/store"
 

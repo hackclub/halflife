@@ -1,8 +1,8 @@
 import "server-only"
-import prisma from "@/lib/prisma"
 import { HoursSource, Phase } from "@/app/generated/prisma/enums"
-import { getHoursBreakdown } from "@/lib/hours"
 import { getThemeDef } from "@/lib/config/program"
+import { getHoursBreakdown } from "@/lib/hours"
+import prisma from "@/lib/prisma"
 
 /**
  * The text that lands in `Optional - Override Hours Spent Justification` on the
