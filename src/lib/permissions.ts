@@ -19,6 +19,8 @@ export enum Permission {
   FULFILL_ORDERS = "FULFILL_ORDERS",
   MANAGE_PROGRAM = "MANAGE_PROGRAM",
   VIEW_AUDIT_LOG = "VIEW_AUDIT_LOG",
+  /** Read the upload bucket index; no mutation permission is implied. */
+  VIEW_UPLOADS = "VIEW_UPLOADS",
   /**
    * Post announcements to the feed, and hide reels or comments.
    *
@@ -42,7 +44,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   [Role.ADMIN]: Object.values(Permission),
   [Role.REVIEWER]: [Permission.REVIEW_SUBMISSIONS, Permission.REVIEW_HOURS, Permission.VIEW_USERS],
   [Role.FULFILLER]: [Permission.FULFILL_ORDERS, Permission.VIEW_USERS],
-  [Role.AUDITOR]: [Permission.VIEW_AUDIT_LOG, Permission.VIEW_USERS],
+  [Role.AUDITOR]: [Permission.VIEW_AUDIT_LOG, Permission.VIEW_USERS, Permission.VIEW_UPLOADS],
 }
 
 export function permissionsFor(roles: Role[]): Permission[] {

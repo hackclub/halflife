@@ -1,6 +1,6 @@
 import "server-only"
 import { randomUUID } from "node:crypto"
-import { DeleteObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3"
+import { DeleteObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3"
 import { HttpError } from "@/lib/errors"
 
 const DEFAULT_MAX_UPLOAD_BYTES = 104_857_600
@@ -44,6 +44,23 @@ export function isVideoBytes(bytes: Uint8Array): boolean {
   return bytes[0] === 0x1a && bytes[1] === 0x45 && bytes[2] === 0xdf && bytes[3] === 0xa3
 }
 
+export const UPLOAD_FOLDERS = ["sessions", "covers", "timelapses", "posts"] as const
+export type UploadFolder = (typeof UPLOAD_FOLDERS)[number]
+
+export interface UploadedObjectSummary {
+  key: string
+  size: number
+  lastModified: Date | null
+  storageClass: string | null
+  url: string | null
+}
+
+export interface UploadedObjectPage {
+  objects: UploadedObjectSummary[]
+  nextCursor: string | null
+  prefix: string
+}
+
 export function isUploadConfigured(): boolean {
   return !!(
     process.env.S3_ACCESS_KEY_ID &&
@@ -53,15 +70,94 @@ export function isUploadConfigured(): boolean {
   )
 }
 
+function credentials() {
+  return {
+    accessKeyId: process.env.S3_ACCESS_KEY_ID ?? "",
+    secretAccessKey: process.env.S3_SECRET_ACCESS_KEY ?? "",
+  }
+}
+
 function client(): S3Client {
   return new S3Client({
     region: "auto",
     endpoint: process.env.S3_ENDPOINT,
-    credentials: {
-      accessKeyId: process.env.S3_ACCESS_KEY_ID ?? "",
-      secretAccessKey: process.env.S3_SECRET_ACCESS_KEY ?? "",
-    },
+    credentials: credentials(),
   })
+}
+
+/** Some R2 configurations put the bucket in the endpoint path, e.g. `/my-bucket`. */
+function endpointIncludesBucket(): boolean {
+  const endpoint = process.env.S3_ENDPOINT
+  const bucket = process.env.S3_BUCKET_NAME
+  if (!endpoint || !bucket) return false
+  try {
+    const path = new URL(endpoint).pathname.replace(/^\/+|\/+$/g, "")
+    return path === bucket
+  } catch {
+    return false
+  }
+}
+
+function listingClient(): S3Client {
+  const endpoint = process.env.S3_ENDPOINT
+  if (!endpoint || !endpointIncludesBucket()) {
+    return new S3Client({ region: "auto", endpoint, credentials: credentials() })
+  }
+
+  const root = new URL(endpoint)
+  root.pathname = root.pathname.replace(/\/[^/]+$/, "")
+  return new S3Client({
+    region: "auto",
+    endpoint: root.toString().replace(/\/$/, ""),
+    credentials: credentials(),
+  })
+}
+
+export async function listUploadedObjects(opts: {
+  prefix?: string
+  cursor?: string
+  limit?: number
+} = {}): Promise<UploadedObjectPage> {
+  if (!isUploadConfigured()) {
+    throw new HttpError("NOT_CONFIGURED", "File uploads are not configured on this deployment")
+  }
+
+  const prefix = opts.prefix ?? ""
+  const bucket = process.env.S3_BUCKET_NAME!
+  const bucketPrefix = endpointIncludesBucket() ? `${bucket}/` : ""
+  const requestPrefix = bucketPrefix ? `${bucketPrefix}${prefix}` : prefix || undefined
+  try {
+    const result = await listingClient().send(
+      new ListObjectsV2Command({
+        Bucket: bucket,
+        Prefix: requestPrefix || undefined,
+        MaxKeys: Math.min(Math.max(opts.limit ?? 100, 1), 1000),
+        ContinuationToken: opts.cursor || undefined,
+      }),
+    )
+
+    return {
+      objects: (result.Contents ?? []).flatMap((object) => {
+        if (!object.Key) return []
+        const key = bucketPrefix && object.Key.startsWith(bucketPrefix)
+          ? object.Key.slice(bucketPrefix.length)
+          : object.Key
+        return [
+          {
+            key,
+            size: object.Size ?? 0,
+            lastModified: object.LastModified ?? null,
+            storageClass: object.StorageClass ?? null,
+            url: publicUrlFor(key),
+          },
+        ]
+      }),
+      nextCursor: result.IsTruncated ? (result.NextContinuationToken ?? null) : null,
+      prefix,
+    }
+  } catch (err) {
+    throw asConfigError(err)
+  }
 }
 
 /** Both extension and MIME type must be on the allowlist and must agree. */
