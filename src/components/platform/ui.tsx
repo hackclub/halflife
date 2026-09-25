@@ -55,6 +55,39 @@ export function Panel({
 }
 
 /* ------------------------------------------------------------------ *
+ * Accent text
+ * ------------------------------------------------------------------ */
+const ACCENT_TEXT: Record<string, string> = {
+  "var(--color-sky)": "var(--color-sky-ink)",
+  "var(--color-teal)": "var(--color-teal-ink)",
+  "var(--color-orange)": "var(--color-orange-ink)",
+  "var(--color-violet)": "var(--color-violet-deep)",
+  "var(--color-gold)": "var(--color-gold-ink)",
+  "var(--color-coral)": "var(--color-coral-deep)",
+}
+
+/**
+ * An accent, as text on cream. The accents are fills first — sky as a label
+ * on cream is 2.37:1 — so a label drawn "in the week's colour" takes that
+ * colour's ink instead. Magenta and the deep tones already read, and pass
+ * through unchanged.
+ */
+export function accentText(accent: string): string {
+  return ACCENT_TEXT[accent] ?? accent
+}
+
+/**
+ * What goes on top of an accent fill: navy, except on the one fill dark enough
+ * for white. White on sky, teal, orange and violet is 1.98–3.37:1; navy on
+ * them is 4.64–7.90. The pill is the counter's ground on the same banner.
+ */
+export function onAccent(accent: string): { text: string; pill: string } {
+  return accent === "var(--color-magenta)"
+    ? { text: "#ffffff", pill: "rgb(0 0 0 / 0.15)" }
+    : { text: "var(--color-navy)", pill: "rgb(255 255 255 / 0.25)" }
+}
+
+/* ------------------------------------------------------------------ *
  * Button
  * ------------------------------------------------------------------ */
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -74,12 +107,14 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   }[size]
 
   const variants = {
+    // Each solid fill is the deep tone, rimmed and hovered one darker: a white
+    // label on the plain violet, teal and coral read 3.37, 2.80 and 3.33:1.
     solid:
-      "bg-violet text-white border-violet-deep hover:bg-violet-deep active:translate-y-px disabled:bg-line disabled:border-line-strong",
+      "bg-violet-deep text-white border-violet-dark hover:bg-violet-dark active:translate-y-px disabled:bg-line disabled:border-line-strong",
     gold: "bg-gold text-navy border-gold-deep hover:brightness-105 active:translate-y-px disabled:bg-line disabled:border-line-strong disabled:text-navy-soft",
-    teal: "bg-teal text-white border-teal-deep hover:bg-teal-deep active:translate-y-px disabled:bg-line disabled:border-line-strong",
+    teal: "bg-teal-deep text-white border-teal-dark hover:bg-teal-dark active:translate-y-px disabled:bg-line disabled:border-line-strong",
     coral:
-      "bg-coral text-white border-coral-deep hover:bg-coral-deep active:translate-y-px disabled:bg-line disabled:border-line-strong",
+      "bg-coral-deep text-white border-coral-dark hover:bg-coral-dark active:translate-y-px disabled:bg-line disabled:border-line-strong",
     outline:
       "bg-transparent text-navy border-violet hover:bg-violet-pale active:translate-y-px disabled:text-navy-soft disabled:border-line",
     ghost: "bg-transparent text-navy-soft border-transparent hover:text-navy hover:bg-black/5",
@@ -254,10 +289,10 @@ export function Chip({
   className?: string
 }) {
   const tones = {
-    sky: "bg-sky-pale text-sky-deep",
-    teal: "bg-mint text-teal-deep",
-    gold: "bg-gold-pale text-gold-deep",
-    coral: "bg-coral/15 text-coral-deep",
+    sky: "bg-sky-pale text-sky-ink",
+    teal: "bg-mint text-teal-ink",
+    gold: "bg-gold-pale text-gold-ink",
+    coral: "bg-coral/15 text-coral-dark",
     violet: "bg-violet-pale text-violet-deep",
     muted: "bg-black/5 text-navy-soft",
   }[tone]
@@ -293,5 +328,17 @@ export function Field({
   )
 }
 
-export const inputClass =
-  "sketch block w-full rounded-xl bg-white px-4 py-3 text-[0.95rem] text-navy placeholder:text-navy-soft/70 outline-none"
+/**
+ * A field with a border that is always there.
+ *
+ * This used to lean on `.sketch`, which draws on a pseudo-element an `<input>`
+ * cannot hold, so the outline never rendered and a field showed no edge at all
+ * until the focus ring arrived. It is DESIGN.md's bordered field now: a real
+ * 2px border in `field` (3.68:1 on white — `line` was 1.72, under the 3:1 a
+ * control's boundary needs), `navy-soft` on hover, violet on focus.
+ */
+export const borderedInputClass =
+  "block w-full rounded-xl border-2 border-field bg-black/[.02] px-4 py-3 text-[0.95rem] text-navy outline-none transition-colors placeholder:text-navy-faint hover:border-navy-soft focus:border-violet focus:bg-white"
+
+/** The same field, under the name every caller already imports. */
+export const inputClass = borderedInputClass

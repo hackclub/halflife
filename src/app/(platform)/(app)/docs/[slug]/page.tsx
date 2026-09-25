@@ -35,12 +35,11 @@ export default async function DocPage({ params }: { params: Promise<{ slug: stri
 
       <div className="mt-6 grid gap-10 lg:grid-cols-[1fr_220px] lg:items-start">
         <article>
-          <p className="label text-teal-deep">{doc.section}</p>
+          <p className="label text-teal-ink">{doc.section}</p>
           <h1 className="mt-2 text-[clamp(2rem,5.5vw,3rem)] leading-[1.03] font-extrabold tracking-[-0.04em] text-navy">
             {doc.title}
           </h1>
           <p className="mt-3 max-w-[60ch] text-[1.05rem] leading-relaxed text-navy-soft">{doc.summary}</p>
-          <p className="hand mt-3 inline-flex items-center gap-1.5 text-[0.8rem] text-line-strong" />
 
           <div className="mt-9 grid gap-9">
             {doc.body.map((block) => (
@@ -73,19 +72,19 @@ export default async function DocPage({ params }: { params: Promise<{ slug: stri
             <Panel tone="teal" radius={18} className="mt-12 bg-mint">
               <ArticleLink href={`/docs/${next.slug}`} className="group flex items-center gap-4 px-5 py-4">
                 <span className="min-w-0 flex-1">
-                  <span className="label block text-teal-deep">Next</span>
+                  <span className="label block text-teal-ink">Next</span>
                   <span className="mt-0.5 block text-[1.05rem] leading-tight font-extrabold text-navy">
                     {next.title}
                   </span>
                 </span>
-                <IconArrowRight className="shrink-0 text-xl text-teal-deep transition-transform duration-200 group-hover:translate-x-1" />
+                <IconArrowRight className="shrink-0 text-xl text-teal-ink transition-transform duration-200 group-hover:translate-x-1" />
               </ArticleLink>
             </Panel>
           )}
         </article>
 
         <nav aria-label="On this page" className="hidden lg:sticky lg:top-24 lg:block">
-          <p className="label mb-3 text-line-strong">On this page</p>
+          <p className="label mb-3 text-navy-faint">On this page</p>
           <ul className="grid gap-2 border-l border-dashed border-line pl-4">
             {doc.body.map((b) => (
               <li key={b.heading}>

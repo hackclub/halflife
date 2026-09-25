@@ -3,6 +3,7 @@ import { AuditAction, logAudit } from "@/lib/audit"
 import { createPost } from "@/lib/feed"
 import { requireSession } from "@/lib/guards"
 import { getUserRoles, hasPermission, Permission } from "@/lib/permissions"
+import { assertNoOwedReel } from "@/lib/reel-gate"
 import { createPostSchema } from "@/lib/schemas/feed"
 
 export const dynamic = "force-dynamic"
@@ -13,6 +14,11 @@ export const POST = withRoute(async (req: Request) => {
 
   const parsed = await parseBody(req, createPostSchema)
   if (parsed.error) return parsed.error
+
+  // A checkpoint reel is checkpoint work, so a deleted reel that is still owed
+  // holds it — unless this is that reel coming back. Freeform posts are not a
+  // checkpoint and are never held.
+  if (parsed.data.checkpointKey) await assertNoOwedReel(gate.user.id, parsed.data.checkpointKey)
 
   const roles = await getUserRoles(gate.user.id)
 

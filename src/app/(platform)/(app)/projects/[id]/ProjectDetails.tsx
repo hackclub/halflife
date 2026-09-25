@@ -143,7 +143,7 @@ export function ProjectDetails({
 // Not inputClass: its drawn outline cannot render on a field, which leaves a
 // white box on the white panel that reads as plain text rather than an input.
 const field =
-  "block w-full rounded-xl border-2 border-line bg-black/[.02] px-4 py-3 text-navy outline-none placeholder:text-navy-soft/70 transition-colors hover:border-line-strong focus:border-violet focus:bg-white aria-invalid:border-coral"
+  "block w-full rounded-xl border-2 border-field bg-black/[.02] px-4 py-3 text-navy outline-none placeholder:text-navy-faint transition-colors hover:border-navy-soft focus:border-violet focus:bg-white aria-invalid:border-coral-deep"
 
 function DetailsForm({
   project,
@@ -281,13 +281,10 @@ function DetailsForm({
                 >
                   <span className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
                     <span className="text-[0.98rem] font-extrabold text-navy">Tier {t.id}</span>
-                    <span className="hand text-[0.86rem] text-teal-deep">${t.grantUsd} funding</span>
+                    <span className="hand text-[0.86rem] text-teal-ink">${t.grantUsd} funding</span>
                     <span className="hand text-[0.82rem] text-navy-soft">· {fmtHours(floor)} per design week</span>
                     <span
-                      className={cx(
-                        "hand text-[0.8rem] tabular-nums",
-                        short > 0 ? "text-coral-deep" : "text-teal-deep",
-                      )}
+                      className={cx("hand text-[0.8rem] tabular-nums", short > 0 ? "text-coral-deep" : "text-teal-ink")}
                     >
                       {short > 0 ? `${fmtHours(short)} to go` : "hours covered"}
                     </span>

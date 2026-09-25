@@ -17,7 +17,7 @@ export const NAV = [
   { href: PLATFORM_HOME, label: "Home", tourId: "nav-home" },
   { href: "/doomscroller", label: "Doomscroller", tourId: "nav-doomscroller" },
   { href: "/projects", label: "Projects", tourId: "nav-projects" },
-  { href: "/reels", label: "Reels", tourId: "nav-reels" },
+  { href: "/reels", label: "Manage Reels", tourId: "nav-reels" },
   { href: "/explore", label: "Explore", tourId: "nav-explore" },
   { href: "/shop", label: "Shop", tourId: "nav-shop" },
   { href: "/docs", label: "Docs", tourId: "nav-docs" },
@@ -100,7 +100,7 @@ export function Sidebar({ className }: { className?: string }) {
                 setSigningOut(false)
               }
             }}
-            className="label mt-2 inline-flex items-center gap-1.5 text-sky-deep transition-colors hover:text-coral"
+            className="label mt-2 inline-flex items-center gap-1.5 text-sky-ink transition-colors hover:text-coral-deep"
           >
             {signingOut ? "Signing out…" : "Log out"} <IconLogout className="text-[0.95rem]" />
           </button>
@@ -110,7 +110,7 @@ export function Sidebar({ className }: { className?: string }) {
       <button
         type="button"
         onClick={reset}
-        className="hand -mt-1 self-start text-[0.76rem] text-line-strong underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
+        className="hand -mt-1 self-start text-[0.76rem] text-navy-faint underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
       >
         Replay the intro
       </button>

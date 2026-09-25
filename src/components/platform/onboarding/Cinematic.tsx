@@ -8,10 +8,10 @@ import {
   IconCoin,
   IconFilm,
   IconLock,
-  IconSparkle,
+  IconPlay,
   IconUpload,
 } from "@/components/platform/icons"
-import { Button, cx } from "@/components/platform/ui"
+import { Button, cx, onAccent } from "@/components/platform/ui"
 import { MIN_HOURS_PER_WEEK } from "@/lib/config/printers"
 import { BUILD_HOURS, checkpointsFor, WEEK_META } from "@/lib/curriculum"
 
@@ -100,18 +100,18 @@ const T_END = T_SETTLE + T.settle
 const SCRIPT: { at: number; kicker: string; line: string | ((goal: string) => string) }[] = [
   {
     at: T_PLATFORM,
-    kicker: "This is the whole thing",
-    line: "Your trail, your feed, your shop — one page.",
+    kicker: "This is your map",
+    line: "All the checkpoints you have to hit on your way to becoming an expert!",
   },
   {
     at: T_DESCENT - 250,
     kicker: "Week 1 · PCB",
-    line: "Every week is a chain of checkpoints. Journal, film a reel, submit.",
+    line: "Every week is a set of checkpoints. Journal your progress, film a reel, submit.",
   },
   {
     at: T_DESCENT + T.descent * 0.26,
     kicker: "Weeks 1 to 5 · Design",
-    line: "A board, a 3D part, a synth, a display, a computer made of logic chips.",
+    line: "A PCB, a 3D model, an instrument, a display, and a custom breadboard computer.",
   },
   {
     at: T_DESCENT + T.descent * 0.55,
@@ -121,7 +121,7 @@ const SCRIPT: { at: number; kicker: string; line: string | ((goal: string) => st
   {
     at: T_DESCENT + T.descent * 0.85,
     kicker: "Keep going",
-    line: "Fifty-nine checkpoints. Ten weeks. One at a time.",
+    line: "Ten weeks. Five projects. You got this.",
   },
   {
     at: T_SETTLE,
@@ -143,8 +143,8 @@ function MiniPanel({ className, children }: { className?: string; children?: Rea
 }
 
 const KIND_ICON = {
-  onboarding: IconSparkle,
-  project: IconSparkle,
+  onboarding: IconPlay,
+  project: IconCoin,
   journal: IconClock,
   reel: IconFilm,
   submit: IconUpload,
@@ -174,7 +174,7 @@ function Stage({ goal }: { goal: PrinterGoal }) {
         <MiniPanel className="relative overflow-hidden px-5 py-4">
           <PrinterArt kind={goal.kind} className="absolute -top-1 right-2 h-20 w-auto" />
           <p className="max-w-[60%] text-[0.95rem] leading-snug font-semibold text-navy">
-            You are on track to get a <span className="text-teal-deep">{goal.name}</span>
+            You are on track to get a <span className="text-teal-ink">{goal.name}</span>
           </p>
           <div className="mt-3 h-4 w-full overflow-hidden rounded-full bg-mint">
             <div className="h-full w-[12%] rounded-full bg-teal" />
@@ -193,7 +193,7 @@ function Stage({ goal }: { goal: PrinterGoal }) {
 
       <div className="absolute top-[40px] left-[1180px] w-[300px]">
         <MiniPanel className="p-3.5">
-          <p className="label mb-3 text-line-strong">The Doomscroller</p>
+          <p className="label mb-3 text-navy-faint">The Doomscroller</p>
           <div className="flex flex-col gap-3">
             {(["hq", "pcb", "cad"] as const).map((s) => (
               <div key={s} className="relative overflow-hidden rounded-xl" style={{ aspectRatio: "9 / 13" }}>
@@ -263,10 +263,9 @@ function Stage({ goal }: { goal: PrinterGoal }) {
         className="absolute flex flex-col items-center rounded-3xl border-[3px] border-gold-deep bg-gold-pale px-12 py-8"
         style={{ top: PRIZE_TOP, left: COL_X - 300, width: 600, height: PRIZE_H }}
       >
-        <span className="label rounded-full bg-gold px-3 py-1.5 text-navy">Grand prize</span>
         <PrinterArt kind={goal.kind} className="mt-3 h-[280px] w-auto" />
         <p className="mt-3 text-[2rem] leading-none font-extrabold tracking-[-0.03em] text-navy">{goal.name}</p>
-        <p className="hand mt-2 text-[1rem] text-navy-soft">finish all ten weeks</p>
+        <p className="hand mt-2 text-[1rem] text-navy-soft">finish all ten weeks!</p>
       </div>
     </div>
   )
@@ -304,12 +303,12 @@ function WeekBanners({ refs }: { refs: React.RefObject<(HTMLDivElement | null)[]
               stretches it to another. The real trail's banner separates them
               the same way. */}
           <span aria-hidden="true" className="torn absolute inset-0 rounded" style={{ background: week.accent }} />
-          <div className="relative flex h-full items-center gap-4 px-6">
+          <div className="relative flex h-full items-center gap-4 px-6" style={{ color: onAccent(week.accent).text }}>
             <div className="min-w-0 flex-1">
-              <p className="label text-white/85">
+              <p className="label">
                 Week {week.id}/10 · {week.phase === "design" ? "Design" : "Build"}
               </p>
-              <p className="mt-0.5 truncate text-[1.6rem] leading-none font-extrabold tracking-[-0.025em] text-white">
+              <p className="mt-0.5 truncate text-[1.6rem] leading-none font-extrabold tracking-[-0.025em]">
                 {week.headline}
               </p>
             </div>
@@ -564,7 +563,7 @@ export function Cinematic() {
             className="sketch sketch-2 max-w-[42rem] rounded-2xl bg-cream px-6 py-4 text-center lift-shadow motion-safe:animate-[hl-rise_.5s_cubic-bezier(.16,1,.3,1)_both]"
             style={{ "--sk-color": "var(--color-navy)", "--sk-radius": "18px" } as React.CSSProperties}
           >
-            <p className="label text-coral">{line.kicker}</p>
+            <p className="label text-coral-deep">{line.kicker}</p>
             <p className="mt-1.5 text-[clamp(1.05rem,2.6vw,1.45rem)] leading-snug font-extrabold tracking-[-0.02em] text-navy">
               {typeof line.line === "function" ? line.line(goal.name) : line.line}
             </p>
@@ -579,12 +578,12 @@ export function Cinematic() {
             className="sketch sketch-2 w-full max-w-md rounded-3xl bg-cream px-6 py-4 text-center lift-shadow motion-safe:animate-[hl-rise_.5s_cubic-bezier(.16,1,.3,1)_both]"
             style={{ "--sk-color": "var(--color-gold-deep)", "--sk-radius": "26px" } as React.CSSProperties}
           >
-            <p className="label text-gold-deep">Ten weeks · fifty-nine checkpoints</p>
+            <p className="label text-gold-ink">Ten weeks · five projects</p>
             <h2 className="mt-1.5 text-[clamp(1.2rem,3.2vw,1.6rem)] leading-tight font-extrabold tracking-[-0.03em] text-navy">
-              That is what is waiting at the bottom
+              Become an expert in 10 weeks, get a 3D printer
             </h2>
             <Button variant="gold" size="lg" full className="mt-4" onClick={() => setPhase("aim")}>
-              Get started <IconSparkle className="text-base" />
+              Get started
             </Button>
           </div>
         </div>

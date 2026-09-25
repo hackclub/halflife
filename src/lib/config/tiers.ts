@@ -75,7 +75,7 @@ export const TIERS = [
     blurb: "An ambitious build with novel engineering.",
     detail:
       "Four-layer boards, motorised anything, or a build that needs two revisions to work. Pick this only if you have shipped something before.",
-    examples: ["Polyphonic synth voice card", "Full breadboard CPU"],
+    examples: ["Polyphonic instrument voice card", "Full breadboard CPU"],
   },
 ] as const satisfies readonly Tier[]
 

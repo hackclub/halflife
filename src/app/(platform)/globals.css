@@ -44,6 +44,29 @@
   --color-line: #c8c3d6;
   --color-line-strong: #9a94b4;
 
+  /* Text-only inks. The brand's deep tones are rims and borders first, and on
+     cream several of them are too light to read (sky-deep 3.61:1, gold-deep
+     2.58, orange-deep 2.94, teal-deep 4.40, line-strong 2.72). Each of these
+     clears 4.5:1 on cream, white and every pale fill a chip sits on, so a
+     `text-` utility reaches for these and the fills and rims keep their hue. */
+  --color-sky-ink: #236b85;
+  --color-teal-ink: #037365;
+  --color-gold-ink: #7f5c07;
+  --color-orange-ink: #8c5507;
+  /* A padlock on a locked puck: 3:1 against sand, where sand-deep is 1.62. */
+  --color-sand-ink: #8a6c4b;
+  /* The quiet third voice line-strong was used for — timestamps, hints, rail
+     titles — at a value someone can actually read: 5.34:1 on cream. */
+  --color-navy-faint: #676386;
+  /* A field's edge. WCAG asks 3:1 of the boundary that tells you a control is
+     there; `line` is 1.72 on white. This is 3.68 on white, 3.47 on cream. */
+  --color-field: #86829f;
+  /* Solid-button fills one step darker, so a white label reads: white on
+     violet was 3.37, on teal 2.80, on coral 3.33. */
+  --color-violet-dark: #613f7b;
+  --color-teal-dark: #025a4f;
+  --color-coral-dark: #a53131;
+
   --font-display: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
   --font-hand: var(--font-hand), var(--font-jakarta), ui-sans-serif, sans-serif;
 
@@ -71,7 +94,8 @@
 
   input::placeholder,
   textarea::placeholder {
-    color: #8b87a8;
+    /* navy-faint: the old #8b87a8 was 3.43:1 on a white field. */
+    color: var(--color-navy-faint);
   }
 }
 

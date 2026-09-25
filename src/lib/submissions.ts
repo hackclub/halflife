@@ -13,6 +13,7 @@ import {
   SUBMISSIONS_CLOSED_MESSAGE,
   weekNumberForDate,
 } from "@/lib/program"
+import { assertNoOwedReel } from "@/lib/reel-gate"
 import { checkRepo } from "@/lib/repo-checks"
 import { isOwnedKey } from "@/lib/uploads/r2"
 
@@ -120,6 +121,9 @@ export async function submitPhase(
 
   const eligible = canSubmitPhase(project, phase)
   if (!eligible.ok) throw new HttpError(eligible.code, eligible.message)
+
+  // Handing a week in is a checkpoint too; a deleted reel still owed holds it.
+  await assertNoOwedReel(userId)
 
   // A submission must not be able to file someone else's evidence as its own.
   const ownKeys = attachmentKeys.filter((key) => isOwnedKey(userId, key))

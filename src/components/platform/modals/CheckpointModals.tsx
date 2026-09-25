@@ -17,7 +17,7 @@ import {
 import { countImages, Markdown, proseLength } from "@/components/platform/Markdown"
 import { RepoInput, repoIsValid } from "@/components/platform/RepoField"
 import { ReelCapture } from "@/components/platform/reels/ReelCapture"
-import { Button, Chip, cx, Field, inputClass, OptionRow, Panel } from "@/components/platform/ui"
+import { Button, borderedInputClass, Chip, cx, Field, inputClass, OptionRow, Panel } from "@/components/platform/ui"
 import { linkLapse } from "@/lib/auth-client"
 import type { BomLine } from "@/lib/bom"
 import { paceTarget, printerById, submitFloorFor, tierBankedFloor, weekAsk } from "@/lib/config/printers"
@@ -150,7 +150,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
   // shortfall is named with the other way out beside it, so nobody is told to
   // write 200 characters they could skip with a timelapse. An edit cannot add
   // one, so it is not offered there.
-  const orLapse = editing ? "" : " Or pick a Lapse timelapse instead."
+  const orLapse = editing ? "" : ""
   const missing = !ok
     ? claimed <= 0
       ? "Add the hours you spent on this session, or pick a Lapse timelapse."
@@ -223,7 +223,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
                 : missing
                   ? missing
                   : editing
-                    ? "Saving replaces this entry. It keeps its place on the trail."
+                    ? "Saving replaces this entry. It keeps its place on the map."
                     : toFloor > 0
                       ? `${fmtH(toFloor)} more before you can wrap up the week.`
                       : "Submit your project when it's done!"}
@@ -264,16 +264,18 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
         <div>
           {editing ? (
             <ModalTitle
-              sub={
-                kept > 0
-                  ? `Fix what it says or how long it took. Its ${kept === 1 ? "timelapse stays" : `${kept} timelapses stay`} attached and still back the hours.`
-                  : "Fix what it says or how long it took. The same rules hold: 200 characters at least, and an image for each hour (minimum of 2)."
-              }
+              subWide
             >
               Edit this entry
             </ModalTitle>
           ) : (
-            <ModalTitle sub="Start with the hours, then back them up: either write the entry here, or pick a Lapse timelapse on the other tab. An entry is 200 characters at least (images do not count toward it), with an image for each hour (minimum of 2). Markdown works, images included.">
+            // `subWide`: the modal is the large size and the editor below runs
+            // its full width, so a subtitle held to 62ch stopped two-thirds of
+            // the way across and wrapped into a ragged column.
+            <ModalTitle
+              subWide
+              sub="Write about the progress you made this work session, complete with pictures/screenshots. Be detailed! Markdown works, images included."
+            >
               What did you do this session?
             </ModalTitle>
           )}
@@ -286,7 +288,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
                 inputMode="decimal"
                 placeholder="0"
                 aria-label="Hours spent on this session"
-                className={cx(inputClass, "tabular-nums")}
+                className={cx(borderedInputClass, "tabular-nums")}
               />
             </Field>
           </div>
@@ -326,7 +328,10 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
           </div>
 
           <div className={cx("grid gap-3", preview && "md:grid-cols-2")}>
-            <div className={cx("relative", preview && "hidden md:block")}>
+            {/* `min-w-0` on both columns: a grid item is otherwise as wide as
+                its widest unbroken content, so a long URL in the entry widened
+                the column and the preview beside it scrolled sideways. */}
+            <div className={cx("relative min-w-0", preview && "hidden md:block")}>
               <FoxMark
                 className="pointer-events-none absolute top-1/2 left-1/2 w-40 -translate-x-1/2 -translate-y-1/2 opacity-[0.07]"
                 sticker={false}
@@ -337,13 +342,13 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
                 rows={9}
                 placeholder="Start typing… What did you work on? What worked and what didn't? &#10;&#10; Markdown styling enabled! Drop images in with ![alt text](src url)."
                 aria-label="Journal entry"
-                className={cx(inputClass, "relative h-full resize-none bg-white/70")}
+                className={cx(borderedInputClass, "relative h-full resize-none")}
               />
             </div>
 
             {preview && (
               <div
-                className="sketch thin-scroll max-h-[15rem] min-h-[8rem] overflow-y-auto rounded-xl bg-white px-4 py-3 md:max-h-none"
+                className="sketch thin-scroll max-h-[15rem] min-h-[8rem] min-w-0 overflow-y-auto rounded-xl bg-white px-4 py-3 md:max-h-none"
                 style={{ "--sk-color": "var(--color-violet)", "--sk-radius": "12px" } as React.CSSProperties}
               >
                 {body.trim() ? (
@@ -361,19 +366,22 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
             <p
               className={cx(
                 "hand text-[0.76rem] tabular-nums",
-                shots >= needPhotos ? "text-teal-deep" : "text-navy-soft",
+                shots >= needPhotos ? "text-teal-ink" : "text-navy-soft",
               )}
             >
               {shots} / {needPhotos} images
             </p>
-            <p className={cx("hand text-[0.76rem] tabular-nums", longEnough ? "text-teal-deep" : "text-navy-soft")}>
+            <p className={cx("hand text-[0.76rem] tabular-nums", longEnough ? "text-teal-ink" : "text-navy-soft")}>
               {written} / 200 characters
             </p>
           </div>
         </div>
       ) : (
         <div>
-          <ModalTitle sub="A timelapse can back your hours on its own, in place of a written entry, and its recorded time becomes the session's hours. Record the session on Lapse, publish it, then pick it here.">
+          <ModalTitle
+            subWide
+            sub="Record timelapse(s) on Lapse, publish as unlisted or public, then select it here. It won't show up if the timelapses are listed as private. Make sure you're pausing your timelapse when you're not working on your project!"
+          >
             Select your timelapses
           </ModalTitle>
 
@@ -668,7 +676,7 @@ export function PublicReelModal({
           <a
             href={videoUrl}
             download="half-life-reel.mp4"
-            className="hand mt-3 inline-block text-[0.84rem] text-sky-deep underline decoration-dashed underline-offset-4 hover:text-navy"
+            className="hand mt-3 inline-block text-[0.84rem] text-sky-ink underline decoration-dashed underline-offset-4 hover:text-navy"
           >
             save your reel to upload it
           </a>
@@ -707,7 +715,7 @@ export function PublicReelModal({
                 aria-invalid={error ? true : undefined}
                 aria-describedby={error ? `${fieldId}-error` : undefined}
                 className={cx(
-                  "block w-full rounded-xl border-2 bg-black/[.02] px-4 py-2.5 text-[0.9rem] text-navy outline-none transition-colors placeholder:text-navy-soft/70 hover:border-line-strong focus:border-violet focus:bg-white",
+                  "block w-full rounded-xl border-2 bg-black/[.02] px-4 py-2.5 text-[0.9rem] text-navy outline-none transition-colors placeholder:text-navy-faint hover:border-line-strong focus:border-violet focus:bg-white",
                   error ? "border-coral-deep bg-coral/5" : "border-line",
                 )}
               />
@@ -820,7 +828,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
       >
         <ModalTitle
           id={titleId}
-          sub="Your first one stays up. A new one is added to your project's timeline, after your latest entry or reel."
+          sub="Your first one will stay up, your new one will be added to your project's timeline. If you want to delete the reel, go to the Reels Manager tab!"
         >
           You&apos;ve completed this checkpoint! Would you like to post another reel?
         </ModalTitle>
@@ -876,7 +884,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
             className="sketch rounded-2xl bg-sky-pale px-5 py-4"
             style={{ "--sk-color": "var(--color-sky)", "--sk-radius": "16px" } as React.CSSProperties}
           >
-            <p className="label flex items-center gap-2 text-sky-deep">
+            <p className="label flex items-center gap-2 text-sky-ink">
               <IconMic className="text-base" /> What to film
             </p>
             <p className="mt-1.5 text-[0.92rem] leading-snug text-navy">{checkpoint.reelBrief}</p>
@@ -1083,7 +1091,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
                 >
                   <span className="flex flex-wrap items-baseline gap-x-2.5">
                     <span className="text-[0.98rem] font-extrabold text-navy">Tier {t.id}</span>
-                    <span className="hand text-[0.86rem] text-teal-deep">${t.grantUsd} funded</span>
+                    <span className="hand text-[0.86rem] text-teal-ink">${t.grantUsd} funded</span>
                     <span className="hand text-[0.8rem] text-navy-soft">
                       · {fmtH(submitFloorFor(t.fundingHours))} to submit
                     </span>
@@ -1378,7 +1386,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
         >
           <IconWarning className="mt-0.5 shrink-0 text-xl text-coral-deep" />
           <div className="min-w-0">
-            <p className="text-[0.95rem] leading-snug font-extrabold text-coral-deep">
+            <p className="text-[0.95rem] leading-snug font-extrabold text-coral-dark">
               You won&apos;t be banking enough coins if you submit the project.
             </p>
             <p className="mt-1 text-[0.85rem] leading-snug text-navy-soft">
@@ -1562,7 +1570,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
                     >
                       Tier {t.id}
                     </span>
-                    <span className={cx("hand block text-[0.86rem]", short > 0 ? "text-navy-soft" : "text-teal-deep")}>
+                    <span className={cx("hand block text-[0.86rem]", short > 0 ? "text-navy-soft" : "text-teal-ink")}>
                       ${t.grantUsd} of funding
                     </span>
 
@@ -1572,7 +1580,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
                     <span
                       className={cx(
                         "mt-1 block text-[0.76rem] leading-snug",
-                        short > 0 ? "text-coral-deep" : behind > 0 ? "text-navy-soft" : "text-teal-deep",
+                        short > 0 ? "text-coral-deep" : behind > 0 ? "text-navy-soft" : "text-teal-ink",
                       )}
                     >
                       {short > 0
@@ -1656,7 +1664,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
                   <p
                     className={cx(
                       "hand mt-1.5 text-right text-[0.76rem] tabular-nums",
-                      writeup.trim().length >= 40 ? "text-teal-deep" : "text-navy-soft",
+                      writeup.trim().length >= 40 ? "text-teal-ink" : "text-navy-soft",
                     )}
                   >
                     {writeup.trim().length} / 40 characters

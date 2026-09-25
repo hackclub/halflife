@@ -446,7 +446,7 @@ export function StageSlide({
             type="button"
             onClick={onCycleRate}
             aria-label={`Playback speed ${rate} times. Change speed.`}
-            className="label hidden min-w-[3rem] rounded-full bg-black/5 px-2.5 py-1.5 text-navy-soft tabular-nums transition-colors hover:bg-sky-pale hover:text-sky-deep @2xs:inline-block"
+            className="label hidden min-w-[3rem] rounded-full bg-black/5 px-2.5 py-1.5 text-navy-soft tabular-nums transition-colors hover:bg-sky-pale hover:text-sky-ink @2xs:inline-block"
           >
             {rate.toFixed(1)}x
           </button>
@@ -480,7 +480,7 @@ function RoundControl({
       disabled={disabled}
       aria-label={label}
       aria-pressed={pressed}
-      className="sketch grid size-9 place-items-center rounded-full bg-paper text-navy transition-colors hover:bg-mint hover:text-teal-deep disabled:cursor-not-allowed disabled:text-line-strong"
+      className="sketch grid size-9 place-items-center rounded-full bg-paper text-navy transition-colors hover:bg-mint hover:text-teal-ink disabled:cursor-not-allowed disabled:text-navy-faint"
       style={{ "--sk-color": "var(--color-line-strong)", "--sk-radius": "999px" } as React.CSSProperties}
     >
       {children}

@@ -106,7 +106,7 @@ export const THEMES = [
   {
     id: Theme.SYNTH,
     slug: "synth",
-    label: "Synth",
+    label: "Music",
     blurb: "Design a sound-making circuit, then build and play it.",
     designWeek: 3,
     buildWeek: 8,

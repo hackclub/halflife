@@ -228,14 +228,10 @@ export function BomEditor({
         })
       }
     },
-    // A red border rather than a ring: the drawn outline inputClass relies on
-    // cannot render on a field, so without its own border an empty one showed
-    // nothing at all.
-    className: cx(
-      inputClass,
-      "border-2 py-2 text-[0.88rem]",
-      invalid.has(key) ? "border-coral-deep bg-coral/5" : "border-transparent",
-    ),
+    // A red border rather than a ring. `inputClass` carries its own border
+    // now, so the invalid colour is `!`: two border colours in one layer are
+    // settled by whichever Tailwind happens to emit last.
+    className: cx(inputClass, "py-2 text-[0.88rem]", invalid.has(key) && "border-coral-deep! bg-coral/5"),
   })
 
   return (
@@ -493,9 +489,9 @@ function ExtraRow({
               // Its own look rather than inputClass: a white field on the white
               // panel reads as a printed number, not one you can change.
               className={cx(
-                "block w-24 rounded-lg border-2 border-line bg-black/[.03] px-2.5 py-1.5 text-[0.86rem] text-navy tabular-nums outline-none placeholder:text-navy-soft/70",
-                "transition-colors hover:border-line-strong focus:border-violet focus:bg-white",
-                invalid && "border-coral text-coral-deep",
+                "block w-24 rounded-lg border-2 border-field bg-black/[.03] px-2.5 py-1.5 text-[0.86rem] text-navy tabular-nums outline-none placeholder:text-navy-faint",
+                "transition-colors hover:border-navy-soft focus:border-violet focus:bg-white",
+                invalid && "border-coral-deep! text-coral-deep",
               )}
             />
           </span>

@@ -40,7 +40,7 @@ function StatCluster() {
     <div className="flex items-center gap-4 sm:gap-6">
       <span className="flex items-center gap-1.5" title={`${coins} coins banked`}>
         <IconCoin className="text-[1.45rem] text-orange" />
-        <span className="text-[1.15rem] leading-none font-extrabold tabular-nums text-orange-deep">{coins}</span>
+        <span className="text-[1.15rem] leading-none font-extrabold tabular-nums text-orange-ink">{coins}</span>
         <span className="sr-only">coins</span>
       </span>
       <span className="flex items-center gap-1.5" title={`${streak} day streak`}>

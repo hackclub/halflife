@@ -222,7 +222,7 @@ export function ReelComments({
           type="button"
           onClick={onClose}
           aria-label="Close comments"
-          className="ml-auto grid size-8 place-items-center rounded-full text-line-strong transition-colors hover:bg-black/5 hover:text-navy"
+          className="ml-auto grid size-8 place-items-center rounded-full text-navy-faint transition-colors hover:bg-black/5 hover:text-navy"
         >
           <IconX className="text-base" />
         </button>
@@ -320,7 +320,7 @@ export function ReelComments({
             disabled={!reel}
             autoComplete="off"
             placeholder="Add a comment…"
-            className="sketch h-11 min-w-0 flex-1 rounded-xl bg-white px-4 text-[0.9rem] text-navy outline-none placeholder:text-navy-soft/70"
+            className="sketch h-11 min-w-0 flex-1 rounded-xl bg-white px-4 text-[0.9rem] text-navy outline-none placeholder:text-navy-faint"
             style={{ "--sk-color": "var(--color-line-strong)", "--sk-radius": "12px" } as React.CSSProperties}
           />
           <button

@@ -151,7 +151,6 @@ export interface DocArticle {
   slug: string
   title: string
   section: string
-  minutes: number
   summary: string
   body: { heading: string; paragraphs: string[]; list?: string[] }[]
 }

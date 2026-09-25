@@ -24,7 +24,7 @@ export function ProjectsGrid() {
           href={PLATFORM_HOME}
           className="label mt-6 inline-flex items-center gap-1.5 rounded-full border-2 border-line px-4 py-2 text-navy-soft transition-colors hover:border-navy hover:text-navy"
         >
-          Go to the trail <IconArrowRight className="text-base" />
+          Go to the map <IconArrowRight className="text-base" />
         </Link>
       </Panel>
     )
@@ -89,7 +89,7 @@ export function ProjectsGrid() {
                     <IconFilm className="text-sm" /> {stats.reels}
                   </span>
                   {stats.started > 0 && (
-                    <span className="hand ml-auto text-[0.76rem] text-line-strong">{fmtDate(stats.started)}</span>
+                    <span className="hand ml-auto text-[0.76rem] text-navy-faint">{fmtDate(stats.started)}</span>
                   )}
                 </span>
               </span>

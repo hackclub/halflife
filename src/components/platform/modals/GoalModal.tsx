@@ -72,7 +72,7 @@ export function GoalModal({ open, onClose }: { open: boolean; onClose: () => voi
               href={goal.link}
               target="_blank"
               rel="noreferrer"
-              className="font-semibold whitespace-nowrap text-sky-deep underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
+              className="font-semibold whitespace-nowrap text-sky-ink underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
             >
               Link to printer
             </a>
@@ -171,13 +171,13 @@ function GoalCard({
             </span>
             <span className="min-w-0 flex-1">
               <span className="block text-[1.02rem] leading-tight font-extrabold text-navy">{goal.name}</span>
-              {current && <span className="hand mt-0.5 block text-[0.72rem] text-teal-deep">your goal right now</span>}
+              {current && <span className="hand mt-0.5 block text-[0.72rem] text-teal-ink">your goal right now</span>}
             </span>
             {goal.note && (
               <span
                 className={cx(
                   "label mt-px shrink-0 rounded-full px-2 py-1 text-[0.6rem]",
-                  goal.note === "Resin" ? "bg-gold-pale text-gold-deep" : "bg-coral/15 text-coral-deep",
+                  goal.note === "Resin" ? "bg-gold-pale text-gold-ink" : "bg-coral/15 text-coral-dark",
                 )}
               >
                 {goal.note}
@@ -197,7 +197,7 @@ function GoalCard({
               {goal.coins.toLocaleString()}
             </span>
           </span>
-          <span className="ml-auto flex items-center gap-1.5 text-[0.79rem] font-semibold text-teal-deep">
+          <span className="ml-auto flex items-center gap-1.5 text-[0.79rem] font-semibold text-teal-ink">
             <IconClock className="text-[0.95rem]" />
             <span className="tabular-nums">{goal.hoursPerWeek.toFixed(1)}</span> hrs/design wk
           </span>

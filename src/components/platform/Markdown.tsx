@@ -186,7 +186,7 @@ function inline(text: string, key: string): ReactNode[] {
             href={href}
             target="_blank"
             rel="noreferrer"
-            className="font-semibold text-sky-deep underline decoration-2 underline-offset-[3px] transition-colors hover:text-coral-deep hover:decoration-coral"
+            className="font-semibold text-sky-ink underline decoration-2 underline-offset-[3px] transition-colors hover:text-coral-deep hover:decoration-coral"
           >
             {m[8]}
           </a>
@@ -286,7 +286,7 @@ export function Markdown({ source, className }: { source: string; className?: st
       }
       const List = ordered ? "ol" : "ul"
       out.push(
-        <List key={key} className={`grid gap-1 pl-5 ${ordered ? "list-decimal" : "list-disc"} marker:text-line-strong`}>
+        <List key={key} className={`grid gap-1 pl-5 ${ordered ? "list-decimal" : "list-disc"} marker:text-navy-faint`}>
           {items.map((item, n) => (
             <li key={`${key}-${n}`}>{inline(item, `${key}-${n}`)}</li>
           ))}
@@ -310,5 +310,11 @@ export function Markdown({ source, className }: { source: string; className?: st
     out.push(<p key={key}>{inline(para.join(" "), key)}</p>)
   }
 
-  return <div className={className}>{out}</div>
+  // Callers lay entries out as a grid, and a grid item will not shrink below
+  // its longest unbroken run — a pasted image URL, a long link, a code line —
+  // so one of those used to widen the whole entry and set every paragraph
+  // scrolling sideways with it. `min-w-0` on each block lets them shrink back
+  // to the column (a `<pre>` then scrolls inside itself, as it is built to),
+  // and `overflow-wrap: anywhere` breaks a word that is wider than the line.
+  return <div className={`min-w-0 [overflow-wrap:anywhere] *:min-w-0 ${className ?? ""}`}>{out}</div>
 }

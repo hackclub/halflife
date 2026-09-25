@@ -65,7 +65,7 @@ export function ReelCapture({
   if (objectKey) {
     return (
       <Panel tone="teal" radius={16} className="flex items-center gap-3 bg-cream px-4 py-3">
-        <IconFilm className="shrink-0 text-[1.4rem] text-teal-deep" />
+        <IconFilm className="shrink-0 text-[1.4rem] text-teal-ink" />
         <p className="min-w-0 flex-1 text-[0.9rem] leading-snug font-semibold text-navy">
           {label} is uploaded and ready to post.
         </p>
@@ -137,7 +137,7 @@ export function ReelCapture({
           <p className="hand text-center text-[0.85rem] text-navy-soft">
             Scan it, film it, and the video lands here. Works once, expires shortly.
           </p>
-          <p className="label text-sky-deep">Waiting for your phone…</p>
+          <p className="label text-sky-ink">Waiting for your phone…</p>
         </Panel>
       )}
 

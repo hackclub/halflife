@@ -16,8 +16,7 @@ export const DOCS: DocArticle[] = [
     slug: "how-it-works",
     title: "How Half Life works",
     section: "Start here",
-    minutes: 4,
-    summary: "Ten weeks, two halves, one printer at the end.",
+    summary: "What's all this then?",
     body: [
       {
         heading: "The shape of the program",
@@ -51,30 +50,69 @@ export const DOCS: DocArticle[] = [
     slug: "journalling",
     title: "Journalling and timelapses",
     section: "Start here",
-    minutes: 3,
-    summary: "How hours get counted, and what counts as a session.",
+    summary:
+      "What counts as a session, how to write an entry a reviewer can check, and how Lapse timelapses back your hours.",
     body: [
       {
         heading: "What a session is",
         paragraphs: [
-          "A session is one unbroken block of work on one project. Start the timer when you open the software, stop it when you walk away. If you take a twenty minute break, stop the timer — nobody is checking, but the reviewer can tell when four hours of logged time produced eleven minutes of timelapse.",
+          "A session is one sitting of work on one project: you sit down, work, and stop. Every session gets its own journal entry on the map, with the hours that sitting took — ideally logged the same day. Log it while you still remember what you did — an entry written a week later is a guess, and it reads like one.",
+          "Your hours are only as good as the evidence behind them. Reviewers approve hours by reading your entries and watching your timelapses, so an entry that says what happened, shows it, and claims a believable amount of time is the whole job.",
         ],
       },
       {
-        heading: "Timelapses",
+        heading: "Two ways to back your hours",
         paragraphs: [
-          "Every session needs its hours backed by one of two things: a written journal entry, or a timelapse. You do not need both. Timelapses are recorded on Hack Club's Lapse (lapse.hackclub.com): a screen recording for software, or a camera pointed at the bench. When you finish, publish it on Lapse as public or unlisted, then pick it on the timelapse tab of your entry. Sign in with Lapse once and everything you publish shows up there. One timelapse backs one entry.",
+          "Each session is backed by one of two things: a written entry, or a Lapse timelapse. You pick one on the entry's Journal or Timelapse tab; you never need both.",
+          "A written entry needs its hours typed in (9.5 means nine and a half). A timelapse brings its own: the time Lapse recorded becomes the session's hours, so there is nothing to type.",
+        ],
+      },
+      {
+        heading: "Recording with Lapse",
+        paragraphs: [
+          "Lapse (lapse.hackclub.com) is Hack Club's timelapse app, and it is the only one the platform takes. Start a recording when you sit down to work and it captures your screen or your camera while you go.",
+          "You can pause or stop a timelapse at any time. Pause it when you step away — to eat, to answer a message, to wait for a print — and pick it back up when you return, so the recording, and the hours it counts, are only the time you were actually working.",
+          "When the session is done, publish the timelapse on Lapse as Unlisted or Public. A private timelapse cannot be watched by a reviewer, so it cannot back any hours, and it will not show up to pick. Then open the entry on your map, switch to the Timelapse tab, sign in with Lapse if it asks (a sign-in lasts about a month), and pick it. Each timelapse can back one entry only.",
         ],
         list: [
-          "Screen recording for CAD, KiCad, and code.",
-          "A phone on a stand for soldering and assembly.",
-          "Both, if you are switching between them.",
+          "Screen recording for CAD, KiCad, and firmware.",
+          "A phone on a stand, pointed at the bench, for soldering and assembly.",
+          "Both at once when you are switching between the screen and the bench.",
         ],
       },
       {
-        heading: "Writing the entry",
+        heading: "The rules a written entry has to meet",
+        paragraphs: ["The editor checks these before it will let you save, and tells you exactly what is missing."],
+        list: [
+          "At least 200 characters of writing. Images do not count toward it.",
+          "One image for every hour you claim, and never fewer than two: a 4.5-hour session needs five.",
+          "Markdown works — headings, bold, lists, code and links. Images go in with ![what it shows](link), right where they belong in the story.",
+        ],
+      },
+      {
+        heading: "Writing an entry worth reading",
         paragraphs: [
-          "If you are writing the entry rather than picking a timelapse, the minimum is 200 characters, and images do not count toward it. Say what you did, what broke, and what you are doing next. The best entries read like a note to yourself three weeks from now, because that is exactly who ends up reading them.",
+          "The best entries read like a note to yourself three weeks from now, because that is exactly who ends up reading them — you, and a reviewer. Tell the story of the session in the order it happened, and be specific: the part number, the error message, the file you changed. A good entry has these parts:",
+        ],
+        list: [
+          'A headline that says what happened: "Got the screen to work!!" beats "Day 4".',
+          "What you set out to do, and why it was hard. The problem is half the story.",
+          "How you got there: what you looked up, what you tried, what broke, and what finally fixed it. Link the datasheet, repo or forum thread that helped.",
+          "Pictures of the work in progress — screenshots of the schematic or model, photos of the board — placed next to the sentence they prove.",
+          "A one-line tl;dr at the end, so a reviewer skimming a week of entries knows what each one was.",
+          "What is next, so the following session starts where this one stopped.",
+        ],
+      },
+      {
+        heading: "Make it yours",
+        paragraphs: [
+          "Write your entries yourself, in your own words. Reviewers are reading for your process — the dead ends as much as the wins — and a generated summary does not show one. If writing feels like a chore, talk through the session into a voice memo or a quick video while it is fresh, then write the entry from that.",
+        ],
+      },
+      {
+        heading: "When an entry is final",
+        paragraphs: [
+          "You can edit an entry while its week is still open. Once you submit the week, its entries are what the reviewer is reading, so they cannot be edited until you unsubmit; and once a reviewer has set the hours on an entry, that entry is final.",
         ],
       },
     ],
@@ -83,48 +121,130 @@ export const DOCS: DocArticle[] = [
     slug: "tiers",
     title: "Funding tiers",
     section: "Money",
-    minutes: 3,
-    summary: "How much you get, and how hours turn into coins.",
+    summary: "How much each tier funds, and how your hours turn into coins.",
     body: [
       {
-        heading: "Picking a tier",
+        heading: "The three tiers",
         paragraphs: [
-          "You choose a tier when you create a project, and you can change it any time before you submit that week — the tier sits on the project page, and it stays editable until that week is handed in. Tier 1 funds $30 and expects six to eight hours. Tier 2 funds $65 and expects thirteen to fifteen. Tier 3 funds $100 and expects twenty or more.",
-          "Those are the funded hours, and they are not the number that lets you submit. A funded hour banks nothing — it has already been spent on your project — so the printer money has to be worked on top of the block. About four banked hours a week (3.76, for an Ender 3 V3 SE) is the least that still ends the season in a machine, which puts the floor at about ten hours on tier 1, seventeen on tier 2 and twenty-four on tier 3. Under that, the week cannot be handed in at that tier; the submit sheet will offer you the tiers your hours do cover.",
-          "If you picked one of the starter projects during onboarding, your first week is locked to tier 1. That is on purpose — the starter projects are scoped so a $30 budget is genuinely enough.",
+          "Every project gets money for parts. Your tier sets how much. The first hours of a design week are what that money pays for.",
+        ],
+        list: [
+          "Tier 1: $30. Covers your first 6 hours.",
+          "Tier 2: $65. Covers your first 13 hours.",
+          "Tier 3: $100. Covers your first 20 hours.",
         ],
       },
       {
-        heading: "How coins work",
+        heading: "Picking a tier",
         paragraphs: [
-          "The first block of hours pays for the project itself. Everything after that banks at five coins an hour, and every dollar you save against your tier banks as one more coin. Work ten hours on a tier 1 project and you get $30 of funding plus twenty banked coins.",
-          "Your tier does not decide which printer you finish with. That is what the banking is for, and it is the same five coins an hour on every tier — the tier only sets how many hours are funded underneath it. Bank a little each week on tier 3 projects and you finish with the cheapest machine; bank hard on tier 1 projects and you finish with the most expensive one.",
+          "You pick a tier when you create a project. You can change it until your design week is approved. A reviewer sets the final tier when they approve it. Starter projects are always tier 1.",
+        ],
+      },
+      {
+        heading: "Hours to submit",
+        paragraphs: [
+          "A design week needs more hours than its tier covers. The extra hours go toward your printer. These are the minimums:",
+        ],
+        list: ["Tier 1: 10 hours.", "Tier 2: 17 hours.", "Tier 3: 24 hours."],
+      },
+      {
+        heading: "Hours become coins",
+        paragraphs: ["One hour of approved work is worth 5 coins. One coin is worth $1."],
+        list: [
+          "Design week: the hours your tier covers pay for parts, not coins.",
+          "Design week: the hours after that bank toward your printer. How many depends on the printer you picked.",
+          "Design week: anything beyond that is coins you can spend.",
+          "Build week: the first 5 hours bank toward your printer. The rest are coins you can spend.",
+          "Ship a theme (design and build both approved): 25 bonus coins to spend.",
+        ],
+      },
+      {
+        heading: "Two kinds of coins",
+        paragraphs: [
+          "Banked coins can only buy a printer. Spendable coins buy anything in the shop, printers included. You unlock the printer by shipping all five themes.",
         ],
       },
     ],
   },
   {
     slug: "submitting",
-    title: "Submitting a week",
+    title: "Shipping a week",
     section: "Shipping",
-    minutes: 4,
-    summary: "The checklist reviewers actually use.",
+    summary: "What your repo needs, what the submit sheet asks for, and what reviewers check.",
     body: [
       {
-        heading: "Design weeks",
+        heading: "What shipping means",
         paragraphs: [
-          "Three things: the files, the bill of materials, and a closing reel. Files means source files, not exports — a PDF of a schematic is not a schematic. The BOM needs a real vendor and a real price per line, and we ask for a screenshot of the cart so the numbers are checkable.",
-        ],
-        list: [
-          "Every file in the checklist attached.",
-          "BOM total inside your tier, or a note explaining why not.",
-          "A 30 second reel walking through the final design.",
+          "Shipping is making your project something other people can open, understand and rebuild. A project that only exists on your laptop has not shipped, and a reviewer cannot approve what they cannot see. The week's work lives in a public GitHub repo, and the repo is the first thing a reviewer opens.",
         ],
       },
       {
-        heading: "Build weeks",
+        heading: "Your repo",
         paragraphs: [
-          "One video, thirty to sixty seconds, of the project working, with your voice explaining what it does. If it does not work, that is still a valid submission — record what happens instead, and write up what needs to change. Reviewers pass honest failures and fail silent ones.",
+          "The submit sheet checks your repo before it lets you hand in. A missing README, a README with no photos, or a missing required file blocks the submit and tells you what to add. Recommended files are flagged but never block.",
+        ],
+        list: [
+          "Every week: a public GitHub repo, with a README that has photos in it.",
+          "PCB week: board and schematic source files (.kicad_pcb, .kicad_sch). Recommended: Gerbers (a .zip is fine) and a bom.csv.",
+          "CAD week: editable CAD files (.step, .f3d, .fcstd, .scad). Recommended: printable models (.stl, .3mf).",
+          "Music week: a schematic (KiCad, Logisim or Digital). Recommended: firmware.",
+          "Displays week: firmware or code. Recommended: a schematic.",
+          "Breadboard computer week: a schematic (KiCad, Logisim or Digital).",
+        ],
+      },
+      {
+        heading: "A README worth reading",
+        paragraphs: [
+          "A folder of files and two sentences is not documentation. Write the README for someone who has never heard of your project and wants to build one:",
+        ],
+        list: [
+          "What it is, and why you made it.",
+          "How it works: how the parts fit together.",
+          "Photos and screenshots: the schematic, the board layout, the 3D model, and the real thing once it exists.",
+          "A wiring diagram, if anything is wired by hand.",
+          "The bill of materials, as a table with links to where each part is bought.",
+        ],
+      },
+      {
+        heading: "Source files, not exports",
+        paragraphs: [
+          "Upload the files someone would need to change your design, not just look at it. A PDF of a schematic is not a schematic, and an STL is not a CAD model. Keep the repo organised in folders, with firmware, libraries and anything you referenced alongside it.",
+        ],
+      },
+      {
+        heading: "Handing in a design week",
+        paragraphs: ["After the repo check, the submit sheet asks for three things:"],
+        list: [
+          "Your bill of materials, with a real vendor and a real price on every line.",
+          "Screenshots of your cart with the total visible, one per vendor if the order is split, so the total can be checked.",
+          "Your tier. Your hours have to reach that tier's minimum; the sheet shows which tiers they cover.",
+          "A closing reel: pan across the schematic, the layout and the render, and talk over it.",
+        ],
+      },
+      {
+        heading: "Handing in a build week",
+        paragraphs: [
+          "One demo video: point the camera at the thing, turn it on, and talk over it. Then say whether it works. If it does not, that is still a valid submission. Record what happens, and write up what went wrong and what needs to change. Reviewers pass honest failures and fail silent ones.",
+          "Anything you changed while building — the firmware, the model, a fix to the board — goes in your journal and in the repo too.",
+        ],
+      },
+      {
+        heading: "Before your first submit",
+        paragraphs: [
+          "You need at least one logged session for the week, and your Hack Club identity has to be verified at identity.hackclub.com. You can explore and journal before verifying; only submitting waits for it.",
+        ],
+      },
+      {
+        heading: "What gets a week sent back",
+        paragraphs: [
+          "Reviewers can approve a week, send it back with changes to make, or reject it. A week sent back can be fixed and handed in again. The usual reasons:",
+        ],
+        list: [
+          "The README does not explain the project, or has no photos.",
+          "Source files are missing, or only exports are there.",
+          "The journal does not back the hours claimed.",
+          "The BOM does not match the cart, or has no real prices.",
+          "Work that is not yours: copied designs, or a README or journal written by AI.",
         ],
       },
     ],
@@ -133,7 +253,6 @@ export const DOCS: DocArticle[] = [
     slug: "reels",
     title: "Making a reel",
     section: "Shipping",
-    minutes: 2,
     summary: "Thirty seconds, one idea, no editing required.",
     body: [
       {

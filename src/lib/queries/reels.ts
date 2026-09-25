@@ -2,6 +2,7 @@ import "server-only"
 import { PostStatus, type PublicReelPlatform } from "@/app/generated/prisma/enums"
 import { THEMES } from "@/lib/config/program"
 import prisma from "@/lib/prisma"
+import { reelLockReason } from "@/lib/reel-gate"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
 /**
@@ -30,6 +31,13 @@ export interface MyReel {
   thumbnailUrl: string | null
   status: PostStatus
   links: MyPublicLink[]
+  /** Why this reel cannot be deleted — its week is in review, decided or over. Null when it can. */
+  deleteLocked: string | null
+  /**
+   * Whether deleting it reopens its checkpoint: the last reel on an idea or
+   * progress checkpoint. The map then holds everything else until it is back.
+   */
+  reopensCheckpoint: boolean
 }
 
 export interface MyReelGroup {
@@ -72,6 +80,17 @@ export async function getMyReels(userId: string): Promise<MyReelGroup[]> {
     },
   })
 
+  // How many live reels each checkpoint has, so a second one can go without
+  // reopening anything. And each checkpoint week's lock, asked once per week.
+  const perKey = new Map<string, number>()
+  for (const p of posts) if (p.checkpointKey) perKey.set(p.checkpointKey, (perKey.get(p.checkpointKey) ?? 0) + 1)
+  const locks = new Map<string, Promise<string | null>>()
+  const lockFor = (projectId: string | null, key: string) => {
+    const k = `${projectId}:${key.replace(/-reel-.*$/, "")}`
+    if (!locks.has(k)) locks.set(k, reelLockReason(userId, projectId, key))
+    return locks.get(k) as Promise<string | null>
+  }
+
   const groups = new Map<string, MyReelGroup>()
   for (const p of posts) {
     const project = p.themeProject && !p.themeProject.deletedAt ? p.themeProject : null
@@ -103,6 +122,9 @@ export async function getMyReels(userId: string): Promise<MyReelGroup[]> {
         url: l.url,
         postedAt: l.postedAt.getTime(),
       })),
+      deleteLocked: p.checkpointKey ? await lockFor(p.themeProject?.id ?? null, p.checkpointKey) : null,
+      reopensCheckpoint:
+        !!p.checkpointKey && /-reel-(idea|\d{1,2})$/.test(p.checkpointKey) && perKey.get(p.checkpointKey) === 1,
     })
   }
 

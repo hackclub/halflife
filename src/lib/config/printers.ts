@@ -45,6 +45,7 @@ export interface PrinterGoal {
   link: string
   /** Short flag for anything that is not a plain FDM printer. */
   note?: string
+  /** How the maker describes it on the product page `link` points at. */
   blurb: string
 }
 
@@ -69,7 +70,7 @@ const SHEET: SheetRow[] = [
     bankedHours: 3.76,
     kind: "bedslinger",
     link: "https://store.creality.com/products/ender-3-v3-se-3d-printer",
-    blurb: "Open-frame bed-slinger, and the machine half the internet learned on.",
+    blurb: "Perfect for beginners: easy, reliable, and ready for every project.",
   },
   {
     id: "bambu-a1-mini",
@@ -81,11 +82,11 @@ const SHEET: SheetRow[] = [
     bankedHours: 4.64,
     kind: "bedslinger",
     link: "https://us.store.bambulab.com/products/a1-mini",
-    blurb: "Bed-slinger, auto-levelling, genuinely good. Small bed, no excuses.",
+    blurb: "Ultimate performance in a compact build volume, with features once found only in high-end models.",
   },
   {
     id: "elegoo-mars-4",
-    name: "ELEGOO Mars 4",
+    name: "ELEGOO Mars 5",
     price: 225,
     shopPrice: 247.5,
     coins: 248,
@@ -94,7 +95,7 @@ const SHEET: SheetRow[] = [
     kind: "resin",
     note: "Resin",
     link: "https://us.elegoo.com/collections/lcd-printers/products/mars-5-4k-6-6inch-monochrome-lcd-resin-3d-printer",
-    blurb: "Detail you will never get out of a nozzle. Gloves and ventilation are not optional.",
+    blurb: "The best resin 3D printer for budget-savvy beginners, with smart self-check and auto-leveling.",
   },
   {
     id: "elegoo-neptune-4",
@@ -106,7 +107,7 @@ const SHEET: SheetRow[] = [
     bankedHours: 5.96,
     kind: "bedslinger",
     link: "https://us.elegoo.com/collections/fdm-printers/products/elegoo-neptune-4-fdm-3d-printer",
-    blurb: "Direct drive and a bigger bed, still an open frame you can reach into.",
+    blurb: "Up to 500mm/s printing, 121-point auto bed leveling and a 300°C dual-gear direct extruder.",
   },
   {
     id: "monoprice-cnc",
@@ -119,7 +120,7 @@ const SHEET: SheetRow[] = [
     kind: "cnc",
     note: "CNC Router",
     link: "https://www.monoprice.com/product?p_id=44220",
-    blurb: "A benchtop router kit. It cuts wood, acrylic and soft metal instead of adding plastic.",
+    blurb: "A 3-axis CNC router for engraving and milling soft metals, wood, plastic, acrylic, PVC and PCBs.",
   },
   {
     id: "elegoo-centauri-2",
@@ -131,7 +132,7 @@ const SHEET: SheetRow[] = [
     bankedHours: 8.16,
     kind: "corexy",
     link: "https://us.elegoo.com/collections/fdm-printers/products/centauri-2",
-    blurb: "Enclosed CoreXY at roughly open-frame money. Fast, and it keeps the heat in.",
+    blurb: "A high-speed CoreXY 3D printer with easy setup, smart auto-calibration and reliable precision.",
   },
   {
     id: "bambu-a1",
@@ -143,7 +144,7 @@ const SHEET: SheetRow[] = [
     bankedHours: 8.16,
     kind: "bedslinger",
     link: "https://us.store.bambulab.com/products/a1",
-    blurb: "The Mini's big sibling. Same idea, 256mm of bed to spread out on.",
+    blurb: "Fully automated, multi-color printing: a full-size bed-slinger with CoreXY speed.",
   },
   {
     id: "bambu-p1s",
@@ -155,7 +156,7 @@ const SHEET: SheetRow[] = [
     bankedHours: 12.56,
     kind: "corexy",
     link: "https://us.store.bambulab.com/products/p1s",
-    blurb: "Enclosed CoreXY, filters, the lot. The one people stop upgrading from.",
+    blurb: "A high-speed enclosed 3D printer with a CoreXY design and reliable performance right out of the box.",
   },
 ]
 

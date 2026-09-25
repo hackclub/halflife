@@ -20,7 +20,6 @@ export default async function ReelsPage() {
       <PageSign
         label="REELS"
         color="var(--color-gold)"
-        sub="Every reel you've posted, by project. Post one on Instagram, TikTok, X or YouTube too and add the link here: if it goes viral, you earn coins."
       />
       <ReelsList groups={groups} />
     </div>

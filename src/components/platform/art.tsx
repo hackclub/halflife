@@ -5,6 +5,13 @@
  * a light is actually emitting.
  */
 
+import Image, { type StaticImageData } from "next/image"
+import breadboardPainting from "../../../public/art/weeks/breadboard.png"
+import cadPainting from "../../../public/art/weeks/cad.png"
+import displayPainting from "../../../public/art/weeks/display.png"
+import musicPainting from "../../../public/art/weeks/music.png"
+import pcbPainting from "../../../public/art/weeks/PCB.png"
+
 const INK = "#1c1a59"
 
 /* ------------------------------------------------------------------ *
@@ -243,7 +250,7 @@ export function WeekScene({ theme, className }: { theme: string; className?: str
   const scene =
     theme === "CAD" ? (
       <SceneCAD />
-    ) : theme === "Synth" ? (
+    ) : theme === "Music" ? (
       <SceneSynth />
     ) : theme === "Displays" ? (
       <SceneDisplay />
@@ -256,6 +263,47 @@ export function WeekScene({ theme, className }: { theme: string; className?: str
     <svg viewBox="0 0 200 160" className={className} role="img" aria-label={`${theme} illustration`}>
       {scene}
     </svg>
+  )
+}
+
+/* ------------------------------------------------------------------ *
+ * Week paintings
+ * ------------------------------------------------------------------ */
+
+/**
+ * The programme's own painted stickers, one per theme, from `public/art/weeks`
+ * — the same files the landing page's "how does it work?" plate shows. A
+ * theme with no painting falls back to its drawn scene.
+ *
+ * Imported rather than named by path, as the landing's are: the URL carries
+ * a hash of the file, so a repainted sticker is never served from a stale
+ * cache. Each source is a 3000px square of 2–4 MB, which is why this goes
+ * through `next/image` and names the size it is shown at.
+ */
+const WEEK_PAINTINGS: Partial<Record<string, StaticImageData>> = {
+  PCB: pcbPainting,
+  CAD: cadPainting,
+  Music: musicPainting,
+  Displays: displayPainting,
+  "Breadboard computer": breadboardPainting,
+}
+
+export function WeekPainting({
+  theme,
+  className,
+  sizes,
+}: {
+  theme: string
+  className?: string
+  /** The rendered width, for `next/image`. */
+  sizes: string
+}) {
+  const painting = WEEK_PAINTINGS[theme]
+  if (!painting) return <WeekScene theme={theme} className={className} />
+  return (
+    <span className={`relative block ${className ?? ""}`}>
+      <Image src={painting} alt={`${theme} illustration`} fill sizes={sizes} className="object-contain" />
+    </span>
   )
 }
 

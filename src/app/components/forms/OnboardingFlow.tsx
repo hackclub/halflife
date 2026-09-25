@@ -6,7 +6,7 @@ import { Button, Chip, Field, OptionRow, Panel } from "@/components/platform/ui"
 import type { OnboardingView } from "@/lib/onboarding-view"
 
 const projectInputClass =
-  "block w-full rounded-xl border-2 border-line bg-black/[.02] px-4 py-2.5 text-[0.9rem] text-navy outline-none transition-colors placeholder:text-navy-soft/70 hover:border-line-strong focus:border-violet focus:bg-white"
+  "block w-full rounded-xl border-2 border-field bg-black/[.02] px-4 py-2.5 text-[0.9rem] text-navy outline-none transition-colors placeholder:text-navy-faint hover:border-navy-soft focus:border-violet focus:bg-white"
 
 interface OnboardingResponse {
   onboarding?: OnboardingView
@@ -80,7 +80,7 @@ export function OnboardingFlow({
     <Panel tone="gold" radius={20} className="bg-paper p-5 sm:p-7">
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <p className="label text-gold-deep">
+          <p className="label text-gold-ink">
             GETTING STARTED: {step.number}/{view.stepCount}
           </p>
           <h2 className="mt-1 text-[1.45rem] font-extrabold tracking-[-0.02em] text-navy sm:text-[1.7rem]">
@@ -100,7 +100,7 @@ export function OnboardingFlow({
       </div>
 
       {error ? (
-        <p role="alert" className="mb-5 rounded-xl bg-coral/10 px-4 py-3 text-[0.86rem] font-semibold text-coral-deep">
+        <p role="alert" className="mb-5 rounded-xl bg-coral/10 px-4 py-3 text-[0.86rem] font-semibold text-coral-dark">
           {error}
         </p>
       ) : null}
@@ -128,7 +128,7 @@ export function OnboardingFlow({
 
         {step.id === "week" && view.weekIntro ? (
           <div className="space-y-4">
-            <p className="label text-sky-deep">{view.weekIntro.kicker}</p>
+            <p className="label text-sky-ink">{view.weekIntro.kicker}</p>
             <h3 className="text-[1.2rem] font-extrabold text-navy">{view.weekIntro.headline}</h3>
             {view.beginner ? (
               <p className="text-[0.92rem] leading-relaxed text-navy-soft">{view.weekIntro.primer}</p>

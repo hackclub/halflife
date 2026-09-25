@@ -47,6 +47,17 @@ colors:
   gold-pale: "#fdf1cc"
   line: "#c8c3d6"
   line-strong: "#9a94b4"
+  # Text-only inks and a field edge: see "Measured contrast".
+  sky-ink: "#236b85"
+  teal-ink: "#037365"
+  gold-ink: "#7f5c07"
+  orange-ink: "#8c5507"
+  sand-ink: "#8a6c4b"
+  navy-faint: "#676386"
+  field: "#86829f"
+  violet-dark: "#613f7b"
+  teal-dark: "#025a4f"
+  coral-dark: "#a53131"
   # ── Staff console (src/app/(platform)/ops.css) ─────────────────────────────
   # The platform's earlier system, kept whole for admin, review and login. In
   # ops.css these are plain `--color-*` names scoped to the (ops) route group;
@@ -342,16 +353,31 @@ magenta 5.62:1 · coral-deep 4.81:1 · teal-deep 4.40:1. Fills with navy text:
 gold 9.74:1 · mint 12.33:1 · sand 12.09:1. White on violet-deep 6.01:1 · magenta
 5.96:1 · coral-deep 5.10:1 · teal-deep 4.67:1 · navy 15.66:1.
 
-**Known failures — stated rather than silently corrected, because the colours
-are the programme's own and changing them is a brand decision:**
+**Resolved by adding text-only tones, not by changing the brand's fills.**
+The deep tones stay rims and borders; anything set as *text* in those hues
+takes an ink that clears 4.5:1 on cream, white and every pale chip fill:
 
-- **Text on cream below 4.5:1:** line-strong 2.72 · teal 2.64 · gold-deep 2.58 · orange-deep 2.94 · coral 3.13 · sky-deep 3.61.
-- **White on a fill below 4.5:1:** sky 2.37 (the Explore sign, sky week banners) · teal 2.80 (teal buttons, teal banners) · coral 3.33 (coral buttons) · violet 3.37 (**the primary button**) · orange 1.98 (orange banners) · teal-grey 1.77 (the glyph on a passed puck).
-- **Tint on its own pale:** gold-deep on gold-pale 2.43 (the gold chip) · sky-deep on sky-pale 3.05 (the sky chip) · sand-deep on sand 1.62 (the padlock on a locked puck).
+- **Inks:** `sky-ink` (was sky-deep, 3.61), `teal-ink` (teal-deep, 4.40),
+  `gold-ink` (gold-deep, 2.58), `orange-ink` (orange-deep, 2.94). Coral text is
+  `coral-deep`, violet text `violet-deep`, and on a coral tint (`coral/10`,
+  `/15`, where coral-deep falls to 4.06–4.30) it is `coral-dark`.
+- **Quiet text** that used to be `line-strong` (2.72) is `navy-faint`
+  (5.34:1), which is also every placeholder.
+- **Solid buttons** fill with the deep tone and rim and hover one darker
+  (`violet-dark`, `teal-dark`, `coral-dark`): white reads 6.01, 4.67 and 5.10.
+- **On an accent fill** the text is navy — `onAccent()` in `ui.tsx` — except on
+  magenta, the one fill white reads on. A label "in the week's colour" on
+  cream goes through `accentText()`, which swaps each accent for its ink.
+- **Fields** are edged in `field` (3.68:1 on white), the 3:1 a control's
+  boundary needs; `line` (1.72) is for dividers only.
+- **Puck glyphs:** a passed glyph is navy-soft on teal-grey (4.69), a padlock
+  `sand-ink` on sand (3.75).
 
-Until they are resolved, none of these carries text a participant has to read.
-The one that most needs a decision is white on violet: it is every primary
-button on the platform.
+**Still below the line, and why:** the white glyph on a sky, teal or orange
+puck (2.37, 2.80, 1.98 against the 3:1 an icon needs). It is the trail's
+signature and every puck is also labelled, so it is left for a design
+decision rather than repainted. Decorative marks — the dotted connectors, the
+dashed `line` rules, panel outlines — carry no information and are exempt.
 
 ## Typography
 
@@ -514,7 +540,7 @@ never renders and the field is a white box on a white panel. Fields take a real
 
 - **Shape:** 12px radius, a 2px border in the fill's own deep tone, label type (Shantell 700, uppercase) at 0.76–0.95rem.
 - **Sizes:** sm 36px tall, md 44px, lg 52px.
-- **Solid (primary):** violet fill, white text, violet-deep border; hover fills violet-deep. Gold, teal and coral variants follow the same pattern for prize, go and danger.
+- **Solid (primary):** violet-deep fill, white text, violet-dark border; hover fills violet-dark. Teal and coral follow the same pattern (deep fill, dark rim) for go and danger; gold keeps its gold fill with navy text for the prize.
 - **Outline:** transparent, navy text, violet border; hover fills violet-pale.
 - **Ghost:** no border, navy-soft text; hover darkens the text and adds a 5% navy wash.
 - **Pressed:** moves down 1px.
@@ -546,9 +572,8 @@ never renders and the field is a white box on a white panel. Fields take a real
 
 ### Inputs / Fields
 
-- **Style:** a real 2px `line` border, 12px radius, a barely-there 2% navy wash that turns white on focus. The border moves to `line-strong` on hover and to violet on focus. Labels sit above in label type in violet-deep.
-- **Invalid:** a coral border (`aria-invalid`).
-- **Known drift:** the shared `inputClass` still leans on `.sketch`, which cannot draw on a field. New fields should use the bordered style above until the two are unified.
+- **Style:** a real 2px `field` border, 12px radius, a barely-there 2% navy wash that turns white on focus. The border moves to `navy-soft` on hover and to violet on focus. Labels sit above in label type in violet-deep. `inputClass` and `borderedInputClass` in `ui.tsx` are this style.
+- **Invalid:** a coral-deep border (`aria-invalid`).
 
 ### Navigation
 
@@ -563,7 +588,7 @@ never renders and the field is a white box on a white panel. Fields take a real
 
 The platform's primary structure, and the thing the dashboard is. **All ten
 weeks render as one continuous track**, so a participant in week 2 can scroll
-down and see the synth, the displays and the breadboard computer waiting. The
+down and see the music week, the displays and the breadboard computer waiting. The
 view lands on the current checkpoint on arrival.
 
 A week opens with its setup (the gold questionnaire in week 1, the project form

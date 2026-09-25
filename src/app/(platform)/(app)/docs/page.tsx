@@ -20,7 +20,7 @@ export default function DocsIndex() {
       <div className="grid gap-9">
         {sections.map((section) => (
           <section key={section}>
-            <h2 className="label mb-3 text-line-strong">{section}</h2>
+            <h2 className="label mb-3 text-navy-faint">{section}</h2>
             <ul className="grid gap-3">
               {DOCS.filter((d) => d.section === section).map((doc) => (
                 <Panel key={doc.slug} as="li" tone="line" radius={18} className="bg-paper">
@@ -29,13 +29,12 @@ export default function DocsIndex() {
                     className="group flex items-center gap-4 px-5 py-4 sm:px-6 sm:py-5"
                   >
                     <span className="min-w-0 flex-1">
-                      <span className="block text-[1.1rem] leading-tight font-extrabold text-navy transition-colors group-hover:text-teal-deep">
+                      <span className="block text-[1.1rem] leading-tight font-extrabold text-navy transition-colors group-hover:text-teal-ink">
                         {doc.title}
                       </span>
                       <span className="mt-1 block text-[0.88rem] leading-snug text-navy-soft">{doc.summary}</span>
-                      <span className="hand mt-2 inline-flex items-center gap-1.5 text-[0.76rem] text-line-strong" />
                     </span>
-                    <IconArrowRight className="shrink-0 text-xl text-line-strong transition-transform duration-200 group-hover:translate-x-1 group-hover:text-teal-deep" />
+                    <IconArrowRight className="shrink-0 text-xl text-navy-faint transition-transform duration-200 group-hover:translate-x-1 group-hover:text-teal-ink" />
                   </ArticleLink>
                 </Panel>
               ))}

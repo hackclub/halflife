@@ -775,7 +775,7 @@ model SessionTimelapse {
 }
 
 /// A linked Hackatime project, scoped to one themed project and phase.
-/// Firmware for the Synth is a different link from firmware for the Breadboard
+/// Firmware for the music week project is a different link from firmware for the Breadboard
 /// Computer, so this is per-project rather than per-user.
 model HackatimeLink {
   id               String       @id @default(cuid())

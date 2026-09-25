@@ -44,7 +44,7 @@ and it encodes the Checkpoint framework exactly:
 
 - **Week 1 (PCB, design)** — onboarding → first journal → idea reel → journal to
   the hours target → progress reel → submit (files, BOM/cart/tier, closing reel).
-- **Design weeks 2–5** (CAD, synth, displays, breadboard computer) — project
+- **Design weeks 2–5** (CAD, music, displays, breadboard computer) — project
   creation with tier selection → idea reel → journal → reel → journal → reel →
   submit.
 - **Build weeks 6–10** — the same five themes, built for real, ending in a
