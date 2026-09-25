@@ -5,6 +5,7 @@ import { Permission } from "@/lib/permissions"
 import { shopItemUpdateSchema } from "@/lib/schemas/admin"
 import { sanitize } from "@/lib/sanitize"
 import { AuditAction, logAudit } from "@/lib/audit"
+import { dollars } from "@/lib/money"
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -26,6 +27,7 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
       ...data,
       ...(data.name !== undefined ? { name: sanitize(data.name) } : {}),
       ...(data.description !== undefined ? { description: sanitize(data.description) } : {}),
+      ...(data.costUsd !== undefined ? { costUsd: dollars(data.costUsd) } : {}),
     },
   })
 
@@ -36,8 +38,18 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
     targetType: "ShopItem",
     targetId: id,
     metadata: {
-      before: { priceCredits: before.priceCredits, stock: before.stock, active: before.active },
-      after: { priceCredits: item.priceCredits, stock: item.stock, active: item.active },
+      before: {
+        priceCredits: before.priceCredits,
+        costUsd: before.costUsd,
+        stock: before.stock,
+        active: before.active,
+      },
+      after: {
+        priceCredits: item.priceCredits,
+        costUsd: item.costUsd,
+        stock: item.stock,
+        active: item.active,
+      },
     },
   })
 

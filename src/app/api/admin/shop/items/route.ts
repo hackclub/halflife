@@ -5,6 +5,7 @@ import { Permission } from "@/lib/permissions"
 import { shopItemSchema } from "@/lib/schemas/admin"
 import { sanitize } from "@/lib/sanitize"
 import { AuditAction, logAudit } from "@/lib/audit"
+import { dollars } from "@/lib/money"
 
 export const dynamic = "force-dynamic"
 
@@ -33,6 +34,7 @@ export const POST = withRoute(async (req: Request) => {
       name: sanitize(data.name),
       description: sanitize(data.description),
       imageUrl: data.imageUrl ?? null,
+      costUsd: dollars(data.costUsd ?? null),
     },
   })
 
@@ -42,7 +44,7 @@ export const POST = withRoute(async (req: Request) => {
     actorEmail: gate.user.email,
     targetType: "ShopItem",
     targetId: item.id,
-    metadata: { after: { name: item.name, priceCredits: item.priceCredits } },
+    metadata: { after: { name: item.name, priceCredits: item.priceCredits, costUsd: item.costUsd } },
   })
 
   return ok({ item }, { status: 201 })

@@ -29,7 +29,7 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
           <Link href="/admin/shop">Shop</Link>
         ) : null}
         {hasPermission(roles, Permission.FULFILL_ORDERS) ? (
-          <Link href="/admin/shop/orders">Orders</Link>
+          <Link href="/admin/fulfillment">Fulfillment</Link>
         ) : null}
         {hasPermission(roles, Permission.MANAGE_PROGRAM) ? (
           <Link href="/admin/program">Program</Link>

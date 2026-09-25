@@ -665,7 +665,10 @@ export default function Process() {
       </div>
 
       {/* ── Stacked layout, below 1180px ───────────────────────────────── */}
-      <div className="px-4 pt-20 pb-24 sm:px-8 min-[1180px]:hidden">
+      {/* `pt-8` on a phone, where the hero above is content-sized and ends on
+          its scroll cue: the full 80 on top of the cue's own room read as the
+          two sections having nothing to do with each other. */}
+      <div className="px-4 pt-8 pb-24 sm:px-8 sm:pt-20 min-[1180px]:hidden">
         <div className="mx-auto flex max-w-2xl flex-col">
           {/* The header, and the weld that leaves it — the same two objects
               the stage opens with, and for the same reason: this is where the
@@ -751,7 +754,7 @@ export default function Process() {
                   className="mt-6 aspect-[11876/3790] w-full"
                   sizes={STEP_ART_SIZES.stacked}
                 />
-                <p className="mt-4 font-semibold">{funding.caption}</p>
+                <p className="mt-4 font-semibold text-opacity-40">{funding.caption}</p>
               </Plate>
             </li>
 

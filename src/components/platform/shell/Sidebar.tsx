@@ -97,7 +97,7 @@ export function Sidebar({ className }: { className?: string }) {
               setSigningOut(true);
               try {
                 await signOut();
-                router.push("/login");
+                router.push("/");
                 router.refresh();
               } finally {
                 setSigningOut(false);

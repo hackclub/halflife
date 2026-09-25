@@ -1,5 +1,10 @@
 import { z } from "zod"
-import { Role, ShopItemCategory } from "@/app/generated/prisma/enums"
+import {
+  Role,
+  ShopFulfillmentMethod,
+  ShopFulfillmentStage,
+  ShopItemCategory,
+} from "@/app/generated/prisma/enums"
 import { boundedText, cuid, httpsUrl } from "@/lib/schemas/common"
 
 export const roleChangeSchema = z.object({ role: z.enum(Role) }).strict()
@@ -43,6 +48,8 @@ export const shopItemSchema = z
     imageUrl: httpsUrl.nullable().optional(),
     category: z.enum(ShopItemCategory).default("PRINTER_UPGRADE"),
     priceCredits: z.number().int().min(0),
+    /** Dollars, rounded to the cent on write. */
+    costUsd: z.number().min(0).max(100_000).nullable().optional(),
     maxPerUser: z.number().int().min(0).default(1),
     stock: z.number().int().min(0).nullable().default(null),
     requiresPrinterQualified: z.boolean().default(true),
@@ -64,6 +71,15 @@ export const orderDecisionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("REJECT"), reason: boundedText(1000, 1) }).strict(),
   z.object({ action: z.literal("HOLD"), reason: boundedText(1000, 1) }).strict(),
 ])
+
+/** Either or both; `method: null` clears a choice made by mistake. */
+export const orderFulfillmentSchema = z
+  .object({
+    method: z.enum(ShopFulfillmentMethod).nullable().optional(),
+    stage: z.enum(ShopFulfillmentStage).optional(),
+  })
+  .strict()
+  .refine((b) => b.method !== undefined || b.stage !== undefined, "Nothing to change")
 
 export const programSettingsSchema = z
   .object({

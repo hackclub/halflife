@@ -157,6 +157,7 @@ export async function purchase(
         unitCredits: fresh.priceCredits,
         totalCredits,
         itemNameSnapshot: fresh.name,
+        unitCostUsd: fresh.costUsd,
       },
     })
 

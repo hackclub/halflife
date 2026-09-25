@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { signInWith, useSession } from "@/lib/auth-client";
 
@@ -32,13 +31,14 @@ import { signInWith, useSession } from "@/lib/auth-client";
  * rather than stopping at the platform's own sign-in page to ask the same
  * question again. Someone already signed in has nothing to sign in to, so for
  * them it is just the way to the trail. It stays a real link to /dashboard
- * underneath — without script, or if the sign-in could not start, that page
- * still gets you in (and says what went wrong).
+ * underneath, which is where a signed-in visitor opening it in a new tab
+ * belongs. If the sign-in could not start, the mark says "try again" and the
+ * page stays where it is: nothing on the site sends anyone to /login.
  */
 export default function LoginMark() {
-  const router = useRouter();
   const { data: session } = useSession();
   const [starting, setStarting] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   async function signIn(e: React.MouseEvent<HTMLAnchorElement>) {
     // Signed in already, or a modified click (new tab, and so on): let the
@@ -51,10 +51,17 @@ export default function LoginMark() {
       // better-auth reports a refusal in the result rather than throwing, and
       // on success the page is already on its way to Hack Club.
       const result = await signInWith("hca", "/dashboard");
-      if (result?.error) router.push("/login");
+      if (result?.error) fail();
     } catch {
-      router.push("/login");
+      fail();
     }
+  }
+
+  // Stays on the landing page and says so on the mark itself, rather than
+  // sending anyone to a separate sign-in page.
+  function fail() {
+    setStarting(false);
+    setFailed(true);
   }
 
   return (
@@ -65,7 +72,7 @@ export default function LoginMark() {
       className="absolute top-1 right-1 z-20 bg-hl-ink px-3.5 py-1.5 font-display font-bold leading-snug text-hl-paper transition-colors hover:text-hl-cyan focus-visible:text-hl-cyan aria-busy:text-hl-cyan min-[830px]:top-3 min-[830px]:right-3 min-[830px]:px-5 min-[830px]:py-2.5"
       style={{ fontSize: "clamp(0.875rem, 3.6vw, 1rem)" }}
     >
-      log in
+      {failed ? "try again" : "log in"}
     </a>
   );
 }

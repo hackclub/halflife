@@ -4,6 +4,7 @@ import { Permission } from "@/lib/permissions"
 import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
 import { ShopItemForm } from "@/app/components/forms/ShopItemForm"
 import { ActionButton } from "@/app/components/forms/ActionButton"
+import { ItemCostField } from "@/app/components/forms/ItemCostField"
 
 export const dynamic = "force-dynamic"
 
@@ -21,12 +22,15 @@ export default async function AdminShopPage() {
         {items.length === 0 ? (
           <EmptyState>No items yet.</EmptyState>
         ) : (
-          <Table head={["Slug", "Name", "Price", "Stock", "Gated", "Active", ""]}>
+          <Table head={["Slug", "Name", "Price", "Cost (USD)", "Stock", "Gated", "Active", ""]}>
             {items.map((item) => (
               <tr key={item.id}>
                 <td className="hl-mono">{item.id}</td>
                 <td>{item.name}</td>
                 <td>{item.priceCredits}</td>
+                <td>
+                  <ItemCostField itemId={item.id} costUsd={item.costUsd} />
+                </td>
                 <td>{item.stock ?? "∞"}</td>
                 <td>{item.requiresPrinterQualified ? "all 5 themes" : "no"}</td>
                 <td>

@@ -29,7 +29,7 @@ function unauthorized(): NextResponse {
  * Cookie PRESENCE only — nothing here is validated, and nothing may be
  * decided on it that matters. It picks which page to render at `/`, and the
  * page it picks runs the real check: `(app)` is guarded by
- * `requireSessionPage`, so a forged cookie buys a redirect to /login rather
+ * `requireSessionPage`, so a forged cookie buys a trip to the landing page rather
  * than a look at anyone's trail. Validating properly would mean a database
  * round trip in front of every request on the site, including the static
  * landing page, to save signed-in visitors one redirect.

@@ -49,6 +49,8 @@ type Props = {
    * brings 0.7 of height with it, and the callers say where that lands.
    */
   artWidth?: string;
+  /** The artwork's `sizes`, for a caller that runs it at another width. */
+  sizes?: string;
 };
 
 export default function Wordmark({
@@ -57,6 +59,7 @@ export default function Wordmark({
   fontSize,
   art = false,
   artWidth,
+  sizes = "(min-width: 1180px) 35vw, 42vw",
 }: Props) {
   const Tag = as;
 
@@ -81,7 +84,7 @@ export default function Wordmark({
             alt=""
             fill
             priority
-            sizes="(min-width: 1180px) 35vw, 42vw"
+            sizes={sizes}
             // The old src was an `.svg`, which next/image serves unoptimized —
             // no srcset, no quality, `sizes` declared for the `fill` contract
             // and nothing else. A png goes through the optimizer, so both now
