@@ -309,5 +309,5 @@ export async function needsOnboarding(userId: string): Promise<boolean> {
   return started === 0
 }
 
-export { ONBOARDING_STEPS }
 export type { OnboardingStepId }
+export { ONBOARDING_STEPS }
