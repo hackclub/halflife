@@ -28,7 +28,11 @@ oauth_config:
   scopes:
     bot:
       - channels:history
-      - channels:manage
+      # The auto-invite needs only this: conversations.invite with a bot token
+      # takes channels:write.invites for public channels. channels:manage would
+      # also work but additionally grants archive/rename/kick, which nothing
+      # here calls — worth not asking an admin to approve.
+      - channels:write.invites
       - channels:read
       - chat:write
       - groups:history
