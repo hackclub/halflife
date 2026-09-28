@@ -4,6 +4,7 @@ import { recomputeWeek } from "@/lib/analytics"
 import { fail, ok, parseBody, parseQuery, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { scheduledWeekFor } from "@/lib/config/program"
+import { HttpError } from "@/lib/errors"
 import { requireSession } from "@/lib/guards"
 import { verifyOwnTimelapses } from "@/lib/lapse"
 import { cursorArgs, pageResult, paginationQuery } from "@/lib/pagination"
@@ -104,29 +105,37 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 
   // Timelapses are the same rule asked of Lapse: each must be the caller's
   // own, published, and done processing. And one recording backs one session —
-  // otherwise the same footage could be offered as proof twice.
+  // otherwise the same footage could be offered as proof twice. That check is
+  // read-then-create, so it happens inside the transaction under a lock on the
+  // recording; two parallel submits of the same clip otherwise both pass it.
   const lapseIds = [...new Set(data.timelapses.map((t) => t.lapseId))]
   const timelapses = await verifyOwnTimelapses(gate.user.id, lapseIds)
-  if (lapseIds.length > 0) {
-    const taken = await prisma.sessionTimelapse.findFirst({
-      where: {
-        provider: "lapse",
-        externalId: { in: lapseIds },
-        workSession: { deletedAt: null },
-      },
-      select: { externalId: true },
-    })
-    if (taken) {
-      const title = timelapses.find((t) => t.id === taken.externalId)?.title ?? "That timelapse"
-      return fail("CONFLICT", `"${title}" already backs another journal entry`)
-    }
-  }
 
   const timing = await stampSessionTiming(new Date())
 
   // One transaction: a session and the streak it feeds have to land together,
   // or a rolled-back write leaves an inflated streak with nothing behind it.
   const session = await prisma.$transaction(async (tx) => {
+    if (lapseIds.length > 0) {
+      // Sorted so two requests naming the same recordings cannot deadlock on
+      // each other's locks.
+      for (const lapseId of [...lapseIds].sort()) {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`lapse:${lapseId}`}, 0))`
+      }
+      const taken = await tx.sessionTimelapse.findFirst({
+        where: {
+          provider: "lapse",
+          externalId: { in: lapseIds },
+          workSession: { deletedAt: null },
+        },
+        select: { externalId: true },
+      })
+      if (taken) {
+        const title = timelapses.find((t) => t.id === taken.externalId)?.title ?? "That timelapse"
+        throw new HttpError("CONFLICT", `"${title}" already backs another journal entry`)
+      }
+    }
+
     const created = await tx.workSession.create({
       data: {
         themeProjectId: id,
