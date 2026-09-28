@@ -913,8 +913,7 @@ model SubmissionReview {
 
   /// Shown to the submitter.
   feedback String  @db.Text
-  /// Internal justification, never shown to the submitter. This is what feeds
-  /// the hours justification on the grant row.
+  /// Internal justification, never shown to the submitter.
   reason   String? @db.Text
 
   /// Set when a later action supersedes this review (an un-approval). Keeps the

@@ -89,7 +89,7 @@ export interface FinalizeInput {
   result: ReviewResult
   /** Shown to the participant. */
   feedback: string
-  /** Internal, feeds the grant row's hours justification. */
+  /** Internal note, never shown to the submitter; kept on the review and in the audit row. */
   reason?: string | null
   /** Required on a design approval. */
   tier?: number | null
