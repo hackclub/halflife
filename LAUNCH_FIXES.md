@@ -99,8 +99,11 @@ larger ones) before it is ticked.
     checking the compatible-brands list too. HEIC/AVIF/JPEG-2000 share the
     `ftyp` box and are now rejected. Seven cases added to `verify:contracts`.
 
-- [ ] **11. Dead Slack link on the shop page**
-  - `src/app/(platform)/(app)/shop/page.tsx:27` — `href="#"`.
+- [x] **11. Dead Slack link on the shop page**
+  - `src/app/(platform)/(app)/shop/page.tsx` — restored the real canvas URL
+    (`https://hackclub.enterprise.slack.com/docs/T0266FRGM/F0C4MAYPK4H`, found
+    in git history at `bdbdf08`), with `target="_blank"` /
+    `rel="noopener noreferrer"` to match the other external links.
 
 - [ ] **12. Hackatime panel can hang on network failure**
   - `.../projects/[id]/HackatimeLinks.tsx:54-80` — `load()` has no `try/catch`

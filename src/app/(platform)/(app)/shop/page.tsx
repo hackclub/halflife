@@ -24,7 +24,9 @@ export default async function ShopPage() {
           <>
             Do not see what you are looking for? Suggest it in the{" "}
             <a
-              href="#"
+              href="https://hackclub.enterprise.slack.com/docs/T0266FRGM/F0C4MAYPK4H"
+              target="_blank"
+              rel="noopener noreferrer"
               className="font-semibold text-navy underline decoration-dashed underline-offset-4 hover:text-coral"
             >
               shop items canvas on Slack
