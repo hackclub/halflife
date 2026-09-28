@@ -6,7 +6,7 @@ larger ones) before it is ticked.
 
 ## High — launch blockers
 
-- [ ] **1. `fulfillOrder` / `rejectOrder` race: refund *and* shipment on one order**
+- [x] **1. `fulfillOrder` / `rejectOrder` race: refund *and* shipment on one order**
   - `src/lib/shop.ts:252-275` — `fulfillOrder` reads the status, then does an
     unconditional `shopOrder.update(... FULFILLED)`. It does not take the
     per-user credit lock that `rejectOrder` (`src/lib/shop.ts:198-249`) holds, so

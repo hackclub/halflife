@@ -249,28 +249,55 @@ export async function rejectOrder(orderId: string, adminId: string, reason: stri
   })
 }
 
+/**
+ * Mark an order shipped.
+ *
+ * Serialized against `rejectOrder` on the same per-user credit lock, because a
+ * fulfill only reads the order and `rejectOrder` only mutates credit: without
+ * a shared lock the two interleave, the refund lands and the goods still ship.
+ * The conditional `updateMany` is the second guard, for a decision that landed
+ * between the lock being taken and the write.
+ */
 export async function fulfillOrder(
   orderId: string,
   adminId: string,
   tracking: { number?: string | null; carrier?: string | null },
 ): Promise<ShopOrder> {
-  const order = await prisma.shopOrder.findUnique({ where: { id: orderId } })
-  if (!order) throw new HttpError("NOT_FOUND", "Order not found")
-  if (order.status === ShopOrderStatus.FULFILLED) {
-    throw new HttpError("CONFLICT", "This order is already fulfilled")
-  }
-  if (order.status === ShopOrderStatus.REJECTED) {
-    throw new HttpError("CONFLICT", "This order was rejected")
-  }
-
-  return prisma.shopOrder.update({
+  const target = await prisma.shopOrder.findUnique({
     where: { id: orderId },
-    data: {
-      status: ShopOrderStatus.FULFILLED,
-      fulfilledAt: new Date(),
-      trackingNumber: tracking.number ?? null,
-      trackingCarrier: tracking.carrier ?? null,
-      lastActorId: adminId,
-    },
+    select: { userId: true },
+  })
+  if (!target) throw new HttpError("NOT_FOUND", "Order not found")
+
+  return prisma.$transaction(async (tx) => {
+    await lockUserCredit(tx, target.userId)
+
+    const order = await tx.shopOrder.findUnique({ where: { id: orderId } })
+    if (!order) throw new HttpError("NOT_FOUND", "Order not found")
+    if (order.status === ShopOrderStatus.FULFILLED) {
+      throw new HttpError("CONFLICT", "This order is already fulfilled")
+    }
+    if (order.status === ShopOrderStatus.REJECTED) {
+      throw new HttpError("CONFLICT", "This order was rejected")
+    }
+    if (order.status === ShopOrderStatus.CANCELLED) {
+      throw new HttpError("CONFLICT", "This order was cancelled")
+    }
+
+    const claimed = await tx.shopOrder.updateMany({
+      where: { id: orderId, status: order.status },
+      data: {
+        status: ShopOrderStatus.FULFILLED,
+        fulfilledAt: new Date(),
+        trackingNumber: tracking.number ?? null,
+        trackingCarrier: tracking.carrier ?? null,
+        lastActorId: adminId,
+      },
+    })
+    if (claimed.count !== 1) {
+      throw new HttpError("CONFLICT", "This order was decided by someone else")
+    }
+
+    return tx.shopOrder.findUniqueOrThrow({ where: { id: orderId } })
   })
 }
