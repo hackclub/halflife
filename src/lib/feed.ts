@@ -260,6 +260,12 @@ export async function createPost(input: CreatePostInput): Promise<FeedItem> {
  */
 export async function recordView(postId: string, userId: string): Promise<number> {
   return prisma.$transaction(async (tx) => {
+    // Only a live, published reel counts. Without this, views keep accruing on
+    // a hidden or deleted post, and the virality number those prizes rest on
+    // could be moved for a reel that is out of the feed.
+    const post = await tx.post.findFirst({ where: { id: postId, ...visible }, select: { id: true } })
+    if (!post) throw new HttpError("NOT_FOUND", "Post not found")
+
     const { count } = await tx.postView.createMany({
       data: [{ postId, userId }],
       skipDuplicates: true,
@@ -328,6 +334,11 @@ export async function getComments(
   viewerId: string,
   opts: { cursor?: string; limit: number },
 ): Promise<{ items: CommentView[]; nextCursor: string | null }> {
+  // A hidden or deleted post's comments are not readable by id. The filter on
+  // the comments themselves is not enough — the parent has to be visible too.
+  const post = await prisma.post.findFirst({ where: { id: postId, ...visible }, select: { id: true } })
+  if (!post) throw new HttpError("NOT_FOUND", "Post not found")
+
   const rows = await prisma.postComment.findMany({
     where: { postId, deletedAt: null, hiddenAt: null },
     include: { user: { select: { id: true, name: true, image: true } } },
@@ -374,8 +385,11 @@ export async function addComment(postId: string, userId: string, body: string): 
 /** Delete your own comment. Moderators use `hideComment` instead. */
 export async function deleteOwnComment(commentId: string, userId: string): Promise<void> {
   await prisma.$transaction(async (tx) => {
+    // `hiddenAt: null` too: a moderator-hidden comment already had its decrement
+    // when it was hidden, so letting the owner delete it as well would take the
+    // count down a second time and could drive it negative.
     const { count } = await tx.postComment.updateMany({
-      where: { id: commentId, userId, deletedAt: null },
+      where: { id: commentId, userId, deletedAt: null, hiddenAt: null },
       data: { deletedAt: new Date() },
     })
     if (count === 0) throw new HttpError("NOT_FOUND", "Comment not found")

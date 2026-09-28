@@ -81,12 +81,15 @@ larger ones) before it is ticked.
     another reviewer's live claim appeared since the page was opened. The
     `resolvedAt` re-read already prevents a double payout.
 
-- [ ] **9. Feed visibility gaps**
-  - `src/lib/feed.ts:326-348` — `getComments` never checks the parent post's
-    `status`/`deletedAt`.
-  - `src/lib/feed.ts:261-281` — `recordView` counts views on hidden/deleted posts.
-  - `src/lib/feed.ts:375-391` — `deleteOwnComment` filters `deletedAt` but not
-    `hiddenAt`, double-decrementing `commentCount` for an already-hidden comment.
+- [x] **9. Feed visibility gaps**
+  - `src/lib/feed.ts` — all three now use the shared `visible` filter / guard:
+    - `getComments` looks the parent post up with `visible` and 404s if it is
+      hidden or deleted.
+    - `recordView` does the same before counting, so views no longer accrue on
+      hidden/deleted reels (which feed the virality prizes).
+    - `deleteOwnComment` now also requires `hiddenAt: null`, so a
+      moderator-hidden comment cannot be deleted by its owner and decrement
+      `commentCount` a second time.
 
 ## Low
 
