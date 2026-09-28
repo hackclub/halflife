@@ -811,6 +811,10 @@ model HackatimeLink {
 
   createdAt DateTime @default(now())
 
+  /// One tracked project backs one phase: `fetchProjectSeconds` returns the
+  /// project's whole total, not a range, so a second link in the other phase
+  /// would count the same time twice. Moving a link between phases is deleting
+  /// it and adding it again.
   @@unique([themeProjectId, hackatimeProject])
   @@index([themeProjectId, phase])
   @@map("hackatime_link")

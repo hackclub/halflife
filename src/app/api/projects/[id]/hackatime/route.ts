@@ -74,7 +74,20 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
       },
     },
   })
-  if (existing) return fail("CONFLICT", "That Hackatime project is already linked here")
+  if (existing) {
+    // Cross-phase on purpose: Hackatime reports the project's whole total, so
+    // linking it for both phases would count the same tracked time twice.
+    const where =
+      existing.phase === parsed.data.phase
+        ? "this phase"
+        : existing.phase === "DESIGN"
+          ? "the design phase"
+          : "the build phase"
+    return fail(
+      "CONFLICT",
+      `That Hackatime project is already linked to ${where} of this project. One tracked project can back only one phase, because its hours are the project's whole total — unlink it there first, or link a different Hackatime project.`,
+    )
+  }
 
   const fetched = await fetchProjectSeconds(project.user.hackatimeUserId, parsed.data.hackatimeProject)
 
