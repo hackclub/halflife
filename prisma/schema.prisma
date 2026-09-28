@@ -265,6 +265,7 @@ enum AuditAction {
   ADMIN_HIDE_COMMENT
   ADMIN_PIN_POST
   ADMIN_RESOLVE_DISPUTE
+  ADMIN_SEND_GRANT
 
   // Printer
   PRINTER_QUALIFIED
@@ -414,6 +415,7 @@ model User {
   reviewsGiven   SubmissionReview[] @relation("SubmissionReviewer")
   reviewClaims   ReviewClaim[]      @relation("ReviewClaimant")
   reviewDisputes ReviewDispute[]    @relation("ReviewDisputeAuthor")
+  hcbGrantTopUps HcbGrantTopUp[]    @relation("HcbGrantTopUpUser")
   syncRunLogs    SyncRunLog[]       @relation("SyncRunActor")
 
   @@index([createdAt])
@@ -617,6 +619,7 @@ model ThemeProject {
   posts          Post[]
   bomItems       BomItem[]
   publicReels    PublicReel[]
+  hcbGrantTopUps HcbGrantTopUp[]
 
   /// One themed project per theme per person. This makes "five themed
   /// projects" a schema invariant rather than a convention, which is what lets
@@ -975,6 +978,36 @@ model ReviewDispute {
 
   @@index([resolvedAt])
   @@map("review_dispute")
+}
+
+/// One HCB card-grant top-up Half Life has sent.
+///
+/// Keyed on (user, project, phase) so a grant is paid once: a double-click or a
+/// retried request cannot pay twice. The row is written before HCB is called
+/// and marked `sentAt` after, so a call that failed is recorded (and can be
+/// retried) while one that succeeded short-circuits the next attempt.
+model HcbGrantTopUp {
+  id             String       @id @default(cuid())
+  userId         String
+  user           User         @relation("HcbGrantTopUpUser", fields: [userId], references: [id], onDelete: Cascade)
+  themeProjectId String
+  themeProject   ThemeProject @relation(fields: [themeProjectId], references: [id], onDelete: Cascade)
+  phase          Phase
+
+  /// The grant's HCB hashid, as parsed from the link an admin pasted.
+  grantHashid   String
+  amountCents   Int
+  /// HCB's transaction id once it succeeded.
+  transactionId String?
+  sentAt        DateTime?
+  /// Why the last attempt failed, cleared when it is retried.
+  error         String?
+
+  createdAt   DateTime @default(now())
+  createdById String?
+
+  @@unique([userId, themeProjectId, phase])
+  @@map("hcb_grant_topup")
 }
 
 /// One row per accepted Ari webhook, for idempotency.

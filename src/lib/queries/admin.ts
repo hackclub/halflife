@@ -155,6 +155,7 @@ export async function getUserDetail(userId: string) {
           designSpendableCoins: true,
           buildCoins: true,
           submissionExtensionUntil: true,
+          hcbGrantTopUps: { where: { phase: "DESIGN", sentAt: { not: null } }, select: { id: true } },
         },
       },
       printerAward: true,

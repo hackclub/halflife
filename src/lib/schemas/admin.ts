@@ -1,6 +1,6 @@
 import { z } from "zod"
 import { Role, ShopFulfillmentMethod, ShopFulfillmentStage, ShopItemCategory } from "@/app/generated/prisma/enums"
-import { boundedText, cuid, httpsUrl } from "@/lib/schemas/common"
+import { boundedText, cuid, httpsUrl, phaseSchema } from "@/lib/schemas/common"
 
 export const roleChangeSchema = z.object({ role: z.enum(Role) }).strict()
 
@@ -15,6 +15,14 @@ export const projectExtensionSchema = z.object({ submissionExtensionUntil: z.coe
 
 /** Closing a maker's dispute. The note is optional; it is for the record. */
 export const resolveDisputeSchema = z.object({ note: boundedText(2000).optional() }).strict()
+
+/** Sending a design's parts grant to a maker's HCB card grant. */
+export const grantSchema = z
+  .object({
+    phase: phaseSchema,
+    grantUrl: boundedText(500, 4),
+  })
+  .strict()
 
 export const creditAdjustSchema = z
   .object({
