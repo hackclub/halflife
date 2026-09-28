@@ -29,13 +29,11 @@ larger ones) before it is ticked.
     too — this hardens the feed, session-media and submission call sites at the
     same time. New cases added to `verify:contracts`.
 
-- [ ] **3. Landing signup form cancels the request it means to let finish**
-  - `src/components/site/signup-form.tsx:113-135` passes an `AbortController`
-    signal to `fetch("/api/subscribe")` and aborts at 2.5s. `keepalive` cannot
-    survive an explicit abort, so slow signups lose their email, referrer and
-    UTMs.
-  - Fix: drop the abort signal (keep `keepalive`), or do not abort — let the
-    request finish on its own as the comment claims.
+- [x] **3. Landing signup form cancels the request it means to let finish**
+  - `src/components/site/signup-form.tsx:101-125` — the `AbortController` +
+    2.5s timeout was removed; the `/api/subscribe` fetch is now fire-and-forget
+    with `keepalive: true` and a `.catch`, so it is never cancelled and never
+    blocks the sign-in. `SUBSCRIBE_WAIT_MS` removed with it.
 
 - [ ] **4. Hero scroll cue renders as an empty, nameless link**
   - `src/components/site/hero.tsx:462-480` — the `<a href="#how-it-works">`
