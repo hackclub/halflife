@@ -6,11 +6,21 @@ import { PrismaClient } from "@/app/generated/prisma/client"
 // connection pool on every edit until Postgres refuses connections.
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient }
 
+/**
+ * Only ever used while `next build` imports this module for static analysis
+ * on a machine with no database. A running server that reaches this line
+ * without DATABASE_URL throws instead of booting and 500ing every request.
+ */
+const BUILD_TIME_DATABASE_URL = "postgresql://placeholder:placeholder@localhost:5432/placeholder"
+
 function createClient(): PrismaClient {
-  const connectionString = process.env.DATABASE_URL ?? "postgresql://placeholder:placeholder@localhost:5432/placeholder"
+  const connectionString = process.env.DATABASE_URL
+  if (!connectionString && process.env.NEXT_PHASE !== "phase-production-build") {
+    throw new Error("DATABASE_URL is not set")
+  }
   return new PrismaClient({
     adapter: new PrismaPg({
-      connectionString,
+      connectionString: connectionString ?? BUILD_TIME_DATABASE_URL,
       // pg's default closes an idle connection after 10 seconds, and opening
       // one to this database is a TLS handshake that took ~900ms from a dev
       // machine — so any page opened after a short pause paid it before its
