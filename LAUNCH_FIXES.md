@@ -18,13 +18,16 @@ larger ones) before it is ticked.
     conditional `updateMany` as a second guard. Make the `ON_HOLD` update
     conditional on the status that was just read.
 
-- [ ] **2. Cover-image ownership check bypassable with `..`**
-  - `src/app/api/projects/[id]/route.ts:93` uses
+- [x] **2. Cover-image ownership check bypassable with `..`**
+  - `src/app/api/projects/[id]/route.ts:93` used
     `data.coverImageKey.startsWith(\`covers/${gate.user.id}/\`)` with no
     traversal guard, and `coverImageKey` is an unconstrained string
     (`src/lib/schemas/project.ts:9`).
-  - Fix: reject `..` (reuse `isOwnedKey()` from `src/lib/uploads/r2.ts`, which
-    already refuses it) in addition to the folder prefix.
+  - Fix landed: the route now uses `isOwnedKey()` plus the `covers/` prefix.
+    `isOwnedKey()` (`src/lib/uploads/r2.ts:205`) was also hardened to reject `%`
+    alongside `..`, because a `%2e%2e` segment is a double-dot to the URL parser
+    too — this hardens the feed, session-media and submission call sites at the
+    same time. New cases added to `verify:contracts`.
 
 - [ ] **3. Landing signup form cancels the request it means to let finish**
   - `src/components/site/signup-form.tsx:113-135` passes an `AbortController`

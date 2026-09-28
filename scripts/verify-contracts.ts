@@ -214,6 +214,8 @@ async function bodies() {
     [`sessions/${me}/cart.png`, true],
     [`posts/${you}/a.mp4`, false],
     [`posts/${me}/../${you}/a.mp4`, false],
+    [`posts/${me}/%2e%2e/${you}/a.mp4`, false],
+    [`covers/${me}/a%2fb.png`, false],
     [`${me}/a.mp4`, false],
     ["a.mp4", false],
     ["", false],

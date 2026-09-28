@@ -199,11 +199,14 @@ export function buildObjectKey(userId: string, folder: string, ext: string): str
  * evidence for hours they did not work — which is the one thing the timelapse
  * rule exists to make hard.
  *
- * `..` is refused separately. It cannot appear in a minted key, and a key that
- * contains one is trying to be a path rather than a name.
+ * `..` is refused separately, and so is `%`. Neither can appear in a minted
+ * key, and a key containing either is trying to be a path rather than a name:
+ * the browser resolves `covers/me/../../sessions/other/x` before it fetches,
+ * and the URL parser treats a `%2e%2e` segment as a double-dot too — so a
+ * check for a literal `..` alone would let both escape the user's own prefix.
  */
 export function isOwnedKey(userId: string, key: string): boolean {
-  if (key.includes("..")) return false
+  if (key.includes("..") || key.includes("%")) return false
   return key.split("/")[1] === userId
 }
 

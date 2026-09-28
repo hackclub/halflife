@@ -9,7 +9,7 @@ import prisma from "@/lib/prisma"
 import { getSubmissionAccess, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
 import { sanitize, sanitizeOptional } from "@/lib/sanitize"
 import { projectUpdateSchema } from "@/lib/schemas/project"
-import { publicUrlFor } from "@/lib/uploads/r2"
+import { isOwnedKey, publicUrlFor } from "@/lib/uploads/r2"
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -90,7 +90,13 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 
   // A cover is a key, and a key is a path into the bucket: only one this user
   // uploaded as a cover, or a project could point its cover at anyone's file.
-  if (data.coverImageKey && !data.coverImageKey.startsWith(`covers/${gate.user.id}/`)) {
+  // `isOwnedKey` refuses path tricks (`..`, `%2e%2e`); the prefix pins it to the
+  // covers folder, so a key genuinely yours but uploaded as session evidence
+  // cannot be re-filed as a cover.
+  if (
+    data.coverImageKey &&
+    (!isOwnedKey(gate.user.id, data.coverImageKey) || !data.coverImageKey.startsWith("covers/"))
+  ) {
     return fail("VALIDATION_FAILED", "Upload the cover image first")
   }
 
