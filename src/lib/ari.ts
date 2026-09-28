@@ -242,10 +242,7 @@ export async function findUnsyncedAriSubmissions(): Promise<{ themeProjectId: st
 
 // ─── Inbound ─────────────────────────────────────────────────────────────────
 
-type DecisionEvent = Extract<
-  AriWebhookEvent,
-  { event: "review.approved" | "review.changes" | "review.rejected" }
->
+type DecisionEvent = Extract<AriWebhookEvent, { event: "review.approved" | "review.changes" | "review.rejected" }>
 type ResetEvent = Extract<AriWebhookEvent, { event: "review.reverted" | "review.requeued" }>
 type FraudEvent = Extract<AriWebhookEvent, { event: "review.fraud" }>
 type UpdatedEvent = Extract<AriWebhookEvent, { event: "ship.updated" }>
@@ -257,7 +254,11 @@ function ariReviewerLabel(review: AriReview): string {
 
 /** Ari's approved time is authoritative; fall back to its minutes breakdown. */
 function approvedHoursFrom(review: AriReview): number | null {
-  if (typeof review.approved_hours === "number" && Number.isFinite(review.approved_hours) && review.approved_hours >= 0) {
+  if (
+    typeof review.approved_hours === "number" &&
+    Number.isFinite(review.approved_hours) &&
+    review.approved_hours >= 0
+  ) {
     return round2(review.approved_hours)
   }
   if (
@@ -430,10 +431,7 @@ async function applyReset(event: ResetEvent): Promise<void> {
     })
     await tx.themeProject.update({
       where: { id: themeProjectId },
-      data:
-        phase === Phase.DESIGN
-          ? { designStatus: PhaseStatus.in_review }
-          : { buildStatus: PhaseStatus.in_review },
+      data: phase === Phase.DESIGN ? { designStatus: PhaseStatus.in_review } : { buildStatus: PhaseStatus.in_review },
     })
   })
 

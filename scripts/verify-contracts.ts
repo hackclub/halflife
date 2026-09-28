@@ -231,7 +231,19 @@ async function bodies() {
   // video one — otherwise a still image renamed `.mp4` becomes a reel.
   const asciiBytes = (s: string) => [...s].map((c) => c.charCodeAt(0))
   const isoFile = (major: string, compatible: string[] = []) => {
-    const body = [0, 0, 0, 0, ...asciiBytes("ftyp"), ...asciiBytes(major), 0, 0, 0, 0, ...compatible.flatMap(asciiBytes)]
+    const body = [
+      0,
+      0,
+      0,
+      0,
+      ...asciiBytes("ftyp"),
+      ...asciiBytes(major),
+      0,
+      0,
+      0,
+      0,
+      ...compatible.flatMap(asciiBytes),
+    ]
     const size = body.length
     body[0] = (size >>> 24) & 0xff
     body[1] = (size >>> 16) & 0xff

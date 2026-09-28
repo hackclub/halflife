@@ -140,11 +140,7 @@ export function LapsePicker({
           Timelapses are recorded on Lapse. Sign in once and every timelapse you publish there shows up here to pick
           from.
         </p>
-        <Button
-          variant="solid"
-          disabled={leaving}
-          onClick={() => void startSignIn()}
-        >
+        <Button variant="solid" disabled={leaving} onClick={() => void startSignIn()}>
           {leaving ? "Opening Lapse…" : "Sign in with Lapse"} <IconArrowRight className="text-base" />
         </Button>
         <p className="hand text-[0.78rem] text-navy-soft">

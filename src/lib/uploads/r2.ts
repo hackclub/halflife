@@ -174,11 +174,9 @@ function listingClient(): S3Client {
   })
 }
 
-export async function listUploadedObjects(opts: {
-  prefix?: string
-  cursor?: string
-  limit?: number
-} = {}): Promise<UploadedObjectPage> {
+export async function listUploadedObjects(
+  opts: { prefix?: string; cursor?: string; limit?: number } = {},
+): Promise<UploadedObjectPage> {
   if (!isUploadConfigured()) {
     throw new HttpError("NOT_CONFIGURED", "File uploads are not configured on this deployment")
   }
@@ -200,9 +198,8 @@ export async function listUploadedObjects(opts: {
     return {
       objects: (result.Contents ?? []).flatMap((object) => {
         if (!object.Key) return []
-        const key = bucketPrefix && object.Key.startsWith(bucketPrefix)
-          ? object.Key.slice(bucketPrefix.length)
-          : object.Key
+        const key =
+          bucketPrefix && object.Key.startsWith(bucketPrefix) ? object.Key.slice(bucketPrefix.length) : object.Key
         return [
           {
             key,

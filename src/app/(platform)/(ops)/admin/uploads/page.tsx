@@ -2,12 +2,7 @@ import Link from "next/link"
 import { Callout, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
-import {
-  isUploadConfigured,
-  listUploadedObjects,
-  type UploadFolder,
-  UPLOAD_FOLDERS,
-} from "@/lib/uploads/r2"
+import { isUploadConfigured, listUploadedObjects, type UploadFolder, UPLOAD_FOLDERS } from "@/lib/uploads/r2"
 
 export const dynamic = "force-dynamic"
 
@@ -73,10 +68,7 @@ export default async function AdminUploadsPage({ searchParams }: Props) {
 
   return (
     <div className="hl-stack">
-      <PageHeader
-        title="Uploads"
-        subtitle="Every object currently in the R2 bucket. This page is read-only."
-      />
+      <PageHeader title="Uploads" subtitle="Every object currently in the R2 bucket. This page is read-only." />
 
       <Panel>
         <form method="get" className="hl-row" style={{ flexWrap: "wrap", alignItems: "center" }}>
@@ -98,9 +90,7 @@ export default async function AdminUploadsPage({ searchParams }: Props) {
             Reset
           </Link>
         </form>
-        <span className="hl-hint">
-          Showing up to 100 objects per page. Older objects continue on the next page.
-        </span>
+        <span className="hl-hint">Showing up to 100 objects per page. Older objects continue on the next page.</span>
       </Panel>
 
       {!isUploadConfigured() ? (
@@ -124,9 +114,7 @@ export default async function AdminUploadsPage({ searchParams }: Props) {
                     {parts.owner || "—"}
                   </td>
                   <td className="hl-mono">{formatBytes(object.size)}</td>
-                  <td className="hl-mono">
-                    {object.lastModified ? modifiedFormat.format(object.lastModified) : "—"}
-                  </td>
+                  <td className="hl-mono">{object.lastModified ? modifiedFormat.format(object.lastModified) : "—"}</td>
                   <td>
                     {object.url ? (
                       <a href={object.url} target="_blank" rel="noreferrer">
