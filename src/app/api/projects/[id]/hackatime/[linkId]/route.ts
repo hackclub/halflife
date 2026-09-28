@@ -1,8 +1,9 @@
+import { PhaseStatus } from "@/app/generated/prisma/enums"
 import { fail, ok, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { requireSession } from "@/lib/guards"
 import prisma from "@/lib/prisma"
-import { isPhaseDecided } from "@/lib/program"
+import { getSubmissionAccess, isPhaseDecided, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
 
 type Params = { params: Promise<{ id: string; linkId: string }> }
 
@@ -21,9 +22,17 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
   })
   if (!link) return fail("NOT_FOUND", "Link not found")
 
-  // Removing a link is a correction to the record, so it is frozen once the
-  // week is decided, exactly as editing an entry is.
+  const access = await getSubmissionAccess(gate.user.id, id)
+  if (!access.open) return fail("SUBMISSIONS_CLOSED", SUBMISSIONS_CLOSED_MESSAGE)
+
+  // Removing a link is a correction to the record, so it freezes with the
+  // phase: while a reviewer is deciding, the numbers have to sit still.
   const phaseStatus = link.phase === "DESIGN" ? link.themeProject.designStatus : link.themeProject.buildStatus
+  if (phaseStatus === PhaseStatus.in_review) {
+    return fail("PHASE_LOCKED", "This phase is in review — unsubmit it before removing its links")
+  }
+  // A decided phase is frozen: removing a link changes a number that has
+  // already been judged, so it waits for a return or an un-approval.
   if (isPhaseDecided(phaseStatus)) {
     return fail("PHASE_LOCKED", "This phase has been submitted and decided, so its links are final")
   }
