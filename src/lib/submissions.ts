@@ -2,6 +2,7 @@ import "server-only"
 import type { ThemeProject } from "@/app/generated/prisma/client"
 import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
 import { scheduledWeekFor } from "@/lib/config/program"
+import { lockUserCredit } from "@/lib/currency"
 import { HttpError } from "@/lib/errors"
 import { syncHcaProfile } from "@/lib/hca-profile"
 import { getHoursBreakdown } from "@/lib/hours"
@@ -220,25 +221,53 @@ export async function unsubmitPhase(userId: string, themeProjectId: string, phas
     throw new HttpError("NOT_SUBMITTED", "This phase is not awaiting review")
   }
 
-  const open = await prisma.phaseSubmission.findFirst({
-    where: { themeProjectId, phase, resolvedAt: null },
-    orderBy: { createdAt: "desc" },
-    include: { claim: true },
-  })
-  if (!open) throw new HttpError("NOT_SUBMITTED", "No open submission found")
-
-  // Withdrawing work a reviewer is actively reading wastes their time and
-  // races the decision they are about to write.
-  if (open.claim && open.claim.expiresAt > new Date()) {
-    throw new HttpError("CLAIMED_BY_OTHER", "A reviewer is looking at this right now")
-  }
-
   return prisma.$transaction(async (tx) => {
-    await tx.phaseSubmission.delete({ where: { id: open.id } })
-    await tx.themeProject.update({
+    // Serialize against the review path. finalizeReview takes this same
+    // per-user credit lock before it re-reads the submission, so holding it
+    // here means a decision cannot land between our read and our delete.
+    await lockUserCredit(tx, project.userId)
+
+    // Everything below is re-read under the lock; the checks above are the
+    // fast fail for the ordinary case.
+    const current = await tx.themeProject.findUniqueOrThrow({
       where: { id: themeProjectId },
+      select: { designStatus: true, buildStatus: true },
+    })
+    if ((phase === Phase.DESIGN ? current.designStatus : current.buildStatus) !== PhaseStatus.in_review) {
+      throw new HttpError("NOT_SUBMITTED", "This phase is not awaiting review")
+    }
+
+    const open = await tx.phaseSubmission.findFirst({
+      where: { themeProjectId, phase, resolvedAt: null },
+      orderBy: { createdAt: "desc" },
+      include: { claim: true },
+    })
+    if (!open) throw new HttpError("NOT_SUBMITTED", "No open submission found")
+
+    // Withdrawing work a reviewer is actively reading wastes their time and
+    // races the decision they are about to write.
+    if (open.claim && open.claim.expiresAt > new Date()) {
+      throw new HttpError("CLAIMED_BY_OTHER", "A reviewer is looking at this right now")
+    }
+
+    // Conditional on still being unresolved: a decision that committed before
+    // the lock was ours has made this row its record, and withdrawing it would
+    // cascade the review away and put a decided phase back to draft.
+    const withdrawn = await tx.phaseSubmission.deleteMany({ where: { id: open.id, resolvedAt: null } })
+    if (withdrawn.count !== 1) {
+      throw new HttpError("ALREADY_RESOLVED", "This submission has already been decided")
+    }
+
+    const flipped = await tx.themeProject.updateMany({
+      where: {
+        id: themeProjectId,
+        ...(phase === Phase.DESIGN
+          ? { designStatus: PhaseStatus.in_review }
+          : { buildStatus: PhaseStatus.in_review }),
+      },
       data: phase === Phase.DESIGN ? { designStatus: PhaseStatus.draft } : { buildStatus: PhaseStatus.draft },
     })
+    if (flipped.count !== 1) throw new HttpError("CONFLICT", "This project moved while it was being withdrawn")
   })
 }
 
