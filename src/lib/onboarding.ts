@@ -247,8 +247,11 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
       where: { id: userId },
       data: {
         ...userData,
-        onboardingStep: reached,
         ...(finishing ? { onboardingCompletedAt: new Date() } : {}),
+        // Keeps the statement non-empty for an informational answer (the PCB
+        // week has no fields of its own) without writing the marker here; the
+        // guarded update below owns it.
+        onboardingStep: { increment: 0 },
       },
       select: {
         hardwareExperience: true,
@@ -256,6 +259,13 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
         onboardingCompletedAt: true,
         trackingTutorialDismissedAt: true,
       },
+    })
+
+    // Raise the furthest-reached marker, never lower it: two answers in flight
+    // read the same snapshot, and the slower one must not rewind the faster one.
+    await tx.user.updateMany({
+      where: { id: userId, onboardingStep: { lt: reached } },
+      data: { onboardingStep: reached },
     })
 
     return { projectAfter, userAfter }
