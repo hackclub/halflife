@@ -53,6 +53,14 @@ Coolify.
    `BETTER_AUTH_SECRET`, `INTEGRATION_API_KEY`, `EXPORT_API_KEY` and (if you are
    pulling PII) `PII_ENCRYPTION_KEY`.
 
+   Keep `.env` files on the operator's machine only. Rotate any credential that
+   has ever lived in one before the directory is shared or archived, and delete
+   stale copies such as `.env.old`. If `PULL_HCA_PII=true`, confirm the HCA app
+   has the `address` and `birthdate` scopes enabled — HCA refuses the whole
+   sign-in if a requested scope is missing — and set `PII_ENCRYPTION_KEY`;
+   without the key, PII pulling quietly turns itself off (a `[config]` line at
+   boot says so) and grant rows ship without an address.
+
 5. **Create the R2 bucket**, an API token scoped to it, and a public custom
    domain. Put that hostname in `NEXT_PUBLIC_UPLOAD_HOST` — `next/image` refuses
    any host not in `next.config.ts`'s `remotePatterns`, and the failure is a
