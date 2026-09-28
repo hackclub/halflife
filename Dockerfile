@@ -37,6 +37,16 @@ ENV DOCKER_BUILD=1
 # refuses a short secret. This value never reaches runtime.
 ENV BETTER_AUTH_SECRET="build-time-placeholder-must-be-32-chars-long"
 
+# These two are read *while building*, not by the running pod: next.config.ts
+# bakes NEXT_PUBLIC_UPLOAD_HOST into the image allowlist, and the client bundle
+# inlines NEXT_PUBLIC_APP_URL. Declaring them as build args is what makes
+# `docker build --build-arg ...` able to supply them — a runtime env var cannot.
+# Unset, the browser client falls back to the page origin and the server-side
+# URL builders fall back to BETTER_AUTH_URL, so only the next/image allowlist
+# (currently unused) is lost.
+ARG NEXT_PUBLIC_APP_URL
+ARG NEXT_PUBLIC_UPLOAD_HOST
+
 RUN pnpm build
 
 # ── runner ───────────────────────────────────────────────────────────────────

@@ -75,7 +75,13 @@ Coolify.
                        env: [ ...every var from .env.example... ]
    ```
 
-   Watch `get_build_logs`. Set `REQUIRE_BASICAUTH=true` plus
+   Watch `get_build_logs`. `next.config.ts` runs at build time, so
+   `NEXT_PUBLIC_UPLOAD_HOST` only reaches the image's `next/image` allowlist if
+   the builder passes it as a build arg; runtime env does not (the Dockerfile
+   declares it). `NEXT_PUBLIC_APP_URL` is optional — the browser falls back to
+   the page origin and server code to `BETTER_AUTH_URL`.
+
+   Set `REQUIRE_BASICAUTH=true` plus
    `BASICAUTH_USERNAME`/`BASICAUTH_PASSWORD` until launch day — the gate now
    503s rather than serving if the flag is on and either credential is blank.
 
