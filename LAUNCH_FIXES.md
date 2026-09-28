@@ -35,12 +35,12 @@ larger ones) before it is ticked.
     with `keepalive: true` and a `.catch`, so it is never cancelled and never
     blocks the sign-in. `SUBSCRIBE_WAIT_MS` removed with it.
 
-- [ ] **4. Hero scroll cue renders as an empty, nameless link**
-  - `src/components/site/hero.tsx:462-480` — the `<a href="#how-it-works">`
-    contains only a JSX comment; no text is ever rendered. Two instances
-    (`:324`, `:398`).
-  - Fix: render the label the comment describes (e.g. a `<span>scroll</span>`
-    and the rest of the phrase), matching the `label`/letter-spacing intent.
+- [x] **4. Hero scroll cue renders as an empty, nameless link**
+  - `src/components/site/hero.tsx:470-481` — added the visible `<span>scroll`
+    (with the `-0.14em` trailing-letter-space correction the comment describes)
+    and an `sr-only` " to see how it works", so the accessible name is
+    "SCROLL TO SEE HOW IT WORKS". Verified in the browser: the word renders and
+    the link's a11y name contains the on-screen label.
 
 ## Medium
 

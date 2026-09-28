@@ -476,6 +476,8 @@ function ScrollCue({
           The negative margin takes back the trailing letter-space that 0.14em
           adds after the final L, which would otherwise push the word half a
           space left of the centre it is being centred on. */}
+      <span style={{ marginRight: "-0.14em" }}>scroll</span>
+      <span className="sr-only"> to see how it works</span>
     </a>
   )
 }
