@@ -262,10 +262,13 @@ export async function getShopAccess(userId: string): Promise<ShopAccess> {
     prisma.themeProject.count({
       where: { userId, deletedAt: null, OR: [{ designStatus: "in_review" }, { buildStatus: "in_review" }] },
     }),
-    prisma.themeProject.findFirst({
+    // The last review is a max over every project's two review dates, not the
+    // most recently *updated* row: editing a title or granting an extension
+    // bumps `updatedAt` without touching a review, which would mask a review
+    // that just landed and close the grace window early.
+    prisma.themeProject.aggregate({
       where: { userId, deletedAt: null },
-      orderBy: { updatedAt: "desc" },
-      select: { designReviewedAt: true, buildReviewedAt: true },
+      _max: { designReviewedAt: true, buildReviewedAt: true },
     }),
   ])
 
@@ -273,7 +276,7 @@ export async function getShopAccess(userId: string): Promise<ShopAccess> {
     return { open: true, reason: "PENDING_REVIEW", closesAt, graceUntil: null }
   }
 
-  const reviewedAt = [lastReview?.designReviewedAt, lastReview?.buildReviewedAt]
+  const reviewedAt = [lastReview._max.designReviewedAt, lastReview._max.buildReviewedAt]
     .filter((d): d is Date => !!d)
     .sort((a, b) => b.getTime() - a.getTime())[0]
 
