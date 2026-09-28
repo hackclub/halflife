@@ -1,7 +1,7 @@
 "use client"
 
 import { Fragment, useEffect, useRef } from "react"
-import { PrinterArt, WeekPainting } from "@/components/platform/art"
+import { PrinterPhoto, WeekPainting } from "@/components/platform/art"
 import {
   IconCheck,
   IconChevronsUp,
@@ -460,8 +460,9 @@ function PhaseDivider() {
 }
 
 /**
- * What the whole trail is aimed at, so it shows the machine actually on the
- * wall rather than the one at the bottom of the catalogue.
+ * What the whole trail is aimed at. The heading names the machine actually on
+ * the wall; the photo is always the Ender 3 V3 SE, the printer every finisher
+ * can reach, whichever goal is picked.
  *
  * No meter under it. Coins, hours and the streak are the only running totals
  * this product keeps, and the header already carries them everywhere; a
@@ -475,15 +476,18 @@ function GrandPrize() {
   return (
     <Panel tone="gold" radius={24} className="relative mt-12 overflow-hidden bg-gold-pale px-6 py-8 sm:px-10">
       <div className="flex flex-col items-center gap-6 text-center sm:flex-row sm:text-left">
-        <PrinterArt kind={goal.kind} className="h-40 w-auto shrink-0 sm:h-48" />
+        <PrinterPhoto
+          id="ender-3-v3-se"
+          sizes="(min-width: 640px) 192px, 160px"
+          className="size-40 shrink-0 rounded-2xl border border-gold-deep/40 sm:size-48"
+        />
         <div className="min-w-0">
           <Chip tone="gold">Finish all ten weeks</Chip>
           <h2 className="mt-3 text-[1.7rem] leading-tight font-extrabold tracking-[-0.03em] text-navy sm:text-[2.2rem]">
             {goal.name}
           </h2>
           <p className="mt-2 max-w-[54ch] text-[0.95rem] leading-relaxed text-navy-soft">
-            Bank the coins and it is yours, shipped to your door. Miss a week and you keep everything you built anyway —
-            the funding is not a loan.
+            Complete each week and it's yours and shipped to your door!
           </p>
         </div>
       </div>

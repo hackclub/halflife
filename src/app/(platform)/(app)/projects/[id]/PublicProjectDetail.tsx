@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { WeekScene } from "@/components/platform/art"
+import { WeekPainting } from "@/components/platform/art"
 import { IconChevronLeft, IconClock } from "@/components/platform/icons"
 import { Chip, Panel } from "@/components/platform/ui"
 import { DESIGN_WEEKS } from "@/lib/config/printers"
@@ -43,7 +43,12 @@ export function PublicProjectDetail({ data }: { data: PublicProjectData }) {
               // eslint-disable-next-line @next/next/no-img-element -- R2 or a URL pasted into a journal
               <img src={data.thumbnailUrl} alt="" className="h-full w-full object-cover" />
             ) : (
-              <WeekScene theme={week?.theme ?? "PCB"} className="h-full w-auto max-w-full p-5 drop-shadow-lg" />
+              <WeekPainting
+                theme={week?.theme ?? "PCB"}
+                alt=""
+                sizes="(min-width: 768px) 360px, 50vw"
+                className="sticker-shadow aspect-square h-[82%] max-w-full"
+              />
             )}
           </div>
           <div className="min-w-0 @3xl:col-start-1 @3xl:row-start-1">

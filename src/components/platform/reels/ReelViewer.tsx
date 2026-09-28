@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { useCallback, useEffect, useRef, useState } from "react"
+import { Avatar } from "@/components/platform/Avatar"
 import {
   IconChevronDown,
   IconChevronUp,
@@ -15,7 +16,7 @@ import type { FeedItem } from "@/lib/feed"
 import { useStore } from "@/lib/store"
 import { compact } from "./format"
 import { sendLike } from "./ReelCard"
-import { ReelComments, StageAvatar } from "./ReelComments"
+import { ReelComments } from "./ReelComments"
 import { type SlideHandle, StageSlide } from "./StageSlide"
 import { useFeed } from "./useFeed"
 import { RATES, usePlayerPrefs } from "./usePlayerPrefs"
@@ -442,7 +443,7 @@ export function ReelViewer() {
                   aria-label={`${current.author.name ?? "A maker"}'s project: ${current.project.title || current.project.theme}`}
                   className="mb-1 rounded-full ring-2 ring-white transition-transform hover:scale-105 md:ring-navy"
                 >
-                  <StageAvatar
+                  <Avatar
                     name={current.author.name}
                     image={current.author.image}
                     className="size-11 text-[1.05rem]"
@@ -450,7 +451,7 @@ export function ReelViewer() {
                 </Link>
               ) : (
                 <span className="mb-1 rounded-full ring-2 ring-white md:ring-navy">
-                  <StageAvatar
+                  <Avatar
                     name={current.author.name}
                     image={current.author.image}
                     className="size-11 text-[1.05rem]"

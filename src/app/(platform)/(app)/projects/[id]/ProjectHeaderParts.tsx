@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef, useState } from "react"
-import { WeekScene } from "@/components/platform/art"
+import { WeekPainting } from "@/components/platform/art"
 import { IconCamera } from "@/components/platform/icons"
 import { UploadProgress } from "@/components/platform/UploadProgress"
 import { Button } from "@/components/platform/ui"
@@ -82,7 +82,12 @@ export function CoverImage({
           // eslint-disable-next-line @next/next/no-img-element -- R2's public URL, or one pasted into a journal
           <img src={shown} alt="" className="h-full w-full object-cover" />
         ) : (
-          <WeekScene theme={theme} className="h-full w-auto max-w-full p-5 drop-shadow-lg" />
+          <WeekPainting
+            theme={theme}
+            alt=""
+            sizes="(min-width: 768px) 360px, 50vw"
+            className="sticker-shadow aspect-square h-[82%] max-w-full"
+          />
         )}
         {/* The bar sits on the picture it is replacing, where the eye already
             is, on a veil dark enough to read over any thumbnail. */}

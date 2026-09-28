@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useId, useMemo, useRef, useState } from "react"
-import { FoxMark, WeekScene } from "@/components/platform/art"
+import { Gato, WeekPainting } from "@/components/platform/art"
 import {
   IconArrowRight,
   IconCamera,
@@ -18,10 +18,13 @@ import {
 import { countImages, Markdown, proseLength } from "@/components/platform/Markdown"
 import { RepoInput, repoIsValid } from "@/components/platform/RepoField"
 import { ReelCapture } from "@/components/platform/reels/ReelCapture"
+import { StarterProjectCard } from "@/components/platform/StarterProjectCard"
 import { Button, borderedInputClass, Chip, cx, Field, inputClass, OptionRow, Panel } from "@/components/platform/ui"
 import { linkLapse } from "@/lib/auth-client"
 import type { BomLine } from "@/lib/bom"
+import { STARTER_PROJECT_TIER, starterProjectsFor } from "@/lib/config/onboarding"
 import { paceTarget, printerById, submitFloorFor, tierBankedFloor, weekAsk } from "@/lib/config/printers"
+import { THEMES } from "@/lib/config/program"
 import { photosRequired, TIERS } from "@/lib/curriculum"
 import {
   PLATFORM_INFO,
@@ -363,9 +366,9 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
                 its widest unbroken content, so a long URL in the entry widened
                 the column and the preview beside it scrolled sideways. */}
             <div className={cx("relative min-w-0", preview && "hidden md:block")}>
-              <FoxMark
-                className="pointer-events-none absolute top-1/2 left-1/2 w-40 -translate-x-1/2 -translate-y-1/2 opacity-[0.07]"
-                sticker={false}
+              <Gato
+                sizes="160px"
+                className="pointer-events-none absolute top-1/2 left-1/2 h-auto w-40 -translate-x-1/2 -translate-y-1/2 opacity-[0.07]"
               />
               <textarea
                 value={body}
@@ -1048,6 +1051,19 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
   const [tier, setTier] = useState<1 | 2 | 3>(experience === "lots" ? 3 : experience === "some" ? 2 : 1)
   const [showExamples, setShowExamples] = useState(false)
   const [repo, setRepo] = useState("")
+  // The week's starter projects, for someone who said they are new to
+  // hardware. Weeks follow the theme order, design then build, so the week
+  // number names the theme.
+  const theme = THEMES[(week.id - 1) % THEMES.length]?.id
+  const starters = theme && (experience === "first" || experience === "little") ? starterProjectsFor(theme) : []
+  // Taking one fills the form in and holds the tier at 1, as onboarding does.
+  const [starterId, setStarterId] = useState<string | null>(null)
+  const takeStarter = (s: (typeof starters)[number]) => {
+    setStarterId(s.id)
+    setName(s.title)
+    setDesc(s.description)
+    setTier(STARTER_PROJECT_TIER)
+  }
 
   const ok = name.trim().length > 1 && desc.trim().length > 4 && repoIsValid(repo)
 
@@ -1075,7 +1091,8 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
                 description: desc.trim(),
                 weekId: week.id,
                 tier,
-                starter: false,
+                starter: starterId !== null,
+                starterProjectId: starterId,
                 githubRepo: normalizeRepo(repo).url,
               })
               complete(checkpoint.id, { artefacts: 1 })
@@ -1091,6 +1108,36 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
       <div className="grid gap-6 lg:grid-cols-[1fr_230px] lg:items-start">
         <div className="grid gap-4">
+          {starters.map((s) => {
+            const chosen = starterId === s.id
+            return (
+              <StarterProjectCard
+                key={s.id}
+                starter={s}
+                chosen={chosen}
+                action={
+                  chosen ? (
+                    <span className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                      <Chip tone="teal">
+                        <IconCheck className="text-[0.9rem]" /> Building {s.title}
+                      </Chip>
+                      <button
+                        type="button"
+                        onClick={() => setStarterId(null)}
+                        className="hand text-[0.82rem] text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
+                      >
+                        Use my own idea instead
+                      </button>
+                    </span>
+                  ) : (
+                    <Button variant="outline" size="sm" onClick={() => takeStarter(s)}>
+                      Build {s.title}
+                    </Button>
+                  )
+                }
+              />
+            )
+          })}
           <Field label="Project name" hint="Give it a cool name." id="np-name">
             <input
               id="np-name"
@@ -1138,6 +1185,11 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
           <div className="mt-2">
             <p className="label mb-2 text-violet-deep">Funding tier</p>
+            {starterId !== null && (
+              <p className="hand mb-2.5 text-[0.82rem] text-navy-soft">
+                Starter projects are Tier 1. Switch to your own idea to choose a different tier.
+              </p>
+            )}
             {/* The hours quoted here are the ones the submit gate will hold
                 you to, not the funded block. A tier that advertises its
                 funding alone advertises the smaller of two numbers: the funded
@@ -1148,6 +1200,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
                 <OptionRow
                   key={t.id}
                   selected={tier === t.id}
+                  disabled={starterId !== null && t.id !== STARTER_PROJECT_TIER}
                   onClick={() => setTier(t.id)}
                   hint={
                     <>
@@ -1175,7 +1228,11 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
         <div className="order-first lg:order-none">
           <div className="overflow-hidden rounded-2xl p-4" style={{ background: week.accent }}>
-            <WeekScene theme={week.theme} className="w-full" />
+            <WeekPainting
+              theme={week.theme}
+              sizes="(min-width: 1024px) 198px, 220px"
+              className="sticker-shadow mx-auto aspect-square w-full max-w-[220px]"
+            />
           </div>
           <p className="mt-3 text-[0.86rem] leading-snug text-navy-soft">{week.primer.split(". ")[0]}.</p>
         </div>

@@ -1,6 +1,9 @@
 "use client"
 
 import { type ReactNode, useState } from "react"
+import { Gato, WeekPainting } from "@/components/platform/art"
+import { IconCheck } from "@/components/platform/icons"
+import { ProjectChoiceCard, StarterProjectCard } from "@/components/platform/StarterProjectCard"
 import { Button, Chip, Field, OptionRow, Panel } from "@/components/platform/ui"
 import type { OnboardingView } from "@/lib/onboarding-view"
 
@@ -39,7 +42,20 @@ export function OnboardingFlow({
   const step = view.steps[viewing]
   if (!step) return null
 
-  async function send(body: unknown, opts: { advance?: boolean } = {}) {
+  // The server decides where an answer lands (a starter taken on the week step
+  // goes straight to time tracking; naming a project skips "Stuck? Pick one",
+  // since the starter was offered on the week step), and this mirrors it, both
+  // forward and back.
+  const indexOf = (id: string) => view.steps.findIndex((s) => s.id === id)
+  const tookStarter = view.project.starterProjectId !== null && view.project.tierLocked
+  function backFrom(current: number): number {
+    const id = view.steps[current]?.id
+    if (id === "tracking" && tookStarter) return indexOf("week")
+    if (id === "tier") return indexOf("project")
+    return Math.max(0, current - 1)
+  }
+
+  async function send(body: unknown, opts: { advance?: boolean } = {}): Promise<OnboardingView | null> {
     setBusy(true)
     setError(null)
     try {
@@ -51,7 +67,7 @@ export function OnboardingFlow({
       const payload = (await res.json().catch(() => null)) as OnboardingResponse | null
       if (!res.ok || !payload?.onboarding) {
         setError(payload?.error?.message ?? `Something went wrong (${res.status})`)
-        return
+        return null
       }
 
       const next = payload.onboarding
@@ -60,35 +76,62 @@ export function OnboardingFlow({
       setDescription(next.project.description)
       if (next.completed) {
         onComplete?.()
-        return
+        return next
       }
 
       if (opts.advance !== false) {
         setViewing((current) => Math.min(current + 1, next.steps.length - 1))
       }
+      return next
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong")
+      return null
     } finally {
       setBusy(false)
     }
   }
 
+  async function sendProject() {
+    const next = await send({ step: "project", title, description }, { advance: false })
+    if (next && !next.completed) setViewing(indexOf("tier"))
+  }
+
+  /** The beginner's fork on the week step: a starter, or their own project. */
+  async function chooseStart(starterProjectId: string | null) {
+    const next = await send({ step: "week", starterProjectId }, { advance: false })
+    if (next && !next.completed) setViewing(indexOf(starterProjectId ? "tracking" : "project"))
+  }
+
+  // No panel of its own: it is the whole body of the Getting started modal,
+  // whose frame and eyebrow already say what this is. A second bordered card
+  // inside it only boxed the same content twice.
   return (
-    <Panel tone="gold" radius={20} className="bg-paper p-5 sm:p-7">
+    <div>
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <p className="label text-gold-ink">
-            GETTING STARTED: {step.number}/{view.stepCount}
+            Step {step.number}/{view.stepCount}
           </p>
-          <h2 className="mt-1 text-[1.45rem] font-extrabold tracking-[-0.02em] text-navy sm:text-[1.7rem]">
-            {step.heading}
-          </h2>
+          {step.id === "week" && view.weekIntro ? (
+            // The week step is a reveal: its heading trails off ("this week
+            // it's...") so it leads in, and the theme it leads to is the title.
+            <>
+              <p className="hand mt-1.5 text-[0.95rem] text-navy-soft">{step.heading}</p>
+              <h2 className="mt-0.5 text-[1.7rem] leading-tight font-extrabold tracking-[-0.025em] text-navy sm:text-[2.1rem]">
+                {view.weekIntro.kicker}
+              </h2>
+            </>
+          ) : (
+            <h2 className="mt-1 text-[1.5rem] leading-tight font-extrabold tracking-[-0.02em] text-navy sm:text-[1.85rem]">
+              {step.heading}
+            </h2>
+          )}
         </div>
         {viewing > 0 ? (
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setViewing((current) => Math.max(0, current - 1))}
+            onClick={() => setViewing(backFrom)}
             disabled={busy}
           >
             Back
@@ -117,31 +160,84 @@ export function OnboardingFlow({
                 <span className="text-[0.95rem] font-extrabold text-navy">{option.label}</span>
               </OptionRow>
             ))}
-            <p className="hand text-[0.8rem] text-navy-soft">
-              This helps us suggest the right funding tier. It does not affect your experience.
-            </p>
           </div>
         ) : null}
 
         {step.id === "week" && view.weekIntro ? (
-          <div className="space-y-4">
-            <p className="label text-sky-ink">{view.weekIntro.kicker}</p>
-            <h3 className="text-[1.2rem] font-extrabold text-navy">{view.weekIntro.headline}</h3>
-            {view.beginner ? (
-              <p className="text-[0.92rem] leading-relaxed text-navy-soft">{view.weekIntro.primer}</p>
+          <div className="space-y-6">
+            {/* What the week is: its painting, then the words. */}
+            <div className="flex items-start gap-4 sm:gap-6">
+              <WeekPainting
+                theme={view.weekIntro.painting}
+                alt=""
+                sizes="(min-width: 640px) 120px, 84px"
+                className="sticker-shadow size-[84px] shrink-0 sm:size-[120px]"
+              />
+              <div className="min-w-0 flex-1 space-y-2">
+                {view.beginner ? (
+                  <p className="max-w-[62ch] text-[0.92rem] leading-relaxed text-navy-soft">{view.weekIntro.primer}</p>
+                ) : (
+                  <>
+                    <p className="text-[0.92rem] text-navy-soft">Some places to start, if you want one:</p>
+                    <ul className="list-disc space-y-1 pl-5 text-[0.9rem] text-navy-soft">
+                      {view.weekIntro.examples.map((example) => (
+                        <li key={example}>{example}</li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {view.beginner && view.starterProjects.length > 0 ? (
+              // The fork. Two ways in, side by side and the same shape, each
+              // with its own button, so the choice reads as a choice.
+              <div className="space-y-3 border-t border-dashed border-line/80 pt-5">
+                <p className="text-[0.92rem] leading-relaxed text-navy-soft">
+                  <strong className="font-extrabold text-navy">New to this?</strong> Build this week&rsquo;s starter
+                  project, with a guide that walks you through every step. Or make a project of your own.
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {view.starterProjects.map((starter) => {
+                    const chosen = view.project.starterProjectId === starter.id
+                    return (
+                      <StarterProjectCard
+                        key={starter.id}
+                        starter={starter}
+                        chosen={chosen}
+                        stacked
+                        action={
+                          <Button variant="gold" disabled={busy} onClick={() => void chooseStart(starter.id)}>
+                            Build {starter.title}
+                            {chosen ? <IconCheck className="text-base" /> : null}
+                          </Button>
+                        }
+                      />
+                    )
+                  })}
+                  <ProjectChoiceCard
+                    stacked
+                    tileClassName="bg-violet-pale"
+                    art={<Gato pose="schematic" sizes="260px" className="h-[140px] w-auto" />}
+                    label="Custom project"
+                    title="Your own idea"
+                    action={
+                      <Button variant="outline" disabled={busy} onClick={() => void chooseStart(null)}>
+                        Make a custom project
+                      </Button>
+                    }
+                  >
+                    <p className="mt-1.5 text-[0.88rem] leading-relaxed text-navy-soft">
+                      Design the board you want to exist. You name it next, then choose how much funding it needs.
+                    </p>
+                  </ProjectChoiceCard>
+                </div>
+              </div>
             ) : (
-              <>
-                <p className="text-[0.92rem] text-navy-soft">Some places to start, if you want one:</p>
-                <ul className="list-disc space-y-1 pl-5 text-[0.9rem] text-navy-soft">
-                  {view.weekIntro.examples.map((example) => (
-                    <li key={example}>{example}</li>
-                  ))}
-                </ul>
-              </>
+              <Button variant="gold" disabled={busy} onClick={() => void send({ step: "week" })}>
+                Got it
+              </Button>
             )}
-            <Button variant="gold" disabled={busy} onClick={() => void send({ step: "week" })}>
-              Got it
-            </Button>
           </div>
         ) : null}
 
@@ -150,7 +246,7 @@ export function OnboardingFlow({
             className="space-y-5"
             onSubmit={(event) => {
               event.preventDefault()
-              void send({ step: "project", title, description })
+              void sendProject()
             }}
           >
             <p className="text-[0.9rem] leading-relaxed text-navy-soft">
@@ -183,29 +279,34 @@ export function OnboardingFlow({
         {step.id === "idea" ? (
           <div className="space-y-4">
             <p className="text-[0.9rem] leading-relaxed text-navy-soft">
-              Taking one of these sets your project to Tier 1, since they are all scoped to Tier 1 work. Write your own
-              idea instead if you want a bigger tier.
+              Starter projects come with a guide that walks you through every step. Taking one sets your project to Tier
+              1, since starters are Tier 1 work. Write your own idea instead if you want a bigger tier.
             </p>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3">
               {view.starterProjects.map((starter) => {
                 const chosen = view.project.starterProjectId === starter.id
                 return (
-                  <Panel key={starter.id} tone="line" radius={16} className="flex flex-col bg-white p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <h3 className="text-[0.98rem] font-extrabold text-navy">{starter.title}</h3>
-                      {chosen ? <Chip tone="teal">Chosen</Chip> : null}
-                    </div>
-                    <p className="mt-2 flex-1 text-[0.84rem] leading-relaxed text-navy-soft">{starter.description}</p>
-                    <Button
-                      className="mt-4 self-start"
-                      variant={chosen ? "teal" : "outline"}
-                      size="sm"
-                      disabled={busy}
-                      onClick={() => void send({ step: "idea", starterProjectId: starter.id })}
-                    >
-                      {chosen ? "Chosen" : "Build this one"}
-                    </Button>
-                  </Panel>
+                  <StarterProjectCard
+                    key={starter.id}
+                    starter={starter}
+                    chosen={chosen}
+                    action={
+                      <Button
+                        variant={chosen ? "teal" : "outline"}
+                        size="sm"
+                        disabled={busy}
+                        onClick={() => void send({ step: "idea", starterProjectId: starter.id })}
+                      >
+                        {chosen ? (
+                          <>
+                            Building {starter.title} <IconCheck className="text-base" />
+                          </>
+                        ) : (
+                          `Build ${starter.title}`
+                        )}
+                      </Button>
+                    }
+                  />
                 )
               })}
             </div>
@@ -223,8 +324,7 @@ export function OnboardingFlow({
             </p>
             {view.project.tierLocked ? (
               <Note>
-                You picked a starter project, so this one is Tier 1. Go back and write your own idea if you want to
-                choose.
+                You picked a starter project, so this one is Tier 1. You can go back and make a custom project if you'd like.
               </Note>
             ) : null}
             <div className="grid gap-3">
@@ -277,38 +377,28 @@ export function OnboardingFlow({
         {step.id === "tracking" ? (
           <div className="space-y-4">
             <p className="text-[0.92rem] leading-relaxed text-navy-soft">
-              Your hours are what get your project funded, and you log them two ways. A{" "}
-              <strong className="text-navy">journal</strong> entry says what you did in a session. A{" "}
-              <strong className="text-navy">timelapse</strong> is evidence for your reviewer, not extra hours, so it
-              never counts twice.
+              Tracking progress of your project is mandatory, and you log it in two ways. A{" "}
+              <strong className="text-navy">journal</strong> entry is a detailed writeup of what you did in a session. A{" "}
+              <strong className="text-navy">timelapse</strong> is a screenrecording or video of yourself working on your project.
             </p>
-            <div className="grid gap-3 sm:grid-cols-3">
+            <ul className="grid gap-3 sm:grid-cols-3">
               {[
                 ["Timelapses", "Use Lapse to record the work, then attach the recording to your project."],
                 ["Journal", "Write what you did, what broke, and what is next after each session."],
                 ["Keep it daily", "Logging on the day is worth doing: your streak counts days you journalled."],
               ].map(([heading, body]) => (
-                <Panel key={heading} tone="line" radius={16} className="bg-white p-4">
+                <Panel key={heading} as="li" tone="line" radius={16} className="bg-white p-4">
                   <h3 className="text-[0.92rem] font-extrabold text-navy">{heading}</h3>
                   <p className="mt-2 text-[0.8rem] leading-relaxed text-navy-soft">{body}</p>
                 </Panel>
               ))}
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <Button variant="gold" disabled={busy} onClick={() => void send({ step: "tracking", dismissed: false })}>
-                Finish
-              </Button>
-              <Button
-                variant="outline"
-                disabled={busy}
-                onClick={() => void send({ step: "tracking", dismissed: true })}
-              >
-                I&rsquo;ve journalled before, skip this
-              </Button>
-            </div>
+            </ul>
+            <Button variant="gold" disabled={busy} onClick={() => void send({ step: "tracking", dismissed: false })}>
+              Finish
+            </Button>
           </div>
         ) : null}
       </div>
-    </Panel>
+    </div>
   )
 }

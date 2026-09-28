@@ -1,10 +1,11 @@
 import "server-only"
-import { HardwareExperience, Phase, PhaseStatus } from "@/app/generated/prisma/enums"
+import { HardwareExperience, Phase, PhaseStatus, Role } from "@/app/generated/prisma/enums"
 import { avatarUrl } from "@/lib/avatar"
 import { DEFAULT_GOAL_ID } from "@/lib/config/printers"
 import { DESIGN_WEEKS, ONBOARDING_CHECKPOINT_ID, scheduleForWeek, THEMES, TOTAL_WEEKS } from "@/lib/config/program"
 import { getBalances } from "@/lib/currency"
 import { rollUpHours } from "@/lib/hours"
+import { getUserRoles, hasRole } from "@/lib/permissions"
 import prisma from "@/lib/prisma"
 import { effectiveDateFor, effectiveWeekClose, getProgramSettings, weekClosesAt } from "@/lib/program"
 import { getOwedReelKeys } from "@/lib/reel-gate"
@@ -49,8 +50,12 @@ export interface CheckpointSnapshot {
 }
 
 export interface StoreSnapshot {
-  /** Who is signed in. Display fields only — never an email or a Slack id. */
-  viewer: { name: string; image: string | null }
+  /**
+   * Who is signed in. Display fields only, never an email or a Slack id.
+   * `isAdmin` decides whether admin-only tools (redo onboarding) are offered;
+   * the routes behind them check the role themselves.
+   */
+  viewer: { name: string; image: string | null; isAdmin: boolean }
   experience: Experience | null
   /** Whether the first checkpoint has been completed. */
   onboardingDone: boolean
@@ -123,7 +128,7 @@ function weekOf(themeIndex: number, phase: Phase): number {
 }
 
 export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
-  const [user, projects, sessions, links, posts, submissions, balances, settings, owedReels] = await Promise.all([
+  const [user, projects, sessions, links, posts, submissions, balances, settings, owedReels, roles] = await Promise.all([
     prisma.user.findUniqueOrThrow({
       where: { id: userId },
       select: {
@@ -196,6 +201,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
     getBalances(prisma, userId),
     getProgramSettings(),
     getOwedReelKeys(userId),
+    getUserRoles(userId),
   ])
 
   const byTheme = new Map(projects.map((p) => [p.theme, p]))
@@ -325,6 +331,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
     viewer: {
       name: user.name ?? "You",
       image: avatarUrl(user),
+      isAdmin: hasRole(roles, Role.ADMIN),
     },
     experience: user.hardwareExperience ? EXPERIENCE[user.hardwareExperience] : null,
     onboardingDone: user.onboardingCompletedAt !== null,
@@ -343,6 +350,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
           weekId: weekOf(themeIndex, Phase.DESIGN),
           tier: clampTier(tier),
           starter: project.starterProjectId !== null,
+          starterProjectId: project.starterProjectId,
           githubRepo: project.githubRepo,
           thumbnailUrl: projectThumbnail(
             publicUrlFor(project.coverImageKey),

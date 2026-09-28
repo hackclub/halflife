@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import { FoxAvatar } from "@/components/platform/art"
+import { Avatar } from "@/components/platform/Avatar"
 import { IconArrowRight, IconClock, IconFlame } from "@/components/platform/icons"
 import { excerpt, Markdown } from "@/components/platform/Markdown"
 import { PageSign } from "@/components/platform/PageSign"
@@ -31,14 +31,6 @@ function groupFor(day: string, today: string, yesterday: string): Group {
   if (day === today) return "Today"
   if (day === yesterday) return "Yesterday"
   return "Earlier"
-}
-
-/** A fox for a name, so the same person keeps the same one. */
-const AVATARS = ["fox-goggles", "fox-solder", "fox-plain", "fox-cap", "fox-blueprint"] as const
-function avatarFor(name: string): string {
-  let n = 0
-  for (const ch of name) n = (n + ch.charCodeAt(0)) % AVATARS.length
-  return AVATARS[n] ?? AVATARS[0]
 }
 
 function fmtMinutes(m: number) {
@@ -73,7 +65,7 @@ function Entry({ entry }: { entry: JournalRow }) {
             className="size-11 shrink-0 rounded-lg border-2 border-line bg-sky-pale object-cover"
           />
         ) : (
-          <FoxAvatar variant={avatarFor(entry.author)} className="size-11 shrink-0 rounded-lg" />
+          <Avatar name={entry.author} image={null} shape="tile" className="size-11 text-[1.15rem]" />
         )}
         <div className="min-w-0 flex-1">
           <p className="text-[1.02rem] leading-tight font-extrabold text-navy [overflow-wrap:anywhere]">

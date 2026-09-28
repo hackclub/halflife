@@ -1,14 +1,13 @@
 import "server-only"
 import { type HardwareExperience, PhaseStatus, Theme } from "@/app/generated/prisma/enums"
-import { markProjectCreated } from "@/lib/analytics"
 import {
-  getStarterProject,
   ONBOARDING_STEP_COUNT,
   ONBOARDING_STEPS,
   type OnboardingStep,
   type OnboardingStepId,
   STARTER_PROJECT_TIER,
   type StarterProject,
+  seesStarterProjects,
   starterProjectsFor,
   stepAt,
   stepIndexOf,
@@ -60,11 +59,11 @@ export interface OnboardingState {
 }
 
 export async function getOnboardingState(userId: string): Promise<OnboardingState> {
-  // Onboarding is week one's "create a project" checkpoint, so it is where the
-  // PCB project comes into being — the only one it makes.
-  await ensureThemeProject(userId, ONBOARDING_THEME)
-
-  const [user, project] = await Promise.all([
+  // One round trip for both reads. Onboarding is week one's "create a project"
+  // checkpoint, so it is where the PCB project comes into being, but only the
+  // first visit needs to make it: every later step finds the row already
+  // there, and ensuring it up front cost each of them a query of its own.
+  const [user, found] = await Promise.all([
     prisma.user.findUniqueOrThrow({
       where: { id: userId },
       select: {
@@ -74,17 +73,12 @@ export async function getOnboardingState(userId: string): Promise<OnboardingStat
         trackingTutorialDismissedAt: true,
       },
     }),
-    prisma.themeProject.findFirstOrThrow({
+    prisma.themeProject.findFirst({
       where: { userId, theme: ONBOARDING_THEME, deletedAt: null },
-      select: {
-        id: true,
-        title: true,
-        description: true,
-        requestedTier: true,
-        starterProjectId: true,
-      },
+      select: PROJECT_SELECT,
     }),
   ])
+  const project = found ?? pickProject(await ensureThemeProject(userId, ONBOARDING_THEME))
 
   const reached = clampStep(user.onboardingStep)
 
@@ -99,9 +93,39 @@ export async function getOnboardingState(userId: string): Promise<OnboardingStat
       ...project,
       tierLocked: project.starterProjectId !== null,
     },
-    starterProjects: starterProjectsFor(ONBOARDING_THEME),
+    starterProjects: startersShownTo(user.hardwareExperience),
     trackingDismissed: user.trackingTutorialDismissedAt !== null,
   }
+}
+
+/** The project fields the flow reads and writes. */
+const PROJECT_SELECT = {
+  id: true,
+  title: true,
+  description: true,
+  requestedTier: true,
+  starterProjectId: true,
+} as const
+
+function pickProject(p: {
+  id: string
+  title: string
+  description: string | null
+  requestedTier: number | null
+  starterProjectId: string | null
+}) {
+  return {
+    id: p.id,
+    title: p.title,
+    description: p.description,
+    requestedTier: p.requestedTier,
+    starterProjectId: p.starterProjectId,
+  }
+}
+
+/** The starter projects this answer to question one is offered, for the onboarding week. */
+function startersShownTo(experience: HardwareExperience | null): readonly StarterProject[] {
+  return seesStarterProjects(experience) ? starterProjectsFor(ONBOARDING_THEME) : []
 }
 
 function clampStep(step: number): number {
@@ -112,7 +136,7 @@ function clampStep(step: number): number {
 /** Answers, one shape per step. The route validates before this is reached. */
 export type OnboardingAnswer =
   | { step: "experience"; experience: HardwareExperience }
-  | { step: "week" }
+  | { step: "week"; starterProjectId?: string | null }
   | { step: "project"; title: string; description: string }
   | { step: "idea"; starterProjectId: string | null }
   | { step: "tier"; requestedTier: number | null }
@@ -121,14 +145,34 @@ export type OnboardingAnswer =
 export interface AdvanceResult {
   state: OnboardingState
   completed: boolean
+  /**
+   * Whether the answer wrote the project row. The caller then runs
+   * `markProjectCreated` for the analytics stamp: in the API route after the
+   * response has gone, since nobody is waiting on it; here it cannot, because
+   * `after` only works inside a request and the verify scripts call this too.
+   */
+  touchedProject: boolean
 }
 
 /**
  * Record one step's answer and move the furthest-reached marker forward.
  *
- * Everything is one transaction because two of the steps write to two tables
- * at once (the project row and the progress marker), and a half-applied answer
- * strands someone on a step they have already completed.
+ * An answer that touches the project writes it and the progress marker in one
+ * transaction, since a half-applied answer strands someone on a step they have
+ * already completed. An answer that only touches the user is a single update:
+ * a transaction there would only add its BEGIN and COMMIT, two round trips of
+ * ~115ms each from a dev machine, and there is nothing to keep atomic.
+ *
+ * Where the flow goes next is decided here, not only in the browser, so the
+ * server never has someone "on" a step the page skipped:
+ *
+ * - A beginner forks on the week step. Building the starter answers the
+ *   project, idea and tier steps at once (its name, its pick, Tier 1) and
+ *   moves them straight to time tracking. Their own project goes on to
+ *   naming it.
+ * - The idea step ("Stuck? Pick one") is stepped over after naming a project.
+ *   The starter is offered on the week step now, and anyone naming their own
+ *   project has already said no to it.
  */
 export async function submitStep(userId: string, answer: OnboardingAnswer): Promise<AdvanceResult> {
   const before = await getOnboardingState(userId)
@@ -161,10 +205,26 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
       userData.hardwareExperience = answer.experience
       break
 
-    case "week":
-      // Purely informational — the PCB week explainer. Nothing to record
-      // beyond having been through it.
+    case "week": {
+      // For most people the PCB week explainer, with nothing to record beyond
+      // having been through it. For a beginner it is also the fork.
+      if (answer.starterProjectId === undefined) break
+      if (answer.starterProjectId === null) {
+        // Their own project: drop a starter taken on an earlier pass, so the
+        // tier is theirs to choose again.
+        projectData.starterProjectId = null
+        break
+      }
+      // Only one this person was actually offered: the list depends on their
+      // answer to question one, and posting an id is not an answer.
+      const starter = before.starterProjects.find((p) => p.id === answer.starterProjectId)
+      if (!starter) throw new HttpError("VALIDATION_FAILED", "That is not one of the suggestions")
+      projectData.starterProjectId = starter.id
+      projectData.title = starter.title
+      projectData.description = starter.description
+      projectData.requestedTier = STARTER_PROJECT_TIER
       break
+    }
 
     case "project": {
       const title = sanitize(answer.title)
@@ -182,8 +242,10 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
         projectData.starterProjectId = null
         break
       }
-      const starter = getStarterProject(answer.starterProjectId)
-      if (!starter || starter.theme !== ONBOARDING_THEME) {
+      // Only one this person was actually offered: the list depends on their
+      // answer to question one, and posting an id is not an answer.
+      const starter = before.starterProjects.find((p) => p.id === answer.starterProjectId)
+      if (!starter) {
         throw new HttpError("VALIDATION_FAILED", "That is not one of the suggestions")
       }
       projectData.starterProjectId = starter.id
@@ -223,45 +285,45 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
       break
   }
 
+  // The step this answer lands on: normally the next one, further when the
+  // answer settles the steps in between (see above).
+  const tookStarter = answer.step === "week" && typeof answer.starterProjectId === "string"
+  const next = tookStarter
+    ? stepIndexOf("tracking")
+    : answer.step === "project"
+      ? stepIndexOf("idea") + 1
+      : index + 1
   // Only ever forward: re-answering step 3 from step 5 must not rewind anyone.
-  const reached = Math.max(before.reached, index + 1)
+  const reached = Math.max(before.reached, next)
   const finishing = reached >= ONBOARDING_STEP_COUNT
 
-  const { projectAfter, userAfter } = await prisma.$transaction(async (tx) => {
-    const projectAfter =
-      Object.keys(projectData).length > 0
-        ? await tx.themeProject.update({
-            where: { id: before.project.id },
-            data: projectData,
-            select: {
-              id: true,
-              title: true,
-              description: true,
-              requestedTier: true,
-              starterProjectId: true,
-            },
-          })
-        : before.project
+  const userWrite = {
+    where: { id: userId },
+    data: {
+      ...userData,
+      onboardingStep: reached,
+      ...(finishing ? { onboardingCompletedAt: new Date() } : {}),
+    },
+    select: {
+      hardwareExperience: true,
+      onboardingStep: true,
+      onboardingCompletedAt: true,
+      trackingTutorialDismissedAt: true,
+    },
+  } as const
+  const touchesProject = Object.keys(projectData).length > 0
 
-    const userAfter = await tx.user.update({
-      where: { id: userId },
-      data: {
-        ...userData,
-        onboardingStep: reached,
-        ...(finishing ? { onboardingCompletedAt: new Date() } : {}),
-      },
-      select: {
-        hardwareExperience: true,
-        onboardingStep: true,
-        onboardingCompletedAt: true,
-        trackingTutorialDismissedAt: true,
-      },
-    })
+  const { projectAfter, userAfter } = touchesProject
+    ? await prisma.$transaction(async (tx) => ({
+        projectAfter: await tx.themeProject.update({
+          where: { id: before.project.id },
+          data: projectData,
+          select: PROJECT_SELECT,
+        }),
+        userAfter: await tx.user.update(userWrite),
+      }))
+    : { projectAfter: before.project, userAfter: await prisma.user.update(userWrite) }
 
-    return { projectAfter, userAfter }
-  })
-
-  if (Object.keys(projectData).length > 0) await markProjectCreated(before.project.id, userId)
 
   const state: OnboardingState = {
     ...before,
@@ -274,10 +336,39 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
       ...projectAfter,
       tierLocked: projectAfter.starterProjectId !== null,
     },
+    // Re-read, not carried over: answering question one changes who is offered them.
+    starterProjects: startersShownTo(userAfter.hardwareExperience),
     trackingDismissed: userAfter.trackingTutorialDismissedAt !== null,
   }
 
-  return { state, completed: finishing }
+  return { state, completed: finishing, touchedProject: touchesProject }
+}
+
+/**
+ * Put someone back at the start of the first checkpoint, for an admin who
+ * wants to walk it again as a participant would.
+ *
+ * Only the progress and the answers the flow owns are cleared. The week-one
+ * project keeps its row, name and entries, and the flow edits it in place as
+ * the questions are answered again; its starter pick is dropped so the tier is
+ * not left locked by an answer that no longer stands.
+ */
+export async function resetOnboarding(userId: string): Promise<void> {
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: userId },
+      data: {
+        onboardingStep: 0,
+        onboardingCompletedAt: null,
+        hardwareExperience: null,
+        trackingTutorialDismissedAt: null,
+      },
+    }),
+    prisma.themeProject.updateMany({
+      where: { userId, theme: ONBOARDING_THEME, deletedAt: null },
+      data: { starterProjectId: null },
+    }),
+  ])
 }
 
 /**

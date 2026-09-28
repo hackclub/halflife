@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { WeekScene } from "@/components/platform/art"
+import { Gato, WeekPainting } from "@/components/platform/art"
 import { IconArrowRight, IconClock, IconFilm, IconPencil } from "@/components/platform/icons"
 import { RepoEditor } from "@/components/platform/RepoField"
 import { Chip, cx, Panel } from "@/components/platform/ui"
@@ -15,7 +15,7 @@ export function ProjectsGrid() {
   if (projects.length === 0) {
     return (
       <Panel tone="line" radius={20} className="bg-paper px-6 py-14 text-center">
-        <WeekScene theme="PCB" className="mx-auto h-24 w-auto opacity-40" />
+        <Gato pose="confused" sizes="180px" className="mx-auto h-auto w-[90px]" />
         <p className="mt-5 text-[1.05rem] font-extrabold text-navy">Nothing here yet</p>
         <p className="hand mx-auto mt-2 max-w-[44ch] text-[0.9rem] leading-relaxed text-navy-soft">
           your first project gets made at the yellow checkpoint. everything you log against it collects here.
@@ -56,9 +56,11 @@ export function ProjectsGrid() {
                     className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.04]"
                   />
                 ) : (
-                  <WeekScene
+                  <WeekPainting
                     theme={week.theme}
-                    className="h-full w-auto max-w-full drop-shadow-md transition-transform duration-300 group-hover:scale-[1.04]"
+                    alt=""
+                    sizes="(min-width: 1280px) 150px, (min-width: 768px) 190px, 60vw"
+                    className="sticker-shadow aspect-square h-full transition-transform duration-300 group-hover:scale-[1.04]"
                   />
                 )}
                 <span className="label absolute top-2.5 left-2.5 rounded-full bg-white/90 px-2.5 py-1 text-navy">

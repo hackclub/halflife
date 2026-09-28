@@ -79,11 +79,34 @@ async function main() {
   check("beginner is suggested Tier 1", afterExperience.state.suggestedTier, 1)
   check("advanced to the week step", afterExperience.state.current?.id, "week")
 
-  // ── 2. Week intro ──────────────────────────────────────────────────────────
-  const afterWeek = await submitStep(user.id, { step: "week" })
-  check("advanced to the project step", afterWeek.state.current?.id, "project")
+  // ── 2. Week intro: a beginner's fork, taking the starter ───────────────────
+  const starters = starterProjectsFor(Theme.PCB)
+  const starter = starters[0]
+  if (!starter) throw new Error("no PCB starter projects configured")
+  check("a first-timer is offered the starter", afterExperience.state.starterProjects[0]?.id, starter.id)
 
-  // ── 3. Their own project ───────────────────────────────────────────────────
+  await refused("rejects a starter id that does not exist", () =>
+    submitStep(user.id, { step: "week", starterProjectId: "not-a-real-starter" }),
+  )
+
+  const afterStarter = await submitStep(user.id, { step: "week", starterProjectId: starter.id })
+  check("starter names the project", afterStarter.state.project.title, starter.title)
+  check("starter locks the tier", afterStarter.state.project.tierLocked, true)
+  check("starter requests Tier 1", afterStarter.state.project.requestedTier, 1)
+  check("starter goes straight to time tracking", afterStarter.state.current?.id, "tracking")
+
+  // The tier step was skipped, not unlocked: still refused if posted.
+  await refused("a locked project cannot request another tier", () =>
+    submitStep(user.id, { step: "tier", requestedTier: 3 }),
+  )
+
+  // ── 2 again, and 3: their own project instead ──────────────────────────────
+  // Going back to make their own project has to release the lock, or someone
+  // who tried the starter is stuck at Tier 1 forever.
+  const afterCustom = await submitStep(user.id, { step: "week", starterProjectId: null })
+  check("choosing their own releases the lock", afterCustom.state.project.tierLocked, false)
+  check("progress is not rewound by going back", afterCustom.state.reached, 5)
+
   const afterProject = await submitStep(user.id, {
     step: "project",
     title: "Mycelium sensor board",
@@ -91,41 +114,6 @@ async function main() {
   })
   check("project title saved", afterProject.state.project.title, "Mycelium sensor board")
   check("tier is not locked by an own idea", afterProject.state.project.tierLocked, false)
-
-  // ── 4. Starter project instead ─────────────────────────────────────────────
-  const starters = starterProjectsFor(Theme.PCB)
-  const starter = starters[0]
-  if (!starter) throw new Error("no PCB starter projects configured")
-
-  await refused("rejects a starter id that does not exist", () =>
-    submitStep(user.id, { step: "idea", starterProjectId: "not-a-real-starter" }),
-  )
-
-  const afterStarter = await submitStep(user.id, {
-    step: "idea",
-    starterProjectId: starter.id,
-  })
-  check("starter replaces the title", afterStarter.state.project.title, starter.title)
-  check("starter locks the tier", afterStarter.state.project.tierLocked, true)
-  check("starter requests Tier 1", afterStarter.state.project.requestedTier, 1)
-
-  // ── 5. Tier ────────────────────────────────────────────────────────────────
-  await refused("a locked project cannot request another tier", () =>
-    submitStep(user.id, { step: "tier", requestedTier: 3 }),
-  )
-  const afterLockedTier = await submitStep(user.id, { step: "tier", requestedTier: null })
-  check("locked project moves on", afterLockedTier.state.current?.id, "tracking")
-  check("still Tier 1", afterLockedTier.state.project.requestedTier, 1)
-
-  // Going back to write their own idea has to release the lock, or someone who
-  // browsed the suggestions is stuck at Tier 1 forever.
-  const afterRewrite = await submitStep(user.id, {
-    step: "project",
-    title: "Mycelium sensor board",
-    description: "Actually I want to do my own thing.",
-  })
-  check("rewriting releases the lock", afterRewrite.state.project.tierLocked, false)
-  check("progress is not rewound by going back", afterRewrite.state.reached, 5)
 
   const afterTier = await submitStep(user.id, { step: "tier", requestedTier: 3 })
   check("unlocked project can request Tier 3", afterTier.state.project.requestedTier, 3)
@@ -161,6 +149,26 @@ async function main() {
   await refused("a finished checkpoint refuses further answers", () =>
     submitStep(user.id, { step: "experience", experience: HardwareExperience.ITS_LIFE }),
   )
+
+  // ── Someone experienced: no starter, and naming a project skips "Stuck?" ───
+  const maker = await prisma.user.create({
+    data: { email: `maker-${stamp}@example.test`, name: "Maker" },
+  })
+  const makerStart = await submitStep(maker.id, {
+    step: "experience",
+    experience: HardwareExperience.A_GOOD_AMOUNT,
+  })
+  check("an experienced maker is offered no starter", makerStart.state.starterProjects.length, 0)
+  await refused("and cannot take one by posting its id", () =>
+    submitStep(maker.id, { step: "week", starterProjectId: starter.id }),
+  )
+  await submitStep(maker.id, { step: "week" })
+  const makerProject = await submitStep(maker.id, {
+    step: "project",
+    title: "Split keyboard",
+    description: "Two halves, one cable.",
+  })
+  check("naming a project goes on to the tier, past the idea step", makerProject.state.current?.id, "tier")
 
   // ── Someone who was already working is never sent through it ───────────────
   const veteran = await prisma.user.create({

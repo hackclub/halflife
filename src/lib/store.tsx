@@ -199,6 +199,11 @@ interface Ctx {
   setDoomscroller: (open: boolean) => void
   setGoal: (id: string) => void
   reset: () => void
+  /**
+   * Admins only: wipe your own setup answers and run the whole first run
+   * again, setup checkpoint included. Resolves to an error message, or null.
+   */
+  redoOnboarding: () => Promise<string | null>
 }
 
 const StoreContext = createContext<Ctx | null>(null)
@@ -403,6 +408,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
             description: p.description,
             requestedTier: p.tier,
             ...(p.githubRepo ? { githubRepo: p.githubRepo } : {}),
+            ...(p.starterProjectId !== undefined ? { starterProjectId: p.starterProjectId } : {}),
           },
           "PATCH",
         )
@@ -696,6 +702,36 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
     setTourStep(0)
     setOpenCheckpoint(null)
   }, [])
+
+  /**
+   * The full redo, for admins checking the flow. The server clears the answers
+   * first; only then is the ceremony reseeded, and without `replaying`, so once
+   * the refreshed snapshot says onboarding is not done the intro runs on into
+   * the setup checkpoint as it would for someone new.
+   */
+  const redoOnboarding = useCallback(async (): Promise<string | null> => {
+    let res: Response
+    try {
+      res = await fetch("/api/onboarding/reset", { method: "POST" })
+    } catch {
+      return "Could not reach the server. Nothing was reset, so try again."
+    }
+    if (!res.ok) {
+      const payload = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
+      return payload?.error?.message ?? `Could not reset onboarding (${res.status})`
+    }
+    try {
+      window.localStorage.removeItem(KEY)
+    } catch {
+      /* nothing to clear */
+    }
+    setFacts((f) => ({ ...f, onboardingDone: false }))
+    setCeremony(seededCeremony())
+    setTourStep(0)
+    setOpenCheckpoint(null)
+    router.refresh()
+    return null
+  }, [router])
 
   const save = facts
 
@@ -1130,6 +1166,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
     setDoomscroller,
     setGoal,
     reset,
+    redoOnboarding,
     weeks,
     allCheckpoints,
     weekOf,

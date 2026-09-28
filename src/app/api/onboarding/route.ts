@@ -1,4 +1,5 @@
 import { after } from "next/server"
+import { markProjectCreated } from "@/lib/analytics"
 import { ok, parseBody, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { requireSession } from "@/lib/guards"
@@ -26,6 +27,12 @@ export const POST = withRoute(async (req: Request) => {
   // is only because Zod infers the literal union separately from the type the
   // state machine declares.
   const result = await submitStep(gate.user.id, parsed.data as OnboardingAnswer)
+
+  // The analytics stamp for a named project: after the response, since it is
+  // nothing the person is waiting on, and quiet about its own failures.
+  if (result.touchedProject) {
+    after(() => markProjectCreated(result.state.project.id, gate.user.id))
+  }
 
   after(() =>
     logAudit({

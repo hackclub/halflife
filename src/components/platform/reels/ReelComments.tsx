@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { Avatar } from "@/components/platform/Avatar"
 import { IconSend, IconX } from "@/components/platform/icons"
 import { cx } from "@/components/platform/ui"
 import type { FeedItem } from "@/lib/feed"
@@ -22,37 +23,6 @@ interface Thread {
 
 const PAGE = 20
 const MAX_LENGTH = 1000
-
-/** A face for a name: the picture if there is one, else its initial on a colour of its own. */
-export function StageAvatar({
-  name,
-  image,
-  className,
-}: {
-  name: string | null
-  image: string | null
-  className?: string
-}) {
-  const label = (name ?? "?").trim()
-  const TONES = ["bg-coral", "bg-violet", "bg-teal", "bg-sky-deep", "bg-orange-deep"]
-  let n = 0
-  for (const ch of label) n = (n + ch.charCodeAt(0)) % TONES.length
-  return image ? (
-    // eslint-disable-next-line @next/next/no-img-element -- avatars come from the identity provider's CDN
-    <img src={image} alt="" className={cx("shrink-0 rounded-full bg-sky-pale object-cover", className)} />
-  ) : (
-    <span
-      aria-hidden="true"
-      className={cx(
-        "grid shrink-0 place-items-center rounded-full font-extrabold text-white",
-        TONES[n] ?? TONES[0],
-        className,
-      )}
-    >
-      {label.charAt(0).toUpperCase()}
-    </span>
-  )
-}
 
 /**
  * The conversation under the current reel.
@@ -262,7 +232,7 @@ export function ReelComments({
             <ol ref={list} className="grid gap-5">
               {thread.items.map((c) => (
                 <li key={c.id} className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-3">
-                  <StageAvatar name={c.author.name} image={c.author.image} className="size-9 text-[0.88rem]" />
+                  <Avatar name={c.author.name} image={c.author.image} className="size-9 text-[0.88rem]" />
                   <div className="min-w-0">
                     <p className="flex min-w-0 items-baseline gap-2">
                       <span className="truncate text-[0.84rem] font-extrabold text-navy">
@@ -308,7 +278,7 @@ export function ReelComments({
         className="shrink-0 border-t border-dashed border-line px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
       >
         <div className="flex items-center gap-2.5">
-          <StageAvatar name={viewer.name} image={viewer.image} className="size-9 text-[0.88rem]" />
+          <Avatar name={viewer.name} image={viewer.image} className="size-9 text-[0.88rem]" />
           <label htmlFor="reel-comment" className="sr-only">
             Add a comment
           </label>

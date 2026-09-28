@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { OnboardingFlow } from "@/app/components/forms/OnboardingFlow"
-import { Button, Panel } from "@/components/platform/ui"
+import { Button } from "@/components/platform/ui"
 import type { OnboardingView } from "@/lib/onboarding-view"
 import { useStore } from "@/lib/store"
 import { Modal, ModalTitle } from "./Modal"
@@ -51,12 +51,10 @@ export function FirstCheckpoint() {
   if (error) {
     return (
       <Modal open onClose={close} accent="var(--color-gold-deep)" eyebrow="Getting started">
-        <Panel tone="gold" radius={18} className="bg-paper px-5 py-5 sm:px-6">
-          <ModalTitle sub={error}>Something went wrong</ModalTitle>
-          <Button variant="outline" onClick={() => setAttempt((value) => value + 1)}>
-            Try again
-          </Button>
-        </Panel>
+        <ModalTitle sub={error}>Something went wrong</ModalTitle>
+        <Button variant="outline" onClick={() => setAttempt((value) => value + 1)}>
+          Try again
+        </Button>
       </Modal>
     )
   }
@@ -64,9 +62,7 @@ export function FirstCheckpoint() {
   if (!view) {
     return (
       <Modal open onClose={close} accent="var(--color-gold-deep)" eyebrow="Getting started">
-        <Panel tone="gold" radius={18} className="bg-paper px-5 py-5 sm:px-6">
-          <p className="hand text-navy-soft">Loading your project setup…</p>
-        </Panel>
+        <p className="hand text-navy-soft">Loading your project setup…</p>
       </Modal>
     )
   }

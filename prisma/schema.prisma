@@ -263,6 +263,8 @@ enum AuditAction {
   ADMIN_RESTORE_POST
   ADMIN_HIDE_COMMENT
   ADMIN_PIN_POST
+  /// An admin putting themselves back at the start of the first checkpoint.
+  ADMIN_RESET_ONBOARDING
 
   // Printer
   PRINTER_QUALIFIED

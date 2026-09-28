@@ -103,6 +103,8 @@ export interface Project {
   weekId: number
   tier: 1 | 2 | 3
   starter: boolean
+  /** Which starter project it is, when it is one. See config/onboarding. */
+  starterProjectId?: string | null
   /** Where the code, schematics and CAD live. Optional, editable any time. */
   githubRepo?: string | null
   /** The chosen thumbnail, else the newest journal image. See lib/thumbnail. */
