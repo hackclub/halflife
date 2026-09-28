@@ -34,9 +34,9 @@ const THEMES: ThemeSeed[] = [
   {
     theme: "PCB",
     designHeadline: "DESIGN YOUR PCB",
-    buildHeadline: "SOLDER YOUR PCB",
+    buildHeadline: "BUILD YOUR PCB",
     fullName: "Printed Circuit Board Week",
-    summary: "Draw a schematic, route a board, and order it from a real fab.",
+    summary: "Draw up a schematic, make a BOM, and route your board!",
     primer:
       "A PCB is the flat green (or purple, or black) board inside every piece of electronics. Copper lines etched onto it replace the messy wires you would otherwise solder by hand. You will draw a schematic — a diagram of which part connects to which — then lay those parts out on a board and let the software route copper between them. At the end you export a set of Gerber files and a real factory turns them into a board you can hold.",
     examples: [
@@ -53,7 +53,7 @@ const THEMES: ThemeSeed[] = [
     designHeadline: "MODEL YOUR PART",
     buildHeadline: "PRINT YOUR PART",
     fullName: "Computer Aided Design Week",
-    summary: "Model a part in 3D with tolerances that survive a real printer.",
+    summary: "Make some awesome 3D models (remember tolerances!)",
     primer:
       "CAD is drawing an object as a solid with exact dimensions instead of a sketch. You start from a 2D sketch, pull it into 3D, then cut and round it until it is the shape you want. The hard part is not the software — it is tolerance: a hole modelled at exactly 3mm will not fit a 3mm screw once the printer squishes plastic into it.",
     examples: [
@@ -66,15 +66,15 @@ const THEMES: ThemeSeed[] = [
     accentDeep: "var(--color-teal-deep)",
   },
   {
-    theme: "Synth",
-    designHeadline: "DESIGN YOUR SYNTH",
-    buildHeadline: "WIRE YOUR SYNTH",
-    fullName: "Synth & Music Week",
-    summary: "Make something that makes noise on purpose.",
+    theme: "Music",
+    designHeadline: "DESIGN YOUR INSTRUMENT",
+    buildHeadline: "WIRE YOUR INSTRUMENT",
+    fullName: "Music Week",
+    summary: "MAKE. SOME. NOOOOOOOOOOOOOISE.",
     primer:
-      "A synth turns voltage into sound. The simplest one is an oscillator — a circuit that flips a pin on and off fast enough to hear — plus something to shape the volume over time. Add a filter and you have a voice. You can build this from a 555 timer, from op-amps, or from a microcontroller running a wavetable. All three count.",
+      "Music week is circuits that turn voltage into sound. The simplest instrument is an oscillator — a circuit that flips a pin on and off fast enough to hear — plus something to shape the volume over time. Add a filter and you have a voice. You can build this from a 555 timer, from op-amps, or from a microcontroller running a wavetable. All three count.",
     examples: [
-      "A 555-based drone synth with three detuned oscillators",
+      "A 555-based drone machine with three detuned oscillators",
       "A MIDI controller with velocity-sensitive pads",
       "A Eurorack-format LFO module in 4HP",
       "A pocket sampler that records to an SD card",
@@ -84,10 +84,10 @@ const THEMES: ThemeSeed[] = [
   },
   {
     theme: "Displays",
-    designHeadline: "DESIGN YOUR DISPLAY",
+    designHeadline: "DESIGN WITH DISPLAYS",
     buildHeadline: "DRIVE YOUR DISPLAY",
     fullName: "Displays Week",
-    summary: "Put pixels somewhere they do not belong.",
+    summary: "TFT? OLED? Nixie tubes? Neopixels? LED matrices?",
     primer:
       "Displays are the fastest way to make a project feel finished. E-paper sips power and holds an image with none. OLED is crisp and tiny. LED matrices are bright enough to read across a room. Each one talks a different protocol — SPI, I2C, or raw shift registers — and the driver you pick decides how much of your microcontroller is left over for anything else.",
     examples: [
@@ -101,10 +101,10 @@ const THEMES: ThemeSeed[] = [
   },
   {
     theme: "Breadboard computer",
-    designHeadline: "PLAN YOUR COMPUTER",
+    designHeadline: "DESIGN YOUR COMPUTER",
     buildHeadline: "BUILD YOUR COMPUTER",
     fullName: "Breadboard Computer Week",
-    summary: "A working computer out of logic chips and a lot of wire.",
+    summary: "Plan your circuit! Simulate some gates!",
     primer:
       "Underneath every processor is a clock, a register, an adder and some way to decide what happens next. Wire those four things together out of 74-series logic chips and you have a computer — slow, hot, and entirely yours. Start with the clock module, get an LED blinking at a speed you can follow, then add a register you can load by hand.",
     examples: [
@@ -203,7 +203,7 @@ export function checkpointsFor(
       weekId: meta.id,
       kind: "journal",
       title: branch ? "Keep working" : `Entry ${n}`,
-      blurb: "One session: what you did, and the photos that prove it.",
+      blurb: "Journal your progress with pictures and screenshots!",
       entryTarget: 1,
       branch,
       // The fork's working arm answers to the week's clock rather than to the
@@ -220,7 +220,7 @@ export function checkpointsFor(
       kind: "reel",
       atHours: k * REEL_EVERY,
       title: `${k * REEL_EVERY}h progress reel`,
-      blurb: k === 1 ? "Ten hours in. Show where the work actually got to." : "What has changed since the last one.",
+      blurb: k === 1 ? "Show off the progress you've made after 10 hours!" : "What has changed since the last one.",
       reelBrief:
         k === 1
           ? "Screen-share what you have and narrate one decision you reversed."
@@ -254,8 +254,8 @@ export function checkpointsFor(
       weekId: meta.id,
       kind: "reel",
       title: "Idea reel",
-      blurb: "30 seconds on what you are making and why anyone should care.",
-      reelBrief: "Hold up a sketch, say the idea out loud, name one thing you are unsure about.",
+      blurb: "A short video about your awesome project idea!",
+      reelBrief: "Talk about the idea you're thinking about designing this week.",
     })
 
     // Every design week opens the same way: say what you are making, then
@@ -269,14 +269,14 @@ export function checkpointsFor(
             weekId: meta.id,
             kind: "onboarding",
             title: "Get started",
-            blurb: "Six quick questions, then your first project exists.",
+            blurb: "Six short questions, then we're off!",
           })
         : cp({
             id: id("project"),
             weekId: meta.id,
             kind: "project",
             title: "New project",
-            blurb: `Name your ${meta.theme.toLowerCase()} project and pick a funding tier.`,
+            blurb: `Create your ${meta.theme.toLowerCase()} project!`,
           }),
       ideaReel,
     )
@@ -304,9 +304,7 @@ export function checkpointsFor(
     kind: "submit",
     title: forked ? "Submit project" : "Submit",
     blurb:
-      meta.phase === "build"
-        ? "A working demo, or an honest write-up of what still needs changing."
-        : "Files, bill of materials, your tier, and the reel that closes the week.",
+      meta.phase === "build" ? "A working video demo or a write-up of what needs changing." : "Submit your project!",
     branch: forked ? "submit" : undefined,
   })
 

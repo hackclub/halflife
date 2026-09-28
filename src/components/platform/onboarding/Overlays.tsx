@@ -32,38 +32,38 @@ const TOUR = [
   {
     selector: '[data-tour="nav-home"]',
     title: "Home",
-    body: "The trail. Ten weeks of checkpoints, and the only one you can open is the one you are on — everything you log happens here.",
+    body: "Here's the main map, where you can log time for your projects, post reels to the Doomscroller, and submit your projects.",
   },
   {
     selector: '[data-tour="nav-doomscroller"], [data-tour="doomscroller-button"]',
     also: '[data-tour="doomscroller"]',
     title: "The Doomscroller",
-    body: "Every reel anyone posts lands here, newest first — in the rail on the right while you work, or full screen from the tab.",
+    body: "Every teenager working on Half Life will be posting short videos about their projects to the platform! Now you can doomscroll forever (technically productive).",
   },
   {
     selector: '[data-tour="nav-projects"]',
     title: "Projects",
-    body: "Everything you have started, each with its journal, its reels and its tier. The tier stays changeable here until you submit the week.",
+    body: "Here's where you manage your projects and edit their details. You can also view your journal entries, lapses, and reels in chronological order.",
   },
   {
     selector: '[data-tour="nav-reels"]',
     title: "Reels",
-    body: "Every reel you have posted, by project. Post one on Instagram, TikTok, X or YouTube too, add the link here, and a post that goes viral earns you coins.",
+    body: "Manage all the reels you've posted to the platform! If you post them online, add your sharable links here so you can get coins if you go viral!",
   },
   {
     selector: '[data-tour="nav-explore"]',
     title: "Explore",
-    body: "The long-form side: everyone's journal entries, with the photos and the parts that did not work.",
+    body: "A feed of all the journal entries teenagers are making around the world.",
   },
   {
     selector: '[data-tour="nav-shop"]',
     title: "Shop",
-    body: "Coins from your logged hours buy grants, tools and parts here. Hardware grants land straight on your card.",
+    body: "See what you can buy with your coins!",
   },
   {
     selector: '[data-tour="nav-docs"]',
     title: "Docs",
-    body: "How tiers work, what counts as a session, and the checklist reviewers actually use when they read your submission.",
+    body: "Confused? Learn how tiers work, what counts as a session, and the checklist reviewers actually use when they read your submission.",
   },
 ]
 

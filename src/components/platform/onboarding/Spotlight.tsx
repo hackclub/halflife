@@ -390,7 +390,7 @@ export function Spotlight({
       >
         <div key={title} className="motion-safe:animate-[hl-rise_.4s_.12s_cubic-bezier(.16,1,.3,1)_both]">
           {typeof step === "number" && typeof total === "number" && (
-            <p className="label mb-1.5 text-gold-deep">
+            <p className="label mb-1.5 text-gold-ink">
               Tour {step}/{total}
             </p>
           )}

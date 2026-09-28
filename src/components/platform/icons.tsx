@@ -177,6 +177,12 @@ export const IconX = (p: P) => (
   </Ico>
 )
 
+export const IconTrash = (p: P) => (
+  <Ico {...p}>
+    <path d="M4.5 7h15M9.5 7V4.8h5V7M6.5 7l.8 12.2h9.4L17.5 7M10.2 10.6v5.2M13.8 10.6v5.2" />
+  </Ico>
+)
+
 export const IconChevronRight = (p: P) => (
   <Ico {...p}>
     <path d="m9.4 5.6 6.4 6.4-6.4 6.4" />

@@ -242,7 +242,7 @@ export function LapsePicker({
                       {t.title || "Untitled timelapse"}
                     </span>
                     <span className="hand mt-0.5 flex flex-wrap items-center gap-x-2 text-[0.78rem] text-navy-soft tabular-nums">
-                      <span className="inline-flex items-center gap-1 text-teal-deep">
+                      <span className="inline-flex items-center gap-1 text-teal-ink">
                         <IconClock className="text-xs" /> {fmtDuration(t.durationSeconds)}
                       </span>
                       <span>

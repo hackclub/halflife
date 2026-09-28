@@ -19,6 +19,9 @@
   --color-surface-raised: #ffffff; /* cards sitting on the ground */
   --color-surface-sunken: #f2ecec;
   --color-border: #cacedd;
+  /* A field's edge, which has to meet 3:1 where a panel's need not: #cacedd
+     is 1.57:1 on a white field. 3.68:1. */
+  --color-field-edge: #86829f;
   --color-border-strong: #1c1a59;
 
   --color-ink: #100f30; /* body text */
@@ -50,6 +53,11 @@
   --color-success: #06ae97;
   --color-warning: #fba62f;
   --color-danger: #f35757;
+  /* The status colours as text. Teal, coin and flame read 2.80, 1.98 and
+     3.33:1 on white, so a badge's word takes these instead. */
+  --color-success-ink: #037365;
+  --color-warning-ink: #8c5507;
+  --color-danger-ink: #c73b3b;
 
   /* ── Shape ─────────────────────────────────────────────────────────────── */
   /* The comp uses 4/8/10/14 and a 2px outline on nearly everything. */
@@ -459,8 +467,9 @@ h4 {
   .hl-btn--primary:hover:not(:disabled) {
     background: var(--color-accent);
   }
+  /* danger-ink, not flame: white on flame is 3.33:1, on this 5.10. */
   .hl-btn--danger {
-    background: var(--color-flame);
+    background: var(--color-danger-ink);
     color: var(--color-surface-raised);
   }
   .hl-btn--danger:hover:not(:disabled) {
@@ -516,7 +525,7 @@ h4 {
     font: inherit;
     color: var(--color-ink);
     background: var(--color-surface-raised);
-    border: 2px solid var(--color-border);
+    border: 2px solid var(--color-field-edge);
     border-radius: var(--radius-button);
     padding: 0.6rem 0.75rem;
   }
@@ -548,13 +557,13 @@ h4 {
     line-height: 1.4;
   }
   .hl-badge--success {
-    color: var(--color-teal);
+    color: var(--color-success-ink);
   }
   .hl-badge--warning {
-    color: var(--color-coin);
+    color: var(--color-warning-ink);
   }
   .hl-badge--danger {
-    color: var(--color-flame);
+    color: var(--color-danger-ink);
   }
   .hl-badge--muted {
     color: var(--color-ink-muted);

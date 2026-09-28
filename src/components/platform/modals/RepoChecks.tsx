@@ -111,7 +111,7 @@ export function RepoChecks({
 
 function CheckRow({ check }: { check: RepoCheck }) {
   const tone =
-    check.status === "pass" ? "text-teal-deep" : check.status === "fail" ? "text-coral-deep" : "text-orange-deep"
+    check.status === "pass" ? "text-teal-ink" : check.status === "fail" ? "text-coral-deep" : "text-orange-ink"
   return (
     <li className="flex items-start gap-2.5">
       <span

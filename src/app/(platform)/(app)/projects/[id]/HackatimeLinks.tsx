@@ -146,7 +146,7 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
         {error && account.state !== "error" && (
           <p
             role="alert"
-            className="mt-4 flex items-start gap-2 rounded-xl bg-coral/10 px-3.5 py-2.5 text-[0.85rem] font-semibold text-coral-deep"
+            className="mt-4 flex items-start gap-2 rounded-xl bg-coral/10 px-3.5 py-2.5 text-[0.85rem] font-semibold text-coral-dark"
           >
             <IconWarning className="mt-0.5 shrink-0 text-base" /> {error}
           </p>
@@ -175,7 +175,7 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
                     className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl bg-cream px-3.5 py-2.5"
                   >
                     <span className="min-w-0 flex-1 truncate font-bold text-navy">{l.hackatimeProject}</span>
-                    <span className="hand inline-flex items-center gap-1.5 text-[0.84rem] text-teal-deep tabular-nums">
+                    <span className="hand inline-flex items-center gap-1.5 text-[0.84rem] text-teal-ink tabular-nums">
                       <IconClock className="text-sm" /> {fmtHours(l.hours)}
                       {l.hoursApproved !== null && " approved"}
                     </span>

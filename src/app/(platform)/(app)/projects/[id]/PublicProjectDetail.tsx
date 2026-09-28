@@ -59,10 +59,10 @@ export function PublicProjectDetail({ data }: { data: PublicProjectData }) {
             {/* The owner's page says the same two things the same way. */}
             <div className="hand mt-4 grid gap-1 text-[0.84rem] text-navy-soft tabular-nums">
               <p className="flex flex-wrap items-center gap-x-2">
-                <span className="inline-flex items-center gap-1.5 text-teal-deep">
+                <span className="inline-flex items-center gap-1.5 text-teal-ink">
                   <IconClock className="text-sm" /> {fmtHours(hours)} logged
                 </span>
-                <span aria-hidden="true" className="text-line-strong">
+                <span aria-hidden="true" className="text-navy-faint">
                   ·
                 </span>
                 <span>{sessions.length === 1 ? "1 entry" : `${sessions.length} entries`}</span>

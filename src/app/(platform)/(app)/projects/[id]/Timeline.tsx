@@ -76,12 +76,12 @@ function Marker({ item }: { item: TimelineItem }) {
     item.kind === "session"
       ? { tone: "bg-violet-pale text-violet-deep", icon: <IconPencil className="text-[0.85rem]" /> }
       : item.kind === "reel"
-        ? { tone: "bg-sky-pale text-sky-deep", icon: <IconFilm className="text-[0.9rem]" /> }
+        ? { tone: "bg-sky-pale text-sky-ink", icon: <IconFilm className="text-[0.9rem]" /> }
         : item.kind === "submitted"
-          ? { tone: "bg-gold-pale text-gold-deep", icon: <IconCheck className="text-[0.8rem]" strokeWidth={3} /> }
+          ? { tone: "bg-gold-pale text-gold-ink", icon: <IconCheck className="text-[0.8rem]" strokeWidth={3} /> }
           : item.result === "APPROVED"
-            ? { tone: "bg-mint text-teal-deep", icon: <IconCheck className="text-[0.8rem]" strokeWidth={3} /> }
-            : { tone: "bg-coral/15 text-coral-deep", icon: <IconWarning className="text-[0.85rem]" /> }
+            ? { tone: "bg-mint text-teal-ink", icon: <IconCheck className="text-[0.8rem]" strokeWidth={3} /> }
+            : { tone: "bg-coral/15 text-coral-dark", icon: <IconWarning className="text-[0.85rem]" /> }
   return (
     <span
       aria-hidden="true"
@@ -104,7 +104,7 @@ function Body({ item }: { item: TimelineItem }) {
       <article>
         <header className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
           <h3 className="text-[0.95rem] font-extrabold text-navy">Journal entry</h3>
-          <span className="hand text-[0.84rem] text-teal-deep tabular-nums">
+          <span className="hand text-[0.84rem] text-teal-ink tabular-nums">
             {fmtHours(item.hours)} logged
             {item.approvedHours !== null && (
               <span className="text-navy-soft"> · {fmtHours(item.approvedHours)} approved</span>
@@ -160,7 +160,7 @@ function Body({ item }: { item: TimelineItem }) {
   }
 
   const verdict = {
-    APPROVED: { text: "approved", tone: "text-teal-deep" },
+    APPROVED: { text: "approved", tone: "text-teal-ink" },
     RETURNED: { text: "sent back for changes", tone: "text-coral-deep" },
     REJECTED: { text: "rejected", tone: "text-coral-deep" },
   }[item.result]
@@ -207,10 +207,7 @@ function EntryBody({ source }: { source: string }) {
           !open && long && "[mask-image:linear-gradient(to_bottom,#000_70%,transparent)]",
         )}
       >
-        <Markdown
-          source={source}
-          className="grid gap-2.5 text-[0.9rem] leading-relaxed [overflow-wrap:anywhere] text-navy"
-        />
+        <Markdown source={source} className="grid gap-2.5 text-[0.9rem] leading-relaxed text-navy" />
       </div>
       {long && (
         <button

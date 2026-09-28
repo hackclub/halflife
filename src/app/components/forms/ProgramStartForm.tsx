@@ -41,7 +41,7 @@ export function ProgramStartForm({
   async function save() {
     if (
       !window.confirm(
-        "Moving the start moves every week for everyone: weeks can lock or reopen on the trail the moment this saves. Continue?",
+        "Moving the start moves every week for everyone: weeks can lock or reopen on the map the moment this saves. Continue?",
       )
     )
       return

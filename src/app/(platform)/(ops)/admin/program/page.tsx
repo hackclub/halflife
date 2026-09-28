@@ -86,7 +86,7 @@ export default async function AdminProgramPage() {
           ))}
         </Table>
         <p className="hl-hint">
-          A passed week is shut on the trail: no more journal entries, only its Submit. An extension on the user or the
+          A passed week is shut on the map: no more journal entries, only its Submit. An extension on the user or the
           project reopens it for them.
         </p>
       </Panel>

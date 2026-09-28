@@ -3,7 +3,7 @@
 import { type ReactNode, useCallback, useEffect, useId, useRef, useSyncExternalStore } from "react"
 import { createPortal } from "react-dom"
 import { IconX } from "@/components/platform/icons"
-import { cx } from "@/components/platform/ui"
+import { accentText, cx } from "@/components/platform/ui"
 
 const FOCUSABLE =
   'a[href],button:not([disabled]),textarea:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])'
@@ -132,7 +132,7 @@ export function Modal({
         style={{ "--sk-color": accent, "--sk-radius": "26px" } as React.CSSProperties}
       >
         <div className="flex shrink-0 items-start justify-between gap-4 px-5 pt-4 sm:px-8 sm:pt-6">
-          <span className="label pt-1" style={{ color: accent }}>
+          <span className="label pt-1" style={{ color: accentText(accent) }}>
             {eyebrow}
           </span>
           {dismissible && (

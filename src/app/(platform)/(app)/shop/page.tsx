@@ -22,12 +22,12 @@ export default async function ShopPage() {
         color="var(--color-orange)"
         sub={
           <>
-            Do not see what you are looking for? Suggest it in the{" "}
+            Don&rsquo;t see what you&rsquo;re looking for? Suggest it on the {" "}
             <a
               href="https://hackclub.enterprise.slack.com/docs/T0266FRGM/F0C4MAYPK4H"
               target="_blank"
               rel="noopener noreferrer"
-              className="font-semibold text-navy underline decoration-dashed underline-offset-4 hover:text-coral"
+              className="font-semibold text-navy underline decoration-dashed underline-offset-4 hover:text-coral-deep"
             >
               shop items canvas on Slack
             </a>

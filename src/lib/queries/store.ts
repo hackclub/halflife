@@ -7,6 +7,7 @@ import { getBalances } from "@/lib/currency"
 import { rollUpHours } from "@/lib/hours"
 import prisma from "@/lib/prisma"
 import { effectiveDateFor, effectiveWeekClose, getProgramSettings, weekClosesAt } from "@/lib/program"
+import { getOwedReelKeys } from "@/lib/reel-gate"
 import { streakAsOf } from "@/lib/streak"
 import { projectThumbnail } from "@/lib/thumbnail"
 import type { Experience, Project, SessionLog } from "@/lib/types"
@@ -102,6 +103,11 @@ export interface StoreSnapshot {
   bankedCoins: number
   streak: number
   goalId: string
+  /**
+   * Reel checkpoints whose reel was deleted and not yet re-recorded. While
+   * any are owed, they are the only checkpoints that open (lib/reel-gate).
+   */
+  owedReels: string[]
 }
 
 const EXPERIENCE: Record<HardwareExperience, Experience> = {
@@ -117,7 +123,7 @@ function weekOf(themeIndex: number, phase: Phase): number {
 }
 
 export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
-  const [user, projects, sessions, links, posts, submissions, balances, settings] = await Promise.all([
+  const [user, projects, sessions, links, posts, submissions, balances, settings, owedReels] = await Promise.all([
     prisma.user.findUniqueOrThrow({
       where: { id: userId },
       select: {
@@ -189,6 +195,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
     // balance inside the transaction that spends it.
     getBalances(prisma, userId),
     getProgramSettings(),
+    getOwedReelKeys(userId),
   ])
 
   const byTheme = new Map(projects.map((p) => [p.theme, p]))
@@ -354,6 +361,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
     bankedCoins: balances.banked,
     streak: streakAsOf(user, effectiveDateFor(new Date(), settings.programTimezone)),
     goalId: user.printerGoalId ?? DEFAULT_GOAL_ID,
+    owedReels,
   }
 }
 

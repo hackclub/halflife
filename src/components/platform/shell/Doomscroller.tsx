@@ -17,7 +17,7 @@ export function DoomscrollerFeed({ onClose, className }: { onClose?: () => void;
   return (
     <Panel tone="line" radius={18} className={cx("flex min-h-0 flex-col bg-cream/60 p-3.5", className)} as="aside">
       <div className="mb-3 flex shrink-0 items-center justify-between gap-2 px-0.5">
-        <h2 className="label text-line-strong">The Doomscroller</h2>
+        <h2 className="label text-navy-faint">The Doomscroller</h2>
         {onClose && (
           <button
             type="button"
@@ -29,13 +29,16 @@ export function DoomscrollerFeed({ onClose, className }: { onClose?: () => void;
               onClose()
             }}
             aria-label="Hide the Doomscroller"
-            className="grid size-7 place-items-center rounded-full text-line-strong transition-colors hover:bg-black/5 hover:text-navy"
+            className="grid size-7 place-items-center rounded-full text-navy-faint transition-colors hover:bg-black/5 hover:text-navy"
           >
             <IconX className="text-base" />
           </button>
         )}
       </div>
-      <div className="thin-scroll snap-y-feed -mx-1 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-1 pb-1">
+      {/* No visible scrollbar: the reels snap one at a time, so the feed reads
+          as a stack of cards, and a bar down its edge only narrowed them. It
+          still scrolls by wheel, trackpad and touch. */}
+      <div className="no-scrollbar snap-y-feed -mx-1 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-1 pb-1">
         {feed.items.map((r) => (
           <ReelCard
             key={r.id}

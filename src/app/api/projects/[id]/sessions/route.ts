@@ -15,6 +15,7 @@ import {
   SUBMISSIONS_CLOSED_MESSAGE,
   WEEK_CLOSED_MESSAGE,
 } from "@/lib/program"
+import { assertNoOwedReel } from "@/lib/reel-gate"
 import { sanitize, sanitizeHtml } from "@/lib/sanitize"
 import { sessionCreateSchema } from "@/lib/schemas/session"
 import { recomputeStreak } from "@/lib/streak"
@@ -70,6 +71,9 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 
   const access = await getSubmissionAccess(gate.user.id, id)
   if (!access.open) return fail("SUBMISSIONS_CLOSED", SUBMISSIONS_CLOSED_MESSAGE)
+
+  // A new entry completes a checkpoint, so a deleted reel still owed holds it.
+  await assertNoOwedReel(gate.user.id)
 
   if (!(await isWeekOpen(gate.user.id, id, scheduledWeekFor(project.theme, data.phase)))) {
     return fail("WEEK_CLOSED", WEEK_CLOSED_MESSAGE)

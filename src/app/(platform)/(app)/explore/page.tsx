@@ -54,7 +54,16 @@ function Entry({ entry }: { entry: JournalRow }) {
   const { text, cut } = excerpt(entry.body, EXCERPT_CHARS)
   const href = `/projects/${entry.projectId}#${entry.id}`
   return (
-    <Panel tone="line" radius={20} as="article" className="bg-paper px-5 py-5 sm:px-7 sm:py-6">
+    // `min-w-0` and `overflow-wrap: anywhere` on the card itself, so nothing in
+    // it — the entry, a project or author name — can be wider than the column:
+    // a grid item is otherwise as wide as its longest unbroken word, and one
+    // pasted URL carried the card, and then the page, off the right edge.
+    <Panel
+      tone="line"
+      radius={20}
+      as="article"
+      className="min-w-0 bg-paper px-5 py-5 [overflow-wrap:anywhere] sm:px-7 sm:py-6"
+    >
       <header className="flex flex-wrap items-start gap-3.5">
         {entry.authorImage ? (
           // eslint-disable-next-line @next/next/no-img-element -- the avatar host (Slack via Cachet) is known only at runtime
@@ -82,7 +91,7 @@ function Entry({ entry }: { entry: JournalRow }) {
             </span>
           </p>
         </div>
-        <time dateTime={entry.when} className="label shrink-0 pt-1 text-line-strong">
+        <time dateTime={entry.when} className="label shrink-0 pt-1 text-navy-faint">
           {entry.day}
         </time>
       </header>
@@ -96,7 +105,7 @@ function Entry({ entry }: { entry: JournalRow }) {
       {cut && (
         <Link
           href={href}
-          className="hand mt-2 inline-flex items-center gap-1 text-[0.86rem] text-sky-deep underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
+          className="hand mt-2 inline-flex items-center gap-1 text-[0.86rem] text-sky-ink underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
         >
           See more <IconArrowRight className="text-sm" />
         </Link>
@@ -121,15 +130,15 @@ export default async function ExplorePage() {
         sub="See what other teenagers around the world are building for Half Life!"
       />
 
-      <div className="grid gap-6">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
         {GROUPS.map((group) => {
           const items = entries.filter((e) => groupFor(e.day, today, yesterday) === group)
           if (items.length === 0) return null
           return (
-            <section key={group} className="grid gap-5">
+            <section key={group} className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5">
               <div className="flex items-center gap-4">
                 <span className="h-px flex-1 bg-line" />
-                <h2 className="label text-line-strong">{group}</h2>
+                <h2 className="label text-navy-faint">{group}</h2>
                 <span className="h-px flex-1 bg-line" />
               </div>
               {items.map((e) => (

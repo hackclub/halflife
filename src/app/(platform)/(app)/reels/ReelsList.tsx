@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { IconArrowRight, IconFilm, IconPlus, IconX } from "@/components/platform/icons"
+import { IconArrowRight, IconFilm, IconPlus, IconTrash, IconX } from "@/components/platform/icons"
 import { PublicReelModal } from "@/components/platform/modals/CheckpointModals"
 import { Button, Chip, Panel } from "@/components/platform/ui"
 import { fmtDate } from "@/lib/projects"
@@ -29,14 +29,14 @@ export function ReelsList({ groups }: { groups: MyReelGroup[] }) {
       <Panel tone="line" radius={20} className="bg-paper px-6 py-14 text-center">
         <p className="text-[1.05rem] font-extrabold text-navy">No reels yet</p>
         <p className="hand mx-auto mt-2 max-w-[44ch] text-[0.9rem] leading-relaxed text-navy-soft">
-          reels are posted from the checkpoints on your trail: an idea reel to start each design week, and one every ten
+          reels are posted from the checkpoints on your map: an idea reel to start each design week, and one every ten
           hours after that.
         </p>
         <Link
           href={PLATFORM_HOME}
           className="label mt-6 inline-flex items-center gap-1.5 rounded-full border-2 border-line px-4 py-2 text-navy-soft transition-colors hover:border-navy hover:text-navy"
         >
-          Go to the trail <IconArrowRight className="text-base" />
+          Go to the map <IconArrowRight className="text-base" />
         </Link>
       </Panel>
     )
@@ -90,6 +90,27 @@ export function ReelsList({ groups }: { groups: MyReelGroup[] }) {
 function ReelRow({ reel, onAdd, onChanged }: { reel: MyReel; onAdd: () => void; onChanged: () => void }) {
   const [removing, setRemoving] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [confirming, setConfirming] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  async function deleteReel() {
+    setDeleting(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/posts/${reel.id}`, { method: "DELETE" })
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
+        setError(body?.error?.message ?? "That reel didn't delete. Try again.")
+        return
+      }
+      setConfirming(false)
+      onChanged()
+    } catch {
+      setError("That reel didn't delete. Try again.")
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   async function remove(id: string) {
     setRemoving(id)
@@ -176,9 +197,48 @@ function ReelRow({ reel, onAdd, onChanged }: { reel: MyReel; onAdd: () => void; 
               {error}
             </p>
           )}
-          <Button variant="ghost" size="sm" onClick={onAdd} className="mt-1.5 -ml-3.5">
-            <IconPlus className="text-sm" /> Add where you posted it
-          </Button>
+          <div className="mt-1.5 -ml-3.5 flex flex-wrap items-center gap-x-1 gap-y-1">
+            <Button variant="ghost" size="sm" onClick={onAdd}>
+              <IconPlus className="text-sm" /> Add where you posted it
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setConfirming(true)}
+              disabled={reel.deleteLocked !== null || confirming}
+              aria-expanded={confirming}
+              className="hover:text-coral-deep"
+            >
+              <IconTrash className="text-sm" /> Delete reel
+            </Button>
+          </div>
+          {/* A disabled control stays where it lives and says why. */}
+          {reel.deleteLocked && <p className="hand pl-0.5 text-[0.84rem] text-navy-soft">{reel.deleteLocked}</p>}
+
+          {confirming && (
+            <div
+              role="group"
+              aria-labelledby={`delete-${reel.id}`}
+              className="mt-2 rounded-xl border-2 border-coral-deep bg-coral/5 px-3.5 py-3"
+            >
+              <p id={`delete-${reel.id}`} className="text-[0.9rem] leading-snug font-bold text-navy">
+                Delete this reel for good?
+              </p>
+              <p className="mt-1 text-[0.86rem] leading-snug text-navy-soft">
+                {reel.reopensCheckpoint
+                  ? `It comes off the platform everywhere, and your ${reel.title.toLowerCase()} checkpoint reopens. Every other checkpoint on your map waits until you re-record it.`
+                  : "It comes off the platform everywhere. Links to where you posted it go with it."}
+              </p>
+              <div className="mt-2.5 flex flex-wrap gap-2">
+                <Button variant="coral" size="sm" onClick={() => void deleteReel()} disabled={deleting}>
+                  {deleting ? "Deleting…" : "Delete reel"}
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setConfirming(false)} disabled={deleting}>
+                  Keep it
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </Panel>

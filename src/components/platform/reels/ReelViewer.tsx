@@ -565,7 +565,7 @@ function NavButton({
       aria-label={label}
       className={cx(
         "sketch grid size-11 place-items-center rounded-full bg-paper transition-colors",
-        disabled ? "cursor-not-allowed text-line-strong/60" : "text-navy hover:bg-mint hover:text-teal-deep",
+        disabled ? "cursor-not-allowed text-navy-faint/60" : "text-navy hover:bg-mint hover:text-teal-ink",
       )}
       style={
         {
@@ -647,9 +647,9 @@ function Action({
           on === "coral" && "text-coral",
           // From md: a drawn paper disc beside the reel.
           "md:bg-paper md:text-navy md:drop-shadow-none",
-          on === "coral" && "md:bg-coral/15 md:text-coral-deep",
+          on === "coral" && "md:bg-coral/15 md:text-coral-dark",
           on === "violet" && "md:bg-violet-pale md:text-violet-deep",
-          onClick && !on && "md:group-hover:bg-mint md:group-hover:text-teal-deep",
+          onClick && !on && "md:group-hover:bg-mint md:group-hover:text-teal-ink",
         )}
         style={{ "--ring": ring, "--sk-radius": "999px" } as React.CSSProperties}
       >

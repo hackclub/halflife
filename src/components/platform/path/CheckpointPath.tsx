@@ -1,7 +1,7 @@
 "use client"
 
 import { Fragment, useEffect, useRef } from "react"
-import { PrinterArt, WeekScene } from "@/components/platform/art"
+import { PrinterArt, WeekPainting } from "@/components/platform/art"
 import {
   IconCheck,
   IconChevronsUp,
@@ -10,10 +10,9 @@ import {
   IconLock,
   IconPencil,
   IconPlay,
-  IconSparkle,
   IconUpload,
 } from "@/components/platform/icons"
-import { Chip, cx, Panel } from "@/components/platform/ui"
+import { Chip, cx, onAccent, Panel } from "@/components/platform/ui"
 import { printerById } from "@/lib/config/printers"
 import { useStore } from "@/lib/store"
 import type { Checkpoint, Week } from "@/lib/types"
@@ -25,7 +24,7 @@ const CURVE = 1.02
 const offsetAt = (i: number) => Number((50 + AMP * Math.sin(i * CURVE)).toFixed(4))
 
 const KIND_ICON = {
-  onboarding: IconSparkle,
+  onboarding: IconPlay,
   project: IconPencil,
   journal: IconClock,
   reel: IconFilm,
@@ -56,8 +55,10 @@ const fmtH = (h: number) => `${Math.round(h * 100) / 100}h`
  */
 const ONE_TIME: Checkpoint["kind"][] = ["onboarding", "project"]
 
-function nodeTone(kind: Checkpoint["kind"], done: boolean, unlocked: boolean, passed: boolean) {
-  if (passed) return "puck-passed"
+function nodeTone(kind: Checkpoint["kind"], done: boolean, unlocked: boolean, passed: boolean, held: boolean) {
+  // Held behind a deleted reel: greyed like a passed node, done or not, so the
+  // one owed reel is the only colour left on the map.
+  if (passed || held) return "puck-passed"
   if (!unlocked) return "puck-locked"
   // The onboarding puck keeps its gold once it is finished. It is the landmark
   // for where the trail started; the check is what says it is done.
@@ -81,13 +82,14 @@ function CheckpointNode({
   /** One half of a fork: both arms are live, and neither is the recommendation. */
   choice?: boolean
 }) {
-  const { stateOf, isUnlocked, isPassed, lockReason, setOpenCheckpoint, phase, weekSubmitted, phaseStatusOf } =
+  const { stateOf, isUnlocked, isPassed, isHeld, lockReason, setOpenCheckpoint, phase, weekSubmitted, phaseStatusOf } =
     useStore()
   const st = stateOf(checkpoint.id)
   const unlocked = isUnlocked(checkpoint.id)
   // Its week ran out of time. Done or not, it is the record now: no redo, no
   // more entries, and the tooltip says only that.
   const passed = isPassed(checkpoint.id)
+  const held = isHeld(checkpoint.id)
   // Done and not for doing again. It keeps its finished colours rather than
   // taking the locked ones: this is a thing achieved, not a thing withheld.
   // A finished entry opens for editing — until its week is handed in, when
@@ -120,11 +122,11 @@ function CheckpointNode({
   // Finished and still reachable: hovering says so, and says what a click
   // does now — edit the entry, or post another reel.
   const doneTip = st.done && unlocked && !passed
-  const Icon = st.done ? IconCheck : unlocked ? KIND_ICON[checkpoint.kind] : IconLock
+  const Icon = held ? IconLock : st.done ? IconCheck : unlocked ? KIND_ICON[checkpoint.kind] : IconLock
   // Gold stays gold after completion, so the icon on it has to stay navy.
   const gold = checkpoint.kind === "onboarding"
 
-  const status = st.done ? "Completed" : unlocked ? "Available" : "Locked"
+  const status = held ? "Locked" : st.done ? "Completed" : unlocked ? "Available" : "Locked"
 
   return (
     <div
@@ -217,7 +219,7 @@ function CheckpointNode({
             }
           >
             <p className="flex items-start gap-1.5 text-[0.74rem] leading-snug font-semibold text-navy">
-              <IconCheck className="mt-px shrink-0 text-[0.8rem] text-teal-deep" strokeWidth={3} />
+              <IconCheck className="mt-px shrink-0 text-[0.8rem] text-teal-ink" strokeWidth={3} />
               You&apos;ve already completed this checkpoint!
             </p>
             {doneNote && <p className="hand mt-1 pl-5 text-[0.72rem] leading-snug text-navy-soft">{doneNote}</p>}
@@ -243,7 +245,7 @@ function CheckpointNode({
         }
         className={cx(
           "puck",
-          nodeTone(checkpoint.kind, st.done, unlocked, passed),
+          nodeTone(checkpoint.kind, st.done, unlocked, passed, held),
           // The puck's own disabled rule reads as refusal. A finished
           // checkpoint is not refusing anything.
           settled && "cursor-default",
@@ -254,7 +256,10 @@ function CheckpointNode({
           <Icon
             className={cx(
               isBeat(checkpoint) ? "text-[clamp(0.95rem,2.8vw,1.25rem)]" : "text-[clamp(1.5rem,4.4vw,2rem)]",
-              passed ? "text-white" : !unlocked ? "text-sand-deep" : gold ? "text-navy" : "text-white",
+              // A passed glyph was white on teal-grey (1.77:1) and a padlock
+              // sand-deep on sand (1.62): both under the 3:1 an icon that
+              // carries meaning needs.
+              passed || held ? "text-navy-soft" : !unlocked ? "text-sand-ink" : gold ? "text-navy" : "text-white",
             )}
             strokeWidth={st.done ? 3 : 2}
           />
@@ -292,24 +297,40 @@ function WeekBanner({ week, index }: { week: Week; index: number }) {
             boxShadow: "0 3px 6px rgba(28,26,89,.12), 0 16px 34px -18px rgba(28,26,89,.5)",
           }}
         />
-        <div className="relative flex items-center gap-3 px-5 py-3.5 sm:gap-5 sm:px-7 sm:py-4">
+        {/* Text takes `onAccent`: navy on every week but music, whose magenta is
+            the only fill white reads on. It was white throughout, 1.98:1 on
+            the orange week and 2.37 on the sky one. */}
+        <div
+          className="relative flex items-center gap-3 px-5 py-3.5 sm:gap-5 sm:px-7 sm:py-4"
+          style={{ color: onAccent(week.accent).text }}
+        >
           <div className="min-w-0 flex-1">
-            <p className="label text-white/85">
+            <p className="label">
               Week {week.id}/10 · {week.phase === "design" ? "Design" : "Build"}
             </p>
-            <h2 className="mt-0.5 truncate text-[1.25rem] leading-none font-extrabold tracking-[-0.025em] text-white sm:text-[1.75rem]">
+            <h2 className="mt-0.5 truncate text-[1.25rem] leading-none font-extrabold tracking-[-0.025em] sm:text-[1.75rem]">
               {week.headline}
             </h2>
-            <p className="mt-1.5 hidden max-w-[52ch] text-[0.82rem] leading-snug text-white/85 sm:block">
-              {week.summary}
-            </p>
+            <p className="mt-1.5 hidden max-w-[52ch] text-[0.82rem] leading-snug sm:block">{week.summary}</p>
           </div>
-          <WeekScene theme={week.theme} className="hidden h-16 w-auto shrink-0 drop-shadow-md sm:block md:h-[74px]" />
+          {/* Square, where the drawn scene was 5:4, and a size up from its 64/74
+              height: the painting sits inside its own canvas with a margin,
+              so at the old height it read smaller than the scene it replaces.
+              `sticker-shadow` rather than a plain drop, because a die-cut
+              sticker is exactly what that shadow is for. */}
+          <WeekPainting
+            theme={week.theme}
+            sizes="(min-width: 768px) 88px, 76px"
+            className="sticker-shadow hidden h-[76px] w-[76px] shrink-0 sm:block md:h-[88px] md:w-[88px]"
+          />
           <div className="flex shrink-0 flex-col items-end gap-1.5">
-            <span className="label rounded-full bg-white/25 px-2.5 py-1 text-white tabular-nums">
+            <span
+              className="label rounded-full px-2.5 py-1 tabular-nums"
+              style={{ background: onAccent(week.accent).pill }}
+            >
               {done}/{week.checkpoints.length}
             </span>
-            {index === 0 && <IconChevronsUp className="hidden text-lg text-white/70 sm:block" aria-hidden="true" />}
+            {index === 0 && <IconChevronsUp className="hidden text-lg opacity-70 sm:block" aria-hidden="true" />}
           </div>
         </div>
       </div>
@@ -400,7 +421,7 @@ function WeekTrail({ week, currentId }: { week: Week; currentId: string | null }
           {row.length > 1 && (
             <p
               aria-hidden="true"
-              className="hand absolute text-[0.78rem] text-line-strong"
+              className="hand absolute text-[0.78rem] text-navy-faint"
               style={{
                 top: offsetOf(f, b, " + var(--node) / 2"),
                 left: "50%",
@@ -431,7 +452,7 @@ function PhaseDivider() {
     <div className="relative my-10 flex items-center gap-4" aria-hidden="true">
       <span className="h-px flex-1 bg-line" />
       <Panel tone="teal" radius={999} className="bg-mint px-5 py-2">
-        <p className="label text-teal-deep">Halfway! Now it&apos;s time to build</p>
+        <p className="label text-teal-ink">Halfway! Now it&apos;s time to build</p>
       </Panel>
       <span className="h-px flex-1 bg-line" />
     </div>

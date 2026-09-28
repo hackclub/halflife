@@ -176,6 +176,8 @@ interface Ctx {
   isUnlocked: (id: string) => boolean
   /** Whether a checkpoint is shut because its week's time ran out. */
   isPassed: (id: string) => boolean
+  /** Whether a checkpoint is held until a deleted reel is re-recorded. */
+  isHeld: (id: string) => boolean
   /** Whether a week's Sunday-midnight close (or its extension) is behind us. */
   weekPassed: (weekId: number) => boolean
   /** Whether a week is handed in — in review, approved or rejected — so its entries are final. */
@@ -583,6 +585,9 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
           }),
         })
         if (!res.ok) return null
+        // Re-recording an owed reel lifts the hold now rather than on the
+        // refresh, so the map opens back up the moment it is posted.
+        setFacts((f) => (f.owedReels.includes(id) ? { ...f, owedReels: f.owedReels.filter((k) => k !== id) } : f))
         const { post } = (await res.json()) as { post?: { id?: string } }
         return post?.id ?? null
       } catch {
@@ -956,6 +961,20 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
   )
 
   /**
+   * Whether a checkpoint waits on a deleted reel.
+   *
+   * Deleting the last reel on a checkpoint reopens it, and until it is posted
+   * again every other checkpoint is held — done ones included, so the map
+   * shows plainly that one thing is owed. The server holds the same line
+   * (lib/reel-gate), and only ever reports a reel owed while its week can
+   * still take one, so the hold always has a way out.
+   */
+  const isHeld = useCallback(
+    (id: string): boolean => facts.owedReels.length > 0 && !facts.owedReels.includes(id),
+    [facts.owedReels],
+  )
+
+  /**
    * Whether a week still stands between the trail and the week after it. A
    * week holds the next one shut until it is handed in — except a week that
    * passed with nothing in it, which can never be handed in and would
@@ -982,6 +1001,9 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
   const isUnlocked = useCallback(
     (id: string): boolean => {
       if (isPassed(id)) return false
+      // The owed reel is the way out, so it opens whatever else is true.
+      if (facts.owedReels.includes(id)) return true
+      if (isHeld(id)) return false
       const done = (c: Checkpoint) => save.progress[c.id]?.done ?? false
       const wi = weeks.findIndex((w) => w.checkpoints.some((c) => c.id === id))
       if (wi === -1) return false
@@ -1013,7 +1035,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 
       return list.slice(0, i).every(done)
     },
-    [isPassed, owesSubmit, weekPassed, weeks, save.progress, weekHours],
+    [isPassed, isHeld, facts.owedReels, owesSubmit, weekPassed, weeks, save.progress, weekHours],
   )
 
   /**
@@ -1033,6 +1055,11 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 
       if (isUnlocked(id)) return null
       if (isPassed(id)) return PASSED_REASON
+      if (isHeld(id)) {
+        const owedId = facts.owedReels[0]
+        const owed = weeks.flatMap((w) => w.checkpoints).find((c) => c.id === owedId)
+        return owed ? `Re-record ${owed.title} first. You deleted it.` : "Re-record the reel you deleted first."
+      }
 
       const done = (c: Checkpoint) => save.progress[c.id]?.done ?? false
       const wi = weeks.findIndex((w) => w.checkpoints.some((c) => c.id === id))
@@ -1058,7 +1085,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
       const blocker = list.slice(0, i).find((c) => !done(c))
       return blocker ? firstFinish(blocker) : null
     },
-    [isUnlocked, isPassed, owesSubmit, weeks, save.progress, weekHours],
+    [isUnlocked, isPassed, isHeld, facts.owedReels, owesSubmit, weeks, save.progress, weekHours],
   )
 
   const currentCheckpointId = useMemo(() => {
@@ -1092,6 +1119,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
     stateOf,
     isUnlocked,
     isPassed,
+    isHeld,
     weekPassed,
     weekSubmitted,
     phaseStatusOf,

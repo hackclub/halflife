@@ -138,7 +138,7 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
               meta={
                 <div className="hand mt-4 grid gap-1 text-[0.84rem] text-navy-soft">
                   <p className="flex flex-wrap items-center gap-x-2 tabular-nums">
-                    <span className="inline-flex items-center gap-1.5 text-teal-deep">
+                    <span className="inline-flex items-center gap-1.5 text-teal-ink">
                       <IconClock className="text-sm" /> {fmtHours(hours)} logged
                     </span>
                     <Dot />
@@ -223,7 +223,7 @@ function noop() {}
 
 function Dot() {
   return (
-    <span aria-hidden="true" className="text-line-strong">
+    <span aria-hidden="true" className="text-navy-faint">
       ·
     </span>
   )

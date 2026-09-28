@@ -76,7 +76,7 @@ export type DesignWeek = {
    * column from one edit.
    *
    * Week 3 has none yet — `public/art/weeks` ships PCB, cad, display and
-   * breadboard, and no synth.
+   * breadboard, and nothing for music.
    */
   art?: string
 }
@@ -86,7 +86,7 @@ export const DESIGN_WEEKS: { lead: DesignWeek; rest: DesignWeek[] } = {
   lead: { subject: "PCBs", week: "week 1", art: "/art/weeks/PCB.png" },
   rest: [
     { subject: "CAD", week: "week 2", art: "/art/weeks/cad.png" },
-    { subject: "synths", week: "week 3" },
+    { subject: "music", week: "week 3" },
     { subject: "displays", week: "week 4", art: "/art/weeks/display.png" },
     {
       subject: "breadboard logic",

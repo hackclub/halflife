@@ -73,7 +73,7 @@ export function NotFoundScene() {
 
         <nav className={styles.actions} aria-label="Ways back">
           <Link href={PLATFORM_HOME} className={styles.primary}>
-            back to your trail
+            back to your map
           </Link>
           <Link href="/" className={styles.secondary}>
             {BRAND.name.toLowerCase()} home
