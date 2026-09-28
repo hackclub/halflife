@@ -76,14 +76,19 @@ async function throttle(): Promise<void> {
  * penalty; anything else transient gets exponential backoff with jitter.
  * Ported from siege's `with_rate_limit_retry`, which stasis has no equivalent
  * of at all.
+ *
+ * `retryServerErrors` is for non-idempotent calls: a 5xx or a timeout can
+ * arrive after Airtable committed the write, so retrying a create duplicates
+ * the row. A 429 is always safe — the request was never processed.
  */
 export async function withRateLimitRetry<T>(
   operation: string,
   fn: () => Promise<T>,
-  opts: { maxAttempts?: number; baseSleepMs?: number } = {},
+  opts: { maxAttempts?: number; baseSleepMs?: number; retryServerErrors?: boolean } = {},
 ): Promise<T> {
   const maxAttempts = opts.maxAttempts ?? 5
   const baseSleepMs = opts.baseSleepMs ?? 1000
+  const retryServerErrors = opts.retryServerErrors ?? true
 
   for (let attempt = 1; ; attempt++) {
     try {
@@ -91,7 +96,8 @@ export async function withRateLimitRetry<T>(
       return await fn()
     } catch (err) {
       const isRateLimit = err instanceof AirtableError && err.isRateLimit
-      const isTransient = isRateLimit || (err instanceof AirtableError && err.status >= 500)
+      const isTransient =
+        isRateLimit || (retryServerErrors && err instanceof AirtableError && err.status >= 500)
       if (!isTransient || attempt >= maxAttempts) throw err
 
       const wait = isRateLimit ? 30_000 : baseSleepMs * 2 ** (attempt - 1) + Math.random() * 500
