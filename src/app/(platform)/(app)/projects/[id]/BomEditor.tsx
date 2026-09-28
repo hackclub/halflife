@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation"
 import { useId, useRef, useState } from "react"
 import { IconPencil, IconPlus, IconX } from "@/components/platform/icons"
-import { Button, cx, inputClass } from "@/components/platform/ui"
+import { Button, cx } from "@/components/platform/ui"
 import type { BomLine } from "@/lib/bom"
 
 const usd = (n: number) => `$${n.toFixed(2)}`
@@ -228,13 +228,13 @@ export function BomEditor({
         })
       }
     },
-    // A red border rather than a ring: the drawn outline inputClass relies on
-    // cannot render on a field, so without its own border an empty one showed
-    // nothing at all.
+    // The drawn outline `inputClass` relies on cannot render on a field, so
+    // these take a real border like the journal and onboarding fields do:
+    // line at rest, line-strong on hover, violet on focus.
     className: cx(
-      inputClass,
-      "border-2 py-2 text-[0.88rem]",
-      invalid.has(key) ? "border-coral-deep bg-coral/5" : "border-transparent",
+      "block w-full rounded-xl border-2 px-4 py-2 text-[0.88rem] text-navy outline-none transition-colors placeholder:text-navy-soft/70",
+      "hover:border-line-strong focus:border-violet",
+      invalid.has(key) ? "border-coral-deep bg-coral/5" : "border-line bg-black/[.02] focus:bg-white",
     ),
   })
 
