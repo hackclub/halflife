@@ -572,8 +572,12 @@ model ThemeProject {
   designSpendableCoins Int?
   buildCoins           Int?
 
-  /// Dollars of the grant the participant did not spend on parts, entered from
-  /// their receipts. Converts 1:1 into spendable coins.
+  /// Reserved for the receipts flow, which is **not shipped**: nothing writes
+  /// this today. The intent was dollars of the grant the participant did not
+  /// spend on parts, entered from their receipts and converted 1:1 into
+  /// spendable coins through `LedgerKind.BOM_SAVINGS` / `PARTS_TOP_UP`.
+  /// Building it is a product decision (who enters the receipts, when it
+  /// pays) and a launch feature list item of its own.
   bomSavingsUsd Int?
 
   /// Tax and shipping for the whole parts order, as one total: a cart charges
