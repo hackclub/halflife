@@ -1,6 +1,7 @@
 import "server-only"
 import { Phase } from "@/app/generated/prisma/enums"
 import { type AirtableRecord, airtableFetch, getAirtableConfig, withRateLimitRetry } from "@/lib/airtable/client"
+import { RSVP_TABLE_ID } from "@/lib/airtable/schema"
 import { THEMES } from "@/lib/config/program"
 import prisma from "@/lib/prisma"
 
@@ -21,7 +22,7 @@ import prisma from "@/lib/prisma"
  * counted, not created.
  */
 
-const TABLE = process.env.AIRTABLE_RSVP_TABLE_ID ?? "Signups"
+const TABLE = RSVP_TABLE_ID
 
 export const LOOPS_FIELDS = {
   email: "email",

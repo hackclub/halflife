@@ -95,8 +95,16 @@ export const YSWS_SUBMISSION = {
 /** What every row says when Half Life writes it; ari.hackclub.com takes it from there. */
 export const YSWS_PENDING_REVIEW = "Pending Review"
 
+/**
+ * The landing page's sign-up list, in its own base. The RSVP buffer drains
+ * into it and the Loops sync reads/writes its Loops columns, so both name it
+ * from here — the two modules used to default to different tables ("RSVPs"
+ * vs "Signups"), which silently split the funnel from the emails.
+ */
+export const RSVP_TABLE_ID = process.env.AIRTABLE_RSVP_TABLE_ID ?? "Signups"
+
 export const RSVP = {
-  tableId: process.env.AIRTABLE_RSVP_TABLE_ID ?? "RSVPs",
+  tableId: RSVP_TABLE_ID,
   fields: {
     email: f<string>("fldRsvpEmail", "Email"),
     firstName: f<string>("fldRsvpFirstName", "First Name"),
