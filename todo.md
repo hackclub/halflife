@@ -1,5 +1,5 @@
 - Callback URL for Ari
-- Project approval should notify the user
+- Project approval (when done in Ari) should notify the user
 	- By email and by Slack DM
 - Indicate submission state on the projects page for each project
 	- Green border = approved
@@ -14,4 +14,5 @@
 			- Other idk
 - A button in the admin panel to send out grants
 	- Use the HCB API at https://hcb.hackclub.com/docs/api/v3
+		- we need to find an authenticated version of this that allows for sending out grant cards
 - Placeholder image for project should be a screenshot from a reel or image from a devlog
