@@ -1,3 +1,5 @@
+import type { PhaseStatus } from "@/app/generated/prisma/enums"
+
 export type Phase = "design" | "build"
 
 export type CheckpointKind =
@@ -107,6 +109,12 @@ export interface Project {
   githubRepo?: string | null
   /** The chosen thumbnail, else the newest journal image. See lib/thumbnail. */
   thumbnailUrl?: string | null
+  /**
+   * The two phases' review state, so a card can colour itself without the
+   * grid re-deriving it from the week.
+   */
+  designStatus: PhaseStatus
+  buildStatus: PhaseStatus
 }
 
 export type Experience = "first" | "little" | "some" | "lots"

@@ -3,12 +3,13 @@
 import Link from "next/link"
 import { IconChevronLeft, IconClock } from "@/components/platform/icons"
 import { RepoChecks } from "@/components/platform/modals/RepoChecks"
-import { Chip, Panel } from "@/components/platform/ui"
+import { Chip, cx, Panel } from "@/components/platform/ui"
 import { DESIGN_WEEKS } from "@/lib/config/printers"
 import { TIERS } from "@/lib/curriculum"
 import { fmtDate, fmtHours } from "@/lib/projects"
 import type { ProjectPageData } from "@/lib/queries/project-page"
 import { displayRepo } from "@/lib/repo"
+import { REVIEW_STATUS_DOT, REVIEW_STATUS_TEXT, reviewChipTone } from "@/lib/review-state"
 import { useStore } from "@/lib/store"
 import { BomEditor } from "./BomEditor"
 import { HackatimeLinks } from "./HackatimeLinks"
@@ -62,6 +63,32 @@ function Section({
  * page; the server supplies the rest in `data`, because the timeline's media
  * and the parts list are only ever wanted here.
  */
+
+/** Where each phase stands with review, above the repo checks. */
+function ReviewState({ phases }: { phases: ProjectPageData["phases"] }) {
+  return (
+    <Panel tone="line" radius={20} className="bg-paper px-5 py-5 sm:px-6">
+      <ul className="grid gap-4">
+        {phases.map((p) => (
+          <li key={p.phase} className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <span className={cx("size-2.5 shrink-0 rounded-full", REVIEW_STATUS_DOT[p.status])} aria-hidden />
+            <span className="text-[0.95rem] font-extrabold text-navy">{p.phase === "DESIGN" ? "Design" : "Build"}</span>
+            <Chip tone={reviewChipTone(p.status)}>{REVIEW_STATUS_TEXT[p.status]}</Chip>
+            {p.reviewedAt !== null && (
+              <span className="hand text-[0.82rem] text-navy-soft">decided {fmtDate(p.reviewedAt)}</span>
+            )}
+            {p.comments && (
+              <p className="basis-full rounded-xl bg-cream px-3.5 py-2.5 text-[0.9rem] leading-snug text-navy-soft">
+                {p.comments}
+              </p>
+            )}
+          </li>
+        ))}
+      </ul>
+    </Panel>
+  )
+}
+
 export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData | null }) {
   const { projects, stateOf, weekOf, weekHours, hydrated, unsubmitPhase } = useStore()
   const project = projects.find((p) => p.id === id)
@@ -180,6 +207,13 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
           </div>
         </div>
       </Panel>
+
+      {/* ---------- where review stands ---------- */}
+      {data.phases.length > 0 && (
+        <Section id="review-title" title="Review">
+          <ReviewState phases={data.phases} />
+        </Section>
+      )}
 
       {/* ---------- what the repo has ---------- */}
       <div className="mt-6">

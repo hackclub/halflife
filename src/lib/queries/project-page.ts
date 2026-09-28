@@ -64,6 +64,18 @@ export type TimelineItem =
       comments: string | null
     }
 
+/** One phase's review state, for the block above the repo checks. */
+export interface PhaseReview {
+  phase: Phase
+  status: PhaseStatus
+  /** The reviewer's note on the latest decision, if any. */
+  comments: string | null
+  /** When the latest submission for this phase was handed in, epoch ms. */
+  submittedAt: number | null
+  /** When it was decided, epoch ms. */
+  reviewedAt: number | null
+}
+
 export interface ProjectPageData {
   /** The thumbnail the maker chose, if any. */
   coverImageUrl: string | null
@@ -79,6 +91,8 @@ export interface ProjectPageData {
   editLocked: string | null
   /** The phase handed in and waiting for a reviewer, which can be taken back. */
   inReview: Phase | null
+  /** The phases that have left draft, for the review-state block. */
+  phases: PhaseReview[]
 }
 
 const SESSION_SELECT = {
@@ -157,6 +171,8 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
       buildStatus: true,
       designReviewComments: true,
       buildReviewComments: true,
+      designReviewedAt: true,
+      buildReviewedAt: true,
       workSessions: { where: { deletedAt: null }, select: SESSION_SELECT },
       posts: {
         // Their own reels, including one a moderator took out of the feed —
@@ -207,6 +223,24 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
         ? Phase.BUILD
         : null
 
+  // Both phases, in order, but only the ones that have left draft — a fresh
+  // project's page should not carry a "not started" row for each week.
+  const phases: PhaseReview[] = ([Phase.DESIGN, Phase.BUILD] as const)
+    .map((phase) => {
+      const isDesign = phase === Phase.DESIGN
+      const latest = project.submissions
+        .filter((s) => s.phase === phase)
+        .reduce<Date | null>((at, s) => (!at || s.createdAt > at ? s.createdAt : at), null)
+      return {
+        phase,
+        status: isDesign ? project.designStatus : project.buildStatus,
+        comments: isDesign ? project.designReviewComments : project.buildReviewComments,
+        submittedAt: latest?.getTime() ?? null,
+        reviewedAt: (isDesign ? project.designReviewedAt : project.buildReviewedAt)?.getTime() ?? null,
+      }
+    })
+    .filter((p) => p.status !== PhaseStatus.draft || p.submittedAt !== null)
+
   return {
     coverImageUrl: publicUrlFor(project.coverImageKey),
     journalImageUrl: latestJournalImage(project.workSessions),
@@ -216,6 +250,7 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
     bomLocked: bomLockReason(project),
     editLocked: inReview ? "In review, so it can't be edited. Unsubmit to change it" : null,
     inReview,
+    phases,
   }
 }
 

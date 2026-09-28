@@ -1077,6 +1077,8 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
                 tier,
                 starter: false,
                 githubRepo: normalizeRepo(repo).url,
+                designStatus: "draft",
+                buildStatus: "draft",
               })
               complete(checkpoint.id, { artefacts: 1 })
               setOpenCheckpoint(null)

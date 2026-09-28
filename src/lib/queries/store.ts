@@ -344,6 +344,8 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
           tier: clampTier(tier),
           starter: project.starterProjectId !== null,
           githubRepo: project.githubRepo,
+          designStatus: project.designStatus,
+          buildStatus: project.buildStatus,
           thumbnailUrl: projectThumbnail(
             publicUrlFor(project.coverImageKey),
             sessions.filter((s) => s.themeProjectId === project.id),
