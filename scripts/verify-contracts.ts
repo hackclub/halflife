@@ -205,7 +205,7 @@ async function bodies() {
   // any participant can read another's key. Every place a client hands one back
   // has to check it, or a stranger's timelapse becomes evidence for hours
   // nobody worked.
-  const { isOwnedKey } = await import("../src/lib/uploads/r2")
+  const { isOwnedKey, isVideoBytes } = await import("../src/lib/uploads/r2")
   const me = "cmu7848ge00004ku8jx1dqi92"
   const you = "cmu99999900004ku8jx1dqi92"
   const keyCases: [string, boolean][] = [
@@ -222,6 +222,34 @@ async function bodies() {
   ]
   for (const [key, owned] of keyCases) {
     check(`key · ${key || "(empty)"} ${owned ? "is mine" : "is not mine"}`, isOwnedKey(me, key) === owned)
+  }
+
+  /* ── 4. Video container signatures ─────────────────────────────────────── */
+  //
+  // A MIME type and an extension are only claims; the bytes decide. The `ftyp`
+  // box is shared with HEIC/AVIF/JPEG-2000 images, so the brand has to be a
+  // video one — otherwise a still image renamed `.mp4` becomes a reel.
+  const asciiBytes = (s: string) => [...s].map((c) => c.charCodeAt(0))
+  const isoFile = (major: string, compatible: string[] = []) => {
+    const body = [0, 0, 0, 0, ...asciiBytes("ftyp"), ...asciiBytes(major), 0, 0, 0, 0, ...compatible.flatMap(asciiBytes)]
+    const size = body.length
+    body[0] = (size >>> 24) & 0xff
+    body[1] = (size >>> 16) & 0xff
+    body[2] = (size >>> 8) & 0xff
+    body[3] = size & 0xff
+    return new Uint8Array(body)
+  }
+  const videoCases: [string, Uint8Array, boolean][] = [
+    ["mp4 · isom", isoFile("isom", ["isom", "avc1"]), true],
+    ["mp4 · unknown major, avc1 compatible", isoFile("zzzz", ["mp42", "avc1"]), true],
+    ["mov · qt  ", isoFile("qt  "), true],
+    ["heic · image", isoFile("heic", ["mif1", "heic"]), false],
+    ["avif · image", isoFile("avif", ["avif", "mif1"]), false],
+    ["webm · EBML", new Uint8Array([0x1a, 0x45, 0xdf, 0xa3, 0, 0, 0, 0, 0, 0, 0, 0]), true],
+    ["plain text", new TextEncoder().encode("hello world!"), false],
+  ]
+  for (const [name, bytes, isVideo] of videoCases) {
+    check(`bytes · ${name} ${isVideo ? "is video" : "is not video"}`, isVideoBytes(bytes) === isVideo)
   }
 
   for (const [name, schema, body] of cases) {

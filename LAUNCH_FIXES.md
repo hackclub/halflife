@@ -93,9 +93,11 @@ larger ones) before it is ticked.
 
 ## Low
 
-- [ ] **10. ISO-BMFF non-video passes the "actually a video" guard**
-  - `src/lib/uploads/r2.ts:37-45` accepts any `ftyp` box (e.g. HEIC/AVIF).
-    Tighten the brand check to the accepted video brands.
+- [x] **10. ISO-BMFF non-video passes the "actually a video" guard**
+  - `src/lib/uploads/r2.ts` — `isVideoBytes` now parses the `ftyp` box and
+    accepts only video brands (`isom`, `mp42`, `avc1`, `qt  `, `3gp4`, …),
+    checking the compatible-brands list too. HEIC/AVIF/JPEG-2000 share the
+    `ftyp` box and are now rejected. Seven cases added to `verify:contracts`.
 
 - [ ] **11. Dead Slack link on the shop page**
   - `src/app/(platform)/(app)/shop/page.tsx:27` — `href="#"`.

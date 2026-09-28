@@ -30,6 +30,66 @@ const EXTENSION_MIME: Record<string, string[]> = {
 }
 
 /**
+ * ISO base media (MP4/MOV) brands that are video.
+ *
+ * `ftyp` alone is not enough: the same box opens HEIC, AVIF and JPEG 2000
+ * images, so a still image renamed `.mp4` with a `video/mp4` content type would
+ * otherwise pass. Only brands a video actually uses are accepted, and a file
+ * whose major brand is unusual still passes if a compatible brand is known.
+ */
+const VIDEO_FTYP_BRANDS = new Set([
+  "isom",
+  "iso2",
+  "iso3",
+  "iso4",
+  "iso5",
+  "iso6",
+  "iso8",
+  "iso9",
+  "mp41",
+  "mp42",
+  "avc1",
+  "avc3",
+  "hvc1",
+  "hev1",
+  "dash",
+  "mmp4",
+  "M4V ",
+  "M4VH",
+  "M4VP",
+  "qt  ",
+  "3gp4",
+  "3gp5",
+  "3gp6",
+  "3g2a",
+  "3g2b",
+  "F4V ",
+  "F4P ",
+])
+
+/** Four ASCII bytes at `offset`, or fewer/`\0` when the buffer is short. */
+function brandAt(bytes: Uint8Array, offset: number): string {
+  let brand = ""
+  for (let i = 0; i < 4; i += 1) brand += String.fromCharCode(bytes[offset + i] ?? 0)
+  return brand
+}
+
+function isIsoBmffVideo(bytes: Uint8Array): boolean {
+  if (brandAt(bytes, 4) !== "ftyp") return false
+  if (VIDEO_FTYP_BRANDS.has(brandAt(bytes, 8))) return true
+
+  // The major brand can be generic (`isom`) with the real one listed among the
+  // compatible brands, so scan those too. The box size is big-endian; a size of
+  // 0 means "to end of file" and is treated as the whole buffer.
+  const declared = ((bytes[0] ?? 0) << 24) | ((bytes[1] ?? 0) << 16) | ((bytes[2] ?? 0) << 8) | (bytes[3] ?? 0)
+  const end = declared >= 16 ? Math.min(declared >>> 0, bytes.length) : bytes.length
+  for (let offset = 16; offset + 4 <= end; offset += 4) {
+    if (VIDEO_FTYP_BRANDS.has(brandAt(bytes, offset))) return true
+  }
+  return false
+}
+
+/**
  * A MIME type and filename are only claims. These are the container signatures
  * for the video formats the app accepts, so a renamed image or text file cannot
  * become a reel by lying about its extension.
@@ -37,8 +97,9 @@ const EXTENSION_MIME: Record<string, string[]> = {
 export function isVideoBytes(bytes: Uint8Array): boolean {
   if (bytes.length < 12) return false
 
-  // ISO base media (MP4/MOV): `....ftyp` at byte 4.
-  if (String.fromCharCode(...bytes.slice(4, 8)) === "ftyp") return true
+  // ISO base media (MP4/MOV): `....ftyp` at byte 4, then a brand that must be
+  // a video one — `heic`, `avif` and `jxl ` share the box and are not video.
+  if (brandAt(bytes, 4) === "ftyp") return isIsoBmffVideo(bytes)
 
   // Matroska/WebM: EBML header 1A 45 DF A3.
   return bytes[0] === 0x1a && bytes[1] === 0x45 && bytes[2] === 0xdf && bytes[3] === 0xa3
