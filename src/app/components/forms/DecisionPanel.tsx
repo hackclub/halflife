@@ -74,6 +74,8 @@ export function DecisionPanel({
       }
       router.push("/review")
       router.refresh()
+    } catch {
+      setError("Could not reach the server")
     } finally {
       setBusy(false)
     }

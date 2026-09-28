@@ -36,6 +36,8 @@ export function OrderDecision({ orderId }: Readonly<{ orderId: string }>) {
         return
       }
       router.refresh()
+    } catch {
+      setError("Could not reach the server")
     } finally {
       setBusy(false)
     }

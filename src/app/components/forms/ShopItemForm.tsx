@@ -44,6 +44,8 @@ export function ShopItemForm() {
       }
       setForm({ ...form, id: "", name: "", description: "", costUsd: "" })
       router.refresh()
+    } catch {
+      setError("Could not reach the server")
     } finally {
       setBusy(false)
     }

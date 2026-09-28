@@ -25,6 +25,8 @@ export function RoleEditor({ userId, current }: Readonly<{ userId: string; curre
         return
       }
       router.refresh()
+    } catch {
+      setError("Could not reach the server")
     } finally {
       setBusy(null)
     }

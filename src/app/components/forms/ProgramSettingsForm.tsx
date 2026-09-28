@@ -48,6 +48,8 @@ export function ProgramSettingsForm({
       }
       setSaved(true)
       router.refresh()
+    } catch {
+      setError("Could not reach the server")
     } finally {
       setBusy(false)
     }
