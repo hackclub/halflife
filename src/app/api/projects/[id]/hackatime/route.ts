@@ -3,6 +3,7 @@ import { AuditAction, logAudit } from "@/lib/audit"
 import { requireSession } from "@/lib/guards"
 import { fetchProjectSeconds } from "@/lib/hackatime"
 import prisma from "@/lib/prisma"
+import { isPhaseDecided } from "@/lib/program"
 import { hackatimeLinkSchema } from "@/lib/schemas/project"
 
 type Params = { params: Promise<{ id: string }> }
@@ -44,6 +45,13 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
     include: { user: { select: { hackatimeUserId: true } } },
   })
   if (!project) return fail("NOT_FOUND", "Project not found")
+
+  // A decided phase is frozen: linking a project adds hours to a number that
+  // has already been judged, so it waits for a return or an un-approval.
+  const phaseStatus = parsed.data.phase === "DESIGN" ? project.designStatus : project.buildStatus
+  if (isPhaseDecided(phaseStatus)) {
+    return fail("PHASE_LOCKED", "This phase has been submitted and decided, so no more hours can be linked")
+  }
 
   if (!project.user.hackatimeUserId) {
     return fail("HACKATIME_NOT_LINKED", "Link your Hackatime account before linking a project to it")

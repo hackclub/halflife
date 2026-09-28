@@ -51,10 +51,16 @@ larger ones) before it is ticked.
     that was absent; `PARTS_TOP_UP`, `SHOP_PURCHASE` and `SHOP_REFUND` are
     correctly excluded).
 
-- [ ] **6. Sessions can be logged into an approved/rejected phase**
-  - `src/app/api/projects/[id]/sessions/route.ts:72-75` blocks only `in_review`,
-    unlike the edit route (`.../sessions/[sessionId]/route.ts:56-58`). Block
-    `approved` and `rejected` too.
+- [x] **6. Sessions can be logged into an approved/rejected phase**
+  - The `POST` route blocked only `in_review`, unlike `PATCH`. Added a shared
+    `isPhaseDecided()` helper (`src/lib/program.ts:296-306`) and applied the
+    same "decided phase is frozen" guard to every write that touches a phase's
+    hours/record:
+    - `.../sessions/route.ts` POST (new entry)
+    - `.../sessions/[sessionId]/route.ts` PATCH (now via the helper) and DELETE
+      (delete was not guarded at all)
+    - `.../hackatime/route.ts` POST (link adds hours; had no guard)
+    - `.../hackatime/[linkId]/route.ts` DELETE (remove a link)
 
 - [ ] **7. Internal costs shipped to participants**
   - `src/lib/shop.ts:59-65` spreads the whole `ShopItem`, leaking `costUsd`

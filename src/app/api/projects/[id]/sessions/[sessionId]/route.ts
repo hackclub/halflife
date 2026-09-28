@@ -5,7 +5,7 @@ import { AuditAction, logAudit } from "@/lib/audit"
 import { scheduledWeekFor } from "@/lib/config/program"
 import { requireSession } from "@/lib/guards"
 import prisma from "@/lib/prisma"
-import { getSubmissionAccess, isWeekOpen, SUBMISSIONS_CLOSED_MESSAGE, WEEK_CLOSED_MESSAGE } from "@/lib/program"
+import { getSubmissionAccess, isPhaseDecided, isWeekOpen, SUBMISSIONS_CLOSED_MESSAGE, WEEK_CLOSED_MESSAGE } from "@/lib/program"
 import { sanitize, sanitizeHtml } from "@/lib/sanitize"
 import { sessionUpdateSchema } from "@/lib/schemas/session"
 import { recomputeStreak } from "@/lib/streak"
@@ -53,7 +53,7 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
   if (phaseStatus === PhaseStatus.in_review) {
     return fail("PHASE_LOCKED", "This week is in review — unsubmit it before editing its entries")
   }
-  if (phaseStatus === PhaseStatus.approved || phaseStatus === PhaseStatus.rejected) {
+  if (isPhaseDecided(phaseStatus)) {
     return fail("PHASE_LOCKED", "This week has been submitted and decided, so its entries are final")
   }
 
@@ -99,6 +99,12 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
   if (!session) return fail("NOT_FOUND", "Session not found")
   if (session.hoursApproved !== null) {
     return fail("PHASE_LOCKED", "This entry has been reviewed and can no longer be deleted")
+  }
+  // Deleting an entry is a correction to the record, so it is frozen once the
+  // week is decided, exactly as editing is.
+  const phaseStatus = session.phase === "DESIGN" ? session.themeProject.designStatus : session.themeProject.buildStatus
+  if (isPhaseDecided(phaseStatus)) {
+    return fail("PHASE_LOCKED", "This week has been submitted and decided, so its entries are final")
   }
   if (!(await weekOpenFor(gate.user.id, id, session))) return fail("WEEK_CLOSED", WEEK_CLOSED_MESSAGE)
 

@@ -1,7 +1,7 @@
 import "server-only"
 import { cache } from "react"
 import type { ProgramSettings } from "@/app/generated/prisma/client"
-import { Phase } from "@/app/generated/prisma/enums"
+import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
 import { DEFAULT_EVENT_START_DATE, DEFAULT_PROGRAM_TIMEZONE, TOTAL_WEEKS } from "@/lib/config/program"
 import prisma from "@/lib/prisma"
 
@@ -291,4 +291,16 @@ export const SHOP_CLOSED_MESSAGE =
 
 export function phaseStatusField(phase: Phase): "designStatus" | "buildStatus" {
   return phase === Phase.DESIGN ? "designStatus" : "buildStatus"
+}
+
+/**
+ * A decided phase is frozen. Its entries are the record the decision was made
+ * against, so no edit, delete or new entry may land until an admin returns it
+ * or un-approves it — either of which moves it back to `update_requested`.
+ *
+ * `in_review` is a separate, softer lock: that one is released by the
+ * participant unsubmitting, so it is checked apart from this.
+ */
+export function isPhaseDecided(status: PhaseStatus): boolean {
+  return status === PhaseStatus.approved || status === PhaseStatus.rejected
 }
