@@ -32,6 +32,10 @@ function projectUrl(id: string): string | null {
   return base ? `${base}/projects/${id}` : null
 }
 
+const HTML_ESCAPES: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }
+/** The note is participant/reviewer text, so it never lands in HTML unescaped. */
+const escapeHtml = (value: string): string => value.replace(/[&<>"']/g, (c) => HTML_ESCAPES[c] ?? c)
+
 /** One line per outcome, in the voice the platform uses everywhere else. */
 function headline(result: ReviewResult, phase: string, title: string): { subject: string; body: string } {
   const what = `${phase} for ${title}`
@@ -92,7 +96,22 @@ export async function notifyReviewOutcome(notice: ReviewOutcomeNotice): Promise<
       "",
       "— Half Life",
     ].join("\n")
-    await trackSideEffect("email", ctx, () => sendEmail({ to: email, subject, text }))
+
+    const html = [
+      `<div style="font-family:system-ui,-apple-system,sans-serif;line-height:1.5;color:#262a2d">`,
+      `<p>Hi ${escapeHtml(firstName)},</p>`,
+      `<p>${escapeHtml(body)}</p>`,
+      feedback
+        ? `<blockquote style="margin:1rem 0;padding:.5rem 1rem;border-left:3px solid #c8c3d6;color:#4a4785">${escapeHtml(feedback)}</blockquote>`
+        : "",
+      url ? `<p><a href="${url}" style="color:#2e8cae">Open the project</a></p>` : "",
+      `<p style="color:#4a4785">— Half Life</p>`,
+      `</div>`,
+    ]
+      .filter(Boolean)
+      .join("\n")
+
+    await trackSideEffect("email", ctx, () => sendEmail({ to: email, subject, text, html }))
   }
 }
 

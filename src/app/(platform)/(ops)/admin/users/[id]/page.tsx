@@ -81,6 +81,12 @@ export default async function AdminUserPage({ params }: Props) {
       ) : null}
 
       <Panel title="Themed projects">
+        {canSendGrant && (
+          <p className="hl-hint" style={{ marginTop: 0 }}>
+            Sending a grant tops up the maker&apos;s HCB card grant directly. It is a manual fallback — the payout
+            pipeline is the normal path — and can only be sent once per project.
+          </p>
+        )}
         <Table
           head={[
             "Theme",
