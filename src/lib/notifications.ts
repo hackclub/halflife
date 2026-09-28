@@ -4,7 +4,7 @@ import { getThemeDef } from "@/lib/config/program"
 import { sendEmail } from "@/lib/email"
 import prisma from "@/lib/prisma"
 import { trackSideEffect } from "@/lib/side-effects"
-import { sendDM } from "@/lib/slack"
+import { sendDM, postMessage } from "@/lib/slack"
 
 /**
  * Telling a maker what a review decided.
@@ -94,4 +94,36 @@ export async function notifyReviewOutcome(notice: ReviewOutcomeNotice): Promise<
     ].join("\n")
     await trackSideEffect("email", ctx, () => sendEmail({ to: email, subject, text }))
   }
+}
+
+/**
+ * Ask staff to look again at a decision a maker has disputed.
+ *
+ * Posted to `SLACK_REVIEW_CHANNEL_ID` when it is set. A deployment without it
+ * still has the dispute in the console and the audit log, so nothing is lost.
+ */
+export async function notifyStaffDispute(input: {
+  themeProjectId: string
+  title: string
+  phase: Phase
+  note: string
+  participant: string
+}): Promise<void> {
+  const channel = process.env.SLACK_REVIEW_CHANNEL_ID
+  if (!channel) return
+  const phase = input.phase === Phase.DESIGN ? "design" : "build"
+  const url = projectUrl(input.themeProjectId)
+  const quoted = input.note
+    .trim()
+    .split("\n")
+    .map((line) => `> ${line}`)
+    .join("\n")
+  const text = `Review dispute on *${input.title}* (${phase}) by ${input.participant}:\n\n${quoted}${
+    url ? `\n\n<${url}|Open the project>` : ""
+  }`
+  await trackSideEffect(
+    "slack",
+    { actorId: null, targetType: "ThemeProject", targetId: input.themeProjectId, metadata: { kind: "review_dispute" } },
+    () => postMessage(channel, text),
+  )
 }

@@ -232,6 +232,7 @@ enum AuditAction {
   USER_ADVANCE_ONBOARDING
   USER_SET_PRINTER_GOAL
   USER_COMPLETE_ONBOARDING
+  USER_DISPUTE_REVIEW
 
   // Review
   REVIEW_CLAIM
@@ -263,6 +264,7 @@ enum AuditAction {
   ADMIN_RESTORE_POST
   ADMIN_HIDE_COMMENT
   ADMIN_PIN_POST
+  ADMIN_RESOLVE_DISPUTE
 
   // Printer
   PRINTER_QUALIFIED
@@ -411,6 +413,7 @@ model User {
   printerAward   PrinterAward?
   reviewsGiven   SubmissionReview[] @relation("SubmissionReviewer")
   reviewClaims   ReviewClaim[]      @relation("ReviewClaimant")
+  reviewDisputes ReviewDispute[]    @relation("ReviewDisputeAuthor")
   syncRunLogs    SyncRunLog[]       @relation("SyncRunActor")
 
   @@index([createdAt])
@@ -862,6 +865,7 @@ model PhaseSubmission {
 
   reviews SubmissionReview[]
   claim   ReviewClaim?
+  dispute ReviewDispute?
 
   @@index([themeProjectId])
   @@index([themeProjectId, phase, createdAt(sort: Desc)])
@@ -946,6 +950,31 @@ model SubmissionReview {
   @@index([submissionId])
   @@index([reviewerId, createdAt])
   @@map("submission_review")
+}
+
+/// A maker's disagreement with a decided submission.
+///
+/// It deliberately changes no state: a returned or rejected phase stays that
+/// way, and no button silently overrides a reviewer. What it does is put the
+/// submission in front of staff for a second look, with the maker's own words
+/// on it. One per submission (`submissionId` is unique), so the queue cannot be
+/// flooded by the same decision.
+model ReviewDispute {
+  id           String          @id @default(cuid())
+  submissionId String          @unique
+  submission   PhaseSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User            @relation("ReviewDisputeAuthor", fields: [userId], references: [id], onDelete: Cascade)
+
+  note String @db.Text
+
+  createdAt      DateTime  @default(now())
+  resolvedAt     DateTime?
+  resolvedById   String?
+  resolutionNote String?   @db.Text
+
+  @@index([resolvedAt])
+  @@map("review_dispute")
 }
 
 /// One row per accepted Ari webhook, for idempotency.

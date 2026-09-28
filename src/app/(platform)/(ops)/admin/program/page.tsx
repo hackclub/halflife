@@ -1,4 +1,5 @@
 import { headers } from "next/headers"
+import Link from "next/link"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { ProgramSettingsForm } from "@/app/components/forms/ProgramSettingsForm"
 import { ProgramStartForm } from "@/app/components/forms/ProgramStartForm"
@@ -12,16 +13,18 @@ import { TIERS } from "@/lib/config/tiers"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import { currentWeekNumber, getProgramSettings, weekClosesAt, weekDateRange } from "@/lib/program"
+import { getOpenDisputes } from "@/lib/queries/review"
 
 export const dynamic = "force-dynamic"
 
 export default async function AdminProgramPage() {
   await requirePermissionPage(Permission.MANAGE_PROGRAM)
 
-  const [settings, week, unsynced, h] = await Promise.all([
+  const [settings, week, unsynced, disputes, h] = await Promise.all([
     getProgramSettings(),
     currentWeekNumber(),
     findUnsyncedSubmissions(),
+    getOpenDisputes(),
     headers(),
   ])
 
@@ -133,6 +136,32 @@ export default async function AdminProgramPage() {
                     url={`/api/admin/theme-projects/${item.themeProjectId}/sync-to-airtable`}
                     body={{ phase: item.phase }}
                     label="Retry"
+                  />
+                </td>
+              </tr>
+            ))}
+          </Table>
+        )}
+      </Panel>
+
+      <Panel title="Open review disputes">
+        {disputes.length === 0 ? (
+          <EmptyState>No maker is waiting on a second look.</EmptyState>
+        ) : (
+          <Table head={["Project", "Phase", "Maker", "Asked", ""]}>
+            {disputes.map((d) => (
+              <tr key={d.id}>
+                <td>{d.projectTitle}</td>
+                <td>{d.phase.toLowerCase()}</td>
+                <td>{d.participant}</td>
+                <td className="hl-mono">{d.createdAt.toDateString()}</td>
+                <td className="hl-row">
+                  <Link href={`/review/${d.submissionId}`}>Read</Link>
+                  <ActionButton
+                    url={`/api/admin/disputes/${d.id}/resolve`}
+                    body={{}}
+                    label="Resolve"
+                    confirm="Mark this dispute as looked at? The decision itself does not change."
                   />
                 </td>
               </tr>

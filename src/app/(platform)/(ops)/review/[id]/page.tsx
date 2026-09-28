@@ -62,6 +62,26 @@ export default async function ReviewDetailPage({ params }: Props) {
         </Callout>
       ) : null}
 
+      {submission.dispute && !submission.dispute.resolvedAt ? (
+        <Callout tone="warning">
+          <strong>The maker disputes this decision.</strong> {submission.dispute.note}
+          <div style={{ marginTop: "0.5rem" }}>
+            <ActionButton
+              url={`/api/admin/disputes/${submission.dispute.id}/resolve`}
+              body={{}}
+              label="Mark as looked at"
+              confirm="Close this dispute? The decision itself does not change."
+            />
+          </div>
+        </Callout>
+      ) : null}
+      {submission.dispute?.resolvedAt ? (
+        <Callout>
+          The maker disputed this decision; a reviewer marked it looked at{" "}
+          {submission.dispute.resolvedAt.toDateString()}.
+        </Callout>
+      ) : null}
+
       <Panel
         title="Claim"
         actions={

@@ -1,9 +1,11 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useState } from "react"
 import { IconChevronLeft, IconClock } from "@/components/platform/icons"
 import { RepoChecks } from "@/components/platform/modals/RepoChecks"
-import { Chip, cx, Panel } from "@/components/platform/ui"
+import { Button, Chip, cx, Panel } from "@/components/platform/ui"
 import { DESIGN_WEEKS } from "@/lib/config/printers"
 import { TIERS } from "@/lib/curriculum"
 import { fmtDate, fmtHours } from "@/lib/projects"
@@ -64,26 +66,144 @@ function Section({
  * and the parts list are only ever wanted here.
  */
 
+/** Ask a reviewer to read a decision again. Changes no state. */
+function DisputeForm({
+  projectId,
+  phase,
+  onClose,
+}: {
+  projectId: string
+  phase: "DESIGN" | "BUILD"
+  onClose: () => void
+}) {
+  const router = useRouter()
+  const [note, setNote] = useState("")
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function submit() {
+    if (note.trim().length < 10) return setError("Tell us what looks wrong — a sentence is enough.")
+    setSaving(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/projects/${projectId}/dispute`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ phase, note: note.trim() }),
+      })
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
+        setError(payload.error?.message ?? `That did not send (${res.status})`)
+        return
+      }
+      router.refresh()
+      onClose()
+    } catch {
+      setError("Could not reach the server. Try again.")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="grid gap-2.5 rounded-xl border-2 border-line bg-cream/60 p-3.5">
+      <label htmlFor={`dispute-${phase}`} className="label text-violet-deep">
+        What looks wrong?
+      </label>
+      <textarea
+        id={`dispute-${phase}`}
+        value={note}
+        onChange={(e) => {
+          setNote(e.target.value)
+          if (error) setError(null)
+        }}
+        rows={3}
+        maxLength={2000}
+        placeholder="The build works — the video runs at 1:20."
+        className="block w-full rounded-xl border-2 border-field bg-white px-3.5 py-2.5 text-[0.9rem] text-navy outline-none placeholder:text-navy-faint transition-colors hover:border-navy-soft focus:border-violet"
+      />
+      {error && (
+        <p role="alert" className="text-[0.82rem] font-semibold text-coral-deep">
+          {error}
+        </p>
+      )}
+      <div className="flex flex-wrap gap-2">
+        <Button variant="solid" size="sm" disabled={saving} onClick={() => void submit()}>
+          {saving ? "Sending…" : "Ask for a second look"}
+        </Button>
+        <Button variant="ghost" size="sm" disabled={saving} onClick={onClose}>
+          Cancel
+        </Button>
+      </div>
+      <p className="hand text-[0.8rem] text-navy-soft">
+        this does not change the decision — it asks a reviewer to read it again.
+      </p>
+    </div>
+  )
+}
+
 /** Where each phase stands with review, above the repo checks. */
-function ReviewState({ phases }: { phases: ProjectPageData["phases"] }) {
+function ReviewState({
+  projectId,
+  phases,
+  weekFor,
+}: {
+  projectId: string
+  phases: ProjectPageData["phases"]
+  weekFor: (phase: "DESIGN" | "BUILD") => number
+}) {
+  const { setOpenCheckpoint } = useStore()
+  const [disputing, setDisputing] = useState<"DESIGN" | "BUILD" | null>(null)
+
   return (
     <Panel tone="line" radius={20} className="bg-paper px-5 py-5 sm:px-6">
-      <ul className="grid gap-4">
-        {phases.map((p) => (
-          <li key={p.phase} className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <span className={cx("size-2.5 shrink-0 rounded-full", REVIEW_STATUS_DOT[p.status])} aria-hidden />
-            <span className="text-[0.95rem] font-extrabold text-navy">{p.phase === "DESIGN" ? "Design" : "Build"}</span>
-            <Chip tone={reviewChipTone(p.status)}>{REVIEW_STATUS_TEXT[p.status]}</Chip>
-            {p.reviewedAt !== null && (
-              <span className="hand text-[0.82rem] text-navy-soft">decided {fmtDate(p.reviewedAt)}</span>
-            )}
-            {p.comments && (
-              <p className="basis-full rounded-xl bg-cream px-3.5 py-2.5 text-[0.9rem] leading-snug text-navy-soft">
-                {p.comments}
-              </p>
-            )}
-          </li>
-        ))}
+      <ul className="grid gap-5">
+        {phases.map((p) => {
+          const negative = p.status === "update_requested" || p.status === "rejected"
+          return (
+            <li key={p.phase} className="grid gap-2.5">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <span className={cx("size-2.5 shrink-0 rounded-full", REVIEW_STATUS_DOT[p.status])} aria-hidden />
+                <span className="text-[0.95rem] font-extrabold text-navy">
+                  {p.phase === "DESIGN" ? "Design" : "Build"}
+                </span>
+                <Chip tone={reviewChipTone(p.status)}>{REVIEW_STATUS_TEXT[p.status]}</Chip>
+                {p.reviewedAt !== null && (
+                  <span className="hand text-[0.82rem] text-navy-soft">decided {fmtDate(p.reviewedAt)}</span>
+                )}
+              </div>
+
+              {p.comments && (
+                <p className="rounded-xl bg-cream px-3.5 py-2.5 text-[0.9rem] leading-snug text-navy-soft">
+                  {p.comments}
+                </p>
+              )}
+
+              {p.disputedAt !== null ? (
+                <p className="hand text-[0.84rem] text-navy-soft">
+                  {p.disputeResolved
+                    ? `a second look was taken on ${fmtDate(p.disputedAt)}.`
+                    : `you asked for a second look on ${fmtDate(p.disputedAt)}; a reviewer will read it again.`}
+                </p>
+              ) : negative ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  {p.status === "update_requested" && (
+                    <Button variant="solid" size="sm" onClick={() => setOpenCheckpoint(`w${weekFor(p.phase)}-submit`)}>
+                      I&apos;ve made these changes — resubmit
+                    </Button>
+                  )}
+                  <Button variant="outline" size="sm" onClick={() => setDisputing(p.phase)}>
+                    This review is incorrect
+                  </Button>
+                </div>
+              ) : null}
+
+              {disputing === p.phase && (
+                <DisputeForm projectId={projectId} phase={p.phase} onClose={() => setDisputing(null)} />
+              )}
+            </li>
+          )
+        })}
       </ul>
     </Panel>
   )
@@ -211,7 +331,7 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
       {/* ---------- where review stands ---------- */}
       {data.phases.length > 0 && (
         <Section id="review-title" title="Review">
-          <ReviewState phases={data.phases} />
+          <ReviewState projectId={project.id} phases={data.phases} weekFor={weekFor} />
         </Section>
       )}
 

@@ -74,6 +74,10 @@ export interface PhaseReview {
   submittedAt: number | null
   /** When it was decided, epoch ms. */
   reviewedAt: number | null
+  /** When the maker asked for a second look, if they have. */
+  disputedAt: number | null
+  /** Whether staff have closed that dispute. */
+  disputeResolved: boolean
 }
 
 export interface ProjectPageData {
@@ -181,7 +185,14 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
         select: POST_SELECT,
       },
       submissions: {
-        select: { id: true, phase: true, createdAt: true, resolvedAt: true, resolvedResult: true },
+        select: {
+          id: true,
+          phase: true,
+          createdAt: true,
+          resolvedAt: true,
+          resolvedResult: true,
+          dispute: { select: { createdAt: true, resolvedAt: true } },
+        },
       },
     },
   })
@@ -231,12 +242,17 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
       const latest = project.submissions
         .filter((s) => s.phase === phase)
         .reduce<Date | null>((at, s) => (!at || s.createdAt > at ? s.createdAt : at), null)
+      const disputed = project.submissions
+        .filter((s) => s.phase === phase && s.dispute)
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
       return {
         phase,
         status: isDesign ? project.designStatus : project.buildStatus,
         comments: isDesign ? project.designReviewComments : project.buildReviewComments,
         submittedAt: latest?.getTime() ?? null,
         reviewedAt: (isDesign ? project.designReviewedAt : project.buildReviewedAt)?.getTime() ?? null,
+        disputedAt: disputed?.dispute?.createdAt.getTime() ?? null,
+        disputeResolved: Boolean(disputed?.dispute?.resolvedAt),
       }
     })
     .filter((p) => p.status !== PhaseStatus.draft || p.submittedAt !== null)

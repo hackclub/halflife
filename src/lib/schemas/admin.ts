@@ -13,6 +13,9 @@ export const userFlagsSchema = z
 
 export const projectExtensionSchema = z.object({ submissionExtensionUntil: z.coerce.date().nullable() }).strict()
 
+/** Closing a maker's dispute. The note is optional; it is for the record. */
+export const resolveDisputeSchema = z.object({ note: boundedText(2000).optional() }).strict()
+
 export const creditAdjustSchema = z
   .object({
     userId: cuid,
