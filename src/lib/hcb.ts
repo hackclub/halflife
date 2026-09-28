@@ -13,8 +13,10 @@ import { HttpError } from "@/lib/errors"
  *
  * Auth is an OAuth bearer. Either a static `HCB_ACCESS_TOKEN`, or the
  * refresh-token flow (`HCB_CLIENT_ID` / `HCB_CLIENT_SECRET` /
- * `HCB_REFRESH_TOKEN`), with the app invited to the org as a manager.
- * Unconfigured, this module refuses rather than calling anything.
+ * `HCB_REFRESH_TOKEN`), with the app invited to the org as a manager. The app
+ * needs `card_grants:write` to top up, and `card_grants:read` to check what a
+ * lost response left behind. Unconfigured, this module refuses rather than
+ * calling anything.
  */
 
 const DEFAULT_BASE = "https://hcb.hackclub.com"
@@ -106,6 +108,78 @@ export async function topUpCardGrant(grantHashid: string, amountCents: number): 
   }
   const data = (await res.json()) as { disbursements?: { transaction_id?: string }[] }
   return { transactionId: data.disbursements?.[0]?.transaction_id ?? null }
+}
+
+export interface GrantDisbursement {
+  transactionId: string | null
+  amountCents: number | null
+  memo: string | null
+  /** ISO timestamp HCB recorded the disbursement at. */
+  createdAt: string | null
+}
+
+/**
+ * Every disbursement on a card grant, newest first: top-ups land as positive
+ * amounts, withdrawals as negative.
+ *
+ * No pagination: a grant only accumulates one row per top-up/withdrawal, and
+ * this exists to spot a top-up whose response was lost before deciding whether
+ * to send another.
+ */
+export async function listCardGrantDisbursements(grantHashid: string): Promise<GrantDisbursement[]> {
+  const token = await accessToken()
+  const res = await fetch(`${base()}/api/v4/card_grants/${encodeURIComponent(grantHashid)}?expand=disbursements`, {
+    headers: { authorization: `Bearer ${token}`, accept: "application/json" },
+    signal: AbortSignal.timeout(15_000),
+  })
+  if (!res.ok) {
+    const body = await res.text().catch(() => "")
+    throw new HttpError("INTERNAL", `HCB refused to read the grant (${res.status})`, { detail: body.slice(0, 300) })
+  }
+  const data = (await res.json()) as { disbursements?: unknown }
+  if (!Array.isArray(data.disbursements)) return []
+  return data.disbursements.map((raw) => {
+    const d = (raw ?? {}) as Record<string, unknown>
+    return {
+      transactionId: typeof d.transaction_id === "string" ? d.transaction_id : null,
+      amountCents: typeof d.amount_cents === "number" ? d.amount_cents : null,
+      memo: typeof d.memo === "string" ? d.memo : null,
+      createdAt: typeof d.created_at === "string" ? d.created_at : null,
+    }
+  })
+}
+
+/** Allowance for clock skew between our attempt time and HCB's record. */
+export const TOPUP_SKEW_MS = 5 * 60_000
+
+/**
+ * Decide whether a top-up whose response was lost actually landed.
+ *
+ * A single disbursement matching the amount at or after the attempt is
+ * evidence it did. Several in the window, or a candidate with no usable
+ * timestamp, is not something to guess about: an unnecessary retry pays
+ * twice, and a skipped one underpays, so ambiguity goes back to a human.
+ */
+export function reconcileDisbursement(
+  disbursements: readonly GrantDisbursement[],
+  amountCents: number,
+  attemptedAt: Date,
+): { kind: "landed"; transactionId: string | null } | { kind: "absent" } | { kind: "ambiguous" } {
+  const sameAmount = disbursements.filter((d) => d.amountCents === amountCents)
+  if (sameAmount.length === 0) return { kind: "absent" }
+
+  const dated: { at: number; transactionId: string | null }[] = []
+  for (const d of sameAmount) {
+    const at = d.createdAt ? Date.parse(d.createdAt) : Number.NaN
+    if (!Number.isFinite(at)) return { kind: "ambiguous" }
+    dated.push({ at, transactionId: d.transactionId })
+  }
+
+  const after = attemptedAt.getTime() - TOPUP_SKEW_MS
+  const inWindow = dated.filter((d) => d.at >= after)
+  if (inWindow.length === 1) return { kind: "landed", transactionId: inWindow[0]?.transactionId ?? null }
+  if (inWindow.length > 1) return { kind: "ambiguous" }
+  return { kind: "absent" }
 }
 
 /** Name the resulting transaction, so the org's books say why the money moved. */

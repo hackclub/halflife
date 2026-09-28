@@ -1,6 +1,6 @@
 import { z } from "zod"
-import { Role, ShopFulfillmentMethod, ShopFulfillmentStage, ShopItemCategory } from "@/app/generated/prisma/enums"
-import { boundedText, cuid, httpsUrl, phaseSchema } from "@/lib/schemas/common"
+import { Phase, Role, ShopFulfillmentMethod, ShopFulfillmentStage, ShopItemCategory } from "@/app/generated/prisma/enums"
+import { boundedText, cuid, httpsUrl } from "@/lib/schemas/common"
 
 export const roleChangeSchema = z.object({ role: z.enum(Role) }).strict()
 
@@ -19,7 +19,9 @@ export const resolveDisputeSchema = z.object({ note: boundedText(2000).optional(
 /** Sending a design's parts grant to a maker's HCB card grant. */
 export const grantSchema = z
   .object({
-    phase: phaseSchema,
+    // The design phase is the funding decision; a build grant does not exist,
+    // and accepting BUILD here sent the design's grant a second time.
+    phase: z.literal(Phase.DESIGN),
     grantUrl: boundedText(500, 4),
   })
   .strict()
