@@ -260,7 +260,7 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
           <CoverImage
             projectId={project.id}
             url={data.coverImageUrl}
-            fallbackUrl={data.journalImageUrl}
+            fallback={data.fallbackThumbnail}
             theme={week.theme}
             accent={week.accent}
             locked={data.editLocked}

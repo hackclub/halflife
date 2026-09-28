@@ -3,7 +3,6 @@ import { Phase } from "@/app/generated/prisma/enums"
 import { getThemeDef } from "@/lib/config/program"
 import { getHoursBreakdown } from "@/lib/hours"
 import prisma from "@/lib/prisma"
-import { projectThumbnail } from "@/lib/thumbnail"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
 export interface QueueItem {
@@ -152,7 +151,7 @@ export async function getSubmissionDetail(submissionId: string, reviewerId?: str
     submission,
     claimLive: !!submission.claim && submission.claim.expiresAt.getTime() > Date.now(),
     themeLabel: getThemeDef(submission.themeProject.theme).label,
-    coverImageUrl: projectThumbnail(publicUrlFor(submission.themeProject.coverImageKey), sessions),
+    coverImageUrl: publicUrlFor(submission.themeProject.coverImageKey),
     breakdown,
     sessions: sessions.map((s) => ({
       ...s,

@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import type { PhaseStatus } from "@/app/generated/prisma/enums"
+import { ProjectThumb } from "@/components/platform/ProjectThumb"
 import { WeekScene } from "@/components/platform/art"
 import { IconArrowRight, IconClock, IconFilm, IconPencil } from "@/components/platform/icons"
 import { RepoEditor } from "@/components/platform/RepoField"
@@ -78,17 +79,14 @@ export function ProjectsGrid() {
                 <span
                   className={cx(
                     "relative grid aspect-[16/9] place-items-center overflow-hidden",
-                    !project.thumbnailUrl && "p-4",
+                    !project.thumbnail && "p-4",
                   )}
-                  style={{ background: project.thumbnailUrl ? "var(--color-navy)" : week.accent }}
+                  style={{ background: project.thumbnail ? "var(--color-navy)" : week.accent }}
                 >
-                  {project.thumbnailUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element -- R2 or a URL the maker pasted into a journal
-                    <img
-                      src={project.thumbnailUrl}
-                      alt=""
-                      loading="lazy"
-                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.04]"
+                  {project.thumbnail ? (
+                    <ProjectThumb
+                      thumb={project.thumbnail}
+                      className="h-full w-full transition-transform duration-300 group-hover:scale-[1.04]"
                     />
                   ) : (
                     <WeekScene

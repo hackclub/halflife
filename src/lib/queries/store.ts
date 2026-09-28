@@ -180,9 +180,18 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
       select: { themeProjectId: true, phase: true, hoursApproved: true, cachedSeconds: true },
     }),
     prisma.post.findMany({
-      where: { userId, deletedAt: null, checkpointKey: { not: null } },
+      // Every reel, not only the ones bound to a checkpoint: a project's
+      // stand-in picture may come from any of them (see the thumbnail below).
+      where: { userId, deletedAt: null },
       orderBy: { createdAt: "asc" },
-      select: { checkpointKey: true, caption: true, createdAt: true },
+      select: {
+        checkpointKey: true,
+        caption: true,
+        createdAt: true,
+        themeProjectId: true,
+        thumbnailKey: true,
+        objectKey: true,
+      },
     }),
     prisma.phaseSubmission.findMany({
       where: { themeProject: { userId, deletedAt: null } },
@@ -346,9 +355,16 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
           githubRepo: project.githubRepo,
           designStatus: project.designStatus,
           buildStatus: project.buildStatus,
-          thumbnailUrl: projectThumbnail(
+          thumbnail: projectThumbnail(
             publicUrlFor(project.coverImageKey),
             sessions.filter((s) => s.themeProjectId === project.id),
+            posts
+              .filter((p) => p.themeProjectId === project.id)
+              .map((p) => ({
+                createdAt: p.createdAt,
+                thumbnailUrl: publicUrlFor(p.thumbnailKey),
+                videoUrl: publicUrlFor(p.objectKey),
+              })),
           ),
         },
       ]

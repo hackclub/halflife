@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { ProjectThumb } from "@/components/platform/ProjectThumb"
 import { WeekScene } from "@/components/platform/art"
 import { IconChevronLeft, IconClock } from "@/components/platform/icons"
 import { Chip, Panel } from "@/components/platform/ui"
@@ -37,11 +38,10 @@ export function PublicProjectDetail({ data }: { data: PublicProjectData }) {
         <div className="grid gap-5 @3xl:grid-cols-[minmax(0,1fr)_260px] @3xl:gap-8">
           <div
             className="relative grid aspect-[21/9] place-items-center overflow-hidden rounded-2xl @3xl:col-start-2 @3xl:aspect-[4/3]"
-            style={{ background: data.thumbnailUrl ? "var(--color-navy)" : week?.accent }}
+            style={{ background: data.thumbnail ? "var(--color-navy)" : week?.accent }}
           >
-            {data.thumbnailUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element -- R2 or a URL pasted into a journal
-              <img src={data.thumbnailUrl} alt="" className="h-full w-full object-cover" />
+            {data.thumbnail ? (
+              <ProjectThumb thumb={data.thumbnail} className="h-full w-full" />
             ) : (
               <WeekScene theme={week?.theme ?? "PCB"} className="h-full w-auto max-w-full p-5 drop-shadow-lg" />
             )}

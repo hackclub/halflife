@@ -5,7 +5,7 @@ import { type BomLine, bomLockReason, listBom } from "@/lib/bom"
 import { THEMES } from "@/lib/config/program"
 import { lapseTimelapseUrl } from "@/lib/lapse"
 import prisma from "@/lib/prisma"
-import { latestJournalImage, projectThumbnail } from "@/lib/thumbnail"
+import { projectThumbnail, type ProjectThumbnail } from "@/lib/thumbnail"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
 /**
@@ -83,8 +83,8 @@ export interface PhaseReview {
 export interface ProjectPageData {
   /** The thumbnail the maker chose, if any. */
   coverImageUrl: string | null
-  /** What stands in until they choose one: the newest image in the journal. */
-  journalImageUrl: string | null
+  /** What stands in until they choose one: a journal image, then a reel frame. */
+  fallbackThumbnail: ProjectThumbnail | null
   timeline: TimelineItem[]
   bom: BomLine[]
   /** The order's tax and shipping total — a fixed line of the BOM, zero until set. */
@@ -259,7 +259,15 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 
   return {
     coverImageUrl: publicUrlFor(project.coverImageKey),
-    journalImageUrl: latestJournalImage(project.workSessions),
+    fallbackThumbnail: projectThumbnail(
+      null,
+      project.workSessions,
+      project.posts.map((p) => ({
+        createdAt: p.createdAt,
+        thumbnailUrl: publicUrlFor(p.thumbnailKey),
+        videoUrl: publicUrlFor(p.objectKey),
+      })),
+    ),
     timeline,
     bom: await listBom(project.id),
     bomTaxShippingUsd: project.bomTaxShippingUsd ?? 0,
@@ -287,7 +295,7 @@ export interface PublicProjectData {
   author: string
   /** 1-based design week the theme runs in, for its colours and scene. */
   weekId: number
-  thumbnailUrl: string | null
+  thumbnail: ProjectThumbnail | null
   timeline: TimelineItem[]
 }
 
@@ -321,7 +329,15 @@ export async function getPublicProjectPage(id: string): Promise<PublicProjectDat
     description: project.description ?? "",
     author: project.user.name ?? "A maker",
     weekId: themeIndex === -1 ? 1 : themeIndex + 1,
-    thumbnailUrl: projectThumbnail(publicUrlFor(project.coverImageKey), project.workSessions),
+    thumbnail: projectThumbnail(
+      publicUrlFor(project.coverImageKey),
+      project.workSessions,
+      project.posts.map((p) => ({
+        createdAt: p.createdAt,
+        thumbnailUrl: publicUrlFor(p.thumbnailKey),
+        videoUrl: publicUrlFor(p.objectKey),
+      })),
+    ),
     timeline,
   }
 }
