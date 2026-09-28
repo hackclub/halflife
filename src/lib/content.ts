@@ -58,8 +58,8 @@ export const BRAND = {
  * which is sentence case everywhere else here too.
  */
 export const ANNOUNCEMENT = {
-  lead: "Warm Up Week 2 started on",
-  date: "September 21st",
+  lead: "Warm Up Week 3 started on",
+  date: "September 28th",
   tail: "! Submit projects ",
   submitLabel: "here",
   submitHref: "https://forms.hackclub.com/halflifesubmit",
