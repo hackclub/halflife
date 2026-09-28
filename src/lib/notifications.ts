@@ -106,7 +106,7 @@ export async function notifyReviewOutcome(notice: ReviewOutcomeNotice): Promise<
         : "",
       url ? `<p><a href="${url}" style="color:#2e8cae">Open the project</a></p>` : "",
       `<p style="color:#4a4785">— Half Life</p>`,
-      `</div>`,
+      "</div>",
     ]
       .filter(Boolean)
       .join("\n")
