@@ -241,7 +241,7 @@ export function Markdown({ source, className }: { source: string; className?: st
       continue
     }
 
-    if (/^(---|\*\*\*|___)\s*$/.test(line)) {
+    if (/^(?:-{3,}|\*{3,}|_{3,})\s*$/.test(line)) {
       out.push(<hr key={key} className="border-t border-dashed border-line" />)
       i += 1
       continue
@@ -304,6 +304,15 @@ export function Markdown({ source, className }: { source: string; className?: st
       !bullet.test(at(i)) &&
       !number.test(at(i))
     ) {
+      para.push(at(i))
+      i += 1
+    }
+    // The exclusion above tests a PREFIX, but the handlers above match whole
+    // lines — `----` and ```` ```js foo ```` passed every handler and were also
+    // declined here, so nothing advanced `i` and the render spun forever on one
+    // line (which is exactly what a rogue journal entry did to Explore). Take
+    // the line as a paragraph so progress is unconditional.
+    if (para.length === 0) {
       para.push(at(i))
       i += 1
     }
