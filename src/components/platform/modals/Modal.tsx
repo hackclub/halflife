@@ -1,9 +1,25 @@
 "use client"
 
-import { type ReactNode, useCallback, useEffect, useId, useRef, useSyncExternalStore } from "react"
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useId,
+  useRef,
+  useSyncExternalStore,
+} from "react"
 import { createPortal } from "react-dom"
 import { IconX } from "@/components/platform/icons"
 import { accentText, cx } from "@/components/platform/ui"
+
+/**
+ * The id the dialog's `aria-labelledby` points at. `Modal` provides it so a
+ * `ModalTitle` that does not carry its own `id` still names the dialog; the
+ * dialogs that predate this passed `labelledBy` and an `id` themselves.
+ */
+const ModalTitleId = createContext<string | undefined>(undefined)
 
 const FOCUSABLE =
   'a[href],button:not([disabled]),textarea:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])'
@@ -149,7 +165,7 @@ export function Modal({
         </div>
 
         <div ref={body} className="thin-scroll min-h-0 flex-1 overflow-y-auto px-5 pt-3 pb-6 sm:px-8 sm:pt-5">
-          {children}
+          <ModalTitleId.Provider value={titleId}>{children}</ModalTitleId.Provider>
         </div>
 
         {footer && (
@@ -181,9 +197,16 @@ export function ModalTitle({
    */
   subWide?: boolean
 }) {
+  // A title with no explicit id takes the dialog's own, so the dialog always
+  // has something to be labelled by; callers that wire `id` + `labelledBy`
+  // themselves keep doing so.
+  const dialogTitleId = useContext(ModalTitleId)
   return (
     <div className="mb-5">
-      <h2 id={id} className="text-[1.5rem] leading-tight font-extrabold tracking-[-0.02em] text-navy sm:text-[1.85rem]">
+      <h2
+        id={id ?? dialogTitleId}
+        className="text-[1.5rem] leading-tight font-extrabold tracking-[-0.02em] text-navy sm:text-[1.85rem]"
+      >
         {children}
       </h2>
       {sub && (
