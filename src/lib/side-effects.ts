@@ -19,7 +19,7 @@ export interface SideEffectContext {
  * (`POST /api/admin/theme-projects/[id]/sync-to-airtable`) is how they fix it.
  */
 export async function trackSideEffect<T>(
-  kind: "airtable" | "slack",
+  kind: "airtable" | "slack" | "ari",
   ctx: SideEffectContext,
   fn: () => Promise<T>,
 ): Promise<T | null> {
@@ -48,13 +48,36 @@ export async function trackSideEffect<T>(
           ...(recordId ? { recordId } : {}),
         },
       })
+    } else if (kind === "ari") {
+      // The send itself records the Ari submission id on the row; this is the
+      // operational trace that it happened.
+      await logAudit({
+        action: AuditAction.ARI_SYNC_SUCCESS,
+        actorId: ctx.actorId,
+        actorEmail: ctx.actorEmail,
+        targetType: ctx.targetType,
+        targetId: ctx.targetId,
+        metadata: {
+          ...(typeof ctx.metadata === "object" && ctx.metadata !== null && !Array.isArray(ctx.metadata)
+            ? ctx.metadata
+            : {}),
+          ...(result && typeof result === "object" && "id" in result && typeof result.id === "string"
+            ? { ariSubmissionId: result.id }
+            : {}),
+        },
+      })
     }
     return result
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error(`[side-effect] ${kind} failed for ${ctx.targetType}:${ctx.targetId}:`, err)
     await logAudit({
-      action: kind === "airtable" ? AuditAction.AIRTABLE_SYNC_FAILURE : AuditAction.NOTIFICATION_FAILURE,
+      action:
+        kind === "airtable"
+          ? AuditAction.AIRTABLE_SYNC_FAILURE
+          : kind === "ari"
+            ? AuditAction.ARI_SYNC_FAILURE
+            : AuditAction.NOTIFICATION_FAILURE,
       actorId: ctx.actorId,
       actorEmail: ctx.actorEmail,
       targetType: ctx.targetType,

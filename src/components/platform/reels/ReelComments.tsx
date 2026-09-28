@@ -320,8 +320,7 @@ export function ReelComments({
             disabled={!reel}
             autoComplete="off"
             placeholder="Add a comment…"
-            className="sketch h-11 min-w-0 flex-1 rounded-xl bg-white px-4 text-[0.9rem] text-navy outline-none placeholder:text-navy-soft/70"
-            style={{ "--sk-color": "var(--color-line-strong)", "--sk-radius": "12px" } as React.CSSProperties}
+            className="h-11 min-w-0 flex-1 rounded-xl border-2 border-line-strong bg-white px-4 text-[0.9rem] text-navy outline-none placeholder:text-navy-soft/70"
           />
           <button
             type="submit"

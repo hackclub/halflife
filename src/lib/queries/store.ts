@@ -1,5 +1,6 @@
 import "server-only"
 import { HardwareExperience, Phase, PhaseStatus } from "@/app/generated/prisma/enums"
+import { avatarUrl } from "@/lib/avatar"
 import { DEFAULT_GOAL_ID } from "@/lib/config/printers"
 import { DESIGN_WEEKS, ONBOARDING_CHECKPOINT_ID, scheduleForWeek, THEMES, TOTAL_WEEKS } from "@/lib/config/program"
 import { getBalances } from "@/lib/currency"
@@ -122,6 +123,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
       select: {
         name: true,
         image: true,
+        slackId: true,
         hardwareExperience: true,
         onboardingCompletedAt: true,
         printerGoalId: true,
@@ -315,7 +317,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
   return {
     viewer: {
       name: user.name ?? "You",
-      image: user.image,
+      image: avatarUrl(user),
     },
     experience: user.hardwareExperience ? EXPERIENCE[user.hardwareExperience] : null,
     onboardingDone: user.onboardingCompletedAt !== null,

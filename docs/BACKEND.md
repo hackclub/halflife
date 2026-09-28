@@ -96,6 +96,43 @@ design.
 
 ---
 
+## Reviewing with Ari
+
+Ari (`ari.hackclub.com`, `@hackclub/ari`) is the review surface. Half Life sends
+each submitted (project, phase) as a ship and receives the decisions back as
+signed webhooks; the in-house `/review` console still exists and still works —
+whichever decision lands first wins, because both go through `finalizeReview`
+and it refuses an already-resolved submission.
+
+- **`lib/ari.ts`** is the whole integration. `lib/ari-id.ts` holds the two pure
+  helpers (`ariExternalId` / `parseAriExternalId`) so `verify:contracts` can pin
+  the format.
+- **One ship per (project, phase).** `external_id` is `<themeProjectId>:design`
+  or `:build`, matching the Airtable rows, which are keyed on (Half-Life ID,
+  Stage). Design and build get independent decisions.
+- **Outbound** happens in the submit/unsubmit `after` hooks, like the Airtable
+  write, and no-ops when the `ARI_*` secrets are unset. A failed send logs an
+  `ARI_SYNC_FAILURE` audit row and is replayed by `ari-retry`.
+- **Inbound** is `POST /api/integrations/ari/webhook`, verified with
+  `ARI_WEBHOOK_SECRET`. `ARI_WEBHOOK_SECRET` is **not** the signing secret; the
+  SDK treats them as different credentials.
+- **Decisions are applied through `finalizeReview`,** attributed to no Half Life
+  user (`SubmissionReview.reviewerId` is nullable) and with reviewer identity in
+  the audit row. Ari's `approved_hours`/`approved_minutes` become the hours
+  override, so the payout matches what Ari approved.
+- **A design approval needs a tier.** Half Life's design approval is also the
+  funding decision, and Ari reviews the work rather than the money, so the tier
+  is the maker's `requestedTier` (falling back to an assigned `tier`). A design
+  approval with neither is logged as `ARI_WEBHOOK_IGNORED` and left for a human
+  rather than invented.
+- **Idempotent.** The `delivery_id` is checked first and recorded only after the
+  work succeeds, so Ari's retries are safe and a failed delivery is retried.
+  `review.reverted` / `review.requeued` undo the local status and credit and put
+  the phase back in review; `review.fraud` flags the maker on a failed verdict;
+  `ship.updated` and unknown events are recorded and ignored.
+
+---
+
 ## Working on it
 
 ```bash

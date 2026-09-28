@@ -8,7 +8,13 @@ import { requireSession } from "@/lib/guards"
 import { verifyOwnTimelapses } from "@/lib/lapse"
 import { cursorArgs, pageResult, paginationQuery } from "@/lib/pagination"
 import prisma from "@/lib/prisma"
-import { getSubmissionAccess, isPhaseDecided, isWeekOpen, SUBMISSIONS_CLOSED_MESSAGE, WEEK_CLOSED_MESSAGE } from "@/lib/program"
+import {
+  getSubmissionAccess,
+  isPhaseDecided,
+  isWeekOpen,
+  SUBMISSIONS_CLOSED_MESSAGE,
+  WEEK_CLOSED_MESSAGE,
+} from "@/lib/program"
 import { sanitize, sanitizeHtml } from "@/lib/sanitize"
 import { sessionCreateSchema } from "@/lib/schemas/session"
 import { recomputeStreak } from "@/lib/streak"

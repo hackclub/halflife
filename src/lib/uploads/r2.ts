@@ -174,11 +174,9 @@ function listingClient(): S3Client {
   })
 }
 
-export async function listUploadedObjects(opts: {
-  prefix?: string
-  cursor?: string
-  limit?: number
-} = {}): Promise<UploadedObjectPage> {
+export async function listUploadedObjects(
+  opts: { prefix?: string; cursor?: string; limit?: number } = {},
+): Promise<UploadedObjectPage> {
   if (!isUploadConfigured()) {
     throw new HttpError("NOT_CONFIGURED", "File uploads are not configured on this deployment")
   }
@@ -200,9 +198,8 @@ export async function listUploadedObjects(opts: {
     return {
       objects: (result.Contents ?? []).flatMap((object) => {
         if (!object.Key) return []
-        const key = bucketPrefix && object.Key.startsWith(bucketPrefix)
-          ? object.Key.slice(bucketPrefix.length)
-          : object.Key
+        const key =
+          bucketPrefix && object.Key.startsWith(bucketPrefix) ? object.Key.slice(bucketPrefix.length) : object.Key
         return [
           {
             key,
@@ -333,6 +330,10 @@ export async function deleteObject(key: string): Promise<void> {
  */
 export function publicUrlFor(key: string | null | undefined): string | null {
   if (!key) return null
+  // Rows imported from a sibling programme carry their old asset host rather
+  // than a key of ours, and there is nothing to mint; pass an absolute URL
+  // through untouched. A key this app minted never starts with a scheme.
+  if (/^https?:\/\//i.test(key)) return key
   const base = process.env.S3_PUBLIC_URL
   if (!base) return null
   return `${base.replace(/\/$/, "")}/${key}`

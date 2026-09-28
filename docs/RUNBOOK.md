@@ -30,6 +30,14 @@ Coolify.
    not listed, `deploy_from_github` fails with a confusing 404 and no amount of
    retrying helps.
 
+   **Ari (project review).** Create the program at ari.hackclub.com, then set
+   `ARI_PROGRAM_ID` and `ARI_SIGNING_SECRET`, register
+   `https://<host>/api/integrations/ari/webhook` as its webhook URL, and set
+   `ARI_WEBHOOK_SECRET` from that page — a different secret from the signing
+   one. Until all three are set, submission sends no-op and the webhook route
+   answers 503 rather than trusting an unverified body. Create the `ari-retry`
+   job below so a failed send is replayed.
+
 3. **Create the project and database.**
 
    ```
@@ -113,6 +121,7 @@ needs duplicating into the job.
 |---|---|---|
 | `hackatime-sync` | `*/15 * * * *` | `POST /api/integrations/hackatime-sync` |
 | `airtable-retry` | `17 * * * *` | `POST /api/integrations/airtable-retry` |
+| `ari-retry` | `23 * * * *` | `POST /api/integrations/ari-retry` |
 | `rsvp-drain` | `*/10 * * * *` | `POST /api/integrations/rsvp-drain` |
 | `claim-sweep` | `*/5 * * * *` | `POST /api/integrations/claim-sweep` |
 | `printer-reconcile` | `0 8 * * *` | `POST /api/integrations/printer-reconcile` |

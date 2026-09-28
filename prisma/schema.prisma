@@ -273,6 +273,12 @@ enum AuditAction {
   AIRTABLE_SYNC_SUCCESS
   AIRTABLE_SYNC_FAILURE
   NOTIFICATION_FAILURE
+  ARI_SYNC_SUCCESS
+  ARI_SYNC_FAILURE
+  /// An Ari webhook that changed local review state.
+  ARI_WEBHOOK_APPLIED
+  /// An Ari webhook that was understood but deliberately did nothing.
+  ARI_WEBHOOK_IGNORED
 
   // System
   SYSTEM_HACKATIME_SYNC
@@ -836,6 +842,18 @@ model PhaseSubmission {
   preReviewed   Boolean   @default(false)
   preReviewedAt DateTime?
 
+  /// The Ari submission this hand-in was sent as (`ari.ships.create`), and the
+  /// last state Ari reported for it. Null on `ariSubmissionId` means the send
+  /// has not succeeded yet, which is what the retry job looks for.
+  ///
+  /// `external_id` is derived as `<themeProjectId>:<design|build>`, so these are
+  /// recovery breadcrumbs rather than a lookup key — a submission is found by
+  /// (project, phase).
+  ariSubmissionId String?
+  ariStatus       String?
+  ariDecision     String?
+  ariSyncedAt     DateTime?
+
   /// Non-null means this submission is resolved and immutable.
   resolvedAt     DateTime?
   resolvedResult ReviewResult?
@@ -874,8 +892,10 @@ model SubmissionReview {
   id           String          @id @default(cuid())
   submissionId String
   submission   PhaseSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
-  reviewerId   String
-  reviewer     User            @relation("SubmissionReviewer", fields: [reviewerId], references: [id], onDelete: Restrict)
+  /// Null when the decision came from Ari rather than a Half Life user; the
+  /// audit row carries the platform reviewer's identity instead.
+  reviewerId   String?
+  reviewer     User?           @relation("SubmissionReviewer", fields: [reviewerId], references: [id], onDelete: Restrict)
 
   pass   ReviewPass   @default(FINAL)
   result ReviewResult
@@ -926,6 +946,24 @@ model SubmissionReview {
   @@index([submissionId])
   @@index([reviewerId, createdAt])
   @@map("submission_review")
+}
+
+/// One row per accepted Ari webhook, for idempotency.
+///
+/// Ari redelivers an event (same `delivery_id`) until it gets a 2xx, so the work
+/// must be safe to repeat and the delivery must only be recorded once it has
+/// actually finished — see `applyAriWebhook` in lib/ari.ts. A manual resend gets
+/// a new delivery id and is meant to run again.
+model AriWebhookDelivery {
+  id              String   @id @default(cuid())
+  deliveryId      String   @unique
+  event           String
+  ariSubmissionId String?
+  externalId      String?
+  receivedAt      DateTime @default(now())
+
+  @@index([receivedAt])
+  @@map("ari_webhook_delivery")
 }
 
 // ─── Feed ────────────────────────────────────────────────────────────────────

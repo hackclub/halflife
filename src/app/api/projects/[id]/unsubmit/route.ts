@@ -1,6 +1,7 @@
 import { after } from "next/server"
 import { removeSubmissionFromYsws } from "@/lib/airtable/sync"
 import { ok, parseBody, withRoute } from "@/lib/api"
+import { isAriConfigured, withdrawSubmissionFromAri } from "@/lib/ari"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { requireSession } from "@/lib/guards"
 import { unsubmitSchema } from "@/lib/schemas/project"
@@ -44,6 +45,24 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
       () => removeSubmissionFromYsws(id, parsed.data.phase),
     )
   })
+
+  // Withdraw it from Ari too, or its queue keeps a hand-in that no longer
+  // exists in Half Life.
+  if (isAriConfigured()) {
+    after(async () => {
+      await trackSideEffect(
+        "ari",
+        {
+          actorId: gate.user.id,
+          actorEmail: gate.user.email,
+          targetType: "ThemeProject",
+          targetId: id,
+          metadata: { phase: parsed.data.phase, withdrawn: true },
+        },
+        () => withdrawSubmissionFromAri(id, parsed.data.phase),
+      )
+    })
+  }
 
   return ok({ ok: true })
 })
