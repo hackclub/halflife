@@ -1,4 +1,5 @@
 import "server-only"
+import { HoursSource } from "@/app/generated/prisma/enums"
 import { getBalances } from "@/lib/currency"
 import prisma from "@/lib/prisma"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
@@ -122,7 +123,14 @@ export function recomputeWeek(userId: string, week: number | null, at = new Date
   if (!week || week < 1) return Promise.resolve()
   return quietly("recomputeWeek", async () => {
     const sum = await prisma.workSession.aggregate({
-      where: { weekNumber: week, deletedAt: null, themeProject: { userId } },
+      // HACKATIME_TRACKED sessions contribute zero to every paid total
+      // (lib/hours), so they must not inflate the weekly analytics either.
+      where: {
+        weekNumber: week,
+        deletedAt: null,
+        themeProject: { userId },
+        hoursSource: { not: HoursSource.HACKATIME_TRACKED },
+      },
       _sum: { hoursClaimed: true },
     })
     const hours = Math.round((sum._sum.hoursClaimed ?? 0) * 100) / 100

@@ -1,5 +1,5 @@
 import "server-only"
-import { HardwareExperience, Phase, PhaseStatus } from "@/app/generated/prisma/enums"
+import { HardwareExperience, HoursSource, Phase, PhaseStatus } from "@/app/generated/prisma/enums"
 import { avatarUrl } from "@/lib/avatar"
 import { DEFAULT_GOAL_ID } from "@/lib/config/printers"
 import { DESIGN_WEEKS, ONBOARDING_CHECKPOINT_ID, scheduleForWeek, THEMES, TOTAL_WEEKS } from "@/lib/config/program"
@@ -308,7 +308,12 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
       // the reviewer's totals cannot answer this differently.
       const frozen = phase === Phase.DESIGN ? project.designApprovedHours : project.approvedHours
       const { effectiveHours } = rollUpHours(phaseSessions, phaseLinks, frozen)
-      const entryHours = phaseSessions.reduce((n, s) => n + minutesOf(s) / 60, 0)
+      // A HACKATIME_TRACKED entry contributes zero to `effectiveHours`, so it
+      // must contribute zero here too, or the subtraction double-counts it.
+      const entryHours = phaseSessions.reduce(
+        (n, s) => n + (s.hoursSource === HoursSource.HACKATIME_TRACKED ? 0 : minutesOf(s) / 60),
+        0,
+      )
       offBookHours[week] = Math.max(0, round2(effectiveHours - entryHours))
     }
   })
