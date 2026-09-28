@@ -223,6 +223,15 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
     if (!fresh) throw new HttpError("NOT_SUBMITTED", "This submission has been withdrawn")
     if (fresh.resolvedAt) throw new HttpError("ALREADY_RESOLVED", "Already decided")
 
+    // Re-check the claim under the transaction too. The check before it ran
+    // against a read taken when the page opened, so another reviewer can have
+    // claimed the submission since; without this the decision would proceed and
+    // delete their live claim on the way out.
+    const claim = await tx.reviewClaim.findUnique({ where: { submissionId: input.submissionId } })
+    if (claim && claim.reviewerId !== input.reviewerId && claim.expiresAt > new Date()) {
+      throw new HttpError("CLAIMED_BY_OTHER", "Another reviewer holds the claim on this submission")
+    }
+
     if (approving) {
       // Accept every unreviewed session at its claimed hours, so the
       // per-session numbers stay consistent with the frozen total.

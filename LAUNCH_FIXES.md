@@ -74,10 +74,12 @@ larger ones) before it is ticked.
     both order-list and purchase responses — so `unitCostUsd`, the encrypted
     address/phone and `lastActorId` no longer leave the server.
 
-- [ ] **8. Review claim not re-checked inside the decision transaction**
-  - `src/lib/review.ts:143` validates the claim outside the `$transaction`
-    (`:212`), which then deletes it (`:368`). Re-check `claim` after
-    `lockUserCredit` inside the transaction.
+- [x] **8. Review claim not re-checked inside the decision transaction**
+  - `src/lib/review.ts` — the outer claim check (kept as a fast fail) is now
+    backed by an authoritative re-read of `reviewClaim` inside the
+    `$transaction`, after `lockUserCredit`, which throws `CLAIMED_BY_OTHER` if
+    another reviewer's live claim appeared since the page was opened. The
+    `resolvedAt` re-read already prevents a double payout.
 
 - [ ] **9. Feed visibility gaps**
   - `src/lib/feed.ts:326-348` — `getComments` never checks the parent post's
