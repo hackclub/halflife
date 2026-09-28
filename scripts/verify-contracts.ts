@@ -252,6 +252,22 @@ async function bodies() {
     check(`bytes · ${name} ${isVideo ? "is video" : "is not video"}`, isVideoBytes(bytes) === isVideo)
   }
 
+  /* ── 5. Ari external ids ───────────────────────────────────────────────── */
+  //
+  // One Ari ship per (project, phase), so the external id has to survive a
+  // round trip for a webhook to find the right submission.
+  const { ariExternalId, parseAriExternalId } = await import("../src/lib/ari-id")
+  const { Phase } = await import("../src/app/generated/prisma/enums")
+  const ariDesign = ariExternalId(me, Phase.DESIGN)
+  const ariBuild = ariExternalId(me, Phase.BUILD)
+  check("ari · design external id", ariDesign === `${me}:design`, ariDesign)
+  check("ari · build external id", ariBuild === `${me}:build`, ariBuild)
+  check("ari · design parses back", parseAriExternalId(ariDesign)?.phase === Phase.DESIGN)
+  check("ari · build parses back", parseAriExternalId(ariBuild)?.phase === Phase.BUILD)
+  check("ari · project id survives", parseAriExternalId(ariDesign)?.themeProjectId === me)
+  check("ari · rejects junk", parseAriExternalId("not-an-id") === null)
+  check("ari · rejects empty project", parseAriExternalId(":design") === null)
+
   for (const [name, schema, body] of cases) {
     const parsed = schema.safeParse(body)
     check(
