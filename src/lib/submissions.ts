@@ -186,7 +186,7 @@ export async function submitPhase(
 
   const settings = await getProgramSettings()
   const now = new Date()
-  const submittedInWeek = weekNumberForDate(settings.eventStartDate, now)
+  const submittedInWeek = weekNumberForDate(settings.eventStartDate, now, settings.programTimezone)
   const scheduledWeek = scheduledWeekFor(project.theme, phase)
 
   return prisma.$transaction(async (tx) => {
@@ -290,6 +290,6 @@ export async function stampSessionTiming(date: Date): Promise<{ effectiveDate: s
   const settings = await getProgramSettings()
   return {
     effectiveDate: effectiveDateFor(date, settings.programTimezone),
-    weekNumber: weekNumberForDate(settings.eventStartDate, date),
+    weekNumber: weekNumberForDate(settings.eventStartDate, date, settings.programTimezone),
   }
 }

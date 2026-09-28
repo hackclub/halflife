@@ -29,15 +29,37 @@ export const getProgramSettings = cache(async (): Promise<ProgramSettings> => {
 })
 
 /**
- * Program week for a date. Week 1 is the seven days from eventStartDate.
- * Returns 0 before the program opens and TOTAL_WEEKS + 1 or higher after it
- * ends, so callers can distinguish "not started" from "over" without a second
- * query.
+ * Program week for a date, in the program's timezone.
+ *
+ * Week 1 is the seven days from eventStartDate. Returns 0 before the program
+ * opens and TOTAL_WEEKS + 1 or higher after it ends, so callers can distinguish
+ * "not started" from "over" without a second query.
+ *
+ * Counted in calendar days rather than elapsed milliseconds: a week flips at
+ * program-timezone midnight, the same instant `weekClosesAt` stops taking work.
+ * Counting from the UTC epoch would stamp the last four or five hours of every
+ * Sunday evening in New York — the hours people actually journal in — into the
+ * next week while the current one is still open.
+ *
+ * The start is anchored to its UTC calendar date, which is what `eventStartDate`
+ * stores (see `weekClosesAt`), while the moment being placed is read in the
+ * program's timezone.
  */
-export function weekNumberForDate(start: Date, date: Date): number {
-  const elapsed = date.getTime() - start.getTime()
+export function weekNumberForDate(start: Date, date: Date, timeZone: string): number {
+  const elapsed = calendarDay(date, timeZone) - utcCalendarDay(start)
   if (elapsed < 0) return 0
-  return Math.floor(elapsed / WEEK_MS) + 1
+  return Math.floor(elapsed / 7) + 1
+}
+
+/** Days since the epoch for a moment's calendar date in `timeZone`. */
+function calendarDay(date: Date, timeZone: string): number {
+  const [year, month, day] = effectiveDateFor(date, timeZone).split("-")
+  return Math.floor(Date.UTC(Number(year), Number(month) - 1, Number(day)) / DAY_MS)
+}
+
+/** Days since the epoch for a moment's own UTC calendar date. */
+function utcCalendarDay(date: Date): number {
+  return Math.floor(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) / DAY_MS)
 }
 
 export function weekDateRange(start: Date, week: number): { start: Date; end: Date } | null {
@@ -129,7 +151,7 @@ export async function isWeekOpen(userId: string, themeProjectId: string, week: n
 
 export async function currentWeekNumber(): Promise<number> {
   const settings = await getProgramSettings()
-  return weekNumberForDate(settings.eventStartDate, new Date())
+  return weekNumberForDate(settings.eventStartDate, new Date(), settings.programTimezone)
 }
 
 /**
