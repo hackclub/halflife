@@ -105,10 +105,12 @@ larger ones) before it is ticked.
     in git history at `bdbdf08`), with `target="_blank"` /
     `rel="noopener noreferrer"` to match the other external links.
 
-- [ ] **12. Hackatime panel can hang on network failure**
-  - `.../projects/[id]/HackatimeLinks.tsx:54-80` — `load()` has no `try/catch`
-    around its `fetch`es, so a failure leaves "checking hackatime…" forever.
-    Add error state + retry, as the sibling loaders do.
+- [x] **12. Hackatime panel can hang on network failure**
+  - `.../projects/[id]/HackatimeLinks.tsx` — `load()` is now wrapped so a
+    rejected `fetch` (offline/DNS/abort) sets an `"error"` account state and
+    `links = []` instead of leaving `"checking hackatime…"` forever. Added a
+    "Try again" retry that resets to the loading state and re-fetches, plus a
+    `role="alert"` message (the raw error is logged, not shown).
 
 - [ ] **13. `export/participants` returns email + slackId to any export key**
   - `src/app/api/integrations/export/participants/route.ts:29-51` contradicts

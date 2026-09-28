@@ -21,6 +21,7 @@ type Account =
   | { state: "loading" }
   | { state: "unlinked" }
   | { state: "linked"; projects: { name: string; totalSeconds: number }[] }
+  | { state: "error" }
 
 async function read<T>(res: Response): Promise<T> {
   const body = await res.json().catch(() => null)
@@ -52,27 +53,45 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
-    const [linksRes, projectsRes] = await Promise.all([
-      fetch(`/api/projects/${projectId}/hackatime`, { cache: "no-store" }),
-      fetch("/api/hackatime/projects", { cache: "no-store" }),
-    ])
     try {
-      setLinks((await read<{ links: Link[] }>(linksRes)).links)
-    } catch (err) {
-      setError((err as Error).message)
-      setLinks([])
-    }
-    try {
-      const { projects } = await read<{ projects: { name: string; totalSeconds: number }[] }>(projectsRes)
-      setAccount({ state: "linked", projects })
-    } catch (err) {
-      if ((err as { code?: string }).code === "HACKATIME_NOT_LINKED") setAccount({ state: "unlinked" })
-      else {
-        setAccount({ state: "linked", projects: [] })
+      const [linksRes, projectsRes] = await Promise.all([
+        fetch(`/api/projects/${projectId}/hackatime`, { cache: "no-store" }),
+        fetch("/api/hackatime/projects", { cache: "no-store" }),
+      ])
+      try {
+        setLinks((await read<{ links: Link[] }>(linksRes)).links)
+      } catch (err) {
         setError((err as Error).message)
+        setLinks([])
       }
+      try {
+        const { projects } = await read<{ projects: { name: string; totalSeconds: number }[] }>(projectsRes)
+        setAccount({ state: "linked", projects })
+      } catch (err) {
+        if ((err as { code?: string }).code === "HACKATIME_NOT_LINKED") setAccount({ state: "unlinked" })
+        else {
+          setAccount({ state: "linked", projects: [] })
+          setError((err as Error).message)
+        }
+      }
+    } catch (err) {
+      // The requests never produced a response at all (offline, DNS, abort).
+      // Both reads are unusable, so fail visibly with a retry rather than
+      // leaving the panel on "checking hackatime…" forever.
+      console.error("[hackatime] failed to load links/account:", err)
+      setLinks([])
+      setAccount({ state: "error" })
+      setError("Could not reach Hackatime. Check your connection and try again.")
     }
   }, [projectId])
+
+  /** Retry after a total load failure: show the spinner again, then re-fetch. */
+  const retry = useCallback(() => {
+    setError(null)
+    setLinks(null)
+    setAccount({ state: "loading" })
+    void load()
+  }, [load])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- fetching on mount
@@ -124,7 +143,7 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
           Code hours count too: link the Hackatime project you wrote them in.
         </p>
 
-        {error && (
+        {error && account.state !== "error" && (
           <p
             role="alert"
             className="mt-4 flex items-start gap-2 rounded-xl bg-coral/10 px-3.5 py-2.5 text-[0.85rem] font-semibold text-coral-deep"
@@ -137,6 +156,15 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
           <p className="hand mt-4 text-[0.84rem] text-navy-soft" aria-live="polite">
             checking hackatime…
           </p>
+        ) : account.state === "error" ? (
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <Button variant="outline" onClick={retry} disabled={busy !== null}>
+              Try again
+            </Button>
+            <span role="alert" className="hand text-[0.84rem] text-coral-deep">
+              {error ?? "Hackatime could not be loaded."}
+            </span>
+          </div>
         ) : (
           <>
             {links.length > 0 && (
