@@ -16,6 +16,7 @@
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
     "grant-role": "tsx scripts/grant-role.ts",
+    "streaks:recompute": "tsx --conditions=react-server scripts/recompute-streaks.ts",
     "import:stasis": "tsx import/stasis.ts",
     "import:check": "tsx import/check.ts",
     "import:dump": "tsx import/dump.ts",

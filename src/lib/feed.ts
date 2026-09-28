@@ -8,6 +8,7 @@ import { cursorArgs, pageResult } from "@/lib/pagination"
 import prisma from "@/lib/prisma"
 import { currentWeekNumber } from "@/lib/program"
 import { sanitize } from "@/lib/sanitize"
+import { recomputeStreak } from "@/lib/streak"
 import { isOwnedKey, publicUrlFor } from "@/lib/uploads/r2"
 
 /**
@@ -220,32 +221,40 @@ export async function createPost(input: CreatePostInput): Promise<FeedItem> {
   const caption = sanitize(input.caption)
   const weekNumber = await currentWeekNumber()
 
-  const post = await prisma.post.create({
-    data: {
-      userId: input.userId,
-      themeProjectId: input.themeProjectId ?? null,
-      checkpointKey: input.checkpointKey ?? null,
-      kind: input.kind,
-      caption,
-      objectKey: input.objectKey,
-      thumbnailKey: input.thumbnailKey ?? null,
-      contentType: input.contentType ?? null,
-      byteSize: input.byteSize ?? null,
-      durationSeconds: input.durationSeconds ?? null,
-      width: input.width ?? null,
-      height: input.height ?? null,
-      weekNumber,
-      // There is no transcoding step yet: the file is already in R2 by the
-      // time this runs, so the post is playable immediately. PROCESSING stays
-      // in the enum for when a pipeline lands and the thumbnail arrives later.
-      status: PostStatus.PUBLISHED,
-      publishedAt: new Date(),
-      ...(input.kind === PostKind.ANNOUNCEMENT ? { pinnedAt: new Date() } : {}),
-    },
-    include: feedInclude,
+  // The reel and the streak day it earns land together: a rolled-back post must
+  // not leave a day behind, exactly as a rolled-back devlog must not.
+  const post = await prisma.$transaction(async (tx) => {
+    const created = await tx.post.create({
+      data: {
+        userId: input.userId,
+        themeProjectId: input.themeProjectId ?? null,
+        checkpointKey: input.checkpointKey ?? null,
+        kind: input.kind,
+        caption,
+        objectKey: input.objectKey,
+        thumbnailKey: input.thumbnailKey ?? null,
+        contentType: input.contentType ?? null,
+        byteSize: input.byteSize ?? null,
+        durationSeconds: input.durationSeconds ?? null,
+        width: input.width ?? null,
+        height: input.height ?? null,
+        weekNumber,
+        // There is no transcoding step yet: the file is already in R2 by the
+        // time this runs, so the post is playable immediately. PROCESSING stays
+        // in the enum for when a pipeline lands and the thumbnail arrives later.
+        status: PostStatus.PUBLISHED,
+        publishedAt: new Date(),
+        ...(input.kind === PostKind.ANNOUNCEMENT ? { pinnedAt: new Date() } : {}),
+      },
+      include: feedInclude,
+    })
+
+    // A participant's own reel, not a staff announcement.
+    if (input.kind !== PostKind.ANNOUNCEMENT) await recomputeStreak(tx, input.userId)
+
+    return created
   })
 
-  // A participant's own reel, not a staff announcement.
   if (input.kind !== PostKind.ANNOUNCEMENT) await markReel(input.userId, post.createdAt)
 
   return toFeedItem(post, new Set())
@@ -407,11 +416,16 @@ export async function deleteOwnComment(commentId: string, userId: string): Promi
 
 /** Soft-delete your own reel. */
 export async function deleteOwnPost(postId: string, userId: string): Promise<void> {
-  const { count } = await prisma.post.updateMany({
-    where: { id: postId, userId, deletedAt: null },
-    data: { deletedAt: new Date(), status: PostStatus.REMOVED },
+  await prisma.$transaction(async (tx) => {
+    const { count } = await tx.post.updateMany({
+      where: { id: postId, userId, deletedAt: null },
+      data: { deletedAt: new Date(), status: PostStatus.REMOVED },
+    })
+    if (count === 0) throw new HttpError("NOT_FOUND", "Post not found")
+    // Deleting the only reel on a day removes that day from the run, so the
+    // streak is recomputed with it — same rule as deleting a devlog.
+    await recomputeStreak(tx, userId)
   })
-  if (count === 0) throw new HttpError("NOT_FOUND", "Post not found")
 }
 
 // ─── Moderation ──────────────────────────────────────────────────────────────

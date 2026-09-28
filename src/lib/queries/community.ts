@@ -3,6 +3,7 @@ import { avatarUrl } from "@/lib/avatar"
 import { getThemeDef } from "@/lib/config/program"
 import prisma from "@/lib/prisma"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
+import { streakAsOf } from "@/lib/streak"
 
 /**
  * The page that is about everyone else: Explore.
@@ -65,7 +66,7 @@ export async function getJournalFeed(): Promise<JournalRow[]> {
             id: true,
             title: true,
             theme: true,
-            user: { select: { name: true, image: true, slackId: true, currentStreak: true } },
+            user: { select: { name: true, image: true, slackId: true, currentStreak: true, lastStreakDate: true } },
           },
         },
       },
@@ -73,13 +74,17 @@ export async function getJournalFeed(): Promise<JournalRow[]> {
     getProgramSettings(),
   ])
 
+  const today = effectiveDateFor(new Date(), settings.programTimezone)
+
   return sessions.map((session) => {
     const project = session.themeProject
     return {
       id: session.id,
       author: project.user.name ?? "A maker",
       authorImage: avatarUrl(project.user),
-      streak: project.user.currentStreak,
+      // Expired against today, so a run that ended weeks ago reads 0 rather
+      // than the number it reached before it broke.
+      streak: streakAsOf(project.user, today),
       projectId: project.id,
       project: project.title || getThemeDef(project.theme).label,
       body: session.content ?? session.title,
