@@ -1,0 +1,10 @@
+- Callback URL for Ari
+- Project approval should notify the user
+	- By email and by Slack DM
+- Indicate submission state on the project page for each project
+	- Green border = approved
+	- Blue border = submitted, not reviewed
+	- Yellow/orange/amber border = reviewed, needs changes
+	- Red border = rejected
+- A button in the admin panel to send out grants
+	- Use the HCB API at https://hcb.hackclub.com/docs/api/v3
