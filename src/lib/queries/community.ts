@@ -1,4 +1,5 @@
 import "server-only"
+import { avatarUrl } from "@/lib/avatar"
 import { getThemeDef } from "@/lib/config/program"
 import prisma from "@/lib/prisma"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
@@ -64,7 +65,7 @@ export async function getJournalFeed(): Promise<JournalRow[]> {
             id: true,
             title: true,
             theme: true,
-            user: { select: { name: true, image: true, currentStreak: true } },
+            user: { select: { name: true, image: true, slackId: true, currentStreak: true } },
           },
         },
       },
@@ -77,7 +78,7 @@ export async function getJournalFeed(): Promise<JournalRow[]> {
     return {
       id: session.id,
       author: project.user.name ?? "A maker",
-      authorImage: project.user.image,
+      authorImage: avatarUrl(project.user),
       streak: project.user.currentStreak,
       projectId: project.id,
       project: project.title || getThemeDef(project.theme).label,

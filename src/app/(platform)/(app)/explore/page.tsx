@@ -56,7 +56,16 @@ function Entry({ entry }: { entry: JournalRow }) {
   return (
     <Panel tone="line" radius={20} as="article" className="bg-paper px-5 py-5 sm:px-7 sm:py-6">
       <header className="flex flex-wrap items-start gap-3.5">
-        <FoxAvatar variant={avatarFor(entry.author)} className="size-11 shrink-0 rounded-lg" />
+        {entry.authorImage ? (
+          // eslint-disable-next-line @next/next/no-img-element -- the avatar host (Slack via Cachet) is known only at runtime
+          <img
+            src={entry.authorImage}
+            alt=""
+            className="size-11 shrink-0 rounded-lg border-2 border-line bg-sky-pale object-cover"
+          />
+        ) : (
+          <FoxAvatar variant={avatarFor(entry.author)} className="size-11 shrink-0 rounded-lg" />
+        )}
         <div className="min-w-0 flex-1">
           <p className="text-[1.02rem] leading-tight font-extrabold text-navy [overflow-wrap:anywhere]">
             {entry.author} <span className="font-semibold text-navy-soft">on</span>{" "}

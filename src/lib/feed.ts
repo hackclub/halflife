@@ -2,6 +2,7 @@ import "server-only"
 import type { Prisma } from "@/app/generated/prisma/client"
 import { PostKind, PostStatus } from "@/app/generated/prisma/enums"
 import { markReel } from "@/lib/analytics"
+import { avatarUrl } from "@/lib/avatar"
 import { HttpError } from "@/lib/errors"
 import { cursorArgs, pageResult } from "@/lib/pagination"
 import prisma from "@/lib/prisma"
@@ -57,7 +58,7 @@ export interface FeedItem {
 
 const feedInclude = {
   user: {
-    select: { id: true, name: true, image: true, currentStreak: true },
+    select: { id: true, name: true, image: true, slackId: true, currentStreak: true },
   },
   themeProject: { select: { id: true, theme: true, title: true } },
 } satisfies Prisma.PostInclude
@@ -81,7 +82,7 @@ function toFeedItem(post: PostWithAuthor, likedPostIds: ReadonlySet<string>): Fe
     author: {
       id: post.user.id,
       name: post.user.name,
-      image: post.user.image,
+      image: avatarUrl(post.user),
       streak: post.user.currentStreak,
     },
     project: post.themeProject
@@ -341,7 +342,7 @@ export async function getComments(
 
   const rows = await prisma.postComment.findMany({
     where: { postId, deletedAt: null, hiddenAt: null },
-    include: { user: { select: { id: true, name: true, image: true } } },
+    include: { user: { select: { id: true, name: true, image: true, slackId: true } } },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     ...cursorArgs(opts.cursor, opts.limit),
   })
@@ -351,7 +352,7 @@ export async function getComments(
       id: c.id,
       body: c.body,
       createdAt: c.createdAt,
-      author: { id: c.user.id, name: c.user.name, image: c.user.image },
+      author: { id: c.user.id, name: c.user.name, image: avatarUrl(c.user) },
       mine: c.user.id === viewerId,
     })),
     nextCursor: page.nextCursor,
@@ -368,7 +369,7 @@ export async function addComment(postId: string, userId: string, body: string): 
 
     const comment = await tx.postComment.create({
       data: { postId, userId, body: clean },
-      include: { user: { select: { id: true, name: true, image: true } } },
+      include: { user: { select: { id: true, name: true, image: true, slackId: true } } },
     })
     await tx.post.update({ where: { id: postId }, data: { commentCount: { increment: 1 } } })
 
@@ -376,7 +377,7 @@ export async function addComment(postId: string, userId: string, body: string): 
       id: comment.id,
       body: comment.body,
       createdAt: comment.createdAt,
-      author: { id: comment.user.id, name: comment.user.name, image: comment.user.image },
+      author: { id: comment.user.id, name: comment.user.name, image: avatarUrl(comment.user) },
       mine: true,
     }
   })
