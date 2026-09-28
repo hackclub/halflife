@@ -20,10 +20,11 @@ export const CREDIT_NAME_SINGULAR = "coin"
 export const COINS_PER_HOUR = 5
 
 /**
- * Ceiling on SPENDABLE coins minted from one project's hours. `approvedHours`
- * can come from a reviewer typing into a box, and a fat-fingered 1000 should
- * not mint five thousand coins. The banked half needs no cap: it is bounded by
- * the goal's weekly banking rate by construction.
+ * Ceiling on SPENDABLE coins minted per phase. `approvedHours` can come from a
+ * reviewer typing into a box, and a fat-fingered 1000 should not mint five
+ * thousand coins. Applied per phase, so one project's design and build
+ * together can mint up to twice this; the banked half needs no cap: it is
+ * bounded by the goal's weekly banking rate by construction.
  */
 export const MAX_COINS_PER_PROJECT = 250
 
