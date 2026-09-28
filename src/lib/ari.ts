@@ -346,6 +346,23 @@ async function applyDecision(event: DecisionEvent): Promise<void> {
     tier = chosen
   }
 
+  // A build cannot be approved before its design is. Ari reviews each phase on
+  // its own clock — and Half Life deliberately lets a build be submitted before
+  // its design is approved, so a build approval arriving first is expected, not
+  // an error. It is a decision deferred by state, so throw: the delivery is not
+  // recorded and Ari redelivers it, which is what eventually applies it once
+  // the design is approved. Checked before the claim is cleared so a deferred
+  // redelivery does not keep deleting a human reviewer's claim.
+  if (result === ReviewResult.APPROVED && phase === Phase.BUILD) {
+    const project = await prisma.themeProject.findUnique({
+      where: { id: themeProjectId },
+      select: { designStatus: true },
+    })
+    if (project?.designStatus !== PhaseStatus.approved) {
+      throw new HttpError("DESIGN_NOT_APPROVED", "Waiting for the design approval before this build approval can be applied")
+    }
+  }
+
   // Ari owns the decision, so a human claim must not block it.
   await prisma.reviewClaim.deleteMany({ where: { submissionId: submission.id } })
 
@@ -366,14 +383,12 @@ async function applyDecision(event: DecisionEvent): Promise<void> {
     })
   } catch (err) {
     // These mean the decision cannot or need not be applied, and retrying will
-    // not change that: the submission is already decided, was withdrawn, or the
-    // build arrived before its design. Record and acknowledge.
+    // not change that: the submission is already decided or was withdrawn. A
+    // build that arrived before its design is NOT in this list — that one is
+    // deferred by state and is rethrown so its delivery stays unrecorded.
     // Anything else (including a claim that reappeared in the tiny window after
     // we cleared it) is rethrown so Ari retries.
-    if (
-      err instanceof HttpError &&
-      (err.code === "ALREADY_RESOLVED" || err.code === "NOT_SUBMITTED" || err.code === "DESIGN_NOT_APPROVED")
-    ) {
+    if (err instanceof HttpError && (err.code === "ALREADY_RESOLVED" || err.code === "NOT_SUBMITTED")) {
       await ignored(event, err.code.toLowerCase(), event.external_id)
       return
     }
