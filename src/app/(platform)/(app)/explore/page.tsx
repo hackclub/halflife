@@ -58,7 +58,7 @@ function Entry({ entry }: { entry: JournalRow }) {
       <header className="flex flex-wrap items-start gap-3.5">
         <FoxAvatar variant={avatarFor(entry.author)} className="size-11 shrink-0 rounded-lg" />
         <div className="min-w-0 flex-1">
-          <p className="text-[1.02rem] leading-tight font-extrabold text-navy">
+          <p className="text-[1.02rem] leading-tight font-extrabold text-navy [overflow-wrap:anywhere]">
             {entry.author} <span className="font-semibold text-navy-soft">on</span>{" "}
             <Link href={href} className="text-navy hover:underline hover:decoration-2 hover:underline-offset-4">
               {entry.project}
@@ -83,7 +83,7 @@ function Entry({ entry }: { entry: JournalRow }) {
           entry renders as written rather than with a tray of photos
           underneath. Only its opening, though: the feed is for finding work,
           and the whole entry is on the project's page. */}
-      <Markdown source={text} className="mt-4 grid max-w-[68ch] gap-3 text-[0.95rem] leading-relaxed text-navy" />
+      <Markdown source={text} className="mt-4 grid max-w-[68ch] gap-3 text-[0.95rem] leading-relaxed text-navy [overflow-wrap:anywhere]" />
       {cut && (
         <Link
           href={href}
