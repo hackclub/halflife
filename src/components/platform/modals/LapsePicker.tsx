@@ -61,11 +61,12 @@ export function LapsePicker({
   picked: LapseTimelapse[]
   onToggle: (t: LapseTimelapse) => void
   /** Leaves the page for Lapse; the caller stashes the draft first. */
-  onSignIn: () => void
+  onSignIn: () => void | Promise<void>
 }) {
   const [load, setLoad] = useState<Load>({ state: "loading" })
   const [more, setMore] = useState(false)
   const [leaving, setLeaving] = useState(false)
+  const [signInError, setSignInError] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
     setLoad({ state: "loading" })
@@ -102,6 +103,17 @@ export function LapsePicker({
     }
   }
 
+  async function startSignIn() {
+    setLeaving(true)
+    setSignInError(null)
+    try {
+      await onSignIn()
+    } catch (err) {
+      setSignInError(err instanceof Error ? err.message : "Could not start Lapse sign-in")
+      setLeaving(false)
+    }
+  }
+
   if (load.state === "loading") {
     return (
       <p className="hand py-10 text-center text-[0.9rem] text-navy-soft" aria-live="polite">
@@ -119,18 +131,16 @@ export function LapsePicker({
         <span className="grid size-12 place-items-center rounded-full bg-violet text-white">
           <IconFilm className="text-xl" />
         </span>
+        {signInError ? (
+          <p role="alert" className="max-w-[46ch] text-[0.84rem] font-semibold text-coral-deep">
+            {signInError}
+          </p>
+        ) : null}
         <p className="max-w-[40ch] text-[0.92rem] leading-snug text-navy">
           Timelapses are recorded on Lapse. Sign in once and every timelapse you publish there shows up here to pick
           from.
         </p>
-        <Button
-          variant="solid"
-          disabled={leaving}
-          onClick={() => {
-            setLeaving(true)
-            onSignIn()
-          }}
-        >
+        <Button variant="solid" disabled={leaving} onClick={() => void startSignIn()}>
           {leaving ? "Opening Lapse…" : "Sign in with Lapse"} <IconArrowRight className="text-base" />
         </Button>
         <p className="hand text-[0.78rem] text-navy-soft">

@@ -1,6 +1,7 @@
 import { z } from "zod"
 import { fail, ok, parseBody, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
+import { avatarUrl } from "@/lib/avatar"
 import { PRINTERS } from "@/lib/config/printers"
 import { getBalances, getEarnedCredit } from "@/lib/currency"
 import { requireSession } from "@/lib/guards"
@@ -37,7 +38,7 @@ export const GET = withRoute(async () => {
   ])
 
   return ok({
-    user: { ...user, hackatimeLinked: !!user?.hackatimeUserId },
+    user: { ...user, image: avatarUrl(user), hackatimeLinked: !!user?.hackatimeUserId },
     roles: gate.roles,
     permissions: permissionsFor(gate.roles),
     credit: { ...balances, earned },

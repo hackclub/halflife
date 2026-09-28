@@ -8,7 +8,13 @@ import { requireSession } from "@/lib/guards"
 import { verifyOwnTimelapses } from "@/lib/lapse"
 import { cursorArgs, pageResult, paginationQuery } from "@/lib/pagination"
 import prisma from "@/lib/prisma"
-import { getSubmissionAccess, isWeekOpen, SUBMISSIONS_CLOSED_MESSAGE, WEEK_CLOSED_MESSAGE } from "@/lib/program"
+import {
+  getSubmissionAccess,
+  isPhaseDecided,
+  isWeekOpen,
+  SUBMISSIONS_CLOSED_MESSAGE,
+  WEEK_CLOSED_MESSAGE,
+} from "@/lib/program"
 import { assertNoOwedReel } from "@/lib/reel-gate"
 import { sanitize, sanitizeHtml } from "@/lib/sanitize"
 import { sessionCreateSchema } from "@/lib/schemas/session"
@@ -76,6 +82,12 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
   const phaseStatus = data.phase === "DESIGN" ? project.designStatus : project.buildStatus
   if (phaseStatus === PhaseStatus.in_review) {
     return fail("PHASE_LOCKED", "This phase is in review — unsubmit before logging more work")
+  }
+  // Same rule as editing an entry: once a week is decided, its entries are the
+  // record the decision was made against. Without this, hours could be logged
+  // after approval and paid out on the next un-approve/re-approve cycle.
+  if (isPhaseDecided(phaseStatus)) {
+    return fail("PHASE_LOCKED", "This phase has been submitted and decided, so new entries cannot be added")
   }
 
   // Evidence has to be the claimant's own. Keys are not secrets — the feed

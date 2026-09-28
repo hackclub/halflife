@@ -27,13 +27,27 @@ features:
 oauth_config:
   scopes:
     bot:
+      # Required for message.channels, which is how a new #halflife-help post
+      # is noticed and turned into a ticket.
       - channels:history
-      - channels:manage
+      # Required for member_joined_channel on public channels — the trigger for
+      # the auto-invite. Without it the event never arrives.
       - channels:read
+      # conversations.invite takes this for public channels, which is all the
+      # auto-invite needs. channels:manage would also work but additionally
+      # grants archive/rename/kick, which nothing here calls.
+      - channels:write.invites
+      # Every post and button update goes through chat.postMessage/chat.update.
+      # This is also all the private tickets channel needs — posting into a
+      # private channel is a membership question, not a scope one, which is why
+      # there are no groups:* scopes below.
       - chat:write
-      - groups:history
-      - groups:read
-      - groups:write
+      # conversations.open (sendDM) accepts this, im:write, groups:write, or
+      # channels:manage — this is the narrow one, and all it grants is starting
+      # a DM with someone.
+      - im:write
+      # users.info, behind getSlackProfile's avatar/display-name enrichment
+      - users:read
 
 settings:
   event_subscriptions:
@@ -41,7 +55,6 @@ settings:
     bot_events:
       - member_joined_channel
       - message.channels
-      - message.groups
   interactivity:
     is_enabled: true
     request_url: https://halflife.hackclub.com/api/slack/interactions

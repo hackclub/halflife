@@ -58,12 +58,7 @@
       "enabled": true
     }
   },
-  "overrides": [
-    {
-      "includes": [".next/**", "build/**"],
-      "formatter": {
-        "enabled": false
-      }
-    }
-  ]
+  "files": {
+    "includes": ["public/**", "scripts/**", "src/**"]
+  }
 }

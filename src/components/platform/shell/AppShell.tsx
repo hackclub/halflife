@@ -109,7 +109,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <button
                 type="button"
                 onClick={() => setDoomscroller(true)}
-                className="label hidden items-center gap-1.5 rounded-full border-2 border-line px-3 py-1.5 text-navy-soft transition-colors hover:border-sky hover:text-navy xl:inline-flex"
+                className="label hidden items-center gap-1.5 rounded-full border-2 border-line bg-paper px-3 py-1.5 text-navy-soft transition-colors hover:border-sky hover:text-navy xl:inline-flex"
               >
                 <IconFilm className="text-base" /> Doomscroller
               </button>
@@ -127,7 +127,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 aria-controls="status-rail"
                 aria-label="Hide the goal and Doomscroller"
                 title="Hide the goal and Doomscroller"
-                className="hidden size-9 place-items-center rounded-full border-2 border-line text-navy-soft transition-colors hover:border-violet hover:text-navy xl:grid"
+                className="hidden size-9 place-items-center rounded-full border-2 border-line bg-paper text-navy-soft transition-colors hover:border-violet hover:text-navy xl:grid"
               >
                 <IconChevronRight className="text-base" />
               </button>
@@ -140,7 +140,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 }}
                 aria-expanded="false"
                 aria-controls="status-rail"
-                className="label hidden items-center gap-1.5 rounded-full border-2 border-line px-3 py-1.5 text-navy-soft transition-colors hover:border-violet hover:text-navy xl:inline-flex"
+                className="label hidden items-center gap-1.5 rounded-full border-2 border-line bg-paper px-3 py-1.5 text-navy-soft transition-colors hover:border-violet hover:text-navy xl:inline-flex"
               >
                 <IconChevronLeft className="text-base" /> Goal &amp; Doomscroller
               </button>
@@ -151,7 +151,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Link
                 href="/doomscroller"
                 data-tour="doomscroller-button"
-                className="label inline-flex items-center gap-1.5 rounded-full border-2 border-line px-3 py-1.5 text-navy-soft transition-colors hover:border-sky hover:text-navy lg:hidden"
+                className="label inline-flex items-center gap-1.5 rounded-full border-2 border-line bg-paper px-3 py-1.5 text-navy-soft transition-colors hover:border-sky hover:text-navy lg:hidden"
               >
                 <IconFilm className="text-base" /> Doomscroller
               </Link>

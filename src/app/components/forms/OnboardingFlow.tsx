@@ -1,6 +1,5 @@
 "use client"
 
-import { useRouter } from "next/navigation"
 import { type ReactNode, useState } from "react"
 import { Button, Chip, Field, OptionRow, Panel } from "@/components/platform/ui"
 import type { OnboardingView } from "@/lib/onboarding-view"
@@ -30,7 +29,6 @@ export function OnboardingFlow({
   initial,
   onComplete,
 }: Readonly<{ initial: OnboardingView; onComplete?: () => void }>) {
-  const router = useRouter()
   const [view, setView] = useState(initial)
   const [viewing, setViewing] = useState(Math.min(initial.reached, initial.steps.length - 1))
   const [busy, setBusy] = useState(false)
@@ -68,7 +66,6 @@ export function OnboardingFlow({
       if (opts.advance !== false) {
         setViewing((current) => Math.min(current + 1, next.steps.length - 1))
       }
-      router.refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong")
     } finally {

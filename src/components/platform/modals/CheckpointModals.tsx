@@ -12,6 +12,7 @@ import {
   IconEye,
   IconFilm,
   IconMic,
+  IconUpload,
   IconWarning,
 } from "@/components/platform/icons"
 import { countImages, Markdown, proseLength } from "@/components/platform/Markdown"
@@ -33,8 +34,10 @@ import { normalizeRepo } from "@/lib/repo"
 import type { RepoCheckResult } from "@/lib/repo-checks"
 import { useStore } from "@/lib/store"
 import type { Checkpoint } from "@/lib/types"
+import { uploadFile } from "@/lib/use-handoff"
 import { ImageUploads, type UploadedImage } from "./ImageUploads"
 import { fmtDuration, LapsePicker, type LapseTimelapse } from "./LapsePicker"
+
 import { Modal, ModalTitle } from "./Modal"
 import { RepoChecks } from "./RepoChecks"
 
@@ -114,6 +117,9 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
   const [hoursText, setHoursText] = useState(draft?.hoursText ?? (existing ? String(to2(existing.minutes / 60)) : ""))
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const imageInput = useRef<HTMLInputElement>(null)
+  const [imageBusy, setImageBusy] = useState(false)
+  const [imageError, setImageError] = useState<string | null>(null)
 
   const project = projects.find((p) => p.weekId === (week.phase === "build" ? week.id - 5 : week.id)) ?? projects[0]
 
@@ -190,9 +196,34 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
     setOpenCheckpoint(null)
   }
 
-  function signInWithLapse() {
+  async function signInWithLapse() {
     stashJournalDraft(checkpoint.id, { tab: "timelapse", body, hoursText, picked })
-    void linkLapse(`${window.location.pathname}?journal=${encodeURIComponent(checkpoint.id)}`)
+    await linkLapse(`${window.location.pathname}?journal=${encodeURIComponent(checkpoint.id)}`)
+  }
+
+  async function addJournalImages(files: FileList | null) {
+    const selected = Array.from(files ?? [])
+    if (selected.length === 0) return
+
+    setImageBusy(true)
+    setImageError(null)
+    try {
+      for (const file of selected) {
+        const { url } = await uploadFile(file, "sessions")
+        if (!url) throw new Error("Image uploads need a public URL before they can be added here")
+        const alt =
+          file.name
+            .replace(/\.[^.]+$/, "")
+            .replace(/[[\]]/g, "")
+            .trim() || "Journal image"
+        setBody((current) => `${current}${current.trim() ? "\n\n" : ""}![${alt}](${url})`)
+      }
+    } catch (err) {
+      setImageError(err instanceof Error ? err.message : "The image did not upload")
+    } finally {
+      setImageBusy(false)
+      if (imageInput.current) imageInput.current.value = ""
+    }
   }
 
   return (
@@ -362,7 +393,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
             )}
           </div>
 
-          <div className="mt-2 flex flex-wrap items-baseline justify-end gap-x-4 gap-y-1">
+          <div className="mt-2 flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
             <p
               className={cx(
                 "hand text-[0.76rem] tabular-nums",
@@ -371,10 +402,35 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
             >
               {shots} / {needPhotos} images
             </p>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={imageBusy}
+              onClick={() => imageInput.current?.click()}
+              aria-label="Add images to your journal entry"
+            >
+              <IconUpload className="text-base" />
+              {imageBusy ? "Uploading…" : "Add images"}
+            </Button>
+            <input
+              ref={imageInput}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              multiple
+              className="sr-only"
+              tabIndex={-1}
+              aria-hidden="true"
+              onChange={(event) => void addJournalImages(event.target.files)}
+            />
             <p className={cx("hand text-[0.76rem] tabular-nums", longEnough ? "text-teal-ink" : "text-navy-soft")}>
               {written} / 200 characters
             </p>
           </div>
+          {imageError ? (
+            <p role="alert" className="mt-2 text-right text-[0.8rem] font-semibold text-coral-deep">
+              {imageError}
+            </p>
+          ) : null}
         </div>
       ) : (
         <div>
@@ -792,6 +848,12 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
   // under way for it means that question was answered last time.
   const [again, setAgain] = useState(!done || draft !== null)
   const titleId = useId()
+  const captionLength = caption.trim().length
+  const captionReady = captionLength >= 8
+  const captionBlocker = captionReady
+    ? null
+    : `Caption needs ${8 - captionLength} more character${8 - captionLength === 1 ? "" : "s"} (${captionLength}/8).`
+  const postBlocker = !clip ? "Add a clip before posting this reel." : captionBlocker
 
   // Posted: the same sheet now asks whether it is going anywhere else. The
   // clip's URL comes along so it can be saved and uploaded there.
@@ -849,6 +911,10 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
             <p role="alert" className="hand mr-auto min-w-0 flex-1 text-[0.84rem] leading-snug text-coral-deep">
               {postError}
             </p>
+          ) : postBlocker ? (
+            <p role="status" className="hand mr-auto min-w-0 flex-1 text-[0.84rem] leading-snug text-coral-deep">
+              {postBlocker}
+            </p>
           ) : (
             <p className="hand mr-auto hidden text-[0.78rem] text-navy-soft sm:block">
               Reels post straight to the Doomscroller.
@@ -865,7 +931,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
                 draft to keep — it is just the answer to "another one?" */}
             {done && !clip && !caption.trim() ? "Not now" : "Save draft"}
           </Button>
-          <Button variant="solid" disabled={!clip || caption.trim().length < 8 || posting} onClick={() => void post()}>
+          <Button variant="solid" disabled={Boolean(postBlocker) || posting} onClick={() => void post()}>
             {posting ? "Posting…" : done ? "Post another reel" : "Post reel"} <IconFilm className="text-base" />
           </Button>
         </>
@@ -900,10 +966,15 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
             <ReelCapture objectKey={clip} onCaptured={capture} />
           </div>
 
-          <Field label="Caption" hint="One line. Say what changed." id="reel-caption">
+          <Field
+            label="Caption"
+            hint={captionReady ? "One line. Say what changed." : `At least 8 characters (${captionLength}/8).`}
+            id="reel-caption"
+          >
             <input
               id="reel-caption"
               value={caption}
+              aria-invalid={!captionReady || undefined}
               onChange={(e) => setCaption(e.target.value)}
               placeholder="routed the whole board without a single ratline left"
               className={inputClass}

@@ -49,6 +49,10 @@ export function ReelCapture({
 
   async function pick(file: File | undefined) {
     if (!file) return
+    if (!file.type.startsWith("video/")) {
+      setError("Choose a video file (MP4, WebM, or MOV).")
+      return
+    }
     setBusy(true)
     setProgress(null)
     setError(null)

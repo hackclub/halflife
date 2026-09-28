@@ -30,6 +30,7 @@ export async function lockUserCredit(tx: Tx, userId: string): Promise<void> {
 const EARNING_KINDS: LedgerKind[] = [
   LedgerKind.DESIGN_BANKED_HOURS,
   LedgerKind.DESIGN_EXCESS_HOURS,
+  LedgerKind.BUILD_BANKED_HOURS,
   LedgerKind.BUILD_HOURS,
   LedgerKind.BOM_SAVINGS,
   LedgerKind.THEME_COMPLETION_BONUS,

@@ -65,7 +65,9 @@ export function NotFoundScene() {
               station 404
             </h2>
             <MissingPath className={styles.path} />
-            <p className={styles.text}>This page doesn&rsquo;t exist (or you don&rsquo;t have permission to view it!)</p>
+            <p className={styles.text}>
+              This page doesn&rsquo;t exist (or you don&rsquo;t have permission to view it!)
+            </p>
           </div>
         </section>
 

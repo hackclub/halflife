@@ -82,7 +82,8 @@ export async function sweepExpiredClaims(): Promise<number> {
 
 export interface FinalizeInput {
   submissionId: string
-  reviewerId: string
+  /** Null when the decision was made by Ari, not by a Half Life user. */
+  reviewerId: string | null
   reviewerName: string | null
   reviewerEmail: string | null
   result: ReviewResult
@@ -166,7 +167,10 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
   }
 
   const breakdown = await getHoursBreakdown(project.id, phase, { live: approving })
-  if (approving && breakdown.hackatimeStale) {
+  // A reviewer (human or Ari) who supplied the hours explicitly has already
+  // covered the underpayment risk that a stale Hackatime reading creates, so
+  // staleness must not block a decision that does not depend on the live value.
+  if (approving && input.hoursOverride == null && breakdown.hackatimeStale) {
     // Refusing here is the point: stasis's client returns 0 on a Hackatime
     // timeout and that zero flows into the grant row, silently underpaying
     // someone with no trace.
@@ -222,6 +226,15 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
     })
     if (!fresh) throw new HttpError("NOT_SUBMITTED", "This submission has been withdrawn")
     if (fresh.resolvedAt) throw new HttpError("ALREADY_RESOLVED", "Already decided")
+
+    // Re-check the claim under the transaction too. The check before it ran
+    // against a read taken when the page opened, so another reviewer can have
+    // claimed the submission since; without this the decision would proceed and
+    // delete their live claim on the way out.
+    const claim = await tx.reviewClaim.findUnique({ where: { submissionId: input.submissionId } })
+    if (claim && claim.reviewerId !== input.reviewerId && claim.expiresAt > new Date()) {
+      throw new HttpError("CLAIMED_BY_OTHER", "Another reviewer holds the claim on this submission")
+    }
 
     if (approving) {
       // Accept every unreviewed session at its claimed hours, so the
@@ -424,7 +437,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 export async function unapprovePhase(
   themeProjectId: string,
   phase: Phase,
-  adminId: string,
+  adminId: string | null,
   adminEmail: string | null,
   reason: string,
 ): Promise<void> {
@@ -536,7 +549,7 @@ export async function unapprovePhase(
 export async function reopenPhase(
   themeProjectId: string,
   phase: Phase,
-  adminId: string,
+  adminId: string | null,
   adminEmail: string | null,
   reason: string,
 ): Promise<void> {

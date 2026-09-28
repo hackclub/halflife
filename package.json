@@ -16,6 +16,10 @@
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
     "grant-role": "tsx scripts/grant-role.ts",
+    "streaks:recompute": "tsx --conditions=react-server scripts/recompute-streaks.ts",
+    "import:stasis": "tsx import/stasis.ts",
+    "import:check": "tsx import/check.ts",
+    "import:dump": "tsx import/dump.ts",
     "verify:ledger": "tsx --conditions=react-server scripts/verify-ledger.ts",
     "dump-airtable-schema": "tsx --conditions=react-server scripts/dump-airtable-schema.ts",
     "verify:onboarding": "tsx --conditions=react-server scripts/verify-onboarding.ts",
@@ -29,6 +33,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1124.0",
     "@aws-sdk/s3-request-presigner": "^3.1124.0",
+    "@hackclub/ari": "^0.1.1",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "better-auth": "1.7.5",

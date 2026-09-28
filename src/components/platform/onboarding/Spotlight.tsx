@@ -182,6 +182,18 @@ export function Spotlight({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape" && onSkip) onSkip()
+
+      // The tour's click-anywhere shortcut is a background affordance. It must
+      // not steal Enter from a textarea (it should insert a newline) or from a
+      // button (the browser should activate that button normally).
+      const target = e.target
+      if (
+        target instanceof HTMLElement &&
+        target.closest("a, button, input, textarea, select, [contenteditable='true']")
+      ) {
+        return
+      }
+
       if ((e.key === "Enter" || e.key === " ") && clickAnywhere) {
         e.preventDefault()
         onNext()

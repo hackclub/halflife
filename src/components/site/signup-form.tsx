@@ -11,14 +11,6 @@ import brushstroke from "../../../public/art/brushstroke.png"
 type Status = "idle" | "pending" | "error"
 
 /**
- * How long the sign-up record may hold up the way in. It is attribution — who
- * referred this visitor, which campaign brought them — and worth waiting a
- * moment for, but never worth making someone stare at a spinner: past this,
- * the sign-in goes ahead and the request is left to finish on its own.
- */
-const SUBSCRIBE_WAIT_MS = 2500
-
-/**
  * The way in. Sizing is entirely `em`-relative, so the caller sets one
  * font-size and the field, the button and the paddings all follow — the comp
  * stage passes a `cqw` value, the stacked mobile layout passes a `clamp()`.
@@ -109,30 +101,28 @@ export default function SignupForm({
     // Whoever sent this visitor here — a referral link or a campaign URL —
     // is only present in this page's own address bar, so it's read fresh at
     // submit time and sent before the page leaves. `keepalive` lets it finish
-    // even if the sign-in navigates away first; its answer is not needed.
+    // even if the sign-in navigates away first, and its answer is not needed,
+    // so it is deliberately NOT awaited: awaiting a slow or rate-limited
+    // signup would put the list provider between the visitor and the way in.
+    // (This used to await with an AbortController that fired after 2.5s — but
+    // aborting cancels the request, so a slow signup was silently dropped
+    // rather than "left to finish on its own".)
     const params = new URLSearchParams(window.location.search)
-    const abort = new AbortController()
-    const timer = window.setTimeout(() => abort.abort(), SUBSCRIBE_WAIT_MS)
-    try {
-      await fetch("/api/subscribe", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        keepalive: true,
-        signal: abort.signal,
-        body: JSON.stringify({
-          email,
-          ref: params.get("ref") || undefined,
-          utmSource: params.get("utm_source") || undefined,
-          utmMedium: params.get("utm_medium") || undefined,
-          utmCampaign: params.get("utm_campaign") || undefined,
-        }),
-      })
-    } catch {
+    void fetch("/api/subscribe", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      keepalive: true,
+      body: JSON.stringify({
+        email,
+        ref: params.get("ref") || undefined,
+        utmSource: params.get("utm_source") || undefined,
+        utmMedium: params.get("utm_medium") || undefined,
+        utmCampaign: params.get("utm_campaign") || undefined,
+      }),
+    }).catch(() => {
       // Slow, offline or refused: none of it should stand between someone and
       // signing in. The sign-in below says so if the network is really gone.
-    } finally {
-      window.clearTimeout(timer)
-    }
+    })
 
     if (session) {
       router.push("/dashboard")

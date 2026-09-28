@@ -2,11 +2,13 @@ import "server-only"
 import type { Prisma } from "@/app/generated/prisma/client"
 import { PostKind, PostStatus } from "@/app/generated/prisma/enums"
 import { markReel } from "@/lib/analytics"
+import { avatarUrl } from "@/lib/avatar"
 import { HttpError } from "@/lib/errors"
 import { cursorArgs, pageResult } from "@/lib/pagination"
 import prisma from "@/lib/prisma"
 import { currentWeekNumber } from "@/lib/program"
 import { sanitize } from "@/lib/sanitize"
+import { recomputeStreak } from "@/lib/streak"
 import { isOwnedKey, publicUrlFor } from "@/lib/uploads/r2"
 
 /**
@@ -57,7 +59,7 @@ export interface FeedItem {
 
 const feedInclude = {
   user: {
-    select: { id: true, name: true, image: true, currentStreak: true },
+    select: { id: true, name: true, image: true, slackId: true, currentStreak: true },
   },
   themeProject: { select: { id: true, theme: true, title: true } },
 } satisfies Prisma.PostInclude
@@ -81,7 +83,7 @@ function toFeedItem(post: PostWithAuthor, likedPostIds: ReadonlySet<string>): Fe
     author: {
       id: post.user.id,
       name: post.user.name,
-      image: post.user.image,
+      image: avatarUrl(post.user),
       streak: post.user.currentStreak,
     },
     project: post.themeProject
@@ -219,32 +221,40 @@ export async function createPost(input: CreatePostInput): Promise<FeedItem> {
   const caption = sanitize(input.caption)
   const weekNumber = await currentWeekNumber()
 
-  const post = await prisma.post.create({
-    data: {
-      userId: input.userId,
-      themeProjectId: input.themeProjectId ?? null,
-      checkpointKey: input.checkpointKey ?? null,
-      kind: input.kind,
-      caption,
-      objectKey: input.objectKey,
-      thumbnailKey: input.thumbnailKey ?? null,
-      contentType: input.contentType ?? null,
-      byteSize: input.byteSize ?? null,
-      durationSeconds: input.durationSeconds ?? null,
-      width: input.width ?? null,
-      height: input.height ?? null,
-      weekNumber,
-      // There is no transcoding step yet: the file is already in R2 by the
-      // time this runs, so the post is playable immediately. PROCESSING stays
-      // in the enum for when a pipeline lands and the thumbnail arrives later.
-      status: PostStatus.PUBLISHED,
-      publishedAt: new Date(),
-      ...(input.kind === PostKind.ANNOUNCEMENT ? { pinnedAt: new Date() } : {}),
-    },
-    include: feedInclude,
+  // The reel and the streak day it earns land together: a rolled-back post must
+  // not leave a day behind, exactly as a rolled-back devlog must not.
+  const post = await prisma.$transaction(async (tx) => {
+    const created = await tx.post.create({
+      data: {
+        userId: input.userId,
+        themeProjectId: input.themeProjectId ?? null,
+        checkpointKey: input.checkpointKey ?? null,
+        kind: input.kind,
+        caption,
+        objectKey: input.objectKey,
+        thumbnailKey: input.thumbnailKey ?? null,
+        contentType: input.contentType ?? null,
+        byteSize: input.byteSize ?? null,
+        durationSeconds: input.durationSeconds ?? null,
+        width: input.width ?? null,
+        height: input.height ?? null,
+        weekNumber,
+        // There is no transcoding step yet: the file is already in R2 by the
+        // time this runs, so the post is playable immediately. PROCESSING stays
+        // in the enum for when a pipeline lands and the thumbnail arrives later.
+        status: PostStatus.PUBLISHED,
+        publishedAt: new Date(),
+        ...(input.kind === PostKind.ANNOUNCEMENT ? { pinnedAt: new Date() } : {}),
+      },
+      include: feedInclude,
+    })
+
+    // A participant's own reel, not a staff announcement.
+    if (input.kind !== PostKind.ANNOUNCEMENT) await recomputeStreak(tx, input.userId)
+
+    return created
   })
 
-  // A participant's own reel, not a staff announcement.
   if (input.kind !== PostKind.ANNOUNCEMENT) await markReel(input.userId, post.createdAt)
 
   return toFeedItem(post, new Set())
@@ -260,6 +270,12 @@ export async function createPost(input: CreatePostInput): Promise<FeedItem> {
  */
 export async function recordView(postId: string, userId: string): Promise<number> {
   return prisma.$transaction(async (tx) => {
+    // Only a live, published reel counts. Without this, views keep accruing on
+    // a hidden or deleted post, and the virality number those prizes rest on
+    // could be moved for a reel that is out of the feed.
+    const post = await tx.post.findFirst({ where: { id: postId, ...visible }, select: { id: true } })
+    if (!post) throw new HttpError("NOT_FOUND", "Post not found")
+
     const { count } = await tx.postView.createMany({
       data: [{ postId, userId }],
       skipDuplicates: true,
@@ -328,9 +344,14 @@ export async function getComments(
   viewerId: string,
   opts: { cursor?: string; limit: number },
 ): Promise<{ items: CommentView[]; nextCursor: string | null }> {
+  // A hidden or deleted post's comments are not readable by id. The filter on
+  // the comments themselves is not enough — the parent has to be visible too.
+  const post = await prisma.post.findFirst({ where: { id: postId, ...visible }, select: { id: true } })
+  if (!post) throw new HttpError("NOT_FOUND", "Post not found")
+
   const rows = await prisma.postComment.findMany({
     where: { postId, deletedAt: null, hiddenAt: null },
-    include: { user: { select: { id: true, name: true, image: true } } },
+    include: { user: { select: { id: true, name: true, image: true, slackId: true } } },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     ...cursorArgs(opts.cursor, opts.limit),
   })
@@ -340,7 +361,7 @@ export async function getComments(
       id: c.id,
       body: c.body,
       createdAt: c.createdAt,
-      author: { id: c.user.id, name: c.user.name, image: c.user.image },
+      author: { id: c.user.id, name: c.user.name, image: avatarUrl(c.user) },
       mine: c.user.id === viewerId,
     })),
     nextCursor: page.nextCursor,
@@ -357,7 +378,7 @@ export async function addComment(postId: string, userId: string, body: string): 
 
     const comment = await tx.postComment.create({
       data: { postId, userId, body: clean },
-      include: { user: { select: { id: true, name: true, image: true } } },
+      include: { user: { select: { id: true, name: true, image: true, slackId: true } } },
     })
     await tx.post.update({ where: { id: postId }, data: { commentCount: { increment: 1 } } })
 
@@ -365,7 +386,7 @@ export async function addComment(postId: string, userId: string, body: string): 
       id: comment.id,
       body: comment.body,
       createdAt: comment.createdAt,
-      author: { id: comment.user.id, name: comment.user.name, image: comment.user.image },
+      author: { id: comment.user.id, name: comment.user.name, image: avatarUrl(comment.user) },
       mine: true,
     }
   })
@@ -374,8 +395,11 @@ export async function addComment(postId: string, userId: string, body: string): 
 /** Delete your own comment. Moderators use `hideComment` instead. */
 export async function deleteOwnComment(commentId: string, userId: string): Promise<void> {
   await prisma.$transaction(async (tx) => {
+    // `hiddenAt: null` too: a moderator-hidden comment already had its decrement
+    // when it was hidden, so letting the owner delete it as well would take the
+    // count down a second time and could drive it negative.
     const { count } = await tx.postComment.updateMany({
-      where: { id: commentId, userId, deletedAt: null },
+      where: { id: commentId, userId, deletedAt: null, hiddenAt: null },
       data: { deletedAt: new Date() },
     })
     if (count === 0) throw new HttpError("NOT_FOUND", "Comment not found")
@@ -392,11 +416,16 @@ export async function deleteOwnComment(commentId: string, userId: string): Promi
 
 /** Soft-delete your own reel. */
 export async function deleteOwnPost(postId: string, userId: string): Promise<void> {
-  const { count } = await prisma.post.updateMany({
-    where: { id: postId, userId, deletedAt: null },
-    data: { deletedAt: new Date(), status: PostStatus.REMOVED },
+  await prisma.$transaction(async (tx) => {
+    const { count } = await tx.post.updateMany({
+      where: { id: postId, userId, deletedAt: null },
+      data: { deletedAt: new Date(), status: PostStatus.REMOVED },
+    })
+    if (count === 0) throw new HttpError("NOT_FOUND", "Post not found")
+    // Deleting the only reel on a day removes that day from the run, so the
+    // streak is recomputed with it — same rule as deleting a devlog.
+    await recomputeStreak(tx, userId)
   })
-  if (count === 0) throw new HttpError("NOT_FOUND", "Post not found")
 }
 
 // ─── Moderation ──────────────────────────────────────────────────────────────

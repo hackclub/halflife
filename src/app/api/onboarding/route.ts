@@ -1,3 +1,4 @@
+import { after } from "next/server"
 import { ok, parseBody, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { requireSession } from "@/lib/guards"
@@ -26,14 +27,16 @@ export const POST = withRoute(async (req: Request) => {
   // state machine declares.
   const result = await submitStep(gate.user.id, parsed.data as OnboardingAnswer)
 
-  await logAudit({
-    action: result.completed ? AuditAction.USER_COMPLETE_ONBOARDING : AuditAction.USER_ADVANCE_ONBOARDING,
-    actorId: gate.user.id,
-    actorEmail: gate.user.email,
-    targetType: "User",
-    targetId: gate.user.id,
-    metadata: { step: parsed.data.step, reached: result.state.reached },
-  })
+  after(() =>
+    logAudit({
+      action: result.completed ? AuditAction.USER_COMPLETE_ONBOARDING : AuditAction.USER_ADVANCE_ONBOARDING,
+      actorId: gate.user.id,
+      actorEmail: gate.user.email,
+      targetType: "User",
+      targetId: gate.user.id,
+      metadata: { step: parsed.data.step, reached: result.state.reached },
+    }),
+  )
 
   return ok({ onboarding: toOnboardingView(result.state) })
 })

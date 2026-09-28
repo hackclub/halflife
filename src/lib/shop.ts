@@ -1,5 +1,5 @@
 import "server-only"
-import type { ShopItem, ShopOrder } from "@/app/generated/prisma/client"
+import type { Prisma, ShopItem, ShopOrder } from "@/app/generated/prisma/client"
 import { CoinBucket, LedgerKind, ShopItemCategory, ShopOrderStatus } from "@/app/generated/prisma/enums"
 import { appendLedgerEntry, type Balances, getBalances, lockUserCredit, spendableFor } from "@/lib/currency"
 import { HttpError } from "@/lib/errors"
@@ -7,7 +7,45 @@ import { getPrinterQualification } from "@/lib/printer"
 import prisma from "@/lib/prisma"
 import { getShopAccess, SHOP_CLOSED_MESSAGE } from "@/lib/program"
 
-export interface ShopItemView extends ShopItem {
+/**
+ * The catalogue row as a participant sees it.
+ *
+ * `costUsd` is deliberately absent: it is what Hack Club pays for the item, not
+ * what it costs the buyer. The old `...item` spread shipped it to the browser
+ * in the RSC payload even though nothing rendered it.
+ */
+export type ShopItemPublic = Omit<ShopItem, "costUsd">
+
+/**
+ * The buyer's own view of an order, shared by the purchase response and the
+ * order list so the two cannot drift. `unitCostUsd` (what Hack Club pays), the
+ * encrypted address/phone and `lastActorId` are staff-side and never selected.
+ */
+export const shopOrderPublicSelect = {
+  id: true,
+  orderNumber: true,
+  shopItemId: true,
+  quantity: true,
+  unitCredits: true,
+  totalCredits: true,
+  itemNameSnapshot: true,
+  status: true,
+  holdReason: true,
+  rejectionReason: true,
+  trackingNumber: true,
+  trackingCarrier: true,
+  fulfillmentMethod: true,
+  fulfillmentStage: true,
+  fulfillmentUpdatedAt: true,
+  placedAt: true,
+  heldAt: true,
+  rejectedAt: true,
+  fulfilledAt: true,
+} satisfies Prisma.ShopOrderSelect
+
+export type ShopOrderPublic = Prisma.ShopOrderGetPayload<{ select: typeof shopOrderPublicSelect }>
+
+export interface ShopItemView extends ShopItemPublic {
   /** Against the pot this item may be paid from, not against the total. */
   affordable: boolean
   locked: boolean
@@ -20,9 +58,26 @@ export async function getShopItemsFor(userId: string): Promise<{
   balances: Balances
 }> {
   const [items, balances, qualification, orders] = await Promise.all([
+    // Explicit `select`, never the whole row: a new internal column added to
+    // ShopItem must not silently start reaching participants.
     prisma.shopItem.findMany({
       where: { active: true },
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        imageUrl: true,
+        category: true,
+        priceCredits: true,
+        maxPerUser: true,
+        stock: true,
+        requiresPrinterQualified: true,
+        active: true,
+        sortOrder: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     }),
     prisma.$transaction((tx) => getBalances(tx, userId)),
     getPrinterQualification(userId),
@@ -77,7 +132,7 @@ export async function getShopItemsFor(userId: string): Promise<{
  * nothing, so without the lock ten parallel requests all read the same balance
  * and all succeed.
  */
-export async function purchase(userId: string, shopItemId: string, quantity: number): Promise<ShopOrder> {
+export async function purchase(userId: string, shopItemId: string, quantity: number): Promise<ShopOrderPublic> {
   const access = await getShopAccess(userId)
   if (!access.open) throw new HttpError("SHOP_CLOSED", SHOP_CLOSED_MESSAGE)
 
@@ -140,6 +195,9 @@ export async function purchase(userId: string, shopItemId: string, quantity: num
         itemNameSnapshot: fresh.name,
         unitCostUsd: fresh.costUsd,
       },
+      // Only the buyer's fields come back; `unitCostUsd` is stored for
+      // fulfillment but must not leave the server.
+      select: shopOrderPublicSelect,
     })
 
     // One row per pot drawn on. The ledger's unique key includes `bucket`
@@ -249,28 +307,55 @@ export async function rejectOrder(orderId: string, adminId: string, reason: stri
   })
 }
 
+/**
+ * Mark an order shipped.
+ *
+ * Serialized against `rejectOrder` on the same per-user credit lock, because a
+ * fulfill only reads the order and `rejectOrder` only mutates credit: without
+ * a shared lock the two interleave, the refund lands and the goods still ship.
+ * The conditional `updateMany` is the second guard, for a decision that landed
+ * between the lock being taken and the write.
+ */
 export async function fulfillOrder(
   orderId: string,
   adminId: string,
   tracking: { number?: string | null; carrier?: string | null },
 ): Promise<ShopOrder> {
-  const order = await prisma.shopOrder.findUnique({ where: { id: orderId } })
-  if (!order) throw new HttpError("NOT_FOUND", "Order not found")
-  if (order.status === ShopOrderStatus.FULFILLED) {
-    throw new HttpError("CONFLICT", "This order is already fulfilled")
-  }
-  if (order.status === ShopOrderStatus.REJECTED) {
-    throw new HttpError("CONFLICT", "This order was rejected")
-  }
-
-  return prisma.shopOrder.update({
+  const target = await prisma.shopOrder.findUnique({
     where: { id: orderId },
-    data: {
-      status: ShopOrderStatus.FULFILLED,
-      fulfilledAt: new Date(),
-      trackingNumber: tracking.number ?? null,
-      trackingCarrier: tracking.carrier ?? null,
-      lastActorId: adminId,
-    },
+    select: { userId: true },
+  })
+  if (!target) throw new HttpError("NOT_FOUND", "Order not found")
+
+  return prisma.$transaction(async (tx) => {
+    await lockUserCredit(tx, target.userId)
+
+    const order = await tx.shopOrder.findUnique({ where: { id: orderId } })
+    if (!order) throw new HttpError("NOT_FOUND", "Order not found")
+    if (order.status === ShopOrderStatus.FULFILLED) {
+      throw new HttpError("CONFLICT", "This order is already fulfilled")
+    }
+    if (order.status === ShopOrderStatus.REJECTED) {
+      throw new HttpError("CONFLICT", "This order was rejected")
+    }
+    if (order.status === ShopOrderStatus.CANCELLED) {
+      throw new HttpError("CONFLICT", "This order was cancelled")
+    }
+
+    const claimed = await tx.shopOrder.updateMany({
+      where: { id: orderId, status: order.status },
+      data: {
+        status: ShopOrderStatus.FULFILLED,
+        fulfilledAt: new Date(),
+        trackingNumber: tracking.number ?? null,
+        trackingCarrier: tracking.carrier ?? null,
+        lastActorId: adminId,
+      },
+    })
+    if (claimed.count !== 1) {
+      throw new HttpError("CONFLICT", "This order was decided by someone else")
+    }
+
+    return tx.shopOrder.findUniqueOrThrow({ where: { id: orderId } })
   })
 }

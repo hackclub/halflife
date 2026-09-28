@@ -188,7 +188,7 @@ export default async function ReviewDetailPage({ params }: Props) {
                   {review.result.toLowerCase()}
                   {review.invalidated ? <div className="hl-hint">invalidated</div> : null}
                 </td>
-                <td>{review.reviewer.name ?? "—"}</td>
+                <td>{review.reviewer?.name ?? "Ari"}</td>
                 <td>
                   {review.feedback}
                   {review.frozenApprovedHours !== null ? (

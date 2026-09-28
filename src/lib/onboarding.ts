@@ -227,26 +227,57 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
   const reached = Math.max(before.reached, index + 1)
   const finishing = reached >= ONBOARDING_STEP_COUNT
 
-  await prisma.$transaction(async (tx) => {
-    if (Object.keys(projectData).length > 0) {
-      await tx.themeProject.update({
-        where: { id: before.project.id },
-        data: projectData,
-      })
-    }
-    await tx.user.update({
+  const { projectAfter, userAfter } = await prisma.$transaction(async (tx) => {
+    const projectAfter =
+      Object.keys(projectData).length > 0
+        ? await tx.themeProject.update({
+            where: { id: before.project.id },
+            data: projectData,
+            select: {
+              id: true,
+              title: true,
+              description: true,
+              requestedTier: true,
+              starterProjectId: true,
+            },
+          })
+        : before.project
+
+    const userAfter = await tx.user.update({
       where: { id: userId },
       data: {
         ...userData,
         onboardingStep: reached,
         ...(finishing ? { onboardingCompletedAt: new Date() } : {}),
       },
+      select: {
+        hardwareExperience: true,
+        onboardingStep: true,
+        onboardingCompletedAt: true,
+        trackingTutorialDismissedAt: true,
+      },
     })
+
+    return { projectAfter, userAfter }
   })
 
   if (Object.keys(projectData).length > 0) await markProjectCreated(before.project.id, userId)
 
-  return { state: await getOnboardingState(userId), completed: finishing }
+  const state: OnboardingState = {
+    ...before,
+    completed: userAfter.onboardingCompletedAt !== null,
+    reached,
+    current: stepAt(reached) ?? null,
+    experience: userAfter.hardwareExperience,
+    suggestedTier: suggestedTierFor(userAfter.hardwareExperience),
+    project: {
+      ...projectAfter,
+      tierLocked: projectAfter.starterProjectId !== null,
+    },
+    trackingDismissed: userAfter.trackingTutorialDismissedAt !== null,
+  }
+
+  return { state, completed: finishing }
 }
 
 /**
@@ -278,5 +309,5 @@ export async function needsOnboarding(userId: string): Promise<boolean> {
   return started === 0
 }
 
-export { ONBOARDING_STEPS }
 export type { OnboardingStepId }
+export { ONBOARDING_STEPS }
