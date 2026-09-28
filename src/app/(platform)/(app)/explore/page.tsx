@@ -101,7 +101,10 @@ function Entry({ entry }: { entry: JournalRow }) {
           entry renders as written rather than with a tray of photos
           underneath. Only its opening, though: the feed is for finding work,
           and the whole entry is on the project's page. */}
-      <Markdown source={text} className="mt-4 grid max-w-[68ch] gap-3 text-[0.95rem] leading-relaxed text-navy [overflow-wrap:anywhere]" />
+      <Markdown
+        source={text}
+        className="mt-4 grid max-w-[68ch] gap-3 text-[0.95rem] leading-relaxed text-navy [overflow-wrap:anywhere]"
+      />
       {cut && (
         <Link
           href={href}

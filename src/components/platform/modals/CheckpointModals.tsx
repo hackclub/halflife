@@ -294,11 +294,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
       {tab === "journal" ? (
         <div>
           {editing ? (
-            <ModalTitle
-              subWide
-            >
-              Edit this entry
-            </ModalTitle>
+            <ModalTitle subWide>Edit this entry</ModalTitle>
           ) : (
             // `subWide`: the modal is the large size and the editor below runs
             // its full width, so a subtitle held to 62ch stopped two-thirds of

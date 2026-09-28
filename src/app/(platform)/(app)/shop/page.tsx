@@ -22,7 +22,7 @@ export default async function ShopPage() {
         color="var(--color-orange)"
         sub={
           <>
-            Don&rsquo;t see what you&rsquo;re looking for? Suggest it on the {" "}
+            Don&rsquo;t see what you&rsquo;re looking for? Suggest it on the{" "}
             <a
               href="https://hackclub.enterprise.slack.com/docs/T0266FRGM/F0C4MAYPK4H"
               target="_blank"

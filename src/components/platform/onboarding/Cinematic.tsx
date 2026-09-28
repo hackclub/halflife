@@ -2,15 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { FoxAvatar, FoxMark, PrinterArt, ReelScene, WeekScene } from "@/components/platform/art"
-import {
-  IconCheck,
-  IconClock,
-  IconCoin,
-  IconFilm,
-  IconLock,
-  IconPlay,
-  IconUpload,
-} from "@/components/platform/icons"
+import { IconCheck, IconClock, IconCoin, IconFilm, IconLock, IconPlay, IconUpload } from "@/components/platform/icons"
 import { Button, cx, onAccent } from "@/components/platform/ui"
 import { MIN_HOURS_PER_WEEK } from "@/lib/config/printers"
 import { BUILD_HOURS, checkpointsFor, WEEK_META } from "@/lib/curriculum"

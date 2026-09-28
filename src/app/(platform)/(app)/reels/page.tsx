@@ -17,10 +17,7 @@ export default async function ReelsPage() {
 
   return (
     <div className="mx-auto w-full max-w-[860px] px-4 pt-2 pb-10 sm:px-8">
-      <PageSign
-        label="REELS"
-        color="var(--color-gold)"
-      />
+      <PageSign label="REELS" color="var(--color-gold)" />
       <ReelsList groups={groups} />
     </div>
   )

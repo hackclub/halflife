@@ -97,9 +97,7 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
     return { amountCents, transactionId, alreadySent: false }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    await prisma.hcbGrantTopUp
-      .update({ where: { id: rowId }, data: { error: message } })
-      .catch(() => undefined)
+    await prisma.hcbGrantTopUp.update({ where: { id: rowId }, data: { error: message } }).catch(() => undefined)
     throw err
   }
 }

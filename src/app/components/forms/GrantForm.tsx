@@ -35,9 +35,10 @@ export function GrantForm({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ phase: "DESIGN", grantUrl }),
       })
-      const payload = (await res.json().catch(() => null)) as
-        | { error?: { message?: string }; alreadySent?: boolean }
-        | null
+      const payload = (await res.json().catch(() => null)) as {
+        error?: { message?: string }
+        alreadySent?: boolean
+      } | null
       if (!res.ok) {
         setError(payload?.error?.message ?? `Failed (${res.status})`)
         return
