@@ -13,6 +13,9 @@ Dockerfile*
 .DS_Store
 .env*
 !.env.example
+# Local signup sink (data/signups.jsonl) holds real email addresses and has no
+# business in a build context.
+data
 docker-compose*.yaml
 dev.sh
 docs
