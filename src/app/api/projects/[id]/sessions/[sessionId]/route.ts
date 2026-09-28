@@ -103,12 +103,21 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 
   const session = await loadOwned(gate.user.id, id, sessionId)
   if (!session) return fail("NOT_FOUND", "Session not found")
+
+  const access = await getSubmissionAccess(gate.user.id, id)
+  if (!access.open) return fail("SUBMISSIONS_CLOSED", SUBMISSIONS_CLOSED_MESSAGE)
+
   if (session.hoursApproved !== null) {
     return fail("PHASE_LOCKED", "This entry has been reviewed and can no longer be deleted")
   }
-  // Deleting an entry is a correction to the record, so it is frozen once the
-  // week is decided, exactly as editing is.
+  // Deleting an entry is a correction to the record, so it freezes with the
+  // phase: while a reviewer is reading the week, its evidence has to sit
+  // still, exactly as editing it does.
   const phaseStatus = session.phase === "DESIGN" ? session.themeProject.designStatus : session.themeProject.buildStatus
+  if (phaseStatus === PhaseStatus.in_review) {
+    return fail("PHASE_LOCKED", "This week is in review — unsubmit it before deleting its entries")
+  }
+  // Once the week is decided its entries are final, exactly as editing is.
   if (isPhaseDecided(phaseStatus)) {
     return fail("PHASE_LOCKED", "This week has been submitted and decided, so its entries are final")
   }
