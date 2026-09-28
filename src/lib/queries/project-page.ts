@@ -5,7 +5,7 @@ import { type BomLine, bomLockReason, listBom } from "@/lib/bom"
 import { THEMES } from "@/lib/config/program"
 import { lapseTimelapseUrl } from "@/lib/lapse"
 import prisma from "@/lib/prisma"
-import { projectThumbnail, type ProjectThumbnail } from "@/lib/thumbnail"
+import { type ProjectThumbnail, projectThumbnail } from "@/lib/thumbnail"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
 /**

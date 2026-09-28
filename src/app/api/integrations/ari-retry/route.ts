@@ -2,8 +2,8 @@ import type { NextRequest } from "next/server"
 import { ok, withRoute } from "@/lib/api"
 import { findUnsyncedAriSubmissions, sendSubmissionToAri } from "@/lib/ari"
 import { requireIntegrationAuth } from "@/lib/integration-auth"
-import { recordSyncRun } from "@/lib/sync-run-log"
 import { trackSideEffect } from "@/lib/side-effects"
+import { recordSyncRun } from "@/lib/sync-run-log"
 
 export const maxDuration = 300
 

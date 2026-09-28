@@ -1,9 +1,9 @@
 "use client"
 
 import { useRef, useState } from "react"
-import { ProjectThumb } from "@/components/platform/ProjectThumb"
 import { WeekScene } from "@/components/platform/art"
 import { IconCamera } from "@/components/platform/icons"
+import { ProjectThumb } from "@/components/platform/ProjectThumb"
 import { UploadProgress } from "@/components/platform/UploadProgress"
 import { Button } from "@/components/platform/ui"
 import { useStore } from "@/lib/store"

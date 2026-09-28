@@ -4,7 +4,7 @@ import { getThemeDef } from "@/lib/config/program"
 import { sendEmail } from "@/lib/email"
 import prisma from "@/lib/prisma"
 import { trackSideEffect } from "@/lib/side-effects"
-import { sendDM, postMessage } from "@/lib/slack"
+import { postMessage, sendDM } from "@/lib/slack"
 
 /**
  * Telling a maker what a review decided.

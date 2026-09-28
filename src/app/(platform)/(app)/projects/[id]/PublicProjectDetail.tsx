@@ -1,9 +1,9 @@
 "use client"
 
 import Link from "next/link"
-import { ProjectThumb } from "@/components/platform/ProjectThumb"
 import { WeekScene } from "@/components/platform/art"
 import { IconChevronLeft, IconClock } from "@/components/platform/icons"
+import { ProjectThumb } from "@/components/platform/ProjectThumb"
 import { Chip, Panel } from "@/components/platform/ui"
 import { DESIGN_WEEKS } from "@/lib/config/printers"
 import { WEEK_META } from "@/lib/curriculum"

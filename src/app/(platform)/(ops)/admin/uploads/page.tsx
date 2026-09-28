@@ -2,7 +2,7 @@ import Link from "next/link"
 import { Callout, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
-import { isUploadConfigured, listUploadedObjects, type UploadFolder, UPLOAD_FOLDERS } from "@/lib/uploads/r2"
+import { isUploadConfigured, listUploadedObjects, UPLOAD_FOLDERS, type UploadFolder } from "@/lib/uploads/r2"
 
 export const dynamic = "force-dynamic"
 

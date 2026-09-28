@@ -1,5 +1,5 @@
 import "server-only"
-import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
+import { type Phase, PhaseStatus } from "@/app/generated/prisma/enums"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { HttpError } from "@/lib/errors"
 import { isHcbConfigured, memoTransaction, parseGrantHashid, topUpCardGrant } from "@/lib/hcb"

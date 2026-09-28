@@ -2,9 +2,9 @@
 
 import Link from "next/link"
 import type { PhaseStatus } from "@/app/generated/prisma/enums"
-import { ProjectThumb } from "@/components/platform/ProjectThumb"
 import { WeekScene } from "@/components/platform/art"
 import { IconArrowRight, IconClock, IconFilm, IconPencil } from "@/components/platform/icons"
+import { ProjectThumb } from "@/components/platform/ProjectThumb"
 import { RepoEditor } from "@/components/platform/RepoField"
 import { Chip, cx, Panel } from "@/components/platform/ui"
 import { fmtDate, fmtHours, projectEvents, projectStats } from "@/lib/projects"

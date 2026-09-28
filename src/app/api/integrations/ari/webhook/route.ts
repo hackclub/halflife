@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server"
 import { createWebhookHandler } from "@hackclub/ari"
+import { NextResponse } from "next/server"
 import { applyAriWebhook, isAriWebhookConfigured } from "@/lib/ari"
 
 // Signature checks need Node's Web Crypto, not the edge runtime.
