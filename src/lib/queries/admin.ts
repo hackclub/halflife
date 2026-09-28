@@ -1,6 +1,7 @@
 import "server-only"
 import type { Prisma } from "@/app/generated/prisma/client"
 import {
+  AuditAction,
   type PhaseStatus,
   type ShopFulfillmentMethod,
   ShopFulfillmentStage,
@@ -301,10 +302,18 @@ export async function listFulfillmentOrders(filters: FulfillmentFilters, opts: {
   return { items, nextCursor: hasMore && last ? last.id : null }
 }
 
+/** True for one of the recorded action names. Guards the audit-log filter. */
+export function isAuditAction(value: string): value is AuditAction {
+  return (Object.values(AuditAction) as string[]).includes(value)
+}
+
 export async function listAuditLog(opts: { action?: string; targetId?: string; cursor?: string; limit: number }) {
   const rows = await prisma.auditLog.findMany({
     where: {
-      ...(opts.action ? { action: opts.action as never } : {}),
+      // The page's filter box takes free text, so an unrecognised action is
+      // treated as no filter rather than a Prisma enum error; the API route
+      // rejects it properly with a 400.
+      ...(opts.action && isAuditAction(opts.action) ? { action: opts.action } : {}),
       ...(opts.targetId ? { targetId: opts.targetId } : {}),
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
