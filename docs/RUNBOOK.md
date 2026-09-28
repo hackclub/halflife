@@ -62,7 +62,7 @@ Coolify.
 
    ```
    deploy_from_github  projectId: <id>, name: half-life-web,
-                       githubRepo: hackclub/half-life, branch: main,
+                       githubRepo: hackclub/halflife, branch: main,
                        buildType: dockerfile, port: 3000,
                        env: [ ...every var from .env.example... ]
    ```

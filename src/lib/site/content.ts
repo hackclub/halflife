@@ -171,7 +171,7 @@ export type BuildCard = {
   /**
    * ── PUT THE GITHUB LINK HERE ──────────────────────────────────────────
    * Full URL to the project's repo, e.g.
-   *   repo: "https://github.com/hackclub/half-life",
+   *   repo: "https://github.com/you/your-project",
    * Optional: a card left empty here simply shows no button, so the repos
    * can be filled in one project at a time.
    */
