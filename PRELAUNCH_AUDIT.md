@@ -13,21 +13,29 @@ was confirmed in the source. `pnpm typecheck`, `pnpm lint`, `pnpm build` and
 
 Legend: **BLOCKER** — launch is damaged without it · **HIGH** · **MED** · **LOW**
 
-## Start here — all nine fixed
+## Start here — all fifteen fixed
 
-The nine items this batch started from are ticked below, one commit each:
-`e9f9549` (Slack challenge) · `e4b41a8` (Slack ack/retry) · `1f9bec2`
-(onboarding copy) · `af0e870` (runbook repo) · `951a440` (unsubmit race) ·
-`1e255ea` (submit race) · `72b0e72` (HCB double-send) · `10d10a9` (Airtable
-duplicates) · `e3aa611` (Hackatime links in review).
+The first nine, one commit each: `e9f9549` (Slack challenge) · `e4b41a8`
+(Slack ack/retry) · `1f9bec2` (onboarding copy) · `af0e870` (runbook repo) ·
+`951a440` (unsubmit race) · `1e255ea` (submit race) · `72b0e72` (HCB
+double-send) · `10d10a9` (Airtable duplicates) · `e3aa611` (Hackatime links in
+review).
 
-Two follow-ups from this batch:
+The next six: `886f2d9` (Ari defers a build approval until its design) ·
+`f12d4ac` (journal delete frozen in review) · `c0b4e3b` (review-hours scoped) ·
+`5d68878` (shop grace window) · `e61623e` (export key scoping) · `41ea62b`
+(PII boot warning, secrets checklist, `.env.old` deleted).
+
+Follow-ups from these batches:
 
 - The onboarding copy in item 3 is written to be true and in the program's
   voice, but it is new editorial content — give it a read before it ships.
 - Item 7 now reads a grant's disbursements before a retry, so the HCB OAuth
   app needs the `card_grants:read` scope as well as `card_grants:write` (noted
   in `.env.example`).
+- Item 15's in-repo half is done (stale `.env.old` deleted, boot warning,
+  runbook checklist). Rotating the credentials it held and confirming the HCA
+  app's `address`/`birthdate` scopes are external and still to do.
 
 Everything not ticked is still open.
 
@@ -150,7 +158,7 @@ Everything not ticked is still open.
   - Fix: apply the same `in_review` freeze (and `getSubmissionAccess`) to link
     add/remove.
 
-- [ ] **10. A build approved by Ari before its design is permanently
+- [x] **10. A build approved by Ari before its design is permanently
       ignored.** **HIGH**
   - `src/lib/ari.ts:369-376` treats `DESIGN_NOT_APPROVED` from
     `finalizeReview` (`src/lib/review.ts:154-156`) as an unappliable decision:
@@ -162,7 +170,7 @@ Everything not ticked is still open.
   - Fix: keep the delivery unrecorded (or record it as deferred) so a retry can
     apply it once the design lands, or queue it for `ari-retry`.
 
-- [ ] **11. A journal entry can be deleted while the review that depends on it
+- [x] **11. A journal entry can be deleted while the review that depends on it
       is live.** **HIGH**
   - `PATCH .../sessions/[sessionId]` blocks `in_review` (`route.ts:54-64`), but
     `DELETE` (`route.ts:99-115`) checks only `hoursApproved`,
@@ -170,7 +178,7 @@ Everything not ticked is still open.
     reviewer is reading it (and no `getSubmissionAccess` check either).
   - Fix: mirror the PATCH guard.
 
-- [ ] **12. `/api/review/hours` can rewrite approved hours on decided phases
+- [x] **12. `/api/review/hours` can rewrite approved hours on decided phases
       and unrelated projects.** **HIGH**
   - `src/app/api/review/hours/route.ts:40-89` updates any session/link id with
     no `isPhaseDecided` check, no submission/claim check and no refresh of
@@ -180,7 +188,7 @@ Everything not ticked is still open.
   - Fix: restrict writes to sessions/links whose phase is `in_review` and to
     claims held by the caller (or make it a decision-route-only operation).
 
-- [ ] **13. The shop grace window is read off the most recently *updated*
+- [x] **13. The shop grace window is read off the most recently *updated*
       project, not the most recent review.** **HIGH (money, user-facing)**
   - `getShopAccess` (`src/lib/program.ts:261-286`) picks one project with
     `orderBy: { updatedAt: "desc" }` and reads only that row's
@@ -192,13 +200,13 @@ Everything not ticked is still open.
   - Fix: `aggregate _max` over both review-date columns (or filter to rows with
     a review date).
 
-- [ ] **14. `export/participants` still returns email + slackId to any export
+- [x] **14. `export/participants` still returns email + slackId to any export
       key.** **HIGH** `[tracked]` — `LAUNCH_FIXES.md` #13
   - `src/app/api/integrations/export/participants/route.ts:29-51` contradicts
     its own comment. Confirm every `EXPORT_API_KEY` holder is trusted with the
     full roster, or scope the fields per key.
 
-- [ ] **15. Live-looking secrets remain in the working tree, and `.env` has
+- [x] **15. Live-looking secrets remain in the working tree, and `.env` has
       `PULL_HCA_PII=true`.** **HIGH** `[tracked]` — `LAUNCH_FIXES.md` #14
   - `.env` / `.env.old` / `import/.env` are gitignored and untracked, but hold
     live-looking Slack, HCA, Hackatime, Lapse, R2 and Airtable credentials.
