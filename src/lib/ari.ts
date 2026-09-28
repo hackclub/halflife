@@ -2,6 +2,7 @@ import "server-only"
 import { Ari, AriApiError, type AriReview, type AriShipInput, type AriWebhookEvent } from "@hackclub/ari"
 import { HoursSource, Phase, PhaseStatus, ReviewResult } from "@/app/generated/prisma/enums"
 import { ariExternalId, parseAriExternalId } from "@/lib/ari-id"
+import { selectPendingShips } from "@/lib/ari-pending"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { getThemeDef } from "@/lib/config/program"
 import { isTierId } from "@/lib/config/tiers"
@@ -230,7 +231,9 @@ export async function withdrawSubmissionFromAri(themeProjectId: string, phase: P
   }
 }
 
-/** Hand-ins awaiting review that never reached Ari — for the retry job. */
+/** Hand-ins awaiting review that never reached Ari — for the retry job and the
+ * admin panel. Two queries total rather than two per project, because the
+ * admin page renders this on every load. */
 export async function findUnsyncedAriSubmissions(): Promise<{ themeProjectId: string; phase: Phase }[]> {
   if (!isAriConfigured()) return []
 
@@ -241,21 +244,13 @@ export async function findUnsyncedAriSubmissions(): Promise<{ themeProjectId: st
     },
     select: { id: true, designStatus: true, buildStatus: true },
   })
+  if (projects.length === 0) return []
 
-  const out: { themeProjectId: string; phase: Phase }[] = []
-  for (const project of projects) {
-    for (const phase of [Phase.DESIGN, Phase.BUILD] as const) {
-      const status = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
-      if (status !== PhaseStatus.in_review) continue
-      const open = await prisma.phaseSubmission.findFirst({
-        where: { themeProjectId: project.id, phase, resolvedAt: null },
-        orderBy: { createdAt: "desc" },
-        select: { ariSubmissionId: true },
-      })
-      if (open && !open.ariSubmissionId) out.push({ themeProjectId: project.id, phase })
-    }
-  }
-  return out
+  const open = await prisma.phaseSubmission.findMany({
+    where: { themeProjectId: { in: projects.map((p) => p.id) }, resolvedAt: null },
+    select: { themeProjectId: true, phase: true, ariSubmissionId: true, createdAt: true },
+  })
+  return selectPendingShips(projects, open)
 }
 
 // ─── Inbound ─────────────────────────────────────────────────────────────────
@@ -359,7 +354,10 @@ async function applyDecision(event: DecisionEvent): Promise<void> {
       select: { designStatus: true },
     })
     if (project?.designStatus !== PhaseStatus.approved) {
-      throw new HttpError("DESIGN_NOT_APPROVED", "Waiting for the design approval before this build approval can be applied")
+      throw new HttpError(
+        "DESIGN_NOT_APPROVED",
+        "Waiting for the design approval before this build approval can be applied",
+      )
     }
   }
 

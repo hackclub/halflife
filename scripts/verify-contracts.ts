@@ -280,6 +280,52 @@ async function bodies() {
   check("ari · rejects junk", parseAriExternalId("not-an-id") === null)
   check("ari · rejects empty project", parseAriExternalId(":design") === null)
 
+  /* ── 5b. Which hand-ins are pending at Ari ─────────────────────────────── */
+  //
+  // What the hourly retry job replays and what the admin Retry button offers:
+  // in-review phases whose NEWEST open submission has no ariSubmissionId.
+  const { selectPendingShips } = await import("../src/lib/ari-pending")
+  const { PhaseStatus } = await import("../src/app/generated/prisma/enums")
+  const at = (minutes: number) => new Date(Date.UTC(2026, 0, 1, 0, minutes))
+  const projects = [
+    { id: "p1", designStatus: PhaseStatus.in_review, buildStatus: PhaseStatus.draft },
+    { id: "p2", designStatus: PhaseStatus.approved, buildStatus: PhaseStatus.in_review },
+    { id: "p3", designStatus: PhaseStatus.draft, buildStatus: PhaseStatus.draft },
+  ]
+  {
+    const pending = selectPendingShips(projects, [
+      { themeProjectId: "p1", phase: Phase.DESIGN, ariSubmissionId: null, createdAt: at(0) },
+      // Already shipped, and p3 has no open submission at all.
+      { themeProjectId: "p2", phase: Phase.BUILD, ariSubmissionId: "ship_1", createdAt: at(1) },
+      { themeProjectId: "p3", phase: Phase.DESIGN, ariSubmissionId: null, createdAt: at(2) },
+    ])
+    check(
+      "ari · pending: only unsent in-review hand-ins",
+      pending.length === 1 && pending[0]?.themeProjectId === "p1" && pending[0]?.phase === Phase.DESIGN,
+      JSON.stringify(pending),
+    )
+  }
+  {
+    // A resubmission replaces the old row: the newest one decides.
+    const pending = selectPendingShips(projects, [
+      { themeProjectId: "p1", phase: Phase.DESIGN, ariSubmissionId: null, createdAt: at(0) },
+      { themeProjectId: "p1", phase: Phase.DESIGN, ariSubmissionId: "ship_2", createdAt: at(5) },
+    ])
+    check("ari · pending: newest sent submission suppresses the phase", pending.length === 0)
+  }
+  {
+    const pending = selectPendingShips(projects, [
+      { themeProjectId: "p1", phase: Phase.DESIGN, ariSubmissionId: "ship_1", createdAt: at(0) },
+      { themeProjectId: "p1", phase: Phase.DESIGN, ariSubmissionId: null, createdAt: at(5) },
+    ])
+    check(
+      "ari · pending: newest unsent submission is listed",
+      pending.length === 1 && pending[0]?.themeProjectId === "p1",
+    )
+  }
+  check("ari · pending: no submissions means nothing pending", selectPendingShips(projects, []).length === 0)
+  check("ari · pending: no projects means nothing pending", selectPendingShips([], []).length === 0)
+
   /* ── 6. Journal image count ─────────────────────────────────────────────── */
   //
   // The evidence bar counts pictures, so the same picture pasted twice must

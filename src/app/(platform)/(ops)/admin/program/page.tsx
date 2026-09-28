@@ -6,7 +6,7 @@ import { ProgramStartForm } from "@/app/components/forms/ProgramStartForm"
 import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
 import { Phase } from "@/app/generated/prisma/enums"
 import { findUnsyncedSubmissions } from "@/lib/airtable/sync"
-import { ariWebhookUrl, isAriConfigured, isAriWebhookConfigured } from "@/lib/ari"
+import { ariWebhookUrl, findUnsyncedAriSubmissions, isAriConfigured, isAriWebhookConfigured } from "@/lib/ari"
 import { PRINTERS, submitFloorFor } from "@/lib/config/printers"
 import { scheduleForWeek, TOTAL_WEEKS } from "@/lib/config/program"
 import { TIERS } from "@/lib/config/tiers"
@@ -20,10 +20,11 @@ export const dynamic = "force-dynamic"
 export default async function AdminProgramPage() {
   await requirePermissionPage(Permission.MANAGE_PROGRAM)
 
-  const [settings, week, unsynced, disputes, h] = await Promise.all([
+  const [settings, week, unsynced, unsyncedAri, disputes, h] = await Promise.all([
     getProgramSettings(),
     currentWeekNumber(),
     findUnsyncedSubmissions(),
+    findUnsyncedAriSubmissions(),
     getOpenDisputes(),
     headers(),
   ])
@@ -142,6 +143,34 @@ export default async function AdminProgramPage() {
             ))}
           </Table>
         )}
+      </Panel>
+
+      <Panel title="Submissions that never reached Ari">
+        {!ariSending ? (
+          <EmptyState>Ari is not configured on this deployment, so nothing is sent there.</EmptyState>
+        ) : unsyncedAri.length === 0 ? (
+          <EmptyState>Every submission awaiting review is in Ari.</EmptyState>
+        ) : (
+          <Table head={["Project", "Phase", ""]}>
+            {unsyncedAri.map((item) => (
+              <tr key={`${item.themeProjectId}-${item.phase}`}>
+                <td className="hl-mono">{item.themeProjectId}</td>
+                <td>{item.phase.toLowerCase()}</td>
+                <td>
+                  <ActionButton
+                    url={`/api/admin/theme-projects/${item.themeProjectId}/sync-to-ari`}
+                    body={{ phase: item.phase }}
+                    label="Retry"
+                  />
+                </td>
+              </tr>
+            ))}
+          </Table>
+        )}
+        <p className="hl-hint">
+          A ship is what the reviewer sees, so a hand-in missing from Ari is a hand-in nobody will decide. The hourly
+          retry job replays these too; this button is for when you are looking at one now.
+        </p>
       </Panel>
 
       <Panel title="Open review disputes">

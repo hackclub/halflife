@@ -22,6 +22,14 @@ export async function trackSideEffect<T>(
   kind: "airtable" | "slack" | "ari" | "email",
   ctx: SideEffectContext,
   fn: () => Promise<T>,
+  opts: {
+    /**
+     * Rethrow after recording the failure. For a manual action whose caller can
+     * show the reason — the admin's Retry button, say — swallowing it into the
+     * audit log alone leaves the person staring at a generic error.
+     */
+    rethrow?: boolean
+  } = {},
 ): Promise<T | null> {
   try {
     const result = await fn()
@@ -84,6 +92,7 @@ export async function trackSideEffect<T>(
       targetId: ctx.targetId,
       metadata: { ...(typeof ctx.metadata === "object" ? ctx.metadata : {}), error: message },
     })
+    if (opts.rethrow) throw err
     return null
   }
 }

@@ -36,7 +36,8 @@ Coolify.
    `ARI_WEBHOOK_SECRET` from that page — a different secret from the signing
    one. Until all three are set, submission sends no-op and the webhook route
    answers 503 rather than trusting an unverified body. Create the `ari-retry`
-   job below so a failed send is replayed.
+   job below so a failed send is replayed, and note that failed sends are also
+   listed with a **Retry** button on `/admin/program`.
 
 3. **Create the project and database.**
 

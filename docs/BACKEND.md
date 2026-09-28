@@ -112,7 +112,8 @@ and it refuses an already-resolved submission.
   Stage). Design and build get independent decisions.
 - **Outbound** happens in the submit/unsubmit `after` hooks, like the Airtable
   write, and no-ops when the `ARI_*` secrets are unset. A failed send logs an
-  `ARI_SYNC_FAILURE` audit row and is replayed by `ari-retry`.
+  `ARI_SYNC_FAILURE` audit row and is replayed by `ari-retry`, or by hand from
+  `/admin/program`.
 - **Inbound** is `POST /api/integrations/ari/webhook`, verified with
   `ARI_WEBHOOK_SECRET`. `ARI_WEBHOOK_SECRET` is **not** the signing secret; the
   SDK treats them as different credentials.
