@@ -14,3 +14,4 @@
 			- Other idk
 - A button in the admin panel to send out grants
 	- Use the HCB API at https://hcb.hackclub.com/docs/api/v3
+- Placeholder image for project should be a screenshot from a reel or image from a devlog
