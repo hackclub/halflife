@@ -1,5 +1,13 @@
+import { timingSafeEqual } from "node:crypto"
 import { type NextRequest, NextResponse } from "next/server"
 import { PLATFORM_HOME } from "@/lib/routes"
+
+/** Constant-time compare; lengths are not the secret. */
+function matches(presented: string, expected: string): boolean {
+  const a = Buffer.from(presented)
+  const b = Buffer.from(expected)
+  return a.length === b.length && timingSafeEqual(a, b)
+}
 
 /**
  * Security headers, and an optional HTTP basic auth gate for pre-launch.
@@ -69,7 +77,11 @@ export function proxy(request: NextRequest) {
     const separator = decoded.indexOf(":")
     const user = separator === -1 ? decoded : decoded.slice(0, separator)
     const pass = separator === -1 ? "" : decoded.slice(separator + 1)
-    if (user !== expectedUser || pass !== expectedPass) return unauthorized()
+    // Both compared before the branch, so a failure time does not say which
+    // half was wrong.
+    const userOk = matches(user, expectedUser)
+    const passOk = matches(pass, expectedPass)
+    if (!userOk || !passOk) return unauthorized()
   }
 
   /**
