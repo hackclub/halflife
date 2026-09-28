@@ -190,7 +190,26 @@ export async function submitPhase(
   const scheduledWeek = scheduledWeekFor(project.theme, phase)
 
   return prisma.$transaction(async (tx) => {
-    const submission = await tx.phaseSubmission.create({
+    // Claim the phase first, conditionally on it still being one that can be
+    // submitted. Two concurrent submits both read the same outside state, so
+    // without this both would create an open submission and both flip the
+    // status; the row lock makes the loser's update match nothing.
+    const claimed = await tx.themeProject.updateMany({
+      where: {
+        id: themeProjectId,
+        userId,
+        deletedAt: null,
+        ...(phase === Phase.DESIGN
+          ? { designStatus: { in: [PhaseStatus.draft, PhaseStatus.update_requested] } }
+          : { buildStatus: { in: [PhaseStatus.draft, PhaseStatus.update_requested] } }),
+      },
+      data: phase === Phase.DESIGN ? { designStatus: PhaseStatus.in_review } : { buildStatus: PhaseStatus.in_review },
+    })
+    if (claimed.count !== 1) {
+      throw new HttpError("ALREADY_SUBMITTED", "This phase is already in review")
+    }
+
+    return tx.phaseSubmission.create({
       data: {
         themeProjectId,
         phase,
@@ -203,11 +222,6 @@ export async function submitPhase(
         onTime: submittedInWeek > 0 && submittedInWeek <= scheduledWeek,
       },
     })
-    await tx.themeProject.update({
-      where: { id: themeProjectId },
-      data: phase === Phase.DESIGN ? { designStatus: PhaseStatus.in_review } : { buildStatus: PhaseStatus.in_review },
-    })
-    return submission
   })
 }
 
