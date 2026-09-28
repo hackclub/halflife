@@ -22,7 +22,9 @@ that remain before launch.
   It is idempotent within Half Life but does **not** know what the pipeline has
   paid, so enabling both can double-pay. See `docs/BACKEND.md` → Payouts.
 - **Email — Resend.** `sendEmail` (Resend's HTTP API, no SDK) sends a text and
-  an HTML body; it no-ops without `RESEND_API_KEY` + `EMAIL_FROM`.
+  an HTML body; unconfigured, the send fails and the notifier records a
+  `NOTIFICATION_FAILURE` audit row, so a deployment missing credentials is
+  visible in ops.
 - **Notifications — all three outcomes, to the maker, Slack DM + email.**
   `approved`, `changes requested` and `rejected` all notify.
 - **Green border — the current phase approved.** The design until the build

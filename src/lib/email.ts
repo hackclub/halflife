@@ -4,9 +4,12 @@ import "server-only"
  * Transactional email.
  *
  * Resend's HTTP API directly rather than an SDK: it is one POST and keeps this
- * deployment free of a mail library. Unconfigured (or missing a from-address)
- * it no-ops with a warning, the same way every other integration here does, so
- * local dev and a deployment that has not set it up still work.
+ * deployment free of a mail library.
+ *
+ * Throws when unconfigured rather than no-oping quietly. The only caller is the
+ * review-outcome notifier, which turns a throw into a NOTIFICATION_FAILURE
+ * audit row — a deployment that forgot its mail credentials should show up in
+ * ops rather than assume people were told.
  */
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails"
@@ -22,10 +25,10 @@ export interface EmailInput {
   html?: string
 }
 
-export async function sendEmail(input: EmailInput): Promise<{ skipped: string } | { id: string }> {
+export async function sendEmail(input: EmailInput): Promise<{ id: string }> {
   const key = process.env.RESEND_API_KEY
   const from = process.env.EMAIL_FROM
-  if (!key || !from) return { skipped: "not_configured" }
+  if (!key || !from) throw new Error("Email is not configured: set RESEND_API_KEY and EMAIL_FROM")
 
   const res = await fetch(RESEND_ENDPOINT, {
     method: "POST",

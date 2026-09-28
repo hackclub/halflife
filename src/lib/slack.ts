@@ -6,29 +6,33 @@ function token(): string | null {
   return process.env.SLACK_BOT_TOKEN ?? null
 }
 
-async function slackCall<T>(method: string, body: Record<string, unknown>): Promise<T | null> {
+/**
+ * One Slack Web API call.
+ *
+ * Throws on anything Slack does not answer with `ok: true` — a revoked token,
+ * the bot not being in the channel, a rate limit — so a caller wrapped in
+ * `trackSideEffect` writes a NOTIFICATION_FAILURE audit row instead of a
+ * console line nobody reads. (The Slack app's own client in `lib/site/slack`
+ * is separate: it answers webhooks, where the caller handles the failure.)
+ */
+async function slackCall<T>(method: string, body: Record<string, unknown>): Promise<T> {
   const bot = token()
-  if (!bot) return null
-  try {
-    const res = await fetch(`${SLACK_API}/${method}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${bot}`,
-        "Content-Type": "application/json; charset=utf-8",
-      },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(10_000),
-    })
-    const data = (await res.json()) as { ok: boolean; error?: string }
-    if (!data.ok) {
-      console.warn(`[slack] ${method} failed: ${data.error}`)
-      return null
-    }
-    return data as T
-  } catch (err) {
-    console.warn(`[slack] ${method} threw:`, err)
-    return null
+  if (!bot) throw new Error("SLACK_BOT_TOKEN is not set")
+
+  const res = await fetch(`${SLACK_API}/${method}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${bot}`,
+      "Content-Type": "application/json; charset=utf-8",
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(10_000),
+  })
+  const data = (await res.json()) as { ok: boolean; error?: string }
+  if (!res.ok || !data.ok) {
+    throw new Error(`Slack ${method} failed: ${data.error ?? `HTTP ${res.status}`}`)
   }
+  return data as T
 }
 
 export async function getSlackProfile(
@@ -55,16 +59,15 @@ export async function getSlackProfile(
   }
 }
 
-export async function postMessage(channel: string, text: string): Promise<boolean> {
-  const result = await slackCall("chat.postMessage", { channel, text })
-  return result !== null
+export async function postMessage(channel: string, text: string): Promise<void> {
+  await slackCall("chat.postMessage", { channel, text })
 }
 
-export async function sendDM(slackId: string, text: string): Promise<boolean> {
+export async function sendDM(slackId: string, text: string): Promise<void> {
   const opened = await slackCall<{ channel?: { id: string } }>("conversations.open", {
     users: slackId,
   })
   const channel = opened?.channel?.id
-  if (!channel) return false
-  return postMessage(channel, text)
+  if (!channel) throw new Error(`Slack conversations.open returned no channel for ${slackId}`)
+  await postMessage(channel, text)
 }
