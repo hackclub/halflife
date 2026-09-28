@@ -280,6 +280,24 @@ async function bodies() {
   check("ari · rejects junk", parseAriExternalId("not-an-id") === null)
   check("ari · rejects empty project", parseAriExternalId(":design") === null)
 
+  /* ── 6. Journal image count ─────────────────────────────────────────────── */
+  //
+  // The evidence bar counts pictures, so the same picture pasted twice must
+  // count once — otherwise one image copied down an entry clears it.
+  const { countImages } = await import("../src/components/platform/Markdown")
+  const imageCases: [string, number][] = [
+    ["", 0],
+    ["![a](https://x/a.png)", 1],
+    ["![a](https://x/a.png)![a](https://x/a.png)", 1],
+    ["![a](https://x/a.png)![b](https://x/b.png)", 2],
+    ["![a](https://x/a.png) ![b](https://x/a.png) ![c](https://x/b.png)", 2],
+    ["![a](javascript:alert(1))", 0],
+    ["![a](https://x/a.png)![b](javascript:x)", 1],
+  ]
+  for (const [source, expected] of imageCases) {
+    check(`images · "${source.slice(0, 40)}" → ${expected}`, countImages(source) === expected)
+  }
+
   for (const [name, schema, body] of cases) {
     const parsed = schema.safeParse(body)
     check(
