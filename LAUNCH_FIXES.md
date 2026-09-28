@@ -62,11 +62,17 @@ larger ones) before it is ticked.
     - `.../hackatime/route.ts` POST (link adds hours; had no guard)
     - `.../hackatime/[linkId]/route.ts` DELETE (remove a link)
 
-- [ ] **7. Internal costs shipped to participants**
-  - `src/lib/shop.ts:59-65` spreads the whole `ShopItem`, leaking `costUsd`
-    through `/api/shop/items` and the shop page; `src/app/api/shop/orders/route.ts:19-25`
-    returns `unitCostUsd`.
-  - Fix: select explicit public fields (`omit`/`select`).
+- [x] **7. Internal costs shipped to participants**
+  - `getShopItemsFor` spread the whole `ShopItem` (`...item`), leaking `costUsd`
+    to the client via `/api/shop/items` and the shop page's RSC payload. Now it
+    uses an explicit `select` and a `ShopItemPublic = Omit<ShopItem, "costUsd">`
+    type (`src/lib/shop.ts`).
+  - Also found and fixed the purchase **response**: `purchase()` returned the
+    full `ShopOrder` (with `unitCostUsd`) through `POST /api/shop/orders`, and
+    `GET` returned full rows too. Added a shared `shopOrderPublicSelect` /
+    `ShopOrderPublic` in `src/lib/shop.ts`, used by the `create` select and by
+    both order-list and purchase responses — so `unitCostUsd`, the encrypted
+    address/phone and `lastActorId` no longer leave the server.
 
 - [ ] **8. Review claim not re-checked inside the decision transaction**
   - `src/lib/review.ts:143` validates the claim outside the `$transaction`

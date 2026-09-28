@@ -5,7 +5,7 @@ import { requireSession } from "@/lib/guards"
 import { cursorArgs, pageResult, paginationQuery } from "@/lib/pagination"
 import prisma from "@/lib/prisma"
 import { purchaseSchema } from "@/lib/schemas/shop"
-import { purchase } from "@/lib/shop"
+import { purchase, shopOrderPublicSelect } from "@/lib/shop"
 
 export const dynamic = "force-dynamic"
 
@@ -20,6 +20,9 @@ export const GET = withRoute(async (req: NextRequest) => {
     where: { userId: gate.user.id },
     orderBy: [{ placedAt: "desc" }, { id: "desc" }],
     ...cursorArgs(query.data.cursor, query.data.limit),
+    // The buyer's own view of the order, shared with the purchase response so
+    // the two cannot drift.
+    select: shopOrderPublicSelect,
   })
 
   return ok(pageResult(rows, query.data.limit))
