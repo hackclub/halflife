@@ -2,7 +2,7 @@ import "server-only"
 import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
 import { getThemeDef, scheduleForWeek, THEMES } from "@/lib/config/program"
 import { type Balances, getBalances, getEarnedCredit } from "@/lib/currency"
-import { getHoursBreakdown } from "@/lib/hours"
+import { rollUpHours } from "@/lib/hours"
 import { getPrinterQualification } from "@/lib/printer"
 import prisma from "@/lib/prisma"
 import { currentWeekNumber, effectiveDateFor, getProgramSettings, weekDateRange } from "@/lib/program"
@@ -56,14 +56,40 @@ export async function getDashboard(userId: string): Promise<DashboardData> {
 
   const byTheme = new Map(projects.map((p) => [p.theme, p]))
 
+  // The cards need each phase's hours. `getHoursBreakdown` would read three
+  // queries per call — thirty queries for five projects on every dashboard
+  // render. Bulk-read the same rows once and run them through the same
+  // `rollUpHours` the ledger uses, so the numbers cannot differ.
+  const projectIds = projects.map((p) => p.id)
+  const [sessions, links] = await Promise.all([
+    prisma.workSession.findMany({
+      where: { themeProjectId: { in: projectIds }, deletedAt: null },
+      select: { themeProjectId: true, phase: true, hoursClaimed: true, hoursApproved: true, hoursSource: true },
+    }),
+    prisma.hackatimeLink.findMany({
+      where: { themeProjectId: { in: projectIds } },
+      select: { themeProjectId: true, phase: true, hoursApproved: true, cachedSeconds: true },
+    }),
+  ])
+  const sessionsFor = (projectId: string, phase: Phase) =>
+    sessions.filter((s) => s.themeProjectId === projectId && s.phase === phase)
+  const linksFor = (projectId: string, phase: Phase) =>
+    links.filter((l) => l.themeProjectId === projectId && l.phase === phase)
+
   const cards: ThemeCard[] = []
   for (const def of THEMES) {
     const project = byTheme.get(def.id)
     if (!project) continue
-    const [design, build] = await Promise.all([
-      getHoursBreakdown(project.id, Phase.DESIGN),
-      getHoursBreakdown(project.id, Phase.BUILD),
-    ])
+    const designHours = rollUpHours(
+      sessionsFor(project.id, Phase.DESIGN),
+      linksFor(project.id, Phase.DESIGN),
+      project.designApprovedHours,
+    ).effectiveHours
+    const buildHours = rollUpHours(
+      sessionsFor(project.id, Phase.BUILD),
+      linksFor(project.id, Phase.BUILD),
+      project.approvedHours,
+    ).effectiveHours
     cards.push({
       id: project.id,
       theme: project.theme,
@@ -77,8 +103,8 @@ export async function getDashboard(userId: string): Promise<DashboardData> {
       buildWeek: def.buildWeek,
       tier: project.tier,
       grantUsd: project.grantUsd,
-      designHours: design.effectiveHours,
-      buildHours: build.effectiveHours,
+      designHours,
+      buildHours,
       shipped: project.designStatus === PhaseStatus.approved && project.buildStatus === PhaseStatus.approved,
     })
   }
