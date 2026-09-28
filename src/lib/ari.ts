@@ -38,6 +38,19 @@ export function isAriWebhookConfigured(): boolean {
   return Boolean(process.env.ARI_WEBHOOK_SECRET)
 }
 
+/**
+ * The absolute webhook URL to paste into the Ari program settings.
+ *
+ * Configured origin first: behind an ingress the request's own host is the
+ * internal one, and a webhook URL the Ari service cannot reach is one that
+ * silently never fires. The caller may pass the request origin as a fallback
+ * for local development.
+ */
+export function ariWebhookUrl(originFallback = ""): string {
+  const base = (process.env.NEXT_PUBLIC_APP_URL ?? process.env.BETTER_AUTH_URL ?? originFallback).replace(/\/$/, "")
+  return `${base}/api/integrations/ari/webhook`
+}
+
 let client: Ari | null = null
 
 function ari(): Ari {

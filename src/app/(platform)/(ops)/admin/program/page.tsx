@@ -1,9 +1,11 @@
+import { headers } from "next/headers"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { ProgramSettingsForm } from "@/app/components/forms/ProgramSettingsForm"
 import { ProgramStartForm } from "@/app/components/forms/ProgramStartForm"
 import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
 import { Phase } from "@/app/generated/prisma/enums"
 import { findUnsyncedSubmissions } from "@/lib/airtable/sync"
+import { ariWebhookUrl, isAriConfigured, isAriWebhookConfigured } from "@/lib/ari"
 import { PRINTERS, submitFloorFor } from "@/lib/config/printers"
 import { scheduleForWeek, TOTAL_WEEKS } from "@/lib/config/program"
 import { TIERS } from "@/lib/config/tiers"
@@ -16,11 +18,21 @@ export const dynamic = "force-dynamic"
 export default async function AdminProgramPage() {
   await requirePermissionPage(Permission.MANAGE_PROGRAM)
 
-  const [settings, week, unsynced] = await Promise.all([
+  const [settings, week, unsynced, h] = await Promise.all([
     getProgramSettings(),
     currentWeekNumber(),
     findUnsyncedSubmissions(),
+    headers(),
   ])
+
+  // The callback URL to register with Ari, resolved the same way the phone
+  // handoff resolves its origin: the configured public origin wins, the
+  // request's own host is only a local-development fallback.
+  const host = h.get("x-forwarded-host") ?? h.get("host")
+  const proto = h.get("x-forwarded-proto") ?? "https"
+  const callbackUrl = ariWebhookUrl(host ? `${proto}://${host}` : "")
+  const ariSending = isAriConfigured()
+  const ariReceiving = isAriWebhookConfigured()
 
   const startYmd = settings.eventStartDate.toISOString().slice(0, 10)
   const now = new Date()
@@ -127,6 +139,39 @@ export default async function AdminProgramPage() {
             ))}
           </Table>
         )}
+      </Panel>
+
+      <Panel title="Ari review integration">
+        <p className="hl-hint">
+          Paste this callback URL into this program&apos;s webhook settings at ari.hackclub.com. Ari signs every
+          delivery with <code>ARI_WEBHOOK_SECRET</code>, which is a different secret from the signing one; until the
+          secrets are set, submission sends no-op and the webhook answers 503 rather than trusting an unverified body.
+        </p>
+        <Table head={["Setting", "Value", "Status"]}>
+          <tr>
+            <td>Callback URL</td>
+            <td className="hl-mono" style={{ overflowWrap: "anywhere" }}>
+              {callbackUrl}
+            </td>
+            <td>
+              <Badge tone={ariReceiving ? "success" : "warning"}>{ariReceiving ? "listening" : "secret unset"}</Badge>
+            </td>
+          </tr>
+          <tr>
+            <td>Sending ships</td>
+            <td className="hl-mono">ARI_PROGRAM_ID · ARI_SIGNING_SECRET</td>
+            <td>
+              <Badge tone={ariSending ? "success" : "muted"}>{ariSending ? "configured" : "not configured"}</Badge>
+            </td>
+          </tr>
+          <tr>
+            <td>Failed sends</td>
+            <td className="hl-mono">POST /api/integrations/ari-retry</td>
+            <td>
+              <Badge tone="muted">hourly job</Badge>
+            </td>
+          </tr>
+        </Table>
       </Panel>
 
       <Panel title="Tiers">
