@@ -13,7 +13,7 @@ was confirmed in the source. `pnpm typecheck`, `pnpm lint`, `pnpm build` and
 
 Legend: **BLOCKER** — launch is damaged without it · **HIGH** · **MED** · **LOW**
 
-## Start here — all fifteen fixed
+## Status — all thirty-eight fixed
 
 The first nine, one commit each: `e9f9549` (Slack challenge) · `e4b41a8`
 (Slack ack/retry) · `1f9bec2` (onboarding copy) · `af0e870` (runbook repo) ·
@@ -26,18 +26,38 @@ The next six: `886f2d9` (Ari defers a build approval until its design) ·
 `5d68878` (shop grace window) · `e61623e` (export key scoping) · `41ea62b`
 (PII boot warning, secrets checklist, `.env.old` deleted).
 
-Follow-ups from these batches:
+The rest, one commit each, ending at `b77ad51`: printer goal reads both pots ·
+program weeks counted in calendar days · notification failures recorded ·
+one RSVP table · non-GitHub repos can submit · better Hackatime conflict
+message · dialogs get names · forms report network failures · Lapse clips
+locked per recording · `data/` out of the Docker context · build args for the
+public vars · tracked sessions out of weekly analytics · BOM savings marked
+not shipped · RSVP rate-limited · `DATABASE_URL` fails fast · audit action
+validated · onboarding step never rewinds · dashboard bulk hours · dead
+justification deleted · last-admin revocation serialized · fulfillment write
+conditional · basic auth constant-time · coin cap documented per phase.
 
-- The onboarding copy in item 3 is written to be true and in the program's
-  voice, but it is new editorial content — give it a read before it ships.
-- Item 7 now reads a grant's disbursements before a retry, so the HCB OAuth
-  app needs the `card_grants:read` scope as well as `card_grants:write` (noted
-  in `.env.example`).
-- Item 15's in-repo half is done (stale `.env.old` deleted, boot warning,
-  runbook checklist). Rotating the credentials it held and confirming the HCA
-  app's `address`/`birthdate` scopes are external and still to do.
+Decisions this pass made, for the owner to confirm:
 
-Everything not ticked is still open.
+- **Item 21**: the cross-phase Hackatime unique key is deliberate —
+  `fetchProjectSeconds` returns a project's whole total, so allowing it in
+  both phases would count the same hours twice. The misleading conflict
+  message was the bug; per-phase links with date ranges would be a feature.
+- **Item 28**: BOM savings → coins is marked in the schema as not shipped.
+  Decide whether launch needs it.
+- **Item 38**: the spendable-coin cap is documented as per-phase (up to 2× a
+  project across design and build); confirm that is intended.
+- **Item 26**: the Dockerfile now declares the build args, but the platform
+  deploying the image has to pass them for the `next/image` allowlist
+  (`NEXT_PUBLIC_UPLOAD_HOST`) to include R2.
+- **Item 15**: rotate the credentials that lived in `.env.old` and confirm the
+  HCA app's `address`/`birthdate` scopes; the in-repo half is done.
+- The onboarding copy in item 3 is new editorial content — give it a read
+  before it ships.
+- Item 7's HCB reconciliation needs the `card_grants:read` scope on the OAuth
+  app (noted in `.env.example`).
+
+The external checklist in §6 is unchanged and still operator work.
 
 ---
 
@@ -220,7 +240,7 @@ Everything not ticked is still open.
 
 ## 3. Medium
 
-- [ ] **16. The printer goal picker ignores the banked printer fund.**
+- [x] **16. The printer goal picker ignores the banked printer fund.**
       `GoalModal.tsx:20,34-35` computes `toGo`/`weeksToGo` from `coins`
       (spendable only), but a printer is paid from `printerFund =
       coins + bankedCoins` (`src/lib/store.tsx:115,1102`;
@@ -228,7 +248,7 @@ Everything not ticked is still open.
       told the wrong "coins to go" and "weeks to go".
   - Fix: use `printerFund` in the modal and in `weeksToGo`.
 
-- [ ] **17. Week numbers flip at UTC midnight while weeks close at program-tz
+- [x] **17. Week numbers flip at UTC midnight while weeks close at program-tz
       midnight.** `weekNumberForDate` (`src/lib/program.ts:37-41`) uses raw
       elapsed time from a UTC-midnight `eventStartDate`, but `weekClosesAt`
       (`:62-73`) closes at wall-clock midnight in `programTimezone`. For the
@@ -239,7 +259,7 @@ Everything not ticked is still open.
       analytics (the docs say this maths is in the program timezone).
   - Fix: derive the week from the program-tz calendar date, not UTC epochs.
 
-- [ ] **18. Slack/email notification failures are invisible to the failure
+- [x] **18. Slack/email notification failures are invisible to the failure
       audit.** `slackCall` (`src/lib/slack.ts:9-32`) returns `null` on
       `ok:false`/throw and `sendDM` returns `false`; `trackSideEffect`
       (`src/lib/side-effects.ts:21-89`) only logs `NOTIFICATION_FAILURE` when
@@ -249,21 +269,21 @@ Everything not ticked is still open.
       so a deployment missing `RESEND_API_KEY` looks healthy.
   - Fix: throw (or explicitly record) on `ok:false` and on skipped email.
 
-- [ ] **19. Airtable RSVP reads and writes default to different tables.**
+- [x] **19. Airtable RSVP reads and writes default to different tables.**
       `src/lib/airtable/schema.ts:99` defaults to `"RSVPs"` while
       `src/lib/airtable/loops.ts:24` defaults to `"Signups"`. If
       `AIRTABLE_RSVP_TABLE_ID` is unset, the count reads one table and the
       drain writes another, silently. Set the var in every deployment (or make
       the two defaults one constant).
 
-- [ ] **20. Non-GitHub repos can be saved but can never be submitted.**
+- [x] **20. Non-GitHub repos can be saved but can never be submitted.**
       `normalizeRepo` explicitly accepts GitLab/Codeberg
       (`src/lib/repo.ts:3-8`), but `checkRepo` marks anything
       `parseGitHubRepo` rejects as a blocking failure
       (`src/lib/repo-checks.ts:236-246`). Either say "GitHub only" at the
       input, or make the checks degrade for other hosts.
 
-- [ ] **21. A Hackatime project cannot back both phases of one project.**
+- [x] **21. A Hackatime project cannot back both phases of one project.**
       `@@unique([themeProjectId, hackatimeProject])`
       (`prisma/schema.prisma:814`) omits `phase`, and the link route returns
       `CONFLICT` regardless of phase (`…/hackatime/route.ts:60-68`), while
@@ -272,7 +292,7 @@ Everything not ticked is still open.
       from build (or refuses the link).
   - Fix: include `phase` in the unique key and in the conflict check.
 
-- [ ] **22. Some dialogs announce no name.** `Modal.tsx:125` sets
+- [x] **22. Some dialogs announce no name.** `Modal.tsx:125` sets
       `aria-labelledby={labelledBy ?? titleId}`, but Modal's own `titleId`
       (line 48) is never rendered, and callers that do not pass `labelledBy`
       get a dangling reference. Several callers do wire it correctly
@@ -283,7 +303,7 @@ Everything not ticked is still open.
   - Fix: render Modal's own `titleId` on a `ModalTitle` (e.g. via context), or
     pass `labelledBy` + matching `id` from every caller.
 
-- [ ] **23. Staff forms go silent on a network failure.**
+- [x] **23. Staff forms go silent on a network failure.**
       `DecisionPanel.tsx:51-79` (and `ShopItemForm`, `ItemCostField`,
       `ProgramSettingsForm`, `CreditGrantForm`, `RoleEditor`, `OrderDecision`)
       use `try { … } finally { setBusy(false) }` with no `catch`. A rejected
@@ -292,7 +312,7 @@ Everything not ticked is still open.
   - Fix: add the same `catch → setError("Could not reach the server")` these
     forms already use for HTTP errors.
 
-- [ ] **24. One Lapse recording can back two journal entries under
+- [x] **24. One Lapse recording can back two journal entries under
       concurrency.** The "already backs another journal entry" check
       (`…/sessions/route.ts:110-123`) is a read-then-create and
       `SessionTimelapse` has only a non-unique
@@ -301,12 +321,12 @@ Everything not ticked is still open.
   - Fix: a unique index on `(provider, externalId)` where the session is live,
     or create with a conditional insert.
 
-- [ ] **25. Local signup data is baked into the Docker build context.**
+- [x] **25. Local signup data is baked into the Docker build context.**
       `.dockerignore` does not exclude `data/`, so `data/signups.jsonl` (real
       email addresses) is sent to the daemon and retained in builder layers via
       `COPY . .` in the `builder` stage. Add `data` to `.dockerignore`.
 
-- [ ] **26. `NEXT_PUBLIC_*` build-time variables are never passed to the
+- [x] **26. `NEXT_PUBLIC_*` build-time variables are never passed to the
       Docker build.** `next.config.ts:50-58` bakes
       `NEXT_PUBLIC_UPLOAD_HOST` into `images.remotePatterns` and
       `src/lib/auth-client.ts:12` bakes `NEXT_PUBLIC_APP_URL` into the client
@@ -318,14 +338,14 @@ Everything not ticked is still open.
   - Fix: declare and pass both as build args/ENV in the Dockerfile, or drop
     the `NEXT_PUBLIC_` prefix where the value is only read on the server.
 
-- [ ] **27. Weekly analytics count Hackatime-tracked sessions the ledger
+- [x] **27. Weekly analytics count Hackatime-tracked sessions the ledger
       deliberately excludes.** `recomputeWeek` sums `hoursClaimed` with no
       `hoursSource` filter (`src/lib/analytics.ts:124-128`), while
       `rollUpHours` skips `HACKATIME_TRACKED` sessions entirely
       (`src/lib/hours.ts:163-168`). Progress numbers and milestones can
       disagree with what a reviewer/decision sees.
 
-- [ ] **28. The BOM-savings half of the economy is never written.**
+- [x] **28. The BOM-savings half of the economy is never written.**
       `ThemeProject.bomSavingsUsd` is documented as "converts 1:1 into
       spendable coins" (`prisma/schema.prisma:575-577`) and
       `LedgerKind.BOM_SAVINGS` / `PARTS_TOP_UP` exist (`:108-110`), but nothing
@@ -336,39 +356,39 @@ Everything not ticked is still open.
 
 ## 4. Low / cleanups
 
-- [ ] **29. `/api/rsvp` is public, unthrottled and write-unbounded** —
+- [x] **29. `/api/rsvp` is public, unthrottled and write-unbounded** —
       `src/app/api/rsvp/route.ts:11-31` (the sibling `/api/subscribe` rate-limits
       at `subscribe/route.ts:16-18`). An attacker can grow `RsvpBuffer` and the
       public counter; add a limiter.
-- [ ] **30. Missing `DATABASE_URL` fails open at runtime** —
+- [x] **30. Missing `DATABASE_URL` fails open at runtime** —
       `src/lib/prisma.ts:10` falls back to a placeholder so the pod boots and
       500s on every request; fail fast at startup instead.
-- [ ] **31. Invalid `?action=` on `/admin/audit` returns 500** —
+- [x] **31. Invalid `?action=` on `/admin/audit` returns 500** —
       `src/app/api/admin/audit/route.ts:11-13` accepts any string and passes it
       to Prisma (`src/lib/queries/admin.ts:307`); reject non-enum values as 400.
-- [ ] **32. Concurrent onboarding answers can rewind the step marker** —
+- [x] **32. Concurrent onboarding answers can rewind the step marker** —
       `src/lib/onboarding.ts:227-251` writes `onboardingStep: reached` from a
       snapshot read before the transaction; a slow earlier answer can overwrite
       a later one (monotonic `updateMany` or re-read inside the transaction).
-- [ ] **33. Dashboard N+1** — `src/lib/queries/dashboard.ts:60-66` calls
+- [x] **33. Dashboard N+1** — `src/lib/queries/dashboard.ts:60-66` calls
       `getHoursBreakdown` twice per project (3 queries each), ~30 queries per
       render for 5 projects; use the `rollUpHours` bulk path like
       `queries/store.ts`.
-- [ ] **34. `buildHoursJustification` is dead code** —
+- [x] **34. `buildHoursJustification` is dead code** —
       `src/lib/justification.ts:11` has no callers, yet the docs describe the
       reviewer's reason as feeding the grant row's hours justification. Wire it
       up or delete it.
-- [ ] **35. Last-admin revocation check is racy** —
+- [x] **35. Last-admin revocation check is racy** —
       `src/app/api/admin/users/[id]/roles/route.ts:52-59` counts then deletes
       without a transaction/lock; two concurrent revokes can leave zero admins.
-- [ ] **36. Fulfillment status write is racy** —
+- [x] **36. Fulfillment status write is racy** —
       `src/app/api/admin/shop/orders/[id]/fulfillment/route.ts:25-52` reads the
       status then unconditionally updates; an order rejected in between can
       still be marked SENT_FOR_DELIVERY. Use a conditional `updateMany`.
-- [ ] **37. Basic-auth comparison is not constant-time** —
+- [x] **37. Basic-auth comparison is not constant-time** —
       `src/proxy.ts:72` uses `!==` for the pre-launch gate; use
       `crypto.timingSafeEqual`.
-- [ ] **38. `MAX_COINS_PER_PROJECT` applies per phase** —
+- [x] **38. `MAX_COINS_PER_PROJECT` applies per phase** —
       `spendCoins` caps each phase at 250 (`src/lib/hours.ts:257-260`), so one
       project can mint up to 500 spendable coins, though
       `config/program.ts:22-28` describes it as a per-project ceiling. Confirm
@@ -376,15 +396,16 @@ Everything not ticked is still open.
 
 ---
 
-## 5. Already tracked, still open
+## 5. Already tracked
 
-- [ ] `LAUNCH_FIXES.md` #13 — `export/participants` returns email + slackId to
-      any export key (see item 14 above).
-- [ ] `LAUNCH_FIXES.md` #14 — rotate and delete `.env.old`; secrets in the
-      working tree (see item 15 above).
+- [x] `LAUNCH_FIXES.md` #13 — fixed by item 14 (`e61623e`).
+- [x] `LAUNCH_FIXES.md` #14 — in-repo half fixed by item 15 (`41ea62b`):
+      `.env.old` deleted, boot warning, runbook checklist. Rotating the
+      credentials it held is still operator work.
 - [ ] `todo.md` — external-only steps: register the Ari callback URL and
-      secrets; set `RESEND_API_KEY` + `EMAIL_FROM` (notifications no-op
-      without them); HCB OAuth app and rotated refresh-token persistence;
+      secrets; set `RESEND_API_KEY` + `EMAIL_FROM` (unconfigured now records a
+      `NOTIFICATION_FAILURE` rather than no-oping); HCB OAuth app and rotated
+      refresh-token persistence;
       `SLACK_REVIEW_CHANNEL_ID` if dispute notices are wanted.
 
 ---
