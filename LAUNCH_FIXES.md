@@ -44,10 +44,12 @@ larger ones) before it is ticked.
 
 ## Medium
 
-- [ ] **5. `BUILD_BANKED_HOURS` missing from `EARNING_KINDS`**
-  - `src/lib/currency.ts:30-38`. `getEarnedCredit()` (`/api/me`,
+- [x] **5. `BUILD_BANKED_HOURS` missing from `EARNING_KINDS`**
+  - `src/lib/currency.ts:30-39`. `getEarnedCredit()` (`/api/me`,
     `/api/credits`, `queries/dashboard.ts`) drops the banked half of every
-    approved build. Add `LedgerKind.BUILD_BANKED_HOURS`.
+    approved build. Added `LedgerKind.BUILD_BANKED_HOURS` (the only earning kind
+    that was absent; `PARTS_TOP_UP`, `SHOP_PURCHASE` and `SHOP_REFUND` are
+    correctly excluded).
 
 - [ ] **6. Sessions can be logged into an approved/rejected phase**
   - `src/app/api/projects/[id]/sessions/route.ts:72-75` blocks only `in_review`,
