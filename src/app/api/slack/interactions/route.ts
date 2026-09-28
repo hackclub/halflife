@@ -11,6 +11,8 @@ type BlockAction = {
 
 type InteractionPayload = {
   type: string
+  /** Present only on the `url_verification` challenge Slack sends first. */
+  challenge?: string
   user: { id: string }
   channel?: { id: string }
   message?: { ts: string; blocks?: SlackBlock[] }
@@ -149,8 +151,10 @@ export async function POST(request: Request) {
   }
 
   // Interactivity payloads arrive form-encoded with the JSON under `payload`.
+  // The first thing Slack sends to a newly saved Request URL is a
+  // `url_verification` challenge, and it arrives the same way.
   const form = new URLSearchParams(rawBody)
-  const raw = form.get("payload")
+  const raw = form.get("payload") ?? (rawBody.trimStart().startsWith("{") ? rawBody : null)
   if (!raw) return NextResponse.json({ ok: false }, { status: 400 })
 
   let payload: InteractionPayload
@@ -158,6 +162,12 @@ export async function POST(request: Request) {
     payload = JSON.parse(raw)
   } catch {
     return NextResponse.json({ ok: false }, { status: 400 })
+  }
+
+  // Slack refuses to save the interactivity Request URL unless the challenge
+  // is echoed verbatim, so this has to be answered before anything else.
+  if (payload.type === "url_verification") {
+    return NextResponse.json({ challenge: payload.challenge })
   }
 
   if (payload.type === "block_actions") {
