@@ -1,0 +1,97 @@
+import "server-only"
+import { Phase, ReviewResult } from "@/app/generated/prisma/enums"
+import { getThemeDef } from "@/lib/config/program"
+import { sendEmail } from "@/lib/email"
+import prisma from "@/lib/prisma"
+import { trackSideEffect } from "@/lib/side-effects"
+import { sendDM } from "@/lib/slack"
+
+/**
+ * Telling a maker what a review decided.
+ *
+ * Best-effort: a decision must never fail because Slack or the mail provider
+ * is down, so each channel is attempted independently and a failure becomes a
+ * `NOTIFICATION_FAILURE` audit row rather than an error. The in-app project
+ * page is still the source of truth, so a missed message is inconvenient, not
+ * lost.
+ *
+ * Called after the decision transaction has committed, from both decision
+ * paths (the console route and the Ari webhook), so the two cannot drift.
+ */
+
+export interface ReviewOutcomeNotice {
+  themeProjectId: string
+  phase: Phase
+  result: ReviewResult
+  /** The reviewer's note, which the participant is meant to read. */
+  feedback: string
+}
+
+function projectUrl(id: string): string | null {
+  const base = (process.env.NEXT_PUBLIC_APP_URL ?? process.env.BETTER_AUTH_URL ?? "").replace(/\/$/, "")
+  return base ? `${base}/projects/${id}` : null
+}
+
+/** One line per outcome, in the voice the platform uses everywhere else. */
+function headline(result: ReviewResult, phase: string, title: string): { subject: string; body: string } {
+  const what = `${phase} for ${title}`
+  switch (result) {
+    case ReviewResult.APPROVED:
+      return { subject: `Your ${phase} was approved — ${title}`, body: `Good news: your ${what} was approved.` }
+    case ReviewResult.RETURNED:
+      return {
+        subject: `Changes requested on your ${phase} — ${title}`,
+        body: `Your ${what} needs a few changes before it can be approved.`,
+      }
+    case ReviewResult.REJECTED:
+      return { subject: `Your ${phase} was not approved — ${title}`, body: `Your ${what} was not approved.` }
+    default:
+      return { subject: `An update on your ${phase} — ${title}`, body: `There is an update on your ${what}.` }
+  }
+}
+
+export async function notifyReviewOutcome(notice: ReviewOutcomeNotice): Promise<void> {
+  const project = await prisma.themeProject.findUnique({
+    where: { id: notice.themeProjectId },
+    select: {
+      title: true,
+      theme: true,
+      user: { select: { name: true, email: true, slackId: true } },
+    },
+  })
+  if (!project) return
+
+  const { email, slackId } = project.user
+  const title = project.title.trim() || getThemeDef(project.theme).label
+  const phaseLabel = notice.phase === Phase.DESIGN ? "design" : "build"
+  const { subject, body } = headline(notice.result, phaseLabel, title)
+  const url = projectUrl(notice.themeProjectId)
+  const feedback = notice.feedback.trim()
+  const firstName = project.user.name?.trim().split(/\s+/)[0] || "there"
+
+  const ctx = {
+    actorId: null,
+    targetType: "ThemeProject",
+    targetId: notice.themeProjectId,
+    metadata: { kind: "review_outcome", phase: notice.phase, result: notice.result },
+  }
+
+  if (slackId) {
+    const link = url ? `\n<${url}|Open the project>` : ""
+    const dm = `${body}${feedback ? `\n\nReviewer's note: ${feedback}` : ""}${link}`
+    await trackSideEffect("slack", ctx, () => sendDM(slackId, dm))
+  }
+
+  if (email) {
+    const text = [
+      `Hi ${firstName},`,
+      "",
+      body,
+      ...(feedback ? ["", `Reviewer's note: ${feedback}`] : []),
+      ...(url ? ["", `Open the project: ${url}`] : []),
+      "",
+      "— Half Life",
+    ].join("\n")
+    await trackSideEffect("email", ctx, () => sendEmail({ to: email, subject, text }))
+  }
+}

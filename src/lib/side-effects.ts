@@ -19,7 +19,7 @@ export interface SideEffectContext {
  * (`POST /api/admin/theme-projects/[id]/sync-to-airtable`) is how they fix it.
  */
 export async function trackSideEffect<T>(
-  kind: "airtable" | "slack" | "ari",
+  kind: "airtable" | "slack" | "ari" | "email",
   ctx: SideEffectContext,
   fn: () => Promise<T>,
 ): Promise<T | null> {

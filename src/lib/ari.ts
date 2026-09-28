@@ -6,6 +6,7 @@ import { ariExternalId, parseAriExternalId } from "@/lib/ari-id"
 import { getThemeDef } from "@/lib/config/program"
 import { isTierId } from "@/lib/config/tiers"
 import { HttpError } from "@/lib/errors"
+import { notifyReviewOutcome } from "@/lib/notifications"
 import prisma from "@/lib/prisma"
 import { reopenPhase, unapprovePhase, finalizeReview } from "@/lib/review"
 import { sanitize } from "@/lib/sanitize"
@@ -344,6 +345,8 @@ async function applyDecision(event: DecisionEvent): Promise<void> {
   // Ari owns the decision, so a human claim must not block it.
   await prisma.reviewClaim.deleteMany({ where: { submissionId: submission.id } })
 
+  const feedback = event.review.note_to_maker?.trim() || defaultFeedback(result)
+
   try {
     await finalizeReview({
       submissionId: submission.id,
@@ -351,7 +354,7 @@ async function applyDecision(event: DecisionEvent): Promise<void> {
       reviewerName: ariReviewerLabel(event.review),
       reviewerEmail: event.review.reviewer?.email ?? null,
       result,
-      feedback: event.review.note_to_maker?.trim() || defaultFeedback(result),
+      feedback,
       reason: event.review.audit_note ?? null,
       tier,
       hoursOverride: approvedHoursFrom(event.review),
@@ -391,6 +394,11 @@ async function applyDecision(event: DecisionEvent): Promise<void> {
       approvedHours: approvedHoursFrom(event.review),
     },
   })
+
+  // The decision is committed and recorded; now tell the maker. Best-effort —
+  // a Slack or mail outage must not make Ari retry a decided submission, and
+  // the project page is the source of truth if a message is missed.
+  await notifyReviewOutcome({ themeProjectId, phase, result, feedback })
 }
 
 /**

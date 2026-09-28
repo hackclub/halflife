@@ -1,5 +1,7 @@
+import { after } from "next/server"
 import { fail, ok, parseBody, withRoute } from "@/lib/api"
 import { requirePermission } from "@/lib/guards"
+import { notifyReviewOutcome } from "@/lib/notifications"
 import { hasPermission, Permission } from "@/lib/permissions"
 import { finalizeReview } from "@/lib/review"
 import { sanitize, sanitizeOptional } from "@/lib/sanitize"
@@ -29,17 +31,30 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
     return fail("FORBIDDEN", "Overriding the grant amount requires the MANAGE_CREDIT permission")
   }
 
+  const feedback = sanitize(body.feedback ?? "")
+
   const outcome = await finalizeReview({
     submissionId: id,
     reviewerId: gate.user.id,
     reviewerName: gate.user.name,
     reviewerEmail: gate.user.email,
     result: body.result,
-    feedback: sanitize(body.feedback ?? ""),
+    feedback,
     reason: "reason" in body ? sanitizeOptional(body.reason) : null,
     tier: "tier" in body ? (body.tier ?? null) : null,
     hoursOverride: "hoursOverride" in body ? (body.hoursOverride ?? null) : null,
     grantUsdOverride: "grantUsdOverride" in body ? (body.grantUsdOverride ?? null) : null,
+  })
+
+  // After the response: telling the maker must not hold up the reviewer, and a
+  // Slack or mail outage must not fail a decision that has already committed.
+  after(async () => {
+    await notifyReviewOutcome({
+      themeProjectId: outcome.themeProjectId,
+      phase: outcome.phase,
+      result: outcome.result,
+      feedback,
+    })
   })
 
   // No Airtable write here. Review happens on ari.hackclub.com, which owns the
