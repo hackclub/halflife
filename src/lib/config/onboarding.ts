@@ -101,11 +101,6 @@ export const EXPERIENCE_OPTIONS = [
  * in scope — roughly six to eight hours. Only the PCB set is reachable from
  * the first checkpoint; the others exist because the design note says every
  * later design week repeats "project creation/tier selection".
- *
- * ⚠️ PLACEHOLDER COPY. The comp has "INSERT EXPLAINATION OF PCB WEEK here" and
- * "Stuck? Pick one of the following:" with no options filled in, so these are
- * written to be plausible Tier 1 builds rather than taken from the program.
- * Replace before launch — participants will actually build these.
  */
 export interface StarterProject {
   readonly id: string
@@ -120,21 +115,21 @@ export const STARTER_PROJECTS = [
     theme: Theme.PCB,
     title: "A blinky conference badge",
     description:
-      "A two-layer board with a coin cell, a microcontroller and a handful of LEDs, shaped however you like. The smallest complete board that is still yours.",
+      "A two-layer board with a coin cell, a microcontroller and a handful of LEDs, shaped however you like. The smallest board that still counts: schematic, layout, order, solder.",
   },
   {
     id: "pcb-usb-macropad",
     theme: Theme.PCB,
     title: "A four-key macropad",
     description:
-      "Four mechanical switches, a USB-C connector and a microcontroller that speaks HID. Ends the week as something you actually keep on your desk.",
+      "Four mechanical switches, a USB-C connector and a microcontroller that speaks HID. Pick a layout you will actually use — it ends the week as something on your desk.",
   },
   {
     id: "pcb-sensor-breakout",
     theme: Theme.PCB,
     title: "A sensor breakout board",
     description:
-      "Pick a sensor you want to use later and give it a breakout: regulator, decoupling, a header, and a footprint you have checked against the datasheet.",
+      "Pick a sensor you want to use in a later build and give it a breakout: regulator, decoupling, a header, and a footprint you have checked against the datasheet.",
   },
 ] as const satisfies readonly StarterProject[]
 
@@ -155,11 +150,6 @@ export const STARTER_PROJECT_TIER: TierId = 1
  * The comp branches this on the answer to question one — "If beginner:
  * information about PCBs, else: example projects" — so both halves are here
  * and the step picks one.
- *
- * ⚠️ PLACEHOLDER COPY. The comp's own text node reads "INSERT EXPLAINATION OF
- * PCB WEEK here. Lorem ipsum", so there is nothing authoritative to copy. This
- * is written to be true and useful rather than invented program policy, but it
- * is not the program's voice and should be rewritten before launch.
  */
 export interface WeekIntro {
   readonly theme: Theme
@@ -177,7 +167,7 @@ export const WEEK_INTROS = [
     kicker: "Printed Circuit Board Week:",
     headline: "DESIGN YOUR PCB",
     primer:
-      "A printed circuit board is a sheet of fibreglass with copper traces etched into it, so components solder straight onto the board instead of being wired by hand. This week you draw one: a schematic that says what connects to what, then a layout that says where everything physically sits. At the end of the week you order it, and a fab house posts you the real thing.",
+      "A printed circuit board is a sheet of fibreglass with copper traces etched into it, so components solder straight onto the board instead of being wired by hand. This week you make one end to end: a schematic that says what connects to what, a layout that says where everything physically sits, and a parts cart to order from. At the end of the week you send it off, and a fab house posts you the real thing.",
     examples: [
       "A board that replaces a breadboard project you have already built",
       "A shield or hat for a dev board you own",

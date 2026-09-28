@@ -156,7 +156,11 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
   const input: AriShipInput = {
     external_id: ariExternalId(themeProjectId, phase),
     title: project.title,
-    description: project.description ?? "",
+    // Ari rejects an empty description. Week one's onboarding allows one, and
+    // submissions made before that was enforced would otherwise fail every
+    // retry, so fall back to the title rather than throw: the title is always
+    // present and is a truer description than a placeholder would be.
+    description: project.description?.trim() || project.title,
     // Half Life is a hardware programme, so a demo video is optional.
     track: "hardware",
     maker: {

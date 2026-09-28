@@ -122,6 +122,18 @@ export async function submitPhase(
   const eligible = canSubmitPhase(project, phase)
   if (!eligible.ok) throw new HttpError(eligible.code, eligible.message)
 
+  // The readiness checklist calls a description required, and the Ari SDK
+  // refuses a ship without one. Week one's onboarding lets the maker leave it
+  // blank (the project form for other weeks does not), so a blank description
+  // used to pass submit and then fail the Ari send silently in the `after`
+  // hook — the maker saw success and no reviewer ever saw the project. Enforce
+  // it here, beside the hours check, so the refusal reaches the person who can
+  // fix it. `buildShipInput` keeps a fallback too, so hand-ins already stuck in
+  // this state can still be replayed by `ari-retry`.
+  if (!project.description?.trim()) {
+    throw new HttpError("UNPROCESSABLE", "Add a project description before submitting this phase")
+  }
+
   // Handing a week in is a checkpoint too; a deleted reel still owed holds it.
   await assertNoOwedReel(userId)
 
