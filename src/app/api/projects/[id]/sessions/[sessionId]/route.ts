@@ -91,7 +91,9 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
     },
   })
 
-  if (data.hoursClaimed !== undefined) await recomputeWeek(gate.user.id, session.weekNumber)
+  if (data.hoursClaimed !== undefined || data.hoursSource !== undefined) {
+    await recomputeWeek(gate.user.id, session.weekNumber)
+  }
 
   return ok({ session: updated })
 })
