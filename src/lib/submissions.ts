@@ -139,7 +139,10 @@ export async function submitPhase(
   await assertNoOwedReel(userId)
 
   // A submission must not be able to file someone else's evidence as its own.
-  const ownKeys = attachmentKeys.filter((key) => isOwnedKey(userId, key))
+  // Refuse rather than filter: silently dropping a stranger's key hands back a
+  // success with the evidence missing, which the maker only finds out at review.
+  const foreign = attachmentKeys.filter((key) => !isOwnedKey(userId, key))
+  if (foreign.length > 0) throw new HttpError("VALIDATION_FAILED", "Those uploads are not yours")
 
   const breakdown = await getHoursBreakdown(themeProjectId, phase)
   if (breakdown.journalEntryCount === 0 && breakdown.hackatimeHours === 0) {
@@ -214,7 +217,7 @@ export async function submitPhase(
         themeProjectId,
         phase,
         notes,
-        attachmentKeys: ownKeys,
+        attachmentKeys,
         submittedInWeek,
         scheduledWeek,
         // Analytics only. Nothing gates on lateness — a late joiner has to be
