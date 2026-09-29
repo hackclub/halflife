@@ -33,7 +33,11 @@ export async function trackSideEffect<T>(
 ): Promise<T | null> {
   try {
     const result = await fn()
-    if (kind === "airtable") {
+    // A skipped write — sync disabled, the service unconfigured, the project
+    // gone — is not a completed side effect: a success audit row for work that
+    // never happened turns the retry jobs green and hides the outage.
+    const skipped = result !== null && typeof result === "object" && "skipped" in result
+    if (kind === "airtable" && !skipped) {
       // A write that made or found an Airtable row reports its record id, and
       // it is kept here: the YSWS table has no column of ours to find the row
       // by later, so this is how a re-submission updates it and an unsubmit
@@ -56,7 +60,7 @@ export async function trackSideEffect<T>(
           ...(recordId ? { recordId } : {}),
         },
       })
-    } else if (kind === "ari") {
+    } else if (kind === "ari" && !skipped) {
       // The send itself records the Ari submission id on the row; this is the
       // operational trace that it happened.
       await logAudit({
