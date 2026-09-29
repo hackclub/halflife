@@ -326,6 +326,46 @@ async function bodies() {
   check("ari · pending: no submissions means nothing pending", selectPendingShips(projects, []).length === 0)
   check("ari · pending: no projects means nothing pending", selectPendingShips([], []).length === 0)
 
+  /* ── 5c. HCB disbursement reconciliation ──────────────────────────────── */
+  //
+  // The one path that decides whether a timed-out top-up is re-sent. An
+  // unreadable payload must be ambiguous, never absent: "nothing landed" is
+  // the state that pays twice.
+  const { reconcileDisbursement } = await import("../src/lib/hcb")
+  const attemptedAt = new Date(Date.UTC(2026, 0, 1, 0, 0))
+  const row = (amountCents: number, createdAt: string | null) => ({
+    transactionId: null,
+    amountCents,
+    memo: null,
+    createdAt,
+  })
+  const listed = (...rows: ReturnType<typeof row>[]) => ({ kind: "listed" as const, rows })
+  check(
+    "hcb · unreadable payload is ambiguous, never absent",
+    reconcileDisbursement({ kind: "unreadable" }, 3000, attemptedAt).kind === "ambiguous",
+  )
+  check("hcb · an empty grant is absent", reconcileDisbursement(listed(), 3000, attemptedAt).kind === "absent")
+  check(
+    "hcb · one matching top-up in the window landed",
+    reconcileDisbursement(listed(row(3000, "2026-01-01T00:02:00Z")), 3000, attemptedAt).kind === "landed",
+  )
+  check(
+    "hcb · two matching top-ups are ambiguous",
+    reconcileDisbursement(
+      listed(row(3000, "2026-01-01T00:02:00Z"), row(3000, "2026-01-01T00:03:00Z")),
+      3000,
+      attemptedAt,
+    ).kind === "ambiguous",
+  )
+  check(
+    "hcb · a matching top-up before the window is absent",
+    reconcileDisbursement(listed(row(3000, "2025-12-30T00:00:00Z")), 3000, attemptedAt).kind === "absent",
+  )
+  check(
+    "hcb · an unparseable timestamp is ambiguous",
+    reconcileDisbursement(listed(row(3000, "not-a-date")), 3000, attemptedAt).kind === "ambiguous",
+  )
+
   /* ── 6. Journal image count ─────────────────────────────────────────────── */
   //
   // The evidence bar counts pictures, so the same picture pasted twice must

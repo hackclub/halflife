@@ -112,11 +112,24 @@ export async function topUpCardGrant(grantHashid: string, amountCents: number): 
 
 export interface GrantDisbursement {
   transactionId: string | null
-  amountCents: number | null
+  /** Every HCB disbursement carries an amount; a row without one is not trusted. */
+  amountCents: number
   memo: string | null
   /** ISO timestamp HCB recorded the disbursement at. */
   createdAt: string | null
 }
+
+/**
+ * The result of reading a grant's disbursements.
+ *
+ * `unreadable` is not the same as an empty list: an unexpected payload shape
+ * (an envelope, a renamed field, a string amount) must never be mistaken for
+ * "the previous attempt paid nothing", because that is the state in which a
+ * retry sends the money again.
+ */
+export type GrantDisbursementList =
+  | { kind: "listed"; rows: GrantDisbursement[] }
+  | { kind: "unreadable" }
 
 /**
  * Every disbursement on a card grant, newest first: top-ups land as positive
@@ -124,9 +137,10 @@ export interface GrantDisbursement {
  *
  * No pagination: a grant only accumulates one row per top-up/withdrawal, and
  * this exists to spot a top-up whose response was lost before deciding whether
- * to send another.
+ * to send another. Fails closed on any shape it does not recognise — see
+ * `GrantDisbursementList`.
  */
-export async function listCardGrantDisbursements(grantHashid: string): Promise<GrantDisbursement[]> {
+export async function listCardGrantDisbursements(grantHashid: string): Promise<GrantDisbursementList> {
   const token = await accessToken()
   const res = await fetch(`${base()}/api/v4/card_grants/${encodeURIComponent(grantHashid)}?expand=disbursements`, {
     headers: { authorization: `Bearer ${token}`, accept: "application/json" },
@@ -136,17 +150,24 @@ export async function listCardGrantDisbursements(grantHashid: string): Promise<G
     const body = await res.text().catch(() => "")
     throw new HttpError("INTERNAL", `HCB refused to read the grant (${res.status})`, { detail: body.slice(0, 300) })
   }
-  const data = (await res.json()) as { disbursements?: unknown }
-  if (!Array.isArray(data.disbursements)) return []
-  return data.disbursements.map((raw) => {
-    const d = (raw ?? {}) as Record<string, unknown>
-    return {
+
+  const data = (await res.json().catch(() => null)) as { disbursements?: unknown } | null
+  const raw = data?.disbursements
+  if (!Array.isArray(raw)) return { kind: "unreadable" }
+
+  const rows: GrantDisbursement[] = []
+  for (const entry of raw) {
+    if (typeof entry !== "object" || entry === null) return { kind: "unreadable" }
+    const d = entry as Record<string, unknown>
+    if (typeof d.amount_cents !== "number" || !Number.isFinite(d.amount_cents)) return { kind: "unreadable" }
+    rows.push({
       transactionId: typeof d.transaction_id === "string" ? d.transaction_id : null,
-      amountCents: typeof d.amount_cents === "number" ? d.amount_cents : null,
+      amountCents: d.amount_cents,
       memo: typeof d.memo === "string" ? d.memo : null,
       createdAt: typeof d.created_at === "string" ? d.created_at : null,
-    }
-  })
+    })
+  }
+  return { kind: "listed", rows }
 }
 
 /** Allowance for clock skew between our attempt time and HCB's record. */
@@ -156,16 +177,21 @@ export const TOPUP_SKEW_MS = 5 * 60_000
  * Decide whether a top-up whose response was lost actually landed.
  *
  * A single disbursement matching the amount at or after the attempt is
- * evidence it did. Several in the window, or a candidate with no usable
- * timestamp, is not something to guess about: an unnecessary retry pays
- * twice, and a skipped one underpays, so ambiguity goes back to a human.
+ * evidence it did. Several in the window, a candidate with no usable
+ * timestamp, or a payload that could not be read at all is not something to
+ * guess about: an unnecessary retry pays twice, and a skipped one underpays,
+ * so ambiguity goes back to a human.
  */
 export function reconcileDisbursement(
-  disbursements: readonly GrantDisbursement[],
+  list: GrantDisbursementList,
   amountCents: number,
   attemptedAt: Date,
 ): { kind: "landed"; transactionId: string | null } | { kind: "absent" } | { kind: "ambiguous" } {
-  const sameAmount = disbursements.filter((d) => d.amountCents === amountCents)
+  // Unreadable is not absent. If we could not parse what HCB holds, the only
+  // safe answer is to send the admin to look, never to retry the top-up.
+  if (list.kind === "unreadable") return { kind: "ambiguous" }
+
+  const sameAmount = list.rows.filter((d) => d.amountCents === amountCents)
   if (sameAmount.length === 0) return { kind: "absent" }
 
   const dated: { at: number; transactionId: string | null }[] = []
