@@ -19,7 +19,7 @@ pass; the DB-backed verify suites were not run (no database was up).
 
 Legend: **BLOCKER** — launch is damaged without it · **HIGH** · **MED** · **LOW**
 
-## Status — every blocker, high and medium fixed; the low/cleanup tail remains
+## Status — all fifty-two findings addressed
 
 **Fixed since this pass:** the two launch blockers (#1 `d746d6f`, #2
 `2da57fa`), all seven highs (#3 `cf3c772`, #4 `69cf674`, #5 `4e10555`,
@@ -36,8 +36,34 @@ Legend: **BLOCKER** — launch is damaged without it · **HIGH** · **MED** · *
 - surfaces and hardening: #27 `f150777`, #28 `7cb1595`, #29/#31 `43eacf3`,
   #30 `e4d2623`, #32 `dab94ca`
 
-What remains is the low/cleanup tail (#33–#52): doc corrections, dead code,
-Docker hygiene and a few small correctness edges. No new authorization bypass,
+The low/cleanup tail (#33–#52) followed, one commit each unless noted: #33
+`a9a053f`, #34 `46f24bd`, #35 `788ef02`, #36 `524ebb8`, #37 `d4bada1`,
+#38 `77e81ba`, #39 `f5c51cf`, #40 `4d21749`, #41 `4de430d`, #42 `7febad1`,
+#43 `167a6d0`, #44 `588309b`, #45 `b32bd0f`, #46 `3d47f17` + `3a47dd6`,
+#47 `43816cd`, #48 `7a8319e`, #49 `0376c7b`, #50 `8a1376a`, #51 `e36f082`.
+#52's stashes were kept as the branches `archive/unify-stash-0` and
+`archive/unify-stash-1` and then dropped.
+
+Noted remainders, deliberately left as cleanups rather than launch risks:
+
+- **#43**: the announcement and FAQ dates are editorial content — the owner
+  still decides the real dates. The code-level items (dead `MAKE_PHOTO`, the
+  Tailwind v4 opacity, the dead timelapse hint, the preview blob leak) are
+  fixed.
+- **#44**: the proxy matcher's negative-lookahead prefixes are still
+  unanchored; the security headers themselves now apply to every route via
+  `next.config.ts`, including the excluded ones.
+- **#45**: the CI image-build job and pruning dev dependencies from the
+  runtime image were not done (pruning is documented as fragile, and there is
+  no Docker daemon here to test a build); the entrypoint command override, the
+  build-context exclusions and the dev-compose binding landed.
+- **#46**: the dead query modules are deleted and `backfillAnalytics` has a
+  script entry point; the remaining never-written schema surface (project
+  delete/restore, `ShopOrderNote`, `REVIEWER_PAYMENT`, unused User columns)
+  stays reserved pending a product call.
+
+Every check passes on the final tree: `pnpm typecheck`, `pnpm lint`,
+`pnpm verify:contracts` and `pnpm build`. No new authorization bypass,
 injection or webhook-verification gap was found.
 
 | # | Severity | Item | Area |
@@ -407,50 +433,50 @@ injection or webhook-verification gap was found.
 
 ## 4. Low / cleanups
 
-- [ ] **33. `unapprovePhase` / `reopenPhase` read status outside the
+- [x] **33. `unapprovePhase` / `reopenPhase` read status outside the
       transaction and write unconditionally.** `src/lib/review.ts:444-452` and
       `:556-570`; a slow unapprove can overwrite a newer approval. Re-read and
       use a conditional `updateMany` inside the locked transaction.
-- [ ] **34. The analytics export uses the raw `currentStreak` column, not
+- [x] **34. The analytics export uses the raw `currentStreak` column, not
       `streakAsOf`.** `src/lib/analytics.ts:327-328, 350-351` — a stale cache
       for anyone who stopped journalling (`src/lib/streak.ts:155-160`). Compute
       the as-of value in `getUserAnalytics`.
-- [ ] **35. HCB memo failures are swallowed and a null transaction id still
+- [x] **35. HCB memo failures are swallowed and a null transaction id still
       marks the grant sent.** `src/lib/grants.ts:120-121, 152-156` — route the
       memo through `trackSideEffect` and flag a missing id for follow-up.
-- [ ] **36. `ThemeProject.buildCoins` records only the spendable half.**
+- [x] **36. `ThemeProject.buildCoins` records only the spendable half.**
       `src/lib/review.ts:310` writes `coins?.spendable` while the build also
       mints `BUILD_BANKED_HOURS`; the schema says these frozen fields reconcile
       against the ledger. Store the split or rename the field.
-- [ ] **37. Tracked sessions distort two read-only surfaces.**
+- [x] **37. Tracked sessions distort two read-only surfaces.**
       `src/lib/hours.ts:81-86, 117, 131` counts timelapse seconds for
       `HACKATIME_TRACKED` sessions in the coverage numerator but not the
       denominator; `src/lib/queries/community.ts:69, 84, 91` shows their
       minutes and embeds the author's Slack id in a public cachet avatar URL
       (the module's comment says neither is shown), as does
       `src/lib/feed.ts:62, 86`.
-- [ ] **38. The BOM lock is checked outside any write transaction.**
+- [x] **38. The BOM lock is checked outside any write transaction.**
       `src/app/api/projects/[id]/bom/route.ts:48-68` — a design approval
       between the check and the create lets a line in after the list is final.
       No money impact (BOM savings is not shipped). Conditional create under
       the project status.
-- [ ] **39. The public rate limits key on a caller-controlled header.**
+- [x] **39. The public rate limits key on a caller-controlled header.**
       `src/app/api/subscribe/route.ts:13-18` and
       `src/app/api/rsvp/route.ts:16-24` take the first `x-forwarded-for`
       entry; the limiter is per-instance (`src/lib/site/signups.ts:250-265`).
       Rotating the header bypasses it. Key on an ingress-overwritten header
       (`cf-connecting-ip`) or the trusted hop only.
-- [ ] **40. The help-channel "Mark as helped" button is open to every
+- [x] **40. The help-channel "Mark as helped" button is open to every
       member.** `src/app/api/slack/interactions/route.ts:113-140` has no
       author/staff check (unlike `handleSelfResolve`, `:80-88`), and the help
       channel is auto-joined by anyone who joins the main channel
       (`src/app/api/slack/events/route.ts:155-164`). Any participant can
       resolve any ticket thread. Check channel membership before resolving.
-- [ ] **41. `/api/upload` has no per-user quota or rate limit.**
+- [x] **41. `/api/upload` has no per-user quota or rate limit.**
       `src/app/api/upload/route.ts:18-53` — an authenticated account can store
       unlimited 100 MiB objects under its own prefix with public URLs. Add a
       per-user rate limit plus an aggregate byte/object cap.
-- [ ] **42. Accessibility leftovers from the dialog-name fix.**
+- [x] **42. Accessibility leftovers from the dialog-name fix.**
       `[tracked-incomplete]` — PRELAUNCH_AUDIT.md #22.
       `src/components/platform/modals/FirstCheckpoint.tsx:64-71` (loading) and
       the `OnboardingFlow` dialog render `ModalTitle`-less dialogs, so the first
@@ -462,7 +488,7 @@ injection or webhook-verification gap was found.
       keyboard-focusable (`AppShell.tsx:85-91`); and `ReelComments` ids are
       duplicated when both the panel and sheet are mounted
       (`ReelComments.tsx:213-316`, `ReelViewer.tsx:490-541`).
-- [ ] **43. Landing/content cleanups.** The announcement and FAQ dates
+- [x] **43. Landing/content cleanups.** The announcement and FAQ dates
       disagree with each other and with the default program schedule
       (`src/lib/site/content.ts:62-68, 180-181` vs
       `src/lib/config/program.ts:49`); `MAKE_PHOTO` is dead config whose comment
@@ -472,13 +498,13 @@ injection or webhook-verification gap was found.
       journal shortfall message (`CheckpointModals.tsx:158-165`); and
       `SubmitModal`'s capture leaks blob URLs (revoked in `ReelModal`,
       `CheckpointModals.tsx:808-813`, but not at `:1695-1702`).
-- [ ] **44. Proxy/header edges.** Every path the matcher excludes loses the
+- [x] **44. Proxy/header edges.** Every path the matcher excludes loses the
       security headers — including `/r/<token>`, whose URL is the credential
       and which therefore has no `Referrer-Policy` (`src/proxy.ts:119`). The
       exclusions are also unanchored prefixes, so a
       future `/api/integrations-…` or `/r/...` path would silently skip basic
       auth (`proxy.ts:119`). Anchor them.
-- [ ] **45. Docker/deploy cleanups.** `COPY . .` (`Dockerfile:32`) can clobber
+- [x] **45. Docker/deploy cleanups.** `COPY . .` (`Dockerfile:32`) can clobber
       the freshly generated Prisma client with a stale local one, since
       `.dockerignore` does not exclude `src/app/generated`; the runner ships
       the whole dev dependency tree (`Dockerfile:72` — typescript, eslint,
@@ -490,7 +516,7 @@ injection or webhook-verification gap was found.
       (`docker-compose.dev.yaml:9`); and migration `20260901215004` adds a
       `NOT NULL` column with no default, so it cannot replay on a database that
       already has account rows (fresh production is fine).
-- [ ] **46. Unwritten or unwired schema/code.** Project delete/restore,
+- [x] **46. Unwritten or unwired schema/code.** Project delete/restore,
       `ShopOrderNote`, `LedgerKind.REVIEWER_PAYMENT`, the User
       attribution/bio/pronoun columns and the `ADMIN_DELETE_PROJECT`/
       `ADMIN_RESTORE_PROJECT` actions have no writers; `submissionsCloseAt`
@@ -504,7 +530,7 @@ injection or webhook-verification gap was found.
       no callers. Note the audit record: PRELAUNCH_AUDIT.md #33 (dashboard
       N+1) rewrote `queries/dashboard.ts`, which is dead — the live dashboard
       uses `queries/store.ts`. Delete or wire; correct the audit note.
-- [ ] **47. Documentation corrections.** `docs/RUNBOOK.md:171` says every
+- [x] **47. Documentation corrections.** `docs/RUNBOOK.md:171` says every
       integration route accepts `?dryRun=true`, but `printer-reconcile` writes
       a `SyncRunLog` regardless; `docs/ARCHITECTURE.md:160` promises an
       Airtable upsert that does not exist (see finding 2), and `:122` still
@@ -512,12 +538,12 @@ injection or webhook-verification gap was found.
       `README.md:145-146` says the carousel credits are placeholders when
       `src/lib/site/content.ts:187-219` carries real makers; and
       `README.md:99` documents a signup payload shape the code does not send.
-- [ ] **48. Environment-template gaps.** `SIGNUP_WEBHOOK_URL` /
+- [x] **48. Environment-template gaps.** `SIGNUP_WEBHOOK_URL` /
       `SIGNUP_WEBHOOK_TOKEN` are read (`src/lib/site/signups.ts:177-209`) and
       documented in the README but absent from `.env.example`, so RUNBOOK step
       "pass every var from .env.example" will not configure them; the same
       applies to `LAPSE_WEB_BASE`, `HCA_ME_URL` and `AIRTABLE_TABLE_NAME`.
-- [ ] **49. Ari API-surface leftovers.** `sync-to-ari` accepts a replay for an
+- [x] **49. Ari API-surface leftovers.** `sync-to-ari` accepts a replay for an
       already-sent hand-in and ignores `deletedAt`
       (`…/sync-to-ari/route.ts:40-48`; harmless today — Ari dedupes — but the
       check belongs there); `selectPendingShips`'s tie-break depends on row
@@ -525,14 +551,14 @@ injection or webhook-verification gap was found.
       at `ari.ts:249-252`); and `ari-retry` snapshots pending state then sends
       later with no re-check, so a phase unsubmitted in between can still get a
       ship (`ari-retry/route.ts:20-39`, `ari.ts:206-219`).
-- [ ] **50. Foreign attachment keys are dropped silently at submit.**
+- [x] **50. Foreign attachment keys are dropped silently at submit.**
       `src/lib/submissions.ts:141-142` filters non-owned keys instead of
       refusing, so evidence disappears with a success response — the opposite
       of the sessions route's rule (`…/sessions/route.ts:101-104`).
-- [ ] **51. The WebM check accepts audio-only files.**
+- [x] **51. The WebM check accepts audio-only files.**
       `src/lib/uploads/r2.ts:97-106` only checks the EBML magic for non-MP4,
       so an audio-only `.webm` with a video MIME passes. Low impact.
-- [ ] **52. Two stale git stashes exist on `unify-platform-ui`.**
+- [x] **52. Two stale git stashes exist on `unify-platform-ui`.**
       `stash@{0}` is a harmless `grant-admin` alias; `stash@{1}` is an older,
       less-safe variant of the Hackatime Linking code that predates the
       `*.link.invalid` mitigation. Drop them (or rebase deliberately) before
