@@ -58,7 +58,7 @@ export const TIERS = [
     id: 1,
     name: "Tier 1",
     grantUsd: 30,
-    estimate: "~10–12h",
+    estimate: "~10–15h",
     showcase: {
       [Theme.PCB]: [
         {
@@ -88,7 +88,7 @@ export const TIERS = [
     id: 2,
     name: "Tier 2",
     grantUsd: 65,
-    estimate: "~13–19h",
+    estimate: "~16–23h",
     showcase: {
       [Theme.PCB]: [
         {
@@ -113,7 +113,7 @@ export const TIERS = [
     id: 3,
     name: "Tier 3",
     grantUsd: 100,
-    estimate: "~20h+",
+    estimate: "~24h+",
     showcase: {
       [Theme.PCB]: [
         {

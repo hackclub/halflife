@@ -5,6 +5,7 @@ import { AuditAction, logAudit } from "@/lib/audit"
 import { requireSession } from "@/lib/guards"
 import { getOnboardingState, type OnboardingAnswer, submitStep } from "@/lib/onboarding"
 import { toOnboardingView } from "@/lib/onboarding-view"
+import { assertWeekStarted } from "@/lib/program"
 import { onboardingStepSchema } from "@/lib/schemas/onboarding"
 
 export const dynamic = "force-dynamic"
@@ -22,6 +23,11 @@ export const POST = withRoute(async (req: Request) => {
 
   const parsed = await parseBody(req, onboardingStepSchema)
   if (parsed.error) return parsed.error
+
+  // Get started is week 1's first checkpoint, so it waits for week 1 too. The
+  // intro and the tab tour do not: they are the browser's, and play for a new
+  // account whatever the date.
+  await assertWeekStarted(1)
 
   // The schema's variants line up with OnboardingAnswer one for one; the cast
   // is only because Zod infers the literal union separately from the type the

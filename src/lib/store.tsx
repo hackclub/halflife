@@ -3,10 +3,10 @@
 import { useRouter } from "next/navigation"
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
 import { COINS_PER_HOUR, printerById, submitFloorFor, weekAsk } from "./config/printers"
-import { DESIGN_WEEKS } from "./config/program"
+import { DESIGN_WEEKS, WARMUP_THEME, WARMUP_WEEK_ID } from "./config/program"
 import { BUILD_HOURS, checkpointsFor, TIERS, WEEK_META } from "./curriculum"
 import type { StoreSnapshot } from "./queries/store"
-import type { Checkpoint, Experience, Project, SessionLog, Week } from "./types"
+import type { Checkpoint, Experience, Project, SessionLog, Week, WeekMeta } from "./types"
 
 /**
  * The trail's store, backed by the database.
@@ -79,6 +79,13 @@ interface Ceremony {
    * existed read as false.
    */
   replaying?: boolean
+  /**
+   * Set once the tab tour has been finished or skipped. Before week 1 opens a
+   * new account gets the intro and the tour but not the Get started
+   * checkpoint, so it meets that checkpoint later, and finishing it must not
+   * walk the tour a second time. Optional so older saves read as not toured.
+   */
+  toured?: boolean
 }
 
 const KEY = "halflife.ceremony.v4"
@@ -87,6 +94,59 @@ const EMPTY: CheckpointState = { done: false, minutes: 0, artefacts: 0, log: [] 
 
 /** What a checkpoint on a passed week says when it is hovered. */
 export const PASSED_REASON = "This week has passed!"
+
+/**
+ * A warm-up project's own week: a chain of entries with one live one waiting,
+ * then its single submit, keyed `wu-<project id>-…` because a maker may hold
+ * several warm-ups and none of them has a week number. The same tier floors as
+ * a season week, since it is handed in the same way.
+ */
+function warmupWeek(project: Project, build: boolean, isDone: (id: string) => boolean): Week {
+  const key = (suffix: string) => `wu-${project.id}-${suffix}`
+  const tier = TIERS.find((t) => t.id === project.tier) ?? TIERS[0]
+  const submitHours = build ? BUILD_HOURS : submitFloorFor(tier.fundingHours)
+  const meta: WeekMeta = {
+    id: WARMUP_WEEK_ID,
+    phase: build ? "build" : "design",
+    theme: WARMUP_THEME.label,
+    headline: "WARM UP",
+    fullName: "Warm-up project",
+    summary: "Any hardware project, before week 1 opens.",
+    primer: "",
+    examples: [],
+    accent: "var(--color-violet-pale)",
+    accentDeep: "var(--color-violet-deep)",
+  }
+  let written = 0
+  while (isDone(key(`entry-${written + 1}`))) written += 1
+  const entries: Checkpoint[] = Array.from({ length: written + 1 }, (_, i) => ({
+    id: key(`entry-${i + 1}`),
+    weekId: WARMUP_WEEK_ID,
+    kind: "journal",
+    title: `Entry ${i + 1}`,
+    blurb: "Journal your progress with pictures and screenshots!",
+    entryTarget: 1,
+  }))
+  return {
+    ...meta,
+    projectId: project.id,
+    tier: tier.id,
+    fundingHours: build ? BUILD_HOURS : tier.fundingHours,
+    bankedFrom: build ? 0 : tier.fundingHours,
+    targetHours: submitHours,
+    submitHours,
+    checkpoints: [
+      ...entries,
+      {
+        id: key("submit"),
+        weekId: WARMUP_WEEK_ID,
+        kind: "submit",
+        title: build ? "Submit your build" : "Submit your design",
+        blurb: "Hand in your warm-up project.",
+      },
+    ],
+  }
+}
 
 function seededCeremony(): Ceremony {
   return { version: 4, phase: "cinematic", doomscrollerOpen: true }
@@ -133,6 +193,8 @@ interface Ctx {
   reducedMotion: boolean
 
   setPhase: (p: IntroPhase) => void
+  /** End the tab tour, finished or skipped, and remember it was seen. */
+  finishTour: () => void
   setTourStep: (n: number) => void
   addProject: (p: Omit<Project, "id">) => void
   /**
@@ -180,6 +242,12 @@ interface Ctx {
   isHeld: (id: string) => boolean
   /** Whether a week's Sunday-midnight close (or its extension) is behind us. */
   weekPassed: (weekId: number) => boolean
+  /** Whether a week's Monday-midnight open is behind us. Nothing on it opens before. */
+  weekStarted: (weekId: number) => boolean
+  /** The day a week opens, e.g. "Monday, October 5", in the program's timezone. */
+  weekOpensOn: (weekId: number) => string | null
+  /** The last day a week takes work (the day before it closes at midnight). */
+  weekLastDay: (weekId: number) => string | null
   /** Whether a week is handed in — in review, approved or rejected — so its entries are final. */
   weekSubmitted: (weekId: number) => boolean
   /** Where a week stands with review. "draft" when nothing is recorded. */
@@ -195,6 +263,23 @@ interface Ctx {
   currentCheckpointId: string | null
   /** The trail, cut to the tier of each week's project. */
   weeks: Week[]
+  /**
+   * A warm-up project's own week, or null. Never drawn on the trail, but its
+   * entries and its one submit are real checkpoints (`wu-<id>-…`), so the
+   * season's journal and submit sheets serve it from its project page. A maker
+   * may hold several, which is why these are found by project, not number.
+   */
+  warmupWeekOf: (projectId: string) => Week | null
+  /** The week a checkpoint belongs to: a season week, or a warm-up's own. */
+  weekOfCheckpoint: (checkpoint: Checkpoint) => Week
+  /** What a week is worth, a warm-up's included. See `weekHours`. */
+  hoursOf: (week: Week) => number
+  /** Whether a week's journal has closed, a warm-up's included. */
+  passedOf: (week: Week) => boolean
+  /** Where a week stands with review, a warm-up's included. */
+  statusOf: (week: Week) => string
+  /** The last day a week takes entries, a warm-up's included. */
+  lastDayOf: (week: Week) => string | null
   allCheckpoints: Checkpoint[]
   weekOf: (weekId: number) => Week
   /** Hours logged across every session checkpoint in a week. */
@@ -250,17 +335,22 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
     setNow(snapshot.now)
   }
 
-  // A trail left open over Sunday midnight greys its week out on the stroke
-  // of it, rather than on the next navigation. Timers top out at about 24.8
-  // days, so a close further off than that just re-arms when this one fires.
+  // A trail left open over midnight greys a closing week out, and opens a
+  // starting one, on the stroke of it rather than on the next navigation.
+  // Timers top out at about 24.8 days, so a moment further off than that just
+  // re-arms when this one fires.
   useEffect(() => {
-    const next = Object.values(facts.weekClosesAt)
+    const next = [
+      ...Object.values(facts.weekClosesAt),
+      ...Object.values(facts.weekOpensAt),
+      ...Object.values(facts.warmups).map((w) => w.closesAt),
+    ]
       .filter((at) => at > now)
       .sort((a, b) => a - b)[0]
     if (next === undefined) return
     const t = window.setTimeout(() => setNow(Date.now()), Math.min(next - now, 2 ** 31 - 1))
     return () => window.clearTimeout(t)
-  }, [facts.weekClosesAt, now])
+  }, [facts.weekClosesAt, facts.weekOpensAt, facts.warmups, now])
 
   const weekPassed = useCallback(
     (weekId: number) => {
@@ -268,6 +358,40 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
       return closesAt !== undefined && now >= closesAt
     },
     [facts.weekClosesAt, now],
+  )
+
+  const weekStarted = useCallback(
+    (weekId: number) => {
+      const opensAt = facts.weekOpensAt[weekId]
+      return opensAt === undefined || now >= opensAt
+    },
+    [facts.weekOpensAt, now],
+  )
+
+  const dayLabel = useCallback(
+    (at: number) =>
+      new Date(at).toLocaleDateString("en-US", {
+        timeZone: facts.programTimezone,
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+      }),
+    [facts.programTimezone],
+  )
+  const weekOpensOn = useCallback(
+    (weekId: number) => {
+      const at = facts.weekOpensAt[weekId]
+      return at === undefined ? null : dayLabel(at)
+    },
+    [facts.weekOpensAt, dayLabel],
+  )
+  const weekLastDay = useCallback(
+    (weekId: number) => {
+      const at = facts.weekClosesAt[weekId]
+      // Closes at midnight, so the last day is the one that midnight ends.
+      return at === undefined ? null : dayLabel(at - 1)
+    },
+    [facts.weekClosesAt, dayLabel],
   )
 
   /** Where a week stands with review: draft, in_review, update_requested, approved or rejected. */
@@ -334,8 +458,16 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
   // A replay plays the cinematic and the tab tour and goes nowhere near the
   // setup checkpoint: its answers are taken once, and the server refuses a
   // second set, so "aim" and "checkpoint" go straight on to the tour.
+  //
+  // Before week 1 opens, Get started is shut, so the intro goes from the
+  // fly-through straight to the tab tour: "aim" (the spotlight on that
+  // checkpoint) and "checkpoint" (its modal) have nothing to point at.
   const phase: IntroPhase = !facts.onboardingDone
-    ? ceremony.phase
+    ? !weekStarted(1) && (ceremony.phase === "aim" || ceremony.phase === "checkpoint")
+      ? ceremony.toured
+        ? "done"
+        : "tour"
+      : ceremony.phase
     : ceremony.replaying
       ? ceremony.phase === "aim" || ceremony.phase === "checkpoint"
         ? "tour"
@@ -346,13 +478,23 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 
   const setPhase = useCallback(
     (next: IntroPhase) =>
-      setCeremony((c) => ({
-        ...c,
-        phase: next,
-        // Finishing or skipping ends the replay, so a later sign-in does not
-        // start it again.
-        replaying: next === "done" ? false : c.replaying,
-      })),
+      setCeremony((c) => {
+        // The tour plays once. Someone who took it while week 1 was shut
+        // finishes Get started straight onto the trail, not into it again.
+        const phase = next === "tour" && c.toured && !c.replaying ? "done" : next
+        return {
+          ...c,
+          phase,
+          // Finishing or skipping ends the replay, so a later sign-in does not
+          // start it again.
+          replaying: phase === "done" ? false : c.replaying,
+        }
+      }),
+    [],
+  )
+
+  const finishTour = useCallback(
+    () => setCeremony((c) => ({ ...c, phase: "done", replaying: false, toured: true })),
     [],
   )
 
@@ -510,6 +652,12 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
   /** The project and phase a checkpoint id belongs to. */
   const routeOf = useCallback(
     (checkpointId: string): { projectId: string; phase: "DESIGN" | "BUILD" } | null => {
+      // A warm-up's checkpoints carry their project: several share no week.
+      const warmup = /^wu-([A-Za-z0-9_]+)-(?:entry-\d+|submit|reel-submission)$/.exec(checkpointId)
+      if (warmup?.[1]) {
+        const info = facts.warmups[warmup[1]]
+        return info ? { projectId: warmup[1], phase: info.phase === "build" ? "BUILD" : "DESIGN" } : null
+      }
       const weekId = Number(/^w(\d+)-/.exec(checkpointId)?.[1])
       if (!Number.isInteger(weekId) || weekId < 0) return null
       const designWeek = weekId > DESIGN_WEEKS ? weekId - DESIGN_WEEKS : weekId
@@ -517,7 +665,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
       if (!projectId) return null
       return { projectId, phase: weekId > DESIGN_WEEKS ? "BUILD" : "DESIGN" }
     },
-    [facts.projectIdByWeek],
+    [facts.projectIdByWeek, facts.warmups],
   )
 
   const patchCheckpoint = useCallback(
@@ -806,7 +954,28 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
     [tierForWeek, goal, save.progress],
   )
 
-  const allCheckpoints = useMemo(() => weeks.flatMap((w) => w.checkpoints), [weeks])
+  // Each warm-up, as a week of its own that the trail never draws.
+  const warmupWeeks = useMemo<Week[]>(
+    () =>
+      save.projects.flatMap((project) => {
+        const info = facts.warmups[project.id]
+        if (project.weekId !== WARMUP_WEEK_ID || !info) return []
+        return [warmupWeek(project, info.phase === "build", (id) => save.progress[id]?.done ?? false)]
+      }),
+    [save.projects, facts.warmups, save.progress],
+  )
+
+  // Every checkpoint a modal can open, the warm-ups' included. The trail
+  // itself draws `weeks` only.
+  const allCheckpoints = useMemo(
+    () => [...weeks, ...warmupWeeks].flatMap((w) => w.checkpoints),
+    [weeks, warmupWeeks],
+  )
+
+  const warmupWeekOf = useCallback(
+    (projectId: string) => warmupWeeks.find((w) => w.projectId === projectId) ?? null,
+    [warmupWeeks],
+  )
 
   /**
    * One saved journal: the entry, the time claimed, and the evidence for it.
@@ -968,6 +1137,46 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
     [weeks, facts.progress, facts.offBookHours],
   )
 
+  // The same questions asked of a week object, so a sheet can serve a warm-up
+  // (which has no week number of its own) as readily as a season week.
+  const weekOfCheckpoint = useCallback(
+    (checkpoint: Checkpoint): Week =>
+      warmupWeeks.find((w) => w.checkpoints.some((c) => c.id === checkpoint.id)) ?? weekOf(checkpoint.weekId),
+    [warmupWeeks, weekOf],
+  )
+  const hoursOf = useCallback(
+    (week: Week): number => {
+      if (!week.projectId) return weekHours(week.id)
+      const mins = week.checkpoints.reduce((n, c) => n + (facts.progress[c.id]?.minutes ?? 0), 0)
+      return mins / 60 + (facts.warmups[week.projectId]?.offBookHours ?? 0)
+    },
+    [weekHours, facts.progress, facts.warmups],
+  )
+  const passedOf = useCallback(
+    (week: Week): boolean => {
+      if (!week.projectId) return weekPassed(week.id)
+      const closesAt = facts.warmups[week.projectId]?.closesAt
+      return closesAt !== undefined && now >= closesAt
+    },
+    [weekPassed, facts.warmups, now],
+  )
+  const lastDayOf = useCallback(
+    (week: Week): string | null => {
+      if (!week.projectId) return weekLastDay(week.id)
+      const closesAt = facts.warmups[week.projectId]?.closesAt
+      return closesAt === undefined ? null : dayLabel(closesAt - 1)
+    },
+    [weekLastDay, facts.warmups, dayLabel],
+  )
+  const statusOf = useCallback(
+    (week: Week): string => {
+      if (!week.projectId) return phaseStatusOf(week.id)
+      const project = save.projects.find((p) => p.id === week.projectId)
+      return (week.phase === "build" ? project?.buildStatus : project?.designStatus) ?? "draft"
+    },
+    [phaseStatusOf, save.projects],
+  )
+
   /**
    * What the unreviewed weeks are on course to bank, at the ledger's own rule:
    * every hour past the week's funded block (all of a build week's) at
@@ -999,15 +1208,15 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
    */
   const isPassed = useCallback(
     (id: string): boolean => {
-      const week = weeks.find((w) => w.checkpoints.some((c) => c.id === id))
+      const week = [...weeks, ...warmupWeeks].find((w) => w.checkpoints.some((c) => c.id === id))
       const self = week?.checkpoints.find((c) => c.id === id)
-      if (!week || !self || !weekPassed(week.id)) return false
+      if (!week || !self || !passedOf(week)) return false
       const done = save.progress[id]?.done ?? false
       if (self.kind === "onboarding" && !done) return false
-      if (self.kind === "submit" && !done && weekHours(week.id) > 0) return false
+      if (self.kind === "submit" && !done && hoursOf(week) > 0) return false
       return true
     },
-    [weeks, weekPassed, save.progress, weekHours],
+    [weeks, warmupWeeks, passedOf, save.progress, hoursOf],
   )
 
   /**
@@ -1060,6 +1269,9 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
       const done = (c: Checkpoint) => save.progress[c.id]?.done ?? false
       const wi = weeks.findIndex((w) => w.checkpoints.some((c) => c.id === id))
       if (wi === -1) return false
+      // Nothing on a week opens before its Monday, Get started included.
+      const opening = weeks[wi]
+      if (opening && !weekStarted(opening.id)) return false
 
       const prev = weeks[wi - 1]
       if (prev && owesSubmit(prev)) return false
@@ -1088,7 +1300,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 
       return list.slice(0, i).every(done)
     },
-    [isPassed, isHeld, facts.owedReels, owesSubmit, weekPassed, weeks, save.progress, weekHours],
+    [isPassed, isHeld, facts.owedReels, owesSubmit, weekPassed, weekStarted, weeks, save.progress, weekHours],
   )
 
   /**
@@ -1118,6 +1330,12 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
       const wi = weeks.findIndex((w) => w.checkpoints.some((c) => c.id === id))
       if (wi === -1) return null
 
+      const opening = weeks[wi]
+      if (opening && !weekStarted(opening.id)) {
+        const day = weekOpensOn(opening.id)
+        return day ? `Week ${opening.id} opens ${day}.` : `Week ${opening.id} has not opened yet.`
+      }
+
       const prev = weeks[wi - 1]
       if (prev && owesSubmit(prev)) return `Submit week ${prev.id} first.`
 
@@ -1138,7 +1356,18 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
       const blocker = list.slice(0, i).find((c) => !done(c))
       return blocker ? firstFinish(blocker) : null
     },
-    [isUnlocked, isPassed, isHeld, facts.owedReels, owesSubmit, weeks, save.progress, weekHours],
+    [
+      isUnlocked,
+      isPassed,
+      isHeld,
+      facts.owedReels,
+      owesSubmit,
+      weekStarted,
+      weekOpensOn,
+      weeks,
+      save.progress,
+      weekHours,
+    ],
   )
 
   const currentCheckpointId = useMemo(() => {
@@ -1158,6 +1387,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
     tourStep,
     reducedMotion,
     setPhase,
+    finishTour,
     setTourStep,
     addProject,
     ensureProject,
@@ -1174,6 +1404,9 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
     isPassed,
     isHeld,
     weekPassed,
+    weekStarted,
+    weekOpensOn,
+    weekLastDay,
     weekSubmitted,
     phaseStatusOf,
     unsubmitPhase,
@@ -1185,6 +1418,12 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
     reset,
     redoOnboarding,
     weeks,
+    warmupWeekOf,
+    weekOfCheckpoint,
+    hoursOf,
+    passedOf,
+    statusOf,
+    lastDayOf,
     allCheckpoints,
     weekOf,
     weekHours,

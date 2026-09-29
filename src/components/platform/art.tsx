@@ -118,6 +118,9 @@ const WEEK_PAINTINGS: Partial<Record<string, StaticImageData>> = {
   Music: musicPainting,
   Displays: displayPainting,
   "Breadboard computer": breadboardPainting,
+  // The warm-up has no theme to paint. It is "your own idea", which is the
+  // Gato that stands for that on onboarding's custom-project card.
+  "Warm Up": gatoSchematic,
 }
 
 export function WeekPainting({

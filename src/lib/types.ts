@@ -71,6 +71,12 @@ export interface WeekMeta {
 }
 
 export interface Week extends WeekMeta {
+  /**
+   * Set only on a warm-up project's own week. Warm-ups have no week number
+   * (all are week 0, and a maker may hold several), so they are addressed by
+   * project instead.
+   */
+  projectId?: string
   /** The tier of this week's project — it decides how many chapters there are. */
   tier: 1 | 2 | 3
   /** Hours that fund the project. Above this, time banks instead. */

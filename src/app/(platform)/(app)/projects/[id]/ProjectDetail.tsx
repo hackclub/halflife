@@ -144,49 +144,96 @@ function DisputeForm({
 }
 
 /**
- * Resubmit a warm-up project after a review asked for changes.
- *
- * A season week opens its submit sheet from the trail checkpoint; a warm-up
- * project has no trail week, so this posts the same submit route directly.
+ * The warm-up's own trail, flattened onto its page: what it has logged against
+ * what submitting asks, the next entry to write, and its one submit. The
+ * sheets these open are the season's own journal and submit sheets, run on the
+ * warm-up's week 0, so writing and handing in work the same way everywhere.
  */
-function WarmupResubmit({ projectId, phase }: { projectId: string; phase: "DESIGN" | "BUILD" }) {
-  const router = useRouter()
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+function WarmupWork({ projectId }: { projectId: string }) {
+  const { warmupWeekOf, hoursOf, passedOf, statusOf, lastDayOf, stateOf, setOpenCheckpoint } = useStore()
+  const warmupWeek = warmupWeekOf(projectId)
+  if (!warmupWeek) return null
 
-  async function run() {
-    setBusy(true)
-    setError(null)
-    try {
-      const res = await fetch(`/api/projects/${projectId}/submit`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ phase, attachmentKeys: [] }),
-      })
-      if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
-        setError(payload.error?.message ?? `Could not resubmit (${res.status})`)
-        return
-      }
-      router.refresh()
-    } catch {
-      setError("Could not reach the server. Try again.")
-    } finally {
-      setBusy(false)
-    }
-  }
+  const build = warmupWeek.phase === "build"
+  const hours = hoursOf(warmupWeek)
+  const need = warmupWeek.submitHours
+  const status = statusOf(warmupWeek)
+  const handedIn = status === "in_review" || status === "approved" || status === "rejected"
+  const passed = passedOf(warmupWeek)
+  const lastDay = lastDayOf(warmupWeek)
+  const submitId = `wu-${projectId}-submit`
+
+  const entries = warmupWeek.checkpoints.filter((c) => c.kind === "journal")
+  const written = entries.filter((c) => stateOf(c.id).done)
+  const next = entries.find((c) => !stateOf(c.id).done)
+  // Once the journal has closed, what there is can still be handed in, as a
+  // season week that has passed can.
+  const canSubmit = !handedIn && (hours >= need || (passed && hours > 0))
+  const short = Math.max(0, need - hours)
 
   return (
-    <span className="inline-flex flex-col items-start gap-1.5">
-      <Button variant="solid" size="sm" disabled={busy} onClick={() => void run()}>
-        {busy ? "Resubmitting…" : "I've made these changes — resubmit"}
-      </Button>
-      {error && (
-        <span role="alert" className="text-[0.82rem] font-semibold text-coral-deep">
-          {error}
-        </span>
-      )}
-    </span>
+    <Section id="warmup-title" title="Warm-up">
+      <Panel tone="line" radius={20} className="bg-paper px-5 py-5 sm:px-6">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+          <p className="text-[0.95rem] font-extrabold text-navy tabular-nums">
+            {fmtHours(hours)} logged
+            <span className="font-semibold text-navy-soft">
+              {" "}
+              · {build ? "a finished build" : "a design"}, submit from {fmtHours(need)}
+            </span>
+          </p>
+          {lastDay && (
+            <p className="hand text-[0.84rem] text-navy-soft">
+              {passed ? `journal closed after ${lastDay}` : `journal open until ${lastDay}`}
+            </p>
+          )}
+        </div>
+
+        {handedIn ? (
+          <p className="mt-3 text-[0.9rem] leading-relaxed text-navy-soft">
+            Submitted. Where it stands with review is below.
+          </p>
+        ) : (
+          <>
+            <div className="mt-4 flex flex-wrap items-center gap-2.5">
+              {next && !passed && (
+                <Button variant="gold" onClick={() => setOpenCheckpoint(next.id)}>
+                  Log a session
+                </Button>
+              )}
+              <Button variant="solid" disabled={!canSubmit} onClick={() => setOpenCheckpoint(submitId)}>
+                {build ? "Submit your build" : "Submit your design"}
+              </Button>
+              {!canSubmit && short > 0 && (
+                <span className="hand text-[0.84rem] text-navy-soft tabular-nums">
+                  {fmtHours(short)} more to submit
+                </span>
+              )}
+            </div>
+            {passed && (
+              <p className="mt-3 text-[0.86rem] leading-relaxed text-navy-soft">
+                Week 1 has opened, so this warm-up takes no new entries. You can still submit what you have.
+              </p>
+            )}
+            {written.length > 0 && !passed && (
+              <p className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[0.84rem] text-navy-soft">
+                <span>Edit an entry:</span>
+                {written.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setOpenCheckpoint(c.id)}
+                    className="font-semibold text-sky-ink underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
+                  >
+                    {c.title}
+                  </button>
+                ))}
+              </p>
+            )}
+          </>
+        )}
+      </Panel>
+    </Section>
   )
 }
 
@@ -200,7 +247,7 @@ function ReviewState({
   projectId: string
   phases: ProjectPageData["phases"]
   weekFor: (phase: "DESIGN" | "BUILD") => number
-  /** A warm-up project has no trail week to open a submit sheet from. */
+  /** A warm-up project's submit sheet lives on week 0, whichever its phase. */
   warmup: boolean
 }) {
   const { setOpenCheckpoint } = useStore()
@@ -238,18 +285,15 @@ function ReviewState({
                 </p>
               ) : negative ? (
                 <div className="flex flex-wrap items-center gap-2">
-                  {p.status === "update_requested" &&
-                    (warmup ? (
-                      <WarmupResubmit projectId={projectId} phase={p.phase} />
-                    ) : (
-                      <Button
-                        variant="solid"
-                        size="sm"
-                        onClick={() => setOpenCheckpoint(`w${weekFor(p.phase)}-submit`)}
-                      >
-                        I&apos;ve made these changes — resubmit
-                      </Button>
-                    ))}
+                  {p.status === "update_requested" && (
+                    <Button
+                      variant="solid"
+                      size="sm"
+                      onClick={() => setOpenCheckpoint(warmup ? `wu-${projectId}-submit` : `w${weekFor(p.phase)}-submit`)}
+                    >
+                      I&apos;ve made these changes — resubmit
+                    </Button>
+                  )}
                   <Button variant="outline" size="sm" onClick={() => setDisputing(p.phase)}>
                     This review is incorrect
                   </Button>
@@ -268,7 +312,7 @@ function ReviewState({
 }
 
 export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData | null }) {
-  const { projects, stateOf, weekOf, weekHours, hydrated, unsubmitPhase } = useStore()
+  const { projects, stateOf, weekOf, warmupWeekOf, weekHours, hydrated, unsubmitPhase } = useStore()
   const project = projects.find((p) => p.id === id)
 
   // A miss here is real: the id is someone else's, or the project was deleted.
@@ -290,9 +334,11 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
   }
 
   const warmup = project.weekId === WARMUP_WEEK_ID
-  const week = weekOf(project.weekId)
+  // A warm-up has a week of its own, found by project: several share week 0.
+  const week = (warmup ? warmupWeekOf(project.id) : null) ?? weekOf(project.weekId)
   const buildWeekId = project.weekId + DESIGN_WEEKS
-  const weekFor = (phase: "DESIGN" | "BUILD") => (phase === "DESIGN" ? project.weekId : buildWeekId)
+  const weekFor = (phase: "DESIGN" | "BUILD") =>
+    warmup ? WARMUP_WEEK_ID : phase === "DESIGN" ? project.weekId : buildWeekId
 
   const sessions = data.timeline.flatMap((t) => (t.kind === "session" ? [t] : []))
   const hours = sessions.reduce((n, s) => n + (s.approvedHours ?? s.hours), 0)
@@ -300,9 +346,9 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 
   // The tier stops being editable the moment the design week is handed in —
   // that submission is what claimed it, and the build week only inherits it.
-  // A warm-up project never had a design week, so the rule does not apply.
+  // A warm-up's one submit claims it the same way.
   const submit = week.checkpoints.find((c) => c.kind === "submit")
-  const submitted = warmup ? false : submit ? stateOf(submit.id).done : false
+  const submitted = submit ? stateOf(submit.id).done : false
   const grantUsd = TIERS.find((t) => t.id === project.tier)?.grantUsd ?? 0
   // Kept in a local so the phase survives into the unsubmit handler below.
   const inReview = data.inReview
@@ -399,6 +445,9 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
           </div>
         </div>
       </Panel>
+
+      {/* ---------- the warm-up's work, and its one hand-in ---------- */}
+      {warmup && <WarmupWork projectId={project.id} />}
 
       {/* ---------- where review stands ---------- */}
       {data.phases.length > 0 && (

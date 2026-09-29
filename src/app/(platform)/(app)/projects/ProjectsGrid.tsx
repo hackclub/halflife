@@ -33,7 +33,11 @@ function Legend({ className, label }: { className: string; label: string }) {
 }
 
 export function ProjectsGrid() {
-  const { projects, weeks, stateOf, weekOf } = useStore()
+  const { projects, weeks, stateOf, weekOf, warmupWeekOf, weekStarted } = useStore()
+
+  // Before week 1 the yellow checkpoint is shut, and the warm-up card above
+  // this grid is the way in, so the empty state would only contradict it.
+  if (projects.length === 0 && !weekStarted(1)) return null
 
   if (projects.length === 0) {
     return (
@@ -70,7 +74,7 @@ export function ProjectsGrid() {
       <ul className="grid gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-3">
         {projects.map((project) => {
           const warmup = project.weekId === WARMUP_WEEK_ID
-          const week = weekOf(project.weekId)
+          const week = (warmup ? warmupWeekOf(project.id) : null) ?? weekOf(project.weekId)
           const events = projectEvents(project, weeks, stateOf)
           const stats = projectStats(events)
           const tone = reviewTone(project.designStatus, project.buildStatus)

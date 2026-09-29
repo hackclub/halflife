@@ -8,6 +8,7 @@ import { syncHcaProfile } from "@/lib/hca-profile"
 import { getHoursBreakdown } from "@/lib/hours"
 import prisma from "@/lib/prisma"
 import {
+  assertWeekStarted,
   effectiveDateFor,
   getProgramSettings,
   getSubmissionAccess,
@@ -16,6 +17,7 @@ import {
 } from "@/lib/program"
 import { assertNoOwedReel } from "@/lib/reel-gate"
 import { checkRepo } from "@/lib/repo-checks"
+import { warmupPhaseOf } from "@/lib/warmup"
 import { isOwnedKey } from "@/lib/uploads/r2"
 
 export function statusFor(project: ThemeProject, phase: Phase): PhaseStatus {
@@ -81,6 +83,19 @@ export function canSubmitPhase(
   project: ThemeProject,
   phase: Phase,
 ): { ok: true } | { ok: false; code: "ALREADY_SUBMITTED" | "PHASE_LOCKED"; message: string } {
+  // A warm-up is one submission, as the phase it was made for: a design
+  // asking for funding, or a finished build. Never the other, never both.
+  if (project.theme === Theme.WARMUP && phase !== warmupPhaseOf(project)) {
+    return {
+      ok: false,
+      code: "PHASE_LOCKED",
+      message:
+        warmupPhaseOf(project) === Phase.DESIGN
+          ? "This warm-up project is handed in as a design"
+          : "This warm-up project is handed in as a finished build",
+    }
+  }
+
   const status = statusFor(project, phase)
   if (status === PhaseStatus.in_review) {
     return { ok: false, code: "ALREADY_SUBMITTED", message: "This phase is already in review" }
@@ -122,6 +137,7 @@ export async function submitPhase(
 
   const access = await getSubmissionAccess(userId, themeProjectId)
   if (!access.open) throw new HttpError("SUBMISSIONS_CLOSED", SUBMISSIONS_CLOSED_MESSAGE)
+  await assertWeekStarted(scheduledWeekFor(project.theme, phase))
 
   const eligible = canSubmitPhase(project, phase)
   if (!eligible.ok) throw new HttpError(eligible.code, eligible.message)

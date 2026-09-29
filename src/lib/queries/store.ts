@@ -14,12 +14,13 @@ import { getBalances } from "@/lib/currency"
 import { rollUpHours } from "@/lib/hours"
 import { getUserRoles, hasRole } from "@/lib/permissions"
 import prisma from "@/lib/prisma"
-import { effectiveDateFor, effectiveWeekClose, getProgramSettings, weekClosesAt } from "@/lib/program"
+import { effectiveDateFor, effectiveWeekClose, getProgramSettings, weekClosesAt, weekOpensAt } from "@/lib/program"
 import { getOwedReelKeys } from "@/lib/reel-gate"
 import { streakAsOf } from "@/lib/streak"
 import { projectThumbnail } from "@/lib/thumbnail"
 import type { Experience, Project, SessionLog } from "@/lib/types"
 import { publicUrlFor } from "@/lib/uploads/r2"
+import { warmupPhaseOf } from "@/lib/warmup"
 
 /**
  * Everything the trail needs, read out of the database in one pass.
@@ -107,6 +108,22 @@ export interface StoreSnapshot {
    * past it, so the trail greys the week out at the same moment.
    */
   weekClosesAt: Record<number, number>
+  /**
+   * When each trail week starts taking work, epoch ms: midnight at the start
+   * of its Monday in the program timezone. Nothing on a week opens before it,
+   * the first checkpoint included, and the server refuses the same writes.
+   */
+  weekOpensAt: Record<number, number>
+  /**
+   * Every warm-up project, by id: the one phase it is handed in as, the hours
+   * it has from somewhere other than its entries (Hackatime, reviewer
+   * adjustments), and when its journal closes. A maker may hold several, so
+   * each is addressed by its id — its entries and submit are `wu-<id>-…` keys
+   * in `progress` — never by a week number.
+   */
+  warmups: Record<string, { phase: "design" | "build"; offBookHours: number; closesAt: number }>
+  /** The program's IANA timezone, so the trail can name the day a week opens. */
+  programTimezone: string
   /** The server's clock when this was read, so the first paint agrees with it. */
   now: number
   /** Ordinary coins. */
@@ -160,6 +177,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
         tier: true,
         requestedTier: true,
         starterProjectId: true,
+        warmupPhase: true,
         githubRepo: true,
         coverImageKey: true,
         designStatus: true,
@@ -252,21 +270,21 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
     }
   }
 
-  THEMES.forEach((theme, themeIndex) => {
-    const project = byTheme.get(theme.id)
-    if (!project) return
-
-    for (const phase of [Phase.DESIGN, Phase.BUILD] as const) {
-      const week = weekOf(themeIndex, phase)
-      const id = (suffix: string) => `w${week}-${suffix}`
+  // One phase of one project, written under the key prefix it is addressed
+  // by: `w<week>` for a season week, `wu-<id>` for a warm-up project, which
+  // has no week of its own. Returns the phase's off-book hours; a season week
+  // also records them, and its status, against its week number.
+  const recordPhase = (project: (typeof projects)[number], phase: Phase, prefix: string, week?: number): number => {
+    {
+      const id = (suffix: string) => `${prefix}-${suffix}`
 
       const phaseSessions = sessions.filter((s) => s.themeProjectId === project.id && s.phase === phase)
       const phaseLinks = links.filter((l) => l.themeProjectId === project.id && l.phase === phase)
 
       // Week one's project comes into existence through the first checkpoint
       // rather than a project form, so the node that stands for it is different
-      // and is already recorded above.
-      if (phase === Phase.DESIGN && week !== 1) {
+      // and is already recorded above. A warm-up has no such node at all.
+      if (phase === Phase.DESIGN && week !== undefined && week > 1) {
         const tier = project.tier ?? project.requestedTier
         if (project.title && project.description && tier) {
           progress[id("project")] = {
@@ -305,7 +323,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
       // not handed in, or the trail would hide the Submit it needs again.
       const submission = submissions.filter((s) => s.themeProjectId === project.id && s.phase === phase).at(-1)
       const status = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
-      phaseStatusByWeek[week] = status
+      if (week !== undefined) phaseStatusByWeek[week] = status
       if (status !== PhaseStatus.draft) {
         progress[id("submit")] = {
           done: true,
@@ -327,9 +345,37 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
         (n, s) => n + (s.hoursSource === HoursSource.HACKATIME_TRACKED ? 0 : minutesOf(s) / 60),
         0,
       )
-      offBookHours[week] = Math.max(0, round2(effectiveHours - entryHours))
+      const offBook = Math.max(0, round2(effectiveHours - entryHours))
+      if (week !== undefined) offBookHours[week] = offBook
+      return offBook
+    }
+  }
+
+  THEMES.forEach((theme, themeIndex) => {
+    const project = byTheme.get(theme.id)
+    if (!project) return
+    for (const phase of [Phase.DESIGN, Phase.BUILD] as const) {
+      const week = weekOf(themeIndex, phase)
+      recordPhase(project, phase, `w${week}`, week)
     }
   })
+
+  // Each warm-up is one submission, so only its one phase goes on the record.
+  // Its journal closes when week 1 opens (week 0's close), later if extended.
+  const warmups: StoreSnapshot["warmups"] = {}
+  for (const project of projects) {
+    if (project.theme !== Theme.WARMUP) continue
+    const phase = warmupPhaseOf(project)
+    warmups[project.id] = {
+      phase: phase === Phase.BUILD ? "build" : "design",
+      offBookHours: recordPhase(project, phase, `wu-${project.id}`),
+      closesAt: effectiveWeekClose(
+        weekClosesAt(settings, WARMUP_WEEK_ID),
+        user.submissionExtensionUntil,
+        project.submissionExtensionUntil,
+      ).getTime(),
+    }
+  }
 
   const projectIdByWeek: Record<number, string> = {}
   for (const project of projects) {
@@ -342,7 +388,9 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
   }
 
   const closes: Record<number, number> = {}
+  const opens: Record<number, number> = {}
   for (let week = 1; week <= TOTAL_WEEKS; week += 1) {
+    opens[week] = weekOpensAt(settings, week).getTime()
     const theme = scheduleForWeek(week)?.theme.id
     const project = theme ? byTheme.get(theme) : undefined
     closes[week] = effectiveWeekClose(
@@ -399,6 +447,9 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
     offBookHours,
     phaseStatusByWeek,
     weekClosesAt: closes,
+    weekOpensAt: opens,
+    warmups,
+    programTimezone: settings.programTimezone,
     now: Date.now(),
     coins: balances.spendable,
     bankedCoins: balances.banked,

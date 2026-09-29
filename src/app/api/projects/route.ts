@@ -5,6 +5,7 @@ import { getThemeDef } from "@/lib/config/program"
 import { requireSession } from "@/lib/guards"
 import { getHoursBreakdown } from "@/lib/hours"
 import prisma from "@/lib/prisma"
+import { assertWeekStarted } from "@/lib/program"
 import { ensureThemeProject, themeForDesignWeek } from "@/lib/provisioning"
 
 export const dynamic = "force-dynamic"
@@ -62,6 +63,7 @@ export const POST = withRoute(async (req: Request) => {
 
   const theme = themeForDesignWeek(parsed.data.weekId)
   if (!theme) return fail("VALIDATION_FAILED", "That week does not start a project")
+  await assertWeekStarted(parsed.data.weekId)
 
   const project = await ensureThemeProject(gate.user.id, theme)
   return ok({ id: project.id }, { status: 201 })

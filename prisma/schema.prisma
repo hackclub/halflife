@@ -618,6 +618,13 @@ model ThemeProject {
   /// turn down a number the app itself offered them.
   starterProjectId String?
 
+  /// Which single phase a warm-up project is handed in as, chosen when it is
+  /// made: DESIGN asks for parts funding, BUILD shows a finished build. A
+  /// warm-up is one submission, never design-then-build. Null on every season
+  /// project, and on warm-ups imported from Airtable, whose phase is whichever
+  /// one the import put in review.
+  warmupPhase Phase?
+
   /// Per-project deadline override, layered on top of the per-user one.
   /// Either being in the future opens the gate.
   submissionExtensionUntil DateTime?

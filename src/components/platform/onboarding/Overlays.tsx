@@ -68,12 +68,12 @@ const TOUR = [
 ]
 
 function CheckpointModal({ id }: { id: string }) {
-  const { allCheckpoints, phaseStatusOf } = useStore()
+  const { allCheckpoints, weekOfCheckpoint, statusOf } = useStore()
   const cp = allCheckpoints.find((c) => c.id === id)
   if (!cp) return null
   // Handed in and waiting: the checkpoint's job now is to let it be taken
   // back, not to walk the hand-in again over the top of the one in review.
-  if ((cp.kind === "submit" || cp.kind === "demo") && phaseStatusOf(cp.weekId) === "in_review") {
+  if ((cp.kind === "submit" || cp.kind === "demo") && statusOf(weekOfCheckpoint(cp)) === "in_review") {
     return <UnsubmitModal checkpoint={cp} />
   }
   switch (cp.kind) {
@@ -102,8 +102,10 @@ export function Overlays() {
     setOpenCheckpoint,
     tourStep,
     setTourStep,
+    finishTour,
     currentCheckpointId,
     isPassed,
+    weekStarted,
   } = useStore()
   const pathname = usePathname()
   const router = useRouter()
@@ -134,6 +136,14 @@ export function Overlays() {
     // stays shut then, exactly as the trail keeps it.
     if (!isPassed(journal)) setOpenCheckpoint(journal)
   }, [hydrated, setOpenCheckpoint, isPassed])
+
+  // Before week 1 there is nothing on the trail to start, so the tour ends on
+  // the projects page, where a warm-up project can be.
+  const endTour = () => {
+    finishTour()
+    setTourStep(0)
+    if (!weekStarted(1)) router.push("/projects")
+  }
 
   if (!hydrated) return null
 
@@ -172,19 +182,12 @@ export function Overlays() {
           step={tourStep + 1}
           total={TOUR.length}
           clickAnywhere
-          cta={tourStep === TOUR.length - 1 ? "Start week 1" : "Next"}
+          cta={tourStep === TOUR.length - 1 ? (weekStarted(1) ? "Start week 1" : "Start a warm-up") : "Next"}
           onNext={() => {
-            if (tourStep >= TOUR.length - 1) {
-              setPhase("done")
-              setTourStep(0)
-            } else {
-              setTourStep(tourStep + 1)
-            }
+            if (tourStep >= TOUR.length - 1) endTour()
+            else setTourStep(tourStep + 1)
           }}
-          onSkip={() => {
-            setPhase("done")
-            setTourStep(0)
-          }}
+          onSkip={endTour}
         />
       )}
     </>

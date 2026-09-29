@@ -45,7 +45,7 @@ export function Timeline({
           />
           <p className="flex items-center gap-3">
             <span className="label shrink-0 text-violet-deep">
-              {PHASE[phase]} · week {weekFor(phase)}
+              {PHASE[phase]} · {weekFor(phase) === 0 ? "warm-up" : `week ${weekFor(phase)}`}
             </span>
             <span aria-hidden="true" className="h-0 flex-1 border-t border-dashed border-line" />
           </p>

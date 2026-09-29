@@ -13,7 +13,7 @@ const prisma = new PrismaClient({
  * production to add newly defined shop items.
  */
 async function main() {
-  const startDate = process.env.PROGRAM_START_DATE ?? "2026-09-07"
+  const startDate = process.env.PROGRAM_START_DATE ?? "2026-10-05"
 
   const settings = await prisma.programSettings.upsert({
     where: { id: "singleton" },
