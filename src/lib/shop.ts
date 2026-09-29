@@ -45,6 +45,38 @@ export const shopOrderPublicSelect = {
 
 export type ShopOrderPublic = Prisma.ShopOrderGetPayload<{ select: typeof shopOrderPublicSelect }>
 
+/**
+ * What a FULFILL_ORDERS surface may see. `unitCostUsd` (what Hack Club pays)
+ * is needed to price a shipment, but the encrypted address/phone and
+ * `lastActorId` are not, and a route that returns a whole row ships them by
+ * accident.
+ */
+export const shopOrderStaffSelect = {
+  id: true,
+  orderNumber: true,
+  userId: true,
+  shopItemId: true,
+  quantity: true,
+  unitCredits: true,
+  totalCredits: true,
+  itemNameSnapshot: true,
+  unitCostUsd: true,
+  status: true,
+  holdReason: true,
+  rejectionReason: true,
+  trackingNumber: true,
+  trackingCarrier: true,
+  fulfillmentMethod: true,
+  fulfillmentStage: true,
+  fulfillmentUpdatedAt: true,
+  placedAt: true,
+  heldAt: true,
+  rejectedAt: true,
+  fulfilledAt: true,
+} satisfies Prisma.ShopOrderSelect
+
+export type ShopOrderStaff = Prisma.ShopOrderGetPayload<{ select: typeof shopOrderStaffSelect }>
+
 export interface ShopItemView extends ShopItemPublic {
   /** Against the pot this item may be paid from, not against the total. */
   affordable: boolean

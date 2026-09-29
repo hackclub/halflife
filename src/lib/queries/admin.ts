@@ -12,6 +12,7 @@ import { getBalances } from "@/lib/currency"
 import { safeDecrypt } from "@/lib/pii"
 import { getPrinterQualification } from "@/lib/printer"
 import prisma from "@/lib/prisma"
+import { shopOrderStaffSelect } from "@/lib/shop"
 
 export async function listUsers(opts: { q?: string; cursor?: string; limit: number }) {
   const rows = await prisma.user.findMany({
@@ -175,6 +176,9 @@ export async function getUserDetail(userId: string) {
       where: { userId },
       orderBy: { placedAt: "desc" },
       take: 25,
+      // The user page lists the number, item, credit total and status only;
+      // internal cost and encrypted columns are not part of VIEW_USERS.
+      select: { id: true, orderNumber: true, itemNameSnapshot: true, totalCredits: true, status: true },
     }),
     getPrinterQualification(userId),
   ])
@@ -188,7 +192,10 @@ export async function listOrders(opts: { status?: ShopOrderStatus; cursor?: stri
     orderBy: [{ placedAt: "desc" }, { id: "desc" }],
     take: opts.limit + 1,
     ...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
-    include: {
+    // Explicit select, not `include`: a whole-row response carries the
+    // encrypted address/phone and `lastActorId` this API has no use for.
+    select: {
+      ...shopOrderStaffSelect,
       user: { select: { id: true, name: true, email: true } },
       shopItem: { select: { id: true, name: true } },
     },
