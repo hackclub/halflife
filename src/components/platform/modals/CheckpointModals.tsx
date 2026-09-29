@@ -156,7 +156,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
   // shortfall is named with the other way out beside it, so nobody is told to
   // write 200 characters they could skip with a timelapse. An edit cannot add
   // one, so it is not offered there.
-  const orLapse = editing ? "" : ""
+  const orLapse = editing ? "" : " Or cover the session with a Lapse timelapse on the Timelapse tab instead."
   const missing = !ok
     ? claimed <= 0
       ? "Add the hours you spent on this session, or pick a Lapse timelapse."
@@ -1286,6 +1286,14 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
   // The bucket URL of the closing clip, when there is one, so it can be saved
   // and posted elsewhere afterwards.
   const [clipUrl, setClipUrl] = useState<string | null>(null)
+  // A blob URL for a locally picked clip holds the whole video in memory
+  // until it is revoked — the preview is replaced or the sheet closes, not
+  // before.
+  useEffect(() => {
+    return () => {
+      if (clipUrl?.startsWith("blob:")) URL.revokeObjectURL(clipUrl)
+    }
+  }, [clipUrl])
   // The closing reel once it is posted. A hand-in that fails after the reel
   // went up reuses it on the retry rather than posting the same clip twice;
   // a new clip clears it.

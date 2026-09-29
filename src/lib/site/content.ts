@@ -254,19 +254,9 @@ export const FAQS: Faq[] = [
 
 /**
  * The one group shot under "here's what you'll make!" — every project in a
- * single frame, where the comp scattered five separate prints.
- *
- * Currently rendered as an `ImageSlot`. To ship the real photograph: drop it
- * at `/art/make/make-all.png`, then swap `ImageSlot` for `next/image` in
- * `hero.tsx` — both call sites already reserve the correct box, so nothing
- * around them has to move.
+ * single frame, where the comp scattered five separate prints. The art is not
+ * shipped; the hero shows its themed stand-ins instead.
  */
-export const MAKE_PHOTO = {
-  label: "every project",
-  /** Footprint on the comp's 1728px grid; supply the art at 2x. */
-  ratio: "380 × 214",
-} as const
-
 export const FOOTER_COLUMNS = [
   {
     heading: "Half Life",
