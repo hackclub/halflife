@@ -19,15 +19,16 @@ pass; the DB-backed verify suites were not run (no database was up).
 
 Legend: **BLOCKER** — launch is damaged without it · **HIGH** · **MED** · **LOW**
 
-## Status — two blockers fixed, seven high, twenty-three medium, and a cleanup tail
+## Status — the two blockers and all seven highs fixed; the medium set and cleanup tail remain
 
-**Fixed since this pass:** #1 (`d746d6f`) and #2 (`2da57fa`) — the two launch
-blockers.
+**Fixed since this pass:** the two launch blockers — #1 (`d746d6f`), #2
+(`2da57fa`) — and every high — #3 (`cf3c772`), #4 (`69cf674`), #5 (`4e10555`),
+#6 (`04d1ea3`), #7 (`46bb0c3`), #8 (`b310df7`), #9 (`43bbe52`).
 
-The earlier audits' money fixes are real, and the two residual holes this pass
-found in them are now closed. Everything else is correctness, missing operator
-surface, or cleanup. No new authorization bypass, injection or
-webhook-verification gap was found.
+The earlier audits' money fixes are real, and the residual holes this pass
+found in them are closed. What remains is the medium set (correctness,
+job-reporting, staff over-fetch, missing surfaces) and the low/cleanup tail.
+No new authorization bypass, injection or webhook-verification gap was found.
 
 | # | Severity | Item | Area |
 | --- | --- | --- | --- |
@@ -82,9 +83,9 @@ webhook-verification gap was found.
 
 ## 2. High
 
-- [ ] **3. A Hackatime project that has been renamed or deleted reads as a
+- [x] **3. A Hackatime project that has been renamed or deleted reads as a
       fresh zero, bypassing the staleness guard.** **HIGH (money,
-      silent-underpay)**
+      silent-underpay)** · fixed `cf3c772`
   - `src/lib/hackatime.ts:36-37` —
     `const match = body.data?.projects?.find((p) => p.name === project); return { seconds: match?.total_seconds ?? 0, stale: false }`.
     A missing project (or missing `data.projects`) is indistinguishable from a
@@ -101,8 +102,8 @@ webhook-verification gap was found.
     the only live zero), and validate the name against `listUserProjects` when
     linking.
 
-- [ ] **4. A build approval can commit after its design is un-approved during
-      the decision.** **HIGH (ordering invariant)**
+- [x] **4. A build approval can commit after its design is un-approved during
+      the decision.** **HIGH (ordering invariant)** · fixed `69cf674`
   - `src/lib/review.ts:154-156` checks `designStatus === approved` *before* the
     transaction; the transaction (`:216-237`) re-reads only the submission and
     the claim. `getHoursBreakdown(..., { live: true })` (`:169`) can spend
@@ -120,8 +121,8 @@ webhook-verification gap was found.
     re-check `designStatus` (taking `tier`/`grantUsd` from that row), exactly as
     the claim is re-read.
 
-- [ ] **5. The unauthenticated handoff upload buffers the whole request body
-      before any token or size check.** **HIGH (DoS)**
+- [x] **5. The unauthenticated handoff upload buffers the whole request body
+      before any token or size check.** **HIGH (DoS)** · fixed `4e10555`
   - `src/app/api/handoff/upload/route.ts:25-29` calls `await req.formData()`
     before reading the token; the size check lives later, in
     `src/lib/handoff.ts:135-139`. The route is deliberately unauthenticated,
@@ -132,8 +133,8 @@ webhook-verification gap was found.
   - Fix: reject/stream by `Content-Length` (and a hard per-request cap) before
     `formData()`, or require the token in the URL and check it first.
 
-- [ ] **6. `pnpm db:seed` — RUNBOOK launch step — cannot run in the runtime
-      image, so a fresh deploy seeds no shop.** **HIGH (ops)**
+- [x] **6. `pnpm db:seed` — RUNBOOK launch step — cannot run in the runtime
+      image, so a fresh deploy seeds no shop.** **HIGH (ops)** · fixed `04d1ea3`
   - `docs/RUNBOOK.md:109` tells the operator to run `pnpm db:seed` in the pod.
     `prisma/seed.ts:5` imports `../src/lib/config/printers`, but the runner
     copies only `public`, `.next/standalone`, `.next/static`, `node_modules`,
@@ -147,8 +148,8 @@ webhook-verification gap was found.
   - Fix: copy `src/lib/config` into the runner (or make `seed.ts`
     self-contained), and add a docker-build + seed smoke check to CI.
 
-- [ ] **7. `import/.env` — a live-looking database credential — is in the
-      Docker build context.** **HIGH (secrets)**
+- [x] **7. `import/.env` — a live-looking database credential — is in the
+      Docker build context.** **HIGH (secrets)** · fixed `46bb0c3`
   - `import/.env:1` holds a `DB_URL` with a 50-character password. The repo
     `.dockerignore` has `.env*` (line 14) and `data` (line 18), but no `import`
     entry; Docker matches `.env*` against the root path only, not
@@ -161,8 +162,8 @@ webhook-verification gap was found.
   - Fix: add `import` (or `**/.env*`) to `.dockerignore`, and rotate that
     credential.
 
-- [ ] **8. Printer awards are schema-only: nothing can lock an address, pack,
-      ship, deliver or revoke a printer.** **HIGH (missing feature)**
+- [x] **8. Printer awards are schema-only: nothing can lock an address, pack,
+      ship, deliver or revoke a printer.** **HIGH (missing feature)** · fixed `b310df7`
   - `PrinterAwardStatus` (`ADDRESS_LOCKED … REVOKED`) and the
     `PRINTER_QUALIFIED` / `PRINTER_STATUS_CHANGE` / `PRINTER_REVOKED` audit
     actions exist (`prisma/schema.prisma:200-207, 270-273`), and participants
@@ -175,8 +176,8 @@ webhook-verification gap was found.
     writing status, address lock, tracking and revoke with the three audit
     actions; extend `FULFILLER` if that is the operator.
 
-- [ ] **9. Reel and comment moderation exists in the library but is
-      unreachable for staff.** **HIGH (safety; audience is 13–18)**
+- [x] **9. Reel and comment moderation exists in the library but is
+      unreachable for staff.** **HIGH (safety; audience is 13–18)** · fixed `43bbe52`
   - `hidePost`/`restorePost`/`hideComment` are implemented
     (`src/lib/feed.ts:433-466`), but nothing calls
     `src/app/api/admin/posts/[id]/moderate/route.ts` (grep: only the route
