@@ -19,16 +19,26 @@ pass; the DB-backed verify suites were not run (no database was up).
 
 Legend: **BLOCKER** — launch is damaged without it · **HIGH** · **MED** · **LOW**
 
-## Status — the two blockers and all seven highs fixed; the medium set and cleanup tail remain
+## Status — every blocker, high and medium fixed; the low/cleanup tail remains
 
-**Fixed since this pass:** the two launch blockers — #1 (`d746d6f`), #2
-(`2da57fa`) — and every high — #3 (`cf3c772`), #4 (`69cf674`), #5 (`4e10555`),
-#6 (`04d1ea3`), #7 (`46bb0c3`), #8 (`b310df7`), #9 (`43bbe52`).
+**Fixed since this pass:** the two launch blockers (#1 `d746d6f`, #2
+`2da57fa`), all seven highs (#3 `cf3c772`, #4 `69cf674`, #5 `4e10555`,
+#6 `04d1ea3`, #7 `46bb0c3`, #8 `b310df7`, #9 `43bbe52`), and the medium set:
 
-The earlier audits' money fixes are real, and the residual holes this pass
-found in them are closed. What remains is the medium set (correctness,
-job-reporting, staff over-fetch, missing surfaces) and the low/cleanup tail.
-No new authorization bypass, injection or webhook-verification gap was found.
+- money and integrations: #10 `31119af`, #11 `285d4a8`, #17 `1ee5c45`,
+  #18 `894ad3f`, #19 `8992439`
+- sync and analytics correctness: #12 `57f5f2a`, #13 `48cec65`, #23 `bde735d`,
+  #25 `d07652e`
+- purchases and staff data: #14 `9bdbf2f`, #15 `281c2f9`
+- the public endpoint and the landing sink: #16 `d35001a`, #24 `4b6faa4`
+- review and Ari paths: #20 `8ea50e1`, #21 `cf97864`, #22 `a0118c6`,
+  #26 `6c13f3a`
+- surfaces and hardening: #27 `f150777`, #28 `7cb1595`, #29/#31 `43eacf3`,
+  #30 `e4d2623`, #32 `dab94ca`
+
+What remains is the low/cleanup tail (#33–#52): doc corrections, dead code,
+Docker hygiene and a few small correctness edges. No new authorization bypass,
+injection or webhook-verification gap was found.
 
 | # | Severity | Item | Area |
 | --- | --- | --- | --- |
@@ -190,14 +200,14 @@ No new authorization bypass, injection or webhook-verification gap was found.
 
 ## 3. Medium
 
-- [ ] **10. HCB's access token is cached for the life of the process.**
+- [x] **10. HCB's access token is cached for the life of the process.**
       `src/lib/hcb.ts:36-40, 61-70` — `cachedToken` never expires, `expires_in`
       is ignored, and nothing invalidates it on a 401. When the OAuth token
       lapses, every HCB call (top-up, reconcile, memo) 401s until redeploy and
       retries cannot reconcile. Fix: store the expiry, refresh with a margin,
       and clear + retry once on 401.
 
-- [ ] **11. A design grant can be sent after the design is un-approved.**
+- [x] **11. A design grant can be sent after the design is un-approved.**
       `src/lib/grants.ts:67-75` checks approval once, before the unique-row
       claim; the 20-second HCB call (`:151-156`) takes no lock and re-reads
       nothing. An `unapprovePhase` (or Ari revert) in that window sends money
@@ -205,7 +215,7 @@ No new authorization bypass, injection or webhook-verification gap was found.
       later re-approval from sending. Fix: re-read/re-claim immediately before
       `topUpCardGrant`; refuse or flag in-flight rows on un-approve.
 
-- [ ] **12. `backfillAnalytics` re-adds `HACKATIME_TRACKED` hours.**
+- [x] **12. `backfillAnalytics` re-adds `HACKATIME_TRACKED` hours.**
       `[tracked-incomplete]` — PRELAUNCH_AUDIT.md #27.
       `src/lib/analytics.ts:125-135` filters tracked sessions, but the
       backfill's query (`:185-189`) and sum (`:253-259`) do not, and omit the
@@ -214,13 +224,13 @@ No new authorization bypass, injection or webhook-verification gap was found.
       export and Loops/Airtable sync disagree with `rollUpHours`. Fix: apply
       the same filters (share one where-clause).
 
-- [ ] **13. Editing only `hoursSource` leaves the week's analytics stale.**
+- [x] **13. Editing only `hoursSource` leaves the week's analytics stale.**
       `src/app/api/projects/[id]/sessions/[sessionId]/route.ts:94` recomputes
       only when `hoursClaimed` changes, but `hoursSource` is editable
       (`src/lib/schemas/session.ts:24-38`) and decides whether the entry counts.
       Fix: recompute when either field changed.
 
-- [ ] **14. A retried or double-submitted purchase of an unlimited item
+- [x] **14. A retried or double-submitted purchase of an unlimited item
       charges twice.** `src/lib/shop.ts:135-240` creates a new `ShopOrder` per
       call, so the `@@unique([shopOrderId, kind, bucket])` the schema calls
       "what stops a double-submitted purchase form from charging twice"
@@ -229,7 +239,7 @@ No new authorization bypass, injection or webhook-verification gap was found.
       unlimited. Fix: accept a client idempotency key and, inside the lock,
       return the existing matching order within a short window.
 
-- [ ] **15. Staff order reads over-fetch internal cost and encrypted
+- [x] **15. Staff order reads over-fetch internal cost and encrypted
       address/phone columns.** `src/lib/queries/admin.ts:174-178` fetches a
       user's orders with no `select`; `listOrders` (`:185-195`) uses `include`;
       the decision routes return the raw `ShopOrder`. Those rows carry
@@ -241,7 +251,7 @@ No new authorization bypass, injection or webhook-verification gap was found.
       cost and actor ids; it becomes a PII leak when address capture is wired.
       Fix: explicit selects for the rendered/fulfillment fields only.
 
-- [ ] **16. `/api/subscribe` is an unauthenticated email-registration oracle
+- [x] **16. `/api/subscribe` is an unauthenticated email-registration oracle
       that hands out referral codes.** `src/app/api/subscribe/route.ts:39-53`
       returns `{ duplicate, referralCode }` for any address, with no proof the
       caller owns it; the Airtable sink returns the stored code on a hit
@@ -250,7 +260,7 @@ No new authorization bypass, injection or webhook-verification gap was found.
       codes for a list that includes minors. Fix: neutral response on a hit;
       release a code only to a matching session or after verification.
 
-- [ ] **17. `airtable-retry` reports skipped writes as success.** The route
+- [x] **17. `airtable-retry` reports skipped writes as success.** The route
       counts any non-null `trackSideEffect` result as `synced++`
       (`src/app/api/integrations/airtable-retry/route.ts:27-39`), while an
       unconfigured/disabled sync resolves `{ skipped: … }`
@@ -262,7 +272,7 @@ No new authorization bypass, injection or webhook-verification gap was found.
       Fix: treat `{ skipped }` as skipped — no success audit, no increment — as
       `rsvp-drain` and `loops-sync` already do.
 
-- [ ] **18. `loops-sync` reads the email column under a different name than
+- [x] **18. `loops-sync` reads the email column under a different name than
       the drain writes it.** `src/lib/airtable/loops.ts:28` uses
       `email: "email"`, but the RSVP table's column is `Email`
       (`src/lib/airtable/schema.ts:109`), which the drain writes
@@ -270,7 +280,7 @@ No new authorization bypass, injection or webhook-verification gap was found.
       either 422s or matches zero rows and reports a green run that updates
       nothing. Fix: read `RSVP.fields.email` via `fieldKey`.
 
-- [ ] **19. RSVP rows that hit the 10-attempt cap are permanently
+- [x] **19. RSVP rows that hit the 10-attempt cap are permanently
       unretryable.** `drainRsvpBuffer` only selects `syncAttempts < 10`
       (`src/lib/airtable/rsvp.ts:92`) and increments on failure (`:156`), while
       neither `bufferRsvp` (`:47`) nor `bufferRsvpForUser` (`:69`) resets the
@@ -278,7 +288,7 @@ No new authorization bypass, injection or webhook-verification gap was found.
       forever, even after the person RSVPs again or creates an account. Fix:
       reset `syncAttempts: 0` on both upsert updates.
 
-- [ ] **20. An Ari decision is bound to `(project, phase)`, not to the ship
+- [x] **20. An Ari decision is bound to `(project, phase)`, not to the ship
       the event names, so a stale approval can land on a later submission.**
       `src/lib/ari.ts:310-318` picks the newest open submission for the phase
       and `:396-399` writes `event.id` onto it without comparing the row's
@@ -289,7 +299,7 @@ No new authorization bypass, injection or webhook-verification gap was found.
       look the row up by `ariSubmissionId === event.id` first, falling back to
       the phase only for legacy rows.
 
-- [ ] **21. A failed Ari withdraw has no recovery path.**
+- [x] **21. A failed Ari withdraw has no recovery path.**
       `…/unsubmit/route.ts:51-65` fires `withdrawSubmissionFromAri` in `after()`
       with no retry: a failure is only an `ARI_SYNC_FAILURE` audit row, and
       `ari-retry` replays sends, never withdrawals. The withdrawn hand-in stays
@@ -297,7 +307,7 @@ No new authorization bypass, injection or webhook-verification gap was found.
       depends on Ari's duplicate semantics. Fix: make `ari-retry` (or a new
       job) replay failed withdraws, or record a withdraw queue.
 
-- [ ] **22. A deferred build approval is invisible and has no local replay.**
+- [x] **22. A deferred build approval is invisible and has no local replay.**
       The item-10 fix throws `DESIGN_NOT_APPROVED` so Ari redelivers
       (`src/lib/ari.ts:344-362`), but nothing records that the decision is
       pending: `ari-retry` only replays ships with a null `ariSubmissionId`
@@ -307,7 +317,7 @@ No new authorization bypass, injection or webhook-verification gap was found.
       approval. Fix: record the deferred decision and replay it from a job/admin
       surface.
 
-- [ ] **23. `hackatime-sync` (and `loops-sync`) do unbounded work and only
+- [x] **23. `hackatime-sync` (and `loops-sync`) do unbounded work and only
       record the run at the end.** `…/hackatime-sync/route.ts:22-41` refreshes
       every link sequentially with a 10s timeout each, then calls
       `recordSyncRun`; a `maxDuration` kill leaves no `SyncRunLog`, and the
@@ -316,7 +326,7 @@ No new authorization bypass, injection or webhook-verification gap was found.
       way. Fix: batch with a cursor/limit and record partial results in a
       `finally`.
 
-- [ ] **24. The landing signup writes through to Airtable synchronously; the
+- [x] **24. The landing signup writes through to Airtable synchronously; the
       buffered path is unused.** `src/lib/site/signups.ts:90-175` checks and
       writes Airtable first, while `docs/ARCHITECTURE.md:176-181` says "every
       RSVP lands in `RsvpBuffer`" and `README.md:94-106` documents the webhook
@@ -326,7 +336,7 @@ No new authorization bypass, injection or webhook-verification gap was found.
       through `bufferRsvp`/`/api/rsvp`, or correct the docs to state the real
       sink precedence.
 
-- [ ] **25. `loops-sync` is built to run on a schedule but is missing from
+- [x] **25. `loops-sync` is built to run on a schedule but is missing from
       every schedule and health surface.** Its own comment says so
       (`…/loops-sync/route.ts:11-13`); the RUNBOOK job table lists six jobs and
       no Loops row (`docs/RUNBOOK.md:135-142`), and the admin panel's
@@ -334,7 +344,7 @@ No new authorization bypass, injection or webhook-verification gap was found.
       (`src/app/(platform)/(ops)/admin/page.tsx:21`). The Loops properties
       silently never update. Fix: add the job row and the two sync keys.
 
-- [ ] **26. Per-entry hour approval is wired to nothing.** The
+- [x] **26. Per-entry hour approval is wired to nothing.** The
       `REVIEW_HOURS` permission, `POST /api/review/hours`,
       `WorkSession.hoursApproved` and hackatime overrides all exist, but no UI
       calls the route; the reviewer console offers only a whole-phase
@@ -343,7 +353,7 @@ No new authorization bypass, injection or webhook-verification gap was found.
       build the review-hours panel the route was written for, or delete the
       route/permission and document override-only review.
 
-- [ ] **27. Public reel links can be claimed but staff have no way to see
+- [x] **27. Public reel links can be claimed but staff have no way to see
       them.** `PublicReel` is "kept so a post that goes viral can be found and
       paid for" (`prisma/schema.prisma:1509-1512`), and the submission dialog
       collects the links, but no admin query, page or export selects them
@@ -351,7 +361,7 @@ No new authorization bypass, injection or webhook-verification gap was found.
       public-reels table on `/admin`, or include them in the participant
       export.
 
-- [ ] **28. `BETTER_AUTH_SECRET` is not checked at boot, so the pod looks
+- [x] **28. `BETTER_AUTH_SECRET` is not checked at boot, so the pod looks
       healthy while every auth page 500s.** `src/lib/auth.ts:31` reads it, and
       better-auth throws in production when it is missing
       (`node_modules/better-auth/dist/context/create-context.mjs:42-43`), but
@@ -361,14 +371,14 @@ No new authorization bypass, injection or webhook-verification gap was found.
       throws. Fix: validate `DATABASE_URL`, `BETTER_AUTH_SECRET` and
       `BETTER_AUTH_URL` in `register()`.
 
-- [ ] **29. No CSP and no HSTS anywhere.** `src/proxy.ts:19-25` is the only
+- [x] **29. No CSP and no HSTS anywhere.** `src/proxy.ts:19-25` is the only
       header setter (X-Frame-Options, nosniff, Referrer-Policy,
       Permissions-Policy). `X-Frame-Options: DENY` covers clickjacking on
       `/admin`/`/review`, but there is no `frame-ancestors` fallback and no
       transport hardening for a cookie app. Fix: add HSTS (and a CSP if the
       inline styles/scripts allow), or document that the ingress supplies them.
 
-- [ ] **30. The Leaderboard is promised by the docs and does not exist.**
+- [x] **30. The Leaderboard is promised by the docs and does not exist.**
       `README.md:33` lists it in the route tree, `DESIGN.md:443,617` describes
       its tab and magenta sign, and `docs/platform-ui.md:98` includes it in the
       tour; no `leaderboard` route exists (deleted in `490fe15`) and the sidebar
@@ -376,7 +386,7 @@ No new authorization bypass, injection or webhook-verification gap was found.
       rebuild it or update the three docs — as it stands, operators and
       participants are told about a destination that was silently cut.
 
-- [ ] **31. Slack's endpoints sit behind the pre-launch basic-auth gate.**
+- [x] **31. Slack's endpoints sit behind the pre-launch basic-auth gate.**
       `src/proxy.ts:114-119` excludes `api/integrations`, `api/health`,
       `api/handoff/upload` and `r/` from basic auth, but not `api/slack/*`.
       The RUNBOOK says to keep `REQUIRE_BASICAUTH=true` until launch, so
@@ -385,7 +395,7 @@ No new authorization bypass, injection or webhook-verification gap was found.
       handler. Fix: exclude `api/slack` (it verifies its own signature), or
       sequence the app setup after the gate is removed.
 
-- [ ] **32. A reel owed at week close can turn a live tab into a dead map.**
+- [x] **32. A reel owed at week close can turn a live tab into a dead map.**
       `src/lib/store.tsx:1001-1006` checks `isPassed(id)` before the
       `owedReels.includes(id)` escape hatch, and `isPassed` (`:950-958`) has no
       exception for a reel node. Delete a checkpoint reel, leave the tab open
