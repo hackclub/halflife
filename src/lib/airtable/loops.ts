@@ -1,7 +1,7 @@
 import "server-only"
 import { Phase } from "@/app/generated/prisma/enums"
 import { type AirtableRecord, airtableFetch, getAirtableConfig, withRateLimitRetry } from "@/lib/airtable/client"
-import { RSVP_TABLE_ID } from "@/lib/airtable/schema"
+import { fieldKey, RSVP, RSVP_TABLE_ID } from "@/lib/airtable/schema"
 import { THEMES } from "@/lib/config/program"
 import prisma from "@/lib/prisma"
 
@@ -25,7 +25,10 @@ import prisma from "@/lib/prisma"
 const TABLE = RSVP_TABLE_ID
 
 export const LOOPS_FIELDS = {
-  email: "email",
+  // The same column the RSVP drain writes. Airtable field names are
+  // case-sensitive, and `"email"` against a column named `Email` matches
+  // nothing — a green run that updates no one.
+  email: fieldKey(RSVP.fields.email),
   lastLoginAt: "Loops - halfLifeLastLoginAt",
   lastEntryAt: "Loops - halfLifeLastEntryAt",
   week: (n: number) => `Loops - halfLifeWeek${n}Project`,
