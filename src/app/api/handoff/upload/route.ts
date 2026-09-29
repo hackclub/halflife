@@ -1,7 +1,7 @@
-import { fail, ok, withRoute } from "@/lib/api"
+import { fail, ok, parseUploadForm, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { completeHandoff, resolveHandoff } from "@/lib/handoff"
-import { isUploadConfigured } from "@/lib/uploads/r2"
+import { isUploadConfigured, MAX_UPLOAD_BYTES } from "@/lib/uploads/r2"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
@@ -22,8 +22,12 @@ export const POST = withRoute(async (req: Request) => {
     return fail("NOT_CONFIGURED", "File uploads are not configured on this deployment")
   }
 
-  const form = await req.formData().catch(() => null)
-  if (!form) return fail("INVALID_BODY", "Expected a multipart form")
+  // Capped before it is parsed, because this route has no session and the
+  // token is inside the form: `req.formData()` would otherwise buffer whatever
+  // the caller sends before any credential is checked.
+  const parsed = await parseUploadForm(req, MAX_UPLOAD_BYTES)
+  if (parsed.error) return parsed.error
+  const form = parsed.data
 
   const token = form.get("token")
   if (typeof token !== "string" || !token) return fail("INVALID_BODY", "Missing token")
