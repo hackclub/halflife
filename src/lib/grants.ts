@@ -35,6 +35,46 @@ import prisma from "@/lib/prisma"
 /** How long a row with no error is trusted as a live request rather than a crash. */
 export const ABANDONED_ATTEMPT_MS = 10 * 60_000
 
+/**
+ * Name the transaction in HCB's books, and make a failure visible.
+ *
+ * The memo is the only record of why the money moved, and a missing
+ * transaction id means HCB committed a top-up it cannot name. Both used to be
+ * a console warning, which the failure audit every other outbound effect
+ * writes would never show.
+ */
+async function memoOrReport(
+  transactionId: string | null,
+  memo: string,
+  ctx: { projectId: string; adminId: string | null; adminEmail: string | null },
+): Promise<void> {
+  if (!transactionId) {
+    await logAudit({
+      action: AuditAction.ADMIN_SEND_GRANT,
+      actorId: ctx.adminId,
+      actorEmail: ctx.adminEmail,
+      targetType: "ThemeProject",
+      targetId: ctx.projectId,
+      metadata: { memoFailed: true, reason: "HCB returned no transaction id", memo },
+    })
+    return
+  }
+  try {
+    await memoTransaction(transactionId, memo)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error("[hcb] memo failed:", err)
+    await logAudit({
+      action: AuditAction.ADMIN_SEND_GRANT,
+      actorId: ctx.adminId,
+      actorEmail: ctx.adminEmail,
+      targetType: "ThemeProject",
+      targetId: ctx.projectId,
+      metadata: { memoFailed: true, transactionId, error: message, memo },
+    })
+  }
+}
+
 export interface SendGrantInput {
   themeProjectId: string
   phase: Phase
@@ -117,9 +157,11 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
         where: { id: existing.id },
         data: { sentAt: new Date(), transactionId: reconciled.transactionId, error: null },
       })
-      if (reconciled.transactionId) {
-        await memoTransaction(reconciled.transactionId, memo).catch((err) => console.warn("[hcb] memo failed:", err))
-      }
+      await memoOrReport(reconciled.transactionId, memo, {
+        projectId: project.id,
+        adminId: input.adminId,
+        adminEmail: input.adminEmail,
+      })
       await logAudit({
         action: AuditAction.ADMIN_SEND_GRANT,
         actorId: input.adminId,
@@ -164,9 +206,11 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 
   try {
     const { transactionId } = await topUpCardGrant(hashid, amountCents)
-    if (transactionId) {
-      await memoTransaction(transactionId, memo).catch((err) => console.warn("[hcb] memo failed:", err))
-    }
+    await memoOrReport(transactionId, memo, {
+      projectId: project.id,
+      adminId: input.adminId,
+      adminEmail: input.adminEmail,
+    })
     await prisma.hcbGrantTopUp.update({ where: { id: rowId }, data: { transactionId, sentAt: new Date() } })
     await logAudit({
       action: AuditAction.ADMIN_SEND_GRANT,
