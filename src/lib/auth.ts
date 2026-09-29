@@ -27,9 +27,64 @@ function linkOnlyEmail(provider: "hackatime" | "lapse", id: string): string {
   return `${provider}-${id.replace(/[^A-Za-z0-9_-]/g, "")}@link.invalid`
 }
 
+/**
+ * The hosts that front a deployed instance. `halflife.hackclub.com` is the one
+ * users are sent to; the k.hackclub.dev wildcard covers the Orchard-generated
+ * names for this project (`swift-hazel-14` today, the `half-life` ingress in
+ * the runbook), so whichever one a request arrives on, it signs in against
+ * that host.
+ */
+const publicHosts = ["halflife.hackclub.com", "*.k.hackclub.dev"]
+const canonicalUrl = "https://halflife.hackclub.com"
+const devUrl = "http://localhost:3000"
+
+/** Is this URL a laptop's own (`next dev`, or `next start` after a local build)? */
+function isLoopbackURL(url: string | undefined): boolean {
+  if (!url) return false
+  try {
+    const { hostname } = new URL(url)
+    return hostname === "localhost" || hostname.endsWith(".localhost") || hostname.startsWith("127.") || hostname === "[::1]"
+  } catch {
+    return false
+  }
+}
+
+const configuredUrl = process.env.BETTER_AUTH_URL
+/**
+ * Where a request signs in from when it names no host we recognise. A deployed
+ * process uses the canonical origin, NOT `BETTER_AUTH_URL`, which can still
+ * name the hostname an earlier deploy used — the stale value that broke
+ * sign-in on halflife.hackclub.com is exactly that. A laptop keeps its own.
+ */
+const baseURLFallback =
+  process.env.NODE_ENV === "production" && !isLoopbackURL(configuredUrl)
+    ? canonicalUrl
+    : (configuredUrl ?? devUrl)
+
 export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,
-  baseURL: process.env.BETTER_AUTH_URL,
+
+  // better-auth validates every credentialed request's Origin against the
+  // origin of its base URL, so pinning `baseURL` to a single hostname refuses
+  // sign-ins that arrive on any other one with INVALID_ORIGIN — logged as
+  // "Invalid origin: https://halflife.hackclub.com" — long before the OAuth
+  // flow starts, which the landing page's login mark reports as "try again".
+  // Resolve the host per request instead, for the hosts we know.
+  //
+  // `protocol: "https"`: TLS terminates at the ingress, so the request the pod
+  // sees still arrives as plain http, and the resolved URL must not.
+  baseURL: {
+    allowedHosts: publicHosts,
+    protocol: "https",
+    fallback: baseURLFallback,
+  },
+
+  // The ingress terminates TLS and forwards the public host in
+  // `x-forwarded-host`. Trusting it for base URL resolution is what makes the
+  // previous block see `halflife.hackclub.com` rather than the pod's own
+  // address; a forged value cannot point anywhere outside `allowedHosts`.
+  advanced: { trustedProxyHeaders: true },
+
   database: prismaAdapter(prisma, { provider: "postgresql" }),
 
   session: {
