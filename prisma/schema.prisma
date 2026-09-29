@@ -7,8 +7,9 @@
 // Convention: tables are @@map'd to snake_case, columns stay camelCase.
 
 generator client {
-  provider = "prisma-client"
-  output   = "../src/app/generated/prisma"
+  provider        = "prisma-client"
+  output          = "../src/app/generated/prisma"
+  previewFeatures = ["partialIndexes"]
 }
 
 // Prisma 7 takes the connection URL from prisma.config.ts (for the CLI) and
@@ -31,8 +32,10 @@ enum Theme {
   /// Fillout form, and imported off the `YSWS Project Submission` table.
   ///
   /// Not a season track: it has no scheduled week, does not count toward
-  /// printer qualification, and exists so a warm-up project does not occupy
-  /// one of the maker's five season slots (`@@unique([userId, theme])`).
+  /// printer qualification, and exists so warm-up projects do not occupy any
+  /// of the maker's five season slots. Unlike a season theme it is not
+  /// unique per maker — the warm-up form may have been filled in more than
+  /// once, and every row is a project of its own (see `@@unique` below).
   WARMUP
 }
 
@@ -514,8 +517,8 @@ model UserRole {
 
 // ─── Program work ────────────────────────────────────────────────────────────
 
-/// The durable unit of participation: one row per (user, theme). Exactly five
-/// per participant.
+/// The durable unit of participation: one row per (user, season theme), plus
+/// one for each warm-up project. Five season rows per participant at most.
 ///
 /// Deliberately not keyed on week. Weeks are derived from
 /// ProgramSettings.eventStartDate and are advisory, so someone doing the week-3
@@ -639,11 +642,17 @@ model ThemeProject {
   publicReels    PublicReel[]
   hcbGrantTopUps HcbGrantTopUp[]
 
-  /// One themed project per theme per person. This makes "five themed
+  /// One season project per season theme per person. This makes "five themed
   /// projects" a schema invariant rather than a convention, which is what lets
   /// printer qualification be a count of five approved themes instead of a
   /// rule someone can game by creating three PCB projects.
-  @@unique([userId, theme])
+  ///
+  /// Warm-up rows are exempt: every imported Airtable row lands on
+  /// `Theme.WARMUP`, and a maker may have handed the warm-up form in more than
+  /// once, so those rows must not collide with each other. Nothing about the
+  /// five season slots changes — the predicate only filters the warm-up rows
+  /// out of this index.
+  @@unique([userId, theme], where: raw("theme <> 'WARMUP'"))
   @@index([userId])
   @@index([designStatus])
   @@index([buildStatus])

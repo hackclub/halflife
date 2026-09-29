@@ -333,12 +333,10 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 
   const projectIdByWeek: Record<number, string> = {}
   for (const project of projects) {
-    // A warm-up project has no curriculum week to be addressed by; week 0 is
-    // the slot the client's unsubmit path reaches for it through.
-    if (project.theme === Theme.WARMUP) {
-      projectIdByWeek[WARMUP_WEEK_ID] = project.id
-      continue
-    }
+    // A warm-up project has no curriculum week to be addressed by, and a
+    // maker may hold several of them, so week 0 would have to pick one of
+    // them arbitrarily. They are reached through the projects list instead.
+    if (project.theme === Theme.WARMUP) continue
     const themeIndex = THEMES.findIndex((t) => t.id === project.theme)
     if (themeIndex !== -1) projectIdByWeek[weekOf(themeIndex, Phase.DESIGN)] = project.id
   }
