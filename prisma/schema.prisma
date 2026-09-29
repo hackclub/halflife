@@ -570,6 +570,9 @@ model ThemeProject {
   /// work out which part of a combined number belonged to the other.
   designBankedCoins    Int?
   designSpendableCoins Int?
+  /// The spendable half of the build's payout only. The banked half lives in
+  /// the ledger as BUILD_BANKED_HOURS and is deliberately not duplicated here,
+  /// so this field is not a reconcile target for the build's two kinds.
   buildCoins           Int?
 
   /// Reserved for the receipts flow, which is **not shipped**: nothing writes

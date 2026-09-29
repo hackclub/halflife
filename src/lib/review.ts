@@ -327,6 +327,8 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
               ? {
                   approvedHours,
                   approvedHoursAt: new Date(),
+                  // Spendable only: the banked half is reconciled through the
+                  // ledger's BUILD_BANKED_HOURS rows, not this display field.
                   buildCoins: coins?.spendable ?? null,
                 }
               : {}),
