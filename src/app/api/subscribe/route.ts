@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { normalizeEmail, rateLimited, recordSignup } from "@/lib/site/signups"
+import { clientIp, normalizeEmail, rateLimited, recordSignup } from "@/lib/site/signups"
 
 /** Referral codes and UTM values are freeform, untrusted client input — cap
  * length and drop anything that isn't a string rather than validate a shape. */
@@ -10,8 +10,7 @@ function sanitizeParam(raw: unknown): string | null {
 }
 
 export async function POST(request: Request) {
-  const ip =
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "unknown"
+  const ip = clientIp(request.headers)
 
   if (rateLimited(ip)) {
     return NextResponse.json({ ok: false, error: "Slow down a second, then try again." }, { status: 429 })

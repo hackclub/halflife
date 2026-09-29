@@ -3,7 +3,7 @@ import { bufferRsvp, getRsvpCount } from "@/lib/airtable/rsvp"
 import { fail, ok, parseBody, withRoute } from "@/lib/api"
 import { sanitizeOptional } from "@/lib/sanitize"
 import { rsvpSchema } from "@/lib/schemas/admin"
-import { rateLimited } from "@/lib/site/signups"
+import { rateLimited, clientIp } from "@/lib/site/signups"
 
 export const dynamic = "force-dynamic"
 
@@ -14,7 +14,7 @@ export const POST = withRoute(async (req: Request) => {
   if (parsed.error) return parsed.error
 
   const h = await headers()
-  const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? h.get("x-real-ip") ?? h.get("cf-connecting-ip") ?? null
+  const ip = clientIp(h)
 
   // This is a public, unauthenticated write that lands a row in the drain
   // queue (and the public counter); the landing form's limiter applies here
