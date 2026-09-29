@@ -79,8 +79,10 @@ export async function getHoursBreakdown(
   let timelapseSeconds = 0
 
   for (const s of sessions) {
-    for (const t of s.timelapses) timelapseSeconds += t.coveredSeconds ?? 0
+    // A tracked entry contributes no journal time, and its timelapses must
+    // not land in a coverage ratio whose denominator excludes them either.
     if (s.hoursSource === HoursSource.HACKATIME_TRACKED) continue
+    for (const t of s.timelapses) timelapseSeconds += t.coveredSeconds ?? 0
     journalHours += s.hoursApproved ?? s.hoursClaimed
     journalHoursClaimed += s.hoursClaimed
   }
