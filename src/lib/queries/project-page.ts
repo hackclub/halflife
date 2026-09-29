@@ -2,7 +2,7 @@ import "server-only"
 import type { Prisma } from "@/app/generated/prisma/client"
 import { Phase, PhaseStatus, PostStatus, type ReviewResult } from "@/app/generated/prisma/enums"
 import { type BomLine, bomLockReason, listBom } from "@/lib/bom"
-import { THEMES } from "@/lib/config/program"
+import { THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { lapseTimelapseUrl } from "@/lib/lapse"
 import prisma from "@/lib/prisma"
 import { type ProjectThumbnail, projectThumbnail } from "@/lib/thumbnail"
@@ -293,7 +293,7 @@ export interface PublicProjectData {
   title: string
   description: string
   author: string
-  /** 1-based design week the theme runs in, for its colours and scene. */
+  /** 1-based design week the theme runs in, or 0 for a warm-up project. */
   weekId: number
   thumbnail: ProjectThumbnail | null
   timeline: TimelineItem[]
@@ -328,7 +328,7 @@ export async function getPublicProjectPage(id: string): Promise<PublicProjectDat
     title: project.title,
     description: project.description ?? "",
     author: project.user.name ?? "A maker",
-    weekId: themeIndex === -1 ? 1 : themeIndex + 1,
+    weekId: themeIndex === -1 ? WARMUP_WEEK_ID : themeIndex + 1,
     thumbnail: projectThumbnail(
       publicUrlFor(project.coverImageKey),
       project.workSessions,

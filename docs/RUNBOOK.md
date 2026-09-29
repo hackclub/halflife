@@ -199,6 +199,16 @@ Reviews and the shop stay up.
 retry button, and `/admin/audit?action=AIRTABLE_SYNC_FAILURE` has the errors.
 The `airtable-retry` job does the same sweep hourly.
 
+**Import the pre-season warm-up projects** — `/admin/program` → *Warm-up
+projects from Airtable* pulls the rows the Fillout form wrote into the `YSWS
+Project Submission` table (`AIRTABLE_YSWS_TABLE_ID`) into Half Life. It creates
+an account for any maker who has not signed in yet, files each project on the
+Warm Up track, records the self-reported hours, and hands the project to Ari.
+Safe to re-run: rows already imported, and rows Half Life itself wrote, are
+skipped. Anything it could not take is listed with its reason — a second row
+for a maker who already has a warm-up project is reported rather than filed,
+because one maker keeps one warm-up project.
+
 **Scale for a launch spike** — `scale_deployment` to 2–3 replicas; the app is
 stateless and sessions live in Postgres. Stagger the rollout rather than going
 from 0 to 3 at once, so several `prisma migrate deploy` runs are not racing at

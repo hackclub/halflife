@@ -7,6 +7,7 @@ import { IconChevronLeft, IconClock } from "@/components/platform/icons"
 import { RepoChecks } from "@/components/platform/modals/RepoChecks"
 import { Button, Chip, cx, Panel } from "@/components/platform/ui"
 import { DESIGN_WEEKS } from "@/lib/config/printers"
+import { WARMUP_WEEK_ID } from "@/lib/config/program"
 import { TIERS } from "@/lib/curriculum"
 import { fmtDate, fmtHours } from "@/lib/projects"
 import type { ProjectPageData } from "@/lib/queries/project-page"
@@ -142,15 +143,65 @@ function DisputeForm({
   )
 }
 
+/**
+ * Resubmit a warm-up project after a review asked for changes.
+ *
+ * A season week opens its submit sheet from the trail checkpoint; a warm-up
+ * project has no trail week, so this posts the same submit route directly.
+ */
+function WarmupResubmit({ projectId, phase }: { projectId: string; phase: "DESIGN" | "BUILD" }) {
+  const router = useRouter()
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function run() {
+    setBusy(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/projects/${projectId}/submit`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ phase, attachmentKeys: [] }),
+      })
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
+        setError(payload.error?.message ?? `Could not resubmit (${res.status})`)
+        return
+      }
+      router.refresh()
+    } catch {
+      setError("Could not reach the server. Try again.")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <span className="inline-flex flex-col items-start gap-1.5">
+      <Button variant="solid" size="sm" disabled={busy} onClick={() => void run()}>
+        {busy ? "Resubmitting…" : "I've made these changes — resubmit"}
+      </Button>
+      {error && (
+        <span role="alert" className="text-[0.82rem] font-semibold text-coral-deep">
+          {error}
+        </span>
+      )}
+    </span>
+  )
+}
+
 /** Where each phase stands with review, above the repo checks. */
 function ReviewState({
   projectId,
   phases,
   weekFor,
+  warmup,
 }: {
   projectId: string
   phases: ProjectPageData["phases"]
   weekFor: (phase: "DESIGN" | "BUILD") => number
+  /** A warm-up project has no trail week to open a submit sheet from. */
+  warmup: boolean
 }) {
   const { setOpenCheckpoint } = useStore()
   const [disputing, setDisputing] = useState<"DESIGN" | "BUILD" | null>(null)
@@ -187,11 +238,18 @@ function ReviewState({
                 </p>
               ) : negative ? (
                 <div className="flex flex-wrap items-center gap-2">
-                  {p.status === "update_requested" && (
-                    <Button variant="solid" size="sm" onClick={() => setOpenCheckpoint(`w${weekFor(p.phase)}-submit`)}>
-                      I&apos;ve made these changes — resubmit
-                    </Button>
-                  )}
+                  {p.status === "update_requested" &&
+                    (warmup ? (
+                      <WarmupResubmit projectId={projectId} phase={p.phase} />
+                    ) : (
+                      <Button
+                        variant="solid"
+                        size="sm"
+                        onClick={() => setOpenCheckpoint(`w${weekFor(p.phase)}-submit`)}
+                      >
+                        I&apos;ve made these changes — resubmit
+                      </Button>
+                    ))}
                   <Button variant="outline" size="sm" onClick={() => setDisputing(p.phase)}>
                     This review is incorrect
                   </Button>
@@ -231,6 +289,7 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
     )
   }
 
+  const warmup = project.weekId === WARMUP_WEEK_ID
   const week = weekOf(project.weekId)
   const buildWeekId = project.weekId + DESIGN_WEEKS
   const weekFor = (phase: "DESIGN" | "BUILD") => (phase === "DESIGN" ? project.weekId : buildWeekId)
@@ -241,8 +300,9 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 
   // The tier stops being editable the moment the design week is handed in —
   // that submission is what claimed it, and the build week only inherits it.
+  // A warm-up project never had a design week, so the rule does not apply.
   const submit = week.checkpoints.find((c) => c.kind === "submit")
-  const submitted = submit ? stateOf(submit.id).done : false
+  const submitted = warmup ? false : submit ? stateOf(submit.id).done : false
   const grantUsd = TIERS.find((t) => t.id === project.tier)?.grantUsd ?? 0
 
   return (
@@ -268,13 +328,15 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
           <div className="min-w-0 @3xl:col-start-1 @3xl:row-start-1">
             <ProjectDetails
               project={project}
-              hours={weekHours(project.weekId)}
+              // A warm-up project's hours live in its imported session, not in
+              // a trail week, so its tier hint reads the timeline total.
+              hours={warmup ? hours : weekHours(project.weekId)}
               tierLocked={submitted}
               locked={data.editLocked}
               unsubmit={
                 data.inReview
                   ? {
-                      week: weekFor(data.inReview),
+                      label: warmup ? "this warm-up project" : `week ${weekFor(data.inReview)}`,
                       run: () => unsubmitPhase(`w${weekFor(data.inReview ?? "DESIGN")}-submit`),
                     }
                   : undefined
@@ -298,14 +360,16 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
                     )}
                   </p>
                   <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
-                    <Chip tone="muted">{week.theme}</Chip>
+                    <Chip tone="muted">{warmup ? "Warm Up" : week.theme}</Chip>
                     <Chip tone="violet">
                       Tier {project.tier}
                       {project.starter && " · starter"}
                     </Chip>
-                    <span>
-                      weeks {project.weekId} &amp; {buildWeekId}
-                    </span>
+                    {!warmup && (
+                      <span>
+                        weeks {project.weekId} &amp; {buildWeekId}
+                      </span>
+                    )}
                     {project.githubRepo && (
                       <>
                         <Dot />
@@ -331,7 +395,7 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
       {/* ---------- where review stands ---------- */}
       {data.phases.length > 0 && (
         <Section id="review-title" title="Review">
-          <ReviewState projectId={project.id} phases={data.phases} weekFor={weekFor} />
+          <ReviewState projectId={project.id} phases={data.phases} weekFor={weekFor} warmup={warmup} />
         </Section>
       )}
 

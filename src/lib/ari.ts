@@ -1,11 +1,11 @@
 import "server-only"
 import { Ari, AriApiError, type AriReview, type AriShipInput, type AriWebhookEvent } from "@hackclub/ari"
 import type { Prisma } from "@/app/generated/prisma/client"
-import { HoursSource, Phase, PhaseStatus, ReviewResult } from "@/app/generated/prisma/enums"
+import { HoursSource, Phase, PhaseStatus, ReviewResult, Theme } from "@/app/generated/prisma/enums"
 import { ariExternalId, parseAriExternalId } from "@/lib/ari-id"
 import { selectPendingShips } from "@/lib/ari-pending"
 import { AuditAction, logAudit } from "@/lib/audit"
-import { getThemeDef } from "@/lib/config/program"
+import { getThemeDef, WARMUP_THEME } from "@/lib/config/program"
 import { isTierId } from "@/lib/config/tiers"
 import { HttpError } from "@/lib/errors"
 import { notifyReviewOutcome } from "@/lib/notifications"
@@ -82,10 +82,14 @@ function appUrl(): string {
 /**
  * Ari requires a thumbnail. Prefer the project's own cover; fall back to the
  * theme painting the participant already saw for that week, so a project
- * without a cover is still reviewable rather than silently unsendable.
+ * without a cover is still reviewable rather than silently unsendable. A
+ * warm-up project has no theme painting — it was never part of the season —
+ * so it falls back to the programme's build artwork rather than a 404.
  */
 function thumbnailFor(coverImageKey: string | null, slug: string): string {
-  return publicUrlFor(coverImageKey) ?? `${appUrl()}/brand/themes/${slug}.png`
+  const cover = publicUrlFor(coverImageKey)
+  if (cover) return cover
+  return slug === WARMUP_THEME.slug ? `${appUrl()}/art/build.png` : `${appUrl()}/brand/themes/${slug}.png`
 }
 
 /** The build's closing reel, or null — hardware projects may omit a demo. */
@@ -377,9 +381,11 @@ async function applyDecision(event: DecisionEvent): Promise<void> {
   if (result === ReviewResult.APPROVED && phase === Phase.BUILD) {
     const project = await prisma.themeProject.findUnique({
       where: { id: themeProjectId },
-      select: { designStatus: true },
+      select: { designStatus: true, theme: true },
     })
-    if (project?.designStatus !== PhaseStatus.approved) {
+    // A warm-up project's only phase is the one the form collected, so there
+    // is no design approval to wait for.
+    if (project?.theme !== Theme.WARMUP && project?.designStatus !== PhaseStatus.approved) {
       throw new HttpError(
         "DESIGN_NOT_APPROVED",
         "Waiting for the design approval before this build approval can be applied",

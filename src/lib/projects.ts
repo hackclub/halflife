@@ -1,4 +1,5 @@
 import { DESIGN_WEEKS } from "./config/printers"
+import { WARMUP_WEEK_ID } from "./config/program"
 import type { Project, SessionLog, Week } from "./types"
 
 /**
@@ -38,7 +39,11 @@ export type ProjectEvent =
 
 /** The design week that owns a project, and the build week that finishes it. */
 export function projectWeeks(project: Project, weeks: Week[]): Week[] {
-  const ids = [project.weekId, project.weekId + DESIGN_WEEKS]
+  // A warm-up project has no curriculum week. Empty rather than "week 0 plus
+  // its build week": week 0 + DESIGN_WEEKS is week 5, the breadboard design
+  // week, and gathering its checkpoints would put a stranger's trail events on
+  // the warm-up card.
+  const ids = project.weekId === WARMUP_WEEK_ID ? [] : [project.weekId, project.weekId + DESIGN_WEEKS]
   return weeks.filter((w) => ids.includes(w.id))
 }
 

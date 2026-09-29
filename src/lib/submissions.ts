@@ -1,6 +1,6 @@
 import "server-only"
 import type { ThemeProject } from "@/app/generated/prisma/client"
-import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
+import { Phase, PhaseStatus, Theme } from "@/app/generated/prisma/enums"
 import { scheduledWeekFor } from "@/lib/config/program"
 import { lockUserCredit } from "@/lib/currency"
 import { HttpError } from "@/lib/errors"
@@ -95,7 +95,10 @@ export function canSubmitPhase(
       message: "This phase was rejected. Ask an admin to reopen it.",
     }
   }
-  if (phase === Phase.BUILD && project.designStatus === PhaseStatus.draft) {
+  // A warm-up project is one phase by nature — it was handed in through the
+  // pre-season form, not designed and then built — so the design-first rule
+  // does not apply to it.
+  if (phase === Phase.BUILD && project.theme !== Theme.WARMUP && project.designStatus === PhaseStatus.draft) {
     return {
       ok: false,
       code: "PHASE_LOCKED",
@@ -278,9 +281,7 @@ export async function unsubmitPhase(userId: string, themeProjectId: string, phas
     const flipped = await tx.themeProject.updateMany({
       where: {
         id: themeProjectId,
-        ...(phase === Phase.DESIGN
-          ? { designStatus: PhaseStatus.in_review }
-          : { buildStatus: PhaseStatus.in_review }),
+        ...(phase === Phase.DESIGN ? { designStatus: PhaseStatus.in_review } : { buildStatus: PhaseStatus.in_review }),
       },
       data: phase === Phase.DESIGN ? { designStatus: PhaseStatus.draft } : { buildStatus: PhaseStatus.draft },
     })

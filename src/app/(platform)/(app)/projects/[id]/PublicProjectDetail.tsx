@@ -6,6 +6,7 @@ import { IconChevronLeft, IconClock } from "@/components/platform/icons"
 import { ProjectThumb } from "@/components/platform/ProjectThumb"
 import { Chip, Panel } from "@/components/platform/ui"
 import { DESIGN_WEEKS } from "@/lib/config/printers"
+import { WARMUP_WEEK_ID } from "@/lib/config/program"
 import { WEEK_META } from "@/lib/curriculum"
 import { fmtHours } from "@/lib/projects"
 import type { PublicProjectData } from "@/lib/queries/project-page"
@@ -18,6 +19,7 @@ import { Timeline } from "./Timeline"
  * on it comes from the server in `data`.
  */
 export function PublicProjectDetail({ data }: { data: PublicProjectData }) {
+  const warmup = data.weekId === WARMUP_WEEK_ID
   const week = WEEK_META.find((w) => w.id === data.weekId) ?? WEEK_META[0]
   const buildWeekId = data.weekId + DESIGN_WEEKS
   const weekFor = (phase: "DESIGN" | "BUILD") => (phase === "DESIGN" ? data.weekId : buildWeekId)
@@ -67,14 +69,14 @@ export function PublicProjectDetail({ data }: { data: PublicProjectData }) {
                 </span>
                 <span>{sessions.length === 1 ? "1 entry" : `${sessions.length} entries`}</span>
               </p>
-              {week && (
-                <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1.5">
-                  <Chip tone="muted">{week.theme}</Chip>
+              <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                <Chip tone="muted">{warmup ? "Warm Up" : (week?.theme ?? "PCB")}</Chip>
+                {!warmup && (
                   <span>
                     weeks {data.weekId} &amp; {buildWeekId}
                   </span>
-                </p>
-              )}
+                )}
+              </p>
             </div>
           </div>
         </div>

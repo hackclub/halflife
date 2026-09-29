@@ -1,10 +1,13 @@
 import { headers } from "next/headers"
 import Link from "next/link"
 import { ActionButton } from "@/app/components/forms/ActionButton"
+import { AirtableImportForm } from "@/app/components/forms/AirtableImportForm"
 import { ProgramSettingsForm } from "@/app/components/forms/ProgramSettingsForm"
 import { ProgramStartForm } from "@/app/components/forms/ProgramStartForm"
 import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
 import { Phase } from "@/app/generated/prisma/enums"
+import { getAirtableConfig } from "@/lib/airtable/client"
+import { YSWS_SUBMISSION } from "@/lib/airtable/schema"
 import { findUnsyncedSubmissions } from "@/lib/airtable/sync"
 import { ariWebhookUrl, findUnsyncedAriSubmissions, isAriConfigured, isAriWebhookConfigured } from "@/lib/ari"
 import { PRINTERS, submitFloorFor } from "@/lib/config/printers"
@@ -37,6 +40,7 @@ export default async function AdminProgramPage() {
   const callbackUrl = ariWebhookUrl(host ? `${proto}://${host}` : "")
   const ariSending = isAriConfigured()
   const ariReceiving = isAriWebhookConfigured()
+  const airtableReady = getAirtableConfig() !== null
 
   const startYmd = settings.eventStartDate.toISOString().slice(0, 10)
   const now = new Date()
@@ -123,6 +127,23 @@ export default async function AdminProgramPage() {
             airtableSyncEnabled: settings.airtableSyncEnabled,
           }}
         />
+      </Panel>
+
+      <Panel title="Warm-up projects from Airtable">
+        <p className="hl-hint">
+          Before the platform opened, projects were handed in through the warm-up submission form, which writes rows
+          into the <code>{YSWS_SUBMISSION.tableId}</code> table (<code>AIRTABLE_YSWS_TABLE_ID</code>). Importing files
+          each one on the maker&apos;s Warm Up track — a pre-season slot that does not use one of their five season
+          themes — creates their account if they have not signed up yet, records the self-reported hours as a work
+          session, and hands the project to Ari for review. Rows already imported, and rows Half Life itself wrote, are
+          skipped, so the button is safe to run again. A maker keeps one warm-up project; a second row for the same
+          person is reported as skipped.
+        </p>
+        {airtableReady ? (
+          <AirtableImportForm ariConfigured={ariSending} />
+        ) : (
+          <EmptyState>Airtable is not configured on this deployment, so there is nothing to import.</EmptyState>
+        )}
       </Panel>
 
       <Panel title="Submissions that never reached Airtable">
