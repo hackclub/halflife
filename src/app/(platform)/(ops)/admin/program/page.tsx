@@ -115,7 +115,9 @@ export default async function AdminProgramPage() {
           initial={{
             programTimezone: settings.programTimezone,
             submissionsOpen: settings.submissionsOpen,
+            submissionsCloseAt: settings.submissionsCloseAt?.toISOString().slice(0, 16) ?? null,
             shopOpen: settings.shopOpen,
+            shopClosesAt: settings.shopClosesAt?.toISOString().slice(0, 16) ?? null,
             shopGraceDays: settings.shopGraceDays,
             reviewClaimTtlMinutes: settings.reviewClaimTtlMinutes,
             airtableSyncEnabled: settings.airtableSyncEnabled,

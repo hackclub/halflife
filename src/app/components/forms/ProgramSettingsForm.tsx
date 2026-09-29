@@ -9,7 +9,9 @@ export function ProgramSettingsForm({
   initial: {
     programTimezone: string
     submissionsOpen: boolean
+    submissionsCloseAt: string | null
     shopOpen: boolean
+    shopClosesAt: string | null
     shopGraceDays: number
     reviewClaimTtlMinutes: number
     airtableSyncEnabled: boolean
@@ -35,7 +37,9 @@ export function ProgramSettingsForm({
         body: JSON.stringify({
           programTimezone: form.programTimezone,
           submissionsOpen: form.submissionsOpen,
+          submissionsCloseAt: form.submissionsCloseAt ? new Date(`${form.submissionsCloseAt}Z`).toISOString() : null,
           shopOpen: form.shopOpen,
+          shopClosesAt: form.shopClosesAt ? new Date(`${form.shopClosesAt}Z`).toISOString() : null,
           shopGraceDays: Number(form.shopGraceDays),
           reviewClaimTtlMinutes: Number(form.reviewClaimTtlMinutes),
           airtableSyncEnabled: form.airtableSyncEnabled,
@@ -77,6 +81,18 @@ export function ProgramSettingsForm({
         <span>Submissions open</span>
       </label>
 
+      <Field
+        label="Submissions close (UTC, optional)"
+        hint="Closes submissions at this instant even while the toggle is on. Blank never closes."
+      >
+        <input
+          className="hl-input"
+          type="datetime-local"
+          value={form.submissionsCloseAt ?? ""}
+          onChange={(e) => setForm({ ...form, submissionsCloseAt: e.target.value || null })}
+        />
+      </Field>
+
       <label className="hl-row" style={{ gap: "0.5rem" }}>
         <input
           type="checkbox"
@@ -85,6 +101,18 @@ export function ProgramSettingsForm({
         />
         <span>Shop open</span>
       </label>
+
+      <Field
+        label="Shop closes (UTC, optional)"
+        hint="Closes the shop at this instant; the grace window still applies after a review."
+      >
+        <input
+          className="hl-input"
+          type="datetime-local"
+          value={form.shopClosesAt ?? ""}
+          onChange={(e) => setForm({ ...form, shopClosesAt: e.target.value || null })}
+        />
+      </Field>
 
       <label className="hl-row" style={{ gap: "0.5rem" }}>
         <input
