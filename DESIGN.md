@@ -439,8 +439,8 @@ vertical tapers between plates.
 - **Status rail** (316px, 352px from 2xl, xl and up): the goal tracker and the Doomscroller feed. Open by default on the trail only; it folds to nothing with a 420ms width transition, and the content keeps its width while it goes, so it is clipped rather than squashed.
 
 Below lg (1024px) the left rail is gone: a sticky 64px header carries the logo
-and a Doomscroller link, and a fixed bottom tab bar carries the six destinations
-(Leaderboard shortens to "Ranks" to fit a 60px cell).
+and a Doomscroller link, and a fixed bottom tab bar carries the main
+destinations.
 
 **The trail** swings its checkpoints along a sine (23% amplitude) down a single
 column. A milestone takes a full stride, and a journal entry a shorter one with
@@ -614,7 +614,7 @@ never appear together on one node.
 
 Page titles hang from two navy straps pinned above the content. On the platform
 the board is a torn painted plate in the page's own accent — orange for the
-shop, sky for Explore, magenta for the leaderboard — so each destination is
+shop, sky for Explore — so each destination is
 recognisable before a word of it is read. Used on every screen except the
 trail (which has the week banner) and the Doomscroller (where the reel is the
 page). `PageSign` in the platform, the `.hl-sign` pair in the staff console.

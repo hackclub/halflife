@@ -30,7 +30,7 @@ is [DESIGN.md](./DESIGN.md), the reasoning behind the invariants is
 
 ```
 src/app/(site)/               the landing page
-src/app/(platform)/(app)/     the trail, projects, shop, explore, leaderboard
+src/app/(platform)/(app)/     the trail, projects, shop, explore
 src/app/(platform)/(ops)/     admin, review, login — earlier design system
 src/app/(handoff)/            the phone upload page a QR code opens
 src/app/api/                  every write in the product

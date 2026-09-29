@@ -95,7 +95,7 @@ local patch first so a click does not wait on a round trip to Postgres.
    server's onboarding state machine in order. The machine refuses a step ahead
    of the furthest one reached, which is what stops anyone arriving at a funded
    project without having been asked what they are building.
-4. **Tab tour** across the Doomscroller, Explore, Shop, Docs and Leaderboard.
+4. **Tab tour** across the Doomscroller, Explore, Shop and Docs.
 
 ## Design system
 
