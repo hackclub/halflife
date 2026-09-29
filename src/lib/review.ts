@@ -472,6 +472,16 @@ export async function unapprovePhase(
   await prisma.$transaction(async (tx) => {
     await lockUserCredit(tx, project.userId)
 
+    // Re-read under the lock: the fast check above ran against a read taken
+    // before it, and a decision or re-approval can have committed since.
+    const fresh = await tx.themeProject.findUnique({
+      where: { id: themeProjectId },
+      select: { designStatus: true, buildStatus: true },
+    })
+    if ((phase === Phase.DESIGN ? fresh?.designStatus : fresh?.buildStatus) !== PhaseStatus.approved) {
+      throw new HttpError("CONFLICT", "That phase is no longer approved")
+    }
+
     // A grant send holds no credit lock while HCB is called, so a design
     // un-approval must not race it: the money would be sent for an approval
     // that no longer stands, and the sent row would block a later send.
@@ -606,13 +616,21 @@ export async function reopenPhase(
     throw new HttpError("CONFLICT", "That phase is not rejected")
   }
 
-  await prisma.themeProject.update({
-    where: { id: themeProjectId },
+  // Conditional on the status that was read: an admin double-click, or a
+  // reopen racing a resubmission, must not overwrite a newer state.
+  const reopened = await prisma.themeProject.updateMany({
+    where: {
+      id: themeProjectId,
+      ...(phase === Phase.DESIGN ? { designStatus: PhaseStatus.rejected } : { buildStatus: PhaseStatus.rejected }),
+    },
     data:
       phase === Phase.DESIGN
         ? { designStatus: PhaseStatus.update_requested, designReviewComments: reason }
         : { buildStatus: PhaseStatus.update_requested, buildReviewComments: reason },
   })
+  if (reopened.count !== 1) {
+    throw new HttpError("CONFLICT", "That phase moved while it was being reopened")
+  }
 
   await logAudit({
     action: AuditAction.ADMIN_REOPEN_PHASE,
