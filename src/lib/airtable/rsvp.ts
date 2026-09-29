@@ -43,12 +43,16 @@ export async function bufferRsvp(input: RsvpInput): Promise<{ buffered: true }> 
       signupPage: input.signupPage ?? null,
       referredBy: input.referredBy ?? null,
     },
-    // Re-RSVPing must not clobber attribution captured the first time.
+    // Re-RSVPing must not clobber attribution captured the first time, and it
+    // resets the failure count: a row that hit the drain's attempt cap while
+    // Airtable was down must be retried when the person comes back, not left
+    // permanently invisible.
     update: {
       firstName: input.firstName ?? undefined,
       lastName: input.lastName ?? undefined,
       pronouns: input.pronouns ?? undefined,
       syncedToAirtable: false,
+      syncAttempts: 0,
     },
   })
   return { buffered: true }
@@ -66,7 +70,7 @@ export async function bufferRsvpForUser(userId: string, email: string, name: str
       userId,
       finishedAccountCreation: true,
     },
-    update: { userId, finishedAccountCreation: true, syncedToAirtable: false },
+    update: { userId, finishedAccountCreation: true, syncedToAirtable: false, syncAttempts: 0 },
   })
 }
 
