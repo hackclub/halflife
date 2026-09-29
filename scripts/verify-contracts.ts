@@ -366,6 +366,38 @@ async function bodies() {
     reconcileDisbursement(listed(row(3000, "not-a-date")), 3000, attemptedAt).kind === "ambiguous",
   )
 
+  /* ── 5d. Hackatime project seconds ─────────────────────────────────────── */
+  //
+  // Approval reads this live, so the difference between "genuinely zero" and
+  // "Hackatime no longer lists that project" decides whether someone is paid
+  // zero silently or the decision is refused.
+  const { projectSecondsFrom } = await import("../src/lib/hackatime")
+  const stats = (...projects: { name: string; total_seconds: number }[]) => ({ data: { projects } })
+
+  const presentZero = projectSecondsFrom(stats({ name: "firmware", total_seconds: 0 }), "firmware")
+  check("hackatime · present with 0s is a live zero", presentZero.stale === false && presentZero.seconds === 0)
+
+  const presentSeconds = projectSecondsFrom(stats({ name: "firmware", total_seconds: 4321 }), "firmware")
+  check("hackatime · present seconds are read", presentSeconds.stale === false && presentSeconds.seconds === 4321)
+
+  const renamed = projectSecondsFrom(stats({ name: "firmware-v2", total_seconds: 4321 }), "firmware")
+  check(
+    "hackatime · a renamed project is stale, not zero",
+    renamed.stale === true && renamed.notFound === true && renamed.seconds === 0,
+  )
+
+  const missingFromEmpty = projectSecondsFrom(stats(), "firmware")
+  check(
+    "hackatime · a name missing from an empty list is stale",
+    missingFromEmpty.stale === true && missingFromEmpty.notFound === true,
+  )
+
+  const noList = projectSecondsFrom({ data: {} }, "firmware")
+  check("hackatime · a response with no list is stale", noList.stale === true && !noList.notFound)
+
+  const nullBody = projectSecondsFrom(null, "firmware")
+  check("hackatime · a null body is stale", nullBody.stale === true && !nullBody.notFound)
+
   /* ── 6. Journal image count ─────────────────────────────────────────────── */
   //
   // The evidence bar counts pictures, so the same picture pasted twice must

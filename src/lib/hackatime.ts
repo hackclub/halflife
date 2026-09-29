@@ -9,6 +9,47 @@ export interface HackatimeFetch {
   /** True when the number came from cache or a failure, not a live fetch. */
   stale: boolean
   error?: string
+  /**
+   * True when Hackatime answered and the named project is not in its list —
+   * the project was renamed or deleted. The approval path must treat this as
+   * "we don't know", never as a fresh zero.
+   */
+  notFound?: boolean
+}
+
+interface StatsBody {
+  data?: { projects?: { name?: unknown; total_seconds?: unknown }[] }
+}
+
+/**
+ * Read one project's seconds out of a Hackatime stats response.
+ *
+ * Pure so the contract can be pinned without a network: a project that is
+ * present with zero seconds is the ONLY live zero. A name missing from a
+ * successfully fetched list means the project was renamed or deleted, and
+ * reporting zero for it would silently underpay the hand-in the number is
+ * about. A response with no usable project list is stale too — a shape change
+ * must not look like "nothing logged".
+ */
+export function projectSecondsFrom(body: unknown, project: string): HackatimeFetch {
+  const projects = (body as StatsBody | null)?.data?.projects
+  if (!Array.isArray(projects)) {
+    return { seconds: 0, stale: true, error: "Hackatime returned no project list" }
+  }
+
+  const match = projects.find((p) => p?.name === project)
+  if (!match) {
+    return {
+      seconds: 0,
+      stale: true,
+      notFound: true,
+      error: `Hackatime does not list a project named "${project}"`,
+    }
+  }
+
+  const total = match.total_seconds
+  const seconds = typeof total === "number" && Number.isFinite(total) ? Math.max(0, total) : 0
+  return { seconds, stale: false }
 }
 
 /**
@@ -30,11 +71,7 @@ export async function fetchProjectSeconds(hackatimeUserId: string, project: stri
     })
     if (!res.ok) return { seconds: 0, stale: true, error: `HTTP ${res.status}` }
 
-    const body = (await res.json()) as {
-      data?: { projects?: { name: string; total_seconds: number }[] }
-    }
-    const match = body.data?.projects?.find((p) => p.name === project)
-    return { seconds: match?.total_seconds ?? 0, stale: false }
+    return projectSecondsFrom(await res.json(), project)
   } catch (err) {
     return { seconds: 0, stale: true, error: err instanceof Error ? err.message : String(err) }
   }

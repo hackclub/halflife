@@ -90,6 +90,16 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
   }
 
   const fetched = await fetchProjectSeconds(project.user.hackatimeUserId, parsed.data.hackatimeProject)
+  // A name Hackatime does not list is a typo or a renamed project, not a
+  // link: creating it would leave a row that can never contribute hours and
+  // only surfaces again at approval time. A transient fetch failure still
+  // creates the link, so it can be refreshed once Hackatime answers.
+  if (fetched.notFound) {
+    return fail(
+      "VALIDATION_FAILED",
+      `Hackatime has no project named "${parsed.data.hackatimeProject}". Check the name on Hackatime and try again.`,
+    )
+  }
 
   const link = await prisma.hackatimeLink.create({
     data: {
