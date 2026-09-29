@@ -4,7 +4,7 @@ import { notFound, redirect } from "next/navigation"
 import { cache } from "react"
 import { auth } from "@/lib/auth"
 import type { SessionUser } from "@/lib/guards"
-import { getUserRoles, hasAnyPermission, hasPermission, type Permission, type Role } from "@/lib/permissions"
+import { getUserRolesIfExists, hasAnyPermission, hasPermission, type Permission, type Role } from "@/lib/permissions"
 
 export interface PageContext {
   user: SessionUser
@@ -28,9 +28,15 @@ export const requireSessionPage = cache(async (): Promise<PageContext> => {
   // landing page; see that route for why it cannot be `/` directly.
   if (!session) redirect("/signed-out")
   const u = session.user
+  // The cookie cache can serve a session whose user is gone — a deleted
+  // account, or a database reset inside the cache's five-minute window — and
+  // the layout below loads that user by id. Same destination as no session at
+  // all, before the first query can turn a ghost into a 500.
+  const roles = await getUserRolesIfExists(u.id)
+  if (roles === null) redirect("/signed-out")
   return {
     user: { id: u.id, email: u.email, name: u.name ?? null, image: u.image ?? null },
-    roles: await getUserRoles(u.id),
+    roles,
   }
 })
 
