@@ -326,6 +326,36 @@ export async function listAuditLog(opts: { action?: string; targetId?: string; c
   return { items, nextCursor: hasMore && last ? last.id : null }
 }
 
+/**
+ * Awards to ship, newest qualification first. `encryptedAddress` is read only
+ * to answer "is an address locked on file"; the ciphertext never leaves the
+ * server.
+ */
+export async function listPrinterAwards(limit = 100) {
+  const rows = await prisma.printerAward.findMany({
+    orderBy: [{ qualifiedAt: "desc" }],
+    take: limit,
+    select: {
+      id: true,
+      status: true,
+      qualifiedAt: true,
+      addressLockedAt: true,
+      encryptedAddress: true,
+      trackingNumber: true,
+      trackingCarrier: true,
+      shippedAt: true,
+      deliveredAt: true,
+      revokedAt: true,
+      revokedReason: true,
+      user: { select: { id: true, name: true, email: true } },
+    },
+  })
+  return rows.map(({ encryptedAddress, ...award }) => ({
+    ...award,
+    addressOnFile: encryptedAddress !== "",
+  }))
+}
+
 export async function getAdminCounters() {
   const [pendingReviews, pendingOrders, participants, shipped] = await Promise.all([
     prisma.phaseSubmission.count({ where: { resolvedAt: null } }),

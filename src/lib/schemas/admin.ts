@@ -1,5 +1,12 @@
 import { z } from "zod"
-import { Phase, Role, ShopFulfillmentMethod, ShopFulfillmentStage, ShopItemCategory } from "@/app/generated/prisma/enums"
+import {
+  Phase,
+  PrinterAwardStatus,
+  Role,
+  ShopFulfillmentMethod,
+  ShopFulfillmentStage,
+  ShopItemCategory,
+} from "@/app/generated/prisma/enums"
 import { boundedText, cuid, httpsUrl } from "@/lib/schemas/common"
 
 export const roleChangeSchema = z.object({ role: z.enum(Role) }).strict()
@@ -41,6 +48,17 @@ export const creditAdjustSchema = z
      * omitted field.
      */
     bucket: z.enum(["SPENDABLE", "BANKED"]).default("SPENDABLE"),
+  })
+  .strict()
+
+/** Moving a printer award along its fulfilment path (or revoking it). */
+export const printerAwardUpdateSchema = z
+  .object({
+    status: z.enum(PrinterAwardStatus),
+    trackingNumber: boundedText(200).optional(),
+    trackingCarrier: boundedText(120).optional(),
+    /** Recorded on the audit row; the server requires one to revoke. */
+    note: boundedText(2000).optional().default(""),
   })
   .strict()
 

@@ -398,6 +398,20 @@ async function bodies() {
   const nullBody = projectSecondsFrom(null, "firmware")
   check("hackatime · a null body is stale", nullBody.stale === true && !nullBody.notFound)
 
+  /* ── 5e. Printer award transitions ─────────────────────────────────────── */
+  const { canMovePrinterAward } = await import("../src/lib/printer-award")
+  check(
+    "printer · qualified can be locked or revoked",
+    canMovePrinterAward("QUALIFIED", "ADDRESS_LOCKED") && canMovePrinterAward("QUALIFIED", "REVOKED"),
+  )
+  check("printer · cannot ship before packing", !canMovePrinterAward("QUALIFIED", "SHIPPED"))
+  check(
+    "printer · delivered is final",
+    !canMovePrinterAward("DELIVERED", "SHIPPED") && !canMovePrinterAward("DELIVERED", "REVOKED"),
+  )
+  check("printer · revoked is final", !canMovePrinterAward("REVOKED", "PACKING"))
+  check("printer · a shipped award can still be delivered", canMovePrinterAward("SHIPPED", "DELIVERED"))
+
   /* ── 6. Journal image count ─────────────────────────────────────────────── */
   //
   // The evidence bar counts pictures, so the same picture pasted twice must
