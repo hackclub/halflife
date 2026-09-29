@@ -113,6 +113,29 @@ async function callSlackApiGet<T extends Record<string, unknown>>(
 
 let botUserId: string | null = null
 
+/**
+ * Whether a Slack user is in a channel the bot can see.
+ *
+ * The help channel is joined by every participant, so the thread's "Mark as
+ * helped" button is gated on membership of the private tickets channel the
+ * bot posts to. Fails closed: an unreadable member list refuses the action
+ * rather than opening it to the room.
+ */
+export async function isChannelMember(channel: string, user: string): Promise<boolean> {
+  let cursor: string | undefined
+  for (let page = 0; page < 10; page += 1) {
+    const result = await callSlackApiGet<{ members?: string[]; response_metadata?: { next_cursor?: string } }>(
+      "conversations.members",
+      { channel, limit: "200", ...(cursor ? { cursor } : {}) },
+    )
+    if (!result.ok || !Array.isArray(result.members)) return false
+    if (result.members.includes(user)) return true
+    cursor = result.response_metadata?.next_cursor || undefined
+    if (!cursor) return false
+  }
+  return false
+}
+
 /** Cached for the life of the instance — this never changes for a given
  * bot token, and calling auth.test on every event would be wasted latency
  * inside Slack's 3-second Events API window. */
