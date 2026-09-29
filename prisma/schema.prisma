@@ -1324,9 +1324,14 @@ model ShopOrder {
   fulfilledAt DateTime?
   lastActorId String?
 
+  /// Client-supplied, one per purchase intent. A retried request with the
+  /// same key resolves to the order it already made instead of charging again.
+  idempotencyKey String?
+
   notes         ShopOrderNote[]
   ledgerEntries LedgerEntry[]
 
+  @@unique([userId, idempotencyKey])
   @@index([userId])
   @@index([status, placedAt])
   @@index([shopItemId])
