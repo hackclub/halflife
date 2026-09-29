@@ -77,32 +77,7 @@ export default function AnnouncementBanner() {
           rather than a decision. 830 makes it an 18px gap. Above 945 the flag
           grows with the viewport at 11vw while the ground either side of the
           plate grows at 50vw, so the clearance only opens from there. */}
-      <div className="pointer-events-auto max-w-[24.375rem] bg-hl-ink px-5 py-2.5 min-[624px]:max-w-none">
-        {/* One line wherever the sentence fits, two where it cannot.
 
-            The whole sentence measures 33.62em set in Open Sans — 13.40 for
-            the lead, 7.59 for the date at its 600 weight, 10.48 for the tail
-            and 2.15 for the link — so at the 16px ceiling it wants 538px of
-            text, 578 with the plate's padding and 602 with the gutter either
-            side. `min-[624px]` is that number with 22px of slack, which is
-            there for the fallback face being a shade wider than Open Sans
-            while the real one loads: a `nowrap` plate that outgrew the gutter
-            would scroll the whole page sideways for a frame.
-
-            Below that width the 390px cap stands and the sentence takes two
-            lines. Uncapped it would be a strip spanning the phone to carry
-            one sentence, which is the cookie-bar reading the plate exists to
-            avoid, and `text-balance` is what keeps the second line a fair
-            share of the sentence rather than "here" stranded under a full
-            one.
-
-            The fluid size is what holds that branch at two lines rather than
-            three: the plate is content-sized below 414px of viewport, where
-            the type shrinking is what keeps the count down, and `3.6vw`
-            reaches the 16px ceiling by 444 — well inside the capped branch,
-            so the one-line branch is always set at the full 16. */}
-
-      </div>
     </div>
   )
 }
