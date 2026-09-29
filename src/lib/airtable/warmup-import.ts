@@ -36,10 +36,12 @@ import { buildObjectKey, isUploadConfigured, MAX_UPLOAD_BYTES, putObject } from 
  *    audit row keyed by its Airtable record id, so re-running the import only
  *    picks up rows that arrived since.
  *  - Warm-up projects are `Theme.WARMUP`, which is not one of the five season
- *    themes, so the `(userId, theme)` unique constraint lets a maker keep
- *    their five season slots. One maker can hold one warm-up project; a second
- *    row for the same person is reported rather than silently folded into the
- *    first, because there is no second slot to put it in.
+ *    themes, so they do not occupy a maker's season slots. Unlike a season
+ *    theme, `WARMUP` is not unique per maker: the form may have been filled in
+ *    more than once, and every row is a different project. Each row therefore
+ *    becomes its own project — the `(userId, theme)` unique index is partial
+ *    and skips warm-up rows (see prisma/schema.prisma), so a second one does
+ *    not collide with the first.
  *
  * Reads go through field NAMES: the Airtable REST API keys `fields` by column
  * name unless `returnFieldsByFieldId` is requested, which nothing here does.
@@ -302,12 +304,9 @@ async function rehostScreenshot(userId: string, url: string): Promise<string | n
 
 // ─── The import itself ───────────────────────────────────────────────────────
 
-interface ImportedRecord {
-  status: "imported" | "skipped"
-  reason: string | null
-  userId: string
-  themeProjectId: string | null
-}
+type ImportedRecord =
+  | { status: "imported"; reason: string | null; userId: string; themeProjectId: string }
+  | { status: "skipped"; reason: string; userId: null; themeProjectId: string | null }
 
 function encryptedPiiFields(row: ParsedWarmupRow): Partial<Prisma.UserCreateInput> {
   if (!isPiiConfigured()) return {}
@@ -328,10 +327,14 @@ function encryptedPiiFields(row: ParsedWarmupRow): Partial<Prisma.UserCreateInpu
  * submission in one transaction.
  *
  * The advisory lock is keyed on the email, so two rows for the same maker, or
- * an admin double-clicking the button, serialize instead of racing the
- * `(userId, theme)` constraint or filing the project twice. Everything after
- * the transaction — the cover copy and the Ari send — is external and
- * idempotent enough not to belong inside it.
+ * an admin double-clicking the button, serialize instead of racing each other
+ * into a duplicate account. Every row that gets here is a project of its own:
+ * the form may have been filled in more than once, and warm-up projects
+ * deliberately do not hold a unique slot. Idempotency per Airtable row is
+ * re-checked under that lock, because the caller's "not imported yet" read
+ * happened before the transaction and a second run can hold the same snapshot.
+ * Everything after the transaction — the cover copy and the Ari send — is
+ * external and idempotent enough not to belong inside it.
  */
 async function importRow(
   record: AirtableRecord,
@@ -352,6 +355,24 @@ async function importRow(
   return prisma.$transaction(
     async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`warmup-import:${row.email}`}, 0))`
+
+      // Two runs of the same click (two admins, two tabs) both read their
+      // "not imported yet" snapshot before either transaction started. Since
+      // warm-up rows are no longer held unique by `(userId, theme)`, the
+      // insert below would happily make a second project for one Airtable
+      // row; this re-read under the lock is what keeps a row to one project.
+      const raced = await tx.auditLog.findFirst({
+        where: { action: IMPORT_ACTION, metadata: { path: ["airtableRecordId"], equals: record.id } },
+        select: { targetId: true },
+      })
+      if (raced?.targetId) {
+        return {
+          status: "skipped" as const,
+          reason: "another import run filed this row first",
+          userId: null,
+          themeProjectId: raced.targetId,
+        }
+      }
 
       let user = await tx.user.findFirst({
         where: { email: { equals: row.email, mode: "insensitive" } },
@@ -378,19 +399,6 @@ async function importRow(
           select: { id: true },
         })
         createdUser = true
-      }
-
-      const existing = await tx.themeProject.findFirst({
-        where: { userId: user.id, theme: Theme.WARMUP },
-        select: { id: true },
-      })
-      if (existing) {
-        return {
-          status: "skipped" as const,
-          reason: "this maker already has a warm-up project",
-          userId: user.id,
-          themeProjectId: existing.id,
-        }
       }
 
       const project = await tx.themeProject.create({
@@ -554,7 +562,7 @@ export async function importWarmupProjects(actor: ImportActor): Promise<WarmupIm
         themeProjectId: result.themeProjectId,
       }
 
-      if (result.status === "imported" && result.themeProjectId) {
+      if (result.status === "imported") {
         if (parsed.row.screenshotUrl) {
           const key = await rehostScreenshot(result.userId, parsed.row.screenshotUrl)
           if (key) {

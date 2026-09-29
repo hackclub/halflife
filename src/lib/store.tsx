@@ -184,8 +184,12 @@ interface Ctx {
   weekSubmitted: (weekId: number) => boolean
   /** Where a week stands with review. "draft" when nothing is recorded. */
   phaseStatusOf: (weekId: number) => string
-  /** Take a week in review back out of it. Null once done, or the server's reason. */
-  unsubmitPhase: (submitCheckpointId: string) => Promise<string | null>
+  /**
+   * Take a phase in review back out of it. Null once done, or the server's
+   * reason. A trail submit passes its checkpoint id; a project with no
+   * checkpoint to address it by (a warm-up project) passes itself directly.
+   */
+  unsubmitPhase: (target: string | { projectId: string; phase: "DESIGN" | "BUILD" }) => Promise<string | null>
   /** Why a locked checkpoint is locked, phrased for the trail. Null if open. */
   lockReason: (id: string) => string | null
   currentCheckpointId: string | null
@@ -635,12 +639,17 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
    * Take a handed-in week back out of review, so it can be changed and handed
    * in again. Only a week still waiting for a reviewer can be — the server
    * refuses once a decision is made, or while a reviewer has it open.
+   *
+   * A checkpoint id resolves to its project through `projectIdByWeek`, which
+   * works for the trail. A warm-up project has no checkpoint: several of them
+   * share week 0, so a week id cannot say which one, and the caller names the
+   * project and phase instead.
    */
   const unsubmitPhase = useCallback(
-    async (id: string): Promise<string | null> => {
-      const route = routeOf(id)
-      const weekId = Number(/^w(\d+)-/.exec(id)?.[1])
-      if (!route || !Number.isInteger(weekId)) return "This week has no project to unsubmit."
+    async (target: string | { projectId: string; phase: "DESIGN" | "BUILD" }): Promise<string | null> => {
+      const fromCheckpoint = typeof target === "string"
+      const route = fromCheckpoint ? routeOf(target) : { projectId: target.projectId, phase: target.phase }
+      if (!route) return "This week has no project to unsubmit."
       let res: Response
       try {
         res = await fetch(`/api/projects/${route.projectId}/unsubmit`, {
@@ -655,11 +664,16 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
         const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
         return err?.error?.message ?? "The week was not unsubmitted. Try again."
       }
-      setFacts((f) => ({
-        ...f,
-        phaseStatusByWeek: { ...f.phaseStatusByWeek, [weekId]: "draft" },
-        progress: { ...f.progress, [id]: { ...EMPTY, ...f.progress[id], done: false } },
-      }))
+      if (fromCheckpoint) {
+        const weekId = Number(/^w(\d+)-/.exec(target)?.[1])
+        if (Number.isInteger(weekId)) {
+          setFacts((f) => ({
+            ...f,
+            phaseStatusByWeek: { ...f.phaseStatusByWeek, [weekId]: "draft" },
+            progress: { ...f.progress, [target]: { ...EMPTY, ...f.progress[target], done: false } },
+          }))
+        }
+      }
       router.refresh()
       return null
     },

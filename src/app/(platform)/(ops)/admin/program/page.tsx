@@ -136,8 +136,8 @@ export default async function AdminProgramPage() {
           each one on the maker&apos;s Warm Up track — a pre-season slot that does not use one of their five season
           themes — creates their account if they have not signed up yet, records the self-reported hours as a work
           session, and hands the project to Ari for review. Rows already imported, and rows Half Life itself wrote, are
-          skipped, so the button is safe to run again. A maker keeps one warm-up project; a second row for the same
-          person is reported as skipped.
+          skipped, so the button is safe to run again. Every row becomes its own project: a maker who handed the form in
+          more than once gets every project they submitted.
         </p>
         {airtableReady ? (
           <AirtableImportForm ariConfigured={ariSending} />

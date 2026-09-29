@@ -304,6 +304,8 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
   const submit = week.checkpoints.find((c) => c.kind === "submit")
   const submitted = warmup ? false : submit ? stateOf(submit.id).done : false
   const grantUsd = TIERS.find((t) => t.id === project.tier)?.grantUsd ?? 0
+  // Kept in a local so the phase survives into the unsubmit handler below.
+  const inReview = data.inReview
 
   return (
     <div className="mx-auto w-full max-w-[960px] px-4 pt-6 pb-10 sm:px-8">
@@ -334,10 +336,16 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
               tierLocked={submitted}
               locked={data.editLocked}
               unsubmit={
-                data.inReview
+                inReview
                   ? {
-                      label: warmup ? "this warm-up project" : `week ${weekFor(data.inReview)}`,
-                      run: () => unsubmitPhase(`w${weekFor(data.inReview ?? "DESIGN")}-submit`),
+                      label: warmup ? "this warm-up project" : `week ${weekFor(inReview)}`,
+                      // A warm-up project has no checkpoint of its own to
+                      // address it by (several share week 0), so it names
+                      // itself; a season week resolves through its checkpoint.
+                      run: () =>
+                        unsubmitPhase(
+                          warmup ? { projectId: project.id, phase: inReview } : `w${weekFor(inReview)}-submit`,
+                        ),
                     }
                   : undefined
               }

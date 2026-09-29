@@ -205,9 +205,9 @@ Project Submission` table (`AIRTABLE_YSWS_TABLE_ID`) into Half Life. It creates
 an account for any maker who has not signed in yet, files each project on the
 Warm Up track, records the self-reported hours, and hands the project to Ari.
 Safe to re-run: rows already imported, and rows Half Life itself wrote, are
-skipped. Anything it could not take is listed with its reason — a second row
-for a maker who already has a warm-up project is reported rather than filed,
-because one maker keeps one warm-up project.
+skipped. Anything it could not take is listed with its reason. Each row becomes
+its own project, so a maker who handed the form in more than once gets every
+project they submitted.
 
 **Scale for a launch spike** — `scale_deployment` to 2–3 replicas; the app is
 stateless and sessions live in Postgres. Stagger the rollout rather than going
