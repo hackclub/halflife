@@ -1,4 +1,4 @@
-import { fail, ok, parseUploadForm, withRoute } from "@/lib/api"
+import { fail, ok, parseUploadForm, rateLimitedInMemory, withRoute } from "@/lib/api"
 import { requireSession } from "@/lib/guards"
 import {
   buildObjectKey,
@@ -18,6 +18,10 @@ const ALLOWED_FOLDERS = new Set(["sessions", "covers", "timelapses", "posts"])
 export const POST = withRoute(async (req: Request) => {
   const gate = await requireSession()
   if (gate.error) return gate.error
+
+  if (rateLimitedInMemory(`upload:${gate.user.id}`)) {
+    return fail("RATE_LIMITED", "Too many uploads at once — wait a minute and try again")
+  }
 
   if (!isUploadConfigured()) {
     return fail("NOT_CONFIGURED", "File uploads are not configured on this deployment")

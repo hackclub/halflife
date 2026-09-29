@@ -128,6 +128,27 @@ export async function parseUploadForm(request: Request, maxFileBytes: number): P
 }
 
 /**
+ * A coarse per-instance limiter for authenticated write endpoints that have
+ * no other brake. Resets on cold start and is not shared across instances, so
+ * it stops one account spending the process's memory or storage in a loop,
+ * not a distributed attacker.
+ */
+const limiterHits = new Map<string, number[]>()
+
+export function rateLimitedInMemory(key: string, max = 10, windowMs = 60_000): boolean {
+  const now = Date.now()
+  const recent = (limiterHits.get(key) ?? []).filter((at) => now - at < windowMs)
+  if (recent.length >= max) {
+    limiterHits.set(key, recent)
+    return true
+  }
+  recent.push(now)
+  limiterHits.set(key, recent)
+  if (limiterHits.size > 10_000) limiterHits.clear()
+  return false
+}
+
+/**
  * Wraps a handler so a thrown HttpError becomes its proper response and
  * anything else becomes a logged 500 instead of an unhandled rejection.
  */
