@@ -2,6 +2,7 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { DecisionPanel } from "@/app/components/forms/DecisionPanel"
+import { HoursApprovalForm } from "@/app/components/forms/HoursApprovalForm"
 import {
   Badge,
   Callout,
@@ -152,7 +153,15 @@ export default async function ReviewDetailPage({ params }: Props) {
                   ) : null}
                 </td>
                 <td className="hl-mono">{session.hoursClaimed}h</td>
-                <td className="hl-mono">{session.hoursApproved ?? "—"}</td>
+                <td>
+                  <div className="hl-mono">{session.hoursApproved ?? "—"}</div>
+                  <HoursApprovalForm
+                    kind="session"
+                    id={session.id}
+                    claimed={claimedByMe}
+                    approved={session.hoursApproved}
+                  />
+                </td>
                 <td>
                   {session.media.map((m) => (
                     <a key={m.id} href={m.url ?? "#"} style={{ marginRight: "0.5rem" }}>
@@ -188,7 +197,10 @@ export default async function ReviewDetailPage({ params }: Props) {
             {detail.links.map((link) => (
               <tr key={link.id}>
                 <td className="hl-mono">{link.hackatimeProject}</td>
-                <td>{(link.hoursApproved ?? (link.cachedSeconds ?? 0) / 3600).toFixed(1)}h</td>
+                <td>
+                  <div>{(link.hoursApproved ?? (link.cachedSeconds ?? 0) / 3600).toFixed(1)}h</div>
+                  <HoursApprovalForm kind="hackatime" id={link.id} claimed={claimedByMe} approved={link.hoursApproved} />
+                </td>
                 <td className="hl-mono">{link.cachedAt?.toLocaleString() ?? "never"}</td>
                 <td className="hl-hint">{link.lastFetchError ?? ""}</td>
               </tr>
