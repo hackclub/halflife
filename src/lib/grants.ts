@@ -33,7 +33,7 @@ import prisma from "@/lib/prisma"
  */
 
 /** How long a row with no error is trusted as a live request rather than a crash. */
-const ABANDONED_ATTEMPT_MS = 10 * 60_000
+export const ABANDONED_ATTEMPT_MS = 10 * 60_000
 
 export interface SendGrantInput {
   themeProjectId: string
@@ -146,6 +146,20 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
     })
     if (reclaimed.count === 0) throw new HttpError("CONFLICT", "A grant for this project is already being sent")
     rowId = existing.id
+  }
+
+  // The approval this grant is for can be reversed while HCB is being called.
+  // Un-approve refuses while a row like this is in flight (see
+  // review.unapprovePhase), so this last read closes the rest of the window.
+  const current = await prisma.themeProject.findUnique({
+    where: { id: project.id },
+    select: { designStatus: true, grantUsd: true },
+  })
+  if (current?.designStatus !== PhaseStatus.approved || !current.grantUsd) {
+    await prisma.hcbGrantTopUp
+      .update({ where: { id: rowId }, data: { error: "The design was un-approved before the grant was sent" } })
+      .catch(() => undefined)
+    throw new HttpError("CONFLICT", "The design is no longer approved, so no grant is due")
   }
 
   try {

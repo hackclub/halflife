@@ -7,6 +7,7 @@ import { BUILD_HOURS, getThemeDef, THEME_COMPLETION_BONUS } from "@/lib/config/p
 import { getTierOrThrow, isTierId } from "@/lib/config/tiers"
 import { lockUserCredit, reconcileGrant } from "@/lib/currency"
 import { HttpError } from "@/lib/errors"
+import { ABANDONED_ATTEMPT_MS } from "@/lib/grants"
 import { buildCoinsFor, type CoinSplit, designCoinsFor, getHoursBreakdown } from "@/lib/hours"
 import { ensurePrinterAward } from "@/lib/printer"
 import prisma from "@/lib/prisma"
@@ -470,6 +471,31 @@ export async function unapprovePhase(
 
   await prisma.$transaction(async (tx) => {
     await lockUserCredit(tx, project.userId)
+
+    // A grant send holds no credit lock while HCB is called, so a design
+    // un-approval must not race it: the money would be sent for an approval
+    // that no longer stands, and the sent row would block a later send.
+    // `sendGrant` marks the row errored before it throws, which is what lets
+    // this same check pass on the retry after the window.
+    if (phase === Phase.DESIGN) {
+      const inFlight = await tx.hcbGrantTopUp.findFirst({
+        where: {
+          userId: project.userId,
+          themeProjectId,
+          phase: Phase.DESIGN,
+          sentAt: null,
+          error: null,
+          createdAt: { gt: new Date(Date.now() - ABANDONED_ATTEMPT_MS) },
+        },
+        select: { id: true },
+      })
+      if (inFlight) {
+        throw new HttpError(
+          "CONFLICT",
+          "A grant send is in flight for this design — wait for it to finish before un-approving",
+        )
+      }
+    }
 
     await tx.submissionReview.updateMany({
       where: { submission: { themeProjectId, phase }, invalidated: false },
