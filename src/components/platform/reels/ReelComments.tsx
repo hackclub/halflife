@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useId, useRef, useState } from "react"
 import { IconSend, IconX } from "@/components/platform/icons"
 import { cx } from "@/components/platform/ui"
 import type { FeedItem } from "@/lib/feed"
@@ -74,6 +74,9 @@ export function ReelComments({
   onClose: () => void
   className?: string
 }) {
+  // Two ReelComments can be mounted at once (the side panel and the narrow
+  // sheet), so fixed ids would collide; useId scopes them to this instance.
+  const uid = useId()
   const [threads, setThreads] = useState<Record<string, Thread>>({})
   const [draft, setDraft] = useState("")
   const [sending, setSending] = useState(false)
@@ -210,9 +213,9 @@ export function ReelComments({
   const count = reel?.commentCount ?? 0
 
   return (
-    <section aria-labelledby="reel-comments-title" className={cx("flex min-h-0 flex-col text-navy", className)}>
+    <section aria-labelledby={`${uid}-title`} className={cx("flex min-h-0 flex-col text-navy", className)}>
       <header className="flex shrink-0 items-center gap-2 border-b border-dashed border-line px-5 py-3.5">
-        <h2 id="reel-comments-title" className="label text-violet-deep">
+        <h2 id={`${uid}-title`} className="label text-violet-deep">
           Comments
         </h2>
         <span className="label rounded-full bg-violet-pale px-2 py-0.5 text-violet-deep tabular-nums">
@@ -309,11 +312,11 @@ export function ReelComments({
       >
         <div className="flex items-center gap-2.5">
           <StageAvatar name={viewer.name} image={viewer.image} className="size-9 text-[0.88rem]" />
-          <label htmlFor="reel-comment" className="sr-only">
+          <label htmlFor={`${uid}-comment`} className="sr-only">
             Add a comment
           </label>
           <input
-            id="reel-comment"
+            id={`${uid}-comment`}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             maxLength={MAX_LENGTH}

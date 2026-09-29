@@ -139,6 +139,10 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={labelledBy ?? titleId}
+        // If no ModalTitle rendered, `titleId` points at nothing: AT ignores
+        // the dangling reference and falls back to this label, so a forgotten
+        // title no longer means an unnamed dialog.
+        aria-label={labelledBy ? undefined : typeof eyebrow === "string" && eyebrow ? eyebrow : "Dialog"}
         tabIndex={-1}
         className={cx(
           "sketch sketch-2 relative flex max-h-[92dvh] w-full flex-col bg-cream outline-none motion-safe:animate-[hl-rise_.42s_cubic-bezier(.16,1,.3,1)]",

@@ -88,6 +88,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           cinematic && "pointer-events-none",
         )}
         aria-hidden={cinematic || undefined}
+        inert={cinematic || undefined}
       >
         {/* ---------- left rail ---------- */}
         <aside className="sticky top-0 hidden h-dvh w-[246px] shrink-0 overflow-y-auto border-r border-dashed border-line px-5 py-6 lg:block xl:w-[286px] xl:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

@@ -273,9 +273,14 @@ export function Spotlight({
     : null
 
   return (
-    <div className="fixed inset-0 z-[80]">
+    <div className="pointer-events-none fixed inset-0 z-[80]">
       {clickAnywhere && (
-        <button type="button" aria-label="Next" onClick={onNext} className="absolute inset-0 cursor-pointer" />
+        <button
+          type="button"
+          aria-label="Next"
+          onClick={onNext}
+          className="pointer-events-auto absolute inset-0 cursor-pointer"
+        />
       )}
 
       <svg
@@ -373,7 +378,7 @@ export function Spotlight({
         role="dialog"
         aria-label={title}
         className={cx(
-          "sketch sketch-2 absolute rounded-2xl bg-cream p-4 lift-shadow",
+          "sketch sketch-2 pointer-events-auto absolute rounded-2xl bg-cream p-4 lift-shadow",
           travelling
             ? "transition-[top,left,width] duration-[520ms] ease-[cubic-bezier(.16,1,.3,1)]"
             : "motion-safe:animate-[hl-pop_.36s_cubic-bezier(.16,1,.3,1)]",
