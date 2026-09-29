@@ -19,11 +19,14 @@ pass; the DB-backed verify suites were not run (no database was up).
 
 Legend: **BLOCKER** — launch is damaged without it · **HIGH** · **MED** · **LOW**
 
-## Status — two blockers, seven high, twenty-three medium, and a cleanup tail
+## Status — two blockers fixed, seven high, twenty-three medium, and a cleanup tail
 
-The earlier audits' money fixes are real, but two residual holes can still move
-money or duplicate the payout sink. Everything else is correctness, missing
-operator surface, or cleanup. No new authorization bypass, injection or
+**Fixed since this pass:** #1 (`d746d6f`) and #2 (`2da57fa`) — the two launch
+blockers.
+
+The earlier audits' money fixes are real, and the two residual holes this pass
+found in them are now closed. Everything else is correctness, missing operator
+surface, or cleanup. No new authorization bypass, injection or
 webhook-verification gap was found.
 
 | # | Severity | Item | Area |
@@ -42,9 +45,9 @@ webhook-verification gap was found.
 
 ## 1. Launch blockers
 
-- [ ] **1. HCB reconciliation fails open: an unreadable disbursement payload
+- [x] **1. HCB reconciliation fails open: an unreadable disbursement payload
       reads as "nothing landed" and a retry pays again.** **BLOCKER (money)**
-      `[tracked-incomplete]` — PRELAUNCH_AUDIT.md #7
+      `[tracked-incomplete]` — PRELAUNCH_AUDIT.md #7 · fixed `d746d6f`
   - `src/lib/hcb.ts:139-140` — `if (!Array.isArray(data.disbursements)) return []`.
     `reconcileDisbursement` (`src/lib/hcb.ts:163-183`) then sees an empty list
     and returns `{ kind: "absent" }`, which `sendGrant` treats as licence to
@@ -60,9 +63,9 @@ webhook-verification gap was found.
     `created_at`) must return `{ kind: "ambiguous" }`. Only "every row parsed
     and none matches" may send.
 
-- [ ] **2. Two concurrent first Airtable writes can still create duplicate
+- [x] **2. Two concurrent first Airtable writes can still create duplicate
       payout rows.** **BLOCKER (payout sink)** `[tracked-incomplete]` —
-      PRELAUNCH_AUDIT.md #8
+      PRELAUNCH_AUDIT.md #8 · fixed `2da57fa`
   - The fix landed an adopt-existing lookup, but it is still read-then-write
     with no lock and no Airtable upsert key: `src/lib/airtable/ysws.ts:137-146`
     (`findExistingRow` matches Email + Project name + stage, `:69-101`), then
