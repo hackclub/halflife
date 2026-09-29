@@ -1,5 +1,3 @@
-import { ANNOUNCEMENT } from "@/lib/site/content"
-
 /**
  * The dateline, laid on the painting.
  *
