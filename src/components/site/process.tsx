@@ -685,7 +685,7 @@ export default function Process() {
               <Plate>
                 <h3 className="font-display text-2xl font-bold sm:text-3xl">{funding.title}</h3>
                 <StepArt step={funding} className="mt-6 aspect-[11876/3790] w-full" sizes={STEP_ART_SIZES.stacked} />
-                <p className="mt-4 font-semibold text-opacity-40">{funding.caption}</p>
+                <p className="mt-4 font-semibold opacity-40">{funding.caption}</p>
               </Plate>
             </li>
 

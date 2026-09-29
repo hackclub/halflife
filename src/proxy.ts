@@ -1,5 +1,13 @@
+import { timingSafeEqual } from "node:crypto"
 import { type NextRequest, NextResponse } from "next/server"
 import { PLATFORM_HOME } from "@/lib/routes"
+
+/** Constant-time compare; lengths are not the secret. */
+function matches(presented: string, expected: string): boolean {
+  const a = Buffer.from(presented)
+  const b = Buffer.from(expected)
+  return a.length === b.length && timingSafeEqual(a, b)
+}
 
 /**
  * Security headers, and an optional HTTP basic auth gate for pre-launch.
@@ -13,6 +21,17 @@ function securityHeaders(res: NextResponse): NextResponse {
   res.headers.set("X-Content-Type-Options", "nosniff")
   res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin")
   res.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+  // Applies to every origin, but harmless on plain http dev and the one header
+  // that stops a downgrade on the way to production.
+  res.headers.set("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
+  // A CSP without `script-src`/`style-src`: it cannot break the app's inline
+  // styles and scripts, but it closes framed pages, plugin content and
+  // form/post hijacking. A nonce-based script policy is a follow-up, not a
+  // launch-day change.
+  res.headers.set(
+    "Content-Security-Policy",
+    "frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'",
+  )
   return res
 }
 
@@ -69,7 +88,11 @@ export function proxy(request: NextRequest) {
     const separator = decoded.indexOf(":")
     const user = separator === -1 ? decoded : decoded.slice(0, separator)
     const pass = separator === -1 ? "" : decoded.slice(separator + 1)
-    if (user !== expectedUser || pass !== expectedPass) return unauthorized()
+    // Both compared before the branch, so a failure time does not say which
+    // half was wrong.
+    const userOk = matches(user, expectedUser)
+    const passOk = matches(pass, expectedPass)
+    if (!userOk || !passOk) return unauthorized()
   }
 
   /**
@@ -104,6 +127,10 @@ export const config = {
     // basic-auth credentials, so gating them would break the feature on
     // exactly the deployments it is most useful on. They carry their own
     // credential: a single-use token that expires in minutes.
-    "/((?!_next/static|_next/image|favicon.ico|api/upload|api/integrations|api/health|api/handoff/upload|r/).*)",
+    //
+    // `api/slack` verifies Slack's HMAC itself and has to answer the Request
+    // URL verification while the pre-launch gate is still on, or the app
+    // cannot be set up.
+    "/((?!_next/static|_next/image|favicon.ico|api/upload|api/integrations|api/slack|api/health|api/handoff/upload|r/).*)",
   ],
 }

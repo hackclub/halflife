@@ -27,6 +27,13 @@ enum Theme {
   SYNTH
   DISPLAYS
   BREADBOARD_COMPUTER
+  /// A project submitted during the pre-season warm-up weeks, through the
+  /// Fillout form, and imported off the `YSWS Project Submission` table.
+  ///
+  /// Not a season track: it has no scheduled week, does not count toward
+  /// printer qualification, and exists so a warm-up project does not occupy
+  /// one of the maker's five season slots (`@@unique([userId, theme])`).
+  WARMUP
 }
 
 enum Phase {
@@ -232,6 +239,7 @@ enum AuditAction {
   USER_ADVANCE_ONBOARDING
   USER_SET_PRINTER_GOAL
   USER_COMPLETE_ONBOARDING
+  USER_DISPUTE_REVIEW
 
   // Review
   REVIEW_CLAIM
@@ -265,6 +273,10 @@ enum AuditAction {
   ADMIN_PIN_POST
   /// An admin putting themselves back at the start of the first checkpoint.
   ADMIN_RESET_ONBOARDING
+  ADMIN_RESOLVE_DISPUTE
+  ADMIN_SEND_GRANT
+  /// One warm-up Airtable row brought into Half Life (lib/airtable/warmup-import).
+  ADMIN_IMPORT_AIRTABLE_PROJECT
 
   // Printer
   PRINTER_QUALIFIED
@@ -413,6 +425,8 @@ model User {
   printerAward   PrinterAward?
   reviewsGiven   SubmissionReview[] @relation("SubmissionReviewer")
   reviewClaims   ReviewClaim[]      @relation("ReviewClaimant")
+  reviewDisputes ReviewDispute[]    @relation("ReviewDisputeAuthor")
+  hcbGrantTopUps HcbGrantTopUp[]    @relation("HcbGrantTopUpUser")
   syncRunLogs    SyncRunLog[]       @relation("SyncRunActor")
 
   @@index([createdAt])
@@ -567,10 +581,17 @@ model ThemeProject {
   /// work out which part of a combined number belonged to the other.
   designBankedCoins    Int?
   designSpendableCoins Int?
+  /// The spendable half of the build's payout only. The banked half lives in
+  /// the ledger as BUILD_BANKED_HOURS and is deliberately not duplicated here,
+  /// so this field is not a reconcile target for the build's two kinds.
   buildCoins           Int?
 
-  /// Dollars of the grant the participant did not spend on parts, entered from
-  /// their receipts. Converts 1:1 into spendable coins.
+  /// Reserved for the receipts flow, which is **not shipped**: nothing writes
+  /// this today. The intent was dollars of the grant the participant did not
+  /// spend on parts, entered from their receipts and converted 1:1 into
+  /// spendable coins through `LedgerKind.BOM_SAVINGS` / `PARTS_TOP_UP`.
+  /// Building it is a product decision (who enters the receipts, when it
+  /// pays) and a launch feature list item of its own.
   bomSavingsUsd Int?
 
   /// Tax and shipping for the whole parts order, as one total: a cart charges
@@ -616,6 +637,7 @@ model ThemeProject {
   posts          Post[]
   bomItems       BomItem[]
   publicReels    PublicReel[]
+  hcbGrantTopUps HcbGrantTopUp[]
 
   /// One themed project per theme per person. This makes "five themed
   /// projects" a schema invariant rather than a convention, which is what lets
@@ -807,6 +829,10 @@ model HackatimeLink {
 
   createdAt DateTime @default(now())
 
+  /// One tracked project backs one phase: `fetchProjectSeconds` returns the
+  /// project's whole total, not a range, so a second link in the other phase
+  /// would count the same time twice. Moving a link between phases is deleting
+  /// it and adding it again.
   @@unique([themeProjectId, hackatimeProject])
   @@index([themeProjectId, phase])
   @@map("hackatime_link")
@@ -864,6 +890,7 @@ model PhaseSubmission {
 
   reviews SubmissionReview[]
   claim   ReviewClaim?
+  dispute ReviewDispute?
 
   @@index([themeProjectId])
   @@index([themeProjectId, phase, createdAt(sort: Desc)])
@@ -904,8 +931,7 @@ model SubmissionReview {
 
   /// Shown to the submitter.
   feedback String  @db.Text
-  /// Internal justification, never shown to the submitter. This is what feeds
-  /// the hours justification on the grant row.
+  /// Internal justification, never shown to the submitter.
   reason   String? @db.Text
 
   /// Set when a later action supersedes this review (an un-approval). Keeps the
@@ -950,6 +976,61 @@ model SubmissionReview {
   @@map("submission_review")
 }
 
+/// A maker's disagreement with a decided submission.
+///
+/// It deliberately changes no state: a returned or rejected phase stays that
+/// way, and no button silently overrides a reviewer. What it does is put the
+/// submission in front of staff for a second look, with the maker's own words
+/// on it. One per submission (`submissionId` is unique), so the queue cannot be
+/// flooded by the same decision.
+model ReviewDispute {
+  id           String          @id @default(cuid())
+  submissionId String          @unique
+  submission   PhaseSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User            @relation("ReviewDisputeAuthor", fields: [userId], references: [id], onDelete: Cascade)
+
+  note String @db.Text
+
+  createdAt      DateTime  @default(now())
+  resolvedAt     DateTime?
+  resolvedById   String?
+  resolutionNote String?   @db.Text
+
+  @@index([resolvedAt])
+  @@map("review_dispute")
+}
+
+/// One HCB card-grant top-up Half Life has sent.
+///
+/// Keyed on (user, project, phase) so a grant is paid once: a double-click or a
+/// retried request cannot pay twice. The row is written before HCB is called
+/// and marked `sentAt` after, so a call that failed is recorded (and can be
+/// retried) while one that succeeded short-circuits the next attempt.
+model HcbGrantTopUp {
+  id             String       @id @default(cuid())
+  userId         String
+  user           User         @relation("HcbGrantTopUpUser", fields: [userId], references: [id], onDelete: Cascade)
+  themeProjectId String
+  themeProject   ThemeProject @relation(fields: [themeProjectId], references: [id], onDelete: Cascade)
+  phase          Phase
+
+  /// The grant's HCB hashid, as parsed from the link an admin pasted.
+  grantHashid   String
+  amountCents   Int
+  /// HCB's transaction id once it succeeded.
+  transactionId String?
+  sentAt        DateTime?
+  /// Why the last attempt failed, cleared when it is retried.
+  error         String?
+
+  createdAt   DateTime @default(now())
+  createdById String?
+
+  @@unique([userId, themeProjectId, phase])
+  @@map("hcb_grant_topup")
+}
+
 /// One row per accepted Ari webhook, for idempotency.
 ///
 /// Ari redelivers an event (same `delivery_id`) until it gets a 2xx, so the work
@@ -964,7 +1045,15 @@ model AriWebhookDelivery {
   externalId      String?
   receivedAt      DateTime @default(now())
 
+  /// Set on a decision whose state said "not yet" — a build approval that
+  /// arrived before its design. `payload` holds the whole event so the retry
+  /// job can apply it once the design lands; `appliedAt` marks it done.
+  /// Ordinary deliveries have both null.
+  appliedAt DateTime?
+  payload   Json?
+
   @@index([receivedAt])
+  @@index([appliedAt])
   @@map("ari_webhook_delivery")
 }
 
@@ -1257,9 +1346,14 @@ model ShopOrder {
   fulfilledAt DateTime?
   lastActorId String?
 
+  /// Client-supplied, one per purchase intent. A retried request with the
+  /// same key resolves to the order it already made instead of charging again.
+  idempotencyKey String?
+
   notes         ShopOrderNote[]
   ledgerEntries LedgerEntry[]
 
+  @@unique([userId, idempotencyKey])
   @@index([userId])
   @@index([status, placedAt])
   @@index([shopItemId])

@@ -11,10 +11,11 @@ import { streakAsOf } from "@/lib/streak"
  * ## What is shown, and what is not
  *
  * It is deliberately thin. A row carries a display name, an avatar, a project
- * title and numbers — never an email, a Slack id, a location or anything under
- * `encrypted*`. A page about other people is where a careless `select` leaks
- * the whole user table, so this query names every column it wants rather than
- * spreading a row.
+ * title and numbers — never an email, a location or anything under
+ * `encrypted*`. (The avatar URL embeds the author's Slack id, because that is
+ * how the image is fetched; that is an accepted exposure, not an oversight.)
+ * A page about other people is where a careless `select` leaks the whole user
+ * table, so this query names every column it wants rather than spreading a row.
  *
  * Object keys are deliberately NOT here. R2 serves them publicly, so a key is
  * a capability to fetch that file — and the journal's photographs already ride
@@ -59,6 +60,7 @@ export async function getJournalFeed(): Promise<JournalRow[]> {
         title: true,
         hoursClaimed: true,
         hoursApproved: true,
+        hoursSource: true,
         effectiveDate: true,
         createdAt: true,
         themeProject: {
@@ -88,7 +90,10 @@ export async function getJournalFeed(): Promise<JournalRow[]> {
       projectId: project.id,
       project: project.title || getThemeDef(project.theme).label,
       body: session.content ?? session.title,
-      minutes: Math.round((session.hoursApproved ?? session.hoursClaimed) * 60),
+      // A tracked entry's time arrives (and is paid) through the Hackatime
+      // link, so advertising its claimed minutes here would show hours the
+      // paid totals deliberately exclude.
+      minutes: session.hoursSource === "HACKATIME_TRACKED" ? 0 : Math.round((session.hoursApproved ?? session.hoursClaimed) * 60),
       day: session.effectiveDate ?? effectiveDateFor(session.createdAt, settings.programTimezone),
       when: session.createdAt.toISOString(),
     }

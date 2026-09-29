@@ -19,13 +19,25 @@ export interface SideEffectContext {
  * (`POST /api/admin/theme-projects/[id]/sync-to-airtable`) is how they fix it.
  */
 export async function trackSideEffect<T>(
-  kind: "airtable" | "slack" | "ari",
+  kind: "airtable" | "slack" | "ari" | "email",
   ctx: SideEffectContext,
   fn: () => Promise<T>,
+  opts: {
+    /**
+     * Rethrow after recording the failure. For a manual action whose caller can
+     * show the reason — the admin's Retry button, say — swallowing it into the
+     * audit log alone leaves the person staring at a generic error.
+     */
+    rethrow?: boolean
+  } = {},
 ): Promise<T | null> {
   try {
     const result = await fn()
-    if (kind === "airtable") {
+    // A skipped write — sync disabled, the service unconfigured, the project
+    // gone — is not a completed side effect: a success audit row for work that
+    // never happened turns the retry jobs green and hides the outage.
+    const skipped = result !== null && typeof result === "object" && "skipped" in result
+    if (kind === "airtable" && !skipped) {
       // A write that made or found an Airtable row reports its record id, and
       // it is kept here: the YSWS table has no column of ours to find the row
       // by later, so this is how a re-submission updates it and an unsubmit
@@ -48,7 +60,7 @@ export async function trackSideEffect<T>(
           ...(recordId ? { recordId } : {}),
         },
       })
-    } else if (kind === "ari") {
+    } else if (kind === "ari" && !skipped) {
       // The send itself records the Ari submission id on the row; this is the
       // operational trace that it happened.
       await logAudit({
@@ -84,6 +96,7 @@ export async function trackSideEffect<T>(
       targetId: ctx.targetId,
       metadata: { ...(typeof ctx.metadata === "object" ? ctx.metadata : {}), error: message },
     })
+    if (opts.rethrow) throw err
     return null
   }
 }

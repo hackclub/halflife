@@ -90,6 +90,18 @@ function isIsoBmffVideo(bytes: Uint8Array): boolean {
 }
 
 /**
+ * Matroska/WebM codec ids are ASCII inside the Tracks element. A pure-audio
+ * WebM (Opus only) carries `A_*` ids and no video track, so the EBML magic
+ * alone is not enough; scan the head of the file for a video codec id.
+ */
+const WEBM_VIDEO_CODEC = /V_(VP8|VP9|AV1|MPEG4|MPEG2|THEORA|H264|H265|PRORES)/
+
+function hasWebmVideoTrack(bytes: Uint8Array): boolean {
+  const head = Buffer.from(bytes.buffer, bytes.byteOffset, Math.min(bytes.length, 1 << 20)).toString("latin1")
+  return WEBM_VIDEO_CODEC.test(head)
+}
+
+/**
  * A MIME type and filename are only claims. These are the container signatures
  * for the video formats the app accepts, so a renamed image or text file cannot
  * become a reel by lying about its extension.
@@ -101,8 +113,8 @@ export function isVideoBytes(bytes: Uint8Array): boolean {
   // a video one — `heic`, `avif` and `jxl ` share the box and are not video.
   if (brandAt(bytes, 4) === "ftyp") return isIsoBmffVideo(bytes)
 
-  // Matroska/WebM: EBML header 1A 45 DF A3.
-  return bytes[0] === 0x1a && bytes[1] === 0x45 && bytes[2] === 0xdf && bytes[3] === 0xa3
+  // Matroska/WebM: EBML header 1A 45 DF A3, plus a video codec id.
+  return bytes[0] === 0x1a && bytes[1] === 0x45 && bytes[2] === 0xdf && bytes[3] === 0xa3 && hasWebmVideoTrack(bytes)
 }
 
 export const UPLOAD_FOLDERS = ["sessions", "covers", "timelapses", "posts"] as const

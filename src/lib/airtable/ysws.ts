@@ -1,12 +1,14 @@
 import "server-only"
 import {
   AirtableError,
+  type AirtableConfig,
   type AirtableRecord,
   airtableFetch,
+  escapeAirtableValue,
   getAirtableConfig,
   withRateLimitRetry,
 } from "@/lib/airtable/client"
-import { YSWS_SUBMISSION } from "@/lib/airtable/schema"
+import { fieldKey, formulaRef, YSWS_SUBMISSION } from "@/lib/airtable/schema"
 
 /**
  * Writes to the `YSWS Project Submission` table.
@@ -20,6 +22,11 @@ import { YSWS_SUBMISSION } from "@/lib/airtable/schema"
  * `typecast: false` is deliberate: with typecast on, a single-select value we
  * did not create is silently added as a new option, so a typo in a status or a
  * tier quietly invents one in the base.
+ *
+ * When no record id is known — a create whose response was lost — the write
+ * first looks for exactly one row matching the submission's identity and
+ * adopts it (see `findExistingRow`), so a retry cannot post a second copy.
+ * Anything less than exactly one match is left for a human.
  */
 
 /** How many columns a write may shed before giving up. */
@@ -50,6 +57,50 @@ function rejectedFields(err: AirtableError, fields: Record<string, unknown>): st
 }
 
 /**
+ * Look for a row this submission may already have, by the only identity the
+ * table can match on: the maker's email, the project name and the stage.
+ *
+ * Used when the record id is unknown — a create whose response was lost can
+ * have landed without Half Life recording an id, and posting again would put
+ * a second "Pending Review" copy in front of reviewers. Returns "ambiguous"
+ * when several rows match, because adopting one and leaving the others is as
+ * wrong as adding another; a human has to look.
+ */
+async function findExistingRow(
+  config: AirtableConfig,
+  fields: Record<string, unknown>,
+): Promise<{ id: string } | "ambiguous" | null> {
+  const email = fields[fieldKey(YSWS_SUBMISSION.fields.email)]
+  const projectName = fields[fieldKey(YSWS_SUBMISSION.fields.projectName)]
+  const stage = fields[fieldKey(YSWS_SUBMISSION.fields.stage)]
+  if (
+    typeof email !== "string" ||
+    email.length === 0 ||
+    typeof projectName !== "string" ||
+    projectName.length === 0 ||
+    typeof stage !== "string" ||
+    stage.length === 0
+  ) {
+    return null
+  }
+
+  const formula = `AND(${formulaRef(YSWS_SUBMISSION.fields.email)}='${escapeAirtableValue(email)}',${formulaRef(
+    YSWS_SUBMISSION.fields.projectName,
+  )}='${escapeAirtableValue(projectName)}',${formulaRef(YSWS_SUBMISSION.fields.stage)}='${escapeAirtableValue(stage)}')`
+
+  const result = await withRateLimitRetry("findYswsSubmission", () =>
+    airtableFetch<{ records?: AirtableRecord[] }>(
+      config,
+      `${YSWS_SUBMISSION.tableId}?maxRecords=3&filterByFormula=${encodeURIComponent(formula)}`,
+    ),
+  )
+  const records = result.records ?? []
+  if (records.length === 0) return null
+  if (records.length === 1) return { id: records[0]?.id ?? "" }
+  return "ambiguous"
+}
+
+/**
  * Create the row, or update it when its record id is known.
  *
  * If Airtable refuses a column, the row is written without it and the column
@@ -68,15 +119,31 @@ export async function writeYswsRecord(
   }
 
   const send = (f: Record<string, unknown>, id: string | null) =>
-    withRateLimitRetry(id ? "updateYswsSubmission" : "createYswsSubmission", () =>
-      airtableFetch<{ records: AirtableRecord[] }>(config, YSWS_SUBMISSION.tableId, {
-        method: id ? "PATCH" : "POST",
-        body: JSON.stringify({ records: [id ? { id, fields: f } : { fields: f }], typecast: false }),
-      }),
+    withRateLimitRetry(
+      id ? "updateYswsSubmission" : "createYswsSubmission",
+      () =>
+        airtableFetch<{ records: AirtableRecord[] }>(config, YSWS_SUBMISSION.tableId, {
+          method: id ? "PATCH" : "POST",
+          body: JSON.stringify({ records: [id ? { id, fields: f } : { fields: f }], typecast: false }),
+        }),
+      // A create is not idempotent: retrying a 5xx whose row was actually
+      // written duplicates it. The hourly retry job re-runs the whole sync
+      // instead, and finds the row (or adopts it) before posting again.
+      { retryServerErrors: id !== null },
     )
 
   let current = { ...fields }
   let id = recordId
+  if (!id) {
+    const existing = await findExistingRow(config, fields)
+    if (existing === "ambiguous") {
+      throw new Error("More than one Airtable row matches this submission; resolve the duplicate before syncing")
+    }
+    if (existing) {
+      console.warn(`[airtable] adopting existing YSWS row ${existing.id}; the previous write left no record id`)
+      id = existing.id
+    }
+  }
   const dropped: string[] = []
   for (;;) {
     try {

@@ -19,7 +19,7 @@ export function Panel({
 }: {
   children: ReactNode
   className?: string
-  tone?: "line" | "violet" | "sky" | "teal" | "gold" | "coral" | "navy"
+  tone?: "line" | "violet" | "sky" | "teal" | "orange" | "gold" | "coral" | "navy"
   radius?: number
   variant?: 1 | 2 | 3
   as?: "div" | "section" | "article" | "aside" | "li"
@@ -29,6 +29,7 @@ export function Panel({
     violet: "var(--color-violet)",
     sky: "var(--color-sky)",
     teal: "var(--color-teal)",
+    orange: "var(--color-orange)",
     gold: "var(--color-gold-deep)",
     coral: "var(--color-coral)",
     navy: "var(--color-navy)",

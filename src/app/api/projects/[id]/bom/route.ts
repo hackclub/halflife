@@ -1,4 +1,5 @@
 import { fail, ok, parseBody, withRoute } from "@/lib/api"
+import { HttpError } from "@/lib/errors"
 import { bomData, bomLockReason, listBom, MAX_BOM_ITEMS } from "@/lib/bom"
 import { requireSession } from "@/lib/guards"
 import prisma from "@/lib/prisma"
@@ -48,25 +49,38 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
   const locked = bomLockReason(project)
   if (locked) return fail("PHASE_LOCKED", locked)
 
-  const last = await prisma.bomItem.aggregate({
-    where: { themeProjectId: id },
-    _count: true,
-    _max: { sortOrder: true },
-  })
-  if (last._count >= MAX_BOM_ITEMS) {
-    return fail("VALIDATION_FAILED", `A parts list can have at most ${MAX_BOM_ITEMS} lines`)
-  }
-
   const input = parsed.data
-  await prisma.bomItem.create({
-    data: {
-      themeProjectId: id,
-      sortOrder: (last._max.sortOrder ?? -1) + 1,
-      name: input.name,
-      quantity: input.quantity,
-      unitCostUsd: input.unitCostUsd,
-      ...bomData(input),
-    },
+  await prisma.$transaction(async (tx) => {
+    // Re-read inside the transaction the write happens in: a design approval
+    // landing between the check above and the create would let a line into a
+    // list that is supposed to be final.
+    const fresh = await tx.themeProject.findUnique({
+      where: { id },
+      select: { designStatus: true, buildStatus: true },
+    })
+    if (!fresh) throw new HttpError("NOT_FOUND", "Project not found")
+    const freshLock = bomLockReason(fresh)
+    if (freshLock) throw new HttpError("PHASE_LOCKED", freshLock)
+
+    const last = await tx.bomItem.aggregate({
+      where: { themeProjectId: id },
+      _count: true,
+      _max: { sortOrder: true },
+    })
+    if (last._count >= MAX_BOM_ITEMS) {
+      throw new HttpError("VALIDATION_FAILED", `A parts list can have at most ${MAX_BOM_ITEMS} lines`)
+    }
+
+    await tx.bomItem.create({
+      data: {
+        themeProjectId: id,
+        sortOrder: (last._max.sortOrder ?? -1) + 1,
+        name: input.name,
+        quantity: input.quantity,
+        unitCostUsd: input.unitCostUsd,
+        ...bomData(input),
+      },
+    })
   })
 
   return ok({ items: await listBom(id) }, { status: 201 })

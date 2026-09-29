@@ -40,14 +40,21 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
     return fail("CONFLICT", "The participant cancelled this order")
   }
 
-  const order = await prisma.shopOrder.update({
-    where: { id },
+  // Conditional on the status that was just read: an order rejected between
+  // that read and this write must not be marked as on its way out.
+  const updated = await prisma.shopOrder.updateMany({
+    where: { id, status: before.status },
     data: {
       ...(body.method !== undefined ? { fulfillmentMethod: body.method } : {}),
       ...(body.stage !== undefined ? { fulfillmentStage: body.stage } : {}),
       fulfillmentUpdatedAt: new Date(),
       lastActorId: gate.user.id,
     },
+  })
+  if (updated.count !== 1) return fail("CONFLICT", "This order was decided by someone else")
+
+  const order = await prisma.shopOrder.findUniqueOrThrow({
+    where: { id },
     select: { id: true, status: true, fulfillmentMethod: true, fulfillmentStage: true },
   })
 

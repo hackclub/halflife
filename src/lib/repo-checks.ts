@@ -219,6 +219,15 @@ function result(repo: string | null, checks: RepoCheck[], unavailable = false): 
   }
 }
 
+/** The host of a repo link, for telling a non-GitHub repo from a broken link. */
+function hostOf(url: string): string | null {
+  try {
+    return new URL(url).hostname.toLowerCase()
+  } catch {
+    return null
+  }
+}
+
 export async function checkRepo(githubRepo: string | null, theme: Theme): Promise<RepoCheckResult> {
   if (!githubRepo) {
     return result(null, [
@@ -234,6 +243,25 @@ export async function checkRepo(githubRepo: string | null, theme: Theme): Promis
 
   const parsed = parseGitHubRepo(githubRepo)
   if (!parsed) {
+    // `normalizeRepo` accepts any http(s) repo — a GitLab or Codeberg project
+    // is a repo too — but everything below talks to the GitHub API. Warn
+    // rather than block, so the link the maker was allowed to save is a link
+    // they can hand in; a reviewer opens it by hand.
+    const host = hostOf(githubRepo)
+    if (host && host !== "github.com" && host !== "www.github.com") {
+      return result(
+        githubRepo,
+        [
+          {
+            key: "repo",
+            label: "Repo is not on GitHub",
+            status: "warn",
+            detail: `${host} is not GitHub, so these file checks cannot run. You can still hand in; a reviewer will open the repo by hand.`,
+          },
+        ],
+        true,
+      )
+    }
     return result(githubRepo, [
       {
         key: "repo",

@@ -1,6 +1,7 @@
 import "server-only"
 import type { Prisma } from "@/app/generated/prisma/client"
 import {
+  AuditAction,
   type PhaseStatus,
   type ShopFulfillmentMethod,
   ShopFulfillmentStage,
@@ -11,6 +12,7 @@ import { getBalances } from "@/lib/currency"
 import { safeDecrypt } from "@/lib/pii"
 import { getPrinterQualification } from "@/lib/printer"
 import prisma from "@/lib/prisma"
+import { shopOrderStaffSelect } from "@/lib/shop"
 
 export async function listUsers(opts: { q?: string; cursor?: string; limit: number }) {
   const rows = await prisma.user.findMany({
@@ -155,6 +157,7 @@ export async function getUserDetail(userId: string) {
           designSpendableCoins: true,
           buildCoins: true,
           submissionExtensionUntil: true,
+          hcbGrantTopUps: { where: { phase: "DESIGN", sentAt: { not: null } }, select: { id: true } },
         },
       },
       printerAward: true,
@@ -173,6 +176,9 @@ export async function getUserDetail(userId: string) {
       where: { userId },
       orderBy: { placedAt: "desc" },
       take: 25,
+      // The user page lists the number, item, credit total and status only;
+      // internal cost and encrypted columns are not part of VIEW_USERS.
+      select: { id: true, orderNumber: true, itemNameSnapshot: true, totalCredits: true, status: true },
     }),
     getPrinterQualification(userId),
   ])
@@ -186,7 +192,10 @@ export async function listOrders(opts: { status?: ShopOrderStatus; cursor?: stri
     orderBy: [{ placedAt: "desc" }, { id: "desc" }],
     take: opts.limit + 1,
     ...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
-    include: {
+    // Explicit select, not `include`: a whole-row response carries the
+    // encrypted address/phone and `lastActorId` this API has no use for.
+    select: {
+      ...shopOrderStaffSelect,
       user: { select: { id: true, name: true, email: true } },
       shopItem: { select: { id: true, name: true } },
     },
@@ -300,10 +309,18 @@ export async function listFulfillmentOrders(filters: FulfillmentFilters, opts: {
   return { items, nextCursor: hasMore && last ? last.id : null }
 }
 
+/** True for one of the recorded action names. Guards the audit-log filter. */
+export function isAuditAction(value: string): value is AuditAction {
+  return (Object.values(AuditAction) as string[]).includes(value)
+}
+
 export async function listAuditLog(opts: { action?: string; targetId?: string; cursor?: string; limit: number }) {
   const rows = await prisma.auditLog.findMany({
     where: {
-      ...(opts.action ? { action: opts.action as never } : {}),
+      // The page's filter box takes free text, so an unrecognised action is
+      // treated as no filter rather than a Prisma enum error; the API route
+      // rejects it properly with a 400.
+      ...(opts.action && isAuditAction(opts.action) ? { action: opts.action } : {}),
       ...(opts.targetId ? { targetId: opts.targetId } : {}),
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -314,6 +331,96 @@ export async function listAuditLog(opts: { action?: string; targetId?: string; c
   const items = hasMore ? rows.slice(0, opts.limit) : rows
   const last = items[items.length - 1]
   return { items, nextCursor: hasMore && last ? last.id : null }
+}
+
+/**
+ * Awards to ship, newest qualification first. `encryptedAddress` is read only
+ * to answer "is an address locked on file"; the ciphertext never leaves the
+ * server.
+ */
+export async function listPrinterAwards(limit = 100) {
+  const rows = await prisma.printerAward.findMany({
+    orderBy: [{ qualifiedAt: "desc" }],
+    take: limit,
+    select: {
+      id: true,
+      status: true,
+      qualifiedAt: true,
+      addressLockedAt: true,
+      encryptedAddress: true,
+      trackingNumber: true,
+      trackingCarrier: true,
+      shippedAt: true,
+      deliveredAt: true,
+      revokedAt: true,
+      revokedReason: true,
+      user: { select: { id: true, name: true, email: true } },
+    },
+  })
+  return rows.map(({ encryptedAddress, ...award }) => ({
+    ...award,
+    addressOnFile: encryptedAddress !== "",
+  }))
+}
+
+/** Recent live reels, newest first, for the moderation panel. */
+export async function listRecentPostsForModeration(limit = 25) {
+  return prisma.post.findMany({
+    where: { deletedAt: null },
+    orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
+    take: limit,
+    select: {
+      id: true,
+      kind: true,
+      caption: true,
+      hiddenAt: true,
+      hiddenReason: true,
+      publishedAt: true,
+      createdAt: true,
+      user: { select: { id: true, name: true, email: true } },
+      themeProject: { select: { id: true, title: true } },
+    },
+  })
+}
+
+/**
+ * Recent live comments, newest first. A comment on a soft-deleted post is not
+ * shown — nobody can reach it to report it — but a hidden comment stays in
+ * the list so staff can see it was handled.
+ */
+export async function listRecentCommentsForModeration(limit = 25) {
+  return prisma.postComment.findMany({
+    where: { deletedAt: null, post: { deletedAt: null } },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: limit,
+    select: {
+      id: true,
+      body: true,
+      hiddenAt: true,
+      hiddenReason: true,
+      createdAt: true,
+      user: { select: { id: true, name: true, email: true } },
+      post: { select: { id: true, caption: true } },
+    },
+  })
+}
+
+/** Public reel links, newest first, so staff can find a post that went viral. */
+export async function listRecentPublicReels(limit = 100) {
+  return prisma.publicReel.findMany({
+    orderBy: [{ postedAt: "desc" }, { id: "desc" }],
+    take: limit,
+    select: {
+      id: true,
+      url: true,
+      platform: true,
+      email: true,
+      postedAt: true,
+      user: { select: { id: true, name: true } },
+      post: { select: { id: true, caption: true } },
+      themeProject: { select: { id: true, title: true } },
+    },
+  })
 }
 
 export async function getAdminCounters() {

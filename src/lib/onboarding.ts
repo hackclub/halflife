@@ -301,8 +301,11 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
     where: { id: userId },
     data: {
       ...userData,
-      onboardingStep: reached,
       ...(finishing ? { onboardingCompletedAt: new Date() } : {}),
+      // Keeps the statement non-empty for an informational answer (the PCB
+      // week has no fields of its own) without writing the marker here; the
+      // guarded update below owns it.
+      onboardingStep: { increment: 0 },
     },
     select: {
       hardwareExperience: true,
@@ -313,16 +316,25 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
   } as const
   const touchesProject = Object.keys(projectData).length > 0
 
-  const { projectAfter, userAfter } = touchesProject
-    ? await prisma.$transaction(async (tx) => ({
-        projectAfter: await tx.themeProject.update({
+  const { projectAfter, userAfter } = await prisma.$transaction(async (tx) => {
+    const projectAfter = touchesProject
+      ? await tx.themeProject.update({
           where: { id: before.project.id },
           data: projectData,
           select: PROJECT_SELECT,
-        }),
-        userAfter: await tx.user.update(userWrite),
-      }))
-    : { projectAfter: before.project, userAfter: await prisma.user.update(userWrite) }
+        })
+      : before.project
+    const userAfter = await tx.user.update(userWrite)
+
+    // Raise the furthest-reached marker, never lower it: two answers in flight
+    // read the same snapshot, and the slower one must not rewind the faster one.
+    await tx.user.updateMany({
+      where: { id: userId, onboardingStep: { lt: reached } },
+      data: { onboardingStep: reached },
+    })
+
+    return { projectAfter, userAfter }
+  })
 
 
   const state: OnboardingState = {

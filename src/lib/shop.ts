@@ -45,6 +45,38 @@ export const shopOrderPublicSelect = {
 
 export type ShopOrderPublic = Prisma.ShopOrderGetPayload<{ select: typeof shopOrderPublicSelect }>
 
+/**
+ * What a FULFILL_ORDERS surface may see. `unitCostUsd` (what Hack Club pays)
+ * is needed to price a shipment, but the encrypted address/phone and
+ * `lastActorId` are not, and a route that returns a whole row ships them by
+ * accident.
+ */
+export const shopOrderStaffSelect = {
+  id: true,
+  orderNumber: true,
+  userId: true,
+  shopItemId: true,
+  quantity: true,
+  unitCredits: true,
+  totalCredits: true,
+  itemNameSnapshot: true,
+  unitCostUsd: true,
+  status: true,
+  holdReason: true,
+  rejectionReason: true,
+  trackingNumber: true,
+  trackingCarrier: true,
+  fulfillmentMethod: true,
+  fulfillmentStage: true,
+  fulfillmentUpdatedAt: true,
+  placedAt: true,
+  heldAt: true,
+  rejectedAt: true,
+  fulfilledAt: true,
+} satisfies Prisma.ShopOrderSelect
+
+export type ShopOrderStaff = Prisma.ShopOrderGetPayload<{ select: typeof shopOrderStaffSelect }>
+
 export interface ShopItemView extends ShopItemPublic {
   /** Against the pot this item may be paid from, not against the total. */
   affordable: boolean
@@ -132,7 +164,12 @@ export async function getShopItemsFor(userId: string): Promise<{
  * nothing, so without the lock ten parallel requests all read the same balance
  * and all succeed.
  */
-export async function purchase(userId: string, shopItemId: string, quantity: number): Promise<ShopOrderPublic> {
+export async function purchase(
+  userId: string,
+  shopItemId: string,
+  quantity: number,
+  idempotencyKey?: string,
+): Promise<ShopOrderPublic> {
   const access = await getShopAccess(userId)
   if (!access.open) throw new HttpError("SHOP_CLOSED", SHOP_CLOSED_MESSAGE)
 
@@ -148,6 +185,18 @@ export async function purchase(userId: string, shopItemId: string, quantity: num
 
   return prisma.$transaction(async (tx) => {
     await lockUserCredit(tx, userId)
+
+    // A retried request — double-tap, proxy retry, two tabs sharing one key —
+    // resolves to the order it already made rather than charging again. The
+    // same per-user lock serializes the two, so the loser always sees the
+    // winner's row.
+    if (idempotencyKey) {
+      const existing = await tx.shopOrder.findFirst({
+        where: { userId, idempotencyKey },
+        select: shopOrderPublicSelect,
+      })
+      if (existing) return existing
+    }
 
     // Re-read stock inside the transaction; the catalogue page may be stale.
     const fresh = await tx.shopItem.findUnique({ where: { id: shopItemId } })
@@ -194,6 +243,7 @@ export async function purchase(userId: string, shopItemId: string, quantity: num
         totalCredits,
         itemNameSnapshot: fresh.name,
         unitCostUsd: fresh.costUsd,
+        idempotencyKey: idempotencyKey ?? null,
       },
       // Only the buyer's fields come back; `unitCostUsd` is stored for
       // fulfillment but must not leave the server.

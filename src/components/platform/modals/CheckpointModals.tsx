@@ -24,7 +24,7 @@ import { linkLapse } from "@/lib/auth-client"
 import type { BomLine } from "@/lib/bom"
 import { STARTER_PROJECT_TIER, starterProjectsFor } from "@/lib/config/onboarding"
 import { paceTarget, printerById, submitFloorFor, tierBankedFloor, weekAsk } from "@/lib/config/printers"
-import { THEMES } from "@/lib/config/program"
+import { THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { photosRequired, TIERS } from "@/lib/curriculum"
 import {
   PLATFORM_INFO,
@@ -124,7 +124,12 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
   const [imageBusy, setImageBusy] = useState(false)
   const [imageError, setImageError] = useState<string | null>(null)
 
-  const project = projects.find((p) => p.weekId === (week.phase === "build" ? week.id - 5 : week.id)) ?? projects[0]
+  // The fallback is for a season sheet opened before its project row landed;
+  // it must never pick the warm-up project, which has no season week.
+  const project =
+    projects.find((p) => p.weekId === (week.phase === "build" ? week.id - 5 : week.id)) ??
+    projects.find((p) => p.weekId !== WARMUP_WEEK_ID) ??
+    projects[0]
 
   // The claim is what the maker types. The photographs are what makes it a
   // claim rather than a number, which is why the bar rises with it — and they
@@ -159,7 +164,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
   // shortfall is named with the other way out beside it, so nobody is told to
   // write 200 characters they could skip with a timelapse. An edit cannot add
   // one, so it is not offered there.
-  const orLapse = editing ? "" : ""
+  const orLapse = editing ? "" : " Or cover the session with a Lapse timelapse on the Timelapse tab instead."
   const missing = !ok
     ? claimed <= 0
       ? "Add the hours you spent on this session, or pick a Lapse timelapse."
@@ -297,11 +302,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
       {tab === "journal" ? (
         <div>
           {editing ? (
-            <ModalTitle
-              subWide
-            >
-              Edit this entry
-            </ModalTitle>
+            <ModalTitle subWide>Edit this entry</ModalTitle>
           ) : (
             // `subWide`: the modal is the large size and the editor below runs
             // its full width, so a subtitle held to 62ch stopped two-thirds of
@@ -1094,6 +1095,8 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
                 starter: starterId !== null,
                 starterProjectId: starterId,
                 githubRepo: normalizeRepo(repo).url,
+                designStatus: "draft",
+                buildStatus: "draft",
               })
               complete(checkpoint.id, { artefacts: 1 })
               setOpenCheckpoint(null)
@@ -1332,7 +1335,12 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
   const goal = printerById(goalId)
   const owed = Math.max(0, Math.ceil(paceTarget(goal, week.id) - printerFund - pendingCoins(week.id)))
 
-  const project = projects.find((p) => p.weekId === (isBuild ? week.id - 5 : week.id)) ?? projects[0]
+  // The fallback is for a season sheet opened before its project row landed;
+  // it must never pick the warm-up project, which has no season week.
+  const project =
+    projects.find((p) => p.weekId === (isBuild ? week.id - 5 : week.id)) ??
+    projects.find((p) => p.weekId !== WARMUP_WEEK_ID) ??
+    projects[0]
 
   const [step, setStep] = useState(1)
   // R2 object keys, not flags: what these ask for is evidence, and a boolean
@@ -1345,6 +1353,14 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
   // The bucket URL of the closing clip, when there is one, so it can be saved
   // and posted elsewhere afterwards.
   const [clipUrl, setClipUrl] = useState<string | null>(null)
+  // A blob URL for a locally picked clip holds the whole video in memory
+  // until it is revoked — the preview is replaced or the sheet closes, not
+  // before.
+  useEffect(() => {
+    return () => {
+      if (clipUrl?.startsWith("blob:")) URL.revokeObjectURL(clipUrl)
+    }
+  }, [clipUrl])
   // The closing reel once it is posted. A hand-in that fails after the reel
   // went up reuses it on the retry rather than posting the same clip twice;
   // a new clip clears it.

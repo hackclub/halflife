@@ -3,9 +3,11 @@
 import { useRef, useState } from "react"
 import { WeekPainting } from "@/components/platform/art"
 import { IconCamera } from "@/components/platform/icons"
+import { ProjectThumb } from "@/components/platform/ProjectThumb"
 import { UploadProgress } from "@/components/platform/UploadProgress"
 import { Button } from "@/components/platform/ui"
 import { useStore } from "@/lib/store"
+import type { ProjectThumbnail } from "@/lib/thumbnail"
 import { uploadFile } from "@/lib/use-handoff"
 
 const COVER_TYPES = "image/png,image/jpeg,image/webp,image/gif"
@@ -22,7 +24,7 @@ const COVER_TYPES = "image/png,image/jpeg,image/webp,image/gif"
 export function CoverImage({
   projectId,
   url,
-  fallbackUrl,
+  fallback,
   theme,
   accent,
   locked,
@@ -30,13 +32,13 @@ export function CoverImage({
   projectId: string
   /** The one the maker chose. */
   url: string | null
-  /** The newest journal image, shown until they choose one. */
-  fallbackUrl: string | null
+  /** What stands in until they choose one: a journal image, then a reel frame. */
+  fallback: ProjectThumbnail | null
   theme: string
   accent: string
   locked: string | null
 }) {
-  const shown = url ?? fallbackUrl
+  const shown: ProjectThumbnail | null = url ? { kind: "image", url } : fallback
   const { updateProject } = useStore()
   const input = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
@@ -79,8 +81,7 @@ export function CoverImage({
         style={{ background: shown ? "var(--color-navy)" : accent }}
       >
         {shown ? (
-          // eslint-disable-next-line @next/next/no-img-element -- R2's public URL, or one pasted into a journal
-          <img src={shown} alt="" className="h-full w-full object-cover" />
+          <ProjectThumb thumb={shown} className="h-full w-full" />
         ) : (
           <WeekPainting
             theme={theme}

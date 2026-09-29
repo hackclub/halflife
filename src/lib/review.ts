@@ -1,12 +1,21 @@
 import "server-only"
 import type { Prisma } from "@/app/generated/prisma/client"
-import { CoinBucket, LedgerKind, Phase, PhaseStatus, ReviewPass, ReviewResult } from "@/app/generated/prisma/enums"
+import {
+  CoinBucket,
+  LedgerKind,
+  Phase,
+  PhaseStatus,
+  ReviewPass,
+  ReviewResult,
+  Theme,
+} from "@/app/generated/prisma/enums"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { DEFAULT_GOAL_ID, printerById } from "@/lib/config/printers"
 import { BUILD_HOURS, getThemeDef, THEME_COMPLETION_BONUS } from "@/lib/config/program"
 import { getTierOrThrow, isTierId } from "@/lib/config/tiers"
 import { lockUserCredit, reconcileGrant } from "@/lib/currency"
 import { HttpError } from "@/lib/errors"
+import { ABANDONED_ATTEMPT_MS } from "@/lib/grants"
 import { buildCoinsFor, type CoinSplit, designCoinsFor, getHoursBreakdown } from "@/lib/hours"
 import { ensurePrinterAward } from "@/lib/printer"
 import prisma from "@/lib/prisma"
@@ -89,7 +98,7 @@ export interface FinalizeInput {
   result: ReviewResult
   /** Shown to the participant. */
   feedback: string
-  /** Internal, feeds the grant row's hours justification. */
+  /** Internal note, never shown to the submitter; kept on the review and in the audit row. */
   reason?: string | null
   /** Required on a design approval. */
   tier?: number | null
@@ -150,8 +159,15 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
   const approving = input.result === ReviewResult.APPROVED
 
   // A build cannot be approved before its design is. Submitting out of order is
-  // fine — see canSubmitPhase — but paying out of order is not.
-  if (approving && phase === Phase.BUILD && project.designStatus !== PhaseStatus.approved) {
+  // fine — see canSubmitPhase — but paying out of order is not. A warm-up
+  // project has no design to wait for: its one phase is whatever the form
+  // collected.
+  if (
+    approving &&
+    phase === Phase.BUILD &&
+    project.theme !== Theme.WARMUP &&
+    project.designStatus !== PhaseStatus.approved
+  ) {
     throw new HttpError("DESIGN_NOT_APPROVED", "Approve the design phase for this theme before approving the build")
   }
 
@@ -236,6 +252,22 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
       throw new HttpError("CLAIMED_BY_OTHER", "Another reviewer holds the claim on this submission")
     }
 
+    // Re-check the design ordering under the same per-user lock the
+    // un-approve path takes. The check before the transaction ran against a
+    // read taken before the live Hackatime fetch; an admin can un-approve the
+    // design in that window, and a build approval must not pay out of order.
+    // Taking the lock first means this read sees either the un-approval (and
+    // refuses) or blocks it until this decision has committed.
+    if (approving && phase === Phase.BUILD) {
+      const design = await tx.themeProject.findUnique({
+        where: { id: project.id },
+        select: { designStatus: true, theme: true },
+      })
+      if (design?.theme !== Theme.WARMUP && design?.designStatus !== PhaseStatus.approved) {
+        throw new HttpError("DESIGN_NOT_APPROVED", "Approve the design phase for this theme before approving the build")
+      }
+    }
+
     if (approving) {
       // Accept every unreviewed session at its claimed hours, so the
       // per-session numbers stay consistent with the frozen total.
@@ -307,6 +339,8 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
               ? {
                   approvedHours,
                   approvedHoursAt: new Date(),
+                  // Spendable only: the banked half is reconciled through the
+                  // ledger's BUILD_BANKED_HOURS rows, not this display field.
                   buildCoins: coins?.spendable ?? null,
                 }
               : {}),
@@ -452,6 +486,41 @@ export async function unapprovePhase(
   await prisma.$transaction(async (tx) => {
     await lockUserCredit(tx, project.userId)
 
+    // Re-read under the lock: the fast check above ran against a read taken
+    // before it, and a decision or re-approval can have committed since.
+    const fresh = await tx.themeProject.findUnique({
+      where: { id: themeProjectId },
+      select: { designStatus: true, buildStatus: true },
+    })
+    if ((phase === Phase.DESIGN ? fresh?.designStatus : fresh?.buildStatus) !== PhaseStatus.approved) {
+      throw new HttpError("CONFLICT", "That phase is no longer approved")
+    }
+
+    // A grant send holds no credit lock while HCB is called, so a design
+    // un-approval must not race it: the money would be sent for an approval
+    // that no longer stands, and the sent row would block a later send.
+    // `sendGrant` marks the row errored before it throws, which is what lets
+    // this same check pass on the retry after the window.
+    if (phase === Phase.DESIGN) {
+      const inFlight = await tx.hcbGrantTopUp.findFirst({
+        where: {
+          userId: project.userId,
+          themeProjectId,
+          phase: Phase.DESIGN,
+          sentAt: null,
+          error: null,
+          createdAt: { gt: new Date(Date.now() - ABANDONED_ATTEMPT_MS) },
+        },
+        select: { id: true },
+      })
+      if (inFlight) {
+        throw new HttpError(
+          "CONFLICT",
+          "A grant send is in flight for this design — wait for it to finish before un-approving",
+        )
+      }
+    }
+
     await tx.submissionReview.updateMany({
       where: { submission: { themeProjectId, phase }, invalidated: false },
       data: { invalidated: true, invalidatedAt: new Date() },
@@ -561,13 +630,21 @@ export async function reopenPhase(
     throw new HttpError("CONFLICT", "That phase is not rejected")
   }
 
-  await prisma.themeProject.update({
-    where: { id: themeProjectId },
+  // Conditional on the status that was read: an admin double-click, or a
+  // reopen racing a resubmission, must not overwrite a newer state.
+  const reopened = await prisma.themeProject.updateMany({
+    where: {
+      id: themeProjectId,
+      ...(phase === Phase.DESIGN ? { designStatus: PhaseStatus.rejected } : { buildStatus: PhaseStatus.rejected }),
+    },
     data:
       phase === Phase.DESIGN
         ? { designStatus: PhaseStatus.update_requested, designReviewComments: reason }
         : { buildStatus: PhaseStatus.update_requested, buildReviewComments: reason },
   })
+  if (reopened.count !== 1) {
+    throw new HttpError("CONFLICT", "That phase moved while it was being reopened")
+  }
 
   await logAudit({
     action: AuditAction.ADMIN_REOPEN_PHASE,

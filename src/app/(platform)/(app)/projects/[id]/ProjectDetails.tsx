@@ -4,6 +4,7 @@ import { useId, useState } from "react"
 import { IconPencil } from "@/components/platform/icons"
 import { Button, Chip, cx, OptionRow } from "@/components/platform/ui"
 import { submitFloorFor, tierBankedFloor } from "@/lib/config/printers"
+import { WARMUP_WEEK_ID } from "@/lib/config/program"
 import { TIERS } from "@/lib/curriculum"
 import { fmtHours } from "@/lib/projects"
 import { normalizeRepo } from "@/lib/repo"
@@ -45,8 +46,8 @@ export function ProjectDetails({
   locked: string | null
   /** The facts under the description while reading: progress, then what it is. */
   meta: React.ReactNode
-  /** Take the week in review back out of it, when one is. */
-  unsubmit?: { week: number; run: () => Promise<string | null> }
+  /** Take the phase in review back out of it, when one is. */
+  unsubmit?: { label: string; run: () => Promise<string | null> }
 }) {
   const [editing, setEditing] = useState(false)
   const lockedId = useId()
@@ -99,7 +100,7 @@ export function ProjectDetails({
             (confirming ? (
               <div className="flex max-w-[16rem] flex-col items-end gap-1.5 text-right">
                 <p className="text-[0.82rem] leading-snug text-navy">
-                  Take week {unsubmit.week} out of review? You can hand it in again when you&apos;re done.
+                  Take {unsubmit.label} out of review? You can hand it in again when you&apos;re done.
                 </p>
                 <div className="flex gap-1.5">
                   <Button variant="ghost" size="sm" onClick={() => setConfirming(false)} disabled={unsubmitting}>
@@ -120,7 +121,7 @@ export function ProjectDetails({
                 }}
                 className="-mr-3.5"
               >
-                Unsubmit week {unsubmit.week}
+                Unsubmit {unsubmit.label}
               </Button>
             ))}
           {unsubmitError && (
@@ -261,8 +262,8 @@ function DetailsForm({
           <>
             <p className="text-[0.82rem] leading-snug text-navy-soft">
               A tier funds its own block of hours and those hours bank nothing, so the printer money has to be worked on
-              top of them. You have <span className="font-bold text-navy tabular-nums">{fmtHours(hours)}</span> in week{" "}
-              {project.weekId}.
+              top of them. You have <span className="font-bold text-navy tabular-nums">{fmtHours(hours)}</span>{" "}
+              {project.weekId === WARMUP_WEEK_ID ? "on this project." : `in week ${project.weekId}.`}
             </p>
             {TIERS.map((t) => {
               const floor = submitFloorFor(t.fundingHours)
@@ -299,7 +300,9 @@ function DetailsForm({
             <span className="hand">
               {project.starter
                 ? "starter projects are scoped to tier 1."
-                : `week ${project.weekId} is submitted, so the tier is final.`}
+                : project.weekId === WARMUP_WEEK_ID
+                  ? "the project is submitted, so the tier is final."
+                  : `week ${project.weekId} is submitted, so the tier is final.`}
             </span>
           </p>
         )}

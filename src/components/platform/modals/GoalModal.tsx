@@ -17,7 +17,7 @@ const TEAL = "var(--color-teal-deep)"
  * hours a week on tier 1 that price actually asks of you.
  */
 export function GoalModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { goalId, setGoal, coins } = useStore()
+  const { goalId, setGoal, printerFund } = useStore()
   const [picked, setPicked] = useState(goalId)
   const titleId = useId()
 
@@ -31,8 +31,10 @@ export function GoalModal({ open, onClose }: { open: boolean; onClose: () => voi
 
   const goal = printerById(picked)
   const unchanged = picked === goalId
-  const toGo = Math.max(0, goal.coins - coins)
-  const weeks = weeksToGo(goal, coins)
+  // Both pots pay for a printer (lib/currency), so the honest "to go" reads the
+  // total; `coins` alone would tell a banked-up saver they are far behind.
+  const toGo = Math.max(0, goal.coins - printerFund)
+  const weeks = weeksToGo(goal, printerFund)
 
   function commit() {
     setGoal(picked)
@@ -66,7 +68,7 @@ export function GoalModal({ open, onClose }: { open: boolean; onClose: () => voi
                 </>
               )
             ) : (
-              <> you&apos;ve earned enough coins to earn this printer! </>
+              <> you&apos;ve earned enough coins to buy this printer! </>
             )}
             <a
               href={goal.link}

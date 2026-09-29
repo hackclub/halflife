@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server"
-import { postMessage, type SlackBlock, updateMessage, verifySlackRequest } from "@/lib/site/slack"
+import { after, NextResponse } from "next/server"
+import { isChannelMember, postMessage, type SlackBlock, updateMessage, verifySlackRequest } from "@/lib/site/slack"
 import { resolveBlocks, type TicketRef, ticketSection } from "@/lib/site/tickets"
 
 export const runtime = "nodejs"
@@ -11,6 +11,8 @@ type BlockAction = {
 
 type InteractionPayload = {
   type: string
+  /** Present only on the `url_verification` challenge Slack sends first. */
+  challenge?: string
   user: { id: string }
   channel?: { id: string }
   message?: { ts: string; blocks?: SlackBlock[] }
@@ -24,6 +26,7 @@ async function respondEphemeral(responseUrl: string, text: string) {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ response_type: "ephemeral", text }),
+      signal: AbortSignal.timeout(10_000),
     })
   } catch (err) {
     console.error(`Failed to post ephemeral response: ${err}`)
@@ -117,6 +120,16 @@ async function handleThreadMarkHelped(payload: InteractionPayload, action: Block
     return
   }
 
+  // The help channel is open to every participant, so the button is gated on
+  // membership of the private tickets channel the bot posts to — the same
+  // people who can resolve it from there.
+  if (!ref.ticketsChannel || !(await isChannelMember(ref.ticketsChannel, payload.user.id))) {
+    if (payload.response_url) {
+      await respondEphemeral(payload.response_url, "Only the Half Life team can resolve a ticket from the thread.")
+    }
+    return
+  }
+
   await updateMessage(
     payload.channel.id,
     payload.message.ts,
@@ -149,8 +162,10 @@ export async function POST(request: Request) {
   }
 
   // Interactivity payloads arrive form-encoded with the JSON under `payload`.
+  // The first thing Slack sends to a newly saved Request URL is a
+  // `url_verification` challenge, and it arrives the same way.
   const form = new URLSearchParams(rawBody)
-  const raw = form.get("payload")
+  const raw = form.get("payload") ?? (rawBody.trimStart().startsWith("{") ? rawBody : null)
   if (!raw) return NextResponse.json({ ok: false }, { status: 400 })
 
   let payload: InteractionPayload
@@ -160,15 +175,38 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false }, { status: 400 })
   }
 
+  // Slack refuses to save the interactivity Request URL unless the challenge
+  // is echoed verbatim, so this has to be answered before anything else.
+  if (payload.type === "url_verification") {
+    return NextResponse.json({ challenge: payload.challenge })
+  }
+
+  // Slack retries an interaction it has not seen a 200 for within 3 seconds,
+  // and these handlers make up to two Slack calls each. Ack first and run the
+  // work in `after`, so a slow call cannot cause a duplicate resolution; the
+  // same reasoning the events route uses. A retry that still arrives is
+  // dropped — the original delivery was already accepted.
+  if (request.headers.get("x-slack-retry-num")) {
+    return NextResponse.json({ ok: true })
+  }
+
   if (payload.type === "block_actions") {
     const action = payload.actions?.[0]
-    if (action?.action_id === "mark_helped") {
-      await handleMarkHelped(payload, action)
-    } else if (action?.action_id === "mark_resolved_by_author") {
-      await handleSelfResolve(payload, action)
-    } else if (action?.action_id === "mark_helped_from_thread") {
-      await handleThreadMarkHelped(payload, action)
-    }
+    after(async () => {
+      try {
+        if (action?.action_id === "mark_helped") {
+          await handleMarkHelped(payload, action)
+        } else if (action?.action_id === "mark_resolved_by_author") {
+          await handleSelfResolve(payload, action)
+        } else if (action?.action_id === "mark_helped_from_thread") {
+          await handleThreadMarkHelped(payload, action)
+        }
+      } catch (err) {
+        // The response is already sent and Slack has its 200, so the log is
+        // the only trace a failure leaves.
+        console.error("[slack] interaction handler threw:", err)
+      }
+    })
   }
 
   return NextResponse.json({ ok: true })

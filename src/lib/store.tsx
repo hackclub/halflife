@@ -507,7 +507,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
   const routeOf = useCallback(
     (checkpointId: string): { projectId: string; phase: "DESIGN" | "BUILD" } | null => {
       const weekId = Number(/^w(\d+)-/.exec(checkpointId)?.[1])
-      if (!weekId) return null
+      if (!Number.isInteger(weekId) || weekId < 0) return null
       const designWeek = weekId > DESIGN_WEEKS ? weekId - DESIGN_WEEKS : weekId
       const projectId = facts.projectIdByWeek[designWeek]
       if (!projectId) return null
@@ -646,7 +646,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
     async (id: string): Promise<string | null> => {
       const route = routeOf(id)
       const weekId = Number(/^w(\d+)-/.exec(id)?.[1])
-      if (!route || !weekId) return "This week has no project to unsubmit."
+      if (!route || !Number.isInteger(weekId)) return "This week has no project to unsubmit."
       let res: Response
       try {
         res = await fetch(`/api/projects/${route.projectId}/unsubmit`, {
@@ -1036,9 +1036,12 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
    */
   const isUnlocked = useCallback(
     (id: string): boolean => {
-      if (isPassed(id)) return false
-      // The owed reel is the way out, so it opens whatever else is true.
+      // The owed reel is the way out, so it opens whatever else is true —
+      // including a week that has since closed while this tab held a stale
+      // snapshot. Checking `isPassed` first dead-mapped the whole trail until
+      // the page was reloaded and the server stopped reporting the debt.
       if (facts.owedReels.includes(id)) return true
+      if (isPassed(id)) return false
       if (isHeld(id)) return false
       const done = (c: Checkpoint) => save.progress[c.id]?.done ?? false
       const wi = weeks.findIndex((w) => w.checkpoints.some((c) => c.id === id))

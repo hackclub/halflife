@@ -1,5 +1,6 @@
 import { appendFile, mkdir, readFile } from "node:fs/promises"
 import path from "node:path"
+import { bufferRsvp } from "@/lib/airtable/rsvp"
 
 /**
  * Signup capture.
@@ -104,6 +105,35 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
       authorization: `Bearer ${airtableToken}`,
     }
 
+    /**
+     * Airtable being unreachable must not lose the signup. Buffer it for the
+     * drain job instead of returning 502, so the person is on the list even
+     * though they do not get a referral number yet (the drain does not assign
+     * one — the signed-in owner gets a code from /api/me/referral once the
+     * row exists).
+     */
+    const bufferInstead = async (reason: string): Promise<SignupResult> => {
+      console.error(`[signup] Airtable ${reason}; buffering the signup for the drain job`)
+      try {
+        await bufferRsvp({
+          email,
+          ip,
+          ...(ref ? { referredBy: ref } : {}),
+          ...(utmSource ? { utmSource } : {}),
+          ...(utmMedium ? { utmMedium } : {}),
+          ...(utmCampaign ? { utmCampaign } : {}),
+        })
+      } catch (err) {
+        console.error("[signup] buffering the signup also failed:", err)
+        return {
+          ok: false,
+          status: 502,
+          error: "We couldn't reach the signup list. Try again in a moment.",
+        }
+      }
+      return { ok: true, duplicate: false, referralCode: "" }
+    }
+
     // Airtable has no unique-field constraint to lean on, so duplicates are
     // caught with a lookup before the write — same contract the other two
     // sinks give the caller.
@@ -114,11 +144,7 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 
     if (!lookup.ok) {
       console.error(`Airtable lookup failed: ${lookup.status} ${await lookup.text()}`)
-      return {
-        ok: false,
-        status: 502,
-        error: "We couldn't reach the signup list. Try again in a moment.",
-      }
+      return bufferInstead("lookup failed")
     }
 
     const found = (await lookup.json()) as {
@@ -140,11 +166,7 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
       referralCode = String((await countAirtableRecords(url, headers)) + 1)
     } catch (err) {
       console.error(`Airtable count failed: ${err}`)
-      return {
-        ok: false,
-        status: 502,
-        error: "We couldn't reach the signup list. Try again in a moment.",
-      }
+      return bufferInstead("count failed")
     }
 
     const response = await fetch(url, {
@@ -165,11 +187,7 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 
     if (!response.ok) {
       console.error(`Airtable create failed: ${response.status} ${await response.text()}`)
-      return {
-        ok: false,
-        status: 502,
-        error: "We couldn't reach the signup list. Try again in a moment.",
-      }
+      return bufferInstead("create failed")
     }
     return { ok: true, duplicate: false, referralCode }
   }
@@ -245,6 +263,26 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
   }
 
   return { ok: true, duplicate, referralCode }
+}
+
+/**
+ * The client address for rate limiting, from the hop the ingress set.
+ *
+ * The first `x-forwarded-for` entry is what the caller sent — nginx and
+ * Traefik append, they do not replace — so keying on it let anyone rotate a
+ * header for a fresh bucket. Cloudflare overwrites `cf-connecting-ip`; behind
+ * a plain proxy the last XFF entry is the address the edge itself saw.
+ */
+export function clientIp(h: { get(name: string): string | null }): string {
+  const cf = h.get("cf-connecting-ip")?.trim()
+  if (cf) return cf
+  const forwarded = h.get("x-forwarded-for")
+  const last = forwarded
+    ?.split(",")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .at(-1)
+  return last || h.get("x-real-ip")?.trim() || "unknown"
 }
 
 /* ── Coarse per-instance rate limit ──────────────────────────────────────

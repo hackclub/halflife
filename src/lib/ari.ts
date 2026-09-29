@@ -1,13 +1,16 @@
 import "server-only"
 import { Ari, AriApiError, type AriReview, type AriShipInput, type AriWebhookEvent } from "@hackclub/ari"
-import { HoursSource, Phase, PhaseStatus, ReviewResult } from "@/app/generated/prisma/enums"
-import { AuditAction, logAudit } from "@/lib/audit"
+import type { Prisma } from "@/app/generated/prisma/client"
+import { HoursSource, Phase, PhaseStatus, ReviewResult, Theme } from "@/app/generated/prisma/enums"
 import { ariExternalId, parseAriExternalId } from "@/lib/ari-id"
-import { getThemeDef } from "@/lib/config/program"
+import { selectPendingShips } from "@/lib/ari-pending"
+import { AuditAction, logAudit } from "@/lib/audit"
+import { getThemeDef, WARMUP_THEME } from "@/lib/config/program"
 import { isTierId } from "@/lib/config/tiers"
 import { HttpError } from "@/lib/errors"
+import { notifyReviewOutcome } from "@/lib/notifications"
 import prisma from "@/lib/prisma"
-import { reopenPhase, unapprovePhase, finalizeReview } from "@/lib/review"
+import { finalizeReview, reopenPhase, unapprovePhase } from "@/lib/review"
 import { sanitize } from "@/lib/sanitize"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
@@ -38,6 +41,19 @@ export function isAriWebhookConfigured(): boolean {
   return Boolean(process.env.ARI_WEBHOOK_SECRET)
 }
 
+/**
+ * The absolute webhook URL to paste into the Ari program settings.
+ *
+ * Configured origin first: behind an ingress the request's own host is the
+ * internal one, and a webhook URL the Ari service cannot reach is one that
+ * silently never fires. The caller may pass the request origin as a fallback
+ * for local development.
+ */
+export function ariWebhookUrl(originFallback = ""): string {
+  const base = (process.env.NEXT_PUBLIC_APP_URL ?? process.env.BETTER_AUTH_URL ?? originFallback).replace(/\/$/, "")
+  return `${base}/api/integrations/ari/webhook`
+}
+
 let client: Ari | null = null
 
 function ari(): Ari {
@@ -66,10 +82,14 @@ function appUrl(): string {
 /**
  * Ari requires a thumbnail. Prefer the project's own cover; fall back to the
  * theme painting the participant already saw for that week, so a project
- * without a cover is still reviewable rather than silently unsendable.
+ * without a cover is still reviewable rather than silently unsendable. A
+ * warm-up project has no theme painting — it was never part of the season —
+ * so it falls back to the programme's build artwork rather than a 404.
  */
 function thumbnailFor(coverImageKey: string | null, slug: string): string {
-  return publicUrlFor(coverImageKey) ?? `${appUrl()}/brand/themes/${slug}.png`
+  const cover = publicUrlFor(coverImageKey)
+  if (cover) return cover
+  return slug === WARMUP_THEME.slug ? `${appUrl()}/art/build.png` : `${appUrl()}/brand/themes/${slug}.png`
 }
 
 /** The build's closing reel, or null — hardware projects may omit a demo. */
@@ -113,6 +133,14 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
   })
   if (!project) throw new HttpError("NOT_FOUND", "Project not found")
 
+  // A retry job snapshots what is pending and sends later; the maker can have
+  // unsubmitted in between. The row the decision would land on is gone, so
+  // sending would leave an untracked ship in Ari's queue.
+  const phaseStatus = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
+  if (phaseStatus !== PhaseStatus.in_review) {
+    throw new HttpError("NOT_SUBMITTED", "This phase is no longer awaiting review, so there is no ship to send")
+  }
+
   const user = project.user
   if (!project.title.trim()) throw new HttpError("UNPROCESSABLE", "This project has no title to send to Ari")
   if (!project.githubRepo) throw new HttpError("UNPROCESSABLE", "This project has no repository link to send to Ari")
@@ -142,7 +170,11 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
   const input: AriShipInput = {
     external_id: ariExternalId(themeProjectId, phase),
     title: project.title,
-    description: project.description ?? "",
+    // Ari rejects an empty description. Week one's onboarding allows one, and
+    // submissions made before that was enforced would otherwise fail every
+    // retry, so fall back to the title rather than throw: the title is always
+    // present and is a truer description than a placeholder would be.
+    description: project.description?.trim() || project.title,
     // Half Life is a hardware programme, so a demo video is optional.
     track: "hardware",
     maker: {
@@ -212,7 +244,9 @@ export async function withdrawSubmissionFromAri(themeProjectId: string, phase: P
   }
 }
 
-/** Hand-ins awaiting review that never reached Ari — for the retry job. */
+/** Hand-ins awaiting review that never reached Ari — for the retry job and the
+ * admin panel. Two queries total rather than two per project, because the
+ * admin page renders this on every load. */
 export async function findUnsyncedAriSubmissions(): Promise<{ themeProjectId: string; phase: Phase }[]> {
   if (!isAriConfigured()) return []
 
@@ -223,21 +257,16 @@ export async function findUnsyncedAriSubmissions(): Promise<{ themeProjectId: st
     },
     select: { id: true, designStatus: true, buildStatus: true },
   })
+  if (projects.length === 0) return []
 
-  const out: { themeProjectId: string; phase: Phase }[] = []
-  for (const project of projects) {
-    for (const phase of [Phase.DESIGN, Phase.BUILD] as const) {
-      const status = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
-      if (status !== PhaseStatus.in_review) continue
-      const open = await prisma.phaseSubmission.findFirst({
-        where: { themeProjectId: project.id, phase, resolvedAt: null },
-        orderBy: { createdAt: "desc" },
-        select: { ariSubmissionId: true },
-      })
-      if (open && !open.ariSubmissionId) out.push({ themeProjectId: project.id, phase })
-    }
-  }
-  return out
+  const open = await prisma.phaseSubmission.findMany({
+    where: { themeProjectId: { in: projects.map((p) => p.id) }, resolvedAt: null },
+    // Ascending so the newest-per-key tie-break in selectPendingShips sees a
+    // stable order when two rows share a millisecond.
+    orderBy: { createdAt: "asc" },
+    select: { themeProjectId: true, phase: true, ariSubmissionId: true, createdAt: true },
+  })
+  return selectPendingShips(projects, open)
 }
 
 // ─── Inbound ─────────────────────────────────────────────────────────────────
@@ -294,15 +323,29 @@ async function applyDecision(event: DecisionEvent): Promise<void> {
   }
   const { themeProjectId, phase } = parsed
 
-  const submission = await prisma.phaseSubmission.findFirst({
-    where: { themeProjectId, phase, resolvedAt: null },
-    orderBy: { createdAt: "desc" },
-    select: { id: true },
+  // Prefer the row this ship was actually sent for. A withdraw-and-resubmit
+  // reuses the same external id, so a decision for the withdrawn ship must not
+  // be applied to the newer hand-in that now holds the open slot.
+  const byShip = await prisma.phaseSubmission.findFirst({
+    where: { themeProjectId, phase, ariSubmissionId: event.id },
+    select: { id: true, ariSubmissionId: true, resolvedAt: true },
   })
-  if (!submission) {
+  const open =
+    byShip ??
+    (await prisma.phaseSubmission.findFirst({
+      where: { themeProjectId, phase, resolvedAt: null },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, ariSubmissionId: true, resolvedAt: true },
+    }))
+  if (!open) {
     await ignored(event, "no open submission for this phase", event.external_id)
     return
   }
+  if (!byShip && open.ariSubmissionId && open.ariSubmissionId !== event.id) {
+    await ignored(event, "decision names an earlier ship of this phase", event.external_id)
+    return
+  }
+  const submission = open
 
   const result =
     event.event === "review.approved"
@@ -328,8 +371,32 @@ async function applyDecision(event: DecisionEvent): Promise<void> {
     tier = chosen
   }
 
+  // A build cannot be approved before its design is. Ari reviews each phase on
+  // its own clock — and Half Life deliberately lets a build be submitted before
+  // its design is approved, so a build approval arriving first is expected, not
+  // an error. It is a decision deferred by state, so throw: the delivery is not
+  // recorded and Ari redelivers it, which is what eventually applies it once
+  // the design is approved. Checked before the claim is cleared so a deferred
+  // redelivery does not keep deleting a human reviewer's claim.
+  if (result === ReviewResult.APPROVED && phase === Phase.BUILD) {
+    const project = await prisma.themeProject.findUnique({
+      where: { id: themeProjectId },
+      select: { designStatus: true, theme: true },
+    })
+    // A warm-up project's only phase is the one the form collected, so there
+    // is no design approval to wait for.
+    if (project?.theme !== Theme.WARMUP && project?.designStatus !== PhaseStatus.approved) {
+      throw new HttpError(
+        "DESIGN_NOT_APPROVED",
+        "Waiting for the design approval before this build approval can be applied",
+      )
+    }
+  }
+
   // Ari owns the decision, so a human claim must not block it.
   await prisma.reviewClaim.deleteMany({ where: { submissionId: submission.id } })
+
+  const feedback = event.review.note_to_maker?.trim() || defaultFeedback(result)
 
   try {
     await finalizeReview({
@@ -338,7 +405,7 @@ async function applyDecision(event: DecisionEvent): Promise<void> {
       reviewerName: ariReviewerLabel(event.review),
       reviewerEmail: event.review.reviewer?.email ?? null,
       result,
-      feedback: event.review.note_to_maker?.trim() || defaultFeedback(result),
+      feedback,
       reason: event.review.audit_note ?? null,
       tier,
       hoursOverride: approvedHoursFrom(event.review),
@@ -346,14 +413,12 @@ async function applyDecision(event: DecisionEvent): Promise<void> {
     })
   } catch (err) {
     // These mean the decision cannot or need not be applied, and retrying will
-    // not change that: the submission is already decided, was withdrawn, or the
-    // build arrived before its design. Record and acknowledge.
+    // not change that: the submission is already decided or was withdrawn. A
+    // build that arrived before its design is NOT in this list — that one is
+    // deferred by state and is rethrown so its delivery stays unrecorded.
     // Anything else (including a claim that reappeared in the tiny window after
     // we cleared it) is rethrown so Ari retries.
-    if (
-      err instanceof HttpError &&
-      (err.code === "ALREADY_RESOLVED" || err.code === "NOT_SUBMITTED" || err.code === "DESIGN_NOT_APPROVED")
-    ) {
+    if (err instanceof HttpError && (err.code === "ALREADY_RESOLVED" || err.code === "NOT_SUBMITTED")) {
       await ignored(event, err.code.toLowerCase(), event.external_id)
       return
     }
@@ -378,6 +443,11 @@ async function applyDecision(event: DecisionEvent): Promise<void> {
       approvedHours: approvedHoursFrom(event.review),
     },
   })
+
+  // The decision is committed and recorded; now tell the maker. Best-effort —
+  // a Slack or mail outage must not make Ari retry a decided submission, and
+  // the project page is the source of truth if a message is missed.
+  await notifyReviewOutcome({ themeProjectId, phase, result, feedback })
 }
 
 /**
@@ -405,10 +475,16 @@ async function applyReset(event: ResetEvent): Promise<void> {
   const latest = await prisma.phaseSubmission.findFirst({
     where: { themeProjectId, phase },
     orderBy: { createdAt: "desc" },
-    select: { id: true },
+    select: { id: true, ariSubmissionId: true },
   })
   if (!latest) {
     await ignored(event, "no submission to requeue", event.external_id)
+    return
+  }
+  // The same stale-ship rule as a decision: reopening a newer hand-in because
+  // Ari reverted an older one would erase a review it never saw.
+  if (latest.ariSubmissionId && latest.ariSubmissionId !== event.id) {
+    await ignored(event, "reset names an earlier ship of this phase", event.external_id)
     return
   }
 
@@ -500,20 +576,7 @@ async function applyUnknown(event: UnknownEvent): Promise<void> {
   })
 }
 
-/**
- * Apply one verified Ari webhook.
- *
- * Idempotent: the delivery id is checked first and recorded only after the work
- * succeeds, so a redelivery (same id) is a no-op and a failed one is retried by
- * Ari. Errors are rethrown so the route answers non-2xx.
- */
-export async function applyAriWebhook(event: AriWebhookEvent, deliveryId: string): Promise<void> {
-  const seen = await prisma.ariWebhookDelivery.findUnique({ where: { deliveryId }, select: { id: true } })
-  if (seen) return
-
-  const externalId = "external_id" in event ? event.external_id : null
-  const ariSubmissionId = "id" in event ? event.id : null
-
+async function applyEvent(event: AriWebhookEvent): Promise<void> {
   switch (event.event) {
     case "review.approved":
     case "review.changes":
@@ -533,6 +596,62 @@ export async function applyAriWebhook(event: AriWebhookEvent, deliveryId: string
     case "unknown":
       await applyUnknown(event)
       break
+  }
+}
+
+/**
+ * Apply an event that was stored because the state was not ready for it — a
+ * build approval that arrived before its design. Called by the `ari-retry`
+ * job; the caller marks the delivery applied once this resolves.
+ */
+export async function applyStoredEvent(event: AriWebhookEvent): Promise<void> {
+  await applyEvent(event)
+}
+
+/**
+ * Apply one verified Ari webhook.
+ *
+ * Idempotent: the delivery id is checked first and recorded only after the work
+ * succeeds, so a redelivery (same id) is a no-op and a failed one is retried by
+ * Ari. A decision the state is not ready for is stored whole instead (see
+ * below) and replayed by `ari-retry`, so it does not depend on Ari's
+ * redelivery window outlasting the wait.
+ *
+ * Errors are rethrown so the route answers non-2xx.
+ */
+export async function applyAriWebhook(event: AriWebhookEvent, deliveryId: string): Promise<void> {
+  const seen = await prisma.ariWebhookDelivery.findUnique({ where: { deliveryId }, select: { id: true } })
+  if (seen) return
+
+  const externalId = "external_id" in event ? event.external_id : null
+  const ariSubmissionId = "id" in event ? event.id : null
+
+  try {
+    await applyEvent(event)
+  } catch (err) {
+    // "Not yet", not "never": the design has to be approved before a build
+    // approval can be applied, and that ordering is normal here. Keep the
+    // whole event so the retry job can apply it later, and accept the
+    // delivery rather than asking Ari to redeliver indefinitely.
+    if (err instanceof HttpError && err.code === "DESIGN_NOT_APPROVED") {
+      await prisma.ariWebhookDelivery.create({
+        data: {
+          deliveryId,
+          event: event.event,
+          ariSubmissionId,
+          externalId,
+          payload: event as unknown as Prisma.InputJsonValue,
+        },
+      })
+      await logAudit({
+        action: AuditAction.ARI_WEBHOOK_IGNORED,
+        targetType: "ThemeProject",
+        targetId: externalId ? (parseAriExternalId(externalId)?.themeProjectId ?? null) : null,
+        metadata: { event: event.event, reason: "deferred: design not approved", externalId, deferred: true },
+      })
+      return
+    }
+    throw err
   }
 
   await prisma.ariWebhookDelivery.create({

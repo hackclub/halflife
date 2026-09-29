@@ -69,6 +69,86 @@ export function parseQuery<S extends z.ZodType>(request: NextRequest, schema: S)
 }
 
 /**
+ * The most a multipart body may carry beyond the file itself: boundaries and
+ * part headers. Generous, because the cap exists to stop multi-gigabyte
+ * bodies, not to tighten the file limit.
+ */
+const MULTIPART_OVERHEAD_BYTES = 1 << 20
+
+type ParsedForm = { data: FormData; error?: never } | { data?: never; error: NextResponse<ApiErrorBody> }
+
+/**
+ * Parse an upload's multipart form without letting the caller decide how much
+ * memory the server spends before a single field can be read.
+ *
+ * `request.formData()` materialises the whole body first, and both upload
+ * routes check their size limits afterwards — fine for a small staff form,
+ * but a denial of service for an upload. The handoff path is deliberately
+ * unauthenticated and reads its token out of the form, so a limit checked
+ * after parsing arrives too late. Content-Length is checked first (cheap, and
+ * what a normal client sends), then the stream is counted as it is read, so a
+ * chunked request cannot skip the check by omitting the header.
+ */
+export async function parseUploadForm(request: Request, maxFileBytes: number): Promise<ParsedForm> {
+  const cap = maxFileBytes + MULTIPART_OVERHEAD_BYTES
+  const tooLarge = () => fail("VALIDATION_FAILED", `That upload is larger than ${maxFileBytes} bytes`)
+  const invalid = () => fail("INVALID_BODY", "Expected a multipart form")
+
+  const declared = Number(request.headers.get("content-length") ?? "")
+  if (Number.isFinite(declared) && declared > cap) return { error: tooLarge() }
+
+  const body = request.body
+  if (!body) return { error: invalid() }
+
+  const reader = body.getReader()
+  const chunks: Uint8Array[] = []
+  let total = 0
+  try {
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      total += value.byteLength
+      if (total > cap) {
+        await reader.cancel().catch(() => undefined)
+        return { error: tooLarge() }
+      }
+      chunks.push(value)
+    }
+  } catch {
+    return { error: invalid() }
+  }
+
+  // Rebuild a request so the runtime's multipart parser does the parsing
+  // rather than hand-rolling boundaries.
+  const headers = new Headers(request.headers)
+  headers.delete("content-length")
+  const buffered = new Request(request.url, { method: "POST", headers, body: Buffer.concat(chunks) })
+  const form = await buffered.formData().catch(() => null)
+  return form ? { data: form } : { error: invalid() }
+}
+
+/**
+ * A coarse per-instance limiter for authenticated write endpoints that have
+ * no other brake. Resets on cold start and is not shared across instances, so
+ * it stops one account spending the process's memory or storage in a loop,
+ * not a distributed attacker.
+ */
+const limiterHits = new Map<string, number[]>()
+
+export function rateLimitedInMemory(key: string, max = 10, windowMs = 60_000): boolean {
+  const now = Date.now()
+  const recent = (limiterHits.get(key) ?? []).filter((at) => now - at < windowMs)
+  if (recent.length >= max) {
+    limiterHits.set(key, recent)
+    return true
+  }
+  recent.push(now)
+  limiterHits.set(key, recent)
+  if (limiterHits.size > 10_000) limiterHits.clear()
+  return false
+}
+
+/**
  * Wraps a handler so a thrown HttpError becomes its proper response and
  * anything else becomes a logged 500 instead of an unhandled rejection.
  */

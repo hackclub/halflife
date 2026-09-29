@@ -30,7 +30,7 @@ is [DESIGN.md](./DESIGN.md), the reasoning behind the invariants is
 
 ```
 src/app/(site)/               the landing page
-src/app/(platform)/(app)/     the trail, projects, shop, explore, leaderboard
+src/app/(platform)/(app)/     the trail, projects, shop, explore
 src/app/(platform)/(ops)/     admin, review, login — earlier design system
 src/app/(handoff)/            the phone upload page a QR code opens
 src/app/api/                  every write in the product
@@ -96,7 +96,7 @@ one of two sinks:
 
 | Env                     | Behaviour                                                        |
 | ----------------------- | ---------------------------------------------------------------- |
-| `SIGNUP_WEBHOOK_URL`    | `POST { email, source, at }` to your list provider or relay      |
+| `SIGNUP_WEBHOOK_URL`    | `POST { email, ip, source, referralCode, ref, utmSource, utmMedium, utmCampaign }` to your list provider or relay |
 | `SIGNUP_WEBHOOK_TOKEN`  | optional `Authorization: Bearer …` for that webhook              |
 | *(neither set)*         | appends JSON Lines to `./data/signups.jsonl` (gitignored)         |
 
@@ -142,8 +142,8 @@ installing.
 
 ### 5. Facts to confirm before launch
 
-- The carousel credits are the comp's placeholder credit ("by Meghana, 17, from
-  Ohio") repeated across five cards — replace with the real makers.
+- The carousel credits are the real makers from the platform art
+  (`src/lib/site/content.ts`); give them a read before they ship.
 - Hack Club's EIN (`81-2908499`) is in the footer. Confirm it and decide whether
   you also want the mailing address, which the Hack Club footer carries.
 - FAQ card six ("What do I get?") replaces a duplicated "What's Hack Club?" in

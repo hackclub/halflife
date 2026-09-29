@@ -153,8 +153,36 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 }
 
 /**
+ * Serialize the adopt-or-create decision for one (project, phase).
+ *
+ * The record id is only known from an audit row written after a successful
+ * write, so two callers can arrive before either row exists — the submit
+ * `after` hook and the hourly retry job, or an admin's Retry button racing
+ * either. Both read "no row yet", both find nothing to adopt, and both POST a
+ * new "Pending Review" row into the payout sink. Postgres serializes them
+ * here: the loser runs its lookup after the winner's row exists and adopts it
+ * instead of creating a second.
+ *
+ * An advisory xact lock releases with the transaction. The work inside is
+ * HTTP, so the transaction gets a generous timeout rather than the default
+ * 5 seconds, which would release the lock in the middle of Airtable's own
+ * retry backoff.
+ */
+async function withYswsWriteLock<T>(themeProjectId: string, phase: Phase, fn: () => Promise<T>): Promise<T> {
+  return prisma.$transaction(
+    async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`ysws:${themeProjectId}:${phase}`}, 0))`
+      return fn()
+    },
+    { timeout: 120_000, maxWait: 30_000 },
+  )
+}
+
+/**
  * Write this submission's row: a new one the first time, the same one on a
- * re-submission, so a phase handed in twice is never two rows.
+ * re-submission, so a phase handed in twice is never two rows. The lookup and
+ * the write are one critical section, because a create that loses its
+ * response and a concurrent create are indistinguishable without it.
  */
 export async function syncSubmissionToYsws(
   themeProjectId: string,
@@ -164,7 +192,9 @@ export async function syncSubmissionToYsws(
   if (!settings.airtableSyncEnabled) return { skipped: "sync_disabled" }
   const fields = await fieldsFor(themeProjectId, phase)
   if (!fields) return { skipped: "project_not_found" }
-  return writeYswsRecord(fields, await lastRecordId(themeProjectId, phase))
+  return withYswsWriteLock(themeProjectId, phase, async () =>
+    writeYswsRecord(fields, await lastRecordId(themeProjectId, phase)),
+  )
 }
 
 /** Remove a submission's row, and its unified-base twin, when it is taken back. */

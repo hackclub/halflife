@@ -157,11 +157,6 @@ export const STARTER_PROJECT_TIER: TierId = 1
  * The comp branches this on the answer to question one — "If beginner:
  * information about PCBs, else: example projects" — so both halves are here
  * and the step picks one.
- *
- * ⚠️ PLACEHOLDER COPY. The comp's own text node reads "INSERT EXPLAINATION OF
- * PCB WEEK here. Lorem ipsum", so there is nothing authoritative to copy. This
- * is written to be true and useful rather than invented program policy, but it
- * is not the program's voice and should be rewritten before launch.
  */
 export interface WeekIntro {
   readonly theme: Theme

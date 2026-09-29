@@ -2,9 +2,11 @@ import { notFound } from "next/navigation"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { CreditGrantForm } from "@/app/components/forms/CreditGrantForm"
 import { ExtensionForm } from "@/app/components/forms/ExtensionForm"
+import { GrantForm } from "@/app/components/forms/GrantForm"
 import { RoleEditor } from "@/app/components/forms/RoleEditor"
 import { Badge, EmptyState, PageHeader, Panel, Stat, statusLabel, statusTone, Table } from "@/app/components/ui"
 import { CREDIT_NAME_PLURAL, getThemeDef } from "@/lib/config/program"
+import { isHcbConfigured } from "@/lib/hcb"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { hasPermission, Permission } from "@/lib/permissions"
 import { getUserDetail } from "@/lib/queries/admin"
@@ -25,6 +27,7 @@ export default async function AdminUserPage({ params }: Props) {
   const canManageCredit = hasPermission(roles, Permission.MANAGE_CREDIT)
   const canManageUsers = hasPermission(roles, Permission.MANAGE_USERS)
   const canOverride = hasPermission(roles, Permission.OVERRIDE_DECISIONS)
+  const canSendGrant = canManageCredit && isHcbConfigured()
 
   return (
     <div className="hl-stack">
@@ -78,6 +81,12 @@ export default async function AdminUserPage({ params }: Props) {
       ) : null}
 
       <Panel title="Themed projects">
+        {canSendGrant && (
+          <p className="hl-hint" style={{ marginTop: 0 }}>
+            Sending a grant tops up the maker&apos;s HCB card grant directly. It is a manual fallback — the payout
+            pipeline is the normal path — and can only be sent once per project.
+          </p>
+        )}
         <Table
           head={[
             "Theme",
@@ -86,6 +95,7 @@ export default async function AdminUserPage({ params }: Props) {
             "Tier",
             "Grant",
             "Hours",
+            canSendGrant ? "Send grant" : null,
             canManageUsers ? "Extension" : null,
             canOverride ? "" : null,
           ].filter(Boolean)}
@@ -105,6 +115,19 @@ export default async function AdminUserPage({ params }: Props) {
               <td>{project.tier ?? "—"}</td>
               <td>{project.grantUsd !== null ? `$${project.grantUsd}` : "—"}</td>
               <td className="hl-mono">{project.approvedHours ?? "—"}</td>
+              {canSendGrant ? (
+                <td style={{ minWidth: "14rem" }}>
+                  {project.designStatus === "approved" && project.grantUsd ? (
+                    <GrantForm
+                      projectId={project.id}
+                      amountUsd={project.grantUsd}
+                      alreadySent={project.hcbGrantTopUps.length > 0}
+                    />
+                  ) : (
+                    <span className="hl-hint">—</span>
+                  )}
+                </td>
+              ) : null}
               {canManageUsers ? (
                 <td style={{ minWidth: "18rem" }}>
                   <ExtensionForm

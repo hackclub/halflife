@@ -257,7 +257,10 @@ async function bodies() {
     ["mov · qt  ", isoFile("qt  "), true],
     ["heic · image", isoFile("heic", ["mif1", "heic"]), false],
     ["avif · image", isoFile("avif", ["avif", "mif1"]), false],
-    ["webm · EBML", new Uint8Array([0x1a, 0x45, 0xdf, 0xa3, 0, 0, 0, 0, 0, 0, 0, 0]), true],
+    ["webm · vp8 video", new Uint8Array([0x1a, 0x45, 0xdf, 0xa3, ...asciiBytes("V_VP8"), 0, 0, 0, 0]), true],
+    ["webm · av1 video", new Uint8Array([0x1a, 0x45, 0xdf, 0xa3, ...asciiBytes("V_AV1"), 0, 0, 0, 0]), true],
+    ["webm · audio only", new Uint8Array([0x1a, 0x45, 0xdf, 0xa3, ...asciiBytes("A_OPUS"), 0, 0, 0]), false],
+    ["webm · magic only", new Uint8Array([0x1a, 0x45, 0xdf, 0xa3, 0, 0, 0, 0, 0, 0, 0, 0]), false],
     ["plain text", new TextEncoder().encode("hello world!"), false],
   ]
   for (const [name, bytes, isVideo] of videoCases) {
@@ -279,6 +282,156 @@ async function bodies() {
   check("ari · project id survives", parseAriExternalId(ariDesign)?.themeProjectId === me)
   check("ari · rejects junk", parseAriExternalId("not-an-id") === null)
   check("ari · rejects empty project", parseAriExternalId(":design") === null)
+
+  /* ── 5b. Which hand-ins are pending at Ari ─────────────────────────────── */
+  //
+  // What the hourly retry job replays and what the admin Retry button offers:
+  // in-review phases whose NEWEST open submission has no ariSubmissionId.
+  const { selectPendingShips } = await import("../src/lib/ari-pending")
+  const { PhaseStatus } = await import("../src/app/generated/prisma/enums")
+  const at = (minutes: number) => new Date(Date.UTC(2026, 0, 1, 0, minutes))
+  const projects = [
+    { id: "p1", designStatus: PhaseStatus.in_review, buildStatus: PhaseStatus.draft },
+    { id: "p2", designStatus: PhaseStatus.approved, buildStatus: PhaseStatus.in_review },
+    { id: "p3", designStatus: PhaseStatus.draft, buildStatus: PhaseStatus.draft },
+  ]
+  {
+    const pending = selectPendingShips(projects, [
+      { themeProjectId: "p1", phase: Phase.DESIGN, ariSubmissionId: null, createdAt: at(0) },
+      // Already shipped, and p3 has no open submission at all.
+      { themeProjectId: "p2", phase: Phase.BUILD, ariSubmissionId: "ship_1", createdAt: at(1) },
+      { themeProjectId: "p3", phase: Phase.DESIGN, ariSubmissionId: null, createdAt: at(2) },
+    ])
+    check(
+      "ari · pending: only unsent in-review hand-ins",
+      pending.length === 1 && pending[0]?.themeProjectId === "p1" && pending[0]?.phase === Phase.DESIGN,
+      JSON.stringify(pending),
+    )
+  }
+  {
+    // A resubmission replaces the old row: the newest one decides.
+    const pending = selectPendingShips(projects, [
+      { themeProjectId: "p1", phase: Phase.DESIGN, ariSubmissionId: null, createdAt: at(0) },
+      { themeProjectId: "p1", phase: Phase.DESIGN, ariSubmissionId: "ship_2", createdAt: at(5) },
+    ])
+    check("ari · pending: newest sent submission suppresses the phase", pending.length === 0)
+  }
+  {
+    const pending = selectPendingShips(projects, [
+      { themeProjectId: "p1", phase: Phase.DESIGN, ariSubmissionId: "ship_1", createdAt: at(0) },
+      { themeProjectId: "p1", phase: Phase.DESIGN, ariSubmissionId: null, createdAt: at(5) },
+    ])
+    check(
+      "ari · pending: newest unsent submission is listed",
+      pending.length === 1 && pending[0]?.themeProjectId === "p1",
+    )
+  }
+  check("ari · pending: no submissions means nothing pending", selectPendingShips(projects, []).length === 0)
+  check("ari · pending: no projects means nothing pending", selectPendingShips([], []).length === 0)
+
+  /* ── 5c. HCB disbursement reconciliation ──────────────────────────────── */
+  //
+  // The one path that decides whether a timed-out top-up is re-sent. An
+  // unreadable payload must be ambiguous, never absent: "nothing landed" is
+  // the state that pays twice.
+  const { reconcileDisbursement } = await import("../src/lib/hcb")
+  const attemptedAt = new Date(Date.UTC(2026, 0, 1, 0, 0))
+  const row = (amountCents: number, createdAt: string | null) => ({
+    transactionId: null,
+    amountCents,
+    memo: null,
+    createdAt,
+  })
+  const listed = (...rows: ReturnType<typeof row>[]) => ({ kind: "listed" as const, rows })
+  check(
+    "hcb · unreadable payload is ambiguous, never absent",
+    reconcileDisbursement({ kind: "unreadable" }, 3000, attemptedAt).kind === "ambiguous",
+  )
+  check("hcb · an empty grant is absent", reconcileDisbursement(listed(), 3000, attemptedAt).kind === "absent")
+  check(
+    "hcb · one matching top-up in the window landed",
+    reconcileDisbursement(listed(row(3000, "2026-01-01T00:02:00Z")), 3000, attemptedAt).kind === "landed",
+  )
+  check(
+    "hcb · two matching top-ups are ambiguous",
+    reconcileDisbursement(
+      listed(row(3000, "2026-01-01T00:02:00Z"), row(3000, "2026-01-01T00:03:00Z")),
+      3000,
+      attemptedAt,
+    ).kind === "ambiguous",
+  )
+  check(
+    "hcb · a matching top-up before the window is absent",
+    reconcileDisbursement(listed(row(3000, "2025-12-30T00:00:00Z")), 3000, attemptedAt).kind === "absent",
+  )
+  check(
+    "hcb · an unparseable timestamp is ambiguous",
+    reconcileDisbursement(listed(row(3000, "not-a-date")), 3000, attemptedAt).kind === "ambiguous",
+  )
+
+  /* ── 5d. Hackatime project seconds ─────────────────────────────────────── */
+  //
+  // Approval reads this live, so the difference between "genuinely zero" and
+  // "Hackatime no longer lists that project" decides whether someone is paid
+  // zero silently or the decision is refused.
+  const { projectSecondsFrom } = await import("../src/lib/hackatime")
+  const stats = (...projects: { name: string; total_seconds: number }[]) => ({ data: { projects } })
+
+  const presentZero = projectSecondsFrom(stats({ name: "firmware", total_seconds: 0 }), "firmware")
+  check("hackatime · present with 0s is a live zero", presentZero.stale === false && presentZero.seconds === 0)
+
+  const presentSeconds = projectSecondsFrom(stats({ name: "firmware", total_seconds: 4321 }), "firmware")
+  check("hackatime · present seconds are read", presentSeconds.stale === false && presentSeconds.seconds === 4321)
+
+  const renamed = projectSecondsFrom(stats({ name: "firmware-v2", total_seconds: 4321 }), "firmware")
+  check(
+    "hackatime · a renamed project is stale, not zero",
+    renamed.stale === true && renamed.notFound === true && renamed.seconds === 0,
+  )
+
+  const missingFromEmpty = projectSecondsFrom(stats(), "firmware")
+  check(
+    "hackatime · a name missing from an empty list is stale",
+    missingFromEmpty.stale === true && missingFromEmpty.notFound === true,
+  )
+
+  const noList = projectSecondsFrom({ data: {} }, "firmware")
+  check("hackatime · a response with no list is stale", noList.stale === true && !noList.notFound)
+
+  const nullBody = projectSecondsFrom(null, "firmware")
+  check("hackatime · a null body is stale", nullBody.stale === true && !nullBody.notFound)
+
+  /* ── 5e. Printer award transitions ─────────────────────────────────────── */
+  const { canMovePrinterAward } = await import("../src/lib/printer-award")
+  check(
+    "printer · qualified can be locked or revoked",
+    canMovePrinterAward("QUALIFIED", "ADDRESS_LOCKED") && canMovePrinterAward("QUALIFIED", "REVOKED"),
+  )
+  check("printer · cannot ship before packing", !canMovePrinterAward("QUALIFIED", "SHIPPED"))
+  check(
+    "printer · delivered is final",
+    !canMovePrinterAward("DELIVERED", "SHIPPED") && !canMovePrinterAward("DELIVERED", "REVOKED"),
+  )
+  check("printer · revoked is final", !canMovePrinterAward("REVOKED", "PACKING"))
+  check("printer · a shipped award can still be delivered", canMovePrinterAward("SHIPPED", "DELIVERED"))
+
+  /* ── 6. Journal image count ─────────────────────────────────────────────── */
+  //
+  // The evidence bar counts pictures, so the same picture pasted twice must
+  // count once — otherwise one image copied down an entry clears it.
+  const { countImages } = await import("../src/components/platform/Markdown")
+  const imageCases: [string, number][] = [
+    ["", 0],
+    ["![a](https://x/a.png)", 1],
+    ["![a](https://x/a.png)![a](https://x/a.png)", 1],
+    ["![a](https://x/a.png)![b](https://x/b.png)", 2],
+    ["![a](https://x/a.png) ![b](https://x/a.png) ![c](https://x/b.png)", 2],
+    ["![a](javascript:alert(1))", 0],
+    ["![a](https://x/a.png)![b](javascript:x)", 1],
+  ]
+  for (const [source, expected] of imageCases) {
+    check(`images · "${source.slice(0, 40)}" → ${expected}`, countImages(source) === expected)
+  }
 
   for (const [name, schema, body] of cases) {
     const parsed = schema.safeParse(body)

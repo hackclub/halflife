@@ -27,6 +27,8 @@ export function ItemCostField({ itemId, costUsd }: Readonly<{ itemId: string; co
         return
       }
       router.refresh()
+    } catch {
+      setError("Could not reach the server")
     } finally {
       setBusy(false)
     }

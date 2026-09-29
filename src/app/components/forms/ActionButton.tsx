@@ -22,6 +22,7 @@ export function ActionButton({
   confirm,
   disabled,
   onDone,
+  reasonPrompt,
 }: Readonly<{
   url: string
   method?: "POST" | "PATCH" | "DELETE"
@@ -32,6 +33,8 @@ export function ActionButton({
   confirm?: string
   disabled?: boolean
   onDone?: () => void
+  /** Ask for a reason before sending; the text is sent as `{ reason }`. */
+  reasonPrompt?: string
 }>) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
@@ -39,13 +42,21 @@ export function ActionButton({
 
   async function submit() {
     if (confirm && !window.confirm(confirm)) return
+    let payload = body
+    if (reasonPrompt) {
+      const reason = window.prompt(reasonPrompt)?.trim()
+      // A cancelled or empty prompt is a cancelled action, not a request the
+      // server should reject for an empty reason.
+      if (!reason) return
+      payload = { reason }
+    }
     setBusy(true)
     setError(null)
     try {
       const res = await fetch(url, {
         method,
-        headers: body === undefined ? undefined : { "Content-Type": "application/json" },
-        body: body === undefined ? undefined : JSON.stringify(body),
+        headers: payload === undefined ? undefined : { "Content-Type": "application/json" },
+        body: payload === undefined ? undefined : JSON.stringify(payload),
       })
       if (!res.ok) {
         const payload = (await res.json().catch(() => ({}))) as ApiError

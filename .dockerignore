@@ -13,6 +13,16 @@ Dockerfile*
 .DS_Store
 .env*
 !.env.example
+# Local signup sink (data/signups.jsonl) holds real email addresses and has no
+# business in a build context.
+data
+# The stasis import scripts carry their own .env with a source-database
+# credential. Docker matches `.env*` against the context root, so the rule
+# above does not reach `import/.env`.
+import
+# Generated at `pnpm db:generate`; kept out of the context so `COPY . .` in the
+# builder cannot clobber the freshly generated client with a stale local one.
+src/app/generated
 docker-compose*.yaml
 dev.sh
 docs

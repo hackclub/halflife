@@ -1,8 +1,15 @@
 import "server-only"
-import { HardwareExperience, Phase, PhaseStatus, Role } from "@/app/generated/prisma/enums"
+import { HardwareExperience, HoursSource, Phase, PhaseStatus, Role, Theme } from "@/app/generated/prisma/enums"
 import { avatarUrl } from "@/lib/avatar"
 import { DEFAULT_GOAL_ID } from "@/lib/config/printers"
-import { DESIGN_WEEKS, ONBOARDING_CHECKPOINT_ID, scheduleForWeek, THEMES, TOTAL_WEEKS } from "@/lib/config/program"
+import {
+  DESIGN_WEEKS,
+  ONBOARDING_CHECKPOINT_ID,
+  scheduleForWeek,
+  THEMES,
+  TOTAL_WEEKS,
+  WARMUP_WEEK_ID,
+} from "@/lib/config/program"
 import { getBalances } from "@/lib/currency"
 import { rollUpHours } from "@/lib/hours"
 import { getUserRoles, hasRole } from "@/lib/permissions"
@@ -185,9 +192,18 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
       select: { themeProjectId: true, phase: true, hoursApproved: true, cachedSeconds: true },
     }),
     prisma.post.findMany({
-      where: { userId, deletedAt: null, checkpointKey: { not: null } },
+      // Every reel, not only the ones bound to a checkpoint: a project's
+      // stand-in picture may come from any of them (see the thumbnail below).
+      where: { userId, deletedAt: null },
       orderBy: { createdAt: "asc" },
-      select: { checkpointKey: true, caption: true, createdAt: true },
+      select: {
+        checkpointKey: true,
+        caption: true,
+        createdAt: true,
+        themeProjectId: true,
+        thumbnailKey: true,
+        objectKey: true,
+      },
     }),
     prisma.phaseSubmission.findMany({
       where: { themeProject: { userId, deletedAt: null } },
@@ -305,13 +321,24 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
       // the reviewer's totals cannot answer this differently.
       const frozen = phase === Phase.DESIGN ? project.designApprovedHours : project.approvedHours
       const { effectiveHours } = rollUpHours(phaseSessions, phaseLinks, frozen)
-      const entryHours = phaseSessions.reduce((n, s) => n + minutesOf(s) / 60, 0)
+      // A HACKATIME_TRACKED entry contributes zero to `effectiveHours`, so it
+      // must contribute zero here too, or the subtraction double-counts it.
+      const entryHours = phaseSessions.reduce(
+        (n, s) => n + (s.hoursSource === HoursSource.HACKATIME_TRACKED ? 0 : minutesOf(s) / 60),
+        0,
+      )
       offBookHours[week] = Math.max(0, round2(effectiveHours - entryHours))
     }
   })
 
   const projectIdByWeek: Record<number, string> = {}
   for (const project of projects) {
+    // A warm-up project has no curriculum week to be addressed by; week 0 is
+    // the slot the client's unsubmit path reaches for it through.
+    if (project.theme === Theme.WARMUP) {
+      projectIdByWeek[WARMUP_WEEK_ID] = project.id
+      continue
+    }
     const themeIndex = THEMES.findIndex((t) => t.id === project.theme)
     if (themeIndex !== -1) projectIdByWeek[weekOf(themeIndex, Phase.DESIGN)] = project.id
   }
@@ -336,25 +363,35 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
     experience: user.hardwareExperience ? EXPERIENCE[user.hardwareExperience] : null,
     onboardingDone: user.onboardingCompletedAt !== null,
     projects: projects.flatMap((project) => {
+      const warmup = project.theme === Theme.WARMUP
       const themeIndex = THEMES.findIndex((t) => t.id === project.theme)
       const tier = project.tier ?? project.requestedTier
       // A project whose checkpoint was opened but never finished is not one
       // the trail should list: the row exists from the moment "create a
       // project" is opened, before anything has been decided about it.
-      if (themeIndex === -1 || !project.title || !tier) return []
+      if ((!warmup && themeIndex === -1) || !project.title || !tier) return []
       return [
         {
           id: project.id,
           name: project.title,
           description: project.description ?? "",
-          weekId: weekOf(themeIndex, Phase.DESIGN),
+          weekId: warmup ? WARMUP_WEEK_ID : weekOf(themeIndex, Phase.DESIGN),
           tier: clampTier(tier),
           starter: project.starterProjectId !== null,
           starterProjectId: project.starterProjectId,
           githubRepo: project.githubRepo,
-          thumbnailUrl: projectThumbnail(
+          designStatus: project.designStatus,
+          buildStatus: project.buildStatus,
+          thumbnail: projectThumbnail(
             publicUrlFor(project.coverImageKey),
             sessions.filter((s) => s.themeProjectId === project.id),
+            posts
+              .filter((p) => p.themeProjectId === project.id)
+              .map((p) => ({
+                createdAt: p.createdAt,
+                thumbnailUrl: publicUrlFor(p.thumbnailKey),
+                videoUrl: publicUrlFor(p.objectKey),
+              })),
           ),
         },
       ]

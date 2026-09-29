@@ -36,7 +36,8 @@ Coolify.
    `ARI_WEBHOOK_SECRET` from that page — a different secret from the signing
    one. Until all three are set, submission sends no-op and the webhook route
    answers 503 rather than trusting an unverified body. Create the `ari-retry`
-   job below so a failed send is replayed.
+   job below so a failed send is replayed, and note that failed sends are also
+   listed with a **Retry** button on `/admin/program`.
 
 3. **Create the project and database.**
 
@@ -53,6 +54,14 @@ Coolify.
    `BETTER_AUTH_SECRET`, `INTEGRATION_API_KEY`, `EXPORT_API_KEY` and (if you are
    pulling PII) `PII_ENCRYPTION_KEY`.
 
+   Keep `.env` files on the operator's machine only. Rotate any credential that
+   has ever lived in one before the directory is shared or archived, and delete
+   stale copies such as `.env.old`. If `PULL_HCA_PII=true`, confirm the HCA app
+   has the `address` and `birthdate` scopes enabled — HCA refuses the whole
+   sign-in if a requested scope is missing — and set `PII_ENCRYPTION_KEY`;
+   without the key, PII pulling quietly turns itself off (a `[config]` line at
+   boot says so) and grant rows ship without an address.
+
 5. **Create the R2 bucket**, an API token scoped to it, and a public custom
    domain. Put that hostname in `NEXT_PUBLIC_UPLOAD_HOST` — `next/image` refuses
    any host not in `next.config.ts`'s `remotePatterns`, and the failure is a
@@ -62,12 +71,18 @@ Coolify.
 
    ```
    deploy_from_github  projectId: <id>, name: half-life-web,
-                       githubRepo: hackclub/half-life, branch: main,
+                       githubRepo: hackclub/halflife, branch: main,
                        buildType: dockerfile, port: 3000,
                        env: [ ...every var from .env.example... ]
    ```
 
-   Watch `get_build_logs`. Set `REQUIRE_BASICAUTH=true` plus
+   Watch `get_build_logs`. `next.config.ts` runs at build time, so
+   `NEXT_PUBLIC_UPLOAD_HOST` only reaches the image's `next/image` allowlist if
+   the builder passes it as a build arg; runtime env does not (the Dockerfile
+   declares it). `NEXT_PUBLIC_APP_URL` is optional — the browser falls back to
+   the page origin and server code to `BETTER_AUTH_URL`.
+
+   Set `REQUIRE_BASICAUTH=true` plus
    `BASICAUTH_USERNAME`/`BASICAUTH_PASSWORD` until launch day — the gate now
    503s rather than serving if the flag is on and either credential is blank.
 
@@ -121,6 +136,7 @@ needs duplicating into the job.
 |---|---|---|
 | `hackatime-sync` | `*/15 * * * *` | `POST /api/integrations/hackatime-sync` |
 | `airtable-retry` | `17 * * * *` | `POST /api/integrations/airtable-retry` |
+| `loops-sync` | `41 * * * *` | `POST /api/integrations/loops-sync` |
 | `ari-retry` | `23 * * * *` | `POST /api/integrations/ari-retry` |
 | `rsvp-drain` | `*/10 * * * *` | `POST /api/integrations/rsvp-drain` |
 | `claim-sweep` | `*/5 * * * *` | `POST /api/integrations/claim-sweep` |
@@ -153,8 +169,9 @@ The jobs hit the public ingress, and `src/proxy.ts` already excludes
 `/api/integrations` from basic auth — verify that before enabling
 `REQUIRE_BASICAUTH`, or every job goes red at once.
 
-Every one of these routes accepts `?dryRun=true` and returns what it would have
-done without writing. Use it before trusting a schedule.
+Most of these routes accept `?dryRun=true` and return what they would have
+done without writing (`printer-reconcile` writes a run record either way).
+Use it before trusting a schedule.
 
 ## Routine operations
 
@@ -181,6 +198,16 @@ Reviews and the shop stay up.
 **A grant row never reached Airtable** — `/admin/program` lists them with a
 retry button, and `/admin/audit?action=AIRTABLE_SYNC_FAILURE` has the errors.
 The `airtable-retry` job does the same sweep hourly.
+
+**Import the pre-season warm-up projects** — `/admin/program` → *Warm-up
+projects from Airtable* pulls the rows the Fillout form wrote into the `YSWS
+Project Submission` table (`AIRTABLE_YSWS_TABLE_ID`) into Half Life. It creates
+an account for any maker who has not signed in yet, files each project on the
+Warm Up track, records the self-reported hours, and hands the project to Ari.
+Safe to re-run: rows already imported, and rows Half Life itself wrote, are
+skipped. Anything it could not take is listed with its reason — a second row
+for a maker who already has a warm-up project is reported rather than filed,
+because one maker keeps one warm-up project.
 
 **Scale for a launch spike** — `scale_deployment` to 2–3 replicas; the app is
 stateless and sessions live in Postgres. Stagger the rollout rather than going

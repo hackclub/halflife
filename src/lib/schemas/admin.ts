@@ -1,5 +1,12 @@
 import { z } from "zod"
-import { Role, ShopFulfillmentMethod, ShopFulfillmentStage, ShopItemCategory } from "@/app/generated/prisma/enums"
+import {
+  Phase,
+  PrinterAwardStatus,
+  Role,
+  ShopFulfillmentMethod,
+  ShopFulfillmentStage,
+  ShopItemCategory,
+} from "@/app/generated/prisma/enums"
 import { boundedText, cuid, httpsUrl } from "@/lib/schemas/common"
 
 export const roleChangeSchema = z.object({ role: z.enum(Role) }).strict()
@@ -12,6 +19,19 @@ export const userFlagsSchema = z
   .strict()
 
 export const projectExtensionSchema = z.object({ submissionExtensionUntil: z.coerce.date().nullable() }).strict()
+
+/** Closing a maker's dispute. The note is optional; it is for the record. */
+export const resolveDisputeSchema = z.object({ note: boundedText(2000).optional() }).strict()
+
+/** Sending a design's parts grant to a maker's HCB card grant. */
+export const grantSchema = z
+  .object({
+    // The design phase is the funding decision; a build grant does not exist,
+    // and accepting BUILD here sent the design's grant a second time.
+    phase: z.literal(Phase.DESIGN),
+    grantUrl: boundedText(500, 4),
+  })
+  .strict()
 
 export const creditAdjustSchema = z
   .object({
@@ -28,6 +48,17 @@ export const creditAdjustSchema = z
      * omitted field.
      */
     bucket: z.enum(["SPENDABLE", "BANKED"]).default("SPENDABLE"),
+  })
+  .strict()
+
+/** Moving a printer award along its fulfilment path (or revoking it). */
+export const printerAwardUpdateSchema = z
+  .object({
+    status: z.enum(PrinterAwardStatus),
+    trackingNumber: boundedText(200).optional(),
+    trackingCarrier: boundedText(120).optional(),
+    /** Recorded on the audit row; the server requires one to revoke. */
+    note: boundedText(2000).optional().default(""),
   })
   .strict()
 

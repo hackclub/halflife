@@ -23,6 +23,7 @@ export const POST = withRoute(async (req: NextRequest) => {
   if (dryRun) return ok({ dryRun: true, pending })
 
   let synced = 0
+  let skipped = 0
   let failed = 0
   for (const item of pending) {
     const result = await trackSideEffect(
@@ -35,11 +36,12 @@ export const POST = withRoute(async (req: NextRequest) => {
       },
       () => syncSubmissionToYsws(item.themeProjectId, item.phase),
     )
-    if (result) synced++
-    else failed++
+    if (!result) failed++
+    else if ("skipped" in result) skipped++
+    else synced++
   }
 
-  const summary = { attempted: pending.length, synced, failed }
+  const summary = { attempted: pending.length, synced, skipped, failed }
   await recordSyncRun("airtable_ysws", summary)
   return ok(summary)
 })

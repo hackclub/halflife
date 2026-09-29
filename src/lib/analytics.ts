@@ -1,7 +1,9 @@
 import "server-only"
+import { HoursSource } from "@/app/generated/prisma/enums"
 import { getBalances } from "@/lib/currency"
 import prisma from "@/lib/prisma"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
+import { streakAsOf } from "@/lib/streak"
 
 /**
  * Analytics time markers: when each step of a person's journey happened.
@@ -122,7 +124,14 @@ export function recomputeWeek(userId: string, week: number | null, at = new Date
   if (!week || week < 1) return Promise.resolve()
   return quietly("recomputeWeek", async () => {
     const sum = await prisma.workSession.aggregate({
-      where: { weekNumber: week, deletedAt: null, themeProject: { userId } },
+      // HACKATIME_TRACKED sessions contribute zero to every paid total
+      // (lib/hours), so they must not inflate the weekly analytics either.
+      where: {
+        weekNumber: week,
+        deletedAt: null,
+        themeProject: { userId },
+        hoursSource: { not: HoursSource.HACKATIME_TRACKED },
+      },
       _sum: { hoursClaimed: true },
     })
     const hours = Math.round((sum._sum.hoursClaimed ?? 0) * 100) / 100
@@ -175,7 +184,13 @@ export async function backfillAnalytics(): Promise<Record<string, number>> {
       }),
       prisma.session.findMany({ where: { userId }, select: { createdAt: true }, orderBy: { createdAt: "asc" } }),
       prisma.workSession.findMany({
-        where: { themeProject: { userId }, deletedAt: null },
+        where: {
+          themeProject: { userId, deletedAt: null },
+          deletedAt: null,
+          // The backfill must apply the same exclusion as recomputeWeek, or
+          // running it re-inflates every tracked session's week.
+          hoursSource: { not: HoursSource.HACKATIME_TRACKED },
+        },
         select: { createdAt: true, weekNumber: true, hoursClaimed: true },
         orderBy: { createdAt: "asc" },
       }),
@@ -302,6 +317,8 @@ export interface UserAnalyticsRow {
 
 /** Per-person rows, for the Loops/Airtable sync and for export. */
 export async function getUserAnalytics(): Promise<UserAnalyticsRow[]> {
+  const { programTimezone } = await getProgramSettings()
+  const today = effectiveDateFor(new Date(), programTimezone)
   const users = await prisma.user.findMany({
     orderBy: { createdAt: "asc" },
     select: {
@@ -318,6 +335,7 @@ export async function getUserAnalytics(): Promise<UserAnalyticsRow[]> {
       activeDays: true,
       currentStreak: true,
       longestStreak: true,
+      lastStreakDate: true,
       activityWeeks: { orderBy: { week: "asc" } },
     },
   })
@@ -339,7 +357,9 @@ export async function getUserAnalytics(): Promise<UserAnalyticsRow[]> {
       totalHours: Math.round(u.activityWeeks.reduce((n, w) => n + w.hours, 0) * 100) / 100,
       coins: balances.spendable,
       bankedCoins: balances.banked,
-      currentStreak: u.currentStreak,
+      // The stored column is a cache only correct as of the last devlog or
+      // reel; an export that reads it directly calls a lapsed run current.
+      currentStreak: streakAsOf(u, today),
       longestStreak: u.longestStreak,
       weeks: u.activityWeeks.map(({ week, hours, reached1hAt, reached5hAt, reached10hAt, reached20hAt }) => ({
         week,

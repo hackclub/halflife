@@ -1,7 +1,8 @@
 import "server-only"
 import type { ThemeProject } from "@/app/generated/prisma/client"
-import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
+import { Phase, PhaseStatus, Theme } from "@/app/generated/prisma/enums"
 import { scheduledWeekFor } from "@/lib/config/program"
+import { lockUserCredit } from "@/lib/currency"
 import { HttpError } from "@/lib/errors"
 import { syncHcaProfile } from "@/lib/hca-profile"
 import { getHoursBreakdown } from "@/lib/hours"
@@ -94,7 +95,10 @@ export function canSubmitPhase(
       message: "This phase was rejected. Ask an admin to reopen it.",
     }
   }
-  if (phase === Phase.BUILD && project.designStatus === PhaseStatus.draft) {
+  // A warm-up project is one phase by nature — it was handed in through the
+  // pre-season form, not designed and then built — so the design-first rule
+  // does not apply to it.
+  if (phase === Phase.BUILD && project.theme !== Theme.WARMUP && project.designStatus === PhaseStatus.draft) {
     return {
       ok: false,
       code: "PHASE_LOCKED",
@@ -122,11 +126,26 @@ export async function submitPhase(
   const eligible = canSubmitPhase(project, phase)
   if (!eligible.ok) throw new HttpError(eligible.code, eligible.message)
 
+  // The readiness checklist calls a description required, and the Ari SDK
+  // refuses a ship without one. Week one's onboarding lets the maker leave it
+  // blank (the project form for other weeks does not), so a blank description
+  // used to pass submit and then fail the Ari send silently in the `after`
+  // hook — the maker saw success and no reviewer ever saw the project. Enforce
+  // it here, beside the hours check, so the refusal reaches the person who can
+  // fix it. `buildShipInput` keeps a fallback too, so hand-ins already stuck in
+  // this state can still be replayed by `ari-retry`.
+  if (!project.description?.trim()) {
+    throw new HttpError("UNPROCESSABLE", "Add a project description before submitting this phase")
+  }
+
   // Handing a week in is a checkpoint too; a deleted reel still owed holds it.
   await assertNoOwedReel(userId)
 
   // A submission must not be able to file someone else's evidence as its own.
-  const ownKeys = attachmentKeys.filter((key) => isOwnedKey(userId, key))
+  // Refuse rather than filter: silently dropping a stranger's key hands back a
+  // success with the evidence missing, which the maker only finds out at review.
+  const foreign = attachmentKeys.filter((key) => !isOwnedKey(userId, key))
+  if (foreign.length > 0) throw new HttpError("VALIDATION_FAILED", "Those uploads are not yours")
 
   const breakdown = await getHoursBreakdown(themeProjectId, phase)
   if (breakdown.journalEntryCount === 0 && breakdown.hackatimeHours === 0) {
@@ -173,16 +192,35 @@ export async function submitPhase(
 
   const settings = await getProgramSettings()
   const now = new Date()
-  const submittedInWeek = weekNumberForDate(settings.eventStartDate, now)
+  const submittedInWeek = weekNumberForDate(settings.eventStartDate, now, settings.programTimezone)
   const scheduledWeek = scheduledWeekFor(project.theme, phase)
 
   return prisma.$transaction(async (tx) => {
-    const submission = await tx.phaseSubmission.create({
+    // Claim the phase first, conditionally on it still being one that can be
+    // submitted. Two concurrent submits both read the same outside state, so
+    // without this both would create an open submission and both flip the
+    // status; the row lock makes the loser's update match nothing.
+    const claimed = await tx.themeProject.updateMany({
+      where: {
+        id: themeProjectId,
+        userId,
+        deletedAt: null,
+        ...(phase === Phase.DESIGN
+          ? { designStatus: { in: [PhaseStatus.draft, PhaseStatus.update_requested] } }
+          : { buildStatus: { in: [PhaseStatus.draft, PhaseStatus.update_requested] } }),
+      },
+      data: phase === Phase.DESIGN ? { designStatus: PhaseStatus.in_review } : { buildStatus: PhaseStatus.in_review },
+    })
+    if (claimed.count !== 1) {
+      throw new HttpError("ALREADY_SUBMITTED", "This phase is already in review")
+    }
+
+    return tx.phaseSubmission.create({
       data: {
         themeProjectId,
         phase,
         notes,
-        attachmentKeys: ownKeys,
+        attachmentKeys,
         submittedInWeek,
         scheduledWeek,
         // Analytics only. Nothing gates on lateness — a late joiner has to be
@@ -190,11 +228,6 @@ export async function submitPhase(
         onTime: submittedInWeek > 0 && submittedInWeek <= scheduledWeek,
       },
     })
-    await tx.themeProject.update({
-      where: { id: themeProjectId },
-      data: phase === Phase.DESIGN ? { designStatus: PhaseStatus.in_review } : { buildStatus: PhaseStatus.in_review },
-    })
-    return submission
   })
 }
 
@@ -208,25 +241,51 @@ export async function unsubmitPhase(userId: string, themeProjectId: string, phas
     throw new HttpError("NOT_SUBMITTED", "This phase is not awaiting review")
   }
 
-  const open = await prisma.phaseSubmission.findFirst({
-    where: { themeProjectId, phase, resolvedAt: null },
-    orderBy: { createdAt: "desc" },
-    include: { claim: true },
-  })
-  if (!open) throw new HttpError("NOT_SUBMITTED", "No open submission found")
-
-  // Withdrawing work a reviewer is actively reading wastes their time and
-  // races the decision they are about to write.
-  if (open.claim && open.claim.expiresAt > new Date()) {
-    throw new HttpError("CLAIMED_BY_OTHER", "A reviewer is looking at this right now")
-  }
-
   return prisma.$transaction(async (tx) => {
-    await tx.phaseSubmission.delete({ where: { id: open.id } })
-    await tx.themeProject.update({
+    // Serialize against the review path. finalizeReview takes this same
+    // per-user credit lock before it re-reads the submission, so holding it
+    // here means a decision cannot land between our read and our delete.
+    await lockUserCredit(tx, project.userId)
+
+    // Everything below is re-read under the lock; the checks above are the
+    // fast fail for the ordinary case.
+    const current = await tx.themeProject.findUniqueOrThrow({
       where: { id: themeProjectId },
+      select: { designStatus: true, buildStatus: true },
+    })
+    if ((phase === Phase.DESIGN ? current.designStatus : current.buildStatus) !== PhaseStatus.in_review) {
+      throw new HttpError("NOT_SUBMITTED", "This phase is not awaiting review")
+    }
+
+    const open = await tx.phaseSubmission.findFirst({
+      where: { themeProjectId, phase, resolvedAt: null },
+      orderBy: { createdAt: "desc" },
+      include: { claim: true },
+    })
+    if (!open) throw new HttpError("NOT_SUBMITTED", "No open submission found")
+
+    // Withdrawing work a reviewer is actively reading wastes their time and
+    // races the decision they are about to write.
+    if (open.claim && open.claim.expiresAt > new Date()) {
+      throw new HttpError("CLAIMED_BY_OTHER", "A reviewer is looking at this right now")
+    }
+
+    // Conditional on still being unresolved: a decision that committed before
+    // the lock was ours has made this row its record, and withdrawing it would
+    // cascade the review away and put a decided phase back to draft.
+    const withdrawn = await tx.phaseSubmission.deleteMany({ where: { id: open.id, resolvedAt: null } })
+    if (withdrawn.count !== 1) {
+      throw new HttpError("ALREADY_RESOLVED", "This submission has already been decided")
+    }
+
+    const flipped = await tx.themeProject.updateMany({
+      where: {
+        id: themeProjectId,
+        ...(phase === Phase.DESIGN ? { designStatus: PhaseStatus.in_review } : { buildStatus: PhaseStatus.in_review }),
+      },
       data: phase === Phase.DESIGN ? { designStatus: PhaseStatus.draft } : { buildStatus: PhaseStatus.draft },
     })
+    if (flipped.count !== 1) throw new HttpError("CONFLICT", "This project moved while it was being withdrawn")
   })
 }
 
@@ -235,6 +294,6 @@ export async function stampSessionTiming(date: Date): Promise<{ effectiveDate: s
   const settings = await getProgramSettings()
   return {
     effectiveDate: effectiveDateFor(date, settings.programTimezone),
-    weekNumber: weekNumberForDate(settings.eventStartDate, date),
+    weekNumber: weekNumberForDate(settings.eventStartDate, date, settings.programTimezone),
   }
 }

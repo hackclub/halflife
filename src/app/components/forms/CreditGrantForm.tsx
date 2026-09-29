@@ -28,6 +28,8 @@ export function CreditGrantForm({ userId }: Readonly<{ userId: string }>) {
       setAmount("")
       setReason("")
       router.refresh()
+    } catch {
+      setError("Could not reach the server")
     } finally {
       setBusy(false)
     }

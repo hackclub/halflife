@@ -1,26 +1,46 @@
+import { headers } from "next/headers"
+import Link from "next/link"
 import { ActionButton } from "@/app/components/forms/ActionButton"
+import { AirtableImportForm } from "@/app/components/forms/AirtableImportForm"
 import { ProgramSettingsForm } from "@/app/components/forms/ProgramSettingsForm"
 import { ProgramStartForm } from "@/app/components/forms/ProgramStartForm"
 import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
 import { Phase } from "@/app/generated/prisma/enums"
+import { getAirtableConfig } from "@/lib/airtable/client"
+import { YSWS_SUBMISSION } from "@/lib/airtable/schema"
 import { findUnsyncedSubmissions } from "@/lib/airtable/sync"
+import { ariWebhookUrl, findUnsyncedAriSubmissions, isAriConfigured, isAriWebhookConfigured } from "@/lib/ari"
 import { PRINTERS, submitFloorFor } from "@/lib/config/printers"
 import { scheduleForWeek, TOTAL_WEEKS } from "@/lib/config/program"
 import { TIERS } from "@/lib/config/tiers"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import { currentWeekNumber, getProgramSettings, weekClosesAt, weekDateRange } from "@/lib/program"
+import { getOpenDisputes } from "@/lib/queries/review"
 
 export const dynamic = "force-dynamic"
 
 export default async function AdminProgramPage() {
   await requirePermissionPage(Permission.MANAGE_PROGRAM)
 
-  const [settings, week, unsynced] = await Promise.all([
+  const [settings, week, unsynced, unsyncedAri, disputes, h] = await Promise.all([
     getProgramSettings(),
     currentWeekNumber(),
     findUnsyncedSubmissions(),
+    findUnsyncedAriSubmissions(),
+    getOpenDisputes(),
+    headers(),
   ])
+
+  // The callback URL to register with Ari, resolved the same way the phone
+  // handoff resolves its origin: the configured public origin wins, the
+  // request's own host is only a local-development fallback.
+  const host = h.get("x-forwarded-host") ?? h.get("host")
+  const proto = h.get("x-forwarded-proto") ?? "https"
+  const callbackUrl = ariWebhookUrl(host ? `${proto}://${host}` : "")
+  const ariSending = isAriConfigured()
+  const ariReceiving = isAriWebhookConfigured()
+  const airtableReady = getAirtableConfig() !== null
 
   const startYmd = settings.eventStartDate.toISOString().slice(0, 10)
   const now = new Date()
@@ -99,12 +119,31 @@ export default async function AdminProgramPage() {
           initial={{
             programTimezone: settings.programTimezone,
             submissionsOpen: settings.submissionsOpen,
+            submissionsCloseAt: settings.submissionsCloseAt?.toISOString().slice(0, 16) ?? null,
             shopOpen: settings.shopOpen,
+            shopClosesAt: settings.shopClosesAt?.toISOString().slice(0, 16) ?? null,
             shopGraceDays: settings.shopGraceDays,
             reviewClaimTtlMinutes: settings.reviewClaimTtlMinutes,
             airtableSyncEnabled: settings.airtableSyncEnabled,
           }}
         />
+      </Panel>
+
+      <Panel title="Warm-up projects from Airtable">
+        <p className="hl-hint">
+          Before the platform opened, projects were handed in through the warm-up submission form, which writes rows
+          into the <code>{YSWS_SUBMISSION.tableId}</code> table (<code>AIRTABLE_YSWS_TABLE_ID</code>). Importing files
+          each one on the maker&apos;s Warm Up track — a pre-season slot that does not use one of their five season
+          themes — creates their account if they have not signed up yet, records the self-reported hours as a work
+          session, and hands the project to Ari for review. Rows already imported, and rows Half Life itself wrote, are
+          skipped, so the button is safe to run again. A maker keeps one warm-up project; a second row for the same
+          person is reported as skipped.
+        </p>
+        {airtableReady ? (
+          <AirtableImportForm ariConfigured={ariSending} />
+        ) : (
+          <EmptyState>Airtable is not configured on this deployment, so there is nothing to import.</EmptyState>
+        )}
       </Panel>
 
       <Panel title="Submissions that never reached Airtable">
@@ -127,6 +166,93 @@ export default async function AdminProgramPage() {
             ))}
           </Table>
         )}
+      </Panel>
+
+      <Panel title="Submissions that never reached Ari">
+        {!ariSending ? (
+          <EmptyState>Ari is not configured on this deployment, so nothing is sent there.</EmptyState>
+        ) : unsyncedAri.length === 0 ? (
+          <EmptyState>Every submission awaiting review is in Ari.</EmptyState>
+        ) : (
+          <Table head={["Project", "Phase", ""]}>
+            {unsyncedAri.map((item) => (
+              <tr key={`${item.themeProjectId}-${item.phase}`}>
+                <td className="hl-mono">{item.themeProjectId}</td>
+                <td>{item.phase.toLowerCase()}</td>
+                <td>
+                  <ActionButton
+                    url={`/api/admin/theme-projects/${item.themeProjectId}/sync-to-ari`}
+                    body={{ phase: item.phase }}
+                    label="Retry"
+                  />
+                </td>
+              </tr>
+            ))}
+          </Table>
+        )}
+        <p className="hl-hint">
+          A ship is what the reviewer sees, so a hand-in missing from Ari is a hand-in nobody will decide. The hourly
+          retry job replays these too; this button is for when you are looking at one now.
+        </p>
+      </Panel>
+
+      <Panel title="Open review disputes">
+        {disputes.length === 0 ? (
+          <EmptyState>No maker is waiting on a second look.</EmptyState>
+        ) : (
+          <Table head={["Project", "Phase", "Maker", "Asked", ""]}>
+            {disputes.map((d) => (
+              <tr key={d.id}>
+                <td>{d.projectTitle}</td>
+                <td>{d.phase.toLowerCase()}</td>
+                <td>{d.participant}</td>
+                <td className="hl-mono">{d.createdAt.toDateString()}</td>
+                <td className="hl-row">
+                  <Link href={`/review/${d.submissionId}`}>Read</Link>
+                  <ActionButton
+                    url={`/api/admin/disputes/${d.id}/resolve`}
+                    body={{}}
+                    label="Resolve"
+                    confirm="Mark this dispute as looked at? The decision itself does not change."
+                  />
+                </td>
+              </tr>
+            ))}
+          </Table>
+        )}
+      </Panel>
+
+      <Panel title="Ari review integration">
+        <p className="hl-hint">
+          Paste this callback URL into this program&apos;s webhook settings at ari.hackclub.com. Ari signs every
+          delivery with <code>ARI_WEBHOOK_SECRET</code>, which is a different secret from the signing one; until the
+          secrets are set, submission sends no-op and the webhook answers 503 rather than trusting an unverified body.
+        </p>
+        <Table head={["Setting", "Value", "Status"]}>
+          <tr>
+            <td>Callback URL</td>
+            <td className="hl-mono" style={{ overflowWrap: "anywhere" }}>
+              {callbackUrl}
+            </td>
+            <td>
+              <Badge tone={ariReceiving ? "success" : "warning"}>{ariReceiving ? "listening" : "secret unset"}</Badge>
+            </td>
+          </tr>
+          <tr>
+            <td>Sending ships</td>
+            <td className="hl-mono">ARI_PROGRAM_ID · ARI_SIGNING_SECRET</td>
+            <td>
+              <Badge tone={ariSending ? "success" : "muted"}>{ariSending ? "configured" : "not configured"}</Badge>
+            </td>
+          </tr>
+          <tr>
+            <td>Failed sends</td>
+            <td className="hl-mono">POST /api/integrations/ari-retry</td>
+            <td>
+              <Badge tone="muted">hourly job</Badge>
+            </td>
+          </tr>
+        </Table>
       </Panel>
 
       <Panel title="Tiers">

@@ -35,6 +35,19 @@ export const submitSchema = z
 
 export const unsubmitSchema = z.object({ phase: phaseSchema }).strict()
 
+/**
+ * A maker asking for a second look at a decided review.
+ *
+ * The note is required: a dispute that does not say what is wrong is one no
+ * one can act on.
+ */
+export const disputeSchema = z
+  .object({
+    phase: phaseSchema,
+    note: boundedText(2000, 10),
+  })
+  .strict()
+
 export const hackatimeLinkSchema = z
   .object({
     hackatimeProject: boundedText(200, 1),

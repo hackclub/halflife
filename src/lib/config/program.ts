@@ -20,10 +20,11 @@ export const CREDIT_NAME_SINGULAR = "coin"
 export const COINS_PER_HOUR = 5
 
 /**
- * Ceiling on SPENDABLE coins minted from one project's hours. `approvedHours`
- * can come from a reviewer typing into a box, and a fat-fingered 1000 should
- * not mint five thousand coins. The banked half needs no cap: it is bounded by
- * the goal's weekly banking rate by construction.
+ * Ceiling on SPENDABLE coins minted per phase. `approvedHours` can come from a
+ * reviewer typing into a box, and a fat-fingered 1000 should not mint five
+ * thousand coins. Applied per phase, so one project's design and build
+ * together can mint up to twice this; the banked half needs no cap: it is
+ * bounded by the goal's weekly banking rate by construction.
  */
 export const MAX_COINS_PER_PROJECT = 250
 
@@ -131,14 +132,42 @@ export const THEMES = [
 
 export type ThemeSlug = (typeof THEMES)[number]["slug"]
 
+/**
+ * The pre-season track warm-up projects are filed on.
+ *
+ * Deliberately not in `THEMES`: `THEMES` is the ten-week season, and a sixth
+ * entry there would invent an eleventh week, count toward printer
+ * qualification, and collide with a season slot when a project's week is
+ * derived from its index. Iteration over the season reads `THEMES`; anything
+ * that only needs a theme's label or slug asks `getThemeDef`, which knows this
+ * one too. Its weeks are 0 because it is not scheduled at all.
+ */
+export const WARMUP_THEME: ThemeDef = {
+  id: Theme.WARMUP,
+  slug: "warmup",
+  label: "Warm Up",
+  blurb: "A project submitted during the pre-season warm-up weeks.",
+  designWeek: 0,
+  buildWeek: 0,
+}
+
+/**
+ * The `weekId` the store gives a warm-up project.
+ *
+ * Warm-up projects have no scheduled week, but a client `Project` carries one
+ * (it addresses the project detail route and picks the card's scene), so they
+ * borrow week 0 — a value no curriculum week can take.
+ */
+export const WARMUP_WEEK_ID = 0
+
 export function getThemeDef(theme: Theme): ThemeDef {
-  const def = THEMES.find((t) => t.id === theme)
+  const def = theme === Theme.WARMUP ? WARMUP_THEME : THEMES.find((t) => t.id === theme)
   if (!def) throw new Error(`Unknown theme: ${theme}`)
   return def
 }
 
 export function themeDefBySlug(slug: string): ThemeDef | undefined {
-  return THEMES.find((t) => t.slug === slug)
+  return slug === WARMUP_THEME.slug ? WARMUP_THEME : THEMES.find((t) => t.slug === slug)
 }
 
 /** The theme and phase a given program week is scheduled for. */

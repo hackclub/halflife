@@ -35,7 +35,7 @@ export const POST = withRoute(async (req: Request) => {
   const parsed = await parseBody(req, purchaseSchema)
   if (parsed.error) return parsed.error
 
-  const order = await purchase(gate.user.id, parsed.data.shopItemId, parsed.data.quantity)
+  const order = await purchase(gate.user.id, parsed.data.shopItemId, parsed.data.quantity, parsed.data.idempotencyKey)
 
   await logAudit({
     action: AuditAction.USER_PLACE_ORDER,

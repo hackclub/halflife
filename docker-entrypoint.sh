@@ -8,4 +8,9 @@ echo "[boot] applying migrations"
 ./node_modules/.bin/prisma migrate deploy
 
 echo "[boot] starting server"
+# A scheduler (Orchard app jobs) can override the image command; honour it
+# rather than always starting the web server.
+if [ "$#" -gt 0 ]; then
+  exec "$@"
+fi
 exec node server.js

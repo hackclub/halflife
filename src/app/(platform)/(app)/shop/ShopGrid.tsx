@@ -50,7 +50,7 @@ export function ShopGrid({ items: all }: { items: readonly ShopItemView[] }) {
       const res = await fetch("/api/shop/orders", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ shopItemId: item.id, quantity: 1 }),
+        body: JSON.stringify({ shopItemId: item.id, quantity: 1, idempotencyKey: crypto.randomUUID() }),
       })
       if (!res.ok) {
         const payload = (await res.json().catch(() => ({}))) as {

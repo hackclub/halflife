@@ -6,7 +6,7 @@ import { Permission } from "@/lib/permissions"
 import prisma from "@/lib/prisma"
 import { sanitize } from "@/lib/sanitize"
 import { orderDecisionSchema } from "@/lib/schemas/admin"
-import { fulfillOrder, rejectOrder } from "@/lib/shop"
+import { fulfillOrder, rejectOrder, shopOrderStaffSelect } from "@/lib/shop"
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -35,7 +35,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
       targetId: id,
       metadata: { before: { status: before.status }, after: { status: order.status } },
     })
-    return ok({ order })
+    return ok({ order: await prisma.shopOrder.findUniqueOrThrow({ where: { id }, select: shopOrderStaffSelect }) })
   }
 
   if (body.action === "REJECT") {
@@ -54,7 +54,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
         after: { status: order.status },
       },
     })
-    return ok({ order })
+    return ok({ order: await prisma.shopOrder.findUniqueOrThrow({ where: { id }, select: shopOrderStaffSelect }) })
   }
 
   if (before.status !== ShopOrderStatus.PENDING) {
@@ -74,6 +74,6 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
   if (held.count !== 1) {
     return fail("CONFLICT", "This order was decided by someone else")
   }
-  const order = await prisma.shopOrder.findUniqueOrThrow({ where: { id } })
+  const order = await prisma.shopOrder.findUniqueOrThrow({ where: { id }, select: shopOrderStaffSelect })
   return ok({ order })
 })

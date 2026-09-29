@@ -2,10 +2,10 @@ import "server-only"
 import type { Prisma } from "@/app/generated/prisma/client"
 import { Phase, PhaseStatus, PostStatus, type ReviewResult } from "@/app/generated/prisma/enums"
 import { type BomLine, bomLockReason, listBom } from "@/lib/bom"
-import { THEMES } from "@/lib/config/program"
+import { THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { lapseTimelapseUrl } from "@/lib/lapse"
 import prisma from "@/lib/prisma"
-import { latestJournalImage, projectThumbnail } from "@/lib/thumbnail"
+import { type ProjectThumbnail, projectThumbnail } from "@/lib/thumbnail"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
 /**
@@ -64,11 +64,27 @@ export type TimelineItem =
       comments: string | null
     }
 
+/** One phase's review state, for the block above the repo checks. */
+export interface PhaseReview {
+  phase: Phase
+  status: PhaseStatus
+  /** The reviewer's note on the latest decision, if any. */
+  comments: string | null
+  /** When the latest submission for this phase was handed in, epoch ms. */
+  submittedAt: number | null
+  /** When it was decided, epoch ms. */
+  reviewedAt: number | null
+  /** When the maker asked for a second look, if they have. */
+  disputedAt: number | null
+  /** Whether staff have closed that dispute. */
+  disputeResolved: boolean
+}
+
 export interface ProjectPageData {
   /** The thumbnail the maker chose, if any. */
   coverImageUrl: string | null
-  /** What stands in until they choose one: the newest image in the journal. */
-  journalImageUrl: string | null
+  /** What stands in until they choose one: a journal image, then a reel frame. */
+  fallbackThumbnail: ProjectThumbnail | null
   timeline: TimelineItem[]
   bom: BomLine[]
   /** The order's tax and shipping total — a fixed line of the BOM, zero until set. */
@@ -79,6 +95,8 @@ export interface ProjectPageData {
   editLocked: string | null
   /** The phase handed in and waiting for a reviewer, which can be taken back. */
   inReview: Phase | null
+  /** The phases that have left draft, for the review-state block. */
+  phases: PhaseReview[]
 }
 
 const SESSION_SELECT = {
@@ -157,6 +175,8 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
       buildStatus: true,
       designReviewComments: true,
       buildReviewComments: true,
+      designReviewedAt: true,
+      buildReviewedAt: true,
       workSessions: { where: { deletedAt: null }, select: SESSION_SELECT },
       posts: {
         // Their own reels, including one a moderator took out of the feed —
@@ -165,7 +185,14 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
         select: POST_SELECT,
       },
       submissions: {
-        select: { id: true, phase: true, createdAt: true, resolvedAt: true, resolvedResult: true },
+        select: {
+          id: true,
+          phase: true,
+          createdAt: true,
+          resolvedAt: true,
+          resolvedResult: true,
+          dispute: { select: { createdAt: true, resolvedAt: true } },
+        },
       },
     },
   })
@@ -207,15 +234,47 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
         ? Phase.BUILD
         : null
 
+  // Both phases, in order, but only the ones that have left draft — a fresh
+  // project's page should not carry a "not started" row for each week.
+  const phases: PhaseReview[] = ([Phase.DESIGN, Phase.BUILD] as const)
+    .map((phase) => {
+      const isDesign = phase === Phase.DESIGN
+      const latest = project.submissions
+        .filter((s) => s.phase === phase)
+        .reduce<Date | null>((at, s) => (!at || s.createdAt > at ? s.createdAt : at), null)
+      const disputed = project.submissions
+        .filter((s) => s.phase === phase && s.dispute)
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
+      return {
+        phase,
+        status: isDesign ? project.designStatus : project.buildStatus,
+        comments: isDesign ? project.designReviewComments : project.buildReviewComments,
+        submittedAt: latest?.getTime() ?? null,
+        reviewedAt: (isDesign ? project.designReviewedAt : project.buildReviewedAt)?.getTime() ?? null,
+        disputedAt: disputed?.dispute?.createdAt.getTime() ?? null,
+        disputeResolved: Boolean(disputed?.dispute?.resolvedAt),
+      }
+    })
+    .filter((p) => p.status !== PhaseStatus.draft || p.submittedAt !== null)
+
   return {
     coverImageUrl: publicUrlFor(project.coverImageKey),
-    journalImageUrl: latestJournalImage(project.workSessions),
+    fallbackThumbnail: projectThumbnail(
+      null,
+      project.workSessions,
+      project.posts.map((p) => ({
+        createdAt: p.createdAt,
+        thumbnailUrl: publicUrlFor(p.thumbnailKey),
+        videoUrl: publicUrlFor(p.objectKey),
+      })),
+    ),
     timeline,
     bom: await listBom(project.id),
     bomTaxShippingUsd: project.bomTaxShippingUsd ?? 0,
     bomLocked: bomLockReason(project),
     editLocked: inReview ? "In review, so it can't be edited. Unsubmit to change it" : null,
     inReview,
+    phases,
   }
 }
 
@@ -234,9 +293,9 @@ export interface PublicProjectData {
   title: string
   description: string
   author: string
-  /** 1-based design week the theme runs in, for its colours and scene. */
+  /** 1-based design week the theme runs in, or 0 for a warm-up project. */
   weekId: number
-  thumbnailUrl: string | null
+  thumbnail: ProjectThumbnail | null
   timeline: TimelineItem[]
 }
 
@@ -269,8 +328,16 @@ export async function getPublicProjectPage(id: string): Promise<PublicProjectDat
     title: project.title,
     description: project.description ?? "",
     author: project.user.name ?? "A maker",
-    weekId: themeIndex === -1 ? 1 : themeIndex + 1,
-    thumbnailUrl: projectThumbnail(publicUrlFor(project.coverImageKey), project.workSessions),
+    weekId: themeIndex === -1 ? WARMUP_WEEK_ID : themeIndex + 1,
+    thumbnail: projectThumbnail(
+      publicUrlFor(project.coverImageKey),
+      project.workSessions,
+      project.posts.map((p) => ({
+        createdAt: p.createdAt,
+        thumbnailUrl: publicUrlFor(p.thumbnailKey),
+        videoUrl: publicUrlFor(p.objectKey),
+      })),
+    ),
     timeline,
   }
 }

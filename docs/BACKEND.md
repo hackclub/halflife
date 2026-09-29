@@ -112,7 +112,8 @@ and it refuses an already-resolved submission.
   Stage). Design and build get independent decisions.
 - **Outbound** happens in the submit/unsubmit `after` hooks, like the Airtable
   write, and no-ops when the `ARI_*` secrets are unset. A failed send logs an
-  `ARI_SYNC_FAILURE` audit row and is replayed by `ari-retry`.
+  `ARI_SYNC_FAILURE` audit row and is replayed by `ari-retry`, or by hand from
+  `/admin/program`.
 - **Inbound** is `POST /api/integrations/ari/webhook`, verified with
   `ARI_WEBHOOK_SECRET`. `ARI_WEBHOOK_SECRET` is **not** the signing secret; the
   SDK treats them as different credentials.
@@ -130,6 +131,35 @@ and it refuses an already-resolved submission.
   `review.reverted` / `review.requeued` undo the local status and credit and put
   the phase back in review; `review.fraud` flags the maker on a failed verdict;
   `ship.updated` and unknown events are recorded and ignored.
+
+---
+
+## Payouts
+
+**The Airtable/YSWS pipeline owns payouts.** Approval mints coins and freezes
+`grantUsd`, and the Design row Half Life writes to `YSWS Project Submission` is
+what the payout team pays from. Nothing in the app pays a maker automatically.
+
+`/admin/users/[id]` has a **manual fallback**: a "Send grant" action that tops
+up a maker's HCB card grant directly (`lib/hcb.ts`, `lib/grants.ts`). It is
+deliberately narrow:
+
+- only on an **approved design**, for the frozen `grantUsd`;
+- **once per (user, project, design)** — `HcbGrantTopUp` has a unique key and
+  the row is claimed before HCB is called, so a double-click cannot pay twice;
+- a failed attempt records its error and may be retried; one in flight may not;
+- it needs `MANAGE_CREDIT`, not `REVIEW_SUBMISSIONS`.
+
+Two things to know before enabling it:
+
+- **It can double-pay alongside the pipeline.** The unique key only prevents a
+  second send *within Half Life*; it knows nothing about what the pipeline has
+  already paid.
+- **The HCB v3 API is read-only.** Grants go through the authenticated **v4**
+  API. Set `HCB_ORG_SLUG` plus either a static `HCB_ACCESS_TOKEN` or the
+  refresh-token flow. HCB rotates the refresh token, and an env var cannot be
+  rewritten, so the production path is to persist it (a credentials row or a
+  secret store); with the env flow the token is good for the life of a process.
 
 ---
 

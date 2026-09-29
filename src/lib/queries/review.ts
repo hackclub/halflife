@@ -3,7 +3,6 @@ import { Phase } from "@/app/generated/prisma/enums"
 import { getThemeDef } from "@/lib/config/program"
 import { getHoursBreakdown } from "@/lib/hours"
 import prisma from "@/lib/prisma"
-import { projectThumbnail } from "@/lib/thumbnail"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
 export interface QueueItem {
@@ -110,6 +109,7 @@ export async function getSubmissionDetail(submissionId: string, reviewerId?: str
         },
       },
       claim: { include: { reviewer: { select: { id: true, name: true } } } },
+      dispute: true,
       reviews: {
         orderBy: { createdAt: "desc" },
         include: { reviewer: { select: { id: true, name: true } } },
@@ -151,7 +151,7 @@ export async function getSubmissionDetail(submissionId: string, reviewerId?: str
     submission,
     claimLive: !!submission.claim && submission.claim.expiresAt.getTime() > Date.now(),
     themeLabel: getThemeDef(submission.themeProject.theme).label,
-    coverImageUrl: projectThumbnail(publicUrlFor(submission.themeProject.coverImageKey), sessions),
+    coverImageUrl: publicUrlFor(submission.themeProject.coverImageKey),
     breakdown,
     sessions: sessions.map((s) => ({
       ...s,
@@ -160,4 +160,60 @@ export async function getSubmissionDetail(submissionId: string, reviewerId?: str
     links,
     priorReviews,
   }
+}
+
+export interface OpenDispute {
+  id: string
+  note: string
+  createdAt: Date
+  phase: Phase
+  submissionId: string
+  themeProjectId: string
+  projectTitle: string
+  themeLabel: string
+  participant: string
+}
+
+/**
+ * Disputes no one has closed yet, oldest first.
+ *
+ * Surfaced on the program page so a maker asking for a second look is not left
+ * waiting on a queue nobody is watching.
+ */
+export async function getOpenDisputes(): Promise<OpenDispute[]> {
+  const rows = await prisma.reviewDispute.findMany({
+    where: { resolvedAt: null },
+    orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      note: true,
+      createdAt: true,
+      submission: {
+        select: {
+          id: true,
+          phase: true,
+          themeProject: {
+            select: {
+              id: true,
+              title: true,
+              theme: true,
+              user: { select: { name: true, email: true } },
+            },
+          },
+        },
+      },
+    },
+  })
+
+  return rows.map((d) => ({
+    id: d.id,
+    note: d.note,
+    createdAt: d.createdAt,
+    phase: d.submission.phase,
+    submissionId: d.submission.id,
+    themeProjectId: d.submission.themeProject.id,
+    projectTitle: d.submission.themeProject.title.trim() || getThemeDef(d.submission.themeProject.theme).label,
+    themeLabel: getThemeDef(d.submission.themeProject.theme).label,
+    participant: d.submission.themeProject.user.name ?? d.submission.themeProject.user.email,
+  }))
 }
