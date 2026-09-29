@@ -136,6 +136,7 @@ needs duplicating into the job.
 |---|---|---|
 | `hackatime-sync` | `*/15 * * * *` | `POST /api/integrations/hackatime-sync` |
 | `airtable-retry` | `17 * * * *` | `POST /api/integrations/airtable-retry` |
+| `loops-sync` | `41 * * * *` | `POST /api/integrations/loops-sync` |
 | `ari-retry` | `23 * * * *` | `POST /api/integrations/ari-retry` |
 | `rsvp-drain` | `*/10 * * * *` | `POST /api/integrations/rsvp-drain` |
 | `claim-sweep` | `*/5 * * * *` | `POST /api/integrations/claim-sweep` |
