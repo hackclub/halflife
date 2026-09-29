@@ -236,6 +236,25 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
       throw new HttpError("CLAIMED_BY_OTHER", "Another reviewer holds the claim on this submission")
     }
 
+    // Re-check the design ordering under the same per-user lock the
+    // un-approve path takes. The check before the transaction ran against a
+    // read taken before the live Hackatime fetch; an admin can un-approve the
+    // design in that window, and a build approval must not pay out of order.
+    // Taking the lock first means this read sees either the un-approval (and
+    // refuses) or blocks it until this decision has committed.
+    if (approving && phase === Phase.BUILD) {
+      const design = await tx.themeProject.findUnique({
+        where: { id: project.id },
+        select: { designStatus: true },
+      })
+      if (design?.designStatus !== PhaseStatus.approved) {
+        throw new HttpError(
+          "DESIGN_NOT_APPROVED",
+          "Approve the design phase for this theme before approving the build",
+        )
+      }
+    }
+
     if (approving) {
       // Accept every unreviewed session at its claimed hours, so the
       // per-session numbers stay consistent with the frozen total.
