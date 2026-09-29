@@ -101,21 +101,7 @@ export default function AnnouncementBanner() {
             the type shrinking is what keeps the count down, and `3.6vw`
             reaches the 16px ceiling by 444 — well inside the capped branch,
             so the one-line branch is always set at the full 16. */}
-        <p
-          className="text-balance text-center leading-snug text-hl-paper min-[624px]:whitespace-nowrap"
-          style={{ fontSize: "clamp(0.8125rem, 3.6vw, 1rem)" }}
-        >
-          {ANNOUNCEMENT.lead} <span className="font-semibold text-hl-cyan">{ANNOUNCEMENT.date}</span>
-          {ANNOUNCEMENT.tail}{" "}
-          <a
-            href={ANNOUNCEMENT.submitHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-hl-paper underline decoration-hl-paper/25 decoration-2 underline-offset-4 transition-colors hover:text-hl-cyan hover:decoration-hl-cyan focus-visible:text-hl-cyan"
-          >
-            {ANNOUNCEMENT.submitLabel}
-          </a>
-        </p>
+
       </div>
     </div>
   )

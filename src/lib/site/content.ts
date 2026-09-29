@@ -57,13 +57,6 @@ export const BRAND = {
  * not a departure from the page's lowercase headings: this is running prose,
  * which is sentence case everywhere else here too.
  */
-export const ANNOUNCEMENT = {
-  lead: "Warm Up Week 2 started on",
-  date: "September 21st",
-  tail: "! Submit projects ",
-  submitLabel: "here",
-  submitHref: "https://forms.hackclub.com/halflifesubmit",
-} as const
 
 export type DesignWeek = {
   subject: string
