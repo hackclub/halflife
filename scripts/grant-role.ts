@@ -22,7 +22,7 @@ async function main() {
 
   const user = await prisma.user.findUnique({ where: { email } })
   if (!user) {
-    console.error(`no user with email ${email} — sign in once first`)
+    console.error(`no user with email ${email}, sign in once first`)
     process.exit(1)
   }
 

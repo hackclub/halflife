@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server"
-import { PhaseStatus } from "@/app/generated/prisma/enums"
+import { PhaseStatus, Theme } from "@/app/generated/prisma/enums"
 import { recomputeWeek } from "@/lib/analytics"
 import { fail, ok, parseBody, parseQuery, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
@@ -10,6 +10,7 @@ import { verifyOwnTimelapses } from "@/lib/lapse"
 import { cursorArgs, pageResult, paginationQuery } from "@/lib/pagination"
 import prisma from "@/lib/prisma"
 import {
+  assertWeekStarted,
   getSubmissionAccess,
   isPhaseDecided,
   isWeekOpen,
@@ -17,6 +18,7 @@ import {
   WEEK_CLOSED_MESSAGE,
 } from "@/lib/program"
 import { assertNoOwedReel } from "@/lib/reel-gate"
+import { warmupPhaseOf } from "@/lib/warmup"
 import { sanitize, sanitizeHtml } from "@/lib/sanitize"
 import { sessionCreateSchema } from "@/lib/schemas/session"
 import { recomputeStreak } from "@/lib/streak"
@@ -76,7 +78,13 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
   // A new entry completes a checkpoint, so a deleted reel still owed holds it.
   await assertNoOwedReel(gate.user.id)
 
-  if (!(await isWeekOpen(gate.user.id, id, scheduledWeekFor(project.theme, data.phase)))) {
+  if (project.theme === Theme.WARMUP && data.phase !== warmupPhaseOf(project)) {
+    return fail("VALIDATION_FAILED", "Entries on a warm-up project go on the phase it is handed in as")
+  }
+
+  const week = scheduledWeekFor(project.theme, data.phase)
+  await assertWeekStarted(week)
+  if (!(await isWeekOpen(gate.user.id, id, week))) {
     return fail("WEEK_CLOSED", WEEK_CLOSED_MESSAGE)
   }
 

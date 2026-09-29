@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import type { PhaseStatus } from "@/app/generated/prisma/enums"
-import { WeekScene } from "@/components/platform/art"
+import { Gato, WeekPainting } from "@/components/platform/art"
 import { IconArrowRight, IconClock, IconFilm, IconPencil } from "@/components/platform/icons"
 import { ProjectThumb } from "@/components/platform/ProjectThumb"
 import { RepoEditor } from "@/components/platform/RepoField"
@@ -33,12 +33,16 @@ function Legend({ className, label }: { className: string; label: string }) {
 }
 
 export function ProjectsGrid() {
-  const { projects, weeks, stateOf, weekOf } = useStore()
+  const { projects, weeks, stateOf, weekOf, warmupWeekOf, weekStarted } = useStore()
+
+  // Before week 1 the yellow checkpoint is shut, and the warm-up card above
+  // this grid is the way in, so the empty state would only contradict it.
+  if (projects.length === 0 && !weekStarted(1)) return null
 
   if (projects.length === 0) {
     return (
       <Panel tone="line" radius={20} className="bg-paper px-6 py-14 text-center">
-        <WeekScene theme="PCB" className="mx-auto h-24 w-auto opacity-40" />
+        <Gato pose="confused" sizes="180px" className="mx-auto h-auto w-[90px]" />
         <p className="mt-5 text-[1.05rem] font-extrabold text-navy">Nothing here yet</p>
         <p className="hand mx-auto mt-2 max-w-[44ch] text-[0.9rem] leading-relaxed text-navy-soft">
           your first project gets made at the yellow checkpoint. everything you log against it collects here.
@@ -70,7 +74,7 @@ export function ProjectsGrid() {
       <ul className="grid gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-3">
         {projects.map((project) => {
           const warmup = project.weekId === WARMUP_WEEK_ID
-          const week = weekOf(project.weekId)
+          const week = (warmup ? warmupWeekOf(project.id) : null) ?? weekOf(project.weekId)
           const events = projectEvents(project, weeks, stateOf)
           const stats = projectStats(events)
           const tone = reviewTone(project.designStatus, project.buildStatus)
@@ -91,9 +95,11 @@ export function ProjectsGrid() {
                       className="h-full w-full transition-transform duration-300 group-hover:scale-[1.04]"
                     />
                   ) : (
-                    <WeekScene
+                    <WeekPainting
                       theme={week.theme}
-                      className="h-full w-auto max-w-full drop-shadow-md transition-transform duration-300 group-hover:scale-[1.04]"
+                      alt=""
+                      sizes="(min-width: 1280px) 150px, (min-width: 768px) 190px, 60vw"
+                      className="sticker-shadow aspect-square h-full transition-transform duration-300 group-hover:scale-[1.04]"
                     />
                   )}
                   <span className="label absolute top-2.5 left-2.5 rounded-full bg-white/90 px-2.5 py-1 text-navy">

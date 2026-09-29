@@ -261,8 +261,8 @@ function DetailsForm({
         {tierEditable ? (
           <>
             <p className="text-[0.82rem] leading-snug text-navy-soft">
-              A tier funds its own block of hours and those hours bank nothing, so the printer money has to be worked on
-              top of them. You have <span className="font-bold text-navy tabular-nums">{fmtHours(hours)}</span>{" "}
+              Bigger tiers fund bigger builds, and ask for more design time before you submit. You have{" "}
+              <span className="font-bold text-navy tabular-nums">{fmtHours(hours)}</span>{" "}
               {project.weekId === WARMUP_WEEK_ID ? "on this project." : `in week ${project.weekId}.`}
             </p>
             {TIERS.map((t) => {
@@ -275,19 +275,18 @@ function DetailsForm({
                   onClick={() => setTier(t.id)}
                   hint={
                     <span className="block">
-                      {fmtHours(t.fundingHours)} funds the project · {fmtHours(tierBankedFloor(t.fundingHours))} banks
-                      toward your printer
+                      Includes {fmtHours(tierBankedFloor(t.fundingHours))} toward your printer goal
                     </span>
                   }
                 >
                   <span className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
                     <span className="text-[0.98rem] font-extrabold text-navy">Tier {t.id}</span>
-                    <span className="hand text-[0.86rem] text-teal-ink">${t.grantUsd} funding</span>
-                    <span className="hand text-[0.82rem] text-navy-soft">· {fmtHours(floor)} per design week</span>
+                    <span className="hand text-[0.86rem] text-teal-ink">${t.grantUsd} for parts</span>
+                    <span className="hand text-[0.82rem] text-navy-soft">· {fmtHours(floor)} to submit</span>
                     <span
                       className={cx("hand text-[0.8rem] tabular-nums", short > 0 ? "text-coral-deep" : "text-teal-ink")}
                     >
-                      {short > 0 ? `${fmtHours(short)} to go` : "hours covered"}
+                      {short > 0 ? `${fmtHours(short)} to go` : "ready to submit"}
                     </span>
                   </span>
                 </OptionRow>

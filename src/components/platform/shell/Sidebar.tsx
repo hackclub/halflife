@@ -4,7 +4,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useState } from "react"
-import { FoxAvatar } from "@/components/platform/art"
+import { Avatar } from "@/components/platform/Avatar"
 import { IconLogout } from "@/components/platform/icons"
 import { cx, Panel } from "@/components/platform/ui"
 import { signOut } from "@/lib/auth-client"
@@ -92,7 +92,7 @@ export function Sidebar({ className }: { className?: string }) {
             className="size-[66px] shrink-0 rounded-lg border-2 border-line bg-sky-pale object-cover"
           />
         ) : (
-          <FoxAvatar variant="fox-blueprint" className="size-[66px] shrink-0 rounded-lg" />
+          <Avatar name={viewer.name} image={null} shape="tile" className="size-[66px] text-[1.6rem]" />
         )}
         <div className="min-w-0">
           <p className="truncate text-[1rem] leading-tight font-extrabold text-navy">{viewer.name}</p>
@@ -123,6 +123,77 @@ export function Sidebar({ className }: { className?: string }) {
       >
         Replay the intro
       </button>
+
+      {viewer.isAdmin && <RedoOnboarding />}
+    </div>
+  )
+}
+
+/**
+ * Admins only: the whole first run again, setup questions included, as a new
+ * participant would see it. It wipes this admin's own answers, so it asks
+ * once, inline rather than in a browser dialog.
+ */
+function RedoOnboarding() {
+  const { redoOnboarding } = useStore()
+  const [asking, setAsking] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const link =
+    "hand text-[0.76rem] underline decoration-dashed underline-offset-4 transition-colors disabled:opacity-60"
+
+  if (!asking) {
+    return (
+      <button
+        type="button"
+        onClick={() => setAsking(true)}
+        className={cx(link, "-mt-3 self-start text-navy-faint hover:text-navy")}
+      >
+        Redo onboarding <span className="label ml-1 text-[0.6rem] no-underline">admin</span>
+      </button>
+    )
+  }
+
+  return (
+    <div className="-mt-2 rounded-xl border-2 border-dashed border-line px-3.5 py-3">
+      <p className="text-[0.8rem] leading-snug text-navy-soft">
+        This clears your setup answers and starts the first run over, questions included. Your projects and entries
+        stay.
+      </p>
+      {error && (
+        <p role="alert" className="mt-2 text-[0.78rem] font-semibold text-coral-dark">
+          {error}
+        </p>
+      )}
+      <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1.5">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true)
+            setError(null)
+            const failed = await redoOnboarding()
+            setBusy(false)
+            if (failed) setError(failed)
+            else setAsking(false)
+          }}
+          className={cx(link, "font-semibold text-coral-dark hover:text-navy")}
+        >
+          {busy ? "Resetting…" : "Yes, redo it"}
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            setAsking(false)
+            setError(null)
+          }}
+          className={cx(link, "text-navy-faint hover:text-navy")}
+        >
+          Cancel
+        </button>
+      </div>
     </div>
   )
 }

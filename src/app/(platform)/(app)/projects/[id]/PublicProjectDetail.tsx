@@ -1,12 +1,12 @@
 "use client"
 
 import Link from "next/link"
-import { WeekScene } from "@/components/platform/art"
+import { WeekPainting } from "@/components/platform/art"
 import { IconChevronLeft, IconClock } from "@/components/platform/icons"
 import { ProjectThumb } from "@/components/platform/ProjectThumb"
 import { Chip, Panel } from "@/components/platform/ui"
 import { DESIGN_WEEKS } from "@/lib/config/printers"
-import { WARMUP_WEEK_ID } from "@/lib/config/program"
+import { WARMUP_THEME, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { WEEK_META } from "@/lib/curriculum"
 import { fmtHours } from "@/lib/projects"
 import type { PublicProjectData } from "@/lib/queries/project-page"
@@ -22,7 +22,8 @@ export function PublicProjectDetail({ data }: { data: PublicProjectData }) {
   const warmup = data.weekId === WARMUP_WEEK_ID
   const week = WEEK_META.find((w) => w.id === data.weekId) ?? WEEK_META[0]
   const buildWeekId = data.weekId + DESIGN_WEEKS
-  const weekFor = (phase: "DESIGN" | "BUILD") => (phase === "DESIGN" ? data.weekId : buildWeekId)
+  const weekFor = (phase: "DESIGN" | "BUILD") =>
+    warmup ? WARMUP_WEEK_ID : phase === "DESIGN" ? data.weekId : buildWeekId
 
   const sessions = data.timeline.flatMap((t) => (t.kind === "session" ? [t] : []))
   const hours = sessions.reduce((n, s) => n + (s.approvedHours ?? s.hours), 0)
@@ -40,12 +41,17 @@ export function PublicProjectDetail({ data }: { data: PublicProjectData }) {
         <div className="grid gap-5 @3xl:grid-cols-[minmax(0,1fr)_260px] @3xl:gap-8">
           <div
             className="relative grid aspect-[21/9] place-items-center overflow-hidden rounded-2xl @3xl:col-start-2 @3xl:aspect-[4/3]"
-            style={{ background: data.thumbnail ? "var(--color-navy)" : week?.accent }}
+            style={{ background: data.thumbnail ? "var(--color-navy)" : warmup ? "var(--color-violet-pale)" : week?.accent }}
           >
             {data.thumbnail ? (
               <ProjectThumb thumb={data.thumbnail} className="h-full w-full" />
             ) : (
-              <WeekScene theme={week?.theme ?? "PCB"} className="h-full w-auto max-w-full p-5 drop-shadow-lg" />
+              <WeekPainting
+                theme={warmup ? WARMUP_THEME.label : (week?.theme ?? "PCB")}
+                alt=""
+                sizes="(min-width: 768px) 360px, 50vw"
+                className="sticker-shadow aspect-square h-[82%] max-w-full"
+              />
             )}
           </div>
           <div className="min-w-0 @3xl:col-start-1 @3xl:row-start-1">

@@ -32,6 +32,26 @@ export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL,
   database: prismaAdapter(prisma, { provider: "postgresql" }),
 
+  session: {
+    // Every signed-in request used to read the session and its user from the
+    // database: two round trips, ~230ms from a dev machine, before any route
+    // did its own work. The cache keeps them in an encrypted cookie for five
+    // minutes instead.
+    //
+    // The trade: a session revoked on the server (signed out on another
+    // device, or deleted by hand) keeps working here until its cookie expires,
+    // up to five minutes. Signing out in this browser clears it at once. Roles
+    // and the fraud flag are read from the database on every request, never
+    // from this cache, so neither can go stale.
+    cookieCache: {
+      enabled: true,
+      maxAge: 5 * 60,
+      // Encrypted, not just signed: the cookie carries the user's name and
+      // email, and nobody but the server needs to read them.
+      strategy: "jwe",
+    },
+  },
+
   account: {
     accountLinking: {
       enabled: true,
@@ -71,14 +91,18 @@ export const auth = betterAuth({
       timezone: { type: "string", required: false, input: false },
       pronouns: { type: "string", required: false, input: false },
       fraudFlagged: { type: "boolean", required: false, input: false, defaultValue: false },
-      encryptedAddressStreet: { type: "string", required: false, input: false },
-      encryptedAddressLine2: { type: "string", required: false, input: false },
-      encryptedAddressCity: { type: "string", required: false, input: false },
-      encryptedAddressState: { type: "string", required: false, input: false },
-      encryptedAddressZip: { type: "string", required: false, input: false },
-      encryptedAddressCountry: { type: "string", required: false, input: false },
-      encryptedBirthday: { type: "string", required: false, input: false },
-      encryptedPhone: { type: "string", required: false, input: false },
+      // Never returned: they would otherwise ride along in every session
+      // response and, with the cookie cache, in the session cookie itself.
+      // Everything that reads them (Airtable sync, the admin console) goes
+      // through Prisma, not the session.
+      encryptedAddressStreet: { type: "string", required: false, input: false, returned: false },
+      encryptedAddressLine2: { type: "string", required: false, input: false, returned: false },
+      encryptedAddressCity: { type: "string", required: false, input: false, returned: false },
+      encryptedAddressState: { type: "string", required: false, input: false, returned: false },
+      encryptedAddressZip: { type: "string", required: false, input: false, returned: false },
+      encryptedAddressCountry: { type: "string", required: false, input: false, returned: false },
+      encryptedBirthday: { type: "string", required: false, input: false, returned: false },
+      encryptedPhone: { type: "string", required: false, input: false, returned: false },
     },
   },
 

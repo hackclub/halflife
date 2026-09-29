@@ -71,6 +71,12 @@ export interface WeekMeta {
 }
 
 export interface Week extends WeekMeta {
+  /**
+   * Set only on a warm-up project's own week. Warm-ups have no week number
+   * (all are week 0, and a maker may hold several), so they are addressed by
+   * project instead.
+   */
+  projectId?: string
   /** The tier of this week's project — it decides how many chapters there are. */
   tier: 1 | 2 | 3
   /** Hours that fund the project. Above this, time banks instead. */
@@ -106,6 +112,8 @@ export interface Project {
   weekId: number
   tier: 1 | 2 | 3
   starter: boolean
+  /** Which starter project it is, when it is one. See config/onboarding. */
+  starterProjectId?: string | null
   /** Where the code, schematics and CAD live. Optional, editable any time. */
   githubRepo?: string | null
   /** The chosen cover, a journal image, or a reel frame. See lib/thumbnail. */
@@ -161,5 +169,5 @@ export interface DocArticle {
   title: string
   section: string
   summary: string
-  body: { heading: string; paragraphs: string[]; list?: string[] }[]
+  body: { heading: string; paragraphs: string[]; list?: string[]; link?: { href: string; label: string } }[]
 }

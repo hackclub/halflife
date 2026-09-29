@@ -16,6 +16,11 @@ export const projectUpdateSchema = z
      * a reviewer's decision at design approval, because it is parts money.
      */
     requestedTier: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
+    /**
+     * Taking one of the week's starter projects, or null to go back to your
+     * own idea. The route checks it is one this person is offered.
+     */
+    starterProjectId: z.string().trim().min(1).max(64).nullable().optional(),
   })
   .strict()
 

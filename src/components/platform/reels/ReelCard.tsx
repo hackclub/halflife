@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { FoxMark } from "@/components/platform/art"
+import { Gato } from "@/components/platform/art"
 import { IconComment, IconEye, IconFilm, IconHeart, IconPlay } from "@/components/platform/icons"
 import { cx } from "@/components/platform/ui"
 import type { FeedItem } from "@/lib/feed"
@@ -269,7 +269,7 @@ export function ReelCard({
 
       {announcement ? (
         <span className="label absolute top-3 left-3 z-10 flex items-center gap-1.5 rounded-2xl bg-coral px-2.5 py-1 text-white">
-          <FoxMark className="size-3.5" sticker={false} face="#ffffff" />
+          <Gato sizes="28px" className="h-auto w-4" />
           From HQ
         </span>
       ) : (

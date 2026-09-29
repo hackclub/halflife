@@ -2,6 +2,7 @@ import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
 import { markProjectCreated } from "@/lib/analytics"
 import { fail, ok, parseBody, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
+import { seesStarterProjects, starterProjectsFor } from "@/lib/config/onboarding"
 import { getThemeDef } from "@/lib/config/program"
 import { requireSession } from "@/lib/guards"
 import { getHoursBreakdown } from "@/lib/hours"
@@ -76,6 +77,22 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 
   const data = parsed.data
 
+  // A starter can only be taken if it is one this person is offered: one of
+  // this week's, and only to someone who said they are new to hardware.
+  if (data.starterProjectId) {
+    const user = await prisma.user.findUniqueOrThrow({
+      where: { id: gate.user.id },
+      select: { hardwareExperience: true },
+    })
+    const offered = seesStarterProjects(user.hardwareExperience) ? starterProjectsFor(project.theme) : []
+    if (!offered.some((p) => p.id === data.starterProjectId)) {
+      return fail("VALIDATION_FAILED", "That is not one of this week's starter projects")
+    }
+  }
+  // The starter the project will have after this request, since the same
+  // request may be the one taking it or dropping it.
+  const starterAfter = data.starterProjectId !== undefined ? data.starterProjectId : project.starterProjectId
+
   // The project page promises the tier is final once the design week is handed
   // in, and a starter project is scoped to tier 1 from the start. Hold the
   // server to the same promise rather than trusting the picker to be hidden.
@@ -83,9 +100,14 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
     if (project.designStatus === PhaseStatus.approved) {
       return fail("PHASE_LOCKED", "The design week is approved, so the tier is final")
     }
-    if (project.starterProjectId !== null && data.requestedTier !== 1) {
+    if (starterAfter !== null && data.requestedTier !== 1) {
       return fail("VALIDATION_FAILED", "Starter projects are scoped to tier 1")
     }
+  }
+  // Taking a starter without also asking for tier 1 would leave a starter at a
+  // bigger tier, which the check above only catches when the tier changes.
+  if (data.starterProjectId && (data.requestedTier ?? project.requestedTier) !== 1) {
+    return fail("VALIDATION_FAILED", "Starter projects are scoped to tier 1")
   }
 
   // A cover is a key, and a key is a path into the bucket: only one this user
@@ -110,6 +132,7 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
       // design approval because it decides parts money, and letting this route
       // write it would let anyone grant themselves $100.
       ...(data.requestedTier !== undefined ? { requestedTier: data.requestedTier } : {}),
+      ...(data.starterProjectId !== undefined ? { starterProjectId: data.starterProjectId } : {}),
       ...(data.coverImageKey !== undefined ? { coverImageKey: data.coverImageKey } : {}),
       ...(data.artifactLinks !== undefined
         ? {

@@ -1,11 +1,23 @@
 "use client"
 
+import Image from "next/image"
 import { useEffect, useMemo, useRef, useState } from "react"
-import { FoxAvatar, FoxMark, PrinterArt, ReelScene, WeekScene } from "@/components/platform/art"
+import { Avatar } from "@/components/platform/Avatar"
+import { Gato, PrinterPhoto, WeekPainting } from "@/components/platform/art"
 import { IconCheck, IconClock, IconCoin, IconFilm, IconLock, IconPlay, IconUpload } from "@/components/platform/icons"
 import { Button, cx, onAccent } from "@/components/platform/ui"
 import { MIN_HOURS_PER_WEEK } from "@/lib/config/printers"
 import { BUILD_HOURS, checkpointsFor, WEEK_META } from "@/lib/curriculum"
+import flightControllerShot from "../../../../public/projects/flightcontroller.png"
+import hexapodShot from "../../../../public/projects/hexapod.png"
+import macropadShot from "../../../../public/projects/macropad.png"
+
+/** The mock Doomscroller's three reels, on photos of real projects makers built. */
+const MOCK_REELS = [
+  { who: "Half Life HQ", shot: macropadShot },
+  { who: "Joe Bob", shot: hexapodShot },
+  { who: "Froppii", shot: flightControllerShot },
+]
 
 /**
  * The fly-through plays before anyone has picked a tier, so it previews the
@@ -149,7 +161,7 @@ function Stage({ goal }: { goal: PrinterGoal }) {
     <div className="relative" style={{ width: STAGE_W, height: STAGE_H }}>
       {/* ---- the shell, in frame while the camera is still at the top ---- */}
       <div className="absolute top-[40px] left-[40px] flex w-[300px] flex-col gap-5">
-        <FoxMark className="w-[86px]" />
+        <Gato className="h-auto w-[86px]" sizes="172px" />
         <MiniPanel className="px-5 py-4">
           {["Home", "Projects", "Reels", "Explore", "Shop"].map((l, i) => (
             <p
@@ -164,7 +176,12 @@ function Stage({ goal }: { goal: PrinterGoal }) {
           ))}
         </MiniPanel>
         <MiniPanel className="relative overflow-hidden px-5 py-4">
-          <PrinterArt kind={goal.kind} className="absolute -top-1 right-2 h-20 w-auto" />
+          {/* as on the real goal card: the photo on its tile, inside the corner */}
+          <PrinterPhoto
+            id={goal.id}
+            sizes="128px"
+            className="absolute top-3 right-3 size-16 rounded-xl border border-line/80"
+          />
           <p className="max-w-[60%] text-[0.95rem] leading-snug font-semibold text-navy">
             You are on track to get a <span className="text-teal-ink">{goal.name}</span>
           </p>
@@ -173,7 +190,7 @@ function Stage({ goal }: { goal: PrinterGoal }) {
           </div>
         </MiniPanel>
         <MiniPanel className="flex items-center gap-3 p-3">
-          <FoxAvatar variant="fox-blueprint" className="size-[60px] rounded-lg" />
+          <Avatar name="John Cena" image={null} shape="tile" className="size-[60px] text-[1.5rem]" />
           <div>
             <p className="text-[1rem] font-extrabold text-navy">John Cena</p>
             <p className="hand text-[0.82rem] text-navy-soft">@johncena</p>
@@ -187,13 +204,11 @@ function Stage({ goal }: { goal: PrinterGoal }) {
         <MiniPanel className="p-3.5">
           <p className="label mb-3 text-navy-faint">The Doomscroller</p>
           <div className="flex flex-col gap-3">
-            {(["hq", "pcb", "cad"] as const).map((s) => (
-              <div key={s} className="relative overflow-hidden rounded-xl" style={{ aspectRatio: "9 / 13" }}>
-                <ReelScene scene={s} className="absolute inset-0 size-full" />
+            {MOCK_REELS.map((r) => (
+              <div key={r.who} className="relative overflow-hidden rounded-xl bg-navy" style={{ aspectRatio: "9 / 13" }}>
+                <Image src={r.shot} alt="" fill sizes="552px" className="object-cover" />
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent p-2.5 pt-8">
-                  <p className="text-[0.72rem] font-bold text-white">
-                    {s === "hq" ? "Half Life HQ" : s === "pcb" ? "Joe Bob" : "Froppii"}
-                  </p>
+                  <p className="text-[0.72rem] font-bold text-white">{r.who}</p>
                 </div>
               </div>
             ))}
@@ -255,7 +270,7 @@ function Stage({ goal }: { goal: PrinterGoal }) {
         className="absolute flex flex-col items-center rounded-3xl border-[3px] border-gold-deep bg-gold-pale px-12 py-8"
         style={{ top: PRIZE_TOP, left: COL_X - 300, width: 600, height: PRIZE_H }}
       >
-        <PrinterArt kind={goal.kind} className="mt-3 h-[280px] w-auto" />
+        <PrinterPhoto id={goal.id} sizes="560px" className="mt-3 size-[280px] rounded-2xl border border-gold-deep/40" />
         <p className="mt-3 text-[2rem] leading-none font-extrabold tracking-[-0.03em] text-navy">{goal.name}</p>
         <p className="hand mt-2 text-[1rem] text-navy-soft">finish all ten weeks!</p>
       </div>
@@ -304,7 +319,7 @@ function WeekBanners({ refs }: { refs: React.RefObject<(HTMLDivElement | null)[]
                 {week.headline}
               </p>
             </div>
-            <WeekScene theme={week.theme} className="h-14 w-auto shrink-0" />
+            <WeekPainting theme={week.theme} alt="" sizes="112px" className="sticker-shadow size-14 shrink-0" />
           </div>
         </div>
       ))}
@@ -516,7 +531,10 @@ export function Cinematic() {
       {title && (
         <div className="absolute inset-0 z-20 grid place-items-center px-6 text-center">
           <div>
-            <FoxMark className="mx-auto w-[clamp(96px,16vw,150px)] motion-safe:animate-[hl-pop_.7s_cubic-bezier(.16,1,.3,1)]" />
+            <Gato
+              sizes="300px"
+              className="mx-auto h-auto w-[clamp(96px,16vw,150px)] motion-safe:animate-[hl-pop_.7s_cubic-bezier(.16,1,.3,1)]"
+            />
             <h1 className="mt-6 text-[clamp(3rem,13vw,7.5rem)] leading-[0.86] font-extrabold tracking-[-0.055em] text-navy motion-safe:animate-[hl-rise_.7s_.15s_cubic-bezier(.16,1,.3,1)_both]">
               HALF LIFE
             </h1>

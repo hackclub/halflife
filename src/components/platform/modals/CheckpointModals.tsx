@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useId, useMemo, useRef, useState } from "react"
-import { FoxMark, WeekScene } from "@/components/platform/art"
+import { Gato, WeekPainting } from "@/components/platform/art"
 import {
   IconArrowRight,
   IconCamera,
@@ -18,11 +18,13 @@ import {
 import { countImages, Markdown, proseLength } from "@/components/platform/Markdown"
 import { RepoInput, repoIsValid } from "@/components/platform/RepoField"
 import { ReelCapture } from "@/components/platform/reels/ReelCapture"
+import { StarterProjectCard } from "@/components/platform/StarterProjectCard"
 import { Button, borderedInputClass, Chip, cx, Field, inputClass, OptionRow, Panel } from "@/components/platform/ui"
 import { linkLapse } from "@/lib/auth-client"
 import type { BomLine } from "@/lib/bom"
+import { STARTER_PROJECT_TIER, starterProjectsFor } from "@/lib/config/onboarding"
 import { paceTarget, printerById, submitFloorFor, tierBankedFloor, weekAsk } from "@/lib/config/printers"
-import { WARMUP_WEEK_ID } from "@/lib/config/program"
+import { THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { photosRequired, TIERS } from "@/lib/curriculum"
 import {
   PLATFORM_INFO,
@@ -33,8 +35,9 @@ import {
 } from "@/lib/public-reels"
 import { normalizeRepo } from "@/lib/repo"
 import type { RepoCheckResult } from "@/lib/repo-checks"
+import { EXAMPLE_JOURNAL_URL } from "@/lib/routes"
 import { useStore } from "@/lib/store"
-import type { Checkpoint } from "@/lib/types"
+import type { Checkpoint, Project, Week } from "@/lib/types"
 import { uploadFile } from "@/lib/use-handoff"
 import { ImageUploads, type UploadedImage } from "./ImageUploads"
 import { fmtDuration, LapsePicker, type LapseTimelapse } from "./LapsePicker"
@@ -53,6 +56,23 @@ import { RepoChecks } from "./RepoChecks"
 const to2 = (n: number) => Math.round(n * 100) / 100
 
 /** Hours, written the way a person says them. */
+/**
+ * How a sheet names its week. The warm-up is week 0 in the store, which is
+ * only an address; to the person it is their warm-up.
+ */
+function weekName(week: { id: number }): string {
+  return week.id === WARMUP_WEEK_ID ? "Warm-up" : `Week ${week.id}`
+}
+
+/**
+ * Whether a project is the one a week's sheet is about: a warm-up's own week
+ * names its project, and a season week's project is its design week's.
+ */
+function isWeeksProject(week: Week, project: Project): boolean {
+  if (week.projectId) return project.id === week.projectId
+  return project.weekId === (week.phase === "build" ? week.id - 5 : week.id)
+}
+
 function fmtH(h: number) {
   return `${to2(h)}h`
 }
@@ -89,9 +109,10 @@ function takeJournalDraft(checkpointId: string): JournalDraft | null {
 }
 
 export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
-  const { setOpenCheckpoint, logSession, editSession, complete, projects, stateOf, weekOf, weekHours } = useStore()
+  const { setOpenCheckpoint, logSession, editSession, complete, projects, stateOf, weekOfCheckpoint, hoursOf } =
+    useStore()
 
-  const week = weekOf(checkpoint.weekId)
+  const week = weekOfCheckpoint(checkpoint)
 
   // Every journal node is one entry: write it and it is done. The week's clock
   // is what decides whether wrapping up is on the table yet. Opened again once
@@ -125,7 +146,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
   // The fallback is for a season sheet opened before its project row landed;
   // it must never pick the warm-up project, which has no season week.
   const project =
-    projects.find((p) => p.weekId === (week.phase === "build" ? week.id - 5 : week.id)) ??
+    projects.find((p) => isWeeksProject(week, p)) ??
     projects.find((p) => p.weekId !== WARMUP_WEEK_ID) ??
     projects[0]
 
@@ -171,7 +192,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
         : `${needPhotos - shots} more ${needPhotos - shots === 1 ? "image" : "images"} in your entry for ${fmtH(claimed)}.${orLapse}`
     : null
 
-  const hours = weekHours(week.id)
+  const hours = hoursOf(week)
   const toFloor = Math.max(0, week.submitHours - hours)
 
   /**
@@ -239,7 +260,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
       accent="var(--color-violet)"
       size="lg"
       scrollKey={tab}
-      eyebrow={`Week ${week.id} · ${checkpoint.title}`}
+      eyebrow={`${weekName(week)} · ${checkpoint.title}`}
       footer={
         <>
           <div className="mr-auto flex min-w-[min(100%,16rem)] flex-1 items-center gap-3">
@@ -262,7 +283,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
                   : editing
                     ? "Saving replaces this entry. It keeps its place on the map."
                     : toFloor > 0
-                      ? `${fmtH(toFloor)} more before you can wrap up the week.`
+                      ? `${fmtH(toFloor)} more before you can ${week.id === WARMUP_WEEK_ID ? "submit it" : "wrap up the week"}.`
                       : "Submit your project when it's done!"}
             </p>
           </div>
@@ -331,12 +352,19 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
             <span className="label inline-flex items-center gap-1.5 rounded-full bg-orange px-3 py-1.5 text-navy">
               {project?.name ?? `${week.theme} project`}
             </span>
-            <Link
-              href="/docs/journalling"
-              className="hand ml-auto text-[0.78rem] text-navy-soft underline decoration-dashed underline-offset-4 hover:text-navy"
-            >
-              Unsure? Read our docs
-            </Link>
+            <span className="hand ml-auto flex flex-wrap gap-x-3 text-[0.78rem] text-navy-soft">
+              <a
+                href={EXAMPLE_JOURNAL_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline decoration-dashed underline-offset-4 hover:text-navy"
+              >
+                See an example journal
+              </a>
+              <Link href="/docs/journalling" className="underline decoration-dashed underline-offset-4 hover:text-navy">
+                Unsure? Read our docs
+              </Link>
+            </span>
           </div>
 
           {/* Write and read sit side by side rather than behind a swap, so a
@@ -365,9 +393,9 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
                 its widest unbroken content, so a long URL in the entry widened
                 the column and the preview beside it scrolled sideways. */}
             <div className={cx("relative min-w-0", preview && "hidden md:block")}>
-              <FoxMark
-                className="pointer-events-none absolute top-1/2 left-1/2 w-40 -translate-x-1/2 -translate-y-1/2 opacity-[0.07]"
-                sticker={false}
+              <Gato
+                sizes="160px"
+                className="pointer-events-none absolute top-1/2 left-1/2 h-auto w-40 -translate-x-1/2 -translate-y-1/2 opacity-[0.07]"
               />
               <textarea
                 value={body}
@@ -863,7 +891,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
     return (
       <PublicReelModal
         postId={postedId}
-        eyebrow={`Week ${week.id} · ${checkpoint.title}`}
+        eyebrow={`${weekName(week)} · ${checkpoint.title}`}
         videoUrl={previewUrl}
         onClose={() => setOpenCheckpoint(null)}
       />
@@ -878,7 +906,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
         accent="var(--color-teal)"
         size="md"
         labelledBy={titleId}
-        eyebrow={`Week ${week.id} · ${checkpoint.title}`}
+        eyebrow={`${weekName(week)} · ${checkpoint.title}`}
         footer={
           <>
             <Button variant="outline" onClick={() => setOpenCheckpoint(null)}>
@@ -906,7 +934,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
       onClose={() => setOpenCheckpoint(null)}
       accent="var(--color-violet)"
       size="lg"
-      eyebrow={`Week ${week.id} · ${checkpoint.title}`}
+      eyebrow={`${weekName(week)} · ${checkpoint.title}`}
       footer={
         <>
           {postError ? (
@@ -1050,6 +1078,19 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
   const [tier, setTier] = useState<1 | 2 | 3>(experience === "lots" ? 3 : experience === "some" ? 2 : 1)
   const [showExamples, setShowExamples] = useState(false)
   const [repo, setRepo] = useState("")
+  // The week's starter projects, for someone who said they are new to
+  // hardware. Weeks follow the theme order, design then build, so the week
+  // number names the theme.
+  const theme = THEMES[(week.id - 1) % THEMES.length]?.id
+  const starters = theme && (experience === "first" || experience === "little") ? starterProjectsFor(theme) : []
+  // Taking one fills the form in and holds the tier at 1, as onboarding does.
+  const [starterId, setStarterId] = useState<string | null>(null)
+  const takeStarter = (s: (typeof starters)[number]) => {
+    setStarterId(s.id)
+    setName(s.title)
+    setDesc(s.description)
+    setTier(STARTER_PROJECT_TIER)
+  }
 
   const ok = name.trim().length > 1 && desc.trim().length > 4 && repoIsValid(repo)
 
@@ -1077,7 +1118,8 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
                 description: desc.trim(),
                 weekId: week.id,
                 tier,
-                starter: false,
+                starter: starterId !== null,
+                starterProjectId: starterId,
                 githubRepo: normalizeRepo(repo).url,
                 designStatus: "draft",
                 buildStatus: "draft",
@@ -1095,6 +1137,36 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
       <div className="grid gap-6 lg:grid-cols-[1fr_230px] lg:items-start">
         <div className="grid gap-4">
+          {starters.map((s) => {
+            const chosen = starterId === s.id
+            return (
+              <StarterProjectCard
+                key={s.id}
+                starter={s}
+                chosen={chosen}
+                action={
+                  chosen ? (
+                    <span className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                      <Chip tone="teal">
+                        <IconCheck className="text-[0.9rem]" /> Building {s.title}
+                      </Chip>
+                      <button
+                        type="button"
+                        onClick={() => setStarterId(null)}
+                        className="hand text-[0.82rem] text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
+                      >
+                        Use my own idea instead
+                      </button>
+                    </span>
+                  ) : (
+                    <Button variant="outline" size="sm" onClick={() => takeStarter(s)}>
+                      Build {s.title}
+                    </Button>
+                  )
+                }
+              />
+            )
+          })}
           <Field label="Project name" hint="Give it a cool name." id="np-name">
             <input
               id="np-name"
@@ -1142,6 +1214,11 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
           <div className="mt-2">
             <p className="label mb-2 text-violet-deep">Funding tier</p>
+            {starterId !== null && (
+              <p className="hand mb-2.5 text-[0.82rem] text-navy-soft">
+                Starter projects are Tier 1. Switch to your own idea to choose a different tier.
+              </p>
+            )}
             {/* The hours quoted here are the ones the submit gate will hold
                 you to, not the funded block. A tier that advertises its
                 funding alone advertises the smaller of two numbers: the funded
@@ -1152,21 +1229,21 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
                 <OptionRow
                   key={t.id}
                   selected={tier === t.id}
+                  disabled={starterId !== null && t.id !== STARTER_PROJECT_TIER}
                   onClick={() => setTier(t.id)}
                   hint={
                     <>
                       {t.detail}
                       <span className="mt-1 block text-navy-soft/90">
-                        About {t.hours}. {fmtH(t.fundingHours)} of that funds the project and banks nothing, so the
-                        least you can hand in on tier {t.id} is {fmtH(submitFloorFor(t.fundingHours))} — the other{" "}
-                        {fmtH(tierBankedFloor(t.fundingHours))} banks toward your printer.
+                        You can submit on tier {t.id} from {fmtH(submitFloorFor(t.fundingHours))} of design time, and{" "}
+                        {fmtH(tierBankedFloor(t.fundingHours))} of that goes toward your printer goal.
                       </span>
                     </>
                   }
                 >
                   <span className="flex flex-wrap items-baseline gap-x-2.5">
                     <span className="text-[0.98rem] font-extrabold text-navy">Tier {t.id}</span>
-                    <span className="hand text-[0.86rem] text-teal-ink">${t.grantUsd} funded</span>
+                    <span className="hand text-[0.86rem] text-teal-ink">${t.grantUsd} for parts</span>
                     <span className="hand text-[0.8rem] text-navy-soft">
                       · {fmtH(submitFloorFor(t.fundingHours))} to submit
                     </span>
@@ -1179,7 +1256,11 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
         <div className="order-first lg:order-none">
           <div className="overflow-hidden rounded-2xl p-4" style={{ background: week.accent }}>
-            <WeekScene theme={week.theme} className="w-full" />
+            <WeekPainting
+              theme={week.theme}
+              sizes="(min-width: 1024px) 198px, 220px"
+              className="sticker-shadow mx-auto aspect-square w-full max-w-[220px]"
+            />
           </div>
           <p className="mt-3 text-[0.86rem] leading-snug text-navy-soft">{week.primer.split(". ")[0]}.</p>
         </div>
@@ -1200,8 +1281,8 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
  * details stay as they are, and this same checkpoint hands it in again.
  */
 export function UnsubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
-  const { setOpenCheckpoint, unsubmitPhase, weekOf, stateOf } = useStore()
-  const week = weekOf(checkpoint.weekId)
+  const { setOpenCheckpoint, unsubmitPhase, weekOfCheckpoint, stateOf } = useStore()
+  const week = weekOfCheckpoint(checkpoint)
   const handedIn = stateOf(checkpoint.id).at
   const titleId = useId()
   const [busy, setBusy] = useState(false)
@@ -1223,7 +1304,7 @@ export function UnsubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
       accent="var(--color-violet)"
       size="md"
       labelledBy={titleId}
-      eyebrow={`Week ${week.id} · ${checkpoint.title}`}
+      eyebrow={`${weekName(week)} · ${checkpoint.title}`}
       footer={
         <>
           {error && (
@@ -1235,7 +1316,7 @@ export function UnsubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
             Keep it in review
           </Button>
           <Button variant="solid" onClick={() => void unsubmit()} disabled={busy}>
-            {busy ? "Unsubmitting…" : `Unsubmit week ${week.id}`}
+            {busy ? "Unsubmitting…" : week.id === WARMUP_WEEK_ID ? "Unsubmit your warm-up" : `Unsubmit week ${week.id}`}
           </Button>
         </>
       }
@@ -1257,13 +1338,13 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
     postReel,
     projects,
     setProjectTier,
-    weekOf,
-    weekHours,
+    weekOfCheckpoint,
+    hoursOf,
     printerFund,
     pendingCoins,
     goalId,
   } = useStore()
-  const week = weekOf(checkpoint.weekId)
+  const week = weekOfCheckpoint(checkpoint)
   const isBuild = week.phase === "build"
 
   // The week is long enough to hand in — that gate is the trail's, and this
@@ -1282,7 +1363,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
   // The fallback is for a season sheet opened before its project row landed;
   // it must never pick the warm-up project, which has no season week.
   const project =
-    projects.find((p) => p.weekId === (isBuild ? week.id - 5 : week.id)) ??
+    projects.find((p) => isWeeksProject(week, p)) ??
     projects.find((p) => p.weekId !== WARMUP_WEEK_ID) ??
     projects[0]
 
@@ -1322,8 +1403,9 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
   // The closing reel is a reel like any other and goes on the trail under its
   // own key, so the week's timeline shows it where it happened rather than
   // swallowing it inside the submission.
-  const reelCheckpointId = `w${week.id}-reel-submission`
-  const closingCaption = isBuild ? `Week ${week.id}: ${week.theme} built.` : `Week ${week.id}: ${week.theme} designed.`
+  const reelCheckpointId = week.projectId ? `wu-${week.projectId}-reel-submission` : `w${week.id}-reel-submission`
+  const closingSubject = week.id === WARMUP_WEEK_ID ? `Warm-up: ${project?.name ?? "my project"}` : `Week ${week.id}: ${week.theme}`
+  const closingCaption = `${closingSubject} ${isBuild ? "built" : "designed"}.`
   const buildNotes = works === "no" && writeup.trim() ? writeup.trim() : undefined
 
   const total = isBuild ? 2 : 3
@@ -1366,7 +1448,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
    * of a tier 2 week than an Ender does. Missing the target is a warning the
    * sheet already gives; missing the floor is a refusal.
    */
-  const hours = weekHours(week.id)
+  const hours = hoursOf(week)
   const tierFloor = submitFloorFor
   const tierTarget = (fundingHours: number) => weekAsk(goal.hoursPerWeek, fundingHours)
   const tierShort = (fundingHours: number) => Math.max(0, tierFloor(fundingHours) - hours)
@@ -1420,7 +1502,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
     return (
       <PublicReelModal
         postId={shareId}
-        eyebrow={`Week ${week.id} · Submitted`}
+        eyebrow={`${weekName(week)} · Submitted`}
         videoUrl={clipUrl}
         onClose={() => setOpenCheckpoint(null)}
       />
@@ -1434,7 +1516,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
       accent="var(--color-magenta)"
       size="lg"
       scrollKey={step}
-      eyebrow={`Submit week ${week.id} · ${step}/${total}`}
+      eyebrow={`Submit ${week.id === WARMUP_WEEK_ID ? "your warm-up" : `week ${week.id}`} · ${step}/${total}`}
       footer={
         <>
           <Button variant="outline" onClick={() => (step === 1 ? setOpenCheckpoint(null) : setStep((s) => s - 1))}>
@@ -1456,7 +1538,13 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
             </Button>
           ) : (
             <Button variant="coral" disabled={!canAdvance || submitting} onClick={() => void submit()}>
-              {submitting ? "Submitting…" : owed > 0 ? "Submit anyway" : `Submit week ${week.id}`}{" "}
+              {submitting
+                ? "Submitting…"
+                : owed > 0
+                  ? "Submit anyway"
+                  : week.id === WARMUP_WEEK_ID
+                    ? "Submit warm-up"
+                    : `Submit week ${week.id}`}{" "}
               <IconCheck className="text-base" />
             </Button>
           )}
@@ -1475,14 +1563,13 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
           <IconWarning className="mt-0.5 shrink-0 text-xl text-coral-deep" />
           <div className="min-w-0">
             <p className="text-[0.95rem] leading-snug font-extrabold text-coral-dark">
-              You won&apos;t be banking enough coins if you submit the project.
+              You&apos;re a little behind on your printer goal.
             </p>
             <p className="mt-1 text-[0.85rem] leading-snug text-navy-soft">
               Spend some more time on it! You are <span className="font-bold text-navy tabular-nums">{owed}</span>{" "}
               {owed === 1 ? "coin" : "coins"} behind the pace for a{" "}
-              <span className="font-bold text-navy">{goal.name}</span> — every hour past{" "}
-              <span className="font-bold text-navy tabular-nums">{fmtH(week.bankedFrom)}</span> this week banks 5 more.
-              You can still hand it in, and a bigger week later makes it up.
+              <span className="font-bold text-navy">{goal.name}</span>. You can still hand it in, and a bigger week
+              later makes it up.
             </p>
           </div>
         </div>
@@ -1659,7 +1746,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
                       Tier {t.id}
                     </span>
                     <span className={cx("hand block text-[0.86rem]", short > 0 ? "text-navy-soft" : "text-teal-ink")}>
-                      ${t.grantUsd} of funding
+                      ${t.grantUsd} for parts
                     </span>
 
                     {/* The hours are the gate, so they lead. The cart only
@@ -1672,7 +1759,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
                       )}
                     >
                       {short > 0
-                        ? `${fmtH(short)} short, tier ${t.id} needs ${fmtH(tierFloor(t.fundingHours))}`
+                        ? `Opens at ${fmtH(tierFloor(t.fundingHours))} of design time, ${fmtH(short)} to go`
                         : behind > 0
                           ? `${fmtH(tierTarget(t.fundingHours))} for a ${goal.name}, ${fmtH(behind)} to go`
                           : `${fmtH(tierTarget(t.fundingHours))} for a ${goal.name}, you have ${fmtH(hours)}`}

@@ -467,17 +467,7 @@ function ScrollCue({
       className={`inline-block px-2 py-1.5 font-display font-bold uppercase text-hl-paper decoration-hl-cyan decoration-2 underline-offset-[0.3em] hover:underline ${className}`}
       style={{ ...style, fontSize, letterSpacing: "0.14em" }}
     >
-      {/* The visible word first and the rest of the sentence after it, so the
-          accessible name reads "scroll to see how it works" — a name that
-          contains the label on screen. An `aria-label` of "See how it works"
-          over the word "scroll" would have been the natural move and would
-          have failed WCAG 2.5.3, which asks the two to agree.
 
-          The negative margin takes back the trailing letter-space that 0.14em
-          adds after the final L, which would otherwise push the word half a
-          space left of the centre it is being centred on. */}
-      <span style={{ marginRight: "-0.14em" }}>scroll</span>
-      <span className="sr-only"> to see how it works</span>
     </a>
   )
 }

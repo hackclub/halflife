@@ -4,7 +4,8 @@ import { AuditAction, logAudit } from "@/lib/audit"
 import { requireSession } from "@/lib/guards"
 import { fetchProjectSeconds } from "@/lib/hackatime"
 import prisma from "@/lib/prisma"
-import { getSubmissionAccess, isPhaseDecided, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
+import { scheduledWeekFor } from "@/lib/config/program"
+import { assertWeekStarted, getSubmissionAccess, isPhaseDecided, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
 import { hackatimeLinkSchema } from "@/lib/schemas/project"
 
 type Params = { params: Promise<{ id: string }> }
@@ -49,6 +50,8 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 
   const access = await getSubmissionAccess(gate.user.id, id)
   if (!access.open) return fail("SUBMISSIONS_CLOSED", SUBMISSIONS_CLOSED_MESSAGE)
+
+  await assertWeekStarted(scheduledWeekFor(project.theme, parsed.data.phase))
 
   // Linking adds hours to the phase, and the decision recomputes those hours
   // live, so an in-review phase is frozen for this too — not only a decided one.

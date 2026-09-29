@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { useMemo, useState } from "react"
-import { ShopArt } from "@/components/platform/art"
+import { Gato } from "@/components/platform/art"
 import { IconCheck, IconCoin } from "@/components/platform/icons"
 import { cx, Panel } from "@/components/platform/ui"
 import type { ShopItemView } from "@/lib/shop"
@@ -21,14 +21,6 @@ const CATEGORIES = [
   { label: "Consumables", match: "CONSUMABLE" },
   { label: "Everything else", match: "MISC" },
 ] as const
-
-/** The drawn object that stands in for an item, since the rows carry no art. */
-const ART: Record<string, string> = {
-  PRINTER: "printer",
-  PRINTER_UPGRADE: "iron",
-  CONSUMABLE: "kit",
-  MISC: "sticker",
-}
 
 export function ShopGrid({ items: all }: { items: readonly ShopItemView[] }) {
   const router = useRouter()
@@ -123,7 +115,14 @@ export function ShopGrid({ items: all }: { items: readonly ShopItemView[] }) {
               className="group flex flex-col overflow-hidden bg-paper"
             >
               <div className="relative grid aspect-[4/3] place-items-center bg-cream/70 p-3">
-                <ShopArt art={ART[item.category] ?? "sticker"} className="h-full w-auto max-w-full drop-shadow-sm" />
+                {/* The photo staff set on the item; until there is one, gato
+                    minding a box of parts, so the shelf never shows a hole. */}
+                {item.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- staff paste any host into the item's image field
+                  <img src={item.imageUrl} alt="" loading="lazy" className="h-full w-full object-contain" />
+                ) : (
+                  <Gato pose="box" sizes="200px" className="sticker-shadow h-full w-auto max-w-full" />
+                )}
                 {item.stock !== null && item.stock > 0 && item.stock <= 3 && (
                   <span className="label absolute top-2.5 left-2.5 rounded-full bg-coral px-2.5 py-1 text-white">
                     Low stock
@@ -189,8 +188,8 @@ export function ShopGrid({ items: all }: { items: readonly ShopItemView[] }) {
       </ul>
 
       <p className="hand mt-8 text-center text-[0.86rem] text-navy-soft">
-        you have <span className="font-bold text-orange-ink tabular-nums">{coins}</span> coins. every hour you log past
-        your tier banks five more.
+        you have <span className="font-bold text-orange-ink tabular-nums">{coins}</span> coins. keep building past your
+        tier to earn more.
       </p>
     </>
   )

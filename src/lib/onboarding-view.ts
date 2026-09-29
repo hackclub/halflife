@@ -1,7 +1,18 @@
 import { type HardwareExperience, Theme } from "@/app/generated/prisma/enums"
 import { EXPERIENCE_OPTIONS, isBeginner, ONBOARDING_STEPS, weekIntroFor } from "@/lib/config/onboarding"
-import { submitFloorFor } from "@/lib/config/printers"
+import { THEMES } from "@/lib/config/program"
 import { TIERS } from "@/lib/config/tiers"
+import { WEEK_META } from "@/lib/curriculum"
+
+/** A starter project as the client shows it: everything but which weeks it belongs to. */
+export interface StarterProjectView {
+  id: string
+  title: string
+  description: string
+  parts: readonly string[]
+  repoUrl: string
+  guideUrl: string
+}
 
 export interface OnboardingStateData {
   reached: number
@@ -16,7 +27,7 @@ export interface OnboardingStateData {
     starterProjectId: string | null
     tierLocked: boolean
   }
-  starterProjects: readonly { id: string; title: string; description: string }[]
+  starterProjects: readonly StarterProjectView[]
   trackingDismissed: boolean
 }
 
@@ -30,6 +41,8 @@ export interface OnboardingView {
   steps: readonly { id: string; number: number; heading: string; skippable: boolean }[]
   experienceOptions: readonly { value: HardwareExperience; label: string; hint: string }[]
   weekIntro: {
+    /** The curriculum's name for the theme, which is what names its painting. */
+    painting: string
     kicker: string
     headline: string
     primer: string
@@ -42,16 +55,13 @@ export interface OnboardingView {
     starterProjectId: string | null
     tierLocked: boolean
   }
-  starterProjects: readonly { id: string; title: string; description: string }[]
+  starterProjects: readonly StarterProjectView[]
   tiers: readonly {
     id: number
     name: string
     grantUsd: number
-    fundingHours: number
-    submitFloorHours: number
-    blurb: string
-    detail: string
-    toBank: string
+    estimate: string
+    showcase: readonly { title: string; image: string; href: string }[]
   }[]
 }
 
@@ -74,6 +84,7 @@ export function toOnboardingView(state: OnboardingStateData): OnboardingView {
     experienceOptions: EXPERIENCE_OPTIONS,
     weekIntro: intro
       ? {
+          painting: WEEK_META[THEMES.findIndex((t) => t.id === intro.theme)]?.theme ?? "",
           kicker: intro.kicker,
           headline: intro.headline,
           primer: intro.primer,
@@ -87,16 +98,20 @@ export function toOnboardingView(state: OnboardingStateData): OnboardingView {
       starterProjectId: state.project.starterProjectId,
       tierLocked: state.project.tierLocked,
     },
-    starterProjects: state.starterProjects.map((project) => ({ ...project })),
+    starterProjects: state.starterProjects.map((p) => ({
+      id: p.id,
+      title: p.title,
+      description: p.description,
+      parts: [...p.parts],
+      repoUrl: p.repoUrl,
+      guideUrl: p.guideUrl,
+    })),
     tiers: TIERS.map((tier) => ({
       id: tier.id,
       name: tier.name,
       grantUsd: tier.grantUsd,
-      fundingHours: tier.fundingHours,
-      submitFloorHours: submitFloorFor(tier.fundingHours),
-      blurb: tier.blurb,
-      detail: tier.detail,
-      toBank: tier.toBank,
+      estimate: tier.estimate,
+      showcase: [...(tier.showcase[Theme.PCB] ?? [])],
     })),
   }
 }

@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
-import { FoxMark } from "@/components/platform/art"
+import { Gato } from "@/components/platform/art"
 import { IconFilm, IconPause, IconPlay, IconVolume, IconVolumeOff } from "@/components/platform/icons"
 import { cx } from "@/components/platform/ui"
 import type { FeedItem } from "@/lib/feed"
@@ -316,7 +316,7 @@ export function StageSlide({
         {/* The project on a tag in the corner, as on the rail's card. */}
         {announcement ? (
           <span className="label absolute top-3 left-3 z-[4] flex items-center gap-1.5 rounded-2xl bg-coral px-2.5 py-1 text-white">
-            <FoxMark className="size-3.5" sticker={false} face="#ffffff" />
+            <Gato sizes="28px" className="h-auto w-4" />
             From HQ
           </span>
         ) : reel.project ? (

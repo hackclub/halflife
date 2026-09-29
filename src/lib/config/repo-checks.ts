@@ -69,8 +69,27 @@ export const REPO_FILE_KINDS: Record<
   },
   firmware: {
     label: "Firmware",
-    missing: "No firmware or code (.ino, .c, .cpp, .py, .rs…) found",
-    extensions: [".ino", ".c", ".cpp", ".h", ".hpp", ".py", ".rs", ".ts", ".js", ".uf2", ".hex", ".bin"],
+    missing: "No firmware found — Arduino (.ino), C/C++, MicroPython or CircuitPython (.py), Rust and the like all count",
+    // .mpy is precompiled MicroPython/CircuitPython; .uf2/.hex/.bin are built
+    // images, which count when the source lives elsewhere.
+    extensions: [
+      ".ino",
+      ".c",
+      ".cc",
+      ".cpp",
+      ".cxx",
+      ".h",
+      ".hh",
+      ".hpp",
+      ".py",
+      ".mpy",
+      ".rs",
+      ".ts",
+      ".js",
+      ".uf2",
+      ".hex",
+      ".bin",
+    ],
   },
   logicSchematic: {
     label: "Schematic",
@@ -90,7 +109,9 @@ export const THEME_REPO_REQUIREMENTS: Record<
   Theme,
   { required: readonly RepoFileKind[]; recommended: readonly RepoFileKind[] }
 > = {
-  [Theme.PCB]: { required: ["pcbSource"], recommended: ["pcbFab", "bom"] },
+  // A PCB week's board has to do something, so the code that runs on it is
+  // part of the hand-in, not an extra.
+  [Theme.PCB]: { required: ["pcbSource", "firmware"], recommended: ["pcbFab", "bom"] },
   [Theme.CAD]: { required: ["cadSource"], recommended: ["cadModel"] },
   [Theme.SYNTH]: { required: ["logicSchematic"], recommended: ["firmware"] },
   [Theme.DISPLAYS]: { required: ["firmware"], recommended: ["logicSchematic"] },

@@ -46,7 +46,7 @@ export const BUILD_HOURS: number = BUILD_BLOCKS.reduce((n, h) => n + h, 0)
 export const THEMES_REQUIRED_FOR_PRINTER = 5
 
 /** Fallbacks used only when seeding a fresh ProgramSettings row. */
-export const DEFAULT_EVENT_START_DATE = process.env.PROGRAM_START_DATE ?? "2026-09-07"
+export const DEFAULT_EVENT_START_DATE = process.env.PROGRAM_START_DATE ?? "2026-10-05"
 export const DEFAULT_PROGRAM_TIMEZONE = process.env.PROGRAM_TIMEZONE ?? "America/New_York"
 
 export const TOTAL_WEEKS = 10

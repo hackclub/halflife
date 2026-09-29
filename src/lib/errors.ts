@@ -29,6 +29,8 @@ export const API_ERROR_STATUS = {
   ALREADY_RESOLVED: 409,
   SUBMISSIONS_CLOSED: 409,
   WEEK_CLOSED: 409,
+  /** A curriculum week that has not opened yet. */
+  WEEK_NOT_STARTED: 409,
   /** A deleted reel has to be re-recorded before anything else moves. */
   REEL_OWED: 409,
   SHOP_CLOSED: 409,

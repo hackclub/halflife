@@ -3,6 +3,7 @@ import { cache } from "react"
 import type { ProgramSettings } from "@/app/generated/prisma/client"
 import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
 import { DEFAULT_EVENT_START_DATE, DEFAULT_PROGRAM_TIMEZONE, TOTAL_WEEKS } from "@/lib/config/program"
+import { HttpError } from "@/lib/errors"
 import prisma from "@/lib/prisma"
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -92,6 +93,37 @@ export function weekClosesAt(
   // first guess landed on the other side of a daylight-saving change.
   const first = wall - zoneOffsetMs(wall, settings.programTimezone)
   return new Date(wall - zoneOffsetMs(first, settings.programTimezone))
+}
+
+/**
+ * The moment a program week starts taking work: midnight at the start of its
+ * Monday in the program's timezone, which is the same instant the week before
+ * it closes. Week 1's is the program's first midnight.
+ */
+export function weekOpensAt(
+  settings: Pick<ProgramSettings, "eventStartDate" | "programTimezone">,
+  week: number,
+): Date {
+  return weekClosesAt(settings, week - 1)
+}
+
+/**
+ * Refuse work on a curriculum week that has not opened. Nothing on the trail
+ * can be started early, the first checkpoint included; the client locks the
+ * same weeks, and this is what holds when a request goes around it.
+ *
+ * Week 0 is the warm-up, which is not scheduled and never waits.
+ */
+export async function assertWeekStarted(week: number): Promise<void> {
+  if (week < 1) return
+  const settings = await getProgramSettings()
+  const opensAt = weekOpensAt(settings, week)
+  if (new Date() < opensAt) {
+    throw new HttpError(
+      "WEEK_NOT_STARTED",
+      `Week ${week} opens on ${formatProgramDate(opensAt, settings.programTimezone)}.`,
+    )
+  }
 }
 
 /** How far ahead of UTC a timezone's wall clock is at an instant, in ms. */

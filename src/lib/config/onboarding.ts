@@ -33,7 +33,7 @@ export interface OnboardingStep {
 
 export const ONBOARDING_STEPS = [
   { id: "experience", number: 1, heading: "Have you built hardware before?", skippable: false },
-  { id: "week", number: 2, heading: "Each week will have a theme, this week it's...", skippable: false },
+  { id: "week", number: 2, heading: "Each week has a theme, this week it's...", skippable: false },
   { id: "project", number: 3, heading: "Make your first project!", skippable: false },
   { id: "idea", number: 4, heading: "Stuck? Pick one of the following:", skippable: true },
   { id: "tier", number: 5, heading: "Choose a Tier", skippable: false },
@@ -74,67 +74,74 @@ export function suggestedTierFor(experience: HardwareExperience | null): TierId 
 export const EXPERIENCE_OPTIONS = [
   {
     value: HardwareExperience.FIRST_TIME,
-    label: "This is my first time!",
-    hint: "Never touched a soldering iron. Perfect.",
+    label: "this is my first time!",
+    hint: "Day 1 or 1 Day, you know?",
   },
   {
     value: HardwareExperience.A_LITTLE,
     label: "just a little...",
-    hint: "A kit or two, maybe an Arduino blink.",
+    hint: "Messed around with breadboards, maybe a blinking LED.",
   },
   {
     value: HardwareExperience.A_GOOD_AMOUNT,
-    label: "Yeah, i've built a good amount",
-    hint: "You have shipped a project that works.",
+    label: "yeah, I've built a good amount",
+    hint: "You've shipped a project that works.",
   },
   {
     value: HardwareExperience.ITS_LIFE,
-    label: "hardware... is life...",
-    hint: "You own more multimeters than mugs.",
+    label: "call me the hardware wizard",
+    hint: "You've built a lot of projects, from PCBs to 3D prints.",
   },
 ] as const
 
 /**
- * Starter projects, offered when someone has no idea of their own.
+ * Starter projects: a real, finished build with a step-by-step guide, offered
+ * to anyone who said they are new to hardware (see `seesStarterProjects`).
  *
  * Taking one locks the tier request to 1, so these have to be genuinely Tier 1
- * in scope — roughly six to eight hours. Only the PCB set is reachable from
- * the first checkpoint; the others exist because the design note says every
- * later design week repeats "project creation/tier selection".
+ * in scope. Each week is meant to get its own; until those repos exist,
+ * Starbie, week one's, stands in for every theme.
  */
 export interface StarterProject {
   readonly id: string
-  readonly theme: Theme
+  /** The weeks it is offered in. */
+  readonly themes: readonly Theme[]
   readonly title: string
   readonly description: string
+  /** What goes on the board, for the card's parts line. */
+  readonly parts: readonly string[]
+  readonly repoUrl: string
+  readonly guideUrl: string
 }
+
+const ALL_THEMES = [Theme.PCB, Theme.CAD, Theme.SYNTH, Theme.DISPLAYS, Theme.BREADBOARD_COMPUTER] as const
 
 export const STARTER_PROJECTS = [
   {
-    id: "pcb-blinky-badge",
-    theme: Theme.PCB,
-    title: "A blinky conference badge",
+    id: "starbie",
+    // Week one's starter, in every week until each has its own repo.
+    themes: ALL_THEMES,
+    title: "Starbie",
+    // The project's own README, trimmed.
     description:
-      "A two-layer board with a coin cell, a microcontroller and a handful of LEDs, shaped however you like. The smallest board that still counts: schematic, layout, order, solder.",
-  },
-  {
-    id: "pcb-usb-macropad",
-    theme: Theme.PCB,
-    title: "A four-key macropad",
-    description:
-      "Four mechanical switches, a USB-C connector and a microcontroller that speaks HID. Pick a layout you will actually use — it ends the week as something on your desk.",
-  },
-  {
-    id: "pcb-sensor-breakout",
-    theme: Theme.PCB,
-    title: "A sensor breakout board",
-    description:
-      "Pick a sensor you want to use in a later build and give it a breakout: regulator, decoupling, a header, and a footprint you have checked against the datasheet.",
+      "A tiny motion-controlled digital pet, basically a desktop Tamagotchi. Totally not a Starboy.",
+    parts: ["XIAO ESP32-C3", "OLED screen", "MPU6050 motion sensor", "DHT11 sensor"],
+    repoUrl: "https://github.com/SharKingStudios/Starbie",
+    guideUrl: "https://github.com/SharKingStudios/Starbie/blob/main/Week%201%20Guide.md",
   },
 ] as const satisfies readonly StarterProject[]
 
 export function starterProjectsFor(theme: Theme): readonly StarterProject[] {
-  return STARTER_PROJECTS.filter((p) => p.theme === theme)
+  return STARTER_PROJECTS.filter((p) => (p.themes as readonly Theme[]).includes(theme))
+}
+
+/**
+ * Who is shown starter projects: the two answers that mean new to hardware.
+ * Unlike `isBeginner`, no answer is not a yes; someone who never answered did
+ * not say they were new.
+ */
+export function seesStarterProjects(experience: HardwareExperience | null): boolean {
+  return experience === HardwareExperience.FIRST_TIME || experience === HardwareExperience.A_LITTLE
 }
 
 export function getStarterProject(id: string): StarterProject | undefined {
@@ -164,14 +171,14 @@ export interface WeekIntro {
 export const WEEK_INTROS = [
   {
     theme: Theme.PCB,
-    kicker: "Printed Circuit Board Week:",
+    kicker: "Printed Circuit Board Week",
     headline: "DESIGN YOUR PCB",
     primer:
-      "A printed circuit board is a sheet of fibreglass with copper traces etched into it, so components solder straight onto the board instead of being wired by hand. This week you make one end to end: a schematic that says what connects to what, a layout that says where everything physically sits, and a parts cart to order from. At the end of the week you send it off, and a fab house posts you the real thing.",
+      "A printed circuit board is a sheet of fibreglass with copper traces etched into it, so components solder straight onto the board instead of being wired by hand.",
     examples: [
-      "A board that replaces a breadboard project you have already built",
-      "A shield or hat for a dev board you own",
-      "Something with a connector you have never routed before",
+      "A PCB keychain!",
+      "A flight controller!",
+      "A devboard from your favorite microcontroller!",
     ],
   },
 ] as const satisfies readonly WeekIntro[]

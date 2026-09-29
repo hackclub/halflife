@@ -75,7 +75,7 @@ async function main() {
   check("upload size cap parsed", Number.isFinite(MAX_UPLOAD_BYTES), `${MAX_UPLOAD_BYTES} bytes`)
 
   if (failures > 0) {
-    console.log(`\n${failures} configuration problem(s) — not attempting an upload.`)
+    console.log(`\n${failures} configuration problem(s), not attempting an upload.`)
     process.exit(1)
   }
 
@@ -89,7 +89,7 @@ async function main() {
     check("PUT to the bucket", true)
   } catch (err) {
     check("PUT to the bucket", false, err instanceof Error ? err.message : String(err))
-    console.log("\nUpload failed — check the access key, secret and bucket name.")
+    console.log("\nUpload failed, check the access key, secret and bucket name.")
     process.exit(1)
   }
 
@@ -104,7 +104,7 @@ async function main() {
         res.ok,
         res.ok
           ? `${res.status}`
-          : `${res.status} ${res.statusText} — the bucket is not public. Enable the r2.dev subdomain or attach a custom domain, or reels will upload fine and never play`,
+          : `${res.status} ${res.statusText}, the bucket is not public. Enable the r2.dev subdomain or attach a custom domain, or reels will upload fine and never play`,
       )
       if (res.ok) {
         const fetched = Buffer.from(await res.arrayBuffer())

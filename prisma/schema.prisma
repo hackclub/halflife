@@ -274,6 +274,8 @@ enum AuditAction {
   ADMIN_RESTORE_POST
   ADMIN_HIDE_COMMENT
   ADMIN_PIN_POST
+  /// An admin putting themselves back at the start of the first checkpoint.
+  ADMIN_RESET_ONBOARDING
   ADMIN_RESOLVE_DISPUTE
   ADMIN_SEND_GRANT
   /// One warm-up Airtable row brought into Half Life (lib/airtable/warmup-import).
@@ -615,6 +617,13 @@ model ThemeProject {
   /// someone pick one and then request Tier 3 would be asking a reviewer to
   /// turn down a number the app itself offered them.
   starterProjectId String?
+
+  /// Which single phase a warm-up project is handed in as, chosen when it is
+  /// made: DESIGN asks for parts funding, BUILD shows a finished build. A
+  /// warm-up is one submission, never design-then-build. Null on every season
+  /// project, and on warm-ups imported from Airtable, whose phase is whichever
+  /// one the import put in review.
+  warmupPhase Phase?
 
   /// Per-project deadline override, layered on top of the per-user one.
   /// Either being in the future opens the gate.
