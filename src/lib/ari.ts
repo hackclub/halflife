@@ -307,15 +307,29 @@ async function applyDecision(event: DecisionEvent): Promise<void> {
   }
   const { themeProjectId, phase } = parsed
 
-  const submission = await prisma.phaseSubmission.findFirst({
-    where: { themeProjectId, phase, resolvedAt: null },
-    orderBy: { createdAt: "desc" },
-    select: { id: true },
+  // Prefer the row this ship was actually sent for. A withdraw-and-resubmit
+  // reuses the same external id, so a decision for the withdrawn ship must not
+  // be applied to the newer hand-in that now holds the open slot.
+  const byShip = await prisma.phaseSubmission.findFirst({
+    where: { themeProjectId, phase, ariSubmissionId: event.id },
+    select: { id: true, ariSubmissionId: true, resolvedAt: true },
   })
-  if (!submission) {
+  const open =
+    byShip ??
+    (await prisma.phaseSubmission.findFirst({
+      where: { themeProjectId, phase, resolvedAt: null },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, ariSubmissionId: true, resolvedAt: true },
+    }))
+  if (!open) {
     await ignored(event, "no open submission for this phase", event.external_id)
     return
   }
+  if (!byShip && open.ariSubmissionId && open.ariSubmissionId !== event.id) {
+    await ignored(event, "decision names an earlier ship of this phase", event.external_id)
+    return
+  }
+  const submission = open
 
   const result =
     event.event === "review.approved"
@@ -443,10 +457,16 @@ async function applyReset(event: ResetEvent): Promise<void> {
   const latest = await prisma.phaseSubmission.findFirst({
     where: { themeProjectId, phase },
     orderBy: { createdAt: "desc" },
-    select: { id: true },
+    select: { id: true, ariSubmissionId: true },
   })
   if (!latest) {
     await ignored(event, "no submission to requeue", event.external_id)
+    return
+  }
+  // The same stale-ship rule as a decision: reopening a newer hand-in because
+  // Ari reverted an older one would erase a review it never saw.
+  if (latest.ariSubmissionId && latest.ariSubmissionId !== event.id) {
+    await ignored(event, "reset names an earlier ship of this phase", event.external_id)
     return
   }
 
