@@ -1031,7 +1031,15 @@ model AriWebhookDelivery {
   externalId      String?
   receivedAt      DateTime @default(now())
 
+  /// Set on a decision whose state said "not yet" — a build approval that
+  /// arrived before its design. `payload` holds the whole event so the retry
+  /// job can apply it once the design lands; `appliedAt` marks it done.
+  /// Ordinary deliveries have both null.
+  appliedAt DateTime?
+  payload   Json?
+
   @@index([receivedAt])
+  @@index([appliedAt])
   @@map("ari_webhook_delivery")
 }
 

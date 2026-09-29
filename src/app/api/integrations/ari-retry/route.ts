@@ -1,8 +1,17 @@
 import type { NextRequest } from "next/server"
+import type { AriWebhookEvent } from "@hackclub/ari"
+import { Prisma } from "@/app/generated/prisma/client"
 import { Phase } from "@/app/generated/prisma/enums"
 import { ok, withRoute } from "@/lib/api"
-import { findUnsyncedAriSubmissions, isAriConfigured, sendSubmissionToAri, withdrawSubmissionFromAri } from "@/lib/ari"
+import {
+  applyStoredEvent,
+  findUnsyncedAriSubmissions,
+  isAriConfigured,
+  sendSubmissionToAri,
+  withdrawSubmissionFromAri,
+} from "@/lib/ari"
 import { AuditAction } from "@/lib/audit"
+import { HttpError } from "@/lib/errors"
 import { requireIntegrationAuth } from "@/lib/integration-auth"
 import prisma from "@/lib/prisma"
 import { trackSideEffect } from "@/lib/side-effects"
@@ -100,7 +109,33 @@ export const POST = withRoute(async (req: NextRequest) => {
     }
   }
 
-  const summary = { attempted: pending.length, synced, skipped, failed, withdrawn, withdrawFailed }
+  // Deferred decisions: a build approval that arrived before its design. The
+  // event is stored whole, not just an error, so applying it here is replaying
+  // the decision itself; the still-waiting ones stay for the next run.
+  let deferred = 0
+  let deferredFailed = 0
+  if (isAriConfigured()) {
+    const waiting = await prisma.ariWebhookDelivery.findMany({
+      where: { appliedAt: null, payload: { not: Prisma.DbNull } },
+      orderBy: { receivedAt: "asc" },
+      take: 25,
+      select: { id: true, payload: true },
+    })
+    for (const row of waiting) {
+      try {
+        await applyStoredEvent(row.payload as unknown as AriWebhookEvent)
+        await prisma.ariWebhookDelivery.update({ where: { id: row.id }, data: { appliedAt: new Date() } })
+        deferred++
+      } catch (err) {
+        // Still waiting on the design: leave it for a later run rather than
+        // counting it failed.
+        if (err instanceof HttpError && err.code === "DESIGN_NOT_APPROVED") continue
+        deferredFailed++
+      }
+    }
+  }
+
+  const summary = { attempted: pending.length, synced, skipped, failed, withdrawn, withdrawFailed, deferred, deferredFailed }
   await recordSyncRun("ari_ship", summary)
   return ok(summary)
 })

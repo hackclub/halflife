@@ -1,5 +1,6 @@
 import "server-only"
 import { Ari, AriApiError, type AriReview, type AriShipInput, type AriWebhookEvent } from "@hackclub/ari"
+import type { Prisma } from "@/app/generated/prisma/client"
 import { HoursSource, Phase, PhaseStatus, ReviewResult } from "@/app/generated/prisma/enums"
 import { ariExternalId, parseAriExternalId } from "@/lib/ari-id"
 import { selectPendingShips } from "@/lib/ari-pending"
@@ -566,20 +567,7 @@ async function applyUnknown(event: UnknownEvent): Promise<void> {
   })
 }
 
-/**
- * Apply one verified Ari webhook.
- *
- * Idempotent: the delivery id is checked first and recorded only after the work
- * succeeds, so a redelivery (same id) is a no-op and a failed one is retried by
- * Ari. Errors are rethrown so the route answers non-2xx.
- */
-export async function applyAriWebhook(event: AriWebhookEvent, deliveryId: string): Promise<void> {
-  const seen = await prisma.ariWebhookDelivery.findUnique({ where: { deliveryId }, select: { id: true } })
-  if (seen) return
-
-  const externalId = "external_id" in event ? event.external_id : null
-  const ariSubmissionId = "id" in event ? event.id : null
-
+async function applyEvent(event: AriWebhookEvent): Promise<void> {
   switch (event.event) {
     case "review.approved":
     case "review.changes":
@@ -599,6 +587,62 @@ export async function applyAriWebhook(event: AriWebhookEvent, deliveryId: string
     case "unknown":
       await applyUnknown(event)
       break
+  }
+}
+
+/**
+ * Apply an event that was stored because the state was not ready for it — a
+ * build approval that arrived before its design. Called by the `ari-retry`
+ * job; the caller marks the delivery applied once this resolves.
+ */
+export async function applyStoredEvent(event: AriWebhookEvent): Promise<void> {
+  await applyEvent(event)
+}
+
+/**
+ * Apply one verified Ari webhook.
+ *
+ * Idempotent: the delivery id is checked first and recorded only after the work
+ * succeeds, so a redelivery (same id) is a no-op and a failed one is retried by
+ * Ari. A decision the state is not ready for is stored whole instead (see
+ * below) and replayed by `ari-retry`, so it does not depend on Ari's
+ * redelivery window outlasting the wait.
+ *
+ * Errors are rethrown so the route answers non-2xx.
+ */
+export async function applyAriWebhook(event: AriWebhookEvent, deliveryId: string): Promise<void> {
+  const seen = await prisma.ariWebhookDelivery.findUnique({ where: { deliveryId }, select: { id: true } })
+  if (seen) return
+
+  const externalId = "external_id" in event ? event.external_id : null
+  const ariSubmissionId = "id" in event ? event.id : null
+
+  try {
+    await applyEvent(event)
+  } catch (err) {
+    // "Not yet", not "never": the design has to be approved before a build
+    // approval can be applied, and that ordering is normal here. Keep the
+    // whole event so the retry job can apply it later, and accept the
+    // delivery rather than asking Ari to redeliver indefinitely.
+    if (err instanceof HttpError && err.code === "DESIGN_NOT_APPROVED") {
+      await prisma.ariWebhookDelivery.create({
+        data: {
+          deliveryId,
+          event: event.event,
+          ariSubmissionId,
+          externalId,
+          payload: event as unknown as Prisma.InputJsonValue,
+        },
+      })
+      await logAudit({
+        action: AuditAction.ARI_WEBHOOK_IGNORED,
+        targetType: "ThemeProject",
+        targetId: externalId ? (parseAriExternalId(externalId)?.themeProjectId ?? null) : null,
+        metadata: { event: event.event, reason: "deferred: design not approved", externalId, deferred: true },
+      })
+      return
+    }
+    throw err
   }
 
   await prisma.ariWebhookDelivery.create({
