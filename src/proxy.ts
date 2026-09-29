@@ -21,6 +21,17 @@ function securityHeaders(res: NextResponse): NextResponse {
   res.headers.set("X-Content-Type-Options", "nosniff")
   res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin")
   res.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+  // Applies to every origin, but harmless on plain http dev and the one header
+  // that stops a downgrade on the way to production.
+  res.headers.set("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
+  // A CSP without `script-src`/`style-src`: it cannot break the app's inline
+  // styles and scripts, but it closes framed pages, plugin content and
+  // form/post hijacking. A nonce-based script policy is a follow-up, not a
+  // launch-day change.
+  res.headers.set(
+    "Content-Security-Policy",
+    "frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'",
+  )
   return res
 }
 
@@ -116,6 +127,10 @@ export const config = {
     // basic-auth credentials, so gating them would break the feature on
     // exactly the deployments it is most useful on. They carry their own
     // credential: a single-use token that expires in minutes.
-    "/((?!_next/static|_next/image|favicon.ico|api/upload|api/integrations|api/health|api/handoff/upload|r/).*)",
+    //
+    // `api/slack` verifies Slack's HMAC itself and has to answer the Request
+    // URL verification while the pre-launch gate is still on, or the app
+    // cannot be set up.
+    "/((?!_next/static|_next/image|favicon.ico|api/upload|api/integrations|api/slack|api/health|api/handoff/upload|r/).*)",
   ],
 }
