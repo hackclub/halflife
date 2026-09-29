@@ -356,6 +356,48 @@ export async function listPrinterAwards(limit = 100) {
   }))
 }
 
+/** Recent live reels, newest first, for the moderation panel. */
+export async function listRecentPostsForModeration(limit = 25) {
+  return prisma.post.findMany({
+    where: { deletedAt: null },
+    orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
+    take: limit,
+    select: {
+      id: true,
+      kind: true,
+      caption: true,
+      hiddenAt: true,
+      hiddenReason: true,
+      publishedAt: true,
+      createdAt: true,
+      user: { select: { id: true, name: true, email: true } },
+      themeProject: { select: { id: true, title: true } },
+    },
+  })
+}
+
+/**
+ * Recent live comments, newest first. A comment on a soft-deleted post is not
+ * shown — nobody can reach it to report it — but a hidden comment stays in
+ * the list so staff can see it was handled.
+ */
+export async function listRecentCommentsForModeration(limit = 25) {
+  return prisma.postComment.findMany({
+    where: { deletedAt: null, post: { deletedAt: null } },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: limit,
+    select: {
+      id: true,
+      body: true,
+      hiddenAt: true,
+      hiddenReason: true,
+      createdAt: true,
+      user: { select: { id: true, name: true, email: true } },
+      post: { select: { id: true, caption: true } },
+    },
+  })
+}
+
 export async function getAdminCounters() {
   const [pendingReviews, pendingOrders, participants, shipped] = await Promise.all([
     prisma.phaseSubmission.count({ where: { resolvedAt: null } }),
