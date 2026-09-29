@@ -119,10 +119,11 @@ trace: a blip during an approval silently underpays someone.
 
 ## Weeks are derived, themes are constants
 
-Week number is `floor((now - eventStartDate) / 7) + 1`, computed in the program
-timezone. There is no `Week` table: a week is not something anyone edits, and a
-row would only create drift between the database and the copy on the dashboard.
-Siege has run a 14-week program on exactly this.
+Week number is counted in program-timezone calendar days from the program
+start's UTC date: a week flips at midnight in the program's timezone, the same
+instant its deadline closes. There is no `Week` table: a week is not something
+anyone edits, and a row would only create drift between the database and the
+copy on the dashboard. Siege has run a 14-week program on exactly this.
 
 Deadlines are **soft**. The week schedule drives what the dashboard highlights
 and stamps an `onTime` flag on submissions for analytics. Nothing gates on it —
@@ -157,9 +158,13 @@ paid with no review and no record. Every review freezes the numbers it used onto
 
 ## Airtable writes
 
-- `performUpsert` keyed on `(Half-Life ID, Stage)`, not read-then-write. Two
-  concurrent approvals — an admin double-click, a retried request — both read
-  zero rows and both create, putting duplicate grant rows into the payout sink.
+- An adopt-or-create keyed on `(email, project name, stage)` under a Postgres
+  advisory lock per `(project, phase)`, not a plain read-then-write. Two
+  concurrent writes — an admin double-click, a retried request, the submit hook
+  racing the retry job — would both read zero rows and both create, putting
+  duplicate grant rows into the payout sink. (Airtable's `performUpsert` on a
+  `(Half-Life ID, Stage)` field pair is the better key when those fields
+  exist; the lock is what makes the current key safe.)
 - `typecast: false`, or a typo in a theme name silently adds a sixth option to
   the single-select.
 - Deletion from the shared unified base goes by exact record id, captured from

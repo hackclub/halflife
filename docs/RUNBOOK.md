@@ -169,8 +169,9 @@ The jobs hit the public ingress, and `src/proxy.ts` already excludes
 `/api/integrations` from basic auth — verify that before enabling
 `REQUIRE_BASICAUTH`, or every job goes red at once.
 
-Every one of these routes accepts `?dryRun=true` and returns what it would have
-done without writing. Use it before trusting a schedule.
+Most of these routes accept `?dryRun=true` and return what they would have
+done without writing (`printer-reconcile` writes a run record either way).
+Use it before trusting a schedule.
 
 ## Routine operations
 
