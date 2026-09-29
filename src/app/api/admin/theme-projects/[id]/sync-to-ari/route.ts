@@ -37,14 +37,26 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 
   // A ship is a hand-in, so only a phase awaiting review has one to send: a
   // draft was never submitted, and a decided phase is already Ari's record.
-  const project = await prisma.themeProject.findUnique({
-    where: { id },
+  const project = await prisma.themeProject.findFirst({
+    where: { id, deletedAt: null },
     select: { designStatus: true, buildStatus: true },
   })
   if (!project) return fail("NOT_FOUND", "Project not found")
   const status = parsed.data.phase === "DESIGN" ? project.designStatus : project.buildStatus
   if (status !== PhaseStatus.in_review) {
     return fail("CONFLICT", "That phase is not awaiting review, so there is no ship to send")
+  }
+
+  // A hand-in that already reached Ari has nothing to retry; resending is
+  // harmless there (Ari dedupes by external id) but the button should say so
+  // rather than perform a no-op round trip.
+  const open = await prisma.phaseSubmission.findFirst({
+    where: { themeProjectId: id, phase: parsed.data.phase, resolvedAt: null },
+    orderBy: { createdAt: "desc" },
+    select: { ariSubmissionId: true },
+  })
+  if (open?.ariSubmissionId) {
+    return fail("CONFLICT", "That hand-in already reached Ari — there is nothing to retry")
   }
 
   try {

@@ -257,6 +257,9 @@ export async function findUnsyncedAriSubmissions(): Promise<{ themeProjectId: st
 
   const open = await prisma.phaseSubmission.findMany({
     where: { themeProjectId: { in: projects.map((p) => p.id) }, resolvedAt: null },
+    // Ascending so the newest-per-key tie-break in selectPendingShips sees a
+    // stable order when two rows share a millisecond.
+    orderBy: { createdAt: "asc" },
     select: { themeProjectId: true, phase: true, ariSubmissionId: true, createdAt: true },
   })
   return selectPendingShips(projects, open)
