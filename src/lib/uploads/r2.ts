@@ -1,5 +1,5 @@
 import "server-only"
-import { randomUUID } from "node:crypto"
+import { createHash, randomUUID } from "node:crypto"
 import { DeleteObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3"
 import { HttpError } from "@/lib/errors"
 
@@ -249,11 +249,28 @@ export function validateUpload(
 }
 
 /**
+ * The SHA-256 of a file's bytes, as hex.
+ *
+ * Pictures are named after this rather than a random id, so the same screenshot
+ * picked twice — in one sitting, or later from another device — is one object
+ * and one URL. The journal counts its evidence by URL, so a random name per
+ * upload let one picture count as many.
+ */
+export function contentHash(body: Buffer): string {
+  return createHash("sha256").update(body).digest("hex")
+}
+
+/**
  * Keys are namespaced by user. Stasis's flat `folder/timestamp-random.ext`
  * makes abuse untraceable and orphan cleanup impossible.
+ *
+ * `name` is the object's name inside the user's folder. It defaults to a
+ * random UUID; images pass their content hash instead (see `contentHash`), so
+ * re-uploading one picture lands on the key it already has rather than on a
+ * second copy.
  */
-export function buildObjectKey(userId: string, folder: string, ext: string): string {
-  return `${folder}/${userId}/${randomUUID()}.${ext}`
+export function buildObjectKey(userId: string, folder: string, ext: string, name: string = randomUUID()): string {
+  return `${folder}/${userId}/${name}.${ext}`
 }
 
 /**

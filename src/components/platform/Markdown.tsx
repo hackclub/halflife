@@ -26,6 +26,24 @@ function safeSrc(raw: string): string | undefined {
 }
 
 /**
+ * What makes two image URLs the same picture.
+ *
+ * Uploads are named after the SHA-256 of their bytes (`contentHash` in
+ * `lib/uploads/r2`), so one picture is always one filename and two URLs for
+ * it differ at most in their extension. Comparing whole URLs would still count
+ * the same screenshot saved once as `a.png` and once as `a.jpg` as two. Any
+ * URL that does not carry such a name — an outside host, a data URI — is its
+ * own identity.
+ */
+function imageIdentity(src: string): string {
+  if (src.startsWith("data:")) return src
+  const path = src.split(/[?#]/, 1)[0] ?? ""
+  const name = path.slice(path.lastIndexOf("/") + 1)
+  const hash = /^([0-9a-f]{64})(?:\.[^.]*)?$/i.exec(name)?.[1]
+  return hash ? hash.toLowerCase() : src
+}
+
+/**
  * How many images an entry carries. The session's evidence rule counts these
  * rather than a separate attachment list: the picture belongs in the sentence
  * that explains it, so the entry is the only place it can live.
@@ -40,7 +58,7 @@ export function countImages(source: string): number {
     const raw = match[1]
     if (raw === undefined) continue
     const src = safeSrc(raw)
-    if (src !== undefined) seen.add(src)
+    if (src !== undefined) seen.add(imageIdentity(src))
   }
   return seen.size
 }

@@ -2,6 +2,7 @@ import { fail, ok, parseUploadForm, rateLimitedInMemory, withRoute } from "@/lib
 import { requireSession } from "@/lib/guards"
 import {
   buildObjectKey,
+  contentHash,
   isUploadConfigured,
   isVideoBytes,
   MAX_UPLOAD_BYTES,
@@ -52,7 +53,12 @@ export const POST = withRoute(async (req: Request) => {
   }
 
   // Keys are namespaced by user so abuse is traceable and orphans are findable.
-  const key = buildObjectKey(gate.user.id, folder, check.ext)
+  // Pictures are named after their bytes rather than a fresh uuid: picking the
+  // same image again has to mint the same URL, because the journal counts its
+  // evidence by URL (`countImages`) and a second URL counts as a second
+  // picture. Videos keep the random name — a reel is identified by its post.
+  const name = file.type.startsWith("image/") ? contentHash(bytes) : undefined
+  const key = buildObjectKey(gate.user.id, folder, check.ext, name)
   await putObject(key, bytes, file.type)
 
   return ok({ objectKey: key, url: publicUrlFor(key) }, { status: 201 })

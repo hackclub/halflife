@@ -66,6 +66,11 @@ export function ImageUploads({
           const { objectKey } = await uploadFile(file, folder, (progress) =>
             setPending((p) => p.map((row) => (row.id === id ? { ...row, progress } : row))),
           )
+          // Uploads are named after their bytes, so re-picking a picture
+          // already on the list hands back the key it already has. Adding it
+          // again would put two thumbnails on one object and make removing
+          // either remove both.
+          if (latest.current.some((img) => img.objectKey === objectKey)) return
           const next = [...latest.current, { objectKey, previewUrl: URL.createObjectURL(file) }]
           latest.current = next
           onChange(next)
