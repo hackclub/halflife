@@ -257,7 +257,10 @@ async function bodies() {
     ["mov · qt  ", isoFile("qt  "), true],
     ["heic · image", isoFile("heic", ["mif1", "heic"]), false],
     ["avif · image", isoFile("avif", ["avif", "mif1"]), false],
-    ["webm · EBML", new Uint8Array([0x1a, 0x45, 0xdf, 0xa3, 0, 0, 0, 0, 0, 0, 0, 0]), true],
+    ["webm · vp8 video", new Uint8Array([0x1a, 0x45, 0xdf, 0xa3, ...asciiBytes("V_VP8"), 0, 0, 0, 0]), true],
+    ["webm · av1 video", new Uint8Array([0x1a, 0x45, 0xdf, 0xa3, ...asciiBytes("V_AV1"), 0, 0, 0, 0]), true],
+    ["webm · audio only", new Uint8Array([0x1a, 0x45, 0xdf, 0xa3, ...asciiBytes("A_OPUS"), 0, 0, 0]), false],
+    ["webm · magic only", new Uint8Array([0x1a, 0x45, 0xdf, 0xa3, 0, 0, 0, 0, 0, 0, 0, 0]), false],
     ["plain text", new TextEncoder().encode("hello world!"), false],
   ]
   for (const [name, bytes, isVideo] of videoCases) {
