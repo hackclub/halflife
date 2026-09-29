@@ -95,4 +95,8 @@ export const THEME_REPO_REQUIREMENTS: Record<
   [Theme.SYNTH]: { required: ["logicSchematic"], recommended: ["firmware"] },
   [Theme.DISPLAYS]: { required: ["firmware"], recommended: ["logicSchematic"] },
   [Theme.BREADBOARD_COMPUTER]: { required: ["logicSchematic"], recommended: [] },
+  // A warm-up project is any hardware project, so nothing over and above the
+  // README and photos every hand-in owes (see lib/repo-checks) is demanded of
+  // its repo.
+  [Theme.WARMUP]: { required: [], recommended: [] },
 }

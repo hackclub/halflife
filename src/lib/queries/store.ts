@@ -1,8 +1,15 @@
 import "server-only"
-import { HardwareExperience, HoursSource, Phase, PhaseStatus } from "@/app/generated/prisma/enums"
+import { HardwareExperience, HoursSource, Phase, PhaseStatus, Theme } from "@/app/generated/prisma/enums"
 import { avatarUrl } from "@/lib/avatar"
 import { DEFAULT_GOAL_ID } from "@/lib/config/printers"
-import { DESIGN_WEEKS, ONBOARDING_CHECKPOINT_ID, scheduleForWeek, THEMES, TOTAL_WEEKS } from "@/lib/config/program"
+import {
+  DESIGN_WEEKS,
+  ONBOARDING_CHECKPOINT_ID,
+  scheduleForWeek,
+  THEMES,
+  TOTAL_WEEKS,
+  WARMUP_WEEK_ID,
+} from "@/lib/config/program"
 import { getBalances } from "@/lib/currency"
 import { rollUpHours } from "@/lib/hours"
 import prisma from "@/lib/prisma"
@@ -320,6 +327,12 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 
   const projectIdByWeek: Record<number, string> = {}
   for (const project of projects) {
+    // A warm-up project has no curriculum week to be addressed by; week 0 is
+    // the slot the client's unsubmit path reaches for it through.
+    if (project.theme === Theme.WARMUP) {
+      projectIdByWeek[WARMUP_WEEK_ID] = project.id
+      continue
+    }
     const themeIndex = THEMES.findIndex((t) => t.id === project.theme)
     if (themeIndex !== -1) projectIdByWeek[weekOf(themeIndex, Phase.DESIGN)] = project.id
   }
@@ -343,18 +356,19 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
     experience: user.hardwareExperience ? EXPERIENCE[user.hardwareExperience] : null,
     onboardingDone: user.onboardingCompletedAt !== null,
     projects: projects.flatMap((project) => {
+      const warmup = project.theme === Theme.WARMUP
       const themeIndex = THEMES.findIndex((t) => t.id === project.theme)
       const tier = project.tier ?? project.requestedTier
       // A project whose checkpoint was opened but never finished is not one
       // the trail should list: the row exists from the moment "create a
       // project" is opened, before anything has been decided about it.
-      if (themeIndex === -1 || !project.title || !tier) return []
+      if ((!warmup && themeIndex === -1) || !project.title || !tier) return []
       return [
         {
           id: project.id,
           name: project.title,
           description: project.description ?? "",
-          weekId: weekOf(themeIndex, Phase.DESIGN),
+          weekId: warmup ? WARMUP_WEEK_ID : weekOf(themeIndex, Phase.DESIGN),
           tier: clampTier(tier),
           starter: project.starterProjectId !== null,
           githubRepo: project.githubRepo,

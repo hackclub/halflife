@@ -1,6 +1,14 @@
 import "server-only"
 import type { Prisma } from "@/app/generated/prisma/client"
-import { CoinBucket, LedgerKind, Phase, PhaseStatus, ReviewPass, ReviewResult } from "@/app/generated/prisma/enums"
+import {
+  CoinBucket,
+  LedgerKind,
+  Phase,
+  PhaseStatus,
+  ReviewPass,
+  ReviewResult,
+  Theme,
+} from "@/app/generated/prisma/enums"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { DEFAULT_GOAL_ID, printerById } from "@/lib/config/printers"
 import { BUILD_HOURS, getThemeDef, THEME_COMPLETION_BONUS } from "@/lib/config/program"
@@ -151,8 +159,15 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
   const approving = input.result === ReviewResult.APPROVED
 
   // A build cannot be approved before its design is. Submitting out of order is
-  // fine — see canSubmitPhase — but paying out of order is not.
-  if (approving && phase === Phase.BUILD && project.designStatus !== PhaseStatus.approved) {
+  // fine — see canSubmitPhase — but paying out of order is not. A warm-up
+  // project has no design to wait for: its one phase is whatever the form
+  // collected.
+  if (
+    approving &&
+    phase === Phase.BUILD &&
+    project.theme !== Theme.WARMUP &&
+    project.designStatus !== PhaseStatus.approved
+  ) {
     throw new HttpError("DESIGN_NOT_APPROVED", "Approve the design phase for this theme before approving the build")
   }
 
@@ -246,13 +261,10 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
     if (approving && phase === Phase.BUILD) {
       const design = await tx.themeProject.findUnique({
         where: { id: project.id },
-        select: { designStatus: true },
+        select: { designStatus: true, theme: true },
       })
-      if (design?.designStatus !== PhaseStatus.approved) {
-        throw new HttpError(
-          "DESIGN_NOT_APPROVED",
-          "Approve the design phase for this theme before approving the build",
-        )
+      if (design?.theme !== Theme.WARMUP && design?.designStatus !== PhaseStatus.approved) {
+        throw new HttpError("DESIGN_NOT_APPROVED", "Approve the design phase for this theme before approving the build")
       }
     }
 

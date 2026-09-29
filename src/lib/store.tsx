@@ -501,7 +501,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
   const routeOf = useCallback(
     (checkpointId: string): { projectId: string; phase: "DESIGN" | "BUILD" } | null => {
       const weekId = Number(/^w(\d+)-/.exec(checkpointId)?.[1])
-      if (!weekId) return null
+      if (!Number.isInteger(weekId) || weekId < 0) return null
       const designWeek = weekId > DESIGN_WEEKS ? weekId - DESIGN_WEEKS : weekId
       const projectId = facts.projectIdByWeek[designWeek]
       if (!projectId) return null
@@ -640,7 +640,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
     async (id: string): Promise<string | null> => {
       const route = routeOf(id)
       const weekId = Number(/^w(\d+)-/.exec(id)?.[1])
-      if (!route || !weekId) return "This week has no project to unsubmit."
+      if (!route || !Number.isInteger(weekId)) return "This week has no project to unsubmit."
       let res: Response
       try {
         res = await fetch(`/api/projects/${route.projectId}/unsubmit`, {

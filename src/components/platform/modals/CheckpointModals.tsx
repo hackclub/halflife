@@ -22,6 +22,7 @@ import { Button, borderedInputClass, Chip, cx, Field, inputClass, OptionRow, Pan
 import { linkLapse } from "@/lib/auth-client"
 import type { BomLine } from "@/lib/bom"
 import { paceTarget, printerById, submitFloorFor, tierBankedFloor, weekAsk } from "@/lib/config/printers"
+import { WARMUP_WEEK_ID } from "@/lib/config/program"
 import { photosRequired, TIERS } from "@/lib/curriculum"
 import {
   PLATFORM_INFO,
@@ -121,7 +122,12 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
   const [imageBusy, setImageBusy] = useState(false)
   const [imageError, setImageError] = useState<string | null>(null)
 
-  const project = projects.find((p) => p.weekId === (week.phase === "build" ? week.id - 5 : week.id)) ?? projects[0]
+  // The fallback is for a season sheet opened before its project row landed;
+  // it must never pick the warm-up project, which has no season week.
+  const project =
+    projects.find((p) => p.weekId === (week.phase === "build" ? week.id - 5 : week.id)) ??
+    projects.find((p) => p.weekId !== WARMUP_WEEK_ID) ??
+    projects[0]
 
   // The claim is what the maker types. The photographs are what makes it a
   // claim rather than a number, which is why the bar rises with it — and they
@@ -1273,7 +1279,12 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
   const goal = printerById(goalId)
   const owed = Math.max(0, Math.ceil(paceTarget(goal, week.id) - printerFund - pendingCoins(week.id)))
 
-  const project = projects.find((p) => p.weekId === (isBuild ? week.id - 5 : week.id)) ?? projects[0]
+  // The fallback is for a season sheet opened before its project row landed;
+  // it must never pick the warm-up project, which has no season week.
+  const project =
+    projects.find((p) => p.weekId === (isBuild ? week.id - 5 : week.id)) ??
+    projects.find((p) => p.weekId !== WARMUP_WEEK_ID) ??
+    projects[0]
 
   const [step, setStep] = useState(1)
   // R2 object keys, not flags: what these ask for is evidence, and a boolean

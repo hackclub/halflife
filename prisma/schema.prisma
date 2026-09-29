@@ -27,6 +27,13 @@ enum Theme {
   SYNTH
   DISPLAYS
   BREADBOARD_COMPUTER
+  /// A project submitted during the pre-season warm-up weeks, through the
+  /// Fillout form, and imported off the `YSWS Project Submission` table.
+  ///
+  /// Not a season track: it has no scheduled week, does not count toward
+  /// printer qualification, and exists so a warm-up project does not occupy
+  /// one of the maker's five season slots (`@@unique([userId, theme])`).
+  WARMUP
 }
 
 enum Phase {
@@ -266,6 +273,8 @@ enum AuditAction {
   ADMIN_PIN_POST
   ADMIN_RESOLVE_DISPUTE
   ADMIN_SEND_GRANT
+  /// One warm-up Airtable row brought into Half Life (lib/airtable/warmup-import).
+  ADMIN_IMPORT_AIRTABLE_PROJECT
 
   // Printer
   PRINTER_QUALIFIED

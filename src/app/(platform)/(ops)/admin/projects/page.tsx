@@ -77,6 +77,7 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
                 {t.label}
               </option>
             ))}
+            <option value={Theme.WARMUP}>Warm Up</option>
           </select>
           <select
             className="hl-input"

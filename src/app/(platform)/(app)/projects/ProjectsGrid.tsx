@@ -7,6 +7,7 @@ import { IconArrowRight, IconClock, IconFilm, IconPencil } from "@/components/pl
 import { ProjectThumb } from "@/components/platform/ProjectThumb"
 import { RepoEditor } from "@/components/platform/RepoField"
 import { Chip, cx, Panel } from "@/components/platform/ui"
+import { WARMUP_WEEK_ID } from "@/lib/config/program"
 import { fmtDate, fmtHours, projectEvents, projectStats } from "@/lib/projects"
 import { REVIEW_STATUS_DOT, REVIEW_STATUS_TEXT, reviewTone } from "@/lib/review-state"
 import { PLATFORM_HOME } from "@/lib/routes"
@@ -68,6 +69,7 @@ export function ProjectsGrid() {
 
       <ul className="grid gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-3">
         {projects.map((project) => {
+          const warmup = project.weekId === WARMUP_WEEK_ID
           const week = weekOf(project.weekId)
           const events = projectEvents(project, weeks, stateOf)
           const stats = projectStats(events)
@@ -95,7 +97,7 @@ export function ProjectsGrid() {
                     />
                   )}
                   <span className="label absolute top-2.5 left-2.5 rounded-full bg-white/90 px-2.5 py-1 text-navy">
-                    Week {week.id}
+                    {warmup ? "Warm Up" : `Week ${week.id}`}
                   </span>
                 </span>
 
@@ -120,20 +122,25 @@ export function ProjectsGrid() {
                     </span>
                   )}
 
-                  <span className="mt-auto flex flex-wrap items-center gap-x-3.5 gap-y-1 pt-3.5">
-                    <span className="hand inline-flex items-center gap-1.5 text-[0.8rem] text-navy-soft tabular-nums">
-                      <IconClock className="text-sm" /> {fmtHours(stats.hours)}
+                  {/* Warm-up projects were never walked on the trail, so the
+                      checkpoint-derived stats would read zero. The project
+                      page has the real record; the card stays quiet. */}
+                  {!warmup && (
+                    <span className="mt-auto flex flex-wrap items-center gap-x-3.5 gap-y-1 pt-3.5">
+                      <span className="hand inline-flex items-center gap-1.5 text-[0.8rem] text-navy-soft tabular-nums">
+                        <IconClock className="text-sm" /> {fmtHours(stats.hours)}
+                      </span>
+                      <span className="hand inline-flex items-center gap-1.5 text-[0.8rem] text-navy-soft tabular-nums">
+                        <IconPencil className="text-sm" /> {stats.sessions}
+                      </span>
+                      <span className="hand inline-flex items-center gap-1.5 text-[0.8rem] text-navy-soft tabular-nums">
+                        <IconFilm className="text-sm" /> {stats.reels}
+                      </span>
+                      {stats.started > 0 && (
+                        <span className="hand ml-auto text-[0.76rem] text-line-strong">{fmtDate(stats.started)}</span>
+                      )}
                     </span>
-                    <span className="hand inline-flex items-center gap-1.5 text-[0.8rem] text-navy-soft tabular-nums">
-                      <IconPencil className="text-sm" /> {stats.sessions}
-                    </span>
-                    <span className="hand inline-flex items-center gap-1.5 text-[0.8rem] text-navy-soft tabular-nums">
-                      <IconFilm className="text-sm" /> {stats.reels}
-                    </span>
-                    {stats.started > 0 && (
-                      <span className="hand ml-auto text-[0.76rem] text-line-strong">{fmtDate(stats.started)}</span>
-                    )}
-                  </span>
+                  )}
                 </span>
               </Link>
               {/* Outside the card's link, so editing the repo is not a click
