@@ -405,6 +405,24 @@ export async function listRecentCommentsForModeration(limit = 25) {
   })
 }
 
+/** Public reel links, newest first, so staff can find a post that went viral. */
+export async function listRecentPublicReels(limit = 100) {
+  return prisma.publicReel.findMany({
+    orderBy: [{ postedAt: "desc" }, { id: "desc" }],
+    take: limit,
+    select: {
+      id: true,
+      url: true,
+      platform: true,
+      email: true,
+      postedAt: true,
+      user: { select: { id: true, name: true } },
+      post: { select: { id: true, caption: true } },
+      themeProject: { select: { id: true, title: true } },
+    },
+  })
+}
+
 export async function getAdminCounters() {
   const [pendingReviews, pendingOrders, participants, shipped] = await Promise.all([
     prisma.phaseSubmission.count({ where: { resolvedAt: null } }),

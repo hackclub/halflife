@@ -6,7 +6,7 @@ import { getThemeDef } from "@/lib/config/program"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { hasPermission, Permission } from "@/lib/permissions"
 import prisma from "@/lib/prisma"
-import { listRecentCommentsForModeration, listRecentPostsForModeration } from "@/lib/queries/admin"
+import { listRecentCommentsForModeration, listRecentPostsForModeration, listRecentPublicReels } from "@/lib/queries/admin"
 
 export const dynamic = "force-dynamic"
 
@@ -34,13 +34,14 @@ function preview(text: string, max = 90): string {
 export default async function AdminFeedPage() {
   const { user, roles } = await requirePermissionPage(Permission.MANAGE_FEED)
 
-  const [projects, posts, comments] = await Promise.all([
+  const [projects, posts, comments, publicReels] = await Promise.all([
     prisma.themeProject.findMany({
       where: { userId: user.id, deletedAt: null },
       select: { id: true, theme: true, title: true },
     }),
     listRecentPostsForModeration(),
     listRecentCommentsForModeration(),
+    listRecentPublicReels(),
   ])
 
   const options: ComposerProject[] = projects.map((project) => ({
@@ -133,6 +134,31 @@ export default async function AdminFeedPage() {
             ))}
           </Table>
         )}
+      </Panel>
+
+      <Panel title="Public reel links">
+        {publicReels.length === 0 ? (
+          <EmptyState>No public links claimed yet.</EmptyState>
+        ) : (
+          <Table head={["Platform", "Maker", "Link", "Reel", "Added"]}>
+            {publicReels.map((reel) => (
+              <tr key={reel.id}>
+                <td>{reel.platform.toLowerCase()}</td>
+                <td>
+                  <Link href={`/admin/users/${reel.user.id}`}>{reel.user.name ?? reel.email}</Link>
+                </td>
+                <td>
+                  <a href={reel.url} target="_blank" rel="noreferrer" className="hl-hint">
+                    {reel.url}
+                  </a>
+                </td>
+                <td className="hl-hint">{reel.themeProject?.title ?? reel.post?.caption?.slice(0, 60) ?? "—"}</td>
+                <td className="hl-mono">{whenFormat.format(reel.postedAt)}</td>
+              </tr>
+            ))}
+          </Table>
+        )}
+        <p className="hl-hint">Where a reel went viral — the links participants claimed for the virality prizes.</p>
       </Panel>
     </section>
   )
