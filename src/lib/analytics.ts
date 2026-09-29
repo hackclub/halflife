@@ -183,7 +183,13 @@ export async function backfillAnalytics(): Promise<Record<string, number>> {
       }),
       prisma.session.findMany({ where: { userId }, select: { createdAt: true }, orderBy: { createdAt: "asc" } }),
       prisma.workSession.findMany({
-        where: { themeProject: { userId }, deletedAt: null },
+        where: {
+          themeProject: { userId, deletedAt: null },
+          deletedAt: null,
+          // The backfill must apply the same exclusion as recomputeWeek, or
+          // running it re-inflates every tracked session's week.
+          hoursSource: { not: HoursSource.HACKATIME_TRACKED },
+        },
         select: { createdAt: true, weekNumber: true, hoursClaimed: true },
         orderBy: { createdAt: "asc" },
       }),
