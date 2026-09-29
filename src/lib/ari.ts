@@ -128,6 +128,14 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
   })
   if (!project) throw new HttpError("NOT_FOUND", "Project not found")
 
+  // A retry job snapshots what is pending and sends later; the maker can have
+  // unsubmitted in between. The row the decision would land on is gone, so
+  // sending would leave an untracked ship in Ari's queue.
+  const phaseStatus = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
+  if (phaseStatus !== PhaseStatus.in_review) {
+    throw new HttpError("NOT_SUBMITTED", "This phase is no longer awaiting review, so there is no ship to send")
+  }
+
   const user = project.user
   if (!project.title.trim()) throw new HttpError("UNPROCESSABLE", "This project has no title to send to Ari")
   if (!project.githubRepo) throw new HttpError("UNPROCESSABLE", "This project has no repository link to send to Ari")
