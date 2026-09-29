@@ -3,6 +3,7 @@ import { HoursSource } from "@/app/generated/prisma/enums"
 import { getBalances } from "@/lib/currency"
 import prisma from "@/lib/prisma"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
+import { streakAsOf } from "@/lib/streak"
 
 /**
  * Analytics time markers: when each step of a person's journey happened.
@@ -316,6 +317,8 @@ export interface UserAnalyticsRow {
 
 /** Per-person rows, for the Loops/Airtable sync and for export. */
 export async function getUserAnalytics(): Promise<UserAnalyticsRow[]> {
+  const { programTimezone } = await getProgramSettings()
+  const today = effectiveDateFor(new Date(), programTimezone)
   const users = await prisma.user.findMany({
     orderBy: { createdAt: "asc" },
     select: {
@@ -332,6 +335,7 @@ export async function getUserAnalytics(): Promise<UserAnalyticsRow[]> {
       activeDays: true,
       currentStreak: true,
       longestStreak: true,
+      lastStreakDate: true,
       activityWeeks: { orderBy: { week: "asc" } },
     },
   })
@@ -353,7 +357,9 @@ export async function getUserAnalytics(): Promise<UserAnalyticsRow[]> {
       totalHours: Math.round(u.activityWeeks.reduce((n, w) => n + w.hours, 0) * 100) / 100,
       coins: balances.spendable,
       bankedCoins: balances.banked,
-      currentStreak: u.currentStreak,
+      // The stored column is a cache only correct as of the last devlog or
+      // reel; an export that reads it directly calls a lapsed run current.
+      currentStreak: streakAsOf(u, today),
       longestStreak: u.longestStreak,
       weeks: u.activityWeeks.map(({ week, hours, reached1hAt, reached5hAt, reached10hAt, reached20hAt }) => ({
         week,
