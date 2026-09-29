@@ -33,11 +33,14 @@ export function isHcbConfigured(): boolean {
   return Boolean(process.env.HCB_ORG_SLUG && (staticToken || refreshable))
 }
 
-let cachedToken: string | null = null
+let cachedToken: { token: string; expiresAt: number } | null = null
 
-async function accessToken(): Promise<string> {
+/** Refresh a little before expiry, so an in-flight call cannot ride off a cliff. */
+const TOKEN_EXPIRY_MARGIN_MS = 60_000
+
+async function accessToken(force = false): Promise<string> {
   if (process.env.HCB_ACCESS_TOKEN) return process.env.HCB_ACCESS_TOKEN
-  if (cachedToken) return cachedToken
+  if (!force && cachedToken && cachedToken.expiresAt > Date.now() + TOKEN_EXPIRY_MARGIN_MS) return cachedToken.token
 
   const id = process.env.HCB_CLIENT_ID
   const secret = process.env.HCB_CLIENT_SECRET
@@ -58,16 +61,41 @@ async function accessToken(): Promise<string> {
   })
   if (!res.ok) throw new HttpError("INTERNAL", `HCB token refresh failed (${res.status})`)
 
-  const data = (await res.json()) as { access_token?: string; refresh_token?: string }
+  const data = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number }
   if (!data.access_token) throw new HttpError("INTERNAL", "HCB token refresh returned no access token")
-  cachedToken = data.access_token
+  // Default an hour when HCB does not say; either way the token is now bounded
+  // rather than cached for the life of the process.
+  const lifetimeMs = (typeof data.expires_in === "number" && data.expires_in > 0 ? data.expires_in : 3600) * 1000
+  cachedToken = { token: data.access_token, expiresAt: Date.now() + lifetimeMs }
   if (data.refresh_token && data.refresh_token !== refresh) {
     // HCB rotates refresh tokens, and an env var cannot be rewritten. This
     // token is used for the life of the process; persisting the new one (see
     // docs) is what keeps the next process able to refresh.
     console.warn("[hcb] refresh token rotated; persist the new value or the next refresh will fail")
   }
-  return cachedToken
+  return cachedToken.token
+}
+
+/**
+ * An HCB request with the current access token, retried once with a fresh one
+ * when a 401 says the cached token is stale. A static `HCB_ACCESS_TOKEN` is
+ * not refreshable, so a 401 there is returned to the caller untouched.
+ */
+async function hcbFetch(path: string, init: RequestInit & { timeoutMs?: number } = {}): Promise<Response> {
+  const { timeoutMs = 15_000, headers, ...rest } = init
+  for (let attempt = 0; ; attempt++) {
+    const token = await accessToken(attempt > 0)
+    const res = await fetch(`${base()}${path}`, {
+      ...rest,
+      headers: { authorization: `Bearer ${token}`, accept: "application/json", ...headers },
+      signal: AbortSignal.timeout(timeoutMs),
+    })
+    if (res.status === 401 && attempt === 0 && !process.env.HCB_ACCESS_TOKEN) {
+      cachedToken = null
+      continue
+    }
+    return res
+  }
 }
 
 /** A bare hashid, or a grant link on HCB (or the configured base). */
@@ -92,16 +120,12 @@ export interface TopUpResult {
 }
 
 export async function topUpCardGrant(grantHashid: string, amountCents: number): Promise<TopUpResult> {
-  const token = await accessToken()
-  const res = await fetch(
-    `${base()}/api/v4/card_grants/${encodeURIComponent(grantHashid)}/topup?expand=disbursements,user`,
-    {
-      method: "POST",
-      headers: { authorization: `Bearer ${token}`, "content-type": "application/json", accept: "application/json" },
-      body: JSON.stringify({ amount_cents: amountCents }),
-      signal: AbortSignal.timeout(20_000),
-    },
-  )
+  const res = await hcbFetch(`/api/v4/card_grants/${encodeURIComponent(grantHashid)}/topup?expand=disbursements,user`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ amount_cents: amountCents }),
+    timeoutMs: 20_000,
+  })
   if (!res.ok) {
     const body = await res.text().catch(() => "")
     throw new HttpError("INTERNAL", `HCB refused the top-up (${res.status})`, { detail: body.slice(0, 300) })
@@ -141,11 +165,7 @@ export type GrantDisbursementList =
  * `GrantDisbursementList`.
  */
 export async function listCardGrantDisbursements(grantHashid: string): Promise<GrantDisbursementList> {
-  const token = await accessToken()
-  const res = await fetch(`${base()}/api/v4/card_grants/${encodeURIComponent(grantHashid)}?expand=disbursements`, {
-    headers: { authorization: `Bearer ${token}`, accept: "application/json" },
-    signal: AbortSignal.timeout(15_000),
-  })
+  const res = await hcbFetch(`/api/v4/card_grants/${encodeURIComponent(grantHashid)}?expand=disbursements`)
   if (!res.ok) {
     const body = await res.text().catch(() => "")
     throw new HttpError("INTERNAL", `HCB refused to read the grant (${res.status})`, { detail: body.slice(0, 300) })
@@ -210,16 +230,14 @@ export function reconcileDisbursement(
 
 /** Name the resulting transaction, so the org's books say why the money moved. */
 export async function memoTransaction(transactionId: string, memo: string): Promise<void> {
-  const token = await accessToken()
   const slug = process.env.HCB_ORG_SLUG
   if (!slug) throw new HttpError("NOT_CONFIGURED", "HCB_ORG_SLUG is not set")
-  const res = await fetch(
-    `${base()}/api/v4/organizations/${encodeURIComponent(slug)}/transactions/${encodeURIComponent(transactionId)}`,
+  const res = await hcbFetch(
+    `/api/v4/organizations/${encodeURIComponent(slug)}/transactions/${encodeURIComponent(transactionId)}`,
     {
       method: "PUT",
-      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      headers: { "content-type": "application/json" },
       body: JSON.stringify({ memo }),
-      signal: AbortSignal.timeout(15_000),
     },
   )
   if (!res.ok) throw new HttpError("INTERNAL", `HCB memo update failed (${res.status})`)
