@@ -46,11 +46,12 @@ export async function POST(request: Request) {
     if (!result.ok) {
       return NextResponse.json({ ok: false, error: result.error }, { status: result.status })
     }
-    return NextResponse.json({
-      ok: true,
-      duplicate: result.duplicate,
-      referralCode: result.referralCode,
-    })
+    // Says nothing about whether the address was already on the list, and
+    // never returns the stored referral code: this endpoint is unauthenticated,
+    // so a `duplicate` flag or a code made it an oracle for anyone's
+    // registration status. The signed-in owner gets their link from
+    // /api/me/referral, which reads the session's own email.
+    return NextResponse.json({ ok: true })
   } catch {
     return NextResponse.json({ ok: false, error: "Something broke on our end. Try again shortly." }, { status: 500 })
   }
