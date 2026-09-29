@@ -64,6 +64,16 @@ export default async function DocPage({ params }: { params: Promise<{ slug: stri
                     ))}
                   </ul>
                 )}
+                {block.link && (
+                  <a
+                    href={block.link.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-4 inline-flex items-center gap-1.5 font-semibold text-sky-ink underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
+                  >
+                    {block.link.label} <IconArrowRight className="text-base" />
+                  </a>
+                )}
               </section>
             ))}
           </div>

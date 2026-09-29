@@ -248,7 +248,7 @@ export const FAQS: Faq[] = [
   },
   {
     q: "What do I get?",
-    a: "Up to $100 of funding per project, a 3D printer for finishing all ten weeks, and extra prizes (like plushies, drawing tablets, and iPads) if you log more hours.",
+    a: "Up to $100 of funding per project, a 3D printer for finishing all ten weeks, and extra prizes (like plushies, drawing tablets, and iPads) for going above and beyond.",
   },
 ]
 

@@ -163,5 +163,5 @@ export interface DocArticle {
   title: string
   section: string
   summary: string
-  body: { heading: string; paragraphs: string[]; list?: string[] }[]
+  body: { heading: string; paragraphs: string[]; list?: string[]; link?: { href: string; label: string } }[]
 }

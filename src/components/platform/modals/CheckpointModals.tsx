@@ -35,6 +35,7 @@ import {
 } from "@/lib/public-reels"
 import { normalizeRepo } from "@/lib/repo"
 import type { RepoCheckResult } from "@/lib/repo-checks"
+import { EXAMPLE_JOURNAL_URL } from "@/lib/routes"
 import { useStore } from "@/lib/store"
 import type { Checkpoint } from "@/lib/types"
 import { uploadFile } from "@/lib/use-handoff"
@@ -333,12 +334,19 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
             <span className="label inline-flex items-center gap-1.5 rounded-full bg-orange px-3 py-1.5 text-navy">
               {project?.name ?? `${week.theme} project`}
             </span>
-            <Link
-              href="/docs/journalling"
-              className="hand ml-auto text-[0.78rem] text-navy-soft underline decoration-dashed underline-offset-4 hover:text-navy"
-            >
-              Unsure? Read our docs
-            </Link>
+            <span className="hand ml-auto flex flex-wrap gap-x-3 text-[0.78rem] text-navy-soft">
+              <a
+                href={EXAMPLE_JOURNAL_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline decoration-dashed underline-offset-4 hover:text-navy"
+              >
+                See an example journal
+              </a>
+              <Link href="/docs/journalling" className="underline decoration-dashed underline-offset-4 hover:text-navy">
+                Unsure? Read our docs
+              </Link>
+            </span>
           </div>
 
           {/* Write and read sit side by side rather than behind a swap, so a
@@ -1209,16 +1217,15 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
                     <>
                       {t.detail}
                       <span className="mt-1 block text-navy-soft/90">
-                        About {t.hours}. {fmtH(t.fundingHours)} of that funds the project and banks nothing, so the
-                        least you can hand in on tier {t.id} is {fmtH(submitFloorFor(t.fundingHours))} — the other{" "}
-                        {fmtH(tierBankedFloor(t.fundingHours))} banks toward your printer.
+                        You can submit on tier {t.id} from {fmtH(submitFloorFor(t.fundingHours))} of design time, and{" "}
+                        {fmtH(tierBankedFloor(t.fundingHours))} of that goes toward your printer goal.
                       </span>
                     </>
                   }
                 >
                   <span className="flex flex-wrap items-baseline gap-x-2.5">
                     <span className="text-[0.98rem] font-extrabold text-navy">Tier {t.id}</span>
-                    <span className="hand text-[0.86rem] text-teal-ink">${t.grantUsd} funded</span>
+                    <span className="hand text-[0.86rem] text-teal-ink">${t.grantUsd} for parts</span>
                     <span className="hand text-[0.8rem] text-navy-soft">
                       · {fmtH(submitFloorFor(t.fundingHours))} to submit
                     </span>
@@ -1531,14 +1538,13 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
           <IconWarning className="mt-0.5 shrink-0 text-xl text-coral-deep" />
           <div className="min-w-0">
             <p className="text-[0.95rem] leading-snug font-extrabold text-coral-dark">
-              You won&apos;t be banking enough coins if you submit the project.
+              You&apos;re a little behind on your printer goal.
             </p>
             <p className="mt-1 text-[0.85rem] leading-snug text-navy-soft">
               Spend some more time on it! You are <span className="font-bold text-navy tabular-nums">{owed}</span>{" "}
               {owed === 1 ? "coin" : "coins"} behind the pace for a{" "}
-              <span className="font-bold text-navy">{goal.name}</span> — every hour past{" "}
-              <span className="font-bold text-navy tabular-nums">{fmtH(week.bankedFrom)}</span> this week banks 5 more.
-              You can still hand it in, and a bigger week later makes it up.
+              <span className="font-bold text-navy">{goal.name}</span>. You can still hand it in, and a bigger week
+              later makes it up.
             </p>
           </div>
         </div>
@@ -1715,7 +1721,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
                       Tier {t.id}
                     </span>
                     <span className={cx("hand block text-[0.86rem]", short > 0 ? "text-navy-soft" : "text-teal-ink")}>
-                      ${t.grantUsd} of funding
+                      ${t.grantUsd} for parts
                     </span>
 
                     {/* The hours are the gate, so they lead. The cart only
@@ -1728,7 +1734,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
                       )}
                     >
                       {short > 0
-                        ? `${fmtH(short)} short, tier ${t.id} needs ${fmtH(tierFloor(t.fundingHours))}`
+                        ? `Opens at ${fmtH(tierFloor(t.fundingHours))} of design time, ${fmtH(short)} to go`
                         : behind > 0
                           ? `${fmtH(tierTarget(t.fundingHours))} for a ${goal.name}, ${fmtH(behind)} to go`
                           : `${fmtH(tierTarget(t.fundingHours))} for a ${goal.name}, you have ${fmtH(hours)}`}

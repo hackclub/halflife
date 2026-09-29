@@ -68,7 +68,7 @@ export function GoalModal({ open, onClose }: { open: boolean; onClose: () => voi
                 </>
               )
             ) : (
-              <> you&apos;ve earned enough coins to buy this printer! </>
+              <> you&apos;ve reached this printer goal! </>
             )}
             <a
               href={goal.link}

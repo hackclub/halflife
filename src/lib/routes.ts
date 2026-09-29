@@ -5,3 +5,9 @@
  * means the same place.
  */
 export const PLATFORM_HOME = "/dashboard"
+
+/**
+ * The journal people are pointed at to model their own on. Linked wherever a
+ * journal entry is explained or written.
+ */
+export const EXAMPLE_JOURNAL_URL = "https://hwdocs.hackclub.dev/journaling/example-journal/"

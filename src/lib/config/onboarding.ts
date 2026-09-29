@@ -75,7 +75,7 @@ export const EXPERIENCE_OPTIONS = [
   {
     value: HardwareExperience.FIRST_TIME,
     label: "this is my first time!",
-    hint: "#readyformyfirsthardwareproject",
+    hint: "Day 1 or 1 Day, you know?",
   },
   {
     value: HardwareExperience.A_LITTLE,
@@ -176,9 +176,9 @@ export const WEEK_INTROS = [
     primer:
       "A printed circuit board is a sheet of fibreglass with copper traces etched into it, so components solder straight onto the board instead of being wired by hand.",
     examples: [
-      "A board that replaces a breadboard project you have already built",
-      "A shield or hat for a dev board you own",
-      "Something with a connector you have never routed before",
+      "A PCB keychain!",
+      "A flight controller!",
+      "A devboard from your favorite microcontroller!",
     ],
   },
 ] as const satisfies readonly WeekIntro[]

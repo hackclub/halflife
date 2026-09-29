@@ -188,8 +188,8 @@ export function ShopGrid({ items: all }: { items: readonly ShopItemView[] }) {
       </ul>
 
       <p className="hand mt-8 text-center text-[0.86rem] text-navy-soft">
-        you have <span className="font-bold text-orange-ink tabular-nums">{coins}</span> coins. every hour you log past
-        your tier banks five more.
+        you have <span className="font-bold text-orange-ink tabular-nums">{coins}</span> coins. keep building past your
+        tier to earn more.
       </p>
     </>
   )

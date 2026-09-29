@@ -1,11 +1,13 @@
 "use client"
 
+import Image from "next/image"
 import { type ReactNode, useState } from "react"
 import { Gato, WeekPainting } from "@/components/platform/art"
 import { IconCheck } from "@/components/platform/icons"
 import { ProjectChoiceCard, StarterProjectCard } from "@/components/platform/StarterProjectCard"
-import { Button, Chip, Field, OptionRow, Panel } from "@/components/platform/ui"
+import { Button, Chip, cx, Field, OptionRow, Panel } from "@/components/platform/ui"
 import type { OnboardingView } from "@/lib/onboarding-view"
+import { EXAMPLE_JOURNAL_URL } from "@/lib/routes"
 
 const projectInputClass =
   "block w-full rounded-xl border-2 border-field bg-black/[.02] px-4 py-2.5 text-[0.9rem] text-navy outline-none transition-colors placeholder:text-navy-faint hover:border-navy-soft focus:border-violet focus:bg-white"
@@ -13,6 +15,65 @@ const projectInputClass =
 interface OnboardingResponse {
   onboarding?: OnboardingView
   error?: { message?: string }
+}
+
+/**
+ * Every step ends on the same bar: Back on the left, the step's one submit on
+ * the right. Choosing an option only selects it; nothing is sent until this.
+ * Without `onSubmit` the button submits its enclosing form.
+ */
+function StepActions({
+  onBack,
+  onSubmit,
+  label = "Next",
+  canSubmit = true,
+  busy,
+}: {
+  onBack?: () => void
+  onSubmit?: () => void
+  label?: string
+  canSubmit?: boolean
+  busy: boolean
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 border-t border-dashed border-line/80 pt-5">
+      {onBack ? (
+        <Button type="button" variant="outline" onClick={onBack} disabled={busy}>
+          Back
+        </Button>
+      ) : (
+        <span />
+      )}
+      <Button
+        type={onSubmit ? "button" : "submit"}
+        variant="gold"
+        onClick={onSubmit}
+        disabled={busy || !canSubmit}
+      >
+        {busy ? "Saving…" : label}
+      </Button>
+    </div>
+  )
+}
+
+/** Picks a card that holds links, so the card itself cannot be the control. */
+function SelectButton({
+  selected,
+  disabled,
+  onClick,
+  label,
+}: {
+  selected: boolean
+  disabled: boolean
+  onClick: () => void
+  label: string
+}) {
+  return (
+    <Button type="button" variant={selected ? "teal" : "outline"} aria-pressed={selected} disabled={disabled} onClick={onClick}>
+      {label}
+      {selected ? <IconCheck className="text-base" /> : null}
+    </Button>
+  )
 }
 
 function Note({ children }: { children: ReactNode }) {
@@ -38,6 +99,18 @@ export function OnboardingFlow({
   const [error, setError] = useState<string | null>(null)
   const [title, setTitle] = useState(initial.project.title)
   const [description, setDescription] = useState(initial.project.description)
+  // What each choice step has selected but not yet submitted, seeded from what
+  // the server already has so coming back to a step shows the earlier answer.
+  const [experience, setExperience] = useState(initial.experience)
+  // The beginner's fork: a starter id, null for their own project, undefined
+  // for not chosen yet. Past the week step with no starter means they chose
+  // their own.
+  const [start, setStart] = useState<string | null | undefined>(() => {
+    if (initial.project.starterProjectId) return initial.project.starterProjectId
+    return initial.reached > initial.steps.findIndex((s) => s.id === "week") ? null : undefined
+  })
+  const [idea, setIdea] = useState<string | null>(initial.project.starterProjectId)
+  const [pickedTier, setPickedTier] = useState<number | null>(initial.project.requestedTier)
 
   const step = view.steps[viewing]
   if (!step) return null
@@ -72,8 +145,6 @@ export function OnboardingFlow({
 
       const next = payload.onboarding
       setView(next)
-      setTitle(next.project.title)
-      setDescription(next.project.description)
       if (next.completed) {
         onComplete?.()
         return next
@@ -102,12 +173,14 @@ export function OnboardingFlow({
     if (next && !next.completed) setViewing(indexOf(starterProjectId ? "tracking" : "project"))
   }
 
+  const back = viewing > 0 ? () => setViewing(backFrom) : undefined
+
   // No panel of its own: it is the whole body of the Getting started modal,
   // whose frame and eyebrow already say what this is. A second bordered card
   // inside it only boxed the same content twice.
   return (
     <div>
-      <div className="mb-6 flex items-start justify-between gap-4">
+      <div className="mb-6">
         <div>
           <p className="label text-gold-ink">
             Step {step.number}/{view.stepCount}
@@ -127,16 +200,6 @@ export function OnboardingFlow({
             </h2>
           )}
         </div>
-        {viewing > 0 ? (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setViewing(backFrom)}
-            disabled={busy}
-          >
-            Back
-          </Button>
-        ) : null}
       </div>
 
       {error ? (
@@ -147,19 +210,27 @@ export function OnboardingFlow({
 
       <div className="space-y-5">
         {step.id === "experience" ? (
-          <div className="space-y-3">
-            {view.experienceOptions.map((option) => (
-              <OptionRow
-                key={option.value}
-                tone="gold"
-                selected={view.experience === option.value}
-                disabled={busy}
-                hint={option.hint}
-                onClick={() => void send({ step: "experience", experience: option.value })}
-              >
-                <span className="text-[0.95rem] font-extrabold text-navy">{option.label}</span>
-              </OptionRow>
-            ))}
+          <div className="space-y-6">
+            <div className="space-y-3">
+              {view.experienceOptions.map((option) => (
+                <OptionRow
+                  key={option.value}
+                  tone="gold"
+                  selected={experience === option.value}
+                  disabled={busy}
+                  hint={option.hint}
+                  onClick={() => setExperience(option.value)}
+                >
+                  <span className="text-[0.95rem] font-extrabold text-navy">{option.label}</span>
+                </OptionRow>
+              ))}
+            </div>
+            <StepActions
+              busy={busy}
+              onBack={back}
+              canSubmit={experience !== null}
+              onSubmit={() => void send({ step: "experience", experience })}
+            />
           </div>
         ) : null}
 
@@ -191,52 +262,67 @@ export function OnboardingFlow({
 
             {view.beginner && view.starterProjects.length > 0 ? (
               // The fork. Two ways in, side by side and the same shape, each
-              // with its own button, so the choice reads as a choice.
-              <div className="space-y-3 border-t border-dashed border-line/80 pt-5">
-                <p className="text-[0.92rem] leading-relaxed text-navy-soft">
-                  <strong className="font-extrabold text-navy">New to this?</strong> Build this week&rsquo;s starter
-                  project, with a guide that walks you through every step. Or make a project of your own.
-                </p>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {view.starterProjects.map((starter) => {
-                    const chosen = view.project.starterProjectId === starter.id
-                    return (
-                      <StarterProjectCard
-                        key={starter.id}
-                        starter={starter}
-                        chosen={chosen}
-                        stacked
-                        action={
-                          <Button variant="gold" disabled={busy} onClick={() => void chooseStart(starter.id)}>
-                            Build {starter.title}
-                            {chosen ? <IconCheck className="text-base" /> : null}
-                          </Button>
-                        }
-                      />
-                    )
-                  })}
-                  <ProjectChoiceCard
-                    stacked
-                    tileClassName="bg-violet-pale"
-                    art={<Gato pose="schematic" sizes="260px" className="h-[140px] w-auto" />}
-                    label="Custom project"
-                    title="Your own idea"
-                    action={
-                      <Button variant="outline" disabled={busy} onClick={() => void chooseStart(null)}>
-                        Make a custom project
-                      </Button>
-                    }
-                  >
-                    <p className="mt-1.5 text-[0.88rem] leading-relaxed text-navy-soft">
-                      Design the board you want to exist. You name it next, then choose how much funding it needs.
-                    </p>
-                  </ProjectChoiceCard>
+              // with its own select button (the cards hold links, so the whole
+              // card cannot be one), then the step's Next.
+              <>
+                <div className="space-y-3 border-t border-dashed border-line/80 pt-5">
+                  <p className="text-[0.92rem] leading-relaxed text-navy-soft">
+                    <strong className="font-extrabold text-navy">New to this?</strong> Build this week&rsquo;s starter
+                    project, with a guide that walks you through every step. Or make a project of your own.
+                  </p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {view.starterProjects.map((starter) => {
+                      const chosen = start === starter.id
+                      return (
+                        <StarterProjectCard
+                          key={starter.id}
+                          starter={starter}
+                          chosen={chosen}
+                          stacked
+                          action={
+                            <SelectButton
+                              selected={chosen}
+                              disabled={busy}
+                              onClick={() => setStart(starter.id)}
+                              label={`Build ${starter.title}`}
+                            />
+                          }
+                        />
+                      )
+                    })}
+                    <ProjectChoiceCard
+                      stacked
+                      chosen={start === null}
+                      tileClassName="bg-violet-pale"
+                      art={<Gato pose="schematic" sizes="260px" className="h-[140px] w-auto" />}
+                      label="Custom project"
+                      title="Your own idea"
+                      action={
+                        <SelectButton
+                          selected={start === null}
+                          disabled={busy}
+                          onClick={() => setStart(null)}
+                          label="Make a custom project"
+                        />
+                      }
+                    >
+                      <p className="mt-1.5 text-[0.88rem] leading-relaxed text-navy-soft">
+                        Make your own project! It can be anything you want.
+                      </p>
+                    </ProjectChoiceCard>
+                  </div>
                 </div>
-              </div>
+                <StepActions
+                  busy={busy}
+                  onBack={back}
+                  canSubmit={start !== undefined}
+                  onSubmit={() => {
+                    if (start !== undefined) void chooseStart(start)
+                  }}
+                />
+              </>
             ) : (
-              <Button variant="gold" disabled={busy} onClick={() => void send({ step: "week" })}>
-                Got it
-              </Button>
+              <StepActions busy={busy} onBack={back} onSubmit={() => void send({ step: "week" })} />
             )}
           </div>
         ) : null}
@@ -270,116 +356,178 @@ export function OnboardingFlow({
                 onChange={(event) => setDescription(event.target.value)}
               />
             </Field>
-            <Button type="submit" variant="gold" disabled={busy}>
-              {busy ? "Saving…" : "Next"}
-            </Button>
+            <StepActions busy={busy} onBack={back} />
           </form>
         ) : null}
 
         {step.id === "idea" ? (
-          <div className="space-y-4">
+          <div className="space-y-5">
             <p className="text-[0.9rem] leading-relaxed text-navy-soft">
               Starter projects come with a guide that walks you through every step. Taking one sets your project to Tier
-              1, since starters are Tier 1 work. Write your own idea instead if you want a bigger tier.
+              1, since starters are Tier 1 work. Stick with your own idea if you want a bigger tier.
             </p>
             <div className="grid gap-3">
               {view.starterProjects.map((starter) => {
-                const chosen = view.project.starterProjectId === starter.id
+                const chosen = idea === starter.id
                 return (
                   <StarterProjectCard
                     key={starter.id}
                     starter={starter}
                     chosen={chosen}
                     action={
-                      <Button
-                        variant={chosen ? "teal" : "outline"}
-                        size="sm"
+                      <SelectButton
+                        selected={chosen}
                         disabled={busy}
-                        onClick={() => void send({ step: "idea", starterProjectId: starter.id })}
-                      >
-                        {chosen ? (
-                          <>
-                            Building {starter.title} <IconCheck className="text-base" />
-                          </>
-                        ) : (
-                          `Build ${starter.title}`
-                        )}
-                      </Button>
+                        onClick={() => setIdea(chosen ? null : starter.id)}
+                        label={`Build ${starter.title}`}
+                      />
                     }
                   />
                 )
               })}
             </div>
-            <Button variant="gold" disabled={busy} onClick={() => void send({ step: "idea", starterProjectId: null })}>
-              I&rsquo;ll stick with my own idea
-            </Button>
+            <StepActions
+              busy={busy}
+              onBack={back}
+              label={idea ? "Next" : "Stick with my own idea"}
+              onSubmit={() => void send({ step: "idea", starterProjectId: idea })}
+            />
           </div>
         ) : null}
 
         {step.id === "tier" ? (
-          <div className="space-y-4">
+          <div className="space-y-5">
             <p className="text-[0.9rem] leading-relaxed text-navy-soft">
-              This is what we will fund your parts with. You can change it any time before you submit your design, and
-              your reviewer decides the final tier when they approve it.
+              Choose what tier fits your project! You can change this at any time until you submit your design, and your
+              reviewer confirms it when they approve.
             </p>
             {view.project.tierLocked ? (
               <Note>
-                You picked a starter project, so this one is Tier 1. You can go back and make a custom project if you'd like.
+                You picked a starter project, so you&rsquo;re fixed to Tier 1. You can go back and make a custom project if you&rsquo;d like.
               </Note>
             ) : null}
-            <div className="grid gap-3">
+            {/* Each tier is one choice: the grant, the rough time, and real
+                projects built at it. The examples link to their repos, so the
+                card cannot be a button; a click anywhere on it picks the tier
+                for the mouse, and the radio in its header is the control for
+                keyboards and screen readers. */}
+            <fieldset className="grid gap-3">
+              <legend className="sr-only">Tier</legend>
               {view.tiers.map((tier) => {
-                const chosen = view.project.requestedTier === tier.id
+                const chosen = view.project.tierLocked ? tier.id === 1 : pickedTier === tier.id
+                const locked = busy || view.project.tierLocked
+                const headingId = `onboarding-tier-${tier.id}`
                 return (
-                  <Panel key={tier.id} tone={chosen ? "gold" : "line"} radius={16} className="bg-white p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <h3 className="text-[1rem] font-extrabold text-navy">
-                          {tier.name} — ${tier.grantUsd}
-                        </h3>
-                        <p className="mt-1 text-[0.84rem] leading-relaxed text-navy-soft">{tier.blurb}</p>
-                        <p className="mt-1 text-[0.8rem] leading-relaxed text-navy-soft">{tier.detail}</p>
-                        <p className="mt-1 text-[0.8rem] leading-relaxed text-navy-soft">
-                          {tier.toBank} towards your 3D printer.
-                        </p>
-                      </div>
-                      {chosen ? (
-                        <Chip tone="teal">Chosen</Chip>
-                      ) : tier.id === view.suggestedTier ? (
-                        <Chip tone="gold">Suggested</Chip>
-                      ) : null}
-                    </div>
-                    <p className="mt-3 text-[0.8rem] leading-relaxed text-navy-soft">
-                      {tier.fundingHours}h of work funds the project. Everything above that banks toward your printer,
-                      so a week is {tier.submitFloorHours}h before you can hand it in.
-                    </p>
-                    <Button
-                      className="mt-4"
-                      variant={chosen ? "gold" : "outline"}
-                      size="sm"
-                      disabled={busy || view.project.tierLocked}
-                      onClick={() => void send({ step: "tier", requestedTier: tier.id })}
+                  <div
+                    key={tier.id}
+                    onClick={() => {
+                      if (!locked) setPickedTier(tier.id)
+                    }}
+                    className={cx(
+                      "rounded-2xl has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-violet has-[input:focus-visible]:ring-offset-2",
+                      locked ? "cursor-default" : "group cursor-pointer",
+                    )}
+                  >
+                    <Panel
+                      tone={chosen ? "gold" : "line"}
+                      radius={16}
+                      className={cx(
+                        "px-4 py-3.5 transition-colors sm:px-5 sm:py-4",
+                        chosen ? "bg-gold-pale/40" : "bg-white group-hover:bg-black/[.015]",
+                      )}
                     >
-                      {chosen ? "Chosen" : `Choose ${tier.name}`}
-                    </Button>
-                  </Panel>
+                      <div className="flex items-center justify-between gap-3">
+                        <input
+                          type="radio"
+                          name="onboarding-tier"
+                          className="sr-only"
+                          checked={chosen}
+                          disabled={locked}
+                          aria-labelledby={headingId}
+                          onChange={() => setPickedTier(tier.id)}
+                        />
+                        <h3 id={headingId} className="text-[1.2rem] leading-tight font-extrabold text-navy">
+                          {tier.name} — ${tier.grantUsd}{" "}
+                          <span className="font-semibold text-navy-soft">({tier.estimate})</span>
+                        </h3>
+                        {chosen ? (
+                          <Chip tone="teal">
+                            <IconCheck className="text-sm" /> Selected
+                          </Chip>
+                        ) : tier.id === view.suggestedTier ? (
+                          <Chip tone="gold">Suggested</Chip>
+                        ) : null}
+                      </div>
+                      {tier.showcase.length > 0 ? (
+                        // The tier line leads; the examples are its footnote,
+                        // a strip of small thumbnails with their names beside
+                        // them. Three columns on every tier, so the strips
+                        // align down the list whatever their length, and fold
+                        // to a stacked list on a phone.
+                        <ul className="mt-3 grid gap-x-4 gap-y-2 border-t border-dashed border-line/80 pt-3 sm:grid-cols-3">
+                          {tier.showcase.map((project) => (
+                            <li key={project.href} className="min-w-0">
+                              <a
+                                href={project.href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                // Following the link is not a vote for the tier.
+                                onClick={(event) => event.stopPropagation()}
+                                className="group/example -m-1 flex items-center gap-2.5 rounded-lg p-1 outline-none focus-visible:ring-2 focus-visible:ring-violet"
+                              >
+                                {/* Cropped to one frame: at this size a uniform
+                                    row reads better than slivers and posts, and
+                                    the repo has the whole board. */}
+                                <span className="relative block h-11 w-14 shrink-0 overflow-hidden rounded-md bg-white shadow-[0_1px_2px_rgb(28_26_89/0.12)] ring-1 ring-line/70">
+                                  <Image
+                                    src={project.image}
+                                    alt=""
+                                    fill
+                                    sizes="112px"
+                                    className="object-cover transition-transform duration-300 ease-out group-hover/example:scale-[1.08]"
+                                  />
+                                </span>
+                                <span className="min-w-0 text-[0.8rem] leading-snug text-navy-soft decoration-dashed underline-offset-[3px] group-hover/example:text-navy group-hover/example:underline">
+                                  {project.title}
+                                  <span className="sr-only"> (opens the project on GitHub)</span>
+                                </span>
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </Panel>
+                  </div>
                 )
               })}
-            </div>
-            {view.project.tierLocked ? (
-              <Button variant="gold" disabled={busy} onClick={() => void send({ step: "tier", requestedTier: null })}>
-                Next
-              </Button>
-            ) : null}
+            </fieldset>
+            {/* A starter's tier is already set, so its Next carries no tier. */}
+            <StepActions
+              busy={busy}
+              onBack={back}
+              canSubmit={view.project.tierLocked || pickedTier !== null}
+              onSubmit={() =>
+                void send({ step: "tier", requestedTier: view.project.tierLocked ? null : pickedTier })
+              }
+            />
           </div>
         ) : null}
 
         {step.id === "tracking" ? (
-          <div className="space-y-4">
+          <div className="space-y-5">
             <p className="text-[0.92rem] leading-relaxed text-navy-soft">
               Tracking progress of your project is mandatory, and you log it in two ways. A{" "}
-              <strong className="text-navy">journal</strong> entry is a detailed writeup of what you did in a session. A{" "}
-              <strong className="text-navy">timelapse</strong> is a screenrecording or video of yourself working on your project.
+              <strong className="text-navy">journal</strong> entry is a detailed writeup of what you did in a session (
+              <a
+                href={EXAMPLE_JOURNAL_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-sky-ink underline decoration-dashed underline-offset-4 hover:text-navy"
+              >
+                here&rsquo;s an example
+              </a>
+              ). A <strong className="text-navy">timelapse</strong> is a screenrecording or video of yourself working on
+              your project.
             </p>
             <ul className="grid gap-3 sm:grid-cols-3">
               {[
@@ -393,9 +541,12 @@ export function OnboardingFlow({
                 </Panel>
               ))}
             </ul>
-            <Button variant="gold" disabled={busy} onClick={() => void send({ step: "tracking", dismissed: false })}>
-              Finish
-            </Button>
+            <StepActions
+              busy={busy}
+              onBack={back}
+              label="Finish"
+              onSubmit={() => void send({ step: "tracking", dismissed: false })}
+            />
           </div>
         ) : null}
       </div>

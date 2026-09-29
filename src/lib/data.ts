@@ -1,3 +1,4 @@
+import { EXAMPLE_JOURNAL_URL } from "./routes"
 import type { DocArticle } from "./types"
 
 /**
@@ -40,8 +41,8 @@ export const DOCS: DocArticle[] = [
       {
         heading: "What you get",
         paragraphs: [
-          "Every project is funded up to its tier — $30, $65 or $100 — paid straight onto a card you can spend at real vendors. Hours beyond the funded block bank as coins at five an hour, and coins buy things in the shop.",
-          "Finish all ten weeks and a printer is yours, shipped to you. Which one is up to you: you pick a goal, and the coins you bank buy it. Hit the hours every week and the cheapest machine is guaranteed — bank faster and you can aim higher.",
+          "Every project gets parts funding for its tier — $30, $65 or $100 — on a card you can spend at real vendors. Going further on your projects earns coins, which you can spend in the shop.",
+          "Finish all ten weeks and a 3D printer is yours, shipped to you. Which one is up to you: you pick it as your goal and work toward it through the season. Keep up every week and the entry machine is guaranteed; go further and you can aim higher.",
         ],
       },
     ],
@@ -102,6 +103,7 @@ export const DOCS: DocArticle[] = [
           "A one-line tl;dr at the end, so a reviewer skimming a week of entries knows what each one was.",
           "What is next, so the following session starts where this one stopped.",
         ],
+        link: { href: EXAMPLE_JOURNAL_URL, label: "See an example journal" },
       },
       {
         heading: "Make it yours",
@@ -120,18 +122,18 @@ export const DOCS: DocArticle[] = [
   {
     slug: "tiers",
     title: "Funding tiers",
-    section: "Money",
-    summary: "How much each tier funds, and how your hours turn into coins.",
+    section: "Funding",
+    summary: "What each tier covers, how much design time it asks for, and how coins work.",
     body: [
       {
         heading: "The three tiers",
         paragraphs: [
-          "Every project gets money for parts. Your tier sets how much. The first hours of a design week are what that money pays for.",
+          "Every project gets funding for its parts, and your tier sets how much. Pick the one that fits the size of what you want to build.",
         ],
         list: [
-          "Tier 1: $30. Covers your first 6 hours.",
-          "Tier 2: $65. Covers your first 13 hours.",
-          "Tier 3: $100. Covers your first 20 hours.",
+          "Tier 1: $30, for a focused build like your first board.",
+          "Tier 2: $65, for a board with more going on.",
+          "Tier 3: $100, for an ambitious build.",
         ],
       },
       {
@@ -141,20 +143,21 @@ export const DOCS: DocArticle[] = [
         ],
       },
       {
-        heading: "Hours to submit",
+        heading: "Time to submit",
         paragraphs: [
-          "A design week needs more hours than its tier covers. The extra hours go toward your printer. These are the minimums:",
+          "Bigger builds take longer to design well, so each tier has a minimum amount of design time before you can submit:",
         ],
         list: ["Tier 1: 10 hours.", "Tier 2: 17 hours.", "Tier 3: 24 hours."],
       },
       {
-        heading: "Hours become coins",
-        paragraphs: ["One hour of approved work is worth 5 coins. One coin is worth $1."],
+        heading: "Coins",
+        paragraphs: [
+          "Coins track how far you go past what your project needs. They fill your printer goal first, and the rest are yours to spend in the shop.",
+        ],
         list: [
-          "Design week: the hours your tier covers pay for parts, not coins.",
-          "Design week: the hours after that bank toward your printer. How many depends on the printer you picked.",
-          "Design week: anything beyond that is coins you can spend.",
-          "Build week: the first 5 hours bank toward your printer. The rest are coins you can spend.",
+          "Design week: once your time goes past what your tier covers, approved time starts filling your printer goal. How much it needs depends on the printer you picked.",
+          "Design week: time beyond your printer goal earns coins to spend.",
+          "Build week: your first 5 hours fill your printer goal, and time after that earns coins to spend.",
           "Ship a theme (design and build both approved): 25 bonus coins to spend.",
         ],
       },
@@ -185,7 +188,7 @@ export const DOCS: DocArticle[] = [
         ],
         list: [
           "Every week: a public GitHub repo, with a README that has photos in it.",
-          "PCB week: board and schematic source files (.kicad_pcb, .kicad_sch). Recommended: Gerbers (a .zip is fine) and a bom.csv.",
+          "PCB week: board and schematic source files (.kicad_pcb, .kicad_sch), and firmware for the board (Arduino .ino, C/C++, MicroPython or CircuitPython). Recommended: Gerbers (a .zip is fine) and a bom.csv.",
           "CAD week: editable CAD files (.step, .f3d, .fcstd, .scad). Recommended: printable models (.stl, .3mf).",
           "Music week: a schematic (KiCad, Logisim or Digital). Recommended: firmware.",
           "Displays week: firmware or code. Recommended: a schematic.",

@@ -1,6 +1,5 @@
 import { type HardwareExperience, Theme } from "@/app/generated/prisma/enums"
 import { EXPERIENCE_OPTIONS, isBeginner, ONBOARDING_STEPS, weekIntroFor } from "@/lib/config/onboarding"
-import { submitFloorFor } from "@/lib/config/printers"
 import { THEMES } from "@/lib/config/program"
 import { TIERS } from "@/lib/config/tiers"
 import { WEEK_META } from "@/lib/curriculum"
@@ -61,11 +60,8 @@ export interface OnboardingView {
     id: number
     name: string
     grantUsd: number
-    fundingHours: number
-    submitFloorHours: number
-    blurb: string
-    detail: string
-    toBank: string
+    estimate: string
+    showcase: readonly { title: string; image: string; href: string }[]
   }[]
 }
 
@@ -114,11 +110,8 @@ export function toOnboardingView(state: OnboardingStateData): OnboardingView {
       id: tier.id,
       name: tier.name,
       grantUsd: tier.grantUsd,
-      fundingHours: tier.fundingHours,
-      submitFloorHours: submitFloorFor(tier.fundingHours),
-      blurb: tier.blurb,
-      detail: tier.detail,
-      toBank: tier.toBank,
+      estimate: tier.estimate,
+      showcase: [...(tier.showcase[Theme.PCB] ?? [])],
     })),
   }
 }
