@@ -3,7 +3,7 @@ import { headers } from "next/headers"
 import type { NextResponse } from "next/server"
 import { type ApiErrorBody, fail } from "@/lib/api"
 import { auth } from "@/lib/auth"
-import { getUserRoles, hasAnyPermission, hasPermission, hasRole, type Permission, type Role } from "@/lib/permissions"
+import { getUserRolesIfExists, hasAnyPermission, hasPermission, hasRole, type Permission, type Role } from "@/lib/permissions"
 
 export interface SessionUser {
   id: string
@@ -20,9 +20,14 @@ async function resolve(): Promise<{ user: SessionUser; roles: Role[] } | null> {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) return null
   const u = session.user
+  // The cookie cache can serve a session whose user is gone; see
+  // getUserRolesIfExists. Treat that ghost as signed out so handlers answer
+  // 401 instead of failing later with a missing-row error.
+  const roles = await getUserRolesIfExists(u.id)
+  if (roles === null) return null
   return {
     user: { id: u.id, email: u.email, name: u.name ?? null, image: u.image ?? null },
-    roles: await getUserRoles(u.id),
+    roles,
   }
 }
 
