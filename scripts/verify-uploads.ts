@@ -67,10 +67,27 @@ async function main() {
   }
 
   const endpoint = process.env.S3_ENDPOINT ?? ""
+  // Check the URL's HOST, not a substring of the whole string: `includes` also
+  // passed `https://evil.example/r2.cloudflarestorage.com` and
+  // `https://r2.cloudflarestorage.com.evil.example`. Parse first, then require
+  // the exact R2 host or a subdomain of it (the account id), the same way the
+  // S3_PUBLIC_URL check above reads `.hostname`.
+  let endpointHost = ""
+  try {
+    endpointHost = new URL(endpoint).hostname
+  } catch {
+    /* not a URL at all; the check below reports it */
+  }
+  const endpointIsHttps = endpoint.startsWith("https://")
+  const endpointIsR2 = endpointHost === "r2.cloudflarestorage.com" || endpointHost.endsWith(".r2.cloudflarestorage.com")
   check(
     "S3_ENDPOINT looks like an R2 S3 endpoint",
-    endpoint.startsWith("https://") && endpoint.includes("r2.cloudflarestorage.com"),
-    endpoint.startsWith("https://") ? "" : "expected https://<account-id>.r2.cloudflarestorage.com",
+    endpointIsHttps && endpointIsR2,
+    endpointIsHttps && endpointIsR2
+      ? ""
+      : endpointIsHttps
+        ? `host is "${endpointHost || "(unparseable)"}", expected https://<account-id>.r2.cloudflarestorage.com`
+        : "expected https://<account-id>.r2.cloudflarestorage.com",
   )
   check("upload size cap parsed", Number.isFinite(MAX_UPLOAD_BYTES), `${MAX_UPLOAD_BYTES} bytes`)
 
