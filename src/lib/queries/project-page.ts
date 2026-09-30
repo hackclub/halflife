@@ -172,7 +172,6 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
     where: { id, userId, deletedAt: null },
     select: {
       id: true,
-      theme: true,
       grantEmittedAt: true,
       coverImageKey: true,
       bomTaxShippingUsd: true,

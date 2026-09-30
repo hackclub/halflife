@@ -1063,7 +1063,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 }
 
 /* ================================================================== *
- * Project creation (weeks 2–5)
+ * Project creation (weeks 2–5, and week 1 once its project is deleted)
  * ================================================================== */
 export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
   const { setOpenCheckpoint, complete, addProject, ensureProject, experience, weekOf } = useStore()

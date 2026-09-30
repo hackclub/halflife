@@ -1,6 +1,5 @@
 import "server-only"
-import { PhaseStatus, type Theme } from "@/app/generated/prisma/enums"
-import { ONBOARDING_THEME } from "@/lib/onboarding"
+import { PhaseStatus } from "@/app/generated/prisma/enums"
 import prisma from "@/lib/prisma"
 
 /**
@@ -9,26 +8,23 @@ import prisma from "@/lib/prisma"
  * Deleting is a soft delete (`deletedAt`), but to the maker it is gone, so the
  * line is drawn where a project stops being only theirs:
  *
- * - Week one's project is made by onboarding, not by a "create a project"
- *   node, so the trail would have no way to make it again.
  * - A phase in review is on a reviewer's desk; unsubmitting takes it back.
  * - An approved phase, a grant, or a coin in the ledger means money was paid
  *   against the project, and the ledger has to keep pointing at a live one.
  * - An open dispute is still waiting on a reviewer's second look.
+ *
+ * Week one's project may go too, though onboarding made it: the trail then
+ * gives week one a "New project" node of its own (see `checkpointsFor`).
  *
  * Shared by the DELETE handler and the project page, so the page only offers
  * what the server will do.
  */
 export async function deleteBlockReason(project: {
   id: string
-  theme: Theme
   designStatus: PhaseStatus
   buildStatus: PhaseStatus
   grantEmittedAt: Date | null
 }): Promise<string | null> {
-  if (project.theme === ONBOARDING_THEME) {
-    return "Your week 1 project comes from onboarding, so it can't be deleted"
-  }
   if (project.designStatus === PhaseStatus.in_review || project.buildStatus === PhaseStatus.in_review) {
     return "Unsubmit before deleting — a phase is in review"
   }

@@ -364,7 +364,10 @@ export function BomEditor({
           <p className="text-[0.9rem] font-extrabold text-navy">
             {editing === "new" ? "Add a part" : `Edit ${items.find((l) => l.id === editing)?.name ?? "part"}`}
           </p>
-          <p className="-mt-2 text-[0.8rem] text-navy-soft">Every field is required, with a price above $0.</p>
+          <p className="-mt-2 text-[0.8rem] text-navy-soft">
+            You can lump all of your passive components together (LEDs, resistors, diodes, transistors, etc) into
+            one BOM entry. The minimum cost for an item is $0.01.
+          </p>
           <div className="grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
             <label className="grid gap-1">
               <span className="label text-violet-deep">Part</span>

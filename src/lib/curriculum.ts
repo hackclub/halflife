@@ -193,6 +193,12 @@ export function checkpointsFor(
    * catalogue already reads the season out of this file.
    */
   submitHours: number,
+  /**
+   * Week one only: its project was deleted after onboarding made it. The
+   * questionnaire does not run twice, so the week gets the "New project" node
+   * every other design week opens with, right after the done "Get started".
+   */
+  needsProject = false,
 ): Checkpoint[] {
   const id = (n: string) => `w${meta.id}-${n}`
   const out: Checkpoint[] = []
@@ -262,24 +268,28 @@ export function checkpointsFor(
     // start logging the making of it. Week one differs only in how the
     // project comes into existence — the questionnaire stands in for the
     // form, and the pitch follows it exactly as it does every other week.
-    out.push(
-      meta.id === 1
-        ? cp({
-            id: id("onboard"),
-            weekId: meta.id,
-            kind: "onboarding",
-            title: "Get started",
-            blurb: "Six short questions, then we're off!",
-          })
-        : cp({
-            id: id("project"),
-            weekId: meta.id,
-            kind: "project",
-            title: "New project",
-            blurb: `Create your ${meta.theme.toLowerCase()} project!`,
-          }),
-      ideaReel,
-    )
+    const newProject = cp({
+      id: id("project"),
+      weekId: meta.id,
+      kind: "project",
+      title: "New project",
+      blurb: `Create your ${meta.theme.toLowerCase()} project!`,
+    })
+    if (meta.id === 1) {
+      out.push(
+        cp({
+          id: id("onboard"),
+          weekId: meta.id,
+          kind: "onboarding",
+          title: "Get started",
+          blurb: "Six short questions, then we're off!",
+        }),
+      )
+      if (needsProject) out.push(newProject)
+    } else {
+      out.push(newProject)
+    }
+    out.push(ideaReel)
     for (let n = 1; n <= live; n += 1) pushEntry(n)
   } else {
     for (let n = 1; n <= live; n += 1) pushEntry(n)

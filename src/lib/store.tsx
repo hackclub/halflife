@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation"
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
 import { COINS_PER_HOUR, printerById, submitFloorFor, weekAsk } from "./config/printers"
-import { DESIGN_WEEKS, WARMUP_THEME, WARMUP_WEEK_ID } from "./config/program"
+import { DESIGN_WEEKS, ONBOARDING_CHECKPOINT_ID, WARMUP_THEME, WARMUP_WEEK_ID } from "./config/program"
 import { formatDeadline } from "./deadline"
 import { BUILD_HOURS, checkpointsFor, TIERS, WEEK_META } from "./curriculum"
 import type { StoreSnapshot } from "./queries/store"
@@ -951,10 +951,20 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
           bankedFrom: build ? 0 : tier.fundingHours,
           targetHours: target,
           submitHours,
-          checkpoints: checkpointsFor(meta, written, (cid) => save.progress[cid]?.done ?? false, submitHours),
+          checkpoints: checkpointsFor(
+            meta,
+            written,
+            (cid) => save.progress[cid]?.done ?? false,
+            submitHours,
+            // Onboarding made week one's project and it has since been
+            // deleted: `projects` only lists live, named ones.
+            meta.id === 1 &&
+              (save.progress[ONBOARDING_CHECKPOINT_ID]?.done ?? false) &&
+              !save.projects.some((p) => p.weekId === 1),
+          ),
         }
       }),
-    [tierForWeek, goal, save.progress],
+    [tierForWeek, goal, save.progress, save.projects],
   )
 
   // Each warm-up, as a week of its own that the trail never draws.
