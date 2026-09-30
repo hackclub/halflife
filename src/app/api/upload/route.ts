@@ -1,5 +1,6 @@
 import { fail, ok, parseUploadForm, rateLimitedInMemory, withRoute } from "@/lib/api"
 import { requireSession } from "@/lib/guards"
+import { getUserRoles, hasPermission, Permission } from "@/lib/permissions"
 import {
   buildObjectKey,
   contentHash,
@@ -14,7 +15,7 @@ import {
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
 
-const ALLOWED_FOLDERS = new Set(["sessions", "covers", "timelapses", "posts"])
+const ALLOWED_FOLDERS = new Set(["sessions", "covers", "timelapses", "posts", "shop"])
 
 export const POST = withRoute(async (req: Request) => {
   const gate = await requireSession()
@@ -35,6 +36,15 @@ export const POST = withRoute(async (req: Request) => {
 
   const folderRaw = parsed.data.get("folder")
   const folder = typeof folderRaw === "string" && ALLOWED_FOLDERS.has(folderRaw) ? folderRaw : "sessions"
+
+  // Shop pictures are the catalogue's, so only someone who runs the shop puts
+  // them there — and only pictures.
+  if (folder === "shop") {
+    if (!hasPermission(await getUserRoles(gate.user.id), Permission.MANAGE_SHOP)) {
+      return fail("FORBIDDEN", "Only shop managers can upload shop images")
+    }
+    if (!file.type.startsWith("image/")) return fail("VALIDATION_FAILED", "Shop images must be pictures")
+  }
 
   if (file.size > MAX_UPLOAD_BYTES) {
     return fail("VALIDATION_FAILED", `Files must be under ${MAX_UPLOAD_BYTES} bytes`)

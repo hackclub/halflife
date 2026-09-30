@@ -37,17 +37,31 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
     actorEmail: gate.user.email,
     targetType: "ShopItem",
     targetId: id,
+    // Everything the edit form can change. Category and gating decide who can
+    // buy an item and with which coins, so a change to them has to be traceable.
     metadata: {
       before: {
+        name: before.name,
+        category: before.category,
         priceCredits: before.priceCredits,
         costUsd: before.costUsd,
+        maxPerUser: before.maxPerUser,
         stock: before.stock,
+        requiresPrinterQualified: before.requiresPrinterQualified,
+        imageUrl: before.imageUrl,
+        sortOrder: before.sortOrder,
         active: before.active,
       },
       after: {
+        name: item.name,
+        category: item.category,
         priceCredits: item.priceCredits,
         costUsd: item.costUsd,
+        maxPerUser: item.maxPerUser,
         stock: item.stock,
+        requiresPrinterQualified: item.requiresPrinterQualified,
+        imageUrl: item.imageUrl,
+        sortOrder: item.sortOrder,
         active: item.active,
       },
     },
