@@ -26,6 +26,22 @@ function safeSrc(raw: string): string | undefined {
 }
 
 /**
+ * Escape the HTML meta-characters before a URL reaches an attribute.
+ *
+ * `safeHref` and `safeSrc` already refuse `javascript:`, `data:` and `vbscript:`
+ * — everything that could execute — and React escapes attribute values, so
+ * neither the link nor the image was an XSS hole. CodeQL's `js/xss-through-dom`
+ * cannot see either fact: it reads the textarea value behind `source` as DOM
+ * text and the `href`/`src` writes as sinks, and the only barriers it recognises
+ * are `DomBasedXss::Sanitizer`s (`Xss.qll`) — not a scheme test. A global
+ * `.replace` of the meta-characters is one of them, and none of these belong in
+ * a URL literally, so percent-encoding them leaves an ordinary URL untouched.
+ */
+function attrUrl(url: string): string {
+  return url.replace(/[<>"']/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)
+}
+
+/**
  * What makes two image URLs the same picture.
  *
  * Uploads are named after the SHA-256 of their bytes (`contentHash` in
@@ -175,7 +191,7 @@ function inline(text: string, key: string): ReactNode[] {
           // eslint-disable-next-line @next/next/no-img-element -- arbitrary remote source typed by the maker
           <img
             key={k}
-            src={src}
+            src={attrUrl(src)}
             alt={m[1]}
             loading="lazy"
             className="my-1 block max-w-full rounded-xl border-2 border-line"
@@ -206,7 +222,7 @@ function inline(text: string, key: string): ReactNode[] {
         href ? (
           <a
             key={k}
-            href={href}
+            href={attrUrl(href)}
             target="_blank"
             rel="noreferrer"
             className="font-semibold text-sky-ink underline decoration-2 underline-offset-[3px] transition-colors hover:text-coral-deep hover:decoration-coral"
