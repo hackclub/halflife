@@ -52,7 +52,7 @@ export function WarmupStart() {
             </p>
             <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3">
               <Button variant="solid" onClick={() => setOpen(true)}>
-                Start a warm-up project <IconArrowRight className="text-base" />
+                Start warm-up project <IconArrowRight className="text-base" />
               </Button>
               <span className="hand text-[0.84rem] text-navy-soft">warm-ups close {warmupDeadline}.</span>
             </div>

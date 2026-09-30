@@ -182,7 +182,7 @@ export function Overlays() {
           step={tourStep + 1}
           total={TOUR.length}
           clickAnywhere
-          cta={tourStep === TOUR.length - 1 ? (weekStarted(1) ? "Start week 1" : "Start a warm-up") : "Next"}
+          cta={tourStep === TOUR.length - 1 ? (weekStarted(1) ? "Start week 1" : "Start warm-up") : "Next"}
           onNext={() => {
             if (tourStep >= TOUR.length - 1) endTour()
             else setTourStep(tourStep + 1)
