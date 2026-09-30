@@ -111,13 +111,17 @@ function htmlToMarkdown(html: string): string {
 }
 
 function decodeEntities(text: string): string {
+  // `&amp;` is unescaped LAST. Decoding it first would turn the literal text
+  // `&amp;lt;` into `&lt;` and then into `<` in the same pass — unescaping
+  // twice, so text the author escaped once came out as live markup. Every other
+  // entity above must also run before this one for the same reason.
   return text
     .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
     .replace(/&#0?39;/g, "'")
+    .replace(/&amp;/g, "&")
 }
 
 /** A table row, keeping empty cells rather than dropping the column. */
