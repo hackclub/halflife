@@ -108,6 +108,89 @@ function takeJournalDraft(checkpointId: string): JournalDraft | null {
   }
 }
 
+/** An image for the entry: a file, or the address of one on another page. */
+type ImageSource = File | { url: string; alt: string }
+
+const IMAGE_ADDRESS = /^(https?:\/\/|data:image\/)/i
+
+/**
+ * The images in a drop. Files when there are any; otherwise a picture dragged
+ * off another page, which arrives as the page's markup for it (read in an
+ * inert document, so nothing loads) and failing that as a bare address that
+ * looks like an image. A plain link comes back empty.
+ */
+function droppedImages(transfer: DataTransfer): ImageSource[] {
+  const files = Array.from(transfer.files).filter((f) => f.type.startsWith("image/"))
+  if (files.length > 0) return files
+  const html = transfer.getData("text/html")
+  if (html) {
+    const found = Array.from(new DOMParser().parseFromString(html, "text/html").images)
+      .map((img) => ({ url: img.getAttribute("src")?.trim() ?? "", alt: img.alt }))
+      .filter((img) => IMAGE_ADDRESS.test(img.url))
+    if (found.length > 0) return found
+  }
+  return transfer
+    .getData("text/uri-list")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith("#") && /^https?:\/\/\S+\.(png|jpe?g|gif|webp)(?:[?#]\S*)?$/i.test(line))
+    .map((url) => ({ url, alt: "" }))
+}
+
+/** Alt text for an image: what the page called it, else its file name. */
+function altFor(source: ImageSource): string {
+  let name = source instanceof File ? source.name : source.alt
+  if (!name && !(source instanceof File) && !source.url.startsWith("data:")) {
+    try {
+      name = decodeURIComponent(new URL(source.url).pathname.split("/").pop() ?? "")
+    } catch {
+      name = ""
+    }
+  }
+  return (
+    name
+      .replace(/\.[^.]+$/, "")
+      .replace(/[[\]()]/g, "")
+      .trim()
+      .slice(0, 80) || "Journal image"
+  )
+}
+
+/**
+ * Put an image in the bucket and hand back its CDN link. A file uploads as
+ * itself. An inline `data:` picture is already here, so it uploads as a file
+ * too. An address on another site is fetched and re-hosted by the server
+ * (/api/upload/from-url): the browser cannot read another site's image, and a
+ * hotlinked one can change or vanish after the entry is reviewed.
+ */
+async function storeImage(source: ImageSource): Promise<{ url: string | null }> {
+  if (source instanceof File) return uploadFile(source, "sessions")
+  if (source.url.startsWith("data:")) {
+    const blob = await (await fetch(source.url)).blob()
+    const ext = blob.type.split("/")[1]?.replace("jpeg", "jpg") ?? "png"
+    return uploadFile(new File([blob], `image.${ext}`, { type: blob.type }), "sessions")
+  }
+  const res = await fetch("/api/upload/from-url", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ url: source.url }),
+  })
+  const payload = (await res.json().catch(() => null)) as {
+    url?: string | null
+    error?: { message?: string }
+  } | null
+  if (!res.ok) throw new Error(payload?.error?.message ?? `That image did not upload (${res.status})`)
+  return { url: payload?.url ?? null }
+}
+
+/** Take an image's placeholder back out of the entry, with the blank line it came with. */
+function withoutPlaceholder(body: string, placeholder: string): string {
+  for (const form of [`\n\n${placeholder}`, `${placeholder}\n\n`, placeholder]) {
+    if (body.includes(form)) return body.replace(form, "")
+  }
+  return body
+}
+
 export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
   const { setOpenCheckpoint, logSession, editSession, complete, projects, stateOf, weekOfCheckpoint, hoursOf } =
     useStore()
@@ -140,8 +223,16 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const imageInput = useRef<HTMLInputElement>(null)
-  const [imageBusy, setImageBusy] = useState(false)
+  const entry = useRef<HTMLTextAreaElement>(null)
+  // Images still on their way up. Each one holds a placeholder in the entry
+  // until its link comes back, and Finish waits for all of them.
+  const [uploading, setUploading] = useState(0)
   const [imageError, setImageError] = useState<string | null>(null)
+  // Files being dragged over the sheet. Counted, because every child the drag
+  // crosses fires its own enter and leave.
+  const [dragging, setDragging] = useState(false)
+  const dragDepth = useRef(0)
+  const placeholderSeq = useRef(0)
 
   // The fallback is for a season sheet opened before its project row landed;
   // it must never pick the warm-up project, which has no season week.
@@ -228,30 +319,84 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
     await linkLapse(`${window.location.pathname}?journal=${encodeURIComponent(checkpoint.id)}`)
   }
 
-  async function addJournalImages(files: FileList | null) {
-    const selected = Array.from(files ?? [])
-    if (selected.length === 0) return
+  /**
+   * Put images into the entry where the cursor is — picked, dropped or
+   * pasted, the same way (after Stasis's session form). Each goes in first as
+   * a placeholder, `![Uploading name…](uploading:n)`, which no renderer or
+   * image count accepts, and is swapped for its CDN link once the upload
+   * lands; a failed one is taken back out. One at a time, because uploads are
+   * rate-limited per account.
+   */
+  async function addJournalImages(sources: Iterable<ImageSource>) {
+    const all = Array.from(sources)
+    const images = all.filter((s) => !(s instanceof File) || s.type.startsWith("image/"))
+    setImageError(images.length < all.length ? "Only images can go in an entry, so the rest were left out." : null)
+    if (images.length === 0) return
 
-    setImageBusy(true)
-    setImageError(null)
-    try {
-      for (const file of selected) {
-        const { url } = await uploadFile(file, "sessions")
+    const items = images.map((source) => {
+      const alt = altFor(source)
+      placeholderSeq.current += 1
+      return { source, alt, placeholder: `![Uploading ${alt}…](uploading:${placeholderSeq.current})` }
+    })
+
+    // Each image a paragraph of its own, wherever in the text it lands.
+    const at = entry.current?.selectionEnd ?? body.length
+    const before = body.slice(0, at)
+    const after = body.slice(at)
+    const lead = !before.trim() || before.endsWith("\n\n") ? "" : before.endsWith("\n") ? "\n" : "\n\n"
+    const trail = !after || after.startsWith("\n") ? "" : "\n\n"
+    const block = `${lead}${items.map((i) => i.placeholder).join("\n\n")}${trail}`
+    setBody(before + block + after)
+    requestAnimationFrame(() => {
+      const caret = before.length + block.length - trail.length
+      entry.current?.setSelectionRange(caret, caret)
+    })
+
+    setUploading((n) => n + items.length)
+    for (const item of items) {
+      try {
+        const { url } = await storeImage(item.source)
         if (!url) throw new Error("Image uploads need a public URL before they can be added here")
-        const alt =
-          file.name
-            .replace(/\.[^.]+$/, "")
-            .replace(/[[\]]/g, "")
-            .trim() || "Journal image"
-        setBody((current) => `${current}${current.trim() ? "\n\n" : ""}![${alt}](${url})`)
+        swapPlaceholder(item.placeholder, `![${item.alt}](${url})`)
+      } catch (err) {
+        swapPlaceholder(item.placeholder, null)
+        setImageError(err instanceof Error ? err.message : "The image did not upload")
+      } finally {
+        setUploading((n) => n - 1)
       }
-    } catch (err) {
-      setImageError(err instanceof Error ? err.message : "The image did not upload")
-    } finally {
-      setImageBusy(false)
-      if (imageInput.current) imageInput.current.value = ""
     }
   }
+
+  /**
+   * Replace a placeholder with its link, or take it out (`null`), without
+   * moving the caret of someone who kept typing while it uploaded: setting a
+   * textarea's value sends the caret to the end, so it is put back, shifted
+   * by however much the text before it grew or shrank.
+   */
+  function swapPlaceholder(placeholder: string, replacement: string | null) {
+    const el = entry.current
+    const keep =
+      el && document.activeElement === el
+        ? { start: el.selectionStart, end: el.selectionEnd, at: el.value.indexOf(placeholder), length: el.value.length }
+        : null
+    setBody((current) =>
+      replacement === null ? withoutPlaceholder(current, placeholder) : current.replace(placeholder, replacement),
+    )
+    if (!keep || keep.at < 0) return
+    requestAnimationFrame(() => {
+      const box = entry.current
+      if (!box) return
+      const delta = box.value.length - keep.length
+      const move = (p: number) => (p > keep.at ? p + delta : p)
+      box.setSelectionRange(move(keep.start), move(keep.end))
+    })
+  }
+
+  // A drag that could be carrying an image: files, or a picture dragged off
+  // another page, which comes as markup and an address rather than a file.
+  // Dragging a selection around the entry is plain text, and not ours.
+  const mightBeImage = (e: React.DragEvent) =>
+    ["Files", "text/html", "text/uri-list"].some((t) => e.dataTransfer.types.includes(t))
 
   return (
     <Modal
@@ -278,7 +423,9 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
             >
               {saveError
                 ? saveError
-                : missing
+                : uploading > 0
+                  ? `Uploading ${uploading === 1 ? "an image" : `${uploading} images`}…`
+                  : missing
                   ? missing
                   : editing
                     ? "Saving replaces this entry. It keeps its place on the map."
@@ -288,7 +435,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
             </p>
           </div>
 
-          <Button variant="solid" onClick={() => void save()} disabled={!ok || saving}>
+          <Button variant="solid" onClick={() => void save()} disabled={!ok || saving || uploading > 0}>
             {saving ? "Saving…" : editing ? "Save changes" : "Finish"}{" "}
             {editing ? <IconCheck className="text-base" /> : <IconArrowRight className="text-base" />}
           </Button>
@@ -319,7 +466,38 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
       </div>
 
       {tab === "journal" ? (
-        <div>
+        // The whole sheet takes a drop, not just the box: a picture let go an
+        // inch off the textarea would otherwise open in the tab and take the
+        // unsaved entry with it.
+        <div
+          onDragEnter={(e) => {
+            if (!mightBeImage(e)) return
+            e.preventDefault()
+            dragDepth.current += 1
+            setDragging(true)
+          }}
+          onDragOver={(e) => {
+            if (mightBeImage(e)) e.preventDefault()
+          }}
+          onDragLeave={(e) => {
+            if (!mightBeImage(e)) return
+            dragDepth.current = Math.max(0, dragDepth.current - 1)
+            if (dragDepth.current === 0) setDragging(false)
+          }}
+          onDrop={(e) => {
+            dragDepth.current = 0
+            setDragging(false)
+            const found = droppedImages(e.dataTransfer)
+            const files = Array.from(e.dataTransfer.files)
+            // A link or some text is not an image: left to the textarea, which
+            // drops it in as text. Files are always caught, images or not, so
+            // a PDF let go over the sheet cannot open in the tab and take the
+            // unsaved entry with it.
+            if (found.length === 0 && files.length === 0) return
+            e.preventDefault()
+            void addJournalImages(found.length > 0 ? found : files)
+          }}
+        >
           {editing ? (
             <ModalTitle subWide>Edit this entry</ModalTitle>
           ) : (
@@ -398,13 +576,31 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
                 className="pointer-events-none absolute top-1/2 left-1/2 h-auto w-40 -translate-x-1/2 -translate-y-1/2 opacity-[0.07]"
               />
               <textarea
+                ref={entry}
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
+                onPaste={(e) => {
+                  // A screenshot on the clipboard goes up like a dropped one;
+                  // pasted text is left to the textarea.
+                  const pasted = Array.from(e.clipboardData.files).filter((f) => f.type.startsWith("image/"))
+                  if (pasted.length === 0) return
+                  e.preventDefault()
+                  void addJournalImages(pasted)
+                }}
                 rows={9}
-                placeholder="Start typing… What did you work on? What worked and what didn't? &#10;&#10; Markdown styling enabled! Drop images in with ![alt text](src url)."
+                placeholder="Start typing… What did you work on? What worked and what didn't? &#10;&#10; Markdown styling enabled! Drag, drop or paste images straight in."
                 aria-label="Journal entry"
-                className={cx(borderedInputClass, "relative h-full resize-none")}
+                className={cx(
+                  borderedInputClass,
+                  "relative h-full resize-none",
+                  dragging && "border-violet! bg-violet-pale/60",
+                )}
               />
+              {dragging && (
+                <p className="hand pointer-events-none absolute inset-0 grid place-items-center text-[0.95rem] text-violet-deep">
+                  drop images to add them to your entry
+                </p>
+              )}
             </div>
 
             {preview && (
@@ -435,12 +631,12 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
             <Button
               variant="outline"
               size="sm"
-              disabled={imageBusy}
+              disabled={uploading > 0}
               onClick={() => imageInput.current?.click()}
               aria-label="Add images to your journal entry"
             >
               <IconUpload className="text-base" />
-              {imageBusy ? "Uploading…" : "Add images"}
+              {uploading > 0 ? "Uploading…" : "Add images"}
             </Button>
             <input
               ref={imageInput}
@@ -450,7 +646,12 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
               className="sr-only"
               tabIndex={-1}
               aria-hidden="true"
-              onChange={(event) => void addJournalImages(event.target.files)}
+              onChange={(event) => {
+                // Copied out first: clearing the input empties the live list.
+                const files = Array.from(event.target.files ?? [])
+                event.target.value = ""
+                void addJournalImages(files)
+              }}
             />
             <p className={cx("hand text-[0.76rem] tabular-nums", longEnough ? "text-teal-ink" : "text-navy-soft")}>
               {written} / 200 characters
