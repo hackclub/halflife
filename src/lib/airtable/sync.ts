@@ -9,7 +9,8 @@ import { lapseTimelapseUrl } from "@/lib/lapse"
 import { decryptUserPII } from "@/lib/pii"
 import prisma from "@/lib/prisma"
 import { getProgramSettings } from "@/lib/program"
-import { findRepoFile, parseGitHubRepo } from "@/lib/repo-checks"
+import { findRepoFile } from "@/lib/repo-checks"
+import { repoRefFromLink } from "@/lib/repo-ref"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
 /**
@@ -133,7 +134,12 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
     description: project.description ?? "",
     journalUrl: journalUrl ?? "",
     lapseLinks: lapseLinks.join(", "),
-    githubUsername: project.githubRepo ? (parseGitHubRepo(project.githubRepo)?.owner ?? "") : "",
+    // A GitHub-only field: for a repo on another forge there is no GitHub
+    // username to send, and the repo URL is carried in its own column anyway.
+    githubUsername: (() => {
+      const ref = repoRefFromLink(project.githubRepo)
+      return ref?.forge.id === "github" ? ref.ownerPath : ""
+    })(),
     addressLine1: pii.line1 ?? "",
     addressLine2: pii.line2 ?? "",
     city: pii.city ?? "",

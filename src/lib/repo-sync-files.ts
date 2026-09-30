@@ -1,6 +1,6 @@
 import "server-only"
 import { Phase } from "@/app/generated/prisma/enums"
-import type { FileUpdate } from "@/lib/github-write"
+import type { FileUpdate } from "@/lib/forge-write"
 
 /**
  * A project's devlogs and parts list, rendered as the markdown that lands in

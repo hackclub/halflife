@@ -3,16 +3,17 @@
 import { useCallback, useEffect, useState } from "react"
 import { IconCheck, IconWarning } from "@/components/platform/icons"
 import { Button, Chip, cx } from "@/components/platform/ui"
-import { linkGitHub } from "@/lib/auth-client"
+import { linkForge } from "@/lib/auth-client"
 
 /**
- * GitHub repo sync — the control that mirrors a project's devlogs and parts
- * list into the maker's own repository.
+ * Repo sync — the control that mirrors a project's devlogs and parts list into
+ * the maker's own repository, on whichever code forge they keep it on.
  *
- * Two states, one component: not connected, and connected. The choice of repo
- * is a picker rather than a text field because the sync has to push, and a repo
+ * Two states, one component: no forge linked, and linked. The choice of repo is
+ * a picker rather than a text field because the sync has to push, and a repo
  * typed by hand is one the token may not be able to write to — which would fail
- * on every entry afterwards with a 403 nobody can act on from here.
+ * on every entry afterwards with a 403 nobody can act on from here. The picked
+ * value is the repo's full URL, so the forge it belongs to travels with it.
  *
  * The first commit happens when the sync is switched on (the server does it
  * before the setting takes), so "on" always means "the files are in the repo",
@@ -22,7 +23,9 @@ import { linkGitHub } from "@/lib/auth-client"
 interface WritableRepo {
   fullName: string
   name: string
-  owner: string
+  ownerPath: string
+  /** The repo's forge URL — what the sync stores and links out to. */
+  url: string
   private: boolean
   defaultBranch: string
   pushedAt: string | null
@@ -31,14 +34,19 @@ interface WritableRepo {
 interface SyncState {
   enabled: boolean
   repo: string | null
+  forge: string | null
   syncedAt: number | null
   error: string | null
-  githubLinked: boolean
+  linkedForges: string[]
   repos: WritableRepo[]
   reposError: string | null
 }
 
-const GITHUB_URL = "https://github.com"
+/** The forges a maker can connect here, and how each is named in the UI. */
+const FORGES = [
+  { id: "github", label: "GitHub" },
+  { id: "gitlab", label: "GitLab" },
+] as const
 
 function when(ms: number): string {
   const minutes = Math.round((Date.now() - ms) / 60_000)
@@ -80,7 +88,7 @@ export function RepoSyncSettings({
       // Pre-select the repo a project already points at, if it is one of the
       // writable ones, so re-enabling does not need the picker used again.
       const current = body.repo as string | null
-      setPicked((p) => p ?? (body.repos as WritableRepo[]).find((r) => r.fullName === current)?.fullName ?? null)
+      setPicked((p) => p ?? (body.repos as WritableRepo[]).find((r) => r.url === current)?.url ?? null)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load the sync settings")
     } finally {
@@ -120,7 +128,7 @@ export function RepoSyncSettings({
   if (loading && !state) {
     return (
       <p className="hand text-[0.84rem] text-navy-soft" aria-live="polite">
-        checking GitHub…
+        checking your repos…
       </p>
     )
   }
@@ -132,24 +140,31 @@ export function RepoSyncSettings({
     )
   }
 
-  // Not linked: the whole feature is gated on it, so the prompt is the panel.
-  if (!state.githubLinked) {
+  // No forge linked: the whole feature is gated on it, so the prompt is the
+  // panel. A maker picks whichever service their project already lives on.
+  if (state.linkedForges.length === 0) {
     return (
       <div className="grid gap-3">
         <p className="text-[0.9rem] leading-relaxed text-navy-soft">
           {compact
-            ? "Connect GitHub to keep your devlogs and parts list in your project's repo."
-            : "Connect your GitHub account to mirror this project's devlogs and parts list into its repository. Syncing needs permission to write to the repo you choose — nothing else on your account is touched."}
+            ? "Connect a code forge to keep your devlogs and parts list in your project's repo."
+            : "Connect the code forge your project lives on — GitHub or GitLab — to mirror this project's devlogs and parts list into its repository. Syncing needs permission to write to the repo you choose; nothing else on your account is touched."}
         </p>
         {error && (
           <p role="alert" className="text-[0.85rem] font-semibold text-coral-deep">
             {error}
           </p>
         )}
-        <div>
-          <Button variant="solid" onClick={() => void linkGitHub(window.location.pathname + window.location.search)}>
-            Connect GitHub
-          </Button>
+        <div className="flex flex-wrap gap-2">
+          {FORGES.map((forge) => (
+            <Button
+              key={forge.id}
+              variant="solid"
+              onClick={() => void linkForge(forge.id, window.location.pathname + window.location.search)}
+            >
+              Connect {forge.label}
+            </Button>
+          ))}
         </div>
       </div>
     )
@@ -163,12 +178,12 @@ export function RepoSyncSettings({
             <IconCheck className="text-sm" /> Syncing
           </Chip>
           <a
-            href={`${GITHUB_URL}/${state.repo ?? ""}`}
+            href={state.repo ?? "#"}
             target="_blank"
             rel="noopener noreferrer"
             className="text-[0.9rem] font-semibold text-navy underline decoration-line-strong decoration-dashed underline-offset-4 transition-colors hover:decoration-violet"
           >
-            {state.repo ?? "the repo"}
+            {state.repo ? state.repo.replace(/^https?:\/\//, "") : "the repo"}
           </a>
           {state.syncedAt && <span className="hand text-[0.82rem] text-navy-soft">synced {when(state.syncedAt)}</span>}
         </p>
@@ -186,7 +201,7 @@ export function RepoSyncSettings({
             <IconWarning className="mt-0.5 shrink-0" />
             <span>
               The last sync did not land: {state.error}
-              {state.error.toLowerCase().includes("github") && " Reconnect GitHub and try again."}
+              {" "}Reconnect {state.forge === "gitlab" ? "GitLab" : "GitHub"} and try again.
             </span>
           </p>
         )}
@@ -223,7 +238,7 @@ export function RepoSyncSettings({
         </p>
       ) : state.repos.length === 0 ? (
         <p className="hand text-[0.86rem] text-navy-soft">
-          no repositories you can push to were found. Make one on GitHub, then check again.
+          no repositories you can push to were found. Make one on {state.linkedForges.length > 1 ? "GitHub or GitLab" : state.linkedForges[0] === "gitlab" ? "GitLab" : "GitHub"}, then check again.
         </p>
       ) : (
         <label className="grid gap-1.5">
@@ -235,7 +250,7 @@ export function RepoSyncSettings({
           >
             <option value="">Choose a repo…</option>
             {state.repos.map((r) => (
-              <option key={r.fullName} value={r.fullName}>
+              <option key={r.url} value={r.url}>
                 {r.fullName}
                 {r.private ? " (private)" : ""}
               </option>

@@ -5,6 +5,7 @@ import { genericOAuth } from "better-auth/plugins"
 import { Role } from "@/app/generated/prisma/enums"
 import { bufferRsvpForUser } from "@/lib/airtable/rsvp"
 import { markLogin } from "@/lib/analytics"
+import { FORGES } from "@/lib/forge"
 import { fetchHcaIdentity, PULL_PII, syncHcaProfile } from "@/lib/hca-profile"
 import { LAPSE_API_BASE } from "@/lib/lapse"
 import prisma from "@/lib/prisma"
@@ -19,22 +20,26 @@ const hcaScopes = ["openid", "profile", "email", "basic_info", "slack_id"]
 if (PULL_PII) hcaScopes.push("address", "birthdate")
 
 /**
- * GitHub scopes for the repo sync. `repo` rather than `public_repo`: a maker's
- * project repo may be private, and the difference between the two scopes only
- * shows up the first day someone links a private repo and every write 403s.
- * `read:user` is what lets the account picker read their login.
- *
- * The list is duplicated in lib/github-write (what the client promises) so a
- * change here does not silently drift from what the UI tells the maker.
+ * The scopes each forge's OAuth app needs, read from the one registry that
+ * describes them (lib/forge). Duplicated nowhere: a change there is what the
+ * picker and the link button promise, because they read the same field.
  */
-const githubScopes = ["read:user", "repo"]
+const githubScopes = [...FORGES.github.scopes]
+const gitlabScopes = [...FORGES.gitlab.scopes]
+
+/**
+ * A forge is link-only: GitHub and GitLab here are not identities we create
+ * accounts from, they are authorisation to push to one repository, granted by
+ * someone we already know. Making either a sign-in provider would mean it
+ * proved an email for an account HCA is supposed to be the sole source of.
+ */
 
 /**
  * The email a link-only provider reports: unique per identity, and on the
  * reserved .invalid TLD, so it can never equal a real user's address. See
  * `trustedProviders` for why that matters.
  */
-function linkOnlyEmail(provider: "hackatime" | "lapse" | "github", id: string): string {
+function linkOnlyEmail(provider: "hackatime" | "lapse" | "github" | "gitlab", id: string): string {
   return `${provider}-${id.replace(/[^A-Za-z0-9_-]/g, "")}@link.invalid`
 }
 
@@ -144,7 +149,7 @@ export const auth = betterAuth({
       // TLD (linkOnlyEmail, above) that no real user can hold, so the email
       // match in (2) can never find anyone. Nothing reads those addresses —
       // a user's email comes from HCA, and Account rows store no email.
-      trustedProviders: ["hca", "hackatime", "lapse", "github"],
+      trustedProviders: ["hca", "hackatime", "lapse", "github", "gitlab"],
     },
   },
 
@@ -425,6 +430,60 @@ export const auth = betterAuth({
               email: linkOnlyEmail("github", data.login),
               name: data.name || data.login,
               image: data.avatar_url,
+              emailVerified: false,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            }
+          },
+        },
+        {
+          // Where the repo sync writes when a maker keeps their work on GitLab.
+          // Link-only for the same reason as GitHub: an authorisation to push
+          // to one repository, not an identity we create accounts from.
+          //
+          // `api` is broad — read/write over every project the person can see.
+          // GitLab offers nothing narrower that still covers creating a commit
+          // through the API (`write_repository` is Git-over-HTTP only), so this
+          // is asked for at link time and explained in the picker, exactly as
+          // GitHub's `repo` scope is.
+          //
+          // GitLab access tokens expire after two hours. That is why
+          // lib/forge-write reads tokens through `auth.api.getAccessToken`
+          // rather than off the account row: that call refreshes from the
+          // stored refresh token, and without it every sync an hour into a
+          // session would fail. See `forgeCredentials`.
+          providerId: "gitlab",
+          authorizationUrl: "https://gitlab.com/oauth/authorize",
+          tokenUrl: "https://gitlab.com/oauth/token",
+          userInfoUrl: "https://gitlab.com/api/v4/user",
+          clientId: process.env.GITLAB_CLIENT_ID ?? "",
+          clientSecret: process.env.GITLAB_CLIENT_SECRET ?? "",
+          scopes: gitlabScopes,
+          // GitLab's token endpoint reads the client from the form body, like
+          // GitHub's.
+          authentication: "post",
+          disableSignUp: true,
+          disableImplicitSignUp: true,
+          getUserInfo: async ({ accessToken }) => {
+            if (!accessToken) return null
+            const res = await fetch("https://gitlab.com/api/v4/user", {
+              headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
+              signal: AbortSignal.timeout(10_000),
+            })
+            if (!res.ok) return null
+            const data = (await res.json()) as {
+              id: number
+              username: string
+              name?: string | null
+              avatar_url?: string | null
+            }
+            return {
+              // The numeric id, not the username: a username can be changed and
+              // the account row has to survive that.
+              id: String(data.id),
+              email: linkOnlyEmail("gitlab", data.username),
+              name: data.name || data.username,
+              image: data.avatar_url ?? undefined,
               emailVerified: false,
               createdAt: new Date(),
               updatedAt: new Date(),

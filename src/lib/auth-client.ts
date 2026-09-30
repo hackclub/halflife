@@ -38,10 +38,11 @@ export function linkLapse(callbackURL = "/dashboard") {
 }
 
 /**
- * GitHub is linked, never signed in with: it is the authorisation that lets the
- * repo sync push to a maker's repository, granted by someone already signed in
- * through Hack Club Auth.
+ * A forge is linked, never signed in with: it is the authorisation that lets
+ * the repo sync push to a maker's repository, granted by someone already signed
+ * in through Hack Club Auth. `forge` names which service — the two configured
+ * today are GitHub and GitLab, both registered in lib/forge.
  */
-export function linkGitHub(callbackURL = "/dashboard") {
-  return authClient.linkSocial({ provider: "github", callbackURL })
+export function linkForge(forge: "github" | "gitlab", callbackURL = "/dashboard") {
+  return authClient.linkSocial({ provider: forge, callbackURL })
 }

@@ -211,17 +211,22 @@ async function bodies() {
     ["setGoal", meSchema, { printerGoalId: "bambu-a1-mini" }],
     ["like", likeSchema, { liked: true }],
     ["buy", purchaseSchema, { shopItemId: "printer-ender-3-v3-se", quantity: 1 }],
-    ["repoSync · on", repoSyncSettingsSchema, { enabled: true, repo: "maker/hackpad" }],
+    ["repoSync · on", repoSyncSettingsSchema, { enabled: true, repo: "https://github.com/maker/hackpad" }],
     ["repoSync · off", repoSyncSettingsSchema, { enabled: false }],
-    ["onboarding · repo step", onboardingStepSchema, { step: "repo", enabled: true, repo: "maker/hackpad" }],
+    ["onboarding · repo step", onboardingStepSchema, { step: "repo", enabled: true, repo: "https://github.com/maker/hackpad" }],
     ["onboarding · repo skipped", onboardingStepSchema, { step: "repo", enabled: false }],
   ]
 
-  // A URL where `owner/name` belongs must be refused: the sync target is a repo
-  // the picker offered, not anything a crafted string can name.
+  // The sync target is a repo URL the picker offered, and only that: a bare
+  // `owner/name` cannot say which forge it means, and a host-less slug is not
+  // something a picker produces.
   check(
-    "body · repoSync rejects a URL",
-    !repoSyncSettingsSchema.safeParse({ enabled: true, repo: "https://github.com/maker/hackpad" }).success,
+    "body · repoSync rejects a bare slug",
+    !repoSyncSettingsSchema.safeParse({ enabled: true, repo: "maker/hackpad" }).success,
+  )
+  check(
+    "body · repoSync accepts a GitLab nested-group URL",
+    repoSyncSettingsSchema.safeParse({ enabled: true, repo: "https://gitlab.com/group/sub/repo" }).success,
   )
 
   /* ── 3. Upload key ownership ───────────────────────────────────────────── */
@@ -563,41 +568,61 @@ async function bodies() {
     )
   }
 
-  /* ── 6c. GitHub repo references ─────────────────────────────────────────── */
+  /* ── 6c. Repo references, across forges ─────────────────────────────────── */
   //
-  // Two shapes reach the sync and both have to work. `githubRepo` on a project
-  // is a full URL; `repoSyncRepo` — the repo the sync is pinned to — is the bare
-  // `owner/name` the picker chose. They went through one parser that assumed a
-  // URL, so `new URL("owner/name")` read `owner` as the HOSTNAME, never matched
-  // github.com, and refused every enable with "Pick a GitHub repo". These pin
-  // both forms so the two columns cannot drift apart again.
-  const { parseGitHubRepo } = await import("../src/lib/repo-checks")
+  // Three shapes reach the sync and all have to work. `githubRepo` on a project
+  // is a full URL; `repoSyncRepo` — the repo the sync is pinned to — is a full
+  // URL now too, but a row written before that change holds a bare `owner/name`
+  // with no host. They went through one parser that assumed a URL, so
+  // `new URL("owner/name")` read `owner` as the HOSTNAME, never matched
+  // github.com, and refused every enable with "Pick a GitHub repo". The bare
+  // form is now resolved against a named forge (the caller's), and both forms
+  // are pinned here so the columns cannot drift apart again.
+  //
+  // GitLab is a forge we speak now, so `gitlab.com/a/b` PARSES rather than
+  // being refused — the old expectation. What is refused is a host we do not
+  // know (Codeberg, self-hosted Gitea), which the checks warn about rather than
+  // block on.
+  const { parseRepoRef } = await import("../src/lib/repo-ref")
+  const { FORGES } = await import("../src/lib/forge")
   {
-    const okCases: Array<[string, string, string]> = [
-      ["a bare owner/name", "Heliodex/civet-lab", "Heliodex/civet-lab"],
-      ["a full https URL", "https://github.com/hackclub/halflife", "hackclub/halflife"],
-      ["a scheme-less host URL", "github.com/hackclub/halflife", "hackclub/halflife"],
-      ["a trailing .git", "Heliodex/coputer.git", "Heliodex/coputer"],
-      ["a www host", "https://www.github.com/a/b", "a/b"],
+    // [label, input, expected fullName, forge the result must carry]
+    const okCases: Array<[string, string, string, string]> = [
+      ["a bare owner/name", "Heliodex/coputer", "Heliodex/coputer", "github"],
+      ["a full https URL", "https://github.com/hackclub/halflife", "hackclub/halflife", "github"],
+      ["a scheme-less host URL", "github.com/hackclub/halflife", "hackclub/halflife", "github"],
+      ["a trailing .git", "Heliodex/coputer.git", "Heliodex/coputer", "github"],
+      ["a www host", "https://www.github.com/a/b", "a/b", "github"],
+      ["a GitLab URL", "https://gitlab.com/a/b", "a/b", "gitlab"],
+      ["a nested GitLab group", "https://gitlab.com/group/sub/repo", "group/sub/repo", "gitlab"],
+      ["a scheme-less GitLab URL", "gitlab.com/group/repo", "group/repo", "gitlab"],
     ]
-    for (const [label, input, expected] of okCases) {
-      const parsed = parseGitHubRepo(input)
+    for (const [label, input, expected, forgeId] of okCases) {
+      // A bare slug can only resolve against a named forge: `Heliodex/coputer
+      // has no host to tell GitHub from GitLab, so the caller supplies the one
+      // the sync was pinned under.
+      const parsed = parseRepoRef(input, { forge: FORGES.github })
       check(
         `repo-ref · ${label} parses`,
-        parsed !== null && `${parsed.owner}/${parsed.repo}` === expected,
-        parsed ? `${parsed.owner}/${parsed.repo}` : "null",
+        parsed !== null && parsed.fullName === expected && parsed.forge.id === forgeId,
+        parsed ? `${parsed.forge.id}:${parsed.fullName}` : "null",
       )
     }
 
+    // A bare slug with no forge named is genuinely ambiguous and must be refused
+    // rather than guessed at.
+    check("repo-ref · a bare slug without a named forge is refused", parseRepoRef("Heliodex/coputer") === null)
+
     const rejectCases: Array<[string, string]> = [
-      ["another host", "https://gitlab.com/a/b"],
+      ["an unknown host", "https://codeberg.org/a/b"],
       ["a single segment", "Heliodex"],
-      ["three segments", "a/b/c"],
+      ["three GitHub segments", "a/b/c"],
       ["a traversal attempt", "https://github.com/a/..%2f..%2fadmin"],
+      ["a dot segment", "https://gitlab.com/a/../b"],
       ["an empty string", ""],
     ]
     for (const [label, input] of rejectCases) {
-      check(`repo-ref · ${label} is refused`, parseGitHubRepo(input) === null)
+      check(`repo-ref · ${label} is refused`, parseRepoRef(input, { forge: FORGES.github }) === null)
     }
   }
 

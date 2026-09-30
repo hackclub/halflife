@@ -79,22 +79,31 @@ export type BomItemInput = z.infer<typeof bomItemSchema>
 export const bomExtrasSchema = z.object({ taxShippingUsd: z.number().min(0).max(10_000).nullable() }).strict()
 
 /**
- * GitHub repo sync, switched per project.
+ * A repo URL a forge picker may have offered: `github.com/owner/name`, or
+ * `gitlab.com/group/sub/repo` for GitLab's nested groups. Two to four path
+ * segments, an optional scheme, an optional trailing slash.
  *
- * `repo` is `owner/name`, not a URL: the picker chooses from the repos GitHub
- * says the caller can push to, and an id that has to be parsed again would let a
- * crafted URL point the sync at a repository the caller never chose.
+ * This is the outer bound only. `parseRepoRef` narrows it further (known host,
+ * safe segments, no traversal) and `enableRepoSync` resolves it against the
+ * forge it names, so a string that slips past this still cannot point the sync
+ * at a repo the caller never picked without the token having to be able to push
+ * there.
+ */
+export const REPO_URL_RE =
+  /^(https?:\/\/)?[A-Za-z0-9.-]+\/[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+){1,3}\/?$/
+
+/**
+ * Repo sync, switched per project.
+ *
+ * `repo` is the full URL of a repo the picker offered, not a bare slug: the
+ * forge it lives on has to stay inferable from the stored value, and a
+ * host-less slug cannot say which service it means.
  */
 export const repoSyncSettingsSchema = z
   .object({
     enabled: z.boolean(),
     /** Required when turning it on, ignored when turning it off. */
-    repo: z
-      .string()
-      .trim()
-      .regex(/^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/, "Pick a GitHub repo")
-      .max(200)
-      .optional(),
+    repo: z.string().trim().regex(REPO_URL_RE, "Pick a repository to sync to").max(300).optional(),
   })
   .strict()
 

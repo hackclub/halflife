@@ -5,14 +5,15 @@ import { listBom } from "@/lib/bom"
 import { getThemeDef, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { TIERS } from "@/lib/config/tiers"
 import { HttpError } from "@/lib/errors"
-import { commitFiles, defaultBranchOf, githubCredentials, type WrittenFile } from "@/lib/github-write"
+import { ALL_FORGES } from "@/lib/forge"
+import { commitFiles, defaultBranchOf, forgeCredentials, type WrittenFile } from "@/lib/forge-write"
+import { parseRepoRef, repoRefFromLink, repoRefToUrl } from "@/lib/repo-ref"
 import prisma from "@/lib/prisma"
-import { parseGitHubRepo } from "@/lib/repo-checks"
 import { type BomLineForFile, type JournalEntry, renderBom, renderJournal } from "@/lib/repo-sync-files"
 
 /**
- * The GitHub repo sync: what actually runs when a project's devlogs or parts
- * list need to land in its repository.
+ * The repo sync: what actually runs when a project's devlogs or parts list need
+ * to land in its repository.
  *
  * Three things this module is careful about:
  *
@@ -28,7 +29,11 @@ import { type BomLineForFile, type JournalEntry, renderBom, renderJournal } from
  *    `repoSyncError` is what its page renders; the run row and the audit entry
  *    are what staff read.
  *
- * The GitHub side is lib/github-write; the file contents are lib/repo-sync-files.
+ * Which forge a repo lives on is read from the repo link, never chosen per
+ * project or per user: `repoRefFromLink` resolves the host to a forge, and
+ * everything below it — credentials, the branch read, the commit — takes that
+ * forge rather than assuming GitHub. The forge side is lib/forge-write; the
+ * file contents are lib/repo-sync-files.
  */
 
 /** Debounce: the shortest gap between a write and its commit being started. */
@@ -202,17 +207,30 @@ async function syncOnce(themeProjectId: string, manual: boolean, force = false):
     if (program?.repoSyncEnabled === false) return []
   }
 
+  // The pinned target is a full URL now, so the forge is inferable from the
+  // stored value alone. A row pinned before this change holds a bare
+  // `owner/name` with no host, which cannot say which forge it means — that one
+  // is resolved against the project's own repo link, the forge the maker was
+  // working on when the pin was written.
   const targetRepo = project.repoSyncRepo ?? project.githubRepo
-  const parsed = targetRepo ? parseGitHubRepo(targetRepo) : null
+  const pinForge = repoRefFromLink(project.repoSyncRepo)?.forge ?? repoRefFromLink(project.githubRepo)?.forge
+  const parsed = targetRepo ? parseRepoRef(targetRepo, pinForge ? { forge: pinForge } : {}) : null
   if (!parsed) {
-    await recordFailure(project.id, project.userId, targetRepo ?? "(none)", "No GitHub repo is set for this project.", manual)
+    await recordFailure(
+      project.id,
+      project.userId,
+      targetRepo ?? "(none)",
+      "No repo is set for this project.",
+      manual,
+    )
     return []
   }
-  const repo = `${parsed.owner}/${parsed.repo}`
+  const repo = parsed.fullName
+  const forge = parsed.forge
 
-  const creds = await githubCredentials(project.userId)
+  const creds = await forgeCredentials(project.userId, forge)
   if (!creds) {
-    await recordFailure(project.id, project.userId, repo, "GitHub is not connected.", manual)
+    await recordFailure(project.id, project.userId, repo, `${forge.label} is not connected.`, manual)
     return []
   }
 
@@ -266,15 +284,8 @@ async function syncOnce(themeProjectId: string, manual: boolean, force = false):
       renderBom(meta, bomLines, project.bomTaxShippingUsd ?? 0, grantUsd),
     ]
 
-    const branch = await defaultBranchOf(creds, parsed.owner, parsed.repo)
-    const written = await commitFiles(
-      creds,
-      parsed.owner,
-      parsed.repo,
-      branch,
-      files,
-      `Sync ${meta.title} from Half Life`,
-    )
+    const branch = await defaultBranchOf(creds, parsed)
+    const written = await commitFiles(creds, parsed, branch, files, `Sync ${meta.title} from Half Life`)
 
     const changed = written.filter((f) => !f.unchanged)
     await prisma.$transaction([
@@ -346,18 +357,23 @@ async function recordFailure(
 }
 
 /**
- * Turn the sync on for a project: pin the repo, verify GitHub can write to it,
- * and do the first commit.
+ * Turn the sync on for a project: pin the repo, verify the forge can write to
+ * it, and do the first commit.
  *
  * Refuses rather than half-applying. Switching the sync on against a repo the
  * caller cannot push to would leave every later write failing with a 403 they
  * cannot fix from the platform, so the first commit is done here and its
  * failure means the setting never takes.
+ *
+ * `repoUrl` is the full URL of the chosen repo, which is what gets pinned. A URL
+ * rather than a slug because the forge then stays inferable from the stored
+ * value on its own — the sync later reads the pin without having to remember
+ * which service the picker was listing.
  */
 export async function enableRepoSync(
   themeProjectId: string,
   userId: string,
-  repoFullName: string,
+  repoUrl: string,
 ): Promise<{ repo: string; files: WrittenFile[] }> {
   const project = await prisma.themeProject.findFirst({
     where: { id: themeProjectId, userId, deletedAt: null },
@@ -365,18 +381,18 @@ export async function enableRepoSync(
   })
   if (!project) throw new HttpError("NOT_FOUND", "Project not found")
 
-  const parsed = parseGitHubRepo(repoFullName)
-  if (!parsed) throw new HttpError("VALIDATION_FAILED", "Pick a GitHub repo")
+  const ref = repoRefFromLink(repoUrl)
+  if (!ref) throw new HttpError("VALIDATION_FAILED", "Pick a repository to sync to")
 
-  const creds = await githubCredentials(userId)
-  if (!creds) throw new HttpError("FORBIDDEN", "Connect your GitHub account first")
+  const creds = await forgeCredentials(userId, ref.forge)
+  if (!creds) throw new HttpError("FORBIDDEN", `Connect your ${ref.forge.label} account first`)
 
-  const repo = `${parsed.owner}/${parsed.repo}`
+  const repo = ref.fullName
   // Pin the target and clear any stale error before the first commit, so a
   // failure here is recorded against the project the maker is looking at.
   await prisma.themeProject.update({
     where: { id: themeProjectId },
-    data: { repoSyncRepo: repo, repoSyncError: null },
+    data: { repoSyncRepo: repoUrl, repoSyncError: null },
   })
 
   try {
@@ -412,30 +428,45 @@ export async function disableRepoSync(themeProjectId: string, userId: string): P
 /** What the project page and settings need to render the control. */
 export interface RepoSyncState {
   enabled: boolean
-  /** `owner/repo` the sync writes to, or null when it is off. */
+  /** The repo the sync writes to, or null when it is off. */
   repo: string | null
+  /** The forge that repo is on, when one is pinned. */
+  forge: string | null
   /** When the last successful run finished, epoch ms. */
   syncedAt: number | null
   /** Why the last attempt failed, or null. */
   error: string | null
-  /** Whether the caller has a GitHub account linked at all. */
-  githubLinked: boolean
+  /** Which forges the caller has linked, by id — a maker may link both. */
+  linkedForges: string[]
 }
 
 export async function getRepoSyncState(themeProjectId: string, userId: string): Promise<RepoSyncState> {
-  const [project, creds] = await Promise.all([
+  const [project, accounts] = await Promise.all([
     prisma.themeProject.findFirst({
       where: { id: themeProjectId, userId },
       select: { repoSyncEnabled: true, repoSyncRepo: true, githubRepo: true, repoSyncedAt: true, repoSyncError: true },
     }),
-    githubCredentials(userId),
+    prisma.account.findMany({
+      where: { userId, providerId: { in: ALL_FORGES.map((f) => f.id) } },
+      select: { providerId: true, accessToken: true },
+    }),
   ])
   if (!project) throw new HttpError("NOT_FOUND", "Project not found")
+
+  // The pinned target is a URL now; an older row still holds a bare slug, which
+  // says nothing about its forge on its own. That one is resolved against the
+  // project's own repo link — the same fallback the sync uses — so the UI is
+  // handed a URL it can link out to rather than a bare `owner/name`.
+  const target = project.repoSyncRepo ?? project.githubRepo
+  const fallback = repoRefFromLink(project.githubRepo)?.forge
+  const ref = repoRefFromLink(target) ?? (target && fallback ? parseRepoRef(target, { forge: fallback }) : null)
+
   return {
     enabled: project.repoSyncEnabled,
-    repo: project.repoSyncRepo ?? project.githubRepo,
+    repo: ref ? repoRefToUrl(ref) : target,
+    forge: ref?.forge.id ?? null,
     syncedAt: project.repoSyncedAt?.getTime() ?? null,
     error: project.repoSyncError,
-    githubLinked: creds !== null,
+    linkedForges: accounts.filter((a) => a.accessToken).map((a) => a.providerId),
   }
 }

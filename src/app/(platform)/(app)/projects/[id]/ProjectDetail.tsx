@@ -528,7 +528,7 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
       </div>
 
       {/* ---------- keeping the repo in step ---------- */}
-      <Section id="repo-sync-title" title="Sync to GitHub">
+      <Section id="repo-sync-title" title="Sync your repo">
         <Panel tone="line" radius={20} className="bg-paper px-5 py-5 sm:px-6">
           <RepoSyncSettings projectId={project.id} />
         </Panel>
