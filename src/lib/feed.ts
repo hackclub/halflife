@@ -1,12 +1,12 @@
 import "server-only"
 import type { Prisma } from "@/app/generated/prisma/client"
-import { PostKind, PostStatus } from "@/app/generated/prisma/enums"
+import { PostKind, PostStatus, Role } from "@/app/generated/prisma/enums"
 import { markReel } from "@/lib/analytics"
 import { avatarUrl } from "@/lib/avatar"
 import { HttpError } from "@/lib/errors"
 import { cursorArgs, pageResult } from "@/lib/pagination"
 import prisma from "@/lib/prisma"
-import { currentWeekNumber } from "@/lib/program"
+import { currentWeekNumber, getProgramSettings, isTimeZone, startOfDay } from "@/lib/program"
 import { sanitize } from "@/lib/sanitize"
 import { recomputeStreak } from "@/lib/streak"
 import { isOwnedKey, publicUrlFor } from "@/lib/uploads/r2"
@@ -117,37 +117,61 @@ const visible: Prisma.PostWhereInput = {
 export interface FeedPage {
   items: FeedItem[]
   nextCursor: string | null
-  /** HQ announcements, returned only on the first page. */
-  pinned: FeedItem[]
+  /**
+   * What goes above the paged rows, on the first page only: any reel an admin
+   * posted today in the viewer's timezone, newest first.
+   */
+  leading: FeedItem[]
 }
 
 /**
- * One page of the feed, newest first.
+ * One page of the feed, newest first, announcements included.
  *
- * Pinned announcements are returned as their own list rather than spliced into
+ * An admin's reel from today leads it, so it is the first thing everyone sees
+ * that day, whether it was posted as an announcement or as an ordinary reel.
+ * From the next day it is back in its place by date, like any other. "Today"
+ * is the viewer's own day, from the timezone their browser sends: one posted
+ * late at night in New York is still today's for someone waking up in Delhi.
+ * A missing or unknown zone falls back to the program's.
+ *
+ * The leading reels are returned as their own list rather than spliced into
  * the paged rows. Paginating a cursor across two different orderings is how a
- * feed starts skipping or repeating items — the pinned set is small, bounded,
- * and only needed on the first page.
+ * feed starts skipping or repeating items — the set is small, bounded, and
+ * only needed on the first page.
  */
-export async function getFeed(viewerId: string, opts: { cursor?: string; limit: number }): Promise<FeedPage> {
+export async function getFeed(
+  viewerId: string,
+  opts: { cursor?: string; limit: number; timeZone?: string },
+): Promise<FeedPage> {
   const rows = await prisma.post.findMany({
-    where: { ...visible, pinnedAt: null },
+    where: visible,
     include: feedInclude,
     orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
     ...cursorArgs(opts.cursor, opts.limit),
   })
 
-  const pinnedRows = opts.cursor
-    ? []
-    : await prisma.post.findMany({
-        where: { ...visible, pinnedAt: { not: null } },
-        include: feedInclude,
-        orderBy: [{ pinnedAt: "desc" }, { id: "desc" }],
-        take: 5,
-      })
+  let leading: typeof rows = []
+  if (!opts.cursor) {
+    const timeZone =
+      opts.timeZone && isTimeZone(opts.timeZone) ? opts.timeZone : (await getProgramSettings()).programTimezone
+    leading = await prisma.post.findMany({
+      where: {
+        ...visible,
+        publishedAt: { gte: startOfDay(new Date(), timeZone) },
+        user: { roles: { some: { role: Role.ADMIN } } },
+      },
+      include: feedInclude,
+      orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
+      take: 5,
+    })
+  }
 
+  // Each reel once: the leading ones are taken out of the page below them. A
+  // later page can still carry one, which the client drops as already seen.
+  const leadIds = new Set(leading.map((p) => p.id))
   const page = pageResult(rows, opts.limit)
-  const all = [...pinnedRows, ...page.items]
+  const pageItems = page.items.filter((p) => !leadIds.has(p.id))
+  const all = [...leading, ...pageItems]
 
   // One query for the viewer's likes across the whole page, rather than a
   // correlated exists() per row.
@@ -160,9 +184,9 @@ export async function getFeed(viewerId: string, opts: { cursor?: string; limit: 
   const likedIds = new Set(liked.map((l) => l.postId))
 
   return {
-    items: page.items.map((p) => toFeedItem(p, likedIds)),
+    items: pageItems.map((p) => toFeedItem(p, likedIds)),
     nextCursor: page.nextCursor,
-    pinned: pinnedRows.map((p) => toFeedItem(p, likedIds)),
+    leading: leading.map((p) => toFeedItem(p, likedIds)),
   }
 }
 

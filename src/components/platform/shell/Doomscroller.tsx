@@ -67,7 +67,7 @@ export function DoomscrollerFeed({ onClose, className }: { onClose?: () => void;
         )}
         {feed.done && feed.items.length > 0 && (
           <p className="hand shrink-0 py-6 text-center text-[0.8rem] text-navy-soft">
-            that is everything. go build something.
+            that's everything! your turn to go build something.
           </p>
         )}
       </div>

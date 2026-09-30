@@ -88,10 +88,23 @@ function midnightAfterWeek(
   const start = settings.eventStartDate
   // The Monday after the week, as a wall-clock midnight in the program zone.
   const wall = Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate() + week * 7)
-  // Correct by the zone's offset at that instant, then once more in case the
-  // first guess landed on the other side of a daylight-saving change.
-  const first = wall - zoneOffsetMs(wall, settings.programTimezone)
-  return new Date(wall - zoneOffsetMs(first, settings.programTimezone))
+  return zonedWallTime(wall, settings.programTimezone)
+}
+
+/** Midnight at the start of the day `at` falls on in `timeZone`. */
+export function startOfDay(at: Date, timeZone: string): Date {
+  const [year, month, day] = effectiveDateFor(at, timeZone).split("-")
+  return zonedWallTime(Date.UTC(Number(year), Number(month) - 1, Number(day)), timeZone)
+}
+
+/**
+ * The instant a wall-clock time (written as if it were UTC) happens in
+ * `timeZone`. Corrected by the zone's offset at that instant, then once more
+ * in case the first guess landed on the other side of a daylight-saving change.
+ */
+function zonedWallTime(wall: number, timeZone: string): Date {
+  const first = wall - zoneOffsetMs(wall, timeZone)
+  return new Date(wall - zoneOffsetMs(first, timeZone))
 }
 
 /** How far before midnight a week closes: the deadline is 11:59 PM, not 12:00 AM. */
@@ -137,6 +150,16 @@ export async function assertWeekStarted(week: number): Promise<void> {
       "WEEK_NOT_STARTED",
       `Week ${week} opens on ${formatProgramDate(opensAt, settings.programTimezone)}.`,
     )
+  }
+}
+
+/** Whether `timeZone` is an IANA name this runtime knows, e.g. "Asia/Kolkata". */
+export function isTimeZone(timeZone: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone })
+    return true
+  } catch {
+    return false
   }
 }
 

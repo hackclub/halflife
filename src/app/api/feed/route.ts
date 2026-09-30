@@ -15,6 +15,8 @@ export const GET = withRoute(async (req: Request) => {
     limit: url.searchParams.get("limit") ?? undefined,
   })
   const { cursor, limit } = parsed.success ? parsed.data : { cursor: undefined, limit: 25 }
+  // The viewer's IANA zone, for what counts as today; getFeed checks it.
+  const timeZone = url.searchParams.get("tz")?.slice(0, 64) || undefined
 
-  return ok(await getFeed(gate.user.id, { cursor, limit }))
+  return ok(await getFeed(gate.user.id, { cursor, limit, timeZone }))
 })

@@ -1,7 +1,7 @@
 import "dotenv/config"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { PrismaClient } from "../src/app/generated/prisma/client"
-import { PostKind, PostStatus, Theme } from "../src/app/generated/prisma/enums"
+import { PostKind, PostStatus, Role, Theme } from "../src/app/generated/prisma/enums"
 
 /**
  * End-to-end check of the Doomscroller.
@@ -184,7 +184,7 @@ async function main() {
   const staff = await prisma.user.create({
     data: { email: `hq-${stamp}@example.test`, name: "HQ" },
   })
-  await createPost({
+  const announcement = await createPost({
     userId: staff.id,
     kind: PostKind.ANNOUNCEMENT,
     caption: "Week 1 starts now",
@@ -192,12 +192,28 @@ async function main() {
     canManageFeed: true,
   })
 
-  const page = await getFeed(viewer.id, { limit: 25 })
-  check("announcements are pinned, not paged", page.pinned.length, 1)
-  check("the pinned one is the announcement", page.pinned[0]?.kind, PostKind.ANNOUNCEMENT)
-  check("the participant reel is in the page", page.items.length, 1)
+  const notAdmin = await getFeed(viewer.id, { limit: 25 })
+  check("a non-admin's post does not lead", notAdmin.leading.length, 0)
+  check("so it is paged with the rest", notAdmin.items.length, 2)
+
+  await prisma.userRole.create({ data: { userId: staff.id, role: Role.ADMIN } })
+  const page = await getFeed(viewer.id, { limit: 25, timeZone: "Asia/Kolkata" })
+  check("an admin's reel from today leads", page.leading.length, 1)
+  check("the leading one is the announcement", page.leading[0]?.kind, PostKind.ANNOUNCEMENT)
+  check("and it is not paged twice", page.items.length, 1)
   check("the viewer's like is reflected", page.items[0]?.likedByMe, true)
   check("the author's streak rides along", typeof page.items[0]?.author.streak, "number")
+
+  // From the next day it goes back to its place by date.
+  const posted = new Date()
+  await prisma.post.update({
+    where: { id: announcement.id },
+    data: { publishedAt: new Date(posted.getTime() - 3 * 24 * 60 * 60 * 1000) },
+  })
+  const later = await getFeed(viewer.id, { limit: 25 })
+  check("an older admin reel no longer leads", later.leading.length, 0)
+  check("it is paged by date, after the newer reel", later.items.at(-1)?.id, announcement.id)
+  await prisma.post.update({ where: { id: announcement.id }, data: { publishedAt: posted } })
 
   // ── Moderation ─────────────────────────────────────────────────────────────
   await hidePost(post.id, staff.id, "not related to the program")

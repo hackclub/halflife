@@ -10,12 +10,14 @@ import type { FeedItem, FeedPage } from "@/lib/feed"
  * it pages as you scroll, and the rail and the full-page view want the same
  * rows without one of them re-rendering a layout to get them.
  *
- * Announcements come back as their own list rather than spliced in. Paginating
- * one cursor across two orderings is how a feed starts skipping rows, so the
- * server keeps them apart and they are simply put first here.
+ * Today's admin reels come back as their own list rather than spliced in.
+ * Paginating one cursor across two orderings is how a feed starts skipping
+ * rows, so the server keeps them apart and they are simply put first here.
  */
 export function useFeed(limit = 12) {
   const [items, setItems] = useState<FeedItem[]>([])
+  // Today's admin reels, as the first page put them in front of the rest.
+  const [leading, setLeading] = useState<FeedItem[]>([])
   const [cursor, setCursor] = useState<string | null>(null)
   const [done, setDone] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -31,12 +33,15 @@ export function useFeed(limit = 12) {
       try {
         const query = new URLSearchParams({ limit: String(limit) })
         if (after) query.set("cursor", after)
+        // So "an admin's reel from today" means the viewer's today.
+        else query.set("tz", Intl.DateTimeFormat().resolvedOptions().timeZone)
         const res = await fetch(`/api/feed?${query}`)
         if (!res.ok) throw new Error(`The feed did not load (${res.status})`)
         const page = (await res.json()) as FeedPage
+        if (!after) setLeading(page.leading)
         setItems((prev) => {
           const seen = new Set(prev.map((i) => i.id))
-          const fresh = [...page.pinned, ...page.items].filter((i) => !seen.has(i.id))
+          const fresh = [...page.leading, ...page.items].filter((i) => !seen.has(i.id))
           return [...prev, ...fresh]
         })
         setCursor(page.nextCursor)
@@ -63,6 +68,7 @@ export function useFeed(limit = 12) {
 
   return {
     items,
+    leading,
     loading,
     error,
     done,

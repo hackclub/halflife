@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { Avatar } from "@/components/platform/Avatar"
 import {
   IconChevronDown,
@@ -14,6 +14,7 @@ import {
 import { cx, Panel } from "@/components/platform/ui"
 import type { FeedItem } from "@/lib/feed"
 import { useStore } from "@/lib/store"
+import { type FeedPosition, readPosition, savePosition } from "./feedPosition"
 import { compact } from "./format"
 import { sendLike } from "./ReelCard"
 import { ReelComments } from "./ReelComments"
@@ -43,6 +44,13 @@ const WHEEL_GESTURE_GAP_MS = 180
 const PREFETCH_AHEAD = 3
 
 /**
+ * How many pages deep to look for where the viewer left off today before
+ * giving up and starting at the top — about a hundred reels, which is more
+ * than a day of the program posts.
+ */
+const RESUME_MAX_PAGES = 8
+
+/**
  * Slides this far either side of the current one are real players; the rest
  * are empty frames of the same height. A feed that has paged in sixty reels
  * then holds five video elements, not sixty.
@@ -54,6 +62,20 @@ const COMMENTS_BESIDE = "(min-width: 80rem)"
 
 function prefersStill() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches
+}
+
+/**
+ * Whether `from` sits in something that scrolls vertically on its own, which
+ * a wheel over it should move rather than the reel. Whether or not it has hit
+ * its end: a list that suddenly changes the reel when you reach its bottom is
+ * a surprise, not a convenience.
+ */
+function scrollsItself(from: Element): boolean {
+  for (let el: Element | null = from; el && el !== document.body; el = el.parentElement) {
+    const { overflowY } = getComputedStyle(el)
+    if ((overflowY === "auto" || overflowY === "scroll") && el.scrollHeight > el.clientHeight) return true
+  }
+  return false
 }
 
 /**
@@ -111,9 +133,18 @@ export function ReelViewer() {
   const onAutoMuted = useCallback(() => setAutoMuted(true), [])
 
   const feed = useFeed()
+  // Where this viewer left off today: undefined until storage has been read,
+  // then the reel being walked to, then null once they are on it (or it could
+  // not be found). Until then the frame shows the loading shape, so the top
+  // reel does not start playing on the way down to theirs.
+  const [resume, setResume] = useState<FeedPosition | null | undefined>(undefined)
+  const restoring = resume !== null
+  const resumePages = useRef(0)
+  // The slide to land on once the walk ends and the slides are back.
+  const landOn = useRef<number | null>(null)
   // The reels plus the slide at the end: the sign-off, or "loading more".
   const last = feed.items.length
-  const current: FeedItem | undefined = feed.items[index]
+  const current: FeedItem | undefined = restoring ? undefined : feed.items[index]
 
   // Animated by hand rather than with `behavior: "smooth"`: inside a
   // mandatory-snap container the smooth form is dropped outright by some
@@ -201,8 +232,8 @@ export function ReelViewer() {
   // One flick, one reel. Left to itself a mouse wheel lurches between snap
   // points and a trackpad's momentum sails past three reels at once; taking
   // the wheel over is what makes a desktop feel like a thumb on a phone.
-  // Heard on the whole stage, not just the scroller, so a flick over the
-  // arrows or the actions moves the reel too.
+  // Heard on the whole window, not just the reel, so a flick anywhere on the
+  // page moves it — except over something that scrolls on its own.
   useEffect(() => {
     const box = stage.current
     if (!box) return
@@ -212,8 +243,14 @@ export function ReelViewer() {
     const onWheel = (e: WheelEvent) => {
       // Pinch-zoom arrives as a ctrl-wheel, and sideways is somebody else's.
       if (e.ctrlKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return
+      // The comments sheet or a checkpoint modal over the page has the wheel.
+      if (document.querySelector("[role='dialog']")) return
+      const target = e.target instanceof Element ? e.target : null
       // An opened caption scrolls itself.
-      if (e.target instanceof Element && e.target.closest("[data-own-scroll]")) return
+      if (target?.closest("[data-own-scroll]")) return
+      // Off the reel, anything with its own scroll keeps it: the comments
+      // beside the reel, a sidebar taller than the window.
+      if (target && !box.contains(target) && scrollsItself(target)) return
       e.preventDefault()
       window.clearTimeout(quiet)
       quiet = window.setTimeout(() => {
@@ -227,16 +264,59 @@ export function ReelViewer() {
       spent = true
       step(travelled > 0 ? 1 : -1)
     }
-    box.addEventListener("wheel", onWheel, { passive: false })
+    window.addEventListener("wheel", onWheel, { passive: false })
     return () => {
-      box.removeEventListener("wheel", onWheel)
+      window.removeEventListener("wheel", onWheel)
       window.clearTimeout(quiet)
     }
   }, [step])
 
+  // Storage after mount, because the server has none and rendered without it.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrating from localStorage
+    setResume(readPosition())
+  }, [])
+
+  // Walk the feed down to the saved reel, a page at a time.
+  const { more, done, loading, error, items, leading } = feed
+  useEffect(() => {
+    if (!resume || loading) return
+    // An admin reel they have not been shown yet goes first, exactly as it
+    // would on a fresh visit; picking up where they left off can wait.
+    const unseenLead = leading.some((r) => !resume.leadIds.includes(r.id))
+    const at = unseenLead ? -1 : items.findIndex((r) => r.id === resume.id)
+    if (at >= 0) {
+      landOn.current = at
+      cursor.current = at
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- the walk ends once the page it needed has arrived
+      setIndex(at)
+      setResume(null)
+    } else if (!unseenLead && !done && !error && resumePages.current < RESUME_MAX_PAGES) {
+      resumePages.current += 1
+      more()
+    } else {
+      // Deleted, hidden, or further back than it is worth walking: the top.
+      setResume(null)
+    }
+  }, [resume, loading, items, leading, done, error, more])
+
+  // Before paint, so the first frame with slides in it is already theirs.
+  useLayoutEffect(() => {
+    if (restoring || landOn.current === null) return
+    const box = scroller.current
+    const target = slides.current[landOn.current]
+    landOn.current = null
+    if (box && target) box.scrollTop = target.offsetTop
+  }, [restoring])
+
+  // Remembered as they go, not on leaving: a closed tab gets no last word.
+  const currentId = current?.id
+  useEffect(() => {
+    if (currentId) savePosition({ id: currentId, leadIds: leading.map((r) => r.id) })
+  }, [currentId, leading])
+
   // Endless, the way a reel feed is: the next page is asked for a few reels
   // before the end, so the reader scrolls into it rather than up to a wall.
-  const { more, done, loading, error } = feed
   useEffect(() => {
     if (!done && !loading && !error && last > 0 && index >= last - PREFETCH_AHEAD) more()
   }, [index, last, done, loading, error, more])
@@ -325,7 +405,7 @@ export function ReelViewer() {
           style={{ overflowAnchor: "none" }}
           className="snap-y-feed no-scrollbar h-full overflow-y-auto overscroll-contain"
         >
-          {feed.items.map((reel, i) => (
+          {(restoring ? [] : feed.items).map((reel, i) => (
             <div
               key={reel.id}
               data-slide={i}
@@ -361,7 +441,7 @@ export function ReelViewer() {
               sign-off once the feed has run out, and until then the slot the
               next page arrives into — anyone who outruns the prefetch lands
               here, and the next reel slides in where they already are. */}
-          {(feed.items.length > 0 || !feed.loading) && (
+          {!restoring && (feed.items.length > 0 || !feed.loading) && (
             <div
               data-slide={last}
               ref={(el) => {
@@ -396,7 +476,7 @@ export function ReelViewer() {
           )}
 
           {/* The first page in the air: the shape of a reel, not an end slide. */}
-          {feed.items.length === 0 && feed.loading && (
+          {(restoring || (feed.items.length === 0 && feed.loading)) && (
             <div className="flex h-full flex-col py-3">
               <span className="min-h-0 flex-1 rounded-2xl bg-black/[.06] motion-safe:animate-pulse" />
               <span className="mt-2.5 hidden h-10 md:block" />
@@ -628,12 +708,20 @@ function Action({
   }, [pop, popKey])
 
   const on = pressed && tone
+  // `field`, not `line`, at rest: it is the edge colour that clears 3:1 on
+  // the cream the disc sits on.
   const ring =
+    on === "coral" ? "var(--color-coral-deep)" : on === "violet" ? "var(--color-violet-deep)" : "var(--color-field)"
+
+  // One class per state rather than a base and an override: two utilities for
+  // the same property in the same variant are settled by stylesheet order,
+  // not by the order they are written here.
+  const face =
     on === "coral"
-      ? "var(--color-coral-deep)"
+      ? "bg-coral-deep text-white md:bg-coral/15 md:text-coral-dark"
       : on === "violet"
-        ? "var(--color-violet-deep)"
-        : "var(--color-line-strong)"
+        ? "bg-violet-deep text-white md:bg-violet-pale md:text-violet-deep"
+        : "bg-black/55 text-white md:bg-paper md:text-navy"
 
   const body = (
     <>
@@ -643,20 +731,21 @@ function Action({
           // The drawn outline is always there, but only inked from md: over the
           // picture on a phone a ring would box off the video.
           "sketch grid size-11 place-items-center rounded-full transition-colors [--sk-color:transparent] md:[--sk-color:var(--ring)]",
-          // Phone: an icon over the picture.
-          "text-white drop-shadow-[0_1px_4px_rgb(0_0_0/0.55)]",
-          on === "coral" && "text-coral",
-          // From md: a drawn paper disc beside the reel.
-          "md:bg-paper md:text-navy md:drop-shadow-none",
-          on === "coral" && "md:bg-coral/15 md:text-coral-dark",
-          on === "violet" && "md:bg-violet-pale md:text-violet-deep",
+          // Phone: over the picture, which can be any brightness — a white CAD
+          // window or a lit bench as easily as a dark one — so the icon sits
+          // on a disc of its own, as the card's mute button does. From md: a
+          // drawn paper disc beside the reel.
+          "backdrop-blur-sm md:backdrop-blur-none",
+          face,
           onClick && !on && "md:group-hover:bg-mint md:group-hover:text-teal-ink",
         )}
         style={{ "--ring": ring, "--sk-radius": "999px" } as React.CSSProperties}
       >
         {children}
       </span>
-      <span className="label text-white tabular-nums [text-shadow:0_1px_3px_rgb(0_0_0/0.6)] md:text-navy md:[text-shadow:none]">
+      {/* The count is text on the same unknown picture, so it gets the same
+          ground on a phone. */}
+      <span className="label rounded-full bg-black/55 px-1.5 py-px text-white tabular-nums backdrop-blur-sm md:bg-transparent md:px-0 md:py-0 md:text-navy md:backdrop-blur-none">
         {compact(count)}
       </span>
     </>
