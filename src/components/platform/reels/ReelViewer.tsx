@@ -465,10 +465,10 @@ export function ReelViewer() {
               ) : (
                 <>
                   <p className="hand text-[1.05rem] text-navy">
-                    {feed.items.length === 0 ? "nothing here yet." : "that is everything."}
+                    {feed.items.length === 0 ? "nothing here yet." : "that's everything!"}
                   </p>
                   <p className="hand text-[0.9rem] text-navy-soft">
-                    {feed.items.length === 0 ? "post the first reel." : "go build something."}
+                    {feed.items.length === 0 ? "post the first reel." : "now it's your turn go build something"}
                   </p>
                 </>
               )}
