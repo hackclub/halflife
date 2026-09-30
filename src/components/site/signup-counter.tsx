@@ -6,13 +6,14 @@ import { useEffect, useState } from "react"
 const REFRESH_MS = 60_000
 
 /**
- * "N people have signed up", boxed, standing between the wordmark and the form.
- * Salience is the whole argument for the box. A line of small type under the
- * field is a footnote; this is social proof, and social proof only works if it
- * is read before the decision rather than after it. So it is one of the page's
- * own reserved slots — the same ink ground and cyan edge the email field is cut
- * from (`hl-field`, globals.css) — which puts it in the sign-up action's own
- * visual family while keeping it a thing you look at rather than type into.
+ * "N people have signed up", boxed, under the sign-up form — below the email
+ * field and the eligibility line beneath it (see the hero for why not between
+ * the two). Salience is the whole argument for the box. Directly under a line
+ * of small print, a line of small type would read as more of it; this is
+ * social proof, so it is one of the page's own reserved slots — the same ink
+ * ground and cyan edge the email field is cut from (`hl-field`, globals.css) —
+ * which puts it in the sign-up action's own visual family while keeping it a
+ * thing you look at rather than type into.
  *
  * The number leads and the words follow it, at roughly half the size: the
  * figure is what the eye should catch, and "people have signed up" explains it
@@ -30,8 +31,7 @@ const REFRESH_MS = 60_000
  * to if the request fails.
  *
  * Before the first answer the box keeps its height and dims its contents rather
- * than collapsing, so the plate above and the form below it do not jump when
- * the number lands. `aria-live="polite"` because a number that changes while
+ * than collapsing, so nothing around it jumps when the number lands. `aria-live="polite"` because a number that changes while
  * someone is reading it should say so, and the initial fill is worth one
  * announcement rather than none.
  */
@@ -83,13 +83,22 @@ export default function SignupCounter({ className = "", style }: { className?: s
         // "5,203people have signed up" — the space lived in the layout and not
         // in the sentence. Here it is a real space, and the size difference is
         // what carries the emphasis.
+        //
+        // Centred on each other, not sat on one baseline: at half the figure's
+        // size, baseline-aligned words hung off the bottom of the number. So
+        // both are `align-middle` — their midpoints land on the same line of
+        // the one inline run — which is the flex `items-center` look without
+        // becoming flex items and losing the space again.
         <>
           {/* `tabular-nums` so the box does not shift width as the count gains
               a digit. */}
-          <span className="font-display font-bold tabular-nums" style={{ fontSize: "1.5em", lineHeight: 1 }}>
+          <span
+            className="align-middle font-display font-bold tabular-nums"
+            style={{ fontSize: "1.5em", lineHeight: 1 }}
+          >
             {count.toLocaleString("en-US")}
           </span>{" "}
-          <span className="font-display" style={{ fontSize: "0.75em" }}>
+          <span className="align-middle font-display" style={{ fontSize: "0.75em" }}>
             people have signed up
           </span>
         </>

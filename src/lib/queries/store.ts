@@ -86,7 +86,7 @@ export interface StoreSnapshot {
    *
    * Kept apart from the entries rather than folded into them because the two
    * are used for different things. Reels are placed where the JOURNAL crossed
-   * ten hours, so that placement has to follow entries and nothing else; the
+   * a reel's mark, so that placement has to follow entries and nothing else; the
    * gates ask what the week is really worth, which is everything. Folding
    * Hackatime into an entry would move a reel to a node the participant never
    * wrote.
