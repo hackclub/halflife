@@ -38,26 +38,6 @@ export const BRAND = {
   eligibility: "teens 13-18. no experience necessary. free to participate.",
 } as const
 
-/**
- * The dateline strip across the top of the page.
- *
- * The one dated claim on the site, and the only place a calendar date is
- * written down, so it is the one thing here that goes stale on its own. Change
- * `date` when the start moves; nothing else reads it. `submitHref` is the
- * project submission form, and goes stale on the same terms.
- *
- * It is split rather than stored as one sentence because two of its pieces are
- * not plain text: the date is the fact the strip exists to carry and is the
- * only thing set in the page's accent colour, and `submitLabel` is the word
- * the anchor wraps — see `announcement-banner.tsx`. Splitting them in the data
- * keeps the component free of string surgery on copy it does not own.
- *
- * "Warm Up Week 1" is the programme's own pre-season phase and is not the
- * `week 1` of `DESIGN_WEEKS`, which is PCBs. Capitals are the phase's name,
- * not a departure from the page's lowercase headings: this is running prose,
- * which is sentence case everywhere else here too.
- */
-
 export type DesignWeek = {
   subject: string
   week: string

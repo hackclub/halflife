@@ -1,6 +1,5 @@
 import Image from "next/image"
 import type { CSSProperties } from "react"
-import AnnouncementBanner from "@/components/site/announcement-banner"
 import LoginMark from "@/components/site/login-mark"
 import SignupForm from "@/components/site/signup-form"
 import Wordmark from "@/components/site/wordmark"
@@ -204,14 +203,6 @@ export default function Hero() {
       <HeroArt />
       <HackClubFlag />
       <LoginMark />
-      {/* On the painting, not above it — so `bg.png` still starts at the top
-          of the screen, which is where it was composed to start. It is
-          positioned in the hero for the reason the flag is: it belongs to
-          this section, and the two of them share one problem — a mark laid on
-          the picture's top edge, near a corner that is already taken — which
-          is solved by comparing their geometry rather than each guessing at
-          the other's. */}
-      <AnnouncementBanner />
 
       {/* ── Comp reproduction, 1180px and up ───────────────────────────── */}
       {/* The fold: exactly one viewport, which is what makes "below the fold"
