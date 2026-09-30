@@ -41,7 +41,7 @@ export const POST = withRoute(async (req: Request) => {
 
   const window = await warmupCreationWindow()
   if (!window.open) {
-    return fail("CONFLICT", `Warm-up projects closed when week 1 opened on ${window.closesOn}.`)
+    return fail("CONFLICT", `Warm-up projects closed ${window.closesOn}.`)
   }
 
   const project = await prisma.themeProject.create({

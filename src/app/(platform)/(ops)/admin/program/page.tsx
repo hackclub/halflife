@@ -13,9 +13,10 @@ import { ariWebhookUrl, findUnsyncedAriSubmissions, isAriConfigured, isAriWebhoo
 import { PRINTERS, submitFloorFor } from "@/lib/config/printers"
 import { scheduleForWeek, TOTAL_WEEKS } from "@/lib/config/program"
 import { TIERS } from "@/lib/config/tiers"
+import { formatDeadline } from "@/lib/deadline"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
-import { currentWeekNumber, getProgramSettings, weekClosesAt, weekDateRange } from "@/lib/program"
+import { currentWeekNumber, getProgramSettings, weekClosesAt, weekDateRange, weekOpensAt } from "@/lib/program"
 import { getOpenDisputes } from "@/lib/queries/review"
 
 export const dynamic = "force-dynamic"
@@ -44,16 +45,12 @@ export default async function AdminProgramPage() {
 
   const startYmd = settings.eventStartDate.toISOString().slice(0, 10)
   const now = new Date()
-  const inZone = (d: Date, opts: Intl.DateTimeFormatOptions) =>
-    d.toLocaleString("en-US", { timeZone: settings.programTimezone, ...opts })
   const schedule = Array.from({ length: TOTAL_WEEKS }, (_, i) => {
     const n = i + 1
     const slot = scheduleForWeek(n)
     const range = weekDateRange(settings.eventStartDate, n)
     const closesAt = weekClosesAt(settings, n)
-    // A week opens as the one before it closes; "week 0" closing is midnight
-    // on the start date itself, in the program's timezone.
-    const opensAt = weekClosesAt(settings, n - 1)
+    const opensAt = weekOpensAt(settings, n)
     const day = { timeZone: "UTC", weekday: "short", month: "short", day: "numeric" } as const
     return {
       week: n,
@@ -61,13 +58,7 @@ export default async function AdminProgramPage() {
       runs: range
         ? `${range.start.toLocaleDateString("en-US", day)} – ${new Date(range.start.getTime() + 6 * 86_400_000).toLocaleDateString("en-US", day)}`
         : "—",
-      closes: inZone(closesAt, {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-      }),
+      closes: formatDeadline(closesAt, settings.programTimezone, "short"),
       state: now >= closesAt ? "passed" : now >= opensAt ? "current" : "upcoming",
     }
   })

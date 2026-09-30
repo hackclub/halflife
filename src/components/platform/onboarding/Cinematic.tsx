@@ -32,6 +32,13 @@ import { type PrinterGoal, printerById } from "@/lib/config/printers"
 import { useStore } from "@/lib/store"
 
 /**
+ * Always the Ender 3 V3 SE, never the picked goal, even if the default goal
+ * moves: it is the printer every finisher can reach, as on the trail's grand
+ * prize.
+ */
+const GOAL = printerById("ender-3-v3-se")
+
+/**
  * The first thing anyone sees: a single unbroken fall down the trail.
  *
  * The claim Half Life makes is "ten weeks", so the intro spends its time
@@ -331,8 +338,7 @@ function WeekBanners({ refs }: { refs: React.RefObject<(HTMLDivElement | null)[]
  * Cinematic
  * ------------------------------------------------------------------ */
 export function Cinematic() {
-  const { setPhase, reducedMotion, goalId } = useStore()
-  const goal = printerById(goalId)
+  const { setPhase, reducedMotion } = useStore()
   const camera = useRef<HTMLDivElement>(null)
   const banners = useRef<(HTMLDivElement | null)[]>([])
   const landing = useRef<(() => void) | null>(null)
@@ -347,7 +353,7 @@ export function Cinematic() {
 
   // The diorama is built once and kept out of every re-render the readouts
   // trigger, so the fall stays a pure transform on a stable layer.
-  const stage = useMemo(() => <Stage goal={goal} />, [goal])
+  const stage = useMemo(() => <Stage goal={GOAL} />, [])
 
   useEffect(() => {
     const prev = document.body.style.overflow
@@ -575,7 +581,7 @@ export function Cinematic() {
           >
             <p className="label text-coral-deep">{line.kicker}</p>
             <p className="mt-1.5 text-[clamp(1.05rem,2.6vw,1.45rem)] leading-snug font-extrabold tracking-[-0.02em] text-navy">
-              {typeof line.line === "function" ? line.line(goal.name) : line.line}
+              {typeof line.line === "function" ? line.line(GOAL.name) : line.line}
             </p>
           </div>
         </div>

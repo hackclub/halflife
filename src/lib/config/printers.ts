@@ -192,7 +192,7 @@ export const PRINTERS: PrinterGoal[] = SHEET.map((p) => ({
   coinsPerWeek: p.bankedHours * COINS_PER_HOUR,
 }))
 
-export const DEFAULT_GOAL_ID = "bambu-a1-mini"
+export const DEFAULT_GOAL_ID = "ender-3-v3-se"
 
 /** The steepest weekly commitment on the board — the scale everything else reads against. */
 export const MAX_HOURS_PER_WEEK = Math.max(...PRINTERS.map((p) => p.hoursPerWeek))

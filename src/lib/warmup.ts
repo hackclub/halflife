@@ -1,12 +1,14 @@
 import "server-only"
 import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
-import { formatProgramDate, getProgramSettings, weekOpensAt } from "@/lib/program"
+import { WARMUP_WEEK_ID } from "@/lib/config/program"
+import { formatDeadline } from "@/lib/deadline"
+import { getProgramSettings, weekClosesAt } from "@/lib/program"
 
 /**
  * The warm-up: projects made before week 1 opens, on any hardware idea rather
  * than a theme. Each one is a single submission — a design asking for parts
- * funding, or a finished build — and its journal closes the moment week 1
- * opens (week 0's close in lib/program is week 1's open). Anything unfinished
+ * funding, or a finished build — and its journal closes at 11:59 PM the night
+ * before week 1 opens (week 0's close in lib/program). Anything unfinished
  * can still be handed in after that; it just takes no new entries.
  */
 
@@ -25,10 +27,10 @@ export function warmupPhaseOf(project: { warmupPhase: Phase | null; buildStatus:
 /** Whether a warm-up project can still be started, and when that stops. */
 export async function warmupCreationWindow(): Promise<{ open: boolean; closesAt: Date; closesOn: string }> {
   const settings = await getProgramSettings()
-  const closesAt = weekOpensAt(settings, 1)
+  const closesAt = weekClosesAt(settings, WARMUP_WEEK_ID)
   return {
     open: new Date() < closesAt,
     closesAt,
-    closesOn: formatProgramDate(closesAt, settings.programTimezone),
+    closesOn: formatDeadline(closesAt, settings.programTimezone),
   }
 }

@@ -75,7 +75,7 @@ export function ProgramStartForm({
 
       <Field
         label="Week 1 starts (PCB design)"
-        hint={`Each week closes at midnight after its seventh day, ${timezone} time.`}
+        hint={`Each week closes at 11:59 PM on its seventh day, ${timezone} time.`}
       >
         <div className="hl-row">
           <input

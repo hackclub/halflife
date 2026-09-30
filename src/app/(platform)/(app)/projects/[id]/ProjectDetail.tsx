@@ -150,7 +150,7 @@ function DisputeForm({
  * warm-up's week 0, so writing and handing in work the same way everywhere.
  */
 function WarmupWork({ projectId }: { projectId: string }) {
-  const { warmupWeekOf, hoursOf, passedOf, statusOf, lastDayOf, stateOf, setOpenCheckpoint } = useStore()
+  const { warmupWeekOf, hoursOf, passedOf, statusOf, deadlineOf, stateOf, setOpenCheckpoint } = useStore()
   const warmupWeek = warmupWeekOf(projectId)
   if (!warmupWeek) return null
 
@@ -160,7 +160,7 @@ function WarmupWork({ projectId }: { projectId: string }) {
   const status = statusOf(warmupWeek)
   const handedIn = status === "in_review" || status === "approved" || status === "rejected"
   const passed = passedOf(warmupWeek)
-  const lastDay = lastDayOf(warmupWeek)
+  const deadline = deadlineOf(warmupWeek)
   const submitId = `wu-${projectId}-submit`
 
   const entries = warmupWeek.checkpoints.filter((c) => c.kind === "journal")
@@ -182,9 +182,9 @@ function WarmupWork({ projectId }: { projectId: string }) {
               · {build ? "a finished build" : "a design"}, submit from {fmtHours(need)}
             </span>
           </p>
-          {lastDay && (
+          {deadline && (
             <p className="hand text-[0.84rem] text-navy-soft">
-              {passed ? `journal closed after ${lastDay}` : `journal open until ${lastDay}`}
+              {passed ? `journal closed after ${deadline}` : `journal open until ${deadline}`}
             </p>
           )}
         </div>

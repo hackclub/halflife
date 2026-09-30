@@ -102,7 +102,7 @@ export interface StoreSnapshot {
    */
   phaseStatusByWeek: Record<number, PhaseStatus>
   /**
-   * When each trail week stops taking work, epoch ms: midnight after its
+   * When each trail week stops taking work, epoch ms: 11:59 PM on its
    * Sunday in the program timezone, pushed later by any extension on the
    * participant or on that week's project. The server refuses journal writes
    * past it, so the trail greys the week out at the same moment.
@@ -114,6 +114,8 @@ export interface StoreSnapshot {
    * the first checkpoint included, and the server refuses the same writes.
    */
   weekOpensAt: Record<number, number>
+  /** When warm-ups stop taking work, epoch ms: 11:59 PM the night before week 1 opens. */
+  warmupsCloseAt: number
   /**
    * Every warm-up project, by id: the one phase it is handed in as, the hours
    * it has from somewhere other than its entries (Hackatime, reviewer
@@ -361,7 +363,8 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
   })
 
   // Each warm-up is one submission, so only its one phase goes on the record.
-  // Its journal closes when week 1 opens (week 0's close), later if extended.
+  // Its journal closes the night before week 1 opens (week 0's close), later
+  // if extended.
   const warmups: StoreSnapshot["warmups"] = {}
   for (const project of projects) {
     if (project.theme !== Theme.WARMUP) continue
@@ -448,6 +451,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
     phaseStatusByWeek,
     weekClosesAt: closes,
     weekOpensAt: opens,
+    warmupsCloseAt: weekClosesAt(settings, WARMUP_WEEK_ID).getTime(),
     warmups,
     programTimezone: settings.programTimezone,
     now: Date.now(),

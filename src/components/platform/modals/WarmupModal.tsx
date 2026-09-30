@@ -95,7 +95,7 @@ export function WarmupModal({ onClose, closesOn }: { onClose: () => void; closes
       <ModalTitle
         sub={
           closesOn
-            ? `Any hardware project you like, no theme. Journal it and submit it like every Half Life project. Warm-ups close when week 1 opens on ${closesOn}.`
+            ? `Any hardware project you like, no theme. Journal it and submit it like every Half Life project. Warm-ups close ${closesOn}.`
             : "Any hardware project you like, no theme. Journal it and submit it like every Half Life project."
         }
       >

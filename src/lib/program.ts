@@ -37,7 +37,7 @@ export const getProgramSettings = cache(async (): Promise<ProgramSettings> => {
  * "not started" from "over" without a second query.
  *
  * Counted in calendar days rather than elapsed milliseconds: a week flips at
- * program-timezone midnight, the same instant `weekClosesAt` stops taking work.
+ * program-timezone midnight, the same instant `weekOpensAt` starts the next.
  * Counting from the UTC epoch would stamp the last four or five hours of every
  * Sunday evening in New York — the hours people actually journal in — into the
  * next week while the current one is still open.
@@ -73,16 +73,15 @@ export function weekDateRange(start: Date, week: number): { start: Date; end: Da
 }
 
 /**
- * The moment a program week stops taking work: midnight after its Sunday, in
- * the program's timezone, so "the week ends Sunday at 11:59pm" means the same
- * thing in New York as it does on a server in Frankfurt.
+ * Midnight after a program week's last day, in the program's timezone, so it
+ * is the same instant in New York as on a server in Frankfurt.
  *
  * `eventStartDate` is stored as UTC midnight of the calendar day the program
  * opens (the admin form reads it back with `toISOString().slice(0, 10)`), so
  * its UTC date is the program's first day, and week N's last day is 7N - 1
  * days after it.
  */
-export function weekClosesAt(
+function midnightAfterWeek(
   settings: Pick<ProgramSettings, "eventStartDate" | "programTimezone">,
   week: number,
 ): Date {
@@ -95,16 +94,31 @@ export function weekClosesAt(
   return new Date(wall - zoneOffsetMs(first, settings.programTimezone))
 }
 
+/** How far before midnight a week closes: the deadline is 11:59 PM, not 12:00 AM. */
+const CLOSE_BEFORE_MIDNIGHT_MS = 60 * 1000
+
+/**
+ * The moment a program week stops taking work: 11:59 PM on its last day, in
+ * the program's timezone. Anything at 11:59 or later is refused; the minute
+ * to midnight belongs to no week.
+ */
+export function weekClosesAt(
+  settings: Pick<ProgramSettings, "eventStartDate" | "programTimezone">,
+  week: number,
+): Date {
+  return new Date(midnightAfterWeek(settings, week).getTime() - CLOSE_BEFORE_MIDNIGHT_MS)
+}
+
 /**
  * The moment a program week starts taking work: midnight at the start of its
- * Monday in the program's timezone, which is the same instant the week before
- * it closes. Week 1's is the program's first midnight.
+ * Monday in the program's timezone, a minute after the week before it closes.
+ * Week 1's is the program's first midnight.
  */
 export function weekOpensAt(
   settings: Pick<ProgramSettings, "eventStartDate" | "programTimezone">,
   week: number,
 ): Date {
-  return weekClosesAt(settings, week - 1)
+  return midnightAfterWeek(settings, week - 1)
 }
 
 /**

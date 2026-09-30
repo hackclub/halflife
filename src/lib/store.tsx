@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation"
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
 import { COINS_PER_HOUR, printerById, submitFloorFor, weekAsk } from "./config/printers"
 import { DESIGN_WEEKS, WARMUP_THEME, WARMUP_WEEK_ID } from "./config/program"
+import { formatDeadline } from "./deadline"
 import { BUILD_HOURS, checkpointsFor, TIERS, WEEK_META } from "./curriculum"
 import type { StoreSnapshot } from "./queries/store"
 import type { Checkpoint, Experience, Project, SessionLog, Week, WeekMeta } from "./types"
@@ -240,14 +241,16 @@ interface Ctx {
   isPassed: (id: string) => boolean
   /** Whether a checkpoint is held until a deleted reel is re-recorded. */
   isHeld: (id: string) => boolean
-  /** Whether a week's Sunday-midnight close (or its extension) is behind us. */
+  /** Whether a week's 11:59 PM Sunday close (or its extension) is behind us. */
   weekPassed: (weekId: number) => boolean
   /** Whether a week's Monday-midnight open is behind us. Nothing on it opens before. */
   weekStarted: (weekId: number) => boolean
   /** The day a week opens, e.g. "Monday, October 5", in the program's timezone. */
   weekOpensOn: (weekId: number) => string | null
-  /** The last day a week takes work (the day before it closes at midnight). */
-  weekLastDay: (weekId: number) => string | null
+  /** When a week stops taking work, e.g. "Sunday, October 5 at 11:59 PM", its extension included. */
+  weekDeadline: (weekId: number) => string | null
+  /** When warm-ups stop taking work: 11:59 PM the night before week 1 opens. */
+  warmupDeadline: string
   /** Whether a week is handed in — in review, approved or rejected — so its entries are final. */
   weekSubmitted: (weekId: number) => boolean
   /** Where a week stands with review. "draft" when nothing is recorded. */
@@ -278,8 +281,8 @@ interface Ctx {
   passedOf: (week: Week) => boolean
   /** Where a week stands with review, a warm-up's included. */
   statusOf: (week: Week) => string
-  /** The last day a week takes entries, a warm-up's included. */
-  lastDayOf: (week: Week) => string | null
+  /** When a week stops taking entries, a warm-up's included. */
+  deadlineOf: (week: Week) => string | null
   allCheckpoints: Checkpoint[]
   weekOf: (weekId: number) => Week
   /** Hours logged across every session checkpoint in a week. */
@@ -385,14 +388,14 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
     },
     [facts.weekOpensAt, dayLabel],
   )
-  const weekLastDay = useCallback(
+  const weekDeadline = useCallback(
     (weekId: number) => {
       const at = facts.weekClosesAt[weekId]
-      // Closes at midnight, so the last day is the one that midnight ends.
-      return at === undefined ? null : dayLabel(at - 1)
+      return at === undefined ? null : formatDeadline(at, facts.programTimezone)
     },
-    [facts.weekClosesAt, dayLabel],
+    [facts.weekClosesAt, facts.programTimezone],
   )
+  const warmupDeadline = formatDeadline(facts.warmupsCloseAt, facts.programTimezone)
 
   /** Where a week stands with review: draft, in_review, update_requested, approved or rejected. */
   const phaseStatusOf = useCallback(
@@ -1160,13 +1163,13 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
     },
     [weekPassed, facts.warmups, now],
   )
-  const lastDayOf = useCallback(
+  const deadlineOf = useCallback(
     (week: Week): string | null => {
-      if (!week.projectId) return weekLastDay(week.id)
+      if (!week.projectId) return weekDeadline(week.id)
       const closesAt = facts.warmups[week.projectId]?.closesAt
-      return closesAt === undefined ? null : dayLabel(closesAt - 1)
+      return closesAt === undefined ? null : formatDeadline(closesAt, facts.programTimezone)
     },
-    [weekLastDay, facts.warmups, dayLabel],
+    [weekDeadline, facts.warmups, facts.programTimezone],
   )
   const statusOf = useCallback(
     (week: Week): string => {
@@ -1406,7 +1409,8 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
     weekPassed,
     weekStarted,
     weekOpensOn,
-    weekLastDay,
+    weekDeadline,
+    warmupDeadline,
     weekSubmitted,
     phaseStatusOf,
     unsubmitPhase,
@@ -1423,7 +1427,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
     hoursOf,
     passedOf,
     statusOf,
-    lastDayOf,
+    deadlineOf,
     allCheckpoints,
     weekOf,
     weekHours,

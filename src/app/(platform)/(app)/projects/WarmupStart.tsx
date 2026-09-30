@@ -15,19 +15,19 @@ import { useStore } from "@/lib/store"
  * line above their projects instead of leading the page.
  */
 export function WarmupStart() {
-  const { hydrated, projects, weekStarted, weekOpensOn } = useStore()
+  const { hydrated, projects, weekStarted, weekOpensOn, warmupDeadline } = useStore()
   const [open, setOpen] = useState(false)
 
   if (!hydrated || weekStarted(1)) return null
   const opensOn = weekOpensOn(1)
-  const modal = open && <WarmupModal onClose={() => setOpen(false)} closesOn={opensOn} />
+  const modal = open && <WarmupModal onClose={() => setOpen(false)} closesOn={warmupDeadline} />
 
   if (projects.some((p) => p.weekId === WARMUP_WEEK_ID)) {
     return (
       <>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <p className="hand text-[0.86rem] text-navy-soft">
-            {opensOn ? `warm-ups close when week 1 opens ${opensOn}.` : "warm-ups close when week 1 opens."}
+            warm-ups close {warmupDeadline}.
           </p>
           <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
             Start another warm-up project <IconArrowRight className="text-base" />
@@ -54,7 +54,7 @@ export function WarmupStart() {
               <Button variant="solid" onClick={() => setOpen(true)}>
                 Start a warm-up project <IconArrowRight className="text-base" />
               </Button>
-              <span className="hand text-[0.84rem] text-navy-soft">warm-ups close when week 1 opens.</span>
+              <span className="hand text-[0.84rem] text-navy-soft">warm-ups close {warmupDeadline}.</span>
             </div>
           </div>
           <div className="order-first grid place-items-center bg-violet-pale px-6 py-5 @2xl:order-none">
