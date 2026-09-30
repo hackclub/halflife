@@ -117,7 +117,7 @@ export function isVideoBytes(bytes: Uint8Array): boolean {
   return bytes[0] === 0x1a && bytes[1] === 0x45 && bytes[2] === 0xdf && bytes[3] === 0xa3 && hasWebmVideoTrack(bytes)
 }
 
-export const UPLOAD_FOLDERS = ["sessions", "covers", "timelapses", "posts"] as const
+export const UPLOAD_FOLDERS = ["sessions", "covers", "timelapses", "posts", "shop"] as const
 export type UploadFolder = (typeof UPLOAD_FOLDERS)[number]
 
 export interface UploadedObjectSummary {

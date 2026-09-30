@@ -17,6 +17,7 @@ const FOLDER_LABELS: Record<UploadFolder, string> = {
   covers: "Cover images",
   timelapses: "Timelapses",
   posts: "Reels",
+  shop: "Shop images",
 }
 
 const modifiedFormat = new Intl.DateTimeFormat("en-US", {

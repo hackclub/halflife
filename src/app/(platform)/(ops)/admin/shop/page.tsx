@@ -1,12 +1,21 @@
+import Link from "next/link"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { ItemCostField } from "@/app/components/forms/ItemCostField"
 import { ShopItemForm } from "@/app/components/forms/ShopItemForm"
 import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
+import type { ShopItemCategory } from "@/app/generated/prisma/enums"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import prisma from "@/lib/prisma"
 
 export const dynamic = "force-dynamic"
+
+const CATEGORY_LABEL: Record<ShopItemCategory, string> = {
+  PRINTER: "printer",
+  PRINTER_UPGRADE: "upgrade",
+  CONSUMABLE: "consumable",
+  MISC: "misc",
+}
 
 export default async function AdminShopPage() {
   await requirePermissionPage(Permission.MANAGE_SHOP)
@@ -22,11 +31,14 @@ export default async function AdminShopPage() {
         {items.length === 0 ? (
           <EmptyState>No items yet.</EmptyState>
         ) : (
-          <Table head={["Slug", "Name", "Price", "Cost (USD)", "Stock", "Gated", "Active", ""]}>
+          <Table head={["Slug", "Name", "Category", "Price", "Cost (USD)", "Stock", "Gated", "Active", ""]}>
             {items.map((item) => (
               <tr key={item.id}>
                 <td className="hl-mono">{item.id}</td>
-                <td>{item.name}</td>
+                <td>
+                  <Link href={`/admin/shop/${item.id}`}>{item.name}</Link>
+                </td>
+                <td>{CATEGORY_LABEL[item.category]}</td>
                 <td>{item.priceCredits}</td>
                 <td>
                   <ItemCostField itemId={item.id} costUsd={item.costUsd} />
@@ -36,7 +48,8 @@ export default async function AdminShopPage() {
                 <td>
                   <Badge tone={item.active ? "success" : "muted"}>{item.active ? "active" : "retired"}</Badge>
                 </td>
-                <td>
+                <td className="hl-row" style={{ gap: "0.5rem" }}>
+                  <Link href={`/admin/shop/${item.id}`}>Edit</Link>
                   {item.active ? (
                     <ActionButton
                       url={`/api/admin/shop/items/${item.id}`}
