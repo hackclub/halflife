@@ -962,7 +962,7 @@ export function PublicReelModal({
         </div>
         {videoUrl && (
           <a
-            href={videoUrl}
+            href={attrUrl(videoUrl)}
             download="half-life-reel.mp4"
             className="hand mt-3 inline-block text-[0.84rem] text-sky-ink underline decoration-dashed underline-offset-4 hover:text-navy"
           >
