@@ -69,6 +69,27 @@ export const onboardingStepSchema = z.discriminatedUnion("step", [
       dismissed: z.boolean(),
     })
     .strict(),
+
+  z
+    .object({
+      step: z.literal("repo"),
+      /**
+       * Whether the maker wants their devlogs and parts list mirrored into a
+       * repo. `repo` is `owner/name`, not a URL — the picker chooses from the
+       * repos GitHub says they can push to. Null/omitted means "not yet",
+       * which is the same as skipping: the step is optional, and the project
+       * page carries the same control forever.
+       */
+      enabled: z.boolean(),
+      repo: z
+        .string()
+        .trim()
+        .regex(/^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/, "Pick a GitHub repo")
+        .max(200)
+        .nullable()
+        .optional(),
+    })
+    .strict(),
 ])
 
 export type OnboardingStepInput = z.infer<typeof onboardingStepSchema>

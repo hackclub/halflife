@@ -77,3 +77,25 @@ export type BomItemInput = z.infer<typeof bomItemSchema>
 
 /** A bill of materials' tax and shipping total. Null clears it back to zero. */
 export const bomExtrasSchema = z.object({ taxShippingUsd: z.number().min(0).max(10_000).nullable() }).strict()
+
+/**
+ * GitHub repo sync, switched per project.
+ *
+ * `repo` is `owner/name`, not a URL: the picker chooses from the repos GitHub
+ * says the caller can push to, and an id that has to be parsed again would let a
+ * crafted URL point the sync at a repository the caller never chose.
+ */
+export const repoSyncSettingsSchema = z
+  .object({
+    enabled: z.boolean(),
+    /** Required when turning it on, ignored when turning it off. */
+    repo: z
+      .string()
+      .trim()
+      .regex(/^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/, "Pick a GitHub repo")
+      .max(200)
+      .optional(),
+  })
+  .strict()
+
+export type RepoSyncSettingsInput = z.infer<typeof repoSyncSettingsSchema>

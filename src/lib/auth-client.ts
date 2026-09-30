@@ -36,3 +36,12 @@ export function linkHackatime(callbackURL = "/dashboard") {
 export function linkLapse(callbackURL = "/dashboard") {
   return authClient.linkSocial({ provider: "lapse", callbackURL })
 }
+
+/**
+ * GitHub is linked, never signed in with: it is the authorisation that lets the
+ * repo sync push to a maker's repository, granted by someone already signed in
+ * through Hack Club Auth.
+ */
+export function linkGitHub(callbackURL = "/dashboard") {
+  return authClient.linkSocial({ provider: "github", callbackURL })
+}

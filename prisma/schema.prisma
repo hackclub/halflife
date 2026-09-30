@@ -302,6 +302,14 @@ enum AuditAction {
   SYSTEM_HACKATIME_SYNC
   SYSTEM_CLAIM_SWEEP
   SYSTEM_RSVP_DRAIN
+
+  // GitHub repo sync (devlogs + BOM into the maker's own repository)
+  /// Turning the automatic sync on or off for a project.
+  USER_UPDATE_REPO_SYNC
+  /// One project's files written to GitHub, by the after-write job or by hand.
+  REPO_SYNC_SUCCESS
+  /// A write to GitHub that did not land. The reason is in the metadata.
+  REPO_SYNC_FAILURE
 }
 
 // ─── Identity ────────────────────────────────────────────────────────────────
@@ -540,6 +548,32 @@ model ThemeProject {
   /// nothing queries into it.
   artifactLinks Json?
 
+  // ─── GitHub repo sync ──────────────────────────────────────────────────────
+  // A maker may mirror their devlogs and parts list into their own repo, so the
+  // work is readable without an account here. Off by default and opt-in per
+  // project: writing to someone's repository is a privilege that is asked for,
+  // never assumed.
+  //
+  // These are plain columns rather than a settings row because they are one
+  // project's, read whenever its page is, and never queried across projects.
+  /// Whether the after-write job mirrors this project into its repo.
+  repoSyncEnabled   Boolean   @default(false)
+  /// Which repo the sync targets, pinned when it is switched on. Null means it
+  /// follows `githubRepo`, which is the maker's choice while they are still
+  /// deciding; a pin means a later edit to the link does not silently move
+  /// where the next write lands (the setup flow pins it).
+  repoSyncRepo     String?
+  /// Program-timezone date, YYYY-MM-DD, of the last successful sync. For the
+  /// "last synced" line; the per-run history is in `repo_sync_run`.
+  repoSyncedAt     DateTime?
+  /// Why the last attempt failed, cleared by a success. Surfaced on the project
+  /// page so a maker sees a broken sync rather than finding out weeks later.
+  repoSyncError    String?
+  /// A sync asked for while one was already running. Picked up when the current
+  /// one finishes, so a burst of edits becomes two writes rather than one per
+  /// edit.
+  repoSyncQueuedAt DateTime?
+
   // DESIGN phase
   designStatus         PhaseStatus @default(draft)
   designReviewComments String?
@@ -649,6 +683,7 @@ model ThemeProject {
   bomItems       BomItem[]
   publicReels    PublicReel[]
   hcbGrantTopUps HcbGrantTopUp[]
+  repoSyncRuns   RepoSyncRun[]
 
   /// One season project per season theme per person. This makes "five themed
   /// projects" a schema invariant rather than a convention, which is what lets
@@ -697,6 +732,37 @@ model BomItem {
 
   @@index([themeProjectId, sortOrder])
   @@map("bom_item")
+}
+
+/// One attempt to mirror a project into its GitHub repo: what was written, or
+/// why it was not.
+///
+/// Kept as rows rather than only on the project so a maker can see the history
+/// ("synced 12 times, last one failed") and staff can tell a repo-wide outage
+/// from one person's revoked token. The project's own columns carry only the
+/// latest state, which is what its page renders; this is the trail behind it.
+model RepoSyncRun {
+  id             String       @id @default(cuid())
+  themeProjectId String
+  themeProject   ThemeProject @relation(fields: [themeProjectId], references: [id], onDelete: Cascade)
+
+  /// `owner/repo` as it was when the run happened, so a later edit to the link
+  /// does not rewrite history.
+  repo String
+
+  /// Files written, as `{ path, sha, bytes }`. Json because nothing queries into
+  /// it; it exists for the "what did this run do" question.
+  files Json?
+
+  /// Null while a run is in flight, and on success. Non-null is the failure.
+  error    String?
+  /// Whether a person pressed "Sync now" rather than the after-write job.
+  manual   Boolean  @default(false)
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+
+  @@index([themeProjectId, startedAt(sort: Desc)])
+  @@map("repo_sync_run")
 }
 
 /// One row per person per day they used the platform, in the program timezone.
@@ -1503,6 +1569,12 @@ model ProgramSettings {
 
   /// Kill switch for the outbound Airtable writer, without a redeploy.
   airtableSyncEnabled Boolean @default(true)
+
+  /// Kill switch for the GitHub repo sync, without a redeploy — the same role
+  /// `airtableSyncEnabled` plays for the other outbound writer. A maker's own
+  /// per-project toggle is theirs; this is what stops every project at once if
+  /// GitHub is the thing that is wrong.
+  repoSyncEnabled Boolean @default(true)
 
   updatedAt   DateTime @updatedAt
   updatedById String?

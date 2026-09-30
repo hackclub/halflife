@@ -15,6 +15,7 @@ export function ProgramSettingsForm({
     shopGraceDays: number
     reviewClaimTtlMinutes: number
     airtableSyncEnabled: boolean
+    repoSyncEnabled: boolean
   }
 }>) {
   const router = useRouter()
@@ -43,6 +44,7 @@ export function ProgramSettingsForm({
           shopGraceDays: Number(form.shopGraceDays),
           reviewClaimTtlMinutes: Number(form.reviewClaimTtlMinutes),
           airtableSyncEnabled: form.airtableSyncEnabled,
+          repoSyncEnabled: form.repoSyncEnabled,
         }),
       })
       if (!res.ok) {
@@ -121,6 +123,15 @@ export function ProgramSettingsForm({
           onChange={(e) => setForm({ ...form, airtableSyncEnabled: e.target.checked })}
         />
         <span>Push approvals to Airtable</span>
+      </label>
+
+      <label className="hl-row" style={{ gap: "0.5rem" }}>
+        <input
+          type="checkbox"
+          checked={form.repoSyncEnabled}
+          onChange={(e) => setForm({ ...form, repoSyncEnabled: e.target.checked })}
+        />
+        <span>Sync devlogs and BOMs to GitHub repos</span>
       </label>
 
       <Field label="Shop grace days" hint="How long the shop stays open after someone's last review.">

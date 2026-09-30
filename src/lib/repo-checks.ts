@@ -48,17 +48,39 @@ export interface RepoCheckResult {
 // path segments to the API URL built below — Stasis's rule, kept as is.
 const GH_SEGMENT = /^[A-Za-z0-9._-]+$/
 
-export function parseGitHubRepo(url: string): { owner: string; repo: string } | null {
-  try {
-    const u = new URL(/^https?:\/\//i.test(url) ? url : `https://${url}`)
-    if (u.hostname !== "github.com" && u.hostname !== "www.github.com") return null
-    const [owner, rawRepo] = u.pathname.split("/").filter(Boolean)
-    const repo = rawRepo?.replace(/\.git$/, "")
-    if (!owner || !repo || !GH_SEGMENT.test(owner) || !GH_SEGMENT.test(repo)) return null
-    return { owner, repo }
-  } catch {
-    return null
+/**
+ * A repo as either a GitHub URL (`github.com/owner/name`) or the bare
+ * `owner/name` the picker and the sync's own column use.
+ *
+ * Both forms reach here, and they cannot share one parse: `new URL()` on a bare
+ * `owner/name` reads `owner` as the HOSTNAME, so it never equals github.com and
+ * every bare slug would be refused. The slash is the tell — a URL has a host
+ * before it, a slug does not.
+ */
+export function parseGitHubRepo(value: string): { owner: string; repo: string } | null {
+  // A URL carries a scheme or names the host itself; a bare slug is just the
+  // two segments. `new URL()` cannot tell them apart — on `owner/name` it reads
+  // `owner` as the hostname — so the form is decided before parsing.
+  const looksLikeUrl = value.includes("://") || /^(www\.)?github\.com\//i.test(value)
+
+  let parts: string[] | null
+  if (looksLikeUrl) {
+    try {
+      const u = new URL(value.includes("://") ? value : `https://${value}`)
+      if (u.hostname !== "github.com" && u.hostname !== "www.github.com") return null
+      parts = u.pathname.split("/").filter(Boolean)
+    } catch {
+      return null
+    }
+  } else {
+    parts = value.split("/").filter(Boolean)
   }
+
+  if (parts.length !== 2) return null
+  const [owner, rawRepo] = parts
+  const repo = rawRepo?.replace(/\.git$/, "")
+  if (!owner || !repo || !GH_SEGMENT.test(owner) || !GH_SEGMENT.test(repo)) return null
+  return { owner, repo }
 }
 
 /** What GitHub said about a repo — everything the checks are built from. */

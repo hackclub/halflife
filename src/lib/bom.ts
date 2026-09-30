@@ -20,6 +20,7 @@ export interface BomLine {
   unitCostUsd: number
   vendor: string | null
   link: string | null
+  updatedAt: Date
 }
 
 export function listBom(themeProjectId: string): Promise<BomLine[]> {
@@ -34,6 +35,7 @@ export function listBom(themeProjectId: string): Promise<BomLine[]> {
       unitCostUsd: true,
       vendor: true,
       link: true,
+      updatedAt: true,
     },
   })
 }

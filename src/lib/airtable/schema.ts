@@ -106,7 +106,10 @@ export const RSVP_TABLE_ID = process.env.AIRTABLE_RSVP_TABLE_ID ?? "Signups"
 export const RSVP = {
   tableId: RSVP_TABLE_ID,
   fields: {
-    email: f<string>("fldRsvpEmail", "Email"),
+    // Lowercase in the live table. Airtable field names are case-sensitive, and
+    // `fields[]=Email` is a 422 that kills the whole list request — which is how
+    // the Loops sync never ran (see lib/airtable/loops).
+    email: f<string>("fldRsvpEmail", "email"),
     firstName: f<string>("fldRsvpFirstName", "First Name"),
     lastName: f<string>("fldRsvpLastName", "Last Name"),
     pronouns: f<string>("fldRsvpPronouns", "Pronouns"),

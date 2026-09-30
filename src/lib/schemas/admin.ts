@@ -119,6 +119,7 @@ export const programSettingsSchema = z
     shopGraceDays: z.number().int().min(0).max(90).optional(),
     reviewClaimTtlMinutes: z.number().int().min(5).max(240).optional(),
     airtableSyncEnabled: z.boolean().optional(),
+    repoSyncEnabled: z.boolean().optional(),
   })
   .strict()
 

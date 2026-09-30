@@ -116,6 +116,7 @@ export default async function AdminProgramPage() {
             shopGraceDays: settings.shopGraceDays,
             reviewClaimTtlMinutes: settings.reviewClaimTtlMinutes,
             airtableSyncEnabled: settings.airtableSyncEnabled,
+            repoSyncEnabled: settings.repoSyncEnabled,
           }}
         />
       </Panel>

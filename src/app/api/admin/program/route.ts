@@ -45,12 +45,14 @@ export const PATCH = withRoute(async (req: Request) => {
         shopOpen: before.shopOpen,
         eventStartDate: before.eventStartDate.toISOString(),
         airtableSyncEnabled: before.airtableSyncEnabled,
+        repoSyncEnabled: before.repoSyncEnabled,
       },
       after: {
         submissionsOpen: settings.submissionsOpen,
         shopOpen: settings.shopOpen,
         eventStartDate: settings.eventStartDate.toISOString(),
         airtableSyncEnabled: settings.airtableSyncEnabled,
+        repoSyncEnabled: settings.repoSyncEnabled,
       },
     },
   })

@@ -20,7 +20,7 @@ import type { TierId } from "@/lib/config/tiers"
  * rest needs the feed first, since every later checkpoint is a reel.
  */
 
-export type OnboardingStepId = "experience" | "week" | "project" | "idea" | "tier" | "tracking"
+export type OnboardingStepId = "experience" | "week" | "project" | "idea" | "tier" | "tracking" | "repo"
 
 export interface OnboardingStep {
   readonly id: OnboardingStepId
@@ -38,6 +38,10 @@ export const ONBOARDING_STEPS = [
   { id: "idea", number: 4, heading: "Stuck? Pick one of the following:", skippable: true },
   { id: "tier", number: 5, heading: "Choose a Tier", skippable: false },
   { id: "tracking", number: 6, heading: "Time Tracking", skippable: true },
+  // Optional and last: the sync is a convenience, not a step of making a
+  // project, and putting it before time tracking would make it read as one.
+  // Skippable, because plenty of people have no repo yet.
+  { id: "repo", number: 7, heading: "Keep it in your repo?", skippable: true },
 ] as const satisfies readonly OnboardingStep[]
 
 export const ONBOARDING_STEP_COUNT = ONBOARDING_STEPS.length

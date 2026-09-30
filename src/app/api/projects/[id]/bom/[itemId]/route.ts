@@ -1,8 +1,10 @@
+import { after } from "next/server"
 import { fail, ok, parseBody, withRoute } from "@/lib/api"
 import { bomData, bomLockReason, listBom } from "@/lib/bom"
 import { requireSession } from "@/lib/guards"
 import prisma from "@/lib/prisma"
 import { getSubmissionAccess, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
+import { scheduleRepoSync } from "@/lib/repo-sync"
 import { bomItemUpdateSchema } from "@/lib/schemas/project"
 
 export const dynamic = "force-dynamic"
@@ -39,6 +41,7 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
   if (g.error) return g.error
 
   await prisma.bomItem.update({ where: { id: itemId }, data: bomData(parsed.data) })
+  after(() => scheduleRepoSync(id))
   return ok({ items: await listBom(id) })
 })
 
@@ -51,5 +54,6 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
   if (g.error) return g.error
 
   await prisma.bomItem.delete({ where: { id: itemId } })
+  after(() => scheduleRepoSync(id))
   return ok({ items: await listBom(id) })
 })

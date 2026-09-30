@@ -141,6 +141,7 @@ export type OnboardingAnswer =
   | { step: "idea"; starterProjectId: string | null }
   | { step: "tier"; requestedTier: number | null }
   | { step: "tracking"; dismissed: boolean }
+  | { step: "repo"; enabled: boolean; repo?: string | null }
 
 export interface AdvanceResult {
   state: OnboardingState
@@ -152,6 +153,13 @@ export interface AdvanceResult {
    * `after` only works inside a request and the verify scripts call this too.
    */
   touchedProject: boolean
+  /**
+   * A request to mirror the project into a repo, made on the setup flow's repo
+   * step. The route runs this after the response has gone, because it is a
+   * GitHub round trip that can fail and the flow finishing must not depend on
+   * it. Null when the step was skipped or the sync was declined.
+   */
+  repoRequest: { repo: string } | null
 }
 
 /**
@@ -283,6 +291,13 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
     case "tracking":
       if (answer.dismissed) userData.trackingTutorialDismissedAt = new Date()
       break
+
+    case "repo":
+      // Nothing is written here. Turning the sync on is a GitHub round trip and
+      // can fail, and this state machine must not fail with it — see the
+      // AdvanceResult.repoRequest field, which the route acts on after the
+      // response has gone.
+      break
   }
 
   // The step this answer lands on: normally the next one, further when the
@@ -315,6 +330,13 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
     },
   } as const
   const touchesProject = Object.keys(projectData).length > 0
+
+  // Turning the sync on is a GitHub round trip that can fail, so it is not done
+  // here: this returns the request and the route performs it after the response
+  // has gone. That way a repo the token cannot push to refuses the *sync*, not
+  // the finishing of the setup flow.
+  const repoRequest =
+    answer.step === "repo" && answer.enabled && answer.repo ? { repo: answer.repo } : null
 
   const { projectAfter, userAfter } = await prisma.$transaction(async (tx) => {
     const projectAfter = touchesProject
@@ -353,7 +375,7 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
     trackingDismissed: userAfter.trackingTutorialDismissedAt !== null,
   }
 
-  return { state, completed: finishing, touchedProject: touchesProject }
+  return { state, completed: finishing, touchedProject: touchesProject, repoRequest }
 }
 
 /**

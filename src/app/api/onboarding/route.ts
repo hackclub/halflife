@@ -6,6 +6,7 @@ import { requireSession } from "@/lib/guards"
 import { getOnboardingState, type OnboardingAnswer, submitStep } from "@/lib/onboarding"
 import { toOnboardingView } from "@/lib/onboarding-view"
 import { assertWeekStarted } from "@/lib/program"
+import { enableRepoSync } from "@/lib/repo-sync"
 import { onboardingStepSchema } from "@/lib/schemas/onboarding"
 
 export const dynamic = "force-dynamic"
@@ -38,6 +39,19 @@ export const POST = withRoute(async (req: Request) => {
   // nothing the person is waiting on, and quiet about its own failures.
   if (result.touchedProject) {
     after(() => markProjectCreated(result.state.project.id, gate.user.id))
+  }
+
+  // A repo chosen on the last step is written to GitHub after the response.
+  // Its failure is recorded on the project (and shown on its page), not thrown
+  // back at someone who has just finished setup.
+  if (result.repoRequest) {
+    after(async () => {
+      try {
+        await enableRepoSync(result.state.project.id, gate.user.id, result.repoRequest!.repo)
+      } catch (err) {
+        console.error("[onboarding] repo sync setup failed:", err)
+      }
+    })
   }
 
   after(() =>

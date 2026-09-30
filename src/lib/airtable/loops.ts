@@ -8,11 +8,16 @@ import prisma from "@/lib/prisma"
 /**
  * The Loops properties on the `Signups` table: what Loops emails people from.
  *
- * Twelve columns, all Half Life's to write: when someone last signed in, when
- * they last logged a journal entry, and one checkbox per program week for
- * whether they have completed that week's first checkpoint. Everything else
- * Half Life tracks stays in Postgres (lib/analytics) — Loops needs these, not
- * the rest.
+ * Twelve columns, all Half Life's to write: when someone was last seen on the
+ * site, when they last logged a journal entry, and one checkbox per program
+ * week for whether they have completed that week's first checkpoint.
+ * Everything else Half Life tracks stays in Postgres (lib/analytics) — Loops
+ * needs these, not the rest.
+ *
+ * "Last login" is last site access, from `lastActiveAt` (the page-view
+ * heartbeat, lib/analytics), falling back to `lastLoginAt` for someone who has
+ * signed in but not been seen since. Loops keys its re-engagement email off
+ * that, so a visit counts, not just a fresh session.
  *
  * Rows are matched on `email`, case-insensitively, because that is the only
  * identity the table holds. Only existing rows are updated: this table is the
@@ -25,9 +30,9 @@ import prisma from "@/lib/prisma"
 const TABLE = RSVP_TABLE_ID
 
 export const LOOPS_FIELDS = {
-  // The same column the RSVP drain writes. Airtable field names are
-  // case-sensitive, and `"email"` against a column named `Email` matches
-  // nothing — a green run that updates no one.
+  // The same column the RSVP drain writes. See RSVP.fields.email: the live
+  // column is lowercase, and Airtable field names are case-sensitive — naming
+  // it `Email` made the list request a 422 that stopped this sync ever running.
   email: fieldKey(RSVP.fields.email),
   lastLoginAt: "Loops - halfLifeLastLoginAt",
   lastEntryAt: "Loops - halfLifeLastEntryAt",
@@ -39,6 +44,7 @@ const WEEKS = Array.from({ length: 10 }, (_, i) => i + 1)
 /** What Loops should hold for one person. */
 interface LoopsValues {
   email: string
+  /** Airtable's "last login": last site access, or the sign-in before it. */
   lastLoginAt: Date | null
   lastEntryAt: Date | null
   /** Week number → completed that week's first checkpoint. */
@@ -61,6 +67,7 @@ async function loopsValues(): Promise<LoopsValues[]> {
     select: {
       email: true,
       lastLoginAt: true,
+      lastActiveAt: true,
       onboardingCompletedAt: true,
       themeProjects: {
         where: { deletedAt: null },
@@ -88,8 +95,19 @@ async function loopsValues(): Promise<LoopsValues[]> {
       .map((p) => p.workSessions[0]?.createdAt)
       .filter((d): d is Date => d instanceof Date)
       .reduce<Date | null>((a, b) => (a && a > b ? a : b), null)
-    return { email: u.email, lastLoginAt: u.lastLoginAt, lastEntryAt, weeks }
+    // "Last login" means last time we saw them, so a page view wins over the
+    // sign-in that started the session; a sign-in with no view since still
+    // counts, so take whichever is newer.
+    const lastLoginAt = newest(u.lastLoginAt, u.lastActiveAt)
+    return { email: u.email, lastLoginAt, lastEntryAt, weeks }
   })
+}
+
+/** The later of two nullable instants. */
+function newest(a: Date | null, b: Date | null): Date | null {
+  if (!a) return b
+  if (!b) return a
+  return a > b ? a : b
 }
 
 /** The Airtable fields for one person, exactly as the table names them. */
