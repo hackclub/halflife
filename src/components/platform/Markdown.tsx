@@ -1,4 +1,5 @@
 import type { ReactNode } from "react"
+import { attrUrl } from "@/lib/attr-url"
 
 /**
  * Enough Markdown for a journal entry, and deliberately no more: headings,
@@ -175,7 +176,7 @@ function inline(text: string, key: string): ReactNode[] {
           // eslint-disable-next-line @next/next/no-img-element -- arbitrary remote source typed by the maker
           <img
             key={k}
-            src={src}
+            src={attrUrl(src)}
             alt={m[1]}
             loading="lazy"
             className="my-1 block max-w-full rounded-xl border-2 border-line"
@@ -206,7 +207,7 @@ function inline(text: string, key: string): ReactNode[] {
         href ? (
           <a
             key={k}
-            href={href}
+            href={attrUrl(href)}
             target="_blank"
             rel="noreferrer"
             className="font-semibold text-sky-ink underline decoration-2 underline-offset-[3px] transition-colors hover:text-coral-deep hover:decoration-coral"

@@ -86,7 +86,7 @@ function slug(text: string): string {
  * README-style render on GitHub shows the picture.
  */
 function htmlToMarkdown(html: string): string {
-  const text = html
+  const mapped = html
     // Block ends become line breaks first, so a <p>a</p><p>b</p> does not run
     // the two together.
     .replace(/<\/(p|div|h[1-6]|li|blockquote)>/gi, "\n\n")
@@ -103,7 +103,20 @@ function htmlToMarkdown(html: string): string {
     .replace(/<(em|i)>(.*?)<\/\1>/gis, "_$2_")
     .replace(/<code>(.*?)<\/code>/gis, "`$1`")
     .replace(/<li[^>]*>/gi, "- ")
-    .replace(/<[^>]+>/g, "")
+
+  // Tags left over by the mappings above are stripped to a fixed point: deleting
+  // one match can, in general, make the text on either side join into a new tag,
+  // so a single pass is not a complete sanitizer
+  // (`js/incomplete-multi-character-sanitization`). Repeat until the string
+  // stops changing; each pass that does anything removes at least `<x>`, so it
+  // always terminates.
+  let text = mapped
+  let previous = ""
+  do {
+    previous = text
+    text = text.replace(/<[^>]+>/g, "")
+  } while (text !== previous)
+
   return decodeEntities(text)
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
@@ -111,13 +124,17 @@ function htmlToMarkdown(html: string): string {
 }
 
 function decodeEntities(text: string): string {
+  // `&amp;` is unescaped LAST. Decoding it first would turn the literal text
+  // `&amp;lt;` into `&lt;` and then into `<` in the same pass — unescaping
+  // twice, so text the author escaped once came out as live markup. Every other
+  // entity above must also run before this one for the same reason.
   return text
     .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
     .replace(/&#0?39;/g, "'")
+    .replace(/&amp;/g, "&")
 }
 
 /** A table row, keeping empty cells rather than dropping the column. */

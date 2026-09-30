@@ -20,9 +20,36 @@ type InteractionPayload = {
   response_url?: string
 }
 
-async function respondEphemeral(responseUrl: string, text: string) {
+/** The only origin Slack sets `response_url` to. */
+const SLACK_RESPONSE_ORIGIN = "https://hooks.slack.com"
+
+/**
+ * Slack always sets `response_url` to `https://hooks.slack.com/...`, but the
+ * value arrives inside the interaction body, so CodeQL (correctly) treats it as
+ * attacker-shaped input. The request signature already proves Slack sent it —
+ * see `verifySlackRequest` — so this is defence in depth. The returned string is
+ * rebuilt from a constant origin: the host can never be steered by the payload,
+ * only the path and query are taken from Slack.
+ */
+function slackResponseUrl(value: string): string | null {
   try {
-    await fetch(responseUrl, {
+    const url = new URL(value)
+    if (url.hostname !== "hooks.slack.com") return null
+    return `${SLACK_RESPONSE_ORIGIN}${url.pathname}${url.search}`
+  } catch {
+    return null
+  }
+}
+
+async function respondEphemeral(responseUrl: string, text: string) {
+  const target = slackResponseUrl(responseUrl)
+  if (!target) {
+    console.error("Refusing to post ephemeral response: URL is not a Slack hooks host")
+    return
+  }
+
+  try {
+    await fetch(target, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ response_type: "ephemeral", text }),
