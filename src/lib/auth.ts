@@ -99,7 +99,34 @@ export const auth = betterAuth({
   // `x-forwarded-host`. Trusting it for base URL resolution is what makes the
   // previous block see `halflife.hackclub.com` rather than the pod's own
   // address; a forged value cannot point anywhere outside `allowedHosts`.
-  advanced: { trustedProxyHeaders: true },
+  //
+  // `ipAddress.ipAddressHeaders` is a separate concern and is NOT covered by
+  // `trustedProxyHeaders`: that option only affects base-URL/host resolution.
+  // The rate limiter resolves the client address on its own, and by default
+  // reads only `x-forwarded-for` — which, behind the ingress, carries more than
+  // one hop, so better-auth refuses it and falls back to a single shared
+  // `no-trusted-ip|/sign-in/social` bucket (3 requests per 10s for the whole
+  // site, which is what made ordinary sign-ins return 429). Cloudflare
+  // overwrites `cf-connecting-ip` and the ingress sets `x-real-ip`, both single
+  // values, so listing them first gives each person their own bucket. The same
+  // chain `clientIp` in lib/site/signups.ts reads.
+  advanced: {
+    trustedProxyHeaders: true,
+    ipAddress: { ipAddressHeaders: ["cf-connecting-ip", "x-real-ip", "x-forwarded-for"] },
+  },
+
+  // better-auth enables its rate limiter in production by default and gives
+  // every `/sign-in/*` path a stricter rule than the global one: 3 requests per
+  // 10 seconds. `/sign-in/social` matches it, so a person who retries — or taps
+  // the button twice, or lands back from HCA and starts again — gets a 429 for
+  // the next few seconds. 3 is right for the credential endpoints it was aimed
+  // at; it is too low for starting a browser social flow, which is one button
+  // per sign-in. Raise only that path and leave the rest of the defaults alone.
+  rateLimit: {
+    customRules: {
+      "/sign-in/social": { window: 10, max: 30 },
+    },
+  },
 
   database: prismaAdapter(prisma, { provider: "postgresql" }),
 
