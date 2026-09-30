@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next"
+import { PlausibleAnalytics } from "@/components/PlausibleAnalytics"
 import { siteFontVariables } from "@/components/site/fonts"
 import "./globals.css"
 
@@ -21,6 +22,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${siteFontVariables} h-full antialiased`}>
+      <head>
+        <PlausibleAnalytics />
+      </head>
       <body className="min-h-full flex flex-col bg-hl-ink text-hl-paper">
         {children}
       </body>

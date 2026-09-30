@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next"
 import { Plus_Jakarta_Sans, Shantell_Sans } from "next/font/google"
+import { PlausibleAnalytics } from "@/components/PlausibleAnalytics"
 import { SketchDefs } from "@/components/platform/art"
 import "./globals.css"
 
@@ -41,6 +42,9 @@ export const viewport: Viewport = {
 export default function PlatformLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${jakarta.variable} ${hand.variable}`}>
+      <head>
+        <PlausibleAnalytics />
+      </head>
       <body>
         <SketchDefs />
         {children}
