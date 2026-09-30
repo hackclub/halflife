@@ -5,6 +5,7 @@ import { type ReactNode, useState } from "react"
 import { Gato, WeekPainting } from "@/components/platform/art"
 import { IconCheck } from "@/components/platform/icons"
 import { ProjectChoiceCard, StarterProjectCard } from "@/components/platform/StarterProjectCard"
+import { RepoSyncSettings } from "@/components/platform/RepoSyncSettings"
 import { Button, Chip, cx, Field, OptionRow, Panel } from "@/components/platform/ui"
 import type { OnboardingView } from "@/lib/onboarding-view"
 import { EXAMPLE_JOURNAL_URL } from "@/lib/routes"
@@ -541,11 +542,28 @@ export function OnboardingFlow({
                 </Panel>
               ))}
             </ul>
+            <StepActions busy={busy} onBack={back} label="Next" onSubmit={() => void send({ step: "tracking", dismissed: true })} />
+          </div>
+        ) : null}
+
+        {step.id === "repo" ? (
+          <div className="space-y-5">
+            <p className="text-[0.92rem] leading-relaxed text-navy-soft">
+              Want your devlogs and parts list in your project&rsquo;s GitHub repo? Turn the sync on and Half Life keeps{" "}
+              <code className="hand text-navy">JOURNAL.md</code> and{" "}
+              <code className="hand text-navy">BOM.md</code> up to date in it as you work. You can turn it on later from
+              the project page, so this is optional.
+            </p>
+            <RepoSyncSettings
+              projectId={view.projectId}
+              compact
+              onEnabled={() => void send({ step: "repo", enabled: true })}
+            />
             <StepActions
               busy={busy}
               onBack={back}
               label="Finish"
-              onSubmit={() => void send({ step: "tracking", dismissed: false })}
+              onSubmit={() => void send({ step: "repo", enabled: false })}
             />
           </div>
         ) : null}

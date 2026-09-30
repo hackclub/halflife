@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server"
+import { after } from "next/server"
 import { PhaseStatus, Theme } from "@/app/generated/prisma/enums"
 import { recomputeWeek } from "@/lib/analytics"
 import { fail, ok, parseBody, parseQuery, withRoute } from "@/lib/api"
@@ -18,6 +19,7 @@ import {
   WEEK_CLOSED_MESSAGE,
 } from "@/lib/program"
 import { assertNoOwedReel } from "@/lib/reel-gate"
+import { scheduleRepoSync } from "@/lib/repo-sync"
 import { warmupPhaseOf } from "@/lib/warmup"
 import { sanitize, sanitizeHtml } from "@/lib/sanitize"
 import { sessionCreateSchema } from "@/lib/schemas/session"
@@ -196,6 +198,10 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
   })
 
   await recomputeWeek(gate.user.id, session.weekNumber)
+
+  // The new entry lands in the repo, after this response has gone out. The
+  // scheduling read is cheap and no-ops for a project with the sync off.
+  after(() => scheduleRepoSync(id))
 
   return ok({ session }, { status: 201 })
 })

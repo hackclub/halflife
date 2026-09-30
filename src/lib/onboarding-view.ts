@@ -21,6 +21,7 @@ export interface OnboardingStateData {
   experience: HardwareExperience | null
   suggestedTier: number
   project: {
+    id: string
     title: string
     description: string | null
     requestedTier: number | null
@@ -38,6 +39,8 @@ export interface OnboardingView {
   experience: HardwareExperience | null
   suggestedTier: number
   beginner: boolean
+  /** The week-one project row, for the repo-sync step at the end of the flow. */
+  projectId: string
   steps: readonly { id: string; number: number; heading: string; skippable: boolean }[]
   experienceOptions: readonly { value: HardwareExperience; label: string; hint: string }[]
   weekIntro: {
@@ -80,6 +83,7 @@ export function toOnboardingView(state: OnboardingStateData): OnboardingView {
     experience: state.experience,
     suggestedTier: state.suggestedTier,
     beginner: isBeginner(state.experience),
+    projectId: state.project.id,
     steps: ONBOARDING_STEPS.map((step) => ({ ...step })),
     experienceOptions: EXPERIENCE_OPTIONS,
     weekIntro: intro

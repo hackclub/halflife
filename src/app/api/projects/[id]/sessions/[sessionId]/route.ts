@@ -1,4 +1,5 @@
 import { type Phase, PhaseStatus, type Theme } from "@/app/generated/prisma/enums"
+import { after } from "next/server"
 import { recomputeWeek } from "@/lib/analytics"
 import { fail, ok, parseBody, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
@@ -12,6 +13,7 @@ import {
   SUBMISSIONS_CLOSED_MESSAGE,
   WEEK_CLOSED_MESSAGE,
 } from "@/lib/program"
+import { scheduleRepoSync } from "@/lib/repo-sync"
 import { sanitize, sanitizeHtml } from "@/lib/sanitize"
 import { sessionUpdateSchema } from "@/lib/schemas/session"
 import { recomputeStreak } from "@/lib/streak"
@@ -95,6 +97,8 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
     await recomputeWeek(gate.user.id, session.weekNumber)
   }
 
+  after(() => scheduleRepoSync(id))
+
   return ok({ session: updated })
 })
 
@@ -146,6 +150,8 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
   })
 
   await recomputeWeek(gate.user.id, session.weekNumber)
+
+  after(() => scheduleRepoSync(id))
 
   return ok({ ok: true })
 })

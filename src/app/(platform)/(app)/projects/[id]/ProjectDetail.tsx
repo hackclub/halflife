@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { IconChevronLeft, IconClock } from "@/components/platform/icons"
+import { RepoSyncSettings } from "@/components/platform/RepoSyncSettings"
 import { RepoChecks } from "@/components/platform/modals/RepoChecks"
 import { Button, Chip, cx, Panel } from "@/components/platform/ui"
 import { DESIGN_WEEKS } from "@/lib/config/printers"
@@ -525,6 +526,13 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
       <div className="mt-6">
         <RepoChecks project={project} onResult={noop} editable={false} />
       </div>
+
+      {/* ---------- keeping the repo in step ---------- */}
+      <Section id="repo-sync-title" title="Sync to GitHub">
+        <Panel tone="line" radius={20} className="bg-paper px-5 py-5 sm:px-6">
+          <RepoSyncSettings projectId={project.id} />
+        </Panel>
+      </Section>
 
       <HackatimeLinks projectId={project.id} phase={week.phase} />
 

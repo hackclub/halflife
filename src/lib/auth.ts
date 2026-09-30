@@ -19,11 +19,22 @@ const hcaScopes = ["openid", "profile", "email", "basic_info", "slack_id"]
 if (PULL_PII) hcaScopes.push("address", "birthdate")
 
 /**
+ * GitHub scopes for the repo sync. `repo` rather than `public_repo`: a maker's
+ * project repo may be private, and the difference between the two scopes only
+ * shows up the first day someone links a private repo and every write 403s.
+ * `read:user` is what lets the account picker read their login.
+ *
+ * The list is duplicated in lib/github-write (what the client promises) so a
+ * change here does not silently drift from what the UI tells the maker.
+ */
+const githubScopes = ["read:user", "repo"]
+
+/**
  * The email a link-only provider reports: unique per identity, and on the
  * reserved .invalid TLD, so it can never equal a real user's address. See
  * `trustedProviders` for why that matters.
  */
-function linkOnlyEmail(provider: "hackatime" | "lapse", id: string): string {
+function linkOnlyEmail(provider: "hackatime" | "lapse" | "github", id: string): string {
   return `${provider}-${id.replace(/[^A-Za-z0-9_-]/g, "")}@link.invalid`
 }
 
@@ -133,7 +144,7 @@ export const auth = betterAuth({
       // TLD (linkOnlyEmail, above) that no real user can hold, so the email
       // match in (2) can never find anyone. Nothing reads those addresses —
       // a user's email comes from HCA, and Account rows store no email.
-      trustedProviders: ["hca", "hackatime", "lapse"],
+      trustedProviders: ["hca", "hackatime", "lapse", "github"],
     },
   },
 
@@ -359,6 +370,61 @@ export const auth = betterAuth({
               email: linkOnlyEmail("lapse", user.id),
               name: user.displayName || user.handle,
               image: user.profilePictureUrl,
+              emailVerified: false,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            }
+          },
+        },
+        {
+          // Where the repo sync writes. Link-only for the same reason as
+          // Hackatime and Lapse: GitHub here is not an identity we create
+          // accounts from, it is an authorisation to push to one repository,
+          // granted by someone we already know. Making it a sign-in provider
+          // would mean GitHub proved an email for an account HCA is supposed
+          // to be the sole source of.
+          //
+          // `repo` is a broad scope — it is write access to every repository
+          // the person can push to. That is what GitHub offers; there is no
+          // narrower one that covers committing to an arbitrary user-chosen
+          // repo. It is asked for at link time, the account picker explains
+          // what it is for, and the sync only ever touches the one repo a maker
+          // names.
+          providerId: "github",
+          authorizationUrl: "https://github.com/login/oauth/authorize",
+          tokenUrl: "https://github.com/login/oauth/access_token",
+          userInfoUrl: "https://api.github.com/user",
+          clientId: process.env.GITHUB_CLIENT_ID ?? "",
+          clientSecret: process.env.GITHUB_CLIENT_SECRET ?? "",
+          scopes: githubScopes,
+          // GitHub's token endpoint reads the client from the form body.
+          authentication: "post",
+          disableSignUp: true,
+          disableImplicitSignUp: true,
+          getUserInfo: async ({ accessToken }) => {
+            if (!accessToken) return null
+            const res = await fetch("https://api.github.com/user", {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                Accept: "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+              },
+              signal: AbortSignal.timeout(10_000),
+            })
+            if (!res.ok) return null
+            const data = (await res.json()) as {
+              id: number
+              login: string
+              name?: string | null
+              avatar_url?: string
+            }
+            return {
+              // The numeric id, not the login: a login can be renamed and the
+              // account row has to survive that.
+              id: String(data.id),
+              email: linkOnlyEmail("github", data.login),
+              name: data.name || data.login,
+              image: data.avatar_url,
               emailVerified: false,
               createdAt: new Date(),
               updatedAt: new Date(),

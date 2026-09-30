@@ -1,9 +1,11 @@
+import { after } from "next/server"
 import { fail, ok, parseBody, withRoute } from "@/lib/api"
 import { HttpError } from "@/lib/errors"
 import { bomData, bomLockReason, listBom, MAX_BOM_ITEMS } from "@/lib/bom"
 import { requireSession } from "@/lib/guards"
 import prisma from "@/lib/prisma"
 import { getSubmissionAccess, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
+import { scheduleRepoSync } from "@/lib/repo-sync"
 import { bomExtrasSchema, bomItemSchema } from "@/lib/schemas/project"
 
 export const dynamic = "force-dynamic"
@@ -83,11 +85,12 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
     })
   })
 
+  after(() => scheduleRepoSync(id))
+
   return ok({ items: await listBom(id) }, { status: 201 })
 })
 
 const cents = (n: number | null) => (n === null ? null : Math.round(n * 100) / 100)
-
 /**
  * Set the order's tax and shipping total. It is a field on the project rather
  * than a line in the list, which is what keeps it from being removed: there is
@@ -114,6 +117,8 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
     data: { bomTaxShippingUsd: cents(parsed.data.taxShippingUsd) },
     select: { bomTaxShippingUsd: true },
   })
+
+  after(() => scheduleRepoSync(id))
 
   return ok({ taxShippingUsd: updated.bomTaxShippingUsd ?? 0 })
 })

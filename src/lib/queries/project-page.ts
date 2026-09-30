@@ -6,6 +6,7 @@ import { THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { lapseTimelapseUrl } from "@/lib/lapse"
 import prisma from "@/lib/prisma"
 import { deleteBlockReason } from "@/lib/project-delete"
+import { getRepoSyncState, type RepoSyncState } from "@/lib/repo-sync"
 import { type ProjectThumbnail, projectThumbnail } from "@/lib/thumbnail"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
@@ -66,8 +67,7 @@ export type TimelineItem =
     }
 
 /** One phase's review state, for the block above the repo checks. */
-export interface PhaseReview {
-  phase: Phase
+export interface PhaseReview {  phase: Phase
   status: PhaseStatus
   /** The reviewer's note on the latest decision, if any. */
   comments: string | null
@@ -100,6 +100,8 @@ export interface ProjectPageData {
   deleteBlocked: string | null
   /** The phases that have left draft, for the review-state block. */
   phases: PhaseReview[]
+  /** Whether devlogs and the parts list are mirrored into the repo, and where. */
+  repoSync: RepoSyncState
 }
 
 const SESSION_SELECT = {
@@ -280,6 +282,7 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
     inReview,
     deleteBlocked: await deleteBlockReason(project),
     phases,
+    repoSync: await getRepoSyncState(project.id, userId),
   }
 }
 
