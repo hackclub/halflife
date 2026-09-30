@@ -736,7 +736,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             // Three occasions, three kinds: the pitch at the start of a design
-            // week, the ones that mark ten hours, and the one that closes a
+            // week, the ones that mark the hours, and the one that closes a
             // week inside Submit.
             kind: id.endsWith("-reel-idea") ? "IDEA" : id.endsWith("-reel-submission") ? "SUBMISSION" : "PROGRESS",
             caption,
@@ -1137,7 +1137,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
    * Journalled entries plus whatever arrived another way — Hackatime link time,
    * and any hours a reviewer adjusted. The two are added here rather than
    * folded into the entries upstream because reels are placed where the JOURNAL
-   * crossed ten hours: fold Hackatime in and a progress reel lands on a node
+   * crossed a reel's mark: fold Hackatime in and a progress reel lands on a node
    * the participant never wrote.
    */
   const weekHours = useCallback(

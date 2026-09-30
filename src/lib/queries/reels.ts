@@ -1,9 +1,11 @@
 import "server-only"
-import { PostStatus, type PublicReelPlatform } from "@/app/generated/prisma/enums"
-import { THEMES } from "@/lib/config/program"
+import { Phase, type PhaseStatus, PostStatus, type PublicReelPlatform } from "@/app/generated/prisma/enums"
+import { DESIGN_WEEKS, THEMES } from "@/lib/config/program"
+import { progressReelHours } from "@/lib/curriculum"
 import prisma from "@/lib/prisma"
 import { reelLockReason } from "@/lib/reel-gate"
 import { publicUrlFor } from "@/lib/uploads/r2"
+import { warmupPhaseOf } from "@/lib/warmup"
 
 /**
  * Everything the Reels page shows: the participant's own reels, grouped by
@@ -23,7 +25,7 @@ export interface MyPublicLink {
 
 export interface MyReel {
   id: string
-  /** What the reel was for, in the trail's words: "Idea reel", "10h progress reel". */
+  /** What the reel was for, in the trail's words: "Idea reel", "2.5h progress reel". */
   title: string
   caption: string
   at: number
@@ -46,12 +48,26 @@ export interface MyReelGroup {
   reels: MyReel[]
 }
 
-/** The checkpoint a reel answered, named the way the trail names it. */
-function titleFor(checkpointKey: string | null, kind: string): string {
+/**
+ * The checkpoint a reel answered, named the way the trail names it. A progress
+ * reel's hours depend on its week's phase: a season week says it by number
+ * (past DESIGN_WEEKS is a build), a warm-up by the phase it is handed in as.
+ */
+function titleFor(
+  checkpointKey: string | null,
+  kind: string,
+  project: { warmupPhase: Phase | null; buildStatus: PhaseStatus } | null,
+): string {
   const slot = checkpointKey ? /-reel-(.+)$/.exec(checkpointKey)?.[1] : null
   if (slot === "idea") return "Idea reel"
   if (slot === "submission") return "Closing reel"
-  if (slot && /^\d+$/.test(slot)) return `${Number(slot) * 10}h progress reel`
+  if (checkpointKey && slot && /^\d+$/.test(slot)) {
+    const week = /^w(\d{1,2})-/.exec(checkpointKey)?.[1]
+    const build = week
+      ? Number(week) > DESIGN_WEEKS
+      : project !== null && warmupPhaseOf(project) === Phase.BUILD
+    return `${progressReelHours(build ? "build" : "design", Number(slot))}h progress reel`
+  }
   if (kind === "IDEA") return "Idea reel"
   if (kind === "SUBMISSION") return "Closing reel"
   if (kind === "PROGRESS") return "Progress reel"
@@ -72,7 +88,9 @@ export async function getMyReels(userId: string): Promise<MyReelGroup[]> {
       status: true,
       createdAt: true,
       publishedAt: true,
-      themeProject: { select: { id: true, title: true, theme: true, deletedAt: true } },
+      themeProject: {
+        select: { id: true, title: true, theme: true, deletedAt: true, warmupPhase: true, buildStatus: true },
+      },
       publicReels: {
         orderBy: { postedAt: "asc" },
         select: { id: true, platform: true, url: true, postedAt: true },
@@ -110,7 +128,7 @@ export async function getMyReels(userId: string): Promise<MyReelGroup[]> {
     }
     groups.get(key)?.reels.push({
       id: p.id,
-      title: titleFor(p.checkpointKey, p.kind),
+      title: titleFor(p.checkpointKey, p.kind, p.themeProject),
       caption: p.caption,
       at: (p.publishedAt ?? p.createdAt).getTime(),
       videoUrl: publicUrlFor(p.objectKey),

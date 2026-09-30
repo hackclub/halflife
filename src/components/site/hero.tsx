@@ -252,20 +252,6 @@ export default function Hero() {
               ever cleared again. */}
           <Wordmark as="h1" art artWidth={LOGO_STAGE_W} fontSize={onPlateU(226.768)} className="w-full" />
 
-          {/* The social proof, between the mark and the ask: read who is already
-              here, then type your email. It is boxed for that reason — a line of
-              small type under the field is read after the decision, which is the
-              wrong side of it. The gap the comp put under the wordmark is split,
-              20 above the box and 16 below it, so the box sits nearer the form it
-              belongs to than the mark above it.
-
-              Sized at `onPlateU(42)`, deliberately larger than the form's own 30:
-              the number sets at 1.5em of this and lands near 63 units, which
-              puts it in the tagline's company (32.8) rather than the eligibility
-              note's. Social proof that is quieter than the fine print is not
-              doing the job it is here for. */}
-          <SignupCounter style={{ marginTop: onPlateU(48), marginBottom: onPlateU(32), fontSize: onPlateU(42) }} />
-
           {/* One line, and sized so it stays one line.
 
               The measure is not a guess: set in Ubuntu 400, this sentence is
@@ -310,9 +296,12 @@ export default function Hero() {
               slack the comp left either side were there to absorb a fallback
               face missing Ubuntu's advances by up to 3.9%; now a wider face
               simply takes the box with it. */}
+          {/* The gap under the wordmark is the form's again, now the counter
+              sits below it: the same 48 the counter used to stand off the mark
+              by, so the mark and the ask keep the distance they had. */}
           <SignupForm
             style={{
-              marginTop: 0,
+              marginTop: onPlateU(48),
               width: u(swashBoxWidth(TAGLINE_RUN)),
             }}
             fontSize={onPlateU(30)}
@@ -325,6 +314,20 @@ export default function Hero() {
               </p>
             }
           />
+
+          {/* The social proof, under the ask: below the field and below the
+              eligibility line under it, not between the two — that line is the
+              field's own caption and error line, and what the input is
+              described by, so it stays attached to the field. 40 units off the
+              line, more than the line sits off the field and less than the
+              mark sits off the form: its own thing, but the form's.
+
+              Sized at `onPlateU(42)`, deliberately larger than the form's own 30:
+              the number sets at 1.5em of this and lands near 63 units, which
+              puts it in the tagline's company (32.8) rather than the eligibility
+              note's. Social proof that is quieter than the fine print is not
+              doing the job it is here for — least of all directly under it. */}
+          <SignupCounter style={{ marginTop: onPlateU(40), fontSize: onPlateU(42) }} />
         </div>
 
         <ScrollCue className="row-start-3 self-end" style={{ marginBottom: u(56) }} fontSize={u(22)} />
@@ -384,14 +387,8 @@ export default function Hero() {
               // The 42vw / 16.8rem is the tablet width argued for above.
               className="left-1/2 w-[95vw] -translate-x-1/2 [--logo-w:100%] sm:left-auto sm:w-full sm:translate-x-0 sm:[--logo-w:min(42vw,16.8rem)]"
             />
-            {/* Between the mark and the ask, as on the stage. Unscreen-sized:
-                it scales with the column's own `clamp()` rather than the stage's
-                `cqw`, because there is no stage here. */}
-            <SignupCounter
-              className="mt-5 mb-4"
-              style={{ fontSize: "clamp(1.1rem, 4.2vw, 1.4rem)" }}
-            />
             <SignupForm
+              className="mt-5"
               fontSize="clamp(1rem, 4.2vw, 1.375rem)"
               intro={
                 <p
@@ -405,6 +402,10 @@ export default function Hero() {
                 </p>
               }
             />
+            {/* Under the ask, below the eligibility line, as on the stage.
+                Unscreen-sized: it scales with the column's own `clamp()` rather
+                than the stage's `cqw`, because there is no stage here. */}
+            <SignupCounter className="mt-6" style={{ fontSize: "clamp(1.1rem, 4.2vw, 1.4rem)" }} />
           </div>
 
           <ScrollCue

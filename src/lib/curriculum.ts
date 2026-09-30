@@ -148,8 +148,22 @@ export const WEEK_META: WeekMeta[] = [
   })),
 ]
 
-/** Progress reels land on the clock: one every ten hours logged, indefinitely. */
-export const REEL_EVERY = 10
+/**
+ * The hours logged at which a week's k-th progress reel falls due (k from 1).
+ *
+ * On the clock, sized to what the week asks. A design week is ten hours or
+ * more, so its reels land every ten. A build week asks only five, so ten would
+ * mean most builds never show their progress at all: its first reel comes at
+ * two and a half hours — halfway to the minimum — and then one every five
+ * hours on the clock: 2.5h, 5h, 10h, 15h…
+ *
+ * Keys stay `w<week>-reel-<k>`, numbered rather than timed, so this can change
+ * without touching a stored reel; the reels page names them from it too.
+ */
+export function progressReelHours(phase: Phase, k: number): number {
+  if (phase === "build") return k === 1 ? 2.5 : (k - 1) * 5
+  return k * 10
+}
 
 /**
  * A session has to be backed by photographs. Two is the floor whatever the
@@ -167,7 +181,7 @@ export const photosRequired = (hours: number) => Math.max(MIN_PHOTOS, Math.ceil(
  * actually was — plus one live node for the entry about to be written.
  *
  * There are exactly three occasions for a reel and no others: the idea at the
- * start, a progress reel every ten hours, and the one that closes the week
+ * start, a progress reel as the hours mount (`progressReelHours`), and the one that closes the week
  * inside Submit. The progress reels are placed at the entry that crossed the
  * mark, so the trail reads as a chronology rather than a queue with the reels
  * swept to the end, and the next unearned one trails the chain so the cadence
@@ -224,9 +238,12 @@ export function checkpointsFor(
       id: id(`reel-${k}`),
       weekId: meta.id,
       kind: "reel",
-      atHours: k * REEL_EVERY,
-      title: `${k * REEL_EVERY}h progress reel`,
-      blurb: k === 1 ? "Show off the progress you've made after 10 hours!" : "What has changed since the last one.",
+      atHours: progressReelHours(meta.phase, k),
+      title: `${progressReelHours(meta.phase, k)}h progress reel`,
+      blurb:
+        k === 1
+          ? `Show off the progress you've made after ${progressReelHours(meta.phase, k)} hours!`
+          : "What has changed since the last one.",
       reelBrief:
         k === 1
           ? "Screen-share what you have and narrate one decision you reversed."
@@ -241,14 +258,14 @@ export function checkpointsFor(
   const loggedHours = entryMinutes.reduce((n, m) => n + m, 0) / 60
   const forked = !submitted && loggedHours >= floorHours
 
-  // Walk the entries, dropping a reel in wherever the clock crosses ten hours.
+  // Walk the entries, dropping a reel in wherever the clock crosses a reel's mark.
   let hours = 0
   let reels = 0
   const live = submitted || forked ? entryMinutes.length : entryMinutes.length + 1
   const pushEntry = (n: number) => {
     out.push(entry(n))
     hours += (entryMinutes[n - 1] ?? 0) / 60
-    while (Math.floor(hours / REEL_EVERY) > reels) {
+    while (hours >= progressReelHours(meta.phase, reels + 1)) {
       reels += 1
       out.push(milestoneReel(reels))
     }
