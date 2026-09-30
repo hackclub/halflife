@@ -1,0 +1,13 @@
+-- A build week now banks its first BUILD_HOURS into the printer fund instead of
+-- paying every hour out as spendable.
+--
+-- It gets its own ledger kind rather than sharing BUILD_HOURS across two
+-- buckets, because reconcileGrant sums a running total by kind: one kind spread
+-- over two buckets would reconcile each half against the other's total and
+-- write the difference as a correction, forever. Design already splits this way
+-- (DESIGN_BANKED_HOURS / DESIGN_EXCESS_HOURS); this makes build symmetrical.
+--
+-- Additive. Existing BUILD_HOURS rows keep their meaning: hours paid as
+-- spendable. Nothing is rewritten, and re-approving a build reconciles its two
+-- pots to the new targets on its own.
+ALTER TYPE "LedgerKind" ADD VALUE 'BUILD_BANKED_HOURS';

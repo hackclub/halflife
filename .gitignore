@@ -93,3 +93,10 @@ id_rsa*
 package-lock.json
 yarn.lock
 .pnpm-store/
+# generated prisma client — output path is set in prisma/schema.prisma
+/src/app/generated
+
+# Local preview config. Machine-specific (it hardcodes a username and a
+# throwaway auth secret for looking at the UI without the OIDC round trip),
+# and a secret-shaped string in the repo is a bad habit even when it is fake.
+/.claude/launch.json

@@ -1,3 +1,11 @@
 ignoredBuiltDependencies:
   - sharp
   - unrs-resolver
+
+# Prisma's postinstall fetches the query engine and esbuild's fetches its
+# platform binary. Without these approved, `prisma generate` fails at run time
+# with a missing-engine error that does not mention pnpm at all.
+onlyBuiltDependencies:
+  - "@prisma/engines"
+  - prisma
+  - esbuild

@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # The Prisma client is gitignored, so typecheck and build both fail
+      # without this. It has to come first.
+      - run: pnpm exec prisma generate
+
+      - run: pnpm typecheck
+      - run: pnpm lint
+
+      - name: Build
+        env:
+          CI: "true"
+          BETTER_AUTH_SECRET: ci-placeholder-secret-at-least-32-chars
+          BETTER_AUTH_URL: http://localhost:3000
+          DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
+        run: pnpm build
+
+  migrations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: halflife_ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/halflife_ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prisma generate
+
+      # Migrations must apply cleanly from nothing. Both reference programs
+      # deploy migrations at container start with no CI check, which means a bad
+      # migration is discovered as a crashlooping production pod.
+      - name: Apply migrations from scratch
+        run: pnpm exec prisma migrate deploy
+
+      # And the committed schema has to match the migration history — the
+      # failure mode where someone edits schema.prisma and forgets to migrate.
+      # Prisma 7 takes the shadow database URL from prisma.config.ts, so this
+      # needs a database it is allowed to reset — hence a separate one from the
+      # migration target above.
+      - name: Schema matches migrations
+        env:
+          SHADOW_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/halflife_shadow
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -c 'CREATE DATABASE halflife_shadow'
+          pnpm exec prisma migrate diff \
+            --from-migrations prisma/migrations \
+            --to-schema prisma/schema.prisma \
+            --exit-code
+
+      - run: pnpm db:seed

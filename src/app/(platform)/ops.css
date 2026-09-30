@@ -1,0 +1,1103 @@
+@import "tailwindcss";
+
+/*
+ * The Half-Life design system.
+ *
+ * Values come from the Figma "platform ui" page — the BRANDING frame
+ * (389:1774) for palette and type, and the [ MAIN PAGE ] / [ EXPLORE PAGE ]
+ * frames for how they are used. Where the comp is silent (hover, focus,
+ * disabled, small screens) the rule is derived from a value it does state.
+ *
+ * This file and app/components/ui/ are the only places that know about colour,
+ * radius or type. A page composes primitives and never writes a raw value.
+ */
+
+@theme {
+  /* ── Palette ───────────────────────────────────────────────────────────── */
+  /* The eight swatches of the BRANDING frame, plus its two large grounds. */
+  --color-surface: #fcf7f7; /* page ground — warm off-white, not pure white */
+  --color-surface-raised: #ffffff; /* cards sitting on the ground */
+  --color-surface-sunken: #f2ecec;
+  --color-border: #cacedd;
+  /* A field's edge, which has to meet 3:1 where a panel's need not: #cacedd
+     is 1.57:1 on a white field. 3.68:1. */
+  --color-field-edge: #86829f;
+  --color-border-strong: #1c1a59;
+
+  --color-ink: #100f30; /* body text */
+  --color-ink-strong: #1c1a59; /* headings, outlines, the brand navy */
+  /*
+   * The comp's secondary grey is #979bab, which is 2.77:1 on white — below the
+   * 4.5:1 body-text floor, and this is read by teenagers on school laptops in
+   * bright rooms. Darkened along its own hue (228°) and saturation rather than
+   * swapped for a neutral, so it stays the comp's colour: 5.06:1 on white,
+   * 4.76:1 on the page ground.
+   */
+  --color-ink-muted: #696e82;
+  /* The original, kept for the decorative rules and borders that are not text. */
+  --color-line-soft: #cacedd;
+
+  --color-accent: #52b4d5; /* primary blue */
+  --color-accent-bright: #61cdf1; /* the header sign */
+  --color-accent-media: #51bce1; /* media blocks in the feed */
+  --color-accent-ink: #1c1a59;
+
+  --color-teal: #06ae97;
+  --color-teal-soft: #75d0c9;
+  --color-mint: #aef2dd;
+  --color-magenta: #b21b9b;
+  --color-coin: #fba62f; /* coin counter */
+  --color-flame: #f35757; /* streak counter, danger, the active nav tab */
+
+  /* Semantic aliases, so primitives read as roles rather than hues. */
+  --color-success: #06ae97;
+  --color-warning: #fba62f;
+  --color-danger: #f35757;
+  /* The status colours as text. Teal, coin and flame read 2.80, 1.98 and
+     3.33:1 on white, so a badge's word takes these instead. */
+  --color-success-ink: #037365;
+  --color-warning-ink: #8c5507;
+  --color-danger-ink: #c73b3b;
+
+  /* ── Shape ─────────────────────────────────────────────────────────────── */
+  /* The comp uses 4/8/10/14 and a 2px outline on nearly everything. */
+  --radius-control: 4px;
+  --radius-button: 8px;
+  --radius-panel: 10px;
+  --radius-rail: 14px;
+
+  /* ── Type ──────────────────────────────────────────────────────────────── */
+  /*
+   * Headings and body are both Plus Jakarta Sans: nav items and names in Bold
+   * 22, body in Regular 16/22, page titles in ExtraBold.
+   *
+   * The accent face is Comico, used only for small uppercase labels
+   * ("VIEW MORE", "LOG OUT", "YESTERDAY", "The Doomscroller") and the two
+   * numeric counters. It is not on Google Fonts and no licensed file ships
+   * here, so it falls back until one does — see the note in layout.tsx.
+   */
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-accent: var(--font-comico), "Comic Sans MS", "Chalkboard SE", var(--font-jakarta), sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  margin: 0;
+}
+
+a {
+  color: var(--color-ink-strong);
+}
+
+/*
+ * The surfaces we did not draw still carry the design. Left at their defaults
+ * these are the browser's blue, and they belong to no design system.
+ */
+::selection {
+  background: var(--color-mint);
+  color: var(--color-ink-strong);
+}
+
+input,
+textarea,
+select {
+  caret-color: var(--color-accent);
+}
+
+* {
+  scrollbar-color: var(--color-line-soft) transparent;
+  scrollbar-width: thin;
+}
+
+/* Headings inherit the display face and weight rather than the browser's. */
+h1,
+h2,
+h3,
+h4 {
+  font-weight: 800;
+  color: var(--color-ink-strong);
+  line-height: 1.15;
+  text-wrap: balance;
+}
+
+@layer components {
+  /* ── App shell ─────────────────────────────────────────────────────────── */
+  /*
+   * Three columns: the 343px sidebar, the content well, and the 409px
+   * Doomscroller rail. The hairline the comp draws down the page at x=425 is
+   * the content column's left border, not a separate element.
+   */
+  .hl-app {
+    display: grid;
+    grid-template-columns: 343px minmax(0, 1fr);
+    gap: 2.4rem;
+    align-items: start;
+    max-width: 1728px;
+    margin: 0 auto;
+    padding: 2.5rem 2.75rem 4rem;
+  }
+  .hl-app--with-rail {
+    grid-template-columns: 343px minmax(0, 1fr) 409px;
+  }
+  .hl-main {
+    min-width: 0;
+    border-left: 1px solid var(--color-border);
+    padding-left: 2.4rem;
+  }
+
+  /* Narrower than the rail, the feed matters more than the rail. Narrower
+     than the sidebar, the nav becomes a strip above the content. */
+  @media (max-width: 1400px) {
+    .hl-app,
+    .hl-app--with-rail {
+      grid-template-columns: 343px minmax(0, 1fr);
+    }
+    .hl-rail {
+      display: none;
+    }
+  }
+  @media (max-width: 900px) {
+    .hl-app,
+    .hl-app--with-rail {
+      grid-template-columns: minmax(0, 1fr);
+      padding: 1.25rem 1rem 3rem;
+      gap: 1.25rem;
+    }
+    .hl-main {
+      border-left: 0;
+      padding-left: 0;
+    }
+    .hl-sidebar {
+      position: static;
+    }
+    /*
+     * On one column the sidebar is three tall cards of chrome. Leaving it
+     * first means scrolling past the whole nav, the printer card and the
+     * account card to reach the thing you opened the app for.
+     */
+    .hl-main {
+      order: -1;
+    }
+  }
+
+  /* ── Cards ─────────────────────────────────────────────────────────────── */
+  .hl-card {
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-panel);
+    padding: 1.4rem 1.5rem;
+  }
+  .hl-panel {
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-panel);
+    padding: 1.4rem 1.5rem;
+    background: var(--color-surface-raised);
+  }
+
+  /* ── Sidebar ───────────────────────────────────────────────────────────── */
+  .hl-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 1.6rem;
+    position: sticky;
+    top: 2.5rem;
+  }
+  .hl-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .hl-nav-card {
+    position: relative;
+    padding-top: 2.4rem;
+  }
+  /* The red tab riding the top edge of the nav card. */
+  .hl-nav-tab {
+    position: absolute;
+    top: -1rem;
+    left: 6.5rem;
+    width: 102px;
+    height: 33px;
+    border-radius: var(--radius-control);
+    background: var(--color-flame);
+  }
+  .hl-nav-list {
+    display: flex;
+    flex-direction: column;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .hl-nav-item {
+    display: block;
+    font-weight: 700;
+    font-size: 1.375rem;
+    color: var(--color-ink);
+    text-decoration: none;
+    padding: 0.55rem 0.25rem;
+    border-bottom: 2px solid var(--color-border);
+  }
+  .hl-nav-list li:last-child .hl-nav-item {
+    border-bottom: 0;
+  }
+  /* The comp dims the page you are on rather than highlighting it. */
+  .hl-nav-item--current {
+    opacity: 0.4;
+  }
+  .hl-nav-item:hover {
+    color: var(--color-accent);
+  }
+
+  /* ── Counters (coins, streak) ──────────────────────────────────────────── */
+  .hl-counters {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+  }
+  .hl-counter {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--font-accent);
+    font-size: 1.875rem;
+    line-height: 1;
+  }
+  .hl-counter--coin {
+    color: var(--color-coin);
+  }
+  .hl-counter--flame {
+    color: var(--color-flame);
+  }
+  .hl-counter-icon {
+    width: 1.75rem;
+    height: 1.75rem;
+    display: block;
+  }
+
+  /* ── The hanging sign ──────────────────────────────────────────────────── */
+  /*
+   * Every page title hangs from two straps pinned to the top of the page. The
+   * straps are drawn behind the board and run up past it.
+   */
+  .hl-sign {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    margin: 1.5rem 0 2.5rem;
+  }
+  .hl-sign-board {
+    position: relative;
+    z-index: 1;
+    background: var(--color-accent-bright);
+    border: 2px solid var(--color-ink-strong);
+    border-radius: var(--radius-button);
+    padding: 0.6rem 2.5rem;
+    min-width: min(340px, 100%);
+    text-align: center;
+  }
+  .hl-sign-board h1 {
+    font-size: clamp(1.75rem, 4vw, 3.75rem);
+    font-weight: 800;
+    color: var(--color-ink-strong);
+    margin: 0;
+    line-height: 1.05;
+  }
+  .hl-sign-strap {
+    position: absolute;
+    top: -4rem;
+    width: 10px;
+    height: 110px;
+    background: var(--color-ink-strong);
+    border-bottom-left-radius: var(--radius-control);
+    border-bottom-right-radius: var(--radius-control);
+  }
+  .hl-sign-strap--left {
+    left: calc(50% - 130px);
+  }
+  .hl-sign-strap--right {
+    right: calc(50% - 130px);
+  }
+  .hl-sign-sub {
+    text-align: center;
+    color: var(--color-ink-muted);
+    margin: 0.75rem 0 0;
+  }
+
+  /*
+   * The comp stands a gato beside the printer card, overlapping its right
+   * edge. It is decoration, so it is out of the accessibility tree and out of
+   * the pointer's way.
+   */
+  .hl-card--mascot {
+    position: relative;
+  }
+  .hl-card-mascot {
+    position: absolute;
+    right: -1.75rem;
+    bottom: -0.5rem;
+    width: 108px;
+    height: auto;
+    pointer-events: none;
+  }
+  @media (max-width: 900px) {
+    .hl-card-mascot {
+      right: 0.5rem;
+      width: 84px;
+    }
+  }
+
+  /* An empty state that says something, rather than a line of grey text. */
+  .hl-empty-art {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    text-align: center;
+    padding: 1.5rem 1rem;
+    color: var(--color-ink-muted);
+  }
+  .hl-empty-art img {
+    width: 132px;
+    height: auto;
+  }
+
+  /* ── Progress ──────────────────────────────────────────────────────────── */
+  .hl-progress {
+    position: relative;
+    height: 19px;
+    border-radius: var(--radius-button);
+    background: var(--color-mint);
+    overflow: hidden;
+  }
+  .hl-progress-fill {
+    height: 100%;
+    border-radius: var(--radius-button);
+    background: var(--color-teal);
+  }
+  .hl-progress-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-teal);
+  }
+
+  /* ── Avatars ───────────────────────────────────────────────────────────── */
+  .hl-avatar {
+    width: 53px;
+    height: 53px;
+    border-radius: var(--radius-button);
+    border: 2px solid var(--color-surface);
+    background: var(--color-ink-strong);
+    object-fit: cover;
+    display: block;
+    flex: 0 0 auto;
+  }
+  .hl-avatar--lg {
+    width: 129px;
+    height: 129px;
+  }
+  /* The fallback holds the gato art on the brand navy. */
+  .hl-avatar--fallback {
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    background: var(--color-teal);
+  }
+  .hl-avatar--fallback img {
+    width: 84%;
+    height: 84%;
+    object-fit: contain;
+  }
+
+  /* Real names include long unbroken ones; the card must not burst. */
+  .hl-account-name {
+    font-size: 1.375rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+
+  /* ── Accent label ──────────────────────────────────────────────────────── */
+  /* "VIEW MORE", "LOG OUT", "YESTERDAY" — Comico, small, tracked out. */
+  .hl-label {
+    font-family: var(--font-accent);
+    font-size: 0.75rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--color-accent);
+    text-decoration: none;
+  }
+  .hl-label--muted {
+    color: var(--color-ink-muted);
+  }
+
+  /* ── Buttons ───────────────────────────────────────────────────────────── */
+  .hl-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    font: inherit;
+    font-weight: 700;
+    padding: 0.5rem 1.1rem;
+    border-radius: var(--radius-button);
+    border: 2px solid var(--color-ink-strong);
+    background: var(--color-surface-raised);
+    color: var(--color-ink-strong);
+    cursor: pointer;
+    text-decoration: none;
+    line-height: 1.3;
+  }
+  .hl-btn:hover:not(:disabled) {
+    background: var(--color-mint);
+  }
+  .hl-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .hl-btn--primary {
+    background: var(--color-accent-bright);
+    color: var(--color-ink-strong);
+  }
+  .hl-btn--primary:hover:not(:disabled) {
+    background: var(--color-accent);
+  }
+  /* danger-ink, not flame: white on flame is 3.33:1, on this 5.10. */
+  .hl-btn--danger {
+    background: var(--color-danger-ink);
+    color: var(--color-surface-raised);
+  }
+  .hl-btn--danger:hover:not(:disabled) {
+    filter: brightness(0.94);
+  }
+
+  /* One visible focus treatment everywhere, since the comp specifies none. */
+  .hl-btn:focus-visible,
+  .hl-input:focus-visible,
+  .hl-textarea:focus-visible,
+  .hl-select:focus-visible,
+  .hl-nav-item:focus-visible,
+  .hl-label:focus-visible {
+    outline: 3px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  /* An icon-only control: the target is the button, not the glyph. */
+  .hl-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-control);
+    background: none;
+    color: var(--color-ink-muted);
+    cursor: pointer;
+  }
+  .hl-icon-btn:hover {
+    color: var(--color-ink-strong);
+    background: var(--color-surface-sunken);
+  }
+  .hl-icon-btn:focus-visible {
+    outline: 3px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  /* ── Fields ────────────────────────────────────────────────────────────── */
+  .hl-label-text {
+    display: block;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--color-ink);
+    margin-bottom: 0.35rem;
+  }
+  .hl-input,
+  .hl-textarea,
+  .hl-select {
+    width: 100%;
+    font: inherit;
+    color: var(--color-ink);
+    background: var(--color-surface-raised);
+    border: 2px solid var(--color-field-edge);
+    border-radius: var(--radius-button);
+    padding: 0.6rem 0.75rem;
+  }
+  .hl-textarea {
+    min-height: 7rem;
+    resize: vertical;
+  }
+  .hl-hint {
+    color: var(--color-ink-muted);
+    font-size: 0.875rem;
+    margin: 0;
+  }
+  .hl-muted {
+    color: var(--color-ink-muted);
+  }
+  .hl-mono {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+  }
+
+  /* ── Badges and callouts ───────────────────────────────────────────────── */
+  .hl-badge {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.15rem 0.6rem;
+    border-radius: 999px;
+    border: 2px solid currentColor;
+    line-height: 1.4;
+  }
+  .hl-badge--success {
+    color: var(--color-success-ink);
+  }
+  .hl-badge--warning {
+    color: var(--color-warning-ink);
+  }
+  .hl-badge--danger {
+    color: var(--color-danger-ink);
+  }
+  .hl-badge--muted {
+    color: var(--color-ink-muted);
+  }
+
+  .hl-callout {
+    border: 2px solid var(--color-accent);
+    background: var(--color-surface-raised);
+    padding: 0.85rem 1rem;
+    border-radius: var(--radius-button);
+  }
+  .hl-callout--danger {
+    border-color: var(--color-flame);
+  }
+  .hl-callout--warning {
+    border-color: var(--color-coin);
+  }
+
+  /* ── Stats ─────────────────────────────────────────────────────────────── */
+  .hl-stat {
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-panel);
+    padding: 0.85rem 1rem;
+    min-width: 8rem;
+    background: var(--color-surface-raised);
+  }
+  .hl-stat-value {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: var(--color-ink-strong);
+  }
+  .hl-stat-label {
+    font-size: 0.78rem;
+    color: var(--color-ink-muted);
+  }
+
+  /* ── Hand-drawn edges ──────────────────────────────────────────────────── */
+  /*
+   * `.hl-wobbly` drops the CSS border and makes room for a <WobbleBorder/>,
+   * which draws the same outline as a displaced SVG stroke. See Wobble.tsx for
+   * why it is generated rather than exported.
+   */
+  .hl-wobbly {
+    position: relative;
+    border-color: transparent !important;
+  }
+  .hl-wobble-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: visible;
+  }
+  /*
+   * Geometry is set HERE rather than as SVG attributes: `width="calc(100% -
+   * 4px)"` is not valid on an SVG <rect> and silently collapses the shape,
+   * which shows up as gaps in the border. The CSS geometry properties take
+   * calc() and do what the attribute could not.
+   */
+  .hl-wobble-svg rect {
+    x: 2px;
+    y: 2px;
+    width: calc(100% - 4px);
+    height: calc(100% - 4px);
+  }
+  .hl-wobble-rule {
+    display: block;
+    width: 100%;
+    height: 10px;
+    overflow: visible;
+  }
+  /* The rules are drawn, so the list items must not draw their own. */
+  .hl-nav-list--wobbly .hl-nav-item {
+    border-bottom: 0;
+  }
+
+  /* ── The week banner ───────────────────────────────────────────────────── */
+  /*
+   * The comp's banner is painted art with a torn edge, exported from the file
+   * rather than reconstructed. Its surround is exactly the page ground
+   * (#fcf7f7), so it needs no mask — the tear blends into the page on its own.
+   *
+   * Stretched to the container width: the edge is organic enough to take it,
+   * and a fixed-width band would letterbox on every screen that is not 676px.
+   */
+  .hl-banner {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-height: 115px;
+    /* The torn edge eats into the first ~1rem, so the copy starts inside it. */
+    padding: 1.5rem 2.5rem;
+    background-image: url("/brand/week-banner.png");
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    color: var(--color-ink-strong);
+  }
+  .hl-banner-week {
+    font-family: var(--font-accent);
+    font-size: 1.1rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin: 0;
+  }
+  /* "DESIGN YOUR BREADBOARD COMPUTER" is the longest headline the program can
+     produce; the ceiling is set so it takes two lines rather than three. */
+  .hl-banner-copy {
+    position: relative;
+    z-index: 1;
+    min-width: 0;
+  }
+  .hl-banner-art {
+    margin-left: auto;
+    width: clamp(88px, 12vw, 139px);
+    height: auto;
+    flex: 0 0 auto;
+    /* The art is a sticker with its own pale outline; it needs no shadow. */
+  }
+  @media (max-width: 700px) {
+    /* At this width the headline needs the whole band. */
+    .hl-banner-art {
+      display: none;
+    }
+  }
+  .hl-banner-title {
+    font-size: clamp(1.5rem, 2.6vw, 2.5rem);
+    font-weight: 800;
+    margin: 0.1rem 0 0;
+    line-height: 1.05;
+    text-wrap: balance;
+  }
+
+  /* ── The programme path ───────────────────────────────────────────────── */
+  /*
+   * Ten weeks as one continuous track. Each week is a section with its own
+   * header and lane; the lane's swing and node geometry come from the comp.
+   */
+  .hl-programme {
+    display: flex;
+    flex-direction: column;
+    gap: 3.5rem;
+    margin-top: 2rem;
+  }
+  .hl-week {
+    scroll-margin-top: 1.5rem;
+  }
+  /* Weeks not yet reached recede without being hidden — the point of the
+     track is that you can see what is coming. */
+  .hl-week--future {
+    opacity: 0.55;
+  }
+  .hl-week--future:hover,
+  .hl-week--future:focus-within {
+    opacity: 1;
+  }
+  .hl-week-head {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid var(--color-line-soft);
+  }
+  .hl-week-art {
+    width: 72px;
+    height: auto;
+    flex: 0 0 auto;
+  }
+  .hl-week-number {
+    font-family: var(--font-accent);
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-ink-muted);
+    margin: 0;
+  }
+  .hl-week-title {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--color-ink-strong);
+    margin: 0.1rem 0 0;
+  }
+  .hl-week--current .hl-week-title {
+    font-size: 1.6rem;
+  }
+  .hl-week-progress {
+    font-size: 0.875rem;
+    color: var(--color-ink-muted);
+    margin: 0.15rem 0 0;
+  }
+
+  .hl-path {
+    list-style: none;
+    margin: 1.25rem auto 0;
+    padding: 0;
+    max-width: 560px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .hl-node {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+  }
+  /* The drawn curve joining one node to the next. */
+  .hl-connector-row {
+    width: 100%;
+    height: 56px;
+    display: block;
+  }
+  /* The trail has to read as a path from across the room, so it takes the
+     muted ink rather than the border grey — on this ground the border colour
+     disappears at the size a dotted line actually occupies. */
+  .hl-connector {
+    display: block;
+    width: 100%;
+    height: 100%;
+    stroke: var(--color-ink-muted);
+    opacity: 0.55;
+    overflow: visible;
+  }
+  .hl-connector--done {
+    stroke: var(--color-teal);
+    opacity: 1;
+  }
+
+  .hl-node-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    color: var(--color-ink);
+    max-width: 15rem;
+    text-align: center;
+  }
+  .hl-node-link[aria-disabled="true"] {
+    cursor: default;
+  }
+  /* The comp draws each node as two stacked ellipses; the solid drop is the
+     lower one, and it is what makes them read as pressable. */
+  .hl-node-disc {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 119px;
+    height: 104px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: var(--color-border);
+    color: var(--color-surface-raised);
+    box-shadow: 0 6px 0 rgb(16 15 48 / 0.18);
+    transition:
+      transform 0.12s ease,
+      box-shadow 0.12s ease;
+  }
+  .hl-node--done .hl-node-disc {
+    background: var(--color-accent);
+    box-shadow: 0 6px 0 #2f7fa0;
+  }
+  .hl-node--current .hl-node-disc {
+    background: var(--color-magenta);
+    box-shadow: 0 6px 0 #7d1370;
+  }
+  /* Not started, and not forbidden: the comp's cream disc. */
+  .hl-node--upcoming .hl-node-disc {
+    background: #fbe3d0;
+    color: #b98a62;
+    box-shadow: 0 6px 0 #c9a284;
+  }
+  .hl-node--locked .hl-node-disc {
+    background: var(--color-surface-sunken);
+    color: var(--color-ink-muted);
+    box-shadow: 0 6px 0 var(--color-border);
+  }
+  a.hl-node-link:hover .hl-node-disc {
+    transform: translateY(2px);
+    box-shadow: 0 4px 0 rgb(16 15 48 / 0.18);
+  }
+  a.hl-node-link:focus-visible .hl-node-disc {
+    outline: 3px solid var(--color-accent);
+    outline-offset: 3px;
+  }
+  .hl-node-glyph {
+    position: relative;
+    z-index: 1;
+    width: 40px;
+    height: 40px;
+  }
+  /*
+   * The hours node fills from the bottom as the hours come in, in a DEEPER
+   * TONE OF THE NODE'S OWN HUE rather than in the completion teal. Teal read
+   * as a second, unrelated colour sitting inside the disc; one hue at two
+   * depths reads as one thing partly filled, which is what it is.
+   */
+  .hl-node-fill {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #7d1370;
+  }
+  .hl-node-label {
+    font-weight: 700;
+    font-size: 1.05rem;
+  }
+  .hl-node--upcoming .hl-node-label,
+  .hl-node--locked .hl-node-label {
+    color: var(--color-ink-muted);
+  }
+  .hl-node-hint {
+    font-size: 0.85rem;
+    color: var(--color-ink-muted);
+  }
+
+  @media (max-width: 900px) {
+    /* The lane's swing costs more than it gives on a phone. */
+    .hl-node {
+      margin-inline-start: 0 !important;
+    }
+    .hl-connector-row {
+      height: 40px;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hl-node-disc {
+      transition: none;
+    }
+  }
+
+  /* ── Staff top bar ─────────────────────────────────────────────────────── */
+  /*
+   * Review and admin keep a plain strip rather than the participant sidebar.
+   * The comp designs neither, and inventing a sidebar for them would be
+   * guessing — this at least dresses them in the same palette and outline
+   * weight as everything else.
+   */
+  .hl-nav {
+    display: flex;
+    gap: 1.25rem;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 0.85rem 1.5rem;
+    border-bottom: 2px solid var(--color-border);
+    background: var(--color-surface-raised);
+    font-weight: 700;
+  }
+  .hl-nav a {
+    text-decoration: none;
+    color: var(--color-ink);
+  }
+  .hl-nav a:hover {
+    color: var(--color-accent);
+  }
+
+  /* ── Layout helpers ────────────────────────────────────────────────────── */
+  .hl-shell {
+    max-width: 62rem;
+    margin: 0 auto;
+    /* Match the participant shell's top inset. The hanging sign's straps
+       extend 4rem above its board; without this extra half-rem they cross
+       into the staff navigation strip. */
+    padding: 2.5rem 1.25rem 4rem;
+  }
+  .hl-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  .hl-stack--tight {
+    gap: 0.75rem;
+  }
+  .hl-row {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .hl-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(261px, 1fr));
+    gap: 1.5rem;
+  }
+  .hl-scroll {
+    overflow-x: auto;
+  }
+
+  /* ── Tables ────────────────────────────────────────────────────────────── */
+  .hl-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+  }
+  .hl-table th,
+  .hl-table td {
+    text-align: left;
+    padding: 0.55rem 0.6rem;
+    border-bottom: 2px solid var(--color-border);
+  }
+  .hl-table th {
+    font-weight: 700;
+    color: var(--color-ink-strong);
+  }
+
+  /* ── Day separator ─────────────────────────────────────────────────────── */
+  .hl-daymark {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin: 0.5rem 0;
+  }
+  .hl-daymark::before,
+  .hl-daymark::after {
+    content: "";
+    flex: 1;
+    height: 2px;
+    background: var(--color-border);
+    border-radius: 2px;
+  }
+  /* Same call as the rail title: a date separator carries information. */
+  .hl-daymark > span {
+    font-family: var(--font-accent);
+    font-size: 1.125rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--color-ink-muted);
+  }
+
+  /* ── The Doomscroller rail ─────────────────────────────────────────────── */
+  .hl-rail {
+    position: sticky;
+    top: 2.5rem;
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-rail);
+    padding: 0.9rem;
+  }
+  .hl-rail-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.7rem;
+  }
+  /* The comp sets this in the border grey. That is 1.6:1 — decorative, and
+     this is the panel's name, so it takes the readable muted instead. */
+  .hl-rail-title {
+    font-family: var(--font-accent);
+    font-size: 1.125rem;
+    color: var(--color-ink-muted);
+    margin: 0;
+  }
+  .hl-rail-body {
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-button);
+    background: var(--color-surface-raised);
+    box-shadow: inset 0 1px 1px rgb(0 0 0 / 0.1);
+    overflow: hidden;
+    min-height: 20rem;
+  }
+
+  /* ── Feed ──────────────────────────────────────────────────────────────── */
+  .hl-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    max-height: 80vh;
+    overflow-y: auto;
+    scroll-snap-type: y mandatory;
+    overscroll-behavior: contain;
+  }
+  .hl-reel {
+    scroll-snap-align: start;
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-panel);
+    overflow: hidden;
+    background: var(--color-surface-raised);
+    flex: 0 0 auto;
+  }
+  .hl-reel-video {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    max-height: 60vh;
+    aspect-ratio: 9 / 16;
+    object-fit: contain;
+    background: var(--color-accent-media);
+    margin-inline: auto;
+  }
+  .hl-reel-body {
+    padding: 0.9rem 1.1rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+  .hl-reel-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    font-size: 1rem;
+  }
+  .hl-reel-author {
+    font-weight: 700;
+    font-size: 1.375rem;
+    color: var(--color-ink);
+  }
+  .hl-reel-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .hl-reel-missing {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    aspect-ratio: 9 / 16;
+    max-height: 60vh;
+    background: var(--color-accent-media);
+    color: var(--color-surface-raised);
+    font-size: 0.9rem;
+    text-align: center;
+    padding: 1rem;
+    margin-inline: auto;
+  }
+  .hl-comment {
+    border-top: 2px solid var(--color-border);
+    padding-top: 0.6rem;
+    font-size: 0.95rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hl-feed {
+      scroll-snap-type: none;
+    }
+  }
+}

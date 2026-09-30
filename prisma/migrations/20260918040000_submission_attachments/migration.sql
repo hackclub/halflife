@@ -1,0 +1,11 @@
+-- Evidence handed in with a submission: the cart screenshot a design week asks
+-- for, and anything else the form collects.
+--
+-- The submit form was already asking for this on screen and had nowhere to put
+-- it, so the file was picked and then dropped on the floor.
+--
+-- R2 object keys, not URLs — they are minted at read time so the bucket or the
+-- CDN in front of it can move without rewriting a row. An array rather than a
+-- child table because nothing queries into it: a reviewer reads the whole list
+-- or none of it.
+ALTER TABLE "phase_submission" ADD COLUMN "attachmentKeys" TEXT[] DEFAULT ARRAY[]::TEXT[];

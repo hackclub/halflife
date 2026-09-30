@@ -1,31 +1,62 @@
 # Half Life
 
-Landing page for Half Life — Hack Club's ten-week hardware programme. Built to
-the Figma frame **"landing page (claude)"** (`275:8`), using the palette from
-the **"color scheme"** frame (`275:222`).
+Hack Club's ten-week hardware programme. One repository, two worlds that are
+meant to look nothing alike:
+
+- **The landing page** (`src/app/(site)`) — the marketing frame, built to the
+  Figma **"landing page (claude)"** (`275:8`) with the palette from **"color
+  scheme"** (`275:222`).
+- **The platform** (`src/app/(platform)`) — the logged-in product: a
+  Duolingo-style trail of checkpoints, a journal, a shop, and the Doomscroller.
+  Documented in [docs/platform-ui.md](./docs/platform-ui.md).
+
+Signed out, `/` is the landing page. Signed in, `proxy.ts` redirects it to the
+trail at `/dashboard`: two route groups cannot both define `/`, and each has its own root layout
+and stylesheet. The cookie check there is optimistic and decides nothing that
+matters — the real session guard is a server component.
 
 ```bash
 pnpm install
-pnpm dev      # http://localhost:3000
-pnpm build && pnpm start
+./dev.sh      # Postgres in Docker, migrated and seeded, then next dev
 ```
 
-Visual system is documented in [DESIGN.md](./DESIGN.md).
+New here? [docs/BACKEND.md](./docs/BACKEND.md) is the handoff — the shape, the
+invariants, and the traps that have already bitten. Beyond it: the visual system
+is [DESIGN.md](./DESIGN.md), the reasoning behind the invariants is
+[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md), and operating it is
+[docs/RUNBOOK.md](./docs/RUNBOOK.md).
 
 ## What's where
 
 ```
-src/app/page.tsx              section composition
-src/app/layout.tsx            fonts, metadata, direction contract
-src/app/globals.css           palette tokens, .stage, reveal states
-src/app/api/subscribe/        email capture endpoint
-src/app/api/slack/            channel auto-invite + #halflife-help ticket bot
-src/lib/content.ts            every word and fact on the page
-src/lib/stage.ts              comp-pixel -> container-unit helpers
-src/lib/signups.ts            signup sinks + rate limit
-src/components/               hero, process, carousel, faq, footer
+src/app/(site)/               the landing page
+src/app/(platform)/(app)/     the trail, projects, shop, explore
+src/app/(platform)/(ops)/     admin, review, login — earlier design system
+src/app/(handoff)/            the phone upload page a QR code opens
+src/app/api/                  every write in the product
+src/components/site/          landing sections
+src/components/platform/      the logged-in product's components
+src/lib/config/               every tunable number: tiers, printers, programme
+src/lib/curriculum.ts         the shape of a week, as a pure function
+src/lib/queries/store.ts      the trail's data, read in one pass
+src/lib/store.tsx             that snapshot, plus every write the trail makes
+prisma/schema.prisma          the data model
 public/art/                   hero painting, scatter photos, comp SVG exports
 ```
+
+## Checking it still works
+
+```bash
+pnpm typecheck && pnpm lint && pnpm build
+pnpm verify:ledger      # the economy: two pots, and every printer reachable
+pnpm verify:store       # the database-to-trail mapping
+pnpm verify:onboarding  # the first checkpoint cannot be skipped
+pnpm verify:feed        # moderation actually removes things
+pnpm verify:handoff     # the QR upload token is single-use
+```
+
+The verify scripts write to whatever `DATABASE_URL` points at and clean up after
+themselves. Point them at a scratch database, never production.
 
 ## Things you'll want to swap
 
@@ -65,7 +96,7 @@ one of two sinks:
 
 | Env                     | Behaviour                                                        |
 | ----------------------- | ---------------------------------------------------------------- |
-| `SIGNUP_WEBHOOK_URL`    | `POST { email, source, at }` to your list provider or relay      |
+| `SIGNUP_WEBHOOK_URL`    | `POST { email, ip, source, referralCode, ref, utmSource, utmMedium, utmCampaign }` to your list provider or relay |
 | `SIGNUP_WEBHOOK_TOKEN`  | optional `Authorization: Bearer …` for that webhook              |
 | *(neither set)*         | appends JSON Lines to `./data/signups.jsonl` (gitignored)         |
 
@@ -111,8 +142,8 @@ installing.
 
 ### 5. Facts to confirm before launch
 
-- The carousel credits are the comp's placeholder credit ("by Meghana, 17, from
-  Ohio") repeated across five cards — replace with the real makers.
+- The carousel credits are the real makers from the platform art
+  (`src/lib/site/content.ts`); give them a read before they ship.
 - Hack Club's EIN (`81-2908499`) is in the footer. Confirm it and decide whether
   you also want the mailing address, which the Hack Club footer carries.
 - FAQ card six ("What do I get?") replaces a duplicated "What's Hack Club?" in

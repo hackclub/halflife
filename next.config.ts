@@ -1,8 +1,22 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from "next"
+
+// `output: "standalone"` traces the whole dependency graph, which is what the
+// container image needs and pure overhead for a local `pnpm build`. Gate it on
+// the two env vars that only ever appear in CI or a Docker build.
+const isDeployBuild = !!(process.env.CI || process.env.DOCKER_BUILD)
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  ...(isDeployBuild && { output: "standalone" }),
+  reactStrictMode: true,
+  poweredByHeader: false,
   reactCompiler: true,
+
+  experimental: {
+    // Two root layouts, `(site)` and `(platform)`, leave Next no single layout
+    // to build an ordinary 404 from, so a URL that matches nothing got the
+    // framework's unstyled default. This turns on `app/global-not-found.tsx`.
+    globalNotFound: true,
+  },
 
   images: {
     /**
@@ -32,7 +46,42 @@ const nextConfig: NextConfig = {
      * stays at 75.
      */
     qualities: [75, 90],
-  },
-};
 
-export default nextConfig;
+    remotePatterns: [
+      { protocol: "https", hostname: "*.slack-edge.com" },
+      { protocol: "https", hostname: "cdn.hackclub.com" },
+      // The R2 public host. A URL whose hostname is not listed here renders as
+      // a broken image with no console error, so keep this in sync with S3_PUBLIC_URL.
+      ...(process.env.NEXT_PUBLIC_UPLOAD_HOST
+        ? [{ protocol: "https" as const, hostname: process.env.NEXT_PUBLIC_UPLOAD_HOST }]
+        : []),
+    ],
+  },
+
+  /**
+   * Security headers for every route, including the ones the proxy matcher
+   * excludes — the handoff page at `/r/<token>`, the integration and upload
+   * routes. The proxy sets the same set for the pages it handles; duplicates
+   * are harmless and this is the one that covers the gaps.
+   */
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+          { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
+          {
+            key: "Content-Security-Policy",
+            value: "frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'",
+          },
+        ],
+      },
+    ]
+  },
+}
+
+export default nextConfig
