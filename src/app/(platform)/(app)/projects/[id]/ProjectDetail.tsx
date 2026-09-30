@@ -144,6 +144,71 @@ function DisputeForm({
 }
 
 /**
+ * Delete the project, behind a second click. The server decides what may go
+ * (`deleteBlockReason`); `blocked` is that answer, so a project that cannot be
+ * deleted says why instead of offering a button that would refuse.
+ */
+function DeleteProject({ projectId, name, blocked }: { projectId: string; name: string; blocked: string | null }) {
+  const router = useRouter()
+  const [confirming, setConfirming] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function remove() {
+    setDeleting(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/projects/${projectId}`, { method: "DELETE" })
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
+        setError(payload.error?.message ?? `That did not delete (${res.status})`)
+        setDeleting(false)
+        return
+      }
+      // Left in the deleting state: the page is on its way out.
+      router.push("/projects")
+      router.refresh()
+    } catch {
+      setError("Could not reach the server. Try again.")
+      setDeleting(false)
+    }
+  }
+
+  return (
+    <Panel tone="line" radius={20} className="bg-paper px-5 py-5 sm:px-6">
+      <p className="text-[0.9rem] leading-snug text-navy-soft">
+        Takes it off your trail and your projects. Its journal entries stop counting toward your hours and streak.
+        Reels you posted stay in the feed.
+      </p>
+      {blocked ? (
+        <p className="hand mt-3 text-[0.84rem] text-navy-soft">{blocked}.</p>
+      ) : confirming ? (
+        <div className="mt-3.5 grid gap-2.5">
+          <p className="text-[0.9rem] font-extrabold text-navy">Delete {name}? You can&apos;t undo this yourself.</p>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="coral" size="sm" disabled={deleting} onClick={() => void remove()}>
+              {deleting ? "Deleting…" : "Yes, delete it"}
+            </Button>
+            <Button variant="ghost" size="sm" disabled={deleting} onClick={() => setConfirming(false)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <Button variant="outline" size="sm" className="mt-3.5" onClick={() => setConfirming(true)}>
+          Delete project
+        </Button>
+      )}
+      {error && (
+        <p role="alert" className="mt-2.5 text-[0.82rem] font-semibold text-coral-deep">
+          {error}
+        </p>
+      )}
+    </Panel>
+  )
+}
+
+/**
  * The warm-up's own trail, flattened onto its page: what it has logged against
  * what submitting asks, the next entry to write, and its one submit. The
  * sheets these open are the season's own journal and submit sheets, run on the
@@ -488,6 +553,11 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
             <Timeline items={data.timeline} weekFor={weekFor} />
           )}
         </Panel>
+      </Section>
+
+      {/* ---------- last, and out of the way ---------- */}
+      <Section id="delete-title" title="Delete project">
+        <DeleteProject projectId={project.id} name={project.name} blocked={data.deleteBlocked} />
       </Section>
     </div>
   )

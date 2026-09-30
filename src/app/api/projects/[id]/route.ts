@@ -1,5 +1,5 @@
 import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
-import { markProjectCreated } from "@/lib/analytics"
+import { markProjectCreated, recomputeWeek } from "@/lib/analytics"
 import { fail, ok, parseBody, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { seesStarterProjects, starterProjectsFor } from "@/lib/config/onboarding"
@@ -8,8 +8,10 @@ import { requireSession } from "@/lib/guards"
 import { getHoursBreakdown } from "@/lib/hours"
 import prisma from "@/lib/prisma"
 import { getSubmissionAccess, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
+import { deleteBlockReason } from "@/lib/project-delete"
 import { sanitize, sanitizeOptional } from "@/lib/sanitize"
 import { projectUpdateSchema } from "@/lib/schemas/project"
+import { recomputeStreak } from "@/lib/streak"
 import { isOwnedKey, publicUrlFor } from "@/lib/uploads/r2"
 
 type Params = { params: Promise<{ id: string }> }
@@ -162,4 +164,62 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
   })
 
   return ok({ project: updated })
+})
+
+/**
+ * Delete a project: a soft delete, so the row and its record stay for audit
+ * and every read that filters on `deletedAt` stops seeing it. What may be
+ * deleted is `deleteBlockReason`'s call, shared with the page.
+ */
+export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
+  const gate = await requireSession()
+  if (gate.error) return gate.error
+  const { id } = await params
+
+  const project = await prisma.themeProject.findFirst({
+    where: { id, userId: gate.user.id, deletedAt: null },
+    select: { id: true, theme: true, title: true, designStatus: true, buildStatus: true, grantEmittedAt: true },
+  })
+  if (!project) return fail("NOT_FOUND", "Project not found")
+
+  const blocked = await deleteBlockReason(project)
+  if (blocked) return fail("PHASE_LOCKED", blocked)
+
+  // Its entries stop counting with it, so the weeks they fell in are recounted.
+  const weeks = await prisma.workSession.findMany({
+    where: { themeProjectId: id, deletedAt: null },
+    select: { weekNumber: true },
+    distinct: ["weekNumber"],
+  })
+
+  const deleted = await prisma.$transaction(async (tx) => {
+    // Conditional on the statuses just checked, so a submit that lands between
+    // the check and here is not deleted out from under its reviewer.
+    const { count } = await tx.themeProject.updateMany({
+      where: {
+        id,
+        deletedAt: null,
+        designStatus: { notIn: [PhaseStatus.in_review, PhaseStatus.approved] },
+        buildStatus: { notIn: [PhaseStatus.in_review, PhaseStatus.approved] },
+      },
+      data: { deletedAt: new Date(), deletedById: gate.user.id },
+    })
+    // The streak only counts days journalled on live projects.
+    if (count > 0) await recomputeStreak(tx, gate.user.id)
+    return count > 0
+  })
+  if (!deleted) return fail("PHASE_LOCKED", "This project just changed — reload and try again")
+
+  await logAudit({
+    action: AuditAction.USER_DELETE_PROJECT,
+    actorId: gate.user.id,
+    actorEmail: gate.user.email,
+    targetType: "ThemeProject",
+    targetId: id,
+    metadata: { theme: project.theme, title: project.title },
+  })
+
+  for (const { weekNumber } of weeks) await recomputeWeek(gate.user.id, weekNumber)
+
+  return ok({ ok: true })
 })

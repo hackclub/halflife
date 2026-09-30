@@ -129,7 +129,7 @@ export function recomputeWeek(userId: string, week: number | null, at = new Date
       where: {
         weekNumber: week,
         deletedAt: null,
-        themeProject: { userId },
+        themeProject: { userId, deletedAt: null },
         hoursSource: { not: HoursSource.HACKATIME_TRACKED },
       },
       _sum: { hoursClaimed: true },

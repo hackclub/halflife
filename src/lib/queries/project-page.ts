@@ -5,6 +5,7 @@ import { type BomLine, bomLockReason, listBom } from "@/lib/bom"
 import { THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { lapseTimelapseUrl } from "@/lib/lapse"
 import prisma from "@/lib/prisma"
+import { deleteBlockReason } from "@/lib/project-delete"
 import { type ProjectThumbnail, projectThumbnail } from "@/lib/thumbnail"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
@@ -95,6 +96,8 @@ export interface ProjectPageData {
   editLocked: string | null
   /** The phase handed in and waiting for a reviewer, which can be taken back. */
   inReview: Phase | null
+  /** Why the project cannot be deleted, or null when it can. */
+  deleteBlocked: string | null
   /** The phases that have left draft, for the review-state block. */
   phases: PhaseReview[]
 }
@@ -169,6 +172,8 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
     where: { id, userId, deletedAt: null },
     select: {
       id: true,
+      theme: true,
+      grantEmittedAt: true,
       coverImageKey: true,
       bomTaxShippingUsd: true,
       designStatus: true,
@@ -274,6 +279,7 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
     bomLocked: bomLockReason(project),
     editLocked: inReview ? "In review, so it can't be edited. Unsubmit to change it" : null,
     inReview,
+    deleteBlocked: await deleteBlockReason(project),
     phases,
   }
 }

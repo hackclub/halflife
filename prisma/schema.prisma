@@ -226,6 +226,7 @@ enum Role {
 enum AuditAction {
   // Participant
   USER_UPDATE_PROJECT
+  USER_DELETE_PROJECT
   USER_SUBMIT_PHASE
   USER_UNSUBMIT_PHASE
   USER_CREATE_SESSION
@@ -659,7 +660,11 @@ model ThemeProject {
   /// once, so those rows must not collide with each other. Nothing about the
   /// five season slots changes — the predicate only filters the warm-up rows
   /// out of this index.
-  @@unique([userId, theme], where: raw("theme <> 'WARMUP'"))
+  ///
+  /// Deleted rows are exempt too: a maker who deletes a season project frees
+  /// its slot, and opening that week's "create a project" node makes a new
+  /// one. Live rows still hold one per theme.
+  @@unique([userId, theme], where: raw("theme <> 'WARMUP' AND \"deletedAt\" IS NULL"))
   @@index([userId])
   @@index([designStatus])
   @@index([buildStatus])

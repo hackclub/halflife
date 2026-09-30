@@ -61,7 +61,7 @@ const feedInclude = {
   user: {
     select: { id: true, name: true, image: true, slackId: true, currentStreak: true },
   },
-  themeProject: { select: { id: true, theme: true, title: true } },
+  themeProject: { select: { id: true, theme: true, title: true, deletedAt: true } },
 } satisfies Prisma.PostInclude
 
 type PostWithAuthor = Prisma.PostGetPayload<{ include: typeof feedInclude }>
@@ -86,13 +86,15 @@ function toFeedItem(post: PostWithAuthor, likedPostIds: ReadonlySet<string>): Fe
       image: avatarUrl(post.user),
       streak: post.user.currentStreak,
     },
-    project: post.themeProject
-      ? {
-          id: post.themeProject.id,
-          theme: post.themeProject.theme,
-          title: post.themeProject.title,
-        }
-      : null,
+    // A reel outlives a deleted project, but stops pointing at it.
+    project:
+      post.themeProject && !post.themeProject.deletedAt
+        ? {
+            id: post.themeProject.id,
+            theme: post.themeProject.theme,
+            title: post.themeProject.title,
+          }
+        : null,
     viewCount: post.viewCount,
     likeCount: post.likeCount,
     commentCount: post.commentCount,
