@@ -80,6 +80,30 @@ const baseURLFallback =
 export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,
 
+  // better-auth's OAuth state is single-use, so a callback delivered twice logs
+  // "Failed to parse state ... verification not found" on the second delivery
+  // even when the first one signed the user in. The callback route already
+  // turns that duplicate into a normal redirect (see
+  // app/api/auth/[...all]/route.ts), so logging it as an error only buried the
+  // failures that matter. Surface it as one info line and pass everything else
+  // through unchanged. `state_security_mismatch` is deliberately NOT caught: a
+  // state cookie that does not match is a real misconfiguration.
+  logger: {
+    log(level, message, ...args) {
+      const error = args[0] as { code?: string; details?: { state?: string } } | undefined
+      if (message === "Failed to parse state" && error?.code === "state_mismatch") {
+        console.info(
+          `[auth] ignored a duplicate or expired OAuth callback (state ${error.details?.state ?? "unknown"})`,
+        )
+        return
+      }
+      const line = `${new Date().toISOString()} ${level.toUpperCase()} [Better Auth]: ${message}`
+      if (level === "error") console.error(line, ...args)
+      else if (level === "warn") console.warn(line, ...args)
+      else console.log(line, ...args)
+    },
+  },
+
   // better-auth validates every credentialed request's Origin against the
   // origin of its base URL, so pinning `baseURL` to a single hostname refuses
   // sign-ins that arrive on any other one with INVALID_ORIGIN — logged as
