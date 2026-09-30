@@ -20,6 +20,7 @@ import { RepoInput, repoIsValid } from "@/components/platform/RepoField"
 import { ReelCapture } from "@/components/platform/reels/ReelCapture"
 import { StarterProjectCard } from "@/components/platform/StarterProjectCard"
 import { Button, borderedInputClass, Chip, cx, Field, inputClass, OptionRow, Panel } from "@/components/platform/ui"
+import { attrUrl } from "@/lib/attr-url"
 import { linkLapse } from "@/lib/auth-client"
 import type { BomLine } from "@/lib/bom"
 import { STARTER_PROJECT_TIER, starterProjectsFor } from "@/lib/config/onboarding"
@@ -1226,7 +1227,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
                   <video
                     ref={previewVideo}
                     key={previewUrl}
-                    src={previewUrl}
+                    src={attrUrl(previewUrl)}
                     autoPlay
                     muted
                     loop

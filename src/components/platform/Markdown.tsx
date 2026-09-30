@@ -1,4 +1,5 @@
 import type { ReactNode } from "react"
+import { attrUrl } from "@/lib/attr-url"
 
 /**
  * Enough Markdown for a journal entry, and deliberately no more: headings,
@@ -23,22 +24,6 @@ function safeSrc(raw: string): string | undefined {
   if (/^data:image\//i.test(src)) return src
   if (src.startsWith("/")) return src
   return undefined
-}
-
-/**
- * Escape the HTML meta-characters before a URL reaches an attribute.
- *
- * `safeHref` and `safeSrc` already refuse `javascript:`, `data:` and `vbscript:`
- * — everything that could execute — and React escapes attribute values, so
- * neither the link nor the image was an XSS hole. CodeQL's `js/xss-through-dom`
- * cannot see either fact: it reads the textarea value behind `source` as DOM
- * text and the `href`/`src` writes as sinks, and the only barriers it recognises
- * are `DomBasedXss::Sanitizer`s (`Xss.qll`) — not a scheme test. A global
- * `.replace` of the meta-characters is one of them, and none of these belong in
- * a URL literally, so percent-encoding them leaves an ordinary URL untouched.
- */
-function attrUrl(url: string): string {
-  return url.replace(/[<>"']/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)
 }
 
 /**
