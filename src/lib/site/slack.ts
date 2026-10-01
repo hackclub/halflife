@@ -17,6 +17,9 @@ export type SlackBlock = Record<string, unknown>
 async function callSlackApi<T extends Record<string, unknown>>(
 	method: string,
 	params: Record<string, unknown>,
+	/** Slack errors that are expected outcomes rather than faults. Matches are
+	 * logged at `log` level so a normal path doesn't fill the error logs. */
+	expectedErrors: string[] = [],
 ): Promise<T & { ok: boolean; error?: string }> {
 	const token = process.env.SLACK_BOT_TOKEN
 	if (!token) throw new Error("SLACK_BOT_TOKEN is not set")
@@ -36,7 +39,15 @@ async function callSlackApi<T extends Record<string, unknown>>(
 
 	const data = (await res.json()) as T & { ok: boolean; error?: string }
 	if (!res.ok || !data.ok) {
-		console.error(`Slack API ${method} failed: ${data.error ?? res.status}`)
+		const detail = data.error ?? res.status
+		// A matched error is an anticipated outcome (e.g. inviting someone
+		// already in the channel), so it reads as a normal log line rather
+		// than an error.
+		if (data.error && expectedErrors.includes(data.error)) {
+			console.log(`Slack API ${method} failed: ${detail}`)
+		} else {
+			console.error(`Slack API ${method} failed: ${detail}`)
+		}
 	}
 	return data
 }
@@ -64,12 +75,17 @@ export async function updateMessage(channel: string, ts: string, text: string, b
 /** `already_in_channel` is treated as success — the caller just wants the
  * user in the channel, not a report of how they got there. Logs either way:
  * this runs inside a webhook with no UI to surface failures to, so the
- * deployment logs are the only way to tell it fired at all. */
+ * deployment logs are the only way to tell it fired at all. `already_in_channel`
+ * is marked expected so the API layer logs it at `log` level, not `error`. */
 export async function inviteToChannel(channel: string, user: string) {
-	const result = await callSlackApi("conversations.invite", {
-		channel,
-		users: user,
-	})
+	const result = await callSlackApi(
+		"conversations.invite",
+		{
+			channel,
+			users: user,
+		},
+		["already_in_channel"],
+	)
 	if (result.ok || result.error === "already_in_channel") {
 		console.log(`Invited ${user} to ${channel}`)
 	} else {
