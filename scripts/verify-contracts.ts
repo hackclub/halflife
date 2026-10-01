@@ -752,6 +752,47 @@ async function bodies() {
 		)
 	}
 
+	/* ── 6bbb. The landing page's week-1 countdown ──────────────────────────── */
+	//
+	// The countdown is the one place a wrong number is visible to every visitor,
+	// and the arithmetic is the only part of it that can silently be wrong — the
+	// clock and the markup are not worth pinning. A span carries down the units
+	// rather than being recomputed from the total, so 90 minutes is 1h 30m and
+	// never 1h 90m; a moment already past clamps to zero rather than counting
+	// negative.
+	const { countdownParts } = await import("../src/lib/site/countdown")
+	{
+		const DAY = 24 * 60 * 60 * 1000
+		const HOUR = 60 * 60 * 1000
+		const MIN = 60 * 1000
+
+		check(
+			"countdown · a full span splits into its units",
+			JSON.stringify(countdownParts(3 * DAY + 9 * HOUR + 37 * MIN + 11 * 1000)) ===
+				JSON.stringify({ days: 3, hours: 9, minutes: 37, seconds: 11 }),
+		)
+		check(
+			"countdown · minutes carry into hours",
+			JSON.stringify(countdownParts(90 * MIN)) === JSON.stringify({ days: 0, hours: 1, minutes: 30, seconds: 0 }),
+		)
+		check(
+			"countdown · seconds carry into minutes",
+			JSON.stringify(countdownParts(61 * 1000)) === JSON.stringify({ days: 0, hours: 0, minutes: 1, seconds: 1 }),
+		)
+		check(
+			"countdown · a past moment clamps to zero",
+			JSON.stringify(countdownParts(-5000)) === JSON.stringify({ days: 0, hours: 0, minutes: 0, seconds: 0 }),
+		)
+		check(
+			"countdown · a non-finite span is all zeroes",
+			JSON.stringify(countdownParts(Number.NaN)) === JSON.stringify({ days: 0, hours: 0, minutes: 0, seconds: 0 }),
+		)
+		check(
+			"countdown · the remainder is floored, not rounded up",
+			countdownParts(59_999).seconds === 59 && countdownParts(59_999).minutes === 0,
+		)
+	}
+
 	/* ── 6c. Repo references, across forges ─────────────────────────────────── */
 	//
 	// Three shapes reach the sync and all have to work. `githubRepo` on a project
