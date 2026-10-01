@@ -123,6 +123,19 @@ export function fmtDate(at: number): string {
 	return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`
 }
 
+/**
+ * The same date as `fmtDate`, from a `YYYY-MM-DD` day rather than an instant.
+ *
+ * The day is read as parts, not handed to `new Date`, because the string is a
+ * calendar day in the PROGRAM's timezone: parsed as an instant it is UTC
+ * midnight, and a reader west of UTC would be shown the day before.
+ */
+export function fmtDay(day: string): string {
+	const [year, month, date] = day.split("-").map(Number)
+	if (!year || !month || !date || month < 1 || month > 12) return day
+	return `${date} ${MONTHS[month - 1]} ${year}`
+}
+
 /** Hours, two decimals at most and never a trailing zero. */
 export function fmtHours(h: number): string {
 	return `${Math.round(h * 100) / 100}h`

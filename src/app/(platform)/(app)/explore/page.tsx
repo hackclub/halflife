@@ -7,6 +7,7 @@ import { PageSign } from "@/components/platform/PageSign"
 import { Panel } from "@/components/platform/ui"
 import { requireSessionPage } from "@/lib/page-guards"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
+import { fmtDay } from "@/lib/projects"
 import { getJournalFeed, type JournalRow } from "@/lib/queries/community"
 
 export const metadata: Metadata = {
@@ -84,7 +85,7 @@ function Entry({ entry }: { entry: JournalRow }) {
 					</p>
 				</div>
 				<time dateTime={entry.when} className="label shrink-0 pt-1 text-navy-faint">
-					{entry.day}
+					{fmtDay(entry.day)}
 				</time>
 			</header>
 
