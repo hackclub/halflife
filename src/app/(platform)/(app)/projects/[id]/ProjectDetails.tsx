@@ -215,7 +215,6 @@ function DetailsForm({
 						if (error) setError(null)
 					}}
 					maxLength={120}
-					autoFocus
 					aria-invalid={error?.field === "name" || undefined}
 					className={cx(field, "text-[1.05rem] font-extrabold")}
 				/>

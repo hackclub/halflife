@@ -269,6 +269,9 @@ export function Spotlight({
 				y: Math.min(line.from.y, line.to.y) - 8,
 				w: Math.abs(line.to.x - line.from.x) + 12,
 				h: Math.abs(line.to.y - line.from.y) + 16,
+				// The left edge the wipe starts from, kept on the object so the
+				// render does not have to reach back through a nullable `line`.
+				startX: line.from.x - 6,
 			}
 		: null
 
@@ -316,7 +319,7 @@ export function Spotlight({
 								width={revealed ? wipe.w : 0}
 								fill="white"
 								style={{
-									transform: `translate(${revealed ? wipe.x : line!.from.x - 6}px, 0)`,
+									transform: `translate(${revealed ? wipe.x : wipe.startX}px, 0)`,
 									transition: `transform 620ms 220ms ${EASE}, width 620ms 220ms ${EASE}`,
 								}}
 							/>

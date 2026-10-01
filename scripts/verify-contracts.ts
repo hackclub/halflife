@@ -76,10 +76,12 @@ function clientCalls(): { file: string; path: string; methods: string[] }[] {
 		if (file.includes("/app/api/")) continue
 		const source = readFileSync(file, "utf8")
 		for (const match of source.matchAll(/fetch\(\s*(`[^`]*`|"[^"]*")([\s\S]{0,220}?)\)/g)) {
-			const path = match[1]!.slice(1, -1)
+			// Group 1 is always there when the regex matched; the fallback keeps
+			// the type honest without a non-null assertion.
+			const path = match[1]?.slice(1, -1) ?? ""
 			if (!path.startsWith("/api")) continue
 			// A method can be a literal or a ternary; collect every literal offered.
-			const methods = [...match[2]!.matchAll(/method:\s*(?:\w+\s*\?\s*)?"(\w+)"(?:\s*:\s*"(\w+)")?/g)]
+			const methods = [...(match[2] ?? "").matchAll(/method:\s*(?:\w+\s*\?\s*)?"(\w+)"(?:\s*:\s*"(\w+)")?/g)]
 				.flatMap((m) => [m[1], m[2]])
 				.filter((m): m is string => Boolean(m))
 			calls.push({ file, path, methods: methods.length ? methods : ["GET"] })
@@ -110,10 +112,7 @@ const COMPONENT_CALLS: { path: string; methods: string[] }[] = [
 const routes = routeTable()
 
 function routeFor(path: string): Set<string> | null {
-	const clean = path
-		.split("?")[0]!
-		.replace(/\$\{[^}]*\}/g, "X")
-		.replace(/\/$/, "")
+	const clean = (path.split("?")[0] ?? "").replace(/\$\{[^}]*\}/g, "X").replace(/\/$/, "")
 	// A static segment beats the variable one it shares a slot with — `bom/import`
 	// is its own route, not `bom/[itemId]` — and Next resolves it that way, so a
 	// client calling `bom/import` must be checked against the import route. The

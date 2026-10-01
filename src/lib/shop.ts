@@ -174,7 +174,7 @@ export async function purchase(
 	if (!access.open) throw new HttpError("SHOP_CLOSED", SHOP_CLOSED_MESSAGE)
 
 	const item = await prisma.shopItem.findUnique({ where: { id: shopItemId } })
-	if (!item || !item.active) throw new HttpError("NOT_FOUND", "Item not found")
+	if (!item?.active) throw new HttpError("NOT_FOUND", "Item not found")
 
 	if (item.requiresPrinterQualified) {
 		const qualification = await getPrinterQualification(userId)
@@ -200,7 +200,7 @@ export async function purchase(
 
 		// Re-read stock inside the transaction; the catalogue page may be stale.
 		const fresh = await tx.shopItem.findUnique({ where: { id: shopItemId } })
-		if (!fresh || !fresh.active) throw new HttpError("NOT_FOUND", "Item not found")
+		if (!fresh?.active) throw new HttpError("NOT_FOUND", "Item not found")
 		if (fresh.stock !== null && fresh.stock < quantity) {
 			throw new HttpError("OUT_OF_STOCK", "Not enough stock left")
 		}

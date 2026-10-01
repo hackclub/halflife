@@ -154,7 +154,6 @@ export function RepoEditor({ project, className }: { project: Project; className
 				onKeyDown={(e) => {
 					if (e.key === "Escape") setEditing(false)
 				}}
-				autoFocus
 				inputMode="url"
 				autoComplete="url"
 				spellCheck={false}

@@ -222,13 +222,14 @@ export async function backfillAnalytics(): Promise<Record<string, number>> {
 		await prisma.user.update({ where: { id: userId }, data: { firstProjectAt: first?.namedAt ?? null } })
 
 		if (posts[0]) await markReel(userId, posts[0].createdAt)
-		if (submissions.length > 0) {
+		// The first and last of the list, named rather than indexed twice: the
+		// narrowing is what keeps the write off `undefined` without an assertion.
+		const firstSubmission = submissions[0]
+		const lastSubmission = submissions[submissions.length - 1]
+		if (firstSubmission && lastSubmission) {
 			await prisma.user.update({
 				where: { id: userId },
-				data: {
-					firstSubmissionAt: submissions[0]!.createdAt,
-					lastSubmissionAt: submissions[submissions.length - 1]!.createdAt,
-				},
+				data: { firstSubmissionAt: firstSubmission.createdAt, lastSubmissionAt: lastSubmission.createdAt },
 			})
 		}
 		const lastLogin = logins[logins.length - 1]?.createdAt
@@ -415,7 +416,10 @@ export async function getAnalyticsSummary(days = 30) {
 		["submitted", reached(4)],
 	] as const
 	const funnel = steps.map(([step, count], i) => {
-		const prev = i === 0 ? count : steps[i - 1]![1]
+		// The step before this one, or this one at the top of the funnel. The
+		// fallback is unreachable — `i` is always within `steps` — but it keeps
+		// the arithmetic off `undefined` without an assertion.
+		const prev = i === 0 ? count : (steps[i - 1]?.[1] ?? count)
 		return {
 			step,
 			count,

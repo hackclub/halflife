@@ -450,7 +450,7 @@ export function BomEditor({
 					<div className="grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
 						<label className="grid gap-1">
 							<span className="label text-violet-deep">Part</span>
-							<input {...field("name")} ref={nameInput} placeholder="ESP32-C3 SuperMini" autoFocus maxLength={120} />
+							<input {...field("name")} ref={nameInput} placeholder="ESP32-C3 SuperMini" maxLength={120} />
 						</label>
 						<label className="grid gap-1">
 							<span className="label text-violet-deep">What it&apos;s for</span>

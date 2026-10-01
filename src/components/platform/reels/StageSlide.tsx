@@ -240,7 +240,7 @@ export function StageSlide({
 
 	function seekTo(clientX: number, track: HTMLElement) {
 		const el = video.current
-		if (!el || !el.duration) return
+		if (!el?.duration) return
 		const box = track.getBoundingClientRect()
 		const f = Math.min(1, Math.max(0, (clientX - box.left) / box.width))
 		el.currentTime = f * el.duration

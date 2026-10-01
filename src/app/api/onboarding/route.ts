@@ -45,9 +45,12 @@ export const POST = withRoute(async (req: Request) => {
 	// Its failure is recorded on the project (and shown on its page), not thrown
 	// back at someone who has just finished setup.
 	if (result.repoRequest) {
+		// Read the repo out here: the narrowing above does not survive into the
+		// deferred closure, so the `!` that used to bridge it is not needed.
+		const repo = result.repoRequest.repo
 		after(async () => {
 			try {
-				await enableRepoSync(result.state.project.id, gate.user.id, result.repoRequest!.repo)
+				await enableRepoSync(result.state.project.id, gate.user.id, repo)
 			} catch (err) {
 				console.error("[onboarding] repo sync setup failed:", err)
 			}
