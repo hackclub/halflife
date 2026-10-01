@@ -293,7 +293,7 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 				key: "repo",
 				label: "No repo yet",
 				status: "fail",
-				detail: "Add your project's repo so a reviewer can see the files.",
+				detail: `Add your project's repo so a reviewer can see the files. Select "Edit details" above and add to the "Repo link" field.`,
 				blocking: true,
 			},
 		])
