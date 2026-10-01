@@ -52,7 +52,8 @@ async function readRepoBom(repoLink: string | null, limit: number): Promise<Repo
 	}
 	if (!repoRefFromLink(repoLink)) {
 		return {
-			error: "Half Life can only read repos on GitHub or GitLab. This project's repo is on another service, so its parts have to be added by hand.",
+			error:
+				"Half Life can only read repos on GitHub or GitLab. This project's repo is on another service, so its parts have to be added by hand.",
 		}
 	}
 	const path = await findRepoFilePath(repoLink, BOM_CSV_PATTERN)

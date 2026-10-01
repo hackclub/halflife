@@ -243,7 +243,7 @@ function parseLink(value: string | undefined): string | null {
 	let v = (value ?? "").trim()
 	if (!v || /^[-–—]+$/.test(v) || /^(n\/?a|none)$/i.test(v)) return null
 	const markdown = v.match(/\]\(\s*([^)]+?)\s*\)/)
-	if (markdown) v = markdown[1]
+	if (markdown) v = markdown[1] ?? v
 	if (!/^https?:\/\//i.test(v)) v = `https://${v}`
 	if (v.length > 1000) return null
 	try {
@@ -285,7 +285,7 @@ function vendorFromLink(link: string | null): string | null {
 		const labels = host.split(".")
 		const label = labels.length >= 2 ? labels[labels.length - 2] : labels[0]
 		if (!label) return null
-		const named = label.length <= 4 ? label.toUpperCase() : label[0].toUpperCase() + label.slice(1)
+		const named = label.length <= 4 ? label.toUpperCase() : label.charAt(0).toUpperCase() + label.slice(1)
 		return named.slice(0, MAX_IMPORT_VENDOR)
 	} catch {
 		return null
@@ -313,6 +313,9 @@ export function parseBomCsv(text: string, opts: { limit?: number } = {}): Parsed
 
 	const { index, map } = head
 	const nameCol = map.name
+	// `findHeader` only returns a row whose name column it found, so this cannot
+	// happen; the guard is for the type, which cannot know that.
+	if (nameCol === undefined) return { header: null, lines: [], skipped: [] }
 	// A single `Description` column is the name; it is only also a purpose when
 	// the file has a separate column for it.
 	const purposeCol = map.purpose !== undefined && map.purpose !== nameCol ? map.purpose : undefined
