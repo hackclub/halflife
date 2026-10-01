@@ -56,16 +56,83 @@ export interface HcaIdentity {
 	birthdate: string | null
 }
 
-let userinfoEndpoint: string | null = null
+/**
+ * HCA's OIDC endpoints, resolved once and kept.
+ *
+ * Read from the discovery document when it answers, because that is the only
+ * authority on where HCA's endpoints live. But HCA sits behind Cloudflare and
+ * rate-limits its own discovery and docs endpoints (`429`, `retry-after: 300`),
+ * and better-auth fetches discovery EXACTLY ONCE at startup: a 429 in that
+ * instant used to register no `hca` provider at all, and every later sign-in
+ * failed with "Provider not found". It also broke this module's own
+ * `userinfoUrl`, which threw on the same fetch.
+ *
+ * So the document is wanted but never depended on. When it answers, it is used;
+ * when it does not, the endpoints fall back to HCA's published, stable routes —
+ * the same paths its `auth` app mounts (`/oauth/authorize`, `/oauth/token` from
+ * Doorkeeper, `/oauth/userinfo` and `/oauth/discovery/keys` from
+ * doorkeeper-openid_connect). These are what the discovery document returns, so
+ * the fallback is not a guess about a different service; it is the same answer
+ * with the network taken out of the path. `userinfo_endpoint` and `issuer`
+ * default to the base, and `HCA_*` env overrides win if a deployment needs a
+ * different host.
+ */
+export interface HcaEndpoints {
+	authorizationUrl: string
+	tokenUrl: string
+	userinfoUrl: string
+	jwksUrl: string
+	issuer: string
+	/** Whether discovery answered; false means the static fallback was used. */
+	discovered: boolean
+}
+
+let endpointsPromise: Promise<HcaEndpoints> | null = null
+
+export function hcaEndpoints(): Promise<HcaEndpoints> {
+	endpointsPromise ??= resolveHcaEndpoints()
+	return endpointsPromise
+}
+
+async function resolveHcaEndpoints(): Promise<HcaEndpoints> {
+	const staticEndpoints: HcaEndpoints = {
+		authorizationUrl: process.env.HCA_AUTHORIZATION_URL ?? "https://auth.hackclub.com/oauth/authorize",
+		tokenUrl: process.env.HCA_TOKEN_URL ?? "https://auth.hackclub.com/oauth/token",
+		userinfoUrl: process.env.HCA_USERINFO_URL ?? "https://auth.hackclub.com/oauth/userinfo",
+		jwksUrl: process.env.HCA_JWKS_URL ?? "https://auth.hackclub.com/oauth/discovery/keys",
+		issuer: process.env.HCA_ISSUER ?? "https://auth.hackclub.com",
+		discovered: false,
+	}
+	try {
+		const res = await fetchWithRetry(DISCOVERY_URL, { signal: AbortSignal.timeout(TIMEOUT_MS), retries: 2 })
+		if (!res.ok) {
+			console.warn(`[hca] discovery returned ${res.status}; using the built-in endpoints`)
+			return staticEndpoints
+		}
+		const config = (await res.json()) as {
+			authorization_endpoint?: string
+			token_endpoint?: string
+			userinfo_endpoint?: string
+			jwks_uri?: string
+			issuer?: string
+		}
+		return {
+			// Each field falls back on its own, so a partial document still helps.
+			authorizationUrl: config.authorization_endpoint ?? staticEndpoints.authorizationUrl,
+			tokenUrl: config.token_endpoint ?? staticEndpoints.tokenUrl,
+			userinfoUrl: config.userinfo_endpoint ?? staticEndpoints.userinfoUrl,
+			jwksUrl: config.jwks_uri ?? staticEndpoints.jwksUrl,
+			issuer: config.issuer ?? staticEndpoints.issuer,
+			discovered: true,
+		}
+	} catch (err) {
+		console.warn("[hca] discovery fetch failed; using the built-in endpoints:", err)
+		return staticEndpoints
+	}
+}
 
 async function userinfoUrl(): Promise<string> {
-	if (userinfoEndpoint) return userinfoEndpoint
-	const res = await fetchWithRetry(DISCOVERY_URL, { signal: AbortSignal.timeout(TIMEOUT_MS) })
-	if (!res.ok) throw new Error(`HCA discovery returned ${res.status}`)
-	const config = (await res.json()) as { userinfo_endpoint?: string }
-	if (!config.userinfo_endpoint) throw new Error("HCA discovery has no userinfo_endpoint")
-	userinfoEndpoint = config.userinfo_endpoint
-	return userinfoEndpoint
+	return (await hcaEndpoints()).userinfoUrl
 }
 
 async function getJson(url: string, accessToken: string): Promise<Record<string, unknown> | null> {
