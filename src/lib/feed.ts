@@ -4,7 +4,7 @@ import { PostKind, PostStatus, Role } from "@/app/generated/prisma/enums"
 import { markReel } from "@/lib/analytics"
 import { avatarUrl } from "@/lib/avatar"
 import { HttpError } from "@/lib/errors"
-import { cursorArgs, pageResult } from "@/lib/pagination"
+import { cursorArgs, NEWEST_FIRST, pageResult } from "@/lib/pagination"
 import prisma from "@/lib/prisma"
 import { currentWeekNumber, getProgramSettings, isTimeZone, startOfDay } from "@/lib/program"
 import { sanitize } from "@/lib/sanitize"
@@ -375,10 +375,14 @@ export async function getComments(
 	const post = await prisma.post.findFirst({ where: { id: postId, ...visible }, select: { id: true } })
 	if (!post) throw new HttpError("NOT_FOUND", "Post not found")
 
+	// Newest first, like every other conversation on the platform. The thread
+	// reads top-down from what just happened, and "show older comments" walks
+	// the cursor further back rather than forward — so the order and the
+	// affordance name the same direction.
 	const rows = await prisma.postComment.findMany({
 		where: { postId, deletedAt: null, hiddenAt: null },
 		include: { user: { select: { id: true, name: true, image: true, slackId: true } } },
-		orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+		orderBy: [...NEWEST_FIRST],
 		...cursorArgs(opts.cursor, opts.limit),
 	})
 	const page = pageResult(rows, opts.limit)

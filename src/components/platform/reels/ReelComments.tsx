@@ -27,6 +27,10 @@ const MAX_LENGTH = 1000
 /**
  * The conversation under the current reel.
  *
+ * Newest first, so the thread opens on the most recent thing said and the
+ * "show older comments" button walks back through time in the direction its
+ * name promises. A new comment is prepended to the top of the list.
+ *
  * It follows the stage: when the reel changes, so does the thread. Threads are
  * kept for the visit, so scrolling back to a reel shows its comments at once
  * instead of a spinner for something already read.
@@ -139,15 +143,17 @@ export function ReelComments({
 				return
 			}
 			const { comment } = (await res.json()) as { comment: Comment }
+			// Newest first, so the new comment goes to the top of the thread, not
+			// the end of it.
 			patchThread(reel.id, (prev) => ({
-				items: [...(prev?.items ?? []), comment],
+				items: [comment, ...(prev?.items ?? [])],
 				nextCursor: prev?.nextCursor ?? null,
 				status: "ready",
 			}))
 			onPatch(reel.id, { commentCount: reel.commentCount + 1 })
 			setDraft("")
-			// The new comment is at the end of the thread; take the reader to it.
-			requestAnimationFrame(() => list.current?.lastElementChild?.scrollIntoView({ block: "nearest" }))
+			// The new comment is at the top of the thread; take the reader to it.
+			requestAnimationFrame(() => list.current?.firstElementChild?.scrollIntoView({ block: "nearest" }))
 		} catch {
 			setSendError("Could not reach the server. Your comment is still here — try again.")
 		} finally {

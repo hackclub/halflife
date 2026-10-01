@@ -160,7 +160,10 @@ async function main() {
 
 	const visibleComments = await getComments(post.id, viewer.id, { limit: 25 })
 	check("both comments are visible", visibleComments.items.length, 2)
-	check("authorship is marked for the viewer", visibleComments.items[0]?.mine, true)
+	// Newest first: commentB was written after commentA, so it leads the thread
+	// and commentA sits under it. The viewer wrote commentA, not commentB.
+	check("the newest comment is first", visibleComments.items[0]?.id, commentB.id)
+	check("authorship is marked for the viewer", visibleComments.items[1]?.mine, true)
 
 	await deleteOwnComment(commentB.id, author.id)
 	const afterDelete = await prisma.post.findUniqueOrThrow({
