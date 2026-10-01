@@ -3,17 +3,8 @@ import Faq from "@/components/site/faq"
 import Hero from "@/components/site/hero"
 import Process from "@/components/site/process"
 import SiteFooter from "@/components/site/site-footer"
-import { getProgramSettings, weekOpensAt } from "@/lib/program"
 
-export default async function Page() {
-	// Week 1's opening instant, for the hero's countdown: the same moment the
-	// trail's first week unlocks (`weekOpensAt(settings, 1)`), so the landing
-	// page promises exactly when the platform opens. Read here rather than in
-	// the hero so the page owns the one program read, and the client component
-	// is handed a plain ISO string rather than a Date crossing the boundary.
-	const settings = await getProgramSettings()
-	const weekOneOpensAt = weekOpensAt(settings, 1).toISOString()
-
+export default function Page() {
 	return (
 		<>
 			<a
@@ -52,7 +43,7 @@ export default async function Page() {
             The sections below keep their own grounds: the carousel and the FAQ
             are different rooms and are supposed to read as such. */}
 				<div className="hl-ground-tile isolate bg-hl-blue-deep">
-					<Hero weekOneOpensAt={weekOneOpensAt} />
+					<Hero />
 					<Process />
 				</div>
 				<BuildCarousel />

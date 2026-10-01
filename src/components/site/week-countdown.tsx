@@ -6,20 +6,24 @@ import { COUNTDOWN_UNITS, countdownParts, pad2 } from "@/lib/site/countdown"
 /**
  * The wait for week 1, as a large countdown across the top of the landing page.
  *
- * The target is `weekOpensAt(settings, 1)` — the same instant the trail's first
- * week unlocks — read on the server and passed in as an ISO string. It is a
- * fixed moment, not a live number, so this needs no endpoint and no polling the
- * way the sign-up counter does; the only thing that changes is the clock.
+ * The target is the programme's own first midnight — `weekOpensAt(settings, 1)`
+ * — fetched from `/api/program`, which is where the site already reads program
+ * settings from. It is NOT read during the page's render, deliberately: the
+ * landing page is statically generated, so a `getProgramSettings()` call in its
+ * tree made the build hit the database, and a build host with no route to
+ * Postgres failed the whole deploy on a socket timeout. Both the countdown and
+ * the sign-up counter are client decorations that fetch their own data, so the
+ * page itself stays static and the build needs no database at all.
  *
  * Two things it has to get right, and both are about the server/client seam:
  *
- * - **No hydration mismatch.** The server renders at time T and the browser
- *   hydrates at T + (however long the document took). Rendering a live figure
- *   on the server would make the two disagree and React would rewrite the
- *   markup on every load. So the server (and the client's first paint) render a
- *   stable placeholder — the unit labels at rest — and the ticking figure
- *   appears only once mounted, in an effect. Before that the band keeps its
- *   height, so nothing under it moves when the number lands.
+ * - **No hydration mismatch.** The server renders the placeholder and the
+ *   browser hydrates later; a live figure on the server would disagree and React
+ *   would rewrite the markup on every load. The stable placeholder (unit labels
+ *   with `--`) is what both the server and the client's first paint show, and
+ *   the ticking figure appears only once mounted, in an effect. Before the first
+ *   answer the plate keeps its height, so nothing under it moves when the number
+ *   lands.
  * - **Ends cleanly.** At zero it stops ticking and says the programme is open
  *   rather than counting into the negative. A stale tab left open across the
  *   deadline should read "open", not "-3 days".
@@ -37,13 +41,34 @@ import { COUNTDOWN_UNITS, countdownParts, pad2 } from "@/lib/site/countdown"
  * shadow in the section's deep teal lifts it off the painting.
  */
 
-export default function WeekCountdown({ opensAt }: { opensAt: string }) {
-	const target = new Date(opensAt).getTime()
-	// null until mounted: the placeholder state, so the server and the first
-	// client paint agree.
+export default function WeekCountdown() {
+	// null until the target is known; then the ms remaining, refreshed on a tick.
+	const [target, setTarget] = useState<number | null>(null)
 	const [remaining, setRemaining] = useState<number | null>(null)
 
+	// The target is a fixed moment, so it is fetched once. A failure leaves the
+	// plate showing its placeholder — a countdown is never worth a visible error,
+	// the same rule the sign-up counter follows.
 	useEffect(() => {
+		let live = true
+		void (async () => {
+			try {
+				const res = await fetch("/api/program", { cache: "no-store" })
+				if (!res.ok) return
+				const body = (await res.json()) as { startDate?: unknown }
+				if (!live || typeof body.startDate !== "string") return
+				setTarget(new Date(body.startDate).getTime())
+			} catch {
+				// Offline or the endpoint is down: keep the placeholder.
+			}
+		})()
+		return () => {
+			live = false
+		}
+	}, [])
+
+	useEffect(() => {
+		if (target === null) return
 		const tick = () => setRemaining(target - Date.now())
 		tick()
 		const timer = setInterval(tick, 1000)
