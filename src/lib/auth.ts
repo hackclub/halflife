@@ -303,6 +303,27 @@ export const auth = betterAuth({
 			config: [
 				{
 					providerId: "hca",
+					// The endpoints are pinned as well as discovered.
+					//
+					// better-auth fetches `discoveryUrl` EXACTLY ONCE, at startup, with
+					// no retry. HCA rate-limits its own discovery endpoint (`429`,
+					// `retry-after: 300`), and one 429 in that instant left the plugin
+					// with no authorization/token URL — so it logged "discovery left no
+					// usable authorization endpoint" and registered NO `hca` provider at
+					// all, and every sign-in then failed with "Provider not found".
+					//
+					// These are HCA's published routes (its `auth` app mounts
+					// `/oauth/authorize` and `/oauth/token` via Doorkeeper, and
+					// `/oauth/userinfo` + `/oauth/discovery/keys` via
+					// doorkeeper-openid_connect) and are what the discovery document
+					// returns, so pinning them is the same answer with the network taken
+					// out of the startup path. Discovery is still passed, so when it does
+					// answer the plugin picks up the issuer and JWKS for ID-token
+					// verification; the pinned URLs just guarantee the provider registers
+					// regardless. `HCA_*` env vars override each.
+					authorizationUrl: process.env.HCA_AUTHORIZATION_URL ?? "https://auth.hackclub.com/oauth/authorize",
+					tokenUrl: process.env.HCA_TOKEN_URL ?? "https://auth.hackclub.com/oauth/token",
+					userInfoUrl: process.env.HCA_USERINFO_URL ?? "https://auth.hackclub.com/oauth/userinfo",
 					discoveryUrl: process.env.HCA_DISCOVERY_URL ?? "https://auth.hackclub.com/.well-known/openid-configuration",
 					clientId: process.env.HCA_CLIENT_ID ?? "",
 					clientSecret: process.env.HCA_CLIENT_SECRET ?? "",

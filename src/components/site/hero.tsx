@@ -3,6 +3,7 @@ import type { CSSProperties } from "react"
 import LoginMark from "@/components/site/login-mark"
 import SignupCounter from "@/components/site/signup-counter"
 import SignupForm from "@/components/site/signup-form"
+import WeekCountdown from "@/components/site/week-countdown"
 import Wordmark from "@/components/site/wordmark"
 import { BRAND } from "@/lib/site/content"
 import { swashBoxWidth, u } from "@/lib/site/stage"
@@ -198,12 +199,19 @@ function onPlateU(px: number) {
  * of block below it only closes the bare ground that used to sit between the
  * dissolve and the header.
  */
-export default function Hero() {
+export default function Hero({ weekOneOpensAt }: { weekOneOpensAt: string }) {
 	return (
 		<section id="signup" className="relative z-10 isolate">
 			<HeroArt />
 			<HackClubFlag />
 			<LoginMark />
+
+			{/* The wait for week 1, across the top between the flag and the log-in
+          mark. It is the "dateline" slot this page's comments still describe —
+          the middle of the top edge, which the two corner marks leave free —
+          and it is settled here rather than in the plate so it reads as part of
+          the page's header rather than as a fifth thing stacked on the hero. */}
+			<WeekCountdown opensAt={weekOneOpensAt} />
 
 			{/* ── Comp reproduction, 1180px and up ───────────────────────────── */}
 			{/* The fold: exactly one viewport, which is what makes "below the fold"
