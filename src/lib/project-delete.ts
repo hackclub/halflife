@@ -20,25 +20,25 @@ import prisma from "@/lib/prisma"
  * what the server will do.
  */
 export async function deleteBlockReason(project: {
-  id: string
-  designStatus: PhaseStatus
-  buildStatus: PhaseStatus
-  grantEmittedAt: Date | null
+	id: string
+	designStatus: PhaseStatus
+	buildStatus: PhaseStatus
+	grantEmittedAt: Date | null
 }): Promise<string | null> {
-  if (project.designStatus === PhaseStatus.in_review || project.buildStatus === PhaseStatus.in_review) {
-    return "Unsubmit before deleting — a phase is in review"
-  }
-  if (project.designStatus === PhaseStatus.approved || project.buildStatus === PhaseStatus.approved) {
-    return "An approved project can't be deleted"
-  }
-  if (project.grantEmittedAt) return "A funded project can't be deleted"
+	if (project.designStatus === PhaseStatus.in_review || project.buildStatus === PhaseStatus.in_review) {
+		return "Unsubmit before deleting — a phase is in review"
+	}
+	if (project.designStatus === PhaseStatus.approved || project.buildStatus === PhaseStatus.approved) {
+		return "An approved project can't be deleted"
+	}
+	if (project.grantEmittedAt) return "A funded project can't be deleted"
 
-  const [ledger, topUps, disputes] = await Promise.all([
-    prisma.ledgerEntry.count({ where: { themeProjectId: project.id } }),
-    prisma.hcbGrantTopUp.count({ where: { themeProjectId: project.id } }),
-    prisma.reviewDispute.count({ where: { submission: { themeProjectId: project.id }, resolvedAt: null } }),
-  ])
-  if (ledger > 0 || topUps > 0) return "This project has earned coins or funding, so it can't be deleted"
-  if (disputes > 0) return "A reviewer is still taking a second look, so it can't be deleted yet"
-  return null
+	const [ledger, topUps, disputes] = await Promise.all([
+		prisma.ledgerEntry.count({ where: { themeProjectId: project.id } }),
+		prisma.hcbGrantTopUp.count({ where: { themeProjectId: project.id } }),
+		prisma.reviewDispute.count({ where: { submission: { themeProjectId: project.id }, resolvedAt: null } }),
+	])
+	if (ledger > 0 || topUps > 0) return "This project has earned coins or funding, so it can't be deleted"
+	if (disputes > 0) return "A reviewer is still taking a second look, so it can't be deleted yet"
+	return null
 }

@@ -19,9 +19,9 @@ export const maxDuration = 300
  * ADMIN_IMPORT_AIRTABLE_PROJECT audit row keyed by its Airtable record id.
  */
 export const POST = withRoute(async () => {
-  const gate = await requirePermission(Permission.MANAGE_PROGRAM)
-  if (gate.error) return gate.error
+	const gate = await requirePermission(Permission.MANAGE_PROGRAM)
+	if (gate.error) return gate.error
 
-  const summary = await importWarmupProjects({ id: gate.user.id, email: gate.user.email })
-  return ok({ summary })
+	const summary = await importWarmupProjects({ id: gate.user.id, email: gate.user.email })
+	return ok({ summary })
 })

@@ -9,7 +9,7 @@ import { createAuthClient } from "better-auth/react"
  * one.
  */
 export const authClient = createAuthClient({
-  baseURL: process.env.NEXT_PUBLIC_APP_URL,
+	baseURL: process.env.NEXT_PUBLIC_APP_URL,
 })
 
 export const { signOut, useSession } = authClient
@@ -21,20 +21,20 @@ export const { signOut, useSession } = authClient
  * landing page is not asked for twice.
  */
 export function signInWith(providerId: "hca" | "hackatime", callbackURL = "/dashboard", loginHint?: string) {
-  return authClient.signIn.social({
-    provider: providerId,
-    callbackURL,
-    ...(loginHint ? { loginHint } : {}),
-  })
+	return authClient.signIn.social({
+		provider: providerId,
+		callbackURL,
+		...(loginHint ? { loginHint } : {}),
+	})
 }
 
 export function linkHackatime(callbackURL = "/dashboard") {
-  return authClient.linkSocial({ provider: "hackatime", callbackURL })
+	return authClient.linkSocial({ provider: "hackatime", callbackURL })
 }
 
 /** Timelapses are recorded on Lapse; linking is what lets us list them. */
 export function linkLapse(callbackURL = "/dashboard") {
-  return authClient.linkSocial({ provider: "lapse", callbackURL })
+	return authClient.linkSocial({ provider: "lapse", callbackURL })
 }
 
 /**
@@ -44,5 +44,5 @@ export function linkLapse(callbackURL = "/dashboard") {
  * today are GitHub and GitLab, both registered in lib/forge.
  */
 export function linkForge(forge: "github" | "gitlab", callbackURL = "/dashboard") {
-  return authClient.linkSocial({ provider: forge, callbackURL })
+	return authClient.linkSocial({ provider: forge, callbackURL })
 }

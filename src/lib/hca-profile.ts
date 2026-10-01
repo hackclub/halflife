@@ -33,130 +33,130 @@ const ME_URL = process.env.HCA_ME_URL ?? "https://auth.hackclub.com/api/v1/me"
 const TIMEOUT_MS = 10_000
 
 export interface HcaAddress {
-  line1: string | null
-  line2: string | null
-  city: string | null
-  state: string | null
-  zip: string | null
-  country: string | null
+	line1: string | null
+	line2: string | null
+	city: string | null
+	state: string | null
+	zip: string | null
+	country: string | null
 }
 
 /** One HCA identity, whichever endpoint each field came from. */
 export interface HcaIdentity {
-  /** The OIDC subject — what the account row is keyed on. */
-  sub: string | null
-  email: string | null
-  emailVerified: boolean
-  name: string | null
-  image: string | null
-  slackId: string | null
-  verificationStatus: string | null
-  address: HcaAddress | null
-  birthdate: string | null
+	/** The OIDC subject — what the account row is keyed on. */
+	sub: string | null
+	email: string | null
+	emailVerified: boolean
+	name: string | null
+	image: string | null
+	slackId: string | null
+	verificationStatus: string | null
+	address: HcaAddress | null
+	birthdate: string | null
 }
 
 let userinfoEndpoint: string | null = null
 
 async function userinfoUrl(): Promise<string> {
-  if (userinfoEndpoint) return userinfoEndpoint
-  const res = await fetch(DISCOVERY_URL, { signal: AbortSignal.timeout(TIMEOUT_MS) })
-  if (!res.ok) throw new Error(`HCA discovery returned ${res.status}`)
-  const config = (await res.json()) as { userinfo_endpoint?: string }
-  if (!config.userinfo_endpoint) throw new Error("HCA discovery has no userinfo_endpoint")
-  userinfoEndpoint = config.userinfo_endpoint
-  return userinfoEndpoint
+	if (userinfoEndpoint) return userinfoEndpoint
+	const res = await fetch(DISCOVERY_URL, { signal: AbortSignal.timeout(TIMEOUT_MS) })
+	if (!res.ok) throw new Error(`HCA discovery returned ${res.status}`)
+	const config = (await res.json()) as { userinfo_endpoint?: string }
+	if (!config.userinfo_endpoint) throw new Error("HCA discovery has no userinfo_endpoint")
+	userinfoEndpoint = config.userinfo_endpoint
+	return userinfoEndpoint
 }
 
 async function getJson(url: string, accessToken: string): Promise<Record<string, unknown> | null> {
-  try {
-    const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-      cache: "no-store",
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    })
-    if (!res.ok) {
-      console.warn(`[hca] ${url} returned ${res.status}`)
-      return null
-    }
-    return (await res.json()) as Record<string, unknown>
-  } catch (err) {
-    console.warn(`[hca] ${url} failed:`, err)
-    return null
-  }
+	try {
+		const res = await fetch(url, {
+			headers: { Authorization: `Bearer ${accessToken}` },
+			cache: "no-store",
+			signal: AbortSignal.timeout(TIMEOUT_MS),
+		})
+		if (!res.ok) {
+			console.warn(`[hca] ${url} returned ${res.status}`)
+			return null
+		}
+		return (await res.json()) as Record<string, unknown>
+	} catch (err) {
+		console.warn(`[hca] ${url} failed:`, err)
+		return null
+	}
 }
 
 const str = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v.trim() : null)
 
 /** The address to ship to: the one marked primary, else the first. */
 function addressFrom(me: Record<string, unknown> | null, userinfo: Record<string, unknown> | null): HcaAddress | null {
-  const list = Array.isArray(me?.addresses) ? (me.addresses as Record<string, unknown>[]) : []
-  const a = list.find((x) => x?.primary === true) ?? list[0]
-  if (a) {
-    return {
-      line1: str(a.line_1),
-      line2: str(a.line_2),
-      city: str(a.city),
-      state: str(a.state),
-      zip: str(a.postal_code),
-      country: str(a.country),
-    }
-  }
-  // The standard OIDC claim, when the `address` scope puts it there instead.
-  const o = userinfo?.address as Record<string, unknown> | undefined
-  if (o && typeof o === "object") {
-    const [line1, ...more] = (str(o.street_address) ?? "").split(/\r?\n/)
-    return {
-      line1: str(line1),
-      line2: str(more.join(", ")),
-      city: str(o.locality),
-      state: str(o.region),
-      zip: str(o.postal_code),
-      country: str(o.country),
-    }
-  }
-  return null
+	const list = Array.isArray(me?.addresses) ? (me.addresses as Record<string, unknown>[]) : []
+	const a = list.find((x) => x?.primary === true) ?? list[0]
+	if (a) {
+		return {
+			line1: str(a.line_1),
+			line2: str(a.line_2),
+			city: str(a.city),
+			state: str(a.state),
+			zip: str(a.postal_code),
+			country: str(a.country),
+		}
+	}
+	// The standard OIDC claim, when the `address` scope puts it there instead.
+	const o = userinfo?.address as Record<string, unknown> | undefined
+	if (o && typeof o === "object") {
+		const [line1, ...more] = (str(o.street_address) ?? "").split(/\r?\n/)
+		return {
+			line1: str(line1),
+			line2: str(more.join(", ")),
+			city: str(o.locality),
+			state: str(o.region),
+			zip: str(o.postal_code),
+			country: str(o.country),
+		}
+	}
+	return null
 }
 
 /** Read one person's identity from HCA with their access token. */
 export async function fetchHcaIdentity(accessToken: string): Promise<HcaIdentity> {
-  const [userinfo, meBody] = await Promise.all([
-    getJson(await userinfoUrl(), accessToken),
-    getJson(ME_URL, accessToken),
-  ])
-  const me = (meBody?.identity as Record<string, unknown> | undefined) ?? meBody
+	const [userinfo, meBody] = await Promise.all([
+		getJson(await userinfoUrl(), accessToken),
+		getJson(ME_URL, accessToken),
+	])
+	const me = (meBody?.identity as Record<string, unknown> | undefined) ?? meBody
 
-  const email = str(userinfo?.email) ?? str(me?.primary_email)
-  const name =
-    str(userinfo?.name) ?? ([str(userinfo?.given_name), str(userinfo?.family_name)].filter(Boolean).join(" ") || null)
+	const email = str(userinfo?.email) ?? str(me?.primary_email)
+	const name =
+		str(userinfo?.name) ?? ([str(userinfo?.given_name), str(userinfo?.family_name)].filter(Boolean).join(" ") || null)
 
-  return {
-    sub: str(userinfo?.sub) ?? str(me?.id),
-    email,
-    // HCA signs people in by emailing them a code, so the address it holds is
-    // one they have proven they read. The explicit claim wins when present.
-    emailVerified: typeof userinfo?.email_verified === "boolean" ? userinfo.email_verified : email !== null,
-    name,
-    image: str(userinfo?.picture),
-    slackId: str(userinfo?.slack_id) ?? str(me?.slack_id),
-    verificationStatus: str(userinfo?.verification_status) ?? str(me?.verification_status),
-    address: addressFrom(me, userinfo),
-    birthdate: str(userinfo?.birthdate) ?? str(me?.birthday),
-  }
+	return {
+		sub: str(userinfo?.sub) ?? str(me?.id),
+		email,
+		// HCA signs people in by emailing them a code, so the address it holds is
+		// one they have proven they read. The explicit claim wins when present.
+		emailVerified: typeof userinfo?.email_verified === "boolean" ? userinfo.email_verified : email !== null,
+		name,
+		image: str(userinfo?.picture),
+		slackId: str(userinfo?.slack_id) ?? str(me?.slack_id),
+		verificationStatus: str(userinfo?.verification_status) ?? str(me?.verification_status),
+		address: addressFrom(me, userinfo),
+		birthdate: str(userinfo?.birthdate) ?? str(me?.birthday),
+	}
 }
 
 /** The PII fields, encrypted, when this deployment is set up to keep them. */
 export function encryptedFieldsFrom(identity: HcaIdentity): Record<string, string> {
-  if (!PULL_PII) return {}
-  const out: Record<string, string> = {}
-  const a = identity.address
-  if (a?.line1) out.encryptedAddressStreet = encryptPII(a.line1)
-  if (a?.line2) out.encryptedAddressLine2 = encryptPII(a.line2)
-  if (a?.city) out.encryptedAddressCity = encryptPII(a.city)
-  if (a?.state) out.encryptedAddressState = encryptPII(a.state)
-  if (a?.zip) out.encryptedAddressZip = encryptPII(a.zip)
-  if (a?.country) out.encryptedAddressCountry = encryptPII(a.country)
-  if (identity.birthdate) out.encryptedBirthday = encryptPII(identity.birthdate)
-  return out
+	if (!PULL_PII) return {}
+	const out: Record<string, string> = {}
+	const a = identity.address
+	if (a?.line1) out.encryptedAddressStreet = encryptPII(a.line1)
+	if (a?.line2) out.encryptedAddressLine2 = encryptPII(a.line2)
+	if (a?.city) out.encryptedAddressCity = encryptPII(a.city)
+	if (a?.state) out.encryptedAddressState = encryptPII(a.state)
+	if (a?.zip) out.encryptedAddressZip = encryptPII(a.zip)
+	if (a?.country) out.encryptedAddressCountry = encryptPII(a.country)
+	if (identity.birthdate) out.encryptedBirthday = encryptPII(identity.birthdate)
+	return out
 }
 
 /**
@@ -167,38 +167,38 @@ export function encryptedFieldsFrom(identity: HcaIdentity): Record<string, strin
  * throws: a sign-in or a submit must not fail because this could not run.
  */
 export async function syncHcaProfile(userId: string): Promise<string | null> {
-  try {
-    // Imported here, not at the top: lib/auth calls this from its own hooks.
-    const { auth } = await import("@/lib/auth")
-    const account = await prisma.account.findFirst({
-      where: { userId, providerId: "hca" },
-      select: { id: true },
-    })
-    if (!account) return null
-    // Refreshes the token first if it has expired. No request headers, so
-    // better-auth takes this as the trusted server-side call it is.
-    const { accessToken } = await auth.api.getAccessToken({ body: { accountId: account.id, userId } })
-    if (!accessToken) return null
+	try {
+		// Imported here, not at the top: lib/auth calls this from its own hooks.
+		const { auth } = await import("@/lib/auth")
+		const account = await prisma.account.findFirst({
+			where: { userId, providerId: "hca" },
+			select: { id: true },
+		})
+		if (!account) return null
+		// Refreshes the token first if it has expired. No request headers, so
+		// better-auth takes this as the trusted server-side call it is.
+		const { accessToken } = await auth.api.getAccessToken({ body: { accountId: account.id, userId } })
+		if (!accessToken) return null
 
-    const identity = await fetchHcaIdentity(accessToken)
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        // Only what HCA actually said: a missing field leaves the stored value.
-        ...(identity.verificationStatus ? { verificationStatus: identity.verificationStatus } : {}),
-        ...encryptedFieldsFrom(identity),
-      },
-    })
-    // Apart, because slackId is unique: a clash with another row must not
-    // cost this user their verification status.
-    if (identity.slackId) {
-      await prisma.user
-        .update({ where: { id: userId }, data: { slackId: identity.slackId } })
-        .catch((err) => console.warn(`[hca] slack id for ${userId} not stored:`, err))
-    }
-    return identity.verificationStatus
-  } catch (err) {
-    console.warn(`[hca] profile sync for ${userId} failed:`, err)
-    return null
-  }
+		const identity = await fetchHcaIdentity(accessToken)
+		await prisma.user.update({
+			where: { id: userId },
+			data: {
+				// Only what HCA actually said: a missing field leaves the stored value.
+				...(identity.verificationStatus ? { verificationStatus: identity.verificationStatus } : {}),
+				...encryptedFieldsFrom(identity),
+			},
+		})
+		// Apart, because slackId is unique: a clash with another row must not
+		// cost this user their verification status.
+		if (identity.slackId) {
+			await prisma.user
+				.update({ where: { id: userId }, data: { slackId: identity.slackId } })
+				.catch((err) => console.warn(`[hca] slack id for ${userId} not stored:`, err))
+		}
+		return identity.verificationStatus
+	} catch (err) {
+		console.warn(`[hca] profile sync for ${userId} failed:`, err)
+		return null
+	}
 }

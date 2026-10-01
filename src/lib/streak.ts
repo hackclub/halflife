@@ -34,18 +34,18 @@ type Tx = Prisma.TransactionClient
 
 /** Days between two YYYY-MM-DD strings. Both are program-timezone dates. */
 function daysBetween(earlier: string, later: string): number {
-  // Parsed as UTC midnight deliberately: these are calendar dates with no time
-  // component, and UTC is the one zone with no DST, so the subtraction can
-  // never come out as 23 or 25 hours and round to the wrong day.
-  const a = Date.parse(`${earlier}T00:00:00Z`)
-  const b = Date.parse(`${later}T00:00:00Z`)
-  return Math.round((b - a) / 86_400_000)
+	// Parsed as UTC midnight deliberately: these are calendar dates with no time
+	// component, and UTC is the one zone with no DST, so the subtraction can
+	// never come out as 23 or 25 hours and round to the wrong day.
+	const a = Date.parse(`${earlier}T00:00:00Z`)
+	const b = Date.parse(`${later}T00:00:00Z`)
+	return Math.round((b - a) / 86_400_000)
 }
 
 export interface StreakState {
-  current: number
-  longest: number
-  lastDate: string | null
+	current: number
+	longest: number
+	lastDate: string | null
 }
 
 /**
@@ -57,30 +57,30 @@ export interface StreakState {
  * Thursday are two.
  */
 export function streakFromDays(daysDesc: readonly string[]): StreakState {
-  const first = daysDesc[0]
-  if (!first) return { current: 0, longest: 0, lastDate: null }
+	const first = daysDesc[0]
+	if (!first) return { current: 0, longest: 0, lastDate: null }
 
-  let current = 1
-  let longest = 1
-  let run = 1
+	let current = 1
+	let longest = 1
+	let run = 1
 
-  for (let i = 1; i < daysDesc.length; i++) {
-    const newer = daysDesc[i - 1]
-    const older = daysDesc[i]
-    if (!newer || !older) break
+	for (let i = 1; i < daysDesc.length; i++) {
+		const newer = daysDesc[i - 1]
+		const older = daysDesc[i]
+		if (!newer || !older) break
 
-    if (daysBetween(older, newer) <= STREAK_GRACE_DAYS + 1) {
-      run += 1
-    } else {
-      run = 1
-    }
-    if (run > longest) longest = run
-    // The current streak is the run that reaches the most recent day, so it
-    // stops growing as soon as the walk hits its first break.
-    if (run === i + 1) current = run
-  }
+		if (daysBetween(older, newer) <= STREAK_GRACE_DAYS + 1) {
+			run += 1
+		} else {
+			run = 1
+		}
+		if (run > longest) longest = run
+		// The current streak is the run that reaches the most recent day, so it
+		// stops growing as soon as the walk hits its first break.
+		if (run === i + 1) current = run
+	}
 
-  return { current, longest: Math.max(longest, current), lastDate: first }
+	return { current, longest: Math.max(longest, current), lastDate: first }
 }
 
 /**
@@ -93,34 +93,34 @@ export function streakFromDays(daysDesc: readonly string[]): StreakState {
  * covers a row whose status was flipped by hand.
  */
 async function activeDaysDesc(tx: Tx, userId: string): Promise<string[]> {
-  const { programTimezone } = await getProgramSettings()
+	const { programTimezone } = await getProgramSettings()
 
-  const [sessions, posts] = await Promise.all([
-    tx.workSession.findMany({
-      where: {
-        themeProject: { userId, deletedAt: null },
-        deletedAt: null,
-        effectiveDate: { not: null },
-      },
-      select: { effectiveDate: true },
-      distinct: ["effectiveDate"],
-    }),
-    // Soft-deleted reels are gone, so the day they carried goes with them.
-    // Hidden ones still count: the day was worked whatever a moderator later
-    // did with the post. ANNOUNCEMENTs are HQ's, never a participant's.
-    tx.post.findMany({
-      where: { userId, deletedAt: null, kind: { not: PostKind.ANNOUNCEMENT } },
-      select: { publishedAt: true, createdAt: true },
-    }),
-  ])
+	const [sessions, posts] = await Promise.all([
+		tx.workSession.findMany({
+			where: {
+				themeProject: { userId, deletedAt: null },
+				deletedAt: null,
+				effectiveDate: { not: null },
+			},
+			select: { effectiveDate: true },
+			distinct: ["effectiveDate"],
+		}),
+		// Soft-deleted reels are gone, so the day they carried goes with them.
+		// Hidden ones still count: the day was worked whatever a moderator later
+		// did with the post. ANNOUNCEMENTs are HQ's, never a participant's.
+		tx.post.findMany({
+			where: { userId, deletedAt: null, kind: { not: PostKind.ANNOUNCEMENT } },
+			select: { publishedAt: true, createdAt: true },
+		}),
+	])
 
-  const days = new Set<string>()
-  for (const s of sessions) if (s.effectiveDate) days.add(s.effectiveDate)
-  for (const p of posts) days.add(effectiveDateFor(p.publishedAt ?? p.createdAt, programTimezone))
+	const days = new Set<string>()
+	for (const s of sessions) if (s.effectiveDate) days.add(s.effectiveDate)
+	for (const p of posts) days.add(effectiveDateFor(p.publishedAt ?? p.createdAt, programTimezone))
 
-  // YYYY-MM-DD sorts lexicographically, so sort-then-reverse is newest-first
-  // without parsing a single date.
-  return [...days].sort().reverse()
+	// YYYY-MM-DD sorts lexicographically, so sort-then-reverse is newest-first
+	// without parsing a single date.
+	return [...days].sort().reverse()
 }
 
 /**
@@ -130,18 +130,18 @@ async function activeDaysDesc(tx: Tx, userId: string): Promise<string[]> {
  * `tx` — so a rolled-back write cannot leave an inflated streak behind.
  */
 export async function recomputeStreak(tx: Tx, userId: string): Promise<StreakState> {
-  const state = streakFromDays(await activeDaysDesc(tx, userId))
+	const state = streakFromDays(await activeDaysDesc(tx, userId))
 
-  await tx.user.update({
-    where: { id: userId },
-    data: {
-      currentStreak: state.current,
-      longestStreak: state.longest,
-      lastStreakDate: state.lastDate,
-    },
-  })
+	await tx.user.update({
+		where: { id: userId },
+		data: {
+			currentStreak: state.current,
+			longestStreak: state.longest,
+			lastStreakDate: state.lastDate,
+		},
+	})
 
-  return state
+	return state
 }
 
 /**
@@ -153,17 +153,17 @@ export async function recomputeStreak(tx: Tx, userId: string): Promise<StreakSta
  * stale run against today's date.
  */
 export function streakAsOf(stored: { currentStreak: number; lastStreakDate: string | null }, today: string): number {
-  if (!stored.lastStreakDate) return 0
-  const gap = daysBetween(stored.lastStreakDate, today)
-  if (gap < 0) return stored.currentStreak
-  return gap <= STREAK_GRACE_DAYS + 1 ? stored.currentStreak : 0
+	if (!stored.lastStreakDate) return 0
+	const gap = daysBetween(stored.lastStreakDate, today)
+	if (gap < 0) return stored.currentStreak
+	return gap <= STREAK_GRACE_DAYS + 1 ? stored.currentStreak : 0
 }
 
 /** Rebuild every user's streak. For a backfill or after editing the rules. */
 export async function recomputeAllStreaks(): Promise<number> {
-  const users = await prisma.user.findMany({ select: { id: true } })
-  for (const user of users) {
-    await prisma.$transaction((tx) => recomputeStreak(tx, user.id))
-  }
-  return users.length
+	const users = await prisma.user.findMany({ select: { id: true } })
+	for (const user of users) {
+		await prisma.$transaction((tx) => recomputeStreak(tx, user.id))
+	}
+	return users.length
 }

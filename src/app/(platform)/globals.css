@@ -6,440 +6,440 @@
    ============================================================ */
 
 @theme {
-  --color-cream: #fcf7f7;
-  --color-paper: #ffffff;
-  --color-navy: #1c1a59;
-  --color-navy-soft: #4a4785;
-  --color-ink: #262a2d;
+	--color-cream: #fcf7f7;
+	--color-paper: #ffffff;
+	--color-navy: #1c1a59;
+	--color-navy-soft: #4a4785;
+	--color-ink: #262a2d;
 
-  --color-sky: #52b4d5;
-  --color-sky-deep: #2e8cae;
-  --color-sky-pale: #cfeaf4;
+	--color-sky: #52b4d5;
+	--color-sky-deep: #2e8cae;
+	--color-sky-pale: #cfeaf4;
 
-  --color-teal: #06ae97;
-  --color-teal-deep: #048372;
-  --color-teal-mid: #75d0c9;
-  --color-mint: #aef2dd;
-  /* Teal with the life drained out: a week whose time has run out. */
-  --color-teal-grey: #b3c7c3;
-  --color-teal-grey-deep: #86a09b;
+	--color-teal: #06ae97;
+	--color-teal-deep: #048372;
+	--color-teal-mid: #75d0c9;
+	--color-mint: #aef2dd;
+	/* Teal with the life drained out: a week whose time has run out. */
+	--color-teal-grey: #b3c7c3;
+	--color-teal-grey-deep: #86a09b;
 
-  --color-magenta: #b21b9b;
-  --color-coral: #f35757;
-  --color-coral-deep: #c73b3b;
-  --color-orange: #fba62f;
-  --color-orange-deep: #d07f0e;
+	--color-magenta: #b21b9b;
+	--color-coral: #f35757;
+	--color-coral-deep: #c73b3b;
+	--color-orange: #fba62f;
+	--color-orange-deep: #d07f0e;
 
-  --color-violet: #a47cc0;
-  --color-violet-deep: #7b519b;
-  --color-violet-pale: #ece2f2;
+	--color-violet: #a47cc0;
+	--color-violet-deep: #7b519b;
+	--color-violet-pale: #ece2f2;
 
-  --color-sand: #f4dfc6;
-  --color-sand-deep: #cdae8a;
+	--color-sand: #f4dfc6;
+	--color-sand-deep: #cdae8a;
 
-  --color-gold: #f6c63f;
-  --color-gold-deep: #c9930f;
-  --color-gold-pale: #fdf1cc;
+	--color-gold: #f6c63f;
+	--color-gold-deep: #c9930f;
+	--color-gold-pale: #fdf1cc;
 
-  --color-line: #c8c3d6;
-  --color-line-strong: #9a94b4;
+	--color-line: #c8c3d6;
+	--color-line-strong: #9a94b4;
 
-  /* Text-only inks. The brand's deep tones are rims and borders first, and on
+	/* Text-only inks. The brand's deep tones are rims and borders first, and on
      cream several of them are too light to read (sky-deep 3.61:1, gold-deep
      2.58, orange-deep 2.94, teal-deep 4.40, line-strong 2.72). Each of these
      clears 4.5:1 on cream, white and every pale fill a chip sits on, so a
      `text-` utility reaches for these and the fills and rims keep their hue. */
-  --color-sky-ink: #236b85;
-  --color-teal-ink: #037365;
-  --color-gold-ink: #7f5c07;
-  --color-orange-ink: #8c5507;
-  /* A padlock on a locked puck: 3:1 against sand, where sand-deep is 1.62. */
-  --color-sand-ink: #8a6c4b;
-  /* The quiet third voice line-strong was used for — timestamps, hints, rail
+	--color-sky-ink: #236b85;
+	--color-teal-ink: #037365;
+	--color-gold-ink: #7f5c07;
+	--color-orange-ink: #8c5507;
+	/* A padlock on a locked puck: 3:1 against sand, where sand-deep is 1.62. */
+	--color-sand-ink: #8a6c4b;
+	/* The quiet third voice line-strong was used for — timestamps, hints, rail
      titles — at a value someone can actually read: 5.34:1 on cream. */
-  --color-navy-faint: #676386;
-  /* A field's edge. WCAG asks 3:1 of the boundary that tells you a control is
+	--color-navy-faint: #676386;
+	/* A field's edge. WCAG asks 3:1 of the boundary that tells you a control is
      there; `line` is 1.72 on white. This is 3.68 on white, 3.47 on cream. */
-  --color-field: #86829f;
-  /* Solid-button fills one step darker, so a white label reads: white on
+	--color-field: #86829f;
+	/* Solid-button fills one step darker, so a white label reads: white on
      violet was 3.37, on teal 2.80, on coral 3.33. */
-  --color-violet-dark: #613f7b;
-  --color-teal-dark: #025a4f;
-  --color-coral-dark: #a53131;
+	--color-violet-dark: #613f7b;
+	--color-teal-dark: #025a4f;
+	--color-coral-dark: #a53131;
 
-  --font-display: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
-  --font-hand: var(--font-hand), var(--font-jakarta), ui-sans-serif, sans-serif;
+	--font-display: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+	--font-hand: var(--font-hand), var(--font-jakarta), ui-sans-serif, sans-serif;
 
-  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-spring: cubic-bezier(0.22, 1.18, 0.36, 1);
+	--ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+	--ease-spring: cubic-bezier(0.22, 1.18, 0.36, 1);
 }
 
 :root {
-  color-scheme: light;
-  --hl-radius: 16px;
+	color-scheme: light;
+	--hl-radius: 16px;
 }
 
 @layer base {
-  * {
-    -webkit-tap-highlight-color: transparent;
-  }
+	* {
+		-webkit-tap-highlight-color: transparent;
+	}
 
-  input,
-  textarea,
-  select,
-  button {
-    font: inherit;
-    color: inherit;
-  }
+	input,
+	textarea,
+	select,
+	button {
+		font: inherit;
+		color: inherit;
+	}
 
-  input::placeholder,
-  textarea::placeholder {
-    /* navy-faint: the old #8b87a8 was 3.43:1 on a white field. */
-    color: var(--color-navy-faint);
-  }
+	input::placeholder,
+	textarea::placeholder {
+		/* navy-faint: the old #8b87a8 was 3.43:1 on a white field. */
+		color: var(--color-navy-faint);
+	}
 }
 
 body {
-  background-color: var(--color-cream);
-  color: var(--color-navy);
-  font-family: var(--font-display);
-  font-synthesis-weight: none;
-  -webkit-font-smoothing: antialiased;
-  overscroll-behavior-y: none;
+	background-color: var(--color-cream);
+	color: var(--color-navy);
+	font-family: var(--font-display);
+	font-synthesis-weight: none;
+	-webkit-font-smoothing: antialiased;
+	overscroll-behavior-y: none;
 }
 
 /* Faint graph-paper tooth so the cream reads as paper, not as white dimmed */
 body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background-image:
-    linear-gradient(to right, rgba(28, 26, 89, 0.035) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(28, 26, 89, 0.035) 1px, transparent 1px);
-  background-size: 28px 28px;
-  mask-image: radial-gradient(120% 90% at 50% 0%, #000 20%, transparent 85%);
+	content: "";
+	position: fixed;
+	inset: 0;
+	z-index: 0;
+	pointer-events: none;
+	background-image:
+		linear-gradient(to right, rgba(28, 26, 89, 0.035) 1px, transparent 1px),
+		linear-gradient(to bottom, rgba(28, 26, 89, 0.035) 1px, transparent 1px);
+	background-size: 28px 28px;
+	mask-image: radial-gradient(120% 90% at 50% 0%, #000 20%, transparent 85%);
 }
 
 ::selection {
-  background: var(--color-mint);
-  color: var(--color-navy);
+	background: var(--color-mint);
+	color: var(--color-navy);
 }
 
 :where(a, button, input, textarea, select, [tabindex]):focus-visible {
-  outline: 3px solid var(--color-magenta);
-  outline-offset: 3px;
-  border-radius: 6px;
+	outline: 3px solid var(--color-magenta);
+	outline-offset: 3px;
+	border-radius: 6px;
 }
 
 @layer components {
-  /* ---------- hand-lettered voice ---------- */
-  .hand {
-    font-family: var(--font-hand);
-    font-weight: 500;
-    letter-spacing: 0.04em;
-  }
+	/* ---------- hand-lettered voice ---------- */
+	.hand {
+		font-family: var(--font-hand);
+		font-weight: 500;
+		letter-spacing: 0.04em;
+	}
 
-  .label {
-    font-family: var(--font-hand);
-    text-transform: uppercase;
-    letter-spacing: 0.11em;
-    font-weight: 700;
-    font-size: 0.78rem;
-    line-height: 1.25;
-  }
+	.label {
+		font-family: var(--font-hand);
+		text-transform: uppercase;
+		letter-spacing: 0.11em;
+		font-weight: 700;
+		font-size: 0.78rem;
+		line-height: 1.25;
+	}
 
-  /* ============================================================
+	/* ============================================================
      SKETCH BORDERS
      A displaced stroke on a pseudo-element: the line wobbles like
      marker on paper without touching the content it frames.
      ============================================================ */
-  .sketch {
-    position: relative;
-  }
+	.sketch {
+		position: relative;
+	}
 
-  .sketch::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border: 2px solid var(--sk-color, var(--color-line));
-    border-radius: var(--sk-radius, var(--hl-radius));
-    filter: url(#hl-wobble);
-    pointer-events: none;
-  }
+	.sketch::before {
+		content: "";
+		position: absolute;
+		inset: 0;
+		border: 2px solid var(--sk-color, var(--color-line));
+		border-radius: var(--sk-radius, var(--hl-radius));
+		filter: url(#hl-wobble);
+		pointer-events: none;
+	}
 
-  .sketch-2::before {
-    border-width: 2.5px;
-    filter: url(#hl-wobble-2);
-  }
+	.sketch-2::before {
+		border-width: 2.5px;
+		filter: url(#hl-wobble-2);
+	}
 
-  .sketch-3::before {
-    filter: url(#hl-wobble-3);
-  }
+	.sketch-3::before {
+		filter: url(#hl-wobble-3);
+	}
 
-  /* Filled shapes whose whole silhouette should tear (tape, signs) */
-  .torn {
-    filter: url(#hl-tear);
-  }
+	/* Filled shapes whose whole silhouette should tear (tape, signs) */
+	.torn {
+		filter: url(#hl-tear);
+	}
 
-  .torn-soft {
-    filter: url(#hl-tear-soft);
-  }
+	.torn-soft {
+		filter: url(#hl-tear-soft);
+	}
 }
 
 @layer components {
-  /* ============================================================
+	/* ============================================================
      PUCKS — the checkpoint tokens
      Physical discs: a rim disc behind, the face on top, a real
      ambient shadow beneath. Pressing sinks the face onto the rim.
      ============================================================ */
-  .puck {
-    --puck-face: var(--color-sky);
-    --puck-rim: var(--color-sky-deep);
-    --puck-lift: 9px;
-    position: relative;
-    display: grid;
-    place-items: center;
-    width: 100%;
-    aspect-ratio: 1 / 0.92;
-    border: 0;
-    padding: 0;
-    background: transparent;
-    cursor: pointer;
-    transition: transform 0.22s var(--ease-spring);
-  }
+	.puck {
+		--puck-face: var(--color-sky);
+		--puck-rim: var(--color-sky-deep);
+		--puck-lift: 9px;
+		position: relative;
+		display: grid;
+		place-items: center;
+		width: 100%;
+		aspect-ratio: 1 / 0.92;
+		border: 0;
+		padding: 0;
+		background: transparent;
+		cursor: pointer;
+		transition: transform 0.22s var(--ease-spring);
+	}
 
-  .puck::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: 50%;
-    background: var(--puck-rim);
-    transform: translateY(var(--puck-lift));
-    box-shadow: 0 10px 18px -6px rgba(28, 26, 89, 0.34);
-  }
+	.puck::after {
+		content: "";
+		position: absolute;
+		inset: 0;
+		border-radius: 50%;
+		background: var(--puck-rim);
+		transform: translateY(var(--puck-lift));
+		box-shadow: 0 10px 18px -6px rgba(28, 26, 89, 0.34);
+	}
 
-  .puck-face {
-    position: relative;
-    z-index: 1;
-    display: grid;
-    place-items: center;
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    background: var(--puck-face);
-    transition: transform 0.16s var(--ease-out-expo);
-    box-shadow:
-      inset 0 -3px 0 rgba(255, 255, 255, 0.2),
-      inset 0 6px 12px rgba(255, 255, 255, 0.34);
-  }
+	.puck-face {
+		position: relative;
+		z-index: 1;
+		display: grid;
+		place-items: center;
+		width: 100%;
+		height: 100%;
+		border-radius: 50%;
+		background: var(--puck-face);
+		transition: transform 0.16s var(--ease-out-expo);
+		box-shadow:
+			inset 0 -3px 0 rgba(255, 255, 255, 0.2),
+			inset 0 6px 12px rgba(255, 255, 255, 0.34);
+	}
 
-  .puck:not([disabled]):hover {
-    transform: translateY(-3px);
-  }
+	.puck:not([disabled]):hover {
+		transform: translateY(-3px);
+	}
 
-  .puck:not([disabled]):active {
-    transform: translateY(0);
-  }
+	.puck:not([disabled]):active {
+		transform: translateY(0);
+	}
 
-  .puck:not([disabled]):active .puck-face {
-    transform: translateY(calc(var(--puck-lift) - 2px));
-  }
+	.puck:not([disabled]):active .puck-face {
+		transform: translateY(calc(var(--puck-lift) - 2px));
+	}
 
-  .puck[disabled] {
-    cursor: not-allowed;
-  }
+	.puck[disabled] {
+		cursor: not-allowed;
+	}
 
-  .puck-locked {
-    --puck-face: var(--color-sand);
-    --puck-rim: var(--color-sand-deep);
-    --puck-lift: 7px;
-  }
+	.puck-locked {
+		--puck-face: var(--color-sand);
+		--puck-rim: var(--color-sand-deep);
+		--puck-lift: 7px;
+	}
 
-  .puck-done {
-    --puck-face: var(--color-teal);
-    --puck-rim: var(--color-teal-deep);
-  }
+	.puck-done {
+		--puck-face: var(--color-teal);
+		--puck-rim: var(--color-teal-deep);
+	}
 
-  /* Its week has passed. Sits lower than a live puck, like a locked one, but
+	/* Its week has passed. Sits lower than a live puck, like a locked one, but
      keeps the trail's teal underneath: this is time that ran out, not a step
      still waiting its turn. */
-  .puck-passed {
-    --puck-face: var(--color-teal-grey);
-    --puck-rim: var(--color-teal-grey-deep);
-    --puck-lift: 7px;
-  }
+	.puck-passed {
+		--puck-face: var(--color-teal-grey);
+		--puck-rim: var(--color-teal-grey-deep);
+		--puck-lift: 7px;
+	}
 
-  .puck-gold {
-    --puck-face: var(--color-gold);
-    --puck-rim: var(--color-gold-deep);
-    --puck-lift: 11px;
-  }
+	.puck-gold {
+		--puck-face: var(--color-gold);
+		--puck-rim: var(--color-gold-deep);
+		--puck-lift: 11px;
+	}
 
-  .puck-gate {
-    --puck-face: var(--color-magenta);
-    --puck-rim: #7d0f6c;
-  }
+	.puck-gate {
+		--puck-face: var(--color-magenta);
+		--puck-rim: #7d0f6c;
+	}
 
-  /* Banking is coin-work, so the bonus node wears the coin colour. */
-  .puck-bonus {
-    --puck-face: var(--color-orange);
-    --puck-rim: var(--color-orange-deep);
-  }
+	/* Banking is coin-work, so the bonus node wears the coin colour. */
+	.puck-bonus {
+		--puck-face: var(--color-orange);
+		--puck-rim: var(--color-orange-deep);
+	}
 }
 
 /* ---------- motion ---------- */
 @keyframes hl-bob {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-7px);
-  }
+	0%,
+	100% {
+		transform: translateY(0);
+	}
+	50% {
+		transform: translateY(-7px);
+	}
 }
 
 @keyframes hl-halo {
-  0% {
-    transform: scale(0.94);
-    opacity: 0.6;
-  }
-  70% {
-    transform: scale(1.34);
-    opacity: 0;
-  }
-  100% {
-    transform: scale(1.34);
-    opacity: 0;
-  }
+	0% {
+		transform: scale(0.94);
+		opacity: 0.6;
+	}
+	70% {
+		transform: scale(1.34);
+		opacity: 0;
+	}
+	100% {
+		transform: scale(1.34);
+		opacity: 0;
+	}
 }
 
 @keyframes hl-rise {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
+	from {
+		opacity: 0;
+		transform: translateY(16px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
 }
 
 @keyframes hl-pop {
-  from {
-    opacity: 0;
-    transform: scale(0.86);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
+	from {
+		opacity: 0;
+		transform: scale(0.86);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
 }
 
 @layer components {
-  .halo {
-    position: absolute;
-    inset: -7%;
-    border-radius: 50%;
-    border: 3px solid var(--color-sky);
-    animation: hl-halo 2.1s var(--ease-out-expo) infinite;
-    pointer-events: none;
-  }
+	.halo {
+		position: absolute;
+		inset: -7%;
+		border-radius: 50%;
+		border: 3px solid var(--color-sky);
+		animation: hl-halo 2.1s var(--ease-out-expo) infinite;
+		pointer-events: none;
+	}
 
-  .halo-gold {
-    border-color: var(--color-gold);
-  }
+	.halo-gold {
+		border-color: var(--color-gold);
+	}
 
-  /* A file that has finished sending and is being stored: the full bar keeps
+	/* A file that has finished sending and is being stored: the full bar keeps
    moving, so a wait with no size to measure still reads as work. */
-  .upload-storing {
-    background-image: linear-gradient(
-      110deg,
-      transparent 0 35%,
-      color-mix(in oklab, white 55%, transparent) 50%,
-      transparent 65% 100%
-    );
-    background-size: 220% 100%;
-    animation: hl-storing 1.1s linear infinite;
-  }
+	.upload-storing {
+		background-image: linear-gradient(
+			110deg,
+			transparent 0 35%,
+			color-mix(in oklab, white 55%, transparent) 50%,
+			transparent 65% 100%
+		);
+		background-size: 220% 100%;
+		animation: hl-storing 1.1s linear infinite;
+	}
 }
 
 @keyframes hl-storing {
-  from {
-    background-position: 110% 0;
-  }
-  to {
-    background-position: -110% 0;
-  }
+	from {
+		background-position: 110% 0;
+	}
+	to {
+		background-position: -110% 0;
+	}
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
-  }
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.001ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.001ms !important;
+	}
 }
 
 /* ---------- scrollbars ---------- */
 .thin-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-line) transparent;
+	scrollbar-width: thin;
+	scrollbar-color: var(--color-line) transparent;
 }
 
 .thin-scroll::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+	width: 8px;
+	height: 8px;
 }
 .thin-scroll::-webkit-scrollbar-thumb {
-  background: var(--color-line);
-  border-radius: 99px;
+	background: var(--color-line);
+	border-radius: 99px;
 }
 .thin-scroll::-webkit-scrollbar-track {
-  background: transparent;
+	background: transparent;
 }
 
 .no-scrollbar {
-  scrollbar-width: none;
+	scrollbar-width: none;
 }
 .no-scrollbar::-webkit-scrollbar {
-  display: none;
+	display: none;
 }
 
 /* ---------- depth ---------- */
 .stack-shadow {
-  box-shadow:
-    0 2px 4px rgba(28, 26, 89, 0.06),
-    0 10px 26px -12px rgba(28, 26, 89, 0.28);
+	box-shadow:
+		0 2px 4px rgba(28, 26, 89, 0.06),
+		0 10px 26px -12px rgba(28, 26, 89, 0.28);
 }
 .lift-shadow {
-  box-shadow:
-    0 3px 6px rgba(28, 26, 89, 0.08),
-    0 18px 40px -16px rgba(28, 26, 89, 0.38);
+	box-shadow:
+		0 3px 6px rgba(28, 26, 89, 0.08),
+		0 18px 40px -16px rgba(28, 26, 89, 0.38);
 }
 .sticker-shadow {
-  filter: drop-shadow(0 3px 2px rgba(28, 26, 89, 0.16)) drop-shadow(0 9px 13px rgba(28, 26, 89, 0.13));
+	filter: drop-shadow(0 3px 2px rgba(28, 26, 89, 0.16)) drop-shadow(0 9px 13px rgba(28, 26, 89, 0.13));
 }
 
 /* The Doomscroller's reel column measures its own height, so the arrows
    beside it can step aside when it is too short to hold them above the
    actions — which depends on the frame, not on the window. */
 .doom-stage {
-  container: doom-stage / size;
+	container: doom-stage / size;
 }
 @container doom-stage (max-height: 30.5rem) {
-  .doom-arrows {
-    display: none !important;
-  }
+	.doom-arrows {
+		display: none !important;
+	}
 }
 
 .snap-y-feed {
-  scroll-snap-type: y mandatory;
+	scroll-snap-type: y mandatory;
 }
 .snap-item {
-  scroll-snap-align: center;
-  scroll-snap-stop: always;
+	scroll-snap-align: center;
+	scroll-snap-stop: always;
 }

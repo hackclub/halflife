@@ -34,44 +34,44 @@ import topLeft2 from "../../../public/art/borders/topleftcorner2.png"
  * be wrapped on all four, and nothing here pretends otherwise.
  */
 const DECALS = {
-  topLeft: {
-    src: topLeft,
-    corner: "top-left",
-    pad: { left: 0.183, top: 0.108, right: 0.071, bottom: 0.103 },
-    inkW: 0.746,
-  },
-  topLeft2: {
-    src: topLeft2,
-    corner: "top-left",
-    pad: { left: 0.17, top: 0.195, right: 0.185, bottom: 0.19 },
-    inkW: 0.645,
-  },
-  bottomLeft: {
-    src: bottomLeft,
-    corner: "bottom-left",
-    pad: { left: 0.206, top: 0.183, right: 0.164, bottom: 0.187 },
-    inkW: 0.63,
-  },
-  bottomRight: {
-    src: bottomRight,
-    corner: "bottom-right",
-    pad: { left: 0.132, top: 0.155, right: 0.154, bottom: 0.082 },
-    inkW: 0.714,
-  },
-  bottomRight2: {
-    src: bottomRight2,
-    corner: "bottom-right",
-    pad: { left: 0.218, top: 0.165, right: 0.039, bottom: 0.078 },
-    inkW: 0.743,
-  },
+	topLeft: {
+		src: topLeft,
+		corner: "top-left",
+		pad: { left: 0.183, top: 0.108, right: 0.071, bottom: 0.103 },
+		inkW: 0.746,
+	},
+	topLeft2: {
+		src: topLeft2,
+		corner: "top-left",
+		pad: { left: 0.17, top: 0.195, right: 0.185, bottom: 0.19 },
+		inkW: 0.645,
+	},
+	bottomLeft: {
+		src: bottomLeft,
+		corner: "bottom-left",
+		pad: { left: 0.206, top: 0.183, right: 0.164, bottom: 0.187 },
+		inkW: 0.63,
+	},
+	bottomRight: {
+		src: bottomRight,
+		corner: "bottom-right",
+		pad: { left: 0.132, top: 0.155, right: 0.154, bottom: 0.082 },
+		inkW: 0.714,
+	},
+	bottomRight2: {
+		src: bottomRight2,
+		corner: "bottom-right",
+		pad: { left: 0.218, top: 0.165, right: 0.039, bottom: 0.078 },
+		inkW: 0.743,
+	},
 } as const satisfies Record<
-  string,
-  {
-    src: StaticImageData
-    corner: "top-left" | "bottom-left" | "bottom-right"
-    pad: { left: number; top: number; right: number; bottom: number }
-    inkW: number
-  }
+	string,
+	{
+		src: StaticImageData
+		corner: "top-left" | "bottom-left" | "bottom-right"
+		pad: { left: number; top: number; right: number; bottom: number }
+		inkW: number
+	}
 >
 
 export type DecalName = keyof typeof DECALS
@@ -153,54 +153,54 @@ const PRINT = 0.3
  * out the filing system.
  */
 export default function CornerDecal({
-  decal,
-  over = false,
+	decal,
+	over = false,
 }: {
-  decal: DecalName
-  /**
-   * Print the decal over the plate's content instead of under it.
-   *
-   * Under is the default and the right answer everywhere text is involved:
-   * ornament goes on the stock, the words go on the ornament. `over` is for
-   * the one plate whose content is a full-bleed picture — under it, the decal
-   * is not screened back, it is simply not there.
-   */
-  over?: boolean
+	decal: DecalName
+	/**
+	 * Print the decal over the plate's content instead of under it.
+	 *
+	 * Under is the default and the right answer everywhere text is involved:
+	 * ornament goes on the stock, the words go on the ornament. `over` is for
+	 * the one plate whose content is a full-bleed picture — under it, the decal
+	 * is not screened back, it is simply not there.
+	 */
+	over?: boolean
 }) {
-  const { src, corner, pad, inkW } = DECALS[decal]
+	const { src, corner, pad, inkW } = DECALS[decal]
 
-  // The rendered file, as a fraction of the plate — the ink's promised share
-  // divided back out through how much of its file the ink actually occupies.
-  const size = INK / inkW
+	// The rendered file, as a fraction of the plate — the ink's promised share
+	// divided back out through how much of its file the ink actually occupies.
+	const size = INK / inkW
 
-  const [vertical, horizontal] = corner.split("-")
-  const fromLeft = horizontal === "left"
-  const fromTop = vertical === "top"
+	const [vertical, horizontal] = corner.split("-")
+	const fromLeft = horizontal === "left"
+	const fromTop = vertical === "top"
 
-  const shiftX = (fromLeft ? -pad.left : pad.right) * 100
-  const shiftY = (fromTop ? -pad.top : pad.bottom) * 100
+	const shiftX = (fromLeft ? -pad.left : pad.right) * 100
+	const shiftY = (fromTop ? -pad.top : pad.bottom) * 100
 
-  return (
-    <Image
-      aria-hidden
-      src={src}
-      alt=""
-      // The widest any decal is ever drawn: 19% of step 1's 975-unit plate at
-      // the stage's 1728 cap. The flow layout's plates top out at `max-w-2xl`,
-      // well under that, so one value covers both.
-      sizes="190px"
-      className="pointer-events-none absolute select-none"
-      style={{
-        opacity: PRINT,
-        // Under the plate's content but over its background. The plates carry
-        // `isolate` so this cannot escape into the page behind them.
-        zIndex: over ? undefined : -1,
-        width: `${(size * 100).toFixed(3)}%`,
-        height: "auto",
-        [fromLeft ? "left" : "right"]: INSET,
-        [fromTop ? "top" : "bottom"]: INSET,
-        transform: `translate(${shiftX.toFixed(2)}%, ${shiftY.toFixed(2)}%)`,
-      }}
-    />
-  )
+	return (
+		<Image
+			aria-hidden
+			src={src}
+			alt=""
+			// The widest any decal is ever drawn: 19% of step 1's 975-unit plate at
+			// the stage's 1728 cap. The flow layout's plates top out at `max-w-2xl`,
+			// well under that, so one value covers both.
+			sizes="190px"
+			className="pointer-events-none absolute select-none"
+			style={{
+				opacity: PRINT,
+				// Under the plate's content but over its background. The plates carry
+				// `isolate` so this cannot escape into the page behind them.
+				zIndex: over ? undefined : -1,
+				width: `${(size * 100).toFixed(3)}%`,
+				height: "auto",
+				[fromLeft ? "left" : "right"]: INSET,
+				[fromTop ? "top" : "bottom"]: INSET,
+				transform: `translate(${shiftX.toFixed(2)}%, ${shiftY.toFixed(2)}%)`,
+			}}
+		/>
+	)
 }

@@ -9,7 +9,7 @@ import { overrideSchema } from "@/lib/schemas/review"
 type Params = { params: Promise<{ id: string }> }
 
 const bodySchema = overrideSchema.extend({
-  action: z.enum(["unapprove", "reopen"]),
+	action: z.enum(["unapprove", "reopen"]),
 })
 
 /**
@@ -20,19 +20,19 @@ const bodySchema = overrideSchema.extend({
  * and re-approving later cannot double-pay.
  */
 export const POST = withRoute(async (req: Request, { params }: Params) => {
-  const gate = await requirePermission(Permission.OVERRIDE_DECISIONS)
-  if (gate.error) return gate.error
-  const { id } = await params
+	const gate = await requirePermission(Permission.OVERRIDE_DECISIONS)
+	if (gate.error) return gate.error
+	const { id } = await params
 
-  const parsed = await parseBody(req, bodySchema)
-  if (parsed.error) return parsed.error
-  const { action, phase, reason } = parsed.data
+	const parsed = await parseBody(req, bodySchema)
+	if (parsed.error) return parsed.error
+	const { action, phase, reason } = parsed.data
 
-  if (action === "unapprove") {
-    await unapprovePhase(id, phase, gate.user.id, gate.user.email, sanitize(reason))
-  } else {
-    await reopenPhase(id, phase, gate.user.id, gate.user.email, sanitize(reason))
-  }
+	if (action === "unapprove") {
+		await unapprovePhase(id, phase, gate.user.id, gate.user.email, sanitize(reason))
+	} else {
+		await reopenPhase(id, phase, gate.user.id, gate.user.email, sanitize(reason))
+	}
 
-  return ok({ ok: true })
+	return ok({ ok: true })
 })

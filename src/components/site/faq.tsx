@@ -33,57 +33,57 @@ const CARD_SCALE = 0.75
  * column reading correctly and 0.75 of 16px body copy would be 12px.
  */
 const size = (floorRem: number, vw: number, maxPx: number) =>
-  `clamp(${floorRem}rem, ${+(vw * CARD_SCALE).toFixed(4)}vw, ${+(maxPx * CARD_SCALE).toFixed(2)}px)`
+	`clamp(${floorRem}rem, ${+(vw * CARD_SCALE).toFixed(4)}vw, ${+(maxPx * CARD_SCALE).toFixed(2)}px)`
 
 const FIELD = {
-  /** Two scaled plates and the gutter between them, and nothing wider. The
-   *  section's own 1615 field stays put so the heading keeps its measure. */
-  grid: `${(PLATE_W * 2 + GUTTER) * CARD_SCALE}px`,
-  gutter: size(1.25, 3.24, GUTTER),
-  padding: size(1.25, 2.37, 41),
-  question: size(1.35, 2.32, 40),
-  answer: size(1, 1.74, 30),
+	/** Two scaled plates and the gutter between them, and nothing wider. The
+	 *  section's own 1615 field stays put so the heading keeps its measure. */
+	grid: `${(PLATE_W * 2 + GUTTER) * CARD_SCALE}px`,
+	gutter: size(1.25, 3.24, GUTTER),
+	padding: size(1.25, 2.37, 41),
+	question: size(1.35, 2.32, 40),
+	answer: size(1, 1.74, 30),
 } as const
 
 export default function Faq() {
-  return (
-    <section id="faq" aria-labelledby="faq-heading" className="hl-ground-hatch bg-hl-blue text-hl-ink">
-      <div className="mx-auto max-w-[1615px] px-4 py-20 sm:px-8 min-[1180px]:px-[3.4vw] min-[1180px]:py-28">
-        <h2
-          id="faq-heading"
-          className="text-center font-display font-bold tracking-[-0.025em]"
-          style={{ fontSize: "clamp(2.25rem, 5.8vw, 6rem)", lineHeight: 1 }}
-        >
-          Frequently Asked Questions
-        </h2>
+	return (
+		<section id="faq" aria-labelledby="faq-heading" className="hl-ground-hatch bg-hl-blue text-hl-ink">
+			<div className="mx-auto max-w-[1615px] px-4 py-20 sm:px-8 min-[1180px]:px-[3.4vw] min-[1180px]:py-28">
+				<h2
+					id="faq-heading"
+					className="text-center font-display font-bold tracking-[-0.025em]"
+					style={{ fontSize: "clamp(2.25rem, 5.8vw, 6rem)", lineHeight: 1 }}
+				>
+					Frequently Asked Questions
+				</h2>
 
-        <dl
-          className="mx-auto mt-12 grid min-[1180px]:mt-20"
-          style={{
-            maxWidth: FIELD.grid,
-            // 26rem is deliberately not scaled: it is the width at which two
-            // columns become one, not a size. Scaled with the rest it would
-            // have let a third column into the row and lost the comp's two up.
-            gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 26rem), 1fr))",
-            gap: FIELD.gutter,
-          }}
-        >
-          {FAQS.map((faq) => (
-            <div
-              key={faq.q}
-              className="flex flex-col bg-hl-ink text-hl-blue rounded-md"
-              style={{ padding: FIELD.padding }}
-            >
-              <dt className="font-display font-bold" style={{ fontSize: FIELD.question, lineHeight: 1.1 }}>
-                {faq.q}
-              </dt>
-              <dd className="mt-[0.85em] text-hl-paper" style={{ fontSize: FIELD.answer, lineHeight: 1.45 }}>
-                {faq.a}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </div>
-    </section>
-  )
+				<dl
+					className="mx-auto mt-12 grid min-[1180px]:mt-20"
+					style={{
+						maxWidth: FIELD.grid,
+						// 26rem is deliberately not scaled: it is the width at which two
+						// columns become one, not a size. Scaled with the rest it would
+						// have let a third column into the row and lost the comp's two up.
+						gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 26rem), 1fr))",
+						gap: FIELD.gutter,
+					}}
+				>
+					{FAQS.map((faq) => (
+						<div
+							key={faq.q}
+							className="flex flex-col bg-hl-ink text-hl-blue rounded-md"
+							style={{ padding: FIELD.padding }}
+						>
+							<dt className="font-display font-bold" style={{ fontSize: FIELD.question, lineHeight: 1.1 }}>
+								{faq.q}
+							</dt>
+							<dd className="mt-[0.85em] text-hl-paper" style={{ fontSize: FIELD.answer, lineHeight: 1.45 }}>
+								{faq.a}
+							</dd>
+						</div>
+					))}
+				</dl>
+			</div>
+		</section>
+	)
 }

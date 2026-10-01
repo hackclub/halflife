@@ -20,57 +20,57 @@ type Params = { params: Promise<{ id: string }> }
  * never leaves the others half saved.
  */
 export const POST = withRoute(async (req: Request, { params }: Params) => {
-  const gate = await requireSession()
-  if (gate.error) return gate.error
-  const { id } = await params
+	const gate = await requireSession()
+	if (gate.error) return gate.error
+	const { id } = await params
 
-  const parsed = await parseBody(req, publicReelLinksSchema)
-  if (parsed.error) return parsed.error
+	const parsed = await parseBody(req, publicReelLinksSchema)
+	if (parsed.error) return parsed.error
 
-  const post = await prisma.post.findFirst({
-    where: { id, userId: gate.user.id, deletedAt: null },
-    select: { id: true, themeProjectId: true },
-  })
-  if (!post) return fail("NOT_FOUND", "Reel not found")
+	const post = await prisma.post.findFirst({
+		where: { id, userId: gate.user.id, deletedAt: null },
+		select: { id: true, themeProjectId: true },
+	})
+	if (!post) return fail("NOT_FOUND", "Reel not found")
 
-  const links: { platform: keyof typeof PLATFORM_INFO; url: string }[] = []
-  const errors: Record<string, string> = {}
-  for (const link of parsed.data.links) {
-    const read = readPublicReelLink(link.platform, link.url)
-    if ("error" in read) errors[link.platform] = read.error
-    else links.push({ platform: link.platform, url: read.url })
-  }
+	const links: { platform: keyof typeof PLATFORM_INFO; url: string }[] = []
+	const errors: Record<string, string> = {}
+	for (const link of parsed.data.links) {
+		const read = readPublicReelLink(link.platform, link.url)
+		if ("error" in read) errors[link.platform] = read.error
+		else links.push({ platform: link.platform, url: read.url })
+	}
 
-  const taken = await prisma.publicReel.findMany({
-    where: { url: { in: links.map((l) => l.url) } },
-    select: { url: true, userId: true },
-  })
-  for (const row of taken) {
-    const link = links.find((l) => l.url === row.url)
-    if (link && row.userId !== gate.user.id) {
-      errors[link.platform] = `That ${PLATFORM_INFO[link.platform].label} post has already been added by someone else.`
-    }
-  }
-  if (Object.keys(errors).length > 0) {
-    return fail("VALIDATION_FAILED", Object.values(errors)[0] ?? "Check your links", { fields: errors })
-  }
+	const taken = await prisma.publicReel.findMany({
+		where: { url: { in: links.map((l) => l.url) } },
+		select: { url: true, userId: true },
+	})
+	for (const row of taken) {
+		const link = links.find((l) => l.url === row.url)
+		if (link && row.userId !== gate.user.id) {
+			errors[link.platform] = `That ${PLATFORM_INFO[link.platform].label} post has already been added by someone else.`
+		}
+	}
+	if (Object.keys(errors).length > 0) {
+		return fail("VALIDATION_FAILED", Object.values(errors)[0] ?? "Check your links", { fields: errors })
+	}
 
-  const mine = new Set(taken.map((t) => t.url))
-  const fresh = links.filter((l) => !mine.has(l.url))
-  if (fresh.length > 0) {
-    await prisma.publicReel.createMany({
-      data: fresh.map((l) => ({
-        url: l.url,
-        platform: l.platform,
-        email: gate.user.email,
-        userId: gate.user.id,
-        postId: post.id,
-        themeProjectId: post.themeProjectId,
-      })),
-      // Two tabs sending the same link at once: the unique url settles it.
-      skipDuplicates: true,
-    })
-  }
+	const mine = new Set(taken.map((t) => t.url))
+	const fresh = links.filter((l) => !mine.has(l.url))
+	if (fresh.length > 0) {
+		await prisma.publicReel.createMany({
+			data: fresh.map((l) => ({
+				url: l.url,
+				platform: l.platform,
+				email: gate.user.email,
+				userId: gate.user.id,
+				postId: post.id,
+				themeProjectId: post.themeProjectId,
+			})),
+			// Two tabs sending the same link at once: the unique url settles it.
+			skipDuplicates: true,
+		})
+	}
 
-  return ok({ saved: links.length }, { status: 201 })
+	return ok({ saved: links.length }, { status: 201 })
 })

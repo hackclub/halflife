@@ -4,10 +4,10 @@ import type { Metadata } from "next"
 import "../(platform)/ops.css"
 
 export const metadata: Metadata = {
-  title: "Record for Half-Life",
-  // This page is reached from a QR code and is a one-shot upload target.
-  // Nothing about it should ever be indexed or shared onward.
-  robots: { index: false, follow: false },
+	title: "Record for Half-Life",
+	// This page is reached from a QR code and is a one-shot upload target.
+	// Nothing about it should ever be indexed or shared onward.
+	robots: { index: false, follow: false },
 }
 
 /**
@@ -18,11 +18,11 @@ export const metadata: Metadata = {
  * under a layout whose job is to enforce a session.
  */
 export default function HandoffLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return (
-    <html lang="en">
-      <body>
-        <main className="hl-shell">{children}</main>
-      </body>
-    </html>
-  )
+	return (
+		<html lang="en">
+			<body>
+				<main className="hl-shell">{children}</main>
+			</body>
+		</html>
+	)
 }

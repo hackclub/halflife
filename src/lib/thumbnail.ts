@@ -1,16 +1,16 @@
 import { imageSources } from "@/components/platform/Markdown"
 
 interface EntryImages {
-  createdAt: Date
-  content: string | null
+	createdAt: Date
+	content: string | null
 }
 
 interface ReelFrames {
-  createdAt: Date
-  /** The frame the pipeline made, when one exists. */
-  thumbnailUrl: string | null
-  /** The reel itself, whose opening frame stands in until then. */
-  videoUrl: string | null
+	createdAt: Date
+	/** The frame the pipeline made, when one exists. */
+	thumbnailUrl: string | null
+	/** The reel itself, whose opening frame stands in until then. */
+	videoUrl: string | null
 }
 
 /**
@@ -30,14 +30,14 @@ export type ProjectThumbnail = { kind: "image"; url: string } | { kind: "video";
  * Null when there is none, and the caller falls back to the week's scene.
  */
 export function projectThumbnail(
-  chosenUrl: string | null,
-  entries: EntryImages[],
-  reels: ReelFrames[] = [],
+	chosenUrl: string | null,
+	entries: EntryImages[],
+	reels: ReelFrames[] = [],
 ): ProjectThumbnail | null {
-  if (chosenUrl) return { kind: "image", url: chosenUrl }
-  const journal = latestJournalImage(entries)
-  if (journal) return { kind: "image", url: journal }
-  return latestReelFrame(reels)
+	if (chosenUrl) return { kind: "image", url: chosenUrl }
+	const journal = latestJournalImage(entries)
+	if (journal) return { kind: "image", url: journal }
+	return latestReelFrame(reels)
 }
 
 /**
@@ -45,21 +45,21 @@ export function projectThumbnail(
  * video is the last resort, and only ever the newest one.
  */
 export function latestReelFrame(reels: ReelFrames[]): ProjectThumbnail | null {
-  const newest = [...reels].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-  let video: ProjectThumbnail | null = null
-  for (const reel of newest) {
-    if (reel.thumbnailUrl) return { kind: "image", url: reel.thumbnailUrl }
-    if (!video && reel.videoUrl) video = { kind: "video", url: reel.videoUrl }
-  }
-  return video
+	const newest = [...reels].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+	let video: ProjectThumbnail | null = null
+	for (const reel of newest) {
+		if (reel.thumbnailUrl) return { kind: "image", url: reel.thumbnailUrl }
+		if (!video && reel.videoUrl) video = { kind: "video", url: reel.videoUrl }
+	}
+	return video
 }
 
 export function latestJournalImage(entries: EntryImages[]): string | null {
-  const newest = [...entries].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-  for (const entry of newest) {
-    const found = imageSources(entry.content ?? "")
-    const last = found[found.length - 1]
-    if (last) return last
-  }
-  return null
+	const newest = [...entries].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+	for (const entry of newest) {
+		const found = imageSources(entry.content ?? "")
+		const last = found[found.length - 1]
+		if (last) return last
+	}
+	return null
 }

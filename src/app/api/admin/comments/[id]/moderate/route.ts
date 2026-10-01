@@ -16,23 +16,23 @@ type Params = { params: Promise<{ id: string }> }
  * would need a new pair of operations rather than a flag flip.
  */
 export const POST = withRoute(async (req: Request, { params }: Params) => {
-  const gate = await requirePermission(Permission.MANAGE_FEED)
-  if (gate.error) return gate.error
-  const { id } = await params
+	const gate = await requirePermission(Permission.MANAGE_FEED)
+	if (gate.error) return gate.error
+	const { id } = await params
 
-  const parsed = await parseBody(req, moderatePostSchema)
-  if (parsed.error) return parsed.error
+	const parsed = await parseBody(req, moderatePostSchema)
+	if (parsed.error) return parsed.error
 
-  await hideComment(id, gate.user.id, parsed.data.reason)
+	await hideComment(id, gate.user.id, parsed.data.reason)
 
-  await logAudit({
-    action: AuditAction.ADMIN_HIDE_COMMENT,
-    actorId: gate.user.id,
-    actorEmail: gate.user.email,
-    targetType: "PostComment",
-    targetId: id,
-    metadata: { reason: parsed.data.reason },
-  })
+	await logAudit({
+		action: AuditAction.ADMIN_HIDE_COMMENT,
+		actorId: gate.user.id,
+		actorEmail: gate.user.email,
+		targetType: "PostComment",
+		targetId: id,
+		metadata: { reason: parsed.data.reason },
+	})
 
-  return ok({ hidden: true })
+	return ok({ hidden: true })
 })

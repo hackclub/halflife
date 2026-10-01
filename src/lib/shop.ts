@@ -22,25 +22,25 @@ export type ShopItemPublic = Omit<ShopItem, "costUsd">
  * encrypted address/phone and `lastActorId` are staff-side and never selected.
  */
 export const shopOrderPublicSelect = {
-  id: true,
-  orderNumber: true,
-  shopItemId: true,
-  quantity: true,
-  unitCredits: true,
-  totalCredits: true,
-  itemNameSnapshot: true,
-  status: true,
-  holdReason: true,
-  rejectionReason: true,
-  trackingNumber: true,
-  trackingCarrier: true,
-  fulfillmentMethod: true,
-  fulfillmentStage: true,
-  fulfillmentUpdatedAt: true,
-  placedAt: true,
-  heldAt: true,
-  rejectedAt: true,
-  fulfilledAt: true,
+	id: true,
+	orderNumber: true,
+	shopItemId: true,
+	quantity: true,
+	unitCredits: true,
+	totalCredits: true,
+	itemNameSnapshot: true,
+	status: true,
+	holdReason: true,
+	rejectionReason: true,
+	trackingNumber: true,
+	trackingCarrier: true,
+	fulfillmentMethod: true,
+	fulfillmentStage: true,
+	fulfillmentUpdatedAt: true,
+	placedAt: true,
+	heldAt: true,
+	rejectedAt: true,
+	fulfilledAt: true,
 } satisfies Prisma.ShopOrderSelect
 
 export type ShopOrderPublic = Prisma.ShopOrderGetPayload<{ select: typeof shopOrderPublicSelect }>
@@ -52,106 +52,106 @@ export type ShopOrderPublic = Prisma.ShopOrderGetPayload<{ select: typeof shopOr
  * accident.
  */
 export const shopOrderStaffSelect = {
-  id: true,
-  orderNumber: true,
-  userId: true,
-  shopItemId: true,
-  quantity: true,
-  unitCredits: true,
-  totalCredits: true,
-  itemNameSnapshot: true,
-  unitCostUsd: true,
-  status: true,
-  holdReason: true,
-  rejectionReason: true,
-  trackingNumber: true,
-  trackingCarrier: true,
-  fulfillmentMethod: true,
-  fulfillmentStage: true,
-  fulfillmentUpdatedAt: true,
-  placedAt: true,
-  heldAt: true,
-  rejectedAt: true,
-  fulfilledAt: true,
+	id: true,
+	orderNumber: true,
+	userId: true,
+	shopItemId: true,
+	quantity: true,
+	unitCredits: true,
+	totalCredits: true,
+	itemNameSnapshot: true,
+	unitCostUsd: true,
+	status: true,
+	holdReason: true,
+	rejectionReason: true,
+	trackingNumber: true,
+	trackingCarrier: true,
+	fulfillmentMethod: true,
+	fulfillmentStage: true,
+	fulfillmentUpdatedAt: true,
+	placedAt: true,
+	heldAt: true,
+	rejectedAt: true,
+	fulfilledAt: true,
 } satisfies Prisma.ShopOrderSelect
 
 export type ShopOrderStaff = Prisma.ShopOrderGetPayload<{ select: typeof shopOrderStaffSelect }>
 
 export interface ShopItemView extends ShopItemPublic {
-  /** Against the pot this item may be paid from, not against the total. */
-  affordable: boolean
-  locked: boolean
-  lockReason: string | null
-  ownedCount: number
+	/** Against the pot this item may be paid from, not against the total. */
+	affordable: boolean
+	locked: boolean
+	lockReason: string | null
+	ownedCount: number
 }
 
 export async function getShopItemsFor(userId: string): Promise<{
-  items: ShopItemView[]
-  balances: Balances
+	items: ShopItemView[]
+	balances: Balances
 }> {
-  const [items, balances, qualification, orders] = await Promise.all([
-    // Explicit `select`, never the whole row: a new internal column added to
-    // ShopItem must not silently start reaching participants.
-    prisma.shopItem.findMany({
-      where: { active: true },
-      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        imageUrl: true,
-        category: true,
-        priceCredits: true,
-        maxPerUser: true,
-        stock: true,
-        requiresPrinterQualified: true,
-        active: true,
-        sortOrder: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    }),
-    prisma.$transaction((tx) => getBalances(tx, userId)),
-    getPrinterQualification(userId),
-    prisma.shopOrder.groupBy({
-      by: ["shopItemId"],
-      where: { userId, status: { notIn: [ShopOrderStatus.REJECTED, ShopOrderStatus.CANCELLED] } },
-      _sum: { quantity: true },
-    }),
-  ])
+	const [items, balances, qualification, orders] = await Promise.all([
+		// Explicit `select`, never the whole row: a new internal column added to
+		// ShopItem must not silently start reaching participants.
+		prisma.shopItem.findMany({
+			where: { active: true },
+			orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+			select: {
+				id: true,
+				name: true,
+				description: true,
+				imageUrl: true,
+				category: true,
+				priceCredits: true,
+				maxPerUser: true,
+				stock: true,
+				requiresPrinterQualified: true,
+				active: true,
+				sortOrder: true,
+				createdAt: true,
+				updatedAt: true,
+			},
+		}),
+		prisma.$transaction((tx) => getBalances(tx, userId)),
+		getPrinterQualification(userId),
+		prisma.shopOrder.groupBy({
+			by: ["shopItemId"],
+			where: { userId, status: { notIn: [ShopOrderStatus.REJECTED, ShopOrderStatus.CANCELLED] } },
+			_sum: { quantity: true },
+		}),
+	])
 
-  const owned = new Map(orders.map((o) => [o.shopItemId, o._sum.quantity ?? 0]))
+	const owned = new Map(orders.map((o) => [o.shopItemId, o._sum.quantity ?? 0]))
 
-  return {
-    balances,
-    items: items.map((item) => {
-      const ownedCount = owned.get(item.id) ?? 0
-      let locked = false
-      let lockReason: string | null = null
+	return {
+		balances,
+		items: items.map((item) => {
+			const ownedCount = owned.get(item.id) ?? 0
+			let locked = false
+			let lockReason: string | null = null
 
-      if (item.requiresPrinterQualified && !qualification.qualified) {
-        locked = true
-        lockReason = `Ship all ${qualification.required} themes to unlock (${qualification.shippedCount} so far)`
-      } else if (item.maxPerUser > 0 && ownedCount >= item.maxPerUser) {
-        locked = true
-        lockReason = "You already have this"
-      } else if (item.stock !== null && item.stock <= 0) {
-        locked = true
-        lockReason = "Out of stock"
-      }
+			if (item.requiresPrinterQualified && !qualification.qualified) {
+				locked = true
+				lockReason = `Ship all ${qualification.required} themes to unlock (${qualification.shippedCount} so far)`
+			} else if (item.maxPerUser > 0 && ownedCount >= item.maxPerUser) {
+				locked = true
+				lockReason = "You already have this"
+			} else if (item.stock !== null && item.stock <= 0) {
+				locked = true
+				lockReason = "Out of stock"
+			}
 
-      // Printers may be paid for out of the printer fund; nothing else may,
-      // so for every other category this compares against spendable alone.
-      const payableFrom = spendableFor(balances, item.category)
-      return {
-        ...item,
-        ownedCount,
-        affordable: payableFrom >= item.priceCredits,
-        locked,
-        lockReason,
-      }
-    }),
-  }
+			// Printers may be paid for out of the printer fund; nothing else may,
+			// so for every other category this compares against spendable alone.
+			const payableFrom = spendableFor(balances, item.category)
+			return {
+				...item,
+				ownedCount,
+				affordable: payableFrom >= item.priceCredits,
+				locked,
+				lockReason,
+			}
+		}),
+	}
 }
 
 /**
@@ -165,128 +165,128 @@ export async function getShopItemsFor(userId: string): Promise<{
  * and all succeed.
  */
 export async function purchase(
-  userId: string,
-  shopItemId: string,
-  quantity: number,
-  idempotencyKey?: string,
+	userId: string,
+	shopItemId: string,
+	quantity: number,
+	idempotencyKey?: string,
 ): Promise<ShopOrderPublic> {
-  const access = await getShopAccess(userId)
-  if (!access.open) throw new HttpError("SHOP_CLOSED", SHOP_CLOSED_MESSAGE)
+	const access = await getShopAccess(userId)
+	if (!access.open) throw new HttpError("SHOP_CLOSED", SHOP_CLOSED_MESSAGE)
 
-  const item = await prisma.shopItem.findUnique({ where: { id: shopItemId } })
-  if (!item || !item.active) throw new HttpError("NOT_FOUND", "Item not found")
+	const item = await prisma.shopItem.findUnique({ where: { id: shopItemId } })
+	if (!item?.active) throw new HttpError("NOT_FOUND", "Item not found")
 
-  if (item.requiresPrinterQualified) {
-    const qualification = await getPrinterQualification(userId)
-    if (!qualification.qualified) {
-      throw new HttpError("ITEM_LOCKED", `Ship all ${qualification.required} themes to unlock this`)
-    }
-  }
+	if (item.requiresPrinterQualified) {
+		const qualification = await getPrinterQualification(userId)
+		if (!qualification.qualified) {
+			throw new HttpError("ITEM_LOCKED", `Ship all ${qualification.required} themes to unlock this`)
+		}
+	}
 
-  return prisma.$transaction(async (tx) => {
-    await lockUserCredit(tx, userId)
+	return prisma.$transaction(async (tx) => {
+		await lockUserCredit(tx, userId)
 
-    // A retried request — double-tap, proxy retry, two tabs sharing one key —
-    // resolves to the order it already made rather than charging again. The
-    // same per-user lock serializes the two, so the loser always sees the
-    // winner's row.
-    if (idempotencyKey) {
-      const existing = await tx.shopOrder.findFirst({
-        where: { userId, idempotencyKey },
-        select: shopOrderPublicSelect,
-      })
-      if (existing) return existing
-    }
+		// A retried request — double-tap, proxy retry, two tabs sharing one key —
+		// resolves to the order it already made rather than charging again. The
+		// same per-user lock serializes the two, so the loser always sees the
+		// winner's row.
+		if (idempotencyKey) {
+			const existing = await tx.shopOrder.findFirst({
+				where: { userId, idempotencyKey },
+				select: shopOrderPublicSelect,
+			})
+			if (existing) return existing
+		}
 
-    // Re-read stock inside the transaction; the catalogue page may be stale.
-    const fresh = await tx.shopItem.findUnique({ where: { id: shopItemId } })
-    if (!fresh || !fresh.active) throw new HttpError("NOT_FOUND", "Item not found")
-    if (fresh.stock !== null && fresh.stock < quantity) {
-      throw new HttpError("OUT_OF_STOCK", "Not enough stock left")
-    }
+		// Re-read stock inside the transaction; the catalogue page may be stale.
+		const fresh = await tx.shopItem.findUnique({ where: { id: shopItemId } })
+		if (!fresh?.active) throw new HttpError("NOT_FOUND", "Item not found")
+		if (fresh.stock !== null && fresh.stock < quantity) {
+			throw new HttpError("OUT_OF_STOCK", "Not enough stock left")
+		}
 
-    if (fresh.maxPerUser > 0) {
-      const owned = await tx.shopOrder.aggregate({
-        where: {
-          userId,
-          shopItemId,
-          status: { notIn: [ShopOrderStatus.REJECTED, ShopOrderStatus.CANCELLED] },
-        },
-        _sum: { quantity: true },
-      })
-      if ((owned._sum.quantity ?? 0) + quantity > fresh.maxPerUser) {
-        throw new HttpError("PURCHASE_LIMIT", `Limit ${fresh.maxPerUser} per person`)
-      }
-    }
+		if (fresh.maxPerUser > 0) {
+			const owned = await tx.shopOrder.aggregate({
+				where: {
+					userId,
+					shopItemId,
+					status: { notIn: [ShopOrderStatus.REJECTED, ShopOrderStatus.CANCELLED] },
+				},
+				_sum: { quantity: true },
+			})
+			if ((owned._sum.quantity ?? 0) + quantity > fresh.maxPerUser) {
+				throw new HttpError("PURCHASE_LIMIT", `Limit ${fresh.maxPerUser} per person`)
+			}
+		}
 
-    const totalCredits = fresh.priceCredits * quantity
-    const balances = await getBalances(tx, userId)
-    const payableFrom = spendableFor(balances, fresh.category)
-    if (payableFrom < totalCredits) {
-      throw new HttpError("INSUFFICIENT_CREDIT", `You need ${totalCredits - payableFrom} more to buy this`)
-    }
+		const totalCredits = fresh.priceCredits * quantity
+		const balances = await getBalances(tx, userId)
+		const payableFrom = spendableFor(balances, fresh.category)
+		if (payableFrom < totalCredits) {
+			throw new HttpError("INSUFFICIENT_CREDIT", `You need ${totalCredits - payableFrom} more to buy this`)
+		}
 
-    // Spend the printer fund FIRST on a printer, and only then reach for
-    // ordinary coins. The other order looks equivalent and is not: it would
-    // drain the spendable balance someone was saving for upgrades while
-    // leaving banked coins sitting in an account where they can never be
-    // spent on anything else.
-    const fromBanked = fresh.category === ShopItemCategory.PRINTER ? Math.min(balances.banked, totalCredits) : 0
-    const fromSpendable = totalCredits - fromBanked
+		// Spend the printer fund FIRST on a printer, and only then reach for
+		// ordinary coins. The other order looks equivalent and is not: it would
+		// drain the spendable balance someone was saving for upgrades while
+		// leaving banked coins sitting in an account where they can never be
+		// spent on anything else.
+		const fromBanked = fresh.category === ShopItemCategory.PRINTER ? Math.min(balances.banked, totalCredits) : 0
+		const fromSpendable = totalCredits - fromBanked
 
-    const order = await tx.shopOrder.create({
-      data: {
-        userId,
-        shopItemId,
-        quantity,
-        unitCredits: fresh.priceCredits,
-        totalCredits,
-        itemNameSnapshot: fresh.name,
-        unitCostUsd: fresh.costUsd,
-        idempotencyKey: idempotencyKey ?? null,
-      },
-      // Only the buyer's fields come back; `unitCostUsd` is stored for
-      // fulfillment but must not leave the server.
-      select: shopOrderPublicSelect,
-    })
+		const order = await tx.shopOrder.create({
+			data: {
+				userId,
+				shopItemId,
+				quantity,
+				unitCredits: fresh.priceCredits,
+				totalCredits,
+				itemNameSnapshot: fresh.name,
+				unitCostUsd: fresh.costUsd,
+				idempotencyKey: idempotencyKey ?? null,
+			},
+			// Only the buyer's fields come back; `unitCostUsd` is stored for
+			// fulfillment but must not leave the server.
+			select: shopOrderPublicSelect,
+		})
 
-    // One row per pot drawn on. The ledger's unique key includes `bucket`
-    // precisely so a printer paid for out of both does not collide with itself.
-    if (fromBanked > 0) {
-      await appendLedgerEntry(tx, {
-        userId,
-        kind: LedgerKind.SHOP_PURCHASE,
-        bucket: CoinBucket.BANKED,
-        amount: -fromBanked,
-        note: `${quantity}× ${fresh.name} (printer fund)`,
-        shopOrderId: order.id,
-        createdById: userId,
-      })
-    }
-    if (fromSpendable > 0) {
-      await appendLedgerEntry(tx, {
-        userId,
-        kind: LedgerKind.SHOP_PURCHASE,
-        bucket: CoinBucket.SPENDABLE,
-        amount: -fromSpendable,
-        note: `${quantity}× ${fresh.name}`,
-        shopOrderId: order.id,
-        createdById: userId,
-      })
-    }
+		// One row per pot drawn on. The ledger's unique key includes `bucket`
+		// precisely so a printer paid for out of both does not collide with itself.
+		if (fromBanked > 0) {
+			await appendLedgerEntry(tx, {
+				userId,
+				kind: LedgerKind.SHOP_PURCHASE,
+				bucket: CoinBucket.BANKED,
+				amount: -fromBanked,
+				note: `${quantity}× ${fresh.name} (printer fund)`,
+				shopOrderId: order.id,
+				createdById: userId,
+			})
+		}
+		if (fromSpendable > 0) {
+			await appendLedgerEntry(tx, {
+				userId,
+				kind: LedgerKind.SHOP_PURCHASE,
+				bucket: CoinBucket.SPENDABLE,
+				amount: -fromSpendable,
+				note: `${quantity}× ${fresh.name}`,
+				shopOrderId: order.id,
+				createdById: userId,
+			})
+		}
 
-    if (fresh.stock !== null) {
-      // Conditional, so stock cannot go negative even if two people buy the
-      // last unit at once — the loser's update matches nothing and rolls back.
-      const claimed = await tx.shopItem.updateMany({
-        where: { id: shopItemId, stock: { gte: quantity } },
-        data: { stock: { decrement: quantity } },
-      })
-      if (claimed.count !== 1) throw new HttpError("OUT_OF_STOCK", "Not enough stock left")
-    }
+		if (fresh.stock !== null) {
+			// Conditional, so stock cannot go negative even if two people buy the
+			// last unit at once — the loser's update matches nothing and rolls back.
+			const claimed = await tx.shopItem.updateMany({
+				where: { id: shopItemId, stock: { gte: quantity } },
+				data: { stock: { decrement: quantity } },
+			})
+			if (claimed.count !== 1) throw new HttpError("OUT_OF_STOCK", "Not enough stock left")
+		}
 
-    return order
-  })
+		return order
+	})
 }
 
 /**
@@ -297,64 +297,64 @@ export async function purchase(
  * record.
  */
 export async function rejectOrder(orderId: string, adminId: string, reason: string): Promise<ShopOrder> {
-  const target = await prisma.shopOrder.findUnique({
-    where: { id: orderId },
-    select: { userId: true },
-  })
-  if (!target) throw new HttpError("NOT_FOUND", "Order not found")
+	const target = await prisma.shopOrder.findUnique({
+		where: { id: orderId },
+		select: { userId: true },
+	})
+	if (!target) throw new HttpError("NOT_FOUND", "Order not found")
 
-  return prisma.$transaction(async (tx) => {
-    await lockUserCredit(tx, target.userId)
+	return prisma.$transaction(async (tx) => {
+		await lockUserCredit(tx, target.userId)
 
-    const order = await tx.shopOrder.findUnique({ where: { id: orderId } })
-    if (!order) throw new HttpError("NOT_FOUND", "Order not found")
-    if (order.status !== ShopOrderStatus.PENDING && order.status !== ShopOrderStatus.ON_HOLD) {
-      throw new HttpError("CONFLICT", "This order has already been decided")
-    }
+		const order = await tx.shopOrder.findUnique({ where: { id: orderId } })
+		if (!order) throw new HttpError("NOT_FOUND", "Order not found")
+		if (order.status !== ShopOrderStatus.PENDING && order.status !== ShopOrderStatus.ON_HOLD) {
+			throw new HttpError("CONFLICT", "This order has already been decided")
+		}
 
-    // Refund each pot exactly what it paid, by reading back the purchase
-    // rows rather than assuming. Refunding the whole total as spendable would
-    // turn a rejected printer order into a laundering step: coins that could
-    // only ever have bought a printer would come back as coins that can buy
-    // anything.
-    const paid = await tx.ledgerEntry.groupBy({
-      by: ["bucket"],
-      where: { shopOrderId: order.id, kind: LedgerKind.SHOP_PURCHASE },
-      _sum: { amount: true },
-    })
+		// Refund each pot exactly what it paid, by reading back the purchase
+		// rows rather than assuming. Refunding the whole total as spendable would
+		// turn a rejected printer order into a laundering step: coins that could
+		// only ever have bought a printer would come back as coins that can buy
+		// anything.
+		const paid = await tx.ledgerEntry.groupBy({
+			by: ["bucket"],
+			where: { shopOrderId: order.id, kind: LedgerKind.SHOP_PURCHASE },
+			_sum: { amount: true },
+		})
 
-    for (const row of paid) {
-      // Purchases are negative; the refund is its mirror.
-      const amount = -(row._sum.amount ?? 0)
-      if (amount <= 0) continue
-      await appendLedgerEntry(tx, {
-        userId: order.userId,
-        kind: LedgerKind.SHOP_REFUND,
-        bucket: row.bucket,
-        amount,
-        note: `Refund for order #${order.orderNumber}: ${reason}`,
-        shopOrderId: order.id,
-        createdById: adminId,
-      })
-    }
+		for (const row of paid) {
+			// Purchases are negative; the refund is its mirror.
+			const amount = -(row._sum.amount ?? 0)
+			if (amount <= 0) continue
+			await appendLedgerEntry(tx, {
+				userId: order.userId,
+				kind: LedgerKind.SHOP_REFUND,
+				bucket: row.bucket,
+				amount,
+				note: `Refund for order #${order.orderNumber}: ${reason}`,
+				shopOrderId: order.id,
+				createdById: adminId,
+			})
+		}
 
-    if (order.shopItemId) {
-      await tx.shopItem.updateMany({
-        where: { id: order.shopItemId, stock: { not: null } },
-        data: { stock: { increment: order.quantity } },
-      })
-    }
+		if (order.shopItemId) {
+			await tx.shopItem.updateMany({
+				where: { id: order.shopItemId, stock: { not: null } },
+				data: { stock: { increment: order.quantity } },
+			})
+		}
 
-    return tx.shopOrder.update({
-      where: { id: orderId },
-      data: {
-        status: ShopOrderStatus.REJECTED,
-        rejectionReason: reason,
-        rejectedAt: new Date(),
-        lastActorId: adminId,
-      },
-    })
-  })
+		return tx.shopOrder.update({
+			where: { id: orderId },
+			data: {
+				status: ShopOrderStatus.REJECTED,
+				rejectionReason: reason,
+				rejectedAt: new Date(),
+				lastActorId: adminId,
+			},
+		})
+	})
 }
 
 /**
@@ -367,45 +367,45 @@ export async function rejectOrder(orderId: string, adminId: string, reason: stri
  * between the lock being taken and the write.
  */
 export async function fulfillOrder(
-  orderId: string,
-  adminId: string,
-  tracking: { number?: string | null; carrier?: string | null },
+	orderId: string,
+	adminId: string,
+	tracking: { number?: string | null; carrier?: string | null },
 ): Promise<ShopOrder> {
-  const target = await prisma.shopOrder.findUnique({
-    where: { id: orderId },
-    select: { userId: true },
-  })
-  if (!target) throw new HttpError("NOT_FOUND", "Order not found")
+	const target = await prisma.shopOrder.findUnique({
+		where: { id: orderId },
+		select: { userId: true },
+	})
+	if (!target) throw new HttpError("NOT_FOUND", "Order not found")
 
-  return prisma.$transaction(async (tx) => {
-    await lockUserCredit(tx, target.userId)
+	return prisma.$transaction(async (tx) => {
+		await lockUserCredit(tx, target.userId)
 
-    const order = await tx.shopOrder.findUnique({ where: { id: orderId } })
-    if (!order) throw new HttpError("NOT_FOUND", "Order not found")
-    if (order.status === ShopOrderStatus.FULFILLED) {
-      throw new HttpError("CONFLICT", "This order is already fulfilled")
-    }
-    if (order.status === ShopOrderStatus.REJECTED) {
-      throw new HttpError("CONFLICT", "This order was rejected")
-    }
-    if (order.status === ShopOrderStatus.CANCELLED) {
-      throw new HttpError("CONFLICT", "This order was cancelled")
-    }
+		const order = await tx.shopOrder.findUnique({ where: { id: orderId } })
+		if (!order) throw new HttpError("NOT_FOUND", "Order not found")
+		if (order.status === ShopOrderStatus.FULFILLED) {
+			throw new HttpError("CONFLICT", "This order is already fulfilled")
+		}
+		if (order.status === ShopOrderStatus.REJECTED) {
+			throw new HttpError("CONFLICT", "This order was rejected")
+		}
+		if (order.status === ShopOrderStatus.CANCELLED) {
+			throw new HttpError("CONFLICT", "This order was cancelled")
+		}
 
-    const claimed = await tx.shopOrder.updateMany({
-      where: { id: orderId, status: order.status },
-      data: {
-        status: ShopOrderStatus.FULFILLED,
-        fulfilledAt: new Date(),
-        trackingNumber: tracking.number ?? null,
-        trackingCarrier: tracking.carrier ?? null,
-        lastActorId: adminId,
-      },
-    })
-    if (claimed.count !== 1) {
-      throw new HttpError("CONFLICT", "This order was decided by someone else")
-    }
+		const claimed = await tx.shopOrder.updateMany({
+			where: { id: orderId, status: order.status },
+			data: {
+				status: ShopOrderStatus.FULFILLED,
+				fulfilledAt: new Date(),
+				trackingNumber: tracking.number ?? null,
+				trackingCarrier: tracking.carrier ?? null,
+				lastActorId: adminId,
+			},
+		})
+		if (claimed.count !== 1) {
+			throw new HttpError("CONFLICT", "This order was decided by someone else")
+		}
 
-    return tx.shopOrder.findUniqueOrThrow({ where: { id: orderId } })
-  })
+		return tx.shopOrder.findUniqueOrThrow({ where: { id: orderId } })
+	})
 }

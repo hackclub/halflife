@@ -7,135 +7,135 @@ import { isUploadConfigured, listUploadedObjects, UPLOAD_FOLDERS, type UploadFol
 export const dynamic = "force-dynamic"
 
 type Search = {
-  folder?: string
-  cursor?: string
+	folder?: string
+	cursor?: string
 }
 type Props = { searchParams: Promise<Search> }
 
 const FOLDER_LABELS: Record<UploadFolder, string> = {
-  sessions: "Session evidence",
-  covers: "Cover images",
-  timelapses: "Timelapses",
-  posts: "Reels",
-  shop: "Shop images",
+	sessions: "Session evidence",
+	covers: "Cover images",
+	timelapses: "Timelapses",
+	posts: "Reels",
+	shop: "Shop images",
 }
 
 const modifiedFormat = new Intl.DateTimeFormat("en-US", {
-  dateStyle: "medium",
-  timeStyle: "short",
+	dateStyle: "medium",
+	timeStyle: "short",
 })
 
 function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  const units = ["KB", "MB", "GB", "TB"]
-  let value = bytes / 1024
-  let unit = units[0]
-  for (let i = 1; i < units.length && value >= 1024; i++) {
-    value /= 1024
-    unit = units[i]
-  }
-  return `${value.toFixed(value >= 10 ? 0 : 1)} ${unit}`
+	if (bytes < 1024) return `${bytes} B`
+	const units = ["KB", "MB", "GB", "TB"]
+	let value = bytes / 1024
+	let unit = units[0]
+	for (let i = 1; i < units.length && value >= 1024; i++) {
+		value /= 1024
+		unit = units[i]
+	}
+	return `${value.toFixed(value >= 10 ? 0 : 1)} ${unit}`
 }
 
 function keyParts(key: string): { folder: string; owner: string } {
-  const [folder = "", owner = ""] = key.split("/")
-  return { folder, owner }
+	const [folder = "", owner = ""] = key.split("/")
+	return { folder, owner }
 }
 
 export default async function AdminUploadsPage({ searchParams }: Props) {
-  await requirePermissionPage(Permission.VIEW_UPLOADS)
-  const search = await searchParams
-  const folder = UPLOAD_FOLDERS.find((value) => value === search.folder)
-  const prefix = folder ? `${folder}/` : ""
+	await requirePermissionPage(Permission.VIEW_UPLOADS)
+	const search = await searchParams
+	const folder = UPLOAD_FOLDERS.find((value) => value === search.folder)
+	const prefix = folder ? `${folder}/` : ""
 
-  let listing: Awaited<ReturnType<typeof listUploadedObjects>> | null = null
-  let listError: string | null = null
-  if (isUploadConfigured()) {
-    try {
-      listing = await listUploadedObjects({ prefix, cursor: search.cursor, limit: 100 })
-    } catch (error) {
-      console.error("[admin] failed to list uploads:", error)
-      listError = "The upload bucket could not be listed. Check its S3 configuration and credentials."
-    }
-  }
+	let listing: Awaited<ReturnType<typeof listUploadedObjects>> | null = null
+	let listError: string | null = null
+	if (isUploadConfigured()) {
+		try {
+			listing = await listUploadedObjects({ prefix, cursor: search.cursor, limit: 100 })
+		} catch (error) {
+			console.error("[admin] failed to list uploads:", error)
+			listError = "The upload bucket could not be listed. Check its S3 configuration and credentials."
+		}
+	}
 
-  const pageHref = (cursor?: string) => {
-    const params = new URLSearchParams()
-    if (folder) params.set("folder", folder)
-    if (cursor) params.set("cursor", cursor)
-    const query = params.toString()
-    return query ? `/admin/uploads?${query}` : "/admin/uploads"
-  }
+	const pageHref = (cursor?: string) => {
+		const params = new URLSearchParams()
+		if (folder) params.set("folder", folder)
+		if (cursor) params.set("cursor", cursor)
+		const query = params.toString()
+		return query ? `/admin/uploads?${query}` : "/admin/uploads"
+	}
 
-  return (
-    <div className="hl-stack">
-      <PageHeader title="Uploads" subtitle="Every object currently in the R2 bucket. This page is read-only." />
+	return (
+		<div className="hl-stack">
+			<PageHeader title="Uploads" subtitle="Every object currently in the R2 bucket. This page is read-only." />
 
-      <Panel>
-        <form method="get" className="hl-row" style={{ flexWrap: "wrap", alignItems: "center" }}>
-          <label className="hl-stack hl-stack--tight" style={{ gap: "0.25rem" }}>
-            <span className="hl-label-text">Folder</span>
-            <select className="hl-input" name="folder" defaultValue={folder ?? ""} style={{ maxWidth: "16rem" }}>
-              <option value="">All folders</option>
-              {UPLOAD_FOLDERS.map((value) => (
-                <option key={value} value={value}>
-                  {FOLDER_LABELS[value]}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button className="hl-btn" type="submit">
-            Filter
-          </button>
-          <Link href="/admin/uploads" className="hl-hint">
-            Reset
-          </Link>
-        </form>
-        <span className="hl-hint">Showing up to 100 objects per page. Older objects continue on the next page.</span>
-      </Panel>
+			<Panel>
+				<form method="get" className="hl-row" style={{ flexWrap: "wrap", alignItems: "center" }}>
+					<label className="hl-stack hl-stack--tight" style={{ gap: "0.25rem" }}>
+						<span className="hl-label-text">Folder</span>
+						<select className="hl-input" name="folder" defaultValue={folder ?? ""} style={{ maxWidth: "16rem" }}>
+							<option value="">All folders</option>
+							{UPLOAD_FOLDERS.map((value) => (
+								<option key={value} value={value}>
+									{FOLDER_LABELS[value]}
+								</option>
+							))}
+						</select>
+					</label>
+					<button className="hl-btn" type="submit">
+						Filter
+					</button>
+					<Link href="/admin/uploads" className="hl-hint">
+						Reset
+					</Link>
+				</form>
+				<span className="hl-hint">Showing up to 100 objects per page. Older objects continue on the next page.</span>
+			</Panel>
 
-      {!isUploadConfigured() ? (
-        <Callout tone="warning">File uploads are not configured on this deployment.</Callout>
-      ) : listError ? (
-        <Callout tone="danger">{listError}</Callout>
-      ) : listing && listing.objects.length === 0 ? (
-        <EmptyState>No uploaded objects match this folder.</EmptyState>
-      ) : listing ? (
-        <Panel>
-          <Table head={["Key", "Folder", "Owner", "Size", "Modified", "File"]}>
-            {listing.objects.map((object) => {
-              const parts = keyParts(object.key)
-              return (
-                <tr key={object.key}>
-                  <td className="hl-mono" style={{ overflowWrap: "anywhere" }}>
-                    {object.key}
-                  </td>
-                  <td>{parts.folder || "—"}</td>
-                  <td className="hl-mono" style={{ overflowWrap: "anywhere" }}>
-                    {parts.owner || "—"}
-                  </td>
-                  <td className="hl-mono">{formatBytes(object.size)}</td>
-                  <td className="hl-mono">{object.lastModified ? modifiedFormat.format(object.lastModified) : "—"}</td>
-                  <td>
-                    {object.url ? (
-                      <a href={object.url} target="_blank" rel="noreferrer">
-                        Open
-                      </a>
-                    ) : (
-                      <span className="hl-hint">not public</span>
-                    )}
-                  </td>
-                </tr>
-              )
-            })}
-          </Table>
-          {listing.nextCursor ? (
-            <p>
-              <Link href={pageHref(listing.nextCursor)}>Next page</Link>
-            </p>
-          ) : null}
-        </Panel>
-      ) : null}
-    </div>
-  )
+			{!isUploadConfigured() ? (
+				<Callout tone="warning">File uploads are not configured on this deployment.</Callout>
+			) : listError ? (
+				<Callout tone="danger">{listError}</Callout>
+			) : listing && listing.objects.length === 0 ? (
+				<EmptyState>No uploaded objects match this folder.</EmptyState>
+			) : listing ? (
+				<Panel>
+					<Table head={["Key", "Folder", "Owner", "Size", "Modified", "File"]}>
+						{listing.objects.map((object) => {
+							const parts = keyParts(object.key)
+							return (
+								<tr key={object.key}>
+									<td className="hl-mono" style={{ overflowWrap: "anywhere" }}>
+										{object.key}
+									</td>
+									<td>{parts.folder || "—"}</td>
+									<td className="hl-mono" style={{ overflowWrap: "anywhere" }}>
+										{parts.owner || "—"}
+									</td>
+									<td className="hl-mono">{formatBytes(object.size)}</td>
+									<td className="hl-mono">{object.lastModified ? modifiedFormat.format(object.lastModified) : "—"}</td>
+									<td>
+										{object.url ? (
+											<a href={object.url} target="_blank" rel="noreferrer">
+												Open
+											</a>
+										) : (
+											<span className="hl-hint">not public</span>
+										)}
+									</td>
+								</tr>
+							)
+						})}
+					</Table>
+					{listing.nextCursor ? (
+						<p>
+							<Link href={pageHref(listing.nextCursor)}>Next page</Link>
+						</p>
+					) : null}
+				</Panel>
+			) : null}
+		</div>
+	)
 }

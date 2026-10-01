@@ -1,12 +1,12 @@
 import { fail, ok, parseBody, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { HttpError } from "@/lib/errors"
-import { forgeById, type Forge } from "@/lib/forge"
+import { type Forge, forgeById } from "@/lib/forge"
 import { forgeCredentials, listWritableRepos, type WritableRepo } from "@/lib/forge-write"
 import { requireSession } from "@/lib/guards"
 import prisma from "@/lib/prisma"
-import { disableRepoSync, enableRepoSync, getRepoSyncState, runProjectSync } from "@/lib/repo-sync"
 import { repoRefFromLink } from "@/lib/repo-ref"
+import { disableRepoSync, enableRepoSync, getRepoSyncState, runProjectSync } from "@/lib/repo-sync"
 import { repoSyncSettingsSchema } from "@/lib/schemas/project"
 
 export const dynamic = "force-dynamic"
@@ -28,79 +28,79 @@ type Params = { params: Promise<{ id: string }> }
  * refused here rather than failing silently on every entry afterwards.
  */
 export const GET = withRoute(async (_req: Request, { params }: Params) => {
-  const gate = await requireSession()
-  if (gate.error) return gate.error
-  const { id } = await params
+	const gate = await requireSession()
+	if (gate.error) return gate.error
+	const { id } = await params
 
-  const state = await getRepoSyncState(id, gate.user.id)
+	const state = await getRepoSyncState(id, gate.user.id)
 
-  // Only the linked forges are asked, and only when at least one is: a maker
-  // with neither gets the connect prompt, not an empty picker that looks broken.
-  const repos: WritableRepo[] = []
-  let reposError: string | null = null
-  for (const forgeId of state.linkedForges) {
-    const forge = forgeById(forgeId)
-    if (!forge) continue
-    try {
-      repos.push(...(await listWritableRepos(gate.user.id, forge)))
-    } catch (err) {
-      // A failure to list one forge's repos must not take the whole control
-      // down with it: the other forge may still answer, and the error names the
-      // one that did not.
-      reposError = err instanceof Error ? err.message : `${forge.label} did not answer.`
-    }
-  }
+	// Only the linked forges are asked, and only when at least one is: a maker
+	// with neither gets the connect prompt, not an empty picker that looks broken.
+	const repos: WritableRepo[] = []
+	let reposError: string | null = null
+	for (const forgeId of state.linkedForges) {
+		const forge = forgeById(forgeId)
+		if (!forge) continue
+		try {
+			repos.push(...(await listWritableRepos(gate.user.id, forge)))
+		} catch (err) {
+			// A failure to list one forge's repos must not take the whole control
+			// down with it: the other forge may still answer, and the error names the
+			// one that did not.
+			reposError = err instanceof Error ? err.message : `${forge.label} did not answer.`
+		}
+	}
 
-  return ok({ ...state, repos, reposError })
+	return ok({ ...state, repos, reposError })
 })
 
 export const POST = withRoute(async (req: Request, { params }: Params) => {
-  const gate = await requireSession()
-  if (gate.error) return gate.error
-  const { id } = await params
+	const gate = await requireSession()
+	if (gate.error) return gate.error
+	const { id } = await params
 
-  const parsed = await parseBody(req, repoSyncSettingsSchema)
-  if (parsed.error) return parsed.error
+	const parsed = await parseBody(req, repoSyncSettingsSchema)
+	if (parsed.error) return parsed.error
 
-  // A project that is gone, or someone else's, is a 404 either way — same as
-  // every other project route.
-  const owned = await prisma.themeProject.findFirst({
-    where: { id, userId: gate.user.id, deletedAt: null },
-    select: { id: true },
-  })
-  if (!owned) return fail("NOT_FOUND", "Project not found")
+	// A project that is gone, or someone else's, is a 404 either way — same as
+	// every other project route.
+	const owned = await prisma.themeProject.findFirst({
+		where: { id, userId: gate.user.id, deletedAt: null },
+		select: { id: true },
+	})
+	if (!owned) return fail("NOT_FOUND", "Project not found")
 
-  if (!parsed.data.enabled) {
-    await disableRepoSync(id, gate.user.id)
-    await logAudit({
-      action: AuditAction.USER_UPDATE_REPO_SYNC,
-      actorId: gate.user.id,
-      actorEmail: gate.user.email,
-      targetType: "ThemeProject",
-      targetId: id,
-      metadata: { enabled: false },
-    })
-    return ok(await getRepoSyncState(id, gate.user.id))
-  }
+	if (!parsed.data.enabled) {
+		await disableRepoSync(id, gate.user.id)
+		await logAudit({
+			action: AuditAction.USER_UPDATE_REPO_SYNC,
+			actorId: gate.user.id,
+			actorEmail: gate.user.email,
+			targetType: "ThemeProject",
+			targetId: id,
+			metadata: { enabled: false },
+		})
+		return ok(await getRepoSyncState(id, gate.user.id))
+	}
 
-  if (!parsed.data.repo) return fail("VALIDATION_FAILED", "Pick a repository to sync to")
+	if (!parsed.data.repo) return fail("VALIDATION_FAILED", "Pick a repository to sync to")
 
-  const { repo, files } = await enableRepoSync(id, gate.user.id, parsed.data.repo)
+	const { repo, files } = await enableRepoSync(id, gate.user.id, parsed.data.repo)
 
-  await logAudit({
-    action: AuditAction.USER_UPDATE_REPO_SYNC,
-    actorId: gate.user.id,
-    actorEmail: gate.user.email,
-    targetType: "ThemeProject",
-    targetId: id,
-    metadata: {
-      enabled: true,
-      repo,
-      files: files.map((f) => ({ path: f.path, bytes: f.bytes })),
-    },
-  })
+	await logAudit({
+		action: AuditAction.USER_UPDATE_REPO_SYNC,
+		actorId: gate.user.id,
+		actorEmail: gate.user.email,
+		targetType: "ThemeProject",
+		targetId: id,
+		metadata: {
+			enabled: true,
+			repo,
+			files: files.map((f) => ({ path: f.path, bytes: f.bytes })),
+		},
+	})
 
-  return ok({ ...(await getRepoSyncState(id, gate.user.id)), synced: files.length > 0 })
+	return ok({ ...(await getRepoSyncState(id, gate.user.id)), synced: files.length > 0 })
 })
 
 /**
@@ -109,26 +109,26 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
  * reaches for after fixing a failure or pushing a change from elsewhere.
  */
 export const PUT = withRoute(async (_req: Request, { params }: Params) => {
-  const gate = await requireSession()
-  if (gate.error) return gate.error
-  const { id } = await params
+	const gate = await requireSession()
+	if (gate.error) return gate.error
+	const { id } = await params
 
-  const state = await getRepoSyncState(id, gate.user.id)
-  if (!state.enabled) throw new HttpError("CONFLICT", "Turn the repo sync on first")
+	const state = await getRepoSyncState(id, gate.user.id)
+	if (!state.enabled) throw new HttpError("CONFLICT", "Turn the repo sync on first")
 
-  // Which forge to check against is the pinned repo's own, not a fixed one.
-  const ref = repoRefFromLink(state.repo)
-  const forge: Forge | null = ref?.forge ?? null
-  if (!forge) throw new HttpError("UNPROCESSABLE", "The pinned repo is not one Half Life can write to.")
-  if (!(await forgeCredentials(gate.user.id, forge))) {
-    throw new HttpError("FORBIDDEN", `Connect your ${forge.label} account first`)
-  }
+	// Which forge to check against is the pinned repo's own, not a fixed one.
+	const ref = repoRefFromLink(state.repo)
+	const forge: Forge | null = ref?.forge ?? null
+	if (!forge) throw new HttpError("UNPROCESSABLE", "The pinned repo is not one Half Life can write to.")
+	if (!(await forgeCredentials(gate.user.id, forge))) {
+		throw new HttpError("FORBIDDEN", `Connect your ${forge.label} account first`)
+	}
 
-  const files = await runProjectSync(id, true)
-  const after = await getRepoSyncState(id, gate.user.id)
-  // A manual run that recorded an error is a refusal, not a quiet success: the
-  // button's whole point is to find out whether it worked now.
-  if (after.error) throw new HttpError("UNPROCESSABLE", after.error)
+	const files = await runProjectSync(id, true)
+	const after = await getRepoSyncState(id, gate.user.id)
+	// A manual run that recorded an error is a refusal, not a quiet success: the
+	// button's whole point is to find out whether it worked now.
+	if (after.error) throw new HttpError("UNPROCESSABLE", after.error)
 
-  return ok({ ...after, synced: files.length > 0 })
+	return ok({ ...after, synced: files.length > 0 })
 })

@@ -9,10 +9,10 @@ import { recordSyncRun } from "@/lib/sync-run-log"
  * may already be in a box, so a human decides what happens next.
  */
 export const POST = withRoute(async (req: NextRequest) => {
-  const denied = requireIntegrationAuth(req)
-  if (denied) return denied
+	const denied = requireIntegrationAuth(req)
+	if (denied) return denied
 
-  const mismatches = await findPrinterAwardMismatches()
-  await recordSyncRun("printer_reconcile", { mismatches: mismatches.length })
-  return ok({ mismatches })
+	const mismatches = await findPrinterAwardMismatches()
+	await recordSyncRun("printer_reconcile", { mismatches: mismatches.length })
+	return ok({ mismatches })
 })

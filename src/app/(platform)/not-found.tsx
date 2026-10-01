@@ -6,10 +6,10 @@ import { NotFoundScene } from "@/components/site/not-found-scene"
  * so a dead link reads the same wherever it leads.
  */
 export default function NotFound() {
-  return (
-    <>
-      <title>Page not found · Half Life by Hack Club</title>
-      <NotFoundScene />
-    </>
-  )
+	return (
+		<>
+			<title>Page not found · Half Life by Hack Club</title>
+			<NotFoundScene />
+		</>
+	)
 }

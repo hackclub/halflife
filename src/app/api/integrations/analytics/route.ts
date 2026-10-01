@@ -16,15 +16,15 @@ export const maxDuration = 120
  * streaks — that includes emails, so it sits behind the integration key.
  */
 export const GET = withRoute(async (req: NextRequest) => {
-  const denied = requireIntegrationAuth(req)
-  if (denied) return denied
+	const denied = requireIntegrationAuth(req)
+	if (denied) return denied
 
-  const days = Math.min(365, Math.max(1, Number(req.nextUrl.searchParams.get("days")) || 30))
-  const withUsers = req.nextUrl.searchParams.get("users") === "true"
+	const days = Math.min(365, Math.max(1, Number(req.nextUrl.searchParams.get("days")) || 30))
+	const withUsers = req.nextUrl.searchParams.get("users") === "true"
 
-  const [summary, users] = await Promise.all([
-    getAnalyticsSummary(days),
-    withUsers ? getUserAnalytics() : Promise.resolve(undefined),
-  ])
-  return ok({ summary, ...(users ? { users } : {}) })
+	const [summary, users] = await Promise.all([
+		getAnalyticsSummary(days),
+		withUsers ? getUserAnalytics() : Promise.resolve(undefined),
+	])
+	return ok({ summary, ...(users ? { users } : {}) })
 })

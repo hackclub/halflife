@@ -24,29 +24,29 @@ import { ENTRY_TIER } from "./tiers"
 export type PrinterKind = "bedslinger" | "corexy" | "resin" | "cnc"
 
 export interface PrinterGoal {
-  id: string
-  name: string
-  /** Sticker price, before anyone ships anything. */
-  price: number
-  /** What it actually costs us — shipping and tax included. */
-  shopPrice: number
-  /** What it costs in the shop. One coin is one dollar. */
-  coins: number
-  /** Hours a design week asks on tier 1 to land this by the end of the season. */
-  hoursPerWeek: number
-  /** Of those hours, the ones that bank instead of funding your project. */
-  bankedHours: number
-  /**
-   * Coins a design week earns at that pace — banked hours at $5 each. A build
-   * week does not use this; it banks BUILD_WEEK_COINS / BUILD_WEEKS flat.
-   */
-  coinsPerWeek: number
-  kind: PrinterKind
-  link: string
-  /** Short flag for anything that is not a plain FDM printer. */
-  note?: string
-  /** How the maker describes it on the product page `link` points at. */
-  blurb: string
+	id: string
+	name: string
+	/** Sticker price, before anyone ships anything. */
+	price: number
+	/** What it actually costs us — shipping and tax included. */
+	shopPrice: number
+	/** What it costs in the shop. One coin is one dollar. */
+	coins: number
+	/** Hours a design week asks on tier 1 to land this by the end of the season. */
+	hoursPerWeek: number
+	/** Of those hours, the ones that bank instead of funding your project. */
+	bankedHours: number
+	/**
+	 * Coins a design week earns at that pace — banked hours at $5 each. A build
+	 * week does not use this; it banks BUILD_WEEK_COINS / BUILD_WEEKS flat.
+	 */
+	coinsPerWeek: number
+	kind: PrinterKind
+	link: string
+	/** Short flag for anything that is not a plain FDM printer. */
+	note?: string
+	/** How the maker describes it on the product page `link` points at. */
+	blurb: string
 }
 
 /**
@@ -60,104 +60,104 @@ export const TIER1_MIN_HOURS = 10
 type SheetRow = Omit<PrinterGoal, "coinsPerWeek">
 
 const SHEET: SheetRow[] = [
-  {
-    id: "ender-3-v3-se",
-    name: "Ender 3 V3 SE",
-    price: 199,
-    shopPrice: 218.9,
-    coins: 219,
-    hoursPerWeek: 9.76,
-    bankedHours: 3.76,
-    kind: "bedslinger",
-    link: "https://store.creality.com/products/ender-3-v3-se-3d-printer",
-    blurb: "Perfect for beginners: easy, reliable, and ready for every project.",
-  },
-  {
-    id: "bambu-a1-mini",
-    name: "Bambu A1 Mini",
-    price: 219,
-    shopPrice: 240.9,
-    coins: 241,
-    hoursPerWeek: 10.64,
-    bankedHours: 4.64,
-    kind: "bedslinger",
-    link: "https://us.store.bambulab.com/products/a1-mini",
-    blurb: "Ultimate performance in a compact build volume, with features once found only in high-end models.",
-  },
-  {
-    id: "elegoo-mars-4",
-    name: "ELEGOO Mars 5",
-    price: 225,
-    shopPrice: 247.5,
-    coins: 248,
-    hoursPerWeek: 10.9,
-    bankedHours: 4.9,
-    kind: "resin",
-    note: "Resin",
-    link: "https://us.elegoo.com/collections/lcd-printers/products/mars-5-4k-6-6inch-monochrome-lcd-resin-3d-printer",
-    blurb: "The best resin 3D printer for budget-savvy beginners, with smart self-check and auto-leveling.",
-  },
-  {
-    id: "elegoo-neptune-4",
-    name: "ELEGOO Neptune 4",
-    price: 249,
-    shopPrice: 273.9,
-    coins: 274,
-    hoursPerWeek: 11.96,
-    bankedHours: 5.96,
-    kind: "bedslinger",
-    link: "https://us.elegoo.com/collections/fdm-printers/products/elegoo-neptune-4-fdm-3d-printer",
-    blurb: "Up to 500mm/s printing, 121-point auto bed leveling and a 300°C dual-gear direct extruder.",
-  },
-  {
-    id: "monoprice-cnc",
-    name: "Monoprice CNC Router",
-    price: 249.99,
-    shopPrice: 274.99,
-    coins: 275,
-    hoursPerWeek: 12,
-    bankedHours: 6,
-    kind: "cnc",
-    note: "CNC Router",
-    link: "https://www.monoprice.com/product?p_id=44220",
-    blurb: "A 3-axis CNC router for engraving and milling soft metals, wood, plastic, acrylic, PVC and PCBs.",
-  },
-  {
-    id: "elegoo-centauri-2",
-    name: "ELEGOO Centauri 2",
-    price: 299,
-    shopPrice: 328.9,
-    coins: 329,
-    hoursPerWeek: 14.16,
-    bankedHours: 8.16,
-    kind: "corexy",
-    link: "https://us.elegoo.com/collections/fdm-printers/products/centauri-2",
-    blurb: "A high-speed CoreXY 3D printer with easy setup, smart auto-calibration and reliable precision.",
-  },
-  {
-    id: "bambu-a1",
-    name: "Bambu A1",
-    price: 299,
-    shopPrice: 328.9,
-    coins: 329,
-    hoursPerWeek: 14.16,
-    bankedHours: 8.16,
-    kind: "bedslinger",
-    link: "https://us.store.bambulab.com/products/a1",
-    blurb: "Fully automated, multi-color printing: a full-size bed-slinger with CoreXY speed.",
-  },
-  {
-    id: "bambu-p1s",
-    name: "Bambu P1S",
-    price: 399,
-    shopPrice: 438.9,
-    coins: 439,
-    hoursPerWeek: 18.56,
-    bankedHours: 12.56,
-    kind: "corexy",
-    link: "https://us.store.bambulab.com/products/p1s",
-    blurb: "A high-speed enclosed 3D printer with a CoreXY design and reliable performance right out of the box.",
-  },
+	{
+		id: "ender-3-v3-se",
+		name: "Ender 3 V3 SE",
+		price: 199,
+		shopPrice: 218.9,
+		coins: 219,
+		hoursPerWeek: 9.76,
+		bankedHours: 3.76,
+		kind: "bedslinger",
+		link: "https://store.creality.com/products/ender-3-v3-se-3d-printer",
+		blurb: "Perfect for beginners: easy, reliable, and ready for every project.",
+	},
+	{
+		id: "bambu-a1-mini",
+		name: "Bambu A1 Mini",
+		price: 219,
+		shopPrice: 240.9,
+		coins: 241,
+		hoursPerWeek: 10.64,
+		bankedHours: 4.64,
+		kind: "bedslinger",
+		link: "https://us.store.bambulab.com/products/a1-mini",
+		blurb: "Ultimate performance in a compact build volume, with features once found only in high-end models.",
+	},
+	{
+		id: "elegoo-mars-4",
+		name: "ELEGOO Mars 5",
+		price: 225,
+		shopPrice: 247.5,
+		coins: 248,
+		hoursPerWeek: 10.9,
+		bankedHours: 4.9,
+		kind: "resin",
+		note: "Resin",
+		link: "https://us.elegoo.com/collections/lcd-printers/products/mars-5-4k-6-6inch-monochrome-lcd-resin-3d-printer",
+		blurb: "The best resin 3D printer for budget-savvy beginners, with smart self-check and auto-leveling.",
+	},
+	{
+		id: "elegoo-neptune-4",
+		name: "ELEGOO Neptune 4",
+		price: 249,
+		shopPrice: 273.9,
+		coins: 274,
+		hoursPerWeek: 11.96,
+		bankedHours: 5.96,
+		kind: "bedslinger",
+		link: "https://us.elegoo.com/collections/fdm-printers/products/elegoo-neptune-4-fdm-3d-printer",
+		blurb: "Up to 500mm/s printing, 121-point auto bed leveling and a 300°C dual-gear direct extruder.",
+	},
+	{
+		id: "monoprice-cnc",
+		name: "Monoprice CNC Router",
+		price: 249.99,
+		shopPrice: 274.99,
+		coins: 275,
+		hoursPerWeek: 12,
+		bankedHours: 6,
+		kind: "cnc",
+		note: "CNC Router",
+		link: "https://www.monoprice.com/product?p_id=44220",
+		blurb: "A 3-axis CNC router for engraving and milling soft metals, wood, plastic, acrylic, PVC and PCBs.",
+	},
+	{
+		id: "elegoo-centauri-2",
+		name: "ELEGOO Centauri 2",
+		price: 299,
+		shopPrice: 328.9,
+		coins: 329,
+		hoursPerWeek: 14.16,
+		bankedHours: 8.16,
+		kind: "corexy",
+		link: "https://us.elegoo.com/collections/fdm-printers/products/centauri-2",
+		blurb: "A high-speed CoreXY 3D printer with easy setup, smart auto-calibration and reliable precision.",
+	},
+	{
+		id: "bambu-a1",
+		name: "Bambu A1",
+		price: 299,
+		shopPrice: 328.9,
+		coins: 329,
+		hoursPerWeek: 14.16,
+		bankedHours: 8.16,
+		kind: "bedslinger",
+		link: "https://us.store.bambulab.com/products/a1",
+		blurb: "Fully automated, multi-color printing: a full-size bed-slinger with CoreXY speed.",
+	},
+	{
+		id: "bambu-p1s",
+		name: "Bambu P1S",
+		price: 399,
+		shopPrice: 438.9,
+		coins: 439,
+		hoursPerWeek: 18.56,
+		bankedHours: 12.56,
+		kind: "corexy",
+		link: "https://us.store.bambulab.com/products/p1s",
+		blurb: "A high-speed enclosed 3D printer with a CoreXY design and reliable performance right out of the box.",
+	},
 ]
 
 /**
@@ -187,9 +187,9 @@ export const BUILD_WEEK_COINS = BUILD_HOURS * COINS_PER_HOUR * BUILD_WEEKS
  * banked hours, or the sheet's arithmetic stops landing on the price.
  */
 export const PRINTERS: PrinterGoal[] = SHEET.map((p) => ({
-  ...p,
-  hoursPerWeek: Math.max(TIER1_MIN_HOURS, p.hoursPerWeek),
-  coinsPerWeek: p.bankedHours * COINS_PER_HOUR,
+	...p,
+	hoursPerWeek: Math.max(TIER1_MIN_HOURS, p.hoursPerWeek),
+	coinsPerWeek: p.bankedHours * COINS_PER_HOUR,
 }))
 
 export const DEFAULT_GOAL_ID = "ender-3-v3-se"
@@ -222,7 +222,7 @@ export const MIN_HOURS_PER_WEEK = Math.min(...PRINTERS.map((p) => p.hoursPerWeek
  * on the trail and another in the submit sheet.
  */
 export function weekAsk(pace: number, fundingHours: number): number {
-  return pace + (fundingHours - ENTRY_TIER.fundingHours)
+	return pace + (fundingHours - ENTRY_TIER.fundingHours)
 }
 
 /**
@@ -233,13 +233,13 @@ export function weekAsk(pace: number, fundingHours: number): number {
  * early week pay for a thin later one without anybody being warned twice.
  */
 export function paceTarget(goal: PrinterGoal, weekId: number): number {
-  const design = Math.min(weekId, DESIGN_WEEKS)
-  const build = Math.max(0, weekId - DESIGN_WEEKS)
-  return design * goal.coinsPerWeek + build * BUILD_HOURS * COINS_PER_HOUR
+	const design = Math.min(weekId, DESIGN_WEEKS)
+	const build = Math.max(0, weekId - DESIGN_WEEKS)
+	return design * goal.coinsPerWeek + build * BUILD_HOURS * COINS_PER_HOUR
 }
 
 export function printerById(id: string): PrinterGoal {
-  return PRINTERS.find((p) => p.id === id) ?? PRINTERS.find((p) => p.id === DEFAULT_GOAL_ID)!
+	return PRINTERS.find((p) => p.id === id) ?? PRINTERS.find((p) => p.id === DEFAULT_GOAL_ID)!
 }
 
 /**
@@ -251,8 +251,8 @@ export function printerById(id: string): PrinterGoal {
  * them to run past the end of a season that is only SEASON_WEEKS long.
  */
 export function weeksToGo(goal: PrinterGoal, coins: number): number {
-  const fromDesign = Math.max(0, goal.coins - coins - BUILD_WEEK_COINS)
-  return Math.min(DESIGN_WEEKS, Math.ceil(fromDesign / goal.coinsPerWeek))
+	const fromDesign = Math.max(0, goal.coins - coins - BUILD_WEEK_COINS)
+	return Math.min(DESIGN_WEEKS, Math.ceil(fromDesign / goal.coinsPerWeek))
 }
 
 /**
@@ -271,15 +271,15 @@ export function weeksToGo(goal: PrinterGoal, coins: number): number {
  * so the number you pick against is the number you are held to.
  */
 export function submitFloorFor(fundingHours: number): number {
-  return weekAsk(MIN_HOURS_PER_WEEK, fundingHours)
+	return weekAsk(MIN_HOURS_PER_WEEK, fundingHours)
 }
 
 /** Of that floor, the part that banks toward the goal rather than the project. */
 export function tierBankedFloor(fundingHours: number): number {
-  return submitFloorFor(fundingHours) - fundingHours
+	return submitFloorFor(fundingHours) - fundingHours
 }
 
 /** What a design week at this tier asks of someone saving for this machine. */
 export function weekAskFor(goal: PrinterGoal, fundingHours: number): number {
-  return weekAsk(goal.hoursPerWeek, fundingHours)
+	return weekAsk(goal.hoursPerWeek, fundingHours)
 }

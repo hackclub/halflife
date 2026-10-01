@@ -13,62 +13,62 @@
  */
 
 .scene {
-  --ink: var(--color-hl-ink, #31222c);
-  --paper: var(--color-hl-paper, #ededed);
-  --cyan: var(--color-hl-cyan, #8ed3dc);
-  --plate: var(--color-hl-lavender-pale, #e6e5fc);
-  --paper-soft: color-mix(in srgb, var(--paper) 78%, var(--ink));
-  --cyan-soft: color-mix(in srgb, var(--cyan) 70%, var(--ink));
+	--ink: var(--color-hl-ink, #31222c);
+	--paper: var(--color-hl-paper, #ededed);
+	--cyan: var(--color-hl-cyan, #8ed3dc);
+	--plate: var(--color-hl-lavender-pale, #e6e5fc);
+	--paper-soft: color-mix(in srgb, var(--paper) 78%, var(--ink));
+	--cyan-soft: color-mix(in srgb, var(--cyan) 70%, var(--ink));
 
-  /* Above the platform's fixed graph-paper layer, which sits at z-index 0. */
-  position: relative;
-  z-index: 1;
-  isolation: isolate;
-  display: flex;
-  min-height: 100dvh;
-  padding: clamp(2.5rem, 8vh, 5rem) 1rem;
-  background-color: var(--ink);
-  color: var(--paper);
-  font-family: var(--font-open-sans), ui-sans-serif, system-ui, sans-serif;
-  -webkit-font-smoothing: antialiased;
+	/* Above the platform's fixed graph-paper layer, which sits at z-index 0. */
+	position: relative;
+	z-index: 1;
+	isolation: isolate;
+	display: flex;
+	min-height: 100dvh;
+	padding: clamp(2.5rem, 8vh, 5rem) 1rem;
+	background-color: var(--ink);
+	color: var(--paper);
+	font-family: var(--font-open-sans), ui-sans-serif, system-ui, sans-serif;
+	-webkit-font-smoothing: antialiased;
 }
 
 /* The landing's ring and selection, in place of whichever document's these
    would otherwise be — the platform's magenta ring means nothing on ink. */
 .scene :focus-visible {
-  outline: 3px solid var(--cyan);
-  outline-offset: 3px;
-  border-radius: 0;
+	outline: 3px solid var(--cyan);
+	outline-offset: 3px;
+	border-radius: 0;
 }
 
 .scene ::selection {
-  background-color: var(--cyan);
-  color: var(--ink);
+	background-color: var(--cyan);
+	color: var(--ink);
 }
 
 .column {
-  width: 100%;
-  max-width: 42rem;
-  margin: auto;
+	width: 100%;
+	max-width: 42rem;
+	margin: auto;
 }
 
 /* ── The wordmark, live, in the footer's cyan ─────────────────────────── */
 
 .wordmark {
-  display: inline-block;
-  margin-bottom: clamp(2.25rem, 7vh, 4rem);
-  color: var(--cyan);
-  font-family: var(--font-masterpiece), var(--font-ubuntu), ui-sans-serif, sans-serif;
-  font-size: clamp(2.25rem, 7vw, 3rem);
-  font-synthesis-weight: none;
-  letter-spacing: -0.045em;
-  line-height: 0.86;
-  text-decoration: none;
-  transition: color 150ms;
+	display: inline-block;
+	margin-bottom: clamp(2.25rem, 7vh, 4rem);
+	color: var(--cyan);
+	font-family: var(--font-masterpiece), var(--font-ubuntu), ui-sans-serif, sans-serif;
+	font-size: clamp(2.25rem, 7vw, 3rem);
+	font-synthesis-weight: none;
+	letter-spacing: -0.045em;
+	line-height: 0.86;
+	text-decoration: none;
+	transition: color 150ms;
 }
 
 .wordmark:hover {
-  color: var(--paper);
+	color: var(--paper);
 }
 
 /* ── The header plate, and the weld that leaves it ────────────────────── */
@@ -76,42 +76,42 @@
 /* As wide as its own line, so the weld is placed by a share of the plate
    rather than of the column, as the landing's header weld is. */
 .head {
-  display: flex;
-  flex-direction: column;
-  width: fit-content;
-  max-width: 100%;
+	display: flex;
+	flex-direction: column;
+	width: fit-content;
+	max-width: 100%;
 }
 
 .plate {
-  margin: 0;
-  padding: 0.75rem 1.25rem;
-  border-radius: 0.75rem;
-  corner-shape: bevel;
-  background-color: var(--plate);
-  color: var(--ink);
-  font-family: var(--font-ubuntu), ui-sans-serif, system-ui, sans-serif;
-  /* 3.25rem is the size the line fits the 42rem column on one line at: it
+	margin: 0;
+	padding: 0.75rem 1.25rem;
+	border-radius: 0.75rem;
+	corner-shape: bevel;
+	background-color: var(--plate);
+	color: var(--ink);
+	font-family: var(--font-ubuntu), ui-sans-serif, system-ui, sans-serif;
+	/* 3.25rem is the size the line fits the 42rem column on one line at: it
      measures 11.4em plus the plate's padding. */
-  font-size: clamp(2rem, 8vw, 3.25rem);
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  line-height: 1.05;
-  /* Not `balance`. A fit-content box is as wide as the line could have been,
+	font-size: clamp(2rem, 8vw, 3.25rem);
+	font-weight: 700;
+	letter-spacing: -0.03em;
+	line-height: 1.05;
+	/* Not `balance`. A fit-content box is as wide as the line could have been,
      not as the lines it ended up with, so balanced lines leave the plate with
      a blank strip down its right side. `pretty` fills the first line and keeps
      the plate on the ink. */
-  text-wrap: pretty;
+	text-wrap: pretty;
 }
 
 /* The landing's stacked weld, cut short. It leaves the plate at the same
    41.78% the landing's header weld does and is sheared before it arrives, so
    the line visibly runs out above the station it was built to reach. */
 .weld {
-  display: block;
-  width: 10rem;
-  height: 4rem;
-  margin-left: 41.78%;
-  translate: -35% 0;
+	display: block;
+	width: 10rem;
+	height: 4rem;
+	margin-left: 41.78%;
+	translate: -35% 0;
 }
 
 /* ── The station that was never built ─────────────────────────────────── */
@@ -119,171 +119,171 @@
 /* The landing's reserved slot (`image-slot.tsx`, ink tone), full width where
    a step plate would be: a measured grid, a cyan edge, registration ticks. */
 .slot {
-  position: relative;
-  display: grid;
-  place-items: center;
-  min-height: 14rem;
-  padding: 2.75rem 1.5rem;
-  overflow: hidden;
-  background-color: var(--ink);
-  text-align: center;
+	position: relative;
+	display: grid;
+	place-items: center;
+	min-height: 14rem;
+	padding: 2.75rem 1.5rem;
+	overflow: hidden;
+	background-color: var(--ink);
+	text-align: center;
 }
 
 .grid {
-  position: absolute;
-  inset: 0;
-  opacity: 0.3;
-  background-image:
-    repeating-linear-gradient(to right, var(--cyan) 0 1px, transparent 1px 2.25rem),
-    repeating-linear-gradient(to bottom, var(--cyan) 0 1px, transparent 1px 2.25rem);
-  mask-image: radial-gradient(120% 120% at 50% 50%, #000 25%, transparent 78%);
-  pointer-events: none;
+	position: absolute;
+	inset: 0;
+	opacity: 0.3;
+	background-image:
+		repeating-linear-gradient(to right, var(--cyan) 0 1px, transparent 1px 2.25rem),
+		repeating-linear-gradient(to bottom, var(--cyan) 0 1px, transparent 1px 2.25rem);
+	mask-image: radial-gradient(120% 120% at 50% 50%, #000 25%, transparent 78%);
+	pointer-events: none;
 }
 
 .edge {
-  position: absolute;
-  inset: 0;
-  border: 2px solid color-mix(in srgb, var(--cyan) 45%, transparent);
-  pointer-events: none;
+	position: absolute;
+	inset: 0;
+	border: 2px solid color-mix(in srgb, var(--cyan) 45%, transparent);
+	pointer-events: none;
 }
 
 .tick {
-  position: absolute;
-  width: 1.75rem;
-  height: 1.75rem;
-  border: 0 solid var(--cyan);
-  pointer-events: none;
+	position: absolute;
+	width: 1.75rem;
+	height: 1.75rem;
+	border: 0 solid var(--cyan);
+	pointer-events: none;
 }
 
 .tl {
-  top: 0;
-  left: 0;
-  border-top-width: 2px;
-  border-left-width: 2px;
+	top: 0;
+	left: 0;
+	border-top-width: 2px;
+	border-left-width: 2px;
 }
 .tr {
-  top: 0;
-  right: 0;
-  border-top-width: 2px;
-  border-right-width: 2px;
+	top: 0;
+	right: 0;
+	border-top-width: 2px;
+	border-right-width: 2px;
 }
 .bl {
-  bottom: 0;
-  left: 0;
-  border-bottom-width: 2px;
-  border-left-width: 2px;
+	bottom: 0;
+	left: 0;
+	border-bottom-width: 2px;
+	border-left-width: 2px;
 }
 .br {
-  bottom: 0;
-  right: 0;
-  border-bottom-width: 2px;
-  border-right-width: 2px;
+	bottom: 0;
+	right: 0;
+	border-bottom-width: 2px;
+	border-right-width: 2px;
 }
 
 .body {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  max-width: 100%;
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	max-width: 100%;
 }
 
 .label {
-  margin: 0;
-  color: var(--cyan);
-  font-family: var(--font-ubuntu), ui-sans-serif, system-ui, sans-serif;
-  font-size: 1.25rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  line-height: 1.1;
-  text-transform: uppercase;
+	margin: 0;
+	color: var(--cyan);
+	font-family: var(--font-ubuntu), ui-sans-serif, system-ui, sans-serif;
+	font-size: 1.25rem;
+	font-weight: 700;
+	letter-spacing: 0.14em;
+	line-height: 1.1;
+	text-transform: uppercase;
 }
 
 /* The address that was asked for. Data, so it wraps anywhere rather than
    pushing a long URL out of the slot on a phone. */
 .path {
-  max-width: 100%;
-  margin-top: 0.5rem;
-  color: var(--cyan-soft);
-  font-size: 0.9rem;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.06em;
-  overflow-wrap: anywhere;
+	max-width: 100%;
+	margin-top: 0.5rem;
+	color: var(--cyan-soft);
+	font-size: 0.9rem;
+	font-variant-numeric: tabular-nums;
+	letter-spacing: 0.06em;
+	overflow-wrap: anywhere;
 }
 
 .text {
-  max-width: 34ch;
-  margin: 1.25rem 0 0;
-  color: var(--paper-soft);
-  font-size: 1rem;
-  line-height: 1.6;
-  text-wrap: pretty;
+	max-width: 34ch;
+	margin: 1.25rem 0 0;
+	color: var(--paper-soft);
+	font-size: 1rem;
+	line-height: 1.6;
+	text-wrap: pretty;
 }
 
 /* ── The ways off the line ────────────────────────────────────────────── */
 
 .actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 1rem 2rem;
-  margin-top: 2rem;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 1rem 2rem;
+	margin-top: 2rem;
 }
 
 /* The sign-up CTA's block: cyan, square, ink type, white on hover. */
 .primary {
-  display: inline-flex;
-  align-items: center;
-  height: 2.875rem;
-  padding: 0 1.25em;
-  background-color: var(--cyan);
-  color: var(--ink);
-  font-family: var(--font-ubuntu), ui-sans-serif, system-ui, sans-serif;
-  font-size: 1.125rem;
-  font-weight: 700;
-  text-decoration: none;
-  transition: background-color 150ms;
+	display: inline-flex;
+	align-items: center;
+	height: 2.875rem;
+	padding: 0 1.25em;
+	background-color: var(--cyan);
+	color: var(--ink);
+	font-family: var(--font-ubuntu), ui-sans-serif, system-ui, sans-serif;
+	font-size: 1.125rem;
+	font-weight: 700;
+	text-decoration: none;
+	transition: background-color 150ms;
 }
 
 .primary:hover,
 .primary:focus-visible {
-  background-color: #fff;
+	background-color: #fff;
 }
 
 /* The footer's link. */
 .secondary {
-  color: var(--paper);
-  font-size: 1rem;
-  text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, var(--paper) 25%, transparent);
-  text-decoration-thickness: 2px;
-  text-underline-offset: 4px;
-  transition:
-    color 150ms,
-    text-decoration-color 150ms;
+	color: var(--paper);
+	font-size: 1rem;
+	text-decoration: underline;
+	text-decoration-color: color-mix(in srgb, var(--paper) 25%, transparent);
+	text-decoration-thickness: 2px;
+	text-underline-offset: 4px;
+	transition:
+		color 150ms,
+		text-decoration-color 150ms;
 }
 
 .secondary:hover,
 .secondary:focus-visible {
-  color: var(--cyan);
-  text-decoration-color: var(--cyan);
+	color: var(--cyan);
+	text-decoration-color: var(--cyan);
 }
 
 @media (min-width: 640px) {
-  .scene {
-    padding-inline: 2rem;
-  }
+	.scene {
+		padding-inline: 2rem;
+	}
 
-  .plate {
-    padding: 1rem 2rem;
-  }
+	.plate {
+		padding: 1rem 2rem;
+	}
 
-  .weld {
-    width: 14rem;
-    height: 6rem;
-  }
+	.weld {
+		width: 14rem;
+		height: 6rem;
+	}
 
-  .slot {
-    min-height: 16rem;
-  }
+	.slot {
+		min-height: 16rem;
+	}
 }

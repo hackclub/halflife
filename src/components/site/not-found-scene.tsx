@@ -26,60 +26,60 @@ import styles from "./not-found.module.css"
 const SHEAR = "M0 0H200V66L186 76L172 64L158 78L144 66L130 76L116 64L102 78L88 66L74 76L60 64L46 78L32 66L18 76L0 64Z"
 
 export function NotFoundScene() {
-  return (
-    <main className={`${styles.scene} ${siteFontVariables}`}>
-      <div className={styles.column}>
-        <Link href="/" className={styles.wordmark}>
-          {BRAND.name.toLowerCase()}
-        </Link>
+	return (
+		<main className={`${styles.scene} ${siteFontVariables}`}>
+			<div className={styles.column}>
+				<Link href="/" className={styles.wordmark}>
+					{BRAND.name.toLowerCase()}
+				</Link>
 
-        <div className={styles.head}>
-          <h1 className={styles.plate}>this page isn&rsquo;t on the map</h1>
-          <svg
-            viewBox={`0 0 ${STACK_VIEW.w} ${STACK_VIEW.h}`}
-            preserveAspectRatio="none"
-            fill="none"
-            aria-hidden="true"
-            focusable="false"
-            className={styles.weld}
-          >
-            <defs>
-              <clipPath id="hl-404-shear">
-                <path d={SHEAR} />
-              </clipPath>
-            </defs>
-            <path d={stackWeld("right")} fill="var(--color-hl-lavender-pale, #e6e5fc)" clipPath="url(#hl-404-shear)" />
-          </svg>
-        </div>
+				<div className={styles.head}>
+					<h1 className={styles.plate}>this page isn&rsquo;t on the map</h1>
+					<svg
+						viewBox={`0 0 ${STACK_VIEW.w} ${STACK_VIEW.h}`}
+						preserveAspectRatio="none"
+						fill="none"
+						aria-hidden="true"
+						focusable="false"
+						className={styles.weld}
+					>
+						<defs>
+							<clipPath id="hl-404-shear">
+								<path d={SHEAR} />
+							</clipPath>
+						</defs>
+						<path d={stackWeld("right")} fill="var(--color-hl-lavender-pale, #e6e5fc)" clipPath="url(#hl-404-shear)" />
+					</svg>
+				</div>
 
-        <section className={styles.slot} aria-labelledby="hl-404-label">
-          <span aria-hidden="true" className={styles.grid} />
-          <span aria-hidden="true" className={styles.edge} />
-          <span aria-hidden="true" className={`${styles.tick} ${styles.tl}`} />
-          <span aria-hidden="true" className={`${styles.tick} ${styles.tr}`} />
-          <span aria-hidden="true" className={`${styles.tick} ${styles.bl}`} />
-          <span aria-hidden="true" className={`${styles.tick} ${styles.br}`} />
+				<section className={styles.slot} aria-labelledby="hl-404-label">
+					<span aria-hidden="true" className={styles.grid} />
+					<span aria-hidden="true" className={styles.edge} />
+					<span aria-hidden="true" className={`${styles.tick} ${styles.tl}`} />
+					<span aria-hidden="true" className={`${styles.tick} ${styles.tr}`} />
+					<span aria-hidden="true" className={`${styles.tick} ${styles.bl}`} />
+					<span aria-hidden="true" className={`${styles.tick} ${styles.br}`} />
 
-          <div className={styles.body}>
-            <h2 id="hl-404-label" className={styles.label}>
-              station 404
-            </h2>
-            <MissingPath className={styles.path} />
-            <p className={styles.text}>
-              This page doesn&rsquo;t exist (or you don&rsquo;t have permission to view it!)
-            </p>
-          </div>
-        </section>
+					<div className={styles.body}>
+						<h2 id="hl-404-label" className={styles.label}>
+							station 404
+						</h2>
+						<MissingPath className={styles.path} />
+						<p className={styles.text}>
+							This page doesn&rsquo;t exist (or you don&rsquo;t have permission to view it!)
+						</p>
+					</div>
+				</section>
 
-        <nav className={styles.actions} aria-label="Ways back">
-          <Link href={PLATFORM_HOME} className={styles.primary}>
-            back to your map
-          </Link>
-          <Link href="/" className={styles.secondary}>
-            {BRAND.name.toLowerCase()} home
-          </Link>
-        </nav>
-      </div>
-    </main>
-  )
+				<nav className={styles.actions} aria-label="Ways back">
+					<Link href={PLATFORM_HOME} className={styles.primary}>
+						back to your map
+					</Link>
+					<Link href="/" className={styles.secondary}>
+						{BRAND.name.toLowerCase()} home
+					</Link>
+				</nav>
+			</div>
+		</main>
+	)
 }

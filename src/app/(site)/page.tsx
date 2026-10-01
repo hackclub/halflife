@@ -5,16 +5,16 @@ import Process from "@/components/site/process"
 import SiteFooter from "@/components/site/site-footer"
 
 export default function Page() {
-  return (
-    <>
-      <a
-        href="#how-it-works"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-50 focus:bg-hl-cyan focus:px-4 focus:py-2 focus:font-semibold focus:text-hl-ink"
-      >
-        Skip to how it works
-      </a>
-      <main className="flex-1">
-        {/* The hero and "how does it work?" are one room, and this is the box
+	return (
+		<>
+			<a
+				href="#how-it-works"
+				className="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-50 focus:bg-hl-cyan focus:px-4 focus:py-2 focus:font-semibold focus:text-hl-ink"
+			>
+				Skip to how it works
+			</a>
+			<main className="flex-1">
+				{/* The hero and "how does it work?" are one room, and this is the box
             that makes that true rather than merely coordinated.
 
             Both the steel ground and the tiled ground pattern live here, on
@@ -42,14 +42,14 @@ export default function Page() {
 
             The sections below keep their own grounds: the carousel and the FAQ
             are different rooms and are supposed to read as such. */}
-        <div className="hl-ground-tile isolate bg-hl-blue-deep">
-          <Hero />
-          <Process />
-        </div>
-        <BuildCarousel />
-        <Faq />
-      </main>
-      <SiteFooter />
-    </>
-  )
+				<div className="hl-ground-tile isolate bg-hl-blue-deep">
+					<Hero />
+					<Process />
+				</div>
+				<BuildCarousel />
+				<Faq />
+			</main>
+			<SiteFooter />
+		</>
+	)
 }

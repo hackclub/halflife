@@ -35,23 +35,23 @@ const STORE_FILE = path.join(STORE_DIR, "signups.jsonl")
 const EMAIL = /^[^\s@,;:<>()[\]\\"]+@[^\s@.,;:<>()[\]\\"]+(\.[^\s@.,;:<>()[\]\\"]+)+$/
 
 export type SignupResult =
-  | { ok: true; duplicate: boolean; referralCode: string }
-  | { ok: false; error: string; status: number }
+	| { ok: true; duplicate: boolean; referralCode: string }
+	| { ok: false; error: string; status: number }
 
 export type SignupMeta = {
-  source?: string
-  ref?: string | null
-  utmSource?: string | null
-  utmMedium?: string | null
-  utmCampaign?: string | null
+	source?: string
+	ref?: string | null
+	utmSource?: string | null
+	utmMedium?: string | null
+	utmCampaign?: string | null
 }
 
 export function normalizeEmail(raw: unknown): string | null {
-  if (typeof raw !== "string") return null
-  const email = raw.trim().toLowerCase()
-  if (email.length < 6 || email.length > 254) return null
-  if (!EMAIL.test(email)) return null
-  return email
+	if (typeof raw !== "string") return null
+	const email = raw.trim().toLowerCase()
+	if (email.length < 6 || email.length > 254) return null
+	if (!EMAIL.test(email)) return null
+	return email
 }
 
 /**
@@ -64,20 +64,20 @@ export function normalizeEmail(raw: unknown): string | null {
  * colliding.
  */
 async function countAirtableRecords(url: string, headers: Record<string, string>): Promise<number> {
-  let count = 0
-  let offset: string | undefined
-  do {
-    const params = new URLSearchParams({ pageSize: "100", "fields[]": "email" })
-    if (offset) params.set("offset", offset)
-    const res = await fetch(`${url}?${params.toString()}`, { headers })
-    if (!res.ok) {
-      throw new Error(`${res.status} ${await res.text()}`)
-    }
-    const data = (await res.json()) as { records?: unknown[]; offset?: string }
-    count += data.records?.length ?? 0
-    offset = data.offset
-  } while (offset)
-  return count
+	let count = 0
+	let offset: string | undefined
+	do {
+		const params = new URLSearchParams({ pageSize: "100", "fields[]": "email" })
+		if (offset) params.set("offset", offset)
+		const res = await fetch(`${url}?${params.toString()}`, { headers })
+		if (!res.ok) {
+			throw new Error(`${res.status} ${await res.text()}`)
+		}
+		const data = (await res.json()) as { records?: unknown[]; offset?: string }
+		count += data.records?.length ?? 0
+		offset = data.offset
+	} while (offset)
+	return count
 }
 
 /**
@@ -89,180 +89,180 @@ async function countAirtableRecords(url: string, headers: Record<string, string>
 let webhookSequence = 0
 
 export async function recordSignup(email: string, ip = "unknown", meta: SignupMeta = {}): Promise<SignupResult> {
-  const { source = "landing", ref = null, utmSource = null, utmMedium = null, utmCampaign = null } = meta
+	const { source = "landing", ref = null, utmSource = null, utmMedium = null, utmCampaign = null } = meta
 
-  const airtableToken = process.env.AIRTABLE_API_KEY
-  const airtableBase = process.env.AIRTABLE_BASE_ID
+	const airtableToken = process.env.AIRTABLE_API_KEY
+	const airtableBase = process.env.AIRTABLE_BASE_ID
 
-  if (airtableToken && airtableBase) {
-    // The Signups table. It used to default to "Table 1", which is not in
-    // the base, so any deployment without AIRTABLE_TABLE_NAME failed every
-    // signup; the platform already names this table in AIRTABLE_RSVP_TABLE_ID.
-    const table = encodeURIComponent(process.env.AIRTABLE_TABLE_NAME ?? process.env.AIRTABLE_RSVP_TABLE_ID ?? "Signups")
-    const url = `https://api.airtable.com/v0/${airtableBase}/${table}`
-    const headers = {
-      "content-type": "application/json",
-      authorization: `Bearer ${airtableToken}`,
-    }
+	if (airtableToken && airtableBase) {
+		// The Signups table. It used to default to "Table 1", which is not in
+		// the base, so any deployment without AIRTABLE_TABLE_NAME failed every
+		// signup; the platform already names this table in AIRTABLE_RSVP_TABLE_ID.
+		const table = encodeURIComponent(process.env.AIRTABLE_TABLE_NAME ?? process.env.AIRTABLE_RSVP_TABLE_ID ?? "Signups")
+		const url = `https://api.airtable.com/v0/${airtableBase}/${table}`
+		const headers = {
+			"content-type": "application/json",
+			authorization: `Bearer ${airtableToken}`,
+		}
 
-    /**
-     * Airtable being unreachable must not lose the signup. Buffer it for the
-     * drain job instead of returning 502, so the person is on the list even
-     * though they do not get a referral number yet (the drain does not assign
-     * one — the signed-in owner gets a code from /api/me/referral once the
-     * row exists).
-     */
-    const bufferInstead = async (reason: string): Promise<SignupResult> => {
-      console.error(`[signup] Airtable ${reason}; buffering the signup for the drain job`)
-      try {
-        await bufferRsvp({
-          email,
-          ip,
-          ...(ref ? { referredBy: ref } : {}),
-          ...(utmSource ? { utmSource } : {}),
-          ...(utmMedium ? { utmMedium } : {}),
-          ...(utmCampaign ? { utmCampaign } : {}),
-        })
-      } catch (err) {
-        console.error("[signup] buffering the signup also failed:", err)
-        return {
-          ok: false,
-          status: 502,
-          error: "We couldn't reach the signup list. Try again in a moment.",
-        }
-      }
-      return { ok: true, duplicate: false, referralCode: "" }
-    }
+		/**
+		 * Airtable being unreachable must not lose the signup. Buffer it for the
+		 * drain job instead of returning 502, so the person is on the list even
+		 * though they do not get a referral number yet (the drain does not assign
+		 * one — the signed-in owner gets a code from /api/me/referral once the
+		 * row exists).
+		 */
+		const bufferInstead = async (reason: string): Promise<SignupResult> => {
+			console.error(`[signup] Airtable ${reason}; buffering the signup for the drain job`)
+			try {
+				await bufferRsvp({
+					email,
+					ip,
+					...(ref ? { referredBy: ref } : {}),
+					...(utmSource ? { utmSource } : {}),
+					...(utmMedium ? { utmMedium } : {}),
+					...(utmCampaign ? { utmCampaign } : {}),
+				})
+			} catch (err) {
+				console.error("[signup] buffering the signup also failed:", err)
+				return {
+					ok: false,
+					status: 502,
+					error: "We couldn't reach the signup list. Try again in a moment.",
+				}
+			}
+			return { ok: true, duplicate: false, referralCode: "" }
+		}
 
-    // Airtable has no unique-field constraint to lean on, so duplicates are
-    // caught with a lookup before the write — same contract the other two
-    // sinks give the caller.
-    const filter = encodeURIComponent(`LOWER({email})="${email}"`)
-    const lookup = await fetch(`${url}?filterByFormula=${filter}&maxRecords=1`, {
-      headers,
-    })
+		// Airtable has no unique-field constraint to lean on, so duplicates are
+		// caught with a lookup before the write — same contract the other two
+		// sinks give the caller.
+		const filter = encodeURIComponent(`LOWER({email})="${email}"`)
+		const lookup = await fetch(`${url}?filterByFormula=${filter}&maxRecords=1`, {
+			headers,
+		})
 
-    if (!lookup.ok) {
-      console.error(`Airtable lookup failed: ${lookup.status} ${await lookup.text()}`)
-      return bufferInstead("lookup failed")
-    }
+		if (!lookup.ok) {
+			console.error(`Airtable lookup failed: ${lookup.status} ${await lookup.text()}`)
+			return bufferInstead("lookup failed")
+		}
 
-    const found = (await lookup.json()) as {
-      records?: Array<{ fields?: Record<string, unknown> }>
-    }
-    if ((found.records?.length ?? 0) > 0) {
-      // The column the number is written to below; there is no
-      // `referral_code`, so reading that handed returning people a blank.
-      const existing = found.records?.[0]?.fields?.["Loops - halfLifeReferralNumber"]
-      return {
-        ok: true,
-        duplicate: true,
-        referralCode: existing == null ? "" : String(existing),
-      }
-    }
+		const found = (await lookup.json()) as {
+			records?: Array<{ fields?: Record<string, unknown> }>
+		}
+		if ((found.records?.length ?? 0) > 0) {
+			// The column the number is written to below; there is no
+			// `referral_code`, so reading that handed returning people a blank.
+			const existing = found.records?.[0]?.fields?.["Loops - halfLifeReferralNumber"]
+			return {
+				ok: true,
+				duplicate: true,
+				referralCode: existing == null ? "" : String(existing),
+			}
+		}
 
-    let referralCode: string
-    try {
-      referralCode = String((await countAirtableRecords(url, headers)) + 1)
-    } catch (err) {
-      console.error(`Airtable count failed: ${err}`)
-      return bufferInstead("count failed")
-    }
+		let referralCode: string
+		try {
+			referralCode = String((await countAirtableRecords(url, headers)) + 1)
+		} catch (err) {
+			console.error(`Airtable count failed: ${err}`)
+			return bufferInstead("count failed")
+		}
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        fields: {
-          email,
-          ip,
-          "Loops - halfLifeReferralNumber": referralCode,
-          referred_by: ref ?? undefined,
-          utm_source: utmSource ?? undefined,
-          utm_medium: utmMedium ?? undefined,
-          utm_campaign: utmCampaign ?? undefined,
-        },
-      }),
-    })
+		const response = await fetch(url, {
+			method: "POST",
+			headers,
+			body: JSON.stringify({
+				fields: {
+					email,
+					ip,
+					"Loops - halfLifeReferralNumber": referralCode,
+					referred_by: ref ?? undefined,
+					utm_source: utmSource ?? undefined,
+					utm_medium: utmMedium ?? undefined,
+					utm_campaign: utmCampaign ?? undefined,
+				},
+			}),
+		})
 
-    if (!response.ok) {
-      console.error(`Airtable create failed: ${response.status} ${await response.text()}`)
-      return bufferInstead("create failed")
-    }
-    return { ok: true, duplicate: false, referralCode }
-  }
+		if (!response.ok) {
+			console.error(`Airtable create failed: ${response.status} ${await response.text()}`)
+			return bufferInstead("create failed")
+		}
+		return { ok: true, duplicate: false, referralCode }
+	}
 
-  const webhook = process.env.SIGNUP_WEBHOOK_URL
+	const webhook = process.env.SIGNUP_WEBHOOK_URL
 
-  if (webhook) {
-    const referralCode = String(++webhookSequence)
-    const entry = {
-      email,
-      ip,
-      source,
-      referralCode,
-      ref,
-      utmSource,
-      utmMedium,
-      utmCampaign,
-    }
-    const token = process.env.SIGNUP_WEBHOOK_TOKEN
-    const response = await fetch(webhook, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        ...(token ? { authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify(entry),
-    })
+	if (webhook) {
+		const referralCode = String(++webhookSequence)
+		const entry = {
+			email,
+			ip,
+			source,
+			referralCode,
+			ref,
+			utmSource,
+			utmMedium,
+			utmCampaign,
+		}
+		const token = process.env.SIGNUP_WEBHOOK_TOKEN
+		const response = await fetch(webhook, {
+			method: "POST",
+			headers: {
+				"content-type": "application/json",
+				...(token ? { authorization: `Bearer ${token}` } : {}),
+			},
+			body: JSON.stringify(entry),
+		})
 
-    if (!response.ok) {
-      return {
-        ok: false,
-        status: 502,
-        error: "We couldn't reach the signup list. Try again in a moment.",
-      }
-    }
-    return { ok: true, duplicate: false, referralCode }
-  }
+		if (!response.ok) {
+			return {
+				ok: false,
+				status: 502,
+				error: "We couldn't reach the signup list. Try again in a moment.",
+			}
+		}
+		return { ok: true, duplicate: false, referralCode }
+	}
 
-  await mkdir(STORE_DIR, { recursive: true })
+	await mkdir(STORE_DIR, { recursive: true })
 
-  let duplicate = false
-  let referralCode = ""
-  let lineCount = 0
-  try {
-    const lines = (await readFile(STORE_FILE, "utf8")).split("\n").filter(Boolean)
-    lineCount = lines.length
-    const match = lines.find((line) => line.includes(`"email":"${email}"`))
-    if (match) {
-      duplicate = true
-      try {
-        referralCode = (JSON.parse(match) as { referralCode?: string }).referralCode ?? ""
-      } catch {
-        referralCode = ""
-      }
-    }
-  } catch {
-    // First signup — no file yet.
-  }
+	let duplicate = false
+	let referralCode = ""
+	let lineCount = 0
+	try {
+		const lines = (await readFile(STORE_FILE, "utf8")).split("\n").filter(Boolean)
+		lineCount = lines.length
+		const match = lines.find((line) => line.includes(`"email":"${email}"`))
+		if (match) {
+			duplicate = true
+			try {
+				referralCode = (JSON.parse(match) as { referralCode?: string }).referralCode ?? ""
+			} catch {
+				referralCode = ""
+			}
+		}
+	} catch {
+		// First signup — no file yet.
+	}
 
-  if (!duplicate) {
-    referralCode = String(lineCount + 1)
-    const entry = {
-      email,
-      ip,
-      source,
-      referralCode,
-      ref,
-      utmSource,
-      utmMedium,
-      utmCampaign,
-    }
-    await appendFile(STORE_FILE, `${JSON.stringify(entry)}\n`, "utf8")
-  }
+	if (!duplicate) {
+		referralCode = String(lineCount + 1)
+		const entry = {
+			email,
+			ip,
+			source,
+			referralCode,
+			ref,
+			utmSource,
+			utmMedium,
+			utmCampaign,
+		}
+		await appendFile(STORE_FILE, `${JSON.stringify(entry)}\n`, "utf8")
+	}
 
-  return { ok: true, duplicate, referralCode }
+	return { ok: true, duplicate, referralCode }
 }
 
 /**
@@ -274,15 +274,15 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
  * a plain proxy the last XFF entry is the address the edge itself saw.
  */
 export function clientIp(h: { get(name: string): string | null }): string {
-  const cf = h.get("cf-connecting-ip")?.trim()
-  if (cf) return cf
-  const forwarded = h.get("x-forwarded-for")
-  const last = forwarded
-    ?.split(",")
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .at(-1)
-  return last || h.get("x-real-ip")?.trim() || "unknown"
+	const cf = h.get("cf-connecting-ip")?.trim()
+	if (cf) return cf
+	const forwarded = h.get("x-forwarded-for")
+	const last = forwarded
+		?.split(",")
+		.map((part) => part.trim())
+		.filter(Boolean)
+		.at(-1)
+	return last || h.get("x-real-ip")?.trim() || "unknown"
 }
 
 /* ── Coarse per-instance rate limit ──────────────────────────────────────
@@ -293,11 +293,11 @@ const MAX_PER_WINDOW = 8
 const hits = new Map<string, number[]>()
 
 export function rateLimited(key: string): boolean {
-  const now = Date.now()
-  const recent = (hits.get(key) ?? []).filter((at) => now - at < WINDOW_MS)
-  recent.push(now)
-  hits.set(key, recent)
+	const now = Date.now()
+	const recent = (hits.get(key) ?? []).filter((at) => now - at < WINDOW_MS)
+	recent.push(now)
+	hits.set(key, recent)
 
-  if (hits.size > 5_000) hits.clear()
-  return recent.length > MAX_PER_WINDOW
+	if (hits.size > 5_000) hits.clear()
+	return recent.length > MAX_PER_WINDOW
 }

@@ -21,42 +21,42 @@ const bodySchema = z.object({ phase: phaseSchema }).strict()
  * The audit log is where a failed sync shows up; this is how an admin fixes it.
  */
 export const POST = withRoute(async (req: Request, { params }: Params) => {
-  const gate = await requirePermission(Permission.MANAGE_PROGRAM)
-  if (gate.error) return gate.error
-  const { id } = await params
+	const gate = await requirePermission(Permission.MANAGE_PROGRAM)
+	if (gate.error) return gate.error
+	const { id } = await params
 
-  const parsed = await parseBody(req, bodySchema)
-  if (parsed.error) return parsed.error
+	const parsed = await parseBody(req, bodySchema)
+	if (parsed.error) return parsed.error
 
-  // A row is a submission, so only a phase that has been handed in gets one —
-  // never a draft, which is how an empty 0-hour row would otherwise appear.
-  const project = await prisma.themeProject.findUnique({
-    where: { id },
-    select: { designStatus: true, buildStatus: true },
-  })
-  if (!project) return fail("NOT_FOUND", "Project not found")
-  const status = parsed.data.phase === "DESIGN" ? project.designStatus : project.buildStatus
-  if (status === PhaseStatus.draft) {
-    return fail("VALIDATION_FAILED", "That phase has not been submitted, so it has no Airtable row")
-  }
+	// A row is a submission, so only a phase that has been handed in gets one —
+	// never a draft, which is how an empty 0-hour row would otherwise appear.
+	const project = await prisma.themeProject.findUnique({
+		where: { id },
+		select: { designStatus: true, buildStatus: true },
+	})
+	if (!project) return fail("NOT_FOUND", "Project not found")
+	const status = parsed.data.phase === "DESIGN" ? project.designStatus : project.buildStatus
+	if (status === PhaseStatus.draft) {
+		return fail("VALIDATION_FAILED", "That phase has not been submitted, so it has no Airtable row")
+	}
 
-  const result = await trackSideEffect(
-    "airtable",
-    {
-      actorId: gate.user.id,
-      actorEmail: gate.user.email,
-      targetType: "ThemeProject",
-      targetId: id,
-      metadata: { phase: parsed.data.phase, manual: true },
-    },
-    () => syncSubmissionToYsws(id, parsed.data.phase),
-  )
+	const result = await trackSideEffect(
+		"airtable",
+		{
+			actorId: gate.user.id,
+			actorEmail: gate.user.email,
+			targetType: "ThemeProject",
+			targetId: id,
+			metadata: { phase: parsed.data.phase, manual: true },
+		},
+		() => syncSubmissionToYsws(id, parsed.data.phase),
+	)
 
-  // A skip means Airtable was never asked, or the row could not be built —
-  // report it instead of showing the admin a green result for nothing.
-  if (result && "skipped" in result) {
-    return fail("UNAVAILABLE", `Airtable did not take the sync (${result.skipped}); check the deployment configuration`)
-  }
+	// A skip means Airtable was never asked, or the row could not be built —
+	// report it instead of showing the admin a green result for nothing.
+	if (result && "skipped" in result) {
+		return fail("UNAVAILABLE", `Airtable did not take the sync (${result.skipped}); check the deployment configuration`)
+	}
 
-  return ok({ result })
+	return ok({ result })
 })

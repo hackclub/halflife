@@ -8,22 +8,22 @@ type Params = { params: Promise<{ id: string }> }
 
 /** Polled by the desktop while it waits for the phone. */
 export const GET = withRoute(async (_req: Request, { params }: Params) => {
-  const gate = await requireSession()
-  if (gate.error) return gate.error
-  const { id } = await params
+	const gate = await requireSession()
+	if (gate.error) return gate.error
+	const { id } = await params
 
-  const status = await getHandoffStatus(id, gate.user.id)
-  if (!status) return fail("NOT_FOUND", "No such handoff")
+	const status = await getHandoffStatus(id, gate.user.id)
+	if (!status) return fail("NOT_FOUND", "No such handoff")
 
-  return ok(status)
+	return ok(status)
 })
 
 /** Called once the desktop has taken the object key, to stop the polling. */
 export const POST = withRoute(async (_req: Request, { params }: Params) => {
-  const gate = await requireSession()
-  if (gate.error) return gate.error
-  const { id } = await params
+	const gate = await requireSession()
+	if (gate.error) return gate.error
+	const { id } = await params
 
-  await claimHandoff(id, gate.user.id)
-  return ok({ claimed: true })
+	await claimHandoff(id, gate.user.id)
+	return ok({ claimed: true })
 })

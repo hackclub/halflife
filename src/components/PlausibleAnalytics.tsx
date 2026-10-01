@@ -8,16 +8,16 @@
  * every path it sees — the token would go to a third party.
  */
 export function PlausibleAnalytics() {
-  return (
-    <>
-      <script async src="https://plausible.io/js/pa-2AUFAV5QT0nnEWNJcAR12.js" />
-      {/* Plausible's fixed init stub; nothing from a user goes into it. */}
-      <script
-        dangerouslySetInnerHTML={{
-          __html:
-            "window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init()",
-        }}
-      />
-    </>
-  )
+	return (
+		<>
+			<script async src="https://plausible.io/js/pa-2AUFAV5QT0nnEWNJcAR12.js" />
+			{/* Plausible's fixed init stub; nothing from a user goes into it. */}
+			<script
+				dangerouslySetInnerHTML={{
+					__html:
+						"window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init()",
+				}}
+			/>
+		</>
+	)
 }

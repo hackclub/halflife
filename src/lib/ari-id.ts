@@ -10,14 +10,14 @@ import { Phase } from "@/app/generated/prisma/enums"
  */
 
 export function ariExternalId(themeProjectId: string, phase: Phase): string {
-  return `${themeProjectId}:${phase === Phase.DESIGN ? "design" : "build"}`
+	return `${themeProjectId}:${phase === Phase.DESIGN ? "design" : "build"}`
 }
 
 /** The inverse of `ariExternalId`, or null for anything else. */
 export function parseAriExternalId(externalId: string): { themeProjectId: string; phase: Phase } | null {
-  const at = externalId.lastIndexOf(":")
-  if (at <= 0) return null
-  const suffix = externalId.slice(at + 1)
-  if (suffix !== "design" && suffix !== "build") return null
-  return { themeProjectId: externalId.slice(0, at), phase: suffix === "design" ? Phase.DESIGN : Phase.BUILD }
+	const at = externalId.lastIndexOf(":")
+	if (at <= 0) return null
+	const suffix = externalId.slice(at + 1)
+	if (suffix !== "design" && suffix !== "build") return null
+	return { themeProjectId: externalId.slice(0, at), phase: suffix === "design" ? Phase.DESIGN : Phase.BUILD }
 }

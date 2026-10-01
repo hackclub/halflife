@@ -11,12 +11,12 @@ import { type NextRequest, NextResponse } from "next/server"
  * was a working session.
  */
 export function GET(request: NextRequest) {
-  const res = NextResponse.redirect(new URL("/", request.url))
-  for (const { name } of request.cookies.getAll()) {
-    if (!name.startsWith("better-auth.") && !name.startsWith("__Secure-better-auth.")) continue
-    // A `__Secure-` cookie is only accepted, even to expire it, over a
-    // Set-Cookie that says Secure.
-    res.cookies.set(name, "", { path: "/", maxAge: 0, secure: name.startsWith("__Secure-") })
-  }
-  return res
+	const res = NextResponse.redirect(new URL("/", request.url))
+	for (const { name } of request.cookies.getAll()) {
+		if (!name.startsWith("better-auth.") && !name.startsWith("__Secure-better-auth.")) continue
+		// A `__Secure-` cookie is only accepted, even to expire it, over a
+		// Set-Cookie that says Secure.
+		res.cookies.set(name, "", { path: "/", maxAge: 0, secure: name.startsWith("__Secure-") })
+	}
+	return res
 }

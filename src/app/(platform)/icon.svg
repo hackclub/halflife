@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="-8 -8 140 126">
-  <rect x="-8" y="-8" width="140" height="126" rx="18" fill="#fcf7f7" />
-  <path
-    d="M60 15 L30 2 L34 44 L12 39 L25 62 L5 72 L27 80 L34 97 L49 86 L52 105 L72 105 L75 86 L90 97 L97 80 L119 72 L99 62 L112 39 L90 44 L94 2 Z"
-    fill="#fdfbfa"
-    stroke="#1c1a59"
-    stroke-width="7"
-    stroke-linejoin="round"
-  />
-  <path d="M36 52 L52 68 M52 52 L36 68" stroke="#1c1a59" stroke-width="7" stroke-linecap="round" />
-  <path d="M74 64 L92 50" stroke="#1c1a59" stroke-width="8" stroke-linecap="round" />
-  <path d="M56 78 h11 v13 a5.5 5.5 0 0 1 -11 0 Z" fill="#1c1a59" />
+	<rect x="-8" y="-8" width="140" height="126" rx="18" fill="#fcf7f7" />
+	<path
+		d="M60 15 L30 2 L34 44 L12 39 L25 62 L5 72 L27 80 L34 97 L49 86 L52 105 L72 105 L75 86 L90 97 L97 80 L119 72 L99 62 L112 39 L90 44 L94 2 Z"
+		fill="#fdfbfa"
+		stroke="#1c1a59"
+		stroke-width="7"
+		stroke-linejoin="round"
+	/>
+	<path d="M36 52 L52 68 M52 52 L36 68" stroke="#1c1a59" stroke-width="7" stroke-linecap="round" />
+	<path d="M74 64 L92 50" stroke="#1c1a59" stroke-width="8" stroke-linecap="round" />
+	<path d="M56 78 h11 v13 a5.5 5.5 0 0 1 -11 0 Z" fill="#1c1a59" />
 </svg>

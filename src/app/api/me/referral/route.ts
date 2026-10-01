@@ -15,20 +15,20 @@ export const dynamic = "force-dynamic"
  * the only way they would ever get one.
  */
 export const GET = withRoute(async (req: Request) => {
-  const gate = await requireSession()
-  if (gate.error) return gate.error
+	const gate = await requireSession()
+	if (gate.error) return gate.error
 
-  const email = normalizeEmail(gate.user.email)
-  if (!email) return fail("UNPROCESSABLE", "Your account has no email to make a referral link from")
+	const email = normalizeEmail(gate.user.email)
+	if (!email) return fail("UNPROCESSABLE", "Your account has no email to make a referral link from")
 
-  const result = await recordSignup(email, "platform", { source: "platform" })
-  if (!result.ok || !result.referralCode) {
-    return fail("UNAVAILABLE", "Your referral link isn't available right now")
-  }
+	const result = await recordSignup(email, "platform", { source: "platform" })
+	if (!result.ok || !result.referralCode) {
+		return fail("UNAVAILABLE", "Your referral link isn't available right now")
+	}
 
-  const origin = (process.env.NEXT_PUBLIC_APP_URL ?? process.env.BETTER_AUTH_URL ?? new URL(req.url).origin).replace(
-    /\/$/,
-    "",
-  )
-  return ok({ link: `${origin}/?ref=${encodeURIComponent(result.referralCode)}` })
+	const origin = (process.env.NEXT_PUBLIC_APP_URL ?? process.env.BETTER_AUTH_URL ?? new URL(req.url).origin).replace(
+		/\/$/,
+		"",
+	)
+	return ok({ link: `${origin}/?ref=${encodeURIComponent(result.referralCode)}` })
 })

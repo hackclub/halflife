@@ -10,20 +10,20 @@ import "./(site)/globals.css"
  * world, so it takes the landing's stylesheet.
  */
 export const metadata: Metadata = {
-  title: "Page not found · Half Life by Hack Club",
+	title: "Page not found · Half Life by Hack Club",
 }
 
 export const viewport: Viewport = {
-  themeColor: "#31222c",
-  colorScheme: "dark",
+	themeColor: "#31222c",
+	colorScheme: "dark",
 }
 
 export default function GlobalNotFound() {
-  return (
-    <html lang="en">
-      <body>
-        <NotFoundScene />
-      </body>
-    </html>
-  )
+	return (
+		<html lang="en">
+			<body>
+				<NotFoundScene />
+			</body>
+		</html>
+	)
 }

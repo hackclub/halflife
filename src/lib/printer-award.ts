@@ -10,24 +10,24 @@ import type { PrinterAwardStatus } from "@/app/generated/prisma/enums"
  * qualification mismatch report treats that as a report, never a recall).
  */
 export const PRINTER_AWARD_LABELS: Record<PrinterAwardStatus, string> = {
-  QUALIFIED: "qualified",
-  ADDRESS_LOCKED: "address locked",
-  PACKING: "packing",
-  SHIPPED: "shipped",
-  DELIVERED: "delivered",
-  REVOKED: "revoked",
+	QUALIFIED: "qualified",
+	ADDRESS_LOCKED: "address locked",
+	PACKING: "packing",
+	SHIPPED: "shipped",
+	DELIVERED: "delivered",
+	REVOKED: "revoked",
 }
 
 /** The moves an award may make, in display order. Empty means final. */
 export const PRINTER_AWARD_NEXT: Record<PrinterAwardStatus, readonly PrinterAwardStatus[]> = {
-  QUALIFIED: ["ADDRESS_LOCKED", "REVOKED"],
-  ADDRESS_LOCKED: ["PACKING", "REVOKED"],
-  PACKING: ["SHIPPED", "REVOKED"],
-  SHIPPED: ["DELIVERED", "REVOKED"],
-  DELIVERED: [],
-  REVOKED: [],
+	QUALIFIED: ["ADDRESS_LOCKED", "REVOKED"],
+	ADDRESS_LOCKED: ["PACKING", "REVOKED"],
+	PACKING: ["SHIPPED", "REVOKED"],
+	SHIPPED: ["DELIVERED", "REVOKED"],
+	DELIVERED: [],
+	REVOKED: [],
 }
 
 export function canMovePrinterAward(from: PrinterAwardStatus, to: PrinterAwardStatus): boolean {
-  return (PRINTER_AWARD_NEXT[from] as readonly PrinterAwardStatus[]).includes(to)
+	return (PRINTER_AWARD_NEXT[from] as readonly PrinterAwardStatus[]).includes(to)
 }

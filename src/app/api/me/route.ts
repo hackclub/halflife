@@ -14,36 +14,36 @@ export const dynamic = "force-dynamic"
 const updateMeSchema = z.object({ printerGoalId: z.string().max(80) }).strict()
 
 export const GET = withRoute(async () => {
-  const gate = await requireSession()
-  if (gate.error) return gate.error
+	const gate = await requireSession()
+	if (gate.error) return gate.error
 
-  const [user, balances, earned, printer] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: gate.user.id },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        image: true,
-        slackId: true,
-        verificationStatus: true,
-        hackatimeUserId: true,
-        fraudFlagged: true,
-        submissionExtensionUntil: true,
-      },
-    }),
-    prisma.$transaction((tx) => getBalances(tx, gate.user.id)),
-    prisma.$transaction((tx) => getEarnedCredit(tx, gate.user.id)),
-    getPrinterQualification(gate.user.id),
-  ])
+	const [user, balances, earned, printer] = await Promise.all([
+		prisma.user.findUnique({
+			where: { id: gate.user.id },
+			select: {
+				id: true,
+				name: true,
+				email: true,
+				image: true,
+				slackId: true,
+				verificationStatus: true,
+				hackatimeUserId: true,
+				fraudFlagged: true,
+				submissionExtensionUntil: true,
+			},
+		}),
+		prisma.$transaction((tx) => getBalances(tx, gate.user.id)),
+		prisma.$transaction((tx) => getEarnedCredit(tx, gate.user.id)),
+		getPrinterQualification(gate.user.id),
+	])
 
-  return ok({
-    user: { ...user, image: avatarUrl(user), hackatimeLinked: !!user?.hackatimeUserId },
-    roles: gate.roles,
-    permissions: permissionsFor(gate.roles),
-    credit: { ...balances, earned },
-    printer,
-  })
+	return ok({
+		user: { ...user, image: avatarUrl(user), hackatimeLinked: !!user?.hackatimeUserId },
+		roles: gate.roles,
+		permissions: permissionsFor(gate.roles),
+		credit: { ...balances, earned },
+		printer,
+	})
 })
 
 /**
@@ -57,28 +57,28 @@ export const GET = withRoute(async () => {
  * against, and the ledger is append-only.
  */
 export const PATCH = withRoute(async (req: Request) => {
-  const gate = await requireSession()
-  if (gate.error) return gate.error
+	const gate = await requireSession()
+	if (gate.error) return gate.error
 
-  const parsed = await parseBody(req, updateMeSchema)
-  if (parsed.error) return parsed.error
+	const parsed = await parseBody(req, updateMeSchema)
+	if (parsed.error) return parsed.error
 
-  const goal = PRINTERS.find((p) => p.id === parsed.data.printerGoalId)
-  if (!goal) return fail("VALIDATION_FAILED", "Unknown printer")
+	const goal = PRINTERS.find((p) => p.id === parsed.data.printerGoalId)
+	if (!goal) return fail("VALIDATION_FAILED", "Unknown printer")
 
-  await prisma.user.update({
-    where: { id: gate.user.id },
-    data: { printerGoalId: goal.id },
-  })
+	await prisma.user.update({
+		where: { id: gate.user.id },
+		data: { printerGoalId: goal.id },
+	})
 
-  await logAudit({
-    action: AuditAction.USER_SET_PRINTER_GOAL,
-    actorId: gate.user.id,
-    actorEmail: gate.user.email,
-    targetType: "User",
-    targetId: gate.user.id,
-    metadata: { printerGoalId: goal.id },
-  })
+	await logAudit({
+		action: AuditAction.USER_SET_PRINTER_GOAL,
+		actorId: gate.user.id,
+		actorEmail: gate.user.email,
+		targetType: "User",
+		targetId: gate.user.id,
+		metadata: { printerGoalId: goal.id },
+	})
 
-  return ok({ printerGoalId: goal.id })
+	return ok({ printerGoalId: goal.id })
 })
