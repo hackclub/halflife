@@ -1,4 +1,5 @@
 import "server-only"
+import { fetchWithRetry } from "@/lib/fetch-retry"
 import { encryptPII, isPiiConfigured } from "@/lib/pii"
 import prisma from "@/lib/prisma"
 
@@ -59,7 +60,7 @@ let userinfoEndpoint: string | null = null
 
 async function userinfoUrl(): Promise<string> {
 	if (userinfoEndpoint) return userinfoEndpoint
-	const res = await fetch(DISCOVERY_URL, { signal: AbortSignal.timeout(TIMEOUT_MS) })
+	const res = await fetchWithRetry(DISCOVERY_URL, { signal: AbortSignal.timeout(TIMEOUT_MS) })
 	if (!res.ok) throw new Error(`HCA discovery returned ${res.status}`)
 	const config = (await res.json()) as { userinfo_endpoint?: string }
 	if (!config.userinfo_endpoint) throw new Error("HCA discovery has no userinfo_endpoint")
@@ -69,7 +70,9 @@ async function userinfoUrl(): Promise<string> {
 
 async function getJson(url: string, accessToken: string): Promise<Record<string, unknown> | null> {
 	try {
-		const res = await fetch(url, {
+		// Retried, like the forges' identity calls (lib/fetch-retry). A dropped
+		// packet here used to abort the OAuth callback with a raw TimeoutError.
+		const res = await fetchWithRetry(url, {
 			headers: { Authorization: `Bearer ${accessToken}` },
 			cache: "no-store",
 			signal: AbortSignal.timeout(TIMEOUT_MS),
