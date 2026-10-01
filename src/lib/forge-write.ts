@@ -1,9 +1,9 @@
 import "server-only"
 import { createHash } from "node:crypto"
-import { type Forge, repoUrl } from "@/lib/forge"
 import { HttpError } from "@/lib/errors"
-import type { RepoRef } from "@/lib/repo-ref"
+import { type Forge, repoUrl } from "@/lib/forge"
 import prisma from "@/lib/prisma"
+import type { RepoRef } from "@/lib/repo-ref"
 
 /**
  * Writing a participant's work back into their own repo, on whichever forge

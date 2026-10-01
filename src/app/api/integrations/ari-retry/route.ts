@@ -1,5 +1,5 @@
-import type { NextRequest } from "next/server"
 import type { AriWebhookEvent } from "@hackclub/ari"
+import type { NextRequest } from "next/server"
 import { Prisma } from "@/app/generated/prisma/client"
 import { Phase } from "@/app/generated/prisma/enums"
 import { ok, withRoute } from "@/lib/api"

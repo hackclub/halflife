@@ -1,7 +1,7 @@
 import "server-only"
 import {
-	AirtableError,
 	type AirtableConfig,
+	AirtableError,
 	type AirtableRecord,
 	airtableFetch,
 	escapeAirtableValue,

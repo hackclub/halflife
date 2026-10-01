@@ -1,5 +1,5 @@
 import "server-only"
-import { type Forge } from "@/lib/forge"
+import type { Forge } from "@/lib/forge"
 
 /**
  * The one way this app reads a repo through a forge's HTTP API.

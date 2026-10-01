@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server"
 import { ok, rateLimitedInMemory, withRoute } from "@/lib/api"
-import { clientIp } from "@/lib/site/signups"
 import { countSignups } from "@/lib/site/signup-count"
+import { clientIp } from "@/lib/site/signups"
 
 export const dynamic = "force-dynamic"
 

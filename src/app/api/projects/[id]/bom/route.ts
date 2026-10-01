@@ -1,7 +1,7 @@
 import { after } from "next/server"
 import { fail, ok, parseBody, withRoute } from "@/lib/api"
-import { HttpError } from "@/lib/errors"
 import { bomData, bomLockReason, listBom, MAX_BOM_ITEMS } from "@/lib/bom"
+import { HttpError } from "@/lib/errors"
 import { requireSession } from "@/lib/guards"
 import prisma from "@/lib/prisma"
 import { getSubmissionAccess, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"

@@ -1,10 +1,10 @@
 import { PhaseStatus } from "@/app/generated/prisma/enums"
 import { fail, ok, parseBody, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
+import { scheduledWeekFor } from "@/lib/config/program"
 import { requireSession } from "@/lib/guards"
 import { fetchProjectSeconds } from "@/lib/hackatime"
 import prisma from "@/lib/prisma"
-import { scheduledWeekFor } from "@/lib/config/program"
 import { assertWeekStarted, getSubmissionAccess, isPhaseDecided, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
 import { hackatimeLinkSchema } from "@/lib/schemas/project"
 

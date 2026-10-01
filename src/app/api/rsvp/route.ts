@@ -3,7 +3,7 @@ import { bufferRsvp, getRsvpCount } from "@/lib/airtable/rsvp"
 import { fail, ok, parseBody, withRoute } from "@/lib/api"
 import { sanitizeOptional } from "@/lib/sanitize"
 import { rsvpSchema } from "@/lib/schemas/admin"
-import { rateLimited, clientIp } from "@/lib/site/signups"
+import { clientIp, rateLimited } from "@/lib/site/signups"
 
 export const dynamic = "force-dynamic"
 

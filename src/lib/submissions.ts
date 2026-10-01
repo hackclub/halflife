@@ -17,8 +17,8 @@ import {
 } from "@/lib/program"
 import { assertNoOwedReel } from "@/lib/reel-gate"
 import { checkRepo } from "@/lib/repo-checks"
-import { warmupPhaseOf } from "@/lib/warmup"
 import { isOwnedKey } from "@/lib/uploads/r2"
+import { warmupPhaseOf } from "@/lib/warmup"
 
 export function statusFor(project: ThemeProject, phase: Phase): PhaseStatus {
 	return phase === Phase.DESIGN ? project.designStatus : project.buildStatus
