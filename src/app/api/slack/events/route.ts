@@ -73,7 +73,14 @@ async function handleHelpMessage(event: SlackEvent) {
     permalink ? `New ticket from <@${ref.authorId}>: ${permalink}` : `New ticket from <@${ref.authorId}>`,
     { blocks: ticketBlocks, unfurlLinks: true },
   )
-  if (!ticketMessage.ok || !ticketMessage.ts) return
+  if (!ticketMessage.ok || !ticketMessage.ts) {
+    // A failed mirror means no ticket exists, so the help-channel ack below is
+    // skipped too. The response already went out, so the log is the only trace.
+    console.error(
+      `[slack] ticket post to ${ticketsChannel} failed (${ticketMessage.error ?? "no message ts"}); no help-channel ack for ${ref.helpTs}`,
+    )
+    return
+  }
 
   // Carried by both buttons: the author's self-resolve and the helpers'
   // in-thread "Mark as helped" both need the tickets-channel target to sync.
