@@ -13,34 +13,34 @@ const TONES = ["bg-coral", "bg-violet", "bg-teal", "bg-sky-deep", "bg-orange-dee
  * whichever Tailwind emits last.
  */
 export function Avatar({
-  name,
-  image,
-  shape = "round",
-  className,
+	name,
+	image,
+	shape = "round",
+	className,
 }: {
-  name: string | null
-  image: string | null
-  shape?: "round" | "tile"
-  className?: string
+	name: string | null
+	image: string | null
+	shape?: "round" | "tile"
+	className?: string
 }) {
-  const label = (name ?? "?").trim()
-  let n = 0
-  for (const ch of label) n = (n + ch.charCodeAt(0)) % TONES.length
-  const radius = shape === "tile" ? "rounded-lg" : "rounded-full"
-  return image ? (
-    // eslint-disable-next-line @next/next/no-img-element -- avatars come from the identity provider's CDN
-    <img src={image} alt="" className={cx("shrink-0 bg-sky-pale object-cover", radius, className)} />
-  ) : (
-    <span
-      aria-hidden="true"
-      className={cx(
-        "grid shrink-0 place-items-center font-extrabold text-white",
-        radius,
-        TONES[n] ?? TONES[0],
-        className,
-      )}
-    >
-      {label.charAt(0).toUpperCase()}
-    </span>
-  )
+	const label = (name ?? "?").trim()
+	let n = 0
+	for (const ch of label) n = (n + ch.charCodeAt(0)) % TONES.length
+	const radius = shape === "tile" ? "rounded-lg" : "rounded-full"
+	return image ? (
+		// eslint-disable-next-line @next/next/no-img-element -- avatars come from the identity provider's CDN
+		<img src={image} alt="" className={cx("shrink-0 bg-sky-pale object-cover", radius, className)} />
+	) : (
+		<span
+			aria-hidden="true"
+			className={cx(
+				"grid shrink-0 place-items-center font-extrabold text-white",
+				radius,
+				TONES[n] ?? TONES[0],
+				className,
+			)}
+		>
+			{label.charAt(0).toUpperCase()}
+		</span>
+	)
 }

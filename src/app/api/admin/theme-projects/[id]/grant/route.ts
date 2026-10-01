@@ -16,19 +16,19 @@ export const maxDuration = 60
  * permission. Idempotent per (user, project, design) in lib/grants.
  */
 export const POST = withRoute(async (req: Request, { params }: Params) => {
-  const gate = await requirePermission(Permission.MANAGE_CREDIT)
-  if (gate.error) return gate.error
-  const { id } = await params
+	const gate = await requirePermission(Permission.MANAGE_CREDIT)
+	if (gate.error) return gate.error
+	const { id } = await params
 
-  const parsed = await parseBody(req, grantSchema)
-  if (parsed.error) return parsed.error
+	const parsed = await parseBody(req, grantSchema)
+	if (parsed.error) return parsed.error
 
-  const result = await sendGrant({
-    themeProjectId: id,
-    phase: parsed.data.phase,
-    grantUrl: parsed.data.grantUrl,
-    adminId: gate.user.id,
-    adminEmail: gate.user.email,
-  })
-  return ok(result)
+	const result = await sendGrant({
+		themeProjectId: id,
+		phase: parsed.data.phase,
+		grantUrl: parsed.data.grantUrl,
+		adminId: gate.user.id,
+		adminEmail: gate.user.email,
+	})
+	return ok(result)
 })

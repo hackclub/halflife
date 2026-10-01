@@ -26,124 +26,124 @@ type Status = "idle" | "pending" | "error"
  * code and campaign in this page's own URL exist nowhere else.
  */
 export default function SignupForm({
-  className = "",
-  fontSize,
-  style,
-  intro,
+	className = "",
+	fontSize,
+	style,
+	intro,
 }: {
-  className?: string
-  fontSize?: string
-  style?: CSSProperties
-  /**
-   * Anything that belongs inside the field's own box — in practice the hero's
-   * tagline.
-   *
-   * It is a slot here rather than a sibling in the hero because of where the
-   * box has to stop. The line under the field is the eligibility note, and it
-   * has to stay outside: it is a footnote about who may sign up, not part of
-   * the offer, and boxing it with the promise would read as fine print on a
-   * coupon. The note lives in this component, so the only way to draw a box
-   * around the caption and the field but not around it is for the box to be
-   * drawn in here too.
-   */
-  intro?: ReactNode
+	className?: string
+	fontSize?: string
+	style?: CSSProperties
+	/**
+	 * Anything that belongs inside the field's own box — in practice the hero's
+	 * tagline.
+	 *
+	 * It is a slot here rather than a sibling in the hero because of where the
+	 * box has to stop. The line under the field is the eligibility note, and it
+	 * has to stay outside: it is a footnote about who may sign up, not part of
+	 * the offer, and boxing it with the promise would read as fine print on a
+	 * coupon. The note lives in this component, so the only way to draw a box
+	 * around the caption and the field but not around it is for the box to be
+	 * drawn in here too.
+	 */
+	intro?: ReactNode
 }) {
-  const id = useId()
-  const router = useRouter()
-  const { data: session } = useSession()
-  const [status, setStatus] = useState<Status>("idle")
-  const [message, setMessage] = useState("")
-  const inputRef = useRef<HTMLInputElement>(null)
+	const id = useId()
+	const router = useRouter()
+	const { data: session } = useSession()
+	const [status, setStatus] = useState<Status>("idle")
+	const [message, setMessage] = useState("")
+	const inputRef = useRef<HTMLInputElement>(null)
 
-  /**
-   * Prefill from the address bar: `?email=someone@example.com`. A link sent
-   * out with the address already in it lands on a field that is filled in and
-   * one click from done, which is the whole point of sending it that way.
-   *
-   * Read off `window.location` in an effect rather than through
-   * `useSearchParams`, for the same reason the submit handler reads it that
-   * way: the hook would pull this component — and so the hero above it — out
-   * of the prerender and behind a Suspense boundary, to save a value that
-   * only matters once the field is interactive anyway. The input is
-   * uncontrolled, so writing straight onto the node after mount costs no
-   * render and cannot mismatch hydration.
-   *
-   * It never overwrites: if someone has already typed, or the browser has
-   * restored a value on a back-navigation, what is in the field wins.
-   */
-  useEffect(() => {
-    const prefill = new URLSearchParams(window.location.search).get("email")?.trim()
-    if (prefill && inputRef.current && !inputRef.current.value) {
-      inputRef.current.value = prefill
-    }
-  }, [])
+	/**
+	 * Prefill from the address bar: `?email=someone@example.com`. A link sent
+	 * out with the address already in it lands on a field that is filled in and
+	 * one click from done, which is the whole point of sending it that way.
+	 *
+	 * Read off `window.location` in an effect rather than through
+	 * `useSearchParams`, for the same reason the submit handler reads it that
+	 * way: the hook would pull this component — and so the hero above it — out
+	 * of the prerender and behind a Suspense boundary, to save a value that
+	 * only matters once the field is interactive anyway. The input is
+	 * uncontrolled, so writing straight onto the node after mount costs no
+	 * render and cannot mismatch hydration.
+	 *
+	 * It never overwrites: if someone has already typed, or the browser has
+	 * restored a value on a back-navigation, what is in the field wins.
+	 */
+	useEffect(() => {
+		const prefill = new URLSearchParams(window.location.search).get("email")?.trim()
+		if (prefill && inputRef.current && !inputRef.current.value) {
+			inputRef.current.value = prefill
+		}
+	}, [])
 
-  function fail(text: string) {
-    setStatus("error")
-    setMessage(text)
-    inputRef.current?.focus()
-  }
+	function fail(text: string) {
+		setStatus("error")
+		setMessage(text)
+		inputRef.current?.focus()
+	}
 
-  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const field = inputRef.current
-    const email = field?.value.trim() ?? ""
+	async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+		event.preventDefault()
+		const field = inputRef.current
+		const email = field?.value.trim() ?? ""
 
-    // Checked here rather than by the browser (`noValidate`), so the message
-    // lands on the line under the field in this page's voice instead of in a
-    // native bubble.
-    if (!email) return fail("Enter your email to sign up or log in.")
-    if (field && !field.checkValidity()) return fail("That doesn't look like an email address.")
+		// Checked here rather than by the browser (`noValidate`), so the message
+		// lands on the line under the field in this page's voice instead of in a
+		// native bubble.
+		if (!email) return fail("Enter your email to sign up or log in.")
+		if (field && !field.checkValidity()) return fail("That doesn't look like an email address.")
 
-    setStatus("pending")
-    setMessage("Taking you to Hack Club to sign in…")
+		setStatus("pending")
+		setMessage("Taking you to Hack Club to sign in…")
 
-    // Whoever sent this visitor here — a referral link or a campaign URL —
-    // is only present in this page's own address bar, so it's read fresh at
-    // submit time and sent before the page leaves. `keepalive` lets it finish
-    // even if the sign-in navigates away first, and its answer is not needed,
-    // so it is deliberately NOT awaited: awaiting a slow or rate-limited
-    // signup would put the list provider between the visitor and the way in.
-    // (This used to await with an AbortController that fired after 2.5s — but
-    // aborting cancels the request, so a slow signup was silently dropped
-    // rather than "left to finish on its own".)
-    const params = new URLSearchParams(window.location.search)
-    void fetch("/api/subscribe", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      keepalive: true,
-      body: JSON.stringify({
-        email,
-        ref: params.get("ref") || undefined,
-        utmSource: params.get("utm_source") || undefined,
-        utmMedium: params.get("utm_medium") || undefined,
-        utmCampaign: params.get("utm_campaign") || undefined,
-      }),
-    }).catch(() => {
-      // Slow, offline or refused: none of it should stand between someone and
-      // signing in. The sign-in below says so if the network is really gone.
-    })
+		// Whoever sent this visitor here — a referral link or a campaign URL —
+		// is only present in this page's own address bar, so it's read fresh at
+		// submit time and sent before the page leaves. `keepalive` lets it finish
+		// even if the sign-in navigates away first, and its answer is not needed,
+		// so it is deliberately NOT awaited: awaiting a slow or rate-limited
+		// signup would put the list provider between the visitor and the way in.
+		// (This used to await with an AbortController that fired after 2.5s — but
+		// aborting cancels the request, so a slow signup was silently dropped
+		// rather than "left to finish on its own".)
+		const params = new URLSearchParams(window.location.search)
+		void fetch("/api/subscribe", {
+			method: "POST",
+			headers: { "content-type": "application/json" },
+			keepalive: true,
+			body: JSON.stringify({
+				email,
+				ref: params.get("ref") || undefined,
+				utmSource: params.get("utm_source") || undefined,
+				utmMedium: params.get("utm_medium") || undefined,
+				utmCampaign: params.get("utm_campaign") || undefined,
+			}),
+		}).catch(() => {
+			// Slow, offline or refused: none of it should stand between someone and
+			// signing in. The sign-in below says so if the network is really gone.
+		})
 
-    if (session) {
-      router.push("/dashboard")
-      return
-    }
+		if (session) {
+			router.push("/dashboard")
+			return
+		}
 
-    try {
-      // better-auth reports a refusal in the result rather than throwing; on
-      // success the page is already on its way to Hack Club.
-      const result = await signInWith("hca", "/dashboard", email)
-      if (result?.error) fail("Hack Club sign-in didn't open. Give it another try in a moment.")
-    } catch {
-      fail("You look offline. Reconnect and try again.")
-    }
-  }
+		try {
+			// better-auth reports a refusal in the result rather than throwing; on
+			// success the page is already on its way to Hack Club.
+			const result = await signInWith("hca", "/dashboard", email)
+			if (result?.error) fail("Hack Club sign-in didn't open. Give it another try in a moment.")
+		} catch {
+			fail("You look offline. Reconnect and try again.")
+		}
+	}
 
-  const pending = status === "pending"
+	const pending = status === "pending"
 
-  return (
-    <div className={className} style={{ ...style, fontSize }}>
-      {/* The box: the promise and the field it is asking you to fill, grouped,
+	return (
+		<div className={className} style={{ ...style, fontSize }}>
+			{/* The box: the promise and the field it is asking you to fill, grouped,
           with the eligibility note left outside it below.
 
           Its ground is the painted swash rather than flat ink. The tagline is
@@ -162,20 +162,20 @@ export default function SignupForm({
           `isolate` keeps the swash's negative index inside this box instead of
           letting it escape to the nearest stacking context and paint behind
           the hero plate, which is to say behind nothing. */}
-      <div
-        className={intro ? "relative isolate mb-[1rem]" : ""}
-        style={
-          intro
-            ? {
-                paddingInline: `${SWASH_INSET_X * 100}%`,
-                paddingBlock: SWASH_INSET_Y,
-              }
-            : undefined
-        }
-      >
-        {intro ? (
-          <>
-            {/* Decorative: the promise is the sentence over it, and a brush
+			<div
+				className={intro ? "relative isolate mb-[1rem]" : ""}
+				style={
+					intro
+						? {
+								paddingInline: `${SWASH_INSET_X * 100}%`,
+								paddingBlock: SWASH_INSET_Y,
+							}
+						: undefined
+				}
+			>
+				{intro ? (
+					<>
+						{/* Decorative: the promise is the sentence over it, and a brush
                 mark carries nothing a reader needs. Through `next/image` rather
                 than as a CSS `background-image` so the 487 KB PNG is served
                 resized and re-encoded on the hero, where it would otherwise
@@ -186,32 +186,32 @@ export default function SignupForm({
                 `contain` would letterbox them, and the interior is flat colour,
                 so stretching it to a box that runs 6.8:1 in the stage and 3:1
                 on a phone costs nothing but the angle of the two tapers. */}
-            <Image
-              src={brushstroke}
-              alt=""
-              aria-hidden
-              fill
-              sizes="(min-width: 1180px) 1110px, 100vw"
-              quality={90}
-              className="-z-10 object-fill"
-            />
-            {/* The 0.7em that separates the promise from the field. It was
+						<Image
+							src={brushstroke}
+							alt=""
+							aria-hidden
+							fill
+							sizes="(min-width: 1180px) 1110px, 100vw"
+							quality={90}
+							className="-z-10 object-fill"
+						/>
+						{/* The 0.7em that separates the promise from the field. It was
                 `mb-[0.7em]` and generated no rule at all, so the two were flush:
                 the sentence sat directly on the slot it is asking you to
                 fill. */}
-            <div style={{ marginBottom: "0.7em" }}>{intro}</div>
-          </>
-        ) : null}
+						<div style={{ marginBottom: "0.7em" }}>{intro}</div>
+					</>
+				) : null}
 
-        {/* The row is the positioning context for the confirmation plate, so
+				{/* The row is the positioning context for the confirmation plate, so
             the plate is exactly the field's footprint and nothing below it ever
             moves. overflow-hidden keeps the wipe's cut edge crisp. */}
-        <div className="relative overflow-hidden">
-          <form onSubmit={onSubmit} noValidate className="flex w-full">
-            <label htmlFor={id} className="sr-only">
-              email address
-            </label>
-            {/* The field is a slot cut into the hero plate, not a control
+				<div className="relative overflow-hidden">
+					<form onSubmit={onSubmit} noValidate className="flex w-full">
+						<label htmlFor={id} className="sr-only">
+							email address
+						</label>
+						{/* The field is a slot cut into the hero plate, not a control
                 sitting on it: ink ground, one soft cyan edge, and an input that
                 carries no surface of its own — no background, no border, no ring
                 of its own, because the slot is the control. The cyan caret is
@@ -223,51 +223,51 @@ export default function SignupForm({
                 specks, so it read as detail for its own sake rather than as an
                 instrument. One surface, one boundary, one accent does the job
                 the five of them were failing to. */}
-            <div
-              className={`hl-field relative min-w-0 flex-1 bg-hl-ink ${pending ? "opacity-70" : ""}`}
-              style={{ height: "2.1667em" }}
-            >
-              <input
-                ref={inputRef}
-                id={id}
-                name="email"
-                type="email"
-                autoComplete="email"
-                inputMode="email"
-                required
-                disabled={pending}
-                placeholder="email address"
-                // Always described by the line below: the eligibility note when
-                // there is nothing wrong, the error when there is. Pointing at
-                // it only on error meant the note was on screen but not in the
-                // accessibility tree.
-                aria-describedby={`${id}-msg`}
-                aria-invalid={status === "error" || undefined}
-                onChange={() => {
-                  if (status === "error") {
-                    setStatus("idle")
-                    setMessage("")
-                  }
-                }}
-                // Display face, not the body one it inherited. The control is
-                // one object — a slot cut into the plate and the word beside it
-                // — and "sign up/log in" is set in the display face, so the field's
-                // own type belongs to the same voice. Set on the input rather
-                // than scoped to `::placeholder`, so the address someone types
-                // does not change face out from under them mid-word.
-                className="h-full w-full bg-transparent px-[0.667em] font-display text-hl-paper caret-hl-cyan outline-none placeholder:text-hl-paper-soft"
-              />
+						<div
+							className={`hl-field relative min-w-0 flex-1 bg-hl-ink ${pending ? "opacity-70" : ""}`}
+							style={{ height: "2.1667em" }}
+						>
+							<input
+								ref={inputRef}
+								id={id}
+								name="email"
+								type="email"
+								autoComplete="email"
+								inputMode="email"
+								required
+								disabled={pending}
+								placeholder="email address"
+								// Always described by the line below: the eligibility note when
+								// there is nothing wrong, the error when there is. Pointing at
+								// it only on error meant the note was on screen but not in the
+								// accessibility tree.
+								aria-describedby={`${id}-msg`}
+								aria-invalid={status === "error" || undefined}
+								onChange={() => {
+									if (status === "error") {
+										setStatus("idle")
+										setMessage("")
+									}
+								}}
+								// Display face, not the body one it inherited. The control is
+								// one object — a slot cut into the plate and the word beside it
+								// — and "sign up/log in" is set in the display face, so the field's
+								// own type belongs to the same voice. Set on the input rather
+								// than scoped to `::placeholder`, so the address someone types
+								// does not change face out from under them mid-word.
+								className="h-full w-full bg-transparent px-[0.667em] font-display text-hl-paper caret-hl-cyan outline-none placeholder:text-hl-paper-soft"
+							/>
 
-              {/* Edge at 55% rather than the slot component's 45%: on ink that
+							{/* Edge at 55% rather than the slot component's 45%: on ink that
                   is 3.71:1 where 45% is 2.96, and this boundary belongs to a
                   control rather than to a picture. */}
-              <span
-                aria-hidden
-                className="hl-field-edge pointer-events-none absolute inset-0 border-2 border-hl-cyan"
-              />
-            </div>
+							<span
+								aria-hidden
+								className="hl-field-edge pointer-events-none absolute inset-0 border-2 border-hl-cyan"
+							/>
+						</div>
 
-            {/* The label, not a glyph. A check meant "done" on a control whose
+						{/* The label, not a glyph. A check meant "done" on a control whose
                 job is "start" — the one place on the page where the tick is
                 honest is the confirmation that wipes over the field once the
                 address is in, which is where it still lives.
@@ -291,33 +291,33 @@ export default function SignupForm({
                 as wide. Two lines at 0.85em and `leading-none`, plus the gap,
                 are 1.82em of the button's 2.1667, so the row keeps its height
                 and the field gets back the second half's width. */}
-            <button
-              type="submit"
-              disabled={pending}
-              className="grid shrink-0 place-items-center bg-hl-cyan px-[0.6em] text-hl-ink transition-colors hover:bg-white focus-visible:bg-white disabled:cursor-progress disabled:bg-hl-blue min-[520px]:px-[0.9em]"
-              style={{ height: "2.1667em" }}
-            >
-              <span
-                className={`[grid-area:1/1] flex flex-col items-center gap-[0.12em] font-display font-bold leading-none min-[520px]:flex-row min-[520px]:gap-0 ${
-                  pending ? "invisible" : ""
-                }`}
-                style={{ fontSize: "0.85em" }}
-              >
-                <span className="whitespace-nowrap">sign up/</span>
-                <span className="whitespace-nowrap">log in</span>
-              </span>
-              {pending ? (
-                <>
-                  <Spinner className="h-[0.9em] w-[0.9em] animate-spin [grid-area:1/1]" />
-                  <span className="sr-only">Taking you to Hack Club to sign in</span>
-                </>
-              ) : null}
-            </button>
-          </form>
-        </div>
-      </div>
+						<button
+							type="submit"
+							disabled={pending}
+							className="grid shrink-0 place-items-center bg-hl-cyan px-[0.6em] text-hl-ink transition-colors hover:bg-white focus-visible:bg-white disabled:cursor-progress disabled:bg-hl-blue min-[520px]:px-[0.9em]"
+							style={{ height: "2.1667em" }}
+						>
+							<span
+								className={`[grid-area:1/1] flex flex-col items-center gap-[0.12em] font-display font-bold leading-none min-[520px]:flex-row min-[520px]:gap-0 ${
+									pending ? "invisible" : ""
+								}`}
+								style={{ fontSize: "0.85em" }}
+							>
+								<span className="whitespace-nowrap">sign up/</span>
+								<span className="whitespace-nowrap">log in</span>
+							</span>
+							{pending ? (
+								<>
+									<Spinner className="h-[0.9em] w-[0.9em] animate-spin [grid-area:1/1]" />
+									<span className="sr-only">Taking you to Hack Club to sign in</span>
+								</>
+							) : null}
+						</button>
+					</form>
+				</div>
+			</div>
 
-      {/* One line under the field, carrying the eligibility note until there
+			{/* One line under the field, carrying the eligibility note until there
           is an error to carry instead. It was already reserving this height
           with a transparent space so an error could never move the plate
           above it, so the note costs no layout and the swap costs none
@@ -330,29 +330,29 @@ export default function SignupForm({
           only 60% opaque over the painting — soft paper falls to 3.44:1
           there, where paper holds 5.28:1. Regular weight against the error's
           semibold, so the two read apart at a glance as well as by colour. */}
-      <p
-        id={`${id}-msg`}
-        className={`mt-[0.45em] ${status === "error" ? "font-semibold text-hl-cyan" : "text-hl-paper"}`}
-        style={{ fontSize: "0.6em", minHeight: "1.4em" }}
-      >
-        {status === "error" ? message : BRAND.eligibility}
-      </p>
+			<p
+				id={`${id}-msg`}
+				className={`mt-[0.45em] ${status === "error" ? "font-semibold text-hl-cyan" : "text-hl-paper"}`}
+				style={{ fontSize: "0.6em", minHeight: "1.4em" }}
+			>
+				{status === "error" ? message : BRAND.eligibility}
+			</p>
 
-      {/* One persistent live region does all the announcing — "taking you to
+			{/* One persistent live region does all the announcing — "taking you to
           Hack Club", or what went wrong. It is always in the tree, so every
           status change is a change to it, and it carries no layout. */}
-      <p role="status" aria-live="polite" className="sr-only">
-        {message}
-      </p>
-    </div>
-  )
+			<p role="status" aria-live="polite" className="sr-only">
+				{message}
+			</p>
+		</div>
+	)
 }
 
 function Spinner({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>
-      <circle cx={12} cy={12} r={9} stroke="currentColor" strokeWidth={3} strokeOpacity={0.3} />
-      <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth={3} strokeLinecap="square" />
-    </svg>
-  )
+	return (
+		<svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>
+			<circle cx={12} cy={12} r={9} stroke="currentColor" strokeWidth={3} strokeOpacity={0.3} />
+			<path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth={3} strokeLinecap="square" />
+		</svg>
+	)
 }

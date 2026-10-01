@@ -14,14 +14,14 @@ import { recomputeAllStreaks } from "../src/lib/streak"
  * Run with `pnpm streaks:recompute`.
  */
 async function main() {
-  const started = Date.now()
-  const users = await recomputeAllStreaks()
-  console.log(`recomputed streaks for ${users} users in ${((Date.now() - started) / 1000).toFixed(1)}s`)
+	const started = Date.now()
+	const users = await recomputeAllStreaks()
+	console.log(`recomputed streaks for ${users} users in ${((Date.now() - started) / 1000).toFixed(1)}s`)
 }
 
 main()
-  .catch((err) => {
-    console.error(err)
-    process.exit(1)
-  })
-  .finally(() => prisma.$disconnect())
+	.catch((err) => {
+		console.error(err)
+		process.exit(1)
+	})
+	.finally(() => prisma.$disconnect())

@@ -12,18 +12,18 @@ export const maxDuration = 300
  * integration jobs; `?dryRun=true` reports what would change without writing.
  */
 export const POST = withRoute(async (req: NextRequest) => {
-  const denied = requireIntegrationAuth(req)
-  if (denied) return denied
+	const denied = requireIntegrationAuth(req)
+	if (denied) return denied
 
-  const dryRun = req.nextUrl.searchParams.get("dryRun") === "true"
-  const result = await syncLoopsProperties({ dryRun })
-  if (!dryRun && "updated" in result) {
-    await recordSyncRun("airtable_loops", {
-      users: result.users,
-      matched: result.matched,
-      unmatched: result.unmatched,
-      updated: result.updated,
-    })
-  }
-  return ok(result)
+	const dryRun = req.nextUrl.searchParams.get("dryRun") === "true"
+	const result = await syncLoopsProperties({ dryRun })
+	if (!dryRun && "updated" in result) {
+		await recordSyncRun("airtable_loops", {
+			users: result.users,
+			matched: result.matched,
+			unmatched: result.unmatched,
+			updated: result.updated,
+		})
+	}
+	return ok(result)
 })

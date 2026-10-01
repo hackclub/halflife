@@ -11,22 +11,22 @@ export const COMP_WIDTH = 1728
 
 /** One comp pixel, as a container-relative length. */
 export function u(px: number): string {
-  return `${((px / COMP_WIDTH) * 100).toFixed(5)}cqw`
+	return `${((px / COMP_WIDTH) * 100).toFixed(5)}cqw`
 }
 
 /** Absolute box, in comp pixels. */
 export function box(x: number, y: number, w: number, h: number) {
-  return { left: u(x), top: u(y), width: u(w), height: u(h) } as const
+	return { left: u(x), top: u(y), width: u(w), height: u(h) } as const
 }
 
 /** Absolute origin only — lets content size itself. */
 export function at(x: number, y: number) {
-  return { left: u(x), top: u(y) } as const
+	return { left: u(x), top: u(y) } as const
 }
 
 /** Type set in comp pixels. */
 export function type(size: number, lineHeight = 1.05) {
-  return { fontSize: u(size), lineHeight } as const
+	return { fontSize: u(size), lineHeight } as const
 }
 
 /**
@@ -59,31 +59,31 @@ export const BAND_TAPER = 1.6
  * thickness divided back out — which is why the paths carry no round numbers.
  */
 export function band(from: readonly [number, number], to: readonly [number, number], mean: number) {
-  const [x0, y0] = from
-  const [x1, y1] = to
-  const dx = x1 - x0
-  const dy = y1 - y0
-  const foreshorten = Math.abs(dy) / Math.hypot(dx, dy)
+	const [x0, y0] = from
+	const [x1, y1] = to
+	const dx = x1 - x0
+	const dy = y1 - y0
+	const foreshorten = Math.abs(dy) / Math.hypot(dx, dy)
 
-  const thin = (2 * mean) / (1 + BAND_TAPER) / foreshorten
-  const thick = thin * BAND_TAPER
+	const thin = (2 * mean) / (1 + BAND_TAPER) / foreshorten
+	const thick = thin * BAND_TAPER
 
-  const topLeft = x0 - thin / 2
-  const topRight = x0 + thin / 2
-  const botLeft = x1 - thick / 2
-  const botRight = x1 + thick / 2
+	const topLeft = x0 - thin / 2
+	const topRight = x0 + thin / 2
+	const botLeft = x1 - thick / 2
+	const botRight = x1 + thick / 2
 
-  const left = Math.min(topLeft, botLeft)
-  const r = (n: number) => Number(n.toFixed(2))
-  const h = r(dy)
+	const left = Math.min(topLeft, botLeft)
+	const r = (n: number) => Number(n.toFixed(2))
+	const h = r(dy)
 
-  return {
-    x: r(left),
-    y: y0,
-    w: r(Math.max(topRight, botRight) - left),
-    h,
-    d: `M${r(topLeft - left)} 0H${r(topRight - left)}` + `L${r(botRight - left)} ${h}H${r(botLeft - left)}Z`,
-  }
+	return {
+		x: r(left),
+		y: y0,
+		w: r(Math.max(topRight, botRight) - left),
+		h,
+		d: `M${r(topLeft - left)} 0H${r(topRight - left)}` + `L${r(botRight - left)} ${h}H${r(botLeft - left)}Z`,
+	}
 }
 
 /** A plate on the comp grid, in comp pixels. */
@@ -91,7 +91,7 @@ export type Plate = { x: number; y: number; w: number; h: number }
 
 /** Declare a plate. `box(...spread)` draws it; `weld` joins it to another. */
 export function plate(x: number, y: number, w: number, h: number): Plate {
-  return { x, y, w, h }
+	return { x, y, w, h }
 }
 
 /**
@@ -112,15 +112,15 @@ export function plate(x: number, y: number, w: number, h: number): Plate {
  * the way step 1 grew to hold its heading — and both its bands follow.
  */
 export function weld(
-  exit: { plate: Plate; at: number; rise: number },
-  entry: { plate: Plate; at: number; drop: number },
-  mean: number,
+	exit: { plate: Plate; at: number; rise: number },
+	entry: { plate: Plate; at: number; drop: number },
+	mean: number,
 ) {
-  return band(
-    [exit.plate.x + exit.plate.w * exit.at, exit.plate.y + exit.plate.h - exit.rise],
-    [entry.plate.x + entry.plate.w * entry.at, entry.plate.y + entry.drop],
-    mean,
-  )
+	return band(
+		[exit.plate.x + exit.plate.w * exit.at, exit.plate.y + exit.plate.h - exit.rise],
+		[entry.plate.x + entry.plate.w * entry.at, entry.plate.y + entry.drop],
+		mean,
+	)
 }
 
 /**
@@ -140,19 +140,19 @@ const STACK_ANCHORS = [70, 135] as const
 export const STACK_VIEW = { w: 200, h: 120 } as const
 
 export function stackWeld(lean: "left" | "right"): string {
-  const [near, far] = lean === "right" ? STACK_ANCHORS : [STACK_ANCHORS[1], STACK_ANCHORS[0]]
-  const thin = (2 * STACK_MEAN_EDGE) / (1 + BAND_TAPER)
-  const thick = thin * BAND_TAPER
-  const r = (n: number) => Number(n.toFixed(2))
+	const [near, far] = lean === "right" ? STACK_ANCHORS : [STACK_ANCHORS[1], STACK_ANCHORS[0]]
+	const thin = (2 * STACK_MEAN_EDGE) / (1 + BAND_TAPER)
+	const thick = thin * BAND_TAPER
+	const r = (n: number) => Number(n.toFixed(2))
 
-  return (
-    `M${r(near - thin / 2)} 0H${r(near + thin / 2)}` + `L${r(far + thick / 2)} ${STACK_VIEW.h}H${r(far - thick / 2)}Z`
-  )
+	return (
+		`M${r(near - thin / 2)} 0H${r(near + thin / 2)}` + `L${r(far + thick / 2)} ${STACK_VIEW.h}H${r(far - thick / 2)}Z`
+	)
 }
 
 /** A plate's absolute box, for `style`. */
 export function plateBox(p: Plate) {
-  return box(p.x, p.y, p.w, p.h)
+	return box(p.x, p.y, p.w, p.h)
 }
 
 /**
@@ -213,5 +213,5 @@ export const SWASH_INSET_Y = "1.8em"
  * column that is already explicit.
  */
 export function swashBoxWidth(lineRun: number) {
-  return lineRun / (1 - 2 * SWASH_INSET_X)
+	return lineRun / (1 - 2 * SWASH_INSET_X)
 }

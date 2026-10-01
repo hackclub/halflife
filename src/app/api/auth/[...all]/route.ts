@@ -23,21 +23,21 @@ const handler = toNextJsHandler(auth)
  * better-auth, because those are real and their page is the right one.
  */
 export async function GET(request: Request) {
-  const response = await handler.GET(request)
+	const response = await handler.GET(request)
 
-  const location = response.headers.get("location")
-  if (!location) return response
-  let error: string | null = null
-  try {
-    error = new URL(location, request.url).searchParams.get("error")
-  } catch {
-    // A Location that will not parse is not one of ours to rewrite.
-    return response
-  }
-  if (error !== "state_mismatch") return response
+	const location = response.headers.get("location")
+	if (!location) return response
+	let error: string | null = null
+	try {
+		error = new URL(location, request.url).searchParams.get("error")
+	} catch {
+		// A Location that will not parse is not one of ours to rewrite.
+		return response
+	}
+	if (error !== "state_mismatch") return response
 
-  const session = await auth.api.getSession({ headers: request.headers })
-  return NextResponse.redirect(new URL(session ? "/dashboard" : "/", request.url))
+	const session = await auth.api.getSession({ headers: request.headers })
+	return NextResponse.redirect(new URL(session ? "/dashboard" : "/", request.url))
 }
 
 export const { POST } = handler

@@ -31,65 +31,65 @@ import "server-only"
 export type ForgeId = "github" | "gitlab"
 
 export interface Forge {
-  id: ForgeId
-  /** What the maker sees: "GitHub", "GitLab". */
-  label: string
-  /** The canonical web host. */
-  hostname: string
-  /** Hosts that mean the same forge, e.g. GitHub's `www.` prefix. */
-  aliases: readonly string[]
-  /** One extra web path segment between the repo and `blob`, e.g. GitLab's `-`. */
-  blobSegment: string
-  /**
-   * Whether a repo path may carry nested groups (`group/sub/repo`), which
-   * GitLab allows and GitHub does not. The repo parser uses this to decide how
-   * many segments are a repo and how many are the path to it.
-   */
-  nestedGroups: boolean
-  /**
-   * The OAuth scopes this forge needs to read private repos and push to one.
-   * GitHub has one broad `repo` scope; GitLab splits read from write and grants
-   * API access separately.
-   */
-  scopes: readonly string[]
-  /** Where the forge's OAuth app is created, for the "make one" link. */
-  newAppUrl: string
+	id: ForgeId
+	/** What the maker sees: "GitHub", "GitLab". */
+	label: string
+	/** The canonical web host. */
+	hostname: string
+	/** Hosts that mean the same forge, e.g. GitHub's `www.` prefix. */
+	aliases: readonly string[]
+	/** One extra web path segment between the repo and `blob`, e.g. GitLab's `-`. */
+	blobSegment: string
+	/**
+	 * Whether a repo path may carry nested groups (`group/sub/repo`), which
+	 * GitLab allows and GitHub does not. The repo parser uses this to decide how
+	 * many segments are a repo and how many are the path to it.
+	 */
+	nestedGroups: boolean
+	/**
+	 * The OAuth scopes this forge needs to read private repos and push to one.
+	 * GitHub has one broad `repo` scope; GitLab splits read from write and grants
+	 * API access separately.
+	 */
+	scopes: readonly string[]
+	/** Where the forge's OAuth app is created, for the "make one" link. */
+	newAppUrl: string
 }
 
 export const FORGES: Record<ForgeId, Forge> = {
-  github: {
-    id: "github",
-    label: "GitHub",
-    hostname: "github.com",
-    aliases: ["www.github.com"],
-    blobSegment: "blob",
-    nestedGroups: false,
-    // `repo` rather than `public_repo`: a maker's project repo may be private,
-    // and the difference only shows up the first day someone links a private
-    // repo and every write 403s. `read:user` is what lets the picker read their
-    // login.
-    scopes: ["read:user", "repo"],
-    newAppUrl: "https://github.com/settings/applications/new",
-  },
-  gitlab: {
-    id: "gitlab",
-    label: "GitLab",
-    hostname: "gitlab.com",
-    aliases: ["www.gitlab.com"],
-    blobSegment: "-/blob",
-    nestedGroups: true,
-    // `api` covers reading a repo's files AND creating a commit through the
-    // Commits API, which `write_repository` alone does not (that is Git-over-
-    // HTTP only — the docs are explicit that it is "not using the API").
-    // `read_user` is the picker's equivalent of GitHub's `read:user`.
-    //
-    // `api` is broad — it is read/write over every project the person can see.
-    // GitLab offers nothing narrower that still covers "commit to an arbitrary
-    // project the maker names", so this is asked for at link time and explained
-    // in the picker, exactly as GitHub's `repo` scope is.
-    scopes: ["api", "read_user"],
-    newAppUrl: "https://gitlab.com/-/user_settings/applications",
-  },
+	github: {
+		id: "github",
+		label: "GitHub",
+		hostname: "github.com",
+		aliases: ["www.github.com"],
+		blobSegment: "blob",
+		nestedGroups: false,
+		// `repo` rather than `public_repo`: a maker's project repo may be private,
+		// and the difference only shows up the first day someone links a private
+		// repo and every write 403s. `read:user` is what lets the picker read their
+		// login.
+		scopes: ["read:user", "repo"],
+		newAppUrl: "https://github.com/settings/applications/new",
+	},
+	gitlab: {
+		id: "gitlab",
+		label: "GitLab",
+		hostname: "gitlab.com",
+		aliases: ["www.gitlab.com"],
+		blobSegment: "-/blob",
+		nestedGroups: true,
+		// `api` covers reading a repo's files AND creating a commit through the
+		// Commits API, which `write_repository` alone does not (that is Git-over-
+		// HTTP only — the docs are explicit that it is "not using the API").
+		// `read_user` is the picker's equivalent of GitHub's `read:user`.
+		//
+		// `api` is broad — it is read/write over every project the person can see.
+		// GitLab offers nothing narrower that still covers "commit to an arbitrary
+		// project the maker names", so this is asked for at link time and explained
+		// in the picker, exactly as GitHub's `repo` scope is.
+		scopes: ["api", "read_user"],
+		newAppUrl: "https://gitlab.com/-/user_settings/applications",
+	},
 }
 
 /** Every configured forge, in a stable order. */
@@ -97,20 +97,20 @@ export const ALL_FORGES: readonly Forge[] = [FORGES.github, FORGES.gitlab]
 
 /** The forge a hostname belongs to, or null when it is not one we speak. */
 export function forgeByHostname(hostname: string): Forge | null {
-  const host = hostname
-    .trim()
-    .toLowerCase()
-    .replace(/^www\./, "")
-  for (const forge of ALL_FORGES) {
-    if (forge.hostname === host) return forge
-    if (forge.aliases.some((a) => a.replace(/^www\./, "") === host)) return forge
-  }
-  return null
+	const host = hostname
+		.trim()
+		.toLowerCase()
+		.replace(/^www\./, "")
+	for (const forge of ALL_FORGES) {
+		if (forge.hostname === host) return forge
+		if (forge.aliases.some((a) => a.replace(/^www\./, "") === host)) return forge
+	}
+	return null
 }
 
 /** The forge with this id, or null. Narrowing helper for stored values. */
 export function forgeById(id: string): Forge | null {
-  return (FORGES as Record<string, Forge | undefined>)[id] ?? null
+	return (FORGES as Record<string, Forge | undefined>)[id] ?? null
 }
 
 /**
@@ -122,17 +122,17 @@ export function forgeById(id: string): Forge | null {
  * have to refuse anything this returns null for.
  */
 export function forgeFromRepoUrlOrNull(url: string | null | undefined): Forge | null {
-  if (!url) return null
-  return forgeByHostname(hostnameOf(url) ?? "")
+	if (!url) return null
+	return forgeByHostname(hostnameOf(url) ?? "")
 }
 
 /** `https://github.com/a/b` → `github.com`. Null when the value will not parse. */
 export function hostnameOf(url: string): string | null {
-  try {
-    return new URL(/^[a-z][a-z\d+.-]*:\/\//i.test(url) ? url : `https://${url}`).hostname.toLowerCase()
-  } catch {
-    return null
-  }
+	try {
+		return new URL(/^[a-z][a-z\d+.-]*:\/\//i.test(url) ? url : `https://${url}`).hostname.toLowerCase()
+	} catch {
+		return null
+	}
 }
 
 /**
@@ -142,10 +142,10 @@ export function hostnameOf(url: string): string | null {
  * and `blob` and a link built the GitHub way lands on GitLab's 404.
  */
 export function fileUrl(forge: Forge, ownerPath: string, repo: string, path: string): string {
-  return `https://${forge.hostname}/${ownerPath}/${repo}/${forge.blobSegment}/HEAD/${path}`
+	return `https://${forge.hostname}/${ownerPath}/${repo}/${forge.blobSegment}/HEAD/${path}`
 }
 
 /** The web URL of the repo itself. */
 export function repoUrl(forge: Forge, ownerPath: string, repo: string): string {
-  return `https://${forge.hostname}/${ownerPath}/${repo}`
+	return `https://${forge.hostname}/${ownerPath}/${repo}`
 }

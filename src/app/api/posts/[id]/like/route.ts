@@ -8,12 +8,12 @@ export const dynamic = "force-dynamic"
 type Params = { params: Promise<{ id: string }> }
 
 export const PUT = withRoute(async (req: Request, { params }: Params) => {
-  const gate = await requireSession()
-  if (gate.error) return gate.error
-  const { id } = await params
+	const gate = await requireSession()
+	if (gate.error) return gate.error
+	const { id } = await params
 
-  const parsed = await parseBody(req, likeSchema)
-  if (parsed.error) return parsed.error
+	const parsed = await parseBody(req, likeSchema)
+	if (parsed.error) return parsed.error
 
-  return ok(await setLike(id, gate.user.id, parsed.data.liked))
+	return ok(await setLike(id, gate.user.id, parsed.data.liked))
 })

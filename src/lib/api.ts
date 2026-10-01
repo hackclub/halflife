@@ -3,7 +3,7 @@ import { z } from "zod"
 import { API_ERROR_STATUS, type ApiErrorCode, HttpError } from "@/lib/errors"
 
 export interface ApiErrorBody {
-  error: { code: ApiErrorCode; message: string; details?: unknown }
+	error: { code: ApiErrorCode; message: string; details?: unknown }
 }
 
 /**
@@ -19,7 +19,7 @@ export interface ApiErrorBody {
  * commit; half the callers reading `payload.data` is the state that hides.
  */
 export function ok<T>(data: T, init?: ResponseInit): NextResponse<T> {
-  return NextResponse.json(data, init)
+	return NextResponse.json(data, init)
 }
 
 /**
@@ -27,10 +27,10 @@ export function ok<T>(data: T, init?: ResponseInit): NextResponse<T> {
  * the two can never disagree.
  */
 export function fail(code: ApiErrorCode, message: string, details?: unknown): NextResponse<ApiErrorBody> {
-  return NextResponse.json(
-    { error: { code, message, ...(details === undefined ? {} : { details }) } },
-    { status: API_ERROR_STATUS[code] },
-  )
+	return NextResponse.json(
+		{ error: { code, message, ...(details === undefined ? {} : { details }) } },
+		{ status: API_ERROR_STATUS[code] },
+	)
 }
 
 type Parsed<T> = { data: T; error?: never } | { data?: never; error: NextResponse<ApiErrorBody> }
@@ -41,31 +41,31 @@ type Parsed<T> = { data: T; error?: never } | { data?: never; error: NextRespons
  * confusing runtime error three layers down.
  */
 export async function parseBody<S extends z.ZodType>(request: Request, schema: S): Promise<Parsed<z.output<S>>> {
-  let raw: unknown
-  try {
-    raw = await request.json()
-  } catch {
-    return { error: fail("INVALID_BODY", "Request body must be valid JSON") }
-  }
+	let raw: unknown
+	try {
+		raw = await request.json()
+	} catch {
+		return { error: fail("INVALID_BODY", "Request body must be valid JSON") }
+	}
 
-  const result = schema.safeParse(raw)
-  if (!result.success) {
-    return {
-      error: fail("VALIDATION_FAILED", "Invalid request", z.treeifyError(result.error)),
-    }
-  }
-  return { data: result.data }
+	const result = schema.safeParse(raw)
+	if (!result.success) {
+		return {
+			error: fail("VALIDATION_FAILED", "Invalid request", z.treeifyError(result.error)),
+		}
+	}
+	return { data: result.data }
 }
 
 export function parseQuery<S extends z.ZodType>(request: NextRequest, schema: S): Parsed<z.output<S>> {
-  const raw = Object.fromEntries(request.nextUrl.searchParams.entries())
-  const result = schema.safeParse(raw)
-  if (!result.success) {
-    return {
-      error: fail("INVALID_QUERY", "Invalid query parameters", z.treeifyError(result.error)),
-    }
-  }
-  return { data: result.data }
+	const raw = Object.fromEntries(request.nextUrl.searchParams.entries())
+	const result = schema.safeParse(raw)
+	if (!result.success) {
+		return {
+			error: fail("INVALID_QUERY", "Invalid query parameters", z.treeifyError(result.error)),
+		}
+	}
+	return { data: result.data }
 }
 
 /**
@@ -90,41 +90,41 @@ type ParsedForm = { data: FormData; error?: never } | { data?: never; error: Nex
  * chunked request cannot skip the check by omitting the header.
  */
 export async function parseUploadForm(request: Request, maxFileBytes: number): Promise<ParsedForm> {
-  const cap = maxFileBytes + MULTIPART_OVERHEAD_BYTES
-  const tooLarge = () => fail("VALIDATION_FAILED", `That upload is larger than ${maxFileBytes} bytes`)
-  const invalid = () => fail("INVALID_BODY", "Expected a multipart form")
+	const cap = maxFileBytes + MULTIPART_OVERHEAD_BYTES
+	const tooLarge = () => fail("VALIDATION_FAILED", `That upload is larger than ${maxFileBytes} bytes`)
+	const invalid = () => fail("INVALID_BODY", "Expected a multipart form")
 
-  const declared = Number(request.headers.get("content-length") ?? "")
-  if (Number.isFinite(declared) && declared > cap) return { error: tooLarge() }
+	const declared = Number(request.headers.get("content-length") ?? "")
+	if (Number.isFinite(declared) && declared > cap) return { error: tooLarge() }
 
-  const body = request.body
-  if (!body) return { error: invalid() }
+	const body = request.body
+	if (!body) return { error: invalid() }
 
-  const reader = body.getReader()
-  const chunks: Uint8Array[] = []
-  let total = 0
-  try {
-    for (;;) {
-      const { done, value } = await reader.read()
-      if (done) break
-      total += value.byteLength
-      if (total > cap) {
-        await reader.cancel().catch(() => undefined)
-        return { error: tooLarge() }
-      }
-      chunks.push(value)
-    }
-  } catch {
-    return { error: invalid() }
-  }
+	const reader = body.getReader()
+	const chunks: Uint8Array[] = []
+	let total = 0
+	try {
+		for (;;) {
+			const { done, value } = await reader.read()
+			if (done) break
+			total += value.byteLength
+			if (total > cap) {
+				await reader.cancel().catch(() => undefined)
+				return { error: tooLarge() }
+			}
+			chunks.push(value)
+		}
+	} catch {
+		return { error: invalid() }
+	}
 
-  // Rebuild a request so the runtime's multipart parser does the parsing
-  // rather than hand-rolling boundaries.
-  const headers = new Headers(request.headers)
-  headers.delete("content-length")
-  const buffered = new Request(request.url, { method: "POST", headers, body: Buffer.concat(chunks) })
-  const form = await buffered.formData().catch(() => null)
-  return form ? { data: form } : { error: invalid() }
+	// Rebuild a request so the runtime's multipart parser does the parsing
+	// rather than hand-rolling boundaries.
+	const headers = new Headers(request.headers)
+	headers.delete("content-length")
+	const buffered = new Request(request.url, { method: "POST", headers, body: Buffer.concat(chunks) })
+	const form = await buffered.formData().catch(() => null)
+	return form ? { data: form } : { error: invalid() }
 }
 
 /**
@@ -136,16 +136,16 @@ export async function parseUploadForm(request: Request, maxFileBytes: number): P
 const limiterHits = new Map<string, number[]>()
 
 export function rateLimitedInMemory(key: string, max = 10, windowMs = 60_000): boolean {
-  const now = Date.now()
-  const recent = (limiterHits.get(key) ?? []).filter((at) => now - at < windowMs)
-  if (recent.length >= max) {
-    limiterHits.set(key, recent)
-    return true
-  }
-  recent.push(now)
-  limiterHits.set(key, recent)
-  if (limiterHits.size > 10_000) limiterHits.clear()
-  return false
+	const now = Date.now()
+	const recent = (limiterHits.get(key) ?? []).filter((at) => now - at < windowMs)
+	if (recent.length >= max) {
+		limiterHits.set(key, recent)
+		return true
+	}
+	recent.push(now)
+	limiterHits.set(key, recent)
+	if (limiterHits.size > 10_000) limiterHits.clear()
+	return false
 }
 
 /**
@@ -153,15 +153,15 @@ export function rateLimitedInMemory(key: string, max = 10, windowMs = 60_000): b
  * anything else becomes a logged 500 instead of an unhandled rejection.
  */
 export function withRoute<A extends unknown[]>(
-  handler: (...args: A) => Promise<NextResponse>,
+	handler: (...args: A) => Promise<NextResponse>,
 ): (...args: A) => Promise<NextResponse> {
-  return async (...args: A) => {
-    try {
-      return await handler(...args)
-    } catch (err) {
-      if (err instanceof HttpError) return fail(err.code, err.message, err.details)
-      console.error("[api] unhandled error:", err)
-      return fail("INTERNAL", "Something went wrong")
-    }
-  }
+	return async (...args: A) => {
+		try {
+			return await handler(...args)
+		} catch (err) {
+			if (err instanceof HttpError) return fail(err.code, err.message, err.details)
+			console.error("[api] unhandled error:", err)
+			return fail("INTERNAL", "Something went wrong")
+		}
+	}
 }

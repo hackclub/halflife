@@ -24,14 +24,14 @@ import { StoreProvider } from "@/lib/store"
  */
 export const dynamic = "force-dynamic"
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user } = await requireSessionPage()
-  // After the response: counting a page view must never slow one down.
-  after(() => touchActivity(user.id))
-  const snapshot = await getStoreSnapshot(user.id)
+	const { user } = await requireSessionPage()
+	// After the response: counting a page view must never slow one down.
+	after(() => touchActivity(user.id))
+	const snapshot = await getStoreSnapshot(user.id)
 
-  return (
-    <StoreProvider snapshot={snapshot}>
-      <AppShell>{children}</AppShell>
-    </StoreProvider>
-  )
+	return (
+		<StoreProvider snapshot={snapshot}>
+			<AppShell>{children}</AppShell>
+		</StoreProvider>
+	)
 }

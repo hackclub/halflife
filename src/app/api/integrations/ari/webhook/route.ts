@@ -24,15 +24,15 @@ type Handler = (request: Request) => Promise<Response>
 let handler: Handler | null = null
 
 export async function POST(request: Request) {
-  if (!isAriWebhookConfigured()) {
-    return NextResponse.json({ error: "Ari is not configured on this deployment" }, { status: 503 })
-  }
-  const secret = process.env.ARI_WEBHOOK_SECRET!
-  handler ??= createWebhookHandler({
-    secret,
-    async on_event(event, context) {
-      await applyAriWebhook(event, context.delivery_id)
-    },
-  })
-  return handler(request)
+	if (!isAriWebhookConfigured()) {
+		return NextResponse.json({ error: "Ari is not configured on this deployment" }, { status: 503 })
+	}
+	const secret = process.env.ARI_WEBHOOK_SECRET!
+	handler ??= createWebhookHandler({
+		secret,
+		async on_event(event, context) {
+			await applyAriWebhook(event, context.delivery_id)
+		},
+	})
+	return handler(request)
 }

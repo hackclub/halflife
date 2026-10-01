@@ -13,9 +13,9 @@ export const dynamic = "force-dynamic"
  * phone can reach. The request origin is only a last resort for local dev.
  */
 function publicOrigin(req: Request): string {
-  const configured = process.env.NEXT_PUBLIC_APP_URL ?? process.env.BETTER_AUTH_URL
-  if (configured) return configured.replace(/\/$/, "")
-  return new URL(req.url).origin
+	const configured = process.env.NEXT_PUBLIC_APP_URL ?? process.env.BETTER_AUTH_URL
+	if (configured) return configured.replace(/\/$/, "")
+	return new URL(req.url).origin
 }
 
 /**
@@ -29,27 +29,27 @@ function publicOrigin(req: Request): string {
  * and can never be read back.
  */
 export const POST = withRoute(async (req: Request) => {
-  const gate = await requireSession()
-  if (gate.error) return gate.error
+	const gate = await requireSession()
+	if (gate.error) return gate.error
 
-  const handoff = await createHandoff(gate.user.id)
-  const url = `${publicOrigin(req)}/r/${handoff.token}`
+	const handoff = await createHandoff(gate.user.id)
+	const url = `${publicOrigin(req)}/r/${handoff.token}`
 
-  const qrSvg = await QRCode.toString(url, {
-    type: "svg",
-    errorCorrectionLevel: "M",
-    margin: 1,
-    width: 200,
-  })
+	const qrSvg = await QRCode.toString(url, {
+		type: "svg",
+		errorCorrectionLevel: "M",
+		margin: 1,
+		width: 200,
+	})
 
-  return ok(
-    {
-      id: handoff.id,
-      qrSvg,
-      url,
-      expiresAt: handoff.expiresAt,
-      ttlMinutes: HANDOFF_TTL_MINUTES,
-    },
-    { status: 201 },
-  )
+	return ok(
+		{
+			id: handoff.id,
+			qrSvg,
+			url,
+			expiresAt: handoff.expiresAt,
+			ttlMinutes: HANDOFF_TTL_MINUTES,
+		},
+		{ status: 201 },
+	)
 })

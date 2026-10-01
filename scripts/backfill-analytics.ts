@@ -8,11 +8,11 @@ import prisma from "../src/lib/prisma"
  * everyone who was here before they were tracked. Safe to run again.
  */
 backfillAnalytics()
-  .then((counts) => {
-    console.log("analytics backfilled:", counts)
-  })
-  .catch((err) => {
-    console.error(err)
-    process.exitCode = 1
-  })
-  .finally(() => prisma.$disconnect())
+	.then((counts) => {
+		console.log("analytics backfilled:", counts)
+	})
+	.catch((err) => {
+		console.error(err)
+		process.exitCode = 1
+	})
+	.finally(() => prisma.$disconnect())

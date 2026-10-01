@@ -21,40 +21,40 @@ import { type RepoRef, repoRefFromLink } from "@/lib/repo-ref"
  */
 
 export interface RepoCheck {
-  key: string
-  label: string
-  status: "pass" | "fail" | "warn"
-  detail?: string
-  /** A failed blocking check stops the hand-in. */
-  blocking?: boolean
+	key: string
+	label: string
+	status: "pass" | "fail" | "warn"
+	detail?: string
+	/** A failed blocking check stops the hand-in. */
+	blocking?: boolean
 }
 
 export interface RepoCheckResult {
-  repo: string | null
-  checks: RepoCheck[]
-  canSubmit: boolean
-  /** The forge could not be asked; nothing was concluded about the repo. */
-  unavailable: boolean
-  checkedAt: string
+	repo: string | null
+	checks: RepoCheck[]
+	canSubmit: boolean
+	/** The forge could not be asked; nothing was concluded about the repo. */
+	unavailable: boolean
+	checkedAt: string
 }
 
 /** What a forge said about a repo — everything the checks are built from. */
 type Snapshot =
-  | {
-      kind: "ok"
-      /** Lowercased, for matching. */
-      paths: string[]
-      /** The same files as the forge spells them, index for index — for links. */
-      files: string[]
-      readme: string | null
-      /**
-       * The file list was cut short (GitHub stops at about 100,000 entries), so
-       * a file missing from `paths` may still be in the repo.
-       */
-      truncated: boolean
-    }
-  | { kind: "not-found" }
-  | { kind: "unavailable"; why: string }
+	| {
+			kind: "ok"
+			/** Lowercased, for matching. */
+			paths: string[]
+			/** The same files as the forge spells them, index for index — for links. */
+			files: string[]
+			readme: string | null
+			/**
+			 * The file list was cut short (GitHub stops at about 100,000 entries), so
+			 * a file missing from `paths` may still be in the repo.
+			 */
+			truncated: boolean
+	  }
+	| { kind: "not-found" }
+	| { kind: "unavailable"; why: string }
 
 /**
  * How long one answer from a forge is reused for a repo.
@@ -87,39 +87,39 @@ const SNAPSHOT_CACHE_MAX = 500
 const snapshots = new Map<string, { at: number; ttl: number; value: Promise<Snapshot> }>()
 
 function snapshot(ref: RepoRef): Promise<Snapshot> {
-  const key = `${ref.forge.id}/${ref.fullName}`.toLowerCase()
-  const now = Date.now()
-  const hit = snapshots.get(key)
-  if (hit && now - hit.at < hit.ttl) return hit.value
+	const key = `${ref.forge.id}/${ref.fullName}`.toLowerCase()
+	const now = Date.now()
+	const hit = snapshots.get(key)
+	if (hit && now - hit.at < hit.ttl) return hit.value
 
-  if (snapshots.size >= SNAPSHOT_CACHE_MAX) {
-    for (const [k, v] of snapshots) {
-      if (now - v.at >= v.ttl) snapshots.delete(k)
-    }
-    // Still full of live entries: drop the oldest. Map keeps insertion order.
-    if (snapshots.size >= SNAPSHOT_CACHE_MAX) snapshots.delete(snapshots.keys().next().value!)
-  }
+	if (snapshots.size >= SNAPSHOT_CACHE_MAX) {
+		for (const [k, v] of snapshots) {
+			if (now - v.at >= v.ttl) snapshots.delete(k)
+		}
+		// Still full of live entries: drop the oldest. Map keeps insertion order.
+		if (snapshots.size >= SNAPSHOT_CACHE_MAX) snapshots.delete(snapshots.keys().next().value!)
+	}
 
-  // Never rejects. The promise is what the cache holds, so a rejected one
-  // would be handed to every check of this repo for the next minute — each of
-  // them a 500 — instead of the short-lived "could not check" it should be.
-  const value = fetchSnapshot(ref).catch((err): Snapshot => {
-    console.warn(`[repo-checks] ${ref.forge.id}/${ref.fullName} failed unexpectedly:`, err)
-    return { kind: "unavailable", why: `${ref.forge.label} did not answer.` }
-  })
-  const entry = { at: now, ttl: SNAPSHOT_TTL_MS, value }
-  snapshots.set(key, entry)
-  // Settled, a failure is only kept briefly. Checked against the entry itself,
-  // so a newer fetch that has replaced it is left alone.
-  void value.then((snap) => {
-    if (snap.kind === "unavailable" && snapshots.get(key) === entry) entry.ttl = UNAVAILABLE_TTL_MS
-  })
-  return value
+	// Never rejects. The promise is what the cache holds, so a rejected one
+	// would be handed to every check of this repo for the next minute — each of
+	// them a 500 — instead of the short-lived "could not check" it should be.
+	const value = fetchSnapshot(ref).catch((err): Snapshot => {
+		console.warn(`[repo-checks] ${ref.forge.id}/${ref.fullName} failed unexpectedly:`, err)
+		return { kind: "unavailable", why: `${ref.forge.label} did not answer.` }
+	})
+	const entry = { at: now, ttl: SNAPSHOT_TTL_MS, value }
+	snapshots.set(key, entry)
+	// Settled, a failure is only kept briefly. Checked against the entry itself,
+	// so a newer fetch that has replaced it is left alone.
+	void value.then((snap) => {
+		if (snap.kind === "unavailable" && snapshots.get(key) === entry) entry.ttl = UNAVAILABLE_TTL_MS
+	})
+	return value
 }
 
 /** Read the file list and README from whichever forge the repo lives on. */
 function fetchSnapshot(ref: RepoRef): Promise<Snapshot> {
-  return ref.forge.id === "gitlab" ? fetchGitLabSnapshot(ref) : fetchGitHubSnapshot(ref)
+	return ref.forge.id === "gitlab" ? fetchGitLabSnapshot(ref) : fetchGitHubSnapshot(ref)
 }
 
 /**
@@ -130,49 +130,49 @@ function fetchSnapshot(ref: RepoRef): Promise<Snapshot> {
  * not, or is private, which to a reviewer is the same thing.
  */
 async function fetchGitHubSnapshot(ref: RepoRef): Promise<Snapshot> {
-  const forge = ref.forge
-  const base = `repos/${ref.fullName}`
-  let treeRes: Response
-  let readmeRes: Response
-  try {
-    ;[treeRes, readmeRes] = await Promise.all([
-      forgeGet(forge, `${base}/git/trees/HEAD?recursive=1`),
-      forgeGet(forge, `${base}/readme`),
-    ])
-  } catch (err) {
-    return {
-      kind: "unavailable",
-      why: err instanceof ForgeUnavailable ? err.message : `${forge.label} did not answer.`,
-    }
-  }
+	const forge = ref.forge
+	const base = `repos/${ref.fullName}`
+	let treeRes: Response
+	let readmeRes: Response
+	try {
+		;[treeRes, readmeRes] = await Promise.all([
+			forgeGet(forge, `${base}/git/trees/HEAD?recursive=1`),
+			forgeGet(forge, `${base}/readme`),
+		])
+	} catch (err) {
+		return {
+			kind: "unavailable",
+			why: err instanceof ForgeUnavailable ? err.message : `${forge.label} did not answer.`,
+		}
+	}
 
-  if (treeRes.status === 404) return { kind: "not-found" }
-  // 409 is an empty repo: no commits, so no tree. That is a real finding.
-  if (!treeRes.ok && treeRes.status !== 409) {
-    return { kind: "unavailable", why: `${forge.label} returned an error (${treeRes.status}).` }
-  }
-  // 404 is the only answer that means there is no README. Anything else is
-  // the forge failing to say, and blocking on that would tell the maker to add
-  // a README they already have.
-  if (!readmeRes.ok && readmeRes.status !== 404) {
-    return { kind: "unavailable", why: `${forge.label} returned an error (${readmeRes.status}).` }
-  }
+	if (treeRes.status === 404) return { kind: "not-found" }
+	// 409 is an empty repo: no commits, so no tree. That is a real finding.
+	if (!treeRes.ok && treeRes.status !== 409) {
+		return { kind: "unavailable", why: `${forge.label} returned an error (${treeRes.status}).` }
+	}
+	// 404 is the only answer that means there is no README. Anything else is
+	// the forge failing to say, and blocking on that would tell the maker to add
+	// a README they already have.
+	if (!readmeRes.ok && readmeRes.status !== 404) {
+		return { kind: "unavailable", why: `${forge.label} returned an error (${readmeRes.status}).` }
+	}
 
-  const body = treeRes.ok
-    ? ((await treeRes.json()) as { tree?: { path: string; type: string }[]; truncated?: boolean })
-    : { tree: [], truncated: false }
-  const files = (body.tree ?? []).filter((f) => f.type === "blob").map((f) => f.path)
-  const paths = files.map((p) => p.toLowerCase())
+	const body = treeRes.ok
+		? ((await treeRes.json()) as { tree?: { path: string; type: string }[]; truncated?: boolean })
+		: { tree: [], truncated: false }
+	const files = (body.tree ?? []).filter((f) => f.type === "blob").map((f) => f.path)
+	const paths = files.map((p) => p.toLowerCase())
 
-  let readme: string | null = null
-  if (readmeRes.ok) {
-    const r = (await readmeRes.json()) as { content?: string; encoding?: string }
-    if (r.content && r.encoding === "base64") {
-      readme = Buffer.from(r.content, "base64").toString("utf-8")
-    }
-  }
+	let readme: string | null = null
+	if (readmeRes.ok) {
+		const r = (await readmeRes.json()) as { content?: string; encoding?: string }
+		if (r.content && r.encoding === "base64") {
+			readme = Buffer.from(r.content, "base64").toString("utf-8")
+		}
+	}
 
-  return { kind: "ok", paths, files, readme, truncated: body.truncated === true }
+	return { kind: "ok", paths, files, readme, truncated: body.truncated === true }
 }
 
 /**
@@ -186,51 +186,51 @@ async function fetchGitHubSnapshot(ref: RepoRef): Promise<Snapshot> {
  * walked until GitLab stops offering a next page.
  */
 async function fetchGitLabSnapshot(ref: RepoRef): Promise<Snapshot> {
-  const forge = ref.forge
-  const project = encodeURIComponent(ref.fullName)
+	const forge = ref.forge
+	const project = encodeURIComponent(ref.fullName)
 
-  let first: Response
-  try {
-    first = await forgeGet(forge, `projects/${project}/repository/tree?ref=HEAD&recursive=true&per_page=100`)
-  } catch (err) {
-    return {
-      kind: "unavailable",
-      why: err instanceof ForgeUnavailable ? err.message : `${forge.label} did not answer.`,
-    }
-  }
-  if (first.status === 404) return { kind: "not-found" }
-  if (!first.ok) {
-    return { kind: "unavailable", why: `${forge.label} returned an error (${first.status}).` }
-  }
+	let first: Response
+	try {
+		first = await forgeGet(forge, `projects/${project}/repository/tree?ref=HEAD&recursive=true&per_page=100`)
+	} catch (err) {
+		return {
+			kind: "unavailable",
+			why: err instanceof ForgeUnavailable ? err.message : `${forge.label} did not answer.`,
+		}
+	}
+	if (first.status === 404) return { kind: "not-found" }
+	if (!first.ok) {
+		return { kind: "unavailable", why: `${forge.label} returned an error (${first.status}).` }
+	}
 
-  const files: string[] = []
-  // A generous ceiling: 100 pages of 100 is 10,000 files, which no hardware
-  // project is, and it stops a pathological repo looping here forever.
-  const MAX_PAGES = 100
-  let page = 1
-  let res = first
-  while (page <= MAX_PAGES) {
-    const entries = (await res.json()) as { path: string; type: string }[]
-    for (const entry of entries) {
-      if (entry.type === "blob") files.push(entry.path)
-    }
-    const next = res.headers.get("x-next-page")
-    if (!next) break
-    page = Number(next)
-    if (!Number.isFinite(page) || page <= 0) break
-    const more = await forgeGet(
-      forge,
-      `projects/${project}/repository/tree?ref=HEAD&recursive=true&per_page=100&page=${page}`,
-    )
-    if (!more.ok) break
-    res = more
-  }
+	const files: string[] = []
+	// A generous ceiling: 100 pages of 100 is 10,000 files, which no hardware
+	// project is, and it stops a pathological repo looping here forever.
+	const MAX_PAGES = 100
+	let page = 1
+	let res = first
+	while (page <= MAX_PAGES) {
+		const entries = (await res.json()) as { path: string; type: string }[]
+		for (const entry of entries) {
+			if (entry.type === "blob") files.push(entry.path)
+		}
+		const next = res.headers.get("x-next-page")
+		if (!next) break
+		page = Number(next)
+		if (!Number.isFinite(page) || page <= 0) break
+		const more = await forgeGet(
+			forge,
+			`projects/${project}/repository/tree?ref=HEAD&recursive=true&per_page=100&page=${page}`,
+		)
+		if (!more.ok) break
+		res = more
+	}
 
-  const paths = files.map((p) => p.toLowerCase())
-  const readme = await fetchGitLabReadme(forge, project, files)
-  // GitLab lists the whole tree when asked to recurse, so a file absent from
-  // `paths` is genuinely absent — there is no "cut short" state to carry.
-  return { kind: "ok", paths, files, readme, truncated: false }
+	const paths = files.map((p) => p.toLowerCase())
+	const readme = await fetchGitLabReadme(forge, project, files)
+	// GitLab lists the whole tree when asked to recurse, so a file absent from
+	// `paths` is genuinely absent — there is no "cut short" state to carry.
+	return { kind: "ok", paths, files, readme, truncated: false }
 }
 
 /**
@@ -245,171 +245,171 @@ async function fetchGitLabSnapshot(ref: RepoRef): Promise<Snapshot> {
 const README_NAMES = ["readme.md", "readme.markdown", "readme.rst", "readme.txt", "readme"]
 
 async function fetchGitLabReadme(forge: Forge, project: string, files: readonly string[]): Promise<string | null> {
-  // Root-level names first, then anything nested, so a docs/README does not
-  // shadow the project's own.
-  const candidates = files
-    .filter((f) => README_NAMES.includes((f.split("/").pop() ?? "").toLowerCase()))
-    .sort((a, b) => a.split("/").length - b.split("/").length)
-  const name = candidates[0]
-  if (!name) return null
+	// Root-level names first, then anything nested, so a docs/README does not
+	// shadow the project's own.
+	const candidates = files
+		.filter((f) => README_NAMES.includes((f.split("/").pop() ?? "").toLowerCase()))
+		.sort((a, b) => a.split("/").length - b.split("/").length)
+	const name = candidates[0]
+	if (!name) return null
 
-  const res = await forgeGet(forge, `projects/${project}/repository/files/${encodeURIComponent(name)}/raw?ref=HEAD`)
-  if (!res.ok) return null
-  return res.text()
+	const res = await forgeGet(forge, `projects/${project}/repository/files/${encodeURIComponent(name)}/raw?ref=HEAD`)
+	if (!res.ok) return null
+	return res.text()
 }
 
 /** Stasis's image test: markdown or HTML images, or an image file named in it. */
 const README_IMAGE = /!\[.*?\]\(.*?\)|<img\s+[^>]*src\s*=|\.png|\.jpe?g|\.gif|\.webp|\.svg/i
 
 function matches(kind: RepoFileKind, paths: readonly string[]): string[] {
-  const def = REPO_FILE_KINDS[kind]
-  return paths.filter((p) =>
-    def.pattern ? def.pattern.test(p) : (def.extensions ?? []).some((ext) => p.endsWith(ext)),
-  )
+	const def = REPO_FILE_KINDS[kind]
+	return paths.filter((p) =>
+		def.pattern ? def.pattern.test(p) : (def.extensions ?? []).some((ext) => p.endsWith(ext)),
+	)
 }
 
 function sample(found: readonly string[]): string {
-  const shown = found
-    .slice(0, 3)
-    .map((p) => p.split("/").pop())
-    .join(", ")
-  return found.length > 3 ? `${shown} and ${found.length - 3} more` : shown
+	const shown = found
+		.slice(0, 3)
+		.map((p) => p.split("/").pop())
+		.join(", ")
+	return found.length > 3 ? `${shown} and ${found.length - 3} more` : shown
 }
 
 function result(repo: string | null, checks: RepoCheck[], unavailable = false): RepoCheckResult {
-  return {
-    repo,
-    checks,
-    canSubmit: !checks.some((c) => c.blocking && c.status === "fail"),
-    unavailable,
-    checkedAt: new Date().toISOString(),
-  }
+	return {
+		repo,
+		checks,
+		canSubmit: !checks.some((c) => c.blocking && c.status === "fail"),
+		unavailable,
+		checkedAt: new Date().toISOString(),
+	}
 }
 
 export async function checkRepo(repoLink: string | null, theme: Theme): Promise<RepoCheckResult> {
-  if (!repoLink) {
-    return result(null, [
-      {
-        key: "repo",
-        label: "No repo yet",
-        status: "fail",
-        detail: "Add your project's repo so a reviewer can see the files.",
-        blocking: true,
-      },
-    ])
-  }
+	if (!repoLink) {
+		return result(null, [
+			{
+				key: "repo",
+				label: "No repo yet",
+				status: "fail",
+				detail: "Add your project's repo so a reviewer can see the files.",
+				blocking: true,
+			},
+		])
+	}
 
-  const ref = repoRefFromLink(repoLink)
-  if (!ref) {
-    // `normalizeRepo` accepts any http(s) repo — a Codeberg project is a repo
-    // too — but the checks below talk to a forge API. Warn rather than block,
-    // so the link the maker was allowed to save is one they can hand in; a
-    // reviewer opens it by hand.
-    const foreignHost = foreignRepoHost(repoLink)
-    if (foreignHost) return result(repoLink, [nonForgeWarn(foreignHost)], true)
-    return result(repoLink, [
-      {
-        key: "repo",
-        label: "Not a repo link",
-        status: "fail",
-        detail: "Use the link to the repo itself, like github.com/you/your-project.",
-        blocking: true,
-      },
-    ])
-  }
+	const ref = repoRefFromLink(repoLink)
+	if (!ref) {
+		// `normalizeRepo` accepts any http(s) repo — a Codeberg project is a repo
+		// too — but the checks below talk to a forge API. Warn rather than block,
+		// so the link the maker was allowed to save is one they can hand in; a
+		// reviewer opens it by hand.
+		const foreignHost = foreignRepoHost(repoLink)
+		if (foreignHost) return result(repoLink, [nonForgeWarn(foreignHost)], true)
+		return result(repoLink, [
+			{
+				key: "repo",
+				label: "Not a repo link",
+				status: "fail",
+				detail: "Use the link to the repo itself, like github.com/you/your-project.",
+				blocking: true,
+			},
+		])
+	}
 
-  const name = ref.fullName
-  const forge = ref.forge
+	const name = ref.fullName
+	const forge = ref.forge
 
-  const unavailable = (why: string) =>
-    result(
-      repoLink,
-      [
-        {
-          key: "repo",
-          label: "Could not check the repo",
-          status: "warn",
-          detail: `${why} You can still hand in; a reviewer will check the repo by hand.`,
-        },
-      ],
-      true,
-    )
+	const unavailable = (why: string) =>
+		result(
+			repoLink,
+			[
+				{
+					key: "repo",
+					label: "Could not check the repo",
+					status: "warn",
+					detail: `${why} You can still hand in; a reviewer will check the repo by hand.`,
+				},
+			],
+			true,
+		)
 
-  const snap = await snapshot(ref)
-  if (snap.kind === "unavailable") return unavailable(snap.why)
-  if (snap.kind === "not-found") {
-    return result(repoLink, [
-      {
-        key: "repo",
-        label: "Repo not found",
-        status: "fail",
-        detail: `${name} does not exist or is private. Make it public so a reviewer can open it.`,
-        blocking: true,
-      },
-    ])
-  }
-  const { paths, readme, truncated } = snap
+	const snap = await snapshot(ref)
+	if (snap.kind === "unavailable") return unavailable(snap.why)
+	if (snap.kind === "not-found") {
+		return result(repoLink, [
+			{
+				key: "repo",
+				label: "Repo not found",
+				status: "fail",
+				detail: `${name} does not exist or is private. Make it public so a reviewer can open it.`,
+				blocking: true,
+			},
+		])
+	}
+	const { paths, readme, truncated } = snap
 
-  const checks: RepoCheck[] = [{ key: "repo", label: `Public ${forge.label} repo`, status: "pass", detail: name }]
+	const checks: RepoCheck[] = [{ key: "repo", label: `Public ${forge.label} repo`, status: "pass", detail: name }]
 
-  checks.push(
-    readme !== null
-      ? { key: "readme", label: "README", status: "pass" }
-      : {
-          key: "readme",
-          label: "README missing",
-          status: "fail",
-          detail: "Add a README.md saying what the project is and how it works.",
-          blocking: true,
-        },
-  )
-  checks.push(
-    readme !== null && README_IMAGE.test(readme)
-      ? { key: "readme_photo", label: "Photos in the README", status: "pass" }
-      : {
-          key: "readme_photo",
-          label: "No photos in the README",
-          status: "fail",
-          detail: "Add at least one image of the project — a render, a screenshot of the board, or a photo.",
-          blocking: true,
-        },
-  )
+	checks.push(
+		readme !== null
+			? { key: "readme", label: "README", status: "pass" }
+			: {
+					key: "readme",
+					label: "README missing",
+					status: "fail",
+					detail: "Add a README.md saying what the project is and how it works.",
+					blocking: true,
+				},
+	)
+	checks.push(
+		readme !== null && README_IMAGE.test(readme)
+			? { key: "readme_photo", label: "Photos in the README", status: "pass" }
+			: {
+					key: "readme_photo",
+					label: "No photos in the README",
+					status: "fail",
+					detail: "Add at least one image of the project — a render, a screenshot of the board, or a photo.",
+					blocking: true,
+				},
+	)
 
-  const { required, recommended } = THEME_REPO_REQUIREMENTS[theme]
-  for (const kind of required) {
-    const found = matches(kind, paths)
-    const def = REPO_FILE_KINDS[kind]
-    checks.push(
-      found.length > 0
-        ? { key: kind, label: def.label, status: "pass", detail: sample(found) }
-        : truncated
-          ? // Not found in a list the forge cut short is not the same as not
-            // there, so it cannot block — a reviewer checks by hand instead.
-            {
-              key: kind,
-              label: `${def.label} not found`,
-              status: "warn",
-              detail: `The repo is too big for ${forge.label} to list in full, so this could not be confirmed. ${def.missing}`,
-            }
-          : { key: kind, label: `${def.label} missing`, status: "fail", detail: def.missing, blocking: true },
-    )
-  }
-  for (const kind of recommended) {
-    const found = matches(kind, paths)
-    const def = REPO_FILE_KINDS[kind]
-    checks.push(
-      found.length > 0
-        ? { key: kind, label: def.label, status: "pass", detail: sample(found) }
-        : {
-            key: kind,
-            label: `${def.label} not found`,
-            status: "warn",
-            detail: `${def.missing}. Not required, but worth adding.`,
-          },
-    )
-  }
+	const { required, recommended } = THEME_REPO_REQUIREMENTS[theme]
+	for (const kind of required) {
+		const found = matches(kind, paths)
+		const def = REPO_FILE_KINDS[kind]
+		checks.push(
+			found.length > 0
+				? { key: kind, label: def.label, status: "pass", detail: sample(found) }
+				: truncated
+					? // Not found in a list the forge cut short is not the same as not
+						// there, so it cannot block — a reviewer checks by hand instead.
+						{
+							key: kind,
+							label: `${def.label} not found`,
+							status: "warn",
+							detail: `The repo is too big for ${forge.label} to list in full, so this could not be confirmed. ${def.missing}`,
+						}
+					: { key: kind, label: `${def.label} missing`, status: "fail", detail: def.missing, blocking: true },
+		)
+	}
+	for (const kind of recommended) {
+		const found = matches(kind, paths)
+		const def = REPO_FILE_KINDS[kind]
+		checks.push(
+			found.length > 0
+				? { key: kind, label: def.label, status: "pass", detail: sample(found) }
+				: {
+						key: kind,
+						label: `${def.label} not found`,
+						status: "warn",
+						detail: `${def.missing}. Not required, but worth adding.`,
+					},
+		)
+	}
 
-  return result(repoLink, checks)
+	return result(repoLink, checks)
 }
 
 /**
@@ -428,26 +428,26 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
  * excluded here too, and such a link reads as malformed instead.
  */
 function foreignRepoHost(link: string): string | null {
-  const host = hostnameOf(link)
-  if (!host) return null
-  if (forgeByHostname(host)) return null
-  const withScheme = /^[a-z][a-z\d+.-]*:\/\//i.test(link) ? link : `https://${link}`
-  try {
-    const pathname = new URL(withScheme).pathname
-    return pathname.split("/").filter(Boolean).length >= 2 ? host : null
-  } catch {
-    return null
-  }
+	const host = hostnameOf(link)
+	if (!host) return null
+	if (forgeByHostname(host)) return null
+	const withScheme = /^[a-z][a-z\d+.-]*:\/\//i.test(link) ? link : `https://${link}`
+	try {
+		const pathname = new URL(withScheme).pathname
+		return pathname.split("/").filter(Boolean).length >= 2 ? host : null
+	} catch {
+		return null
+	}
 }
 
 /** A repo on a host we cannot read: a hand-check, not a failure. */
 function nonForgeWarn(host: string): RepoCheck {
-  return {
-    key: "repo",
-    label: "Repo is on another service",
-    status: "warn",
-    detail: `${host} is not a service Half Life can read, so these file checks cannot run. You can still hand in; a reviewer will open the repo by hand.`,
-  }
+	return {
+		key: "repo",
+		label: "Repo is on another service",
+		status: "warn",
+		detail: `${host} is not a service Half Life can read, so these file checks cannot run. You can still hand in; a reviewer will open the repo by hand.`,
+	}
 }
 
 /**
@@ -458,13 +458,13 @@ function nonForgeWarn(host: string): RepoCheck {
  * Shallowest match wins, so a root JOURNAL.md beats one in a subfolder.
  */
 export async function findRepoFile(repoLink: string | null, test: RegExp): Promise<string | null> {
-  const ref = repoRefFromLink(repoLink)
-  if (!ref) return null
-  const snap = await snapshot(ref)
-  if (snap.kind !== "ok") return null
-  const hits = snap.files.filter((f) => test.test(f)).sort((a, b) => a.split("/").length - b.split("/").length)
-  const hit = hits[0]
-  if (!hit) return null
-  const path = hit.split("/").map(encodeURIComponent).join("/")
-  return fileUrl(ref.forge, ref.ownerPath, ref.repo, path)
+	const ref = repoRefFromLink(repoLink)
+	if (!ref) return null
+	const snap = await snapshot(ref)
+	if (snap.kind !== "ok") return null
+	const hits = snap.files.filter((f) => test.test(f)).sort((a, b) => a.split("/").length - b.split("/").length)
+	const hit = hits[0]
+	if (!hit) return null
+	const path = hit.split("/").map(encodeURIComponent).join("/")
+	return fileUrl(ref.forge, ref.ownerPath, ref.repo, path)
 }

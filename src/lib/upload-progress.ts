@@ -11,31 +11,31 @@
  * treat 1 as "finishing" rather than "done" until this resolves.
  */
 export function postForm(
-  url: string,
-  body: FormData,
-  onProgress?: (fraction: number) => void,
+	url: string,
+	body: FormData,
+	onProgress?: (fraction: number) => void,
 ): Promise<{ ok: boolean; status: number; json: unknown }> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest()
-    xhr.open("POST", url)
-    xhr.responseType = "text"
-    if (onProgress) {
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable && e.total > 0) onProgress(Math.min(1, e.loaded / e.total))
-      }
-      xhr.upload.onload = () => onProgress(1)
-    }
-    xhr.onload = () => {
-      let json: unknown = null
-      try {
-        json = JSON.parse(xhr.responseText)
-      } catch {
-        json = null
-      }
-      resolve({ ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status, json })
-    }
-    xhr.onerror = () => reject(new Error("The upload did not get through. Check your connection and try again."))
-    xhr.onabort = () => reject(new Error("The upload was cancelled."))
-    xhr.send(body)
-  })
+	return new Promise((resolve, reject) => {
+		const xhr = new XMLHttpRequest()
+		xhr.open("POST", url)
+		xhr.responseType = "text"
+		if (onProgress) {
+			xhr.upload.onprogress = (e) => {
+				if (e.lengthComputable && e.total > 0) onProgress(Math.min(1, e.loaded / e.total))
+			}
+			xhr.upload.onload = () => onProgress(1)
+		}
+		xhr.onload = () => {
+			let json: unknown = null
+			try {
+				json = JSON.parse(xhr.responseText)
+			} catch {
+				json = null
+			}
+			resolve({ ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status, json })
+		}
+		xhr.onerror = () => reject(new Error("The upload did not get through. Check your connection and try again."))
+		xhr.onabort = () => reject(new Error("The upload was cancelled."))
+		xhr.send(body)
+	})
 }

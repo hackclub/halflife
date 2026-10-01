@@ -16,17 +16,17 @@ import localFont from "next/font/local"
  * donation to charity for commercial use.
  */
 export const masterpiece = localFont({
-  src: "../../../public/fonts/Masterpiece.ttf",
-  variable: "--font-masterpiece",
-  weight: "400",
-  style: "normal",
-  display: "swap",
+	src: "../../../public/fonts/Masterpiece.ttf",
+	variable: "--font-masterpiece",
+	weight: "400",
+	style: "normal",
+	display: "swap",
 })
 
 export const openSans = Open_Sans({
-  subsets: ["latin"],
-  variable: "--font-open-sans",
-  display: "swap",
+	subsets: ["latin"],
+	variable: "--font-open-sans",
+	display: "swap",
 })
 
 /**
@@ -46,10 +46,10 @@ export const openSans = Open_Sans({
  * Open Sans is variable and covers it.
  */
 export const ubuntu = Ubuntu({
-  subsets: ["latin"],
-  weight: ["400", "700"],
-  variable: "--font-ubuntu",
-  display: "swap",
+	subsets: ["latin"],
+	weight: ["400", "700"],
+	variable: "--font-ubuntu",
+	display: "swap",
 })
 
 /** All three variables, for the element a landing-world document hangs them on. */

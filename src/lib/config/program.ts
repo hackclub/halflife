@@ -74,60 +74,60 @@ export const ONBOARDING_CHECKPOINT_ID = "w1-onboard"
 export const STREAK_GRACE_DAYS = 1
 
 export interface ThemeDef {
-  readonly id: Theme
-  readonly slug: string
-  readonly label: string
-  readonly blurb: string
-  /** Program week this theme's design phase is scheduled for. */
-  readonly designWeek: number
-  /** Program week its build phase is scheduled for. */
-  readonly buildWeek: number
+	readonly id: Theme
+	readonly slug: string
+	readonly label: string
+	readonly blurb: string
+	/** Program week this theme's design phase is scheduled for. */
+	readonly designWeek: number
+	/** Program week its build phase is scheduled for. */
+	readonly buildWeek: number
 }
 
 // designWeek/buildWeek are written out rather than derived from array index.
 // `index + 1` / `index + 6` is exactly the implicit coupling that breaks the
 // day someone inserts a pilot week zero.
 export const THEMES = [
-  {
-    id: Theme.PCB,
-    slug: "pcb",
-    label: "PCBs",
-    blurb: "Design a printed circuit board, then have it fabbed and assemble it.",
-    designWeek: 1,
-    buildWeek: 6,
-  },
-  {
-    id: Theme.CAD,
-    slug: "cad",
-    label: "CAD",
-    blurb: "Model something in CAD, then print or machine it.",
-    designWeek: 2,
-    buildWeek: 7,
-  },
-  {
-    id: Theme.SYNTH,
-    slug: "synth",
-    label: "Music",
-    blurb: "Design a sound-making circuit, then build and play it.",
-    designWeek: 3,
-    buildWeek: 8,
-  },
-  {
-    id: Theme.DISPLAYS,
-    slug: "displays",
-    label: "Displays",
-    blurb: "Design something that drives a display, then wire it up.",
-    designWeek: 4,
-    buildWeek: 9,
-  },
-  {
-    id: Theme.BREADBOARD_COMPUTER,
-    slug: "breadboard",
-    label: "Breadboard Computer",
-    blurb: "Design a computer from discrete logic, then breadboard it.",
-    designWeek: 5,
-    buildWeek: 10,
-  },
+	{
+		id: Theme.PCB,
+		slug: "pcb",
+		label: "PCBs",
+		blurb: "Design a printed circuit board, then have it fabbed and assemble it.",
+		designWeek: 1,
+		buildWeek: 6,
+	},
+	{
+		id: Theme.CAD,
+		slug: "cad",
+		label: "CAD",
+		blurb: "Model something in CAD, then print or machine it.",
+		designWeek: 2,
+		buildWeek: 7,
+	},
+	{
+		id: Theme.SYNTH,
+		slug: "synth",
+		label: "Music",
+		blurb: "Design a sound-making circuit, then build and play it.",
+		designWeek: 3,
+		buildWeek: 8,
+	},
+	{
+		id: Theme.DISPLAYS,
+		slug: "displays",
+		label: "Displays",
+		blurb: "Design something that drives a display, then wire it up.",
+		designWeek: 4,
+		buildWeek: 9,
+	},
+	{
+		id: Theme.BREADBOARD_COMPUTER,
+		slug: "breadboard",
+		label: "Breadboard Computer",
+		blurb: "Design a computer from discrete logic, then breadboard it.",
+		designWeek: 5,
+		buildWeek: 10,
+	},
 ] as const satisfies readonly ThemeDef[]
 
 export type ThemeSlug = (typeof THEMES)[number]["slug"]
@@ -143,12 +143,12 @@ export type ThemeSlug = (typeof THEMES)[number]["slug"]
  * one too. Its weeks are 0 because it is not scheduled at all.
  */
 export const WARMUP_THEME: ThemeDef = {
-  id: Theme.WARMUP,
-  slug: "warmup",
-  label: "Warm Up",
-  blurb: "A project submitted during the pre-season warm-up weeks.",
-  designWeek: 0,
-  buildWeek: 0,
+	id: Theme.WARMUP,
+	slug: "warmup",
+	label: "Warm Up",
+	blurb: "A project submitted during the pre-season warm-up weeks.",
+	designWeek: 0,
+	buildWeek: 0,
 }
 
 /**
@@ -161,25 +161,25 @@ export const WARMUP_THEME: ThemeDef = {
 export const WARMUP_WEEK_ID = 0
 
 export function getThemeDef(theme: Theme): ThemeDef {
-  const def = theme === Theme.WARMUP ? WARMUP_THEME : THEMES.find((t) => t.id === theme)
-  if (!def) throw new Error(`Unknown theme: ${theme}`)
-  return def
+	const def = theme === Theme.WARMUP ? WARMUP_THEME : THEMES.find((t) => t.id === theme)
+	if (!def) throw new Error(`Unknown theme: ${theme}`)
+	return def
 }
 
 export function themeDefBySlug(slug: string): ThemeDef | undefined {
-  return slug === WARMUP_THEME.slug ? WARMUP_THEME : THEMES.find((t) => t.slug === slug)
+	return slug === WARMUP_THEME.slug ? WARMUP_THEME : THEMES.find((t) => t.slug === slug)
 }
 
 /** The theme and phase a given program week is scheduled for. */
 export function scheduleForWeek(week: number): { theme: ThemeDef; phase: Phase } | null {
-  const design = THEMES.find((t) => t.designWeek === week)
-  if (design) return { theme: design, phase: Phase.DESIGN }
-  const build = THEMES.find((t) => t.buildWeek === week)
-  if (build) return { theme: build, phase: Phase.BUILD }
-  return null
+	const design = THEMES.find((t) => t.designWeek === week)
+	if (design) return { theme: design, phase: Phase.DESIGN }
+	const build = THEMES.find((t) => t.buildWeek === week)
+	if (build) return { theme: build, phase: Phase.BUILD }
+	return null
 }
 
 export function scheduledWeekFor(theme: Theme, phase: Phase): number {
-  const def = getThemeDef(theme)
-  return phase === Phase.DESIGN ? def.designWeek : def.buildWeek
+	const def = getThemeDef(theme)
+	return phase === Phase.DESIGN ? def.designWeek : def.buildWeek
 }

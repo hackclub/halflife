@@ -89,11 +89,11 @@ const SHIFT = HEADER.y + HEADER.h - LEAD_WELD.rise + LEAD_WELD.run - LEAD_WELD.d
  * numbers by hand before, which is why the record of them lived in prose.
  */
 const PLATES = {
-  header: HEADER,
-  design: plate(57, 59 + STEP_ONE_GROWTH + SHIFT, 975, 547 + STEP_ONE_GROWTH),
-  funding: plate(812, 836 + STEP_ONE_GROWTH + SHIFT, 823, 445),
-  build: plate(57, 1406 + STEP_ONE_GROWTH + SHIFT, 958, 582),
-  printer: plate(731, 2143 + STEP_ONE_GROWTH + SHIFT, 943, 458),
+	header: HEADER,
+	design: plate(57, 59 + STEP_ONE_GROWTH + SHIFT, 975, 547 + STEP_ONE_GROWTH),
+	funding: plate(812, 836 + STEP_ONE_GROWTH + SHIFT, 823, 445),
+	build: plate(57, 1406 + STEP_ONE_GROWTH + SHIFT, 958, 582),
+	printer: plate(731, 2143 + STEP_ONE_GROWTH + SHIFT, 943, 458),
 } as const
 
 /**
@@ -114,38 +114,38 @@ const PLATES = {
  *   275:148  step 3 bottom-right  ->  step 4 top-left
  */
 const WELDS = [
-  {
-    id: "how-to-one",
-    exit: {
-      plate: PLATES.header,
-      at: 383.5 / PLATES.header.w,
-      rise: LEAD_WELD.rise,
-    },
-    entry: {
-      plate: PLATES.design,
-      at: 763.75 / PLATES.design.w,
-      drop: LEAD_WELD.drop,
-    },
-    mean: LEAD_WELD.mean,
-  },
-  {
-    id: "one-to-two",
-    exit: { plate: PLATES.design, at: 778.25 / PLATES.design.w, rise: 16.5 },
-    entry: { plate: PLATES.funding, at: 155.25 / PLATES.funding.w, drop: 12.5 },
-    mean: 92.2,
-  },
-  {
-    id: "two-to-three",
-    exit: { plate: PLATES.funding, at: 148.5 / PLATES.funding.w, rise: 28.5 },
-    entry: { plate: PLATES.build, at: 803 / PLATES.build.w, drop: 26.5 },
-    mean: 102.2,
-  },
-  {
-    id: "three-to-four",
-    exit: { plate: PLATES.build, at: 693.25 / PLATES.build.w, rise: 6.5 },
-    entry: { plate: PLATES.printer, at: 178.5 / PLATES.printer.w, drop: 22 },
-    mean: 120.3,
-  },
+	{
+		id: "how-to-one",
+		exit: {
+			plate: PLATES.header,
+			at: 383.5 / PLATES.header.w,
+			rise: LEAD_WELD.rise,
+		},
+		entry: {
+			plate: PLATES.design,
+			at: 763.75 / PLATES.design.w,
+			drop: LEAD_WELD.drop,
+		},
+		mean: LEAD_WELD.mean,
+	},
+	{
+		id: "one-to-two",
+		exit: { plate: PLATES.design, at: 778.25 / PLATES.design.w, rise: 16.5 },
+		entry: { plate: PLATES.funding, at: 155.25 / PLATES.funding.w, drop: 12.5 },
+		mean: 92.2,
+	},
+	{
+		id: "two-to-three",
+		exit: { plate: PLATES.funding, at: 148.5 / PLATES.funding.w, rise: 28.5 },
+		entry: { plate: PLATES.build, at: 803 / PLATES.build.w, drop: 26.5 },
+		mean: 102.2,
+	},
+	{
+		id: "three-to-four",
+		exit: { plate: PLATES.build, at: 693.25 / PLATES.build.w, rise: 6.5 },
+		entry: { plate: PLATES.printer, at: 178.5 / PLATES.printer.w, drop: 22 },
+		mean: 120.3,
+	},
 ] as const
 
 /**
@@ -205,10 +205,10 @@ const WELDS = [
 const HOW_LABEL = "how does it work?"
 
 const STEP_ART_SIZES = {
-  stage: "510px",
-  /** Step 1's picture runs its plate's full 975 units, 666px at the 1180 cap. */
-  weeks: "670px",
-  stacked: "(min-width: 640px) 610px, 100vw",
+	stage: "510px",
+	/** Step 1's picture runs its plate's full 975 units, 666px at the 1180 cap. */
+	weeks: "670px",
+	stacked: "(min-width: 640px) 610px, 100vw",
 } as const
 
 /**
@@ -269,43 +269,43 @@ const STAGE_H = PLATES.printer.y + PLATES.printer.h
  * with a hairline of bare plate down one edge, which is the visible one.
  */
 function StepArt({
-  step,
-  className = "",
-  style,
-  scale,
-  sizes,
+	step,
+	className = "",
+	style,
+	scale,
+	sizes,
 }: {
-  step: Step
-  className?: string
-  style?: CSSProperties
-  /** Only reaches the drawn fallback; a photograph has no fittings to scale. */
-  scale?: number
-  sizes: string
+	step: Step
+	className?: string
+	style?: CSSProperties
+	/** Only reaches the drawn fallback; a photograph has no fittings to scale. */
+	scale?: number
+	sizes: string
 }) {
-  if (!step.slot) return null
+	if (!step.slot) return null
 
-  if (!step.art) {
-    return (
-      <ImageSlot label={step.slot.label} ratio={step.slot.ratio} className={className} style={style} scale={scale} />
-    )
-  }
+	if (!step.art) {
+		return (
+			<ImageSlot label={step.slot.label} ratio={step.slot.ratio} className={className} style={style} scale={scale} />
+		)
+	}
 
-  return (
-    <div
-      className={`overflow-hidden ${className}`}
-      // `position` lives in `style` for the same reason it does on ImageSlot
-      // and the week backdrops: the stage passes `absolute` here, where it has
-      // to be able to beat the component's own `relative`.
-      style={{ position: "relative", ...style }}
-    >
-      {/* Decorative: each of these sits directly under the heading that says
+	return (
+		<div
+			className={`overflow-hidden ${className}`}
+			// `position` lives in `style` for the same reason it does on ImageSlot
+			// and the week backdrops: the stage passes `absolute` here, where it has
+			// to be able to beat the component's own `relative`.
+			style={{ position: "relative", ...style }}
+		>
+			{/* Decorative: each of these sits directly under the heading that says
           what the step is, and the drawn slot it replaces carried only its own
           footprint label. If either picture turns out to carry information the
           heading does not — an order-flow diagram would — it wants real alt
           text rather than this. */}
-      <Image src={step.art} alt="" fill sizes={sizes} quality={90} className="object-cover" />
-    </div>
-  )
+			<Image src={step.art} alt="" fill sizes={sizes} quality={90} className="object-cover" />
+		</div>
+	)
 }
 
 /**
@@ -342,12 +342,12 @@ function StepArt({
  * across, and the plate grew downward.
  */
 const EXTRAS = [
-  { src: gatoandspirit, x: 1290, y: 300, w: 300, h: 255 },
-  { src: spiritguy, x: 120, y: 955, w: 190 / 2, h: 293 / 2 },
-  { src: gatointube, x: 400, y: 1155, w: 230, h: 272 },
-  { src: gatoycaja, x: 1180, y: 1425, w: 170, h: 172 },
-  { src: hammer, x: 1120, y: 1937, w: 310, h: 271 },
-  { src: gatohead, x: 180, y: 2131, w: 230, h: 198 },
+	{ src: gatoandspirit, x: 1290, y: 300, w: 300, h: 255 },
+	{ src: spiritguy, x: 120, y: 955, w: 190 / 2, h: 293 / 2 },
+	{ src: gatointube, x: 400, y: 1155, w: 230, h: 272 },
+	{ src: gatoycaja, x: 1180, y: 1425, w: 170, h: 172 },
+	{ src: hammer, x: 1120, y: 1937, w: 310, h: 271 },
+	{ src: gatohead, x: 180, y: 2131, w: 230, h: 198 },
 ] as const
 
 /** The widest of them is 310 comp units, 212px at the 1180 cap. */
@@ -362,23 +362,23 @@ const EXTRA_SIZES = "220px"
  * `DESIGN_WEEKS` the five pairings were built from, so the two cannot drift.
  */
 function WeekList() {
-  return (
-    <ul className="sr-only">
-      {[DESIGN_WEEKS.lead, ...DESIGN_WEEKS.rest].map((week) => (
-        <li key={week.subject}>{`${week.week}: ${week.subject}`}</li>
-      ))}
-    </ul>
-  )
+	return (
+		<ul className="sr-only">
+			{[DESIGN_WEEKS.lead, ...DESIGN_WEEKS.rest].map((week) => (
+				<li key={week.subject}>{`${week.week}: ${week.subject}`}</li>
+			))}
+		</ul>
+	)
 }
 
 export default function Process() {
-  const [design, funding, build, printer] = STEPS
-  const [viral, community] = ASIDES
+	const [design, funding, build, printer] = STEPS
+	const [viral, community] = ASIDES
 
-  return (
-    <section id="how-it-works" aria-label="How Half Life works" className="relative z-0 isolate min-[1180px]:pb-[10vh]">
-      {/* ── Comp reproduction, 1180px and up ───────────────────────────── */}
-      {/* Every child here is absolutely positioned, so the stage has no
+	return (
+		<section id="how-it-works" aria-label="How Half Life works" className="relative z-0 isolate min-[1180px]:pb-[10vh]">
+			{/* ── Comp reproduction, 1180px and up ───────────────────────────── */}
+			{/* Every child here is absolutely positioned, so the stage has no
           intrinsic height and has to be told one — as a ratio of its own
           width, never as a `cqw` length.
 
@@ -403,52 +403,52 @@ export default function Process() {
           height, not the comp grid: this gap is the beat between two sections
           and what makes it feel long or short is how much screen is left to
           look at, not how wide the window is. */}
-      <div
-        className="stage hidden min-[1180px]:block"
-        style={{
-          maxWidth: STAGE_CAP,
-          aspectRatio: `${COMP_WIDTH} / ${STAGE_H}`,
-        }}
-      >
-        {/* The section's own heading, and the plate the first weld leaves.
+			<div
+				className="stage hidden min-[1180px]:block"
+				style={{
+					maxWidth: STAGE_CAP,
+					aspectRatio: `${COMP_WIDTH} / ${STAGE_H}`,
+				}}
+			>
+				{/* The section's own heading, and the plate the first weld leaves.
             First in the stage because it reads first; nothing else is drawn
             in the 297 units it occupies, so it has no paint order to lose.
 
             `grid place-items-center` rather than the comp's own offset: the
             line is a label for the plate, so it is centred by the box and
             stays centred if the copy changes. */}
-        <h2 className="absolute grid place-items-center rounded-xl bg-hl-lavender-pale" style={plateBox(PLATES.header)}>
-          <span
-            className="whitespace-nowrap font-display font-bold text-hl-ink"
-            style={{
-              // The comp's own 100, which is now 68px at every width this
-              // layout runs at — the same trade `STAGE_CAP` already makes for
-              // the four step titles below, and the size a 1180 screen has
-              // always shown this line at.
-              fontSize: u(100),
-              lineHeight: 1,
-              letterSpacing: "-0.03em",
-            }}
-          >
-            {HOW_LABEL}
-          </span>
-          {/* Parked: corner decals, to be placed later. <CornerDecal decal="topLeft" /> */}
-        </h2>
+				<h2 className="absolute grid place-items-center rounded-xl bg-hl-lavender-pale" style={plateBox(PLATES.header)}>
+					<span
+						className="whitespace-nowrap font-display font-bold text-hl-ink"
+						style={{
+							// The comp's own 100, which is now 68px at every width this
+							// layout runs at — the same trade `STAGE_CAP` already makes for
+							// the four step titles below, and the size a 1180 screen has
+							// always shown this line at.
+							fontSize: u(100),
+							lineHeight: 1,
+							letterSpacing: "-0.03em",
+						}}
+					>
+						{HOW_LABEL}
+					</span>
+					{/* Parked: corner decals, to be placed later. <CornerDecal decal="topLeft" /> */}
+				</h2>
 
-        {/* Decorative, and drawn before the plates so that if a plate is ever
+				{/* Decorative, and drawn before the plates so that if a plate is ever
             resized past one of them the plate wins the overlap. */}
-        {EXTRAS.map((extra) => (
-          <div
-            key={extra.src.src}
-            aria-hidden
-            className="absolute"
-            style={box(extra.x, extra.y + SHIFT, extra.w, extra.h)}
-          >
-            <Image src={extra.src} alt="" fill sizes={EXTRA_SIZES} quality={90} className="object-contain" />
-          </div>
-        ))}
+				{EXTRAS.map((extra) => (
+					<div
+						key={extra.src.src}
+						aria-hidden
+						className="absolute"
+						style={box(extra.x, extra.y + SHIFT, extra.w, extra.h)}
+					>
+						<Image src={extra.src} alt="" fill sizes={EXTRA_SIZES} quality={90} className="object-contain" />
+					</div>
+				))}
 
-        {/* Step 1 — design weeks: a title over one piece of artwork.
+				{/* Step 1 — design weeks: a title over one piece of artwork.
 
             `allweeks.png` is 1920x1080 and gets 975x548 here, 1.7778 against
             1.7792 — a 0.08% match, which is why it is still `cover`. The five
@@ -479,137 +479,137 @@ export default function Process() {
             The five weeks stay in the document under it. A picture that
             replaces text has to hand that text back or the page has quietly
             lost it, and `WeekList` carries the subjects and their numbers. */}
-        <div
-          className="absolute overflow-hidden rounded-xl bg-hl-lavender-pale text-hl-ink"
-          style={plateBox(PLATES.design)}
-        >
-          <h3
-            className="absolute text-center font-display font-bold text-balance"
-            style={{
-              ...at(68, 38),
-              width: u(839),
-              fontSize: u(40),
-              lineHeight: 1.1,
-            }}
-          >
-            {design.title}
-          </h3>
-          {design.art ? (
-            <div className="absolute" style={box(0, 92, 975, 548)}>
-              <Image src={design.art} alt="" fill sizes={STEP_ART_SIZES.weeks} quality={90} className="object-cover" />
-            </div>
-          ) : null}
-          <WeekList />
-          {/* Parked: corner decals, to be placed later. <CornerDecal decal="bottomLeft" over /> */}
-        </div>
+				<div
+					className="absolute overflow-hidden rounded-xl bg-hl-lavender-pale text-hl-ink"
+					style={plateBox(PLATES.design)}
+				>
+					<h3
+						className="absolute text-center font-display font-bold text-balance"
+						style={{
+							...at(68, 38),
+							width: u(839),
+							fontSize: u(40),
+							lineHeight: 1.1,
+						}}
+					>
+						{design.title}
+					</h3>
+					{design.art ? (
+						<div className="absolute" style={box(0, 92, 975, 548)}>
+							<Image src={design.art} alt="" fill sizes={STEP_ART_SIZES.weeks} quality={90} className="object-cover" />
+						</div>
+					) : null}
+					<WeekList />
+					{/* Parked: corner decals, to be placed later. <CornerDecal decal="bottomLeft" over /> */}
+				</div>
 
-        {/* Step 2 — funding */}
-        <div className="absolute rounded-xl bg-hl-lavender-pale text-hl-ink" style={plateBox(PLATES.funding)}>
-          <h3
-            className="absolute font-display font-bold"
-            style={{
-              ...at(94, 38),
-              width: u(690),
-              fontSize: u(40),
-              lineHeight: 1.1,
-            }}
-          >
-            {funding.title}
-          </h3>
-          <StepArt
-            step={funding}
-            style={{ ...box(53, 109, 736, 235), position: "absolute" }}
-            scale={1.05}
-            sizes={STEP_ART_SIZES.stage}
-          />
-          <p
-            className="absolute whitespace-nowrap font-semibold opacity-60"
-            style={{ ...at(323, 353), fontSize: u(20), lineHeight: 1 }}
-          >
-            {funding.caption}
-          </p>
-          {/* Bottom-right is the only corner free of a band here. */}
-          {/* Parked: corner decals, to be placed later. <CornerDecal decal="bottomRight" /> */}
-        </div>
+				{/* Step 2 — funding */}
+				<div className="absolute rounded-xl bg-hl-lavender-pale text-hl-ink" style={plateBox(PLATES.funding)}>
+					<h3
+						className="absolute font-display font-bold"
+						style={{
+							...at(94, 38),
+							width: u(690),
+							fontSize: u(40),
+							lineHeight: 1.1,
+						}}
+					>
+						{funding.title}
+					</h3>
+					<StepArt
+						step={funding}
+						style={{ ...box(53, 109, 736, 235), position: "absolute" }}
+						scale={1.05}
+						sizes={STEP_ART_SIZES.stage}
+					/>
+					<p
+						className="absolute whitespace-nowrap font-semibold opacity-60"
+						style={{ ...at(323, 353), fontSize: u(20), lineHeight: 1 }}
+					>
+						{funding.caption}
+					</p>
+					{/* Bottom-right is the only corner free of a band here. */}
+					{/* Parked: corner decals, to be placed later. <CornerDecal decal="bottomRight" /> */}
+				</div>
 
-        {/* Step 3 — build */}
-        <div className="absolute rounded-xl bg-hl-lavender-pale text-hl-ink" style={plateBox(PLATES.build)}>
-          <h3
-            className="absolute font-display font-bold"
-            style={{
-              ...at(68, 42),
-              width: u(821),
-              fontSize: u(40),
-              lineHeight: 1.1,
-            }}
-          >
-            {build.title}
-          </h3>
-          <StepArt
-            step={build}
-            style={{ ...box(111, 158, 736, 328), position: "absolute" }}
-            scale={1.35}
-            sizes={STEP_ART_SIZES.stage}
-          />
-          {/* Parked: corner decals, to be placed later. <CornerDecal decal="topLeft2" /> */}
-        </div>
+				{/* Step 3 — build */}
+				<div className="absolute rounded-xl bg-hl-lavender-pale text-hl-ink" style={plateBox(PLATES.build)}>
+					<h3
+						className="absolute font-display font-bold"
+						style={{
+							...at(68, 42),
+							width: u(821),
+							fontSize: u(40),
+							lineHeight: 1.1,
+						}}
+					>
+						{build.title}
+					</h3>
+					<StepArt
+						step={build}
+						style={{ ...box(111, 158, 736, 328), position: "absolute" }}
+						scale={1.35}
+						sizes={STEP_ART_SIZES.stage}
+					/>
+					{/* Parked: corner decals, to be placed later. <CornerDecal decal="topLeft2" /> */}
+				</div>
 
-        {/* Step 4 — the printer */}
-        <div className="absolute rounded-xl bg-hl-lavender-pale text-hl-ink" style={plateBox(PLATES.printer)}>
-          <h3
-            className="absolute font-display font-bold"
-            style={{
-              ...at(69, 52),
-              width: u(700),
-              fontSize: u(40),
-              lineHeight: 1.1,
-            }}
-          >
-            {printer.title}
-          </h3>
-          <StepArt
-            step={printer}
-            style={{ ...box(106, 140, 736, 257), position: "absolute" }}
-            scale={1.35}
-            sizes={STEP_ART_SIZES.stage}
-          />
-          {/* Parked: corner decals, to be placed later. <CornerDecal decal="bottomLeft" /> */}
-        </div>
+				{/* Step 4 — the printer */}
+				<div className="absolute rounded-xl bg-hl-lavender-pale text-hl-ink" style={plateBox(PLATES.printer)}>
+					<h3
+						className="absolute font-display font-bold"
+						style={{
+							...at(69, 52),
+							width: u(700),
+							fontSize: u(40),
+							lineHeight: 1.1,
+						}}
+					>
+						{printer.title}
+					</h3>
+					<StepArt
+						step={printer}
+						style={{ ...box(106, 140, 736, 257), position: "absolute" }}
+						scale={1.35}
+						sizes={STEP_ART_SIZES.stage}
+					/>
+					{/* Parked: corner decals, to be placed later. <CornerDecal decal="bottomLeft" /> */}
+				</div>
 
-        {/* Asides — small plates orbiting the band. Only where they sit
+				{/* Asides — small plates orbiting the band. Only where they sit
             differs; the plate itself is the same object twice. */}
-        <Aside aside={viral} origin={[1114, 1636 + SHIFT]} />
-        <Aside aside={community} origin={[59, 2367 + SHIFT]} />
+				<Aside aside={viral} origin={[1114, 1636 + SHIFT]} />
+				<Aside aside={community} origin={[59, 2367 + SHIFT]} />
 
-        {/* The welds, drawn last so they ride over the plates they join */}
-        {WELDS.map((w) => {
-          const b = weld(w.exit, w.entry, w.mean)
-          return (
-            <svg
-              key={w.id}
-              className="absolute"
-              style={box(b.x, b.y, b.w, b.h)}
-              viewBox={`0 0 ${b.w} ${b.h}`}
-              preserveAspectRatio="none"
-              fill="none"
-              aria-hidden
-            >
-              {/* The bands are the plates' own material, not a rule drawn
+				{/* The welds, drawn last so they ride over the plates they join */}
+				{WELDS.map((w) => {
+					const b = weld(w.exit, w.entry, w.mean)
+					return (
+						<svg
+							key={w.id}
+							className="absolute"
+							style={box(b.x, b.y, b.w, b.h)}
+							viewBox={`0 0 ${b.w} ${b.h}`}
+							preserveAspectRatio="none"
+							fill="none"
+							aria-hidden
+						>
+							{/* The bands are the plates' own material, not a rule drawn
                   between them — they ride over the plates they join, so a band
                   in any other colour reads as a weld in a second metal. */}
-              <path d={b.d} fill="var(--color-hl-lavender-pale)" />
-            </svg>
-          )
-        })}
-      </div>
+							<path d={b.d} fill="var(--color-hl-lavender-pale)" />
+						</svg>
+					)
+				})}
+			</div>
 
-      {/* ── Stacked layout, below 1180px ───────────────────────────────── */}
-      {/* `pt-8` on a phone, where the hero above is content-sized and ends on
+			{/* ── Stacked layout, below 1180px ───────────────────────────────── */}
+			{/* `pt-8` on a phone, where the hero above is content-sized and ends on
           its scroll cue: the full 80 on top of the cue's own room read as the
           two sections having nothing to do with each other. */}
-      <div className="px-4 pt-8 pb-24 sm:px-8 sm:pt-20 min-[1180px]:hidden">
-        <div className="mx-auto flex max-w-2xl flex-col">
-          {/* The header, and the weld that leaves it — the same two objects
+			<div className="px-4 pt-8 pb-24 sm:px-8 sm:pt-20 min-[1180px]:hidden">
+				<div className="mx-auto flex max-w-2xl flex-col">
+					{/* The header, and the weld that leaves it — the same two objects
               the stage opens with, and for the same reason: this is where the
               drawing starts, so this is where the line starts.
 
@@ -620,127 +620,127 @@ export default function Process() {
               its left rank; the four below it are full-width, which is what
               makes this one read as their heading rather than as a fifth
               step. */}
-          <div className="flex w-fit flex-col">
-            <h2
-              className="rounded-xl bg-hl-lavender-pale px-5 py-3 font-display font-bold text-balance text-hl-ink sm:px-8 sm:py-4"
-              style={{
-                // Both ends of this clamp are measured, not chosen. The line is
-                // 7.71em wide in Urbanist bold — the comp's own 100 ran it to
-                // 84% of a 918 plate — so its size and the width it needs are
-                // the same number, and the plate is that plus its padding.
-                //
-                // The floor was 1.75rem, held down by Masterpiece, which set
-                // this line wide enough to push past a 320px viewport. That
-                // left the section's heading at 28px over 24px step titles —
-                // 1.17x, where the stage runs 2.50x, so the thing introducing
-                // the programme read as another item in it. At 2.25rem it is
-                // 1.50x and still one line from 360px up; at 320 it takes two,
-                // which a heading plate can carry and `text-balance` splits.
-                //
-                // The ceiling was 3.25rem, which capped this at 52px right up
-                // to 1179px — and then the stage took over at 68.3px, a 31%
-                // jump at a breakpoint that is supposed to be a change of
-                // layout, not of scale. 4.25rem is 68px, so the two layouts now
-                // hand the line over at the same size, and the widest plate it
-                // makes is 556px inside a 672px column.
-                fontSize: "clamp(2.25rem, 9vw, 4.25rem)",
-                letterSpacing: "-0.03em",
-                lineHeight: 1.05,
-              }}
-            >
-              {HOW_LABEL}
-            </h2>
-            <StackWeld lean="right" anchor />
-          </div>
+					<div className="flex w-fit flex-col">
+						<h2
+							className="rounded-xl bg-hl-lavender-pale px-5 py-3 font-display font-bold text-balance text-hl-ink sm:px-8 sm:py-4"
+							style={{
+								// Both ends of this clamp are measured, not chosen. The line is
+								// 7.71em wide in Urbanist bold — the comp's own 100 ran it to
+								// 84% of a 918 plate — so its size and the width it needs are
+								// the same number, and the plate is that plus its padding.
+								//
+								// The floor was 1.75rem, held down by Masterpiece, which set
+								// this line wide enough to push past a 320px viewport. That
+								// left the section's heading at 28px over 24px step titles —
+								// 1.17x, where the stage runs 2.50x, so the thing introducing
+								// the programme read as another item in it. At 2.25rem it is
+								// 1.50x and still one line from 360px up; at 320 it takes two,
+								// which a heading plate can carry and `text-balance` splits.
+								//
+								// The ceiling was 3.25rem, which capped this at 52px right up
+								// to 1179px — and then the stage took over at 68.3px, a 31%
+								// jump at a breakpoint that is supposed to be a change of
+								// layout, not of scale. 4.25rem is 68px, so the two layouts now
+								// hand the line over at the same size, and the widest plate it
+								// makes is 556px inside a 672px column.
+								fontSize: "clamp(2.25rem, 9vw, 4.25rem)",
+								letterSpacing: "-0.03em",
+								lineHeight: 1.05,
+							}}
+						>
+							{HOW_LABEL}
+						</h2>
+						<StackWeld lean="right" anchor />
+					</div>
 
-          <ol className="flex flex-col">
-            <li>
-              <Plate>
-                {/* Centred here for the same reason as on the stage: the
+					<ol className="flex flex-col">
+						<li>
+							<Plate>
+								{/* Centred here for the same reason as on the stage: the
                   picture below runs the plate's full width and places its five
                   pairings across all of it, so the title belongs over the
                   middle of it rather than ranged against an edge the drawing
                   does not have. Steps 2-4 keep their left rank — their
                   pictures are single objects sitting inside the plate. */}
-                <h3 className="text-center font-display text-2xl font-bold text-balance sm:text-3xl">{design.title}</h3>
-                {design.art ? (
-                  <div className="relative mt-6 aspect-[1920/1080] w-full overflow-hidden">
-                    <Image
-                      src={design.art}
-                      alt=""
-                      fill
-                      sizes={STEP_ART_SIZES.stacked}
-                      quality={90}
-                      className="object-cover"
-                    />
-                  </div>
-                ) : null}
-                <WeekList />
-              </Plate>
-            </li>
+								<h3 className="text-center font-display text-2xl font-bold text-balance sm:text-3xl">{design.title}</h3>
+								{design.art ? (
+									<div className="relative mt-6 aspect-[1920/1080] w-full overflow-hidden">
+										<Image
+											src={design.art}
+											alt=""
+											fill
+											sizes={STEP_ART_SIZES.stacked}
+											quality={90}
+											className="object-cover"
+										/>
+									</div>
+								) : null}
+								<WeekList />
+							</Plate>
+						</li>
 
-            <StackWeld lean="left" />
+						<StackWeld lean="left" />
 
-            <li>
-              <Plate>
-                <h3 className="font-display text-2xl font-bold sm:text-3xl">{funding.title}</h3>
-                <StepArt step={funding} className="mt-6 aspect-[11876/3790] w-full" sizes={STEP_ART_SIZES.stacked} />
-                <p className="mt-4 font-semibold opacity-40">{funding.caption}</p>
-              </Plate>
-            </li>
+						<li>
+							<Plate>
+								<h3 className="font-display text-2xl font-bold sm:text-3xl">{funding.title}</h3>
+								<StepArt step={funding} className="mt-6 aspect-[11876/3790] w-full" sizes={STEP_ART_SIZES.stacked} />
+								<p className="mt-4 font-semibold opacity-40">{funding.caption}</p>
+							</Plate>
+						</li>
 
-            <StackWeld lean="right" />
+						<StackWeld lean="right" />
 
-            <li>
-              <Plate>
-                <h3 className="font-display text-2xl font-bold sm:text-3xl">{build.title}</h3>
-                <StepArt step={build} className="mt-6 aspect-[9673/4315] w-full" sizes={STEP_ART_SIZES.stacked} />
-              </Plate>
-            </li>
+						<li>
+							<Plate>
+								<h3 className="font-display text-2xl font-bold sm:text-3xl">{build.title}</h3>
+								<StepArt step={build} className="mt-6 aspect-[9673/4315] w-full" sizes={STEP_ART_SIZES.stacked} />
+							</Plate>
+						</li>
 
-            <StackWeld lean="left" />
+						<StackWeld lean="left" />
 
-            <li>
-              <Plate>
-                <h3 className="font-display text-2xl font-bold sm:text-3xl">{printer.title}</h3>
-                <StepArt step={printer} className="mt-6 aspect-[8439/2948] w-full" sizes={STEP_ART_SIZES.stacked} />
-              </Plate>
-            </li>
-          </ol>
+						<li>
+							<Plate>
+								<h3 className="font-display text-2xl font-bold sm:text-3xl">{printer.title}</h3>
+								<StepArt step={printer} className="mt-6 aspect-[8439/2948] w-full" sizes={STEP_ART_SIZES.stacked} />
+							</Plate>
+						</li>
+					</ol>
 
-          {/* The asides, after the line rather than inside it.
+					{/* The asides, after the line rather than inside it.
 
               `viral` used to sit between steps 3 and 4, which left the third
               weld running from *it* into step 4 — the one place either layout
               said an aside was part of the programme. On the stage they orbit
               the line and no weld touches them; down here they follow it. */}
-          {/* `gap-8` against the plates' own `py-7`: two plates of the same
+					{/* `gap-8` against the plates' own `py-7`: two plates of the same
               colour separated by less than their own padding read as one
               object with a seam. 32 outside, 28 inside. The `pt-10` above the
               pair is the generous break that takes them off the line. */}
-          <div className="flex flex-col gap-8 pt-10">
-            <Aside aside={viral} stacked />
-            <Aside aside={community} stacked />
-          </div>
-        </div>
-      </div>
-    </section>
-  )
+					<div className="flex flex-col gap-8 pt-10">
+						<Aside aside={viral} stacked />
+						<Aside aside={community} stacked />
+					</div>
+				</div>
+			</div>
+		</section>
+	)
 }
 
 function Plate({ children }: { children: React.ReactNode }) {
-  return (
-    // Parked, with the decals. Bringing them back needs `relative isolate`
-    // here and a `decal` prop threaded in: the decal is absolutely positioned
-    // at `z-index: -1`, so it needs this plate both as its containing block
-    // and as the stacking context that keeps it from escaping behind it. Step
-    // 1's plate is a full-bleed picture and takes `over` instead. The stage
-    // plates are absolute already, so they are containing blocks already.
-    <div className="rounded-xl bg-hl-lavender-pale px-5 py-7 text-hl-ink sm:px-8 sm:py-9">
-      {children}
-      {/* Parked: corner decals, to be placed later. <CornerDecal decal={decal} /> */}
-    </div>
-  )
+	return (
+		// Parked, with the decals. Bringing them back needs `relative isolate`
+		// here and a `decal` prop threaded in: the decal is absolutely positioned
+		// at `z-index: -1`, so it needs this plate both as its containing block
+		// and as the stacking context that keeps it from escaping behind it. Step
+		// 1's plate is a full-bleed picture and takes `over` instead. The stage
+		// plates are absolute already, so they are containing blocks already.
+		<div className="rounded-xl bg-hl-lavender-pale px-5 py-7 text-hl-ink sm:px-8 sm:py-9">
+			{children}
+			{/* Parked: corner decals, to be placed later. <CornerDecal decal={decal} /> */}
+		</div>
+	)
 }
 
 /**
@@ -766,44 +766,44 @@ function Plate({ children }: { children: React.ReactNode }) {
  * and read as a shelf rather than as a joint.
  */
 function StackWeld({
-  lean,
-  anchor = false,
+	lean,
+	anchor = false,
 }: {
-  lean: "left" | "right"
-  /**
-   * Leave the *parent's* own width at the stage's own 383.5/918 instead of
-   * centring in the column — for the header plate, which is only as wide as
-   * its line. Also renders a `div` rather than an `li`, since that weld sits
-   * above the list rather than inside it.
-   */
-  anchor?: boolean
+	lean: "left" | "right"
+	/**
+	 * Leave the *parent's* own width at the stage's own 383.5/918 instead of
+	 * centring in the column — for the header plate, which is only as wide as
+	 * its line. Also renders a `div` rather than an `li`, since that weld sits
+	 * above the list rather than inside it.
+	 */
+	anchor?: boolean
 }) {
-  const Tag = anchor ? "div" : "li"
-  return (
-    <Tag role="presentation" aria-hidden className={anchor ? "flex" : "flex justify-center"}>
-      <svg
-        viewBox={`0 0 ${STACK_VIEW.w} ${STACK_VIEW.h}`}
-        preserveAspectRatio="none"
-        fill="none"
-        className={`h-16 w-40 sm:h-24 sm:w-56${
-          // 41.78% is the fraction of its plate the stage's own header weld
-          // leaves at, so the margin puts this box's left edge there and the
-          // translate walks it back by the 35% of its own width that the run's
-          // exit sits at — landing the exit itself on 41.78%.
-          //
-          // The translate is what makes this one pair of values rather than one
-          // per breakpoint: it is a share of whatever width the box currently
-          // has, so `w-40` and `sm:w-56` both come out anchored with nothing to
-          // keep in step. The `calc()` this replaces needed the box's width
-          // spelled out, and Tailwind generated the base rule but not the `sm:`
-          // one, so the weld would have jumped off the plate at 640px.
-          anchor ? " ml-[41.78%] -translate-x-[35%]" : ""
-        }`}
-      >
-        <path d={stackWeld(lean)} fill="var(--color-hl-lavender-pale)" />
-      </svg>
-    </Tag>
-  )
+	const Tag = anchor ? "div" : "li"
+	return (
+		<Tag role="presentation" aria-hidden className={anchor ? "flex" : "flex justify-center"}>
+			<svg
+				viewBox={`0 0 ${STACK_VIEW.w} ${STACK_VIEW.h}`}
+				preserveAspectRatio="none"
+				fill="none"
+				className={`h-16 w-40 sm:h-24 sm:w-56${
+					// 41.78% is the fraction of its plate the stage's own header weld
+					// leaves at, so the margin puts this box's left edge there and the
+					// translate walks it back by the 35% of its own width that the run's
+					// exit sits at — landing the exit itself on 41.78%.
+					//
+					// The translate is what makes this one pair of values rather than one
+					// per breakpoint: it is a share of whatever width the box currently
+					// has, so `w-40` and `sm:w-56` both come out anchored with nothing to
+					// keep in step. The `calc()` this replaces needed the box's width
+					// spelled out, and Tailwind generated the base rule but not the `sm:`
+					// one, so the weld would have jumped off the plate at 640px.
+					anchor ? " ml-[41.78%] -translate-x-[35%]" : ""
+				}`}
+			>
+				<path d={stackWeld(lean)} fill="var(--color-hl-lavender-pale)" />
+			</svg>
+		</Tag>
+	)
 }
 
 /**
@@ -823,15 +823,15 @@ function StackWeld({
  * spacing is re-derived.
  */
 const ASIDE = {
-  /** The comp's plate. Height is a floor, not a fixed size, so a title that
-   *  wraps lengthens the plate instead of crushing the gap below it. */
-  w: 555,
-  minH: 261.227,
-  padX: 34,
-  padY: 30,
-  gap: 18,
-  titleSize: 30.833,
-  bodySize: 22.269,
+	/** The comp's plate. Height is a floor, not a fixed size, so a title that
+	 *  wraps lengthens the plate instead of crushing the gap below it. */
+	w: 555,
+	minH: 261.227,
+	padX: 34,
+	padY: 30,
+	gap: 18,
+	titleSize: 30.833,
+	bodySize: 22.269,
 } as const
 
 /**
@@ -839,47 +839,47 @@ const ASIDE = {
  * two are separate shapes rather than one with everything optional.
  */
 type AsideProps = { aside: (typeof ASIDES)[number] } & (
-  | { stacked: true; origin?: never }
-  /** Where the plate sits on the stage, in comp pixels. */
-  | { stacked?: false; origin: readonly [number, number] }
+	| { stacked: true; origin?: never }
+	/** Where the plate sits on the stage, in comp pixels. */
+	| { stacked?: false; origin: readonly [number, number] }
 )
 
 function Aside(props: AsideProps) {
-  const { aside } = props
+	const { aside } = props
 
-  if (props.stacked) {
-    return (
-      <div className="rounded-xl bg-hl-lavender px-5 py-7 text-center text-hl-indigo sm:px-7">
-        <h3 className="font-display text-xl font-bold sm:text-2xl">{aside.title}</h3>
-        <p className="mt-4 text-[0.975rem] leading-relaxed sm:text-base">{aside.body}</p>
-        {/* Parked: corner decals, to be placed later. <CornerDecal decal={decal} /> */}
-      </div>
-    )
-  }
+	if (props.stacked) {
+		return (
+			<div className="rounded-xl bg-hl-lavender px-5 py-7 text-center text-hl-indigo sm:px-7">
+				<h3 className="font-display text-xl font-bold sm:text-2xl">{aside.title}</h3>
+				<p className="mt-4 text-[0.975rem] leading-relaxed sm:text-base">{aside.body}</p>
+				{/* Parked: corner decals, to be placed later. <CornerDecal decal={decal} /> */}
+			</div>
+		)
+	}
 
-  return (
-    <div
-      className="absolute flex flex-col justify-center rounded-xl bg-hl-lavender text-center text-hl-indigo"
-      style={{
-        ...at(props.origin[0], props.origin[1]),
-        width: u(ASIDE.w),
-        minHeight: u(ASIDE.minH),
-        padding: `${u(ASIDE.padY)} ${u(ASIDE.padX)}`,
-      }}
-    >
-      <h3 className="font-display font-bold" style={{ fontSize: u(ASIDE.titleSize), lineHeight: 1.15 }}>
-        {aside.title}
-      </h3>
-      <p
-        style={{
-          marginTop: u(ASIDE.gap),
-          fontSize: u(ASIDE.bodySize),
-          lineHeight: 1.5,
-        }}
-      >
-        {aside.body}
-      </p>
-      {/* Parked: corner decals, to be placed later. <CornerDecal decal={decal} /> */}
-    </div>
-  )
+	return (
+		<div
+			className="absolute flex flex-col justify-center rounded-xl bg-hl-lavender text-center text-hl-indigo"
+			style={{
+				...at(props.origin[0], props.origin[1]),
+				width: u(ASIDE.w),
+				minHeight: u(ASIDE.minH),
+				padding: `${u(ASIDE.padY)} ${u(ASIDE.padX)}`,
+			}}
+		>
+			<h3 className="font-display font-bold" style={{ fontSize: u(ASIDE.titleSize), lineHeight: 1.15 }}>
+				{aside.title}
+			</h3>
+			<p
+				style={{
+					marginTop: u(ASIDE.gap),
+					fontSize: u(ASIDE.bodySize),
+					lineHeight: 1.5,
+				}}
+			>
+				{aside.body}
+			</p>
+			{/* Parked: corner decals, to be placed later. <CornerDecal decal={decal} /> */}
+		</div>
+	)
 }

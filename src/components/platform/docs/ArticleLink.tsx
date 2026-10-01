@@ -10,11 +10,11 @@ import { useStore } from "@/lib/store"
  * page. The Doomscroller button in the header brings it back.
  */
 export function ArticleLink({ href, className, children }: { href: string; className?: string; children: ReactNode }) {
-  const { setDoomscroller } = useStore()
+	const { setDoomscroller } = useStore()
 
-  return (
-    <Link href={href} className={className} onClick={() => setDoomscroller(false)}>
-      {children}
-    </Link>
-  )
+	return (
+		<Link href={href} className={className} onClick={() => setDoomscroller(false)}>
+			{children}
+		</Link>
+	)
 }

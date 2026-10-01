@@ -20,45 +20,45 @@ export type ReviewTone = "line" | "sky" | "teal" | "orange" | "coral"
  * per-phase chips carry the detail this single colour cannot.
  */
 export function reviewTone(design: PhaseStatus, build: PhaseStatus): ReviewTone {
-  const phases = [design, build]
-  if (phases.includes("rejected")) return "coral"
-  if (phases.includes("update_requested")) return "orange"
-  if (phases.includes("in_review")) return "sky"
-  const current = build !== "draft" ? build : design
-  if (current === "approved") return "teal"
-  return "line"
+	const phases = [design, build]
+	if (phases.includes("rejected")) return "coral"
+	if (phases.includes("update_requested")) return "orange"
+	if (phases.includes("in_review")) return "sky"
+	const current = build !== "draft" ? build : design
+	if (current === "approved") return "teal"
+	return "line"
 }
 
 /** Plain words, not the enum. */
 export const REVIEW_STATUS_TEXT: Record<PhaseStatus, string> = {
-  draft: "not started",
-  in_review: "in review",
-  update_requested: "needs changes",
-  approved: "approved",
-  rejected: "rejected",
+	draft: "not started",
+	in_review: "in review",
+	update_requested: "needs changes",
+	approved: "approved",
+	rejected: "rejected",
 }
 
 /** Tailwind background for a state's dot, in the platform's own state colours. */
 export const REVIEW_STATUS_DOT: Record<PhaseStatus, string> = {
-  draft: "bg-line-strong",
-  in_review: "bg-sky",
-  update_requested: "bg-orange",
-  approved: "bg-teal",
-  rejected: "bg-coral",
+	draft: "bg-line-strong",
+	in_review: "bg-sky",
+	update_requested: "bg-orange",
+	approved: "bg-teal",
+	rejected: "bg-coral",
 }
 
 /** The platform `Chip` tone for a state. */
 export function reviewChipTone(status: PhaseStatus): "sky" | "teal" | "gold" | "coral" | "muted" {
-  switch (status) {
-    case "approved":
-      return "teal"
-    case "in_review":
-      return "sky"
-    case "update_requested":
-      return "gold"
-    case "rejected":
-      return "coral"
-    default:
-      return "muted"
-  }
+	switch (status) {
+		case "approved":
+			return "teal"
+		case "in_review":
+			return "sky"
+		case "update_requested":
+			return "gold"
+		case "rejected":
+			return "coral"
+		default:
+			return "muted"
+	}
 }

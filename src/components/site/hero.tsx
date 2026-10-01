@@ -67,15 +67,15 @@ const PLATE_H = PLATE.h * PLATE_SCALE
  * sliver, which is what has to be gentle, gives up more than before.
  */
 const ART_FADE = [
-  "linear-gradient(to bottom",
-  "#000 0 72%",
-  "rgb(0 0 0/.94) 76%",
-  "rgb(0 0 0/.80) 80%",
-  "rgb(0 0 0/.61) 84%",
-  "rgb(0 0 0/.39) 88%",
-  "rgb(0 0 0/.20) 92%",
-  "rgb(0 0 0/.06) 96%",
-  "transparent 100%)",
+	"linear-gradient(to bottom",
+	"#000 0 72%",
+	"rgb(0 0 0/.94) 76%",
+	"rgb(0 0 0/.80) 80%",
+	"rgb(0 0 0/.61) 84%",
+	"rgb(0 0 0/.39) 88%",
+	"rgb(0 0 0/.20) 92%",
+	"rgb(0 0 0/.06) 96%",
+	"transparent 100%)",
 ].join(",")
 
 /**
@@ -172,13 +172,13 @@ const TAGLINE_RUN = 830
  * the two rows under it.
  */
 const PLATE_SIZE = {
-  width: u(PLATE_W),
-  minHeight: u(PLATE_H),
+	width: u(PLATE_W),
+	minHeight: u(PLATE_H),
 } as const
 
 /** A comp length on the plate. */
 function onPlateU(px: number) {
-  return u(px * PLATE_SCALE)
+	return u(px * PLATE_SCALE)
 }
 
 /**
@@ -199,14 +199,14 @@ function onPlateU(px: number) {
  * dissolve and the header.
  */
 export default function Hero() {
-  return (
-    <section id="signup" className="relative z-10 isolate">
-      <HeroArt />
-      <HackClubFlag />
-      <LoginMark />
+	return (
+		<section id="signup" className="relative z-10 isolate">
+			<HeroArt />
+			<HackClubFlag />
+			<LoginMark />
 
-      {/* ── Comp reproduction, 1180px and up ───────────────────────────── */}
-      {/* The fold: exactly one viewport, which is what makes "below the fold"
+			{/* ── Comp reproduction, 1180px and up ───────────────────────────── */}
+			{/* The fold: exactly one viewport, which is what makes "below the fold"
           mean anything. `min-h` rather than `h`, so a viewport too short to
           hold the plate grows instead of clipping it -- either way the block
           is never shorter than the fold, so the header below is never dragged
@@ -233,8 +233,8 @@ export default function Hero() {
           height `1fr` wins in both rows and the centring is untouched; below
           it the plate stops descending on the dateline and the squeeze goes
           to the cue's row, which is the row that was already growing. */}
-      <div className="stage hidden min-h-[100svh] grid-rows-[minmax(4.125rem,1fr)_auto_1fr] justify-items-center min-[1180px]:grid">
-        {/* The hero plate. Its three pieces were hand-placed absolute boxes
+			<div className="stage hidden min-h-[100svh] grid-rows-[minmax(4.125rem,1fr)_auto_1fr] justify-items-center min-[1180px]:grid">
+				{/* The hero plate. Its three pieces were hand-placed absolute boxes
             on the comp grid; centred, that arithmetic was fighting itself, so
             the plate is a flex column instead and centring is structural. The
             comp still owns every size and the rhythm between them, scaled —
@@ -243,16 +243,16 @@ export default function Hero() {
             `text-center` is set here rather than per-child so it reaches the
             signup form's own status line too, and does not reach the stacked
             layout, which stays left-aligned in its column. */}
-        <div className="row-start-2 flex flex-col items-center justify-center text-center" style={PLATE_SIZE}>
-          {/* `cqw` rather than `vw`: the stage caps at 1728 and centres, so a
+				<div className="row-start-2 flex flex-col items-center justify-center text-center" style={PLATE_SIZE}>
+					{/* `cqw` rather than `vw`: the stage caps at 1728 and centres, so a
               real `vw` would keep growing the mark on a wider monitor while
               everything around it had stopped. Against the stage it is 35vw up
               to the cap and 35% of the composition after it. `fontSize` is
               still here for the live-type branch, which renders if LOGO_SRC is
               ever cleared again. */}
-          <Wordmark as="h1" art artWidth={LOGO_STAGE_W} fontSize={onPlateU(226.768)} className="w-full" />
+					<Wordmark as="h1" art artWidth={LOGO_STAGE_W} fontSize={onPlateU(226.768)} className="w-full" />
 
-          {/* One line, and sized so it stays one line.
+					{/* One line, and sized so it stays one line.
 
               The measure is not a guess: set in Ubuntu 400, this sentence is
               25.301em wide, so its size and its length are the same number and
@@ -273,13 +273,13 @@ export default function Hero() {
               balance, and an explicit measure narrower than the line would only
               give the text something to overflow. As a centred flex item it
               takes its own content width. */}
-          {/* The tagline now travels inside the form's own box, so the two
+					{/* The tagline now travels inside the form's own box, so the two
               things the hero is actually asking of a visitor — read this, then
               type here — are one object rather than two stacked ones. The
               27-unit gap the comp put under the wordmark moves to the box; the
               49 that used to separate the line from the field is gone, since
               the point of grouping them is that they no longer need it. */}
-          {/* No width. The comp's 866 was the field's own measure, and once
+					{/* No width. The comp's 866 was the field's own measure, and once
               the tagline moved inside the box that width became the box's too
               — 596 comp px of box for a line that needs 830, so a nowrap
               sentence hung 269 out of both sides of the teal.
@@ -296,26 +296,26 @@ export default function Hero() {
               slack the comp left either side were there to absorb a fallback
               face missing Ubuntu's advances by up to 3.9%; now a wider face
               simply takes the box with it. */}
-          {/* The gap under the wordmark is the form's again, now the counter
+					{/* The gap under the wordmark is the form's again, now the counter
               sits below it: the same 48 the counter used to stand off the mark
               by, so the mark and the ask keep the distance they had. */}
-          <SignupForm
-            style={{
-              marginTop: onPlateU(48),
-              width: u(swashBoxWidth(TAGLINE_RUN)),
-            }}
-            fontSize={onPlateU(30)}
-            intro={
-              <p
-                className="font-tagline whitespace-nowrap text-hl-paper"
-                style={{ fontSize: u(32.8), lineHeight: 1.1 }}
-              >
-                {BRAND.tagline}
-              </p>
-            }
-          />
+					<SignupForm
+						style={{
+							marginTop: onPlateU(48),
+							width: u(swashBoxWidth(TAGLINE_RUN)),
+						}}
+						fontSize={onPlateU(30)}
+						intro={
+							<p
+								className="font-tagline whitespace-nowrap text-hl-paper"
+								style={{ fontSize: u(32.8), lineHeight: 1.1 }}
+							>
+								{BRAND.tagline}
+							</p>
+						}
+					/>
 
-          {/* The social proof, under the ask: below the field and below the
+					{/* The social proof, under the ask: below the field and below the
               eligibility line under it, not between the two — that line is the
               field's own caption and error line, and what the input is
               described by, so it stays attached to the field. 40 units off the
@@ -327,17 +327,17 @@ export default function Hero() {
               puts it in the tagline's company (32.8) rather than the eligibility
               note's. Social proof that is quieter than the fine print is not
               doing the job it is here for — least of all directly under it. */}
-          <SignupCounter style={{ marginTop: onPlateU(40), fontSize: onPlateU(42) }} />
-        </div>
+					<SignupCounter style={{ marginTop: onPlateU(40), fontSize: onPlateU(42) }} />
+				</div>
 
-        <ScrollCue className="row-start-3 self-end" style={{ marginBottom: u(56) }} fontSize={u(22)} />
-      </div>
+				<ScrollCue className="row-start-3 self-end" style={{ marginBottom: u(56) }} fontSize={u(22)} />
+			</div>
 
-      {/* ── Stacked layout, below 1180px ───────────────────────────────── */}
-      <div className="min-[1180px]:hidden">
-        {/* pb leaves the cue its own room; without it `justify-center` centres
+			{/* ── Stacked layout, below 1180px ───────────────────────────────── */}
+			<div className="min-[1180px]:hidden">
+				{/* pb leaves the cue its own room; without it `justify-center` centres
             the plate against the cue and the two crowd each other. */}
-        {/* On a phone the block is as tall as what it holds, not the fold.
+				{/* On a phone the block is as tall as what it holds, not the fold.
             As a full-height fold with the group centred in it, an 844px
             screen put ~97px of empty painting under the field, then the cue's
             112px, then the next section's 80 before "how does it work?" —
@@ -350,8 +350,8 @@ export default function Hero() {
             111px, and 128 keeps 17px between them.
 
             From `sm` up it is the full fold again, centred, as before. */}
-        <div className="relative flex flex-col px-4 pt-32 pb-20 sm:min-h-[100svh] sm:justify-center sm:px-8 sm:pb-28">
-          {/* On the painting, as the stage's plate is. This used to be a solid
+				<div className="relative flex flex-col px-4 pt-32 pb-20 sm:min-h-[100svh] sm:justify-center sm:px-8 sm:pb-28">
+					{/* On the painting, as the stage's plate is. This used to be a solid
               `hl-blue-deep` box, which on a phone was the only thing the logo
               ever stood on: the art layer kept its 16:9 box, so at 390 wide the
               painting was a 219px strip under the flag and the dateline while
@@ -364,13 +364,13 @@ export default function Hero() {
               edges and open through the middle, and a phone's crop of it is
               that open middle. `max-w-xl` keeps the group a column on a tablet
               rather than letting the swash run the width of the screen. */}
-          <div className="mx-auto w-full max-w-xl text-center">
-            {/* 42vw here, with a ceiling. Uncapped it is right on a phone and
+					<div className="mx-auto w-full max-w-xl text-center">
+						{/* 42vw here, with a ceiling. Uncapped it is right on a phone and
                 wrong by 768, where even 42vw is 323 across for a mark sitting
                 above a form — the stacked layout runs to 1180, and 16.8rem
                 holds it at a wordmark's size rather than a splash screen's.
                 Both numbers are the old 60 and 24rem less 30%. */}
-            {/* 95vw on a phone. The column is the screen less 16px a side, so
+						{/* 95vw on a phone. The column is the screen less 16px a side, so
                 95vw (2.5vw a side) is wider than it: the tag takes the width
                 itself and is centred on the screen with the left/translate
                 pair, which lands on the column's own centre because the
@@ -378,44 +378,44 @@ export default function Hero() {
                 column again and the art goes back to its capped width. The
                 width is a custom property because `artWidth` is an inline
                 style, which cannot change at a breakpoint. */}
-            <Wordmark
-              as="h1"
-              art
-              artWidth="var(--logo-w)"
-              sizes="(min-width: 640px) 269px, 95vw"
-              fontSize="clamp(3.2rem, 15vw, 7.5rem)"
-              // The 42vw / 16.8rem is the tablet width argued for above.
-              className="left-1/2 w-[95vw] -translate-x-1/2 [--logo-w:100%] sm:left-auto sm:w-full sm:translate-x-0 sm:[--logo-w:min(42vw,16.8rem)]"
-            />
-            <SignupForm
-              className="mt-5"
-              fontSize="clamp(1rem, 4.2vw, 1.375rem)"
-              intro={
-                <p
-                  className="mx-auto max-w-[34ch] font-tagline text-hl-paper"
-                  style={{
-                    fontSize: "clamp(1.05rem, 4.1vw, 1.5rem)",
-                    lineHeight: 1.25,
-                  }}
-                >
-                  {BRAND.tagline}
-                </p>
-              }
-            />
-            {/* Under the ask, below the eligibility line, as on the stage.
+						<Wordmark
+							as="h1"
+							art
+							artWidth="var(--logo-w)"
+							sizes="(min-width: 640px) 269px, 95vw"
+							fontSize="clamp(3.2rem, 15vw, 7.5rem)"
+							// The 42vw / 16.8rem is the tablet width argued for above.
+							className="left-1/2 w-[95vw] -translate-x-1/2 [--logo-w:100%] sm:left-auto sm:w-full sm:translate-x-0 sm:[--logo-w:min(42vw,16.8rem)]"
+						/>
+						<SignupForm
+							className="mt-5"
+							fontSize="clamp(1rem, 4.2vw, 1.375rem)"
+							intro={
+								<p
+									className="mx-auto max-w-[34ch] font-tagline text-hl-paper"
+									style={{
+										fontSize: "clamp(1.05rem, 4.1vw, 1.5rem)",
+										lineHeight: 1.25,
+									}}
+								>
+									{BRAND.tagline}
+								</p>
+							}
+						/>
+						{/* Under the ask, below the eligibility line, as on the stage.
                 Unscreen-sized: it scales with the column's own `clamp()` rather
                 than the stage's `cqw`, because there is no stage here. */}
-            <SignupCounter className="mt-6" style={{ fontSize: "clamp(1.1rem, 4.2vw, 1.4rem)" }} />
-          </div>
+						<SignupCounter className="mt-6" style={{ fontSize: "clamp(1.1rem, 4.2vw, 1.4rem)" }} />
+					</div>
 
-          <ScrollCue
-            className="absolute bottom-5 left-1/2 -translate-x-1/2 sm:bottom-10"
-            fontSize="clamp(0.8rem, 3vw, 1rem)"
-          />
-        </div>
-      </div>
-    </section>
-  )
+					<ScrollCue
+						className="absolute bottom-5 left-1/2 -translate-x-1/2 sm:bottom-10"
+						fontSize="clamp(0.8rem, 3vw, 1rem)"
+					/>
+				</div>
+			</div>
+		</section>
+	)
 }
 
 /**
@@ -463,24 +463,24 @@ export default function Hero() {
  * doing the work.
  */
 function ScrollCue({
-  className = "",
-  style,
-  fontSize,
+	className = "",
+	style,
+	fontSize,
 }: {
-  className?: string
-  style?: CSSProperties
-  /** The label's size, as a CSS length. */
-  fontSize?: string
+	className?: string
+	style?: CSSProperties
+	/** The label's size, as a CSS length. */
+	fontSize?: string
 }) {
-  return (
-    <a
-      href="#how-it-works"
-      // `py-1.5` is the tap target, not spacing: the word is a 16-22px line, and
-      // 12px of vertical padding is what takes the box past the 24px floor.
-      className={`inline-block px-2 py-1.5 font-display font-bold uppercase text-hl-paper decoration-hl-cyan decoration-2 underline-offset-[0.3em] hover:underline ${className}`}
-      style={{ ...style, fontSize, letterSpacing: "0.14em" }}
-    ></a>
-  )
+	return (
+		<a
+			href="#how-it-works"
+			// `py-1.5` is the tap target, not spacing: the word is a 16-22px line, and
+			// 12px of vertical padding is what takes the box past the 24px floor.
+			className={`inline-block px-2 py-1.5 font-display font-bold uppercase text-hl-paper decoration-hl-cyan decoration-2 underline-offset-[0.3em] hover:underline ${className}`}
+			style={{ ...style, fontSize, letterSpacing: "0.14em" }}
+		></a>
+	)
 }
 
 /**
@@ -502,16 +502,16 @@ function ScrollCue({
  * leave it with no accessible name at all.
  */
 function HackClubFlag() {
-  return (
-    <a
-      href="https://hackclub.com"
-      target="_blank"
-      rel="noopener noreferrer"
-      className="absolute top-1 left-1 z-20 w-[clamp(6.5rem,11vw,10rem)]"
-    >
-      <Image src={flagArt} alt="Hack Club" priority className="w-full" />
-    </a>
-  )
+	return (
+		<a
+			href="https://hackclub.com"
+			target="_blank"
+			rel="noopener noreferrer"
+			className="absolute top-1 left-1 z-20 w-[clamp(6.5rem,11vw,10rem)]"
+		>
+			<Image src={flagArt} alt="Hack Club" priority className="w-full" />
+		</a>
+	)
 }
 
 /**
@@ -550,9 +550,9 @@ function HackClubFlag() {
  * all: the box is the painting's own ratio and cover has nothing to take.
  */
 function HeroArt() {
-  return (
-    <div aria-hidden className="absolute inset-0 -z-10 overflow-hidden">
-      {/* The painting's own ratio from 1180 up, where the stage was composed
+	return (
+		<div aria-hidden className="absolute inset-0 -z-10 overflow-hidden">
+			{/* The painting's own ratio from 1180 up, where the stage was composed
           against it. Below that it fills the fold instead: a 16:9 box on a
           portrait phone is a strip across the top of the screen, and the
           stacked plate is centred in the fold, so it landed on bare ground
@@ -560,8 +560,8 @@ function HeroArt() {
           takes the painting's open middle on a phone and a little off each
           framed edge on a tablet, and the dissolve still lands on the fold's
           bottom edge. */}
-      <div className="relative h-full w-full min-[1180px]:aspect-[1920/1080] min-[1180px]:h-auto min-[1180px]:max-h-full">
-        {/* The scene dissolves at its own lower edge rather than at a fixed
+			<div className="relative h-full w-full min-[1180px]:aspect-[1920/1080] min-[1180px]:h-auto min-[1180px]:max-h-full">
+				{/* The scene dissolves at its own lower edge rather than at a fixed
             distance from the bottom of the section, so the fade scales with
             the picture instead of eating a third of it on a phone.
 
@@ -569,24 +569,24 @@ function HeroArt() {
             pin theirs: a gradient has no intrinsic dimensions, so it is drawn
             at the size of its box by a rule worth stating rather than leaning
             on silently. `-webkit-` alongside, for Safari before 15.4. */}
-        <Image
-          src={bgArt}
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          quality={90}
-          className="object-cover"
-          style={{
-            maskImage: ART_FADE,
-            maskSize: "100% 100%",
-            maskRepeat: "no-repeat",
-            WebkitMaskImage: ART_FADE,
-            WebkitMaskSize: "100% 100%",
-            WebkitMaskRepeat: "no-repeat",
-          }}
-        />
-      </div>
-    </div>
-  )
+				<Image
+					src={bgArt}
+					alt=""
+					fill
+					priority
+					sizes="100vw"
+					quality={90}
+					className="object-cover"
+					style={{
+						maskImage: ART_FADE,
+						maskSize: "100% 100%",
+						maskRepeat: "no-repeat",
+						WebkitMaskImage: ART_FADE,
+						WebkitMaskSize: "100% 100%",
+						WebkitMaskRepeat: "no-repeat",
+					}}
+				/>
+			</div>
+		</div>
+	)
 }

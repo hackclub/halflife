@@ -17,20 +17,20 @@ export const dynamic = "force-dynamic"
  * starter project's tier lock.
  */
 export const POST = withRoute(async () => {
-  const gate = await requireRole(Role.ADMIN)
-  if (gate.error) return gate.error
+	const gate = await requireRole(Role.ADMIN)
+	if (gate.error) return gate.error
 
-  await resetOnboarding(gate.user.id)
+	await resetOnboarding(gate.user.id)
 
-  after(() =>
-    logAudit({
-      action: AuditAction.ADMIN_RESET_ONBOARDING,
-      actorId: gate.user.id,
-      actorEmail: gate.user.email,
-      targetType: "User",
-      targetId: gate.user.id,
-    }),
-  )
+	after(() =>
+		logAudit({
+			action: AuditAction.ADMIN_RESET_ONBOARDING,
+			actorId: gate.user.id,
+			actorEmail: gate.user.email,
+			targetType: "User",
+			targetId: gate.user.id,
+		}),
+	)
 
-  return ok({ onboarding: toOnboardingView(await getOnboardingState(gate.user.id)) })
+	return ok({ onboarding: toOnboardingView(await getOnboardingState(gate.user.id)) })
 })

@@ -27,8 +27,8 @@ export const dynamic = "force-dynamic"
  * already ignores it.
  */
 export const GET = withRoute(async (req: NextRequest) => {
-  if (rateLimitedInMemory(`signup-count:${clientIp(req.headers)}`, 30, 60_000)) {
-    return ok({ count: null }, { status: 429 })
-  }
-  return ok({ count: await countSignups() })
+	if (rateLimitedInMemory(`signup-count:${clientIp(req.headers)}`, 30, 60_000)) {
+		return ok({ count: null }, { status: 429 })
+	}
+	return ok({ count: await countSignups() })
 })

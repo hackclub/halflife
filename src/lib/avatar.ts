@@ -12,7 +12,7 @@
 const CACHET_BASE = (process.env.CACHET_BASE_URL ?? "https://cachet.dunkirk.sh").replace(/\/$/, "")
 
 export function avatarUrl(user: { slackId?: string | null; image?: string | null } | null | undefined): string | null {
-  if (!user) return null
-  if (user.slackId) return `${CACHET_BASE}/users/${encodeURIComponent(user.slackId)}/r`
-  return user.image ?? null
+	if (!user) return null
+	if (user.slackId) return `${CACHET_BASE}/users/${encodeURIComponent(user.slackId)}/r`
+	return user.image ?? null
 }

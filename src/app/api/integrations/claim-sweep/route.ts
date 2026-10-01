@@ -10,16 +10,16 @@ import { recordSyncRun } from "@/lib/sync-run-log"
  * a backstop for queues nobody has opened rather than the primary mechanism.
  */
 export const POST = withRoute(async (req: NextRequest) => {
-  const denied = requireIntegrationAuth(req)
-  if (denied) return denied
+	const denied = requireIntegrationAuth(req)
+	if (denied) return denied
 
-  const dryRun = req.nextUrl.searchParams.get("dryRun") === "true"
-  if (dryRun) {
-    const expired = await prisma.reviewClaim.count({ where: { expiresAt: { lt: new Date() } } })
-    return ok({ dryRun: true, expired })
-  }
+	const dryRun = req.nextUrl.searchParams.get("dryRun") === "true"
+	if (dryRun) {
+		const expired = await prisma.reviewClaim.count({ where: { expiresAt: { lt: new Date() } } })
+		return ok({ dryRun: true, expired })
+	}
 
-  const released = await sweepExpiredClaims()
-  await recordSyncRun("claim_sweep", { released })
-  return ok({ released })
+	const released = await sweepExpiredClaims()
+	await recordSyncRun("claim_sweep", { released })
+	return ok({ released })
 })

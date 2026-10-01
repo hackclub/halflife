@@ -7,8 +7,8 @@ import type { SessionUser } from "@/lib/guards"
 import { getUserRolesIfExists, hasAnyPermission, hasPermission, type Permission, type Role } from "@/lib/permissions"
 
 export interface PageContext {
-  user: SessionUser
-  roles: Role[]
+	user: SessionUser
+	roles: Role[]
 }
 
 /**
@@ -23,21 +23,21 @@ export interface PageContext {
 // three serial queries against a remote database. React's `cache` scopes the
 // answer to one server render, so a sign-out still takes effect on the next.
 export const requireSessionPage = cache(async (): Promise<PageContext> => {
-  const session = await auth.api.getSession({ headers: await headers() })
-  // Via /signed-out, which clears a dead session cookie on the way to the
-  // landing page; see that route for why it cannot be `/` directly.
-  if (!session) redirect("/signed-out")
-  const u = session.user
-  // The cookie cache can serve a session whose user is gone — a deleted
-  // account, or a database reset inside the cache's five-minute window — and
-  // the layout below loads that user by id. Same destination as no session at
-  // all, before the first query can turn a ghost into a 500.
-  const roles = await getUserRolesIfExists(u.id)
-  if (roles === null) redirect("/signed-out")
-  return {
-    user: { id: u.id, email: u.email, name: u.name ?? null, image: u.image ?? null },
-    roles,
-  }
+	const session = await auth.api.getSession({ headers: await headers() })
+	// Via /signed-out, which clears a dead session cookie on the way to the
+	// landing page; see that route for why it cannot be `/` directly.
+	if (!session) redirect("/signed-out")
+	const u = session.user
+	// The cookie cache can serve a session whose user is gone — a deleted
+	// account, or a database reset inside the cache's five-minute window — and
+	// the layout below loads that user by id. Same destination as no session at
+	// all, before the first query can turn a ghost into a 500.
+	const roles = await getUserRolesIfExists(u.id)
+	if (roles === null) redirect("/signed-out")
+	return {
+		user: { id: u.id, email: u.email, name: u.name ?? null, image: u.image ?? null },
+		roles,
+	}
 })
 
 /**
@@ -45,13 +45,13 @@ export const requireSessionPage = cache(async (): Promise<PageContext> => {
  * at URLs.
  */
 export async function requirePermissionPage(permission: Permission): Promise<PageContext> {
-  const ctx = await requireSessionPage()
-  if (!hasPermission(ctx.roles, permission)) notFound()
-  return ctx
+	const ctx = await requireSessionPage()
+	if (!hasPermission(ctx.roles, permission)) notFound()
+	return ctx
 }
 
 export async function requireAnyPermissionPage(...permissions: Permission[]): Promise<PageContext> {
-  const ctx = await requireSessionPage()
-  if (!hasAnyPermission(ctx.roles, permissions)) notFound()
-  return ctx
+	const ctx = await requireSessionPage()
+	if (!hasAnyPermission(ctx.roles, permissions)) notFound()
+	return ctx
 }

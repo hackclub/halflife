@@ -18,9 +18,9 @@
  */
 
 export interface FieldDef<T = unknown> {
-  readonly id: string
-  readonly name: string
-  readonly __type?: T
+	readonly id: string
+	readonly name: string
+	readonly __type?: T
 }
 
 const f = <T>(id: string, name: string): FieldDef<T> => ({ id, name })
@@ -33,12 +33,12 @@ const f = <T>(id: string, name: string): FieldDef<T> => ({ id, name })
 export const FIELD_MODE: "id" | "name" = process.env.AIRTABLE_USE_FIELD_IDS === "true" ? "id" : "name"
 
 export function fieldKey(field: FieldDef): string {
-  return FIELD_MODE === "id" ? field.id : field.name
+	return FIELD_MODE === "id" ? field.id : field.name
 }
 
 /** filterByFormula cannot use field ids. */
 export function formulaRef(field: FieldDef): string {
-  return `{${field.name}}`
+	return `{${field.name}}`
 }
 
 /**
@@ -55,41 +55,41 @@ export function formulaRef(field: FieldDef): string {
  * row onward, and that is a reviewer's call, not a submitter's.
  */
 export const YSWS_SUBMISSION = {
-  tableId: process.env.AIRTABLE_YSWS_TABLE_ID ?? "YSWS Project Submission",
-  fields: {
-    codeUrl: f<string>("fldYswsCodeUrl", "Code URL"),
-    firstName: f<string>("fldYswsFirstName", "First Name"),
-    lastName: f<string>("fldYswsLastName", "Last Name"),
-    email: f<string>("fldYswsEmail", "Email"),
-    birthday: f<string>("fldYswsBirthday", "Birthday"),
-    slackId: f<string>("fldYswsSlackId", "Slack ID"),
-    stage: f<"Design" | "Build">("fldYswsStage", "Design or build"),
-    requestedFunding: f<number>("fldYswsRequestedFunding", "Requested funding"),
-    hoursSelfReported: f<number>("fldYswsHoursSelfReported", "Hours spent (self reported)"),
-    playableUrl: f<string>("fldYswsPlayableUrl", "Playable URL"),
-    description: f<string>("fldYswsDescription", "Description"),
-    screenshot: f<{ url: string }[]>("fldYswsScreenshot", "Screenshot"),
-    journalUrl: f<string>("fldYswsJournalUrl", "Link to JOURNAL.md"),
-    lapseLinks: f<string>("fldYswsLapseLinks", "Justification - Lapse Links, comma-separated"),
-    githubUsername: f<string>("fldYswsGithubUsername", "GitHub Username"),
-    addressLine1: f<string>("fldYswsAddress1", "Address (Line 1)"),
-    addressLine2: f<string>("fldYswsAddress2", "Address (Line 2)"),
-    city: f<string>("fldYswsCity", "City"),
-    zip: f<string>("fldYswsZip", "ZIP / Postal Code"),
-    state: f<string>("fldYswsState", "State / Province"),
-    country: f<string>("fldYswsCountry", "Country"),
-    hackatimeProjects: f<string>(
-      "fldYswsHackatimeProjects",
-      "Justification - Hackatime Project Name(s) + Date Range(s)",
-    ),
-    hackatimeId: f<string>("fldYswsHackatimeId", "Justification - Submitter Hackatime ID"),
-    projectName: f<string>("fldYswsProjectName", "Project name"),
-    reviewStatus: f<string>("fldYswsReviewStatus", "Review Status"),
-    tier: f<string>("fldYswsTier", "Tier"),
-    // Written by the pipeline's automation, read by us: it identifies the row's
-    // twin in the unified base, which is the only safe way to remove it.
-    unifiedRecordId: f<string>("fldYswsUnifiedRecordId", "Automation - YSWS Record ID"),
-  },
+	tableId: process.env.AIRTABLE_YSWS_TABLE_ID ?? "YSWS Project Submission",
+	fields: {
+		codeUrl: f<string>("fldYswsCodeUrl", "Code URL"),
+		firstName: f<string>("fldYswsFirstName", "First Name"),
+		lastName: f<string>("fldYswsLastName", "Last Name"),
+		email: f<string>("fldYswsEmail", "Email"),
+		birthday: f<string>("fldYswsBirthday", "Birthday"),
+		slackId: f<string>("fldYswsSlackId", "Slack ID"),
+		stage: f<"Design" | "Build">("fldYswsStage", "Design or build"),
+		requestedFunding: f<number>("fldYswsRequestedFunding", "Requested funding"),
+		hoursSelfReported: f<number>("fldYswsHoursSelfReported", "Hours spent (self reported)"),
+		playableUrl: f<string>("fldYswsPlayableUrl", "Playable URL"),
+		description: f<string>("fldYswsDescription", "Description"),
+		screenshot: f<{ url: string }[]>("fldYswsScreenshot", "Screenshot"),
+		journalUrl: f<string>("fldYswsJournalUrl", "Link to JOURNAL.md"),
+		lapseLinks: f<string>("fldYswsLapseLinks", "Justification - Lapse Links, comma-separated"),
+		githubUsername: f<string>("fldYswsGithubUsername", "GitHub Username"),
+		addressLine1: f<string>("fldYswsAddress1", "Address (Line 1)"),
+		addressLine2: f<string>("fldYswsAddress2", "Address (Line 2)"),
+		city: f<string>("fldYswsCity", "City"),
+		zip: f<string>("fldYswsZip", "ZIP / Postal Code"),
+		state: f<string>("fldYswsState", "State / Province"),
+		country: f<string>("fldYswsCountry", "Country"),
+		hackatimeProjects: f<string>(
+			"fldYswsHackatimeProjects",
+			"Justification - Hackatime Project Name(s) + Date Range(s)",
+		),
+		hackatimeId: f<string>("fldYswsHackatimeId", "Justification - Submitter Hackatime ID"),
+		projectName: f<string>("fldYswsProjectName", "Project name"),
+		reviewStatus: f<string>("fldYswsReviewStatus", "Review Status"),
+		tier: f<string>("fldYswsTier", "Tier"),
+		// Written by the pipeline's automation, read by us: it identifies the row's
+		// twin in the unified base, which is the only safe way to remove it.
+		unifiedRecordId: f<string>("fldYswsUnifiedRecordId", "Automation - YSWS Record ID"),
+	},
 } as const
 
 /** What every row says when Half Life writes it; ari.hackclub.com takes it from there. */
@@ -104,40 +104,40 @@ export const YSWS_PENDING_REVIEW = "Pending Review"
 export const RSVP_TABLE_ID = process.env.AIRTABLE_RSVP_TABLE_ID ?? "Signups"
 
 export const RSVP = {
-  tableId: RSVP_TABLE_ID,
-  fields: {
-    // Lowercase in the live table. Airtable field names are case-sensitive, and
-    // `fields[]=Email` is a 422 that kills the whole list request — which is how
-    // the Loops sync never ran (see lib/airtable/loops).
-    email: f<string>("fldRsvpEmail", "email"),
-    firstName: f<string>("fldRsvpFirstName", "First Name"),
-    lastName: f<string>("fldRsvpLastName", "Last Name"),
-    pronouns: f<string>("fldRsvpPronouns", "Pronouns"),
-    ip: f<string>("fldRsvpIp", "IP"),
-    utmSource: f<string>("fldRsvpUtmSource", "UTM Source"),
-    referredBy: f<string>("fldRsvpReferredBy", "Referred By"),
-    signupPage: f<string>("fldRsvpSignupPage", "Loops - halfLifeSignUpPage"),
-    finishedAccountCreation: f<boolean>("fldRsvpFinished", "Finished Account Creation"),
-    // Stasis joins RSVPs to users on email alone, which breaks when someone
-    // RSVPs with a personal address and signs in through HCA with a school one.
-    userId: f<string>("fldRsvpUserId", "Half-Life User ID"),
-  },
+	tableId: RSVP_TABLE_ID,
+	fields: {
+		// Lowercase in the live table. Airtable field names are case-sensitive, and
+		// `fields[]=Email` is a 422 that kills the whole list request — which is how
+		// the Loops sync never ran (see lib/airtable/loops).
+		email: f<string>("fldRsvpEmail", "email"),
+		firstName: f<string>("fldRsvpFirstName", "First Name"),
+		lastName: f<string>("fldRsvpLastName", "Last Name"),
+		pronouns: f<string>("fldRsvpPronouns", "Pronouns"),
+		ip: f<string>("fldRsvpIp", "IP"),
+		utmSource: f<string>("fldRsvpUtmSource", "UTM Source"),
+		referredBy: f<string>("fldRsvpReferredBy", "Referred By"),
+		signupPage: f<string>("fldRsvpSignupPage", "Loops - halfLifeSignUpPage"),
+		finishedAccountCreation: f<boolean>("fldRsvpFinished", "Finished Account Creation"),
+		// Stasis joins RSVPs to users on email alone, which breaks when someone
+		// RSVPs with a personal address and signs in through HCA with a school one.
+		userId: f<string>("fldRsvpUserId", "Half-Life User ID"),
+	},
 } as const
 
 type FieldMap = Record<string, FieldDef>
 
 type ValuesFor<S extends FieldMap> = Partial<{
-  [K in keyof S]: S[K] extends FieldDef<infer T> ? T : never
+	[K in keyof S]: S[K] extends FieldDef<infer T> ? T : never
 }>
 
 /** Build an Airtable `fields` payload, keyed however FIELD_MODE says. */
 export function toFields<S extends FieldMap>(schema: S, values: ValuesFor<S>): Record<string, unknown> {
-  const out: Record<string, unknown> = {}
-  for (const [key, value] of Object.entries(values)) {
-    if (value === undefined) continue
-    const field = schema[key]
-    if (!field) continue
-    out[fieldKey(field)] = value
-  }
-  return out
+	const out: Record<string, unknown> = {}
+	for (const [key, value] of Object.entries(values)) {
+		if (value === undefined) continue
+		const field = schema[key]
+		if (!field) continue
+		out[fieldKey(field)] = value
+	}
+	return out
 }

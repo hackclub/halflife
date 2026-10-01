@@ -13,31 +13,31 @@ import type { BomItemInput } from "@/lib/schemas/project"
 export const MAX_BOM_ITEMS = 80
 
 export interface BomLine {
-  id: string
-  name: string
-  purpose: string | null
-  quantity: number
-  unitCostUsd: number
-  vendor: string | null
-  link: string | null
-  updatedAt: Date
+	id: string
+	name: string
+	purpose: string | null
+	quantity: number
+	unitCostUsd: number
+	vendor: string | null
+	link: string | null
+	updatedAt: Date
 }
 
 export function listBom(themeProjectId: string): Promise<BomLine[]> {
-  return prisma.bomItem.findMany({
-    where: { themeProjectId },
-    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-    select: {
-      id: true,
-      name: true,
-      purpose: true,
-      quantity: true,
-      unitCostUsd: true,
-      vendor: true,
-      link: true,
-      updatedAt: true,
-    },
-  })
+	return prisma.bomItem.findMany({
+		where: { themeProjectId },
+		orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+		select: {
+			id: true,
+			name: true,
+			purpose: true,
+			quantity: true,
+			unitCostUsd: true,
+			vendor: true,
+			link: true,
+			updatedAt: true,
+		},
+	})
 }
 
 /**
@@ -49,23 +49,23 @@ export function listBom(themeProjectId: string): Promise<BomLine[]> {
  * tier out against this list.
  */
 export function bomLockReason(project: { designStatus: PhaseStatus; buildStatus: PhaseStatus }): string | null {
-  if (project.designStatus === PhaseStatus.in_review || project.buildStatus === PhaseStatus.in_review) {
-    return "Unsubmit before editing — a phase is in review"
-  }
-  if (project.designStatus === PhaseStatus.approved) {
-    return "The design week is approved, so the parts list is final"
-  }
-  return null
+	if (project.designStatus === PhaseStatus.in_review || project.buildStatus === PhaseStatus.in_review) {
+		return "Unsubmit before editing — a phase is in review"
+	}
+	if (project.designStatus === PhaseStatus.approved) {
+		return "The design week is approved, so the parts list is final"
+	}
+	return null
 }
 
 /** The fields a write may set, cleaned the way every other maker text is. */
 export function bomData(input: Partial<BomItemInput>) {
-  return {
-    ...(input.name !== undefined ? { name: sanitize(input.name) } : {}),
-    ...(input.purpose !== undefined ? { purpose: sanitizeOptional(input.purpose) } : {}),
-    ...(input.quantity !== undefined ? { quantity: input.quantity } : {}),
-    ...(input.unitCostUsd !== undefined ? { unitCostUsd: Math.round(input.unitCostUsd * 100) / 100 } : {}),
-    ...(input.vendor !== undefined ? { vendor: sanitizeOptional(input.vendor) } : {}),
-    ...(input.link !== undefined ? { link: input.link || null } : {}),
-  }
+	return {
+		...(input.name !== undefined ? { name: sanitize(input.name) } : {}),
+		...(input.purpose !== undefined ? { purpose: sanitizeOptional(input.purpose) } : {}),
+		...(input.quantity !== undefined ? { quantity: input.quantity } : {}),
+		...(input.unitCostUsd !== undefined ? { unitCostUsd: Math.round(input.unitCostUsd * 100) / 100 } : {}),
+		...(input.vendor !== undefined ? { vendor: sanitizeOptional(input.vendor) } : {}),
+		...(input.link !== undefined ? { link: input.link || null } : {}),
+	}
 }

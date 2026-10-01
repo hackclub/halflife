@@ -20,17 +20,17 @@ import { getProgramSettings, weekClosesAt } from "@/lib/program"
  * put in review — the build if that one has left draft, the design otherwise.
  */
 export function warmupPhaseOf(project: { warmupPhase: Phase | null; buildStatus: PhaseStatus }): Phase {
-  if (project.warmupPhase) return project.warmupPhase
-  return project.buildStatus !== PhaseStatus.draft ? Phase.BUILD : Phase.DESIGN
+	if (project.warmupPhase) return project.warmupPhase
+	return project.buildStatus !== PhaseStatus.draft ? Phase.BUILD : Phase.DESIGN
 }
 
 /** Whether a warm-up project can still be started, and when that stops. */
 export async function warmupCreationWindow(): Promise<{ open: boolean; closesAt: Date; closesOn: string }> {
-  const settings = await getProgramSettings()
-  const closesAt = weekClosesAt(settings, WARMUP_WEEK_ID)
-  return {
-    open: new Date() < closesAt,
-    closesAt,
-    closesOn: formatDeadline(closesAt, settings.programTimezone),
-  }
+	const settings = await getProgramSettings()
+	const closesAt = weekClosesAt(settings, WARMUP_WEEK_ID)
+	return {
+		open: new Date() < closesAt,
+		closesAt,
+		closesOn: formatDeadline(closesAt, settings.programTimezone),
+	}
 }

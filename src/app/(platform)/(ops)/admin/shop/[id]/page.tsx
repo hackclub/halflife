@@ -10,38 +10,38 @@ export const dynamic = "force-dynamic"
 
 /** One shop item, to edit. Retiring and re-listing stay on the catalogue. */
 export default async function AdminShopItemPage({ params }: { params: Promise<{ id: string }> }) {
-  await requirePermissionPage(Permission.MANAGE_SHOP)
-  const { id } = await params
-  const item = await prisma.shopItem.findUnique({ where: { id } })
-  if (!item) notFound()
+	await requirePermissionPage(Permission.MANAGE_SHOP)
+	const { id } = await params
+	const item = await prisma.shopItem.findUnique({ where: { id } })
+	if (!item) notFound()
 
-  return (
-    <div className="hl-stack">
-      <p>
-        <Link href="/admin/shop">← Shop items</Link>
-      </p>
-      <PageHeader title={item.name} />
-      <Panel title="Edit item">
-        <p className="hl-hint" style={{ marginBottom: "0.75rem" }}>
-          <Badge tone={item.active ? "success" : "muted"}>{item.active ? "active" : "retired"}</Badge> Changes apply to
-          new orders; orders already placed keep what they were bought at.
-        </p>
-        <ShopItemForm
-          item={{
-            id: item.id,
-            name: item.name,
-            description: item.description,
-            imageUrl: item.imageUrl,
-            category: item.category,
-            priceCredits: item.priceCredits,
-            costUsd: item.costUsd,
-            maxPerUser: item.maxPerUser,
-            stock: item.stock,
-            requiresPrinterQualified: item.requiresPrinterQualified,
-            sortOrder: item.sortOrder,
-          }}
-        />
-      </Panel>
-    </div>
-  )
+	return (
+		<div className="hl-stack">
+			<p>
+				<Link href="/admin/shop">← Shop items</Link>
+			</p>
+			<PageHeader title={item.name} />
+			<Panel title="Edit item">
+				<p className="hl-hint" style={{ marginBottom: "0.75rem" }}>
+					<Badge tone={item.active ? "success" : "muted"}>{item.active ? "active" : "retired"}</Badge> Changes apply to
+					new orders; orders already placed keep what they were bought at.
+				</p>
+				<ShopItemForm
+					item={{
+						id: item.id,
+						name: item.name,
+						description: item.description,
+						imageUrl: item.imageUrl,
+						category: item.category,
+						priceCredits: item.priceCredits,
+						costUsd: item.costUsd,
+						maxPerUser: item.maxPerUser,
+						stock: item.stock,
+						requiresPrinterQualified: item.requiresPrinterQualified,
+						sortOrder: item.sortOrder,
+					}}
+				/>
+			</Panel>
+		</div>
+	)
 }

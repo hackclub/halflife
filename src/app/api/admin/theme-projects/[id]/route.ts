@@ -15,36 +15,36 @@ export const dynamic = "force-dynamic"
  * where the user-level one on /api/admin/users/[id] covers everything they own.
  */
 export const PATCH = withRoute(async (req: Request, { params }: Params) => {
-  const gate = await requirePermission(Permission.MANAGE_USERS)
-  if (gate.error) return gate.error
-  const { id } = await params
+	const gate = await requirePermission(Permission.MANAGE_USERS)
+	if (gate.error) return gate.error
+	const { id } = await params
 
-  const parsed = await parseBody(req, projectExtensionSchema)
-  if (parsed.error) return parsed.error
+	const parsed = await parseBody(req, projectExtensionSchema)
+	if (parsed.error) return parsed.error
 
-  const before = await prisma.themeProject.findFirst({
-    where: { id, deletedAt: null },
-    select: { submissionExtensionUntil: true },
-  })
-  if (!before) return fail("NOT_FOUND", "Project not found")
+	const before = await prisma.themeProject.findFirst({
+		where: { id, deletedAt: null },
+		select: { submissionExtensionUntil: true },
+	})
+	if (!before) return fail("NOT_FOUND", "Project not found")
 
-  const updated = await prisma.themeProject.update({
-    where: { id },
-    data: { submissionExtensionUntil: parsed.data.submissionExtensionUntil },
-    select: { id: true, submissionExtensionUntil: true },
-  })
+	const updated = await prisma.themeProject.update({
+		where: { id },
+		data: { submissionExtensionUntil: parsed.data.submissionExtensionUntil },
+		select: { id: true, submissionExtensionUntil: true },
+	})
 
-  await logAudit({
-    action: AuditAction.ADMIN_GRANT_EXTENSION,
-    actorId: gate.user.id,
-    actorEmail: gate.user.email,
-    targetType: "ThemeProject",
-    targetId: id,
-    metadata: {
-      before: before.submissionExtensionUntil?.toISOString() ?? null,
-      after: parsed.data.submissionExtensionUntil?.toISOString() ?? null,
-    },
-  })
+	await logAudit({
+		action: AuditAction.ADMIN_GRANT_EXTENSION,
+		actorId: gate.user.id,
+		actorEmail: gate.user.email,
+		targetType: "ThemeProject",
+		targetId: id,
+		metadata: {
+			before: before.submissionExtensionUntil?.toISOString() ?? null,
+			after: parsed.data.submissionExtensionUntil?.toISOString() ?? null,
+		},
+	})
 
-  return ok({ project: updated })
+	return ok({ project: updated })
 })

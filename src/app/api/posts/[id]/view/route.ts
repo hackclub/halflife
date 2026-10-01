@@ -11,9 +11,9 @@ type Params = { params: Promise<{ id: string }> }
  * bury every other action in the log.
  */
 export const POST = withRoute(async (_req: Request, { params }: Params) => {
-  const gate = await requireSession()
-  if (gate.error) return gate.error
-  const { id } = await params
+	const gate = await requireSession()
+	if (gate.error) return gate.error
+	const { id } = await params
 
-  return ok({ viewCount: await recordView(id, gate.user.id) })
+	return ok({ viewCount: await recordView(id, gate.user.id) })
 })

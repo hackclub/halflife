@@ -20,16 +20,16 @@ import { postMessage, sendDM } from "@/lib/slack"
  */
 
 export interface ReviewOutcomeNotice {
-  themeProjectId: string
-  phase: Phase
-  result: ReviewResult
-  /** The reviewer's note, which the participant is meant to read. */
-  feedback: string
+	themeProjectId: string
+	phase: Phase
+	result: ReviewResult
+	/** The reviewer's note, which the participant is meant to read. */
+	feedback: string
 }
 
 function projectUrl(id: string): string | null {
-  const base = (process.env.NEXT_PUBLIC_APP_URL ?? process.env.BETTER_AUTH_URL ?? "").replace(/\/$/, "")
-  return base ? `${base}/projects/${id}` : null
+	const base = (process.env.NEXT_PUBLIC_APP_URL ?? process.env.BETTER_AUTH_URL ?? "").replace(/\/$/, "")
+	return base ? `${base}/projects/${id}` : null
 }
 
 const HTML_ESCAPES: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }
@@ -38,81 +38,81 @@ const escapeHtml = (value: string): string => value.replace(/[&<>"']/g, (c) => H
 
 /** One line per outcome, in the voice the platform uses everywhere else. */
 function headline(result: ReviewResult, phase: string, title: string): { subject: string; body: string } {
-  const what = `${phase} for ${title}`
-  switch (result) {
-    case ReviewResult.APPROVED:
-      return { subject: `Your ${phase} was approved — ${title}`, body: `Good news: your ${what} was approved.` }
-    case ReviewResult.RETURNED:
-      return {
-        subject: `Changes requested on your ${phase} — ${title}`,
-        body: `Your ${what} needs a few changes before it can be approved.`,
-      }
-    case ReviewResult.REJECTED:
-      return { subject: `Your ${phase} was not approved — ${title}`, body: `Your ${what} was not approved.` }
-    default:
-      return { subject: `An update on your ${phase} — ${title}`, body: `There is an update on your ${what}.` }
-  }
+	const what = `${phase} for ${title}`
+	switch (result) {
+		case ReviewResult.APPROVED:
+			return { subject: `Your ${phase} was approved — ${title}`, body: `Good news: your ${what} was approved.` }
+		case ReviewResult.RETURNED:
+			return {
+				subject: `Changes requested on your ${phase} — ${title}`,
+				body: `Your ${what} needs a few changes before it can be approved.`,
+			}
+		case ReviewResult.REJECTED:
+			return { subject: `Your ${phase} was not approved — ${title}`, body: `Your ${what} was not approved.` }
+		default:
+			return { subject: `An update on your ${phase} — ${title}`, body: `There is an update on your ${what}.` }
+	}
 }
 
 export async function notifyReviewOutcome(notice: ReviewOutcomeNotice): Promise<void> {
-  const project = await prisma.themeProject.findUnique({
-    where: { id: notice.themeProjectId },
-    select: {
-      title: true,
-      theme: true,
-      user: { select: { name: true, email: true, slackId: true } },
-    },
-  })
-  if (!project) return
+	const project = await prisma.themeProject.findUnique({
+		where: { id: notice.themeProjectId },
+		select: {
+			title: true,
+			theme: true,
+			user: { select: { name: true, email: true, slackId: true } },
+		},
+	})
+	if (!project) return
 
-  const { email, slackId } = project.user
-  const title = project.title.trim() || getThemeDef(project.theme).label
-  const phaseLabel = notice.phase === Phase.DESIGN ? "design" : "build"
-  const { subject, body } = headline(notice.result, phaseLabel, title)
-  const url = projectUrl(notice.themeProjectId)
-  const feedback = notice.feedback.trim()
-  const firstName = project.user.name?.trim().split(/\s+/)[0] || "there"
+	const { email, slackId } = project.user
+	const title = project.title.trim() || getThemeDef(project.theme).label
+	const phaseLabel = notice.phase === Phase.DESIGN ? "design" : "build"
+	const { subject, body } = headline(notice.result, phaseLabel, title)
+	const url = projectUrl(notice.themeProjectId)
+	const feedback = notice.feedback.trim()
+	const firstName = project.user.name?.trim().split(/\s+/)[0] || "there"
 
-  const ctx = {
-    actorId: null,
-    targetType: "ThemeProject",
-    targetId: notice.themeProjectId,
-    metadata: { kind: "review_outcome", phase: notice.phase, result: notice.result },
-  }
+	const ctx = {
+		actorId: null,
+		targetType: "ThemeProject",
+		targetId: notice.themeProjectId,
+		metadata: { kind: "review_outcome", phase: notice.phase, result: notice.result },
+	}
 
-  if (slackId) {
-    const link = url ? `\n<${url}|Open the project>` : ""
-    const dm = `${body}${feedback ? `\n\nReviewer's note: ${feedback}` : ""}${link}`
-    await trackSideEffect("slack", ctx, () => sendDM(slackId, dm))
-  }
+	if (slackId) {
+		const link = url ? `\n<${url}|Open the project>` : ""
+		const dm = `${body}${feedback ? `\n\nReviewer's note: ${feedback}` : ""}${link}`
+		await trackSideEffect("slack", ctx, () => sendDM(slackId, dm))
+	}
 
-  if (email) {
-    const text = [
-      `Hi ${firstName},`,
-      "",
-      body,
-      ...(feedback ? ["", `Reviewer's note: ${feedback}`] : []),
-      ...(url ? ["", `Open the project: ${url}`] : []),
-      "",
-      "— Half Life",
-    ].join("\n")
+	if (email) {
+		const text = [
+			`Hi ${firstName},`,
+			"",
+			body,
+			...(feedback ? ["", `Reviewer's note: ${feedback}`] : []),
+			...(url ? ["", `Open the project: ${url}`] : []),
+			"",
+			"— Half Life",
+		].join("\n")
 
-    const html = [
-      `<div style="font-family:system-ui,-apple-system,sans-serif;line-height:1.5;color:#262a2d">`,
-      `<p>Hi ${escapeHtml(firstName)},</p>`,
-      `<p>${escapeHtml(body)}</p>`,
-      feedback
-        ? `<blockquote style="margin:1rem 0;padding:.5rem 1rem;border-left:3px solid #c8c3d6;color:#4a4785">${escapeHtml(feedback)}</blockquote>`
-        : "",
-      url ? `<p><a href="${url}" style="color:#2e8cae">Open the project</a></p>` : "",
-      `<p style="color:#4a4785">— Half Life</p>`,
-      "</div>",
-    ]
-      .filter(Boolean)
-      .join("\n")
+		const html = [
+			`<div style="font-family:system-ui,-apple-system,sans-serif;line-height:1.5;color:#262a2d">`,
+			`<p>Hi ${escapeHtml(firstName)},</p>`,
+			`<p>${escapeHtml(body)}</p>`,
+			feedback
+				? `<blockquote style="margin:1rem 0;padding:.5rem 1rem;border-left:3px solid #c8c3d6;color:#4a4785">${escapeHtml(feedback)}</blockquote>`
+				: "",
+			url ? `<p><a href="${url}" style="color:#2e8cae">Open the project</a></p>` : "",
+			`<p style="color:#4a4785">— Half Life</p>`,
+			"</div>",
+		]
+			.filter(Boolean)
+			.join("\n")
 
-    await trackSideEffect("email", ctx, () => sendEmail({ to: email, subject, text, html }))
-  }
+		await trackSideEffect("email", ctx, () => sendEmail({ to: email, subject, text, html }))
+	}
 }
 
 /**
@@ -122,27 +122,27 @@ export async function notifyReviewOutcome(notice: ReviewOutcomeNotice): Promise<
  * still has the dispute in the console and the audit log, so nothing is lost.
  */
 export async function notifyStaffDispute(input: {
-  themeProjectId: string
-  title: string
-  phase: Phase
-  note: string
-  participant: string
+	themeProjectId: string
+	title: string
+	phase: Phase
+	note: string
+	participant: string
 }): Promise<void> {
-  const channel = process.env.SLACK_REVIEW_CHANNEL_ID
-  if (!channel) return
-  const phase = input.phase === Phase.DESIGN ? "design" : "build"
-  const url = projectUrl(input.themeProjectId)
-  const quoted = input.note
-    .trim()
-    .split("\n")
-    .map((line) => `> ${line}`)
-    .join("\n")
-  const text = `Review dispute on *${input.title}* (${phase}) by ${input.participant}:\n\n${quoted}${
-    url ? `\n\n<${url}|Open the project>` : ""
-  }`
-  await trackSideEffect(
-    "slack",
-    { actorId: null, targetType: "ThemeProject", targetId: input.themeProjectId, metadata: { kind: "review_dispute" } },
-    () => postMessage(channel, text),
-  )
+	const channel = process.env.SLACK_REVIEW_CHANNEL_ID
+	if (!channel) return
+	const phase = input.phase === Phase.DESIGN ? "design" : "build"
+	const url = projectUrl(input.themeProjectId)
+	const quoted = input.note
+		.trim()
+		.split("\n")
+		.map((line) => `> ${line}`)
+		.join("\n")
+	const text = `Review dispute on *${input.title}* (${phase}) by ${input.participant}:\n\n${quoted}${
+		url ? `\n\n<${url}|Open the project>` : ""
+	}`
+	await trackSideEffect(
+		"slack",
+		{ actorId: null, targetType: "ThemeProject", targetId: input.themeProjectId, metadata: { kind: "review_dispute" } },
+		() => postMessage(channel, text),
+	)
 }

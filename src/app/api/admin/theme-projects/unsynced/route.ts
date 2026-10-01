@@ -6,7 +6,7 @@ import { Permission } from "@/lib/permissions"
 export const dynamic = "force-dynamic"
 
 export const GET = withRoute(async () => {
-  const gate = await requirePermission(Permission.MANAGE_PROGRAM)
-  if (gate.error) return gate.error
-  return ok({ unsynced: await findUnsyncedSubmissions() })
+	const gate = await requirePermission(Permission.MANAGE_PROGRAM)
+	if (gate.error) return gate.error
+	return ok({ unsynced: await findUnsyncedSubmissions() })
 })

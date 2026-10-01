@@ -19,38 +19,38 @@ type Tx = Prisma.TransactionClient
  * that reads a balance and then writes against it.
  */
 export async function lockUserCredit(tx: Tx, userId: string): Promise<void> {
-  // hashtextextended gives a stable bigint for the key; the constant is just a
-  // namespace so this lock cannot collide with an unrelated advisory lock.
-  // $executeRaw rather than $queryRaw: pg_advisory_xact_lock returns void, and
-  // the driver adapter cannot deserialize that as a result row.
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`credit:${userId}`}, 0))`
+	// hashtextextended gives a stable bigint for the key; the constant is just a
+	// namespace so this lock cannot collide with an unrelated advisory lock.
+	// $executeRaw rather than $queryRaw: pg_advisory_xact_lock returns void, and
+	// the driver adapter cannot deserialize that as a result row.
+	await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`credit:${userId}`}, 0))`
 }
 
 /** Kinds that represent earning, as opposed to spending. */
 const EARNING_KINDS: LedgerKind[] = [
-  LedgerKind.DESIGN_BANKED_HOURS,
-  LedgerKind.DESIGN_EXCESS_HOURS,
-  LedgerKind.BUILD_BANKED_HOURS,
-  LedgerKind.BUILD_HOURS,
-  LedgerKind.BOM_SAVINGS,
-  LedgerKind.THEME_COMPLETION_BONUS,
-  LedgerKind.ADMIN_ADJUSTMENT,
-  LedgerKind.REVIEWER_PAYMENT,
+	LedgerKind.DESIGN_BANKED_HOURS,
+	LedgerKind.DESIGN_EXCESS_HOURS,
+	LedgerKind.BUILD_BANKED_HOURS,
+	LedgerKind.BUILD_HOURS,
+	LedgerKind.BOM_SAVINGS,
+	LedgerKind.THEME_COMPLETION_BONUS,
+	LedgerKind.ADMIN_ADJUSTMENT,
+	LedgerKind.REVIEWER_PAYMENT,
 ]
 
 async function sumFor(tx: Tx, where: Prisma.LedgerEntryWhereInput): Promise<number> {
-  const { _sum } = await tx.ledgerEntry.aggregate({ where, _sum: { amount: true } })
-  return _sum.amount ?? 0
+	const { _sum } = await tx.ledgerEntry.aggregate({ where, _sum: { amount: true } })
+	return _sum.amount ?? 0
 }
 
 /** Both pots, plus their total. Every balance read should go through this. */
 export interface Balances {
-  /** Ordinary coins. Buys anything in the shop. */
-  spendable: number
-  /** The printer fund. Buys a printer and nothing else. */
-  banked: number
-  /** spendable + banked. For display only — never a spending limit. */
-  total: number
+	/** Ordinary coins. Buys anything in the shop. */
+	spendable: number
+	/** The printer fund. Buys a printer and nothing else. */
+	banked: number
+	/** spendable + banked. For display only — never a spending limit. */
+	total: number
 }
 
 /**
@@ -62,11 +62,11 @@ export interface Balances {
  * never included them.
  */
 export async function getBalances(tx: Tx, userId: string): Promise<Balances> {
-  const [spendable, banked] = await Promise.all([
-    sumFor(tx, { userId, bucket: CoinBucket.SPENDABLE }),
-    sumFor(tx, { userId, bucket: CoinBucket.BANKED }),
-  ])
-  return { spendable, banked, total: spendable + banked }
+	const [spendable, banked] = await Promise.all([
+		sumFor(tx, { userId, bucket: CoinBucket.SPENDABLE }),
+		sumFor(tx, { userId, bucket: CoinBucket.BANKED }),
+	])
+	return { spendable, banked, total: spendable + banked }
 }
 
 /**
@@ -77,24 +77,24 @@ export async function getBalances(tx: Tx, userId: string): Promise<Balances> {
  * that, and `purchase()` is its only caller that matters.
  */
 export function spendableFor(balances: Balances, category: ShopItemCategory): number {
-  return category === ShopItemCategory.PRINTER ? balances.total : balances.spendable
+	return category === ShopItemCategory.PRINTER ? balances.total : balances.spendable
 }
 
 /** Lifetime earnings, ignoring spending. For progress displays. */
 export async function getEarnedCredit(tx: Tx, userId: string): Promise<number> {
-  return sumFor(tx, { userId, kind: { in: EARNING_KINDS } })
+	return sumFor(tx, { userId, kind: { in: EARNING_KINDS } })
 }
 
 export interface LedgerEntryParams {
-  userId: string
-  kind: LedgerKind
-  /** Which pot to move. Defaults to SPENDABLE; only the forced savings differ. */
-  bucket?: CoinBucket
-  amount: number
-  note?: string | null
-  themeProjectId?: string | null
-  shopOrderId?: string | null
-  createdById?: string | null
+	userId: string
+	kind: LedgerKind
+	/** Which pot to move. Defaults to SPENDABLE; only the forced savings differ. */
+	bucket?: CoinBucket
+	amount: number
+	note?: string | null
+	themeProjectId?: string | null
+	shopOrderId?: string | null
+	createdById?: string | null
 }
 
 /**
@@ -105,42 +105,42 @@ export interface LedgerEntryParams {
  * balanceBefore/balanceAfter pair that was never true.
  */
 export async function appendLedgerEntry(tx: Tx, params: LedgerEntryParams): Promise<LedgerEntry> {
-  const bucket = params.bucket ?? CoinBucket.SPENDABLE
-  // Scoped to the bucket: a combined figure here would make the audit columns
-  // disagree with the balance the participant was actually shown and spent
-  // against, which is the one question these columns exist to answer.
-  const balanceBefore = await sumFor(tx, { userId: params.userId, bucket })
-  return tx.ledgerEntry.create({
-    data: {
-      userId: params.userId,
-      kind: params.kind,
-      bucket,
-      amount: params.amount,
-      note: params.note ?? null,
-      themeProjectId: params.themeProjectId ?? null,
-      shopOrderId: params.shopOrderId ?? null,
-      createdById: params.createdById ?? null,
-      balanceBefore,
-      balanceAfter: balanceBefore + params.amount,
-    },
-  })
+	const bucket = params.bucket ?? CoinBucket.SPENDABLE
+	// Scoped to the bucket: a combined figure here would make the audit columns
+	// disagree with the balance the participant was actually shown and spent
+	// against, which is the one question these columns exist to answer.
+	const balanceBefore = await sumFor(tx, { userId: params.userId, bucket })
+	return tx.ledgerEntry.create({
+		data: {
+			userId: params.userId,
+			kind: params.kind,
+			bucket,
+			amount: params.amount,
+			note: params.note ?? null,
+			themeProjectId: params.themeProjectId ?? null,
+			shopOrderId: params.shopOrderId ?? null,
+			createdById: params.createdById ?? null,
+			balanceBefore,
+			balanceAfter: balanceBefore + params.amount,
+		},
+	})
 }
 
 export interface ReconcileParams {
-  userId: string
-  themeProjectId: string
-  kind: LedgerKind
-  /**
-   * The pot this kind pays into. Fixed per kind — DESIGN_BANKED_HOURS is
-   * always BANKED and everything else is always SPENDABLE — so passing the
-   * wrong one here would split one grant across two pots and make the
-   * reconcile sum converge on a target it can never reach.
-   */
-  bucket?: CoinBucket
-  /** What the total for this (user, project, kind) should now be. */
-  target: number
-  note: string
-  createdById?: string | null
+	userId: string
+	themeProjectId: string
+	kind: LedgerKind
+	/**
+	 * The pot this kind pays into. Fixed per kind — DESIGN_BANKED_HOURS is
+	 * always BANKED and everything else is always SPENDABLE — so passing the
+	 * wrong one here would split one grant across two pots and make the
+	 * reconcile sum converge on a target it can never reach.
+	 */
+	bucket?: CoinBucket
+	/** What the total for this (user, project, kind) should now be. */
+	target: number
+	note: string
+	createdById?: string | null
 }
 
 /**
@@ -161,40 +161,40 @@ export interface ReconcileParams {
  * Must run inside a transaction, for the same reason as appendLedgerEntry.
  */
 export async function reconcileGrant(tx: Tx, params: ReconcileParams): Promise<LedgerEntry | null> {
-  const current = await sumFor(tx, {
-    userId: params.userId,
-    themeProjectId: params.themeProjectId,
-    kind: params.kind,
-  })
-  const delta = params.target - current
-  if (delta === 0) return null
+	const current = await sumFor(tx, {
+		userId: params.userId,
+		themeProjectId: params.themeProjectId,
+		kind: params.kind,
+	})
+	const delta = params.target - current
+	if (delta === 0) return null
 
-  return appendLedgerEntry(tx, {
-    userId: params.userId,
-    kind: params.kind,
-    bucket: params.bucket ?? CoinBucket.SPENDABLE,
-    amount: delta,
-    note: params.note,
-    themeProjectId: params.themeProjectId,
-    createdById: params.createdById ?? null,
-  })
+	return appendLedgerEntry(tx, {
+		userId: params.userId,
+		kind: params.kind,
+		bucket: params.bucket ?? CoinBucket.SPENDABLE,
+		amount: delta,
+		note: params.note,
+		themeProjectId: params.themeProjectId,
+		createdById: params.createdById ?? null,
+	})
 }
 
 export async function getLedgerPage(
-  userId: string,
-  cursor: string | undefined,
-  limit: number,
+	userId: string,
+	cursor: string | undefined,
+	limit: number,
 ): Promise<{ items: LedgerEntry[]; nextCursor: string | null }> {
-  const rows = await prisma.ledgerEntry.findMany({
-    where: { userId },
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    take: limit + 1,
-    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-  })
-  const hasMore = rows.length > limit
-  const items = hasMore ? rows.slice(0, limit) : rows
-  const last = items[items.length - 1]
-  return { items, nextCursor: hasMore && last ? last.id : null }
+	const rows = await prisma.ledgerEntry.findMany({
+		where: { userId },
+		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+		take: limit + 1,
+		...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+	})
+	const hasMore = rows.length > limit
+	const items = hasMore ? rows.slice(0, limit) : rows
+	const last = items[items.length - 1]
+	return { items, nextCursor: hasMore && last ? last.id : null }
 }
 
 export { CoinBucket, LedgerKind }

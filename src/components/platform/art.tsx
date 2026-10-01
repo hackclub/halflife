@@ -36,32 +36,32 @@ import gatoSchematic from "../../../public/brand/gato/schematic.png"
  * Filters. Mounted once, referenced by .sketch / .torn in globals.css
  * ------------------------------------------------------------------ */
 export function SketchDefs() {
-  return (
-    <svg aria-hidden="true" focusable="false" style={{ position: "absolute", width: 0, height: 0, overflow: "hidden" }}>
-      <defs>
-        <filter id="hl-wobble" x="-12%" y="-12%" width="124%" height="124%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="3" seed="7" result="n" />
-          <feDisplacementMap in="SourceGraphic" in2="n" scale="4.2" xChannelSelector="R" yChannelSelector="G" />
-        </filter>
-        <filter id="hl-wobble-2" x="-12%" y="-12%" width="124%" height="124%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.022" numOctaves="3" seed="21" result="n" />
-          <feDisplacementMap in="SourceGraphic" in2="n" scale="5" xChannelSelector="R" yChannelSelector="G" />
-        </filter>
-        <filter id="hl-wobble-3" x="-14%" y="-14%" width="128%" height="128%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.034" numOctaves="2" seed="43" result="n" />
-          <feDisplacementMap in="SourceGraphic" in2="n" scale="3.4" xChannelSelector="R" yChannelSelector="G" />
-        </filter>
-        <filter id="hl-tear" x="-10%" y="-25%" width="120%" height="150%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.02 0.11" numOctaves="3" seed="11" result="n" />
-          <feDisplacementMap in="SourceGraphic" in2="n" scale="9" xChannelSelector="R" yChannelSelector="G" />
-        </filter>
-        <filter id="hl-tear-soft" x="-10%" y="-20%" width="120%" height="140%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.03 0.09" numOctaves="2" seed="31" result="n" />
-          <feDisplacementMap in="SourceGraphic" in2="n" scale="5" xChannelSelector="R" yChannelSelector="G" />
-        </filter>
-      </defs>
-    </svg>
-  )
+	return (
+		<svg aria-hidden="true" focusable="false" style={{ position: "absolute", width: 0, height: 0, overflow: "hidden" }}>
+			<defs>
+				<filter id="hl-wobble" x="-12%" y="-12%" width="124%" height="124%">
+					<feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="3" seed="7" result="n" />
+					<feDisplacementMap in="SourceGraphic" in2="n" scale="4.2" xChannelSelector="R" yChannelSelector="G" />
+				</filter>
+				<filter id="hl-wobble-2" x="-12%" y="-12%" width="124%" height="124%">
+					<feTurbulence type="fractalNoise" baseFrequency="0.022" numOctaves="3" seed="21" result="n" />
+					<feDisplacementMap in="SourceGraphic" in2="n" scale="5" xChannelSelector="R" yChannelSelector="G" />
+				</filter>
+				<filter id="hl-wobble-3" x="-14%" y="-14%" width="128%" height="128%">
+					<feTurbulence type="fractalNoise" baseFrequency="0.034" numOctaves="2" seed="43" result="n" />
+					<feDisplacementMap in="SourceGraphic" in2="n" scale="3.4" xChannelSelector="R" yChannelSelector="G" />
+				</filter>
+				<filter id="hl-tear" x="-10%" y="-25%" width="120%" height="150%">
+					<feTurbulence type="fractalNoise" baseFrequency="0.02 0.11" numOctaves="3" seed="11" result="n" />
+					<feDisplacementMap in="SourceGraphic" in2="n" scale="9" xChannelSelector="R" yChannelSelector="G" />
+				</filter>
+				<filter id="hl-tear-soft" x="-10%" y="-20%" width="120%" height="140%">
+					<feTurbulence type="fractalNoise" baseFrequency="0.03 0.09" numOctaves="2" seed="31" result="n" />
+					<feDisplacementMap in="SourceGraphic" in2="n" scale="5" xChannelSelector="R" yChannelSelector="G" />
+				</filter>
+			</defs>
+		</svg>
+	)
 }
 
 /* ------------------------------------------------------------------ *
@@ -69,10 +69,10 @@ export function SketchDefs() {
  * ------------------------------------------------------------------ */
 
 const GATO: Record<"head" | "box" | "confused" | "schematic", StaticImageData> = {
-  head: gatoHead,
-  box: gatoBox,
-  confused: gatoConfused,
-  schematic: gatoSchematic,
+	head: gatoHead,
+	box: gatoBox,
+	confused: gatoConfused,
+	schematic: gatoSchematic,
 }
 
 /**
@@ -87,18 +87,18 @@ const GATO: Record<"head" | "box" | "confused" | "schematic", StaticImageData> =
  * place it sits is beside words that already say what it would.
  */
 export function Gato({
-  pose = "head",
-  className,
-  sizes,
-  alt = "",
+	pose = "head",
+	className,
+	sizes,
+	alt = "",
 }: {
-  pose?: keyof typeof GATO
-  className?: string
-  /** The rendered width, for `next/image`. */
-  sizes: string
-  alt?: string
+	pose?: keyof typeof GATO
+	className?: string
+	/** The rendered width, for `next/image`. */
+	sizes: string
+	alt?: string
 }) {
-  return <Image src={GATO[pose]} alt={alt} sizes={sizes} className={`object-contain ${className ?? ""}`} />
+	return <Image src={GATO[pose]} alt={alt} sizes={sizes} className={`object-contain ${className ?? ""}`} />
 }
 
 /* ------------------------------------------------------------------ *
@@ -113,35 +113,35 @@ export function Gato({
  * shows nothing rather than a stand-in.
  */
 const WEEK_PAINTINGS: Partial<Record<string, StaticImageData>> = {
-  PCB: pcbPainting,
-  CAD: cadPainting,
-  Music: musicPainting,
-  Displays: displayPainting,
-  "Breadboard computer": breadboardPainting,
-  // The warm-up has no theme to paint. It is "your own idea", which is the
-  // Gato that stands for that on onboarding's custom-project card.
-  "Warm Up": gatoSchematic,
+	PCB: pcbPainting,
+	CAD: cadPainting,
+	Music: musicPainting,
+	Displays: displayPainting,
+	"Breadboard computer": breadboardPainting,
+	// The warm-up has no theme to paint. It is "your own idea", which is the
+	// Gato that stands for that on onboarding's custom-project card.
+	"Warm Up": gatoSchematic,
 }
 
 export function WeekPainting({
-  theme,
-  className,
-  sizes,
-  alt = `${theme} illustration`,
+	theme,
+	className,
+	sizes,
+	alt = `${theme} illustration`,
 }: {
-  theme: string
-  className?: string
-  /** The rendered width, for `next/image`. */
-  sizes: string
-  alt?: string
+	theme: string
+	className?: string
+	/** The rendered width, for `next/image`. */
+	sizes: string
+	alt?: string
 }) {
-  const painting = WEEK_PAINTINGS[theme]
-  if (!painting) return null
-  return (
-    <span className={`relative block ${className ?? ""}`}>
-      <Image src={painting} alt={alt} fill sizes={sizes} className="object-contain" />
-    </span>
-  )
+	const painting = WEEK_PAINTINGS[theme]
+	if (!painting) return null
+	return (
+		<span className={`relative block ${className ?? ""}`}>
+			<Image src={painting} alt={alt} fill sizes={sizes} className="object-contain" />
+		</span>
+	)
 }
 
 /* ------------------------------------------------------------------ *
@@ -159,14 +159,14 @@ export function WeekPainting({
  * — at twice the pixels, and `next/image` cuts it down for the small tiles.
  */
 const PRINTER_PHOTOS: Partial<Record<string, StaticImageData>> = {
-  "ender-3-v3-se": ender3V3SePhoto,
-  "bambu-a1-mini": bambuA1MiniPhoto,
-  "elegoo-mars-4": mars5Photo,
-  "elegoo-neptune-4": neptune4Photo,
-  "monoprice-cnc": monopriceCncPhoto,
-  "elegoo-centauri-2": centauri2Photo,
-  "bambu-a1": bambuA1Photo,
-  "bambu-p1s": bambuP1sPhoto,
+	"ender-3-v3-se": ender3V3SePhoto,
+	"bambu-a1-mini": bambuA1MiniPhoto,
+	"elegoo-mars-4": mars5Photo,
+	"elegoo-neptune-4": neptune4Photo,
+	"monoprice-cnc": monopriceCncPhoto,
+	"elegoo-centauri-2": centauri2Photo,
+	"bambu-a1": bambuA1Photo,
+	"bambu-p1s": bambuP1sPhoto,
 }
 
 /**
@@ -178,23 +178,23 @@ const PRINTER_PHOTOS: Partial<Record<string, StaticImageData>> = {
  * already written beside it, and reading it out twice helps nobody.
  */
 export function PrinterPhoto({
-  id,
-  className,
-  sizes,
-  alt = "",
+	id,
+	className,
+	sizes,
+	alt = "",
 }: {
-  id: string
-  className?: string
-  /** The rendered width, for `next/image`. */
-  sizes: string
-  alt?: string
+	id: string
+	className?: string
+	/** The rendered width, for `next/image`. */
+	sizes: string
+	alt?: string
 }) {
-  const photo = PRINTER_PHOTOS[id]
-  return (
-    <span className={`relative block overflow-hidden bg-white ${className ?? ""}`}>
-      {photo && <Image src={photo} alt={alt} fill sizes={sizes} className="object-contain" />}
-    </span>
-  )
+	const photo = PRINTER_PHOTOS[id]
+	return (
+		<span className={`relative block overflow-hidden bg-white ${className ?? ""}`}>
+			{photo && <Image src={photo} alt={alt} fill sizes={sizes} className="object-contain" />}
+		</span>
+	)
 }
 
 /* ------------------------------------------------------------------ *
@@ -207,26 +207,26 @@ export function PrinterPhoto({
  * no render shows nothing.
  */
 const STARTER_RENDERS: Partial<Record<string, StaticImageData>> = {
-  starbie: starbieRender,
+	starbie: starbieRender,
 }
 
 export function StarterRender({
-  id,
-  className,
-  sizes,
-  alt = "",
+	id,
+	className,
+	sizes,
+	alt = "",
 }: {
-  id: string
-  className?: string
-  /** The rendered width, for `next/image`. */
-  sizes: string
-  alt?: string
+	id: string
+	className?: string
+	/** The rendered width, for `next/image`. */
+	sizes: string
+	alt?: string
 }) {
-  const render = STARTER_RENDERS[id]
-  if (!render) return null
-  return (
-    <span className={`relative block ${className ?? ""}`}>
-      <Image src={render} alt={alt} fill sizes={sizes} className="object-contain" />
-    </span>
-  )
+	const render = STARTER_RENDERS[id]
+	if (!render) return null
+	return (
+		<span className={`relative block ${className ?? ""}`}>
+			<Image src={render} alt={alt} fill sizes={sizes} className="object-contain" />
+		</span>
+	)
 }

@@ -3,8 +3,8 @@ import "server-only"
 const API_BASE = "https://api.airtable.com/v0"
 
 export interface AirtableConfig {
-  apiKey: string
-  baseId: string
+	apiKey: string
+	baseId: string
 }
 
 /**
@@ -13,10 +13,10 @@ export interface AirtableConfig {
  * never 500s a participant's request.
  */
 export function getAirtableConfig(): AirtableConfig | null {
-  const apiKey = process.env.AIRTABLE_API_KEY
-  const baseId = process.env.AIRTABLE_BASE_ID
-  if (!apiKey || !baseId) return null
-  return { apiKey, baseId }
+	const apiKey = process.env.AIRTABLE_API_KEY
+	const baseId = process.env.AIRTABLE_BASE_ID
+	if (!apiKey || !baseId) return null
+	return { apiKey, baseId }
 }
 
 /**
@@ -30,29 +30,29 @@ export function getAirtableConfig(): AirtableConfig | null {
  * characters.
  */
 export function escapeAirtableValue(value: string): string {
-  return value
-    .replace(/[\x00-\x1F\x7F]/g, "")
-    .replace(/\\/g, "\\\\")
-    .replace(/'/g, "\\'")
+	return value
+		.replace(/[\x00-\x1F\x7F]/g, "")
+		.replace(/\\/g, "\\\\")
+		.replace(/'/g, "\\'")
 }
 
 export class AirtableError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-    readonly body: string,
-  ) {
-    super(message)
-    this.name = "AirtableError"
-  }
+	constructor(
+		message: string,
+		readonly status: number,
+		readonly body: string,
+	) {
+		super(message)
+		this.name = "AirtableError"
+	}
 
-  get isRateLimit(): boolean {
-    return this.status === 429
-  }
+	get isRateLimit(): boolean {
+		return this.status === 429
+	}
 
-  get isPermission(): boolean {
-    return this.status === 403 || this.status === 401
-  }
+	get isPermission(): boolean {
+		return this.status === 403 || this.status === 401
+	}
 }
 
 // Airtable allows 5 requests/second/base. A shared token bucket is stricter
@@ -64,11 +64,11 @@ const MIN_INTERVAL_MS = 210
 let nextSlot = 0
 
 async function throttle(): Promise<void> {
-  const now = Date.now()
-  const slot = Math.max(now, nextSlot)
-  nextSlot = slot + MIN_INTERVAL_MS
-  const wait = slot - now
-  if (wait > 0) await new Promise((r) => setTimeout(r, wait))
+	const now = Date.now()
+	const slot = Math.max(now, nextSlot)
+	nextSlot = slot + MIN_INTERVAL_MS
+	const wait = slot - now
+	if (wait > 0) await new Promise((r) => setTimeout(r, wait))
 }
 
 /**
@@ -82,59 +82,59 @@ async function throttle(): Promise<void> {
  * the row. A 429 is always safe — the request was never processed.
  */
 export async function withRateLimitRetry<T>(
-  operation: string,
-  fn: () => Promise<T>,
-  opts: { maxAttempts?: number; baseSleepMs?: number; retryServerErrors?: boolean } = {},
+	operation: string,
+	fn: () => Promise<T>,
+	opts: { maxAttempts?: number; baseSleepMs?: number; retryServerErrors?: boolean } = {},
 ): Promise<T> {
-  const maxAttempts = opts.maxAttempts ?? 5
-  const baseSleepMs = opts.baseSleepMs ?? 1000
-  const retryServerErrors = opts.retryServerErrors ?? true
+	const maxAttempts = opts.maxAttempts ?? 5
+	const baseSleepMs = opts.baseSleepMs ?? 1000
+	const retryServerErrors = opts.retryServerErrors ?? true
 
-  for (let attempt = 1; ; attempt++) {
-    try {
-      await throttle()
-      return await fn()
-    } catch (err) {
-      const isRateLimit = err instanceof AirtableError && err.isRateLimit
-      const isTransient = isRateLimit || (retryServerErrors && err instanceof AirtableError && err.status >= 500)
-      if (!isTransient || attempt >= maxAttempts) throw err
+	for (let attempt = 1; ; attempt++) {
+		try {
+			await throttle()
+			return await fn()
+		} catch (err) {
+			const isRateLimit = err instanceof AirtableError && err.isRateLimit
+			const isTransient = isRateLimit || (retryServerErrors && err instanceof AirtableError && err.status >= 500)
+			if (!isTransient || attempt >= maxAttempts) throw err
 
-      const wait = isRateLimit ? 30_000 : baseSleepMs * 2 ** (attempt - 1) + Math.random() * 500
-      console.warn(
-        `[airtable] ${operation} attempt ${attempt} failed (${err instanceof Error ? err.message : err}); retrying in ${Math.round(wait)}ms`,
-      )
-      await new Promise((r) => setTimeout(r, wait))
-    }
-  }
+			const wait = isRateLimit ? 30_000 : baseSleepMs * 2 ** (attempt - 1) + Math.random() * 500
+			console.warn(
+				`[airtable] ${operation} attempt ${attempt} failed (${err instanceof Error ? err.message : err}); retrying in ${Math.round(wait)}ms`,
+			)
+			await new Promise((r) => setTimeout(r, wait))
+		}
+	}
 }
 
 export async function airtableFetch<T>(config: AirtableConfig, path: string, init: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${API_BASE}/${config.baseId}/${path}`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${config.apiKey}`,
-      "Content-Type": "application/json",
-      ...init.headers,
-    },
-    cache: "no-store",
-    signal: AbortSignal.timeout(20_000),
-  })
-  if (!res.ok) {
-    const body = await res.text().catch(() => "")
-    throw new AirtableError(`Airtable ${res.status} on ${path}`, res.status, body)
-  }
-  return (await res.json()) as T
+	const res = await fetch(`${API_BASE}/${config.baseId}/${path}`, {
+		...init,
+		headers: {
+			Authorization: `Bearer ${config.apiKey}`,
+			"Content-Type": "application/json",
+			...init.headers,
+		},
+		cache: "no-store",
+		signal: AbortSignal.timeout(20_000),
+	})
+	if (!res.ok) {
+		const body = await res.text().catch(() => "")
+		throw new AirtableError(`Airtable ${res.status} on ${path}`, res.status, body)
+	}
+	return (await res.json()) as T
 }
 
 export interface AirtableRecord {
-  id: string
-  fields: Record<string, unknown>
-  createdTime?: string
+	id: string
+	fields: Record<string, unknown>
+	createdTime?: string
 }
 
 /** Chunk into batches of 10, Airtable's per-request record limit. */
 export function chunk<T>(items: T[], size = 10): T[][] {
-  const out: T[][] = []
-  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size))
-  return out
+	const out: T[][] = []
+	for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size))
+	return out
 }

@@ -7,29 +7,29 @@ import { HANDOFF_TTL_MINUTES, resolveHandoff } from "@/lib/handoff"
 export const dynamic = "force-dynamic"
 
 export default async function HandoffPage({ params }: { params: Promise<{ token: string }> }) {
-  const { token } = await params
-  const target = await resolveHandoff(token)
+	const { token } = await params
+	const target = await resolveHandoff(token)
 
-  if (!target) {
-    return (
-      <div className="hl-stack">
-        <PageHeader title="This link has expired" />
-        <Callout tone="warning">
-          Codes last {HANDOFF_TTL_MINUTES} minutes and work once. Generate a new one on your computer and scan it again.
-        </Callout>
-      </div>
-    )
-  }
+	if (!target) {
+		return (
+			<div className="hl-stack">
+				<PageHeader title="This link has expired" />
+				<Callout tone="warning">
+					Codes last {HANDOFF_TTL_MINUTES} minutes and work once. Generate a new one on your computer and scan it again.
+				</Callout>
+			</div>
+		)
+	}
 
-  return (
-    <div className="hl-stack">
-      <PageHeader
-        title="Record your reel"
-        subtitle="Your video goes straight to your Half Life account. You don't need to sign in here."
-      />
-      <Panel>
-        <HandoffUploader token={token} />
-      </Panel>
-    </div>
-  )
+	return (
+		<div className="hl-stack">
+			<PageHeader
+				title="Record your reel"
+				subtitle="Your video goes straight to your Half Life account. You don't need to sign in here."
+			/>
+			<Panel>
+				<HandoffUploader token={token} />
+			</Panel>
+		</div>
+	)
 }

@@ -44,9 +44,9 @@ const FAILED_TTL_MS = 15_000
 const PAGE_SIZE = 100
 
 interface Cached {
-  at: number
-  ttl: number
-  value: Promise<number | null>
+	at: number
+	ttl: number
+	value: Promise<number | null>
 }
 
 /**
@@ -64,21 +64,21 @@ let cached: Cached | null = null
  * short-lived failure it should be.
  */
 export function countSignups(): Promise<number | null> {
-  const now = Date.now()
-  if (cached && now - cached.at < cached.ttl) return cached.value
+	const now = Date.now()
+	if (cached && now - cached.at < cached.ttl) return cached.value
 
-  const config = getAirtableConfig()
-  if (!config) return Promise.resolve(null)
+	const config = getAirtableConfig()
+	if (!config) return Promise.resolve(null)
 
-  const value = walkSignups(config)
-  const entry: Cached = { at: now, ttl: CACHE_TTL_MS, value }
-  cached = entry
-  void value.then((count) => {
-    // A failure is kept briefly: checked against the entry itself, so a newer
-    // walk that has since replaced it is left alone.
-    if (count === null && cached === entry) entry.ttl = FAILED_TTL_MS
-  })
-  return value
+	const value = walkSignups(config)
+	const entry: Cached = { at: now, ttl: CACHE_TTL_MS, value }
+	cached = entry
+	void value.then((count) => {
+		// A failure is kept briefly: checked against the entry itself, so a newer
+		// walk that has since replaced it is left alone.
+		if (count === null && cached === entry) entry.ttl = FAILED_TTL_MS
+	})
+	return value
 }
 
 /**
@@ -90,29 +90,29 @@ export function countSignups(): Promise<number | null> {
  * list request (see `schema.ts`), which would take this counter down with it.
  */
 async function walkSignups(config: NonNullable<ReturnType<typeof getAirtableConfig>>): Promise<number | null> {
-  const emailField = fieldKey(RSVP.fields.email)
-  const seen = new Set<string>()
-  let offset: string | undefined
-  try {
-    do {
-      const query = `pageSize=${PAGE_SIZE}&fields%5B%5D=${encodeURIComponent(emailField)}${
-        offset ? `&offset=${encodeURIComponent(offset)}` : ""
-      }`
-      const page = await withRateLimitRetry("countSignups", () =>
-        airtableFetch<{ records: { fields: Record<string, unknown> }[]; offset?: string }>(
-          config,
-          `${encodeURIComponent(RSVP_TABLE_ID)}?${query}`,
-        ),
-      )
-      for (const record of page.records) {
-        const email = record.fields[emailField]
-        if (typeof email === "string" && email.trim()) seen.add(email.trim().toLowerCase())
-      }
-      offset = page.offset
-    } while (offset)
-  } catch (err) {
-    console.warn("[signup-count] could not count the sign-up list:", err)
-    return null
-  }
-  return seen.size
+	const emailField = fieldKey(RSVP.fields.email)
+	const seen = new Set<string>()
+	let offset: string | undefined
+	try {
+		do {
+			const query = `pageSize=${PAGE_SIZE}&fields%5B%5D=${encodeURIComponent(emailField)}${
+				offset ? `&offset=${encodeURIComponent(offset)}` : ""
+			}`
+			const page = await withRateLimitRetry("countSignups", () =>
+				airtableFetch<{ records: { fields: Record<string, unknown> }[]; offset?: string }>(
+					config,
+					`${encodeURIComponent(RSVP_TABLE_ID)}?${query}`,
+				),
+			)
+			for (const record of page.records) {
+				const email = record.fields[emailField]
+				if (typeof email === "string" && email.trim()) seen.add(email.trim().toLowerCase())
+			}
+			offset = page.offset
+		} while (offset)
+	} catch (err) {
+		console.warn("[signup-count] could not count the sign-up list:", err)
+		return null
+	}
+	return seen.size
 }

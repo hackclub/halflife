@@ -18,5 +18,5 @@
  * the URL. This only touches the four characters below.
  */
 export function attrUrl(url: string): string {
-  return url.replace(/[<>"']/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)
+	return url.replace(/[<>"']/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)
 }

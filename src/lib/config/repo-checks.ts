@@ -19,106 +19,106 @@ import { Theme } from "@/app/generated/prisma/enums"
  */
 
 export type RepoFileKind =
-  | "pcbSource" // board and schematic sources
-  | "pcbFab" // gerbers and drill files
-  | "cadSource" // editable 3D sources
-  | "cadModel" // printable meshes
-  | "firmware"
-  | "logicSchematic" // schematics, plus logic-simulator files
-  | "bom"
+	| "pcbSource" // board and schematic sources
+	| "pcbFab" // gerbers and drill files
+	| "cadSource" // editable 3D sources
+	| "cadModel" // printable meshes
+	| "firmware"
+	| "logicSchematic" // schematics, plus logic-simulator files
+	| "bom"
 
 export const REPO_FILE_KINDS: Record<
-  RepoFileKind,
-  { label: string; missing: string; extensions?: readonly string[]; pattern?: RegExp }
+	RepoFileKind,
+	{ label: string; missing: string; extensions?: readonly string[]; pattern?: RegExp }
 > = {
-  pcbSource: {
-    label: "PCB design files",
-    missing: "No board or schematic files (.kicad_pcb, .kicad_sch, .brd, EasyEDA…) found",
-    extensions: [
-      ".kicad_pcb",
-      ".kicad_sch",
-      ".kicad_pro",
-      ".brd",
-      ".sch",
-      ".pcbdoc",
-      ".schdoc",
-      ".fzz",
-      ".fzpz",
-      ".epcb",
-      ".epro",
-      ".eprj",
-      ".esch",
-    ],
-  },
-  pcbFab: {
-    label: "Fabrication files",
-    missing: "No Gerber or drill files (or a zip of them) found",
-    // A .zip counts, as in Stasis: most fab houses take the Gerbers as one
-    // zipped export, and that is often all a repo carries.
-    extensions: [".gbr", ".gbl", ".gtl", ".gbs", ".gts", ".gbo", ".gto", ".gko", ".drl", ".zip"],
-  },
-  cadSource: {
-    label: "CAD source files",
-    missing: "No editable CAD files (.step, .f3d, .scad, .fcstd…) found",
-    extensions: [".f3d", ".step", ".stp", ".fcstd", ".scad", ".blend", ".sldprt", ".sldasm", ".iges", ".igs"],
-  },
-  cadModel: {
-    label: "Printable models",
-    missing: "No printable models (.stl, .3mf, .obj) found",
-    extensions: [".stl", ".obj", ".3mf"],
-  },
-  firmware: {
-    label: "Firmware",
-    missing:
-      "No firmware found — Arduino (.ino), C/C++, MicroPython or CircuitPython (.py), Rust and the like all count",
-    // .mpy is precompiled MicroPython/CircuitPython; .uf2/.hex/.bin are built
-    // images, which count when the source lives elsewhere.
-    extensions: [
-      ".ino",
-      ".c",
-      ".cc",
-      ".cpp",
-      ".cxx",
-      ".h",
-      ".hh",
-      ".hpp",
-      ".py",
-      ".mpy",
-      ".rs",
-      ".ts",
-      ".js",
-      ".uf2",
-      ".hex",
-      ".bin",
-    ],
-  },
-  logicSchematic: {
-    label: "Schematic",
-    missing: "No schematic found — KiCad, Logisim (.circ) or Digital (.dig) files all count",
-    extensions: [".kicad_sch", ".kicad_pro", ".kicad_pcb", ".sch", ".schdoc", ".esch", ".fzz", ".circ", ".dig"],
-  },
-  bom: {
-    label: "BOM CSV",
-    missing: "No bom*.csv found",
-    // Strict on purpose, as Stasis has it: "parts.csv" matching would tell a
-    // reviewer there is a BOM when there may not be one.
-    pattern: /(^|\/)[^/]*bom[^/]*\.csv$/i,
-  },
+	pcbSource: {
+		label: "PCB design files",
+		missing: "No board or schematic files (.kicad_pcb, .kicad_sch, .brd, EasyEDA…) found",
+		extensions: [
+			".kicad_pcb",
+			".kicad_sch",
+			".kicad_pro",
+			".brd",
+			".sch",
+			".pcbdoc",
+			".schdoc",
+			".fzz",
+			".fzpz",
+			".epcb",
+			".epro",
+			".eprj",
+			".esch",
+		],
+	},
+	pcbFab: {
+		label: "Fabrication files",
+		missing: "No Gerber or drill files (or a zip of them) found",
+		// A .zip counts, as in Stasis: most fab houses take the Gerbers as one
+		// zipped export, and that is often all a repo carries.
+		extensions: [".gbr", ".gbl", ".gtl", ".gbs", ".gts", ".gbo", ".gto", ".gko", ".drl", ".zip"],
+	},
+	cadSource: {
+		label: "CAD source files",
+		missing: "No editable CAD files (.step, .f3d, .scad, .fcstd…) found",
+		extensions: [".f3d", ".step", ".stp", ".fcstd", ".scad", ".blend", ".sldprt", ".sldasm", ".iges", ".igs"],
+	},
+	cadModel: {
+		label: "Printable models",
+		missing: "No printable models (.stl, .3mf, .obj) found",
+		extensions: [".stl", ".obj", ".3mf"],
+	},
+	firmware: {
+		label: "Firmware",
+		missing:
+			"No firmware found — Arduino (.ino), C/C++, MicroPython or CircuitPython (.py), Rust and the like all count",
+		// .mpy is precompiled MicroPython/CircuitPython; .uf2/.hex/.bin are built
+		// images, which count when the source lives elsewhere.
+		extensions: [
+			".ino",
+			".c",
+			".cc",
+			".cpp",
+			".cxx",
+			".h",
+			".hh",
+			".hpp",
+			".py",
+			".mpy",
+			".rs",
+			".ts",
+			".js",
+			".uf2",
+			".hex",
+			".bin",
+		],
+	},
+	logicSchematic: {
+		label: "Schematic",
+		missing: "No schematic found — KiCad, Logisim (.circ) or Digital (.dig) files all count",
+		extensions: [".kicad_sch", ".kicad_pro", ".kicad_pcb", ".sch", ".schdoc", ".esch", ".fzz", ".circ", ".dig"],
+	},
+	bom: {
+		label: "BOM CSV",
+		missing: "No bom*.csv found",
+		// Strict on purpose, as Stasis has it: "parts.csv" matching would tell a
+		// reviewer there is a BOM when there may not be one.
+		pattern: /(^|\/)[^/]*bom[^/]*\.csv$/i,
+	},
 }
 
 export const THEME_REPO_REQUIREMENTS: Record<
-  Theme,
-  { required: readonly RepoFileKind[]; recommended: readonly RepoFileKind[] }
+	Theme,
+	{ required: readonly RepoFileKind[]; recommended: readonly RepoFileKind[] }
 > = {
-  // A PCB week's board has to do something, so the code that runs on it is
-  // part of the hand-in, not an extra.
-  [Theme.PCB]: { required: ["pcbSource", "firmware"], recommended: ["pcbFab", "bom"] },
-  [Theme.CAD]: { required: ["cadSource"], recommended: ["cadModel"] },
-  [Theme.SYNTH]: { required: ["logicSchematic"], recommended: ["firmware"] },
-  [Theme.DISPLAYS]: { required: ["firmware"], recommended: ["logicSchematic"] },
-  [Theme.BREADBOARD_COMPUTER]: { required: ["logicSchematic"], recommended: [] },
-  // A warm-up project is any hardware project, so nothing over and above the
-  // README and photos every hand-in owes (see lib/repo-checks) is demanded of
-  // its repo.
-  [Theme.WARMUP]: { required: [], recommended: [] },
+	// A PCB week's board has to do something, so the code that runs on it is
+	// part of the hand-in, not an extra.
+	[Theme.PCB]: { required: ["pcbSource", "firmware"], recommended: ["pcbFab", "bom"] },
+	[Theme.CAD]: { required: ["cadSource"], recommended: ["cadModel"] },
+	[Theme.SYNTH]: { required: ["logicSchematic"], recommended: ["firmware"] },
+	[Theme.DISPLAYS]: { required: ["firmware"], recommended: ["logicSchematic"] },
+	[Theme.BREADBOARD_COMPUTER]: { required: ["logicSchematic"], recommended: [] },
+	// A warm-up project is any hardware project, so nothing over and above the
+	// README and photos every hand-in owes (see lib/repo-checks) is demanded of
+	// its repo.
+	[Theme.WARMUP]: { required: [], recommended: [] },
 }

@@ -36,43 +36,43 @@ import { signInWith, useSession } from "@/lib/auth-client"
  * page stays where it is: nothing on the site sends anyone to /login.
  */
 export default function LoginMark() {
-  const { data: session } = useSession()
-  const [starting, setStarting] = useState(false)
-  const [failed, setFailed] = useState(false)
+	const { data: session } = useSession()
+	const [starting, setStarting] = useState(false)
+	const [failed, setFailed] = useState(false)
 
-  async function signIn(e: React.MouseEvent<HTMLAnchorElement>) {
-    // Signed in already, or a modified click (new tab, and so on): let the
-    // link do what links do.
-    if (session || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
-    e.preventDefault()
-    if (starting) return
-    setStarting(true)
-    try {
-      // better-auth reports a refusal in the result rather than throwing, and
-      // on success the page is already on its way to Hack Club.
-      const result = await signInWith("hca", "/dashboard")
-      if (result?.error) fail()
-    } catch {
-      fail()
-    }
-  }
+	async function signIn(e: React.MouseEvent<HTMLAnchorElement>) {
+		// Signed in already, or a modified click (new tab, and so on): let the
+		// link do what links do.
+		if (session || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
+		e.preventDefault()
+		if (starting) return
+		setStarting(true)
+		try {
+			// better-auth reports a refusal in the result rather than throwing, and
+			// on success the page is already on its way to Hack Club.
+			const result = await signInWith("hca", "/dashboard")
+			if (result?.error) fail()
+		} catch {
+			fail()
+		}
+	}
 
-  // Stays on the landing page and says so on the mark itself, rather than
-  // sending anyone to a separate sign-in page.
-  function fail() {
-    setStarting(false)
-    setFailed(true)
-  }
+	// Stays on the landing page and says so on the mark itself, rather than
+	// sending anyone to a separate sign-in page.
+	function fail() {
+		setStarting(false)
+		setFailed(true)
+	}
 
-  return (
-    <a
-      href="/dashboard"
-      onClick={(e) => void signIn(e)}
-      aria-busy={starting || undefined}
-      className="absolute top-1 right-1 z-20 bg-hl-ink px-3.5 py-1.5 font-display font-bold leading-snug text-hl-paper transition-colors hover:text-hl-cyan focus-visible:text-hl-cyan aria-busy:text-hl-cyan min-[830px]:top-3 min-[830px]:right-3 min-[830px]:px-5 min-[830px]:py-2.5"
-      style={{ fontSize: "clamp(0.875rem, 3.6vw, 1rem)" }}
-    >
-      {failed ? "try again" : "log in"}
-    </a>
-  )
+	return (
+		<a
+			href="/dashboard"
+			onClick={(e) => void signIn(e)}
+			aria-busy={starting || undefined}
+			className="absolute top-1 right-1 z-20 bg-hl-ink px-3.5 py-1.5 font-display font-bold leading-snug text-hl-paper transition-colors hover:text-hl-cyan focus-visible:text-hl-cyan aria-busy:text-hl-cyan min-[830px]:top-3 min-[830px]:right-3 min-[830px]:px-5 min-[830px]:py-2.5"
+			style={{ fontSize: "clamp(0.875rem, 3.6vw, 1rem)" }}
+		>
+			{failed ? "try again" : "log in"}
+		</a>
+	)
 }

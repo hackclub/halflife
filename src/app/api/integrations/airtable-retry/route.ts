@@ -14,34 +14,34 @@ export const maxDuration = 300
  * turning into a project that is never reviewed.
  */
 export const POST = withRoute(async (req: NextRequest) => {
-  const denied = requireIntegrationAuth(req)
-  if (denied) return denied
+	const denied = requireIntegrationAuth(req)
+	if (denied) return denied
 
-  const dryRun = req.nextUrl.searchParams.get("dryRun") === "true"
-  const pending = await findUnsyncedSubmissions()
+	const dryRun = req.nextUrl.searchParams.get("dryRun") === "true"
+	const pending = await findUnsyncedSubmissions()
 
-  if (dryRun) return ok({ dryRun: true, pending })
+	if (dryRun) return ok({ dryRun: true, pending })
 
-  let synced = 0
-  let skipped = 0
-  let failed = 0
-  for (const item of pending) {
-    const result = await trackSideEffect(
-      "airtable",
-      {
-        actorId: null,
-        targetType: "ThemeProject",
-        targetId: item.themeProjectId,
-        metadata: { phase: item.phase, retry: true },
-      },
-      () => syncSubmissionToYsws(item.themeProjectId, item.phase),
-    )
-    if (!result) failed++
-    else if ("skipped" in result) skipped++
-    else synced++
-  }
+	let synced = 0
+	let skipped = 0
+	let failed = 0
+	for (const item of pending) {
+		const result = await trackSideEffect(
+			"airtable",
+			{
+				actorId: null,
+				targetType: "ThemeProject",
+				targetId: item.themeProjectId,
+				metadata: { phase: item.phase, retry: true },
+			},
+			() => syncSubmissionToYsws(item.themeProjectId, item.phase),
+		)
+		if (!result) failed++
+		else if ("skipped" in result) skipped++
+		else synced++
+	}
 
-  const summary = { attempted: pending.length, synced, skipped, failed }
-  await recordSyncRun("airtable_ysws", summary)
-  return ok(summary)
+	const summary = { attempted: pending.length, synced, skipped, failed }
+	await recordSyncRun("airtable_ysws", summary)
+	return ok(summary)
 })

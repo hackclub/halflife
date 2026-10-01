@@ -2,12 +2,12 @@ import { z } from "zod"
 import { fail, ok, parseBody, rateLimitedInMemory, withRoute } from "@/lib/api"
 import { requireSession } from "@/lib/guards"
 import {
-  buildObjectKey,
-  contentHash,
-  isUploadConfigured,
-  MAX_UPLOAD_BYTES,
-  publicUrlFor,
-  putObject,
+	buildObjectKey,
+	contentHash,
+	isUploadConfigured,
+	MAX_UPLOAD_BYTES,
+	publicUrlFor,
+	putObject,
 } from "@/lib/uploads/r2"
 import { fetchRemoteImage } from "@/lib/uploads/remote"
 
@@ -24,23 +24,23 @@ const bodySchema = z.object({ url: z.string().url().max(2048) }).strict()
  * their bytes the same way (see /api/upload).
  */
 export const POST = withRoute(async (req: Request) => {
-  const gate = await requireSession()
-  if (gate.error) return gate.error
+	const gate = await requireSession()
+	if (gate.error) return gate.error
 
-  // The same budget as a file upload: fetching for someone is uploading for them.
-  if (rateLimitedInMemory(`upload:${gate.user.id}`)) {
-    return fail("RATE_LIMITED", "Too many uploads at once — wait a minute and try again")
-  }
-  if (!isUploadConfigured()) {
-    return fail("NOT_CONFIGURED", "File uploads are not configured on this deployment")
-  }
+	// The same budget as a file upload: fetching for someone is uploading for them.
+	if (rateLimitedInMemory(`upload:${gate.user.id}`)) {
+		return fail("RATE_LIMITED", "Too many uploads at once — wait a minute and try again")
+	}
+	if (!isUploadConfigured()) {
+		return fail("NOT_CONFIGURED", "File uploads are not configured on this deployment")
+	}
 
-  const parsed = await parseBody(req, bodySchema)
-  if (parsed.error) return parsed.error
+	const parsed = await parseBody(req, bodySchema)
+	if (parsed.error) return parsed.error
 
-  const image = await fetchRemoteImage(parsed.data.url, MAX_UPLOAD_BYTES)
-  const key = buildObjectKey(gate.user.id, "sessions", image.ext, contentHash(image.bytes))
-  await putObject(key, image.bytes, image.contentType)
+	const image = await fetchRemoteImage(parsed.data.url, MAX_UPLOAD_BYTES)
+	const key = buildObjectKey(gate.user.id, "sessions", image.ext, contentHash(image.bytes))
+	await putObject(key, image.bytes, image.contentType)
 
-  return ok({ objectKey: key, url: publicUrlFor(key) }, { status: 201 })
+	return ok({ objectKey: key, url: publicUrlFor(key) }, { status: 201 })
 })

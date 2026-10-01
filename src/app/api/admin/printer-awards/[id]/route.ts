@@ -14,13 +14,13 @@ type Params = { params: Promise<{ id: string }> }
  * transition rules and the audit row live in `updatePrinterAwardStatus`.
  */
 export const PATCH = withRoute(async (req: Request, { params }: Params) => {
-  const gate = await requirePermission(Permission.FULFILL_ORDERS)
-  if (gate.error) return gate.error
-  const { id } = await params
+	const gate = await requirePermission(Permission.FULFILL_ORDERS)
+	if (gate.error) return gate.error
+	const { id } = await params
 
-  const parsed = await parseBody(req, printerAwardUpdateSchema)
-  if (parsed.error) return parsed.error
+	const parsed = await parseBody(req, printerAwardUpdateSchema)
+	if (parsed.error) return parsed.error
 
-  const award = await updatePrinterAwardStatus(id, parsed.data, gate.user.id, gate.user.email)
-  return ok({ award })
+	const award = await updatePrinterAwardStatus(id, parsed.data, gate.user.id, gate.user.email)
+	return ok({ award })
 })

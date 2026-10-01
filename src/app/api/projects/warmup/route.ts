@@ -13,15 +13,15 @@ import { warmupCreationWindow } from "@/lib/warmup"
 export const dynamic = "force-dynamic"
 
 const createSchema = z
-  .object({
-    title: boundedText(120, 1),
-    description: boundedText(4000).optional(),
-    githubRepo: httpsUrl.nullable().optional(),
-    requestedTier: z.union([z.literal(1), z.literal(2), z.literal(3)]),
-    /** DESIGN asks for parts funding; BUILD hands in something already built. */
-    phase: phaseSchema,
-  })
-  .strict()
+	.object({
+		title: boundedText(120, 1),
+		description: boundedText(4000).optional(),
+		githubRepo: httpsUrl.nullable().optional(),
+		requestedTier: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+		/** DESIGN asks for parts funding; BUILD hands in something already built. */
+		phase: phaseSchema,
+	})
+	.strict()
 
 /**
  * Start a warm-up project: any hardware idea, before week 1 opens.
@@ -32,42 +32,42 @@ const createSchema = z
  * it in once, as the phase chosen here.
  */
 export const POST = withRoute(async (req: Request) => {
-  const gate = await requireSession()
-  if (gate.error) return gate.error
+	const gate = await requireSession()
+	if (gate.error) return gate.error
 
-  const parsed = await parseBody(req, createSchema)
-  if (parsed.error) return parsed.error
-  const data = parsed.data
+	const parsed = await parseBody(req, createSchema)
+	if (parsed.error) return parsed.error
+	const data = parsed.data
 
-  const window = await warmupCreationWindow()
-  if (!window.open) {
-    return fail("CONFLICT", `Warm-up projects closed ${window.closesOn}.`)
-  }
+	const window = await warmupCreationWindow()
+	if (!window.open) {
+		return fail("CONFLICT", `Warm-up projects closed ${window.closesOn}.`)
+	}
 
-  const project = await prisma.themeProject.create({
-    data: {
-      userId: gate.user.id,
-      theme: Theme.WARMUP,
-      title: data.title,
-      description: data.description?.trim() || null,
-      githubRepo: data.githubRepo ?? null,
-      requestedTier: data.requestedTier,
-      warmupPhase: data.phase === "BUILD" ? Phase.BUILD : Phase.DESIGN,
-    },
-    select: { id: true },
-  })
+	const project = await prisma.themeProject.create({
+		data: {
+			userId: gate.user.id,
+			theme: Theme.WARMUP,
+			title: data.title,
+			description: data.description?.trim() || null,
+			githubRepo: data.githubRepo ?? null,
+			requestedTier: data.requestedTier,
+			warmupPhase: data.phase === "BUILD" ? Phase.BUILD : Phase.DESIGN,
+		},
+		select: { id: true },
+	})
 
-  after(() => markProjectCreated(project.id, gate.user.id))
-  after(() =>
-    logAudit({
-      action: AuditAction.USER_UPDATE_PROJECT,
-      actorId: gate.user.id,
-      actorEmail: gate.user.email,
-      targetType: "ThemeProject",
-      targetId: project.id,
-      metadata: { created: WARMUP_THEME.slug, phase: data.phase, requestedTier: data.requestedTier },
-    }),
-  )
+	after(() => markProjectCreated(project.id, gate.user.id))
+	after(() =>
+		logAudit({
+			action: AuditAction.USER_UPDATE_PROJECT,
+			actorId: gate.user.id,
+			actorEmail: gate.user.email,
+			targetType: "ThemeProject",
+			targetId: project.id,
+			metadata: { created: WARMUP_THEME.slug, phase: data.phase, requestedTier: data.requestedTier },
+		}),
+	)
 
-  return ok({ id: project.id }, { status: 201 })
+	return ok({ id: project.id }, { status: 201 })
 })

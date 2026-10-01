@@ -7,27 +7,27 @@ import { fetchProjectSeconds } from "@/lib/hackatime"
 import prisma from "@/lib/prisma"
 
 export interface HoursBreakdown {
-  /** Sum over MANUAL sessions of (hoursApproved ?? hoursClaimed). */
-  journalHours: number
-  /** The same sum of hoursClaimed only, so the UI can show reviewer deflation. */
-  journalHoursClaimed: number
-  journalEntryCount: number
+	/** Sum over MANUAL sessions of (hoursApproved ?? hoursClaimed). */
+	journalHours: number
+	/** The same sum of hoursClaimed only, so the UI can show reviewer deflation. */
+	journalHoursClaimed: number
+	journalEntryCount: number
 
-  hackatimeHours: number
-  /** True when any link fell back to its cache. Blocks finalisation. */
-  hackatimeStale: boolean
+	hackatimeHours: number
+	/** True when any link fell back to its cache. Blocks finalisation. */
+	hackatimeStale: boolean
 
-  /** Evidence only. Never part of any total. */
-  timelapseSeconds: number
-  /** timelapseSeconds / claimed seconds, clamped to [0, 1]. */
-  timelapseCoverage: number
+	/** Evidence only. Never part of any total. */
+	timelapseSeconds: number
+	/** timelapseSeconds / claimed seconds, clamped to [0, 1]. */
+	timelapseCoverage: number
 
-  /** journalHours + hackatimeHours. The reviewer's default. */
-  computedTotal: number
-  /** This phase's frozen hours on ThemeProject, once its review has landed. */
-  frozenTotal: number | null
-  /** frozenTotal ?? computedTotal. The number every caller should use. */
-  effectiveHours: number
+	/** journalHours + hackatimeHours. The reviewer's default. */
+	computedTotal: number
+	/** This phase's frozen hours on ThemeProject, once its review has landed. */
+	frozenTotal: number | null
+	/** frozenTotal ?? computedTotal. The number every caller should use. */
+	effectiveHours: number
 }
 
 /**
@@ -44,97 +44,97 @@ export interface HoursBreakdown {
  * because its time already arrives through the link.
  */
 export async function getHoursBreakdown(
-  themeProjectId: string,
-  phase: Phase,
-  opts: { live?: boolean } = {},
+	themeProjectId: string,
+	phase: Phase,
+	opts: { live?: boolean } = {},
 ): Promise<HoursBreakdown> {
-  const live = opts.live ?? false
+	const live = opts.live ?? false
 
-  const [project, sessions, links] = await Promise.all([
-    prisma.themeProject.findUnique({
-      where: { id: themeProjectId },
-      select: {
-        approvedHours: true,
-        designApprovedHours: true,
-        user: { select: { hackatimeUserId: true } },
-      },
-    }),
-    prisma.workSession.findMany({
-      where: { themeProjectId, phase, deletedAt: null },
-      select: {
-        hoursClaimed: true,
-        hoursApproved: true,
-        hoursSource: true,
-        timelapses: { select: { coveredSeconds: true } },
-      },
-    }),
-    prisma.hackatimeLink.findMany({
-      where: { themeProjectId, phase },
-      select: { id: true, hackatimeProject: true, hoursApproved: true, cachedSeconds: true },
-    }),
-  ])
+	const [project, sessions, links] = await Promise.all([
+		prisma.themeProject.findUnique({
+			where: { id: themeProjectId },
+			select: {
+				approvedHours: true,
+				designApprovedHours: true,
+				user: { select: { hackatimeUserId: true } },
+			},
+		}),
+		prisma.workSession.findMany({
+			where: { themeProjectId, phase, deletedAt: null },
+			select: {
+				hoursClaimed: true,
+				hoursApproved: true,
+				hoursSource: true,
+				timelapses: { select: { coveredSeconds: true } },
+			},
+		}),
+		prisma.hackatimeLink.findMany({
+			where: { themeProjectId, phase },
+			select: { id: true, hackatimeProject: true, hoursApproved: true, cachedSeconds: true },
+		}),
+	])
 
-  let journalHours = 0
-  let journalHoursClaimed = 0
-  let timelapseSeconds = 0
+	let journalHours = 0
+	let journalHoursClaimed = 0
+	let timelapseSeconds = 0
 
-  for (const s of sessions) {
-    // A tracked entry contributes no journal time, and its timelapses must
-    // not land in a coverage ratio whose denominator excludes them either.
-    if (s.hoursSource === HoursSource.HACKATIME_TRACKED) continue
-    for (const t of s.timelapses) timelapseSeconds += t.coveredSeconds ?? 0
-    journalHours += s.hoursApproved ?? s.hoursClaimed
-    journalHoursClaimed += s.hoursClaimed
-  }
+	for (const s of sessions) {
+		// A tracked entry contributes no journal time, and its timelapses must
+		// not land in a coverage ratio whose denominator excludes them either.
+		if (s.hoursSource === HoursSource.HACKATIME_TRACKED) continue
+		for (const t of s.timelapses) timelapseSeconds += t.coveredSeconds ?? 0
+		journalHours += s.hoursApproved ?? s.hoursClaimed
+		journalHoursClaimed += s.hoursClaimed
+	}
 
-  let hackatimeHours = 0
-  let hackatimeStale = false
-  const hackatimeUserId = project?.user.hackatimeUserId ?? null
+	let hackatimeHours = 0
+	let hackatimeStale = false
+	const hackatimeUserId = project?.user.hackatimeUserId ?? null
 
-  for (const link of links) {
-    // A reviewer override replaces the live value permanently, so there is
-    // nothing to fetch and nothing that can go stale.
-    if (link.hoursApproved !== null) {
-      hackatimeHours += link.hoursApproved
-      continue
-    }
-    if (live && hackatimeUserId) {
-      const result = await fetchProjectSeconds(hackatimeUserId, link.hackatimeProject)
-      if (result.stale) {
-        hackatimeStale = true
-        hackatimeHours += (link.cachedSeconds ?? 0) / 3600
-      } else {
-        hackatimeHours += result.seconds / 3600
-        await prisma.hackatimeLink.update({
-          where: { id: link.id },
-          data: { cachedSeconds: result.seconds, cachedAt: new Date(), lastFetchError: null },
-        })
-      }
-    } else {
-      if (link.cachedSeconds === null) hackatimeStale = true
-      hackatimeHours += (link.cachedSeconds ?? 0) / 3600
-    }
-  }
+	for (const link of links) {
+		// A reviewer override replaces the live value permanently, so there is
+		// nothing to fetch and nothing that can go stale.
+		if (link.hoursApproved !== null) {
+			hackatimeHours += link.hoursApproved
+			continue
+		}
+		if (live && hackatimeUserId) {
+			const result = await fetchProjectSeconds(hackatimeUserId, link.hackatimeProject)
+			if (result.stale) {
+				hackatimeStale = true
+				hackatimeHours += (link.cachedSeconds ?? 0) / 3600
+			} else {
+				hackatimeHours += result.seconds / 3600
+				await prisma.hackatimeLink.update({
+					where: { id: link.id },
+					data: { cachedSeconds: result.seconds, cachedAt: new Date(), lastFetchError: null },
+				})
+			}
+		} else {
+			if (link.cachedSeconds === null) hackatimeStale = true
+			hackatimeHours += (link.cachedSeconds ?? 0) / 3600
+		}
+	}
 
-  const claimedSeconds = journalHoursClaimed * 3600
-  const computedTotal = round2(journalHours + hackatimeHours)
-  // Each phase freezes its own hours. Reading the build's column for a design
-  // breakdown would report a design as already-frozen the moment its build was
-  // approved, and hand the reviewer the wrong phase's number.
-  const frozenTotal = (phase === Phase.DESIGN ? project?.designApprovedHours : project?.approvedHours) ?? null
+	const claimedSeconds = journalHoursClaimed * 3600
+	const computedTotal = round2(journalHours + hackatimeHours)
+	// Each phase freezes its own hours. Reading the build's column for a design
+	// breakdown would report a design as already-frozen the moment its build was
+	// approved, and hand the reviewer the wrong phase's number.
+	const frozenTotal = (phase === Phase.DESIGN ? project?.designApprovedHours : project?.approvedHours) ?? null
 
-  return {
-    journalHours: round2(journalHours),
-    journalHoursClaimed: round2(journalHoursClaimed),
-    journalEntryCount: sessions.length,
-    hackatimeHours: round2(hackatimeHours),
-    hackatimeStale,
-    timelapseSeconds,
-    timelapseCoverage: claimedSeconds > 0 ? Math.min(1, timelapseSeconds / claimedSeconds) : 0,
-    computedTotal,
-    frozenTotal,
-    effectiveHours: frozenTotal ?? computedTotal,
-  }
+	return {
+		journalHours: round2(journalHours),
+		journalHoursClaimed: round2(journalHoursClaimed),
+		journalEntryCount: sessions.length,
+		hackatimeHours: round2(hackatimeHours),
+		hackatimeStale,
+		timelapseSeconds,
+		timelapseCoverage: claimedSeconds > 0 ? Math.min(1, timelapseSeconds / claimedSeconds) : 0,
+		computedTotal,
+		frozenTotal,
+		effectiveHours: frozenTotal ?? computedTotal,
+	}
 }
 
 /**
@@ -146,41 +146,41 @@ export async function getHoursBreakdown(
  * and a second copy that drifts is a second answer to "how many hours is this".
  */
 export interface SessionRow {
-  hoursClaimed: number
-  hoursApproved: number | null
-  hoursSource: HoursSource
+	hoursClaimed: number
+	hoursApproved: number | null
+	hoursSource: HoursSource
 }
 
 export interface LinkRow {
-  hoursApproved: number | null
-  cachedSeconds: number | null
+	hoursApproved: number | null
+	cachedSeconds: number | null
 }
 
 export function rollUpHours(
-  sessions: readonly SessionRow[],
-  links: readonly LinkRow[],
-  frozenTotal: number | null,
+	sessions: readonly SessionRow[],
+	links: readonly LinkRow[],
+	frozenTotal: number | null,
 ): { journalHours: number; hackatimeHours: number; computedTotal: number; effectiveHours: number } {
-  let journalHours = 0
-  for (const s of sessions) {
-    // A HACKATIME_TRACKED session still exists as evidence but contributes
-    // zero: its time already arrives through the link.
-    if (s.hoursSource === HoursSource.HACKATIME_TRACKED) continue
-    journalHours += s.hoursApproved ?? s.hoursClaimed
-  }
+	let journalHours = 0
+	for (const s of sessions) {
+		// A HACKATIME_TRACKED session still exists as evidence but contributes
+		// zero: its time already arrives through the link.
+		if (s.hoursSource === HoursSource.HACKATIME_TRACKED) continue
+		journalHours += s.hoursApproved ?? s.hoursClaimed
+	}
 
-  let hackatimeHours = 0
-  for (const link of links) {
-    hackatimeHours += link.hoursApproved ?? (link.cachedSeconds ?? 0) / 3600
-  }
+	let hackatimeHours = 0
+	for (const link of links) {
+		hackatimeHours += link.hoursApproved ?? (link.cachedSeconds ?? 0) / 3600
+	}
 
-  const computedTotal = round2(journalHours + hackatimeHours)
-  return {
-    journalHours: round2(journalHours),
-    hackatimeHours: round2(hackatimeHours),
-    computedTotal,
-    effectiveHours: frozenTotal ?? computedTotal,
-  }
+	const computedTotal = round2(journalHours + hackatimeHours)
+	return {
+		journalHours: round2(journalHours),
+		hackatimeHours: round2(hackatimeHours),
+		computedTotal,
+		effectiveHours: frozenTotal ?? computedTotal,
+	}
 }
 
 /**
@@ -191,11 +191,11 @@ export function rollUpHours(
  * with an implicit index signature, which interfaces do not have.
  */
 export type CoinSplit = {
-  /** Printer fund. Spendable on a printer and nothing else. */
-  banked: number
-  /** Ordinary coins. */
-  spendable: number
-  total: number
+	/** Printer fund. Spendable on a printer and nothing else. */
+	banked: number
+	/** Ordinary coins. */
+	spendable: number
+	total: number
 }
 
 /**
@@ -224,11 +224,11 @@ export type CoinSplit = {
  * and they cannot buy anything but a printer.
  */
 export function designCoinsFor(tierId: TierId | number, goal: PrinterGoal, approvedHours: number): CoinSplit {
-  const tier = getTierOrThrow(tierId)
-  const beyondFunding = Math.max(0, approvedHours - tier.fundingHours)
-  const bankedHours = Math.min(beyondFunding, goal.bankedHours)
-  const spendableHours = beyondFunding - bankedHours
-  return split(bankCoins(bankedHours), spendCoins(spendableHours))
+	const tier = getTierOrThrow(tierId)
+	const beyondFunding = Math.max(0, approvedHours - tier.fundingHours)
+	const bankedHours = Math.min(beyondFunding, goal.bankedHours)
+	const spendableHours = beyondFunding - bankedHours
+	return split(bankCoins(bankedHours), spendCoins(spendableHours))
 }
 
 /**
@@ -246,19 +246,19 @@ export function designCoinsFor(tierId: TierId | number, goal: PrinterGoal, appro
  * is more than half the cheapest machine.
  */
 export function buildCoinsFor(approvedHours: number): CoinSplit {
-  const hours = Math.max(0, approvedHours)
-  const bankedHours = Math.min(hours, BUILD_HOURS)
-  const spendableHours = hours - bankedHours
-  return split(bankCoins(bankedHours), spendCoins(spendableHours))
+	const hours = Math.max(0, approvedHours)
+	const bankedHours = Math.min(hours, BUILD_HOURS)
+	const spendableHours = hours - bankedHours
+	return split(bankCoins(bankedHours), spendCoins(spendableHours))
 }
 
 function split(banked: number, spendable: number): CoinSplit {
-  return { banked, spendable, total: banked + spendable }
+	return { banked, spendable, total: banked + spendable }
 }
 
 /** Spendable hours to coins, floored and capped. */
 function spendCoins(hours: number): number {
-  return Math.min(Math.floor(hours * COINS_PER_HOUR), MAX_COINS_PER_PROJECT)
+	return Math.min(Math.floor(hours * COINS_PER_HOUR), MAX_COINS_PER_PROJECT)
 }
 
 /**
@@ -274,9 +274,9 @@ function spendCoins(hours: number): number {
  * Checked against the whole catalogue by `verify:ledger`.
  */
 function bankCoins(hours: number): number {
-  return Math.ceil(hours * COINS_PER_HOUR)
+	return Math.ceil(hours * COINS_PER_HOUR)
 }
 
 function round2(n: number): number {
-  return Math.round(n * 100) / 100
+	return Math.round(n * 100) / 100
 }
