@@ -15,7 +15,9 @@ import {
 	IconFlame,
 	IconHome,
 	IconPencil,
+	IconTrophy,
 } from "@/components/platform/icons"
+import { GoalModal } from "@/components/platform/modals/GoalModal"
 import { Overlays } from "@/components/platform/onboarding/Overlays"
 import { cx } from "@/components/platform/ui"
 import { PLATFORM_HOME } from "@/lib/routes"
@@ -70,6 +72,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 	const [railChoice, setRailChoice] = useState<{ path: string; open: boolean } | null>(null)
 	const railOpen = railChoice?.path === pathname ? railChoice.open : pathname === PLATFORM_HOME
 	const setRailOpen = (open: boolean) => setRailChoice({ path: pathname, open })
+
+	// Below lg the status rail is gone, so this is the only way to the goal
+	// tracker on a phone. It opens the same picker the rail's "View more" does.
+	const [goalOpen, setGoalOpen] = useState(false)
 
 	const rail = railOpen && doomscrollerOpen && !onDoomscroller
 
@@ -147,15 +153,32 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 							</button>
 						)}
 
-						{/* Below lg there is no sidebar, so this is the way to the page. */}
+						{/* Below lg there is no sidebar, so this is the way to the page.
+                The rail's goal tracker is out of reach there too, so "Change
+                printer" opens that picker here beside it. Both fold to their
+                icons on a phone: the logo, two full-width pills and the
+                counters cannot share a 360px row. */}
 						{!onDoomscroller && (
-							<Link
-								href="/doomscroller"
-								data-tour="doomscroller-button"
-								className="label inline-flex items-center gap-1.5 rounded-full border-2 border-line bg-paper px-3 py-1.5 text-navy-soft transition-colors hover:border-sky hover:text-navy lg:hidden"
-							>
-								<IconFilm className="text-base" /> Doomscroller
-							</Link>
+							<>
+								<button
+									type="button"
+									onClick={() => setGoalOpen(true)}
+									aria-haspopup="dialog"
+									aria-label="Change printer"
+									className="label inline-flex items-center gap-1.5 rounded-full border-2 border-line bg-paper px-3 py-1.5 text-navy-soft transition-colors hover:border-teal hover:text-navy lg:hidden"
+								>
+									<IconTrophy className="text-base" />
+									<span className="hidden md:inline">Change printer</span>
+								</button>
+								<Link
+									href="/doomscroller"
+									data-tour="doomscroller-button"
+									className="label inline-flex items-center gap-1.5 rounded-full border-2 border-line bg-paper px-3 py-1.5 text-navy-soft transition-colors hover:border-sky hover:text-navy lg:hidden"
+								>
+									<IconFilm className="text-base" />
+									<span className="hidden md:inline">Doomscroller</span>
+								</Link>
+							</>
 						)}
 
 						<StatCluster />
@@ -243,6 +266,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 			</nav>
 
 			<Overlays />
+			<GoalModal open={goalOpen} onClose={() => setGoalOpen(false)} />
 		</>
 	)
 }
