@@ -1,8 +1,8 @@
 import "server-only"
-import { REPO_FILE_KINDS, type RepoFileKind, THEME_REPO_REQUIREMENTS } from "@/lib/config/repo-checks"
 import type { Theme } from "@/app/generated/prisma/enums"
-import { ForgeUnavailable, forgeGet } from "@/lib/github"
+import { REPO_FILE_KINDS, type RepoFileKind, THEME_REPO_REQUIREMENTS } from "@/lib/config/repo-checks"
 import { type Forge, fileUrl, forgeByHostname, hostnameOf } from "@/lib/forge"
+import { ForgeUnavailable, forgeGet } from "@/lib/github"
 import { type RepoRef, repoRefFromLink } from "@/lib/repo-ref"
 
 /**
@@ -460,11 +460,61 @@ function nonForgeWarn(host: string): RepoCheck {
 export async function findRepoFile(repoLink: string | null, test: RegExp): Promise<string | null> {
 	const ref = repoRefFromLink(repoLink)
 	if (!ref) return null
+	const path = await findRepoFilePath(repoLink, test)
+	if (!path) return null
+	const encoded = path.split("/").map(encodeURIComponent).join("/")
+	return fileUrl(ref.forge, ref.ownerPath, ref.repo, encoded)
+}
+
+/**
+ * The shallowest path in the repo whose name matches, or null.
+ *
+ * The same search `findRepoFile` runs, but returning the path rather than a
+ * web link — for callers that mean to read the file's bytes rather than point
+ * at it, such as the BOM import. Reads the same cached file list, so calling
+ * both for one project costs one fetch.
+ */
+export async function findRepoFilePath(repoLink: string | null, test: RegExp): Promise<string | null> {
+	const ref = repoRefFromLink(repoLink)
+	if (!ref) return null
 	const snap = await snapshot(ref)
 	if (snap.kind !== "ok") return null
 	const hits = snap.files.filter((f) => test.test(f)).sort((a, b) => a.split("/").length - b.split("/").length)
-	const hit = hits[0]
-	if (!hit) return null
-	const path = hit.split("/").map(encodeURIComponent).join("/")
-	return fileUrl(ref.forge, ref.ownerPath, ref.repo, path)
+	return hits[0] ?? null
+}
+
+/**
+ * The text of one file in the repo, or null when it cannot be read.
+ *
+ * The two forges speak differently here — GitHub's contents API answers with
+ * base64, GitLab's raw endpoint with the bytes — so this is the one place that
+ * difference lives. It reads the file at HEAD, the default branch, and treats
+ * a missing, binary or oversized file as simply unreadable: the caller has
+ * picked a path it matched in the same file list, so "not there" is a race, not
+ * an error worth a different message.
+ */
+export async function readRepoFile(repoLink: string | null, path: string): Promise<string | null> {
+	const ref = repoRefFromLink(repoLink)
+	if (!ref) return null
+
+	// GitLab takes the file path as one encoded value, slashes included, the way
+	// the README read above does; GitHub's contents API takes it as path
+	// segments, so each is encoded on its own.
+	if (ref.forge.id === "gitlab") {
+		const res = await forgeGet(
+			ref.forge,
+			`projects/${encodeURIComponent(ref.fullName)}/repository/files/${encodeURIComponent(path)}/raw?ref=HEAD`,
+		)
+		if (!res.ok) return null
+		return res.text()
+	}
+
+	const encoded = path.split("/").map(encodeURIComponent).join("/")
+	const res = await forgeGet(ref.forge, `repos/${ref.fullName}/contents/${encoded}?ref=HEAD`)
+	if (!res.ok) return null
+	const body = (await res.json().catch(() => null)) as { content?: string; encoding?: string } | null
+	// GitHub omits `content` for files over a megabyte and sets `encoding` to
+	// `none`; a BOM CSV is never one, so that is just unreadable.
+	if (!body?.content || body.encoding !== "base64") return null
+	return Buffer.from(body.content, "base64").toString("utf-8")
 }

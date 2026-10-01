@@ -79,6 +79,23 @@ export type BomItemInput = z.infer<typeof bomItemSchema>
 export const bomExtrasSchema = z.object({ taxShippingUsd: z.number().min(0).max(10_000).nullable() }).strict()
 
 /**
+ * Reading a project's BOM CSV into its parts list.
+ *
+ * `apply` false is a preview: read the repo and report what would land. `apply`
+ * true writes, and `replace` says whether that means the whole list or an
+ * addition to it — the caller is shown the count first and chooses. Both
+ * default false, so an empty body is the harmless preview.
+ */
+export const bomImportSchema = z
+	.object({
+		apply: z.boolean().default(false),
+		replace: z.boolean().default(false),
+	})
+	.strict()
+
+export type BomImportInput = z.infer<typeof bomImportSchema>
+
+/**
  * A repo URL a forge picker may have offered: `github.com/owner/name`, or
  * `gitlab.com/group/sub/repo` for GitLab's nested groups. Two to four path
  * segments, an optional scheme, an optional trailing slash.

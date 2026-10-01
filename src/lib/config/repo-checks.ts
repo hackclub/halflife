@@ -18,6 +18,15 @@ import { Theme } from "@/app/generated/prisma/enums"
  * Changing what a theme asks for is this table and nothing else.
  */
 
+/**
+ * The file the BOM import looks for, and what the repo check calls a BOM CSV.
+ *
+ * Strict on purpose, as Stasis has it: "parts.csv" matching would tell a
+ * reviewer there is a BOM when there may not be one. Shared here so the check
+ * and the import find the same file.
+ */
+export const BOM_CSV_PATTERN = /(^|\/)[^/]*bom[^/]*\.csv$/i
+
 export type RepoFileKind =
 	| "pcbSource" // board and schematic sources
 	| "pcbFab" // gerbers and drill files
@@ -100,9 +109,7 @@ export const REPO_FILE_KINDS: Record<
 	bom: {
 		label: "BOM CSV",
 		missing: "No bom*.csv found",
-		// Strict on purpose, as Stasis has it: "parts.csv" matching would tell a
-		// reviewer there is a BOM when there may not be one.
-		pattern: /(^|\/)[^/]*bom[^/]*\.csv$/i,
+		pattern: BOM_CSV_PATTERN,
 	},
 }
 

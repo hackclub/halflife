@@ -114,10 +114,18 @@ function routeFor(path: string): Set<string> | null {
 		.split("?")[0]!
 		.replace(/\$\{[^}]*\}/g, "X")
 		.replace(/\/$/, "")
+	// A static segment beats the variable one it shares a slot with — `bom/import`
+	// is its own route, not `bom/[itemId]` — and Next resolves it that way, so a
+	// client calling `bom/import` must be checked against the import route. The
+	// fewest variables is that rule spelled out; without it the walker could hand
+	// back `[itemId]` and report a POST as a 405 that Next would never send.
+	let best: { methods: Set<string>; dynamic: number } | null = null
 	for (const [url, methods] of routes) {
-		if (new RegExp("^" + url.replace(/\[[^\]]+\]/g, "[^/]+") + "$").test(clean)) return methods
+		if (!new RegExp(`^${url.replace(/\[[^\]]+\]/g, "[^/]+")}$`).test(clean)) continue
+		const dynamic = (url.match(/\[/g) ?? []).length
+		if (!best || dynamic < best.dynamic) best = { methods, dynamic }
 	}
-	return null
+	return best?.methods ?? null
 }
 
 for (const call of [
@@ -142,7 +150,7 @@ async function bodies() {
 	const { projectUpdateSchema, submitSchema } = await import("../src/lib/schemas/project")
 	const { sessionCreateSchema } = await import("../src/lib/schemas/session")
 	const { createPostSchema, likeSchema } = await import("../src/lib/schemas/feed")
-	const { repoSyncSettingsSchema } = await import("../src/lib/schemas/project")
+	const { bomImportSchema, repoSyncSettingsSchema } = await import("../src/lib/schemas/project")
 	const { purchaseSchema } = await import("../src/lib/schemas/shop")
 
 	const meSchema = z.object({ printerGoalId: z.string().max(80) }).strict()
@@ -213,6 +221,10 @@ async function bodies() {
 		["buy", purchaseSchema, { shopItemId: "printer-ender-3-v3-se", quantity: 1 }],
 		["repoSync · on", repoSyncSettingsSchema, { enabled: true, repo: "https://github.com/maker/hackpad" }],
 		["repoSync · off", repoSyncSettingsSchema, { enabled: false }],
+		// The import body is optional in full: an empty POST is the preview, which
+		// is the harmless act, and the client only says `apply` when it means it.
+		["bomImport · preview", bomImportSchema, {}],
+		["bomImport · apply replace", bomImportSchema, { apply: true, replace: true }],
 		[
 			"onboarding · repo step",
 			onboardingStepSchema,
@@ -232,6 +244,14 @@ async function bodies() {
 		"body · repoSync accepts a GitLab nested-group URL",
 		repoSyncSettingsSchema.safeParse({ enabled: true, repo: "https://gitlab.com/group/sub/repo" }).success,
 	)
+	// An empty body is a preview, not a write: the defaults have to be false on
+	// both axes or a stray POST would replace the list.
+	const importDefaults = bomImportSchema.safeParse({})
+	check(
+		"body · bomImport defaults to a preview, not a write",
+		importDefaults.success && importDefaults.data.apply === false && importDefaults.data.replace === false,
+	)
+	check("body · bomImport rejects an unknown field", !bomImportSchema.safeParse({ write: true }).success)
 
 	/* ── 3. Upload key ownership ───────────────────────────────────────────── */
 	//
@@ -594,6 +614,60 @@ async function bodies() {
 				// carries "now", it drifts forward on every run and this stays true.
 				return Math.abs(Date.now() - new Date(stamped).getTime()) > 60_000
 			})(),
+		)
+	}
+
+	/* ── 6bb. Reading a BOM CSV out of a repo ───────────────────────────────── */
+	//
+	// A maker's repo carries whatever their tool exported, so the importer is
+	// pinned on the shapes that actually turn up: a hand-kept spreadsheet whose
+	// price column says `Rs. 1300 (~ $15)`, a KiCad export with a commented
+	// preamble and a comma inside a quoted description, and a link column that
+	// holds `JLCPCB` as often as a URL.
+	const { parseBomCsv } = await import("../src/lib/bom-csv")
+	{
+		const messy = [
+			'"Item","Qty","Link","Price","Running total"',
+			'"Keycaps","1 set","https://stackskb.com/store/keycaps/","Rs. 1300 (~ $15)","Rs. 1300 ($15)"',
+			'"Switches","100pc","https://www.thecosmicbyte.com/p/1","Rs. 2000 (~ $25)","Rs. 3300 ($40)"',
+			'"EC11 rotary encoder","1","-","0","Rs. 4120 ($49.2)"',
+			'"PCB","1","JLCPCB","$25.3 (~Rs. 2300)","Rs. 7320 ($83.5)"',
+			'"Shipping (Guesstimate)","-","-","$25 (~Rs. 2500)","Rs. 11090 ($120.5)"',
+		].join("\n")
+		const parsed = parseBomCsv(messy)
+		check("bom-csv · the header is found", parsed.header?.[0] === "Item")
+		check(
+			"bom-csv · the shipping line is not a part",
+			parsed.skipped.some((s) => s.name === "Shipping (Guesstimate)"),
+		)
+		check("bom-csv · a dollar amount is read out of a rupee price", parsed.lines[0]?.unitCostUsd === 15)
+		check("bom-csv · a count in words becomes a number", parsed.lines[0]?.quantity === 1)
+		check("bom-csv · `100pc` becomes 100", parsed.lines[1]?.quantity === 100)
+		check("bom-csv · a vendor is derived from an unknown link host", parsed.lines[1]?.vendor === "Cosmic Byte")
+		check("bom-csv · a known host names its vendor", parsed.lines[0]?.vendor === "StacksKB")
+		check("bom-csv · a dash is not a link", parsed.lines[2]?.link === null && parsed.lines[2]?.unitCostUsd === 0)
+		check("bom-csv · a bare word is not a link", parsed.lines[3]?.link === null)
+		check("bom-csv · a price without a currency is read", parsed.lines[3]?.unitCostUsd === 25.3)
+		check("bom-csv · five data rows, four parts", parsed.lines.length === 4 && parsed.skipped.length === 1)
+
+		const kicad = [
+			"# BOM for Hackpad",
+			"# Generated 2026-01-01",
+			'"Comment","Designator","Footprint","Quantity","Supplier","Link"',
+			'"ESP32-C3","U1","QFN","1","LCSC","https://lcsc.com/product-detail/C2934560.html"',
+			'"Cap, 1uF","C1","0603","1","",""',
+		].join("\n")
+		const k = parseBomCsv(kicad)
+		check("bom-csv · the header is found below a commented preamble", k.header?.[0] === "Comment")
+		check("bom-csv · a comma inside a quoted field stays in the name", k.lines[1]?.name === "Cap, 1uF")
+		check("bom-csv · a part with no price still imports at zero", k.lines[1]?.unitCostUsd === 0)
+		check("bom-csv · no currency means no link", k.lines[1]?.link === null)
+
+		check("bom-csv · a file with no header imports nothing", parseBomCsv("a,b,c\n1,2,3").header === null)
+		const capped = parseBomCsv(kicad, { limit: 1 })
+		check(
+			"bom-csv · the limit is reported rather than silently dropped",
+			capped.lines.length === 1 && capped.skipped.some((s) => s.reason === "beyond the parts-list limit"),
 		)
 	}
 

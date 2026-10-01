@@ -2,11 +2,28 @@
 
 import { useRouter } from "next/navigation"
 import { useId, useRef, useState } from "react"
-import { IconPencil, IconPlus, IconX } from "@/components/platform/icons"
+import { IconArrowDown, IconPencil, IconPlus, IconX } from "@/components/platform/icons"
+import { Modal, ModalTitle } from "@/components/platform/modals/Modal"
 import { Button, cx, inputClass } from "@/components/platform/ui"
 import type { BomLine } from "@/lib/bom"
 
 const usd = (n: number) => `$${n.toFixed(2)}`
+
+/** What the import route reports after reading the repo's CSV. */
+interface ImportPreview {
+	path: string
+	lines: {
+		name: string
+		purpose: string | null
+		quantity: number
+		unitCostUsd: number
+		vendor: string | null
+		link: string | null
+	}[]
+	skipped: { row: number; name: string; reason: string }[]
+	/** Lines already on the page, so the copy can offer add vs replace. */
+	existing: number
+}
 
 type Draft = {
 	name: string
@@ -86,6 +103,14 @@ export function BomEditor({
 	const [invalid, setInvalid] = useState<Set<keyof Draft>>(new Set())
 
 	const [taxShipping, setTaxShipping] = useState(initialExtra)
+
+	// The repo import, kept apart from the line form: it is one read, a preview,
+	// and one confirm, not a field-by-field edit.
+	const [importOpen, setImportOpen] = useState(false)
+	const [importLoading, setImportLoading] = useState(false)
+	const [importing, setImporting] = useState(false)
+	const [importError, setImportError] = useState<string | null>(null)
+	const [preview, setPreview] = useState<ImportPreview | null>(null)
 
 	const parts = items.reduce((n, l) => n + l.quantity * l.unitCostUsd, 0)
 	const total = parts + taxShipping
@@ -184,6 +209,55 @@ export function BomEditor({
 	async function remove(line: BomLine) {
 		const done = await send("DELETE", `/api/projects/${projectId}/bom/${line.id}`)
 		if (done && editing === line.id) setEditing(null)
+	}
+
+	/** Open the dialog and read the repo, so the preview is ready when it shows. */
+	async function openImport() {
+		setImportOpen(true)
+		setPreview(null)
+		setImportError(null)
+		setImportLoading(true)
+		try {
+			const res = await fetch(`/api/projects/${projectId}/bom/import`, {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ apply: false }),
+			})
+			const payload = await res.json().catch(() => null)
+			if (!res.ok) {
+				setImportError(payload?.error?.message ?? "Could not read the repo. Try again.")
+				return
+			}
+			setPreview(payload as ImportPreview)
+		} catch {
+			setImportError("Could not reach the server. Try again.")
+		} finally {
+			setImportLoading(false)
+		}
+	}
+
+	async function applyImport(replace: boolean) {
+		setImporting(true)
+		setImportError(null)
+		try {
+			const res = await fetch(`/api/projects/${projectId}/bom/import`, {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ apply: true, replace }),
+			})
+			const payload = await res.json().catch(() => null)
+			if (!res.ok) {
+				setImportError(payload?.error?.message ?? "That did not save. Try again.")
+				return
+			}
+			setItems(payload.items as BomLine[])
+			setImportOpen(false)
+			router.refresh()
+		} catch {
+			setImportError("Could not reach the server. Try again.")
+		} finally {
+			setImporting(false)
+		}
 	}
 
 	async function saveTaxShipping(value: number) {
@@ -341,9 +415,14 @@ export function BomEditor({
 					)}
 				</p>
 				{!locked && editing === null && (
-					<Button variant="outline" size="sm" onClick={() => open("new")}>
-						<IconPlus className="text-base" /> Add a part
-					</Button>
+					<div className="flex flex-wrap gap-2">
+						<Button variant="outline" size="sm" onClick={() => open("new")}>
+							<IconPlus className="text-base" /> Add a part
+						</Button>
+						<Button variant="ghost" size="sm" disabled={saving || importLoading} onClick={() => void openImport()}>
+							<IconArrowDown className="text-base" /> Import from repo
+						</Button>
+					</div>
 				)}
 			</div>
 
@@ -416,6 +495,114 @@ export function BomEditor({
 					{error}
 				</p>
 			)}
+
+			<Modal
+				open={importOpen}
+				onClose={() => setImportOpen(false)}
+				eyebrow="Bill of materials"
+				size="lg"
+				dismissible={!importing}
+				footer={
+					preview && preview.lines.length > 0 ? (
+						<>
+							<Button variant="ghost" size="sm" disabled={importing} onClick={() => setImportOpen(false)}>
+								Cancel
+							</Button>
+							{preview.existing > 0 && (
+								<Button variant="outline" size="sm" disabled={importing} onClick={() => void applyImport(false)}>
+									{importing ? "Adding…" : `Add ${preview.lines.length} to my list`}
+								</Button>
+							)}
+							<Button variant="solid" size="sm" disabled={importing} onClick={() => void applyImport(true)}>
+								{importing
+									? "Importing…"
+									: preview.existing > 0
+										? `Replace with ${preview.lines.length}`
+										: `Import ${preview.lines.length} ${preview.lines.length === 1 ? "part" : "parts"}`}
+							</Button>
+						</>
+					) : (
+						<Button variant="ghost" size="sm" disabled={importing} onClick={() => setImportOpen(false)}>
+							Close
+						</Button>
+					)
+				}
+			>
+				<ModalTitle sub="Read from the bom*.csv in your project's repo, so parts you have listed once are not typed in again.">
+					Import parts from your repo
+				</ModalTitle>
+
+				{importLoading ? (
+					<p className="hand text-[0.9rem] text-navy-soft" aria-live="polite">
+						reading your repo…
+					</p>
+				) : importError ? (
+					<p role="alert" className="text-[0.88rem] font-semibold text-coral-deep">
+						{importError}
+					</p>
+				) : preview ? (
+					<div className="grid gap-4">
+						{preview.lines.length === 0 ? (
+							<p className="text-[0.9rem] leading-relaxed text-navy-soft">
+								No importable parts were found in <code className="hand text-navy">{preview.path}</code>.
+							</p>
+						) : (
+							<>
+								<p className="text-[0.9rem] leading-relaxed text-navy-soft">
+									Read {preview.lines.length} {preview.lines.length === 1 ? "part" : "parts"} from{" "}
+									<code className="hand text-navy">{preview.path}</code>. What the file did not say is left blank — open
+									each line and add a purpose, and a vendor and price a reviewer can check.
+								</p>
+								{preview.existing > 0 && (
+									<p className="hand text-[0.84rem] text-navy-soft">
+										your list already has {preview.existing}. Adding keeps them; replacing clears them first.
+									</p>
+								)}
+								<div className="-mx-1 max-h-[42vh] overflow-auto px-1">
+									<table className="w-full min-w-[440px] text-left text-[0.85rem]">
+										<thead>
+											<tr className="border-b border-dashed border-line">
+												{["Part", "Qty", "Unit", "Vendor"].map((h) => (
+													<th key={h} scope="col" className="label px-3 py-2 text-navy-soft first:pl-0">
+														{h}
+													</th>
+												))}
+											</tr>
+										</thead>
+										<tbody>
+											{preview.lines.map((l, i) => (
+												<tr key={`${l.name}-${i}`} className="border-b border-dashed border-line/60 align-top">
+													<td className="py-2 pr-3">
+														<span className="block font-semibold [overflow-wrap:anywhere] text-navy">{l.name}</span>
+													</td>
+													<td className="px-3 py-2 tabular-nums">{l.quantity}</td>
+													<td className="px-3 py-2 tabular-nums">
+														{l.unitCostUsd > 0 ? usd(l.unitCostUsd) : <span className="text-coral-deep">no price</span>}
+													</td>
+													<td className="hand px-3 py-2 text-navy-soft">{l.vendor || "—"}</td>
+												</tr>
+											))}
+										</tbody>
+									</table>
+								</div>
+							</>
+						)}
+
+						{preview.skipped.length > 0 && (
+							<div className="rounded-xl bg-black/[.03] px-3.5 py-3">
+								<p className="label text-violet-deep">Skipped {preview.skipped.length}</p>
+								<ul className="mt-1.5 grid gap-1">
+									{preview.skipped.map((s) => (
+										<li key={s.row} className="text-[0.82rem] leading-snug text-navy-soft">
+											<span className="font-semibold text-navy">{s.name || `line ${s.row}`}</span> — {s.reason}
+										</li>
+									))}
+								</ul>
+							</div>
+						)}
+					</div>
+				) : null}
+			</Modal>
 		</div>
 	)
 }
