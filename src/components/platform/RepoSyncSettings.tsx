@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react"
 import { IconCheck, IconWarning } from "@/components/platform/icons"
 import { Button, Chip, cx } from "@/components/platform/ui"
 import { linkForge } from "@/lib/auth-client"
+import { displayRepo } from "@/lib/repo"
+import { useStore } from "@/lib/store"
 
 /**
  * Repo sync — the control that mirrors a project's devlogs and parts list into
@@ -40,6 +42,10 @@ interface SyncState {
 	linkedForges: string[]
 	repos: WritableRepo[]
 	reposError: string | null
+	/** The project's own repo link, what the sync target is compared against. */
+	projectRepo: string | null
+	/** True when the sync writes to a different repo than the project points at. */
+	syncRepoDiffers: boolean
 }
 
 /** The forges a maker can connect here, and how each is named in the UI. */
@@ -71,11 +77,14 @@ export function RepoSyncSettings({
 	onEnabled?: () => void
 	compact?: boolean
 }) {
+	const { linkSyncRepoToProject } = useStore()
 	const [state, setState] = useState<SyncState | null>(null)
 	const [loading, setLoading] = useState(true)
 	const [busy, setBusy] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 	const [picked, setPicked] = useState<string | null>(null)
+	const [linking, setLinking] = useState(false)
+	const [linked, setLinked] = useState(false)
 
 	const load = useCallback(async () => {
 		setLoading(true)
@@ -123,6 +132,20 @@ export function RepoSyncSettings({
 		} finally {
 			setBusy(false)
 		}
+	}
+
+	/**
+	 * Point the project's own repo link at the repo the sync writes to. The
+	 * store updates the project row and refreshes, so the Repo checks box above
+	 * re-runs against the new link on its own.
+	 */
+	async function linkProject() {
+		setLinking(true)
+		setError(null)
+		const refused = await linkSyncRepoToProject(projectId)
+		setLinking(false)
+		if (refused) setError(refused)
+		else setLinked(true)
 	}
 
 	if (loading && !state) {
@@ -211,6 +234,20 @@ export function RepoSyncSettings({
 					</p>
 				)}
 
+				{state.syncRepoDiffers && !linked && (
+					<LinkProjectButton
+						repo={state.repo}
+						existing={state.projectRepo}
+						busy={linking}
+						onClick={() => void linkProject()}
+					/>
+				)}
+				{linked && (
+					<p className="hand text-[0.82rem] text-teal-ink">
+						the project now links to {state.repo ? displayRepo(state.repo) : "the repo"}.
+					</p>
+				)}
+
 				<div className="flex flex-wrap gap-2">
 					<Button variant="outline" size="sm" disabled={busy} onClick={() => void send("PUT")}>
 						{busy ? "Syncing…" : "Sync now"}
@@ -292,5 +329,35 @@ export function RepoSyncSettings({
 				it writes JOURNAL.md and BOM.md to the repo&apos;s default branch, with one commit per update.
 			</p>
 		</div>
+	)
+}
+
+/**
+ * The offer to make the project's repo link and the sync's repo the same repo.
+ *
+ * Only rendered when the two genuinely differ. The copy says which link it will
+ * change and to what, because a maker who has set both by hand should not have
+ * to guess which direction "link" means here.
+ */
+function LinkProjectButton({
+	repo,
+	existing,
+	busy,
+	onClick,
+}: {
+	repo: string | null
+	existing: string | null
+	busy: boolean
+	onClick: () => void
+}) {
+	const to = repo ? displayRepo(repo) : "the repo"
+	return (
+		<p className="rounded-xl bg-gold-pale/60 px-3.5 py-2.5 text-[0.85rem] leading-relaxed text-navy">
+			The sync writes to <span className="font-semibold">{to}</span>, but the project links to{" "}
+			<span className="font-semibold">{existing ? displayRepo(existing) : "no repo"}</span>.{" "}
+			<Button variant="outline" size="sm" disabled={busy} className="ml-1 align-baseline" onClick={onClick}>
+				{busy ? "Linking…" : "Link this project to that repo"}
+			</Button>
+		</p>
 	)
 }

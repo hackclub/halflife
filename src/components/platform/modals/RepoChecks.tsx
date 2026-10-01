@@ -4,7 +4,9 @@ import { useCallback, useEffect, useState } from "react"
 import { IconCheck, IconWarning } from "@/components/platform/icons"
 import { RepoEditor } from "@/components/platform/RepoField"
 import { Button, cx } from "@/components/platform/ui"
+import { displayRepo } from "@/lib/repo"
 import type { RepoCheck, RepoCheckResult } from "@/lib/repo-checks"
+import { useStore } from "@/lib/store"
 import type { Project } from "@/lib/types"
 
 /**
@@ -32,9 +34,42 @@ export function RepoChecks({
 	 */
 	editable?: boolean
 }) {
+	const { linkSyncRepoToProject } = useStore()
 	const [data, setData] = useState<RepoCheckResult | null>(null)
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
+	// Whether the sync writes to a different repo than the project links to, and
+	// what that repo is — the shortcut offered when the link is missing or wrong.
+	const [syncRepo, setSyncRepo] = useState<{ repo: string; differs: boolean } | null>(null)
+	const [linking, setLinking] = useState(false)
+
+	// Runs on mount and on a new link. The sync state is a second read, and only
+	// its repo identity is kept: the rest of it belongs to the sync settings box.
+	const loadSync = useCallback(async () => {
+		try {
+			const res = await fetch(`/api/projects/${project.id}/repo-sync`, { cache: "no-store" })
+			if (!res.ok) return
+			const body = (await res.json()) as { repo?: string | null; syncRepoDiffers?: boolean }
+			setSyncRepo(body.repo && body.syncRepoDiffers ? { repo: body.repo, differs: true } : null)
+		} catch {
+			// Best effort: the shortcut is a convenience, not the check itself.
+		}
+	}, [project.id])
+
+	useEffect(() => {
+		// eslint-disable-next-line react-hooks/set-state-in-effect -- fetching on mount and a new project
+		void loadSync()
+	}, [loadSync])
+
+	async function linkProject() {
+		if (!syncRepo) return
+		setLinking(true)
+		setError(null)
+		const refused = await linkSyncRepoToProject(project.id)
+		setLinking(false)
+		if (refused) setError(refused)
+		else setSyncRepo(null)
+	}
 
 	const run = useCallback(async () => {
 		setLoading(true)
@@ -80,6 +115,22 @@ export function RepoChecks({
           cannot — the project page — it is already in the page's heading, and
           saying it twice a few lines apart only makes the reader compare them. */}
 			{editable && <RepoEditor project={project} className="mt-1" />}
+
+			{/* The sync can be pointed at a repo the project link never got, which is
+          exactly the state the checks below fail in. One press copies it over,
+          so the fix for a "No repo" finding is here rather than a trip to the
+          details form. */}
+			{syncRepo && (
+				<p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1.5 rounded-xl bg-gold-pale/60 px-3.5 py-2.5 text-[0.85rem] leading-relaxed text-navy">
+					<span>
+						Your repo sync is writing to <span className="font-semibold">{displayRepo(syncRepo.repo)}</span>. Link this
+						project to it?
+					</span>
+					<Button variant="outline" size="sm" disabled={linking} onClick={() => void linkProject()}>
+						{linking ? "Linking…" : "Link this repo"}
+					</Button>
+				</p>
+			)}
 
 			{loading && !data ? (
 				<p className="hand mt-2 text-[0.84rem] text-navy-soft" aria-live="polite">

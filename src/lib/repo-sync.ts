@@ -434,6 +434,18 @@ export interface RepoSyncState {
 	error: string | null
 	/** Which forges the caller has linked, by id — a maker may link both. */
 	linkedForges: string[]
+	/**
+	 * The project's own repo link, as the alternative the sync target is measured
+	 * against. Null when the project has none.
+	 */
+	projectRepo: string | null
+	/**
+	 * Whether the project's link should be moved to the sync target, so the UI
+	 * can offer to do it in one press. True when the project has no link, or has
+	 * one that names a different repo; false when they already agree, or when the
+	 * target is not a repo Half Life can read (a bare slug, a Codeberg URL).
+	 */
+	syncRepoDiffers: boolean
 }
 
 export async function getRepoSyncState(themeProjectId: string, userId: string): Promise<RepoSyncState> {
@@ -457,6 +469,16 @@ export async function getRepoSyncState(themeProjectId: string, userId: string): 
 	const fallback = repoRefFromLink(project.githubRepo)?.forge
 	const ref = repoRefFromLink(target) ?? (target && fallback ? parseRepoRef(target, { forge: fallback }) : null)
 
+	// The link should point at the repo the sync writes to, so the offer to copy
+	// it over appears whenever the two disagree — including when the project has
+	// no link at all, which is the common case this exists for (the sync was set
+	// up first, and the project details never named a repo). A target that will
+	// not parse (a bare slug left by an older row, a Codeberg URL) is not offered:
+	// the project's repo field takes any repo URL, but writing a value we cannot
+	// even read into it would be a guess dressed as a fix.
+	const projectRef = repoRefFromLink(project.githubRepo)
+	const differs = Boolean(ref && (!projectRef || projectRef.fullName !== ref.fullName))
+
 	return {
 		enabled: project.repoSyncEnabled,
 		repo: ref ? repoRefToUrl(ref) : target,
@@ -464,5 +486,7 @@ export async function getRepoSyncState(themeProjectId: string, userId: string): 
 		syncedAt: project.repoSyncedAt?.getTime() ?? null,
 		error: project.repoSyncError,
 		linkedForges: accounts.filter((a) => a.accessToken).map((a) => a.providerId),
+		projectRepo: project.githubRepo,
+		syncRepoDiffers: differs,
 	}
 }

@@ -96,6 +96,7 @@ const STORE_CALLS: { path: string; methods: string[] }[] = [
 	{ path: "/api/projects/${id}", methods: ["PATCH"] },
 	{ path: "/api/projects/${id}/sessions", methods: ["POST"] },
 	{ path: "/api/projects/${id}/submit", methods: ["POST"] },
+	{ path: "/api/projects/${id}/link-sync-repo", methods: ["POST"] },
 	{ path: "/api/posts", methods: ["POST"] },
 	{ path: "/api/me", methods: ["PATCH"] },
 ]
