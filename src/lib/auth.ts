@@ -5,6 +5,7 @@ import { genericOAuth } from "better-auth/plugins"
 import { Role } from "@/app/generated/prisma/enums"
 import { bufferRsvpForUser } from "@/lib/airtable/rsvp"
 import { markLogin } from "@/lib/analytics"
+import { fetchWithRetry } from "@/lib/fetch-retry"
 import { FORGES } from "@/lib/forge"
 import { fetchHcaIdentity, PULL_PII, syncHcaProfile } from "@/lib/hca-profile"
 import { LAPSE_API_BASE } from "@/lib/lapse"
@@ -361,7 +362,9 @@ export const auth = betterAuth({
 					disableImplicitSignUp: true,
 					getUserInfo: async ({ accessToken }) => {
 						const base = process.env.HACKATIME_API_BASE ?? "https://hackatime.hackclub.com"
-						const res = await fetch(`${base}/api/v1/authenticated/me`, {
+						// Retried, so a single timeout at Hackatime does not fail a
+						// link. See lib/fetch-retry.
+						const res = await fetchWithRetry(`${base}/api/v1/authenticated/me`, {
 							headers: { Authorization: `Bearer ${accessToken}` },
 							signal: AbortSignal.timeout(10_000),
 						})
@@ -403,7 +406,7 @@ export const auth = betterAuth({
 					disableSignUp: true,
 					disableImplicitSignUp: true,
 					getUserInfo: async ({ accessToken }) => {
-						const res = await fetch(`${LAPSE_API_BASE}/user/myself`, {
+						const res = await fetchWithRetry(`${LAPSE_API_BASE}/user/myself`, {
 							headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
 							signal: AbortSignal.timeout(10_000),
 						})
@@ -459,7 +462,7 @@ export const auth = betterAuth({
 					disableImplicitSignUp: true,
 					getUserInfo: async ({ accessToken }) => {
 						if (!accessToken) return null
-						const res = await fetch("https://api.github.com/user", {
+						const res = await fetchWithRetry("https://api.github.com/user", {
 							headers: {
 								Authorization: `Bearer ${accessToken}`,
 								Accept: "application/vnd.github+json",
@@ -517,7 +520,7 @@ export const auth = betterAuth({
 					disableImplicitSignUp: true,
 					getUserInfo: async ({ accessToken }) => {
 						if (!accessToken) return null
-						const res = await fetch("https://gitlab.com/api/v4/user", {
+						const res = await fetchWithRetry("https://gitlab.com/api/v4/user", {
 							headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
 							signal: AbortSignal.timeout(10_000),
 						})

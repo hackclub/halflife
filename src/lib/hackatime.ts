@@ -1,4 +1,5 @@
 import "server-only"
+import { fetchWithRetry } from "@/lib/fetch-retry"
 import prisma from "@/lib/prisma"
 
 const BASE = process.env.HACKATIME_API_BASE ?? "https://hackatime.hackclub.com"
@@ -65,7 +66,7 @@ export async function fetchProjectSeconds(hackatimeUserId: string, project: stri
 	try {
 		const url = new URL(`${BASE}/api/v1/users/${encodeURIComponent(hackatimeUserId)}/stats`)
 		url.searchParams.set("features", "projects")
-		const res = await fetch(url, {
+		const res = await fetchWithRetry(url, {
 			signal: AbortSignal.timeout(TIMEOUT_MS),
 			cache: "no-store",
 		})
@@ -81,7 +82,7 @@ export async function listUserProjects(hackatimeUserId: string): Promise<{ name:
 	try {
 		const url = new URL(`${BASE}/api/v1/users/${encodeURIComponent(hackatimeUserId)}/stats`)
 		url.searchParams.set("features", "projects")
-		const res = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS), cache: "no-store" })
+		const res = await fetchWithRetry(url, { signal: AbortSignal.timeout(TIMEOUT_MS), cache: "no-store" })
 		if (!res.ok) return []
 		const body = (await res.json()) as {
 			data?: { projects?: { name: string; total_seconds: number }[] }

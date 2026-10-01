@@ -211,6 +211,13 @@ interface Ctx {
 	 * can say so instead of quietly reverting.
 	 */
 	setProjectRepo: (id: string, url: string | null) => Promise<string | null>
+	/**
+	 * Point a project's repo link at the repo its sync writes to, when the two
+	 * drifted apart because the sync's repo was picked after the project's was
+	 * set. Resolves to null once saved, or the server's reason for refusing; the
+	 * link is the sync target already, so no URL is taken from the client.
+	 */
+	linkSyncRepoToProject: (id: string) => Promise<string | null>
 	/** Change any of a project's own details in one save. Null once saved, or why it was refused. */
 	updateProject: (id: string, patch: ProjectPatch) => Promise<string | null>
 	complete: (id: string, patch?: Partial<CheckpointState>) => void
@@ -589,6 +596,30 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
 				return err?.error?.message ?? "That did not save. Try again."
 			}
+			setFacts((f) => ({
+				...f,
+				projects: f.projects.map((p) => (p.id === id ? { ...p, githubRepo: url } : p)),
+			}))
+			router.refresh()
+			return null
+		},
+		[router],
+	)
+
+	const linkSyncRepoToProject = useCallback(
+		async (id: string): Promise<string | null> => {
+			let res: Response
+			try {
+				res = await fetch(`/api/projects/${id}/link-sync-repo`, { method: "POST" })
+			} catch {
+				return "Could not reach the server. Try again."
+			}
+			const body = (await res.json().catch(() => null)) as {
+				githubRepo?: string | null
+				error?: { message?: string }
+			} | null
+			if (!res.ok) return body?.error?.message ?? "That did not save. Try again."
+			const url = body?.githubRepo ?? null
 			setFacts((f) => ({
 				...f,
 				projects: f.projects.map((p) => (p.id === id ? { ...p, githubRepo: url } : p)),
@@ -1403,6 +1434,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		ensureProject,
 		setProjectTier,
 		setProjectRepo,
+		linkSyncRepoToProject,
 		updateProject,
 		complete,
 		postReel,
