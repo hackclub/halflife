@@ -131,7 +131,7 @@ export function ProgramSettingsForm({
 					checked={form.repoSyncEnabled}
 					onChange={(e) => setForm({ ...form, repoSyncEnabled: e.target.checked })}
 				/>
-				<span>Sync devlogs and BOMs to GitHub repos</span>
+				<span>Sync devlogs and BOMs to repos</span>
 			</label>
 
 			<Field label="Shop grace days" hint="How long the shop stays open after someone's last review.">

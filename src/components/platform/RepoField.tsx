@@ -21,7 +21,7 @@ export function RepoInput({ value, onChange, id }: { value: string; onChange: (v
 	const { error } = normalizeRepo(value)
 	return (
 		<Field
-			label="GitHub repo"
+			label="Repo link"
 			hint="Where the code, schematics and CAD live. Optional, and you can add or change it later on the project page."
 			id={id}
 		>
@@ -126,7 +126,7 @@ export function RepoEditor({ project, className }: { project: Project; className
 						}}
 						className="hand text-[0.82rem] text-violet-deep underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
 					>
-						add a GitHub repo
+						add a repo link
 					</button>
 				)}
 			</div>
@@ -142,7 +142,7 @@ export function RepoEditor({ project, className }: { project: Project; className
 			}}
 		>
 			<label htmlFor={id} className="sr-only">
-				GitHub repo
+				Repo link
 			</label>
 			<input
 				id={id}

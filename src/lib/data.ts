@@ -178,7 +178,7 @@ export const DOCS: DocArticle[] = [
 			{
 				heading: "What shipping means",
 				paragraphs: [
-					"Shipping is making your project something other people can open, understand and rebuild. A project that only exists on your laptop has not shipped, and a reviewer cannot approve what they cannot see. The week's work lives in a public GitHub repo, and the repo is the first thing a reviewer opens.",
+					"Shipping is making your project something other people can open, understand and rebuild. A project that only exists on your laptop has not shipped, and a reviewer cannot approve what they cannot see. The week's work lives in a public repo, and the repo is the first thing a reviewer opens.",
 				],
 			},
 			{
@@ -187,7 +187,7 @@ export const DOCS: DocArticle[] = [
 					"The submit sheet checks your repo before it lets you hand in. A missing README, a README with no photos, or a missing required file blocks the submit and tells you what to add. Recommended files are flagged but never block.",
 				],
 				list: [
-					"Every week: a public GitHub repo, with a README that has photos in it.",
+					"Every week: a public repo, with a README that has photos in it.",
 					"PCB week: board and schematic source files (.kicad_pcb, .kicad_sch), and firmware for the board (Arduino .ino, C/C++, MicroPython or CircuitPython). Recommended: Gerbers (a .zip is fine) and a bom.csv.",
 					"CAD week: editable CAD files (.step, .f3d, .fcstd, .scad). Recommended: printable models (.stl, .3mf).",
 					"Music week: a schematic (KiCad, Logisim or Digital). Recommended: firmware.",

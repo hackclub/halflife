@@ -237,7 +237,7 @@ function DetailsForm({
 
 			<div className="grid gap-1.5">
 				<label htmlFor={`${id}-repo`} className="label text-violet-deep">
-					GitHub repo
+					Repo link
 				</label>
 				<input
 					id={`${id}-repo`}
