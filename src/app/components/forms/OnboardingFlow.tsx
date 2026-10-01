@@ -45,12 +45,7 @@ function StepActions({
       ) : (
         <span />
       )}
-      <Button
-        type={onSubmit ? "button" : "submit"}
-        variant="gold"
-        onClick={onSubmit}
-        disabled={busy || !canSubmit}
-      >
+      <Button type={onSubmit ? "button" : "submit"} variant="gold" onClick={onSubmit} disabled={busy || !canSubmit}>
         {busy ? "Saving…" : label}
       </Button>
     </div>
@@ -70,7 +65,13 @@ function SelectButton({
   label: string
 }) {
   return (
-    <Button type="button" variant={selected ? "teal" : "outline"} aria-pressed={selected} disabled={disabled} onClick={onClick}>
+    <Button
+      type="button"
+      variant={selected ? "teal" : "outline"}
+      aria-pressed={selected}
+      disabled={disabled}
+      onClick={onClick}
+    >
       {label}
       {selected ? <IconCheck className="text-base" /> : null}
     </Button>
@@ -404,7 +405,8 @@ export function OnboardingFlow({
             </p>
             {view.project.tierLocked ? (
               <Note>
-                You picked a starter project, so you&rsquo;re fixed to Tier 1. You can go back and make a custom project if you&rsquo;d like.
+                You picked a starter project, so you&rsquo;re fixed to Tier 1. You can go back and make a custom project
+                if you&rsquo;d like.
               </Note>
             ) : null}
             {/* Each tier is one choice: the grant, the rough time, and real
@@ -507,9 +509,7 @@ export function OnboardingFlow({
               busy={busy}
               onBack={back}
               canSubmit={view.project.tierLocked || pickedTier !== null}
-              onSubmit={() =>
-                void send({ step: "tier", requestedTier: view.project.tierLocked ? null : pickedTier })
-              }
+              onSubmit={() => void send({ step: "tier", requestedTier: view.project.tierLocked ? null : pickedTier })}
             />
           </div>
         ) : null}
@@ -542,7 +542,12 @@ export function OnboardingFlow({
                 </Panel>
               ))}
             </ul>
-            <StepActions busy={busy} onBack={back} label="Next" onSubmit={() => void send({ step: "tracking", dismissed: true })} />
+            <StepActions
+              busy={busy}
+              onBack={back}
+              label="Next"
+              onSubmit={() => void send({ step: "tracking", dismissed: true })}
+            />
           </div>
         ) : null}
 
@@ -550,9 +555,8 @@ export function OnboardingFlow({
           <div className="space-y-5">
             <p className="text-[0.92rem] leading-relaxed text-navy-soft">
               Want your devlogs and parts list in your project&rsquo;s GitHub repo? Turn the sync on and Half Life keeps{" "}
-              <code className="hand text-navy">JOURNAL.md</code> and{" "}
-              <code className="hand text-navy">BOM.md</code> up to date in it as you work. You can turn it on later from
-              the project page, so this is optional.
+              <code className="hand text-navy">JOURNAL.md</code> and <code className="hand text-navy">BOM.md</code> up
+              to date in it as you work. You can turn it on later from the project page, so this is optional.
             </p>
             <RepoSyncSettings
               projectId={view.projectId}

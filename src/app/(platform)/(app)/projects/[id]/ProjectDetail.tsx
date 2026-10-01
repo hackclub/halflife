@@ -178,8 +178,8 @@ function DeleteProject({ projectId, name, blocked }: { projectId: string; name: 
   return (
     <Panel tone="line" radius={20} className="bg-paper px-5 py-5 sm:px-6">
       <p className="text-[0.9rem] leading-snug text-navy-soft">
-        Takes it off your trail and your projects. Its journal entries stop counting toward your hours and streak.
-        Reels you posted stay in the feed.
+        Takes it off your trail and your projects. Its journal entries stop counting toward your hours and streak. Reels
+        you posted stay in the feed.
       </p>
       {blocked ? (
         <p className="hand mt-3 text-[0.84rem] text-navy-soft">{blocked}.</p>
@@ -355,7 +355,9 @@ function ReviewState({
                     <Button
                       variant="solid"
                       size="sm"
-                      onClick={() => setOpenCheckpoint(warmup ? `wu-${projectId}-submit` : `w${weekFor(p.phase)}-submit`)}
+                      onClick={() =>
+                        setOpenCheckpoint(warmup ? `wu-${projectId}-submit` : `w${weekFor(p.phase)}-submit`)
+                      }
                     >
                       I&apos;ve made these changes — resubmit
                     </Button>

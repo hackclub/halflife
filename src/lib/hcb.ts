@@ -151,9 +151,7 @@ export interface GrantDisbursement {
  * "the previous attempt paid nothing", because that is the state in which a
  * retry sends the money again.
  */
-export type GrantDisbursementList =
-  | { kind: "listed"; rows: GrantDisbursement[] }
-  | { kind: "unreadable" }
+export type GrantDisbursementList = { kind: "listed"; rows: GrantDisbursement[] } | { kind: "unreadable" }
 
 /**
  * Every disbursement on a card grant, newest first: top-ups land as positive

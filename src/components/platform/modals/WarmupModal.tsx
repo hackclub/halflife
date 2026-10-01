@@ -185,7 +185,8 @@ export function WarmupModal({ onClose, closesOn }: { onClose: () => void; closes
             />
           </div>
           <p className="mt-3 text-[0.86rem] leading-snug text-navy-soft">
-            Each warm-up is one submission: a design or a finished build, whichever you choose here. You can start as many as you like.
+            Each warm-up is one submission: a design or a finished build, whichever you choose here. You can start as
+            many as you like.
           </p>
         </div>
       </div>

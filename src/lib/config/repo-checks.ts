@@ -69,7 +69,8 @@ export const REPO_FILE_KINDS: Record<
   },
   firmware: {
     label: "Firmware",
-    missing: "No firmware found — Arduino (.ino), C/C++, MicroPython or CircuitPython (.py), Rust and the like all count",
+    missing:
+      "No firmware found — Arduino (.ino), C/C++, MicroPython or CircuitPython (.py), Rust and the like all count",
     // .mpy is precompiled MicroPython/CircuitPython; .uf2/.hex/.bin are built
     // images, which count when the source lives elsewhere.
     extensions: [

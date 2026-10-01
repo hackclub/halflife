@@ -59,7 +59,9 @@ function isLoopbackURL(url: string | undefined): boolean {
   if (!url) return false
   try {
     const { hostname } = new URL(url)
-    return hostname === "localhost" || hostname.endsWith(".localhost") || hostname.startsWith("127.") || hostname === "[::1]"
+    return (
+      hostname === "localhost" || hostname.endsWith(".localhost") || hostname.startsWith("127.") || hostname === "[::1]"
+    )
   } catch {
     return false
   }
@@ -73,9 +75,7 @@ const configuredUrl = process.env.BETTER_AUTH_URL
  * sign-in on halflife.hackclub.com is exactly that. A laptop keeps its own.
  */
 const baseURLFallback =
-  process.env.NODE_ENV === "production" && !isLoopbackURL(configuredUrl)
-    ? canonicalUrl
-    : (configuredUrl ?? devUrl)
+  process.env.NODE_ENV === "production" && !isLoopbackURL(configuredUrl) ? canonicalUrl : (configuredUrl ?? devUrl)
 
 export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,

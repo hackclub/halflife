@@ -980,10 +980,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 
   // Every checkpoint a modal can open, the warm-ups' included. The trail
   // itself draws `weeks` only.
-  const allCheckpoints = useMemo(
-    () => [...weeks, ...warmupWeeks].flatMap((w) => w.checkpoints),
-    [weeks, warmupWeeks],
-  )
+  const allCheckpoints = useMemo(() => [...weeks, ...warmupWeeks].flatMap((w) => w.checkpoints), [weeks, warmupWeeks])
 
   const warmupWeekOf = useCallback(
     (projectId: string) => warmupWeeks.find((w) => w.projectId === projectId) ?? null,

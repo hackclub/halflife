@@ -135,7 +135,16 @@ export const POST = withRoute(async (req: NextRequest) => {
     }
   }
 
-  const summary = { attempted: pending.length, synced, skipped, failed, withdrawn, withdrawFailed, deferred, deferredFailed }
+  const summary = {
+    attempted: pending.length,
+    synced,
+    skipped,
+    failed,
+    withdrawn,
+    withdrawFailed,
+    deferred,
+    deferredFailed,
+  }
   await recordSyncRun("ari_ship", summary)
   return ok(summary)
 })

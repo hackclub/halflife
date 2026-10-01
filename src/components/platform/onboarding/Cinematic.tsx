@@ -212,7 +212,11 @@ function Stage({ goal }: { goal: PrinterGoal }) {
           <p className="label mb-3 text-navy-faint">The Doomscroller</p>
           <div className="flex flex-col gap-3">
             {MOCK_REELS.map((r) => (
-              <div key={r.who} className="relative overflow-hidden rounded-xl bg-navy" style={{ aspectRatio: "9 / 13" }}>
+              <div
+                key={r.who}
+                className="relative overflow-hidden rounded-xl bg-navy"
+                style={{ aspectRatio: "9 / 13" }}
+              >
                 <Image src={r.shot} alt="" fill sizes="552px" className="object-cover" />
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent p-2.5 pt-8">
                   <p className="text-[0.72rem] font-bold text-white">{r.who}</p>

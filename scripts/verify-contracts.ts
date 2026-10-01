@@ -213,7 +213,11 @@ async function bodies() {
     ["buy", purchaseSchema, { shopItemId: "printer-ender-3-v3-se", quantity: 1 }],
     ["repoSync · on", repoSyncSettingsSchema, { enabled: true, repo: "https://github.com/maker/hackpad" }],
     ["repoSync · off", repoSyncSettingsSchema, { enabled: false }],
-    ["onboarding · repo step", onboardingStepSchema, { step: "repo", enabled: true, repo: "https://github.com/maker/hackpad" }],
+    [
+      "onboarding · repo step",
+      onboardingStepSchema,
+      { step: "repo", enabled: true, repo: "https://github.com/maker/hackpad" },
+    ],
     ["onboarding · repo skipped", onboardingStepSchema, { step: "repo", enabled: false }],
   ]
 
@@ -515,8 +519,7 @@ async function bodies() {
     const adjusted = renderJournal(project, [entry({ hoursClaimed: 4, hoursApproved: 2 })])
     check(
       "repo-files · an approved adjustment wins",
-      adjusted.content.includes("**2h** _(4h logged, adjusted by a reviewer)_") &&
-        !adjusted.content.includes("**4h**"),
+      adjusted.content.includes("**2h** _(4h logged, adjusted by a reviewer)_") && !adjusted.content.includes("**4h**"),
     )
 
     // An empty project still renders a coherent file rather than a bare title.
@@ -526,8 +529,24 @@ async function bodies() {
     const bom = renderBom(
       project,
       [
-        { name: "ESP32-C3", purpose: "Main loop", quantity: 2, unitCostUsd: 3, vendor: "LCSC", link: "https://lcsc.com/x", updatedAt: new Date("2026-10-06T09:00:00Z") },
-        { name: "OLED", purpose: "Screen", quantity: 1, unitCostUsd: 4, vendor: "AliExpress", link: null, updatedAt: new Date("2026-10-05T09:00:00Z") },
+        {
+          name: "ESP32-C3",
+          purpose: "Main loop",
+          quantity: 2,
+          unitCostUsd: 3,
+          vendor: "LCSC",
+          link: "https://lcsc.com/x",
+          updatedAt: new Date("2026-10-06T09:00:00Z"),
+        },
+        {
+          name: "OLED",
+          purpose: "Screen",
+          quantity: 1,
+          unitCostUsd: 4,
+          vendor: "AliExpress",
+          link: null,
+          updatedAt: new Date("2026-10-05T09:00:00Z"),
+        },
       ],
       3,
       44,
@@ -538,7 +557,17 @@ async function bodies() {
     check("repo-files · bom reports what is left", bom.content.includes("$31.00 left"))
     const over = renderBom(
       project,
-      [{ name: "Fancy MCU", purpose: "Overkill", quantity: 1, unitCostUsd: 99, vendor: "Mouser", link: null, updatedAt: new Date("2026-10-06T09:00:00Z") }],
+      [
+        {
+          name: "Fancy MCU",
+          purpose: "Overkill",
+          quantity: 1,
+          unitCostUsd: 99,
+          vendor: "Mouser",
+          link: null,
+          updatedAt: new Date("2026-10-06T09:00:00Z"),
+        },
+      ],
       0,
       44,
     )

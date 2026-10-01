@@ -89,8 +89,7 @@ export const bomExtrasSchema = z.object({ taxShippingUsd: z.number().min(0).max(
  * at a repo the caller never picked without the token having to be able to push
  * there.
  */
-export const REPO_URL_RE =
-  /^(https?:\/\/)?[A-Za-z0-9.-]+\/[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+){1,3}\/?$/
+export const REPO_URL_RE = /^(https?:\/\/)?[A-Za-z0-9.-]+\/[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+){1,3}\/?$/
 
 /**
  * Repo sync, switched per project.

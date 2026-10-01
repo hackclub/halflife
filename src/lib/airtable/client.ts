@@ -96,8 +96,7 @@ export async function withRateLimitRetry<T>(
       return await fn()
     } catch (err) {
       const isRateLimit = err instanceof AirtableError && err.isRateLimit
-      const isTransient =
-        isRateLimit || (retryServerErrors && err instanceof AirtableError && err.status >= 500)
+      const isTransient = isRateLimit || (retryServerErrors && err instanceof AirtableError && err.status >= 500)
       if (!isTransient || attempt >= maxAttempts) throw err
 
       const wait = isRateLimit ? 30_000 : baseSleepMs * 2 ** (attempt - 1) + Math.random() * 500

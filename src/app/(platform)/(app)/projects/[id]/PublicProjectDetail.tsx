@@ -41,7 +41,9 @@ export function PublicProjectDetail({ data }: { data: PublicProjectData }) {
         <div className="grid gap-5 @3xl:grid-cols-[minmax(0,1fr)_260px] @3xl:gap-8">
           <div
             className="relative grid aspect-[21/9] place-items-center overflow-hidden rounded-2xl @3xl:col-start-2 @3xl:aspect-[4/3]"
-            style={{ background: data.thumbnail ? "var(--color-navy)" : warmup ? "var(--color-violet-pale)" : week?.accent }}
+            style={{
+              background: data.thumbnail ? "var(--color-navy)" : warmup ? "var(--color-violet-pale)" : week?.accent,
+            }}
           >
             {data.thumbnail ? (
               <ProjectThumb thumb={data.thumbnail} className="h-full w-full" />

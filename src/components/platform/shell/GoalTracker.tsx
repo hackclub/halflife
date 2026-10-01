@@ -44,11 +44,7 @@ export function GoalTracker({ className }: { className?: string }) {
           reads as cropped rather than propped up. The name beside it is its
           label, so the image itself stays silent. */}
       <span className="pointer-events-none absolute top-3 right-3 size-20 @min-[16rem]:top-4 @min-[16rem]:right-4 @min-[16rem]:size-24">
-        <PrinterPhoto
-          id={goal.id}
-          sizes="96px"
-          className="size-full rounded-xl border border-line/80"
-        />
+        <PrinterPhoto id={goal.id} sizes="96px" className="size-full rounded-xl border border-line/80" />
       </span>
       <p className="mt-9 max-w-[62%] text-[0.92rem] leading-snug font-semibold text-navy @min-[16rem]:mt-11 @min-[16rem]:max-w-[60%] @min-[16rem]:text-[1rem]">
         You are on track to get a <span className="text-teal-ink">{goal.name}</span>

@@ -81,10 +81,7 @@ export function weekDateRange(start: Date, week: number): { start: Date; end: Da
  * its UTC date is the program's first day, and week N's last day is 7N - 1
  * days after it.
  */
-function midnightAfterWeek(
-  settings: Pick<ProgramSettings, "eventStartDate" | "programTimezone">,
-  week: number,
-): Date {
+function midnightAfterWeek(settings: Pick<ProgramSettings, "eventStartDate" | "programTimezone">, week: number): Date {
   const start = settings.eventStartDate
   // The Monday after the week, as a wall-clock midnight in the program zone.
   const wall = Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate() + week * 7)
@@ -127,10 +124,7 @@ export function weekClosesAt(
  * Monday in the program's timezone, a minute after the week before it closes.
  * Week 1's is the program's first midnight.
  */
-export function weekOpensAt(
-  settings: Pick<ProgramSettings, "eventStartDate" | "programTimezone">,
-  week: number,
-): Date {
+export function weekOpensAt(settings: Pick<ProgramSettings, "eventStartDate" | "programTimezone">, week: number): Date {
   return midnightAfterWeek(settings, week - 1)
 }
 

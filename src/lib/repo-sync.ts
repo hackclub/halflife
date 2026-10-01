@@ -96,11 +96,7 @@ export async function scheduleRepoSync(themeProjectId: string): Promise<void> {
  * because at that instant it is not on yet — it is the commit that decides
  * whether it can be. Everything else cooperates with the gate.
  */
-export async function runProjectSync(
-  themeProjectId: string,
-  manual: boolean,
-  force = false,
-): Promise<WrittenFile[]> {
+export async function runProjectSync(themeProjectId: string, manual: boolean, force = false): Promise<WrittenFile[]> {
   // Wait out another run on the same project rather than racing it for the ref.
   if (inFlight.has(themeProjectId)) {
     await waitForFree(themeProjectId)
@@ -216,13 +212,7 @@ async function syncOnce(themeProjectId: string, manual: boolean, force = false):
   const pinForge = repoRefFromLink(project.repoSyncRepo)?.forge ?? repoRefFromLink(project.githubRepo)?.forge
   const parsed = targetRepo ? parseRepoRef(targetRepo, pinForge ? { forge: pinForge } : {}) : null
   if (!parsed) {
-    await recordFailure(
-      project.id,
-      project.userId,
-      targetRepo ?? "(none)",
-      "No repo is set for this project.",
-      manual,
-    )
+    await recordFailure(project.id, project.userId, targetRepo ?? "(none)", "No repo is set for this project.", manual)
     return []
   }
   const repo = parsed.fullName
@@ -279,10 +269,7 @@ async function syncOnce(themeProjectId: string, manual: boolean, force = false):
       updatedAt: l.updatedAt,
     }))
 
-    const files = [
-      renderJournal(meta, entries),
-      renderBom(meta, bomLines, project.bomTaxShippingUsd ?? 0, grantUsd),
-    ]
+    const files = [renderJournal(meta, entries), renderBom(meta, bomLines, project.bomTaxShippingUsd ?? 0, grantUsd)]
 
     const branch = await defaultBranchOf(creds, parsed)
     const written = await commitFiles(creds, parsed, branch, files, `Sync ${meta.title} from Half Life`)
@@ -291,7 +278,10 @@ async function syncOnce(themeProjectId: string, manual: boolean, force = false):
     await prisma.$transaction([
       prisma.repoSyncRun.update({
         where: { id: run.id },
-        data: { files: written.map((f) => ({ path: f.path, sha: f.sha, bytes: f.bytes, unchanged: f.unchanged })), finishedAt: new Date() },
+        data: {
+          files: written.map((f) => ({ path: f.path, sha: f.sha, bytes: f.bytes, unchanged: f.unchanged })),
+          finishedAt: new Date(),
+        },
       }),
       prisma.themeProject.update({
         where: { id: project.id },
@@ -335,17 +325,23 @@ async function recordFailure(
   runId?: string,
 ): Promise<void> {
   console.error(`[repo-sync] ${repo} for ${themeProjectId}: ${message}`)
-  await prisma.$transaction([
-    ...(runId
-      ? [
-          prisma.repoSyncRun.update({
-            where: { id: runId },
-            data: { error: message, finishedAt: new Date() },
-          }),
-        ]
-      : [prisma.repoSyncRun.create({ data: { themeProjectId, repo, error: message, manual, finishedAt: new Date() } })]),
-    prisma.themeProject.update({ where: { id: themeProjectId }, data: { repoSyncError: message } }),
-  ]).catch((err) => console.error("[repo-sync] failed to record failure:", err))
+  await prisma
+    .$transaction([
+      ...(runId
+        ? [
+            prisma.repoSyncRun.update({
+              where: { id: runId },
+              data: { error: message, finishedAt: new Date() },
+            }),
+          ]
+        : [
+            prisma.repoSyncRun.create({
+              data: { themeProjectId, repo, error: message, manual, finishedAt: new Date() },
+            }),
+          ]),
+      prisma.themeProject.update({ where: { id: themeProjectId }, data: { repoSyncError: message } }),
+    ])
+    .catch((err) => console.error("[repo-sync] failed to record failure:", err))
 
   await logAudit({
     action: AuditAction.REPO_SYNC_FAILURE,

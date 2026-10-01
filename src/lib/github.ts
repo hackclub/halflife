@@ -174,7 +174,9 @@ async function via(forge: Forge, route: Route, path: string): Promise<Response> 
     }
     if (res.status >= 500) {
       const body = await res.text().catch(() => "")
-      console.warn(`[forge] ${forge.id} ${route} GET ${path} → ${res.status} (attempt ${attempt + 1}): ${body.slice(0, 200)}`)
+      console.warn(
+        `[forge] ${forge.id} ${route} GET ${path} → ${res.status} (attempt ${attempt + 1}): ${body.slice(0, 200)}`,
+      )
       why = `${forge.label} returned an error (${res.status}).`
       continue
     }

@@ -238,9 +238,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
   // The fallback is for a season sheet opened before its project row landed;
   // it must never pick the warm-up project, which has no season week.
   const project =
-    projects.find((p) => isWeeksProject(week, p)) ??
-    projects.find((p) => p.weekId !== WARMUP_WEEK_ID) ??
-    projects[0]
+    projects.find((p) => isWeeksProject(week, p)) ?? projects.find((p) => p.weekId !== WARMUP_WEEK_ID) ?? projects[0]
 
   // The claim is what the maker types. The photographs are what makes it a
   // claim rather than a number, which is why the bar rises with it — and they
@@ -427,12 +425,12 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
                 : uploading > 0
                   ? `Uploading ${uploading === 1 ? "an image" : `${uploading} images`}…`
                   : missing
-                  ? missing
-                  : editing
-                    ? "Saving replaces this entry. It keeps its place on the map."
-                    : toFloor > 0
-                      ? `${fmtH(toFloor)} more before you can ${week.id === WARMUP_WEEK_ID ? "submit it" : "wrap up the week"}.`
-                      : "Submit your project when it's done!"}
+                    ? missing
+                    : editing
+                      ? "Saving replaces this entry. It keeps its place on the map."
+                      : toFloor > 0
+                        ? `${fmtH(toFloor)} more before you can ${week.id === WARMUP_WEEK_ID ? "submit it" : "wrap up the week"}.`
+                        : "Submit your project when it's done!"}
             </p>
           </div>
 
@@ -1565,9 +1563,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
   // The fallback is for a season sheet opened before its project row landed;
   // it must never pick the warm-up project, which has no season week.
   const project =
-    projects.find((p) => isWeeksProject(week, p)) ??
-    projects.find((p) => p.weekId !== WARMUP_WEEK_ID) ??
-    projects[0]
+    projects.find((p) => isWeeksProject(week, p)) ?? projects.find((p) => p.weekId !== WARMUP_WEEK_ID) ?? projects[0]
 
   const [step, setStep] = useState(1)
   // R2 object keys, not flags: what these ask for is evidence, and a boolean
@@ -1606,7 +1602,8 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
   // own key, so the week's timeline shows it where it happened rather than
   // swallowing it inside the submission.
   const reelCheckpointId = week.projectId ? `wu-${week.projectId}-reel-submission` : `w${week.id}-reel-submission`
-  const closingSubject = week.id === WARMUP_WEEK_ID ? `Warm-up: ${project?.name ?? "my project"}` : `Week ${week.id}: ${week.theme}`
+  const closingSubject =
+    week.id === WARMUP_WEEK_ID ? `Warm-up: ${project?.name ?? "my project"}` : `Week ${week.id}: ${week.theme}`
   const closingCaption = `${closingSubject} ${isBuild ? "built" : "designed"}.`
   const buildNotes = works === "no" && writeup.trim() ? writeup.trim() : undefined
 

@@ -14,16 +14,14 @@ type Kind = "session" | "hackatime"
  * a batch another reviewer's live claim covers — showing the field without a
  * claim would be an input that always errors.
  */
-export function HoursApprovalForm(props: Readonly<{ kind: Kind; id: string; claimed: boolean; approved: number | null }>) {
+export function HoursApprovalForm(
+  props: Readonly<{ kind: Kind; id: string; claimed: boolean; approved: number | null }>,
+) {
   if (!props.claimed) return null
   return <HoursApprovalFormInner {...props} />
 }
 
-function HoursApprovalFormInner({
-  kind,
-  id,
-  approved,
-}: Readonly<{ kind: Kind; id: string; approved: number | null }>) {
+function HoursApprovalFormInner({ kind, id, approved }: Readonly<{ kind: Kind; id: string; approved: number | null }>) {
   const router = useRouter()
   const [value, setValue] = useState(approved === null ? "" : String(approved))
   const [busy, setBusy] = useState(false)

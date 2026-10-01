@@ -18,7 +18,15 @@ export default async function AdminOverviewPage() {
 
   const [counters, syncs] = await Promise.all([
     getAdminCounters(),
-    getLatestSyncRuns(["hackatime", "airtable_ysws", "airtable_rsvp", "airtable_loops", "ari_ship", "claim_sweep", "printer_reconcile"]),
+    getLatestSyncRuns([
+      "hackatime",
+      "airtable_ysws",
+      "airtable_rsvp",
+      "airtable_loops",
+      "ari_ship",
+      "claim_sweep",
+      "printer_reconcile",
+    ]),
   ])
 
   return (

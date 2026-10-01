@@ -93,7 +93,10 @@ function htmlToMarkdown(html: string): string {
     .replace(/<br\s*\/?>/gi, "\n")
     // Headings: GitHub renders `###` and is indifferent to which level was
     // stored, so the entry's own hierarchy is kept.
-    .replace(/<h([1-6])[^>]*>(.*?)<\/h\1>/gis, (_m, level: string, inner: string) => `${"#".repeat(Number(level))} ${inner.trim()}\n\n`)
+    .replace(
+      /<h([1-6])[^>]*>(.*?)<\/h\1>/gis,
+      (_m, level: string, inner: string) => `${"#".repeat(Number(level))} ${inner.trim()}\n\n`,
+    )
     // Images before links: an <a> wrapping an <img> would otherwise swallow it.
     .replace(/<img[^>]*?src=["']([^"']+)["'][^>]*?alt=["']([^"']*)["'][^>]*>/gi, "![$2]($1)")
     .replace(/<img[^>]*?alt=["']([^"']*)["'][^>]*?src=["']([^"']+)["'][^>]*>/gi, "![$1]($2)")
@@ -279,10 +282,7 @@ export function renderBom(
   const parts = items.reduce((n, l) => n + l.quantity * l.unitCostUsd, 0)
   const total = parts + taxShippingUsd
 
-  lines.push(
-    row("Part", "What it's for", "Qty", "Unit", "Total", "Vendor"),
-    "| --- | --- | --- | --- | --- | --- |",
-  )
+  lines.push(row("Part", "What it's for", "Qty", "Unit", "Total", "Vendor"), "| --- | --- | --- | --- | --- | --- |")
   for (const item of items) {
     const part = item.link ? `[${item.name}](${item.link})` : item.name
     const vendor = item.vendor && item.link ? `[${item.vendor}](${item.link})` : (item.vendor ?? "—")

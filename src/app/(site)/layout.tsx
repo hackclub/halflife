@@ -25,9 +25,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         <PlausibleAnalytics />
       </head>
-      <body className="min-h-full flex flex-col bg-hl-ink text-hl-paper">
-        {children}
-      </body>
+      <body className="min-h-full flex flex-col bg-hl-ink text-hl-paper">{children}</body>
     </html>
   )
 }

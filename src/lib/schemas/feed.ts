@@ -29,7 +29,10 @@ export const createPostSchema = z
      */
     checkpointKey: z
       .string()
-      .regex(/^(w([1-9]|10)-reel-(idea|submission|\d{1,2})|wu-[A-Za-z0-9_]{1,64}-reel-submission)$/, "Not a reel checkpoint")
+      .regex(
+        /^(w([1-9]|10)-reel-(idea|submission|\d{1,2})|wu-[A-Za-z0-9_]{1,64}-reel-submission)$/,
+        "Not a reel checkpoint",
+      )
       .nullish(),
     contentType: boundedText(100).nullish(),
     byteSize: z.number().int().min(0).nullish(),

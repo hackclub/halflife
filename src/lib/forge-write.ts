@@ -101,10 +101,7 @@ export async function forgeCredentials(userId: string, forge: Forge): Promise<Fo
 }
 async function call(creds: ForgeCredentials, path: string, init: RequestInit): Promise<Response> {
   const forge = creds.forge
-  const url =
-    forge.id === "gitlab"
-      ? `https://gitlab.com/api/v4/${path}`
-      : `https://api.github.com/${path}`
+  const url = forge.id === "gitlab" ? `https://gitlab.com/api/v4/${path}` : `https://api.github.com/${path}`
 
   const headers: Record<string, string> =
     forge.id === "gitlab"
@@ -426,9 +423,13 @@ async function commitGitLab(
   // The branch tip, for the optimistic guard. `last_commit_id` makes GitLab
   // refuse the commit if the file has moved since; the tree listing below is
   // read at this same tip, so the two agree.
-  const treeRes = await call(creds, `projects/${project}/repository/tree?ref=${encodeURIComponent(branch)}&per_page=100`, {
-    method: "GET",
-  })
+  const treeRes = await call(
+    creds,
+    `projects/${project}/repository/tree?ref=${encodeURIComponent(branch)}&per_page=100`,
+    {
+      method: "GET",
+    },
+  )
   if (treeRes.status === 404) {
     throw new HttpError("UNPROCESSABLE", `The repo has no branch called ${branch}.`)
   }
@@ -466,9 +467,13 @@ async function commitGitLab(
   await Promise.all(
     files.map(async (file) => {
       const path = encodeURIComponent(file.path)
-      const res = await call(creds, `projects/${project}/repository/files/${path}/raw?ref=${encodeURIComponent(branch)}`, {
-        method: "GET",
-      })
+      const res = await call(
+        creds,
+        `projects/${project}/repository/files/${path}/raw?ref=${encodeURIComponent(branch)}`,
+        {
+          method: "GET",
+        },
+      )
       // A 404 is "not there yet", which is a create. Anything else non-ok is a
       // real problem and is left for the commit to surface.
       const present = res.status !== 404

@@ -6,7 +6,11 @@ import { getThemeDef } from "@/lib/config/program"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { hasPermission, Permission } from "@/lib/permissions"
 import prisma from "@/lib/prisma"
-import { listRecentCommentsForModeration, listRecentPostsForModeration, listRecentPublicReels } from "@/lib/queries/admin"
+import {
+  listRecentCommentsForModeration,
+  listRecentPostsForModeration,
+  listRecentPublicReels,
+} from "@/lib/queries/admin"
 
 export const dynamic = "force-dynamic"
 
@@ -53,8 +57,8 @@ export default async function AdminFeedPage() {
     <section className="hl-stack">
       <h1>Post to the feed</h1>
       <p className="hl-hint">
-        Announcements are pinned above every other reel and are only visible to accounts that can manage the feed. Everything else
-        lands in the Doomscroller in the ordinary order.
+        Announcements are pinned above every other reel and are only visible to accounts that can manage the feed.
+        Everything else lands in the Doomscroller in the ordinary order.
       </p>
       <PostComposer projects={options} canAnnounce={hasPermission(roles, Permission.MANAGE_FEED)} />
 
@@ -100,7 +104,9 @@ export default async function AdminFeedPage() {
             ))}
           </Table>
         )}
-        <p className="hl-hint">A hidden reel stays as a record; restoring puts it back. A hidden comment cannot be restored yet.</p>
+        <p className="hl-hint">
+          A hidden reel stays as a record; restoring puts it back. A hidden comment cannot be restored yet.
+        </p>
       </Panel>
 
       <Panel title="Recent comments">
@@ -114,7 +120,9 @@ export default async function AdminFeedPage() {
                 <td>
                   {comment.hiddenAt ? <Badge tone="danger">hidden</Badge> : null}
                   <span className="hl-hint"> {preview(comment.body)}</span>
-                  {comment.post ? <div className="hl-hint">on {preview(comment.post.caption, 60) || "a reel"}</div> : null}
+                  {comment.post ? (
+                    <div className="hl-hint">on {preview(comment.post.caption, 60) || "a reel"}</div>
+                  ) : null}
                 </td>
                 <td className="hl-mono">{whenFormat.format(comment.createdAt)}</td>
                 <td>

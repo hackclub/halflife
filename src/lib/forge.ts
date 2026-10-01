@@ -97,7 +97,10 @@ export const ALL_FORGES: readonly Forge[] = [FORGES.github, FORGES.gitlab]
 
 /** The forge a hostname belongs to, or null when it is not one we speak. */
 export function forgeByHostname(hostname: string): Forge | null {
-  const host = hostname.trim().toLowerCase().replace(/^www\./, "")
+  const host = hostname
+    .trim()
+    .toLowerCase()
+    .replace(/^www\./, "")
   for (const forge of ALL_FORGES) {
     if (forge.hostname === host) return forge
     if (forge.aliases.some((a) => a.replace(/^www\./, "") === host)) return forge

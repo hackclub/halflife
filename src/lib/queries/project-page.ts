@@ -67,7 +67,8 @@ export type TimelineItem =
     }
 
 /** One phase's review state, for the block above the repo checks. */
-export interface PhaseReview {  phase: Phase
+export interface PhaseReview {
+  phase: Phase
   status: PhaseStatus
   /** The reviewer's note on the latest decision, if any. */
   comments: string | null

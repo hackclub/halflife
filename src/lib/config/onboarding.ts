@@ -127,8 +127,7 @@ export const STARTER_PROJECTS = [
     themes: ALL_THEMES,
     title: "Starbie",
     // The project's own README, trimmed.
-    description:
-      "A tiny motion-controlled digital pet, basically a desktop Tamagotchi. Totally not a Starboy.",
+    description: "A tiny motion-controlled digital pet, basically a desktop Tamagotchi. Totally not a Starboy.",
     parts: ["XIAO ESP32-C3", "OLED screen", "MPU6050 motion sensor", "DHT11 sensor"],
     repoUrl: "https://github.com/SharKingStudios/Starbie",
     guideUrl: "https://github.com/SharKingStudios/Starbie/blob/main/Week%201%20Guide.md",
@@ -179,11 +178,7 @@ export const WEEK_INTROS = [
     headline: "DESIGN YOUR PCB",
     primer:
       "A printed circuit board is a sheet of fibreglass with copper traces etched into it, so components solder straight onto the board instead of being wired by hand.",
-    examples: [
-      "A PCB keychain!",
-      "A flight controller!",
-      "A devboard from your favorite microcontroller!",
-    ],
+    examples: ["A PCB keychain!", "A flight controller!", "A devboard from your favorite microcontroller!"],
   },
 ] as const satisfies readonly WeekIntro[]
 

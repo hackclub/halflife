@@ -26,9 +26,7 @@ export function WarmupStart() {
     return (
       <>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <p className="hand text-[0.86rem] text-navy-soft">
-            warm-ups close {warmupDeadline}.
-          </p>
+          <p className="hand text-[0.86rem] text-navy-soft">warm-ups close {warmupDeadline}.</p>
           <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
             Start another warm-up project <IconArrowRight className="text-base" />
           </Button>
@@ -48,7 +46,8 @@ export function WarmupStart() {
             </h2>
             <p className="mt-3 max-w-[58ch] text-[0.95rem] leading-relaxed text-navy-soft">
               {opensOn ? `Week 1 opens ${opensOn}.` : "Week 1 has not opened yet."} Until then, build any hardware
-              project you like, no theme. You journal it and submit it for review as a design that requests funding or as a build.
+              project you like, no theme. You journal it and submit it for review as a design that requests funding or
+              as a build.
             </p>
             <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3">
               <Button variant="solid" onClick={() => setOpen(true)}>

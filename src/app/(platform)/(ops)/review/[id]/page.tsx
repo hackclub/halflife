@@ -199,7 +199,12 @@ export default async function ReviewDetailPage({ params }: Props) {
                 <td className="hl-mono">{link.hackatimeProject}</td>
                 <td>
                   <div>{(link.hoursApproved ?? (link.cachedSeconds ?? 0) / 3600).toFixed(1)}h</div>
-                  <HoursApprovalForm kind="hackatime" id={link.id} claimed={claimedByMe} approved={link.hoursApproved} />
+                  <HoursApprovalForm
+                    kind="hackatime"
+                    id={link.id}
+                    claimed={claimedByMe}
+                    approved={link.hoursApproved}
+                  />
                 </td>
                 <td className="hl-mono">{link.cachedAt?.toLocaleString() ?? "never"}</td>
                 <td className="hl-hint">{link.lastFetchError ?? ""}</td>

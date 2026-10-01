@@ -93,7 +93,10 @@ export async function getJournalFeed(): Promise<JournalRow[]> {
       // A tracked entry's time arrives (and is paid) through the Hackatime
       // link, so advertising its claimed minutes here would show hours the
       // paid totals deliberately exclude.
-      minutes: session.hoursSource === "HACKATIME_TRACKED" ? 0 : Math.round((session.hoursApproved ?? session.hoursClaimed) * 60),
+      minutes:
+        session.hoursSource === "HACKATIME_TRACKED"
+          ? 0
+          : Math.round((session.hoursApproved ?? session.hoursClaimed) * 60),
       day: session.effectiveDate ?? effectiveDateFor(session.createdAt, settings.programTimezone),
       when: session.createdAt.toISOString(),
     }

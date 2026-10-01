@@ -154,91 +154,93 @@ function weekOf(themeIndex: number, phase: Phase): number {
 }
 
 export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
-  const [user, projects, sessions, links, posts, submissions, balances, settings, owedReels, roles] = await Promise.all([
-    prisma.user.findUniqueOrThrow({
-      where: { id: userId },
-      select: {
-        name: true,
-        image: true,
-        slackId: true,
-        hardwareExperience: true,
-        onboardingCompletedAt: true,
-        printerGoalId: true,
-        currentStreak: true,
-        lastStreakDate: true,
-        submissionExtensionUntil: true,
-      },
-    }),
-    prisma.themeProject.findMany({
-      where: { userId, deletedAt: null },
-      select: {
-        id: true,
-        theme: true,
-        title: true,
-        description: true,
-        tier: true,
-        requestedTier: true,
-        starterProjectId: true,
-        warmupPhase: true,
-        githubRepo: true,
-        coverImageKey: true,
-        designStatus: true,
-        buildStatus: true,
-        designApprovedHours: true,
-        approvedHours: true,
-        submissionExtensionUntil: true,
-      },
-    }),
-    // Ordered, because the trail's Nth entry node IS the Nth session written.
-    prisma.workSession.findMany({
-      where: { themeProject: { userId, deletedAt: null }, deletedAt: null },
-      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-      select: {
-        id: true,
-        themeProjectId: true,
-        phase: true,
-        content: true,
-        title: true,
-        hoursClaimed: true,
-        hoursApproved: true,
-        hoursSource: true,
-        createdAt: true,
-        media: { select: { objectKey: true } },
-        timelapses: { select: { objectKey: true, externalId: true } },
-      },
-    }),
-    prisma.hackatimeLink.findMany({
-      where: { themeProject: { userId, deletedAt: null } },
-      select: { themeProjectId: true, phase: true, hoursApproved: true, cachedSeconds: true },
-    }),
-    prisma.post.findMany({
-      // Every reel, not only the ones bound to a checkpoint: a project's
-      // stand-in picture may come from any of them (see the thumbnail below).
-      where: { userId, deletedAt: null },
-      orderBy: { createdAt: "asc" },
-      select: {
-        checkpointKey: true,
-        caption: true,
-        createdAt: true,
-        themeProjectId: true,
-        thumbnailKey: true,
-        objectKey: true,
-      },
-    }),
-    prisma.phaseSubmission.findMany({
-      where: { themeProject: { userId, deletedAt: null } },
-      orderBy: { createdAt: "asc" },
-      select: { themeProjectId: true, phase: true, createdAt: true },
-    }),
-    // Not in a transaction: this is a read for display, and BEGIN and COMMIT
-    // are two more round trips to a database ~110ms away from a laptop —
-    // the slowest part of the whole snapshot. Spending still reads its
-    // balance inside the transaction that spends it.
-    getBalances(prisma, userId),
-    getProgramSettings(),
-    getOwedReelKeys(userId),
-    getUserRoles(userId),
-  ])
+  const [user, projects, sessions, links, posts, submissions, balances, settings, owedReels, roles] = await Promise.all(
+    [
+      prisma.user.findUniqueOrThrow({
+        where: { id: userId },
+        select: {
+          name: true,
+          image: true,
+          slackId: true,
+          hardwareExperience: true,
+          onboardingCompletedAt: true,
+          printerGoalId: true,
+          currentStreak: true,
+          lastStreakDate: true,
+          submissionExtensionUntil: true,
+        },
+      }),
+      prisma.themeProject.findMany({
+        where: { userId, deletedAt: null },
+        select: {
+          id: true,
+          theme: true,
+          title: true,
+          description: true,
+          tier: true,
+          requestedTier: true,
+          starterProjectId: true,
+          warmupPhase: true,
+          githubRepo: true,
+          coverImageKey: true,
+          designStatus: true,
+          buildStatus: true,
+          designApprovedHours: true,
+          approvedHours: true,
+          submissionExtensionUntil: true,
+        },
+      }),
+      // Ordered, because the trail's Nth entry node IS the Nth session written.
+      prisma.workSession.findMany({
+        where: { themeProject: { userId, deletedAt: null }, deletedAt: null },
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        select: {
+          id: true,
+          themeProjectId: true,
+          phase: true,
+          content: true,
+          title: true,
+          hoursClaimed: true,
+          hoursApproved: true,
+          hoursSource: true,
+          createdAt: true,
+          media: { select: { objectKey: true } },
+          timelapses: { select: { objectKey: true, externalId: true } },
+        },
+      }),
+      prisma.hackatimeLink.findMany({
+        where: { themeProject: { userId, deletedAt: null } },
+        select: { themeProjectId: true, phase: true, hoursApproved: true, cachedSeconds: true },
+      }),
+      prisma.post.findMany({
+        // Every reel, not only the ones bound to a checkpoint: a project's
+        // stand-in picture may come from any of them (see the thumbnail below).
+        where: { userId, deletedAt: null },
+        orderBy: { createdAt: "asc" },
+        select: {
+          checkpointKey: true,
+          caption: true,
+          createdAt: true,
+          themeProjectId: true,
+          thumbnailKey: true,
+          objectKey: true,
+        },
+      }),
+      prisma.phaseSubmission.findMany({
+        where: { themeProject: { userId, deletedAt: null } },
+        orderBy: { createdAt: "asc" },
+        select: { themeProjectId: true, phase: true, createdAt: true },
+      }),
+      // Not in a transaction: this is a read for display, and BEGIN and COMMIT
+      // are two more round trips to a database ~110ms away from a laptop —
+      // the slowest part of the whole snapshot. Spending still reads its
+      // balance inside the transaction that spends it.
+      getBalances(prisma, userId),
+      getProgramSettings(),
+      getOwedReelKeys(userId),
+      getUserRoles(userId),
+    ],
+  )
 
   const byTheme = new Map(projects.map((p) => [p.theme, p]))
   const progress: Record<string, CheckpointSnapshot> = {}

@@ -523,19 +523,11 @@ export function ReelViewer() {
                   aria-label={`${current.author.name ?? "A maker"}'s project: ${current.project.title || current.project.theme}`}
                   className="mb-1 rounded-full ring-2 ring-white transition-transform hover:scale-105 md:ring-navy"
                 >
-                  <Avatar
-                    name={current.author.name}
-                    image={current.author.image}
-                    className="size-11 text-[1.05rem]"
-                  />
+                  <Avatar name={current.author.name} image={current.author.image} className="size-11 text-[1.05rem]" />
                 </Link>
               ) : (
                 <span className="mb-1 rounded-full ring-2 ring-white md:ring-navy">
-                  <Avatar
-                    name={current.author.name}
-                    image={current.author.image}
-                    className="size-11 text-[1.05rem]"
-                  />
+                  <Avatar name={current.author.name} image={current.author.image} className="size-11 text-[1.05rem]" />
                 </span>
               )}
 

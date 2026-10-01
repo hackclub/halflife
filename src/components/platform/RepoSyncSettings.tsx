@@ -200,8 +200,8 @@ export function RepoSyncSettings({
           >
             <IconWarning className="mt-0.5 shrink-0" />
             <span>
-              The last sync did not land: {state.error}
-              {" "}Reconnect {state.forge === "gitlab" ? "GitLab" : "GitHub"} and try again.
+              The last sync did not land: {state.error} Reconnect {state.forge === "gitlab" ? "GitLab" : "GitHub"} and
+              try again.
             </span>
           </p>
         )}
@@ -238,7 +238,13 @@ export function RepoSyncSettings({
         </p>
       ) : state.repos.length === 0 ? (
         <p className="hand text-[0.86rem] text-navy-soft">
-          no repositories you can push to were found. Make one on {state.linkedForges.length > 1 ? "GitHub or GitLab" : state.linkedForges[0] === "gitlab" ? "GitLab" : "GitHub"}, then check again.
+          no repositories you can push to were found. Make one on{" "}
+          {state.linkedForges.length > 1
+            ? "GitHub or GitLab"
+            : state.linkedForges[0] === "gitlab"
+              ? "GitLab"
+              : "GitHub"}
+          , then check again.
         </p>
       ) : (
         <label className="grid gap-1.5">

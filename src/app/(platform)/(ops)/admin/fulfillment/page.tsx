@@ -213,8 +213,8 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
           </Table>
         )}
         <p className="hl-hint">
-          A printer is earned by shipping all five themes; the address is snapshotted from the participant&apos;s HCA profile when
-          it is locked, so later edits there cannot move a package already being packed.
+          A printer is earned by shipping all five themes; the address is snapshotted from the participant&apos;s HCA
+          profile when it is locked, so later edits there cannot move a package already being packed.
         </p>
       </Panel>
     </div>

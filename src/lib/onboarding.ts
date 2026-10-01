@@ -303,11 +303,7 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
   // The step this answer lands on: normally the next one, further when the
   // answer settles the steps in between (see above).
   const tookStarter = answer.step === "week" && typeof answer.starterProjectId === "string"
-  const next = tookStarter
-    ? stepIndexOf("tracking")
-    : answer.step === "project"
-      ? stepIndexOf("idea") + 1
-      : index + 1
+  const next = tookStarter ? stepIndexOf("tracking") : answer.step === "project" ? stepIndexOf("idea") + 1 : index + 1
   // Only ever forward: re-answering step 3 from step 5 must not rewind anyone.
   const reached = Math.max(before.reached, next)
   const finishing = reached >= ONBOARDING_STEP_COUNT
@@ -335,8 +331,7 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
   // here: this returns the request and the route performs it after the response
   // has gone. That way a repo the token cannot push to refuses the *sync*, not
   // the finishing of the setup flow.
-  const repoRequest =
-    answer.step === "repo" && answer.enabled && answer.repo ? { repo: answer.repo } : null
+  const repoRequest = answer.step === "repo" && answer.enabled && answer.repo ? { repo: answer.repo } : null
 
   const { projectAfter, userAfter } = await prisma.$transaction(async (tx) => {
     const projectAfter = touchesProject
@@ -357,7 +352,6 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 
     return { projectAfter, userAfter }
   })
-
 
   const state: OnboardingState = {
     ...before,

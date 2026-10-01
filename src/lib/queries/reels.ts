@@ -63,9 +63,7 @@ function titleFor(
   if (slot === "submission") return "Closing reel"
   if (checkpointKey && slot && /^\d+$/.test(slot)) {
     const week = /^w(\d{1,2})-/.exec(checkpointKey)?.[1]
-    const build = week
-      ? Number(week) > DESIGN_WEEKS
-      : project !== null && warmupPhaseOf(project) === Phase.BUILD
+    const build = week ? Number(week) > DESIGN_WEEKS : project !== null && warmupPhaseOf(project) === Phase.BUILD
     return `${progressReelHours(build ? "build" : "design", Number(slot))}h progress reel`
   }
   if (kind === "IDEA") return "Idea reel"

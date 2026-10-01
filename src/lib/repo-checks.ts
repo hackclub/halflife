@@ -253,10 +253,7 @@ async function fetchGitLabReadme(forge: Forge, project: string, files: readonly 
   const name = candidates[0]
   if (!name) return null
 
-  const res = await forgeGet(
-    forge,
-    `projects/${project}/repository/files/${encodeURIComponent(name)}/raw?ref=HEAD`,
-  )
+  const res = await forgeGet(forge, `projects/${project}/repository/files/${encodeURIComponent(name)}/raw?ref=HEAD`)
   if (!res.ok) return null
   return res.text()
 }

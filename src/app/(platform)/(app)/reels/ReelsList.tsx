@@ -29,8 +29,8 @@ export function ReelsList({ groups }: { groups: MyReelGroup[] }) {
       <Panel tone="line" radius={20} className="bg-paper px-6 py-14 text-center">
         <p className="text-[1.05rem] font-extrabold text-navy">No reels yet</p>
         <p className="hand mx-auto mt-2 max-w-[44ch] text-[0.9rem] leading-relaxed text-navy-soft">
-          reels are posted from the checkpoints on your map: an idea reel to start each design week, then progress
-          reels as the hours add up — every ten hours in a design week, and from two and a half in a build.
+          reels are posted from the checkpoints on your map: an idea reel to start each design week, then progress reels
+          as the hours add up — every ten hours in a design week, and from two and a half in a build.
         </p>
         <Link
           href={PLATFORM_HOME}
