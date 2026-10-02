@@ -117,13 +117,15 @@ that:
   that channel can click it), and replies in-thread in `#halflife-help` with
   an **I'm all set** button that only the ticket's own author can click
 
-Either button resolves the ticket: it edits its own message in place, and —
-for the author's button — also updates the tickets-channel message so staff
-can see it's already handled. There's no database; each button's own
-`value` carries the pointer(s) it needs back to the other message(s). One
-known gap: if staff resolve a ticket first, the author's button is left
-active and clicking it afterward will just re-mark things as resolved by
-the author — harmless, but slightly confusing if it happens.
+Either button resolves the ticket: the bot **deletes its own message** in the
+tickets channel, so a resolved ticket leaves the queue instead of lingering
+there struck through, and it edits its own button message in `#halflife-help`
+in place. The thread keeps the question and the "you're all set" ack, so the
+record survives where anyone would look for it. There's no database; each
+button's own `value` carries the pointer(s) it needs back to the other
+message(s). One known gap: if staff resolve a ticket first, the author's
+button is left active, and clicking it afterward does nothing to the tickets
+channel — the message is already gone — though it still acks the thread.
 
 Create the app from `slack-app-manifest.yml` at the repo root (see the
 comments in that file for the exact steps), then set:

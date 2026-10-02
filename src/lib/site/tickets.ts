@@ -1,4 +1,4 @@
-import type { SlackBlock } from "./slack"
+import { deleteMessage, type SlackBlock } from "./slack"
 
 /**
  * Everything either button (the staff-facing one in the tickets channel, or
@@ -55,4 +55,28 @@ export function resolveBlocks(blocks: SlackBlock[] | undefined, byUserId: string
 	)
 	kept.push(resolvedContext(byUserId, note))
 	return kept
+}
+
+/**
+ * Takes a resolved ticket's mirror out of the tickets channel, and reports
+ * whether it's actually gone.
+ *
+ * The channel is a queue: a ticket that arrives there wants help, and one
+ * that's answered has nothing left to ask. Deleting rather than striking
+ * through keeps the queue honest, and it's safe because the mirror is a
+ * message the bot posted itself — `chat.delete` needs no extra scope for it.
+ * The record isn't lost: the `#halflife-help` thread keeps the question and
+ * the "you're all set" ack, which is where anyone would go looking.
+ *
+ * False means the removal didn't land, and is the caller's cue to fall back to
+ * editing the message into its resolved state. A ticket must never be left
+ * sitting in the queue with a live button just because the delete failed, so
+ * the fallback is a floor on reliability, not a nicety. `message_not_found`
+ * counts as gone — a ticket can be resolved from either the tickets channel or
+ * the help thread, so the second arrival is told the message is already gone,
+ * which is the outcome we wanted.
+ */
+export async function deleteTicketMessage(channel: string, ts: string): Promise<boolean> {
+	const result = await deleteMessage(channel, ts)
+	return result.ok || result.error === "message_not_found"
 }

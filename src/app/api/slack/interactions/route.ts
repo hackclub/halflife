@@ -1,6 +1,6 @@
 import { after, NextResponse } from "next/server"
 import { isChannelMember, postMessage, type SlackBlock, updateMessage, verifySlackRequest } from "@/lib/site/slack"
-import { resolveBlocks, type TicketRef, ticketSection } from "@/lib/site/tickets"
+import { deleteTicketMessage, resolveBlocks, type TicketRef, ticketSection } from "@/lib/site/tickets"
 
 export const runtime = "nodejs"
 
@@ -61,7 +61,9 @@ async function respondEphemeral(responseUrl: string, text: string) {
 }
 
 /** Staff clicking "Mark as helped" in the tickets channel — no permission
- * check, anyone with access to that private channel can resolve a ticket. */
+ * check, anyone with access to that private channel can resolve a ticket.
+ * The button they just clicked is the ticket's own mirror, so resolving it
+ * takes it straight back out of the queue. */
 async function handleMarkHelped(payload: InteractionPayload, action: BlockAction) {
 	if (!payload.channel?.id || !payload.message?.ts) return
 
@@ -72,12 +74,14 @@ async function handleMarkHelped(payload: InteractionPayload, action: BlockAction
 		// Malformed value — still resolve the tickets-channel message below.
 	}
 
-	await updateMessage(
-		payload.channel.id,
-		payload.message.ts,
-		`Ticket resolved by <@${payload.user.id}>`,
-		resolveBlocks(payload.message.blocks, payload.user.id),
-	)
+	if (!(await deleteTicketMessage(payload.channel.id, payload.message.ts))) {
+		await updateMessage(
+			payload.channel.id,
+			payload.message.ts,
+			`Ticket resolved by <@${payload.user.id}>`,
+			resolveBlocks(payload.message.blocks, payload.user.id),
+		)
+	}
 
 	if (ref.helpChannel && ref.helpTs) {
 		try {
@@ -92,8 +96,8 @@ async function handleMarkHelped(payload: InteractionPayload, action: BlockAction
 
 /** The ticket's own author clicking "I'm all set" in the help-channel
  * thread — restricted to whoever opened the ticket, so someone else in the
- * thread can't close it out from under them. Also syncs the tickets-channel
- * message so staff see it's already resolved. */
+ * thread can't close it out from under them. Also clears the ticket out of the
+ * tickets channel so staff see it's already handled. */
 async function handleSelfResolve(payload: InteractionPayload, action: BlockAction) {
 	if (!payload.channel?.id || !payload.message?.ts) return
 
@@ -123,12 +127,14 @@ async function handleSelfResolve(payload: InteractionPayload, action: BlockActio
 
 	if (ref.ticketsChannel && ref.ticketsTs && ref.helpChannel) {
 		try {
-			await updateMessage(ref.ticketsChannel, ref.ticketsTs, `Ticket resolved by <@${payload.user.id}>`, [
-				ticketSection(ref as TicketRef),
-				...resolveBlocks(undefined, payload.user.id, "marked it themselves"),
-			])
+			if (!(await deleteTicketMessage(ref.ticketsChannel, ref.ticketsTs))) {
+				await updateMessage(ref.ticketsChannel, ref.ticketsTs, `Ticket resolved by <@${payload.user.id}>`, [
+					ticketSection(ref as TicketRef),
+					...resolveBlocks(undefined, payload.user.id, "marked it themselves"),
+				])
+			}
 		} catch (err) {
-			console.error(`Failed to sync tickets-channel message: ${err}`)
+			console.error(`Failed to clear the tickets-channel message: ${err}`)
 		}
 	}
 }
@@ -166,12 +172,14 @@ async function handleThreadMarkHelped(payload: InteractionPayload, action: Block
 
 	if (ref.ticketsChannel && ref.ticketsTs && ref.helpChannel) {
 		try {
-			await updateMessage(ref.ticketsChannel, ref.ticketsTs, `Ticket resolved by <@${payload.user.id}>`, [
-				ticketSection(ref as TicketRef),
-				...resolveBlocks(undefined, payload.user.id),
-			])
+			if (!(await deleteTicketMessage(ref.ticketsChannel, ref.ticketsTs))) {
+				await updateMessage(ref.ticketsChannel, ref.ticketsTs, `Ticket resolved by <@${payload.user.id}>`, [
+					ticketSection(ref as TicketRef),
+					...resolveBlocks(undefined, payload.user.id),
+				])
+			}
 		} catch (err) {
-			console.error(`Failed to sync tickets-channel message: ${err}`)
+			console.error(`Failed to clear the tickets-channel message: ${err}`)
 		}
 	}
 }

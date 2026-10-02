@@ -37,10 +37,12 @@ oauth_config:
       # auto-invite needs. channels:manage would also work but additionally
       # grants archive/rename/kick, which nothing here calls.
       - channels:write.invites
-      # Every post and button update goes through chat.postMessage/chat.update.
-      # This is also all the private tickets channel needs — posting into a
-      # private channel is a membership question, not a scope one, which is why
-      # there are no groups:* scopes below.
+      # Every post, button update, and ticket removal goes through
+      # chat.postMessage/chat.update/chat.delete. chat.delete needs no scope of
+      # its own and a bot token may delete its own messages, which is the only
+      # kind this app ever removes. This is also all the private tickets channel
+      # needs — posting into a private channel is a membership question, not a
+      # scope one, which is why there are no groups:* scopes below.
       - chat:write
       # conversations.open (sendDM) accepts this, im:write, groups:write, or
       # channels:manage — this is the narrow one, and all it grants is starting
