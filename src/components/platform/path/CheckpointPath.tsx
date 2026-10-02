@@ -20,8 +20,27 @@ import type { Checkpoint, Week } from "@/lib/types"
 /** Horizontal swing of the trail, as a percentage of the column width. */
 const AMP = 23
 const CURVE = 1.02
+/** Phase room (in rows) added between weeks, so consecutive trails keep the
+    same meander flowing under their separating banner instead of restarting. */
+const WEEK_GAP = 0.25
 
-const offsetAt = (i: number) => Number((50 + AMP * Math.sin(i * CURVE)).toFixed(4))
+/**
+ * The swing one week takes. The wave is one continuous sine down the page:
+ * each week's `phase` is where the previous week's trail ended, plus WEEK_GAP.
+ */
+const offsetAt = (i: number, phase: number) => Number((50 + AMP * Math.sin((phase + i) * CURVE)).toFixed(4))
+
+/** Rows a week's trail occupies, matching WeekTrail's fork grouping (both fork
+    arms share one row). */
+const trailRows = (week: Week): number => {
+	const rows: Checkpoint[][] = []
+	for (const cp of week.checkpoints) {
+		const last = rows[rows.length - 1]
+		if (cp.branch && last?.[0]?.branch) last.push(cp)
+		else rows.push([cp])
+	}
+	return rows.length
+}
 
 const KIND_ICON = {
 	onboarding: IconPlay,
@@ -359,7 +378,7 @@ const FORK_AT: [number, number] = [24, 76]
  * last row, which is what lets every row before it keep using its own index
  * for the sine — the trail above a fork is laid out exactly as it was.
  */
-function WeekTrail({ week, currentId }: { week: Week; currentId: string | null }) {
+function WeekTrail({ week, currentId, phase }: { week: Week; currentId: string | null; phase: number }) {
 	// Group into rows: singles all the way down, then the fork as one row of two.
 	const rows: Checkpoint[][] = []
 	for (const cp of week.checkpoints) {
@@ -380,7 +399,8 @@ function WeekTrail({ week, currentId }: { week: Week; currentId: string | null }
 		placed.push({ row, full, beats, beat: row.every(isBeat) })
 	}
 
-	const leftOf = (i: number, j: number) => ((placed[i]?.row.length ?? 0) > 1 ? (FORK_AT[j] ?? FORK_AT[0]) : offsetAt(i))
+	const leftOf = (i: number, j: number) =>
+		(placed[i]?.row.length ?? 0) > 1 ? (FORK_AT[j] ?? FORK_AT[0]) : offsetAt(i, phase)
 
 	const dots: React.ReactNode[] = []
 	for (let i = 0; i < placed.length - 1; i += 1) {
@@ -404,7 +424,7 @@ function WeekTrail({ week, currentId }: { week: Week; currentId: string | null }
 							left:
 								next.row.length > 1
 									? `${leftOf(i, 0) + ((FORK_AT[j] ?? FORK_AT[0]) - leftOf(i, 0)) * f}%`
-									: `${offsetAt(i + f)}%`,
+									: `${offsetAt(i + f, phase)}%`,
 							transform: "translate(-50%, -50%)",
 						}}
 					/>,
@@ -518,6 +538,16 @@ export function CheckpointPath() {
 		if (overlap > 0) window.scrollBy(0, -overlap)
 	}, [hydrated, currentCheckpointId, phase])
 
+	// One continuous wave down the page: each week picks up where the previous
+	// trail ended, leaving a little phase room for its separating banner.
+	const { phases: weekPhases } = weeks.reduce<{ total: number; phases: number[] }>(
+		({ total, phases }, week) => {
+			phases.push(total)
+			return { total: total + trailRows(week) + WEEK_GAP, phases }
+		},
+		{ total: 0, phases: [] },
+	)
+
 	return (
 		<div
 			className="mx-auto w-full max-w-[720px] px-4 sm:px-8"
@@ -542,7 +572,7 @@ export function CheckpointPath() {
 						Week {week.id}: {week.fullName}
 					</h3>
 					<WeekBanner week={week} index={wi} />
-					<WeekTrail week={week} currentId={currentCheckpointId} />
+					<WeekTrail week={week} currentId={currentCheckpointId} phase={weekPhases[wi] ?? 0} />
 				</section>
 			))}
 			<GrandPrize />
