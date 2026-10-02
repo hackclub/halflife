@@ -112,7 +112,8 @@ body {
    The sheet is a seamless tile of the platform's hand-drawn symbols, baked at
    build time from the drawings in `background assets/`. It lives on the app
    shell only — the pages with the left sidebar — so login, admin and the
-   one-shot pages keep a plain cream ground instead of the tooth. */
+   one-shot pages keep a plain cream ground instead of the tooth. No vertical
+   mask: the doodles stay as present at the bottom of the page as at the top. */
 .shell-backdrop::before {
 	content: "";
 	position: fixed;
@@ -122,7 +123,9 @@ body {
 	background-image: url("/platform/doodle-sheet.png");
 	background-size: 768px 768px;
 	opacity: 0.06;
-	mask-image: radial-gradient(120% 90% at 50% 0%, #000 20%, transparent 85%);
+	/* A soft vertical fade — full at the top, 45% at the bottom — so the page
+	   still reads top-lit without the old mask swallowing the lower half. */
+	mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.45) 100%);
 }
 
 ::selection {
