@@ -90,14 +90,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
 			<div
 				className={cx(
-					"relative z-10 mx-auto flex w-full max-w-[1760px] transition-[filter,opacity] duration-500",
+					"shell-backdrop relative z-10 flex w-full transition-[filter,opacity] duration-500",
 					cinematic && "pointer-events-none",
 				)}
 				aria-hidden={cinematic || undefined}
 				inert={cinematic || undefined}
 			>
 				{/* ---------- left rail ---------- */}
-				<aside className="sticky top-0 hidden h-dvh w-[246px] shrink-0 overflow-y-auto border-r border-dashed border-line px-5 py-6 lg:block xl:w-[286px] xl:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+				<aside className="sticky top-0 hidden h-dvh w-[246px] shrink-0 overflow-y-auto border-r border-dashed border-line bg-paper px-5 py-6 lg:block xl:w-[286px] xl:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 					<Sidebar />
 				</aside>
 
@@ -199,12 +199,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 							id="status-rail"
 							inert={!railOpen}
 							className={cx(
-								"sticky top-16 hidden h-[calc(100dvh_-_4rem)] shrink-0 justify-end overflow-hidden xl:flex",
-								"transition-[width,opacity] duration-[420ms] ease-[cubic-bezier(.16,1,.3,1)] motion-reduce:transition-none",
-								railOpen ? "w-[316px] opacity-100 2xl:w-[352px]" : "w-0 opacity-0",
+								"sticky top-16 hidden h-[calc(100dvh-4rem)] shrink-0 justify-end overflow-hidden xl:flex",
+								"transition-[width,opacity] duration-420 ease-out-expo motion-reduce:transition-none",
+								railOpen ? "w-79 opacity-100 2xl:w-[352px]" : "w-0 opacity-0",
 							)}
 						>
-							<div className="flex h-full w-[316px] shrink-0 flex-col py-4 pr-5 pl-1 2xl:w-[352px] 2xl:pr-7">
+							<div className="flex h-full w-full min-w-0 flex-col py-4 pr-5 pl-1 2xl:pr-7">
 								<GoalTracker className="shrink-0" />
 
 								{/* Stays mounted through the close so the feed slides shut
