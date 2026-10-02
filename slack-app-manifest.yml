@@ -6,8 +6,8 @@
 #   1. Install it to the workspace, then copy the Bot User OAuth Token
 #      (starts xoxb-) into SLACK_BOT_TOKEN, and the Signing Secret (Basic
 #      Information page) into SLACK_SIGNING_SECRET.
-#   2. Invite the bot user into the main channel, #halflife-bulletin,
-#      #halflife-help, and the private tickets channel — conversations.invite
+#   2. Invite the bot user into the main channel, #half-life-bulletin,
+#      #half-life-help, and the private tickets channel — conversations.invite
 #      and the message/member events both require the bot to already be a
 #      member of a channel to act on it.
 #   3. Set SLACK_MAIN_CHANNEL_ID, SLACK_BULLETIN_CHANNEL_ID,
@@ -16,7 +16,7 @@
 
 display_information:
   name: Half Life Little Helper
-  description: Adds new members to Half Life channels and tracks #halflife-help tickets.
+  description: Adds new members to Half Life channels and tracks #half-life-help tickets.
   background_color: "#1a1a1a"
 
 features:
@@ -27,7 +27,7 @@ features:
 oauth_config:
   scopes:
     bot:
-      # Required for message.channels, which is how a new #halflife-help post
+      # Required for message.channels, which is how a new #half-life-help post
       # is noticed and turned into a ticket.
       - channels:history
       # Required for member_joined_channel on public channels — the trigger for

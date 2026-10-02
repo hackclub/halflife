@@ -111,15 +111,16 @@ BotID or a WAF rule in front of the route for real abuse protection.
 that:
 
 - invites anyone who joins the main Half Life channel into
-  `#halflife-bulletin` and `#halflife-help`
-- posts every new top-level message in `#halflife-help` into a private
-  tickets channel with a **Mark as helped** button (anyone with access to
-  that channel can click it), and replies in-thread in `#halflife-help` with
-  an **I'm all set** button that only the ticket's own author can click
+  `#half-life-bulletin` and `#half-life-help`
+- posts every new top-level message in `#half-life-help` into a private
+  tickets channel with a **mark as helped** button (anyone with access to
+  that channel can click it), and replies in-thread in `#half-life-help` with
+  an **i've got it, thanks** button that only the ticket's own author can
+  click
 
 Either button resolves the ticket: the bot **deletes its own message** in the
 tickets channel, so a resolved ticket leaves the queue instead of lingering
-there struck through, and it edits its own button message in `#halflife-help`
+there struck through, and it edits its own button message in `#half-life-help`
 in place. The thread keeps the question and the "you're all set" ack, so the
 record survives where anyone would look for it. There's no database; each
 button's own `value` carries the pointer(s) it needs back to the other
@@ -135,8 +136,8 @@ comments in that file for the exact steps), then set:
 | `SLACK_BOT_TOKEN`             | Bot User OAuth Token (`xoxb-…`)                            |
 | `SLACK_SIGNING_SECRET`        | Basic Information → Signing Secret, verifies both routes  |
 | `SLACK_MAIN_CHANNEL_ID`       | channel that triggers the auto-invite                      |
-| `SLACK_BULLETIN_CHANNEL_ID`   | `#halflife-bulletin`'s channel ID                          |
-| `SLACK_HELP_CHANNEL_ID`       | `#halflife-help`'s channel ID                               |
+| `SLACK_BULLETIN_CHANNEL_ID`   | `#half-life-bulletin`'s channel ID                          |
+| `SLACK_HELP_CHANNEL_ID`       | `#half-life-help`'s channel ID                               |
 | `SLACK_TICKETS_CHANNEL_ID`    | private channel new/resolved tickets get posted to         |
 
 The bot needs to be a member of all four channels — invite it manually after
