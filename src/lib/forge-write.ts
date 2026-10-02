@@ -160,7 +160,19 @@ export async function listWritableRepos(userId: string, forge: Forge): Promise<W
 }
 
 async function listGitHubRepos(creds: ForgeCredentials): Promise<WritableRepo[]> {
-	const res = await call(creds, "user/repos?per_page=100&sort=pushed&affiliation=owner,collaborator", { method: "GET" })
+	// All three affiliations — the API's default is `owner,collaborator,
+	// organization_member`, and each is needed to see every repo they can push
+	// to: `owner` their own, `collaborator` ones they were added to directly,
+	// and `organization_member` the ones reached through an organisation. Org
+	// repos are exactly the ones a team grant or an org-wide write role lands
+	// on, so dropping that affiliation hid every organisation repository from
+	// the picker no matter what was granted at the OAuth prompt. The push
+	// filter below still removes anything the token cannot write to.
+	const res = await call(
+		creds,
+		"user/repos?per_page=100&sort=pushed&affiliation=owner,collaborator,organization_member",
+		{ method: "GET" },
+	)
 	if (!res.ok) throw new ForgeWriteUnavailable(`${creds.forge.label} did not answer.`)
 	const repos = (await res.json()) as {
 		full_name: string
@@ -186,7 +198,8 @@ async function listGitHubRepos(creds: ForgeCredentials): Promise<WritableRepo[]>
 
 async function listGitLabRepos(creds: ForgeCredentials): Promise<WritableRepo[]> {
 	// `membership=true` is "projects I am a member of", which is the closest
-	// equivalent to GitHub's owner+collaborator affiliation. `min_access_level`
+	// equivalent to GitHub's owner+collaborator+organisation affiliation.
+	// `min_access_level`
 	// narrows it to projects they can push to, the same filter GitHub's
 	// `permissions.push` applies client-side.
 	const res = await call(
