@@ -1,6 +1,13 @@
 import { after, NextResponse } from "next/server"
 import { isChannelMember, postMessage, type SlackBlock, updateMessage, verifySlackRequest } from "@/lib/site/slack"
-import { deleteTicketMessage, resolveBlocks, type TicketRef, ticketSection } from "@/lib/site/tickets"
+import {
+	deleteTicketMessage,
+	helpedAck,
+	resolveBlocks,
+	selfResolvedAck,
+	type TicketRef,
+	ticketSection,
+} from "@/lib/site/tickets"
 
 export const runtime = "nodejs"
 
@@ -85,7 +92,7 @@ async function handleMarkHelped(payload: InteractionPayload, action: BlockAction
 
 	if (ref.helpChannel && ref.helpTs) {
 		try {
-			await postMessage(ref.helpChannel, `You're all set — <@${payload.user.id}> marked this as helped.`, {
+			await postMessage(ref.helpChannel, helpedAck(payload.user.id), {
 				threadTs: ref.helpTs,
 			})
 		} catch (err) {
@@ -121,7 +128,7 @@ async function handleSelfResolve(payload: InteractionPayload, action: BlockActio
 	await updateMessage(
 		payload.channel.id,
 		payload.message.ts,
-		"Marked resolved.",
+		selfResolvedAck(),
 		resolveBlocks(payload.message.blocks, payload.user.id),
 	)
 
@@ -166,7 +173,7 @@ async function handleThreadMarkHelped(payload: InteractionPayload, action: Block
 	await updateMessage(
 		payload.channel.id,
 		payload.message.ts,
-		`You're all set — <@${payload.user.id}> marked this as helped.`,
+		helpedAck(payload.user.id),
 		resolveBlocks(payload.message.blocks, payload.user.id),
 	)
 

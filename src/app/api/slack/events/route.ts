@@ -8,7 +8,12 @@ import {
 	verifySlackRequest,
 } from "@/lib/site/slack"
 import {
+	FAQ_CARD_BUTTON,
+	FAQ_CARD_TITLE,
+	HELP_THREAD_REMINDERS,
+	MARK_HELPED_BUTTON,
 	SELF_RESOLVE_ACTIONS_BLOCK_ID,
+	SELF_RESOLVE_BUTTON,
 	TICKET_ACTIONS_BLOCK_ID,
 	type TicketRef,
 	ticketSection,
@@ -28,7 +33,7 @@ type SlackEvent = {
 	bot_id?: string
 }
 
-/** New top-level message in #halflife-help — post it to the private
+/** New top-level message in #half-life-help — post it to the private
  * tickets channel with a "Mark as helped" button, and reply in-thread with a
  * "I'm all set" button the ticket's own author can use to self-resolve.
  * Thread replies and anything from a bot (including our own acks) are
@@ -56,7 +61,7 @@ async function handleHelpMessage(event: SlackEvent) {
 			elements: [
 				{
 					type: "button",
-					text: { type: "plain_text", text: "Mark as helped", emoji: true },
+					text: { type: "plain_text", text: MARK_HELPED_BUTTON, emoji: true },
 					style: "primary",
 					action_id: "mark_helped",
 					value: JSON.stringify(ref),
@@ -95,7 +100,7 @@ async function handleHelpMessage(event: SlackEvent) {
 			type: "section",
 			text: {
 				type: "mrkdwn",
-				text: "Flagged to the helpers! If the problem is solved, you can mark it too.",
+				text: HELP_THREAD_REMINDERS,
 			},
 		},
 		{
@@ -107,7 +112,7 @@ async function handleHelpMessage(event: SlackEvent) {
 			},
 			title: {
 				type: "mrkdwn",
-				text: "Check out the FAQ!",
+				text: FAQ_CARD_TITLE,
 				verbatim: false,
 			},
 			actions: [
@@ -115,7 +120,7 @@ async function handleHelpMessage(event: SlackEvent) {
 					type: "button",
 					text: {
 						type: "plain_text",
-						text: "Open FAQ",
+						text: FAQ_CARD_BUTTON,
 					},
 					url: "https://hackclub.enterprise.slack.com/docs/T0266FRGM/F0C0Q6UEPCH",
 					action_id: "faq_link_click",
@@ -128,13 +133,13 @@ async function handleHelpMessage(event: SlackEvent) {
 			elements: [
 				{
 					type: "button",
-					text: { type: "plain_text", text: "I'm all set", emoji: true },
+					text: { type: "plain_text", text: SELF_RESOLVE_BUTTON, emoji: true },
 					action_id: "mark_resolved_by_author",
 					value: resolveValue,
 				},
 				{
 					type: "button",
-					text: { type: "plain_text", text: "Mark as helped", emoji: true },
+					text: { type: "plain_text", text: MARK_HELPED_BUTTON, emoji: true },
 					style: "primary",
 					action_id: "mark_helped_from_thread",
 					value: resolveValue,
@@ -143,7 +148,10 @@ async function handleHelpMessage(event: SlackEvent) {
 		},
 	]
 
-	await postMessage(ref.helpChannel, "Flagged to the helpers! If the problem is solved, you can mark it too.", {
+	// The thread's top-level text repeats the reminders above rather than
+	// carrying new information: it's what a notification preview shows, and
+	// it's what a screen reader reads out.
+	await postMessage(ref.helpChannel, HELP_THREAD_REMINDERS, {
 		threadTs: ref.helpTs,
 		blocks: selfResolveBlocks,
 	})

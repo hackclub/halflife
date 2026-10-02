@@ -2,7 +2,7 @@ import { deleteMessage, type SlackBlock } from "./slack"
 
 /**
  * Everything either button (the staff-facing one in the tickets channel, or
- * the self-resolve one in the #halflife-help thread) needs to act — carried
+ * the self-resolve one in the #half-life-help thread) needs to act — carried
  * in the button's own `value` since there's no ticket database to look it
  * up from.
  */
@@ -17,6 +17,48 @@ export type TicketRef = {
 
 export const TICKET_ACTIONS_BLOCK_ID = "ticket_actions"
 export const SELF_RESOLVE_ACTIONS_BLOCK_ID = "self_resolve_actions"
+
+/**
+ * Everything the bot says to a participant, in one place so the voice stays
+ * one voice.
+ *
+ * The register is the one the other event bots used in this workspace (see
+ * `botexamples.md`): lowercase, contractions, an emoji to open, bullets when
+ * there's more than one thing to say, and a first-person narrator who is
+ * clearly a cat and is not the one doing the actual helping. Warm, a bit
+ * distracted, never institutional — the participant is reading this in a
+ * channel where they've just asked for help, and "your ticket has been
+ * flagged to the helpers" is the wrong register for that moment.
+ *
+ * Two things are deliberately *not* here: the tickets channel's own strings,
+ * which are read by staff rather than participants, and anything the FAQ card
+ * already says.
+ */
+export const HELP_THREAD_REMINDERS = `:yay-wave: hi there! i'm keeping an eye on this thread while you wait. a few things in the meantime:
+• have a read of the faq below – there's a fair chance your question's already answered in there!
+• if it's about your own build, like wiring something up or picking a part, just say so and one of the hardware experts will dig in with you.
+• once your question's been answered, hit a button below and i'll head off :D`
+
+export const FAQ_CARD_TITLE = "the faq, just in case"
+
+export const FAQ_CARD_BUTTON = "read the faq"
+
+export const SELF_RESOLVE_BUTTON = "i've got it, thanks"
+
+export const MARK_HELPED_BUTTON = "mark as helped"
+
+/** Posted to the thread once a helper has answered. Mentions the helper on
+ * purpose: for them the participant hasn't had an answer yet, so this is the
+ * ping that tells them it's arrived. */
+export function helpedAck(helperId: string): string {
+	return `oh! <@${helperId}> has this one sorted – you're all set! if anything else comes up, just send another message in #half-life-help and someone'll pick it up :D`
+}
+
+/** The same beat for the author resolving their own ticket, with no mention —
+ * they'd be pinging themselves over their own click. */
+export function selfResolvedAck(): string {
+	return "oh! you've marked this as resolved – thanks for letting us know! if you need anything else, just send another message in #half-life-help and someone'll be happy to help :D"
+}
 
 /** Links to the original rather than copying it: a quoted copy can't be
  * replied to, so the useful thing to hand a helper is a jump link into the
@@ -41,7 +83,7 @@ export function resolvedContext(byUserId: string, note?: string): SlackBlock {
 		elements: [
 			{
 				type: "mrkdwn",
-				text: `✅ Helped by <@${byUserId}>${note ? ` — ${note}` : ""}`,
+				text: `✅ helped by <@${byUserId}>${note ? ` – ${note}` : ""}`,
 			},
 		],
 	}
@@ -65,7 +107,7 @@ export function resolveBlocks(blocks: SlackBlock[] | undefined, byUserId: string
  * that's answered has nothing left to ask. Deleting rather than striking
  * through keeps the queue honest, and it's safe because the mirror is a
  * message the bot posted itself — `chat.delete` needs no extra scope for it.
- * The record isn't lost: the `#halflife-help` thread keeps the question and
+ * The record isn't lost: the `#half-life-help` thread keeps the question and
  * the "you're all set" ack, which is where anyone would go looking.
  *
  * False means the removal didn't land, and is the caller's cue to fall back to
