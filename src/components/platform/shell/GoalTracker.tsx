@@ -55,7 +55,7 @@ export function GoalTracker({ className }: { className?: string }) {
 				aria-haspopup="dialog"
 				className="label relative z-10 text-sky-ink transition-colors hover:text-navy"
 			>
-				View more
+				Change goal
 			</button>
 
 			{chasing ? (
