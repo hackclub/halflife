@@ -69,10 +69,10 @@ def main():
     symbols = [load_symbol(p) for p in sorted(SRC)]
     print(f"{len(symbols)} symbols loaded")
 
-    # Random target size and rotation for each marker up front, so spacing can
-    # be tuned to the drawing that will actually sit there.
+    # Random target size and rotation for each marker up front. Rotation is
+    # capped at 45deg each way, keeping every drawing near-upright.
     targets = [random.uniform(45, 85) for _ in range(N_SYMBOLS)]
-    angles = [random.uniform(-180, 180) for _ in range(N_SYMBOLS)]
+    angles = [random.uniform(-45, 45) for _ in range(N_SYMBOLS)]
     # A circle roughly covering the rotated bounding box; the 0.8 factor allows
     # a thin near-touch without letting icons grind through each other.
     radii = [0.5 * t * math.sqrt(2) * 0.8 for t in targets]
@@ -114,7 +114,7 @@ def main():
         scale = target / max(sym.size)
         size = (max(1, round(sym.width * scale)), max(1, round(sym.height * scale)))
         sym = sym.resize(size, Image.LANCZOS)
-        # Full-circle rotation: drawings land at every angle.
+        # Rotation within +/-90deg: drawings lean, never flip upside-down.
         sym = sym.rotate(angle, resample=Image.BICUBIC, expand=True)
         for i in (-1, 0, 1):
             for j in (-1, 0, 1):

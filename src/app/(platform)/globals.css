@@ -120,7 +120,7 @@ body {
 	z-index: -1;
 	pointer-events: none;
 	background-image: url("/platform/doodle-sheet.png");
-	background-size: 1024px 1024px;
+	background-size: 768px 768px;
 	opacity: 0.06;
 	mask-image: radial-gradient(120% 90% at 50% 0%, #000 20%, transparent 85%);
 }
