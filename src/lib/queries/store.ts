@@ -1,5 +1,13 @@
 import "server-only"
-import { HardwareExperience, HoursSource, Phase, PhaseStatus, Role, Theme } from "@/app/generated/prisma/enums"
+import {
+	HardwareExperience,
+	HoursSource,
+	type ParticipantGoal,
+	Phase,
+	PhaseStatus,
+	Role,
+	Theme,
+} from "@/app/generated/prisma/enums"
 import { avatarUrl } from "@/lib/avatar"
 import { DEFAULT_GOAL_ID } from "@/lib/config/printers"
 import {
@@ -58,6 +66,8 @@ export interface CheckpointSnapshot {
 }
 
 export interface StoreSnapshot {
+	/** What the participant is here for, or null if not yet answered. */
+	participantGoal: ParticipantGoal | null
 	/**
 	 * Who is signed in. Display fields only, never an email or a Slack id.
 	 * `isAdmin` decides whether admin-only tools (redo onboarding) are offered;
@@ -165,6 +175,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 					hardwareExperience: true,
 					onboardingCompletedAt: true,
 					printerGoalId: true,
+					participantGoal: true,
 					currentStreak: true,
 					lastStreakDate: true,
 					submissionExtensionUntil: true,
@@ -413,6 +424,10 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 		},
 		experience: user.hardwareExperience ? EXPERIENCE[user.hardwareExperience] : null,
 		onboardingDone: user.onboardingCompletedAt !== null,
+		// Null is the answer "not yet", and it is what holds the mandatory goal
+		// prompt open. It is read here rather than derived from the ceremony
+		// state because it is a fact about the person, not about this browser.
+		participantGoal: user.participantGoal,
 		projects: projects.flatMap((project) => {
 			const warmup = project.theme === Theme.WARMUP
 			const themeIndex = THEMES.findIndex((t) => t.id === project.theme)

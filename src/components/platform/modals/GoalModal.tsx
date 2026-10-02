@@ -1,9 +1,11 @@
 "use client"
 
 import { useId, useState } from "react"
+import { ParticipantGoal } from "@/app/generated/prisma/enums"
 import { PrinterPhoto } from "@/components/platform/art"
 import { IconCheck, IconClock, IconCoin } from "@/components/platform/icons"
-import { Button, cx } from "@/components/platform/ui"
+import { Button, cx, OptionRow } from "@/components/platform/ui"
+import { GOAL_OPTIONS } from "@/lib/config/goal"
 import { MAX_HOURS_PER_WEEK, PRINTERS, type PrinterGoal, printerById, weeksToGo } from "@/lib/config/printers"
 import { BUILD_HOURS } from "@/lib/curriculum"
 import { useStore } from "@/lib/store"
@@ -11,34 +13,77 @@ import { Modal, ModalTitle } from "./Modal"
 
 const TEAL = "var(--color-teal-deep)"
 
+type Step = "goal" | "printer"
+
 /**
- * Picking the machine at the end of the season. Eight of them, and the only
- * honest way to compare is side by side: what it costs in coins, and how many
- * hours a week on tier 1 that price actually asks of you.
+ * What you're here for, and — only if the answer is a printer — which machine.
+ *
+ * The order is the point. The catalogue is eight machines priced against each
+ * other, and it is a meaningless question to somebody who is here for the grant
+ * and never wanted a printer; so the goal is always asked first and the
+ * machines are only ever shown to someone who has said they want one. Reversing
+ * the two is what would make a fifteen-year-old read eight prices to work out a
+ * question they hadn't been asked.
+ *
+ * The same modal does both jobs. The rail's tracker and the phone's "Change
+ * printer" open it to change an answer; the prompt after the first checkpoint
+ * opens it uncloseable, and is driven by `participantGoal` still being null
+ * rather than by anything in this file.
  */
-export function GoalModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-	const { goalId, setGoal, printerFund } = useStore()
+export function GoalModal({
+	open,
+	onClose,
+	/** False for the mandatory prompt, which has nowhere to go until answered. */
+	dismissible = true,
+}: {
+	open: boolean
+	onClose: () => void
+	dismissible?: boolean
+}) {
+	const { goalId, participantGoal, printerFund, setParticipantGoal } = useStore()
+	const [step, setStep] = useState<Step>("goal")
+	const [chosen, setChosen] = useState<ParticipantGoal>(ParticipantGoal.PRINTER)
 	const [picked, setPicked] = useState(goalId)
+	const [saving, setSaving] = useState(false)
+	const [error, setError] = useState<string | null>(null)
 	const titleId = useId()
 
-	// Reopening should start from whatever is taped up now, including a goal that
+	// Reopening starts from whatever is taped up now, including a goal that
 	// changed elsewhere — adjusting during render beats an effect that repaints.
-	const [seenGoal, setSeenGoal] = useState(goalId)
-	if (seenGoal !== goalId) {
-		setSeenGoal(goalId)
+	// Opening always lands on the goal question, never mid-catalogue, so the
+	// answer is never edited by accident on the way to changing the machine.
+	const [seen, setSeen] = useState({ open, goalId, participantGoal })
+	if (seen.open !== open || seen.goalId !== goalId || seen.participantGoal !== participantGoal) {
+		setSeen({ open, goalId, participantGoal })
+		setStep("goal")
+		setChosen(participantGoal ?? ParticipantGoal.PRINTER)
 		setPicked(goalId)
+		setError(null)
 	}
 
 	const goal = printerById(picked)
 	const unchanged = picked === goalId
-	// Both pots pay for a printer (lib/currency), so the honest "to go" reads the
-	// total; `coins` alone would tell a banked-up saver they are far behind.
 	const toGo = Math.max(0, goal.coins - printerFund)
 	const weeks = weeksToGo(goal, printerFund)
 
-	function commit() {
-		setGoal(picked)
+	async function commit(goalAnswer: ParticipantGoal, printer?: string) {
+		setSaving(true)
+		setError(null)
+		const refusal = await setParticipantGoal(goalAnswer, printer)
+		setSaving(false)
+		// A refusal keeps the sheet open with the reason on it. Closing here would
+		// leave the mandatory prompt looking finished when nothing was saved.
+		if (refusal) {
+			setError(refusal)
+			return
+		}
 		onClose()
+	}
+
+	function advance() {
+		setError(null)
+		if (chosen === ParticipantGoal.PRINTER) setStep("printer")
+		else void commit(chosen)
 	}
 
 	return (
@@ -46,67 +91,124 @@ export function GoalModal({ open, onClose }: { open: boolean; onClose: () => voi
 			open={open}
 			onClose={onClose}
 			accent={TEAL}
-			size="xl"
+			size={step === "goal" ? "md" : "xl"}
 			labelledBy={titleId}
-			eyebrow="Your goal"
+			eyebrow={dismissible ? "Your goal" : "One more thing"}
+			dismissible={dismissible}
+			scrollKey={step}
 			footer={
 				<>
-					<p className="mr-auto w-full text-[0.82rem] leading-snug text-navy-soft sm:w-auto sm:max-w-[44ch]">
-						<span className="font-extrabold text-navy">{goal.name}</span>
-						{toGo > 0 ? (
-							weeks > 0 ? (
-								<>
-									{" — "}
-									<span className="tabular-nums">{toGo.toLocaleString()}</span> coins to go: about{" "}
-									{goal.hoursPerWeek.toFixed(1)} hours a week for {weeks} design weeks{" "}
-								</>
-							) : (
-								<>
-									{" — "}
-									<span className="tabular-nums">{toGo.toLocaleString()}</span> coins to go, and the build weeks cover
-									it at {BUILD_HOURS} hours a week.{" "}
-								</>
-							)
-						) : (
-							<> you&apos;ve reached this printer goal! </>
-						)}
-						<a
-							href={goal.link}
-							target="_blank"
-							rel="noreferrer"
-							className="font-semibold whitespace-nowrap text-sky-ink underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
-						>
-							Link to printer
-						</a>
-					</p>
-					<Button variant="outline" onClick={onClose}>
-						Cancel
-					</Button>
-					<Button variant="teal" onClick={commit}>
-						{unchanged ? "Keep this goal" : "Set this goal"} <IconCheck className="text-base" />
-					</Button>
+					{error && (
+						<p role="alert" className="hand mr-auto w-full text-[0.82rem] leading-snug text-coral-deep sm:w-auto">
+							{error}
+						</p>
+					)}
+					{step === "goal" ? (
+						<>
+							{dismissible && (
+								<Button variant="outline" onClick={onClose}>
+									Cancel
+								</Button>
+							)}
+							<Button variant="teal" onClick={advance} disabled={saving}>
+								Continue <IconCheck className="text-base" />
+							</Button>
+						</>
+					) : (
+						<>
+							<p className="mr-auto w-full text-[0.82rem] leading-snug text-navy-soft sm:w-auto sm:max-w-[44ch]">
+								<span className="font-extrabold text-navy">{goal.name}</span>
+								{toGo > 0 ? (
+									weeks > 0 ? (
+										<>
+											{" — "}
+											<span className="tabular-nums">{toGo.toLocaleString()}</span> coins to go: about{" "}
+											{goal.hoursPerWeek.toFixed(1)} hours a week for {weeks} design weeks{" "}
+										</>
+									) : (
+										<>
+											{" — "}
+											<span className="tabular-nums">{toGo.toLocaleString()}</span> coins to go, and the build weeks
+											cover it at {BUILD_HOURS} hours a week.{" "}
+										</>
+									)
+								) : (
+									<> you&apos;ve reached this printer goal! </>
+								)}
+								<a
+									href={goal.link}
+									target="_blank"
+									rel="noreferrer"
+									className="font-semibold whitespace-nowrap text-sky-ink underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
+								>
+									Link to printer
+								</a>
+							</p>
+							<Button variant="ghost" onClick={() => setStep("goal")} disabled={saving}>
+								Back
+							</Button>
+							{dismissible && (
+								<Button variant="outline" onClick={onClose}>
+									Cancel
+								</Button>
+							)}
+							<Button variant="teal" disabled={saving} onClick={() => void commit(ParticipantGoal.PRINTER, picked)}>
+								{unchanged ? "Keep this goal" : "Set this goal"} <IconCheck className="text-base" />
+							</Button>
+						</>
+					)}
 				</>
 			}
 		>
-			<ModalTitle
-				id={titleId}
-				subWide
-				sub="Spend more time on your hardware projects to unlock better printers! You can change this goal anytime you'd like."
-			>
-				What&apos;s your big prize?
-			</ModalTitle>
+			{step === "goal" ? (
+				<>
+					<ModalTitle
+						id={titleId}
+						sub={
+							dismissible
+								? "Change this whenever you like — it decides what we build the rest of the season around."
+								: "Last thing before you get going! It decides what we build the rest of the season around, and you can change it whenever you like."
+						}
+					>
+						What are you here for?
+					</ModalTitle>
 
-			<div role="radiogroup" aria-labelledby={titleId} className="grid gap-x-4 gap-y-6 sm:grid-cols-2">
-				{PRINTERS.map((p) => (
-					<GoalCard
-						key={p.id}
-						goal={p}
-						current={p.id === goalId}
-						selected={p.id === picked}
-						onSelect={() => setPicked(p.id)}
-					/>
-				))}
-			</div>
+					<div role="radiogroup" aria-labelledby={titleId} className="mt-2 grid gap-3">
+						{GOAL_OPTIONS.map((option) => (
+							<OptionRow
+								key={option.value}
+								selected={option.value === chosen}
+								onClick={() => setChosen(option.value)}
+								hint={option.hint}
+							>
+								<span className="block text-[0.98rem] font-extrabold text-navy">{option.label}</span>
+							</OptionRow>
+						))}
+					</div>
+				</>
+			) : (
+				<>
+					<ModalTitle
+						id={titleId}
+						subWide
+						sub="Spend more time on your hardware projects to unlock better printers! You can change this goal anytime you'd like."
+					>
+						What&apos;s your big prize?
+					</ModalTitle>
+
+					<div role="radiogroup" aria-labelledby={titleId} className="grid gap-x-4 gap-y-6 sm:grid-cols-2">
+						{PRINTERS.map((p) => (
+							<GoalCard
+								key={p.id}
+								goal={p}
+								current={p.id === goalId}
+								selected={p.id === picked}
+								onSelect={() => setPicked(p.id)}
+							/>
+						))}
+					</div>
+				</>
+			)}
 		</Modal>
 	)
 }

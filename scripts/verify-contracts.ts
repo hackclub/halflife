@@ -1,7 +1,7 @@
 import "dotenv/config"
 import { readdirSync, readFileSync, statSync } from "node:fs"
 import { join, relative } from "node:path"
-import { z } from "zod"
+import type { z } from "zod"
 
 /**
  * The contract between the browser and the API.
@@ -98,7 +98,7 @@ const STORE_CALLS: { path: string; methods: string[] }[] = [
 	{ path: "/api/projects/${id}/submit", methods: ["POST"] },
 	{ path: "/api/projects/${id}/link-sync-repo", methods: ["POST"] },
 	{ path: "/api/posts", methods: ["POST"] },
-	{ path: "/api/me", methods: ["PATCH"] },
+	{ path: "/api/goal", methods: ["PATCH"] },
 ]
 
 /**
@@ -152,8 +152,8 @@ async function bodies() {
 	const { createPostSchema, likeSchema } = await import("../src/lib/schemas/feed")
 	const { bomImportSchema, repoSyncSettingsSchema } = await import("../src/lib/schemas/project")
 	const { purchaseSchema } = await import("../src/lib/schemas/shop")
+	const { setGoalSchema } = await import("../src/lib/schemas/goal")
 
-	const meSchema = z.object({ printerGoalId: z.string().max(80) }).strict()
 	const journal = "x".repeat(200)
 
 	const cases: [string, z.ZodType, unknown][] = [
@@ -216,7 +216,12 @@ async function bodies() {
 		],
 		["submitPhase", submitSchema, { phase: "DESIGN", notes: "it works", attachmentKeys: ["sessions/u/cart.png"] }],
 		["submitPhase · no notes", submitSchema, { phase: "BUILD", attachmentKeys: [] }],
-		["setGoal", meSchema, { printerGoalId: "bambu-a1-mini" }],
+		// The printer branch carries a machine and the two funding branches must
+		// not. The store sends `{ goal }` alone for those, so a schema that grew a
+		// required printer would break every one of them at once.
+		["setGoal · printer", setGoalSchema, { goal: "PRINTER", printerGoalId: "bambu-a1-mini" }],
+		["setGoal · funding all weeks", setGoalSchema, { goal: "FULL_FUNDING" }],
+		["setGoal · funding some weeks", setGoalSchema, { goal: "PARTIAL_FUNDING" }],
 		["like", likeSchema, { liked: true }],
 		["buy", purchaseSchema, { shopItemId: "printer-ender-3-v3-se", quantity: 1 }],
 		["repoSync · on", repoSyncSettingsSchema, { enabled: true, repo: "https://github.com/maker/hackpad" }],

@@ -10,6 +10,7 @@ import {
 	UnsubmitModal,
 } from "@/components/platform/modals/CheckpointModals"
 import { FirstCheckpoint } from "@/components/platform/modals/FirstCheckpoint"
+import { GoalModal } from "@/components/platform/modals/GoalModal"
 import { PLATFORM_HOME } from "@/lib/routes"
 import { useStore } from "@/lib/store"
 import { Cinematic } from "./Cinematic"
@@ -106,11 +107,23 @@ export function Overlays() {
 		currentCheckpointId,
 		isPassed,
 		weekStarted,
+		onboardingDone,
+		participantGoal,
 	} = useStore()
 	const pathname = usePathname()
 	const router = useRouter()
 
 	const needsHome = phase === "aim" || phase === "cinematic"
+
+	// The one question that has to be answered before the platform lets anyone
+	// carry on. It is read off the server rather than off the ceremony state, so
+	// it is the same on every device and comes back on every sign-in until it is
+	// answered — clearing localStorage or switching laptop does not lose it.
+	//
+	// `onboardingDone` is the other half of the gate and not a detail: asked
+	// before the first checkpoint it would be a question about hardware
+	// experience asked by the same form that asks about hardware experience.
+	const needsGoal = onboardingDone && participantGoal === null
 
 	useEffect(() => {
 		if (hydrated && needsHome && pathname !== PLATFORM_HOME) router.push(PLATFORM_HOME)
@@ -153,7 +166,15 @@ export function Overlays() {
 		<>
 			{openCheckpoint && <CheckpointModal id={openCheckpoint} />}
 
-			{phase === "aim" && !openCheckpoint && pathname === PLATFORM_HOME && (
+			{/*
+			 * Uncloseable, and above everything else here. It waits its turn rather
+			 * than stacking: `openCheckpoint` is the first checkpoint's own modal, and
+			 * the tour is the thing this most often lands on top of, since answering
+			 * the goal hands you straight into it.
+			 */}
+			{needsGoal && !openCheckpoint && <GoalModal open dismissible={false} onClose={() => {}} />}
+
+			{phase === "aim" && !openCheckpoint && !needsGoal && pathname === PLATFORM_HOME && (
 				<Spotlight
 					selector='[data-tour="first-checkpoint"]'
 					title="Start here"
@@ -169,7 +190,7 @@ export function Overlays() {
 				/>
 			)}
 
-			{phase === "tour" && !openCheckpoint && (
+			{phase === "tour" && !openCheckpoint && !needsGoal && (
 				<Spotlight
 					// Deliberately not keyed on the step: one instance living across all
 					// seven is what lets the window travel down the rail instead of
