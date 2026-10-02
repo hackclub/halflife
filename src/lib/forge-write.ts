@@ -271,8 +271,10 @@ export async function defaultBranchOf(creds: ForgeCredentials, ref: RepoRef): Pr
 	const res = await call(creds, `repos/${ref.fullName}`, { method: "GET" })
 	if (res.status === 404) throw new HttpError("NOT_FOUND", `${ref.fullName} does not exist or is not visible.`)
 	if (!res.ok) throw new ForgeWriteUnavailable(`${creds.forge.label} did not answer.`)
-	const body = (await res.json()) as { default_branch: string }
-	return body.default_branch
+	const body = (await res.json()) as { default_branch: string | null }
+	// An empty repo may answer null; the branch the first commit names has to come
+	// from somewhere, and `main` is what GitHub itself would create.
+	return body.default_branch ?? "main"
 }
 
 /* ── GitHub ─────────────────────────────────────────────────────────────── */
@@ -289,7 +291,20 @@ async function commitGitHub(
 	// What the branch's tip is. The commit is parented on this, and the ref
 	// update is guarded on it still being the tip — so a push that lands between
 	// this read and the write fails the whole thing rather than discarding it.
-	const refRes = await call(creds, `${base}/git/ref/heads/${encodeURIComponent(branch)}`, { method: "GET" })
+	//
+	// An empty repository is the one case where there is no tip to read: GitHub
+	// answers 409 ("Git Repository is empty") and refuses the whole Git Data API
+	// until the repo has a commit. The Contents API is the documented way in —
+	// writing one file initialises the repository and its first branch — after
+	// which the read below works as usual. That first file lands in its own
+	// commit; the rest still land together in one.
+	let refRes = await call(creds, `${base}/git/ref/heads/${encodeURIComponent(branch)}`, { method: "GET" })
+	if (refRes.status === 409) {
+		const first = files[0]
+		if (!first) return []
+		await initializeEmptyGitHubRepo(creds, ref, branch, first, message)
+		refRes = await call(creds, `${base}/git/ref/heads/${encodeURIComponent(branch)}`, { method: "GET" })
+	}
 	if (refRes.status === 404) {
 		throw new HttpError("UNPROCESSABLE", `The repo has no branch called ${branch}.`)
 	}
@@ -365,6 +380,36 @@ async function commitGitHub(
 	if (!updateRes.ok) throw new ForgeWriteUnavailable(`${creds.forge.label} did not answer.`)
 
 	return written.sort((a, b) => a.path.localeCompare(b.path))
+}
+
+/**
+ * Give a repo with no commits its first one, so the Git Data API can be used on
+ * it. GitHub refuses blobs, trees and commits on an empty repository (409), and
+ * names the Contents API as the one endpoint that can initialise it: writing a
+ * single file creates the commit and, with it, the branch. Named branch because
+ * an empty repo has no default for GitHub to fall back to.
+ *
+ * https://docs.github.com/rest/guides/using-the-rest-api-to-interact-with-your-git-database
+ */
+async function initializeEmptyGitHubRepo(
+	creds: ForgeCredentials,
+	ref: RepoRef,
+	branch: string,
+	file: FileUpdate,
+	message: string,
+): Promise<void> {
+	const path = file.path.split("/").map(encodeURIComponent).join("/")
+	const res = await call(creds, `repos/${ref.fullName}/contents/${path}`, {
+		method: "PUT",
+		headers: { "content-type": "application/json" },
+		body: JSON.stringify({
+			message,
+			// The Contents API wants the bytes base64-encoded, not the text.
+			content: Buffer.from(file.content, "utf-8").toString("base64"),
+			branch,
+		}),
+	})
+	if (!res.ok) throw new ForgeWriteUnavailable(`${creds.forge.label} did not answer.`)
 }
 
 /** `path -> blob sha` for one tree, so an unchanged file can be spotted. */
