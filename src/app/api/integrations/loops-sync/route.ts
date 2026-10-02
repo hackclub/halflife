@@ -21,6 +21,8 @@ export const POST = withRoute(async (req: NextRequest) => {
 		await recordSyncRun("airtable_loops", {
 			users: result.users,
 			matched: result.matched,
+			matchedById: result.matchedById,
+			matchedByEmail: result.matchedByEmail,
 			unmatched: result.unmatched,
 			updated: result.updated,
 		})
