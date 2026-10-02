@@ -147,6 +147,29 @@ enum HardwareExperience {
   ITS_LIFE
 }
 
+/// What a participant is actually here for, asked once the first checkpoint is
+/// done and answered before the platform lets them carry on.
+///
+/// It is the one question the program has to ask up front, because the three
+/// answers want different things from the same ten weeks: a printer is a target
+/// to pace against, funding is the grant itself, and there is no prize-shaped
+/// version of "I'd like some of it".
+///
+/// Deliberately NOT an extension of `printerGoalId`. That column answers "which
+/// machine", which is a question only the PRINTER branch ever asks; this one
+/// answers "why am I here", and it gates whether the machine question is asked
+/// at all. An enum and not a string because these three are the program's own
+/// vocabulary and staff report on them by name.
+enum ParticipantGoal {
+  /// A 3D printer at the end of the season — the only answer that takes a
+  /// `printerGoalId`.
+  PRINTER
+  /// The per-project funding grant, for the whole ten weeks.
+  FULL_FUNDING
+  /// The same grant, for some of the ten weeks rather than all of them.
+  PARTIAL_FUNDING
+}
+
 /// What a reel is FOR.
 ///
 /// The design file's checkpoint note makes reels part of the week's required
@@ -242,6 +265,10 @@ enum AuditAction {
   USER_DELETE_COMMENT
   USER_ADVANCE_ONBOARDING
   USER_SET_PRINTER_GOAL
+  /// The participant's answer to "what are you here for". Carries the previous
+  /// answer in its metadata, since the only interesting fact about this one is
+  /// what it changed.
+  USER_SET_PARTICIPANT_GOAL
   USER_COMPLETE_ONBOARDING
   USER_DISPUTE_REVIEW
 
@@ -374,6 +401,20 @@ model User {
   /// Figma page), and re-ordering copy should not need a migration.
   onboardingStep        Int       @default(0)
   onboardingCompletedAt DateTime?
+
+  /// What this participant is here for. Null means they have not answered yet.
+  ///
+  /// Read by the platform to hold the mandatory goal prompt open after the first
+  /// checkpoint, and by staff to know how many printers the season is funding
+  /// against. It is deliberately separate from the ceremony state in
+  /// localStorage: that is per-browser and replays on a new laptop, while this
+  /// is a fact about the person, so it has to travel with the account.
+  ///
+  /// Changing it never rewrites `printerGoalId`. A participant who switched off
+  /// the printer branch and back on again gets their machine back rather than
+  /// the default, and nothing that was already banked was ever paced against the
+  /// wrong target.
+  participantGoal ParticipantGoal?
 
   /// The tracking tutorial is the one step the comp marks dismissible —
   /// "option in corner to dismiss if you've journaled before". Recorded

@@ -147,11 +147,47 @@ export interface WritableRepo {
 }
 
 /**
+ * A page of a repo listing is 100 items and no more, so a listing that stops
+ * at the first page shows only the hundred most recently pushed — which for
+ * anyone with a long history hides whole organisations behind their own
+ * activity. The forges say exactly how many pages exist through their `Link`
+ * header, and that is what the loops below follow. This is only a bound on a
+ * header that never ends: 100 pages is 10,000 repos, well past where a listing
+ * that keeps saying "next" is more likely to be broken than a real account.
+ */
+const MAX_REPO_LIST_PAGES = 100
+
+/**
+ * The `path?query` the `Link` header's `rel="next"` entry points at, ready to
+ * hand back to `call`, or null when there is no next page.
+ *
+ * The forges hand out absolute URLs under their own API root, and `call`
+ * prepends that root itself, so it is stripped off again here. Taking the
+ * forge's word for which page comes next — rather than incrementing `page`
+ * ourselves — is what "fetch them all" means: the loop ends on the page the
+ * forge says is the last one, not on whichever count we guessed.
+ *
+ * The regex deliberately does not split the header on commas first: a next
+ * URL can carry commas of its own (`affiliation=owner,collaborator,…`), and a
+ * split there would tear the link in half without either half matching.
+ */
+function nextPagePath(linkHeader: string | null, apiRoot: string): string | null {
+	for (const match of (linkHeader ?? "").matchAll(/<([^<>]+)>\s*;\s*rel="?next"?/g)) {
+		const url = match[1]
+		if (!url) continue
+		if (url.startsWith(apiRoot)) return url.slice(apiRoot.length)
+		if (url.startsWith("http")) console.warn(`[forge-write] next page outside ${apiRoot}: ${url}`)
+	}
+	return null
+}
+
+/**
  * The repos the caller may write to, newest-pushed first.
  *
- * Filtered to what they can actually push to. Offering a repo the token cannot
- * write to would let someone turn the sync on and then watch every entry fail
- * with a 403 they cannot fix from here.
+ * Every page is followed, so the count is the account's, not the first
+ * hundred's. Filtered to what they can actually push to: offering a repo the
+ * token cannot write to would let someone turn the sync on and then watch every
+ * entry fail with a 403 they cannot fix from here.
  */
 export async function listWritableRepos(userId: string, forge: Forge): Promise<WritableRepo[]> {
 	const creds = await forgeCredentials(userId, forge)
@@ -159,63 +195,115 @@ export async function listWritableRepos(userId: string, forge: Forge): Promise<W
 	return forge.id === "gitlab" ? listGitLabRepos(creds) : listGitHubRepos(creds)
 }
 
+/** One repo as GitHub's `GET /user/repos` returns it. */
+type GitHubRepo = {
+	full_name: string
+	name: string
+	owner: { login: string }
+	private: boolean
+	default_branch: string
+	permissions?: { push?: boolean; admin?: boolean; maintain?: boolean }
+	pushed_at: string | null
+}
+
 async function listGitHubRepos(creds: ForgeCredentials): Promise<WritableRepo[]> {
-	const res = await call(creds, "user/repos?per_page=100&sort=pushed&affiliation=owner,collaborator", { method: "GET" })
-	if (!res.ok) throw new ForgeWriteUnavailable(`${creds.forge.label} did not answer.`)
-	const repos = (await res.json()) as {
-		full_name: string
-		name: string
-		owner: { login: string }
-		private: boolean
-		default_branch: string
-		permissions?: { push?: boolean; admin?: boolean; maintain?: boolean }
-		pushed_at: string | null
-	}[]
-	return repos
-		.filter((r) => r.permissions?.push === true || r.permissions?.admin === true || r.permissions?.maintain === true)
-		.map((r) => ({
-			fullName: r.full_name,
-			name: r.name,
-			ownerPath: r.owner.login,
-			url: repoUrl(creds.forge, r.owner.login, r.name),
-			private: r.private,
-			defaultBranch: r.default_branch,
-			pushedAt: r.pushed_at,
-		}))
+	// All three affiliations — the API's default is `owner,collaborator,
+	// organization_member`, and each is needed to see every repo they can push
+	// to: `owner` their own, `collaborator` ones they were added to directly,
+	// and `organization_member` the ones reached through an organisation. Org
+	// repos are exactly the ones a team grant or an org-wide write role lands
+	// on, so dropping that affiliation hid every organisation repository from
+	// the picker no matter what was granted at the OAuth prompt. The push
+	// filter below still removes anything the token cannot write to.
+	let path: string | null = "user/repos?per_page=100&sort=pushed&affiliation=owner,collaborator,organization_member"
+	const repos: GitHubRepo[] = []
+	for (let page = 1; path; page++) {
+		if (page > MAX_REPO_LIST_PAGES) {
+			console.warn(`[forge-write] stopped listing ${creds.forge.label} repos at ${MAX_REPO_LIST_PAGES} pages`)
+			break
+		}
+		const res = await call(creds, path, { method: "GET" })
+		if (!res.ok) throw new ForgeWriteUnavailable(`${creds.forge.label} did not answer.`)
+		repos.push(...((await res.json()) as GitHubRepo[]))
+		path = nextPagePath(res.headers.get("Link"), "https://api.github.com/")
+	}
+	const seen = new Set<string>()
+	return (
+		repos
+			// A repo can turn up on two pages when a push lands mid-listing — the
+			// `sort=pushed` key moved underneath us. One entry per repo either way.
+			.filter((r) => {
+				if (seen.has(r.full_name)) return false
+				seen.add(r.full_name)
+				return true
+			})
+			.filter((r) => r.permissions?.push === true || r.permissions?.admin === true || r.permissions?.maintain === true)
+			.map((r) => ({
+				fullName: r.full_name,
+				name: r.name,
+				ownerPath: r.owner.login,
+				url: repoUrl(creds.forge, r.owner.login, r.name),
+				private: r.private,
+				defaultBranch: r.default_branch,
+				pushedAt: r.pushed_at,
+			}))
+	)
+}
+
+/** One project as GitLab's `GET /projects` returns it. */
+type GitLabProject = {
+	path_with_namespace: string
+	name: string
+	path: string
+	namespace: { full_path: string }
+	visibility: string
+	default_branch: string | null
+	last_activity_at: string | null
 }
 
 async function listGitLabRepos(creds: ForgeCredentials): Promise<WritableRepo[]> {
 	// `membership=true` is "projects I am a member of", which is the closest
-	// equivalent to GitHub's owner+collaborator affiliation. `min_access_level`
-	// narrows it to projects they can push to, the same filter GitHub's
-	// `permissions.push` applies client-side.
-	const res = await call(
-		creds,
-		"projects?membership=true&min_access_level=30&per_page=100&order_by=last_activity_at&sort=desc",
-		{ method: "GET" },
+	// equivalent to GitHub's owner+collaborator+organisation affiliation.
+	// `min_access_level` narrows it to projects they can push to, the same
+	// filter GitHub's `permissions.push` applies client-side. Every page is
+	// followed for the same reason GitHub's is: one page is 100 projects, and
+	// an account with more would otherwise only see the most recently active.
+	let path: string | null =
+		"projects?membership=true&min_access_level=30&per_page=100&order_by=last_activity_at&sort=desc"
+	const projects: GitLabProject[] = []
+	for (let page = 1; path; page++) {
+		if (page > MAX_REPO_LIST_PAGES) {
+			console.warn(`[forge-write] stopped listing ${creds.forge.label} projects at ${MAX_REPO_LIST_PAGES} pages`)
+			break
+		}
+		const res = await call(creds, path, { method: "GET" })
+		if (!res.ok) throw new ForgeWriteUnavailable(`${creds.forge.label} did not answer.`)
+		projects.push(...((await res.json()) as GitLabProject[]))
+		path = nextPagePath(res.headers.get("Link"), "https://gitlab.com/api/v4/")
+	}
+	const seen = new Set<string>()
+	return (
+		projects
+			// Same mid-listing shuffle as GitHub's `sort=pushed`: one entry per
+			// project even when activity moves one across a page boundary.
+			.filter((p) => {
+				if (seen.has(p.path_with_namespace)) return false
+				seen.add(p.path_with_namespace)
+				return true
+			})
+			.map((p) => ({
+				fullName: p.path_with_namespace,
+				name: p.name,
+				ownerPath: p.namespace.full_path,
+				url: repoUrl(creds.forge, p.namespace.full_path, p.path),
+				private: p.visibility !== "public",
+				// GitLab answers null for a project with no commits yet. The default
+				// branch of such a project is `main`, and a commit has to name one, so
+				// that is what it falls back to.
+				defaultBranch: p.default_branch ?? "main",
+				pushedAt: p.last_activity_at,
+			}))
 	)
-	if (!res.ok) throw new ForgeWriteUnavailable(`${creds.forge.label} did not answer.`)
-	const projects = (await res.json()) as {
-		path_with_namespace: string
-		name: string
-		path: string
-		namespace: { full_path: string }
-		visibility: string
-		default_branch: string | null
-		last_activity_at: string | null
-	}[]
-	return projects.map((p) => ({
-		fullName: p.path_with_namespace,
-		name: p.name,
-		ownerPath: p.namespace.full_path,
-		url: repoUrl(creds.forge, p.namespace.full_path, p.path),
-		private: p.visibility !== "public",
-		// GitLab answers null for a project with no commits yet. The default
-		// branch of such a project is `main`, and a commit has to name one, so
-		// that is what it falls back to.
-		defaultBranch: p.default_branch ?? "main",
-		pushedAt: p.last_activity_at,
-	}))
 }
 
 export interface FileUpdate {

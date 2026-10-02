@@ -154,21 +154,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 						)}
 
 						{/* Below lg there is no sidebar, so this is the way to the page.
-                The rail's goal tracker is out of reach there too, so "Change
-                printer" opens that picker here beside it. Both fold to their
-                icons on a phone: the logo, two full-width pills and the
-                counters cannot share a 360px row. */}
+                The rail's goal tracker is out of reach there too, so this opens
+                that picker here beside it — which asks what you're here for
+                first, so it is named after the goal rather than the printer. Both
+                fold to their icons on a phone: the logo, two full-width pills and
+                the counters cannot share a 360px row. */}
 						{!onDoomscroller && (
 							<>
 								<button
 									type="button"
 									onClick={() => setGoalOpen(true)}
 									aria-haspopup="dialog"
-									aria-label="Change printer"
+									aria-label="Change goal"
 									className="label inline-flex items-center gap-1.5 rounded-full border-2 border-line bg-paper px-3 py-1.5 text-navy-soft transition-colors hover:border-teal hover:text-navy lg:hidden"
 								>
 									<IconTrophy className="text-base" />
-									<span className="hidden md:inline">Change printer</span>
+									<span className="hidden md:inline">Change goal</span>
 								</button>
 								<Link
 									href="/doomscroller"

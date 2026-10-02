@@ -14,7 +14,7 @@ import { Modal, ModalTitle } from "./Modal"
  * `/api/onboarding` state machine and view model as the server flow.
  */
 export function FirstCheckpoint() {
-	const { setOpenCheckpoint, setPhase } = useStore()
+	const { setOpenCheckpoint, setPhase, finishOnboarding } = useStore()
 	const router = useRouter()
 	const [view, setView] = useState<OnboardingView | null>(null)
 	const [error, setError] = useState<string | null>(null)
@@ -79,6 +79,10 @@ export function FirstCheckpoint() {
 			<OnboardingFlow
 				initial={view}
 				onComplete={() => {
+					// Marked done before anything is closed, so the goal prompt — which
+					// is gated on it — is already up by the time this modal unmounts,
+					// rather than arriving a refresh later over the tab tour.
+					finishOnboarding()
 					setOpenCheckpoint(null)
 					setPhase("tour")
 					router.refresh()

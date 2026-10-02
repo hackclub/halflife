@@ -189,8 +189,47 @@ async function main() {
 	check("an existing participant is not sent through onboarding", await needsOnboarding(veteran.id), false)
 	check("starter lookup round-trips", getStarterProject(starter.id)?.id, starter.id)
 
+	// ── The goal gate the first checkpoint hands off to ────────────────────────
+	// The prompt after onboarding is held open on one fact — participantGoal
+	// being null — and that fact has to travel with the account rather than with
+	// a browser, or a new laptop would let somebody past a question they have
+	// never been asked. These three are what that rests on.
+	const asked = await prisma.user.create({
+		data: {
+			email: `goal-${stamp}@example.test`,
+			name: "Goal Check",
+			onboardingCompletedAt: new Date(),
+			// No participantGoal: finished onboarding, not yet answered.
+		},
+	})
+	const { getStoreSnapshot } = await import("../src/lib/queries/store")
+	const unanswered = await getStoreSnapshot(asked.id)
+	check("an unanswered goal is null, not defaulted", unanswered.participantGoal, null)
+	check(
+		"and that is what holds the prompt open",
+		unanswered.onboardingDone && unanswered.participantGoal === null,
+		true,
+	)
+
+	// Answering it is a plain write, and the gate opens the moment it lands.
+	await prisma.user.update({ where: { id: asked.id }, data: { participantGoal: "FULL_FUNDING" } })
+	const answered = await getStoreSnapshot(asked.id)
+	check("answering closes the gate", answered.onboardingDone && answered.participantGoal === null, false)
+
+	// A participant on the printer branch keeps their machine across a change of
+	// heart; nulling it here would hand them the default instead of their own.
+	await prisma.user.update({ where: { id: asked.id }, data: { printerGoalId: "bambu-a1-mini" } })
+	await prisma.user.update({ where: { id: asked.id }, data: { participantGoal: "PARTIAL_FUNDING" } })
+	await prisma.user.update({ where: { id: asked.id }, data: { participantGoal: "PRINTER" } })
+	const returned = await prisma.user.findUniqueOrThrow({
+		where: { id: asked.id },
+		select: { printerGoalId: true },
+	})
+	check("their own machine is still theirs after switching back", returned.printerGoalId, "bambu-a1-mini")
+
 	await prisma.user.delete({ where: { id: user.id } })
 	await prisma.user.delete({ where: { id: veteran.id } })
+	await prisma.user.delete({ where: { id: asked.id } })
 
 	console.log(failures === 0 ? "\nAll onboarding checks passed." : `\n${failures} check(s) failed.`)
 	process.exit(failures === 0 ? 0 : 1)

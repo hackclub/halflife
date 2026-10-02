@@ -72,6 +72,16 @@ export async function updateMessage(channel: string, ts: string, text: string, b
 	return callSlackApi("chat.update", { channel, ts, text, blocks })
 }
 
+/** A bot token may delete only messages that bot posted, which is the whole
+ * point here — every tickets-channel mirror is one we posted ourselves, so
+ * this needs `chat:write` and nothing more. `message_not_found` is marked
+ * expected: two people can resolve the same ticket from different places, and
+ * whoever gets there second is told the message is already gone, which is the
+ * outcome we wanted rather than a fault. */
+export async function deleteMessage(channel: string, ts: string) {
+	return callSlackApi("chat.delete", { channel, ts }, ["message_not_found"])
+}
+
 /** `already_in_channel` is treated as success — the caller just wants the
  * user in the channel, not a report of how they got there. Logs either way:
  * this runs inside a webhook with no UI to surface failures to, so the

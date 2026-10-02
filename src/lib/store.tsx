@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
+import type { ParticipantGoal } from "@/app/generated/prisma/enums"
 import { COINS_PER_HOUR, printerById, submitFloorFor, weekAsk } from "./config/printers"
 import { DESIGN_WEEKS, ONBOARDING_CHECKPOINT_ID, WARMUP_THEME, WARMUP_WEEK_ID } from "./config/program"
 import { BUILD_HOURS, checkpointsFor, TIERS, WEEK_META } from "./curriculum"
@@ -187,6 +188,15 @@ interface Ctx {
 	goalId: string
 	/** Whether the first checkpoint has been completed. */
 	onboardingDone: boolean
+	/**
+	 * What this participant is here for, or null if they have not been asked
+	 * yet. See config/goal.
+	 *
+	 * Null is a gate, not a default: it is what keeps the mandatory prompt open
+	 * after the first checkpoint, and because it comes from the server it
+	 * reappears on every sign-in rather than on every visit to this browser.
+	 */
+	participantGoal: ParticipantGoal | null
 	hydrated: boolean
 	/** id of the checkpoint whose modal is open, if any */
 	openCheckpoint: string | null
@@ -296,7 +306,19 @@ interface Ctx {
 	weekHours: (weekId: number) => number
 	setOpenCheckpoint: (id: string | null) => void
 	setDoomscroller: (open: boolean) => void
-	setGoal: (id: string) => void
+	/**
+	 * Record what this participant is here for, with the printer if the answer
+	 * is a printer. Resolves to null once saved, or to the server's reason for
+	 * refusing — the prompt that calls it is uncloseable, so a silent failure
+	 * would strand somebody.
+	 */
+	setParticipantGoal: (goal: ParticipantGoal, printerGoalId?: string) => Promise<string | null>
+	/**
+	 * Mark the first checkpoint done, on the API's say-so. Patched rather than
+	 * awaited so the goal prompt can take over from the onboarding modal without
+	 * a frame of the tab tour in between.
+	 */
+	finishOnboarding: () => void
 	reset: () => void
 	/**
 	 * Admins only: wipe your own setup answers and run the whole first run
@@ -873,10 +895,54 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		[],
 	)
 
-	const setGoal = useCallback(
-		(goalId: string) => {
-			setFacts((f) => ({ ...f, goalId }))
-			void send("/api/me", { printerGoalId: goalId }, "PATCH").finally(() => router.refresh())
+	/**
+	 * The first checkpoint answered its last question.
+	 *
+	 * Patched here rather than left to the refresh that follows, because the gate
+	 * that holds the goal prompt open is `onboardingDone && participantGoal ===
+	 * null`. Waiting for the round-trip would put the tab tour's spotlight on
+	 * screen for the length of the request and then cover it with the prompt.
+	 * The API has already confirmed this, so it is a fact and not a guess.
+	 */
+	const finishOnboarding = useCallback(() => {
+		setFacts((f) => ({ ...f, onboardingDone: true }))
+	}, [])
+
+	/**
+	 * Record what this participant is here for.
+	 *
+	 * Unlike everything else in here, this one reports its failures instead of
+	 * swallowing them, and it does NOT patch optimistically. The prompt that
+	 * calls it is uncloseable: if the facts flipped before the write landed, a
+	 * refused save would close the modal on the spot and unmount the error with
+	 * it, leaving somebody stuck behind a prompt that looks finished and says
+	 * nothing about why. So the gate opens only once the server agrees.
+	 *
+	 * Resolves to null once saved, or to the server's reason for refusing.
+	 */
+	const setParticipantGoal = useCallback(
+		async (goal: ParticipantGoal, printerGoalId?: string): Promise<string | null> => {
+			let refusal: string | null = null
+			try {
+				const res = await fetch("/api/goal", {
+					method: "PATCH",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify(printerGoalId ? { goal, printerGoalId } : { goal }),
+				})
+				if (res.ok) {
+					setFacts((f) => ({ ...f, participantGoal: goal, goalId: printerGoalId ?? f.goalId }))
+				} else {
+					const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
+					refusal = err?.error?.message ?? "That did not save. Try again."
+				}
+			} catch {
+				refusal = "Could not reach the server. Try again."
+			}
+
+			// Either way the server has the last word, so a write that landed
+			// elsewhere while this one was refused cannot sit on top of it.
+			void router.refresh()
+			return refusal
 		},
 		[router],
 	)
@@ -1457,7 +1523,8 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		currentCheckpointId,
 		setOpenCheckpoint,
 		setDoomscroller,
-		setGoal,
+		setParticipantGoal,
+		finishOnboarding,
 		reset,
 		redoOnboarding,
 		weeks,

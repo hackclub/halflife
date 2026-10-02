@@ -142,6 +142,14 @@ needs duplicating into the job.
 | `claim-sweep` | `*/5 * * * *` | `POST /api/integrations/claim-sweep` |
 | `printer-reconcile` | `0 8 * * *` | `POST /api/integrations/printer-reconcile` |
 
+`loops-sync` finds each person's row by `Half-Life User ID`, falling back to
+email. The two disagree whenever somebody signs up on the landing page with one
+address and is issued another at sign-in — the normal case, not an edge one — so
+**the `Signups` base needs that column, and `rsvp-drain` needs to be filling it.**
+A run whose `matched` count is far below `users` means one of those is untrue;
+the job logs an error saying so rather than reporting a clean run, because a row
+that is not found is skipped and counted rather than raised.
+
 Each step:
 
 ```jsonc
