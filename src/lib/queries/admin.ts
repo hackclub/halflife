@@ -2,6 +2,7 @@ import "server-only"
 import type { Prisma } from "@/app/generated/prisma/client"
 import {
 	AuditAction,
+	HoursSource,
 	type PhaseStatus,
 	type ShopFulfillmentMethod,
 	ShopFulfillmentStage,
@@ -431,4 +432,116 @@ export async function getAdminCounters() {
 		prisma.printerAward.count({ where: { revokedAt: null } }),
 	])
 	return { pendingReviews, pendingOrders, participants, shipped }
+}
+
+export interface FlowStep {
+	id: string
+	label: string
+	hint: string
+	count: number
+	/** Share of the previous step that made it down to this one. */
+	retainPct: number
+	/** Share of the previous step that stopped here. */
+	dropOffPct: number
+	/** Share of everyone who signed up that got this far. */
+	ofSignupsPct: number
+}
+
+/**
+ * The participant journey as a funnel. Each row counts people who ALSO did
+ * every step above it, so a step never has more people than the one before it
+ * and drop-off is never negative — whatever order things actually happened in.
+ *
+ * Steps with a named marker come from User (lib/analytics); devlogs and repo
+ * links are derived from their own tables; "repo checks passed" is stamped by
+ * the preflight that gates submissions.
+ */
+export async function getUserFlowFunnel(): Promise<FlowStep[]> {
+	const [users, sessionUsers, devlogUsers, repoUsers] = await Promise.all([
+		prisma.user.findMany({
+			select: {
+				id: true,
+				firstProjectAt: true,
+				firstReelAt: true,
+				firstChecksPassedAt: true,
+				firstSubmissionAt: true,
+			},
+		}),
+		// People who logged in: a sign-in is what issues a session. Derived from
+		// the table rather than the lastLoginAt marker, so the funnel does not
+		// depend on the analytics backfill having run.
+		prisma.session.findMany({ select: { userId: true }, distinct: ["userId"] }),
+		// People who added a devlog: a project with a real work session on it.
+		prisma.user.findMany({
+			where: {
+				themeProjects: {
+					some: {
+						deletedAt: null,
+						workSessions: { some: { deletedAt: null, hoursSource: { not: HoursSource.HACKATIME_TRACKED } } },
+					},
+				},
+			},
+			select: { id: true },
+		}),
+		// People who connected a repository to a project.
+		prisma.themeProject.findMany({
+			where: {
+				deletedAt: null,
+				OR: [{ githubRepo: { not: null } }, { repoSyncRepo: { not: null } }, { repoSyncEnabled: true }],
+			},
+			select: { userId: true },
+			distinct: ["userId"],
+		}),
+	])
+
+	const sessions = new Set(sessionUsers.map((s) => s.userId))
+	const devlogs = new Set(devlogUsers.map((u) => u.id))
+	const repos = new Set(repoUsers.map((u) => u.userId))
+	// One boolean per step per person; steps[0] (signup) is true for everyone.
+	const flags = users.map((u) => [
+		true,
+		sessions.has(u.id),
+		u.firstProjectAt !== null,
+		u.firstReelAt !== null,
+		devlogs.has(u.id),
+		repos.has(u.id),
+		u.firstChecksPassedAt !== null,
+		u.firstSubmissionAt !== null,
+	])
+	const total = users.length
+
+	const defs = [
+		{ id: "signedUp", label: "Signed up", hint: "Account in the database" },
+		{ id: "loggedIn", label: "Logged in", hint: "At least one sign-in" },
+		{ id: "createdProject", label: "Created a project", hint: "Named a project and picked a funding tier" },
+		{ id: "postedReel", label: "Posted a reel", hint: "A video published to the feed" },
+		{ id: "addedDevlog", label: "Added a devlog", hint: "Wrote a journal entry" },
+		{ id: "connectedRepo", label: "Connected a repo", hint: "Linked an external repository to a project" },
+		{ id: "checksPassed", label: "Repo checks passed", hint: "Every hand-in repo check came back green" },
+		{ id: "submitted", label: "Submitted a project", hint: "Handed a phase in for review" },
+	] as const
+
+	const steps: FlowStep[] = []
+	for (const [n, def] of defs.entries()) {
+		let count = 0
+		for (const f of flags) {
+			let ok = true
+			for (let k = 0; k <= n; k += 1) {
+				if (!f[k]) {
+					ok = false
+					break
+				}
+			}
+			if (ok) count += 1
+		}
+		const prev = n === 0 ? total : (steps[n - 1]?.count ?? total)
+		steps.push({
+			...def,
+			count,
+			retainPct: prev === 0 ? 0 : Math.round((count / prev) * 1000) / 10,
+			dropOffPct: n === 0 || prev === 0 ? 0 : Math.round(((prev - count) / prev) * 1000) / 10,
+			ofSignupsPct: total === 0 ? 0 : Math.round((count / total) * 1000) / 10,
+		})
+	}
+	return steps
 }

@@ -2,7 +2,7 @@ import Link from "next/link"
 import { EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
 import { requireAnyPermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
-import { getAdminCounters } from "@/lib/queries/admin"
+import { getAdminCounters, getUserFlowFunnel, type FlowStep } from "@/lib/queries/admin"
 import { getLatestSyncRuns } from "@/lib/sync-run-log"
 
 export const dynamic = "force-dynamic"
@@ -16,7 +16,7 @@ export default async function AdminOverviewPage() {
 		Permission.MANAGE_PROGRAM,
 	)
 
-	const [counters, syncs] = await Promise.all([
+	const [counters, syncs, flow] = await Promise.all([
 		getAdminCounters(),
 		getLatestSyncRuns([
 			"hackatime",
@@ -27,6 +27,7 @@ export default async function AdminOverviewPage() {
 			"claim_sweep",
 			"printer_reconcile",
 		]),
+		getUserFlowFunnel(),
 	])
 
 	return (
@@ -39,6 +40,17 @@ export default async function AdminOverviewPage() {
 				<Stat label="Participants" value={counters.participants} />
 				<Stat label="Printers earned" value={counters.shipped} />
 			</div>
+
+			<Panel
+				title="User flow"
+				actions={
+					<span className="hl-hint" style={{ fontSize: "0.78rem" }}>
+						each step includes everyone who completed every step above it
+					</span>
+				}
+			>
+				<FlowFunnel steps={flow} />
+			</Panel>
 
 			<Panel
 				title="Scheduled jobs"
@@ -58,6 +70,68 @@ export default async function AdminOverviewPage() {
 					</Table>
 				)}
 			</Panel>
+		</div>
+	)
+}
+
+/**
+ * The funnel as horizontal bars: each row's bar is its count share of the top
+ * step, and the trailing number reads how many people made it that far — the
+ * gap between rows is the drop-off.
+ */
+function FlowFunnel({ steps }: { steps: FlowStep[] }) {
+	const top = steps[0]?.count ?? 1
+	return (
+		<div className="hl-stack">
+			{steps.map((s) => (
+				<div
+					key={s.id}
+					style={{
+						display: "grid",
+						// Fixed side columns: the middle (bar) gets the same width in
+						// every row regardless of how the caption text wraps.
+						gridTemplateColumns: "12rem minmax(0,1fr) 6rem",
+						alignItems: "center",
+						gap: "0.75rem",
+					}}
+				>
+					<div style={{ minWidth: 0 }}>
+						<div style={{ fontWeight: 700 }}>{s.label}</div>
+						<div className="hl-hint" style={{ fontSize: "0.72rem" }}>
+							{s.hint}
+						</div>
+					</div>
+
+					<div
+						aria-hidden="true"
+						style={{
+							position: "relative",
+							height: "14px",
+							background: "var(--color-border)",
+							borderRadius: "999px",
+							overflow: "hidden",
+						}}
+					>
+						<div
+							style={{
+								width: `${(s.count / top) * 100}%`,
+								height: "100%",
+								background: "var(--color-accent)",
+								borderRadius: "999px",
+							}}
+						/>
+					</div>
+
+					<div style={{ textAlign: "right", minWidth: 0, overflowWrap: "anywhere" }}>
+						<div style={{ fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{s.count}</div>
+						<div className="hl-hint" style={{ fontSize: "0.72rem" }}>
+							{s.id === "signedUp"
+								? "baseline"
+								: `${s.retainPct}% of previous${s.dropOffPct > 0 ? ` · ${s.dropOffPct}% stopped` : ""}`}
+						</div>
+					</div>
+				</div>
+			))}
 		</div>
 	)
 }

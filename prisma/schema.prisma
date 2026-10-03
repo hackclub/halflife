@@ -444,6 +444,9 @@ model User {
   firstReelAt       DateTime?
   firstSubmissionAt DateTime?
   lastSubmissionAt  DateTime?
+  /// When the repo file checks first passed for this person (a preflight whose
+  /// `canSubmit` came back true). Set once, never moved — see lib/analytics.ts.
+  firstChecksPassedAt DateTime?
   /// The last sign-in — a new session, not a page view.
   lastLoginAt       DateTime?
   /// The last page view, to within a few minutes (writes are throttled).
