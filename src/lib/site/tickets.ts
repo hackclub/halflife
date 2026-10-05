@@ -47,6 +47,12 @@ export const SELF_RESOLVE_BUTTON = "i've got it, thanks"
 
 export const MARK_HELPED_BUTTON = "mark as helped"
 
+/** The workspace's custom "done" emoji, dropped on the original question once
+ * its ticket is resolved from any of the three buttons. Note this is the
+ * hyphenated custom-emoji name, not `:white_check_mark:` — it only resolves if
+ * an emoji by this exact name exists in the Hack Club workspace. */
+export const RESOLVED_REACTION = "white-checkbox-checkbox-checkbox"
+
 /** Posted to the thread once a helper has answered. Mentions the helper on
  * purpose: for them the participant hasn't had an answer yet, so this is the
  * ping that tells them it's arrived. */

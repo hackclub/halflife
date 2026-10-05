@@ -3,10 +3,11 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { IconChevronLeft, IconClock } from "@/components/platform/icons"
+import { IconBook, IconChevronLeft, IconClock } from "@/components/platform/icons"
 import { RepoChecks } from "@/components/platform/modals/RepoChecks"
 import { RepoSyncSettings } from "@/components/platform/RepoSyncSettings"
 import { Button, Chip, cx, Panel } from "@/components/platform/ui"
+import { getStarterProject } from "@/lib/config/onboarding"
 import { DESIGN_WEEKS } from "@/lib/config/printers"
 import { WARMUP_WEEK_ID } from "@/lib/config/program"
 import { TIERS } from "@/lib/curriculum"
@@ -15,6 +16,7 @@ import type { ProjectPageData } from "@/lib/queries/project-page"
 import { displayRepo } from "@/lib/repo"
 import { REVIEW_STATUS_DOT, REVIEW_STATUS_TEXT, reviewChipTone } from "@/lib/review-state"
 import { useStore } from "@/lib/store"
+import type { Project } from "@/lib/types"
 import { BomEditor } from "./BomEditor"
 import { HackatimeLinks } from "./HackatimeLinks"
 import { ProjectDetails } from "./ProjectDetails"
@@ -379,6 +381,43 @@ function ReviewState({
 	)
 }
 
+/**
+ * The guide a starter project is built from. Choosing a starter happens once,
+ * on the step that names the project, and the card carrying its guide is gone
+ * the moment that step is left — but the guide is what the whole build is
+ * worked from, so the project page keeps the door to it open.
+ *
+ * Only a starter whose id is still in the config has one: the imported starters
+ * predate the config and carry no guide URL, so they show nothing rather than a
+ * dead link.
+ */
+function StarterGuide({ project }: { project: Project }) {
+	const starter = project.starterProjectId ? getStarterProject(project.starterProjectId) : undefined
+	if (!starter) return null
+
+	return (
+		<Panel tone="gold" radius={20} className="mt-6 bg-gold-pale/70 px-5 py-4 sm:px-6">
+			<div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+				<div className="min-w-0 flex-1">
+					<p className="label text-gold-ink">Starter project</p>
+					<p className="mt-1.5 text-[0.92rem] leading-relaxed text-navy">
+						You&rsquo;re building <strong className="font-extrabold">{project.name}</strong>. The guide walks you
+						through every step, from the first part to the finished board.
+					</p>
+				</div>
+				<a
+					href={starter.guideUrl}
+					target="_blank"
+					rel="noopener noreferrer"
+					className="inline-flex shrink-0 items-center gap-1.5 font-semibold text-sky-ink underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
+				>
+					<IconBook className="text-[1rem]" /> Read the guide
+				</a>
+			</div>
+		</Panel>
+	)
+}
+
 export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData | null }) {
 	const { projects, stateOf, weekOf, warmupWeekOf, weekHours, hydrated, unsubmitPhase } = useStore()
 	const project = projects.find((p) => p.id === id)
@@ -513,6 +552,9 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 					</div>
 				</div>
 			</Panel>
+
+			{/* ---------- the guide a starter is built from ---------- */}
+			<StarterGuide project={project} />
 
 			{/* ---------- the warm-up's work, and its one hand-in ---------- */}
 			{warmup && <WarmupWork projectId={project.id} />}

@@ -1,8 +1,9 @@
 import { after, NextResponse } from "next/server"
-import { isChannelMember, postMessage, type SlackBlock, updateMessage, verifySlackRequest } from "@/lib/site/slack"
+import { addReaction, isChannelMember, postMessage, type SlackBlock, updateMessage, verifySlackRequest } from "@/lib/site/slack"
 import {
 	deleteTicketMessage,
 	helpedAck,
+	RESOLVED_REACTION,
 	resolveBlocks,
 	selfResolvedAck,
 	type TicketRef,
@@ -67,6 +68,23 @@ async function respondEphemeral(responseUrl: string, text: string) {
 	}
 }
 
+/**
+ * Flags the original #half-life-help question with the resolved reaction.
+ * Best-effort: the reaction is a nice-to-have marker, so a Slack call that
+ * fails here (the custom emoji missing from the workspace, the question
+ * deleted) must not sink the ack that follows it. Guarded on the ref carrying
+ * a help thread, which every resolution button does but a malformed value
+ * might not.
+ */
+async function reactResolved(ref: Partial<TicketRef>) {
+	if (!ref.helpChannel || !ref.helpTs) return
+	try {
+		await addReaction(ref.helpChannel, ref.helpTs, RESOLVED_REACTION)
+	} catch (err) {
+		console.error(`Failed to add resolved reaction: ${err}`)
+	}
+}
+
 /** Staff clicking "Mark as helped" in the tickets channel — no permission
  * check, anyone with access to that private channel can resolve a ticket.
  * The button they just clicked is the ticket's own mirror, so resolving it
@@ -99,6 +117,8 @@ async function handleMarkHelped(payload: InteractionPayload, action: BlockAction
 			console.error(`Failed to post help-channel ack: ${err}`)
 		}
 	}
+
+	await reactResolved(ref)
 }
 
 /** The ticket's own author clicking "I'm all set" in the help-channel
@@ -144,6 +164,8 @@ async function handleSelfResolve(payload: InteractionPayload, action: BlockActio
 			console.error(`Failed to clear the tickets-channel message: ${err}`)
 		}
 	}
+
+	await reactResolved(ref)
 }
 
 /** A helper clicking "Mark as helped" in the help-channel thread — the ask
@@ -189,6 +211,8 @@ async function handleThreadMarkHelped(payload: InteractionPayload, action: Block
 			console.error(`Failed to clear the tickets-channel message: ${err}`)
 		}
 	}
+
+	await reactResolved(ref)
 }
 
 export async function POST(request: Request) {

@@ -5,7 +5,7 @@ import crypto from "node:crypto"
  *
  * Auth is a single bot token (`SLACK_BOT_TOKEN`) with `chat:write`,
  * `channels:read`, `channels:write.invites`, `channels:history`, `im:write`,
- * and `users:read` scopes — see `slack-app-manifest.yml` at the repo root for
+ * `users:read`, and `reactions:write` scopes — see `slack-app-manifest.yml` at the repo root for
  * the exact manifest to paste into api.slack.com when creating the app, which
  * annotates what each one is for. chat.getPermalink and auth.test need none of
  * them, and the private tickets channel needs no extra scope beyond
@@ -70,6 +70,18 @@ export async function postMessage(
 
 export async function updateMessage(channel: string, ts: string, text: string, blocks?: SlackBlock[]) {
 	return callSlackApi("chat.update", { channel, ts, text, blocks })
+}
+
+/** Drops a reaction on a message, used to flag the original #half-life-help
+ * question once its ticket is resolved. `already_reacted` is marked expected:
+ * a ticket can be resolved from the tickets channel or the help thread, so a
+ * second resolution finds the bot's own reaction already in place, which is
+ * the outcome we wanted rather than a fault. `invalid_name` — the custom emoji
+ * not existing in the workspace — is logged by the API layer since there's no
+ * runtime fix for it; see `slack-app-manifest.yml` for the `reactions:write`
+ * scope this needs. */
+export async function addReaction(channel: string, timestamp: string, name: string) {
+	return callSlackApi("reactions.add", { channel, timestamp, name }, ["already_reacted"])
 }
 
 /** A bot token may delete only messages that bot posted, which is the whole
