@@ -50,6 +50,9 @@ oauth_config:
       - im:write
       # users.info, behind getSlackProfile's avatar/display-name enrichment
       - users:read
+      # reactions.add, which flags the original question once its ticket is
+      # resolved. Without this the call comes back `missing_scope`.
+      - reactions:write
 
 settings:
   event_subscriptions:
