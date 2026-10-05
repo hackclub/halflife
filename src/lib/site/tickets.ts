@@ -83,6 +83,20 @@ export function ticketSection(ref: TicketRef): SlackBlock {
 	}
 }
 
+/** A quiet line under a new ticket saying whether the asker has been here
+ * before, and how often. Read by staff in the tickets channel, so it stays
+ * plain rather than in the cat's voice. */
+export function ticketHistory(authorId: string, priorTickets: number): SlackBlock {
+	const prior =
+		priorTickets === 0
+			? "first ticket"
+			: `${priorTickets} previous ${priorTickets === 1 ? "ticket" : "tickets"}`
+	return {
+		type: "context",
+		elements: [{ type: "mrkdwn", text: `${prior} from <@${authorId}>` }],
+	}
+}
+
 export function resolvedContext(byUserId: string, note?: string): SlackBlock {
 	return {
 		type: "context",
