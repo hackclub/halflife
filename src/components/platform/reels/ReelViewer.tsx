@@ -115,6 +115,12 @@ export function ReelViewer() {
 	const [sheetOpen, setSheetOpen] = useState(false)
 	// Kept mounted through the slide down, so it does not empty as it goes.
 	const [sheetShown, setSheetShown] = useState(false)
+	// A card's comments link asks for the conversation once its reel has landed.
+	const [pendingComments, setPendingComments] = useState(false)
+	// The reel a card's link asked for, and whether that link wanted the
+	// comments. Read from the URL once, after mount, so the walk below knows to
+	// go to it rather than to wherever the viewer left off.
+	const deepLink = useRef<{ id: string; comments: boolean } | null>(null)
 	// Whether the comments have room to stand beside the reel. Only one of the
 	// two homes for them is ever mounted, so only one ever fetches.
 	const [wide, setWide] = useState(false)
@@ -271,9 +277,18 @@ export function ReelViewer() {
 		}
 	}, [step])
 
+	// Where to land after mount. A reel card's link carries a reel id, which
+	// wins over the saved position; otherwise it is wherever they left off.
 	// Storage after mount, because the server has none and rendered without it.
 	useEffect(() => {
-		// eslint-disable-next-line react-hooks/set-state-in-effect -- hydrating from localStorage
+		const params = new URLSearchParams(window.location.search)
+		const id = params.get("reel")
+		if (id) {
+			deepLink.current = { id, comments: params.get("comments") === "1" }
+			// eslint-disable-next-line react-hooks/set-state-in-effect -- reading the URL after mount
+			setResume({ id, leadIds: [] })
+			return
+		}
 		setResume(readPosition())
 	}, [])
 
@@ -281,15 +296,18 @@ export function ReelViewer() {
 	const { more, done, loading, error, items, leading } = feed
 	useEffect(() => {
 		if (!resume || loading) return
+		// A link goes straight to its reel; the unseen-admin-reel rule below is
+		// for picking up where someone left off, not for following a card.
+		const isDeep = deepLink.current !== null
 		// An admin reel they have not been shown yet goes first, exactly as it
 		// would on a fresh visit; picking up where they left off can wait.
-		const unseenLead = leading.some((r) => !resume.leadIds.includes(r.id))
+		const unseenLead = isDeep ? false : leading.some((r) => !resume.leadIds.includes(r.id))
 		const at = unseenLead ? -1 : items.findIndex((r) => r.id === resume.id)
 		if (at >= 0) {
 			landOn.current = at
 			cursor.current = at
-			// eslint-disable-next-line react-hooks/set-state-in-effect -- the walk ends once the page it needed has arrived
 			setIndex(at)
+			if (isDeep && deepLink.current?.comments) setPendingComments(true)
 			setResume(null)
 		} else if (!unseenLead && !done && !error && resumePages.current < RESUME_MAX_PAGES) {
 			resumePages.current += 1
@@ -299,6 +317,19 @@ export function ReelViewer() {
 			setResume(null)
 		}
 	}, [resume, loading, items, leading, done, error, more])
+
+	// A card's comments link opens the conversation once its reel has landed.
+	// Wide, that is the panel beside the reel; below it, the sheet over it.
+	useEffect(() => {
+		if (!pendingComments || restoring) return
+		if (wide) setPrefs({ comments: true })
+		else {
+			// eslint-disable-next-line react-hooks/set-state-in-effect -- a deep link asks for the comments once
+			setSheetShown(true)
+			setSheetOpen(true)
+		}
+		setPendingComments(false)
+	}, [pendingComments, restoring, wide, setPrefs])
 
 	// Before paint, so the first frame with slides in it is already theirs.
 	useLayoutEffect(() => {

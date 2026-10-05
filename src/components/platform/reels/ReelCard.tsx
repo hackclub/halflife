@@ -306,7 +306,7 @@ export function ReelCard({
 					<div className="min-w-0 flex-1">
 						<Link
 							href={`/u/${reel.author.id}`}
-							className="block truncate text-[0.86rem] leading-tight font-extrabold text-white transition-colors hover:text-sky-pale hover:underline hover:decoration-dashed hover:underline-offset-4"
+							className="block truncate text-[0.86rem] leading-tight font-extrabold text-white [text-shadow:0_1px_3px_rgba(0,0,0,.6)] transition-colors hover:text-sky-pale hover:underline hover:decoration-dashed hover:underline-offset-4"
 						>
 							{reel.author.name ?? "A maker"}
 						</Link>
@@ -328,12 +328,20 @@ export function ReelCard({
 								{compact(reel.likeCount)}
 							</span>
 						</button>
-						<span className="flex flex-col items-center gap-0.5 text-white">
+						<Link
+							href={`/doomscroller?reel=${reel.id}&comments=1`}
+							// Every card carries a different deep link, so the rail's
+							// dozen would each prefetch their own page; a press is a
+							// deliberate one-off, not something to speculate on.
+							prefetch={false}
+							aria-label={`Comments (${reel.commentCount})`}
+							className="flex flex-col items-center gap-0.5 text-white transition-transform duration-150 hover:scale-110"
+						>
 							<IconComment className="text-[1.3rem]" />
 							<span className="hand text-[0.72rem] font-semibold tabular-nums [text-shadow:0_1px_3px_rgba(0,0,0,.6)]">
 								{compact(reel.commentCount)}
 							</span>
-						</span>
+						</Link>
 						<span className="flex flex-col items-center gap-0.5 text-white">
 							<IconEye className="text-[1.3rem]" />
 							<span className="hand text-[0.72rem] font-semibold tabular-nums [text-shadow:0_1px_3px_rgba(0,0,0,.6)]">
