@@ -1,15 +1,15 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { WeekPainting } from "@/components/platform/art"
 import { Avatar } from "@/components/platform/Avatar"
+import { WeekPainting } from "@/components/platform/art"
 import { IconChevronLeft, IconClock, IconFilm, IconFlame, IconPencil } from "@/components/platform/icons"
 import { ProjectThumb } from "@/components/platform/ProjectThumb"
 import { Panel } from "@/components/platform/ui"
 import { requireSessionPage } from "@/lib/page-guards"
-import { PLATFORM_HOME } from "@/lib/routes"
 import { fmtDate, fmtHours } from "@/lib/projects"
 import { getProfile } from "@/lib/queries/profile"
+import { PLATFORM_HOME } from "@/lib/routes"
 import { ProfileReels } from "./ProfileReels"
 
 export const metadata: Metadata = {

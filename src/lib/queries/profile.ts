@@ -7,7 +7,7 @@ import { type FeedItem, getCreatorReels } from "@/lib/feed"
 import prisma from "@/lib/prisma"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
 import { streakAsOf } from "@/lib/streak"
-import { projectThumbnail, type ProjectThumbnail } from "@/lib/thumbnail"
+import { type ProjectThumbnail, projectThumbnail } from "@/lib/thumbnail"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
 /**
