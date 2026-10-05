@@ -21,8 +21,7 @@ export default async function AdminReferralsPage() {
 			{board === null ? (
 				<Panel>
 					<EmptyState>
-						Referral numbers live on the sign-up list, and Airtable is not configured here, so there is nothing to
-						show.
+						Referral numbers live on the sign-up list, and Airtable is not configured here, so there is nothing to show.
 					</EmptyState>
 				</Panel>
 			) : (

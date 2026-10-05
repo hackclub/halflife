@@ -1,5 +1,12 @@
 import { after, NextResponse } from "next/server"
-import { addReaction, isChannelMember, postMessage, type SlackBlock, updateMessage, verifySlackRequest } from "@/lib/site/slack"
+import {
+	addReaction,
+	isChannelMember,
+	postMessage,
+	type SlackBlock,
+	updateMessage,
+	verifySlackRequest,
+} from "@/lib/site/slack"
 import {
 	deleteTicketMessage,
 	helpedAck,
