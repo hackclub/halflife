@@ -14,13 +14,26 @@ import crypto from "node:crypto"
 
 export type SlackBlock = Record<string, unknown>
 
+/** Slack answers `missing_scope` with the scope it wanted (`needed`) and the
+ * ones the token actually carries (`provided`). Folding them into the logged
+ * detail turns a bare "missing_scope" into a line that names the scope to add,
+ * instead of leaving it to a manual trip through the app's OAuth settings. */
+function slackErrorDetail(data: { error?: string; needed?: string; provided?: string }, status: number): string {
+	if (data.error === "missing_scope" && data.needed) {
+		return data.provided
+			? `${data.error} (needed ${data.needed}; token has ${data.provided})`
+			: `${data.error} (needed ${data.needed})`
+	}
+	return data.error ?? String(status)
+}
+
 async function callSlackApi<T extends Record<string, unknown>>(
 	method: string,
 	params: Record<string, unknown>,
 	/** Slack errors that are expected outcomes rather than faults. Matches are
 	 * logged at `log` level so a normal path doesn't fill the error logs. */
 	expectedErrors: string[] = [],
-): Promise<T & { ok: boolean; error?: string }> {
+): Promise<T & { ok: boolean; error?: string; needed?: string; provided?: string }> {
 	const token = process.env.SLACK_BOT_TOKEN
 	if (!token) throw new Error("SLACK_BOT_TOKEN is not set")
 
@@ -37,9 +50,9 @@ async function callSlackApi<T extends Record<string, unknown>>(
 		signal: AbortSignal.timeout(10_000),
 	})
 
-	const data = (await res.json()) as T & { ok: boolean; error?: string }
+	const data = (await res.json()) as T & { ok: boolean; error?: string; needed?: string; provided?: string }
 	if (!res.ok || !data.ok) {
-		const detail = data.error ?? res.status
+		const detail = slackErrorDetail(data, res.status)
 		// A matched error is an anticipated outcome (e.g. inviting someone
 		// already in the channel), so it reads as a normal log line rather
 		// than an error.
@@ -142,9 +155,9 @@ async function callSlackApiGet<T extends Record<string, unknown>>(
 		signal: AbortSignal.timeout(10_000),
 	})
 
-	const data = (await res.json()) as T & { ok: boolean; error?: string }
+	const data = (await res.json()) as T & { ok: boolean; error?: string; needed?: string; provided?: string }
 	if (!res.ok || !data.ok) {
-		console.error(`Slack API ${method} failed: ${data.error ?? res.status}`)
+		console.error(`Slack API ${method} failed: ${slackErrorDetail(data, res.status)}`)
 	}
 	return data
 }
