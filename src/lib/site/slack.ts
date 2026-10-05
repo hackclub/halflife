@@ -187,6 +187,50 @@ export async function isChannelMember(channel: string, user: string): Promise<bo
 	return false
 }
 
+/** A message as `conversations.history` returns it, trimmed to the fields that
+ * decide whether it opened a ticket. */
+export type SlackHistoryMessage = {
+	type?: string
+	subtype?: string
+	bot_id?: string
+	user?: string
+	ts?: string
+	thread_ts?: string
+}
+
+/**
+ * Walks a channel's whole history and hands back every message it saw.
+ *
+ * `conversations.history` pages newest-first; the cursor carries us further
+ * back until Slack has no more or `maxPages` trips — a guard so a one-off
+ * backfill cannot hammer the API forever. `exhausted` is false when that guard
+ * tripped, so the caller can say the sweep was partial instead of quietly
+ * undercounting.
+ *
+ * Throws on a Slack error rather than returning a short list: the backfill
+ * that uses this is idempotent, so a `ratelimited` should fail loudly and be
+ * re-run, not silently leave the table half-filled.
+ */
+export async function listChannelHistory(
+	channel: string,
+	opts: { maxPages?: number } = {},
+): Promise<{ messages: SlackHistoryMessage[]; exhausted: boolean }> {
+	const maxPages = opts.maxPages ?? 200
+	const messages: SlackHistoryMessage[] = []
+	let cursor: string | undefined
+	for (let page = 0; page < maxPages; page += 1) {
+		const result = await callSlackApiGet<{
+			messages?: SlackHistoryMessage[]
+			response_metadata?: { next_cursor?: string }
+		}>("conversations.history", { channel, limit: "200", ...(cursor ? { cursor } : {}) })
+		if (!result.ok) throw new Error(`conversations.history failed: ${result.error ?? "unknown error"}`)
+		messages.push(...(result.messages ?? []))
+		cursor = result.response_metadata?.next_cursor || undefined
+		if (!cursor) return { messages, exhausted: true }
+	}
+	return { messages, exhausted: false }
+}
+
 /** Cached for the life of the instance — this never changes for a given
  * bot token, and calling auth.test on every event would be wasted latency
  * inside Slack's 3-second Events API window. */
