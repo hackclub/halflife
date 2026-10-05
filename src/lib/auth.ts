@@ -7,7 +7,7 @@ import { bufferRsvpForUser } from "@/lib/airtable/rsvp"
 import { markLogin } from "@/lib/analytics"
 import { fetchWithRetry } from "@/lib/fetch-retry"
 import { FORGES } from "@/lib/forge"
-import { fetchHcaIdentity, PULL_PII, syncHcaProfile } from "@/lib/hca-profile"
+import { adoptHcaVerifiedEmail, fetchHcaIdentity, PULL_PII, syncHcaProfile } from "@/lib/hca-profile"
 import { LAPSE_API_BASE } from "@/lib/lapse"
 import prisma from "@/lib/prisma"
 
@@ -338,6 +338,15 @@ export const auth = betterAuth({
 						if (!identity.sub || !identity.email) {
 							console.error("[auth] HCA returned no subject or email; check the app's scopes")
 							return null
+						}
+						// Before better-auth decides whether this identity may attach to
+						// an existing user. A row made by a staff import has no HCA
+						// account and is not verified, which would dead-end the sign-in
+						// at `account_not_linked`; when HCA vouches for the address, that
+						// proof is adopted here so the normal linking path can run. See
+						// `adoptHcaVerifiedEmail`.
+						if (await adoptHcaVerifiedEmail(identity.email, identity.emailVerified)) {
+							console.info(`[auth] adopted HCA's verified address for ${identity.email} to allow account linking`)
 						}
 						return {
 							id: identity.sub,
