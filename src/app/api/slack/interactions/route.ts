@@ -49,6 +49,16 @@ function slackResponseUrl(value: string): string | null {
 	}
 }
 
+/**
+ * Posts a message only the interacting user can see, via the short-lived
+ * `response_url` in the interaction payload.
+ *
+ * `replace_original: false` is load-bearing: Slack replaces the source message
+ * with an interaction response unless told otherwise, so without it the
+ * ephemeral denial would overwrite the ticket message for the clicker rather
+ * than appear beside it. Showing both fields is the shape Slack's own
+ * error-message example uses.
+ */
 async function respondEphemeral(responseUrl: string, text: string) {
 	const target = slackResponseUrl(responseUrl)
 	if (!target) {
@@ -60,7 +70,7 @@ async function respondEphemeral(responseUrl: string, text: string) {
 		await fetch(target, {
 			method: "POST",
 			headers: { "content-type": "application/json" },
-			body: JSON.stringify({ response_type: "ephemeral", text }),
+			body: JSON.stringify({ response_type: "ephemeral", replace_original: false, text }),
 			signal: AbortSignal.timeout(10_000),
 		})
 	} catch (err) {

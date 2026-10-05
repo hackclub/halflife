@@ -230,6 +230,41 @@ export function encryptedFieldsFrom(identity: HcaIdentity): Record<string, strin
 }
 
 /**
+ * Adopt HCA's proof of an address onto a pre-existing local user, so that
+ * better-auth's implicit account linking can attach the HCA identity.
+ *
+ * better-auth refuses to link an incoming OAuth identity to a local user that
+ * is not already `emailVerified` (`account.accountLinking.requireLocalEmailVerified`
+ * defaults true). That gate guards against somebody pre-registering an
+ * unverified account at a victim's address — but in this app nobody can
+ * pre-register a Half Life user: the only unverified, account-less rows are
+ * made by staff imports (the Airtable warm-up import and the Stasis import).
+ * A participant created that way therefore dead-ends at `account_not_linked`
+ * on their first Hack Club sign-in, with no way in.
+ *
+ * When HCA itself reports the address verified, that is the same ownership
+ * proof better-auth would accept, so it is copied onto the matching row and the
+ * normal signing-in path completes. An unverified claim changes nothing: it
+ * must not become a way into a pre-created account.
+ *
+ * The address is matched exactly as better-auth matches it — lowercased, as
+ * its own `findUserByEmail` does — so the row repaired here is the row it will
+ * look up next.
+ *
+ * Returns whether a row was changed, so the caller can say so in the log.
+ */
+export async function adoptHcaVerifiedEmail(email: string, emailVerified: boolean): Promise<boolean> {
+	if (!emailVerified) return false
+	const user = await prisma.user.findUnique({
+		where: { email: email.toLowerCase() },
+		select: { id: true, emailVerified: true },
+	})
+	if (!user || user.emailVerified) return false
+	await prisma.user.update({ where: { id: user.id }, data: { emailVerified: true } })
+	return true
+}
+
+/**
  * Read this user's profile from HCA and store what we keep of it.
  *
  * Resolves to the verification status HCA reported, or null if HCA could not
