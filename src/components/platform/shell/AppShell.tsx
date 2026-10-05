@@ -3,7 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import {
 	IconBag,
 	IconBook,
@@ -36,6 +36,13 @@ const MOBILE_ICONS = {
 	"/reels": IconFilm,
 } as const
 
+/**
+ * How much of the page's scroll the doodle backdrop absorbs. 0 is the fixed
+ * backdrop it used to be; 1 would scroll with the page. A third reads as a slow
+ * drift — the paper lags the trail without ever looking detached from it.
+ */
+const BACKDROP_PARALLAX = 0.35
+
 function StatCluster() {
 	const { coins, streak } = useStore()
 	return (
@@ -57,6 +64,7 @@ function StatCluster() {
 export function AppShell({ children }: { children: React.ReactNode }) {
 	const pathname = usePathname()
 	const { doomscrollerOpen, setDoomscroller, phase } = useStore()
+	const backdropRef = useRef<HTMLDivElement>(null)
 
 	const cinematic = phase === "cinematic"
 	// The Doomscroller page is this feed at full size. Running the rail feed
@@ -79,6 +87,40 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
 	const rail = railOpen && doomscrollerOpen && !onDoomscroller
 
+	// The shell's doodle backdrop drifts slower than the page: scroll writes a
+	// negative offset to --shell-parallax, which the backdrop's ::before reads as
+	// background-position. A plain listener rather than a requestAnimationFrame
+	// queue because scroll events are already frame-aligned and this only writes
+	// a variable — an rAF guard can wedge shut if a queued frame never runs (a
+	// backgrounded tab), leaving the backdrop stuck at its last offset. Skipped
+	// under prefers-reduced-motion, with the query watched so toggling the OS
+	// setting takes effect without a reload.
+	useEffect(() => {
+		const el = backdropRef.current
+		if (!el) return
+		const reduce = window.matchMedia("(prefers-reduced-motion: reduce)")
+
+		const paint = () => {
+			el.style.setProperty("--shell-parallax", `${-window.scrollY * BACKDROP_PARALLAX}px`)
+		}
+		const sync = () => {
+			window.removeEventListener("scroll", paint)
+			if (reduce.matches) {
+				el.style.removeProperty("--shell-parallax")
+				return
+			}
+			paint()
+			window.addEventListener("scroll", paint, { passive: true })
+		}
+
+		sync()
+		reduce.addEventListener("change", sync)
+		return () => {
+			reduce.removeEventListener("change", sync)
+			window.removeEventListener("scroll", paint)
+		}
+	}, [])
+
 	return (
 		<>
 			<a
@@ -89,6 +131,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 			</a>
 
 			<div
+				ref={backdropRef}
 				className={cx(
 					"shell-backdrop relative z-10 flex w-full transition-[filter,opacity] duration-500",
 					cinematic && "pointer-events-none",
