@@ -88,18 +88,29 @@ export function Sidebar({ className }: { className?: string }) {
 			<TimeLogged />
 
 			<Panel tone="line" radius={18} className="flex items-center gap-3.5 bg-cream/60 p-3.5">
-				{viewer.image ? (
-					// eslint-disable-next-line @next/next/no-img-element -- the avatar host (Slack via Cachet) is known only at runtime
-					<img
-						src={viewer.image}
-						alt=""
-						className="size-[66px] shrink-0 rounded-lg border-2 border-line bg-sky-pale object-cover"
-					/>
-				) : (
-					<Avatar name={viewer.name} image={null} shape="tile" className="size-[66px] text-[1.6rem]" />
-				)}
+				<Link
+					href={`/u/${viewer.id}`}
+					aria-label={`${viewer.name}'s profile`}
+					className="shrink-0 rounded-lg transition-transform hover:-translate-y-0.5"
+				>
+					{viewer.image ? (
+						// eslint-disable-next-line @next/next/no-img-element -- the avatar host (Slack via Cachet) is known only at runtime
+						<img
+							src={viewer.image}
+							alt=""
+							className="size-[66px] rounded-lg border-2 border-line bg-sky-pale object-cover"
+						/>
+					) : (
+						<Avatar name={viewer.name} image={null} shape="tile" className="size-[66px] text-[1.6rem]" />
+					)}
+				</Link>
 				<div className="min-w-0">
-					<p className="truncate text-[1rem] leading-tight font-extrabold text-navy">{viewer.name}</p>
+					<Link
+						href={`/u/${viewer.id}`}
+						className="block truncate text-[1rem] leading-tight font-extrabold text-navy transition-colors hover:text-violet-deep hover:underline hover:decoration-dashed hover:underline-offset-4"
+					>
+						{viewer.name}
+					</Link>
 					<button
 						type="button"
 						disabled={signingOut}

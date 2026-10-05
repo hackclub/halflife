@@ -58,19 +58,31 @@ function Entry({ entry }: { entry: JournalRow }) {
 			className="min-w-0 bg-paper px-5 py-5 [overflow-wrap:anywhere] sm:px-7 sm:py-6"
 		>
 			<header className="flex flex-wrap items-start gap-3.5">
-				{entry.authorImage ? (
-					// eslint-disable-next-line @next/next/no-img-element -- the avatar host (Slack via Cachet) is known only at runtime
-					<img
-						src={entry.authorImage}
-						alt=""
-						className="size-11 shrink-0 rounded-lg border-2 border-line bg-sky-pale object-cover"
-					/>
-				) : (
-					<Avatar name={entry.author} image={null} shape="tile" className="size-11 text-[1.15rem]" />
-				)}
+				<Link
+					href={`/u/${entry.authorId}`}
+					aria-label={`${entry.author}'s profile`}
+					className="shrink-0 rounded-lg transition-transform hover:-translate-y-0.5"
+				>
+					{entry.authorImage ? (
+						// eslint-disable-next-line @next/next/no-img-element -- the avatar host (Slack via Cachet) is known only at runtime
+						<img
+							src={entry.authorImage}
+							alt=""
+							className="size-11 rounded-lg border-2 border-line bg-sky-pale object-cover"
+						/>
+					) : (
+						<Avatar name={entry.author} image={null} shape="tile" className="size-11 text-[1.15rem]" />
+					)}
+				</Link>
 				<div className="min-w-0 flex-1">
 					<p className="text-[1.02rem] leading-tight font-extrabold text-navy [overflow-wrap:anywhere]">
-						{entry.author} <span className="font-semibold text-navy-soft">on</span>{" "}
+						<Link
+							href={`/u/${entry.authorId}`}
+							className="hover:underline hover:decoration-dashed hover:underline-offset-4"
+						>
+							{entry.author}
+						</Link>{" "}
+						<span className="font-semibold text-navy-soft">on</span>{" "}
 						<Link href={href} className="text-navy hover:underline hover:decoration-2 hover:underline-offset-4">
 							{entry.project}
 						</Link>

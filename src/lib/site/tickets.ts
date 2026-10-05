@@ -88,9 +88,7 @@ export function ticketSection(ref: TicketRef): SlackBlock {
  * plain rather than in the cat's voice. */
 export function ticketHistory(authorId: string, priorTickets: number): SlackBlock {
 	const prior =
-		priorTickets === 0
-			? "first ticket"
-			: `${priorTickets} previous ${priorTickets === 1 ? "ticket" : "tickets"}`
+		priorTickets === 0 ? "first ticket" : `${priorTickets} previous ${priorTickets === 1 ? "ticket" : "tickets"}`
 	return {
 		type: "context",
 		elements: [{ type: "mrkdwn", text: `${prior} from <@${authorId}>` }],

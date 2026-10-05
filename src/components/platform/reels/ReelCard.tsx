@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 import { Gato } from "@/components/platform/art"
 import { IconComment, IconEye, IconFilm, IconHeart, IconPlay } from "@/components/platform/icons"
@@ -303,7 +304,12 @@ export function ReelCard({
 			<div className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/80 via-black/45 to-transparent px-3.5 pt-10 pb-3.5">
 				<div ref={meta} className="flex items-end gap-3">
 					<div className="min-w-0 flex-1">
-						<p className="text-[0.86rem] leading-tight font-extrabold text-white">{reel.author.name ?? "A maker"}</p>
+						<Link
+							href={`/u/${reel.author.id}`}
+							className="block truncate text-[0.86rem] leading-tight font-extrabold text-white transition-colors hover:text-sky-pale hover:underline hover:decoration-dashed hover:underline-offset-4"
+						>
+							{reel.author.name ?? "A maker"}
+						</Link>
 						<p className="mt-1 line-clamp-3 text-[0.78rem] leading-snug text-white/85">{reel.caption}</p>
 					</div>
 					<div className="flex shrink-0 flex-col items-center gap-2.5 pb-0.5">

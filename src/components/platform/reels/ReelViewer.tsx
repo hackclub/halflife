@@ -517,19 +517,13 @@ export function ReelViewer() {
 						</div>
 
 						<div className="flex flex-col items-center gap-3.5">
-							{current.project ? (
-								<Link
-									href={`/projects/${current.project.id}`}
-									aria-label={`${current.author.name ?? "A maker"}'s project: ${current.project.title || current.project.theme}`}
-									className="mb-1 rounded-full ring-2 ring-white transition-transform hover:scale-105 md:ring-navy"
-								>
-									<Avatar name={current.author.name} image={current.author.image} className="size-11 text-[1.05rem]" />
-								</Link>
-							) : (
-								<span className="mb-1 rounded-full ring-2 ring-white md:ring-navy">
-									<Avatar name={current.author.name} image={current.author.image} className="size-11 text-[1.05rem]" />
-								</span>
-							)}
+							<Link
+								href={`/u/${current.author.id}`}
+								aria-label={`${current.author.name ?? "A maker"}'s profile`}
+								className="mb-1 rounded-full ring-2 ring-white transition-transform hover:scale-105 md:ring-navy"
+							>
+								<Avatar name={current.author.name} image={current.author.image} className="size-11 text-[1.05rem]" />
+							</Link>
 
 							<Action
 								label={current.likedByMe ? "Unlike" : "Like"}

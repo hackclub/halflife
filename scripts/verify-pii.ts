@@ -170,7 +170,7 @@ async function main() {
 				] as [string, string][])),
 	]
 
-	for (const path of [...PARTICIPANT_PAGES, ...PARTICIPANT_APIS]) {
+	for (const path of [...PARTICIPANT_PAGES, `/u/${other.id}`, ...PARTICIPANT_APIS]) {
 		const res = await fetch(`${BASE}${path}`, { headers: { cookie } })
 		const text = await res.text()
 		const found = forbidden(path)

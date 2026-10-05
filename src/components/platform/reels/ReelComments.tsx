@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useCallback, useEffect, useId, useRef, useState } from "react"
 import { Avatar } from "@/components/platform/Avatar"
 import { IconSend, IconX } from "@/components/platform/icons"
@@ -244,9 +245,12 @@ export function ReelComments({
 									<Avatar name={c.author.name} image={c.author.image} className="size-9 text-[0.88rem]" />
 									<div className="min-w-0">
 										<p className="flex min-w-0 items-baseline gap-2">
-											<span className="truncate text-[0.84rem] font-extrabold text-navy">
+											<Link
+												href={`/u/${c.author.id}`}
+												className="truncate text-[0.84rem] font-extrabold text-navy transition-colors hover:text-violet-deep hover:underline hover:decoration-dashed hover:underline-offset-4"
+											>
 												{c.author.name ?? "A maker"}
-											</span>
+											</Link>
 											{c.mine && <span className="label shrink-0 text-violet-deep">you</span>}
 										</p>
 										<p className="mt-0.5 text-[0.9rem] leading-snug whitespace-pre-line [overflow-wrap:anywhere] text-navy">

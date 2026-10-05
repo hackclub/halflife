@@ -190,6 +190,31 @@ export async function getFeed(
 	}
 }
 
+/**
+ * One maker's own published reels, newest first, for their profile.
+ *
+ * The same `visible` filter and the same mapper as the feed, on purpose: a reel
+ * a moderator hid, or the author deleted, is not on their profile either, and
+ * whether the viewer has liked it is answered the way the feed answers it.
+ */
+export async function getCreatorReels(creatorId: string, viewerId: string, limit = 24): Promise<FeedItem[]> {
+	const rows = await prisma.post.findMany({
+		where: { ...visible, userId: creatorId },
+		include: feedInclude,
+		orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
+		take: limit,
+	})
+	if (rows.length === 0) return []
+
+	// One query for the viewer's likes across the whole set, exactly as the feed.
+	const liked = await prisma.postLike.findMany({
+		where: { userId: viewerId, postId: { in: rows.map((p) => p.id) } },
+		select: { postId: true },
+	})
+	const likedIds = new Set(liked.map((l) => l.postId))
+	return rows.map((p) => toFeedItem(p, likedIds))
+}
+
 export interface CreatePostInput {
 	userId: string
 	kind: PostKind
