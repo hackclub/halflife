@@ -342,7 +342,15 @@ export function StageSlide({
 				{/* ---------- who, and what they said ---------- */}
 				<div className="pointer-events-none absolute inset-x-0 bottom-0 z-[4] bg-gradient-to-t from-black/80 via-black/45 to-transparent px-3.5 pt-12 pb-4 pr-[4.25rem] md:pr-3.5">
 					<p className="flex min-w-0 items-baseline gap-1.5 leading-tight text-white">
-						<span className="truncate text-[0.9rem] font-extrabold">{who}</span>
+						{/* The name is the way to the poster's profile, so it takes clicks
+                back from the surface that pauses and likes; the timestamp and the
+                caption stay inert over the picture. */}
+						<Link
+							href={`/u/${reel.author.id}`}
+							className="pointer-events-auto min-w-0 truncate text-[0.9rem] font-extrabold hover:underline hover:decoration-dashed hover:underline-offset-4"
+						>
+							{who}
+						</Link>
 						{reel.publishedAt && (
 							<span className="hand shrink-0 text-[0.76rem] text-white/80">· {ago(reel.publishedAt)}</span>
 						)}
