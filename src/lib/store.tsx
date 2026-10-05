@@ -304,6 +304,12 @@ interface Ctx {
 	weekOf: (weekId: number) => Week
 	/** Hours logged across every session checkpoint in a week. */
 	weekHours: (weekId: number) => number
+	/**
+	 * Every hour on the record — journalled in entries and tracked some other
+	 * way (Hackatime, a reviewer's adjustment) — summed across the season's
+	 * weeks and every warm-up. Zero until the first session lands.
+	 */
+	totalHours: number
 	setOpenCheckpoint: (id: string | null) => void
 	setDoomscroller: (open: boolean) => void
 	/**
@@ -1259,6 +1265,23 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		},
 		[weekHours, facts.progress, facts.warmups],
 	)
+	/**
+	 * Everything logged, as one number: every season week's hours plus every
+	 * warm-up's. A warm-up has no week of its own, so it is found by project and
+	 * read through `hoursOf`; the season weeks go through `weekHours`. Both
+	 * already fold in the time that did not come from an entry (Hackatime, a
+	 * reviewer's adjustment), which is what makes this "journalled and tracked"
+	 * rather than entries alone.
+	 */
+	const totalHours = useMemo(
+		() =>
+			weeks.reduce((n, w) => n + weekHours(w.id), 0) +
+			save.projects.reduce((n, p) => {
+				const week = p.weekId === WARMUP_WEEK_ID ? warmupWeekOf(p.id) : null
+				return week ? n + hoursOf(week) : n
+			}, 0),
+		[weeks, weekHours, save.projects, warmupWeekOf, hoursOf],
+	)
 	const passedOf = useCallback(
 		(week: Week): boolean => {
 			if (!week.projectId) return weekPassed(week.id)
@@ -1537,6 +1560,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		allCheckpoints,
 		weekOf,
 		weekHours,
+		totalHours,
 		pendingCoins,
 	}
 

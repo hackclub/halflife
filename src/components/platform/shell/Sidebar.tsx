@@ -5,9 +5,10 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useState } from "react"
 import { Avatar } from "@/components/platform/Avatar"
-import { IconLogout } from "@/components/platform/icons"
+import { IconClock, IconLogout } from "@/components/platform/icons"
 import { cx, Panel } from "@/components/platform/ui"
 import { signOut } from "@/lib/auth-client"
+import { fmtHours } from "@/lib/projects"
 import { PLATFORM_HOME } from "@/lib/routes"
 import { useStore } from "@/lib/store"
 import logoArt from "../../../../public/art/logo.png"
@@ -83,6 +84,9 @@ export function Sidebar({ className }: { className?: string }) {
           here — one instance is on screen at a time either way. */}
 			<GoalTracker className="xl:hidden" />
 
+			{/* The one number that only grows, kept above the account card. */}
+			<TimeLogged />
+
 			<Panel tone="line" radius={18} className="flex items-center gap-3.5 bg-cream/60 p-3.5">
 				{viewer.image ? (
 					// eslint-disable-next-line @next/next/no-img-element -- the avatar host (Slack via Cachet) is known only at runtime
@@ -126,6 +130,31 @@ export function Sidebar({ className }: { className?: string }) {
 
 			{viewer.isAdmin && <RedoOnboarding />}
 		</div>
+	)
+}
+
+/**
+ * How much time is on the record, journalled and tracked.
+ *
+ * Hidden entirely at zero. An empty account gets no "0h" card, because a
+ * counter sitting at zero is a scold rather than a fact; the moment there is
+ * any time at all it appears above the account card and stays.
+ */
+function TimeLogged() {
+	const { totalHours } = useStore()
+	if (totalHours <= 0) return null
+
+	return (
+		<Panel tone="line" radius={18} className="bg-cream/60 px-5 py-4">
+			<p className="label text-violet-deep">Time logged</p>
+			<p className="mt-2 flex items-baseline gap-2">
+				<IconClock className="translate-y-0.5 text-[1.15rem] text-teal-ink" />
+				<span className="text-[1.5rem] leading-none font-extrabold tabular-nums text-navy">{fmtHours(totalHours)}</span>
+			</p>
+			<p className="hand mt-1.5 text-[0.78rem] leading-snug text-navy-soft">
+				journalled and tracked across your projects
+			</p>
+		</Panel>
 	)
 }
 
