@@ -26,6 +26,7 @@ export default async function AdminOverviewPage() {
 			"ari_ship",
 			"claim_sweep",
 			"printer_reconcile",
+			"help_ticket_summary",
 		]),
 		getUserFlowFunnel(),
 	])

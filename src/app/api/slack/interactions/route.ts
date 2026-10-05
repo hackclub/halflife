@@ -7,6 +7,7 @@ import {
 	updateMessage,
 	verifySlackRequest,
 } from "@/lib/site/slack"
+import { resolveHelpTicket } from "@/lib/site/ticket-store"
 import {
 	deleteTicketMessage,
 	helpedAck,
@@ -126,6 +127,13 @@ async function handleMarkHelped(payload: InteractionPayload, action: BlockAction
 	}
 
 	if (ref.helpChannel && ref.helpTs) {
+		// Best-effort: a database hiccup must not cost the helper their ack.
+		try {
+			await resolveHelpTicket({ helpChannel: ref.helpChannel, helpTs: ref.helpTs, resolvedBy: payload.user.id })
+		} catch (err) {
+			console.error(`Failed to record ticket resolution for ${ref.helpTs}: ${err}`)
+		}
+
 		try {
 			await postMessage(ref.helpChannel, helpedAck(payload.user.id), {
 				threadTs: ref.helpTs,
@@ -168,6 +176,15 @@ async function handleSelfResolve(payload: InteractionPayload, action: BlockActio
 		selfResolvedAck(),
 		resolveBlocks(payload.message.blocks, payload.user.id),
 	)
+
+	if (ref.helpChannel && ref.helpTs) {
+		// Best-effort, like the helper path — the ack above already went out.
+		try {
+			await resolveHelpTicket({ helpChannel: ref.helpChannel, helpTs: ref.helpTs, resolvedBy: payload.user.id })
+		} catch (err) {
+			console.error(`Failed to record ticket resolution for ${ref.helpTs}: ${err}`)
+		}
+	}
 
 	if (ref.ticketsChannel && ref.ticketsTs && ref.helpChannel) {
 		try {
@@ -215,6 +232,15 @@ async function handleThreadMarkHelped(payload: InteractionPayload, action: Block
 		helpedAck(payload.user.id),
 		resolveBlocks(payload.message.blocks, payload.user.id),
 	)
+
+	if (ref.helpChannel && ref.helpTs) {
+		// Best-effort, like the staff-channel path.
+		try {
+			await resolveHelpTicket({ helpChannel: ref.helpChannel, helpTs: ref.helpTs, resolvedBy: payload.user.id })
+		} catch (err) {
+			console.error(`Failed to record ticket resolution for ${ref.helpTs}: ${err}`)
+		}
+	}
 
 	if (ref.ticketsChannel && ref.ticketsTs && ref.helpChannel) {
 		try {

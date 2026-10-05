@@ -4,12 +4,14 @@ import crypto from "node:crypto"
  * Slack Web API + request verification.
  *
  * Auth is a single bot token (`SLACK_BOT_TOKEN`) with `chat:write`,
- * `channels:read`, `channels:write.invites`, `channels:history`, `im:write`,
- * `users:read`, and `reactions:write` scopes — see `slack-app-manifest.yml` at the repo root for
- * the exact manifest to paste into api.slack.com when creating the app, which
- * annotates what each one is for. chat.getPermalink and auth.test need none of
- * them, and the private tickets channel needs no extra scope beyond
- * `chat:write` and the bot being a member of it.
+ * `channels:read`, `groups:read`, `channels:write.invites`, `channels:history`,
+ * `im:write`, `users:read`, and `reactions:write` scopes — see
+ * `slack-app-manifest.yml` at the repo root for the exact manifest to paste into
+ * api.slack.com when creating the app, which annotates what each one is for.
+ * chat.getPermalink and auth.test need none of them; posting into the private
+ * tickets channel needs `chat:write` plus membership, but reading its member
+ * list (isChannelMember) needs `groups:read`, since `channels:read` covers only
+ * public channels.
  */
 
 export type SlackBlock = Record<string, unknown>
@@ -160,6 +162,39 @@ async function callSlackApiGet<T extends Record<string, unknown>>(
 		console.error(`Slack API ${method} failed: ${slackErrorDetail(data, res.status)}`)
 	}
 	return data
+}
+
+const slackUserNameCache = new Map<string, string>()
+
+/**
+ * A user's display name for the daily summary's leaderboard.
+ *
+ * A `<@id>` mention would be simpler, but it notifies the person every single
+ * day, which is a poor trade for a stats post. Falls back to the mention only
+ * when the lookup fails, so the name is never the reason a summary breaks.
+ * Cached for the life of the instance: the summary asks once per closer, and
+ * a display name does not change mid-process.
+ */
+export async function getSlackUserName(userId: string): Promise<string> {
+	const cached = slackUserNameCache.get(userId)
+	if (cached) return cached
+
+	try {
+		const result = await callSlackApiGet<{
+			user?: { real_name?: string; profile?: { display_name?: string; real_name?: string } }
+		}>("users.info", { user: userId })
+		const name = result.ok
+			? result.user?.profile?.display_name || result.user?.profile?.real_name || result.user?.real_name || null
+			: null
+		if (name) {
+			slackUserNameCache.set(userId, name)
+			return name
+		}
+	} catch {
+		// No token, or Slack unreachable — the mention below still reads fine.
+	}
+
+	return `<@${userId}>`
 }
 
 let botUserId: string | null = null

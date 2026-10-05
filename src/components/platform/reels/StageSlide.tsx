@@ -347,7 +347,7 @@ export function StageSlide({
                 caption stay inert over the picture. */}
 						<Link
 							href={`/u/${reel.author.id}`}
-							className="pointer-events-auto min-w-0 truncate text-[0.9rem] font-extrabold hover:underline hover:decoration-dashed hover:underline-offset-4"
+							className="pointer-events-auto min-w-0 truncate text-[0.9rem] font-extrabold text-white [text-shadow:0_1px_3px_rgba(0,0,0,.6)] hover:underline hover:decoration-dashed hover:underline-offset-4"
 						>
 							{who}
 						</Link>

@@ -122,6 +122,13 @@ body {
 	pointer-events: none;
 	background-image: url("/platform/doodle-sheet.png");
 	background-size: 768px 768px;
+	/* Parallax: the backdrop drifts at a fraction of the page scroll, written to
+	   --shell-parallax by AppShell. Offset via background-position rather than a
+	   transform so the seamless tile can never run out of vertical room on a
+	   long trail (a transformed viewport-sized box would leave a bare strip at
+	   the foot once the offset passed its own height). Defaults to 0 — the old
+	   static backdrop — with JS disabled or under prefers-reduced-motion. */
+	background-position: 0 var(--shell-parallax, 0px);
 	opacity: 0.06;
 	/* A soft vertical fade — full at the top, 45% at the bottom — so the page
 	   still reads top-lit without the old mask swallowing the lower half. */

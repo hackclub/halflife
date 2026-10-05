@@ -11,6 +11,7 @@ export type SyncKey =
 	| "ari_ship"
 	| "claim_sweep"
 	| "printer_reconcile"
+	| "help_ticket_summary"
 
 /**
  * One row per successful run. Failures go to the audit log instead, so a

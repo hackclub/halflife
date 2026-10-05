@@ -272,11 +272,6 @@ function DetailsForm({
 									key={t.id}
 									selected={tier === t.id}
 									onClick={() => setTier(t.id)}
-									hint={
-										<span className="block">
-											Includes {fmtHours(tierBankedFloor(t.fundingHours))} toward your printer goal
-										</span>
-									}
 								>
 									<span className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
 										<span className="text-[0.98rem] font-extrabold text-navy">Tier {t.id}</span>
