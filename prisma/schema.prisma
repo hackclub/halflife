@@ -1743,7 +1743,7 @@ model RsvpBuffer {
 /// The Slack-side flow is otherwise stateless — the button carries the ticket
 /// ref and a resolved tickets-channel mirror is deleted — so this is the only
 /// durable record that someone asked. It backs the "N previous tickets" note
-/// staff see on a new ticket, and nothing else reads it yet.
+/// staff see on a new ticket and the daily summary's opened/closed counts.
 model HelpTicket {
   id String @id @default(cuid())
   /// The asker's Slack user id (TicketRef.authorId), not a User row: help is
@@ -1754,8 +1754,16 @@ model HelpTicket {
   helpChannel String
   helpTs      String
   createdAt   DateTime @default(now())
+  /// When the ticket was resolved, from any of the three buttons; null while
+  /// it is still waiting. Set once — a second resolution does not overwrite
+  /// it, so the daily summary counts each ticket exactly once.
+  resolvedAt  DateTime?
+  /// The Slack user who resolved it: the helper for either "Mark as helped"
+  /// button, the asker themselves for "I'm all set". Null until resolved.
+  resolvedBy  String?
 
   @@unique([helpChannel, helpTs])
   @@index([authorSlackId, createdAt])
+  @@index([resolvedAt])
   @@map("help_ticket")
 }

@@ -141,6 +141,7 @@ needs duplicating into the job.
 | `rsvp-drain` | `*/10 * * * *` | `POST /api/integrations/rsvp-drain` |
 | `claim-sweep` | `*/5 * * * *` | `POST /api/integrations/claim-sweep` |
 | `printer-reconcile` | `0 8 * * *` | `POST /api/integrations/printer-reconcile` |
+| `slack-ticket-summary` | `0 9 * * *` | `POST /api/integrations/slack-ticket-summary` |
 
 `loops-sync` finds each person's row by `Half-Life User ID`, falling back to
 email. The two disagree whenever somebody signs up on the landing page with one

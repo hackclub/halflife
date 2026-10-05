@@ -33,6 +33,62 @@ export async function rememberHelpTicket(input: {
 	})
 }
 
+/**
+ * Marks a ticket resolved, called from all three resolution buttons.
+ *
+ * `updateMany` rather than `update`: a ticket asked before the table existed,
+ * or one whose mirror post failed, has no row — resolving it is still a
+ * success, not an error. The `resolvedAt: null` guard makes a second
+ * resolution a no-op, so two people clicking at once (or a Slack redelivery)
+ * cannot move the closer or double-count the ticket in a summary.
+ */
+export async function resolveHelpTicket(input: {
+	helpChannel: string
+	helpTs: string
+	resolvedBy: string
+}): Promise<void> {
+	await prisma.helpTicket.updateMany({
+		where: { helpChannel: input.helpChannel, helpTs: input.helpTs, resolvedAt: null },
+		data: { resolvedAt: new Date(), resolvedBy: input.resolvedBy },
+	})
+}
+
+export interface HelpTicketStats {
+	/** Tickets opened since `since`, by `createdAt`. */
+	opened: number
+	/** Tickets resolved since `since`, by `resolvedAt`, whoever resolved them. */
+	closed: number
+	/**
+	 * Who closed what, busiest first. Self-resolutions are left out: the
+	 * leaderboard is the helpers' competition, and an asker clicking "I'm all
+	 * set" on their own ticket would read as a helper. Ties break by id so the
+	 * order is stable between runs.
+	 */
+	leaderboard: { resolvedBy: string; closed: number }[]
+}
+
+/** The counts behind the daily summary. `since` is normally 24 hours ago. */
+export async function getHelpTicketStats(since: Date): Promise<HelpTicketStats> {
+	const [opened, closedRows] = await Promise.all([
+		prisma.helpTicket.count({ where: { createdAt: { gte: since } } }),
+		prisma.helpTicket.findMany({
+			where: { resolvedAt: { gte: since }, resolvedBy: { not: null } },
+			select: { resolvedBy: true, authorSlackId: true },
+		}),
+	])
+
+	const counts = new Map<string, number>()
+	for (const row of closedRows) {
+		if (!row.resolvedBy || row.resolvedBy === row.authorSlackId) continue
+		counts.set(row.resolvedBy, (counts.get(row.resolvedBy) ?? 0) + 1)
+	}
+	const leaderboard = [...counts.entries()]
+		.map(([resolvedBy, closed]) => ({ resolvedBy, closed }))
+		.sort((a, b) => b.closed - a.closed || a.resolvedBy.localeCompare(b.resolvedBy))
+
+	return { opened, closed: closedRows.length, leaderboard }
+}
+
 /** A history message that opened a ticket, under the same guards
  * `handleHelpMessage` applies to a live event. A parent message carries
  * `thread_ts` equal to its own `ts` once it has replies, so it only counts as
