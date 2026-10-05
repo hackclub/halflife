@@ -4,12 +4,14 @@ import crypto from "node:crypto"
  * Slack Web API + request verification.
  *
  * Auth is a single bot token (`SLACK_BOT_TOKEN`) with `chat:write`,
- * `channels:read`, `channels:write.invites`, `channels:history`, `im:write`,
- * `users:read`, and `reactions:write` scopes — see `slack-app-manifest.yml` at the repo root for
- * the exact manifest to paste into api.slack.com when creating the app, which
- * annotates what each one is for. chat.getPermalink and auth.test need none of
- * them, and the private tickets channel needs no extra scope beyond
- * `chat:write` and the bot being a member of it.
+ * `channels:read`, `groups:read`, `channels:write.invites`, `channels:history`,
+ * `im:write`, `users:read`, and `reactions:write` scopes — see
+ * `slack-app-manifest.yml` at the repo root for the exact manifest to paste into
+ * api.slack.com when creating the app, which annotates what each one is for.
+ * chat.getPermalink and auth.test need none of them; posting into the private
+ * tickets channel needs `chat:write` plus membership, but reading its member
+ * list (isChannelMember) needs `groups:read`, since `channels:read` covers only
+ * public channels.
  */
 
 export type SlackBlock = Record<string, unknown>
