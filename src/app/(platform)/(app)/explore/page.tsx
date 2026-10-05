@@ -70,7 +70,13 @@ function Entry({ entry }: { entry: JournalRow }) {
 				)}
 				<div className="min-w-0 flex-1">
 					<p className="text-[1.02rem] leading-tight font-extrabold text-navy [overflow-wrap:anywhere]">
-						{entry.author} <span className="font-semibold text-navy-soft">on</span>{" "}
+						<Link
+							href={`/u/${entry.authorId}`}
+							className="hover:underline hover:decoration-dashed hover:underline-offset-4"
+						>
+							{entry.author}
+						</Link>{" "}
+						<span className="font-semibold text-navy-soft">on</span>{" "}
 						<Link href={href} className="text-navy hover:underline hover:decoration-2 hover:underline-offset-4">
 							{entry.project}
 						</Link>

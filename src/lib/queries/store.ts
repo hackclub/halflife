@@ -73,7 +73,7 @@ export interface StoreSnapshot {
 	 * `isAdmin` decides whether admin-only tools (redo onboarding) are offered;
 	 * the routes behind them check the role themselves.
 	 */
-	viewer: { name: string; image: string | null; isAdmin: boolean }
+	viewer: { id: string; name: string; image: string | null; isAdmin: boolean }
 	experience: Experience | null
 	/** Whether the first checkpoint has been completed. */
 	onboardingDone: boolean
@@ -418,6 +418,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 
 	return {
 		viewer: {
+			id: userId,
 			name: user.name ?? "You",
 			image: avatarUrl(user),
 			isAdmin: hasRole(roles, Role.ADMIN),

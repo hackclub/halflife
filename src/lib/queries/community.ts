@@ -33,6 +33,7 @@ import { streakAsOf } from "@/lib/streak"
 export interface JournalRow {
 	id: string
 	author: string
+	authorId: string
 	authorImage: string | null
 	streak: number
 	projectId: string
@@ -68,7 +69,16 @@ export async function getJournalFeed(): Promise<JournalRow[]> {
 						id: true,
 						title: true,
 						theme: true,
-						user: { select: { name: true, image: true, slackId: true, currentStreak: true, lastStreakDate: true } },
+						user: {
+							select: {
+								id: true,
+								name: true,
+								image: true,
+								slackId: true,
+								currentStreak: true,
+								lastStreakDate: true,
+							},
+						},
 					},
 				},
 			},
@@ -83,6 +93,7 @@ export async function getJournalFeed(): Promise<JournalRow[]> {
 		return {
 			id: session.id,
 			author: project.user.name ?? "A maker",
+			authorId: project.user.id,
 			authorImage: avatarUrl(project.user),
 			// Expired against today, so a run that ended weeks ago reads 0 rather
 			// than the number it reached before it broke.

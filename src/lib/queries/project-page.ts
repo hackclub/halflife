@@ -302,6 +302,8 @@ export interface PublicProjectData {
 	title: string
 	description: string
 	author: string
+	/** The author's user id, so their name can open their profile. */
+	authorId: string
 	/** 1-based design week the theme runs in, or 0 for a warm-up project. */
 	weekId: number
 	thumbnail: ProjectThumbnail | null
@@ -318,7 +320,7 @@ export async function getPublicProjectPage(id: string): Promise<PublicProjectDat
 			title: true,
 			description: true,
 			coverImageKey: true,
-			user: { select: { name: true } },
+			user: { select: { id: true, name: true } },
 			workSessions: { where: { deletedAt: null }, select: SESSION_SELECT },
 			posts: {
 				where: { deletedAt: null, status: PostStatus.PUBLISHED },
@@ -337,6 +339,7 @@ export async function getPublicProjectPage(id: string): Promise<PublicProjectDat
 		title: project.title,
 		description: project.description ?? "",
 		author: project.user.name ?? "A maker",
+		authorId: project.user.id,
 		weekId: themeIndex === -1 ? WARMUP_WEEK_ID : themeIndex + 1,
 		thumbnail: projectThumbnail(
 			publicUrlFor(project.coverImageKey),

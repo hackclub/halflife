@@ -99,7 +99,12 @@ export function Sidebar({ className }: { className?: string }) {
 					<Avatar name={viewer.name} image={null} shape="tile" className="size-[66px] text-[1.6rem]" />
 				)}
 				<div className="min-w-0">
-					<p className="truncate text-[1rem] leading-tight font-extrabold text-navy">{viewer.name}</p>
+					<Link
+						href={`/u/${viewer.id}`}
+						className="block truncate text-[1rem] leading-tight font-extrabold text-navy transition-colors hover:text-violet-deep hover:underline hover:decoration-dashed hover:underline-offset-4"
+					>
+						{viewer.name}
+					</Link>
 					<button
 						type="button"
 						disabled={signingOut}

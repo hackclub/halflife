@@ -57,7 +57,12 @@ export function PublicProjectDetail({ data }: { data: PublicProjectData }) {
 						)}
 					</div>
 					<div className="min-w-0 @3xl:col-start-1 @3xl:row-start-1">
-						<p className="label text-navy-soft">by {data.author}</p>
+						<p className="label text-navy-soft">
+							by{" "}
+							<Link href={`/u/${data.authorId}`} className="text-navy-soft hover:text-navy hover:underline hover:decoration-dashed hover:underline-offset-4">
+								{data.author}
+							</Link>
+						</p>
 						<h1 className="mt-1 text-[1.6rem] leading-tight font-extrabold tracking-[-0.02em] [overflow-wrap:anywhere] text-navy sm:text-[1.9rem]">
 							{data.title}
 						</h1>
