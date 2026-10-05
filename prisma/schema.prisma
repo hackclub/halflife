@@ -1737,3 +1737,25 @@ model RsvpBuffer {
   @@index([syncedToAirtable, syncAttempts, createdAt])
   @@map("rsvp_buffer")
 }
+
+/// One row per #half-life-help question the bot turned into a ticket.
+///
+/// The Slack-side flow is otherwise stateless — the button carries the ticket
+/// ref and a resolved tickets-channel mirror is deleted — so this is the only
+/// durable record that someone asked. It backs the "N previous tickets" note
+/// staff see on a new ticket, and nothing else reads it yet.
+model HelpTicket {
+  id String @id @default(cuid())
+  /// The asker's Slack user id (TicketRef.authorId), not a User row: help is
+  /// open to anyone in the workspace, most of whom never sign in here.
+  authorSlackId String
+  /// The #half-life-help channel and the original message's ts — the ticket's
+  /// Slack identity. Unique so a redelivery cannot be counted twice.
+  helpChannel String
+  helpTs      String
+  createdAt   DateTime @default(now())
+
+  @@unique([helpChannel, helpTs])
+  @@index([authorSlackId, createdAt])
+  @@map("help_ticket")
+}

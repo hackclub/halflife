@@ -17,6 +17,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "grant-role": "tsx scripts/grant-role.ts",
     "analytics:backfill": "tsx --conditions=react-server scripts/backfill-analytics.ts",
+    "slack:backfill-tickets": "tsx --conditions=react-server scripts/backfill-slack-tickets.ts",
     "streaks:recompute": "tsx --conditions=react-server scripts/recompute-streaks.ts",
     "import:stasis": "tsx import/stasis.ts",
     "import:check": "tsx import/check.ts",

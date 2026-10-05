@@ -7,6 +7,7 @@ import {
 	type SlackBlock,
 	verifySlackRequest,
 } from "@/lib/site/slack"
+import { countPriorHelpTickets, rememberHelpTicket } from "@/lib/site/ticket-store"
 import {
 	FAQ_CARD_BUTTON,
 	FAQ_CARD_TITLE,
@@ -16,6 +17,7 @@ import {
 	SELF_RESOLVE_BUTTON,
 	TICKET_ACTIONS_BLOCK_ID,
 	type TicketRef,
+	ticketHistory,
 	ticketSection,
 } from "@/lib/site/tickets"
 
@@ -53,22 +55,30 @@ async function handleHelpMessage(event: SlackEvent) {
 		permalink,
 	}
 
-	const ticketBlocks: SlackBlock[] = [
-		ticketSection(ref),
-		{
-			type: "actions",
-			block_id: TICKET_ACTIONS_BLOCK_ID,
-			elements: [
-				{
-					type: "button",
-					text: { type: "plain_text", text: MARK_HELPED_BUTTON, emoji: true },
-					style: "primary",
-					action_id: "mark_helped",
-					value: JSON.stringify(ref),
-				},
-			],
-		},
-	]
+	// Best-effort: a database hiccup must not keep the ticket out of the queue,
+	// it just means the mirror goes without the history line.
+	let priorTickets: number | null = null
+	try {
+		priorTickets = await countPriorHelpTickets(ref.authorId)
+	} catch (err) {
+		console.error(`[slack] failed to read ticket history for ${ref.helpTs}:`, err)
+	}
+
+	const ticketBlocks: SlackBlock[] = [ticketSection(ref)]
+	if (priorTickets !== null) ticketBlocks.push(ticketHistory(ref.authorId, priorTickets))
+	ticketBlocks.push({
+		type: "actions",
+		block_id: TICKET_ACTIONS_BLOCK_ID,
+		elements: [
+			{
+				type: "button",
+				text: { type: "plain_text", text: MARK_HELPED_BUTTON, emoji: true },
+				style: "primary",
+				action_id: "mark_helped",
+				value: JSON.stringify(ref),
+			},
+		],
+	})
 
 	// The permalink rides in the top-level text as well as the section block:
 	// Slack unfurls text-based links only there, never inside blocks, so this
@@ -85,6 +95,17 @@ async function handleHelpMessage(event: SlackEvent) {
 			`[slack] ticket post to ${ticketsChannel} failed (${ticketMessage.error ?? "no message ts"}); no help-channel ack for ${ref.helpTs}`,
 		)
 		return
+	}
+
+	// The mirror is up, so the ticket is real — remember it for future counts.
+	try {
+		await rememberHelpTicket({
+			authorSlackId: ref.authorId,
+			helpChannel: ref.helpChannel,
+			helpTs: ref.helpTs,
+		})
+	} catch (err) {
+		console.error(`[slack] failed to record ticket for ${ref.helpTs}:`, err)
 	}
 
 	// Carried by both buttons: the author's self-resolve and the helpers'

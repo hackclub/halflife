@@ -14,13 +14,26 @@ import crypto from "node:crypto"
 
 export type SlackBlock = Record<string, unknown>
 
+/** Slack answers `missing_scope` with the scope it wanted (`needed`) and the
+ * ones the token actually carries (`provided`). Folding them into the logged
+ * detail turns a bare "missing_scope" into a line that names the scope to add,
+ * instead of leaving it to a manual trip through the app's OAuth settings. */
+function slackErrorDetail(data: { error?: string; needed?: string; provided?: string }, status: number): string {
+	if (data.error === "missing_scope" && data.needed) {
+		return data.provided
+			? `${data.error} (needed ${data.needed}; token has ${data.provided})`
+			: `${data.error} (needed ${data.needed})`
+	}
+	return data.error ?? String(status)
+}
+
 async function callSlackApi<T extends Record<string, unknown>>(
 	method: string,
 	params: Record<string, unknown>,
 	/** Slack errors that are expected outcomes rather than faults. Matches are
 	 * logged at `log` level so a normal path doesn't fill the error logs. */
 	expectedErrors: string[] = [],
-): Promise<T & { ok: boolean; error?: string }> {
+): Promise<T & { ok: boolean; error?: string; needed?: string; provided?: string }> {
 	const token = process.env.SLACK_BOT_TOKEN
 	if (!token) throw new Error("SLACK_BOT_TOKEN is not set")
 
@@ -37,9 +50,9 @@ async function callSlackApi<T extends Record<string, unknown>>(
 		signal: AbortSignal.timeout(10_000),
 	})
 
-	const data = (await res.json()) as T & { ok: boolean; error?: string }
+	const data = (await res.json()) as T & { ok: boolean; error?: string; needed?: string; provided?: string }
 	if (!res.ok || !data.ok) {
-		const detail = data.error ?? res.status
+		const detail = slackErrorDetail(data, res.status)
 		// A matched error is an anticipated outcome (e.g. inviting someone
 		// already in the channel), so it reads as a normal log line rather
 		// than an error.
@@ -142,9 +155,9 @@ async function callSlackApiGet<T extends Record<string, unknown>>(
 		signal: AbortSignal.timeout(10_000),
 	})
 
-	const data = (await res.json()) as T & { ok: boolean; error?: string }
+	const data = (await res.json()) as T & { ok: boolean; error?: string; needed?: string; provided?: string }
 	if (!res.ok || !data.ok) {
-		console.error(`Slack API ${method} failed: ${data.error ?? res.status}`)
+		console.error(`Slack API ${method} failed: ${slackErrorDetail(data, res.status)}`)
 	}
 	return data
 }
@@ -172,6 +185,50 @@ export async function isChannelMember(channel: string, user: string): Promise<bo
 		if (!cursor) return false
 	}
 	return false
+}
+
+/** A message as `conversations.history` returns it, trimmed to the fields that
+ * decide whether it opened a ticket. */
+export type SlackHistoryMessage = {
+	type?: string
+	subtype?: string
+	bot_id?: string
+	user?: string
+	ts?: string
+	thread_ts?: string
+}
+
+/**
+ * Walks a channel's whole history and hands back every message it saw.
+ *
+ * `conversations.history` pages newest-first; the cursor carries us further
+ * back until Slack has no more or `maxPages` trips — a guard so a one-off
+ * backfill cannot hammer the API forever. `exhausted` is false when that guard
+ * tripped, so the caller can say the sweep was partial instead of quietly
+ * undercounting.
+ *
+ * Throws on a Slack error rather than returning a short list: the backfill
+ * that uses this is idempotent, so a `ratelimited` should fail loudly and be
+ * re-run, not silently leave the table half-filled.
+ */
+export async function listChannelHistory(
+	channel: string,
+	opts: { maxPages?: number } = {},
+): Promise<{ messages: SlackHistoryMessage[]; exhausted: boolean }> {
+	const maxPages = opts.maxPages ?? 200
+	const messages: SlackHistoryMessage[] = []
+	let cursor: string | undefined
+	for (let page = 0; page < maxPages; page += 1) {
+		const result = await callSlackApiGet<{
+			messages?: SlackHistoryMessage[]
+			response_metadata?: { next_cursor?: string }
+		}>("conversations.history", { channel, limit: "200", ...(cursor ? { cursor } : {}) })
+		if (!result.ok) throw new Error(`conversations.history failed: ${result.error ?? "unknown error"}`)
+		messages.push(...(result.messages ?? []))
+		cursor = result.response_metadata?.next_cursor || undefined
+		if (!cursor) return { messages, exhausted: true }
+	}
+	return { messages, exhausted: false }
 }
 
 /** Cached for the life of the instance — this never changes for a given

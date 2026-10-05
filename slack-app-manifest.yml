@@ -2,6 +2,12 @@
 # Slack validates the request URLs during creation by sending a
 # url_verification challenge, which src/app/api/slack/events/route.ts answers.
 #
+# Changing anything here later — adding a scope, editing the request URLs —
+# only reaches the live app when the manifest is re-imported (Features → App
+# Manifest → paste → Save). "Reinstall to Workspace" on its own re-runs OAuth
+# with the app's *existing* scopes, so a scope added to this file and nothing
+# else never lands on the bot token, and the call keeps failing `missing_scope`.
+#
 # After creating the app:
 #   1. Install it to the workspace, then copy the Bot User OAuth Token
 #      (starts xoxb-) into SLACK_BOT_TOKEN, and the Signing Secret (Basic
