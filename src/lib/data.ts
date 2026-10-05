@@ -152,12 +152,12 @@ export const DOCS: DocArticle[] = [
 			{
 				heading: "Coins",
 				paragraphs: [
-					"Coins track how far you go past what your project needs. They fill your printer goal first, and the rest are yours to spend in the shop.",
+					"Coins track how far you go past what your project needs. Every approved hour earns 5, and they fill your printer goal before the rest is yours to spend in the shop.",
 				],
 				list: [
-					"Design week: once your time goes past what your tier covers, approved time starts filling your printer goal. How much it needs depends on the printer you picked.",
-					"Design week: time beyond your printer goal earns coins to spend.",
-					"Build week: your first 5 hours fill your printer goal, and time after that earns coins to spend.",
+					"Design week: your tier's funded hours pay for your parts and earn no coins. Past them, approved time banks toward your printer goal – how much depends on the printer you picked – and anything beyond that is yours to spend.",
+					"Build week: nothing is funded, so every hour earns coins: the first 5 bank toward your printer goal, and the rest are yours to spend.",
+					"Each hand-in is capped at 250 spendable coins (50 hours).",
 					"Ship a theme (design and build both approved): 25 bonus coins to spend.",
 				],
 			},
