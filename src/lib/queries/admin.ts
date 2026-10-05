@@ -452,15 +452,26 @@ export interface FlowStep {
  * every step above it, so a step never has more people than the one before it
  * and drop-off is never negative — whatever order things actually happened in.
  *
- * Steps with a named marker come from User (lib/analytics); devlogs and repo
- * links are derived from their own tables; "repo checks passed" is stamped by
- * the preflight that gates submissions.
+ * Steps with a named marker come from User (lib/analytics); "named a project"
+ * and the repo/devlog steps are derived from their own tables; "repo checks
+ * passed" is stamped by the preflight that gates submissions. The onboarding,
+ * goal and upload steps in between are derived as noted below.
+ *
+ * A note on the steps added between "logged in" and "posted a reel": they rest
+ * on columns and tables that did not exist for the whole life of the program
+ * (the goal prompt shipped after the first reels; a desktop file-pick writes
+ * no upload-handoff row). Each is therefore "did this OR already did something
+ * later that presupposes it". Without the fallback, inserting a late marker
+ * would silently shrink every step below it instead of showing a real drop.
  */
 export async function getUserFlowFunnel(): Promise<FlowStep[]> {
-	const [users, sessionUsers, devlogUsers, repoUsers] = await Promise.all([
+	const [users, sessionUsers, namedUsers, devlogUsers, repoUsers, handoffRows] = await Promise.all([
 		prisma.user.findMany({
 			select: {
 				id: true,
+				hardwareExperience: true,
+				onboardingCompletedAt: true,
+				participantGoal: true,
 				firstProjectAt: true,
 				firstReelAt: true,
 				firstChecksPassedAt: true,
@@ -471,6 +482,14 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 		// the table rather than the lastLoginAt marker, so the funnel does not
 		// depend on the analytics backfill having run.
 		prisma.session.findMany({ select: { userId: true }, distinct: ["userId"] }),
+		// People who named a project: a live project carrying a description. The
+		// row itself appears as soon as the checkpoint is opened and is already
+		// titled with its theme, so a title says nothing — the description does.
+		prisma.themeProject.findMany({
+			where: { deletedAt: null, description: { not: null }, NOT: { description: "" } },
+			select: { userId: true },
+			distinct: ["userId"],
+		}),
 		// People who added a devlog: a project with a real work session on it.
 		prisma.user.findMany({
 			where: {
@@ -492,28 +511,55 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 			select: { userId: true },
 			distinct: ["userId"],
 		}),
+		// Reel uploads. A row is written when the desktop mints a phone handoff;
+		// `usedAt` means the phone actually sent a file. A desktop file-pick goes
+		// straight to /api/upload and leaves no row here, which is why anyone who
+		// posted is counted as having started and finished an upload.
+		prisma.uploadHandoff.findMany({ select: { userId: true, usedAt: true } }),
 	])
 
 	const sessions = new Set(sessionUsers.map((s) => s.userId))
+	const named = new Set(namedUsers.map((u) => u.userId))
 	const devlogs = new Set(devlogUsers.map((u) => u.id))
 	const repos = new Set(repoUsers.map((u) => u.userId))
-	// One boolean per step per person; steps[0] (signup) is true for everyone.
-	const flags = users.map((u) => [
-		true,
-		sessions.has(u.id),
-		u.firstProjectAt !== null,
-		u.firstReelAt !== null,
-		devlogs.has(u.id),
-		repos.has(u.id),
-		u.firstChecksPassedAt !== null,
-		u.firstSubmissionAt !== null,
-	])
+	const handoffs = new Set(handoffRows.map((h) => h.userId))
+	const handoffUploads = new Set(handoffRows.filter((h) => h.usedAt !== null).map((h) => h.userId))
+
+	// One boolean per step per person, in funnel order; steps[0] (signup) is true
+	// for everyone. The `|| posted` / `|| submitted` fallbacks are the history
+	// guard described above the function — do not drop them.
+	const flags = users.map((u) => {
+		const posted = u.firstReelAt !== null
+		const submitted = u.firstSubmissionAt !== null
+		return [
+			true,
+			sessions.has(u.id),
+			u.hardwareExperience !== null || u.onboardingCompletedAt !== null || u.firstProjectAt !== null,
+			named.has(u.id) || u.firstProjectAt !== null,
+			u.firstProjectAt !== null,
+			u.onboardingCompletedAt !== null || posted || submitted,
+			u.participantGoal !== null || posted || submitted,
+			handoffs.has(u.id) || posted,
+			handoffUploads.has(u.id) || posted,
+			posted,
+			devlogs.has(u.id),
+			repos.has(u.id),
+			u.firstChecksPassedAt !== null,
+			submitted,
+		]
+	})
 	const total = users.length
 
 	const defs = [
 		{ id: "signedUp", label: "Signed up", hint: "Account in the database" },
 		{ id: "loggedIn", label: "Logged in", hint: "At least one sign-in" },
+		{ id: "startedOnboarding", label: "Started onboarding", hint: "Answered the first getting-started question" },
+		{ id: "namedProject", label: "Named a project", hint: "Gave a project a title and description" },
 		{ id: "createdProject", label: "Created a project", hint: "Named a project and picked a funding tier" },
+		{ id: "finishedOnboarding", label: "Finished onboarding", hint: "Worked through every getting-started step" },
+		{ id: "setGoal", label: "Set a goal", hint: "Answered what they are here for" },
+		{ id: "startedUpload", label: "Started a reel upload", hint: "Opened the recorder or minted a phone code" },
+		{ id: "uploadedReel", label: "Uploaded a reel", hint: "A video reached the bucket, posted or not" },
 		{ id: "postedReel", label: "Posted a reel", hint: "A video published to the feed" },
 		{ id: "addedDevlog", label: "Added a devlog", hint: "Wrote a journal entry" },
 		{ id: "connectedRepo", label: "Connected a repo", hint: "Linked an external repository to a project" },
