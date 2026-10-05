@@ -324,6 +324,21 @@ export function RepoSyncSettings({
 				<Button variant="ghost" size="sm" disabled={busy || loading} onClick={() => void load()}>
 					Check again
 				</Button>
+				{state.linkedForges.map((id) => {
+					const forge = FORGES.find((f) => f.id === id)
+					if (!forge) return null
+					return (
+						<Button
+							key={id}
+							variant="outline"
+							size="sm"
+							disabled={busy}
+							onClick={() => void linkForge(forge.id, window.location.pathname + window.location.search)}
+						>
+							Reconnect {forge.label}
+						</Button>
+					)
+				})}
 			</div>
 			<p className={cx("hand text-[0.8rem] text-navy-soft", compact && "hidden")}>
 				it writes JOURNAL.md and BOM.md to the repo&apos;s default branch, with one commit per update.

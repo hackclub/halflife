@@ -18,10 +18,10 @@ export function PageSign({
 	stripe?: string
 }) {
 	return (
-		<div className="relative flex flex-col items-center pt-0 pb-6">
+		<div className="relative flex flex-col items-center -mt-2 pb-6 lg:-mt-[4.5rem]">
 			<div aria-hidden="true" className="relative flex w-[172px] justify-between sm:w-[214px]">
-				<span className="h-9 w-[7px] rounded-b-sm bg-navy sm:h-11" />
-				<span className="h-9 w-[7px] rounded-b-sm bg-navy sm:h-11" />
+				<span className="h-9 w-[7px] rounded-b-sm bg-navy sm:h-11 lg:h-[7rem]" />
+				<span className="h-9 w-[7px] rounded-b-sm bg-navy sm:h-11 lg:h-[7rem]" />
 			</div>
 
 			<div className="relative -mt-1">

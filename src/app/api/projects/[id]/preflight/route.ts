@@ -1,4 +1,5 @@
 import { fail, ok, withRoute } from "@/lib/api"
+import { markChecksPassed } from "@/lib/analytics"
 import { requireSession } from "@/lib/guards"
 import prisma from "@/lib/prisma"
 import { checkRepo } from "@/lib/repo-checks"
@@ -24,5 +25,9 @@ export const GET = withRoute(async (_req: Request, { params }: Params) => {
 	})
 	if (!project) return fail("NOT_FOUND", "Project not found")
 
-	return ok(await checkRepo(project.githubRepo, project.theme))
+	const checks = await checkRepo(project.githubRepo, project.theme)
+	// First time the checks come back green, stamp it — the admin funnel uses it
+	// to separate "passed the repo checks" from "actually submitted".
+	if (checks.canSubmit) void markChecksPassed(gate.user.id)
+	return ok(checks)
 })

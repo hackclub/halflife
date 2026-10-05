@@ -115,6 +115,13 @@ export function markSubmission(userId: string, at = new Date()): Promise<void> {
 	})
 }
 
+/** The repo file checks first passed: the preflight that gates submissions. */
+export function markChecksPassed(userId: string, at = new Date()): Promise<void> {
+	return quietly("markChecksPassed", () =>
+		prisma.user.updateMany({ where: { id: userId, firstChecksPassedAt: null }, data: { firstChecksPassedAt: at } }),
+	)
+}
+
 /**
  * Recount one person's hours for one program week, and stamp any milestone
  * crossed for the first time. Called after a session is written, edited or
@@ -298,6 +305,7 @@ export interface UserAnalyticsRow {
 	firstReelAt: Date | null
 	firstSubmissionAt: Date | null
 	lastSubmissionAt: Date | null
+	firstChecksPassedAt: Date | null
 	lastLoginAt: Date | null
 	lastActiveAt: Date | null
 	activeDays: number
@@ -331,6 +339,7 @@ export async function getUserAnalytics(): Promise<UserAnalyticsRow[]> {
 			firstReelAt: true,
 			firstSubmissionAt: true,
 			lastSubmissionAt: true,
+			firstChecksPassedAt: true,
 			lastLoginAt: true,
 			lastActiveAt: true,
 			activeDays: true,
@@ -352,6 +361,7 @@ export async function getUserAnalytics(): Promise<UserAnalyticsRow[]> {
 			firstReelAt: u.firstReelAt,
 			firstSubmissionAt: u.firstSubmissionAt,
 			lastSubmissionAt: u.lastSubmissionAt,
+			firstChecksPassedAt: u.firstChecksPassedAt,
 			lastLoginAt: u.lastLoginAt,
 			lastActiveAt: u.lastActiveAt,
 			activeDays: u.activeDays,

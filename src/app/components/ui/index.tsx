@@ -68,9 +68,13 @@ export function PageHeader({
 	return (
 		<header>
 			<div className="hl-sign">
-				<span className="hl-sign-strap hl-sign-strap--left" aria-hidden="true" />
-				<span className="hl-sign-strap hl-sign-strap--right" aria-hidden="true" />
+				<div className="hl-sign-straps" aria-hidden="true">
+					<span className="hl-sign-strap" />
+					<span className="hl-sign-strap" />
+				</div>
 				<div className="hl-sign-board">
+					{/* The tear lives on its own layer so the heading stays clean. */}
+					<div aria-hidden="true" className="hl-sign-tear" />
 					<h1>{title}</h1>
 				</div>
 			</div>

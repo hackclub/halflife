@@ -289,45 +289,88 @@ h4 {
 	.hl-sign {
 		position: relative;
 		display: flex;
-		justify-content: center;
-		margin: 1.5rem 0 2.5rem;
+		flex-direction: column;
+		align-items: center;
+		/* Counter the shell's top padding so the straps hang from the very top:
+         right under the staff navbar on the ops pages, at the top of the page
+         on the one-shot handoff screen. */
+		margin: -2.5rem 0 2.5rem;
+	}
+	/* The same hanging sign as the platform pages (PageSign): two straps run up
+     out of the header, a torn plaque swings underneath. The tear is drawn on
+     its own layer so the heading is never crinkled by the filter. */
+	.hl-sign-straps {
+		position: relative;
+		display: flex;
+		width: 172px;
+		justify-content: space-between;
+	}
+	@media (min-width: 640px) {
+		.hl-sign-straps {
+			width: 214px;
+		}
+	}
+	.hl-sign-strap {
+		width: 7px;
+		height: 2.25rem;
+		background: #1c1a59;
+		border-bottom-left-radius: 6px;
+		border-bottom-right-radius: 6px;
+	}
+	@media (min-width: 640px) {
+		.hl-sign-strap {
+			height: 2.75rem;
+		}
+	}
+	@media (min-width: 1024px) {
+		.hl-sign-strap {
+			height: 7rem;
+		}
 	}
 	.hl-sign-board {
 		position: relative;
-		z-index: 1;
-		background: var(--color-accent-bright);
-		border: 2px solid var(--color-ink-strong);
-		border-radius: var(--radius-button);
-		padding: 0.6rem 2.5rem;
+		margin-top: -4px;
 		min-width: min(340px, 100%);
 		text-align: center;
 	}
+	.hl-sign-tear {
+		position: absolute;
+		inset: 0;
+		border-radius: 16px;
+		background-color: var(--color-accent-bright);
+		background-image: repeating-linear-gradient(
+			112deg,
+			transparent 0 38px,
+			rgba(0, 0, 0, 0.075) 38px 64px,
+			transparent 64px 104px
+		);
+		filter: url(#hl-tear);
+		box-shadow:
+			0 4px 8px rgba(28, 26, 89, 0.14),
+			0 20px 40px -20px rgba(28, 26, 89, 0.55);
+	}
 	.hl-sign-board h1 {
-		font-size: clamp(1.75rem, 4vw, 3.75rem);
+		position: relative;
+		font-size: clamp(1.6rem, 5.2vw, 3rem);
 		font-weight: 800;
+		letter-spacing: -0.04em;
+		line-height: 1;
 		color: var(--color-ink-strong);
 		margin: 0;
-		line-height: 1.05;
+		padding: 0.875rem 2.5rem;
 	}
-	.hl-sign-strap {
-		position: absolute;
-		top: -4rem;
-		width: 10px;
-		height: 110px;
-		background: var(--color-ink-strong);
-		border-bottom-left-radius: var(--radius-control);
-		border-bottom-right-radius: var(--radius-control);
-	}
-	.hl-sign-strap--left {
-		left: calc(50% - 130px);
-	}
-	.hl-sign-strap--right {
-		right: calc(50% - 130px);
+	@media (min-width: 640px) {
+		.hl-sign-board h1 {
+			padding: 1.25rem 4rem;
+		}
 	}
 	.hl-sign-sub {
 		text-align: center;
+		font-size: 0.86rem;
+		line-height: 1.5;
+		max-width: 46ch;
 		color: var(--color-ink-muted);
-		margin: 0.75rem 0 0;
+		margin: 1rem auto 0;
 	}
 
 	/*
