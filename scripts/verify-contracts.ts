@@ -154,6 +154,8 @@ async function bodies() {
 	const { purchaseSchema } = await import("../src/lib/schemas/shop")
 	const { setGoalSchema } = await import("../src/lib/schemas/goal")
 	const { createReportSchema } = await import("../src/lib/schemas/report")
+	const { shopRegionSchema, itemRegionPriceSchema } = await import("../src/lib/schemas/admin")
+	const { shopRegionPreferenceSchema } = await import("../src/lib/schemas/shop")
 
 	const journal = "x".repeat(200)
 
@@ -224,6 +226,11 @@ async function bodies() {
 		["setGoal · funding all weeks", setGoalSchema, { goal: "FULL_FUNDING" }],
 		["setGoal · funding some weeks", setGoalSchema, { goal: "PARTIAL_FUNDING" }],
 		["like", likeSchema, { liked: true }],
+		["shopRegion", shopRegionSchema, { id: "eu", name: "Europe" }],
+		["itemRegionPrice", itemRegionPriceSchema, { regionId: "eu", priceCredits: 40 }],
+		["itemRegionPrice · clear", itemRegionPriceSchema, { regionId: "eu", priceCredits: null }],
+		["shopRegionPreference", shopRegionPreferenceSchema, { regionId: "eu" }],
+		["shopRegionPreference · default", shopRegionPreferenceSchema, { regionId: null }],
 		[
 			"report",
 			createReportSchema,

@@ -85,11 +85,40 @@ export interface ShopItemView extends ShopItemPublic {
 	ownedCount: number
 }
 
+/** Regions staff sell to, for the shop's price picker. Active only. */
+export interface ShopRegionOption {
+	id: string
+	name: string
+}
+
+export async function listActiveShopRegions(): Promise<ShopRegionOption[]> {
+	return prisma.shopRegion.findMany({
+		where: { active: true },
+		orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+		select: { id: true, name: true },
+	})
+}
+
+/**
+ * The region whose prices a participant sees and pays. Null is base pricing;
+ * a region deactivated after being picked reads as base too, so flipping one
+ * off never strands anyone on prices that no longer exist.
+ */
+async function shopRegionIdFor(userId: string): Promise<string | null> {
+	const user = await prisma.user.findUnique({
+		where: { id: userId },
+		select: { shopRegion: { select: { id: true, active: true } } },
+	})
+	return user?.shopRegion?.active ? user.shopRegion.id : null
+}
+
 export async function getShopItemsFor(userId: string): Promise<{
 	items: ShopItemView[]
 	balances: Balances
+	regions: ShopRegionOption[]
+	regionId: string | null
 }> {
-	const [items, balances, qualification, orders] = await Promise.all([
+	const [items, balances, qualification, orders, regions, regionId] = await Promise.all([
 		// Explicit `select`, never the whole row: a new internal column added to
 		// ShopItem must not silently start reaching participants.
 		prisma.shopItem.findMany({
@@ -109,6 +138,7 @@ export async function getShopItemsFor(userId: string): Promise<{
 				sortOrder: true,
 				createdAt: true,
 				updatedAt: true,
+				regionPrices: { select: { regionId: true, priceCredits: true } },
 			},
 		}),
 		prisma.$transaction((tx) => getBalances(tx, userId)),
@@ -118,12 +148,16 @@ export async function getShopItemsFor(userId: string): Promise<{
 			where: { userId, status: { notIn: [ShopOrderStatus.REJECTED, ShopOrderStatus.CANCELLED] } },
 			_sum: { quantity: true },
 		}),
+		listActiveShopRegions(),
+		shopRegionIdFor(userId),
 	])
 
 	const owned = new Map(orders.map((o) => [o.shopItemId, o._sum.quantity ?? 0]))
 
 	return {
 		balances,
+		regions,
+		regionId,
 		items: items.map((item) => {
 			const ownedCount = owned.get(item.id) ?? 0
 			let locked = false
@@ -140,13 +174,23 @@ export async function getShopItemsFor(userId: string): Promise<{
 				lockReason = "Out of stock"
 			}
 
+			// A regional override replaces the base price wherever this
+			// participant is concerned — display and purchase read the same
+			// number, so the shelf can never advertise a price the till refuses.
+			const { regionPrices, ...base } = item
+			const priceCredits =
+				regionId !== null
+					? (regionPrices.find((r) => r.regionId === regionId)?.priceCredits ?? item.priceCredits)
+					: item.priceCredits
+
 			// Printers may be paid for out of the printer fund; nothing else may,
 			// so for every other category this compares against spendable alone.
 			const payableFrom = spendableFor(balances, item.category)
 			return {
-				...item,
+				...base,
+				priceCredits,
 				ownedCount,
-				affordable: payableFrom >= item.priceCredits,
+				affordable: payableFrom >= priceCredits,
 				locked,
 				lockReason,
 			}
@@ -186,6 +230,21 @@ export async function purchase(
 	return prisma.$transaction(async (tx) => {
 		await lockUserCredit(tx, userId)
 
+		// The buyer's region, re-read here rather than trusted from the shelf:
+		// the price on the order is whatever this resolves to, so display and
+		// charge cannot drift apart.
+		const buyer = await tx.user.findUnique({
+			where: { id: userId },
+			select: { shopRegion: { select: { id: true, active: true } } },
+		})
+		const buyerRegionId = buyer?.shopRegion?.active ? buyer.shopRegion.id : null
+		const regional =
+			buyerRegionId !== null
+				? await tx.shopItemRegionPrice.findUnique({
+						where: { shopItemId_regionId: { shopItemId, regionId: buyerRegionId } },
+						select: { priceCredits: true },
+					})
+				: null
 		// A retried request — double-tap, proxy retry, two tabs sharing one key —
 		// resolves to the order it already made rather than charging again. The
 		// same per-user lock serializes the two, so the loser always sees the
@@ -219,7 +278,8 @@ export async function purchase(
 			}
 		}
 
-		const totalCredits = fresh.priceCredits * quantity
+		const unitPrice = regional?.priceCredits ?? fresh.priceCredits
+		const totalCredits = unitPrice * quantity
 		const balances = await getBalances(tx, userId)
 		const payableFrom = spendableFor(balances, fresh.category)
 		if (payableFrom < totalCredits) {
@@ -239,7 +299,7 @@ export async function purchase(
 				userId,
 				shopItemId,
 				quantity,
-				unitCredits: fresh.priceCredits,
+				unitCredits: unitPrice,
 				totalCredits,
 				itemNameSnapshot: fresh.name,
 				unitCostUsd: fresh.costUsd,

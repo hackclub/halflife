@@ -325,6 +325,9 @@ enum AuditAction {
   ADMIN_CREATE_SHOP_ITEM
   ADMIN_UPDATE_SHOP_ITEM
   ADMIN_RETIRE_SHOP_ITEM
+  ADMIN_CREATE_SHOP_REGION
+  ADMIN_UPDATE_SHOP_REGION
+  ADMIN_SET_REGION_PRICE
   ADMIN_FULFILL_ORDER
   ADMIN_REJECT_ORDER
   ADMIN_UPDATE_ORDER_FULFILLMENT
@@ -501,6 +504,11 @@ model User {
   submissionExtensionUntil DateTime?
 
   fraudFlagged Boolean @default(false)
+
+  /// The region whose prices the shop shows this participant. Null is base
+  /// pricing; a region deactivated after being picked reads as base too.
+  shopRegionId String?
+  shopRegion   ShopRegion? @relation(fields: [shopRegionId], references: [id], onDelete: SetNull)
 
   utmSource  String?
   signupPage String?
@@ -1522,9 +1530,57 @@ model ShopItem {
   updatedAt DateTime @updatedAt
 
   orders ShopOrder[]
+  /// Per-region coin prices. An item with no row for a region sells there at
+  /// `priceCredits`; a row overrides it. Orders snapshot the price they were
+  /// charged, so changing or removing a row never rewrites history.
+  regionPrices ShopItemRegionPrice[]
 
   @@index([active, sortOrder])
   @@map("shop_item")
+}
+
+/// A sales region staff can price the shop for separately.
+///
+/// Participants pick theirs on the shop page; it is stored on the user so the
+/// price they see is the price the server charges. Deactivating a region
+/// falls everyone on it back to base pricing — rows are kept, not deleted, so
+/// re-activating restores the overrides and no history is lost.
+model ShopRegion {
+  /// Hand-assigned slug, like a shop item id: it appears in analytics and has
+  /// to survive a rename of the display name.
+  id     String  @id
+  name   String
+  active Boolean @default(true)
+
+  sortOrder Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users  User[]
+  prices ShopItemRegionPrice[]
+
+  @@index([active, sortOrder])
+  @@map("shop_region")
+}
+
+/// One region's coin price for one shop item. Absent means base pricing.
+model ShopItemRegionPrice {
+  id String @id @default(cuid())
+
+  shopItemId String
+  shopItem   ShopItem @relation(fields: [shopItemId], references: [id], onDelete: Cascade)
+
+  regionId String
+  region   ShopRegion @relation(fields: [regionId], references: [id], onDelete: Cascade)
+
+  priceCredits Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([shopItemId, regionId])
+  @@map("shop_item_region_price")
 }
 
 model ShopOrder {
