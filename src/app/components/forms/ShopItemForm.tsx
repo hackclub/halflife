@@ -6,7 +6,7 @@ import type { ShopItemCategory } from "@/app/generated/prisma/enums"
 import { uploadFile } from "@/lib/use-handoff"
 
 const CATEGORIES: { value: ShopItemCategory; label: string }[] = [
-	{ value: "PRINTER", label: "Printer — the only category banked coins can buy" },
+	{ value: "PRINTER", label: "Printer — not listed in the shop" },
 	{ value: "PRINTER_UPGRADE", label: "Printer upgrade" },
 	{ value: "CONSUMABLE", label: "Consumable" },
 	{ value: "MISC", label: "Misc" },
@@ -21,10 +21,7 @@ export interface ShopItemInitial {
 	category: ShopItemCategory
 	priceCredits: number
 	costUsd: number | null
-	maxPerUser: number
-	stock: number | null
 	requiresPrinterQualified: boolean
-	sortOrder: number
 }
 
 const blank = {
@@ -35,10 +32,7 @@ const blank = {
 	category: "PRINTER_UPGRADE" as ShopItemCategory,
 	priceCredits: "50",
 	costUsd: "",
-	maxPerUser: "1",
-	stock: "",
 	requiresPrinterQualified: true,
-	sortOrder: "0",
 }
 
 /**
@@ -68,9 +62,10 @@ function previewImageUrl(value: string): string | null {
 }
 
 /**
- * Add a shop item, or edit one when `item` is given. Every field the API
- * takes is here; the slug is fixed once an item exists, because orders and
- * analytics refer to it.
+ * Add a shop item, or edit one when `item` is given. The slug is fixed once
+ * an item exists, because orders and analytics refer to it. Per-person limit,
+ * stock and shelf order are left to their defaults (one per person, unlimited stock, first)
+ * and an edit never sends them, so an item that already has them keeps them.
  */
 export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 	const router = useRouter()
@@ -85,10 +80,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 					category: item.category,
 					priceCredits: String(item.priceCredits),
 					costUsd: item.costUsd === null ? "" : String(item.costUsd),
-					maxPerUser: String(item.maxPerUser),
-					stock: item.stock === null ? "" : String(item.stock),
 					requiresPrinterQualified: item.requiresPrinterQualified,
-					sortOrder: String(item.sortOrder),
 				}
 			: blank,
 	)
@@ -125,10 +117,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 			category: form.category,
 			priceCredits: Number(form.priceCredits),
 			costUsd: form.costUsd === "" ? null : Number(form.costUsd),
-			maxPerUser: Number(form.maxPerUser),
-			stock: form.stock === "" ? null : Number(form.stock),
 			requiresPrinterQualified: form.requiresPrinterQualified,
-			sortOrder: Number(form.sortOrder) || 0,
 		}
 		try {
 			const res = await fetch(editing ? `/api/admin/shop/items/${item.id}` : "/api/admin/shop/items", {
@@ -190,7 +179,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 					onChange={(e) => setForm({ ...form, description: e.target.value })}
 				/>
 			</Field>
-			<Field label="Category" hint="Decides which coins can pay for it: banked coins only ever buy a printer.">
+			<Field label="Category" hint="Printers are not listed in the shop; everything else is paid for in coins.">
 				<select
 					className="hl-select"
 					value={form.category}
@@ -256,32 +245,6 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 					step="0.01"
 					value={form.costUsd}
 					onChange={(e) => setForm({ ...form, costUsd: e.target.value })}
-				/>
-			</Field>
-			<Field label="Max per person" hint="0 for unlimited.">
-				<input
-					className="hl-input"
-					type="number"
-					min="0"
-					value={form.maxPerUser}
-					onChange={(e) => setForm({ ...form, maxPerUser: e.target.value })}
-				/>
-			</Field>
-			<Field label="Stock" hint="Blank for unlimited.">
-				<input
-					className="hl-input"
-					type="number"
-					min="0"
-					value={form.stock}
-					onChange={(e) => setForm({ ...form, stock: e.target.value })}
-				/>
-			</Field>
-			<Field label="Order in the shop" hint="Lower comes first; ties go by name.">
-				<input
-					className="hl-input"
-					type="number"
-					value={form.sortOrder}
-					onChange={(e) => setForm({ ...form, sortOrder: e.target.value })}
 				/>
 			</Field>
 			<label className="hl-row" style={{ gap: "0.5rem" }}>

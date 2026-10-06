@@ -9,14 +9,11 @@ import type { ShopItemView } from "@/lib/shop"
 import { useStore } from "@/lib/store"
 
 /**
- * The shelves, in the order they read on screen, mapped to the categories the
- * ledger actually enforces. `PRINTER` is its own shelf because it is the only
- * one banked coins may be spent on — the distinction is not cosmetic, it is the
- * forced-savings rule.
+ * The shelves, in the order they read on screen. Printers are not sold here,
+ * so every item on them is paid for in ordinary coins.
  */
 const CATEGORIES = [
 	{ label: "All", match: null },
-	{ label: "Printers", match: "PRINTER" },
 	{ label: "Upgrades", match: "PRINTER_UPGRADE" },
 	{ label: "Consumables", match: "CONSUMABLE" },
 	{ label: "Everything else", match: "MISC" },
@@ -32,7 +29,7 @@ export function ShopGrid({
 	regionId: string | null
 }) {
 	const router = useRouter()
-	const { coins, printerFund } = useStore()
+	const { coins } = useStore()
 	const [cat, setCat] = useState<string>("All")
 	const [busy, setBusy] = useState<string | null>(null)
 	const [error, setError] = useState<string | null>(null)
@@ -152,11 +149,9 @@ export function ShopGrid({
 				{items.map((item) => {
 					const has = item.ownedCount > 0
 					const out = item.stock !== null && item.stock <= 0
-					// Banked coins are legal tender for a printer and for nothing else,
-					// so what you can afford depends on what you are buying. Without this
-					// the shop would offer to sell someone a hoodie out of their savings.
-					const purse = item.category === "PRINTER" ? printerFund : coins
-					const afford = purse >= item.priceCredits
+					// Banked coins only ever bought a printer, and printers are not on
+					// sale here, so ordinary coins are the whole purse.
+					const afford = coins >= item.priceCredits
 					return (
 						<Panel
 							key={item.id}
@@ -211,7 +206,7 @@ export function ShopGrid({
 									) : afford ? (
 										"Buy"
 									) : (
-										"Not enough"
+										"Not enough coins"
 									)}
 								</button>
 							</div>

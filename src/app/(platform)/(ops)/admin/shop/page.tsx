@@ -2,6 +2,7 @@ import Link from "next/link"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { ItemCostField } from "@/app/components/forms/ItemCostField"
 import { ShopItemForm } from "@/app/components/forms/ShopItemForm"
+import { ShopItemImport } from "@/app/components/forms/ShopItemImport"
 import { ShopRegionForm } from "@/app/components/forms/ShopRegionForm"
 import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
 import type { ShopItemCategory } from "@/app/generated/prisma/enums"
@@ -83,6 +84,9 @@ export default async function AdminShopPage() {
 				<ShopItemForm />
 			</Panel>
 
+			<Panel title="Import from CSV">
+				<ShopItemImport />
+			</Panel>
 			<Panel title="Regions">
 				<p className="hl-hint">
 					Sales regions staff can price items for separately. Participants pick theirs on the shop page; an
