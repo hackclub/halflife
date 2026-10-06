@@ -7,7 +7,7 @@ import {
 	type ShopFulfillmentMethod,
 	ShopFulfillmentStage,
 	ShopOrderStatus,
-	type Theme,
+	Theme,
 	type ReportStatus,
 } from "@/app/generated/prisma/enums"
 import { getBalances } from "@/lib/currency"
@@ -15,6 +15,7 @@ import { displayName } from "@/lib/display-name"
 import { safeDecrypt } from "@/lib/pii"
 import { getPrinterQualification } from "@/lib/printer"
 import { REGIONS, type RegionId, countryOfTimezone, regionOfTimezone } from "@/lib/regions"
+import { getStarterProject } from "@/lib/config/onboarding"
 import prisma from "@/lib/prisma"
 import { shopOrderStaffSelect } from "@/lib/shop"
 
@@ -832,4 +833,47 @@ export async function getDailyActivity(): Promise<DayActivity[]> {
 		})
 	}
 	return out
+}
+
+export interface FirstProjectStat {
+	/** Starter title, or "Custom project" for a self-named idea. */
+	label: string
+	starter: boolean
+	users: number
+}
+
+/**
+ * What users chose for their first project: which starter, or a custom idea.
+ *
+ * Setup edits one row — the week-one (PCB) project — so its final
+ * `starterProjectId` is the choice: a starter id, or null for custom. Only
+ * users who finished setup and still have that project count; accounts with
+ * no week-one row made no choice in this system.
+ */
+export async function getFirstProjectStats(): Promise<FirstProjectStat[]> {
+	const rows = await prisma.themeProject.findMany({
+		where: { theme: Theme.PCB, deletedAt: null, user: { onboardingCompletedAt: { not: null } } },
+		select: { starterProjectId: true },
+	})
+
+	const counts = new Map<string | null, number>()
+	for (const r of rows) counts.set(r.starterProjectId, (counts.get(r.starterProjectId) ?? 0) + 1)
+
+	// Starter ids outlive the catalogue: resolve a title when one exists, else
+	// show the id prettified rather than dropped.
+	const pretty = (id: string) =>
+		getStarterProject(id)?.title ??
+		id
+			.split(/[-_]/)
+			.map((w) => (w ? w[0]?.toUpperCase() + w.slice(1) : w))
+			.join(" ")
+
+	return [...counts]
+		.filter(([, users]) => users > 0)
+		.map(([starterId, users]) => ({
+			label: starterId === null ? "Custom project" : pretty(starterId),
+			starter: starterId !== null,
+			users,
+		}))
+		.sort((a, b) => b.users - a.users)
 }
