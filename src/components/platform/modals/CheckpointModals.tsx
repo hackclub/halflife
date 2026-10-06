@@ -97,15 +97,66 @@ function stashJournalDraft(checkpointId: string, draft: JournalDraft) {
 	}
 }
 
-function takeJournalDraft(checkpointId: string): JournalDraft | null {
+function isJournalDraft(value: unknown): value is JournalDraft {
+	if (typeof value !== "object" || value === null) return false
+	const v = value as Record<string, unknown>
+	return (
+		(v.tab === "journal" || v.tab === "timelapse") &&
+		typeof v.body === "string" &&
+		typeof v.hoursText === "string" &&
+		Array.isArray(v.picked)
+	)
+}
+
+function peekJournalTrip(checkpointId: string): JournalDraft | null {
 	if (typeof window === "undefined") return null
 	try {
 		const raw = window.sessionStorage.getItem(draftKey(checkpointId))
 		if (!raw) return null
-		window.sessionStorage.removeItem(draftKey(checkpointId))
-		return JSON.parse(raw) as JournalDraft
+		const parsed: unknown = JSON.parse(raw)
+		return isJournalDraft(parsed) ? parsed : null
 	} catch {
 		return null
+	}
+}
+
+const autosaveKey = (checkpointId: string) => `halflife.journal-autosave.${checkpointId}`
+
+/** Placeholders for images still uploading: never persisted, their upload dies with the page. */
+const UPLOADING_PLACEHOLDER = /!\[Uploading .*?\]\(uploading:\d+\)/g
+
+function cleanBodyForAutosave(body: string): string {
+	return body.replace(UPLOADING_PLACEHOLDER, "").replace(/\n{3,}/g, "\n\n")
+}
+
+/** A draft that survives closing the sheet, reloading, or navigating away. Cleared on save. */
+function readJournalAutosave(checkpointId: string): JournalDraft | null {
+	if (typeof window === "undefined") return null
+	try {
+		const raw = window.localStorage.getItem(autosaveKey(checkpointId))
+		if (!raw) return null
+		const parsed: unknown = JSON.parse(raw)
+		return isJournalDraft(parsed) ? parsed : null
+	} catch {
+		return null
+	}
+}
+
+function writeJournalAutosave(checkpointId: string, draft: JournalDraft | null) {
+	try {
+		if (draft) window.localStorage.setItem(autosaveKey(checkpointId), JSON.stringify(draft))
+		else window.localStorage.removeItem(autosaveKey(checkpointId))
+	} catch {
+		// Storage off: the sheet still works, it just cannot keep the draft.
+	}
+}
+
+function clearJournalAutosave(checkpointId: string) {
+	try {
+		window.localStorage.removeItem(autosaveKey(checkpointId))
+		window.sessionStorage.removeItem(draftKey(checkpointId))
+	} catch {
+		// Storage off or already cleared.
 	}
 }
 
@@ -210,9 +261,13 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	// the entry was saved with — and it still counts as the entry's evidence.
 	const kept = existing?.clips.length ?? 0
 
-	// A draft survives exactly one trip: out to Lapse to sign in, and back. It
-	// is read once and cleared, so it cannot resurrect an entry days later.
-	const [draft] = useState(() => takeJournalDraft(checkpoint.id))
+	// A Lapse sign-in leaves the page and comes back: that trip's draft is
+	// restored once. Anything else typed is autosaved to this browser and
+	// restored next time the sheet opens, so clicking out cannot lose it.
+	// A saved entry clears it. Peeked (not taken) during render so StrictMode's
+	// double-invoked initializer cannot consume it before state is set.
+	const [draft] = useState(() => peekJournalTrip(checkpoint.id) ?? readJournalAutosave(checkpoint.id))
+	const draftRestored = draft != null
 	const [tab, setTab] = useState<"journal" | "timelapse">(editing ? "journal" : (draft?.tab ?? "journal"))
 	// The Lapse timelapses backing this session.
 	const [picked, setPicked] = useState<LapseTimelapse[]>(draft?.picked ?? [])
@@ -234,6 +289,51 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const [dragging, setDragging] = useState(false)
 	const dragDepth = useRef(0)
 	const placeholderSeq = useRef(0)
+
+	// Autosave: every keystroke lands in this browser, so closing the sheet,
+	// reloading, or navigating away cannot lose it. Empty sheets and edits
+	// matching the saved entry keep no draft; a saved entry clears it.
+	const baselineBody = existing?.body ?? ""
+	const baselineHours = existing ? String(to2(existing.minutes / 60)) : ""
+	// The trip draft has been restored into state: consume it so it cannot
+	// resurrect an entry days later. Autosave below keeps it from here on.
+	useEffect(() => {
+		try {
+			window.sessionStorage.removeItem(draftKey(checkpoint.id))
+		} catch {
+			// Storage off.
+		}
+	}, [checkpoint.id])
+	useEffect(() => {
+		const cleanBody = cleanBodyForAutosave(body)
+		const hasContent =
+			cleanBody.trim() !== "" || hoursText.trim() !== "" || picked.length > 0 || (!editing && tab !== "journal")
+		const matchesSaved =
+			editing && cleanBody === baselineBody && hoursText === baselineHours && picked.length === 0
+		if (!hasContent || matchesSaved) {
+			writeJournalAutosave(checkpoint.id, null)
+			return
+		}
+		writeJournalAutosave(checkpoint.id, { tab, body: cleanBody, hoursText, picked })
+	}, [checkpoint.id, tab, body, hoursText, picked, editing, baselineBody, baselineHours])
+
+	const hasUnsavedWork =
+		cleanBodyForAutosave(body).trim() !== "" || hoursText.trim() !== "" || picked.length > 0
+
+	function discardDraft() {
+		if (editing) {
+			setBody(baselineBody)
+			setHoursText(baselineHours)
+			setPicked([])
+			setTab("journal")
+		} else {
+			setBody("")
+			setHoursText("")
+			setPicked([])
+			setTab("journal")
+		}
+		writeJournalAutosave(checkpoint.id, null)
+	}
 
 	// The fallback is for a season sheet opened before its project row landed;
 	// it must never pick the warm-up project, which has no season week.
@@ -298,7 +398,10 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			const refused = await editSession(checkpoint.id, sessionMinutes, body.trim())
 			setSaving(false)
 			if (refused) setSaveError(refused)
-			else setOpenCheckpoint(null)
+			else {
+				clearJournalAutosave(checkpoint.id)
+				setOpenCheckpoint(null)
+			}
 			return
 		}
 		const refused = await logSession(checkpoint.id, sessionMinutes, body.trim(), {
@@ -309,12 +412,13 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			setSaveError(refused)
 			return
 		}
+		clearJournalAutosave(checkpoint.id)
 		complete(checkpoint.id)
 		setOpenCheckpoint(null)
 	}
 
 	async function signInWithLapse() {
-		stashJournalDraft(checkpoint.id, { tab: "timelapse", body, hoursText, picked })
+		stashJournalDraft(checkpoint.id, { tab: "timelapse", body: cleanBodyForAutosave(body), hoursText, picked })
 		await linkLapse(`${window.location.pathname}?journal=${encodeURIComponent(checkpoint.id)}`)
 	}
 
@@ -549,20 +653,38 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
               losing the cursor. Below md there is only room for one, and the
               toggle picks which. */}
 					<div className="mb-2 flex items-center justify-between gap-3">
-						<p className="label text-violet-deep">Your entry</p>
-						<button
-							type="button"
-							onClick={() => setPreview((v) => !v)}
-							aria-pressed={preview}
-							className={cx(
-								"label inline-flex items-center gap-1.5 rounded-full border-2 px-3 py-1.5 transition-colors",
-								preview
-									? "border-violet bg-violet-pale text-violet-deep"
-									: "border-line text-navy-soft hover:border-violet hover:text-navy",
+						<p className="label text-violet-deep">
+							Your entry{" "}
+							{hasUnsavedWork && (
+								<span className="hand ml-1 font-normal normal-case text-navy-soft" role="status">
+									· {draftRestored ? "draft restored, autosaves as you type" : "draft autosaved"}
+								</span>
 							)}
-						>
-							<IconEye className="text-base" /> {preview ? "Hide preview" : "Preview"}
-						</button>
+						</p>
+						<span className="flex items-center gap-2">
+							{hasUnsavedWork && (
+								<button
+									type="button"
+									onClick={discardDraft}
+									className="label rounded-full px-3 py-1.5 text-navy-soft underline decoration-dashed underline-offset-4 hover:text-coral-deep"
+								>
+									Discard draft
+								</button>
+							)}
+							<button
+								type="button"
+								onClick={() => setPreview((v) => !v)}
+								aria-pressed={preview}
+								className={cx(
+									"label inline-flex items-center gap-1.5 rounded-full border-2 px-3 py-1.5 transition-colors",
+									preview
+										? "border-violet bg-violet-pale text-violet-deep"
+										: "border-line text-navy-soft hover:border-violet hover:text-navy",
+								)}
+							>
+								<IconEye className="text-base" /> {preview ? "Hide preview" : "Preview"}
+							</button>
+						</span>
 					</div>
 
 					<div className={cx("grid gap-3", preview && "md:grid-cols-2")}>
