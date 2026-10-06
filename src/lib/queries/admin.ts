@@ -606,13 +606,19 @@ export type ReportStatusFilter = ReportStatus | "ALL"
 /**
  * The moderation queue for user reports: who flagged what, why, and what
  * staff did about it. Newest first, with the reported row's own preview and
- * author alongside, so a report reads without opening five tabs.
+ * author alongside, so a report reads without opening five tabs. Cursor-
+ * paged like the audit log, so a busy queue never silently drops its tail.
  */
-export async function listContentReports(status: ReportStatusFilter = "OPEN", limit = 100) {
+export async function listContentReports(
+	status: ReportStatusFilter = "OPEN",
+	opts: { cursor?: string; limit?: number } = {},
+) {
+	const limit = opts.limit ?? 50
 	const rows = await prisma.contentReport.findMany({
 		where: status === "ALL" ? undefined : { status },
 		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-		take: limit,
+		take: limit + 1,
+		...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
 		select: {
 			id: true,
 			target: true,
@@ -668,10 +674,13 @@ export async function listContentReports(status: ReportStatusFilter = "OPEN", li
 			},
 		},
 	})
-	return rows
+	const hasMore = rows.length > limit
+	const items = hasMore ? rows.slice(0, limit) : rows
+	const last = items[items.length - 1]
+	return { items, nextCursor: hasMore && last ? last.id : null }
 }
 
-export type ContentReportRow = Awaited<ReturnType<typeof listContentReports>>[number]
+export type ContentReportRow = Awaited<ReturnType<typeof listContentReports>>["items"][number]
 
 export async function countContentReports(): Promise<Record<ReportStatus, number>> {
 	const groups = await prisma.contentReport.groupBy({ by: ["status"], _count: { _all: true } })
