@@ -312,8 +312,8 @@ export function BomEditor({
 	return (
 		<div>
 			<p className="mb-4 text-[0.88rem] leading-snug text-navy-soft">
-				Parts only – don&apos;t list tools here. Soldering irons, multimeters, cutters and the like are bought
-				in the{" "}
+				Parts only – don&apos;t list tools here. Enter all prices in US dollars (USD). Soldering irons,
+				multimeters, cutters and the like are bought in the{" "}
 				<Link href="/shop" className="underline decoration-dashed underline-offset-4 hover:text-navy">
 					programme shop
 				</Link>{" "}
@@ -454,7 +454,7 @@ export function BomEditor({
 					</p>
 					<p className="-mt-2 text-[0.8rem] text-navy-soft">
 						You can lump all of your passive components together (LEDs, resistors, diodes, transistors, etc) into one
-						BOM entry. The minimum cost for an item is $0.01.
+						BOM entry. Prices are in US dollars (USD); the minimum cost for an item is $0.01.
 					</p>
 					<div className="grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
 						<label className="grid gap-1">
