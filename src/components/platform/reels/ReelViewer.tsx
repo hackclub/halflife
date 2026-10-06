@@ -580,12 +580,14 @@ export function ReelViewer() {
 							<Action label={`${current.viewCount} views`} count={current.viewCount}>
 								<IconEye className="text-[1.3rem]" />
 							</Action>
-							<ReportButton
-								target={{ type: "REEL", id: current.id }}
-								title="Report this reel"
-								context={current.caption || undefined}
-								tone="adaptive"
-							/>
+							{current.author.id !== viewer.id && (
+								<ReportButton
+									target={{ type: "REEL", id: current.id }}
+									title="Report this reel"
+									context={current.caption || undefined}
+									tone="adaptive"
+								/>
+							)}
 						</div>
 					</div>
 				)}

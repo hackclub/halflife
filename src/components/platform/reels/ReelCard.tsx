@@ -7,6 +7,7 @@ import { IconComment, IconEye, IconFilm, IconHeart, IconPlay } from "@/component
 import { cx } from "@/components/platform/ui"
 import type { FeedItem } from "@/lib/feed"
 import { ReportButton } from "@/components/platform/report/ReportButton"
+import { useStore } from "@/lib/store"
 
 function compact(n: number) {
 	return n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k` : `${n}`
@@ -152,6 +153,7 @@ export function ReelCard({
 	 */
 	onComments?: (reel: FeedItem) => void
 }) {
+	const { viewer } = useStore()
 	const card = useRef<HTMLElement>(null)
 	const video = useRef<HTMLVideoElement>(null)
 	const meta = useRef<HTMLDivElement>(null)
@@ -370,12 +372,16 @@ export function ReelCard({
 								{compact(reel.viewCount)}
 							</span>
 						</span>
-						<ReportButton
-							target={{ type: "REEL", id: reel.id }}
-							title="Report this reel"
-							context={reel.caption || undefined}
-							tone="inverse"
-						/>
+						{/* No button on your own reel: the route rejects self-reports,
+						    so showing one would only ever end in an error. */}
+						{reel.author.id !== viewer.id && (
+							<ReportButton
+								target={{ type: "REEL", id: reel.id }}
+								title="Report this reel"
+								context={reel.caption || undefined}
+								tone="inverse"
+							/>
+						)}
 					</div>
 				</div>
 			</div>
