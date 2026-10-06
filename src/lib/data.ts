@@ -157,7 +157,7 @@ export const DOCS: DocArticle[] = [
 				list: [
 					"Design week: your tier's funded hours pay for your parts and earn no coins. Past them, approved time banks toward your printer goal – how much depends on the printer you picked – and anything beyond that is yours to spend.",
 					"Build week: nothing is funded, so every hour earns coins: the first 5 bank toward your printer goal, and the rest are yours to spend.",
-					"Each hand-in is capped at 250 spendable coins (50 hours).",
+					"Each submission is capped at 250 spendable coins (50 hours).",
 					"Ship a theme (design and build both approved): 25 bonus coins to spend.",
 				],
 			},
@@ -184,7 +184,7 @@ export const DOCS: DocArticle[] = [
 			{
 				heading: "Your repo",
 				paragraphs: [
-					"The submit sheet checks your repo before it lets you hand in. A missing README, a README with no photos, or a missing required file blocks the submit and tells you what to add. Recommended files are flagged but never block.",
+					"The submit sheet checks your repo before it lets you submit. A missing README, a README with no photos, or a missing required file blocks the submit and tells you what to add. Recommended files are flagged but never block.",
 				],
 				list: [
 					"Every week: a public repo, with a README that has photos in it.",
@@ -240,7 +240,7 @@ export const DOCS: DocArticle[] = [
 			{
 				heading: "What gets a week sent back",
 				paragraphs: [
-					"Reviewers can approve a week, send it back with changes to make, or reject it. A week sent back can be fixed and handed in again. The usual reasons:",
+					"Reviewers can approve a week, send it back with changes to make, or reject it. A week sent back can be fixed and submitted again. The usual reasons:",
 				],
 				list: [
 					"The README does not explain the project, or has no photos.",

@@ -329,7 +329,7 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 					key: "repo",
 					label: "Could not check the repo",
 					status: "warn",
-					detail: `${why} You can still hand in; a reviewer will check the repo by hand.`,
+					detail: `${why} You can still submit; a reviewer will check the repo by hand.`,
 				},
 			],
 			true,
@@ -446,7 +446,7 @@ function nonForgeWarn(host: string): RepoCheck {
 		key: "repo",
 		label: "Repo is on another service",
 		status: "warn",
-		detail: `${host} is not a service Half Life can read, so these file checks cannot run. You can still hand in; a reviewer will open the repo by hand.`,
+		detail: `${host} is not a service Half Life can read, so these file checks cannot run. You can still submit; a reviewer will open the repo by hand.`,
 	}
 }
 

@@ -326,18 +326,23 @@ body {
 	}
 }
 
-@keyframes hl-halo {
-	0% {
-		transform: scale(0.94);
-		opacity: 0.6;
+/* The next checkpoint presses itself: the face drops into its rim the way it
+   does under a finger, then springs back a hair past rest. Mostly still, so
+   the trail stays calm and the press reads as a tap, not a throb. */
+@keyframes hl-press {
+	0%,
+	72% {
+		transform: translateY(0);
 	}
-	70% {
-		transform: scale(1.34);
-		opacity: 0;
+	77% {
+		transform: translateY(calc(var(--puck-lift) - 2px));
 	}
+	87% {
+		transform: translateY(-2px);
+	}
+	94%,
 	100% {
-		transform: scale(1.34);
-		opacity: 0;
+		transform: translateY(0);
 	}
 }
 
@@ -364,17 +369,14 @@ body {
 }
 
 @layer components {
-	.halo {
-		position: absolute;
-		inset: -7%;
-		border-radius: 50%;
-		border: 3px solid var(--color-sky);
-		animation: hl-halo 2.1s var(--ease-out-expo) infinite;
-		pointer-events: none;
+	.puck-next .puck-face {
+		animation: hl-press 2.6s var(--ease-out-expo) infinite;
 	}
 
-	.halo-gold {
-		border-color: var(--color-gold);
+	/* A real hover or press takes over from the demonstration. */
+	.puck-next:hover .puck-face,
+	.puck-next:active .puck-face {
+		animation: none;
 	}
 
 	/* A file that has finished sending and is being stored: the full bar keeps
