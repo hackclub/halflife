@@ -1,5 +1,5 @@
 import Link from "next/link"
-import type { CSSProperties } from "react"
+import { Fragment, type CSSProperties } from "react"
 import { EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
 import { requireAnyPermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
@@ -80,112 +80,138 @@ export default async function AdminOverviewPage() {
  * The funnel as an actual funnel running down the page: each stage is a
  * trapezoid whose top edge meets the stage above it and whose bottom edge is
  * its own share of signups, so the slope between two stages *is* the
- * drop-off. A stage that loses more than half of the previous stage renders
- * in red, with the loss named in the connector above it.
+ * drop-off. Captions sit in a column to the left of the funnel, where text
+ * never fights the colour for contrast, and the through/stopped share for
+ * each joint is named in the connector between its two stages. Each stage is
+ * heat-coloured by the share of the previous stage it lost, from blue (no
+ * loss) to red (all lost).
  */
 function FlowFunnel({ steps }: { steps: FlowStep[] }) {
 	if (steps.length === 0) return <EmptyState>No signups yet.</EmptyState>
 	const top = steps[0]?.count ?? 0
-	// A stage narrower than this still renders, so a near-total drop-off reads
-	// as a sliver rather than vanishing; captions always print the true share.
-	const MIN_W = 12
+	// A floor so a near-total drop-off still renders as a thread rather than
+	// vanishing entirely; captions always print the true share.
+	const MIN_W = 2
 	const share = (n: number) => (top > 0 ? (n / top) * 100 : 0)
 	const shown = steps.map((s) => (s.count === 0 ? 0 : Math.max(share(s.count), MIN_W)))
 
-	const dot = (color: string): CSSProperties => ({
-		display: "inline-block",
-		width: "0.7em",
-		height: "0.7em",
-		borderRadius: "2px",
-		background: color,
-		marginRight: "0.35rem",
-		verticalAlign: "baseline",
+	// Clamp a drop-off share to a 0–100 blend weight.
+	const weightOf = (dropOffPct: number) => Math.min(100, Math.max(0, dropOffPct))
+
+	// Heat of a stage, as a background from flow-through blue to total-loss
+	// red. `backgroundColor` first so browsers without color-mix still get the
+	// cold end rather than nothing.
+	const heat = (dropOffPct: number): CSSProperties => ({
+		backgroundColor: "var(--color-accent)",
+		background: `color-mix(in srgb, var(--color-danger) ${weightOf(dropOffPct)}%, var(--color-accent))`,
 	})
 
+	// The same heat for text: muted where nothing was lost, danger-ink where
+	// everything was. An unsupported color-mix just inherits body text, which
+	// still reads.
+	const heatInk = (dropOffPct: number): CSSProperties => ({
+		color: `color-mix(in srgb, var(--color-danger-ink) ${weightOf(dropOffPct)}%, var(--color-ink-muted))`,
+	})
+
+	// 400 where nothing was lost, 800 where everything was.
+	const heatWeight = (dropOffPct: number) => 400 + Math.round(weightOf(dropOffPct) / 25) * 100
+
 	return (
-		<div style={{ maxWidth: "36rem", margin: "0 auto" }}>
+		// width:100% — the panel is a flex column, where auto margins alone
+		// shrink-wrap this to its content instead of filling the panel.
+		<div style={{ width: "100%", maxWidth: "56rem", margin: "0 auto" }}>
 			<div
 				className="hl-hint"
-				style={{ display: "flex", gap: "1.25rem", justifyContent: "center", marginBottom: "1rem" }}
+				style={{
+					display: "flex",
+					alignItems: "center",
+					justifyContent: "center",
+					gap: "0.5rem",
+					marginBottom: "1rem",
+				}}
 			>
-				<span>
-					<span style={dot("var(--color-accent)")} aria-hidden="true" />
-					flow-through
-				</span>
-				<span>
-					<span style={dot("var(--color-danger)")} aria-hidden="true" />
-					lost over half at this step
-				</span>
+				<span>no loss</span>
+				<span
+					aria-hidden="true"
+					style={{
+						width: "9rem",
+						height: "0.65rem",
+						borderRadius: "999px",
+						background: "linear-gradient(90deg, var(--color-accent), var(--color-danger))",
+					}}
+				/>
+				<span>all lost</span>
 			</div>
 
-			{steps.map((s, i) => {
-				const prev = i === 0 ? 100 : (shown[i - 1] ?? 100)
-				const bottom = shown[i] ?? 0
-				const bigDrop = s.dropOffPct > 50
-				// Narrow slivers sit mostly on the panel background, so their
-				// caption stays dark; wide stages carry light text on colour.
-				const narrow = (shown[i] ?? 0) < 40
-				return (
-					<div key={s.id}>
-						{i > 0 && (
-							<div
-								role="note"
-								aria-label={
-									bigDrop
-										? `${s.dropOffPct}% stopped between ${steps[i - 1]?.label} and ${s.label}`
-										: `${s.retainPct}% continued to ${s.label}`
-								}
-								style={{
-									textAlign: "center",
-									fontSize: "0.78rem",
-									fontWeight: bigDrop ? 800 : 400,
-									color: bigDrop ? "var(--color-danger-ink)" : "var(--color-ink-muted)",
-									padding: "0.3rem 0",
-									fontVariantNumeric: "tabular-nums",
-								}}
-							>
-								↓ {bigDrop ? `${s.dropOffPct}% stopped` : `${s.retainPct}% through`}
-							</div>
-						)}
+			<div
+				style={{
+					display: "grid",
+					gridTemplateColumns: "15rem minmax(0,1fr)",
+					columnGap: "1rem",
+					rowGap: "0.3rem",
+					alignItems: "center",
+				}}
+			>
+				{steps.map((s, i) => {
+					const prev = i === 0 ? 100 : (shown[i - 1] ?? 100)
+					const bottom = shown[i] ?? 0
+					return (
+						<Fragment key={s.id}>
+							{i > 0 && s.dropOffPct > 0 && (
+								<>
+									<div />
+									<div
+										role="note"
+										aria-label={`${s.retainPct}% continued and ${s.dropOffPct}% stopped between ${steps[i - 1]?.label} and ${s.label}`}
+										style={{
+											textAlign: "center",
+											fontSize: "0.78rem",
+											fontWeight: heatWeight(s.dropOffPct),
+											fontVariantNumeric: "tabular-nums",
+											...heatInk(s.dropOffPct),
+										}}
+									>
+										↓ {s.retainPct}% through · {s.dropOffPct}% stopped
+									</div>
+								</>
+							)}
 
-						<div
-							title={`${s.label}: ${s.count} people · ${s.hint}`}
-							style={{ position: "relative", height: "3.75rem" }}
-						>
+							<div style={{ minWidth: 0 }}>
+								<div style={{ fontWeight: 700 }}>{s.label}</div>
+								<div className="hl-hint" style={{ fontSize: "0.72rem" }}>
+									{s.hint}
+								</div>
+								<div style={{ fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>
+									{s.count}{" "}
+									<span className="hl-hint" style={{ fontWeight: 400, fontSize: "0.78rem" }}>
+										· {s.ofSignupsPct}% of signups
+									</span>
+								</div>
+								{i === 0 && (
+									<div className="hl-hint" style={{ fontSize: "0.72rem" }}>
+										baseline
+									</div>
+								)}
+							</div>
+
 							<div
 								aria-hidden="true"
-								style={{
-									position: "absolute",
-									inset: 0,
-									background: bigDrop ? "var(--color-danger)" : "var(--color-accent)",
-									clipPath: `polygon(${(100 - prev) / 2}% 0, ${(100 + prev) / 2}% 0, ${(100 + bottom) / 2}% 100%, ${(100 - bottom) / 2}% 100%)`,
-								}}
-							/>
-							<div
-								style={{
-									position: "relative",
-									height: "100%",
-									display: "flex",
-									flexDirection: "column",
-									alignItems: "center",
-									justifyContent: "center",
-									gap: "0.1rem",
-									padding: "0 0.5rem",
-									textAlign: "center",
-									color: narrow ? "var(--color-ink-strong)" : "#fff",
-								}}
+								title={`${s.label}: ${s.count} people · ${s.hint}`}
+								style={{ position: "relative", height: "2.75rem" }}
 							>
-								<div style={{ fontWeight: 800, lineHeight: 1.15, overflowWrap: "anywhere" }}>
-									{s.label} · <span style={{ fontVariantNumeric: "tabular-nums" }}>{s.count}</span>
-								</div>
-								<div style={{ fontSize: "0.72rem", opacity: narrow ? 0.75 : 0.9 }}>
-									{i === 0 ? "baseline" : `${s.ofSignupsPct}% of signups`}
-								</div>
+								<div
+									style={{
+										position: "absolute",
+										inset: 0,
+										...heat(s.dropOffPct),
+										clipPath: `polygon(${(100 - prev) / 2}% 0, ${(100 + prev) / 2}% 0, ${(100 + bottom) / 2}% 100%, ${(100 - bottom) / 2}% 100%)`,
+									}}
+								/>
 							</div>
-						</div>
-					</div>
-				)
-			})}
+						</Fragment>
+					)
+				})}
+			</div>
 		</div>
 	)
 }
