@@ -116,7 +116,7 @@ function CheckpointNode({
 	// the entries are what the review reads and they stop changing.
 	const final = st.done && checkpoint.kind === "journal" && weekSubmitted(checkpoint.weekId)
 	// A handed-in week's Submit opens to unsubmit it while it waits for review,
-	// and to hand it in again once it is sent back. Decided, there is nothing
+	// and to submit it again once it is sent back. Decided, there is nothing
 	// left to do from it, so it stops opening.
 	const handIn = checkpoint.kind === "submit" || checkpoint.kind === "demo"
 	const reviewStatus = handIn && st.done ? phaseStatusOf(checkpoint.weekId) : null
@@ -132,7 +132,7 @@ function CheckpointNode({
 				: reviewStatus === "in_review"
 					? "waiting for review. click to unsubmit it."
 					: reviewStatus === "update_requested"
-						? "sent back for changes. click to hand it in again."
+						? "sent back for changes. click to submit it again."
 						: reviewStatus === "approved"
 							? "approved — this week is done."
 							: reviewStatus === "rejected"
@@ -269,9 +269,10 @@ function CheckpointNode({
 					// The puck's own disabled rule reads as refusal. A finished
 					// checkpoint is not refusing anything.
 					settled && "cursor-default",
+					// The next step taps itself, so the trail shows where to press.
+					(isCurrent || choice) && "puck-next",
 				)}
 			>
-				{(isCurrent || choice) && <span aria-hidden="true" className={cx("halo", gold && "halo-gold")} />}
 				<span className="puck-face">
 					<Icon
 						className={cx(

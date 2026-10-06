@@ -231,7 +231,7 @@ export function checkpointsFor(
 			weekId: meta.id,
 			kind: "journal",
 			title: branch === "keep" ? "Keep working" : `Entry ${n}`,
-			blurb: "Journal your progress with pictures and screenshots!",
+			blurb: "Journal your progress with pictures and screenshots! More nodes will show up once you start journaling.",
 			entryTarget: 1,
 			branch,
 			// The fork's working arm answers to the week's clock rather than to the

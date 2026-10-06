@@ -56,7 +56,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		select: { ariSubmissionId: true },
 	})
 	if (open?.ariSubmissionId) {
-		return fail("CONFLICT", "That hand-in already reached Ari — there is nothing to retry")
+		return fail("CONFLICT", "That submission already reached Ari — there is nothing to retry")
 	}
 
 	try {

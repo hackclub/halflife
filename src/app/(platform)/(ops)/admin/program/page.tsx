@@ -123,7 +123,7 @@ export default async function AdminProgramPage() {
 
 			<Panel title="Warm-up projects from Airtable">
 				<p className="hl-hint">
-					Before the platform opened, projects were handed in through the warm-up submission form, which writes rows
+					Before the platform opened, projects were submitted through the warm-up submission form, which writes rows
 					into the <code>{YSWS_SUBMISSION.tableId}</code> table (<code>AIRTABLE_YSWS_TABLE_ID</code>). Importing files
 					each one on the maker&apos;s Warm Up track — a pre-season slot that does not use one of their five season
 					themes — creates their account if they have not signed up yet, records the self-reported hours as a work
@@ -183,8 +183,8 @@ export default async function AdminProgramPage() {
 					</Table>
 				)}
 				<p className="hl-hint">
-					A ship is what the reviewer sees, so a hand-in missing from Ari is a hand-in nobody will decide. The hourly
-					retry job replays these too; this button is for when you are looking at one now.
+					A ship is what the reviewer sees, so a submission missing from Ari is a submission nobody will decide. The
+					hourly retry job replays these too; this button is for when you are looking at one now.
 				</p>
 			</Panel>
 

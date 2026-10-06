@@ -81,7 +81,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	await assertNoOwedReel(gate.user.id)
 
 	if (project.theme === Theme.WARMUP && data.phase !== warmupPhaseOf(project)) {
-		return fail("VALIDATION_FAILED", "Entries on a warm-up project go on the phase it is handed in as")
+		return fail("VALIDATION_FAILED", "Entries on a warm-up project go on the phase it is submitted as")
 	}
 
 	const week = scheduledWeekFor(project.theme, data.phase)

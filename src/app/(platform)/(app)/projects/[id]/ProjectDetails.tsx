@@ -100,7 +100,7 @@ export function ProjectDetails({
 						(confirming ? (
 							<div className="flex max-w-[16rem] flex-col items-end gap-1.5 text-right">
 								<p className="text-[0.82rem] leading-snug text-navy">
-									Take {unsubmit.label} out of review? You can hand it in again when you&apos;re done.
+									Take {unsubmit.label} out of review? You can submit it again when you&apos;re done.
 								</p>
 								<div className="flex gap-1.5">
 									<Button variant="ghost" size="sm" onClick={() => setConfirming(false)} disabled={unsubmitting}>
