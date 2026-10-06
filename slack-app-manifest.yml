@@ -63,8 +63,9 @@ oauth_config:
       - im:write
       # users.info, behind getSlackProfile's avatar/display-name enrichment
       - users:read
-      # reactions.add, which flags the original question once its ticket is
-      # resolved. Without this the call comes back `missing_scope`.
+      # reactions.add/reactions.remove, which mark the original question
+      # pending when its ticket opens and swap that for the done emoji once it
+      # is resolved. Without this the calls come back `missing_scope`.
       - reactions:write
 
 settings:

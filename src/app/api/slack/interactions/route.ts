@@ -3,6 +3,7 @@ import {
 	addReaction,
 	isChannelMember,
 	postMessage,
+	removeReaction,
 	type SlackBlock,
 	updateMessage,
 	verifySlackRequest,
@@ -11,6 +12,7 @@ import { resolveHelpTicket } from "@/lib/site/ticket-store"
 import {
 	deleteTicketMessage,
 	helpedAck,
+	PENDING_REACTION,
 	RESOLVED_REACTION,
 	resolveBlocks,
 	selfResolvedAck,
@@ -87,15 +89,24 @@ async function respondEphemeral(responseUrl: string, text: string) {
 }
 
 /**
- * Flags the original #half-life-help question with the resolved reaction.
+ * Swaps the original #half-life-help question's reaction from pending to
+ * resolved: the loading emoji comes off, the done one goes on, so the channel
+ * shows the question is answered rather than still waiting.
+ *
  * Best-effort: the reaction is a nice-to-have marker, so a Slack call that
  * fails here (the custom emoji missing from the workspace, the question
- * deleted) must not sink the ack that follows it. Guarded on the ref carrying
- * a help thread, which every resolution button does but a malformed value
- * might not.
+ * deleted) must not sink the ack that follows it. The two calls are guarded
+ * separately so one failure still leaves the other half of the swap to land.
+ * Guarded on the ref carrying a help thread, which every resolution button
+ * does but a malformed value might not.
  */
 async function reactResolved(ref: Partial<TicketRef>) {
 	if (!ref.helpChannel || !ref.helpTs) return
+	try {
+		await removeReaction(ref.helpChannel, ref.helpTs, PENDING_REACTION)
+	} catch (err) {
+		console.error(`Failed to clear the pending reaction: ${err}`)
+	}
 	try {
 		await addReaction(ref.helpChannel, ref.helpTs, RESOLVED_REACTION)
 	} catch (err) {
