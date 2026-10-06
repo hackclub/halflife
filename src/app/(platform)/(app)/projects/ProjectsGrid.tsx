@@ -7,7 +7,7 @@ import { IconArrowRight, IconClock, IconFilm, IconPencil } from "@/components/pl
 import { ProjectThumb } from "@/components/platform/ProjectThumb"
 import { RepoEditor } from "@/components/platform/RepoField"
 import { Chip, cx, Panel } from "@/components/platform/ui"
-import { WARMUP_WEEK_ID } from "@/lib/config/program"
+import { DESIGN_WEEKS, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { fmtDate, fmtHours, projectEvents, projectStats } from "@/lib/projects"
 import { REVIEW_STATUS_DOT, REVIEW_STATUS_TEXT, reviewTone } from "@/lib/review-state"
 import { PLATFORM_HOME } from "@/lib/routes"
@@ -33,7 +33,7 @@ function Legend({ className, label }: { className: string; label: string }) {
 }
 
 export function ProjectsGrid() {
-	const { projects, weeks, stateOf, weekOf, warmupWeekOf, weekStarted } = useStore()
+	const { projects, weeks, stateOf, weekOf, warmupWeekOf, weekStarted, weekHours } = useStore()
 
 	// Before week 1 the yellow checkpoint is shut, and the warm-up card above
 	// this grid is the way in, so the empty state would only contradict it.
@@ -77,6 +77,12 @@ export function ProjectsGrid() {
 					const week = (warmup ? warmupWeekOf(project.id) : null) ?? weekOf(project.weekId)
 					const events = projectEvents(project, weeks, stateOf)
 					const stats = projectStats(events)
+					// Journal sessions plus everything that arrived another way
+					// (Hackatime link time, reviewer adjustments) — the same
+					// weekHours accounting the sidebar total reads, so the two
+					// never disagree. A project spans its design week and its
+					// build week, five apart.
+					const hours = warmup ? stats.hours : weekHours(project.weekId) + weekHours(project.weekId + DESIGN_WEEKS)
 					const tone = reviewTone(project.designStatus, project.buildStatus)
 
 					return (
@@ -134,7 +140,7 @@ export function ProjectsGrid() {
 									{!warmup && (
 										<span className="mt-auto flex flex-wrap items-center gap-x-3.5 gap-y-1 pt-3.5">
 											<span className="hand inline-flex items-center gap-1.5 text-[0.8rem] text-navy-soft tabular-nums">
-												<IconClock className="text-sm" /> {fmtHours(stats.hours)}
+												<IconClock className="text-sm" /> {fmtHours(hours)}
 											</span>
 											<span className="hand inline-flex items-center gap-1.5 text-[0.8rem] text-navy-soft tabular-nums">
 												<IconPencil className="text-sm" /> {stats.sessions}
