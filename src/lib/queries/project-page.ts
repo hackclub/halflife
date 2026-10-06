@@ -3,6 +3,7 @@ import type { Prisma } from "@/app/generated/prisma/client"
 import { Phase, PhaseStatus, PostStatus, type ReviewResult } from "@/app/generated/prisma/enums"
 import { type BomLine, bomLockReason, listBom } from "@/lib/bom"
 import { THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
+import { displayName } from "@/lib/display-name"
 import { lapseTimelapseUrl } from "@/lib/lapse"
 import prisma from "@/lib/prisma"
 import { deleteBlockReason } from "@/lib/project-delete"
@@ -320,7 +321,7 @@ export async function getPublicProjectPage(id: string): Promise<PublicProjectDat
 			title: true,
 			description: true,
 			coverImageKey: true,
-			user: { select: { id: true, name: true } },
+			user: { select: { id: true, name: true, displayName: true } },
 			workSessions: { where: { deletedAt: null }, select: SESSION_SELECT },
 			posts: {
 				where: { deletedAt: null, status: PostStatus.PUBLISHED },
@@ -338,7 +339,7 @@ export async function getPublicProjectPage(id: string): Promise<PublicProjectDat
 		id: project.id,
 		title: project.title,
 		description: project.description ?? "",
-		author: project.user.name ?? "A maker",
+		author: displayName(project.user, "A maker"),
 		authorId: project.user.id,
 		weekId: themeIndex === -1 ? WARMUP_WEEK_ID : themeIndex + 1,
 		thumbnail: projectThumbnail(

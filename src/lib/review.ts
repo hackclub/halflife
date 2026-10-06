@@ -14,6 +14,7 @@ import { DEFAULT_GOAL_ID, printerById } from "@/lib/config/printers"
 import { BUILD_HOURS, getThemeDef, THEME_COMPLETION_BONUS } from "@/lib/config/program"
 import { getTierOrThrow, isTierId } from "@/lib/config/tiers"
 import { lockUserCredit, reconcileGrant } from "@/lib/currency"
+import { displayName } from "@/lib/display-name"
 import { HttpError } from "@/lib/errors"
 import { ABANDONED_ATTEMPT_MS } from "@/lib/grants"
 import { buildCoinsFor, type CoinSplit, designCoinsFor, getHoursBreakdown } from "@/lib/hours"
@@ -59,13 +60,15 @@ export async function claimSubmission(submissionId: string, reviewerId: string):
 	} catch {
 		const held = await prisma.reviewClaim.findUnique({
 			where: { submissionId },
-			include: { reviewer: { select: { name: true } } },
+			include: { reviewer: { select: { name: true, displayName: true } } },
 		})
 		if (!held) throw new HttpError("CONFLICT", "Could not claim this submission")
 		return {
 			ok: false,
 			heldBy: held.reviewerId,
-			heldByName: held.reviewer.name,
+			// The claim conflict is shown on the queue, so it names them the way
+			// the queue does.
+			heldByName: displayName(held.reviewer),
 			expiresAt: held.expiresAt,
 		}
 	}

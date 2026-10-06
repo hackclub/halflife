@@ -16,6 +16,7 @@ import {
 } from "@/app/components/ui"
 import { submitFloorFor } from "@/lib/config/printers"
 import { TIERS } from "@/lib/config/tiers"
+import { displayName } from "@/lib/display-name"
 import { lapseTimelapseUrl } from "@/lib/lapse"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
@@ -40,7 +41,7 @@ export default async function ReviewDetailPage({ params }: Props) {
 		<div className="hl-stack">
 			<PageHeader
 				title={`${detail.themeLabel} — ${submission.phase.toLowerCase()}`}
-				subtitle={`${project.user.name ?? project.user.email} · submitted ${submission.createdAt.toDateString()}`}
+				subtitle={`${displayName(project.user, project.user.email)} · submitted ${submission.createdAt.toDateString()}`}
 				actions={
 					<Badge tone={statusTone(submission.phase === "DESIGN" ? project.designStatus : project.buildStatus)}>
 						{statusLabel(submission.phase === "DESIGN" ? project.designStatus : project.buildStatus)}
@@ -88,7 +89,7 @@ export default async function ReviewDetailPage({ params }: Props) {
 				actions={
 					claimLive ? (
 						<Badge tone="warning">
-							{claimedByMe ? "yours" : (submission.claim?.reviewer.name ?? "claimed")} until{" "}
+							{claimedByMe ? "yours" : (displayName(submission.claim?.reviewer) ?? "claimed")} until{" "}
 							{submission.claim?.expiresAt.toLocaleTimeString()}
 						</Badge>
 					) : (
@@ -225,7 +226,7 @@ export default async function ReviewDetailPage({ params }: Props) {
 									{review.result.toLowerCase()}
 									{review.invalidated ? <div className="hl-hint">invalidated</div> : null}
 								</td>
-								<td>{review.reviewer?.name ?? "Ari"}</td>
+								<td>{displayName(review.reviewer) ?? "Ari"}</td>
 								<td>
 									{review.feedback}
 									{review.frozenApprovedHours !== null ? (

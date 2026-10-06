@@ -48,7 +48,13 @@ export interface HcaIdentity {
 	sub: string | null
 	email: string | null
 	emailVerified: boolean
+	/** "first last" — the string the sinks that need a whole person keep. */
 	name: string | null
+	/**
+	 * HCA's `nickname` claim under `profile`: what they go by. This is the name
+	 * the site shows; see lib/display-name for the rule and its fallback.
+	 */
+	nickname: string | null
 	image: string | null
 	slackId: string | null
 	verificationStatus: string | null
@@ -206,6 +212,11 @@ export async function fetchHcaIdentity(accessToken: string): Promise<HcaIdentity
 		// one they have proven they read. The explicit claim wins when present.
 		emailVerified: typeof userinfo?.email_verified === "boolean" ? userinfo.email_verified : email !== null,
 		name,
+		// The `profile` scope's nickname claim. HCA answers it from its own
+		// name field, and `/api/v1/me` carries no equivalent, so unlike the
+		// others there is no second endpoint to fall back to — a missing one
+		// leaves null and the display falls back to `name`.
+		nickname: str(userinfo?.nickname),
 		image: str(userinfo?.picture),
 		slackId: str(userinfo?.slack_id) ?? str(me?.slack_id),
 		verificationStatus: str(userinfo?.verification_status) ?? str(me?.verification_status),
@@ -291,6 +302,11 @@ export async function syncHcaProfile(userId: string): Promise<string | null> {
 			data: {
 				// Only what HCA actually said: a missing field leaves the stored value.
 				...(identity.verificationStatus ? { verificationStatus: identity.verificationStatus } : {}),
+				// The name the site shows, alongside `name` rather than instead of
+				// it: better-auth's own mapping cannot carry this (see the header),
+				// and the Airtable rows, Ari and the export still need the full
+				// name they split into first and last. See lib/display-name.
+				...(identity.nickname ? { displayName: identity.nickname } : {}),
 				...encryptedFieldsFrom(identity),
 			},
 		})

@@ -191,6 +191,14 @@ Hack Club Auth is one provider carrying identity, Slack ID, YSWS
 `verification_status` and (optionally) address and birthday, which replaces
 siege's separate Slack-OAuth-plus-identity-vault dance.
 
+It answers with two names, and the site shows one of them. HCA's `nickname`
+claim is copied to `User.displayName` at every sign-in and is what every
+surface renders, through `lib/display-name`; `User.name` keeps the full
+"first last" string for everything that needs a whole person — the Airtable
+RSVP and YSWS rows, Ari, the participant export — all of which split it into
+first and last. The helper falls back to `name` for a row that has not signed
+in since the column existed.
+
 Two guard modules, because they fail differently: `lib/guards.ts` returns a JSON
 response for route handlers, `lib/page-guards.ts` redirects or 404s for server
 components. Page-level auth in a server component removes the auth flash and

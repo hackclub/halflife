@@ -4,6 +4,7 @@ import { OrderFulfillment } from "@/app/components/forms/OrderFulfillment"
 import { PrinterAwardForm } from "@/app/components/forms/PrinterAwardForm"
 import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
 import { ShopFulfillmentMethod, ShopFulfillmentStage } from "@/app/generated/prisma/enums"
+import { displayName } from "@/lib/display-name"
 import { METHOD_LABELS, STAGE_LABELS } from "@/lib/fulfillment"
 import { formatUsd } from "@/lib/money"
 import { requirePermissionPage } from "@/lib/page-guards"
@@ -129,7 +130,7 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 							<tr key={order.id}>
 								<td className="hl-mono">{order.orderNumber}</td>
 								<td>
-									<Link href={`/admin/users/${order.user.id}`}>{order.user.name ?? order.user.email}</Link>
+									<Link href={`/admin/users/${order.user.id}`}>{displayName(order.user, order.user.email)}</Link>
 									{order.status === "PENDING" || order.status === "ON_HOLD" ? (
 										<div>
 											<Badge tone="warning">{order.status.toLowerCase().replace("_", " ")}</Badge>
@@ -183,7 +184,7 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 						{awards.map((award) => (
 							<tr key={award.id}>
 								<td>
-									<Link href={`/admin/users/${award.user.id}`}>{award.user.name ?? award.user.email}</Link>
+									<Link href={`/admin/users/${award.user.id}`}>{displayName(award.user, award.user.email)}</Link>
 								</td>
 								<td className="hl-mono">{placedFormat.format(award.qualifiedAt)}</td>
 								<td>

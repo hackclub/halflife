@@ -345,6 +345,13 @@ model User {
   id            String   @id @default(cuid())
   email         String   @unique
   name          String?
+  /// How they are known on the site: HCA's `nickname` claim, copied here at
+  /// every sign-in by lib/hca-profile. `name` deliberately keeps the full
+  /// "first last" string — the Airtable RSVP and YSWS rows, Ari and the
+  /// participant export split it into first and last and need the whole thing.
+  /// Every renderer reads both through lib/display-name, which falls back to
+  /// `name` while this is still null (a row from before this column existed).
+  displayName   String?
   emailVerified Boolean  @default(false)
   image         String?
   createdAt     DateTime @default(now())
