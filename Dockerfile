@@ -70,7 +70,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # have to ship in the runtime image. node_modules is copied whole because the
 # Prisma CLI's dependency tree is hoisted and pruning it by hand is fragile.
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=builder /app/src/app/generated ./src/app/generated
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./
 
@@ -80,7 +79,16 @@ COPY --from=builder /app/prisma.config.ts ./
 # imports rather than shipping the source — so the config module and the
 # tsconfig whose `paths` resolves the alias have to ship as well, or a fresh
 # deploy seeds no shop items.
-COPY --from=builder /app/src/lib/config ./src/lib/config
+#
+# The migration/backfill scripts in scripts/ (`pnpm analytics:backfill`,
+# `pnpm streaks:recompute`, …) import from all over src/lib via relative
+# paths, and those modules reach further still — so the whole src tree ships,
+# not just the config. Without it the scripts are absent from the image and
+# there is nothing to run migrations/backfills with inside the container. Run
+# them with `tsx --conditions=react-server` (the condition swaps the
+# `server-only` imports for plain ones), e.g. `pnpm analytics:backfill`.
+COPY --from=builder --chown=nextjs:nodejs /app/src ./src
+COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
 COPY --from=builder /app/tsconfig.json ./tsconfig.json
 
 COPY --chown=nextjs:nodejs docker-entrypoint.sh ./
