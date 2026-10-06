@@ -136,7 +136,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 				where: {
 					provider: "lapse",
 					externalId: { in: lapseIds },
-					workSession: { deletedAt: null },
+					workSession: { deletedAt: null, themeProject: { deletedAt: null } },
 				},
 				select: { externalId: true },
 			})

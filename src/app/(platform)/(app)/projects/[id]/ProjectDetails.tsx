@@ -292,7 +292,7 @@ function DetailsForm({
 						<Chip tone="violet">Tier {project.tier}</Chip>
 						<span className="hand">
 							{project.starter
-								? "starter projects are scoped to tier 1."
+								? "starter projects are fixed to tier 1."
 								: project.weekId === WARMUP_WEEK_ID
 									? "the project is submitted, so the tier is final."
 									: `week ${project.weekId} is submitted, so the tier is final.`}

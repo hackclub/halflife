@@ -1,4 +1,5 @@
-import { type NextRequest, NextResponse } from "next/server"
+import type { NextRequest } from "next/server"
+import { publicRedirect } from "@/lib/public-origin"
 
 /**
  * Where a page guard sends someone with no valid session: clear whatever
@@ -11,7 +12,10 @@ import { type NextRequest, NextResponse } from "next/server"
  * was a working session.
  */
 export function GET(request: NextRequest) {
-	const res = NextResponse.redirect(new URL("/", request.url))
+	// Redirect via the public origin, not `new URL("/", request.url)`: behind
+	// the ingress the request URL carries the pod's own host (0.0.0.0), which
+	// used to bounce logged-out visitors there. See lib/public-origin.
+	const res = publicRedirect(request, "/")
 	for (const { name } of request.cookies.getAll()) {
 		if (!name.startsWith("better-auth.") && !name.startsWith("__Secure-better-auth.")) continue
 		// A `__Secure-` cookie is only accepted, even to expire it, over a

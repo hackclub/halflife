@@ -1,6 +1,6 @@
 import { toNextJsHandler } from "better-auth/next-js"
-import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
+import { publicRedirect } from "@/lib/public-origin"
 
 const handler = toNextJsHandler(auth)
 
@@ -43,16 +43,18 @@ export async function GET(request: Request) {
 	if (error !== "state_mismatch" && error !== "account_not_linked") return response
 
 	// A duplicate callback that already signed someone in leaves a session
-	// behind; a failed link attempt does not.
+	// behind; a failed link attempt does not. Redirects stay on the public
+	// origin (see lib/public-origin): `request.url` carries the pod's own host
+	// behind the ingress.
 	const session = await auth.api.getSession({ headers: request.headers })
-	if (session) return NextResponse.redirect(new URL("/dashboard", request.url))
+	if (session) return publicRedirect(request, "/dashboard")
 
 	if (error === "account_not_linked") {
-		return NextResponse.redirect(new URL("/?error=account_not_linked", request.url))
+		return publicRedirect(request, "/?error=account_not_linked")
 	}
 
 	// An expired or duplicate state, with no session: the attempt is over.
-	return NextResponse.redirect(new URL("/", request.url))
+	return publicRedirect(request, "/")
 }
 
 export const { POST } = handler

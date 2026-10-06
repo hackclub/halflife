@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto"
 import { type NextRequest, NextResponse } from "next/server"
+import { publicRedirect } from "@/lib/public-origin"
 import { PLATFORM_HOME } from "@/lib/routes"
 
 /** Constant-time compare; lengths are not the secret. */
@@ -108,9 +109,9 @@ export function proxy(request: NextRequest) {
 	 * with the platform's — so this is what joins them.
 	 */
 	if (request.nextUrl.pathname === "/" && looksSignedIn(request)) {
-		const url = request.nextUrl.clone()
-		url.pathname = PLATFORM_HOME
-		return securityHeaders(NextResponse.redirect(url))
+		// Via the public origin, not `nextUrl.clone()`: behind the ingress the
+		// request URL carries the pod's own host (0.0.0.0). See lib/public-origin.
+		return securityHeaders(publicRedirect(request, `${PLATFORM_HOME}${request.nextUrl.search}`))
 	}
 
 	return securityHeaders(NextResponse.next())

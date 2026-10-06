@@ -25,7 +25,7 @@ export const GET = withRoute(async (req: NextRequest) => {
 		where: {
 			provider: "lapse",
 			externalId: { in: page.timelapses.map((t) => t.id) },
-			workSession: { deletedAt: null },
+			workSession: { deletedAt: null, themeProject: { deletedAt: null } },
 		},
 		select: { externalId: true },
 	})
