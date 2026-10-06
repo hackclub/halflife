@@ -2,6 +2,7 @@ import Link from "next/link"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { ItemCostField } from "@/app/components/forms/ItemCostField"
 import { ShopItemForm } from "@/app/components/forms/ShopItemForm"
+import { ShopItemImport } from "@/app/components/forms/ShopItemImport"
 import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
 import type { ShopItemCategory } from "@/app/generated/prisma/enums"
 import { requirePermissionPage } from "@/lib/page-guards"
@@ -74,6 +75,10 @@ export default async function AdminShopPage() {
 
 			<Panel title="Add an item">
 				<ShopItemForm />
+			</Panel>
+
+			<Panel title="Import from CSV">
+				<ShopItemImport />
 			</Panel>
 		</div>
 	)

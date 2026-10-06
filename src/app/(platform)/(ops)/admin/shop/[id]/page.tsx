@@ -35,10 +35,7 @@ export default async function AdminShopItemPage({ params }: { params: Promise<{ 
 						category: item.category,
 						priceCredits: item.priceCredits,
 						costUsd: item.costUsd,
-						maxPerUser: item.maxPerUser,
-						stock: item.stock,
 						requiresPrinterQualified: item.requiresPrinterQualified,
-						sortOrder: item.sortOrder,
 					}}
 				/>
 			</Panel>
