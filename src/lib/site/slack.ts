@@ -35,6 +35,9 @@ async function callSlackApi<T extends Record<string, unknown>>(
 	/** Slack errors that are expected outcomes rather than faults. Matches are
 	 * logged at `log` level so a normal path doesn't fill the error logs. */
 	expectedErrors: string[] = [],
+	/** Slack errors to omit from the logs entirely. Matches produce no log
+	 * line at any level. */
+	silentErrors: string[] = [],
 ): Promise<T & { ok: boolean; error?: string; needed?: string; provided?: string }> {
 	const token = process.env.SLACK_BOT_TOKEN
 	if (!token) throw new Error("SLACK_BOT_TOKEN is not set")
@@ -55,10 +58,13 @@ async function callSlackApi<T extends Record<string, unknown>>(
 	const data = (await res.json()) as T & { ok: boolean; error?: string; needed?: string; provided?: string }
 	if (!res.ok || !data.ok) {
 		const detail = slackErrorDetail(data, res.status)
-		// A matched error is an anticipated outcome (e.g. inviting someone
-		// already in the channel), so it reads as a normal log line rather
-		// than an error.
-		if (data.error && expectedErrors.includes(data.error)) {
+		// A silent error is an anticipated outcome noisy enough to omit
+		// entirely (e.g. inviting someone already in the channel on every
+		// join event). A matched expected error is still anticipated, but
+		// worth a normal log line rather than an error.
+		if (data.error && silentErrors.includes(data.error)) {
+			// Intentionally unlogged.
+		} else if (data.error && expectedErrors.includes(data.error)) {
 			console.log(`Slack API ${method} failed: ${detail}`)
 		} else {
 			console.error(`Slack API ${method} failed: ${detail}`)
@@ -120,10 +126,10 @@ export async function deleteMessage(channel: string, ts: string) {
 }
 
 /** `already_in_channel` is treated as success — the caller just wants the
- * user in the channel, not a report of how they got there. Logs either way:
- * this runs inside a webhook with no UI to surface failures to, so the
- * deployment logs are the only way to tell it fired at all. `already_in_channel`
- * is marked expected so the API layer logs it at `log` level, not `error`. */
+ * user in the channel, not a report of how they got there. It is omitted
+ * from the logs entirely: the join handler fires for every member join, so
+ * logging the no-op case buries real failures. Genuine invites still log, as
+ * do genuine failures. */
 export async function inviteToChannel(channel: string, user: string) {
 	const result = await callSlackApi(
 		"conversations.invite",
@@ -131,11 +137,12 @@ export async function inviteToChannel(channel: string, user: string) {
 			channel,
 			users: user,
 		},
+		[],
 		["already_in_channel"],
 	)
-	if (result.ok || result.error === "already_in_channel") {
+	if (result.ok) {
 		console.log(`Invited ${user} to ${channel}`)
-	} else {
+	} else if (result.error !== "already_in_channel") {
 		console.error(`Failed to invite ${user} to ${channel}: ${result.error}`)
 	}
 }
