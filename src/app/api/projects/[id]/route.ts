@@ -103,13 +103,13 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 			return fail("PHASE_LOCKED", "The design week is approved, so the tier is final")
 		}
 		if (starterAfter !== null && data.requestedTier !== 1) {
-			return fail("VALIDATION_FAILED", "Starter projects are scoped to tier 1")
+			return fail("VALIDATION_FAILED", "Starter projects are fixed to tier 1")
 		}
 	}
 	// Taking a starter without also asking for tier 1 would leave a starter at a
 	// bigger tier, which the check above only catches when the tier changes.
 	if (data.starterProjectId && (data.requestedTier ?? project.requestedTier) !== 1) {
-		return fail("VALIDATION_FAILED", "Starter projects are scoped to tier 1")
+		return fail("VALIDATION_FAILED", "Starter projects are fixed to tier 1")
 	}
 
 	// A cover is a key, and a key is a path into the bucket: only one this user
