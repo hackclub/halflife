@@ -83,6 +83,10 @@ interface JournalDraft {
 	body: string
 	hoursText: string
 	picked: LapseTimelapse[]
+	/** Lapse clips kept from the original entry that Lapse would not re-verify. */
+	pinned?: string[]
+	/** Older non-Lapse clips, preserved untouched. */
+	legacy?: string[]
 }
 
 const draftKey = (checkpointId: string) => `halflife.journal-draft.${checkpointId}`
@@ -104,7 +108,9 @@ function isJournalDraft(value: unknown): value is JournalDraft {
 		(v.tab === "journal" || v.tab === "timelapse") &&
 		typeof v.body === "string" &&
 		typeof v.hoursText === "string" &&
-		Array.isArray(v.picked)
+		Array.isArray(v.picked) &&
+		(!("pinned" in v) || Array.isArray((v as { pinned?: unknown }).pinned)) &&
+		(!("legacy" in v) || Array.isArray((v as { legacy?: unknown }).legacy))
 	)
 }
 
@@ -257,9 +263,6 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		return saved.done ? saved.log[0] : undefined
 	})
 	const editing = existing !== undefined
-	// Timelapses cannot be re-homed after the fact, so an edit keeps whatever
-	// the entry was saved with — and it still counts as the entry's evidence.
-	const kept = existing?.clips.length ?? 0
 
 	// A Lapse sign-in leaves the page and comes back: that trip's draft is
 	// restored once. Anything else typed is autosaved to this browser and
@@ -268,9 +271,30 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	// double-invoked initializer cannot consume it before state is set.
 	const [draft] = useState(() => peekJournalTrip(checkpoint.id) ?? readJournalAutosave(checkpoint.id))
 	const draftRestored = draft != null
-	const [tab, setTab] = useState<"journal" | "timelapse">(editing ? "journal" : (draft?.tab ?? "journal"))
-	// The Lapse timelapses backing this session.
+
+	// An edit re-opens the picker with this entry's clips selected: Lapse clips
+	// that still verify resolve into items, ones Lapse no longer vouches for
+	// stay pinned by id, and older non-Lapse uploads stay untouched. The resolve
+	// below seeds all three; a returning draft already holds the working set.
 	const [picked, setPicked] = useState<LapseTimelapse[]>(draft?.picked ?? [])
+	const [pinned, setPinned] = useState<string[]>(draft?.pinned ?? [])
+	const [legacyKept, setLegacyKept] = useState<string[]>(draft?.legacy ?? [])
+	// The last-saved clip set, for telling a real change from the seed — and
+	// for putting the seed back on "Discard draft".
+	const [clipSeed, setClipSeed] = useState<{ picked: LapseTimelapse[]; pinned: string[] }>({
+		picked: [],
+		pinned: [],
+	})
+	// Resolve runs once per open; anything the maker toggles after that wins
+	// over the seed, whenever it lands.
+	const seededRef = useRef(false)
+	const clipsTouchedRef = useRef(
+		(draft?.picked.length ?? 0) > 0 || (draft?.pinned?.length ?? 0) > 0 || (draft?.legacy?.length ?? 0) > 0,
+	)
+
+	const [tab, setTab] = useState<"journal" | "timelapse">(editing ? "journal" : (draft?.tab ?? "journal"))
+	// The Lapse timelapses backing this session (clip state lives above, with
+	// the seed it resolves from).
 	const [body, setBody] = useState(draft?.body ?? existing?.body ?? "")
 	const [preview, setPreview] = useState(false)
 	// Free text, not a number: a controlled number input that coerces as you
@@ -304,27 +328,79 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			// Storage off.
 		}
 	}, [checkpoint.id])
+
+	// Seed the picker's working set from what the entry was saved with. The
+	// seed never overwrites anything already picked — a returning draft, or a
+	// toggle that beat the read back, always wins.
+	useEffect(() => {
+		if (!editing || !existing || existing.clips.length === 0 || seededRef.current) return
+		let live = true
+		void (async () => {
+			let seed: { picked: LapseTimelapse[]; pinned: string[] } = { picked: [], pinned: [] }
+			let legacy: string[] = []
+			try {
+				const query = new URLSearchParams({ ids: existing.clips.join(","), forSession: existing.id })
+				const res = await fetch(`/api/lapse/timelapses/resolve?${query}`, { cache: "no-store" })
+				const body = (await res.json().catch(() => null)) as {
+					resolved?: LapseTimelapse[]
+					pinned?: string[]
+					legacy?: string[]
+				} | null
+				if (!res.ok || !body) throw new Error("unresolvable")
+				seed = { picked: body.resolved ?? [], pinned: body.pinned ?? [] }
+				legacy = body.legacy ?? []
+			} catch {
+				// Lapse unreachable or unlinked: keep every stored ref by id. The
+				// server preserves what is already attached, so an edit that
+				// touches the words drops nothing.
+				seed = { picked: [], pinned: existing.clips }
+			}
+			if (!live) return
+			seededRef.current = true
+			setClipSeed(seed)
+			setLegacyKept(legacy)
+			if (!clipsTouchedRef.current) {
+				setPicked(seed.picked)
+				setPinned(seed.pinned)
+			}
+		})()
+		return () => {
+			live = false
+		}
+		// `existing` is the entry this sheet opened on: it never changes mid-edit.
+	}, [editing, existing, checkpoint.id])
 	useEffect(() => {
 		const cleanBody = cleanBodyForAutosave(body)
 		const hasContent =
-			cleanBody.trim() !== "" || hoursText.trim() !== "" || picked.length > 0 || (!editing && tab !== "journal")
-		const matchesSaved =
-			editing && cleanBody === baselineBody && hoursText === baselineHours && picked.length === 0
+			cleanBody.trim() !== "" ||
+			hoursText.trim() !== "" ||
+			picked.length > 0 ||
+			pinned.length > 0 ||
+			(!editing && tab !== "journal")
+		// Clips compare as sets against the seed: reordering a pick is not a change.
+		const workingIds = [...picked.map((t) => t.id), ...pinned].sort()
+		const seedIds = [...clipSeed.picked.map((t) => t.id), ...clipSeed.pinned].sort()
+		const clipsMatch = workingIds.length === seedIds.length && workingIds.every((id, i) => seedIds[i] === id)
+		const matchesSaved = editing && cleanBody === baselineBody && hoursText === baselineHours && clipsMatch
 		if (!hasContent || matchesSaved) {
 			writeJournalAutosave(checkpoint.id, null)
 			return
 		}
-		writeJournalAutosave(checkpoint.id, { tab, body: cleanBody, hoursText, picked })
-	}, [checkpoint.id, tab, body, hoursText, picked, editing, baselineBody, baselineHours])
+		writeJournalAutosave(checkpoint.id, { tab, body: cleanBody, hoursText, picked, pinned, legacy: legacyKept })
+	}, [checkpoint.id, tab, body, hoursText, picked, pinned, legacyKept, clipSeed, editing, baselineBody, baselineHours])
 
 	const hasUnsavedWork =
-		cleanBodyForAutosave(body).trim() !== "" || hoursText.trim() !== "" || picked.length > 0
+		cleanBodyForAutosave(body).trim() !== "" || hoursText.trim() !== "" || picked.length > 0 || pinned.length > 0
 
 	function discardDraft() {
 		if (editing) {
 			setBody(baselineBody)
 			setHoursText(baselineHours)
-			setPicked([])
+			// Back to the last-saved clips — and anything toggled after that
+			// stops counting as touched, so a seed still in flight lands clean.
+			setPicked(clipSeed.picked)
+			setPinned(clipSeed.pinned)
+			clipsTouchedRef.current = false
 			setTab("journal")
 		} else {
 			setBody("")
@@ -366,15 +442,15 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	// land on the same entry. A written entry needs its hours typed; a timelapse
 	// brings its own.
 	const journalled = longEnough && enoughPhotos
-	const recorded = picked.length > 0 || kept > 0
+	const attachedCount = picked.length + pinned.length + legacyKept.length
+	const recorded = attachedCount > 0
 	const ok = claimed > 0 && (journalled || recorded)
 
 	// One thing at a time — a list of four faults reads as a wall, and only the
 	// first one is actionable anyway. Once the hours are in, the entry's next
 	// shortfall is named with the other way out beside it, so nobody is told to
-	// write 200 characters they could skip with a timelapse. An edit cannot add
-	// one, so it is not offered there.
-	const orLapse = editing ? "" : " You can also attach Lapse timelapses on the Timelapse tab — they back the same entry."
+	// write 200 characters they could skip with a timelapse.
+	const orLapse = " You can also attach Lapse timelapses on the Timelapse tab — they back the same entry."
 	const missing = !ok
 		? claimed <= 0
 			? "Add the hours you spent on this session, or pick a Lapse timelapse."
@@ -396,7 +472,12 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		setSaving(true)
 		setSaveError(null)
 		if (editing) {
-			const refused = await editSession(checkpoint.id, sessionMinutes, body.trim())
+			// The full set the server reconciles against: Lapse picks and pins
+			// plus the older uploads, which the server keeps silently — sending
+			// them keeps the local snapshot agreeing with it until the refresh.
+			const refused = await editSession(checkpoint.id, sessionMinutes, body.trim(), {
+				clips: [...legacyKept, ...pinned, ...picked.map((t) => t.id)],
+			})
 			setSaving(false)
 			if (refused) setSaveError(refused)
 			else {
@@ -419,7 +500,14 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	}
 
 	async function signInWithLapse() {
-		stashJournalDraft(checkpoint.id, { tab: "timelapse", body: cleanBodyForAutosave(body), hoursText, picked })
+		stashJournalDraft(checkpoint.id, {
+			tab: "timelapse",
+			body: cleanBodyForAutosave(body),
+			hoursText,
+			picked,
+			pinned,
+			legacy: legacyKept,
+		})
 		await linkLapse(`${window.location.pathname}?journal=${encodeURIComponent(checkpoint.id)}`)
 	}
 
@@ -546,8 +634,9 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				</>
 			}
 		>
-			{/* No tab switch in an edit: the timelapses are fixed to the entry. */}
-			<div className={cx("mb-5 flex justify-center", editing && "hidden")}>
+			{/* An edit re-opens both tabs: the picker comes back with this entry's
+			    clips selected, ready to swap. */}
+			<div className="mb-5 flex justify-center">
 				<div
 					className="sketch flex gap-1 rounded-full bg-white p-1"
 					style={{ "--sk-radius": "999px" } as React.CSSProperties}
@@ -571,13 +660,12 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 			{/* Timelapses are picked on the other tab but belong to this entry too:
 			    say so under the switcher, so combining the two is an offer on screen
-			    rather than something you find by accident. Edits keep whatever the
-			    entry was saved with, so there is nothing to attach there. */}
-			{!editing && tab === "journal" && (
+			    rather than something you find by accident. */}
+			{tab === "journal" && (
 				<p className="hand -mt-2 mb-5 text-center text-[0.78rem] text-navy-soft">
-					{picked.length > 0 ? (
+					{attachedCount > 0 ? (
 						<>
-							{picked.length === 1 ? "1 timelapse" : `${picked.length} timelapses`} attached —{" "}
+							{attachedCount === 1 ? "1 timelapse" : `${attachedCount} timelapses`} attached —{" "}
 							<button
 								type="button"
 								onClick={() => setTab("timelapse")}
@@ -827,12 +915,44 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						Select your timelapses
 					</ModalTitle>
 
+					{editing && (pinned.length > 0 || legacyKept.length > 0) && (
+						<div className="mb-3 grid justify-items-center gap-1.5">
+							{/* Clips Lapse would not re-verify stay by id: listed so they
+							    can still be taken off, rather than stuck on forever. */}
+							{pinned.map((id) => (
+								<p
+									key={id}
+									className="hand flex flex-wrap items-center justify-center gap-x-2 text-center text-[0.78rem] text-navy-soft"
+								>
+									<span>Kept from the original entry.</span>
+									<button
+										type="button"
+										onClick={() => {
+											clipsTouchedRef.current = true
+											setPinned((prev) => prev.filter((x) => x !== id))
+										}}
+										className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
+									>
+										Remove
+									</button>
+								</p>
+							))}
+							{legacyKept.length > 0 && (
+								<p className="hand text-center text-[0.78rem] text-navy-soft">
+									{legacyKept.length === 1 ? "1 older recording" : `${legacyKept.length} older recordings`} kept from
+									the original entry.
+								</p>
+							)}
+						</div>
+					)}
 					<LapsePicker
 						picked={picked}
 						onSignIn={signInWithLapse}
-						onToggle={(t) =>
+						forSession={editing ? existing?.id : undefined}
+						onToggle={(t) => {
+							clipsTouchedRef.current = true
 							setPicked((p) => (p.some((x) => x.id === t.id) ? p.filter((x) => x.id !== t.id) : [...p, t]))
-						}
+						}}
 					/>
 
 					<p className="mt-4 text-center text-[0.82rem] text-navy-soft tabular-nums">
@@ -1679,7 +1799,7 @@ export function UnsubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		>
 			<ModalTitle
 				id={titleId}
-				sub={`${handedIn ? `Handed in ${new Date(handedIn).toLocaleDateString("en-US", { month: "short", day: "numeric" })}. ` : ""}Unsubmitting takes it out of the review queue so you can change your entries, parts list or project details. Hand it in again from this checkpoint when you're done.`}
+				sub={`${handedIn ? `Submitted ${new Date(handedIn).toLocaleDateString("en-US", { month: "short", day: "numeric" })}. ` : ""}Unsubmitting takes it out of the review queue so you can change your entries, parts list or project details. Submit it again from this checkpoint when you're done.`}
 			>
 				This week is waiting for review
 			</ModalTitle>
@@ -1923,8 +2043,8 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						<p className="mt-1 text-[0.85rem] leading-snug text-navy-soft">
 							Spend some more time on it! You are <span className="font-bold text-navy tabular-nums">{owed}</span>{" "}
 							{owed === 1 ? "coin" : "coins"} behind the pace for a{" "}
-							<span className="font-bold text-navy">{goal.name}</span>. You can still hand it in, and a bigger week
-							later makes it up.
+							<span className="font-bold text-navy">{goal.name}</span>. You can still submit it, and a bigger week later
+							makes it up.
 						</p>
 					</div>
 				</div>
@@ -1976,7 +2096,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 										{bom.items.length === 0 && (
 											<tr className="border-b border-dashed border-line/60">
 												<td colSpan={5} className="hand px-4 py-3.5 text-[0.88rem] text-coral-deep">
-													no parts listed yet. Add them on the project page before you hand this in.
+													no parts listed yet. Add them on the project page before you submit this.
 												</td>
 											</tr>
 										)}

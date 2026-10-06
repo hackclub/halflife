@@ -92,6 +92,12 @@ interface Ceremony {
 
 const KEY = "halflife.ceremony.v4"
 
+/**
+ * The admin lock bypass. Kept apart from the ceremony so "Replay the intro",
+ * which clears that, leaves it alone.
+ */
+const BYPASS_KEY = "halflife.bypass-locks"
+
 const EMPTY: CheckpointState = { done: false, minutes: 0, artefacts: 0, log: [] }
 
 /** What a checkpoint on a passed week says when it is hovered. */
@@ -153,7 +159,7 @@ function warmupWeek(project: Project, build: boolean, isDone: (id: string) => bo
 				weekId: WARMUP_WEEK_ID,
 				kind: "submit",
 				title: build ? "Submit your build" : "Submit your design",
-				blurb: "Hand in your warm-up project.",
+				blurb: "Submit your warm-up project.",
 			},
 		],
 	}
@@ -259,8 +265,17 @@ interface Ctx {
 		body: string,
 		evidence?: Pick<SessionLog, "clips">,
 	) => Promise<string | null>
-	/** Correct a finished entry's words and hours. Null once saved, or why it was refused. */
-	editSession: (id: string, minutes: number, body: string) => Promise<string | null>
+	/**
+	 * Correct a finished entry's words, hours, and timelapses. Null once saved,
+	 * or why it was refused. The clips are the full desired set of Lapse
+	 * attachments; the server keeps, adds, and releases the difference.
+	 */
+	editSession: (
+		id: string,
+		minutes: number,
+		body: string,
+		evidence?: Pick<SessionLog, "clips">,
+	) => Promise<string | null>
 	stateOf: (id: string) => CheckpointState
 	isUnlocked: (id: string) => boolean
 	/** Whether a checkpoint is shut because its week's time ran out. */
@@ -340,6 +355,12 @@ interface Ctx {
 	 * again, setup checkpoint included. Resolves to an error message, or null.
 	 */
 	redoOnboarding: () => Promise<string | null>
+	/**
+	 * Admins only: every checkpoint on the trail opens, whatever its order,
+	 * hours or dates say. Always false for anyone else.
+	 */
+	bypassLocks: boolean
+	setBypassLocks: (on: boolean) => void
 }
 
 const StoreContext = createContext<Ctx | null>(null)
@@ -462,6 +483,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	const [openCheckpoint, setOpenCheckpoint] = useState<string | null>(null)
 	const [tourStep, setTourStep] = useState(0)
 	const [reducedMotion, setReducedMotion] = useState(false)
+	const [bypassing, setBypassing] = useState(false)
 
 	useEffect(() => {
 		const mq = window.matchMedia("(prefers-reduced-motion: reduce)")
@@ -485,10 +507,30 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		} catch {
 			/* storage unavailable — run from the seed */
 		}
+		let bypass = false
+		try {
+			bypass = window.localStorage.getItem(BYPASS_KEY) === "1"
+		} catch {
+			/* storage unavailable — the trail stays locked */
+		}
 		// eslint-disable-next-line react-hooks/set-state-in-effect -- hydrating from localStorage
 		if (next) setCeremony(next)
+		if (bypass) setBypassing(true)
 		setHydrated(true)
 	}, [])
+
+	const setBypassLocks = useCallback((on: boolean) => {
+		setBypassing(on)
+		try {
+			if (on) window.localStorage.setItem(BYPASS_KEY, "1")
+			else window.localStorage.removeItem(BYPASS_KEY)
+		} catch {
+			/* private mode — it lasts the session */
+		}
+	}, [])
+	// Read by role, not by storage alone: a flag left behind on a shared
+	// browser, or by an admin since demoted, opens nothing.
+	const bypassLocks = facts.viewer.isAdmin && bypassing
 
 	useEffect(() => {
 		if (!hydrated) return
@@ -1177,17 +1219,22 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	)
 
 	/**
-	 * Change a finished entry's words and hours. The node stays where it is —
-	 * this is the same session, corrected, not another one — and its timelapses
-	 * stay attached, because the server does not re-home evidence.
+	 * Change a finished entry's words, hours, and timelapses. The node stays where
+	 * it is — this is the same session, corrected, not another one.
 	 *
 	 * Server first, like logSession: the server can refuse (an entry a reviewer
-	 * has already put hours on, a week in review or passed), and an edit shown as
-	 * saved that quietly reverts on the next refresh is worse than a sheet that
-	 * says why it did not take.
+	 * has already put hours on, a week in review or passed, a timelapse that is
+	 * not yours or already backs another entry), and an edit shown as saved that
+	 * quietly reverts on the next refresh is worse than a sheet that says why it
+	 * did not take.
 	 */
 	const editSession = useCallback(
-		async (id: string, minutes: number, body: string): Promise<string | null> => {
+		async (
+			id: string,
+			minutes: number,
+			body: string,
+			evidence: Pick<SessionLog, "clips"> = { clips: [] },
+		): Promise<string | null> => {
 			const route = routeOf(id)
 			const entry = facts.progress[id]?.log[0]
 			if (!route || !entry) return "That entry could not be found. Refresh and try again."
@@ -1200,6 +1247,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 						title: body.trim().split("\n")[0]?.slice(0, 200) || "Work session",
 						content: body,
 						hoursClaimed: Math.round((minutes / 60) * 100) / 100,
+						timelapses: evidence.clips.map((lapseId) => ({ lapseId })),
 					}),
 				})
 			} catch {
@@ -1218,7 +1266,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 						[id]: {
 							...prev,
 							minutes,
-							log: prev.log.map((l, i) => (i === 0 ? { ...l, minutes, body } : l)),
+							log: prev.log.map((l, i) => (i === 0 ? { ...l, minutes, body, clips: evidence.clips } : l)),
 						},
 					},
 				}
@@ -1472,8 +1520,24 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 
 			return withoutOptionalIdea(list.slice(0, i)).every(done)
 		},
-		[isPassed, isHeld, facts.owedReels, owesSubmit, weekPassed, weekStarted, weeks, save.progress, weekHours, journalHours],
+		[
+			isPassed,
+			isHeld,
+			facts.owedReels,
+			owesSubmit,
+			weekPassed,
+			weekStarted,
+			weeks,
+			save.progress,
+			weekHours,
+			journalHours,
+		],
 	)
+
+	// What the trail lets you click. An admin bypassing the locks can open
+	// anything; the server still has the last word on whatever is saved from a
+	// node opened that way. "Start here" keeps to the real rules above.
+	const isOpen = useCallback((id: string) => bypassLocks || isUnlocked(id), [bypassLocks, isUnlocked])
 
 	/**
 	 * Why a checkpoint is shut, in the maker's terms. Null when it is open.
@@ -1582,7 +1646,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		logSession,
 		editSession,
 		stateOf,
-		isUnlocked,
+		isUnlocked: isOpen,
 		isPassed,
 		isHeld,
 		weekPassed,
@@ -1601,6 +1665,8 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		finishOnboarding,
 		reset,
 		redoOnboarding,
+		bypassLocks,
+		setBypassLocks,
 		weeks,
 		warmupWeekOf,
 		weekOfCheckpoint,
