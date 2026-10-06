@@ -3,6 +3,7 @@
 import { Fragment, useEffect, useRef } from "react"
 import { PrinterPhoto, WeekPainting } from "@/components/platform/art"
 import {
+	IconBook,
 	IconCheck,
 	IconChevronsUp,
 	IconClock,
@@ -13,6 +14,7 @@ import {
 	IconUpload,
 } from "@/components/platform/icons"
 import { Chip, cx, onAccent, Panel } from "@/components/platform/ui"
+import { getStarterProject } from "@/lib/config/onboarding"
 import { printerById } from "@/lib/config/printers"
 import { useStore } from "@/lib/store"
 import type { Checkpoint, Week } from "@/lib/types"
@@ -474,6 +476,49 @@ function WeekTrail({ week, currentId, phase }: { week: Week; currentId: string |
 	)
 }
 
+/**
+ * The starter guide for a week whose project is a starter, on the trail
+ * itself. The project page carries the full guide card, but few people go back
+ * there mid-week — this is the same door, slimmed to one line under the week's
+ * banner. A handed-in week keeps only its record, so the banner goes away
+ * once the week is submitted.
+ *
+ * Only a starter whose id is still in the config has one: imported starters
+ * predate the config and carry no guide URL, so they show nothing rather than
+ * a dead link. Same rule as the project page.
+ */
+function StarterGuideBanner({ week }: { week: Week }) {
+	const { projects, stateOf } = useStore()
+	const submitted = stateOf(`w${week.id}-submit`).done
+	// A build week inherits its design week's project, exactly as the project
+	// modal's week matching does.
+	const designWeekId = week.phase === "build" ? week.id - 5 : week.id
+	const project = projects.find((p) => p.weekId === designWeekId)
+	const starter = project?.starterProjectId ? getStarterProject(project.starterProjectId) : undefined
+	if (submitted || !starter || !project) return null
+
+	return (
+		<div className="mb-1 px-1">
+			<Panel tone="gold" radius={16} className="bg-gold-pale/70 px-4 py-3">
+				<div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+					<p className="min-w-0 flex-1 text-[0.85rem] leading-snug text-navy">
+						<span className="label text-gold-ink">Starter project · </span>
+						Building <strong className="font-extrabold">{project.name}</strong>? The guide walks you through every step.
+					</p>
+					<a
+						href={starter.guideUrl}
+						target="_blank"
+						rel="noopener noreferrer"
+						className="inline-flex shrink-0 items-center gap-1.5 text-[0.85rem] font-semibold text-sky-ink underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
+					>
+						<IconBook className="text-[1rem]" /> Read the guide
+					</a>
+				</div>
+			</Panel>
+		</div>
+	)
+}
+
 function PhaseDivider() {
 	return (
 		<div className="relative my-10 flex items-center gap-4" aria-hidden="true">
@@ -579,6 +624,7 @@ export function CheckpointPath() {
 						Week {week.id}: {week.fullName}
 					</h3>
 					<WeekBanner week={week} index={wi} />
+					<StarterGuideBanner week={week} />
 					<WeekTrail week={week} currentId={currentCheckpointId} phase={weekPhases[wi] ?? 0} />
 				</section>
 			))}

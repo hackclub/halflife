@@ -5,11 +5,13 @@ import { requireAnyPermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import {
 	type DayActivity,
+	type FirstProjectStat,
 	type FlowStep,
 	getAdminCounters,
 	getAreaStats,
 	getCountryStats,
 	getDailyActivity,
+	getFirstProjectStats,
 	getUserFlowFunnel,
 } from "@/lib/queries/admin"
 import { getLatestSyncRuns } from "@/lib/sync-run-log"
@@ -28,7 +30,7 @@ export default async function AdminOverviewPage() {
 		Permission.MANAGE_PROGRAM,
 	)
 
-	const [counters, syncs, flow, areas, countries, activity] = await Promise.all([
+	const [counters, syncs, flow, areas, countries, activity, firstProjects] = await Promise.all([
 		getAdminCounters(),
 		getLatestSyncRuns([
 			"hackatime",
@@ -44,6 +46,7 @@ export default async function AdminOverviewPage() {
 		getAreaStats(),
 		getCountryStats(),
 		getDailyActivity(),
+		getFirstProjectStats(),
 	])
 
 	return (
@@ -111,6 +114,14 @@ export default async function AdminOverviewPage() {
 				</div>
 				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
 					Countries map each account&apos;s timezone; zones with nothing to place read as Unknown.
+				</p>
+			</Panel>
+
+			<Panel title="First project choice">
+				<FirstProjectDonut stats={firstProjects} />
+				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+					Users who finished setup and still have their week-one project. Starter names come
+					from the catalogue; Custom project means they named their own idea.
 				</p>
 			</Panel>
 
@@ -568,6 +579,95 @@ function ActivityStrip({ days }: { days: DayActivity[] }) {
 					</div>
 				</div>
 			</div>
+		</div>
+	)
+}
+
+/**
+ * First-project choice as a donut: one slice per starter plus Custom, with a
+ * legend carrying the counts. Segments are SVG circles rather than a chart
+ * dependency — the page's other visuals are hand-rolled the same way — and
+ * the figure carries a text summary so the shares do not live in colour alone.
+ */
+function FirstProjectDonut({ stats }: { stats: FirstProjectStat[] }) {
+	const total = stats.reduce((n, s) => n + s.users, 0)
+	if (total === 0) return <EmptyState>No finished setups yet.</EmptyState>
+	const palette = [
+		"var(--color-accent)",
+		"var(--color-magenta)",
+		"var(--color-teal)",
+		"var(--color-coin)",
+		"var(--color-flame)",
+		"var(--color-ink-strong)",
+		"var(--color-teal-soft)",
+		"var(--color-ink-muted)",
+	]
+	const R = 15.9155 // 100 / 2π: a share of p% is a dash of p units
+	// Segment offsets, computed up front: each slice starts where the last one
+	// ended, from the top of the ring.
+	const shares = stats.map((s) => (s.users / total) * 100)
+	const segments = stats.map((s, i) => ({
+		label: s.label,
+		share: shares[i] ?? 0,
+		start: 25 - shares.slice(0, i).reduce((n, p) => n + p, 0),
+	}))
+	const summary = stats.map((s) => `${s.label} ${Math.round((s.users / total) * 100)}%`).join(", ")
+	return (
+		<div
+			style={{
+				display: "flex",
+				flexWrap: "wrap",
+				gap: "1.5rem",
+				alignItems: "center",
+			}}
+		>
+			<svg
+				role="img"
+				aria-label={`First project choice: ${summary}`}
+				viewBox="0 0 42 42"
+				style={{ width: "11rem", height: "11rem", flexShrink: 0 }}
+			>
+				<circle cx="21" cy="21" r={R} fill="none" stroke="var(--color-surface-sunken)" strokeWidth="7" />
+				{segments.map((seg, i) => (
+					<circle
+						key={seg.label}
+						cx="21"
+						cy="21"
+						r={R}
+						fill="none"
+						stroke={palette[i % palette.length]}
+						strokeWidth="7"
+						strokeDasharray={`${Math.max(seg.share - 0.6, 0)} 100`}
+						strokeDashoffset={seg.start}
+					/>
+				))}
+			</svg>
+			<ul style={{ display: "grid", gap: "0.4rem", listStyle: "none", margin: 0, padding: 0, minWidth: 0 }}>
+				{stats.map((s, i) => (
+					<li
+						key={s.label}
+						style={{ display: "flex", alignItems: "baseline", gap: "0.5rem", fontVariantNumeric: "tabular-nums" }}
+					>
+						<span
+							aria-hidden="true"
+							style={{
+								width: "0.7rem",
+								height: "0.7rem",
+								borderRadius: "2px",
+								background: palette[i % palette.length],
+								flexShrink: 0,
+								alignSelf: "center",
+							}}
+						/>
+						<span style={{ fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+							{s.label}
+						</span>
+						<span className="hl-hint">
+							{s.users.toLocaleString("en-US")} · {Math.round((s.users / total) * 100)}%
+						</span>
+					</li>
+				))}
+			</ul>
 		</div>
 	)
 }

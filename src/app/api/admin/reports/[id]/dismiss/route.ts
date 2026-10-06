@@ -18,10 +18,13 @@ export const POST = withRoute(async (_req: Request, { params }: Params) => {
 	if (!report) return fail("NOT_FOUND", "Report not found")
 	if (report.status !== "OPEN") return fail("CONFLICT", "This report was already decided")
 
-	await prisma.contentReport.update({
-		where: { id },
+	// Conditional, so two admins deciding at once cannot both succeed: the
+	// loser matches no OPEN row and gets the same conflict as a late arrival.
+	const updated = await prisma.contentReport.updateMany({
+		where: { id, status: "OPEN" },
 		data: { status: "DISMISSED", resolvedAt: new Date(), resolvedById: gate.user.id },
 	})
+	if (updated.count === 0) return fail("CONFLICT", "This report was already decided")
 
 	await logAudit({
 		action: AuditAction.ADMIN_DISMISS_REPORT,

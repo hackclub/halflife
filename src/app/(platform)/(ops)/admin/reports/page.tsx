@@ -54,15 +54,18 @@ const FILTERS: { id: Filter; label: string; status: ReportStatusFilter }[] = [
 export default async function AdminReportsPage({
 	searchParams,
 }: {
-	searchParams: Promise<{ status?: string }>
+	searchParams: Promise<{ status?: string; cursor?: string }>
 }) {
 	await requirePermissionPage(Permission.MANAGE_FEED)
 
-	const { status } = await searchParams
+	const { status, cursor } = await searchParams
 	const filter: Filter = filterFor(status)
 	const active = FILTERS.find((f) => f.id === filter) ?? { id: "open", label: "Open", status: "OPEN" } as const
 
-	const [counts, reports] = await Promise.all([countContentReports(), listContentReports(active.status)])
+	const [counts, { items: reports, nextCursor }] = await Promise.all([
+		countContentReports(),
+		listContentReports(active.status, { cursor }),
+	])
 
 	return (
 		<section className="hl-stack">
@@ -95,6 +98,19 @@ export default async function AdminReportsPage({
 						))}
 					</Table>
 				)}
+				{nextCursor ? (
+					<p>
+						<Link
+							href={
+								filter === "open"
+									? `/admin/reports?cursor=${nextCursor}`
+									: `/admin/reports?status=${filter}&cursor=${nextCursor}`
+							}
+						>
+							Next page
+						</Link>
+					</p>
+				) : null}
 			</Panel>
 		</section>
 	)
@@ -134,7 +150,7 @@ function ReportRow({ report }: { report: ContentReportRow }) {
 			<td>
 				<div className="hl-row">
 					{!subject.gone &&
-						subject.hideUrl &&
+						(subject.hideUrl || subject.restoreUrl || subject.hidden) &&
 						(subject.hidden ? (
 							subject.restoreUrl ? (
 								<ActionButton
@@ -146,7 +162,7 @@ function ReportRow({ report }: { report: ContentReportRow }) {
 							) : (
 								<span className="hl-hint">hidden</span>
 							)
-						) : (
+						) : subject.hideUrl ? (
 							<ActionButton
 								url={subject.hideUrl}
 								label={subject.hideLabel}
@@ -154,7 +170,7 @@ function ReportRow({ report }: { report: ContentReportRow }) {
 								confirm={`${subject.hideLabel} this ${subject.kind}?`}
 								reasonPrompt={`Why is this ${subject.kind} being hidden?`}
 							/>
-						))}
+						) : null)}
 					{report.status === "OPEN" && (
 						<>
 							<ActionButton
