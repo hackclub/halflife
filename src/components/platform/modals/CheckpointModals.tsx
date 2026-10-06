@@ -327,7 +327,14 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	// reloading, or navigating away cannot lose it. Empty sheets and edits
 	// matching the saved entry keep no draft; a saved entry clears it.
 	const baselineBody = existing?.body ?? ""
-	const baselineHours = existing ? String(to2(existing.minutes / 60)) : ""
+	// In the box's own arithmetic, once the seed below restates it: the box
+	// holds what the timelapses do not cover, so the baseline moves with it.
+	const [baselineHours, setBaselineHours] = useState(existing ? String(to2(existing.minutes / 60)) : "")
+	// An entry logged under the old arithmetic whose old total does not cover
+	// its resolved timelapses: restating the box clamps it at zero and the
+	// total grows on open. Named on screen rather than silently absorbed, so
+	// a typo fix never quietly logs extra hours.
+	const [legacyBump, setLegacyBump] = useState<{ from: number; lapse: number } | null>(null)
 	// The trip draft has been restored into state: consume it so it cannot
 	// resurrect an entry days later. Autosave below keeps it from here on.
 	useEffect(() => {
@@ -373,11 +380,17 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				setPinned(seed.pinned)
 				// The saved figure was logged under the old arithmetic, so restate
 				// the box as the part the timelapses do not cover: the total is
-				// unchanged unless the maker edits it.
+				// unchanged unless the maker edits it. The baseline moves with the
+				// box — autosave, discard and "matches saved" all compare against
+				// it, and leaving it at the old total would restore that total as
+				// a residual on discard and count the timelapses twice.
 				const seedLapseHours = Math.round((seed.picked.reduce((n, t) => n + t.durationSeconds, 0) / 3600) * 100) / 100
 				if (seedLapseHours > 0) {
 					const baseHours = to2(existing.minutes / 60)
-					setHoursText(String(Math.max(0, Math.round((baseHours - seedLapseHours) * 100) / 100)))
+					const restated = String(Math.max(0, Math.round((baseHours - seedLapseHours) * 100) / 100))
+					setHoursText(restated)
+					setBaselineHours(restated)
+					if (seedLapseHours > baseHours) setLegacyBump({ from: baseHours, lapse: seedLapseHours })
 				}
 			}
 		})()
@@ -785,6 +798,13 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							<p className="hand mt-1.5 text-[0.76rem] tabular-nums text-navy-soft" role="status">
 								{fmtH(lapseHours)} from timelapses{typed > 0 ? ` + ${fmtH(typed)} declared` : ""} = {fmtH(claimed)}{" "}
 								logged
+							</p>
+						)}
+						{editing && legacyBump && (
+							<p role="note" className="hand mt-1.5 text-[0.76rem] leading-snug text-coral-deep">
+								This entry was logged as {fmtH(legacyBump.from)} before timelapses added hours on top — with
+								its {fmtH(legacyBump.lapse)} of recording it now totals {fmtH(claimed)}. Unpick
+								timelapses on the Timelapse tab to bring it back down.
 							</p>
 						)}
 					</div>
