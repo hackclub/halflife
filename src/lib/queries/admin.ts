@@ -8,6 +8,7 @@ import {
 	ShopFulfillmentStage,
 	ShopOrderStatus,
 	type Theme,
+	type ReportStatus,
 } from "@/app/generated/prisma/enums"
 import { getBalances } from "@/lib/currency"
 import { displayName } from "@/lib/display-name"
@@ -596,4 +597,83 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 		})
 	}
 	return steps
+}
+
+export type ReportStatusFilter = ReportStatus | "ALL"
+
+/**
+ * The moderation queue for user reports: who flagged what, why, and what
+ * staff did about it. Newest first, with the reported row's own preview and
+ * author alongside, so a report reads without opening five tabs.
+ */
+export async function listContentReports(status: ReportStatusFilter = "OPEN", limit = 100) {
+	const rows = await prisma.contentReport.findMany({
+		where: status === "ALL" ? undefined : { status },
+		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+		take: limit,
+		select: {
+			id: true,
+			target: true,
+			reason: true,
+			details: true,
+			status: true,
+			createdAt: true,
+			resolvedAt: true,
+			resolvedById: true,
+			reporter: { select: { id: true, name: true, displayName: true, email: true } },
+			post: {
+				select: {
+					id: true,
+					caption: true,
+					hiddenAt: true,
+					deletedAt: true,
+					user: { select: { id: true, name: true, displayName: true } },
+				},
+			},
+			comment: {
+				select: {
+					id: true,
+					body: true,
+					hiddenAt: true,
+					deletedAt: true,
+					postId: true,
+					user: { select: { id: true, name: true, displayName: true } },
+				},
+			},
+			themeProject: {
+				select: {
+					id: true,
+					title: true,
+					deletedAt: true,
+					user: { select: { id: true, name: true, displayName: true } },
+				},
+			},
+			targetUser: { select: { id: true, name: true, displayName: true } },
+			workSession: {
+				select: {
+					id: true,
+					title: true,
+					content: true,
+					deletedAt: true,
+					themeProject: {
+						select: {
+							id: true,
+							title: true,
+							user: { select: { id: true, name: true, displayName: true } },
+						},
+					},
+				},
+			},
+		},
+	})
+	return rows
+}
+
+export type ContentReportRow = Awaited<ReturnType<typeof listContentReports>>[number]
+
+export async function countContentReports(): Promise<Record<ReportStatus, number>> {
+	const groups = await prisma.contentReport.groupBy({ by: ["status"], _count: { _all: true } })
+	const counts: Record<ReportStatus, number> = { OPEN: 0, RESOLVED: 0, DISMISSED: 0 }
+	for (const group of groups) counts[group.status] = group._count._all
+	return counts
 }

@@ -14,6 +14,7 @@ import {
 import { cx, Panel } from "@/components/platform/ui"
 import type { FeedItem } from "@/lib/feed"
 import { useStore } from "@/lib/store"
+import { ReportButton } from "@/components/platform/report/ReportButton"
 import { type FeedPosition, readPosition, savePosition } from "./feedPosition"
 import { compact } from "./format"
 import { sendLike } from "./ReelCard"
@@ -579,6 +580,12 @@ export function ReelViewer() {
 							<Action label={`${current.viewCount} views`} count={current.viewCount}>
 								<IconEye className="text-[1.3rem]" />
 							</Action>
+							<ReportButton
+								target={{ type: "REEL", id: current.id }}
+								title="Report this reel"
+								context={current.caption || undefined}
+								tone="adaptive"
+							/>
 						</div>
 					</div>
 				)}
