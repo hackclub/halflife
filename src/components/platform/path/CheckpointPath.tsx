@@ -30,8 +30,9 @@ const WEEK_GAP = 0.25
  */
 const offsetAt = (i: number, phase: number) => Number((50 + AMP * Math.sin((phase + i) * CURVE)).toFixed(4))
 
-/** Rows a week's trail occupies, matching WeekTrail's fork grouping (both fork
-    arms share one row). */
+/** Rows a week's trail occupies, matching WeekTrail's fork grouping (a fork's
+    arms share one row — the keep/submit fork at a week's end, and week 1's
+    idea/skip fork at its start). */
 const trailRows = (week: Week): number => {
 	const rows: Checkpoint[][] = []
 	for (const cp of week.checkpoints) {
@@ -358,7 +359,8 @@ function WeekBanner({ week, index }: { week: Week; index: number }) {
 }
 
 /** Where the two halves of a fork sit, as a percentage of the column. */
-/** A fork has exactly two arms: keep working, or wrap the week up. */
+/** A fork has exactly two arms: keep working or wrap the week up at a week's
+    end, the idea reel or the first devlog entry at the start of week 1. */
 const FORK_AT: [number, number] = [24, 76]
 
 /**
@@ -376,10 +378,14 @@ const FORK_AT: [number, number] = [24, 76]
  * A week past its tier floor ends in a fork: two checkpoints on one row,
  * pinned left and right instead of taking the swing. The fork is always the
  * last row, which is what lets every row before it keep using its own index
- * for the sine — the trail above a fork is laid out exactly as it was.
+ * for the sine — the trail above a fork is laid out exactly as it was. Week
+ * 1 opens with the same treatment one row down from setup: the idea reel and
+ * the first devlog entry side by side, the reel optional and the entry the
+ * road onward.
  */
 function WeekTrail({ week, currentId, phase }: { week: Week; currentId: string | null; phase: number }) {
-	// Group into rows: singles all the way down, then the fork as one row of two.
+	// Group into rows: singles all the way down, each fork as one row of two —
+	// the opening idea/skip fork in week 1, the keep/submit fork at a week's end.
 	const rows: Checkpoint[][] = []
 	for (const cp of week.checkpoints) {
 		const last = rows[rows.length - 1]

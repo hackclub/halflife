@@ -28,11 +28,16 @@ export interface Checkpoint {
 	/** Reel checkpoints carry the brief for what to film. */
 	reelBrief?: string
 	/**
-	 * The two halves of the fork the trail opens once the week is past its tier
-	 * floor: one more session, or wrap the week up. Both sit on the same row of
-	 * the trail, and finishing one is what settles the route.
+	 * The two halves of a fork the trail lays side by side on one row with an
+	 * "or" between them.
+	 *
+	 * At the end of a week past its tier floor: one more session (`keep`), or
+	 * wrap the week up (`submit`) — finishing one is what settles the route.
+	 * At the start of week 1: pitch the idea (`idea`), or skip straight to the
+	 * first devlog (`skip`) — the reel is optional and never gates anything
+	 * past the fork.
 	 */
-	branch?: "keep" | "submit"
+	branch?: "keep" | "submit" | "idea" | "skip"
 }
 
 /** One saved journal session: the entry, the time claimed, and the evidence. */

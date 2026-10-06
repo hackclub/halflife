@@ -593,7 +593,9 @@ view lands on the current checkpoint on arrival.
 
 A week opens with its setup (the gold questionnaire in week 1, the project form
 after), then the idea reel, then one node per journal entry with a progress reel
-wherever the logged hours cross each ten, then Submit. Once the week's hours
+wherever the logged hours cross each ten, then Submit. Week 1 is the exception:
+the idea reel is optional, so it sits side by side with the first devlog entry
+as a choice instead of gating it. Once the week's hours
 reach the submit floor, the trail forks: "Keep working" and "Submit project" sit
 side by side at 24% and 76% with an "or" between them.
 

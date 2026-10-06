@@ -98,6 +98,15 @@ const EMPTY: CheckpointState = { done: false, minutes: 0, artefacts: 0, log: [] 
 export const PASSED_REASON = "This week has passed!"
 
 /**
+ * Week 1's idea reel is optional: it sits beside the first devlog entry as a
+ * choice rather than gating it. The trail still lists it, and it stays
+ * postable, but nothing past the fork ever waits on it — so every gate below
+ * reads predecessors with this id filtered out.
+ */
+export const WEEK1_IDEA_REEL_ID = "w1-reel-idea"
+const withoutOptionalIdea = (list: Checkpoint[]) => list.filter((c) => c.id !== WEEK1_IDEA_REEL_ID)
+
+/**
  * A warm-up project's own week: a chain of entries with one live one waiting,
  * then its single submit, keyed `wu-<project id>-…` because a maker may hold
  * several warm-ups and none of them has a week number. The same tier floors as
@@ -1232,7 +1241,10 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	)
 
 	/**
-	 * What a week is worth, for every gate that asks.
+	 * What a week is worth, for the gates that ask what it is worth rather than
+	 * what was journalled: Submit's floor, the keep/submit fork, and the pace
+	 * math. Progress reels are the exception — they open on `journalHours`
+	 * below, the same clock their nodes are placed on.
 	 *
 	 * Journalled entries plus whatever arrived another way — Hackatime link time,
 	 * and any hours a reviewer adjusted. The two are added here rather than
@@ -1248,6 +1260,24 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			return mins / 60 + (facts.offBookHours[weekId] ?? 0)
 		},
 		[weeks, facts.progress, facts.offBookHours],
+	)
+
+	/**
+	 * Hours logged through journal entries alone — no Hackatime, no reviewer
+	 * adjustments from elsewhere. Progress reels open on this clock and not on
+	 * `weekHours`: a reel answers to the devlog that earned it, so ten tracked
+	 * hours somewhere else must not open a reel before the first entry is even
+	 * written. Placement already reads this clock (`checkpointsFor` walks
+	 * `entryMinutes`); the gate now agrees with it.
+	 */
+	const journalHours = useCallback(
+		(weekId: number) => {
+			const week = weeks.find((w) => w.id === weekId)
+			if (!week) return 0
+			const mins = week.checkpoints.reduce((n, c) => n + (facts.progress[c.id]?.minutes ?? 0), 0)
+			return mins / 60
+		},
+		[weeks, facts.progress],
 	)
 
 	// The same questions asked of a week object, so a sheet can serve a warm-up
@@ -1385,7 +1415,9 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	 *  - anything on the clock (the milestone reels, and Submit itself) opens on
 	 *    the week's hours, so a half-written entry never traps you and the choice
 	 *    to wrap up is always live.
-	 * Everything else unlocks in order, as it always has.
+	 * Everything else unlocks in order, as it always has — except week 1's
+	 * idea reel, which is the optional arm of the opening fork and never holds
+	 * anything shut (see WEEK1_IDEA_REEL_ID).
 	 */
 	const isUnlocked = useCallback(
 		(id: string): boolean => {
@@ -1415,7 +1447,11 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			if (self.kind === "submit" && weekPassed(week.id)) return true
 
 			if (self.atHours !== undefined) {
-				const hours = weekHours(week.id)
+				// A progress reel is earned by journalled hours alone (see
+				// `journalHours`); Submit and "Keep working" read what the week
+				// is worth in total. Only progress reels carry atHours besides
+				// those two, so `kind` is the whole distinction.
+				const hours = self.kind === "reel" ? journalHours(week.id) : weekHours(week.id)
 				// Unwritten entries never block a milestone — the clock does. Neither
 				// does a milestone that is not due yet: the reel waiting at 30h cannot
 				// hold up a Submit that opened at 23.76h.
@@ -1424,13 +1460,19 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				// come due is the cadence asking to be paid before the week runs on;
 				// letting the fork's other arm open around it would make every
 				// progress reel skippable forever.
-				const gates = list.slice(0, i).filter((c) => c.kind !== "journal" && (c.atHours ?? 0) <= hours)
+				//
+				// Week 1's idea reel is the exception: it is the optional arm of the
+				// opening fork, so it never holds the clock's milestones or Submit
+				// shut, whichever arm the maker took.
+				const gates = withoutOptionalIdea(list.slice(0, i)).filter(
+					(c) => c.kind !== "journal" && (c.atHours ?? 0) <= hours,
+				)
 				return gates.every(done) && hours >= self.atHours
 			}
 
-			return list.slice(0, i).every(done)
+			return withoutOptionalIdea(list.slice(0, i)).every(done)
 		},
-		[isPassed, isHeld, facts.owedReels, owesSubmit, weekPassed, weekStarted, weeks, save.progress, weekHours],
+		[isPassed, isHeld, facts.owedReels, owesSubmit, weekPassed, weekStarted, weeks, save.progress, weekHours, journalHours],
 	)
 
 	/**
@@ -1476,14 +1518,16 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			if (!week || !self) return null
 
 			if (self.atHours !== undefined) {
-				const hours = weekHours(week.id)
-				const owed = list.slice(0, i).find((c) => c.kind !== "journal" && (c.atHours ?? 0) <= hours && !done(c))
+				const hours = self.kind === "reel" ? journalHours(week.id) : weekHours(week.id)
+				const owed = withoutOptionalIdea(list.slice(0, i)).find(
+					(c) => c.kind !== "journal" && (c.atHours ?? 0) <= hours && !done(c),
+				)
 				if (owed) return firstFinish(owed)
 				const toGo = Math.round((self.atHours - hours) * 100) / 100
 				return `Opens at ${self.atHours}h logged this week — ${toGo}h to go.`
 			}
 
-			const blocker = list.slice(0, i).find((c) => !done(c))
+			const blocker = withoutOptionalIdea(list.slice(0, i)).find((c) => !done(c))
 			return blocker ? firstFinish(blocker) : null
 		},
 		[
@@ -1497,11 +1541,18 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			weeks,
 			save.progress,
 			weekHours,
+			journalHours,
 		],
 	)
 
 	const currentCheckpointId = useMemo(() => {
-		const next = allCheckpoints.find((c) => !(save.progress[c.id]?.done ?? false) && isUnlocked(c.id))
+		// Once the first devlog is written the opening fork is settled on the
+		// skip arm, so the unposted idea reel stops being the trail's answer
+		// to "where next" — it stays open as an extra, not as the current.
+		const skipSettled = save.progress["w1-entry-1"]?.done ?? false
+		const next = allCheckpoints.find(
+			(c) => !(save.progress[c.id]?.done ?? false) && isUnlocked(c.id) && !(skipSettled && c.id === WEEK1_IDEA_REEL_ID),
+		)
 		return next?.id ?? null
 	}, [allCheckpoints, save.progress, isUnlocked])
 
