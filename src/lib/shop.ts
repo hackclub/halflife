@@ -121,8 +121,10 @@ export async function getShopItemsFor(userId: string): Promise<{
 	const [items, balances, qualification, orders, regions, regionId] = await Promise.all([
 		// Explicit `select`, never the whole row: a new internal column added to
 		// ShopItem must not silently start reaching participants.
+		// Printers are not sold in the shop. They stay in the catalogue — the goal
+		// tracker and printer awards read them — but never reach this list.
 		prisma.shopItem.findMany({
-			where: { active: true },
+			where: { active: true, category: { not: ShopItemCategory.PRINTER } },
 			orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
 			select: {
 				id: true,
@@ -259,7 +261,11 @@ export async function purchase(
 
 		// Re-read stock inside the transaction; the catalogue page may be stale.
 		const fresh = await tx.shopItem.findUnique({ where: { id: shopItemId } })
-		if (!fresh?.active) throw new HttpError("NOT_FOUND", "Item not found")
+		// A printer is hidden from the shop, so it is as good as not there: a
+		// request for one by id is refused the same way a retired item is.
+		if (!fresh?.active || fresh.category === ShopItemCategory.PRINTER) {
+			throw new HttpError("NOT_FOUND", "Item not found")
+		}
 		if (fresh.stock !== null && fresh.stock < quantity) {
 			throw new HttpError("OUT_OF_STOCK", "Not enough stock left")
 		}
@@ -286,14 +292,6 @@ export async function purchase(
 			throw new HttpError("INSUFFICIENT_CREDIT", `You need ${totalCredits - payableFrom} more to buy this`)
 		}
 
-		// Spend the printer fund FIRST on a printer, and only then reach for
-		// ordinary coins. The other order looks equivalent and is not: it would
-		// drain the spendable balance someone was saving for upgrades while
-		// leaving banked coins sitting in an account where they can never be
-		// spent on anything else.
-		const fromBanked = fresh.category === ShopItemCategory.PRINTER ? Math.min(balances.banked, totalCredits) : 0
-		const fromSpendable = totalCredits - fromBanked
-
 		const order = await tx.shopOrder.create({
 			data: {
 				userId,
@@ -310,25 +308,14 @@ export async function purchase(
 			select: shopOrderPublicSelect,
 		})
 
-		// One row per pot drawn on. The ledger's unique key includes `bucket`
-		// precisely so a printer paid for out of both does not collide with itself.
-		if (fromBanked > 0) {
-			await appendLedgerEntry(tx, {
-				userId,
-				kind: LedgerKind.SHOP_PURCHASE,
-				bucket: CoinBucket.BANKED,
-				amount: -fromBanked,
-				note: `${quantity}× ${fresh.name} (printer fund)`,
-				shopOrderId: order.id,
-				createdById: userId,
-			})
-		}
-		if (fromSpendable > 0) {
+		// Only a printer could draw on the printer fund, and printers are not sold
+		// here, so a purchase is paid out of ordinary coins alone.
+		if (totalCredits > 0) {
 			await appendLedgerEntry(tx, {
 				userId,
 				kind: LedgerKind.SHOP_PURCHASE,
 				bucket: CoinBucket.SPENDABLE,
-				amount: -fromSpendable,
+				amount: -totalCredits,
 				note: `${quantity}× ${fresh.name}`,
 				shopOrderId: order.id,
 				createdById: userId,
