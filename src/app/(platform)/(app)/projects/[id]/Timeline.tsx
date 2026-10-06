@@ -3,6 +3,7 @@
 import { useLayoutEffect, useRef, useState } from "react"
 import { IconCheck, IconFilm, IconPencil, IconPlay, IconWarning } from "@/components/platform/icons"
 import { Markdown } from "@/components/platform/Markdown"
+import { ReportButton } from "@/components/platform/report/ReportButton"
 import { Chip, cx } from "@/components/platform/ui"
 import { fmtDate, fmtHours } from "@/lib/projects"
 import type { TimelineItem, TimelineLapse } from "@/lib/queries/project-page"
@@ -20,10 +21,16 @@ import type { TimelineItem, TimelineLapse } from "@/lib/queries/project-page"
 export function Timeline({
 	items,
 	weekFor,
+	allowReport = false,
 }: {
 	items: TimelineItem[]
 	/** The trail week a phase of this project ran in, for the "Week 3" labels. */
 	weekFor: (phase: "DESIGN" | "BUILD") => number
+	/**
+	 * Whether journal entries and reels carry a report button. On for someone
+	 * else's project, off on your own — reporting your own work is noise.
+	 */
+	allowReport?: boolean
 }) {
 	// Which week each moment belongs to is said once, where that week starts,
 	// rather than on every entry — and only once there are two weeks to tell
@@ -58,7 +65,7 @@ export function Timeline({
 			<li key={item.id} id={item.id} className="relative grid scroll-mt-24 grid-cols-[32px_minmax(0,1fr)] gap-x-4">
 				<Marker item={item} />
 				<div className="min-w-0 pt-1">
-					<Body item={item} />
+					<Body item={item} allowReport={allowReport} />
 				</div>
 			</li>,
 		)
@@ -98,7 +105,7 @@ function When({ at }: { at: number }) {
 
 const PHASE = { DESIGN: "design", BUILD: "build" } as const
 
-function Body({ item }: { item: TimelineItem }) {
+function Body({ item, allowReport }: { item: TimelineItem; allowReport: boolean }) {
 	if (item.kind === "session") {
 		return (
 			<article>
@@ -110,6 +117,14 @@ function Body({ item }: { item: TimelineItem }) {
 							<span className="text-navy-soft"> · {fmtHours(item.approvedHours)} approved</span>
 						)}
 					</span>
+					{allowReport && (
+						<ReportButton
+							target={{ type: "DEVLOG", id: item.id }}
+							title="Report this journal entry"
+							context={item.body.slice(0, 280)}
+							className="text-[0.76rem]"
+						/>
+					)}
 					<When at={item.at} />
 				</header>
 				<EntryBody source={item.body} />
@@ -125,6 +140,14 @@ function Body({ item }: { item: TimelineItem }) {
 					<h3 className="text-[0.95rem] font-extrabold text-navy">Posted a reel</h3>
 					{item.status === "PROCESSING" && <Chip tone="gold">Processing</Chip>}
 					{item.status === "HIDDEN" && <Chip tone="coral">Hidden from the feed</Chip>}
+					{allowReport && (
+						<ReportButton
+							target={{ type: "REEL", id: item.id }}
+							title="Report this reel"
+							context={item.caption || undefined}
+							className="text-[0.76rem]"
+						/>
+					)}
 					<When at={item.at} />
 				</header>
 				{item.caption && (

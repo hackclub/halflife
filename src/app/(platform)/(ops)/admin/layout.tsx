@@ -31,6 +31,7 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
 				{hasPermission(roles, Permission.FULFILL_ORDERS) ? <Link href="/admin/fulfillment">Fulfillment</Link> : null}
 				{hasPermission(roles, Permission.MANAGE_PROGRAM) ? <Link href="/admin/program">Program</Link> : null}
 				{hasPermission(roles, Permission.MANAGE_FEED) ? <Link href="/admin/feed">Feed</Link> : null}
+				{hasPermission(roles, Permission.MANAGE_FEED) ? <Link href="/admin/reports">Reports</Link> : null}
 				{hasPermission(roles, Permission.VIEW_AUDIT_LOG) ? <Link href="/admin/audit">Audit</Link> : null}
 				{hasPermission(roles, Permission.VIEW_UPLOADS) ? <Link href="/admin/uploads">Uploads</Link> : null}
 				<Link href="/dashboard">Dashboard</Link>

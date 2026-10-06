@@ -197,6 +197,35 @@ enum PostStatus {
   REMOVED
 }
 
+/// What kind of user-generated thing a content report is about. One report
+/// points at exactly one of the five; the matching FK is set and the rest are
+/// null, checked in the route rather than the schema.
+enum ReportTarget {
+  REEL
+  REEL_COMMENT
+  PROJECT
+  USER
+  DEVLOG
+}
+
+/// Why something was reported. A fixed set so the queue triages at a glance;
+/// the free-form `details` on the report carries the rest.
+enum ReportReason {
+  EXCESSIVE_AI_USE
+  MISCONDUCT
+  SPAM
+  OTHER
+}
+
+/// Where a report stands. OPEN is the queue; RESOLVED means staff reviewed it
+/// and took whatever action fit (possibly none beyond looking); DISMISSED
+/// means no violation.
+enum ReportStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
 /// Where a participant posted their reel outside Half Life.
 enum PublicReelPlatform {
   INSTAGRAM
@@ -271,6 +300,8 @@ enum AuditAction {
   USER_SET_PARTICIPANT_GOAL
   USER_COMPLETE_ONBOARDING
   USER_DISPUTE_REVIEW
+  /// A participant flagging a reel, comment, project, user or devlog for staff.
+  USER_CREATE_REPORT
 
   // Review
   REVIEW_CLAIM
@@ -305,6 +336,10 @@ enum AuditAction {
   /// An admin putting themselves back at the start of the first checkpoint.
   ADMIN_RESET_ONBOARDING
   ADMIN_RESOLVE_DISPUTE
+  /// A content report reviewed with action taken (or looked at and closed).
+  ADMIN_RESOLVE_REPORT
+  /// A content report closed as no violation.
+  ADMIN_DISMISS_REPORT
   ADMIN_SEND_GRANT
   /// One warm-up Airtable row brought into Half Life (lib/airtable/warmup-import).
   ADMIN_IMPORT_AIRTABLE_PROJECT
@@ -489,6 +524,8 @@ model User {
   reviewsGiven   SubmissionReview[] @relation("SubmissionReviewer")
   reviewClaims   ReviewClaim[]      @relation("ReviewClaimant")
   reviewDisputes ReviewDispute[]    @relation("ReviewDisputeAuthor")
+  reportsMade    ContentReport[]    @relation("ReportReporter")
+  reportsAgainst ContentReport[]    @relation("ReportSubject")
   hcbGrantTopUps HcbGrantTopUp[]    @relation("HcbGrantTopUpUser")
   syncRunLogs    SyncRunLog[]       @relation("SyncRunActor")
 
@@ -735,6 +772,7 @@ model ThemeProject {
   publicReels    PublicReel[]
   hcbGrantTopUps HcbGrantTopUp[]
   repoSyncRuns   RepoSyncRun[]
+  reports        ContentReport[]
 
   /// One season project per season theme per person. This makes "five themed
   /// projects" a schema invariant rather than a convention, which is what lets
@@ -885,6 +923,7 @@ model WorkSession {
 
   media      SessionMedia[]
   timelapses SessionTimelapse[]
+  reports    ContentReport[]
 
   @@index([themeProjectId, phase])
   @@index([themeProjectId, createdAt])
@@ -1139,6 +1178,46 @@ model ReviewDispute {
   @@map("review_dispute")
 }
 
+/// A participant flagging user-generated content for staff: a reel, a reel
+/// comment, a project, a user, or a devlog entry.
+///
+/// It changes no state: like ReviewDispute, it records words and puts them in
+/// front of staff. Taking the thing down stays a separate admin action (the
+/// existing hide routes), so a report is never a silent takedown.
+model ContentReport {
+  id         String @id @default(cuid())
+  reporterId String
+  reporter   User   @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  target ReportTarget
+  reason ReportReason
+  /// Optional context in the reporter's own words.
+  details String? @db.Text
+
+  /// Exactly one of these is set, matching `target` — checked in the route.
+  postId         String?
+  post           Post?         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  commentId      String?
+  comment        PostComment?  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  themeProjectId String?
+  themeProject   ThemeProject? @relation(fields: [themeProjectId], references: [id], onDelete: Cascade)
+  targetUserId   String?
+  targetUser     User?         @relation("ReportSubject", fields: [targetUserId], references: [id], onDelete: Cascade)
+  workSessionId  String?
+  workSession    WorkSession?  @relation(fields: [workSessionId], references: [id], onDelete: Cascade)
+
+  status       ReportStatus @default(OPEN)
+  resolvedAt   DateTime?
+  resolvedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([reporterId])
+  @@map("content_report")
+}
+
 /// One HCB card-grant top-up Half Life has sent.
 ///
 /// Keyed on (user, project, phase) so a grant is paid once: a double-click or a
@@ -1280,6 +1359,7 @@ model Post {
   likes       PostLike[]
   comments    PostComment[]
   publicReels PublicReel[]
+  reports     ContentReport[]
 
   /// The feed's hot path: published posts, newest first.
   @@index([status, publishedAt(sort: Desc)])
@@ -1332,6 +1412,8 @@ model PostComment {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
+
+  reports ContentReport[]
 
   @@index([postId, createdAt])
   @@index([userId])

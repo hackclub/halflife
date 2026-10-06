@@ -153,6 +153,7 @@ async function bodies() {
 	const { bomImportSchema, repoSyncSettingsSchema } = await import("../src/lib/schemas/project")
 	const { purchaseSchema } = await import("../src/lib/schemas/shop")
 	const { setGoalSchema } = await import("../src/lib/schemas/goal")
+	const { createReportSchema } = await import("../src/lib/schemas/report")
 
 	const journal = "x".repeat(200)
 
@@ -223,6 +224,11 @@ async function bodies() {
 		["setGoal · funding all weeks", setGoalSchema, { goal: "FULL_FUNDING" }],
 		["setGoal · funding some weeks", setGoalSchema, { goal: "PARTIAL_FUNDING" }],
 		["like", likeSchema, { liked: true }],
+		[
+			"report",
+			createReportSchema,
+			{ target: "REEL", targetId: "cmxxxxxxxxxxxxxxxxxxxxxxx", reason: "SPAM", details: "same clip five times" },
+		],
 		["buy", purchaseSchema, { shopItemId: "printer-ender-3-v3-se", quantity: 1 }],
 		["repoSync · on", repoSyncSettingsSchema, { enabled: true, repo: "https://github.com/maker/hackpad" }],
 		["repoSync · off", repoSyncSettingsSchema, { enabled: false }],

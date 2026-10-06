@@ -6,6 +6,7 @@ import { Gato } from "@/components/platform/art"
 import { IconComment, IconEye, IconFilm, IconHeart, IconPlay } from "@/components/platform/icons"
 import { cx } from "@/components/platform/ui"
 import type { FeedItem } from "@/lib/feed"
+import { ReportButton } from "@/components/platform/report/ReportButton"
 
 function compact(n: number) {
 	return n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k` : `${n}`
@@ -369,6 +370,12 @@ export function ReelCard({
 								{compact(reel.viewCount)}
 							</span>
 						</span>
+						<ReportButton
+							target={{ type: "REEL", id: reel.id }}
+							title="Report this reel"
+							context={reel.caption || undefined}
+							tone="inverse"
+						/>
 					</div>
 				</div>
 			</div>
