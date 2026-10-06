@@ -42,8 +42,9 @@ those are facts on the server, and only the ceremony lives in the browser.
 `src/lib/curriculum.ts` is the single source of truth for the programme shape,
 and it encodes the Checkpoint framework exactly:
 
-- **Week 1 (PCB, design)** — onboarding → first journal → idea reel → journal to
-  the hours target → progress reel → submit (files, BOM/cart/tier, closing reel).
+- **Week 1 (PCB, design)** — onboarding → a fork of idea reel or first
+  journal (the reel is optional) → journal to the hours target → progress
+  reel → submit (files, BOM/cart/tier, closing reel).
 - **Design weeks 2–5** (CAD, music, displays, breadboard computer) — project
   creation with tier selection → idea reel → journal → reel → journal → reel →
   submit.

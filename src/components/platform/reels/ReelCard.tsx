@@ -134,6 +134,7 @@ export function ReelCard({
 	onPatch,
 	autoplay = false,
 	onPlayPress,
+	onComments,
 }: {
 	reel: FeedItem
 	className?: string
@@ -143,6 +144,12 @@ export function ReelCard({
 	autoplay?: boolean
 	/** The reader pressed play themselves. */
 	onPlayPress?: () => void
+	/**
+	 * The reader asked for this reel's comments. When given, the comment
+	 * button calls back instead of deep-linking to the Doomscroller, so a
+	 * host (like a profile) can show the conversation in place.
+	 */
+	onComments?: (reel: FeedItem) => void
 }) {
 	const card = useRef<HTMLElement>(null)
 	const video = useRef<HTMLVideoElement>(null)
@@ -328,20 +335,34 @@ export function ReelCard({
 								{compact(reel.likeCount)}
 							</span>
 						</button>
-						<Link
-							href={`/doomscroller?reel=${reel.id}&comments=1`}
-							// Every card carries a different deep link, so the rail's
-							// dozen would each prefetch their own page; a press is a
-							// deliberate one-off, not something to speculate on.
-							prefetch={false}
-							aria-label={`Comments (${reel.commentCount})`}
-							className="flex flex-col items-center gap-0.5 text-white transition-transform duration-150 hover:scale-110"
-						>
-							<IconComment className="text-[1.3rem]" />
-							<span className="hand text-[0.72rem] font-semibold tabular-nums [text-shadow:0_1px_3px_rgba(0,0,0,.6)]">
-								{compact(reel.commentCount)}
-							</span>
-						</Link>
+						{onComments ? (
+							<button
+								type="button"
+								onClick={() => onComments(reel)}
+								aria-label={`Comments (${reel.commentCount})`}
+								className="flex flex-col items-center gap-0.5 text-white transition-transform duration-150 hover:scale-110"
+							>
+								<IconComment className="text-[1.3rem]" />
+								<span className="hand text-[0.72rem] font-semibold tabular-nums [text-shadow:0_1px_3px_rgba(0,0,0,.6)]">
+									{compact(reel.commentCount)}
+								</span>
+							</button>
+						) : (
+							<Link
+								href={`/doomscroller?reel=${reel.id}&comments=1`}
+								// Every card carries a different deep link, so the rail's
+								// dozen would each prefetch their own page; a press is a
+								// deliberate one-off, not something to speculate on.
+								prefetch={false}
+								aria-label={`Comments (${reel.commentCount})`}
+								className="flex flex-col items-center gap-0.5 text-white transition-transform duration-150 hover:scale-110"
+							>
+								<IconComment className="text-[1.3rem]" />
+								<span className="hand text-[0.72rem] font-semibold tabular-nums [text-shadow:0_1px_3px_rgba(0,0,0,.6)]">
+									{compact(reel.commentCount)}
+								</span>
+							</Link>
+						)}
 						<span className="flex flex-col items-center gap-0.5 text-white">
 							<IconEye className="text-[1.3rem]" />
 							<span className="hand text-[0.72rem] font-semibold tabular-nums [text-shadow:0_1px_3px_rgba(0,0,0,.6)]">

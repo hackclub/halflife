@@ -14,7 +14,9 @@ export { TIERS } from "./config/tiers"
  * Ten weeks: five design weeks, then the same five themes built for real.
  * A design week opens by settling what is being made — the yellow onboarding
  * checkpoint in week 1, the project form after that — and then pitches it in
- * the idea reel before a single hour is logged against it. Build weeks skip
+ * the idea reel before a single hour is logged against it. Week 1 is the
+ * exception: the reel is optional there, offered side by side with the first
+ * devlog entry instead of gating it. Build weeks skip
  * both and end on a working-demo video.
  */
 
@@ -187,6 +189,12 @@ export const photosRequired = (hours: number) => Math.max(MIN_PHOTOS, Math.ceil(
  * swept to the end, and the next unearned one trails the chain so the cadence
  * is visible before you get there.
  *
+ * Week 1 is the exception to the opening: its idea reel is optional, so the
+ * trail forks right after setup — the idea reel on one arm, the first devlog
+ * entry on the other. The entry arm is the road onward; nothing past the fork
+ * waits on the reel, and the reel stays postable as an extra whenever. Other
+ * design weeks keep the reel as a straight gate before the first entry.
+ *
  * Submit opens the moment the tier's funded hours are on the board, and from
  * then on the trail forks rather than continuing: the live entry and Submit
  * come off the chain and sit side by side as a choice — one more session, or
@@ -217,20 +225,22 @@ export function checkpointsFor(
 	const id = (n: string) => `w${meta.id}-${n}`
 	const out: Checkpoint[] = []
 
-	const entry = (n: number, branch?: "keep") =>
+	const entry = (n: number, branch?: "keep" | "skip") =>
 		cp({
 			id: id(`entry-${n}`),
 			weekId: meta.id,
 			kind: "journal",
-			title: branch ? "Keep working" : `Entry ${n}`,
+			title: branch === "keep" ? "Keep working" : `Entry ${n}`,
 			blurb: "Journal your progress with pictures and screenshots!",
 			entryTarget: 1,
 			branch,
 			// The fork's working arm answers to the week's clock rather than to the
 			// node before it, so a reel that has fallen due holds it shut exactly as
 			// it holds Submit shut. Zero, because carrying on is never gated on
-			// hours of its own — only on what the hours have already earned.
-			atHours: branch ? 0 : undefined,
+			// hours of its own — only on what the hours have already earned. The
+			// week-1 skip arm is an ordinary journal node: it unlocks off the
+			// setup before it, not off the clock.
+			atHours: branch === "keep" ? 0 : undefined,
 		})
 
 	const milestoneReel = (k: number) =>
@@ -272,6 +282,9 @@ export function checkpointsFor(
 	}
 
 	if (meta.phase === "design") {
+		// Week 1 only: the pitch is a choice, not a gate. Both arms carry a
+		// branch so the renderer lays them side by side with an "or" between
+		// them, exactly as it does the keep/submit fork at the end of a week.
 		const ideaReel = cp({
 			id: id("reel-idea"),
 			weekId: meta.id,
@@ -279,6 +292,7 @@ export function checkpointsFor(
 			title: "Idea reel",
 			blurb: "A short video about your awesome project idea!",
 			reelBrief: "Talk about the idea you're thinking about designing this week.",
+			branch: meta.id === 1 ? "idea" : undefined,
 		})
 
 		// Every design week opens the same way: say what you are making, then
@@ -303,11 +317,26 @@ export function checkpointsFor(
 				}),
 			)
 			if (needsProject) out.push(newProject)
+			// The fork: the idea reel, or straight to the first devlog. The
+			// entry arm is entry 1 itself, so skipping is just starting the
+			// work — no extra "skip" node to settle. A submitted week with no
+			// entries logged them nowhere (Hackatime-only), so there is no
+			// live entry to offer; the reel stands alone as it always has.
+			out.push(ideaReel)
+			if (!submitted || entryMinutes.length >= 1) {
+				out.push(entry(1, "skip"))
+				hours += (entryMinutes[0] ?? 0) / 60
+				while (hours >= progressReelHours(meta.phase, reels + 1)) {
+					reels += 1
+					out.push(milestoneReel(reels))
+				}
+				for (let n = 2; n <= live; n += 1) pushEntry(n)
+			}
 		} else {
 			out.push(newProject)
+			out.push(ideaReel)
+			for (let n = 1; n <= live; n += 1) pushEntry(n)
 		}
-		out.push(ideaReel)
-		for (let n = 1; n <= live; n += 1) pushEntry(n)
 	} else {
 		for (let n = 1; n <= live; n += 1) pushEntry(n)
 	}
