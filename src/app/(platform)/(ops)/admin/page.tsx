@@ -167,18 +167,19 @@ function FlowFunnel({ steps }: { steps: FlowStep[] }) {
 	const weightOf = (dropOffPct: number) => Math.min(100, Math.max(0, dropOffPct))
 
 	// Heat of a stage, as a background from flow-through blue to total-loss
-	// red. `backgroundColor` first so browsers without color-mix still get the
-	// cold end rather than nothing.
+	// red. Mixed in oklch so the middle stays vivid rather than washing out
+	// through grey the way an srgb blend does. `backgroundColor` first so
+	// browsers without color-mix still get the cold end rather than nothing.
 	const heat = (dropOffPct: number): CSSProperties => ({
 		backgroundColor: "var(--color-accent)",
-		background: `color-mix(in srgb, var(--color-danger) ${weightOf(dropOffPct)}%, var(--color-accent))`,
+		background: `color-mix(in oklch, var(--color-danger) ${weightOf(dropOffPct)}%, var(--color-accent))`,
 	})
 
 	// The same heat for text: muted where nothing was lost, danger-ink where
 	// everything was. An unsupported color-mix just inherits body text, which
 	// still reads.
 	const heatInk = (dropOffPct: number): CSSProperties => ({
-		color: `color-mix(in srgb, var(--color-danger-ink) ${weightOf(dropOffPct)}%, var(--color-ink-muted))`,
+		color: `color-mix(in oklch, var(--color-danger-ink) ${weightOf(dropOffPct)}%, var(--color-ink-muted))`,
 	})
 
 	// 400 where nothing was lost, 800 where everything was.
@@ -205,7 +206,8 @@ function FlowFunnel({ steps }: { steps: FlowStep[] }) {
 						width: "9rem",
 						height: "0.65rem",
 						borderRadius: "999px",
-						background: "linear-gradient(90deg, var(--color-accent), var(--color-danger))",
+						background:
+							"linear-gradient(90deg in oklch, var(--color-accent), var(--color-danger))",
 					}}
 				/>
 				<span>all lost</span>
