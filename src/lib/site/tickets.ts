@@ -47,10 +47,18 @@ export const SELF_RESOLVE_BUTTON = "i've got it, thanks"
 
 export const MARK_HELPED_BUTTON = "mark as helped"
 
+/** The workspace's custom "loading" emoji, dropped on the original question
+ * the moment its ticket is opened, so a question in #half-life-help reads as
+ * still waiting from the channel list. Same caveat as below: it's the custom
+ * emoji's exact name, and it only resolves if an emoji by that name exists in
+ * the Hack Club workspace. */
+export const PENDING_REACTION = "safari-loading"
+
 /** The workspace's custom "done" emoji, dropped on the original question once
- * its ticket is resolved from any of the three buttons. Note this is the
- * hyphenated custom-emoji name, not `:white_check_mark:` — it only resolves if
- * an emoji by this exact name exists in the Hack Club workspace. */
+ * its ticket is resolved from any of the three buttons, in place of the
+ * pending one above. Note this is the hyphenated custom-emoji name, not
+ * `:white_check_mark:` — it only resolves if an emoji by this exact name
+ * exists in the Hack Club workspace. */
 export const RESOLVED_REACTION = "white-checkbox-checkbox-checkbox"
 
 /** Posted to the thread once a helper has answered. Mentions the helper on

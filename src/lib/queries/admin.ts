@@ -10,6 +10,7 @@ import {
 	type Theme,
 } from "@/app/generated/prisma/enums"
 import { getBalances } from "@/lib/currency"
+import { displayName } from "@/lib/display-name"
 import { safeDecrypt } from "@/lib/pii"
 import { getPrinterQualification } from "@/lib/printer"
 import prisma from "@/lib/prisma"
@@ -22,6 +23,7 @@ export async function listUsers(opts: { q?: string; cursor?: string; limit: numb
 					OR: [
 						{ email: { contains: opts.q, mode: "insensitive" } },
 						{ name: { contains: opts.q, mode: "insensitive" } },
+						{ displayName: { contains: opts.q, mode: "insensitive" } },
 						{ slackId: { contains: opts.q, mode: "insensitive" } },
 					],
 				}
@@ -32,6 +34,7 @@ export async function listUsers(opts: { q?: string; cursor?: string; limit: numb
 		select: {
 			id: true,
 			name: true,
+			displayName: true,
 			email: true,
 			slackId: true,
 			verificationStatus: true,
@@ -81,6 +84,7 @@ export async function listProjects(opts: ProjectFilters & { cursor?: string; lim
 							{ description: { contains: q, mode: "insensitive" } },
 							{ githubRepo: { contains: q, mode: "insensitive" } },
 							{ user: { name: { contains: q, mode: "insensitive" } } },
+							{ user: { displayName: { contains: q, mode: "insensitive" } } },
 							{ user: { email: { contains: q, mode: "insensitive" } } },
 							{ user: { slackId: { contains: q, mode: "insensitive" } } },
 						],
@@ -114,6 +118,7 @@ export async function listProjects(opts: ProjectFilters & { cursor?: string; lim
 				select: {
 					id: true,
 					name: true,
+					displayName: true,
 					email: true,
 					slackId: true,
 					submissionExtensionUntil: true,
@@ -133,6 +138,7 @@ export async function getUserDetail(userId: string) {
 		select: {
 			id: true,
 			name: true,
+			displayName: true,
 			email: true,
 			slackId: true,
 			slackDisplayName: true,
@@ -197,7 +203,7 @@ export async function listOrders(opts: { status?: ShopOrderStatus; cursor?: stri
 		// encrypted address/phone and `lastActorId` this API has no use for.
 		select: {
 			...shopOrderStaffSelect,
-			user: { select: { id: true, name: true, email: true } },
+			user: { select: { id: true, name: true, displayName: true, email: true } },
 			shopItem: { select: { id: true, name: true } },
 		},
 	})
@@ -288,7 +294,7 @@ export async function listFulfillmentOrders(filters: FulfillmentFilters, opts: {
 			placedAt: true,
 			shopItem: { select: { costUsd: true } },
 			user: {
-				select: { id: true, name: true, email: true, encryptedAddressCountry: true },
+				select: { id: true, name: true, displayName: true, email: true, encryptedAddressCountry: true },
 			},
 		},
 	})
@@ -304,7 +310,7 @@ export async function listFulfillmentOrders(filters: FulfillmentFilters, opts: {
 			fulfillmentStage: fulfillmentStageOf(order),
 			totalUsd: unit === null ? null : unit * order.quantity,
 			country: safeDecrypt(user.encryptedAddressCountry),
-			user: { id: user.id, name: user.name, email: user.email },
+			user: { id: user.id, name: displayName(user), email: user.email },
 		}
 	})
 	return { items, nextCursor: hasMore && last ? last.id : null }
@@ -355,7 +361,7 @@ export async function listPrinterAwards(limit = 100) {
 			deliveredAt: true,
 			revokedAt: true,
 			revokedReason: true,
-			user: { select: { id: true, name: true, email: true } },
+			user: { select: { id: true, name: true, displayName: true, email: true } },
 		},
 	})
 	return rows.map(({ encryptedAddress, ...award }) => ({
@@ -378,7 +384,7 @@ export async function listRecentPostsForModeration(limit = 25) {
 			hiddenReason: true,
 			publishedAt: true,
 			createdAt: true,
-			user: { select: { id: true, name: true, email: true } },
+			user: { select: { id: true, name: true, displayName: true, email: true } },
 			themeProject: { select: { id: true, title: true } },
 		},
 	})
@@ -400,7 +406,7 @@ export async function listRecentCommentsForModeration(limit = 25) {
 			hiddenAt: true,
 			hiddenReason: true,
 			createdAt: true,
-			user: { select: { id: true, name: true, email: true } },
+			user: { select: { id: true, name: true, displayName: true, email: true } },
 			post: { select: { id: true, caption: true } },
 		},
 	})
@@ -417,7 +423,7 @@ export async function listRecentPublicReels(limit = 100) {
 			platform: true,
 			email: true,
 			postedAt: true,
-			user: { select: { id: true, name: true } },
+			user: { select: { id: true, name: true, displayName: true } },
 			post: { select: { id: true, caption: true } },
 			themeProject: { select: { id: true, title: true } },
 		},

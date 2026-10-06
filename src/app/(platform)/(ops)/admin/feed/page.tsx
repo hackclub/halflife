@@ -3,6 +3,7 @@ import { ActionButton } from "@/app/components/forms/ActionButton"
 import { type ComposerProject, PostComposer } from "@/app/components/forms/PostComposer"
 import { Badge, EmptyState, Panel, Table } from "@/app/components/ui"
 import { getThemeDef } from "@/lib/config/program"
+import { displayName } from "@/lib/display-name"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { hasPermission, Permission } from "@/lib/permissions"
 import prisma from "@/lib/prisma"
@@ -70,7 +71,7 @@ export default async function AdminFeedPage() {
 						{posts.map((post) => (
 							<tr key={post.id}>
 								<td>
-									<Link href={`/admin/users/${post.user.id}`}>{post.user.name ?? post.user.email}</Link>
+									<Link href={`/admin/users/${post.user.id}`}>{displayName(post.user, post.user.email)}</Link>
 								</td>
 								<td>
 									{post.hiddenAt ? (
@@ -116,7 +117,7 @@ export default async function AdminFeedPage() {
 					<Table head={["Author", "Comment", "Posted", ""]}>
 						{comments.map((comment) => (
 							<tr key={comment.id}>
-								<td>{comment.user.name ?? comment.user.email}</td>
+								<td>{displayName(comment.user, comment.user.email)}</td>
 								<td>
 									{comment.hiddenAt ? <Badge tone="danger">hidden</Badge> : null}
 									<span className="hl-hint"> {preview(comment.body)}</span>
@@ -153,7 +154,7 @@ export default async function AdminFeedPage() {
 							<tr key={reel.id}>
 								<td>{reel.platform.toLowerCase()}</td>
 								<td>
-									<Link href={`/admin/users/${reel.user.id}`}>{reel.user.name ?? reel.email}</Link>
+									<Link href={`/admin/users/${reel.user.id}`}>{displayName(reel.user) ?? reel.email}</Link>
 								</td>
 								<td>
 									<a href={reel.url} target="_blank" rel="noreferrer" className="hl-hint">

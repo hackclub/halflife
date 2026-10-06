@@ -3,6 +3,7 @@ import { ExtensionForm } from "@/app/components/forms/ExtensionForm"
 import { Badge, EmptyState, PageHeader, Panel, statusLabel, statusTone, Table } from "@/app/components/ui"
 import { PhaseStatus, Theme } from "@/app/generated/prisma/enums"
 import { getThemeDef, THEMES } from "@/lib/config/program"
+import { displayName } from "@/lib/display-name"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { hasPermission, Permission } from "@/lib/permissions"
 import { listProjects, type ProjectFilters } from "@/lib/queries/admin"
@@ -159,7 +160,9 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 										) : null}
 									</td>
 									<td>
-										<Link href={`/admin/users/${project.user.id}`}>{project.user.name ?? project.user.email}</Link>
+										<Link href={`/admin/users/${project.user.id}`}>
+											{displayName(project.user, project.user.email)}
+										</Link>
 										<div className="hl-hint hl-mono">{project.user.slackId ?? project.user.email}</div>
 									</td>
 									<td>{getThemeDef(project.theme).label}</td>

@@ -87,16 +87,26 @@ export async function updateMessage(channel: string, ts: string, text: string, b
 	return callSlackApi("chat.update", { channel, ts, text, blocks })
 }
 
-/** Drops a reaction on a message, used to flag the original #half-life-help
- * question once its ticket is resolved. `already_reacted` is marked expected:
- * a ticket can be resolved from the tickets channel or the help thread, so a
- * second resolution finds the bot's own reaction already in place, which is
- * the outcome we wanted rather than a fault. `invalid_name` — the custom emoji
- * not existing in the workspace — is logged by the API layer since there's no
- * runtime fix for it; see `slack-app-manifest.yml` for the `reactions:write`
- * scope this needs. */
+/** Drops a reaction on a message: the pending one when a #half-life-help
+ * question opens its ticket, the resolved one when any of the three buttons
+ * closes it. `already_reacted` is marked expected: a ticket can be resolved
+ * from the tickets channel or the help thread, so a second resolution finds
+ * the bot's own reaction already in place, which is the outcome we wanted
+ * rather than a fault. `invalid_name` — the custom emoji not existing in the
+ * workspace — is logged by the API layer since there's no runtime fix for it;
+ * see `slack-app-manifest.yml` for the `reactions:write` scope this needs. */
 export async function addReaction(channel: string, timestamp: string, name: string) {
 	return callSlackApi("reactions.add", { channel, timestamp, name }, ["already_reacted"])
+}
+
+/** Takes a reaction back off a message, the other half of swapping a
+ * #half-life-help question from pending to resolved. `no_reaction` is marked
+ * expected for the mirror of `already_reacted` above: two people can resolve
+ * the same ticket from different places, or a Slack redelivery can rerun the
+ * handler, and whoever gets there second finds the emoji already gone — the
+ * outcome we wanted rather than a fault. Same `reactions:write` scope. */
+export async function removeReaction(channel: string, timestamp: string, name: string) {
+	return callSlackApi("reactions.remove", { channel, timestamp, name }, ["no_reaction"])
 }
 
 /** A bot token may delete only messages that bot posted, which is the whole

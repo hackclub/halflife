@@ -1,6 +1,7 @@
 import "server-only"
 import { Phase } from "@/app/generated/prisma/enums"
 import { getThemeDef } from "@/lib/config/program"
+import { displayName } from "@/lib/display-name"
 import { getHoursBreakdown } from "@/lib/hours"
 import prisma from "@/lib/prisma"
 import { publicUrlFor } from "@/lib/uploads/r2"
@@ -54,10 +55,10 @@ export async function getReviewQueue(opts: {
 						theme: true,
 						title: true,
 						tier: true,
-						user: { select: { id: true, name: true, email: true } },
+						user: { select: { id: true, name: true, displayName: true, email: true } },
 					},
 				},
-				claim: { include: { reviewer: { select: { id: true, name: true } } } },
+				claim: { include: { reviewer: { select: { id: true, name: true, displayName: true } } } },
 			},
 		}),
 		prisma.phaseSubmission.count({ where: { ...where, phase: Phase.DESIGN } }),
@@ -76,11 +77,11 @@ export async function getReviewQueue(opts: {
 			phase: row.phase,
 			themeLabel: getThemeDef(row.themeProject.theme).label,
 			projectTitle: row.themeProject.title,
-			participant: row.themeProject.user,
+			participant: { ...row.themeProject.user, name: displayName(row.themeProject.user) },
 			submittedAt: row.createdAt,
 			submittedInWeek: row.submittedInWeek,
 			onTime: row.onTime,
-			claimedBy: row.claim ? { id: row.claim.reviewer.id, name: row.claim.reviewer.name } : null,
+			claimedBy: row.claim ? { id: row.claim.reviewer.id, name: displayName(row.claim.reviewer) } : null,
 			claimExpiresAt: row.claim?.expiresAt ?? null,
 			claimLive: !!row.claim && row.claim.expiresAt.getTime() > now,
 			tier: row.themeProject.tier,
@@ -100,6 +101,7 @@ export async function getSubmissionDetail(submissionId: string, reviewerId?: str
 						select: {
 							id: true,
 							name: true,
+							displayName: true,
 							email: true,
 							slackId: true,
 							verificationStatus: true,
@@ -108,11 +110,11 @@ export async function getSubmissionDetail(submissionId: string, reviewerId?: str
 					},
 				},
 			},
-			claim: { include: { reviewer: { select: { id: true, name: true } } } },
+			claim: { include: { reviewer: { select: { id: true, name: true, displayName: true } } } },
 			dispute: true,
 			reviews: {
 				orderBy: { createdAt: "desc" },
-				include: { reviewer: { select: { id: true, name: true } } },
+				include: { reviewer: { select: { id: true, name: true, displayName: true } } },
 			},
 		},
 	})
@@ -141,7 +143,7 @@ export async function getSubmissionDetail(submissionId: string, reviewerId?: str
 			orderBy: { createdAt: "desc" },
 			take: 20,
 			include: {
-				reviewer: { select: { name: true } },
+				reviewer: { select: { name: true, displayName: true } },
 				submission: { select: { phase: true } },
 			},
 		}),
@@ -197,7 +199,7 @@ export async function getOpenDisputes(): Promise<OpenDispute[]> {
 							id: true,
 							title: true,
 							theme: true,
-							user: { select: { name: true, email: true } },
+							user: { select: { name: true, displayName: true, email: true } },
 						},
 					},
 				},
@@ -214,6 +216,6 @@ export async function getOpenDisputes(): Promise<OpenDispute[]> {
 		themeProjectId: d.submission.themeProject.id,
 		projectTitle: d.submission.themeProject.title.trim() || getThemeDef(d.submission.themeProject.theme).label,
 		themeLabel: getThemeDef(d.submission.themeProject.theme).label,
-		participant: d.submission.themeProject.user.name ?? d.submission.themeProject.user.email,
+		participant: displayName(d.submission.themeProject.user, d.submission.themeProject.user.email),
 	}))
 }

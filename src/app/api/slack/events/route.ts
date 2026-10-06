@@ -1,5 +1,6 @@
 import { after, NextResponse } from "next/server"
 import {
+	addReaction,
 	getBotUserId,
 	getPermalink,
 	inviteToChannel,
@@ -13,6 +14,7 @@ import {
 	FAQ_CARD_TITLE,
 	HELP_THREAD_REMINDERS,
 	MARK_HELPED_BUTTON,
+	PENDING_REACTION,
 	SELF_RESOLVE_ACTIONS_BLOCK_ID,
 	SELF_RESOLVE_BUTTON,
 	TICKET_ACTIONS_BLOCK_ID,
@@ -36,8 +38,10 @@ type SlackEvent = {
 }
 
 /** New top-level message in #half-life-help — post it to the private
- * tickets channel with a "Mark as helped" button, and reply in-thread with a
- * "I'm all set" button the ticket's own author can use to self-resolve.
+ * tickets channel with a "Mark as helped" button, reply in-thread with an
+ * "I'm all set" button the ticket's own author can use to self-resolve, and
+ * drop the pending reaction on the original so the channel shows at a glance
+ * that it's still waiting.
  * Thread replies and anything from a bot (including our own acks) are
  * conversation on an existing ticket, not a new one. */
 async function handleHelpMessage(event: SlackEvent) {
@@ -95,6 +99,17 @@ async function handleHelpMessage(event: SlackEvent) {
 			`[slack] ticket post to ${ticketsChannel} failed (${ticketMessage.error ?? "no message ts"}); no help-channel ack for ${ref.helpTs}`,
 		)
 		return
+	}
+
+	// The ticket is real, so the question now has an open state to show for it:
+	// a loading emoji on the original, which resolution swaps for the done one.
+	// Best-effort — the two buttons are what actually resolve the ticket, so a
+	// reaction that never lands just leaves the question unmarked rather than
+	// unresolvable.
+	try {
+		await addReaction(ref.helpChannel, ref.helpTs, PENDING_REACTION)
+	} catch (err) {
+		console.error(`[slack] failed to mark ${ref.helpTs} as pending:`, err)
 	}
 
 	// The mirror is up, so the ticket is real — remember it for future counts.

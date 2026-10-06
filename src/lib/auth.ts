@@ -209,6 +209,10 @@ export const auth = betterAuth({
 		additionalFields: {
 			slackId: { type: "string", required: false, input: false },
 			slackDisplayName: { type: "string", required: false, input: false },
+			// HCA's nickname, what the site shows — written server-side by
+			// syncHcaProfile, like the verification status below, because a
+			// provider's profile cannot set an `input: false` field.
+			displayName: { type: "string", required: false, input: false },
 			verificationStatus: { type: "string", required: false, input: false },
 			hackatimeUserId: { type: "string", required: false, input: false },
 			timezone: { type: "string", required: false, input: false },

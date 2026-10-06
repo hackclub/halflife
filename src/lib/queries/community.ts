@@ -1,6 +1,7 @@
 import "server-only"
 import { avatarUrl } from "@/lib/avatar"
 import { getThemeDef } from "@/lib/config/program"
+import { displayName } from "@/lib/display-name"
 import prisma from "@/lib/prisma"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
 import { streakAsOf } from "@/lib/streak"
@@ -73,6 +74,7 @@ export async function getJournalFeed(): Promise<JournalRow[]> {
 							select: {
 								id: true,
 								name: true,
+								displayName: true,
 								image: true,
 								slackId: true,
 								currentStreak: true,
@@ -92,7 +94,7 @@ export async function getJournalFeed(): Promise<JournalRow[]> {
 		const project = session.themeProject
 		return {
 			id: session.id,
-			author: project.user.name ?? "A maker",
+			author: displayName(project.user, "A maker"),
 			authorId: project.user.id,
 			authorImage: avatarUrl(project.user),
 			// Expired against today, so a run that ended weeks ago reads 0 rather

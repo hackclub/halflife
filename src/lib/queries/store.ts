@@ -19,6 +19,7 @@ import {
 	WARMUP_WEEK_ID,
 } from "@/lib/config/program"
 import { getBalances } from "@/lib/currency"
+import { displayName } from "@/lib/display-name"
 import { rollUpHours } from "@/lib/hours"
 import { getUserRoles, hasRole } from "@/lib/permissions"
 import prisma from "@/lib/prisma"
@@ -170,6 +171,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 				where: { id: userId },
 				select: {
 					name: true,
+					displayName: true,
 					image: true,
 					slackId: true,
 					hardwareExperience: true,
@@ -419,7 +421,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 	return {
 		viewer: {
 			id: userId,
-			name: user.name ?? "You",
+			name: displayName(user, "You"),
 			image: avatarUrl(user),
 			isAdmin: hasRole(roles, Role.ADMIN),
 		},

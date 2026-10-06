@@ -6,6 +6,7 @@ import { GrantForm } from "@/app/components/forms/GrantForm"
 import { RoleEditor } from "@/app/components/forms/RoleEditor"
 import { Badge, EmptyState, PageHeader, Panel, Stat, statusLabel, statusTone, Table } from "@/app/components/ui"
 import { CREDIT_NAME_PLURAL, getThemeDef } from "@/lib/config/program"
+import { displayName } from "@/lib/display-name"
 import { isHcbConfigured } from "@/lib/hcb"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { hasPermission, Permission } from "@/lib/permissions"
@@ -32,10 +33,14 @@ export default async function AdminUserPage({ params }: Props) {
 	return (
 		<div className="hl-stack">
 			<PageHeader
-				title={user.name ?? user.email}
+				title={displayName(user, user.email)}
 				subtitle={user.email}
 				actions={user.fraudFlagged ? <Badge tone="danger">flagged</Badge> : null}
 			/>
+
+			{/* The nickname is what every surface shows; this is the one place staff
+				need the whole name, because the payout and shipping rows split it. */}
+			{user.name && user.name !== displayName(user) ? <p className="hl-hint">Full name on file: {user.name}</p> : null}
 
 			<div className="hl-row">
 				<Stat label={`${CREDIT_NAME_PLURAL} to spend`} value={balances.spendable} />

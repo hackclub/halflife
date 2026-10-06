@@ -3,6 +3,7 @@ import { PostStatus, Theme } from "@/app/generated/prisma/enums"
 import { avatarUrl } from "@/lib/avatar"
 import { getThemeDef } from "@/lib/config/program"
 import { WEEK_META } from "@/lib/curriculum"
+import { displayName } from "@/lib/display-name"
 import { type FeedItem, getCreatorReels } from "@/lib/feed"
 import prisma from "@/lib/prisma"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
@@ -66,6 +67,7 @@ export async function getProfile(userId: string, viewerId: string): Promise<Prof
 			select: {
 				id: true,
 				name: true,
+				displayName: true,
 				image: true,
 				slackId: true,
 				currentStreak: true,
@@ -145,7 +147,7 @@ export async function getProfile(userId: string, viewerId: string): Promise<Prof
 
 	return {
 		id: user.id,
-		name: user.name ?? "A maker",
+		name: displayName(user, "A maker"),
 		image: avatarUrl(user),
 		// Expired against today, so a run that ended weeks ago reads 0 rather
 		// than the number it reached before it broke.

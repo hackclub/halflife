@@ -117,6 +117,10 @@ that:
   that channel can click it), and replies in-thread in `#half-life-help` with
   an **i've got it, thanks** button that only the ticket's own author can
   click
+- reacts to that message with `:safari-loading:` while the ticket is open, and
+  swaps it for `:white-checkbox-checkbox-checkbox:` — the workspace's custom
+  "done" emoji — the moment it's resolved, so the channel reads at a glance
+  which questions are still waiting
 
 Either button resolves the ticket: the bot **deletes its own message** in the
 tickets channel, so a resolved ticket leaves the queue instead of lingering

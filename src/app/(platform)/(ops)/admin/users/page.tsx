@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
+import { displayName } from "@/lib/display-name"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import { listUsers } from "@/lib/queries/admin"
@@ -41,7 +42,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
 						{items.map((user) => (
 							<tr key={user.id}>
 								<td>
-									<Link href={`/admin/users/${user.id}`}>{user.name ?? "—"}</Link>
+									<Link href={`/admin/users/${user.id}`}>{displayName(user) ?? "—"}</Link>
 									{user.fraudFlagged ? (
 										<div>
 											<Badge tone="danger">flagged</Badge>
