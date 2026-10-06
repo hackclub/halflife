@@ -14,6 +14,7 @@ import { getBalances } from "@/lib/currency"
 import { displayName } from "@/lib/display-name"
 import { safeDecrypt } from "@/lib/pii"
 import { getPrinterQualification } from "@/lib/printer"
+import { REGIONS, type RegionId, countryOfTimezone, regionOfTimezone } from "@/lib/regions"
 import prisma from "@/lib/prisma"
 import { shopOrderStaffSelect } from "@/lib/shop"
 
@@ -676,4 +677,159 @@ export async function countContentReports(): Promise<Record<ReportStatus, number
 	const counts: Record<ReportStatus, number> = { OPEN: 0, RESOLVED: 0, DISMISSED: 0 }
 	for (const group of groups) counts[group.status] = group._count._all
 	return counts
+}
+
+export interface AreaStat {
+	id: RegionId
+	label: string
+	/** Accounts whose timezone maps here. */
+	users: number
+	/**
+	 * Hours logged by those accounts: journal sessions (reviewer-adjusted where
+	 * set) plus linked Hackatime time. A session already counted through a
+	 * Hackatime link contributes nothing on its own, exactly as the ledger
+	 * reads it.
+	 */
+	hours: number
+}
+
+export interface CountryStat {
+	country: string
+	/** Accounts whose timezone maps here. */
+	users: number
+	/** Hours logged by those accounts, as above. */
+	hours: number
+}
+
+const round1 = (n: number) => Math.round(n * 10) / 10
+
+/**
+ * Users and hours per region, for the overview's geography section.
+ *
+ * Regions come from each account's timezone — the only per-user geography
+ * with real coverage (see lib/regions). Hours are attributed to the
+ * author's region, never to a project's.
+ */
+async function loadRegionInputs() {
+	const [users, sessions, links] = await Promise.all([
+		prisma.user.findMany({ select: { id: true, timezone: true } }),
+		prisma.workSession.findMany({
+			where: { deletedAt: null, themeProject: { deletedAt: null } },
+			select: {
+				hoursClaimed: true,
+				hoursApproved: true,
+				hoursSource: true,
+				themeProject: { select: { userId: true } },
+			},
+		}),
+		prisma.hackatimeLink.findMany({
+			where: { themeProject: { deletedAt: null } },
+			select: { hoursApproved: true, cachedSeconds: true, themeProject: { select: { userId: true } } },
+		}),
+	])
+	return { users, sessions, links }
+}
+
+type RegionInputs = Awaited<ReturnType<typeof loadRegionInputs>>
+
+function aggregateByKey(inputs: RegionInputs, keyOf: (timezone: string | null) => string) {
+	const userKey = new Map(inputs.users.map((u) => [u.id, keyOf(u.timezone)]))
+	const totals = new Map<string, { users: number; hours: number }>()
+	const row = (key: string) => {
+		let r = totals.get(key)
+		if (!r) {
+			r = { users: 0, hours: 0 }
+			totals.set(key, r)
+		}
+		return r
+	}
+
+	for (const u of inputs.users) row(userKey.get(u.id) ?? "Unknown").users += 1
+	for (const s of inputs.sessions) {
+		// A tracked entry's hours arrive through its link, counted below — the
+		// journal row itself contributes nothing, exactly as the ledger reads it.
+		if (s.hoursSource === HoursSource.HACKATIME_TRACKED) continue
+		row(userKey.get(s.themeProject.userId) ?? "Unknown").hours += s.hoursApproved ?? s.hoursClaimed
+	}
+	for (const l of inputs.links) {
+		row(userKey.get(l.themeProject.userId) ?? "Unknown").hours +=
+			(l.hoursApproved ?? (l.cachedSeconds ?? 0) / 3600)
+	}
+	return totals
+}
+
+// Unknown always trails, whatever its size.
+const rankLast = (key: string, users: number) => (key === "Unknown" ? -1 : users)
+
+/** Users and hours per continent/area bucket. Ranked by users. */
+export async function getAreaStats(): Promise<AreaStat[]> {
+	const totals = aggregateByKey(await loadRegionInputs(), (tz) => regionOfTimezone(tz))
+	return REGIONS.map(({ id, label }) => ({
+		id,
+		label,
+		users: totals.get(id)?.users ?? 0,
+		hours: round1(totals.get(id)?.hours ?? 0),
+	})).sort((a, b) => rankLast(b.label, b.users) - rankLast(a.label, a.users))
+}
+
+/** Users and hours per country, from each account's timezone. Ranked by users. */
+export async function getCountryStats(): Promise<CountryStat[]> {
+	const totals = aggregateByKey(await loadRegionInputs(), countryOfTimezone)
+	return [...totals]
+		.filter(([, t]) => t.users > 0 || t.hours > 0)
+		.map(([country, t]) => ({ country, users: t.users, hours: round1(t.hours) }))
+		.sort((a, b) => rankLast(b.country, b.users) - rankLast(a.country, a.users))
+}
+
+export interface DayActivity {
+	/** YYYY-MM-DD in the program timezone, as the journal stamped it. */
+	day: string
+	devlogs: number
+	/** Journal hours that day, reviewer-adjusted where set. */
+	hours: number
+}
+
+const DAY = /^\d{4}-\d{2}-\d{2}$/
+
+/**
+ * Devlogs written and hours logged per day, gap-filled from the first active
+ * day to the last so the strip chart reads continuously. Days are
+ * program-timezone effective dates — the day the work counted for, not the
+ * instant it was typed.
+ */
+export async function getDailyActivity(): Promise<DayActivity[]> {
+	const sessions = await prisma.workSession.findMany({
+		where: { deletedAt: null, themeProject: { deletedAt: null } },
+		select: { effectiveDate: true, hoursClaimed: true, hoursApproved: true, hoursSource: true },
+	})
+
+	const byDay = new Map<string, { devlogs: number; hours: number }>()
+	for (const s of sessions) {
+		const day = s.effectiveDate
+		if (!day || !DAY.test(day)) continue
+		let row = byDay.get(day)
+		if (!row) {
+			row = { devlogs: 0, hours: 0 }
+			byDay.set(day, row)
+		}
+		row.devlogs += 1
+		if (s.hoursSource !== HoursSource.HACKATIME_TRACKED) {
+			row.hours += s.hoursApproved ?? s.hoursClaimed
+		}
+	}
+
+	const days = [...byDay.keys()].sort()
+	if (days.length === 0) return []
+	const out: DayActivity[] = []
+	const [first, last] = [days[0] as string, days[days.length - 1] as string]
+	for (let at = Date.parse(`${first}T00:00:00Z`); at <= Date.parse(`${last}T00:00:00Z`); at += 86_400_000) {
+		const day = new Date(at).toISOString().slice(0, 10)
+		const row = byDay.get(day)
+		out.push({
+			day,
+			devlogs: row?.devlogs ?? 0,
+			hours: Math.round((row?.hours ?? 0) * 10) / 10,
+		})
+	}
+	return out
 }

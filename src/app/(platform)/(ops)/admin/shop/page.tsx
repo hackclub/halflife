@@ -86,6 +86,7 @@ export default async function AdminShopPage() {
 
 			<Panel title="Import from CSV">
 				<ShopItemImport />
+			</Panel>
 			<Panel title="Regions">
 				<p className="hl-hint">
 					Sales regions staff can price items for separately. Participants pick theirs on the shop page; an

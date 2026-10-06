@@ -3,7 +3,15 @@ import { Fragment, type CSSProperties } from "react"
 import { EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
 import { requireAnyPermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
-import { type FlowStep, getAdminCounters, getUserFlowFunnel } from "@/lib/queries/admin"
+import {
+	type DayActivity,
+	type FlowStep,
+	getAdminCounters,
+	getAreaStats,
+	getCountryStats,
+	getDailyActivity,
+	getUserFlowFunnel,
+} from "@/lib/queries/admin"
 import { getLatestSyncRuns } from "@/lib/sync-run-log"
 
 export const dynamic = "force-dynamic"
@@ -17,7 +25,7 @@ export default async function AdminOverviewPage() {
 		Permission.MANAGE_PROGRAM,
 	)
 
-	const [counters, syncs, flow] = await Promise.all([
+	const [counters, syncs, flow, areas, countries, activity] = await Promise.all([
 		getAdminCounters(),
 		getLatestSyncRuns([
 			"hackatime",
@@ -30,6 +38,9 @@ export default async function AdminOverviewPage() {
 			"help_ticket_summary",
 		]),
 		getUserFlowFunnel(),
+		getAreaStats(),
+		getCountryStats(),
+		getDailyActivity(),
 	])
 
 	return (
@@ -52,6 +63,30 @@ export default async function AdminOverviewPage() {
 				}
 			>
 				<FlowFunnel steps={flow} />
+			</Panel>
+
+			<Panel title="Users & hours by continent">
+				<BreakdownBars rows={areas} />
+				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+					Continents group each account&apos;s timezone; Unknown has none on file. Hours count
+					journal devlogs (reviewer-adjusted where set) plus linked Hackatime time, attributed to
+					the author&apos;s region.
+				</p>
+			</Panel>
+
+			<Panel title="Users & hours by country">
+				<BreakdownBars rows={countries.map((c) => ({ label: c.country, users: c.users, hours: c.hours }))} />
+				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+					Countries map each account&apos;s timezone; zones with nothing to place read as Unknown.
+				</p>
+			</Panel>
+
+			<Panel title="Activity over time">
+				<ActivityStrip days={activity} />
+				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+					Days are program-timezone effective dates — the day the work counted for. Hours count
+					journal devlogs only.
+				</p>
 			</Panel>
 
 			<Panel
@@ -211,6 +246,180 @@ function FlowFunnel({ steps }: { steps: FlowStep[] }) {
 						</Fragment>
 					)
 				})}
+			</div>
+		</div>
+	)
+}
+
+/**
+ * Users and hours as horizontal bars, one row per bucket. Shared by the
+ * continent and country panels — both hand it rows shaped the same way.
+ */
+function BreakdownBars({ rows }: { rows: { label: string; users: number; hours: number }[] }) {
+	const totalUsers = rows.reduce((n, r) => n + r.users, 0)
+	if (totalUsers === 0) return <EmptyState>No users yet.</EmptyState>
+	const maxUsers = Math.max(...rows.map((r) => r.users))
+	const fmtInt = (n: number) => n.toLocaleString("en-US")
+	const fmtHours = (h: number) => `${h.toLocaleString("en-US", { maximumFractionDigits: 1 })}h`
+	return (
+		<div style={{ display: "grid", gap: "0.55rem" }}>
+			{rows.map((r) => (
+				<div
+					key={r.label}
+					style={{
+						display: "grid",
+						gridTemplateColumns: "10rem minmax(0,1fr) auto",
+						gap: "0.75rem",
+						alignItems: "center",
+					}}
+				>
+					<div style={{ fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+						{r.label}
+					</div>
+					<div
+						aria-hidden="true"
+						style={{
+							height: "0.65rem",
+							borderRadius: "999px",
+							background: "color-mix(in srgb, var(--color-accent) 18%, transparent)",
+						}}
+					>
+						<div
+							style={{
+								width: `${maxUsers > 0 ? (r.users / maxUsers) * 100 : 0}%`,
+								height: "100%",
+								borderRadius: "999px",
+								background: "var(--color-accent)",
+							}}
+						/>
+					</div>
+					<div style={{ fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
+						{fmtInt(r.users)} · {fmtHours(r.hours)}
+					</div>
+				</div>
+			))}
+		</div>
+	)
+}
+
+/**
+ * Hours logged and devlogs written per day, as two strips sharing one day
+ * axis. Days are program-timezone effective dates, gap-filled first to last
+ * so the axis reads continuously; the strip scrolls sideways once the season
+ * outgrows the panel.
+ */
+function ActivityStrip({ days }: { days: DayActivity[] }) {
+	if (days.length === 0) return <EmptyState>No devlogs yet.</EmptyState>
+	const maxHours = Math.max(1, ...days.map((d) => d.hours))
+	const maxDevlogs = Math.max(1, ...days.map((d) => d.devlogs))
+	const totalHours = days.reduce((n, d) => n + d.hours, 0)
+	const totalDevlogs = days.reduce((n, d) => n + d.devlogs, 0)
+	const labelEvery = Math.max(1, Math.ceil(days.length / 14))
+	const columns = `repeat(${days.length}, minmax(5px, 1fr))`
+	const fmtInt = (n: number) => n.toLocaleString("en-US")
+	const fmtHours = (h: number) => `${h.toLocaleString("en-US", { maximumFractionDigits: 1 })}h`
+	return (
+		<div>
+			<p className="hl-hint" style={{ fontSize: "0.78rem", marginBottom: "0.75rem" }}>
+				<span
+					aria-hidden="true"
+					style={{
+						display: "inline-block",
+						width: "0.7rem",
+						height: "0.7rem",
+						borderRadius: "2px",
+						background: "var(--color-accent)",
+						marginRight: "0.35rem",
+						verticalAlign: "baseline",
+					}}
+				/>
+				hours ({fmtHours(totalHours)} total)
+				<span
+					aria-hidden="true"
+					style={{
+						display: "inline-block",
+						width: "0.7rem",
+						height: "0.7rem",
+						borderRadius: "2px",
+						background: "var(--color-ink-muted)",
+						marginRight: "0.35rem",
+						marginLeft: "1rem",
+						verticalAlign: "baseline",
+					}}
+				/>
+				devlogs ({fmtInt(totalDevlogs)} total)
+			</p>
+			<div style={{ overflowX: "auto" }}>
+				<div style={{ minWidth: `${days.length * 9}px` }}>
+					<div
+						role="img"
+						aria-label={`Hours logged per day from ${days[0]?.day} to ${days[days.length - 1]?.day}`}
+						style={{
+							display: "grid",
+							gridTemplateColumns: columns,
+							gap: "2px",
+							alignItems: "end",
+							height: "7rem",
+						}}
+					>
+						{days.map((d) => (
+							<div
+								key={d.day}
+								aria-hidden="true"
+								title={`${d.day}: ${fmtHours(d.hours)} logged`}
+								style={{
+									height: `${(d.hours / maxHours) * 100}%`,
+									minHeight: d.hours > 0 ? "2px" : 0,
+									background: "var(--color-accent)",
+									borderRadius: "2px",
+								}}
+							/>
+						))}
+					</div>
+					<div
+						role="img"
+						aria-label={`Devlogs written per day from ${days[0]?.day} to ${days[days.length - 1]?.day}`}
+						style={{
+							display: "grid",
+							gridTemplateColumns: columns,
+							gap: "2px",
+							alignItems: "end",
+							height: "2.5rem",
+							marginTop: "4px",
+						}}
+					>
+						{days.map((d) => (
+							<div
+								key={d.day}
+								aria-hidden="true"
+								title={`${d.day}: ${fmtInt(d.devlogs)} devlogs`}
+								style={{
+									height: `${(d.devlogs / maxDevlogs) * 100}%`,
+									minHeight: d.devlogs > 0 ? "2px" : 0,
+									background: "var(--color-ink-muted)",
+									borderRadius: "2px",
+								}}
+							/>
+						))}
+					</div>
+					<div
+						aria-hidden="true"
+						style={{
+							display: "grid",
+							gridTemplateColumns: columns,
+							gap: "2px",
+							marginTop: "4px",
+							fontSize: "0.65rem",
+							color: "var(--color-ink-muted)",
+						}}
+					>
+						{days.map((d, i) => (
+							<div key={d.day} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+								{i % labelEvery === 0 ? d.day.slice(5) : ""}
+							</div>
+						))}
+					</div>
+				</div>
 			</div>
 		</div>
 	)
