@@ -114,7 +114,7 @@ export const DOCS: DocArticle[] = [
 			{
 				heading: "When an entry is final",
 				paragraphs: [
-					"You can edit an entry while its week is still open. Once you submit the week, its entries are what the reviewer is reading, so they cannot be edited until you unsubmit; and once a reviewer has set the hours on an entry, that entry is final.",
+					"You can edit an entry while its week is still open — its words, its hours, and which timelapses back it. Once you submit the week, its entries are what the reviewer is reading, so they cannot be edited until you unsubmit; and once a reviewer has set the hours on an entry, that entry is final.",
 				],
 			},
 		],
