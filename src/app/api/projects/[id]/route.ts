@@ -195,6 +195,7 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 	const deleted = await prisma.$transaction(async (tx) => {
 		// Conditional on the statuses just checked, so a submit that lands between
 		// the check and here is not deleted out from under its reviewer.
+		const now = new Date()
 		const { count } = await tx.themeProject.updateMany({
 			where: {
 				id,
@@ -202,10 +203,19 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 				designStatus: { notIn: [PhaseStatus.in_review, PhaseStatus.approved] },
 				buildStatus: { notIn: [PhaseStatus.in_review, PhaseStatus.approved] },
 			},
-			data: { deletedAt: new Date(), deletedById: gate.user.id },
+			data: { deletedAt: now, deletedById: gate.user.id },
 		})
-		// The streak only counts days journalled on live projects.
-		if (count > 0) await recomputeStreak(tx, gate.user.id)
+		if (count > 0) {
+			// Its sessions go with it, so their timelapses are free to back a new
+			// project's entries (the taken-check ignores deleted sessions) and no
+			// query that only filters sessions on `deletedAt` keeps counting them.
+			await tx.workSession.updateMany({
+				where: { themeProjectId: id, deletedAt: null },
+				data: { deletedAt: now },
+			})
+			// The streak only counts days journalled on live projects.
+			await recomputeStreak(tx, gate.user.id)
+		}
 		return count > 0
 	})
 	if (!deleted) return fail("PHASE_LOCKED", "This project just changed — reload and try again")
