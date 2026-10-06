@@ -78,6 +78,13 @@ function fmtH(h: number) {
 	return `${to2(h)}h`
 }
 
+/**
+ * One devlog covers a single sitting. The server holds the same line
+ * (`sessionCreateSchema` caps `hoursClaimed` here), so the sheet refuses above
+ * it rather than failing opaquely on save.
+ */
+const MAX_SESSION_HOURS = 24
+
 interface JournalDraft {
 	tab: "journal" | "timelapse"
 	body: string
@@ -362,6 +369,14 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			if (!clipsTouchedRef.current) {
 				setPicked(seed.picked)
 				setPinned(seed.pinned)
+				// The saved figure was logged under the old arithmetic, so restate
+				// the box as the part the timelapses do not cover: the total is
+				// unchanged unless the maker edits it.
+				const seedLapseHours = Math.round((seed.picked.reduce((n, t) => n + t.durationSeconds, 0) / 3600) * 100) / 100
+				if (seedLapseHours > 0) {
+					const baseHours = to2(existing.minutes / 60)
+					setHoursText(String(Math.max(0, Math.round((baseHours - seedLapseHours) * 100) / 100)))
+				}
 			}
 		})()
 		return () => {
@@ -421,16 +436,19 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	// are counted out of the entry itself, so every picture sits in the sentence
 	// that explains it instead of in a tray underneath.
 	const typed = Math.max(0, Number(hoursText) || 0)
-	// Lapse knows how long a recorded session was, so with a timelapse picked
-	// and nothing typed, that is the claim — the maker is not asked to retype a
-	// number Lapse already has. Typed hours still win when given.
+	// The hours box declares what the timelapses do not cover, so the claim is
+	// the two added together: 2 typed hours on top of a 5-hour recording logs
+	// 7. Leave the box empty and the recording sets the claim on its own — the
+	// maker is never asked to retype a number Lapse already has.
 	const coveredSeconds = picked.reduce((sum, t) => sum + t.durationSeconds, 0)
-	const fromLapse = typed <= 0 && picked.length > 0 && coveredSeconds > 0
-	const claimed = fromLapse ? Math.round((coveredSeconds / 3600) * 100) / 100 : typed
+	const lapseHours = Math.round((coveredSeconds / 3600) * 100) / 100
+	const claimed = typed + lapseHours
 	// At least a minute once there is a claim, so a short recording is not
 	// rounded down to nothing.
 	const sessionMinutes = claimed > 0 ? Math.max(1, Math.round(claimed * 60)) : 0
-	const needPhotos = photosRequired(claimed)
+	// Screenshots back the written entry, so they follow the typed hours: 2
+	// additional hours need two screenshots, however long the timelapses run.
+	const needPhotos = photosRequired(typed)
 	const shots = countImages(body)
 	// Words only: the images are counted above, not twice.
 	const written = proseLength(body)
@@ -444,7 +462,8 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const journalled = longEnough && enoughPhotos
 	const attachedCount = picked.length + pinned.length + legacyKept.length
 	const recorded = attachedCount > 0
-	const ok = claimed > 0 && (journalled || recorded)
+	const overCap = claimed > MAX_SESSION_HOURS
+	const ok = claimed > 0 && !overCap && (journalled || recorded)
 
 	// One thing at a time — a list of four faults reads as a wall, and only the
 	// first one is actionable anyway. Once the hours are in, the entry's next
@@ -452,11 +471,13 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	// write 200 characters they could skip with a timelapse.
 	const orLapse = " You can also attach Lapse timelapses on the Timelapse tab — they back the same entry."
 	const missing = !ok
-		? claimed <= 0
-			? "Add the hours you spent on this session, or pick a Lapse timelapse."
-			: !longEnough
-				? `${200 - written} more characters in your entry, not counting images.${orLapse}`
-				: `${needPhotos - shots} more ${needPhotos - shots === 1 ? "image" : "images"} in your entry for ${fmtH(claimed)}.${orLapse}`
+		? overCap
+			? `A single devlog covers at most ${MAX_SESSION_HOURS} hours — split longer work across sessions.`
+			: claimed <= 0
+				? "Add the hours you spent on this session, or pick a Lapse timelapse."
+				: !longEnough
+					? `${200 - written} more characters in your entry, not counting images.${orLapse}`
+					: `${needPhotos - shots} more ${needPhotos - shots === 1 ? "image" : "images"} in your entry for ${fmtH(typed)}.${orLapse}`
 		: null
 
 	const hours = hoursOf(week)
@@ -738,16 +759,32 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					)}
 
 					<div className="mb-4 max-w-[220px]">
-						<Field label="Hours this session" hint="(9.5 is 9 and a half hours)">
+						<Field
+							label={picked.length > 0 ? "Additional hours" : "Hours this session"}
+							hint={
+								picked.length > 0
+									? "On top of your timelapses — 0 if the recording covers it all."
+									: "(9.5 is 9 and a half hours)"
+							}
+						>
 							<input
 								value={hoursText}
 								onChange={(e) => setHoursText(e.target.value.replace(/[^\d.]/g, ""))}
 								inputMode="decimal"
 								placeholder="0"
 								aria-label="Hours spent on this session"
+								aria-invalid={overCap || undefined}
 								className={cx(borderedInputClass, "tabular-nums")}
 							/>
 						</Field>
+						{/* The claim as the server will log it: what was typed plus what
+						    the timelapses recorded. */}
+						{lapseHours > 0 && (
+							<p className="hand mt-1.5 text-[0.76rem] tabular-nums text-navy-soft" role="status">
+								{fmtH(lapseHours)} from timelapses{typed > 0 ? ` + ${fmtH(typed)} declared` : ""} = {fmtH(claimed)}{" "}
+								logged
+							</p>
+						)}
 					</div>
 
 					<div className="mb-3 flex flex-wrap items-center gap-2.5">
@@ -959,7 +996,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						{picked.length === 0
 							? " "
 							: `${picked.length === 1 ? "1 timelapse" : `${picked.length} timelapses`} picked · ${fmtDuration(coveredSeconds)} recorded${
-									fromLapse ? `, logged as ${fmtH(claimed)}` : claimed > 0 ? ` for ${fmtH(claimed)} claimed` : ""
+									claimed > 0 ? `, logged as ${fmtH(claimed)}` : ""
 								}`}
 					</p>
 				</div>
