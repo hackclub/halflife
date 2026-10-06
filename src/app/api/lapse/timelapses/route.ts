@@ -12,7 +12,8 @@ export const dynamic = "force-dynamic"
  * Each carries `attached` — whether a session already claims it — because one
  * recording backs one session. Otherwise the same two hours of footage could
  * be offered as proof for two entries. The session route refuses it too; this
- * is only so the picker can say so before anyone tries.
+ * is only so the picker can say so before anyone tries. `forSession` names the
+ * entry being edited, whose own clips read as free.
  */
 export const GET = withRoute(async (req: NextRequest) => {
 	const gate = await requireSession()
@@ -21,11 +22,28 @@ export const GET = withRoute(async (req: NextRequest) => {
 	const cursor = req.nextUrl.searchParams.get("cursor") ?? undefined
 	const page = await listMyTimelapses(gate.user.id, cursor)
 
+	// Editing an entry: its own clips read as unattached, so taking one off
+	// and putting it back on is picking, not a refusal. Anything else's stays
+	// claimed. The session has to be theirs, or the exclusion is ignored.
+	let excludeSession: string | null = null
+	const forSession = req.nextUrl.searchParams.get("forSession") ?? undefined
+	if (forSession) {
+		const own = await prisma.workSession.findFirst({
+			where: { id: forSession, deletedAt: null, themeProject: { userId: gate.user.id, deletedAt: null } },
+			select: { id: true },
+		})
+		if (own) excludeSession = own.id
+	}
+
 	const used = await prisma.sessionTimelapse.findMany({
 		where: {
 			provider: "lapse",
 			externalId: { in: page.timelapses.map((t) => t.id) },
-			workSession: { deletedAt: null, themeProject: { deletedAt: null } },
+			workSession: {
+				deletedAt: null,
+				themeProject: { deletedAt: null },
+				...(excludeSession ? { id: { not: excludeSession } } : {}),
+			},
 		},
 		select: { externalId: true },
 	})

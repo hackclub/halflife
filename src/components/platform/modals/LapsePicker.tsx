@@ -32,8 +32,11 @@ export function fmtDuration(seconds: number) {
 	return m % 60 ? `${h}h ${m % 60}m` : `${h}h`
 }
 
-async function fetchPage(cursor?: string) {
-	const query = new URLSearchParams(cursor ? { cursor } : {})
+async function fetchPage(cursor?: string, forSession?: string) {
+	const query = new URLSearchParams({
+		...(cursor ? { cursor } : {}),
+		...(forSession ? { forSession } : {}),
+	})
 	const res = await fetch(`/api/lapse/timelapses?${query}`, { cache: "no-store" })
 	const body = await res.json().catch(() => null)
 	if (!res.ok) {
@@ -57,11 +60,17 @@ export function LapsePicker({
 	picked,
 	onToggle,
 	onSignIn,
+	forSession,
 }: {
 	picked: LapseTimelapse[]
 	onToggle: (t: LapseTimelapse) => void
 	/** Leaves the page for Lapse; the caller stashes the draft first. */
 	onSignIn: () => void | Promise<void>
+	/**
+	 * The entry being edited, so its own clips read as free: taking one off
+	 * and putting it back on stays pickable instead of reading as claimed.
+	 */
+	forSession?: string
 }) {
 	const [load, setLoad] = useState<Load>({ state: "loading" })
 	const [more, setMore] = useState(false)
@@ -71,13 +80,13 @@ export function LapsePicker({
 	const refresh = useCallback(async () => {
 		setLoad({ state: "loading" })
 		try {
-			const page = await fetchPage()
+			const page = await fetchPage(undefined, forSession)
 			if ("unlinked" in page) setLoad({ state: "unlinked" })
 			else setLoad({ state: "ready", items: page.timelapses, nextCursor: page.nextCursor })
 		} catch (err) {
 			setLoad({ state: "error", message: (err as Error).message })
 		}
-	}, [])
+	}, [forSession])
 
 	useEffect(() => {
 		// eslint-disable-next-line react-hooks/set-state-in-effect -- fetching on mount
@@ -88,7 +97,7 @@ export function LapsePicker({
 		if (load.state !== "ready" || !load.nextCursor) return
 		setMore(true)
 		try {
-			const page = await fetchPage(load.nextCursor)
+			const page = await fetchPage(load.nextCursor, forSession)
 			if ("unlinked" in page) setLoad({ state: "unlinked" })
 			else
 				setLoad({
@@ -204,14 +213,14 @@ export function LapsePicker({
 									? "still processing on Lapse"
 									: null
 						return (
-							<li key={t.id}>
+							<li key={t.id} className="flex flex-col">
 								<button
 									type="button"
 									onClick={() => onToggle(t)}
 									disabled={blocked}
 									aria-pressed={selected}
 									className={cx(
-										"sketch group flex w-full items-center gap-3 rounded-2xl p-2.5 text-left transition-[background-color,transform] duration-150",
+										"sketch group flex w-full flex-1 items-center gap-3 rounded-2xl p-2.5 text-left transition-[background-color,transform] duration-150",
 										selected ? "bg-violet-pale" : "bg-white hover:bg-cream",
 										blocked ? "cursor-not-allowed opacity-60" : "active:translate-y-px",
 									)}
