@@ -213,14 +213,14 @@ export function LapsePicker({
 									? "still processing on Lapse"
 									: null
 						return (
-							<li key={t.id}>
+							<li key={t.id} className="flex flex-col">
 								<button
 									type="button"
 									onClick={() => onToggle(t)}
 									disabled={blocked}
 									aria-pressed={selected}
 									className={cx(
-										"sketch group flex w-full items-center gap-3 rounded-2xl p-2.5 text-left transition-[background-color,transform] duration-150",
+										"sketch group flex w-full flex-1 items-center gap-3 rounded-2xl p-2.5 text-left transition-[background-color,transform] duration-150",
 										selected ? "bg-violet-pale" : "bg-white hover:bg-cream",
 										blocked ? "cursor-not-allowed opacity-60" : "active:translate-y-px",
 									)}
