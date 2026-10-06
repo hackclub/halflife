@@ -239,8 +239,7 @@ export function ShopGrid({
 			</ul>
 
 			<p className="hand mt-8 text-center text-[0.86rem] text-navy-soft">
-				you have <span className="font-bold text-orange-ink tabular-nums">{coins}</span> coins. keep building past your
-				tier to earn more.
+				you have <span className="font-bold text-orange-ink tabular-nums">{coins}</span> coins.
 			</p>
 		</>
 	)

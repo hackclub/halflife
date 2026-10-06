@@ -175,7 +175,7 @@ function Body({ item, allowReport }: { item: TimelineItem; allowReport: boolean 
 		return (
 			<p className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
 				<span className="text-[0.95rem] font-extrabold text-navy">
-					Handed in the {PHASE[item.phase]} week for review
+					Submitted the {PHASE[item.phase]} week for review
 				</span>
 				<When at={item.at} />
 			</p>

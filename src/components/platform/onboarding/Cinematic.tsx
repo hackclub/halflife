@@ -39,14 +39,15 @@ import { useStore } from "@/lib/store"
 const GOAL = printerById("ender-3-v3-se")
 
 /**
- * The first thing anyone sees: a single unbroken fall down the trail.
+ * The first thing anyone sees: one fall down the trail, in one direction.
  *
  * The claim Half Life makes is "ten weeks", so the intro spends its time
- * proving the distance rather than describing it — the camera drops through
- * every week banner in order, a counter on the right ticks 1 to 10, and it
- * decelerates onto the machine sitting at the bottom of the run. The diorama
- * is the real home page at the real proportions, so when the spotlight lands on
- * the yellow checkpoint a moment later the viewer is already oriented.
+ * proving the distance rather than describing it. The title sits at the head
+ * of the real home page; the camera lets go of it and drops through every week
+ * banner in order — gathering speed, never reversing — and lands on the
+ * machine at the bottom of the run. The diorama is the real home page at the
+ * real proportions, so when the spotlight finds the yellow checkpoint a moment
+ * later the viewer is already oriented.
  */
 
 /* ------------------------------------------------------------------ *
@@ -54,7 +55,9 @@ const GOAL = printerById("ender-3-v3-se")
  * ------------------------------------------------------------------ */
 const STAGE_W = 1520
 const COL_X = 760 // centre of the trail column
-const TOP_PAD = 150
+/** Where the title is anchored: above week 1, between the rail and the feed. */
+const TITLE_Y = 240
+const TOP_PAD = 600
 const BANNER_H = 96
 const BANNER_GAP = 30
 const PUCK = 66
@@ -94,57 +97,74 @@ const STAGE_H = PRIZE_TOP + PRIZE_H + 140
 /* ------------------------------------------------------------------ *
  * Timeline
  * ------------------------------------------------------------------ */
-const T = {
-	titleHold: 1500,
-	titleOut: 1100, // pull back to take in the whole platform
-	dropIn: 900, // close on the trail column
-	descent: 7200, // the fall, week 1 to the prize
-	settle: 900,
-}
+/** The title holds still long enough to read, then the camera lets go. */
+const T_HOLD = 1400
+/** Title to prize, one move. */
+const T_FALL = 6800
+const T_END = T_HOLD + T_FALL
 
-const T_PLATFORM = T.titleHold
-const T_TRAIL = T_PLATFORM + T.titleOut
-const T_DESCENT = T_TRAIL + T.dropIn
-const T_SETTLE = T_DESCENT + T.descent
-const T_END = T_SETTLE + T.settle
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t
+const clamp01 = (t: number) => (t < 0 ? 0 : t > 1 ? 1 : t)
 
-const SCRIPT: { at: number; kicker: string; line: string | ((goal: string) => string) }[] = [
+/**
+ * What the captions say, keyed to where the camera is rather than to the
+ * clock: each line appears as the weeks it describes come into frame, so a
+ * slow machine never has a caption naming weeks that are not on screen yet.
+ * The banners already name each week, so a caption says only what they don't.
+ */
+const article = (name: string) => (/^[aeiou]/i.test(name) ? "an" : "a")
+const SCRIPT: { fromWeek: number; fromDepth: number; line: (goal: string) => string }[] = [
 	{
-		at: T_PLATFORM,
-		kicker: "This is your map",
-		line: "All the checkpoints you have to hit on your way to becoming an expert!",
+		fromWeek: 1,
+		fromDepth: 0,
+		line: () => "This is your map. Every week is a set of checkpoints: journal your progress, film a reel, submit.",
 	},
 	{
-		at: T_DESCENT - 250,
-		kicker: "Week 1 · PCB",
-		line: "Every week is a set of checkpoints. Journal your progress, film a reel, submit.",
+		fromWeek: 3,
+		fromDepth: 0,
+		line: () => "Weeks 1 to 5, you design: a PCB, a 3D model, an instrument, a display and a breadboard computer.",
 	},
 	{
-		at: T_DESCENT + T.descent * 0.26,
-		kicker: "Weeks 1 to 5 · Design",
-		line: "A PCB, a 3D model, an instrument, a display, and a custom breadboard computer.",
+		fromWeek: 6,
+		fromDepth: 0,
+		line: () => "Weeks 6 to 10, the parts arrive and you build all five for real.",
 	},
 	{
-		at: T_DESCENT + T.descent * 0.55,
-		kicker: "Weeks 6 to 10 · Build",
-		line: "Then the parts arrive and you build all five for real.",
-	},
-	{
-		at: T_DESCENT + T.descent * 0.85,
-		kicker: "Keep going",
-		line: "Ten weeks. Five projects. You got this.",
-	},
-	{
-		at: T_SETTLE,
-		kicker: "And at the bottom",
-		line: (goal: string) => `A ${goal}, shipped to your door.`,
+		fromWeek: 1,
+		fromDepth: 0.94,
+		line: (goal) => `At the end, you get ${article(goal)} ${goal} shipped right to you!.`,
 	},
 ]
 
-const easeInOutSine = (t: number) => -(Math.cos(Math.PI * t) - 1) / 2
+/**
+ * The fall's speed profile: it eases off the title like something starting to
+ * drop, runs fastest through the middle weeks, and spends its last stretch
+ * braking onto the prize. Asymmetric on purpose — a symmetric ease reads as a
+ * glide, and this is an arrival.
+ */
+function cubicBezier(x1: number, y1: number, x2: number, y2: number) {
+	const cx = 3 * x1
+	const bx = 3 * (x2 - x1) - cx
+	const ax = 1 - cx - bx
+	const cy = 3 * y1
+	const by = 3 * (y2 - y1) - cy
+	const ay = 1 - cy - by
+	const sampleX = (t: number) => ((ax * t + bx) * t + cx) * t
+	const slopeX = (t: number) => (3 * ax * t + 2 * bx) * t + cx
+	return (x: number) => {
+		let t = x
+		for (let i = 0; i < 6; i += 1) {
+			const slope = slopeX(t)
+			if (Math.abs(slope) < 1e-6) break
+			t -= (sampleX(t) - x) / slope
+		}
+		t = clamp01(t)
+		return ((ay * t + by) * t + cy) * t
+	}
+}
+const fall = cubicBezier(0.5, 0, 0.12, 1)
 const easeOutExpo = (t: number) => (t >= 1 ? 1 : 1 - 2 ** (-10 * t))
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t
-const clamp01 = (t: number) => (t < 0 ? 0 : t > 1 ? 1 : t)
+const smooth = (t: number) => t * t * (3 - 2 * t)
 
 /* ------------------------------------------------------------------ *
  * Stage
@@ -345,17 +365,15 @@ export function Cinematic() {
 	const { setPhase, reducedMotion } = useStore()
 	const camera = useRef<HTMLDivElement>(null)
 	const banners = useRef<(HTMLDivElement | null)[]>([])
+	const title = useRef<HTMLDivElement>(null)
 	const landing = useRef<(() => void) | null>(null)
 	const skipped = useRef(false)
 	const [ended, setEnded] = useState(reducedMotion)
 	const [beat, setBeat] = useState(reducedMotion ? SCRIPT.length - 1 : -1)
-	const [week, setWeek] = useState(reducedMotion ? WEEKS.length : 1)
-	/** Depth, in whole percent, so the gauge re-renders ~100 times, not 800. */
-	const [depth, setDepth] = useState(reducedMotion ? 100 : 0)
 	/** Last painted camera position, so a skip can land from where it is. */
-	const here = useRef({ fy: (BLOCKS[0]?.top ?? 0) + 250, scale: 0.6 })
+	const here = useRef({ fy: TITLE_Y, scale: 1 })
 
-	// The diorama is built once and kept out of every re-render the readouts
+	// The diorama is built once and kept out of every re-render the captions
 	// trigger, so the fall stays a pure transform on a stable layer.
 	const stage = useMemo(() => <Stage goal={GOAL} />, [])
 
@@ -375,27 +393,33 @@ export function Cinematic() {
 		const platformScale = () => Math.min(window.innerWidth / 1620, window.innerHeight / 940)
 		// Close enough that the trail column and one banner fill the frame.
 		const trailScale = () => Math.min(window.innerWidth / 940, window.innerHeight / 620, 1.05)
+		// The opening frame shows the platform around the title — but never so
+		// far out on a phone that the trail under it is a smudge.
+		const openScale = () => Math.max(platformScale(), Math.min(trailScale(), 0.55))
 		// The closing frame has to hold the whole prize card above the CTA.
 		const CTA_ROOM = 190
 		const prizeScale = () =>
 			Math.min(Math.max(Math.min(window.innerWidth / 720, (window.innerHeight - CTA_ROOM) / 600), 0.3), 1)
 		const prizeFocus = () => PRIZE_CENTRE + CTA_ROOM / 2 / prizeScale()
 
-		const apply = (fy: number, scale: number) => {
+		/**
+		 * One camera position, painted everywhere at once: the stage, the
+		 * banners that stick at the top of the frame, and the title, which is
+		 * anchored to the head of the trail but drawn at screen size so it reads
+		 * on a phone. Returns the week whose banner is on top.
+		 */
+		const place = (fy: number, scale: number) => {
+			const vh = window.innerHeight
 			node.style.transform =
 				`translate(-50%, -50%) scale(${scale.toFixed(4)}) ` +
 				`translate(${STAGE_W / 2 - COL_X}px, ${STAGE_H / 2 - fy}px)`
-		}
+			if (title.current) {
+				title.current.style.transform = `translateY(${((TITLE_Y - fy) * scale + vh / 2).toFixed(1)}px)`
+			}
 
-		/**
-		 * Sticky, by hand: a banner tracks its block until the block reaches the
-		 * top of the frame, holds there, then gets pushed up by the next one.
-		 */
-		const pinBanners = (fy: number, scale: number) => {
-			const vh = window.innerHeight
+			// Sticky, by hand: a banner tracks its block until the block reaches
+			// the top of the frame, holds there, then gets pushed up by the next.
 			const h = BANNER_H * scale
-			// The counter reports the top-most banner still on screen, so the number
-			// and the header a viewer is reading always name the same week.
 			let pinned = -1
 			for (let i = 0; i < BLOCKS.length; i += 1) {
 				const el = banners.current[i]
@@ -412,20 +436,17 @@ export function Cinematic() {
 				if (el.style.display === "none") el.style.display = ""
 				el.style.transform = `translateY(${y.toFixed(1)}px) scale(${scale.toFixed(4)})`
 			}
+			here.current = { fy, scale }
 			return pinned < 0 ? WEEKS.length : pinned + 1
 		}
 
-		const startY = (BLOCKS[0]?.top ?? 0) + 250
-		const endY = PRIZE_CENTRE
-
 		if (reducedMotion) {
-			apply(prizeFocus(), prizeScale())
-			pinBanners(prizeFocus(), prizeScale())
+			place(prizeFocus(), prizeScale())
 			return
 		}
 
-		// A skip plays its own short landing so the camera and the banners stay in
-		// step instead of the banners freezing mid-flight.
+		// A skip lands from wherever the camera is, so the banners and the
+		// title move with it instead of freezing mid-flight.
 		landing.current = () => {
 			const from = here.current
 			const toFy = prizeFocus()
@@ -433,10 +454,7 @@ export function Cinematic() {
 			const t1 = performance.now()
 			const land = (now: number) => {
 				const k = easeOutExpo(clamp01((now - t1) / 700))
-				const fy = lerp(from.fy, toFy, k)
-				const sc = lerp(from.scale, toScale, k)
-				apply(fy, sc)
-				pinBanners(fy, sc)
+				place(lerp(from.fy, toFy, k), lerp(from.scale, toScale, k))
 				if (k < 1) window.requestAnimationFrame(land)
 			}
 			window.requestAnimationFrame(land)
@@ -448,46 +466,26 @@ export function Cinematic() {
 		const frame = (now: number) => {
 			if (skipped.current) return
 			const t = now - t0
+			// Everything below is one move: no pull-backs, no reversals. Until the
+			// hold is up the camera is parked on the title; after it, `depth` is
+			// how far down the run the camera is, title to prize.
+			const p = clamp01((t - T_HOLD) / T_FALL)
+			const depth = fall(p)
+			const fy = lerp(TITLE_Y, prizeFocus(), depth)
+			// Close in on the trail as the fall gathers speed, and open back out
+			// only for the landing, so the whole prize card arrives in frame.
+			const cruising = lerp(openScale(), trailScale(), smooth(clamp01(p / 0.25)))
+			const scale = lerp(cruising, prizeScale(), smooth(clamp01((depth - 0.86) / 0.14)))
 
-			let fy: number
-			let scale: number
-
-			if (t < T_PLATFORM) {
-				// Held close on the head of the trail while the title card sits over it.
-				fy = startY
-				scale = platformScale() * 1.55
-			} else if (t < T_TRAIL) {
-				const k = easeOutExpo(clamp01((t - T_PLATFORM) / T.titleOut))
-				fy = lerp(startY, 460, k)
-				scale = lerp(platformScale() * 1.55, platformScale(), k)
-			} else if (t < T_DESCENT) {
-				const k = easeInOutSine(clamp01((t - T_TRAIL) / T.dropIn))
-				fy = lerp(460, startY, k)
-				scale = lerp(platformScale(), trailScale(), k)
-			} else if (t < T_SETTLE) {
-				// The fall: one unbroken move, slow away and slow in. The camera also
-				// pulls back where it is moving fastest, so two banners are in frame at
-				// the speed where one would be a blur.
-				const k = easeInOutSine(clamp01((t - T_DESCENT) / T.descent))
-				fy = lerp(startY, endY - 90, k)
-				scale = trailScale() * (1 - 0.2 * Math.sin(Math.PI * k))
-			} else {
-				const k = easeOutExpo(clamp01((t - T_SETTLE) / T.settle))
-				fy = lerp(endY - 90, prizeFocus(), k)
-				scale = lerp(trailScale(), prizeScale(), k)
-			}
-
-			apply(fy, scale)
-			const pinned = pinBanners(fy, scale)
-			here.current = { fy, scale }
-
-			// Readouts come from where the camera actually is, not from the clock.
-			const pct = Math.round(clamp01((fy - startY) / (endY - startY)) * 100)
-			setDepth((d) => (d === pct ? d : pct))
-			setWeek((w) => (w === pinned ? w : pinned))
+			const week = place(fy, scale)
 
 			let idx = -1
-			for (let i = 0; i < SCRIPT.length; i += 1) if (t >= (SCRIPT[i]?.at ?? 0)) idx = i
+			if (t >= T_HOLD) {
+				for (let i = 0; i < SCRIPT.length; i += 1) {
+					const s = SCRIPT[i]
+					if (s && week >= s.fromWeek && depth >= s.fromDepth) idx = i
+				}
+			}
 			setBeat((b) => (b === idx ? b : idx))
 
 			if (t >= T_END) {
@@ -504,13 +502,10 @@ export function Cinematic() {
 	function skip() {
 		skipped.current = true
 		landing.current?.()
-		setDepth(100)
-		setWeek(WEEKS.length)
 		setBeat(SCRIPT.length - 1)
 		setEnded(true)
 	}
 
-	const title = beat < 0
 	const line = beat >= 0 ? SCRIPT[beat] : null
 
 	return (
@@ -521,73 +516,43 @@ export function Cinematic() {
 					className="absolute top-1/2 left-1/2 will-change-transform"
 					style={{ width: STAGE_W, height: STAGE_H }}
 				>
-					<div
-						className="size-full transition-[opacity,filter] duration-700"
-						style={{ opacity: title ? 0.2 : 1, filter: title ? "blur(7px)" : "none" }}
-					>
-						{stage}
-					</div>
+					{stage}
 				</div>
 			</div>
 
-			<div
-				className="pointer-events-none absolute inset-0 z-10 transition-[opacity,filter] duration-700"
-				style={{ opacity: title ? 0.2 : 1, filter: title ? "blur(7px)" : "none" }}
-			>
-				<WeekBanners refs={banners} />
-			</div>
+			<WeekBanners refs={banners} />
 
-			{/* title card */}
-			{title && (
-				<div className="absolute inset-0 z-20 grid place-items-center px-6 text-center">
-					<div>
-						<Gato
-							sizes="300px"
-							className="mx-auto h-auto w-[clamp(96px,16vw,150px)] motion-safe:animate-[hl-pop_.7s_cubic-bezier(.16,1,.3,1)]"
-						/>
-						<h1 className="mt-6 text-[clamp(3rem,13vw,7.5rem)] leading-[0.86] font-extrabold tracking-[-0.055em] text-navy motion-safe:animate-[hl-rise_.7s_.15s_cubic-bezier(.16,1,.3,1)_both]">
+			{/* The title is part of the scene: it sits at the head of the trail and
+			    leaves the frame the way the weeks do, by the camera falling away
+			    from it. */}
+			<div
+				ref={title}
+				className="pointer-events-none absolute inset-x-0 top-0 z-20 px-6 text-center"
+				style={{ transform: "translateY(50vh)" }}
+			>
+				<div className="-translate-y-1/2">
+					<div className="motion-safe:animate-[hl-rise_.6s_cubic-bezier(.16,1,.3,1)_both]">
+						<Gato sizes="300px" className="mx-auto h-auto w-[clamp(84px,13vw,132px)]" />
+						<h1 className="mt-5 text-[clamp(3rem,12vw,6rem)] leading-[0.86] font-extrabold tracking-[-0.04em] text-navy">
 							HALF LIFE
 						</h1>
-						<p className="hand mt-4 text-[clamp(1rem,2.6vw,1.45rem)] text-navy-soft motion-safe:animate-[hl-rise_.7s_.32s_cubic-bezier(.16,1,.3,1)_both]">
+						<p className="hand mt-4 text-[clamp(1rem,2.6vw,1.45rem)] text-navy-soft">
 							ten weeks of hardware, five designs, five builds
 						</p>
 					</div>
 				</div>
-			)}
-
-			{/* depth gauge: how far down the trail the camera has fallen */}
-			{!title && (
-				<div
-					aria-hidden="true"
-					className="absolute top-1/2 right-3 z-20 flex -translate-y-1/2 flex-col items-center gap-2.5 rounded-full border border-line bg-cream/95 px-3 py-4 backdrop-blur-sm sm:right-7 sm:gap-3"
-				>
-					<span className="label text-navy-soft">Week</span>
-					<span className="text-[1.5rem] leading-none font-extrabold text-navy tabular-nums sm:text-[2rem]">
-						{week}
-					</span>
-					<div className="relative h-[clamp(110px,30vh,260px)] w-1.5 overflow-hidden rounded-full bg-line/60">
-						<div
-							className="absolute inset-x-0 top-0 rounded-full bg-navy"
-							style={{ height: `${Math.max(3, depth)}%` }}
-						/>
-					</div>
-					<span className="label text-navy-soft">of 10</span>
-				</div>
-			)}
+			</div>
 
 			{/* caption */}
 			{line && !ended && (
 				<div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center px-5 pb-20 sm:pb-12">
-					<div
+					<p
 						key={beat}
-						className="sketch sketch-2 max-w-[42rem] rounded-2xl bg-cream px-6 py-4 text-center lift-shadow motion-safe:animate-[hl-rise_.5s_cubic-bezier(.16,1,.3,1)_both]"
+						className="sketch sketch-2 max-w-[40rem] rounded-2xl bg-cream px-6 py-4 text-center text-[clamp(1.05rem,2.4vw,1.35rem)] leading-snug font-extrabold tracking-[-0.02em] text-balance text-navy lift-shadow motion-safe:animate-[hl-rise_.4s_cubic-bezier(.16,1,.3,1)_both]"
 						style={{ "--sk-color": "var(--color-navy)", "--sk-radius": "18px" } as React.CSSProperties}
 					>
-						<p className="label text-coral-deep">{line.kicker}</p>
-						<p className="mt-1.5 text-[clamp(1.05rem,2.6vw,1.45rem)] leading-snug font-extrabold tracking-[-0.02em] text-navy">
-							{typeof line.line === "function" ? line.line(GOAL.name) : line.line}
-						</p>
-					</div>
+						{line.line(GOAL.name)}
+					</p>
 				</div>
 			)}
 

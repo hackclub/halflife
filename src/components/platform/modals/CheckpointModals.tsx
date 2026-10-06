@@ -1858,7 +1858,7 @@ export function UnsubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		>
 			<ModalTitle
 				id={titleId}
-				sub={`${handedIn ? `Handed in ${new Date(handedIn).toLocaleDateString("en-US", { month: "short", day: "numeric" })}. ` : ""}Unsubmitting takes it out of the review queue so you can change your entries, parts list or project details. Hand it in again from this checkpoint when you're done.`}
+				sub={`${handedIn ? `Submitted ${new Date(handedIn).toLocaleDateString("en-US", { month: "short", day: "numeric" })}. ` : ""}Unsubmitting takes it out of the review queue so you can change your entries, parts list or project details. Submit it again from this checkpoint when you're done.`}
 			>
 				This week is waiting for review
 			</ModalTitle>
@@ -2102,8 +2102,8 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						<p className="mt-1 text-[0.85rem] leading-snug text-navy-soft">
 							Spend some more time on it! You are <span className="font-bold text-navy tabular-nums">{owed}</span>{" "}
 							{owed === 1 ? "coin" : "coins"} behind the pace for a{" "}
-							<span className="font-bold text-navy">{goal.name}</span>. You can still hand it in, and a bigger week
-							later makes it up.
+							<span className="font-bold text-navy">{goal.name}</span>. You can still submit it, and a bigger week later
+							makes it up.
 						</p>
 					</div>
 				</div>
@@ -2155,7 +2155,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 										{bom.items.length === 0 && (
 											<tr className="border-b border-dashed border-line/60">
 												<td colSpan={5} className="hand px-4 py-3.5 text-[0.88rem] text-coral-deep">
-													no parts listed yet. Add them on the project page before you hand this in.
+													no parts listed yet. Add them on the project page before you submit this.
 												</td>
 											</tr>
 										)}

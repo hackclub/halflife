@@ -570,7 +570,7 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 		{ id: "postedReel", label: "Posted a reel", hint: "A video published to the feed" },
 		{ id: "addedDevlog", label: "Added a devlog", hint: "Wrote a journal entry" },
 		{ id: "connectedRepo", label: "Connected a repo", hint: "Linked an external repository to a project" },
-		{ id: "checksPassed", label: "Repo checks passed", hint: "Every hand-in repo check came back green" },
+		{ id: "checksPassed", label: "Repo checks passed", hint: "Every submission repo check came back green" },
 		{ id: "submitted", label: "Submitted a project", hint: "Handed a phase in for review" },
 	] as const
 

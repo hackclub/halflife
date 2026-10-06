@@ -140,6 +140,7 @@ export function Sidebar({ className }: { className?: string }) {
 			</button>
 
 			{viewer.isAdmin && <RedoOnboarding />}
+			{viewer.isAdmin && <BypassLocks />}
 		</div>
 	)
 }
@@ -166,6 +167,30 @@ function TimeLogged() {
 				journalled and tracked across your projects
 			</p>
 		</Panel>
+	)
+}
+
+/**
+ * Admins only: open every checkpoint on the trail, whatever its order, hours
+ * or dates say, for walking the flow. It only opens nodes — whatever is saved
+ * from one still goes through the server's own checks.
+ */
+function BypassLocks() {
+	const { bypassLocks, setBypassLocks } = useStore()
+
+	return (
+		<button
+			type="button"
+			aria-pressed={bypassLocks}
+			onClick={() => setBypassLocks(!bypassLocks)}
+			className={cx(
+				"hand -mt-3 self-start text-[0.76rem] underline decoration-dashed underline-offset-4 transition-colors",
+				bypassLocks ? "font-semibold text-coral-dark hover:text-navy" : "text-navy-faint hover:text-navy",
+			)}
+		>
+			{bypassLocks ? "Relock checkpoints" : "Bypass checkpoint locks"}{" "}
+			<span className="label ml-1 text-[0.6rem] no-underline">admin</span>
+		</button>
 	)
 }
 

@@ -144,9 +144,9 @@ export function RepoChecks({
 				<>
 					<p className="mt-1 text-[0.9rem] leading-snug text-navy-soft" aria-live="polite">
 						{blocking > 0
-							? `${blocking} ${blocking === 1 ? "thing needs" : "things need"} fixing before you can hand this in.`
+							? `${blocking} ${blocking === 1 ? "thing needs" : "things need"} fixing before you can submit.`
 							: data.unavailable
-								? "GitHub could not be reached, so this was not checked. You can still hand it in."
+								? "GitHub could not be reached, so this was not checked. You can still submit."
 								: "Everything this week needs is in the repo."}
 					</p>
 					<ul className={cx("mt-3 grid gap-1.5", loading && "opacity-60")}>

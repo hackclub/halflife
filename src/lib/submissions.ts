@@ -91,8 +91,8 @@ export function canSubmitPhase(
 			code: "PHASE_LOCKED",
 			message:
 				warmupPhaseOf(project) === Phase.DESIGN
-					? "This warm-up project is handed in as a design"
-					: "This warm-up project is handed in as a finished build",
+					? "This warm-up project is submitted as a design"
+					: "This warm-up project is submitted as a finished build",
 		}
 	}
 
