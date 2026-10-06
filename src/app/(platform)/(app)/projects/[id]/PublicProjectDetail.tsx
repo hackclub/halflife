@@ -5,6 +5,7 @@ import { WeekPainting } from "@/components/platform/art"
 import { IconChevronLeft, IconClock } from "@/components/platform/icons"
 import { ProjectThumb } from "@/components/platform/ProjectThumb"
 import { Chip, Panel } from "@/components/platform/ui"
+import { ReportButton } from "@/components/platform/report/ReportButton"
 import { DESIGN_WEEKS } from "@/lib/config/printers"
 import { WARMUP_THEME, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { WEEK_META } from "@/lib/curriculum"
@@ -64,7 +65,15 @@ export function PublicProjectDetail({ data }: { data: PublicProjectData }) {
 								className="text-navy-soft hover:text-navy hover:underline hover:decoration-dashed hover:underline-offset-4"
 							>
 								{data.author}
-							</Link>
+							</Link>{" "}
+							<span aria-hidden="true" className="text-navy-faint">
+								·
+							</span>{" "}
+							<ReportButton
+								target={{ type: "PROJECT", id: data.id }}
+								title="Report this project"
+								context={data.description || data.title}
+							/>
 						</p>
 						<h1 className="mt-1 text-[1.6rem] leading-tight font-extrabold tracking-[-0.02em] [overflow-wrap:anywhere] text-navy sm:text-[1.9rem]">
 							{data.title}
@@ -109,7 +118,7 @@ export function PublicProjectDetail({ data }: { data: PublicProjectData }) {
 					{data.timeline.length === 0 ? (
 						<p className="hand py-8 text-center text-[0.9rem] text-navy-soft">nothing on the record yet.</p>
 					) : (
-						<Timeline items={data.timeline} weekFor={weekFor} />
+						<Timeline items={data.timeline} weekFor={weekFor} allowReport />
 					)}
 				</Panel>
 			</section>

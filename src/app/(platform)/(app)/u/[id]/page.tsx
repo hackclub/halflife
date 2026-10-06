@@ -5,6 +5,7 @@ import { Avatar } from "@/components/platform/Avatar"
 import { WeekPainting } from "@/components/platform/art"
 import { IconChevronLeft, IconClock, IconFilm, IconFlame, IconPencil } from "@/components/platform/icons"
 import { ProjectThumb } from "@/components/platform/ProjectThumb"
+import { ReportButton } from "@/components/platform/report/ReportButton"
 import { Panel } from "@/components/platform/ui"
 import { requireSessionPage } from "@/lib/page-guards"
 import { fmtDate, fmtHours } from "@/lib/projects"
@@ -76,6 +77,13 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
 								<IconFilm className="text-sm" /> {profile.reelCount} {profile.reelCount === 1 ? "reel" : "reels"}
 							</span>
 							{profile.joinedAt > 0 && <span>building since {fmtDate(profile.joinedAt)}</span>}
+							{!profile.isViewer && (
+								<ReportButton
+									target={{ type: "USER", id: profile.id }}
+									title={`Report ${profile.name}`}
+									context={`${profile.name}'s profile`}
+								/>
+							)}
 						</p>
 					</div>
 				</div>

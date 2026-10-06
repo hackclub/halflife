@@ -87,6 +87,43 @@ export const shopItemSchema = z
 
 export const shopItemUpdateSchema = shopItemSchema.partial().omit({ id: true }).strict()
 
+/**
+ * A sales region: a hand-assigned slug (it appears in analytics and has to
+ * survive a rename) and a display name.
+ */
+export const shopRegionSchema = z
+	.object({
+		id: z
+			.string()
+			.trim()
+			.min(1)
+			.max(64)
+			.regex(/^[a-z0-9][a-z0-9-]*$/, "Lowercase letters, digits and hyphens"),
+		name: boundedText(80, 1),
+		sortOrder: z.number().int().default(0),
+	})
+	.strict()
+
+export const shopRegionUpdateSchema = z
+	.object({
+		name: boundedText(80, 1).optional(),
+		sortOrder: z.number().int().optional(),
+		active: z.boolean().optional(),
+	})
+	.strict()
+	.refine((b) => b.name !== undefined || b.sortOrder !== undefined || b.active !== undefined, "Nothing to change")
+
+/**
+ * One region's coin price for one shop item. Null clears the override back
+ * to base pricing.
+ */
+export const itemRegionPriceSchema = z
+	.object({
+		regionId: boundedText(64, 1),
+		priceCredits: z.number().int().min(0).nullable(),
+	})
+	.strict()
+
 export const orderDecisionSchema = z.discriminatedUnion("action", [
 	z
 		.object({

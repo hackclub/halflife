@@ -3,6 +3,7 @@ import { ActionButton } from "@/app/components/forms/ActionButton"
 import { ItemCostField } from "@/app/components/forms/ItemCostField"
 import { ShopItemForm } from "@/app/components/forms/ShopItemForm"
 import { ShopItemImport } from "@/app/components/forms/ShopItemImport"
+import { ShopRegionForm } from "@/app/components/forms/ShopRegionForm"
 import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
 import type { ShopItemCategory } from "@/app/generated/prisma/enums"
 import { requirePermissionPage } from "@/lib/page-guards"
@@ -20,9 +21,15 @@ const CATEGORY_LABEL: Record<ShopItemCategory, string> = {
 
 export default async function AdminShopPage() {
 	await requirePermissionPage(Permission.MANAGE_SHOP)
-	const items = await prisma.shopItem.findMany({
-		orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-	})
+	const [items, regions] = await Promise.all([
+		prisma.shopItem.findMany({
+			orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+		}),
+		prisma.shopRegion.findMany({
+			orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+			select: { id: true, name: true, active: true, _count: { select: { prices: true } } },
+		}),
+	])
 
 	return (
 		<div className="hl-stack">
@@ -79,6 +86,42 @@ export default async function AdminShopPage() {
 
 			<Panel title="Import from CSV">
 				<ShopItemImport />
+			<Panel title="Regions">
+				<p className="hl-hint">
+					Sales regions staff can price items for separately. Participants pick theirs on the shop page; an
+					item with no override for a region sells there at its base price. Switching a region off falls
+					everyone on it back to base pricing.
+				</p>
+				{regions.length > 0 && (
+					<Table head={["Slug", "Name", "Overrides", "Active", ""]}>
+						{regions.map((region) => (
+							<tr key={region.id}>
+								<td className="hl-mono">{region.id}</td>
+								<td>{region.name}</td>
+								<td>{region._count.prices}</td>
+								<td>
+									<Badge tone={region.active ? "success" : "muted"}>
+										{region.active ? "active" : "off"}
+									</Badge>
+								</td>
+								<td>
+									<ActionButton
+										url={`/api/admin/shop/regions/${region.id}`}
+										method="PATCH"
+										body={{ active: !region.active }}
+										label={region.active ? "Switch off" : "Switch on"}
+										confirm={
+											region.active
+												? "Switch this region off? Everyone on it falls back to base pricing."
+												: "Switch this region on?"
+										}
+									/>
+								</td>
+							</tr>
+						))}
+					</Table>
+				)}
+				<ShopRegionForm />
 			</Panel>
 		</div>
 	)
