@@ -361,9 +361,10 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 	const longEnough = written >= 200
 	const enoughPhotos = shots >= needPhotos
-	// A session is backed by a journal entry OR a Lapse timelapse, not both:
-	// either one is evidence a reviewer can check the hours against. A written
-	// entry needs its hours typed; a timelapse brings its own.
+	// A session is backed by a journal entry, a Lapse timelapse, or both together:
+	// each one is evidence a reviewer can check the hours against, and the two
+	// land on the same entry. A written entry needs its hours typed; a timelapse
+	// brings its own.
 	const journalled = longEnough && enoughPhotos
 	const recorded = picked.length > 0 || kept > 0
 	const ok = claimed > 0 && (journalled || recorded)
@@ -373,7 +374,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	// shortfall is named with the other way out beside it, so nobody is told to
 	// write 200 characters they could skip with a timelapse. An edit cannot add
 	// one, so it is not offered there.
-	const orLapse = editing ? "" : " Or cover the session with a Lapse timelapse on the Timelapse tab instead."
+	const orLapse = editing ? "" : " You can also attach Lapse timelapses on the Timelapse tab — they back the same entry."
 	const missing = !ok
 		? claimed <= 0
 			? "Add the hours you spent on this session, or pick a Lapse timelapse."
@@ -567,6 +568,39 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					))}
 				</div>
 			</div>
+
+			{/* Timelapses are picked on the other tab but belong to this entry too:
+			    say so under the switcher, so combining the two is an offer on screen
+			    rather than something you find by accident. Edits keep whatever the
+			    entry was saved with, so there is nothing to attach there. */}
+			{!editing && tab === "journal" && (
+				<p className="hand -mt-2 mb-5 text-center text-[0.78rem] text-navy-soft">
+					{picked.length > 0 ? (
+						<>
+							{picked.length === 1 ? "1 timelapse" : `${picked.length} timelapses`} attached —{" "}
+							<button
+								type="button"
+								onClick={() => setTab("timelapse")}
+								className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
+							>
+								change them on the timelapse tab
+							</button>
+						</>
+					) : (
+						<>
+							Writing, filming, or both —{" "}
+							<button
+								type="button"
+								onClick={() => setTab("timelapse")}
+								className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
+							>
+								attach a timelapse too
+							</button>{" "}
+							if you recorded one.
+						</>
+					)}
+				</p>
+			)}
 
 			{tab === "journal" ? (
 				// The whole sheet takes a drop, not just the box: a picture let go an
@@ -788,7 +822,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				<div>
 					<ModalTitle
 						subWide
-						sub="Record timelapse(s) on Lapse, publish as unlisted or public, then select it here. It won't show up if the timelapses are listed as private. Make sure you're pausing your timelapse when you're not working on your project!"
+						sub="Record timelapse(s) on Lapse, publish as unlisted or public, then select it here. It won't show up if the timelapses are listed as private. Make sure you're pausing your timelapse when you're not working on your project! Timelapses can back the entry on their own, or together with a written entry — pick here, write on the journal tab."
 					>
 						Select your timelapses
 					</ModalTitle>

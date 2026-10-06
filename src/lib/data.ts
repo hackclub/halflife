@@ -64,7 +64,7 @@ export const DOCS: DocArticle[] = [
 			{
 				heading: "Two ways to back your hours",
 				paragraphs: [
-					"Each session is backed by one of two things: a written entry, or a Lapse timelapse. You pick one on the entry's Journal or Timelapse tab; you never need both.",
+					"Each session is backed by a written entry, a Lapse timelapse, or both together: pick timelapses on the entry's Timelapse tab, write on the Journal tab, and everything you pick and write lands on the same entry. Either one alone is enough.",
 					"A written entry needs its hours typed in (9.5 means nine and a half). A timelapse brings its own: the time Lapse recorded becomes the session's hours, so there is nothing to type.",
 				],
 			},
