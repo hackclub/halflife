@@ -13,6 +13,8 @@ import {
 	IconFilm,
 	IconMic,
 	IconUpload,
+	IconVolume,
+	IconVolumeOff,
 	IconWarning,
 } from "@/components/platform/icons"
 import { countImages, Markdown, proseLength } from "@/components/platform/Markdown"
@@ -1347,10 +1349,18 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 	// `autoPlay` alone is a request the browser may defer (a tab that was not
 	// focused when the clip arrived, say), so the preview asks once more itself.
+	// Sound starts off: autoplay with audio is refused, so the preview opens
+	// muted and the speaker toggle below is the gesture that allows it.
 	const previewVideo = useRef<HTMLVideoElement>(null)
+	const [muted, setMuted] = useState(true)
 	useEffect(() => {
-		void previewVideo.current?.play().catch(() => undefined)
-	}, [previewUrl])
+		const video = previewVideo.current
+		if (!video) return
+		// The `muted` attribute only sets the initial state — React re-renders
+		// do not move the property after mount — so the toggle writes it here.
+		video.muted = muted
+		void video.play().catch(() => undefined)
+	}, [previewUrl, muted])
 
 	// A blob URL holds the whole video in memory until it is revoked.
 	useEffect(() => {
@@ -1363,6 +1373,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		setClip(key)
 		setPreviewUrl(url ?? null)
 		setClipUrl(url && !url.startsWith("blob:") ? url : null)
+		setMuted(true)
 	}
 
 	// Posting waits for the server, so there is a post to hang public links on
@@ -1530,22 +1541,33 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					<div className="relative overflow-hidden rounded-xl" style={{ aspectRatio: "9 / 16" }}>
 						{clip ? (
 							<>
-								{/* The clip itself, muted and looping, the way the Doomscroller
-                    will show it. Without a URL (a draft on a deployment with
-                    no public bucket URL) it says so rather than standing a
-                    stock illustration in for someone's footage. */}
+								{/* The clip itself, looping the way the Doomscroller will show
+                    it. Without a URL (a draft on a deployment with no public
+                    bucket URL) it says so rather than standing a stock
+                    illustration in for someone's footage. */}
 								{previewUrl ? (
-									<video
-										ref={previewVideo}
-										key={previewUrl}
-										src={attrUrl(previewUrl)}
-										autoPlay
-										muted
-										loop
-										playsInline
-										aria-label="Preview of your reel"
-										className="absolute inset-0 size-full bg-navy object-cover"
-									/>
+									<>
+										<video
+											ref={previewVideo}
+											key={previewUrl}
+											src={attrUrl(previewUrl)}
+											autoPlay
+											muted
+											loop
+											playsInline
+											aria-label="Preview of your reel"
+											className="absolute inset-0 size-full bg-navy object-cover"
+										/>
+										<button
+											type="button"
+											onClick={() => setMuted((m) => !m)}
+											aria-pressed={!muted}
+											aria-label={muted ? "Unmute the preview" : "Mute the preview"}
+											className="absolute top-2 right-2 z-10 grid size-9 place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm transition-colors hover:bg-black/75"
+										>
+											{muted ? <IconVolumeOff className="text-lg" /> : <IconVolume className="text-lg" />}
+										</button>
+									</>
 								) : (
 									<div className="absolute inset-0 grid place-items-center bg-navy px-4 text-center">
 										<p className="flex flex-col items-center gap-2 text-[0.78rem] leading-snug text-white/85">
