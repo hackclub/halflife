@@ -1,4 +1,5 @@
 import { fail, ok, parseBody, rateLimitedInMemory, withRoute } from "@/lib/api"
+import { Prisma } from "@/app/generated/prisma/client"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { requireSession } from "@/lib/guards"
 import prisma from "@/lib/prisma"
@@ -91,16 +92,27 @@ export const POST = withRoute(async (req: Request) => {
 	})
 	if (dupe) return fail("CONFLICT", `You have already reported this ${label} — staff will take a look`)
 
-	const report = await prisma.contentReport.create({
-		data: {
-			reporterId: gate.user.id,
-			target,
-			reason,
-			details: details?.trim() ? details.trim() : null,
-			...field,
-		},
-		select: { id: true },
-	})
+	// The friendly check above races a second press in flight: the partial
+	// unique indexes are the real guard, and their violation reads as the
+	// same conflict rather than a 500.
+	let report: { id: string }
+	try {
+		report = await prisma.contentReport.create({
+			data: {
+				reporterId: gate.user.id,
+				target,
+				reason,
+				details: details?.trim() ? details.trim() : null,
+				...field,
+			},
+			select: { id: true },
+		})
+	} catch (err) {
+		if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+			return fail("CONFLICT", `You have already reported this ${label} — staff will take a look`)
+		}
+		throw err
+	}
 
 	await logAudit({
 		action: AuditAction.USER_CREATE_REPORT,
