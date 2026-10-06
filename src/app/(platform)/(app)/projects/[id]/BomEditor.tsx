@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useId, useRef, useState } from "react"
 import { IconArrowDown, IconPencil, IconPlus, IconX } from "@/components/platform/icons"
@@ -310,6 +311,14 @@ export function BomEditor({
 
 	return (
 		<div>
+			<p className="mb-4 text-[0.88rem] leading-snug text-navy-soft">
+				Parts only – don&apos;t list tools here. Soldering irons, multimeters, cutters and the like are bought
+				in the{" "}
+				<Link href="/shop" className="underline decoration-dashed underline-offset-4 hover:text-navy">
+					programme shop
+				</Link>{" "}
+				after your project is approved.
+			</p>
 			<div className="-mx-1 overflow-x-auto px-1">
 				<table className="w-full min-w-[480px] text-left text-[0.86rem]">
 					<thead>
