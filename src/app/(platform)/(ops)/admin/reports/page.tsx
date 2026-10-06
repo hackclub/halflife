@@ -134,7 +134,7 @@ function ReportRow({ report }: { report: ContentReportRow }) {
 			<td>
 				<div className="hl-row">
 					{!subject.gone &&
-						subject.hideUrl &&
+						(subject.hideUrl || subject.restoreUrl || subject.hidden) &&
 						(subject.hidden ? (
 							subject.restoreUrl ? (
 								<ActionButton
@@ -146,7 +146,7 @@ function ReportRow({ report }: { report: ContentReportRow }) {
 							) : (
 								<span className="hl-hint">hidden</span>
 							)
-						) : (
+						) : subject.hideUrl ? (
 							<ActionButton
 								url={subject.hideUrl}
 								label={subject.hideLabel}
@@ -154,7 +154,7 @@ function ReportRow({ report }: { report: ContentReportRow }) {
 								confirm={`${subject.hideLabel} this ${subject.kind}?`}
 								reasonPrompt={`Why is this ${subject.kind} being hidden?`}
 							/>
-						))}
+						) : null)}
 					{report.status === "OPEN" && (
 						<>
 							<ActionButton
