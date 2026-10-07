@@ -26,7 +26,7 @@ import { attrUrl } from "@/lib/attr-url"
 import { linkLapse } from "@/lib/auth-client"
 import type { BomLine } from "@/lib/bom"
 import { STARTER_PROJECT_TIER, starterProjectsFor } from "@/lib/config/onboarding"
-import { paceTarget, printerById, submitFloorFor, tierBankedFloor, weekAsk } from "@/lib/config/printers"
+import { paceTarget, printerById, submitFloorFor, tierBankedFloor } from "@/lib/config/printers"
 import { THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { photosRequired, TIERS } from "@/lib/curriculum"
 import {
@@ -2006,7 +2006,6 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	 */
 	const hours = hoursOf(week)
 	const tierFloor = submitFloorFor
-	const tierTarget = (fundingHours: number) => weekAsk(goal.hoursPerWeek, fundingHours)
 	const tierShort = (fundingHours: number) => Math.max(0, tierFloor(fundingHours) - hours)
 	const selectedTier = TIERS.find((t) => t.id === tier) ?? TIERS[0]
 	const tierBlocked = !isBuild && tierShort(selectedTier.fundingHours) > 0
@@ -2302,8 +2301,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								const on = tier === t.id
 								const over = bomTotal > t.grantUsd
 								const short = tierShort(t.fundingHours)
-								const behind = Math.max(0, tierTarget(t.fundingHours) - hours)
-								return (
+									return (
 									<button
 										key={t.id}
 										type="button"
@@ -2342,14 +2340,12 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 										<span
 											className={cx(
 												"mt-1 block text-[0.76rem] leading-snug",
-												short > 0 ? "text-coral-deep" : behind > 0 ? "text-navy-soft" : "text-teal-ink",
+												short > 0 ? "text-coral-deep" : "text-navy-soft",
 											)}
 										>
 											{short > 0
 												? `Opens at ${fmtCoins(tierFloor(t.fundingHours))} of design time, ${fmtCoins(short)} to go`
-												: behind > 0
-													? `${fmtCoins(tierTarget(t.fundingHours))} for a ${goal.name}, ${fmtCoins(behind)} to go`
-													: `${fmtCoins(tierTarget(t.fundingHours))} for a ${goal.name}, you have ${fmtCoins(hours)}`}
+											: `bank ~${fmtCoins(goal.bankedHours)} per design week for your ${goal.name} — the pace is the same on every tier`}
 										</span>
 										{short === 0 && over && (
 											<span className="hand mt-1 block text-[0.74rem] leading-snug text-coral-deep">

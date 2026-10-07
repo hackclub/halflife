@@ -6,7 +6,7 @@ import { IconCheck, IconPencil } from "@/components/platform/icons"
 import { StarterProjectCard } from "@/components/platform/StarterProjectCard"
 import { Button, Chip, cx, OptionRow } from "@/components/platform/ui"
 import { getStarterProject, STARTER_PROJECT_TIER, starterProjectsFor } from "@/lib/config/onboarding"
-import { MIN_HOURS_PER_WEEK, printerById, submitFloorFor, weekAskFor } from "@/lib/config/printers"
+import { MIN_HOURS_PER_WEEK, printerById, submitFloorFor } from "@/lib/config/printers"
 import { DESIGN_WEEKS, THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { ENTRY_TIER } from "@/lib/config/tiers"
 import { TIERS } from "@/lib/curriculum"
@@ -311,7 +311,7 @@ function DetailsForm({
 					{takingStarter && hotGoal && (
 						<p role="status" className="hand text-[0.82rem] leading-snug text-coral-deep">
 							Heads up: starter projects are meant to take about {fmtCoins(submitFloorFor(ENTRY_TIER.fundingHours))} of work,
-							no more. Your {goal.name} needs roughly {fmtCoins(goal.hoursPerWeek)} a design week to stay on pace.
+							no more. Your {goal.name} needs roughly {fmtCoins(goal.bankedHours)} banked a design week to stay on pace.
 						</p>
 					)}
 					{starters.map((s) => {
@@ -391,6 +391,12 @@ function DetailsForm({
 							<span className="font-bold text-navy tabular-nums">{fmtHours(hours)}</span>{" "}
 							{project.weekId === WARMUP_WEEK_ID ? "on this project." : `in week ${project.weekId}.`}
 						</p>
+					{pacingToPrinter && (
+						<p className="hand text-[0.84rem] leading-snug text-navy-soft">
+							aim to bank about {fmtCoins(goal.bankedHours)} per design week for your {goal.name} — one pace on every
+							tier, since tier hours pay for parts and only banked work earns.
+						</p>
+					)}
 						{TIERS.map((t) => {
 							const floor = submitFloorFor(t.fundingHours)
 							const short = Math.max(0, floor - hours)
@@ -406,12 +412,6 @@ function DetailsForm({
 											{short > 0 ? `${fmtCoins(short)} to go` : "ready to submit"}
 										</span>
 									</span>
-									{pacingToPrinter && (
-										<span className="hand mt-1 block text-[0.8rem] leading-snug text-navy-soft">
-											aim for about {fmtCoins(weekAskFor(goal, t.fundingHours))} each design week at this tier, for your{" "}
-											{goal.name}
-										</span>
-									)}
 								</OptionRow>
 							)
 						})}
