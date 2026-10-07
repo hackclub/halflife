@@ -11,6 +11,7 @@ import {
 	putObject,
 	validateUpload,
 } from "@/lib/uploads/r2"
+import { sniffImage } from "@/lib/uploads/remote"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
@@ -62,14 +63,26 @@ export const POST = withRoute(async (req: Request) => {
 		return fail("VALIDATION_FAILED", "That file does not look like a video")
 	}
 
+	// The extension/MIME check above trusts what the client *claimed*. For
+	// images, verify the bytes too — the from-url path already does — so an
+	// HTML file renamed to .png cannot land in the bucket as image/png.
+	let ext = check.ext
+	let contentType = file.type
+	if (file.type.startsWith("image/")) {
+		const sniffed = sniffImage(bytes)
+		if (!sniffed) return fail("VALIDATION_FAILED", "That file does not look like a PNG, JPEG, GIF or WebP image")
+		ext = sniffed.ext
+		contentType = sniffed.contentType
+	}
+
 	// Keys are namespaced by user so abuse is traceable and orphans are findable.
 	// Pictures are named after their bytes rather than a fresh uuid: picking the
 	// same image again has to mint the same URL, because the journal counts its
 	// evidence by URL (`countImages`) and a second URL counts as a second
 	// picture. Videos keep the random name — a reel is identified by its post.
-	const name = file.type.startsWith("image/") ? contentHash(bytes) : undefined
-	const key = buildObjectKey(gate.user.id, folder, check.ext, name)
-	await putObject(key, bytes, file.type)
+	const name = contentType.startsWith("image/") ? contentHash(bytes) : undefined
+	const key = buildObjectKey(gate.user.id, folder, ext, name)
+	await putObject(key, bytes, contentType)
 
 	return ok({ objectKey: key, url: publicUrlFor(key) }, { status: 201 })
 })

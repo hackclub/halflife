@@ -12,7 +12,12 @@ export function sanitize(input: string): string {
 
 /** Allows safe markup. Only for journal content, which renders as rich text. */
 export function sanitizeHtml(input: string): string {
-	return DOMPurify.sanitize(input)
+	return DOMPurify.sanitize(input, {
+		ALLOWED_TAGS: ["b", "i", "em", "strong", "a", "p", "br", "ul", "ol", "li", "blockquote", "code", "pre"],
+		ALLOWED_ATTR: ["href", "title", "target", "rel"],
+		ALLOW_DATA_ATTR: false,
+		FORBID_ATTR: ["style", "on*"],
+	})
 }
 
 export function sanitizeOptional(input: string | null | undefined): string | null {

@@ -9,7 +9,7 @@ import { CREDIT_NAME_PLURAL, getThemeDef } from "@/lib/config/program"
 import { displayName } from "@/lib/display-name"
 import { isHcbConfigured } from "@/lib/hcb"
 import { requirePermissionPage } from "@/lib/page-guards"
-import { hasPermission, Permission } from "@/lib/permissions"
+import { hasPermission, hasRole, Permission, Role } from "@/lib/permissions"
 import { getUserDetail } from "@/lib/queries/admin"
 
 export const dynamic = "force-dynamic"
@@ -20,7 +20,9 @@ export default async function AdminUserPage({ params }: Props) {
 	const { roles } = await requirePermissionPage(Permission.VIEW_USERS)
 	const { id } = await params
 
-	const detail = await getUserDetail(id)
+	const detail = await getUserDetail(id, {
+		includeSensitive: hasRole(roles, Role.ADMIN) || hasRole(roles, Role.AUDITOR),
+	})
 	if (!detail) notFound()
 
 	const { user, balances, ledger, orders, printer } = detail

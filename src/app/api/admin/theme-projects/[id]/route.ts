@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic"
  * where the user-level one on /api/admin/users/[id] covers everything they own.
  */
 export const PATCH = withRoute(async (req: Request, { params }: Params) => {
-	const gate = await requirePermission(Permission.MANAGE_USERS)
+	const gate = await requirePermission(Permission.MANAGE_PROGRAM)
 	if (gate.error) return gate.error
 	const { id } = await params
 

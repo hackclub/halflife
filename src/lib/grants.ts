@@ -203,6 +203,15 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 			.catch(() => undefined)
 		throw new HttpError("CONFLICT", "The design is no longer approved, so no grant is due")
 	}
+	// The amount was captured before HCB was called; if the grant was edited
+	// since — including by a retry reclaiming the row above — paying the stale
+	// figure sends the wrong money. Fail closed instead.
+	if (Math.round(current.grantUsd * 100) !== amountCents) {
+		await prisma.hcbGrantTopUp
+			.update({ where: { id: rowId }, data: { error: "The grant amount changed before the top-up was sent" } })
+			.catch(() => undefined)
+		throw new HttpError("CONFLICT", "The grant amount changed — reload and try again")
+	}
 
 	try {
 		const { transactionId } = await topUpCardGrant(hashid, amountCents)

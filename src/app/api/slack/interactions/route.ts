@@ -114,12 +114,21 @@ async function reactResolved(ref: Partial<TicketRef>) {
 	}
 }
 
-/** Staff clicking "Mark as helped" in the tickets channel — no permission
- * check, anyone with access to that private channel can resolve a ticket.
- * The button they just clicked is the ticket's own mirror, so resolving it
- * takes it straight back out of the queue. */
+/** Staff clicking "Mark as helped" in the tickets channel — gated on
+ * membership of the private tickets channel, like the thread path below.
+ * The request signature already proves Slack sent it; this is defence in
+ * depth so a leaked message-ts pair or a future workspace-wide action with
+ * the same action_id cannot resolve tickets as any Slack identity. */
 async function handleMarkHelped(payload: InteractionPayload, action: BlockAction) {
 	if (!payload.channel?.id || !payload.message?.ts) return
+
+	const ticketsChannel = process.env.SLACK_TICKETS_CHANNEL_ID
+	// The button lives on the ticket mirror, so the interaction must come
+	// from the tickets channel itself, clicked by someone in it. Fail closed
+	// when the channel is not configured — isChannelMember already does on
+	// API failure.
+	if (!ticketsChannel || payload.channel.id !== ticketsChannel) return
+	if (!(await isChannelMember(ticketsChannel, payload.user.id))) return
 
 	let ref: Partial<TicketRef> = {}
 	try {

@@ -419,7 +419,7 @@ function StarterGuide({ project }: { project: Project }) {
 }
 
 export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData | null }) {
-	const { projects, stateOf, weekOf, warmupWeekOf, weekHours, hydrated, unsubmitPhase } = useStore()
+	const { projects, stateOf, weekOf, warmupWeekOf, weekHours, hoursOf, hydrated, unsubmitPhase } = useStore()
 	const project = projects.find((p) => p.id === id)
 
 	// A miss here is real: the id is someone else's, or the project was deleted.
@@ -448,7 +448,11 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 		warmup ? WARMUP_WEEK_ID : phase === "DESIGN" ? project.weekId : buildWeekId
 
 	const sessions = data.timeline.flatMap((t) => (t.kind === "session" ? [t] : []))
-	const hours = sessions.reduce((n, s) => n + (s.approvedHours ?? s.hours), 0)
+	// Journal sessions plus everything that arrived another way (Hackatime link
+	// time, reviewer adjustments) — the same accounting the sidebar total and
+	// the project cards read, so the three never disagree. A season project
+	// spans its design week and its build week.
+	const hours = warmup ? hoursOf(week) : weekHours(project.weekId) + weekHours(buildWeekId)
 	const started = data.timeline.at(-1)?.at ?? 0
 
 	// The tier stops being editable the moment the design week is handed in —

@@ -604,12 +604,15 @@ function FirstProjectDonut({ stats }: { stats: FirstProjectStat[] }) {
 	]
 	const R = 15.9155 // 100 / 2π: a share of p% is a dash of p units
 	// Segment offsets, computed up front: each slice starts where the last one
-	// ended, from the top of the ring.
+	// ended, from path position 0 (3 o'clock). A positive dashoffset does NOT
+	// move the start forward — it starts the path that far into the pattern,
+	// eating the first segment's opening units (a grey quadrant, in the old
+	// code's case) — so the top start comes from the rotate below instead.
 	const shares = stats.map((s) => (s.users / total) * 100)
 	const segments = stats.map((s, i) => ({
 		label: s.label,
 		share: shares[i] ?? 0,
-		start: 25 - shares.slice(0, i).reduce((n, p) => n + p, 0),
+		start: -shares.slice(0, i).reduce((n, p) => n + p, 0),
 	}))
 	const summary = stats.map((s) => `${s.label} ${Math.round((s.users / total) * 100)}%`).join(", ")
 	return (
@@ -628,19 +631,22 @@ function FirstProjectDonut({ stats }: { stats: FirstProjectStat[] }) {
 				style={{ width: "11rem", height: "11rem", flexShrink: 0 }}
 			>
 				<circle cx="21" cy="21" r={R} fill="none" stroke="var(--color-surface-sunken)" strokeWidth="7" />
-				{segments.map((seg, i) => (
-					<circle
-						key={seg.label}
-						cx="21"
-						cy="21"
-						r={R}
-						fill="none"
-						stroke={palette[i % palette.length]}
-						strokeWidth="7"
-						strokeDasharray={`${Math.max(seg.share - 0.6, 0)} 100`}
-						strokeDashoffset={seg.start}
-					/>
-				))}
+				{/* The ring starts at 3 o'clock; rotate it so it starts at the top. */}
+				<g transform="rotate(-90 21 21)">
+					{segments.map((seg, i) => (
+						<circle
+							key={seg.label}
+							cx="21"
+							cy="21"
+							r={R}
+							fill="none"
+							stroke={palette[i % palette.length]}
+							strokeWidth="7"
+							strokeDasharray={`${Math.max(seg.share - 0.6, 0)} 100`}
+							strokeDashoffset={seg.start}
+						/>
+					))}
+				</g>
 			</svg>
 			<ul style={{ display: "grid", gap: "0.4rem", listStyle: "none", margin: 0, padding: 0, minWidth: 0 }}>
 				{stats.map((s, i) => (

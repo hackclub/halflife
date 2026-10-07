@@ -1,8 +1,9 @@
 import "server-only"
 import type { Prisma, ShopItem, ShopOrder } from "@/app/generated/prisma/client"
-import { CoinBucket, LedgerKind, ShopItemCategory, ShopOrderStatus } from "@/app/generated/prisma/enums"
+import { CoinBucket, LedgerKind, PhaseStatus, ShopItemCategory, ShopOrderStatus } from "@/app/generated/prisma/enums"
 import { appendLedgerEntry, type Balances, getBalances, lockUserCredit, spendableFor } from "@/lib/currency"
 import { HttpError } from "@/lib/errors"
+import { THEMES_REQUIRED_FOR_PRINTER } from "@/lib/config/program"
 import { getPrinterQualification } from "@/lib/printer"
 import prisma from "@/lib/prisma"
 import { getShopAccess, SHOP_CLOSED_MESSAGE } from "@/lib/program"
@@ -231,6 +232,46 @@ export async function purchase(
 
 	return prisma.$transaction(async (tx) => {
 		await lockUserCredit(tx, userId)
+
+		// Re-checked inside the transaction: the pre-check above ran against
+		// reads taken before the lock, so a shop-close or a
+		// qualification-revoke in between must not still complete. Read off
+		// the transaction so this sees a consistent snapshot.
+		const settings = await tx.programSettings.findUnique({ where: { id: "singleton" } })
+		if (!settings?.shopOpen) throw new HttpError("SHOP_CLOSED", SHOP_CLOSED_MESSAGE)
+		if (settings.shopClosesAt && settings.shopClosesAt <= new Date()) {
+			const [awaitingReview, lastReview] = await Promise.all([
+				tx.themeProject.count({
+					where: { userId, deletedAt: null, OR: [{ designStatus: "in_review" }, { buildStatus: "in_review" }] },
+				}),
+				tx.themeProject.aggregate({
+					where: { userId, deletedAt: null },
+					_max: { designReviewedAt: true, buildReviewedAt: true },
+				}),
+			])
+			let inGrace = awaitingReview > 0
+			if (!inGrace) {
+				const reviewedAt = [lastReview._max.designReviewedAt, lastReview._max.buildReviewedAt]
+					.filter((d): d is Date => !!d)
+					.sort((a, b) => b.getTime() - a.getTime())[0]
+				inGrace =
+					!!reviewedAt && reviewedAt.getTime() + settings.shopGraceDays * 86_400_000 > Date.now()
+			}
+			if (!inGrace) throw new HttpError("SHOP_CLOSED", SHOP_CLOSED_MESSAGE)
+		}
+		if (item.requiresPrinterQualified) {
+			const shipped = await tx.themeProject.count({
+				where: {
+					userId,
+					deletedAt: null,
+					designStatus: PhaseStatus.approved,
+					buildStatus: PhaseStatus.approved,
+				},
+			})
+			if (shipped < THEMES_REQUIRED_FOR_PRINTER) {
+				throw new HttpError("ITEM_LOCKED", "This item is locked for your account")
+			}
+		}
 
 		// The buyer's region, re-read here rather than trusted from the shelf:
 		// the price on the order is whatever this resolves to, so display and

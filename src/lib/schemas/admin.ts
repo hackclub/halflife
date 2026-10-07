@@ -39,6 +39,8 @@ export const creditAdjustSchema = z
 		amount: z
 			.number()
 			.int()
+			.min(-10_000, "Amount must be within ±10,000 per adjustment")
+			.max(10_000, "Amount must be within ±10,000 per adjustment")
 			.refine((n) => n !== 0, "Amount cannot be zero"),
 		reason: boundedText(1000, 1),
 		/**
@@ -169,5 +171,16 @@ export const rsvpSchema = z
 		utmSource: boundedText(200).optional(),
 		signupPage: boundedText(200).optional(),
 		referredBy: boundedText(64).optional(),
+	})
+	.strict()
+
+/** Unauthenticated landing-page signup. Freeform referral/UTM input is capped, never validated for shape. */
+export const subscribeSchema = z
+	.object({
+		email: z.email().max(320),
+		ref: boundedText(128).optional(),
+		utmSource: boundedText(128).optional(),
+		utmMedium: boundedText(128).optional(),
+		utmCampaign: boundedText(128).optional(),
 	})
 	.strict()

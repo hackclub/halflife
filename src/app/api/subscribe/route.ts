@@ -1,13 +1,7 @@
 import { NextResponse } from "next/server"
+import { parseBody } from "@/lib/api"
+import { subscribeSchema } from "@/lib/schemas/admin"
 import { clientIp, normalizeEmail, rateLimited, recordSignup } from "@/lib/site/signups"
-
-/** Referral codes and UTM values are freeform, untrusted client input — cap
- * length and drop anything that isn't a string rather than validate a shape. */
-function sanitizeParam(raw: unknown): string | null {
-	if (typeof raw !== "string") return null
-	const value = raw.trim().slice(0, 128)
-	return value.length > 0 ? value : null
-}
 
 export async function POST(request: Request) {
 	const ip = clientIp(request.headers)
@@ -16,31 +10,26 @@ export async function POST(request: Request) {
 		return NextResponse.json({ ok: false, error: "Slow down a second, then try again." }, { status: 429 })
 	}
 
-	let body: unknown
-	try {
-		body = await request.json()
-	} catch {
-		return NextResponse.json({ ok: false, error: "We couldn't read that request." }, { status: 400 })
+	const parsed = await parseBody(request, subscribeSchema)
+	if (parsed.error) {
+		// parseBody speaks the API error dialect; this route speaks plain
+		// landing-page copy. Same 400, friendlier body.
+		return NextResponse.json({ ok: false, error: "That doesn't look like an email address." }, { status: 400 })
 	}
 
-	const fields = typeof body === "object" && body !== null ? body : {}
-	const email = normalizeEmail((fields as { email?: unknown }).email)
-
+	// Lowercase + length/shape check on top of zod, so "Foo@Bar.com" and
+	// "foo@bar.com" are the same signup.
+	const email = normalizeEmail(parsed.data.email)
 	if (!email) {
 		return NextResponse.json({ ok: false, error: "That doesn't look like an email address." }, { status: 400 })
 	}
 
-	const ref = sanitizeParam((fields as { ref?: unknown }).ref)
-	const utmSource = sanitizeParam((fields as { utmSource?: unknown }).utmSource)
-	const utmMedium = sanitizeParam((fields as { utmMedium?: unknown }).utmMedium)
-	const utmCampaign = sanitizeParam((fields as { utmCampaign?: unknown }).utmCampaign)
-
 	try {
 		const result = await recordSignup(email, ip, {
-			ref,
-			utmSource,
-			utmMedium,
-			utmCampaign,
+			ref: parsed.data.ref ?? null,
+			utmSource: parsed.data.utmSource ?? null,
+			utmMedium: parsed.data.utmMedium ?? null,
+			utmCampaign: parsed.data.utmCampaign ?? null,
 		})
 		if (!result.ok) {
 			return NextResponse.json({ ok: false, error: result.error }, { status: result.status })

@@ -19,7 +19,7 @@ import { TIERS } from "@/lib/config/tiers"
 import { displayName } from "@/lib/display-name"
 import { lapseTimelapseUrl } from "@/lib/lapse"
 import { requirePermissionPage } from "@/lib/page-guards"
-import { Permission } from "@/lib/permissions"
+import { hasPermission, hasRole, Permission, Role } from "@/lib/permissions"
 import { getSubmissionDetail } from "@/lib/queries/review"
 
 export const dynamic = "force-dynamic"
@@ -27,10 +27,16 @@ export const dynamic = "force-dynamic"
 type Props = { params: Promise<{ id: string }> }
 
 export default async function ReviewDetailPage({ params }: Props) {
-	const { user } = await requirePermissionPage(Permission.REVIEW_SUBMISSIONS)
+	const { user, roles } = await requirePermissionPage(Permission.REVIEW_SUBMISSIONS)
 	const { id } = await params
 
-	const detail = await getSubmissionDetail(id, user.id)
+	const detail = await getSubmissionDetail(id, user.id, {
+		includeContact: hasRole(roles, Role.ADMIN) || hasRole(roles, Role.AUDITOR),
+		includeRiskFlags:
+			hasRole(roles, Role.ADMIN) ||
+			hasRole(roles, Role.AUDITOR) ||
+			hasPermission(roles, Permission.REVIEW_HOURS),
+	})
 	if (!detail) notFound()
 
 	const { submission, breakdown, claimLive } = detail
@@ -41,7 +47,7 @@ export default async function ReviewDetailPage({ params }: Props) {
 		<div className="hl-stack">
 			<PageHeader
 				title={`${detail.themeLabel} — ${submission.phase.toLowerCase()}`}
-				subtitle={`${displayName(project.user, project.user.email)} · submitted ${submission.createdAt.toDateString()}`}
+				subtitle={`${project.user.email ? displayName(project.user, project.user.email) : (displayName(project.user) ?? "—")} · submitted ${submission.createdAt.toDateString()}`}
 				actions={
 					<Badge tone={statusTone(submission.phase === "DESIGN" ? project.designStatus : project.buildStatus)}>
 						{statusLabel(submission.phase === "DESIGN" ? project.designStatus : project.buildStatus)}
@@ -52,7 +58,7 @@ export default async function ReviewDetailPage({ params }: Props) {
 			{project.user.fraudFlagged ? (
 				<Callout tone="danger">This account is flagged. Do not approve without an admin.</Callout>
 			) : null}
-			{project.user.verificationStatus !== "verified" ? (
+			{project.user.verificationStatus !== null && project.user.verificationStatus !== "verified" ? (
 				<Callout tone="warning">
 					Identity status is “{project.user.verificationStatus ?? "unknown"}”, not verified.
 				</Callout>
