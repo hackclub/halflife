@@ -743,6 +743,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 								...(patch.name !== undefined ? { name: patch.name.trim() } : {}),
 								...(patch.description !== undefined ? { description: patch.description.trim() } : {}),
 								...(patch.githubRepo !== undefined ? { githubRepo: patch.githubRepo } : {}),
+								...(patch.coverImageKey !== undefined ? { coverImageKey: patch.coverImageKey } : {}),
 								...(patch.tier !== undefined ? { tier: patch.tier } : {}),
 								...(patch.starterProjectId !== undefined
 									? { starter: patch.starterProjectId !== null, starterProjectId: patch.starterProjectId }
