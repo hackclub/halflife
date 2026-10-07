@@ -7,19 +7,19 @@ import { Phase, PhaseStatus, PostKind, PostStatus, Theme } from "../src/app/gene
  * End-to-end check of the seam between the database and the trail.
  *
  * The platform derives its whole shape from one map of checkpoint states. If
- * that map is built wrong, nothing throws and nothing fails to compile — the
+ * that map is built wrong, nothing throws and nothing fails to compile – the
  * trail just quietly tells someone they have not done work they have done, or
  * the reverse. So the mapping is asserted rather than trusted:
  *
  * 1. The Nth journal entry on the trail is the Nth session written, in order.
- * 2. A reel ticks the node it was posted for and NOT the others — the 5h and
+ * 2. A reel ticks the node it was posted for and NOT the others – the 5h and
  *    the 15h reel are both PROGRESS, so anything that counts by kind marks the
  *    15h node done the moment the 5h one lands.
  * 3. Hours that never passed through a journal entry (Hackatime, reviewer
  *    adjustments) reach the week's total without moving an entry node, because
  *    progress reels are placed where the JOURNAL crossed their mark.
  * 4. A project nobody has named is not listed as one, but its id is still
- *    available to write to — the five rows exist from signup.
+ *    available to write to – the five rows exist from signup.
  *
  * Run with `pnpm verify:store` against a scratch database.
  */
@@ -154,7 +154,7 @@ async function main() {
 	// The store replays the modal's six answers through the onboarding state
 	// machine one request at a time, because the machine refuses a step ahead of
 	// the furthest one reached. That refusal is what stops anyone arriving at a
-	// funded project without being asked what they are building — and it also
+	// funded project without being asked what they are building – and it also
 	// means the store's sequence has to be exactly right, or onboarding never
 	// completes and the modal reappears forever with nothing in the log to say
 	// why. This replays that sequence in the order the store sends it.

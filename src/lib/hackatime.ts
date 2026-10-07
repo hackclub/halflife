@@ -12,7 +12,7 @@ export interface HackatimeFetch {
 	stale: boolean
 	error?: string
 	/**
-	 * True when Hackatime answered and the named project is not in its list —
+	 * True when Hackatime answered and the named project is not in its list –
 	 * the project was renamed or deleted. The approval path must treat this as
 	 * "we don't know", never as a fresh zero.
 	 */
@@ -30,7 +30,7 @@ interface StatsBody {
  * present with zero seconds is the ONLY live zero. A name missing from a
  * successfully fetched list means the project was renamed or deleted, and
  * reporting zero for it would silently underpay the hand-in the number is
- * about. A response with no usable project list is stale too — a shape change
+ * about. A response with no usable project list is stale too – a shape change
  * must not look like "nothing logged".
  */
 export function projectSecondsFrom(body: unknown, project: string): HackatimeFetch {
@@ -85,7 +85,7 @@ export async function fetchProjectSeconds(hackatimeUserId: string, project: stri
  * The counterpart to `projectSecondsFrom`, and for the same reason: approval
  * reads this live, and the difference between "no overlap" and "we could not
  * find out" decides whether somebody is paid for the same minutes twice or once.
- * A response with no spans array is therefore stale, never an empty answer —
+ * A response with no spans array is therefore stale, never an empty answer –
  * an empty array IS a real answer here, meaning the project was tracked at no
  * time in the window, and the two must not be confused.
  *

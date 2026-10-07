@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic"
  *
  * Codes live on the landing's signup list, keyed by email, so this asks the
  * same `recordSignup` the landing uses. That hands back the code already
- * assigned to this address — or, for someone who came straight to the
+ * assigned to this address – or, for someone who came straight to the
  * platform and never signed up on the landing, assigns them one now, which is
  * the only way they would ever get one.
  */

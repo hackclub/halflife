@@ -10,7 +10,7 @@ import { PrismaClient } from "../src/app/generated/prisma/client"
  * the only thing standing between a QR code and someone's account. Every
  * property that keeps that narrow is asserted here:
  *
- * 1. The plaintext token is never stored — a database leak must not yield
+ * 1. The plaintext token is never stored – a database leak must not yield
  *    working upload links.
  * 2. One use, ever, claimed atomically so two phones racing the same code
  *    cannot both win.

@@ -35,7 +35,7 @@ export const POST = withRoute(async (req: Request) => {
 	const file = form.get("file")
 	if (!(file instanceof File)) return fail("INVALID_BODY", "Expected a `file` field")
 
-	// Resolved twice — once to attribute the audit row, once inside
+	// Resolved twice – once to attribute the audit row, once inside
 	// completeHandoff where the claim actually happens. Only the second one is
 	// authoritative.
 	const target = await resolveHandoff(token)

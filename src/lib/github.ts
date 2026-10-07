@@ -8,18 +8,18 @@ import type { Forge } from "@/lib/forge"
  * Stasis does: the proxy spreads requests over a pool of donated tokens, so the
  * budget is the pool's rather than one account's. Else the GitHub API with
  * GITHUB_TOKEN (5,000 an hour), else unauthenticated (60 an hour for the whole
- * server — fine on a dev machine, not in production).
+ * server – fine on a dev machine, not in production).
  *
  * GitLab has no proxy and needs none: its API is generous and a check is a
  * handful of requests. It is always called direct, with GITLAB_TOKEN when set
- * (which only raises the ceiling — GitLab serves public projects without any
+ * (which only raises the ceiling – GitLab serves public projects without any
  * token at all).
  *
  * What keeps a check answering, and the budget intact, is shared by both forges:
  *
- * - Retries. gh-proxy has transient failures of its own — a 503 with "Could not
+ * - Retries. gh-proxy has transient failures of its own – a 503 with "Could not
  *   verify the API key" and a hint to retry with backoff, or a dropped
- *   connection — that clear within a second. Those are retried twice, briefly,
+ *   connection – that clear within a second. Those are retried twice, briefly,
  *   before anything gives up.
  * - A fallback, GitHub only. If the proxy still fails, the request goes to
  *   GitHub directly, so a proxy outage costs direct budget rather than every
@@ -135,7 +135,7 @@ function request(route: Route, path: string): { url: string; headers: Record<str
 
 /**
  * One route, with retries for what is worth retrying. Resolves to the forge's
- * answer — any status it chose, including 404 — or throws ForgeUnavailable.
+ * answer – any status it chose, including 404 – or throws ForgeUnavailable.
  */
 async function via(forge: Forge, route: Route, path: string): Promise<Response> {
 	let why = `${forge.label} did not answer.`
@@ -153,7 +153,7 @@ async function via(forge: Forge, route: Route, path: string): Promise<Response> 
 			const raw = await fetch(url, { headers, cache: "no-store", signal: AbortSignal.timeout(TIMEOUT_MS[route]) })
 			// Read the body here, inside the same timeout and the same retry. The
 			// timeout covers the download as well as the headers, so a slow file
-			// list used to abort mid-read in the caller — outside every catch —
+			// list used to abort mid-read in the caller – outside every catch –
 			// and surface as a 500. Buffered, a slow body is just a slow attempt.
 			const body = await raw.arrayBuffer()
 			res = new Response(body, { status: raw.status, statusText: raw.statusText, headers: raw.headers })
@@ -192,7 +192,7 @@ async function via(forge: Forge, route: Route, path: string): Promise<Response> 
  * `projects/owner%2Frepo` on GitLab.
  *
  * Resolves to the response for any status the forge answered with, including
- * 404 — that is a finding, not a failure. Throws ForgeUnavailable when there is
+ * 404 – that is a finding, not a failure. Throws ForgeUnavailable when there is
  * no answer to be had on any route.
  */
 export async function forgeGet(forge: Forge, path: string): Promise<Response> {

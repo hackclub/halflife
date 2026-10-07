@@ -57,7 +57,7 @@ export const onboardingStepSchema = z.discriminatedUnion("step", [
 			/**
 			 * Null means "move on without choosing", which is only legal when the
 			 * choice is already locked to Tier 1 by a starter project. The state
-			 * machine enforces that — a null here from someone who can choose is
+			 * machine enforces that – a null here from someone who can choose is
 			 * rejected rather than silently skipping the question.
 			 */
 			requestedTier: z.number().int().min(1).max(3).nullable(),

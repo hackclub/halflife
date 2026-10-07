@@ -54,10 +54,10 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	await assertWeekStarted(scheduledWeekFor(project.theme, parsed.data.phase))
 
 	// Linking adds hours to the phase, and the decision recomputes those hours
-	// live, so an in-review phase is frozen for this too — not only a decided one.
+	// live, so an in-review phase is frozen for this too – not only a decided one.
 	const phaseStatus = parsed.data.phase === "DESIGN" ? project.designStatus : project.buildStatus
 	if (phaseStatus === PhaseStatus.in_review) {
-		return fail("PHASE_LOCKED", "This phase is in review — unsubmit it before linking more hours")
+		return fail("PHASE_LOCKED", "This phase is in review – unsubmit it before linking more hours")
 	}
 	// A decided phase is frozen: linking a project adds hours to a number that
 	// has already been judged, so it waits for a return or an un-approval.
@@ -88,7 +88,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 					: "the build phase"
 		return fail(
 			"CONFLICT",
-			`That Hackatime project is already linked to ${where} of this project. One tracked project can back only one phase, because its hours are the project's whole total — unlink it there first, or link a different Hackatime project.`,
+			`That Hackatime project is already linked to ${where} of this project. One tracked project can back only one phase, because its hours are the project's whole total – unlink it there first, or link a different Hackatime project.`,
 		)
 	}
 

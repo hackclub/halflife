@@ -44,7 +44,7 @@ export const creditAdjustSchema = z
 			.refine((n) => n !== 0, "Amount cannot be zero"),
 		reason: boundedText(1000, 1),
 		/**
-		 * Which pot to move. Defaults to spendable — an admin correcting someone's
+		 * Which pot to move. Defaults to spendable – an admin correcting someone's
 		 * balance almost always means ordinary coins, and topping up the printer
 		 * fund should be a deliberate choice rather than the accident of an
 		 * omitted field.

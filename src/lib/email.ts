@@ -8,7 +8,7 @@ import "server-only"
  *
  * Throws when unconfigured rather than no-oping quietly. The only caller is the
  * review-outcome notifier, which turns a throw into a NOTIFICATION_FAILURE
- * audit row — a deployment that forgot its mail credentials should show up in
+ * audit row – a deployment that forgot its mail credentials should show up in
  * ops rather than assume people were told.
  */
 

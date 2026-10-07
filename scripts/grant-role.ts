@@ -7,7 +7,7 @@ const prisma = new PrismaClient({
 	adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL ?? "" }),
 })
 
-/** `yarn grant-role you@example.com ADMIN` — the local bootstrap path. */
+/** `yarn grant-role you@example.com ADMIN` – the local bootstrap path. */
 async function main() {
 	const [email, roleArg] = process.argv.slice(2)
 	if (!email || !roleArg) {

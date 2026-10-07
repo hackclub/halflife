@@ -22,7 +22,7 @@ export function getAirtableConfig(): AirtableConfig | null {
 /**
  * Sanitise a value for interpolation into a filterByFormula string.
  *
- * Strip control characters, then escape backslashes, then quotes — in that
+ * Strip control characters, then escape backslashes, then quotes – in that
  * order. Escaping quotes first would double-escape the backslashes you just
  * inserted. Every formula interpolation goes through this: siege's duplicate
  * check interpolates a URL raw, which is a formula-injection hole, and stasis
@@ -60,7 +60,7 @@ export class AirtableError extends Error {
 
 // Airtable allows 5 requests/second/base. A shared token bucket is stricter
 // than siege's per-job `sleep 0.25`, which only works because its sync is a
-// single serialised job — here several request handlers can hit Airtable at
+// single serialised job – here several request handlers can hit Airtable at
 // once and each be individually well behaved while collectively exceeding the
 // cap.
 const MIN_INTERVAL_MS = 210
@@ -82,7 +82,7 @@ async function throttle(): Promise<void> {
  *
  * `retryServerErrors` is for non-idempotent calls: a 5xx or a timeout can
  * arrive after Airtable committed the write, so retrying a create duplicates
- * the row. A 429 is always safe — the request was never processed.
+ * the row. A 429 is always safe – the request was never processed.
  */
 export async function withRateLimitRetry<T>(
 	operation: string,

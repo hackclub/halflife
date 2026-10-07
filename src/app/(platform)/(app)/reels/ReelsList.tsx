@@ -16,7 +16,7 @@ import { PLATFORM_HOME } from "@/lib/routes"
  * each reel the places it has been posted publicly.
  *
  * Adding a link opens the same sheet a reel offers right after it is posted,
- * started on the links — pressing "Add where you posted it" has already said
+ * started on the links – pressing "Add where you posted it" has already said
  * yes. Everything here changes on the server, so every change ends in a
  * refresh rather than a local patch.
  */
@@ -30,7 +30,7 @@ export function ReelsList({ groups }: { groups: MyReelGroup[] }) {
 				<p className="text-[1.05rem] font-extrabold text-navy">No reels yet</p>
 				<p className="hand mx-auto mt-2 max-w-[44ch] text-[0.9rem] leading-relaxed text-navy-soft">
 					reels are posted from the checkpoints on your map: an idea reel to start each design week, then progress reels
-					as the hours add up — from five hours in a design week, then every ten, and from two and a half in a build.
+					as the hours add up – from five hours in a design week, then every ten, and from two and a half in a build.
 				</p>
 				<Link
 					href={PLATFORM_HOME}

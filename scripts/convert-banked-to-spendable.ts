@@ -4,14 +4,14 @@ import prisma from "../src/lib/prisma"
 /**
  * Merge the legacy locked printer fund into the single spendable pot.
  *
- * New mints never write BANKED rows anymore — every coin is spendable on
- * anything — so this moves the rows the old economy left behind. Kinds are
+ * New mints never write BANKED rows anymore – every coin is spendable on
+ * anything – so this moves the rows the old economy left behind. Kinds are
  * untouched, so the review reconcile (which sums by kind, not by bucket)
  * keeps converging exactly as before; only the bucket column moves, which is
  * what balances and the shop read.
  *
  * One UPDATE, idempotent: running it again moves nothing. Safe to run while
- * the app is live — no amounts change, so no totals move, only which pot
+ * the app is live – no amounts change, so no totals move, only which pot
  * they sit in.
  */
 async function main() {

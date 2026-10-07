@@ -25,7 +25,7 @@ function check(label: string, actual: unknown, expected: unknown) {
 const row = (id: string, fields: Record<string, unknown> = {}) => ({ id, fields })
 const person = (id: string, email: string) => ({ id, email })
 
-/** A table where the row's email is NOT the account's — the normal case. */
+/** A table where the row's email is NOT the account's – the normal case. */
 const divergent = {
 	byEmail: new Map([["someone@gmail.com", row("recSignup")]]),
 	byUserId: new Map([["cmuser123", row("recSignup")]]),
@@ -100,7 +100,7 @@ function main() {
 
 	// The join that works on the live base. The `Half-Life User ID` column it was
 	// designed around is not in the base, so the only key that needs no change to
-	// Airtable is the record id the RSVP drain already wrote down — and that is
+	// Airtable is the record id the RSVP drain already wrote down – and that is
 	// the case the Loops columns being empty actually came down to.
 	const byRecordOnly = {
 		byEmail: new Map<string, { id: string; fields: Record<string, unknown> }>(),

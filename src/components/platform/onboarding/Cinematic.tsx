@@ -44,14 +44,14 @@ const GOAL = printerById("ender-3-v3-se")
  * The claim Half Life makes is "ten weeks", so the intro spends its time
  * proving the distance rather than describing it. The title sits at the head
  * of the real home page; the camera lets go of it and drops through every week
- * banner in order — gathering speed, never reversing — and lands on the
+ * banner in order – gathering speed, never reversing – and lands on the
  * machine at the bottom of the run. The diorama is the real home page at the
  * real proportions, so when the spotlight finds the yellow checkpoint a moment
  * later the viewer is already oriented.
  */
 
 /* ------------------------------------------------------------------ *
- * Stage layout — computed once, shared by the markup and the camera
+ * Stage layout – computed once, shared by the markup and the camera
  * ------------------------------------------------------------------ */
 const STAGE_W = 1520
 const COL_X = 760 // centre of the trail column
@@ -139,7 +139,7 @@ const SCRIPT: { fromWeek: number; fromDepth: number; line: (goal: string) => str
 /**
  * The fall's speed profile: it eases off the title like something starting to
  * drop, runs fastest through the middle weeks, and spends its last stretch
- * braking onto the prize. Asymmetric on purpose — a symmetric ease reads as a
+ * braking onto the prize. Asymmetric on purpose – a symmetric ease reads as a
  * glide, and this is an arrival.
  */
 function cubicBezier(x1: number, y1: number, x2: number, y2: number) {
@@ -313,7 +313,7 @@ function Stage({ goal }: { goal: PrinterGoal }) {
  * The week banners are chrome, not scenery: like the real trail, each one
  * parks at the top of the frame while its week is passing and is then shoved
  * off by the next. They live in screen space so the camera loop can clamp them
- * every frame — CSS sticky needs a scroll container, and the stage is a
+ * every frame – CSS sticky needs a scroll container, and the stage is a
  * transform.
  */
 function WeekBanners({ refs }: { refs: React.RefObject<(HTMLDivElement | null)[]> }) {
@@ -336,7 +336,7 @@ function WeekBanners({ refs }: { refs: React.RefObject<(HTMLDivElement | null)[]
 				>
 					{/* The tear belongs to the plaque, never to the type. `.torn` is a
               displacement filter, so on a container it drags the glyphs about
-              with the edges — and this one is re-scaled every frame by the
+              with the edges – and this one is re-scaled every frame by the
               camera, which rasterises the filtered result at one size and
               stretches it to another. The real trail's banner separates them
               the same way. */}
@@ -393,7 +393,7 @@ export function Cinematic() {
 		const platformScale = () => Math.min(window.innerWidth / 1620, window.innerHeight / 940)
 		// Close enough that the trail column and one banner fill the frame.
 		const trailScale = () => Math.min(window.innerWidth / 940, window.innerHeight / 620, 1.05)
-		// The opening frame shows the platform around the title — but never so
+		// The opening frame shows the platform around the title – but never so
 		// far out on a phone that the trail under it is a smudge.
 		const openScale = () => Math.max(platformScale(), Math.min(trailScale(), 0.55))
 		// The closing frame has to hold the whole prize card above the CTA.

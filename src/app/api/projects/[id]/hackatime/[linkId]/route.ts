@@ -29,7 +29,7 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 	// phase: while a reviewer is deciding, the numbers have to sit still.
 	const phaseStatus = link.phase === "DESIGN" ? link.themeProject.designStatus : link.themeProject.buildStatus
 	if (phaseStatus === PhaseStatus.in_review) {
-		return fail("PHASE_LOCKED", "This phase is in review — unsubmit it before removing its links")
+		return fail("PHASE_LOCKED", "This phase is in review – unsubmit it before removing its links")
 	}
 	// A decided phase is frozen: removing a link changes a number that has
 	// already been judged, so it waits for a return or an un-approval.

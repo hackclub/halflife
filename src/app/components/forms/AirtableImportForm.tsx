@@ -104,7 +104,7 @@ export function AirtableImportForm({
 								<li key={outcome.recordId} className="hl-hint">
 									<span className="hl-mono">{outcome.recordId}</span>
 									{outcome.email ? ` · ${outcome.email}` : ""} · {STATUS_LABEL[outcome.status]}
-									{outcome.reason ? ` — ${outcome.reason}` : ""}
+									{outcome.reason ? ` – ${outcome.reason}` : ""}
 									{ARI_LABEL[outcome.ari] ? ` (${ARI_LABEL[outcome.ari]})` : ""}
 								</li>
 							))}

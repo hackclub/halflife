@@ -190,8 +190,8 @@ async function main() {
 	check("starter lookup round-trips", getStarterProject(starter.id)?.id, starter.id)
 
 	// ── The goal gate the first checkpoint hands off to ────────────────────────
-	// The prompt after onboarding is held open on one fact — participantGoal
-	// being null — and that fact has to travel with the account rather than with
+	// The prompt after onboarding is held open on one fact – participantGoal
+	// being null – and that fact has to travel with the account rather than with
 	// a browser, or a new laptop would let somebody past a question they have
 	// never been asked. These three are what that rests on.
 	const asked = await prisma.user.create({

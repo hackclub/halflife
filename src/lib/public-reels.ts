@@ -38,7 +38,7 @@ export const PUBLIC_REEL_HASHTAG = "#hackclubhalflife"
 /**
  * A pasted link, checked against its platform and tidied into the one form it
  * is stored and de-duplicated in: https, lower-case host without `www.` or
- * `m.`, no trailing slash, and no query or fragment — share links carry
+ * `m.`, no trailing slash, and no query or fragment – share links carry
  * per-share tracking (`?igsh=`, `?t=`, `?si=`) that would let the same post
  * be claimed twice. YouTube keeps `v`, the one query that names the video.
  *
@@ -56,7 +56,7 @@ export function readPublicReelLink(platform: PublicReelPlatform, raw: string): {
 	}
 	const seen = url.hostname.toLowerCase().replace(/^(www|m|mobile)\./, "")
 	if (!info.hosts.some((h) => seen === h || seen.endsWith(`.${h}`))) {
-		return { error: `That isn't a ${info.label} link — it should look like ${info.example}` }
+		return { error: `That isn't a ${info.label} link – it should look like ${info.example}` }
 	}
 	// One post, one link: X still answers on its old name, and the same status
 	// shared from each would otherwise be two claims on one post.

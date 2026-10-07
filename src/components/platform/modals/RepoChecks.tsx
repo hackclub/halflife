@@ -10,7 +10,7 @@ import { useStore } from "@/lib/store"
 import type { Project } from "@/lib/types"
 
 /**
- * What the repo has, checked against what this week needs — before the maker
+ * What the repo has, checked against what this week needs – before the maker
  * hands it in rather than after a reviewer bounces it.
  *
  * Failures that block are coral and say how to fix them; recommendations are
@@ -39,7 +39,7 @@ export function RepoChecks({
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
 	// Whether the sync writes to a different repo than the project links to, and
-	// what that repo is — the shortcut offered when the link is missing or wrong.
+	// what that repo is – the shortcut offered when the link is missing or wrong.
 	const [syncRepo, setSyncRepo] = useState<{ repo: string; differs: boolean } | null>(null)
 	const [linking, setLinking] = useState(false)
 
@@ -112,7 +112,7 @@ export function RepoChecks({
 				</Button>
 			</div>
 			{/* Where the link can be changed, it sits here with its editor. Where it
-          cannot — the project page — it is already in the page's heading, and
+          cannot – the project page – it is already in the page's heading, and
           saying it twice a few lines apart only makes the reader compare them. */}
 			{editable && <RepoEditor project={project} className="mt-1" />}
 

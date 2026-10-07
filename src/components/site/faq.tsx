@@ -2,7 +2,7 @@ import { FAQS } from "@/lib/site/content"
 
 /**
  * Comp geometry: a 1615-wide field of 725 × 323 plates, two up, 56px apart
- * (Figma 275:158–177). The comp's grey containing panel is dropped — its only
+ * (Figma 275:158-177). The comp's grey containing panel is dropped – its only
  * job was separating the field from the band behind it, and the palette shift
  * to periwinkle now does that.
  */
@@ -14,14 +14,14 @@ const GUTTER = 56
 /**
  * Every measurement of a plate is the comp's own, scaled by this.
  *
- * At full size the plates read as display type doing a body job — a 40px
- * question over a 30px answer — and the plates themselves stretched to 779
+ * At full size the plates read as display type doing a body job – a 40px
+ * question over a 30px answer – and the plates themselves stretched to 779
  * across the 1615 field, wider than the 725 the comp drew. So the whole card
  * comes down as one piece: shrinking the type inside a box that stayed put
  * would have left the type adrift in its own padding.
  *
  * One knob. Nudge it and the plate, its padding, both type sizes and the
- * gutter all move together — and the answer's measure does not move at all,
+ * gutter all move together – and the answer's measure does not move at all,
  * because a uniform scale cannot change a ratio. It sits at 43 characters
  * either way, which is the measure the comp's own numbers describe.
  */

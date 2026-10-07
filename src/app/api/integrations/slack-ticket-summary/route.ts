@@ -16,7 +16,7 @@ const WINDOW_MS = 24 * 60 * 60 * 1000
  *
  * Run by an Orchard `app` job once a day; see `docs/RUNBOOK.md`. The opened
  * count reads `createdAt` and the closed count `resolvedAt`, both written by
- * the Slack flow itself — `resolveHelpTicket` on any of the three resolution
+ * the Slack flow itself – `resolveHelpTicket` on any of the three resolution
  * buttons, `rememberHelpTicket` when a ticket's mirror posts.
  *
  * `?dryRun=true` returns the counts and the rendered message without posting,

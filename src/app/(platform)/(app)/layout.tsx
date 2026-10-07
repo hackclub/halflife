@@ -14,7 +14,7 @@ import { StoreProvider } from "@/lib/store"
  * working through a queue wants neither the trail's sidebar nor a store
  * describing a programme they are not enrolled in.
  *
- * The session gate lives here, in a server component, and is the real one —
+ * The session gate lives here, in a server component, and is the real one –
  * the cookie check in `proxy.ts` only decides which page to render at `/`.
  * Gating client-side would render the trail first and then take it away.
  *

@@ -3,7 +3,7 @@
 /*
  * The Half-Life design system.
  *
- * Values come from the Figma "platform ui" page — the BRANDING frame
+ * Values come from the Figma "platform ui" page – the BRANDING frame
  * (389:1774) for palette and type, and the [ MAIN PAGE ] / [ EXPLORE PAGE ]
  * frames for how they are used. Where the comp is silent (hover, focus,
  * disabled, small screens) the rule is derived from a value it does state.
@@ -15,7 +15,7 @@
 @theme {
 	/* ── Palette ───────────────────────────────────────────────────────────── */
 	/* The eight swatches of the BRANDING frame, plus its two large grounds. */
-	--color-surface: #fcf7f7; /* page ground — warm off-white, not pure white */
+	--color-surface: #fcf7f7; /* page ground – warm off-white, not pure white */
 	--color-surface-raised: #ffffff; /* cards sitting on the ground */
 	--color-surface-sunken: #f2ecec;
 	--color-border: #cacedd;
@@ -27,7 +27,7 @@
 	--color-ink: #100f30; /* body text */
 	--color-ink-strong: #1c1a59; /* headings, outlines, the brand navy */
 	/*
-   * The comp's secondary grey is #979bab, which is 2.77:1 on white — below the
+   * The comp's secondary grey is #979bab, which is 2.77:1 on white – below the
    * 4.5:1 body-text floor, and this is read by teenagers on school laptops in
    * bright rooms. Darkened along its own hue (228°) and saturation rather than
    * swapped for a neutral, so it stays the comp's colour: 5.06:1 on white,
@@ -74,7 +74,7 @@
    * The accent face is Comico, used only for small uppercase labels
    * ("VIEW MORE", "LOG OUT", "YESTERDAY", "The Doomscroller") and the two
    * numeric counters. It is not on Google Fonts and no licensed file ships
-   * here, so it falls back until one does — see the note in layout.tsx.
+   * here, so it falls back until one does – see the note in layout.tsx.
    */
 	--font-sans: var(--font-jakarta), ui-sans-serif, system-ui, -apple-system, sans-serif;
 	--font-accent: var(--font-comico), "Comic Sans MS", "Chalkboard SE", var(--font-jakarta), sans-serif;
@@ -467,7 +467,7 @@ h4 {
 	}
 
 	/* ── Accent label ──────────────────────────────────────────────────────── */
-	/* "VIEW MORE", "LOG OUT", "YESTERDAY" — Comico, small, tracked out. */
+	/* "VIEW MORE", "LOG OUT", "YESTERDAY" – Comico, small, tracked out. */
 	.hl-label {
 		font-family: var(--font-accent);
 		font-size: 0.75rem;
@@ -625,7 +625,7 @@ h4 {
 	.hl-callout--warning {
 		border-color: var(--color-coin);
 	}
-	/* A plain explanation, not a problem to act on — the deduplicated hours
+	/* A plain explanation, not a problem to act on – the deduplicated hours
 	   notice is the reader being told why a number is smaller than expected. */
 	.hl-callout--info {
 		border-color: var(--color-mint);
@@ -695,7 +695,7 @@ h4 {
 	/*
    * The comp's banner is painted art with a torn edge, exported from the file
    * rather than reconstructed. Its surround is exactly the page ground
-   * (#fcf7f7), so it needs no mask — the tear blends into the page on its own.
+   * (#fcf7f7), so it needs no mask – the tear blends into the page on its own.
    *
    * Stretched to the container width: the edge is organic enough to take it,
    * and a fixed-width band would letterbox on every screen that is not 676px.
@@ -761,7 +761,7 @@ h4 {
 	.hl-week {
 		scroll-margin-top: 1.5rem;
 	}
-	/* Weeks not yet reached recede without being hidden — the point of the
+	/* Weeks not yet reached recede without being hidden – the point of the
      track is that you can see what is coming. */
 	.hl-week--future {
 		opacity: 0.55;
@@ -826,7 +826,7 @@ h4 {
 		display: block;
 	}
 	/* The trail has to read as a path from across the room, so it takes the
-     muted ink rather than the border grey — on this ground the border colour
+     muted ink rather than the border grey – on this ground the border colour
      disappears at the size a dotted line actually occupies. */
 	.hl-connector {
 		display: block;
@@ -933,7 +933,7 @@ h4 {
 	@media (max-width: 900px) {
 		/* The lane's swing costs more than it gives on a phone. The offset is a
 		   Tailwind margin utility on the element, which a plain class cannot outrank,
-		   hence the override — and note the whole .hl-node family is currently
+		   hence the override – and note the whole .hl-node family is currently
 		   unreferenced by any component, so this can go with it. */
 		.hl-node {
 			/* biome-ignore lint/complexity/noImportantStyles: see above */
@@ -953,7 +953,7 @@ h4 {
 	/*
    * Review and admin keep a plain strip rather than the participant sidebar.
    * The comp designs neither, and inventing a sidebar for them would be
-   * guessing — this at least dresses them in the same palette and outline
+   * guessing – this at least dresses them in the same palette and outline
    * weight as everything else.
    */
 	.hl-nav {
@@ -1061,7 +1061,7 @@ h4 {
 		justify-content: space-between;
 		margin-bottom: 0.7rem;
 	}
-	/* The comp sets this in the border grey. That is 1.6:1 — decorative, and
+	/* The comp sets this in the border grey. That is 1.6:1 – decorative, and
      this is the panel's name, so it takes the readable muted instead. */
 	.hl-rail-title {
 		font-family: var(--font-accent);

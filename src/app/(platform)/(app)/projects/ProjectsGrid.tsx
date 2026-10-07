@@ -78,7 +78,7 @@ export function ProjectsGrid() {
 					const events = projectEvents(project, weeks, stateOf)
 					const stats = projectStats(events)
 					// Journal sessions plus everything that arrived another way
-					// (Hackatime link time, reviewer adjustments) — the same
+					// (Hackatime link time, reviewer adjustments) – the same
 					// weekHours accounting the sidebar total reads, so the two
 					// never disagree. A project spans its design week and its
 					// build week, five apart.

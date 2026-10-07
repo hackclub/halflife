@@ -17,7 +17,7 @@ type Params = { params: Promise<{ id: string }> }
  * The repo sync for one of the caller's projects.
  *
  * GET reads the state and, for each forge the caller has linked, the repos they
- * can push to — the list the settings control offers. It is read here rather
+ * can push to – the list the settings control offers. It is read here rather
  * than from a separate `/api/me/github` because the only place it is wanted is
  * this control, and one round trip is one less thing to keep in step. A maker
  * who has linked both GitHub and GitLab gets one list from each, each repo
@@ -62,7 +62,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	const parsed = await parseBody(req, repoSyncSettingsSchema)
 	if (parsed.error) return parsed.error
 
-	// A project that is gone, or someone else's, is a 404 either way — same as
+	// A project that is gone, or someone else's, is a 404 either way – same as
 	// every other project route.
 	const owned = await prisma.themeProject.findFirst({
 		where: { id, userId: gate.user.id, deletedAt: null },

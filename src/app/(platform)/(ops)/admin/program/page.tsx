@@ -125,8 +125,8 @@ export default async function AdminProgramPage() {
 				<p className="hl-hint">
 					Before the platform opened, projects were submitted through the warm-up submission form, which writes rows
 					into the <code>{YSWS_SUBMISSION.tableId}</code> table (<code>AIRTABLE_YSWS_TABLE_ID</code>). Importing files
-					each one on the maker&apos;s Warm Up track — a pre-season slot that does not use one of their five season
-					themes — creates their account if they have not signed up yet, records the self-reported hours as a work
+					each one on the maker&apos;s Warm Up track – a pre-season slot that does not use one of their five season
+					themes – creates their account if they have not signed up yet, records the self-reported hours as a work
 					session, and hands the project to Ari for review. Rows already imported, and rows Half Life itself wrote, are
 					skipped, so the button is safe to run again. Every row becomes its own project: a maker who handed the form in
 					more than once gets every project they submitted.
@@ -263,7 +263,7 @@ export default async function AdminProgramPage() {
 				</Table>
 				<p className="hl-hint">
 					Edit these in <code>lib/config/tiers.ts</code>. Funded hours buy parts, and the submit floor is the funded
-					hours and nothing more — every hour past them earns spendable coins.
+					hours and nothing more – every hour past them earns spendable coins.
 				</p>
 
 				<h2>Printer goals</h2>
@@ -279,7 +279,7 @@ export default async function AdminProgramPage() {
 				</Table>
 				<p className="hl-hint">
 					Earning is paced by the machine, not the tier: the same printer asks the same weekly hours on every tier. Edit
-					these in <code>lib/config/printers.ts</code>, which is the budget spreadsheet transcribed — the season lands
+					these in <code>lib/config/printers.ts</code>, which is the budget spreadsheet transcribed – the season lands
 					exactly on each price.
 				</p>
 			</Panel>

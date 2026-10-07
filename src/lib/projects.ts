@@ -3,8 +3,8 @@ import { WARMUP_WEEK_ID } from "./config/program"
 import type { Project, SessionLog, Week } from "./types"
 
 /**
- * A project is one theme carried across two weeks — designed in week N, built
- * in week N + 5 — so everything it accumulated lives under two week ids and
+ * A project is one theme carried across two weeks – designed in week N, built
+ * in week N + 5 – so everything it accumulated lives under two week ids and
  * has to be gathered back into one story.
  */
 

@@ -3,7 +3,7 @@ import type { ReactNode } from "react"
 
 /**
  * Presentational primitives. These are the only files besides globals.css that
- * know about colour, spacing or type — a page composes these and never writes a
+ * know about colour, spacing or type – a page composes these and never writes a
  * raw utility class.
  */
 
@@ -54,7 +54,7 @@ export function Panel({
 }
 
 /**
- * The page title, hung from two straps pinned to the top of the page — the
+ * The page title, hung from two straps pinned to the top of the page – the
  * comp's own device, used on every screen.
  *
  * `actions` sit below the board rather than beside it: the sign is centred,
@@ -109,7 +109,7 @@ export function Callout({ tone, children }: Readonly<{ tone?: "danger" | "warnin
  * A participant's avatar, falling back to the programme's own art.
  *
  * The comp puts a gato illustration in the account card rather than an empty
- * square, and most participants will not have set a picture — so the fallback
+ * square, and most participants will not have set a picture – so the fallback
  * is the common case, not the edge case.
  *
  * Not next/image: an avatar URL comes from Slack or R2 and its host is only

@@ -102,7 +102,7 @@ async function main() {
 	const first = await approve()
 	check("approved hours frozen", first.approvedHours, 18)
 	check("build coins minted", first.coins?.spendable, buildSplit.spendable)
-	check("a build banks nothing — every coin is spendable", first.coins?.banked, 0)
+	check("a build banks nothing – every coin is spendable", first.coins?.banked, 0)
 	check("balance after first approval", await spendable(), expectedTotal)
 	check("no locked fund holds anything", await banked(), 0)
 
@@ -113,7 +113,7 @@ async function main() {
 	check("balance after re-approval does not double", await spendable(), expectedTotal)
 
 	const entries = await prisma.ledgerEntry.count({ where: { userId: participant.id } })
-	// A build approval writes two lines — the spendable mint and the completion
+	// A build approval writes two lines – the spendable mint and the completion
 	// bonus. The legacy locked half reconciles to a zero target against a zero
 	// sum, which writes nothing. This exercise approves, un-approves and
 	// re-approves. Six rows for three states: history is appended, never edited,

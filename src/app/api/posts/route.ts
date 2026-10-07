@@ -16,7 +16,7 @@ export const POST = withRoute(async (req: Request) => {
 	if (parsed.error) return parsed.error
 
 	// A checkpoint reel is checkpoint work, so a deleted reel that is still owed
-	// holds it — unless this is that reel coming back. Freeform posts are not a
+	// holds it – unless this is that reel coming back. Freeform posts are not a
 	// checkpoint and are never held.
 	if (parsed.data.checkpointKey) await assertNoOwedReel(gate.user.id, parsed.data.checkpointKey)
 

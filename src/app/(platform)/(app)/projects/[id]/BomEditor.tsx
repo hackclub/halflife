@@ -73,7 +73,7 @@ function draftOf(line: BomLine): Draft {
  * fit the money it is asking for.
  *
  * Tax and shipping close the table as one fixed line for the whole order. It
- * has an amount and nothing else — no edit form and no remove — because every
+ * has an amount and nothing else – no edit form and no remove – because every
  * order has it, even at zero.
  */
 export function BomEditor({
@@ -564,7 +564,7 @@ export function BomEditor({
 							<>
 								<p className="text-[0.9rem] leading-relaxed text-navy-soft">
 									Read {preview.lines.length} {preview.lines.length === 1 ? "part" : "parts"} from{" "}
-									<code className="hand text-navy">{preview.path}</code>. What the file did not say is left blank — open
+									<code className="hand text-navy">{preview.path}</code>. What the file did not say is left blank – open
 									each line and add a purpose, and a vendor and price a reviewer can check.
 								</p>
 								{preview.existing > 0 && (
@@ -608,7 +608,7 @@ export function BomEditor({
 								<ul className="mt-1.5 grid gap-1">
 									{preview.skipped.map((s) => (
 										<li key={s.row} className="text-[0.82rem] leading-snug text-navy-soft">
-											<span className="font-semibold text-navy">{s.name || `line ${s.row}`}</span> — {s.reason}
+											<span className="font-semibold text-navy">{s.name || `line ${s.row}`}</span> – {s.reason}
 										</li>
 									))}
 								</ul>
@@ -623,7 +623,7 @@ export function BomEditor({
 
 /**
  * The order-wide line. The amount is edited in the row itself and
- * saved when the field is left or Enter is pressed — there is nothing else
+ * saved when the field is left or Enter is pressed – there is nothing else
  * about it to edit, so it never needs the form.
  */
 function ExtraRow({
@@ -664,8 +664,8 @@ function ExtraRow({
 				</label>
 				<span className="block text-[0.8rem] leading-snug text-navy-soft">{hint}</span>
 			</td>
-			<td className="px-3 py-2.5 text-navy-soft">—</td>
-			<td className="px-3 py-2.5 text-navy-soft">—</td>
+			<td className="px-3 py-2.5 text-navy-soft">–</td>
+			<td className="px-3 py-2.5 text-navy-soft">–</td>
 			<td className="px-3 py-1.5 font-semibold text-navy tabular-nums" colSpan={locked ? 2 : 3}>
 				{locked ? (
 					usd(value)

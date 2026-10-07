@@ -50,7 +50,7 @@ export const GET = withRoute(async () => {
 const createSchema = z.object({ weekId: z.number().int().min(1).max(10) }).strict()
 
 /**
- * Create the project for a design week — called when its "create a project"
+ * Create the project for a design week – called when its "create a project"
  * checkpoint is opened, which is the only moment a project row is made (see
  * lib/provisioning). Opening it again returns the same row.
  */

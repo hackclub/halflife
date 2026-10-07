@@ -36,7 +36,7 @@ export interface ProfileProject {
 	/** Warm-ups are not a week of the season; the card labels them differently. */
 	warmup: boolean
 	thumbnail: ProjectThumbnail | null
-	/** Journalled hours — tracked entries contribute zero, as they do everywhere. */
+	/** Journalled hours – tracked entries contribute zero, as they do everywhere. */
 	hours: number
 	entries: number
 }

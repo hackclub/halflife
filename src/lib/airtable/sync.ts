@@ -19,13 +19,13 @@ import { publicUrlFor } from "@/lib/uploads/r2"
  *
  * Half Life has no review page of its own: reviewers work on
  * ari.hackclub.com, straight from this table. So the row is the submission,
- * and everything a reviewer needs to judge it goes into it here — the repo,
+ * and everything a reviewer needs to judge it goes into it here – the repo,
  * the hours, the timelapses, the parts money, the address to ship to.
  */
 
 const round2 = (n: number) => Math.round(n * 100) / 100
 
-/** YYYY-MM-DD, in UTC — the program's week maths is UTC-anchored too. */
+/** YYYY-MM-DD, in UTC – the program's week maths is UTC-anchored too. */
 const ymd = (d: Date) => d.toISOString().slice(0, 10)
 
 /**
@@ -86,7 +86,7 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 		project.bomItems.reduce((n, l) => n + l.quantity * l.unitCostUsd, 0) + (project.bomTaxShippingUsd ?? 0),
 	)
 
-	// A design is judged from its repo; a build from the video of it working —
+	// A design is judged from its repo; a build from the video of it working –
 	// the closing reel the submit sheet asks for, posted under this week's key.
 	let playableUrl = project.githubRepo ?? ""
 	if (phase === Phase.BUILD) {
@@ -162,7 +162,7 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
  * Serialize the adopt-or-create decision for one (project, phase).
  *
  * The record id is only known from an audit row written after a successful
- * write, so two callers can arrive before either row exists — the submit
+ * write, so two callers can arrive before either row exists – the submit
  * `after` hook and the hourly retry job, or an admin's Retry button racing
  * either. Both read "no row yet", both find nothing to adopt, and both POST a
  * new "Pending Review" row into the payout sink. Postgres serializes them
@@ -217,7 +217,7 @@ export async function removeSubmissionFromYsws(
 }
 
 /**
- * Submissions awaiting review whose row never made it to the table — a write
+ * Submissions awaiting review whose row never made it to the table – a write
  * that failed, or one made before this sync existed. Replayed by the retry
  * job and listed on /admin/program.
  */

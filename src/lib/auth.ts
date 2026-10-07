@@ -73,7 +73,7 @@ const configuredUrl = process.env.BETTER_AUTH_URL
 /**
  * Where a request signs in from when it names no host we recognise. A deployed
  * process uses the canonical origin, NOT `BETTER_AUTH_URL`, which can still
- * name the hostname an earlier deploy used — the stale value that broke
+ * name the hostname an earlier deploy used – the stale value that broke
  * sign-in on halflife.hackclub.com is exactly that. A laptop keeps its own.
  */
 const baseURLFallback =
@@ -111,8 +111,8 @@ export const auth = betterAuth({
 
 	// better-auth validates every credentialed request's Origin against the
 	// origin of its base URL, so pinning `baseURL` to a single hostname refuses
-	// sign-ins that arrive on any other one with INVALID_ORIGIN — logged as
-	// "Invalid origin: https://halflife.hackclub.com" — long before the OAuth
+	// sign-ins that arrive on any other one with INVALID_ORIGIN – logged as
+	// "Invalid origin: https://halflife.hackclub.com" – long before the OAuth
 	// flow starts, which the landing page's login mark reports as "try again".
 	// Resolve the host per request instead, for the hosts we know.
 	//
@@ -132,7 +132,7 @@ export const auth = betterAuth({
 	// `ipAddress.ipAddressHeaders` is a separate concern and is NOT covered by
 	// `trustedProxyHeaders`: that option only affects base-URL/host resolution.
 	// The rate limiter resolves the client address on its own, and by default
-	// reads only `x-forwarded-for` — which, behind the ingress, carries more than
+	// reads only `x-forwarded-for` – which, behind the ingress, carries more than
 	// one hop, so better-auth refuses it and falls back to a single shared
 	// `no-trusted-ip|/sign-in/social` bucket (3 requests per 10s for the whole
 	// site, which is what made ordinary sign-ins return 429). Cloudflare
@@ -146,8 +146,8 @@ export const auth = betterAuth({
 
 	// better-auth enables its rate limiter in production by default and gives
 	// every `/sign-in/*` path a stricter rule than the global one: 3 requests per
-	// 10 seconds. `/sign-in/social` matches it, so a person who retries — or taps
-	// the button twice, or lands back from HCA and starts again — gets a 429 for
+	// 10 seconds. `/sign-in/social` matches it, so a person who retries – or taps
+	// the button twice, or lands back from HCA and starts again – gets a 429 for
 	// the next few seconds. 3 is right for the credential endpoints it was aimed
 	// at; it is too low for starting a browser social flow, which is one button
 	// per sign-in. Raise only that path and leave the rest of the defaults alone.
@@ -161,7 +161,7 @@ export const auth = betterAuth({
 
 	session: {
 		// The session cookie cache used to keep sessions in an encrypted
-		// cookie for five minutes — so a session revoked on the server (signed
+		// cookie for five minutes – so a session revoked on the server (signed
 		// out on another device, or deleted by hand) kept working here until
 		// its cookie expired. Disabled per the security audit (L3): every
 		// request now reads the session from the database, so revocation
@@ -177,7 +177,7 @@ export const auth = betterAuth({
 			enabled: true,
 			// A participant's Hackatime signup email rarely matches their HCA email.
 			// Without this, better-auth's link flow aborts with email_doesn't_match
-			// and the account is never created — and because the auth handler
+			// and the account is never created – and because the auth handler
 			// swallows the error into a dashboard redirect, it looks like the button
 			// simply did nothing. This only affects the explicit linkSocial path,
 			// where the actor already holds the target session.
@@ -196,7 +196,7 @@ export const auth = betterAuth({
 			// Hackatime and Lapse are trusted for (1) and defused for (2): their
 			// getUserInfo reports a per-identity address on the reserved .invalid
 			// TLD (linkOnlyEmail, above) that no real user can hold, so the email
-			// match in (2) can never find anyone. Nothing reads those addresses —
+			// match in (2) can never find anyone. Nothing reads those addresses –
 			// a user's email comes from HCA, and Account rows store no email.
 			trustedProviders: ["hca", "hackatime", "lapse", "github", "gitlab"],
 		},
@@ -206,7 +206,7 @@ export const auth = betterAuth({
 		additionalFields: {
 			slackId: { type: "string", required: false, input: false },
 			slackDisplayName: { type: "string", required: false, input: false },
-			// HCA's nickname, what the site shows — written server-side by
+			// HCA's nickname, what the site shows – written server-side by
 			// syncHcaProfile, like the verification status below, because a
 			// provider's profile cannot set an `input: false` field.
 			displayName: { type: "string", required: false, input: false },
@@ -234,7 +234,7 @@ export const auth = betterAuth({
 		session: {
 			create: {
 				// Every sign-in re-reads the HCA profile, so a status that changed
-				// since the last one — most often "pending" becoming "verified" — is
+				// since the last one – most often "pending" becoming "verified" – is
 				// current. Not awaited: signing in must not wait on, or fail with, HCA.
 				after: async (session) => {
 					void syncHcaProfile(session.userId)
@@ -309,7 +309,7 @@ export const auth = betterAuth({
 					// better-auth fetches `discoveryUrl` EXACTLY ONCE, at startup, with
 					// no retry. HCA rate-limits its own discovery endpoint (`429`,
 					// `retry-after: 300`), and one 429 in that instant left the plugin
-					// with no authorization/token URL — so it logged "discovery left no
+					// with no authorization/token URL – so it logged "discovery left no
 					// usable authorization endpoint" and registered NO `hca` provider at
 					// all, and every sign-in then failed with "Provider not found".
 					//
@@ -366,7 +366,7 @@ export const auth = betterAuth({
 					},
 					// Core fields only. The verification status, Slack id and PII are
 					// `input: false`, and better-auth drops those from a provider profile
-					// — so they are written by syncHcaProfile at sign-in instead. Mapping
+					// – so they are written by syncHcaProfile at sign-in instead. Mapping
 					// them here did nothing, which is how every user ended up unverified.
 					mapProfileToUser: (profile: Record<string, unknown>) => ({
 						email: profile.email as string,
@@ -386,7 +386,7 @@ export const auth = betterAuth({
 					// Link-only. better-auth 1.7 registers generic OAuth providers as
 					// first-class social providers, so without this anyone could POST
 					// /api/auth/sign-in/social {"provider":"hackatime"} and mint a
-					// Half-Life account under an email Hackatime never verified —
+					// Half-Life account under an email Hackatime never verified –
 					// bypassing HCA identity entirely, and reaching the superadmin
 					// bootstrap below.
 					disableSignUp: true,
@@ -474,7 +474,7 @@ export const auth = betterAuth({
 					// would mean GitHub proved an email for an account HCA is supposed
 					// to be the sole source of.
 					//
-					// `repo` is a broad scope — it is write access to every repository
+					// `repo` is a broad scope – it is write access to every repository
 					// the person can push to. That is what GitHub offers; there is no
 					// narrower one that covers committing to an arbitrary user-chosen
 					// repo. It is asked for at link time, the account picker explains
@@ -526,7 +526,7 @@ export const auth = betterAuth({
 					// Link-only for the same reason as GitHub: an authorisation to push
 					// to one repository, not an identity we create accounts from.
 					//
-					// `api` is broad — read/write over every project the person can see.
+					// `api` is broad – read/write over every project the person can see.
 					// GitLab offers nothing narrower that still covers creating a commit
 					// through the API (`write_repository` is Git-over-HTTP only), so this
 					// is asked for at link time and explained in the picker, exactly as

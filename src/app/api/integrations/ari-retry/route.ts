@@ -28,7 +28,7 @@ function phaseOf(metadata: unknown): Phase | null {
 }
 
 /**
- * Replays hand-ins that never reached Ari — a send that failed, or one on a
+ * Replays hand-ins that never reached Ari – a send that failed, or one on a
  * deployment whose Ari secrets were added after the submission. Reviewers work
  * in Ari, so a ship that never arrived is a project nobody will review.
  */
@@ -60,8 +60,8 @@ export const POST = withRoute(async (req: NextRequest) => {
 		else synced++
 	}
 
-	// Withdrawals have no row to list — the submission they belonged to was
-	// deleted on unsubmit — so a failure's only trace is its audit row. Replay
+	// Withdrawals have no row to list – the submission they belonged to was
+	// deleted on unsubmit – so a failure's only trace is its audit row. Replay
 	// the ones that no later success has resolved; `not_queued` is success
 	// (Ari had already decided or dropped it).
 	let withdrawn = 0

@@ -36,8 +36,8 @@ import { warmupPhaseOf } from "@/lib/warmup"
  *
  * ## The seam
  *
- * The platform UI derives its entire shape — how many nodes a week has, where
- * the progress reels fall, which one is live, what is locked and why — from one
+ * The platform UI derives its entire shape – how many nodes a week has, where
+ * the progress reels fall, which one is live, what is locked and why – from one
  * record of checkpoint states, through `curriculum.checkpointsFor`. That
  * function is pure and already agrees with the program design, so the server's
  * only job is to say which checkpoints are done and with what, and let the
@@ -80,7 +80,7 @@ export interface StoreSnapshot {
 	onboardingDone: boolean
 	projects: Project[]
 	/**
-	 * Every theme project's id, by the design week it belongs to — including the
+	 * Every theme project's id, by the design week it belongs to – including the
 	 * ones not named yet.
 	 *
 	 * A row is made when its week's "create a project" checkpoint is opened
@@ -92,7 +92,7 @@ export interface StoreSnapshot {
 	projectIdByWeek: Record<number, string>
 	progress: Record<string, CheckpointSnapshot>
 	/**
-	 * Hours a week has that did NOT come from its journal entries — Hackatime
+	 * Hours a week has that did NOT come from its journal entries – Hackatime
 	 * link time, and reviewer adjustments to it.
 	 *
 	 * Kept apart from the entries rather than folded into them because the two
@@ -109,7 +109,7 @@ export interface StoreSnapshot {
 	 * Coins are minted when a reviewer approves a phase, not when hours are
 	 * logged, so the balance below trails the work by a review. Anything that
 	 * asks "is this week on pace" has to add back what the unreviewed weeks will
-	 * bank — and to know which weeks those are, it needs this.
+	 * bank – and to know which weeks those are, it needs this.
 	 */
 	phaseStatusByWeek: Record<number, PhaseStatus>
 	/**
@@ -131,8 +131,8 @@ export interface StoreSnapshot {
 	 * Every warm-up project, by id: the one phase it is handed in as, the hours
 	 * it has from somewhere other than its entries (Hackatime, reviewer
 	 * adjustments), and when its journal closes. A maker may hold several, so
-	 * each is addressed by its id — its entries and submit are `wu-<id>-…` keys
-	 * in `progress` — never by a week number.
+	 * each is addressed by its id – its entries and submit are `wu-<id>-…` keys
+	 * in `progress` – never by a week number.
 	 */
 	warmups: Record<string, { phase: "design" | "build"; offBookHours: number; closesAt: number }>
 	/** The program's IANA timezone, so the trail can name the day a week opens. */
@@ -228,7 +228,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 				// cachedSpans comes along because `rollUpHours` is what the ledger
 				// uses, and a trail that reported a different Hackatime total from the
 				// one a reviewer approves is the disagreement this file already warns
-				// about — the same minutes must not be payable twice on one screen and
+				// about – the same minutes must not be payable twice on one screen and
 				// once off it.
 				select: {
 					themeProjectId: true,
@@ -258,7 +258,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 				select: { themeProjectId: true, phase: true, createdAt: true },
 			}),
 			// Not in a transaction: this is a read for display, and BEGIN and COMMIT
-			// are two more round trips to a database ~110ms away from a laptop —
+			// are two more round trips to a database ~110ms away from a laptop –
 			// the slowest part of the whole snapshot. Spending still reads its
 			// balance inside the transaction that spends it.
 			getBalances(prisma, userId),

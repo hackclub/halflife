@@ -14,7 +14,7 @@ import type { FileUpdate } from "@/lib/forge-write"
  *
  * "No diff at all" is load-bearing, not a nicety: the write is skipped when the
  * rendered bytes match the blob already in the repo (see `newestOf`), so the
- * debounced after-write sync does not commit on every keystroke-save — only when
+ * debounced after-write sync does not commit on every keystroke-save – only when
  * something a reader would see actually changed.
  *
  * The banner at the top of each file says so, in the file, because the first
@@ -50,12 +50,12 @@ export interface JournalEntry {
 
 /**
  * Whether an entry belongs where it does: DESIGN weeks read as designing, BUILD
- * weeks as building. Used for the heading, not for filtering — every entry is
+ * weeks as building. Used for the heading, not for filtering – every entry is
  * written either way.
  */
 const phaseWord = (phase: Phase) => (phase === Phase.DESIGN ? "Design" : "Build")
 
-/** `1,234.5h` — the journal's own rounding, so the file matches the page. */
+/** `1,234.5h` – the journal's own rounding, so the file matches the page. */
 function hours(n: number): string {
 	const rounded = Math.round(n * 100) / 100
 	return `${rounded}h`
@@ -128,7 +128,7 @@ function htmlToMarkdown(html: string): string {
 
 function decodeEntities(text: string): string {
 	// `&amp;` is unescaped LAST. Decoding it first would turn the literal text
-	// `&amp;lt;` into `&lt;` and then into `<` in the same pass — unescaping
+	// `&amp;lt;` into `&lt;` and then into `<` in the same pass – unescaping
 	// twice, so text the author escaped once came out as live markup. Every other
 	// entity above must also run before this one for the same reason.
 	return text
@@ -145,7 +145,7 @@ function row(...cells: (string | number | null | undefined)[]): string {
 	return `| ${cells.map((c) => (c === null || c === undefined || c === "" ? "—" : String(c))).join(" | ")} |`
 }
 
-/** `$12.30` — dollars, two places, the way the BOM page shows them. */
+/** `$12.30` – dollars, two places, the way the BOM page shows them. */
 function usd(n: number): string {
 	return `$${n.toFixed(2)}`
 }
@@ -158,7 +158,7 @@ function usd(n: number): string {
  * commitFiles never fired. Every debounced sync then wrote a commit with no
  * diff.
  *
- * Only the file's own content counts — deliberately not the project row's
+ * Only the file's own content counts – deliberately not the project row's
  * `updatedAt`, which the sync itself writes `repoSyncedAt` to on every run. With
  * that in the mix each sync moved its own date forward, so the file always
  * looked changed and the guard still never fired. Date from the data, and a
@@ -187,7 +187,7 @@ export interface ProjectMeta {
  */
 export function renderJournal(project: ProjectMeta, entries: JournalEntry[]): FileUpdate {
 	const lines: string[] = []
-	lines.push(`# ${project.title} — devlog`, "")
+	lines.push(`# ${project.title} – devlog`, "")
 	lines.push(BANNER("devlog", project.id, newestOf(entries.map((e) => e.createdAt))).trimEnd(), "")
 	if (project.description) lines.push(`> ${project.description.replace(/\n+/g, " ")}`, "")
 	lines.push(
@@ -214,7 +214,7 @@ export function renderJournal(project: ProjectMeta, entries: JournalEntry[]): Fi
 	// rendering has no sidebar.
 	lines.push("## Contents", "")
 	for (const [i, entry] of ordered.entries()) {
-		lines.push(`${i + 1}. [${dateOf(entry)} — ${entry.title}](#${slug(`${dateOf(entry)} ${entry.title}`)})`)
+		lines.push(`${i + 1}. [${dateOf(entry)} – ${entry.title}](#${slug(`${dateOf(entry)} ${entry.title}`)})`)
 	}
 	lines.push("")
 
@@ -224,7 +224,7 @@ export function renderJournal(project: ProjectMeta, entries: JournalEntry[]): Fi
 			lines.push(`## ${phaseWord(entry.phase)}`, "")
 			lastPhase = entry.phase
 		}
-		lines.push(`### ${dateOf(entry)} — ${entry.title}`, "")
+		lines.push(`### ${dateOf(entry)} – ${entry.title}`, "")
 		const claimed = entry.hoursApproved ?? entry.hoursClaimed
 		const adjusted = entry.hoursApproved !== null && entry.hoursApproved !== entry.hoursClaimed
 		lines.push(
@@ -265,7 +265,7 @@ export function renderBom(
 	grantUsd: number,
 ): FileUpdate {
 	const lines: string[] = []
-	lines.push(`# ${project.title} — bill of materials`, "")
+	lines.push(`# ${project.title} – bill of materials`, "")
 	lines.push(BANNER("parts list", project.id, newestOf(items.map((i) => i.updatedAt))).trimEnd(), "")
 	lines.push(
 		row("Week", "Tier", "Parts funding"),

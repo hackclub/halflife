@@ -77,7 +77,7 @@ export async function getSubmitReadiness(project: ThemeProject, phase: Phase): P
 /**
  * Whether a phase can be submitted right now.
  *
- * Build may be submitted once design has been submitted at least once — not
+ * Build may be submitted once design has been submitted at least once – not
  * once design has been *approved*. With five concurrent themes sharing one
  * review queue, gating on approval turns a reviewer-capacity problem into a
  * participant-blocked problem: someone would sit idle through their build week
@@ -116,8 +116,8 @@ export function canSubmitPhase(
 			message: "This phase was rejected. Ask an admin to reopen it.",
 		}
 	}
-	// A warm-up project is one phase by nature — it was handed in through the
-	// pre-season form, not designed and then built — so the design-first rule
+	// A warm-up project is one phase by nature – it was handed in through the
+	// pre-season form, not designed and then built – so the design-first rule
 	// does not apply to it.
 	if (phase === Phase.BUILD && project.theme !== Theme.WARMUP && project.designStatus === PhaseStatus.draft) {
 		return {
@@ -152,7 +152,7 @@ export async function submitPhase(
 	// refuses a ship without one. Week one's onboarding lets the maker leave it
 	// blank (the project form for other weeks does not), so a blank description
 	// used to pass submit and then fail the Ari send silently in the `after`
-	// hook — the maker saw success and no reviewer ever saw the project. Enforce
+	// hook – the maker saw success and no reviewer ever saw the project. Enforce
 	// it here, beside the hours check, so the refusal reaches the person who can
 	// fix it. `buildShipInput` keeps a fallback too, so hand-ins already stuck in
 	// this state can still be replayed by `ari-retry`.
@@ -189,7 +189,7 @@ export async function submitPhase(
 	}
 	// The stored status is from the last sign-in. Someone who finished verifying
 	// since then is verified now, so HCA is asked again before anyone is turned
-	// away — and only then, so a verified maker's submit costs no extra call.
+	// away – and only then, so a verified maker's submit costs no extra call.
 	let verificationStatus = user?.verificationStatus ?? null
 	if (process.env.SKIP_YSWS_VERIFICATION_CHECK !== "true" && verificationStatus !== "verified") {
 		verificationStatus = (await syncHcaProfile(userId)) ?? verificationStatus
@@ -249,7 +249,7 @@ export async function submitPhase(
 				attachmentKeys,
 				submittedInWeek,
 				scheduledWeek,
-				// Analytics only. Nothing gates on lateness — a late joiner has to be
+				// Analytics only. Nothing gates on lateness – a late joiner has to be
 				// able to finish.
 				onTime: submittedInWeek > 0 && submittedInWeek <= scheduledWeek,
 			},

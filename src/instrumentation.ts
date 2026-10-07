@@ -5,7 +5,7 @@
  * (see lib/hca-profile), which is safe but leaves every grant row without an
  * address, so say so on every boot rather than finding out at payout time.
  *
- * The reverse — requesting PII scopes the HCA app does not hold — breaks every
+ * The reverse – requesting PII scopes the HCA app does not hold – breaks every
  * sign-in, and can only be checked on the HCA app itself; docs/RUNBOOK has it
  * on the pre-launch list.
  */

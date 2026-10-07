@@ -49,8 +49,8 @@ const TONES = {
 /**
  * Reserved artwork slot.
  *
- * Drawn in the page's own silkscreen grammar — plate, registration ticks, a
- * measured grid — so an unfilled slot reads as a deliberate footprint waiting
+ * Drawn in the page's own silkscreen grammar – plate, registration ticks, a
+ * measured grid – so an unfilled slot reads as a deliberate footprint waiting
  * for its part, not as a broken image. Swap it for `next/image` when the real
  * photograph exists; the wrapper's box is already the comp's box.
  */
@@ -71,8 +71,8 @@ export default function ImageSlot({
 			className={`overflow-hidden ${t.ground} ${className}`}
 			// `relative` is the default containing block for the fittings below, but
 			// it lives in `style` so a caller can override it. As a class it could
-			// not be beaten by a `className` of "absolute" — same specificity, and
-			// stylesheet order decides — which silently drops positioned slots into
+			// not be beaten by a `className` of "absolute" – same specificity, and
+			// stylesheet order decides – which silently drops positioned slots into
 			// flow. Callers that place a slot pass `position` here instead.
 			style={{ position: "relative", ...style }}
 			{...(backdrop ? { "aria-hidden": true } : { role: "img", "aria-label": `Placeholder for ${label}` })}

@@ -8,12 +8,12 @@ import { displayRepo } from "@/lib/repo"
 import { useStore } from "@/lib/store"
 
 /**
- * Repo sync — the control that mirrors a project's devlogs and parts list into
+ * Repo sync – the control that mirrors a project's devlogs and parts list into
  * the maker's own repository, on whichever code forge they keep it on.
  *
  * Two states, one component: no forge linked, and linked. The choice of repo is
  * a picker rather than a text field because the sync has to push, and a repo
- * typed by hand is one the token may not be able to write to — which would fail
+ * typed by hand is one the token may not be able to write to – which would fail
  * on every entry afterwards with a 403 nobody can act on from here. The picked
  * value is the repo's full URL, so the forge it belongs to travels with it.
  *
@@ -26,7 +26,7 @@ interface WritableRepo {
 	fullName: string
 	name: string
 	ownerPath: string
-	/** The repo's forge URL — what the sync stores and links out to. */
+	/** The repo's forge URL – what the sync stores and links out to. */
 	url: string
 	private: boolean
 	defaultBranch: string
@@ -171,7 +171,7 @@ export function RepoSyncSettings({
 				<p className="text-[0.9rem] leading-relaxed text-navy-soft">
 					{compact
 						? "Connect a code forge to keep your devlogs and parts list in your project's repo."
-						: "Connect the code forge your project lives on — GitHub or GitLab — to mirror this project's devlogs and parts list into its repository. Syncing needs permission to write to the repo you choose; nothing else on your account is touched."}
+						: "Connect the code forge your project lives on – GitHub or GitLab – to mirror this project's devlogs and parts list into its repository. Syncing needs permission to write to the repo you choose; nothing else on your account is touched."}
 				</p>
 				{error && (
 					<p role="alert" className="text-[0.85rem] font-semibold text-coral-deep">

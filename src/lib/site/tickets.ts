@@ -2,7 +2,7 @@ import { deleteMessage, type SlackBlock } from "./slack"
 
 /**
  * Everything either button (the staff-facing one in the tickets channel, or
- * the self-resolve one in the #half-life-help thread) needs to act — carried
+ * the self-resolve one in the #half-life-help thread) needs to act – carried
  * in the button's own `value` since there's no ticket database to look it
  * up from.
  */
@@ -10,7 +10,7 @@ export type TicketRef = {
 	helpChannel: string
 	helpTs: string
 	authorId: string
-	/** null when the permalink lookup failed — the ticket still posts, just
+	/** null when the permalink lookup failed – the ticket still posts, just
 	 * without a jump link. */
 	permalink: string | null
 }
@@ -26,7 +26,7 @@ export const SELF_RESOLVE_ACTIONS_BLOCK_ID = "self_resolve_actions"
  * `botexamples.md`): lowercase, contractions, an emoji to open, bullets when
  * there's more than one thing to say, and a first-person narrator who is
  * clearly a cat and is not the one doing the actual helping. Warm, a bit
- * distracted, never institutional — the participant is reading this in a
+ * distracted, never institutional – the participant is reading this in a
  * channel where they've just asked for help, and "your ticket has been
  * flagged to the helpers" is the wrong register for that moment.
  *
@@ -57,7 +57,7 @@ export const PENDING_REACTION = "safari-loading"
 /** The workspace's custom "done" emoji, dropped on the original question once
  * its ticket is resolved from any of the three buttons, in place of the
  * pending one above. Note this is the hyphenated custom-emoji name, not
- * `:white_check_mark:` — it only resolves if an emoji by this exact name
+ * `:white_check_mark:` – it only resolves if an emoji by this exact name
  * exists in the Hack Club workspace. */
 export const RESOLVED_REACTION = "white-checkbox-checkbox-checkbox"
 
@@ -68,7 +68,7 @@ export function helpedAck(helperId: string): string {
 	return `oh! <@${helperId}> has this one sorted – you're all set! if anything else comes up, just send another message in #half-life-help and someone'll pick it up :D`
 }
 
-/** The same beat for the author resolving their own ticket, with no mention —
+/** The same beat for the author resolving their own ticket, with no mention –
  * they'd be pinging themselves over their own click. */
 export function selfResolvedAck(): string {
 	return "oh! you've marked this as resolved – thanks for letting us know! if you need anything else, just send another message in #half-life-help and someone'll be happy to help :D"
@@ -85,7 +85,7 @@ export function ticketSection(ref: TicketRef): SlackBlock {
 		text: {
 			type: "mrkdwn",
 			text: ref.permalink
-				? `*Ticket* from <@${ref.authorId}> in <#${ref.helpChannel}> — <${ref.permalink}|open the thread>`
+				? `*Ticket* from <@${ref.authorId}> in <#${ref.helpChannel}> – <${ref.permalink}|open the thread>`
 				: `*Ticket* from <@${ref.authorId}> in <#${ref.helpChannel}>`,
 		},
 	}
@@ -115,7 +115,7 @@ export function resolvedContext(byUserId: string, note?: string): SlackBlock {
 	}
 }
 
-/** Strips whichever action block is present and appends a resolved note —
+/** Strips whichever action block is present and appends a resolved note –
  * shared by both buttons since a message only ever carries one of the two. */
 export function resolveBlocks(blocks: SlackBlock[] | undefined, byUserId: string, note?: string): SlackBlock[] {
 	const kept = (blocks ?? []).filter(
@@ -132,7 +132,7 @@ export function resolveBlocks(blocks: SlackBlock[] | undefined, byUserId: string
  * The channel is a queue: a ticket that arrives there wants help, and one
  * that's answered has nothing left to ask. Deleting rather than striking
  * through keeps the queue honest, and it's safe because the mirror is a
- * message the bot posted itself — `chat.delete` needs no extra scope for it.
+ * message the bot posted itself – `chat.delete` needs no extra scope for it.
  * The record isn't lost: the `#half-life-help` thread keeps the question and
  * the "you're all set" ack, which is where anyone would go looking.
  *
@@ -140,7 +140,7 @@ export function resolveBlocks(blocks: SlackBlock[] | undefined, byUserId: string
  * editing the message into its resolved state. A ticket must never be left
  * sitting in the queue with a live button just because the delete failed, so
  * the fallback is a floor on reliability, not a nicety. `message_not_found`
- * counts as gone — a ticket can be resolved from either the tickets channel or
+ * counts as gone – a ticket can be resolved from either the tickets channel or
  * the help thread, so the second arrival is told the message is already gone,
  * which is the outcome we wanted.
  */

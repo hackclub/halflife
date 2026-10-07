@@ -126,7 +126,7 @@ export default async function AdminOverviewPage() {
 			<Panel title="Activity over time">
 				<ActivityStrip days={activity} />
 				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
-					Days are program-timezone effective dates — the day the work counted for. Hours count journal devlogs only.
+					Days are program-timezone effective dates – the day the work counted for. Hours count journal devlogs only.
 				</p>
 			</Panel>
 
@@ -155,7 +155,7 @@ export default async function AdminOverviewPage() {
 /**
  * One metric as a donut pie: the biggest slices named, the long tail folded
  * into Other. Shared by the continent and country panels, once for users and
- * once for hours — both hand it rows shaped the same way and say which field
+ * once for hours – both hand it rows shaped the same way and say which field
  * to cut by.
  */
 function MetricPie({
@@ -436,7 +436,7 @@ function ActivityStrip({ days }: { days: DayActivity[] }) {
 /**
  * First-project choice as a donut: one slice per starter plus Custom, with a
  * legend carrying the counts. Segments are SVG circles rather than a chart
- * dependency — the page's other visuals are hand-rolled the same way — and
+ * dependency – the page's other visuals are hand-rolled the same way – and
  * the figure carries a text summary so the shares do not live in colour alone.
  */
 function FirstProjectDonut({ stats }: { stats: FirstProjectStat[] }) {
@@ -455,9 +455,9 @@ function FirstProjectDonut({ stats }: { stats: FirstProjectStat[] }) {
 	const R = 15.9155 // 100 / 2π: a share of p% is a dash of p units
 	// Segment offsets, computed up front: each slice starts where the last one
 	// ended, from path position 0 (3 o'clock). A positive dashoffset does NOT
-	// move the start forward — it starts the path that far into the pattern,
+	// move the start forward – it starts the path that far into the pattern,
 	// eating the first segment's opening units (a grey quadrant, in the old
-	// code's case) — so the top start comes from the rotate below instead.
+	// code's case) – so the top start comes from the rotate below instead.
 	const shares = stats.map((s) => (s.users / total) * 100)
 	const segments = stats.map((s, i) => ({
 		label: s.label,

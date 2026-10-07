@@ -43,7 +43,7 @@ function claim(el: HTMLVideoElement) {
 
 /**
  * Play `el` as the only reel making noise, for players with their own
- * controls (the full-page stage). Resolves to whether it is playing — false
+ * controls (the full-page stage). Resolves to whether it is playing – false
  * when the browser refused, which is the caller's cue to retry muted.
  */
 export function playExclusive(el: HTMLVideoElement): Promise<boolean> {
@@ -54,7 +54,7 @@ export function playExclusive(el: HTMLVideoElement): Promise<boolean> {
 	)
 }
 
-/** For a video that started some other way — the element's own play event. */
+/** For a video that started some other way – the element's own play event. */
 export function notePlaying(el: HTMLVideoElement) {
 	claim(el)
 }
@@ -72,8 +72,8 @@ export function pauseReels() {
  * Like or unlike a reel: optimistic, then corrected. The count the server
  * returns is the truth, because someone else may have liked it meanwhile.
  *
- * PUT, not POST: a like is idempotent — the body says which state you want,
- * not "add one" — and the route is declared that way. Sending POST got a
+ * PUT, not POST: a like is idempotent – the body says which state you want,
+ * not "add one" – and the route is declared that way. Sending POST got a
  * silent 405 and left the optimistic count standing until the next refresh.
  */
 export function sendLike(reel: FeedItem, next: boolean, onPatch?: (id: string, patch: Partial<FeedItem>) => void) {
@@ -121,12 +121,12 @@ const ARRIVE_TIMING: KeyframeAnimationOptions = {
 
 /**
  * One reel. The rail stacks these in a snap column, the Doomscroller page lays
- * them out as a wall — the sizing comes in through `className` so the artwork,
+ * them out as a wall – the sizing comes in through `className` so the artwork,
  * the counts and the gradient read identically in both.
  *
  * Only the current reel plays. A card pauses the moment it scrolls out of the
  * current slot, and with `autoplay` the card that takes the slot starts on its
- * own — one video at a time, never a column of them burning a phone's battery
+ * own – one video at a time, never a column of them burning a phone's battery
  * and a hotel's wifi. Anyone who has asked for less motion gets the pausing but
  * not the starting.
  */
@@ -160,7 +160,7 @@ export function ReelCard({
 	const [playing, setPlaying] = useState(false)
 	const counted = useRef(false)
 	// Whether this card holds the current slot. Playback is only ever changed as
-	// a card enters or leaves it, never while it stays there — so a reel the
+	// a card enters or leaves it, never while it stays there – so a reel the
 	// reader paused stays paused until they scroll away and back.
 	const current = useRef(false)
 	// Read by the observer at the moment a card arrives, so a feed switching
@@ -177,7 +177,7 @@ export function ReelCard({
 	// closed by collapsing and clipping the panels AROUND that scroller, which an
 	// observer rooted inside it never sees. Measured against the viewport, a
 	// closing rail, a rail hidden at narrow widths and a reel scrolled past all
-	// read the same way — the card is no longer on screen, so it stops.
+	// read the same way – the card is no longer on screen, so it stops.
 	useEffect(() => {
 		const box = card.current
 		const el = video.current
@@ -221,7 +221,7 @@ export function ReelCard({
 
 	// A view is a second of actual playback, not a press or an autoplay that a
 	// quick flick scrolled straight past. It is counted once per card, and the
-	// server counts it once per person by unique row — so neither a replay nor a
+	// server counts it once per person by unique row – so neither a replay nor a
 	// retried request can inflate it.
 	function countView() {
 		const el = video.current
@@ -242,7 +242,7 @@ export function ReelCard({
 			{/* Nothing generates thumbnails yet, so most reels have no poster, and
           with `preload="none"` that left a blank box with a play button on
           it. Without a poster the card fetches only the metadata and asks for
-          the frame at 0.1s — the clip's own first frame, for a few kilobytes,
+          the frame at 0.1s – the clip's own first frame, for a few kilobytes,
           rather than the whole video for every card in the feed. */}
 			{reel.videoUrl ? (
 				// biome-ignore lint/a11y/useMediaCaption: a participant upload, and there is no caption file to point a track at. An empty track is announced as an empty caption, which is worse than none.

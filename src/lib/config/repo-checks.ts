@@ -8,7 +8,7 @@ import { Theme } from "@/app/generated/prisma/enums"
  * knows, because every week has a theme. So the file requirements are keyed
  * by theme here rather than ticked on a form.
  *
- * Every theme needs a public repo with a README that has photos in it — that
+ * Every theme needs a public repo with a README that has photos in it – that
  * is what a reviewer opens first. On top of that, each theme names:
  * - `required`: file kinds that block submitting when none are found. These
  *   are the files the week exists to produce.
@@ -80,7 +80,7 @@ export const REPO_FILE_KINDS: Record<
 	firmware: {
 		label: "Firmware",
 		missing:
-			"No firmware found — Arduino (.ino), C/C++, MicroPython or CircuitPython (.py), Rust and the like all count",
+			"No firmware found – Arduino (.ino), C/C++, MicroPython or CircuitPython (.py), Rust and the like all count",
 		// .mpy is precompiled MicroPython/CircuitPython; .uf2/.hex/.bin are built
 		// images, which count when the source lives elsewhere.
 		extensions: [
@@ -104,7 +104,7 @@ export const REPO_FILE_KINDS: Record<
 	},
 	logicSchematic: {
 		label: "Schematic",
-		missing: "No schematic found — KiCad, Logisim (.circ) or Digital (.dig) files all count",
+		missing: "No schematic found – KiCad, Logisim (.circ) or Digital (.dig) files all count",
 		extensions: [".kicad_sch", ".kicad_pro", ".kicad_pcb", ".sch", ".schdoc", ".esch", ".fzz", ".circ", ".dig"],
 	},
 	bom: {

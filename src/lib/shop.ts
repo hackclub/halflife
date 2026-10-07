@@ -122,8 +122,8 @@ export async function getShopItemsFor(userId: string): Promise<{
 	const [items, balances, qualification, orders, regions, regionId] = await Promise.all([
 		// Explicit `select`, never the whole row: a new internal column added to
 		// ShopItem must not silently start reaching participants.
-		// Printers are not sold in the shop. They stay in the catalogue — the goal
-		// tracker and printer awards read them — but never reach this list.
+		// Printers are not sold in the shop. They stay in the catalogue – the goal
+		// tracker and printer awards read them – but never reach this list.
 		prisma.shopItem.findMany({
 			where: { active: true, category: { not: ShopItemCategory.PRINTER } },
 			orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
@@ -178,7 +178,7 @@ export async function getShopItemsFor(userId: string): Promise<{
 			}
 
 			// A regional override replaces the base price wherever this
-			// participant is concerned — display and purchase read the same
+			// participant is concerned – display and purchase read the same
 			// number, so the shelf can never advertise a price the till refuses.
 			const { regionPrices, ...base } = item
 			const priceCredits =
@@ -187,7 +187,7 @@ export async function getShopItemsFor(userId: string): Promise<{
 					: item.priceCredits
 
 			// Every coin is spendable on anything, so affordability compares the
-			// whole balance against the price — display and purchase read the
+			// whole balance against the price – display and purchase read the
 			// same number, so the shelf can never advertise a price the till
 			// refuses.
 			const payableFrom = spendableFor(balances, item.category)
@@ -208,7 +208,7 @@ export async function getShopItemsFor(userId: string): Promise<{
  *
  * The whole thing runs under a per-user advisory lock. The ledger's
  * `@@unique([shopOrderId, kind, bucket])` only stops one order being charged
- * twice —
+ * twice –
  * two concurrent purchases mint two different order ids and collide with
  * nothing, so without the lock ten parallel requests all read the same balance
  * and all succeed.
@@ -289,7 +289,7 @@ export async function purchase(
 						select: { priceCredits: true },
 					})
 				: null
-		// A retried request — double-tap, proxy retry, two tabs sharing one key —
+		// A retried request – double-tap, proxy retry, two tabs sharing one key –
 		// resolves to the order it already made rather than charging again. The
 		// same per-user lock serializes the two, so the loser always sees the
 		// winner's row.
@@ -366,7 +366,7 @@ export async function purchase(
 
 		if (fresh.stock !== null) {
 			// Conditional, so stock cannot go negative even if two people buy the
-			// last unit at once — the loser's update matches nothing and rolls back.
+			// last unit at once – the loser's update matches nothing and rolls back.
 			const claimed = await tx.shopItem.updateMany({
 				where: { id: shopItemId, stock: { gte: quantity } },
 				data: { stock: { decrement: quantity } },

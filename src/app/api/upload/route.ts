@@ -23,7 +23,7 @@ export const POST = withRoute(async (req: Request) => {
 	if (gate.error) return gate.error
 
 	if (rateLimitedInMemory(`upload:${gate.user.id}`)) {
-		return fail("RATE_LIMITED", "Too many uploads at once — wait a minute and try again")
+		return fail("RATE_LIMITED", "Too many uploads at once – wait a minute and try again")
 	}
 
 	if (!isUploadConfigured()) {
@@ -39,7 +39,7 @@ export const POST = withRoute(async (req: Request) => {
 	const folder = typeof folderRaw === "string" && ALLOWED_FOLDERS.has(folderRaw) ? folderRaw : "sessions"
 
 	// Shop pictures are the catalogue's, so only someone who runs the shop puts
-	// them there — and only pictures.
+	// them there – and only pictures.
 	if (folder === "shop") {
 		if (!hasPermission(await getUserRoles(gate.user.id), Permission.MANAGE_SHOP)) {
 			return fail("FORBIDDEN", "Only shop managers can upload shop images")
@@ -64,7 +64,7 @@ export const POST = withRoute(async (req: Request) => {
 	}
 
 	// The extension/MIME check above trusts what the client *claimed*. For
-	// images, verify the bytes too — the from-url path already does — so an
+	// images, verify the bytes too – the from-url path already does – so an
 	// HTML file renamed to .png cannot land in the bucket as image/png.
 	let ext = check.ext
 	let contentType = file.type
@@ -79,7 +79,7 @@ export const POST = withRoute(async (req: Request) => {
 	// Pictures are named after their bytes rather than a fresh uuid: picking the
 	// same image again has to mint the same URL, because the journal counts its
 	// evidence by URL (`countImages`) and a second URL counts as a second
-	// picture. Videos keep the random name — a reel is identified by its post.
+	// picture. Videos keep the random name – a reel is identified by its post.
 	const name = contentType.startsWith("image/") ? contentHash(bytes) : undefined
 	const key = buildObjectKey(gate.user.id, folder, ext, name)
 	await putObject(key, bytes, contentType)

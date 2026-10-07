@@ -12,8 +12,8 @@ import { useStore } from "@/lib/store"
 /**
  * What this participant is here for, and how far along they are.
  *
- * It rides whichever rail the viewport hands it — the nav rail on the left below
- * xl, the status rail on the right above it — so it sizes itself from its
+ * It rides whichever rail the viewport hands it – the nav rail on the left below
+ * xl, the status rail on the right above it – so it sizes itself from its
  * container rather than from the window, and neither slot has to be told which
  * one it is.
  *
@@ -30,7 +30,7 @@ import { useStore } from "@/lib/store"
  */
 export function GoalTracker({ className }: { className?: string }) {
 	// The whole balance, not the spendable pot alone. Every coin counts toward
-	// the machine — a meter reading anything less would sit near zero all
+	// the machine – a meter reading anything less would sit near zero all
 	// season while the money for it piled up out of sight.
 	const { printerFund, goalId, participantGoal, coins } = useStore()
 	const [open, setOpen] = useState(false)

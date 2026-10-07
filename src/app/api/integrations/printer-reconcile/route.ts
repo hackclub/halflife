@@ -5,7 +5,7 @@ import { findPrinterAwardMismatches } from "@/lib/printer"
 import { recordSyncRun } from "@/lib/sync-run-log"
 
 /**
- * Reports awards whose holder no longer qualifies — never revokes. The printer
+ * Reports awards whose holder no longer qualifies – never revokes. The printer
  * may already be in a box, so a human decides what happens next.
  */
 export const POST = withRoute(async (req: NextRequest) => {

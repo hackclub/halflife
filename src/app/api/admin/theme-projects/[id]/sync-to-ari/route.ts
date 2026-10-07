@@ -16,7 +16,7 @@ export const maxDuration = 60
 const bodySchema = z.object({ phase: phaseSchema }).strict()
 
 /**
- * Re-send a hand-in that never reached Ari — a send that failed, or one made
+ * Re-send a hand-in that never reached Ari – a send that failed, or one made
  * before the ARI_* secrets were set. Same work the hourly retry job does, for
  * the one submission an admin is looking at.
  *
@@ -56,7 +56,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		select: { ariSubmissionId: true },
 	})
 	if (open?.ariSubmissionId) {
-		return fail("CONFLICT", "That submission already reached Ari — there is nothing to retry")
+		return fail("CONFLICT", "That submission already reached Ari – there is nothing to retry")
 	}
 
 	try {

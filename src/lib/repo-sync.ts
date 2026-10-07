@@ -31,7 +31,7 @@ import { type BomLineForFile, type JournalEntry, renderBom, renderJournal } from
  *
  * Which forge a repo lives on is read from the repo link, never chosen per
  * project or per user: `repoRefFromLink` resolves the host to a forge, and
- * everything below it — credentials, the branch read, the commit — takes that
+ * everything below it – credentials, the branch read, the commit – takes that
  * forge rather than assuming GitHub. The forge side is lib/forge-write; the
  * file contents are lib/repo-sync-files.
  */
@@ -48,7 +48,7 @@ const QUEUE_MAX_WAIT_MS = 60_000
 /**
  * In-process note of which projects currently have a run going.
  *
- * Not a lock — a second process is a second map, and the GitHub ref update is
+ * Not a lock – a second process is a second map, and the GitHub ref update is
  * itself guarded, so two runs racing is a lost commit rather than a corrupt
  * repo. This exists to keep one process from stacking runs on the same project,
  * which is the common case (one maker editing one project).
@@ -93,7 +93,7 @@ export async function scheduleRepoSync(themeProjectId: string): Promise<void> {
  * called it is not cut short.
  *
  * `force` is the first write of an enable: it ignores the "is the sync on" gate,
- * because at that instant it is not on yet — it is the commit that decides
+ * because at that instant it is not on yet – it is the commit that decides
  * whether it can be. Everything else cooperates with the gate.
  */
 export async function runProjectSync(themeProjectId: string, manual: boolean, force = false): Promise<WrittenFile[]> {
@@ -109,7 +109,7 @@ export async function runProjectSync(themeProjectId: string, manual: boolean, fo
 	let runManual = manual
 	try {
 		// A loop, not an `if`: a write that lands during this run stamps the queue
-		// flag, and the correct response is one more run — not leaving it for a
+		// flag, and the correct response is one more run – not leaving it for a
 		// sync that may never come.
 		for (let pass = 0; pass < 5; pass++) {
 			const queuedAt = await claimQueued(themeProjectId)
@@ -132,7 +132,7 @@ export async function runProjectSync(themeProjectId: string, manual: boolean, fo
 
 	// A write can land between the last queue read and the delete above: it stamps
 	// the flag, finds the project still in flight, and returns, so nobody would
-	// ever claim it. Claiming here closes that window — and if this run loses the
+	// ever claim it. Claiming here closes that window – and if this run loses the
 	// claim to another process, that process is doing the work instead.
 	if (await claimQueued(themeProjectId)) {
 		void runProjectSync(themeProjectId, false).catch((err) =>
@@ -210,7 +210,7 @@ async function syncOnce(themeProjectId: string, manual: boolean, force = false):
 
 	// The pinned target is a full URL now, so the forge is inferable from the
 	// stored value alone. A row pinned before this change holds a bare
-	// `owner/name` with no host, which cannot say which forge it means — that one
+	// `owner/name` with no host, which cannot say which forge it means – that one
 	// is resolved against the project's own repo link, the forge the maker was
 	// working on when the pin was written.
 	const targetRepo = project.repoSyncRepo ?? project.githubRepo
@@ -368,7 +368,7 @@ async function recordFailure(
  *
  * `repoUrl` is the full URL of the chosen repo, which is what gets pinned. A URL
  * rather than a slug because the forge then stays inferable from the stored
- * value on its own — the sync later reads the pin without having to remember
+ * value on its own – the sync later reads the pin without having to remember
  * which service the picker was listing.
  */
 export async function enableRepoSync(
@@ -437,7 +437,7 @@ export interface RepoSyncState {
 	syncedAt: number | null
 	/** Why the last attempt failed, or null. */
 	error: string | null
-	/** Which forges the caller has linked, by id — a maker may link both. */
+	/** Which forges the caller has linked, by id – a maker may link both. */
 	linkedForges: string[]
 	/**
 	 * The project's own repo link, as the alternative the sync target is measured
@@ -468,14 +468,14 @@ export async function getRepoSyncState(themeProjectId: string, userId: string): 
 
 	// The pinned target is a URL now; an older row still holds a bare slug, which
 	// says nothing about its forge on its own. That one is resolved against the
-	// project's own repo link — the same fallback the sync uses — so the UI is
+	// project's own repo link – the same fallback the sync uses – so the UI is
 	// handed a URL it can link out to rather than a bare `owner/name`.
 	const target = project.repoSyncRepo ?? project.githubRepo
 	const fallback = repoRefFromLink(project.githubRepo)?.forge
 	const ref = repoRefFromLink(target) ?? (target && fallback ? parseRepoRef(target, { forge: fallback }) : null)
 
 	// The link should point at the repo the sync writes to, so the offer to copy
-	// it over appears whenever the two disagree — including when the project has
+	// it over appears whenever the two disagree – including when the project has
 	// no link at all, which is the common case this exists for (the sync was set
 	// up first, and the project details never named a repo). A target that will
 	// not parse (a bare slug left by an older row, a Codeberg URL) is not offered:

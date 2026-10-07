@@ -6,7 +6,7 @@ import { cx } from "@/components/platform/ui"
  * How far a file has got on its way up.
  *
  * Two states, because an upload has two waits. While bytes are leaving, the
- * bar is the real fraction sent — it moves because the file is moving, never
+ * bar is the real fraction sent – it moves because the file is moving, never
  * on a timer. Once the last byte has gone the server is still storing it, and
  * that wait has no size, so the full bar carries a stripe drifting across it
  * instead: still working, not stuck at 100%.

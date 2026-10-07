@@ -7,7 +7,7 @@ const DEFAULT_MAX_UPLOAD_BYTES = 104_857_600
 
 /**
  * An unparseable UPLOAD_MAX_BYTES used to yield NaN, and every `size > NaN`
- * comparison is false — which silently removed the cap instead of failing
+ * comparison is false – which silently removed the cap instead of failing
  * loudly. Fall back to the default rather than trusting the environment.
  */
 function parseMaxBytes(raw: string | undefined): number {
@@ -110,7 +110,7 @@ export function isVideoBytes(bytes: Uint8Array): boolean {
 	if (bytes.length < 12) return false
 
 	// ISO base media (MP4/MOV): `....ftyp` at byte 4, then a brand that must be
-	// a video one — `heic`, `avif` and `jxl ` share the box and are not video.
+	// a video one – `heic`, `avif` and `jxl ` share the box and are not video.
 	if (brandAt(bytes, 4) === "ftyp") return isIsoBmffVideo(bytes)
 
 	// Matroska/WebM: EBML header 1A 45 DF A3, plus a video codec id.
@@ -252,7 +252,7 @@ export function validateUpload(
  * The SHA-256 of a file's bytes, as hex.
  *
  * Pictures are named after this rather than a random id, so the same screenshot
- * picked twice — in one sitting, or later from another device — is one object
+ * picked twice – in one sitting, or later from another device – is one object
  * and one URL. The journal counts its evidence by URL, so a random name per
  * upload let one picture count as many.
  */
@@ -283,13 +283,13 @@ export function buildObjectKey(userId: string, folder: string, ext: string, name
  * not secrets: the feed returns a full `videoUrl` for every reel, so any
  * participant can read another participant's key and offer it as their own.
  * Without this, someone could attach a stranger's timelapse to their journal as
- * evidence for hours they did not work — which is the one thing the timelapse
+ * evidence for hours they did not work – which is the one thing the timelapse
  * rule exists to make hard.
  *
  * `..` is refused separately, and so is `%`. Neither can appear in a minted
  * key, and a key containing either is trying to be a path rather than a name:
  * the browser resolves `covers/me/../../sessions/other/x` before it fetches,
- * and the URL parser treats a `%2e%2e` segment as a double-dot too — so a
+ * and the URL parser treats a `%2e%2e` segment as a double-dot too – so a
  * check for a literal `..` alone would let both escape the user's own prefix.
  */
 export function isOwnedKey(userId: string, key: string): boolean {
@@ -316,7 +316,7 @@ export async function putObject(key: string, body: Buffer, contentType: string):
  * Credentials the bucket rejected are an operator problem, not a user one.
  *
  * Without this they surface as an unhandled exception and the participant is
- * told "Something went wrong" — which happened, with a Cloudflare API token
+ * told "Something went wrong" – which happened, with a Cloudflare API token
  * pasted into `S3_ACCESS_KEY_ID`, and the phone only found out AFTER the video
  * had been recorded and uploaded. A 503 saying uploads are misconfigured is
  * both true and actionable; the detail stays in the server log, because the
@@ -344,7 +344,7 @@ function asConfigError(err: unknown): unknown {
 /**
  * Remove an object.
  *
- * Deleting a post row does not delete its bytes — a soft-deleted reel can be
+ * Deleting a post row does not delete its bytes – a soft-deleted reel can be
  * restored by a moderator, and its video has to still be there when it is. So
  * this is for the orphan sweep and for the smoke test, not for the delete
  * path.

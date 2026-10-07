@@ -32,7 +32,7 @@ export interface HoursBreakdown {
 	 */
 	hackatimeOverlapSeconds: number
 	/**
-	 * True when an overlap may exist but could not be checked — the spans fetch
+	 * True when an overlap may exist but could not be checked – the spans fetch
 	 * failed, or failed because the participant has Hackatime's public stats off.
 	 * Deliberately NOT folded into `hackatimeStale`: that one blocks an approval
 	 * outright, and a participant who turned public stats off must not become
@@ -58,7 +58,7 @@ export interface HoursBreakdown {
  *
  * A timelapse is a recording *of* a session whose hours were already claimed,
  * so adding its duration is a straight double-count. It surfaces instead as
- * `timelapseCoverage` — a session claiming six hours with five hours of
+ * `timelapseCoverage` – a session claiming six hours with five hours of
  * timelapse reads very differently from one with none.
  *
  * Journal and Hackatime can double-count too, which is what
@@ -130,7 +130,7 @@ export async function getHoursBreakdown(
 	let hackatimeOverlapUnknown = false
 	const hackatimeUserId = project?.user.hackatimeUserId ?? null
 	// Only a phase that tracks BOTH tools can have anything to deduplicate, and
-	// when it cannot there is nothing to fetch — the spans of a link nobody's
+	// when it cannot there is nothing to fetch – the spans of a link nobody's
 	// timelapse could overlap are a request nobody needs.
 	const dedupePossible = journalWindows.length > 0 && links.length > 0
 	const spanWindow = spanWindowFor(journalWindows)
@@ -174,7 +174,7 @@ export async function getHoursBreakdown(
 				// double-count rather than an underpayment.
 				hackatimeOverlapUnknown = true
 				// Recorded only when a fetch was actually attempted. This runs on
-				// read paths too — the projects list breaks down every project — and a
+				// read paths too – the projects list breaks down every project – and a
 				// write per dashboard load to note a cache that was simply cold would
 				// be a great deal of write load for no new information.
 				if (live) {
@@ -237,7 +237,7 @@ export async function getHoursBreakdown(
  * One link's tracked intervals, from cache when the cache answers the question
  * and from Hackatime when it does not.
  *
- * `stale` here means "unknown", not "empty" — and it is the distinction the whole
+ * `stale` here means "unknown", not "empty" – and it is the distinction the whole
  * dedupe rests on. Spans that say a project was tracked at no time in the window
  * are a finding; spans nobody could fetch are not, and treating the two alike
  * would either subtract nothing silently or subtract something invented.
@@ -269,7 +269,7 @@ async function resolveSpans(
  * Warm the cached spans for a phase's links, best effort.
  *
  * Called when a timelapse is attached, off the response path. Without it the
- * deduplicated number only appears once something forces a live fetch — which
+ * deduplicated number only appears once something forces a live fetch – which
  * today means the approval itself, so a reviewer would open a submission, read
  * one Hackatime total, and watch a different one get approved underneath them.
  * Warming the cache when the window it depends on actually changes keeps the
@@ -339,7 +339,7 @@ export interface SessionRow {
 	hoursSource: HoursSource
 	/**
 	 * The recording windows behind this entry, when it has any. A HACKATIME_TRACKED
-	 * entry is ignored entirely — it claims nothing — so its timelapses are not
+	 * entry is ignored entirely – it claims nothing – so its timelapses are not
 	 * read either.
 	 */
 	timelapses?: { recordedAt: Date | null; coveredSeconds: number | null }[]
@@ -406,8 +406,8 @@ export function rollUpHours(
 }
 
 /**
- * Coins a phase minted. Every coin is spendable on anything — the shop, or
- * the printer goal — so there is a single pot and no locked fund.
+ * Coins a phase minted. Every coin is spendable on anything – the shop, or
+ * the printer goal – so there is a single pot and no locked fund.
  *
  * `banked` stays on the shape as a legacy field: rows minted before the pots
  * were merged still carry a banked half, and the review reconcile zeroes that
@@ -437,7 +437,7 @@ export type CoinSplit = {
  * The printer on the wall no longer sizes any of this: a tier decides how
  * many hours the project itself eats, and everything past that is simply
  * earned. What a machine asks per week is still paced in ./config/printers.ts,
- * but that pace is guidance the goal tracker reads — warnings, never a second
+ * but that pace is guidance the goal tracker reads – warnings, never a second
  * pot of money.
  *
  * Undershooting needs no special case: an approval below the funded line earns
@@ -458,8 +458,8 @@ export function designCoinsFor(tierId: TierId | number, approvedHours: number): 
 /**
  * Coins minted by an approved BUILD phase.
  *
- * A build week has no BOM to pay for — the parts were bought with the design
- * week's grant — so there is no funded block to clear and every hour earns
+ * A build week has no BOM to pay for – the parts were bought with the design
+ * week's grant – so there is no funded block to clear and every hour earns
  * 5 coins, spendable on anything.
  *
  * This half of the economy is what carries someone from what five design weeks
@@ -474,8 +474,8 @@ export function buildCoinsFor(approvedHours: number): CoinSplit {
 /**
  * Hours to coins, rounded UP and capped.
  *
- * Up rather than down because the budget sheet paces in fractional hours —
- * the Ender asks 3.76 a week, the A1 Mini 4.64 — and coins are whole. Flooring
+ * Up rather than down because the budget sheet paces in fractional hours –
+ * the Ender asks 3.76 a week, the A1 Mini 4.64 – and coins are whole. Flooring
  * 4.64 * 5 = 23.2 to 23 loses a coin a week, which over five design weeks
  * leaves an A1 Mini saver one coin short of the machine they were told they
  * were on track for. Rounding up costs a handful of coins and keeps the

@@ -28,7 +28,7 @@ import prisma from "@/lib/prisma"
  *     flight may not, and a row stranded by a crash is treated as in flight
  *     for a while before it may be.
  *
- * Enabling this alongside the Airtable/YSWS payout pipeline would pay twice —
+ * Enabling this alongside the Airtable/YSWS payout pipeline would pay twice –
  * that ownership question is a decision, not something this code can settle.
  */
 
@@ -95,7 +95,7 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 	if (!isHcbConfigured()) throw new HttpError("NOT_CONFIGURED", "HCB is not configured on this deployment")
 
 	// The design approval is the funding decision, and the idempotency key
-	// includes the phase — accepting BUILD would send the same frozen grant a
+	// includes the phase – accepting BUILD would send the same frozen grant a
 	// second time under a key of its own.
 	if (input.phase !== Phase.DESIGN) {
 		throw new HttpError("VALIDATION_FAILED", "A grant is only sent for an approved design")
@@ -113,7 +113,7 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 		throw new HttpError("CONFLICT", "A grant is only due on an approved design")
 	}
 	const amountCents = Math.round(project.grantUsd * 100)
-	const memo = `[grant] ${project.title || "Half Life project"} — Half Life tier ${project.tier ?? "?"}`
+	const memo = `[grant] ${project.title || "Half Life project"} – Half Life tier ${project.tier ?? "?"}`
 
 	const key = { userId: project.userId, themeProjectId: project.id, phase: input.phase }
 
@@ -204,13 +204,13 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 		throw new HttpError("CONFLICT", "The design is no longer approved, so no grant is due")
 	}
 	// The amount was captured before HCB was called; if the grant was edited
-	// since — including by a retry reclaiming the row above — paying the stale
+	// since – including by a retry reclaiming the row above – paying the stale
 	// figure sends the wrong money. Fail closed instead.
 	if (Math.round(current.grantUsd * 100) !== amountCents) {
 		await prisma.hcbGrantTopUp
 			.update({ where: { id: rowId }, data: { error: "The grant amount changed before the top-up was sent" } })
 			.catch(() => undefined)
-		throw new HttpError("CONFLICT", "The grant amount changed — reload and try again")
+		throw new HttpError("CONFLICT", "The grant amount changed – reload and try again")
 	}
 
 	try {

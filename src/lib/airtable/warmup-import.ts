@@ -23,7 +23,7 @@ import { buildObjectKey, isUploadConfigured, MAX_UPLOAD_BYTES, putObject } from 
  * Bring the warm-up weeks' projects into Half Life.
  *
  * Before the program opened, projects were handed in through a Fillout form
- * that writes rows into the `YSWS Project Submission` table — the same table
+ * that writes rows into the `YSWS Project Submission` table – the same table
  * Half Life's own submissions land in. This reads those rows, files each one
  * on the Warm Up track, creates the submitter's account if they have not
  * signed up yet, and sends the project to Ari so it enters the same review
@@ -39,7 +39,7 @@ import { buildObjectKey, isUploadConfigured, MAX_UPLOAD_BYTES, putObject } from 
  *    themes, so they do not occupy a maker's season slots. Unlike a season
  *    theme, `WARMUP` is not unique per maker: the form may have been filled in
  *    more than once, and every row is a different project. Each row therefore
- *    becomes its own project — the `(userId, theme)` unique index is partial
+ *    becomes its own project – the `(userId, theme)` unique index is partial
  *    and skips warm-up rows (see prisma/schema.prisma), so a second one does
  *    not collide with the first.
  *
@@ -333,7 +333,7 @@ function encryptedPiiFields(row: ParsedWarmupRow): Partial<Prisma.UserCreateInpu
  * deliberately do not hold a unique slot. Idempotency per Airtable row is
  * re-checked under that lock, because the caller's "not imported yet" read
  * happened before the transaction and a second run can hold the same snapshot.
- * Everything after the transaction — the cover copy and the Ari send — is
+ * Everything after the transaction – the cover copy and the Ari send – is
  * external and idempotent enough not to belong inside it.
  */
 async function importRow(
@@ -422,7 +422,7 @@ async function importRow(
 					data: {
 						themeProjectId: project.id,
 						phase,
-						title: `${row.title} — warm-up submission`,
+						title: `${row.title} – warm-up submission`,
 						content: journalParts.length > 0 ? journalParts.join("\n\n") : null,
 						hoursClaimed: row.hours ?? 0,
 						hoursSource: HoursSource.MANUAL,
@@ -444,8 +444,8 @@ async function importRow(
 				},
 			})
 
-			// The row already exists in the table — it is where this import came
-			// from — so record its record id the same way a successful write does.
+			// The row already exists in the table – it is where this import came
+			// from – so record its record id the same way a successful write does.
 			// That is what keeps the retry job from posting a second copy, lets a
 			// resubmission update this row instead of creating one, and lets an
 			// unsubmit remove it (see lib/airtable/sync). Nothing was written to

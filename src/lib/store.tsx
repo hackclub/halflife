@@ -24,8 +24,8 @@ import type { Checkpoint, Experience, Project, SessionLog, Week, WeekMeta } from
  *
  * ## Why the derivation did not change
  *
- * Everything below `weeks` — the shape of a week, which node is live, what is
- * locked and why — is computed exactly as it was when the data was a toy, by
+ * Everything below `weeks` – the shape of a week, which node is live, what is
+ * locked and why – is computed exactly as it was when the data was a toy, by
  * `curriculum.checkpointsFor`. The server says which checkpoints are done and
  * with what; it does not say what a week looks like. A second checkpoint engine
  * on the server would have been a second answer to "have I finished this week",
@@ -37,7 +37,7 @@ import type { Checkpoint, Experience, Project, SessionLog, Week, WeekMeta } from
  * Every mutation posts to the API and then asks Next to re-render the layout,
  * which reloads the snapshot. Each one also patches local state first, because
  * a round trip to Postgres between clicking a node and seeing it fill is long
- * enough to feel broken — and if the request fails the refresh puts the truth
+ * enough to feel broken – and if the request fails the refresh puts the truth
  * back.
  */
 
@@ -106,7 +106,7 @@ export const PASSED_REASON = "This week has passed!"
 /**
  * Week 1's idea reel is optional: it sits beside the first devlog entry as a
  * choice rather than gating it. The trail still lists it, and it stays
- * postable, but nothing past the fork ever waits on it — so every gate below
+ * postable, but nothing past the fork ever waits on it – so every gate below
  * reads predecessors with this id filtered out.
  */
 export const WEEK1_IDEA_REEL_ID = "w1-reel-idea"
@@ -188,7 +188,7 @@ interface Ctx {
 	experience: Experience | null
 	projects: Project[]
 	progress: Record<string, CheckpointState>
-	/** Spendable coins — what the shop will take for anything. */
+	/** Spendable coins – what the shop will take for anything. */
 	coins: number
 	/** Legacy locked coins. Drains to zero; kept so old rows still add up. */
 	bankedCoins: number
@@ -258,7 +258,7 @@ interface Ctx {
 	submitPhase: (id: string, extra?: { notes?: string; attachmentKeys?: string[] }) => Promise<string | null>
 	/**
 	 * Resolves to null once the entry is saved, or to the server's reason for
-	 * refusing it — Lapse may say a timelapse is not yours, is still processing,
+	 * refusing it – Lapse may say a timelapse is not yours, is still processing,
 	 * or already backs another entry, and the sheet has to stay open to say so.
 	 */
 	logSession: (
@@ -300,7 +300,7 @@ interface Ctx {
 	weekClosesAtMs: (weekId: number) => number | null
 	/** When warm-ups stop taking work: 11:59 PM the night before week 1 opens. */
 	warmupDeadline: string
-	/** Whether a week is handed in — in review, approved or rejected — so its entries are final. */
+	/** Whether a week is handed in – in review, approved or rejected – so its entries are final. */
 	weekSubmitted: (weekId: number) => boolean
 	/** Where a week stands with review. "draft" when nothing is recorded. */
 	phaseStatusOf: (weekId: number) => string
@@ -337,8 +337,8 @@ interface Ctx {
 	/** Hours logged across every session checkpoint in a week. */
 	weekHours: (weekId: number) => number
 	/**
-	 * Every hour on the record — journalled in entries and tracked some other
-	 * way (Hackatime, a reviewer's adjustment) — summed across the season's
+	 * Every hour on the record – journalled in entries and tracked some other
+	 * way (Hackatime, a reviewer's adjustment) – summed across the season's
 	 * weeks and every warm-up. Zero until the first session lands.
 	 */
 	totalHours: number
@@ -347,7 +347,7 @@ interface Ctx {
 	/**
 	 * Record what this participant is here for, with the printer if the answer
 	 * is a printer. Resolves to null once saved, or to the server's reason for
-	 * refusing — the prompt that calls it is uncloseable, so a silent failure
+	 * refusing – the prompt that calls it is uncloseable, so a silent failure
 	 * would strand somebody.
 	 */
 	setParticipantGoal: (goal: ParticipantGoal, printerGoalId?: string) => Promise<string | null>
@@ -378,7 +378,7 @@ const StoreContext = createContext<Ctx | null>(null)
  *
  * Errors are swallowed on purpose. Every caller has already patched local state
  * optimistically, and the `router.refresh()` in the `finally` reloads the
- * server's version either way — so a failed write corrects itself on screen
+ * server's version either way – so a failed write corrects itself on screen
  * instead of leaving the trail showing something that did not happen.
  */
 async function send(path: string, body: unknown, method = "POST"): Promise<boolean> {
@@ -483,7 +483,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		[facts.phaseStatusByWeek],
 	)
 
-	// Handed in — in review, or decided. A week sent back for changes is open
+	// Handed in – in review, or decided. A week sent back for changes is open
 	// again, because fixing it is the point of sending it back.
 	const weekSubmitted = useCallback(
 		(weekId: number) => {
@@ -520,13 +520,13 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				if (parsed && parsed.version === 4) next = { ...seededCeremony(), ...parsed }
 			}
 		} catch {
-			/* storage unavailable — run from the seed */
+			/* storage unavailable – run from the seed */
 		}
 		let bypass = false
 		try {
 			bypass = window.localStorage.getItem(BYPASS_KEY) === "1"
 		} catch {
-			/* storage unavailable — the trail stays locked */
+			/* storage unavailable – the trail stays locked */
 		}
 		// eslint-disable-next-line react-hooks/set-state-in-effect -- hydrating from localStorage
 		if (next) setCeremony(next)
@@ -540,7 +540,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			if (on) window.localStorage.setItem(BYPASS_KEY, "1")
 			else window.localStorage.removeItem(BYPASS_KEY)
 		} catch {
-			/* private mode — it lasts the session */
+			/* private mode – it lasts the session */
 		}
 	}, [])
 	// Read by role, not by storage alone: a flag left behind on a shared
@@ -552,13 +552,13 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		try {
 			window.localStorage.setItem(KEY, JSON.stringify(ceremony))
 		} catch {
-			/* quota or private mode — the session still works, it just will not persist */
+			/* quota or private mode – the session still works, it just will not persist */
 		}
 	}, [ceremony, hydrated])
 
 	// Someone who has already finished the first checkpoint must never be shown
 	// the intro again, whatever a stale or cleared localStorage says. The server
-	// is what knows, so it gets the final word — unless they asked for it back.
+	// is what knows, so it gets the final word – unless they asked for it back.
 	// A replay plays the cinematic and the tab tour and goes nowhere near the
 	// setup checkpoint: its answers are taken once, and the server refuses a
 	// second set, so "aim" and "checkpoint" go straight on to the tour.
@@ -635,7 +635,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	)
 
 	/**
-	 * Naming a week's project — filling in the row its checkpoint made when it
+	 * Naming a week's project – filling in the row its checkpoint made when it
 	 * was opened (ensureProject). A second project for the same week is refused
 	 * rather than queued behind the first, where nothing would ever read it.
 	 */
@@ -853,7 +853,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	 * and the 15h reel are both PROGRESS, so counting posts by kind would tick
 	 * the 15h node the moment the 5h one landed.
 	 */
-	// Resolves to the new post's id — what a public link gets attached to — or
+	// Resolves to the new post's id – what a public link gets attached to – or
 	// null if the post did not land. The node is patched first either way, and
 	// the refresh puts the truth back if the write failed.
 	const postReel = useCallback(
@@ -909,7 +909,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 					}),
 				})
 			} catch {
-				return "Could not reach the server. Nothing was submitted — try again."
+				return "Could not reach the server. Nothing was submitted – try again."
 			}
 			if (!res.ok) {
 				const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
@@ -924,7 +924,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 
 	/**
 	 * Take a handed-in week back out of review, so it can be changed and handed
-	 * in again. Only a week still waiting for a reviewer can be — the server
+	 * in again. Only a week still waiting for a reviewer can be – the server
 	 * refuses once a decision is made, or while a reviewer has it open.
 	 *
 	 * A checkpoint id resolves to its project through `projectIdByWeek`, which
@@ -945,7 +945,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 					body: JSON.stringify({ phase: route.phase }),
 				})
 			} catch {
-				return "Could not reach the server. Nothing changed — try again."
+				return "Could not reach the server. Nothing changed – try again."
 			}
 			if (!res.ok) {
 				const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
@@ -1092,7 +1092,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	)
 
 	// The printer you are saving for sets how many hours a week you need to earn,
-	// and that number is the same on every tier — the tier only decides how many
+	// and that number is the same on every tier – the tier only decides how many
 	// funded hours sit underneath it.
 	const goal = printerById(save.goalId)
 
@@ -1165,7 +1165,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	 * One saved journal: the entry, the time claimed, and the evidence for it.
 	 *
 	 * Note what this does NOT do any more: credit coins. Hours are paid for when
-	 * a reviewer approves the phase, not when they are claimed — otherwise the
+	 * a reviewer approves the phase, not when they are claimed – otherwise the
 	 * currency is self-issued, and a week could be spent in the shop before
 	 * anyone had looked at it. The trail still moves immediately, because the
 	 * node is the entry rather than the payment.
@@ -1179,7 +1179,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		): Promise<string | null> => {
 			// Server first, unlike the other writes here. An entry's timelapses are
 			// checked against Lapse, and a refusal is something the maker has to
-			// fix in the sheet — patching the trail first would show a node done
+			// fix in the sheet – patching the trail first would show a node done
 			// for an entry that was never saved.
 			const route = routeOf(id)
 			if (route) {
@@ -1201,7 +1201,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 						}),
 					})
 				} catch {
-					return "Could not reach the server. Your entry is still here — try again."
+					return "Could not reach the server. Your entry is still here – try again."
 				}
 				if (!res.ok) {
 					const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
@@ -1240,7 +1240,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 
 	/**
 	 * Change a finished entry's words, hours, and timelapses. The node stays where
-	 * it is — this is the same session, corrected, not another one.
+	 * it is – this is the same session, corrected, not another one.
 	 *
 	 * Server first, like logSession: the server can refuse (an entry a reviewer
 	 * has already put hours on, a week in review or passed, a timelapse that is
@@ -1271,7 +1271,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 					}),
 				})
 			} catch {
-				return "Could not reach the server. Your changes are still here — try again."
+				return "Could not reach the server. Your changes are still here – try again."
 			}
 			if (!res.ok) {
 				const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
@@ -1311,10 +1311,10 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	/**
 	 * What a week is worth, for the gates that ask what it is worth rather than
 	 * what was journalled: Submit's floor, the keep/submit fork, and the pace
-	 * math. Progress reels are the exception — they open on `journalHours`
+	 * math. Progress reels are the exception – they open on `journalHours`
 	 * below, the same clock their nodes are placed on.
 	 *
-	 * Journalled entries plus whatever arrived another way — Hackatime link time,
+	 * Journalled entries plus whatever arrived another way – Hackatime link time,
 	 * and any hours a reviewer adjusted. The two are added here rather than
 	 * folded into the entries upstream because reels are placed where the JOURNAL
 	 * crossed a reel's mark: fold Hackatime in and a progress reel lands on a node
@@ -1331,7 +1331,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	)
 
 	/**
-	 * Hours logged through journal entries alone — no Hackatime, no reviewer
+	 * Hours logged through journal entries alone – no Hackatime, no reviewer
 	 * adjustments from elsewhere. Progress reels open on this clock and not on
 	 * `weekHours`: a reel answers to the devlog that earned it, so ten tracked
 	 * hours somewhere else must not open a reel before the first entry is even
@@ -1410,7 +1410,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	 * every hour past the week's funded block (all of a build week's) at
 	 * COINS_PER_HOUR. Approved weeks are skipped because their coins are already
 	 * minted, rejected ones because they will never mint. It is a
-	 * projection — a reviewer can still adjust the hours — which is why it only
+	 * projection – a reviewer can still adjust the hours – which is why it only
 	 * feeds the pace warning and never the balance anyone can spend.
 	 */
 	const pendingCoins = useCallback(
@@ -1430,7 +1430,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	 *
 	 * Every node on a passed week is, done or not, with two exceptions: the
 	 * Submit that still owes the week's hand-in, and a setup nobody has done
-	 * yet — a late joiner still has to come in through the front door. A Submit
+	 * yet – a late joiner still has to come in through the front door. A Submit
 	 * with nothing logged behind it passes with the rest, because the server
 	 * refuses an empty hand-in and there is nothing left to do about that.
 	 */
@@ -1451,7 +1451,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	 * Whether a checkpoint waits on a deleted reel.
 	 *
 	 * Deleting the last reel on a checkpoint reopens it, and until it is posted
-	 * again every other checkpoint is held — done ones included, so the map
+	 * again every other checkpoint is held – done ones included, so the map
 	 * shows plainly that one thing is owed. The server holds the same line
 	 * (lib/reel-gate), and only ever reports a reel owed while its week can
 	 * still take one, so the hold always has a way out.
@@ -1463,7 +1463,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 
 	/**
 	 * Whether a week still stands between the trail and the week after it. A
-	 * week holds the next one shut until it is handed in — except a week that
+	 * week holds the next one shut until it is handed in – except a week that
 	 * passed with nothing in it, which can never be handed in and would
 	 * otherwise dead-end the rest of the season.
 	 */
@@ -1478,18 +1478,18 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 
 	/**
 	 * Four rules, and only four break the sequence:
-	 *  - a week that has passed is shut, all but the Submit it still owes —
+	 *  - a week that has passed is shut, all but the Submit it still owes –
 	 *    which opens whatever the hours say, since no more can be logged;
 	 *  - anything on the clock (the milestone reels, and Submit itself) opens on
 	 *    the week's hours, so a half-written entry never traps you and the choice
 	 *    to wrap up is always live.
-	 * Everything else unlocks in order, as it always has — except week 1's
+	 * Everything else unlocks in order, as it always has – except week 1's
 	 * idea reel, which is the optional arm of the opening fork and never holds
 	 * anything shut (see WEEK1_IDEA_REEL_ID).
 	 */
 	const isUnlocked = useCallback(
 		(id: string): boolean => {
-			// The owed reel is the way out, so it opens whatever else is true —
+			// The owed reel is the way out, so it opens whatever else is true –
 			// including a week that has since closed while this tab held a stale
 			// snapshot. Checking `isPassed` first dead-mapped the whole trail until
 			// the page was reloaded and the server stopped reporting the debt.
@@ -1520,7 +1520,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				// is worth in total. Only progress reels carry atHours besides
 				// those two, so `kind` is the whole distinction.
 				const hours = self.kind === "reel" ? journalHours(week.id) : weekHours(week.id)
-				// Unwritten entries never block a milestone — the clock does. Neither
+				// Unwritten entries never block a milestone – the clock does. Neither
 				// does a milestone that is not due yet: the reel waiting at 30h cannot
 				// hold up a Submit that opened at 23.76h.
 				//
@@ -1565,7 +1565,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	 * It walks the same three rules as isUnlocked, in the same order, and lives
 	 * next to it so the two cannot drift: a trail that says one thing and does
 	 * another is worse than a trail that says nothing. Each branch names the one
-	 * thing standing in the way rather than listing everything outstanding —
+	 * thing standing in the way rather than listing everything outstanding –
 	 * only the first is actionable anyway.
 	 */
 	const lockReason = useCallback(
@@ -1608,7 +1608,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				)
 				if (owed) return firstFinish(owed)
 				const toGo = Math.round((self.atHours - hours) * 100) / 100
-				return `Opens at ${self.atHours}h logged this week — ${toGo}h to go.`
+				return `Opens at ${self.atHours}h logged this week – ${toGo}h to go.`
 			}
 
 			const blocker = withoutOptionalIdea(list.slice(0, i)).find((c) => !done(c))
@@ -1632,7 +1632,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	const currentCheckpointId = useMemo(() => {
 		// Once the first devlog is written the opening fork is settled on the
 		// skip arm, so the unposted idea reel stops being the trail's answer
-		// to "where next" — it stays open as an extra, not as the current.
+		// to "where next" – it stays open as an extra, not as the current.
 		const skipSettled = save.progress["w1-entry-1"]?.done ?? false
 		const next = allCheckpoints.find(
 			(c) => !(save.progress[c.id]?.done ?? false) && isUnlocked(c.id) && !(skipSettled && c.id === WEEK1_IDEA_REEL_ID),

@@ -2,7 +2,7 @@ import "server-only"
 import { HttpError } from "@/lib/errors"
 
 /**
- * HCB's v4 API — the authenticated, write-capable one.
+ * HCB's v4 API – the authenticated, write-capable one.
  *
  * The v3 API behind /docs/api/v3 is read-only and unauthenticated; it cannot
  * send money. Grants are paid by topping up a participant's existing HCB card
@@ -159,7 +159,7 @@ export type GrantDisbursementList = { kind: "listed"; rows: GrantDisbursement[] 
  *
  * No pagination: a grant only accumulates one row per top-up/withdrawal, and
  * this exists to spot a top-up whose response was lost before deciding whether
- * to send another. Fails closed on any shape it does not recognise — see
+ * to send another. Fails closed on any shape it does not recognise – see
  * `GrantDisbursementList`.
  */
 export async function listCardGrantDisbursements(grantHashid: string): Promise<GrantDisbursementList> {

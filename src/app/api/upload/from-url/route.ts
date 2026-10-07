@@ -29,7 +29,7 @@ export const POST = withRoute(async (req: Request) => {
 
 	// The same budget as a file upload: fetching for someone is uploading for them.
 	if (rateLimitedInMemory(`upload:${gate.user.id}`)) {
-		return fail("RATE_LIMITED", "Too many uploads at once — wait a minute and try again")
+		return fail("RATE_LIMITED", "Too many uploads at once – wait a minute and try again")
 	}
 	if (!isUploadConfigured()) {
 		return fail("NOT_CONFIGURED", "File uploads are not configured on this deployment")

@@ -32,7 +32,7 @@ export enum Permission {
 }
 
 /**
- * Participants hold no role rows at all — absence of a role is the participant
+ * Participants hold no role rows at all – absence of a role is the participant
  * state, which keeps the common case free of writes at signup.
  *
  * REVIEWER is the volume role and deliberately cannot mint credit, change
@@ -78,8 +78,8 @@ export async function getUserRoles(userId: string): Promise<Role[]> {
  *
  * A session can outlive its user. The session cookie cache answers
  * `getSession` without touching the database for up to five minutes, so a
- * user deleted inside that window — by hand, or wholesale by a database
- * reset — still looks signed in, and every page then loads that user by id.
+ * user deleted inside that window – by hand, or wholesale by a database
+ * reset – still looks signed in, and every page then loads that user by id.
  * One query answers both "who are they" and "are they still here", so the
  * guards can turn a ghost session into a sign-out rather than let the first
  * `findUniqueOrThrow` discover it as a 500.

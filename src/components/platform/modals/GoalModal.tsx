@@ -16,7 +16,7 @@ const TEAL = "var(--color-teal-deep)"
 type Step = "goal" | "printer"
 
 /**
- * What you're here for, and — only if the answer is a printer — which machine.
+ * What you're here for, and – only if the answer is a printer – which machine.
  *
  * The order is the point. The catalogue is eight machines priced against each
  * other, and it is a meaningless question to somebody who is here for the grant
@@ -49,7 +49,7 @@ export function GoalModal({
 	const titleId = useId()
 
 	// Reopening starts from whatever is taped up now, including a goal that
-	// changed elsewhere — adjusting during render beats an effect that repaints.
+	// changed elsewhere – adjusting during render beats an effect that repaints.
 	// Opening always lands on the goal question, never mid-catalogue, so the
 	// answer is never edited by accident on the way to changing the machine.
 	const [seen, setSeen] = useState({ open, goalId, participantGoal })
@@ -121,13 +121,13 @@ export function GoalModal({
 								{toGo > 0 ? (
 									weeks > 0 ? (
 										<>
-											{" — "}
+											{" – "}
 											<span className="tabular-nums">{toGo.toLocaleString()}</span> coins to go: about{" "}
 											{Math.round(goal.paceHours * 5)} coins a week to earn for {weeks} design weeks{" "}
 										</>
 									) : (
 										<>
-											{" — "}
+											{" – "}
 											<span className="tabular-nums">{toGo.toLocaleString()}</span> coins to go, and the build weeks
 											cover it at {BUILD_HOURS * 5} coins a week.{" "}
 										</>
@@ -166,7 +166,7 @@ export function GoalModal({
 						id={titleId}
 						sub={
 							dismissible
-								? "Change this whenever you like — it decides what we build the rest of the season around."
+								? "Change this whenever you like – it decides what we build the rest of the season around."
 								: "Last thing before you get going! It decides what we build the rest of the season around, and you can change it whenever you like."
 						}
 					>
@@ -213,7 +213,7 @@ export function GoalModal({
 	)
 }
 
-/* A button, so every child below has to be phrasing content — spans, not divs. */
+/* A button, so every child below has to be phrasing content – spans, not divs. */
 function GoalCard({
 	goal,
 	selected,
@@ -234,7 +234,7 @@ function GoalCard({
 			role="radio"
 			aria-checked={selected}
 			onClick={onSelect}
-			title={`About ${Math.round(goal.paceHours * 5)} coins to earn each design week — that pace is the same on every tier, because tier hours pay for parts while every hour past them earns. Bigger printers cost more coins to earn each week.`}
+			title={`About ${Math.round(goal.paceHours * 5)} coins to earn each design week – that pace is the same on every tier, because tier hours pay for parts while every hour past them earns. Bigger printers cost more coins to earn each week.`}
 			className={cx(
 				"sketch relative block w-full rounded-2xl px-4 pt-4 pb-3.5 text-left transition-colors duration-150 sm:px-5",
 				!selected && "hover:bg-white",

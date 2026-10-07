@@ -33,16 +33,16 @@ import type { RepoRef } from "@/lib/repo-ref"
  *
  * - **GitHub** has no "commit these files" endpoint. Its contents API is
  *   per-file, so n files would be n commits and n "Update JOURNAL.md" entries in
- *   the maker's history. The Git Data API is used instead — blobs, one tree,
- *   one commit, one ref update — which is four round trips and a manual
+ *   the maker's history. The Git Data API is used instead – blobs, one tree,
+ *   one commit, one ref update – which is four round trips and a manual
  *   fast-forward guard, but lands atomically and detects a concurrent push.
  * - **GitLab** has `POST /projects/:id/repository/commits` with an `actions[]`
  *   array: one request, one commit, create/update/delete decided per action.
  *   That is simpler, and takes GitLab's own optional guard (`last_commit_id`)
  *   for the same concurrency protection.
  *
- * Each is written the way its API wants to be used, and the shared parts — the
- * no-op-when-unchanged check, the result shape — are hoisted above them.
+ * Each is written the way its API wants to be used, and the shared parts – the
+ * no-op-when-unchanged check, the result shape – are hoisted above them.
  */
 
 /** Long enough for a commit, short enough that a stalled call does not hold a job. */
@@ -74,7 +74,7 @@ export class ForgeWriteUnavailable extends Error {}
  * tokens do not expire).
  *
  * Resolves null when the user has not linked this forge, or when the refresh
- * fails (the refresh token was revoked) — both mean "offer the forge again".
+ * fails (the refresh token was revoked) – both mean "offer the forge again".
  */
 export async function forgeCredentials(userId: string, forge: Forge): Promise<ForgeCredentials | null> {
 	const account = await prisma.account.findFirst({
@@ -124,10 +124,10 @@ async function call(creds: ForgeCredentials, path: string, init: RequestInit): P
 		throw new ForgeWriteUnavailable(`${forge.label} did not answer.`)
 	}
 	// 401/403 are the two ways a token says it may not do this: revoked, or
-	// lacking the scope. Neither is retried here — the caller records it and the
+	// lacking the scope. Neither is retried here – the caller records it and the
 	// maker relinks.
 	if (res.status === 401 || res.status === 403) {
-		throw new HttpError("FORBIDDEN", `${forge.label} refused that — reconnect ${forge.label} and try again.`)
+		throw new HttpError("FORBIDDEN", `${forge.label} refused that – reconnect ${forge.label} and try again.`)
 	}
 	return res
 }
@@ -139,7 +139,7 @@ export interface WritableRepo {
 	name: string
 	/** The whole path to the repo, which may be more than one segment. */
 	ownerPath: string
-	/** The repo's forge web URL — what the sync stores as its pinned target. */
+	/** The repo's forge web URL – what the sync stores as its pinned target. */
 	url: string
 	private: boolean
 	defaultBranch: string
@@ -148,7 +148,7 @@ export interface WritableRepo {
 
 /**
  * A page of a repo listing is 100 items and no more, so a listing that stops
- * at the first page shows only the hundred most recently pushed — which for
+ * at the first page shows only the hundred most recently pushed – which for
  * anyone with a long history hides whole organisations behind their own
  * activity. The forges say exactly how many pages exist through their `Link`
  * header, and that is what the loops below follow. This is only a bound on a
@@ -163,8 +163,8 @@ const MAX_REPO_LIST_PAGES = 100
  *
  * The forges hand out absolute URLs under their own API root, and `call`
  * prepends that root itself, so it is stripped off again here. Taking the
- * forge's word for which page comes next — rather than incrementing `page`
- * ourselves — is what "fetch them all" means: the loop ends on the page the
+ * forge's word for which page comes next – rather than incrementing `page`
+ * ourselves – is what "fetch them all" means: the loop ends on the page the
  * forge says is the last one, not on whichever count we guessed.
  *
  * The regex deliberately does not split the header on commas first: a next
@@ -207,7 +207,7 @@ type GitHubRepo = {
 }
 
 async function listGitHubRepos(creds: ForgeCredentials): Promise<WritableRepo[]> {
-	// All three affiliations — the API's default is `owner,collaborator,
+	// All three affiliations – the API's default is `owner,collaborator,
 	// organization_member`, and each is needed to see every repo they can push
 	// to: `owner` their own, `collaborator` ones they were added to directly,
 	// and `organization_member` the ones reached through an organisation. Org
@@ -230,7 +230,7 @@ async function listGitHubRepos(creds: ForgeCredentials): Promise<WritableRepo[]>
 	const seen = new Set<string>()
 	return (
 		repos
-			// A repo can turn up on two pages when a push lands mid-listing — the
+			// A repo can turn up on two pages when a push lands mid-listing – the
 			// `sort=pushed` key moved underneath us. One entry per repo either way.
 			.filter((r) => {
 				if (seen.has(r.full_name)) return false
@@ -324,8 +324,8 @@ export interface WrittenFile {
  * Write a set of files to one branch in one commit.
  *
  * A file whose contents already match is left alone rather than rewritten, so
- * the common case — a journal entry that changed nothing about BOM.md, or a
- * retried sync — produces no commit at all. Both implementations honour that,
+ * the common case – a journal entry that changed nothing about BOM.md, or a
+ * retried sync – produces no commit at all. Both implementations honour that,
  * and both make the whole set land atomically or not at all.
  */
 export async function commitFiles(
@@ -377,13 +377,13 @@ async function commitGitHub(
 	const base = `repos/${ref.fullName}`
 
 	// What the branch's tip is. The commit is parented on this, and the ref
-	// update is guarded on it still being the tip — so a push that lands between
+	// update is guarded on it still being the tip – so a push that lands between
 	// this read and the write fails the whole thing rather than discarding it.
 	//
 	// An empty repository is the one case where there is no tip to read: GitHub
 	// answers 409 ("Git Repository is empty") and refuses the whole Git Data API
-	// until the repo has a commit. The Contents API is the documented way in —
-	// writing one file initialises the repository and its first branch — after
+	// until the repo has a commit. The Contents API is the documented way in –
+	// writing one file initialises the repository and its first branch – after
 	// which the read below works as usual. That first file lands in its own
 	// commit; the rest still land together in one.
 	let refRes = await call(creds, `${base}/git/ref/heads/${encodeURIComponent(branch)}`, { method: "GET" })
@@ -415,7 +415,7 @@ async function commitGitHub(
 			const sha = blobSha(file.content)
 			if (current.get(file.path) === sha) {
 				written.push({ path: file.path, sha, bytes: byteLength(file.content), unchanged: true })
-				// Still in the tree — an unchanged file is simply not re-added.
+				// Still in the tree – an unchanged file is simply not re-added.
 				return
 			}
 			const blobRes = await call(creds, `${base}/git/blobs`, {
@@ -456,7 +456,7 @@ async function commitGitHub(
 
 	// Guarded: only fast-forward if the ref is still where we read it. A
 	// concurrent push makes this a 422 and nothing is written, which is the
-	// correct outcome — the next sync reads the new tip and commits on top of it.
+	// correct outcome – the next sync reads the new tip and commits on top of it.
 	const updateRes = await call(creds, `${base}/git/refs/heads/${encodeURIComponent(branch)}`, {
 		method: "PATCH",
 		headers: { "content-type": "application/json" },
@@ -516,7 +516,7 @@ async function currentBlobShas(creds: ForgeCredentials, base: string, treeSha: s
  * The blob sha GitHub would give this content: SHA-1 over `blob <len>\0<content>`.
  *
  * Computed here rather than asked for, because asking means uploading each file
- * twice — once to check, once to write — and the hash is the documented, stable
+ * twice – once to check, once to write – and the hash is the documented, stable
  * way to compare against what the tree already holds.
  */
 function blobSha(content: string): string {
@@ -537,7 +537,7 @@ function byteLength(content: string): number {
  * GitLab wants `create` for a file that is not in the repo and `update` for one
  * that is; sending the wrong one fails the whole commit. So the file list is
  * read first, and each action is labelled from what it found. That read is also
- * what the no-op check needs — a file whose content already matches is left out
+ * what the no-op check needs – a file whose content already matches is left out
  * of the actions entirely.
  *
  * There is no blob hash to compare against here (that is a GitHub concept), so

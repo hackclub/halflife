@@ -17,7 +17,7 @@ import prisma from "@/lib/prisma"
  * Twelve columns, all Half Life's to write: when someone was last seen on the
  * site, when they last logged a journal entry, and one checkbox per program
  * week for whether they have completed that week's first checkpoint.
- * Everything else Half Life tracks stays in Postgres (lib/analytics) — Loops
+ * Everything else Half Life tracks stays in Postgres (lib/analytics) – Loops
  * needs these, not the rest.
  *
  * "Last login" is last site access, from `lastActiveAt` (the page-view
@@ -31,7 +31,7 @@ import prisma from "@/lib/prisma"
  * landing page's list, so a row's email is whatever address someone typed
  * before they had an account, while `User.email` is what the identity provider
  * later gave them. Measured on the dev base, 5100 of 5101 rows had no user
- * sharing their email — matching on email alone matched one person and left
+ * sharing their email – matching on email alone matched one person and left
  * every Loops column empty for the rest, which is exactly the bug this column
  * already existed to prevent (see RSVP.fields.userId).
  *
@@ -45,7 +45,7 @@ const TABLE = RSVP_TABLE_ID
 
 export const LOOPS_FIELDS = {
 	// The same column the RSVP drain writes. See RSVP.fields.email: the live
-	// column is lowercase, and Airtable field names are case-sensitive — naming
+	// column is lowercase, and Airtable field names are case-sensitive – naming
 	// it `Email` made the list request a 422 that stopped this sync ever running.
 	email: fieldKey(RSVP.fields.email),
 	// The join key, when the base has it. See the note above.
@@ -74,9 +74,9 @@ interface LoopsValues {
  * A week's box is ticked when its first checkpoint is complete, which differs
  * by kind of week:
  * - week 1's is "Get started", the onboarding;
- * - weeks 2–5 open with "New project", complete once the project has its
+ * - weeks 2-5 open with "New project", complete once the project has its
  *   description and tier (`namedAt`, see lib/analytics);
- * - weeks 6–10 are the builds of those same projects and open straight into
+ * - weeks 6-10 are the builds of those same projects and open straight into
  *   logging, so their first checkpoint is the first build journal entry.
  */
 async function loopsValues(): Promise<LoopsValues[]> {
@@ -154,7 +154,7 @@ function unchanged(row: AirtableRecord, fields: Record<string, unknown>): boolea
  * Whether this base has the `Half-Life User ID` column.
  *
  * Airtable 422s a list request naming a field that does not exist, and it does
- * so for the whole request — so asking for the id column on a base without it
+ * so for the whole request – so asking for the id column on a base without it
  * takes the entire sync down, not just the join. One single-record probe
  * settles it per instance instead.
  *
@@ -189,7 +189,7 @@ async function userIdColumnExists(config: NonNullable<ReturnType<typeof getAirta
 /**
  * Which Signups row, if any, is this person's.
  *
- * Split out from the sync and free of I/O so the join can be tested directly —
+ * Split out from the sync and free of I/O so the join can be tested directly –
  * this is the one decision that made every Loops column silently empty, and it
  * fails quietly by design: a row that is not found is skipped and counted, not
  * an error, so a wrong join looks exactly like a healthy run that had nothing
@@ -203,7 +203,7 @@ async function userIdColumnExists(config: NonNullable<ReturnType<typeof getAirta
  * 2. **The Airtable record id the RSVP drain recorded.** Not a fuzzy match at
  *    all: it is the row this app itself created for this person, read back out
  *    of `RsvpBuffer`. It is here because key 1 depends on a column that has to
- *    exist in the base, and on the live base it does not — so the join that
+ *    exist in the base, and on the live base it does not – so the join that
  *    needs no new column is the one that actually matches.
  * 3. **Email.** The last resort, and the one that mostly fails: the Signups row
  *    holds whatever address was typed on the landing page.
@@ -365,14 +365,14 @@ export async function syncLoopsProperties(
 	// collapse in the match rate is called out loudly rather than returned as a
 	// number somebody has to notice. Most often it means the base has no
 	// `Half-Life User ID` column, or the RSVP drain has not been running to fill
-	// it — either way the fix is on the Airtable side, not here.
+	// it – either way the fix is on the Airtable side, not here.
 	if (degraded) {
 		console.error(
 			`[airtable] Loops sync matched only ${matched}/${values.length} Half Life users to a Signups row ` +
-				`(${matchedById} by id, ${matchedByRecord} by drained record id, ${matchedByEmail} by email) — ` +
+				`(${matchedById} by id, ${matchedByRecord} by drained record id, ${matchedByEmail} by email) – ` +
 				`${result.unmatched} were skipped and their Loops columns left empty. In order of likelihood: ` +
 				"their rsvp-drain row hit the attempt cap while the table was missing a column the drain sends, and a " +
-				"row at the cap is never retried — reset `syncAttempts` on those to give them another go; " +
+				"row at the cap is never retried – reset `syncAttempts` on those to give them another go; " +
 				`${TABLE} still has no \`${LOOPS_FIELDS.userId}\` column, so the drain cannot stamp a row with its user; ` +
 				"or the person never had a Signups row at all.",
 		)

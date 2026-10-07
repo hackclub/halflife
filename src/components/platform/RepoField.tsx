@@ -55,7 +55,7 @@ export function repoIsValid(value: string) {
 /**
  * A project's repo, read or edited in place.
  *
- * One line when it is set — the link itself, shortened to what anyone reads —
+ * One line when it is set – the link itself, shortened to what anyone reads –
  * and one quiet prompt when it is not, so an empty repo does not take up the
  * room of a form on every card. Editing swaps the line for an input and two
  * buttons without moving what is around it much, and the server's refusal

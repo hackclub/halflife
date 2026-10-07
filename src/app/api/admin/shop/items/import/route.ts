@@ -17,7 +17,7 @@ const importSchema = z.object({ csv: z.string().min(1).max(500_000) }).strict()
  * Add shop items from a CSV, all or nothing.
  *
  * A file with any bad row, or any slug that already exists, imports nothing
- * and says which lines to fix — the same refusal the single-item form gives,
+ * and says which lines to fix – the same refusal the single-item form gives,
  * once per line. Existing items are never touched: changing one is what its
  * own page is for.
  */

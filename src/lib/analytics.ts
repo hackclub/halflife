@@ -16,7 +16,7 @@ import { streakAsOf } from "@/lib/streak"
  *
  * Every function here is fire-and-forget safe: it never throws, because a
  * sign-in, a post or a submit must not fail over a counter. And every one is
- * idempotent — "first" markers are written with a `WHERE … IS NULL`, so two
+ * idempotent – "first" markers are written with a `WHERE … IS NULL`, so two
  * requests racing cannot move one, and a replay or the backfill cannot either.
  */
 
@@ -46,7 +46,7 @@ const lastTouched = new Map<string, number>()
 
 /**
  * A page view: moves `lastActiveAt` forward and records today as an active
- * day. Throttled to one write per person per few minutes — DAU needs a day to
+ * day. Throttled to one write per person per few minutes – DAU needs a day to
  * be counted once, not every click.
  */
 export function touchActivity(userId: string, at = new Date()): Promise<void> {
@@ -77,8 +77,8 @@ export function touchActivity(userId: string, at = new Date()): Promise<void> {
 /**
  * Whether a project has actually been started. Not its title: every row is
  * made at sign-up already titled with its theme's name. The app counts a
- * project once it has a description and a tier — that is what completes the
- * trail's "project" node (lib/queries/store) — so this does too.
+ * project once it has a description and a tier – that is what completes the
+ * trail's "project" node (lib/queries/store) – so this does too.
  */
 function isCreated(p: { description: string | null; tier: number | null; requestedTier: number | null }) {
 	return !!p.description?.trim() && (p.tier ?? p.requestedTier) != null
@@ -428,7 +428,7 @@ export async function getAnalyticsSummary(days = 30) {
 	] as const
 	const funnel = steps.map(([step, count], i) => {
 		// The step before this one, or this one at the top of the funnel. The
-		// fallback is unreachable — `i` is always within `steps` — but it keeps
+		// fallback is unreachable – `i` is always within `steps` – but it keeps
 		// the arithmetic off `undefined` without an assertion.
 		const prev = i === 0 ? count : (steps[i - 1]?.[1] ?? count)
 		return {

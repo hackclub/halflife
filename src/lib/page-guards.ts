@@ -28,8 +28,8 @@ export const requireSessionPage = cache(async (): Promise<PageContext> => {
 	// landing page; see that route for why it cannot be `/` directly.
 	if (!session) redirect("/signed-out")
 	const u = session.user
-	// The cookie cache can serve a session whose user is gone — a deleted
-	// account, or a database reset inside the cache's five-minute window — and
+	// The cookie cache can serve a session whose user is gone – a deleted
+	// account, or a database reset inside the cache's five-minute window – and
 	// the layout below loads that user by id. Same destination as no session at
 	// all, before the first query can turn a ghost into a 500.
 	const roles = await getUserRolesIfExists(u.id)

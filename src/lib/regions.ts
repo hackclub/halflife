@@ -5,7 +5,7 @@
  * This is the only per-user geography with real coverage (shop regions are
  * pricing prefs almost nobody picks; the HCA address country is encrypted PII
  * held for one account). Buckets follow IANA areas rather than a curated
- * country list, so there is nothing to maintain as signups spread — and
+ * country list, so there is nothing to maintain as signups spread – and
  * nothing to mislabel. `other` is valid-but-placeless zones (Etc, GMT, the
  * POSIX-style ones); `unknown` is no timezone on file.
  */
@@ -67,7 +67,7 @@ export function regionOfTimezone(timezone: string | null | undefined): RegionId 
  * IANA zone to country, for the country breakdown. Covers every timezone on
  * file plus the common aliases browsers report (e.g. both Kathmandu
  * spellings); anything else falls to Unknown so a new zone shows up as
- * unplaced rather than mislabeled — extend the map when it does.
+ * unplaced rather than mislabeled – extend the map when it does.
  */
 const ZONE_COUNTRY: Record<string, string> = {
 	// Americas

@@ -34,7 +34,7 @@ export const THEME_COMPLETION_BONUS = 25
 /**
  * A build week is the same five hours for everyone, split into two sittings.
  *
- * None of it is funded — the parts were bought with the design week's grant —
+ * None of it is funded – the parts were bought with the design week's grant –
  * so every one of these hours banks. This is the `5 hours * 5 build weeks * $5`
  * term the budget sheet subtracts from a machine's price before it works out
  * what the design weeks have to carry, which is why it lives here rather than
@@ -63,7 +63,7 @@ export const ONBOARDING_CHECKPOINT_ID = "w1-onboard"
  * Streaks.
  *
  * A day counts when the participant logs a work session with that day as its
- * `effectiveDate` in the program timezone — the same stamp the journal already
+ * `effectiveDate` in the program timezone – the same stamp the journal already
  * writes, so the streak is derived from work rather than from logging in.
  *
  * `STREAK_GRACE_DAYS = 1` means one missed day does not reset you: the streak
@@ -156,7 +156,7 @@ export const WARMUP_THEME: ThemeDef = {
  *
  * Warm-up projects have no scheduled week, but a client `Project` carries one
  * (it addresses the project detail route and picks the card's scene), so they
- * borrow week 0 — a value no curriculum week can take.
+ * borrow week 0 – a value no curriculum week can take.
  */
 export const WARMUP_WEEK_ID = 0
 

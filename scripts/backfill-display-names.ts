@@ -3,7 +3,7 @@ import { syncHcaProfile } from "../src/lib/hca-profile"
 import prisma from "../src/lib/prisma"
 
 /**
- * Fill in `User.displayName` — HCA's nickname, the name the site shows — for
+ * Fill in `User.displayName` – HCA's nickname, the name the site shows – for
  * everyone who signed in before the column existed, so the platform stops
  * showing full names only as people happen to come back.
  *

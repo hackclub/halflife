@@ -2,7 +2,7 @@
  * POST a form and report how much of it has been sent.
  *
  * XMLHttpRequest rather than fetch, because fetch still cannot report upload
- * progress in any browser this audience uses — and a phone sending a minute of
+ * progress in any browser this audience uses – and a phone sending a minute of
  * video over school wifi needs to show it is moving, or it looks frozen and
  * gets closed.
  *

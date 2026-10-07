@@ -25,7 +25,7 @@ function publicOrigin(req: Request): string {
  * token to a third-party QR service would be handing an upload credential for
  * this user's account to someone else's server.
  *
- * The plaintext token exists only in this response — it is stored as a hash
+ * The plaintext token exists only in this response – it is stored as a hash
  * and can never be read back.
  */
 export const POST = withRoute(async (req: Request) => {

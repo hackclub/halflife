@@ -37,7 +37,7 @@ export async function rememberHelpTicket(input: {
  * Marks a ticket resolved, called from all three resolution buttons.
  *
  * `updateMany` rather than `update`: a ticket asked before the table existed,
- * or one whose mirror post failed, has no row — resolving it is still a
+ * or one whose mirror post failed, has no row – resolving it is still a
  * success, not an error. The `resolvedAt: null` guard makes a second
  * resolution a no-op, so two people clicking at once (or a Slack redelivery)
  * cannot move the closer or double-count the ticket in a summary.

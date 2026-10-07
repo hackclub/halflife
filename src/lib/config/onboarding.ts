@@ -58,7 +58,7 @@ export function stepIndexOf(id: OnboardingStepId): number {
 /**
  * Which tier to highlight, from the answer to question one.
  *
- * A suggestion in the UI and nothing more — the participant can pick any tier,
+ * A suggestion in the UI and nothing more – the participant can pick any tier,
  * and the reviewer decides the real one at design approval. Someone who has
  * never touched hardware being shown Tier 3 first is the thing this avoids.
  */
@@ -149,14 +149,14 @@ export function getStarterProject(id: string): StarterProject | undefined {
 	return STARTER_PROJECTS.find((p) => p.id === id)
 }
 
-/** The tier a starter project is scoped to. Not configurable — see above. */
+/** The tier a starter project is scoped to. Not configurable – see above. */
 export const STARTER_PROJECT_TIER: TierId = 1
 
 /**
  * Step two's copy: "Each week will have a theme, this week it's..."
  *
- * The comp branches this on the answer to question one — "If beginner:
- * information about PCBs, else: example projects" — so both halves are here
+ * The comp branches this on the answer to question one – "If beginner:
+ * information about PCBs, else: example projects" – so both halves are here
  * and the step picks one.
  */
 export interface WeekIntro {

@@ -14,7 +14,7 @@
  * The `fld…` ids are filled in once, from
  * `GET https://api.airtable.com/v0/meta/bases/{baseId}/tables`, by running
  * `yarn tsx scripts/dump-airtable-schema.ts` against the created base.
- * Until then the writer falls back to names — see FIELD_MODE below.
+ * Until then the writer falls back to names – see FIELD_MODE below.
  */
 
 export interface FieldDef<T = unknown> {
@@ -51,7 +51,7 @@ export function formulaRef(field: FieldDef): string {
  * Every row is written by Half Life at submit time, as "Pending Review";
  * review itself happens on ari.hackclub.com, which moves the row on from there.
  * The `Automation - …` columns belong to the pipeline and are never written
- * here — `Automation - Submit to Unified YSWS` in particular is what sends a
+ * here – `Automation - Submit to Unified YSWS` in particular is what sends a
  * row onward, and that is a reviewer's call, not a submitter's.
  */
 export const YSWS_SUBMISSION = {
@@ -98,7 +98,7 @@ export const YSWS_PENDING_REVIEW = "Pending Review"
 /**
  * The landing page's sign-up list, in its own base. The RSVP buffer drains
  * into it and the Loops sync reads/writes its Loops columns, so both name it
- * from here — the two modules used to default to different tables ("RSVPs"
+ * from here – the two modules used to default to different tables ("RSVPs"
  * vs "Signups"), which silently split the funnel from the emails.
  */
 export const RSVP_TABLE_ID = process.env.AIRTABLE_RSVP_TABLE_ID ?? "Signups"
@@ -107,7 +107,7 @@ export const RSVP = {
 	tableId: RSVP_TABLE_ID,
 	fields: {
 		// Lowercase in the live table. Airtable field names are case-sensitive, and
-		// `fields[]=Email` is a 422 that kills the whole list request — which is how
+		// `fields[]=Email` is a 422 that kills the whole list request – which is how
 		// the Loops sync never ran (see lib/airtable/loops).
 		email: f<string>("fldRsvpEmail", "email"),
 		firstName: f<string>("fldRsvpFirstName", "First Name"),

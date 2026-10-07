@@ -11,7 +11,7 @@ import { uploadFile, useHandoff } from "@/lib/use-handoff"
  *
  * Two routes, because the program runs on hardware that is nowhere near the
  * machine the platform is open on. You can pick a file here, or scan a code and
- * film on your phone — which is the one that actually gets used, since the
+ * film on your phone – which is the one that actually gets used, since the
  * bench and the laptop are rarely the same desk. The phone route needs no
  * sign-in on the phone: the QR carries a single-use token that expires in
  * minutes, so nobody has to type a Hack Club password into a borrowed handset.
@@ -95,7 +95,7 @@ export function ReelCapture({
 			)}
 
 			{/* A reel is the biggest thing anyone uploads here, often over school
-          wifi — without a bar, a minute of sending looks like a hang. */}
+          wifi – without a bar, a minute of sending looks like a hang. */}
 			{busy && <UploadProgress progress={progress} name="Your video" className="max-w-[420px]" />}
 
 			<div className="flex flex-wrap gap-2">
@@ -128,7 +128,7 @@ export function ReelCapture({
 
 			{showQr && handoff.minted && handoff.status === "waiting" && (
 				<Panel tone="line" radius={16} className="grid justify-items-center gap-3 bg-paper p-5">
-					{/* Server-rendered SVG from our own origin — the token is never sent
+					{/* Server-rendered SVG from our own origin – the token is never sent
               to a third-party QR service.
               The SVG carries its own width, so it is forced to the box rather
               than trusted to fit: at its natural 200px it overflowed and sat on

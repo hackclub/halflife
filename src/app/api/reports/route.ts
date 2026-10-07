@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic"
  *
  * It changes no state: the row stays up and the queue gains a row. Taking
  * something down stays a separate admin action, so a report is never a
- * silent takedown — and, because an open report per reporter per row is the
+ * silent takedown – and, because an open report per reporter per row is the
  * most the queue holds, neither is it a flood.
  */
 export const POST = withRoute(async (req: Request) => {
@@ -75,7 +75,7 @@ export const POST = withRoute(async (req: Request) => {
 
 	// One open report per reporter per row: a second press while staff have
 	// not looked yet is a duplicate, not a new report. A decided one may be
-	// reported again — something can get worse after it was cleared.
+	// reported again – something can get worse after it was cleared.
 	const field =
 		target === "REEL"
 			? { postId: targetId }
@@ -90,7 +90,7 @@ export const POST = withRoute(async (req: Request) => {
 		where: { reporterId: gate.user.id, target, status: "OPEN", ...field },
 		select: { id: true },
 	})
-	if (dupe) return fail("CONFLICT", `You have already reported this ${label} — staff will take a look`)
+	if (dupe) return fail("CONFLICT", `You have already reported this ${label} – staff will take a look`)
 
 	// The friendly check above races a second press in flight: the partial
 	// unique indexes are the real guard, and their violation reads as the
@@ -109,7 +109,7 @@ export const POST = withRoute(async (req: Request) => {
 		})
 	} catch (err) {
 		if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-			return fail("CONFLICT", `You have already reported this ${label} — staff will take a look`)
+			return fail("CONFLICT", `You have already reported this ${label} – staff will take a look`)
 		}
 		throw err
 	}

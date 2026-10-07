@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic"
 /**
  * The caller's published Lapse timelapses, for the journal's picker.
  *
- * Each carries `attached` — whether a session already claims it — because one
+ * Each carries `attached` – whether a session already claims it – because one
  * recording backs one session. Otherwise the same two hours of footage could
  * be offered as proof for two entries. The session route refuses it too; this
  * is only so the picker can say so before anyone tries. `forSession` names the

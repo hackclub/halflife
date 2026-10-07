@@ -5,7 +5,7 @@ import crypto from "node:crypto"
  *
  * Auth is a single bot token (`SLACK_BOT_TOKEN`) with `chat:write`,
  * `channels:read`, `groups:read`, `channels:write.invites`, `channels:history`,
- * `im:write`, `users:read`, and `reactions:write` scopes — see
+ * `im:write`, `users:read`, and `reactions:write` scopes – see
  * `slack-app-manifest.yml` at the repo root for the exact manifest to paste into
  * api.slack.com when creating the app, which annotates what each one is for.
  * chat.getPermalink and auth.test need none of them; posting into the private
@@ -98,8 +98,8 @@ export async function updateMessage(channel: string, ts: string, text: string, b
  * closes it. `already_reacted` is marked expected: a ticket can be resolved
  * from the tickets channel or the help thread, so a second resolution finds
  * the bot's own reaction already in place, which is the outcome we wanted
- * rather than a fault. `invalid_name` — the custom emoji not existing in the
- * workspace — is logged by the API layer since there's no runtime fix for it;
+ * rather than a fault. `invalid_name` – the custom emoji not existing in the
+ * workspace – is logged by the API layer since there's no runtime fix for it;
  * see `slack-app-manifest.yml` for the `reactions:write` scope this needs. */
 export async function addReaction(channel: string, timestamp: string, name: string) {
 	return callSlackApi("reactions.add", { channel, timestamp, name }, ["already_reacted"])
@@ -109,14 +109,14 @@ export async function addReaction(channel: string, timestamp: string, name: stri
  * #half-life-help question from pending to resolved. `no_reaction` is marked
  * expected for the mirror of `already_reacted` above: two people can resolve
  * the same ticket from different places, or a Slack redelivery can rerun the
- * handler, and whoever gets there second finds the emoji already gone — the
+ * handler, and whoever gets there second finds the emoji already gone – the
  * outcome we wanted rather than a fault. Same `reactions:write` scope. */
 export async function removeReaction(channel: string, timestamp: string, name: string) {
 	return callSlackApi("reactions.remove", { channel, timestamp, name }, ["no_reaction"])
 }
 
 /** A bot token may delete only messages that bot posted, which is the whole
- * point here — every tickets-channel mirror is one we posted ourselves, so
+ * point here – every tickets-channel mirror is one we posted ourselves, so
  * this needs `chat:write` and nothing more. `message_not_found` is marked
  * expected: two people can resolve the same ticket from different places, and
  * whoever gets there second is told the message is already gone, which is the
@@ -125,7 +125,7 @@ export async function deleteMessage(channel: string, ts: string) {
 	return callSlackApi("chat.delete", { channel, ts }, ["message_not_found"])
 }
 
-/** `already_in_channel` is treated as success — the caller just wants the
+/** `already_in_channel` is treated as success – the caller just wants the
  * user in the channel, not a report of how they got there. It is omitted
  * from the logs entirely: the join handler fires for every member join, so
  * logging the no-op case buries real failures. Genuine invites still log, as
@@ -149,7 +149,7 @@ export async function inviteToChannel(channel: string, user: string) {
 
 /** A Slack permalink, dropped into a message's text, auto-unfurls into a
  * rich preview of the original message (sender, avatar, timestamp, files,
- * formatting) — the closest the Bot API gets to the client's "Forward
+ * formatting) – the closest the Bot API gets to the client's "Forward
  * message" action, which isn't itself exposed over the API. */
 export async function getPermalink(channel: string, messageTs: string): Promise<string | null> {
 	const result = await callSlackApiGet<{ permalink?: string }>("chat.getPermalink", { channel, message_ts: messageTs })
@@ -157,7 +157,7 @@ export async function getPermalink(channel: string, messageTs: string): Promise<
 }
 
 /** Slack's GET-family methods (`chat.getPermalink` among them) read their
- * arguments from the query string — POSTing them as a JSON body gets an
+ * arguments from the query string – POSTing them as a JSON body gets an
  * `invalid_arguments` back, since Slack sees no `channel`/`message_ts` at
  * all. Those methods go through here instead of `callSlackApi`. */
 async function callSlackApiGet<T extends Record<string, unknown>>(
@@ -208,7 +208,7 @@ export async function getSlackUserName(userId: string): Promise<string> {
 			return name
 		}
 	} catch {
-		// No token, or Slack unreachable — the mention below still reads fine.
+		// No token, or Slack unreachable – the mention below still reads fine.
 	}
 
 	return `<@${userId}>`
@@ -254,7 +254,7 @@ export type SlackHistoryMessage = {
  * Walks a channel's whole history and hands back every message it saw.
  *
  * `conversations.history` pages newest-first; the cursor carries us further
- * back until Slack has no more or `maxPages` trips — a guard so a one-off
+ * back until Slack has no more or `maxPages` trips – a guard so a one-off
  * backfill cannot hammer the API forever. `exhausted` is false when that guard
  * tripped, so the caller can say the sweep was partial instead of quietly
  * undercounting.
@@ -283,7 +283,7 @@ export async function listChannelHistory(
 	return { messages, exhausted: false }
 }
 
-/** Cached for the life of the instance — this never changes for a given
+/** Cached for the life of the instance – this never changes for a given
  * bot token, and calling auth.test on every event would be wasted latency
  * inside Slack's 3-second Events API window. */
 export async function getBotUserId(): Promise<string | null> {

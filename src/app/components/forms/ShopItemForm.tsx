@@ -6,7 +6,7 @@ import type { ShopItemCategory } from "@/app/generated/prisma/enums"
 import { uploadFile } from "@/lib/use-handoff"
 
 const CATEGORIES: { value: ShopItemCategory; label: string }[] = [
-	{ value: "PRINTER", label: "Printer — not listed in the shop" },
+	{ value: "PRINTER", label: "Printer – not listed in the shop" },
 	{ value: "PRINTER_UPGRADE", label: "Printer upgrade" },
 	{ value: "CONSUMABLE", label: "Consumable" },
 	{ value: "MISC", label: "Misc" },
@@ -40,7 +40,7 @@ const blank = {
  * URL yet.
  *
  * React escapes attribute values and `<img src>` never executes `javascript:`
- * or an SVG payload, so the raw value was not an XSS hole — but CodeQL cannot
+ * or an SVG payload, so the raw value was not an XSS hole – but CodeQL cannot
  * see either fact. `js/xss-through-dom` sees a DOM read (`e.target.value`) reach
  * a `src` write and reports it, because the guards it recognises are
  * `DomBasedXss::Sanitizer`, not a `/^https:\/\//` test. The global `.replace`

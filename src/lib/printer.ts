@@ -86,7 +86,7 @@ export async function ensurePrinterAward(tx: Prisma.TransactionClient, userId: s
 }
 
 /**
- * Awards whose holder no longer qualifies. Reports only — never auto-revokes,
+ * Awards whose holder no longer qualifies. Reports only – never auto-revokes,
  * because the printer may already have shipped.
  */
 export async function findPrinterAwardMismatches(): Promise<{ userId: string; email: string; shippedCount: number }[]> {
@@ -118,7 +118,7 @@ export interface PrinterAwardUpdate {
 
 /**
  * Move one award along the fulfilment path: lock the address, then pack, ship
- * and deliver it — or revoke it for the record.
+ * and deliver it – or revoke it for the record.
  *
  * Conditional on the status that was read, so two admins saving at once cannot
  * skip a step or overwrite a revoke. Locking the address snapshots the
@@ -187,7 +187,7 @@ export async function updatePrinterAwardStatus(
 		if (!address) {
 			throw new HttpError(
 				"VALIDATION_FAILED",
-				"No shipping address is on file for this participant — pull it from HCA (PULL_HCA_PII) or ask them for it before locking.",
+				"No shipping address is on file for this participant – pull it from HCA (PULL_HCA_PII) or ask them for it before locking.",
 			)
 		}
 		data.encryptedAddress = encryptPII(address)
@@ -200,7 +200,7 @@ export async function updatePrinterAwardStatus(
 		data,
 	})
 	if (moved.count !== 1) {
-		throw new HttpError("CONFLICT", "The award moved while this was being saved — reload and try again")
+		throw new HttpError("CONFLICT", "The award moved while this was being saved – reload and try again")
 	}
 
 	await logAudit({

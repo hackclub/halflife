@@ -76,7 +76,7 @@ const GATO: Record<"head" | "box" | "confused" | "schematic", StaticImageData> =
 }
 
 /**
- * The programme's fox, as its artist painted it. `head` is the mark — the
+ * The programme's fox, as its artist painted it. `head` is the mark – the
  * face alone, for the title card, the HQ badge and the journal's watermark;
  * the others are whole-body stickers for a slot that wants a character.
  *
@@ -107,8 +107,8 @@ export function Gato({
 
 /**
  * The programme's own painted stickers, one per theme, from `public/art/weeks`
- * — the same files the landing page's "how does it work?" plate shows. Each
- * source is a 3000px square of 2–4 MB, which is why this goes through
+ * – the same files the landing page's "how does it work?" plate shows. Each
+ * source is a 3000px square of 2-4 MB, which is why this goes through
  * `next/image` and names the size it is shown at. A theme with no painting
  * shows nothing rather than a stand-in.
  */
@@ -155,8 +155,8 @@ export function WeekPainting({
  *
  * Each file is the maker's shot trimmed to the machine and set on white at
  * 560px square, the machine standing on a common floor so a row of them lines
- * up. That is the largest place one is shown — the onboarding prize, at 280px
- * — at twice the pixels, and `next/image` cuts it down for the small tiles.
+ * up. That is the largest place one is shown – the onboarding prize, at 280px
+ * – at twice the pixels, and `next/image` cuts it down for the small tiles.
  */
 const PRINTER_PHOTOS: Partial<Record<string, StaticImageData>> = {
 	"ender-3-v3-se": ender3V3SePhoto,
@@ -171,7 +171,7 @@ const PRINTER_PHOTOS: Partial<Record<string, StaticImageData>> = {
 
 /**
  * The photo on its white ground, in a box the caller sizes. A goal with no
- * photo shows an empty white tile — the catalogue has one for every machine,
+ * photo shows an empty white tile – the catalogue has one for every machine,
  * so that only happens to a goal added without one.
  *
  * `alt` is empty by default: everywhere this sits, the printer's name is

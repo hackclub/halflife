@@ -4,8 +4,8 @@ import { useState } from "react"
 import { Button, Callout, Field } from "@/app/components/ui"
 
 /**
- * Add a sales region. The slug is fixed once created — orders snapshot
- * prices, and analytics refers to regions by id — so it should not change.
+ * Add a sales region. The slug is fixed once created – orders snapshot
+ * prices, and analytics refers to regions by id – so it should not change.
  */
 export function ShopRegionForm() {
 	const router = useRouter()

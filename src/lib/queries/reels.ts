@@ -11,7 +11,7 @@ import { warmupPhaseOf } from "@/lib/warmup"
  * Everything the Reels page shows: the participant's own reels, grouped by
  * the project each belongs to, with every public link they have added to each.
  *
- * Their own reels only, and including ones a moderator took out of the feed —
+ * Their own reels only, and including ones a moderator took out of the feed –
  * the author still sees those, as the feed's own rule has it. A removed reel
  * is gone for them too.
  */
@@ -33,7 +33,7 @@ export interface MyReel {
 	thumbnailUrl: string | null
 	status: PostStatus
 	links: MyPublicLink[]
-	/** Why this reel cannot be deleted — its week is in review, decided or over. Null when it can. */
+	/** Why this reel cannot be deleted – its week is in review, decided or over. Null when it can. */
 	deleteLocked: string | null
 	/**
 	 * Whether deleting it reopens its checkpoint: the last reel on an idea or

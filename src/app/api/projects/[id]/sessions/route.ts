@@ -93,7 +93,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 
 	const phaseStatus = data.phase === "DESIGN" ? project.designStatus : project.buildStatus
 	if (phaseStatus === PhaseStatus.in_review) {
-		return fail("PHASE_LOCKED", "This phase is in review — unsubmit before logging more work")
+		return fail("PHASE_LOCKED", "This phase is in review – unsubmit before logging more work")
 	}
 	// Same rule as editing an entry: once a week is decided, its entries are the
 	// record the decision was made against. Without this, hours could be logged
@@ -102,8 +102,8 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		return fail("PHASE_LOCKED", "This phase has been submitted and decided, so new entries cannot be added")
 	}
 
-	// Evidence has to be the claimant's own. Keys are not secrets — the feed
-	// hands out a full video URL for every reel — so without this someone could
+	// Evidence has to be the claimant's own. Keys are not secrets – the feed
+	// hands out a full video URL for every reel – so without this someone could
 	// attach a stranger's timelapse as proof of hours they did not work, which is
 	// the one thing the timelapse rule exists to make hard.
 	//
@@ -115,7 +115,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	}
 
 	// Timelapses are the same rule asked of Lapse: each must be the caller's
-	// own, published, and done processing. And one recording backs one session —
+	// own, published, and done processing. And one recording backs one session –
 	// otherwise the same footage could be offered as proof twice. That check is
 	// read-then-create, so it happens inside the transaction under a lock on the
 	// recording; two parallel submits of the same clip otherwise both pass it.
@@ -211,7 +211,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 
 	// Same reasoning, for the overlap cache: a recording just widened the window
 	// the Hackatime hours are deduplicated against, so the spans covering it are
-	// fetched here rather than at approval — where the reviewer would otherwise
+	// fetched here rather than at approval – where the reviewer would otherwise
 	// see one Hackatime total and approve a different one.
 	if (timelapses.length > 0) after(() => refreshOverlapSpans(id, data.phase))
 

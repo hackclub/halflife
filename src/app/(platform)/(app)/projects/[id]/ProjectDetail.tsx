@@ -62,7 +62,7 @@ function Section({
 /**
  * One project, laid out the way Stasis lays out its project page: what it is
  * at the top with its thumbnail beside it, then what the repo has, the hours
- * tracked elsewhere, the parts list, and last the full record of the work —
+ * tracked elsewhere, the parts list, and last the full record of the work –
  * every entry, timelapse, reel and review, newest first.
  *
  * The store supplies the project's name, tier and weeks, as it does for every
@@ -86,7 +86,7 @@ function DisputeForm({
 	const [error, setError] = useState<string | null>(null)
 
 	async function submit() {
-		if (note.trim().length < 10) return setError("Tell us what looks wrong — a sentence is enough.")
+		if (note.trim().length < 10) return setError("Tell us what looks wrong – a sentence is enough.")
 		setSaving(true)
 		setError(null)
 		try {
@@ -123,7 +123,7 @@ function DisputeForm({
 				}}
 				rows={3}
 				maxLength={2000}
-				placeholder="The build works — the video runs at 1:20."
+				placeholder="The build works – the video runs at 1:20."
 				className="block w-full rounded-xl border-2 border-field bg-white px-3.5 py-2.5 text-[0.9rem] text-navy outline-none placeholder:text-navy-faint transition-colors hover:border-navy-soft focus:border-violet"
 			/>
 			{error && (
@@ -140,7 +140,7 @@ function DisputeForm({
 				</Button>
 			</div>
 			<p className="hand text-[0.8rem] text-navy-soft">
-				this does not change the decision — it asks a reviewer to read it again.
+				this does not change the decision – it asks a reviewer to read it again.
 			</p>
 		</div>
 	)
@@ -367,7 +367,7 @@ function ReviewState({
 												setOpenCheckpoint(warmup ? `wu-${projectId}-submit` : `w${weekFor(p.phase)}-submit`)
 											}
 										>
-											I&apos;ve made these changes — resubmit
+											I&apos;ve made these changes – resubmit
 										</Button>
 									)}
 									<Button variant="outline" size="sm" onClick={() => setDisputing(p.phase)}>
@@ -390,7 +390,7 @@ function ReviewState({
 /**
  * The guide a starter project is built from. Choosing a starter happens once,
  * on the step that names the project, and the card carrying its guide is gone
- * the moment that step is left — but the guide is what the whole build is
+ * the moment that step is left – but the guide is what the whole build is
  * worked from, so the project page keeps the door to it open.
  *
  * Only a starter whose id is still in the config has one: the imported starters
@@ -455,13 +455,13 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 
 	const sessions = data.timeline.flatMap((t) => (t.kind === "session" ? [t] : []))
 	// Journal sessions plus everything that arrived another way (Hackatime link
-	// time, reviewer adjustments) — the same accounting the sidebar total and
+	// time, reviewer adjustments) – the same accounting the sidebar total and
 	// the project cards read, so the three never disagree. A season project
 	// spans its design week and its build week.
 	const hours = warmup ? hoursOf(week) : weekHours(project.weekId) + weekHours(buildWeekId)
 	const started = data.timeline.at(-1)?.at ?? 0
 
-	// The tier stops being editable the moment the design week is handed in —
+	// The tier stops being editable the moment the design week is handed in –
 	// that submission is what claimed it, and the build week only inherits it.
 	// A warm-up's one submit claims it the same way.
 	const submit = week.checkpoints.find((c) => c.kind === "submit")

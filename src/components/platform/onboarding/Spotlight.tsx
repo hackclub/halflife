@@ -45,7 +45,7 @@ function tether(a: Rect, b: Rect) {
  *
  * `also` is what makes this more than one hole. A step that names a control and
  * the thing that control opens has to point at both at once, or the reader has
- * to take the relationship on trust — so the dim layer is an SVG mask rather
+ * to take the relationship on trust – so the dim layer is an SVG mask rather
  * than the usual ring of box-shadow, which can only ever punch one hole.
  *
  * The second window does not simply appear. The card and the first window land,
@@ -168,7 +168,7 @@ export function Spotlight({
 	// open from. It closes again the moment the target goes.
 	// Presence, not position. The measured rect is a new object on every frame
 	// the target moves, and an effect keyed on it would cancel its own pending
-	// frame for as long as the page was still settling — which is exactly the
+	// frame for as long as the page was still settling – which is exactly the
 	// window the reveal is supposed to run in, so it could be starved outright.
 	const hasAlso = alsoRect !== null
 
@@ -219,7 +219,7 @@ export function Spotlight({
 	let cardLeft: number
 
 	if (!rect) {
-		// Target not on screen at this breakpoint — still show the card so the
+		// Target not on screen at this breakpoint – still show the card so the
 		// tour can be finished rather than trapping the user behind a dim layer.
 		cardLeft = clamp(vw / 2 - cardW / 2, 16, vw - cardW - 16)
 		cardTop = vh - cardH - 32

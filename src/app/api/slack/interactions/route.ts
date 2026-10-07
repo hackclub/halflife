@@ -44,8 +44,8 @@ const SLACK_RESPONSE_ORIGIN = "https://hooks.slack.com"
 /**
  * Slack always sets `response_url` to `https://hooks.slack.com/...`, but the
  * value arrives inside the interaction body, so CodeQL (correctly) treats it as
- * attacker-shaped input. The request signature already proves Slack sent it —
- * see `verifySlackRequest` — so this is defence in depth. The returned string is
+ * attacker-shaped input. The request signature already proves Slack sent it –
+ * see `verifySlackRequest` – so this is defence in depth. The returned string is
  * rebuilt from a constant origin: the host can never be steered by the payload,
  * only the path and query are taken from Slack.
  */
@@ -114,7 +114,7 @@ async function reactResolved(ref: Partial<TicketRef>) {
 	}
 }
 
-/** Staff clicking "Mark as helped" in the tickets channel — gated on
+/** Staff clicking "Mark as helped" in the tickets channel – gated on
  * membership of the private tickets channel, like the thread path below.
  * The request signature already proves Slack sent it; this is defence in
  * depth so a leaked message-ts pair or a future workspace-wide action with
@@ -125,7 +125,7 @@ async function handleMarkHelped(payload: InteractionPayload, action: BlockAction
 	const ticketsChannel = process.env.SLACK_TICKETS_CHANNEL_ID
 	// The button lives on the ticket mirror, so the interaction must come
 	// from the tickets channel itself, clicked by someone in it. Fail closed
-	// when the channel is not configured — isChannelMember already does on
+	// when the channel is not configured – isChannelMember already does on
 	// API failure.
 	if (!ticketsChannel || payload.channel.id !== ticketsChannel) return
 	if (!(await isChannelMember(ticketsChannel, payload.user.id))) return
@@ -134,7 +134,7 @@ async function handleMarkHelped(payload: InteractionPayload, action: BlockAction
 	try {
 		ref = action.value ? JSON.parse(action.value) : {}
 	} catch {
-		// Malformed value — still resolve the tickets-channel message below.
+		// Malformed value – still resolve the tickets-channel message below.
 	}
 
 	if (!(await deleteTicketMessage(payload.channel.id, payload.message.ts))) {
@@ -167,7 +167,7 @@ async function handleMarkHelped(payload: InteractionPayload, action: BlockAction
 }
 
 /** The ticket's own author clicking "I'm all set" in the help-channel
- * thread — restricted to whoever opened the ticket, so someone else in the
+ * thread – restricted to whoever opened the ticket, so someone else in the
  * thread can't close it out from under them. Also clears the ticket out of the
  * tickets channel so staff see it's already handled. */
 async function handleSelfResolve(payload: InteractionPayload, action: BlockAction) {
@@ -184,7 +184,7 @@ async function handleSelfResolve(payload: InteractionPayload, action: BlockActio
 		if (payload.response_url) {
 			await respondEphemeral(
 				payload.response_url,
-				'Only the person who asked can close it themselves — helpers can use "Mark as helped" right here in the thread.',
+				'Only the person who asked can close it themselves – helpers can use "Mark as helped" right here in the thread.',
 			)
 		}
 		return
@@ -198,7 +198,7 @@ async function handleSelfResolve(payload: InteractionPayload, action: BlockActio
 	)
 
 	if (ref.helpChannel && ref.helpTs) {
-		// Best-effort, like the helper path — the ack above already went out.
+		// Best-effort, like the helper path – the ack above already went out.
 		try {
 			await resolveHelpTicket({ helpChannel: ref.helpChannel, helpTs: ref.helpTs, resolvedBy: payload.user.id })
 		} catch (err) {
@@ -222,7 +222,7 @@ async function handleSelfResolve(payload: InteractionPayload, action: BlockActio
 	await reactResolved(ref)
 }
 
-/** A helper clicking "Mark as helped" in the help-channel thread — the ask
+/** A helper clicking "Mark as helped" in the help-channel thread – the ask
  * from the helpers, so nobody has to jump over to the tickets channel to
  * close a ticket. Resolves both the thread ack and the tickets-channel
  * message, mirroring what the staff-side button does. */
@@ -237,7 +237,7 @@ async function handleThreadMarkHelped(payload: InteractionPayload, action: Block
 	}
 
 	// The help channel is open to every participant, so the button is gated on
-	// membership of the private tickets channel the bot posts to — the same
+	// membership of the private tickets channel the bot posts to – the same
 	// people who can resolve it from there.
 	if (!ref.ticketsChannel || !(await isChannelMember(ref.ticketsChannel, payload.user.id))) {
 		if (payload.response_url) {
@@ -314,7 +314,7 @@ export async function POST(request: Request) {
 	// and these handlers make up to two Slack calls each. Ack first and run the
 	// work in `after`, so a slow call cannot cause a duplicate resolution; the
 	// same reasoning the events route uses. A retry that still arrives is
-	// dropped — the original delivery was already accepted.
+	// dropped – the original delivery was already accepted.
 	if (request.headers.get("x-slack-retry-num")) {
 		return NextResponse.json({ ok: true })
 	}

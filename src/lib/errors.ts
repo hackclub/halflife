@@ -4,22 +4,22 @@
  * 400, and clients can branch on the code rather than parsing prose.
  */
 export const API_ERROR_STATUS = {
-	// 400 — the caller sent something malformed
+	// 400 – the caller sent something malformed
 	INVALID_BODY: 400,
 	VALIDATION_FAILED: 400,
 	INVALID_QUERY: 400,
 
-	// 401 / 403 — who you are
+	// 401 / 403 – who you are
 	UNAUTHENTICATED: 401,
 	FORBIDDEN: 403,
 	NOT_VERIFIED: 403,
 
-	// 404 — not found, or found but not visible to this caller. Participants
+	// 404 – not found, or found but not visible to this caller. Participants
 	// asking about someone else's project get this, never 403: don't leak the
 	// ID space.
 	NOT_FOUND: 404,
 
-	// 409 — well-formed and permitted, but the world is in the wrong state.
+	// 409 – well-formed and permitted, but the world is in the wrong state.
 	// This is the code the UI branches on most.
 	CONFLICT: 409,
 	ALREADY_SUBMITTED: 409,
@@ -41,7 +41,7 @@ export const API_ERROR_STATUS = {
 	DESIGN_NOT_APPROVED: 409,
 	LAST_ADMIN: 409,
 
-	// 422 — well-formed and permitted but semantically impossible
+	// 422 – well-formed and permitted but semantically impossible
 	UNPROCESSABLE: 422,
 	HACKATIME_NOT_LINKED: 422,
 	HACKATIME_STALE: 422,

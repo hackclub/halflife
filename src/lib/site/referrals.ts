@@ -7,7 +7,7 @@ import { fieldKey, RSVP, RSVP_TABLE_ID } from "@/lib/airtable/schema"
  *
  * A referral link is `/?ref=<code>` (see /api/me/referral), and the code lands
  * on a sign-up's `referred_by` cell. So the ranking is a walk of the same
- * Airtable `Signups` list the counter and the Loops sync use — the landing form
+ * Airtable `Signups` list the counter and the Loops sync use – the landing form
  * writes straight there (lib/site/signups), and Postgres only holds a fallback
  * buffer, so Airtable is the only place the attribution actually lives.
  *

@@ -5,7 +5,7 @@ import { attrUrl } from "@/lib/attr-url"
  * Enough Markdown for a journal entry, and deliberately no more: headings,
  * emphasis, code, links, images, lists, quotes and rules. Everything renders
  * as React elements rather than injected HTML, so an entry can never smuggle
- * markup into the page — which matters because every word of this is typed by
+ * markup into the page – which matters because every word of this is typed by
  * a maker and, on the Explore feed, read by everybody else.
  */
 
@@ -33,7 +33,7 @@ function safeSrc(raw: string): string | undefined {
  * `lib/uploads/r2`), so one picture is always one filename and two URLs for
  * it differ at most in their extension. Comparing whole URLs would still count
  * the same screenshot saved once as `a.png` and once as `a.jpg` as two. Any
- * URL that does not carry such a name — an outside host, a data URI — is its
+ * URL that does not carry such a name – an outside host, a data URI – is its
  * own identity.
  */
 function imageIdentity(src: string): string {
@@ -52,7 +52,7 @@ function imageIdentity(src: string): string {
 export function countImages(source: string): number {
 	// Only ones that will actually render: counting by syntax alone would let
 	// `![x](javascript:)` three times clear the bar with nothing to show. And
-	// only once each — the same picture pasted again is the same picture, so a
+	// only once each – the same picture pasted again is the same picture, so a
 	// maker cannot clear the evidence bar by repeating one image down the entry.
 	const seen = new Set<string>()
 	for (const match of source.matchAll(/!\[[^\]]*\]\(([^)\s]+)\)/g)) {
@@ -84,7 +84,7 @@ export function imageSources(source: string): string[] {
  * Cut as Markdown rather than as a string: slicing through `![a](url)` or
  * `**bold**` would leave a half-token that renders as literal syntax, so
  * tokens are kept whole and the cut falls on a word boundary between them.
- * Images cost nothing against the limit, but only the first one is kept — an
+ * Images cost nothing against the limit, but only the first one is kept – an
  * excerpt that is mostly photographs is not an excerpt.
  */
 export function excerpt(source: string, limit: number): { text: string; cut: boolean } {
@@ -141,8 +141,8 @@ export function excerpt(source: string, limit: number): { text: string; cut: boo
  * How much an entry actually says, for the 200-character floor.
  *
  * Images are the evidence half of an entry and are counted by `countImages`;
- * counting their markdown here too would let a pasted CDN URL — often a
- * hundred characters on its own — write most of the minimum. So every image,
+ * counting their markdown here too would let a pasted CDN URL – often a
+ * hundred characters on its own – write most of the minimum. So every image,
  * alt text included, comes out before the length is taken: alt text is not
  * prose, and leaving it in would only move the padding into the brackets.
  */
@@ -332,7 +332,7 @@ export function Markdown({ source, className }: { source: string; className?: st
 			i += 1
 		}
 		// The exclusion above tests a PREFIX, but the handlers above match whole
-		// lines — `----` and ```` ```js foo ```` passed every handler and were also
+		// lines – `----` and ```` ```js foo ```` passed every handler and were also
 		// declined here, so nothing advanced `i` and the render spun forever on one
 		// line (which is exactly what a rogue journal entry did to Explore). Take
 		// the line as a paragraph so progress is unconditional.
@@ -344,7 +344,7 @@ export function Markdown({ source, className }: { source: string; className?: st
 	}
 
 	// Callers lay entries out as a grid, and a grid item will not shrink below
-	// its longest unbroken run — a pasted image URL, a long link, a code line —
+	// its longest unbroken run – a pasted image URL, a long link, a code line –
 	// so one of those used to widen the whole entry and set every paragraph
 	// scrolling sideways with it. `min-w-0` on each block lets them shrink back
 	// to the column (a `<pre>` then scrolls inside itself, as it is built to),

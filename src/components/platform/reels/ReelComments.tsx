@@ -98,7 +98,7 @@ export function ReelComments({
 		[patchThread],
 	)
 
-	/** A fetch the reader asked for — retry, or the next page — shows that it is working. */
+	/** A fetch the reader asked for – retry, or the next page – shows that it is working. */
 	function fetchAgain(id: string, cursor: string | null) {
 		patchThread(id, (prev) => ({
 			items: prev?.items ?? [],
@@ -157,7 +157,7 @@ export function ReelComments({
 			// The new comment is at the top of the thread; take the reader to it.
 			requestAnimationFrame(() => list.current?.firstElementChild?.scrollIntoView({ block: "nearest" }))
 		} catch {
-			setSendError("Could not reach the server. Your comment is still here — try again.")
+			setSendError("Could not reach the server. Your comment is still here – try again.")
 		} finally {
 			setSending(false)
 		}

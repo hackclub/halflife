@@ -13,7 +13,7 @@ import { isWeekOpen } from "@/lib/program"
  * last one reopens the checkpoint by itself. What this adds is the other half:
  * until that reel is re-recorded, nothing else on the map moves. Every other
  * checkpoint is held, and the server refuses the work that would complete one
- * — a journal entry, a different checkpoint's reel, a submit.
+ * – a journal entry, a different checkpoint's reel, a submit.
  *
  * Only a week that can still take work can owe a reel. A week in review or
  * decided keeps its reels as the record it was judged on, and a passed week
@@ -40,7 +40,7 @@ function weekOfKey(key: string): number | null {
  * week the same way `reelLockReason` reads it.
  *
  * A warm-up's reel has no week to read a phase from, so it is named without one
- * rather than guessed at — "your progress reel" is true; "your 15h progress
+ * rather than guessed at – "your progress reel" is true; "your 15h progress
  * reel" might not be.
  */
 export function reelNameForKey(key: string): string {
@@ -115,7 +115,7 @@ export async function getOwedReelKeys(userId: string): Promise<string[]> {
 /**
  * Refuse work while a deleted reel is owed. `checkpointKey` is the reel being
  * posted, if this is a reel: re-recording an owed one is the way out, so that
- * one — and only that one — goes through.
+ * one – and only that one – goes through.
  */
 export async function assertNoOwedReel(userId: string, checkpointKey?: string | null): Promise<void> {
 	const owed = await getOwedReelKeys(userId)

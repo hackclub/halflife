@@ -14,7 +14,7 @@ export interface FreshTimelapse {
 	 * When the recording STARTED, Lapse's createdAt (epoch ms).
 	 *
 	 * Stored because without it a timelapse is a duration with no date, and a
-	 * duration cannot be compared against Hackatime's tracked intervals — which is
+	 * duration cannot be compared against Hackatime's tracked intervals – which is
 	 * the whole basis for not paying twice for the same sitting. Read back from
 	 * Lapse at attach time rather than later, because Lapse answers on the
 	 * caller's own OAuth token and that token expires.
@@ -30,7 +30,7 @@ export interface FreshTimelapse {
  * Ids already on the session stay untouched; brand-new ones are created from
  * the just-verified metadata; lapse rows for anything else come off. Older R2
  * rows predate Lapse and are never touched. A clip claimed by another live
- * session refuses with the same conflict the create path reports — re-homing
+ * session refuses with the same conflict the create path reports – re-homing
  * must not let one recording back two entries.
  *
  * Runs inside the caller's transaction: the advisory locks serialize against

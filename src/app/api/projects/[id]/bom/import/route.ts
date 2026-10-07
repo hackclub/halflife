@@ -21,7 +21,7 @@ export const dynamic = "force-dynamic"
  * A maker who exported a BOM from KiCad or EasyEDA has the parts listed once
  * already; retyping them onto the page is busywork that invites mismatched
  * prices. This reads that file through the same repo plumbing the pre-submission
- * checks use — the same cached file list, the same forge-aware read — and turns
+ * checks use – the same cached file list, the same forge-aware read – and turns
  * whatever columns it recognises into lines.
  *
  * One route, two acts. Without `apply` it only reads and answers with what it
@@ -31,8 +31,8 @@ export const dynamic = "force-dynamic"
  * open, the phase not frozen, the list's cap respected.
  *
  * The CSV is re-read on apply rather than trusting what the preview returned.
- * The preview is not a contract — the file may have moved on, and a client is
- * free to send whatever it likes — so the bytes that are parsed are always the
+ * The preview is not a contract – the file may have moved on, and a client is
+ * free to send whatever it likes – so the bytes that are parsed are always the
  * ones in the repo at the moment of the write.
  */
 
@@ -41,7 +41,7 @@ type Params = { params: Promise<{ id: string }> }
 type RepoBom = { path: string; lines: ImportedBomLine[]; skipped: SkippedRow[] }
 
 /**
- * The repo's BOM CSV, found, read and parsed — or a sentence saying why not.
+ * The repo's BOM CSV, found, read and parsed – or a sentence saying why not.
  *
  * `limit` is what the import may add, so the overflow is reported as skipped
  * by the parser rather than by the caller.
@@ -70,7 +70,7 @@ async function readRepoBom(repoLink: string | null, limit: number): Promise<Repo
 	}
 	const parsed = parseBomCsv(csv, { limit })
 	if (!parsed.header) {
-		return { error: `${path} does not look like a BOM table — no header row with part names was found.` }
+		return { error: `${path} does not look like a BOM table – no header row with part names was found.` }
 	}
 	return { path, lines: parsed.lines, skipped: parsed.skipped }
 }
@@ -125,7 +125,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		const freshLock = bomLockReason(fresh)
 		if (freshLock) throw new HttpError("PHASE_LOCKED", freshLock)
 
-		// The count is what the cap is about, not the sort order — replacing
+		// The count is what the cap is about, not the sort order – replacing
 		// clears the list, adding shares its room.
 		const count = replace ? 0 : await tx.bomItem.count({ where: { themeProjectId: id } })
 		if (count + result.lines.length > MAX_BOM_ITEMS) {

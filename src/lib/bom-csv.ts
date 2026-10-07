@@ -1,8 +1,8 @@
 /**
  * A BOM CSV from a maker's own repo, read into the platform's parts list.
  *
- * These files come from whatever tool the maker used — KiCad's BOM export,
- * EasyEDA, a hand-kept spreadsheet — so there is no one shape to parse. What
+ * These files come from whatever tool the maker used – KiCad's BOM export,
+ * EasyEDA, a hand-kept spreadsheet – so there is no one shape to parse. What
  * this does instead is find the header row, map the columns whose names it
  * recognises, and take what it can from each row. Nothing is required to be
  * present: a file with only a part name and a price imports, and the fields the
@@ -118,7 +118,7 @@ function normalize(cell: string): string {
  *
  * The RFC's shape, not its every clause: quoted fields may contain commas and
  * newlines, a doubled quote is a literal quote, and a bare CR is ignored. That
- * covers what the exporters emit — the one thing worth noting is that a BOM
+ * covers what the exporters emit – the one thing worth noting is that a BOM
  * with a part description containing a comma is exactly the case that breaks a
  * naive `split(",")`.
  */
@@ -241,7 +241,7 @@ function parseUsd(value: string | undefined): number | null {
  */
 function parseLink(value: string | undefined): string | null {
 	let v = (value ?? "").trim()
-	if (!v || /^[-–—]+$/.test(v) || /^(n\/?a|none)$/i.test(v)) return null
+	if (!v || /^[-––]+$/.test(v) || /^(n\/?a|none)$/i.test(v)) return null
 	const markdown = v.match(/\]\(\s*([^)]+?)\s*\)/)
 	if (markdown) v = markdown[1] ?? v
 	if (!/^https?:\/\//i.test(v)) v = `https://${v}`
@@ -292,7 +292,7 @@ function vendorFromLink(link: string | null): string | null {
 	}
 }
 
-/** Trim, collapse whitespace, cap — the same treatment every other maker text gets. */
+/** Trim, collapse whitespace, cap – the same treatment every other maker text gets. */
 function clean(value: string | undefined, max: number): string | null {
 	const v = (value ?? "").replace(/\s+/g, " ").trim()
 	return v ? v.slice(0, max) : null
@@ -301,7 +301,7 @@ function clean(value: string | undefined, max: number): string | null {
 /**
  * A whole CSV file's rows, as parts to import.
  *
- * `limit` bounds what a single import may add — the route passes what is left
+ * `limit` bounds what a single import may add – the route passes what is left
  * of the parts-list cap, and the overflow is reported as skipped rather than
  * silently dropped.
  */

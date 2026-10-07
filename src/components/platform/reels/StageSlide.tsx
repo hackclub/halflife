@@ -31,8 +31,8 @@ export interface SlideHandle {
  * it is, and the player underneath. All of it moves as one when the reader
  * scrolls, while the actions beside the reel stay where the hand is.
  *
- * Dressed like the rail's own reel card — project on a tag in the corner,
- * author and caption over the foot of the picture — so the two feeds read as
+ * Dressed like the rail's own reel card – project on a tag in the corner,
+ * author and caption over the foot of the picture – so the two feeds read as
  * one product at two sizes. The player below the card is platform furniture:
  * drawn round buttons on the cream, the clock in the hand.
  *
@@ -102,7 +102,7 @@ export function StageSlide({
 			el.pause()
 			return
 		}
-		// Arriving is asking to watch — except for anyone who has asked for less
+		// Arriving is asking to watch – except for anyone who has asked for less
 		// motion, who gets the play button instead of a video that starts moving.
 		if (prefersStill()) return
 		el.currentTime = 0
@@ -164,7 +164,7 @@ export function StageSlide({
 
 	// The clock, the bar while it is not being driven by the frame loop, and the
 	// view. A view is a second of actual playback, not an arrival that a quick
-	// flick scrolled straight past — once per slide; the server counts once per
+	// flick scrolled straight past – once per slide; the server counts once per
 	// person.
 	function onTime() {
 		const el = video.current
@@ -210,7 +210,7 @@ export function StageSlide({
 			.finally(() => heart.remove())
 	}
 
-	// One tap pauses, two like — the same surface does both. The single tap
+	// One tap pauses, two like – the same surface does both. The single tap
 	// waits out the double-tap window before acting, or every like would also
 	// pause the reel. Keyboard presses (detail 0) are never a double tap, so
 	// they toggle at once.

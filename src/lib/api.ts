@@ -9,8 +9,8 @@ export interface ApiErrorBody {
 /**
  * A successful response is the payload ITSELF. There is no `data` envelope.
  *
- * Worth stating because failures are not symmetrical — `fail()` wraps, in
- * `{ error: { code, message } }` — and the asymmetry invites a client to
+ * Worth stating because failures are not symmetrical – `fail()` wraps, in
+ * `{ error: { code, message } }` – and the asymmetry invites a client to
  * assume both are wrapped. Three of them did, and the phone handoff and the
  * staff composer's upload spent their whole lives throwing "cannot read
  * properties of undefined (reading 'id')" as a result.
@@ -37,7 +37,7 @@ type Parsed<T> = { data: T; error?: never } | { data?: never; error: NextRespons
 
 /**
  * Parse and validate a JSON body. Handlers must never read a field off an
- * unvalidated object — that is how `undefined` reaches Prisma and becomes a
+ * unvalidated object – that is how `undefined` reaches Prisma and becomes a
  * confusing runtime error three layers down.
  */
 export async function parseBody<S extends z.ZodType>(request: Request, schema: S): Promise<Parsed<z.output<S>>> {
@@ -82,7 +82,7 @@ type ParsedForm = { data: FormData; error?: never } | { data?: never; error: Nex
  * memory the server spends before a single field can be read.
  *
  * `request.formData()` materialises the whole body first, and both upload
- * routes check their size limits afterwards — fine for a small staff form,
+ * routes check their size limits afterwards – fine for a small staff form,
  * but a denial of service for an upload. The handoff path is deliberately
  * unauthenticated and reads its token out of the form, so a limit checked
  * after parsing arrives too late. Content-Length is checked first (cheap, and

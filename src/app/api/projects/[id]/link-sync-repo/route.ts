@@ -22,7 +22,7 @@ type Params = { params: Promise<{ id: string }> }
  * the project does not point at.
  *
  * This closes that gap with one press. It is not a general "copy the sync repo
- * over the link" — the button that calls it appears only when the two are
+ * over the link" – the button that calls it appears only when the two are
  * actually different repos (see `syncRepoDiffers`), and the URL it writes is
  * taken from the sync's own stored target server-side, never from the client,
  * so a caller cannot use it to point their project at a repo of their choosing.
@@ -55,7 +55,7 @@ export const POST = withRoute(async (_req: Request, { params }: Params) => {
 	const access = await getSubmissionAccess(gate.user.id, id)
 	if (!access.open) return fail("SUBMISSIONS_CLOSED", SUBMISSIONS_CLOSED_MESSAGE)
 	if (project.designStatus === PhaseStatus.in_review || project.buildStatus === PhaseStatus.in_review) {
-		return fail("PHASE_LOCKED", "Unsubmit before editing — a phase is in review")
+		return fail("PHASE_LOCKED", "Unsubmit before editing – a phase is in review")
 	}
 
 	// Conditional on the statuses just checked, so a review that lands between
@@ -73,7 +73,7 @@ export const POST = withRoute(async (_req: Request, { params }: Params) => {
 		},
 		data: { githubRepo: syncRepo },
 	})
-	if (claimed.count === 0) return fail("PHASE_LOCKED", "This project just changed — reload and try again")
+	if (claimed.count === 0) return fail("PHASE_LOCKED", "This project just changed – reload and try again")
 
 	await logAudit({
 		action: AuditAction.USER_UPDATE_PROJECT,

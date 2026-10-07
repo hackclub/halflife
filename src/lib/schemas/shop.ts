@@ -18,7 +18,7 @@ export const orderNoteSchema = z.object({ orderId: cuid, body: boundedText(2000,
 
 /**
  * A participant picking which region's prices their shop shows. Null is base
- * pricing. The region has to exist and be active — checked in the route, so a
+ * pricing. The region has to exist and be active – checked in the route, so a
  * deactivated region falls back to base rather than stranding anyone.
  */
 export const shopRegionPreferenceSchema = z

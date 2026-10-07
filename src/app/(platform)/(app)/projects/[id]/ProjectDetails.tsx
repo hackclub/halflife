@@ -16,7 +16,7 @@ import { useStore } from "@/lib/store"
 import type { Project } from "@/lib/types"
 
 /**
- * The project's own details — name, description, repo and tier — read as the
+ * The project's own details – name, description, repo and tier – read as the
  * page's heading, and changed together behind one pencil.
  *
  * One editor rather than a pencil per field, because they are one decision:
@@ -178,7 +178,7 @@ function DetailsForm({
 	const [saving, setSaving] = useState(false)
 	const [error, setError] = useState<{ field: "name" | "repo" | null; message: string } | null>(null)
 
-	// The week's starters, as at creation — offered to everyone here, so a
+	// The week's starters, as at creation – offered to everyone here, so a
 	// custom project can switch to one and back. The tier-1 scoping is what
 	// keeps a starter a starter, not who was offered it during onboarding.
 	// A project already on one keeps a way off it even when the week offers
@@ -202,7 +202,7 @@ function DetailsForm({
 	function takeStarter(id: string) {
 		setStarterId(id)
 		// A starter is scoped to tier 1 from the start, so taking one carries
-		// the tier with it — the server holds the same rule.
+		// the tier with it – the server holds the same rule.
 		setTier(STARTER_PROJECT_TIER)
 	}
 
@@ -213,7 +213,7 @@ function DetailsForm({
 
 		// Only what changed, so an untouched tier is never re-sent against a
 		// server rule it does not need to meet. Taking a starter always
-		// carries tier 1 with it when the project is not already there —
+		// carries tier 1 with it when the project is not already there –
 		// the server refuses a starter at any other tier.
 		const patch = {
 			...(name.trim() !== project.name ? { name: name.trim() } : {}),
@@ -306,7 +306,7 @@ function DetailsForm({
 					<p className="-mt-1 text-[0.82rem] leading-snug text-navy-soft">
 						{takingStarter
 							? "Starter projects are Tier 1. Switch to your own idea to choose a different tier."
-							: "Building from a starter, or your own idea? Picked the wrong one by accident — change it here."}
+							: "Building from a starter, or your own idea? Picked the wrong one by accident – change it here."}
 					</p>
 					{takingStarter && hotGoal && (
 						<p role="status" className="hand text-[0.82rem] leading-snug text-coral-deep">
@@ -387,7 +387,7 @@ function DetailsForm({
 					<>
 						<p className="text-[0.82rem] leading-snug text-navy-soft">
 							Bigger tiers fund bigger builds, and ask for more design time before you submit. The hours next to each
-							tier are the <span className="font-bold text-navy">minimum</span> a week needs before you can submit — not
+							tier are the <span className="font-bold text-navy">minimum</span> a week needs before you can submit – not
 							a cap, and not a suggestion. You have{" "}
 							<span className="font-bold text-navy tabular-nums">{fmtHours(hours)}</span>{" "}
 							{project.weekId === WARMUP_WEEK_ID ? "on this project." : `in week ${project.weekId}.`}
@@ -395,7 +395,7 @@ function DetailsForm({
 						{pacingToPrinter && (
 							<p className="hand text-[0.84rem] leading-snug text-navy-soft">
 								Every hour past your tier&apos;s parts-funding earns 5 coins, added straight to your spendable balance
-								to use on your {goal.name} or anything else — changing your goal later never changes what you earn.
+								to use on your {goal.name} or anything else – changing your goal later never changes what you earn.
 							</p>
 						)}
 						{TIERS.map((t) => {

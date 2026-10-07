@@ -14,7 +14,7 @@ import hammer from "../../../public/art/extras/hammer.png"
 import spiritguy from "../../../public/art/extras/spiritguy.png"
 
 /**
- * The header plate — "how does it work?".
+ * The header plate – "how does it work?".
  *
  * It used to live in the hero, in a `.stage` of its own that inherited the
  * default 1728 cap while this one caps at `STAGE_CAP`. Both are `cqw`, so one
@@ -23,7 +23,7 @@ import spiritguy from "../../../public/art/extras/spiritguy.png"
  * below the hero's block while its landing plate had moved to 112px below the
  * top of this one. Under about 1333px of viewport the arithmetic happened to
  * clear. Above it the band ran through "spend 5 weeks designing 5 projects",
- * in the plates' own colour, over the top of it — one drawing in two grids.
+ * in the plates' own colour, over the top of it – one drawing in two grids.
  *
  * The header is a part of this drawing, so it is a plate in this stage now, on
  * one grid at one cap with the four plates it introduces. Its `918` is the
@@ -37,7 +37,7 @@ const HEADER_LEAD = 96
 const HEADER = plate(474, HEADER_LEAD, 918, 201)
 
 /**
- * The header's weld — comp node 275:181, and the first of the page's four.
+ * The header's weld – comp node 275:181, and the first of the page's four.
  *
  * Its run and its two overlaps are named here rather than inside `WELDS`
  * because `SHIFT` is derived from them: the room the header needs above step 1
@@ -52,8 +52,8 @@ const LEAD_WELD = { run: 106, rise: 6, drop: 15, mean: 70.6 } as const
  *
  * `allweeks.png` had been given the whole plate, which left nowhere for the
  * step's own title to sit: its ink reaches all four edges, and the only band
- * of bare canvas in the file — the top-left corner, 239 x 223 comp units once
- * the picture is drawn at 975 — is a third of what a 40-unit line needs. The
+ * of bare canvas in the file – the top-left corner, 239 x 223 comp units once
+ * the picture is drawn at 975 – is a third of what a 40-unit line needs. The
  * choice was to shrink the picture into the leftover or to lengthen the plate,
  * and shrinking loses more than it saves: the week marks are drawn small, so
  * at the 743 units a title would leave them the "WEEK n" caps land at 8px.
@@ -61,8 +61,8 @@ const LEAD_WELD = { run: 106, rise: 6, drop: 15, mean: 70.6 } as const
  * So the plate grew instead, which is what the steps below it already did when
  * their pictures did not fit the comp's slots. Growing upward was not
  * available: the header's weld lands 15 units inside the plate's top edge, so
- * that edge is pinned. Everything below moves down by this instead — steps
- * 2-4, both asides, and the five extras that sit beside them — and the three
+ * that edge is pinned. Everything below moves down by this instead – steps
+ * 2-4, both asides, and the five extras that sit beside them – and the three
  * welds between them now follow the plates rather than being re-counted.
  */
 const STEP_ONE_GROWTH = 105
@@ -72,7 +72,7 @@ const STEP_ONE_GROWTH = 105
  *
  * Step 1 used to start at 164 with the header in someone else's grid. It now
  * starts wherever the header's weld lands, so this is derived rather than
- * counted — nothing below can fall out of step with the header's height. It
+ * counted – nothing below can fall out of step with the header's height. It
  * comes to 218, and every plate, aside and extra below carries it, so every
  * clearance measured in here is still the number it was.
  */
@@ -100,8 +100,8 @@ const PLATES = {
  * The welds, derived from the plates they join.
  *
  * These were four sets of absolute centreline midpoints, which is to say four
- * hand-kept copies of where the plates are. A plate could move — step 1 has,
- * twice, for its heading and for its artwork — and its bands would not, so the
+ * hand-kept copies of where the plates are. A plate could move – step 1 has,
+ * twice, for its heading and for its artwork – and its bands would not, so the
  * page's joints were only ever as correct as the last time someone re-added
  * the offset to all of them. `weld` takes the plates instead: `at` is how far
  * across that plate's own edge the end sits, and `rise`/`drop` are how deep it
@@ -149,7 +149,7 @@ const WELDS = [
 ] as const
 
 /**
- * Which corner each plate's decal goes in — PARKED, not yet applied.
+ * Which corner each plate's decal goes in – PARKED, not yet applied.
  *
  * The placements below are commented out at their sites. This is the analysis
  * they were derived from, kept so it does not have to be redone: the corner
@@ -161,20 +161,20 @@ const WELDS = [
  * corner's distance to the nearest band, at the y where that band actually
  * crosses the plate's edge, rules three of them out: step 2's top-left (72
  * comp units of clearance) and bottom-left (83), and step 4's top-left (66).
- * A decal's ink runs 12% of its plate — 99 units on step 2, 113 on step 4 —
+ * A decal's ink runs 12% of its plate – 99 units on step 2, 113 on step 4 –
  * so all three would land on the weld. Step 3's top-right is tight too, at
  * 72, and moot: the set has no top-right decal to put there.
  *
  * That leaves step 2 with exactly one corner, bottom-right, and step 4 with
  * two. Everything else is clear by 130 units or more, and the asides are
- * clear on all four — no band comes within 200 units of either.
+ * clear on all four – no band comes within 200 units of either.
  *
  * Given those constraints the order is chosen so no two marks down the
  * section repeat and no two land on the same corner:
  *
  *   header plate   top-left        (in Hero, with the plate)
  *   step 1         bottom-left     the band leaves the opposite corner
- *   step 2         bottom-right    forced — both left corners are welds
+ *   step 2         bottom-right    forced – both left corners are welds
  *   step 3         top-left 2
  *   aside, viral   bottom-right 2
  *   step 4         bottom-left     its top-left is under the last band
@@ -182,14 +182,14 @@ const WELDS = [
  *
  * Both layouts carry the same seven, so the stacked page is the same drawing
  * and not a reduction of it. The flow layout's own welds are siblings rather
- * than overlays, so nothing is ruled out down there — the assignment is the
+ * than overlays, so nothing is ruled out down there – the assignment is the
  * stage's, kept for consistency rather than recomputed.
  *
  * The other constraint, and the one that decided the treatment: these plates
  * are full, so text overprints a decal wherever one is big enough to read.
  * Measured against the darkest opaque pixel in the set, rgb(63,73,38), AA
  * holds up to 0.55 opacity for ink on lavender-pale and only 0.30 for the
- * asides' indigo on lavender — so 0.30 is what `corner-decal.tsx` prints at,
+ * asides' indigo on lavender – so 0.30 is what `corner-decal.tsx` prints at,
  * and the decals sit under the content, not over it. Shrinking them instead
  * does not work: the decal is a share of the plate's width while the flow
  * layout's padding is a flat 20px, so anything visible crosses it anyway.
@@ -212,31 +212,31 @@ const STEP_ART_SIZES = {
 } as const
 
 /**
- * The width the composition stops scaling at — and with it, the one number
+ * The width the composition stops scaling at – and with it, the one number
  * that decides this section's height.
  *
  * Everything in the stage is a comp pixel expressed in `cqw`, so every length
  * in here is a share of the stage's own width. That includes the height: 2706
  * comp units is 156.60cqw, which means widening the window made the section
- * taller, 1:1.57. From 1180 to 1728 that added 858px of scroll — a page
+ * taller, 1:1.57. From 1180 to 1728 that added 858px of scroll – a page
  * getting longer as it gets more room, which is backwards.
  *
  * `.stage` caps at 1728, so the section was constant above that and variable
  * below it; the whole problem lived in the one band between the breakpoint and
  * the cap. Capping here at the breakpoint itself removes the band: the stage is
  * 1180 wide at 1180 and 1180 wide at 3840, so the height is a flat 1848px at
- * every width this layout is ever shown at — which it now actually is; see the
+ * every width this layout is ever shown at – which it now actually is; see the
  * stage element below for the `cqw` fallback that was defeating this cap.
  *
  * Nothing is smaller than it already was, which is the part worth being clear
  * about: 1180 was always the narrowest this layout renders at, so the type now
- * sits everywhere at the size a 1180 screen has always shown it — the week
+ * sits everywhere at the size a 1180 screen has always shown it – the week
  * labels at 13.7px, the step titles at 27.3px. The composition simply stops
  * growing rather than shrinking. The section's ground and its wave stay
  * full-bleed; only the plates are held to a centred column.
  *
  * Raising this trades exactness for scale. Any value above 1180 re-opens a
- * band between the two where the height moves again — 1280 gives 16px week
+ * band between the two where the height moves again – 1280 gives 16px week
  * labels and 151px of travel, 1400 gives 16.2px and 331px.
  */
 const STAGE_CAP = 1180
@@ -250,14 +250,14 @@ const STAGE_H = PLATES.printer.y + PLATES.printer.h
 
 /**
  * A step's artwork: the picture where there is one, the drawn footprint where
- * there is not — the same optional-path-with-slot-fallback the week backdrops
+ * there is not – the same optional-path-with-slot-fallback the week backdrops
  * and the carousel cards already use.
  *
  * Unlike a week backdrop this is a picture on show rather than a ground, so
  * nothing is screened, blended or thrown away: the comp's boxes were refitted
  * to the artwork's own proportions instead. `getfunding.png` is 3.133:1 into a
  * slot the comp drew at 4.748:1, `build.png` is 2.242:1 into one drawn at
- * 2.736:1, and `prizes.png` is 2.863:1 into that same 2.736:1 — so every box
+ * 2.736:1, and `prizes.png` is 2.863:1 into that same 2.736:1 – so every box
  * took its picture's shape and the plates below moved to make room. Step 4 is
  * the only one that moved *up*: its picture is wider than the slot the comp
  * drew, so the plate lost 12 units rather than gaining them, and being the
@@ -301,7 +301,7 @@ function StepArt({
 			{/* Decorative: each of these sits directly under the heading that says
           what the step is, and the drawn slot it replaces carried only its own
           footprint label. If either picture turns out to carry information the
-          heading does not — an order-flow diagram would — it wants real alt
+          heading does not – an order-flow diagram would – it wants real alt
           text rather than this. */}
 			<Image src={step.art} alt="" fill sizes={sizes} quality={90} className="object-cover" />
 		</div>
@@ -313,7 +313,7 @@ function StepArt({
  *
  * Every box here is placed against the comp grid the plates are on, in the gaps
  * they leave: right of step 1, left of step 2, either side of the belt of
- * asides, and left of step 4. The hammer is the one with a brief — it sits 105
+ * asides, and left of step 4. The hammer is the one with a brief – it sits 105
  * to the right of "then spend 5 weeks building your projects!", overlapping its
  * lower half by 156, so it reads as belonging to that step rather than floating
  * between two.
@@ -337,7 +337,7 @@ function StepArt({
  * The five below step 1 carry `STEP_ONE_GROWTH` on their y, which is what
  * keeps those clearances the numbers they were: the hammer still sits 105 to
  * the right of step 3 and overlaps its lower half by 156, and the tightest of
- * the six is still gatohead's 38 under step 3. Only gatoandspirit stays put —
+ * the six is still gatohead's 38 under step 3. Only gatoandspirit stays put –
  * it is beside step 1 rather than below it, clear of the taller plate by 258
  * across, and the plate grew downward.
  */
@@ -357,7 +357,7 @@ const EXTRA_SIZES = "220px"
  * The five design weeks, for anything that cannot see the picture.
  *
  * `allweeks.png` carries the subjects and their week numbers as drawing, so
- * this is where that content still lives as text — for a screen reader, for
+ * this is where that content still lives as text – for a screen reader, for
  * find-in-page, and for anything indexing the page. It is the same
  * `DESIGN_WEEKS` the five pairings were built from, so the two cannot drift.
  */
@@ -379,7 +379,7 @@ export default function Process() {
 		<section id="how-it-works" aria-label="How Half Life works" className="relative z-0 isolate min-[1180px]:pb-[10vh]">
 			{/* ── Comp reproduction, 1180px and up ───────────────────────────── */}
 			{/* Every child here is absolutely positioned, so the stage has no
-          intrinsic height and has to be told one — as a ratio of its own
+          intrinsic height and has to be told one – as a ratio of its own
           width, never as a `cqw` length.
 
           `height: u(2474)` looked equivalent and was not. A container query
@@ -389,7 +389,7 @@ export default function Process() {
           spec's last resort. The children, being descendants, did resolve
           against `.stage` and stopped at its 1180 cap. So the content ended at
           a flat 1689px while the box claimed 143.17vw, and every pixel past the
-          cap became dead air under step 4 — 372 at 1440, 1060 at 1920, 1976 at
+          cap became dead air under step 4 – 372 at 1440, 1060 at 1920, 1976 at
           2560, growing without limit. (Those are the numbers as they stood;
           `STAGE_H` has moved twice since, with the artwork.)
 
@@ -422,7 +422,7 @@ export default function Process() {
 						className="whitespace-nowrap font-display font-bold text-hl-ink"
 						style={{
 							// The comp's own 100, which is now 68px at every width this
-							// layout runs at — the same trade `STAGE_CAP` already makes for
+							// layout runs at – the same trade `STAGE_CAP` already makes for
 							// the four step titles below, and the size a 1180 screen has
 							// always shown this line at.
 							fontSize: u(100),
@@ -448,10 +448,10 @@ export default function Process() {
 					</div>
 				))}
 
-				{/* Step 1 — design weeks: a title over one piece of artwork.
+				{/* Step 1 – design weeks: a title over one piece of artwork.
 
             `allweeks.png` is 1920x1080 and gets 975x548 here, 1.7778 against
-            1.7792 — a 0.08% match, which is why it is still `cover`. The five
+            1.7792 – a 0.08% match, which is why it is still `cover`. The five
             hand-placed pairings, their five screened backdrops and the comp's
             own week marks are all inside it.
 
@@ -459,8 +459,8 @@ export default function Process() {
             sr-only, and that is the one thing that made this step read as a
             different object from the three below it: they say what you do and
             then show it, and this one only showed. The plate is
-            `STEP_ONE_GROWTH` taller so the title can sit where theirs do — top
-            of the plate, 40 units, on the plate's own ground — and the picture
+            `STEP_ONE_GROWTH` taller so the title can sit where theirs do – top
+            of the plate, 40 units, on the plate's own ground – and the picture
             keeps every unit of width it had.
 
             The title is centred where the other three are ranged left, and
@@ -468,7 +468,7 @@ export default function Process() {
             are hand-placed across the full 975 with no left edge to range
             against, so a left-ranged line would hang off a composition that
             has no margin. The box is still the family's 68 gutter, taken on
-            both sides — 68 + 839/2 lands on 487.5, the plate's own centre — so
+            both sides – 68 + 839/2 lands on 487.5, the plate's own centre – so
             the line is centred by the box rather than by an offset that has to
             be re-derived if the copy changes. 38 from the top is step 2's.
 
@@ -503,7 +503,7 @@ export default function Process() {
 					{/* Parked: corner decals, to be placed later. <CornerDecal decal="bottomLeft" over /> */}
 				</div>
 
-				{/* Step 2 — funding */}
+				{/* Step 2 – funding */}
 				<div className="absolute rounded-xl bg-hl-lavender-pale text-hl-ink" style={plateBox(PLATES.funding)}>
 					<h3
 						className="absolute font-display font-bold"
@@ -532,7 +532,7 @@ export default function Process() {
 					{/* Parked: corner decals, to be placed later. <CornerDecal decal="bottomRight" /> */}
 				</div>
 
-				{/* Step 3 — build */}
+				{/* Step 3 – build */}
 				<div className="absolute rounded-xl bg-hl-lavender-pale text-hl-ink" style={plateBox(PLATES.build)}>
 					<h3
 						className="absolute font-display font-bold"
@@ -554,7 +554,7 @@ export default function Process() {
 					{/* Parked: corner decals, to be placed later. <CornerDecal decal="topLeft2" /> */}
 				</div>
 
-				{/* Step 4 — the printer */}
+				{/* Step 4 – the printer */}
 				<div className="absolute rounded-xl bg-hl-lavender-pale text-hl-ink" style={plateBox(PLATES.printer)}>
 					<h3
 						className="absolute font-display font-bold"
@@ -576,7 +576,7 @@ export default function Process() {
 					{/* Parked: corner decals, to be placed later. <CornerDecal decal="bottomLeft" /> */}
 				</div>
 
-				{/* Asides — small plates orbiting the band. Only where they sit
+				{/* Asides – small plates orbiting the band. Only where they sit
             differs; the plate itself is the same object twice. */}
 				<Aside aside={viral} origin={[1114, 1636 + SHIFT]} />
 				<Aside aside={community} origin={[59, 2367 + SHIFT]} />
@@ -595,7 +595,7 @@ export default function Process() {
 							aria-hidden
 						>
 							{/* The bands are the plates' own material, not a rule drawn
-                  between them — they ride over the plates they join, so a band
+                  between them – they ride over the plates they join, so a band
                   in any other colour reads as a weld in a second metal. */}
 							<path d={b.d} fill="var(--color-hl-lavender-pale)" />
 						</svg>
@@ -609,13 +609,13 @@ export default function Process() {
           two sections having nothing to do with each other. */}
 			<div className="px-4 pt-8 pb-24 sm:px-8 sm:pt-20 min-[1180px]:hidden">
 				<div className="mx-auto flex max-w-2xl flex-col">
-					{/* The header, and the weld that leaves it — the same two objects
+					{/* The header, and the weld that leaves it – the same two objects
               the stage opens with, and for the same reason: this is where the
               drawing starts, so this is where the line starts.
 
               `w-fit` is load-bearing. The plate is as wide as its own line
               rather than the column, so the weld below it is offset by a share
-              of *the plate* — `StackWeld`'s `anchor` — and cannot wander off the
+              of *the plate* – `StackWeld`'s `anchor` – and cannot wander off the
               edge of it as the copy or the type size changes. The plate keeps
               its left rank; the four below it are full-width, which is what
               makes this one read as their heading rather than as a fifth
@@ -625,20 +625,20 @@ export default function Process() {
 							className="rounded-xl bg-hl-lavender-pale px-5 py-3 font-display font-bold text-balance text-hl-ink sm:px-8 sm:py-4"
 							style={{
 								// Both ends of this clamp are measured, not chosen. The line is
-								// 7.71em wide in Urbanist bold — the comp's own 100 ran it to
-								// 84% of a 918 plate — so its size and the width it needs are
+								// 7.71em wide in Urbanist bold – the comp's own 100 ran it to
+								// 84% of a 918 plate – so its size and the width it needs are
 								// the same number, and the plate is that plus its padding.
 								//
 								// The floor was 1.75rem, held down by Masterpiece, which set
 								// this line wide enough to push past a 320px viewport. That
-								// left the section's heading at 28px over 24px step titles —
+								// left the section's heading at 28px over 24px step titles –
 								// 1.17x, where the stage runs 2.50x, so the thing introducing
 								// the programme read as another item in it. At 2.25rem it is
 								// 1.50x and still one line from 360px up; at 320 it takes two,
 								// which a heading plate can carry and `text-balance` splits.
 								//
 								// The ceiling was 3.25rem, which capped this at 52px right up
-								// to 1179px — and then the stage took over at 68.3px, a 31%
+								// to 1179px – and then the stage took over at 68.3px, a 31%
 								// jump at a breakpoint that is supposed to be a change of
 								// layout, not of scale. 4.25rem is 68px, so the two layouts now
 								// hand the line over at the same size, and the widest plate it
@@ -660,7 +660,7 @@ export default function Process() {
                   picture below runs the plate's full width and places its five
                   pairings across all of it, so the title belongs over the
                   middle of it rather than ranged against an edge the drawing
-                  does not have. Steps 2-4 keep their left rank — their
+                  does not have. Steps 2-4 keep their left rank – their
                   pictures are single objects sitting inside the plate. */}
 								<h3 className="text-center font-display text-2xl font-bold text-balance sm:text-3xl">{design.title}</h3>
 								{design.art ? (
@@ -711,7 +711,7 @@ export default function Process() {
 					{/* The asides, after the line rather than inside it.
 
               `viral` used to sit between steps 3 and 4, which left the third
-              weld running from *it* into step 4 — the one place either layout
+              weld running from *it* into step 4 – the one place either layout
               said an aside was part of the programme. On the stage they orbit
               the line and no weld touches them; down here they follow it. */}
 					{/* `gap-8` against the plates' own `py-7`: two plates of the same
@@ -746,8 +746,8 @@ function Plate({ children }: { children: React.ReactNode }) {
 /**
  * The stacked layout's weld.
  *
- * Both paths were hardcoded — the one thing in either layout that really was
- * a drawn shape rather than a derived one — and the left-leaning one missed
+ * Both paths were hardcoded – the one thing in either layout that really was
+ * a drawn shape rather than a derived one – and the left-leaning one missed
  * its own anchor pair by 5 units, so the zigzag jogged sideways at every
  * second plate. `stackWeld` builds both from the stage's `BAND_TAPER` and one
  * anchor pair, taken in whichever order the band leans, so one weld's exit is
@@ -760,7 +760,7 @@ function Plate({ children }: { children: React.ReactNode }) {
  * are, so the band reads as the material running on between them.
  *
  * The box is wider than it is tall by the same ratio at both sizes, which puts
- * the run at 51-53° — inside the 49-71° the stage's four bands sit at, and the
+ * the run at 51-53° – inside the 49-71° the stage's four bands sit at, and the
  * reason the ends are near the middle of the column rather than at its edges:
  * a 672px column joined edge to edge across a 64px gap would lie almost flat
  * and read as a shelf rather than as a joint.
@@ -772,7 +772,7 @@ function StackWeld({
 	lean: "left" | "right"
 	/**
 	 * Leave the *parent's* own width at the stage's own 383.5/918 instead of
-	 * centring in the column — for the header plate, which is only as wide as
+	 * centring in the column – for the header plate, which is only as wide as
 	 * its line. Also renders a `div` rather than an `li`, since that weld sits
 	 * above the list rather than inside it.
 	 */
@@ -790,7 +790,7 @@ function StackWeld({
 					// 41.78% is the fraction of its plate the stage's own header weld
 					// leaves at, so the margin puts this box's left edge there and the
 					// translate walks it back by the 35% of its own width that the run's
-					// exit sits at — landing the exit itself on 41.78%.
+					// exit sits at – landing the exit itself on 41.78%.
 					//
 					// The translate is what makes this one pair of values rather than one
 					// per breakpoint: it is a share of whatever width the box currently
@@ -814,8 +814,8 @@ function StackWeld({
  * is what made the spacing read as an accident: the title's height depends on
  * whether it wraps, but the body's top did not move with it. "earn more prizes
  * by going viral!" takes two lines and left a 5-unit gap; "100,000 more of you"
- * takes one and left 39. The plate's own padding was uneven too — 33 over the
- * title, 43 under the body — and the body box sat 21.4 from the left against
+ * takes one and left 39. The plate's own padding was uneven too – 33 over the
+ * title, 43 under the body – and the body box sat 21.4 from the left against
  * 19.7 from the right, so it was a fraction off centre.
  *
  * It is a flow box now: one padding value on each axis, one gap, and the title

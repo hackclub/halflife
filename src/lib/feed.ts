@@ -18,7 +18,7 @@ import { isOwnedKey, publicUrlFor } from "@/lib/uploads/r2"
  * Reels are not a social extra bolted on the side: the design file's checkpoint
  * note makes an idea reel, a progress reel and a submission reel required steps
  * of every week. That is why `Post.kind` exists and why this module is separate
- * from journal sessions — a journal entry is evidence a reviewer reads to
+ * from journal sessions – a journal entry is evidence a reviewer reads to
  * decide what someone is paid, a reel is something made to be watched, and the
  * two must never be one query away from each other.
  *
@@ -137,7 +137,7 @@ export interface FeedPage {
  *
  * The leading reels are returned as their own list rather than spliced into
  * the paged rows. Paginating a cursor across two different orderings is how a
- * feed starts skipping or repeating items — the set is small, bounded, and
+ * feed starts skipping or repeating items – the set is small, bounded, and
  * only needed on the first page.
  */
 export async function getFeed(
@@ -240,7 +240,7 @@ export interface CreatePostInput {
  * `/api/upload` builds keys as `posts/<userId>/<uuid>.<ext>`, but the key
  * travels through the browser between the upload and this call, so the server
  * has to check it rather than trust it. Without this, a post can be created
- * pointing at somebody else's object — or at a key outside the posts folder
+ * pointing at somebody else's object – or at a key outside the posts folder
  * entirely.
  */
 function assertOwnedKey(userId: string, key: string, field: string): void {
@@ -261,7 +261,7 @@ export async function createPost(input: CreatePostInput): Promise<FeedItem> {
 	if (input.thumbnailKey) assertOwnedKey(input.userId, input.thumbnailKey, "thumbnail")
 
 	if (input.themeProjectId) {
-		// A reel can be attached to a project, but only to one of yours —
+		// A reel can be attached to a project, but only to one of yours –
 		// otherwise a reel could be filed against someone else's submission.
 		const owned = await prisma.themeProject.findFirst({
 			where: { id: input.themeProjectId, userId: input.userId, deletedAt: null },
@@ -317,7 +317,7 @@ export async function createPost(input: CreatePostInput): Promise<FeedItem> {
  *
  * The unique key does the work: a repeat view is a failed insert, so the count
  * only moves when a genuinely new viewer arrives. This matters because the
- * program pays prizes on virality — a number anyone can inflate by refreshing
+ * program pays prizes on virality – a number anyone can inflate by refreshing
  * is a number that decides who gets a drawing tablet.
  */
 export async function recordView(postId: string, userId: string): Promise<number> {
@@ -397,13 +397,13 @@ export async function getComments(
 	opts: { cursor?: string; limit: number },
 ): Promise<{ items: CommentView[]; nextCursor: string | null }> {
 	// A hidden or deleted post's comments are not readable by id. The filter on
-	// the comments themselves is not enough — the parent has to be visible too.
+	// the comments themselves is not enough – the parent has to be visible too.
 	const post = await prisma.post.findFirst({ where: { id: postId, ...visible }, select: { id: true } })
 	if (!post) throw new HttpError("NOT_FOUND", "Post not found")
 
 	// Newest first, like every other conversation on the platform. The thread
 	// reads top-down from what just happened, and "show older comments" walks
-	// the cursor further back rather than forward — so the order and the
+	// the cursor further back rather than forward – so the order and the
 	// affordance name the same direction.
 	const rows = await prisma.postComment.findMany({
 		where: { postId, deletedAt: null, hiddenAt: null },
@@ -479,7 +479,7 @@ export async function deleteOwnPost(postId: string, userId: string): Promise<voi
 		})
 		if (count === 0) throw new HttpError("NOT_FOUND", "Post not found")
 		// Deleting the only reel on a day removes that day from the run, so the
-		// streak is recomputed with it — same rule as deleting a devlog.
+		// streak is recomputed with it – same rule as deleting a devlog.
 		await recomputeStreak(tx, userId)
 	})
 }

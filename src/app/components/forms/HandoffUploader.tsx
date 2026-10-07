@@ -12,7 +12,7 @@ interface ApiError {
  *
  * `capture="environment"` is what makes this worth building: on a phone it
  * opens the rear camera straight into the native recorder, and hands back the
- * platform's own format — an .mp4 on iOS, which is the one format everything
+ * platform's own format – an .mp4 on iOS, which is the one format everything
  * plays. A MediaRecorder implementation here would be more code, worse on iOS,
  * and would produce .webm that a chunk of the audience cannot watch.
  *
@@ -65,7 +65,7 @@ export function HandoffUploader({ token }: Readonly<{ token: string }>) {
 	if (state === "done") {
 		return (
 			<div className="hl-stack hl-stack--tight">
-				<Callout>Sent. Go back to your computer to finish the post — you can close this.</Callout>
+				<Callout>Sent. Go back to your computer to finish the post – you can close this.</Callout>
 			</div>
 		)
 	}

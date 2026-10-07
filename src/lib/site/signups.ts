@@ -11,7 +11,7 @@ import { redactForLog } from "@/lib/redact"
  *
  *   AIRTABLE_API_KEY +   Write straight to the "Half Life" base
  *   AIRTABLE_BASE_ID     (appVGSvooOShD3qtC), table AIRTABLE_TABLE_NAME,
- *                        else AIRTABLE_RSVP_TABLE_ID — the Signups table,
+ *                        else AIRTABLE_RSVP_TABLE_ID – the Signups table,
  *                        which has `email`, `ip`, `referred_by`,
  *                        `utm_source`, `utm_medium`, `utm_campaign` and
  *                        `Loops - halfLifeReferralNumber` (text). The token
@@ -21,7 +21,7 @@ import { redactForLog } from "@/lib/redact"
  *                        utmCampaign) to your list provider, form endpoint,
  *                        Sheets relay, or queue. Set SIGNUP_WEBHOOK_TOKEN to
  *                        send a bearer header.
- *   (unset)              append JSON Lines to ./data/signups.jsonl — fine for
+ *   (unset)              append JSON Lines to ./data/signups.jsonl – fine for
  *                        local development and any host with a writable disk,
  *                        NOT durable on serverless.
  *
@@ -57,7 +57,7 @@ export function normalizeEmail(raw: unknown): string | null {
 
 /**
  * Fetches every record's `referral_code` isn't an option at scale, but
- * counting record ids is cheap — request just the `email` field (Airtable
+ * counting record ids is cheap – request just the `email` field (Airtable
  * rejects an empty field name outright) so each page carries almost nothing
  * else. The count is a snapshot, not a lock, so two signups landing in the
  * same instant can in principle claim the same ordinal; acceptable here
@@ -82,7 +82,7 @@ async function countAirtableRecords(url: string, headers: Record<string, string>
 }
 
 /**
- * In-memory only — resets on cold start and isn't shared across instances,
+ * In-memory only – resets on cold start and isn't shared across instances,
  * so it's a rough ordinal rather than a guaranteed-unique one. Unlike
  * Airtable or the JSONL file, a webhook sink has nothing local to count
  * signups from.
@@ -110,7 +110,7 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 		 * Airtable being unreachable must not lose the signup. Buffer it for the
 		 * drain job instead of returning 502, so the person is on the list even
 		 * though they do not get a referral number yet (the drain does not assign
-		 * one — the signed-in owner gets a code from /api/me/referral once the
+		 * one – the signed-in owner gets a code from /api/me/referral once the
 		 * row exists).
 		 */
 		const bufferInstead = async (reason: string): Promise<SignupResult> => {
@@ -136,7 +136,7 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 		}
 
 		// Airtable has no unique-field constraint to lean on, so duplicates are
-		// caught with a lookup before the write — same contract the other two
+		// caught with a lookup before the write – same contract the other two
 		// sinks give the caller.
 		const filter = encodeURIComponent(`LOWER({email})="${email}"`)
 		const lookup = await fetch(`${url}?filterByFormula=${filter}&maxRecords=1`, {
@@ -245,7 +245,7 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 			}
 		}
 	} catch {
-		// First signup — no file yet.
+		// First signup – no file yet.
 	}
 
 	if (!duplicate) {
@@ -269,8 +269,8 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 /**
  * The client address for rate limiting, from the hop the ingress set.
  *
- * The first `x-forwarded-for` entry is what the caller sent — nginx and
- * Traefik append, they do not replace — so keying on it let anyone rotate a
+ * The first `x-forwarded-for` entry is what the caller sent – nginx and
+ * Traefik append, they do not replace – so keying on it let anyone rotate a
  * header for a fresh bucket. Cloudflare overwrites `cf-connecting-ip`; behind
  * a plain proxy the last XFF entry is the address the edge itself saw.
  */

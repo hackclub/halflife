@@ -5,7 +5,7 @@ import { fieldKey, RSVP, RSVP_TABLE_ID } from "@/lib/airtable/schema"
 /**
  * How many people are on the landing page's sign-up list, for the counter.
  *
- * This is the Airtable `Signups` table — the list the landing page's own field
+ * This is the Airtable `Signups` table – the list the landing page's own field
  * writes into, and the one the RSVP drain and the Loops sync share. It is NOT
  * the `User` table: an account means someone signed in through Hack Club Auth,
  * while the list counts everyone who left an address, which is the number the
@@ -14,7 +14,7 @@ import { fieldKey, RSVP, RSVP_TABLE_ID } from "@/lib/airtable/schema"
  *
  * Two things it has to get right, and neither is free:
  *
- * - **Distinct people, not rows.** The list can hold the same address twice —
+ * - **Distinct people, not rows.** The list can hold the same address twice –
  *   `loops.ts` dedupes on lowercased email for exactly that reason ("First row
  *   wins if the list has the same address twice"). Counting rows would report
  *   more people than there are, which is the one direction social proof must
@@ -22,7 +22,7 @@ import { fieldKey, RSVP, RSVP_TABLE_ID } from "@/lib/airtable/schema"
  * - **Not per request.** The list is paginated at 100, so a count is a walk of
  *   several pages, and every page costs a slot in the process-wide Airtable
  *   throttle (5 req/s, `client.ts`). The endpoint is public and polled by every
- *   visitor, so the walk is cached and shared — see CACHE_TTL_MS.
+ *   visitor, so the walk is cached and shared – see CACHE_TTL_MS.
  *
  * `getAirtableConfig()` returning null (no key configured, e.g. a local checkout)
  * is not an error: the caller gets `null` and the page shows no number, which is
@@ -35,7 +35,7 @@ const CACHE_TTL_MS = 60_000
 /**
  * How long "could not count" is reused. Short, for the same reason
  * `repo-checks.ts` keeps its failures brief: a blip should not pin a wrong
- * answer for a full minute. `null` never enters the cache at all — a missing
+ * answer for a full minute. `null` never enters the cache at all – a missing
  * key is a configuration state, not a transient one.
  */
 const FAILED_TTL_MS = 15_000

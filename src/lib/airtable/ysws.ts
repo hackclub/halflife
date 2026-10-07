@@ -15,15 +15,15 @@ import { fieldKey, formulaRef, YSWS_SUBMISSION } from "@/lib/airtable/schema"
  *
  * Rows are addressed by their Airtable record id, which Half Life keeps from
  * the moment it creates one (see lib/airtable/sync). The table has no column
- * of ours to match on, and none of its own is unique per submission — Code URL
- * is shared by every project in a monorepo — so a match-on-fields upsert would
+ * of ours to match on, and none of its own is unique per submission – Code URL
+ * is shared by every project in a monorepo – so a match-on-fields upsert would
  * sooner or later update someone else's row.
  *
  * `typecast: false` is deliberate: with typecast on, a single-select value we
  * did not create is silently added as a new option, so a typo in a status or a
  * tier quietly invents one in the base.
  *
- * When no record id is known — a create whose response was lost — the write
+ * When no record id is known – a create whose response was lost – the write
  * first looks for exactly one row matching the submission's identity and
  * adopts it (see `findExistingRow`), so a retry cannot post a second copy.
  * Anything less than exactly one match is left for a human.
@@ -60,7 +60,7 @@ function rejectedFields(err: AirtableError, fields: Record<string, unknown>): st
  * Look for a row this submission may already have, by the only identity the
  * table can match on: the maker's email, the project name and the stage.
  *
- * Used when the record id is unknown — a create whose response was lost can
+ * Used when the record id is unknown – a create whose response was lost can
  * have landed without Half Life recording an id, and posting again would put
  * a second "Pending Review" copy in front of reviewers. Returns "ambiguous"
  * when several rows match, because adopting one and leaving the others is as

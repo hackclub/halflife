@@ -47,7 +47,7 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 	const share = (n: number) => (top > 0 ? (n / top) * 100 : 0)
 	const shown = shownSteps.map((s) => (s.count === 0 ? 0 : Math.max(share(s.count), MIN_W)))
 
-	// Clamp a drop-off share to a 0–100 blend weight.
+	// Clamp a drop-off share to a 0-100 blend weight.
 	const weightOf = (dropOffPct: number) => Math.min(100, Math.max(0, dropOffPct))
 
 	// Heat of a stage, as a background from flow-through blue to total-loss
@@ -70,7 +70,7 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 	const heatWeight = (dropOffPct: number) => 400 + Math.round(weightOf(dropOffPct) / 25) * 100
 
 	return (
-		// width:100% — the panel is a flex column, where auto margins alone
+		// width:100% – the panel is a flex column, where auto margins alone
 		// shrink-wrap this to its content instead of filling the panel.
 		<div style={{ width: "100%", maxWidth: "56rem", margin: "0 auto" }}>
 			<label

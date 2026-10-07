@@ -19,7 +19,7 @@ export function box(x: number, y: number, w: number, h: number) {
 	return { left: u(x), top: u(y), width: u(w), height: u(h) } as const
 }
 
-/** Absolute origin only — lets content size itself. */
+/** Absolute origin only – lets content size itself. */
 export function at(x: number, y: number) {
 	return { left: u(x), top: u(y) } as const
 }
@@ -30,7 +30,7 @@ export function type(size: number, lineHeight = 1.05) {
 }
 
 /**
- * The connector bands' taper — thick end over thin.
+ * The connector bands' taper – thick end over thin.
  *
  * The comp's four bands came in at 1.07, 1.09, 1.19 and 1.20, and two of them
  * tapered one way while two tapered the other. Under about 1.3 the eye reads a
@@ -46,8 +46,8 @@ export const BAND_TAPER = 1.6
 /**
  * A connector band, built from its centreline instead of exported path data.
  *
- * `from` and `to` are the midpoints of the band's two ends — the comp's own
- * axis, untouched — and `mean` is its average perpendicular thickness, also
+ * `from` and `to` are the midpoints of the band's two ends – the comp's own
+ * axis, untouched – and `mean` is its average perpendicular thickness, also
  * the comp's. Holding the mean is what lets the taper change without changing
  * the page's weight: each band keeps the presence the comp gave it, and keeps
  * the progression between them, where the line grows as the programme does
@@ -56,7 +56,7 @@ export const BAND_TAPER = 1.6
  * The ends are horizontal cuts, not perpendicular ones, because that is how
  * they meet the plates. So an end's thickness is its edge foreshortened by the
  * axis's own slope, and the edge that delivers a wanted thickness is that
- * thickness divided back out — which is why the paths carry no round numbers.
+ * thickness divided back out – which is why the paths carry no round numbers.
  */
 export function band(from: readonly [number, number], to: readonly [number, number], mean: number) {
 	const [x0, y0] = from
@@ -95,7 +95,7 @@ export function plate(x: number, y: number, w: number, h: number): Plate {
 }
 
 /**
- * A weld between two plates — the band, expressed as the joint it actually is.
+ * A weld between two plates – the band, expressed as the joint it actually is.
  *
  * `band` takes a centreline, which means whoever calls it has to know where
  * both plates are and keep two absolute midpoints in agreement with them by
@@ -108,8 +108,8 @@ export function plate(x: number, y: number, w: number, h: number): Plate {
  * the end sits, as a fraction of that plate's own width, so a plate that is
  * resized keeps its band near the same corner. `rise` and `drop` are how far
  * the end reaches *inside* the plate it meets, which is the overlap that makes
- * the joint a weld and not two shapes touching. Move a plate — or grow one,
- * the way step 1 grew to hold its heading — and both its bands follow.
+ * the joint a weld and not two shapes touching. Move a plate – or grow one,
+ * the way step 1 grew to hold its heading – and both its bands follow.
  */
 export function weld(
 	exit: { plate: Plate; at: number; rise: number },
@@ -127,7 +127,7 @@ export function weld(
  * The stacked layout's weld, on the same taper and the same anchor pair.
  *
  * Not `weld`: these svgs scale with `preserveAspectRatio="none"`, so a
- * thickness measured perpendicular to the run would not survive the stretch —
+ * thickness measured perpendicular to the run would not survive the stretch –
  * the taper goes on the horizontal edges directly, which is the one dimension
  * the viewBox and the box agree about. `STACK_ANCHORS` is where the run
  * leaves and lands across the 200-unit box, and a weld takes the pair in
@@ -165,9 +165,9 @@ export function plateBox(p: Plate) {
  * component, so a plain function exported from it cannot be called while the
  * hero renders on the server.
  *
- * `brushstroke.png` is 2000x400 and its interior is one flat `#103070` — RGB
+ * `brushstroke.png` is 2000x400 and its interior is one flat `#103070` – RGB
  * standard deviation under 1.4 across 578k opaque pixels, 52 distinct colours
- * in the whole of it — so there is no bristle texture to distort and it can be
+ * in the whole of it – so there is no bristle texture to distort and it can be
  * stretched to the box outright. Everything the file is carrying lives in its
  * alpha: a soft rim, and two tapered ends running 12% of the width on the left
  * and 28% on the right.
@@ -185,7 +185,7 @@ export function plateBox(p: Plate) {
  * Measured, at the worst pixel under the type rather than on average. At a
  * 12.5% inset the type occupies the middle 75% of the stroke's width, and
  * 1.8em holds it inside the middle 54-60% of its height at every size either
- * layout sets — a band whose lowest alpha is 0.667. The lightest thing that
+ * layout sets – a band whose lowest alpha is 0.667. The lightest thing that
  * can be behind it is bg.png's own brightest pixel across the plate's
  * footprint, `#1698a9` once the art layer's 0.66 is applied, which is 2.94:1 to
  * paper bare and 6.95:1 through the stroke. So the tagline clears 4.5:1 at any
@@ -203,13 +203,13 @@ export const SWASH_INSET_Y = "1.8em"
  * The stage's tagline is one `whitespace-nowrap` line of a known measure, and
  * the box used to be sized by it: as the widest child of a centred flex
  * column it shrank to the line and landed on 865 against the plate's own 864.
- * A percentage padding cannot do that — it is treated as zero while the box is
+ * A percentage padding cannot do that – it is treated as zero while the box is
  * working out its own max-content, so the box would still stop at the line and
  * then take the inset out of it, clipping 25% of the sentence.
  *
  * So in the stage the box is given its width instead of finding it, and this
  * is the arithmetic: the line is the middle 75%, so the box is the line over
- * 0.75. The stacked layout needs none of this — its tagline wraps inside a
+ * 0.75. The stacked layout needs none of this – its tagline wraps inside a
  * column that is already explicit.
  */
 export function swashBoxWidth(lineRun: number) {

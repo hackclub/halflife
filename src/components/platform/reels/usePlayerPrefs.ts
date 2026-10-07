@@ -7,7 +7,7 @@ import { useCallback, useEffect, useState } from "react"
  *
  * Per browser, in localStorage, the way the rest of the ceremony is kept:
  * nobody else ever needs to read it, and a new laptop starting from the
- * defaults is no loss. Every read and write is guarded — a private window or
+ * defaults is no loss. Every read and write is guarded – a private window or
  * blocked storage just means the defaults, every visit.
  */
 export interface PlayerPrefs {
@@ -40,7 +40,7 @@ export function usePlayerPrefs() {
 				comments: typeof saved.comments === "boolean" ? saved.comments : DEFAULTS.comments,
 			})
 		} catch {
-			/* storage unavailable — the defaults stand */
+			/* storage unavailable – the defaults stand */
 		}
 	}, [])
 
@@ -50,7 +50,7 @@ export function usePlayerPrefs() {
 			try {
 				window.localStorage.setItem(KEY, JSON.stringify(next))
 			} catch {
-				/* quota or private mode — it holds for this visit */
+				/* quota or private mode – it holds for this visit */
 			}
 			return next
 		})

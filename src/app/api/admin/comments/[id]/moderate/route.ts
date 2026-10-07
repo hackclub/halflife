@@ -11,7 +11,7 @@ type Params = { params: Promise<{ id: string }> }
 
 /**
  * Hide a comment. Hiding only: a hidden comment is out of the feed and out of
- * the comment count, and there is no moderator-facing restore — the owner
+ * the comment count, and there is no moderator-facing restore – the owner
  * cannot delete it either (that would decrement the count twice), so unhiding
  * would need a new pair of operations rather than a flag flip.
  */

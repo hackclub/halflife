@@ -93,7 +93,7 @@ export interface DrainResult {
  *
  * The user id is the one field asked about rather than assumed. Airtable refuses
  * a request whose `fields` names a column the table does not have, and it refuses
- * the WHOLE record — so on a base without that column, sending it did not leave
+ * the WHOLE record – so on a base without that column, sending it did not leave
  * the id blank, it stopped the email, the name, the referral number and the rest
  * of that row from landing, and after the attempt cap the row was abandoned for
  * good. Probing once and omitting the field means the rest of the payload is

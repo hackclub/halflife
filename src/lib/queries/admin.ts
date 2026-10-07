@@ -187,7 +187,7 @@ export async function getUserDetail(userId: string, flags?: { includeSensitive?:
 	if (!user) return null
 
 	// Ledger, balances and order history only leave the server for
-	// ADMIN/AUDITOR — a FULFILLER (shipping role) needs the fulfilment sheet,
+	// ADMIN/AUDITOR – a FULFILLER (shipping role) needs the fulfilment sheet,
 	// not someone's full credit history. Stripped callers get the profile
 	// with contact/risk fields redacted and empty money sections.
 	if (!includeSensitive) {
@@ -283,7 +283,7 @@ export interface FulfillmentFilters {
  *
  * The country is the one on their HCA profile now, not at order time: it is
  * what the parcel will actually be addressed to. It is decrypted here and only
- * the plain country leaves this function — never the ciphertext.
+ * the plain country leaves this function – never the ciphertext.
  */
 export async function listFulfillmentOrders(filters: FulfillmentFilters, opts: { cursor?: string; limit: number }) {
 	const where: Prisma.ShopOrderWhereInput = {
@@ -429,7 +429,7 @@ export async function listRecentPostsForModeration(limit = 25) {
 
 /**
  * Recent live comments, newest first. A comment on a soft-deleted post is not
- * shown — nobody can reach it to report it — but a hidden comment stays in
+ * shown – nobody can reach it to report it – but a hidden comment stays in
  * the list so staff can see it was handled.
  */
 export async function listRecentCommentsForModeration(limit = 25) {
@@ -493,7 +493,7 @@ export interface FlowStep {
 /**
  * The participant journey as a funnel. Each row counts people who ALSO did
  * every step above it, so a step never has more people than the one before it
- * and drop-off is never negative — whatever order things actually happened in.
+ * and drop-off is never negative – whatever order things actually happened in.
  *
  * Steps with a named marker come from User (lib/analytics); "named a project"
  * and the repo/devlog steps are derived from their own tables; "repo checks
@@ -573,7 +573,7 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 
 	// One boolean per step per person, in funnel order; steps[0] (signup) is true
 	// for everyone. The `|| posted` / `|| submitted` fallbacks are the history
-	// guard described above the function — do not drop them.
+	// guard described above the function – do not drop them.
 	//
 	// The onboarding steps between "started" and "finished" are read from
 	// `onboardingStep` (the furthest step reached, 0-based) rather than from a
@@ -784,7 +784,7 @@ const round1 = (n: number) => Math.round(n * 10) / 10
 /**
  * Users and hours per region, for the overview's geography section.
  *
- * Regions come from each account's timezone — the only per-user geography
+ * Regions come from each account's timezone – the only per-user geography
  * with real coverage (see lib/regions). Hours are attributed to the
  * author's region, never to a project's.
  */
@@ -824,7 +824,7 @@ function aggregateByKey(inputs: RegionInputs, keyOf: (timezone: string | null) =
 
 	for (const u of inputs.users) row(userKey.get(u.id) ?? "Unknown").users += 1
 	for (const s of inputs.sessions) {
-		// A tracked entry's hours arrive through its link, counted below — the
+		// A tracked entry's hours arrive through its link, counted below – the
 		// journal row itself contributes nothing, exactly as the ledger reads it.
 		if (s.hoursSource === HoursSource.HACKATIME_TRACKED) continue
 		row(userKey.get(s.themeProject.userId) ?? "Unknown").hours += s.hoursApproved ?? s.hoursClaimed
@@ -871,7 +871,7 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/
 /**
  * Devlogs written and hours logged per day, gap-filled from the first active
  * day to the last so the strip chart reads continuously. Days are
- * program-timezone effective dates — the day the work counted for, not the
+ * program-timezone effective dates – the day the work counted for, not the
  * instant it was typed.
  */
 export async function getDailyActivity(): Promise<DayActivity[]> {
@@ -921,7 +921,7 @@ export interface FirstProjectStat {
 /**
  * What users chose for their first project: which starter, or a custom idea.
  *
- * Setup edits one row — the week-one (PCB) project — so its final
+ * Setup edits one row – the week-one (PCB) project – so its final
  * `starterProjectId` is the choice: a starter id, or null for custom. Only
  * users who finished setup and still have that project count; accounts with
  * no week-one row made no choice in this system.

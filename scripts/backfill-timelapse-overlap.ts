@@ -9,7 +9,7 @@ import prisma from "../src/lib/prisma"
  * recording was made, and which Hackatime project Lapse saw while it ran.
  *
  * Someone who codes with Hackatime running and records a Lapse timelapse of the
- * same sitting had that sitting counted twice — once by their journal entry and
+ * same sitting had that sitting counted twice – once by their journal entry and
  * once by the linked Hackatime project. Fixing that needs the two tools' clocks
  * to be compared, and a timelapse row only ever stored a duration. `recordedAt`
  * and `hackatimeProject` carry the rest.
@@ -20,7 +20,7 @@ import prisma from "../src/lib/prisma"
  *
  * Lapse tokens last 30 days and this repo cannot refresh them, so a token that
  * has lapsed means that person's recordings stay undeduplicated. That is the
- * honest outcome — a window guessed from the row's created_at (when the clip was
+ * honest outcome – a window guessed from the row's created_at (when the clip was
  * ATTACHED, possibly days later) would subtract Hackatime time from the wrong
  * sitting and underpay them. Those rows are listed at the end so they can be
  * re-run after the owner signs in with Lapse again.

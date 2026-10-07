@@ -34,8 +34,8 @@ const WEEK_GAP = 0.25
 const offsetAt = (i: number, phase: number) => Number((50 + AMP * Math.sin((phase + i) * CURVE)).toFixed(4))
 
 /** Rows a week's trail occupies, matching WeekTrail's fork grouping (a fork's
-    arms share one row — the keep/submit fork at a week's end, and week 1's
-    idea/skip fork at its start) — plus WeekTrail's ghost rows, so the wave
+    arms share one row – the keep/submit fork at a week's end, and week 1's
+    idea/skip fork at its start) – plus WeekTrail's ghost rows, so the wave
     below starts where the rendered trail actually ends. */
 const trailRows = (week: Week, done: (id: string) => boolean, passed: (id: string) => boolean): number => {
 	const rows: Checkpoint[][] = []
@@ -50,7 +50,7 @@ const trailRows = (week: Week, done: (id: string) => boolean, passed: (id: strin
 /**
  * Where the trail can still grow: a row holding a live journal entry,
  * followed by a reel nobody has earned yet. Every new entry lands between
- * them — which is why the trail gets longer as devlogs are added — so a
+ * them – which is why the trail gets longer as devlogs are added – so a
  * ghost row marks that stretch and the growth reads as the trail working,
  * not shifting under you.
  *
@@ -83,7 +83,7 @@ const KIND_ICON = {
 
 /**
  * A journal entry is a smaller beat than a milestone, and a long week is mostly
- * entries — so they get a smaller puck and a shorter stride. Big node, run of
+ * entries – so they get a smaller puck and a shorter stride. Big node, run of
  * small ones, big node: the week reads as rhythm instead of as a queue.
  */
 const isBeat = (c: Checkpoint) => c.kind === "journal" && !c.branch
@@ -99,7 +99,7 @@ const fmtH = (h: number) => `${Math.round(h * 100) / 100}h`
  * Checkpoints that bring something into existence rather than record it. Going
  * through onboarding or the project form a second time would mint a second
  * project for a week that already has one, and every lookup in the app finds a
- * week's project with `.find` — so the duplicate would not replace the first,
+ * week's project with `.find` – so the duplicate would not replace the first,
  * it would sit behind it, unreachable and counting for nothing.
  */
 const ONE_TIME: Checkpoint["kind"][] = ["onboarding", "project"]
@@ -141,7 +141,7 @@ function CheckpointNode({
 	const held = isHeld(checkpoint.id)
 	// Done and not for doing again. It keeps its finished colours rather than
 	// taking the locked ones: this is a thing achieved, not a thing withheld.
-	// A finished entry opens for editing — until its week is handed in, when
+	// A finished entry opens for editing – until its week is handed in, when
 	// the entries are what the review reads and they stop changing.
 	const final = st.done && checkpoint.kind === "journal" && weekSubmitted(checkpoint.weekId)
 	// A handed-in week's Submit opens to unsubmit it while it waits for review,
@@ -163,13 +163,13 @@ function CheckpointNode({
 					: reviewStatus === "update_requested"
 						? "sent back for changes. click to submit it again."
 						: reviewStatus === "approved"
-							? "approved — this week is done."
+							? "approved – this week is done."
 							: reviewStatus === "rejected"
 								? "this week has been reviewed."
 								: null
 	const locked = !unlocked ? lockReason(checkpoint.id) : null
 	// Finished and still reachable: hovering says so, and says what a click
-	// does now — edit the entry, or post another reel.
+	// does now – edit the entry, or post another reel.
 	const doneTip = st.done && unlocked && !passed
 	const Icon = held ? IconLock : st.done ? IconCheck : unlocked ? KIND_ICON[checkpoint.kind] : IconLock
 	// Gold stays gold after completion, so the icon on it has to stay navy.
@@ -220,7 +220,7 @@ function CheckpointNode({
 			)}
 
 			{/* Why this one is shut. It hangs where the "Start here" callout hangs,
-          in sand rather than navy — the trail already uses that shape to speak
+          in sand rather than navy – the trail already uses that shape to speak
           about a node, and a locked node is the other half of the same
           sentence. The two never appear together: a locked checkpoint is never
           the current one. */}
@@ -287,10 +287,10 @@ function CheckpointNode({
 				onClick={() => setOpenCheckpoint(checkpoint.id)}
 				aria-label={
 					locked
-						? `${checkpoint.title} — ${status}. ${locked}`
+						? `${checkpoint.title} – ${status}. ${locked}`
 						: doneTip && doneNote
-							? `${checkpoint.title} — ${status}. ${doneNote.charAt(0).toUpperCase()}${doneNote.slice(1)}`
-							: `${checkpoint.title} — ${status}`
+							? `${checkpoint.title} – ${status}. ${doneNote.charAt(0).toUpperCase()}${doneNote.slice(1)}`
+							: `${checkpoint.title} – ${status}`
 				}
 				className={cx(
 					"puck",
@@ -395,20 +395,20 @@ const FORK_AT: [number, number] = [24, 76]
 
 /**
  * One week's stretch of trail. Positions are walked rather than multiplied,
- * because entries and milestones take different-sized strides — but the
+ * because entries and milestones take different-sized strides – but the
  * left-right swing still comes from the node's place in the line.
  *
  * A stride is sized by the node it leaves, never by the one it arrives at.
  * That is the only version that cannot collide: what has to be cleared is the
- * height of the node behind you — its puck, its label, and the hours under a
- * finished entry — and a milestone is half as tall again as a beat. Sizing on
+ * height of the node behind you – its puck, its label, and the hours under a
+ * finished entry – and a milestone is half as tall again as a beat. Sizing on
  * arrival instead puts a beat's short stride under a milestone's tall label,
  * and the label lands on the next puck.
  *
  * A week past its tier floor ends in a fork: two checkpoints on one row,
  * pinned left and right instead of taking the swing. The fork is always the
  * last row, which is what lets every row before it keep using its own index
- * for the sine — the trail above a fork is laid out exactly as it was. Week
+ * for the sine – the trail above a fork is laid out exactly as it was. Week
  * 1 opens with the same treatment one row down from setup: the idea reel and
  * the first devlog entry side by side, the reel optional and the entry the
  * road onward.
@@ -416,7 +416,7 @@ const FORK_AT: [number, number] = [24, 76]
 function WeekTrail({ week, currentId, phase }: { week: Week; currentId: string | null; phase: number }) {
 	const { stateOf, isPassed } = useStore()
 	const done = (id: string) => stateOf(id).done
-	// Group into rows: singles all the way down, each fork as one row of two —
+	// Group into rows: singles all the way down, each fork as one row of two –
 	// the opening idea/skip fork in week 1, the keep/submit fork at a week's end.
 	const rows: Checkpoint[][] = []
 	for (const cp of week.checkpoints) {
@@ -524,14 +524,14 @@ function WeekTrail({ week, currentId, phase }: { week: Week; currentId: string |
 /**
  * The ghost itself: a dashed, beat-sized placeholder where future entries
  * land, with the growth it stands for written underneath. A plus would read
- * as something to press — it is not pressable, so it gets an ellipsis, the
+ * as something to press – it is not pressable, so it gets an ellipsis, the
  * mark for "to be continued".
  */
 function GhostNode({ top, left }: { top: string; left: string }) {
 	return (
 		<div
 			role="img"
-			aria-label="More journal entries land here as you log them — the trail grows"
+			aria-label="More journal entries land here as you log them – the trail grows"
 			className="absolute flex w-[var(--node-sm)] flex-col items-center"
 			style={{ top, left, transform: "translateX(-50%)" }}
 		>
@@ -553,7 +553,7 @@ function GhostNode({ top, left }: { top: string; left: string }) {
 /**
  * The starter guide for a week whose project is a starter, on the trail
  * itself. The project page carries the full guide card, but few people go back
- * there mid-week — this is the same door, slimmed to one line under the week's
+ * there mid-week – this is the same door, slimmed to one line under the week's
  * banner. A handed-in week keeps only its record, so the banner goes away
  * once the week is submitted.
  *
@@ -655,7 +655,7 @@ export function CheckpointPath() {
 
 		// The week banner is sticky, so centring the node can park its callout
 		// underneath it. Hand back whatever the banner took, plus a little air.
-		// A node on a fork row has no callout — there the node's own top is the
+		// A node on a fork row has no callout – there the node's own top is the
 		// edge that has to clear.
 		const banner = node.closest("section")?.querySelector<HTMLElement>("[data-week-banner]")
 		if (!banner) return

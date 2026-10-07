@@ -12,8 +12,8 @@ export { TIERS } from "./config/tiers"
 
 /**
  * Ten weeks: five design weeks, then the same five themes built for real.
- * A design week opens by settling what is being made — the yellow onboarding
- * checkpoint in week 1, the project form after that — and then pitches it in
+ * A design week opens by settling what is being made – the yellow onboarding
+ * checkpoint in week 1, the project form after that – and then pitches it in
  * the idea reel before a single hour is logged against it. Week 1 is the
  * exception: the reel is optional there, offered side by side with the first
  * devlog entry instead of gating it. Build weeks skip
@@ -40,7 +40,7 @@ const THEMES: ThemeSeed[] = [
 		fullName: "Printed Circuit Board Week",
 		summary: "Draw up a schematic, make a BOM, and route your board!",
 		primer:
-			"A PCB is the flat green (or purple, or black) board inside every piece of electronics. Copper lines etched onto it replace the messy wires you would otherwise solder by hand. You will draw a schematic — a diagram of which part connects to which — then lay those parts out on a board and let the software route copper between them. At the end you export a set of Gerber files and a real factory turns them into a board you can hold.",
+			"A PCB is the flat green (or purple, or black) board inside every piece of electronics. Copper lines etched onto it replace the messy wires you would otherwise solder by hand. You will draw a schematic – a diagram of which part connects to which – then lay those parts out on a board and let the software route copper between them. At the end you export a set of Gerber files and a real factory turns them into a board you can hold.",
 		examples: [
 			"A macropad with hot-swap sockets and per-key LEDs",
 			"An ESP32 dev board with a built-in battery charger",
@@ -57,7 +57,7 @@ const THEMES: ThemeSeed[] = [
 		fullName: "Computer Aided Design Week",
 		summary: "Make some awesome 3D models (remember tolerances!)",
 		primer:
-			"CAD is drawing an object as a solid with exact dimensions instead of a sketch. You start from a 2D sketch, pull it into 3D, then cut and round it until it is the shape you want. The hard part is not the software — it is tolerance: a hole modelled at exactly 3mm will not fit a 3mm screw once the printer squishes plastic into it.",
+			"CAD is drawing an object as a solid with exact dimensions instead of a sketch. You start from a 2D sketch, pull it into 3D, then cut and round it until it is the shape you want. The hard part is not the software – it is tolerance: a hole modelled at exactly 3mm will not fit a 3mm screw once the printer squishes plastic into it.",
 		examples: [
 			"An enclosure for the PCB you designed in week 1",
 			"A desk arm that clamps a phone at eye height",
@@ -74,7 +74,7 @@ const THEMES: ThemeSeed[] = [
 		fullName: "Music Week",
 		summary: "MAKE. SOME. NOOOOOOOOOOOOOISE.",
 		primer:
-			"Music week is circuits that turn voltage into sound. The simplest instrument is an oscillator — a circuit that flips a pin on and off fast enough to hear — plus something to shape the volume over time. Add a filter and you have a voice. You can build this from a 555 timer, from op-amps, or from a microcontroller running a wavetable. All three count.",
+			"Music week is circuits that turn voltage into sound. The simplest instrument is an oscillator – a circuit that flips a pin on and off fast enough to hear – plus something to shape the volume over time. Add a filter and you have a voice. You can build this from a 555 timer, from op-amps, or from a microcontroller running a wavetable. All three count.",
 		examples: [
 			"A 555-based drone machine with three detuned oscillators",
 			"A MIDI controller with velocity-sensitive pads",
@@ -91,7 +91,7 @@ const THEMES: ThemeSeed[] = [
 		fullName: "Displays Week",
 		summary: "TFT? OLED? Nixie tubes? Neopixels? LED matrices?",
 		primer:
-			"Displays are the fastest way to make a project feel finished. E-paper sips power and holds an image with none. OLED is crisp and tiny. LED matrices are bright enough to read across a room. Each one talks a different protocol — SPI, I2C, or raw shift registers — and the driver you pick decides how much of your microcontroller is left over for anything else.",
+			"Displays are the fastest way to make a project feel finished. E-paper sips power and holds an image with none. OLED is crisp and tiny. LED matrices are bright enough to read across a room. Each one talks a different protocol – SPI, I2C, or raw shift registers – and the driver you pick decides how much of your microcontroller is left over for anything else.",
 		examples: [
 			"An e-paper name badge that updates over Bluetooth",
 			"A 32x32 LED matrix that mirrors your now-playing track",
@@ -108,7 +108,7 @@ const THEMES: ThemeSeed[] = [
 		fullName: "Breadboard Computer Week",
 		summary: "Plan your circuit! Simulate some gates!",
 		primer:
-			"Underneath every processor is a clock, a register, an adder and some way to decide what happens next. Wire those four things together out of 74-series logic chips and you have a computer — slow, hot, and entirely yours. Start with the clock module, get an LED blinking at a speed you can follow, then add a register you can load by hand.",
+			"Underneath every processor is a clock, a register, an adder and some way to decide what happens next. Wire those four things together out of 74-series logic chips and you have a computer – slow, hot, and entirely yours. Start with the clock module, get an LED blinking at a speed you can follow, then add a register you can load by hand.",
 		examples: [
 			"An 8-bit SAP-1 computer across four breadboards",
 			"A 4-bit ALU with carry-lookahead you can single-step",
@@ -122,7 +122,7 @@ const THEMES: ThemeSeed[] = [
 
 const cp = (c: Checkpoint): Checkpoint => c
 
-/** Every week's fixed half — everything that does not depend on the tier. */
+/** Every week's fixed half – everything that does not depend on the tier. */
 export const WEEK_META: WeekMeta[] = [
 	...THEMES.map((seed, i) => ({
 		id: i + 1,
@@ -141,7 +141,7 @@ export const WEEK_META: WeekMeta[] = [
 		phase: "build" as Phase,
 		theme: seed.theme,
 		headline: seed.buildHeadline,
-		fullName: `${seed.fullName} — Build`,
+		fullName: `${seed.fullName} – Build`,
 		summary: `Assemble the ${seed.theme.toLowerCase()} project you designed in week ${i + 1}.`,
 		primer: seed.primer,
 		examples: seed.examples,
@@ -155,19 +155,19 @@ export const WEEK_META: WeekMeta[] = [
  *
  * On the clock, sized to what the week asks.
  *
- * A design week's reels fall at **five hours, then every ten after that** — 5h,
+ * A design week's reels fall at **five hours, then every ten after that** – 5h,
  * 15h, 25h, 35h. Not at ten and then every ten, which is what this was, because
  * a design week can be handed in before ten hours: the floor is the tier's
  * funded hours and tier 1 is six. A tier-1 maker submitting at six never reached
  * a ten-hour mark, so the reel that was supposed to show their progress was a
- * node that never appeared — the week was over before the first one came due.
+ * node that never appeared – the week was over before the first one came due.
  * Five sits under the lowest floor in the programme, so it lands for everyone
  * who can submit at all, and the ten-hour spacing keeps every later one a real
  * milestone rather than a nag.
  *
  * A build week asks only five hours, so ten would mean most builds never show
- * their progress at all: its first reel comes at two and a half hours — halfway
- * to the minimum — and then one every five hours on the clock: 2.5h, 5h, 10h,
+ * their progress at all: its first reel comes at two and a half hours – halfway
+ * to the minimum – and then one every five hours on the clock: 2.5h, 5h, 10h,
  * 15h…
  *
  * Keys stay `w<week>-reel-<k>`, numbered rather than timed, so this can change
@@ -175,14 +175,14 @@ export const WEEK_META: WeekMeta[] = [
  */
 export function progressReelHours(phase: Phase, k: number): number {
 	if (phase === "build") return k === 1 ? 2.5 : (k - 1) * 5
-	// 5h, 15h, 25h… — the first under the cheapest tier's floor, then every ten.
+	// 5h, 15h, 25h… – the first under the cheapest tier's floor, then every ten.
 	if (k <= 1) return 5
 	return 5 + (k - 1) * 10
 }
 
 /**
  * A session has to be backed by photographs. Two is the floor whatever the
- * claim, and past two hours it is one an hour — a long session has to show
+ * claim, and past two hours it is one an hour – a long session has to show
  * more of itself than a short one, which is the only thing standing between a
  * self-reported number and a made-up one.
  */
@@ -193,7 +193,7 @@ export const photosRequired = (hours: number) => Math.max(MIN_PHOTOS, Math.ceil(
  * The week's checkpoints.
  *
  * Every journal entry is its own node, so the trail is as long as the work
- * actually was — plus one live node for the entry about to be written.
+ * actually was – plus one live node for the entry about to be written.
  *
  * There are exactly three occasions for a reel and no others: the idea at the
  * start, a progress reel as the hours mount (`progressReelHours`), and the one that closes the week
@@ -203,14 +203,14 @@ export const photosRequired = (hours: number) => Math.max(MIN_PHOTOS, Math.ceil(
  * is visible before you get there.
  *
  * Week 1 is the exception to the opening: its idea reel is optional, so the
- * trail forks right after setup — the idea reel on one arm, the first devlog
+ * trail forks right after setup – the idea reel on one arm, the first devlog
  * entry on the other. The entry arm is the road onward; nothing past the fork
  * waits on the reel, and the reel stays postable as an extra whenever. Other
  * design weeks keep the reel as a straight gate before the first entry.
  *
  * Submit opens the moment the tier's funded hours are on the board, and from
  * then on the trail forks rather than continuing: the live entry and Submit
- * come off the chain and sit side by side as a choice — one more session, or
+ * come off the chain and sit side by side as a choice – one more session, or
  * wrap the week up. Finishing one of them is what settles the route, so
  * nothing is committed by clicking. The closing reel is not a node at all; it
  * is the last step inside Submit, so submitting always ships a reel.
@@ -250,7 +250,7 @@ export function checkpointsFor(
 			// The fork's working arm answers to the week's clock rather than to the
 			// node before it, so a reel that has fallen due holds it shut exactly as
 			// it holds Submit shut. Zero, because carrying on is never gated on
-			// hours of its own — only on what the hours have already earned. The
+			// hours of its own – only on what the hours have already earned. The
 			// week-1 skip arm is an ordinary journal node: it unlocks off the
 			// setup before it, not off the clock.
 			atHours: branch === "keep" ? 0 : undefined,
@@ -275,7 +275,7 @@ export function checkpointsFor(
 
 	// Past the submit floor the live entry leaves the chain and pairs with Submit
 	// as a fork, so the walk stops one short of it. A submitted week has no live
-	// entry at all — the route is settled and the trail shows only what happened.
+	// entry at all – the route is settled and the trail shows only what happened.
 	const submitted = isDone(id("submit"))
 	const floorHours = submitHours
 	const loggedHours = entryMinutes.reduce((n, m) => n + m, 0) / 60
@@ -310,7 +310,7 @@ export function checkpointsFor(
 
 		// Every design week opens the same way: say what you are making, then
 		// start logging the making of it. Week one differs only in how the
-		// project comes into existence — the questionnaire stands in for the
+		// project comes into existence – the questionnaire stands in for the
 		// form, and the pitch follows it exactly as it does every other week.
 		const newProject = cp({
 			id: id("project"),
@@ -332,7 +332,7 @@ export function checkpointsFor(
 			if (needsProject) out.push(newProject)
 			// The fork: the idea reel, or straight to the first devlog. The
 			// entry arm is entry 1 itself, so skipping is just starting the
-			// work — no extra "skip" node to settle. A submitted week with no
+			// work – no extra "skip" node to settle. A submitted week with no
 			// entries logged them nowhere (Hackatime-only), so there is no
 			// live entry to offer; the reel stands alone as it always has.
 			out.push(ideaReel)
@@ -367,7 +367,7 @@ export function checkpointsFor(
 	const submit = cp({
 		id: id("submit"),
 		weekId: meta.id,
-		// Opens on the week's submit floor — the moment wrapping up becomes a
+		// Opens on the week's submit floor – the moment wrapping up becomes a
 		// real choice rather than the only road left.
 		atHours: floorHours,
 		kind: "submit",
@@ -395,7 +395,7 @@ export const SUBMIT_FILES_DESIGN = [
 ]
 
 export const SUBMIT_FILES_BUILD = [
-	{ id: "demo", label: "30–60 second working demo", hint: "Show it doing the thing, with your voice over it." },
+	{ id: "demo", label: "30-60 second working demo", hint: "Show it doing the thing, with your voice over it." },
 	{ id: "photos", label: "Three photos of the finished build", hint: "Front, back, and one detail shot." },
 	{ id: "notes", label: "Assembly notes", hint: "What you got wrong the first time." },
 ]

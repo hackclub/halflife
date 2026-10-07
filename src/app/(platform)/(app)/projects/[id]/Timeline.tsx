@@ -28,12 +28,12 @@ export function Timeline({
 	weekFor: (phase: "DESIGN" | "BUILD") => number
 	/**
 	 * Whether journal entries and reels carry a report button. On for someone
-	 * else's project, off on your own — reporting your own work is noise.
+	 * else's project, off on your own – reporting your own work is noise.
 	 */
 	allowReport?: boolean
 }) {
 	// Which week each moment belongs to is said once, where that week starts,
-	// rather than on every entry — and only once there are two weeks to tell
+	// rather than on every entry – and only once there are two weeks to tell
 	// apart. A reel carries no phase, so it sits in whichever week is running
 	// when it comes up.
 	const phaseOf = (item: TimelineItem) => (item.kind === "reel" ? null : item.phase)
@@ -208,7 +208,7 @@ function Body({ item, allowReport }: { item: TimelineItem; allowReport: boolean 
 /**
  * A journal entry, folded when it runs long. The timeline is for reading the
  * story of a project, and one entry pasted in at a thousand lines should not
- * push every other moment off the page — so past about a dozen lines it
+ * push every other moment off the page – so past about a dozen lines it
  * fades out behind a toggle, and the whole of it is one click away.
  */
 function EntryBody({ source }: { source: string }) {

@@ -10,7 +10,7 @@ export const maxDuration = 300
 /**
  * Replays submission rows that never reached the YSWS table. Reviewers work
  * from that table on ari.hackclub.com, so a row that failed to write is a
- * submission nobody can see — this is what keeps an Airtable outage from
+ * submission nobody can see – this is what keeps an Airtable outage from
  * turning into a project that is never reviewed.
  */
 export const POST = withRoute(async (req: NextRequest) => {

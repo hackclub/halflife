@@ -267,7 +267,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 	// Every journal node is one entry: write it and it is done. The week's clock
 	// is what decides whether wrapping up is on the table yet. Opened again once
-	// it is done, the same sheet is that entry, to correct — not a new one.
+	// it is done, the same sheet is that entry, to correct – not a new one.
 	const [existing] = useState(() => {
 		const saved = stateOf(checkpoint.id)
 		return saved.done ? saved.log[0] : undefined
@@ -289,7 +289,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const [picked, setPicked] = useState<LapseTimelapse[]>(draft?.picked ?? [])
 	const [pinned, setPinned] = useState<string[]>(draft?.pinned ?? [])
 	const [legacyKept, setLegacyKept] = useState<string[]>(draft?.legacy ?? [])
-	// The last-saved clip set, for telling a real change from the seed — and
+	// The last-saved clip set, for telling a real change from the seed – and
 	// for putting the seed back on "Discard draft".
 	const [clipSeed, setClipSeed] = useState<{ picked: LapseTimelapse[]; pinned: string[] }>({
 		picked: [],
@@ -347,7 +347,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	}, [checkpoint.id])
 
 	// Seed the picker's working set from what the entry was saved with. The
-	// seed never overwrites anything already picked — a returning draft, or a
+	// seed never overwrites anything already picked – a returning draft, or a
 	// toggle that beat the read back, always wins.
 	useEffect(() => {
 		if (!editing || !existing || existing.clips.length === 0 || seededRef.current) return
@@ -382,7 +382,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				// The saved figure was logged under the old arithmetic, so restate
 				// the box as the part the timelapses do not cover: the total is
 				// unchanged unless the maker edits it. The baseline moves with the
-				// box — autosave, discard and "matches saved" all compare against
+				// box – autosave, discard and "matches saved" all compare against
 				// it, and leaving it at the old total would restore that total as
 				// a residual on discard and count the timelapses twice.
 				const seedLapseHours = Math.round((seed.picked.reduce((n, t) => n + t.durationSeconds, 0) / 3600) * 100) / 100
@@ -427,7 +427,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		if (editing) {
 			setBody(baselineBody)
 			setHoursText(baselineHours)
-			// Back to the last-saved clips — and anything toggled after that
+			// Back to the last-saved clips – and anything toggled after that
 			// stops counting as touched, so a seed still in flight lands clean.
 			setPicked(clipSeed.picked)
 			setPinned(clipSeed.pinned)
@@ -448,13 +448,13 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		projects.find((p) => isWeeksProject(week, p)) ?? projects.find((p) => p.weekId !== WARMUP_WEEK_ID) ?? projects[0]
 
 	// The claim is what the maker types. The photographs are what makes it a
-	// claim rather than a number, which is why the bar rises with it — and they
+	// claim rather than a number, which is why the bar rises with it – and they
 	// are counted out of the entry itself, so every picture sits in the sentence
 	// that explains it instead of in a tray underneath.
 	const typed = Math.max(0, Number(hoursText) || 0)
 	// The hours box declares what the timelapses do not cover, so the claim is
 	// the two added together: 2 typed hours on top of a 5-hour recording logs
-	// 7. Leave the box empty and the recording sets the claim on its own — the
+	// 7. Leave the box empty and the recording sets the claim on its own – the
 	// maker is never asked to retype a number Lapse already has.
 	const coveredSeconds = picked.reduce((sum, t) => sum + t.durationSeconds, 0)
 	const lapseHours = Math.round((coveredSeconds / 3600) * 100) / 100
@@ -481,14 +481,14 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const overCap = claimed > MAX_SESSION_HOURS
 	const ok = claimed > 0 && !overCap && (journalled || recorded)
 
-	// One thing at a time — a list of four faults reads as a wall, and only the
+	// One thing at a time – a list of four faults reads as a wall, and only the
 	// first one is actionable anyway. Once the hours are in, the entry's next
 	// shortfall is named with the other way out beside it, so nobody is told to
 	// write 200 characters they could skip with a timelapse.
-	const orLapse = " You can also attach Lapse timelapses on the Timelapse tab — they back the same entry."
+	const orLapse = " You can also attach Lapse timelapses on the Timelapse tab – they back the same entry."
 	const missing = !ok
 		? overCap
-			? `A single devlog covers at most ${MAX_SESSION_HOURS} hours — split longer work across sessions.`
+			? `A single devlog covers at most ${MAX_SESSION_HOURS} hours – split longer work across sessions.`
 			: claimed <= 0
 				? "Add the hours you spent on this session, or pick a Lapse timelapse."
 				: !longEnough
@@ -510,7 +510,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		setSaveError(null)
 		if (editing) {
 			// The full set the server reconciles against: Lapse picks and pins
-			// plus the older uploads, which the server keeps silently — sending
+			// plus the older uploads, which the server keeps silently – sending
 			// them keeps the local snapshot agreeing with it until the refresh.
 			const refused = await editSession(checkpoint.id, sessionMinutes, body.trim(), {
 				clips: [...legacyKept, ...pinned, ...picked.map((t) => t.id)],
@@ -549,7 +549,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	}
 
 	/**
-	 * Put images into the entry where the cursor is — picked, dropped or
+	 * Put images into the entry where the cursor is – picked, dropped or
 	 * pasted, the same way (after Stasis's session form). Each goes in first as
 	 * a placeholder, `![Uploading name…](uploading:n)`, which no renderer or
 	 * image count accepts, and is swapped for its CDN link once the upload
@@ -702,7 +702,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				<p className="hand -mt-2 mb-5 text-center text-[0.78rem] text-navy-soft">
 					{attachedCount > 0 ? (
 						<>
-							{attachedCount === 1 ? "1 timelapse" : `${attachedCount} timelapses`} attached —{" "}
+							{attachedCount === 1 ? "1 timelapse" : `${attachedCount} timelapses`} attached –{" "}
 							<button
 								type="button"
 								onClick={() => setTab("timelapse")}
@@ -713,7 +713,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						</>
 					) : (
 						<>
-							Writing, filming, or both —{" "}
+							Writing, filming, or both –{" "}
 							<button
 								type="button"
 								onClick={() => setTab("timelapse")}
@@ -780,7 +780,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							label={picked.length > 0 ? "Additional hours" : "Hours this session"}
 							hint={
 								picked.length > 0
-									? "On top of your timelapses — 0 if the recording covers it all."
+									? "On top of your timelapses – 0 if the recording covers it all."
 									: "(9.5 is 9 and a half hours)"
 							}
 						>
@@ -971,7 +971,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				<div>
 					<ModalTitle
 						subWide
-						sub="Record timelapse(s) on Lapse, publish as unlisted or public, then select it here. It won't show up if the timelapses are listed as private. Make sure you're pausing your timelapse when you're not working on your project! Timelapses can back the entry on their own, or together with a written entry — pick here, write on the journal tab."
+						sub="Record timelapse(s) on Lapse, publish as unlisted or public, then select it here. It won't show up if the timelapses are listed as private. Make sure you're pausing your timelapse when you're not working on your project! Timelapses can back the entry on their own, or together with a written entry – pick here, write on the journal tab."
 					>
 						Select your timelapses
 					</ModalTitle>
@@ -1045,7 +1045,7 @@ const reelDraftKey = (checkpointId: string) => `halflife.reel-draft.${checkpoint
  * A reel's draft is the clip already sitting in the bucket plus its caption.
  * The upload is the expensive half and it has already happened by the time
  * Save draft is on offer, so keeping the draft is keeping a key and a line of
- * text — in this browser, like the rest of the ceremony, and cleared on post.
+ * text – in this browser, like the rest of the ceremony, and cleared on post.
  */
 function readReelDraft(checkpointId: string): ReelDraft | null {
 	if (typeof window === "undefined") return null
@@ -1070,7 +1070,7 @@ function writeReelDraft(checkpointId: string, draft: ReelDraft | null) {
  * After a reel posts: would they like to post it online too?
  *
  * Asked once, as a yes-or-no, so saying no costs one click. Yes opens the
- * links — one field per platform, all optional but at least one — with the
+ * links – one field per platform, all optional but at least one – with the
  * reminder that makes the post count at the top, because it has to be in the
  * caption *before* they post it: their referral link and the programme's
  * hashtag. Each link is saved as its own Public Reels row against this reel.
@@ -1088,7 +1088,7 @@ export function PublicReelModal({
 	videoUrl: string | null
 	onClose: () => void
 	/**
-	 * "links" skips the question — for the Reels page, where pressing "Add
+	 * "links" skips the question – for the Reels page, where pressing "Add
 	 * where you posted it" has already answered it.
 	 */
 	start?: "ask" | "links"
@@ -1171,7 +1171,7 @@ export function PublicReelModal({
 			}
 			setStep("saved")
 		} catch {
-			setSaveError("Could not reach the server. Your links are still here — try again.")
+			setSaveError("Could not reach the server. Your links are still here – try again.")
 		} finally {
 			setSaving(false)
 		}
@@ -1378,8 +1378,8 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	useEffect(() => {
 		const video = previewVideo.current
 		if (!video) return
-		// The `muted` attribute only sets the initial state — React re-renders
-		// do not move the property after mount — so the toggle writes it here.
+		// The `muted` attribute only sets the initial state – React re-renders
+		// do not move the property after mount – so the toggle writes it here.
 		video.muted = muted
 		void video.play().catch(() => undefined)
 	}, [previewUrl, muted])
@@ -1504,7 +1504,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						}}
 					>
 						{/* On a finished checkpoint with nothing started there is no
-                draft to keep — it is just the answer to "another one?" */}
+                draft to keep – it is just the answer to "another one?" */}
 						{done && !clip && !caption.trim() ? "Not now" : "Save draft"}
 					</Button>
 					<Button variant="solid" disabled={Boolean(postBlocker) || posting} onClick={() => void post()}>
@@ -1620,12 +1620,12 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 }
 
 /* ================================================================== *
- * Project creation (weeks 2–5, and week 1 once its project is deleted)
+ * Project creation (weeks 2-5, and week 1 once its project is deleted)
  * ================================================================== */
 export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const { setOpenCheckpoint, complete, addProject, ensureProject, experience, weekOf } = useStore()
 	const week = weekOf(checkpoint.weekId)
-	// Opening "create a project" is what makes the week's project row — not
+	// Opening "create a project" is what makes the week's project row – not
 	// signing up, when nobody knows yet whether they will get this far.
 	useEffect(() => {
 		void ensureProject(checkpoint.weekId)
@@ -1790,7 +1790,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 										<>
 											{t.detail}
 											<span className="mt-1 block text-navy-soft/90">
-												You can submit on tier {t.id} from {fmtH(t.fundingHours)} of design time — the parts-funding
+												You can submit on tier {t.id} from {fmtH(t.fundingHours)} of design time – the parts-funding
 												hours and nothing more. Every hour past that earns 5 spendable coins.
 											</span>
 										</>
@@ -1832,7 +1832,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
  *
  * Opening it again is almost always "I need to change something", so it says
  * where the week stands and offers the one thing that allows a change: taking
- * it back out of review. Nothing is lost by it — the entries, parts list and
+ * it back out of review. Nothing is lost by it – the entries, parts list and
  * details stay as they are, and this same checkpoint hands it in again.
  */
 export function UnsubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
@@ -1902,15 +1902,15 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const week = weekOfCheckpoint(checkpoint)
 	const isBuild = week.phase === "build"
 
-	// The week is long enough to hand in — that gate is the trail's, and this
+	// The week is long enough to hand in – that gate is the trail's, and this
 	// node would be locked otherwise. What is left to say is whether it was
 	// long enough for the machine actually on the wall. A surplus earned in an
 	// earlier week pays for a thin one, so this reads the running total against
 	// the pace rather than this week against its target.
 	//
 	// The running total is the fund plus what unreviewed weeks will earn. Coins
-	// are minted at approval, so the fund alone reads this very week — the one
-	// being handed in, which nobody can have reviewed yet — as earning nothing,
+	// are minted at approval, so the fund alone reads this very week – the one
+	// being handed in, which nobody can have reviewed yet – as earning nothing,
 	// and warned everyone on every submit.
 	const goal = printerById(goalId)
 	const owed = Math.max(0, Math.ceil(paceTarget(goal, week.id) - printerFund - pendingCoins(week.id)))
@@ -1932,7 +1932,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	// and posted elsewhere afterwards.
 	const [clipUrl, setClipUrl] = useState<string | null>(null)
 	// A blob URL for a locally picked clip holds the whole video in memory
-	// until it is revoked — the preview is replaced or the sheet closes, not
+	// until it is revoked – the preview is replaced or the sheet closes, not
 	// before.
 	useEffect(() => {
 		return () => {
@@ -1963,7 +1963,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const buildNotes = works === "no" && writeup.trim() ? writeup.trim() : undefined
 
 	const total = isBuild ? 2 : 3
-	// The project's own parts list, as kept on its page — read fresh when the
+	// The project's own parts list, as kept on its page – read fresh when the
 	// sheet opens, because it is edited there and this is the moment it is
 	// handed in. Null while it loads; the cart total reads zero until then.
 	const [bom, setBom] = useState<{ items: BomLine[]; taxShippingUsd: number } | null>(null)
@@ -1990,14 +1990,14 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	/**
 	 * A tier is a claim about hours as much as about money: its funded block has
 	 * to be covered, and everything past it earns. Tier 2 funds thirteen hours,
-	 * so thirteen hours pay for the project and the fourteenth already earns —
+	 * so thirteen hours pay for the project and the fourteenth already earns –
 	 * which is why the tier cannot be raised at the last moment on hours that
 	 * were only ever enough for a smaller one.
 	 *
 	 * Two asks come out of that, and they are different numbers. The floor is
 	 * the funded block, and below it the week cannot be handed in at all, so it
 	 * is a gate. The target is this maker's own goal, and it moves when they
-	 * change what they are saving for — a P1S asks far more of a tier 2 week
+	 * change what they are saving for – a P1S asks far more of a tier 2 week
 	 * than an Ender does. Missing the target is a warning the sheet already
 	 * gives; missing the floor is a refusal.
 	 */
@@ -2027,8 +2027,8 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	 * Handing a week in, in the order the pieces depend on each other.
 	 *
 	 * The tier first, because it is what the reviewer will be deciding against.
-	 * Then the closing reel, awaited, so the submission a reviewer opens — and
-	 * the YSWS row written just after it, which looks the reel up — already has
+	 * Then the closing reel, awaited, so the submission a reviewer opens – and
+	 * the YSWS row written just after it, which looks the reel up – already has
 	 * the video rather than one arriving behind it. It is posted once: a retry
 	 * after a refused hand-in reuses it. The submission last, and only once it
 	 * has gone through is the reel offered for posting online.
@@ -2110,7 +2110,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		>
 			{/* On every step, not just the last one: a maker who is short on hours
           should find that out before working through the checklist, not after.
-          It warns and does not block — the hours needed for a printer at all
+          It warns and does not block – the hours needed for a printer at all
           are the trail's gate, and this is the gap to the one they chose. */}
 			{!hasCover && (
 				<div
@@ -2242,8 +2242,8 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 												<span className="block font-semibold text-navy">Tax &amp; shipping</span>
 												<span className="block text-[0.8rem] leading-snug text-navy-soft">for the whole order</span>
 											</td>
-											<td className="px-4 py-2.5 text-navy-soft">—</td>
-											<td className="px-4 py-2.5 text-navy-soft">—</td>
+											<td className="px-4 py-2.5 text-navy-soft">–</td>
+											<td className="px-4 py-2.5 text-navy-soft">–</td>
 											<td className="px-4 py-2.5 font-semibold text-navy tabular-nums">
 												${bom.taxShippingUsd.toFixed(2)}
 											</td>
@@ -2280,7 +2280,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								<IconCart className="text-base" /> Screenshots of your cart
 							</p>
 							<p className="text-[0.88rem] leading-snug text-navy-soft">
-								The checkout page with the total visible. Any vendor — add one per cart if the order is split.
+								The checkout page with the total visible. Any vendor – add one per cart if the order is split.
 							</p>
 							<ImageUploads images={carts} onChange={setCarts} folder="sessions" max={10} label="Cart screenshot" />
 						</div>
@@ -2395,7 +2395,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							<p className="label mb-2 text-magenta">Does it work?</p>
 							<div className="grid gap-2.5 sm:grid-cols-2">
 								<OptionRow selected={works === "yes"} onClick={() => setWorks("yes")}>
-									<span className="text-[0.95rem] font-bold text-navy">Yes — it does the thing</span>
+									<span className="text-[0.95rem] font-bold text-navy">Yes – it does the thing</span>
 								</OptionRow>
 								<OptionRow selected={works === "no"} onClick={() => setWorks("no")}>
 									<span className="text-[0.95rem] font-bold text-navy">Not yet</span>
@@ -2414,7 +2414,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 											rows={5}
 											value={writeup}
 											onChange={(e) => setWriteup(e.target.value)}
-											placeholder="The display initialises but stays blank. I think the reset pin is floating — next revision ties it through a 10k to 3V3 and I will bodge it in the meantime."
+											placeholder="The display initialises but stays blank. I think the reset pin is floating – next revision ties it through a 10k to 3V3 and I will bodge it in the meantime."
 											className={cx(inputClass, "resize-none")}
 										/>
 									</Field>

@@ -5,7 +5,7 @@ import prisma from "@/lib/prisma"
 
 /**
  * Create one themed project row, when its week's "create a project" checkpoint
- * is opened — never ahead of time.
+ * is opened – never ahead of time.
  *
  * Rows used to be made for all five themes at sign-up. Most people do not
  * reach week five (the program expects steep drop-off between weeks), so that

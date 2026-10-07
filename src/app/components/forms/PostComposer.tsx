@@ -46,7 +46,7 @@ export function PostComposer({
 	const [error, setError] = useState<string | null>(null)
 	/**
 	 * An object key that arrived from a phone. When set it stands in for the
-	 * file input entirely — the bytes are already in R2, so there is nothing
+	 * file input entirely – the bytes are already in R2, so there is nothing
 	 * left to upload.
 	 */
 	const [handoffKey, setHandoffKey] = useState<string | null>(null)

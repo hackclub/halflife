@@ -15,7 +15,7 @@ export type ReviewTone = "line" | "sky" | "teal" | "orange" | "coral"
  *
  * Attention wins: something rejected or sent back is what the maker needs to
  * see first, then a phase under review. Otherwise it follows the current
- * phase — the build once it has started, the design until then — so a design
+ * phase – the build once it has started, the design until then – so a design
  * that passed while the build has not begun still reads as approved. The
  * per-phase chips carry the detail this single colour cannot.
  */

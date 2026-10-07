@@ -37,7 +37,7 @@ async function read<T>(res: Response): Promise<T> {
  * Hours that came from the editor rather than the journal.
  *
  * Firmware and CAD scripting are tracked by Hackatime, and a link here is what
- * folds that time into the week — the trail reads it back as off-book hours on
+ * folds that time into the week – the trail reads it back as off-book hours on
  * the next snapshot, which is why every change ends in a refresh rather than a
  * local patch. The journal is still the evidence; this is only the clock.
  *

@@ -10,8 +10,8 @@ const mediaSchema = z.object({
 })
 
 /**
- * A timelapse is a Lapse timelapse, named by its id. Everything else about it —
- * owner, runtime, playback URL — is read back from Lapse by the route rather
+ * A timelapse is a Lapse timelapse, named by its id. Everything else about it –
+ * owner, runtime, playback URL – is read back from Lapse by the route rather
  * than taken from the request, because those are the facts a reviewer relies
  * on and the client is the one party with a reason to overstate them.
  */

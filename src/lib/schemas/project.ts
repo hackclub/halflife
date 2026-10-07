@@ -89,7 +89,7 @@ export const BOM_MARGIN_USD = 3
  *
  * `apply` false is a preview: read the repo and report what would land. `apply`
  * true writes, and `replace` says whether that means the whole list or an
- * addition to it — the caller is shown the count first and chooses. Both
+ * addition to it – the caller is shown the count first and chooses. Both
  * default false, so an empty body is the harmless preview.
  */
 export const bomImportSchema = z

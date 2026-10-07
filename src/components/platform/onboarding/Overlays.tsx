@@ -18,14 +18,14 @@ import { Spotlight } from "./Spotlight"
 
 /**
  * The tour walks the left rail from top to bottom, one tab per step, in the
- * order the nav itself is written — so the highlight travels down the list the
+ * order the nav itself is written – so the highlight travels down the list the
  * way a finger would, and finishing the tour has covered every door out of the
  * page rather than the five somebody thought to mention.
  *
  * The Doomscroller is the one step that names two things: the tab, and the
  * player the tab opens. It carries `also` for the rail feed, which is what
  * lights both at once and draws the line between them. Where the rail is not on
- * screen — below xl, or with the feed closed — the step falls back to the tab
+ * screen – below xl, or with the feed closed – the step falls back to the tab
  * alone, and below lg `selector` finds the header link instead, since the phone
  * tab bar has no Doomscroller cell.
  */
@@ -118,7 +118,7 @@ export function Overlays() {
 	// The one question that has to be answered before the platform lets anyone
 	// carry on. It is read off the server rather than off the ceremony state, so
 	// it is the same on every device and comes back on every sign-in until it is
-	// answered — clearing localStorage or switching laptop does not lose it.
+	// answered – clearing localStorage or switching laptop does not lose it.
 	//
 	// `onboardingDone` is the other half of the gate and not a detail: asked
 	// before the first checkpoint it would be a question about hardware

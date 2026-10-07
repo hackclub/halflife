@@ -62,7 +62,7 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 	// sent back for changes can have its entries corrected.
 	const phaseStatus = session.phase === "DESIGN" ? session.themeProject.designStatus : session.themeProject.buildStatus
 	if (phaseStatus === PhaseStatus.in_review) {
-		return fail("PHASE_LOCKED", "This week is in review — unsubmit it before editing its entries")
+		return fail("PHASE_LOCKED", "This week is in review – unsubmit it before editing its entries")
 	}
 	if (isPhaseDecided(phaseStatus)) {
 		return fail("PHASE_LOCKED", "This week has been submitted and decided, so its entries are final")
@@ -79,7 +79,7 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 	// re-verification, so a clip that went private since does not fail an
 	// unrelated words edit; brand-new ids go through the same ownership and
 	// single-use checks as creation; lapse rows for anything else come off.
-	// Ids naming this session's own older R2 uploads are kept silently — those
+	// Ids naming this session's own older R2 uploads are kept silently – those
 	// rows predate Lapse and are never touched here.
 	const rows = await prisma.sessionTimelapse.findMany({
 		where: { workSessionId: sessionId },
@@ -169,7 +169,7 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 	// still, exactly as editing it does.
 	const phaseStatus = session.phase === "DESIGN" ? session.themeProject.designStatus : session.themeProject.buildStatus
 	if (phaseStatus === PhaseStatus.in_review) {
-		return fail("PHASE_LOCKED", "This week is in review — unsubmit it before deleting its entries")
+		return fail("PHASE_LOCKED", "This week is in review – unsubmit it before deleting its entries")
 	}
 	// Once the week is decided its entries are final, exactly as editing is.
 	if (isPhaseDecided(phaseStatus)) {
@@ -179,7 +179,7 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 
 	// Deleting the only session on a day removes that day from the run, so the
 	// streak has to be recomputed with it. PATCH does not, because it cannot
-	// change `effectiveDate` — the set of journalled days is the same after it.
+	// change `effectiveDate` – the set of journalled days is the same after it.
 	await prisma.$transaction(async (tx) => {
 		await tx.workSession.update({
 			where: { id: sessionId },

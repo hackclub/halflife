@@ -4,7 +4,7 @@
  *
  * Per browser, in localStorage, like the player prefs: a convenience, not a
  * record, and a new laptop starting from the newest reel is no loss. Kept for
- * the viewer's own day only — tomorrow the top of the feed is new, and that
+ * the viewer's own day only – tomorrow the top of the feed is new, and that
  * is where they should start. Every read and write is guarded.
  */
 const KEY = "halflife.doomscroller.position.v1"
@@ -38,6 +38,6 @@ export function savePosition(position: FeedPosition): void {
 	try {
 		window.localStorage.setItem(KEY, JSON.stringify({ ...position, day: today() }))
 	} catch {
-		/* quota or private mode — they start from the top next time */
+		/* quota or private mode – they start from the top next time */
 	}
 }

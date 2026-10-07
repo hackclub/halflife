@@ -39,7 +39,7 @@ export const getProgramSettings = cache(async (): Promise<ProgramSettings> => {
  * Counted in calendar days rather than elapsed milliseconds: a week flips at
  * program-timezone midnight, the same instant `weekOpensAt` starts the next.
  * Counting from the UTC epoch would stamp the last four or five hours of every
- * Sunday evening in New York — the hours people actually journal in — into the
+ * Sunday evening in New York – the hours people actually journal in – into the
  * next week while the current one is still open.
  *
  * The start is anchored to its UTC calendar date, which is what `eventStartDate`
@@ -189,7 +189,7 @@ export const WEEK_CLOSED_MESSAGE =
 
 /**
  * Whether work can still be logged against a project's week. Passed weeks can
- * still be submitted — that is the whole point of closing them — but not
+ * still be submitted – that is the whole point of closing them – but not
  * added to, edited or trimmed.
  */
 export async function isWeekOpen(userId: string, themeProjectId: string, week: number): Promise<boolean> {
@@ -326,7 +326,7 @@ export interface ShopAccess {
 
 /**
  * The shop stays open past its close date for anyone with work still in the
- * queue, and for a grace window after their last review — otherwise credit
+ * queue, and for a grace window after their last review – otherwise credit
  * awarded at the buzzer is unspendable through no fault of the participant.
  */
 export async function getShopAccess(userId: string): Promise<ShopAccess> {
@@ -384,7 +384,7 @@ export function phaseStatusField(phase: Phase): "designStatus" | "buildStatus" {
 /**
  * A decided phase is frozen. Its entries are the record the decision was made
  * against, so no edit, delete or new entry may land until an admin returns it
- * or un-approves it — either of which moves it back to `update_requested`.
+ * or un-approves it – either of which moves it back to `update_requested`.
  *
  * `in_review` is a separate, softer lock: that one is released by the
  * participant unsubmitting, so it is checked apart from this.

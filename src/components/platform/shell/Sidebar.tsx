@@ -81,7 +81,7 @@ export function Sidebar({ className }: { className?: string }) {
 
 			{/* From xl up the goal rides the status rail on the right, where the
           Doomscroller lives. Below that there is no second rail, so it stays
-          here — one instance is on screen at a time either way. */}
+          here – one instance is on screen at a time either way. */}
 			<GoalTracker className="xl:hidden" />
 
 			{/* The one number that only grows, kept above the account card. */}
@@ -172,7 +172,7 @@ function TimeLogged() {
 
 /**
  * Admins only: open every checkpoint on the trail, whatever its order, hours
- * or dates say, for walking the flow. It only opens nodes — whatever is saved
+ * or dates say, for walking the flow. It only opens nodes – whatever is saved
  * from one still goes through the server's own checks.
  */
 function BypassLocks() {

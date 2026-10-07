@@ -79,8 +79,8 @@ export function FirstCheckpoint() {
 			<OnboardingFlow
 				initial={view}
 				onComplete={() => {
-					// Marked done before anything is closed, so the goal prompt — which
-					// is gated on it — is already up by the time this modal unmounts,
+					// Marked done before anything is closed, so the goal prompt – which
+					// is gated on it – is already up by the time this modal unmounts,
 					// rather than arriving a refresh later over the tab tour.
 					finishOnboarding()
 					setOpenCheckpoint(null)

@@ -37,7 +37,7 @@ type SlackEvent = {
 	bot_id?: string
 }
 
-/** New top-level message in #half-life-help — post it to the private
+/** New top-level message in #half-life-help – post it to the private
  * tickets channel with a "Mark as helped" button, reply in-thread with an
  * "I'm all set" button the ticket's own author can use to self-resolve, and
  * drop the pending reaction on the original so the channel shows at a glance
@@ -103,7 +103,7 @@ async function handleHelpMessage(event: SlackEvent) {
 
 	// The ticket is real, so the question now has an open state to show for it:
 	// a loading emoji on the original, which resolution swaps for the done one.
-	// Best-effort — the two buttons are what actually resolve the ticket, so a
+	// Best-effort – the two buttons are what actually resolve the ticket, so a
 	// reaction that never lands just leaves the question unmarked rather than
 	// unresolvable.
 	try {
@@ -112,7 +112,7 @@ async function handleHelpMessage(event: SlackEvent) {
 		console.error(`[slack] failed to mark ${ref.helpTs} as pending:`, err)
 	}
 
-	// The mirror is up, so the ticket is real — remember it for future counts.
+	// The mirror is up, so the ticket is real – remember it for future counts.
 	try {
 		await rememberHelpTicket({
 			authorSlackId: ref.authorId,
@@ -193,7 +193,7 @@ async function handleHelpMessage(event: SlackEvent) {
 	})
 }
 
-/** Someone joined the main channel — pull them into the rest of the Half
+/** Someone joined the main channel – pull them into the rest of the Half
  * Life channels too. Skips the bot's own membership changes so wiring the
  * bot into the main channel doesn't loop back into inviting itself. */
 async function handleMainChannelJoin(event: SlackEvent) {
@@ -241,7 +241,7 @@ export async function POST(request: Request) {
 
 	// Slack retries delivery if it doesn't get a 200 within 3s. Reprocessing a
 	// retry would double-invite members and double-post tickets, so only the
-	// original delivery is handled — Slack has already gotten the point across.
+	// original delivery is handled – Slack has already gotten the point across.
 	if (request.headers.get("x-slack-retry-num")) {
 		return NextResponse.json({ ok: true })
 	}
@@ -249,7 +249,7 @@ export async function POST(request: Request) {
 	if (body.type === "event_callback" && body.event) {
 		const event = body.event
 		// Ack first, work second. Slack abandons a delivery it hasn't seen a 200
-		// for within 3s and retries, and the guard above drops every retry — so if
+		// for within 3s and retries, and the guard above drops every retry – so if
 		// a slow Slack call held the response open past that window, the retry
 		// carrying the same work would be discarded and the invite lost with
 		// nothing in the logs. `after` keeps the response instant so the retry
@@ -262,8 +262,8 @@ export async function POST(request: Request) {
 					await handleHelpMessage(event)
 				}
 			} catch (err) {
-				// Nothing above this frame can observe a failure — the response is
-				// already sent and Slack has its 200 — so the log is the only trace.
+				// Nothing above this frame can observe a failure – the response is
+				// already sent and Slack has its 200 – so the log is the only trace.
 				console.error("[slack] event handler threw:", err)
 			}
 		})

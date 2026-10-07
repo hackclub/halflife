@@ -32,9 +32,9 @@ export interface Checkpoint {
 	 * "or" between them.
 	 *
 	 * At the end of a week past its tier floor: one more session (`keep`), or
-	 * wrap the week up (`submit`) — finishing one is what settles the route.
+	 * wrap the week up (`submit`) – finishing one is what settles the route.
 	 * At the start of week 1: pitch the idea (`idea`), or skip straight to the
-	 * first devlog (`skip`) — the reel is optional and never gates anything
+	 * first devlog (`skip`) – the reel is optional and never gates anything
 	 * past the fork.
 	 */
 	branch?: "keep" | "submit" | "idea" | "skip"
@@ -82,7 +82,7 @@ export interface Week extends WeekMeta {
 	 * project instead.
 	 */
 	projectId?: string
-	/** The tier of this week's project — it decides how many chapters there are. */
+	/** The tier of this week's project – it decides how many chapters there are. */
 	tier: 1 | 2 | 3
 	/** Hours that fund the project. Above this, time banks instead. */
 	fundingHours: number
@@ -105,7 +105,7 @@ export interface Tier {
 	hours: string
 	toBank: string
 	detail: string
-	/** Hours that fund the project — the floor that opens the closing reel. */
+	/** Hours that fund the project – the floor that opens the closing reel. */
 	fundingHours: number
 }
 

@@ -10,7 +10,7 @@ import { useStore } from "@/lib/store"
 
 /**
  * The shelves, in the order they read on screen. Every item on them is paid
- * for out of the whole balance — every coin is spendable on anything.
+ * for out of the whole balance – every coin is spendable on anything.
  */
 const CATEGORIES = [
 	{ label: "All", match: null },
@@ -45,7 +45,7 @@ export function ShopGrid({
 	 *
 	 * The server takes the coins inside one locked transaction and the order
 	 * lands PENDING for someone to fulfil, so there is nothing to do optimistically
-	 * here beyond refusing to double-fire — a second click while the first is in
+	 * here beyond refusing to double-fire – a second click while the first is in
 	 * the air is how somebody ends up with two printers.
 	 */
 	async function buy(item: ShopItemView) {

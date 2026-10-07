@@ -30,7 +30,7 @@ function preview(text: string, max = 90): string {
  * Where the Half Life team posts to the Doomscroller, and where a reel or
  * comment that should not be visible is taken down.
  *
- * The composer is the only way to make an announcement — the participant
+ * The composer is the only way to make an announcement – the participant
  * trail only posts reels against a checkpoint. The moderation lists are the
  * only way to hide one: the API routes behind them have always existed (the
  * comment one was added alongside this page), and a moderation capability
@@ -167,7 +167,7 @@ export default async function AdminFeedPage() {
 						))}
 					</Table>
 				)}
-				<p className="hl-hint">Where a reel went viral — the links participants claimed for the virality prizes.</p>
+				<p className="hl-hint">Where a reel went viral – the links participants claimed for the virality prizes.</p>
 			</Panel>
 		</section>
 	)

@@ -8,8 +8,8 @@ import { signInWith, useSession } from "@/lib/auth-client"
  *
  * It answers the flag across the top edge: the Hack Club flag hangs from the
  * top-left, this hangs from the top-right, and the dateline centres between
- * them. Same material as the dateline — flat ink, square corners, no border,
- * no shadow, the one container this system has — so it reads as a third mark
+ * them. Same material as the dateline – flat ink, square corners, no border,
+ * no shadow, the one container this system has – so it reads as a third mark
  * mounted on the scene rather than as a nav bar that crept in.
  *
  * Paper on ink rather than a cyan block. Cyan is the sign-up CTA's colour one

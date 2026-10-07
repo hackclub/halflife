@@ -5,7 +5,7 @@ import { useHandoff } from "@/lib/use-handoff"
 /**
  * The desktop half of the handoff, in the staff console's dress.
  *
- * The rules — minting, polling, retiring the code once a phone has delivered —
+ * The rules – minting, polling, retiring the code once a phone has delivered –
  * live in `useHandoff`, because the platform's reel modal needs exactly the
  * same ones wearing completely different clothes. Only the markup is here.
  */
@@ -20,7 +20,7 @@ export function PhoneHandoff({ onReady }: Readonly<{ onReady: (objectKey: string
 			{!minted ? (
 				<>
 					<p className="hl-hint" style={{ margin: 0 }}>
-						Record on your phone instead — scan a code, film it, and the video lands here. No signing in on the phone.
+						Record on your phone instead – scan a code, film it, and the video lands here. No signing in on the phone.
 					</p>
 					<div>
 						<Button onClick={mint} disabled={busy}>
@@ -32,7 +32,7 @@ export function PhoneHandoff({ onReady }: Readonly<{ onReady: (objectKey: string
 
 			{minted && status === "waiting" ? (
 				<div className="hl-stack hl-stack--tight">
-					{/* Server-rendered SVG from our own origin — the token is never sent
+					{/* Server-rendered SVG from our own origin – the token is never sent
               to a third-party QR service. */}
 					<div
 						role="img"

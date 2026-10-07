@@ -13,7 +13,7 @@ type Params = { params: Promise<{ id: string }> }
  *
  * It changes no state: the phase stays returned or rejected. It records the
  * maker's own words against the submission and puts it in front of staff, so a
- * decision is never silently overridden by a button — and, because
+ * decision is never silently overridden by a button – and, because
  * `ReviewDispute.submissionId` is unique, neither is the queue flooded.
  */
 export const POST = withRoute(async (req: Request, { params }: Params) => {

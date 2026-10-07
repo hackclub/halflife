@@ -10,7 +10,7 @@ import styles from "./not-found.module.css"
 /**
  * The 404: the production line, run out.
  *
- * The landing draws the programme as a line — a header plate, then a tapered
+ * The landing draws the programme as a line – a header plate, then a tapered
  * weld down into each station. Here the weld leaves the header and is sheared
  * off before it lands, and the station it was heading for is one of the
  * page's own reserved slots, empty, labelled with the address that was asked

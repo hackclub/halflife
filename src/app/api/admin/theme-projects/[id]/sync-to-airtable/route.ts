@@ -28,7 +28,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	const parsed = await parseBody(req, bodySchema)
 	if (parsed.error) return parsed.error
 
-	// A row is a submission, so only a phase that has been handed in gets one —
+	// A row is a submission, so only a phase that has been handed in gets one –
 	// never a draft, which is how an empty 0-hour row would otherwise appear.
 	const project = await prisma.themeProject.findUnique({
 		where: { id },
@@ -52,7 +52,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		() => syncSubmissionToYsws(id, parsed.data.phase),
 	)
 
-	// A skip means Airtable was never asked, or the row could not be built —
+	// A skip means Airtable was never asked, or the row could not be built –
 	// report it instead of showing the admin a green result for nothing.
 	if (result && "skipped" in result) {
 		return fail("UNAVAILABLE", `Airtable did not take the sync (${result.skipped}); check the deployment configuration`)

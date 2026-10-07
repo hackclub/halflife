@@ -13,8 +13,8 @@ export const metadata: Metadata = {
 /**
  * A third root layout, for the phone.
  *
- * Separate from (platform) because this page is public by design — the whole
- * point is recording without signing in on your phone — so it must not sit
+ * Separate from (platform) because this page is public by design – the whole
+ * point is recording without signing in on your phone – so it must not sit
  * under a layout whose job is to enforce a session.
  */
 export default function HandoffLayout({ children }: Readonly<{ children: React.ReactNode }>) {

@@ -12,7 +12,7 @@ export interface QueueItem {
 	phase: Phase
 	themeLabel: string
 	projectTitle: string
-	// Display name only — the queue is open to every REVIEWER, so maker
+	// Display name only – the queue is open to every REVIEWER, so maker
 	// emails must not be scrapable page by page (M6).
 	participant: { id: string; name: string | null }
 	submittedAt: Date
@@ -37,7 +37,7 @@ export async function getReviewQueue(opts: {
 		resolvedAt: null,
 		...(opts.phase ? { phase: opts.phase } : {}),
 		// Nobody reviews their own work, so it should never show up as something
-		// to act on. The decision path refuses it too — this is so the queue
+		// to act on. The decision path refuses it too – this is so the queue
 		// counts are honest, not the enforcement.
 		themeProject: { deletedAt: null, userId: { not: opts.reviewerId } },
 	}
@@ -133,7 +133,7 @@ export async function getSubmissionDetail(
 	if (reviewerId && submission.themeProject.userId === reviewerId) return null
 
 	// Maker contact + risk flags only for ADMIN/AUDITOR (contact) and
-	// REVIEW_HOURS holders (risk flags) — the volume reviewer role gets the
+	// REVIEW_HOURS holders (risk flags) – the volume reviewer role gets the
 	// work, not the person (M6). Redacted here, before any caller can render
 	// or serialize them.
 	if (!includeContact || !includeRiskFlags) {

@@ -12,8 +12,8 @@ import { type Forge, forgeFromRepoUrlOrNull } from "@/lib/forge"
  *   path to the repo is kept whole as `ownerPath`; `owner` is only the last
  *   segment, for the places (a display name, a fallback label) that want one.
  * - **Bare slugs.** The sync's pinned target was once `owner/name` with no
- *   host. Those still parse — against a named forge, since a host-less slug
- *   cannot say which one it means — and the caller supplies the forge it must
+ *   host. Those still parse – against a named forge, since a host-less slug
+ *   cannot say which one it means – and the caller supplies the forge it must
  *   have come from. See `parseRepoRef(value, { forge })`.
  */
 export interface RepoRef {
@@ -28,7 +28,7 @@ export interface RepoRef {
 
 // A path segment only ever contains these. Checking them here is the one
 // chokepoint that stops a crafted URL (`github.com/a/..%2f..%2fadmin`) adding
-// path segments to an API URL built from this — Stasis's rule, kept as is.
+// path segments to an API URL built from this – Stasis's rule, kept as is.
 const SEGMENT = /^[A-Za-z0-9._-]+$/
 
 /** `.git` is a clone suffix, not part of the name. */
@@ -44,7 +44,7 @@ function stripGit(segment: string): string {
  * Both forms reach here and cannot share one parse: `new URL()` on a bare
  * `owner/name` reads `owner` as the HOSTNAME, so it never matches a forge and
  * every bare slug would be refused. The tell is whether the value names a host
- * at all — a scheme, or a leading `www.`/hostname segment before the first
+ * at all – a scheme, or a leading `www.`/hostname segment before the first
  * slash.
  *
  * `opts.forge` names the forge a bare slug is assumed to belong to. Without it,
@@ -125,7 +125,7 @@ export function repoRefToUrl(ref: RepoRef): string {
  * The repo reference for a project's stored repo link, or null when it is not a
  * forge we can act on (a Codeberg URL, say).
  *
- * A project's `githubRepo` is allowed to be any repo link — a maker may keep
+ * A project's `githubRepo` is allowed to be any repo link – a maker may keep
  * their work somewhere we do not speak, and the link is still theirs to show.
  * Only the read and write paths need this to resolve, and they refuse when it
  * does not.

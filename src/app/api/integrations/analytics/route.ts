@@ -13,7 +13,7 @@ export const maxDuration = 120
  * `summary` is program-wide: DAU per day, the funnel with drop-off at each
  * step, and how many people crossed 1h / 5h / 10h / 20h in each week. Add
  * `?users=true` for one row per person with every timestamp, hours, coins and
- * streaks — that includes emails, so it sits behind the integration key.
+ * streaks – that includes emails, so it sits behind the integration key.
  */
 export const GET = withRoute(async (req: NextRequest) => {
 	const denied = requireIntegrationAuth(req)

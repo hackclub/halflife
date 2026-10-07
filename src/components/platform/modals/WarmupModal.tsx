@@ -18,7 +18,7 @@ function fmtH(h: number) {
 
 /**
  * Start a warm-up project: the season's "create a project" sheet, for any
- * hardware idea rather than a theme, plus the one question a warm-up adds —
+ * hardware idea rather than a theme, plus the one question a warm-up adds –
  * whether it is handed in as a design or as a finished build. It is handed in
  * once, as that.
  */
@@ -59,7 +59,7 @@ export function WarmupModal({ onClose, closesOn }: { onClose: () => void; closes
 			router.refresh()
 			onClose()
 		} catch {
-			setError("Could not reach the server. Nothing was created — try again.")
+			setError("Could not reach the server. Nothing was created – try again.")
 		} finally {
 			setSaving(false)
 		}
@@ -157,7 +157,7 @@ export function WarmupModal({ onClose, closesOn }: { onClose: () => void; closes
 										{t.detail}
 										{phase !== "BUILD" && (
 											<span className="mt-1 block text-navy-soft/90">
-												You can submit on tier {t.id} from {fmtH(submitFloorFor(t.fundingHours))} of design time — every
+												You can submit on tier {t.id} from {fmtH(submitFloorFor(t.fundingHours))} of design time – every
 												hour past that earns 5 spendable coins.
 											</span>
 										)}

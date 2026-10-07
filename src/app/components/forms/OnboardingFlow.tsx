@@ -447,7 +447,7 @@ export function OnboardingFlow({
 													onChange={() => setPickedTier(tier.id)}
 												/>
 												<h3 id={headingId} className="text-[1.2rem] leading-tight font-extrabold text-navy">
-													{tier.name} — ${tier.grantUsd}{" "}
+													{tier.name} – ${tier.grantUsd}{" "}
 													<span className="font-semibold text-navy-soft">({tier.estimate})</span>
 												</h3>
 												{chosen ? (

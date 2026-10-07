@@ -10,8 +10,8 @@ type Params = { params: Promise<{ id: string }> }
 export const dynamic = "force-dynamic"
 
 /**
- * One project's extension. It reopens that project alone — its passed weeks
- * take journal entries again, and it can be submitted past a global close —
+ * One project's extension. It reopens that project alone – its passed weeks
+ * take journal entries again, and it can be submitted past a global close –
  * where the user-level one on /api/admin/users/[id] covers everything they own.
  */
 export const PATCH = withRoute(async (req: Request, { params }: Params) => {

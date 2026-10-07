@@ -15,7 +15,7 @@ export interface UploadedImage {
 }
 
 /**
- * Screenshots picked from this machine — several at once, and more later.
+ * Screenshots picked from this machine – several at once, and more later.
  *
  * Only a file picker: this is evidence that already exists on the screen it
  * was taken on, so there is nothing to record and no phone to hand off to.

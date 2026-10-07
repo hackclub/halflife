@@ -8,13 +8,13 @@ import { Theme } from "@/app/generated/prisma/enums"
  * starts, not after it.
  *
  * A tier decides ONE thing: how many of a design week's hours are spoken for by
- * the project itself. Those `fundingHours` earn dollars, not coins — they are
+ * the project itself. Those `fundingHours` earn dollars, not coins – they are
  * what the grant buys. Every hour above them is banked or spent.
  *
  * It decides nothing about the machine at the end of the season. That is paid
  * for out of banked coins at the same rate on every tier, and how many hours a
  * week must bank is a property of the printer someone is saving for, not of the
- * tier they are working at — see ./printers.ts. Tier 1 and Tier 3 both reach a
+ * tier they are working at – see ./printers.ts. Tier 1 and Tier 3 both reach a
  * Bambu P1S; Tier 3 simply has more funded hours sitting underneath the same
  * banking.
  *
@@ -50,7 +50,7 @@ export interface TierShowcaseProject {
 }
 
 // Numbers are the program designer's, and match the tier cards in the platform
-// comp. Changing them is this file and nothing else — every review freezes the
+// comp. Changing them is this file and nothing else – every review freezes the
 // numbers it actually used onto SubmissionReview, so editing these does not
 // rewrite anyone's history.
 export const TIERS = [
@@ -58,7 +58,7 @@ export const TIERS = [
 		id: 1,
 		name: "Tier 1",
 		grantUsd: 30,
-		estimate: "~10–15h",
+		estimate: "~10-15h",
 		showcase: {
 			[Theme.PCB]: [
 				{
@@ -88,7 +88,7 @@ export const TIERS = [
 		id: 2,
 		name: "Tier 2",
 		grantUsd: 65,
-		estimate: "~16–23h",
+		estimate: "~16-23h",
 		showcase: {
 			[Theme.PCB]: [
 				{

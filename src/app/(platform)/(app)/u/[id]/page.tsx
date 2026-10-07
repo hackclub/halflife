@@ -25,8 +25,8 @@ export const dynamic = "force-dynamic"
  * posted to the Doomscroller.
  *
  * Reached by selecting a poster's name on a reel. Someone else's and your own
- * are the same page — the projects and reels are all public work, and nothing
- * private is read for it — so the only difference is the `isViewer` flag, which
+ * are the same page – the projects and reels are all public work, and nothing
+ * private is read for it – so the only difference is the `isViewer` flag, which
  * the header uses to name the trail as the way on rather than a back link to a
  * feed you may not have come from.
  */

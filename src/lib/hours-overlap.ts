@@ -1,5 +1,5 @@
 /**
- * How much of a period was logged twice — once through a journal entry and once
+ * How much of a period was logged twice – once through a journal entry and once
  * through a linked Hackatime project.
  *
  * Someone who codes with Hackatime running and records a Lapse timelapse of the
@@ -37,7 +37,7 @@ export type Interval = {
 }
 
 /**
- * A Hackatime span is one of these. Named so call sites say what they hold — a
+ * A Hackatime span is one of these. Named so call sites say what they hold – a
  * cached `HackatimeSpan[]` on a link reads as tracked intervals, where an
  * `Interval[]` reads as arithmetic.
  */
@@ -48,7 +48,7 @@ export type HackatimeSpan = Interval
  * ascending intervals.
  *
  * Timelapses and Hackatime spans both arrive as lists that can touch or overlap
- * each other — two recordings made back to back, a span straddling a break. The
+ * each other – two recordings made back to back, a span straddling a break. The
  * union is taken first so an overlap is never counted twice merely because two
  * windows described the same minute, and so the intersection below can walk both
  * sides in one pass. Zero-length and backwards intervals are dropped: they are
@@ -76,7 +76,7 @@ export function mergeIntervals(intervals: readonly Interval[]): Interval[] {
 }
 
 /**
- * Seconds covered by both sets — the time two tools counted once each.
+ * Seconds covered by both sets – the time two tools counted once each.
  *
  * Both sides are merged first, so the answer is the size of the intersection of
  * the two unions, counted once however many windows happened to describe it.
@@ -150,7 +150,7 @@ export function timelapseWindow(recordedAtMs: number | Date | null, coveredSecon
  * spans themselves.
  *
  * The bounds are stored with the data because a bare list of spans cannot say
- * what period it covers — and a cached answer to a NARROWER question than the one
+ * what period it covers – and a cached answer to a NARROWER question than the one
  * being asked is not an answer at all. Asked to check an overlap outside the
  * window it was fetched for, the caller must refetch rather than conclude "no
  * overlap" from spans that simply never covered those minutes.

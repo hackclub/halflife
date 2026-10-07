@@ -5,7 +5,7 @@ import { sanitize, sanitizeOptional } from "@/lib/sanitize"
 import type { BomItemInput } from "@/lib/schemas/project"
 
 /**
- * A project's bill of materials — the parts list the tier's funding is asked
+ * A project's bill of materials – the parts list the tier's funding is asked
  * against, kept on the project page and handed in with the design week.
  */
 
@@ -50,7 +50,7 @@ export function listBom(themeProjectId: string): Promise<BomLine[]> {
  */
 export function bomLockReason(project: { designStatus: PhaseStatus; buildStatus: PhaseStatus }): string | null {
 	if (project.designStatus === PhaseStatus.in_review || project.buildStatus === PhaseStatus.in_review) {
-		return "Unsubmit before editing — a phase is in review"
+		return "Unsubmit before editing – a phase is in review"
 	}
 	if (project.designStatus === PhaseStatus.approved) {
 		return "The design week is approved, so the parts list is final"

@@ -20,7 +20,7 @@ Coolify.
    the journal, so without this app nobody can finish a journal entry.
 
    Generic OAuth providers register as first-class social providers in
-   better-auth 1.7, so the callback path is `/api/auth/callback/<providerId>` —
+   better-auth 1.7, so the callback path is `/api/auth/callback/<providerId>` –
    **not** an `oauth2`-prefixed one. The URI must match `BETTER_AUTH_URL`
    exactly: same scheme, no trailing slash.
 
@@ -33,7 +33,7 @@ Coolify.
    **Ari (project review).** Create the program at ari.hackclub.com, then set
    `ARI_PROGRAM_ID` and `ARI_SIGNING_SECRET`, register
    `https://<host>/api/integrations/ari/webhook` as its webhook URL, and set
-   `ARI_WEBHOOK_SECRET` from that page — a different secret from the signing
+   `ARI_WEBHOOK_SECRET` from that page – a different secret from the signing
    one. Until all three are set, submission sends no-op and the webhook route
    answers 503 rather than trusting an unverified body. Create the `ari-retry`
    job below so a failed send is replayed, and note that failed sends are also
@@ -50,20 +50,20 @@ Coolify.
    Note the returned connection string. Storage can be expanded later
    (`expand_database_storage`); it cannot be shrunk.
 
-4. **Generate secrets** — `openssl rand -base64 32` for each of
+4. **Generate secrets** – `openssl rand -base64 32` for each of
    `BETTER_AUTH_SECRET`, `INTEGRATION_API_KEY`, `EXPORT_API_KEY` and (if you are
    pulling PII) `PII_ENCRYPTION_KEY`.
 
    Keep `.env` files on the operator's machine only. Rotate any credential that
    has ever lived in one before the directory is shared or archived, and delete
    stale copies such as `.env.old`. If `PULL_HCA_PII=true`, confirm the HCA app
-   has the `address` and `birthdate` scopes enabled — HCA refuses the whole
-   sign-in if a requested scope is missing — and set `PII_ENCRYPTION_KEY`;
+   has the `address` and `birthdate` scopes enabled – HCA refuses the whole
+   sign-in if a requested scope is missing – and set `PII_ENCRYPTION_KEY`;
    without the key, PII pulling quietly turns itself off (a `[config]` line at
    boot says so) and grant rows ship without an address.
 
 5. **Create the R2 bucket**, an API token scoped to it, and a public custom
-   domain. Put that hostname in `NEXT_PUBLIC_UPLOAD_HOST` — `next/image` refuses
+   domain. Put that hostname in `NEXT_PUBLIC_UPLOAD_HOST` – `next/image` refuses
    any host not in `next.config.ts`'s `remotePatterns`, and the failure is a
    broken image with no console error.
 
@@ -79,11 +79,11 @@ Coolify.
    Watch `get_build_logs`. `next.config.ts` runs at build time, so
    `NEXT_PUBLIC_UPLOAD_HOST` only reaches the image's `next/image` allowlist if
    the builder passes it as a build arg; runtime env does not (the Dockerfile
-   declares it). `NEXT_PUBLIC_APP_URL` is optional — the browser falls back to
+   declares it). `NEXT_PUBLIC_APP_URL` is optional – the browser falls back to
    the page origin and server code to `BETTER_AUTH_URL`.
 
    Set `REQUIRE_BASICAUTH=true` plus
-   `BASICAUTH_USERNAME`/`BASICAUTH_PASSWORD` until launch day — the gate now
+   `BASICAUTH_USERNAME`/`BASICAUTH_PASSWORD` until launch day – the gate now
    503s rather than serving if the flag is on and either credential is blank.
 
    **Changing an env var later: use `add_env_vars`, not `set_env_vars`.**
@@ -92,18 +92,18 @@ Coolify.
 
    `DATABASE_URL` is the only database setting. Prisma 7 dropped the `url =`
    line from `schema.prisma`, so the CLI reads it from `prisma.config.ts` and
-   the runtime reads it from the driver adapter in `lib/prisma.ts` — both off
+   the runtime reads it from the driver adapter in `lib/prisma.ts` – both off
    `process.env.DATABASE_URL`. **Never set `SHADOW_DATABASE_URL` in
    production**: `prisma migrate deploy` refuses to run when the shadow URL
    equals the main one, and the pod crashloops at boot. It exists for the CI
    schema-vs-migrations check and nowhere else.
 
-7. **Create the ingress** — `create_ingress` for `half-life.k.hackclub.dev`.
+7. **Create the ingress** – `create_ingress` for `half-life.k.hackclub.dev`.
    Orchard already terminates TLS for that domain, so no `validate_dns` step is
    needed; a vanity domain later needs `validate_dns` first.
 
 8. **Check health.** `GET https://<host>/api/health` must return `{"ok":true}`.
-   `{"ok":false}` means the database is unreachable or migrations did not run —
+   `{"ok":false}` means the database is unreachable or migrations did not run –
    look for the `[boot]` lines in `get_pod_logs`.
 
 9. **Seed.** `exec_in_pod` → `pnpm db:seed`. Idempotent; it creates the settings
@@ -148,7 +148,7 @@ needs duplicating into the job.
 `loops-sync` fills `Loops - halfLifeLastLoginAt`, `Loops - halfLifeLastEntryAt`
 and the ten week checkboxes on the `Signups` table. Those columns **were not
 being filled because the sync could not find anybody's row**, not because the
-dates were wrong — measured on the live base: 0 of the first 2000 rows had any
+dates were wrong – measured on the live base: 0 of the first 2000 rows had any
 Loops column set, dates or weeks alike.
 
 Finding the row is a three-key join, tried strongest first:
@@ -161,7 +161,7 @@ Finding the row is a three-key join, tried strongest first:
 
 **On the live base key 1 does not exist.** `Half-Life User ID` answers 422
 `UNKNOWN_FIELD_NAME`; none of the other candidate columns exist either, so email
-is the only identity the table holds — and it is the one that fails, since a
+is the only identity the table holds – and it is the one that fails, since a
 sign-up row holds whatever address was typed on the landing page while
 `User.email` is what the identity provider later issued. That is the whole bug.
 
@@ -171,7 +171,7 @@ Two consequences worth knowing:
   single-line-text field named exactly `Half-Life User ID` to `Signups`. The
   drain probes for it and starts filling it on its own within ten minutes
   (key 2 keeps the sync working for everyone in the meantime). Rows signed up
-  before the column exists are not backfilled — for those, key 2 is the join.
+  before the column exists are not backfilled – for those, key 2 is the join.
 - **The drain used to fail wholesale on that column.** Airtable rejects a
   `fields` payload naming a column the table lacks, for the *whole* record, so
   every drained row carrying a user id lost its email, name and referral number
@@ -207,7 +207,7 @@ Three details that decide whether this works or quietly rots:
   that, so a timeout surfaces as a clean curl failure rather than a killed pod.
 
 The jobs hit the public ingress, and `src/proxy.ts` already excludes
-`/api/integrations` from basic auth — verify that before enabling
+`/api/integrations` from basic auth – verify that before enabling
 `REQUIRE_BASICAUTH`, or every job goes red at once.
 
 Most of these routes accept `?dryRun=true` and return what they would have
@@ -216,31 +216,31 @@ Use it before trusting a schedule.
 
 ## Routine operations
 
-**Deploy** — merge to `main`; auto-deploy builds and rolls.
+**Deploy** – merge to `main`; auto-deploy builds and rolls.
 
-**Roll back** — `rollback_deployment` reverts the *image*, not the *database*. A
+**Roll back** – `rollback_deployment` reverts the *image*, not the *database*. A
 release containing a destructive migration is not rollback-safe. Keep migrations
 additive (add nullable, backfill, drop in a later release) and this never comes
 up.
 
-**Migration failed at boot** — the pod crashloops and `pod.crashing` fires;
+**Migration failed at boot** – the pod crashloops and `pod.crashing` fires;
 `get_pod_logs` has the Prisma error. Fix forward with a new migration. Restore a
 backup only if data was lost.
 
-**A job went red** — `list_job_runs` → `get_job_run_logs`, then `run_job` by
+**A job went red** – `list_job_runs` → `get_job_run_logs`, then `run_job` by
 hand. Reproduce with `?dryRun=true` first.
 
-**Stop participant writes right now** — flip *Submissions open* off at
+**Stop participant writes right now** – flip *Submissions open* off at
 `/admin/program`. It is a database row with an audit trail, deliberately not an
 env var: stasis put this in `SUBMISSIONS_CLOSED`, nobody flipped it in the
 dashboard, and submissions stayed open for two weeks after the event ended.
 Reviews and the shop stay up.
 
-**A grant row never reached Airtable** — `/admin/program` lists them with a
+**A grant row never reached Airtable** – `/admin/program` lists them with a
 retry button, and `/admin/audit?action=AIRTABLE_SYNC_FAILURE` has the errors.
 The `airtable-retry` job does the same sweep hourly.
 
-**Import the pre-season warm-up projects** — `/admin/program` → *Warm-up
+**Import the pre-season warm-up projects** – `/admin/program` → *Warm-up
 projects from Airtable* pulls the rows the Fillout form wrote into the `YSWS
 Project Submission` table (`AIRTABLE_YSWS_TABLE_ID`) into Half Life. It creates
 an account for any maker who has not signed in yet, files each project on the
@@ -250,7 +250,7 @@ skipped. Anything it could not take is listed with its reason. Each row becomes
 its own project, so a maker who handed the form in more than once gets every
 project they submitted.
 
-**Scale for a launch spike** — `scale_deployment` to 2–3 replicas; the app is
+**Scale for a launch spike** – `scale_deployment` to 2-3 replicas; the app is
 stateless and sessions live in Postgres. Stagger the rollout rather than going
 from 0 to 3 at once, so several `prisma migrate deploy` runs are not racing at
 boot (Prisma's advisory lock handles it, but there is no reason to lean on it).
@@ -260,5 +260,5 @@ boot (Prisma's advisory lock handles it, but there is no reason to lean on it).
 `./dev.sh` starts Postgres in Docker, waits on its healthcheck, generates the
 Prisma client, migrates, seeds and runs `next dev`. It is safe to re-run.
 
-The app works with no Airtable, no R2 and no Slack configured — every one of
+The app works with no Airtable, no R2 and no Slack configured – every one of
 those integrations no-ops with a warning when its credentials are missing.

@@ -3,7 +3,7 @@ import { HttpError } from "@/lib/errors"
 import prisma from "@/lib/prisma"
 
 /**
- * Lapse — where every timelapse is recorded.
+ * Lapse – where every timelapse is recorded.
  *
  * The platform stopped taking timelapse uploads: people record on Lapse, publish
  * the timelapse there (public or unlisted), and pick it when they write the
@@ -18,7 +18,7 @@ import prisma from "@/lib/prisma"
 
 export const LAPSE_API_BASE = (process.env.LAPSE_API_BASE ?? "https://api.lapse.hackclub.com/api").replace(/\/$/, "")
 
-/** Where people watch a timelapse — Lapse's own page, not the raw stream. */
+/** Where people watch a timelapse – Lapse's own page, not the raw stream. */
 const LAPSE_WEB_BASE = (process.env.LAPSE_WEB_BASE ?? "https://lapse.hackclub.com").replace(/\/$/, "")
 
 export function lapseTimelapseUrl(id: string): string {
@@ -30,7 +30,7 @@ const TIMEOUT_MS = 10_000
 export interface LapseTimelapse {
 	id: string
 	title: string
-	/** Wall-clock seconds recorded — Lapse derives it from the snapshots. */
+	/** Wall-clock seconds recorded – Lapse derives it from the snapshots. */
 	durationSeconds: number
 	visibility: "PUBLIC" | "UNLISTED" | "FAILED_PROCESSING"
 	createdAt: number
@@ -100,7 +100,7 @@ async function call<T>(accessToken: string, path: string, query?: Record<string,
 			cache: "no-store",
 		})
 	} catch {
-		throw new HttpError("LAPSE_UNAVAILABLE", "Lapse is not answering right now — try again in a minute")
+		throw new HttpError("LAPSE_UNAVAILABLE", "Lapse is not answering right now – try again in a minute")
 	}
 
 	if (res.status === 401 || res.status === 403) throw NOT_LINKED()
@@ -135,7 +135,7 @@ export async function listMyTimelapses(userId: string, cursor?: string) {
  * The timelapses a session is about to claim, each confirmed with Lapse as the
  * claimant's own, published, and finished processing.
  *
- * The id alone proves nothing — Lapse ids show up in every share link — so
+ * The id alone proves nothing – Lapse ids show up in every share link – so
  * this is the same rule the R2 uploads had ("evidence has to be your own"),
  * asked of the system that actually knows. Refused as a whole rather than
  * filtered: a participant who thinks they attached a timelapse and finds it

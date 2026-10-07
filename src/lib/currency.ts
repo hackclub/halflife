@@ -10,7 +10,7 @@ type Tx = Prisma.TransactionClient
  *
  * The balance is `SUM(amount)` over an append-only table, so there is no row to
  * lock and READ COMMITTED lets two concurrent transactions both read the same
- * pre-existing balance and both commit — which is a double-spend, not a
+ * pre-existing balance and both commit – which is a double-spend, not a
  * theoretical race: the window spans several round trips, and the goods on the
  * other side are physical.
  *
@@ -48,8 +48,8 @@ export interface Balances {
 	/** Every coin. Buys anything in the shop, printers included. */
 	spendable: number
 	/**
-	 * The legacy locked printer fund. New mints never land here — everything
-	 * is spendable now — but old rows keep their bucket until they are
+	 * The legacy locked printer fund. New mints never land here – everything
+	 * is spendable now – but old rows keep their bucket until they are
 	 * converted, so this drains to zero rather than vanishing.
 	 */
 	banked: number
@@ -58,7 +58,7 @@ export interface Balances {
 }
 
 /**
- * Authoritative balances. Always SUM(amount) — there is no balance column.
+ * Authoritative balances. Always SUM(amount) – there is no balance column.
  */
 export async function getBalances(tx: Tx, userId: string): Promise<Balances> {
 	const [spendable, banked] = await Promise.all([
@@ -70,8 +70,8 @@ export async function getBalances(tx: Tx, userId: string): Promise<Balances> {
 
 /**
  * What this user can spend right now: the whole balance, whatever it was
- * minted as. The locked printer fund is gone — every coin is spendable on
- * anything — so there is nothing left for the category to decide. The
+ * minted as. The locked printer fund is gone – every coin is spendable on
+ * anything – so there is nothing left for the category to decide. The
  * parameter stays so the two call sites do not have to learn about the
  * merge; it is ignored.
  */
@@ -149,7 +149,7 @@ export interface ReconcileParams {
  *
  * This is what makes re-review idempotent: approving the same project five
  * times converges on one balance instead of compounding, and un-approving is
- * the same call with `target: 0` rather than a separate reversal code path —
+ * the same call with `target: 0` rather than a separate reversal code path –
  * so there is no separate reversal code path to get wrong.
  *
  * Stasis instead pairs every kind with a *_REVERSED twin and cancels by hand,

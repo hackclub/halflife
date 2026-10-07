@@ -12,21 +12,21 @@ import { streakAsOf } from "@/lib/streak"
  * ## What is shown, and what is not
  *
  * It is deliberately thin. A row carries a display name, an avatar, a project
- * title and numbers — never an email, a location or anything under
+ * title and numbers – never an email, a location or anything under
  * `encrypted*`. (The avatar URL embeds the author's Slack id, because that is
  * how the image is fetched; that is an accepted exposure, not an oversight.)
  * A page about other people is where a careless `select` leaks the whole user
  * table, so this query names every column it wants rather than spreading a row.
  *
  * Object keys are deliberately NOT here. R2 serves them publicly, so a key is
- * a capability to fetch that file — and the journal's photographs already ride
+ * a capability to fetch that file – and the journal's photographs already ride
  * inside the body as Markdown, which is the copy this page renders. Shipping
  * the keys as well put every participant's session media into every other
  * participant's page payload for nothing.
  *
  * Journal bodies are shown as written. Participants write them knowing a
  * reviewer will read them, and the program already publishes reels to the
- * Doomscroller, so the audience is peers either way — but it is a real choice
+ * Doomscroller, so the audience is peers either way – but it is a real choice
  * and this is where it is made. Soft-deleted sessions and deleted projects are
  * excluded, so removing an entry removes it here too.
  */
@@ -41,7 +41,7 @@ export interface JournalRow {
 	project: string
 	body: string
 	minutes: number
-	/** YYYY-MM-DD in the program timezone — what the day grouping reads. */
+	/** YYYY-MM-DD in the program timezone – what the day grouping reads. */
 	day: string
 	when: string
 }

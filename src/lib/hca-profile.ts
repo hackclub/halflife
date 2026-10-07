@@ -10,13 +10,13 @@ import prisma from "@/lib/prisma"
  * scopes the app is granted. The OIDC userinfo endpoint has the standard
  * claims only when their standard scopes are granted; Half Life's app is given
  * `basic_info` instead of `email`, and under it the email, verification status
- * and addresses live on HCA's own `/api/v1/me` identity — which is where Stasis
+ * and addresses live on HCA's own `/api/v1/me` identity – which is where Stasis
  * reads them too. So both are asked, and each field is taken from whichever
  * has it.
  *
  * Why the fields are written here rather than by better-auth's
  * `mapProfileToUser`: they are declared `input: false`, so a participant cannot
- * set `verificationStatus` to "verified" on themselves through update-user —
+ * set `verificationStatus` to "verified" on themselves through update-user –
  * and better-auth 1.7 applies that same rule to a provider's profile,
  * silently dropping every one of them at sign-up. The protection has to stay,
  * so the server writes them from HCA's own answer.
@@ -44,11 +44,11 @@ export interface HcaAddress {
 
 /** One HCA identity, whichever endpoint each field came from. */
 export interface HcaIdentity {
-	/** The OIDC subject — what the account row is keyed on. */
+	/** The OIDC subject – what the account row is keyed on. */
 	sub: string | null
 	email: string | null
 	emailVerified: boolean
-	/** "first last" — the string the sinks that need a whole person keep. */
+	/** "first last" – the string the sinks that need a whole person keep. */
 	name: string | null
 	/**
 	 * HCA's `nickname` claim under `profile`: what they go by. This is the name
@@ -74,7 +74,7 @@ export interface HcaIdentity {
  * `userinfoUrl`, which threw on the same fetch.
  *
  * So the document is wanted but never depended on. When it answers, it is used;
- * when it does not, the endpoints fall back to HCA's published, stable routes —
+ * when it does not, the endpoints fall back to HCA's published, stable routes –
  * the same paths its `auth` app mounts (`/oauth/authorize`, `/oauth/token` from
  * Doorkeeper, `/oauth/userinfo` and `/oauth/discovery/keys` from
  * doorkeeper-openid_connect). These are what the discovery document returns, so
@@ -214,7 +214,7 @@ export async function fetchHcaIdentity(accessToken: string): Promise<HcaIdentity
 		name,
 		// The `profile` scope's nickname claim. HCA answers it from its own
 		// name field, and `/api/v1/me` carries no equivalent, so unlike the
-		// others there is no second endpoint to fall back to — a missing one
+		// others there is no second endpoint to fall back to – a missing one
 		// leaves null and the display falls back to `name`.
 		nickname: str(userinfo?.nickname),
 		image: str(userinfo?.picture),
@@ -247,7 +247,7 @@ export function encryptedFieldsFrom(identity: HcaIdentity): Record<string, strin
  * better-auth refuses to link an incoming OAuth identity to a local user that
  * is not already `emailVerified` (`account.accountLinking.requireLocalEmailVerified`
  * defaults true). That gate guards against somebody pre-registering an
- * unverified account at a victim's address — but in this app nobody can
+ * unverified account at a victim's address – but in this app nobody can
  * pre-register a Half Life user: the only unverified, account-less rows are
  * made by staff imports (the Airtable warm-up import and the Stasis import).
  * A participant created that way therefore dead-ends at `account_not_linked`
@@ -258,8 +258,8 @@ export function encryptedFieldsFrom(identity: HcaIdentity): Record<string, strin
  * normal signing-in path completes. An unverified claim changes nothing: it
  * must not become a way into a pre-created account.
  *
- * The address is matched exactly as better-auth matches it — lowercased, as
- * its own `findUserByEmail` does — so the row repaired here is the row it will
+ * The address is matched exactly as better-auth matches it – lowercased, as
+ * its own `findUserByEmail` does – so the row repaired here is the row it will
  * look up next.
  *
  * Returns whether a row was changed, so the caller can say so in the log.

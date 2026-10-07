@@ -13,7 +13,7 @@ import { uploadFile } from "@/lib/use-handoff"
 const COVER_TYPES = "image/png,image/jpeg,image/webp,image/gif"
 
 /**
- * The project's thumbnail — what its card and the review queue show.
+ * The project's thumbnail – what its card and the review queue show.
  *
  * Until one is uploaded the newest picture in the journal stands in, and
  * before there is one of those, the week's own scene on the week's colour, so

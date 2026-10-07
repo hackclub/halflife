@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic"
 type Params = { params: Promise<{ id: string; itemId: string }> }
 
 /**
- * The line, only if it belongs to one of the caller's projects — looked up
+ * The line, only if it belongs to one of the caller's projects – looked up
  * through the project so someone else's item id reads as not found.
  */
 async function guard(userId: string, id: string, itemId: string) {

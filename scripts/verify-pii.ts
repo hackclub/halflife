@@ -15,7 +15,7 @@ import { Phase, PostKind, PostStatus, Role, Theme } from "../src/app/generated/p
  *
  *   1. Two participants exist with sentinel values in every sensitive column.
  *      Signed in as one, no page and no API response may contain the other's
- *      email, Slack id, address, phone or birthday — nor, for the encrypted
+ *      email, Slack id, address, phone or birthday – nor, for the encrypted
  *      columns, the viewer's own. `/api/me` returning the viewer's OWN email
  *      and Slack id is expected and allowed: that is the endpoint's whole job.
  *

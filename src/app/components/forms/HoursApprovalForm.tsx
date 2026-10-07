@@ -11,7 +11,7 @@ type Kind = "session" | "hackatime"
  * before the phase total is computed from it.
  *
  * Only rendered while the reviewer holds the claim, because the route refuses
- * a batch another reviewer's live claim covers — showing the field without a
+ * a batch another reviewer's live claim covers – showing the field without a
  * claim would be an input that always errors.
  */
 export function HoursApprovalForm(

@@ -11,8 +11,8 @@ import type { Week } from "@/lib/types"
  * How long is left in the week being lived, as the biggest figure on the trail.
  *
  * It sits under that week's last node, where the eye already goes looking for
- * how the week ends, and it wears the week's own accent — the banner's ground a
- * few hundred pixels up — so it reads as part of the week rather than as a
+ * how the week ends, and it wears the week's own accent – the banner's ground a
+ * few hundred pixels up – so it reads as part of the week rather than as a
  * widget dropped onto the page.
  *
  * Only the ongoing week draws it. A week that has not opened is greyed out and
@@ -28,7 +28,7 @@ import type { Week } from "@/lib/types"
  *   figure takes, so nothing on the trail jumps when the count lands.
  * - **Ends cleanly.** At zero the store's own week timer flips `weekPassed`
  *   (store.tsx re-arms its clock for the next boundary), the gate above closes
- *   and the plate goes away — rather than counting up into negative days, which
+ *   and the plate goes away – rather than counting up into negative days, which
  *   is what a tab left open overnight would otherwise show.
  *
  * The figures are split into units rather than printed as one string so each is
@@ -90,7 +90,7 @@ export function WeekCountdown({ week }: { week: Week }) {
 									{parts === null ? "--" : unit.key === "days" ? parts.days : pad2(parts[unit.key])}
 								</span>
 								{/* The labels, not the figures, are what the four columns cannot
-                  go below — "MINUTES" is the widest word here — so they are the
+                  go below – "MINUTES" is the widest word here – so they are the
                   ones that shrink on a phone. */}
 								<span className="label mt-1.5 text-[0.62rem] sm:text-[0.78rem]" style={{ opacity: 0.7 }}>
 									{unit.label}

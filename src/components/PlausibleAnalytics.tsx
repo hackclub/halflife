@@ -7,11 +7,11 @@ import Script from "next/script"
  *
  * Through next/script rather than bare <script> tags: React refuses to run an
  * inline script it renders on the client, and says so in the console. Either
- * may land first — the stub and the library each keep whatever the other set.
+ * may land first – the stub and the library each keep whatever the other set.
  *
  * In the landing site's and the platform's layouts, and deliberately not the
  * phone hand-off's: that page's path is `/r/<token>`, and Plausible records
- * every path it sees — the token would go to a third party.
+ * every path it sees – the token would go to a third party.
  */
 export function PlausibleAnalytics() {
 	return (

@@ -3,8 +3,8 @@ import type { CSSProperties } from "react"
 /**
  * The comp's hand-drawn edges.
  *
- * Every outline in the Figma file — card borders, the rules between nav items,
- * the hairline down the page — is a wobbly ink stroke rather than a clean
+ * Every outline in the Figma file – card borders, the rules between nav items,
+ * the hairline down the page – is a wobbly ink stroke rather than a clean
  * rectangle. Reproducing that as exported artwork would mean a fixed-size
  * image per card, and the cards are fluid, so the corners would stretch.
  *
@@ -12,7 +12,7 @@ import type { CSSProperties } from "react"
  * around by a turbulence displacement map. That scales to any size, stays
  * crisp at any zoom, costs one filter definition for the whole page, and can
  * be varied per card with `seed` so two cards side by side are not identical
- * tracings of each other — which is what gives a hand-drawn look its life.
+ * tracings of each other – which is what gives a hand-drawn look its life.
  *
  * The filter is applied to the BORDER ELEMENT ONLY, never to a container.
  * Filtering an element that holds text drags the text through the same
@@ -67,7 +67,7 @@ export function WobbleDefs() {
 /**
  * A hand-drawn border, sized to whatever it is placed inside.
  *
- * The parent needs `position: relative` — `.hl-wobbly` does that and removes
+ * The parent needs `position: relative` – `.hl-wobbly` does that and removes
  * the plain CSS border it replaces.
  */
 export function WobbleBorder({
@@ -83,7 +83,7 @@ export function WobbleBorder({
 
 	return (
 		<svg aria-hidden="true" focusable="false" className="hl-wobble-svg" preserveAspectRatio="none" style={style}>
-			{/* Geometry comes from CSS — see .hl-wobble-svg rect in globals.css.
+			{/* Geometry comes from CSS – see .hl-wobble-svg rect in globals.css.
           SVG attributes cannot take calc(), and silently collapse if given it. */}
 			<rect
 				rx={radius}
@@ -97,7 +97,7 @@ export function WobbleBorder({
 	)
 }
 
-/** A hand-drawn horizontal rule — the line between nav items. */
+/** A hand-drawn horizontal rule – the line between nav items. */
 export function WobbleRule({ stroke = "var(--color-border)" }: Readonly<{ stroke?: string }>) {
 	return (
 		<svg

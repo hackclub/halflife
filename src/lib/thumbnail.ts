@@ -16,15 +16,15 @@ interface ReelFrames {
 /**
  * How a project is pictured when it has no cover of its own.
  *
- * A reel frame can be a video, and a renderer has to know that — it uses a
- * `<video>` and takes the opening frame — so the two kinds are told apart
+ * A reel frame can be a video, and a renderer has to know that – it uses a
+ * `<video>` and takes the opening frame – so the two kinds are told apart
  * rather than flattened into one URL string that every caller would guess at.
  */
 export type ProjectThumbnail = { kind: "image"; url: string } | { kind: "video"; url: string }
 
 /**
  * The picture a project is shown by, in falling order: the cover the maker
- * chose, the newest image in their journal, then the newest reel's own frame —
+ * chose, the newest image in their journal, then the newest reel's own frame –
  * a thumbnail if the pipeline made one, else the reel's opening frame.
  *
  * Null when there is none, and the caller falls back to the week's scene.

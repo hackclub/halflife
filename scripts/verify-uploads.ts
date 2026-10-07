@@ -9,7 +9,7 @@ import "dotenv/config"
  *
  * The fetch is the point. Credentials that can write and a bucket the browser
  * can read are two different things: a deployment can upload every reel
- * successfully and play none of them, and nothing in the app would say so —
+ * successfully and play none of them, and nothing in the app would say so –
  * `publicUrlFor` just returns a URL that 403s. This catches that before there
  * is a feed sitting on top of it.
  *

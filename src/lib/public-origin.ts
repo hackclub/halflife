@@ -4,11 +4,11 @@ import { NextResponse } from "next/server"
  * The public origin a same-host redirect should point at.
  *
  * `new URL(path, request.url)` reads the host Next saw on the socket, which
- * behind the ingress is the pod's own address (`0.0.0.0`, `10.x`) — so a
+ * behind the ingress is the pod's own address (`0.0.0.0`, `10.x`) – so a
  * logged-out visitor bounced through `/signed-out` landed on
  * `http://0.0.0.0:3000/` instead of the site. The forwarded host/proto the
  * ingress sets fixes that, but those headers are attacker-controlled unless
- * the ingress overwrites them — so they are only trusted when they name a
+ * the ingress overwrites them – so they are only trusted when they name a
  * host we actually serve (L5). Anything else falls back to the `Host`
  * header and request URL, which are the right answers for local
  * development, where no proxy headers exist.

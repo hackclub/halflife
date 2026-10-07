@@ -29,7 +29,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		metadata: { phase: parsed.data.phase },
 	})
 
-	// Taken back before review, so its row goes too — otherwise reviewers on ari
+	// Taken back before review, so its row goes too – otherwise reviewers on ari
 	// would see a hand-in that no longer exists. `removed` marks the row gone, so
 	// the next submission of this phase writes a fresh one.
 	after(async () => {

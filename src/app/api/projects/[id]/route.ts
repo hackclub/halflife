@@ -74,13 +74,13 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 	// Editing the thing a reviewer is currently reading changes what they are
 	// deciding on halfway through.
 	if (project.designStatus === PhaseStatus.in_review || project.buildStatus === PhaseStatus.in_review) {
-		return fail("PHASE_LOCKED", "Unsubmit before editing — a phase is in review")
+		return fail("PHASE_LOCKED", "Unsubmit before editing – a phase is in review")
 	}
 
 	const data = parsed.data
 
 	// A starter can only be taken if it is one of this week's: anyone may
-	// switch to one from the project page after creation, beginner or not —
+	// switch to one from the project page after creation, beginner or not –
 	// the tier-1 scoping below is what keeps a starter a starter, not who
 	// was offered it during onboarding.
 	if (data.starterProjectId) {
@@ -216,7 +216,7 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 		}
 		return count > 0
 	})
-	if (!deleted) return fail("PHASE_LOCKED", "This project just changed — reload and try again")
+	if (!deleted) return fail("PHASE_LOCKED", "This project just changed – reload and try again")
 
 	await logAudit({
 		action: AuditAction.USER_DELETE_PROJECT,

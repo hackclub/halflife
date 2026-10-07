@@ -6,7 +6,7 @@ import { publicRedirect } from "@/lib/public-origin"
  * session cookie they still carry, then go to the landing page.
  *
  * Not straight to `/`. The proxy sends a request for `/` on to the trail
- * whenever a session cookie is merely present — it never validates one — so a
+ * whenever a session cookie is merely present – it never validates one – so a
  * stale or forged cookie would bounce between `/` and `/dashboard` forever.
  * Only reached once `getSession` has already said no, so nothing cleared here
  * was a working session.

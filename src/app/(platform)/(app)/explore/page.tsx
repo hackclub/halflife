@@ -49,7 +49,7 @@ function Entry({ entry, viewerId }: { entry: JournalRow; viewerId: string }) {
 	const href = `/projects/${entry.projectId}#${entry.id}`
 	return (
 		// `min-w-0` and `overflow-wrap: anywhere` on the card itself, so nothing in
-		// it — the entry, a project or author name — can be wider than the column:
+		// it – the entry, a project or author name – can be wider than the column:
 		// a grid item is otherwise as wide as its longest unbroken word, and one
 		// pasted URL carried the card, and then the page, off the right edge.
 		<Panel
@@ -111,7 +111,7 @@ function Entry({ entry, viewerId }: { entry: JournalRow; viewerId: string }) {
 				)}
 			</header>
 
-			{/* Journals are written in Markdown, images included — the pictures that
+			{/* Journals are written in Markdown, images included – the pictures that
           back a session live inside the sentence that explains them, so the
           entry renders as written rather than with a tray of photos
           underneath. Only its opening, though: the feed is for finding work,

@@ -4,7 +4,7 @@
  * React escapes attribute values, so a URL in `href`/`src` was never an
  * injection. CodeQL's `js/xss-through-dom` cannot see that: it reads the DOM
  * value behind the string as text and the attribute write as an HTML sink, and
- * the only guards it models are `DomBasedXss::Sanitizer`s (`Xss.qll`) —
+ * the only guards it models are `DomBasedXss::Sanitizer`s (`Xss.qll`) –
  * `encodeURI`, DOMPurify, or a global `.replace` of `<`, `'` or `"`. A scheme
  * allow-list (https-only, say) is not one, which is why a correct link guard
  * like `safeHref` does not clear the alert but this does.

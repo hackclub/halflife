@@ -26,8 +26,8 @@ const createSchema = z
 /**
  * Start a warm-up project: any hardware idea, before week 1 opens.
  *
- * A maker may start as many as they like — warm-up rows are exempt from the
- * one-per-theme index — and none of them takes one of the five season slots.
+ * A maker may start as many as they like – warm-up rows are exempt from the
+ * one-per-theme index – and none of them takes one of the five season slots.
  * Everything after this is the ordinary flow: journal against it, then hand
  * it in once, as the phase chosen here.
  */

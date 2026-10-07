@@ -41,7 +41,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		metadata: { phase: parsed.data.phase, submissionId: submission.id },
 	})
 
-	// Into the YSWS table as "Pending Review" — the table reviewers work from on
+	// Into the YSWS table as "Pending Review" – the table reviewers work from on
 	// ari.hackclub.com. After the response, so a slow Airtable never holds up a
 	// hand-in; a failure lands in the audit log and the retry job replays it.
 	after(async () => {

@@ -125,8 +125,8 @@ export interface FinalizeOutcome {
 /**
  * Record a review decision and move everything that depends on it.
  *
- * The whole thing is one transaction because a partial application — status
- * moved but credit not written, or credit written twice — is the failure that
+ * The whole thing is one transaction because a partial application – status
+ * moved but credit not written, or credit written twice – is the failure that
  * costs real money.
  */
 export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutcome> {
@@ -143,7 +143,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 
 	// Nobody reviews their own work. Every account gets its own five themed
 	// projects at signup, reviewers included, so without this a REVIEWER could
-	// approve their own design, set their own tier, and mint their own credit —
+	// approve their own design, set their own tier, and mint their own credit –
 	// which is exactly what the role is not supposed to be able to do. Admins are
 	// not exempt: the point is a second pair of eyes, not a trust level.
 	if (submission.themeProject.userId === input.reviewerId) {
@@ -162,7 +162,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 	const approving = input.result === ReviewResult.APPROVED
 
 	// A build cannot be approved before its design is. Submitting out of order is
-	// fine — see canSubmitPhase — but paying out of order is not. A warm-up
+	// fine – see canSubmitPhase – but paying out of order is not. A warm-up
 	// project has no design to wait for: its one phase is whatever the form
 	// collected.
 	if (
@@ -176,8 +176,8 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 
 	let tier = project.tier
 	if (approving && phase === Phase.DESIGN) {
-		// The tier's dollars are parts money, so the decision lands here — before
-		// the participant starts building — not at build approval.
+		// The tier's dollars are parts money, so the decision lands here – before
+		// the participant starts building – not at build approval.
 		const chosen = input.tier ?? project.tier
 		if (!isTierId(chosen)) {
 			throw new HttpError("VALIDATION_FAILED", "Assign a funding tier when approving a design")
@@ -358,8 +358,8 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 			// The legacy locked half and the spendable half are separate kinds, so
 			// an un-approval can zero each one independently and neither has to
 			// work out which share of a combined number was its own. New approvals
-			// always target zero for the locked half — every coin is spendable
-			// now — which also migrates an old approval to the single pot the
+			// always target zero for the locked half – every coin is spendable
+			// now – which also migrates an old approval to the single pot the
 			// next time it is re-decided, with no change to its total.
 			await reconcileGrant(tx, {
 				userId: project.userId,
@@ -471,7 +471,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
  * Reverse an approval.
  *
  * Because credit is reconciled to a target, undoing is the same call with
- * `target: 0` — there is no separate reversal code path, so there is no
+ * `target: 0` – there is no separate reversal code path, so there is no
  * separate reversal code path to get wrong.
  */
 export async function unapprovePhase(
@@ -522,7 +522,7 @@ export async function unapprovePhase(
 			if (inFlight) {
 				throw new HttpError(
 					"CONFLICT",
-					"A grant send is in flight for this design — wait for it to finish before un-approving",
+					"A grant send is in flight for this design – wait for it to finish before un-approving",
 				)
 			}
 		}
@@ -558,7 +558,7 @@ export async function unapprovePhase(
 
 		if (phase === Phase.DESIGN) {
 			// Includes the banked half. Forced savings are still savings someone was
-			// credited for work that is no longer approved, so they unwind too —
+			// credited for work that is no longer approved, so they unwind too –
 			// otherwise un-approving a design leaves free printer money behind.
 			await reconcileGrant(tx, {
 				userId: project.userId,

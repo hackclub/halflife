@@ -19,7 +19,7 @@ import "server-only"
  *   `…/-/blob/HEAD/path` on GitLab. A link to a maker's file has to use the
  *   right one or it 404s.
  *
- * The API surfaces are different enough that they are NOT modelled here — the
+ * The API surfaces are different enough that they are NOT modelled here – the
  * read path (lib/github) and the write path (lib/forge-write) each switch on
  * `id` internally, where the API shapes are visible side by side and the
  * differences can be explained. This module is only the identity layer: what a
@@ -80,10 +80,10 @@ export const FORGES: Record<ForgeId, Forge> = {
 		nestedGroups: true,
 		// `api` covers reading a repo's files AND creating a commit through the
 		// Commits API, which `write_repository` alone does not (that is Git-over-
-		// HTTP only — the docs are explicit that it is "not using the API").
+		// HTTP only – the docs are explicit that it is "not using the API").
 		// `read_user` is the picker's equivalent of GitHub's `read:user`.
 		//
-		// `api` is broad — it is read/write over every project the person can see.
+		// `api` is broad – it is read/write over every project the person can see.
 		// GitLab offers nothing narrower that still covers "commit to an arbitrary
 		// project the maker names", so this is asked for at link time and explained
 		// in the picker, exactly as GitHub's `repo` scope is.

@@ -46,7 +46,7 @@ const FILTERS: { id: Filter; label: string; status: ReportStatusFilter }[] = [
 ]
 
 /**
- * Where user reports land. A report changes nothing by itself — it puts a
+ * Where user reports land. A report changes nothing by itself – it puts a
  * reel, comment, project, user or devlog in front of staff. Deciding one
  * closes it as resolved or dismissed; taking the thing down stays the
  * existing hide action next to it, so a report is never a silent takedown.
@@ -135,7 +135,7 @@ function ReportRow({ report }: { report: ContentReportRow }) {
 				)}
 				<div className="hl-hint">
 					by {subject.author}
-					{report.details ? ` — “${preview(report.details, 80)}”` : ""}
+					{report.details ? ` – “${preview(report.details, 80)}”` : ""}
 				</div>
 			</td>
 			<td>

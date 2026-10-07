@@ -197,7 +197,7 @@ export function ModalTitle({
 	 * measure. For a wide modal whose body is a full-width grid, the capped line
 	 * stops halfway and reads as a ragged column the grid below does not share;
 	 * a sentence short enough to stay near one line would rather square up with
-	 * it. Long copy still wants the cap — that is why this is opt-in.
+	 * it. Long copy still wants the cap – that is why this is opt-in.
 	 */
 	subWide?: boolean
 }) {

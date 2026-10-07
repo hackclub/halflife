@@ -7,7 +7,7 @@ import ImageSlot from "@/components/site/image-slot"
 import { BUILD_CARDS } from "@/lib/site/content"
 
 /**
- * The belt carries one card past you every this many seconds — at every
+ * The belt carries one card past you every this many seconds – at every
  * breakpoint. Speed is derived from the set's measured pitch rather than fixed
  * in pixels, so the pace reads identically on a phone and on the comp stage.
  * Averaged across the set, because a card is only as wide as its own credit.
@@ -26,7 +26,7 @@ const START_TAU = 0.34
  * fit inside them or the far end of the belt runs out of cards. While the
  * blue block was capped at 1360 that could not be in question. Full-bleed it
  * can be, so the sum has to be done: five cards on the closed-up 450 pitch is
- * a 2250 set, and the three sets this leaves standing carry 6750 — past a 5K
+ * a 2250 set, and the three sets this leaves standing carry 6750 – past a 5K
  * display's 5120, where three copies would carry 4500 and run out. The margin
  * survived halving the gutter: at the comp's 514 it was 7710.
  */
@@ -48,7 +48,7 @@ const BAND_H = "32.012%"
  * without the cards touching.
  *
  * The floor does not halve with it. On a phone the cards stop shrinking at
- * their own 13rem — 208px — so the gap has to hold against a card that is no
+ * their own 13rem – 208px – so the gap has to hold against a card that is no
  * longer getting smaller, and the halved slope would put 13.9px between two
  * 208px cards and read as a seam. 1.5rem is 11.5% of that card, near the 12.4%
  * the full-size pair keeps.
@@ -303,7 +303,7 @@ export default function BuildCarousel() {
 								<div className="flex h-full w-full flex-col">
 									{/* Contained, never cropped: a build is the thing on show,
                       and the field left around it is the card's own ground
-                      rather than a gap — which is how the comp mounts these,
+                      rather than a gap – which is how the comp mounts these,
                       each photograph a different size on the same field.
 
                       The lattice is on this box and not the card, so it is

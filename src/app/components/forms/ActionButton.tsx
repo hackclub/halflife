@@ -9,7 +9,7 @@ interface ApiError {
 
 /**
  * One button that POSTs a JSON body and refreshes the server components on the
- * page. Client components here own interaction only — the data on screen came
+ * page. Client components here own interaction only – the data on screen came
  * from the server, so a refresh is the whole update path.
  */
 export function ActionButton({

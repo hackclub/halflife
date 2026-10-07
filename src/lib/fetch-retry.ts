@@ -9,7 +9,7 @@ import "server-only"
  * dropped packet or a slow moment at the provider made `AbortSignal.timeout`
  * fire, the `TimeoutError` propagated through better-auth's callback with no
  * catch of its own, the whole sign-in died, and the server logged a raw
- * `TimeoutError` object — the DOM-exception constants and all — rather than a
+ * `TimeoutError` object – the DOM-exception constants and all – rather than a
  * line anyone could act on.
  *
  * So this does two things the bare `fetch` did not:
@@ -19,7 +19,7 @@ import "server-only"
  *   A 4xx is NOT retried: it is a real answer, and asking again cannot change
  *   it.
  * - **Bounds the total memory.** A response body is read into memory, so the
- *   headers alone are not enough — a huge body would blow up after this
+ *   headers alone are not enough – a huge body would blow up after this
  *   returned. The length is capped, and a body over it is treated as a failed
  *   attempt, which is what a caller's retry-then-give-up wants.
  *
@@ -44,7 +44,7 @@ export interface FetchRetryOptions extends RequestInit {
 function unreachable(err: unknown): boolean {
 	// Node/undici put the real cause on `.cause`; a bare TimeoutError from
 	// `AbortSignal.timeout` is its own. Both mean "no answer", which is worth
-	// another try — a rejection from the fetch itself (bad URL, bad options) is
+	// another try – a rejection from the fetch itself (bad URL, bad options) is
 	// not.
 	if (!(err instanceof Error)) return true
 	const code = (err as { cause?: { code?: string } }).cause?.code ?? (err as { code?: string }).code
@@ -75,7 +75,7 @@ async function boundedBody(res: Response): Promise<ArrayBuffer | null> {
  * response too large to be real is turned into one too.
  *
  * Resolves to the final `Response` for any status the server chose, including
- * a 4xx and a 5xx that survived every retry — a non-2xx is a finding the
+ * a 4xx and a 5xx that survived every retry – a non-2xx is a finding the
  * caller decides about, not an exception. Throws when there is genuinely no
  * answer to be had, with a message naming the endpoint.
  */

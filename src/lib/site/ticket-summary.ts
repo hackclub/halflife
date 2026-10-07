@@ -7,7 +7,7 @@ import type { HelpTicketStats } from "./ticket-store"
  * It deliberately keeps to what the table can actually answer: how many
  * tickets were opened, how many were closed, and who closed them. The Stasis
  * sample this is modelled on also listed "assigned" and "still open" counts
- * and a set of ageing tickets — none of which Half Life tracks. The table is
+ * and a set of ageing tickets – none of which Half Life tracks. The table is
  * also seeded by a backfill, so every pre-launch question looks unresolved;
  * a "still open" number built from it would be wrong rather than merely
  * absent, which is why there isn't one.

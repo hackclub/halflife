@@ -294,7 +294,7 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 
 		case "repo":
 			// Nothing is written here. Turning the sync on is a GitHub round trip and
-			// can fail, and this state machine must not fail with it — see the
+			// can fail, and this state machine must not fail with it – see the
 			// AdvanceResult.repoRequest field, which the route acts on after the
 			// response has gone.
 			break

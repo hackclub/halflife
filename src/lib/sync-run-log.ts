@@ -2,7 +2,7 @@ import "server-only"
 import type { Prisma } from "@/app/generated/prisma/client"
 import prisma from "@/lib/prisma"
 
-/** Keep these literals stable — admin surfaces match them by string. */
+/** Keep these literals stable – admin surfaces match them by string. */
 export type SyncKey =
 	| "hackatime"
 	| "airtable_ysws"

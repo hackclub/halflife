@@ -48,7 +48,7 @@ config()
 const SOURCE_URL = process.env.DB_URL
 const TARGET_URL = process.env.DATABASE_URL
 if (!SOURCE_URL) throw new Error("DB_URL missing from import/.env")
-if (!TARGET_URL) throw new Error("DATABASE_URL missing — copy .env.example to .env")
+if (!TARGET_URL) throw new Error("DATABASE_URL missing – copy .env.example to .env")
 
 const args = process.argv.slice(2)
 const has = (f: string) => args.includes(`--${f}`)
@@ -675,7 +675,7 @@ async function main() {
   const started = Date.now()
   console.log(`Source: ${SOURCE_URL!.replace(/:[^:@/]+@/, ":***@")}`)
   console.log(`Target: ${TARGET_URL!.replace(/:[^:@/]+@/, ":***@")}`)
-  if (DRY) console.log("DRY RUN — nothing will be written")
+  if (DRY) console.log("DRY RUN – nothing will be written")
   if (KEEP_EMAILS) console.log("Keeping real email addresses")
 
   console.log("\nUsers")
