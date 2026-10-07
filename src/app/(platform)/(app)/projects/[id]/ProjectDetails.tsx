@@ -1,15 +1,14 @@
 "use client"
 
 import { useId, useState } from "react"
+import { ParticipantGoal } from "@/app/generated/prisma/enums"
 import { IconCheck, IconPencil } from "@/components/platform/icons"
 import { StarterProjectCard } from "@/components/platform/StarterProjectCard"
 import { Button, Chip, cx, OptionRow } from "@/components/platform/ui"
 import { getStarterProject, STARTER_PROJECT_TIER, starterProjectsFor } from "@/lib/config/onboarding"
-import { ParticipantGoal } from "@/app/generated/prisma/enums"
-import { MIN_HOURS_PER_WEEK, submitFloorFor, weekAskFor } from "@/lib/config/printers"
-import { printerById } from "@/lib/config/printers"
-import { ENTRY_TIER } from "@/lib/config/tiers"
+import { MIN_HOURS_PER_WEEK, printerById, submitFloorFor, weekAskFor } from "@/lib/config/printers"
 import { DESIGN_WEEKS, THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
+import { ENTRY_TIER } from "@/lib/config/tiers"
 import { TIERS } from "@/lib/curriculum"
 import { fmtHours } from "@/lib/projects"
 import { normalizeRepo } from "@/lib/repo"
@@ -311,9 +310,8 @@ function DetailsForm({
 					</p>
 					{takingStarter && hotGoal && (
 						<p role="status" className="hand text-[0.82rem] leading-snug text-coral-deep">
-							Heads up: starters are deliberately small, tier 1 projects — about{" "}
-							{fmtHours(submitFloorFor(ENTRY_TIER.fundingHours))} of funded work a week. Your {goal.name} wants roughly{" "}
-							{fmtHours(goal.hoursPerWeek)} a design week to stay on pace, which a starter rarely fills. That is a lot of hours to find in a starter — your own idea leaves more room.
+							Heads up: starter projects are meant to take {fmtHours(submitFloorFor(ENTRY_TIER.fundingHours))} of work,
+							no more. Your {goal.name} needs roughly {fmtHours(goal.hoursPerWeek)} a design week to stay on pace.
 						</p>
 					)}
 					{starters.map((s) => {
@@ -387,9 +385,9 @@ function DetailsForm({
 				{tierEditable ? (
 					<>
 						<p className="text-[0.82rem] leading-snug text-navy-soft">
-							Bigger tiers fund bigger builds, and ask for more design time before you submit. The hours next to each tier are the{" "}
-						<span className="font-bold text-navy">minimum</span> a week needs before you can submit — not a cap, and not a suggestion. You
-						have{" "}
+							Bigger tiers fund bigger builds, and ask for more design time before you submit. The hours next to each
+							tier are the <span className="font-bold text-navy">minimum</span> a week needs before you can submit — not
+							a cap, and not a suggestion. You have{" "}
 							<span className="font-bold text-navy tabular-nums">{fmtHours(hours)}</span>{" "}
 							{project.weekId === WARMUP_WEEK_ID ? "on this project." : `in week ${project.weekId}.`}
 						</p>
@@ -397,11 +395,7 @@ function DetailsForm({
 							const floor = submitFloorFor(t.fundingHours)
 							const short = Math.max(0, floor - hours)
 							return (
-								<OptionRow
-									key={t.id}
-									selected={tier === t.id}
-									onClick={() => setTier(t.id)}
-								>
+								<OptionRow key={t.id} selected={tier === t.id} onClick={() => setTier(t.id)}>
 									<span className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
 										<span className="text-[0.98rem] font-extrabold text-navy">Tier {t.id}</span>
 										<span className="hand text-[0.86rem] text-teal-ink">${t.grantUsd} for parts</span>
@@ -414,7 +408,8 @@ function DetailsForm({
 									</span>
 									{pacingToPrinter && (
 										<span className="hand mt-1 block text-[0.8rem] leading-snug text-navy-soft">
-											aim for about {fmtHours(weekAskFor(goal, t.fundingHours))} each design week at this tier, for your {goal.name}
+											aim for about {fmtHours(weekAskFor(goal, t.fundingHours))} each design week at this tier, for your{" "}
+											{goal.name}
 										</span>
 									)}
 								</OptionRow>
