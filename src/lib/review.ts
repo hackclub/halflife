@@ -405,9 +405,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 				themeProjectId: project.id,
 				kind: LedgerKind.BUILD_HOURS,
 				target: approving ? (coins?.spendable ?? 0) : 0,
-				note: approving
-					? `${approvedHours}h of build work, spendable on anything`
-					: "Build approval withdrawn",
+				note: approving ? `${approvedHours}h of build work, spendable on anything` : "Build approval withdrawn",
 				createdById: input.reviewerId,
 			})
 			await reconcileGrant(tx, {

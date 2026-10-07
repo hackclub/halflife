@@ -59,7 +59,7 @@ async function main() {
 	})
 
 	// 18 hours of journal work. A build has no funding floor, so all of it pays,
-// spendable on anything.
+	// spendable on anything.
 	await prisma.workSession.create({
 		data: {
 			themeProjectId: project.id,
@@ -218,8 +218,7 @@ async function main() {
 	// exists cost 219.
 	for (const goal of PRINTERS) {
 		const earned =
-			DESIGN_WEEKS * designCoinsFor(1, 6 + goal.paceHours).total +
-			BUILD_WEEKS * buildCoinsFor(BUILD_HOURS).total
+			DESIGN_WEEKS * designCoinsFor(1, 6 + goal.paceHours).total + BUILD_WEEKS * buildCoinsFor(BUILD_HOURS).total
 		check(`a season at pace buys the ${goal.name}`, earned >= goal.coins, true)
 	}
 

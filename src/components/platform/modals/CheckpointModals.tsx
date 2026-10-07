@@ -1789,8 +1789,9 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 										<>
 											{t.detail}
 											<span className="mt-1 block text-navy-soft/90">
-												You can submit on tier {t.id} from {fmtH(t.fundingHours)} of design time — the parts-funding hours and nothing more. Every hour past that earns 5 spendable coins.
-												</span>
+												You can submit on tier {t.id} from {fmtH(t.fundingHours)} of design time — the parts-funding
+												hours and nothing more. Every hour past that earns 5 spendable coins.
+											</span>
 										</>
 									}
 								>
@@ -2296,7 +2297,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								const on = tier === t.id
 								const over = bomTotal > t.grantUsd
 								const short = tierShort(t.fundingHours)
-									return (
+								return (
 									<button
 										key={t.id}
 										type="button"

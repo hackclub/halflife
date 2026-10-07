@@ -310,8 +310,9 @@ function DetailsForm({
 					</p>
 					{takingStarter && hotGoal && (
 						<p role="status" className="hand text-[0.82rem] leading-snug text-coral-deep">
-							Heads up: starter projects are meant to take about {fmtHours(submitFloorFor(ENTRY_TIER.fundingHours))} of work,
-							no more. Your {goal.name} needs roughly {Math.round(goal.paceHours * 5)} coins a design week on top of its parts-funding to stay on pace.
+							Heads up: starter projects are meant to take about {fmtHours(submitFloorFor(ENTRY_TIER.fundingHours))} of
+							work, no more. Your {goal.name} needs roughly {Math.round(goal.paceHours * 5)} coins a design week on top
+							of its parts-funding to stay on pace.
 						</p>
 					)}
 					{starters.map((s) => {
@@ -391,11 +392,12 @@ function DetailsForm({
 							<span className="font-bold text-navy tabular-nums">{fmtHours(hours)}</span>{" "}
 							{project.weekId === WARMUP_WEEK_ID ? "on this project." : `in week ${project.weekId}.`}
 						</p>
-					{pacingToPrinter && (
-						<p className="hand text-[0.84rem] leading-snug text-navy-soft">
-							Every hour past your tier&apos;s parts-funding earns 5 coins, added straight to your spendable balance to use on your {goal.name} or anything else — changing your goal later never changes what you earn.
-						</p>
-					)}
+						{pacingToPrinter && (
+							<p className="hand text-[0.84rem] leading-snug text-navy-soft">
+								Every hour past your tier&apos;s parts-funding earns 5 coins, added straight to your spendable balance
+								to use on your {goal.name} or anything else — changing your goal later never changes what you earn.
+							</p>
+						)}
 						{TIERS.map((t) => {
 							const floor = submitFloorFor(t.fundingHours)
 							const short = Math.max(0, floor - hours)

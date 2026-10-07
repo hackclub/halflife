@@ -59,11 +59,7 @@ const trailRows = (week: Week, done: (id: string) => boolean, passed: (id: strin
  * nothing more can land, and never before an earned reel mid-chain, which
  * is history rather than headroom.
  */
-function ghostAfter(
-	rows: Checkpoint[][],
-	done: (id: string) => boolean,
-	passed: (id: string) => boolean,
-): Set<number> {
+function ghostAfter(rows: Checkpoint[][], done: (id: string) => boolean, passed: (id: string) => boolean): Set<number> {
 	const at = new Set<number>()
 	rows.forEach((row, i) => {
 		const next = rows[i + 1]

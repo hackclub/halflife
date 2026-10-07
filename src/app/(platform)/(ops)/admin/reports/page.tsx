@@ -60,7 +60,7 @@ export default async function AdminReportsPage({
 
 	const { status, cursor } = await searchParams
 	const filter: Filter = filterFor(status)
-	const active = FILTERS.find((f) => f.id === filter) ?? { id: "open", label: "Open", status: "OPEN" } as const
+	const active = FILTERS.find((f) => f.id === filter) ?? ({ id: "open", label: "Open", status: "OPEN" } as const)
 
 	const [counts, { items: reports, nextCursor }] = await Promise.all([
 		countContentReports(),
@@ -89,7 +89,9 @@ export default async function AdminReportsPage({
 			<Panel title={`${active.label} reports`}>
 				{reports.length === 0 ? (
 					<EmptyState>
-						{filter === "open" ? "Nobody has reported anything. The queue is clear." : `No ${active.label.toLowerCase()} reports.`}
+						{filter === "open"
+							? "Nobody has reported anything. The queue is clear."
+							: `No ${active.label.toLowerCase()} reports.`}
 					</EmptyState>
 				) : (
 					<Table head={["Reported", "Reason", "Reporter", "Received", "Status", ""]}>

@@ -92,9 +92,7 @@ export function ReportDialog({
 				</>
 			) : (
 				<>
-					<ModalTitle sub="Tell staff what is wrong. Nothing is taken down by reporting alone.">
-						{title}
-					</ModalTitle>
+					<ModalTitle sub="Tell staff what is wrong. Nothing is taken down by reporting alone.">{title}</ModalTitle>
 					{context && (
 						<blockquote className="mb-4 max-w-[62ch] rounded-xl bg-black/[.04] px-4 py-3 text-[0.86rem] leading-relaxed whitespace-pre-line [overflow-wrap:anywhere] text-navy-soft">
 							{context}

@@ -53,8 +53,7 @@ export default async function AdminShopItemPage({ params }: { params: Promise<{ 
 			</Panel>
 			<Panel title="Regional prices">
 				<p className="hl-hint" style={{ marginBottom: "0.75rem" }}>
-					Coin prices per sales region. Base price is {item.priceCredits}; orders keep the price they were
-					charged.
+					Coin prices per sales region. Base price is {item.priceCredits}; orders keep the price they were charged.
 				</p>
 				<ItemRegionPrices
 					itemId={item.id}

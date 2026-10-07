@@ -262,8 +262,8 @@ export default async function AdminProgramPage() {
 					))}
 				</Table>
 				<p className="hl-hint">
-					Edit these in <code>lib/config/tiers.ts</code>. Funded hours buy parts, and the submit floor is the funded hours
-					and nothing more — every hour past them earns spendable coins.
+					Edit these in <code>lib/config/tiers.ts</code>. Funded hours buy parts, and the submit floor is the funded
+					hours and nothing more — every hour past them earns spendable coins.
 				</p>
 
 				<h2>Printer goals</h2>
@@ -278,8 +278,8 @@ export default async function AdminProgramPage() {
 					))}
 				</Table>
 				<p className="hl-hint">
-					Earning is paced by the machine, not the tier: the same printer asks the same weekly hours on every tier.
-					Edit these in <code>lib/config/printers.ts</code>, which is the budget spreadsheet transcribed — the season lands
+					Earning is paced by the machine, not the tier: the same printer asks the same weekly hours on every tier. Edit
+					these in <code>lib/config/printers.ts</code>, which is the budget spreadsheet transcribed — the season lands
 					exactly on each price.
 				</p>
 			</Panel>

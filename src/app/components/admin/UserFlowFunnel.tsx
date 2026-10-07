@@ -82,11 +82,7 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 					cursor: "pointer",
 				}}
 			>
-				<input
-					type="checkbox"
-					checked={hideReel}
-					onChange={(e) => setHideReel(e.target.checked)}
-				/>
+				<input type="checkbox" checked={hideReel} onChange={(e) => setHideReel(e.target.checked)} />
 				<span className="hl-hint">Hide reel steps</span>
 			</label>
 
@@ -107,8 +103,7 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 						width: "9rem",
 						height: "0.65rem",
 						borderRadius: "999px",
-						background:
-							"linear-gradient(90deg in oklch, var(--color-accent), var(--color-danger))",
+						background: "linear-gradient(90deg in oklch, var(--color-accent), var(--color-danger))",
 					}}
 				/>
 				<span>all lost</span>

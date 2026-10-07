@@ -508,14 +508,7 @@ export interface FlowStep {
  * would silently shrink every step below it instead of showing a real drop.
  */
 export async function getUserFlowFunnel(): Promise<FlowStep[]> {
-	const [
-		users,
-		sessionUsers,
-		projectUsers,
-		devlogUsers,
-		repoUsers,
-		handoffRows,
-	] = await Promise.all([
+	const [users, sessionUsers, projectUsers, devlogUsers, repoUsers, handoffRows] = await Promise.all([
 		prisma.user.findMany({
 			select: {
 				id: true,
@@ -571,9 +564,7 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 
 	const sessions = new Set(sessionUsers.map((s) => s.userId))
 	const named = new Set(projectUsers.filter((p) => p.description !== null && p.description !== "").map((p) => p.userId))
-	const tookStarter = new Set(
-		projectUsers.filter((p) => p.starterProjectId !== null).map((p) => p.userId),
-	)
+	const tookStarter = new Set(projectUsers.filter((p) => p.starterProjectId !== null).map((p) => p.userId))
 	const pickedTier = new Set(projectUsers.filter((p) => p.requestedTier !== null).map((p) => p.userId))
 	const devlogs = new Set(devlogUsers.map((u) => u.id))
 	const repos = new Set(repoUsers.map((u) => u.userId))
@@ -839,8 +830,7 @@ function aggregateByKey(inputs: RegionInputs, keyOf: (timezone: string | null) =
 		row(userKey.get(s.themeProject.userId) ?? "Unknown").hours += s.hoursApproved ?? s.hoursClaimed
 	}
 	for (const l of inputs.links) {
-		row(userKey.get(l.themeProject.userId) ?? "Unknown").hours +=
-			(l.hoursApproved ?? (l.cachedSeconds ?? 0) / 3600)
+		row(userKey.get(l.themeProject.userId) ?? "Unknown").hours += l.hoursApproved ?? (l.cachedSeconds ?? 0) / 3600
 	}
 	return totals
 }
