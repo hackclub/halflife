@@ -156,16 +156,11 @@ export async function completeHandoff(
 	// can only ever write into the prefix of the person who generated it.
 	const key = buildObjectKey(target.userId, POST_UPLOAD_FOLDER, check.ext)
 
-	try {
-		await putObject(key, bytes, file.type)
-	} catch (err) {
-		// The code stays spent: re-arming it here gave anyone holding a photo
-		// of the QR unlimited attempts past the first claim (each R2 failure
-		// freed the code again). Minting a fresh code is one click on the
-		// desktop, so a failed upload asks for a new code instead of retrying
-		// the old one.
-		throw err
-	}
+	// A failed upload is deliberately not retried, and not re-armed either: letting
+	// this re-arm the code gave anyone holding a photo of the QR unlimited attempts
+	// past the first claim, since every R2 failure freed the code again. Minting a
+	// fresh code is one click on the desktop, so a failed upload asks for a new one.
+	await putObject(key, bytes, file.type)
 
 	await prisma.uploadHandoff.update({
 		where: { id: target.id },

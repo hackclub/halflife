@@ -245,6 +245,7 @@ export function ReelCard({
           the frame at 0.1s — the clip's own first frame, for a few kilobytes,
           rather than the whole video for every card in the feed. */}
 			{reel.videoUrl ? (
+				// biome-ignore lint/a11y/useMediaCaption: a participant upload, and there is no caption file to point a track at. An empty track is announced as an empty caption, which is worse than none.
 				<video
 					ref={video}
 					src={reel.thumbnailUrl ? reel.videoUrl : `${reel.videoUrl}#t=0.1`}

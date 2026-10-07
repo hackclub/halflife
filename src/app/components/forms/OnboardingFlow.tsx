@@ -421,13 +421,10 @@ export function OnboardingFlow({
 								const locked = busy || view.project.tierLocked
 								const headingId = `onboarding-tier-${tier.id}`
 								return (
-									<div
+									<label
 										key={tier.id}
-										onClick={() => {
-											if (!locked) setPickedTier(tier.id)
-										}}
 										className={cx(
-											"rounded-2xl has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-violet has-[input:focus-visible]:ring-offset-2",
+											"block rounded-2xl has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-violet has-[input:focus-visible]:ring-offset-2",
 											locked ? "cursor-default" : "group cursor-pointer",
 										)}
 									>
@@ -500,7 +497,7 @@ export function OnboardingFlow({
 												</ul>
 											) : null}
 										</Panel>
-									</div>
+									</label>
 								)
 							})}
 						</fieldset>

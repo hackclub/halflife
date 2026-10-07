@@ -35,6 +35,7 @@ export function PhoneHandoff({ onReady }: Readonly<{ onReady: (objectKey: string
 					{/* Server-rendered SVG from our own origin — the token is never sent
               to a third-party QR service. */}
 					<div
+						role="img"
 						aria-label="QR code linking to the upload page"
 						dangerouslySetInnerHTML={{ __html: minted.qrSvg }}
 						style={{ width: 200, height: 200 }}

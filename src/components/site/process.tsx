@@ -782,6 +782,7 @@ function StackWeld({
 	return (
 		<Tag role="presentation" aria-hidden className={anchor ? "flex" : "flex justify-center"}>
 			<svg
+				aria-hidden
 				viewBox={`0 0 ${STACK_VIEW.w} ${STACK_VIEW.h}`}
 				preserveAspectRatio="none"
 				fill="none"

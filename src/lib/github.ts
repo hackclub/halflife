@@ -104,9 +104,11 @@ function isRateLimited(forge: Forge, res: Response) {
 /** The transport a forge's read calls take, and how they are addressed. */
 function request(route: Route, path: string): { url: string; headers: Record<string, string> } {
 	if (route === "proxy") {
+		const apiKey = process.env.GH_PROXY_API_KEY
+		if (!apiKey) throw new Error("GH_PROXY_API_KEY is not set on this deployment")
 		return {
 			url: `https://gh-proxy.hackclub.com/gh/${path}${path.includes("?") ? "&" : "?"}_t=${Date.now()}`,
-			headers: { Accept: "application/vnd.github+json", "X-API-Key": process.env.GH_PROXY_API_KEY! },
+			headers: { Accept: "application/vnd.github+json", "X-API-Key": apiKey },
 		}
 	}
 

@@ -228,6 +228,7 @@ function GoalCard({
 	const load = Math.round((goal.paceHours / Math.max(...PRINTERS.map((p) => p.paceHours))) * 100)
 
 	return (
+		// biome-ignore lint/a11y/useSemanticElements: a radio option drawn as a card; a real input would replace the card.
 		<button
 			type="button"
 			role="radio"

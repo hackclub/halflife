@@ -255,6 +255,7 @@ export function StageSlide({
 			{/* ---------- the reel ---------- */}
 			<article className="lift-shadow relative min-h-0 flex-1 overflow-hidden rounded-2xl bg-navy">
 				{reel.videoUrl ? (
+					// biome-ignore lint/a11y/useMediaCaption: a participant upload, and there is no caption file to point a track at. An empty track is announced as an empty caption, which is worse than none.
 					<video
 						ref={video}
 						src={reel.thumbnailUrl ? reel.videoUrl : `${reel.videoUrl}#t=0.1`}

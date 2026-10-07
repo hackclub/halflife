@@ -189,12 +189,12 @@ function listingClient(): S3Client {
 export async function listUploadedObjects(
 	opts: { prefix?: string; cursor?: string; limit?: number } = {},
 ): Promise<UploadedObjectPage> {
-	if (!isUploadConfigured()) {
+	const bucket = process.env.S3_BUCKET_NAME
+	if (!isUploadConfigured() || !bucket) {
 		throw new HttpError("NOT_CONFIGURED", "File uploads are not configured on this deployment")
 	}
 
 	const prefix = opts.prefix ?? ""
-	const bucket = process.env.S3_BUCKET_NAME!
 	const bucketPrefix = endpointIncludesBucket() ? `${bucket}/` : ""
 	const requestPrefix = bucketPrefix ? `${bucketPrefix}${prefix}` : prefix || undefined
 	try {

@@ -134,6 +134,7 @@ export function ReelCapture({
               than trusted to fit: at its natural 200px it overflowed and sat on
               top of the caption. */}
 					<div
+						role="img"
 						aria-label="QR code linking to the upload page"
 						className="w-[180px] [&>svg]:block [&>svg]:h-auto [&>svg]:w-full"
 						dangerouslySetInnerHTML={{ __html: handoff.minted.qrSvg }}

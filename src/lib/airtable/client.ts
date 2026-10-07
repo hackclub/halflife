@@ -30,10 +30,13 @@ export function getAirtableConfig(): AirtableConfig | null {
  * characters.
  */
 export function escapeAirtableValue(value: string): string {
-	return value
-		.replace(/[\x00-\x1F\x7F]/g, "")
-		.replace(/\\/g, "\\\\")
-		.replace(/'/g, "\\'")
+	return (
+		value
+			// biome-ignore lint/suspicious/noControlCharactersInRegex: removing them is the job
+			.replace(/[\x00-\x1F\x7F]/g, "")
+			.replace(/\\/g, "\\\\")
+			.replace(/'/g, "\\'")
+	)
 }
 
 export class AirtableError extends Error {

@@ -406,9 +406,14 @@ body {
 	*,
 	*::before,
 	*::after {
+		/* biome-ignore-start lint/complexity/noImportantStyles: a blanket reset of every
+		   animated thing on the page, which is the entire point of the media query.
+		   Without the override the site's own keyframes and the .puck press win on
+		   specificity, and a reader who asked for reduced motion still gets motion. */
 		animation-duration: 0.001ms !important;
 		animation-iteration-count: 1 !important;
 		transition-duration: 0.001ms !important;
+		/* biome-ignore-end lint/complexity/noImportantStyles: as above */
 	}
 }
 
@@ -459,8 +464,10 @@ body {
 	container: doom-stage / size;
 }
 @container doom-stage (max-height: 30.5rem) {
-	.doom-arrows {
-		display: none !important;
+	/* Two classes rather than `!important`: the element carries Tailwind's `md:flex`,
+	   and a second class outranks a single utility without a blanket override. */
+	.doom-stage .doom-arrows {
+		display: none;
 	}
 }
 

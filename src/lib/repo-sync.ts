@@ -104,22 +104,27 @@ export async function runProjectSync(themeProjectId: string, manual: boolean, fo
 
 	inFlight.add(themeProjectId)
 	let written: WrittenFile[] = []
+	// A local rather than the parameter: the first pass is the manual one, and
+	// every pass after it is an ordinary one.
+	let runManual = manual
 	try {
 		// A loop, not an `if`: a write that lands during this run stamps the queue
 		// flag, and the correct response is one more run — not leaving it for a
 		// sync that may never come.
 		for (let pass = 0; pass < 5; pass++) {
 			const queuedAt = await claimQueued(themeProjectId)
-			if (!queuedAt && !manual && !force) break
-			written = await syncOnce(themeProjectId, manual || pass > 0, force && pass === 0)
-			manual = false
+			if (queuedAt === null && !runManual && !force) break
+			written = await syncOnce(themeProjectId, runManual || pass > 0, force && pass === 0)
+			runManual = false
 			const stillQueued = await prisma.themeProject.findUnique({
 				where: { id: themeProjectId },
 				select: { repoSyncQueuedAt: true },
 			})
 			// Anything queued AFTER the claim means another write arrived while this
 			// pass ran.
-			if (!stillQueued?.repoSyncQueuedAt || stillQueued.repoSyncQueuedAt <= queuedAt!) break
+			const queueTime = stillQueued?.repoSyncQueuedAt
+			if (queueTime === null || queueTime === undefined) break
+			if (queuedAt !== null && queueTime <= queuedAt) break
 		}
 	} finally {
 		inFlight.delete(themeProjectId)

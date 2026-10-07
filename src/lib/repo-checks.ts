@@ -97,7 +97,8 @@ function snapshot(ref: RepoRef): Promise<Snapshot> {
 			if (now - v.at >= v.ttl) snapshots.delete(k)
 		}
 		// Still full of live entries: drop the oldest. Map keeps insertion order.
-		if (snapshots.size >= SNAPSHOT_CACHE_MAX) snapshots.delete(snapshots.keys().next().value!)
+		const oldest = snapshots.keys().next()
+		if (snapshots.size >= SNAPSHOT_CACHE_MAX && !oldest.done) snapshots.delete(oldest.value)
 	}
 
 	// Never rejects. The promise is what the cache holds, so a rejected one

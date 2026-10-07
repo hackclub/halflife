@@ -99,6 +99,7 @@ export function ReportDialog({
 						</blockquote>
 					)}
 
+					{/* biome-ignore lint/a11y/useSemanticElements: a group of choices, not a form. */}
 					<div className="grid gap-2.5" role="group" aria-label="Reason">
 						{REPORT_REASONS.map((r) => (
 							<OptionRow key={r.id} selected={reason === r.id} onClick={() => setReason(r.id)}>

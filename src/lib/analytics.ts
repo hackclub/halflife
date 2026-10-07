@@ -249,7 +249,8 @@ export async function backfillAnalytics(): Promise<Record<string, number>> {
 		const days = new Map<string, Date>()
 		for (const m of moments) {
 			const d = effectiveDateFor(m, programTimezone)
-			if (!days.has(d) || m < days.get(d)!) days.set(d, m)
+			const seen = days.get(d)
+			if (seen === undefined || m < seen) days.set(d, m)
 		}
 		if (days.size > 0) {
 			await prisma.userDay.createMany({

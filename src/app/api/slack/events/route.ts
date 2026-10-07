@@ -198,10 +198,11 @@ async function handleHelpMessage(event: SlackEvent) {
  * bot into the main channel doesn't loop back into inviting itself. */
 async function handleMainChannelJoin(event: SlackEvent) {
 	const mainChannel = process.env.SLACK_MAIN_CHANNEL_ID
-	if (!mainChannel || event.channel !== mainChannel || !event.user) return
+	const joined = event.user
+	if (!mainChannel || event.channel !== mainChannel || !joined) return
 
 	const botUserId = await getBotUserId()
-	if (event.user === botUserId) return
+	if (joined === botUserId) return
 
 	const targets = [process.env.SLACK_BULLETIN_CHANNEL_ID, process.env.SLACK_HELP_CHANNEL_ID].filter(
 		(id): id is string => Boolean(id),
@@ -212,7 +213,7 @@ async function handleMainChannelJoin(event: SlackEvent) {
 		return
 	}
 
-	await Promise.all(targets.map((channel) => inviteToChannel(channel, event.user!)))
+	await Promise.all(targets.map((channel) => inviteToChannel(channel, joined)))
 }
 
 export async function POST(request: Request) {

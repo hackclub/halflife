@@ -133,6 +133,7 @@ function ReelRow({ reel, onAdd, onChanged }: { reel: MyReel; onAdd: () => void; 
 			<div className="w-[84px] shrink-0 sm:w-[96px]">
 				<div className="relative overflow-hidden rounded-xl bg-navy" style={{ aspectRatio: "9 / 16" }}>
 					{reel.videoUrl ? (
+						// biome-ignore lint/a11y/useMediaCaption: a participant upload, and there is no caption file to point a track at. An empty track is announced as an empty caption, which is worse than none.
 						<video
 							src={reel.thumbnailUrl ? reel.videoUrl : `${reel.videoUrl}#t=0.1`}
 							poster={reel.thumbnailUrl ?? undefined}
@@ -216,6 +217,7 @@ function ReelRow({ reel, onAdd, onChanged }: { reel: MyReel; onAdd: () => void; 
 					{reel.deleteLocked && <p className="hand pl-0.5 text-[0.84rem] text-navy-soft">{reel.deleteLocked}</p>}
 
 					{confirming && (
+						// biome-ignore lint/a11y/useSemanticElements: a confirmation box, not a form.
 						<div
 							role="group"
 							aria-labelledby={`delete-${reel.id}`}

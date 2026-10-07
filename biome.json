@@ -59,6 +59,6 @@
 		}
 	},
 	"files": {
-		"includes": ["public/**", "scripts/**", "src/**"]
+		"includes": ["public/**", "!public/**/*.svg", "scripts/**", "src/**", "!src/**/*.svg"]
 	}
 }

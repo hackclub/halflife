@@ -267,6 +267,7 @@ export default function BuildCarousel() {
 					// With no buttons, the scroller itself is the control: tabbable
 					// everywhere rather than only in browsers that focus overflow
 					// containers on their own, and the belt halts as focus lands.
+					// biome-ignore lint/a11y/noNoninteractiveTabindex: the scroller is the only control this rail has; focus is what lets a keyboard scroll it.
 					tabIndex={0}
 					className="rail flex overflow-x-auto"
 					style={{ gap: GAP, paddingInline: INSET }}

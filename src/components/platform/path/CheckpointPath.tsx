@@ -65,7 +65,7 @@ function ghostAfter(rows: Checkpoint[][], done: (id: string) => boolean, passed:
 		const next = rows[i + 1]
 		if (next?.length !== 1) return
 		const [reel] = next
-		if (!reel || reel.kind !== "reel" || done(reel.id) || passed(reel.id)) return
+		if (reel?.kind !== "reel" || done(reel.id) || passed(reel.id)) return
 		if (!row.some((c) => c.kind === "journal" && !done(c.id))) return
 		at.add(i)
 	})

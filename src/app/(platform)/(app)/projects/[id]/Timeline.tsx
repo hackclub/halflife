@@ -158,6 +158,7 @@ function Body({ item, allowReport }: { item: TimelineItem; allowReport: boolean 
 				{item.videoUrl && (
 					// Nothing autoplays and nothing preloads past the poster: a timeline
 					// of reels loading at once is a page that eats a phone's data.
+					// biome-ignore lint/a11y/useMediaCaption: a participant upload, and there is no caption file to point a track at. An empty track is announced as an empty caption, which is worse than none.
 					<video
 						src={item.thumbnailUrl ? item.videoUrl : `${item.videoUrl}#t=0.1`}
 						poster={item.thumbnailUrl ?? undefined}

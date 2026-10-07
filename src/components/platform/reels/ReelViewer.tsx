@@ -621,9 +621,10 @@ export function ReelViewer() {
 						sheetOpen ? "opacity-100" : "opacity-0",
 					)}
 				/>
+				{/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: the role is conditional, and aria-modal is only ever rendered alongside it. */}
 				<div
 					role={sheetOpen ? "dialog" : undefined}
-					aria-modal={sheetOpen || undefined}
+					aria-modal={sheetOpen ? true : undefined}
 					aria-label="Comments"
 					className={cx(
 						"sketch absolute inset-x-0 bottom-0 flex h-[72dvh] flex-col rounded-t-3xl bg-cream",

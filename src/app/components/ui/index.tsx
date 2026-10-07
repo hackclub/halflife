@@ -170,6 +170,7 @@ export function EmptyState({ children }: Readonly<{ children: ReactNode }>) {
 
 export function Field({ label, hint, children }: Readonly<{ label: string; hint?: ReactNode; children: ReactNode }>) {
 	return (
+		// biome-ignore lint/a11y/noLabelWithoutControl: the control is the children prop, which the rule cannot see through. Every call site passes a labelled input, select or textarea.
 		<label className="hl-stack hl-stack--tight" style={{ gap: "0.25rem" }}>
 			<span className="hl-label-text">{label}</span>
 			{children}

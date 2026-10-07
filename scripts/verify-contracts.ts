@@ -91,11 +91,18 @@ function clientCalls(): { file: string; path: string; methods: string[] }[] {
 }
 
 /** The store posts through a helper rather than calling fetch directly. */
+// The `${…}` below are the shape of a path, written out by hand on purpose: the
+// point of the table is to state what the client is believed to send, and
+// interpolating a real value would check the wrong thing.
 const STORE_CALLS: { path: string; methods: string[] }[] = [
 	{ path: "/api/onboarding", methods: ["POST"] },
+	// biome-ignore lint/suspicious/noTemplateCurlyInString: a path shape, written out by hand
 	{ path: "/api/projects/${id}", methods: ["PATCH"] },
+	// biome-ignore lint/suspicious/noTemplateCurlyInString: a path shape, written out by hand
 	{ path: "/api/projects/${id}/sessions", methods: ["POST"] },
+	// biome-ignore lint/suspicious/noTemplateCurlyInString: a path shape, written out by hand
 	{ path: "/api/projects/${id}/submit", methods: ["POST"] },
+	// biome-ignore lint/suspicious/noTemplateCurlyInString: a path shape, written out by hand
 	{ path: "/api/projects/${id}/link-sync-repo", methods: ["POST"] },
 	{ path: "/api/posts", methods: ["POST"] },
 	{ path: "/api/goal", methods: ["PATCH"] },
@@ -107,6 +114,7 @@ const STORE_CALLS: { path: string; methods: string[] }[] = [
  * script: a method that drifts becomes a 405 the UI cannot explain.
  */
 const COMPONENT_CALLS: { path: string; methods: string[] }[] = [
+	// biome-ignore lint/suspicious/noTemplateCurlyInString: a path shape, written out by hand
 	{ path: "/api/projects/${projectId}/repo-sync", methods: ["GET", "POST", "PUT"] },
 ]
 

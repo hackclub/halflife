@@ -60,9 +60,12 @@ function ari(): Ari {
 	if (!isAriConfigured()) {
 		throw new HttpError("NOT_CONFIGURED", "Ari is not configured on this deployment")
 	}
+	const programId = process.env.ARI_PROGRAM_ID
+	const signingSecret = process.env.ARI_SIGNING_SECRET
+	if (!programId || !signingSecret) throw new Error("Ari is not configured on this deployment")
 	client ??= new Ari({
-		programId: process.env.ARI_PROGRAM_ID!,
-		signingSecret: process.env.ARI_SIGNING_SECRET!,
+		programId,
+		signingSecret,
 		...(process.env.ARI_BASE_URL ? { baseUrl: process.env.ARI_BASE_URL } : {}),
 	})
 	return client

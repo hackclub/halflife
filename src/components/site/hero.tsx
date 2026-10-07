@@ -476,11 +476,13 @@ function ScrollCue({
 	className = "",
 	style,
 	fontSize,
+	children = "See how it works",
 }: {
 	className?: string
 	style?: CSSProperties
 	/** The label's size, as a CSS length. */
 	fontSize?: string
+	children?: React.ReactNode
 }) {
 	return (
 		<a
@@ -489,7 +491,9 @@ function ScrollCue({
 			// 12px of vertical padding is what takes the box past the 24px floor.
 			className={`inline-block px-2 py-1.5 font-display font-bold uppercase text-hl-paper decoration-hl-cyan decoration-2 underline-offset-[0.3em] hover:underline ${className}`}
 			style={{ ...style, fontSize, letterSpacing: "0.14em" }}
-		/>
+		>
+			{children}
+		</a>
 	)
 }
 

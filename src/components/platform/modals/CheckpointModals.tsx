@@ -731,6 +731,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				// The whole sheet takes a drop, not just the box: a picture let go an
 				// inch off the textarea would otherwise open in the tab and take the
 				// unsaved entry with it.
+				// biome-ignore lint/a11y/noStaticElementInteractions: a drop target, not a control; dragging is not a keyboard gesture, and the sheet stays reachable through its fields.
 				<div
 					onDragEnter={(e) => {
 						if (!mightBeImage(e)) return

@@ -235,7 +235,9 @@ export function paceTarget(goal: PrinterGoal, weekId: number): number {
 }
 
 export function printerById(id: string): PrinterGoal {
-	return PRINTERS.find((p) => p.id === id) ?? PRINTERS.find((p) => p.id === DEFAULT_GOAL_ID)!
+	const found = PRINTERS.find((p) => p.id === id) ?? PRINTERS.find((p) => p.id === DEFAULT_GOAL_ID)
+	if (!found) throw new Error(`no printer goal for ${id}, and ${DEFAULT_GOAL_ID} is missing from the catalogue`)
+	return found
 }
 
 /**

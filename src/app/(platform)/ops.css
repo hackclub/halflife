@@ -244,6 +244,7 @@ h4 {
 		padding: 0.55rem 0.25rem;
 		border-bottom: 2px solid var(--color-border);
 	}
+	.hl-nav-list--wobbly .hl-nav-item,
 	.hl-nav-list li:last-child .hl-nav-item {
 		border-bottom: 0;
 	}
@@ -657,6 +658,11 @@ h4 {
    */
 	.hl-wobbly {
 		position: relative;
+		/* biome-ignore lint/complexity/noImportantStyles: the outline is a drawn SVG
+		   instead of a CSS border, and this class rides along with .hl-btn, whose
+		   :hover, :disabled and --primary variants all set a border-colour at a higher
+		   specificity. Enumerating those here would drift the moment a variant is
+		   added; overriding the property outright cannot. */
 		border-color: transparent !important;
 	}
 	.hl-wobble-svg {
@@ -685,11 +691,6 @@ h4 {
 		height: 10px;
 		overflow: visible;
 	}
-	/* The rules are drawn, so the list items must not draw their own. */
-	.hl-nav-list--wobbly .hl-nav-item {
-		border-bottom: 0;
-	}
-
 	/* ── The week banner ───────────────────────────────────────────────────── */
 	/*
    * The comp's banner is painted art with a torn edge, exported from the file
@@ -930,8 +931,12 @@ h4 {
 	}
 
 	@media (max-width: 900px) {
-		/* The lane's swing costs more than it gives on a phone. */
+		/* The lane's swing costs more than it gives on a phone. The offset is a
+		   Tailwind margin utility on the element, which a plain class cannot outrank,
+		   hence the override — and note the whole .hl-node family is currently
+		   unreferenced by any component, so this can go with it. */
 		.hl-node {
+			/* biome-ignore lint/complexity/noImportantStyles: see above */
 			margin-inline-start: 0 !important;
 		}
 		.hl-connector-row {
