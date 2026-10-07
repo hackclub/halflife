@@ -33,9 +33,7 @@ export default async function ReviewDetailPage({ params }: Props) {
 	const detail = await getSubmissionDetail(id, user.id, {
 		includeContact: hasRole(roles, Role.ADMIN) || hasRole(roles, Role.AUDITOR),
 		includeRiskFlags:
-			hasRole(roles, Role.ADMIN) ||
-			hasRole(roles, Role.AUDITOR) ||
-			hasPermission(roles, Permission.REVIEW_HOURS),
+			hasRole(roles, Role.ADMIN) || hasRole(roles, Role.AUDITOR) || hasPermission(roles, Permission.REVIEW_HOURS),
 	})
 	if (!detail) notFound()
 

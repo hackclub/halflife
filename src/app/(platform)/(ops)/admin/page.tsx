@@ -83,9 +83,8 @@ export default async function AdminOverviewPage() {
 					<MetricPie title="Hours" rows={areas} pick={(r) => r.hours} format={fmtHours} />
 				</div>
 				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
-					Continents group each account&apos;s timezone; Unknown has none on file. Hours count
-					journal devlogs (reviewer-adjusted where set) plus linked Hackatime time, attributed to
-					the author&apos;s region.
+					Continents group each account&apos;s timezone; Unknown has none on file. Hours count journal devlogs
+					(reviewer-adjusted where set) plus linked Hackatime time, attributed to the author&apos;s region.
 				</p>
 			</Panel>
 
@@ -119,16 +118,15 @@ export default async function AdminOverviewPage() {
 			<Panel title="First project choice">
 				<FirstProjectDonut stats={firstProjects} />
 				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
-					Users who finished setup and still have their week-one project. Starter names come
-					from the catalogue; Custom project means they named their own idea.
+					Users who finished setup and still have their week-one project. Starter names come from the catalogue; Custom
+					project means they named their own idea.
 				</p>
 			</Panel>
 
 			<Panel title="Activity over time">
 				<ActivityStrip days={activity} />
 				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
-					Days are program-timezone effective dates — the day the work counted for. Hours count
-					journal devlogs only.
+					Days are program-timezone effective dates — the day the work counted for. Hours count journal devlogs only.
 				</p>
 			</Panel>
 
@@ -183,7 +181,10 @@ function MetricPie({
 	const MAX_SLICES = 6
 	const head = ranked.slice(0, MAX_SLICES)
 	const tail = ranked.slice(MAX_SLICES)
-	const slices = tail.length > 0 ? [...head, { label: `Other (${tail.length})`, value: tail.reduce((n, s) => n + s.value, 0) }] : head
+	const slices =
+		tail.length > 0
+			? [...head, { label: `Other (${tail.length})`, value: tail.reduce((n, s) => n + s.value, 0) }]
+			: head
 
 	const COLORS = [
 		"var(--color-accent)",
@@ -270,12 +271,7 @@ function MetricPie({
 					>
 						{format(total)}
 					</text>
-					<text
-						x={CX}
-						y={CY + 20}
-						textAnchor="middle"
-						style={{ fontSize: "0.8rem", fill: "var(--color-ink-muted)" }}
-					>
+					<text x={CX} y={CY + 20} textAnchor="middle" style={{ fontSize: "0.8rem", fill: "var(--color-ink-muted)" }}>
 						total {title.toLowerCase()}
 					</text>
 				</svg>
@@ -291,10 +287,7 @@ function MetricPie({
 					}}
 				>
 					{colored.map((s) => (
-						<li
-							key={s.label}
-							style={{ display: "flex", alignItems: "baseline", gap: "0.45rem", fontSize: "0.82rem" }}
-						>
+						<li key={s.label} style={{ display: "flex", alignItems: "baseline", gap: "0.45rem", fontSize: "0.82rem" }}>
 							<span
 								aria-hidden="true"
 								style={{

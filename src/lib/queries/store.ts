@@ -449,6 +449,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 					starter: project.starterProjectId !== null,
 					starterProjectId: project.starterProjectId,
 					githubRepo: project.githubRepo,
+					coverImageKey: project.coverImageKey,
 					designStatus: project.designStatus,
 					buildStatus: project.buildStatus,
 					thumbnail: projectThumbnail(

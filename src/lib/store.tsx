@@ -149,7 +149,7 @@ function warmupWeek(project: Project, build: boolean, isDone: (id: string) => bo
 		projectId: project.id,
 		tier: tier.id,
 		fundingHours: build ? BUILD_HOURS : tier.fundingHours,
-		bankedFrom: build ? 0 : tier.fundingHours,
+		earnFrom: build ? 0 : tier.fundingHours,
 		targetHours: submitHours,
 		submitHours,
 		checkpoints: [
@@ -188,20 +188,20 @@ interface Ctx {
 	experience: Experience | null
 	projects: Project[]
 	progress: Record<string, CheckpointState>
-	/** Ordinary coins — what the shop will take for anything but a printer. */
+	/** Spendable coins — what the shop will take for anything. */
 	coins: number
-	/** The printer fund: earned, ring-fenced, and spendable on a printer only. */
+	/** Legacy locked coins. Drains to zero; kept so old rows still add up. */
 	bankedCoins: number
-	/** Both pots. A printer can be paid for out of either, so this is the goal. */
+	/** The whole balance. Every coin counts toward the printer goal. */
 	printerFund: number
 	/**
-	 * Coins the logged hours of weeks 1..weekId will bank once reviewed, that
+	 * Coins the logged hours of weeks 1..weekId will earn once reviewed, that
 	 * are not in `printerFund` yet. Coins are minted at approval, so the fund
-	 * alone says a week nobody has reviewed banked nothing; pacing reads both.
+	 * alone says a week nobody has reviewed earned nothing; pacing reads both.
 	 */
 	pendingCoins: (weekId: number) => number
 	streak: number
-	/** The printer every banked coin is aimed at. See config/printers. */
+	/** The printer your earnings are paced against. See config/printers. */
 	goalId: string
 	/** Whether the first checkpoint has been completed. */
 	onboardingDone: boolean
@@ -292,6 +292,12 @@ interface Ctx {
 	weekOpensOn: (weekId: number) => string | null
 	/** When a week stops taking work, e.g. "Sunday, October 5 at 11:59 PM", its extension included. */
 	weekDeadline: (weekId: number) => string | null
+	/**
+	 * The same close as a moment rather than a phrase, epoch ms, its extension
+	 * included. `weekDeadline` is for writing it down; a countdown has to count
+	 * to it, and there is no arithmetic to do on a formatted date.
+	 */
+	weekClosesAtMs: (weekId: number) => number | null
 	/** When warm-ups stop taking work: 11:59 PM the night before week 1 opens. */
 	warmupDeadline: string
 	/** Whether a week is handed in — in review, approved or rejected — so its entries are final. */
@@ -461,6 +467,13 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			return at === undefined ? null : formatDeadline(at, facts.programTimezone)
 		},
 		[facts.weekClosesAt, facts.programTimezone],
+	)
+	const weekClosesAtMs = useCallback(
+		(weekId: number) => {
+			const at = facts.weekClosesAt[weekId]
+			return at === undefined ? null : at
+		},
+		[facts.weekClosesAt],
 	)
 	const warmupDeadline = formatDeadline(facts.warmupsCloseAt, facts.programTimezone)
 
@@ -743,6 +756,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 								...(patch.name !== undefined ? { name: patch.name.trim() } : {}),
 								...(patch.description !== undefined ? { description: patch.description.trim() } : {}),
 								...(patch.githubRepo !== undefined ? { githubRepo: patch.githubRepo } : {}),
+								...(patch.coverImageKey !== undefined ? { coverImageKey: patch.coverImageKey } : {}),
 								...(patch.tier !== undefined ? { tier: patch.tier } : {}),
 								...(patch.starterProjectId !== undefined
 									? { starter: patch.starterProjectId !== null, starterProjectId: patch.starterProjectId }
@@ -1077,7 +1091,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		[save.projects, save.experience],
 	)
 
-	// The printer you are saving for sets how many hours a week you need to bank,
+	// The printer you are saving for sets how many hours a week you need to earn,
 	// and that number is the same on every tier — the tier only decides how many
 	// funded hours sit underneath it.
 	const goal = printerById(save.goalId)
@@ -1108,7 +1122,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 					tier: tierId,
 					fundingHours: build ? BUILD_HOURS : tier.fundingHours,
 					// Build-week hours all bank; the grant paid for the design week.
-					bankedFrom: build ? 0 : tier.fundingHours,
+					earnFrom: build ? 0 : tier.fundingHours,
 					targetHours: target,
 					submitHours,
 					checkpoints: checkpointsFor(
@@ -1392,10 +1406,10 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	)
 
 	/**
-	 * What the unreviewed weeks are on course to bank, at the ledger's own rule:
+	 * What the unreviewed weeks are on course to earn, at the ledger's own rule:
 	 * every hour past the week's funded block (all of a build week's) at
 	 * COINS_PER_HOUR. Approved weeks are skipped because their coins are already
-	 * in the fund, rejected ones because they will never mint. It is a
+	 * minted, rejected ones because they will never mint. It is a
 	 * projection — a reviewer can still adjust the hours — which is why it only
 	 * feeds the pace warning and never the balance anyone can spend.
 	 */
@@ -1406,7 +1420,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				.reduce((n, w) => {
 					const status = facts.phaseStatusByWeek[w.id]
 					if (status === "approved" || status === "rejected") return n
-					return n + Math.max(0, weekHours(w.id) - w.bankedFrom) * COINS_PER_HOUR
+					return n + Math.max(0, weekHours(w.id) - w.earnFrom) * COINS_PER_HOUR
 				}, 0),
 		[weeks, facts.phaseStatusByWeek, weekHours],
 	)
@@ -1659,6 +1673,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		weekStarted,
 		weekOpensOn,
 		weekDeadline,
+		weekClosesAtMs,
 		warmupDeadline,
 		weekSubmitted,
 		phaseStatusOf,

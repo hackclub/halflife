@@ -13,6 +13,7 @@ import {
 	IconPlay,
 	IconUpload,
 } from "@/components/platform/icons"
+import { WeekCountdown } from "@/components/platform/path/WeekCountdown"
 import { Chip, cx, onAccent, Panel } from "@/components/platform/ui"
 import { getStarterProject } from "@/lib/config/onboarding"
 import { printerById } from "@/lib/config/printers"
@@ -58,11 +59,7 @@ const trailRows = (week: Week, done: (id: string) => boolean, passed: (id: strin
  * nothing more can land, and never before an earned reel mid-chain, which
  * is history rather than headroom.
  */
-function ghostAfter(
-	rows: Checkpoint[][],
-	done: (id: string) => boolean,
-	passed: (id: string) => boolean,
-): Set<number> {
+function ghostAfter(rows: Checkpoint[][], done: (id: string) => boolean, passed: (id: string) => boolean): Set<number> {
 	const at = new Set<number>()
 	rows.forEach((row, i) => {
 		const next = rows[i + 1]
@@ -704,6 +701,7 @@ export function CheckpointPath() {
 					<WeekBanner week={week} index={wi} />
 					<StarterGuideBanner week={week} />
 					<WeekTrail week={week} currentId={currentCheckpointId} phase={weekPhases[wi] ?? 0} />
+					<WeekCountdown week={week} />
 				</section>
 			))}
 			<GrandPrize />

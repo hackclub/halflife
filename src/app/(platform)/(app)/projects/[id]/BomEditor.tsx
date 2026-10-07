@@ -315,8 +315,8 @@ export function BomEditor({
 	return (
 		<div>
 			<p className="mb-4 text-[0.88rem] leading-snug text-navy-soft">
-				Parts only – don&apos;t list tools here. Enter all prices in US dollars (USD). Soldering irons,
-				multimeters, cutters and the like are bought in the{" "}
+				Parts only – don&apos;t list tools here. Enter all prices in US dollars (USD). Soldering irons, multimeters,
+				cutters and the like are bought in the{" "}
 				<Link href="/shop" className="underline decoration-dashed underline-offset-4 hover:text-navy">
 					programme shop
 				</Link>{" "}
@@ -423,8 +423,8 @@ export function BomEditor({
 					{over && (
 						<span className="hand block text-[0.84rem] text-coral-deep">
 							{pastMargin
-						? `${usd(total - grantUsd)} over and past the $${BOM_MARGIN_USD} margin – cut parts or ask for a higher tier before you can submit.`
-						: `${usd(total - grantUsd)} over – still within the $${BOM_MARGIN_USD} margin, so you can submit, but cut parts or ask for a higher tier if you can.`}
+								? `${usd(total - grantUsd)} over and past the $${BOM_MARGIN_USD} margin – cut parts or ask for a higher tier before you can submit.`
+								: `${usd(total - grantUsd)} over – still within the $${BOM_MARGIN_USD} margin, so you can submit, but cut parts or ask for a higher tier if you can.`}
 						</span>
 					)}
 				</p>

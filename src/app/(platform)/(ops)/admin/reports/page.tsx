@@ -1,17 +1,17 @@
 import Link from "next/link"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { Badge, EmptyState, Panel, Table } from "@/app/components/ui"
+import type { ReportReason, ReportStatus } from "@/app/generated/prisma/enums"
 import { displayName } from "@/lib/display-name"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import {
+	type ContentReportRow,
 	countContentReports,
 	listContentReports,
-	type ContentReportRow,
 	type ReportStatusFilter,
 } from "@/lib/queries/admin"
-import { REPORT_STATUS_LABELS, REPORT_TARGET_LABELS, REPORT_REASONS } from "@/lib/reports"
-import type { ReportReason, ReportStatus } from "@/app/generated/prisma/enums"
+import { REPORT_REASONS, REPORT_STATUS_LABELS, REPORT_TARGET_LABELS } from "@/lib/reports"
 
 export const dynamic = "force-dynamic"
 
@@ -60,7 +60,7 @@ export default async function AdminReportsPage({
 
 	const { status, cursor } = await searchParams
 	const filter: Filter = filterFor(status)
-	const active = FILTERS.find((f) => f.id === filter) ?? { id: "open", label: "Open", status: "OPEN" } as const
+	const active = FILTERS.find((f) => f.id === filter) ?? ({ id: "open", label: "Open", status: "OPEN" } as const)
 
 	const [counts, { items: reports, nextCursor }] = await Promise.all([
 		countContentReports(),
@@ -89,7 +89,9 @@ export default async function AdminReportsPage({
 			<Panel title={`${active.label} reports`}>
 				{reports.length === 0 ? (
 					<EmptyState>
-						{filter === "open" ? "Nobody has reported anything. The queue is clear." : `No ${active.label.toLowerCase()} reports.`}
+						{filter === "open"
+							? "Nobody has reported anything. The queue is clear."
+							: `No ${active.label.toLowerCase()} reports.`}
 					</EmptyState>
 				) : (
 					<Table head={["Reported", "Reason", "Reporter", "Received", "Status", ""]}>

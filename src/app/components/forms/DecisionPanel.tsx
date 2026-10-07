@@ -8,7 +8,7 @@ interface TierOption {
 	name: string
 	grantUsd: number
 	fundingHours: number
-	/** Funded hours plus the banking the cheapest machine needs. */
+	/** Funded hours: the parts money, and the submit floor. */
 	submitFloorHours: number
 }
 
@@ -102,7 +102,7 @@ export function DecisionPanel({
 						<option value="">Choose a tier…</option>
 						{tiers.map((t) => (
 							<option key={t.id} value={t.id}>
-								{t.name} — ${t.grantUsd} for {t.fundingHours}h, {t.submitFloorHours}h to submit
+								{t.name} — ${t.grantUsd} for parts, submit from {t.fundingHours}h of design time
 							</option>
 						))}
 					</select>

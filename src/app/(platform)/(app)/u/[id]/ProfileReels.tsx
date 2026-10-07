@@ -4,8 +4,8 @@ import { useState } from "react"
 import { Modal } from "@/components/platform/modals/Modal"
 import { pauseReels, ReelCard } from "@/components/platform/reels/ReelCard"
 import { ReelComments } from "@/components/platform/reels/ReelComments"
-import { useStore } from "@/lib/store"
 import type { FeedItem } from "@/lib/feed"
+import { useStore } from "@/lib/store"
 
 /**
  * The reels on a profile, as a grid of the same card the Doomscroller's rail

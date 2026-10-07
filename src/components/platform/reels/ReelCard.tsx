@@ -4,9 +4,9 @@ import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 import { Gato } from "@/components/platform/art"
 import { IconComment, IconEye, IconFilm, IconHeart, IconPlay } from "@/components/platform/icons"
+import { ReportButton } from "@/components/platform/report/ReportButton"
 import { cx } from "@/components/platform/ui"
 import type { FeedItem } from "@/lib/feed"
-import { ReportButton } from "@/components/platform/report/ReportButton"
 import { useStore } from "@/lib/store"
 
 function compact(n: number) {

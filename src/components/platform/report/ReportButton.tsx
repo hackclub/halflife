@@ -42,8 +42,7 @@ export function ReportButton({
 				className={cx(
 					"hand text-[0.78rem] underline decoration-dashed underline-offset-4 transition-colors",
 					tone === "muted" && "text-navy-soft hover:text-coral-deep",
-					tone === "inverse" &&
-						"text-white/85 [text-shadow:0_1px_3px_rgba(0,0,0,.6)] hover:text-white",
+					tone === "inverse" && "text-white/85 [text-shadow:0_1px_3px_rgba(0,0,0,.6)] hover:text-white",
 					tone === "adaptive" &&
 						"text-white/85 [text-shadow:0_1px_3px_rgba(0,0,0,.6)] hover:text-white md:text-navy-soft md:[text-shadow:none] md:hover:text-coral-deep",
 					className,

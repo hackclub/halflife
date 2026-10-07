@@ -4,19 +4,19 @@ import {
 	AuditAction,
 	HoursSource,
 	type PhaseStatus,
+	type ReportStatus,
 	type ShopFulfillmentMethod,
 	ShopFulfillmentStage,
 	ShopOrderStatus,
 	Theme,
-	type ReportStatus,
 } from "@/app/generated/prisma/enums"
+import { getStarterProject, stepIndexOf } from "@/lib/config/onboarding"
 import { getBalances } from "@/lib/currency"
 import { displayName } from "@/lib/display-name"
 import { safeDecrypt } from "@/lib/pii"
 import { getPrinterQualification } from "@/lib/printer"
-import { REGIONS, type RegionId, countryOfTimezone, regionOfTimezone } from "@/lib/regions"
-import { getStarterProject } from "@/lib/config/onboarding"
 import prisma from "@/lib/prisma"
+import { countryOfTimezone, REGIONS, type RegionId, regionOfTimezone } from "@/lib/regions"
 import { shopOrderStaffSelect } from "@/lib/shop"
 
 export async function listUsers(
@@ -508,11 +508,12 @@ export interface FlowStep {
  * would silently shrink every step below it instead of showing a real drop.
  */
 export async function getUserFlowFunnel(): Promise<FlowStep[]> {
-	const [users, sessionUsers, namedUsers, devlogUsers, repoUsers, handoffRows] = await Promise.all([
+	const [users, sessionUsers, projectUsers, devlogUsers, repoUsers, handoffRows] = await Promise.all([
 		prisma.user.findMany({
 			select: {
 				id: true,
 				hardwareExperience: true,
+				onboardingStep: true,
 				onboardingCompletedAt: true,
 				participantGoal: true,
 				firstProjectAt: true,
@@ -525,13 +526,13 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 		// the table rather than the lastLoginAt marker, so the funnel does not
 		// depend on the analytics backfill having run.
 		prisma.session.findMany({ select: { userId: true }, distinct: ["userId"] }),
-		// People who named a project: a live project carrying a description. The
-		// row itself appears as soon as the checkpoint is opened and is already
-		// titled with its theme, so a title says nothing — the description does.
+		// The onboarding paper trail, per person, read off their live projects: a
+		// description means they named something, a starter means they took one of
+		// the catalogue's, and a requested tier means they answered the tier
+		// question. One read for all three because the funnel needs them together.
 		prisma.themeProject.findMany({
-			where: { deletedAt: null, description: { not: null }, NOT: { description: "" } },
-			select: { userId: true },
-			distinct: ["userId"],
+			where: { deletedAt: null },
+			select: { userId: true, description: true, starterProjectId: true, requestedTier: true },
 		}),
 		// People who added a devlog: a project with a real work session on it.
 		prisma.user.findMany({
@@ -562,7 +563,9 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 	])
 
 	const sessions = new Set(sessionUsers.map((s) => s.userId))
-	const named = new Set(namedUsers.map((u) => u.userId))
+	const named = new Set(projectUsers.filter((p) => p.description !== null && p.description !== "").map((p) => p.userId))
+	const tookStarter = new Set(projectUsers.filter((p) => p.starterProjectId !== null).map((p) => p.userId))
+	const pickedTier = new Set(projectUsers.filter((p) => p.requestedTier !== null).map((p) => p.userId))
 	const devlogs = new Set(devlogUsers.map((u) => u.id))
 	const repos = new Set(repoUsers.map((u) => u.userId))
 	const handoffs = new Set(handoffRows.map((h) => h.userId))
@@ -571,16 +574,38 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 	// One boolean per step per person, in funnel order; steps[0] (signup) is true
 	// for everyone. The `|| posted` / `|| submitted` fallbacks are the history
 	// guard described above the function — do not drop them.
+	//
+	// The onboarding steps between "started" and "finished" are read from
+	// `onboardingStep` (the furthest step reached, 0-based) rather than from a
+	// marker per step, because that one column is the state machine's own
+	// answer and predates nothing. Each carries `|| completed` so a person who
+	// finished is never missing from an earlier row, and each also accepts the
+	// branch that skips it: a starter pick jumps the project and idea steps, so
+	// "named or picked" and "tier settled" are ORs, not a single column.
+	const ONBOARDING = {
+		week: stepIndexOf("week"),
+		idea: stepIndexOf("idea"),
+		tracking: stepIndexOf("tracking"),
+		repo: stepIndexOf("repo"),
+	} as const
 	const flags = users.map((u) => {
 		const posted = u.firstReelAt !== null
 		const submitted = u.firstSubmissionAt !== null
+		const completed = u.onboardingCompletedAt !== null
+		const step = u.onboardingStep
+		const reached = (n: number) => step >= n || completed
 		return [
 			true,
 			sessions.has(u.id),
-			u.hardwareExperience !== null || u.onboardingCompletedAt !== null || u.firstProjectAt !== null,
-			named.has(u.id) || u.firstProjectAt !== null,
+			u.hardwareExperience !== null || completed || u.firstProjectAt !== null,
+			reached(ONBOARDING.week),
+			named.has(u.id) || tookStarter.has(u.id) || completed,
+			reached(ONBOARDING.idea) || tookStarter.has(u.id),
+			pickedTier.has(u.id) || tookStarter.has(u.id) || completed,
+			reached(ONBOARDING.tracking),
+			reached(ONBOARDING.repo),
+			completed || posted || submitted,
 			u.firstProjectAt !== null,
-			u.onboardingCompletedAt !== null || posted || submitted,
 			u.participantGoal !== null || posted || submitted,
 			handoffs.has(u.id) || posted,
 			handoffUploads.has(u.id) || posted,
@@ -597,14 +622,23 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 		{ id: "signedUp", label: "Signed up", hint: "Account in the database" },
 		{ id: "loggedIn", label: "Logged in", hint: "At least one sign-in" },
 		{ id: "startedOnboarding", label: "Started onboarding", hint: "Answered the first getting-started question" },
-		{ id: "namedProject", label: "Named a project", hint: "Gave a project a title and description" },
-		{ id: "createdProject", label: "Created a project", hint: "Named a project and picked a funding tier" },
+		{ id: "reachedWeek", label: "Reached the week step", hint: "Saw what this week's theme is" },
+		{
+			id: "namedProject",
+			label: "Named or picked a project",
+			hint: "Described a project, or took a starter",
+		},
+		{ id: "reachedIdea", label: "Reached the idea step", hint: "Passed the project step to the starter ideas" },
+		{ id: "pickedTier", label: "Picked a tier", hint: "Answered the tier question, or took a starter" },
+		{ id: "reachedTracking", label: "Reached time tracking", hint: "Saw how hours are logged" },
+		{ id: "reachedRepo", label: "Reached the repo step", hint: "Saw the optional repo-linking question" },
 		{ id: "finishedOnboarding", label: "Finished onboarding", hint: "Worked through every getting-started step" },
+		{ id: "createdProject", label: "Created a project", hint: "A project row with its first marker stamped" },
 		{ id: "setGoal", label: "Set a goal", hint: "Answered what they are here for" },
 		{ id: "startedUpload", label: "Started a reel upload", hint: "Opened the recorder or minted a phone code" },
 		{ id: "uploadedReel", label: "Uploaded a reel", hint: "A video reached the bucket, posted or not" },
 		{ id: "postedReel", label: "Posted a reel", hint: "A video published to the feed" },
-		{ id: "addedDevlog", label: "Added a devlog", hint: "Wrote a journal entry" },
+		{ id: "addedDevlog", label: "Added a devlog", hint: "Logged a work session on a project" },
 		{ id: "connectedRepo", label: "Connected a repo", hint: "Linked an external repository to a project" },
 		{ id: "checksPassed", label: "Repo checks passed", hint: "Every submission repo check came back green" },
 		{ id: "submitted", label: "Submitted a project", hint: "Handed a phase in for review" },
@@ -796,8 +830,7 @@ function aggregateByKey(inputs: RegionInputs, keyOf: (timezone: string | null) =
 		row(userKey.get(s.themeProject.userId) ?? "Unknown").hours += s.hoursApproved ?? s.hoursClaimed
 	}
 	for (const l of inputs.links) {
-		row(userKey.get(l.themeProject.userId) ?? "Unknown").hours +=
-			(l.hoursApproved ?? (l.cachedSeconds ?? 0) / 3600)
+		row(userKey.get(l.themeProject.userId) ?? "Unknown").hours += l.hoursApproved ?? (l.cachedSeconds ?? 0) / 3600
 	}
 	return totals
 }

@@ -157,7 +157,8 @@ export function WarmupModal({ onClose, closesOn }: { onClose: () => void; closes
 										{t.detail}
 										{phase !== "BUILD" && (
 											<span className="mt-1 block text-navy-soft/90">
-												You can submit on tier {t.id} from {fmtH(submitFloorFor(t.fundingHours))} of design time.
+												You can submit on tier {t.id} from {fmtH(submitFloorFor(t.fundingHours))} of design time — every
+												hour past that earns 5 spendable coins.
 											</span>
 										)}
 									</>
@@ -167,7 +168,7 @@ export function WarmupModal({ onClose, closesOn }: { onClose: () => void; closes
 									<span className="text-[0.98rem] font-extrabold text-navy">Tier {t.id}</span>
 									<span className="hand text-[0.86rem] text-teal-ink">${t.grantUsd} for parts</span>
 									<span className="hand text-[0.8rem] text-navy-soft">
-										· {fmtH(phase === "BUILD" ? BUILD_HOURS : submitFloorFor(t.fundingHours))} to submit
+										· {phase === "BUILD" ? BUILD_HOURS : submitFloorFor(t.fundingHours)}h to submit
 									</span>
 								</span>
 							</OptionRow>

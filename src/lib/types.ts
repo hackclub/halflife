@@ -87,16 +87,15 @@ export interface Week extends WeekMeta {
 	/** Hours that fund the project. Above this, time banks instead. */
 	fundingHours: number
 	/**
-	 * Hours before the week can be handed in: the funded hours plus enough
-	 * banking to keep the cheapest machine reachable. Submitting under this
-	 * would end the season with no printer, so the gate sits here and not on
-	 * the funded line. See MIN_HOURS_PER_WEEK.
+	 * Hours before the week can be handed in: the tier's funded hours, and
+	 * nothing more. Every hour past them only earns, so the gate sits on the
+	 * funded line.
 	 */
 	submitHours: number
-	/** Funded hours plus the hours your goal asks you to bank. */
+	/** Funded hours plus the hours your printer goal asks you to earn. */
 	targetHours: number
-	/** Hours that pay for the project rather than banking. Build weeks: none. */
-	bankedFrom: number
+	/** Hours that pay for the project rather than earning. Build weeks: none. */
+	earnFrom: number
 	checkpoints: Checkpoint[]
 }
 

@@ -1,5 +1,5 @@
 "use client"
-import { Fragment, useState, type CSSProperties } from "react"
+import { type CSSProperties, Fragment, useState } from "react"
 import { EmptyState } from "@/app/components/ui"
 import type { FlowStep } from "@/lib/queries/admin"
 
@@ -78,15 +78,11 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 				style={{
 					gap: "0.5rem",
 					justifyContent: "center",
-					marginBottom: "1rem",
+					marginBottom: "0.6rem",
 					cursor: "pointer",
 				}}
 			>
-				<input
-					type="checkbox"
-					checked={hideReel}
-					onChange={(e) => setHideReel(e.target.checked)}
-				/>
+				<input type="checkbox" checked={hideReel} onChange={(e) => setHideReel(e.target.checked)} />
 				<span className="hl-hint">Hide reel steps</span>
 			</label>
 
@@ -97,7 +93,7 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 					alignItems: "center",
 					justifyContent: "center",
 					gap: "0.5rem",
-					marginBottom: "1rem",
+					marginBottom: "0.6rem",
 				}}
 			>
 				<span>no loss</span>
@@ -107,8 +103,7 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 						width: "9rem",
 						height: "0.65rem",
 						borderRadius: "999px",
-						background:
-							"linear-gradient(90deg in oklch, var(--color-accent), var(--color-danger))",
+						background: "linear-gradient(90deg in oklch, var(--color-accent), var(--color-danger))",
 					}}
 				/>
 				<span>all lost</span>
@@ -119,7 +114,7 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 					display: "grid",
 					gridTemplateColumns: "15rem minmax(0,1fr)",
 					columnGap: "1rem",
-					rowGap: "0.3rem",
+					rowGap: "0.1rem",
 					alignItems: "center",
 				}}
 			>
@@ -147,22 +142,19 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 								</>
 							)}
 
-							<div style={{ minWidth: 0 }}>
-								<div style={{ fontWeight: 700 }}>{s.label}</div>
+							<div style={{ minWidth: 0, minHeight: "3.8rem" }}>
+								<div style={{ fontWeight: 700 }}>
+									{s.label}
+									{i === 0 && (
+										<span className="hl-hint" style={{ fontWeight: 400, fontSize: "0.72rem" }}>
+											{" "}
+											· baseline
+										</span>
+									)}
+								</div>
 								<div className="hl-hint" style={{ fontSize: "0.72rem" }}>
 									{s.hint}
 								</div>
-								<div style={{ fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>
-									{s.count}{" "}
-									<span className="hl-hint" style={{ fontWeight: 400, fontSize: "0.78rem" }}>
-										· {s.ofSignupsPct}% of signups
-									</span>
-								</div>
-								{i === 0 && (
-									<div className="hl-hint" style={{ fontSize: "0.72rem" }}>
-										baseline
-									</div>
-								)}
 							</div>
 
 							<div
@@ -178,6 +170,37 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 										clipPath: `polygon(${(100 - prev) / 2}% 0, ${(100 + prev) / 2}% 0, ${(100 + bottom) / 2}% 100%, ${(100 - bottom) / 2}% 100%)`,
 									}}
 								/>
+								{/* The headcount rides inside the band, white on a dark pill so a
+                    thin tail's number stays legible even where it overflows
+                    the band onto the panel. */}
+								<span
+									style={{
+										position: "absolute",
+										inset: 0,
+										display: "grid",
+										placeItems: "center",
+									}}
+								>
+									<span
+										style={{
+											fontWeight: 800,
+											fontVariantNumeric: "tabular-nums",
+											fontSize: "0.88rem",
+											lineHeight: 1.35,
+											color: "#fff",
+											padding: "0 0.4rem",
+											borderRadius: "999px",
+											background: "rgba(0,0,0,.4)",
+											whiteSpace: "nowrap",
+										}}
+									>
+										{s.count}
+										{i === 0 ? " users " : " "}
+										<span style={{ fontWeight: 400, fontSize: "0.74rem" }}>
+											· {s.ofSignupsPct}%{i === 0 ? " of signups" : ""}
+										</span>
+									</span>
+								</span>
 							</div>
 						</Fragment>
 					)
