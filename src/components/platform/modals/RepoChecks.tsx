@@ -48,7 +48,7 @@ export function RepoChecks({
 
 	useEffect(() => {
 		// eslint-disable-next-line react-hooks/set-state-in-effect -- fetching on mount and a new project
-		void loadSync()
+		loadSync()
 	}, [loadSync])
 
 	async function linkProject() {
@@ -81,7 +81,7 @@ export function RepoChecks({
 
 	useEffect(() => {
 		// eslint-disable-next-line react-hooks/set-state-in-effect -- fetching on mount and on a new link
-		void run()
+		run()
 	}, [run])
 
 	const blocking = data?.checks.filter((c) => c.blocking && c.status === "fail").length ?? 0
@@ -96,7 +96,7 @@ export function RepoChecks({
 				<h3 id="repo-checks-title" className="label text-violet-deep">
 					Repo checks
 				</h3>
-				<Button variant="ghost" size="sm" onClick={() => void run()} disabled={loading}>
+				<Button variant="ghost" size="sm" onClick={() => run()} disabled={loading}>
 					{loading ? "Checking…" : "Check again"}
 				</Button>
 			</div>
@@ -115,7 +115,7 @@ export function RepoChecks({
 						Your repo sync is writing to <span className="font-semibold">{displayRepo(syncRepo.repo)}</span>. Link this
 						project to it?
 					</span>
-					<Button variant="outline" size="sm" disabled={linking} onClick={() => void linkProject()}>
+					<Button variant="outline" size="sm" disabled={linking} onClick={() => linkProject()}>
 						{linking ? "Linking…" : "Link this repo"}
 					</Button>
 				</p>

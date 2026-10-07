@@ -66,7 +66,7 @@ export function useHandoff(onReady: (objectKey: string, url: string | null) => v
 						setStatus("ready")
 						ready.current(status.objectKey, status.url ?? null)
 						// Tell the server we have it, so nothing keeps this row live.
-						void fetch(`/api/handoff/${id}`, { method: "POST" })
+						fetch(`/api/handoff/${id}`, { method: "POST" })
 					} else if (status.state === "expired") {
 						stop()
 						setStatus("expired")

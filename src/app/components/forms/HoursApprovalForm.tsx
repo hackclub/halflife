@@ -56,7 +56,7 @@ function HoursApprovalFormInner({ kind, id, approved }: Readonly<{ kind: Kind; i
 			style={{ gap: "0.3rem", minWidth: "6rem" }}
 			onSubmit={(e) => {
 				e.preventDefault()
-				void save()
+				save()
 			}}
 		>
 			<input

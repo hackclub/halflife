@@ -111,7 +111,7 @@ export function CoverImage({
 						className="sr-only"
 						tabIndex={-1}
 						aria-hidden="true"
-						onChange={(e) => void pick(e.target.files?.[0])}
+						onChange={(e) => pick(e.target.files?.[0])}
 					/>
 					<Button variant="ghost" size="sm" disabled={busy} onClick={() => input.current?.click()} className="-ml-3.5">
 						<IconCamera className="text-base" /> {url ? "Change thumbnail" : "Add a thumbnail"}
@@ -120,7 +120,7 @@ export function CoverImage({
 						<button
 							type="button"
 							disabled={busy}
-							onClick={() => void clear()}
+							onClick={() => clear()}
 							className="hand text-[0.8rem] text-navy-soft underline decoration-dashed underline-offset-4 hover:text-coral-deep"
 						>
 							remove

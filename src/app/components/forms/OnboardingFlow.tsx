@@ -216,7 +216,7 @@ export function OnboardingFlow({
 							busy={busy}
 							onBack={back}
 							canSubmit={experience !== null}
-							onSubmit={() => void send({ step: "experience", experience })}
+							onSubmit={() => send({ step: "experience", experience })}
 						/>
 					</div>
 				) : null}
@@ -302,12 +302,12 @@ export function OnboardingFlow({
 									onBack={back}
 									canSubmit={start !== undefined}
 									onSubmit={() => {
-										if (start !== undefined) void chooseStart(start)
+										if (start !== undefined) chooseStart(start)
 									}}
 								/>
 							</>
 						) : (
-							<StepActions busy={busy} onBack={back} onSubmit={() => void send({ step: "week" })} />
+							<StepActions busy={busy} onBack={back} onSubmit={() => send({ step: "week" })} />
 						)}
 					</div>
 				) : null}
@@ -317,7 +317,7 @@ export function OnboardingFlow({
 						className="space-y-5"
 						onSubmit={(event) => {
 							event.preventDefault()
-							void sendProject()
+							sendProject()
 						}}
 					>
 						<p className="text-[0.9rem] leading-relaxed text-navy-soft">
@@ -375,7 +375,7 @@ export function OnboardingFlow({
 							busy={busy}
 							onBack={back}
 							label={idea ? "Next" : "Stick with my own idea"}
-							onSubmit={() => void send({ step: "idea", starterProjectId: idea })}
+							onSubmit={() => send({ step: "idea", starterProjectId: idea })}
 						/>
 					</div>
 				) : null}
@@ -485,7 +485,7 @@ export function OnboardingFlow({
 							busy={busy}
 							onBack={back}
 							canSubmit={view.project.tierLocked || pickedTier !== null}
-							onSubmit={() => void send({ step: "tier", requestedTier: view.project.tierLocked ? null : pickedTier })}
+							onSubmit={() => send({ step: "tier", requestedTier: view.project.tierLocked ? null : pickedTier })}
 						/>
 					</div>
 				) : null}
@@ -522,7 +522,7 @@ export function OnboardingFlow({
 							busy={busy}
 							onBack={back}
 							label="Next"
-							onSubmit={() => void send({ step: "tracking", dismissed: true })}
+							onSubmit={() => send({ step: "tracking", dismissed: true })}
 						/>
 					</div>
 				) : null}
@@ -537,13 +537,13 @@ export function OnboardingFlow({
 						<RepoSyncSettings
 							projectId={view.projectId}
 							compact
-							onEnabled={() => void send({ step: "repo", enabled: true })}
+							onEnabled={() => send({ step: "repo", enabled: true })}
 						/>
 						<StepActions
 							busy={busy}
 							onBack={back}
 							label="Finish"
-							onSubmit={() => void send({ step: "repo", enabled: false })}
+							onSubmit={() => send({ step: "repo", enabled: false })}
 						/>
 					</div>
 				) : null}

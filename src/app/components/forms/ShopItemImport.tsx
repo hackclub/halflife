@@ -101,7 +101,7 @@ export function ShopItemImport() {
 						e.target.value = ""
 					}}
 				/>
-				<Button type="button" variant="primary" disabled={!file || busy} onClick={() => void run()}>
+				<Button type="button" variant="primary" disabled={!file || busy} onClick={() => run()}>
 					{busy ? "Importing…" : "Import items"}
 				</Button>
 			</div>

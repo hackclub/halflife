@@ -111,7 +111,7 @@ export function AirtableImportForm({
 			) : null}
 
 			<div>
-				<Button variant="primary" disabled={busy} onClick={() => void run()}>
+				<Button variant="primary" disabled={busy} onClick={() => run()}>
 					{busy ? "Importing… (this can take a few minutes)" : "Import projects from Airtable"}
 				</Button>
 			</div>

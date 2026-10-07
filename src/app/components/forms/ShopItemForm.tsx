@@ -201,7 +201,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 						onChange={(e) => {
 							const file = e.target.files?.[0]
 							e.target.value = ""
-							void uploadImage(file)
+							uploadImage(file)
 						}}
 					/>
 				</div>

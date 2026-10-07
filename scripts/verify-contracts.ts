@@ -266,7 +266,7 @@ async function bodies() {
 		const originalSetTimeout = globalThis.setTimeout
 		await (async () => {
 			globalThis.setTimeout = ((fn: () => void) => {
-				void fn()
+				fn()
 				return 0
 			}) as unknown as typeof setTimeout
 			try {

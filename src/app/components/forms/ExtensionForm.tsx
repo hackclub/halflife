@@ -62,7 +62,7 @@ export function ExtensionForm({
 
 	function extendBy(days: number) {
 		const base = active && current ? new Date(current).getTime() : Date.now()
-		void save(new Date(base + days * DAY_MS))
+		save(new Date(base + days * DAY_MS))
 	}
 
 	return (
@@ -78,7 +78,7 @@ export function ExtensionForm({
 				className="hl-row"
 				onSubmit={(e) => {
 					e.preventDefault()
-					if (value) void save(new Date(value))
+					if (value) save(new Date(value))
 				}}
 			>
 				<input
@@ -99,7 +99,7 @@ export function ExtensionForm({
 					+3 days
 				</Button>
 				{current ? (
-					<Button type="button" variant="danger" disabled={busy} onClick={() => void save(null)}>
+					<Button type="button" variant="danger" disabled={busy} onClick={() => save(null)}>
 						Clear
 					</Button>
 				) : null}

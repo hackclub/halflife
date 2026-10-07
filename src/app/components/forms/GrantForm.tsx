@@ -60,7 +60,7 @@ export function GrantForm({
 				disabled={busy}
 				aria-label="HCB grant link"
 			/>
-			<Button variant="primary" disabled={busy || !grantUrl.trim()} onClick={() => void send()}>
+			<Button variant="primary" disabled={busy || !grantUrl.trim()} onClick={() => send()}>
 				{busy ? "Sending…" : `Send $${amountUsd}`}
 			</Button>
 			{error ? <Callout tone="danger">{error}</Callout> : null}

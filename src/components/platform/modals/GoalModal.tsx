@@ -71,7 +71,7 @@ export function GoalModal({
 	function advance() {
 		setError(null)
 		if (chosen === ParticipantGoal.PRINTER) setStep("printer")
-		else void commit(chosen)
+		else commit(chosen)
 	}
 
 	return (
@@ -140,7 +140,7 @@ export function GoalModal({
 									Cancel
 								</Button>
 							)}
-							<Button variant="teal" disabled={saving} onClick={() => void commit(ParticipantGoal.PRINTER, picked)}>
+							<Button variant="teal" disabled={saving} onClick={() => commit(ParticipantGoal.PRINTER, picked)}>
 								{unchanged ? "Keep this goal" : "Set this goal"} <IconCheck className="text-base" />
 							</Button>
 						</>

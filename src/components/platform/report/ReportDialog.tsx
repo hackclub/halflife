@@ -132,7 +132,7 @@ export function ReportDialog({
 						<Button variant="ghost" onClick={close} disabled={sending}>
 							Cancel
 						</Button>
-						<Button variant="solid" onClick={() => void send()} disabled={!reason || sending}>
+						<Button variant="solid" onClick={() => send()} disabled={!reason || sending}>
 							{sending ? "Sending…" : "Send report"}
 						</Button>
 					</div>

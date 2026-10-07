@@ -52,7 +52,7 @@ export function countSignups(): Promise<number | null> {
 	const value = walkSignups(config)
 	const entry: Cached = { at: now, ttl: CACHE_TTL_MS, value }
 	cached = entry
-	void value.then((count) => {
+	value.then((count) => {
 		// A failure is kept briefly: checked against the entry itself, so a newer walk that has since replaced it is left alone.
 		if (count === null && cached === entry) entry.ttl = FAILED_TTL_MS
 	})

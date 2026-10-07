@@ -98,7 +98,7 @@ export function RepoSyncSettings({
 
 	useEffect(() => {
 		// eslint-disable-next-line react-hooks/set-state-in-effect -- fetching on mount and on a new project
-		void load()
+		load()
 	}, [load])
 
 	async function send(method: "POST" | "PUT", body?: unknown) {
@@ -171,7 +171,7 @@ export function RepoSyncSettings({
 						<Button
 							key={forge.id}
 							variant="solid"
-							onClick={() => void linkForge(forge.id, window.location.pathname + window.location.search)}
+							onClick={() => linkForge(forge.id, window.location.pathname + window.location.search)}
 						>
 							Connect {forge.label}
 						</Button>
@@ -227,7 +227,7 @@ export function RepoSyncSettings({
 						repo={state.repo}
 						existing={state.projectRepo}
 						busy={linking}
-						onClick={() => void linkProject()}
+						onClick={() => linkProject()}
 					/>
 				)}
 				{linked && (
@@ -237,10 +237,10 @@ export function RepoSyncSettings({
 				)}
 
 				<div className="flex flex-wrap gap-2">
-					<Button variant="outline" size="sm" disabled={busy} onClick={() => void send("PUT")}>
+					<Button variant="outline" size="sm" disabled={busy} onClick={() => send("PUT")}>
 						{busy ? "Syncing…" : "Sync now"}
 					</Button>
-					<Button variant="ghost" size="sm" disabled={busy} onClick={() => void send("POST", { enabled: false })}>
+					<Button variant="ghost" size="sm" disabled={busy} onClick={() => send("POST", { enabled: false })}>
 						Turn off
 					</Button>
 				</div>
@@ -309,7 +309,7 @@ export function RepoSyncSettings({
 				>
 					{busy ? "Writing to the repo…" : "Turn on syncing"}
 				</Button>
-				<Button variant="ghost" size="sm" disabled={busy || loading} onClick={() => void load()}>
+				<Button variant="ghost" size="sm" disabled={busy || loading} onClick={() => load()}>
 					Check again
 				</Button>
 				{state.linkedForges.map((id) => {
@@ -321,7 +321,7 @@ export function RepoSyncSettings({
 							variant="outline"
 							size="sm"
 							disabled={busy}
-							onClick={() => void linkForge(forge.id, window.location.pathname + window.location.search)}
+							onClick={() => linkForge(forge.id, window.location.pathname + window.location.search)}
 						>
 							Reconnect {forge.label}
 						</Button>

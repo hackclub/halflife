@@ -97,7 +97,7 @@ export function StageSlide({
 		if (prefersStill()) return
 		el.currentTime = 0
 		let cancelled = false
-		void playExclusive(el).then(async (ok) => {
+		playExclusive(el).then(async (ok) => {
 			if (ok || cancelled || el.muted) return
 			// Sound before the reader has touched the page is the browser's to refuse, and it does. Muted playback it always allows, so the reel plays silently and the page offers the sound back.
 			el.muted = true
@@ -127,7 +127,7 @@ export function StageSlide({
 	const toggle = useCallback(() => {
 		const el = video.current
 		if (!el || !reel.videoUrl) return
-		if (el.paused) void playExclusive(el)
+		if (el.paused) playExclusive(el)
 		else el.pause()
 	}, [reel.videoUrl])
 
@@ -161,7 +161,7 @@ export function StageSlide({
 		for (let i = 0; i < el.played.length; i++) watched += el.played.end(i) - el.played.start(i)
 		if (watched < 1) return
 		counted.current = true
-		void fetch(`/api/posts/${reel.id}/view`, { method: "POST" })
+		fetch(`/api/posts/${reel.id}/view`, { method: "POST" })
 	}
 
 	/** The heart that says a double tap landed, where it landed. */

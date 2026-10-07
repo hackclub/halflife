@@ -37,7 +37,7 @@ export function FirstCheckpoint() {
 			}
 		}
 
-		void load()
+		load()
 		return () => {
 			cancelled = true
 		}

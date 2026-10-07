@@ -85,7 +85,7 @@ export function ShopGrid({
 							const next = e.target.value === "" ? null : e.target.value
 							setSavingRegion(true)
 							setError(null)
-							void fetch("/api/shop/region", {
+							fetch("/api/shop/region", {
 								method: "PUT",
 								headers: { "content-type": "application/json" },
 								body: JSON.stringify({ regionId: next }),
@@ -178,7 +178,7 @@ export function ShopGrid({
 								<button
 									type="button"
 									disabled={out || item.locked || !afford || busy !== null}
-									onClick={() => void buy(item)}
+									onClick={() => buy(item)}
 									className={cx(
 										"label absolute bottom-3 left-3 flex items-center gap-1.5 rounded-xl border-2 px-3.5 py-2 transition-all duration-150",
 										"opacity-100 sm:translate-y-1.5 sm:opacity-0 sm:group-hover:translate-y-0 sm:group-hover:opacity-100 sm:group-focus-within:translate-y-0 sm:group-focus-within:opacity-100 focus-visible:translate-y-0 focus-visible:opacity-100",

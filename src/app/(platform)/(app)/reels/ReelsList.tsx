@@ -176,7 +176,7 @@ function ReelRow({ reel, onAdd, onChanged }: { reel: MyReel; onAdd: () => void; 
 									</a>
 									<button
 										type="button"
-										onClick={() => void remove(link.id)}
+										onClick={() => remove(link.id)}
 										disabled={removing !== null}
 										aria-label={`Remove the ${PLATFORM_INFO[link.platform].label} link`}
 										className="grid size-8 shrink-0 place-items-center rounded-full text-navy-soft transition-colors hover:bg-coral/10 hover:text-coral-deep disabled:opacity-50"
@@ -228,7 +228,7 @@ function ReelRow({ reel, onAdd, onChanged }: { reel: MyReel; onAdd: () => void; 
 									: "It comes off the platform everywhere. Links to where you posted it go with it."}
 							</p>
 							<div className="mt-2.5 flex flex-wrap gap-2">
-								<Button variant="coral" size="sm" onClick={() => void deleteReel()} disabled={deleting}>
+								<Button variant="coral" size="sm" onClick={() => deleteReel()} disabled={deleting}>
 									{deleting ? "Deleting…" : "Delete reel"}
 								</Button>
 								<Button variant="ghost" size="sm" onClick={() => setConfirming(false)} disabled={deleting}>

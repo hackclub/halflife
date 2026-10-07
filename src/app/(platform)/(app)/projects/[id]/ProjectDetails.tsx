@@ -98,7 +98,7 @@ export function ProjectDetails({
 									<Button variant="ghost" size="sm" onClick={() => setConfirming(false)} disabled={unsubmitting}>
 										Keep it in
 									</Button>
-									<Button variant="solid" size="sm" onClick={() => void takeBack()} disabled={unsubmitting}>
+									<Button variant="solid" size="sm" onClick={() => takeBack()} disabled={unsubmitting}>
 										{unsubmitting ? "Unsubmitting…" : "Unsubmit"}
 									</Button>
 								</div>
@@ -218,7 +218,7 @@ function DetailsForm({
 			className="grid gap-4"
 			onSubmit={(e) => {
 				e.preventDefault()
-				void save()
+				save()
 			}}
 			onKeyDown={(e) => {
 				if (e.key === "Escape" && !saving) onDone()

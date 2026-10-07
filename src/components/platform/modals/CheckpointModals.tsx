@@ -588,7 +588,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						</p>
 					</div>
 
-					<Button variant="solid" onClick={() => void save()} disabled={!ok || saving || uploading > 0}>
+					<Button variant="solid" onClick={() => save()} disabled={!ok || saving || uploading > 0}>
 						{saving ? "Saving…" : editing ? "Save changes" : "Finish"}{" "}
 						{editing ? <IconCheck className="text-base" /> : <IconArrowRight className="text-base" />}
 					</Button>
@@ -677,7 +677,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						// A link or some text is not an image: left to the textarea, which drops it in as text. Files are always caught, images or not, so a PDF let go over the sheet cannot open in the tab and take the unsaved entry with it.
 						if (found.length === 0 && files.length === 0) return
 						e.preventDefault()
-						void addJournalImages(found.length > 0 ? found : files)
+						addJournalImages(found.length > 0 ? found : files)
 					}}
 				>
 					{editing ? (
@@ -805,7 +805,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									const pasted = Array.from(e.clipboardData.files).filter((f) => f.type.startsWith("image/"))
 									if (pasted.length === 0) return
 									e.preventDefault()
-									void addJournalImages(pasted)
+									addJournalImages(pasted)
 								}}
 								rows={9}
 								placeholder="Start typing… What did you work on? What worked and what didn't? &#10;&#10; Markdown styling enabled! Drag, drop or paste images straight in."
@@ -870,7 +870,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								// Copied out first: clearing the input empties the live list.
 								const files = Array.from(event.target.files ?? [])
 								event.target.value = ""
-								void addJournalImages(files)
+								addJournalImages(files)
 							}}
 						/>
 						<p className={cx("hand text-[0.76rem] tabular-nums", longEnough ? "text-teal-ink" : "text-navy-soft")}>
@@ -1162,7 +1162,7 @@ export function PublicReelModal({
 					<Button variant="outline" onClick={onClose} disabled={saving}>
 						Skip
 					</Button>
-					<Button variant="solid" onClick={() => void save()} disabled={filled.length === 0 || saving}>
+					<Button variant="solid" onClick={() => save()} disabled={filled.length === 0 || saving}>
 						{saving ? "Saving…" : "Save links"}
 					</Button>
 				</>
@@ -1193,11 +1193,11 @@ export function PublicReelModal({
 						</code>
 					)}
 					{referral.state === "ready" && (
-						<Button variant="outline" size="sm" onClick={() => void copy(referral.link, "link")}>
+						<Button variant="outline" size="sm" onClick={() => copy(referral.link, "link")}>
 							{copied === "link" ? "Copied!" : "Copy link"}
 						</Button>
 					)}
-					<Button variant="outline" size="sm" onClick={() => void copy(captionLine, "caption")}>
+					<Button variant="outline" size="sm" onClick={() => copy(captionLine, "caption")}>
 						{copied === "caption" ? "Copied!" : referral.state === "ready" ? "Copy link + hashtag" : "Copy hashtag"}
 					</Button>
 				</div>
@@ -1281,7 +1281,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		if (!video) return
 		// The `muted` attribute only sets the initial state – React re-renders do not move the property after mount – so the toggle writes it here.
 		video.muted = muted
-		void video.play().catch(() => undefined)
+		video.play().catch(() => undefined)
 	}, [previewUrl, muted])
 
 	// A blob URL holds the whole video in memory until it is revoked.
@@ -1402,7 +1402,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
                 draft to keep – it is just the answer to "another one?" */}
 						{done && !clip && !caption.trim() ? "Not now" : "Save draft"}
 					</Button>
-					<Button variant="solid" disabled={Boolean(postBlocker) || posting} onClick={() => void post()}>
+					<Button variant="solid" disabled={Boolean(postBlocker) || posting} onClick={() => post()}>
 						{posting ? "Posting…" : done ? "Post another reel" : "Post reel"} <IconFilm className="text-base" />
 					</Button>
 				</>
@@ -1522,7 +1522,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const week = weekOf(checkpoint.weekId)
 	// Opening "create a project" is what makes the week's project row – not signing up, when nobody knows yet whether they will get this far.
 	useEffect(() => {
-		void ensureProject(checkpoint.weekId)
+		ensureProject(checkpoint.weekId)
 	}, [checkpoint.weekId, ensureProject])
 	const [name, setName] = useState("")
 	const [desc, setDesc] = useState("")
@@ -1759,7 +1759,7 @@ export function UnsubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					<Button variant="outline" onClick={() => setOpenCheckpoint(null)} disabled={busy}>
 						Keep it in review
 					</Button>
-					<Button variant="solid" onClick={() => void unsubmit()} disabled={busy}>
+					<Button variant="solid" onClick={() => unsubmit()} disabled={busy}>
 						{busy ? "Unsubmitting…" : week.id === WARMUP_WEEK_ID ? "Unsubmit your warm-up" : `Unsubmit week ${week.id}`}
 					</Button>
 				</>
@@ -1947,7 +1947,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							Next <IconArrowRight className="text-base" />
 						</Button>
 					) : (
-						<Button variant="coral" disabled={!canAdvance || submitting} onClick={() => void submit()}>
+						<Button variant="coral" disabled={!canAdvance || submitting} onClick={() => submit()}>
 							{submitting
 								? "Submitting…"
 								: owed > 0

@@ -76,7 +76,7 @@ export function ItemRegionPrices({
 								onChange={(e) => setValues((v) => ({ ...v, [region.id]: e.target.value }))}
 								style={{ maxWidth: "9rem" }}
 							/>
-							<Button type="button" disabled={busy !== null} onClick={() => void save(region.id)}>
+							<Button type="button" disabled={busy !== null} onClick={() => save(region.id)}>
 								{busy === region.id ? "Saving…" : "Save"}
 							</Button>
 						</li>

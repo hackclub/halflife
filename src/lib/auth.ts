@@ -158,8 +158,8 @@ export const auth = betterAuth({
 			create: {
 				// Every sign-in re-reads the HCA profile, so a status that changed since the last one – most often "pending" becoming "verified" – is current. Not awaited: signing in must not wait on, or fail with, HCA.
 				after: async (session) => {
-					void syncHcaProfile(session.userId)
-					void markLogin(session.userId)
+					syncHcaProfile(session.userId)
+					markLogin(session.userId)
 				},
 			},
 		},

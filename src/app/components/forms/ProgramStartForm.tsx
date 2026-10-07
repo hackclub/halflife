@@ -85,7 +85,7 @@ export function ProgramStartForm({
 						}}
 						style={{ maxWidth: "12rem" }}
 					/>
-					<Button variant="primary" disabled={busy || !valid || !changed} onClick={() => void save()}>
+					<Button variant="primary" disabled={busy || !valid || !changed} onClick={() => save()}>
 						{busy ? "Saving…" : "Save start date"}
 					</Button>
 					{changed ? (

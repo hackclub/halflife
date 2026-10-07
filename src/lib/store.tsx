@@ -688,7 +688,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				...f,
 				projects: f.projects.map((p) => (p.id === id ? { ...p, tier } : p)),
 			}))
-			void send(`/api/projects/${id}`, { requestedTier: tier }, "PATCH").finally(() => router.refresh())
+			send(`/api/projects/${id}`, { requestedTier: tier }, "PATCH").finally(() => router.refresh())
 		},
 		[router],
 	)
@@ -739,7 +739,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 
 			const route = routeOf(id)
 			if (route && /-submit$/.test(id)) {
-				void send(`/api/projects/${route.projectId}/submit`, { phase: route.phase }).finally(() => router.refresh())
+				send(`/api/projects/${route.projectId}/submit`, { phase: route.phase }).finally(() => router.refresh())
 				return
 			}
 
@@ -897,7 +897,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			}
 
 			// Either way the server has the last word, so a write that landed elsewhere while this one was refused cannot sit on top of it.
-			void router.refresh()
+			router.refresh()
 			return refusal
 		},
 		[router],

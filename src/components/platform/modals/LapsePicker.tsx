@@ -85,7 +85,7 @@ export function LapsePicker({
 
 	useEffect(() => {
 		// eslint-disable-next-line react-hooks/set-state-in-effect -- fetching on mount
-		void refresh()
+		refresh()
 	}, [refresh])
 
 	async function loadMore() {
@@ -144,7 +144,7 @@ export function LapsePicker({
 					Timelapses are recorded on Lapse. Sign in once and every timelapse you publish there shows up here to pick
 					from.
 				</p>
-				<Button variant="solid" disabled={leaving} onClick={() => void startSignIn()}>
+				<Button variant="solid" disabled={leaving} onClick={() => startSignIn()}>
 					{leaving ? "Opening Lapse…" : "Sign in with Lapse"} <IconArrowRight className="text-base" />
 				</Button>
 				<p className="hand text-[0.78rem] text-navy-soft">
@@ -160,7 +160,7 @@ export function LapsePicker({
 				<p role="alert" className="flex items-start gap-2 text-[0.88rem] font-semibold text-coral-deep">
 					<IconWarning className="mt-0.5 shrink-0 text-base" /> {load.message}
 				</p>
-				<Button variant="outline" size="sm" onClick={() => void refresh()}>
+				<Button variant="outline" size="sm" onClick={() => refresh()}>
 					Try again
 				</Button>
 			</div>
@@ -180,7 +180,7 @@ export function LapsePicker({
 				>
 					record a new one on Lapse
 				</a>
-				<Button variant="ghost" size="sm" onClick={() => void refresh()}>
+				<Button variant="ghost" size="sm" onClick={() => refresh()}>
 					Refresh
 				</Button>
 			</div>
@@ -269,7 +269,7 @@ export function LapsePicker({
 
 			{load.nextCursor && (
 				<div className="mt-3 flex justify-center">
-					<Button variant="outline" size="sm" onClick={() => void loadMore()} disabled={more}>
+					<Button variant="outline" size="sm" onClick={() => loadMore()} disabled={more}>
 						{more ? "Loading…" : "Show older timelapses"}
 					</Button>
 				</div>

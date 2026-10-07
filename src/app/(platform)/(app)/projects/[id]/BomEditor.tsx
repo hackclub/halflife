@@ -374,7 +374,7 @@ export function BomEditor({
 										</button>
 										<button
 											type="button"
-											onClick={() => void remove(l)}
+											onClick={() => remove(l)}
 											disabled={saving}
 											aria-label={`Remove ${l.name}`}
 											className="inline-grid size-8 place-items-center rounded-full text-navy-soft transition-colors hover:bg-coral/10 hover:text-coral-deep"
@@ -419,7 +419,7 @@ export function BomEditor({
 						<Button variant="outline" size="sm" onClick={() => open("new")}>
 							<IconPlus className="text-base" /> Add a part
 						</Button>
-						<Button variant="ghost" size="sm" disabled={saving || importLoading} onClick={() => void openImport()}>
+						<Button variant="ghost" size="sm" disabled={saving || importLoading} onClick={() => openImport()}>
 							<IconArrowDown className="text-base" /> Import from repo
 						</Button>
 					</div>
@@ -434,7 +434,7 @@ export function BomEditor({
 					className="mt-4 grid gap-3 rounded-2xl bg-black/[.03] p-4"
 					onSubmit={(e) => {
 						e.preventDefault()
-						void save()
+						save()
 					}}
 					onKeyDown={(e) => {
 						if (e.key === "Escape") setEditing(null)
@@ -509,11 +509,11 @@ export function BomEditor({
 								Cancel
 							</Button>
 							{preview.existing > 0 && (
-								<Button variant="outline" size="sm" disabled={importing} onClick={() => void applyImport(false)}>
+								<Button variant="outline" size="sm" disabled={importing} onClick={() => applyImport(false)}>
 									{importing ? "Adding…" : `Add ${preview.lines.length} to my list`}
 								</Button>
 							)}
-							<Button variant="solid" size="sm" disabled={importing} onClick={() => void applyImport(true)}>
+							<Button variant="solid" size="sm" disabled={importing} onClick={() => applyImport(true)}>
 								{importing
 									? "Importing…"
 									: preview.existing > 0
@@ -667,7 +667,7 @@ function ExtraRow({
 								setDraft(e.target.value)
 								if (invalid) setInvalid(false)
 							}}
-							onBlur={() => void commit()}
+							onBlur={() => commit()}
 							onKeyDown={(e) => {
 								if (e.key === "Enter") {
 									e.preventDefault()

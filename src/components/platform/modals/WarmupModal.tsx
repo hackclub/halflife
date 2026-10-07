@@ -83,7 +83,7 @@ export function WarmupModal({ onClose, closesOn }: { onClose: () => void; closes
 					<Button variant="outline" onClick={onClose} disabled={saving}>
 						Cancel
 					</Button>
-					<Button variant="solid" disabled={!ok || saving} onClick={() => void create()}>
+					<Button variant="solid" disabled={!ok || saving} onClick={() => create()}>
 						{saving ? "Creating…" : "Create project"} <IconArrowRight className="text-base" />
 					</Button>
 				</>

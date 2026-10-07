@@ -137,7 +137,7 @@ export function ImageUploads({
 				className="sr-only"
 				tabIndex={-1}
 				aria-hidden="true"
-				onChange={(e) => void pick(e.target.files)}
+				onChange={(e) => pick(e.target.files)}
 			/>
 
 			{errors.map((e) => (

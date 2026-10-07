@@ -127,7 +127,7 @@ function DisputeForm({
 				</p>
 			)}
 			<div className="flex flex-wrap gap-2">
-				<Button variant="solid" size="sm" disabled={saving} onClick={() => void submit()}>
+				<Button variant="solid" size="sm" disabled={saving} onClick={() => submit()}>
 					{saving ? "Sending…" : "Ask for a second look"}
 				</Button>
 				<Button variant="ghost" size="sm" disabled={saving} onClick={onClose}>
@@ -182,7 +182,7 @@ function DeleteProject({ projectId, name, blocked }: { projectId: string; name: 
 				<div className="mt-3.5 grid gap-2.5">
 					<p className="text-[0.9rem] font-extrabold text-navy">Delete {name}? You can&apos;t undo this yourself.</p>
 					<div className="flex flex-wrap gap-2">
-						<Button variant="coral" size="sm" disabled={deleting} onClick={() => void remove()}>
+						<Button variant="coral" size="sm" disabled={deleting} onClick={() => remove()}>
 							{deleting ? "Deleting…" : "Yes, delete it"}
 						</Button>
 						<Button variant="ghost" size="sm" disabled={deleting} onClick={() => setConfirming(false)}>

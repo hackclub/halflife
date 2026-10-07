@@ -98,7 +98,7 @@ export function ReelComments({
 			nextCursor: prev?.nextCursor ?? null,
 			status: "loading",
 		}))
-		void load(id, cursor)
+		load(id, cursor)
 	}
 
 	// Fetching the thread for whichever reel is current is exactly the external-system sync an effect is for. Once asked, a reel keeps its thread for the visit, so scrolling back does not ask again.
@@ -106,7 +106,7 @@ export function ReelComments({
 	useEffect(() => {
 		if (!reelId || asked) return
 		// eslint-disable-next-line react-hooks/set-state-in-effect -- every update in `load` lands after its await
-		void load(reelId, null)
+		load(reelId, null)
 	}, [reelId, asked, load])
 
 	// A different reel is a different conversation: whatever was half-typed for the last one is not an answer to this one.
@@ -251,7 +251,7 @@ export function ReelComments({
 											{c.mine && (
 												<button
 													type="button"
-													onClick={() => void remove(c)}
+													onClick={() => remove(c)}
 													className="underline decoration-dashed underline-offset-4 transition-colors hover:text-coral-deep"
 												>
 													delete

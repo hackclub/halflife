@@ -84,12 +84,12 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 		setError(null)
 		setLinks(null)
 		setAccount({ state: "loading" })
-		void load()
+		load()
 	}, [load])
 
 	useEffect(() => {
 		// eslint-disable-next-line react-hooks/set-state-in-effect -- fetching on mount
-		void load()
+		load()
 	}, [load])
 
 	async function run(key: string, fn: () => Promise<void>) {

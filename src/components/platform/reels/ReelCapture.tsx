@@ -97,7 +97,7 @@ export function ReelCapture({
 					disabled={handoff.status === "minting"}
 					onClick={() => {
 						setShowQr(true)
-						void handoff.mint()
+						handoff.mint()
 					}}
 				>
 					{handoff.status === "minting" ? "Making a code…" : "Record on my phone"}
@@ -111,7 +111,7 @@ export function ReelCapture({
 				className="sr-only"
 				// `capture` is a hint, not a constraint: on a phone it opens the camera straight away, and on a laptop the browser ignores it and shows the file picker, which is exactly what is wanted in both places.
 				capture="environment"
-				onChange={(e) => void pick(e.target.files?.[0])}
+				onChange={(e) => pick(e.target.files?.[0])}
 			/>
 
 			{showQr && handoff.minted && handoff.status === "waiting" && (

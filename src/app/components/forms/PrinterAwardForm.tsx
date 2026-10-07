@@ -57,7 +57,7 @@ export function PrinterAwardForm({ awardId, status }: Readonly<{ awardId: string
 			style={{ gap: "0.4rem", minWidth: "12rem" }}
 			onSubmit={(e) => {
 				e.preventDefault()
-				void save()
+				save()
 			}}
 		>
 			<select
