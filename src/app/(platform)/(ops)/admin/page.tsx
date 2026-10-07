@@ -153,10 +153,7 @@ export default async function AdminOverviewPage() {
 }
 
 /**
- * One metric as a donut pie: the biggest slices named, the long tail folded
- * into Other. Shared by the continent and country panels, once for users and
- * once for hours – both hand it rows shaped the same way and say which field
- * to cut by.
+ * One metric as a donut pie: the biggest slices named, the long tail folded into Other. Shared by the continent and country panels, once for users and once for hours – both hand it rows shaped the same way and say which field to cut by.
  */
 function MetricPie({
 	title,
@@ -176,8 +173,7 @@ function MetricPie({
 	const total = ranked.reduce((n, s) => n + s.value, 0)
 	if (total === 0) return <EmptyState>No data yet.</EmptyState>
 
-	// Past six the wedges turn to slivers, so the rest reads as one slice.
-	// The legend names the same slices, so the pie and its key never disagree.
+	// Past six the wedges turn to slivers, so the rest reads as one slice. The legend names the same slices, so the pie and its key never disagree.
 	const MAX_SLICES = 6
 	const head = ranked.slice(0, MAX_SLICES)
 	const tail = ranked.slice(MAX_SLICES)
@@ -313,10 +309,7 @@ function MetricPie({
 }
 
 /**
- * Hours logged and devlogs written per day, as two strips sharing one day
- * axis. Days are program-timezone effective dates, gap-filled first to last
- * so the axis reads continuously; the strip scrolls sideways once the season
- * outgrows the panel.
+ * Hours logged and devlogs written per day, as two strips sharing one day axis. Days are program-timezone effective dates, gap-filled first to last so the axis reads continuously; the strip scrolls sideways once the season outgrows the panel.
  */
 function ActivityStrip({ days }: { days: DayActivity[] }) {
 	if (days.length === 0) return <EmptyState>No devlogs yet.</EmptyState>
@@ -434,10 +427,7 @@ function ActivityStrip({ days }: { days: DayActivity[] }) {
 }
 
 /**
- * First-project choice as a donut: one slice per starter plus Custom, with a
- * legend carrying the counts. Segments are SVG circles rather than a chart
- * dependency – the page's other visuals are hand-rolled the same way – and
- * the figure carries a text summary so the shares do not live in colour alone.
+ * First-project choice as a donut: one slice per starter plus Custom, with a legend carrying the counts. Segments are SVG circles rather than a chart dependency – the page's other visuals are hand-rolled the same way – and the figure carries a text summary so the shares do not live in colour alone.
  */
 function FirstProjectDonut({ stats }: { stats: FirstProjectStat[] }) {
 	const total = stats.reduce((n, s) => n + s.users, 0)
@@ -453,11 +443,7 @@ function FirstProjectDonut({ stats }: { stats: FirstProjectStat[] }) {
 		"var(--color-ink-muted)",
 	]
 	const R = 15.9155 // 100 / 2π: a share of p% is a dash of p units
-	// Segment offsets, computed up front: each slice starts where the last one
-	// ended, from path position 0 (3 o'clock). A positive dashoffset does NOT
-	// move the start forward – it starts the path that far into the pattern,
-	// eating the first segment's opening units (a grey quadrant, in the old
-	// code's case) – so the top start comes from the rotate below instead.
+	// Segment offsets, computed up front: each slice starts where the last one ended, from path position 0 (3 o'clock). A positive dashoffset does NOT move the start forward – it starts the path that far into the pattern, eating the first segment's opening units (a grey quadrant, in the old code's case) – so the top start comes from the rotate below instead.
 	const shares = stats.map((s) => (s.users / total) * 100)
 	const segments = stats.map((s, i) => ({
 		label: s.label,

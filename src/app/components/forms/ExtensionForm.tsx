@@ -14,9 +14,7 @@ function toLocalInput(date: Date): string {
 /**
  * Grant, move or clear an extension.
  *
- * An extension reopens passed weeks for journal entries and lets the work be
- * submitted past a global close. The quick buttons count from whichever is
- * later, now or the current extension, so pressing "+1 day" twice gives two.
+ * An extension reopens passed weeks for journal entries and lets the work be submitted past a global close. The quick buttons count from whichever is later, now or the current extension, so pressing "+1 day" twice gives two.
  */
 export function ExtensionForm({
 	url,
@@ -28,8 +26,7 @@ export function ExtensionForm({
 	current: string | null
 }>) {
 	const router = useRouter()
-	// Filled in after mount: the server renders in its own timezone, and the
-	// input has to show the admin's.
+	// Filled in after mount: the server renders in its own timezone, and the input has to show the admin's.
 	const [value, setValue] = useState("")
 	useEffect(() => {
 		// eslint-disable-next-line react-hooks/set-state-in-effect -- reading the browser's timezone

@@ -17,11 +17,7 @@ export const maxDuration = 60
 const bodySchema = z.object({ url: z.string().url().max(2048) }).strict()
 
 /**
- * Re-host an image from another site in the bucket: an image dragged into a
- * journal entry from another page arrives as its address, and a hotlinked
- * picture can vanish or change after the entry is reviewed. Journal images
- * only, so they land beside the uploaded ones in `sessions`, named after
- * their bytes the same way (see /api/upload).
+ * Re-host an image from another site in the bucket: an image dragged into a journal entry from another page arrives as its address, and a hotlinked picture can vanish or change after the entry is reviewed. Journal images only, so they land beside the uploaded ones in `sessions`, named after their bytes the same way (see /api/upload).
  */
 export const POST = withRoute(async (req: Request) => {
 	const gate = await requireSession()

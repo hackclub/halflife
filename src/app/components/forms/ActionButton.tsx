@@ -8,9 +8,7 @@ interface ApiError {
 }
 
 /**
- * One button that POSTs a JSON body and refreshes the server components on the
- * page. Client components here own interaction only – the data on screen came
- * from the server, so a refresh is the whole update path.
+ * One button that POSTs a JSON body and refreshes the server components on the page. Client components here own interaction only – the data on screen came from the server, so a refresh is the whole update path.
  */
 export function ActionButton({
 	url,
@@ -45,8 +43,7 @@ export function ActionButton({
 		let payload = body
 		if (reasonPrompt) {
 			const reason = window.prompt(reasonPrompt)?.trim()
-			// A cancelled or empty prompt is a cancelled action, not a request the
-			// server should reject for an empty reason.
+			// A cancelled or empty prompt is a cancelled action, not a request the server should reject for an empty reason.
 			if (!reason) return
 			payload = { reason }
 		}

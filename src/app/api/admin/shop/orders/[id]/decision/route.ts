@@ -60,8 +60,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	if (before.status !== ShopOrderStatus.PENDING) {
 		return fail("CONFLICT", "Only a pending order can be put on hold")
 	}
-	// Conditional on the status just read: a concurrent fulfil or reject landing
-	// between the read and the write must not be overwritten back to ON_HOLD.
+	// Conditional on the status just read: a concurrent fulfil or reject landing between the read and the write must not be overwritten back to ON_HOLD.
 	const held = await prisma.shopOrder.updateMany({
 		where: { id, status: ShopOrderStatus.PENDING },
 		data: {

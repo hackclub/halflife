@@ -29,13 +29,9 @@ const MAX_LENGTH = 1000
 /**
  * The conversation under the current reel.
  *
- * Newest first, so the thread opens on the most recent thing said and the
- * "show older comments" button walks back through time in the direction its
- * name promises. A new comment is prepended to the top of the list.
+ * Newest first, so the thread opens on the most recent thing said and the "show older comments" button walks back through time in the direction its name promises. A new comment is prepended to the top of the list.
  *
- * It follows the stage: when the reel changes, so does the thread. Threads are
- * kept for the visit, so scrolling back to a reel shows its comments at once
- * instead of a spinner for something already read.
+ * It follows the stage: when the reel changes, so does the thread. Threads are kept for the visit, so scrolling back to a reel shows its comments at once instead of a spinner for something already read.
  */
 export function ReelComments({
 	reel,
@@ -50,8 +46,7 @@ export function ReelComments({
 	onClose: () => void
 	className?: string
 }) {
-	// Two ReelComments can be mounted at once (the side panel and the narrow
-	// sheet), so fixed ids would collide; useId scopes them to this instance.
+	// Two ReelComments can be mounted at once (the side panel and the narrow sheet), so fixed ids would collide; useId scopes them to this instance.
 	const uid = useId()
 	const [threads, setThreads] = useState<Record<string, Thread>>({})
 	const [draft, setDraft] = useState("")
@@ -60,16 +55,14 @@ export function ReelComments({
 	const list = useRef<HTMLOListElement>(null)
 
 	const reelId = reel?.id ?? null
-	// No entry yet reads as loading: the first fetch for a reel is started by
-	// the effect below, which must not set state before its await.
+	// No entry yet reads as loading: the first fetch for a reel is started by the effect below, which must not set state before its await.
 	const thread = reelId ? threads[reelId] : undefined
 
 	const patchThread = useCallback((id: string, next: (prev: Thread | undefined) => Thread) => {
 		setThreads((all) => ({ ...all, [id]: next(all[id]) }))
 	}, [])
 
-	// Everything it sets lands after the await, so it is safe to start from an
-	// effect. Callers that want the "loading" state shown mark it themselves.
+	// Everything it sets lands after the await, so it is safe to start from an effect. Callers that want the "loading" state shown mark it themselves.
 	const load = useCallback(
 		async (id: string, cursor: string | null) => {
 			try {
@@ -108,9 +101,7 @@ export function ReelComments({
 		void load(id, cursor)
 	}
 
-	// Fetching the thread for whichever reel is current is exactly the
-	// external-system sync an effect is for. Once asked, a reel keeps its
-	// thread for the visit, so scrolling back does not ask again.
+	// Fetching the thread for whichever reel is current is exactly the external-system sync an effect is for. Once asked, a reel keeps its thread for the visit, so scrolling back does not ask again.
 	const asked = thread !== undefined
 	useEffect(() => {
 		if (!reelId || asked) return
@@ -118,8 +109,7 @@ export function ReelComments({
 		void load(reelId, null)
 	}, [reelId, asked, load])
 
-	// A different reel is a different conversation: whatever was half-typed for
-	// the last one is not an answer to this one.
+	// A different reel is a different conversation: whatever was half-typed for the last one is not an answer to this one.
 	const [draftFor, setDraftFor] = useState(reelId)
 	if (draftFor !== reelId) {
 		setDraftFor(reelId)
@@ -145,8 +135,7 @@ export function ReelComments({
 				return
 			}
 			const { comment } = (await res.json()) as { comment: Comment }
-			// Newest first, so the new comment goes to the top of the thread, not
-			// the end of it.
+			// Newest first, so the new comment goes to the top of the thread, not the end of it.
 			patchThread(reel.id, (prev) => ({
 				items: [comment, ...(prev?.items ?? [])],
 				nextCursor: prev?.nextCursor ?? null,

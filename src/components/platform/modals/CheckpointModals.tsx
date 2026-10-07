@@ -53,24 +53,20 @@ import { RepoChecks } from "./RepoChecks"
  * Journal + timelapse
  * ================================================================== */
 /**
- * Two decimals at most, never a trailing zero: 7.5h, 9h, 9.55h. Rounded rather
- * than truncated because binary floats land on 44.799999999999955, and cutting
- * that gives 44.79 for a remainder that is really 44.8.
+ * Two decimals at most, never a trailing zero: 7.5h, 9h, 9.55h. Rounded rather than truncated because binary floats land on 44.799999999999955, and cutting that gives 44.79 for a remainder that is really 44.8.
  */
 const to2 = (n: number) => Math.round(n * 100) / 100
 
 /** Hours, written the way a person says them. */
 /**
- * How a sheet names its week. The warm-up is week 0 in the store, which is
- * only an address; to the person it is their warm-up.
+ * How a sheet names its week. The warm-up is week 0 in the store, which is only an address; to the person it is their warm-up.
  */
 function weekName(week: { id: number }): string {
 	return week.id === WARMUP_WEEK_ID ? "Warm-up" : `Week ${week.id}`
 }
 
 /**
- * Whether a project is the one a week's sheet is about: a warm-up's own week
- * names its project, and a season week's project is its design week's.
+ * Whether a project is the one a week's sheet is about: a warm-up's own week names its project, and a season week's project is its design week's.
  */
 function isWeeksProject(week: Week, project: Project): boolean {
 	if (week.projectId) return project.id === week.projectId
@@ -82,9 +78,7 @@ function fmtH(h: number) {
 }
 
 /**
- * One devlog covers a single sitting. The server holds the same line
- * (`sessionCreateSchema` caps `hoursClaimed` here), so the sheet refuses above
- * it rather than failing opaquely on save.
+ * One devlog covers a single sitting. The server holds the same line (`sessionCreateSchema` caps `hoursClaimed` here), so the sheet refuses above it rather than failing opaquely on save.
  */
 const MAX_SESSION_HOURS = 24
 
@@ -106,8 +100,7 @@ function stashJournalDraft(checkpointId: string, draft: JournalDraft) {
 	try {
 		window.sessionStorage.setItem(draftKey(checkpointId), JSON.stringify(draft))
 	} catch {
-		// Private mode or storage off: the trip still works, the draft just
-		// does not survive it.
+		// Private mode or storage off: the trip still works, the draft just does not survive it.
 	}
 }
 
@@ -182,10 +175,7 @@ type ImageSource = File | { url: string; alt: string }
 const IMAGE_ADDRESS = /^(https?:\/\/|data:image\/)/i
 
 /**
- * The images in a drop. Files when there are any; otherwise a picture dragged
- * off another page, which arrives as the page's markup for it (read in an
- * inert document, so nothing loads) and failing that as a bare address that
- * looks like an image. A plain link comes back empty.
+ * The images in a drop. Files when there are any; otherwise a picture dragged off another page, which arrives as the page's markup for it (read in an inert document, so nothing loads) and failing that as a bare address that looks like an image. A plain link comes back empty.
  */
 function droppedImages(transfer: DataTransfer): ImageSource[] {
 	const files = Array.from(transfer.files).filter((f) => f.type.startsWith("image/"))
@@ -225,11 +215,7 @@ function altFor(source: ImageSource): string {
 }
 
 /**
- * Put an image in the bucket and hand back its CDN link. A file uploads as
- * itself. An inline `data:` picture is already here, so it uploads as a file
- * too. An address on another site is fetched and re-hosted by the server
- * (/api/upload/from-url): the browser cannot read another site's image, and a
- * hotlinked one can change or vanish after the entry is reviewed.
+ * Put an image in the bucket and hand back its CDN link. A file uploads as itself. An inline `data:` picture is already here, so it uploads as a file too. An address on another site is fetched and re-hosted by the server (/api/upload/from-url): the browser cannot read another site's image, and a hotlinked one can change or vanish after the entry is reviewed.
  */
 async function storeImage(source: ImageSource): Promise<{ url: string | null }> {
 	if (source instanceof File) return uploadFile(source, "sessions")
@@ -265,79 +251,57 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 	const week = weekOfCheckpoint(checkpoint)
 
-	// Every journal node is one entry: write it and it is done. The week's clock
-	// is what decides whether wrapping up is on the table yet. Opened again once
-	// it is done, the same sheet is that entry, to correct – not a new one.
+	// Every journal node is one entry: write it and it is done. The week's clock is what decides whether wrapping up is on the table yet. Opened again once it is done, the same sheet is that entry, to correct – not a new one.
 	const [existing] = useState(() => {
 		const saved = stateOf(checkpoint.id)
 		return saved.done ? saved.log[0] : undefined
 	})
 	const editing = existing !== undefined
 
-	// A Lapse sign-in leaves the page and comes back: that trip's draft is
-	// restored once. Anything else typed is autosaved to this browser and
-	// restored next time the sheet opens, so clicking out cannot lose it.
-	// A saved entry clears it. Peeked (not taken) during render so StrictMode's
-	// double-invoked initializer cannot consume it before state is set.
+	// A Lapse sign-in leaves the page and comes back: that trip's draft is restored once. Anything else typed is autosaved to this browser and restored next time the sheet opens, so clicking out cannot lose it. A saved entry clears it. Peeked (not taken) during render so StrictMode's double-invoked initializer cannot consume it before state is set.
 	const [draft] = useState(() => peekJournalTrip(checkpoint.id) ?? readJournalAutosave(checkpoint.id))
 	const draftRestored = draft != null
 
-	// An edit re-opens the picker with this entry's clips selected: Lapse clips
-	// that still verify resolve into items, ones Lapse no longer vouches for
-	// stay pinned by id, and older non-Lapse uploads stay untouched. The resolve
-	// below seeds all three; a returning draft already holds the working set.
+	// An edit re-opens the picker with this entry's clips selected: Lapse clips that still verify resolve into items, ones Lapse no longer vouches for stay pinned by id, and older non-Lapse uploads stay untouched. The resolve below seeds all three; a returning draft already holds the working set.
 	const [picked, setPicked] = useState<LapseTimelapse[]>(draft?.picked ?? [])
 	const [pinned, setPinned] = useState<string[]>(draft?.pinned ?? [])
 	const [legacyKept, setLegacyKept] = useState<string[]>(draft?.legacy ?? [])
-	// The last-saved clip set, for telling a real change from the seed – and
-	// for putting the seed back on "Discard draft".
+	// The last-saved clip set, for telling a real change from the seed – and for putting the seed back on "Discard draft".
 	const [clipSeed, setClipSeed] = useState<{ picked: LapseTimelapse[]; pinned: string[] }>({
 		picked: [],
 		pinned: [],
 	})
-	// Resolve runs once per open; anything the maker toggles after that wins
-	// over the seed, whenever it lands.
+	// Resolve runs once per open; anything the maker toggles after that wins over the seed, whenever it lands.
 	const seededRef = useRef(false)
 	const clipsTouchedRef = useRef(
 		(draft?.picked.length ?? 0) > 0 || (draft?.pinned?.length ?? 0) > 0 || (draft?.legacy?.length ?? 0) > 0,
 	)
 
 	const [tab, setTab] = useState<"journal" | "timelapse">(editing ? "journal" : (draft?.tab ?? "journal"))
-	// The Lapse timelapses backing this session (clip state lives above, with
-	// the seed it resolves from).
+	// The Lapse timelapses backing this session (clip state lives above, with the seed it resolves from).
 	const [body, setBody] = useState(draft?.body ?? existing?.body ?? "")
 	const [preview, setPreview] = useState(false)
-	// Free text, not a number: a controlled number input that coerces as you
-	// type eats the decimal point the moment you reach for "1.5".
+	// Free text, not a number: a controlled number input that coerces as you type eats the decimal point the moment you reach for "1.5".
 	const [hoursText, setHoursText] = useState(draft?.hoursText ?? (existing ? String(to2(existing.minutes / 60)) : ""))
 	const [saving, setSaving] = useState(false)
 	const [saveError, setSaveError] = useState<string | null>(null)
 	const imageInput = useRef<HTMLInputElement>(null)
 	const entry = useRef<HTMLTextAreaElement>(null)
-	// Images still on their way up. Each one holds a placeholder in the entry
-	// until its link comes back, and Finish waits for all of them.
+	// Images still on their way up. Each one holds a placeholder in the entry until its link comes back, and Finish waits for all of them.
 	const [uploading, setUploading] = useState(0)
 	const [imageError, setImageError] = useState<string | null>(null)
-	// Files being dragged over the sheet. Counted, because every child the drag
-	// crosses fires its own enter and leave.
+	// Files being dragged over the sheet. Counted, because every child the drag crosses fires its own enter and leave.
 	const [dragging, setDragging] = useState(false)
 	const dragDepth = useRef(0)
 	const placeholderSeq = useRef(0)
 
-	// Autosave: every keystroke lands in this browser, so closing the sheet,
-	// reloading, or navigating away cannot lose it. Empty sheets and edits
-	// matching the saved entry keep no draft; a saved entry clears it.
+	// Autosave: every keystroke lands in this browser, so closing the sheet, reloading, or navigating away cannot lose it. Empty sheets and edits matching the saved entry keep no draft; a saved entry clears it.
 	const baselineBody = existing?.body ?? ""
-	// In the box's own arithmetic, once the seed below restates it: the box
-	// holds what the timelapses do not cover, so the baseline moves with it.
+	// In the box's own arithmetic, once the seed below restates it: the box holds what the timelapses do not cover, so the baseline moves with it.
 	const [baselineHours, setBaselineHours] = useState(existing ? String(to2(existing.minutes / 60)) : "")
-	// An entry logged under the old arithmetic whose old total does not cover
-	// its resolved timelapses: restating the box clamps it at zero and the
-	// total grows on open. Named on screen rather than silently absorbed, so
-	// a typo fix never quietly logs extra hours.
+	// An entry logged under the old arithmetic whose old total does not cover its resolved timelapses: restating the box clamps it at zero and the total grows on open. Named on screen rather than silently absorbed, so a typo fix never quietly logs extra hours.
 	const [legacyBump, setLegacyBump] = useState<{ from: number; lapse: number } | null>(null)
-	// The trip draft has been restored into state: consume it so it cannot
-	// resurrect an entry days later. Autosave below keeps it from here on.
+	// The trip draft has been restored into state: consume it so it cannot resurrect an entry days later. Autosave below keeps it from here on.
 	useEffect(() => {
 		try {
 			window.sessionStorage.removeItem(draftKey(checkpoint.id))
@@ -346,9 +310,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		}
 	}, [checkpoint.id])
 
-	// Seed the picker's working set from what the entry was saved with. The
-	// seed never overwrites anything already picked – a returning draft, or a
-	// toggle that beat the read back, always wins.
+	// Seed the picker's working set from what the entry was saved with. The seed never overwrites anything already picked – a returning draft, or a toggle that beat the read back, always wins.
 	useEffect(() => {
 		if (!editing || !existing || existing.clips.length === 0 || seededRef.current) return
 		let live = true
@@ -367,9 +329,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				seed = { picked: body.resolved ?? [], pinned: body.pinned ?? [] }
 				legacy = body.legacy ?? []
 			} catch {
-				// Lapse unreachable or unlinked: keep every stored ref by id. The
-				// server preserves what is already attached, so an edit that
-				// touches the words drops nothing.
+				// Lapse unreachable or unlinked: keep every stored ref by id. The server preserves what is already attached, so an edit that touches the words drops nothing.
 				seed = { picked: [], pinned: existing.clips }
 			}
 			if (!live) return
@@ -379,12 +339,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			if (!clipsTouchedRef.current) {
 				setPicked(seed.picked)
 				setPinned(seed.pinned)
-				// The saved figure was logged under the old arithmetic, so restate
-				// the box as the part the timelapses do not cover: the total is
-				// unchanged unless the maker edits it. The baseline moves with the
-				// box – autosave, discard and "matches saved" all compare against
-				// it, and leaving it at the old total would restore that total as
-				// a residual on discard and count the timelapses twice.
+				// The saved figure was logged under the old arithmetic, so restate the box as the part the timelapses do not cover: the total is unchanged unless the maker edits it. The baseline moves with the box – autosave, discard and "matches saved" all compare against it, and leaving it at the old total would restore that total as a residual on discard and count the timelapses twice.
 				const seedLapseHours = Math.round((seed.picked.reduce((n, t) => n + t.durationSeconds, 0) / 3600) * 100) / 100
 				if (seedLapseHours > 0) {
 					const baseHours = to2(existing.minutes / 60)
@@ -427,8 +382,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		if (editing) {
 			setBody(baselineBody)
 			setHoursText(baselineHours)
-			// Back to the last-saved clips – and anything toggled after that
-			// stops counting as touched, so a seed still in flight lands clean.
+			// Back to the last-saved clips – and anything toggled after that stops counting as touched, so a seed still in flight lands clean.
 			setPicked(clipSeed.picked)
 			setPinned(clipSeed.pinned)
 			clipsTouchedRef.current = false
@@ -442,28 +396,20 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		writeJournalAutosave(checkpoint.id, null)
 	}
 
-	// The fallback is for a season sheet opened before its project row landed;
-	// it must never pick the warm-up project, which has no season week.
+	// The fallback is for a season sheet opened before its project row landed; it must never pick the warm-up project, which has no season week.
 	const project =
 		projects.find((p) => isWeeksProject(week, p)) ?? projects.find((p) => p.weekId !== WARMUP_WEEK_ID) ?? projects[0]
 
-	// The claim is what the maker types. The photographs are what makes it a
-	// claim rather than a number, which is why the bar rises with it – and they
-	// are counted out of the entry itself, so every picture sits in the sentence
-	// that explains it instead of in a tray underneath.
+	// The claim is what the maker types. The photographs are what makes it a claim rather than a number, which is why the bar rises with it – and they are counted out of the entry itself, so every picture sits in the sentence that explains it instead of in a tray underneath.
 	const typed = Math.max(0, Number(hoursText) || 0)
-	// The hours box declares what the timelapses do not cover, so the claim is
-	// the two added together: 2 typed hours on top of a 5-hour recording logs
-	// 7. Leave the box empty and the recording sets the claim on its own – the
-	// maker is never asked to retype a number Lapse already has.
+	// The hours box declares what the timelapses do not cover, so the claim is the two added together: 2 typed hours on top of a 5-hour recording logs
+	// 7. Leave the box empty and the recording sets the claim on its own – the maker is never asked to retype a number Lapse already has.
 	const coveredSeconds = picked.reduce((sum, t) => sum + t.durationSeconds, 0)
 	const lapseHours = Math.round((coveredSeconds / 3600) * 100) / 100
 	const claimed = typed + lapseHours
-	// At least a minute once there is a claim, so a short recording is not
-	// rounded down to nothing.
+	// At least a minute once there is a claim, so a short recording is not rounded down to nothing.
 	const sessionMinutes = claimed > 0 ? Math.max(1, Math.round(claimed * 60)) : 0
-	// Screenshots back the written entry, so they follow the typed hours: 2
-	// additional hours need two screenshots, however long the timelapses run.
+	// Screenshots back the written entry, so they follow the typed hours: 2 additional hours need two screenshots, however long the timelapses run.
 	const needPhotos = photosRequired(typed)
 	const shots = countImages(body)
 	// Words only: the images are counted above, not twice.
@@ -471,20 +417,14 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 	const longEnough = written >= 200
 	const enoughPhotos = shots >= needPhotos
-	// A session is backed by a journal entry, a Lapse timelapse, or both together:
-	// each one is evidence a reviewer can check the hours against, and the two
-	// land on the same entry. A written entry needs its hours typed; a timelapse
-	// brings its own.
+	// A session is backed by a journal entry, a Lapse timelapse, or both together: each one is evidence a reviewer can check the hours against, and the two land on the same entry. A written entry needs its hours typed; a timelapse brings its own.
 	const journalled = longEnough && enoughPhotos
 	const attachedCount = picked.length + pinned.length + legacyKept.length
 	const recorded = attachedCount > 0
 	const overCap = claimed > MAX_SESSION_HOURS
 	const ok = claimed > 0 && !overCap && (journalled || recorded)
 
-	// One thing at a time – a list of four faults reads as a wall, and only the
-	// first one is actionable anyway. Once the hours are in, the entry's next
-	// shortfall is named with the other way out beside it, so nobody is told to
-	// write 200 characters they could skip with a timelapse.
+	// One thing at a time – a list of four faults reads as a wall, and only the first one is actionable anyway. Once the hours are in, the entry's next shortfall is named with the other way out beside it, so nobody is told to write 200 characters they could skip with a timelapse.
 	const orLapse = " You can also attach Lapse timelapses on the Timelapse tab – they back the same entry."
 	const missing = !ok
 		? overCap
@@ -500,18 +440,13 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const toFloor = Math.max(0, week.submitHours - hours)
 
 	/**
-	 * Finishing hands the maker back to the trail rather than straight into
-	 * another entry. What comes next is the trail's to say: logging these hours
-	 * may have brought a reel due, or opened the fork at the end of the week,
-	 * and a modal that reopens itself would march past both.
+	 * Finishing hands the maker back to the trail rather than straight into another entry. What comes next is the trail's to say: logging these hours may have brought a reel due, or opened the fork at the end of the week, and a modal that reopens itself would march past both.
 	 */
 	async function save() {
 		setSaving(true)
 		setSaveError(null)
 		if (editing) {
-			// The full set the server reconciles against: Lapse picks and pins
-			// plus the older uploads, which the server keeps silently – sending
-			// them keeps the local snapshot agreeing with it until the refresh.
+			// The full set the server reconciles against: Lapse picks and pins plus the older uploads, which the server keeps silently – sending them keeps the local snapshot agreeing with it until the refresh.
 			const refused = await editSession(checkpoint.id, sessionMinutes, body.trim(), {
 				clips: [...legacyKept, ...pinned, ...picked.map((t) => t.id)],
 			})
@@ -549,12 +484,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	}
 
 	/**
-	 * Put images into the entry where the cursor is – picked, dropped or
-	 * pasted, the same way (after Stasis's session form). Each goes in first as
-	 * a placeholder, `![Uploading name…](uploading:n)`, which no renderer or
-	 * image count accepts, and is swapped for its CDN link once the upload
-	 * lands; a failed one is taken back out. One at a time, because uploads are
-	 * rate-limited per account.
+	 * Put images into the entry where the cursor is – picked, dropped or pasted, the same way (after Stasis's session form). Each goes in first as a placeholder, `![Uploading name…](uploading:n)`, which no renderer or image count accepts, and is swapped for its CDN link once the upload lands; a failed one is taken back out. One at a time, because uploads are rate-limited per account.
 	 */
 	async function addJournalImages(sources: Iterable<ImageSource>) {
 		const all = Array.from(sources)
@@ -597,10 +527,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	}
 
 	/**
-	 * Replace a placeholder with its link, or take it out (`null`), without
-	 * moving the caret of someone who kept typing while it uploaded: setting a
-	 * textarea's value sends the caret to the end, so it is put back, shifted
-	 * by however much the text before it grew or shrank.
+	 * Replace a placeholder with its link, or take it out (`null`), without moving the caret of someone who kept typing while it uploaded: setting a textarea's value sends the caret to the end, so it is put back, shifted by however much the text before it grew or shrank.
 	 */
 	function swapPlaceholder(placeholder: string, replacement: string | null) {
 		const el = entry.current
@@ -621,9 +548,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		})
 	}
 
-	// A drag that could be carrying an image: files, or a picture dragged off
-	// another page, which comes as markup and an address rather than a file.
-	// Dragging a selection around the entry is plain text, and not ours.
+	// A drag that could be carrying an image: files, or a picture dragged off another page, which comes as markup and an address rather than a file. Dragging a selection around the entry is plain text, and not ours.
 	const mightBeImage = (e: React.DragEvent) =>
 		["Files", "text/html", "text/uri-list"].some((t) => e.dataTransfer.types.includes(t))
 
@@ -728,9 +653,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			)}
 
 			{tab === "journal" ? (
-				// The whole sheet takes a drop, not just the box: a picture let go an
-				// inch off the textarea would otherwise open in the tab and take the
-				// unsaved entry with it.
+				// The whole sheet takes a drop, not just the box: a picture let go an inch off the textarea would otherwise open in the tab and take the unsaved entry with it.
 				// biome-ignore lint/a11y/noStaticElementInteractions: a drop target, not a control; dragging is not a keyboard gesture, and the sheet stays reachable through its fields.
 				<div
 					onDragEnter={(e) => {
@@ -752,10 +675,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						setDragging(false)
 						const found = droppedImages(e.dataTransfer)
 						const files = Array.from(e.dataTransfer.files)
-						// A link or some text is not an image: left to the textarea, which
-						// drops it in as text. Files are always caught, images or not, so
-						// a PDF let go over the sheet cannot open in the tab and take the
-						// unsaved entry with it.
+						// A link or some text is not an image: left to the textarea, which drops it in as text. Files are always caught, images or not, so a PDF let go over the sheet cannot open in the tab and take the unsaved entry with it.
 						if (found.length === 0 && files.length === 0) return
 						e.preventDefault()
 						void addJournalImages(found.length > 0 ? found : files)
@@ -764,9 +684,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					{editing ? (
 						<ModalTitle subWide>Edit this entry</ModalTitle>
 					) : (
-						// `subWide`: the modal is the large size and the editor below runs
-						// its full width, so a subtitle held to 62ch stopped two-thirds of
-						// the way across and wrapped into a ragged column.
+						// `subWide`: the modal is the large size and the editor below runs its full width, so a subtitle held to 62ch stopped two-thirds of the way across and wrapped into a ragged column.
 						<ModalTitle
 							subWide
 							sub="Write about the progress you made this work session, complete with pictures/screenshots. Be detailed! Markdown works, images included."
@@ -884,8 +802,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								value={body}
 								onChange={(e) => setBody(e.target.value)}
 								onPaste={(e) => {
-									// A screenshot on the clipboard goes up like a dropped one;
-									// pasted text is left to the textarea.
+									// A screenshot on the clipboard goes up like a dropped one; pasted text is left to the textarea.
 									const pasted = Array.from(e.clipboardData.files).filter((f) => f.type.startsWith("image/"))
 									if (pasted.length === 0) return
 									e.preventDefault()
@@ -1042,10 +959,7 @@ interface ReelDraft {
 const reelDraftKey = (checkpointId: string) => `halflife.reel-draft.${checkpointId}`
 
 /**
- * A reel's draft is the clip already sitting in the bucket plus its caption.
- * The upload is the expensive half and it has already happened by the time
- * Save draft is on offer, so keeping the draft is keeping a key and a line of
- * text – in this browser, like the rest of the ceremony, and cleared on post.
+ * A reel's draft is the clip already sitting in the bucket plus its caption. The upload is the expensive half and it has already happened by the time Save draft is on offer, so keeping the draft is keeping a key and a line of text – in this browser, like the rest of the ceremony, and cleared on post.
  */
 function readReelDraft(checkpointId: string): ReelDraft | null {
 	if (typeof window === "undefined") return null
@@ -1069,11 +983,7 @@ function writeReelDraft(checkpointId: string, draft: ReelDraft | null) {
 /**
  * After a reel posts: would they like to post it online too?
  *
- * Asked once, as a yes-or-no, so saying no costs one click. Yes opens the
- * links – one field per platform, all optional but at least one – with the
- * reminder that makes the post count at the top, because it has to be in the
- * caption *before* they post it: their referral link and the programme's
- * hashtag. Each link is saved as its own Public Reels row against this reel.
+ * Asked once, as a yes-or-no, so saying no costs one click. Yes opens the links – one field per platform, all optional but at least one – with the reminder that makes the post count at the top, because it has to be in the caption *before* they post it: their referral link and the programme's hashtag. Each link is saved as its own Public Reels row against this reel.
  */
 export function PublicReelModal({
 	postId,
@@ -1088,8 +998,7 @@ export function PublicReelModal({
 	videoUrl: string | null
 	onClose: () => void
 	/**
-	 * "links" skips the question – for the Reels page, where pressing "Add
-	 * where you posted it" has already answered it.
+	 * "links" skips the question – for the Reels page, where pressing "Add where you posted it" has already answered it.
 	 */
 	start?: "ask" | "links"
 }) {
@@ -1109,8 +1018,7 @@ export function PublicReelModal({
 	>({ state: "loading" })
 	const [copied, setCopied] = useState<"link" | "caption" | null>(null)
 
-	// Asked for only once they say yes: most people will not, and the lookup
-	// reaches the signup list.
+	// Asked for only once they say yes: most people will not, and the lookup reaches the signup list.
 	useEffect(() => {
 		if (step !== "links" || referral.state !== "loading") return
 		let cancelled = false
@@ -1142,8 +1050,7 @@ export function PublicReelModal({
 	const filled = PUBLIC_REEL_PLATFORMS.filter((p) => values[p].trim())
 
 	async function save() {
-		// The same check the server runs, so a wrong link is named on its field
-		// before anything is sent.
+		// The same check the server runs, so a wrong link is named on its field before anything is sent.
 		const found: Partial<Record<PublicReelPlatform, string>> = {}
 		for (const p of filled) {
 			const read = readPublicReelLink(p, values[p])
@@ -1361,25 +1268,19 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const done = stateOf(checkpoint.id).done
 	const [draft] = useState(() => readReelDraft(checkpoint.id))
 	const [clip, setClip] = useState<string | null>(draft?.clip ?? null)
-	// What the preview plays: a blob URL for a file picked on this machine, the
-	// bucket's URL for one filmed on the phone or restored from a draft.
+	// What the preview plays: a blob URL for a file picked on this machine, the bucket's URL for one filmed on the phone or restored from a draft.
 	const [previewUrl, setPreviewUrl] = useState<string | null>(draft?.url ?? null)
-	// Kept apart from the preview because a blob URL cannot outlive the page,
-	// so it is never what a draft remembers.
+	// Kept apart from the preview because a blob URL cannot outlive the page, so it is never what a draft remembers.
 	const [clipUrl, setClipUrl] = useState<string | null>(draft?.url ?? null)
 	const [caption, setCaption] = useState(draft?.caption ?? "")
 
-	// `autoPlay` alone is a request the browser may defer (a tab that was not
-	// focused when the clip arrived, say), so the preview asks once more itself.
-	// Sound starts off: autoplay with audio is refused, so the preview opens
-	// muted and the speaker toggle below is the gesture that allows it.
+	// `autoPlay` alone is a request the browser may defer (a tab that was not focused when the clip arrived, say), so the preview asks once more itself. Sound starts off: autoplay with audio is refused, so the preview opens muted and the speaker toggle below is the gesture that allows it.
 	const previewVideo = useRef<HTMLVideoElement>(null)
 	const [muted, setMuted] = useState(true)
 	useEffect(() => {
 		const video = previewVideo.current
 		if (!video) return
-		// The `muted` attribute only sets the initial state – React re-renders
-		// do not move the property after mount – so the toggle writes it here.
+		// The `muted` attribute only sets the initial state – React re-renders do not move the property after mount – so the toggle writes it here.
 		video.muted = muted
 		void video.play().catch(() => undefined)
 	}, [previewUrl, muted])
@@ -1398,8 +1299,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		setMuted(true)
 	}
 
-	// Posting waits for the server, so there is a post to hang public links on
-	// and so a failure says so instead of closing on a reel that never landed.
+	// Posting waits for the server, so there is a post to hang public links on and so a failure says so instead of closing on a reel that never landed.
 	const [posting, setPosting] = useState(false)
 	const [postError, setPostError] = useState<string | null>(null)
 	const [postedId, setPostedId] = useState<string | null>(null)
@@ -1418,10 +1318,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		setPostedId(id)
 	}
 
-	// A finished reel asks before it opens the recorder: the checkpoint is done,
-	// and another reel is an extra, so reopening one should say that rather
-	// than look like the checkpoint asking for its reel again. A draft already
-	// under way for it means that question was answered last time.
+	// A finished reel asks before it opens the recorder: the checkpoint is done, and another reel is an extra, so reopening one should say that rather than look like the checkpoint asking for its reel again. A draft already under way for it means that question was answered last time.
 	const [again, setAgain] = useState(!done || draft !== null)
 	const titleId = useId()
 	const captionLength = caption.trim().length
@@ -1431,8 +1328,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		: `Caption needs ${8 - captionLength} more character${8 - captionLength === 1 ? "" : "s"} (${captionLength}/8).`
 	const postBlocker = !clip ? "Add a clip before posting this reel." : captionBlocker
 
-	// Posted: the same sheet now asks whether it is going anywhere else. The
-	// clip's URL comes along so it can be saved and uploaded there.
+	// Posted: the same sheet now asks whether it is going anywhere else. The clip's URL comes along so it can be saved and uploaded there.
 	if (postedId) {
 		return (
 			<PublicReelModal
@@ -1625,8 +1521,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const { setOpenCheckpoint, complete, addProject, ensureProject, experience, weekOf } = useStore()
 	const week = weekOf(checkpoint.weekId)
-	// Opening "create a project" is what makes the week's project row – not
-	// signing up, when nobody knows yet whether they will get this far.
+	// Opening "create a project" is what makes the week's project row – not signing up, when nobody knows yet whether they will get this far.
 	useEffect(() => {
 		void ensureProject(checkpoint.weekId)
 	}, [checkpoint.weekId, ensureProject])
@@ -1635,9 +1530,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const [tier, setTier] = useState<1 | 2 | 3>(experience === "lots" ? 3 : experience === "some" ? 2 : 1)
 	const [showExamples, setShowExamples] = useState(false)
 	const [repo, setRepo] = useState("")
-	// The week's starter projects, for someone who said they are new to
-	// hardware. Weeks follow the theme order, design then build, so the week
-	// number names the theme.
+	// The week's starter projects, for someone who said they are new to hardware. Weeks follow the theme order, design then build, so the week number names the theme.
 	const theme = THEMES[(week.id - 1) % THEMES.length]?.id
 	const starters = theme && (experience === "first" || experience === "little") ? starterProjectsFor(theme) : []
 	// Taking one fills the form in and holds the tier at 1, as onboarding does.
@@ -1830,10 +1723,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 /**
  * A Submit checkpoint whose week is already handed in and waiting for review.
  *
- * Opening it again is almost always "I need to change something", so it says
- * where the week stands and offers the one thing that allows a change: taking
- * it back out of review. Nothing is lost by it – the entries, parts list and
- * details stay as they are, and this same checkpoint hands it in again.
+ * Opening it again is almost always "I need to change something", so it says where the week stands and offers the one thing that allows a change: taking it back out of review. Nothing is lost by it – the entries, parts list and details stay as they are, and this same checkpoint hands it in again.
  */
 export function UnsubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const { setOpenCheckpoint, unsubmitPhase, weekOfCheckpoint, stateOf } = useStore()
@@ -1902,60 +1792,41 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const week = weekOfCheckpoint(checkpoint)
 	const isBuild = week.phase === "build"
 
-	// The week is long enough to hand in – that gate is the trail's, and this
-	// node would be locked otherwise. What is left to say is whether it was
-	// long enough for the machine actually on the wall. A surplus earned in an
-	// earlier week pays for a thin one, so this reads the running total against
-	// the pace rather than this week against its target.
+	// The week is long enough to hand in – that gate is the trail's, and this node would be locked otherwise. What is left to say is whether it was long enough for the machine actually on the wall. A surplus earned in an earlier week pays for a thin one, so this reads the running total against the pace rather than this week against its target.
 	//
-	// The running total is the fund plus what unreviewed weeks will earn. Coins
-	// are minted at approval, so the fund alone reads this very week – the one
-	// being handed in, which nobody can have reviewed yet – as earning nothing,
-	// and warned everyone on every submit.
+	// The running total is the fund plus what unreviewed weeks will earn. Coins are minted at approval, so the fund alone reads this very week – the one being handed in, which nobody can have reviewed yet – as earning nothing, and warned everyone on every submit.
 	const goal = printerById(goalId)
 	const owed = Math.max(0, Math.ceil(paceTarget(goal, week.id) - printerFund - pendingCoins(week.id)))
 
-	// The fallback is for a season sheet opened before its project row landed;
-	// it must never pick the warm-up project, which has no season week.
+	// The fallback is for a season sheet opened before its project row landed; it must never pick the warm-up project, which has no season week.
 	const project =
 		projects.find((p) => isWeeksProject(week, p)) ?? projects.find((p) => p.weekId !== WARMUP_WEEK_ID) ?? projects[0]
 
 	const [step, setStep] = useState(1)
-	// R2 object keys, not flags: what these ask for is evidence, and a boolean
-	// was letting the form take a file and drop it on the floor.
-	// Several screenshots, because one order is often split across vendors and
-	// one checkout page is not always one screen tall.
+	// R2 object keys, not flags: what these ask for is evidence, and a boolean was letting the form take a file and drop it on the floor. Several screenshots, because one order is often split across vendors and one checkout page is not always one screen tall.
 	const [carts, setCarts] = useState<UploadedImage[]>([])
 	const [tier, setTier] = useState<1 | 2 | 3>(project?.tier ?? 1)
 	const [clip, setClip] = useState<string | null>(null)
-	// The bucket URL of the closing clip, when there is one, so it can be saved
-	// and posted elsewhere afterwards.
+	// The bucket URL of the closing clip, when there is one, so it can be saved and posted elsewhere afterwards.
 	const [clipUrl, setClipUrl] = useState<string | null>(null)
-	// A blob URL for a locally picked clip holds the whole video in memory
-	// until it is revoked – the preview is replaced or the sheet closes, not
-	// before.
+	// A blob URL for a locally picked clip holds the whole video in memory until it is revoked – the preview is replaced or the sheet closes, not before.
 	useEffect(() => {
 		return () => {
 			if (clipUrl?.startsWith("blob:")) URL.revokeObjectURL(clipUrl)
 		}
 	}, [clipUrl])
-	// The closing reel once it is posted. A hand-in that fails after the reel
-	// went up reuses it on the retry rather than posting the same clip twice;
-	// a new clip clears it.
+	// The closing reel once it is posted. A hand-in that fails after the reel went up reuses it on the retry rather than posting the same clip twice; a new clip clears it.
 	const [closingPostId, setClosingPostId] = useState<string | null>(null)
 	// Handed in: the reel that closed the week is offered for posting online.
 	const [shareId, setShareId] = useState<string | null>(null)
 	const [works, setWorks] = useState<"yes" | "no" | null>(null)
 	const [writeup, setWriteup] = useState("")
-	// Null while checking. The server runs the same checks at submit, so this
-	// only decides whether the sheet lets you get that far.
+	// Null while checking. The server runs the same checks at submit, so this only decides whether the sheet lets you get that far.
 	const [repoResult, setRepoResult] = useState<RepoCheckResult | null>(null)
 	const [submitting, setSubmitting] = useState(false)
 	const [submitError, setSubmitError] = useState<string | null>(null)
 
-	// The closing reel is a reel like any other and goes on the trail under its
-	// own key, so the week's timeline shows it where it happened rather than
-	// swallowing it inside the submission.
+	// The closing reel is a reel like any other and goes on the trail under its own key, so the week's timeline shows it where it happened rather than swallowing it inside the submission.
 	const reelCheckpointId = week.projectId ? `wu-${week.projectId}-reel-submission` : `w${week.id}-reel-submission`
 	const closingSubject =
 		week.id === WARMUP_WEEK_ID ? `Warm-up: ${project?.name ?? "my project"}` : `Week ${week.id}: ${week.theme}`
@@ -1963,9 +1834,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const buildNotes = works === "no" && writeup.trim() ? writeup.trim() : undefined
 
 	const total = isBuild ? 2 : 3
-	// The project's own parts list, as kept on its page – read fresh when the
-	// sheet opens, because it is edited there and this is the moment it is
-	// handed in. Null while it loads; the cart total reads zero until then.
+	// The project's own parts list, as kept on its page – read fresh when the sheet opens, because it is edited there and this is the moment it is handed in. Null while it loads; the cart total reads zero until then.
 	const [bom, setBom] = useState<{ items: BomLine[]; taxShippingUsd: number } | null>(null)
 	const [bomError, setBomError] = useState<string | null>(null)
 	useEffect(() => {
@@ -1988,26 +1857,16 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	)
 
 	/**
-	 * A tier is a claim about hours as much as about money: its funded block has
-	 * to be covered, and everything past it earns. Tier 2 funds thirteen hours,
-	 * so thirteen hours pay for the project and the fourteenth already earns –
-	 * which is why the tier cannot be raised at the last moment on hours that
-	 * were only ever enough for a smaller one.
+	 * A tier is a claim about hours as much as about money: its funded block has to be covered, and everything past it earns. Tier 2 funds thirteen hours, so thirteen hours pay for the project and the fourteenth already earns – which is why the tier cannot be raised at the last moment on hours that were only ever enough for a smaller one.
 	 *
-	 * Two asks come out of that, and they are different numbers. The floor is
-	 * the funded block, and below it the week cannot be handed in at all, so it
-	 * is a gate. The target is this maker's own goal, and it moves when they
-	 * change what they are saving for – a P1S asks far more of a tier 2 week
-	 * than an Ender does. Missing the target is a warning the sheet already
-	 * gives; missing the floor is a refusal.
+	 * Two asks come out of that, and they are different numbers. The floor is the funded block, and below it the week cannot be handed in at all, so it is a gate. The target is this maker's own goal, and it moves when they change what they are saving for – a P1S asks far more of a tier 2 week than an Ender does. Missing the target is a warning the sheet already gives; missing the floor is a refusal.
 	 */
 	const hours = hoursOf(week)
 	const tierFloor = submitFloorFor
 	const tierShort = (fundingHours: number) => Math.max(0, tierFloor(fundingHours) - hours)
 	const selectedTier = TIERS.find((t) => t.id === tier) ?? TIERS[0]
 	const tierBlocked = !isBuild && tierShort(selectedTier.fundingHours) > 0
-	// Over the tier's funding warns; past the leeway it refuses the submit,
-	// the same refusal the hours floor makes.
+	// Over the tier's funding warns; past the leeway it refuses the submit, the same refusal the hours floor makes.
 	const bomBlocked = !isBuild && bomTotal > selectedTier.grantUsd + BOM_MARGIN_USD
 
 	const repoReady = repoResult?.canSubmit ?? false
@@ -2026,12 +1885,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	/**
 	 * Handing a week in, in the order the pieces depend on each other.
 	 *
-	 * The tier first, because it is what the reviewer will be deciding against.
-	 * Then the closing reel, awaited, so the submission a reviewer opens – and
-	 * the YSWS row written just after it, which looks the reel up – already has
-	 * the video rather than one arriving behind it. It is posted once: a retry
-	 * after a refused hand-in reuses it. The submission last, and only once it
-	 * has gone through is the reel offered for posting online.
+	 * The tier first, because it is what the reviewer will be deciding against. Then the closing reel, awaited, so the submission a reviewer opens – and the YSWS row written just after it, which looks the reel up – already has the video rather than one arriving behind it. It is posted once: a retry after a refused hand-in reuses it. The submission last, and only once it has gone through is the reel offered for posting online.
 	 */
 	async function submit() {
 		setSubmitting(true)
@@ -2304,8 +2158,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 										type="button"
 										onClick={() => setTier(t.id)}
 										aria-pressed={on}
-										// A tier you have not worked the hours for is not an
-										// option, so it does not behave like one.
+										// A tier you have not worked the hours for is not an option, so it does not behave like one.
 										disabled={short > 0}
 										className={cx(
 											"sketch rounded-2xl px-4 py-3 text-left transition-colors",

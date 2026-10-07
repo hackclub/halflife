@@ -29,9 +29,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		metadata: { phase: parsed.data.phase },
 	})
 
-	// Taken back before review, so its row goes too – otherwise reviewers on ari
-	// would see a hand-in that no longer exists. `removed` marks the row gone, so
-	// the next submission of this phase writes a fresh one.
+	// Taken back before review, so its row goes too – otherwise reviewers on ari would see a hand-in that no longer exists. `removed` marks the row gone, so the next submission of this phase writes a fresh one.
 	after(async () => {
 		await trackSideEffect(
 			"airtable",
@@ -46,8 +44,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		)
 	})
 
-	// Withdraw it from Ari too, or its queue keeps a hand-in that no longer
-	// exists in Half Life.
+	// Withdraw it from Ari too, or its queue keeps a hand-in that no longer exists in Half Life.
 	if (isAriConfigured()) {
 		after(async () => {
 			await trackSideEffect(

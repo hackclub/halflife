@@ -38,11 +38,7 @@ type SlackEvent = {
 }
 
 /** New top-level message in #half-life-help – post it to the private
- * tickets channel with a "Mark as helped" button, reply in-thread with an
- * "I'm all set" button the ticket's own author can use to self-resolve, and
- * drop the pending reaction on the original so the channel shows at a glance
- * that it's still waiting.
- * Thread replies and anything from a bot (including our own acks) are
+ * tickets channel with a "Mark as helped" button, reply in-thread with an "I'm all set" button the ticket's own author can use to self-resolve, and drop the pending reaction on the original so the channel shows at a glance that it's still waiting. Thread replies and anything from a bot (including our own acks) are
  * conversation on an existing ticket, not a new one. */
 async function handleHelpMessage(event: SlackEvent) {
 	const ticketsChannel = process.env.SLACK_TICKETS_CHANNEL_ID
@@ -59,8 +55,7 @@ async function handleHelpMessage(event: SlackEvent) {
 		permalink,
 	}
 
-	// Best-effort: a database hiccup must not keep the ticket out of the queue,
-	// it just means the mirror goes without the history line.
+	// Best-effort: a database hiccup must not keep the ticket out of the queue, it just means the mirror goes without the history line.
 	let priorTickets: number | null = null
 	try {
 		priorTickets = await countPriorHelpTickets(ref.authorId)
@@ -84,28 +79,21 @@ async function handleHelpMessage(event: SlackEvent) {
 		],
 	})
 
-	// The permalink rides in the top-level text as well as the section block:
-	// Slack unfurls text-based links only there, never inside blocks, so this
-	// is what gets the original message previewed under the ticket.
+	// The permalink rides in the top-level text as well as the section block: Slack unfurls text-based links only there, never inside blocks, so this is what gets the original message previewed under the ticket.
 	const ticketMessage = await postMessage(
 		ticketsChannel,
 		permalink ? `New ticket from <@${ref.authorId}>: ${permalink}` : `New ticket from <@${ref.authorId}>`,
 		{ blocks: ticketBlocks, unfurlLinks: true },
 	)
 	if (!ticketMessage.ok || !ticketMessage.ts) {
-		// A failed mirror means no ticket exists, so the help-channel ack below is
-		// skipped too. The response already went out, so the log is the only trace.
+		// A failed mirror means no ticket exists, so the help-channel ack below is skipped too. The response already went out, so the log is the only trace.
 		console.error(
 			`[slack] ticket post to ${ticketsChannel} failed (${ticketMessage.error ?? "no message ts"}); no help-channel ack for ${ref.helpTs}`,
 		)
 		return
 	}
 
-	// The ticket is real, so the question now has an open state to show for it:
-	// a loading emoji on the original, which resolution swaps for the done one.
-	// Best-effort – the two buttons are what actually resolve the ticket, so a
-	// reaction that never lands just leaves the question unmarked rather than
-	// unresolvable.
+	// The ticket is real, so the question now has an open state to show for it: a loading emoji on the original, which resolution swaps for the done one. Best-effort – the two buttons are what actually resolve the ticket, so a reaction that never lands just leaves the question unmarked rather than unresolvable.
 	try {
 		await addReaction(ref.helpChannel, ref.helpTs, PENDING_REACTION)
 	} catch (err) {
@@ -123,8 +111,7 @@ async function handleHelpMessage(event: SlackEvent) {
 		console.error(`[slack] failed to record ticket for ${ref.helpTs}:`, err)
 	}
 
-	// Carried by both buttons: the author's self-resolve and the helpers'
-	// in-thread "Mark as helped" both need the tickets-channel target to sync.
+	// Carried by both buttons: the author's self-resolve and the helpers' in-thread "Mark as helped" both need the tickets-channel target to sync.
 	const resolveValue = JSON.stringify({
 		...ref,
 		ticketsChannel,
@@ -184,9 +171,7 @@ async function handleHelpMessage(event: SlackEvent) {
 		},
 	]
 
-	// The thread's top-level text repeats the reminders above rather than
-	// carrying new information: it's what a notification preview shows, and
-	// it's what a screen reader reads out.
+	// The thread's top-level text repeats the reminders above rather than carrying new information: it's what a notification preview shows, and it's what a screen reader reads out.
 	await postMessage(ref.helpChannel, HELP_THREAD_REMINDERS, {
 		threadTs: ref.helpTs,
 		blocks: selfResolveBlocks,
@@ -239,21 +224,14 @@ export async function POST(request: Request) {
 		return NextResponse.json({ challenge: body.challenge })
 	}
 
-	// Slack retries delivery if it doesn't get a 200 within 3s. Reprocessing a
-	// retry would double-invite members and double-post tickets, so only the
-	// original delivery is handled – Slack has already gotten the point across.
+	// Slack retries delivery if it doesn't get a 200 within 3s. Reprocessing a retry would double-invite members and double-post tickets, so only the original delivery is handled – Slack has already gotten the point across.
 	if (request.headers.get("x-slack-retry-num")) {
 		return NextResponse.json({ ok: true })
 	}
 
 	if (body.type === "event_callback" && body.event) {
 		const event = body.event
-		// Ack first, work second. Slack abandons a delivery it hasn't seen a 200
-		// for within 3s and retries, and the guard above drops every retry – so if
-		// a slow Slack call held the response open past that window, the retry
-		// carrying the same work would be discarded and the invite lost with
-		// nothing in the logs. `after` keeps the response instant so the retry
-		// path stays a genuine safety net rather than a silent failure.
+		// Ack first, work second. Slack abandons a delivery it hasn't seen a 200 for within 3s and retries, and the guard above drops every retry – so if a slow Slack call held the response open past that window, the retry carrying the same work would be discarded and the invite lost with nothing in the logs. `after` keeps the response instant so the retry path stays a genuine safety net rather than a silent failure.
 		after(async () => {
 			try {
 				if (event.type === "member_joined_channel") {
@@ -262,8 +240,7 @@ export async function POST(request: Request) {
 					await handleHelpMessage(event)
 				}
 			} catch (err) {
-				// Nothing above this frame can observe a failure – the response is
-				// already sent and Slack has its 200 – so the log is the only trace.
+				// Nothing above this frame can observe a failure – the response is already sent and Slack has its 200 – so the log is the only trace.
 				console.error("[slack] event handler threw:", err)
 			}
 		})

@@ -42,10 +42,7 @@ export function Panel({
 				{
 					"--sk-color": color,
 					"--sk-radius": `${radius}px`,
-					// The drawn border lives on a pseudo-element, so the panel's own
-					// background does not inherit its radius – a light fill sits in a
-					// square box and pokes out past the rounded corners. Most panels hide
-					// it by being nearly the colour of the page; a white one does not.
+					// The drawn border lives on a pseudo-element, so the panel's own background does not inherit its radius – a light fill sits in a square box and pokes out past the rounded corners. Most panels hide it by being nearly the colour of the page; a white one does not.
 					borderRadius: `${radius}px`,
 				} as React.CSSProperties
 			}
@@ -68,10 +65,7 @@ const ACCENT_TEXT: Record<string, string> = {
 }
 
 /**
- * An accent, as text on cream. The accents are fills first – sky as a label
- * on cream is 2.37:1 – so a label drawn "in the week's colour" takes that
- * colour's ink instead. Magenta and the deep tones already read, and pass
- * through unchanged.
+ * An accent, as text on cream. The accents are fills first – sky as a label on cream is 2.37:1 – so a label drawn "in the week's colour" takes that colour's ink instead. Magenta and the deep tones already read, and pass through unchanged.
  */
 export function accentText(accent: string): string {
 	return ACCENT_TEXT[accent] ?? accent
@@ -108,8 +102,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
 	}[size]
 
 	const variants = {
-		// Each solid fill is the deep tone, rimmed and hovered one darker: a white
-		// label on the plain violet, teal and coral read 3.37, 2.80 and 3.33:1.
+		// Each solid fill is the deep tone, rimmed and hovered one darker: a white label on the plain violet, teal and coral read 3.37, 2.80 and 3.33:1.
 		solid:
 			"bg-violet-deep text-white border-violet-dark hover:bg-violet-dark active:translate-y-px disabled:bg-line disabled:border-line-strong",
 		gold: "bg-gold text-navy border-gold-deep hover:brightness-105 active:translate-y-px disabled:bg-line disabled:border-line-strong disabled:text-navy-soft",
@@ -332,11 +325,7 @@ export function Field({
 /**
  * A field with a border that is always there.
  *
- * This used to lean on `.sketch`, which draws on a pseudo-element an `<input>`
- * cannot hold, so the outline never rendered and a field showed no edge at all
- * until the focus ring arrived. It is DESIGN.md's bordered field now: a real
- * 2px border in `field` (3.68:1 on white – `line` was 1.72, under the 3:1 a
- * control's boundary needs), `navy-soft` on hover, violet on focus.
+ * This used to lean on `.sketch`, which draws on a pseudo-element an `<input>` cannot hold, so the outline never rendered and a field showed no edge at all until the focus ring arrived. It is DESIGN.md's bordered field now: a real 2px border in `field` (3.68:1 on white – `line` was 1.72, under the 3:1 a control's boundary needs), `navy-soft` on hover, violet on focus.
  */
 export const borderedInputClass =
 	"block w-full rounded-xl border-2 border-field bg-black/[.02] px-4 py-3 text-[0.95rem] text-navy outline-none transition-colors placeholder:text-navy-faint hover:border-navy-soft focus:border-violet focus:bg-white"

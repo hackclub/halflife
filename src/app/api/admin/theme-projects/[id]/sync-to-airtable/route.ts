@@ -15,8 +15,7 @@ export const maxDuration = 60
 const bodySchema = z.object({ phase: phaseSchema }).strict()
 
 /**
- * Replay a submission-row write that failed the first time, or refresh a row
- * with the project as it stands now. Writes to the same row as before.
+ * Replay a submission-row write that failed the first time, or refresh a row with the project as it stands now. Writes to the same row as before.
  *
  * The audit log is where a failed sync shows up; this is how an admin fixes it.
  */
@@ -28,8 +27,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	const parsed = await parseBody(req, bodySchema)
 	if (parsed.error) return parsed.error
 
-	// A row is a submission, so only a phase that has been handed in gets one –
-	// never a draft, which is how an empty 0-hour row would otherwise appear.
+	// A row is a submission, so only a phase that has been handed in gets one – never a draft, which is how an empty 0-hour row would otherwise appear.
 	const project = await prisma.themeProject.findUnique({
 		where: { id },
 		select: { designStatus: true, buildStatus: true },
@@ -52,8 +50,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		() => syncSubmissionToYsws(id, parsed.data.phase),
 	)
 
-	// A skip means Airtable was never asked, or the row could not be built –
-	// report it instead of showing the admin a green result for nothing.
+	// A skip means Airtable was never asked, or the row could not be built – report it instead of showing the admin a green result for nothing.
 	if (result && "skipped" in result) {
 		return fail("UNAVAILABLE", `Airtable did not take the sync (${result.skipped}); check the deployment configuration`)
 	}

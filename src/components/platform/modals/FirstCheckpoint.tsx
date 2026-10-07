@@ -9,9 +9,7 @@ import { useStore } from "@/lib/store"
 import { Modal, ModalTitle } from "./Modal"
 
 /**
- * The dashboard's Get started checkpoint. The standalone onboarding page is
- * intentionally not a second implementation: this modal consumes the same
- * `/api/onboarding` state machine and view model as the server flow.
+ * The dashboard's Get started checkpoint. The standalone onboarding page is intentionally not a second implementation: this modal consumes the same `/api/onboarding` state machine and view model as the server flow.
  */
 export function FirstCheckpoint() {
 	const { setOpenCheckpoint, setPhase, finishOnboarding } = useStore()
@@ -79,9 +77,7 @@ export function FirstCheckpoint() {
 			<OnboardingFlow
 				initial={view}
 				onComplete={() => {
-					// Marked done before anything is closed, so the goal prompt – which
-					// is gated on it – is already up by the time this modal unmounts,
-					// rather than arriving a refresh later over the tab tour.
+					// Marked done before anything is closed, so the goal prompt – which is gated on it – is already up by the time this modal unmounts, rather than arriving a refresh later over the tab tour.
 					finishOnboarding()
 					setOpenCheckpoint(null)
 					setPhase("tour")

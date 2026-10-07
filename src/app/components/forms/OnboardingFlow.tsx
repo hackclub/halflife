@@ -19,9 +19,7 @@ interface OnboardingResponse {
 }
 
 /**
- * Every step ends on the same bar: Back on the left, the step's one submit on
- * the right. Choosing an option only selects it; nothing is sent until this.
- * Without `onSubmit` the button submits its enclosing form.
+ * Every step ends on the same bar: Back on the left, the step's one submit on the right. Choosing an option only selects it; nothing is sent until this. Without `onSubmit` the button submits its enclosing form.
  */
 function StepActions({
 	onBack,
@@ -87,9 +85,7 @@ function Note({ children }: { children: ReactNode }) {
 }
 
 /**
- * The one onboarding interaction. It is rendered by the dashboard's Get
- * started modal; the server owns the state machine and every response returns
- * the next canonical view.
+ * The one onboarding interaction. It is rendered by the dashboard's Get started modal; the server owns the state machine and every response returns the next canonical view.
  */
 export function OnboardingFlow({
 	initial,
@@ -101,12 +97,9 @@ export function OnboardingFlow({
 	const [error, setError] = useState<string | null>(null)
 	const [title, setTitle] = useState(initial.project.title)
 	const [description, setDescription] = useState(initial.project.description)
-	// What each choice step has selected but not yet submitted, seeded from what
-	// the server already has so coming back to a step shows the earlier answer.
+	// What each choice step has selected but not yet submitted, seeded from what the server already has so coming back to a step shows the earlier answer.
 	const [experience, setExperience] = useState(initial.experience)
-	// The beginner's fork: a starter id, null for their own project, undefined
-	// for not chosen yet. Past the week step with no starter means they chose
-	// their own.
+	// The beginner's fork: a starter id, null for their own project, undefined for not chosen yet. Past the week step with no starter means they chose their own.
 	const [start, setStart] = useState<string | null | undefined>(() => {
 		if (initial.project.starterProjectId) return initial.project.starterProjectId
 		return initial.reached > initial.steps.findIndex((s) => s.id === "week") ? null : undefined
@@ -117,10 +110,7 @@ export function OnboardingFlow({
 	const step = view.steps[viewing]
 	if (!step) return null
 
-	// The server decides where an answer lands (a starter taken on the week step
-	// goes straight to time tracking; naming a project skips "Stuck? Pick one",
-	// since the starter was offered on the week step), and this mirrors it, both
-	// forward and back.
+	// The server decides where an answer lands (a starter taken on the week step goes straight to time tracking; naming a project skips "Stuck? Pick one", since the starter was offered on the week step), and this mirrors it, both forward and back.
 	const indexOf = (id: string) => view.steps.findIndex((s) => s.id === id)
 	const tookStarter = view.project.starterProjectId !== null && view.project.tierLocked
 	function backFrom(current: number): number {
@@ -177,9 +167,7 @@ export function OnboardingFlow({
 
 	const back = viewing > 0 ? () => setViewing(backFrom) : undefined
 
-	// No panel of its own: it is the whole body of the Getting started modal,
-	// whose frame and eyebrow already say what this is. A second bordered card
-	// inside it only boxed the same content twice.
+	// No panel of its own: it is the whole body of the Getting started modal, whose frame and eyebrow already say what this is. A second bordered card inside it only boxed the same content twice.
 	return (
 		<div>
 			<div className="mb-6">
@@ -188,8 +176,7 @@ export function OnboardingFlow({
 						Step {step.number}/{view.stepCount}
 					</p>
 					{step.id === "week" && view.weekIntro ? (
-						// The week step is a reveal: its heading trails off ("this week
-						// it's...") so it leads in, and the theme it leads to is the title.
+						// The week step is a reveal: its heading trails off ("this week it's...") so it leads in, and the theme it leads to is the title.
 						<>
 							<p className="hand mt-1.5 text-[0.95rem] text-navy-soft">{step.heading}</p>
 							<h2 className="mt-0.5 text-[1.7rem] leading-tight font-extrabold tracking-[-0.025em] text-navy sm:text-[2.1rem]">
@@ -263,9 +250,7 @@ export function OnboardingFlow({
 						</div>
 
 						{view.beginner && view.starterProjects.length > 0 ? (
-							// The fork. Two ways in, side by side and the same shape, each
-							// with its own select button (the cards hold links, so the whole
-							// card cannot be one), then the step's Next.
+							// The fork. Two ways in, side by side and the same shape, each with its own select button (the cards hold links, so the whole card cannot be one), then the step's Next.
 							<>
 								<div className="space-y-3 border-t border-dashed border-line/80 pt-5">
 									<p className="text-[0.92rem] leading-relaxed text-navy-soft">
@@ -459,11 +444,7 @@ export function OnboardingFlow({
 												) : null}
 											</div>
 											{tier.showcase.length > 0 ? (
-												// The tier line leads; the examples are its footnote,
-												// a strip of small thumbnails with their names beside
-												// them. Three columns on every tier, so the strips
-												// align down the list whatever their length, and fold
-												// to a stacked list on a phone.
+												// The tier line leads; the examples are its footnote, a strip of small thumbnails with their names beside them. Three columns on every tier, so the strips align down the list whatever their length, and fold to a stacked list on a phone.
 												<ul className="mt-3 grid gap-x-4 gap-y-2 border-t border-dashed border-line/80 pt-3 sm:grid-cols-3">
 													{tier.showcase.map((project) => (
 														<li key={project.href} className="min-w-0">

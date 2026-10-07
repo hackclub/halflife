@@ -9,16 +9,9 @@ export const dynamic = "force-dynamic"
 /**
  * Turn stored clip refs back into picker items, for editing an entry.
  *
- * The journal sheet only keeps clip ids; the picker needs the full item, and
- * deciding what each id still means needs the database. Ids this session
- * claimed on Lapse that still verify come back `resolved`. Ones Lapse no
- * longer vouches for – gone private, deleted, still processing – come back
- * `pinned`: the edit keeps them without re-checking, so touching the words
- * does not drop the evidence. Anything else (older R2 uploads) comes back
- * `legacy` and is never touched at all.
+ * The journal sheet only keeps clip ids; the picker needs the full item, and deciding what each id still means needs the database. Ids this session claimed on Lapse that still verify come back `resolved`. Ones Lapse no longer vouches for – gone private, deleted, still processing – come back `pinned`: the edit keeps them without re-checking, so touching the words does not drop the evidence. Anything else (older R2 uploads) comes back `legacy` and is never touched at all.
  *
- * `forSession` names the session being edited and must be theirs: otherwise
- * one maker could probe another's attachments a guess at a time.
+ * `forSession` names the session being edited and must be theirs: otherwise one maker could probe another's attachments a guess at a time.
  */
 export const GET = withRoute(async (req: NextRequest) => {
 	const gate = await requireSession()
@@ -83,8 +76,7 @@ export const GET = withRoute(async (req: NextRequest) => {
 				thumbnailUrl: t.thumbnailUrl,
 				hackatimeProject: t.hackatimeProject,
 				processing: t.playbackUrl === null,
-				// About to be selected, which is what unblocks a picked row –
-				// the flag only ever stops somebody else's clip.
+				// About to be selected, which is what unblocks a picked row – the flag only ever stops somebody else's clip.
 				attached: false,
 			})
 		} catch {

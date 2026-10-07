@@ -50,11 +50,7 @@ async function fetchPage(cursor?: string, forSession?: string) {
 /**
  * Pick the Lapse timelapses that back this entry.
  *
- * Timelapses are recorded on Lapse, not here. This lists what the maker has
- * published there and lets them tick the ones for this session. A timelapse is
- * offered only once it is finished and not already claimed by another entry –
- * one recording backs one session, and the server holds to both rules whatever
- * this shows.
+ * Timelapses are recorded on Lapse, not here. This lists what the maker has published there and lets them tick the ones for this session. A timelapse is offered only once it is finished and not already claimed by another entry – one recording backs one session, and the server holds to both rules whatever this shows.
  */
 export function LapsePicker({
 	picked,
@@ -67,8 +63,7 @@ export function LapsePicker({
 	/** Leaves the page for Lapse; the caller stashes the draft first. */
 	onSignIn: () => void | Promise<void>
 	/**
-	 * The entry being edited, so its own clips read as free: taking one off
-	 * and putting it back on stays pickable instead of reading as claimed.
+	 * The entry being edited, so its own clips read as free: taking one off and putting it back on stays pickable instead of reading as claimed.
 	 */
 	forSession?: string
 }) {
@@ -233,9 +228,7 @@ export function LapsePicker({
 								>
 									<span className="relative grid aspect-video w-24 shrink-0 place-items-center overflow-hidden rounded-lg bg-navy/10">
 										{t.thumbnailUrl ? (
-											// Lapse's CDN, sized by the box; next/image would need
-											// every Lapse host allow-listed for no gain at 96px.
-											// eslint-disable-next-line @next/next/no-img-element
+											// Lapse's CDN, sized by the box; next/image would need every Lapse host allow-listed for no gain at 96px. eslint-disable-next-line @next/next/no-img-element
 											<img src={t.thumbnailUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
 										) : (
 											<IconFilm className="text-lg text-navy-soft" />

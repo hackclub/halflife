@@ -1,9 +1,7 @@
 import type { SVGProps } from "react"
 
 /**
- * One icon set, one stroke weight. Everything is drawn on a 24px grid with a
- * 1.8px round-joined stroke so the marks sit next to the hand-lettering
- * without looking imported from somewhere else.
+ * One icon set, one stroke weight. Everything is drawn on a 24px grid with a 1.8px round-joined stroke so the marks sit next to the hand-lettering without looking imported from somewhere else.
  */
 
 type P = SVGProps<SVGSVGElement>

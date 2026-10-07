@@ -53,9 +53,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 
 	const input = parsed.data
 	await prisma.$transaction(async (tx) => {
-		// Re-read inside the transaction the write happens in: a design approval
-		// landing between the check above and the create would let a line into a
-		// list that is supposed to be final.
+		// Re-read inside the transaction the write happens in: a design approval landing between the check above and the create would let a line into a list that is supposed to be final.
 		const fresh = await tx.themeProject.findUnique({
 			where: { id },
 			select: { designStatus: true, buildStatus: true },
@@ -92,9 +90,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 
 const cents = (n: number | null) => (n === null ? null : Math.round(n * 100) / 100)
 /**
- * Set the order's tax and shipping total. It is a field on the project rather
- * than a line in the list, which is what keeps it from being removed: there is
- * no row to delete, only an amount to set.
+ * Set the order's tax and shipping total. It is a field on the project rather than a line in the list, which is what keeps it from being removed: there is no row to delete, only an amount to set.
  */
 export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 	const gate = await requireSession()

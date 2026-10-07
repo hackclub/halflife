@@ -14,9 +14,7 @@ export const metadata: Metadata = {
 export default async function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
 	const { user } = await requireSessionPage()
 	const { id } = await params
-	// Null for someone else's project or a deleted one. Someone else's still
-	// opens, read-only and cut to what is public – that is where Explore's
-	// "See more" goes. A deleted one gets the client's "no such project".
+	// Null for someone else's project or a deleted one. Someone else's still opens, read-only and cut to what is public – that is where Explore's "See more" goes. A deleted one gets the client's "no such project".
 	const data = await getProjectPage(user.id, id)
 	if (!data) {
 		const shared = await getPublicProjectPage(id)

@@ -18,17 +18,9 @@ type Step = "goal" | "printer"
 /**
  * What you're here for, and – only if the answer is a printer – which machine.
  *
- * The order is the point. The catalogue is eight machines priced against each
- * other, and it is a meaningless question to somebody who is here for the grant
- * and never wanted a printer; so the goal is always asked first and the
- * machines are only ever shown to someone who has said they want one. Reversing
- * the two is what would make a fifteen-year-old read eight prices to work out a
- * question they hadn't been asked.
+ * The order is the point. The catalogue is eight machines priced against each other, and it is a meaningless question to somebody who is here for the grant and never wanted a printer; so the goal is always asked first and the machines are only ever shown to someone who has said they want one. Reversing the two is what would make a fifteen-year-old read eight prices to work out a question they hadn't been asked.
  *
- * The same modal does both jobs. The rail's tracker and the phone's "Change
- * printer" open it to change an answer; the prompt after the first checkpoint
- * opens it uncloseable, and is driven by `participantGoal` still being null
- * rather than by anything in this file.
+ * The same modal does both jobs. The rail's tracker and the phone's "Change printer" open it to change an answer; the prompt after the first checkpoint opens it uncloseable, and is driven by `participantGoal` still being null rather than by anything in this file.
  */
 export function GoalModal({
 	open,
@@ -48,10 +40,7 @@ export function GoalModal({
 	const [error, setError] = useState<string | null>(null)
 	const titleId = useId()
 
-	// Reopening starts from whatever is taped up now, including a goal that
-	// changed elsewhere – adjusting during render beats an effect that repaints.
-	// Opening always lands on the goal question, never mid-catalogue, so the
-	// answer is never edited by accident on the way to changing the machine.
+	// Reopening starts from whatever is taped up now, including a goal that changed elsewhere – adjusting during render beats an effect that repaints. Opening always lands on the goal question, never mid-catalogue, so the answer is never edited by accident on the way to changing the machine.
 	const [seen, setSeen] = useState({ open, goalId, participantGoal })
 	if (seen.open !== open || seen.goalId !== goalId || seen.participantGoal !== participantGoal) {
 		setSeen({ open, goalId, participantGoal })
@@ -71,8 +60,7 @@ export function GoalModal({
 		setError(null)
 		const refusal = await setParticipantGoal(goalAnswer, printer)
 		setSaving(false)
-		// A refusal keeps the sheet open with the reason on it. Closing here would
-		// leave the mandatory prompt looking finished when nothing was saved.
+		// A refusal keeps the sheet open with the reason on it. Closing here would leave the mandatory prompt looking finished when nothing was saved.
 		if (refusal) {
 			setError(refusal)
 			return

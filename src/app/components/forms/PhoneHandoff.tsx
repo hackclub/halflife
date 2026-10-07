@@ -5,9 +5,7 @@ import { useHandoff } from "@/lib/use-handoff"
 /**
  * The desktop half of the handoff, in the staff console's dress.
  *
- * The rules – minting, polling, retiring the code once a phone has delivered –
- * live in `useHandoff`, because the platform's reel modal needs exactly the
- * same ones wearing completely different clothes. Only the markup is here.
+ * The rules – minting, polling, retiring the code once a phone has delivered – live in `useHandoff`, because the platform's reel modal needs exactly the same ones wearing completely different clothes. Only the markup is here.
  */
 export function PhoneHandoff({ onReady }: Readonly<{ onReady: (objectKey: string) => void }>) {
 	const { minted, status, error, mint } = useHandoff(onReady)

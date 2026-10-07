@@ -10,17 +10,11 @@ import { recordSyncRun } from "@/lib/sync-run-log"
 const WINDOW_MS = 24 * 60 * 60 * 1000
 
 /**
- * Posts the daily #half-life-help ticket summary to the private tickets
- * channel: how many tickets were opened in the last 24 hours, how many were
- * closed, and who closed the most.
+ * Posts the daily #half-life-help ticket summary to the private tickets channel: how many tickets were opened in the last 24 hours, how many were closed, and who closed the most.
  *
- * Run by an Orchard `app` job once a day; see `docs/RUNBOOK.md`. The opened
- * count reads `createdAt` and the closed count `resolvedAt`, both written by
- * the Slack flow itself – `resolveHelpTicket` on any of the three resolution
- * buttons, `rememberHelpTicket` when a ticket's mirror posts.
+ * Run by an Orchard `app` job once a day; see `docs/RUNBOOK.md`. The opened count reads `createdAt` and the closed count `resolvedAt`, both written by the Slack flow itself – `resolveHelpTicket` on any of the three resolution buttons, `rememberHelpTicket` when a ticket's mirror posts.
  *
- * `?dryRun=true` returns the counts and the rendered message without posting,
- * so a schedule can be trusted before it is wired up.
+ * `?dryRun=true` returns the counts and the rendered message without posting, so a schedule can be trusted before it is wired up.
  */
 export const POST = withRoute(async (req: NextRequest) => {
 	const denied = requireIntegrationAuth(req)
@@ -35,8 +29,7 @@ export const POST = withRoute(async (req: NextRequest) => {
 
 	const channel = process.env.SLACK_TICKETS_CHANNEL_ID
 	if (!channel) {
-		// A missing channel is a misconfiguration, not a quiet no-op: the job's
-		// `curl -f` should go red rather than stay green having posted nothing.
+		// A missing channel is a misconfiguration, not a quiet no-op: the job's `curl -f` should go red rather than stay green having posted nothing.
 		return fail("NOT_CONFIGURED", "Set SLACK_TICKETS_CHANNEL_ID to post the ticket summary")
 	}
 

@@ -16,14 +16,9 @@ const LINK =
 	"inline-flex items-center gap-1.5 font-semibold text-sky-ink underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
 
 /**
- * One way to start a week's project, as a card: a picture on its own tile,
- * a label and a title, a few lines about it, and the button that picks it.
+ * One way to start a week's project, as a card: a picture on its own tile, a label and a title, a few lines about it, and the button that picks it.
  *
- * Sized by its container, not the window, because it sits in places of very
- * different widths. Narrow, the picture leads on top; given room, it stands
- * beside the words. `stacked` keeps it on top whatever the width, for cards
- * laid side by side as a choice, where every card has to share one shape and
- * keep its button on the same line as its neighbour's.
+ * Sized by its container, not the window, because it sits in places of very different widths. Narrow, the picture leads on top; given room, it stands beside the words. `stacked` keeps it on top whatever the width, for cards laid side by side as a choice, where every card has to share one shape and keep its button on the same line as its neighbour's.
  */
 export function ProjectChoiceCard({
 	art,
@@ -81,13 +76,9 @@ export function ProjectChoiceCard({
 }
 
 /**
- * A starter project, as the people it is offered to meet it: the board as its
- * designer rendered it, what it is, what goes on it, and the two links that
- * make it a starter rather than a suggestion. The guide walks you through it;
- * the repo is what it ends up as.
+ * A starter project, as the people it is offered to meet it: the board as its designer rendered it, what it is, what goes on it, and the two links that make it a starter rather than a suggestion. The guide walks you through it; the repo is what it ends up as.
  *
- * `action` is the caller's: onboarding's "Build Starbie", the checkpoint's
- * "Build Starbie", or nothing where the card is only there to be read.
+ * `action` is the caller's: onboarding's "Build Starbie", the checkpoint's "Build Starbie", or nothing where the card is only there to be read.
  */
 export function StarterProjectCard({
 	starter,
@@ -104,15 +95,13 @@ export function StarterProjectCard({
 }) {
 	return (
 		<ProjectChoiceCard
-			// A dark ground, because the board is gold and the renders are cut out:
-			// on paper or cream the edges of the star wash away.
+			// A dark ground, because the board is gold and the renders are cut out: on paper or cream the edges of the star wash away.
 			tileClassName="bg-navy"
 			art={
 				<StarterRender
 					id={starter.id}
 					sizes="220px"
-					// Stacked beside another choice, the tile is a fixed height so the
-					// two line up whatever shape each picture is.
+					// Stacked beside another choice, the tile is a fixed height so the two line up whatever shape each picture is.
 					className={stacked ? "h-[140px] w-full" : "aspect-[720/589] w-full max-w-[220px]"}
 				/>
 			}

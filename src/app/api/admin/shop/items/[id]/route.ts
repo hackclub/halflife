@@ -37,8 +37,7 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 		actorEmail: gate.user.email,
 		targetType: "ShopItem",
 		targetId: id,
-		// Everything the edit form can change. Category and gating decide who can
-		// buy an item and with which coins, so a change to them has to be traceable.
+		// Everything the edit form can change. Category and gating decide who can buy an item and with which coins, so a change to them has to be traceable.
 		metadata: {
 			before: {
 				name: before.name,
@@ -71,8 +70,7 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 })
 
 /**
- * Retire, never delete: orders reference the item forever, and "retired" is a
- * different concept from "deleted".
+ * Retire, never delete: orders reference the item forever, and "retired" is a different concept from "deleted".
  */
 export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 	const gate = await requirePermission(Permission.MANAGE_SHOP)

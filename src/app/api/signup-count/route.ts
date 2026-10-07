@@ -8,23 +8,11 @@ export const dynamic = "force-dynamic"
 /**
  * The landing page's sign-up counter, polled by the hero.
  *
- * Public and unauthenticated, because it is on the landing page – so it is
- * rate-limited per IP. That matters more than it looks: the Airtable list is
- * paginated, so behind this route is a walk of several pages costing several
- * slots of the process-wide Airtable throttle. The limiter is per instance and
- * coarse, but the count itself is cached for a minute (`signup-count.ts`), so a
- * burst of visitors collapses to one walk.
+ * Public and unauthenticated, because it is on the landing page – so it is rate-limited per IP. That matters more than it looks: the Airtable list is paginated, so behind this route is a walk of several pages costing several slots of the process-wide Airtable throttle. The limiter is per instance and coarse, but the count itself is cached for a minute (`signup-count.ts`), so a burst of visitors collapses to one walk.
  *
- * `count: null` means "no number right now" – Airtable is unconfigured or did
- * not answer – and the client renders nothing for it. That is the same state as
- * before the first fetch lands, so it needs no separate handling, and a 500
- * would be the wrong signal for a page decoration.
+ * `count: null` means "no number right now" – Airtable is unconfigured or did not answer – and the client renders nothing for it. That is the same state as before the first fetch lands, so it needs no separate handling, and a 500 would be the wrong signal for a page decoration.
  *
- * It answers `{ count }` rather than a bare number, so the shape can grow
- * (a delta, an updated-at) without the client having to tell one response kind
- * from another by inspecting the body. A 429 is the one exception: it carries
- * the same shape, so the client's `typeof body.count === "number"` check
- * already ignores it.
+ * It answers `{ count }` rather than a bare number, so the shape can grow (a delta, an updated-at) without the client having to tell one response kind from another by inspecting the body. A 429 is the one exception: it carries the same shape, so the client's `typeof body.count === "number"` check already ignores it.
  */
 export const GET = withRoute(async (req: NextRequest) => {
 	if (rateLimitedInMemory(`signup-count:${clientIp(req.headers)}`, 30, 60_000)) {

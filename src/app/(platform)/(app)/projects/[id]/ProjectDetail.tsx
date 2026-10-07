@@ -60,14 +60,9 @@ function Section({
 }
 
 /**
- * One project, laid out the way Stasis lays out its project page: what it is
- * at the top with its thumbnail beside it, then what the repo has, the hours
- * tracked elsewhere, the parts list, and last the full record of the work –
- * every entry, timelapse, reel and review, newest first.
+ * One project, laid out the way Stasis lays out its project page: what it is at the top with its thumbnail beside it, then what the repo has, the hours tracked elsewhere, the parts list, and last the full record of the work – every entry, timelapse, reel and review, newest first.
  *
- * The store supplies the project's name, tier and weeks, as it does for every
- * page; the server supplies the rest in `data`, because the timeline's media
- * and the parts list are only ever wanted here.
+ * The store supplies the project's name, tier and weeks, as it does for every page; the server supplies the rest in `data`, because the timeline's media and the parts list are only ever wanted here.
  */
 
 /** Ask a reviewer to read a decision again. Changes no state. */
@@ -147,9 +142,7 @@ function DisputeForm({
 }
 
 /**
- * Delete the project, behind a second click. The server decides what may go
- * (`deleteBlockReason`); `blocked` is that answer, so a project that cannot be
- * deleted says why instead of offering a button that would refuse.
+ * Delete the project, behind a second click. The server decides what may go (`deleteBlockReason`); `blocked` is that answer, so a project that cannot be deleted says why instead of offering a button that would refuse.
  */
 function DeleteProject({ projectId, name, blocked }: { projectId: string; name: string; blocked: string | null }) {
 	const router = useRouter()
@@ -212,10 +205,7 @@ function DeleteProject({ projectId, name, blocked }: { projectId: string; name: 
 }
 
 /**
- * The warm-up's own trail, flattened onto its page: what it has logged against
- * what submitting asks, the next entry to write, and its one submit. The
- * sheets these open are the season's own journal and submit sheets, run on the
- * warm-up's week 0, so writing and handing in work the same way everywhere.
+ * The warm-up's own trail, flattened onto its page: what it has logged against what submitting asks, the next entry to write, and its one submit. The sheets these open are the season's own journal and submit sheets, run on the warm-up's week 0, so writing and handing in work the same way everywhere.
  */
 function WarmupWork({ projectId }: { projectId: string }) {
 	const { warmupWeekOf, hoursOf, passedOf, statusOf, deadlineOf, stateOf, setOpenCheckpoint, projects } = useStore()
@@ -235,8 +225,7 @@ function WarmupWork({ projectId }: { projectId: string }) {
 	const entries = warmupWeek.checkpoints.filter((c) => c.kind === "journal")
 	const written = entries.filter((c) => stateOf(c.id).done)
 	const next = entries.find((c) => !stateOf(c.id).done)
-	// Once the journal has closed, what there is can still be handed in, as a
-	// season week that has passed can.
+	// Once the journal has closed, what there is can still be handed in, as a season week that has passed can.
 	const canSubmit = !handedIn && (hours >= need || (passed && hours > 0))
 	const short = Math.max(0, need - hours)
 	const hasCover = !!project?.coverImageKey
@@ -388,14 +377,9 @@ function ReviewState({
 }
 
 /**
- * The guide a starter project is built from. Choosing a starter happens once,
- * on the step that names the project, and the card carrying its guide is gone
- * the moment that step is left – but the guide is what the whole build is
- * worked from, so the project page keeps the door to it open.
+ * The guide a starter project is built from. Choosing a starter happens once, on the step that names the project, and the card carrying its guide is gone the moment that step is left – but the guide is what the whole build is worked from, so the project page keeps the door to it open.
  *
- * Only a starter whose id is still in the config has one: the imported starters
- * predate the config and carry no guide URL, so they show nothing rather than a
- * dead link.
+ * Only a starter whose id is still in the config has one: the imported starters predate the config and carry no guide URL, so they show nothing rather than a dead link.
  */
 function StarterGuide({ project }: { project: Project }) {
 	const starter = project.starterProjectId ? getStarterProject(project.starterProjectId) : undefined
@@ -454,16 +438,11 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 		warmup ? WARMUP_WEEK_ID : phase === "DESIGN" ? project.weekId : buildWeekId
 
 	const sessions = data.timeline.flatMap((t) => (t.kind === "session" ? [t] : []))
-	// Journal sessions plus everything that arrived another way (Hackatime link
-	// time, reviewer adjustments) – the same accounting the sidebar total and
-	// the project cards read, so the three never disagree. A season project
-	// spans its design week and its build week.
+	// Journal sessions plus everything that arrived another way (Hackatime link time, reviewer adjustments) – the same accounting the sidebar total and the project cards read, so the three never disagree. A season project spans its design week and its build week.
 	const hours = warmup ? hoursOf(week) : weekHours(project.weekId) + weekHours(buildWeekId)
 	const started = data.timeline.at(-1)?.at ?? 0
 
-	// The tier stops being editable the moment the design week is handed in –
-	// that submission is what claimed it, and the build week only inherits it.
-	// A warm-up's one submit claims it the same way.
+	// The tier stops being editable the moment the design week is handed in – that submission is what claimed it, and the build week only inherits it. A warm-up's one submit claims it the same way.
 	const submit = week.checkpoints.find((c) => c.kind === "submit")
 	const submitted = submit ? stateOf(submit.id).done : false
 	const grantUsd = TIERS.find((t) => t.id === project.tier)?.grantUsd ?? 0
@@ -493,8 +472,7 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 					<div className="min-w-0 @3xl:col-start-1 @3xl:row-start-1">
 						<ProjectDetails
 							project={project}
-							// A warm-up project's hours live in its imported session, not in
-							// a trail week, so its tier hint reads the timeline total.
+							// A warm-up project's hours live in its imported session, not in a trail week, so its tier hint reads the timeline total.
 							hours={warmup ? hours : weekHours(project.weekId)}
 							tierLocked={submitted}
 							locked={data.editLocked}
@@ -502,9 +480,7 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 								inReview
 									? {
 											label: warmup ? "this warm-up project" : `week ${weekFor(inReview)}`,
-											// A warm-up project has no checkpoint of its own to
-											// address it by (several share week 0), so it names
-											// itself; a season week resolves through its checkpoint.
+											// A warm-up project has no checkpoint of its own to address it by (several share week 0), so it names itself; a season week resolves through its checkpoint.
 											run: () =>
 												unsubmitPhase(
 													warmup ? { projectId: project.id, phase: inReview } : `w${weekFor(inReview)}-submit`,
@@ -512,9 +488,7 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 										}
 									: undefined
 							}
-							// Two lines, one voice: how far it has got, then what it is.
-							// Everything else the page knows about it is further down, where
-							// it can be acted on.
+							// Two lines, one voice: how far it has got, then what it is. Everything else the page knows about it is further down, where it can be acted on.
 							meta={
 								<div className="hand mt-4 grid gap-1 text-[0.84rem] text-navy-soft">
 									<p className="flex flex-wrap items-center gap-x-2 tabular-nums">

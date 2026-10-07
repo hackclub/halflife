@@ -15,11 +15,7 @@ const COVER_TYPES = "image/png,image/jpeg,image/webp,image/gif"
 /**
  * The project's thumbnail – what its card and the review queue show.
  *
- * Until one is uploaded the newest picture in the journal stands in, and
- * before there is one of those, the week's own scene on the week's colour, so
- * an empty project still looks like the week it belongs to rather than a grey
- * box. Changing it is one button on the image itself: pick a file, it
- * uploads, the page re-reads.
+ * Until one is uploaded the newest picture in the journal stands in, and before there is one of those, the week's own scene on the week's colour, so an empty project still looks like the week it belongs to rather than a grey box. Changing it is one button on the image itself: pick a file, it uploads, the page re-reads.
  */
 export function CoverImage({
 	projectId,

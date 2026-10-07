@@ -40,10 +40,7 @@ const ARI_LABEL: Record<ImportOutcome["ari"], string> = {
 /**
  * One button that pulls the warm-up form's rows out of Airtable.
  *
- * It reports what each row did rather than only refreshing: a skipped row is
- * usually something a human has to look at (a row with no email, or one Half
- * Life wrote itself), and the whole point of surfacing it is that the import
- * not silently drop a project it was asked to bring across.
+ * It reports what each row did rather than only refreshing: a skipped row is usually something a human has to look at (a row with no email, or one Half Life wrote itself), and the whole point of surfacing it is that the import not silently drop a project it was asked to bring across.
  */
 export function AirtableImportForm({
 	ariConfigured,

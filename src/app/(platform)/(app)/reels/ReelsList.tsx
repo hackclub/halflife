@@ -12,13 +12,9 @@ import type { MyReel, MyReelGroup } from "@/lib/queries/reels"
 import { PLATFORM_HOME } from "@/lib/routes"
 
 /**
- * The Reels page's list: one section per project, one row per reel, and under
- * each reel the places it has been posted publicly.
+ * The Reels page's list: one section per project, one row per reel, and under each reel the places it has been posted publicly.
  *
- * Adding a link opens the same sheet a reel offers right after it is posted,
- * started on the links – pressing "Add where you posted it" has already said
- * yes. Everything here changes on the server, so every change ends in a
- * refresh rather than a local patch.
+ * Adding a link opens the same sheet a reel offers right after it is posted, started on the links – pressing "Add where you posted it" has already said yes. Everything here changes on the server, so every change ends in a refresh rather than a local patch.
  */
 export function ReelsList({ groups }: { groups: MyReelGroup[] }) {
 	const router = useRouter()

@@ -26,18 +26,11 @@ export interface SlideHandle {
 }
 
 /**
- * One reel on the Doomscroller, and everything that belongs to it rather than
- * to the page: the video, who posted it and what they said, how far through
- * it is, and the player underneath. All of it moves as one when the reader
- * scrolls, while the actions beside the reel stay where the hand is.
+ * One reel on the Doomscroller, and everything that belongs to it rather than to the page: the video, who posted it and what they said, how far through it is, and the player underneath. All of it moves as one when the reader scrolls, while the actions beside the reel stay where the hand is.
  *
- * Dressed like the rail's own reel card – project on a tag in the corner,
- * author and caption over the foot of the picture – so the two feeds read as
- * one product at two sizes. The player below the card is platform furniture:
- * drawn round buttons on the cream, the clock in the hand.
+ * Dressed like the rail's own reel card – project on a tag in the corner, author and caption over the foot of the picture – so the two feeds read as one product at two sizes. The player below the card is platform furniture: drawn round buttons on the cream, the clock in the hand.
  *
- * Playback follows `active` and nothing else. The page decides which slide is
- * current; the slide plays when it is, from the top, and stops when it is not.
+ * Playback follows `active` and nothing else. The page decides which slide is current; the slide plays when it is, from the top, and stops when it is not.
  */
 export function StageSlide({
 	reel,
@@ -82,12 +75,10 @@ export function StageSlide({
 	const pendingToggle = useRef(0)
 
 	const announcement = reel.pinned || reel.kind === "ANNOUNCEMENT"
-	// Portrait fills the card edge to edge; anything wider is letterboxed in it,
-	// so a landscape clip is shown whole rather than cropped to a strip.
+	// Portrait fills the card edge to edge; anything wider is letterboxed in it, so a landscape clip is shown whole rather than cropped to a strip.
 	const portrait = !reel.width || !reel.height || reel.height >= reel.width
 
-	// `muted` as a prop is not reflected after mount in React, so both are set
-	// on the element directly.
+	// `muted` as a prop is not reflected after mount in React, so both are set on the element directly.
 	useEffect(() => {
 		const el = video.current
 		if (!el) return
@@ -102,16 +93,13 @@ export function StageSlide({
 			el.pause()
 			return
 		}
-		// Arriving is asking to watch – except for anyone who has asked for less
-		// motion, who gets the play button instead of a video that starts moving.
+		// Arriving is asking to watch – except for anyone who has asked for less motion, who gets the play button instead of a video that starts moving.
 		if (prefersStill()) return
 		el.currentTime = 0
 		let cancelled = false
 		void playExclusive(el).then(async (ok) => {
 			if (ok || cancelled || el.muted) return
-			// Sound before the reader has touched the page is the browser's to
-			// refuse, and it does. Muted playback it always allows, so the reel
-			// plays silently and the page offers the sound back.
+			// Sound before the reader has touched the page is the browser's to refuse, and it does. Muted playback it always allows, so the reel plays silently and the page offers the sound back.
 			el.muted = true
 			onAutoMuted()
 			await playExclusive(el)
@@ -121,8 +109,7 @@ export function StageSlide({
 		}
 	}, [active, onAutoMuted])
 
-	// Smooth rather than stepped: `timeupdate` fires four times a second, which
-	// makes a thin bar visibly tick. Only the playing slide pays for a frame loop.
+	// Smooth rather than stepped: `timeupdate` fires four times a second, which makes a thin bar visibly tick. Only the playing slide pays for a frame loop.
 	useEffect(() => {
 		if (!active || !playing) return
 		let raf = 0
@@ -150,8 +137,7 @@ export function StageSlide({
 		return () => register(null)
 	}, [active, register, toggle])
 
-	// Whether the caption runs past its lines, so "more" only appears when there
-	// is more. Measured, because a character count cannot know the font.
+	// Whether the caption runs past its lines, so "more" only appears when there is more. Measured, because a character count cannot know the font.
 	useLayoutEffect(() => {
 		const el = caption.current
 		if (!el || expanded) return
@@ -162,10 +148,7 @@ export function StageSlide({
 		return () => ro.disconnect()
 	}, [reel.caption, expanded])
 
-	// The clock, the bar while it is not being driven by the frame loop, and the
-	// view. A view is a second of actual playback, not an arrival that a quick
-	// flick scrolled straight past – once per slide; the server counts once per
-	// person.
+	// The clock, the bar while it is not being driven by the frame loop, and the view. A view is a second of actual playback, not an arrival that a quick flick scrolled straight past – once per slide; the server counts once per person.
 	function onTime() {
 		const el = video.current
 		if (!el) return
@@ -210,10 +193,7 @@ export function StageSlide({
 			.finally(() => heart.remove())
 	}
 
-	// One tap pauses, two like – the same surface does both. The single tap
-	// waits out the double-tap window before acting, or every like would also
-	// pause the reel. Keyboard presses (detail 0) are never a double tap, so
-	// they toggle at once.
+	// One tap pauses, two like – the same surface does both. The single tap waits out the double-tap window before acting, or every like would also pause the reel. Keyboard presses (detail 0) are never a double tap, so they toggle at once.
 	function onSurfaceClick(e: React.MouseEvent<HTMLButtonElement>) {
 		if (e.detail === 0) {
 			toggle()
@@ -262,9 +242,7 @@ export function StageSlide({
 						poster={reel.thumbnailUrl ?? undefined}
 						playsInline
 						loop={!autoScroll}
-						// The reel on screen is worth buffering ahead; its mounted
-						// neighbours fetch just enough to show a first frame, which is
-						// what makes a swipe land on a picture rather than a blank card.
+						// The reel on screen is worth buffering ahead; its mounted neighbours fetch just enough to show a first frame, which is what makes a swipe land on a picture rather than a blank card.
 						preload={active ? "auto" : "metadata"}
 						onPlay={(e) => {
 							notePlaying(e.currentTarget)
@@ -282,8 +260,7 @@ export function StageSlide({
 						className={cx("absolute inset-0 size-full", portrait ? "object-cover" : "object-contain")}
 					/>
 				) : (
-					// No URL is a deployment without a public bucket URL, not a reel
-					// without a video. Saying so beats standing a picture in for it.
+					// No URL is a deployment without a public bucket URL, not a reel without a video. Saying so beats standing a picture in for it.
 					<div className="absolute inset-0 grid place-items-center px-8 text-center">
 						<p className="flex flex-col items-center gap-2 text-[0.84rem] leading-snug text-white/80">
 							<IconFilm className="text-2xl text-white" />
@@ -360,8 +337,7 @@ export function StageSlide({
 						<div className={cx("mt-1 flex items-end gap-2.5", expanded && "pointer-events-auto")}>
 							<p
 								ref={caption}
-								// Opened, the caption can outgrow its space and scrolls itself;
-								// the page's wheel handler leaves anything marked so alone.
+								// Opened, the caption can outgrow its space and scrolls itself; the page's wheel handler leaves anything marked so alone.
 								data-own-scroll={expanded || undefined}
 								className={cx(
 									"min-w-0 flex-1 text-[0.8rem] leading-snug whitespace-pre-line [overflow-wrap:anywhere] text-white/90",

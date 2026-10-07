@@ -24,10 +24,7 @@ type Group = (typeof GROUPS)[number]
 /**
  * Which heading an entry sits under.
  *
- * Bucketed against the PROGRAM's day rather than the reader's: an entry is
- * stamped with the date it counted for, in the program timezone, and that is
- * the same stamp the streak is built from. Comparing it to a browser clock in
- * another timezone would put yesterday's work under "Today" for half the world.
+ * Bucketed against the PROGRAM's day rather than the reader's: an entry is stamped with the date it counted for, in the program timezone, and that is the same stamp the streak is built from. Comparing it to a browser clock in another timezone would put yesterday's work under "Today" for half the world.
  */
 function groupFor(day: string, today: string, yesterday: string): Group {
 	if (day === today) return "Today"
@@ -48,10 +45,7 @@ function Entry({ entry, viewerId }: { entry: JournalRow; viewerId: string }) {
 	const { text, cut } = excerpt(entry.body, EXCERPT_CHARS)
 	const href = `/projects/${entry.projectId}#${entry.id}`
 	return (
-		// `min-w-0` and `overflow-wrap: anywhere` on the card itself, so nothing in
-		// it – the entry, a project or author name – can be wider than the column:
-		// a grid item is otherwise as wide as its longest unbroken word, and one
-		// pasted URL carried the card, and then the page, off the right edge.
+		// `min-w-0` and `overflow-wrap: anywhere` on the card itself, so nothing in it – the entry, a project or author name – can be wider than the column: a grid item is otherwise as wide as its longest unbroken word, and one pasted URL carried the card, and then the page, off the right edge.
 		<Panel
 			tone="line"
 			radius={20}

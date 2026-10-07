@@ -2,13 +2,9 @@
 import { useCallback, useEffect, useState } from "react"
 
 /**
- * How this viewer likes the Doomscroller: sound, speed, whether it moves on
- * by itself, and whether the comments stand open beside the reel.
+ * How this viewer likes the Doomscroller: sound, speed, whether it moves on by itself, and whether the comments stand open beside the reel.
  *
- * Per browser, in localStorage, the way the rest of the ceremony is kept:
- * nobody else ever needs to read it, and a new laptop starting from the
- * defaults is no loss. Every read and write is guarded – a private window or
- * blocked storage just means the defaults, every visit.
+ * Per browser, in localStorage, the way the rest of the ceremony is kept: nobody else ever needs to read it, and a new laptop starting from the defaults is no loss. Every read and write is guarded – a private window or blocked storage just means the defaults, every visit.
  */
 export interface PlayerPrefs {
 	muted: boolean
@@ -25,8 +21,7 @@ export const RATES = [1, 1.5, 2, 0.5] as const
 export function usePlayerPrefs() {
 	const [prefs, setPrefs] = useState<PlayerPrefs>(DEFAULTS)
 
-	// After mount, because the server has no storage and must render the
-	// defaults; reading it during render would tear hydration.
+	// After mount, because the server has no storage and must render the defaults; reading it during render would tear hydration.
 	useEffect(() => {
 		try {
 			const raw = window.localStorage.getItem(KEY)

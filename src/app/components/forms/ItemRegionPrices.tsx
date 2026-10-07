@@ -4,9 +4,7 @@ import { useState } from "react"
 import { Button, Callout } from "@/app/components/ui"
 
 /**
- * One region's coin price for one shop item. Blank is base pricing: the row
- * only exists while an override does, so clearing the field deletes it and
- * the item sells at its base price again.
+ * One region's coin price for one shop item. Blank is base pricing: the row only exists while an override does, so clearing the field deletes it and the item sells at its base price again.
  */
 export function ItemRegionPrices({
 	itemId,

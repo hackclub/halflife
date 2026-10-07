@@ -11,19 +11,11 @@ import brushstroke from "../../../public/art/brushstroke.png"
 type Status = "idle" | "pending" | "error"
 
 /**
- * The way in. Sizing is entirely `em`-relative, so the caller sets one
- * font-size and the field, the button and the paddings all follow – the comp
- * stage passes a `cqw` value, the stacked mobile layout passes a `clamp()`.
+ * The way in. Sizing is entirely `em`-relative, so the caller sets one font-size and the field, the button and the paddings all follow – the comp stage passes a `cqw` value, the stacked mobile layout passes a `clamp()`.
  *
- * "sign up/log in" does exactly that now: it signs in with Hack Club, the
- * account the platform runs on, carrying the address typed here as the
- * sign-in's `login_hint`. Hack Club Auth pre-fills its email box from that, and
- * that box is where a returning user logs in and where a newcomer starts the
- * account they do not have yet – so nobody types their address twice. Someone
- * already signed in has nothing to sign in to and goes straight to the trail.
+ * "sign up/log in" does exactly that now: it signs in with Hack Club, the account the platform runs on, carrying the address typed here as the sign-in's `login_hint`. Hack Club Auth pre-fills its email box from that, and that box is where a returning user logs in and where a newcomer starts the account they do not have yet – so nobody types their address twice. Someone already signed in has nothing to sign in to and goes straight to the trail.
  *
- * The address is still recorded as a sign-up on the way, because the referral
- * code and campaign in this page's own URL exist nowhere else.
+ * The address is still recorded as a sign-up on the way, because the referral code and campaign in this page's own URL exist nowhere else.
  */
 export default function SignupForm({
 	className = "",
@@ -35,16 +27,9 @@ export default function SignupForm({
 	fontSize?: string
 	style?: CSSProperties
 	/**
-	 * Anything that belongs inside the field's own box – in practice the hero's
-	 * tagline.
+	 * Anything that belongs inside the field's own box – in practice the hero's tagline.
 	 *
-	 * It is a slot here rather than a sibling in the hero because of where the
-	 * box has to stop. The line under the field is the eligibility note, and it
-	 * has to stay outside: it is a footnote about who may sign up, not part of
-	 * the offer, and boxing it with the promise would read as fine print on a
-	 * coupon. The note lives in this component, so the only way to draw a box
-	 * around the caption and the field but not around it is for the box to be
-	 * drawn in here too.
+	 * It is a slot here rather than a sibling in the hero because of where the box has to stop. The line under the field is the eligibility note, and it has to stay outside: it is a footnote about who may sign up, not part of the offer, and boxing it with the promise would read as fine print on a coupon. The note lives in this component, so the only way to draw a box around the caption and the field but not around it is for the box to be drawn in here too.
 	 */
 	intro?: ReactNode
 }) {
@@ -56,20 +41,11 @@ export default function SignupForm({
 	const inputRef = useRef<HTMLInputElement>(null)
 
 	/**
-	 * Prefill from the address bar: `?email=someone@example.com`. A link sent
-	 * out with the address already in it lands on a field that is filled in and
-	 * one click from done, which is the whole point of sending it that way.
+	 * Prefill from the address bar: `?email=someone@example.com`. A link sent out with the address already in it lands on a field that is filled in and one click from done, which is the whole point of sending it that way.
 	 *
-	 * Read off `window.location` in an effect rather than through
-	 * `useSearchParams`, for the same reason the submit handler reads it that
-	 * way: the hook would pull this component – and so the hero above it – out
-	 * of the prerender and behind a Suspense boundary, to save a value that
-	 * only matters once the field is interactive anyway. The input is
-	 * uncontrolled, so writing straight onto the node after mount costs no
-	 * render and cannot mismatch hydration.
+	 * Read off `window.location` in an effect rather than through `useSearchParams`, for the same reason the submit handler reads it that way: the hook would pull this component – and so the hero above it – out of the prerender and behind a Suspense boundary, to save a value that only matters once the field is interactive anyway. The input is uncontrolled, so writing straight onto the node after mount costs no render and cannot mismatch hydration.
 	 *
-	 * It never overwrites: if someone has already typed, or the browser has
-	 * restored a value on a back-navigation, what is in the field wins.
+	 * It never overwrites: if someone has already typed, or the browser has restored a value on a back-navigation, what is in the field wins.
 	 */
 	useEffect(() => {
 		const params = new URLSearchParams(window.location.search)
@@ -77,11 +53,7 @@ export default function SignupForm({
 		if (prefill && inputRef.current && !inputRef.current.value) {
 			inputRef.current.value = prefill
 		}
-		// A callback that could not attach the Hack Club identity sends the
-		// person back here with a flag, so they meet an explanation on the field
-		// they sign in with rather than an empty page. The common case – a
-		// staff-imported row that was never verified – is repaired automatically
-		// at the callback (lib/hca-profile), so this is the remainder.
+		// A callback that could not attach the Hack Club identity sends the person back here with a flag, so they meet an explanation on the field they sign in with rather than an empty page. The common case – a staff-imported row that was never verified – is repaired automatically at the callback (lib/hca-profile), so this is the remainder.
 		if (params.get("error") === "account_not_linked") {
 			// eslint-disable-next-line react-hooks/set-state-in-effect -- reading the redirect flag after hydration
 			setStatus("error")
@@ -100,24 +72,14 @@ export default function SignupForm({
 		const field = inputRef.current
 		const email = field?.value.trim() ?? ""
 
-		// Checked here rather than by the browser (`noValidate`), so the message
-		// lands on the line under the field in this page's voice instead of in a
-		// native bubble.
+		// Checked here rather than by the browser (`noValidate`), so the message lands on the line under the field in this page's voice instead of in a native bubble.
 		if (!email) return fail("Enter your email to sign up or log in.")
 		if (field && !field.checkValidity()) return fail("That doesn't look like an email address.")
 
 		setStatus("pending")
 		setMessage("Taking you to Hack Club to sign in…")
 
-		// Whoever sent this visitor here – a referral link or a campaign URL –
-		// is only present in this page's own address bar, so it's read fresh at
-		// submit time and sent before the page leaves. `keepalive` lets it finish
-		// even if the sign-in navigates away first, and its answer is not needed,
-		// so it is deliberately NOT awaited: awaiting a slow or rate-limited
-		// signup would put the list provider between the visitor and the way in.
-		// (This used to await with an AbortController that fired after 2.5s – but
-		// aborting cancels the request, so a slow signup was silently dropped
-		// rather than "left to finish on its own".)
+		// Whoever sent this visitor here – a referral link or a campaign URL – is only present in this page's own address bar, so it's read fresh at submit time and sent before the page leaves. `keepalive` lets it finish even if the sign-in navigates away first, and its answer is not needed, so it is deliberately NOT awaited: awaiting a slow or rate-limited signup would put the list provider between the visitor and the way in. (This used to await with an AbortController that fired after 2.5s – but aborting cancels the request, so a slow signup was silently dropped rather than "left to finish on its own".)
 		const params = new URLSearchParams(window.location.search)
 		void fetch("/api/subscribe", {
 			method: "POST",
@@ -131,8 +93,7 @@ export default function SignupForm({
 				utmCampaign: params.get("utm_campaign") || undefined,
 			}),
 		}).catch(() => {
-			// Slow, offline or refused: none of it should stand between someone and
-			// signing in. The sign-in below says so if the network is really gone.
+			// Slow, offline or refused: none of it should stand between someone and signing in. The sign-in below says so if the network is really gone.
 		})
 
 		if (session) {
@@ -141,8 +102,7 @@ export default function SignupForm({
 		}
 
 		try {
-			// better-auth reports a refusal in the result rather than throwing; on
-			// success the page is already on its way to Hack Club.
+			// better-auth reports a refusal in the result rather than throwing; on success the page is already on its way to Hack Club.
 			const result = await signInWith("hca", "/dashboard", email)
 			if (result?.error) fail("Hack Club sign-in didn't open. Give it another try in a moment.")
 		} catch {
@@ -248,10 +208,7 @@ export default function SignupForm({
 								required
 								disabled={pending}
 								placeholder="email address"
-								// Always described by the line below: the eligibility note when
-								// there is nothing wrong, the error when there is. Pointing at
-								// it only on error meant the note was on screen but not in the
-								// accessibility tree.
+								// Always described by the line below: the eligibility note when there is nothing wrong, the error when there is. Pointing at it only on error meant the note was on screen but not in the accessibility tree.
 								aria-describedby={`${id}-msg`}
 								aria-invalid={status === "error" || undefined}
 								onChange={() => {
@@ -260,12 +217,7 @@ export default function SignupForm({
 										setMessage("")
 									}
 								}}
-								// Display face, not the body one it inherited. The control is
-								// one object – a slot cut into the plate and the word beside it
-								// – and "sign up/log in" is set in the display face, so the field's
-								// own type belongs to the same voice. Set on the input rather
-								// than scoped to `::placeholder`, so the address someone types
-								// does not change face out from under them mid-word.
+								// Display face, not the body one it inherited. The control is one object – a slot cut into the plate and the word beside it – and "sign up/log in" is set in the display face, so the field's own type belongs to the same voice. Set on the input rather than scoped to `::placeholder`, so the address someone types does not change face out from under them mid-word.
 								className="h-full w-full bg-transparent px-[0.667em] font-display text-hl-paper caret-hl-cyan outline-none placeholder:text-hl-paper-soft"
 							/>
 

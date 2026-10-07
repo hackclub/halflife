@@ -1,11 +1,7 @@
 /**
- * Where this viewer left off in the Doomscroller today, so closing the tab
- * and coming back later does not start them from the top of the day again.
+ * Where this viewer left off in the Doomscroller today, so closing the tab and coming back later does not start them from the top of the day again.
  *
- * Per browser, in localStorage, like the player prefs: a convenience, not a
- * record, and a new laptop starting from the newest reel is no loss. Kept for
- * the viewer's own day only – tomorrow the top of the feed is new, and that
- * is where they should start. Every read and write is guarded.
+ * Per browser, in localStorage, like the player prefs: a convenience, not a record, and a new laptop starting from the newest reel is no loss. Kept for the viewer's own day only – tomorrow the top of the feed is new, and that is where they should start. Every read and write is guarded.
  */
 const KEY = "halflife.doomscroller.position.v1"
 

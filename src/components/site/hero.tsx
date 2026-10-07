@@ -8,34 +8,19 @@ import Wordmark from "@/components/site/wordmark"
 import { BRAND } from "@/lib/site/content"
 import { swashBoxWidth, u } from "@/lib/site/stage"
 import bgArt from "../../../public/art/bg.png"
-// Parked: the corner decals, to be placed later.
-// import CornerDecal from "@/components/site/corner-decal";
+// Parked: the corner decals, to be placed later. import CornerDecal from "@/components/site/corner-decal";
 import flagArt from "../../../public/art/hackclub-flag.svg"
 
 /**
  * The hero plate, taken to half the grid.
  *
- * The comp draws it 1256 wide – 73% of the 1728 grid – which read too heavy
- * against the painting behind it: bg.png is framed on both edges and left open
- * through the middle, and a plate that wide spanned frame to frame and closed
- * the opening. At 864 it is half the grid, and since the stage is the viewport
- * up to its 1728 cap, that is literally 50vw at every width the comp layout
- * runs at.
+ * The comp draws it 1256 wide – 73% of the 1728 grid – which read too heavy against the painting behind it: bg.png is framed on both edges and left open through the middle, and a plate that wide spanned frame to frame and closed the opening. At 864 it is half the grid, and since the stage is the viewport up to its 1728 cap, that is literally 50vw at every width the comp layout runs at.
  *
- * Once it is half the grid it is centred on the grid rather than left where the
- * comp's wider plate started, and that is the relationship bg.png was painted
+ * Once it is half the grid it is centred on the grid rather than left where the comp's wider plate started, and that is the relationship bg.png was painted
  * for: the picture carries a pipe column down each edge and is left open
- * through the middle, so a centred plate sits in the opening and leaves both
- * columns to read. `.stage` and the art layer both cap at 1728 and centre, so
- * centring on the grid centres the plate over the painting's own centre at
- * every width. Vertically it keeps the comp's y – the caption and group shot
- * hold the lower left, so there is no free height to centre into.
+ * through the middle, so a centred plate sits in the opening and leaves both columns to read. `.stage` and the art layer both cap at 1728 and centre, so centring on the grid centres the plate over the painting's own centre at every width. Vertically it keeps the comp's y – the caption and group shot hold the lower left, so there is no free height to centre into.
  *
- * Everything set on the plate scales by the same factor and moves with it, so
- * the comp's internal composition survives intact at a smaller size rather
- * than being re-fitted by hand: offsets are still measured from the comp's own
- * plate origin, and only where that origin lands has changed. Every number
- * below is still the literal Figma pixel DESIGN.md says it is.
+ * Everything set on the plate scales by the same factor and moves with it, so the comp's internal composition survives intact at a smaller size rather than being re-fitted by hand: offsets are still measured from the comp's own plate origin, and only where that origin lands has changed. Every number below is still the literal Figma pixel DESIGN.md says it is.
  */
 const PLATE = { x: 276, y: 98, w: 1256, h: 677 } as const
 const PLATE_SCALE = 864 / PLATE.w
@@ -46,26 +31,11 @@ const PLATE_H = PLATE.h * PLATE_SCALE
    out because Tailwind reads class names from the source as literal text. */
 
 /**
- * The painting's dissolve, as a mask on the picture rather than a scrim over
- * it.
+ * The painting's dissolve, as a mask on the picture rather than a scrim over it.
  *
- * It used to be a `<div>` of `transparent -> hl-blue-deep` laid on top. That works
- * only while the thing underneath is flat colour: the ground now carries the
- * tiled pattern, and an opaque scrim would paint the texture out again
- * exactly where the dissolve is supposed to be revealing it. Masking the
- * picture instead takes the painting to nothing and lets whatever the room is
- * standing on come up through it, so the pattern arrives as the painting
- * leaves – one handoff instead of two.
+ * It used to be a `<div>` of `transparent -> hl-blue-deep` laid on top. That works only while the thing underneath is flat colour: the ground now carries the tiled pattern, and an opaque scrim would paint the texture out again exactly where the dissolve is supposed to be revealing it. Masking the picture instead takes the painting to nothing and lets whatever the room is standing on come up through it, so the pattern arrives as the painting leaves – one handoff instead of two.
  *
- * The stops are `1 - smoothstep(t)` sampled every eighth over the run, not a
- * straight line. A linear ramp is the severe one: alpha is continuous but its
- * slope is not, so the eye finds the kink where the fade starts and the kink
- * where it stops, and reads them as two edges drawn across the picture.
- * Smoothstep leaves 1 and arrives at 0 with zero slope, so neither end has a
- * position to find. The run is the bottom 28% against the old 22% – longer,
- * but the first quarter of it is still above 94% opacity, so the fox in the
- * lower-left corner keeps roughly the exposure it had and only the last
- * sliver, which is what has to be gentle, gives up more than before.
+ * The stops are `1 - smoothstep(t)` sampled every eighth over the run, not a straight line. A linear ramp is the severe one: alpha is continuous but its slope is not, so the eye finds the kink where the fade starts and the kink where it stops, and reads them as two edges drawn across the picture. Smoothstep leaves 1 and arrives at 0 with zero slope, so neither end has a position to find. The run is the bottom 28% against the old 22% – longer, but the first quarter of it is still above 94% opacity, so the fox in the lower-left corner keeps roughly the exposure it had and only the last sliver, which is what has to be gentle, gives up more than before.
  */
 const ART_FADE = [
 	"linear-gradient(to bottom",
@@ -82,33 +52,16 @@ const ART_FADE = [
 /**
  * The plate is centred in the fold, not at a fixed y on the comp grid.
  *
- * Now that the fold is a real viewport rather than a 1092-unit block, a fixed
- * y cannot stay centred in it: the number that centres the plate on a 16:9
- * screen leaves it high on a tall viewport and past the fold on a short one.
- * Centring it in the block holds at every shape - and on a 16:9 viewport,
- * where the painting exactly fills the fold, it lands on 486, the painting's
- * own centre, which is precisely where it sat before.
+ * Now that the fold is a real viewport rather than a 1092-unit block, a fixed y cannot stay centred in it: the number that centres the plate on a 16:9 screen leaves it high on a tall viewport and past the fold on a short one. Centring it in the block holds at every shape - and on a 16:9 viewport, where the painting exactly fills the fold, it lands on 486, the painting's own centre, which is precisely where it sat before.
  */
 /**
  * How wide the wordmark art runs on the stage.
  *
- * 604.8 is the plate column's 864 taken down 30%, which is where this was
- * asked to sit. It is now its own number rather than `u(PLATE_W)`: at 70% of
- * the column the mark no longer spans it, so the two have to be free to differ
- * – see `PLATE_SIZE` below, which holds the column at the comp's half-grid so
- * that shrinking the mark does not drag the tagline and the form in with it.
+ * 604.8 is the plate column's 864 taken down 30%, which is where this was asked to sit. It is now its own number rather than `u(PLATE_W)`: at 70% of the column the mark no longer spans it, so the two have to be free to differ – see `PLATE_SIZE` below, which holds the column at the comp's half-grid so that shrinking the mark does not drag the tagline and the form in with it.
  *
- * What the number buys, since the file carries its own inset: the ink is 1125
- * of a 1280 canvas and the box crops nothing horizontally, so the visible mark
- * is 88% of the box – 532 units. Height follows at 0.7 to 1, so it stands 423.
+ * What the number buys, since the file carries its own inset: the ink is 1125 of a 1280 canvas and the box crops nothing horizontally, so the visible mark is 88% of the box – 532 units. Height follows at 0.7 to 1, so it stands 423.
  *
- * Worth knowing before this moves again. 532 of ink sits *under* the 585
- * tagline and the 596 form beneath it, so the mark is no longer the widest
- * thing in the column; it still leads on mass, standing 423 tall against a
- * 22px line, but the three widths are now close enough to read as an
- * near-miss rather than a decision. The two clean stops either side are
- * `u(678)`, where the ink lands on the form's own 596 and the group shares one
- * edge, and `u(PLATE_W)`, where it spans the column outright.
+ * Worth knowing before this moves again. 532 of ink sits *under* the 585 tagline and the 596 form beneath it, so the mark is no longer the widest thing in the column; it still leads on mass, standing 423 tall against a 22px line, but the three widths are now close enough to read as an near-miss rather than a decision. The two clean stops either side are `u(678)`, where the ink lands on the form's own 596 and the group shares one edge, and `u(PLATE_W)`, where it spans the column outright.
  *
  * The fold has room to spare: 423 for the mark, 172 for the copy and form, 90
  * for the cue – 685 against a 16:9 fold's 972, so anything squarer than 2.5:1
@@ -119,58 +72,28 @@ const LOGO_STAGE_W = u(604.8)
 /**
  * How far the tagline runs, in comp units, set in Ubuntu 400 at `u(32.8)`.
  *
- * The sentence is 25.301em wide in that face, so its size and its measure are
- * the same number – 32.8 of them is 830. It was a figure in the prose below
- * and is now the value the box is built from: `swashBoxWidth` takes the line
- * as the middle 75% of the box, which is the inset the swash behind it needs.
+ * The sentence is 25.301em wide in that face, so its size and its measure are the same number – 32.8 of them is 830. It was a figure in the prose below and is now the value the box is built from: `swashBoxWidth` takes the line as the middle 75% of the box, which is the inset the swash behind it needs.
  *
- * The line is `whitespace-nowrap`, so a face whose advances run wider than
- * this does not wrap – it eats into the inset. That is the right failure: the
- * metric-adjusted fallback can miss Ubuntu by 3.9%, which takes the line to
- * 77.9% of the box and the inset from 12.5% to 11.0%, where the worst pixel
- * under the type is still alpha 0.686 and 7.14:1 against the lightest thing
- * the painting can put there. The inset is a contrast buffer before it is a
- * margin, and it has that much to give.
+ * The line is `whitespace-nowrap`, so a face whose advances run wider than this does not wrap – it eats into the inset. That is the right failure: the metric-adjusted fallback can miss Ubuntu by 3.9%, which takes the line to 77.9% of the box and the inset from 12.5% to 11.0%, where the worst pixel under the type is still alpha 0.686 and 7.14:1 against the lightest thing the painting can put there. The inset is a contrast buffer before it is a margin, and it has that much to give.
  *
- * At 1107 the box is wider than the 864 plate it sits on and overhangs it by
- * 122 either side. Nothing clips – the plate is a centred content column with
- * no ground – and the overhang is inside the composition: bg.png's open middle
- * runs 274 to 1503 on this grid, measured as its calmest contiguous span of
- * column edge energy, so the swash stops 190 short of the left pipe column and
- * 86 short of the right.
+ * At 1107 the box is wider than the 864 plate it sits on and overhangs it by 122 either side. Nothing clips – the plate is a centred content column with no ground – and the overhang is inside the composition: bg.png's open middle runs 274 to 1503 on this grid, measured as its calmest contiguous span of column edge energy, so the swash stops 190 short of the left pipe column and 86 short of the right.
  */
 const TAGLINE_RUN = 830
 
 /*
- * The stacked layout's own width, also taken down 30% – 60 to 42, and the
- * ceiling below from 24rem to 16.8rem.
+ * The stacked layout's own width, also taken down 30% – 60 to 42, and the ceiling below from 24rem to 16.8rem.
  *
- * This one is worth watching. The column here is not the comp's plate but
- * whatever the phone's padding leaves – 318 units on a 390 screen – so the
- * stage's proportions do not carry over. At 42 the mark's ink is 144 of that
- * 318, which sets it at about half the width of the tagline block beneath it,
- * and a wordmark narrower than its own tagline stops reading as the page's
- * h1. It was 60 for that reason. 55 is roughly where the mark and the tagline
- * come level, if this wants pulling back.
+ * This one is worth watching. The column here is not the comp's plate but whatever the phone's padding leaves – 318 units on a 390 screen – so the stage's proportions do not carry over. At 42 the mark's ink is 144 of that 318, which sets it at about half the width of the tagline block beneath it, and a wordmark narrower than its own tagline stops reading as the page's h1. It was 60 for that reason. 55 is roughly where the mark and the tagline come level, if this wants pulling back.
  *
- * From 640 up only. On a phone the mark runs 95vw instead – see the stacked
- * `Wordmark` – wider than the column's own padding allows, and centred on the
- * screen rather than on the column.
+ * From 640 up only. On a phone the mark runs 95vw instead – see the stacked `Wordmark` – wider than the column's own padding allows, and centred on the screen rather than on the column.
  *
- * It lives in the stacked `Wordmark`'s class list as `min(42vw,16.8rem)`,
- * written out there because Tailwind reads class names as literal text.
+ * It lives in the stacked `Wordmark`'s class list as `min(42vw,16.8rem)`, written out there because Tailwind reads class names as literal text.
  */
 
 /**
- * The plate is a content column, not a box with a ground, so it is sized to
- * hold what it carries rather than to a drawn rectangle.
+ * The plate is a content column, not a box with a ground, so it is sized to hold what it carries rather than to a drawn rectangle.
  *
- * `minHeight`, not `height`: at the comp's 466 a wordmark this size spilled
- * out of its grid row and into the scroll cue's. The width is the comp's
- * half-grid plate outright, and deliberately not the mark's: the column has to
- * hold a 585 tagline and a 596 form whatever the wordmark above them is doing,
- * so a mark taken below the column's width shrinks alone rather than crushing
- * the two rows under it.
+ * `minHeight`, not `height`: at the comp's 466 a wordmark this size spilled out of its grid row and into the scroll cue's. The width is the comp's half-grid plate outright, and deliberately not the mark's: the column has to hold a 585 tagline and a 596 form whatever the wordmark above them is doing, so a mark taken below the column's width shrinks alone rather than crushing the two rows under it.
  */
 const PLATE_SIZE = {
 	width: u(PLATE_W),
@@ -185,19 +108,9 @@ function onPlateU(px: number) {
 /**
  * "how does it work?" is not in here any more.
  *
- * It was a `.stage` block of its own at the bottom of this section, and the
- * band that drops out of it into the programme had to cross from this section's
- * grid into the process section's. The two cap at different widths, so one comp
- * unit was a different number of pixels in each and the band landed further
- * down its own grid than the plate it was aiming at had moved to – through the
- * step's heading, from about 1333px of viewport up. The header plate, its band
- * and both layouts' copies of it are in `process.tsx` now, on one grid with the
- * four plates they introduce.
+ * It was a `.stage` block of its own at the bottom of this section, and the band that drops out of it into the programme had to cross from this section's grid into the process section's. The two cap at different widths, so one comp unit was a different number of pixels in each and the band landed further down its own grid than the plate it was aiming at had moved to – through the step's heading, from about 1333px of viewport up. The header plate, its band and both layouts' copies of it are in `process.tsx` now, on one grid with the four plates they introduce.
  *
- * The hero is the fold, and only the fold. The painting's own box is unchanged
- * – it takes bg.png's ratio and clamps to the section – so losing the 218 units
- * of block below it only closes the bare ground that used to sit between the
- * dissolve and the header.
+ * The hero is the fold, and only the fold. The painting's own box is unchanged – it takes bg.png's ratio and clamps to the section – so losing the 218 units of block below it only closes the bare ground that used to sit between the dissolve and the header.
  */
 export default function Hero() {
 	return (
@@ -431,46 +344,22 @@ export default function Hero() {
 /**
  * The scroll cue.
  *
- * Drawn in the page's icon grammar – square-cap strokes at the same 2.75
- * weight as every other icon here – rather than as one of the welds, which
- * are diagram parts and mean something specific. It is a real
- * link to the section it points at, because a downward arrow above the fold is
- * something people click, and that also puts it on the keyboard path.
+ * Drawn in the page's icon grammar – square-cap strokes at the same 2.75 weight as every other icon here – rather than as one of the welds, which are diagram parts and mean something specific. It is a real link to the section it points at, because a downward arrow above the fold is something people click, and that also puts it on the keyboard path.
  *
- * The nudge lives on the glyph, not on the link box, so it cannot fight the
- * box's own centring transform.
+ * The nudge lives on the glyph, not on the link box, so it cannot fight the box's own centring transform.
  */
 /**
  * The cue, as its own word rather than a chevron.
  *
- * Set in the display face, uppercase, tracked 0.14em – the treatment the image
- * slots already use for their labels, which is this page's grammar for a small
- * word that is naming something rather than saying it. The CTA beside it is
- * lowercase because a button speaks; a cue labels.
+ * Set in the display face, uppercase, tracked 0.14em – the treatment the image slots already use for their labels, which is this page's grammar for a small word that is naming something rather than saying it. The CTA beside it is lowercase because a button speaks; a cue labels.
  *
- * The bob stays and is now load-bearing. A chevron points on its own; a word
- * does not, so the one thing still saying *down* is the 16% translate the
- * animation gives it.
+ * The bob stays and is now load-bearing. A chevron points on its own; a word does not, so the one thing still saying *down* is the 16% translate the animation gives it.
  *
  * `text-hl-paper`, and now in every state rather than only at rest.
  *
- * Cyan used to carry the hover and the focus. That was already the second
- * attempt – the arrow's original classes asked for cyan at rest, and both
- * paths carried a hardcoded `stroke="white"`, so no `color` ever reached the
- * glyph and neither did the hover; moving cyan to the interaction state was
- * the fix. On the steel ground it does not survive there either. Cyan is
- * 4.60:1 on bare steel, 4.27:1 over one arc of the ground pattern and 3.97:1
- * where two cross, and this word is 12.8-16px, so it owes 4.5:1 in every
- * state. Nothing in the palette between cyan and paper clears it: on the
- * worst ground only paper, lavender-pale, blue-pale and white do.
+ * Cyan used to carry the hover and the focus. That was already the second attempt – the arrow's original classes asked for cyan at rest, and both paths carried a hardcoded `stroke="white"`, so no `color` ever reached the glyph and neither did the hover; moving cyan to the interaction state was the fix. On the steel ground it does not survive there either. Cyan is 4.60:1 on bare steel, 4.27:1 over one arc of the ground pattern and 3.97:1 where two cross, and this word is 12.8-16px, so it owes 4.5:1 in every state. Nothing in the palette between cyan and paper clears it: on the worst ground only paper, lavender-pale, blue-pale and white do.
  *
- * So the cyan moved off the text and onto a rule under it. The word holds at
- * 5.70:1 whatever the arcs are doing, the interaction is still signalled in
- * the page's own interaction colour, and an underline is non-text – it owes
- * 3:1 and has 3.97:1. Focus is left to the global `:focus-visible` ring,
- * which is the same cyan at the same 3:1 and is the treatment every other
- * control on the page gets; a colour change underneath it was never what was
- * doing the work.
+ * So the cyan moved off the text and onto a rule under it. The word holds at 5.70:1 whatever the arcs are doing, the interaction is still signalled in the page's own interaction colour, and an underline is non-text – it owes 3:1 and has 3.97:1. Focus is left to the global `:focus-visible` ring, which is the same cyan at the same 3:1 and is the treatment every other control on the page gets; a colour change underneath it was never what was doing the work.
  */
 function ScrollCue({
 	className = "",
@@ -487,8 +376,7 @@ function ScrollCue({
 	return (
 		<a
 			href="#how-it-works"
-			// `py-1.5` is the tap target, not spacing: the word is a 16-22px line, and
-			// 12px of vertical padding is what takes the box past the 24px floor.
+			// `py-1.5` is the tap target, not spacing: the word is a 16-22px line, and 12px of vertical padding is what takes the box past the 24px floor.
 			className={`inline-block px-2 py-1.5 font-display font-bold uppercase text-hl-paper decoration-hl-cyan decoration-2 underline-offset-[0.3em] hover:underline ${className}`}
 			style={{ ...style, fontSize, letterSpacing: "0.14em" }}
 		>
@@ -500,20 +388,11 @@ function ScrollCue({
 /**
  * The Hack Club flag, hung from the top-left corner.
  *
- * Flush to the corner rather than inset: the artwork is drawn as a banner
- * running off its own left edge, so any gap reads as a mistake rather than as
- * margin. It scales between 104 and 160px – small enough to stay a mark on the
- * painting rather than a second piece of art competing with it.
+ * Flush to the corner rather than inset: the artwork is drawn as a banner running off its own left edge, so any gap reads as a mistake rather than as margin. It scales between 104 and 160px – small enough to stay a mark on the painting rather than a second piece of art competing with it.
  *
- * `absolute`, not `fixed`. The fixed treatment is the more familiar one, but
- * this page scrolls through four rooms with their own grounds and a flag
- * riding over the carousel and the FAQ would be an overlay rather than a
- * corner. It belongs to the hero, so it is positioned in the hero.
+ * `absolute`, not `fixed`. The fixed treatment is the more familiar one, but this page scrolls through four rooms with their own grounds and a flag riding over the carousel and the FAQ would be an overlay rather than a corner. It belongs to the hero, so it is positioned in the hero.
  *
- * A link, because that is what the flag is – the mark that says who made this,
- * and it is the only thing on the page that says so above the fold. `alt` does
- * the naming: the image is the link's whole content, so an empty one would
- * leave it with no accessible name at all.
+ * A link, because that is what the flag is – the mark that says who made this, and it is the only thing on the page that says so above the fold. `alt` does the naming: the image is the link's whole content, so an empty one would leave it with no accessible name at all.
  */
 function HackClubFlag() {
 	return (
@@ -531,37 +410,13 @@ function HackClubFlag() {
 /**
  * One painted scene across the top of the hero, shown whole.
  *
- * bg.png is 1920x1080 and it is composed, not tileable: piping and foliage
- * frame its left and right edges, the fox sits in its lower-left corner, and
- * the middle is left open for the hero plate to land in. It was previously
- * drawn as two half-width tiles with the right one mirrored, which put the fox
- * and the framing on the page twice and – because a 16:9 painting cannot cover
- * a half-width, full-height box without losing about 55% of its width – cropped
- * off the frame that is the whole point of the picture.
+ * bg.png is 1920x1080 and it is composed, not tileable: piping and foliage frame its left and right edges, the fox sits in its lower-left corner, and the middle is left open for the hero plate to land in. It was previously drawn as two half-width tiles with the right one mirrored, which put the fox and the framing on the page twice and – because a 16:9 painting cannot cover a half-width, full-height box without losing about 55% of its width – cropped off the frame that is the whole point of the picture.
  *
- * So the art layer takes the painting's aspect ratio rather than the section's:
- * full width, top-aligned, nothing cropped and nothing repeated. The box is cut
- * to 1920/1080, so `object-cover` has nothing to crop and cannot leave a
- * hairline of bare ink the way `object-contain` would under sub-pixel rounding.
- * Below the picture, and up through its dissolve, is the steel ground and the
- * tiled pattern that the hero and the process section share from one box in
- * `page.tsx` – so the painting resolves into the room it hands off to rather
- * than into a flat field that the room's texture then switches on in further
- * down. The fade is the only place that ground is ever seen arriving, which is
- * why it cannot start at the section below.
+ * So the art layer takes the painting's aspect ratio rather than the section's: full width, top-aligned, nothing cropped and nothing repeated. The box is cut to 1920/1080, so `object-cover` has nothing to crop and cannot leave a hairline of bare ink the way `object-contain` would under sub-pixel rounding. Below the picture, and up through its dissolve, is the steel ground and the tiled pattern that the hero and the process section share from one box in `page.tsx` – so the painting resolves into the room it hands off to rather than into a flat field that the room's texture then switches on in further down. The fade is the only place that ground is ever seen arriving, which is why it cannot start at the section below.
  *
- * It spans the screen at every width. Capped at the comp's 1728 it left ink
- * shoulders on anything wider, and the painting is the hero's ground rather
- * than an object standing on it.
+ * It spans the screen at every width. Capped at the comp's 1728 it left ink shoulders on anything wider, and the painting is the hero's ground rather than an object standing on it.
  *
- * `max-height: 100%` is the guard that buys. Uncapped, a 16:9 box on a wide
- * screen grows taller than the section it sits in -- a 2560 window only 800
- * tall wants 1440 of painting against 1018 of section -- and `overflow-hidden`
- * would take the difference off the bottom as a hard cut, dissolve and all.
- * Clamped to the section instead, the box stops being 16:9 and `object-cover`
- * trims the picture rather than the layer, so the fade still lands on the
- * bottom edge that is actually visible. Below that width nothing is cropped at
- * all: the box is the painting's own ratio and cover has nothing to take.
+ * `max-height: 100%` is the guard that buys. Uncapped, a 16:9 box on a wide screen grows taller than the section it sits in -- a 2560 window only 800 tall wants 1440 of painting against 1018 of section -- and `overflow-hidden` would take the difference off the bottom as a hard cut, dissolve and all. Clamped to the section instead, the box stops being 16:9 and `object-cover` trims the picture rather than the layer, so the fade still lands on the bottom edge that is actually visible. Below that width nothing is cropped at all: the box is the painting's own ratio and cover has nothing to take.
  */
 function HeroArt() {
 	return (

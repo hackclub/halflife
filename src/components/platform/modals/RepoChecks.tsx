@@ -10,15 +10,9 @@ import { useStore } from "@/lib/store"
 import type { Project } from "@/lib/types"
 
 /**
- * What the repo has, checked against what this week needs – before the maker
- * hands it in rather than after a reviewer bounces it.
+ * What the repo has, checked against what this week needs – before the maker hands it in rather than after a reviewer bounces it.
  *
- * Failures that block are coral and say how to fix them; recommendations are
- * amber and never block; GitHub being unreachable is amber too, because that
- * is ours to absorb. The repo being checked sits under the heading with its
- * editor, so a wrong or missing link is fixed without leaving the sheet, and
- * a new link re-runs the checks. Otherwise the fix is a push, and "Check
- * again" is how the sheet finds out.
+ * Failures that block are coral and say how to fix them; recommendations are amber and never block; GitHub being unreachable is amber too, because that is ours to absorb. The repo being checked sits under the heading with its editor, so a wrong or missing link is fixed without leaving the sheet, and a new link re-runs the checks. Otherwise the fix is a push, and "Check again" is how the sheet finds out.
  */
 export function RepoChecks({
 	project,
@@ -28,9 +22,7 @@ export function RepoChecks({
 	project: Project
 	onResult: (result: RepoCheckResult | null) => void
 	/**
-	 * Whether the link can be changed from here. The submit sheet says yes, so a
-	 * wrong link is fixed without leaving it; the project page says no, because
-	 * its own details editor already owns the link.
+	 * Whether the link can be changed from here. The submit sheet says yes, so a wrong link is fixed without leaving it; the project page says no, because its own details editor already owns the link.
 	 */
 	editable?: boolean
 }) {
@@ -38,13 +30,11 @@ export function RepoChecks({
 	const [data, setData] = useState<RepoCheckResult | null>(null)
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
-	// Whether the sync writes to a different repo than the project links to, and
-	// what that repo is – the shortcut offered when the link is missing or wrong.
+	// Whether the sync writes to a different repo than the project links to, and what that repo is – the shortcut offered when the link is missing or wrong.
 	const [syncRepo, setSyncRepo] = useState<{ repo: string; differs: boolean } | null>(null)
 	const [linking, setLinking] = useState(false)
 
-	// Runs on mount and on a new link. The sync state is a second read, and only
-	// its repo identity is kept: the rest of it belongs to the sync settings box.
+	// Runs on mount and on a new link. The sync state is a second read, and only its repo identity is kept: the rest of it belongs to the sync settings box.
 	const loadSync = useCallback(async () => {
 		try {
 			const res = await fetch(`/api/projects/${project.id}/repo-sync`, { cache: "no-store" })
@@ -86,8 +76,7 @@ export function RepoChecks({
 		} finally {
 			setLoading(false)
 		}
-		// The link is the input: a new one means a fresh check.
-		// eslint-disable-next-line react-hooks/exhaustive-deps
+		// The link is the input: a new one means a fresh check. eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [project.id, project.githubRepo])
 
 	useEffect(() => {

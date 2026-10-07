@@ -7,13 +7,9 @@ export const dynamic = "force-dynamic"
 export const maxDuration = 120
 
 /**
- * The analytics time markers, for whatever pushes them onward (the Loops
- * properties in Airtable) and for anyone checking the numbers.
+ * The analytics time markers, for whatever pushes them onward (the Loops properties in Airtable) and for anyone checking the numbers.
  *
- * `summary` is program-wide: DAU per day, the funnel with drop-off at each
- * step, and how many people crossed 1h / 5h / 10h / 20h in each week. Add
- * `?users=true` for one row per person with every timestamp, hours, coins and
- * streaks – that includes emails, so it sits behind the integration key.
+ * `summary` is program-wide: DAU per day, the funnel with drop-off at each step, and how many people crossed 1h / 5h / 10h / 20h in each week. Add `?users=true` for one row per person with every timestamp, hours, coins and streaks – that includes emails, so it sits behind the integration key.
  */
 export const GET = withRoute(async (req: NextRequest) => {
 	const denied = requireIntegrationAuth(req)

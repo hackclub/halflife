@@ -11,10 +11,7 @@ export const dynamic = "force-dynamic"
 /**
  * An admin walking the first checkpoint again as a participant would.
  *
- * Their own onboarding only, never someone else's: this is for checking the
- * flow, and there is no id to pass. Admin-only because the setup answers are
- * otherwise taken once, and a participant resetting theirs could re-roll a
- * starter project's tier lock.
+ * Their own onboarding only, never someone else's: this is for checking the flow, and there is no id to pass. Admin-only because the setup answers are otherwise taken once, and a participant resetting theirs could re-roll a starter project's tier lock.
  */
 export const POST = withRoute(async () => {
 	const gate = await requireRole(Role.ADMIN)

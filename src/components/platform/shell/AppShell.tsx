@@ -37,9 +37,7 @@ const MOBILE_ICONS = {
 } as const
 
 /**
- * How much of the page's scroll the doodle backdrop absorbs. 0 is the fixed
- * backdrop it used to be; 1 would scroll with the page. A third reads as a slow
- * drift – the paper lags the trail without ever looking detached from it.
+ * How much of the page's scroll the doodle backdrop absorbs. 0 is the fixed backdrop it used to be; 1 would scroll with the page. A third reads as a slow drift – the paper lags the trail without ever looking detached from it.
  */
 const BACKDROP_PARALLAX = 0.35
 
@@ -67,34 +65,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 	const backdropRef = useRef<HTMLDivElement>(null)
 
 	const cinematic = phase === "cinematic"
-	// The Doomscroller page is this feed at full size. Running the rail feed
-	// alongside it would put the same six reels on screen twice, so the route
-	// wins – without touching the reader's own open/closed preference.
+	// The Doomscroller page is this feed at full size. Running the rail feed alongside it would put the same six reels on screen twice, so the route wins – without touching the reader's own open/closed preference.
 	const onDoomscroller = pathname.startsWith("/doomscroller")
 
-	// The status rail is the map's companion: open on the trail, where the goal
-	// is what the whole page is measured against, and folded away everywhere
-	// else so a project, the shop or the docs get the width. A toggle holds only
-	// for the page it was pressed on – the next page starts from its own
-	// default, so opening it once on the shop does not squeeze every page after.
+	// The status rail is the map's companion: open on the trail, where the goal is what the whole page is measured against, and folded away everywhere else so a project, the shop or the docs get the width. A toggle holds only for the page it was pressed on – the next page starts from its own default, so opening it once on the shop does not squeeze every page after.
 	const [railChoice, setRailChoice] = useState<{ path: string; open: boolean } | null>(null)
 	const railOpen = railChoice?.path === pathname ? railChoice.open : pathname === PLATFORM_HOME
 	const setRailOpen = (open: boolean) => setRailChoice({ path: pathname, open })
 
-	// Below lg the status rail is gone, so this is the only way to the goal
-	// tracker on a phone. It opens the same picker the rail's "View more" does.
+	// Below lg the status rail is gone, so this is the only way to the goal tracker on a phone. It opens the same picker the rail's "View more" does.
 	const [goalOpen, setGoalOpen] = useState(false)
 
 	const rail = railOpen && doomscrollerOpen && !onDoomscroller
 
-	// The shell's doodle backdrop drifts slower than the page: scroll writes a
-	// negative offset to --shell-parallax, which the backdrop's ::before reads as
-	// background-position. A plain listener rather than a requestAnimationFrame
-	// queue because scroll events are already frame-aligned and this only writes
-	// a variable – an rAF guard can wedge shut if a queued frame never runs (a
-	// backgrounded tab), leaving the backdrop stuck at its last offset. Skipped
-	// under prefers-reduced-motion, with the query watched so toggling the OS
-	// setting takes effect without a reload.
+	// The shell's doodle backdrop drifts slower than the page: scroll writes a negative offset to --shell-parallax, which the backdrop's ::before reads as background-position. A plain listener rather than a requestAnimationFrame queue because scroll events are already frame-aligned and this only writes a variable – an rAF guard can wedge shut if a queued frame never runs (a backgrounded tab), leaving the backdrop stuck at its last offset. Skipped under prefers-reduced-motion, with the query watched so toggling the OS setting takes effect without a reload.
 	useEffect(() => {
 		const el = backdropRef.current
 		if (!el) return

@@ -12,31 +12,20 @@ import { useStore } from "@/lib/store"
 /**
  * What this participant is here for, and how far along they are.
  *
- * It rides whichever rail the viewport hands it – the nav rail on the left below
- * xl, the status rail on the right above it – so it sizes itself from its
- * container rather than from the window, and neither slot has to be told which
- * one it is.
+ * It rides whichever rail the viewport hands it – the nav rail on the left below xl, the status rail on the right above it – so it sizes itself from its container rather than from the window, and neither slot has to be told which one it is.
  *
- * The two branches exist because the answer changed what the panel is for.
- * Somebody saving for a machine gets the machine and the pace to it. Somebody
- * here for the grant has no machine to be on track for, and telling them they
- * are "on track to get a Bambu A1" a second after they said that was never the
- * goal would be the platform arguing with its own question. They get their
- * ordinary coins instead, which is what their hours actually buy them.
+ * The two branches exist because the answer changed what the panel is for. Somebody saving for a machine gets the machine and the pace to it. Somebody here for the grant has no machine to be on track for, and telling them they are "on track to get a Bambu A1" a second after they said that was never the goal would be the platform arguing with its own question. They get their ordinary coins instead, which is what their hours actually buy them.
  *
  * Only the copy changes between the two. The pace, the hours a design week asks
  * for and what an approval mints are all still read from the printer column, so
  * nothing here quietly changes what anybody is owed.
  */
 export function GoalTracker({ className }: { className?: string }) {
-	// The whole balance, not the spendable pot alone. Every coin counts toward
-	// the machine – a meter reading anything less would sit near zero all
-	// season while the money for it piled up out of sight.
+	// The whole balance, not the spendable pot alone. Every coin counts toward the machine – a meter reading anything less would sit near zero all season while the money for it piled up out of sight.
 	const { printerFund, goalId, participantGoal, coins } = useStore()
 	const [open, setOpen] = useState(false)
 	const goal = printerById(goalId)
-	// Null means the answer has not been given yet. Until it has, the panel keeps
-	// showing the machine rather than guessing at a reading.
+	// Null means the answer has not been given yet. Until it has, the panel keeps showing the machine rather than guessing at a reading.
 	const chasing = participantGoal === null || participantGoal === ParticipantGoal.PRINTER
 
 	return (

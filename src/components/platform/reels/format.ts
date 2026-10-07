@@ -15,9 +15,7 @@ export function clock(seconds: number): string {
 }
 
 /**
- * How long ago, the way a feed says it: "now", "5m ago", "3h ago", "6d ago",
- * "2w ago", and past a month the date itself – "ago" stops meaning anything
- * once it has to be worked out.
+ * How long ago, the way a feed says it: "now", "5m ago", "3h ago", "6d ago", "2w ago", and past a month the date itself – "ago" stops meaning anything once it has to be worked out.
  */
 export function ago(when: Date | string | null | undefined, now = Date.now()): string {
 	if (!when) return ""

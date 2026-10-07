@@ -6,39 +6,16 @@ import { COUNTDOWN_UNITS, countdownParts, pad2 } from "@/lib/site/countdown"
 /**
  * The wait for week 1, as a large countdown across the top of the landing page.
  *
- * The target is the programme's own first midnight – `weekOpensAt(settings, 1)`
- * – fetched from `/api/program`, which is where the site already reads program
- * settings from. It is NOT read during the page's render, deliberately: the
- * landing page is statically generated, so a `getProgramSettings()` call in its
- * tree made the build hit the database, and a build host with no route to
- * Postgres failed the whole deploy on a socket timeout. Both the countdown and
- * the sign-up counter are client decorations that fetch their own data, so the
- * page itself stays static and the build needs no database at all.
+ * The target is the programme's own first midnight – `weekOpensAt(settings, 1)` – fetched from `/api/program`, which is where the site already reads program settings from. It is NOT read during the page's render, deliberately: the landing page is statically generated, so a `getProgramSettings()` call in its tree made the build hit the database, and a build host with no route to Postgres failed the whole deploy on a socket timeout. Both the countdown and the sign-up counter are client decorations that fetch their own data, so the page itself stays static and the build needs no database at all.
  *
  * Two things it has to get right, and both are about the server/client seam:
  *
- * - **No hydration mismatch.** The server renders the placeholder and the
- *   browser hydrates later; a live figure on the server would disagree and React
- *   would rewrite the markup on every load. The stable placeholder (unit labels
- *   with `--`) is what both the server and the client's first paint show, and
- *   the ticking figure appears only once mounted, in an effect. Before the first
- *   answer the plate keeps its height, so nothing under it moves when the number
- *   lands.
- * - **Ends cleanly.** At zero it stops ticking and says the programme is open
- *   rather than counting into the negative. A stale tab left open across the
- *   deadline should read "open", not "-3 days".
+ * - **No hydration mismatch.** The server renders the placeholder and the browser hydrates later; a live figure on the server would disagree and React would rewrite the markup on every load. The stable placeholder (unit labels with `--`) is what both the server and the client's first paint show, and the ticking figure appears only once mounted, in an effect. Before the first answer the plate keeps its height, so nothing under it moves when the number lands.
+ * - **Ends cleanly.** At zero it stops ticking and says the programme is open rather than counting into the negative. A stale tab left open across the deadline should read "open", not "-3 days".
  *
- * The count is split into days/hours/minutes/seconds rather than one string, so
- * each unit is its own large figure with a small label beneath – the same
- * figure-leads, words-follow relationship the sign-up counter uses, taken to the
- * four columns a countdown wants.
+ * The count is split into days/hours/minutes/seconds rather than one string, so each unit is its own large figure with a small label beneath – the same figure-leads, words-follow relationship the sign-up counter uses, taken to the four columns a countdown wants.
  *
- * It is a solid cyan plate with ink text, the page's CTA material: the sign-up
- * button is `bg-hl-cyan text-hl-ink`, and a countdown to opening day is the
- * same kind of object – an offer the page is making – rather than the muted
- * dateline it replaced. `rounded-lg` plus the global `* { corner-shape: bevel }`
- * (globals.css) makes the corners the page's own 45° mitre, and the short
- * shadow in the section's deep teal lifts it off the painting.
+ * It is a solid cyan plate with ink text, the page's CTA material: the sign-up button is `bg-hl-cyan text-hl-ink`, and a countdown to opening day is the same kind of object – an offer the page is making – rather than the muted dateline it replaced. `rounded-lg` plus the global `* { corner-shape: bevel }` (globals.css) makes the corners the page's own 45° mitre, and the short shadow in the section's deep teal lifts it off the painting.
  */
 
 export default function WeekCountdown() {
@@ -46,9 +23,7 @@ export default function WeekCountdown() {
 	const [target, setTarget] = useState<number | null>(null)
 	const [remaining, setRemaining] = useState<number | null>(null)
 
-	// The target is a fixed moment, so it is fetched once. A failure leaves the
-	// plate showing its placeholder – a countdown is never worth a visible error,
-	// the same rule the sign-up counter follows.
+	// The target is a fixed moment, so it is fetched once. A failure leaves the plate showing its placeholder – a countdown is never worth a visible error, the same rule the sign-up counter follows.
 	useEffect(() => {
 		let live = true
 		void (async () => {
@@ -79,11 +54,7 @@ export default function WeekCountdown() {
 	const over = remaining !== null && remaining <= 0
 	const parts = remaining === null ? null : countdownParts(remaining)
 
-	// The plate, cut from the page's cyan the way the sign-up CTA is: a solid
-	// ground with ink text, `rounded-lg` and the global `corner-shape: bevel`
-	// turning that radius into a 45° mitre. It sits as high as it can without
-	// meeting the flag and log-in marks at the corners – `top-12` clears both –
-	// and the gap under it is what keeps it off the wordmark in the plate below.
+	// The plate, cut from the page's cyan the way the sign-up CTA is: a solid ground with ink text, `rounded-lg` and the global `corner-shape: bevel` turning that radius into a 45° mitre. It sits as high as it can without meeting the flag and log-in marks at the corners – `top-12` clears both – and the gap under it is what keeps it off the wordmark in the plate below.
 	return (
 		<div className="pointer-events-none absolute top-10 left-1/2 z-20 -translate-x-1/2 min-[830px]:top-12">
 			<div

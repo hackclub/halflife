@@ -8,18 +8,11 @@ import { displayRepo } from "@/lib/repo"
 import { useStore } from "@/lib/store"
 
 /**
- * Repo sync – the control that mirrors a project's devlogs and parts list into
- * the maker's own repository, on whichever code forge they keep it on.
+ * Repo sync – the control that mirrors a project's devlogs and parts list into the maker's own repository, on whichever code forge they keep it on.
  *
- * Two states, one component: no forge linked, and linked. The choice of repo is
- * a picker rather than a text field because the sync has to push, and a repo
- * typed by hand is one the token may not be able to write to – which would fail
- * on every entry afterwards with a 403 nobody can act on from here. The picked
- * value is the repo's full URL, so the forge it belongs to travels with it.
+ * Two states, one component: no forge linked, and linked. The choice of repo is a picker rather than a text field because the sync has to push, and a repo typed by hand is one the token may not be able to write to – which would fail on every entry afterwards with a 403 nobody can act on from here. The picked value is the repo's full URL, so the forge it belongs to travels with it.
  *
- * The first commit happens when the sync is switched on (the server does it
- * before the setting takes), so "on" always means "the files are in the repo",
- * never a promise that the next write will try.
+ * The first commit happens when the sync is switched on (the server does it before the setting takes), so "on" always means "the files are in the repo", never a promise that the next write will try.
  */
 
 interface WritableRepo {
@@ -66,8 +59,7 @@ function when(ms: number): string {
 export function RepoSyncSettings({
 	projectId,
 	/**
-	 * Called after a successful enable/sync so a host page (the onboarding step,
-	 * say) can move on. The project page passes nothing.
+	 * Called after a successful enable/sync so a host page (the onboarding step, say) can move on. The project page passes nothing.
 	 */
 	onEnabled,
 	/** Compact copy for the onboarding step, where there is less room. */
@@ -94,8 +86,7 @@ export function RepoSyncSettings({
 			const body = await res.json().catch(() => null)
 			if (!res.ok) throw new Error(body?.error?.message ?? "Could not load the sync settings")
 			setState(body as SyncState)
-			// Pre-select the repo a project already points at, if it is one of the
-			// writable ones, so re-enabling does not need the picker used again.
+			// Pre-select the repo a project already points at, if it is one of the writable ones, so re-enabling does not need the picker used again.
 			const current = body.repo as string | null
 			setPicked((p) => p ?? (body.repos as WritableRepo[]).find((r) => r.url === current)?.url ?? null)
 		} catch (err) {
@@ -135,9 +126,7 @@ export function RepoSyncSettings({
 	}
 
 	/**
-	 * Point the project's own repo link at the repo the sync writes to. The
-	 * store updates the project row and refreshes, so the Repo checks box above
-	 * re-runs against the new link on its own.
+	 * Point the project's own repo link at the repo the sync writes to. The store updates the project row and refreshes, so the Repo checks box above re-runs against the new link on its own.
 	 */
 	async function linkProject() {
 		setLinking(true)
@@ -163,8 +152,7 @@ export function RepoSyncSettings({
 		)
 	}
 
-	// No forge linked: the whole feature is gated on it, so the prompt is the
-	// panel. A maker picks whichever service their project already lives on.
+	// No forge linked: the whole feature is gated on it, so the prompt is the panel. A maker picks whichever service their project already lives on.
 	if (state.linkedForges.length === 0) {
 		return (
 			<div className="grid gap-3">
@@ -350,9 +338,7 @@ export function RepoSyncSettings({
 /**
  * The offer to make the project's repo link and the sync's repo the same repo.
  *
- * Only rendered when the two genuinely differ. The copy says which link it will
- * change and to what, because a maker who has set both by hand should not have
- * to guess which direction "link" means here.
+ * Only rendered when the two genuinely differ. The copy says which link it will change and to what, because a maker who has set both by hand should not have to guess which direction "link" means here.
  */
 function LinkProjectButton({
 	repo,

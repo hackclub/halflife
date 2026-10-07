@@ -6,9 +6,7 @@ import type { ReportTargetInput } from "@/lib/reports"
 import { ReportDialog } from "./ReportDialog"
 
 /**
- * The "report" affordance, shared by every surface: a quiet dashed button
- * that opens the report dialog for its target. Owns its own open state, so
- * hosts – server or client components alike – drop it in with two props.
+ * The "report" affordance, shared by every surface: a quiet dashed button that opens the report dialog for its target. Owns its own open state, so hosts – server or client components alike – drop it in with two props.
  */
 export function ReportButton({
 	target,
@@ -24,10 +22,7 @@ export function ReportButton({
 	context?: string
 	className?: string
 	/**
-	 * muted: navy on light grounds. inverse: white with a shadow, for over a
-	 * video. adaptive: inverse on a phone, muted from md – for the
-	 * Doomscroller's action rail, which sits over the picture on a phone and
-	 * beside the reel on cream from md.
+	 * muted: navy on light grounds. inverse: white with a shadow, for over a video. adaptive: inverse on a phone, muted from md – for the Doomscroller's action rail, which sits over the picture on a phone and beside the reel on cream from md.
 	 */
 	tone?: "muted" | "inverse" | "adaptive"
 }) {

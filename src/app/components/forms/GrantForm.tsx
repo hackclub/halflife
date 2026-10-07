@@ -7,9 +7,7 @@ import { Button, Callout } from "@/app/components/ui"
 /**
  * Send a design's parts grant to a maker's HCB card grant.
  *
- * The grant link is pasted each time rather than stored on the row: Half Life
- * does not own the participant's HCB grant, and a hashid kept here would go
- * stale the moment they made a new one.
+ * The grant link is pasted each time rather than stored on the row: Half Life does not own the participant's HCB grant, and a hashid kept here would go stale the moment they made a new one.
  */
 export function GrantForm({
 	projectId,

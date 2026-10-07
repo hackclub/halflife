@@ -24,13 +24,9 @@ const KIND_OPTIONS = [
 /**
  * Post a reel.
  *
- * Two requests, deliberately: the file goes to /api/upload and comes back as
- * an object key, then /api/posts records the reel. Keeping them apart means a
- * failed post does not have to re-send the video, and the upload route stays
- * the one place that talks to R2.
+ * Two requests, deliberately: the file goes to /api/upload and comes back as an object key, then /api/posts records the reel. Keeping them apart means a failed post does not have to re-send the video, and the upload route stays the one place that talks to R2.
  *
- * The key is not trusted on the way back through: the server checks it belongs
- * to the poster before it will attach it to anything.
+ * The key is not trusted on the way back through: the server checks it belongs to the poster before it will attach it to anything.
  */
 export function PostComposer({
 	projects,
@@ -45,9 +41,7 @@ export function PostComposer({
 	const [progress, setProgress] = useState(0)
 	const [error, setError] = useState<string | null>(null)
 	/**
-	 * An object key that arrived from a phone. When set it stands in for the
-	 * file input entirely – the bytes are already in R2, so there is nothing
-	 * left to upload.
+	 * An object key that arrived from a phone. When set it stands in for the file input entirely – the bytes are already in R2, so there is nothing left to upload.
 	 */
 	const [handoffKey, setHandoffKey] = useState<string | null>(null)
 
@@ -70,8 +64,7 @@ export function PostComposer({
 		try {
 			let objectKey = handoffKey
 
-			// A phone upload is already in the bucket; only a locally chosen file
-			// still has to be sent.
+			// A phone upload is already in the bucket; only a locally chosen file still has to be sent.
 			if (!objectKey && file) {
 				setStage("uploading")
 				setProgress(0)
@@ -85,8 +78,7 @@ export function PostComposer({
 					setError(payload.error?.message ?? `Upload failed (${uploaded.status})`)
 					return
 				}
-				// No `data` envelope: ok() returns the payload itself, and only a
-				// failure is wrapped. See lib/api.ts.
+				// No `data` envelope: ok() returns the payload itself, and only a failure is wrapped. See lib/api.ts.
 				const data = uploaded.json as { objectKey: string }
 				objectKey = data.objectKey
 			}

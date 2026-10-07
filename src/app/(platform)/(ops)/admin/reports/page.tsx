@@ -46,10 +46,7 @@ const FILTERS: { id: Filter; label: string; status: ReportStatusFilter }[] = [
 ]
 
 /**
- * Where user reports land. A report changes nothing by itself – it puts a
- * reel, comment, project, user or devlog in front of staff. Deciding one
- * closes it as resolved or dismissed; taking the thing down stays the
- * existing hide action next to it, so a report is never a silent takedown.
+ * Where user reports land. A report changes nothing by itself – it puts a reel, comment, project, user or devlog in front of staff. Deciding one closes it as resolved or dismissed; taking the thing down stays the existing hide action next to it, so a report is never a silent takedown.
  */
 export default async function AdminReportsPage({
 	searchParams,

@@ -8,10 +8,7 @@ import { REPORT_REASONS, type ReportReason, type ReportTargetInput } from "@/lib
 /**
  * Report something for staff: a reason picker, an optional note, and a send.
  *
- * One shared dialog for every surface (reels, comments, projects, users,
- * devlogs), so reporting reads the same everywhere. It changes no state –
- * the row stays up and the queue gains a row – and says so, so nobody files
- * a report expecting an instant takedown.
+ * One shared dialog for every surface (reels, comments, projects, users, devlogs), so reporting reads the same everywhere. It changes no state – the row stays up and the queue gains a row – and says so, so nobody files a report expecting an instant takedown.
  */
 export function ReportDialog({
 	open,

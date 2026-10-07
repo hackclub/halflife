@@ -3,14 +3,9 @@ import { cx } from "@/components/platform/ui"
 const TONES = ["bg-coral", "bg-violet", "bg-teal", "bg-sky-deep", "bg-orange-deep"]
 
 /**
- * A face for a name: the picture if there is one, else its initial on a colour
- * of its own. The colour is hashed from the name, so the same person keeps the
- * same one on every screen.
+ * A face for a name: the picture if there is one, else its initial on a colour of its own. The colour is hashed from the name, so the same person keeps the same one on every screen.
  *
- * `round` is the reels' puck; `tile` is the rounded square the feed and the
- * sidebar frame a person in. The shape is a prop rather than a class override
- * because `cx` only joins, and two radii in one class list are settled by
- * whichever Tailwind emits last.
+ * `round` is the reels' puck; `tile` is the rounded square the feed and the sidebar frame a person in. The shape is a prop rather than a class override because `cx` only joins, and two radii in one class list are settled by whichever Tailwind emits last.
  */
 export function Avatar({
 	name,

@@ -14,24 +14,18 @@ function compact(n: number) {
 }
 
 /**
- * How much of a card has to be on screen for it to be the current reel. With
- * every card at least the height of its column, two can never both clear this,
- * so "current" is always one card or none.
+ * How much of a card has to be on screen for it to be the current reel. With every card at least the height of its column, two can never both clear this, so "current" is always one card or none.
  */
 const CURRENT = 0.6
 
 /**
- * The one reel allowed to be making noise, across every feed on the page. Every
- * way into playback goes through `start`, which silences this one first, so
- * scrolling on, pressing play on another card, or the rail and the full page
- * both being mounted can never leave two soundtracks talking over each other.
+ * The one reel allowed to be making noise, across every feed on the page. Every way into playback goes through `start`, which silences this one first, so scrolling on, pressing play on another card, or the rail and the full page both being mounted can never leave two soundtracks talking over each other.
  */
 let playingNow: HTMLVideoElement | null = null
 
 function start(el: HTMLVideoElement) {
 	claim(el)
-	// Autoplay with sound is the browser's call, not ours: without a click on the
-	// page first it is refused, and the card simply keeps its play button.
+	// Autoplay with sound is the browser's call, not ours: without a click on the page first it is refused, and the card simply keeps its play button.
 	return el.play().catch(() => undefined)
 }
 
@@ -42,9 +36,7 @@ function claim(el: HTMLVideoElement) {
 }
 
 /**
- * Play `el` as the only reel making noise, for players with their own
- * controls (the full-page stage). Resolves to whether it is playing – false
- * when the browser refused, which is the caller's cue to retry muted.
+ * Play `el` as the only reel making noise, for players with their own controls (the full-page stage). Resolves to whether it is playing – false when the browser refused, which is the caller's cue to retry muted.
  */
 export function playExclusive(el: HTMLVideoElement): Promise<boolean> {
 	claim(el)
@@ -69,12 +61,9 @@ export function pauseReels() {
 }
 
 /**
- * Like or unlike a reel: optimistic, then corrected. The count the server
- * returns is the truth, because someone else may have liked it meanwhile.
+ * Like or unlike a reel: optimistic, then corrected. The count the server returns is the truth, because someone else may have liked it meanwhile.
  *
- * PUT, not POST: a like is idempotent – the body says which state you want,
- * not "add one" – and the route is declared that way. Sending POST got a
- * silent 405 and left the optimistic count standing until the next refresh.
+ * PUT, not POST: a like is idempotent – the body says which state you want, not "add one" – and the route is declared that way. Sending POST got a silent 405 and left the optimistic count standing until the next refresh.
  */
 export function sendLike(reel: FeedItem, next: boolean, onPatch?: (id: string, patch: Partial<FeedItem>) => void) {
 	if (reel.likedByMe === next) return
@@ -101,12 +90,7 @@ function prefersStill() {
 }
 
 /**
- * The reel that has just taken the frame says so: its author, caption and
- * counts rise into place a beat behind the video, the way a feed hands over
- * from one clip to the next. Played by the Web Animations API rather than a
- * class, because it has to restart on every arrival and a card scrolled back
- * to is arriving again. It only ever animates FROM hidden: the resting state
- * is fully visible, so a browser that never runs it shows everything.
+ * The reel that has just taken the frame says so: its author, caption and counts rise into place a beat behind the video, the way a feed hands over from one clip to the next. Played by the Web Animations API rather than a class, because it has to restart on every arrival and a card scrolled back to is arriving again. It only ever animates FROM hidden: the resting state is fully visible, so a browser that never runs it shows everything.
  */
 const ARRIVE: Keyframe[] = [
 	{ opacity: 0, transform: "translateY(12px)" },
@@ -120,15 +104,9 @@ const ARRIVE_TIMING: KeyframeAnimationOptions = {
 }
 
 /**
- * One reel. The rail stacks these in a snap column, the Doomscroller page lays
- * them out as a wall – the sizing comes in through `className` so the artwork,
- * the counts and the gradient read identically in both.
+ * One reel. The rail stacks these in a snap column, the Doomscroller page lays them out as a wall – the sizing comes in through `className` so the artwork, the counts and the gradient read identically in both.
  *
- * Only the current reel plays. A card pauses the moment it scrolls out of the
- * current slot, and with `autoplay` the card that takes the slot starts on its
- * own – one video at a time, never a column of them burning a phone's battery
- * and a hotel's wifi. Anyone who has asked for less motion gets the pausing but
- * not the starting.
+ * Only the current reel plays. A card pauses the moment it scrolls out of the current slot, and with `autoplay` the card that takes the slot starts on its own – one video at a time, never a column of them burning a phone's battery and a hotel's wifi. Anyone who has asked for less motion gets the pausing but not the starting.
  */
 export function ReelCard({
 	reel,
@@ -147,9 +125,7 @@ export function ReelCard({
 	/** The reader pressed play themselves. */
 	onPlayPress?: () => void
 	/**
-	 * The reader asked for this reel's comments. When given, the comment
-	 * button calls back instead of deep-linking to the Doomscroller, so a
-	 * host (like a profile) can show the conversation in place.
+	 * The reader asked for this reel's comments. When given, the comment button calls back instead of deep-linking to the Doomscroller, so a host (like a profile) can show the conversation in place.
 	 */
 	onComments?: (reel: FeedItem) => void
 }) {
@@ -159,12 +135,9 @@ export function ReelCard({
 	const meta = useRef<HTMLDivElement>(null)
 	const [playing, setPlaying] = useState(false)
 	const counted = useRef(false)
-	// Whether this card holds the current slot. Playback is only ever changed as
-	// a card enters or leaves it, never while it stays there – so a reel the
-	// reader paused stays paused until they scroll away and back.
+	// Whether this card holds the current slot. Playback is only ever changed as a card enters or leaves it, never while it stays there – so a reel the reader paused stays paused until they scroll away and back.
 	const current = useRef(false)
-	// Read by the observer at the moment a card arrives, so a feed switching
-	// autoplay on does not tear the observer down (and pause the video) to do it.
+	// Read by the observer at the moment a card arrives, so a feed switching autoplay on does not tear the observer down (and pause the video) to do it.
 	const wantsAutoplay = useRef(autoplay)
 
 	const announcement = reel.pinned || reel.kind === "ANNOUNCEMENT"
@@ -173,11 +146,7 @@ export function ReelCard({
 		wantsAutoplay.current = autoplay
 	}, [autoplay])
 
-	// Rooted on the viewport rather than the feed's own scroller: the rail is
-	// closed by collapsing and clipping the panels AROUND that scroller, which an
-	// observer rooted inside it never sees. Measured against the viewport, a
-	// closing rail, a rail hidden at narrow widths and a reel scrolled past all
-	// read the same way – the card is no longer on screen, so it stops.
+	// Rooted on the viewport rather than the feed's own scroller: the rail is closed by collapsing and clipping the panels AROUND that scroller, which an observer rooted inside it never sees. Measured against the viewport, a closing rail, a rail hidden at narrow widths and a reel scrolled past all read the same way – the card is no longer on screen, so it stops.
 	useEffect(() => {
 		const box = card.current
 		const el = video.current
@@ -191,9 +160,7 @@ export function ReelCard({
 					el.pause()
 					return
 				}
-				// Only in a feed being watched. The rail sits idle beside every page,
-				// and replaying an arrival on each navigation would be motion for its
-				// own sake.
+				// Only in a feed being watched. The rail sits idle beside every page, and replaying an arrival on each navigation would be motion for its own sake.
 				if (!wantsAutoplay.current || prefersStill()) return
 				meta.current?.animate?.(ARRIVE, ARRIVE_TIMING)
 				void start(el)
@@ -219,10 +186,7 @@ export function ReelCard({
 		void start(el)
 	}
 
-	// A view is a second of actual playback, not a press or an autoplay that a
-	// quick flick scrolled straight past. It is counted once per card, and the
-	// server counts it once per person by unique row – so neither a replay nor a
-	// retried request can inflate it.
+	// A view is a second of actual playback, not a press or an autoplay that a quick flick scrolled straight past. It is counted once per card, and the server counts it once per person by unique row – so neither a replay nor a retried request can inflate it.
 	function countView() {
 		const el = video.current
 		if (counted.current || !el) return
@@ -253,9 +217,7 @@ export function ReelCard({
 					playsInline
 					loop
 					preload={reel.thumbnailUrl ? "none" : "metadata"}
-					// The element is the truth about whether it is playing: it can be
-					// paused by the observer, by another card starting, or by the browser
-					// refusing autoplay, none of which pass through the button.
+					// The element is the truth about whether it is playing: it can be paused by the observer, by another card starting, or by the browser refusing autoplay, none of which pass through the button.
 					onPlay={(e) => {
 						notePlaying(e.currentTarget)
 						setPlaying(true)
@@ -268,9 +230,7 @@ export function ReelCard({
 					className="absolute inset-0 size-full bg-navy object-cover"
 				/>
 			) : (
-				// No URL is a deployment without a public bucket URL, not a reel
-				// without a video. Saying so beats standing an illustration in for
-				// somebody's footage.
+				// No URL is a deployment without a public bucket URL, not a reel without a video. Saying so beats standing an illustration in for somebody's footage.
 				<div className="absolute inset-0 grid place-items-center bg-navy px-6 text-center">
 					<p className="flex flex-col items-center gap-2 text-[0.8rem] leading-snug text-white/80">
 						<IconFilm className="text-2xl text-white" />
@@ -354,9 +314,7 @@ export function ReelCard({
 						) : (
 							<Link
 								href={`/doomscroller?reel=${reel.id}&comments=1`}
-								// Every card carries a different deep link, so the rail's
-								// dozen would each prefetch their own page; a press is a
-								// deliberate one-off, not something to speculate on.
+								// Every card carries a different deep link, so the rail's dozen would each prefetch their own page; a press is a deliberate one-off, not something to speculate on.
 								prefetch={false}
 								aria-label={`Comments (${reel.commentCount})`}
 								className="flex flex-col items-center gap-0.5 text-white transition-transform duration-150 hover:scale-110"

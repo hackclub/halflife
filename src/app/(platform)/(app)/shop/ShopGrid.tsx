@@ -43,10 +43,7 @@ export function ShopGrid({
 	/**
 	 * Buying is a request, not a transaction the browser can settle.
 	 *
-	 * The server takes the coins inside one locked transaction and the order
-	 * lands PENDING for someone to fulfil, so there is nothing to do optimistically
-	 * here beyond refusing to double-fire – a second click while the first is in
-	 * the air is how somebody ends up with two printers.
+	 * The server takes the coins inside one locked transaction and the order lands PENDING for someone to fulfil, so there is nothing to do optimistically here beyond refusing to double-fire – a second click while the first is in the air is how somebody ends up with two printers.
 	 */
 	async function buy(item: ShopItemView) {
 		if (busy) return
@@ -149,8 +146,7 @@ export function ShopGrid({
 				{items.map((item) => {
 					const has = item.ownedCount > 0
 					const out = item.stock !== null && item.stock <= 0
-					// One pot: affordability reads the same whole balance the till
-					// does, so the shelf can never refuse what the server would take.
+					// One pot: affordability reads the same whole balance the till does, so the shelf can never refuse what the server would take.
 					const afford = printerFund >= item.priceCredits
 					return (
 						<Panel

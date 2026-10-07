@@ -66,15 +66,9 @@ function draftOf(line: BomLine): Draft {
 /**
  * The parts list, kept here rather than typed out at submission time.
  *
- * One table, one form. The form sits under the table and serves both adding
- * and editing, so the table itself never grows inputs and stays readable at
- * phone width with a horizontal scroll. The total is read against the tier's
- * funding because that is the question the list answers: does this project
- * fit the money it is asking for.
+ * One table, one form. The form sits under the table and serves both adding and editing, so the table itself never grows inputs and stays readable at phone width with a horizontal scroll. The total is read against the tier's funding because that is the question the list answers: does this project fit the money it is asking for.
  *
- * Tax and shipping close the table as one fixed line for the whole order. It
- * has an amount and nothing else – no edit form and no remove – because every
- * order has it, even at zero.
+ * Tax and shipping close the table as one fixed line for the whole order. It has an amount and nothing else – no edit form and no remove – because every order has it, even at zero.
  */
 export function BomEditor({
 	projectId,
@@ -106,8 +100,7 @@ export function BomEditor({
 
 	const [taxShipping, setTaxShipping] = useState(initialExtra)
 
-	// The repo import, kept apart from the line form: it is one read, a preview,
-	// and one confirm, not a field-by-field edit.
+	// The repo import, kept apart from the line form: it is one read, a preview, and one confirm, not a field-by-field edit.
 	const [importOpen, setImportOpen] = useState(false)
 	const [importLoading, setImportLoading] = useState(false)
 	const [importing, setImporting] = useState(false)
@@ -138,10 +131,7 @@ export function BomEditor({
 			})
 			const payload = await res.json().catch(() => null)
 			if (!res.ok) {
-				// The server's field check says which fields, not just "Invalid
-				// request": outline those and say it the way the form's own check
-				// does. This catches anything the form let through, like a tab still
-				// running an older copy of it.
+				// The server's field check says which fields, not just "Invalid request": outline those and say it the way the form's own check does. This catches anything the form let through, like a tab still running an older copy of it.
 				const fields = Object.keys(payload?.error?.details?.properties ?? {}).filter(
 					(k): k is keyof Draft => k in FIELD_NAMES,
 				)
@@ -165,8 +155,7 @@ export function BomEditor({
 	}
 
 	async function save() {
-		// Every field, because a reviewer prices the tier from this list: a line
-		// without a vendor, a link or a price is one they cannot check.
+		// Every field, because a reviewer prices the tier from this list: a line without a vendor, a link or a price is one they cannot check.
 		const quantity = /^\d+$/.test(draft.quantity.trim()) ? Number(draft.quantity) : Number.NaN
 		const unitCostUsd = draft.unitCostUsd.trim() ? Number(draft.unitCostUsd) : Number.NaN
 		let link = draft.link.trim()
@@ -201,8 +190,7 @@ export function BomEditor({
 				? await send("POST", `/api/projects/${projectId}/bom`, body)
 				: await send("PATCH", `/api/projects/${projectId}/bom/${editing}`, body)
 		if (done) {
-			// Adding is usually several parts in a row, so the form stays open
-			// and the cursor goes back to the first field.
+			// Adding is usually several parts in a row, so the form stays open and the cursor goes back to the first field.
 			if (editing === "new") {
 				setDraft(EMPTY)
 				nameInput.current?.focus()
@@ -306,9 +294,7 @@ export function BomEditor({
 				})
 			}
 		},
-		// A red border rather than a ring. `inputClass` carries its own border
-		// now, so the invalid colour is `!`: two border colours in one layer are
-		// settled by whichever Tailwind happens to emit last.
+		// A red border rather than a ring. `inputClass` carries its own border now, so the invalid colour is `!`: two border colours in one layer are settled by whichever Tailwind happens to emit last.
 		className: cx(inputClass, "py-2 text-[0.88rem]", invalid.has(key) && "border-coral-deep! bg-coral/5"),
 	})
 
@@ -622,9 +608,7 @@ export function BomEditor({
 }
 
 /**
- * The order-wide line. The amount is edited in the row itself and
- * saved when the field is left or Enter is pressed – there is nothing else
- * about it to edit, so it never needs the form.
+ * The order-wide line. The amount is edited in the row itself and saved when the field is left or Enter is pressed – there is nothing else about it to edit, so it never needs the form.
  */
 function ExtraRow({
 	label,
@@ -690,8 +674,7 @@ function ExtraRow({
 									e.currentTarget.blur()
 								}
 							}}
-							// Its own look rather than inputClass: a white field on the white
-							// panel reads as a printed number, not one you can change.
+							// Its own look rather than inputClass: a white field on the white panel reads as a printed number, not one you can change.
 							className={cx(
 								"block w-24 rounded-lg border-2 border-field bg-black/[.03] px-2.5 py-1.5 text-[0.86rem] text-navy tabular-nums outline-none placeholder:text-navy-faint",
 								"transition-colors hover:border-navy-soft focus:border-violet focus:bg-white",

@@ -8,14 +8,9 @@ import type { FeedItem } from "@/lib/feed"
 import { useStore } from "@/lib/store"
 
 /**
- * The reels on a profile, as a grid of the same card the Doomscroller's rail
- * uses.
+ * The reels on a profile, as a grid of the same card the Doomscroller's rail uses.
  *
- * Nothing autoplays here – a wall of clips should not all start talking at
- * once – so each card is played by hand. A like patches its row in place, the
- * way the rail does, so the count moves without a reload. Comments open in a
- * dialog over the profile rather than carrying the reader off to the
- * Doomscroller.
+ * Nothing autoplays here – a wall of clips should not all start talking at once – so each card is played by hand. A like patches its row in place, the way the rail does, so the count moves without a reload. Comments open in a dialog over the profile rather than carrying the reader off to the Doomscroller.
  */
 export function ProfileReels({ initial }: { initial: FeedItem[] }) {
 	const { viewer } = useStore()

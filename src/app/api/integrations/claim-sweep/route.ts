@@ -6,8 +6,7 @@ import { sweepExpiredClaims } from "@/lib/review"
 import { recordSyncRun } from "@/lib/sync-run-log"
 
 /**
- * The claim endpoint also clears an expired lock opportunistically, so this is
- * a backstop for queues nobody has opened rather than the primary mechanism.
+ * The claim endpoint also clears an expired lock opportunistically, so this is a backstop for queues nobody has opened rather than the primary mechanism.
  */
 export const POST = withRoute(async (req: NextRequest) => {
 	const denied = requireIntegrationAuth(req)

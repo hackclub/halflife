@@ -6,9 +6,7 @@ import type { PrinterAwardStatus } from "@/app/generated/prisma/enums"
 import { PRINTER_AWARD_LABELS, PRINTER_AWARD_NEXT } from "@/lib/printer-award"
 
 /**
- * One printer award's next step: lock the address, pack, ship, deliver, or
- * revoke. The moves offered are the same ones the server enforces, so the
- * form cannot propose a transition the API will refuse.
+ * One printer award's next step: lock the address, pack, ship, deliver, or revoke. The moves offered are the same ones the server enforces, so the form cannot propose a transition the API will refuse.
  */
 export function PrinterAwardForm({ awardId, status }: Readonly<{ awardId: string; status: PrinterAwardStatus }>) {
 	const router = useRouter()

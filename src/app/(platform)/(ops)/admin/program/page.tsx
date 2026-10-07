@@ -33,9 +33,7 @@ export default async function AdminProgramPage() {
 		headers(),
 	])
 
-	// The callback URL to register with Ari, resolved the same way the phone
-	// handoff resolves its origin: the configured public origin wins, the
-	// request's own host is only a local-development fallback.
+	// The callback URL to register with Ari, resolved the same way the phone handoff resolves its origin: the configured public origin wins, the request's own host is only a local-development fallback.
 	const host = h.get("x-forwarded-host") ?? h.get("host")
 	const proto = h.get("x-forwarded-proto") ?? "https"
 	const callbackUrl = ariWebhookUrl(host ? `${proto}://${host}` : "")

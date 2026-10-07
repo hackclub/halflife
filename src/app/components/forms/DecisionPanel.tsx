@@ -15,8 +15,7 @@ interface TierOption {
 /**
  * The reviewer's decision form.
  *
- * A tier is required when approving a design, because that is where the parts
- * money is decided. Feedback is required on anything that is not an approval.
+ * A tier is required when approving a design, because that is where the parts money is decided. Feedback is required on anything that is not an approval.
  */
 export function DecisionPanel({
 	submissionId,
