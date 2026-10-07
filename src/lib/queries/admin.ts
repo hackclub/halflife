@@ -4,19 +4,19 @@ import {
 	AuditAction,
 	HoursSource,
 	type PhaseStatus,
+	type ReportStatus,
 	type ShopFulfillmentMethod,
 	ShopFulfillmentStage,
 	ShopOrderStatus,
 	Theme,
-	type ReportStatus,
 } from "@/app/generated/prisma/enums"
+import { getStarterProject, stepIndexOf } from "@/lib/config/onboarding"
 import { getBalances } from "@/lib/currency"
 import { displayName } from "@/lib/display-name"
 import { safeDecrypt } from "@/lib/pii"
 import { getPrinterQualification } from "@/lib/printer"
-import { REGIONS, type RegionId, countryOfTimezone, regionOfTimezone } from "@/lib/regions"
-import { getStarterProject, stepIndexOf } from "@/lib/config/onboarding"
 import prisma from "@/lib/prisma"
+import { countryOfTimezone, REGIONS, type RegionId, regionOfTimezone } from "@/lib/regions"
 import { shopOrderStaffSelect } from "@/lib/shop"
 
 export async function listUsers(

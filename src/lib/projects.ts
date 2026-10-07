@@ -1,5 +1,5 @@
-import { WARMUP_WEEK_ID } from "./config/program"
 import { DESIGN_WEEKS } from "./config/printers"
+import { WARMUP_WEEK_ID } from "./config/program"
 import type { Project, SessionLog, Week } from "./types"
 
 /**

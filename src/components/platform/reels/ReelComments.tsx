@@ -4,9 +4,9 @@ import Link from "next/link"
 import { useCallback, useEffect, useId, useRef, useState } from "react"
 import { Avatar } from "@/components/platform/Avatar"
 import { IconSend, IconX } from "@/components/platform/icons"
+import { ReportButton } from "@/components/platform/report/ReportButton"
 import { cx } from "@/components/platform/ui"
 import type { FeedItem } from "@/lib/feed"
-import { ReportButton } from "@/components/platform/report/ReportButton"
 import { ago, compact } from "./format"
 
 interface Comment {

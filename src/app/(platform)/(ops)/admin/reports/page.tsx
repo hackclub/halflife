@@ -1,17 +1,17 @@
 import Link from "next/link"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { Badge, EmptyState, Panel, Table } from "@/app/components/ui"
+import type { ReportReason, ReportStatus } from "@/app/generated/prisma/enums"
 import { displayName } from "@/lib/display-name"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import {
+	type ContentReportRow,
 	countContentReports,
 	listContentReports,
-	type ContentReportRow,
 	type ReportStatusFilter,
 } from "@/lib/queries/admin"
-import { REPORT_STATUS_LABELS, REPORT_TARGET_LABELS, REPORT_REASONS } from "@/lib/reports"
-import type { ReportReason, ReportStatus } from "@/app/generated/prisma/enums"
+import { REPORT_REASONS, REPORT_STATUS_LABELS, REPORT_TARGET_LABELS } from "@/lib/reports"
 
 export const dynamic = "force-dynamic"
 

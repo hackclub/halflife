@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Modal, ModalTitle } from "@/components/platform/modals/Modal"
-import { Button, Field, OptionRow, borderedInputClass, cx } from "@/components/platform/ui"
+import { Button, borderedInputClass, cx, Field, OptionRow } from "@/components/platform/ui"
 import { REPORT_REASONS, type ReportReason, type ReportTargetInput } from "@/lib/reports"
 
 /**
