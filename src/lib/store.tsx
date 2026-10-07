@@ -292,6 +292,12 @@ interface Ctx {
 	weekOpensOn: (weekId: number) => string | null
 	/** When a week stops taking work, e.g. "Sunday, October 5 at 11:59 PM", its extension included. */
 	weekDeadline: (weekId: number) => string | null
+	/**
+	 * The same close as a moment rather than a phrase, epoch ms, its extension
+	 * included. `weekDeadline` is for writing it down; a countdown has to count
+	 * to it, and there is no arithmetic to do on a formatted date.
+	 */
+	weekClosesAtMs: (weekId: number) => number | null
 	/** When warm-ups stop taking work: 11:59 PM the night before week 1 opens. */
 	warmupDeadline: string
 	/** Whether a week is handed in — in review, approved or rejected — so its entries are final. */
@@ -461,6 +467,13 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			return at === undefined ? null : formatDeadline(at, facts.programTimezone)
 		},
 		[facts.weekClosesAt, facts.programTimezone],
+	)
+	const weekClosesAtMs = useCallback(
+		(weekId: number) => {
+			const at = facts.weekClosesAt[weekId]
+			return at === undefined ? null : at
+		},
+		[facts.weekClosesAt],
 	)
 	const warmupDeadline = formatDeadline(facts.warmupsCloseAt, facts.programTimezone)
 
@@ -1660,6 +1673,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		weekStarted,
 		weekOpensOn,
 		weekDeadline,
+		weekClosesAtMs,
 		warmupDeadline,
 		weekSubmitted,
 		phaseStatusOf,

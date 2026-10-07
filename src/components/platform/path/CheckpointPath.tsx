@@ -13,6 +13,7 @@ import {
 	IconPlay,
 	IconUpload,
 } from "@/components/platform/icons"
+import { WeekCountdown } from "@/components/platform/path/WeekCountdown"
 import { Chip, cx, onAccent, Panel } from "@/components/platform/ui"
 import { getStarterProject } from "@/lib/config/onboarding"
 import { printerById } from "@/lib/config/printers"
@@ -704,6 +705,7 @@ export function CheckpointPath() {
 					<WeekBanner week={week} index={wi} />
 					<StarterGuideBanner week={week} />
 					<WeekTrail week={week} currentId={currentCheckpointId} phase={weekPhases[wi] ?? 0} />
+					<WeekCountdown week={week} />
 				</section>
 			))}
 			<GrandPrize />

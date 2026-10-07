@@ -1,9 +1,10 @@
 /**
- * The arithmetic behind the landing page's week-1 countdown.
+ * The arithmetic behind a countdown — the landing page's wait for week 1, and
+ * the platform's run down the week being lived.
  *
- * Kept out of the component so the one thing that can actually be wrong — how a
+ * Kept out of the components so the one thing that can actually be wrong — how a
  * span of milliseconds splits into days, hours, minutes and seconds — is a pure
- * function the contract tests can drive. The component is then only the clock
+ * function the contract tests can drive. Each component is then only the clock
  * and the markup.
  */
 
