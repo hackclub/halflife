@@ -5,7 +5,7 @@ export const cuid = z.string().min(1).max(64)
 
 export const phaseSchema = z.enum(Phase)
 
-/** Rejects javascript:, data: and friends — a URL field is not a script host. */
+/** Rejects javascript:, data:, http: and friends — a URL field is not a script host. */
 export const httpsUrl = z
 	.string()
 	.trim()
@@ -13,11 +13,11 @@ export const httpsUrl = z
 	.refine((v) => {
 		try {
 			const parsed = new URL(v)
-			return parsed.protocol === "https:" || parsed.protocol === "http:"
+			return parsed.protocol === "https:"
 		} catch {
 			return false
 		}
-	}, "Must be an http(s) URL")
+	}, "Must be an https URL")
 
 export function boundedText(max: number, min = 0) {
 	return z.string().trim().min(min).max(max)
