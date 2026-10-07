@@ -648,13 +648,17 @@ async function bodies() {
 	)
 
 	// A link whose tracking is outside the recording's window is not overlap.
-	const elsewhere = rollUpHours(oneEntry, [
-		{
-			hoursApproved: null,
-			cachedSeconds: 7200,
-			cachedSpans: { from: 1_600_000_000, to: 1_601_000_000, spans: [{ start: 1_600_000_000, end: 1_600_007_200 }] },
-		},
-	], null)
+	const elsewhere = rollUpHours(
+		oneEntry,
+		[
+			{
+				hoursApproved: null,
+				cachedSeconds: 7200,
+				cachedSpans: { from: 1_600_000_000, to: 1_601_000_000, spans: [{ start: 1_600_000_000, end: 1_600_007_200 }] },
+			},
+		],
+		null,
+	)
 	check(
 		"rollup · tracking from another day is still counted",
 		elsewhere.computedTotal === 4,
