@@ -849,9 +849,9 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	/**
 	 * Post a reel against the node that asked for it.
 	 *
-	 * `checkpointKey` is what binds the post to the node, and it has to: the 10h
-	 * and the 20h reel are both PROGRESS, so counting posts by kind would tick
-	 * the 20h node the moment the 10h one landed.
+	 * `checkpointKey` is what binds the post to the node, and it has to: the 5h
+	 * and the 15h reel are both PROGRESS, so counting posts by kind would tick
+	 * the 15h node the moment the 5h one landed.
 	 */
 	// Resolves to the new post's id — what a public link gets attached to — or
 	// null if the post did not land. The node is patched first either way, and

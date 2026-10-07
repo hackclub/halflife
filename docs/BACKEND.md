@@ -57,7 +57,7 @@ truth for "has this week had its idea reel", and the first time the two
 disagreed the trail would lie to someone about work they had really done.
 
 Reels bind to their node by `Post.checkpointKey`, not by counting posts of a
-kind: the 10h and 20h reels are both `PROGRESS`, so counting would tick the 20h
+kind: the 5h and 15h reels are both `PROGRESS`, so counting would tick the 15h
 node the moment the 10h one landed.
 
 ---

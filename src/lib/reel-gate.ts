@@ -1,6 +1,7 @@
 import "server-only"
 import { Phase, PhaseStatus, PostStatus } from "@/app/generated/prisma/enums"
 import { DESIGN_WEEKS } from "@/lib/config/program"
+import { progressReelHours } from "@/lib/curriculum"
 import { HttpError } from "@/lib/errors"
 import prisma from "@/lib/prisma"
 import { isWeekOpen } from "@/lib/program"
@@ -29,12 +30,33 @@ function weekOfKey(key: string): number | null {
 	return m ? Number(m[1]) : null
 }
 
-/** "your week 3 idea reel", "your week 2 20h progress reel". */
+/**
+ * "your week 3 idea reel", "your week 2 15h progress reel".
+ *
+ * The hours come from `progressReelHours` rather than from arithmetic on the
+ * slot, because the two used to disagree: this said `slot * 10` while the trail
+ * put a build week's second reel at five hours, so an owed-reel message could
+ * name a mark the maker never had. One source, and the phase is read off the
+ * week the same way `reelLockReason` reads it.
+ *
+ * A warm-up's reel has no week to read a phase from, so it is named without one
+ * rather than guessed at — "your progress reel" is true; "your 15h progress
+ * reel" might not be.
+ */
 export function reelNameForKey(key: string): string {
 	const week = weekOfKey(key)
 	const slot = /-reel-(.+)$/.exec(key)?.[1]
-	const what =
-		slot === "idea" ? "idea reel" : slot && /^\d+$/.test(slot) ? `${Number(slot) * 10}h progress reel` : "reel"
+	const progress = slot && /^\d+$/.test(slot)
+	// `curriculum` names the phases in lower case, as the trail does; the Prisma
+	// enum is spelled the other way and is not what this takes.
+	const phase = week === null ? null : week > DESIGN_WEEKS ? ("build" as const) : ("design" as const)
+	const what = progress
+		? phase
+			? `${progressReelHours(phase, Number(slot))}h progress reel`
+			: "progress reel"
+		: slot === "idea"
+			? "idea reel"
+			: "reel"
 	return week ? `your week ${week} ${what}` : `your ${what}`
 }
 
