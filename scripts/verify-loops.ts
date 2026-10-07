@@ -98,6 +98,45 @@ function main() {
 		"id",
 	)
 
+	// The join that works on the live base. The `Half-Life User ID` column it was
+	// designed around is not in the base, so the only key that needs no change to
+	// Airtable is the record id the RSVP drain already wrote down — and that is
+	// the case the Loops columns being empty actually came down to.
+	const byRecordOnly = {
+		byEmail: new Map<string, { id: string; fields: Record<string, unknown> }>(),
+		byUserId: new Map<string, { id: string; fields: Record<string, unknown> }>(),
+		byRecordId: new Map([["cmdrained", row("recDrained")]]),
+	}
+	check(
+		"a drained record id matches with no user-id column and no email match",
+		resolveSignupRow(person("cmdrained", "official@example.test"), byRecordOnly)?.by,
+		"record",
+	)
+	check(
+		"a drained record id wins over a wrong email match",
+		resolveSignupRow(person("cmdrained", "typed@example.test"), {
+			...byRecordOnly,
+			byEmail: new Map([["typed@example.test", row("recWrong")]]),
+		})?.row.id,
+		"recDrained",
+	)
+	// Still ordered: a hand-set user id column outranks the drain's own record.
+	check(
+		"the user-id column still outranks the drained record id",
+		resolveSignupRow(person("cmdrained", "official@example.test"), {
+			...byRecordOnly,
+			byUserId: new Map([["cmdrained", row("recById")]]),
+		})?.by,
+		"id",
+	)
+	// A person the app never drained, on a base with no id column, is still not
+	// found. The record key is not a substitute for a join, it is a real mapping.
+	check(
+		"a person the app never drained is still skipped",
+		resolveSignupRow(person("cmnever", "ghost@example.test"), byRecordOnly),
+		null,
+	)
+
 	console.log(failures === 0 ? "\nAll Loops join checks passed." : `\n${failures} check(s) failed.`)
 	process.exit(failures === 0 ? 0 : 1)
 }

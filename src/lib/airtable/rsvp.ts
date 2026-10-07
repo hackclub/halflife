@@ -6,7 +6,8 @@ import {
 	getAirtableConfig,
 	withRateLimitRetry,
 } from "@/lib/airtable/client"
-import { fieldKey, formulaRef, RSVP, toFields } from "@/lib/airtable/schema"
+import { existingColumns } from "@/lib/airtable/field-probe"
+import { fieldKey, formulaRef, RSVP } from "@/lib/airtable/schema"
 import prisma from "@/lib/prisma"
 
 export interface RsvpInput {
@@ -79,6 +80,8 @@ export interface DrainResult {
 	created: number
 	updated: number
 	failed: number
+	/** Drained rows carrying a user id the base has no column for. */
+	skippedUserId: number
 	skipped?: string
 }
 
@@ -87,10 +90,21 @@ export interface DrainResult {
  * anything that fails stays unsynced with an incremented attempt count, and
  * the index on (syncedToAirtable, syncAttempts, createdAt) makes finding them
  * a single scan.
+ *
+ * The user id is the one field asked about rather than assumed. Airtable refuses
+ * a request whose `fields` names a column the table does not have, and it refuses
+ * the WHOLE record — so on a base without that column, sending it did not leave
+ * the id blank, it stopped the email, the name, the referral number and the rest
+ * of that row from landing, and after the attempt cap the row was abandoned for
+ * good. Probing once and omitting the field means the rest of the payload is
+ * written on a base that has not been set up yet, and the id starts filling
+ * itself the moment somebody adds the column.
  */
 export async function drainRsvpBuffer(limit = 50, opts: { dryRun?: boolean } = {}): Promise<DrainResult> {
 	const config = getAirtableConfig()
-	if (!config) return { attempted: 0, created: 0, updated: 0, failed: 0, skipped: "not_configured" }
+	if (!config) {
+		return { attempted: 0, created: 0, updated: 0, failed: 0, skippedUserId: 0, skipped: "not_configured" }
+	}
 
 	const pending = await prisma.rsvpBuffer.findMany({
 		where: { syncedToAirtable: false, syncAttempts: { lt: 10 } },
@@ -98,12 +112,37 @@ export async function drainRsvpBuffer(limit = 50, opts: { dryRun?: boolean } = {
 		take: limit,
 	})
 
-	const result: DrainResult = { attempted: pending.length, created: 0, updated: 0, failed: 0 }
+	const result: DrainResult = {
+		attempted: pending.length,
+		created: 0,
+		updated: 0,
+		failed: 0,
+		skippedUserId: 0,
+	}
 	if (opts.dryRun) return result
+
+	// Which of the columns this table has, asked once for the whole batch.
+	// Everything the drain would send is filtered through it: Airtable refuses a
+	// request naming a column it does not have, for the WHOLE record, so one
+	// unknown name loses every other field in the payload with it. The live
+	// Signups base has three of the ten the schema names, so without this every
+	// row of every drain was being rejected.
+	const writable = await existingColumns(config, RSVP.tableId, Object.values(RSVP.fields).map(fieldKey))
+	const skippedColumns = Object.entries(RSVP.fields)
+		.filter(([, field]) => !writable.has(fieldKey(field)))
+		.map(([key]) => key)
+	if (skippedColumns.length > 0) {
+		// Said once per drain, naming them, because "the RSVP drain is failing" is
+		// otherwise indistinguishable from "Airtable is down".
+		console.warn(
+			`[airtable] rsvp-drain: ${RSVP.tableId} has no column(s) ${skippedColumns.join(", ")}; those values are not ` +
+				"sent. Everything else in the row is still written.",
+		)
+	}
 
 	for (const row of pending) {
 		try {
-			const fields = toFields(RSVP.fields, {
+			const values = {
 				email: row.email,
 				firstName: row.firstName ?? undefined,
 				lastName: row.lastName ?? undefined,
@@ -114,7 +153,16 @@ export async function drainRsvpBuffer(limit = 50, opts: { dryRun?: boolean } = {
 				referredBy: row.referredBy ?? undefined,
 				finishedAccountCreation: row.finishedAccountCreation,
 				userId: row.userId ?? undefined,
-			})
+			}
+			// Only the columns this table actually has, so one absent column cannot
+			// cost the row the seven that are present.
+			const fields: Record<string, unknown> = {}
+			for (const [key, value] of Object.entries(values)) {
+				if (value === undefined) continue
+				const field = RSVP.fields[key as keyof typeof RSVP.fields]
+				if (field && writable.has(fieldKey(field))) fields[fieldKey(field)] = value
+			}
+			if (row.userId && !writable.has(fieldKey(RSVP.fields.userId))) result.skippedUserId++
 
 			let recordId = row.airtableRecordId
 			if (recordId) {
