@@ -223,9 +223,8 @@ function assertOwnedKey(userId: string, key: string, field: string): void {
 }
 
 export async function createPost(input: CreatePostInput): Promise<FeedItem> {
-	if (input.kind === PostKind.ANNOUNCEMENT && !input.canManageFeed) {
+	if (input.kind === PostKind.ANNOUNCEMENT && !input.canManageFeed)
 		throw new HttpError("FORBIDDEN", "Only the Half Life team can post announcements")
-	}
 
 	assertOwnedKey(input.userId, input.objectKey, "video")
 	if (input.thumbnailKey) assertOwnedKey(input.userId, input.thumbnailKey, "thumbnail")

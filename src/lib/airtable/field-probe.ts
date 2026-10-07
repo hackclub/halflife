@@ -70,8 +70,6 @@ export async function existingColumns(
 	columns: readonly string[],
 ): Promise<Set<string>> {
 	const known = new Set<string>()
-	for (const column of columns) {
-		if (await columnExists(config, tableId, column)) known.add(column)
-	}
+	for (const column of columns) if (await columnExists(config, tableId, column)) known.add(column)
 	return known
 }

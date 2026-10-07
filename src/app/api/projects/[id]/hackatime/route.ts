@@ -55,17 +55,14 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 
 	// Linking adds hours to the phase, and the decision recomputes those hours live, so an in-review phase is frozen for this too – not only a decided one.
 	const phaseStatus = parsed.data.phase === "DESIGN" ? project.designStatus : project.buildStatus
-	if (phaseStatus === PhaseStatus.in_review) {
+	if (phaseStatus === PhaseStatus.in_review)
 		return fail("PHASE_LOCKED", "This phase is in review – unsubmit it before linking more hours")
-	}
 	// A decided phase is frozen: linking a project adds hours to a number that has already been judged, so it waits for a return or an un-approval.
-	if (isPhaseDecided(phaseStatus)) {
+	if (isPhaseDecided(phaseStatus))
 		return fail("PHASE_LOCKED", "This phase has been submitted and decided, so no more hours can be linked")
-	}
 
-	if (!project.user.hackatimeUserId) {
+	if (!project.user.hackatimeUserId)
 		return fail("HACKATIME_NOT_LINKED", "Link your Hackatime account before linking a project to it")
-	}
 
 	const existing = await prisma.hackatimeLink.findUnique({
 		where: {

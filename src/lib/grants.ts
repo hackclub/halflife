@@ -86,9 +86,8 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 	if (!isHcbConfigured()) throw new HttpError("NOT_CONFIGURED", "HCB is not configured on this deployment")
 
 	// The design approval is the funding decision, and the idempotency key includes the phase – accepting BUILD would send the same frozen grant a second time under a key of its own.
-	if (input.phase !== Phase.DESIGN) {
+	if (input.phase !== Phase.DESIGN)
 		throw new HttpError("VALIDATION_FAILED", "A grant is only sent for an approved design")
-	}
 
 	const hashid = parseGrantHashid(input.grantUrl)
 	if (!hashid) throw new HttpError("VALIDATION_FAILED", "That is not an HCB grant link")
@@ -98,9 +97,8 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 		select: { id: true, userId: true, title: true, theme: true, tier: true, grantUsd: true, designStatus: true },
 	})
 	if (!project) throw new HttpError("NOT_FOUND", "Project not found")
-	if (project.designStatus !== PhaseStatus.approved || !project.grantUsd) {
+	if (project.designStatus !== PhaseStatus.approved || !project.grantUsd)
 		throw new HttpError("CONFLICT", "A grant is only due on an approved design")
-	}
 	const amountCents = Math.round(project.grantUsd * 100)
 	const memo = `[grant] ${project.title || "Half Life project"} – Half Life tier ${project.tier ?? "?"}`
 
@@ -123,9 +121,8 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 
 		// A row with no error normally means a request is running right now, and two of those must not both send. A crash strands a row the same way, so only a row old enough to be abandoned gets past this.
 		const ageMs = Date.now() - existing.createdAt.getTime()
-		if (existing.error === null && ageMs < ABANDONED_ATTEMPT_MS) {
+		if (existing.error === null && ageMs < ABANDONED_ATTEMPT_MS)
 			throw new HttpError("CONFLICT", "A grant for this project is already being sent")
-		}
 
 		// Before re-sending, ask HCB what the last attempt left behind. A timeout can lose the response after the top-up applied, and a resend would pay twice; a grant that cannot be read fails closed rather than guessing.
 		const disbursements = await listCardGrantDisbursements(existing.grantHashid)

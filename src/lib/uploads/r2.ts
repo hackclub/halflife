@@ -76,9 +76,7 @@ function isIsoBmffVideo(bytes: Uint8Array): boolean {
 	// The major brand can be generic (`isom`) with the real one listed among the compatible brands, so scan those too. The box size is big-endian; a size of 0 means "to end of file" and is treated as the whole buffer.
 	const declared = ((bytes[0] ?? 0) << 24) | ((bytes[1] ?? 0) << 16) | ((bytes[2] ?? 0) << 8) | (bytes[3] ?? 0)
 	const end = declared >= 16 ? Math.min(declared >>> 0, bytes.length) : bytes.length
-	for (let offset = 16; offset + 4 <= end; offset += 4) {
-		if (VIDEO_FTYP_BRANDS.has(brandAt(bytes, offset))) return true
-	}
+	for (let offset = 16; offset + 4 <= end; offset += 4) if (VIDEO_FTYP_BRANDS.has(brandAt(bytes, offset))) return true
 	return false
 }
 
@@ -180,9 +178,8 @@ export async function listUploadedObjects(
 	opts: { prefix?: string; cursor?: string; limit?: number } = {},
 ): Promise<UploadedObjectPage> {
 	const bucket = process.env.S3_BUCKET_NAME
-	if (!isUploadConfigured() || !bucket) {
+	if (!isUploadConfigured() || !bucket)
 		throw new HttpError("NOT_CONFIGURED", "File uploads are not configured on this deployment")
-	}
 
 	const prefix = opts.prefix ?? ""
 	const bucketPrefix = endpointIncludesBucket() ? `${bucket}/` : ""

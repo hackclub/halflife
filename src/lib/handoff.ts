@@ -44,9 +44,7 @@ export interface NewHandoff {
  * Retiring the old ones matters: without it, every QR a participant ever generated stays live until its own expiry, so a code someone photographed off a screen ten minutes ago still works. One live code per person at a time is the behaviour people already expect from a pairing screen.
  */
 export async function createHandoff(userId: string): Promise<NewHandoff> {
-	if (!isUploadConfigured()) {
-		throw new HttpError("NOT_CONFIGURED", "File uploads are not configured on this deployment")
-	}
+	if (!isUploadConfigured()) throw new HttpError("NOT_CONFIGURED", "File uploads are not configured on this deployment")
 
 	const token = randomBytes(32).toString("base64url")
 	const expiresAt = new Date(Date.now() + HANDOFF_TTL_MINUTES * 60_000)
@@ -110,13 +108,9 @@ export async function completeHandoff(
 	file: { name: string; type: string; size: number; bytes: () => Promise<Buffer> },
 ): Promise<HandoffUploadResult> {
 	const target = await resolveHandoff(token)
-	if (!target) {
-		throw new HttpError("NOT_FOUND", "This link has expired or has already been used")
-	}
+	if (!target) throw new HttpError("NOT_FOUND", "This link has expired or has already been used")
 
-	if (!file.type.startsWith(ALLOWED_PREFIX)) {
-		throw new HttpError("VALIDATION_FAILED", "That is not a video")
-	}
+	if (!file.type.startsWith(ALLOWED_PREFIX)) throw new HttpError("VALIDATION_FAILED", "That is not a video")
 	if (file.size > MAX_UPLOAD_BYTES) {
 		throw new HttpError("VALIDATION_FAILED", `Videos must be under ${MAX_UPLOAD_BYTES} bytes`)
 	}
@@ -124,18 +118,14 @@ export async function completeHandoff(
 	if (!check.ok) throw new HttpError("VALIDATION_FAILED", check.reason)
 
 	const bytes = await file.bytes()
-	if (!isVideoBytes(bytes)) {
-		throw new HttpError("VALIDATION_FAILED", "That file does not look like a video")
-	}
+	if (!isVideoBytes(bytes)) throw new HttpError("VALIDATION_FAILED", "That file does not look like a video")
 
 	// Claim first. Losing this race means another phone already used the code.
 	const claimed = await prisma.uploadHandoff.updateMany({
 		where: { id: target.id, usedAt: null, expiresAt: { gt: new Date() } },
 		data: { usedAt: new Date() },
 	})
-	if (claimed.count !== 1) {
-		throw new HttpError("CONFLICT", "This link has already been used")
-	}
+	if (claimed.count !== 1) throw new HttpError("CONFLICT", "This link has already been used")
 
 	// The owner comes from the handoff row, never from the request, so a token can only ever write into the prefix of the person who generated it.
 	const key = buildObjectKey(target.userId, POST_UPLOAD_FOLDER, check.ext)

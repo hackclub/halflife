@@ -57,9 +57,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		return ok({ order: await prisma.shopOrder.findUniqueOrThrow({ where: { id }, select: shopOrderStaffSelect }) })
 	}
 
-	if (before.status !== ShopOrderStatus.PENDING) {
-		return fail("CONFLICT", "Only a pending order can be put on hold")
-	}
+	if (before.status !== ShopOrderStatus.PENDING) return fail("CONFLICT", "Only a pending order can be put on hold")
 	// Conditional on the status just read: a concurrent fulfil or reject landing between the read and the write must not be overwritten back to ON_HOLD.
 	const held = await prisma.shopOrder.updateMany({
 		where: { id, status: ShopOrderStatus.PENDING },
@@ -70,9 +68,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 			lastActorId: gate.user.id,
 		},
 	})
-	if (held.count !== 1) {
-		return fail("CONFLICT", "This order was decided by someone else")
-	}
+	if (held.count !== 1) return fail("CONFLICT", "This order was decided by someone else")
 	const order = await prisma.shopOrder.findUniqueOrThrow({ where: { id }, select: shopOrderStaffSelect })
 	return ok({ order })
 })

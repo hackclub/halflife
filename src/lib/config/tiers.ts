@@ -146,9 +146,7 @@ export function isTierId(id: unknown): id is TierId {
  */
 export function suggestTierForHours(hours: number): TierId {
 	let suggested: TierId = ENTRY_TIER.id
-	for (const tier of TIERS) {
-		if (hours >= tier.fundingHours) suggested = tier.id
-	}
+	for (const tier of TIERS) if (hours >= tier.fundingHours) suggested = tier.id
 	return suggested
 }
 

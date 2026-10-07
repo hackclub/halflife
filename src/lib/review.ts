@@ -39,9 +39,8 @@ export async function claimSubmission(submissionId: string, reviewerId: string):
 		select: { themeProject: { select: { userId: true } } },
 	})
 	if (!owner) throw new HttpError("NOT_FOUND", "Submission not found")
-	if (owner.themeProject.userId === reviewerId) {
+	if (owner.themeProject.userId === reviewerId)
 		throw new HttpError("FORBIDDEN", "You cannot review your own submission")
-	}
 
 	const settings = await getProgramSettings()
 	const expiresAt = new Date(Date.now() + settings.reviewClaimTtlMinutes * 60_000)
@@ -73,9 +72,7 @@ export async function claimSubmission(submissionId: string, reviewerId: string):
 export async function releaseClaim(submissionId: string, reviewerId: string): Promise<void> {
 	const claim = await prisma.reviewClaim.findUnique({ where: { submissionId } })
 	if (!claim) return
-	if (claim.reviewerId !== reviewerId) {
-		throw new HttpError("FORBIDDEN", "That claim belongs to another reviewer")
-	}
+	if (claim.reviewerId !== reviewerId) throw new HttpError("FORBIDDEN", "That claim belongs to another reviewer")
 	await prisma.reviewClaim.delete({ where: { submissionId } })
 }
 
@@ -136,16 +133,12 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 	if (!submission) throw new HttpError("NOT_FOUND", "Submission not found")
 
 	// Nobody reviews their own work. Every account gets its own five themed projects at signup, reviewers included, so without this a REVIEWER could approve their own design, set their own tier, and mint their own credit – which is exactly what the role is not supposed to be able to do. Admins are not exempt: the point is a second pair of eyes, not a trust level.
-	if (submission.themeProject.userId === input.reviewerId) {
+	if (submission.themeProject.userId === input.reviewerId)
 		throw new HttpError("FORBIDDEN", "You cannot review your own submission")
-	}
 
-	if (submission.resolvedAt) {
-		throw new HttpError("ALREADY_RESOLVED", "This submission has already been decided")
-	}
-	if (submission.claim && submission.claim.reviewerId !== input.reviewerId && submission.claim.expiresAt > new Date()) {
+	if (submission.resolvedAt) throw new HttpError("ALREADY_RESOLVED", "This submission has already been decided")
+	if (submission.claim && submission.claim.reviewerId !== input.reviewerId && submission.claim.expiresAt > new Date())
 		throw new HttpError("CLAIMED_BY_OTHER", "Another reviewer holds the claim on this submission")
-	}
 
 	const project = submission.themeProject
 	const phase = submission.phase
@@ -165,9 +158,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 	if (approving && phase === Phase.DESIGN) {
 		// The tier's dollars are parts money, so the decision lands here – before the participant starts building – not at build approval.
 		const chosen = input.tier ?? project.tier
-		if (!isTierId(chosen)) {
-			throw new HttpError("VALIDATION_FAILED", "Assign a funding tier when approving a design")
-		}
+		if (!isTierId(chosen)) throw new HttpError("VALIDATION_FAILED", "Assign a funding tier when approving a design")
 		tier = chosen
 	}
 
@@ -224,9 +215,8 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 
 		// Re-check the claim under the transaction too. The check before it ran against a read taken when the page opened, so another reviewer can have claimed the submission since; without this the decision would proceed and delete their live claim on the way out.
 		const claim = await tx.reviewClaim.findUnique({ where: { submissionId: input.submissionId } })
-		if (claim && claim.reviewerId !== input.reviewerId && claim.expiresAt > new Date()) {
+		if (claim && claim.reviewerId !== input.reviewerId && claim.expiresAt > new Date())
 			throw new HttpError("CLAIMED_BY_OTHER", "Another reviewer holds the claim on this submission")
-		}
 
 		// Re-check the design ordering under the same per-user lock the un-approve path takes. The check before the transaction ran against a read taken before the live Hackatime fetch; an admin can un-approve the design in that window, and a build approval must not pay out of order. Taking the lock first means this read sees either the un-approval (and refuses) or blocks it until this decision has committed.
 		if (approving && phase === Phase.BUILD) {
@@ -234,9 +224,8 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 				where: { id: project.id },
 				select: { designStatus: true, theme: true },
 			})
-			if (design?.theme !== Theme.WARMUP && design?.designStatus !== PhaseStatus.approved) {
+			if (design?.theme !== Theme.WARMUP && design?.designStatus !== PhaseStatus.approved)
 				throw new HttpError("DESIGN_NOT_APPROVED", "Approve the design phase for this theme before approving the build")
-			}
 		}
 
 		if (approving) {
@@ -437,9 +426,7 @@ export async function unapprovePhase(
 	if (!project) throw new HttpError("NOT_FOUND", "Project not found")
 
 	const status = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
-	if (status !== PhaseStatus.approved) {
-		throw new HttpError("CONFLICT", "That phase is not approved")
-	}
+	if (status !== PhaseStatus.approved) throw new HttpError("CONFLICT", "That phase is not approved")
 
 	await prisma.$transaction(async (tx) => {
 		await lockUserCredit(tx, project.userId)
@@ -449,9 +436,8 @@ export async function unapprovePhase(
 			where: { id: themeProjectId },
 			select: { designStatus: true, buildStatus: true },
 		})
-		if ((phase === Phase.DESIGN ? fresh?.designStatus : fresh?.buildStatus) !== PhaseStatus.approved) {
+		if ((phase === Phase.DESIGN ? fresh?.designStatus : fresh?.buildStatus) !== PhaseStatus.approved)
 			throw new HttpError("CONFLICT", "That phase is no longer approved")
-		}
 
 		// A grant send holds no credit lock while HCB is called, so a design un-approval must not race it: the money would be sent for an approval that no longer stands, and the sent row would block a later send. `sendGrant` marks the row errored before it throws, which is what lets this same check pass on the retry after the window.
 		if (phase === Phase.DESIGN) {
@@ -576,9 +562,7 @@ export async function reopenPhase(
 	if (!project) throw new HttpError("NOT_FOUND", "Project not found")
 
 	const status = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
-	if (status !== PhaseStatus.rejected) {
-		throw new HttpError("CONFLICT", "That phase is not rejected")
-	}
+	if (status !== PhaseStatus.rejected) throw new HttpError("CONFLICT", "That phase is not rejected")
 
 	// Conditional on the status that was read: an admin double-click, or a reopen racing a resubmission, must not overwrite a newer state.
 	const reopened = await prisma.themeProject.updateMany({
@@ -591,9 +575,7 @@ export async function reopenPhase(
 				? { designStatus: PhaseStatus.update_requested, designReviewComments: reason }
 				: { buildStatus: PhaseStatus.update_requested, buildReviewComments: reason },
 	})
-	if (reopened.count !== 1) {
-		throw new HttpError("CONFLICT", "That phase moved while it was being reopened")
-	}
+	if (reopened.count !== 1) throw new HttpError("CONFLICT", "That phase moved while it was being reopened")
 
 	await logAudit({
 		action: AuditAction.ADMIN_REOPEN_PHASE,

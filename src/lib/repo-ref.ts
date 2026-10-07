@@ -79,9 +79,7 @@ function fromSegments(forge: Forge, segments: string[]): RepoRef | null {
 
 	if (!repo || ownerSegments.length === 0) return null
 	// Every segment has to be safe on its own: this is what stops a traversal (`a/..%2f..%2fadmin`) from reaching an API path we built from it.
-	for (const segment of [...ownerSegments, repo]) {
-		if (!SEGMENT.test(segment)) return null
-	}
+	for (const segment of [...ownerSegments, repo]) if (!SEGMENT.test(segment)) return null
 	// A `.` or `..` segment passes SEGMENT (the dot is allowed) but means a path step, not a name. Refused outright rather than normalised away.
 	if ([...ownerSegments, repo].some((s) => s === "." || s === "..")) return null
 

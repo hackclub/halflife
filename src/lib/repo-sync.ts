@@ -72,9 +72,7 @@ export async function scheduleRepoSync(themeProjectId: string): Promise<void> {
  */
 export async function runProjectSync(themeProjectId: string, manual: boolean, force = false): Promise<WrittenFile[]> {
 	// Wait out another run on the same project rather than racing it for the ref.
-	if (inFlight.has(themeProjectId)) {
-		await waitForFree(themeProjectId)
-	}
+	if (inFlight.has(themeProjectId)) await waitForFree(themeProjectId)
 
 	inFlight.add(themeProjectId)
 	let written: WrittenFile[] = []
@@ -132,9 +130,7 @@ async function claimQueued(themeProjectId: string): Promise<Date | null> {
 async function waitForFree(themeProjectId: string): Promise<void> {
 	const deadline = Date.now() + QUEUE_MAX_WAIT_MS
 	await new Promise((r) => setTimeout(r, SYNC_DEBOUNCE_MS))
-	while (inFlight.has(themeProjectId) && Date.now() < deadline) {
-		await new Promise((r) => setTimeout(r, QUEUE_POLL_MS))
-	}
+	while (inFlight.has(themeProjectId) && Date.now() < deadline) await new Promise((r) => setTimeout(r, QUEUE_POLL_MS))
 }
 
 /** One commit: read the project, render its files, write them. */

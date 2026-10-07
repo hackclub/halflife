@@ -79,9 +79,8 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 			where: { themeProjectId: id, phase: parsed.data.phase },
 			select: { id: true },
 		})
-		for (const link of links) {
+		for (const link of links)
 			await refreshLinkCache(link.id).catch((err) => console.error("[submit] hackatime refresh failed:", err))
-		}
 	})
 
 	return ok({ submission }, { status: 201 })

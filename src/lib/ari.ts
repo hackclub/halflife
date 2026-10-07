@@ -46,9 +46,7 @@ export function ariWebhookUrl(originFallback = ""): string {
 let client: Ari | null = null
 
 function ari(): Ari {
-	if (!isAriConfigured()) {
-		throw new HttpError("NOT_CONFIGURED", "Ari is not configured on this deployment")
-	}
+	if (!isAriConfigured()) throw new HttpError("NOT_CONFIGURED", "Ari is not configured on this deployment")
 	const programId = process.env.ARI_PROGRAM_ID
 	const signingSecret = process.env.ARI_SIGNING_SECRET
 	if (!programId || !signingSecret) throw new Error("Ari is not configured on this deployment")
@@ -123,16 +121,14 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
 
 	// A retry job snapshots what is pending and sends later; the maker can have unsubmitted in between. The row the decision would land on is gone, so sending would leave an untracked ship in Ari's queue.
 	const phaseStatus = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
-	if (phaseStatus !== PhaseStatus.in_review) {
+	if (phaseStatus !== PhaseStatus.in_review)
 		throw new HttpError("NOT_SUBMITTED", "This phase is no longer awaiting review, so there is no ship to send")
-	}
 
 	const user = project.user
 	if (!project.title.trim()) throw new HttpError("UNPROCESSABLE", "This project has no title to send to Ari")
 	if (!project.githubRepo) throw new HttpError("UNPROCESSABLE", "This project has no repository link to send to Ari")
-	if (!user.slackId) {
+	if (!user.slackId)
 		throw new HttpError("UNPROCESSABLE", "This account has no Slack ID, so Ari cannot be told who the maker is")
-	}
 
 	const def = getThemeDef(project.theme)
 

@@ -26,9 +26,7 @@ export function requireBearerAuth(request: NextRequest, envVars: string[]): Next
 	if (!match?.[1]) return fail("UNAUTHENTICATED", "Missing bearer token")
 
 	const presented = match[1].trim()
-	if (!expected.some((token) => matches(presented, token))) {
-		return fail("UNAUTHENTICATED", "Invalid bearer token")
-	}
+	if (!expected.some((token) => matches(presented, token))) return fail("UNAUTHENTICATED", "Invalid bearer token")
 	return null
 }
 

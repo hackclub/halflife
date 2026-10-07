@@ -51,21 +51,18 @@ export const POST = withRoute(async (req: Request) => {
 		])
 
 		// All or nothing: a decision naming an entry that is gone is a stale page, not a partial success.
-		if (sessions.length !== sessionIds.length || links.length !== linkIds.length) {
+		if (sessions.length !== sessionIds.length || links.length !== linkIds.length)
 			throw new HttpError("NOT_FOUND", "One of those entries no longer exists")
-		}
 
 		// Approving hours is the other half of the money path, so it needs the same rule the decision route has: nobody rules on their own work.
 		const all = [...sessions, ...links]
-		if (all.some((row) => row.themeProject.userId === gate.user.id)) {
+		if (all.some((row) => row.themeProject.userId === gate.user.id))
 			throw new HttpError("FORBIDDEN", "You cannot approve hours on your own work")
-		}
 
 		for (const row of all) {
 			const status = row.phase === Phase.DESIGN ? row.themeProject.designStatus : row.themeProject.buildStatus
-			if (status !== PhaseStatus.in_review) {
+			if (status !== PhaseStatus.in_review)
 				throw new HttpError("PHASE_LOCKED", "Hours can only be approved while the phase is in review")
-			}
 		}
 
 		// Ari owns its own decisions, but a claim another Half Life reviewer holds is theirs until it expires.

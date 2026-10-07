@@ -31,9 +31,7 @@ export async function GET(request: Request) {
 	const session = await auth.api.getSession({ headers: request.headers })
 	if (session) return publicRedirect(request, "/dashboard")
 
-	if (error === "account_not_linked") {
-		return publicRedirect(request, "/?error=account_not_linked")
-	}
+	if (error === "account_not_linked") return publicRedirect(request, "/?error=account_not_linked")
 
 	// An expired or duplicate state, with no session: the attempt is over.
 	return publicRedirect(request, "/")

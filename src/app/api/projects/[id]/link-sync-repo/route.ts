@@ -32,16 +32,13 @@ export const POST = withRoute(async (_req: Request, { params }: Params) => {
 
 	// The state resolves both the sync target and whether it differs from the project link, and is the one place that logic lives.
 	const state = await getRepoSyncState(id, gate.user.id)
-	if (!state.syncRepoDiffers || !state.repo) {
-		return fail("CONFLICT", "There is no different repo to link to.")
-	}
+	if (!state.syncRepoDiffers || !state.repo) return fail("CONFLICT", "There is no different repo to link to.")
 	const syncRepo = state.repo
 
 	const access = await getSubmissionAccess(gate.user.id, id)
 	if (!access.open) return fail("SUBMISSIONS_CLOSED", SUBMISSIONS_CLOSED_MESSAGE)
-	if (project.designStatus === PhaseStatus.in_review || project.buildStatus === PhaseStatus.in_review) {
+	if (project.designStatus === PhaseStatus.in_review || project.buildStatus === PhaseStatus.in_review)
 		return fail("PHASE_LOCKED", "Unsubmit before editing – a phase is in review")
-	}
 
 	// Conditional on the statuses just checked, so a review that lands between the read and the write is not edited out from under. It also repeats the "still different" test against the current link, in case another tab changed it while this one was deciding to press the button.
 	const claimed = await prisma.themeProject.updateMany({

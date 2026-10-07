@@ -28,9 +28,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	const parsed = await parseBody(req, bodySchema)
 	if (parsed.error) return parsed.error
 
-	if (!isAriConfigured()) {
-		return fail("NOT_CONFIGURED", "Ari is not configured on this deployment")
-	}
+	if (!isAriConfigured()) return fail("NOT_CONFIGURED", "Ari is not configured on this deployment")
 
 	// A ship is a hand-in, so only a phase awaiting review has one to send: a draft was never submitted, and a decided phase is already Ari's record.
 	const project = await prisma.themeProject.findFirst({
@@ -39,9 +37,8 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	})
 	if (!project) return fail("NOT_FOUND", "Project not found")
 	const status = parsed.data.phase === "DESIGN" ? project.designStatus : project.buildStatus
-	if (status !== PhaseStatus.in_review) {
+	if (status !== PhaseStatus.in_review)
 		return fail("CONFLICT", "That phase is not awaiting review, so there is no ship to send")
-	}
 
 	// A hand-in that already reached Ari has nothing to retry; resending is harmless there (Ari dedupes by external id) but the button should say so rather than perform a no-op round trip.
 	const open = await prisma.phaseSubmission.findFirst({
@@ -49,9 +46,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		orderBy: { createdAt: "desc" },
 		select: { ariSubmissionId: true },
 	})
-	if (open?.ariSubmissionId) {
-		return fail("CONFLICT", "That submission already reached Ari – there is nothing to retry")
-	}
+	if (open?.ariSubmissionId) return fail("CONFLICT", "That submission already reached Ari – there is nothing to retry")
 
 	try {
 		const result = await trackSideEffect(

@@ -161,16 +161,12 @@ export interface AdvanceResult {
 export async function submitStep(userId: string, answer: OnboardingAnswer): Promise<AdvanceResult> {
 	const before = await getOnboardingState(userId)
 
-	if (before.completed) {
-		throw new HttpError("ALREADY_RESOLVED", "You have already finished getting started")
-	}
+	if (before.completed) throw new HttpError("ALREADY_RESOLVED", "You have already finished getting started")
 
 	const index = stepIndexOf(answer.step)
 	if (index === -1) throw new HttpError("VALIDATION_FAILED", "Unknown step")
 	// Answering ahead of where you have got would let someone skip the questions by posting the last step first.
-	if (index > before.reached) {
-		throw new HttpError("VALIDATION_FAILED", "Finish the earlier steps first")
-	}
+	if (index > before.reached) throw new HttpError("VALIDATION_FAILED", "Finish the earlier steps first")
 
 	const userData: {
 		hardwareExperience?: HardwareExperience
@@ -223,9 +219,7 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 			}
 			// Only one this person was actually offered: the list depends on their answer to question one, and posting an id is not an answer.
 			const starter = before.starterProjects.find((p) => p.id === answer.starterProjectId)
-			if (!starter) {
-				throw new HttpError("VALIDATION_FAILED", "That is not one of the suggestions")
-			}
+			if (!starter) throw new HttpError("VALIDATION_FAILED", "That is not one of the suggestions")
 			projectData.starterProjectId = starter.id
 			projectData.title = starter.title
 			projectData.description = starter.description
@@ -237,9 +231,7 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 		case "tier": {
 			if (answer.requestedTier === null) {
 				// Only the locked case may decline to choose: its tier was already written when the starter project was taken, so there is nothing left to answer. Anyone else is trying to skip the question.
-				if (!before.project.tierLocked) {
-					throw new HttpError("VALIDATION_FAILED", "Pick one of the three tiers")
-				}
+				if (!before.project.tierLocked) throw new HttpError("VALIDATION_FAILED", "Pick one of the three tiers")
 				break
 			}
 			if (before.project.tierLocked) {
@@ -248,9 +240,7 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 					"Starter projects are Tier 1. Write your own project idea to choose a different tier.",
 				)
 			}
-			if (!isTierId(answer.requestedTier)) {
-				throw new HttpError("VALIDATION_FAILED", "Pick one of the three tiers")
-			}
+			if (!isTierId(answer.requestedTier)) throw new HttpError("VALIDATION_FAILED", "Pick one of the three tiers")
 			projectData.requestedTier = answer.requestedTier
 			break
 		}

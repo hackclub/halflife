@@ -776,9 +776,8 @@ function aggregateByKey(inputs: RegionInputs, keyOf: (timezone: string | null) =
 		if (s.hoursSource === HoursSource.HACKATIME_TRACKED) continue
 		row(userKey.get(s.themeProject.userId) ?? "Unknown").hours += s.hoursApproved ?? s.hoursClaimed
 	}
-	for (const l of inputs.links) {
+	for (const l of inputs.links)
 		row(userKey.get(l.themeProject.userId) ?? "Unknown").hours += l.hoursApproved ?? (l.cachedSeconds ?? 0) / 3600
-	}
 	return totals
 }
 
@@ -834,9 +833,7 @@ export async function getDailyActivity(): Promise<DayActivity[]> {
 			byDay.set(day, row)
 		}
 		row.devlogs += 1
-		if (s.hoursSource !== HoursSource.HACKATIME_TRACKED) {
-			row.hours += s.hoursApproved ?? s.hoursClaimed
-		}
+		if (s.hoursSource !== HoursSource.HACKATIME_TRACKED) row.hours += s.hoursApproved ?? s.hoursClaimed
 	}
 
 	const days = [...byDay.keys()].sort()

@@ -12,9 +12,8 @@ const BUILD_TIME_DATABASE_URL = "postgresql://placeholder:placeholder@localhost:
 
 function createClient(): PrismaClient {
 	const connectionString = process.env.DATABASE_URL
-	if (!connectionString && process.env.NEXT_PHASE !== "phase-production-build") {
+	if (!connectionString && process.env.NEXT_PHASE !== "phase-production-build")
 		throw new Error("DATABASE_URL is not set")
-	}
 	return new PrismaClient({
 		adapter: new PrismaPg({
 			connectionString: connectionString ?? BUILD_TIME_DATABASE_URL,

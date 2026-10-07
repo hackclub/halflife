@@ -75,9 +75,7 @@ function snapshot(ref: RepoRef): Promise<Snapshot> {
 	if (hit && now - hit.at < hit.ttl) return hit.value
 
 	if (snapshots.size >= SNAPSHOT_CACHE_MAX) {
-		for (const [k, v] of snapshots) {
-			if (now - v.at >= v.ttl) snapshots.delete(k)
-		}
+		for (const [k, v] of snapshots) if (now - v.at >= v.ttl) snapshots.delete(k)
 		// Still full of live entries: drop the oldest. Map keeps insertion order.
 		const oldest = snapshots.keys().next()
 		if (snapshots.size >= SNAPSHOT_CACHE_MAX && !oldest.done) snapshots.delete(oldest.value)
@@ -141,9 +139,7 @@ async function fetchGitHubSnapshot(ref: RepoRef): Promise<Snapshot> {
 	let readme: string | null = null
 	if (readmeRes.ok) {
 		const r = (await readmeRes.json()) as { content?: string; encoding?: string }
-		if (r.content && r.encoding === "base64") {
-			readme = Buffer.from(r.content, "base64").toString("utf-8")
-		}
+		if (r.content && r.encoding === "base64") readme = Buffer.from(r.content, "base64").toString("utf-8")
 	}
 
 	return { kind: "ok", paths, files, readme, truncated: body.truncated === true }
@@ -181,9 +177,7 @@ async function fetchGitLabSnapshot(ref: RepoRef): Promise<Snapshot> {
 	let res = first
 	while (page <= MAX_PAGES) {
 		const entries = (await res.json()) as { path: string; type: string }[]
-		for (const entry of entries) {
-			if (entry.type === "blob") files.push(entry.path)
-		}
+		for (const entry of entries) if (entry.type === "blob") files.push(entry.path)
 		const next = res.headers.get("x-next-page")
 		if (!next) break
 		page = Number(next)

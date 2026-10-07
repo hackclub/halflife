@@ -21,12 +21,10 @@ export async function deleteBlockReason(project: {
 	buildStatus: PhaseStatus
 	grantEmittedAt: Date | null
 }): Promise<string | null> {
-	if (project.designStatus === PhaseStatus.in_review || project.buildStatus === PhaseStatus.in_review) {
+	if (project.designStatus === PhaseStatus.in_review || project.buildStatus === PhaseStatus.in_review)
 		return "Unsubmit before deleting – a phase is in review"
-	}
-	if (project.designStatus === PhaseStatus.approved || project.buildStatus === PhaseStatus.approved) {
+	if (project.designStatus === PhaseStatus.approved || project.buildStatus === PhaseStatus.approved)
 		return "An approved project can't be deleted"
-	}
 	if (project.grantEmittedAt) return "A funded project can't be deleted"
 
 	const [ledger, topUps, disputes] = await Promise.all([

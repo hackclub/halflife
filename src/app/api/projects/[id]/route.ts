@@ -72,35 +72,30 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 	if (!access.open) return fail("SUBMISSIONS_CLOSED", SUBMISSIONS_CLOSED_MESSAGE)
 
 	// Editing the thing a reviewer is currently reading changes what they are deciding on halfway through.
-	if (project.designStatus === PhaseStatus.in_review || project.buildStatus === PhaseStatus.in_review) {
+	if (project.designStatus === PhaseStatus.in_review || project.buildStatus === PhaseStatus.in_review)
 		return fail("PHASE_LOCKED", "Unsubmit before editing – a phase is in review")
-	}
 
 	const data = parsed.data
 
 	// A starter can only be taken if it is one of this week's: anyone may switch to one from the project page after creation, beginner or not – the tier-1 scoping below is what keeps a starter a starter, not who was offered it during onboarding.
 	if (data.starterProjectId) {
 		const offered = starterProjectsFor(project.theme)
-		if (!offered.some((p) => p.id === data.starterProjectId)) {
+		if (!offered.some((p) => p.id === data.starterProjectId))
 			return fail("VALIDATION_FAILED", "That is not one of this week's starter projects")
-		}
 	}
 	// The starter the project will have after this request, since the same request may be the one taking it or dropping it.
 	const starterAfter = data.starterProjectId !== undefined ? data.starterProjectId : project.starterProjectId
 
 	// The project page promises the tier is final once the design week is handed in, and a starter project is scoped to tier 1 from the start. Hold the server to the same promise rather than trusting the picker to be hidden.
 	if (data.requestedTier !== undefined && data.requestedTier !== project.requestedTier) {
-		if (project.designStatus === PhaseStatus.approved) {
+		if (project.designStatus === PhaseStatus.approved)
 			return fail("PHASE_LOCKED", "The design week is approved, so the tier is final")
-		}
-		if (starterAfter !== null && data.requestedTier !== 1) {
+		if (starterAfter !== null && data.requestedTier !== 1)
 			return fail("VALIDATION_FAILED", "Starter projects are fixed to tier 1")
-		}
 	}
 	// Taking a starter without also asking for tier 1 would leave a starter at a bigger tier, which the check above only catches when the tier changes.
-	if (data.starterProjectId && (data.requestedTier ?? project.requestedTier) !== 1) {
+	if (data.starterProjectId && (data.requestedTier ?? project.requestedTier) !== 1)
 		return fail("VALIDATION_FAILED", "Starter projects are fixed to tier 1")
-	}
 
 	// A cover is a key, and a key is a path into the bucket: only one this user uploaded as a cover, or a project could point its cover at anyone's file. `isOwnedKey` refuses path tricks (`..`, `%2e%2e`); the prefix pins it to the covers folder, so a key genuinely yours but uploaded as session evidence cannot be re-filed as a cover.
 	if (

@@ -244,9 +244,8 @@ export async function purchase(
 					buildStatus: PhaseStatus.approved,
 				},
 			})
-			if (shipped < THEMES_REQUIRED_FOR_PRINTER) {
+			if (shipped < THEMES_REQUIRED_FOR_PRINTER)
 				throw new HttpError("ITEM_LOCKED", "This item is locked for your account")
-			}
 		}
 
 		// The buyer's region, re-read here rather than trusted from the shelf: the price on the order is whatever this resolves to, so display and charge cannot drift apart.
@@ -274,12 +273,9 @@ export async function purchase(
 		// Re-read stock inside the transaction; the catalogue page may be stale.
 		const fresh = await tx.shopItem.findUnique({ where: { id: shopItemId } })
 		// A printer is hidden from the shop, so it is as good as not there: a request for one by id is refused the same way a retired item is.
-		if (!fresh?.active || fresh.category === ShopItemCategory.PRINTER) {
+		if (!fresh?.active || fresh.category === ShopItemCategory.PRINTER)
 			throw new HttpError("NOT_FOUND", "Item not found")
-		}
-		if (fresh.stock !== null && fresh.stock < quantity) {
-			throw new HttpError("OUT_OF_STOCK", "Not enough stock left")
-		}
+		if (fresh.stock !== null && fresh.stock < quantity) throw new HttpError("OUT_OF_STOCK", "Not enough stock left")
 
 		if (fresh.maxPerUser > 0) {
 			const owned = await tx.shopOrder.aggregate({
@@ -361,9 +357,8 @@ export async function rejectOrder(orderId: string, adminId: string, reason: stri
 
 		const order = await tx.shopOrder.findUnique({ where: { id: orderId } })
 		if (!order) throw new HttpError("NOT_FOUND", "Order not found")
-		if (order.status !== ShopOrderStatus.PENDING && order.status !== ShopOrderStatus.ON_HOLD) {
+		if (order.status !== ShopOrderStatus.PENDING && order.status !== ShopOrderStatus.ON_HOLD)
 			throw new HttpError("CONFLICT", "This order has already been decided")
-		}
 
 		// Refund each pot exactly what it paid, by reading back the purchase rows rather than assuming. Refunding the whole total as spendable would turn a rejected printer order into a laundering step: coins that could only ever have bought a printer would come back as coins that can buy anything.
 		const paid = await tx.ledgerEntry.groupBy({
@@ -427,15 +422,9 @@ export async function fulfillOrder(
 
 		const order = await tx.shopOrder.findUnique({ where: { id: orderId } })
 		if (!order) throw new HttpError("NOT_FOUND", "Order not found")
-		if (order.status === ShopOrderStatus.FULFILLED) {
-			throw new HttpError("CONFLICT", "This order is already fulfilled")
-		}
-		if (order.status === ShopOrderStatus.REJECTED) {
-			throw new HttpError("CONFLICT", "This order was rejected")
-		}
-		if (order.status === ShopOrderStatus.CANCELLED) {
-			throw new HttpError("CONFLICT", "This order was cancelled")
-		}
+		if (order.status === ShopOrderStatus.FULFILLED) throw new HttpError("CONFLICT", "This order is already fulfilled")
+		if (order.status === ShopOrderStatus.REJECTED) throw new HttpError("CONFLICT", "This order was rejected")
+		if (order.status === ShopOrderStatus.CANCELLED) throw new HttpError("CONFLICT", "This order was cancelled")
 
 		const claimed = await tx.shopOrder.updateMany({
 			where: { id: orderId, status: order.status },
@@ -447,9 +436,7 @@ export async function fulfillOrder(
 				lastActorId: adminId,
 			},
 		})
-		if (claimed.count !== 1) {
-			throw new HttpError("CONFLICT", "This order was decided by someone else")
-		}
+		if (claimed.count !== 1) throw new HttpError("CONFLICT", "This order was decided by someone else")
 
 		return tx.shopOrder.findUniqueOrThrow({ where: { id: orderId } })
 	})

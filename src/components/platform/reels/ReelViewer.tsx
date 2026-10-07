@@ -331,9 +331,7 @@ export function ReelViewer() {
 			// A checkpoint modal can open over any route, and typing is typing.
 			if (document.querySelector("[role='dialog']")) return
 			const el = e.target
-			if (el instanceof Element && el.closest("input, textarea, select, [contenteditable='true']")) {
-				return
-			}
+			if (el instanceof Element && el.closest("input, textarea, select, [contenteditable='true']")) return
 
 			// Space is a button's own key when one has focus; anywhere else it is the player's.
 			if (e.key === " " && !(el instanceof Element && el.closest("button, a, [role='slider']"))) {

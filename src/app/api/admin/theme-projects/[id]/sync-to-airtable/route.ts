@@ -34,9 +34,8 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	})
 	if (!project) return fail("NOT_FOUND", "Project not found")
 	const status = parsed.data.phase === "DESIGN" ? project.designStatus : project.buildStatus
-	if (status === PhaseStatus.draft) {
+	if (status === PhaseStatus.draft)
 		return fail("VALIDATION_FAILED", "That phase has not been submitted, so it has no Airtable row")
-	}
 
 	const result = await trackSideEffect(
 		"airtable",

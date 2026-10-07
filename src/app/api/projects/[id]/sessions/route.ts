@@ -81,32 +81,25 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	// A new entry completes a checkpoint, so a deleted reel still owed holds it.
 	await assertNoOwedReel(gate.user.id)
 
-	if (project.theme === Theme.WARMUP && data.phase !== warmupPhaseOf(project)) {
+	if (project.theme === Theme.WARMUP && data.phase !== warmupPhaseOf(project))
 		return fail("VALIDATION_FAILED", "Entries on a warm-up project go on the phase it is submitted as")
-	}
 
 	const week = scheduledWeekFor(project.theme, data.phase)
 	await assertWeekStarted(week)
-	if (!(await isWeekOpen(gate.user.id, id, week))) {
-		return fail("WEEK_CLOSED", WEEK_CLOSED_MESSAGE)
-	}
+	if (!(await isWeekOpen(gate.user.id, id, week))) return fail("WEEK_CLOSED", WEEK_CLOSED_MESSAGE)
 
 	const phaseStatus = data.phase === "DESIGN" ? project.designStatus : project.buildStatus
-	if (phaseStatus === PhaseStatus.in_review) {
+	if (phaseStatus === PhaseStatus.in_review)
 		return fail("PHASE_LOCKED", "This phase is in review – unsubmit before logging more work")
-	}
 	// Same rule as editing an entry: once a week is decided, its entries are the record the decision was made against. Without this, hours could be logged after approval and paid out on the next un-approve/re-approve cycle.
-	if (isPhaseDecided(phaseStatus)) {
+	if (isPhaseDecided(phaseStatus))
 		return fail("PHASE_LOCKED", "This phase has been submitted and decided, so new entries cannot be added")
-	}
 
 	// Evidence has to be the claimant's own. Keys are not secrets – the feed hands out a full video URL for every reel – so without this someone could attach a stranger's timelapse as proof of hours they did not work, which is the one thing the timelapse rule exists to make hard.
 	//
 	// Rejected rather than quietly dropped: a participant who thinks they attached a clip and finds it missing at review has been failed silently.
 	const foreign = data.media.map((m) => m.objectKey).filter((key) => !isOwnedKey(gate.user.id, key))
-	if (foreign.length > 0) {
-		return fail("VALIDATION_FAILED", "Those uploads are not yours")
-	}
+	if (foreign.length > 0) return fail("VALIDATION_FAILED", "Those uploads are not yours")
 
 	// Timelapses are the same rule asked of Lapse: each must be the caller's own, published, and done processing. And one recording backs one session – otherwise the same footage could be offered as proof twice. That check is read-then-create, so it happens inside the transaction under a lock on the recording; two parallel submits of the same clip otherwise both pass it.
 	const lapseIds = [...new Set(data.timelapses.map((t) => t.lapseId))]

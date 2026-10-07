@@ -58,17 +58,14 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 
 	// A submitted week's entries are what it was judged on, or is being judged on: in review, a reviewer is reading them; decided, they are the record the decision was made against. Only a week that is still open or has been sent back for changes can have its entries corrected.
 	const phaseStatus = session.phase === "DESIGN" ? session.themeProject.designStatus : session.themeProject.buildStatus
-	if (phaseStatus === PhaseStatus.in_review) {
+	if (phaseStatus === PhaseStatus.in_review)
 		return fail("PHASE_LOCKED", "This week is in review – unsubmit it before editing its entries")
-	}
-	if (isPhaseDecided(phaseStatus)) {
+	if (isPhaseDecided(phaseStatus))
 		return fail("PHASE_LOCKED", "This week has been submitted and decided, so its entries are final")
-	}
 
 	// Once a reviewer has set hours on an entry, the participant editing it would silently invalidate the number the review was based on.
-	if (session.hoursApproved !== null) {
+	if (session.hoursApproved !== null)
 		return fail("PHASE_LOCKED", "This entry has been reviewed and can no longer be edited")
-	}
 
 	// Timelapse re-attachment. `timelapses`, when present, is the full desired set of LAPSE clips: rows for ids already on this session are kept without re-verification, so a clip that went private since does not fail an unrelated words edit; brand-new ids go through the same ownership and single-use checks as creation; lapse rows for anything else come off. Ids naming this session's own older R2 uploads are kept silently – those rows predate Lapse and are never touched here.
 	const rows = await prisma.sessionTimelapse.findMany({
@@ -118,9 +115,8 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 		},
 	})
 
-	if (data.hoursClaimed !== undefined || data.hoursSource !== undefined || data.timelapses !== undefined) {
+	if (data.hoursClaimed !== undefined || data.hoursSource !== undefined || data.timelapses !== undefined)
 		await recomputeWeek(gate.user.id, session.weekNumber)
-	}
 
 	// Attaching, dropping or swapping a recording moves the window Hackatime's hours are deduplicated against, so the cached spans covering it are refetched off the response path. `addIds` is the narrower truth for a pure reattach of clips already on this entry, but a removal narrows the window just as much, so the cache is warmed whenever the clip set was touched at all.
 	if (want !== null) after(() => refreshOverlapSpans(id, session.phase))
@@ -141,18 +137,15 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 	const access = await getSubmissionAccess(gate.user.id, id)
 	if (!access.open) return fail("SUBMISSIONS_CLOSED", SUBMISSIONS_CLOSED_MESSAGE)
 
-	if (session.hoursApproved !== null) {
+	if (session.hoursApproved !== null)
 		return fail("PHASE_LOCKED", "This entry has been reviewed and can no longer be deleted")
-	}
 	// Deleting an entry is a correction to the record, so it freezes with the phase: while a reviewer is reading the week, its evidence has to sit still, exactly as editing it does.
 	const phaseStatus = session.phase === "DESIGN" ? session.themeProject.designStatus : session.themeProject.buildStatus
-	if (phaseStatus === PhaseStatus.in_review) {
+	if (phaseStatus === PhaseStatus.in_review)
 		return fail("PHASE_LOCKED", "This week is in review – unsubmit it before deleting its entries")
-	}
 	// Once the week is decided its entries are final, exactly as editing is.
-	if (isPhaseDecided(phaseStatus)) {
+	if (isPhaseDecided(phaseStatus))
 		return fail("PHASE_LOCKED", "This week has been submitted and decided, so its entries are final")
-	}
 	if (!(await weekOpenFor(gate.user.id, id, session))) return fail("WEEK_CLOSED", WEEK_CLOSED_MESSAGE)
 
 	// Deleting the only session on a day removes that day from the run, so the streak has to be recomputed with it. PATCH does not, because it cannot change `effectiveDate` – the set of journalled days is the same after it.

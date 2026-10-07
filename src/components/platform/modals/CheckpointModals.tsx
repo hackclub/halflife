@@ -239,9 +239,8 @@ async function storeImage(source: ImageSource): Promise<{ url: string | null }> 
 
 /** Take an image's placeholder back out of the entry, with the blank line it came with. */
 function withoutPlaceholder(body: string, placeholder: string): string {
-	for (const form of [`\n\n${placeholder}`, `${placeholder}\n\n`, placeholder]) {
+	for (const form of [`\n\n${placeholder}`, `${placeholder}\n\n`, placeholder])
 		if (body.includes(form)) return body.replace(form, "")
-	}
 	return body
 }
 

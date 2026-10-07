@@ -142,9 +142,7 @@ export function OnboardingFlow({
 				return next
 			}
 
-			if (opts.advance !== false) {
-				setViewing((current) => Math.min(current + 1, next.steps.length - 1))
-			}
+			if (opts.advance !== false) setViewing((current) => Math.min(current + 1, next.steps.length - 1))
 			return next
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Something went wrong")

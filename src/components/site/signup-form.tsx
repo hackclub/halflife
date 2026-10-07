@@ -50,9 +50,7 @@ export default function SignupForm({
 	useEffect(() => {
 		const params = new URLSearchParams(window.location.search)
 		const prefill = params.get("email")?.trim()
-		if (prefill && inputRef.current && !inputRef.current.value) {
-			inputRef.current.value = prefill
-		}
+		if (prefill && inputRef.current && !inputRef.current.value) inputRef.current.value = prefill
 		// A callback that could not attach the Hack Club identity sends the person back here with a flag, so they meet an explanation on the field they sign in with rather than an empty page. The common case – a staff-imported row that was never verified – is repaired automatically at the callback (lib/hca-profile), so this is the remainder.
 		if (params.get("error") === "account_not_linked") {
 			// eslint-disable-next-line react-hooks/set-state-in-effect -- reading the redirect flag after hydration

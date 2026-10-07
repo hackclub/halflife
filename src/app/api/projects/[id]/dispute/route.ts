@@ -29,9 +29,8 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	if (!project) return fail("NOT_FOUND", "Project not found")
 
 	const status = phase === "DESIGN" ? project.designStatus : project.buildStatus
-	if (status !== "update_requested" && status !== "rejected") {
+	if (status !== "update_requested" && status !== "rejected")
 		return fail("CONFLICT", "Only a review that asked for changes or rejected the work can be disputed")
-	}
 
 	const submission = await prisma.phaseSubmission.findFirst({
 		where: { themeProjectId: id, phase, resolvedAt: { not: null } },

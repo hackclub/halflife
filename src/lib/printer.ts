@@ -146,9 +146,8 @@ export async function updatePrinterAwardStatus(
 			`A ${PRINTER_AWARD_LABELS[award.status]} award cannot move to ${PRINTER_AWARD_LABELS[input.status]}`,
 		)
 	}
-	if (input.status === "REVOKED" && !input.note.trim()) {
+	if (input.status === "REVOKED" && !input.note.trim())
 		throw new HttpError("VALIDATION_FAILED", "Say why the award is being revoked")
-	}
 
 	const trackingNumber = input.trackingNumber?.trim() || null
 	const trackingCarrier = input.trackingCarrier?.trim() || null
@@ -188,9 +187,8 @@ export async function updatePrinterAwardStatus(
 		where: { id: awardId, status: award.status, revokedAt: null },
 		data,
 	})
-	if (moved.count !== 1) {
+	if (moved.count !== 1)
 		throw new HttpError("CONFLICT", "The award moved while this was being saved – reload and try again")
-	}
 
 	await logAudit({
 		action: input.status === "REVOKED" ? AuditAction.PRINTER_REVOKED : AuditAction.PRINTER_STATUS_CHANGE,

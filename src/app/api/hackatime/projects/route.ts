@@ -13,9 +13,7 @@ export const GET = withRoute(async () => {
 		where: { id: gate.user.id },
 		select: { hackatimeUserId: true },
 	})
-	if (!user?.hackatimeUserId) {
-		return fail("HACKATIME_NOT_LINKED", "Link your Hackatime account first")
-	}
+	if (!user?.hackatimeUserId) return fail("HACKATIME_NOT_LINKED", "Link your Hackatime account first")
 
 	return ok({ projects: await listUserProjects(user.hackatimeUserId) })
 })

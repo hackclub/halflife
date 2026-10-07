@@ -132,8 +132,6 @@ export function streakAsOf(stored: { currentStreak: number; lastStreakDate: stri
 /** Rebuild every user's streak. For a backfill or after editing the rules. */
 export async function recomputeAllStreaks(): Promise<number> {
 	const users = await prisma.user.findMany({ select: { id: true } })
-	for (const user of users) {
-		await prisma.$transaction((tx) => recomputeStreak(tx, user.id))
-	}
+	for (const user of users) await prisma.$transaction((tx) => recomputeStreak(tx, user.id))
 	return users.length
 }

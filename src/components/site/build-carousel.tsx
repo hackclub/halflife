@@ -135,9 +135,7 @@ export default function BuildCarousel() {
 
 			if (v > 0 && cycle > 0) {
 				// Our own fractional position is authoritative; resync only when the reader has taken the belt somewhere themselves.
-				if (Math.abs(rail.scrollLeft - posRef.current) > 1.5) {
-					posRef.current = norm(rail.scrollLeft, cycle)
-				}
+				if (Math.abs(rail.scrollLeft - posRef.current) > 1.5) posRef.current = norm(rail.scrollLeft, cycle)
 				posRef.current = norm(posRef.current + v * dt, cycle)
 				rail.scrollLeft = posRef.current
 			}

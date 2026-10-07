@@ -71,9 +71,7 @@ export async function lapseCredentials(userId: string) {
 		select: { accountId: true, accessToken: true, accessTokenExpiresAt: true },
 	})
 	if (!account?.accessToken) throw NOT_LINKED()
-	if (account.accessTokenExpiresAt && account.accessTokenExpiresAt.getTime() <= Date.now()) {
-		throw NOT_LINKED()
-	}
+	if (account.accessTokenExpiresAt && account.accessTokenExpiresAt.getTime() <= Date.now()) throw NOT_LINKED()
 	return { lapseUserId: account.accountId, accessToken: account.accessToken }
 }
 
@@ -103,9 +101,7 @@ async function call<T>(accessToken: string, path: string, query?: Record<string,
 	if (!body) throw new HttpError("LAPSE_UNAVAILABLE", `Lapse returned HTTP ${res.status}`)
 	if (!body.ok) {
 		if (body.error === "EXPIRED") throw NOT_LINKED()
-		if (body.error === "NO_PERMISSION") {
-			throw new HttpError("VALIDATION_FAILED", "That timelapse is not one of yours")
-		}
+		if (body.error === "NO_PERMISSION") throw new HttpError("VALIDATION_FAILED", "That timelapse is not one of yours")
 		if (body.error === "NOT_FOUND") throw new HttpError("NOT_FOUND", "That timelapse is not on Lapse")
 		throw new HttpError("LAPSE_UNAVAILABLE", body.message || "Lapse refused the request")
 	}

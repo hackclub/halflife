@@ -138,13 +138,11 @@ export async function submitPhase(
 	if (!eligible.ok) throw new HttpError(eligible.code, eligible.message)
 
 	// The readiness checklist calls a description required, and the Ari SDK refuses a ship without one. Week one's onboarding lets the maker leave it blank (the project form for other weeks does not), so a blank description used to pass submit and then fail the Ari send silently in the `after` hook – the maker saw success and no reviewer ever saw the project. Enforce it here, beside the hours check, so the refusal reaches the person who can fix it. `buildShipInput` keeps a fallback too, so hand-ins already stuck in this state can still be replayed by `ari-retry`.
-	if (!project.description?.trim()) {
+	if (!project.description?.trim())
 		throw new HttpError("UNPROCESSABLE", "Add a project description before submitting this phase")
-	}
 
-	if (!project.coverImageKey) {
+	if (!project.coverImageKey)
 		throw new HttpError("UNPROCESSABLE", "Upload a cover image for your project before submitting this phase")
-	}
 
 	// Handing a week in is a checkpoint too; a deleted reel still owed holds it.
 	await assertNoOwedReel(userId)
@@ -154,23 +152,19 @@ export async function submitPhase(
 	if (foreign.length > 0) throw new HttpError("VALIDATION_FAILED", "Those uploads are not yours")
 
 	const breakdown = await getHoursBreakdown(themeProjectId, phase)
-	if (breakdown.journalEntryCount === 0 && breakdown.hackatimeHours === 0) {
+	if (breakdown.journalEntryCount === 0 && breakdown.hackatimeHours === 0)
 		throw new HttpError("UNPROCESSABLE", "Log at least one work session before submitting this phase")
-	}
 
 	// Identity verification is gated here rather than at signup, so people can explore and log work before they have finished verifying.
 	const user = await prisma.user.findUnique({
 		where: { id: userId },
 		select: { verificationStatus: true, fraudFlagged: true },
 	})
-	if (user?.fraudFlagged) {
-		throw new HttpError("FORBIDDEN", "Your account is under review. Reach out in Slack.")
-	}
+	if (user?.fraudFlagged) throw new HttpError("FORBIDDEN", "Your account is under review. Reach out in Slack.")
 	// The stored status is from the last sign-in. Someone who finished verifying since then is verified now, so HCA is asked again before anyone is turned away – and only then, so a verified maker's submit costs no extra call.
 	let verificationStatus = user?.verificationStatus ?? null
-	if (process.env.SKIP_YSWS_VERIFICATION_CHECK !== "true" && verificationStatus !== "verified") {
+	if (process.env.SKIP_YSWS_VERIFICATION_CHECK !== "true" && verificationStatus !== "verified")
 		verificationStatus = (await syncHcaProfile(userId)) ?? verificationStatus
-	}
 	if (process.env.SKIP_YSWS_VERIFICATION_CHECK !== "true" && verificationStatus !== "verified") {
 		throw new HttpError(
 			"NOT_VERIFIED",
@@ -207,9 +201,7 @@ export async function submitPhase(
 			},
 			data: phase === Phase.DESIGN ? { designStatus: PhaseStatus.in_review } : { buildStatus: PhaseStatus.in_review },
 		})
-		if (claimed.count !== 1) {
-			throw new HttpError("ALREADY_SUBMITTED", "This phase is already in review")
-		}
+		if (claimed.count !== 1) throw new HttpError("ALREADY_SUBMITTED", "This phase is already in review")
 
 		return tx.phaseSubmission.create({
 			data: {
@@ -232,9 +224,8 @@ export async function unsubmitPhase(userId: string, themeProjectId: string, phas
 	})
 	if (!project) throw new HttpError("NOT_FOUND", "Project not found")
 
-	if (statusFor(project, phase) !== PhaseStatus.in_review) {
+	if (statusFor(project, phase) !== PhaseStatus.in_review)
 		throw new HttpError("NOT_SUBMITTED", "This phase is not awaiting review")
-	}
 
 	return prisma.$transaction(async (tx) => {
 		// Serialize against the review path. finalizeReview takes this same per-user credit lock before it re-reads the submission, so holding it here means a decision cannot land between our read and our delete.
@@ -245,9 +236,8 @@ export async function unsubmitPhase(userId: string, themeProjectId: string, phas
 			where: { id: themeProjectId },
 			select: { designStatus: true, buildStatus: true },
 		})
-		if ((phase === Phase.DESIGN ? current.designStatus : current.buildStatus) !== PhaseStatus.in_review) {
+		if ((phase === Phase.DESIGN ? current.designStatus : current.buildStatus) !== PhaseStatus.in_review)
 			throw new HttpError("NOT_SUBMITTED", "This phase is not awaiting review")
-		}
 
 		const open = await tx.phaseSubmission.findFirst({
 			where: { themeProjectId, phase, resolvedAt: null },
@@ -257,15 +247,12 @@ export async function unsubmitPhase(userId: string, themeProjectId: string, phas
 		if (!open) throw new HttpError("NOT_SUBMITTED", "No open submission found")
 
 		// Withdrawing work a reviewer is actively reading wastes their time and races the decision they are about to write.
-		if (open.claim && open.claim.expiresAt > new Date()) {
+		if (open.claim && open.claim.expiresAt > new Date())
 			throw new HttpError("CLAIMED_BY_OTHER", "A reviewer is looking at this right now")
-		}
 
 		// Conditional on still being unresolved: a decision that committed before the lock was ours has made this row its record, and withdrawing it would cascade the review away and put a decided phase back to draft.
 		const withdrawn = await tx.phaseSubmission.deleteMany({ where: { id: open.id, resolvedAt: null } })
-		if (withdrawn.count !== 1) {
-			throw new HttpError("ALREADY_RESOLVED", "This submission has already been decided")
-		}
+		if (withdrawn.count !== 1) throw new HttpError("ALREADY_RESOLVED", "This submission has already been decided")
 
 		const flipped = await tx.themeProject.updateMany({
 			where: {

@@ -32,9 +32,7 @@ export const POST = withRoute(async (req: Request) => {
 	const result = await submitStep(gate.user.id, parsed.data as OnboardingAnswer)
 
 	// The analytics stamp for a named project: after the response, since it is nothing the person is waiting on, and quiet about its own failures.
-	if (result.touchedProject) {
-		after(() => markProjectCreated(result.state.project.id, gate.user.id))
-	}
+	if (result.touchedProject) after(() => markProjectCreated(result.state.project.id, gate.user.id))
 
 	// A repo chosen on the last step is written to GitHub after the response. Its failure is recorded on the project (and shown on its page), not thrown back at someone who has just finished setup.
 	if (result.repoRequest) {

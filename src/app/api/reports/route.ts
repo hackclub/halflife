@@ -21,9 +21,8 @@ export const POST = withRoute(async (req: Request) => {
 	if (parsed.error) return parsed.error
 	const { target, targetId, reason, details } = parsed.data
 
-	if (rateLimitedInMemory(`report:${gate.user.id}`, 10, 60_000)) {
+	if (rateLimitedInMemory(`report:${gate.user.id}`, 10, 60_000))
 		return fail("RATE_LIMITED", "Slow down a second, then try again.")
-	}
 
 	const label = REPORT_TARGET_LABELS[target as ReportTarget].toLowerCase()
 

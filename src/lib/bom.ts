@@ -45,12 +45,9 @@ export function listBom(themeProjectId: string): Promise<BomLine[]> {
  * In review for the same reason the project itself is: editing what a reviewer is reading changes the thing being decided halfway through. And final once the design is approved, because that approval is what paid the tier out against this list.
  */
 export function bomLockReason(project: { designStatus: PhaseStatus; buildStatus: PhaseStatus }): string | null {
-	if (project.designStatus === PhaseStatus.in_review || project.buildStatus === PhaseStatus.in_review) {
+	if (project.designStatus === PhaseStatus.in_review || project.buildStatus === PhaseStatus.in_review)
 		return "Unsubmit before editing – a phase is in review"
-	}
-	if (project.designStatus === PhaseStatus.approved) {
-		return "The design week is approved, so the parts list is final"
-	}
+	if (project.designStatus === PhaseStatus.approved) return "The design week is approved, so the parts list is final"
 	return null
 }
 

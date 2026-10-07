@@ -214,9 +214,8 @@ async function handleThreadMarkHelped(payload: InteractionPayload, action: Block
 
 	// The help channel is open to every participant, so the button is gated on membership of the private tickets channel the bot posts to – the same people who can resolve it from there.
 	if (!ref.ticketsChannel || !(await isChannelMember(ref.ticketsChannel, payload.user.id))) {
-		if (payload.response_url) {
+		if (payload.response_url)
 			await respondEphemeral(payload.response_url, "Only the Half Life team can resolve a ticket from the thread.")
-		}
 		return
 	}
 

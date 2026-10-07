@@ -380,9 +380,8 @@ async function commitGitHub(
 		headers: { "content-type": "application/json" },
 		body: JSON.stringify({ sha: commit, force: false }),
 	})
-	if (updateRes.status === 422) {
+	if (updateRes.status === 422)
 		throw new HttpError("CONFLICT", "The repo moved while syncing. Nothing was written; try again.")
-	}
 	if (!updateRes.ok) throw new ForgeWriteUnavailable(`${creds.forge.label} did not answer.`)
 
 	return written.sort((a, b) => a.path.localeCompare(b.path))
@@ -420,9 +419,7 @@ async function currentBlobShas(creds: ForgeCredentials, base: string, treeSha: s
 	const out = new Map<string, string>()
 	if (!res.ok) return out
 	const body = (await res.json()) as { tree?: { path: string; type: string; sha: string }[] }
-	for (const entry of body.tree ?? []) {
-		if (entry.type === "blob") out.set(entry.path, entry.sha)
-	}
+	for (const entry of body.tree ?? []) if (entry.type === "blob") out.set(entry.path, entry.sha)
 	return out
 }
 
@@ -487,9 +484,7 @@ async function commitGitLab(
 		if (!res.ok) break
 		const entries = (await res.json()) as { path: string; type: string }[]
 		if (entries.length === 0) break
-		for (const entry of entries) {
-			if (entry.type === "blob") existing.set(entry.path, entry.path)
-		}
+		for (const entry of entries) if (entry.type === "blob") existing.set(entry.path, entry.path)
 		// GitLab signals another page with `x-next-page`; an empty one ends it.
 		const next = res.headers.get("x-next-page")
 		if (!next) break
@@ -529,9 +524,7 @@ async function commitGitLab(
 		}),
 	)
 
-	if (actions.length === 0) {
-		return written.sort((a, b) => a.path.localeCompare(b.path))
-	}
+	if (actions.length === 0) return written.sort((a, b) => a.path.localeCompare(b.path))
 
 	const commitRes = await call(creds, `projects/${project}/repository/commits`, {
 		method: "POST",
@@ -539,9 +532,8 @@ async function commitGitLab(
 		body: JSON.stringify({ branch, commit_message: message, actions }),
 	})
 	// GitLab answers 409 when the branch moved under us, which is the same finding as GitHub's 422 on a non-fast-forward ref update.
-	if (commitRes.status === 409) {
+	if (commitRes.status === 409)
 		throw new HttpError("CONFLICT", "The repo moved while syncing. Nothing was written; try again.")
-	}
 	if (!commitRes.ok) throw new ForgeWriteUnavailable(`${creds.forge.label} did not answer.`)
 	const commit = (await commitRes.json()) as { id: string }
 

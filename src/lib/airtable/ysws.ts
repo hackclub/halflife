@@ -114,9 +114,8 @@ export async function writeYswsRecord(
 	let id = recordId
 	if (!id) {
 		const existing = await findExistingRow(config, fields)
-		if (existing === "ambiguous") {
+		if (existing === "ambiguous")
 			throw new Error("More than one Airtable row matches this submission; resolve the duplicate before syncing")
-		}
 		if (existing) {
 			console.warn(`[airtable] adopting existing YSWS row ${existing.id}; the previous write left no record id`)
 			id = existing.id

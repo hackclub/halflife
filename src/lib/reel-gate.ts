@@ -63,9 +63,8 @@ export async function reelLockReason(
 	const phase = week > DESIGN_WEEKS ? Phase.BUILD : Phase.DESIGN
 	const status = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
 	if (status === PhaseStatus.in_review) return "This week is in review. Unsubmit it to delete its reels."
-	if (status === PhaseStatus.approved || status === PhaseStatus.rejected) {
+	if (status === PhaseStatus.approved || status === PhaseStatus.rejected)
 		return "This week has been reviewed, so its reels stay as the record."
-	}
 	if (!(await isWeekOpen(userId, themeProjectId, week))) return "This week has passed, so its reels stay."
 	return null
 }
@@ -77,9 +76,8 @@ export async function getOwedReelKeys(userId: string): Promise<string[]> {
 		select: { checkpointKey: true, themeProjectId: true },
 	})
 	const projectByKey = new Map<string, string | null>()
-	for (const p of deleted) {
+	for (const p of deleted)
 		if (p.checkpointKey && REDOABLE.test(p.checkpointKey)) projectByKey.set(p.checkpointKey, p.themeProjectId)
-	}
 	if (projectByKey.size === 0) return []
 
 	const live = await prisma.post.findMany({
