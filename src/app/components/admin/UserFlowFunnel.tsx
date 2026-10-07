@@ -78,7 +78,7 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 				style={{
 					gap: "0.5rem",
 					justifyContent: "center",
-					marginBottom: "1rem",
+					marginBottom: "0.6rem",
 					cursor: "pointer",
 				}}
 			>
@@ -97,7 +97,7 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 					alignItems: "center",
 					justifyContent: "center",
 					gap: "0.5rem",
-					marginBottom: "1rem",
+					marginBottom: "0.6rem",
 				}}
 			>
 				<span>no loss</span>
@@ -119,7 +119,7 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 					display: "grid",
 					gridTemplateColumns: "15rem minmax(0,1fr)",
 					columnGap: "1rem",
-					rowGap: "0.3rem",
+					rowGap: "0.1rem",
 					alignItems: "center",
 				}}
 			>
