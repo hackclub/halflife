@@ -1,4 +1,4 @@
-import { COINS_PER_HOUR, WARMUP_WEEK_ID } from "./config/program"
+import { WARMUP_WEEK_ID } from "./config/program"
 import { DESIGN_WEEKS } from "./config/printers"
 import type { Project, SessionLog, Week } from "./types"
 
@@ -139,15 +139,4 @@ export function fmtDay(day: string): string {
 /** Hours, two decimals at most and never a trailing zero. */
 export function fmtHours(h: number): string {
 	return `${Math.round(h * 100) / 100}h`
-}
-
-/**
- * The same stretch of work as coins. Tier floors and goal paces are still
- * tracked in hours, but users reason about what they earn — and banked hours
- * are coins at one rate — so anything that is a target, a floor or a pace
- * reads in coins. Actual logged time (journal durations, timelapse lengths)
- * stays in hours, where it belongs.
- */
-export function fmtCoins(h: number): string {
-	return `${Math.round(h * COINS_PER_HOUR)} coins`
 }

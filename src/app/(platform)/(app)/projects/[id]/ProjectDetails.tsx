@@ -10,7 +10,7 @@ import { MIN_HOURS_PER_WEEK, printerById, submitFloorFor } from "@/lib/config/pr
 import { DESIGN_WEEKS, THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { ENTRY_TIER } from "@/lib/config/tiers"
 import { TIERS } from "@/lib/curriculum"
-import { fmtCoins, fmtHours } from "@/lib/projects"
+import { fmtHours } from "@/lib/projects"
 import { normalizeRepo } from "@/lib/repo"
 import { useStore } from "@/lib/store"
 import type { Project } from "@/lib/types"
@@ -310,8 +310,8 @@ function DetailsForm({
 					</p>
 					{takingStarter && hotGoal && (
 						<p role="status" className="hand text-[0.82rem] leading-snug text-coral-deep">
-							Heads up: starter projects are meant to take about {fmtCoins(submitFloorFor(ENTRY_TIER.fundingHours))} of work,
-							no more. Your {goal.name} needs roughly {fmtCoins(goal.bankedHours)} banked a design week to stay on pace.
+							Heads up: starter projects are meant to take about {fmtHours(submitFloorFor(ENTRY_TIER.fundingHours))} of work,
+							no more. Your {goal.name} needs roughly {Math.round(goal.bankedHours * 5)} coins a design week on top of its parts-funding to stay on pace.
 						</p>
 					)}
 					{starters.map((s) => {
@@ -385,7 +385,7 @@ function DetailsForm({
 				{tierEditable ? (
 					<>
 						<p className="text-[0.82rem] leading-snug text-navy-soft">
-							Bigger tiers fund bigger builds, and ask for more design time before you submit. The coins next to each
+							Bigger tiers fund bigger builds, and ask for more design time before you submit. The hours next to each
 							tier are the <span className="font-bold text-navy">minimum</span> a week needs before you can submit — not
 							a cap, and not a suggestion. You have{" "}
 							<span className="font-bold text-navy tabular-nums">{fmtHours(hours)}</span>{" "}
@@ -393,8 +393,7 @@ function DetailsForm({
 						</p>
 					{pacingToPrinter && (
 						<p className="hand text-[0.84rem] leading-snug text-navy-soft">
-							aim to bank about {fmtCoins(goal.bankedHours)} per design week for your {goal.name} — one pace on every
-							tier, since tier hours pay for parts and only banked work earns.
+							Every hour past your tier&apos;s parts-funding earns 5 coins, added straight to your spendable balance to use on your {goal.name} or anything else — changing your goal later never changes what you earn.
 						</p>
 					)}
 						{TIERS.map((t) => {
@@ -405,11 +404,11 @@ function DetailsForm({
 									<span className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
 										<span className="text-[0.98rem] font-extrabold text-navy">Tier {t.id}</span>
 										<span className="hand text-[0.86rem] text-teal-ink">${t.grantUsd} for parts</span>
-										<span className="hand text-[0.82rem] text-navy-soft">· {fmtCoins(floor)} to submit</span>
+										<span className="hand text-[0.82rem] text-navy-soft">· {fmtHours(floor)} to submit</span>
 										<span
 											className={cx("hand text-[0.8rem] tabular-nums", short > 0 ? "text-coral-deep" : "text-teal-ink")}
 										>
-											{short > 0 ? `${fmtCoins(short)} to go` : "ready to submit"}
+											{short > 0 ? `${fmtHours(short)} to go` : "ready to submit"}
 										</span>
 									</span>
 								</OptionRow>

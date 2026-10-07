@@ -26,7 +26,7 @@ import { attrUrl } from "@/lib/attr-url"
 import { linkLapse } from "@/lib/auth-client"
 import type { BomLine } from "@/lib/bom"
 import { STARTER_PROJECT_TIER, starterProjectsFor } from "@/lib/config/onboarding"
-import { paceTarget, printerById, submitFloorFor, tierBankedFloor } from "@/lib/config/printers"
+import { paceTarget, printerById, submitFloorFor } from "@/lib/config/printers"
 import { THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { photosRequired, TIERS } from "@/lib/curriculum"
 import {
@@ -36,7 +36,6 @@ import {
 	type PublicReelPlatform,
 	readPublicReelLink,
 } from "@/lib/public-reels"
-import { fmtCoins } from "@/lib/projects"
 import { normalizeRepo } from "@/lib/repo"
 import type { RepoCheckResult } from "@/lib/repo-checks"
 import { EXAMPLE_JOURNAL_URL } from "@/lib/routes"
@@ -1792,9 +1791,8 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 										<>
 											{t.detail}
 											<span className="mt-1 block text-navy-soft/90">
-												You can submit on tier {t.id} from {fmtCoins(submitFloorFor(t.fundingHours))} of design time, and{" "}
-												{fmtCoins(tierBankedFloor(t.fundingHours))} of that banks toward your printer goal.
-											</span>
+												You can submit on tier {t.id} from {fmtH(t.fundingHours)} of design time — the parts-funding hours and nothing more. Every hour past that earns 5 spendable coins.
+												</span>
 										</>
 									}
 								>
@@ -1802,7 +1800,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 										<span className="text-[0.98rem] font-extrabold text-navy">Tier {t.id}</span>
 										<span className="hand text-[0.86rem] text-teal-ink">${t.grantUsd} for parts</span>
 										<span className="hand text-[0.8rem] text-navy-soft">
-											· {fmtCoins(submitFloorFor(t.fundingHours))} to submit
+											· {fmtH(submitFloorFor(t.fundingHours))} to submit
 										</span>
 									</span>
 								</OptionRow>
@@ -2294,7 +2292,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						<p className="mb-3 text-[0.82rem] leading-snug text-navy-soft">
 							Find out which tier you&apos;re eligible for! Your current goal is a{" "}
 							<span className="font-bold text-navy">{goal.name}</span> and you have{" "}
-							<span className="font-bold text-navy tabular-nums">{fmtCoins(hours)}</span> of work logged this week.
+							<span className="font-bold text-navy tabular-nums">{fmtH(hours)}</span> logged this week.
 						</p>
 						<div className="grid gap-2.5 sm:grid-cols-3">
 							{TIERS.map((t) => {
@@ -2344,8 +2342,8 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 											)}
 										>
 											{short > 0
-												? `Opens at ${fmtCoins(tierFloor(t.fundingHours))} of design time, ${fmtCoins(short)} to go`
-											: `bank ~${fmtCoins(goal.bankedHours)} per design week for your ${goal.name} — the pace is the same on every tier`}
+												? `Opens at ${fmtH(tierFloor(t.fundingHours))} of design time, ${fmtH(short)} to go`
+												: `Every hour past this tier's ${t.fundingHours}h earns 5 spendable coins`}
 										</span>
 										{short === 0 && over && (
 											<span className="hand mt-1 block text-[0.74rem] leading-snug text-coral-deep">
