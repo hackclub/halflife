@@ -7,6 +7,7 @@ import { IconArrowDown, IconPencil, IconPlus, IconX } from "@/components/platfor
 import { Modal, ModalTitle } from "@/components/platform/modals/Modal"
 import { Button, cx, inputClass } from "@/components/platform/ui"
 import type { BomLine } from "@/lib/bom"
+import { BOM_MARGIN_USD } from "@/lib/schemas/project"
 
 const usd = (n: number) => `$${n.toFixed(2)}`
 
@@ -116,6 +117,8 @@ export function BomEditor({
 	const parts = items.reduce((n, l) => n + l.quantity * l.unitCostUsd, 0)
 	const total = parts + taxShipping
 	const over = total > grantUsd
+	// Past the funding it warns; past the margin it also blocks the week's submit.
+	const pastMargin = total > grantUsd + BOM_MARGIN_USD
 
 	function open(target: "new" | BomLine) {
 		setEditing(target === "new" ? "new" : target.id)
@@ -419,7 +422,9 @@ export function BomEditor({
 					of <span className="font-bold text-navy tabular-nums">${grantUsd}</span> tier {tier} funding
 					{over && (
 						<span className="hand block text-[0.84rem] text-coral-deep">
-							{usd(total - grantUsd)} over. Cut parts, or ask for a higher tier.
+							{pastMargin
+						? `${usd(total - grantUsd)} over and past the $${BOM_MARGIN_USD} margin – cut parts or ask for a higher tier before you can submit.`
+						: `${usd(total - grantUsd)} over – still within the $${BOM_MARGIN_USD} margin, so you can submit, but cut parts or ask for a higher tier if you can.`}
 						</span>
 					)}
 				</p>

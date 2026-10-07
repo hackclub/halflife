@@ -79,6 +79,12 @@ export type BomItemInput = z.infer<typeof bomItemSchema>
 export const bomExtrasSchema = z.object({ taxShippingUsd: z.number().min(0).max(10_000).nullable() }).strict()
 
 /**
+ * How far past a tier's funding a cart may run before the week cannot be
+ * submitted. Within it, an over-budget cart is a warning, not a refusal.
+ */
+export const BOM_MARGIN_USD = 3
+
+/**
  * Reading a project's BOM CSV into its parts list.
  *
  * `apply` false is a preview: read the repo and report what would land. `apply`
