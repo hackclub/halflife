@@ -53,8 +53,9 @@ and it encodes the Checkpoint framework exactly:
   write-up of what needs to change.
 
 Every journal entry is its own node, so the trail is as long as the work
-actually was, and progress reels land at the entry where the clock crossed ten
-hours. Past the week's submit floor the trail forks rather than continuing: one
+actually was, and progress reels land at the entry where the clock crossed their
+mark — five hours into a design week and every ten after that, two and a half
+into a build and every five after that. Past the week's submit floor the trail forks rather than continuing: one
 more session, or wrap the week up.
 
 **Changed by the merge.** Tiers and the build-week ask now come from

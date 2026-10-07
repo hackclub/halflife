@@ -153,18 +153,31 @@ export const WEEK_META: WeekMeta[] = [
 /**
  * The hours logged at which a week's k-th progress reel falls due (k from 1).
  *
- * On the clock, sized to what the week asks. A design week is ten hours or
- * more, so its reels land every ten. A build week asks only five, so ten would
- * mean most builds never show their progress at all: its first reel comes at
- * two and a half hours — halfway to the minimum — and then one every five
- * hours on the clock: 2.5h, 5h, 10h, 15h…
+ * On the clock, sized to what the week asks.
+ *
+ * A design week's reels fall at **five hours, then every ten after that** — 5h,
+ * 15h, 25h, 35h. Not at ten and then every ten, which is what this was, because
+ * a design week can be handed in before ten hours: the floor is the tier's
+ * funded hours and tier 1 is six. A tier-1 maker submitting at six never reached
+ * a ten-hour mark, so the reel that was supposed to show their progress was a
+ * node that never appeared — the week was over before the first one came due.
+ * Five sits under the lowest floor in the programme, so it lands for everyone
+ * who can submit at all, and the ten-hour spacing keeps every later one a real
+ * milestone rather than a nag.
+ *
+ * A build week asks only five hours, so ten would mean most builds never show
+ * their progress at all: its first reel comes at two and a half hours — halfway
+ * to the minimum — and then one every five hours on the clock: 2.5h, 5h, 10h,
+ * 15h…
  *
  * Keys stay `w<week>-reel-<k>`, numbered rather than timed, so this can change
  * without touching a stored reel; the reels page names them from it too.
  */
 export function progressReelHours(phase: Phase, k: number): number {
 	if (phase === "build") return k === 1 ? 2.5 : (k - 1) * 5
-	return k * 10
+	// 5h, 15h, 25h… — the first under the cheapest tier's floor, then every ten.
+	if (k <= 1) return 5
+	return 5 + (k - 1) * 10
 }
 
 /**
