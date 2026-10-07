@@ -1,7 +1,7 @@
 import { fail, ok, parseBody, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { requirePermission } from "@/lib/guards"
-import { Permission } from "@/lib/permissions"
+import { hasRole, Permission, Role } from "@/lib/permissions"
 import prisma from "@/lib/prisma"
 import { getUserDetail } from "@/lib/queries/admin"
 import { userFlagsSchema } from "@/lib/schemas/admin"
@@ -15,7 +15,9 @@ export const GET = withRoute(async (_req: Request, { params }: Params) => {
 	if (gate.error) return gate.error
 	const { id } = await params
 
-	const detail = await getUserDetail(id)
+	const detail = await getUserDetail(id, {
+		includeSensitive: hasRole(gate.roles, Role.ADMIN) || hasRole(gate.roles, Role.AUDITOR),
+	})
 	if (!detail) return fail("NOT_FOUND", "User not found")
 	return ok(detail)
 })

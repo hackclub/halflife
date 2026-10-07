@@ -2,7 +2,7 @@ import Link from "next/link"
 import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
 import { displayName } from "@/lib/display-name"
 import { requirePermissionPage } from "@/lib/page-guards"
-import { Permission } from "@/lib/permissions"
+import { hasRole, Permission, Role } from "@/lib/permissions"
 import { listUsers } from "@/lib/queries/admin"
 
 export const dynamic = "force-dynamic"
@@ -10,10 +10,11 @@ export const dynamic = "force-dynamic"
 type Props = { searchParams: Promise<{ q?: string; cursor?: string }> }
 
 export default async function AdminUsersPage({ searchParams }: Props) {
-	await requirePermissionPage(Permission.VIEW_USERS)
+	const { roles } = await requirePermissionPage(Permission.VIEW_USERS)
 	const { q, cursor } = await searchParams
 
-	const { items, nextCursor } = await listUsers({ q, cursor, limit: 50 })
+	const includePii = hasRole(roles, Role.ADMIN) || hasRole(roles, Role.AUDITOR)
+	const { items, nextCursor } = await listUsers({ q, cursor, limit: 50 }, { includePii })
 
 	return (
 		<div className="hl-stack">

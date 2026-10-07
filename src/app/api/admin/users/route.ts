@@ -3,7 +3,7 @@ import { z } from "zod"
 import { ok, parseQuery, withRoute } from "@/lib/api"
 import { requirePermission } from "@/lib/guards"
 import { paginationQuery } from "@/lib/pagination"
-import { Permission } from "@/lib/permissions"
+import { hasRole, Permission, Role } from "@/lib/permissions"
 import { listUsers } from "@/lib/queries/admin"
 
 export const dynamic = "force-dynamic"
@@ -17,5 +17,6 @@ export const GET = withRoute(async (req: NextRequest) => {
 	const parsed = parseQuery(req, query)
 	if (parsed.error) return parsed.error
 
-	return ok(await listUsers(parsed.data))
+	const includePii = hasRole(gate.roles, Role.ADMIN) || hasRole(gate.roles, Role.AUDITOR)
+	return ok(await listUsers(parsed.data, { includePii }))
 })

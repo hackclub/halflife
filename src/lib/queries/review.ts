@@ -12,7 +12,9 @@ export interface QueueItem {
 	phase: Phase
 	themeLabel: string
 	projectTitle: string
-	participant: { id: string; name: string | null; email: string }
+	// Display name only — the queue is open to every REVIEWER, so maker
+	// emails must not be scrapable page by page (M6).
+	participant: { id: string; name: string | null }
 	submittedAt: Date
 	submittedInWeek: number | null
 	onTime: boolean
@@ -55,7 +57,7 @@ export async function getReviewQueue(opts: {
 						theme: true,
 						title: true,
 						tier: true,
-						user: { select: { id: true, name: true, displayName: true, email: true } },
+						user: { select: { id: true, name: true, displayName: true } },
 					},
 				},
 				claim: { include: { reviewer: { select: { id: true, name: true, displayName: true } } } },
@@ -91,7 +93,13 @@ export async function getReviewQueue(opts: {
 	}
 }
 
-export async function getSubmissionDetail(submissionId: string, reviewerId?: string) {
+export async function getSubmissionDetail(
+	submissionId: string,
+	reviewerId?: string,
+	flags?: { includeContact?: boolean; includeRiskFlags?: boolean },
+) {
+	const includeContact = flags?.includeContact ?? false
+	const includeRiskFlags = flags?.includeRiskFlags ?? false
 	const submission = await prisma.phaseSubmission.findUnique({
 		where: { id: submissionId },
 		include: {
@@ -123,6 +131,27 @@ export async function getSubmissionDetail(submissionId: string, reviewerId?: str
 	// Null rather than a 403: the review surface should not confirm that this is
 	// a submission you merely lack rights over.
 	if (reviewerId && submission.themeProject.userId === reviewerId) return null
+
+	// Maker contact + risk flags only for ADMIN/AUDITOR (contact) and
+	// REVIEW_HOURS holders (risk flags) — the volume reviewer role gets the
+	// work, not the person (M6). Redacted here, before any caller can render
+	// or serialize them.
+	if (!includeContact || !includeRiskFlags) {
+		const maker = submission.themeProject.user as {
+			email: string
+			slackId: string | null
+			verificationStatus: string | null
+			fraudFlagged: boolean
+		}
+		if (!includeContact) {
+			maker.email = ""
+			maker.slackId = null
+		}
+		if (!includeRiskFlags) {
+			maker.verificationStatus = null
+			maker.fraudFlagged = false
+		}
+	}
 
 	const [breakdown, sessions, links, priorReviews] = await Promise.all([
 		getHoursBreakdown(submission.themeProjectId, submission.phase, { live: false }),

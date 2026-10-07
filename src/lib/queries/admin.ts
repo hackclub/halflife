@@ -19,7 +19,11 @@ import { getStarterProject } from "@/lib/config/onboarding"
 import prisma from "@/lib/prisma"
 import { shopOrderStaffSelect } from "@/lib/shop"
 
-export async function listUsers(opts: { q?: string; cursor?: string; limit: number }) {
+export async function listUsers(
+	opts: { q?: string; cursor?: string; limit: number },
+	flags?: { includePii?: boolean },
+) {
+	const includePii = flags?.includePii ?? false
 	const rows = await prisma.user.findMany({
 		where: opts.q
 			? {
@@ -47,7 +51,13 @@ export async function listUsers(opts: { q?: string; cursor?: string; limit: numb
 		},
 	})
 	const hasMore = rows.length > opts.limit
-	const items = hasMore ? rows.slice(0, opts.limit) : rows
+	// Contact + risk fields only leave the server for ADMIN/AUDITOR.
+	// REVIEWER/FULFILLER get the directory (names + roles) with no emails,
+	// Slack ids or fraud flags to scrape. Callers pass includePii explicitly;
+	// the default is stripped.
+	const items = (hasMore ? rows.slice(0, opts.limit) : rows).map((row) =>
+		includePii ? row : { ...row, email: "", slackId: null, verificationStatus: null, fraudFlagged: false },
+	)
 	const last = items[items.length - 1]
 	return { items, nextCursor: hasMore && last ? last.id : null }
 }
@@ -135,7 +145,8 @@ export async function listProjects(opts: ProjectFilters & { cursor?: string; lim
 	return { items, nextCursor: hasMore && last ? last.id : null }
 }
 
-export async function getUserDetail(userId: string) {
+export async function getUserDetail(userId: string, flags?: { includeSensitive?: boolean }) {
+	const includeSensitive = flags?.includeSensitive ?? false
 	const user = await prisma.user.findUnique({
 		where: { id: userId },
 		select: {
@@ -174,6 +185,29 @@ export async function getUserDetail(userId: string) {
 		},
 	})
 	if (!user) return null
+
+	// Ledger, balances and order history only leave the server for
+	// ADMIN/AUDITOR — a FULFILLER (shipping role) needs the fulfilment sheet,
+	// not someone's full credit history. Stripped callers get the profile
+	// with contact/risk fields redacted and empty money sections.
+	if (!includeSensitive) {
+		const printer = await getPrinterQualification(userId)
+		return {
+			user: {
+				...user,
+				email: "",
+				slackId: null,
+				slackDisplayName: null,
+				verificationStatus: null,
+				hackatimeUserId: null,
+				fraudFlagged: false,
+			},
+			balances: { spendable: 0, banked: 0, total: 0 },
+			ledger: [],
+			orders: [],
+			printer,
+		}
+	}
 
 	const [balances, ledger, orders, printer] = await Promise.all([
 		prisma.$transaction((tx) => getBalances(tx, userId)),
