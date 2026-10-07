@@ -1,18 +1,7 @@
 /**
- * Every word and fact on the page. Copy is taken from the approved comp
- * (Figma "landing page (claude)", node 275:8). Nothing here is invented:
- * program claims – dates, prize list, funding cap, community size –
- * are the comp's own.
+ * Every word and fact on the page. Copy is taken from the approved comp (Figma "landing page (claude)", node 275:8). Nothing here is invented: program claims – dates, prize list, funding cap, community size – are the comp's own.
  *
- * Artwork is imported rather than named by path. A string path is a promise
- * the build cannot check and the cache cannot see through: `/art/build.png`
- * stays the same URL when the file behind it changes, so Next's optimizer goes
- * on serving what it cached under that key – four hours by default – and a
- * replaced picture does not appear. An import is resolved at build time, so a
- * missing file is a build error rather than a 404 nobody notices, and the URL
- * carries a hash of the file's own bytes: replace the art and the URL changes
- * with it, which invalidates every cache between here and the browser without
- * anyone having to remember to clear one.
+ * Artwork is imported rather than named by path. A string path is a promise the build cannot check and the cache cannot see through: `/art/build.png` stays the same URL when the file behind it changes, so Next's optimizer goes on serving what it cached under that key – four hours by default – and a replaced picture does not appear. An import is resolved at build time, so a missing file is a build error rather than a 404 nobody notices, and the URL carries a hash of the file's own bytes: replace the art and the URL changes with it, which invalidates every cache between here and the browser without anyone having to remember to clear one.
  */
 import type { StaticImageData } from "next/image"
 
@@ -30,10 +19,7 @@ export const BRAND = {
 	name: "Half Life",
 	tagline: "become a hardware expert in 10 weeks, get a 3D printer",
 	/**
-	 * Under the email field. The one line here that is not the comp's: it was
-	 * asked for directly, and it is the two things someone hesitating over the
-	 * field wants settled before they type. Lowercase to match the tagline
-	 * above it; en dash because 13-18 is a range.
+	 * Under the email field. The one line here that is not the comp's: it was asked for directly, and it is the two things someone hesitating over the field wants settled before they type. Lowercase to match the tagline above it; en dash because 13-18 is a range.
 	 */
 	eligibility: "teens 13-18. no experience necessary. free to participate.",
 } as const
@@ -42,14 +28,9 @@ export type DesignWeek = {
 	subject: string
 	week: string
 	/**
-	 * The artwork behind this pairing, as a path under `public/`. Optional on
-	 * the same terms as a `BuildCard`'s photo: a week without one falls back to
-	 * the drawn slot, so the five fill in one week at a time. Both layouts read
-	 * it from here, so a new picture lands on the stage and in the stacked
-	 * column from one edit.
+	 * The artwork behind this pairing, as a path under `public/`. Optional on the same terms as a `BuildCard`'s photo: a week without one falls back to the drawn slot, so the five fill in one week at a time. Both layouts read it from here, so a new picture lands on the stage and in the stacked column from one edit.
 	 *
-	 * Week 3 has none yet – `public/art/weeks` ships PCB, cad, display and
-	 * breadboard, and nothing for music.
+	 * Week 3 has none yet – `public/art/weeks` ships PCB, cad, display and breadboard, and nothing for music.
 	 */
 	art?: string
 }
@@ -73,8 +54,7 @@ export type Step = {
 	id: string
 	title: string
 	/**
-	 * The step's artwork, on the same terms as a `DesignWeek`'s `art` and a
-	 * `BuildCard`'s `photo`: an optional path, with `slot` drawn as the fallback
+	 * The step's artwork, on the same terms as a `DesignWeek`'s `art` and a `BuildCard`'s `photo`: an optional path, with `slot` drawn as the fallback
 	 * while a step is still waiting for its picture. `slot` stays on a step that
 	 * has its art – it is the in-source record of the footprint the comp drew.
 	 */
@@ -85,7 +65,7 @@ export type Step = {
 }
 
 /** Exactly four, in comp order: design, funding, build, printer. The
- *  arity is load-bearing – `process.tsx` destructures these positionally
+ * arity is load-bearing – `process.tsx` destructures these positionally
  *  and gives each one its own plate. */
 export const STEPS: [Step, Step, Step, Step] = [
 	{
@@ -136,17 +116,11 @@ export type BuildCard = {
 	label: string
 	credit: string
 	/**
-	 * The project photograph, as a path under `public/`. Optional on purpose: a
-	 * card without one falls back to the drawn slot, so the belt fills up one
-	 * project at a time instead of needing the whole set before it renders.
+	 * The project photograph, as a path under `public/`. Optional on purpose: a card without one falls back to the drawn slot, so the belt fills up one project at a time instead of needing the whole set before it renders.
 	 */
 	photo?: StaticImageData
 	/**
-	 * ── PUT THE GITHUB LINK HERE ──────────────────────────────────────────
-	 * Full URL to the project's repo, e.g.
-	 *   repo: "https://github.com/you/your-project",
-	 * Optional: a card left empty here simply shows no button, so the repos
-	 * can be filled in one project at a time.
+	 * ── PUT THE GITHUB LINK HERE ────────────────────────────────────────── Full URL to the project's repo, e.g. repo: "https://github.com/you/your-project", Optional: a card left empty here simply shows no button, so the repos can be filled in one project at a time.
 	 */
 	repo?: string
 	/** The drawn footprint, standing in until `photo` lands. */
@@ -226,9 +200,7 @@ export const FAQS: Faq[] = [
 ]
 
 /**
- * The one group shot under "here's what you'll make!" – every project in a
- * single frame, where the comp scattered five separate prints. The art is not
- * shipped; the hero shows its themed stand-ins instead.
+ * The one group shot under "here's what you'll make!" – every project in a single frame, where the comp scattered five separate prints. The art is not shipped; the hero shows its themed stand-ins instead.
  */
 export const FOOTER_COLUMNS = [
 	{

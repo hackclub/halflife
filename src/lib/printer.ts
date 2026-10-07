@@ -25,9 +25,7 @@ export interface PrinterQualification {
 /**
  * Always derived from ThemeProject state, never read from PrinterAward.
  *
- * Keeping eligibility and fulfilment separate means an un-approval after the
- * award surfaces as a mismatch an admin resolves, rather than silently
- * revoking a printer that is already in a box.
+ * Keeping eligibility and fulfilment separate means an un-approval after the award surfaces as a mismatch an admin resolves, rather than silently revoking a printer that is already in a box.
  */
 export async function getPrinterQualification(userId: string): Promise<PrinterQualification> {
 	const projects = await prisma.themeProject.findMany({
@@ -53,8 +51,7 @@ export async function getPrinterQualification(userId: string): Promise<PrinterQu
 }
 
 /**
- * Create the award row the first time someone qualifies. Idempotent, and safe
- * to call inside the review transaction.
+ * Create the award row the first time someone qualifies. Idempotent, and safe to call inside the review transaction.
  */
 export async function ensurePrinterAward(tx: Prisma.TransactionClient, userId: string): Promise<PrinterAward | null> {
 	const projects = await tx.themeProject.findMany({
@@ -75,8 +72,7 @@ export async function ensurePrinterAward(tx: Prisma.TransactionClient, userId: s
 		data: {
 			userId,
 			qualifiedAt: new Date(),
-			// Snapshot the evidence so a later un-approval doesn't erase why this
-			// award exists.
+			// Snapshot the evidence so a later un-approval doesn't erase why this award exists.
 			qualifyingSnapshot: projects.map((p) => ({
 				theme: p.theme,
 				buildReviewedAt: p.buildReviewedAt?.toISOString() ?? null,
@@ -86,8 +82,7 @@ export async function ensurePrinterAward(tx: Prisma.TransactionClient, userId: s
 }
 
 /**
- * Awards whose holder no longer qualifies. Reports only – never auto-revokes,
- * because the printer may already have shipped.
+ * Awards whose holder no longer qualifies. Reports only – never auto-revokes, because the printer may already have shipped.
  */
 export async function findPrinterAwardMismatches(): Promise<{ userId: string; email: string; shippedCount: number }[]> {
 	const awards = await prisma.printerAward.findMany({
@@ -117,15 +112,9 @@ export interface PrinterAwardUpdate {
 }
 
 /**
- * Move one award along the fulfilment path: lock the address, then pack, ship
- * and deliver it – or revoke it for the record.
+ * Move one award along the fulfilment path: lock the address, then pack, ship and deliver it – or revoke it for the record.
  *
- * Conditional on the status that was read, so two admins saving at once cannot
- * skip a step or overwrite a revoke. Locking the address snapshots the
- * participant's HCA address onto the award, encrypted, so an update there
- * afterwards cannot move a package that is already being packed; a lock with
- * no address to snapshot is refused rather than looking ready while shipping
- * nowhere.
+ * Conditional on the status that was read, so two admins saving at once cannot skip a step or overwrite a revoke. Locking the address snapshots the participant's HCA address onto the award, encrypted, so an update there afterwards cannot move a package that is already being packed; a lock with no address to snapshot is refused rather than looking ready while shipping nowhere.
  */
 export async function updatePrinterAwardStatus(
 	awardId: string,

@@ -15,30 +15,15 @@ import type { Checkpoint, Experience, Project, SessionLog, Week, WeekMeta } from
  *
  * ## The split
  *
- * Facts come from the server, as a `StoreSnapshot` loaded once per navigation
- * by the `(app)` layout: projects, checkpoint states, coins, streak, goal.
- * Ceremony stays in `localStorage`: whether the cinematic has played, how far
- * the tab tour got, whether the Doomscroller rail is open. Nobody else ever
- * needs to read the ceremony, and a new laptop replaying the intro is a feature
- * rather than a bug.
+ * Facts come from the server, as a `StoreSnapshot` loaded once per navigation by the `(app)` layout: projects, checkpoint states, coins, streak, goal. Ceremony stays in `localStorage`: whether the cinematic has played, how far the tab tour got, whether the Doomscroller rail is open. Nobody else ever needs to read the ceremony, and a new laptop replaying the intro is a feature rather than a bug.
  *
  * ## Why the derivation did not change
  *
- * Everything below `weeks` – the shape of a week, which node is live, what is
- * locked and why – is computed exactly as it was when the data was a toy, by
- * `curriculum.checkpointsFor`. The server says which checkpoints are done and
- * with what; it does not say what a week looks like. A second checkpoint engine
- * on the server would have been a second answer to "have I finished this week",
- * and the first time the two disagreed the trail would have lied to someone
- * about work they had really done.
+ * Everything below `weeks` – the shape of a week, which node is live, what is locked and why – is computed exactly as it was when the data was a toy, by `curriculum.checkpointsFor`. The server says which checkpoints are done and with what; it does not say what a week looks like. A second checkpoint engine on the server would have been a second answer to "have I finished this week", and the first time the two disagreed the trail would have lied to someone about work they had really done.
  *
  * ## Writes
  *
- * Every mutation posts to the API and then asks Next to re-render the layout,
- * which reloads the snapshot. Each one also patches local state first, because
- * a round trip to Postgres between clicking a node and seeing it fill is long
- * enough to feel broken – and if the request fails the refresh puts the truth
- * back.
+ * Every mutation posts to the API and then asks Next to re-render the layout, which reloads the snapshot. Each one also patches local state first, because a round trip to Postgres between clicking a node and seeing it fill is long enough to feel broken – and if the request fails the refresh puts the truth back.
  */
 
 export type IntroPhase =
@@ -65,27 +50,20 @@ export interface CheckpointState {
 /**
  * What the browser owns: the first-run ceremony, and nothing else.
  *
- * Kept apart from the facts deliberately. If any of this lived on the server,
- * signing in on a second device would drop you into the middle of a tab tour
- * you had already finished, and a schema migration would be needed to change
- * the order of the intro.
+ * Kept apart from the facts deliberately. If any of this lived on the server, signing in on a second device would drop you into the middle of a tab tour you had already finished, and a schema migration would be needed to change the order of the intro.
  */
 interface Ceremony {
 	version: 4
 	phase: IntroPhase
 	doomscrollerOpen: boolean
 	/**
-	 * Set by "Replay the intro". Without it the server's word that onboarding
-	 * is done forces the phase straight back to "done", so the replay cleared
-	 * the ceremony and then showed nothing. Optional so saves written before it
-	 * existed read as false.
+	 * Set by "Replay the intro". Without it the server's word that onboarding is done forces the phase straight back to "done", so the replay cleared the ceremony and then showed nothing. Optional so saves written before it existed read as false.
 	 */
 	replaying?: boolean
 	/**
 	 * Set once the tab tour has been finished or skipped. Before week 1 opens a
 	 * new account gets the intro and the tour but not the Get started
-	 * checkpoint, so it meets that checkpoint later, and finishing it must not
-	 * walk the tour a second time. Optional so older saves read as not toured.
+	 * checkpoint, so it meets that checkpoint later, and finishing it must not walk the tour a second time. Optional so older saves read as not toured.
 	 */
 	toured?: boolean
 }
@@ -93,8 +71,7 @@ interface Ceremony {
 const KEY = "halflife.ceremony.v4"
 
 /**
- * The admin lock bypass. Kept apart from the ceremony so "Replay the intro",
- * which clears that, leaves it alone.
+ * The admin lock bypass. Kept apart from the ceremony so "Replay the intro", which clears that, leaves it alone.
  */
 const BYPASS_KEY = "halflife.bypass-locks"
 
@@ -104,19 +81,13 @@ const EMPTY: CheckpointState = { done: false, minutes: 0, artefacts: 0, log: [] 
 export const PASSED_REASON = "This week has passed!"
 
 /**
- * Week 1's idea reel is optional: it sits beside the first devlog entry as a
- * choice rather than gating it. The trail still lists it, and it stays
- * postable, but nothing past the fork ever waits on it – so every gate below
- * reads predecessors with this id filtered out.
+ * Week 1's idea reel is optional: it sits beside the first devlog entry as a choice rather than gating it. The trail still lists it, and it stays postable, but nothing past the fork ever waits on it – so every gate below reads predecessors with this id filtered out.
  */
 export const WEEK1_IDEA_REEL_ID = "w1-reel-idea"
 const withoutOptionalIdea = (list: Checkpoint[]) => list.filter((c) => c.id !== WEEK1_IDEA_REEL_ID)
 
 /**
- * A warm-up project's own week: a chain of entries with one live one waiting,
- * then its single submit, keyed `wu-<project id>-…` because a maker may hold
- * several warm-ups and none of them has a week number. The same tier floors as
- * a season week, since it is handed in the same way.
+ * A warm-up project's own week: a chain of entries with one live one waiting, then its single submit, keyed `wu-<project id>-…` because a maker may hold several warm-ups and none of them has a week number. The same tier floors as a season week, since it is handed in the same way.
  */
 function warmupWeek(project: Project, build: boolean, isDone: (id: string) => boolean): Week {
 	const key = (suffix: string) => `wu-${project.id}-${suffix}`
@@ -195,9 +166,7 @@ interface Ctx {
 	/** The whole balance. Every coin counts toward the printer goal. */
 	printerFund: number
 	/**
-	 * Coins the logged hours of weeks 1..weekId will earn once reviewed, that
-	 * are not in `printerFund` yet. Coins are minted at approval, so the fund
-	 * alone says a week nobody has reviewed earned nothing; pacing reads both.
+	 * Coins the logged hours of weeks 1..weekId will earn once reviewed, that are not in `printerFund` yet. Coins are minted at approval, so the fund alone says a week nobody has reviewed earned nothing; pacing reads both.
 	 */
 	pendingCoins: (weekId: number) => number
 	streak: number
@@ -206,12 +175,9 @@ interface Ctx {
 	/** Whether the first checkpoint has been completed. */
 	onboardingDone: boolean
 	/**
-	 * What this participant is here for, or null if they have not been asked
-	 * yet. See config/goal.
+	 * What this participant is here for, or null if they have not been asked yet. See config/goal.
 	 *
-	 * Null is a gate, not a default: it is what keeps the mandatory prompt open
-	 * after the first checkpoint, and because it comes from the server it
-	 * reappears on every sign-in rather than on every visit to this browser.
+	 * Null is a gate, not a default: it is what keeps the mandatory prompt open after the first checkpoint, and because it comes from the server it reappears on every sign-in rather than on every visit to this browser.
 	 */
 	participantGoal: ParticipantGoal | null
 	hydrated: boolean
@@ -226,40 +192,30 @@ interface Ctx {
 	setTourStep: (n: number) => void
 	addProject: (p: Omit<Project, "id">) => void
 	/**
-	 * Make the project row for a design week, if there is none yet, and resolve
-	 * to its id (null if the server refused). Called when a "create a project"
-	 * checkpoint is opened, which is the only moment a project row is made.
+	 * Make the project row for a design week, if there is none yet, and resolve to its id (null if the server refused). Called when a "create a project" checkpoint is opened, which is the only moment a project row is made.
 	 */
 	ensureProject: (weekId: number) => Promise<string | null>
 	setProjectTier: (id: string, tier: 1 | 2 | 3) => void
 	/**
-	 * Set or clear a project's repo link. Resolves to null once saved, or to the
-	 * server's reason for refusing (a phase in review, say), so an inline editor
-	 * can say so instead of quietly reverting.
+	 * Set or clear a project's repo link. Resolves to null once saved, or to the server's reason for refusing (a phase in review, say), so an inline editor can say so instead of quietly reverting.
 	 */
 	setProjectRepo: (id: string, url: string | null) => Promise<string | null>
 	/**
-	 * Point a project's repo link at the repo its sync writes to, when the two
-	 * drifted apart because the sync's repo was picked after the project's was
-	 * set. Resolves to null once saved, or the server's reason for refusing; the
-	 * link is the sync target already, so no URL is taken from the client.
+	 * Point a project's repo link at the repo its sync writes to, when the two drifted apart because the sync's repo was picked after the project's was set. Resolves to null once saved, or the server's reason for refusing; the link is the sync target already, so no URL is taken from the client.
 	 */
 	linkSyncRepoToProject: (id: string) => Promise<string | null>
 	/** Change any of a project's own details in one save. Null once saved, or why it was refused. */
 	updateProject: (id: string, patch: ProjectPatch) => Promise<string | null>
 	complete: (id: string, patch?: Partial<CheckpointState>) => void
 	/**
-	 * Post the reel a checkpoint is asking for. The video is already uploaded.
-	 * Resolves to the new post's id, or null if it did not land.
+	 * Post the reel a checkpoint is asking for. The video is already uploaded. Resolves to the new post's id, or null if it did not land.
 	 */
 	postReel: (id: string, caption: string, objectKey: string) => Promise<string | null>
 	/** Hand a week in, with its notes and whatever evidence it collected. */
 	/** Resolves to null once submitted, or the server's reason for refusing. */
 	submitPhase: (id: string, extra?: { notes?: string; attachmentKeys?: string[] }) => Promise<string | null>
 	/**
-	 * Resolves to null once the entry is saved, or to the server's reason for
-	 * refusing it – Lapse may say a timelapse is not yours, is still processing,
-	 * or already backs another entry, and the sheet has to stay open to say so.
+	 * Resolves to null once the entry is saved, or to the server's reason for refusing it – Lapse may say a timelapse is not yours, is still processing, or already backs another entry, and the sheet has to stay open to say so.
 	 */
 	logSession: (
 		id: string,
@@ -268,9 +224,7 @@ interface Ctx {
 		evidence?: Pick<SessionLog, "clips">,
 	) => Promise<string | null>
 	/**
-	 * Correct a finished entry's words, hours, and timelapses. Null once saved,
-	 * or why it was refused. The clips are the full desired set of Lapse
-	 * attachments; the server keeps, adds, and releases the difference.
+	 * Correct a finished entry's words, hours, and timelapses. Null once saved, or why it was refused. The clips are the full desired set of Lapse attachments; the server keeps, adds, and releases the difference.
 	 */
 	editSession: (
 		id: string,
@@ -293,9 +247,7 @@ interface Ctx {
 	/** When a week stops taking work, e.g. "Sunday, October 5 at 11:59 PM", its extension included. */
 	weekDeadline: (weekId: number) => string | null
 	/**
-	 * The same close as a moment rather than a phrase, epoch ms, its extension
-	 * included. `weekDeadline` is for writing it down; a countdown has to count
-	 * to it, and there is no arithmetic to do on a formatted date.
+	 * The same close as a moment rather than a phrase, epoch ms, its extension included. `weekDeadline` is for writing it down; a countdown has to count to it, and there is no arithmetic to do on a formatted date.
 	 */
 	weekClosesAtMs: (weekId: number) => number | null
 	/** When warm-ups stop taking work: 11:59 PM the night before week 1 opens. */
@@ -305,9 +257,7 @@ interface Ctx {
 	/** Where a week stands with review. "draft" when nothing is recorded. */
 	phaseStatusOf: (weekId: number) => string
 	/**
-	 * Take a phase in review back out of it. Null once done, or the server's
-	 * reason. A trail submit passes its checkpoint id; a project with no
-	 * checkpoint to address it by (a warm-up project) passes itself directly.
+	 * Take a phase in review back out of it. Null once done, or the server's reason. A trail submit passes its checkpoint id; a project with no checkpoint to address it by (a warm-up project) passes itself directly.
 	 */
 	unsubmitPhase: (target: string | { projectId: string; phase: "DESIGN" | "BUILD" }) => Promise<string | null>
 	/** Why a locked checkpoint is locked, phrased for the trail. Null if open. */
@@ -316,10 +266,7 @@ interface Ctx {
 	/** The trail, cut to the tier of each week's project. */
 	weeks: Week[]
 	/**
-	 * A warm-up project's own week, or null. Never drawn on the trail, but its
-	 * entries and its one submit are real checkpoints (`wu-<id>-…`), so the
-	 * season's journal and submit sheets serve it from its project page. A maker
-	 * may hold several, which is why these are found by project, not number.
+	 * A warm-up project's own week, or null. Never drawn on the trail, but its entries and its one submit are real checkpoints (`wu-<id>-…`), so the season's journal and submit sheets serve it from its project page. A maker may hold several, which is why these are found by project, not number.
 	 */
 	warmupWeekOf: (projectId: string) => Week | null
 	/** The week a checkpoint belongs to: a season week, or a warm-up's own. */
@@ -337,35 +284,26 @@ interface Ctx {
 	/** Hours logged across every session checkpoint in a week. */
 	weekHours: (weekId: number) => number
 	/**
-	 * Every hour on the record – journalled in entries and tracked some other
-	 * way (Hackatime, a reviewer's adjustment) – summed across the season's
-	 * weeks and every warm-up. Zero until the first session lands.
+	 * Every hour on the record – journalled in entries and tracked some other way (Hackatime, a reviewer's adjustment) – summed across the season's weeks and every warm-up. Zero until the first session lands.
 	 */
 	totalHours: number
 	setOpenCheckpoint: (id: string | null) => void
 	setDoomscroller: (open: boolean) => void
 	/**
-	 * Record what this participant is here for, with the printer if the answer
-	 * is a printer. Resolves to null once saved, or to the server's reason for
-	 * refusing – the prompt that calls it is uncloseable, so a silent failure
-	 * would strand somebody.
+	 * Record what this participant is here for, with the printer if the answer is a printer. Resolves to null once saved, or to the server's reason for refusing – the prompt that calls it is uncloseable, so a silent failure would strand somebody.
 	 */
 	setParticipantGoal: (goal: ParticipantGoal, printerGoalId?: string) => Promise<string | null>
 	/**
-	 * Mark the first checkpoint done, on the API's say-so. Patched rather than
-	 * awaited so the goal prompt can take over from the onboarding modal without
-	 * a frame of the tab tour in between.
+	 * Mark the first checkpoint done, on the API's say-so. Patched rather than awaited so the goal prompt can take over from the onboarding modal without a frame of the tab tour in between.
 	 */
 	finishOnboarding: () => void
 	reset: () => void
 	/**
-	 * Admins only: wipe your own setup answers and run the whole first run
-	 * again, setup checkpoint included. Resolves to an error message, or null.
+	 * Admins only: wipe your own setup answers and run the whole first run again, setup checkpoint included. Resolves to an error message, or null.
 	 */
 	redoOnboarding: () => Promise<string | null>
 	/**
-	 * Admins only: every checkpoint on the trail opens, whatever its order,
-	 * hours or dates say. Always false for anyone else.
+	 * Admins only: every checkpoint on the trail opens, whatever its order, hours or dates say. Always false for anyone else.
 	 */
 	bypassLocks: boolean
 	setBypassLocks: (on: boolean) => void
@@ -376,10 +314,7 @@ const StoreContext = createContext<Ctx | null>(null)
 /**
  * Post JSON and reload the snapshot.
  *
- * Errors are swallowed on purpose. Every caller has already patched local state
- * optimistically, and the `router.refresh()` in the `finally` reloads the
- * server's version either way – so a failed write corrects itself on screen
- * instead of leaving the trail showing something that did not happen.
+ * Errors are swallowed on purpose. Every caller has already patched local state optimistically, and the `router.refresh()` in the `finally` reloads the server's version either way – so a failed write corrects itself on screen instead of leaving the trail showing something that did not happen.
  */
 async function send(path: string, body: unknown, method = "POST"): Promise<boolean> {
 	try {
@@ -397,13 +332,10 @@ async function send(path: string, body: unknown, method = "POST"): Promise<boole
 export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot; children: ReactNode }) {
 	const router = useRouter()
 
-	// Server state as the starting point, patched locally while a write is in
-	// flight. Re-seeded from props during render rather than in an effect: an
-	// effect would paint one frame of stale data every time a refresh lands.
+	// Server state as the starting point, patched locally while a write is in flight. Re-seeded from props during render rather than in an effect: an effect would paint one frame of stale data every time a refresh lands.
 	const [facts, setFacts] = useState<StoreSnapshot>(snapshot)
 	const [seen, setSeen] = useState<StoreSnapshot>(snapshot)
-	// The clock the week locks read. Seeded from the server's, so the first
-	// paint matches the server render, and moved on only when a week closes.
+	// The clock the week locks read. Seeded from the server's, so the first paint matches the server render, and moved on only when a week closes.
 	const [now, setNow] = useState(snapshot.now)
 	if (seen !== snapshot) {
 		setSeen(snapshot)
@@ -411,10 +343,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		setNow(snapshot.now)
 	}
 
-	// A trail left open over midnight greys a closing week out, and opens a
-	// starting one, on the stroke of it rather than on the next navigation.
-	// Timers top out at about 24.8 days, so a moment further off than that just
-	// re-arms when this one fires.
+	// A trail left open over midnight greys a closing week out, and opens a starting one, on the stroke of it rather than on the next navigation. Timers top out at about 24.8 days, so a moment further off than that just re-arms when this one fires.
 	useEffect(() => {
 		const next = [
 			...Object.values(facts.weekClosesAt),
@@ -483,8 +412,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		[facts.phaseStatusByWeek],
 	)
 
-	// Handed in – in review, or decided. A week sent back for changes is open
-	// again, because fixing it is the point of sending it back.
+	// Handed in – in review, or decided. A week sent back for changes is open again, because fixing it is the point of sending it back.
 	const weekSubmitted = useCallback(
 		(weekId: number) => {
 			const status = facts.phaseStatusByWeek[weekId]
@@ -508,9 +436,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		return () => mq.removeEventListener("change", sync)
 	}, [])
 
-	// Reading the persisted ceremony is exactly the external-system sync an effect
-	// is for: it cannot run during render without breaking SSR hydration, since
-	// the server has no localStorage and must render the seeded state.
+	// Reading the persisted ceremony is exactly the external-system sync an effect is for: it cannot run during render without breaking SSR hydration, since the server has no localStorage and must render the seeded state.
 	useEffect(() => {
 		let next: Ceremony | null = null
 		try {
@@ -543,8 +469,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			/* private mode – it lasts the session */
 		}
 	}, [])
-	// Read by role, not by storage alone: a flag left behind on a shared
-	// browser, or by an admin since demoted, opens nothing.
+	// Read by role, not by storage alone: a flag left behind on a shared browser, or by an admin since demoted, opens nothing.
 	const bypassLocks = facts.viewer.isAdmin && bypassing
 
 	useEffect(() => {
@@ -556,16 +481,9 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		}
 	}, [ceremony, hydrated])
 
-	// Someone who has already finished the first checkpoint must never be shown
-	// the intro again, whatever a stale or cleared localStorage says. The server
-	// is what knows, so it gets the final word – unless they asked for it back.
-	// A replay plays the cinematic and the tab tour and goes nowhere near the
-	// setup checkpoint: its answers are taken once, and the server refuses a
-	// second set, so "aim" and "checkpoint" go straight on to the tour.
+	// Someone who has already finished the first checkpoint must never be shown the intro again, whatever a stale or cleared localStorage says. The server is what knows, so it gets the final word – unless they asked for it back. A replay plays the cinematic and the tab tour and goes nowhere near the setup checkpoint: its answers are taken once, and the server refuses a second set, so "aim" and "checkpoint" go straight on to the tour.
 	//
-	// Before week 1 opens, Get started is shut, so the intro goes from the
-	// fly-through straight to the tab tour: "aim" (the spotlight on that
-	// checkpoint) and "checkpoint" (its modal) have nothing to point at.
+	// Before week 1 opens, Get started is shut, so the intro goes from the fly-through straight to the tab tour: "aim" (the spotlight on that checkpoint) and "checkpoint" (its modal) have nothing to point at.
 	const phase: IntroPhase = !facts.onboardingDone
 		? !weekStarted(1) && (ceremony.phase === "aim" || ceremony.phase === "checkpoint")
 			? ceremony.toured
@@ -583,14 +501,12 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	const setPhase = useCallback(
 		(next: IntroPhase) =>
 			setCeremony((c) => {
-				// The tour plays once. Someone who took it while week 1 was shut
-				// finishes Get started straight onto the trail, not into it again.
+				// The tour plays once. Someone who took it while week 1 was shut finishes Get started straight onto the trail, not into it again.
 				const phase = next === "tour" && c.toured && !c.replaying ? "done" : next
 				return {
 					...c,
 					phase,
-					// Finishing or skipping ends the replay, so a later sign-in does not
-					// start it again.
+					// Finishing or skipping ends the replay, so a later sign-in does not start it again.
 					replaying: phase === "done" ? false : c.replaying,
 				}
 			}),
@@ -635,15 +551,12 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	)
 
 	/**
-	 * Naming a week's project – filling in the row its checkpoint made when it
-	 * was opened (ensureProject). A second project for the same week is refused
-	 * rather than queued behind the first, where nothing would ever read it.
+	 * Naming a week's project – filling in the row its checkpoint made when it was opened (ensureProject). A second project for the same week is refused rather than queued behind the first, where nothing would ever read it.
 	 */
 	const addProject = useCallback(
 		(p: Omit<Project, "id">) => {
 			void (async () => {
-				// Normally made when the checkpoint opened; made here if that request
-				// had not landed yet, so a quick "Create project" still has a row.
+				// Normally made when the checkpoint opened; made here if that request had not landed yet, so a quick "Create project" still has a row.
 				const id = await ensureProject(p.weekId)
 				if (!id) return
 				setFacts((f) =>
@@ -670,9 +583,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	/**
 	 * `requestedTier`, never `tier`.
 	 *
-	 * The assigned tier is a reviewer's decision at design approval, because it
-	 * is parts money. This is the participant saying which one they are aiming
-	 * at, and the API refuses to write anything else.
+	 * The assigned tier is a reviewer's decision at design approval, because it is parts money. This is the participant saying which one they are aiming at, and the API refuses to write anything else.
 	 */
 	const setProjectRepo = useCallback(
 		async (id: string, url: string | null): Promise<string | null> => {
@@ -809,9 +720,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 					...f,
 					progress: {
 						...f.progress,
-						// The first completion is the one that dates it. Redoing a
-						// checkpoint should not move it up the project timeline past work
-						// that came after it.
+						// The first completion is the one that dates it. Redoing a checkpoint should not move it up the project timeline past work that came after it.
 						[id]: { ...prev, ...patch, at: prev.at ?? Date.now(), done: true },
 					},
 				}
@@ -822,10 +731,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	/**
 	 * Mark a checkpoint done.
 	 *
-	 * Which write that means depends on the node, because the trail's nodes are
-	 * derived from real records rather than stored as a list of ticks: a reel is
-	 * a post, a submission is a submission, and the first checkpoint is the
-	 * onboarding flow's own business.
+	 * Which write that means depends on the node, because the trail's nodes are derived from real records rather than stored as a list of ticks: a reel is a post, a submission is a submission, and the first checkpoint is the onboarding flow's own business.
 	 */
 	const complete = useCallback(
 		(id: string, patch: Partial<CheckpointState> = {}) => {
@@ -837,10 +743,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				return
 			}
 
-			// Reels are posted by the reel modal, which has to upload the video
-			// before there is anything to post; the first checkpoint is written by
-			// the onboarding API as its steps are answered. Both arrive back through
-			// the snapshot, so there is nothing to send here.
+			// Reels are posted by the reel modal, which has to upload the video before there is anything to post; the first checkpoint is written by the onboarding API as its steps are answered. Both arrive back through the snapshot, so there is nothing to send here.
 			router.refresh()
 		},
 		[patchCheckpoint, routeOf, router],
@@ -849,13 +752,9 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	/**
 	 * Post a reel against the node that asked for it.
 	 *
-	 * `checkpointKey` is what binds the post to the node, and it has to: the 5h
-	 * and the 15h reel are both PROGRESS, so counting posts by kind would tick
-	 * the 15h node the moment the 5h one landed.
+	 * `checkpointKey` is what binds the post to the node, and it has to: the 5h and the 15h reel are both PROGRESS, so counting posts by kind would tick the 15h node the moment the 5h one landed.
 	 */
-	// Resolves to the new post's id – what a public link gets attached to – or
-	// null if the post did not land. The node is patched first either way, and
-	// the refresh puts the truth back if the write failed.
+	// Resolves to the new post's id – what a public link gets attached to – or null if the post did not land. The node is patched first either way, and the refresh puts the truth back if the write failed.
 	const postReel = useCallback(
 		async (id: string, caption: string, objectKey: string): Promise<string | null> => {
 			patchCheckpoint(id, { caption, artefacts: 1 })
@@ -865,9 +764,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 					method: "POST",
 					headers: { "content-type": "application/json" },
 					body: JSON.stringify({
-						// Three occasions, three kinds: the pitch at the start of a design
-						// week, the ones that mark the hours, and the one that closes a
-						// week inside Submit.
+						// Three occasions, three kinds: the pitch at the start of a design week, the ones that mark the hours, and the one that closes a week inside Submit.
 						kind: id.endsWith("-reel-idea") ? "IDEA" : id.endsWith("-reel-submission") ? "SUBMISSION" : "PROGRESS",
 						caption,
 						objectKey,
@@ -876,8 +773,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 					}),
 				})
 				if (!res.ok) return null
-				// Re-recording an owed reel lifts the hold now rather than on the
-				// refresh, so the map opens back up the moment it is posted.
+				// Re-recording an owed reel lifts the hold now rather than on the refresh, so the map opens back up the moment it is posted.
 				setFacts((f) => (f.owedReels.includes(id) ? { ...f, owedReels: f.owedReels.filter((k) => k !== id) } : f))
 				const { post } = (await res.json()) as { post?: { id?: string } }
 				return post?.id ?? null
@@ -890,9 +786,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		[patchCheckpoint, routeOf, router],
 	)
 
-	// Server first, like logSession: the submit route runs the repo checks and
-	// can refuse, and a week shown as handed in that then quietly reopens on the
-	// next refresh is worse than a sheet that says what is wrong.
+	// Server first, like logSession: the submit route runs the repo checks and can refuse, and a week shown as handed in that then quietly reopens on the next refresh is worse than a sheet that says what is wrong.
 	const submitPhase = useCallback(
 		async (id: string, extra: { notes?: string; attachmentKeys?: string[] } = {}): Promise<string | null> => {
 			const route = routeOf(id)
@@ -923,14 +817,9 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	)
 
 	/**
-	 * Take a handed-in week back out of review, so it can be changed and handed
-	 * in again. Only a week still waiting for a reviewer can be – the server
-	 * refuses once a decision is made, or while a reviewer has it open.
+	 * Take a handed-in week back out of review, so it can be changed and handed in again. Only a week still waiting for a reviewer can be – the server refuses once a decision is made, or while a reviewer has it open.
 	 *
-	 * A checkpoint id resolves to its project through `projectIdByWeek`, which
-	 * works for the trail. A warm-up project has no checkpoint: several of them
-	 * share week 0, so a week id cannot say which one, and the caller names the
-	 * project and phase instead.
+	 * A checkpoint id resolves to its project through `projectIdByWeek`, which works for the trail. A warm-up project has no checkpoint: several of them share week 0, so a week id cannot say which one, and the caller names the project and phase instead.
 	 */
 	const unsubmitPhase = useCallback(
 		async (target: string | { projectId: string; phase: "DESIGN" | "BUILD" }): Promise<string | null> => {
@@ -975,11 +864,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	/**
 	 * The first checkpoint answered its last question.
 	 *
-	 * Patched here rather than left to the refresh that follows, because the gate
-	 * that holds the goal prompt open is `onboardingDone && participantGoal ===
-	 * null`. Waiting for the round-trip would put the tab tour's spotlight on
-	 * screen for the length of the request and then cover it with the prompt.
-	 * The API has already confirmed this, so it is a fact and not a guess.
+	 * Patched here rather than left to the refresh that follows, because the gate that holds the goal prompt open is `onboardingDone && participantGoal === null`. Waiting for the round-trip would put the tab tour's spotlight on screen for the length of the request and then cover it with the prompt. The API has already confirmed this, so it is a fact and not a guess.
 	 */
 	const finishOnboarding = useCallback(() => {
 		setFacts((f) => ({ ...f, onboardingDone: true }))
@@ -988,12 +873,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	/**
 	 * Record what this participant is here for.
 	 *
-	 * Unlike everything else in here, this one reports its failures instead of
-	 * swallowing them, and it does NOT patch optimistically. The prompt that
-	 * calls it is uncloseable: if the facts flipped before the write landed, a
-	 * refused save would close the modal on the spot and unmount the error with
-	 * it, leaving somebody stuck behind a prompt that looks finished and says
-	 * nothing about why. So the gate opens only once the server agrees.
+	 * Unlike everything else in here, this one reports its failures instead of swallowing them, and it does NOT patch optimistically. The prompt that calls it is uncloseable: if the facts flipped before the write landed, a refused save would close the modal on the spot and unmount the error with it, leaving somebody stuck behind a prompt that looks finished and says nothing about why. So the gate opens only once the server agrees.
 	 *
 	 * Resolves to null once saved, or to the server's reason for refusing.
 	 */
@@ -1016,8 +896,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				refusal = "Could not reach the server. Try again."
 			}
 
-			// Either way the server has the last word, so a write that landed
-			// elsewhere while this one was refused cannot sit on top of it.
+			// Either way the server has the last word, so a write that landed elsewhere while this one was refused cannot sit on top of it.
 			void router.refresh()
 			return refusal
 		},
@@ -1027,9 +906,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	/**
 	 * Replay the first run.
 	 *
-	 * Ceremony only. It cannot un-log a session or un-post a reel, and pretending
-	 * otherwise would be the more surprising behaviour: the trail comes back
-	 * exactly as it was, with the intro playing over it.
+	 * Ceremony only. It cannot un-log a session or un-post a reel, and pretending otherwise would be the more surprising behaviour: the trail comes back exactly as it was, with the intro playing over it.
 	 */
 	const reset = useCallback(() => {
 		try {
@@ -1043,10 +920,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	}, [])
 
 	/**
-	 * The full redo, for admins checking the flow. The server clears the answers
-	 * first; only then is the ceremony reseeded, and without `replaying`, so once
-	 * the refreshed snapshot says onboarding is not done the intro runs on into
-	 * the setup checkpoint as it would for someone new.
+	 * The full redo, for admins checking the flow. The server clears the answers first; only then is the ceremony reseeded, and without `replaying`, so once the refreshed snapshot says onboarding is not done the intro runs on into the setup checkpoint as it would for someone new.
 	 */
 	const redoOnboarding = useCallback(async (): Promise<string | null> => {
 		let res: Response
@@ -1074,13 +948,10 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 
 	const save = facts
 
-	// Saves written before a field existed would otherwise hand back a record
-	// with holes in it, so every read is filled out from EMPTY.
+	// Saves written before a field existed would otherwise hand back a record with holes in it, so every read is filled out from EMPTY.
 	const stateOf = useCallback((id: string): CheckpointState => ({ ...EMPTY, ...save.progress[id] }), [save.progress])
 
-	// A build week inherits the tier of the design week it is building. A week
-	// nobody has started yet borrows the last tier picked, so the trail shows a
-	// believable shape instead of lurching when the project is finally created.
+	// A build week inherits the tier of the design week it is building. A week nobody has started yet borrows the last tier picked, so the trail shows a believable shape instead of lurching when the project is finally created.
 	const tierForWeek = useCallback(
 		(weekId: number): 1 | 2 | 3 => {
 			const designWeek = weekId > 5 ? weekId - 5 : weekId
@@ -1091,9 +962,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		[save.projects, save.experience],
 	)
 
-	// The printer you are saving for sets how many hours a week you need to earn,
-	// and that number is the same on every tier – the tier only decides how many
-	// funded hours sit underneath it.
+	// The printer you are saving for sets how many hours a week you need to earn, and that number is the same on every tier – the tier only decides how many funded hours sit underneath it.
 	const goal = printerById(save.goalId)
 
 	const weeks = useMemo<Week[]>(
@@ -1102,15 +971,11 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				const tierId = tierForWeek(meta.id)
 				const tier = TIERS.find((t) => t.id === tierId) ?? TIERS[0]
 				const build = meta.phase === "build"
-				// Column 5 is the tier-1 week and is already floored to a flat 10 hours,
-				// so every other tier is that plus the extra hours its grant funds.
+				// Column 5 is the tier-1 week and is already floored to a flat 10 hours, so every other tier is that plus the extra hours its grant funds.
 				const target = build ? BUILD_HOURS : weekAsk(goal.hoursPerWeek, tier.fundingHours)
-				// The same ask at the cheapest machine's pace: the least a week can be
-				// worth and still leave a printer at the end of the season.
+				// The same ask at the cheapest machine's pace: the least a week can be worth and still leave a printer at the end of the season.
 				const submitHours = build ? BUILD_HOURS : submitFloorFor(tier.fundingHours)
-				// The trail is as long as the work was: every finished entry is a node,
-				// and one more waits at the end for the entry about to be written. The
-				// minutes come along because reels are placed where the clock crossed.
+				// The trail is as long as the work was: every finished entry is a node, and one more waits at the end for the entry about to be written. The minutes come along because reels are placed where the clock crossed.
 				const written: number[] = []
 				for (;;) {
 					const done = save.progress[`w${meta.id}-entry-${written.length + 1}`]
@@ -1130,8 +995,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 						written,
 						(cid) => save.progress[cid]?.done ?? false,
 						submitHours,
-						// Onboarding made week one's project and it has since been
-						// deleted: `projects` only lists live, named ones.
+						// Onboarding made week one's project and it has since been deleted: `projects` only lists live, named ones.
 						meta.id === 1 &&
 							(save.progress[ONBOARDING_CHECKPOINT_ID]?.done ?? false) &&
 							!save.projects.some((p) => p.weekId === 1),
@@ -1152,8 +1016,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		[save.projects, facts.warmups, save.progress],
 	)
 
-	// Every checkpoint a modal can open, the warm-ups' included. The trail
-	// itself draws `weeks` only.
+	// Every checkpoint a modal can open, the warm-ups' included. The trail itself draws `weeks` only.
 	const allCheckpoints = useMemo(() => [...weeks, ...warmupWeeks].flatMap((w) => w.checkpoints), [weeks, warmupWeeks])
 
 	const warmupWeekOf = useCallback(
@@ -1164,11 +1027,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	/**
 	 * One saved journal: the entry, the time claimed, and the evidence for it.
 	 *
-	 * Note what this does NOT do any more: credit coins. Hours are paid for when
-	 * a reviewer approves the phase, not when they are claimed – otherwise the
-	 * currency is self-issued, and a week could be spent in the shop before
-	 * anyone had looked at it. The trail still moves immediately, because the
-	 * node is the entry rather than the payment.
+	 * Note what this does NOT do any more: credit coins. Hours are paid for when a reviewer approves the phase, not when they are claimed – otherwise the currency is self-issued, and a week could be spent in the shop before anyone had looked at it. The trail still moves immediately, because the node is the entry rather than the payment.
 	 */
 	const logSession = useCallback(
 		async (
@@ -1177,10 +1036,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			body: string,
 			evidence: Pick<SessionLog, "clips"> = { clips: [] },
 		): Promise<string | null> => {
-			// Server first, unlike the other writes here. An entry's timelapses are
-			// checked against Lapse, and a refusal is something the maker has to
-			// fix in the sheet – patching the trail first would show a node done
-			// for an entry that was never saved.
+			// Server first, unlike the other writes here. An entry's timelapses are checked against Lapse, and a refusal is something the maker has to fix in the sheet – patching the trail first would show a node done for an entry that was never saved.
 			const route = routeOf(id)
 			if (route) {
 				let res: Response
@@ -1190,10 +1046,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 						headers: { "content-type": "application/json" },
 						body: JSON.stringify({
 							phase: route.phase,
-							// The journal's first line stands in for a title. The form asks
-							// for one piece of writing, and inventing a second field to
-							// satisfy the column would put a box on screen that exists only
-							// because of the schema.
+							// The journal's first line stands in for a title. The form asks for one piece of writing, and inventing a second field to satisfy the column would put a box on screen that exists only because of the schema.
 							title: body.trim().split("\n")[0]?.slice(0, 200) || "Work session",
 							content: body,
 							hoursClaimed: Math.round((minutes / 60) * 100) / 100,
@@ -1239,14 +1092,9 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	)
 
 	/**
-	 * Change a finished entry's words, hours, and timelapses. The node stays where
-	 * it is – this is the same session, corrected, not another one.
+	 * Change a finished entry's words, hours, and timelapses. The node stays where it is – this is the same session, corrected, not another one.
 	 *
-	 * Server first, like logSession: the server can refuse (an entry a reviewer
-	 * has already put hours on, a week in review or passed, a timelapse that is
-	 * not yours or already backs another entry), and an edit shown as saved that
-	 * quietly reverts on the next refresh is worse than a sheet that says why it
-	 * did not take.
+	 * Server first, like logSession: the server can refuse (an entry a reviewer has already put hours on, a week in review or passed, a timelapse that is not yours or already backs another entry), and an edit shown as saved that quietly reverts on the next refresh is worse than a sheet that says why it did not take.
 	 */
 	const editSession = useCallback(
 		async (
@@ -1300,8 +1148,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	const weekOf = useCallback(
 		(weekId: number): Week => {
 			const week = weeks.find((w) => w.id === weekId) ?? weeks[0]
-			// The curriculum is a compile-time constant with ten weeks in it, so an
-			// empty list is a broken build rather than a state to render around.
+			// The curriculum is a compile-time constant with ten weeks in it, so an empty list is a broken build rather than a state to render around.
 			if (!week) throw new Error("The curriculum has no weeks in it")
 			return week
 		},
@@ -1309,16 +1156,9 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	)
 
 	/**
-	 * What a week is worth, for the gates that ask what it is worth rather than
-	 * what was journalled: Submit's floor, the keep/submit fork, and the pace
-	 * math. Progress reels are the exception – they open on `journalHours`
-	 * below, the same clock their nodes are placed on.
+	 * What a week is worth, for the gates that ask what it is worth rather than what was journalled: Submit's floor, the keep/submit fork, and the pace math. Progress reels are the exception – they open on `journalHours` below, the same clock their nodes are placed on.
 	 *
-	 * Journalled entries plus whatever arrived another way – Hackatime link time,
-	 * and any hours a reviewer adjusted. The two are added here rather than
-	 * folded into the entries upstream because reels are placed where the JOURNAL
-	 * crossed a reel's mark: fold Hackatime in and a progress reel lands on a node
-	 * the participant never wrote.
+	 * Journalled entries plus whatever arrived another way – Hackatime link time, and any hours a reviewer adjusted. The two are added here rather than folded into the entries upstream because reels are placed where the JOURNAL crossed a reel's mark: fold Hackatime in and a progress reel lands on a node the participant never wrote.
 	 */
 	const weekHours = useCallback(
 		(weekId: number) => {
@@ -1331,12 +1171,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	)
 
 	/**
-	 * Hours logged through journal entries alone – no Hackatime, no reviewer
-	 * adjustments from elsewhere. Progress reels open on this clock and not on
-	 * `weekHours`: a reel answers to the devlog that earned it, so ten tracked
-	 * hours somewhere else must not open a reel before the first entry is even
-	 * written. Placement already reads this clock (`checkpointsFor` walks
-	 * `entryMinutes`); the gate now agrees with it.
+	 * Hours logged through journal entries alone – no Hackatime, no reviewer adjustments from elsewhere. Progress reels open on this clock and not on `weekHours`: a reel answers to the devlog that earned it, so ten tracked hours somewhere else must not open a reel before the first entry is even written. Placement already reads this clock (`checkpointsFor` walks `entryMinutes`); the gate now agrees with it.
 	 */
 	const journalHours = useCallback(
 		(weekId: number) => {
@@ -1348,8 +1183,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		[weeks, facts.progress],
 	)
 
-	// The same questions asked of a week object, so a sheet can serve a warm-up
-	// (which has no week number of its own) as readily as a season week.
+	// The same questions asked of a week object, so a sheet can serve a warm-up (which has no week number of its own) as readily as a season week.
 	const weekOfCheckpoint = useCallback(
 		(checkpoint: Checkpoint): Week =>
 			warmupWeeks.find((w) => w.checkpoints.some((c) => c.id === checkpoint.id)) ?? weekOf(checkpoint.weekId),
@@ -1364,12 +1198,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		[weekHours, facts.progress, facts.warmups],
 	)
 	/**
-	 * Everything logged, as one number: every season week's hours plus every
-	 * warm-up's. A warm-up has no week of its own, so it is found by project and
-	 * read through `hoursOf`; the season weeks go through `weekHours`. Both
-	 * already fold in the time that did not come from an entry (Hackatime, a
-	 * reviewer's adjustment), which is what makes this "journalled and tracked"
-	 * rather than entries alone.
+	 * Everything logged, as one number: every season week's hours plus every warm-up's. A warm-up has no week of its own, so it is found by project and read through `hoursOf`; the season weeks go through `weekHours`. Both already fold in the time that did not come from an entry (Hackatime, a reviewer's adjustment), which is what makes this "journalled and tracked" rather than entries alone.
 	 */
 	const totalHours = useMemo(
 		() =>
@@ -1406,12 +1235,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	)
 
 	/**
-	 * What the unreviewed weeks are on course to earn, at the ledger's own rule:
-	 * every hour past the week's funded block (all of a build week's) at
-	 * COINS_PER_HOUR. Approved weeks are skipped because their coins are already
-	 * minted, rejected ones because they will never mint. It is a
-	 * projection – a reviewer can still adjust the hours – which is why it only
-	 * feeds the pace warning and never the balance anyone can spend.
+	 * What the unreviewed weeks are on course to earn, at the ledger's own rule: every hour past the week's funded block (all of a build week's) at COINS_PER_HOUR. Approved weeks are skipped because their coins are already minted, rejected ones because they will never mint. It is a projection – a reviewer can still adjust the hours – which is why it only feeds the pace warning and never the balance anyone can spend.
 	 */
 	const pendingCoins = useCallback(
 		(weekId: number) =>
@@ -1428,11 +1252,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	/**
 	 * Whether a checkpoint is shut because its week ran out of time.
 	 *
-	 * Every node on a passed week is, done or not, with two exceptions: the
-	 * Submit that still owes the week's hand-in, and a setup nobody has done
-	 * yet – a late joiner still has to come in through the front door. A Submit
-	 * with nothing logged behind it passes with the rest, because the server
-	 * refuses an empty hand-in and there is nothing left to do about that.
+	 * Every node on a passed week is, done or not, with two exceptions: the Submit that still owes the week's hand-in, and a setup nobody has done yet – a late joiner still has to come in through the front door. A Submit with nothing logged behind it passes with the rest, because the server refuses an empty hand-in and there is nothing left to do about that.
 	 */
 	const isPassed = useCallback(
 		(id: string): boolean => {
@@ -1450,11 +1270,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	/**
 	 * Whether a checkpoint waits on a deleted reel.
 	 *
-	 * Deleting the last reel on a checkpoint reopens it, and until it is posted
-	 * again every other checkpoint is held – done ones included, so the map
-	 * shows plainly that one thing is owed. The server holds the same line
-	 * (lib/reel-gate), and only ever reports a reel owed while its week can
-	 * still take one, so the hold always has a way out.
+	 * Deleting the last reel on a checkpoint reopens it, and until it is posted again every other checkpoint is held – done ones included, so the map shows plainly that one thing is owed. The server holds the same line (lib/reel-gate), and only ever reports a reel owed while its week can still take one, so the hold always has a way out.
 	 */
 	const isHeld = useCallback(
 		(id: string): boolean => facts.owedReels.length > 0 && !facts.owedReels.includes(id),
@@ -1462,10 +1278,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	)
 
 	/**
-	 * Whether a week still stands between the trail and the week after it. A
-	 * week holds the next one shut until it is handed in – except a week that
-	 * passed with nothing in it, which can never be handed in and would
-	 * otherwise dead-end the rest of the season.
+	 * Whether a week still stands between the trail and the week after it. A week holds the next one shut until it is handed in – except a week that passed with nothing in it, which can never be handed in and would otherwise dead-end the rest of the season.
 	 */
 	const owesSubmit = useCallback(
 		(week: Week): boolean => {
@@ -1478,21 +1291,12 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 
 	/**
 	 * Four rules, and only four break the sequence:
-	 *  - a week that has passed is shut, all but the Submit it still owes –
-	 *    which opens whatever the hours say, since no more can be logged;
-	 *  - anything on the clock (the milestone reels, and Submit itself) opens on
-	 *    the week's hours, so a half-written entry never traps you and the choice
-	 *    to wrap up is always live.
-	 * Everything else unlocks in order, as it always has – except week 1's
-	 * idea reel, which is the optional arm of the opening fork and never holds
-	 * anything shut (see WEEK1_IDEA_REEL_ID).
+	 * - a week that has passed is shut, all but the Submit it still owes – which opens whatever the hours say, since no more can be logged;
+	 * - anything on the clock (the milestone reels, and Submit itself) opens on the week's hours, so a half-written entry never traps you and the choice to wrap up is always live. Everything else unlocks in order, as it always has – except week 1's idea reel, which is the optional arm of the opening fork and never holds anything shut (see WEEK1_IDEA_REEL_ID).
 	 */
 	const isUnlocked = useCallback(
 		(id: string): boolean => {
-			// The owed reel is the way out, so it opens whatever else is true –
-			// including a week that has since closed while this tab held a stale
-			// snapshot. Checking `isPassed` first dead-mapped the whole trail until
-			// the page was reloaded and the server stopped reporting the debt.
+			// The owed reel is the way out, so it opens whatever else is true – including a week that has since closed while this tab held a stale snapshot. Checking `isPassed` first dead-mapped the whole trail until the page was reloaded and the server stopped reporting the debt.
 			if (facts.owedReels.includes(id)) return true
 			if (isPassed(id)) return false
 			if (isHeld(id)) return false
@@ -1515,23 +1319,13 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			if (self.kind === "submit" && weekPassed(week.id)) return true
 
 			if (self.atHours !== undefined) {
-				// A progress reel is earned by journalled hours alone (see
-				// `journalHours`); Submit and "Keep working" read what the week
-				// is worth in total. Only progress reels carry atHours besides
-				// those two, so `kind` is the whole distinction.
+				// A progress reel is earned by journalled hours alone (see `journalHours`); Submit and "Keep working" read what the week is worth in total. Only progress reels carry atHours besides those two, so `kind` is the whole distinction.
 				const hours = self.kind === "reel" ? journalHours(week.id) : weekHours(week.id)
-				// Unwritten entries never block a milestone – the clock does. Neither
-				// does a milestone that is not due yet: the reel waiting at 30h cannot
-				// hold up a Submit that opened at 23.76h.
+				// Unwritten entries never block a milestone – the clock does. Neither does a milestone that is not due yet: the reel waiting at 30h cannot hold up a Submit that opened at 23.76h.
 				//
-				// "Keep working" rides this rule too, at atHours 0. A reel that has
-				// come due is the cadence asking to be paid before the week runs on;
-				// letting the fork's other arm open around it would make every
-				// progress reel skippable forever.
+				// "Keep working" rides this rule too, at atHours 0. A reel that has come due is the cadence asking to be paid before the week runs on; letting the fork's other arm open around it would make every progress reel skippable forever.
 				//
-				// Week 1's idea reel is the exception: it is the optional arm of the
-				// opening fork, so it never holds the clock's milestones or Submit
-				// shut, whichever arm the maker took.
+				// Week 1's idea reel is the exception: it is the optional arm of the opening fork, so it never holds the clock's milestones or Submit shut, whichever arm the maker took.
 				const gates = withoutOptionalIdea(list.slice(0, i)).filter(
 					(c) => c.kind !== "journal" && (c.atHours ?? 0) <= hours,
 				)
@@ -1554,24 +1348,17 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		],
 	)
 
-	// What the trail lets you click. An admin bypassing the locks can open
-	// anything; the server still has the last word on whatever is saved from a
-	// node opened that way. "Start here" keeps to the real rules above.
+	// What the trail lets you click. An admin bypassing the locks can open anything; the server still has the last word on whatever is saved from a node opened that way. "Start here" keeps to the real rules above.
 	const isOpen = useCallback((id: string) => bypassLocks || isUnlocked(id), [bypassLocks, isUnlocked])
 
 	/**
 	 * Why a checkpoint is shut, in the maker's terms. Null when it is open.
 	 *
-	 * It walks the same three rules as isUnlocked, in the same order, and lives
-	 * next to it so the two cannot drift: a trail that says one thing and does
-	 * another is worse than a trail that says nothing. Each branch names the one
-	 * thing standing in the way rather than listing everything outstanding –
-	 * only the first is actionable anyway.
+	 * It walks the same three rules as isUnlocked, in the same order, and lives next to it so the two cannot drift: a trail that says one thing and does another is worse than a trail that says nothing. Each branch names the one thing standing in the way rather than listing everything outstanding – only the first is actionable anyway.
 	 */
 	const lockReason = useCallback(
 		(id: string): string | null => {
-			// Titles are node names, so they keep their capital. The verb follows
-			// the kind: you post a reel, you finish everything else.
+			// Titles are node names, so they keep their capital. The verb follows the kind: you post a reel, you finish everything else.
 			const firstFinish = (c: Checkpoint) => (c.kind === "reel" ? `Post ${c.title} first.` : `Finish ${c.title} first.`)
 
 			if (isUnlocked(id)) return null
@@ -1630,9 +1417,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	)
 
 	const currentCheckpointId = useMemo(() => {
-		// Once the first devlog is written the opening fork is settled on the
-		// skip arm, so the unposted idea reel stops being the trail's answer
-		// to "where next" – it stays open as an extra, not as the current.
+		// Once the first devlog is written the opening fork is settled on the skip arm, so the unposted idea reel stops being the trail's answer to "where next" – it stays open as an extra, not as the current.
 		const skipSettled = save.progress["w1-entry-1"]?.done ?? false
 		const next = allCheckpoints.find(
 			(c) => !(save.progress[c.id]?.done ?? false) && isUnlocked(c.id) && !(skipSettled && c.id === WEEK1_IDEA_REEL_ID),
@@ -1644,8 +1429,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		...facts,
 		phase,
 		doomscrollerOpen: ceremony.doomscrollerOpen,
-		// A printer can be paid for out of either pot, so the goal tracker reads
-		// the total. Everything else in the shop takes `coins` alone.
+		// A printer can be paid for out of either pot, so the goal tracker reads the total. Everything else in the shop takes `coins` alone.
 		printerFund: facts.coins + facts.bankedCoins,
 		hydrated,
 		openCheckpoint,

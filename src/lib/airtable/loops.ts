@@ -14,39 +14,19 @@ import prisma from "@/lib/prisma"
 /**
  * The Loops properties on the `Signups` table: what Loops emails people from.
  *
- * Twelve columns, all Half Life's to write: when someone was last seen on the
- * site, when they last logged a journal entry, and one checkbox per program
- * week for whether they have completed that week's first checkpoint.
- * Everything else Half Life tracks stays in Postgres (lib/analytics) – Loops
- * needs these, not the rest.
+ * Twelve columns, all Half Life's to write: when someone was last seen on the site, when they last logged a journal entry, and one checkbox per program week for whether they have completed that week's first checkpoint. Everything else Half Life tracks stays in Postgres (lib/analytics) – Loops needs these, not the rest.
  *
- * "Last login" is last site access, from `lastActiveAt` (the page-view
- * heartbeat, lib/analytics), falling back to `lastLoginAt` for someone who has
- * signed in but not been seen since. Loops keys its re-engagement email off
- * that, so a visit counts, not just a fresh session.
+ * "Last login" is last site access, from `lastActiveAt` (the page-view heartbeat, lib/analytics), falling back to `lastLoginAt` for someone who has signed in but not been seen since. Loops keys its re-engagement email off that, so a visit counts, not just a fresh session.
  *
- * Rows are matched on `Half-Life User ID` where the column exists, falling back
- * to a case-insensitive email match. The id is the reliable one and the email
- * is the fallback, because the two genuinely disagree: the Signups table is the
- * landing page's list, so a row's email is whatever address someone typed
- * before they had an account, while `User.email` is what the identity provider
- * later gave them. Measured on the dev base, 5100 of 5101 rows had no user
- * sharing their email – matching on email alone matched one person and left
- * every Loops column empty for the rest, which is exactly the bug this column
- * already existed to prevent (see RSVP.fields.userId).
+ * Rows are matched on `Half-Life User ID` where the column exists, falling back to a case-insensitive email match. The id is the reliable one and the email is the fallback, because the two genuinely disagree: the Signups table is the landing page's list, so a row's email is whatever address someone typed before they had an account, while `User.email` is what the identity provider later gave them. Measured on the dev base, 5100 of 5101 rows had no user sharing their email – matching on email alone matched one person and left every Loops column empty for the rest, which is exactly the bug this column already existed to prevent (see RSVP.fields.userId).
  *
- * Only existing rows are updated: this table is the landing page's sign-up list,
- * and a row made here would put someone on a Loops list they never joined.
- * Someone whose Half Life account has no row is skipped and counted, not
- * created.
+ * Only existing rows are updated: this table is the landing page's sign-up list, and a row made here would put someone on a Loops list they never joined. Someone whose Half Life account has no row is skipped and counted, not created.
  */
 
 const TABLE = RSVP_TABLE_ID
 
 export const LOOPS_FIELDS = {
-	// The same column the RSVP drain writes. See RSVP.fields.email: the live
-	// column is lowercase, and Airtable field names are case-sensitive – naming
-	// it `Email` made the list request a 422 that stopped this sync ever running.
+	// The same column the RSVP drain writes. See RSVP.fields.email: the live column is lowercase, and Airtable field names are case-sensitive – naming it `Email` made the list request a 422 that stopped this sync ever running.
 	email: fieldKey(RSVP.fields.email),
 	// The join key, when the base has it. See the note above.
 	userId: fieldKey(RSVP.fields.userId),
@@ -71,13 +51,10 @@ interface LoopsValues {
 /**
  * Each person's values, from Postgres.
  *
- * A week's box is ticked when its first checkpoint is complete, which differs
- * by kind of week:
+ * A week's box is ticked when its first checkpoint is complete, which differs by kind of week:
  * - week 1's is "Get started", the onboarding;
- * - weeks 2-5 open with "New project", complete once the project has its
- *   description and tier (`namedAt`, see lib/analytics);
- * - weeks 6-10 are the builds of those same projects and open straight into
- *   logging, so their first checkpoint is the first build journal entry.
+ * - weeks 2-5 open with "New project", complete once the project has its description and tier (`namedAt`, see lib/analytics);
+ * - weeks 6-10 are the builds of those same projects and open straight into logging, so their first checkpoint is the first build journal entry.
  */
 async function loopsValues(): Promise<LoopsValues[]> {
 	const users = await prisma.user.findMany({
@@ -113,9 +90,7 @@ async function loopsValues(): Promise<LoopsValues[]> {
 			.map((p) => p.workSessions[0]?.createdAt)
 			.filter((d): d is Date => d instanceof Date)
 			.reduce<Date | null>((a, b) => (a && a > b ? a : b), null)
-		// "Last login" means last time we saw them, so a page view wins over the
-		// sign-in that started the session; a sign-in with no view since still
-		// counts, so take whichever is newer.
+		// "Last login" means last time we saw them, so a page view wins over the sign-in that started the session; a sign-in with no view since still counts, so take whichever is newer.
 		const lastLoginAt = newest(u.lastLoginAt, u.lastActiveAt)
 		return { id: u.id, email: u.email, lastLoginAt, lastEntryAt, weeks }
 	})
@@ -153,14 +128,9 @@ function unchanged(row: AirtableRecord, fields: Record<string, unknown>): boolea
 /**
  * Whether this base has the `Half-Life User ID` column.
  *
- * Airtable 422s a list request naming a field that does not exist, and it does
- * so for the whole request – so asking for the id column on a base without it
- * takes the entire sync down, not just the join. One single-record probe
- * settles it per instance instead.
+ * Airtable 422s a list request naming a field that does not exist, and it does so for the whole request – so asking for the id column on a base without it takes the entire sync down, not just the join. One single-record probe settles it per instance instead.
  *
- * Cached because it is a property of the base, not of the run: a base either
- * has the column or it does not, and re-probing on every sync would spend a
- * request an hour to learn something that cannot have changed.
+ * Cached because it is a property of the base, not of the run: a base either has the column or it does not, and re-probing on every sync would spend a request an hour to learn something that cannot have changed.
  */
 let hasUserIdColumn: boolean | null = null
 
@@ -173,9 +143,7 @@ async function userIdColumnExists(config: NonNullable<ReturnType<typeof getAirta
 		)
 		hasUserIdColumn = true
 	} catch (err) {
-		// Only a missing field is "absent". A rate limit or an outage is a real
-		// fault and must not be remembered as a fact about the base, or the id
-		// join would be switched off for the life of the process by one bad minute.
+		// Only a missing field is "absent". A rate limit or an outage is a real fault and must not be remembered as a fact about the base, or the id join would be switched off for the life of the process by one bad minute.
 		const missing = err instanceof AirtableError && err.status === 422 && err.body.includes("UNKNOWN_FIELD_NAME")
 		if (!missing) throw err
 		hasUserIdColumn = false
@@ -189,24 +157,13 @@ async function userIdColumnExists(config: NonNullable<ReturnType<typeof getAirta
 /**
  * Which Signups row, if any, is this person's.
  *
- * Split out from the sync and free of I/O so the join can be tested directly –
- * this is the one decision that made every Loops column silently empty, and it
- * fails quietly by design: a row that is not found is skipped and counted, not
- * an error, so a wrong join looks exactly like a healthy run that had nothing
- * to do.
+ * Split out from the sync and free of I/O so the join can be tested directly – this is the one decision that made every Loops column silently empty, and it fails quietly by design: a row that is not found is skipped and counted, not an error, so a wrong join looks exactly like a healthy run that had nothing to do.
  *
  * Three keys, strongest first:
  *
- * 1. **The `Half-Life User ID` column.** The designed join, and the one that
- *    survives somebody typing one address on the landing page and being issued a
- *    different one at sign-in.
- * 2. **The Airtable record id the RSVP drain recorded.** Not a fuzzy match at
- *    all: it is the row this app itself created for this person, read back out
- *    of `RsvpBuffer`. It is here because key 1 depends on a column that has to
- *    exist in the base, and on the live base it does not – so the join that
- *    needs no new column is the one that actually matches.
- * 3. **Email.** The last resort, and the one that mostly fails: the Signups row
- *    holds whatever address was typed on the landing page.
+ * 1. **The `Half-Life User ID` column.** The designed join, and the one that survives somebody typing one address on the landing page and being issued a different one at sign-in.
+ * 2. **The Airtable record id the RSVP drain recorded.** Not a fuzzy match at all: it is the row this app itself created for this person, read back out of `RsvpBuffer`. It is here because key 1 depends on a column that has to exist in the base, and on the live base it does not – so the join that needs no new column is the one that actually matches.
+ * 3. **Email.** The last resort, and the one that mostly fails: the Signups row holds whatever address was typed on the landing page.
  */
 export function resolveSignupRow(
 	value: Pick<LoopsValues, "id" | "email">,
@@ -227,9 +184,7 @@ export function resolveSignupRow(
 /**
  * The rows this app itself created, indexed by Half Life user id.
  *
- * `RsvpBuffer.airtableRecordId` is the Airtable record for a signup this app
- * drained, and `RsvpBuffer.userId` is whose it is. Together they are an exact
- * mapping that costs one indexed read and needs no column added to the base.
+ * `RsvpBuffer.airtableRecordId` is the Airtable record for a signup this app drained, and `RsvpBuffer.userId` is whose it is. Together they are an exact mapping that costs one indexed read and needs no column added to the base.
  */
 async function drainedRecordRows(): Promise<Map<string, AirtableRecord>> {
 	const byRecordId = new Map<string, AirtableRecord>()
@@ -238,9 +193,7 @@ async function drainedRecordRows(): Promise<Map<string, AirtableRecord>> {
 		select: { userId: true, airtableRecordId: true },
 	})
 	for (const row of rows) {
-		// The row id in the listing and the one the drain recorded are the same
-		// thing, so this needs no second request: a placeholder is enough for the
-		// join, and the write below addresses the real record by that id.
+		// The row id in the listing and the one the drain recorded are the same thing, so this needs no second request: a placeholder is enough for the join, and the write below addresses the real record by that id.
 		if (row.userId && row.airtableRecordId && !byRecordId.has(row.userId)) {
 			byRecordId.set(row.userId, { id: row.airtableRecordId, fields: {} })
 		}
@@ -300,9 +253,7 @@ export interface LoopsSyncResult {
 	unchanged: number
 	dryRun: boolean
 	/**
-	 * True when the join matched so little that this run should not be believed.
-	 * Set rather than merely logged, because the way this failed for months was a
-	 * run that reported success having written nothing.
+	 * True when the join matched so little that this run should not be believed. Set rather than merely logged, because the way this failed for months was a run that reported success having written nothing.
 	 */
 	degraded: boolean
 	/** In a dry run, the first few updates that would be sent. */
@@ -310,9 +261,7 @@ export interface LoopsSyncResult {
 }
 
 /**
- * Bring the Loops columns up to date for everyone. Sends only rows whose
- * values changed, ten per request (Airtable's limit), so an hourly run costs a
- * listing and a handful of writes.
+ * Bring the Loops columns up to date for everyone. Sends only rows whose values changed, ten per request (Airtable's limit), so an hourly run costs a listing and a handful of writes.
  */
 export async function syncLoopsProperties(
 	opts: { dryRun?: boolean } = {},
@@ -321,8 +270,7 @@ export async function syncLoopsProperties(
 	if (!config) return { skipped: "not_configured" }
 
 	const [values, listed, byRecordId] = await Promise.all([loopsValues(), signupRows(config), drainedRecordRows()])
-	// The drained rows are the join, not a fallback for it: a record id addresses
-	// the row directly, so a person the listing never held is still writable.
+	// The drained rows are the join, not a fallback for it: a record id addresses the row directly, so a person the listing never held is still writable.
 	const rows = { ...listed, byRecordId }
 	const updates: { id: string; email: string; fields: Record<string, unknown> }[] = []
 	let matched = 0
@@ -342,9 +290,7 @@ export async function syncLoopsProperties(
 		else updates.push({ id: hit.row.id, email: v.email, fields })
 	}
 
-	// Half the population, matching nothing, is a broken join rather than a quiet
-	// morning. Small populations are exempt: half of four users is noise, and the
-	// first signups of a new season legitimately have no Signups row yet.
+	// Half the population, matching nothing, is a broken join rather than a quiet morning. Small populations are exempt: half of four users is noise, and the first signups of a new season legitimately have no Signups row yet.
 	const degraded = values.length >= 50 && matched * 2 < values.length
 	const result: LoopsSyncResult = {
 		users: values.length,
@@ -359,13 +305,7 @@ export async function syncLoopsProperties(
 		degraded,
 	}
 
-	// A join that stops matching does not throw: rows are skipped and counted, so
-	// the run reports success while writing nothing, and the only symptom is that
-	// the columns stay empty. That is precisely how this went unnoticed, so a
-	// collapse in the match rate is called out loudly rather than returned as a
-	// number somebody has to notice. Most often it means the base has no
-	// `Half-Life User ID` column, or the RSVP drain has not been running to fill
-	// it – either way the fix is on the Airtable side, not here.
+	// A join that stops matching does not throw: rows are skipped and counted, so the run reports success while writing nothing, and the only symptom is that the columns stay empty. That is precisely how this went unnoticed, so a collapse in the match rate is called out loudly rather than returned as a number somebody has to notice. Most often it means the base has no `Half-Life User ID` column, or the RSVP drain has not been running to fill it – either way the fix is on the Airtable side, not here.
 	if (degraded) {
 		console.error(
 			`[airtable] Loops sync matched only ${matched}/${values.length} Half Life users to a Signups row ` +

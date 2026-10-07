@@ -3,24 +3,15 @@ import { Theme } from "@/app/generated/prisma/enums"
 /**
  * Funding tiers.
  *
- * A tier is assigned per themed project when its DESIGN phase is approved. The
- * tier's dollars are parts money, so the decision has to land before the build
- * starts, not after it.
+ * A tier is assigned per themed project when its DESIGN phase is approved. The tier's dollars are parts money, so the decision has to land before the build starts, not after it.
  *
- * A tier decides ONE thing: how many of a design week's hours are spoken for by
- * the project itself. Those `fundingHours` earn dollars, not coins – they are
- * what the grant buys. Every hour above them is banked or spent.
+ * A tier decides ONE thing: how many of a design week's hours are spoken for by the project itself. Those `fundingHours` earn dollars, not coins – they are what the grant buys. Every hour above them is banked or spent.
  *
  * It decides nothing about the machine at the end of the season. That is paid
  * for out of banked coins at the same rate on every tier, and how many hours a
- * week must bank is a property of the printer someone is saving for, not of the
- * tier they are working at – see ./printers.ts. Tier 1 and Tier 3 both reach a
- * Bambu P1S; Tier 3 simply has more funded hours sitting underneath the same
- * banking.
+ * week must bank is a property of the printer someone is saving for, not of the tier they are working at – see ./printers.ts. Tier 1 and Tier 3 both reach a Bambu P1S; Tier 3 simply has more funded hours sitting underneath the same banking.
  *
- * This is why there is no `bankHours` here any more. It used to be a tier
- * property (2/5/10), which quietly made the expensive machines unreachable from
- * Tier 1 and the cheap ones over-funded from Tier 3.
+ * This is why there is no `bankHours` here any more. It used to be a tier property (2/5/10), which quietly made the expensive machines unreachable from Tier 1 and the cheap ones over-funded from Tier 3.
  */
 export interface Tier {
 	readonly id: 1 | 2 | 3
@@ -35,8 +26,7 @@ export interface Tier {
 	/** The time a tier's build takes, as onboarding shows it beside the grant. */
 	readonly estimate: string
 	/**
-	 * Real projects built at this tier, shown when choosing one. Keyed by theme,
-	 * because a tier is shared by every week but what fits in it is not.
+	 * Real projects built at this tier, shown when choosing one. Keyed by theme, because a tier is shared by every week but what fits in it is not.
 	 */
 	readonly showcase: Partial<Record<Theme, readonly TierShowcaseProject[]>>
 }
@@ -49,10 +39,7 @@ export interface TierShowcaseProject {
 	readonly href: string
 }
 
-// Numbers are the program designer's, and match the tier cards in the platform
-// comp. Changing them is this file and nothing else – every review freezes the
-// numbers it actually used onto SubmissionReview, so editing these does not
-// rewrite anyone's history.
+// Numbers are the program designer's, and match the tier cards in the platform comp. Changing them is this file and nothing else – every review freezes the numbers it actually used onto SubmissionReview, so editing these does not rewrite anyone's history.
 export const TIERS = [
 	{
 		id: 1,
@@ -155,9 +142,7 @@ export function isTierId(id: unknown): id is TierId {
 /**
  * The tier an hour count falls into, for suggesting a default to a reviewer.
  *
- * Compares against `fundingHours`: someone who worked 14 hours has cleared
- * Tier 2's funded block even though they are short of what a full Tier 2 week
- * asks, and the reviewer wants Tier 2 offered so they can see that.
+ * Compares against `fundingHours`: someone who worked 14 hours has cleared Tier 2's funded block even though they are short of what a full Tier 2 week asks, and the reviewer wants Tier 2 offered so they can see that.
  */
 export function suggestTierForHours(hours: number): TierId {
 	let suggested: TierId = ENTRY_TIER.id

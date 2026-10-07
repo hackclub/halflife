@@ -11,9 +11,7 @@ const tierSchema = z
 	})
 
 /**
- * A discriminated union rather than one flat object with an `if`: it makes
- * "comments are mandatory unless you are approving" a type-level fact, and it
- * makes the tier required exactly where it is meaningful.
+ * A discriminated union rather than one flat object with an `if`: it makes "comments are mandatory unless you are approving" a type-level fact, and it makes the tier required exactly where it is meaningful.
  */
 export const decisionSchema = z.discriminatedUnion("result", [
 	z
@@ -66,8 +64,7 @@ export const hoursDecisionSchema = z
 				]),
 			)
 			.min(1)
-			// Reviewers approve a whole project's hours in one pass, so this is
-			// batched; the bound stops a pathological payload.
+			// Reviewers approve a whole project's hours in one pass, so this is batched; the bound stops a pathological payload.
 			.max(100),
 	})
 	.strict()

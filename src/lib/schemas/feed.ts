@@ -3,9 +3,7 @@ import { PostKind } from "@/app/generated/prisma/enums"
 import { boundedText, cuid } from "@/lib/schemas/common"
 
 /**
- * Object keys are shape-checked here and OWNERSHIP-checked in lib/feed.ts.
- * This only rejects the obviously malformed; whether the key belongs to the
- * person posting is a question the database has to answer, not a regex.
+ * Object keys are shape-checked here and OWNERSHIP-checked in lib/feed.ts. This only rejects the obviously malformed; whether the key belongs to the person posting is a question the database has to answer, not a regex.
  */
 const objectKey = z
 	.string()
@@ -22,10 +20,7 @@ export const createPostSchema = z
 		thumbnailKey: objectKey.nullish(),
 		themeProjectId: cuid.nullish(),
 		/**
-		 * The trail node this reel answers, e.g. "w3-reel-2". Bounded and pattern-
-		 * matched rather than free text: it is written straight into a column the
-		 * trail reads back by key, so anything that is not a checkpoint id is a
-		 * row nothing will ever find again.
+		 * The trail node this reel answers, e.g. "w3-reel-2". Bounded and pattern- matched rather than free text: it is written straight into a column the trail reads back by key, so anything that is not a checkpoint id is a row nothing will ever find again.
 		 */
 		checkpointKey: z
 			.string()
@@ -50,9 +45,7 @@ export const createPostSchema = z
 export const likeSchema = z.object({ liked: z.boolean() }).strict()
 
 /**
- * The public links for one reel, one per platform at most. The URL is only
- * length-checked here; whether it is really a link to that platform, and its
- * tidy stored form, is lib/public-reels.ts's call, shared with the dialog.
+ * The public links for one reel, one per platform at most. The URL is only length-checked here; whether it is really a link to that platform, and its tidy stored form, is lib/public-reels.ts's call, shared with the dialog.
  */
 export const publicReelLinksSchema = z
 	.object({

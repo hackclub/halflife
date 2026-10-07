@@ -8,12 +8,9 @@ import { publicUrlFor } from "@/lib/uploads/r2"
 import { warmupPhaseOf } from "@/lib/warmup"
 
 /**
- * Everything the Reels page shows: the participant's own reels, grouped by
- * the project each belongs to, with every public link they have added to each.
+ * Everything the Reels page shows: the participant's own reels, grouped by the project each belongs to, with every public link they have added to each.
  *
- * Their own reels only, and including ones a moderator took out of the feed –
- * the author still sees those, as the feed's own rule has it. A removed reel
- * is gone for them too.
+ * Their own reels only, and including ones a moderator took out of the feed – the author still sees those, as the feed's own rule has it. A removed reel is gone for them too.
  */
 
 export interface MyPublicLink {
@@ -36,8 +33,7 @@ export interface MyReel {
 	/** Why this reel cannot be deleted – its week is in review, decided or over. Null when it can. */
 	deleteLocked: string | null
 	/**
-	 * Whether deleting it reopens its checkpoint: the last reel on an idea or
-	 * progress checkpoint. The map then holds everything else until it is back.
+	 * Whether deleting it reopens its checkpoint: the last reel on an idea or progress checkpoint. The map then holds everything else until it is back.
 	 */
 	reopensCheckpoint: boolean
 }
@@ -49,9 +45,7 @@ export interface MyReelGroup {
 }
 
 /**
- * The checkpoint a reel answered, named the way the trail names it. A progress
- * reel's hours depend on its week's phase: a season week says it by number
- * (past DESIGN_WEEKS is a build), a warm-up by the phase it is handed in as.
+ * The checkpoint a reel answered, named the way the trail names it. A progress reel's hours depend on its week's phase: a season week says it by number (past DESIGN_WEEKS is a build), a warm-up by the phase it is handed in as.
  */
 function titleFor(
 	checkpointKey: string | null,
@@ -96,8 +90,7 @@ export async function getMyReels(userId: string): Promise<MyReelGroup[]> {
 		},
 	})
 
-	// How many live reels each checkpoint has, so a second one can go without
-	// reopening anything. And each checkpoint week's lock, asked once per week.
+	// How many live reels each checkpoint has, so a second one can go without reopening anything. And each checkpoint week's lock, asked once per week.
 	const perKey = new Map<string, number>()
 	for (const p of posts) if (p.checkpointKey) perKey.set(p.checkpointKey, (perKey.get(p.checkpointKey) ?? 0) + 1)
 	const locks = new Map<string, Promise<string | null>>()
@@ -144,8 +137,7 @@ export async function getMyReels(userId: string): Promise<MyReelGroup[]> {
 		})
 	}
 
-	// Projects in trail order, so PCB reads before CAD whatever was posted last;
-	// reels outside any project come after them.
+	// Projects in trail order, so PCB reads before CAD whatever was posted last; reels outside any project come after them.
 	const order = (g: MyReelGroup) => {
 		if (!g.project) return Number.MAX_SAFE_INTEGER
 		const i = THEMES.findIndex((t) => t.label === g.project?.theme)

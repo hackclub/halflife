@@ -4,19 +4,12 @@ import { HttpError } from "@/lib/errors"
 /**
  * HCB's v4 API – the authenticated, write-capable one.
  *
- * The v3 API behind /docs/api/v3 is read-only and unauthenticated; it cannot
- * send money. Grants are paid by topping up a participant's existing HCB card
- * grant, which is what `hackclub/dinobags` does with this same API:
+ * The v3 API behind /docs/api/v3 is read-only and unauthenticated; it cannot send money. Grants are paid by topping up a participant's existing HCB card grant, which is what `hackclub/dinobags` does with this same API:
  *
  *   POST /api/v4/card_grants/{hashid}/topup?expand=disbursements,user
  *   PUT  /api/v4/organizations/{slug}/transactions/{txn_id}
  *
- * Auth is an OAuth bearer. Either a static `HCB_ACCESS_TOKEN`, or the
- * refresh-token flow (`HCB_CLIENT_ID` / `HCB_CLIENT_SECRET` /
- * `HCB_REFRESH_TOKEN`), with the app invited to the org as a manager. The app
- * needs `card_grants:write` to top up, and `card_grants:read` to check what a
- * lost response left behind. Unconfigured, this module refuses rather than
- * calling anything.
+ * Auth is an OAuth bearer. Either a static `HCB_ACCESS_TOKEN`, or the refresh-token flow (`HCB_CLIENT_ID` / `HCB_CLIENT_SECRET` / `HCB_REFRESH_TOKEN`), with the app invited to the org as a manager. The app needs `card_grants:write` to top up, and `card_grants:read` to check what a lost response left behind. Unconfigured, this module refuses rather than calling anything.
  */
 
 const DEFAULT_BASE = "https://hcb.hackclub.com"
@@ -63,23 +56,18 @@ async function accessToken(force = false): Promise<string> {
 
 	const data = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number }
 	if (!data.access_token) throw new HttpError("INTERNAL", "HCB token refresh returned no access token")
-	// Default an hour when HCB does not say; either way the token is now bounded
-	// rather than cached for the life of the process.
+	// Default an hour when HCB does not say; either way the token is now bounded rather than cached for the life of the process.
 	const lifetimeMs = (typeof data.expires_in === "number" && data.expires_in > 0 ? data.expires_in : 3600) * 1000
 	cachedToken = { token: data.access_token, expiresAt: Date.now() + lifetimeMs }
 	if (data.refresh_token && data.refresh_token !== refresh) {
-		// HCB rotates refresh tokens, and an env var cannot be rewritten. This
-		// token is used for the life of the process; persisting the new one (see
-		// docs) is what keeps the next process able to refresh.
+		// HCB rotates refresh tokens, and an env var cannot be rewritten. This token is used for the life of the process; persisting the new one (see docs) is what keeps the next process able to refresh.
 		console.warn("[hcb] refresh token rotated; persist the new value or the next refresh will fail")
 	}
 	return cachedToken.token
 }
 
 /**
- * An HCB request with the current access token, retried once with a fresh one
- * when a 401 says the cached token is stale. A static `HCB_ACCESS_TOKEN` is
- * not refreshable, so a 401 there is returned to the caller untouched.
+ * An HCB request with the current access token, retried once with a fresh one when a 401 says the cached token is stale. A static `HCB_ACCESS_TOKEN` is not refreshable, so a 401 there is returned to the caller untouched.
  */
 async function hcbFetch(path: string, init: RequestInit & { timeoutMs?: number } = {}): Promise<Response> {
 	const { timeoutMs = 15_000, headers, ...rest } = init
@@ -146,21 +134,14 @@ export interface GrantDisbursement {
 /**
  * The result of reading a grant's disbursements.
  *
- * `unreadable` is not the same as an empty list: an unexpected payload shape
- * (an envelope, a renamed field, a string amount) must never be mistaken for
- * "the previous attempt paid nothing", because that is the state in which a
- * retry sends the money again.
+ * `unreadable` is not the same as an empty list: an unexpected payload shape (an envelope, a renamed field, a string amount) must never be mistaken for "the previous attempt paid nothing", because that is the state in which a retry sends the money again.
  */
 export type GrantDisbursementList = { kind: "listed"; rows: GrantDisbursement[] } | { kind: "unreadable" }
 
 /**
- * Every disbursement on a card grant, newest first: top-ups land as positive
- * amounts, withdrawals as negative.
+ * Every disbursement on a card grant, newest first: top-ups land as positive amounts, withdrawals as negative.
  *
- * No pagination: a grant only accumulates one row per top-up/withdrawal, and
- * this exists to spot a top-up whose response was lost before deciding whether
- * to send another. Fails closed on any shape it does not recognise – see
- * `GrantDisbursementList`.
+ * No pagination: a grant only accumulates one row per top-up/withdrawal, and this exists to spot a top-up whose response was lost before deciding whether to send another. Fails closed on any shape it does not recognise – see `GrantDisbursementList`.
  */
 export async function listCardGrantDisbursements(grantHashid: string): Promise<GrantDisbursementList> {
 	const res = await hcbFetch(`/api/v4/card_grants/${encodeURIComponent(grantHashid)}?expand=disbursements`)
@@ -194,19 +175,14 @@ export const TOPUP_SKEW_MS = 5 * 60_000
 /**
  * Decide whether a top-up whose response was lost actually landed.
  *
- * A single disbursement matching the amount at or after the attempt is
- * evidence it did. Several in the window, a candidate with no usable
- * timestamp, or a payload that could not be read at all is not something to
- * guess about: an unnecessary retry pays twice, and a skipped one underpays,
- * so ambiguity goes back to a human.
+ * A single disbursement matching the amount at or after the attempt is evidence it did. Several in the window, a candidate with no usable timestamp, or a payload that could not be read at all is not something to guess about: an unnecessary retry pays twice, and a skipped one underpays, so ambiguity goes back to a human.
  */
 export function reconcileDisbursement(
 	list: GrantDisbursementList,
 	amountCents: number,
 	attemptedAt: Date,
 ): { kind: "landed"; transactionId: string | null } | { kind: "absent" } | { kind: "ambiguous" } {
-	// Unreadable is not absent. If we could not parse what HCB holds, the only
-	// safe answer is to send the admin to look, never to retry the top-up.
+	// Unreadable is not absent. If we could not parse what HCB holds, the only safe answer is to send the admin to look, never to retry the top-up.
 	if (list.kind === "unreadable") return { kind: "ambiguous" }
 
 	const sameAmount = list.rows.filter((d) => d.amountCents === amountCents)

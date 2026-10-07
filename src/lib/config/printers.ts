@@ -1,23 +1,13 @@
 /**
  * The grand-prize catalogue – the thing every earned coin is paced against.
  *
- * Numbers come straight from the budget sheet (Half life budget – Printers),
- * and nothing here is invented on top of them. One coin is one dollar, so a
- * machine costs its shop price. Pace hours a week are the sheet's column 4:
+ * Numbers come straight from the budget sheet (Half life budget – Printers), and nothing here is invented on top of them. One coin is one dollar, so a machine costs its shop price. Pace hours a week are the sheet's column 4:
  *
  *   pace = (shopPrice - 5 hours * 5 build weeks * $5) / 5 design weeks / $5
  *
- * Read the shape of that formula, because every projection below depends on
- * it: the season is ten weeks, and the two halves earn differently. The five
- * build weeks are the same five hours for everyone and none of them is funded,
- * so they hand every maker the same flat BUILD_WEEK_COINS whatever machine
- * they picked. Only the remainder is paced against the design weeks, and there
- * are five of those. A projection that charges the whole price to the design
- * rate asks for weeks the season does not have.
+ * Read the shape of that formula, because every projection below depends on it: the season is ten weeks, and the two halves earn differently. The five build weeks are the same five hours for everyone and none of them is funded, so they hand every maker the same flat BUILD_WEEK_COINS whatever machine they picked. Only the remainder is paced against the design weeks, and there are five of those. A projection that charges the whole price to the design rate asks for weeks the season does not have.
  *
- * Those pace hours are the same whatever tier you are on – the tier decides
- * how many funded hours sit underneath them, not how much you earn. They are
- * guidance only: every coin is spendable, and no pot is locked.
+ * Those pace hours are the same whatever tier you are on – the tier decides how many funded hours sit underneath them, not how much you earn. They are guidance only: every coin is spendable, and no pot is locked.
  */
 import { BUILD_HOURS, COINS_PER_HOUR, DESIGN_WEEKS, TOTAL_WEEKS } from "./program"
 import { ENTRY_TIER } from "./tiers"
@@ -38,8 +28,7 @@ export interface PrinterGoal {
 	/** Of those hours, the ones past the parts funding – the weekly earn pace. */
 	paceHours: number
 	/**
-	 * Coins a design week earns at that pace – pace hours at $5 each. A build
-	 * week does not use this; it earns BUILD_WEEK_COINS / BUILD_WEEKS flat.
+	 * Coins a design week earns at that pace – pace hours at $5 each. A build week does not use this; it earns BUILD_WEEK_COINS / BUILD_WEEKS flat.
 	 */
 	coinsPerWeek: number
 	kind: PrinterKind
@@ -51,9 +40,7 @@ export interface PrinterGoal {
 }
 
 /**
- * Nobody is asked for less than ten hours a week on tier 1. The cheapest
- * machine works out at 9.76 on the budget sheet, so it is held here at the
- * floor; every other goal already clears it on its own.
+ * Nobody is asked for less than ten hours a week on tier 1. The cheapest machine works out at 9.76 on the budget sheet, so it is held here at the floor; every other goal already clears it on its own.
  */
 export const TIER1_MIN_HOURS = 10
 
@@ -162,9 +149,7 @@ const SHEET: SheetRow[] = [
 ]
 
 /**
- * The coins one paced hour is worth – the sheet's $5, at a coin to the dollar.
- * Re-exported rather than restated so the catalogue and the ledger cannot
- * disagree about what an hour is worth.
+ * The coins one paced hour is worth – the sheet's $5, at a coin to the dollar. Re-exported rather than restated so the catalogue and the ledger cannot disagree about what an hour is worth.
  */
 export { COINS_PER_HOUR }
 
@@ -174,18 +159,12 @@ export const BUILD_WEEKS = TOTAL_WEEKS - DESIGN_WEEKS
 export { DESIGN_WEEKS }
 
 /**
- * What the build half earns for everyone, whichever machine is on the wall:
- * BUILD_HOURS a week, none of it funded, at COINS_PER_HOUR. This is the
- * `5 hours * 5 build weeks * $5` term the sheet subtracts before it works out
- * column 4, so it is money the projection may count on rather than ask for.
+ * What the build half earns for everyone, whichever machine is on the wall: BUILD_HOURS a week, none of it funded, at COINS_PER_HOUR. This is the `5 hours * 5 build weeks * $5` term the sheet subtracts before it works out column 4, so it is money the projection may count on rather than ask for.
  */
 export const BUILD_WEEK_COINS = BUILD_HOURS * COINS_PER_HOUR * BUILD_WEEKS
 
 /**
- * Column 4 is the economy and is left exactly as the sheet has it – every tier
- * earns the same hours for the same machine. The ten-hour floor only touches
- * the tier-1 hours figure the goal picker shows; it must never reach the
- * pace hours, or the sheet's arithmetic stops landing on the price.
+ * Column 4 is the economy and is left exactly as the sheet has it – every tier earns the same hours for the same machine. The ten-hour floor only touches the tier-1 hours figure the goal picker shows; it must never reach the pace hours, or the sheet's arithmetic stops landing on the price.
  */
 export const PRINTERS: PrinterGoal[] = SHEET.map((p) => ({
 	...p,
@@ -199,34 +178,23 @@ export const DEFAULT_GOAL_ID = "ender-3-v3-se"
 export const MAX_HOURS_PER_WEEK = Math.max(...PRINTERS.map((p) => p.hoursPerWeek))
 
 /**
- * The gentlest, which is the cheapest machine's pace. It used to gate
- * submission; now the submit floor is the funded hours and this is only the
- * threshold for "that starter will not fill your week" style warnings. It is
- * read off the board rather than restated so that repricing the catalogue
- * moves it with it.
+ * The gentlest, which is the cheapest machine's pace. It used to gate submission; now the submit floor is the funded hours and this is only the threshold for "that starter will not fill your week" style warnings. It is read off the board rather than restated so that repricing the catalogue moves it with it.
  */
 export const MIN_HOURS_PER_WEEK = Math.min(...PRINTERS.map((p) => p.hoursPerWeek))
 
 /**
  * What a design week asks of you, for a weekly earning pace and a tier.
  *
- * The pace is the whole of it: the tier only slides the funded block in or out
- * underneath, since those hours pay for the project and earn nothing. So the
- * ask is the pace plus however much further down tier 1's floor this tier sits.
+ * The pace is the whole of it: the tier only slides the funded block in or out underneath, since those hours pay for the project and earn nothing. So the ask is the pace plus however much further down tier 1's floor this tier sits.
  *
- * Trail targets are this function at the goal's own pace. One formula, so a
- * tier cannot mean one thing on the trail and another in the submit sheet.
+ * Trail targets are this function at the goal's own pace. One formula, so a tier cannot mean one thing on the trail and another in the submit sheet.
  */
 export function weekAsk(pace: number, fundingHours: number): number {
 	return pace + (fundingHours - ENTRY_TIER.fundingHours)
 }
 
 /**
- * Coins that should be earned once `weekId` is behind you, to still land the
- * goal on time. Design weeks carry the goal's own rate; build weeks carry the
- * flat hours everyone logs. At SEASON_WEEKS this lands exactly on the price,
- * which is what makes it a pace rather than a guess – and what lets a big
- * early week pay for a thin later one without anybody being warned twice.
+ * Coins that should be earned once `weekId` is behind you, to still land the goal on time. Design weeks carry the goal's own rate; build weeks carry the flat hours everyone logs. At SEASON_WEEKS this lands exactly on the price, which is what makes it a pace rather than a guess – and what lets a big early week pay for a thin later one without anybody being warned twice.
  */
 export function paceTarget(goal: PrinterGoal, weekId: number): number {
 	const design = Math.min(weekId, DESIGN_WEEKS)
@@ -254,16 +222,9 @@ export function weeksToGo(goal: PrinterGoal, coins: number): number {
 }
 
 /**
- * The least a week can be on a tier and still be handed in: the tier's funded
- * block, and nothing more. Funding hours pay for the parts, so they are the
- * whole requirement for submission – every hour worked past them only earns,
- * it is never gate-keeping.
+ * The least a week can be on a tier and still be handed in: the tier's funded block, and nothing more. Funding hours pay for the parts, so they are the whole requirement for submission – every hour worked past them only earns, it is never gate-keeping.
  *
- * That used to be funded block plus a cheapest-machine earning pace; the
- * floor is now simply what the grant buys. This is that gate: the submit
- * node opens here, and the submit sheet refuses a tier below it. Every
- * screen that names a tier's requirement reads it from here, so the number
- * you pick against is the number you are held to.
+ * That used to be funded block plus a cheapest-machine earning pace; the floor is now simply what the grant buys. This is that gate: the submit node opens here, and the submit sheet refuses a tier below it. Every screen that names a tier's requirement reads it from here, so the number you pick against is the number you are held to.
  */
 export function submitFloorFor(fundingHours: number): number {
 	return fundingHours

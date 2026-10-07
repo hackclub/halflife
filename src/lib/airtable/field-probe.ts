@@ -4,25 +4,13 @@ import { type AirtableConfig, AirtableError, airtableFetch } from "@/lib/airtabl
 /**
  * Whether a column exists on a table, probed once per process.
  *
- * Airtable refuses the WHOLE request when a `fields[]` entry or a `fields` key
- * names a column the table does not have – a 422 UNKNOWN_FIELD_NAME, not a
- * partial success. So one column that was never created does not leave that
- * column blank, it stops every request that mentions it: the RSVP drain's
- * per-record upsert, the Loops sync's whole listing.
+ * Airtable refuses the WHOLE request when a `fields[]` entry or a `fields` key names a column the table does not have – a 422 UNKNOWN_FIELD_NAME, not a partial success. So one column that was never created does not leave that column blank, it stops every request that mentions it: the RSVP drain's per-record upsert, the Loops sync's whole listing.
  *
- * That is the failure this module exists to absorb. Both callers need to ask
- * "may I write this column?" and answer yes/no, because the alternative is a
- * payload that is rejected wholesale and a job that reports success having
- * written nothing.
+ * That is the failure this module exists to absorb. Both callers need to ask "may I write this column?" and answer yes/no, because the alternative is a payload that is rejected wholesale and a job that reports success having written nothing.
  *
- * Only a 422 naming the field counts as "absent". A rate limit, a timeout or a
- * 5xx is a fault, not a fact about the schema, and must never be remembered as
- * one – caching that would switch a column off for the life of the process after
- * a single bad minute.
+ * Only a 422 naming the field counts as "absent". A rate limit, a timeout or a 5xx is a fault, not a fact about the schema, and must never be remembered as one – caching that would switch a column off for the life of the process after a single bad minute.
  *
- * Cached per (table, column) because a base either has a column or it does not.
- * Re-probing on every write would spend an Airtable request to learn something
- * that cannot have changed.
+ * Cached per (table, column) because a base either has a column or it does not. Re-probing on every write would spend an Airtable request to learn something that cannot have changed.
  */
 const probed = new Map<string, boolean>()
 
@@ -72,19 +60,9 @@ export function resetColumnProbes(): void {
 /**
  * The subset of `columns` the table actually has, probed once and cached.
  *
- * Airtable will not say which of several `fields[]` entries it disliked – the
- * whole request is refused – so this asks about them one at a time. The cost is
- * one request per column the first time a process sees them and none after,
- * which is what the cache above is for: a drain running every ten minutes pays
- * it once per deploy, not once per run.
+ * Airtable will not say which of several `fields[]` entries it disliked – the whole request is refused – so this asks about them one at a time. The cost is one request per column the first time a process sees them and none after, which is what the cache above is for: a drain running every ten minutes pays it once per deploy, not once per run.
  *
- * The point is that a payload is built out of what exists rather than out of what
- * the schema hopes for. A base set up with three of the columns a payload names
- * otherwise has every write refused wholesale – not the missing column left
- * blank, every other column in the same record lost too – and the only symptom
- * is a `failed` count nobody reads. Measured on the live Signups base: three of
- * the ten columns the drain sends exist, so every drain of every row was
- * rejected.
+ * The point is that a payload is built out of what exists rather than out of what the schema hopes for. A base set up with three of the columns a payload names otherwise has every write refused wholesale – not the missing column left blank, every other column in the same record lost too – and the only symptom is a `failed` count nobody reads. Measured on the live Signups base: three of the ten columns the drain sends exist, so every drain of every row was rejected.
  */
 export async function existingColumns(
 	config: AirtableConfig,

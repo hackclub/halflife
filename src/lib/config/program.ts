@@ -1,8 +1,7 @@
 import { Phase, Theme } from "@/app/generated/prisma/enums"
 
 /**
- * Every tunable program number lives in this file and ./tiers.ts. If you are
- * about to hardcode a threshold anywhere else, put it here instead.
+ * Every tunable program number lives in this file and ./tiers.ts. If you are about to hardcode a threshold anywhere else, put it here instead.
  */
 
 /** Shown wherever the currency is named. One line to rename it everywhere. */
@@ -12,19 +11,12 @@ export const CREDIT_NAME_SINGULAR = "coin"
 /**
  * One coin is one dollar, and an hour of work is worth five of them.
  *
- * This single rate drives the whole economy: design hours beyond the tier's
- * funding hours, and every build hour. It is the budget sheet's $5, and every
- * printer price in ./printers.ts is paced against it, so changing it moves
- * every machine in the catalogue out of reach at once.
+ * This single rate drives the whole economy: design hours beyond the tier's funding hours, and every build hour. It is the budget sheet's $5, and every printer price in ./printers.ts is paced against it, so changing it moves every machine in the catalogue out of reach at once.
  */
 export const COINS_PER_HOUR = 5
 
 /**
- * Ceiling on SPENDABLE coins minted per phase. `approvedHours` can come from a
- * reviewer typing into a box, and a fat-fingered 1000 should not mint five
- * thousand coins. Applied per phase, so one project's design and build
- * together can mint up to twice this; the banked half needs no cap: it is
- * bounded by the goal's weekly banking rate by construction.
+ * Ceiling on SPENDABLE coins minted per phase. `approvedHours` can come from a reviewer typing into a box, and a fat-fingered 1000 should not mint five thousand coins. Applied per phase, so one project's design and build together can mint up to twice this; the banked half needs no cap: it is bounded by the goal's weekly banking rate by construction.
  */
 export const MAX_COINS_PER_PROJECT = 250
 
@@ -34,11 +26,7 @@ export const THEME_COMPLETION_BONUS = 25
 /**
  * A build week is the same five hours for everyone, split into two sittings.
  *
- * None of it is funded – the parts were bought with the design week's grant –
- * so every one of these hours banks. This is the `5 hours * 5 build weeks * $5`
- * term the budget sheet subtracts from a machine's price before it works out
- * what the design weeks have to carry, which is why it lives here rather than
- * in the curriculum: the printer catalogue depends on it.
+ * None of it is funded – the parts were bought with the design week's grant – so every one of these hours banks. This is the `5 hours * 5 build weeks * $5` term the budget sheet subtracts from a machine's price before it works out what the design weeks have to carry, which is why it lives here rather than in the curriculum: the printer catalogue depends on it.
  */
 export const BUILD_BLOCKS = [2, 3] as const
 export const BUILD_HOURS: number = BUILD_BLOCKS.reduce((n, h) => n + h, 0)
@@ -53,23 +41,16 @@ export const TOTAL_WEEKS = 10
 export const DESIGN_WEEKS = 5
 
 /**
- * The trail's first node, the setup questionnaire. The server marks it done
- * from onboardingCompletedAt and the client marks it done the moment setup is
- * finished; both have to name the same node.
+ * The trail's first node, the setup questionnaire. The server marks it done from onboardingCompletedAt and the client marks it done the moment setup is finished; both have to name the same node.
  */
 export const ONBOARDING_CHECKPOINT_ID = "w1-onboard"
 
 /**
  * Streaks.
  *
- * A day counts when the participant logs a work session with that day as its
- * `effectiveDate` in the program timezone – the same stamp the journal already
- * writes, so the streak is derived from work rather than from logging in.
+ * A day counts when the participant logs a work session with that day as its `effectiveDate` in the program timezone – the same stamp the journal already writes, so the streak is derived from work rather than from logging in.
  *
- * `STREAK_GRACE_DAYS = 1` means one missed day does not reset you: the streak
- * breaks on the second. Hardware work is not a daily-habit app, and a rule
- * that punishes a day at a robotics competition would mostly teach people to
- * file a fake session.
+ * `STREAK_GRACE_DAYS = 1` means one missed day does not reset you: the streak breaks on the second. Hardware work is not a daily-habit app, and a rule that punishes a day at a robotics competition would mostly teach people to file a fake session.
  */
 export const STREAK_GRACE_DAYS = 1
 
@@ -84,9 +65,7 @@ export interface ThemeDef {
 	readonly buildWeek: number
 }
 
-// designWeek/buildWeek are written out rather than derived from array index.
-// `index + 1` / `index + 6` is exactly the implicit coupling that breaks the
-// day someone inserts a pilot week zero.
+// designWeek/buildWeek are written out rather than derived from array index. `index + 1` / `index + 6` is exactly the implicit coupling that breaks the day someone inserts a pilot week zero.
 export const THEMES = [
 	{
 		id: Theme.PCB,
@@ -135,12 +114,7 @@ export type ThemeSlug = (typeof THEMES)[number]["slug"]
 /**
  * The pre-season track warm-up projects are filed on.
  *
- * Deliberately not in `THEMES`: `THEMES` is the ten-week season, and a sixth
- * entry there would invent an eleventh week, count toward printer
- * qualification, and collide with a season slot when a project's week is
- * derived from its index. Iteration over the season reads `THEMES`; anything
- * that only needs a theme's label or slug asks `getThemeDef`, which knows this
- * one too. Its weeks are 0 because it is not scheduled at all.
+ * Deliberately not in `THEMES`: `THEMES` is the ten-week season, and a sixth entry there would invent an eleventh week, count toward printer qualification, and collide with a season slot when a project's week is derived from its index. Iteration over the season reads `THEMES`; anything that only needs a theme's label or slug asks `getThemeDef`, which knows this one too. Its weeks are 0 because it is not scheduled at all.
  */
 export const WARMUP_THEME: ThemeDef = {
 	id: Theme.WARMUP,
@@ -154,9 +128,7 @@ export const WARMUP_THEME: ThemeDef = {
 /**
  * The `weekId` the store gives a warm-up project.
  *
- * Warm-up projects have no scheduled week, but a client `Project` carries one
- * (it addresses the project detail route and picks the card's scene), so they
- * borrow week 0 – a value no curriculum week can take.
+ * Warm-up projects have no scheduled week, but a client `Project` carries one (it addresses the project detail route and picks the card's scene), so they borrow week 0 – a value no curriculum week can take.
  */
 export const WARMUP_WEEK_ID = 0
 

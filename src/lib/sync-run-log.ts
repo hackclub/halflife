@@ -14,8 +14,7 @@ export type SyncKey =
 	| "help_ticket_summary"
 
 /**
- * One row per successful run. Failures go to the audit log instead, so a
- * timestamp in this table always means a real round trip completed.
+ * One row per successful run. Failures go to the audit log instead, so a timestamp in this table always means a real round trip completed.
  */
 export async function recordSyncRun(
 	syncKey: SyncKey,

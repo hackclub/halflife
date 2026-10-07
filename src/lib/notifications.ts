@@ -9,14 +9,9 @@ import { postMessage, sendDM } from "@/lib/slack"
 /**
  * Telling a maker what a review decided.
  *
- * Best-effort: a decision must never fail because Slack or the mail provider
- * is down, so each channel is attempted independently and a failure becomes a
- * `NOTIFICATION_FAILURE` audit row rather than an error. The in-app project
- * page is still the source of truth, so a missed message is inconvenient, not
- * lost.
+ * Best-effort: a decision must never fail because Slack or the mail provider is down, so each channel is attempted independently and a failure becomes a `NOTIFICATION_FAILURE` audit row rather than an error. The in-app project page is still the source of truth, so a missed message is inconvenient, not lost.
  *
- * Called after the decision transaction has committed, from both decision
- * paths (the console route and the Ari webhook), so the two cannot drift.
+ * Called after the decision transaction has committed, from both decision paths (the console route and the Ari webhook), so the two cannot drift.
  */
 
 export interface ReviewOutcomeNotice {
@@ -118,8 +113,7 @@ export async function notifyReviewOutcome(notice: ReviewOutcomeNotice): Promise<
 /**
  * Ask staff to look again at a decision a maker has disputed.
  *
- * Posted to `SLACK_REVIEW_CHANNEL_ID` when it is set. A deployment without it
- * still has the dispute in the console and the audit log, so nothing is lost.
+ * Posted to `SLACK_REVIEW_CHANNEL_ID` when it is set. A deployment without it still has the dispute in the console and the audit log, so nothing is lost.
  */
 export async function notifyStaffDispute(input: {
 	themeProjectId: string

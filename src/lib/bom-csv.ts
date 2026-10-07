@@ -1,13 +1,7 @@
 /**
  * A BOM CSV from a maker's own repo, read into the platform's parts list.
  *
- * These files come from whatever tool the maker used – KiCad's BOM export,
- * EasyEDA, a hand-kept spreadsheet – so there is no one shape to parse. What
- * this does instead is find the header row, map the columns whose names it
- * recognises, and take what it can from each row. Nothing is required to be
- * present: a file with only a part name and a price imports, and the fields the
- * platform insists on (what it's for, the vendor) are left blank for the maker
- * to fill in on the page.
+ * These files come from whatever tool the maker used – KiCad's BOM export, EasyEDA, a hand-kept spreadsheet – so there is no one shape to parse. What this does instead is find the header row, map the columns whose names it recognises, and take what it can from each row. Nothing is required to be present: a file with only a part name and a price imports, and the fields the platform insists on (what it's for, the vendor) are left blank for the maker to fill in on the page.
  *
  * Kept pure and dependency-free so the contract tests can drive it directly.
  */
@@ -99,9 +93,7 @@ const ALIASES: Record<Field, readonly string[]> = {
 const FIELD_ORDER: readonly Field[] = ["name", "purpose", "quantity", "unitCostUsd", "vendor", "link"]
 
 /**
- * A row that names an order total rather than a part. A BOM exported from a
- * spreadsheet often ends with one of these, and importing "Shipping" as a
- * ceramic capacitor's sibling would be worse than dropping it and saying so.
+ * A row that names an order total rather than a part. A BOM exported from a spreadsheet often ends with one of these, and importing "Shipping" as a ceramic capacitor's sibling would be worse than dropping it and saying so.
  */
 const NOT_A_PART = /^(shipping|postage|delivery|handling|tax|vat|gst|discount|subtotal|sub total|grand total|total)\b/i
 
@@ -116,15 +108,10 @@ function normalize(cell: string): string {
 /**
  * Split CSV text into rows and cells, honouring quotes.
  *
- * The RFC's shape, not its every clause: quoted fields may contain commas and
- * newlines, a doubled quote is a literal quote, and a bare CR is ignored. That
- * covers what the exporters emit – the one thing worth noting is that a BOM
- * with a part description containing a comma is exactly the case that breaks a
- * naive `split(",")`.
+ * The RFC's shape, not its every clause: quoted fields may contain commas and newlines, a doubled quote is a literal quote, and a bare CR is ignored. That covers what the exporters emit – the one thing worth noting is that a BOM with a part description containing a comma is exactly the case that breaks a naive `split(",")`.
  */
 function parseRows(input: string): string[][] {
-	// A UTF-8 BOM is invisible and would otherwise become part of the first
-	// header cell, so the name column is never found.
+	// A UTF-8 BOM is invisible and would otherwise become part of the first header cell, so the name column is never found.
 	const text = input.charCodeAt(0) === 0xfeff ? input.slice(1) : input
 	const rows: string[][] = []
 	let row: string[] = []
@@ -180,9 +167,7 @@ function mapHeader(row: readonly string[]): Partial<Record<Field, number>> {
 }
 
 /**
- * The header row, preferring the first one that names enough columns to be
- * recognisable. A file may open with a title or an export date; those rows map
- * to nothing and are passed over.
+ * The header row, preferring the first one that names enough columns to be recognisable. A file may open with a title or an export date; those rows map to nothing and are passed over.
  */
 function findHeader(rows: readonly string[][]): { index: number; map: Partial<Record<Field, number>> } | null {
 	const limit = Math.min(rows.length, HEADER_SEARCH_ROWS)
@@ -217,10 +202,7 @@ function parseQuantity(value: string | undefined): number {
 /**
  * A dollar figure from a price cell, whatever currency it leads with.
  *
- * Hand-kept BOMs carry things like `Rs. 1300 (~ $15)` and `$0.60 (~ Rs. 60)`;
- * the dollar amount is the one the platform prices in, so it is read wherever
- * it appears. A cell that is a bare number is taken too. Null means the file
- * gave no price at all.
+ * Hand-kept BOMs carry things like `Rs. 1300 (~ $15)` and `$0.60 (~ Rs. 60)`; the dollar amount is the one the platform prices in, so it is read wherever it appears. A cell that is a bare number is taken too. Null means the file gave no price at all.
  */
 function parseUsd(value: string | undefined): number | null {
 	const v = (value ?? "").trim()
@@ -235,9 +217,7 @@ function parseUsd(value: string | undefined): number | null {
 /**
  * A usable product URL, or null.
  *
- * `JLCPCB` and `0` sit in link columns about as often as URLs do, so a value is
- * only kept when it parses with a real host. A bare domain gains its scheme so
- * `lcsc.com/product/1` survives.
+ * `JLCPCB` and `0` sit in link columns about as often as URLs do, so a value is only kept when it parses with a real host. A bare domain gains its scheme so `lcsc.com/product/1` survives.
  */
 function parseLink(value: string | undefined): string | null {
 	let v = (value ?? "").trim()
@@ -257,9 +237,7 @@ function parseLink(value: string | undefined): string | null {
 }
 
 /**
- * Common suppliers, so `lcsc.com` reads as LCSC rather than Lcsc. Anything not
- * here still gets the registrable label, title-cased, which is close enough to
- * edit and better than a blank next to a link the maker already has.
+ * Common suppliers, so `lcsc.com` reads as LCSC rather than Lcsc. Anything not here still gets the registrable label, title-cased, which is close enough to edit and better than a blank next to a link the maker already has.
  */
 const KNOWN_VENDORS: Record<string, string> = {
 	"lcsc.com": "LCSC",
@@ -301,9 +279,7 @@ function clean(value: string | undefined, max: number): string | null {
 /**
  * A whole CSV file's rows, as parts to import.
  *
- * `limit` bounds what a single import may add – the route passes what is left
- * of the parts-list cap, and the overflow is reported as skipped rather than
- * silently dropped.
+ * `limit` bounds what a single import may add – the route passes what is left of the parts-list cap, and the overflow is reported as skipped rather than silently dropped.
  */
 export function parseBomCsv(text: string, opts: { limit?: number } = {}): ParsedBom {
 	const limit = opts.limit ?? Number.POSITIVE_INFINITY
@@ -313,11 +289,9 @@ export function parseBomCsv(text: string, opts: { limit?: number } = {}): Parsed
 
 	const { index, map } = head
 	const nameCol = map.name
-	// `findHeader` only returns a row whose name column it found, so this cannot
-	// happen; the guard is for the type, which cannot know that.
+	// `findHeader` only returns a row whose name column it found, so this cannot happen; the guard is for the type, which cannot know that.
 	if (nameCol === undefined) return { header: null, lines: [], skipped: [] }
-	// A single `Description` column is the name; it is only also a purpose when
-	// the file has a separate column for it.
+	// A single `Description` column is the name; it is only also a purpose when the file has a separate column for it.
 	const purposeCol = map.purpose !== undefined && map.purpose !== nameCol ? map.purpose : undefined
 	const lines: ImportedBomLine[] = []
 	const skipped: SkippedRow[] = []

@@ -8,9 +8,7 @@ export interface AirtableConfig {
 }
 
 /**
- * Returns null when credentials are absent, and every write path no-ops with a
- * warning. Local development works with no Airtable at all, and a rotated key
- * never 500s a participant's request.
+ * Returns null when credentials are absent, and every write path no-ops with a warning. Local development works with no Airtable at all, and a rotated key never 500s a participant's request.
  */
 export function getAirtableConfig(): AirtableConfig | null {
 	const apiKey = process.env.AIRTABLE_API_KEY
@@ -22,12 +20,7 @@ export function getAirtableConfig(): AirtableConfig | null {
 /**
  * Sanitise a value for interpolation into a filterByFormula string.
  *
- * Strip control characters, then escape backslashes, then quotes – in that
- * order. Escaping quotes first would double-escape the backslashes you just
- * inserted. Every formula interpolation goes through this: siege's duplicate
- * check interpolates a URL raw, which is a formula-injection hole, and stasis
- * has one call site that hand-rolls the replace and misses the control
- * characters.
+ * Strip control characters, then escape backslashes, then quotes – in that order. Escaping quotes first would double-escape the backslashes you just inserted. Every formula interpolation goes through this: siege's duplicate check interpolates a URL raw, which is a formula-injection hole, and stasis has one call site that hand-rolls the replace and misses the control characters.
  */
 export function escapeAirtableValue(value: string): string {
 	return (
@@ -58,11 +51,7 @@ export class AirtableError extends Error {
 	}
 }
 
-// Airtable allows 5 requests/second/base. A shared token bucket is stricter
-// than siege's per-job `sleep 0.25`, which only works because its sync is a
-// single serialised job – here several request handlers can hit Airtable at
-// once and each be individually well behaved while collectively exceeding the
-// cap.
+// Airtable allows 5 requests/second/base. A shared token bucket is stricter than siege's per-job `sleep 0.25`, which only works because its sync is a single serialised job – here several request handlers can hit Airtable at once and each be individually well behaved while collectively exceeding the cap.
 const MIN_INTERVAL_MS = 210
 let nextSlot = 0
 
@@ -75,14 +64,9 @@ async function throttle(): Promise<void> {
 }
 
 /**
- * Retry wrapper for the rate limit. A 429 gets Airtable's documented 30-second
- * penalty; anything else transient gets exponential backoff with jitter.
- * Ported from siege's `with_rate_limit_retry`, which stasis has no equivalent
- * of at all.
+ * Retry wrapper for the rate limit. A 429 gets Airtable's documented 30-second penalty; anything else transient gets exponential backoff with jitter. Ported from siege's `with_rate_limit_retry`, which stasis has no equivalent of at all.
  *
- * `retryServerErrors` is for non-idempotent calls: a 5xx or a timeout can
- * arrive after Airtable committed the write, so retrying a create duplicates
- * the row. A 429 is always safe – the request was never processed.
+ * `retryServerErrors` is for non-idempotent calls: a 5xx or a timeout can arrive after Airtable committed the write, so retrying a create duplicates the row. A 429 is always safe – the request was never processed.
  */
 export async function withRateLimitRetry<T>(
 	operation: string,

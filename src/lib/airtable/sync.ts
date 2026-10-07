@@ -14,13 +14,9 @@ import { repoRefFromLink } from "@/lib/repo-ref"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
 /**
- * One handed-in (themed project, phase) → one row in `YSWS Project
- * Submission`, written at submit as "Pending Review".
+ * One handed-in (themed project, phase) → one row in `YSWS Project Submission`, written at submit as "Pending Review".
  *
- * Half Life has no review page of its own: reviewers work on
- * ari.hackclub.com, straight from this table. So the row is the submission,
- * and everything a reviewer needs to judge it goes into it here – the repo,
- * the hours, the timelapses, the parts money, the address to ship to.
+ * Half Life has no review page of its own: reviewers work on ari.hackclub.com, straight from this table. So the row is the submission, and everything a reviewer needs to judge it goes into it here – the repo, the hours, the timelapses, the parts money, the address to ship to.
  */
 
 const round2 = (n: number) => Math.round(n * 100) / 100
@@ -31,10 +27,7 @@ const ymd = (d: Date) => d.toISOString().slice(0, 10)
 /**
  * The record id this (project, phase) was last written to, or null.
  *
- * Kept in the audit row each successful write leaves (see trackSideEffect),
- * because the table has no column of ours to find the row by. A later
- * "removed" entry means the row was deleted on unsubmit, so the next
- * submission starts a fresh one.
+ * Kept in the audit row each successful write leaves (see trackSideEffect), because the table has no column of ours to find the row by. A later "removed" entry means the row was deleted on unsubmit, so the next submission starts a fresh one.
  */
 async function lastRecordId(themeProjectId: string, phase: Phase): Promise<string | null> {
 	const rows = await prisma.auditLog.findMany({
@@ -69,8 +62,7 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 	})
 	if (!project) return null
 
-	// Fresh from HCA, so the address a grant ships to is the one on file today
-	// rather than the one from whenever they last signed in.
+	// Fresh from HCA, so the address a grant ships to is the one on file today rather than the one from whenever they last signed in.
 	await syncHcaProfile(project.userId)
 	const user = await prisma.user.findUniqueOrThrow({ where: { id: project.userId } })
 	const pii = decryptUserPII(user)
@@ -86,8 +78,7 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 		project.bomItems.reduce((n, l) => n + l.quantity * l.unitCostUsd, 0) + (project.bomTaxShippingUsd ?? 0),
 	)
 
-	// A design is judged from its repo; a build from the video of it working –
-	// the closing reel the submit sheet asks for, posted under this week's key.
+	// A design is judged from its repo; a build from the video of it working – the closing reel the submit sheet asks for, posted under this week's key.
 	let playableUrl = project.githubRepo ?? ""
 	if (phase === Phase.BUILD) {
 		const demo = await prisma.post.findFirst({
@@ -126,16 +117,14 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 		...(pii.birthday ? { birthday: pii.birthday } : {}),
 		slackId: user.slackId ?? "",
 		stage: phase === Phase.DESIGN ? "Design" : "Build",
-		// The parts are funded once, at design. A build asks for no new money, so
-		// its row says $0 rather than repeating the design's request.
+		// The parts are funded once, at design. A build asks for no new money, so its row says $0 rather than repeating the design's request.
 		requestedFunding: phase === Phase.DESIGN ? bomTotal : 0,
 		hoursSelfReported: round2(breakdown.journalHoursClaimed + breakdown.hackatimeHours),
 		playableUrl,
 		description: project.description ?? "",
 		journalUrl: journalUrl ?? "",
 		lapseLinks: lapseLinks.join(", "),
-		// A GitHub-only field: for a repo on another forge there is no GitHub
-		// username to send, and the repo URL is carried in its own column anyway.
+		// A GitHub-only field: for a repo on another forge there is no GitHub username to send, and the repo URL is carried in its own column anyway.
 		githubUsername: (() => {
 			const ref = repoRefFromLink(project.githubRepo)
 			return ref?.forge.id === "github" ? ref.ownerPath : ""
@@ -152,8 +141,7 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 		reviewStatus: YSWS_PENDING_REVIEW,
 		tier: tier ? `Tier ${tier}` : "",
 	})
-	// An attachment is written as a URL Airtable fetches, so the bytes stay in
-	// R2 and the base only references them.
+	// An attachment is written as a URL Airtable fetches, so the bytes stay in R2 and the base only references them.
 	if (cover) fields[fieldKey(YSWS_SUBMISSION.fields.screenshot)] = [{ url: cover }]
 	return fields
 }
@@ -161,18 +149,11 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 /**
  * Serialize the adopt-or-create decision for one (project, phase).
  *
- * The record id is only known from an audit row written after a successful
- * write, so two callers can arrive before either row exists – the submit
- * `after` hook and the hourly retry job, or an admin's Retry button racing
- * either. Both read "no row yet", both find nothing to adopt, and both POST a
+ * The record id is only known from an audit row written after a successful write, so two callers can arrive before either row exists – the submit `after` hook and the hourly retry job, or an admin's Retry button racing either. Both read "no row yet", both find nothing to adopt, and both POST a
  * new "Pending Review" row into the payout sink. Postgres serializes them
- * here: the loser runs its lookup after the winner's row exists and adopts it
- * instead of creating a second.
+ * here: the loser runs its lookup after the winner's row exists and adopts it instead of creating a second.
  *
- * An advisory xact lock releases with the transaction. The work inside is
- * HTTP, so the transaction gets a generous timeout rather than the default
- * 5 seconds, which would release the lock in the middle of Airtable's own
- * retry backoff.
+ * An advisory xact lock releases with the transaction. The work inside is HTTP, so the transaction gets a generous timeout rather than the default 5 seconds, which would release the lock in the middle of Airtable's own retry backoff.
  */
 async function withYswsWriteLock<T>(themeProjectId: string, phase: Phase, fn: () => Promise<T>): Promise<T> {
 	return prisma.$transaction(
@@ -185,10 +166,7 @@ async function withYswsWriteLock<T>(themeProjectId: string, phase: Phase, fn: ()
 }
 
 /**
- * Write this submission's row: a new one the first time, the same one on a
- * re-submission, so a phase handed in twice is never two rows. The lookup and
- * the write are one critical section, because a create that loses its
- * response and a concurrent create are indistinguishable without it.
+ * Write this submission's row: a new one the first time, the same one on a re-submission, so a phase handed in twice is never two rows. The lookup and the write are one critical section, because a create that loses its response and a concurrent create are indistinguishable without it.
  */
 export async function syncSubmissionToYsws(
 	themeProjectId: string,
@@ -217,9 +195,7 @@ export async function removeSubmissionFromYsws(
 }
 
 /**
- * Submissions awaiting review whose row never made it to the table – a write
- * that failed, or one made before this sync existed. Replayed by the retry
- * job and listed on /admin/program.
+ * Submissions awaiting review whose row never made it to the table – a write that failed, or one made before this sync existed. Replayed by the retry job and listed on /admin/program.
  */
 export async function findUnsyncedSubmissions(): Promise<{ themeProjectId: string; phase: Phase }[]> {
 	const pending = await prisma.themeProject.findMany({
@@ -247,8 +223,7 @@ export async function findUnsyncedSubmissions(): Promise<{ themeProjectId: strin
 			const status = phase === Phase.DESIGN ? p.designStatus : p.buildStatus
 			if (status !== PhaseStatus.in_review) continue
 			const submittedAt = p.submissions.find((s) => s.phase === phase)?.createdAt
-			// Written since the latest hand-in counts; an older write was for a
-			// submission that has since been taken back and handed in again.
+			// Written since the latest hand-in counts; an older write was for a submission that has since been taken back and handed in again.
 			const written = synced.some((s) => {
 				const meta = s.metadata as { phase?: string; recordId?: string } | null
 				return (

@@ -4,25 +4,17 @@ import { THEMES } from "@/lib/config/program"
 import prisma from "@/lib/prisma"
 
 /**
- * Create one themed project row, when its week's "create a project" checkpoint
- * is opened – never ahead of time.
+ * Create one themed project row, when its week's "create a project" checkpoint is opened – never ahead of time.
  *
- * Rows used to be made for all five themes at sign-up. Most people do not
- * reach week five (the program expects steep drop-off between weeks), so that
- * filled the table with projects nobody started and made "has a project" mean
- * nothing. A row now exists only once someone has gone to make it.
+ * Rows used to be made for all five themes at sign-up. Most people do not reach week five (the program expects steep drop-off between weeks), so that filled the table with projects nobody started and made "has a project" mean nothing. A row now exists only once someone has gone to make it.
  *
- * Idempotent: the `(userId, theme)` unique constraint plus `skipDuplicates`
- * means opening the checkpoint twice, or two tabs racing, is still one row.
- * Resolves to the row either way.
+ * Idempotent: the `(userId, theme)` unique constraint plus `skipDuplicates` means opening the checkpoint twice, or two tabs racing, is still one row. Resolves to the row either way.
  */
 export async function ensureThemeProject(userId: string, theme: Theme) {
 	const def = THEMES.find((t) => t.id === theme)
 	if (!def) throw new Error(`Unknown theme ${theme}`)
 
-	// Most onboarding reads happen after the row already exists. Avoid a
-	// pointless write/round-trip on that hot path; the unique constraint still
-	// makes the create branch safe when two tabs open the checkpoint together.
+	// Most onboarding reads happen after the row already exists. Avoid a pointless write/round-trip on that hot path; the unique constraint still makes the create branch safe when two tabs open the checkpoint together.
 	const existing = await prisma.themeProject.findFirst({
 		where: { userId, theme, deletedAt: null },
 	})

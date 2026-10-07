@@ -6,28 +6,11 @@ import { redactForLog } from "@/lib/redact"
 /**
  * Signup capture.
  *
- * Three sinks, chosen by environment so the same route works locally and in
- * production without a code change:
+ * Three sinks, chosen by environment so the same route works locally and in production without a code change:
  *
- *   AIRTABLE_API_KEY +   Write straight to the "Half Life" base
- *   AIRTABLE_BASE_ID     (appVGSvooOShD3qtC), table AIRTABLE_TABLE_NAME,
- *                        else AIRTABLE_RSVP_TABLE_ID – the Signups table,
- *                        which has `email`, `ip`, `referred_by`,
- *                        `utm_source`, `utm_medium`, `utm_campaign` and
- *                        `Loops - halfLifeReferralNumber` (text). The token
- *                        needs data.records:read/write scope on that base.
- *   SIGNUP_WEBHOOK_URL   POST the full entry (email, ip, source, at,
- *                        referralCode, ref, utmSource, utmMedium,
- *                        utmCampaign) to your list provider, form endpoint,
- *                        Sheets relay, or queue. Set SIGNUP_WEBHOOK_TOKEN to
- *                        send a bearer header.
- *   (unset)              append JSON Lines to ./data/signups.jsonl – fine for
- *                        local development and any host with a writable disk,
- *                        NOT durable on serverless.
+ * AIRTABLE_API_KEY +   Write straight to the "Half Life" base AIRTABLE_BASE_ID     (appVGSvooOShD3qtC), table AIRTABLE_TABLE_NAME, else AIRTABLE_RSVP_TABLE_ID – the Signups table, which has `email`, `ip`, `referred_by`, `utm_source`, `utm_medium`, `utm_campaign` and `Loops - halfLifeReferralNumber` (text). The token needs data.records:read/write scope on that base. SIGNUP_WEBHOOK_URL   POST the full entry (email, ip, source, at, referralCode, ref, utmSource, utmMedium, utmCampaign) to your list provider, form endpoint, Sheets relay, or queue. Set SIGNUP_WEBHOOK_TOKEN to send a bearer header. (unset)              append JSON Lines to ./data/signups.jsonl – fine for local development and any host with a writable disk, NOT durable on serverless.
  *
- * referralCode is a running count ("1", "2", "3", ...) of signups in
- * whichever sink is active, assigned once per email and handed back
- * unchanged on repeat signups.
+ * referralCode is a running count ("1", "2", "3", ...) of signups in whichever sink is active, assigned once per email and handed back unchanged on repeat signups.
  */
 
 const STORE_DIR = path.join(process.cwd(), "data")
@@ -56,13 +39,7 @@ export function normalizeEmail(raw: unknown): string | null {
 }
 
 /**
- * Fetches every record's `referral_code` isn't an option at scale, but
- * counting record ids is cheap – request just the `email` field (Airtable
- * rejects an empty field name outright) so each page carries almost nothing
- * else. The count is a snapshot, not a lock, so two signups landing in the
- * same instant can in principle claim the same ordinal; acceptable here
- * given the existing rate limit and the low stakes of a referral number
- * colliding.
+ * Fetches every record's `referral_code` isn't an option at scale, but counting record ids is cheap – request just the `email` field (Airtable rejects an empty field name outright) so each page carries almost nothing else. The count is a snapshot, not a lock, so two signups landing in the same instant can in principle claim the same ordinal; acceptable here given the existing rate limit and the low stakes of a referral number colliding.
  */
 async function countAirtableRecords(url: string, headers: Record<string, string>): Promise<number> {
 	let count = 0
@@ -82,10 +59,7 @@ async function countAirtableRecords(url: string, headers: Record<string, string>
 }
 
 /**
- * In-memory only – resets on cold start and isn't shared across instances,
- * so it's a rough ordinal rather than a guaranteed-unique one. Unlike
- * Airtable or the JSONL file, a webhook sink has nothing local to count
- * signups from.
+ * In-memory only – resets on cold start and isn't shared across instances, so it's a rough ordinal rather than a guaranteed-unique one. Unlike Airtable or the JSONL file, a webhook sink has nothing local to count signups from.
  */
 let webhookSequence = 0
 
@@ -96,9 +70,7 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 	const airtableBase = process.env.AIRTABLE_BASE_ID
 
 	if (airtableToken && airtableBase) {
-		// The Signups table. It used to default to "Table 1", which is not in
-		// the base, so any deployment without AIRTABLE_TABLE_NAME failed every
-		// signup; the platform already names this table in AIRTABLE_RSVP_TABLE_ID.
+		// The Signups table. It used to default to "Table 1", which is not in the base, so any deployment without AIRTABLE_TABLE_NAME failed every signup; the platform already names this table in AIRTABLE_RSVP_TABLE_ID.
 		const table = encodeURIComponent(process.env.AIRTABLE_TABLE_NAME ?? process.env.AIRTABLE_RSVP_TABLE_ID ?? "Signups")
 		const url = `https://api.airtable.com/v0/${airtableBase}/${table}`
 		const headers = {
@@ -107,11 +79,7 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 		}
 
 		/**
-		 * Airtable being unreachable must not lose the signup. Buffer it for the
-		 * drain job instead of returning 502, so the person is on the list even
-		 * though they do not get a referral number yet (the drain does not assign
-		 * one – the signed-in owner gets a code from /api/me/referral once the
-		 * row exists).
+		 * Airtable being unreachable must not lose the signup. Buffer it for the drain job instead of returning 502, so the person is on the list even though they do not get a referral number yet (the drain does not assign one – the signed-in owner gets a code from /api/me/referral once the row exists).
 		 */
 		const bufferInstead = async (reason: string): Promise<SignupResult> => {
 			console.error(`[signup] Airtable ${reason}; buffering the signup for the drain job`)
@@ -135,9 +103,7 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 			return { ok: true, duplicate: false, referralCode: "" }
 		}
 
-		// Airtable has no unique-field constraint to lean on, so duplicates are
-		// caught with a lookup before the write – same contract the other two
-		// sinks give the caller.
+		// Airtable has no unique-field constraint to lean on, so duplicates are caught with a lookup before the write – same contract the other two sinks give the caller.
 		const filter = encodeURIComponent(`LOWER({email})="${email}"`)
 		const lookup = await fetch(`${url}?filterByFormula=${filter}&maxRecords=1`, {
 			headers,
@@ -152,8 +118,7 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 			records?: Array<{ fields?: Record<string, unknown> }>
 		}
 		if ((found.records?.length ?? 0) > 0) {
-			// The column the number is written to below; there is no
-			// `referral_code`, so reading that handed returning people a blank.
+			// The column the number is written to below; there is no `referral_code`, so reading that handed returning people a blank.
 			const existing = found.records?.[0]?.fields?.["Loops - halfLifeReferralNumber"]
 			return {
 				ok: true,
@@ -269,10 +234,7 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 /**
  * The client address for rate limiting, from the hop the ingress set.
  *
- * The first `x-forwarded-for` entry is what the caller sent – nginx and
- * Traefik append, they do not replace – so keying on it let anyone rotate a
- * header for a fresh bucket. Cloudflare overwrites `cf-connecting-ip`; behind
- * a plain proxy the last XFF entry is the address the edge itself saw.
+ * The first `x-forwarded-for` entry is what the caller sent – nginx and Traefik append, they do not replace – so keying on it let anyone rotate a header for a fresh bucket. Cloudflare overwrites `cf-connecting-ip`; behind a plain proxy the last XFF entry is the address the edge itself saw.
  */
 export function clientIp(h: { get(name: string): string | null }): string {
 	const cf = h.get("cf-connecting-ip")?.trim()

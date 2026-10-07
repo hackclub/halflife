@@ -15,17 +15,9 @@ import { isOwnedKey, publicUrlFor } from "@/lib/uploads/r2"
 /**
  * The Doomscroller.
  *
- * Reels are not a social extra bolted on the side: the design file's checkpoint
- * note makes an idea reel, a progress reel and a submission reel required steps
- * of every week. That is why `Post.kind` exists and why this module is separate
- * from journal sessions – a journal entry is evidence a reviewer reads to
- * decide what someone is paid, a reel is something made to be watched, and the
- * two must never be one query away from each other.
+ * Reels are not a social extra bolted on the side: the design file's checkpoint note makes an idea reel, a progress reel and a submission reel required steps of every week. That is why `Post.kind` exists and why this module is separate from journal sessions – a journal entry is evidence a reviewer reads to decide what someone is paid, a reel is something made to be watched, and the two must never be one query away from each other.
  *
- * Counts (`viewCount`, `likeCount`, `commentCount`) are denormalised onto the
- * post and every writer updates the row and its count in the same transaction.
- * The child rows remain the truth; the counts exist so a feed page is one query
- * rather than three aggregates per card.
+ * Counts (`viewCount`, `likeCount`, `commentCount`) are denormalised onto the post and every writer updates the row and its count in the same transaction. The child rows remain the truth; the counts exist so a feed page is one query rather than three aggregates per card.
  */
 
 /** Where reel uploads live in the bucket. Keys are validated against this. */
@@ -72,8 +64,7 @@ function toFeedItem(post: PostWithAuthor, likedPostIds: ReadonlySet<string>): Fe
 		id: post.id,
 		kind: post.kind,
 		caption: post.caption,
-		// Keys are stored, never URLs, so the bucket or CDN can move without
-		// rewriting a single row. The URL is minted here, at read time.
+		// Keys are stored, never URLs, so the bucket or CDN can move without rewriting a single row. The URL is minted here, at read time.
 		videoUrl: publicUrlFor(post.objectKey),
 		thumbnailUrl: publicUrlFor(post.thumbnailKey),
 		durationSeconds: post.durationSeconds,
@@ -106,9 +97,7 @@ function toFeedItem(post: PostWithAuthor, likedPostIds: ReadonlySet<string>): Fe
 /**
  * Only PUBLISHED posts, and never a soft-deleted one.
  *
- * Defined once and reused by every read path. A feed filter that has to be
- * rewritten at each call site is a filter that will eventually be written
- * wrong at one of them, and the failure mode is a hidden post reappearing.
+ * Defined once and reused by every read path. A feed filter that has to be rewritten at each call site is a filter that will eventually be written wrong at one of them, and the failure mode is a hidden post reappearing.
  */
 const visible: Prisma.PostWhereInput = {
 	status: PostStatus.PUBLISHED,
@@ -119,8 +108,7 @@ export interface FeedPage {
 	items: FeedItem[]
 	nextCursor: string | null
 	/**
-	 * What goes above the paged rows, on the first page only: any reel an admin
-	 * posted today in the viewer's timezone, newest first.
+	 * What goes above the paged rows, on the first page only: any reel an admin posted today in the viewer's timezone, newest first.
 	 */
 	leading: FeedItem[]
 }
@@ -128,17 +116,9 @@ export interface FeedPage {
 /**
  * One page of the feed, newest first, announcements included.
  *
- * An admin's reel from today leads it, so it is the first thing everyone sees
- * that day, whether it was posted as an announcement or as an ordinary reel.
- * From the next day it is back in its place by date, like any other. "Today"
- * is the viewer's own day, from the timezone their browser sends: one posted
- * late at night in New York is still today's for someone waking up in Delhi.
- * A missing or unknown zone falls back to the program's.
+ * An admin's reel from today leads it, so it is the first thing everyone sees that day, whether it was posted as an announcement or as an ordinary reel. From the next day it is back in its place by date, like any other. "Today" is the viewer's own day, from the timezone their browser sends: one posted late at night in New York is still today's for someone waking up in Delhi. A missing or unknown zone falls back to the program's.
  *
- * The leading reels are returned as their own list rather than spliced into
- * the paged rows. Paginating a cursor across two different orderings is how a
- * feed starts skipping or repeating items – the set is small, bounded, and
- * only needed on the first page.
+ * The leading reels are returned as their own list rather than spliced into the paged rows. Paginating a cursor across two different orderings is how a feed starts skipping or repeating items – the set is small, bounded, and only needed on the first page.
  */
 export async function getFeed(
 	viewerId: string,
@@ -167,15 +147,13 @@ export async function getFeed(
 		})
 	}
 
-	// Each reel once: the leading ones are taken out of the page below them. A
-	// later page can still carry one, which the client drops as already seen.
+	// Each reel once: the leading ones are taken out of the page below them. A later page can still carry one, which the client drops as already seen.
 	const leadIds = new Set(leading.map((p) => p.id))
 	const page = pageResult(rows, opts.limit)
 	const pageItems = page.items.filter((p) => !leadIds.has(p.id))
 	const all = [...leading, ...pageItems]
 
-	// One query for the viewer's likes across the whole page, rather than a
-	// correlated exists() per row.
+	// One query for the viewer's likes across the whole page, rather than a correlated exists() per row.
 	const liked = all.length
 		? await prisma.postLike.findMany({
 				where: { userId: viewerId, postId: { in: all.map((p) => p.id) } },
@@ -194,9 +172,7 @@ export async function getFeed(
 /**
  * One maker's own published reels, newest first, for their profile.
  *
- * The same `visible` filter and the same mapper as the feed, on purpose: a reel
- * a moderator hid, or the author deleted, is not on their profile either, and
- * whether the viewer has liked it is answered the way the feed answers it.
+ * The same `visible` filter and the same mapper as the feed, on purpose: a reel a moderator hid, or the author deleted, is not on their profile either, and whether the viewer has liked it is answered the way the feed answers it.
  */
 export async function getCreatorReels(creatorId: string, viewerId: string, limit = 24): Promise<FeedItem[]> {
 	const rows = await prisma.post.findMany({
@@ -237,16 +213,10 @@ export interface CreatePostInput {
 /**
  * An object key must live under this user's own prefix.
  *
- * `/api/upload` builds keys as `posts/<userId>/<uuid>.<ext>`, but the key
- * travels through the browser between the upload and this call, so the server
- * has to check it rather than trust it. Without this, a post can be created
- * pointing at somebody else's object – or at a key outside the posts folder
- * entirely.
+ * `/api/upload` builds keys as `posts/<userId>/<uuid>.<ext>`, but the key travels through the browser between the upload and this call, so the server has to check it rather than trust it. Without this, a post can be created pointing at somebody else's object – or at a key outside the posts folder entirely.
  */
 function assertOwnedKey(userId: string, key: string, field: string): void {
-	// Ownership plus the folder: a reel's video has to be in the posts folder, so
-	// a key that is genuinely yours but was uploaded as session evidence cannot
-	// be re-filed as a reel.
+	// Ownership plus the folder: a reel's video has to be in the posts folder, so a key that is genuinely yours but was uploaded as session evidence cannot be re-filed as a reel.
 	if (!isOwnedKey(userId, key) || !key.startsWith(`${POST_UPLOAD_FOLDER}/`)) {
 		throw new HttpError("VALIDATION_FAILED", `That ${field} is not one of your uploads`)
 	}
@@ -261,8 +231,7 @@ export async function createPost(input: CreatePostInput): Promise<FeedItem> {
 	if (input.thumbnailKey) assertOwnedKey(input.userId, input.thumbnailKey, "thumbnail")
 
 	if (input.themeProjectId) {
-		// A reel can be attached to a project, but only to one of yours –
-		// otherwise a reel could be filed against someone else's submission.
+		// A reel can be attached to a project, but only to one of yours – otherwise a reel could be filed against someone else's submission.
 		const owned = await prisma.themeProject.findFirst({
 			where: { id: input.themeProjectId, userId: input.userId, deletedAt: null },
 			select: { id: true },
@@ -273,8 +242,7 @@ export async function createPost(input: CreatePostInput): Promise<FeedItem> {
 	const caption = sanitize(input.caption)
 	const weekNumber = await currentWeekNumber()
 
-	// The reel and the streak day it earns land together: a rolled-back post must
-	// not leave a day behind, exactly as a rolled-back devlog must not.
+	// The reel and the streak day it earns land together: a rolled-back post must not leave a day behind, exactly as a rolled-back devlog must not.
 	const post = await prisma.$transaction(async (tx) => {
 		const created = await tx.post.create({
 			data: {
@@ -291,9 +259,7 @@ export async function createPost(input: CreatePostInput): Promise<FeedItem> {
 				width: input.width ?? null,
 				height: input.height ?? null,
 				weekNumber,
-				// There is no transcoding step yet: the file is already in R2 by the
-				// time this runs, so the post is playable immediately. PROCESSING stays
-				// in the enum for when a pipeline lands and the thumbnail arrives later.
+				// There is no transcoding step yet: the file is already in R2 by the time this runs, so the post is playable immediately. PROCESSING stays in the enum for when a pipeline lands and the thumbnail arrives later.
 				status: PostStatus.PUBLISHED,
 				publishedAt: new Date(),
 				...(input.kind === PostKind.ANNOUNCEMENT ? { pinnedAt: new Date() } : {}),
@@ -315,16 +281,11 @@ export async function createPost(input: CreatePostInput): Promise<FeedItem> {
 /**
  * Record that someone watched a reel.
  *
- * The unique key does the work: a repeat view is a failed insert, so the count
- * only moves when a genuinely new viewer arrives. This matters because the
- * program pays prizes on virality – a number anyone can inflate by refreshing
- * is a number that decides who gets a drawing tablet.
+ * The unique key does the work: a repeat view is a failed insert, so the count only moves when a genuinely new viewer arrives. This matters because the program pays prizes on virality – a number anyone can inflate by refreshing is a number that decides who gets a drawing tablet.
  */
 export async function recordView(postId: string, userId: string): Promise<number> {
 	return prisma.$transaction(async (tx) => {
-		// Only a live, published reel counts. Without this, views keep accruing on
-		// a hidden or deleted post, and the virality number those prizes rest on
-		// could be moved for a reel that is out of the feed.
+		// Only a live, published reel counts. Without this, views keep accruing on a hidden or deleted post, and the virality number those prizes rest on could be moved for a reel that is out of the feed.
 		const post = await tx.post.findFirst({ where: { id: postId, ...visible }, select: { id: true } })
 		if (!post) throw new HttpError("NOT_FOUND", "Post not found")
 
@@ -349,9 +310,7 @@ export async function recordView(postId: string, userId: string): Promise<number
 }
 
 /**
- * Like or unlike. Explicitly stated rather than toggled: a toggle sent twice
- * by an impatient double-tap ends in whichever state the race landed on, and
- * the client always knows which one it means.
+ * Like or unlike. Explicitly stated rather than toggled: a toggle sent twice by an impatient double-tap ends in whichever state the race landed on, and the client always knows which one it means.
  */
 export async function setLike(
 	postId: string,
@@ -396,15 +355,11 @@ export async function getComments(
 	viewerId: string,
 	opts: { cursor?: string; limit: number },
 ): Promise<{ items: CommentView[]; nextCursor: string | null }> {
-	// A hidden or deleted post's comments are not readable by id. The filter on
-	// the comments themselves is not enough – the parent has to be visible too.
+	// A hidden or deleted post's comments are not readable by id. The filter on the comments themselves is not enough – the parent has to be visible too.
 	const post = await prisma.post.findFirst({ where: { id: postId, ...visible }, select: { id: true } })
 	if (!post) throw new HttpError("NOT_FOUND", "Post not found")
 
-	// Newest first, like every other conversation on the platform. The thread
-	// reads top-down from what just happened, and "show older comments" walks
-	// the cursor further back rather than forward – so the order and the
-	// affordance name the same direction.
+	// Newest first, like every other conversation on the platform. The thread reads top-down from what just happened, and "show older comments" walks the cursor further back rather than forward – so the order and the affordance name the same direction.
 	const rows = await prisma.postComment.findMany({
 		where: { postId, deletedAt: null, hiddenAt: null },
 		include: { user: { select: { id: true, name: true, displayName: true, image: true, slackId: true } } },
@@ -451,9 +406,7 @@ export async function addComment(postId: string, userId: string, body: string): 
 /** Delete your own comment. Moderators use `hideComment` instead. */
 export async function deleteOwnComment(commentId: string, userId: string): Promise<void> {
 	await prisma.$transaction(async (tx) => {
-		// `hiddenAt: null` too: a moderator-hidden comment already had its decrement
-		// when it was hidden, so letting the owner delete it as well would take the
-		// count down a second time and could drive it negative.
+		// `hiddenAt: null` too: a moderator-hidden comment already had its decrement when it was hidden, so letting the owner delete it as well would take the count down a second time and could drive it negative.
 		const { count } = await tx.postComment.updateMany({
 			where: { id: commentId, userId, deletedAt: null, hiddenAt: null },
 			data: { deletedAt: new Date() },
@@ -478,8 +431,7 @@ export async function deleteOwnPost(postId: string, userId: string): Promise<voi
 			data: { deletedAt: new Date(), status: PostStatus.REMOVED },
 		})
 		if (count === 0) throw new HttpError("NOT_FOUND", "Post not found")
-		// Deleting the only reel on a day removes that day from the run, so the
-		// streak is recomputed with it – same rule as deleting a devlog.
+		// Deleting the only reel on a day removes that day from the run, so the streak is recomputed with it – same rule as deleting a devlog.
 		await recomputeStreak(tx, userId)
 	})
 }

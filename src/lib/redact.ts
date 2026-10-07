@@ -1,10 +1,7 @@
 /**
  * Scrubbing for log lines that interpolate upstream response bodies.
  *
- * A third party echoing a request back inside an error (Airtable, Slack,
- * OAuth providers) would otherwise land a participant's email – or a token
- * – in the logs. These helpers mask the value while keeping the shape, so
- * the line is still useful for debugging.
+ * A third party echoing a request back inside an error (Airtable, Slack, OAuth providers) would otherwise land a participant's email – or a token – in the logs. These helpers mask the value while keeping the shape, so the line is still useful for debugging.
  */
 
 const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g

@@ -12,14 +12,9 @@ import { type ProjectThumbnail, projectThumbnail } from "@/lib/thumbnail"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
 /**
- * Everything the project page shows that the trail's store does not carry:
- * the timeline with its media, the parts list and the cover.
+ * Everything the project page shows that the trail's store does not carry: the timeline with its media, the parts list and the cover.
  *
- * The store knows a session happened and how long it was, which is all the
- * trail needs. The project page is the full record – the timelapses behind
- * each entry, the reels themselves, when each week was handed in and what the
- * reviewer said – so it reads the rows directly rather than widening a
- * snapshot every other page has to download.
+ * The store knows a session happened and how long it was, which is all the trail needs. The project page is the full record – the timelapses behind each entry, the reels themselves, when each week was handed in and what the reviewer said – so it reads the rows directly rather than widening a snapshot every other page has to download.
  */
 
 export interface TimelineLapse {
@@ -187,8 +182,7 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 			buildReviewedAt: true,
 			workSessions: { where: { deletedAt: null }, select: SESSION_SELECT },
 			posts: {
-				// Their own reels, including one a moderator took out of the feed –
-				// the author still sees those, as the feed's own rule has it.
+				// Their own reels, including one a moderator took out of the feed – the author still sees those, as the feed's own rule has it.
 				where: { deletedAt: null, userId, status: { not: PostStatus.REMOVED } },
 				select: POST_SELECT,
 			},
@@ -208,9 +202,7 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 
 	const timeline: TimelineItem[] = [...project.workSessions.map(sessionItem), ...project.posts.map(reelItem)]
 
-	// A resolved submission is two moments – handed in, then decided – and the
-	// gap between them is part of the story. Only the latest decision per phase
-	// has comments on the project row, so older ones are shown without them.
+	// A resolved submission is two moments – handed in, then decided – and the gap between them is part of the story. Only the latest decision per phase has comments on the project row, so older ones are shown without them.
 	const latestResolved = new Map<Phase, string>()
 	for (const sub of [...project.submissions].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())) {
 		timeline.push({ kind: "submitted", id: `${sub.id}-in`, at: sub.createdAt.getTime(), phase: sub.phase })
@@ -242,8 +234,7 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 				? Phase.BUILD
 				: null
 
-	// Both phases, in order, but only the ones that have left draft – a fresh
-	// project's page should not carry a "not started" row for each week.
+	// Both phases, in order, but only the ones that have left draft – a fresh project's page should not carry a "not started" row for each week.
 	const phases: PhaseReview[] = ([Phase.DESIGN, Phase.BUILD] as const)
 		.map((phase) => {
 			const isDesign = phase === Phase.DESIGN
@@ -291,12 +282,7 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 /**
  * Someone else's project, as Explore's "See more" opens it.
  *
- * Only what is already public elsewhere: the entries Explore shows, the reels
- * the Doomscroller shows (published ones – a hidden or processing reel is
- * nobody's business but its author's), and the project's name and picture.
- * No parts list, no repo checks, no review comments, no submissions: those
- * are between the maker and their reviewer. Author by display name only, as
- * lib/queries/community has it.
+ * Only what is already public elsewhere: the entries Explore shows, the reels the Doomscroller shows (published ones – a hidden or processing reel is nobody's business but its author's), and the project's name and picture. No parts list, no repo checks, no review comments, no submissions: those are between the maker and their reviewer. Author by display name only, as lib/queries/community has it.
  */
 export interface PublicProjectData {
 	id: string

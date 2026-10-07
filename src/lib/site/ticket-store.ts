@@ -6,8 +6,7 @@ import { listChannelHistory, type SlackHistoryMessage } from "./slack"
 /**
  * How many tickets this person opened before the current one.
  *
- * The Slack flow keeps no state of its own, so this table is what lets the
- * tickets-channel mirror tell a first-time asker from a repeat one.
+ * The Slack flow keeps no state of its own, so this table is what lets the tickets-channel mirror tell a first-time asker from a repeat one.
  */
 export async function countPriorHelpTickets(authorSlackId: string): Promise<number> {
 	return prisma.helpTicket.count({ where: { authorSlackId } })
@@ -16,10 +15,7 @@ export async function countPriorHelpTickets(authorSlackId: string): Promise<numb
 /**
  * Remembers a ticket once its mirror has actually reached the tickets channel.
  *
- * Called only on a successful post, so a fail-to-mirror doesn't leave a
- * phantom row that would count toward the next ask. Upsert rather than create
- * because Slack can redeliver an event, and the unique [helpChannel, helpTs]
- * must not turn that into an error.
+ * Called only on a successful post, so a fail-to-mirror doesn't leave a phantom row that would count toward the next ask. Upsert rather than create because Slack can redeliver an event, and the unique [helpChannel, helpTs] must not turn that into an error.
  */
 export async function rememberHelpTicket(input: {
 	authorSlackId: string
@@ -36,11 +32,7 @@ export async function rememberHelpTicket(input: {
 /**
  * Marks a ticket resolved, called from all three resolution buttons.
  *
- * `updateMany` rather than `update`: a ticket asked before the table existed,
- * or one whose mirror post failed, has no row – resolving it is still a
- * success, not an error. The `resolvedAt: null` guard makes a second
- * resolution a no-op, so two people clicking at once (or a Slack redelivery)
- * cannot move the closer or double-count the ticket in a summary.
+ * `updateMany` rather than `update`: a ticket asked before the table existed, or one whose mirror post failed, has no row – resolving it is still a success, not an error. The `resolvedAt: null` guard makes a second resolution a no-op, so two people clicking at once (or a Slack redelivery) cannot move the closer or double-count the ticket in a summary.
  */
 export async function resolveHelpTicket(input: {
 	helpChannel: string
@@ -59,10 +51,7 @@ export interface HelpTicketStats {
 	/** Tickets resolved since `since`, by `resolvedAt`, whoever resolved them. */
 	closed: number
 	/**
-	 * Who closed what, busiest first. Self-resolutions are left out: the
-	 * leaderboard is the helpers' competition, and an asker clicking "I'm all
-	 * set" on their own ticket would read as a helper. Ties break by id so the
-	 * order is stable between runs.
+	 * Who closed what, busiest first. Self-resolutions are left out: the leaderboard is the helpers' competition, and an asker clicking "I'm all set" on their own ticket would read as a helper. Ties break by id so the order is stable between runs.
 	 */
 	leaderboard: { resolvedBy: string; closed: number }[]
 }
@@ -90,8 +79,7 @@ export async function getHelpTicketStats(since: Date): Promise<HelpTicketStats> 
 }
 
 /** A history message that opened a ticket, under the same guards
- * `handleHelpMessage` applies to a live event. A parent message carries
- * `thread_ts` equal to its own `ts` once it has replies, so it only counts as
+ * `handleHelpMessage` applies to a live event. A parent message carries `thread_ts` equal to its own `ts` once it has replies, so it only counts as
  * a reply when the two differ. */
 function isTicketOpeningMessage(
 	message: SlackHistoryMessage,
@@ -109,11 +97,7 @@ function isTicketOpeningMessage(
 /**
  * Seeds the table from the questions already sitting in #half-life-help.
  *
- * The live flow only records tickets from the moment it ships, so without this
- * staff would see everyone as a first-timer until they ask again. Each
- * top-level, non-bot question in the channel is one ticket. Idempotent: rows
- * are keyed by [helpChannel, helpTs] and duplicates are skipped, so it is safe
- * to run again after a partial sweep.
+ * The live flow only records tickets from the moment it ships, so without this staff would see everyone as a first-timer until they ask again. Each top-level, non-bot question in the channel is one ticket. Idempotent: rows are keyed by [helpChannel, helpTs] and duplicates are skipped, so it is safe to run again after a partial sweep.
  */
 export async function backfillHelpTickets(channel: string): Promise<{
 	scanned: number
@@ -125,13 +109,11 @@ export async function backfillHelpTickets(channel: string): Promise<{
 		authorSlackId: message.user,
 		helpChannel: channel,
 		helpTs: message.ts,
-		// The question's own time, not the backfill's, so the rows order as the
-		// conversation actually happened.
+		// The question's own time, not the backfill's, so the rows order as the conversation actually happened.
 		createdAt: new Date(Number(message.ts) * 1000),
 	}))
 
-	// Chunked so a long channel does not exceed one INSERT's parameter limit;
-	// `skipDuplicates` is the idempotency.
+	// Chunked so a long channel does not exceed one INSERT's parameter limit; `skipDuplicates` is the idempotency.
 	const CHUNK = 1000
 	let created = 0
 	for (let i = 0; i < rows.length; i += CHUNK) {

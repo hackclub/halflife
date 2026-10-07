@@ -24,11 +24,7 @@ export interface RsvpInput {
 /**
  * Write-behind, not write-through.
  *
- * Airtable is the funnel's source of truth but it rate-limits and it goes down.
- * Every RSVP lands in Postgres first and is drained by a job, so a
- * marketing-page signup never fails because a third party is having a bad day.
- * Stasis calls Airtable synchronously here and only falls back to Postgres when
- * someone flips an env var by hand.
+ * Airtable is the funnel's source of truth but it rate-limits and it goes down. Every RSVP lands in Postgres first and is drained by a job, so a marketing-page signup never fails because a third party is having a bad day. Stasis calls Airtable synchronously here and only falls back to Postgres when someone flips an env var by hand.
  */
 export async function bufferRsvp(input: RsvpInput): Promise<{ buffered: true }> {
 	const email = input.email.trim().toLowerCase()
@@ -44,10 +40,7 @@ export async function bufferRsvp(input: RsvpInput): Promise<{ buffered: true }> 
 			signupPage: input.signupPage ?? null,
 			referredBy: input.referredBy ?? null,
 		},
-		// Re-RSVPing must not clobber attribution captured the first time, and it
-		// resets the failure count: a row that hit the drain's attempt cap while
-		// Airtable was down must be retried when the person comes back, not left
-		// permanently invisible.
+		// Re-RSVPing must not clobber attribution captured the first time, and it resets the failure count: a row that hit the drain's attempt cap while Airtable was down must be retried when the person comes back, not left permanently invisible.
 		update: {
 			firstName: input.firstName ?? undefined,
 			lastName: input.lastName ?? undefined,
@@ -86,19 +79,9 @@ export interface DrainResult {
 }
 
 /**
- * Push buffered RSVPs upstream. Idempotent and safe to run on a schedule:
- * anything that fails stays unsynced with an incremented attempt count, and
- * the index on (syncedToAirtable, syncAttempts, createdAt) makes finding them
- * a single scan.
+ * Push buffered RSVPs upstream. Idempotent and safe to run on a schedule: anything that fails stays unsynced with an incremented attempt count, and the index on (syncedToAirtable, syncAttempts, createdAt) makes finding them a single scan.
  *
- * The user id is the one field asked about rather than assumed. Airtable refuses
- * a request whose `fields` names a column the table does not have, and it refuses
- * the WHOLE record – so on a base without that column, sending it did not leave
- * the id blank, it stopped the email, the name, the referral number and the rest
- * of that row from landing, and after the attempt cap the row was abandoned for
- * good. Probing once and omitting the field means the rest of the payload is
- * written on a base that has not been set up yet, and the id starts filling
- * itself the moment somebody adds the column.
+ * The user id is the one field asked about rather than assumed. Airtable refuses a request whose `fields` names a column the table does not have, and it refuses the WHOLE record – so on a base without that column, sending it did not leave the id blank, it stopped the email, the name, the referral number and the rest of that row from landing, and after the attempt cap the row was abandoned for good. Probing once and omitting the field means the rest of the payload is written on a base that has not been set up yet, and the id starts filling itself the moment somebody adds the column.
  */
 export async function drainRsvpBuffer(limit = 50, opts: { dryRun?: boolean } = {}): Promise<DrainResult> {
 	const config = getAirtableConfig()
@@ -121,19 +104,13 @@ export async function drainRsvpBuffer(limit = 50, opts: { dryRun?: boolean } = {
 	}
 	if (opts.dryRun) return result
 
-	// Which of the columns this table has, asked once for the whole batch.
-	// Everything the drain would send is filtered through it: Airtable refuses a
-	// request naming a column it does not have, for the WHOLE record, so one
-	// unknown name loses every other field in the payload with it. The live
-	// Signups base has three of the ten the schema names, so without this every
-	// row of every drain was being rejected.
+	// Which of the columns this table has, asked once for the whole batch. Everything the drain would send is filtered through it: Airtable refuses a request naming a column it does not have, for the WHOLE record, so one unknown name loses every other field in the payload with it. The live Signups base has three of the ten the schema names, so without this every row of every drain was being rejected.
 	const writable = await existingColumns(config, RSVP.tableId, Object.values(RSVP.fields).map(fieldKey))
 	const skippedColumns = Object.entries(RSVP.fields)
 		.filter(([, field]) => !writable.has(fieldKey(field)))
 		.map(([key]) => key)
 	if (skippedColumns.length > 0) {
-		// Said once per drain, naming them, because "the RSVP drain is failing" is
-		// otherwise indistinguishable from "Airtable is down".
+		// Said once per drain, naming them, because "the RSVP drain is failing" is otherwise indistinguishable from "Airtable is down".
 		console.warn(
 			`[airtable] rsvp-drain: ${RSVP.tableId} has no column(s) ${skippedColumns.join(", ")}; those values are not ` +
 				"sent. Everything else in the row is still written.",
@@ -154,8 +131,7 @@ export async function drainRsvpBuffer(limit = 50, opts: { dryRun?: boolean } = {
 				finishedAccountCreation: row.finishedAccountCreation,
 				userId: row.userId ?? undefined,
 			}
-			// Only the columns this table actually has, so one absent column cannot
-			// cost the row the seven that are present.
+			// Only the columns this table actually has, so one absent column cannot cost the row the seven that are present.
 			const fields: Record<string, unknown> = {}
 			for (const [key, value] of Object.entries(values)) {
 				if (value === undefined) continue
@@ -166,8 +142,7 @@ export async function drainRsvpBuffer(limit = 50, opts: { dryRun?: boolean } = {
 
 			let recordId = row.airtableRecordId
 			if (recordId) {
-				// Once the row exists upstream, updates are a patch by id rather than a
-				// formula search.
+				// Once the row exists upstream, updates are a patch by id rather than a formula search.
 				await withRateLimitRetry("updateRsvp", () =>
 					airtableFetch(config, `${RSVP.tableId}/${recordId}`, {
 						method: "PATCH",

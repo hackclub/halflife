@@ -13,11 +13,7 @@ export interface FreshTimelapse {
 	/**
 	 * When the recording STARTED, Lapse's createdAt (epoch ms).
 	 *
-	 * Stored because without it a timelapse is a duration with no date, and a
-	 * duration cannot be compared against Hackatime's tracked intervals – which is
-	 * the whole basis for not paying twice for the same sitting. Read back from
-	 * Lapse at attach time rather than later, because Lapse answers on the
-	 * caller's own OAuth token and that token expires.
+	 * Stored because without it a timelapse is a duration with no date, and a duration cannot be compared against Hackatime's tracked intervals – which is the whole basis for not paying twice for the same sitting. Read back from Lapse at attach time rather than later, because Lapse answers on the caller's own OAuth token and that token expires.
 	 */
 	recordedAt: number | null
 	/** The Hackatime project Lapse had synced when this was recorded, if any. */
@@ -27,14 +23,9 @@ export interface FreshTimelapse {
 /**
  * Bring a session's Lapse attachments to the desired set.
  *
- * Ids already on the session stay untouched; brand-new ones are created from
- * the just-verified metadata; lapse rows for anything else come off. Older R2
- * rows predate Lapse and are never touched. A clip claimed by another live
- * session refuses with the same conflict the create path reports – re-homing
- * must not let one recording back two entries.
+ * Ids already on the session stay untouched; brand-new ones are created from the just-verified metadata; lapse rows for anything else come off. Older R2 rows predate Lapse and are never touched. A clip claimed by another live session refuses with the same conflict the create path reports – re-homing must not let one recording back two entries.
  *
- * Runs inside the caller's transaction: the advisory locks serialize against
- * concurrent attaches of the same recording, exactly as creation does.
+ * Runs inside the caller's transaction: the advisory locks serialize against concurrent attaches of the same recording, exactly as creation does.
  */
 export async function reconcileSessionTimelapses(
 	tx: Tx,
@@ -57,8 +48,7 @@ export async function reconcileSessionTimelapses(
 		await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`lapse:${lapseId}`}, 0))`
 	}
 	if (addIds.length > 0) {
-		// This session's own rows do not count: keeping a clip is not taking it
-		// from anywhere.
+		// This session's own rows do not count: keeping a clip is not taking it from anywhere.
 		const taken = await tx.sessionTimelapse.findFirst({
 			where: {
 				provider: "lapse",
@@ -85,9 +75,7 @@ export async function reconcileSessionTimelapses(
 				playbackUrl: t.playbackUrl,
 				thumbnailUrl: t.thumbnailUrl,
 				coveredSeconds: t.durationSeconds,
-				// The recording's own start, and the project Lapse saw while it ran,
-				// so the hours rollup can intersect this window with Hackatime's
-				// spans instead of paying for the same sitting twice.
+				// The recording's own start, and the project Lapse saw while it ran, so the hours rollup can intersect this window with Hackatime's spans instead of paying for the same sitting twice.
 				recordedAt: t.recordedAt === null ? null : new Date(t.recordedAt),
 				hackatimeProject: t.hackatimeProject,
 			})),

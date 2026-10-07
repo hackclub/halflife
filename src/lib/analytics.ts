@@ -8,16 +8,9 @@ import { streakAsOf } from "@/lib/streak"
 /**
  * Analytics time markers: when each step of a person's journey happened.
  *
- * The one writer of the markers on User (first project, first reel, first and
- * last submission, last login, last active), of UserDay (one row per active
- * day, which is what DAU counts) and of UserWeek (hours per program week, and
- * when 1h / 5h / 10h / 20h was first crossed). Signing up and onboarding are
- * already stamped (`createdAt`, `onboardingCompletedAt`).
+ * The one writer of the markers on User (first project, first reel, first and last submission, last login, last active), of UserDay (one row per active day, which is what DAU counts) and of UserWeek (hours per program week, and when 1h / 5h / 10h / 20h was first crossed). Signing up and onboarding are already stamped (`createdAt`, `onboardingCompletedAt`).
  *
- * Every function here is fire-and-forget safe: it never throws, because a
- * sign-in, a post or a submit must not fail over a counter. And every one is
- * idempotent – "first" markers are written with a `WHERE … IS NULL`, so two
- * requests racing cannot move one, and a replay or the backfill cannot either.
+ * Every function here is fire-and-forget safe: it never throws, because a sign-in, a post or a submit must not fail over a counter. And every one is idempotent – "first" markers are written with a `WHERE … IS NULL`, so two requests racing cannot move one, and a replay or the backfill cannot either.
  */
 
 const HOUR_MILESTONES = [1, 5, 10, 20] as const
@@ -40,14 +33,11 @@ export function markLogin(userId: string, at = new Date()): Promise<void> {
 	return quietly("markLogin", () => prisma.user.update({ where: { id: userId }, data: { lastLoginAt: at } }))
 }
 
-// Per process, so a burst of page views costs one write, not one each. The
-// database value is the truth; this only saves round trips.
+// Per process, so a burst of page views costs one write, not one each. The database value is the truth; this only saves round trips.
 const lastTouched = new Map<string, number>()
 
 /**
- * A page view: moves `lastActiveAt` forward and records today as an active
- * day. Throttled to one write per person per few minutes – DAU needs a day to
- * be counted once, not every click.
+ * A page view: moves `lastActiveAt` forward and records today as an active day. Throttled to one write per person per few minutes – DAU needs a day to be counted once, not every click.
  */
 export function touchActivity(userId: string, at = new Date()): Promise<void> {
 	const prev = lastTouched.get(userId)
@@ -66,8 +56,7 @@ export function touchActivity(userId: string, at = new Date()): Promise<void> {
 			where: { id: userId },
 			data: {
 				lastActiveAt: at,
-				// Counted only when the day is new, so it always equals the number of
-				// UserDay rows without a count query.
+				// Counted only when the day is new, so it always equals the number of UserDay rows without a count query.
 				...(created.count > 0 ? { activeDays: { increment: 1 } } : {}),
 			},
 		})
@@ -75,18 +64,14 @@ export function touchActivity(userId: string, at = new Date()): Promise<void> {
 }
 
 /**
- * Whether a project has actually been started. Not its title: every row is
- * made at sign-up already titled with its theme's name. The app counts a
- * project once it has a description and a tier – that is what completes the
- * trail's "project" node (lib/queries/store) – so this does too.
+ * Whether a project has actually been started. Not its title: every row is made at sign-up already titled with its theme's name. The app counts a project once it has a description and a tier – that is what completes the trail's "project" node (lib/queries/store) – so this does too.
  */
 function isCreated(p: { description: string | null; tier: number | null; requestedTier: number | null }) {
 	return !!p.description?.trim() && (p.tier ?? p.requestedTier) != null
 }
 
 /**
- * Stamp a project as created, if it now is and was not before. Called after
- * anything that writes a project's description or tier.
+ * Stamp a project as created, if it now is and was not before. Called after anything that writes a project's description or tier.
  */
 export function markProjectCreated(themeProjectId: string, userId: string, at = new Date()): Promise<void> {
 	return quietly("markProjectCreated", async () => {
@@ -123,16 +108,13 @@ export function markChecksPassed(userId: string, at = new Date()): Promise<void>
 }
 
 /**
- * Recount one person's hours for one program week, and stamp any milestone
- * crossed for the first time. Called after a session is written, edited or
- * deleted; `at` is when the crossing is recorded as having happened.
+ * Recount one person's hours for one program week, and stamp any milestone crossed for the first time. Called after a session is written, edited or deleted; `at` is when the crossing is recorded as having happened.
  */
 export function recomputeWeek(userId: string, week: number | null, at = new Date()): Promise<void> {
 	if (!week || week < 1) return Promise.resolve()
 	return quietly("recomputeWeek", async () => {
 		const sum = await prisma.workSession.aggregate({
-			// HACKATIME_TRACKED sessions contribute zero to every paid total
-			// (lib/hours), so they must not inflate the weekly analytics either.
+			// HACKATIME_TRACKED sessions contribute zero to every paid total (lib/hours), so they must not inflate the weekly analytics either.
 			where: {
 				weekNumber: week,
 				deletedAt: null,
@@ -158,15 +140,9 @@ export function recomputeWeek(userId: string, week: number | null, at = new Date
 }
 
 /**
- * Fill the markers in from what the database already holds, for everyone who
- * was here before they were tracked. Safe to run again: every write only fills
- * what is still empty (or, for weeks, recounts).
+ * Fill the markers in from what the database already holds, for everyone who was here before they were tracked. Safe to run again: every write only fills what is still empty (or, for weeks, recounts).
  *
- * Approximations, said plainly: a project's naming time is taken from the
- * first audit entry that touched it, else when it was last updated; a week's
- * milestones are stamped at the time of the session that crossed them, in
- * order. Past page views were never recorded, so active days are rebuilt from
- * days with a sign-in, a session, a post or a submission.
+ * Approximations, said plainly: a project's naming time is taken from the first audit entry that touched it, else when it was last updated; a week's milestones are stamped at the time of the session that crossed them, in order. Past page views were never recorded, so active days are rebuilt from days with a sign-in, a session, a post or a submission.
  */
 export async function backfillAnalytics(): Promise<Record<string, number>> {
 	const { programTimezone } = await getProgramSettings()
@@ -194,8 +170,7 @@ export async function backfillAnalytics(): Promise<Record<string, number>> {
 				where: {
 					themeProject: { userId, deletedAt: null },
 					deletedAt: null,
-					// The backfill must apply the same exclusion as recomputeWeek, or
-					// running it re-inflates every tracked session's week.
+					// The backfill must apply the same exclusion as recomputeWeek, or running it re-inflates every tracked session's week.
 					hoursSource: { not: HoursSource.HACKATIME_TRACKED },
 				},
 				select: { createdAt: true, weekNumber: true, hoursClaimed: true },
@@ -229,8 +204,7 @@ export async function backfillAnalytics(): Promise<Record<string, number>> {
 		await prisma.user.update({ where: { id: userId }, data: { firstProjectAt: first?.namedAt ?? null } })
 
 		if (posts[0]) await markReel(userId, posts[0].createdAt)
-		// The first and last of the list, named rather than indexed twice: the
-		// narrowing is what keeps the write off `undefined` without an assertion.
+		// The first and last of the list, named rather than indexed twice: the narrowing is what keeps the write off `undefined` without an assertion.
 		const firstSubmission = submissions[0]
 		const lastSubmission = submissions[submissions.length - 1]
 		if (firstSubmission && lastSubmission) {
@@ -264,8 +238,7 @@ export async function backfillAnalytics(): Promise<Record<string, number>> {
 			counts.days += days.size
 		}
 
-		// Weeks: replay sessions in order so each milestone is stamped by the
-		// session that crossed it.
+		// Weeks: replay sessions in order so each milestone is stamped by the session that crossed it.
 		const byWeek = new Map<number, { at: Date; hours: number }[]>()
 		for (const s of sessions) {
 			if (!s.weekNumber || s.weekNumber < 1) continue
@@ -369,8 +342,7 @@ export async function getUserAnalytics(): Promise<UserAnalyticsRow[]> {
 			totalHours: Math.round(u.activityWeeks.reduce((n, w) => n + w.hours, 0) * 100) / 100,
 			coins: balances.spendable,
 			bankedCoins: balances.banked,
-			// The stored column is a cache only correct as of the last devlog or
-			// reel; an export that reads it directly calls a lapsed run current.
+			// The stored column is a cache only correct as of the last devlog or reel; an export that reads it directly calls a lapsed run current.
 			currentStreak: streakAsOf(u, today),
 			longestStreak: u.longestStreak,
 			weeks: u.activityWeeks.map(({ week, hours, reached1hAt, reached5hAt, reached10hAt, reached20hAt }) => ({
@@ -387,8 +359,7 @@ export async function getUserAnalytics(): Promise<UserAnalyticsRow[]> {
 }
 
 /**
- * The program-wide numbers: DAU per day, the funnel with drop-off at each
- * step, and how many people crossed each hour milestone in each week.
+ * The program-wide numbers: DAU per day, the funnel with drop-off at each step, and how many people crossed each hour milestone in each week.
  */
 export async function getAnalyticsSummary(days = 30) {
 	const { programTimezone } = await getProgramSettings()
@@ -409,9 +380,7 @@ export async function getAnalyticsSummary(days = 30) {
 		}),
 	])
 
-	// A strict funnel: each step counts only people who also did every step
-	// before it, so a step never has more people than the one above it (and
-	// drop-off is never negative), whatever order things happened in.
+	// A strict funnel: each step counts only people who also did every step before it, so a step never has more people than the one above it (and drop-off is never negative), whatever order things happened in.
 	const reached = (n: number) =>
 		people.filter((u) =>
 			[u.onboardingCompletedAt, u.firstProjectAt, u.firstReelAt, u.firstSubmissionAt]
@@ -427,9 +396,7 @@ export async function getAnalyticsSummary(days = 30) {
 		["submitted", reached(4)],
 	] as const
 	const funnel = steps.map(([step, count], i) => {
-		// The step before this one, or this one at the top of the funnel. The
-		// fallback is unreachable – `i` is always within `steps` – but it keeps
-		// the arithmetic off `undefined` without an assertion.
+		// The step before this one, or this one at the top of the funnel. The fallback is unreachable – `i` is always within `steps` – but it keeps the arithmetic off `undefined` without an assertion.
 		const prev = i === 0 ? count : (steps[i - 1]?.[1] ?? count)
 		return {
 			step,

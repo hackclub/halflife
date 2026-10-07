@@ -32,9 +32,7 @@ export interface ReadinessCheck {
 }
 
 /**
- * The readiness checklist shown before submitting. This is UI: the submit route
- * recomputes eligibility server-side, because a checklist rendered five minutes
- * ago is not an authorisation.
+ * The readiness checklist shown before submitting. This is UI: the submit route recomputes eligibility server-side, because a checklist rendered five minutes ago is not an authorisation.
  */
 export async function getSubmitReadiness(project: ThemeProject, phase: Phase): Promise<ReadinessCheck[]> {
 	const breakdown = await getHoursBreakdown(project.id, phase)
@@ -77,20 +75,13 @@ export async function getSubmitReadiness(project: ThemeProject, phase: Phase): P
 /**
  * Whether a phase can be submitted right now.
  *
- * Build may be submitted once design has been submitted at least once – not
- * once design has been *approved*. With five concurrent themes sharing one
- * review queue, gating on approval turns a reviewer-capacity problem into a
- * participant-blocked problem: someone would sit idle through their build week
- * waiting on a queue. The finalize path does require design approved before a
- * build can be approved, so the ordering invariant holds where money is
- * involved and not where it only costs people time.
+ * Build may be submitted once design has been submitted at least once – not once design has been *approved*. With five concurrent themes sharing one review queue, gating on approval turns a reviewer-capacity problem into a participant-blocked problem: someone would sit idle through their build week waiting on a queue. The finalize path does require design approved before a build can be approved, so the ordering invariant holds where money is involved and not where it only costs people time.
  */
 export function canSubmitPhase(
 	project: ThemeProject,
 	phase: Phase,
 ): { ok: true } | { ok: false; code: "ALREADY_SUBMITTED" | "PHASE_LOCKED"; message: string } {
-	// A warm-up is one submission, as the phase it was made for: a design
-	// asking for funding, or a finished build. Never the other, never both.
+	// A warm-up is one submission, as the phase it was made for: a design asking for funding, or a finished build. Never the other, never both.
 	if (project.theme === Theme.WARMUP && phase !== warmupPhaseOf(project)) {
 		return {
 			ok: false,
@@ -116,9 +107,7 @@ export function canSubmitPhase(
 			message: "This phase was rejected. Ask an admin to reopen it.",
 		}
 	}
-	// A warm-up project is one phase by nature – it was handed in through the
-	// pre-season form, not designed and then built – so the design-first rule
-	// does not apply to it.
+	// A warm-up project is one phase by nature – it was handed in through the pre-season form, not designed and then built – so the design-first rule does not apply to it.
 	if (phase === Phase.BUILD && project.theme !== Theme.WARMUP && project.designStatus === PhaseStatus.draft) {
 		return {
 			ok: false,
@@ -148,14 +137,7 @@ export async function submitPhase(
 	const eligible = canSubmitPhase(project, phase)
 	if (!eligible.ok) throw new HttpError(eligible.code, eligible.message)
 
-	// The readiness checklist calls a description required, and the Ari SDK
-	// refuses a ship without one. Week one's onboarding lets the maker leave it
-	// blank (the project form for other weeks does not), so a blank description
-	// used to pass submit and then fail the Ari send silently in the `after`
-	// hook – the maker saw success and no reviewer ever saw the project. Enforce
-	// it here, beside the hours check, so the refusal reaches the person who can
-	// fix it. `buildShipInput` keeps a fallback too, so hand-ins already stuck in
-	// this state can still be replayed by `ari-retry`.
+	// The readiness checklist calls a description required, and the Ari SDK refuses a ship without one. Week one's onboarding lets the maker leave it blank (the project form for other weeks does not), so a blank description used to pass submit and then fail the Ari send silently in the `after` hook – the maker saw success and no reviewer ever saw the project. Enforce it here, beside the hours check, so the refusal reaches the person who can fix it. `buildShipInput` keeps a fallback too, so hand-ins already stuck in this state can still be replayed by `ari-retry`.
 	if (!project.description?.trim()) {
 		throw new HttpError("UNPROCESSABLE", "Add a project description before submitting this phase")
 	}
@@ -167,9 +149,7 @@ export async function submitPhase(
 	// Handing a week in is a checkpoint too; a deleted reel still owed holds it.
 	await assertNoOwedReel(userId)
 
-	// A submission must not be able to file someone else's evidence as its own.
-	// Refuse rather than filter: silently dropping a stranger's key hands back a
-	// success with the evidence missing, which the maker only finds out at review.
+	// A submission must not be able to file someone else's evidence as its own. Refuse rather than filter: silently dropping a stranger's key hands back a success with the evidence missing, which the maker only finds out at review.
 	const foreign = attachmentKeys.filter((key) => !isOwnedKey(userId, key))
 	if (foreign.length > 0) throw new HttpError("VALIDATION_FAILED", "Those uploads are not yours")
 
@@ -178,8 +158,7 @@ export async function submitPhase(
 		throw new HttpError("UNPROCESSABLE", "Log at least one work session before submitting this phase")
 	}
 
-	// Identity verification is gated here rather than at signup, so people can
-	// explore and log work before they have finished verifying.
+	// Identity verification is gated here rather than at signup, so people can explore and log work before they have finished verifying.
 	const user = await prisma.user.findUnique({
 		where: { id: userId },
 		select: { verificationStatus: true, fraudFlagged: true },
@@ -187,9 +166,7 @@ export async function submitPhase(
 	if (user?.fraudFlagged) {
 		throw new HttpError("FORBIDDEN", "Your account is under review. Reach out in Slack.")
 	}
-	// The stored status is from the last sign-in. Someone who finished verifying
-	// since then is verified now, so HCA is asked again before anyone is turned
-	// away – and only then, so a verified maker's submit costs no extra call.
+	// The stored status is from the last sign-in. Someone who finished verifying since then is verified now, so HCA is asked again before anyone is turned away – and only then, so a verified maker's submit costs no extra call.
 	let verificationStatus = user?.verificationStatus ?? null
 	if (process.env.SKIP_YSWS_VERIFICATION_CHECK !== "true" && verificationStatus !== "verified") {
 		verificationStatus = (await syncHcaProfile(userId)) ?? verificationStatus
@@ -201,11 +178,7 @@ export async function submitPhase(
 		)
 	}
 
-	// The repo checks, run here rather than trusted from the sheet: what the
-	// maker was shown a minute ago is not an authorisation. They exist so a
-	// maker fixes what would get the week rejected before it is handed in, so a
-	// blocking failure refuses with its own reason. GitHub being unreachable
-	// never blocks.
+	// The repo checks, run here rather than trusted from the sheet: what the maker was shown a minute ago is not an authorisation. They exist so a maker fixes what would get the week rejected before it is handed in, so a blocking failure refuses with its own reason. GitHub being unreachable never blocks.
 	const repoChecks = await checkRepo(project.githubRepo, project.theme)
 	if (!repoChecks.canSubmit) {
 		const first = repoChecks.checks.find((c) => c.blocking && c.status === "fail")
@@ -222,10 +195,7 @@ export async function submitPhase(
 	const scheduledWeek = scheduledWeekFor(project.theme, phase)
 
 	return prisma.$transaction(async (tx) => {
-		// Claim the phase first, conditionally on it still being one that can be
-		// submitted. Two concurrent submits both read the same outside state, so
-		// without this both would create an open submission and both flip the
-		// status; the row lock makes the loser's update match nothing.
+		// Claim the phase first, conditionally on it still being one that can be submitted. Two concurrent submits both read the same outside state, so without this both would create an open submission and both flip the status; the row lock makes the loser's update match nothing.
 		const claimed = await tx.themeProject.updateMany({
 			where: {
 				id: themeProjectId,
@@ -249,8 +219,7 @@ export async function submitPhase(
 				attachmentKeys,
 				submittedInWeek,
 				scheduledWeek,
-				// Analytics only. Nothing gates on lateness – a late joiner has to be
-				// able to finish.
+				// Analytics only. Nothing gates on lateness – a late joiner has to be able to finish.
 				onTime: submittedInWeek > 0 && submittedInWeek <= scheduledWeek,
 			},
 		})
@@ -268,13 +237,10 @@ export async function unsubmitPhase(userId: string, themeProjectId: string, phas
 	}
 
 	return prisma.$transaction(async (tx) => {
-		// Serialize against the review path. finalizeReview takes this same
-		// per-user credit lock before it re-reads the submission, so holding it
-		// here means a decision cannot land between our read and our delete.
+		// Serialize against the review path. finalizeReview takes this same per-user credit lock before it re-reads the submission, so holding it here means a decision cannot land between our read and our delete.
 		await lockUserCredit(tx, project.userId)
 
-		// Everything below is re-read under the lock; the checks above are the
-		// fast fail for the ordinary case.
+		// Everything below is re-read under the lock; the checks above are the fast fail for the ordinary case.
 		const current = await tx.themeProject.findUniqueOrThrow({
 			where: { id: themeProjectId },
 			select: { designStatus: true, buildStatus: true },
@@ -290,15 +256,12 @@ export async function unsubmitPhase(userId: string, themeProjectId: string, phas
 		})
 		if (!open) throw new HttpError("NOT_SUBMITTED", "No open submission found")
 
-		// Withdrawing work a reviewer is actively reading wastes their time and
-		// races the decision they are about to write.
+		// Withdrawing work a reviewer is actively reading wastes their time and races the decision they are about to write.
 		if (open.claim && open.claim.expiresAt > new Date()) {
 			throw new HttpError("CLAIMED_BY_OTHER", "A reviewer is looking at this right now")
 		}
 
-		// Conditional on still being unresolved: a decision that committed before
-		// the lock was ours has made this row its record, and withdrawing it would
-		// cascade the review away and put a decided phase back to draft.
+		// Conditional on still being unresolved: a decision that committed before the lock was ours has made this row its record, and withdrawing it would cascade the review away and put a decided phase back to draft.
 		const withdrawn = await tx.phaseSubmission.deleteMany({ where: { id: open.id, resolvedAt: null } })
 		if (withdrawn.count !== 1) {
 			throw new HttpError("ALREADY_RESOLVED", "This submission has already been decided")

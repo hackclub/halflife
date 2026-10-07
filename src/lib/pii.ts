@@ -2,12 +2,9 @@ import "server-only"
 import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from "node:crypto"
 
 /**
- * AES-256-GCM with an HKDF-derived key. Stored as `iv:authTag:ciphertext`, all
- * base64.
+ * AES-256-GCM with an HKDF-derived key. Stored as `iv:authTag:ciphertext`, all base64.
  *
- * Only address and birthday are encrypted, and only when PULL_HCA_PII=true.
- * They exist solely to fill in the grant row and a shipping label, and are
- * decrypted at the moment of use – never selected into anything a browser sees.
+ * Only address and birthday are encrypted, and only when PULL_HCA_PII=true. They exist solely to fill in the grant row and a shipping label, and are decrypted at the moment of use – never selected into anything a browser sees.
  */
 const INFO = "half-life-pii-encryption"
 
@@ -39,9 +36,7 @@ export function decryptPII(payload: string): string {
 }
 
 /**
- * Decrypt without throwing. One corrupt column must not take down the whole
- * record – the grant sync would rather ship a missing address line than fail
- * outright and leave someone unpaid.
+ * Decrypt without throwing. One corrupt column must not take down the whole record – the grant sync would rather ship a missing address line than fail outright and leave someone unpaid.
  */
 export function safeDecrypt(payload: string | null | undefined): string | null {
 	if (!payload) return null

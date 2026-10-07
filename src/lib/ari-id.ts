@@ -3,10 +3,7 @@ import { Phase } from "@/app/generated/prisma/enums"
 /**
  * The `external_id` Half Life gives Ari.
  *
- * Leadership decided one Ari ship per (project, phase), so the id carries both:
- * `<themeProjectId>:design` / `:build`. This is deliberately a pure module with
- * no server imports, so `verify:contracts` can pin the format without loading
- * the database layer.
+ * Leadership decided one Ari ship per (project, phase), so the id carries both: `<themeProjectId>:design` / `:build`. This is deliberately a pure module with no server imports, so `verify:contracts` can pin the format without loading the database layer.
  */
 
 export function ariExternalId(themeProjectId: string, phase: Phase): string {

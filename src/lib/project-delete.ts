@@ -5,19 +5,15 @@ import prisma from "@/lib/prisma"
 /**
  * Why a maker cannot delete this project, or null when they can.
  *
- * Deleting is a soft delete (`deletedAt`), but to the maker it is gone, so the
- * line is drawn where a project stops being only theirs:
+ * Deleting is a soft delete (`deletedAt`), but to the maker it is gone, so the line is drawn where a project stops being only theirs:
  *
  * - A phase in review is on a reviewer's desk; unsubmitting takes it back.
- * - An approved phase, a grant, or a coin in the ledger means money was paid
- *   against the project, and the ledger has to keep pointing at a live one.
+ * - An approved phase, a grant, or a coin in the ledger means money was paid against the project, and the ledger has to keep pointing at a live one.
  * - An open dispute is still waiting on a reviewer's second look.
  *
- * Week one's project may go too, though onboarding made it: the trail then
- * gives week one a "New project" node of its own (see `checkpointsFor`).
+ * Week one's project may go too, though onboarding made it: the trail then gives week one a "New project" node of its own (see `checkpointsFor`).
  *
- * Shared by the DELETE handler and the project page, so the page only offers
- * what the server will do.
+ * Shared by the DELETE handler and the project page, so the page only offers what the server will do.
  */
 export async function deleteBlockReason(project: {
 	id: string

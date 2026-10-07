@@ -6,16 +6,14 @@ import { type ApiErrorBody, fail } from "@/lib/api"
 function matches(presented: string, expected: string): boolean {
 	const a = Buffer.from(presented)
 	const b = Buffer.from(expected)
-	// timingSafeEqual throws on a length mismatch, so check length first. The
-	// length of a bearer token is not the secret.
+	// timingSafeEqual throws on a length mismatch, so check length first. The length of a bearer token is not the secret.
 	return a.length === b.length && timingSafeEqual(a, b)
 }
 
 /**
  * Returns null when the caller is authorised, or the response to send back.
  *
- * An unset env var yields 503, never an open route: a machine endpoint that
- * silently stops checking its key is worse than one that stops working.
+ * An unset env var yields 503, never an open route: a machine endpoint that silently stops checking its key is worse than one that stops working.
  */
 export function requireBearerAuth(request: NextRequest, envVars: string[]): NextResponse<ApiErrorBody> | null {
 	const expected = envVars.map((v) => process.env[v]).filter((v): v is string => !!v)
@@ -42,9 +40,7 @@ export function requireIntegrationAuth(request: NextRequest) {
 export type ExportScope = "internal" | "partner"
 
 /**
- * Authorise the participant export and say which key matched, because the
- * fields a partner may see are narrower than the internal key's: only
- * `INTEGRATION_API_KEY` holders get the contact identifiers.
+ * Authorise the participant export and say which key matched, because the fields a partner may see are narrower than the internal key's: only `INTEGRATION_API_KEY` holders get the contact identifiers.
  */
 export function requireExportAuth(
 	request: NextRequest,

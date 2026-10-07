@@ -5,15 +5,9 @@ import prisma from "@/lib/prisma"
 /**
  * Lapse – where every timelapse is recorded.
  *
- * The platform stopped taking timelapse uploads: people record on Lapse, publish
- * the timelapse there (public or unlisted), and pick it when they write the
- * journal entry it backs. What we keep is a reference, checked against Lapse at
- * attach time.
+ * The platform stopped taking timelapse uploads: people record on Lapse, publish the timelapse there (public or unlisted), and pick it when they write the journal entry it backs. What we keep is a reference, checked against Lapse at attach time.
  *
- * Auth is the user's own OAuth token, stored on their `lapse` Account row by
- * better-auth when they link it. Lapse issues 30-day tokens and no refresh
- * tokens yet, so an expired token is the same answer as never having linked:
- * sign in with Lapse again.
+ * Auth is the user's own OAuth token, stored on their `lapse` Account row by better-auth when they link it. Lapse issues 30-day tokens and no refresh tokens yet, so an expired token is the same answer as never having linked: sign in with Lapse again.
  */
 
 export const LAPSE_API_BASE = (process.env.LAPSE_API_BASE ?? "https://api.lapse.hackclub.com/api").replace(/\/$/, "")
@@ -84,9 +78,7 @@ export async function lapseCredentials(userId: string) {
 }
 
 /**
- * One call into Lapse's REST API, unwrapped from its `{ ok, data }` envelope.
- * A 401 means the token died early (revoked, or Lapse rotated its keys) and is
- * reported as not-linked so the UI offers the same way back in.
+ * One call into Lapse's REST API, unwrapped from its `{ ok, data }` envelope. A 401 means the token died early (revoked, or Lapse rotated its keys) and is reported as not-linked so the UI offers the same way back in.
  */
 async function call<T>(accessToken: string, path: string, query?: Record<string, string>) {
 	const url = new URL(`${LAPSE_API_BASE}${path}`)
@@ -132,14 +124,9 @@ export async function listMyTimelapses(userId: string, cursor?: string) {
 }
 
 /**
- * The timelapses a session is about to claim, each confirmed with Lapse as the
- * claimant's own, published, and finished processing.
+ * The timelapses a session is about to claim, each confirmed with Lapse as the claimant's own, published, and finished processing.
  *
- * The id alone proves nothing – Lapse ids show up in every share link – so
- * this is the same rule the R2 uploads had ("evidence has to be your own"),
- * asked of the system that actually knows. Refused as a whole rather than
- * filtered: a participant who thinks they attached a timelapse and finds it
- * missing at review has been failed silently.
+ * The id alone proves nothing – Lapse ids show up in every share link – so this is the same rule the R2 uploads had ("evidence has to be your own"), asked of the system that actually knows. Refused as a whole rather than filtered: a participant who thinks they attached a timelapse and finds it missing at review has been failed silently.
  */
 export async function verifyOwnTimelapses(userId: string, ids: readonly string[]) {
 	if (ids.length === 0) return []

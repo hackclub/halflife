@@ -1,9 +1,7 @@
 /**
- * The arithmetic behind a countdown – the landing page's wait for week 1, and
- * the platform's run down the week being lived.
+ * The arithmetic behind a countdown – the landing page's wait for week 1, and the platform's run down the week being lived.
  *
- * Kept out of the components so the one thing that can actually be wrong – how a
- * span of milliseconds splits into days, hours, minutes and seconds – is a pure
+ * Kept out of the components so the one thing that can actually be wrong – how a span of milliseconds splits into days, hours, minutes and seconds – is a pure
  * function the contract tests can drive. Each component is then only the clock
  * and the markup.
  */
@@ -21,11 +19,7 @@ export type CountdownParts = Record<(typeof COUNTDOWN_UNITS)[number]["key"], num
 /**
  * Split a span of milliseconds into whole days/hours/minutes/seconds.
  *
- * The remainder is carried down each unit rather than recomputed from the
- * total, so 90 minutes reads as 1 hour 30 minutes and not 1 hour 90 minutes.
- * A negative or non-finite span clamps to zero: the countdown is only ever
- * asked to show the time until a moment, and a moment already past is behind
- * it, not a negative count.
+ * The remainder is carried down each unit rather than recomputed from the total, so 90 minutes reads as 1 hour 30 minutes and not 1 hour 90 minutes. A negative or non-finite span clamps to zero: the countdown is only ever asked to show the time until a moment, and a moment already past is behind it, not a negative count.
  */
 export function countdownParts(ms: number): CountdownParts {
 	let rest = Number.isFinite(ms) ? Math.max(0, Math.floor(ms)) : 0

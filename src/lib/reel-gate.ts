@@ -9,17 +9,9 @@ import { isWeekOpen } from "@/lib/program"
 /**
  * Deleting a reel, and the debt it leaves.
  *
- * A reel checkpoint is done while a live reel carries its key, so deleting the
- * last one reopens the checkpoint by itself. What this adds is the other half:
- * until that reel is re-recorded, nothing else on the map moves. Every other
- * checkpoint is held, and the server refuses the work that would complete one
- * – a journal entry, a different checkpoint's reel, a submit.
+ * A reel checkpoint is done while a live reel carries its key, so deleting the last one reopens the checkpoint by itself. What this adds is the other half: until that reel is re-recorded, nothing else on the map moves. Every other checkpoint is held, and the server refuses the work that would complete one – a journal entry, a different checkpoint's reel, a submit.
  *
- * Only a week that can still take work can owe a reel. A week in review or
- * decided keeps its reels as the record it was judged on, and a passed week
- * can never be re-recorded, so neither can have a reel deleted from it. That
- * is what keeps the debt payable: anything owed is always somewhere the maker
- * can go and pay it.
+ * Only a week that can still take work can owe a reel. A week in review or decided keeps its reels as the record it was judged on, and a passed week can never be re-recorded, so neither can have a reel deleted from it. That is what keeps the debt payable: anything owed is always somewhere the maker can go and pay it.
  */
 
 /** Idea and progress reels. The closing reel lives inside Submit, not on its own node. */
@@ -33,22 +25,15 @@ function weekOfKey(key: string): number | null {
 /**
  * "your week 3 idea reel", "your week 2 15h progress reel".
  *
- * The hours come from `progressReelHours` rather than from arithmetic on the
- * slot, because the two used to disagree: this said `slot * 10` while the trail
- * put a build week's second reel at five hours, so an owed-reel message could
- * name a mark the maker never had. One source, and the phase is read off the
- * week the same way `reelLockReason` reads it.
+ * The hours come from `progressReelHours` rather than from arithmetic on the slot, because the two used to disagree: this said `slot * 10` while the trail put a build week's second reel at five hours, so an owed-reel message could name a mark the maker never had. One source, and the phase is read off the week the same way `reelLockReason` reads it.
  *
- * A warm-up's reel has no week to read a phase from, so it is named without one
- * rather than guessed at – "your progress reel" is true; "your 15h progress
- * reel" might not be.
+ * A warm-up's reel has no week to read a phase from, so it is named without one rather than guessed at – "your progress reel" is true; "your 15h progress reel" might not be.
  */
 export function reelNameForKey(key: string): string {
 	const week = weekOfKey(key)
 	const slot = /-reel-(.+)$/.exec(key)?.[1]
 	const progress = slot && /^\d+$/.test(slot)
-	// `curriculum` names the phases in lower case, as the trail does; the Prisma
-	// enum is spelled the other way and is not what this takes.
+	// `curriculum` names the phases in lower case, as the trail does; the Prisma enum is spelled the other way and is not what this takes.
 	const phase = week === null ? null : week > DESIGN_WEEKS ? ("build" as const) : ("design" as const)
 	const what = progress
 		? phase
@@ -61,8 +46,7 @@ export function reelNameForKey(key: string): string {
 }
 
 /**
- * Whether a checkpoint reel's week still lets its reels change. Null when it
- * does; otherwise the reason, phrased for the maker.
+ * Whether a checkpoint reel's week still lets its reels change. Null when it does; otherwise the reason, phrased for the maker.
  */
 export async function reelLockReason(
 	userId: string,
@@ -113,9 +97,7 @@ export async function getOwedReelKeys(userId: string): Promise<string[]> {
 }
 
 /**
- * Refuse work while a deleted reel is owed. `checkpointKey` is the reel being
- * posted, if this is a reel: re-recording an owed one is the way out, so that
- * one – and only that one – goes through.
+ * Refuse work while a deleted reel is owed. `checkpointKey` is the reel being posted, if this is a reel: re-recording an owed one is the way out, so that one – and only that one – goes through.
  */
 export async function assertNoOwedReel(userId: string, checkpointKey?: string | null): Promise<void> {
 	const owed = await getOwedReelKeys(userId)

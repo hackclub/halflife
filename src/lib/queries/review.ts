@@ -12,8 +12,7 @@ export interface QueueItem {
 	phase: Phase
 	themeLabel: string
 	projectTitle: string
-	// Display name only – the queue is open to every REVIEWER, so maker
-	// emails must not be scrapable page by page (M6).
+	// Display name only – the queue is open to every REVIEWER, so maker emails must not be scrapable page by page (M6).
 	participant: { id: string; name: string | null }
 	submittedAt: Date
 	submittedInWeek: number | null
@@ -36,17 +35,14 @@ export async function getReviewQueue(opts: {
 	const where = {
 		resolvedAt: null,
 		...(opts.phase ? { phase: opts.phase } : {}),
-		// Nobody reviews their own work, so it should never show up as something
-		// to act on. The decision path refuses it too – this is so the queue
-		// counts are honest, not the enforcement.
+		// Nobody reviews their own work, so it should never show up as something to act on. The decision path refuses it too – this is so the queue counts are honest, not the enforcement.
 		themeProject: { deletedAt: null, userId: { not: opts.reviewerId } },
 	}
 
 	const [rows, designCount, buildCount] = await Promise.all([
 		prisma.phaseSubmission.findMany({
 			where,
-			// Oldest first: a review queue that surfaces the newest work leaves the
-			// people who submitted first waiting longest.
+			// Oldest first: a review queue that surfaces the newest work leaves the people who submitted first waiting longest.
 			orderBy: [{ createdAt: "asc" }, { id: "asc" }],
 			take: opts.limit + 1,
 			...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
@@ -127,15 +123,10 @@ export async function getSubmissionDetail(
 		},
 	})
 	if (!submission) return null
-	// Your own work is not reviewable by you, so it is not visible here either.
-	// Null rather than a 403: the review surface should not confirm that this is
-	// a submission you merely lack rights over.
+	// Your own work is not reviewable by you, so it is not visible here either. Null rather than a 403: the review surface should not confirm that this is a submission you merely lack rights over.
 	if (reviewerId && submission.themeProject.userId === reviewerId) return null
 
-	// Maker contact + risk flags only for ADMIN/AUDITOR (contact) and
-	// REVIEW_HOURS holders (risk flags) – the volume reviewer role gets the
-	// work, not the person (M6). Redacted here, before any caller can render
-	// or serialize them.
+	// Maker contact + risk flags only for ADMIN/AUDITOR (contact) and REVIEW_HOURS holders (risk flags) – the volume reviewer role gets the work, not the person (M6). Redacted here, before any caller can render or serialize them.
 	if (!includeContact || !includeRiskFlags) {
 		const maker = submission.themeProject.user as {
 			email: string
@@ -208,8 +199,7 @@ export interface OpenDispute {
 /**
  * Disputes no one has closed yet, oldest first.
  *
- * Surfaced on the program page so a maker asking for a second look is not left
- * waiting on a queue nobody is watching.
+ * Surfaced on the program page so a maker asking for a second look is not left waiting on a queue nobody is watching.
  */
 export async function getOpenDisputes(): Promise<OpenDispute[]> {
 	const rows = await prisma.reviewDispute.findMany({

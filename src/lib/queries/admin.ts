@@ -51,10 +51,7 @@ export async function listUsers(
 		},
 	})
 	const hasMore = rows.length > opts.limit
-	// Contact + risk fields only leave the server for ADMIN/AUDITOR.
-	// REVIEWER/FULFILLER get the directory (names + roles) with no emails,
-	// Slack ids or fraud flags to scrape. Callers pass includePii explicitly;
-	// the default is stripped.
+	// Contact + risk fields only leave the server for ADMIN/AUDITOR. REVIEWER/FULFILLER get the directory (names + roles) with no emails, Slack ids or fraud flags to scrape. Callers pass includePii explicitly; the default is stripped.
 	const items = (hasMore ? rows.slice(0, opts.limit) : rows).map((row) =>
 		includePii ? row : { ...row, email: "", slackId: null, verificationStatus: null, fraudFlagged: false },
 	)
@@ -72,8 +69,7 @@ export interface ProjectFilters {
 	/** Only projects, or owners, with an extension still running. */
 	extended?: boolean
 	/**
-	 * Include rows nobody has started. Every theme's row is made at sign-up, so
-	 * without this the list is five placeholders per participant.
+	 * Include rows nobody has started. Every theme's row is made at sign-up, so without this the list is five placeholders per participant.
 	 */
 	unstarted?: boolean
 }
@@ -186,10 +182,7 @@ export async function getUserDetail(userId: string, flags?: { includeSensitive?:
 	})
 	if (!user) return null
 
-	// Ledger, balances and order history only leave the server for
-	// ADMIN/AUDITOR – a FULFILLER (shipping role) needs the fulfilment sheet,
-	// not someone's full credit history. Stripped callers get the profile
-	// with contact/risk fields redacted and empty money sections.
+	// Ledger, balances and order history only leave the server for ADMIN/AUDITOR – a FULFILLER (shipping role) needs the fulfilment sheet, not someone's full credit history. Stripped callers get the profile with contact/risk fields redacted and empty money sections.
 	if (!includeSensitive) {
 		const printer = await getPrinterQualification(userId)
 		return {
@@ -220,8 +213,7 @@ export async function getUserDetail(userId: string, flags?: { includeSensitive?:
 			where: { userId },
 			orderBy: { placedAt: "desc" },
 			take: 25,
-			// The user page lists the number, item, credit total and status only;
-			// internal cost and encrypted columns are not part of VIEW_USERS.
+			// The user page lists the number, item, credit total and status only; internal cost and encrypted columns are not part of VIEW_USERS.
 			select: { id: true, orderNumber: true, itemNameSnapshot: true, totalCredits: true, status: true },
 		}),
 		getPrinterQualification(userId),
@@ -236,8 +228,7 @@ export async function listOrders(opts: { status?: ShopOrderStatus; cursor?: stri
 		orderBy: [{ placedAt: "desc" }, { id: "desc" }],
 		take: opts.limit + 1,
 		...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
-		// Explicit select, not `include`: a whole-row response carries the
-		// encrypted address/phone and `lastActorId` this API has no use for.
+		// Explicit select, not `include`: a whole-row response carries the encrypted address/phone and `lastActorId` this API has no use for.
 		select: {
 			...shopOrderStaffSelect,
 			user: { select: { id: true, name: true, displayName: true, email: true } },
@@ -251,8 +242,7 @@ export async function listOrders(opts: { status?: ShopOrderStatus; cursor?: stri
 }
 
 /**
- * What the fulfilment sheet lists. Rejected orders were refunded and never
- * ship; cancelled ones stay, since one may already be on its way to HQ.
+ * What the fulfilment sheet lists. Rejected orders were refunded and never ship; cancelled ones stay, since one may already be on its way to HQ.
  */
 export const FULFILLMENT_ORDER_STATUSES: ShopOrderStatus[] = [
 	ShopOrderStatus.PENDING,
@@ -281,9 +271,7 @@ export interface FulfillmentFilters {
 /**
  * Orders for the fulfilment sheet, with each buyer's country.
  *
- * The country is the one on their HCA profile now, not at order time: it is
- * what the parcel will actually be addressed to. It is decrypted here and only
- * the plain country leaves this function – never the ciphertext.
+ * The country is the one on their HCA profile now, not at order time: it is what the parcel will actually be addressed to. It is decrypted here and only the plain country leaves this function – never the ciphertext.
  */
 export async function listFulfillmentOrders(filters: FulfillmentFilters, opts: { cursor?: string; limit: number }) {
 	const where: Prisma.ShopOrderWhereInput = {
@@ -361,9 +349,7 @@ export function isAuditAction(value: string): value is AuditAction {
 export async function listAuditLog(opts: { action?: string; targetId?: string; cursor?: string; limit: number }) {
 	const rows = await prisma.auditLog.findMany({
 		where: {
-			// The page's filter box takes free text, so an unrecognised action is
-			// treated as no filter rather than a Prisma enum error; the API route
-			// rejects it properly with a 400.
+			// The page's filter box takes free text, so an unrecognised action is treated as no filter rather than a Prisma enum error; the API route rejects it properly with a 400.
 			...(opts.action && isAuditAction(opts.action) ? { action: opts.action } : {}),
 			...(opts.targetId ? { targetId: opts.targetId } : {}),
 		},
@@ -378,9 +364,7 @@ export async function listAuditLog(opts: { action?: string; targetId?: string; c
 }
 
 /**
- * Awards to ship, newest qualification first. `encryptedAddress` is read only
- * to answer "is an address locked on file"; the ciphertext never leaves the
- * server.
+ * Awards to ship, newest qualification first. `encryptedAddress` is read only to answer "is an address locked on file"; the ciphertext never leaves the server.
  */
 export async function listPrinterAwards(limit = 100) {
 	const rows = await prisma.printerAward.findMany({
@@ -428,9 +412,7 @@ export async function listRecentPostsForModeration(limit = 25) {
 }
 
 /**
- * Recent live comments, newest first. A comment on a soft-deleted post is not
- * shown – nobody can reach it to report it – but a hidden comment stays in
- * the list so staff can see it was handled.
+ * Recent live comments, newest first. A comment on a soft-deleted post is not shown – nobody can reach it to report it – but a hidden comment stays in the list so staff can see it was handled.
  */
 export async function listRecentCommentsForModeration(limit = 25) {
 	return prisma.postComment.findMany({
@@ -491,21 +473,11 @@ export interface FlowStep {
 }
 
 /**
- * The participant journey as a funnel. Each row counts people who ALSO did
- * every step above it, so a step never has more people than the one before it
- * and drop-off is never negative – whatever order things actually happened in.
+ * The participant journey as a funnel. Each row counts people who ALSO did every step above it, so a step never has more people than the one before it and drop-off is never negative – whatever order things actually happened in.
  *
- * Steps with a named marker come from User (lib/analytics); "named a project"
- * and the repo/devlog steps are derived from their own tables; "repo checks
- * passed" is stamped by the preflight that gates submissions. The onboarding,
- * goal and upload steps in between are derived as noted below.
+ * Steps with a named marker come from User (lib/analytics); "named a project" and the repo/devlog steps are derived from their own tables; "repo checks passed" is stamped by the preflight that gates submissions. The onboarding, goal and upload steps in between are derived as noted below.
  *
- * A note on the steps added between "logged in" and "posted a reel": they rest
- * on columns and tables that did not exist for the whole life of the program
- * (the goal prompt shipped after the first reels; a desktop file-pick writes
- * no upload-handoff row). Each is therefore "did this OR already did something
- * later that presupposes it". Without the fallback, inserting a late marker
- * would silently shrink every step below it instead of showing a real drop.
+ * A note on the steps added between "logged in" and "posted a reel": they rest on columns and tables that did not exist for the whole life of the program (the goal prompt shipped after the first reels; a desktop file-pick writes no upload-handoff row). Each is therefore "did this OR already did something later that presupposes it". Without the fallback, inserting a late marker would silently shrink every step below it instead of showing a real drop.
  */
 export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 	const [users, sessionUsers, projectUsers, devlogUsers, repoUsers, handoffRows] = await Promise.all([
@@ -522,14 +494,9 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 				firstSubmissionAt: true,
 			},
 		}),
-		// People who logged in: a sign-in is what issues a session. Derived from
-		// the table rather than the lastLoginAt marker, so the funnel does not
-		// depend on the analytics backfill having run.
+		// People who logged in: a sign-in is what issues a session. Derived from the table rather than the lastLoginAt marker, so the funnel does not depend on the analytics backfill having run.
 		prisma.session.findMany({ select: { userId: true }, distinct: ["userId"] }),
-		// The onboarding paper trail, per person, read off their live projects: a
-		// description means they named something, a starter means they took one of
-		// the catalogue's, and a requested tier means they answered the tier
-		// question. One read for all three because the funnel needs them together.
+		// The onboarding paper trail, per person, read off their live projects: a description means they named something, a starter means they took one of the catalogue's, and a requested tier means they answered the tier question. One read for all three because the funnel needs them together.
 		prisma.themeProject.findMany({
 			where: { deletedAt: null },
 			select: { userId: true, description: true, starterProjectId: true, requestedTier: true },
@@ -555,10 +522,7 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 			select: { userId: true },
 			distinct: ["userId"],
 		}),
-		// Reel uploads. A row is written when the desktop mints a phone handoff;
-		// `usedAt` means the phone actually sent a file. A desktop file-pick goes
-		// straight to /api/upload and leaves no row here, which is why anyone who
-		// posted is counted as having started and finished an upload.
+		// Reel uploads. A row is written when the desktop mints a phone handoff; `usedAt` means the phone actually sent a file. A desktop file-pick goes straight to /api/upload and leaves no row here, which is why anyone who posted is counted as having started and finished an upload.
 		prisma.uploadHandoff.findMany({ select: { userId: true, usedAt: true } }),
 	])
 
@@ -571,17 +535,9 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 	const handoffs = new Set(handoffRows.map((h) => h.userId))
 	const handoffUploads = new Set(handoffRows.filter((h) => h.usedAt !== null).map((h) => h.userId))
 
-	// One boolean per step per person, in funnel order; steps[0] (signup) is true
-	// for everyone. The `|| posted` / `|| submitted` fallbacks are the history
-	// guard described above the function – do not drop them.
+	// One boolean per step per person, in funnel order; steps[0] (signup) is true for everyone. The `|| posted` / `|| submitted` fallbacks are the history guard described above the function – do not drop them.
 	//
-	// The onboarding steps between "started" and "finished" are read from
-	// `onboardingStep` (the furthest step reached, 0-based) rather than from a
-	// marker per step, because that one column is the state machine's own
-	// answer and predates nothing. Each carries `|| completed` so a person who
-	// finished is never missing from an earlier row, and each also accepts the
-	// branch that skips it: a starter pick jumps the project and idea steps, so
-	// "named or picked" and "tier settled" are ORs, not a single column.
+	// The onboarding steps between "started" and "finished" are read from `onboardingStep` (the furthest step reached, 0-based) rather than from a marker per step, because that one column is the state machine's own answer and predates nothing. Each carries `|| completed` so a person who finished is never missing from an earlier row, and each also accepts the branch that skips it: a starter pick jumps the project and idea steps, so "named or picked" and "tier settled" are ORs, not a single column.
 	const ONBOARDING = {
 		week: stepIndexOf("week"),
 		idea: stepIndexOf("idea"),
@@ -672,10 +628,7 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 export type ReportStatusFilter = ReportStatus | "ALL"
 
 /**
- * The moderation queue for user reports: who flagged what, why, and what
- * staff did about it. Newest first, with the reported row's own preview and
- * author alongside, so a report reads without opening five tabs. Cursor-
- * paged like the audit log, so a busy queue never silently drops its tail.
+ * The moderation queue for user reports: who flagged what, why, and what staff did about it. Newest first, with the reported row's own preview and author alongside, so a report reads without opening five tabs. Cursor- paged like the audit log, so a busy queue never silently drops its tail.
  */
 export async function listContentReports(
 	status: ReportStatusFilter = "OPEN",
@@ -763,10 +716,7 @@ export interface AreaStat {
 	/** Accounts whose timezone maps here. */
 	users: number
 	/**
-	 * Hours logged by those accounts: journal sessions (reviewer-adjusted where
-	 * set) plus linked Hackatime time. A session already counted through a
-	 * Hackatime link contributes nothing on its own, exactly as the ledger
-	 * reads it.
+	 * Hours logged by those accounts: journal sessions (reviewer-adjusted where set) plus linked Hackatime time. A session already counted through a Hackatime link contributes nothing on its own, exactly as the ledger reads it.
 	 */
 	hours: number
 }
@@ -784,9 +734,7 @@ const round1 = (n: number) => Math.round(n * 10) / 10
 /**
  * Users and hours per region, for the overview's geography section.
  *
- * Regions come from each account's timezone – the only per-user geography
- * with real coverage (see lib/regions). Hours are attributed to the
- * author's region, never to a project's.
+ * Regions come from each account's timezone – the only per-user geography with real coverage (see lib/regions). Hours are attributed to the author's region, never to a project's.
  */
 async function loadRegionInputs() {
 	const [users, sessions, links] = await Promise.all([
@@ -824,8 +772,7 @@ function aggregateByKey(inputs: RegionInputs, keyOf: (timezone: string | null) =
 
 	for (const u of inputs.users) row(userKey.get(u.id) ?? "Unknown").users += 1
 	for (const s of inputs.sessions) {
-		// A tracked entry's hours arrive through its link, counted below – the
-		// journal row itself contributes nothing, exactly as the ledger reads it.
+		// A tracked entry's hours arrive through its link, counted below – the journal row itself contributes nothing, exactly as the ledger reads it.
 		if (s.hoursSource === HoursSource.HACKATIME_TRACKED) continue
 		row(userKey.get(s.themeProject.userId) ?? "Unknown").hours += s.hoursApproved ?? s.hoursClaimed
 	}
@@ -869,10 +816,7 @@ export interface DayActivity {
 const DAY = /^\d{4}-\d{2}-\d{2}$/
 
 /**
- * Devlogs written and hours logged per day, gap-filled from the first active
- * day to the last so the strip chart reads continuously. Days are
- * program-timezone effective dates – the day the work counted for, not the
- * instant it was typed.
+ * Devlogs written and hours logged per day, gap-filled from the first active day to the last so the strip chart reads continuously. Days are program-timezone effective dates – the day the work counted for, not the instant it was typed.
  */
 export async function getDailyActivity(): Promise<DayActivity[]> {
 	const sessions = await prisma.workSession.findMany({
@@ -921,10 +865,7 @@ export interface FirstProjectStat {
 /**
  * What users chose for their first project: which starter, or a custom idea.
  *
- * Setup edits one row – the week-one (PCB) project – so its final
- * `starterProjectId` is the choice: a starter id, or null for custom. Only
- * users who finished setup and still have that project count; accounts with
- * no week-one row made no choice in this system.
+ * Setup edits one row – the week-one (PCB) project – so its final `starterProjectId` is the choice: a starter id, or null for custom. Only users who finished setup and still have that project count; accounts with no week-one row made no choice in this system.
  */
 export async function getFirstProjectStats(): Promise<FirstProjectStat[]> {
 	const rows = await prisma.themeProject.findMany({
@@ -935,8 +876,7 @@ export async function getFirstProjectStats(): Promise<FirstProjectStat[]> {
 	const counts = new Map<string | null, number>()
 	for (const r of rows) counts.set(r.starterProjectId, (counts.get(r.starterProjectId) ?? 0) + 1)
 
-	// Starter ids outlive the catalogue: resolve a title when one exists, else
-	// show the id prettified rather than dropped.
+	// Starter ids outlive the catalogue: resolve a title when one exists, else show the id prettified rather than dropped.
 	const pretty = (id: string) =>
 		getStarterProject(id)?.title ??
 		id

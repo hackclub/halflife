@@ -69,9 +69,7 @@ export interface OnboardingView {
 }
 
 /**
- * The API and the dashboard modal deliberately share this view model. The
- * server remains authoritative for progress; the client only chooses which
- * answered step to display.
+ * The API and the dashboard modal deliberately share this view model. The server remains authoritative for progress; the client only chooses which answered step to display.
  */
 export function toOnboardingView(state: OnboardingStateData): OnboardingView {
 	const intro = weekIntroFor(Theme.PCB)

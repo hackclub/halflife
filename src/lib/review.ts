@@ -31,9 +31,7 @@ export type ClaimResult =
 /**
  * Take an exclusive lock on a submission.
  *
- * `submissionId` is unique, so this is a single insert that either succeeds or
- * collides. Never implement claiming as read-then-write: two reviewers opening
- * the queue at the same moment both read "unclaimed" and both proceed.
+ * `submissionId` is unique, so this is a single insert that either succeeds or collides. Never implement claiming as read-then-write: two reviewers opening the queue at the same moment both read "unclaimed" and both proceed.
  */
 export async function claimSubmission(submissionId: string, reviewerId: string): Promise<ClaimResult> {
 	const owner = await prisma.phaseSubmission.findUnique({
@@ -48,8 +46,7 @@ export async function claimSubmission(submissionId: string, reviewerId: string):
 	const settings = await getProgramSettings()
 	const expiresAt = new Date(Date.now() + settings.reviewClaimTtlMinutes * 60_000)
 
-	// Opportunistically clear a dead reviewer's lock so a queue isn't blocked for
-	// up to a full sweep interval.
+	// Opportunistically clear a dead reviewer's lock so a queue isn't blocked for up to a full sweep interval.
 	await prisma.reviewClaim.deleteMany({
 		where: { submissionId, OR: [{ expiresAt: { lt: new Date() } }, { reviewerId }] },
 	})
@@ -66,8 +63,7 @@ export async function claimSubmission(submissionId: string, reviewerId: string):
 		return {
 			ok: false,
 			heldBy: held.reviewerId,
-			// The claim conflict is shown on the queue, so it names them the way
-			// the queue does.
+			// The claim conflict is shown on the queue, so it names them the way the queue does.
 			heldByName: displayName(held.reviewer),
 			expiresAt: held.expiresAt,
 		}
@@ -125,9 +121,7 @@ export interface FinalizeOutcome {
 /**
  * Record a review decision and move everything that depends on it.
  *
- * The whole thing is one transaction because a partial application – status
- * moved but credit not written, or credit written twice – is the failure that
- * costs real money.
+ * The whole thing is one transaction because a partial application – status moved but credit not written, or credit written twice – is the failure that costs real money.
  */
 export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutcome> {
 	const submission = await prisma.phaseSubmission.findUnique({
@@ -141,11 +135,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 	})
 	if (!submission) throw new HttpError("NOT_FOUND", "Submission not found")
 
-	// Nobody reviews their own work. Every account gets its own five themed
-	// projects at signup, reviewers included, so without this a REVIEWER could
-	// approve their own design, set their own tier, and mint their own credit –
-	// which is exactly what the role is not supposed to be able to do. Admins are
-	// not exempt: the point is a second pair of eyes, not a trust level.
+	// Nobody reviews their own work. Every account gets its own five themed projects at signup, reviewers included, so without this a REVIEWER could approve their own design, set their own tier, and mint their own credit – which is exactly what the role is not supposed to be able to do. Admins are not exempt: the point is a second pair of eyes, not a trust level.
 	if (submission.themeProject.userId === input.reviewerId) {
 		throw new HttpError("FORBIDDEN", "You cannot review your own submission")
 	}
@@ -161,10 +151,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 	const phase = submission.phase
 	const approving = input.result === ReviewResult.APPROVED
 
-	// A build cannot be approved before its design is. Submitting out of order is
-	// fine – see canSubmitPhase – but paying out of order is not. A warm-up
-	// project has no design to wait for: its one phase is whatever the form
-	// collected.
+	// A build cannot be approved before its design is. Submitting out of order is fine – see canSubmitPhase – but paying out of order is not. A warm-up project has no design to wait for: its one phase is whatever the form collected.
 	if (
 		approving &&
 		phase === Phase.BUILD &&
@@ -176,8 +163,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 
 	let tier = project.tier
 	if (approving && phase === Phase.DESIGN) {
-		// The tier's dollars are parts money, so the decision lands here – before
-		// the participant starts building – not at build approval.
+		// The tier's dollars are parts money, so the decision lands here – before the participant starts building – not at build approval.
 		const chosen = input.tier ?? project.tier
 		if (!isTierId(chosen)) {
 			throw new HttpError("VALIDATION_FAILED", "Assign a funding tier when approving a design")
@@ -186,13 +172,9 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 	}
 
 	const breakdown = await getHoursBreakdown(project.id, phase, { live: approving })
-	// A reviewer (human or Ari) who supplied the hours explicitly has already
-	// covered the underpayment risk that a stale Hackatime reading creates, so
-	// staleness must not block a decision that does not depend on the live value.
+	// A reviewer (human or Ari) who supplied the hours explicitly has already covered the underpayment risk that a stale Hackatime reading creates, so staleness must not block a decision that does not depend on the live value.
 	if (approving && input.hoursOverride == null && breakdown.hackatimeStale) {
-		// Refusing here is the point: stasis's client returns 0 on a Hackatime
-		// timeout and that zero flows into the grant row, silently underpaying
-		// someone with no trace.
+		// Refusing here is the point: stasis's client returns 0 on a Hackatime timeout and that zero flows into the grant row, silently underpaying someone with no trace.
 		throw new HttpError(
 			"HACKATIME_STALE",
 			"Hackatime data could not be refreshed. Retry, or set an explicit hours override.",
@@ -206,15 +188,10 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 			? (input.grantUsdOverride ?? getTierOrThrow(tier).grantUsd)
 			: project.grantUsd
 
-	// The machine this participant is saving for is frozen alongside the tier
-	// for the pacing displays: it no longer sizes the payout, but the goal
-	// tracker still reads it to say what this week's work means for the goal.
-	// Someone who never chose one is paced against the default.
+	// The machine this participant is saving for is frozen alongside the tier for the pacing displays: it no longer sizes the payout, but the goal tracker still reads it to say what this week's work means for the goal. Someone who never chose one is paced against the default.
 	const goal = printerById(project.user.printerGoalId ?? DEFAULT_GOAL_ID)
 
-	// Both phases mint coins, by different rules. A design pays out only above
-	// its tier's funded hours; a build has no funded block, so every hour pays.
-	// Either way every coin is spendable on anything.
+	// Both phases mint coins, by different rules. A design pays out only above its tier's funded hours; a build has no funded block, so every hour pays. Either way every coin is spendable on anything.
 	const coins: CoinSplit | null =
 		approving && approvedHours !== null
 			? phase === Phase.DESIGN
@@ -234,12 +211,10 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 				: PhaseStatus.rejected
 
 	const outcome = await prisma.$transaction(async (tx) => {
-		// reconcileGrant reads a running sum and writes a delta against it, so it
-		// needs the same serialization the shop does.
+		// reconcileGrant reads a running sum and writes a delta against it, so it needs the same serialization the shop does.
 		await lockUserCredit(tx, project.userId)
 
-		// Re-read inside the transaction: the review page may have been open for a
-		// while, and the participant may have withdrawn in the meantime.
+		// Re-read inside the transaction: the review page may have been open for a while, and the participant may have withdrawn in the meantime.
 		const fresh = await tx.phaseSubmission.findUnique({
 			where: { id: input.submissionId },
 			select: { resolvedAt: true },
@@ -247,21 +222,13 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 		if (!fresh) throw new HttpError("NOT_SUBMITTED", "This submission has been withdrawn")
 		if (fresh.resolvedAt) throw new HttpError("ALREADY_RESOLVED", "Already decided")
 
-		// Re-check the claim under the transaction too. The check before it ran
-		// against a read taken when the page opened, so another reviewer can have
-		// claimed the submission since; without this the decision would proceed and
-		// delete their live claim on the way out.
+		// Re-check the claim under the transaction too. The check before it ran against a read taken when the page opened, so another reviewer can have claimed the submission since; without this the decision would proceed and delete their live claim on the way out.
 		const claim = await tx.reviewClaim.findUnique({ where: { submissionId: input.submissionId } })
 		if (claim && claim.reviewerId !== input.reviewerId && claim.expiresAt > new Date()) {
 			throw new HttpError("CLAIMED_BY_OTHER", "Another reviewer holds the claim on this submission")
 		}
 
-		// Re-check the design ordering under the same per-user lock the
-		// un-approve path takes. The check before the transaction ran against a
-		// read taken before the live Hackatime fetch; an admin can un-approve the
-		// design in that window, and a build approval must not pay out of order.
-		// Taking the lock first means this read sees either the un-approval (and
-		// refuses) or blocks it until this decision has committed.
+		// Re-check the design ordering under the same per-user lock the un-approve path takes. The check before the transaction ran against a read taken before the live Hackatime fetch; an admin can un-approve the design in that window, and a build approval must not pay out of order. Taking the lock first means this read sees either the un-approval (and refuses) or blocks it until this decision has committed.
 		if (approving && phase === Phase.BUILD) {
 			const design = await tx.themeProject.findUnique({
 				where: { id: project.id },
@@ -273,8 +240,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 		}
 
 		if (approving) {
-			// Accept every unreviewed session at its claimed hours, so the
-			// per-session numbers stay consistent with the frozen total.
+			// Accept every unreviewed session at its claimed hours, so the per-session numbers stay consistent with the frozen total.
 			await tx.workSession.updateMany({
 				where: { themeProjectId: project.id, phase, deletedAt: null, hoursApproved: null },
 				data: { reviewedAt: new Date(), reviewedById: input.reviewerId },
@@ -292,9 +258,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 				hoursOverride: input.hoursOverride ?? null,
 				tierOverride: input.tier ?? null,
 				grantUsdOverride: input.grantUsdOverride ?? null,
-				// Freeze what the reviewer was looking at. The tier table is expected
-				// to change mid-program, so without these there is no way to
-				// reconstruct why anyone was paid what they were paid.
+				// Freeze what the reviewer was looking at. The tier table is expected to change mid-program, so without these there is no way to reconstruct why anyone was paid what they were paid.
 				frozenJournalHours: breakdown.journalHours,
 				frozenHackatimeHours: breakdown.hackatimeHours,
 				frozenTimelapseSeconds: breakdown.timelapseSeconds,
@@ -343,8 +307,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 							? {
 									approvedHours,
 									approvedHoursAt: new Date(),
-									// Spendable only: the banked half is reconciled through the
-									// ledger's BUILD_BANKED_HOURS rows, not this display field.
+									// Spendable only: the banked half is reconciled through the ledger's BUILD_BANKED_HOURS rows, not this display field.
 									buildCoins: coins?.spendable ?? null,
 								}
 							: {}),
@@ -352,15 +315,9 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 
 		await tx.themeProject.update({ where: { id: project.id }, data: projectUpdate })
 
-		// Credit is reconciled to a target rather than appended, so approving the
-		// same build five times converges instead of compounding.
+		// Credit is reconciled to a target rather than appended, so approving the same build five times converges instead of compounding.
 		if (phase === Phase.DESIGN) {
-			// The legacy locked half and the spendable half are separate kinds, so
-			// an un-approval can zero each one independently and neither has to
-			// work out which share of a combined number was its own. New approvals
-			// always target zero for the locked half – every coin is spendable
-			// now – which also migrates an old approval to the single pot the
-			// next time it is re-decided, with no change to its total.
+			// The legacy locked half and the spendable half are separate kinds, so an un-approval can zero each one independently and neither has to work out which share of a combined number was its own. New approvals always target zero for the locked half – every coin is spendable now – which also migrates an old approval to the single pot the next time it is re-decided, with no change to its total.
 			await reconcileGrant(tx, {
 				userId: project.userId,
 				themeProjectId: project.id,
@@ -387,10 +344,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 		}
 
 		if (phase === Phase.BUILD) {
-			// Two kinds for the same reason as a design approval: reconcileGrant
-			// sums by kind, so folding the legacy locked half into the spendable
-			// kind would reconcile each against the other's running total. New
-			// approvals target zero for the locked half.
+			// Two kinds for the same reason as a design approval: reconcileGrant sums by kind, so folding the legacy locked half into the spendable kind would reconcile each against the other's running total. New approvals target zero for the locked half.
 			await reconcileGrant(tx, {
 				userId: project.userId,
 				themeProjectId: project.id,
@@ -470,9 +424,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 /**
  * Reverse an approval.
  *
- * Because credit is reconciled to a target, undoing is the same call with
- * `target: 0` – there is no separate reversal code path, so there is no
- * separate reversal code path to get wrong.
+ * Because credit is reconciled to a target, undoing is the same call with `target: 0` – there is no separate reversal code path, so there is no separate reversal code path to get wrong.
  */
 export async function unapprovePhase(
 	themeProjectId: string,
@@ -492,8 +444,7 @@ export async function unapprovePhase(
 	await prisma.$transaction(async (tx) => {
 		await lockUserCredit(tx, project.userId)
 
-		// Re-read under the lock: the fast check above ran against a read taken
-		// before it, and a decision or re-approval can have committed since.
+		// Re-read under the lock: the fast check above ran against a read taken before it, and a decision or re-approval can have committed since.
 		const fresh = await tx.themeProject.findUnique({
 			where: { id: themeProjectId },
 			select: { designStatus: true, buildStatus: true },
@@ -502,11 +453,7 @@ export async function unapprovePhase(
 			throw new HttpError("CONFLICT", "That phase is no longer approved")
 		}
 
-		// A grant send holds no credit lock while HCB is called, so a design
-		// un-approval must not race it: the money would be sent for an approval
-		// that no longer stands, and the sent row would block a later send.
-		// `sendGrant` marks the row errored before it throws, which is what lets
-		// this same check pass on the retry after the window.
+		// A grant send holds no credit lock while HCB is called, so a design un-approval must not race it: the money would be sent for an approval that no longer stands, and the sent row would block a later send. `sendGrant` marks the row errored before it throws, which is what lets this same check pass on the retry after the window.
 		if (phase === Phase.DESIGN) {
 			const inFlight = await tx.hcbGrantTopUp.findFirst({
 				where: {
@@ -557,9 +504,7 @@ export async function unapprovePhase(
 		})
 
 		if (phase === Phase.DESIGN) {
-			// Includes the banked half. Forced savings are still savings someone was
-			// credited for work that is no longer approved, so they unwind too –
-			// otherwise un-approving a design leaves free printer money behind.
+			// Includes the banked half. Forced savings are still savings someone was credited for work that is no longer approved, so they unwind too – otherwise un-approving a design leaves free printer money behind.
 			await reconcileGrant(tx, {
 				userId: project.userId,
 				themeProjectId,
@@ -580,8 +525,7 @@ export async function unapprovePhase(
 		}
 
 		if (phase === Phase.BUILD) {
-			// The banked half unwinds too, for the same reason the design's does:
-			// forced savings are still savings credited for work no longer approved.
+			// The banked half unwinds too, for the same reason the design's does: forced savings are still savings credited for work no longer approved.
 			await reconcileGrant(tx, {
 				userId: project.userId,
 				themeProjectId,
@@ -636,8 +580,7 @@ export async function reopenPhase(
 		throw new HttpError("CONFLICT", "That phase is not rejected")
 	}
 
-	// Conditional on the status that was read: an admin double-click, or a
-	// reopen racing a resubmission, must not overwrite a newer state.
+	// Conditional on the status that was read: an admin double-click, or a reopen racing a resubmission, must not overwrite a newer state.
 	const reopened = await prisma.themeProject.updateMany({
 		where: {
 			id: themeProjectId,

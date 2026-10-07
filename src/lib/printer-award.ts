@@ -3,11 +3,7 @@ import type { PrinterAwardStatus } from "@/app/generated/prisma/enums"
 /**
  * How a printer award moves from "earned" to "in someone's hands".
  *
- * Pure so the admin form and the server validate the same path, and so
- * `verify:contracts` can pin it without a database. A revoke is legal from
- * anywhere except the two terminal states: a shipped printer cannot be
- * un-shipped, but the award can still be marked revoked for the record (the
- * qualification mismatch report treats that as a report, never a recall).
+ * Pure so the admin form and the server validate the same path, and so `verify:contracts` can pin it without a database. A revoke is legal from anywhere except the two terminal states: a shipped printer cannot be un-shipped, but the award can still be marked revoked for the record (the qualification mismatch report treats that as a report, never a recall).
  */
 export const PRINTER_AWARD_LABELS: Record<PrinterAwardStatus, string> = {
 	QUALIFIED: "qualified",

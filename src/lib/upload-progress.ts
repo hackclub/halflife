@@ -1,14 +1,9 @@
 /**
  * POST a form and report how much of it has been sent.
  *
- * XMLHttpRequest rather than fetch, because fetch still cannot report upload
- * progress in any browser this audience uses – and a phone sending a minute of
- * video over school wifi needs to show it is moving, or it looks frozen and
- * gets closed.
+ * XMLHttpRequest rather than fetch, because fetch still cannot report upload progress in any browser this audience uses – and a phone sending a minute of video over school wifi needs to show it is moving, or it looks frozen and gets closed.
  *
- * `onProgress` gets the fraction sent, 0 to 1. It reaches 1 when the last byte
- * leaves, which is before the server has stored the file, so a caller should
- * treat 1 as "finishing" rather than "done" until this resolves.
+ * `onProgress` gets the fraction sent, 0 to 1. It reaches 1 when the last byte leaves, which is before the server has stored the file, so a caller should treat 1 as "finishing" rather than "done" until this resolves.
  */
 export function postForm(
 	url: string,

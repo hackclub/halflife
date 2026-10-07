@@ -5,25 +5,15 @@ import { postForm } from "@/lib/upload-progress"
 /**
  * The desktop half of the phone handoff.
  *
- * Asks the server for a single-use code, shows it as a QR, and polls until a
- * phone has uploaded something – then hands the object key back, to be used
- * exactly as if the file had been chosen on this machine.
+ * Asks the server for a single-use code, shows it as a QR, and polls until a phone has uploaded something – then hands the object key back, to be used exactly as if the file had been chosen on this machine.
  *
- * A hook rather than a component because two very differently dressed surfaces
- * need it: the platform's reel modal and the staff composer. The polling rules
- * are the part worth not having two of.
+ * A hook rather than a component because two very differently dressed surfaces need it: the platform's reel modal and the staff composer. The polling rules are the part worth not having two of.
  *
- * Polling rather than a socket: this waits minutes at most, ends on its own,
- * and a websocket would be a deployment concern for something idle 99% of the
- * time.
+ * Polling rather than a socket: this waits minutes at most, ends on its own, and a websocket would be a deployment concern for something idle 99% of the time.
  *
  * ## The response shape
  *
- * A successful response from this API is the payload itself. There is no `data`
- * envelope – `ok()` in lib/api.ts calls `NextResponse.json(body)` directly, and
- * only `fail()` wraps, in `{ error: { code, message } }`. Reading `payload.data`
- * here is how this feature spent its whole life throwing "cannot read
- * properties of undefined".
+ * A successful response from this API is the payload itself. There is no `data` envelope – `ok()` in lib/api.ts calls `NextResponse.json(body)` directly, and only `fail()` wraps, in `{ error: { code, message } }`. Reading `payload.data` here is how this feature spent its whole life throwing "cannot read properties of undefined".
  */
 
 export interface MintedHandoff {
@@ -44,10 +34,7 @@ export function useHandoff(onReady: (objectKey: string, url: string | null) => v
 	const [error, setError] = useState<string | null>(null)
 	const timer = useRef<ReturnType<typeof setInterval> | null>(null)
 
-	// The callback is held in a ref so a caller that passes an inline arrow –
-	// which is every caller – does not restart the poll on each render. Written
-	// in an effect rather than during render: a ref touched while rendering is
-	// not safe under concurrent rendering, and the compiler enforces it.
+	// The callback is held in a ref so a caller that passes an inline arrow – which is every caller – does not restart the poll on each render. Written in an effect rather than during render: a ref touched while rendering is not safe under concurrent rendering, and the compiler enforces it.
 	const ready = useRef(onReady)
 	useEffect(() => {
 		ready.current = onReady
@@ -127,8 +114,7 @@ export function useHandoff(onReady: (objectKey: string, url: string | null) => v
 /**
  * Upload a file from this machine.
  *
- * Returns the R2 object key. Keys rather than URLs everywhere: the bucket or
- * the CDN in front of it can move without rewriting a single stored row.
+ * Returns the R2 object key. Keys rather than URLs everywhere: the bucket or the CDN in front of it can move without rewriting a single stored row.
  */
 export async function uploadFile(
 	file: File,

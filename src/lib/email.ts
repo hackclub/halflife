@@ -3,13 +3,9 @@ import "server-only"
 /**
  * Transactional email.
  *
- * Resend's HTTP API directly rather than an SDK: it is one POST and keeps this
- * deployment free of a mail library.
+ * Resend's HTTP API directly rather than an SDK: it is one POST and keeps this deployment free of a mail library.
  *
- * Throws when unconfigured rather than no-oping quietly. The only caller is the
- * review-outcome notifier, which turns a throw into a NOTIFICATION_FAILURE
- * audit row – a deployment that forgot its mail credentials should show up in
- * ops rather than assume people were told.
+ * Throws when unconfigured rather than no-oping quietly. The only caller is the review-outcome notifier, which turns a throw into a NOTIFICATION_FAILURE audit row – a deployment that forgot its mail credentials should show up in ops rather than assume people were told.
  */
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails"
@@ -44,8 +40,7 @@ export async function sendEmail(input: EmailInput): Promise<{ id: string }> {
 	})
 
 	if (!res.ok) {
-		// The body names the reason (unverified domain, bad key); keep it short so
-		// it is useful in the audit row without pasting a wall of HTML.
+		// The body names the reason (unverified domain, bad key); keep it short so it is useful in the audit row without pasting a wall of HTML.
 		const body = await res.text().catch(() => "")
 		throw new Error(`Resend returned ${res.status}: ${body.slice(0, 200)}`)
 	}

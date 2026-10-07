@@ -4,12 +4,7 @@ import type { DocArticle } from "./types"
 /**
  * Reference content, written rather than recorded.
  *
- * What is left in this file is the five docs pages, and they belong here: they
- * are editorial copy with no database behind them, and putting them in Postgres
- * would mean a migration to fix a typo. Everything else that used to live here
- * – the reels, the journal feed, the shop shelves, the leaderboard, the signed-
- * in user – was scaffolding for a front end with no server, and now comes from
- * one.
+ * What is left in this file is the five docs pages, and they belong here: they are editorial copy with no database behind them, and putting them in Postgres would mean a migration to fix a typo. Everything else that used to live here – the reels, the journal feed, the shop shelves, the leaderboard, the signed- in user – was scaffolding for a front end with no server, and now comes from one.
  */
 
 export const DOCS: DocArticle[] = [
