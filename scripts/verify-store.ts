@@ -6,20 +6,12 @@ import { Phase, PhaseStatus, PostKind, PostStatus, Theme } from "../src/app/gene
 /**
  * End-to-end check of the seam between the database and the trail.
  *
- * The platform derives its whole shape from one map of checkpoint states. If
- * that map is built wrong, nothing throws and nothing fails to compile – the
- * trail just quietly tells someone they have not done work they have done, or
- * the reverse. So the mapping is asserted rather than trusted:
+ * The platform derives its whole shape from one map of checkpoint states. If that map is built wrong, nothing throws and nothing fails to compile – the trail just quietly tells someone they have not done work they have done, or the reverse. So the mapping is asserted rather than trusted:
  *
  * 1. The Nth journal entry on the trail is the Nth session written, in order.
- * 2. A reel ticks the node it was posted for and NOT the others – the 5h and
- *    the 15h reel are both PROGRESS, so anything that counts by kind marks the
- *    15h node done the moment the 5h one lands.
- * 3. Hours that never passed through a journal entry (Hackatime, reviewer
- *    adjustments) reach the week's total without moving an entry node, because
- *    progress reels are placed where the JOURNAL crossed their mark.
- * 4. A project nobody has named is not listed as one, but its id is still
- *    available to write to – the five rows exist from signup.
+ * 2. A reel ticks the node it was posted for and NOT the others – the 5h and the 15h reel are both PROGRESS, so anything that counts by kind marks the 15h node done the moment the 5h one lands.
+ * 3. Hours that never passed through a journal entry (Hackatime, reviewer adjustments) reach the week's total without moving an entry node, because progress reels are placed where the JOURNAL crossed their mark.
+ * 4. A project nobody has named is not listed as one, but its id is still available to write to – the five rows exist from signup.
  *
  * Run with `pnpm verify:store` against a scratch database.
  */
@@ -52,8 +44,7 @@ async function main() {
 		},
 	})
 
-	// Projects are created one at a time as their checkpoints are opened; opening
-	// one twice must still leave one row.
+	// Projects are created one at a time as their checkpoints are opened; opening one twice must still leave one row.
 	for (const t of THEMES) await ensureThemeProject(user.id, t.id)
 	for (const t of THEMES) await ensureThemeProject(user.id, t.id)
 	const made = await prisma.themeProject.count({ where: { userId: user.id } })
@@ -89,8 +80,7 @@ async function main() {
 		})
 	}
 
-	// Two reels, on nodes that are ten hours apart. Only one has been earned,
-	// and counting by kind would tick both.
+	// Two reels, on nodes that are ten hours apart. Only one has been earned, and counting by kind would tick both.
 	await prisma.post.create({
 		data: {
 			userId: user.id,
@@ -145,19 +135,12 @@ async function main() {
 
 	const submitted = await getStoreSnapshot(user.id)
 	check("submitting ticks the submit node", submitted.progress["w1-submit"]?.done, true)
-	// The build half of the same theme is week 6 and must stay untouched: one
-	// project, two weeks, and a design submission is not a build submission.
+	// The build half of the same theme is week 6 and must stay untouched: one project, two weeks, and a design submission is not a build submission.
 	check("but not the build week's", submitted.progress["w6-submit"], undefined)
 
 	// ── The first checkpoint ──────────────────────────────────────────────────
 	//
-	// The store replays the modal's six answers through the onboarding state
-	// machine one request at a time, because the machine refuses a step ahead of
-	// the furthest one reached. That refusal is what stops anyone arriving at a
-	// funded project without being asked what they are building – and it also
-	// means the store's sequence has to be exactly right, or onboarding never
-	// completes and the modal reappears forever with nothing in the log to say
-	// why. This replays that sequence in the order the store sends it.
+	// The store replays the modal's six answers through the onboarding state machine one request at a time, because the machine refuses a step ahead of the furthest one reached. That refusal is what stops anyone arriving at a funded project without being asked what they are building – and it also means the store's sequence has to be exactly right, or onboarding never completes and the modal reappears forever with nothing in the log to say why. This replays that sequence in the order the store sends it.
 	const { submitStep } = await import("../src/lib/onboarding")
 
 	const fresh = await prisma.user.create({
@@ -168,8 +151,7 @@ async function main() {
 			joinedProgramAt: new Date(),
 		},
 	})
-	// No project yet: onboarding is week one's "create a project" checkpoint and
-	// makes the PCB row itself.
+	// No project yet: onboarding is week one's "create a project" checkpoint and makes the PCB row itself.
 
 	await submitStep(fresh.id, { step: "experience", experience: "A_LITTLE" })
 	await submitStep(fresh.id, { step: "week" })

@@ -8,13 +8,8 @@ import { HardwareExperience, Theme } from "../src/app/generated/prisma/enums"
  *
  * Two properties matter enough to assert rather than trust:
  *
- * 1. The flow cannot be skipped. Posting a later step than you have reached is
- *    refused, so nobody arrives at a funded project without having been asked
- *    what they are building.
- * 2. Onboarding never writes `ThemeProject.tier`. That column is the
- *    reviewer's decision and the number the grant is paid against; the
- *    participant's answer belongs in `requestedTier`. If these two ever merge,
- *    a participant is choosing their own funding.
+ * 1. The flow cannot be skipped. Posting a later step than you have reached is refused, so nobody arrives at a funded project without having been asked what they are building.
+ * 2. Onboarding never writes `ThemeProject.tier`. That column is the reviewer's decision and the number the grant is paid against; the participant's answer belongs in `requestedTier`. If these two ever merge, a participant is choosing their own funding.
  *
  * Run with `pnpm verify:onboarding` against a scratch database.
  */
@@ -64,8 +59,7 @@ async function main() {
 	check("provisioned the PCB project", typeof start.project.id, "string")
 	check("needs onboarding", await needsOnboarding(user.id), true)
 
-	// Skipping ahead must fail: without this, a client could post the last step
-	// first and land on the dashboard having answered nothing.
+	// Skipping ahead must fail: without this, a client could post the last step first and land on the dashboard having answered nothing.
 	await refused("cannot answer a step it has not reached", () =>
 		submitStep(user.id, { step: "tracking", dismissed: true }),
 	)
@@ -100,9 +94,7 @@ async function main() {
 		submitStep(user.id, { step: "tier", requestedTier: 3 }),
 	)
 
-	// ── 2 again, and 3: their own project instead ──────────────────────────────
-	// Going back to make their own project has to release the lock, or someone
-	// who tried the starter is stuck at Tier 1 forever.
+	// ── 2 again, and 3: their own project instead ────────────────────────────── Going back to make their own project has to release the lock, or someone who tried the starter is stuck at Tier 1 forever.
 	const afterCustom = await submitStep(user.id, { step: "week", starterProjectId: null })
 	check("choosing their own releases the lock", afterCustom.state.project.tierLocked, false)
 	check("progress is not rewound by going back", afterCustom.state.reached, 5)
@@ -119,8 +111,7 @@ async function main() {
 	check("unlocked project can request Tier 3", afterTier.state.project.requestedTier, 3)
 
 	await refused("a made-up tier is rejected", () =>
-		// Past the schema, which the route applies first; this is the state
-		// machine's own guard.
+		// Past the schema, which the route applies first; this is the state machine's own guard.
 		submitStep(user.id, { step: "tier", requestedTier: 9 }),
 	)
 
@@ -189,11 +180,7 @@ async function main() {
 	check("an existing participant is not sent through onboarding", await needsOnboarding(veteran.id), false)
 	check("starter lookup round-trips", getStarterProject(starter.id)?.id, starter.id)
 
-	// ── The goal gate the first checkpoint hands off to ────────────────────────
-	// The prompt after onboarding is held open on one fact – participantGoal
-	// being null – and that fact has to travel with the account rather than with
-	// a browser, or a new laptop would let somebody past a question they have
-	// never been asked. These three are what that rests on.
+	// ── The goal gate the first checkpoint hands off to ──────────────────────── The prompt after onboarding is held open on one fact – participantGoal being null – and that fact has to travel with the account rather than with a browser, or a new laptop would let somebody past a question they have never been asked. These three are what that rests on.
 	const asked = await prisma.user.create({
 		data: {
 			email: `goal-${stamp}@example.test`,
@@ -216,8 +203,7 @@ async function main() {
 	const answered = await getStoreSnapshot(asked.id)
 	check("answering closes the gate", answered.onboardingDone && answered.participantGoal === null, false)
 
-	// A participant on the printer branch keeps their machine across a change of
-	// heart; nulling it here would hand them the default instead of their own.
+	// A participant on the printer branch keeps their machine across a change of heart; nulling it here would hand them the default instead of their own.
 	await prisma.user.update({ where: { id: asked.id }, data: { printerGoalId: "bambu-a1-mini" } })
 	await prisma.user.update({ where: { id: asked.id }, data: { participantGoal: "PARTIAL_FUNDING" } })
 	await prisma.user.update({ where: { id: asked.id }, data: { participantGoal: "PRINTER" } })

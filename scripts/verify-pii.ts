@@ -7,27 +7,15 @@ import { Phase, PostKind, PostStatus, Role, Theme } from "../src/app/generated/p
 /**
  * Does anything private reach a browser that should not have it?
  *
- * Asked against a RUNNING SERVER rather than by reading code, because the
- * dangerous paths are the ones inspection misses. A React Server Component
- * serialises whatever it hands a client component into the HTML, so a field
- * nobody renders can still ship; and `include: { user: true }` pulls every
- * column including the encrypted ones without naming a single one.
+ * Asked against a RUNNING SERVER rather than by reading code, because the dangerous paths are the ones inspection misses. A React Server Component serialises whatever it hands a client component into the HTML, so a field nobody renders can still ship; and `include: { user: true }` pulls every column including the encrypted ones without naming a single one.
  *
- *   1. Two participants exist with sentinel values in every sensitive column.
- *      Signed in as one, no page and no API response may contain the other's
- *      email, Slack id, address, phone or birthday – nor, for the encrypted
- *      columns, the viewer's own. `/api/me` returning the viewer's OWN email
- *      and Slack id is expected and allowed: that is the endpoint's whole job.
+ * 1. Two participants exist with sentinel values in every sensitive column. Signed in as one, no page and no API response may contain the other's email, Slack id, address, phone or birthday – nor, for the encrypted columns, the viewer's own. `/api/me` returning the viewer's OWN email and Slack id is expected and allowed: that is the endpoint's whole job.
  *
- *   2. A participant holding no role is refused by every staff surface. A 503
- *      counts as refused: an unconfigured integration endpoint fails closed,
- *      which is the designed behaviour rather than a hole.
+ * 2. A participant holding no role is refused by every staff surface. A 503 counts as refused: an unconfigured integration endpoint fails closed, which is the designed behaviour rather than a hole.
  *
- * Sentinels rather than real ciphertext, because the question is whether a
- * COLUMN VALUE escapes, which does not depend on the encryption working.
+ * Sentinels rather than real ciphertext, because the question is whether a COLUMN VALUE escapes, which does not depend on the encryption working.
  *
- * Needs the dev server on :3000 and a scratch database.
- * Run with `pnpm verify:pii`.
+ * Needs the dev server on :3000 and a scratch database. Run with `pnpm verify:pii`.
  */
 
 const BASE = process.env.VERIFY_BASE_URL ?? "http://localhost:3000"
@@ -120,8 +108,7 @@ async function main() {
 	// Fixtures: every theme's project, as if each checkpoint had been opened.
 	for (const u of [viewer, other]) for (const t of THEMES) await ensureThemeProject(u.id, t.id)
 
-	// The other participant needs work, or they appear on none of these pages and
-	// the whole exercise passes by having nothing to leak.
+	// The other participant needs work, or they appear on none of these pages and the whole exercise passes by having nothing to leak.
 	const project = await prisma.themeProject.findFirstOrThrow({
 		where: { userId: other.id, theme: Theme.PCB },
 	})
@@ -154,8 +141,7 @@ async function main() {
 
 	const cookie = await cookieFor(viewer.id)
 
-	// `/api/me` is the viewer asking about themselves, so their own identifiers
-	// are the answer. Nobody else's, and no encrypted column, anywhere.
+	// `/api/me` is the viewer asking about themselves, so their own identifiers are the answer. Nobody else's, and no encrypted column, anywhere.
 	const forbidden = (path: string): [string, string][] => [
 		["another participant's email", S.otherEmail],
 		["another participant's Slack id", S.otherSlack],
@@ -203,8 +189,7 @@ async function main() {
 		check(`${method} ${path} refuses a participant`, refused, `got ${res.status}`)
 	}
 
-	// A sanity check on the checker: ADMIN must actually get in, or every line
-	// above passes for the boring reason that nothing works.
+	// A sanity check on the checker: ADMIN must actually get in, or every line above passes for the boring reason that nothing works.
 	await prisma.userRole.create({ data: { userId: nobody.id, role: Role.ADMIN } })
 	const asAdmin = await fetch(`${BASE}/api/admin/users`, { headers: { cookie: theirCookie } })
 	check("and lets an ADMIN through", asAdmin.status === 200, `got ${asAdmin.status}`)

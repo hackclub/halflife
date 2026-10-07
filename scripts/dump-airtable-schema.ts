@@ -1,13 +1,9 @@
 import "dotenv/config"
 
 /**
- * Print the field ids for the configured Airtable base, ready to paste into
- * lib/airtable/schema.ts.
+ * Print the field ids for the configured Airtable base, ready to paste into lib/airtable/schema.ts.
  *
- * Writing by field id rather than field name is what keeps the integration
- * working when an ops person renames a column. Until these ids are filled in,
- * the writer falls back to names (AIRTABLE_USE_FIELD_IDS=false), which works
- * but breaks silently on a rename.
+ * Writing by field id rather than field name is what keeps the integration working when an ops person renames a column. Until these ids are filled in, the writer falls back to names (AIRTABLE_USE_FIELD_IDS=false), which works but breaks silently on a rename.
  */
 async function main() {
 	const apiKey = process.env.AIRTABLE_API_KEY

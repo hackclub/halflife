@@ -3,9 +3,7 @@ import { backfillAnalytics } from "../src/lib/analytics"
 import prisma from "../src/lib/prisma"
 
 /**
- * Fill in the analytics markers (first project, first reel, active days,
- * weekly hours and milestones) from what the database already holds, for
- * everyone who was here before they were tracked. Safe to run again.
+ * Fill in the analytics markers (first project, first reel, active days, weekly hours and milestones) from what the database already holds, for everyone who was here before they were tracked. Safe to run again.
  */
 backfillAnalytics()
 	.then((counts) => {
