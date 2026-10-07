@@ -23,8 +23,8 @@ export const decisionSchema = z.discriminatedUnion("result", [
 			reason: boundedText(8000).optional(),
 			/** Required when approving a design; ignored on a build. */
 			tier: tierSchema.optional(),
-			hoursOverride: z.number().min(0).max(2000).optional(),
-			grantUsdOverride: z.number().int().min(0).max(100_000).optional(),
+			hoursOverride: z.number().min(0).max(168).optional(),
+			grantUsdOverride: z.number().int().min(0).max(500).optional(),
 		})
 		.strict(),
 	z

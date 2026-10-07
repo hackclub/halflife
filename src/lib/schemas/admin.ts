@@ -39,6 +39,8 @@ export const creditAdjustSchema = z
 		amount: z
 			.number()
 			.int()
+			.min(-10_000, "Amount must be within ±10,000 per adjustment")
+			.max(10_000, "Amount must be within ±10,000 per adjustment")
 			.refine((n) => n !== 0, "Amount cannot be zero"),
 		reason: boundedText(1000, 1),
 		/**
