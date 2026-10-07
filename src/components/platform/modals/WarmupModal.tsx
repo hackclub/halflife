@@ -9,12 +9,9 @@ import { Button, cx, Field, inputClass, OptionRow } from "@/components/platform/
 import { submitFloorFor } from "@/lib/config/printers"
 import { WARMUP_THEME } from "@/lib/config/program"
 import { BUILD_HOURS, TIERS } from "@/lib/curriculum"
+import { fmtCoins } from "@/lib/projects"
 import { normalizeRepo } from "@/lib/repo"
 import { Modal, ModalTitle } from "./Modal"
-
-function fmtH(h: number) {
-	return `${Number.isInteger(h) ? h : h.toFixed(1)}h`
-}
 
 /**
  * Start a warm-up project: the season's "create a project" sheet, for any
@@ -157,7 +154,7 @@ export function WarmupModal({ onClose, closesOn }: { onClose: () => void; closes
 										{t.detail}
 										{phase !== "BUILD" && (
 											<span className="mt-1 block text-navy-soft/90">
-												You can submit on tier {t.id} from {fmtH(submitFloorFor(t.fundingHours))} of design time.
+												You can submit on tier {t.id} from {fmtCoins(submitFloorFor(t.fundingHours))} of design time.
 											</span>
 										)}
 									</>
@@ -167,7 +164,7 @@ export function WarmupModal({ onClose, closesOn }: { onClose: () => void; closes
 									<span className="text-[0.98rem] font-extrabold text-navy">Tier {t.id}</span>
 									<span className="hand text-[0.86rem] text-teal-ink">${t.grantUsd} for parts</span>
 									<span className="hand text-[0.8rem] text-navy-soft">
-										· {fmtH(phase === "BUILD" ? BUILD_HOURS : submitFloorFor(t.fundingHours))} to submit
+										· {fmtCoins(phase === "BUILD" ? BUILD_HOURS : submitFloorFor(t.fundingHours))} to submit
 									</span>
 								</span>
 							</OptionRow>

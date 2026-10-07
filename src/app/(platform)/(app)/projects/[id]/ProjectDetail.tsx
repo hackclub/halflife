@@ -11,7 +11,7 @@ import { getStarterProject } from "@/lib/config/onboarding"
 import { DESIGN_WEEKS } from "@/lib/config/printers"
 import { WARMUP_WEEK_ID } from "@/lib/config/program"
 import { TIERS } from "@/lib/curriculum"
-import { fmtDate, fmtHours } from "@/lib/projects"
+import { fmtCoins, fmtDate, fmtHours } from "@/lib/projects"
 import type { ProjectPageData } from "@/lib/queries/project-page"
 import { displayRepo } from "@/lib/repo"
 import { REVIEW_STATUS_DOT, REVIEW_STATUS_TEXT, reviewChipTone } from "@/lib/review-state"
@@ -250,7 +250,7 @@ function WarmupWork({ projectId }: { projectId: string }) {
 						{fmtHours(hours)} logged
 						<span className="font-semibold text-navy-soft">
 							{" "}
-							· {build ? "a finished build" : "a design"}, submit from {fmtHours(need)}
+							· {build ? "a finished build" : "a design"}, submit from {fmtCoins(need)}
 						</span>
 					</p>
 					{deadline && (
@@ -277,7 +277,7 @@ function WarmupWork({ projectId }: { projectId: string }) {
 							</Button>
 							{!canSubmit && short > 0 && (
 								<span className="hand text-[0.84rem] text-navy-soft tabular-nums">
-									{fmtHours(short)} more to submit
+									{fmtCoins(short)} more to submit
 								</span>
 							)}
 							{canSubmit && !hasCover && (

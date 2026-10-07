@@ -123,13 +123,13 @@ export function GoalModal({
 										<>
 											{" — "}
 											<span className="tabular-nums">{toGo.toLocaleString()}</span> coins to go: about{" "}
-											{goal.hoursPerWeek.toFixed(1)} hours a week for {weeks} design weeks{" "}
+											{Math.round(goal.hoursPerWeek * 5)} coins a week for {weeks} design weeks{" "}
 										</>
 									) : (
 										<>
 											{" — "}
 											<span className="tabular-nums">{toGo.toLocaleString()}</span> coins to go, and the build weeks
-											cover it at {BUILD_HOURS} hours a week.{" "}
+											cover it at {BUILD_HOURS * 5} coins a week.{" "}
 										</>
 									)
 								) : (
@@ -233,7 +233,7 @@ function GoalCard({
 			role="radio"
 			aria-checked={selected}
 			onClick={onSelect}
-			title={`Needs about ${goal.hoursPerWeek.toFixed(1)}h per design week at the entry tier — and more at higher funding tiers, since those add funded project hours on top of the same banking pace. Cheaper printers ask for less time each week.`}
+			title={`Needs about ${Math.round(goal.hoursPerWeek * 5)} coins per design week at the entry tier — the same weekly pace, whatever tier your projects fund, since tier hours pay for parts while this is what banks. Cheaper printers ask for fewer coins each week.`}
 			className={cx(
 				"sketch relative block w-full rounded-2xl px-4 pt-4 pb-3.5 text-left transition-colors duration-150 sm:px-5",
 				!selected && "hover:bg-white",
@@ -310,7 +310,7 @@ function GoalCard({
 					</span>
 					<span className="ml-auto flex items-center gap-1.5 text-[0.79rem] font-semibold text-teal-ink">
 						<IconClock className="text-[0.95rem]" />
-						<span className="tabular-nums">{goal.hoursPerWeek.toFixed(1)}</span> hrs/design wk
+						<span className="tabular-nums">{Math.round(goal.hoursPerWeek * 5)}</span> coins/design wk
 					</span>
 				</span>
 

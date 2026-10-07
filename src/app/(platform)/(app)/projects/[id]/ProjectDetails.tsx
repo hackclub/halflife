@@ -10,7 +10,7 @@ import { MIN_HOURS_PER_WEEK, printerById, submitFloorFor, weekAskFor } from "@/l
 import { DESIGN_WEEKS, THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { ENTRY_TIER } from "@/lib/config/tiers"
 import { TIERS } from "@/lib/curriculum"
-import { fmtHours } from "@/lib/projects"
+import { fmtCoins, fmtHours } from "@/lib/projects"
 import { normalizeRepo } from "@/lib/repo"
 import { useStore } from "@/lib/store"
 import type { Project } from "@/lib/types"
@@ -310,8 +310,8 @@ function DetailsForm({
 					</p>
 					{takingStarter && hotGoal && (
 						<p role="status" className="hand text-[0.82rem] leading-snug text-coral-deep">
-							Heads up: starter projects are meant to take {fmtHours(submitFloorFor(ENTRY_TIER.fundingHours))} of work,
-							no more. Your {goal.name} needs roughly {fmtHours(goal.hoursPerWeek)} a design week to stay on pace.
+							Heads up: starter projects are meant to take about {fmtCoins(submitFloorFor(ENTRY_TIER.fundingHours))} of work,
+							no more. Your {goal.name} needs roughly {fmtCoins(goal.hoursPerWeek)} a design week to stay on pace.
 						</p>
 					)}
 					{starters.map((s) => {
@@ -385,7 +385,7 @@ function DetailsForm({
 				{tierEditable ? (
 					<>
 						<p className="text-[0.82rem] leading-snug text-navy-soft">
-							Bigger tiers fund bigger builds, and ask for more design time before you submit. The hours next to each
+							Bigger tiers fund bigger builds, and ask for more design time before you submit. The coins next to each
 							tier are the <span className="font-bold text-navy">minimum</span> a week needs before you can submit — not
 							a cap, and not a suggestion. You have{" "}
 							<span className="font-bold text-navy tabular-nums">{fmtHours(hours)}</span>{" "}
@@ -399,16 +399,16 @@ function DetailsForm({
 									<span className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
 										<span className="text-[0.98rem] font-extrabold text-navy">Tier {t.id}</span>
 										<span className="hand text-[0.86rem] text-teal-ink">${t.grantUsd} for parts</span>
-										<span className="hand text-[0.82rem] text-navy-soft">· {fmtHours(floor)} to submit</span>
+										<span className="hand text-[0.82rem] text-navy-soft">· {fmtCoins(floor)} to submit</span>
 										<span
 											className={cx("hand text-[0.8rem] tabular-nums", short > 0 ? "text-coral-deep" : "text-teal-ink")}
 										>
-											{short > 0 ? `${fmtHours(short)} to go` : "ready to submit"}
+											{short > 0 ? `${fmtCoins(short)} to go` : "ready to submit"}
 										</span>
 									</span>
 									{pacingToPrinter && (
 										<span className="hand mt-1 block text-[0.8rem] leading-snug text-navy-soft">
-											aim for about {fmtHours(weekAskFor(goal, t.fundingHours))} each design week at this tier, for your{" "}
+											aim for about {fmtCoins(weekAskFor(goal, t.fundingHours))} each design week at this tier, for your{" "}
 											{goal.name}
 										</span>
 									)}
