@@ -162,9 +162,9 @@ export const DOCS: DocArticle[] = [
 				],
 			},
 			{
-				heading: "Two kinds of coins",
+				heading: "How do coins work?",
 				paragraphs: [
-					"Banked coins can only buy a printer. Spendable coins buy anything in the shop, printers included. You unlock the printer by shipping all five themes.",
+					"Each week, you'll recieve coins from your approved projects. You can spend those coins in the shop OR on your printer!",
 				],
 			},
 		],

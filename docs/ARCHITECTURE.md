@@ -95,7 +95,7 @@ for "has this week had its idea reel", and the first time the two disagreed the
 trail would lie to someone about work they had really done.
 
 Reels bind to their node by `Post.checkpointKey` rather than by counting posts
-of a kind: the 10h and the 20h reel are both `PROGRESS`, so counting would tick
+of a kind: the 5h and the 15h reel are both `PROGRESS`, so counting would tick
 the 20h node the moment the 10h one landed.
 
 ## Three hours sources, two ways to double-count

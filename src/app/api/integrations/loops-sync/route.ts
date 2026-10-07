@@ -22,9 +22,13 @@ export const POST = withRoute(async (req: NextRequest) => {
 			users: result.users,
 			matched: result.matched,
 			matchedById: result.matchedById,
+			matchedByRecord: result.matchedByRecord,
 			matchedByEmail: result.matchedByEmail,
 			unmatched: result.unmatched,
 			updated: result.updated,
+			// Logged rather than assumed, so the sync-run history says "wrote
+			// nothing" instead of showing a healthy row for a broken join.
+			degraded: result.degraded,
 		})
 	}
 	return ok(result)

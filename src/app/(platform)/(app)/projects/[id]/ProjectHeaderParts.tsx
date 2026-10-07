@@ -132,6 +132,11 @@ export function CoverImage({
 					)}
 				</div>
 			)}
+			{!locked && (
+				<p className="hand mt-1 text-[0.8rem] leading-snug text-navy-soft">
+					Use a photo of the project itself, or a screenshot of the design.
+				</p>
+			)}
 			{error && (
 				<p role="alert" className="mt-1 text-[0.8rem] font-semibold text-coral-deep">
 					{error}

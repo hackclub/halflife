@@ -62,9 +62,7 @@ export default async function ReviewQueuePage({ searchParams }: Props) {
 										<div className="hl-hint">submitted week {item.submittedInWeek}</div>
 									) : null}
 								</td>
-								<td>
-									{item.participant.name ?? "—"}
-								</td>
+								<td>{item.participant.name ?? "—"}</td>
 								<td className="hl-mono">{item.submittedAt.toDateString()}</td>
 								<td>
 									{item.claimLive ? (

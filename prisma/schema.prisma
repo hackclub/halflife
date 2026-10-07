@@ -982,6 +982,18 @@ model SessionTimelapse {
   runtimeSeconds Int?
   speedupFactor  Float?
 
+  /// When the RECORDING started, from Lapse's createdAt (epoch ms, stored as a
+  /// timestamp). With coveredSeconds this is the wall-clock window the footage
+  /// covers, which is what gets intersected with Hackatime's spans to find time
+  /// both tools counted. Null on rows written before this existed — a backfill
+  /// fills what Lapse still answers for, and the rest stay undeduplicated rather
+  /// than being guessed at.
+  recordedAt DateTime?
+  /// The Hackatime project Lapse had synced when this was recorded. Kept as the
+  /// corroborating fact Lapse reports; the subtraction itself uses real Hackatime
+  /// spans, so a mismatch here cannot invent an overlap on its own.
+  hackatimeProject String?
+
   createdAt DateTime @default(now())
 
   @@index([workSessionId])
@@ -1011,6 +1023,15 @@ model HackatimeLink {
   cachedSeconds  Int?
   cachedAt       DateTime?
   lastFetchError String?
+
+  /// The project's tracked INTERVALS for the same period, as
+  /// `{ start: <epoch seconds>, end: <epoch seconds> }[]`. The total above cannot
+  /// say when the time was logged, so it cannot be compared against a timelapse's
+  /// recording window; these can. Null until the first span fetch, and kept as
+  /// the last good value on failure for the same reason cachedSeconds is.
+  cachedSpans    Json?
+  spansFetchedAt DateTime?
+  spansFetchError String?
 
   createdAt DateTime @default(now())
 

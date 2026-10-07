@@ -195,22 +195,60 @@ async function userIdColumnExists(config: NonNullable<ReturnType<typeof getAirta
  * an error, so a wrong join looks exactly like a healthy run that had nothing
  * to do.
  *
- * The id wins. It is the only key that survives somebody typing one address on
- * the landing page and being issued a different one at sign-in, which is the
- * normal case rather than an edge one. Email stays as the fallback for rows the
- * RSVP drain has not stamped yet.
+ * Three keys, strongest first:
+ *
+ * 1. **The `Half-Life User ID` column.** The designed join, and the one that
+ *    survives somebody typing one address on the landing page and being issued a
+ *    different one at sign-in.
+ * 2. **The Airtable record id the RSVP drain recorded.** Not a fuzzy match at
+ *    all: it is the row this app itself created for this person, read back out
+ *    of `RsvpBuffer`. It is here because key 1 depends on a column that has to
+ *    exist in the base, and on the live base it does not — so the join that
+ *    needs no new column is the one that actually matches.
+ * 3. **Email.** The last resort, and the one that mostly fails: the Signups row
+ *    holds whatever address was typed on the landing page.
  */
 export function resolveSignupRow(
 	value: Pick<LoopsValues, "id" | "email">,
-	rows: { byEmail: Map<string, AirtableRecord>; byUserId: Map<string, AirtableRecord> },
-): { row: AirtableRecord; by: "id" | "email" } | null {
+	rows: {
+		byEmail: Map<string, AirtableRecord>
+		byUserId: Map<string, AirtableRecord>
+		byRecordId?: Map<string, AirtableRecord>
+	},
+): { row: AirtableRecord; by: "id" | "record" | "email" } | null {
 	const byId = rows.byUserId.get(value.id)
 	if (byId) return { row: byId, by: "id" }
+	const byRecord = rows.byRecordId?.get(value.id)
+	if (byRecord) return { row: byRecord, by: "record" }
 	const byEmail = rows.byEmail.get(value.email.trim().toLowerCase())
 	return byEmail ? { row: byEmail, by: "email" } : null
 }
 
-/** Every row of the table, indexed both ways. */
+/**
+ * The rows this app itself created, indexed by Half Life user id.
+ *
+ * `RsvpBuffer.airtableRecordId` is the Airtable record for a signup this app
+ * drained, and `RsvpBuffer.userId` is whose it is. Together they are an exact
+ * mapping that costs one indexed read and needs no column added to the base.
+ */
+async function drainedRecordRows(): Promise<Map<string, AirtableRecord>> {
+	const byRecordId = new Map<string, AirtableRecord>()
+	const rows = await prisma.rsvpBuffer.findMany({
+		where: { userId: { not: null }, airtableRecordId: { not: null } },
+		select: { userId: true, airtableRecordId: true },
+	})
+	for (const row of rows) {
+		// The row id in the listing and the one the drain recorded are the same
+		// thing, so this needs no second request: a placeholder is enough for the
+		// join, and the write below addresses the real record by that id.
+		if (row.userId && row.airtableRecordId && !byRecordId.has(row.userId)) {
+			byRecordId.set(row.userId, { id: row.airtableRecordId, fields: {} })
+		}
+	}
+	return byRecordId
+}
+
+/** Every row of the table, indexed by every key available. */
 async function signupRows(config: NonNullable<ReturnType<typeof getAirtableConfig>>) {
 	const byEmail = new Map<string, AirtableRecord>()
 	const byUserId = new Map<string, AirtableRecord>()
@@ -252,6 +290,8 @@ export interface LoopsSyncResult {
 	matched: number
 	/** Rows found by `Half-Life User ID`. */
 	matchedById: number
+	/** Rows found by the Airtable record id the RSVP drain recorded. */
+	matchedByRecord: number
 	/** Rows found only by email, because the row had no user id on it. */
 	matchedByEmail: number
 	/** Half Life users with no row in Signups. */
@@ -259,6 +299,12 @@ export interface LoopsSyncResult {
 	updated: number
 	unchanged: number
 	dryRun: boolean
+	/**
+	 * True when the join matched so little that this run should not be believed.
+	 * Set rather than merely logged, because the way this failed for months was a
+	 * run that reported success having written nothing.
+	 */
+	degraded: boolean
 	/** In a dry run, the first few updates that would be sent. */
 	preview?: { email: string; fields: Record<string, unknown> }[]
 }
@@ -274,10 +320,14 @@ export async function syncLoopsProperties(
 	const config = getAirtableConfig()
 	if (!config) return { skipped: "not_configured" }
 
-	const [values, rows] = await Promise.all([loopsValues(), signupRows(config)])
+	const [values, listed, byRecordId] = await Promise.all([loopsValues(), signupRows(config), drainedRecordRows()])
+	// The drained rows are the join, not a fallback for it: a record id addresses
+	// the row directly, so a person the listing never held is still writable.
+	const rows = { ...listed, byRecordId }
 	const updates: { id: string; email: string; fields: Record<string, unknown> }[] = []
 	let matched = 0
 	let matchedById = 0
+	let matchedByRecord = 0
 	let matchedByEmail = 0
 	let same = 0
 	for (const v of values) {
@@ -285,21 +335,28 @@ export async function syncLoopsProperties(
 		if (!hit) continue
 		matched++
 		if (hit.by === "id") matchedById++
+		else if (hit.by === "record") matchedByRecord++
 		else matchedByEmail++
 		const fields = fieldsFor(v)
 		if (unchanged(hit.row, fields)) same++
 		else updates.push({ id: hit.row.id, email: v.email, fields })
 	}
 
+	// Half the population, matching nothing, is a broken join rather than a quiet
+	// morning. Small populations are exempt: half of four users is noise, and the
+	// first signups of a new season legitimately have no Signups row yet.
+	const degraded = values.length >= 50 && matched * 2 < values.length
 	const result: LoopsSyncResult = {
 		users: values.length,
 		matched,
 		matchedById,
+		matchedByRecord,
 		matchedByEmail,
 		unmatched: values.length - matched,
 		updated: updates.length,
 		unchanged: same,
 		dryRun: !!opts.dryRun,
+		degraded,
 	}
 
 	// A join that stops matching does not throw: rows are skipped and counted, so
@@ -309,11 +366,15 @@ export async function syncLoopsProperties(
 	// number somebody has to notice. Most often it means the base has no
 	// `Half-Life User ID` column, or the RSVP drain has not been running to fill
 	// it — either way the fix is on the Airtable side, not here.
-	if (values.length >= 50 && matched * 2 < values.length) {
+	if (degraded) {
 		console.error(
 			`[airtable] Loops sync matched only ${matched}/${values.length} Half Life users to a Signups row ` +
-				`(${matchedById} by id, ${matchedByEmail} by email) — ${result.unmatched} were skipped and their Loops ` +
-				`columns left empty. Check that ${TABLE} has a \`${LOOPS_FIELDS.userId}\` column and that the RSVP drain is running.`,
+				`(${matchedById} by id, ${matchedByRecord} by drained record id, ${matchedByEmail} by email) — ` +
+				`${result.unmatched} were skipped and their Loops columns left empty. In order of likelihood: ` +
+				"their rsvp-drain row hit the attempt cap while the table was missing a column the drain sends, and a " +
+				"row at the cap is never retried — reset `syncAttempts` on those to give them another go; " +
+				`${TABLE} still has no \`${LOOPS_FIELDS.userId}\` column, so the drain cannot stamp a row with its user; ` +
+				"or the person never had a Signups row at all.",
 		)
 	}
 	if (opts.dryRun) {

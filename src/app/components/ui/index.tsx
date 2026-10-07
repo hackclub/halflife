@@ -94,7 +94,7 @@ export function Badge({ tone = "muted", children }: Readonly<{ tone?: BadgeTone;
 	return <span className={`hl-badge hl-badge--${tone}`}>{children}</span>
 }
 
-export function Callout({ tone, children }: Readonly<{ tone?: "danger" | "warning"; children: ReactNode }>) {
+export function Callout({ tone, children }: Readonly<{ tone?: "danger" | "warning" | "info"; children: ReactNode }>) {
 	return <div className={`hl-callout ${tone ? `hl-callout--${tone}` : ""}`}>{children}</div>
 }
 

@@ -143,13 +143,45 @@ needs duplicating into the job.
 | `printer-reconcile` | `0 8 * * *` | `POST /api/integrations/printer-reconcile` |
 | `slack-ticket-summary` | `0 9 * * *` | `POST /api/integrations/slack-ticket-summary` |
 
-`loops-sync` finds each person's row by `Half-Life User ID`, falling back to
-email. The two disagree whenever somebody signs up on the landing page with one
-address and is issued another at sign-in — the normal case, not an edge one — so
-**the `Signups` base needs that column, and `rsvp-drain` needs to be filling it.**
-A run whose `matched` count is far below `users` means one of those is untrue;
-the job logs an error saying so rather than reporting a clean run, because a row
-that is not found is skipped and counted rather than raised.
+### The Loops columns (`loops-sync`)
+
+`loops-sync` fills `Loops - halfLifeLastLoginAt`, `Loops - halfLifeLastEntryAt`
+and the ten week checkboxes on the `Signups` table. Those columns **were not
+being filled because the sync could not find anybody's row**, not because the
+dates were wrong — measured on the live base: 0 of the first 2000 rows had any
+Loops column set, dates or weeks alike.
+
+Finding the row is a three-key join, tried strongest first:
+
+1. `Half-Life User ID` on the row.
+2. The Airtable record id `rsvp-drain` recorded in `RsvpBuffer.airtableRecordId`.
+   An exact mapping, no column required, and the only one that matches on a base
+   without key 1.
+3. Email, as a last resort.
+
+**On the live base key 1 does not exist.** `Half-Life User ID` answers 422
+`UNKNOWN_FIELD_NAME`; none of the other candidate columns exist either, so email
+is the only identity the table holds — and it is the one that fails, since a
+sign-up row holds whatever address was typed on the landing page while
+`User.email` is what the identity provider later issued. That is the whole bug.
+
+Two consequences worth knowing:
+
+- **Adding the column is a one-time Airtable change and nothing else.** Add a
+  single-line-text field named exactly `Half-Life User ID` to `Signups`. The
+  drain probes for it and starts filling it on its own within ten minutes
+  (key 2 keeps the sync working for everyone in the meantime). Rows signed up
+  before the column exists are not backfilled — for those, key 2 is the join.
+- **The drain used to fail wholesale on that column.** Airtable rejects a
+  `fields` payload naming a column the table lacks, for the *whole* record, so
+  every drained row carrying a user id lost its email, name and referral number
+  too, and after ten attempts was abandoned. The drain now probes and omits the
+  field instead.
+
+A run whose `matched` count is far below `users` sets `degraded: true` in the
+response and in the `airtable_loops` sync-run row, and logs an error. Look for
+that flag before trusting a run: a row that is not found is skipped and counted
+rather than raised, which is exactly how this stayed invisible.
 
 Each step:
 

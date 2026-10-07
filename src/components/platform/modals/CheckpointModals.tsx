@@ -26,7 +26,7 @@ import { attrUrl } from "@/lib/attr-url"
 import { linkLapse } from "@/lib/auth-client"
 import type { BomLine } from "@/lib/bom"
 import { STARTER_PROJECT_TIER, starterProjectsFor } from "@/lib/config/onboarding"
-import { paceTarget, printerById, submitFloorFor, tierBankedFloor, weekAsk } from "@/lib/config/printers"
+import { paceTarget, printerById, submitFloorFor } from "@/lib/config/printers"
 import { THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { photosRequired, TIERS } from "@/lib/curriculum"
 import {
@@ -1775,11 +1775,9 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								Starter projects are Tier 1. Switch to your own idea to choose a different tier.
 							</p>
 						)}
-						{/* The hours quoted here are the ones the submit gate will hold
-                you to, not the funded block. A tier that advertises its
-                funding alone advertises the smaller of two numbers: the funded
-                hours bank nothing, so the printer money has to be worked on
-                top of them. */}
+						{/* The hours quoted here are the funded block, which is exactly
+                what the submit gate holds you to. The funded hours buy the
+                parts; every hour past them earns spendable coins. */}
 						<div className="grid gap-2.5">
 							{TIERS.map((t) => (
 								<OptionRow
@@ -1791,8 +1789,8 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 										<>
 											{t.detail}
 											<span className="mt-1 block text-navy-soft/90">
-												You can submit on tier {t.id} from {fmtH(submitFloorFor(t.fundingHours))} of design time, and{" "}
-												{fmtH(tierBankedFloor(t.fundingHours))} of that goes toward your printer goal.
+												You can submit on tier {t.id} from {fmtH(t.fundingHours)} of design time — the parts-funding
+												hours and nothing more. Every hour past that earns 5 spendable coins.
 											</span>
 										</>
 									}
@@ -1905,13 +1903,13 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 	// The week is long enough to hand in — that gate is the trail's, and this
 	// node would be locked otherwise. What is left to say is whether it was
-	// long enough for the machine actually on the wall. A surplus banked in an
+	// long enough for the machine actually on the wall. A surplus earned in an
 	// earlier week pays for a thin one, so this reads the running total against
 	// the pace rather than this week against its target.
 	//
-	// The running total is the fund plus what unreviewed weeks will bank. Coins
+	// The running total is the fund plus what unreviewed weeks will earn. Coins
 	// are minted at approval, so the fund alone reads this very week — the one
-	// being handed in, which nobody can have reviewed yet — as banking nothing,
+	// being handed in, which nobody can have reviewed yet — as earning nothing,
 	// and warned everyone on every submit.
 	const goal = printerById(goalId)
 	const owed = Math.max(0, Math.ceil(paceTarget(goal, week.id) - printerFund - pendingCoins(week.id)))
@@ -1990,22 +1988,20 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 	/**
 	 * A tier is a claim about hours as much as about money: its funded block has
-	 * to be covered, and the banking that buys the printer has to sit on top of
-	 * it. Tier 2 funds thirteen hours, so thirteen hours pay for the project and
-	 * nothing at all banks until the fourteenth — which is why the tier cannot be
-	 * raised at the last moment on hours that were only ever enough for a
-	 * smaller one.
+	 * to be covered, and everything past it earns. Tier 2 funds thirteen hours,
+	 * so thirteen hours pay for the project and the fourteenth already earns —
+	 * which is why the tier cannot be raised at the last moment on hours that
+	 * were only ever enough for a smaller one.
 	 *
 	 * Two asks come out of that, and they are different numbers. The floor is
-	 * the cheapest machine's pace, and below it the season cannot end in a
-	 * printer at all, so it is a gate. The target is this maker's own goal, and
-	 * it moves when they change what they are saving for — a P1S asks far more
-	 * of a tier 2 week than an Ender does. Missing the target is a warning the
-	 * sheet already gives; missing the floor is a refusal.
+	 * the funded block, and below it the week cannot be handed in at all, so it
+	 * is a gate. The target is this maker's own goal, and it moves when they
+	 * change what they are saving for — a P1S asks far more of a tier 2 week
+	 * than an Ender does. Missing the target is a warning the sheet already
+	 * gives; missing the floor is a refusal.
 	 */
 	const hours = hoursOf(week)
 	const tierFloor = submitFloorFor
-	const tierTarget = (fundingHours: number) => weekAsk(goal.hoursPerWeek, fundingHours)
 	const tierShort = (fundingHours: number) => Math.max(0, tierFloor(fundingHours) - hours)
 	const selectedTier = TIERS.find((t) => t.id === tier) ?? TIERS[0]
 	const tierBlocked = !isBuild && tierShort(selectedTier.fundingHours) > 0
@@ -2294,14 +2290,13 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						<p className="mb-3 text-[0.82rem] leading-snug text-navy-soft">
 							Find out which tier you&apos;re eligible for! Your current goal is a{" "}
 							<span className="font-bold text-navy">{goal.name}</span> and you have{" "}
-							<span className="font-bold text-navy tabular-nums">{fmtH(hours)}</span> this week.
+							<span className="font-bold text-navy tabular-nums">{fmtH(hours)}</span> logged this week.
 						</p>
 						<div className="grid gap-2.5 sm:grid-cols-3">
 							{TIERS.map((t) => {
 								const on = tier === t.id
 								const over = bomTotal > t.grantUsd
 								const short = tierShort(t.fundingHours)
-								const behind = Math.max(0, tierTarget(t.fundingHours) - hours)
 								return (
 									<button
 										key={t.id}
@@ -2341,14 +2336,12 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 										<span
 											className={cx(
 												"mt-1 block text-[0.76rem] leading-snug",
-												short > 0 ? "text-coral-deep" : behind > 0 ? "text-navy-soft" : "text-teal-ink",
+												short > 0 ? "text-coral-deep" : "text-navy-soft",
 											)}
 										>
 											{short > 0
 												? `Opens at ${fmtH(tierFloor(t.fundingHours))} of design time, ${fmtH(short)} to go`
-												: behind > 0
-													? `${fmtH(tierTarget(t.fundingHours))} for a ${goal.name}, ${fmtH(behind)} to go`
-													: `${fmtH(tierTarget(t.fundingHours))} for a ${goal.name}, you have ${fmtH(hours)}`}
+												: `Every hour past this tier's ${t.fundingHours}h earns 5 spendable coins`}
 										</span>
 										{short === 0 && over && (
 											<span className="hand mt-1 block text-[0.74rem] leading-snug text-coral-deep">

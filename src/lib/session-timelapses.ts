@@ -10,6 +10,18 @@ export interface FreshTimelapse {
 	playbackUrl: string | null
 	thumbnailUrl: string | null
 	durationSeconds: number
+	/**
+	 * When the recording STARTED, Lapse's createdAt (epoch ms).
+	 *
+	 * Stored because without it a timelapse is a duration with no date, and a
+	 * duration cannot be compared against Hackatime's tracked intervals — which is
+	 * the whole basis for not paying twice for the same sitting. Read back from
+	 * Lapse at attach time rather than later, because Lapse answers on the
+	 * caller's own OAuth token and that token expires.
+	 */
+	recordedAt: number | null
+	/** The Hackatime project Lapse had synced when this was recorded, if any. */
+	hackatimeProject: string | null
 }
 
 /**
@@ -73,6 +85,11 @@ export async function reconcileSessionTimelapses(
 				playbackUrl: t.playbackUrl,
 				thumbnailUrl: t.thumbnailUrl,
 				coveredSeconds: t.durationSeconds,
+				// The recording's own start, and the project Lapse saw while it ran,
+				// so the hours rollup can intersect this window with Hackatime's
+				// spans instead of paying for the same sitting twice.
+				recordedAt: t.recordedAt === null ? null : new Date(t.recordedAt),
+				hackatimeProject: t.hackatimeProject,
 			})),
 		})
 	}

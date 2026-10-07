@@ -5,6 +5,7 @@ import { fail, ok, parseBody, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { scheduledWeekFor } from "@/lib/config/program"
 import { requireSession } from "@/lib/guards"
+import { refreshOverlapSpans } from "@/lib/hours"
 import { verifyOwnTimelapses } from "@/lib/lapse"
 import prisma from "@/lib/prisma"
 import {
@@ -94,7 +95,19 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 	// Same rule as creation, asked of Lapse rather than trusted from the sheet.
 	// Only brand-new ids are verified; everything already attached stays
 	// without a round trip.
-	const fresh = await verifyOwnTimelapses(gate.user.id, addIds)
+	// Verified for its side effects here (ownership, published, processed) and
+	// mapped to the shape the reconciler writes: `LapseTimelapse.createdAt` is
+	// epoch ms and becomes the recording's start, which is what makes this clip's
+	// wall-clock window comparable with Hackatime's tracked intervals.
+	const fresh = (await verifyOwnTimelapses(gate.user.id, addIds)).map((t) => ({
+		id: t.id,
+		title: t.title,
+		playbackUrl: t.playbackUrl,
+		thumbnailUrl: t.thumbnailUrl,
+		durationSeconds: t.durationSeconds,
+		recordedAt: t.createdAt,
+		hackatimeProject: t.hackatimeProject,
+	}))
 
 	const updated = await prisma.$transaction(async (tx) => {
 		if (want !== null) await reconcileSessionTimelapses(tx, sessionId, want, fresh)
@@ -124,6 +137,13 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 	if (data.hoursClaimed !== undefined || data.hoursSource !== undefined || data.timelapses !== undefined) {
 		await recomputeWeek(gate.user.id, session.weekNumber)
 	}
+
+	// Attaching, dropping or swapping a recording moves the window Hackatime's
+	// hours are deduplicated against, so the cached spans covering it are refetched
+	// off the response path. `addIds` is the narrower truth for a pure reattach of
+	// clips already on this entry, but a removal narrows the window just as much,
+	// so the cache is warmed whenever the clip set was touched at all.
+	if (want !== null) after(() => refreshOverlapSpans(id, session.phase))
 
 	after(() => scheduleRepoSync(id))
 

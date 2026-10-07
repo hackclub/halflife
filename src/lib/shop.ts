@@ -1,9 +1,9 @@
 import "server-only"
 import type { Prisma, ShopItem, ShopOrder } from "@/app/generated/prisma/client"
 import { CoinBucket, LedgerKind, PhaseStatus, ShopItemCategory, ShopOrderStatus } from "@/app/generated/prisma/enums"
+import { THEMES_REQUIRED_FOR_PRINTER } from "@/lib/config/program"
 import { appendLedgerEntry, type Balances, getBalances, lockUserCredit, spendableFor } from "@/lib/currency"
 import { HttpError } from "@/lib/errors"
-import { THEMES_REQUIRED_FOR_PRINTER } from "@/lib/config/program"
 import { getPrinterQualification } from "@/lib/printer"
 import prisma from "@/lib/prisma"
 import { getShopAccess, SHOP_CLOSED_MESSAGE } from "@/lib/program"
@@ -186,8 +186,10 @@ export async function getShopItemsFor(userId: string): Promise<{
 					? (regionPrices.find((r) => r.regionId === regionId)?.priceCredits ?? item.priceCredits)
 					: item.priceCredits
 
-			// Printers may be paid for out of the printer fund; nothing else may,
-			// so for every other category this compares against spendable alone.
+			// Every coin is spendable on anything, so affordability compares the
+			// whole balance against the price — display and purchase read the
+			// same number, so the shelf can never advertise a price the till
+			// refuses.
 			const payableFrom = spendableFor(balances, item.category)
 			return {
 				...base,
@@ -254,8 +256,7 @@ export async function purchase(
 				const reviewedAt = [lastReview._max.designReviewedAt, lastReview._max.buildReviewedAt]
 					.filter((d): d is Date => !!d)
 					.sort((a, b) => b.getTime() - a.getTime())[0]
-				inGrace =
-					!!reviewedAt && reviewedAt.getTime() + settings.shopGraceDays * 86_400_000 > Date.now()
+				inGrace = !!reviewedAt && reviewedAt.getTime() + settings.shopGraceDays * 86_400_000 > Date.now()
 			}
 			if (!inGrace) throw new HttpError("SHOP_CLOSED", SHOP_CLOSED_MESSAGE)
 		}
@@ -349,8 +350,8 @@ export async function purchase(
 			select: shopOrderPublicSelect,
 		})
 
-		// Only a printer could draw on the printer fund, and printers are not sold
-		// here, so a purchase is paid out of ordinary coins alone.
+		// Every coin is spendable on anything, so a purchase is paid out of the
+		// whole balance.
 		if (totalCredits > 0) {
 			await appendLedgerEntry(tx, {
 				userId,

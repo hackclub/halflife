@@ -281,9 +281,7 @@ function WarmupWork({ projectId }: { projectId: string }) {
 								</span>
 							)}
 							{canSubmit && !hasCover && (
-								<span className="hand text-[0.84rem] text-coral-deep">
-									Upload a cover image to submit
-								</span>
+								<span className="hand text-[0.84rem] text-coral-deep">Upload a cover image to submit</span>
 							)}
 						</div>
 						{passed && (

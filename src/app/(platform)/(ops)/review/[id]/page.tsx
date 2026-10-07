@@ -33,9 +33,7 @@ export default async function ReviewDetailPage({ params }: Props) {
 	const detail = await getSubmissionDetail(id, user.id, {
 		includeContact: hasRole(roles, Role.ADMIN) || hasRole(roles, Role.AUDITOR),
 		includeRiskFlags:
-			hasRole(roles, Role.ADMIN) ||
-			hasRole(roles, Role.AUDITOR) ||
-			hasPermission(roles, Permission.REVIEW_HOURS),
+			hasRole(roles, Role.ADMIN) || hasRole(roles, Role.AUDITOR) || hasPermission(roles, Permission.REVIEW_HOURS),
 	})
 	if (!detail) notFound()
 
@@ -118,6 +116,25 @@ export default async function ReviewDetailPage({ params }: Props) {
 				<Stat label="Total" value={`${breakdown.computedTotal}h`} />
 				<Stat label="Timelapse coverage" value={`${Math.round(breakdown.timelapseCoverage * 100)}%`} />
 			</div>
+
+			{/* A Hackatime total smaller than the one Hackatime reports has to say
+			    why, or it reads as a broken number. The overlap is wall-clock time
+			    a journal entry with a recording already claimed, so it is counted
+			    once, through the entry. */}
+			{breakdown.hackatimeOverlapSeconds > 0 && (
+				<Callout tone="info">
+					<strong>{(breakdown.hackatimeOverlapSeconds / 3600).toFixed(1)}h counted once.</strong> That time is tracked
+					by Hackatime <em>and</em> backed by a timelapse on a journal entry, so it is taken off Hackatime and counted
+					through the entry. An explicit override bypasses this — the subtraction only applies to computed hours.
+				</Callout>
+			)}
+			{breakdown.hackatimeOverlapUnknown && (
+				<Callout tone="warning">
+					<strong>Overlap not checked.</strong> The tracked intervals could not be read from Hackatime, so any time
+					double-counted between Hackatime and a timelapse is still in the numbers above. Most often this is a
+					participant with Hackatime&apos;s public stats turned off.
+				</Callout>
+			)}
 
 			<Panel title="Project">
 				<p style={{ marginTop: 0 }}>

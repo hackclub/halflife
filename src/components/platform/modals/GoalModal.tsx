@@ -6,7 +6,7 @@ import { PrinterPhoto } from "@/components/platform/art"
 import { IconCheck, IconClock, IconCoin } from "@/components/platform/icons"
 import { Button, cx, OptionRow } from "@/components/platform/ui"
 import { GOAL_OPTIONS } from "@/lib/config/goal"
-import { MAX_HOURS_PER_WEEK, PRINTERS, type PrinterGoal, printerById, weeksToGo } from "@/lib/config/printers"
+import { PRINTERS, type PrinterGoal, printerById, weeksToGo } from "@/lib/config/printers"
 import { BUILD_HOURS } from "@/lib/curriculum"
 import { useStore } from "@/lib/store"
 import { Modal, ModalTitle } from "./Modal"
@@ -123,13 +123,13 @@ export function GoalModal({
 										<>
 											{" — "}
 											<span className="tabular-nums">{toGo.toLocaleString()}</span> coins to go: about{" "}
-											{goal.hoursPerWeek.toFixed(1)} hours a week for {weeks} design weeks{" "}
+											{Math.round(goal.paceHours * 5)} coins a week to earn for {weeks} design weeks{" "}
 										</>
 									) : (
 										<>
 											{" — "}
 											<span className="tabular-nums">{toGo.toLocaleString()}</span> coins to go, and the build weeks
-											cover it at {BUILD_HOURS} hours a week.{" "}
+											cover it at {BUILD_HOURS * 5} coins a week.{" "}
 										</>
 									)
 								) : (
@@ -225,7 +225,7 @@ function GoalCard({
 	current: boolean
 	onSelect: () => void
 }) {
-	const load = Math.round((goal.hoursPerWeek / MAX_HOURS_PER_WEEK) * 100)
+	const load = Math.round((goal.paceHours / Math.max(...PRINTERS.map((p) => p.paceHours))) * 100)
 
 	return (
 		<button
@@ -233,6 +233,7 @@ function GoalCard({
 			role="radio"
 			aria-checked={selected}
 			onClick={onSelect}
+			title={`About ${Math.round(goal.paceHours * 5)} coins to earn each design week — that pace is the same on every tier, because tier hours pay for parts while every hour past them earns. Bigger printers cost more coins to earn each week.`}
 			className={cx(
 				"sketch relative block w-full rounded-2xl px-4 pt-4 pb-3.5 text-left transition-colors duration-150 sm:px-5",
 				!selected && "hover:bg-white",
@@ -309,7 +310,7 @@ function GoalCard({
 					</span>
 					<span className="ml-auto flex items-center gap-1.5 text-[0.79rem] font-semibold text-teal-ink">
 						<IconClock className="text-[0.95rem]" />
-						<span className="tabular-nums">{goal.hoursPerWeek.toFixed(1)}</span> hrs/design wk
+						<span className="tabular-nums">{Math.round(goal.paceHours * 5)}</span> coins to earn/design wk
 					</span>
 				</span>
 

@@ -9,8 +9,8 @@ import type { ShopItemView } from "@/lib/shop"
 import { useStore } from "@/lib/store"
 
 /**
- * The shelves, in the order they read on screen. Printers are not sold here,
- * so every item on them is paid for in ordinary coins.
+ * The shelves, in the order they read on screen. Every item on them is paid
+ * for out of the whole balance — every coin is spendable on anything.
  */
 const CATEGORIES = [
 	{ label: "All", match: null },
@@ -29,7 +29,7 @@ export function ShopGrid({
 	regionId: string | null
 }) {
 	const router = useRouter()
-	const { coins } = useStore()
+	const { printerFund } = useStore()
 	const [cat, setCat] = useState<string>("All")
 	const [busy, setBusy] = useState<string | null>(null)
 	const [error, setError] = useState<string | null>(null)
@@ -149,9 +149,9 @@ export function ShopGrid({
 				{items.map((item) => {
 					const has = item.ownedCount > 0
 					const out = item.stock !== null && item.stock <= 0
-					// Banked coins only ever bought a printer, and printers are not on
-					// sale here, so ordinary coins are the whole purse.
-					const afford = coins >= item.priceCredits
+					// One pot: affordability reads the same whole balance the till
+					// does, so the shelf can never refuse what the server would take.
+					const afford = printerFund >= item.priceCredits
 					return (
 						<Panel
 							key={item.id}
@@ -234,7 +234,7 @@ export function ShopGrid({
 			</ul>
 
 			<p className="hand mt-8 text-center text-[0.86rem] text-navy-soft">
-				you have <span className="font-bold text-orange-ink tabular-nums">{coins}</span> coins.
+				you have <span className="font-bold text-orange-ink tabular-nums">{printerFund}</span> coins.
 			</p>
 		</>
 	)

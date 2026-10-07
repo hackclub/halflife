@@ -624,6 +624,12 @@ h4 {
 	.hl-callout--warning {
 		border-color: var(--color-coin);
 	}
+	/* A plain explanation, not a problem to act on — the deduplicated hours
+	   notice is the reader being told why a number is smaller than expected. */
+	.hl-callout--info {
+		border-color: var(--color-mint);
+		background: var(--color-surface);
+	}
 
 	/* ── Stats ─────────────────────────────────────────────────────────────── */
 	.hl-stat {

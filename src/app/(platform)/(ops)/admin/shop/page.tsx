@@ -89,9 +89,9 @@ export default async function AdminShopPage() {
 			</Panel>
 			<Panel title="Regions">
 				<p className="hl-hint">
-					Sales regions staff can price items for separately. Participants pick theirs on the shop page; an
-					item with no override for a region sells there at its base price. Switching a region off falls
-					everyone on it back to base pricing.
+					Sales regions staff can price items for separately. Participants pick theirs on the shop page; an item with no
+					override for a region sells there at its base price. Switching a region off falls everyone on it back to base
+					pricing.
 				</p>
 				{regions.length > 0 && (
 					<Table head={["Slug", "Name", "Overrides", "Active", ""]}>
@@ -101,9 +101,7 @@ export default async function AdminShopPage() {
 								<td>{region.name}</td>
 								<td>{region._count.prices}</td>
 								<td>
-									<Badge tone={region.active ? "success" : "muted"}>
-										{region.active ? "active" : "off"}
-									</Badge>
+									<Badge tone={region.active ? "success" : "muted"}>{region.active ? "active" : "off"}</Badge>
 								</td>
 								<td>
 									<ActionButton
