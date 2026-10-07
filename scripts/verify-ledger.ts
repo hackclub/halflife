@@ -58,7 +58,8 @@ async function main() {
 		},
 	})
 
-	// 18 hours of journal work. A build has no funding floor, so all of it pays.
+	// 18 hours of journal work. A build has no funding floor, so all of it pays,
+// spendable on anything.
 	await prisma.workSession.create({
 		data: {
 			themeProjectId: project.id,
@@ -69,9 +70,8 @@ async function main() {
 		},
 	})
 
-	// This exercise approves an 18h BUILD. The first BUILD_HOURS of it bank —
-	// that is the flat contribution every machine's price is paced against — and
-	// the rest is spendable.
+	// This exercise approves an 18h BUILD. Every hour earns, 5 coins each,
+	// spendable on anything.
 	const buildSplit = buildCoinsFor(18)
 	const expectedTotal = buildSplit.spendable + THEME_COMPLETION_BONUS
 
@@ -102,9 +102,9 @@ async function main() {
 	const first = await approve()
 	check("approved hours frozen", first.approvedHours, 18)
 	check("build coins minted", first.coins?.spendable, buildSplit.spendable)
-	check("a build banks its first BUILD_HOURS", first.coins?.banked, buildSplit.banked)
+	check("a build banks nothing — every coin is spendable", first.coins?.banked, 0)
 	check("balance after first approval", await spendable(), expectedTotal)
-	check("the printer fund holds them", await banked(), buildSplit.banked)
+	check("no locked fund holds anything", await banked(), 0)
 
 	await unapprovePhase(project.id, Phase.BUILD, reviewer.id, reviewer.email, "checking reversal")
 	check("balance after un-approval returns to zero", await spendable(), 0)
@@ -113,11 +113,12 @@ async function main() {
 	check("balance after re-approval does not double", await spendable(), expectedTotal)
 
 	const entries = await prisma.ledgerEntry.count({ where: { userId: participant.id } })
-	// A build approval writes three lines — the banked half, the spendable half
-	// and the completion bonus — and this exercise approves, un-approves and
-	// re-approves. Nine rows for three states: history is appended, never edited,
+	// A build approval writes two lines — the spendable mint and the completion
+	// bonus. The legacy locked half reconciles to a zero target against a zero
+	// sum, which writes nothing. This exercise approves, un-approves and
+	// re-approves. Six rows for three states: history is appended, never edited,
 	// and the running total still converges to the same place it started.
-	const LINES_PER_BUILD_APPROVAL = 3
+	const LINES_PER_BUILD_APPROVAL = 2
 	check("ledger rows appended, never edited", entries, LINES_PER_BUILD_APPROVAL * 3)
 
 	// Approving the remaining four themes should mint the printer award.
@@ -189,30 +190,24 @@ async function main() {
 
 	check("balance never goes negative", await spendable(), 0)
 
-	// ── The printer fund ───────────────────────────────────────────────────────
+	// ── Single-pot minting ─────────────────────────────────────────────────────
 	//
-	// Everything above spends the ordinary pot. What follows is the invariant the
-	// forced-savings rule rests on: banked coins are legal tender for a printer
-	// and for nothing else. If this ever passes by accident, the rule is decor.
+	// Everything above spends the one spendable pot. What follows is the
+	// invariant the merge rests on: there is no locked half anymore, so every
+	// minted coin lands spendable and the pacing math is guidance only.
 	const { designCoinsFor } = await import("../src/lib/hours")
-	const { PRINTERS, printerById, DEFAULT_GOAL_ID, DESIGN_WEEKS, BUILD_WEEKS } = await import(
-		"../src/lib/config/printers"
-	)
+	const { PRINTERS, DESIGN_WEEKS, BUILD_WEEKS } = await import("../src/lib/config/printers")
 	const { BUILD_HOURS } = await import("../src/lib/config/program")
 
-	// Tier 1 funds 6h. Saving for an Ender the goal asks 3.76h of banking on top,
-	// so 11h is 3.76h banked (19 coins, rounded up) and 1.24h spendable (6).
-	const ender = printerById("ender-3-v3-se")
-	const design = designCoinsFor(1, ender, 11)
-	check("design banks the goal's weekly rate", design.banked, 19)
-	check("design pays the rest as spendable", design.spendable, 6)
+	// Tier 1 funds 6h, so 11h earns on the 5 above it: 25 coins, all spendable.
+	const design = designCoinsFor(1, 11)
+	check("design mints nothing locked", design.banked, 0)
+	check("design pays everything past funding as spendable", design.spendable, 25)
 
-	// Banking is paced by the machine, not the tier: the same goal banks the same
-	// amount whatever tier is underneath it. Tier 3 funds 20h, so the equivalent
-	// week is 20 + 3.76 + 1.24.
-	const tier3 = designCoinsFor(3, ender, 25)
-	check("tier does not change what banks", tier3.banked, design.banked)
-	check("tier only moves the funded block", tier3.spendable, design.spendable)
+	// The tier only moves the funded block: Tier 3 funds 20h, so the equivalent
+	// week is 20 + 5.
+	const tier3 = designCoinsFor(3, 25)
+	check("tier does not change what earns", tier3.spendable, design.spendable)
 
 	// The whole point of the catalogue: a season worked at a goal's own pace has
 	// to actually buy that goal. Five design weeks at its banking rate, plus five
@@ -222,10 +217,10 @@ async function main() {
 	// the documented minimum path minted 175 coins and the cheapest machine that
 	// exists cost 219.
 	for (const goal of PRINTERS) {
-		const banked =
-			DESIGN_WEEKS * designCoinsFor(1, goal, 6 + goal.bankedHours).banked +
-			BUILD_WEEKS * buildCoinsFor(BUILD_HOURS).banked
-		check(`a season at pace buys the ${goal.name}`, banked >= goal.coins, true)
+		const earned =
+			DESIGN_WEEKS * designCoinsFor(1, 6 + goal.paceHours).total +
+			BUILD_WEEKS * buildCoinsFor(BUILD_HOURS).total
+		check(`a season at pace buys the ${goal.name}`, earned >= goal.coins, true)
 	}
 
 	const saver = await prisma.user.create({
@@ -272,52 +267,43 @@ async function main() {
 	// Derived rather than typed out: these numbers move whenever the default goal
 	// is re-priced, and a hardcoded copy would only ever be discovered wrong by
 	// failing here long after the change that broke it.
-	const saverGoal = printerById(DEFAULT_GOAL_ID)
-	const expectedDesign = designCoinsFor(1, saverGoal, 11)
-	check("design approval banks the goal's rate", designOutcome.coins?.banked, expectedDesign.banked)
-	check("printer fund holds the banked coins", await saverBanked(), expectedDesign.banked)
-	check("spendable got the overtime only", await saverSpendable(), expectedDesign.spendable)
+	const expectedDesign = designCoinsFor(1, 11)
+	check("design approval locks nothing", designOutcome.coins?.banked, 0)
+	check("every earned coin lands spendable", await saverSpendable(), expectedDesign.spendable)
+	check("the legacy locked pot stays empty", await saverBanked(), 0)
 
-	// An upgrade costs more than the spendable pot but less than the two
-	// combined. It must be refused: the printer fund is not available to it.
+	// An upgrade costs part of the design mint. It must succeed: every coin is
+	// spendable on anything now, goal or no goal.
 	const upgrade = await prisma.shopItem.create({
 		data: {
 			id: `ledger-check-upgrade-${stamp}`,
 			name: "Ledger check upgrade",
-			description: "Priced between the spendable pot and the combined total.",
+			description: "Priced at part of the design mint.",
 			category: ShopItemCategory.PRINTER_UPGRADE,
-			// More than the spendable pot, less than the two combined. Derived so it
-			// stays on that knife edge when the default goal is re-priced.
-			priceCredits: expectedDesign.spendable + 1,
+			priceCredits: 10,
 			maxPerUser: 0,
 			requiresPrinterQualified: false,
 		},
 	})
-	let upgradeRefused = false
-	try {
-		await purchase(saver.id, upgrade.id, 1)
-	} catch {
-		upgradeRefused = true
-	}
-	check("banked coins cannot buy an upgrade", upgradeRefused, true)
-	check("the refused purchase moved nothing", await saverBanked(), expectedDesign.banked)
+	await purchase(saver.id, upgrade.id, 1)
+	check("spendable coins buy an upgrade", await saverSpendable(), expectedDesign.spendable - 10)
+	check("the purchase moved nothing locked", await saverBanked(), 0)
 
-	// A printer priced at everything they have must succeed, and must drain the
-	// banked pot FIRST — the spendable one is meant to survive as long as it can.
+	// A printer priced at everything left must succeed too, and empty the pot.
 	const printerItem = await prisma.shopItem.create({
 		data: {
 			id: `ledger-check-printer-${stamp}`,
 			name: "Ledger check printer",
-			description: "The cheapest printer in the world.",
+			description: "Priced at the rest of the design mint.",
 			category: ShopItemCategory.PRINTER,
-			priceCredits: expectedDesign.total,
+			priceCredits: expectedDesign.spendable - 10,
 			maxPerUser: 0,
 			requiresPrinterQualified: false,
 		},
 	})
 	await purchase(saver.id, printerItem.id, 1)
-	check("a printer drains the fund first", await saverBanked(), 0)
-	check("and takes the remainder from spendable", await saverSpendable(), 0)
+	check("a printer purchase empties the balance", await saverSpendable(), 0)
+	check("and leaves nothing locked either", await saverBanked(), 0)
 
 	// Clean up so the script is re-runnable. Order matters: SubmissionReview
 	// restricts deleting its reviewer, so the participant (whose projects cascade

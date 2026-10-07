@@ -186,8 +186,10 @@ export async function getShopItemsFor(userId: string): Promise<{
 					? (regionPrices.find((r) => r.regionId === regionId)?.priceCredits ?? item.priceCredits)
 					: item.priceCredits
 
-			// Printers may be paid for out of the printer fund; nothing else may,
-			// so for every other category this compares against spendable alone.
+			// Every coin is spendable on anything, so affordability compares the
+			// whole balance against the price — display and purchase read the
+			// same number, so the shelf can never advertise a price the till
+			// refuses.
 			const payableFrom = spendableFor(balances, item.category)
 			return {
 				...base,
@@ -349,8 +351,8 @@ export async function purchase(
 			select: shopOrderPublicSelect,
 		})
 
-		// Only a printer could draw on the printer fund, and printers are not sold
-		// here, so a purchase is paid out of ordinary coins alone.
+		// Every coin is spendable on anything, so a purchase is paid out of the
+		// whole balance.
 		if (totalCredits > 0) {
 			await appendLedgerEntry(tx, {
 				userId,

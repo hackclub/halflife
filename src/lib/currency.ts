@@ -43,23 +43,22 @@ async function sumFor(tx: Tx, where: Prisma.LedgerEntryWhereInput): Promise<numb
 	return _sum.amount ?? 0
 }
 
-/** Both pots, plus their total. Every balance read should go through this. */
+/** A single spendable pot, plus its legacy split. Every balance read should go through this. */
 export interface Balances {
-	/** Ordinary coins. Buys anything in the shop. */
+	/** Every coin. Buys anything in the shop, printers included. */
 	spendable: number
-	/** The printer fund. Buys a printer and nothing else. */
+	/**
+	 * The legacy locked printer fund. New mints never land here — everything
+	 * is spendable now — but old rows keep their bucket until they are
+	 * converted, so this drains to zero rather than vanishing.
+	 */
 	banked: number
-	/** spendable + banked. For display only — never a spending limit. */
+	/** spendable + banked. The number every purchase and progress display reads. */
 	total: number
 }
 
 /**
  * Authoritative balances. Always SUM(amount) — there is no balance column.
- *
- * Returns the two pots separately rather than a total and a reserve, because a
- * reserve is something a caller can forget to subtract and a pot is not: there
- * is no way to spend banked coins by accident when the number you were handed
- * never included them.
  */
 export async function getBalances(tx: Tx, userId: string): Promise<Balances> {
 	const [spendable, banked] = await Promise.all([
@@ -70,14 +69,14 @@ export async function getBalances(tx: Tx, userId: string): Promise<Balances> {
 }
 
 /**
- * What this user can spend on `category` right now.
- *
- * Banked coins are only legal tender for a printer, so the answer depends on
- * what is being bought. This is the only function that should ever decide
- * that, and `purchase()` is its only caller that matters.
+ * What this user can spend right now: the whole balance, whatever it was
+ * minted as. The locked printer fund is gone — every coin is spendable on
+ * anything — so there is nothing left for the category to decide. The
+ * parameter stays so the two call sites do not have to learn about the
+ * merge; it is ignored.
  */
-export function spendableFor(balances: Balances, category: ShopItemCategory): number {
-	return category === ShopItemCategory.PRINTER ? balances.total : balances.spendable
+export function spendableFor(balances: Balances, _category: ShopItemCategory): number {
+	return balances.total
 }
 
 /** Lifetime earnings, ignoring spending. For progress displays. */
@@ -131,10 +130,10 @@ export interface ReconcileParams {
 	themeProjectId: string
 	kind: LedgerKind
 	/**
-	 * The pot this kind pays into. Fixed per kind — DESIGN_BANKED_HOURS is
-	 * always BANKED and everything else is always SPENDABLE — so passing the
-	 * wrong one here would split one grant across two pots and make the
-	 * reconcile sum converge on a target it can never reach.
+	 * The pot this kind pays into. New mints always land in SPENDABLE; the
+	 * BANKED kinds below only ever reconcile the legacy locked rows toward
+	 * zero, so passing anything else here would split one grant across two
+	 * pots and make the reconcile sum converge on a target it can never reach.
 	 */
 	bucket?: CoinBucket
 	/** What the total for this (user, project, kind) should now be. */

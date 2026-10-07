@@ -8,7 +8,7 @@ interface TierOption {
 	name: string
 	grantUsd: number
 	fundingHours: number
-	/** Funded hours plus the banking the cheapest machine needs. */
+	/** Funded hours: the parts money, and the submit floor. */
 	submitFloorHours: number
 }
 

@@ -29,10 +29,9 @@ import { useStore } from "@/lib/store"
  * nothing here quietly changes what anybody is owed.
  */
 export function GoalTracker({ className }: { className?: string }) {
-	// The printer fund, not the spendable pot. A printer can be paid for out of
-	// either, and most of what is aimed at it is banked — a meter reading the
-	// spendable pot alone would sit near zero all season while the money for the
-	// machine piled up out of sight.
+	// The whole balance, not the spendable pot alone. Every coin counts toward
+	// the machine — a meter reading anything less would sit near zero all
+	// season while the money for it piled up out of sight.
 	const { printerFund, goalId, participantGoal, coins } = useStore()
 	const [open, setOpen] = useState(false)
 	const goal = printerById(goalId)

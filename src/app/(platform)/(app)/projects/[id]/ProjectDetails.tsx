@@ -311,7 +311,7 @@ function DetailsForm({
 					{takingStarter && hotGoal && (
 						<p role="status" className="hand text-[0.82rem] leading-snug text-coral-deep">
 							Heads up: starter projects are meant to take about {fmtHours(submitFloorFor(ENTRY_TIER.fundingHours))} of work,
-							no more. Your {goal.name} needs roughly {Math.round(goal.bankedHours * 5)} coins a design week on top of its parts-funding to stay on pace.
+							no more. Your {goal.name} needs roughly {Math.round(goal.paceHours * 5)} coins a design week on top of its parts-funding to stay on pace.
 						</p>
 					)}
 					{starters.map((s) => {

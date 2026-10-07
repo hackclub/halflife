@@ -123,7 +123,7 @@ export function GoalModal({
 										<>
 											{" — "}
 											<span className="tabular-nums">{toGo.toLocaleString()}</span> coins to go: about{" "}
-											{Math.round(goal.bankedHours * 5)} coins a week to bank for {weeks} design weeks{" "}
+											{Math.round(goal.paceHours * 5)} coins a week to earn for {weeks} design weeks{" "}
 										</>
 									) : (
 										<>
@@ -225,7 +225,7 @@ function GoalCard({
 	current: boolean
 	onSelect: () => void
 }) {
-	const load = Math.round((goal.bankedHours / Math.max(...PRINTERS.map((p) => p.bankedHours))) * 100)
+	const load = Math.round((goal.paceHours / Math.max(...PRINTERS.map((p) => p.paceHours))) * 100)
 
 	return (
 		<button
@@ -233,7 +233,7 @@ function GoalCard({
 			role="radio"
 			aria-checked={selected}
 			onClick={onSelect}
-			title={`About ${Math.round(goal.bankedHours * 5)} coins to bank each design week — that pace is the same on every tier, because tier hours pay for parts while only banked hours earn. Bigger printers cost more coins to bank each week.`}
+			title={`About ${Math.round(goal.paceHours * 5)} coins to earn each design week — that pace is the same on every tier, because tier hours pay for parts while every hour past them earns. Bigger printers cost more coins to earn each week.`}
 			className={cx(
 				"sketch relative block w-full rounded-2xl px-4 pt-4 pb-3.5 text-left transition-colors duration-150 sm:px-5",
 				!selected && "hover:bg-white",
@@ -310,7 +310,7 @@ function GoalCard({
 					</span>
 					<span className="ml-auto flex items-center gap-1.5 text-[0.79rem] font-semibold text-teal-ink">
 						<IconClock className="text-[0.95rem]" />
-						<span className="tabular-nums">{Math.round(goal.bankedHours * 5)}</span> coins to bank/design wk
+						<span className="tabular-nums">{Math.round(goal.paceHours * 5)}</span> coins to earn/design wk
 					</span>
 				</span>
 

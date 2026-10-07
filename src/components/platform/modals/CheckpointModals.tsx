@@ -1775,11 +1775,9 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								Starter projects are Tier 1. Switch to your own idea to choose a different tier.
 							</p>
 						)}
-						{/* The hours quoted here are the ones the submit gate will hold
-                you to, not the funded block. A tier that advertises its
-                funding alone advertises the smaller of two numbers: the funded
-                hours bank nothing, so the printer money has to be worked on
-                top of them. */}
+						{/* The hours quoted here are the funded block, which is exactly
+                what the submit gate holds you to. The funded hours buy the
+                parts; every hour past them earns spendable coins. */}
 						<div className="grid gap-2.5">
 							{TIERS.map((t) => (
 								<OptionRow
@@ -1904,13 +1902,13 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 	// The week is long enough to hand in — that gate is the trail's, and this
 	// node would be locked otherwise. What is left to say is whether it was
-	// long enough for the machine actually on the wall. A surplus banked in an
+	// long enough for the machine actually on the wall. A surplus earned in an
 	// earlier week pays for a thin one, so this reads the running total against
 	// the pace rather than this week against its target.
 	//
-	// The running total is the fund plus what unreviewed weeks will bank. Coins
+	// The running total is the fund plus what unreviewed weeks will earn. Coins
 	// are minted at approval, so the fund alone reads this very week — the one
-	// being handed in, which nobody can have reviewed yet — as banking nothing,
+	// being handed in, which nobody can have reviewed yet — as earning nothing,
 	// and warned everyone on every submit.
 	const goal = printerById(goalId)
 	const owed = Math.max(0, Math.ceil(paceTarget(goal, week.id) - printerFund - pendingCoins(week.id)))
@@ -1989,18 +1987,17 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 	/**
 	 * A tier is a claim about hours as much as about money: its funded block has
-	 * to be covered, and the banking that buys the printer has to sit on top of
-	 * it. Tier 2 funds thirteen hours, so thirteen hours pay for the project and
-	 * nothing at all banks until the fourteenth — which is why the tier cannot be
-	 * raised at the last moment on hours that were only ever enough for a
-	 * smaller one.
+	 * to be covered, and everything past it earns. Tier 2 funds thirteen hours,
+	 * so thirteen hours pay for the project and the fourteenth already earns —
+	 * which is why the tier cannot be raised at the last moment on hours that
+	 * were only ever enough for a smaller one.
 	 *
 	 * Two asks come out of that, and they are different numbers. The floor is
-	 * the cheapest machine's pace, and below it the season cannot end in a
-	 * printer at all, so it is a gate. The target is this maker's own goal, and
-	 * it moves when they change what they are saving for — a P1S asks far more
-	 * of a tier 2 week than an Ender does. Missing the target is a warning the
-	 * sheet already gives; missing the floor is a refusal.
+	 * the funded block, and below it the week cannot be handed in at all, so it
+	 * is a gate. The target is this maker's own goal, and it moves when they
+	 * change what they are saving for — a P1S asks far more of a tier 2 week
+	 * than an Ender does. Missing the target is a warning the sheet already
+	 * gives; missing the floor is a refusal.
 	 */
 	const hours = hoursOf(week)
 	const tierFloor = submitFloorFor

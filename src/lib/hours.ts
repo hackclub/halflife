@@ -1,7 +1,6 @@
 import "server-only"
 import { HoursSource, Phase } from "@/app/generated/prisma/enums"
-import type { PrinterGoal } from "@/lib/config/printers"
-import { BUILD_HOURS, COINS_PER_HOUR, MAX_COINS_PER_PROJECT } from "@/lib/config/program"
+import { COINS_PER_HOUR, MAX_COINS_PER_PROJECT } from "@/lib/config/program"
 import { getTierOrThrow, type TierId } from "@/lib/config/tiers"
 import { fetchProjectSeconds } from "@/lib/hackatime"
 import prisma from "@/lib/prisma"
@@ -184,16 +183,22 @@ export function rollUpHours(
 }
 
 /**
- * Coins a phase minted, split by which pot they land in.
+ * Coins a phase minted. Every coin is spendable on anything — the shop, or
+ * the printer goal — so there is a single pot and no locked fund.
+ *
+ * `banked` stays on the shape as a legacy field: rows minted before the pots
+ * were merged still carry a banked half, and the review reconcile zeroes that
+ * half out (moving it to spendable) the next time an old approval is
+ * re-decided. New mints always report it as zero.
  *
  * A type alias rather than an interface on purpose: this gets written into the
  * audit row's JSON payload, and Prisma's `InputJsonValue` only accepts types
  * with an implicit index signature, which interfaces do not have.
  */
 export type CoinSplit = {
-	/** Printer fund. Spendable on a printer and nothing else. */
+	/** Legacy locked half. Always zero on new mints. */
 	banked: number
-	/** Ordinary coins. */
+	/** Every coin earned. Spendable on anything. */
 	spendable: number
 	total: number
 }
@@ -201,80 +206,63 @@ export type CoinSplit = {
 /**
  * Coins minted by an approved DESIGN phase.
  *
- * The hours come in three layers and the order matters:
+ * Two layers and the order matters:
  *
- *   [0, fundingHours)                     → dollars, not coins. The parts
- *                                           grant; it buys the BOM.
- *   [fundingHours, +goal.bankedHours)     → BANKED coins. The printer fund.
- *   [fundingHours + goal.bankedHours, ∞)  → spendable coins.
+ *   [0, fundingHours)   → dollars, not coins. The parts grant; it buys the BOM.
+ *   [fundingHours, ∞)   → spendable coins, 5 per hour.
  *
- * The middle band is sized by the PRINTER, not by the tier. That is the whole
- * shape of the economy: a tier decides how many hours the project itself eats,
- * and the machine on the wall decides how many have to bank on top. So a Tier 1
- * and a Tier 3 saving for the same printer bank the same amount each week —
- * Tier 3 just works more hours underneath it.
+ * The printer on the wall no longer sizes any of this: a tier decides how
+ * many hours the project itself eats, and everything past that is simply
+ * earned. What a machine asks per week is still paced in ./config/printers.ts,
+ * but that pace is guidance the goal tracker reads — warnings, never a second
+ * pot of money.
  *
- * Undershooting needs no special case: an approval below the funded line banks
+ * Undershooting needs no special case: an approval below the funded line earns
  * nothing and the participant falls behind their own pace, which is exactly
  * what the goal tracker is for.
  *
- * Spendable coins are capped, because `approvedHours` can come from a reviewer
+ * Minted coins are capped, because `approvedHours` can come from a reviewer
  * typing into a box and a fat-fingered 1000 should not mint five thousand
- * coins. Banked coins are not: they are bounded by `goal.bankedHours` already,
- * and they cannot buy anything but a printer.
+ * coins.
  */
-export function designCoinsFor(tierId: TierId | number, goal: PrinterGoal, approvedHours: number): CoinSplit {
+export function designCoinsFor(tierId: TierId | number, approvedHours: number): CoinSplit {
 	const tier = getTierOrThrow(tierId)
 	const beyondFunding = Math.max(0, approvedHours - tier.fundingHours)
-	const bankedHours = Math.min(beyondFunding, goal.bankedHours)
-	const spendableHours = beyondFunding - bankedHours
-	return split(bankCoins(bankedHours), spendCoins(spendableHours))
+	const spendable = earnCoins(beyondFunding)
+	return { banked: 0, spendable, total: spendable }
 }
 
 /**
  * Coins minted by an approved BUILD phase.
  *
  * A build week has no BOM to pay for — the parts were bought with the design
- * week's grant — so there is no funded block to clear and the hours bank from
- * the first one. The first `BUILD_HOURS` of them are the flat contribution the
- * budget sheet subtracts from every machine's price before pacing the rest
- * against the design weeks, so that much banks for everyone whatever they are
- * saving for; anything beyond it is the participant's to spend.
+ * week's grant — so there is no funded block to clear and every hour earns
+ * 5 coins, spendable on anything.
  *
  * This half of the economy is what carries someone from what five design weeks
- * bank to an actual printer: five build weeks at five hours is 125 coins, which
+ * earn to an actual printer: five build weeks at five hours is 125 coins, which
  * is more than half the cheapest machine.
  */
 export function buildCoinsFor(approvedHours: number): CoinSplit {
-	const hours = Math.max(0, approvedHours)
-	const bankedHours = Math.min(hours, BUILD_HOURS)
-	const spendableHours = hours - bankedHours
-	return split(bankCoins(bankedHours), spendCoins(spendableHours))
-}
-
-function split(banked: number, spendable: number): CoinSplit {
-	return { banked, spendable, total: banked + spendable }
-}
-
-/** Spendable hours to coins, floored and capped. */
-function spendCoins(hours: number): number {
-	return Math.min(Math.floor(hours * COINS_PER_HOUR), MAX_COINS_PER_PROJECT)
+	const spendable = earnCoins(Math.max(0, approvedHours))
+	return { banked: 0, spendable, total: spendable }
 }
 
 /**
- * Banked hours to banked coins, rounded UP.
+ * Hours to coins, rounded UP and capped.
  *
- * Up rather than down because the budget sheet paces in fractional hours — the
- * Ender asks 3.76 a week, the A1 Mini 4.64 — and coins are whole. Flooring
+ * Up rather than down because the budget sheet paces in fractional hours —
+ * the Ender asks 3.76 a week, the A1 Mini 4.64 — and coins are whole. Flooring
  * 4.64 * 5 = 23.2 to 23 loses a coin a week, which over five design weeks
  * leaves an A1 Mini saver one coin short of the machine they were told they
- * were on track for. Rounding up costs a handful of coins that can only ever
- * be spent on a printer, and keeps the promise the goal tracker makes.
+ * were on track for. Rounding up costs a handful of coins and keeps the
+ * promise the goal tracker makes.
  *
- * Checked against the whole catalogue by `verify:ledger`.
+ * Capped, because `approvedHours` can come from a reviewer typing into a box
+ * and a fat-fingered 1000 should not mint five thousand coins.
  */
-function bankCoins(hours: number): number {
-	return Math.ceil(hours * COINS_PER_HOUR)
+function earnCoins(hours: number): number {
+	return Math.min(Math.ceil(hours * COINS_PER_HOUR), MAX_COINS_PER_PROJECT)
 }
 
 function round2(n: number): number {
