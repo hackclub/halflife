@@ -218,9 +218,10 @@ function DeleteProject({ projectId, name, blocked }: { projectId: string; name: 
  * warm-up's week 0, so writing and handing in work the same way everywhere.
  */
 function WarmupWork({ projectId }: { projectId: string }) {
-	const { warmupWeekOf, hoursOf, passedOf, statusOf, deadlineOf, stateOf, setOpenCheckpoint } = useStore()
+	const { warmupWeekOf, hoursOf, passedOf, statusOf, deadlineOf, stateOf, setOpenCheckpoint, projects } = useStore()
 	const warmupWeek = warmupWeekOf(projectId)
 	if (!warmupWeek) return null
+	const project = projects.find((p) => p.id === projectId)
 
 	const build = warmupWeek.phase === "build"
 	const hours = hoursOf(warmupWeek)
@@ -238,6 +239,8 @@ function WarmupWork({ projectId }: { projectId: string }) {
 	// season week that has passed can.
 	const canSubmit = !handedIn && (hours >= need || (passed && hours > 0))
 	const short = Math.max(0, need - hours)
+	const hasCover = !!project?.coverImageKey
+	const canActuallySubmit = canSubmit && hasCover
 
 	return (
 		<Section id="warmup-title" title="Warm-up">
@@ -269,12 +272,17 @@ function WarmupWork({ projectId }: { projectId: string }) {
 									Log a session
 								</Button>
 							)}
-							<Button variant="solid" disabled={!canSubmit} onClick={() => setOpenCheckpoint(submitId)}>
+							<Button variant="solid" disabled={!canActuallySubmit} onClick={() => setOpenCheckpoint(submitId)}>
 								{build ? "Submit your build" : "Submit your design"}
 							</Button>
 							{!canSubmit && short > 0 && (
 								<span className="hand text-[0.84rem] text-navy-soft tabular-nums">
 									{fmtHours(short)} more to submit
+								</span>
+							)}
+							{canSubmit && !hasCover && (
+								<span className="hand text-[0.84rem] text-coral-deep">
+									Upload a cover image to submit
 								</span>
 							)}
 						</div>

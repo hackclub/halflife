@@ -121,6 +121,8 @@ export interface Project {
 	starterProjectId?: string | null
 	/** Where the code, schematics and CAD live. Optional, editable any time. */
 	githubRepo?: string | null
+	/** The R2 object key for the chosen cover image. Required before submitting. */
+	coverImageKey?: string | null
 	/** The chosen cover, a journal image, or a reel frame. See lib/thumbnail. */
 	thumbnail?: ProjectThumbnail | null
 	/**
