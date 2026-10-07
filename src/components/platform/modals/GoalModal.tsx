@@ -233,6 +233,7 @@ function GoalCard({
 			role="radio"
 			aria-checked={selected}
 			onClick={onSelect}
+			title={`Needs about ${goal.hoursPerWeek.toFixed(1)}h per design week at the entry tier — and more at higher funding tiers, since those add funded project hours on top of the same banking pace. Cheaper printers ask for less time each week.`}
 			className={cx(
 				"sketch relative block w-full rounded-2xl px-4 pt-4 pb-3.5 text-left transition-colors duration-150 sm:px-5",
 				!selected && "hover:bg-white",

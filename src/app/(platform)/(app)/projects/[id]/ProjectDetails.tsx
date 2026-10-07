@@ -5,7 +5,10 @@ import { IconCheck, IconPencil } from "@/components/platform/icons"
 import { StarterProjectCard } from "@/components/platform/StarterProjectCard"
 import { Button, Chip, cx, OptionRow } from "@/components/platform/ui"
 import { getStarterProject, STARTER_PROJECT_TIER, starterProjectsFor } from "@/lib/config/onboarding"
-import { submitFloorFor, tierBankedFloor } from "@/lib/config/printers"
+import { ParticipantGoal } from "@/app/generated/prisma/enums"
+import { MIN_HOURS_PER_WEEK, submitFloorFor, weekAskFor } from "@/lib/config/printers"
+import { printerById } from "@/lib/config/printers"
+import { ENTRY_TIER } from "@/lib/config/tiers"
 import { DESIGN_WEEKS, THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { TIERS } from "@/lib/curriculum"
 import { fmtHours } from "@/lib/projects"
@@ -166,7 +169,7 @@ function DetailsForm({
 	tierLocked: boolean
 	onDone: () => void
 }) {
-	const { updateProject } = useStore()
+	const { updateProject, goalId, participantGoal } = useStore()
 	const id = useId()
 	const [name, setName] = useState(project.name)
 	const [description, setDescription] = useState(project.description)
@@ -188,6 +191,14 @@ function DetailsForm({
 
 	const takingStarter = starterId !== null
 	const tierEditable = !takingStarter && !tierLocked
+
+	// The printer goal every hour is paced against, and only when the person
+	// is actually saving toward one: "funding for all/some weeks" goals have
+	// no machine to pace to, so nothing should warn against their tier or
+	// their starter.
+	const goal = printerById(goalId)
+	const pacingToPrinter = participantGoal === null || participantGoal === ParticipantGoal.PRINTER
+	const hotGoal = pacingToPrinter && goal.hoursPerWeek > MIN_HOURS_PER_WEEK
 
 	function takeStarter(id: string) {
 		setStarterId(id)
@@ -298,6 +309,13 @@ function DetailsForm({
 							? "Starter projects are Tier 1. Switch to your own idea to choose a different tier."
 							: "Building from a starter, or your own idea? Picked the wrong one by accident — change it here."}
 					</p>
+					{takingStarter && hotGoal && (
+						<p role="status" className="hand text-[0.82rem] leading-snug text-coral-deep">
+							Heads up: starters are deliberately small, tier 1 projects — about{" "}
+							{fmtHours(submitFloorFor(ENTRY_TIER.fundingHours))} of funded work a week. Your {goal.name} wants roughly{" "}
+							{fmtHours(goal.hoursPerWeek)} a design week to stay on pace, which a starter rarely fills. That is a lot of hours to find in a starter — your own idea leaves more room.
+						</p>
+					)}
 					{starters.map((s) => {
 						const chosen = starterId === s.id
 						return (
@@ -369,7 +387,9 @@ function DetailsForm({
 				{tierEditable ? (
 					<>
 						<p className="text-[0.82rem] leading-snug text-navy-soft">
-							Bigger tiers fund bigger builds, and ask for more design time before you submit. You have{" "}
+							Bigger tiers fund bigger builds, and ask for more design time before you submit. The hours next to each tier are the{" "}
+						<span className="font-bold text-navy">minimum</span> a week needs before you can submit — not a cap, and not a suggestion. You
+						have{" "}
 							<span className="font-bold text-navy tabular-nums">{fmtHours(hours)}</span>{" "}
 							{project.weekId === WARMUP_WEEK_ID ? "on this project." : `in week ${project.weekId}.`}
 						</p>
@@ -392,6 +412,11 @@ function DetailsForm({
 											{short > 0 ? `${fmtHours(short)} to go` : "ready to submit"}
 										</span>
 									</span>
+									{pacingToPrinter && (
+										<span className="hand mt-1 block text-[0.8rem] leading-snug text-navy-soft">
+											aim for about {fmtHours(weekAskFor(goal, t.fundingHours))} each design week at this tier, for your {goal.name}
+										</span>
+									)}
 								</OptionRow>
 							)
 						})}
