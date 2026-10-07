@@ -39,6 +39,7 @@ import {
 import { normalizeRepo } from "@/lib/repo"
 import type { RepoCheckResult } from "@/lib/repo-checks"
 import { EXAMPLE_JOURNAL_URL } from "@/lib/routes"
+import { BOM_MARGIN_USD } from "@/lib/schemas/project"
 import { useStore } from "@/lib/store"
 import type { Checkpoint, Project, Week } from "@/lib/types"
 import { uploadFile } from "@/lib/use-handoff"
@@ -802,9 +803,9 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						)}
 						{editing && legacyBump && (
 							<p role="note" className="hand mt-1.5 text-[0.76rem] leading-snug text-coral-deep">
-								This entry was logged as {fmtH(legacyBump.from)} before timelapses added hours on top — with
-								its {fmtH(legacyBump.lapse)} of recording it now totals {fmtH(claimed)}. Unpick
-								timelapses on the Timelapse tab to bring it back down.
+								This entry was logged as {fmtH(legacyBump.from)} before timelapses added hours on top – with its{" "}
+								{fmtH(legacyBump.lapse)} of recording it now totals {fmtH(claimed)}. Unpick timelapses on the Timelapse
+								tab to bring it back down.
 							</p>
 						)}
 					</div>
@@ -2008,6 +2009,9 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const tierShort = (fundingHours: number) => Math.max(0, tierFloor(fundingHours) - hours)
 	const selectedTier = TIERS.find((t) => t.id === tier) ?? TIERS[0]
 	const tierBlocked = !isBuild && tierShort(selectedTier.fundingHours) > 0
+	// Over the tier's funding warns; past the leeway it refuses the submit,
+	// the same refusal the hours floor makes.
+	const bomBlocked = !isBuild && bomTotal > selectedTier.grantUsd + BOM_MARGIN_USD
 
 	const repoReady = repoResult?.canSubmit ?? false
 
@@ -2019,8 +2023,8 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			: isBuild
 				? clip && (works === "yes" || (works === "no" && writeup.trim().length >= 40))
 				: step === 2
-					? carts.length > 0 && !tierBlocked
-					: clip && !tierBlocked && hasCover
+					? carts.length > 0 && !tierBlocked && !bomBlocked
+					: clip && !tierBlocked && !bomBlocked && hasCover
 
 	/**
 	 * Handing a week in, in the order the pieces depend on each other.
@@ -2348,7 +2352,9 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 										</span>
 										{short === 0 && over && (
 											<span className="hand mt-1 block text-[0.74rem] leading-snug text-coral-deep">
-												Cart over by ${(bomTotal - t.grantUsd).toFixed(2)}
+												{bomTotal > t.grantUsd + BOM_MARGIN_USD
+													? `Cart over by $${(bomTotal - t.grantUsd).toFixed(2)} – past the $${BOM_MARGIN_USD} margin, no submit on this tier`
+													: `Cart over by $${(bomTotal - t.grantUsd).toFixed(2)} – within the $${BOM_MARGIN_USD} margin, you can still submit`}
 											</span>
 										)}
 									</button>
