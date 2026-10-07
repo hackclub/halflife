@@ -3,17 +3,11 @@ import { Theme } from "@/app/generated/prisma/enums"
 /**
  * What a project's repo has to contain before its week can be handed in.
  *
- * Ported from Hack Club Stasis's pre-submission checks, with one difference:
- * Stasis asks the maker what kind of project it is, and Half Life already
- * knows, because every week has a theme. So the file requirements are keyed
- * by theme here rather than ticked on a form.
+ * Ported from Hack Club Stasis's pre-submission checks, with one difference: Stasis asks the maker what kind of project it is, and Half Life already knows, because every week has a theme. So the file requirements are keyed by theme here rather than ticked on a form.
  *
- * Every theme needs a public repo with a README that has photos in it — that
- * is what a reviewer opens first. On top of that, each theme names:
- * - `required`: file kinds that block submitting when none are found. These
- *   are the files the week exists to produce.
- * - `recommended`: file kinds worth having, reported to the maker and the
- *   reviewer but never blocking.
+ * Every theme needs a public repo with a README that has photos in it – that is what a reviewer opens first. On top of that, each theme names:
+ * - `required`: file kinds that block submitting when none are found. These are the files the week exists to produce.
+ * - `recommended`: file kinds worth having, reported to the maker and the reviewer but never blocking.
  *
  * Changing what a theme asks for is this table and nothing else.
  */
@@ -21,9 +15,7 @@ import { Theme } from "@/app/generated/prisma/enums"
 /**
  * The file the BOM import looks for, and what the repo check calls a BOM CSV.
  *
- * Strict on purpose, as Stasis has it: "parts.csv" matching would tell a
- * reviewer there is a BOM when there may not be one. Shared here so the check
- * and the import find the same file.
+ * Strict on purpose, as Stasis has it: "parts.csv" matching would tell a reviewer there is a BOM when there may not be one. Shared here so the check and the import find the same file.
  */
 export const BOM_CSV_PATTERN = /(^|\/)[^/]*bom[^/]*\.csv$/i
 
@@ -63,8 +55,7 @@ export const REPO_FILE_KINDS: Record<
 	pcbFab: {
 		label: "Fabrication files",
 		missing: "No Gerber or drill files (or a zip of them) found",
-		// A .zip counts, as in Stasis: most fab houses take the Gerbers as one
-		// zipped export, and that is often all a repo carries.
+		// A .zip counts, as in Stasis: most fab houses take the Gerbers as one zipped export, and that is often all a repo carries.
 		extensions: [".gbr", ".gbl", ".gtl", ".gbs", ".gts", ".gbo", ".gto", ".gko", ".drl", ".zip"],
 	},
 	cadSource: {
@@ -80,9 +71,8 @@ export const REPO_FILE_KINDS: Record<
 	firmware: {
 		label: "Firmware",
 		missing:
-			"No firmware found — Arduino (.ino), C/C++, MicroPython or CircuitPython (.py), Rust and the like all count",
-		// .mpy is precompiled MicroPython/CircuitPython; .uf2/.hex/.bin are built
-		// images, which count when the source lives elsewhere.
+			"No firmware found – Arduino (.ino), C/C++, MicroPython or CircuitPython (.py), Rust and the like all count",
+		// .mpy is precompiled MicroPython/CircuitPython; .uf2/.hex/.bin are built images, which count when the source lives elsewhere.
 		extensions: [
 			".ino",
 			".c",
@@ -104,7 +94,7 @@ export const REPO_FILE_KINDS: Record<
 	},
 	logicSchematic: {
 		label: "Schematic",
-		missing: "No schematic found — KiCad, Logisim (.circ) or Digital (.dig) files all count",
+		missing: "No schematic found – KiCad, Logisim (.circ) or Digital (.dig) files all count",
 		extensions: [".kicad_sch", ".kicad_pro", ".kicad_pcb", ".sch", ".schdoc", ".esch", ".fzz", ".circ", ".dig"],
 	},
 	bom: {
@@ -118,15 +108,12 @@ export const THEME_REPO_REQUIREMENTS: Record<
 	Theme,
 	{ required: readonly RepoFileKind[]; recommended: readonly RepoFileKind[] }
 > = {
-	// A PCB week's board has to do something, so the code that runs on it is
-	// part of the hand-in, not an extra.
+	// A PCB week's board has to do something, so the code that runs on it is part of the hand-in, not an extra.
 	[Theme.PCB]: { required: ["pcbSource", "firmware"], recommended: ["pcbFab", "bom"] },
 	[Theme.CAD]: { required: ["cadSource"], recommended: ["cadModel"] },
 	[Theme.SYNTH]: { required: ["logicSchematic"], recommended: ["firmware"] },
 	[Theme.DISPLAYS]: { required: ["firmware"], recommended: ["logicSchematic"] },
 	[Theme.BREADBOARD_COMPUTER]: { required: ["logicSchematic"], recommended: [] },
-	// A warm-up project is any hardware project, so nothing over and above the
-	// README and photos every hand-in owes (see lib/repo-checks) is demanded of
-	// its repo.
+	// A warm-up project is any hardware project, so nothing over and above the README and photos every hand-in owes (see lib/repo-checks) is demanded of its repo.
 	[Theme.WARMUP]: { required: [], recommended: [] },
 }

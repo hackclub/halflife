@@ -10,8 +10,7 @@ import { listAuditLog } from "@/lib/queries/admin"
 export const dynamic = "force-dynamic"
 
 const query = paginationQuery.extend({
-	// An enum, not a free string: anything else used to reach Prisma and answer
-	// a 500 instead of naming the bad parameter.
+	// An enum, not a free string: anything else used to reach Prisma and answer a 500 instead of naming the bad parameter.
 	action: z.enum(AuditAction).optional(),
 	targetId: z.string().max(80).optional(),
 })

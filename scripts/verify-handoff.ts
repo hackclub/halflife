@@ -6,22 +6,15 @@ import { PrismaClient } from "../src/app/generated/prisma/client"
 /**
  * End-to-end check of the phone handoff.
  *
- * This feature deliberately accepts an unauthenticated upload, so the token is
- * the only thing standing between a QR code and someone's account. Every
- * property that keeps that narrow is asserted here:
+ * This feature deliberately accepts an unauthenticated upload, so the token is the only thing standing between a QR code and someone's account. Every property that keeps that narrow is asserted here:
  *
- * 1. The plaintext token is never stored — a database leak must not yield
- *    working upload links.
- * 2. One use, ever, claimed atomically so two phones racing the same code
- *    cannot both win.
+ * 1. The plaintext token is never stored – a database leak must not yield working upload links.
+ * 2. One use, ever, claimed atomically so two phones racing the same code cannot both win.
  * 3. Expiry is enforced on the way in, not just in the UI.
- * 4. The object key is built from the handoff's OWNER, so a token can only
- *    ever write into the prefix of the person who generated it.
- * 5. Minting a new code retires the previous one, so a code photographed off a
- *    screen does not stay live.
+ * 4. The object key is built from the handoff's OWNER, so a token can only ever write into the prefix of the person who generated it.
+ * 5. Minting a new code retires the previous one, so a code photographed off a screen does not stay live.
  *
- * The R2 round trip is skipped when uploads are not configured; everything
- * else runs regardless.
+ * The R2 round trip is skipped when uploads are not configured; everything else runs regardless.
  *
  * Run with `pnpm verify:handoff` against a scratch database.
  */
@@ -131,8 +124,7 @@ async function main() {
 	if (uploadsReady) {
 		const result = await completeHandoff(live.token, fakeVideo())
 
-		// The whole security model in one assertion: the key is derived from the
-		// handoff's owner, so a token cannot write anywhere but its own prefix.
+		// The whole security model in one assertion: the key is derived from the handoff's owner, so a token cannot write anywhere but its own prefix.
 		check("the object key is under the OWNER's prefix", result.objectKey.startsWith(`posts/${owner.id}/`), true)
 		check("and not the stranger's", result.objectKey.includes(stranger.id), false)
 

@@ -2,7 +2,7 @@ import "server-only"
 import type { Prisma } from "@/app/generated/prisma/client"
 import prisma from "@/lib/prisma"
 
-/** Keep these literals stable — admin surfaces match them by string. */
+/** Keep these literals stable – admin surfaces match them by string. */
 export type SyncKey =
 	| "hackatime"
 	| "airtable_ysws"
@@ -14,8 +14,7 @@ export type SyncKey =
 	| "help_ticket_summary"
 
 /**
- * One row per successful run. Failures go to the audit log instead, so a
- * timestamp in this table always means a real round trip completed.
+ * One row per successful run. Failures go to the audit log instead, so a timestamp in this table always means a real round trip completed.
  */
 export async function recordSyncRun(
 	syncKey: SyncKey,

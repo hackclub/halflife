@@ -16,10 +16,7 @@ const importSchema = z.object({ csv: z.string().min(1).max(500_000) }).strict()
 /**
  * Add shop items from a CSV, all or nothing.
  *
- * A file with any bad row, or any slug that already exists, imports nothing
- * and says which lines to fix — the same refusal the single-item form gives,
- * once per line. Existing items are never touched: changing one is what its
- * own page is for.
+ * A file with any bad row, or any slug that already exists, imports nothing and says which lines to fix – the same refusal the single-item form gives, once per line. Existing items are never touched: changing one is what its own page is for.
  */
 export const POST = withRoute(async (req: Request) => {
 	const gate = await requirePermission(Permission.MANAGE_SHOP)
@@ -50,8 +47,7 @@ export const POST = withRoute(async (req: Request) => {
 		imageUrl: item.imageUrl ?? null,
 		costUsd: dollars(item.costUsd ?? null),
 	}))
-	// createMany is one statement, so a slug added in the meantime fails the
-	// whole batch rather than leaving half of it behind.
+	// createMany is one statement, so a slug added in the meantime fails the whole batch rather than leaving half of it behind.
 	await prisma.shopItem.createMany({ data })
 
 	await Promise.all(

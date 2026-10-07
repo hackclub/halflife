@@ -25,14 +25,14 @@ better-auth against Hack Club Auth. One repo, four worlds:
 `proxy.ts` redirects `/` to `/dashboard` when a session cookie is present, so a
 stranger gets the landing page and a participant lands on the trail, which has
 its own URL.
-That cookie check is optimistic and decides nothing — `(app)` runs
+That cookie check is optimistic and decides nothing – `(app)` runs
 `requireSessionPage()`.
 
 **There are no server actions.** Every write goes through `src/app/api/**`, which
 means every write has one auditable entry point with a Zod schema on it.
 
 ```
-src/lib/config/     every tunable number — tiers, printers, themes, weeks
+src/lib/config/     every tunable number – tiers, printers, themes, weeks
 src/lib/queries/    read paths (one per surface)
 src/lib/*.ts        domain: currency, hours, review, shop, feed, handoff, streak
 src/lib/schemas/    Zod, one per API area
@@ -44,8 +44,8 @@ prisma/schema.prisma
 
 ## The seam you most need to understand
 
-The trail derives its **entire** shape — how many nodes a week has, where the
-progress reels fall, which node is live, what is locked and why — from one pure
+The trail derives its **entire** shape – how many nodes a week has, where the
+progress reels fall, which node is live, what is locked and why – from one pure
 function, `curriculum.checkpointsFor()`, applied to one map of checkpoint states.
 
 `lib/queries/store.ts` builds that map by reading the projects, sessions, posts
@@ -66,7 +66,7 @@ node the moment the 10h one landed.
 
 **The ledger is append-only.** `reconcileGrant` reads a running sum and writes
 the delta, so re-approving something converges instead of double-paying. It sums
-**by kind** — so a new bucket needs a *new kind*, not the same kind with a
+**by kind** – so a new bucket needs a *new kind*, not the same kind with a
 different bucket, or the two halves reconcile against each other's totals
 forever.
 
@@ -77,7 +77,7 @@ printer only. `spendableFor()` is the only thing that decides which applies.
 design week's hours the project itself eats (`fundingHours`); everything above
 that banks at the rate the chosen machine needs (`goal.bankedHours`). Every tier
 banks the same for the same printer. `lib/config/printers.ts` is the budget
-spreadsheet transcribed — the season must land on each price, and
+spreadsheet transcribed – the season must land on each price, and
 `verify:ledger` checks all eight machines.
 
 **Hours have one implementation.** `rollUpHours()` decides what a phase is worth
@@ -86,7 +86,7 @@ additive; timelapse duration is *not* (it is a recording of hours already
 claimed).
 
 **Uploads store keys, never URLs**, minted at read time so the bucket can move.
-Keys are `<folder>/<userId>/<uuid>.<ext>` and are **not secrets** — the feed
+Keys are `<folder>/<userId>/<uuid>.<ext>` and are **not secrets** – the feed
 returns a full video URL for every reel. Anywhere a client hands a key back,
 check `isOwnedKey()`, or a stranger's timelapse becomes evidence for hours
 nobody worked.
@@ -100,7 +100,7 @@ design.
 
 Ari (`ari.hackclub.com`, `@hackclub/ari`) is the review surface. Half Life sends
 each submitted (project, phase) as a ship and receives the decisions back as
-signed webhooks; the in-house `/review` console still exists and still works —
+signed webhooks; the in-house `/review` console still exists and still works –
 whichever decision lands first wins, because both go through `finalizeReview`
 and it refuses an already-resolved submission.
 
@@ -145,7 +145,7 @@ up a maker's HCB card grant directly (`lib/hcb.ts`, `lib/grants.ts`). It is
 deliberately narrow:
 
 - only on an **approved design**, for the frozen `grantUsd`;
-- **once per (user, project, design)** — `HcbGrantTopUp` has a unique key and
+- **once per (user, project, design)** – `HcbGrantTopUp` has a unique key and
   the row is claimed before HCB is called, so a double-click cannot pay twice;
 - a failed attempt records its error and may be retried; one in flight may not;
 - it needs `MANAGE_CREDIT`, not `REVIEW_SUBMISSIONS`.
@@ -170,7 +170,7 @@ Two things to know before enabling it:
 pnpm typecheck && pnpm lint && pnpm build
 ```
 
-Local scripts need `DATABASE_URL` in `.env` — every `package.json` script assumes
+Local scripts need `DATABASE_URL` in `.env` – every `package.json` script assumes
 it, and without it Prisma silently falls back to a database named after your
 shell user.
 
@@ -186,7 +186,7 @@ it against a scratch copy, and re-run the diff to confirm it comes back empty.
 ### The checks
 
 Eight suites. They write to whatever `DATABASE_URL` points at and clean up after
-themselves — **point them at a scratch database, never production.**
+themselves – **point them at a scratch database, never production.**
 
 | | |
 | --- | --- |
@@ -208,7 +208,7 @@ identical to "the click did nothing".
 
 ## Traps that have already bitten
 
-- **`ok()` returns the payload itself — there is no `data` envelope.** Only
+- **`ok()` returns the payload itself – there is no `data` envelope.** Only
   `fail()` wraps, in `{ error: { code, message } }`. Three clients assumed
   symmetry and threw on their first call.
 - **`tsconfig` has `noUncheckedIndexedAccess`.** Index access is
@@ -217,7 +217,7 @@ identical to "the click did nothing".
   database; `db execute` no longer takes `--url` (it reads `prisma.config.ts`).
 - **The Docker image does not ship `scripts/`.** `grant-role` and the verify
   suites cannot run in a pod as-is.
-- **`.env.example` comments live above values, not beside them** — a trailing
+- **`.env.example` comments live above values, not beside them** – a trailing
   comment gets copy-pasted into a deployment and a 32-character R2 key becomes 59.
 - **Coins are minted at review approval, not when hours are logged.** The trail
   moves immediately because the node is the entry, not the payment.
@@ -230,7 +230,7 @@ identical to "the click did nothing".
   journal photos, timelapses.
 - **`/explore` publishes journal bodies to every participant.** Written for a
   reviewer, read by peers.
-- **`/admin/feed` is post-only** — no way to unpin or remove an announcement
+- **`/admin/feed` is post-only** – no way to unpin or remove an announcement
   without the moderation route.
 - **Deadlines are soft by design.** A late joiner has to be able to finish, so
   almost nothing on the trail is hard-locked; the one real gate is that a build

@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* ============================================================
-   HALF LIFE — hand-drawn hardware workshop
+   HALF LIFE – hand-drawn hardware workshop
    A cream-paper world of sticker pucks, torn tape and marker ink.
    ============================================================ */
 
@@ -55,8 +55,8 @@
 	--color-orange-ink: #8c5507;
 	/* A padlock on a locked puck: 3:1 against sand, where sand-deep is 1.62. */
 	--color-sand-ink: #8a6c4b;
-	/* The quiet third voice line-strong was used for — timestamps, hints, rail
-     titles — at a value someone can actually read: 5.34:1 on cream. */
+	/* The quiet third voice line-strong was used for – timestamps, hints, rail
+     titles – at a value someone can actually read: 5.34:1 on cream. */
 	--color-navy-faint: #676386;
 	/* A field's edge. WCAG asks 3:1 of the boundary that tells you a control is
      there; `line` is 1.72 on white. This is 3.68 on white, 3.47 on cream. */
@@ -111,7 +111,7 @@ body {
 /* Faint scattered doodles so the cream reads as paper, not as white dimmed.
    The sheet is a seamless tile of the platform's hand-drawn symbols, baked at
    build time from the drawings in `background assets/`. It lives on the app
-   shell only — the pages with the left sidebar — so login, admin and the
+   shell only – the pages with the left sidebar – so login, admin and the
    one-shot pages keep a plain cream ground instead of the tooth. No vertical
    mask: the doodles stay as present at the bottom of the page as at the top. */
 .shell-backdrop::before {
@@ -126,11 +126,11 @@ body {
 	   --shell-parallax by AppShell. Offset via background-position rather than a
 	   transform so the seamless tile can never run out of vertical room on a
 	   long trail (a transformed viewport-sized box would leave a bare strip at
-	   the foot once the offset passed its own height). Defaults to 0 — the old
-	   static backdrop — with JS disabled or under prefers-reduced-motion. */
+	   the foot once the offset passed its own height). Defaults to 0 – the old
+	   static backdrop – with JS disabled or under prefers-reduced-motion. */
 	background-position: 0 var(--shell-parallax, 0px);
 	opacity: 0.06;
-	/* A soft vertical fade — full at the top, 45% at the bottom — so the page
+	/* A soft vertical fade – full at the top, 45% at the bottom – so the page
 	   still reads top-lit without the old mask swallowing the lower half. */
 	mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.45) 100%);
 }
@@ -203,7 +203,7 @@ body {
 
 @layer components {
 	/* ============================================================
-     PUCKS — the checkpoint tokens
+     PUCKS – the checkpoint tokens
      Physical discs: a rim disc behind, the face on top, a real
      ambient shadow beneath. Pressing sinks the face onto the rim.
      ============================================================ */
@@ -244,7 +244,7 @@ body {
 		transition: transform 0.16s var(--ease-out-expo);
 	}
 
-	/* The torn face is a layer under the icon — the same split the headers use —
+	/* The torn face is a layer under the icon – the same split the headers use –
 	   so the tear crinkles the sticker, never the glyph on top of it. */
 	.puck-face::before {
 		content: "";
@@ -406,9 +406,14 @@ body {
 	*,
 	*::before,
 	*::after {
+		/* biome-ignore-start lint/complexity/noImportantStyles: a blanket reset of every
+		   animated thing on the page, which is the entire point of the media query.
+		   Without the override the site's own keyframes and the .puck press win on
+		   specificity, and a reader who asked for reduced motion still gets motion. */
 		animation-duration: 0.001ms !important;
 		animation-iteration-count: 1 !important;
 		transition-duration: 0.001ms !important;
+		/* biome-ignore-end lint/complexity/noImportantStyles: as above */
 	}
 }
 
@@ -454,13 +459,15 @@ body {
 
 /* The Doomscroller's reel column measures its own height, so the arrows
    beside it can step aside when it is too short to hold them above the
-   actions — which depends on the frame, not on the window. */
+   actions – which depends on the frame, not on the window. */
 .doom-stage {
 	container: doom-stage / size;
 }
 @container doom-stage (max-height: 30.5rem) {
-	.doom-arrows {
-		display: none !important;
+	/* Two classes rather than `!important`: the element carries Tailwind's `md:flex`,
+	   and a second class outranks a single utility without a blanket override. */
+	.doom-stage .doom-arrows {
+		display: none;
 	}
 }
 

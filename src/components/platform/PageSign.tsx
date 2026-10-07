@@ -1,8 +1,7 @@
 import type { ReactNode } from "react"
 
 /**
- * The hanging shop sign. Two straps run up out of the header, a torn plaque
- * swings underneath. Used as the page title on every non-trail route.
+ * The hanging shop sign. Two straps run up out of the header, a torn plaque swings underneath. Used as the page title on every non-trail route.
  */
 export function PageSign({
 	label,

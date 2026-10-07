@@ -5,13 +5,9 @@ import { SketchDefs } from "@/components/platform/art"
 import "./globals.css"
 
 /**
- * The platform's root layout: fonts, tokens, and the filter definitions every
- * hand-drawn edge in the app points at.
+ * The platform's root layout: fonts, tokens, and the filter definitions every hand-drawn edge in the app points at.
  *
- * Deliberately has no participant chrome. The sidebar, the Doomscroller rail
- * and the store that feeds them live one level down in `(app)`, so the signed-
- * out login page and the staff surfaces in `(ops)` can share this design
- * system without inheriting a shell that assumes a session and a trail.
+ * Deliberately has no participant chrome. The sidebar, the Doomscroller rail and the store that feeds them live one level down in `(app)`, so the signed- out login page and the staff surfaces in `(ops)` can share this design system without inheriting a shell that assumes a session and a trail.
  */
 const jakarta = Plus_Jakarta_Sans({
 	subsets: ["latin"],

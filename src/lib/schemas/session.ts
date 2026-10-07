@@ -10,10 +10,7 @@ const mediaSchema = z.object({
 })
 
 /**
- * A timelapse is a Lapse timelapse, named by its id. Everything else about it —
- * owner, runtime, playback URL — is read back from Lapse by the route rather
- * than taken from the request, because those are the facts a reviewer relies
- * on and the client is the one party with a reason to overstate them.
+ * A timelapse is a Lapse timelapse, named by its id. Everything else about it – owner, runtime, playback URL – is read back from Lapse by the route rather than taken from the request, because those are the facts a reviewer relies on and the client is the one party with a reason to overstate them.
  */
 const timelapseSchema = z
 	.object({
@@ -29,8 +26,7 @@ export const sessionCreateSchema = z
 		// A single sitting cannot exceed a day. This is a sanity bound, not a policy.
 		hoursClaimed: z.number().min(0).max(24),
 		/**
-		 * MANUAL counts toward the journal total; HACKATIME_TRACKED does not,
-		 * because those hours already arrive through the linked project.
+		 * MANUAL counts toward the journal total; HACKATIME_TRACKED does not, because those hours already arrive through the linked project.
 		 */
 		hoursSource: z.enum(HoursSource).default("MANUAL"),
 		media: z.array(mediaSchema).max(10).default([]),

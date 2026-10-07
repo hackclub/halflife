@@ -12,10 +12,7 @@ type Params = { params: Promise<{ id: string }> }
 /**
  * Delete one of your own posts.
  *
- * A reel on a checkpoint can only go while its week can still take work: a
- * week in review or decided keeps its reels as its record, and a passed week
- * could never have the reel re-recorded, which would hold the rest of the map
- * forever (see lib/reel-gate).
+ * A reel on a checkpoint can only go while its week can still take work: a week in review or decided keeps its reels as its record, and a passed week could never have the reel re-recorded, which would hold the rest of the map forever (see lib/reel-gate).
  */
 export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 	const gate = await requireSession()

@@ -81,55 +81,36 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	// A new entry completes a checkpoint, so a deleted reel still owed holds it.
 	await assertNoOwedReel(gate.user.id)
 
-	if (project.theme === Theme.WARMUP && data.phase !== warmupPhaseOf(project)) {
+	if (project.theme === Theme.WARMUP && data.phase !== warmupPhaseOf(project))
 		return fail("VALIDATION_FAILED", "Entries on a warm-up project go on the phase it is submitted as")
-	}
 
 	const week = scheduledWeekFor(project.theme, data.phase)
 	await assertWeekStarted(week)
-	if (!(await isWeekOpen(gate.user.id, id, week))) {
-		return fail("WEEK_CLOSED", WEEK_CLOSED_MESSAGE)
-	}
+	if (!(await isWeekOpen(gate.user.id, id, week))) return fail("WEEK_CLOSED", WEEK_CLOSED_MESSAGE)
 
 	const phaseStatus = data.phase === "DESIGN" ? project.designStatus : project.buildStatus
-	if (phaseStatus === PhaseStatus.in_review) {
-		return fail("PHASE_LOCKED", "This phase is in review — unsubmit before logging more work")
-	}
-	// Same rule as editing an entry: once a week is decided, its entries are the
-	// record the decision was made against. Without this, hours could be logged
-	// after approval and paid out on the next un-approve/re-approve cycle.
-	if (isPhaseDecided(phaseStatus)) {
+	if (phaseStatus === PhaseStatus.in_review)
+		return fail("PHASE_LOCKED", "This phase is in review – unsubmit before logging more work")
+	// Same rule as editing an entry: once a week is decided, its entries are the record the decision was made against. Without this, hours could be logged after approval and paid out on the next un-approve/re-approve cycle.
+	if (isPhaseDecided(phaseStatus))
 		return fail("PHASE_LOCKED", "This phase has been submitted and decided, so new entries cannot be added")
-	}
 
-	// Evidence has to be the claimant's own. Keys are not secrets — the feed
-	// hands out a full video URL for every reel — so without this someone could
-	// attach a stranger's timelapse as proof of hours they did not work, which is
-	// the one thing the timelapse rule exists to make hard.
+	// Evidence has to be the claimant's own. Keys are not secrets – the feed hands out a full video URL for every reel – so without this someone could attach a stranger's timelapse as proof of hours they did not work, which is the one thing the timelapse rule exists to make hard.
 	//
-	// Rejected rather than quietly dropped: a participant who thinks they
-	// attached a clip and finds it missing at review has been failed silently.
+	// Rejected rather than quietly dropped: a participant who thinks they attached a clip and finds it missing at review has been failed silently.
 	const foreign = data.media.map((m) => m.objectKey).filter((key) => !isOwnedKey(gate.user.id, key))
-	if (foreign.length > 0) {
-		return fail("VALIDATION_FAILED", "Those uploads are not yours")
-	}
+	if (foreign.length > 0) return fail("VALIDATION_FAILED", "Those uploads are not yours")
 
-	// Timelapses are the same rule asked of Lapse: each must be the caller's
-	// own, published, and done processing. And one recording backs one session —
-	// otherwise the same footage could be offered as proof twice. That check is
-	// read-then-create, so it happens inside the transaction under a lock on the
-	// recording; two parallel submits of the same clip otherwise both pass it.
+	// Timelapses are the same rule asked of Lapse: each must be the caller's own, published, and done processing. And one recording backs one session – otherwise the same footage could be offered as proof twice. That check is read-then-create, so it happens inside the transaction under a lock on the recording; two parallel submits of the same clip otherwise both pass it.
 	const lapseIds = [...new Set(data.timelapses.map((t) => t.lapseId))]
 	const timelapses = await verifyOwnTimelapses(gate.user.id, lapseIds)
 
 	const timing = await stampSessionTiming(new Date())
 
-	// One transaction: a session and the streak it feeds have to land together,
-	// or a rolled-back write leaves an inflated streak with nothing behind it.
+	// One transaction: a session and the streak it feeds have to land together, or a rolled-back write leaves an inflated streak with nothing behind it.
 	const session = await prisma.$transaction(async (tx) => {
 		if (lapseIds.length > 0) {
-			// Sorted so two requests naming the same recordings cannot deadlock on
-			// each other's locks.
+			// Sorted so two requests naming the same recordings cannot deadlock on each other's locks.
 			for (const lapseId of [...lapseIds].sort()) {
 				await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`lapse:${lapseId}`}, 0))`
 			}
@@ -172,12 +153,9 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 						externalId: t.id,
 						playbackUrl: t.playbackUrl,
 						thumbnailUrl: t.thumbnailUrl,
-						// Lapse's duration is wall-clock time recorded, which is exactly
-						// what coverage is measured in.
+						// Lapse's duration is wall-clock time recorded, which is exactly what coverage is measured in.
 						coveredSeconds: t.durationSeconds,
-						// When it was recorded, and what Lapse saw on Hackatime while it
-						// ran. Together these are what stops one sitting being counted by
-						// this entry and again by the linked project.
+						// When it was recorded, and what Lapse saw on Hackatime while it ran. Together these are what stops one sitting being counted by this entry and again by the linked project.
 						recordedAt: new Date(t.createdAt),
 						hackatimeProject: t.hackatimeProject,
 					})),
@@ -205,14 +183,10 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 
 	await recomputeWeek(gate.user.id, session.weekNumber)
 
-	// The new entry lands in the repo, after this response has gone out. The
-	// scheduling read is cheap and no-ops for a project with the sync off.
+	// The new entry lands in the repo, after this response has gone out. The scheduling read is cheap and no-ops for a project with the sync off.
 	after(() => scheduleRepoSync(id))
 
-	// Same reasoning, for the overlap cache: a recording just widened the window
-	// the Hackatime hours are deduplicated against, so the spans covering it are
-	// fetched here rather than at approval — where the reviewer would otherwise
-	// see one Hackatime total and approve a different one.
+	// Same reasoning, for the overlap cache: a recording just widened the window the Hackatime hours are deduplicated against, so the spans covering it are fetched here rather than at approval – where the reviewer would otherwise see one Hackatime total and approve a different one.
 	if (timelapses.length > 0) after(() => refreshOverlapSpans(id, data.phase))
 
 	return ok({ session }, { status: 201 })

@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation"
 import { useId, useRef, useState } from "react"
 import { IconArrowDown, IconPencil, IconPlus, IconX } from "@/components/platform/icons"
 import { Modal, ModalTitle } from "@/components/platform/modals/Modal"
-import { Button, cx, inputClass } from "@/components/platform/ui"
+import { Button, inputClass } from "@/components/platform/ui"
 import type { BomLine } from "@/lib/bom"
+import { cx } from "@/lib/cx"
 import { BOM_MARGIN_USD } from "@/lib/schemas/project"
 
 const usd = (n: number) => `$${n.toFixed(2)}`
@@ -66,15 +67,9 @@ function draftOf(line: BomLine): Draft {
 /**
  * The parts list, kept here rather than typed out at submission time.
  *
- * One table, one form. The form sits under the table and serves both adding
- * and editing, so the table itself never grows inputs and stays readable at
- * phone width with a horizontal scroll. The total is read against the tier's
- * funding because that is the question the list answers: does this project
- * fit the money it is asking for.
+ * One table, one form. The form sits under the table and serves both adding and editing, so the table itself never grows inputs and stays readable at phone width with a horizontal scroll. The total is read against the tier's funding because that is the question the list answers: does this project fit the money it is asking for.
  *
- * Tax and shipping close the table as one fixed line for the whole order. It
- * has an amount and nothing else — no edit form and no remove — because every
- * order has it, even at zero.
+ * Tax and shipping close the table as one fixed line for the whole order. It has an amount and nothing else – no edit form and no remove – because every order has it, even at zero.
  */
 export function BomEditor({
 	projectId,
@@ -106,8 +101,7 @@ export function BomEditor({
 
 	const [taxShipping, setTaxShipping] = useState(initialExtra)
 
-	// The repo import, kept apart from the line form: it is one read, a preview,
-	// and one confirm, not a field-by-field edit.
+	// The repo import, kept apart from the line form: it is one read, a preview, and one confirm, not a field-by-field edit.
 	const [importOpen, setImportOpen] = useState(false)
 	const [importLoading, setImportLoading] = useState(false)
 	const [importing, setImporting] = useState(false)
@@ -138,10 +132,7 @@ export function BomEditor({
 			})
 			const payload = await res.json().catch(() => null)
 			if (!res.ok) {
-				// The server's field check says which fields, not just "Invalid
-				// request": outline those and say it the way the form's own check
-				// does. This catches anything the form let through, like a tab still
-				// running an older copy of it.
+				// The server's field check says which fields, not just "Invalid request": outline those and say it the way the form's own check does. This catches anything the form let through, like a tab still running an older copy of it.
 				const fields = Object.keys(payload?.error?.details?.properties ?? {}).filter(
 					(k): k is keyof Draft => k in FIELD_NAMES,
 				)
@@ -165,8 +156,7 @@ export function BomEditor({
 	}
 
 	async function save() {
-		// Every field, because a reviewer prices the tier from this list: a line
-		// without a vendor, a link or a price is one they cannot check.
+		// Every field, because a reviewer prices the tier from this list: a line without a vendor, a link or a price is one they cannot check.
 		const quantity = /^\d+$/.test(draft.quantity.trim()) ? Number(draft.quantity) : Number.NaN
 		const unitCostUsd = draft.unitCostUsd.trim() ? Number(draft.unitCostUsd) : Number.NaN
 		let link = draft.link.trim()
@@ -201,8 +191,7 @@ export function BomEditor({
 				? await send("POST", `/api/projects/${projectId}/bom`, body)
 				: await send("PATCH", `/api/projects/${projectId}/bom/${editing}`, body)
 		if (done) {
-			// Adding is usually several parts in a row, so the form stays open
-			// and the cursor goes back to the first field.
+			// Adding is usually several parts in a row, so the form stays open and the cursor goes back to the first field.
 			if (editing === "new") {
 				setDraft(EMPTY)
 				nameInput.current?.focus()
@@ -306,9 +295,7 @@ export function BomEditor({
 				})
 			}
 		},
-		// A red border rather than a ring. `inputClass` carries its own border
-		// now, so the invalid colour is `!`: two border colours in one layer are
-		// settled by whichever Tailwind happens to emit last.
+		// A red border rather than a ring. `inputClass` carries its own border now, so the invalid colour is `!`: two border colours in one layer are settled by whichever Tailwind happens to emit last.
 		className: cx(inputClass, "py-2 text-[0.88rem]", invalid.has(key) && "border-coral-deep! bg-coral/5"),
 	})
 
@@ -388,7 +375,7 @@ export function BomEditor({
 										</button>
 										<button
 											type="button"
-											onClick={() => void remove(l)}
+											onClick={() => remove(l)}
 											disabled={saving}
 											aria-label={`Remove ${l.name}`}
 											className="inline-grid size-8 place-items-center rounded-full text-navy-soft transition-colors hover:bg-coral/10 hover:text-coral-deep"
@@ -433,7 +420,7 @@ export function BomEditor({
 						<Button variant="outline" size="sm" onClick={() => open("new")}>
 							<IconPlus className="text-base" /> Add a part
 						</Button>
-						<Button variant="ghost" size="sm" disabled={saving || importLoading} onClick={() => void openImport()}>
+						<Button variant="ghost" size="sm" disabled={saving || importLoading} onClick={() => openImport()}>
 							<IconArrowDown className="text-base" /> Import from repo
 						</Button>
 					</div>
@@ -448,7 +435,7 @@ export function BomEditor({
 					className="mt-4 grid gap-3 rounded-2xl bg-black/[.03] p-4"
 					onSubmit={(e) => {
 						e.preventDefault()
-						void save()
+						save()
 					}}
 					onKeyDown={(e) => {
 						if (e.key === "Escape") setEditing(null)
@@ -523,11 +510,11 @@ export function BomEditor({
 								Cancel
 							</Button>
 							{preview.existing > 0 && (
-								<Button variant="outline" size="sm" disabled={importing} onClick={() => void applyImport(false)}>
+								<Button variant="outline" size="sm" disabled={importing} onClick={() => applyImport(false)}>
 									{importing ? "Adding…" : `Add ${preview.lines.length} to my list`}
 								</Button>
 							)}
-							<Button variant="solid" size="sm" disabled={importing} onClick={() => void applyImport(true)}>
+							<Button variant="solid" size="sm" disabled={importing} onClick={() => applyImport(true)}>
 								{importing
 									? "Importing…"
 									: preview.existing > 0
@@ -564,7 +551,7 @@ export function BomEditor({
 							<>
 								<p className="text-[0.9rem] leading-relaxed text-navy-soft">
 									Read {preview.lines.length} {preview.lines.length === 1 ? "part" : "parts"} from{" "}
-									<code className="hand text-navy">{preview.path}</code>. What the file did not say is left blank — open
+									<code className="hand text-navy">{preview.path}</code>. What the file did not say is left blank – open
 									each line and add a purpose, and a vendor and price a reviewer can check.
 								</p>
 								{preview.existing > 0 && (
@@ -608,7 +595,7 @@ export function BomEditor({
 								<ul className="mt-1.5 grid gap-1">
 									{preview.skipped.map((s) => (
 										<li key={s.row} className="text-[0.82rem] leading-snug text-navy-soft">
-											<span className="font-semibold text-navy">{s.name || `line ${s.row}`}</span> — {s.reason}
+											<span className="font-semibold text-navy">{s.name || `line ${s.row}`}</span> – {s.reason}
 										</li>
 									))}
 								</ul>
@@ -622,9 +609,7 @@ export function BomEditor({
 }
 
 /**
- * The order-wide line. The amount is edited in the row itself and
- * saved when the field is left or Enter is pressed — there is nothing else
- * about it to edit, so it never needs the form.
+ * The order-wide line. The amount is edited in the row itself and saved when the field is left or Enter is pressed – there is nothing else about it to edit, so it never needs the form.
  */
 function ExtraRow({
 	label,
@@ -664,8 +649,8 @@ function ExtraRow({
 				</label>
 				<span className="block text-[0.8rem] leading-snug text-navy-soft">{hint}</span>
 			</td>
-			<td className="px-3 py-2.5 text-navy-soft">—</td>
-			<td className="px-3 py-2.5 text-navy-soft">—</td>
+			<td className="px-3 py-2.5 text-navy-soft">–</td>
+			<td className="px-3 py-2.5 text-navy-soft">–</td>
 			<td className="px-3 py-1.5 font-semibold text-navy tabular-nums" colSpan={locked ? 2 : 3}>
 				{locked ? (
 					usd(value)
@@ -683,15 +668,14 @@ function ExtraRow({
 								setDraft(e.target.value)
 								if (invalid) setInvalid(false)
 							}}
-							onBlur={() => void commit()}
+							onBlur={() => commit()}
 							onKeyDown={(e) => {
 								if (e.key === "Enter") {
 									e.preventDefault()
 									e.currentTarget.blur()
 								}
 							}}
-							// Its own look rather than inputClass: a white field on the white
-							// panel reads as a printed number, not one you can change.
+							// Its own look rather than inputClass: a white field on the white panel reads as a printed number, not one you can change.
 							className={cx(
 								"block w-24 rounded-lg border-2 border-field bg-black/[.03] px-2.5 py-1.5 text-[0.86rem] text-navy tabular-nums outline-none placeholder:text-navy-faint",
 								"transition-colors hover:border-navy-soft focus:border-violet focus:bg-white",

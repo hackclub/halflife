@@ -45,7 +45,7 @@ requests bought eight things with one balance.
 
 `lockUserCredit(tx, userId)` takes a `pg_advisory_xact_lock` as the first
 statement inside every transaction that reads a balance and then writes against
-it — purchase, refund, admin adjustment, and the review reconcile. It releases
+it – purchase, refund, admin adjustment, and the review reconcile. It releases
 with the transaction, including on rollback. `scripts/verify-ledger.ts` fires
 eight concurrent purchases and asserts exactly one succeeds.
 
@@ -61,13 +61,13 @@ payout team has the full trail without a second payment.
 
 A tier decides one thing: how many of a design week's hours the project itself
 eats. Everything above that funded block banks toward a machine, and how much
-has to bank each week is a property of the machine, not of the tier — so Tier 1
+has to bank each week is a property of the machine, not of the tier – so Tier 1
 and Tier 3 both reach a Bambu P1S, and Tier 3 simply has more funded hours
 underneath the same banking.
 
 It used to be a tier property (a fixed 2, 5 or 10 hours a week), which quietly
 made the expensive machines unreachable from Tier 1 and over-funded the cheap
-ones from Tier 3 — and sized the whole programme against a 175-coin printer that
+ones from Tier 3 – and sized the whole programme against a 175-coin printer that
 was not the price of anything. The cheapest machine on the budget sheet is
 $218.90.
 
@@ -83,8 +83,8 @@ short of the machine the goal tracker spent ten weeks promising them.
 
 ## The trail is derived, not stored
 
-The platform's shape — how many nodes a week has, where the progress reels fall,
-which node is live, what is locked and why — is computed by one pure function
+The platform's shape – how many nodes a week has, where the progress reels fall,
+which node is live, what is locked and why – is computed by one pure function
 (`lib/curriculum.ts`) from one map of checkpoint states. The server's only job
 is to say which checkpoints are done and with what; `lib/queries/store.ts` reads
 that map out of the projects, sessions, posts and submissions that already
@@ -109,7 +109,7 @@ the 20h node the moment the 10h one landed.
   total; it becomes a coverage ratio against claimed time. `coveredSeconds`
   (wall-clock time represented) is stored separately from `runtimeSeconds` (the
   video's length), because stasis stores only the runtime and then reports it as
-  hours — so a 30× timelapse of eight hours displays as 0.27h and looks like the
+  hours – so a 30× timelapse of eight hours displays as 0.27h and looks like the
   participant did nothing.
 
 Approving refuses outright when Hackatime data is stale, rather than treating a
@@ -126,7 +126,7 @@ anyone edits, and a row would only create drift between the database and the
 copy on the dashboard. Siege has run a 14-week program on exactly this.
 
 Deadlines are **soft**. The week schedule drives what the dashboard highlights
-and stamps an `onTime` flag on submissions for analytics. Nothing gates on it —
+and stamps an `onTime` flag on submissions for analytics. Nothing gates on it –
 a late joiner has to be able to finish, and someone doing week 3's theme in
 week 5 lands on the same row they would have in week 3. Hard gating is one
 settings toggle plus per-user and per-project `submissionExtensionUntil`
@@ -160,8 +160,8 @@ paid with no review and no record. Every review freezes the numbers it used onto
 
 - An adopt-or-create keyed on `(email, project name, stage)` under a Postgres
   advisory lock per `(project, phase)`, not a plain read-then-write. Two
-  concurrent writes — an admin double-click, a retried request, the submit hook
-  racing the retry job — would both read zero rows and both create, putting
+  concurrent writes – an admin double-click, a retried request, the submit hook
+  racing the retry job – would both read zero rows and both create, putting
   duplicate grant rows into the payout sink. (Airtable's `performUpsert` on a
   `(Half-Life ID, Stage)` field pair is the better key when those fields
   exist; the lock is what makes the current key safe.)
@@ -182,7 +182,7 @@ paid with no review and no record. Every review freezes the numbers it used onto
 
 Every RSVP lands in `RsvpBuffer` in Postgres and is drained to Airtable by a
 job. Stasis writes through synchronously inside the request handler, so a
-rate-limited Airtable becomes a failed signup — and only falls back to Postgres
+rate-limited Airtable becomes a failed signup – and only falls back to Postgres
 when someone flips an env var by hand.
 
 ## Auth and guards
@@ -194,15 +194,15 @@ siege's separate Slack-OAuth-plus-identity-vault dance.
 It answers with two names, and the site shows one of them. HCA's `nickname`
 claim is copied to `User.displayName` at every sign-in and is what every
 surface renders, through `lib/display-name`; `User.name` keeps the full
-"first last" string for everything that needs a whole person — the Airtable
-RSVP and YSWS rows, Ari, the participant export — all of which split it into
+"first last" string for everything that needs a whole person – the Airtable
+RSVP and YSWS rows, Ari, the participant export – all of which split it into
 first and last. The helper falls back to `name` for a row that has not signed
 in since the column existed.
 
 Two guard modules, because they fail differently: `lib/guards.ts` returns a JSON
 response for route handlers, `lib/page-guards.ts` redirects or 404s for server
 components. Page-level auth in a server component removes the auth flash and
-stops an unauthorised page rendering at all — stasis does admin auth in a
+stops an unauthorised page rendering at all – stasis does admin auth in a
 `'use client'` layout, so `/admin` renders first and then vanishes.
 
 Permission checks 404 rather than 403 where the resource's existence is itself

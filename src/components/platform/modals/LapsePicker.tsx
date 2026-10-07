@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { IconArrowRight, IconCheck, IconClock, IconFilm, IconWarning } from "@/components/platform/icons"
-import { Button, Chip, cx } from "@/components/platform/ui"
+import { Button, Chip } from "@/components/platform/ui"
+import { cx } from "@/lib/cx"
 
 export interface LapseTimelapse {
 	id: string
@@ -50,11 +51,7 @@ async function fetchPage(cursor?: string, forSession?: string) {
 /**
  * Pick the Lapse timelapses that back this entry.
  *
- * Timelapses are recorded on Lapse, not here. This lists what the maker has
- * published there and lets them tick the ones for this session. A timelapse is
- * offered only once it is finished and not already claimed by another entry —
- * one recording backs one session, and the server holds to both rules whatever
- * this shows.
+ * Timelapses are recorded on Lapse, not here. This lists what the maker has published there and lets them tick the ones for this session. A timelapse is offered only once it is finished and not already claimed by another entry – one recording backs one session, and the server holds to both rules whatever this shows.
  */
 export function LapsePicker({
 	picked,
@@ -67,8 +64,7 @@ export function LapsePicker({
 	/** Leaves the page for Lapse; the caller stashes the draft first. */
 	onSignIn: () => void | Promise<void>
 	/**
-	 * The entry being edited, so its own clips read as free: taking one off
-	 * and putting it back on stays pickable instead of reading as claimed.
+	 * The entry being edited, so its own clips read as free: taking one off and putting it back on stays pickable instead of reading as claimed.
 	 */
 	forSession?: string
 }) {
@@ -90,7 +86,7 @@ export function LapsePicker({
 
 	useEffect(() => {
 		// eslint-disable-next-line react-hooks/set-state-in-effect -- fetching on mount
-		void refresh()
+		refresh()
 	}, [refresh])
 
 	async function loadMore() {
@@ -149,7 +145,7 @@ export function LapsePicker({
 					Timelapses are recorded on Lapse. Sign in once and every timelapse you publish there shows up here to pick
 					from.
 				</p>
-				<Button variant="solid" disabled={leaving} onClick={() => void startSignIn()}>
+				<Button variant="solid" disabled={leaving} onClick={() => startSignIn()}>
 					{leaving ? "Opening Lapse…" : "Sign in with Lapse"} <IconArrowRight className="text-base" />
 				</Button>
 				<p className="hand text-[0.78rem] text-navy-soft">
@@ -165,7 +161,7 @@ export function LapsePicker({
 				<p role="alert" className="flex items-start gap-2 text-[0.88rem] font-semibold text-coral-deep">
 					<IconWarning className="mt-0.5 shrink-0 text-base" /> {load.message}
 				</p>
-				<Button variant="outline" size="sm" onClick={() => void refresh()}>
+				<Button variant="outline" size="sm" onClick={() => refresh()}>
 					Try again
 				</Button>
 			</div>
@@ -185,7 +181,7 @@ export function LapsePicker({
 				>
 					record a new one on Lapse
 				</a>
-				<Button variant="ghost" size="sm" onClick={() => void refresh()}>
+				<Button variant="ghost" size="sm" onClick={() => refresh()}>
 					Refresh
 				</Button>
 			</div>
@@ -233,9 +229,7 @@ export function LapsePicker({
 								>
 									<span className="relative grid aspect-video w-24 shrink-0 place-items-center overflow-hidden rounded-lg bg-navy/10">
 										{t.thumbnailUrl ? (
-											// Lapse's CDN, sized by the box; next/image would need
-											// every Lapse host allow-listed for no gain at 96px.
-											// eslint-disable-next-line @next/next/no-img-element
+											// Lapse's CDN, sized by the box; next/image would need every Lapse host allow-listed for no gain at 96px. eslint-disable-next-line @next/next/no-img-element
 											<img src={t.thumbnailUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
 										) : (
 											<IconFilm className="text-lg text-navy-soft" />
@@ -276,7 +270,7 @@ export function LapsePicker({
 
 			{load.nextCursor && (
 				<div className="mt-3 flex justify-center">
-					<Button variant="outline" size="sm" onClick={() => void loadMore()} disabled={more}>
+					<Button variant="outline" size="sm" onClick={() => loadMore()} disabled={more}>
 						{more ? "Loading…" : "Show older timelapses"}
 					</Button>
 				</div>

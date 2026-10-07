@@ -9,11 +9,7 @@ function token(): string | null {
 /**
  * One Slack Web API call.
  *
- * Throws on anything Slack does not answer with `ok: true` — a revoked token,
- * the bot not being in the channel, a rate limit — so a caller wrapped in
- * `trackSideEffect` writes a NOTIFICATION_FAILURE audit row instead of a
- * console line nobody reads. (The Slack app's own client in `lib/site/slack`
- * is separate: it answers webhooks, where the caller handles the failure.)
+ * Throws on anything Slack does not answer with `ok: true` – a revoked token, the bot not being in the channel, a rate limit – so a caller wrapped in `trackSideEffect` writes a NOTIFICATION_FAILURE audit row instead of a console line nobody reads. (The Slack app's own client in `lib/site/slack` is separate: it answers webhooks, where the caller handles the failure.)
  */
 async function slackCall<T>(method: string, body: Record<string, unknown>): Promise<T> {
 	const bot = token()

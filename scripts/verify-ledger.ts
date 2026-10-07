@@ -6,9 +6,7 @@ import { Phase, PhaseStatus, ReviewResult, ShopItemCategory, Theme } from "../sr
 /**
  * End-to-end check of the money path.
  *
- * The property that matters: approving a build, un-approving it, and approving
- * it again must land on exactly the same balance as approving it once. That is
- * what `reconcileGrant` buys, and it is the failure mode that costs real money
+ * The property that matters: approving a build, un-approving it, and approving it again must land on exactly the same balance as approving it once. That is what `reconcileGrant` buys, and it is the failure mode that costs real money
  * if it regresses.
  *
  * Run with `yarn tsx scripts/verify-ledger.ts` against a scratch database.
@@ -58,8 +56,7 @@ async function main() {
 		},
 	})
 
-	// 18 hours of journal work. A build has no funding floor, so all of it pays,
-	// spendable on anything.
+	// 18 hours of journal work. A build has no funding floor, so all of it pays, spendable on anything.
 	await prisma.workSession.create({
 		data: {
 			themeProjectId: project.id,
@@ -70,8 +67,7 @@ async function main() {
 		},
 	})
 
-	// This exercise approves an 18h BUILD. Every hour earns, 5 coins each,
-	// spendable on anything.
+	// This exercise approves an 18h BUILD. Every hour earns, 5 coins each, spendable on anything.
 	const buildSplit = buildCoinsFor(18)
 	const expectedTotal = buildSplit.spendable + THEME_COMPLETION_BONUS
 
@@ -102,7 +98,7 @@ async function main() {
 	const first = await approve()
 	check("approved hours frozen", first.approvedHours, 18)
 	check("build coins minted", first.coins?.spendable, buildSplit.spendable)
-	check("a build banks nothing — every coin is spendable", first.coins?.banked, 0)
+	check("a build banks nothing – every coin is spendable", first.coins?.banked, 0)
 	check("balance after first approval", await spendable(), expectedTotal)
 	check("no locked fund holds anything", await banked(), 0)
 
@@ -113,11 +109,7 @@ async function main() {
 	check("balance after re-approval does not double", await spendable(), expectedTotal)
 
 	const entries = await prisma.ledgerEntry.count({ where: { userId: participant.id } })
-	// A build approval writes two lines — the spendable mint and the completion
-	// bonus. The legacy locked half reconciles to a zero target against a zero
-	// sum, which writes nothing. This exercise approves, un-approves and
-	// re-approves. Six rows for three states: history is appended, never edited,
-	// and the running total still converges to the same place it started.
+	// A build approval writes two lines – the spendable mint and the completion bonus. The legacy locked half reconciles to a zero target against a zero sum, which writes nothing. This exercise approves, un-approves and re-approves. Six rows for three states: history is appended, never edited, and the running total still converges to the same place it started.
 	const LINES_PER_BUILD_APPROVAL = 2
 	check("ledger rows appended, never edited", entries, LINES_PER_BUILD_APPROVAL * 3)
 
@@ -140,9 +132,7 @@ async function main() {
 	check("printer qualification", qualification.qualified, true)
 	check("themes shipped", qualification.shippedCount, 5)
 
-	// Nobody reviews their own work. Every account owns five themed projects, so
-	// without this a REVIEWER could approve their own design, set their own tier
-	// and mint their own credit.
+	// Nobody reviews their own work. Every account owns five themed projects, so without this a REVIEWER could approve their own design, set their own tier and mint their own credit.
 	const selfSubmission = await prisma.phaseSubmission.create({
 		data: { themeProjectId: project.id, phase: Phase.DESIGN },
 	})
@@ -165,9 +155,7 @@ async function main() {
 	// The balance must be untouched by the attempt.
 	check("self-review minted nothing", await spendable(), expectedTotal)
 
-	// Concurrent purchases must not double-spend. The balance is a SUM over an
-	// append-only table, so without a per-user lock ten parallel requests all
-	// read the same balance and all succeed.
+	// Concurrent purchases must not double-spend. The balance is a SUM over an append-only table, so without a per-user lock ten parallel requests all read the same balance and all succeed.
 	const { purchase } = await import("../src/lib/shop")
 	await prisma.programSettings.update({
 		where: { id: "singleton" },
@@ -192,9 +180,7 @@ async function main() {
 
 	// ── Single-pot minting ─────────────────────────────────────────────────────
 	//
-	// Everything above spends the one spendable pot. What follows is the
-	// invariant the merge rests on: there is no locked half anymore, so every
-	// minted coin lands spendable and the pacing math is guidance only.
+	// Everything above spends the one spendable pot. What follows is the invariant the merge rests on: there is no locked half anymore, so every minted coin lands spendable and the pacing math is guidance only.
 	const { designCoinsFor } = await import("../src/lib/hours")
 	const { PRINTERS, DESIGN_WEEKS, BUILD_WEEKS } = await import("../src/lib/config/printers")
 	const { BUILD_HOURS } = await import("../src/lib/config/program")
@@ -204,18 +190,13 @@ async function main() {
 	check("design mints nothing locked", design.banked, 0)
 	check("design pays everything past funding as spendable", design.spendable, 25)
 
-	// The tier only moves the funded block: Tier 3 funds 20h, so the equivalent
-	// week is 20 + 5.
+	// The tier only moves the funded block: Tier 3 funds 20h, so the equivalent week is 20 + 5.
 	const tier3 = designCoinsFor(3, 25)
 	check("tier does not change what earns", tier3.spendable, design.spendable)
 
-	// The whole point of the catalogue: a season worked at a goal's own pace has
-	// to actually buy that goal. Five design weeks at its banking rate, plus five
-	// build weeks of BUILD_HOURS, must clear the price.
+	// The whole point of the catalogue: a season worked at a goal's own pace has to actually buy that goal. Five design weeks at its banking rate, plus five build weeks of BUILD_HOURS, must clear the price.
 	//
-	// This is the check that would have caught the economy this replaced, where
-	// the documented minimum path minted 175 coins and the cheapest machine that
-	// exists cost 219.
+	// This is the check that would have caught the economy this replaced, where the documented minimum path minted 175 coins and the cheapest machine that exists cost 219.
 	for (const goal of PRINTERS) {
 		const earned =
 			DESIGN_WEEKS * designCoinsFor(1, 6 + goal.paceHours).total + BUILD_WEEKS * buildCoinsFor(BUILD_HOURS).total
@@ -263,16 +244,13 @@ async function main() {
 		reason: "11h of modelling.",
 		tier: 1,
 	})
-	// Derived rather than typed out: these numbers move whenever the default goal
-	// is re-priced, and a hardcoded copy would only ever be discovered wrong by
-	// failing here long after the change that broke it.
+	// Derived rather than typed out: these numbers move whenever the default goal is re-priced, and a hardcoded copy would only ever be discovered wrong by failing here long after the change that broke it.
 	const expectedDesign = designCoinsFor(1, 11)
 	check("design approval locks nothing", designOutcome.coins?.banked, 0)
 	check("every earned coin lands spendable", await saverSpendable(), expectedDesign.spendable)
 	check("the legacy locked pot stays empty", await saverBanked(), 0)
 
-	// An upgrade costs part of the design mint. It must succeed: every coin is
-	// spendable on anything now, goal or no goal.
+	// An upgrade costs part of the design mint. It must succeed: every coin is spendable on anything now, goal or no goal.
 	const upgrade = await prisma.shopItem.create({
 		data: {
 			id: `ledger-check-upgrade-${stamp}`,
@@ -304,9 +282,7 @@ async function main() {
 	check("a printer purchase empties the balance", await saverSpendable(), 0)
 	check("and leaves nothing locked either", await saverBanked(), 0)
 
-	// Clean up so the script is re-runnable. Order matters: SubmissionReview
-	// restricts deleting its reviewer, so the participant (whose projects cascade
-	// down to those reviews) has to go first.
+	// Clean up so the script is re-runnable. Order matters: SubmissionReview restricts deleting its reviewer, so the participant (whose projects cascade down to those reviews) has to go first.
 	await prisma.user.delete({ where: { id: participant.id } })
 	await prisma.user.delete({ where: { id: saver.id } })
 	await prisma.user.delete({ where: { id: reviewer.id } })

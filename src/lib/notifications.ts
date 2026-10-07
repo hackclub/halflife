@@ -9,14 +9,9 @@ import { postMessage, sendDM } from "@/lib/slack"
 /**
  * Telling a maker what a review decided.
  *
- * Best-effort: a decision must never fail because Slack or the mail provider
- * is down, so each channel is attempted independently and a failure becomes a
- * `NOTIFICATION_FAILURE` audit row rather than an error. The in-app project
- * page is still the source of truth, so a missed message is inconvenient, not
- * lost.
+ * Best-effort: a decision must never fail because Slack or the mail provider is down, so each channel is attempted independently and a failure becomes a `NOTIFICATION_FAILURE` audit row rather than an error. The in-app project page is still the source of truth, so a missed message is inconvenient, not lost.
  *
- * Called after the decision transaction has committed, from both decision
- * paths (the console route and the Ari webhook), so the two cannot drift.
+ * Called after the decision transaction has committed, from both decision paths (the console route and the Ari webhook), so the two cannot drift.
  */
 
 export interface ReviewOutcomeNotice {
@@ -41,16 +36,16 @@ function headline(result: ReviewResult, phase: string, title: string): { subject
 	const what = `${phase} for ${title}`
 	switch (result) {
 		case ReviewResult.APPROVED:
-			return { subject: `Your ${phase} was approved — ${title}`, body: `Good news: your ${what} was approved.` }
+			return { subject: `Your ${phase} was approved – ${title}`, body: `Good news: your ${what} was approved.` }
 		case ReviewResult.RETURNED:
 			return {
-				subject: `Changes requested on your ${phase} — ${title}`,
+				subject: `Changes requested on your ${phase} – ${title}`,
 				body: `Your ${what} needs a few changes before it can be approved.`,
 			}
 		case ReviewResult.REJECTED:
-			return { subject: `Your ${phase} was not approved — ${title}`, body: `Your ${what} was not approved.` }
+			return { subject: `Your ${phase} was not approved – ${title}`, body: `Your ${what} was not approved.` }
 		default:
-			return { subject: `An update on your ${phase} — ${title}`, body: `There is an update on your ${what}.` }
+			return { subject: `An update on your ${phase} – ${title}`, body: `There is an update on your ${what}.` }
 	}
 }
 
@@ -94,7 +89,7 @@ export async function notifyReviewOutcome(notice: ReviewOutcomeNotice): Promise<
 			...(feedback ? ["", `Reviewer's note: ${feedback}`] : []),
 			...(url ? ["", `Open the project: ${url}`] : []),
 			"",
-			"— Half Life",
+			"– Half Life",
 		].join("\n")
 
 		const html = [
@@ -105,7 +100,7 @@ export async function notifyReviewOutcome(notice: ReviewOutcomeNotice): Promise<
 				? `<blockquote style="margin:1rem 0;padding:.5rem 1rem;border-left:3px solid #c8c3d6;color:#4a4785">${escapeHtml(feedback)}</blockquote>`
 				: "",
 			url ? `<p><a href="${url}" style="color:#2e8cae">Open the project</a></p>` : "",
-			`<p style="color:#4a4785">— Half Life</p>`,
+			`<p style="color:#4a4785">– Half Life</p>`,
 			"</div>",
 		]
 			.filter(Boolean)
@@ -118,8 +113,7 @@ export async function notifyReviewOutcome(notice: ReviewOutcomeNotice): Promise<
 /**
  * Ask staff to look again at a decision a maker has disputed.
  *
- * Posted to `SLACK_REVIEW_CHANNEL_ID` when it is set. A deployment without it
- * still has the dispute in the console and the audit log, so nothing is lost.
+ * Posted to `SLACK_REVIEW_CHANNEL_ID` when it is set. A deployment without it still has the dispute in the console and the audit log, so nothing is lost.
  */
 export async function notifyStaffDispute(input: {
 	themeProjectId: string

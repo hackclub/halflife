@@ -11,8 +11,7 @@ type Params = { params: Promise<{ id: string }> }
 /**
  * The repo checks for one of the caller's projects, for the submit sheet.
  *
- * Advisory only: the submit route runs the same checks itself before it lets
- * a phase through, so nothing here is an authorisation.
+ * Advisory only: the submit route runs the same checks itself before it lets a phase through, so nothing here is an authorisation.
  */
 export const GET = withRoute(async (_req: Request, { params }: Params) => {
 	const gate = await requireSession()
@@ -26,8 +25,7 @@ export const GET = withRoute(async (_req: Request, { params }: Params) => {
 	if (!project) return fail("NOT_FOUND", "Project not found")
 
 	const checks = await checkRepo(project.githubRepo, project.theme)
-	// First time the checks come back green, stamp it — the admin funnel uses it
-	// to separate "passed the repo checks" from "actually submitted".
-	if (checks.canSubmit) void markChecksPassed(gate.user.id)
+	// First time the checks come back green, stamp it – the admin funnel uses it to separate "passed the repo checks" from "actually submitted".
+	if (checks.canSubmit) markChecksPassed(gate.user.id)
 	return ok(checks)
 })

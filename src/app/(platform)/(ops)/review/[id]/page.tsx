@@ -44,7 +44,7 @@ export default async function ReviewDetailPage({ params }: Props) {
 	return (
 		<div className="hl-stack">
 			<PageHeader
-				title={`${detail.themeLabel} — ${submission.phase.toLowerCase()}`}
+				title={`${detail.themeLabel} – ${submission.phase.toLowerCase()}`}
 				subtitle={`${project.user.email ? displayName(project.user, project.user.email) : (displayName(project.user) ?? "—")} · submitted ${submission.createdAt.toDateString()}`}
 				actions={
 					<Badge tone={statusTone(submission.phase === "DESIGN" ? project.designStatus : project.buildStatus)}>
@@ -125,7 +125,7 @@ export default async function ReviewDetailPage({ params }: Props) {
 				<Callout tone="info">
 					<strong>{(breakdown.hackatimeOverlapSeconds / 3600).toFixed(1)}h counted once.</strong> That time is tracked
 					by Hackatime <em>and</em> backed by a timelapse on a journal entry, so it is taken off Hackatime and counted
-					through the entry. An explicit override bypasses this — the subtraction only applies to computed hours.
+					through the entry. An explicit override bypasses this – the subtraction only applies to computed hours.
 				</Callout>
 			)}
 			{breakdown.hackatimeOverlapUnknown && (
@@ -173,7 +173,7 @@ export default async function ReviewDetailPage({ params }: Props) {
 										</div>
 									) : null}
 									{session.hoursSource === "HACKATIME_TRACKED" ? (
-										<div className="hl-hint">counted via Hackatime — contributes 0 to the journal total</div>
+										<div className="hl-hint">counted via Hackatime – contributes 0 to the journal total</div>
 									) : null}
 								</td>
 								<td className="hl-mono">{session.hoursClaimed}h</td>

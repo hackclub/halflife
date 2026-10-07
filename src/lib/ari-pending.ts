@@ -3,10 +3,7 @@ import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
 /**
  * Which (project, phase) hand-ins never reached Ari.
  *
- * Pure so `verify:contracts` can pin the selection rules without a database —
- * this decides what the hourly retry job replays and what the admin's Retry
- * button is offered, and getting it wrong either resends a ship Ari already
- * has or leaves a hand-in nobody will ever review.
+ * Pure so `verify:contracts` can pin the selection rules without a database – this decides what the hourly retry job replays and what the admin's Retry button is offered, and getting it wrong either resends a ship Ari already has or leaves a hand-in nobody will ever review.
  */
 export interface PendingShipProject {
 	id: string
@@ -25,8 +22,7 @@ export function selectPendingShips(
 	projects: readonly PendingShipProject[],
 	submissions: readonly PendingShipSubmission[],
 ): { themeProjectId: string; phase: Phase }[] {
-	// The newest open submission per (project, phase) is the one a reviewer
-	// would be looking at, so an older row cannot make its phase look unsent.
+	// The newest open submission per (project, phase) is the one a reviewer would be looking at, so an older row cannot make its phase look unsent.
 	const newest = new Map<string, PendingShipSubmission>()
 	for (const submission of submissions) {
 		const key = `${submission.themeProjectId}:${submission.phase}`

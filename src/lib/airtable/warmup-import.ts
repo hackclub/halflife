@@ -22,30 +22,14 @@ import { buildObjectKey, isUploadConfigured, MAX_UPLOAD_BYTES, putObject } from 
 /**
  * Bring the warm-up weeks' projects into Half Life.
  *
- * Before the program opened, projects were handed in through a Fillout form
- * that writes rows into the `YSWS Project Submission` table — the same table
- * Half Life's own submissions land in. This reads those rows, files each one
- * on the Warm Up track, creates the submitter's account if they have not
- * signed up yet, and sends the project to Ari so it enters the same review
- * queue as everything submitted through the site.
+ * Before the program opened, projects were handed in through a Fillout form that writes rows into the `YSWS Project Submission` table – the same table Half Life's own submissions land in. This reads those rows, files each one on the Warm Up track, creates the submitter's account if they have not signed up yet, and sends the project to Ari so it enters the same review queue as everything submitted through the site.
  *
  * Ownership and idempotency:
- *  - A row Half Life itself wrote (an AIRTABLE_SYNC_SUCCESS audit row carries
- *    its record id) is never imported; it is already a local submission.
- *  - A row that was imported is recorded in an ADMIN_IMPORT_AIRTABLE_PROJECT
- *    audit row keyed by its Airtable record id, so re-running the import only
- *    picks up rows that arrived since.
- *  - Warm-up projects are `Theme.WARMUP`, which is not one of the five season
- *    themes, so they do not occupy a maker's season slots. Unlike a season
- *    theme, `WARMUP` is not unique per maker: the form may have been filled in
- *    more than once, and every row is a different project. Each row therefore
- *    becomes its own project — the `(userId, theme)` unique index is partial
- *    and skips warm-up rows (see prisma/schema.prisma), so a second one does
- *    not collide with the first.
+ * - A row Half Life itself wrote (an AIRTABLE_SYNC_SUCCESS audit row carries its record id) is never imported; it is already a local submission.
+ * - A row that was imported is recorded in an ADMIN_IMPORT_AIRTABLE_PROJECT audit row keyed by its Airtable record id, so re-running the import only picks up rows that arrived since.
+ * - Warm-up projects are `Theme.WARMUP`, which is not one of the five season themes, so they do not occupy a maker's season slots. Unlike a season theme, `WARMUP` is not unique per maker: the form may have been filled in more than once, and every row is a different project. Each row therefore becomes its own project – the `(userId, theme)` unique index is partial and skips warm-up rows (see prisma/schema.prisma), so a second one does not collide with the first.
  *
- * Reads go through field NAMES: the Airtable REST API keys `fields` by column
- * name unless `returnFieldsByFieldId` is requested, which nothing here does.
- * The schema's `fld…` ids are for writes (`fieldKey`).
+ * Reads go through field NAMES: the Airtable REST API keys `fields` by column name unless `returnFieldsByFieldId` is requested, which nothing here does. The schema's `fld…` ids are for writes (`fieldKey`).
  */
 
 const IMPORT_ACTION = AuditAction.ADMIN_IMPORT_AIRTABLE_PROJECT
@@ -105,9 +89,8 @@ function readAttachmentUrl(record: AirtableRecord, field: FieldDef): string | nu
 	const value = rawField(record, field)
 	if (!Array.isArray(value)) return null
 	for (const entry of value) {
-		if (entry && typeof entry === "object" && "url" in entry && typeof entry.url === "string" && entry.url) {
+		if (entry && typeof entry === "object" && "url" in entry && typeof entry.url === "string" && entry.url)
 			return entry.url
-		}
 	}
 	return null
 }
@@ -136,15 +119,11 @@ function phaseForStage(stage: string | null): Phase {
 /**
  * The smallest funding tier that covers what the form asked for, capped at 3.
  *
- * The form's number is a dollar ask, not a tier, and the tier is a reviewer's
- * decision anyway: this only sets `requestedTier`, so the project card has the
- * tier the maker asked for and a design approval has something to start from.
+ * The form's number is a dollar ask, not a tier, and the tier is a reviewer's decision anyway: this only sets `requestedTier`, so the project card has the tier the maker asked for and a design approval has something to start from.
  */
 function tierForRequestedFunding(usd: number | null): number {
 	if (usd === null || usd <= 0) return TIERS[0].id
-	for (const tier of TIERS) {
-		if (usd <= tier.grantUsd) return tier.id
-	}
+	for (const tier of TIERS) if (usd <= tier.grantUsd) return tier.id
 	return TIERS[TIERS.length - 1]?.id ?? 3
 }
 
@@ -196,9 +175,7 @@ function parseRow(record: AirtableRecord): { ok: true; row: ParsedWarmupRow } | 
 			hackatimeId: cleanExternalId(readString(record, f.hackatimeId)),
 			title,
 			description: readString(record, f.description),
-			// A warm-up form's "Code URL" is the repo; the playable link is a
-			// fallback so a project without one still has something a reviewer and
-			// the repo checks can open.
+			// A warm-up form's "Code URL" is the repo; the playable link is a fallback so a project without one still has something a reviewer and the repo checks can open.
 			repoUrl: readString(record, f.codeUrl) ?? readString(record, f.playableUrl),
 			journalUrl: readString(record, f.journalUrl),
 			playableUrl: readString(record, f.playableUrl),
@@ -279,9 +256,7 @@ const IMAGE_EXT: Record<string, string> = {
 }
 
 /**
- * Airtable attachment URLs are signed and expire in about two hours, so a
- * cover has to be copied into R2 to outlive the import. Best-effort: a missing
- * cover is cosmetic and must not fail the project.
+ * Airtable attachment URLs are signed and expire in about two hours, so a cover has to be copied into R2 to outlive the import. Best-effort: a missing cover is cosmetic and must not fail the project.
  */
 async function rehostScreenshot(userId: string, url: string): Promise<string | null> {
 	if (!isUploadConfigured()) return null
@@ -323,18 +298,9 @@ function encryptedPiiFields(row: ParsedWarmupRow): Partial<Prisma.UserCreateInpu
 }
 
 /**
- * Claim the row for one person and build their warm-up project, session and
- * submission in one transaction.
+ * Claim the row for one person and build their warm-up project, session and submission in one transaction.
  *
- * The advisory lock is keyed on the email, so two rows for the same maker, or
- * an admin double-clicking the button, serialize instead of racing each other
- * into a duplicate account. Every row that gets here is a project of its own:
- * the form may have been filled in more than once, and warm-up projects
- * deliberately do not hold a unique slot. Idempotency per Airtable row is
- * re-checked under that lock, because the caller's "not imported yet" read
- * happened before the transaction and a second run can hold the same snapshot.
- * Everything after the transaction — the cover copy and the Ari send — is
- * external and idempotent enough not to belong inside it.
+ * The advisory lock is keyed on the email, so two rows for the same maker, or an admin double-clicking the button, serialize instead of racing each other into a duplicate account. Every row that gets here is a project of its own: the form may have been filled in more than once, and warm-up projects deliberately do not hold a unique slot. Idempotency per Airtable row is re-checked under that lock, because the caller's "not imported yet" read happened before the transaction and a second run can hold the same snapshot. Everything after the transaction – the cover copy and the Ari send – is external and idempotent enough not to belong inside it.
  */
 async function importRow(
 	record: AirtableRecord,
@@ -356,11 +322,7 @@ async function importRow(
 		async (tx) => {
 			await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`warmup-import:${row.email}`}, 0))`
 
-			// Two runs of the same click (two admins, two tabs) both read their
-			// "not imported yet" snapshot before either transaction started. Since
-			// warm-up rows are no longer held unique by `(userId, theme)`, the
-			// insert below would happily make a second project for one Airtable
-			// row; this re-read under the lock is what keeps a row to one project.
+			// Two runs of the same click (two admins, two tabs) both read their "not imported yet" snapshot before either transaction started. Since warm-up rows are no longer held unique by `(userId, theme)`, the insert below would happily make a second project for one Airtable row; this re-read under the lock is what keeps a row to one project.
 			const raced = await tx.auditLog.findFirst({
 				where: { action: IMPORT_ACTION, metadata: { path: ["airtableRecordId"], equals: record.id } },
 				select: { targetId: true },
@@ -422,7 +384,7 @@ async function importRow(
 					data: {
 						themeProjectId: project.id,
 						phase,
-						title: `${row.title} — warm-up submission`,
+						title: `${row.title} – warm-up submission`,
 						content: journalParts.length > 0 ? journalParts.join("\n\n") : null,
 						hoursClaimed: row.hours ?? 0,
 						hoursSource: HoursSource.MANUAL,
@@ -444,12 +406,7 @@ async function importRow(
 				},
 			})
 
-			// The row already exists in the table — it is where this import came
-			// from — so record its record id the same way a successful write does.
-			// That is what keeps the retry job from posting a second copy, lets a
-			// resubmission update this row instead of creating one, and lets an
-			// unsubmit remove it (see lib/airtable/sync). Nothing was written to
-			// Airtable here; `imported` says where the id came from.
+			// The row already exists in the table – it is where this import came from – so record its record id the same way a successful write does. That is what keeps the retry job from posting a second copy, lets a resubmission update this row instead of creating one, and lets an unsubmit remove it (see lib/airtable/sync). Nothing was written to Airtable here; `imported` says where the id came from.
 			await logAuditTx(tx, {
 				action: AuditAction.AIRTABLE_SYNC_SUCCESS,
 				actorId: actor.id,
@@ -508,10 +465,7 @@ async function sendToAri(
 /**
  * Import every warm-up row that has not been imported yet.
  *
- * Sequential on purpose: each row can download a screenshot and call Ari, and
- * the Airtable client already rate-limits at the base's 5 req/s. `getProgramSettings`
- * runs up front because the singleton row may need creating, which a
- * transaction must not do while it holds a lock.
+ * Sequential on purpose: each row can download a screenshot and call Ari, and the Airtable client already rate-limits at the base's 5 req/s. `getProgramSettings` runs up front because the singleton row may need creating, which a transaction must not do while it holds a lock.
  */
 export async function importWarmupProjects(actor: ImportActor): Promise<WarmupImportSummary> {
 	const config = getAirtableConfig()

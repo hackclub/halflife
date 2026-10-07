@@ -36,24 +36,15 @@ import { warmupPhaseOf } from "@/lib/warmup"
  *
  * ## The seam
  *
- * The platform UI derives its entire shape — how many nodes a week has, where
- * the progress reels fall, which one is live, what is locked and why — from one
- * record of checkpoint states, through `curriculum.checkpointsFor`. That
+ * The platform UI derives its entire shape – how many nodes a week has, where the progress reels fall, which one is live, what is locked and why – from one record of checkpoint states, through `curriculum.checkpointsFor`. That
  * function is pure and already agrees with the program design, so the server's
- * only job is to say which checkpoints are done and with what, and let the
- * client derive the rest exactly as it did when the data was a toy.
+ * only job is to say which checkpoints are done and with what, and let the client derive the rest exactly as it did when the data was a toy.
  *
- * This is why the wedding is small. The alternative was a second checkpoint
- * engine on the server, and the first time the two disagreed the trail would
- * have lied to someone about work they had really done.
+ * This is why the wedding is small. The alternative was a second checkpoint engine on the server, and the first time the two disagreed the trail would have lied to someone about work they had really done.
  *
  * ## What is NOT here
  *
- * The cinematic, the spotlight, the tab tour, and whether the Doomscroller rail
- * is open. Those are ceremony, they are per-device, and nobody else ever needs
- * to read them, so they stay in `localStorage` where a new laptop replays the
- * intro rather than inheriting a half-finished one. The server owns facts; the
- * browser owns ceremony.
+ * The cinematic, the spotlight, the tab tour, and whether the Doomscroller rail is open. Those are ceremony, they are per-device, and nobody else ever needs to read them, so they stay in `localStorage` where a new laptop replays the intro rather than inheriting a half-finished one. The server owns facts; the browser owns ceremony.
  */
 
 /** One checkpoint's state, in the shape the client store keeps them. */
@@ -70,9 +61,7 @@ export interface StoreSnapshot {
 	/** What the participant is here for, or null if not yet answered. */
 	participantGoal: ParticipantGoal | null
 	/**
-	 * Who is signed in. Display fields only, never an email or a Slack id.
-	 * `isAdmin` decides whether admin-only tools (redo onboarding) are offered;
-	 * the routes behind them check the role themselves.
+	 * Who is signed in. Display fields only, never an email or a Slack id. `isAdmin` decides whether admin-only tools (redo onboarding) are offered; the routes behind them check the role themselves.
 	 */
 	viewer: { id: string; name: string; image: string | null; isAdmin: boolean }
 	experience: Experience | null
@@ -80,59 +69,36 @@ export interface StoreSnapshot {
 	onboardingDone: boolean
 	projects: Project[]
 	/**
-	 * Every theme project's id, by the design week it belongs to — including the
-	 * ones not named yet.
+	 * Every theme project's id, by the design week it belongs to – including the ones not named yet.
 	 *
-	 * A row is made when its week's "create a project" checkpoint is opened
-	 * (lib/provisioning), so a week that has not started has no id here; the
-	 * client asks for one (ensureProject) when that checkpoint opens. `projects`
-	 * leaves the unnamed ones out, or the trail would claim credit for a week
-	 * that has only been looked at.
+	 * A row is made when its week's "create a project" checkpoint is opened (lib/provisioning), so a week that has not started has no id here; the client asks for one (ensureProject) when that checkpoint opens. `projects` leaves the unnamed ones out, or the trail would claim credit for a week that has only been looked at.
 	 */
 	projectIdByWeek: Record<number, string>
 	progress: Record<string, CheckpointSnapshot>
 	/**
-	 * Hours a week has that did NOT come from its journal entries — Hackatime
-	 * link time, and reviewer adjustments to it.
+	 * Hours a week has that did NOT come from its journal entries – Hackatime link time, and reviewer adjustments to it.
 	 *
-	 * Kept apart from the entries rather than folded into them because the two
-	 * are used for different things. Reels are placed where the JOURNAL crossed
-	 * a reel's mark, so that placement has to follow entries and nothing else; the
-	 * gates ask what the week is really worth, which is everything. Folding
-	 * Hackatime into an entry would move a reel to a node the participant never
-	 * wrote.
+	 * Kept apart from the entries rather than folded into them because the two are used for different things. Reels are placed where the JOURNAL crossed a reel's mark, so that placement has to follow entries and nothing else; the gates ask what the week is really worth, which is everything. Folding Hackatime into an entry would move a reel to a node the participant never wrote.
 	 */
 	offBookHours: Record<number, number>
 	/**
 	 * Where each week's phase stands with review, by trail week.
 	 *
-	 * Coins are minted when a reviewer approves a phase, not when hours are
-	 * logged, so the balance below trails the work by a review. Anything that
-	 * asks "is this week on pace" has to add back what the unreviewed weeks will
-	 * bank — and to know which weeks those are, it needs this.
+	 * Coins are minted when a reviewer approves a phase, not when hours are logged, so the balance below trails the work by a review. Anything that asks "is this week on pace" has to add back what the unreviewed weeks will bank – and to know which weeks those are, it needs this.
 	 */
 	phaseStatusByWeek: Record<number, PhaseStatus>
 	/**
-	 * When each trail week stops taking work, epoch ms: 11:59 PM on its
-	 * Sunday in the program timezone, pushed later by any extension on the
-	 * participant or on that week's project. The server refuses journal writes
-	 * past it, so the trail greys the week out at the same moment.
+	 * When each trail week stops taking work, epoch ms: 11:59 PM on its Sunday in the program timezone, pushed later by any extension on the participant or on that week's project. The server refuses journal writes past it, so the trail greys the week out at the same moment.
 	 */
 	weekClosesAt: Record<number, number>
 	/**
-	 * When each trail week starts taking work, epoch ms: midnight at the start
-	 * of its Monday in the program timezone. Nothing on a week opens before it,
-	 * the first checkpoint included, and the server refuses the same writes.
+	 * When each trail week starts taking work, epoch ms: midnight at the start of its Monday in the program timezone. Nothing on a week opens before it, the first checkpoint included, and the server refuses the same writes.
 	 */
 	weekOpensAt: Record<number, number>
 	/** When warm-ups stop taking work, epoch ms: 11:59 PM the night before week 1 opens. */
 	warmupsCloseAt: number
 	/**
-	 * Every warm-up project, by id: the one phase it is handed in as, the hours
-	 * it has from somewhere other than its entries (Hackatime, reviewer
-	 * adjustments), and when its journal closes. A maker may hold several, so
-	 * each is addressed by its id — its entries and submit are `wu-<id>-…` keys
-	 * in `progress` — never by a week number.
+	 * Every warm-up project, by id: the one phase it is handed in as, the hours it has from somewhere other than its entries (Hackatime, reviewer adjustments), and when its journal closes. A maker may hold several, so each is addressed by its id – its entries and submit are `wu-<id>-…` keys in `progress` – never by a week number.
 	 */
 	warmups: Record<string, { phase: "design" | "build"; offBookHours: number; closesAt: number }>
 	/** The program's IANA timezone, so the trail can name the day a week opens. */
@@ -146,8 +112,7 @@ export interface StoreSnapshot {
 	streak: number
 	goalId: string
 	/**
-	 * Reel checkpoints whose reel was deleted and not yet re-recorded. While
-	 * any are owed, they are the only checkpoints that open (lib/reel-gate).
+	 * Reel checkpoints whose reel was deleted and not yet re-recorded. While any are owed, they are the only checkpoints that open (lib/reel-gate).
 	 */
 	owedReels: string[]
 }
@@ -225,11 +190,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 			}),
 			prisma.hackatimeLink.findMany({
 				where: { themeProject: { userId, deletedAt: null } },
-				// cachedSpans comes along because `rollUpHours` is what the ledger
-				// uses, and a trail that reported a different Hackatime total from the
-				// one a reviewer approves is the disagreement this file already warns
-				// about — the same minutes must not be payable twice on one screen and
-				// once off it.
+				// cachedSpans comes along because `rollUpHours` is what the ledger uses, and a trail that reported a different Hackatime total from the one a reviewer approves is the disagreement this file already warns about – the same minutes must not be payable twice on one screen and once off it.
 				select: {
 					themeProjectId: true,
 					phase: true,
@@ -239,8 +200,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 				},
 			}),
 			prisma.post.findMany({
-				// Every reel, not only the ones bound to a checkpoint: a project's
-				// stand-in picture may come from any of them (see the thumbnail below).
+				// Every reel, not only the ones bound to a checkpoint: a project's stand-in picture may come from any of them (see the thumbnail below).
 				where: { userId, deletedAt: null },
 				orderBy: { createdAt: "asc" },
 				select: {
@@ -257,10 +217,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 				orderBy: { createdAt: "asc" },
 				select: { themeProjectId: true, phase: true, createdAt: true },
 			}),
-			// Not in a transaction: this is a read for display, and BEGIN and COMMIT
-			// are two more round trips to a database ~110ms away from a laptop —
-			// the slowest part of the whole snapshot. Spending still reads its
-			// balance inside the transaction that spends it.
+			// Not in a transaction: this is a read for display, and BEGIN and COMMIT are two more round trips to a database ~110ms away from a laptop – the slowest part of the whole snapshot. Spending still reads its balance inside the transaction that spends it.
 			getBalances(prisma, userId),
 			getProgramSettings(),
 			getOwedReelKeys(userId),
@@ -273,11 +230,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 	const offBookHours: Record<number, number> = {}
 	const phaseStatusByWeek: Record<number, PhaseStatus> = {}
 
-	// A reel posted twice for the same node keeps the newest caption; the rows are
-	// ordered oldest-first, so the last write through this loop is the newest.
-	// The node keeps the FIRST post's date, though, as the client's own patch
-	// does: posting another reel adds to the timeline, it does not move the
-	// checkpoint up it.
+	// A reel posted twice for the same node keeps the newest caption; the rows are ordered oldest-first, so the last write through this loop is the newest. The node keeps the FIRST post's date, though, as the client's own patch does: posting another reel adds to the timeline, it does not move the checkpoint up it.
 	for (const post of posts) {
 		if (!post.checkpointKey) continue
 		progress[post.checkpointKey] = {
@@ -300,10 +253,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 		}
 	}
 
-	// One phase of one project, written under the key prefix it is addressed
-	// by: `w<week>` for a season week, `wu-<id>` for a warm-up project, which
-	// has no week of its own. Returns the phase's off-book hours; a season week
-	// also records them, and its status, against its week number.
+	// One phase of one project, written under the key prefix it is addressed by: `w<week>` for a season week, `wu-<id>` for a warm-up project, which has no week of its own. Returns the phase's off-book hours; a season week also records them, and its status, against its week number.
 	const recordPhase = (project: (typeof projects)[number], phase: Phase, prefix: string, week?: number): number => {
 		{
 			const id = (suffix: string) => `${prefix}-${suffix}`
@@ -311,9 +261,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 			const phaseSessions = sessions.filter((s) => s.themeProjectId === project.id && s.phase === phase)
 			const phaseLinks = links.filter((l) => l.themeProjectId === project.id && l.phase === phase)
 
-			// Week one's project comes into existence through the first checkpoint
-			// rather than a project form, so the node that stands for it is different
-			// and is already recorded above. A warm-up has no such node at all.
+			// Week one's project comes into existence through the first checkpoint rather than a project form, so the node that stands for it is different and is already recorded above. A warm-up has no such node at all.
 			if (phase === Phase.DESIGN && week !== undefined && week > 1) {
 				const tier = project.tier ?? project.requestedTier
 				if (project.title && project.description && tier) {
@@ -326,7 +274,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 				}
 			}
 
-			phaseSessions.forEach((session, index) => {
+			for (const [index, session] of phaseSessions.entries()) {
 				progress[id(`entry-${index + 1}`)] = {
 					done: true,
 					at: session.createdAt.getTime(),
@@ -345,12 +293,9 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 						},
 					],
 				}
-			})
+			}
 
-			// The newest hand-in dates the node; the status says whether it stands.
-			// A week taken back out of review (or reopened by an admin) is draft
-			// again with its old submission rows still there, and it has to read as
-			// not handed in, or the trail would hide the Submit it needs again.
+			// The newest hand-in dates the node; the status says whether it stands. A week taken back out of review (or reopened by an admin) is draft again with its old submission rows still there, and it has to read as not handed in, or the trail would hide the Submit it needs again.
 			const submission = submissions.filter((s) => s.themeProjectId === project.id && s.phase === phase).at(-1)
 			const status = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
 			if (week !== undefined) phaseStatusByWeek[week] = status
@@ -364,13 +309,10 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 				}
 			}
 
-			// What the phase is worth, minus what its entries already account for.
-			// `rollUpHours` is the function the ledger uses, so the trail's gates and
-			// the reviewer's totals cannot answer this differently.
+			// What the phase is worth, minus what its entries already account for. `rollUpHours` is the function the ledger uses, so the trail's gates and the reviewer's totals cannot answer this differently.
 			const frozen = phase === Phase.DESIGN ? project.designApprovedHours : project.approvedHours
 			const { effectiveHours } = rollUpHours(phaseSessions, phaseLinks, frozen)
-			// A HACKATIME_TRACKED entry contributes zero to `effectiveHours`, so it
-			// must contribute zero here too, or the subtraction double-counts it.
+			// A HACKATIME_TRACKED entry contributes zero to `effectiveHours`, so it must contribute zero here too, or the subtraction double-counts it.
 			const entryHours = phaseSessions.reduce(
 				(n, s) => n + (s.hoursSource === HoursSource.HACKATIME_TRACKED ? 0 : minutesOf(s) / 60),
 				0,
@@ -381,18 +323,16 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 		}
 	}
 
-	THEMES.forEach((theme, themeIndex) => {
+	for (const [themeIndex, theme] of THEMES.entries()) {
 		const project = byTheme.get(theme.id)
-		if (!project) return
+		if (!project) continue
 		for (const phase of [Phase.DESIGN, Phase.BUILD] as const) {
 			const week = weekOf(themeIndex, phase)
 			recordPhase(project, phase, `w${week}`, week)
 		}
-	})
+	}
 
-	// Each warm-up is one submission, so only its one phase goes on the record.
-	// Its journal closes the night before week 1 opens (week 0's close), later
-	// if extended.
+	// Each warm-up is one submission, so only its one phase goes on the record. Its journal closes the night before week 1 opens (week 0's close), later if extended.
 	const warmups: StoreSnapshot["warmups"] = {}
 	for (const project of projects) {
 		if (project.theme !== Theme.WARMUP) continue
@@ -410,9 +350,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 
 	const projectIdByWeek: Record<number, string> = {}
 	for (const project of projects) {
-		// A warm-up project has no curriculum week to be addressed by, and a
-		// maker may hold several of them, so week 0 would have to pick one of
-		// them arbitrarily. They are reached through the projects list instead.
+		// A warm-up project has no curriculum week to be addressed by, and a maker may hold several of them, so week 0 would have to pick one of them arbitrarily. They are reached through the projects list instead.
 		if (project.theme === Theme.WARMUP) continue
 		const themeIndex = THEMES.findIndex((t) => t.id === project.theme)
 		if (themeIndex !== -1) projectIdByWeek[weekOf(themeIndex, Phase.DESIGN)] = project.id
@@ -440,17 +378,13 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 		},
 		experience: user.hardwareExperience ? EXPERIENCE[user.hardwareExperience] : null,
 		onboardingDone: user.onboardingCompletedAt !== null,
-		// Null is the answer "not yet", and it is what holds the mandatory goal
-		// prompt open. It is read here rather than derived from the ceremony
-		// state because it is a fact about the person, not about this browser.
+		// Null is the answer "not yet", and it is what holds the mandatory goal prompt open. It is read here rather than derived from the ceremony state because it is a fact about the person, not about this browser.
 		participantGoal: user.participantGoal,
 		projects: projects.flatMap((project) => {
 			const warmup = project.theme === Theme.WARMUP
 			const themeIndex = THEMES.findIndex((t) => t.id === project.theme)
 			const tier = project.tier ?? project.requestedTier
-			// A project whose checkpoint was opened but never finished is not one
-			// the trail should list: the row exists from the moment "create a
-			// project" is opened, before anything has been decided about it.
+			// A project whose checkpoint was opened but never finished is not one the trail should list: the row exists from the moment "create a project" is opened, before anything has been decided about it.
 			if ((!warmup && themeIndex === -1) || !project.title || !tier) return []
 			return [
 				{

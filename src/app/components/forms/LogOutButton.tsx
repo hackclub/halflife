@@ -3,7 +3,7 @@ import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { signOut } from "@/lib/auth-client"
 
-/** The sidebar's "LOG OUT" — an accent label in the comp, not a button. */
+/** The sidebar's "LOG OUT" – an accent label in the comp, not a button. */
 export function LogOutButton() {
 	const router = useRouter()
 	const [busy, setBusy] = useState(false)

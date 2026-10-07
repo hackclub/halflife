@@ -3,15 +3,9 @@ import "dotenv/config"
 /**
  * Smoke-test the R2 wiring, end to end, with no database involved.
  *
- * Uploads a small object through the same code path `/api/upload` uses, mints
- * its public URL the way the feed does, fetches that URL over the open
- * internet, compares the bytes, and deletes it again.
+ * Uploads a small object through the same code path `/api/upload` uses, mints its public URL the way the feed does, fetches that URL over the open internet, compares the bytes, and deletes it again.
  *
- * The fetch is the point. Credentials that can write and a bucket the browser
- * can read are two different things: a deployment can upload every reel
- * successfully and play none of them, and nothing in the app would say so —
- * `publicUrlFor` just returns a URL that 403s. This catches that before there
- * is a feed sitting on top of it.
+ * The fetch is the point. Credentials that can write and a bucket the browser can read are two different things: a deployment can upload every reel successfully and play none of them, and nothing in the app would say so – `publicUrlFor` just returns a URL that 403s. This catches that before there is a feed sitting on top of it.
  *
  * Prints no secret values, only whether each is present.
  *
@@ -46,8 +40,7 @@ async function main() {
 		publicBase ? "" : "without it every stored key mints a null URL and no video ever plays",
 	)
 
-	// A mismatch here renders thumbnails broken with no console error, because
-	// next/image refuses hosts that are not in next.config.ts.
+	// A mismatch here renders thumbnails broken with no console error, because next/image refuses hosts that are not in next.config.ts.
 	if (publicBase) {
 		let publicHost = ""
 		try {
@@ -67,11 +60,7 @@ async function main() {
 	}
 
 	const endpoint = process.env.S3_ENDPOINT ?? ""
-	// Check the URL's HOST, not a substring of the whole string: `includes` also
-	// passed `https://evil.example/r2.cloudflarestorage.com` and
-	// `https://r2.cloudflarestorage.com.evil.example`. Parse first, then require
-	// the exact R2 host or a subdomain of it (the account id), the same way the
-	// S3_PUBLIC_URL check above reads `.hostname`.
+	// Check the URL's HOST, not a substring of the whole string: `includes` also passed `https://evil.example/r2.cloudflarestorage.com` and `https://r2.cloudflarestorage.com.evil.example`. Parse first, then require the exact R2 host or a subdomain of it (the account id), the same way the S3_PUBLIC_URL check above reads `.hostname`.
 	let endpointHost = ""
 	try {
 		endpointHost = new URL(endpoint).hostname

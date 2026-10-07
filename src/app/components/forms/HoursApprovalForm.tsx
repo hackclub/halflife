@@ -6,13 +6,9 @@ import { Callout } from "@/app/components/ui"
 type Kind = "session" | "hackatime"
 
 /**
- * Approve one entry's hours, which is what `WorkSession.hoursApproved` and
- * `HackatimeLink.hoursApproved` exist for: a reviewer deflating one bad entry
- * before the phase total is computed from it.
+ * Approve one entry's hours, which is what `WorkSession.hoursApproved` and `HackatimeLink.hoursApproved` exist for: a reviewer deflating one bad entry before the phase total is computed from it.
  *
- * Only rendered while the reviewer holds the claim, because the route refuses
- * a batch another reviewer's live claim covers — showing the field without a
- * claim would be an input that always errors.
+ * Only rendered while the reviewer holds the claim, because the route refuses a batch another reviewer's live claim covers – showing the field without a claim would be an input that always errors.
  */
 export function HoursApprovalForm(
 	props: Readonly<{ kind: Kind; id: string; claimed: boolean; approved: number | null }>,
@@ -60,7 +56,7 @@ function HoursApprovalFormInner({ kind, id, approved }: Readonly<{ kind: Kind; i
 			style={{ gap: "0.3rem", minWidth: "6rem" }}
 			onSubmit={(e) => {
 				e.preventDefault()
-				void save()
+				save()
 			}}
 		>
 			<input

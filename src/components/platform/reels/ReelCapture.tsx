@@ -3,27 +3,18 @@
 import { useRef, useState } from "react"
 import { IconFilm } from "@/components/platform/icons"
 import { UploadProgress } from "@/components/platform/UploadProgress"
-import { Button, cx, Panel } from "@/components/platform/ui"
+import { Button, Panel } from "@/components/platform/ui"
+import { cx } from "@/lib/cx"
 import { uploadFile, useHandoff } from "@/lib/use-handoff"
 
 /**
  * Getting a video out of someone and into the bucket.
  *
- * Two routes, because the program runs on hardware that is nowhere near the
- * machine the platform is open on. You can pick a file here, or scan a code and
- * film on your phone — which is the one that actually gets used, since the
- * bench and the laptop are rarely the same desk. The phone route needs no
- * sign-in on the phone: the QR carries a single-use token that expires in
- * minutes, so nobody has to type a Hack Club password into a borrowed handset.
+ * Two routes, because the program runs on hardware that is nowhere near the machine the platform is open on. You can pick a file here, or scan a code and film on your phone – which is the one that actually gets used, since the bench and the laptop are rarely the same desk. The phone route needs no sign-in on the phone: the QR carries a single-use token that expires in minutes, so nobody has to type a Hack Club password into a borrowed handset.
  *
- * Either way what is stored is an R2 object key, never a URL. URLs are minted
- * at read time so the bucket or the CDN in front of it can move without
- * rewriting a single stored row.
+ * Either way what is stored is an R2 object key, never a URL. URLs are minted at read time so the bucket or the CDN in front of it can move without rewriting a single stored row.
  *
- * `onCaptured` also hands back something playable, for previewing the clip
- * before it is posted: a local blob URL when the file came from this machine
- * (instant, and it works on a deployment with no public bucket URL), or the
- * bucket's URL when it came from the phone. It is null when neither exists.
+ * `onCaptured` also hands back something playable, for previewing the clip before it is posted: a local blob URL when the file came from this machine (instant, and it works on a deployment with no public bucket URL), or the bucket's URL when it came from the phone. It is null when neither exists.
  */
 export function ReelCapture({
 	objectKey,
@@ -95,7 +86,7 @@ export function ReelCapture({
 			)}
 
 			{/* A reel is the biggest thing anyone uploads here, often over school
-          wifi — without a bar, a minute of sending looks like a hang. */}
+          wifi – without a bar, a minute of sending looks like a hang. */}
 			{busy && <UploadProgress progress={progress} name="Your video" className="max-w-[420px]" />}
 
 			<div className="flex flex-wrap gap-2">
@@ -107,7 +98,7 @@ export function ReelCapture({
 					disabled={handoff.status === "minting"}
 					onClick={() => {
 						setShowQr(true)
-						void handoff.mint()
+						handoff.mint()
 					}}
 				>
 					{handoff.status === "minting" ? "Making a code…" : "Record on my phone"}
@@ -119,21 +110,20 @@ export function ReelCapture({
 				type="file"
 				accept="video/*"
 				className="sr-only"
-				// `capture` is a hint, not a constraint: on a phone it opens the camera
-				// straight away, and on a laptop the browser ignores it and shows the
-				// file picker, which is exactly what is wanted in both places.
+				// `capture` is a hint, not a constraint: on a phone it opens the camera straight away, and on a laptop the browser ignores it and shows the file picker, which is exactly what is wanted in both places.
 				capture="environment"
-				onChange={(e) => void pick(e.target.files?.[0])}
+				onChange={(e) => pick(e.target.files?.[0])}
 			/>
 
 			{showQr && handoff.minted && handoff.status === "waiting" && (
 				<Panel tone="line" radius={16} className="grid justify-items-center gap-3 bg-paper p-5">
-					{/* Server-rendered SVG from our own origin — the token is never sent
+					{/* Server-rendered SVG from our own origin – the token is never sent
               to a third-party QR service.
               The SVG carries its own width, so it is forced to the box rather
               than trusted to fit: at its natural 200px it overflowed and sat on
               top of the caption. */}
 					<div
+						role="img"
 						aria-label="QR code linking to the upload page"
 						className="w-[180px] [&>svg]:block [&>svg]:h-auto [&>svg]:w-full"
 						dangerouslySetInnerHTML={{ __html: handoff.minted.qrSvg }}

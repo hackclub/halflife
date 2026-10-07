@@ -9,15 +9,9 @@ export const dynamic = "force-dynamic"
 type Params = { params: Promise<{ id: string }> }
 
 /**
- * Record where a Half Life reel was also posted publicly — one Public Reels
- * row per link — so a post that goes viral can be found and paid for.
+ * Record where a Half Life reel was also posted publicly – one Public Reels row per link – so a post that goes viral can be found and paid for.
  *
- * Only the reel's author can add links to it. Each link is checked against its
- * platform and stored in its tidy form (lib/public-reels.ts), which is also
- * what makes a post claimable once: the same link sent again by its owner is
- * accepted and not duplicated, and a link someone else already added is
- * refused. Nothing is written unless every link passes, so a typo in one field
- * never leaves the others half saved.
+ * Only the reel's author can add links to it. Each link is checked against its platform and stored in its tidy form (lib/public-reels.ts), which is also what makes a post claimable once: the same link sent again by its owner is accepted and not duplicated, and a link someone else already added is refused. Nothing is written unless every link passes, so a typo in one field never leaves the others half saved.
  */
 export const POST = withRoute(async (req: Request, { params }: Params) => {
 	const gate = await requireSession()

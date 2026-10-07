@@ -10,9 +10,7 @@ type Params = { params: Promise<{ id: string }> }
 /**
  * Close a maker's dispute.
  *
- * Resolving does not change the decision; it records that a person looked
- * again. Changing the outcome is the review path's job (`Override decisions`),
- * so this cannot become a second, quieter way to approve something.
+ * Resolving does not change the decision; it records that a person looked again. Changing the outcome is the review path's job (`Override decisions`), so this cannot become a second, quieter way to approve something.
  */
 export const POST = withRoute(async (req: Request, { params }: Params) => {
 	const gate = await requirePermission(Permission.REVIEW_SUBMISSIONS)

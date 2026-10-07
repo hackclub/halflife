@@ -26,7 +26,7 @@ export default function Page() {
             hand off to. Put the tiling on the process section alone and the
             dissolve resolves into flat `hl-blue-deep`, then the texture
             switches on further down at a section boundary the reader cannot
-            see the reason for — two handoffs, one of them a hard line, where
+            see the reason for – two handoffs, one of them a hard line, where
             the painting was masked to make a single soft one.
 
             The second is phase. The tile is a `repeat` at a viewport-derived

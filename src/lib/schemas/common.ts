@@ -5,7 +5,7 @@ export const cuid = z.string().min(1).max(64)
 
 export const phaseSchema = z.enum(Phase)
 
-/** Rejects javascript:, data:, http: and friends — a URL field is not a script host. */
+/** Rejects javascript:, data:, http: and friends – a URL field is not a script host. */
 export const httpsUrl = z
 	.string()
 	.trim()

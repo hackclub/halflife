@@ -12,12 +12,11 @@ import {
 } from "react"
 import { createPortal } from "react-dom"
 import { IconX } from "@/components/platform/icons"
-import { accentText, cx } from "@/components/platform/ui"
+import { accentText } from "@/components/platform/ui"
+import { cx } from "@/lib/cx"
 
 /**
- * The id the dialog's `aria-labelledby` points at. `Modal` provides it so a
- * `ModalTitle` that does not carry its own `id` still names the dialog; the
- * dialogs that predate this passed `labelledBy` and an `id` themselves.
+ * The id the dialog's `aria-labelledby` points at. `Modal` provides it so a `ModalTitle` that does not carry its own `id` still names the dialog; the dialogs that predate this passed `labelledBy` and an `id` themselves.
  */
 const ModalTitleId = createContext<string | undefined>(undefined)
 
@@ -64,9 +63,7 @@ export function Modal({
 	const titleId = useId()
 	const isClient = useIsClient()
 
-	// Parents commonly pass an inline onClose. Keep the latest callback in a
-	// ref so a re-render caused by typing does not restart the focus-trap effect
-	// (its cleanup restores focus and its setup focuses the first control again).
+	// Parents commonly pass an inline onClose. Keep the latest callback in a ref so a re-render caused by typing does not restart the focus-trap effect (its cleanup restores focus and its setup focuses the first control again).
 	const onCloseRef = useRef(onClose)
 	useEffect(() => {
 		onCloseRef.current = onClose
@@ -124,8 +121,7 @@ export function Modal({
 
 	const width = { md: "max-w-[720px]", lg: "max-w-[880px]", xl: "max-w-[1020px]" }[size]
 
-	// Straight onto the body: several callers sit inside sticky panels, and a
-	// sticky ancestor is its own stacking context that a z-index cannot escape.
+	// Straight onto the body: several callers sit inside sticky panels, and a sticky ancestor is its own stacking context that a z-index cannot escape.
 	return createPortal(
 		<div className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center sm:p-6">
 			<div
@@ -139,9 +135,7 @@ export function Modal({
 				role="dialog"
 				aria-modal="true"
 				aria-labelledby={labelledBy ?? titleId}
-				// If no ModalTitle rendered, `titleId` points at nothing: AT ignores
-				// the dangling reference and falls back to this label, so a forgotten
-				// title no longer means an unnamed dialog.
+				// If no ModalTitle rendered, `titleId` points at nothing: AT ignores the dangling reference and falls back to this label, so a forgotten title no longer means an unnamed dialog.
 				aria-label={labelledBy ? undefined : typeof eyebrow === "string" && eyebrow ? eyebrow : "Dialog"}
 				tabIndex={-1}
 				className={cx(
@@ -193,17 +187,11 @@ export function ModalTitle({
 	id?: string
 	sub?: ReactNode
 	/**
-	 * Let the subtitle run the whole content width instead of holding a reading
-	 * measure. For a wide modal whose body is a full-width grid, the capped line
-	 * stops halfway and reads as a ragged column the grid below does not share;
-	 * a sentence short enough to stay near one line would rather square up with
-	 * it. Long copy still wants the cap — that is why this is opt-in.
+	 * Let the subtitle run the whole content width instead of holding a reading measure. For a wide modal whose body is a full-width grid, the capped line stops halfway and reads as a ragged column the grid below does not share; a sentence short enough to stay near one line would rather square up with it. Long copy still wants the cap – that is why this is opt-in.
 	 */
 	subWide?: boolean
 }) {
-	// A title with no explicit id takes the dialog's own, so the dialog always
-	// has something to be labelled by; callers that wire `id` + `labelledBy`
-	// themselves keep doing so.
+	// A title with no explicit id takes the dialog's own, so the dialog always has something to be labelled by; callers that wire `id` + `labelledBy` themselves keep doing so.
 	const dialogTitleId = useContext(ModalTitleId)
 	return (
 		<div className="mb-5">

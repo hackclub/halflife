@@ -13,30 +13,18 @@ import { fieldKey, formulaRef, YSWS_SUBMISSION } from "@/lib/airtable/schema"
 /**
  * Writes to the `YSWS Project Submission` table.
  *
- * Rows are addressed by their Airtable record id, which Half Life keeps from
- * the moment it creates one (see lib/airtable/sync). The table has no column
- * of ours to match on, and none of its own is unique per submission — Code URL
- * is shared by every project in a monorepo — so a match-on-fields upsert would
- * sooner or later update someone else's row.
+ * Rows are addressed by their Airtable record id, which Half Life keeps from the moment it creates one (see lib/airtable/sync). The table has no column of ours to match on, and none of its own is unique per submission – Code URL is shared by every project in a monorepo – so a match-on-fields upsert would sooner or later update someone else's row.
  *
- * `typecast: false` is deliberate: with typecast on, a single-select value we
- * did not create is silently added as a new option, so a typo in a status or a
- * tier quietly invents one in the base.
+ * `typecast: false` is deliberate: with typecast on, a single-select value we did not create is silently added as a new option, so a typo in a status or a tier quietly invents one in the base.
  *
- * When no record id is known — a create whose response was lost — the write
- * first looks for exactly one row matching the submission's identity and
- * adopts it (see `findExistingRow`), so a retry cannot post a second copy.
- * Anything less than exactly one match is left for a human.
+ * When no record id is known – a create whose response was lost – the write first looks for exactly one row matching the submission's identity and adopts it (see `findExistingRow`), so a retry cannot post a second copy. Anything less than exactly one match is left for a human.
  */
 
 /** How many columns a write may shed before giving up. */
 const MAX_DROPPED_FIELDS = 6
 
 /**
- * The fields Airtable says it cannot take, from its error message: a column
- * that does not exist, a value a column rejects, or a select option that is
- * not defined. Airtable names the column in the first two and only the value
- * in the third, so both are looked for.
+ * The fields Airtable says it cannot take, from its error message: a column that does not exist, a value a column rejects, or a select option that is not defined. Airtable names the column in the first two and only the value in the third, so both are looked for.
  */
 function rejectedFields(err: AirtableError, fields: Record<string, unknown>): string[] {
 	let message = err.body
@@ -57,14 +45,9 @@ function rejectedFields(err: AirtableError, fields: Record<string, unknown>): st
 }
 
 /**
- * Look for a row this submission may already have, by the only identity the
- * table can match on: the maker's email, the project name and the stage.
+ * Look for a row this submission may already have, by the only identity the table can match on: the maker's email, the project name and the stage.
  *
- * Used when the record id is unknown — a create whose response was lost can
- * have landed without Half Life recording an id, and posting again would put
- * a second "Pending Review" copy in front of reviewers. Returns "ambiguous"
- * when several rows match, because adopting one and leaving the others is as
- * wrong as adding another; a human has to look.
+ * Used when the record id is unknown – a create whose response was lost can have landed without Half Life recording an id, and posting again would put a second "Pending Review" copy in front of reviewers. Returns "ambiguous" when several rows match, because adopting one and leaving the others is as wrong as adding another; a human has to look.
  */
 async function findExistingRow(
 	config: AirtableConfig,
@@ -103,10 +86,7 @@ async function findExistingRow(
 /**
  * Create the row, or update it when its record id is known.
  *
- * If Airtable refuses a column, the row is written without it and the column
- * is logged: a submission reaching the table with one blank field is
- * recoverable, and one that never arrives is not. Resolves to the record id,
- * and the columns that had to be left out.
+ * If Airtable refuses a column, the row is written without it and the column is logged: a submission reaching the table with one blank field is recoverable, and one that never arrives is not. Resolves to the record id, and the columns that had to be left out.
  */
 export async function writeYswsRecord(
 	fields: Record<string, unknown>,
@@ -126,9 +106,7 @@ export async function writeYswsRecord(
 					method: id ? "PATCH" : "POST",
 					body: JSON.stringify({ records: [id ? { id, fields: f } : { fields: f }], typecast: false }),
 				}),
-			// A create is not idempotent: retrying a 5xx whose row was actually
-			// written duplicates it. The hourly retry job re-runs the whole sync
-			// instead, and finds the row (or adopts it) before posting again.
+			// A create is not idempotent: retrying a 5xx whose row was actually written duplicates it. The hourly retry job re-runs the whole sync instead, and finds the row (or adopts it) before posting again.
 			{ retryServerErrors: id !== null },
 		)
 
@@ -136,9 +114,8 @@ export async function writeYswsRecord(
 	let id = recordId
 	if (!id) {
 		const existing = await findExistingRow(config, fields)
-		if (existing === "ambiguous") {
+		if (existing === "ambiguous")
 			throw new Error("More than one Airtable row matches this submission; resolve the duplicate before syncing")
-		}
 		if (existing) {
 			console.warn(`[airtable] adopting existing YSWS row ${existing.id}; the previous write left no record id`)
 			id = existing.id
@@ -172,8 +149,7 @@ export async function writeYswsRecord(
 }
 
 /**
- * Delete one row by record id, reporting its unified-base twin (if the
- * pipeline has made one) so that can be removed by exact id too.
+ * Delete one row by record id, reporting its unified-base twin (if the pipeline has made one) so that can be removed by exact id too.
  */
 export async function deleteYswsRecord(
 	recordId: string,
@@ -195,8 +171,7 @@ export async function deleteYswsRecord(
 		if (err instanceof AirtableError && (err.status === 404 || err.body.includes("ROW_DOES_NOT_EXIST"))) {
 			return { deleted: false, unifiedRecordId: null, skipped: "already_gone" }
 		}
-		// A missing write grant is an ops problem, not a reason to fail the
-		// participant's unsubmit.
+		// A missing write grant is an ops problem, not a reason to fail the participant's unsubmit.
 		if (err instanceof AirtableError && err.isPermission) {
 			return { deleted: false, unifiedRecordId: null, skipped: "no_write_access" }
 		}

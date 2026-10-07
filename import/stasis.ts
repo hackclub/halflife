@@ -1,26 +1,15 @@
 /**
  * Import a sibling Hack Club programme's hardware data into Half Life.
  *
- * The source (Stasis/Siege lineage) is read-only; the target is whatever
- * Half Life's DATABASE_URL points at. Run it against a scratch database, not
- * production:
+ * The source (Stasis/Siege lineage) is read-only; the target is whatever Half Life's DATABASE_URL points at. Run it against a scratch database, not production:
  *
- *   pnpm exec tsx import/stasis.ts                 # everything
- *   pnpm exec tsx import/stasis.ts --limit=50      # first 50 users (quick pass)
- *   pnpm exec tsx import/stasis.ts --dry-run       # count, write nothing
- *   pnpm exec tsx import/stasis.ts --keep-emails   # keep real addresses
+ * pnpm exec tsx import/stasis.ts                 # everything pnpm exec tsx import/stasis.ts --limit=50      # first 50 users (quick pass) pnpm exec tsx import/stasis.ts --dry-run       # count, write nothing pnpm exec tsx import/stasis.ts --keep-emails   # keep real addresses
  *
  * Shape differences this bridges:
- *   - Half Life is theme-based (one project per user per theme, five themes).
- *     The source is unthemed, so each user's projects are assigned themes in
- *     creation order and anything past the fifth is dropped.
- *   - The source stores full asset URLs; Half Life stores object keys. Imported
- *     rows keep the URL and `publicUrlFor` passes absolute URLs through.
- *   - The source has no two-pot economy, so every imported transaction lands in
- *     the SPENDABLE pot.
- *   - PII: emails are anonymised unless --keep-emails, encrypted columns are
- *     never read, and third-party ids that would collide with an existing row
- *     are dropped rather than failing the import.
+ * - Half Life is theme-based (one project per user per theme, five themes). The source is unthemed, so each user's projects are assigned themes in creation order and anything past the fifth is dropped.
+ * - The source stores full asset URLs; Half Life stores object keys. Imported rows keep the URL and `publicUrlFor` passes absolute URLs through.
+ * - The source has no two-pot economy, so every imported transaction lands in the SPENDABLE pot.
+ * - PII: emails are anonymised unless --keep-emails, encrypted columns are never read, and third-party ids that would collide with an existing row are dropped rather than failing the import.
  */
 import { config } from "dotenv"
 import { PrismaPg } from "@prisma/adapter-pg"
@@ -48,7 +37,7 @@ config()
 const SOURCE_URL = process.env.DB_URL
 const TARGET_URL = process.env.DATABASE_URL
 if (!SOURCE_URL) throw new Error("DB_URL missing from import/.env")
-if (!TARGET_URL) throw new Error("DATABASE_URL missing — copy .env.example to .env")
+if (!TARGET_URL) throw new Error("DATABASE_URL missing – copy .env.example to .env")
 
 const args = process.argv.slice(2)
 const has = (f: string) => args.includes(`--${f}`)
@@ -355,7 +344,7 @@ async function importProjects(userIds: Set<string>): Promise<{
   let dropped = 0
 
   for (const [userId, list] of byUser) {
-    list.slice(0, 5).forEach((p, i) => {
+    for (const [i, p] of list.slice(0, 5).entries()) {
       const theme = THEME_ORDER[i]!
       const tier = p.tier && p.tier >= 1 && p.tier <= 3 ? p.tier : null
       ids.add(p.id)
@@ -388,7 +377,7 @@ async function importProjects(userIds: Set<string>): Promise<{
         deletedAt: p.deletedAt,
         deletedById: p.deletedById,
       })
-    })
+    }
     dropped += Math.max(0, list.length - 5)
   }
   if (dropped > 0) console.log(`  (dropped ${dropped} projects past each user's fifth theme slot)`)
@@ -441,8 +430,7 @@ async function importMedia(sessionIds: Set<string>): Promise<void> {
       id: m.id,
       workSessionId: m.workSessionId,
       type: m.type,
-      // The source asset host, kept whole; lib/uploads/r2.publicUrlFor passes
-      // an absolute URL through rather than prefixing the bucket base.
+      // The source asset host, kept whole; lib/uploads/r2.publicUrlFor passes an absolute URL through rather than prefixing the bucket base.
       objectKey: m.url,
       createdAt: m.createdAt,
     }))
@@ -525,8 +513,7 @@ async function importSubmissions(
         themeProjectId: s.projectId,
         phase: s.stage,
         notes: s.notes,
-        // The design week asks for the cart screenshot, which the source kept
-        // on the project rather than the submission.
+        // The design week asks for the cart screenshot, which the source kept on the project rather than the submission.
         attachmentKeys: s.stage === Phase.DESIGN ? (cartScreenshots.get(s.projectId) ?? []) : [],
         submittedInWeek: week,
         scheduledWeek: week,
@@ -624,8 +611,7 @@ async function importShop(userIds: Set<string>): Promise<void> {
     name: i.name,
     description: i.description,
     imageUrl: i.imageUrl,
-    // The source has no category; keeping them open (not printer-gated) makes
-    // them usable in a test build.
+    // The source has no category; keeping them open (not printer-gated) makes them usable in a test build.
     category: ShopItemCategory.MISC,
     priceCredits: i.price,
     maxPerUser: i.maxPerUser,
@@ -675,7 +661,7 @@ async function main() {
   const started = Date.now()
   console.log(`Source: ${SOURCE_URL!.replace(/:[^:@/]+@/, ":***@")}`)
   console.log(`Target: ${TARGET_URL!.replace(/:[^:@/]+@/, ":***@")}`)
-  if (DRY) console.log("DRY RUN — nothing will be written")
+  if (DRY) console.log("DRY RUN – nothing will be written")
   if (KEEP_EMAILS) console.log("Keeping real email addresses")
 
   console.log("\nUsers")

@@ -41,9 +41,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		metadata: { phase: parsed.data.phase, submissionId: submission.id },
 	})
 
-	// Into the YSWS table as "Pending Review" — the table reviewers work from on
-	// ari.hackclub.com. After the response, so a slow Airtable never holds up a
-	// hand-in; a failure lands in the audit log and the retry job replays it.
+	// Into the YSWS table as "Pending Review" – the table reviewers work from on ari.hackclub.com. After the response, so a slow Airtable never holds up a hand-in; a failure lands in the audit log and the retry job replays it.
 	after(async () => {
 		await trackSideEffect(
 			"airtable",
@@ -58,9 +56,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		)
 	})
 
-	// And into Ari, which reviews it through the SDK and reports back by webhook.
-	// Only scheduled when configured, so a deployment without Ari secrets logs no
-	// noise; a failure lands in the audit log and /api/integrations/ari-retry.
+	// And into Ari, which reviews it through the SDK and reports back by webhook. Only scheduled when configured, so a deployment without Ari secrets logs no noise; a failure lands in the audit log and /api/integrations/ari-retry.
 	if (isAriConfigured()) {
 		after(async () => {
 			await trackSideEffect(
@@ -77,17 +73,14 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		})
 	}
 
-	// Warm the Hackatime cache now so the reviewer opens a page with fresh
-	// numbers instead of waiting on the API. The participant does not need to
-	// wait for it.
+	// Warm the Hackatime cache now so the reviewer opens a page with fresh numbers instead of waiting on the API. The participant does not need to wait for it.
 	after(async () => {
 		const links = await prisma.hackatimeLink.findMany({
 			where: { themeProjectId: id, phase: parsed.data.phase },
 			select: { id: true },
 		})
-		for (const link of links) {
+		for (const link of links)
 			await refreshLinkCache(link.id).catch((err) => console.error("[submit] hackatime refresh failed:", err))
-		}
 	})
 
 	return ok({ submission }, { status: 201 })

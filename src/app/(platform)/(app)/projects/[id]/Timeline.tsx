@@ -4,19 +4,15 @@ import { useLayoutEffect, useRef, useState } from "react"
 import { IconCheck, IconFilm, IconPencil, IconPlay, IconWarning } from "@/components/platform/icons"
 import { Markdown } from "@/components/platform/Markdown"
 import { ReportButton } from "@/components/platform/report/ReportButton"
-import { Chip, cx } from "@/components/platform/ui"
+import { Chip } from "@/components/platform/ui"
+import { cx } from "@/lib/cx"
 import { fmtDate, fmtHours } from "@/lib/projects"
 import type { TimelineItem, TimelineLapse } from "@/lib/queries/project-page"
 
 /**
- * The whole record of a project, newest first: every journal entry with the
- * timelapses behind it, every reel, and each time a week was handed in and
- * decided.
+ * The whole record of a project, newest first: every journal entry with the timelapses behind it, every reel, and each time a week was handed in and decided.
  *
- * One rule down the left and one marker per moment, so it reads as a single
- * chronology rather than a feed of cards. The marker says what kind of
- * moment it was; the body is only as big as what was put on the record, so a
- * submission is a line and a journal entry is the entry.
+ * One rule down the left and one marker per moment, so it reads as a single chronology rather than a feed of cards. The marker says what kind of moment it was; the body is only as big as what was put on the record, so a submission is a line and a journal entry is the entry.
  */
 export function Timeline({
 	items,
@@ -27,21 +23,20 @@ export function Timeline({
 	/** The trail week a phase of this project ran in, for the "Week 3" labels. */
 	weekFor: (phase: "DESIGN" | "BUILD") => number
 	/**
-	 * Whether journal entries and reels carry a report button. On for someone
-	 * else's project, off on your own — reporting your own work is noise.
+	 * Whether journal entries and reels carry a report button. On for someone else's project, off on your own – reporting your own work is noise.
 	 */
 	allowReport?: boolean
 }) {
-	// Which week each moment belongs to is said once, where that week starts,
-	// rather than on every entry — and only once there are two weeks to tell
-	// apart. A reel carries no phase, so it sits in whichever week is running
-	// when it comes up.
+	// Which week each moment belongs to is said once, where that week starts, rather than on every entry – and only once there are two weeks to tell apart. A reel carries no phase, so it sits in whichever week is running when it comes up.
 	const phaseOf = (item: TimelineItem) => (item.kind === "reel" ? null : item.phase)
 	const split = new Set(items.map(phaseOf).filter(Boolean)).size > 1
 	let running: "DESIGN" | "BUILD" | null = null
 	const rows: React.ReactNode[] = []
-	items.forEach((item, i) => {
-		const phase = phaseOf(item) ?? running ?? items.slice(i).map(phaseOf).find(Boolean) ?? null
+	for (const [i, item] of items.entries()) {
+		// Annotated because `running` is assigned from this on the next pass, so
+		// left to inference it is its own initializer.
+		const phase: "DESIGN" | "BUILD" | null =
+			phaseOf(item) ?? running ?? items.slice(i).map(phaseOf).find(Boolean) ?? null
 		if (split && phase && phase !== running) {
 			running = phase
 			rows.push(
@@ -60,8 +55,7 @@ export function Timeline({
 			)
 		}
 		rows.push(
-			// The id is the anchor Explore's "See more" links to, so the entry
-			// someone was reading is the one they land on.
+			// The id is the anchor Explore's "See more" links to, so the entry someone was reading is the one they land on.
 			<li key={item.id} id={item.id} className="relative grid scroll-mt-24 grid-cols-[32px_minmax(0,1fr)] gap-x-4">
 				<Marker item={item} />
 				<div className="min-w-0 pt-1">
@@ -69,7 +63,7 @@ export function Timeline({
 				</div>
 			</li>,
 		)
-	})
+	}
 
 	return (
 		<ol className="relative grid gap-6 before:absolute before:top-2 before:bottom-2 before:left-[15px] before:w-0.5 before:rounded-full before:bg-line">
@@ -156,8 +150,8 @@ function Body({ item, allowReport }: { item: TimelineItem; allowReport: boolean 
 					</p>
 				)}
 				{item.videoUrl && (
-					// Nothing autoplays and nothing preloads past the poster: a timeline
-					// of reels loading at once is a page that eats a phone's data.
+					// Nothing autoplays and nothing preloads past the poster: a timeline of reels loading at once is a page that eats a phone's data.
+					// biome-ignore lint/a11y/useMediaCaption: a participant upload, and there is no caption file to point a track at. An empty track is announced as an empty caption, which is worse than none.
 					<video
 						src={item.thumbnailUrl ? item.videoUrl : `${item.videoUrl}#t=0.1`}
 						poster={item.thumbnailUrl ?? undefined}
@@ -205,10 +199,7 @@ function Body({ item, allowReport }: { item: TimelineItem; allowReport: boolean 
 }
 
 /**
- * A journal entry, folded when it runs long. The timeline is for reading the
- * story of a project, and one entry pasted in at a thousand lines should not
- * push every other moment off the page — so past about a dozen lines it
- * fades out behind a toggle, and the whole of it is one click away.
+ * A journal entry, folded when it runs long. The timeline is for reading the story of a project, and one entry pasted in at a thousand lines should not push every other moment off the page – so past about a dozen lines it fades out behind a toggle, and the whole of it is one click away.
  */
 function EntryBody({ source }: { source: string }) {
 	const box = useRef<HTMLDivElement>(null)
@@ -253,8 +244,7 @@ function footage(seconds: number | null) {
 }
 
 /**
- * The timelapses behind an entry. They open on Lapse, where they play, rather
- * than inline: Lapse's page is the canonical one and knows how to stream them.
+ * The timelapses behind an entry. They open on Lapse, where they play, rather than inline: Lapse's page is the canonical one and knows how to stream them.
  */
 function Lapses({ lapses }: { lapses: TimelineLapse[] }) {
 	return (

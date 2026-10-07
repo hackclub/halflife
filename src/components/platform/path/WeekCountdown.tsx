@@ -10,32 +10,16 @@ import type { Week } from "@/lib/types"
 /**
  * How long is left in the week being lived, as the biggest figure on the trail.
  *
- * It sits under that week's last node, where the eye already goes looking for
- * how the week ends, and it wears the week's own accent — the banner's ground a
- * few hundred pixels up — so it reads as part of the week rather than as a
- * widget dropped onto the page.
+ * It sits under that week's last node, where the eye already goes looking for how the week ends, and it wears the week's own accent – the banner's ground a few hundred pixels up – so it reads as part of the week rather than as a widget dropped onto the page.
  *
- * Only the ongoing week draws it. A week that has not opened is greyed out and
- * a week past its Sunday is history, so an early or a late countdown is worse
- * than none: it would name a deadline that is not the one anybody is racing.
+ * Only the ongoing week draws it. A week that has not opened is greyed out and a week past its Sunday is history, so an early or a late countdown is worse than none: it would name a deadline that is not the one anybody is racing.
  *
- * Two things it has to get right, both about the seam the platform's client
- * components live on:
+ * Two things it has to get right, both about the seam the platform's client components live on:
  *
- * - **No hydration mismatch.** The server render and the browser's first paint
- *   have to agree, and the server's clock is not the browser's, so the figures
- *   are placeholders until an effect has run. `--` holds the width a real
- *   figure takes, so nothing on the trail jumps when the count lands.
- * - **Ends cleanly.** At zero the store's own week timer flips `weekPassed`
- *   (store.tsx re-arms its clock for the next boundary), the gate above closes
- *   and the plate goes away — rather than counting up into negative days, which
- *   is what a tab left open overnight would otherwise show.
+ * - **No hydration mismatch.** The server render and the browser's first paint have to agree, and the server's clock is not the browser's, so the figures are placeholders until an effect has run. `--` holds the width a real figure takes, so nothing on the trail jumps when the count lands.
+ * - **Ends cleanly.** At zero the store's own week timer flips `weekPassed` (store.tsx re-arms its clock for the next boundary), the gate above closes and the plate goes away – rather than counting up into negative days, which is what a tab left open overnight would otherwise show.
  *
- * The figures are split into units rather than printed as one string so each is
- * its own column with its label beneath, the figure-leads/words-follow shape
- * the site's countdown uses. They are hidden from a screen reader, which gets
- * the same count in words plus the deadline itself rather than four numbers
- * changing every second.
+ * The figures are split into units rather than printed as one string so each is its own column with its label beneath, the figure-leads/words-follow shape the site's countdown uses. They are hidden from a screen reader, which gets the same count in words plus the deadline itself rather than four numbers changing every second.
  */
 export function WeekCountdown({ week }: { week: Week }) {
 	const { weekStarted, weekPassed, weekClosesAtMs, weekDeadline } = useStore()
@@ -90,7 +74,7 @@ export function WeekCountdown({ week }: { week: Week }) {
 									{parts === null ? "--" : unit.key === "days" ? parts.days : pad2(parts[unit.key])}
 								</span>
 								{/* The labels, not the figures, are what the four columns cannot
-                  go below — "MINUTES" is the widest word here — so they are the
+                  go below – "MINUTES" is the widest word here – so they are the
                   ones that shrink on a phone. */}
 								<span className="label mt-1.5 text-[0.62rem] sm:text-[0.78rem]" style={{ opacity: 0.7 }}>
 									{unit.label}

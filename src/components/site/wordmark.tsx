@@ -7,20 +7,11 @@ import logoArt from "../../../public/art/logo.png"
 const LOGO_SRC: StaticImageData | null = logoArt
 
 /**
- * The box the artwork is laid into — the file's own aspect, read off the file.
+ * The box the artwork is laid into – the file's own aspect, read off the file.
  *
- * It used to be a hardcoded 1125/787, measured off a logo.svg whose ink sat in
- * a 1280-square canvas, with `object-cover` trimming the transparent air back
- * off. That worked exactly as long as the file did not change. The replacement
- * was a 3000-square png whose ink ran y 381–2225 — sitting high, 381 of padding
- * above against 774 below — and `cover` centres its crop, so it opened its
- * window at y 451 and sheared 70px off the top of the wordmark while leaving
- * 324px of slack unused underneath.
+ * It used to be a hardcoded 1125/787, measured off a logo.svg whose ink sat in a 1280-square canvas, with `object-cover` trimming the transparent air back off. That worked exactly as long as the file did not change. The replacement was a 3000-square png whose ink ran y 381-2225 – sitting high, 381 of padding above against 774 below – and `cover` centres its crop, so it opened its window at y 451 and sheared 70px off the top of the wordmark while leaving 324px of slack unused underneath.
  *
- * Two hardcoded numbers are gone instead of being corrected. The file was
- * trimmed to its own ink, so its dimensions now *are* the artwork, and the box
- * takes its ratio from the import rather than from anything typed here. A
- * replacement logo of any shape gets a box of that shape.
+ * Two hardcoded numbers are gone instead of being corrected. The file was trimmed to its own ink, so its dimensions now *are* the artwork, and the box takes its ratio from the import rather than from anything typed here. A replacement logo of any shape gets a box of that shape.
  */
 const LOGO_ASPECT = LOGO_SRC ? LOGO_SRC.width / LOGO_SRC.height : 1
 
@@ -31,21 +22,13 @@ type Props = {
 	/** Font size for the live-type fallback, as a CSS length. */
 	fontSize?: string
 	/**
-	 * Renders `LOGO_SRC` instead of live type. The hero opts in; the footer does
-	 * not, because it recolours its wordmark to cyan with `text-hl-cyan!` and a
-	 * traced SVG carries its fills baked in — cream at 88% opacity across 664 of
-	 * its 853 paths — so no `color` can reach them. Live Masterpiece stays the
-	 * only wordmark that can take a colour.
+	 * Renders `LOGO_SRC` instead of live type. The hero opts in; the footer does not, because it recolours its wordmark to cyan with `text-hl-cyan!` and a traced SVG carries its fills baked in – cream at 88% opacity across 664 of its 853 paths – so no `color` can reach them. Live Masterpiece stays the only wordmark that can take a colour.
 	 */
 	art?: boolean
 	/**
-	 * How wide the artwork runs, as a CSS length. Height follows from the file's
-	 * own aspect, so a caller never has to know it.
+	 * How wide the artwork runs, as a CSS length. Height follows from the file's own aspect, so a caller never has to know it.
 	 *
-	 * Width is the dimension a caller actually reasons in — the mark reads as
-	 * "this much of the screen across". What a caller cannot see from here is
-	 * how much height that buys: the ink is 1125 x 787, so every unit of width
-	 * brings 0.7 of height with it, and the callers say where that lands.
+	 * Width is the dimension a caller actually reasons in – the mark reads as "this much of the screen across". What a caller cannot see from here is how much height that buys: the ink is 1125 x 787, so every unit of width brings 0.7 of height with it, and the callers say where that lands.
 	 */
 	artWidth?: string
 	/** The artwork's `sizes`, for a caller that runs it at another width. */
@@ -72,7 +55,7 @@ export default function Wordmark({
 				<span className="relative mx-auto block" style={{ width: artWidth, aspectRatio: String(LOGO_ASPECT) }}>
 					{/* Contain, not cover. Cover was there to trim transparent air off a
               file that had some; with the box now cut from the file's own
-              proportions the two agree, so neither fits differently — and
+              proportions the two agree, so neither fits differently – and
               contain is the safe one of the pair, because a file that ever
               disagrees again is letterboxed rather than cut into. */}
 					<Image
@@ -81,11 +64,7 @@ export default function Wordmark({
 						fill
 						priority
 						sizes={sizes}
-						// The old src was an `.svg`, which next/image serves unoptimized —
-						// no srcset, no quality, `sizes` declared for the `fill` contract
-						// and nothing else. A png goes through the optimizer, so both now
-						// matter: 90 to match the rest of the page's artwork, since 75 on
-						// a flat two-colour wordmark is where banding shows first.
+						// The old src was an `.svg`, which next/image serves unoptimized – no srcset, no quality, `sizes` declared for the `fill` contract and nothing else. A png goes through the optimizer, so both now matter: 90 to match the rest of the page's artwork, since 75 on a flat two-colour wordmark is where banding shows first.
 						quality={90}
 						className="object-contain"
 					/>

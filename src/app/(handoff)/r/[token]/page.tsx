@@ -2,8 +2,7 @@ import { HandoffUploader } from "@/app/components/forms/HandoffUploader"
 import { Callout, PageHeader, Panel } from "@/app/components/ui"
 import { HANDOFF_TTL_MINUTES, resolveHandoff } from "@/lib/handoff"
 
-// Never cached: the token is single-use and its validity changes the moment a
-// phone claims it.
+// Never cached: the token is single-use and its validity changes the moment a phone claims it.
 export const dynamic = "force-dynamic"
 
 export default async function HandoffPage({ params }: { params: Promise<{ token: string }> }) {

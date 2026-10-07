@@ -28,14 +28,9 @@ export interface Checkpoint {
 	/** Reel checkpoints carry the brief for what to film. */
 	reelBrief?: string
 	/**
-	 * The two halves of a fork the trail lays side by side on one row with an
-	 * "or" between them.
+	 * The two halves of a fork the trail lays side by side on one row with an "or" between them.
 	 *
-	 * At the end of a week past its tier floor: one more session (`keep`), or
-	 * wrap the week up (`submit`) — finishing one is what settles the route.
-	 * At the start of week 1: pitch the idea (`idea`), or skip straight to the
-	 * first devlog (`skip`) — the reel is optional and never gates anything
-	 * past the fork.
+	 * At the end of a week past its tier floor: one more session (`keep`), or wrap the week up (`submit`) – finishing one is what settles the route. At the start of week 1: pitch the idea (`idea`), or skip straight to the first devlog (`skip`) – the reel is optional and never gates anything past the fork.
 	 */
 	branch?: "keep" | "submit" | "idea" | "skip"
 }
@@ -48,9 +43,7 @@ export interface SessionLog {
 	/** When it was saved, epoch ms. The project timeline is ordered on this. */
 	at: number
 	/**
-	 * Timelapse clips picked for this session. The photo evidence is not listed
-	 * here: it is written into `body` as Markdown images, so the entry and the
-	 * pictures that back it can never drift apart.
+	 * Timelapse clips picked for this session. The photo evidence is not listed here: it is written into `body` as Markdown images, so the entry and the pictures that back it can never drift apart.
 	 */
 	clips: string[]
 }
@@ -77,19 +70,15 @@ export interface WeekMeta {
 
 export interface Week extends WeekMeta {
 	/**
-	 * Set only on a warm-up project's own week. Warm-ups have no week number
-	 * (all are week 0, and a maker may hold several), so they are addressed by
-	 * project instead.
+	 * Set only on a warm-up project's own week. Warm-ups have no week number (all are week 0, and a maker may hold several), so they are addressed by project instead.
 	 */
 	projectId?: string
-	/** The tier of this week's project — it decides how many chapters there are. */
+	/** The tier of this week's project – it decides how many chapters there are. */
 	tier: 1 | 2 | 3
 	/** Hours that fund the project. Above this, time banks instead. */
 	fundingHours: number
 	/**
-	 * Hours before the week can be handed in: the tier's funded hours, and
-	 * nothing more. Every hour past them only earns, so the gate sits on the
-	 * funded line.
+	 * Hours before the week can be handed in: the tier's funded hours, and nothing more. Every hour past them only earns, so the gate sits on the funded line.
 	 */
 	submitHours: number
 	/** Funded hours plus the hours your printer goal asks you to earn. */
@@ -105,7 +94,7 @@ export interface Tier {
 	hours: string
 	toBank: string
 	detail: string
-	/** Hours that fund the project — the floor that opens the closing reel. */
+	/** Hours that fund the project – the floor that opens the closing reel. */
 	fundingHours: number
 }
 
@@ -125,8 +114,7 @@ export interface Project {
 	/** The chosen cover, a journal image, or a reel frame. See lib/thumbnail. */
 	thumbnail?: ProjectThumbnail | null
 	/**
-	 * The two phases' review state, so a card can colour itself without the
-	 * grid re-deriving it from the week.
+	 * The two phases' review state, so a card can colour itself without the grid re-deriving it from the week.
 	 */
 	designStatus: PhaseStatus
 	buildStatus: PhaseStatus

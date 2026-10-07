@@ -15,8 +15,7 @@ interface TierOption {
 /**
  * The reviewer's decision form.
  *
- * A tier is required when approving a design, because that is where the parts
- * money is decided. Feedback is required on anything that is not an approval.
+ * A tier is required when approving a design, because that is where the parts money is decided. Feedback is required on anything that is not an approval.
  */
 export function DecisionPanel({
 	submissionId,
@@ -102,7 +101,7 @@ export function DecisionPanel({
 						<option value="">Choose a tier…</option>
 						{tiers.map((t) => (
 							<option key={t.id} value={t.id}>
-								{t.name} — ${t.grantUsd} for parts, submit from {t.fundingHours}h of design time
+								{t.name} – ${t.grantUsd} for parts, submit from {t.fundingHours}h of design time
 							</option>
 						))}
 					</select>

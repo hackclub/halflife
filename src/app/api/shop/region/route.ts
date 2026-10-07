@@ -6,9 +6,7 @@ import { shopRegionPreferenceSchema } from "@/lib/schemas/shop"
 export const dynamic = "force-dynamic"
 
 /**
- * Which region's prices a participant's shop shows. Null is base pricing; a
- * region id that is unknown or deactivated is refused, so a saved preference
- * can never point at prices that do not exist.
+ * Which region's prices a participant's shop shows. Null is base pricing; a region id that is unknown or deactivated is refused, so a saved preference can never point at prices that do not exist.
  */
 export const PUT = withRoute(async (req: Request) => {
 	const gate = await requireSession()

@@ -15,9 +15,7 @@ const bodySchema = overrideSchema.extend({
 /**
  * Reversing a decision.
  *
- * Un-approving reconciles the project's credit to zero rather than writing a
- * compensating "reversal" kind, so the balance lands exactly where it started
- * and re-approving later cannot double-pay.
+ * Un-approving reconciles the project's credit to zero rather than writing a compensating "reversal" kind, so the balance lands exactly where it started and re-approving later cannot double-pay.
  */
 export const POST = withRoute(async (req: Request, { params }: Params) => {
 	const gate = await requirePermission(Permission.OVERRIDE_DECISIONS)

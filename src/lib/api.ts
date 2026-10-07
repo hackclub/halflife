@@ -9,22 +9,16 @@ export interface ApiErrorBody {
 /**
  * A successful response is the payload ITSELF. There is no `data` envelope.
  *
- * Worth stating because failures are not symmetrical — `fail()` wraps, in
- * `{ error: { code, message } }` — and the asymmetry invites a client to
- * assume both are wrapped. Three of them did, and the phone handoff and the
- * staff composer's upload spent their whole lives throwing "cannot read
- * properties of undefined (reading 'id')" as a result.
+ * Worth stating because failures are not symmetrical – `fail()` wraps, in `{ error: { code, message } }` – and the asymmetry invites a client to assume both are wrapped. Three of them did, and the phone handoff and the staff composer's upload spent their whole lives throwing "cannot read properties of undefined (reading 'id')" as a result.
  *
- * If this ever grows an envelope, it has to grow one everywhere in the same
- * commit; half the callers reading `payload.data` is the state that hides.
+ * If this ever grows an envelope, it has to grow one everywhere in the same commit; half the callers reading `payload.data` is the state that hides.
  */
 export function ok<T>(data: T, init?: ResponseInit): NextResponse<T> {
 	return NextResponse.json(data, init)
 }
 
 /**
- * The only way to build an error response. The status comes from the code, so
- * the two can never disagree.
+ * The only way to build an error response. The status comes from the code, so the two can never disagree.
  */
 export function fail(code: ApiErrorCode, message: string, details?: unknown): NextResponse<ApiErrorBody> {
 	return NextResponse.json(
@@ -36,9 +30,7 @@ export function fail(code: ApiErrorCode, message: string, details?: unknown): Ne
 type Parsed<T> = { data: T; error?: never } | { data?: never; error: NextResponse<ApiErrorBody> }
 
 /**
- * Parse and validate a JSON body. Handlers must never read a field off an
- * unvalidated object — that is how `undefined` reaches Prisma and becomes a
- * confusing runtime error three layers down.
+ * Parse and validate a JSON body. Handlers must never read a field off an unvalidated object – that is how `undefined` reaches Prisma and becomes a confusing runtime error three layers down.
  */
 export async function parseBody<S extends z.ZodType>(request: Request, schema: S): Promise<Parsed<z.output<S>>> {
 	let raw: unknown
@@ -69,25 +61,16 @@ export function parseQuery<S extends z.ZodType>(request: NextRequest, schema: S)
 }
 
 /**
- * The most a multipart body may carry beyond the file itself: boundaries and
- * part headers. Generous, because the cap exists to stop multi-gigabyte
- * bodies, not to tighten the file limit.
+ * The most a multipart body may carry beyond the file itself: boundaries and part headers. Generous, because the cap exists to stop multi-gigabyte bodies, not to tighten the file limit.
  */
 const MULTIPART_OVERHEAD_BYTES = 1 << 20
 
 type ParsedForm = { data: FormData; error?: never } | { data?: never; error: NextResponse<ApiErrorBody> }
 
 /**
- * Parse an upload's multipart form without letting the caller decide how much
- * memory the server spends before a single field can be read.
+ * Parse an upload's multipart form without letting the caller decide how much memory the server spends before a single field can be read.
  *
- * `request.formData()` materialises the whole body first, and both upload
- * routes check their size limits afterwards — fine for a small staff form,
- * but a denial of service for an upload. The handoff path is deliberately
- * unauthenticated and reads its token out of the form, so a limit checked
- * after parsing arrives too late. Content-Length is checked first (cheap, and
- * what a normal client sends), then the stream is counted as it is read, so a
- * chunked request cannot skip the check by omitting the header.
+ * `request.formData()` materialises the whole body first, and both upload routes check their size limits afterwards – fine for a small staff form, but a denial of service for an upload. The handoff path is deliberately unauthenticated and reads its token out of the form, so a limit checked after parsing arrives too late. Content-Length is checked first (cheap, and what a normal client sends), then the stream is counted as it is read, so a chunked request cannot skip the check by omitting the header.
  */
 export async function parseUploadForm(request: Request, maxFileBytes: number): Promise<ParsedForm> {
 	const cap = maxFileBytes + MULTIPART_OVERHEAD_BYTES
@@ -118,8 +101,7 @@ export async function parseUploadForm(request: Request, maxFileBytes: number): P
 		return { error: invalid() }
 	}
 
-	// Rebuild a request so the runtime's multipart parser does the parsing
-	// rather than hand-rolling boundaries.
+	// Rebuild a request so the runtime's multipart parser does the parsing rather than hand-rolling boundaries.
 	const headers = new Headers(request.headers)
 	headers.delete("content-length")
 	const buffered = new Request(request.url, { method: "POST", headers, body: Buffer.concat(chunks) })
@@ -128,10 +110,7 @@ export async function parseUploadForm(request: Request, maxFileBytes: number): P
 }
 
 /**
- * A coarse per-instance limiter for authenticated write endpoints that have
- * no other brake. Resets on cold start and is not shared across instances, so
- * it stops one account spending the process's memory or storage in a loop,
- * not a distributed attacker.
+ * A coarse per-instance limiter for authenticated write endpoints that have no other brake. Resets on cold start and is not shared across instances, so it stops one account spending the process's memory or storage in a loop, not a distributed attacker.
  */
 const limiterHits = new Map<string, number[]>()
 
@@ -149,8 +128,7 @@ export function rateLimitedInMemory(key: string, max = 10, windowMs = 60_000): b
 }
 
 /**
- * Wraps a handler so a thrown HttpError becomes its proper response and
- * anything else becomes a logged 500 instead of an unhandled rejection.
+ * Wraps a handler so a thrown HttpError becomes its proper response and anything else becomes a logged 500 instead of an unhandled rejection.
  */
 export function withRoute<A extends unknown[]>(
 	handler: (...args: A) => Promise<NextResponse>,

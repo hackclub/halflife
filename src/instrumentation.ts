@@ -5,7 +5,7 @@
  * (see lib/hca-profile), which is safe but leaves every grant row without an
  * address, so say so on every boot rather than finding out at payout time.
  *
- * The reverse — requesting PII scopes the HCA app does not hold — breaks every
+ * The reverse – requesting PII scopes the HCA app does not hold – breaks every
  * sign-in, and can only be checked on the HCA app itself; docs/RUNBOOK has it
  * on the pre-launch list.
  */
@@ -19,10 +19,8 @@ export function register() {
 	// /api/health). BETTER_AUTH_URL is not checked there because the request
 	// origin is a usable fallback, but a deployment behind a proxy wants the
 	// configured value, so say so on boot.
-	if (!process.env.BETTER_AUTH_SECRET) {
+	if (!process.env.BETTER_AUTH_SECRET)
 		console.error("[config] BETTER_AUTH_SECRET is not set; every page that touches auth will fail")
-	}
-	if (!process.env.BETTER_AUTH_URL) {
+	if (!process.env.BETTER_AUTH_URL)
 		console.error("[config] BETTER_AUTH_URL is not set; auth and webhook URLs will fall back to the request origin")
-	}
 }

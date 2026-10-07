@@ -13,9 +13,7 @@ const query = paginationQuery.extend({ updatedSince: z.coerce.date().optional() 
 /**
  * Read-only participant export for the YSWS pipeline and sibling programs.
  *
- * `INTEGRATION_API_KEY` is the internal key and sees the full roster. The
- * narrower `EXPORT_API_KEY` gets the same rows without the contact
- * identifiers (email, Slack id), so a partner key is not a full PII dump.
+ * `INTEGRATION_API_KEY` is the internal key and sees the full roster. The narrower `EXPORT_API_KEY` gets the same rows without the contact identifiers (email, Slack id), so a partner key is not a full PII dump.
  */
 export const GET = withRoute(async (req: NextRequest) => {
 	const gate = requireExportAuth(req)

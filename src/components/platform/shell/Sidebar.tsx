@@ -6,8 +6,9 @@ import { usePathname, useRouter } from "next/navigation"
 import { useState } from "react"
 import { Avatar } from "@/components/platform/Avatar"
 import { IconClock, IconLogout } from "@/components/platform/icons"
-import { cx, Panel } from "@/components/platform/ui"
+import { Panel } from "@/components/platform/ui"
 import { signOut } from "@/lib/auth-client"
+import { cx } from "@/lib/cx"
 import { fmtHours } from "@/lib/projects"
 import { PLATFORM_HOME } from "@/lib/routes"
 import { useStore } from "@/lib/store"
@@ -25,9 +26,7 @@ export const NAV = [
 ] as const
 
 /**
- * The phone tab bar divides into equal cells, six at most: six 60px cells is
- * what a 360px screen holds with the uppercase labels still readable. The
- * Doomscroller gets in through the header link below lg instead of taking one.
+ * The phone tab bar divides into equal cells, six at most: six 60px cells is what a 360px screen holds with the uppercase labels still readable. The Doomscroller gets in through the header link below lg instead of taking one.
  */
 export const TAB_NAV = NAV.filter((item) => item.href !== "/doomscroller")
 
@@ -81,7 +80,7 @@ export function Sidebar({ className }: { className?: string }) {
 
 			{/* From xl up the goal rides the status rail on the right, where the
           Doomscroller lives. Below that there is no second rail, so it stays
-          here — one instance is on screen at a time either way. */}
+          here – one instance is on screen at a time either way. */}
 			<GoalTracker className="xl:hidden" />
 
 			{/* The one number that only grows, kept above the account card. */}
@@ -148,9 +147,7 @@ export function Sidebar({ className }: { className?: string }) {
 /**
  * How much time is on the record, journalled and tracked.
  *
- * Hidden entirely at zero. An empty account gets no "0h" card, because a
- * counter sitting at zero is a scold rather than a fact; the moment there is
- * any time at all it appears above the account card and stays.
+ * Hidden entirely at zero. An empty account gets no "0h" card, because a counter sitting at zero is a scold rather than a fact; the moment there is any time at all it appears above the account card and stays.
  */
 function TimeLogged() {
 	const { totalHours } = useStore()
@@ -171,9 +168,7 @@ function TimeLogged() {
 }
 
 /**
- * Admins only: open every checkpoint on the trail, whatever its order, hours
- * or dates say, for walking the flow. It only opens nodes — whatever is saved
- * from one still goes through the server's own checks.
+ * Admins only: open every checkpoint on the trail, whatever its order, hours or dates say, for walking the flow. It only opens nodes – whatever is saved from one still goes through the server's own checks.
  */
 function BypassLocks() {
 	const { bypassLocks, setBypassLocks } = useStore()
@@ -195,9 +190,7 @@ function BypassLocks() {
 }
 
 /**
- * Admins only: the whole first run again, setup questions included, as a new
- * participant would see it. It wipes this admin's own answers, so it asks
- * once, inline rather than in a browser dialog.
+ * Admins only: the whole first run again, setup questions included, as a new participant would see it. It wipes this admin's own answers, so it asks once, inline rather than in a browser dialog.
  */
 function RedoOnboarding() {
 	const { redoOnboarding } = useStore()

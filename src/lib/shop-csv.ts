@@ -5,10 +5,7 @@ import { shopItemSchema } from "@/lib/schemas/admin"
 /**
  * Shop items from a spreadsheet, for staff adding a catalogue in one go.
  *
- * Every row goes through `shopItemSchema`, the same check the single-item form
- * answers to, so a CSV can never create an item the form would have refused.
- * The columns are the form's: per-person limit, stock and shelf order are left
- * to their defaults here as they are there.
+ * Every row goes through `shopItemSchema`, the same check the single-item form answers to, so a CSV can never create an item the form would have refused. The columns are the form's: per-person limit, stock and shelf order are left to their defaults here as they are there.
  */
 
 /** Header, in the order the template lists it. */
@@ -59,9 +56,7 @@ export interface ShopCsvProblem {
 }
 
 /**
- * RFC 4180, which is what every spreadsheet exports: commas, double-quoted
- * fields that may hold commas and line breaks, and `""` for a literal quote.
- * Each record carries the line it started on, so problems can point at it.
+ * RFC 4180, which is what every spreadsheet exports: commas, double-quoted fields that may hold commas and line breaks, and `""` for a literal quote. Each record carries the line it started on, so problems can point at it.
  */
 function records(text: string): { line: number; fields: string[] }[] {
 	const out: { line: number; fields: string[] }[] = []
@@ -124,9 +119,7 @@ function num(raw: string): number {
 }
 
 /**
- * Parse and validate a whole file. Either every row is good and `items` holds
- * them all, or `problems` says what to fix, line by line. Nothing in between:
- * a half-imported catalogue is harder to fix than a refused one.
+ * Parse and validate a whole file. Either every row is good and `items` holds them all, or `problems` says what to fix, line by line. Nothing in between: a half-imported catalogue is harder to fix than a refused one.
  */
 export function parseShopCsv(text: string): { items: ShopCsvItem[]; problems: ShopCsvProblem[] } {
 	const rows = records(text)
@@ -143,11 +136,11 @@ export function parseShopCsv(text: string): { items: ShopCsvItem[]; problems: Sh
 					.replace(/[^a-z]/g, "")
 			],
 	)
-	head.fields.forEach((h, i) => {
+	for (const [i, h] of head.fields.entries()) {
 		if (!columns[i] && h.trim() !== "") {
 			problems.push({ line: 1, message: `Unknown column "${h.trim()}". Columns are: ${SHOP_CSV_COLUMNS.join(", ")}.` })
 		}
-	})
+	}
 	const missing = REQUIRED.filter((c) => !columns.includes(c))
 	if (missing.length > 0)
 		problems.push({ line: 1, message: `Missing column${missing.length > 1 ? "s" : ""}: ${missing.join(", ")}.` })
@@ -171,8 +164,7 @@ export function parseShopCsv(text: string): { items: ShopCsvItem[]; problems: Sh
 		}
 		const say = (message: string) => problems.push({ line: row.line, message })
 
-		// Every cell after a stray comma is in the wrong column, so anything else
-		// said about this row would be noise.
+		// Every cell after a stray comma is in the wrong column, so anything else said about this row would be noise.
 		if (row.fields.length > head.fields.length) {
 			say(`Has ${row.fields.length} cells but the header has ${head.fields.length}. Quote any cell that holds a comma.`)
 			continue

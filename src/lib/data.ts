@@ -4,12 +4,7 @@ import type { DocArticle } from "./types"
 /**
  * Reference content, written rather than recorded.
  *
- * What is left in this file is the five docs pages, and they belong here: they
- * are editorial copy with no database behind them, and putting them in Postgres
- * would mean a migration to fix a typo. Everything else that used to live here
- * — the reels, the journal feed, the shop shelves, the leaderboard, the signed-
- * in user — was scaffolding for a front end with no server, and now comes from
- * one.
+ * What is left in this file is the five docs pages, and they belong here: they are editorial copy with no database behind them, and putting them in Postgres would mean a migration to fix a typo. Everything else that used to live here – the reels, the journal feed, the shop shelves, the leaderboard, the signed- in user – was scaffolding for a front end with no server, and now comes from one.
  */
 
 export const DOCS: DocArticle[] = [
@@ -22,14 +17,14 @@ export const DOCS: DocArticle[] = [
 			{
 				heading: "The shape of the program",
 				paragraphs: [
-					"Half Life runs for ten weeks. The first five are design weeks: each one has a theme, and you spend it designing a project around that theme. The second five are build weeks, in the same order — on week six you build the PCB you designed on week one, on week seven the CAD part from week two, and so on.",
+					"Half Life runs for ten weeks. The first five are design weeks: each one has a theme, and you spend it designing a project around that theme. The second five are build weeks, in the same order – on week six you build the PCB you designed on week one, on week seven the CAD part from week two, and so on.",
 					"You are not designing five things you will never make. Everything you draw in the first half arrives as real parts in the second.",
 				],
 			},
 			{
 				heading: "Checkpoints",
 				paragraphs: [
-					"Each week is a chain of checkpoints. You cannot skip one — the next puck stays sand-coloured until the one before it is done. Most checkpoints are either a journal block (keep logging sessions until the week hits ten tracked hours) or a reel (a short video showing where you got to).",
+					"Each week is a chain of checkpoints. You cannot skip one – the next puck stays sand-coloured until the one before it is done. Most checkpoints are either a journal block (keep logging sessions until the week hits ten tracked hours) or a reel (a short video showing where you got to).",
 					"The week ends on a submit gate. Design weeks ask for your files, a bill of materials, and a closing reel. Build weeks ask for a 30 to 60 second video of the thing working.",
 				],
 				list: [
@@ -41,7 +36,7 @@ export const DOCS: DocArticle[] = [
 			{
 				heading: "What you get",
 				paragraphs: [
-					"Every project gets parts funding for its tier — $30, $65 or $100 — on a card you can spend at real vendors. Going further on your projects earns coins, which you can spend in the shop.",
+					"Every project gets parts funding for its tier – $30, $65 or $100 – on a card you can spend at real vendors. Going further on your projects earns coins, which you can spend in the shop.",
 					"Finish all ten weeks and a 3D printer is yours, shipped to you. Which one is up to you: you pick it as your goal and work toward it through the season. Keep up every week and the entry machine is guaranteed; go further and you can aim higher.",
 				],
 			},
@@ -57,7 +52,7 @@ export const DOCS: DocArticle[] = [
 			{
 				heading: "What a session is",
 				paragraphs: [
-					"A session is one sitting of work on one project: you sit down, work, and stop. Every session gets its own journal entry on the map, with the hours that sitting took — ideally logged the same day. Log it while you still remember what you did — an entry written a week later is a guess, and it reads like one.",
+					"A session is one sitting of work on one project: you sit down, work, and stop. Every session gets its own journal entry on the map, with the hours that sitting took – ideally logged the same day. Log it while you still remember what you did – an entry written a week later is a guess, and it reads like one.",
 					"Your hours are only as good as the evidence behind them. Reviewers approve hours by reading your entries and watching your timelapses, so an entry that says what happened, shows it, and claims a believable amount of time is the whole job.",
 				],
 			},
@@ -72,7 +67,7 @@ export const DOCS: DocArticle[] = [
 				heading: "Recording with Lapse",
 				paragraphs: [
 					"Lapse (lapse.hackclub.com) is Hack Club's timelapse app, and it is the only one the platform takes. Start a recording when you sit down to work and it captures your screen or your camera while you go.",
-					"You can pause or stop a timelapse at any time. Pause it when you step away — to eat, to answer a message, to wait for a print — and pick it back up when you return, so the recording, and the hours it counts, are only the time you were actually working.",
+					"You can pause or stop a timelapse at any time. Pause it when you step away – to eat, to answer a message, to wait for a print – and pick it back up when you return, so the recording, and the hours it counts, are only the time you were actually working.",
 					"When the session is done, publish the timelapse on Lapse as Unlisted or Public. A private timelapse cannot be watched by a reviewer, so it cannot back any hours, and it will not show up to pick. Then open the entry on your map, switch to the Timelapse tab, sign in with Lapse if it asks (a sign-in lasts about a month), and pick it. Each timelapse can back one entry only.",
 				],
 				list: [
@@ -87,19 +82,19 @@ export const DOCS: DocArticle[] = [
 				list: [
 					"At least 200 characters of writing. Images do not count toward it.",
 					"One image for every additional hour you declare, and never fewer than two: 2 additional hours need two screenshots, however long the timelapses run.",
-					"Markdown works — headings, bold, lists, code and links. Images go in with ![what it shows](link), right where they belong in the story.",
+					"Markdown works – headings, bold, lists, code and links. Images go in with ![what it shows](link), right where they belong in the story.",
 				],
 			},
 			{
 				heading: "Writing an entry worth reading",
 				paragraphs: [
-					"The best entries read like a note to yourself three weeks from now, because that is exactly who ends up reading them — you, and a reviewer. Tell the story of the session in the order it happened, and be specific: the part number, the error message, the file you changed. A good entry has these parts:",
+					"The best entries read like a note to yourself three weeks from now, because that is exactly who ends up reading them – you, and a reviewer. Tell the story of the session in the order it happened, and be specific: the part number, the error message, the file you changed. A good entry has these parts:",
 				],
 				list: [
 					'A headline that says what happened: "Got the screen to work!!" beats "Day 4".',
 					"What you set out to do, and why it was hard. The problem is half the story.",
 					"How you got there: what you looked up, what you tried, what broke, and what finally fixed it. Link the datasheet, repo or forum thread that helped.",
-					"Pictures of the work in progress — screenshots of the schematic or model, photos of the board — placed next to the sentence they prove.",
+					"Pictures of the work in progress – screenshots of the schematic or model, photos of the board – placed next to the sentence they prove.",
 					"A one-line tl;dr at the end, so a reviewer skimming a week of entries knows what each one was.",
 					"What is next, so the following session starts where this one stopped.",
 				],
@@ -108,13 +103,13 @@ export const DOCS: DocArticle[] = [
 			{
 				heading: "Make it yours",
 				paragraphs: [
-					"Write your entries yourself, in your own words. Reviewers are reading for your process — the dead ends as much as the wins — and a generated summary does not show one. If writing feels like a chore, talk through the session into a voice memo or a quick video while it is fresh, then write the entry from that.",
+					"Write your entries yourself, in your own words. Reviewers are reading for your process – the dead ends as much as the wins – and a generated summary does not show one. If writing feels like a chore, talk through the session into a voice memo or a quick video while it is fresh, then write the entry from that.",
 				],
 			},
 			{
 				heading: "When an entry is final",
 				paragraphs: [
-					"You can edit an entry while its week is still open — its words, its hours, and which timelapses back it. Once you submit the week, its entries are what the reviewer is reading, so they cannot be edited until you unsubmit; and once a reviewer has set the hours on an entry, that entry is final.",
+					"You can edit an entry while its week is still open – its words, its hours, and which timelapses back it. Once you submit the week, its entries are what the reviewer is reading, so they cannot be edited until you unsubmit; and once a reviewer has set the hours on an entry, that entry is final.",
 				],
 			},
 		],
@@ -228,7 +223,7 @@ export const DOCS: DocArticle[] = [
 				heading: "Handing in a build week",
 				paragraphs: [
 					"One demo video: point the camera at the thing, turn it on, and talk over it. Then say whether it works. If it does not, that is still a valid submission. Record what happens, and write up what went wrong and what needs to change. Reviewers pass honest failures and fail silent ones.",
-					"Anything you changed while building — the firmware, the model, a fix to the board — goes in your journal and in the repo too.",
+					"Anything you changed while building – the firmware, the model, a fix to the board – goes in your journal and in the repo too.",
 				],
 			},
 			{

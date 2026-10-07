@@ -40,10 +40,7 @@ const ARI_LABEL: Record<ImportOutcome["ari"], string> = {
 /**
  * One button that pulls the warm-up form's rows out of Airtable.
  *
- * It reports what each row did rather than only refreshing: a skipped row is
- * usually something a human has to look at (a row with no email, or one Half
- * Life wrote itself), and the whole point of surfacing it is that the import
- * not silently drop a project it was asked to bring across.
+ * It reports what each row did rather than only refreshing: a skipped row is usually something a human has to look at (a row with no email, or one Half Life wrote itself), and the whole point of surfacing it is that the import not silently drop a project it was asked to bring across.
  */
 export function AirtableImportForm({
 	ariConfigured,
@@ -104,7 +101,7 @@ export function AirtableImportForm({
 								<li key={outcome.recordId} className="hl-hint">
 									<span className="hl-mono">{outcome.recordId}</span>
 									{outcome.email ? ` · ${outcome.email}` : ""} · {STATUS_LABEL[outcome.status]}
-									{outcome.reason ? ` — ${outcome.reason}` : ""}
+									{outcome.reason ? ` – ${outcome.reason}` : ""}
 									{ARI_LABEL[outcome.ari] ? ` (${ARI_LABEL[outcome.ari]})` : ""}
 								</li>
 							))}
@@ -114,7 +111,7 @@ export function AirtableImportForm({
 			) : null}
 
 			<div>
-				<Button variant="primary" disabled={busy} onClick={() => void run()}>
+				<Button variant="primary" disabled={busy} onClick={() => run()}>
 					{busy ? "Importing… (this can take a few minutes)" : "Import projects from Airtable"}
 				</Button>
 			</div>

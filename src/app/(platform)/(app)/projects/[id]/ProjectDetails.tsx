@@ -4,34 +4,24 @@ import { useId, useState } from "react"
 import { ParticipantGoal } from "@/app/generated/prisma/enums"
 import { IconCheck, IconPencil } from "@/components/platform/icons"
 import { StarterProjectCard } from "@/components/platform/StarterProjectCard"
-import { Button, Chip, cx, OptionRow } from "@/components/platform/ui"
+import { Button, Chip, OptionRow } from "@/components/platform/ui"
 import { getStarterProject, STARTER_PROJECT_TIER, starterProjectsFor } from "@/lib/config/onboarding"
 import { MIN_HOURS_PER_WEEK, printerById, submitFloorFor } from "@/lib/config/printers"
 import { DESIGN_WEEKS, THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { ENTRY_TIER } from "@/lib/config/tiers"
 import { TIERS } from "@/lib/curriculum"
+import { cx } from "@/lib/cx"
 import { fmtHours } from "@/lib/projects"
 import { normalizeRepo } from "@/lib/repo"
 import { useStore } from "@/lib/store"
 import type { Project } from "@/lib/types"
 
 /**
- * The project's own details — name, description, repo and tier — read as the
- * page's heading, and changed together behind one pencil.
+ * The project's own details – name, description, repo and tier – read as the page's heading, and changed together behind one pencil.
  *
- * One editor rather than a pencil per field, because they are one decision:
- * what this project is, where it lives, and what it is asking for. Editing
- * swaps the block for a form in place, so nothing around it moves far, and
- * Save sends everything that changed in one request, which is also how the
- * server's refusal comes back as one message rather than four.
+ * One editor rather than a pencil per field, because they are one decision: what this project is, where it lives, and what it is asking for. Editing swaps the block for a form in place, so nothing around it moves far, and Save sends everything that changed in one request, which is also how the server's refusal comes back as one message rather than four.
  *
- * The tier has two rules the form keeps. A starter project is scoped to tier
- * 1, so its tier is never offered. And once the design week is handed in the
- * tier is the claim a reviewer is deciding on, so it is shown but not
- * editable. Every other tier stays pickable, including ones the hours do not
- * cover yet: until you submit, a tier is a plan, and the line under each one
- * says what it costs. The refusal stays in the submit sheet, where the claim
- * is made.
+ * The tier has two rules the form keeps. A starter project is scoped to tier 1, so its tier is never offered. And once the design week is handed in the tier is the claim a reviewer is deciding on, so it is shown but not editable. Every other tier stays pickable, including ones the hours do not cover yet: until you submit, a tier is a plan, and the line under each one says what it costs. The refusal stays in the submit sheet, where the claim is made.
  */
 export function ProjectDetails({
 	project,
@@ -55,8 +45,7 @@ export function ProjectDetails({
 }) {
 	const [editing, setEditing] = useState(false)
 	const lockedId = useId()
-	// Two steps, in place: unsubmitting pulls the week out of the review queue,
-	// so the first press asks, and the second does it.
+	// Two steps, in place: unsubmitting pulls the week out of the review queue, so the first press asks, and the second does it.
 	const [confirming, setConfirming] = useState(false)
 	const [unsubmitting, setUnsubmitting] = useState(false)
 	const [unsubmitError, setUnsubmitError] = useState<string | null>(null)
@@ -110,7 +99,7 @@ export function ProjectDetails({
 									<Button variant="ghost" size="sm" onClick={() => setConfirming(false)} disabled={unsubmitting}>
 										Keep it in
 									</Button>
-									<Button variant="solid" size="sm" onClick={() => void takeBack()} disabled={unsubmitting}>
+									<Button variant="solid" size="sm" onClick={() => takeBack()} disabled={unsubmitting}>
 										{unsubmitting ? "Unsubmitting…" : "Unsubmit"}
 									</Button>
 								</div>
@@ -152,8 +141,7 @@ export function ProjectDetails({
 	)
 }
 
-// Not inputClass: its drawn outline cannot render on a field, which leaves a
-// white box on the white panel that reads as plain text rather than an input.
+// Not inputClass: its drawn outline cannot render on a field, which leaves a white box on the white panel that reads as plain text rather than an input.
 const field =
 	"block w-full rounded-xl border-2 border-field bg-black/[.02] px-4 py-3 text-navy outline-none placeholder:text-navy-faint transition-colors hover:border-navy-soft focus:border-violet focus:bg-white aria-invalid:border-coral-deep"
 
@@ -178,11 +166,7 @@ function DetailsForm({
 	const [saving, setSaving] = useState(false)
 	const [error, setError] = useState<{ field: "name" | "repo" | null; message: string } | null>(null)
 
-	// The week's starters, as at creation — offered to everyone here, so a
-	// custom project can switch to one and back. The tier-1 scoping is what
-	// keeps a starter a starter, not who was offered it during onboarding.
-	// A project already on one keeps a way off it even when the week offers
-	// nothing, so a wrong pick is never stuck.
+	// The week's starters, as at creation – offered to everyone here, so a custom project can switch to one and back. The tier-1 scoping is what keeps a starter a starter, not who was offered it during onboarding. A project already on one keeps a way off it even when the week offers nothing, so a wrong pick is never stuck.
 	const designWeek = project.weekId > DESIGN_WEEKS ? project.weekId - DESIGN_WEEKS : project.weekId
 	const theme = THEMES[designWeek - 1]?.id
 	const starters = theme ? starterProjectsFor(theme) : []
@@ -191,18 +175,14 @@ function DetailsForm({
 	const takingStarter = starterId !== null
 	const tierEditable = !takingStarter && !tierLocked
 
-	// The printer goal every hour is paced against, and only when the person
-	// is actually saving toward one: "funding for all/some weeks" goals have
-	// no machine to pace to, so nothing should warn against their tier or
-	// their starter.
+	// The printer goal every hour is paced against, and only when the person is actually saving toward one: "funding for all/some weeks" goals have no machine to pace to, so nothing should warn against their tier or their starter.
 	const goal = printerById(goalId)
 	const pacingToPrinter = participantGoal === null || participantGoal === ParticipantGoal.PRINTER
 	const hotGoal = pacingToPrinter && goal.hoursPerWeek > MIN_HOURS_PER_WEEK
 
 	function takeStarter(id: string) {
 		setStarterId(id)
-		// A starter is scoped to tier 1 from the start, so taking one carries
-		// the tier with it — the server holds the same rule.
+		// A starter is scoped to tier 1 from the start, so taking one carries the tier with it – the server holds the same rule.
 		setTier(STARTER_PROJECT_TIER)
 	}
 
@@ -211,10 +191,7 @@ function DetailsForm({
 		const { url, error: repoError } = normalizeRepo(repo)
 		if (repoError) return setError({ field: "repo", message: repoError })
 
-		// Only what changed, so an untouched tier is never re-sent against a
-		// server rule it does not need to meet. Taking a starter always
-		// carries tier 1 with it when the project is not already there —
-		// the server refuses a starter at any other tier.
+		// Only what changed, so an untouched tier is never re-sent against a server rule it does not need to meet. Taking a starter always carries tier 1 with it when the project is not already there – the server refuses a starter at any other tier.
 		const patch = {
 			...(name.trim() !== project.name ? { name: name.trim() } : {}),
 			...(description.trim() !== project.description.trim() ? { description: description.trim() } : {}),
@@ -242,7 +219,7 @@ function DetailsForm({
 			className="grid gap-4"
 			onSubmit={(e) => {
 				e.preventDefault()
-				void save()
+				save()
 			}}
 			onKeyDown={(e) => {
 				if (e.key === "Escape" && !saving) onDone()
@@ -306,7 +283,7 @@ function DetailsForm({
 					<p className="-mt-1 text-[0.82rem] leading-snug text-navy-soft">
 						{takingStarter
 							? "Starter projects are Tier 1. Switch to your own idea to choose a different tier."
-							: "Building from a starter, or your own idea? Picked the wrong one by accident — change it here."}
+							: "Building from a starter, or your own idea? Picked the wrong one by accident – change it here."}
 					</p>
 					{takingStarter && hotGoal && (
 						<p role="status" className="hand text-[0.82rem] leading-snug text-coral-deep">
@@ -332,9 +309,7 @@ function DetailsForm({
 												type="button"
 												onClick={() => {
 													setStarterId(null)
-													// Back to the tier it had: taking the starter
-													// forced tier 1, and dropping it should not
-													// bank a tier change nobody asked for.
+													// Back to the tier it had: taking the starter forced tier 1, and dropping it should not bank a tier change nobody asked for.
 													setTier(project.tier)
 												}}
 												className="hand text-[0.82rem] text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
@@ -387,7 +362,7 @@ function DetailsForm({
 					<>
 						<p className="text-[0.82rem] leading-snug text-navy-soft">
 							Bigger tiers fund bigger builds, and ask for more design time before you submit. The hours next to each
-							tier are the <span className="font-bold text-navy">minimum</span> a week needs before you can submit — not
+							tier are the <span className="font-bold text-navy">minimum</span> a week needs before you can submit – not
 							a cap, and not a suggestion. You have{" "}
 							<span className="font-bold text-navy tabular-nums">{fmtHours(hours)}</span>{" "}
 							{project.weekId === WARMUP_WEEK_ID ? "on this project." : `in week ${project.weekId}.`}
@@ -395,7 +370,7 @@ function DetailsForm({
 						{pacingToPrinter && (
 							<p className="hand text-[0.84rem] leading-snug text-navy-soft">
 								Every hour past your tier&apos;s parts-funding earns 5 coins, added straight to your spendable balance
-								to use on your {goal.name} or anything else — changing your goal later never changes what you earn.
+								to use on your {goal.name} or anything else – changing your goal later never changes what you earn.
 							</p>
 						)}
 						{TIERS.map((t) => {

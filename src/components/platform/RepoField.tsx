@@ -2,15 +2,14 @@
 
 import { useId, useState } from "react"
 import { IconPencil } from "@/components/platform/icons"
-import { Button, cx, Field, inputClass } from "@/components/platform/ui"
+import { Button, Field, inputClass } from "@/components/platform/ui"
+import { cx } from "@/lib/cx"
 import { displayRepo, normalizeRepo } from "@/lib/repo"
 import { useStore } from "@/lib/store"
 import type { Project } from "@/lib/types"
 
 /**
- * The repo field in a project-creation form. Optional on purpose: a first
- * board often has no repo until it has a schematic worth pushing, and the link
- * can be added from the project page whenever it exists.
+ * The repo field in a project-creation form. Optional on purpose: a first board often has no repo until it has a schematic worth pushing, and the link can be added from the project page whenever it exists.
  *
  * Checked on blur rather than per keystroke, so half a URL is not told off
  * while it is still being typed. The form reads the same check back through
@@ -55,11 +54,7 @@ export function repoIsValid(value: string) {
 /**
  * A project's repo, read or edited in place.
  *
- * One line when it is set — the link itself, shortened to what anyone reads —
- * and one quiet prompt when it is not, so an empty repo does not take up the
- * room of a form on every card. Editing swaps the line for an input and two
- * buttons without moving what is around it much, and the server's refusal
- * (a phase in review is locked) is said right there rather than lost.
+ * One line when it is set – the link itself, shortened to what anyone reads – and one quiet prompt when it is not, so an empty repo does not take up the room of a form on every card. Editing swaps the line for an input and two buttons without moving what is around it much, and the server's refusal (a phase in review is locked) is said right there rather than lost.
  */
 export function RepoEditor({ project, className }: { project: Project; className?: string }) {
 	const { setProjectRepo } = useStore()
@@ -138,7 +133,7 @@ export function RepoEditor({ project, className }: { project: Project; className
 			className={cx("grid gap-2", className)}
 			onSubmit={(e) => {
 				e.preventDefault()
-				void save()
+				save()
 			}}
 		>
 			<label htmlFor={id} className="sr-only">

@@ -12,13 +12,9 @@ import type { MyReel, MyReelGroup } from "@/lib/queries/reels"
 import { PLATFORM_HOME } from "@/lib/routes"
 
 /**
- * The Reels page's list: one section per project, one row per reel, and under
- * each reel the places it has been posted publicly.
+ * The Reels page's list: one section per project, one row per reel, and under each reel the places it has been posted publicly.
  *
- * Adding a link opens the same sheet a reel offers right after it is posted,
- * started on the links — pressing "Add where you posted it" has already said
- * yes. Everything here changes on the server, so every change ends in a
- * refresh rather than a local patch.
+ * Adding a link opens the same sheet a reel offers right after it is posted, started on the links – pressing "Add where you posted it" has already said yes. Everything here changes on the server, so every change ends in a refresh rather than a local patch.
  */
 export function ReelsList({ groups }: { groups: MyReelGroup[] }) {
 	const router = useRouter()
@@ -30,7 +26,7 @@ export function ReelsList({ groups }: { groups: MyReelGroup[] }) {
 				<p className="text-[1.05rem] font-extrabold text-navy">No reels yet</p>
 				<p className="hand mx-auto mt-2 max-w-[44ch] text-[0.9rem] leading-relaxed text-navy-soft">
 					reels are posted from the checkpoints on your map: an idea reel to start each design week, then progress reels
-					as the hours add up — from five hours in a design week, then every ten, and from two and a half in a build.
+					as the hours add up – from five hours in a design week, then every ten, and from two and a half in a build.
 				</p>
 				<Link
 					href={PLATFORM_HOME}
@@ -133,6 +129,7 @@ function ReelRow({ reel, onAdd, onChanged }: { reel: MyReel; onAdd: () => void; 
 			<div className="w-[84px] shrink-0 sm:w-[96px]">
 				<div className="relative overflow-hidden rounded-xl bg-navy" style={{ aspectRatio: "9 / 16" }}>
 					{reel.videoUrl ? (
+						// biome-ignore lint/a11y/useMediaCaption: a participant upload, and there is no caption file to point a track at. An empty track is announced as an empty caption, which is worse than none.
 						<video
 							src={reel.thumbnailUrl ? reel.videoUrl : `${reel.videoUrl}#t=0.1`}
 							poster={reel.thumbnailUrl ?? undefined}
@@ -179,7 +176,7 @@ function ReelRow({ reel, onAdd, onChanged }: { reel: MyReel; onAdd: () => void; 
 									</a>
 									<button
 										type="button"
-										onClick={() => void remove(link.id)}
+										onClick={() => remove(link.id)}
 										disabled={removing !== null}
 										aria-label={`Remove the ${PLATFORM_INFO[link.platform].label} link`}
 										className="grid size-8 shrink-0 place-items-center rounded-full text-navy-soft transition-colors hover:bg-coral/10 hover:text-coral-deep disabled:opacity-50"
@@ -216,6 +213,7 @@ function ReelRow({ reel, onAdd, onChanged }: { reel: MyReel; onAdd: () => void; 
 					{reel.deleteLocked && <p className="hand pl-0.5 text-[0.84rem] text-navy-soft">{reel.deleteLocked}</p>}
 
 					{confirming && (
+						// biome-ignore lint/a11y/useSemanticElements: a confirmation box, not a form.
 						<div
 							role="group"
 							aria-labelledby={`delete-${reel.id}`}
@@ -230,7 +228,7 @@ function ReelRow({ reel, onAdd, onChanged }: { reel: MyReel; onAdd: () => void; 
 									: "It comes off the platform everywhere. Links to where you posted it go with it."}
 							</p>
 							<div className="mt-2.5 flex flex-wrap gap-2">
-								<Button variant="coral" size="sm" onClick={() => void deleteReel()} disabled={deleting}>
+								<Button variant="coral" size="sm" onClick={() => deleteReel()} disabled={deleting}>
 									{deleting ? "Deleting…" : "Delete reel"}
 								</Button>
 								<Button variant="ghost" size="sm" onClick={() => setConfirming(false)} disabled={deleting}>

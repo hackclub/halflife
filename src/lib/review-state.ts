@@ -3,9 +3,7 @@ import type { PhaseStatus } from "@/app/generated/prisma/enums"
 /**
  * How a review state is said and shown, in one place.
  *
- * The projects grid and the project page both read it, so a card and the page
- * it opens can never disagree about what "needs changes" looks like. Pure, so
- * both server and client components can name it.
+ * The projects grid and the project page both read it, so a card and the page it opens can never disagree about what "needs changes" looks like. Pure, so both server and client components can name it.
  */
 
 export type ReviewTone = "line" | "sky" | "teal" | "orange" | "coral"
@@ -13,11 +11,7 @@ export type ReviewTone = "line" | "sky" | "teal" | "orange" | "coral"
 /**
  * Where a project stands, as one colour for its card.
  *
- * Attention wins: something rejected or sent back is what the maker needs to
- * see first, then a phase under review. Otherwise it follows the current
- * phase — the build once it has started, the design until then — so a design
- * that passed while the build has not begun still reads as approved. The
- * per-phase chips carry the detail this single colour cannot.
+ * Attention wins: something rejected or sent back is what the maker needs to see first, then a phase under review. Otherwise it follows the current phase – the build once it has started, the design until then – so a design that passed while the build has not begun still reads as approved. The per-phase chips carry the detail this single colour cannot.
  */
 export function reviewTone(design: PhaseStatus, build: PhaseStatus): ReviewTone {
 	const phases = [design, build]

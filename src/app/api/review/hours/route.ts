@@ -9,15 +9,9 @@ import { sanitizeOptional } from "@/lib/sanitize"
 import { hoursDecisionSchema } from "@/lib/schemas/review"
 
 /**
- * Batched, because a reviewer approves a whole project's hours in one pass and
- * one request per entry would be a dozen round trips per review.
+ * Batched, because a reviewer approves a whole project's hours in one pass and one request per entry would be a dozen round trips per review.
  *
- * These numbers feed `getHoursBreakdown` and therefore the payout, so the route
- * is scoped to work actually awaiting review: every entry must belong to a
- * phase that is `in_review`, and another reviewer's live claim refuses the
- * whole batch. Without that, a REVIEW_HOURS holder could rewrite accepted hours
- * on a draft project or after a decision, which a later un-approve/re-approve
- * cycle would then pay against.
+ * These numbers feed `getHoursBreakdown` and therefore the payout, so the route is scoped to work actually awaiting review: every entry must belong to a phase that is `in_review`, and another reviewer's live claim refuses the whole batch. Without that, a REVIEW_HOURS holder could rewrite accepted hours on a draft project or after a decision, which a later un-approve/re-approve cycle would then pay against.
  */
 export const POST = withRoute(async (req: Request) => {
 	const gate = await requirePermission(Permission.REVIEW_HOURS)
@@ -56,28 +50,22 @@ export const POST = withRoute(async (req: Request) => {
 				: [],
 		])
 
-		// All or nothing: a decision naming an entry that is gone is a stale page,
-		// not a partial success.
-		if (sessions.length !== sessionIds.length || links.length !== linkIds.length) {
+		// All or nothing: a decision naming an entry that is gone is a stale page, not a partial success.
+		if (sessions.length !== sessionIds.length || links.length !== linkIds.length)
 			throw new HttpError("NOT_FOUND", "One of those entries no longer exists")
-		}
 
-		// Approving hours is the other half of the money path, so it needs the same
-		// rule the decision route has: nobody rules on their own work.
+		// Approving hours is the other half of the money path, so it needs the same rule the decision route has: nobody rules on their own work.
 		const all = [...sessions, ...links]
-		if (all.some((row) => row.themeProject.userId === gate.user.id)) {
+		if (all.some((row) => row.themeProject.userId === gate.user.id))
 			throw new HttpError("FORBIDDEN", "You cannot approve hours on your own work")
-		}
 
 		for (const row of all) {
 			const status = row.phase === Phase.DESIGN ? row.themeProject.designStatus : row.themeProject.buildStatus
-			if (status !== PhaseStatus.in_review) {
+			if (status !== PhaseStatus.in_review)
 				throw new HttpError("PHASE_LOCKED", "Hours can only be approved while the phase is in review")
-			}
 		}
 
-		// Ari owns its own decisions, but a claim another Half Life reviewer holds
-		// is theirs until it expires.
+		// Ari owns its own decisions, but a claim another Half Life reviewer holds is theirs until it expires.
 		const pairs = [...new Map(all.map((row) => [`${row.themeProjectId}:${row.phase}`, row])).values()]
 		const openSubmissions = await tx.phaseSubmission.findMany({
 			where: {
@@ -101,9 +89,7 @@ export const POST = withRoute(async (req: Request) => {
 					select: { hoursApproved: true },
 				})
 				if (!before) throw new HttpError("NOT_FOUND", "One of those entries no longer exists")
-				// Conditional on the phase still being in review: a decision or a
-				// withdrawal that commits between the checks above and this write
-				// makes it match nothing, and the batch rolls back.
+				// Conditional on the phase still being in review: a decision or a withdrawal that commits between the checks above and this write makes it match nothing, and the batch rolls back.
 				const updated = await tx.workSession.updateMany({
 					where: {
 						id: decision.id,

@@ -6,24 +6,16 @@ import { BlockList, isIP } from "node:net"
 import { HttpError } from "@/lib/errors"
 
 /**
- * Fetch an image from somewhere else on the web, so it can be re-hosted in the
- * bucket. This is what an image dragged in from another page arrives as: its
- * address, not its bytes, and the browser cannot read another site's image
+ * Fetch an image from somewhere else on the web, so it can be re-hosted in the bucket. This is what an image dragged in from another page arrives as: its address, not its bytes, and the browser cannot read another site's image
  * for us.
  *
- * The server fetching a URL a user chose is the textbook way in to its private
- * network, so everything here is about refusing that:
+ * The server fetching a URL a user chose is the textbook way in to its private network, so everything here is about refusing that:
  *
  * - http and https on their standard ports only;
- * - no private, loopback, link-local or otherwise reserved address, checked in
- *   the DNS lookup the connection itself uses — so a name that resolves to a
- *   public address when asked and a private one when connected ("DNS
- *   rebinding") still cannot get through — and for IP literals, which skip
- *   the lookup entirely;
+ * - no private, loopback, link-local or otherwise reserved address, checked in the DNS lookup the connection itself uses – so a name that resolves to a public address when asked and a private one when connected ("DNS rebinding") still cannot get through – and for IP literals, which skip the lookup entirely;
  * - every redirect is checked the same way, and there are at most three;
  * - a time limit on the whole thing, and a byte cap that stops reading;
- * - and the bytes must actually be a PNG, JPEG, GIF or WebP, whatever the
- *   Content-Type says. SVG is refused: it can carry script.
+ * - and the bytes must actually be a PNG, JPEG, GIF or WebP, whatever the Content-Type says. SVG is refused: it can carry script.
  */
 
 const MAX_REDIRECTS = 3
@@ -51,10 +43,7 @@ for (const [net, prefix] of [
 for (const [net, prefix] of [
 	["::", 128],
 	["::1", 128],
-	// No rule for IPv4-mapped addresses (::ffff:0:0/96): BlockList already
-	// checks `::ffff:10.0.0.1` against the IPv4 rules above, and it also checks
-	// every plain IPv4 address against a mapped rule — so one here would refuse
-	// the whole IPv4 internet. NAT64 is not unwrapped, so it is refused outright.
+	// No rule for IPv4-mapped addresses (::ffff:0:0/96): BlockList already checks `::ffff:10.0.0.1` against the IPv4 rules above, and it also checks every plain IPv4 address against a mapped rule – so one here would refuse the whole IPv4 internet. NAT64 is not unwrapped, so it is refused outright.
 	["64:ff9b::", 96],
 	["100::", 64],
 	["2001:db8::", 32],
@@ -72,9 +61,7 @@ function isBlocked(address: string, family: number): boolean {
 const refused = () => new HttpError("VALIDATION_FAILED", "That image's address can't be fetched")
 
 /**
- * `lookup` for the request: resolves as usual, then refuses if any address is
- * one we will not connect to. Answers in whichever shape Node asked for —
- * newer versions ask for every address, to race IPv4 against IPv6.
+ * `lookup` for the request: resolves as usual, then refuses if any address is one we will not connect to. Answers in whichever shape Node asked for – newer versions ask for every address, to race IPv4 against IPv6.
  */
 function safeLookup(
 	hostname: string,
