@@ -166,7 +166,7 @@ function DetailsForm({
 	tierLocked: boolean
 	onDone: () => void
 }) {
-	const { updateProject, experience } = useStore()
+	const { updateProject } = useStore()
 	const id = useId()
 	const [name, setName] = useState(project.name)
 	const [description, setDescription] = useState(project.description)
@@ -176,12 +176,14 @@ function DetailsForm({
 	const [saving, setSaving] = useState(false)
 	const [error, setError] = useState<{ field: "name" | "repo" | null; message: string } | null>(null)
 
-	// The week's starters, as at creation: only someone who said they are new
-	// to hardware is offered them. A project already on one keeps a way off
-	// it even when nothing is offered, so a wrong pick is never stuck.
+	// The week's starters, as at creation — offered to everyone here, so a
+	// custom project can switch to one and back. The tier-1 scoping is what
+	// keeps a starter a starter, not who was offered it during onboarding.
+	// A project already on one keeps a way off it even when the week offers
+	// nothing, so a wrong pick is never stuck.
 	const designWeek = project.weekId > DESIGN_WEEKS ? project.weekId - DESIGN_WEEKS : project.weekId
 	const theme = THEMES[designWeek - 1]?.id
-	const starters = theme && (experience === "first" || experience === "little") ? starterProjectsFor(theme) : []
+	const starters = theme ? starterProjectsFor(theme) : []
 	const showStarterPicker = starters.length > 0 || project.starterProjectId != null
 
 	const takingStarter = starterId !== null
