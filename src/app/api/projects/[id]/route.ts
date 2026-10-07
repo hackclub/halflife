@@ -158,8 +158,8 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 		targetType: "ThemeProject",
 		targetId: id,
 		metadata: {
-			before: { title: project.title, githubRepo: project.githubRepo },
-			after: { title: updated.title, githubRepo: updated.githubRepo },
+			before: { title: project.title, githubRepo: project.githubRepo, starterProjectId: project.starterProjectId },
+			after: { title: updated.title, githubRepo: updated.githubRepo, starterProjectId: updated.starterProjectId },
 		},
 	})
 

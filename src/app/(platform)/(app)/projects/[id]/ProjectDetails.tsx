@@ -1,10 +1,12 @@
 "use client"
 
 import { useId, useState } from "react"
-import { IconPencil } from "@/components/platform/icons"
+import { IconCheck, IconPencil } from "@/components/platform/icons"
+import { StarterProjectCard } from "@/components/platform/StarterProjectCard"
 import { Button, Chip, cx, OptionRow } from "@/components/platform/ui"
+import { getStarterProject, STARTER_PROJECT_TIER, starterProjectsFor } from "@/lib/config/onboarding"
 import { submitFloorFor, tierBankedFloor } from "@/lib/config/printers"
-import { WARMUP_WEEK_ID } from "@/lib/config/program"
+import { DESIGN_WEEKS, THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { TIERS } from "@/lib/curriculum"
 import { fmtHours } from "@/lib/projects"
 import { normalizeRepo } from "@/lib/repo"
@@ -135,6 +137,13 @@ export function ProjectDetails({
 			<p className="mt-3 max-w-[62ch] text-[0.95rem] leading-relaxed whitespace-pre-line [overflow-wrap:anywhere] text-navy-soft">
 				{project.description || <span className="hand">no description yet.</span>}
 			</p>
+			{project.starterProjectId ? (
+				<p className="hand mt-2 text-[0.84rem] text-navy-soft">
+					Built from the {getStarterProject(project.starterProjectId)?.title ?? "starter project"} starter
+					{/* Picked the wrong one by accident: the picker lives in Edit details. */}
+					<span aria-hidden="true"> · </span>wrong one? Pick another any time in Edit details.
+				</p>
+			) : null}
 
 			{meta}
 		</div>
@@ -157,16 +166,33 @@ function DetailsForm({
 	tierLocked: boolean
 	onDone: () => void
 }) {
-	const { updateProject } = useStore()
+	const { updateProject, experience } = useStore()
 	const id = useId()
 	const [name, setName] = useState(project.name)
 	const [description, setDescription] = useState(project.description)
 	const [repo, setRepo] = useState(project.githubRepo ?? "")
 	const [tier, setTier] = useState<1 | 2 | 3>(project.tier)
+	const [starterId, setStarterId] = useState<string | null>(project.starterProjectId ?? null)
 	const [saving, setSaving] = useState(false)
 	const [error, setError] = useState<{ field: "name" | "repo" | null; message: string } | null>(null)
 
-	const tierEditable = !project.starter && !tierLocked
+	// The week's starters, as at creation: only someone who said they are new
+	// to hardware is offered them. A project already on one keeps a way off
+	// it even when nothing is offered, so a wrong pick is never stuck.
+	const designWeek = project.weekId > DESIGN_WEEKS ? project.weekId - DESIGN_WEEKS : project.weekId
+	const theme = THEMES[designWeek - 1]?.id
+	const starters = theme && (experience === "first" || experience === "little") ? starterProjectsFor(theme) : []
+	const showStarterPicker = starters.length > 0 || project.starterProjectId != null
+
+	const takingStarter = starterId !== null
+	const tierEditable = !takingStarter && !tierLocked
+
+	function takeStarter(id: string) {
+		setStarterId(id)
+		// A starter is scoped to tier 1 from the start, so taking one carries
+		// the tier with it — the server holds the same rule.
+		setTier(STARTER_PROJECT_TIER)
+	}
 
 	async function save() {
 		if (!name.trim()) return setError({ field: "name", message: "A project needs a name." })
@@ -174,12 +200,19 @@ function DetailsForm({
 		if (repoError) return setError({ field: "repo", message: repoError })
 
 		// Only what changed, so an untouched tier is never re-sent against a
-		// server rule it does not need to meet.
+		// server rule it does not need to meet. Taking a starter always
+		// carries tier 1 with it when the project is not already there —
+		// the server refuses a starter at any other tier.
 		const patch = {
 			...(name.trim() !== project.name ? { name: name.trim() } : {}),
 			...(description.trim() !== project.description.trim() ? { description: description.trim() } : {}),
 			...(url !== (project.githubRepo ?? null) ? { githubRepo: url } : {}),
-			...(tierEditable && tier !== project.tier ? { tier } : {}),
+			...(starterId !== (project.starterProjectId ?? null) ? { starterProjectId: starterId } : {}),
+			...(takingStarter && project.tier !== STARTER_PROJECT_TIER
+				? { tier: STARTER_PROJECT_TIER }
+				: tierEditable && tier !== project.tier
+					? { tier }
+					: {}),
 		}
 		if (Object.keys(patch).length === 0) return onDone()
 
@@ -255,6 +288,80 @@ function DetailsForm({
 				/>
 			</div>
 
+			{showStarterPicker && (
+				<fieldset className="grid gap-2.5">
+					<legend className="label mb-1.5 text-violet-deep">Starter project</legend>
+					<p className="-mt-1 text-[0.82rem] leading-snug text-navy-soft">
+						{takingStarter
+							? "Starter projects are Tier 1. Switch to your own idea to choose a different tier."
+							: "Building from a starter, or your own idea? Picked the wrong one by accident — change it here."}
+					</p>
+					{starters.map((s) => {
+						const chosen = starterId === s.id
+						return (
+							<StarterProjectCard
+								key={s.id}
+								starter={s}
+								chosen={chosen}
+								action={
+									chosen ? (
+										<span className="flex flex-wrap items-center gap-x-4 gap-y-2">
+											<Chip tone="teal">
+												<IconCheck className="text-[0.9rem]" /> Building {s.title}
+											</Chip>
+											<button
+												type="button"
+												onClick={() => {
+													setStarterId(null)
+													// Back to the tier it had: taking the starter
+													// forced tier 1, and dropping it should not
+													// bank a tier change nobody asked for.
+													setTier(project.tier)
+												}}
+												className="hand text-[0.82rem] text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
+											>
+												Use my own idea instead
+											</button>
+										</span>
+									) : (
+										<Button variant="outline" size="sm" type="button" onClick={() => takeStarter(s.id)}>
+											Build {s.title}
+										</Button>
+									)
+								}
+							/>
+						)
+					})}
+					{/* Your own idea is the default: picked explicitly here so a
+					    project that already has a starter can leave it even when
+					    no starters are offered anymore. */}
+					{starters.length > 0 ? (
+						<OptionRow
+							selected={starterId === null}
+							onClick={() => {
+								setStarterId(null)
+								setTier(project.tier)
+							}}
+						>
+							<span className="text-[0.95rem] font-bold text-navy">My own idea</span>
+						</OptionRow>
+					) : (
+						project.starterProjectId != null && (
+							<OptionRow
+								selected={false}
+								onClick={() => {
+									setStarterId(null)
+									setTier(project.tier)
+								}}
+								hint={`Leave the ${getStarterProject(project.starterProjectId)?.title ?? "starter project"} starter.`}
+							>
+								<span className="text-[0.95rem] font-bold text-navy">My own idea</span>
+							</OptionRow>
+						)
+					)}
+				</fieldset>
+			)}
+
 			<fieldset className="grid gap-2.5">
 				<legend className="label mb-1.5 text-violet-deep">Tier</legend>
 				{tierEditable ? (
@@ -291,7 +398,7 @@ function DetailsForm({
 					<p className="flex flex-wrap items-center gap-2 text-[0.82rem] text-navy-soft">
 						<Chip tone="violet">Tier {project.tier}</Chip>
 						<span className="hand">
-							{project.starter
+							{takingStarter
 								? "starter projects are fixed to tier 1."
 								: project.weekId === WARMUP_WEEK_ID
 									? "the project is submitted, so the tier is final."
