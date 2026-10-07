@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react"
 import { Gato } from "@/components/platform/art"
 import { IconComment, IconEye, IconFilm, IconHeart, IconPlay } from "@/components/platform/icons"
 import { ReportButton } from "@/components/platform/report/ReportButton"
-import { cx } from "@/components/platform/ui"
+import { cx } from "@/lib/cx"
 import type { FeedItem } from "@/lib/feed"
 import { useStore } from "@/lib/store"
 

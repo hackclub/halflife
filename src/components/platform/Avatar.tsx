@@ -1,4 +1,4 @@
-import { cx } from "@/components/platform/ui"
+import { cx } from "@/lib/cx"
 
 const TONES = ["bg-coral", "bg-violet", "bg-teal", "bg-sky-deep", "bg-orange-deep"]
 

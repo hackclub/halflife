@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { cx } from "@/components/platform/ui"
+import { cx } from "@/lib/cx"
 import type { ReportTargetInput } from "@/lib/reports"
 import { ReportDialog } from "./ReportDialog"
 

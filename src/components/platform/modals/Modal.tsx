@@ -12,7 +12,8 @@ import {
 } from "react"
 import { createPortal } from "react-dom"
 import { IconX } from "@/components/platform/icons"
-import { accentText, cx } from "@/components/platform/ui"
+import { accentText } from "@/components/platform/ui"
+import { cx } from "@/lib/cx"
 
 /**
  * The id the dialog's `aria-labelledby` points at. `Modal` provides it so a `ModalTitle` that does not carry its own `id` still names the dialog; the dialogs that predate this passed `labelledBy` and an `id` themselves.

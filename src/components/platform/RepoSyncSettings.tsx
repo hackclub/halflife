@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { IconCheck, IconWarning } from "@/components/platform/icons"
-import { Button, Chip, cx } from "@/components/platform/ui"
+import { Button, Chip } from "@/components/platform/ui"
 import { linkForge } from "@/lib/auth-client"
+import { cx } from "@/lib/cx"
 import { displayRepo } from "@/lib/repo"
 import { useStore } from "@/lib/store"
 

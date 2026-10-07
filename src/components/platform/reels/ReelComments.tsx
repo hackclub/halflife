@@ -5,7 +5,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react"
 import { Avatar } from "@/components/platform/Avatar"
 import { IconSend, IconX } from "@/components/platform/icons"
 import { ReportButton } from "@/components/platform/report/ReportButton"
-import { cx } from "@/components/platform/ui"
+import { cx } from "@/lib/cx"
 import type { FeedItem } from "@/lib/feed"
 import { ago, compact } from "./format"
 

@@ -21,7 +21,7 @@ import { countImages, Markdown, proseLength } from "@/components/platform/Markdo
 import { RepoInput, repoIsValid } from "@/components/platform/RepoField"
 import { ReelCapture } from "@/components/platform/reels/ReelCapture"
 import { StarterProjectCard } from "@/components/platform/StarterProjectCard"
-import { Button, borderedInputClass, Chip, cx, Field, inputClass, OptionRow, Panel } from "@/components/platform/ui"
+import { Button, borderedInputClass, Chip, Field, inputClass, OptionRow, Panel } from "@/components/platform/ui"
 import { attrUrl } from "@/lib/attr-url"
 import { linkLapse } from "@/lib/auth-client"
 import type { BomLine } from "@/lib/bom"
@@ -29,6 +29,7 @@ import { STARTER_PROJECT_TIER, starterProjectsFor } from "@/lib/config/onboardin
 import { paceTarget, printerById, submitFloorFor } from "@/lib/config/printers"
 import { THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { photosRequired, TIERS } from "@/lib/curriculum"
+import { cx } from "@/lib/cx"
 import {
 	PLATFORM_INFO,
 	PUBLIC_REEL_HASHTAG,
@@ -45,7 +46,6 @@ import type { Checkpoint, Project, Week } from "@/lib/types"
 import { uploadFile } from "@/lib/use-handoff"
 import { ImageUploads, type UploadedImage } from "./ImageUploads"
 import { fmtDuration, LapsePicker, type LapseTimelapse } from "./LapsePicker"
-
 import { Modal, ModalTitle } from "./Modal"
 import { RepoChecks } from "./RepoChecks"
 

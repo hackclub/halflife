@@ -3,7 +3,8 @@
 import { useRef, useState } from "react"
 import { IconFilm } from "@/components/platform/icons"
 import { UploadProgress } from "@/components/platform/UploadProgress"
-import { Button, cx, Panel } from "@/components/platform/ui"
+import { Button, Panel } from "@/components/platform/ui"
+import { cx } from "@/lib/cx"
 import { uploadFile, useHandoff } from "@/lib/use-handoff"
 
 /**

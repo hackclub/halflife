@@ -1,6 +1,5 @@
 "use client"
-
-import { cx } from "@/components/platform/ui"
+import { cx } from "@/lib/cx"
 
 /**
  * How far a file has got on its way up.

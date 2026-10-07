@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation"
 import { useId, useRef, useState } from "react"
 import { IconArrowDown, IconPencil, IconPlus, IconX } from "@/components/platform/icons"
 import { Modal, ModalTitle } from "@/components/platform/modals/Modal"
-import { Button, cx, inputClass } from "@/components/platform/ui"
+import { Button, inputClass } from "@/components/platform/ui"
 import type { BomLine } from "@/lib/bom"
+import { cx } from "@/lib/cx"
 import { BOM_MARGIN_USD } from "@/lib/schemas/project"
 
 const usd = (n: number) => `$${n.toFixed(2)}`

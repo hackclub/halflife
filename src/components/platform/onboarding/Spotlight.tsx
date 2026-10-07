@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from "react"
 import { IconArrowRight } from "@/components/platform/icons"
-import { Button, cx } from "@/components/platform/ui"
+import { Button } from "@/components/platform/ui"
+import { cx } from "@/lib/cx"
 
 export interface Rect {
 	top: number

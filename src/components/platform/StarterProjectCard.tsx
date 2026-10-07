@@ -1,7 +1,8 @@
 import type { ReactNode } from "react"
 import { StarterRender } from "@/components/platform/art"
 import { IconBook, IconFile } from "@/components/platform/icons"
-import { cx, Panel } from "@/components/platform/ui"
+import { Panel } from "@/components/platform/ui"
+import { cx } from "@/lib/cx"
 
 export interface StarterProjectCardData {
 	id: string

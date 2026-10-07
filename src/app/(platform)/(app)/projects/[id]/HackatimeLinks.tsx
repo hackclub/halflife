@@ -3,8 +3,9 @@
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useState } from "react"
 import { IconClock, IconPlus, IconWarning, IconX } from "@/components/platform/icons"
-import { Button, cx, inputClass, Panel } from "@/components/platform/ui"
+import { Button, inputClass, Panel } from "@/components/platform/ui"
 import { linkHackatime } from "@/lib/auth-client"
+import { cx } from "@/lib/cx"
 import { fmtHours } from "@/lib/projects"
 import type { Phase } from "@/lib/types"
 

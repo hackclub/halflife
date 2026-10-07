@@ -14,9 +14,10 @@ import {
 	IconUpload,
 } from "@/components/platform/icons"
 import { WeekCountdown } from "@/components/platform/path/WeekCountdown"
-import { Chip, cx, onAccent, Panel } from "@/components/platform/ui"
+import { Chip, onAccent, Panel } from "@/components/platform/ui"
 import { getStarterProject } from "@/lib/config/onboarding"
 import { printerById } from "@/lib/config/printers"
+import { cx } from "@/lib/cx"
 import { useStore } from "@/lib/store"
 import type { Checkpoint, Week } from "@/lib/types"
 

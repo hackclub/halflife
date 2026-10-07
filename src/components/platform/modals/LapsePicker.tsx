@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { IconArrowRight, IconCheck, IconClock, IconFilm, IconWarning } from "@/components/platform/icons"
-import { Button, Chip, cx } from "@/components/platform/ui"
+import { Button, Chip } from "@/components/platform/ui"
+import { cx } from "@/lib/cx"
 
 export interface LapseTimelapse {
 	id: string

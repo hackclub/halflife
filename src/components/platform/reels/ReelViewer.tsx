@@ -12,7 +12,8 @@ import {
 	IconVolumeOff,
 } from "@/components/platform/icons"
 import { ReportButton } from "@/components/platform/report/ReportButton"
-import { cx, Panel } from "@/components/platform/ui"
+import { Panel } from "@/components/platform/ui"
+import { cx } from "@/lib/cx"
 import type { FeedItem } from "@/lib/feed"
 import { useStore } from "@/lib/store"
 import { type FeedPosition, readPosition, savePosition } from "./feedPosition"

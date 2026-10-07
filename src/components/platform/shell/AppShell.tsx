@@ -19,7 +19,7 @@ import {
 } from "@/components/platform/icons"
 import { GoalModal } from "@/components/platform/modals/GoalModal"
 import { Overlays } from "@/components/platform/onboarding/Overlays"
-import { cx } from "@/components/platform/ui"
+import { cx } from "@/lib/cx"
 import { PLATFORM_HOME } from "@/lib/routes"
 import { useStore } from "@/lib/store"
 import logoArt from "../../../../public/art/logo.png"
