@@ -173,3 +173,14 @@ export const rsvpSchema = z
 		referredBy: boundedText(64).optional(),
 	})
 	.strict()
+
+/** Unauthenticated landing-page signup. Freeform referral/UTM input is capped, never validated for shape. */
+export const subscribeSchema = z
+	.object({
+		email: z.email().max(320),
+		ref: boundedText(128).optional(),
+		utmSource: boundedText(128).optional(),
+		utmMedium: boundedText(128).optional(),
+		utmCampaign: boundedText(128).optional(),
+	})
+	.strict()

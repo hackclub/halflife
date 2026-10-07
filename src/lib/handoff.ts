@@ -159,12 +159,11 @@ export async function completeHandoff(
 	try {
 		await putObject(key, bytes, file.type)
 	} catch (err) {
-		// Give the code back — the user did nothing wrong and should be able to
-		// retry without generating a new QR.
-		await prisma.uploadHandoff.updateMany({
-			where: { id: target.id },
-			data: { usedAt: null },
-		})
+		// The code stays spent: re-arming it here gave anyone holding a photo
+		// of the QR unlimited attempts past the first claim (each R2 failure
+		// freed the code again). Minting a fresh code is one click on the
+		// desktop, so a failed upload asks for a new code instead of retrying
+		// the old one.
 		throw err
 	}
 

@@ -1,6 +1,7 @@
 import { appendFile, mkdir, readFile } from "node:fs/promises"
 import path from "node:path"
 import { bufferRsvp } from "@/lib/airtable/rsvp"
+import { redactForLog } from "@/lib/redact"
 
 /**
  * Signup capture.
@@ -143,7 +144,7 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 		})
 
 		if (!lookup.ok) {
-			console.error(`Airtable lookup failed: ${lookup.status} ${await lookup.text()}`)
+			console.error(`Airtable lookup failed: ${lookup.status} ${redactForLog(await lookup.text())}`)
 			return bufferInstead("lookup failed")
 		}
 
@@ -165,7 +166,7 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 		try {
 			referralCode = String((await countAirtableRecords(url, headers)) + 1)
 		} catch (err) {
-			console.error(`Airtable count failed: ${err}`)
+			console.error(`Airtable count failed: ${redactForLog(err instanceof Error ? err.message : String(err))}`)
 			return bufferInstead("count failed")
 		}
 
@@ -186,7 +187,7 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 		})
 
 		if (!response.ok) {
-			console.error(`Airtable create failed: ${response.status} ${await response.text()}`)
+			console.error(`Airtable create failed: ${response.status} ${redactForLog(await response.text())}`)
 			return bufferInstead("create failed")
 		}
 		return { ok: true, duplicate: false, referralCode }

@@ -10,6 +10,7 @@ import { FORGES } from "@/lib/forge"
 import { adoptHcaVerifiedEmail, fetchHcaIdentity, PULL_PII, syncHcaProfile } from "@/lib/hca-profile"
 import { LAPSE_API_BASE } from "@/lib/lapse"
 import prisma from "@/lib/prisma"
+import { redactForLog } from "@/lib/redact"
 
 // Exactly the scopes enabled on Half Life's HCA app. HCA refuses the whole
 // sign-in ("The requested scope is invalid") if any one is not, so this list
@@ -99,9 +100,12 @@ export const auth = betterAuth({
 				return
 			}
 			const line = `${new Date().toISOString()} ${level.toUpperCase()} [Better Auth]: ${message}`
-			if (level === "error") console.error(line, ...args)
-			else if (level === "warn") console.warn(line, ...args)
-			else console.log(line, ...args)
+			// Upstream provider errors can echo request fields; scrub
+			// emails/tokens before they reach the logs (L10).
+			const safeArgs = args.map((a) => redactForLog(a))
+			if (level === "error") console.error(line, ...safeArgs)
+			else if (level === "warn") console.warn(line, ...safeArgs)
+			else console.log(line, ...safeArgs)
 		},
 	},
 
@@ -156,22 +160,15 @@ export const auth = betterAuth({
 	database: prismaAdapter(prisma, { provider: "postgresql" }),
 
 	session: {
-		// Every signed-in request used to read the session and its user from the
-		// database: two round trips, ~230ms from a dev machine, before any route
-		// did its own work. The cache keeps them in an encrypted cookie for five
-		// minutes instead.
-		//
-		// The trade: a session revoked on the server (signed out on another
-		// device, or deleted by hand) keeps working here until its cookie expires,
-		// up to five minutes. Signing out in this browser clears it at once. Roles
-		// and the fraud flag are read from the database on every request, never
-		// from this cache, so neither can go stale.
+		// The session cookie cache used to keep sessions in an encrypted
+		// cookie for five minutes — so a session revoked on the server (signed
+		// out on another device, or deleted by hand) kept working here until
+		// its cookie expired. Disabled per the security audit (L3): every
+		// request now reads the session from the database, so revocation
+		// takes effect at once. Roles and the fraud flag were already read
+		// from the database on every request, never from a cache.
 		cookieCache: {
-			enabled: true,
-			maxAge: 5 * 60,
-			// Encrypted, not just signed: the cookie carries the user's name and
-			// email, and nobody but the server needs to read them.
-			strategy: "jwe",
+			enabled: false,
 		},
 	},
 
