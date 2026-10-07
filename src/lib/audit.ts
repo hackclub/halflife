@@ -13,10 +13,7 @@ export interface AuditInput {
 	targetType?: string | null
 	targetId?: string | null
 	/**
-	 * Record what changed, not just that something changed:
-	 * `{ before: { tier: null }, after: { tier: 2 } }`. Six weeks later the
-	 * question is always "why does this person have 340 credits", and only a
-	 * before/after answers it.
+	 * Record what changed, not just that something changed: `{ before: { tier: null }, after: { tier: 2 } }`. Six weeks later the question is always "why does this person have 340 credits", and only a before/after answers it.
 	 */
 	metadata?: Prisma.InputJsonValue
 }
@@ -34,9 +31,7 @@ async function requestInfo(): Promise<{ ip: string | null; userAgent: string | n
 }
 
 /**
- * Best-effort by design: an audit write must never fail the user's request.
- * It logs loudly instead, so a broken audit trail is discoverable rather than
- * silent.
+ * Best-effort by design: an audit write must never fail the user's request. It logs loudly instead, so a broken audit trail is discoverable rather than silent.
  */
 export async function logAudit(input: AuditInput): Promise<void> {
 	try {
@@ -59,10 +54,7 @@ export async function logAudit(input: AuditInput): Promise<void> {
 }
 
 /**
- * Audit write that participates in a transaction. Use this only when
- * correctness depends on the log landing with the mutation (credit grants,
- * role changes); everything else should use logAudit so a slow insert doesn't
- * hold a row lock.
+ * Audit write that participates in a transaction. Use this only when correctness depends on the log landing with the mutation (credit grants, role changes); everything else should use logAudit so a slow insert doesn't hold a row lock.
  */
 export async function logAuditTx(
 	tx: Prisma.TransactionClient,

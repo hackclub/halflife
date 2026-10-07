@@ -4,13 +4,14 @@ import { useRouter } from "next/navigation"
 import { useMemo, useState } from "react"
 import { Gato } from "@/components/platform/art"
 import { IconCheck, IconCoin } from "@/components/platform/icons"
-import { cx, Panel } from "@/components/platform/ui"
+import { Panel } from "@/components/platform/ui"
+import { cx } from "@/lib/cx"
 import type { ShopItemView } from "@/lib/shop"
 import { useStore } from "@/lib/store"
 
 /**
  * The shelves, in the order they read on screen. Every item on them is paid
- * for out of the whole balance — every coin is spendable on anything.
+ * for out of the whole balance – every coin is spendable on anything.
  */
 const CATEGORIES = [
 	{ label: "All", match: null },
@@ -43,10 +44,7 @@ export function ShopGrid({
 	/**
 	 * Buying is a request, not a transaction the browser can settle.
 	 *
-	 * The server takes the coins inside one locked transaction and the order
-	 * lands PENDING for someone to fulfil, so there is nothing to do optimistically
-	 * here beyond refusing to double-fire — a second click while the first is in
-	 * the air is how somebody ends up with two printers.
+	 * The server takes the coins inside one locked transaction and the order lands PENDING for someone to fulfil, so there is nothing to do optimistically here beyond refusing to double-fire – a second click while the first is in the air is how somebody ends up with two printers.
 	 */
 	async function buy(item: ShopItemView) {
 		if (busy) return
@@ -88,7 +86,7 @@ export function ShopGrid({
 							const next = e.target.value === "" ? null : e.target.value
 							setSavingRegion(true)
 							setError(null)
-							void fetch("/api/shop/region", {
+							fetch("/api/shop/region", {
 								method: "PUT",
 								headers: { "content-type": "application/json" },
 								body: JSON.stringify({ regionId: next }),
@@ -149,8 +147,7 @@ export function ShopGrid({
 				{items.map((item) => {
 					const has = item.ownedCount > 0
 					const out = item.stock !== null && item.stock <= 0
-					// One pot: affordability reads the same whole balance the till
-					// does, so the shelf can never refuse what the server would take.
+					// One pot: affordability reads the same whole balance the till does, so the shelf can never refuse what the server would take.
 					const afford = printerFund >= item.priceCredits
 					return (
 						<Panel
@@ -182,7 +179,7 @@ export function ShopGrid({
 								<button
 									type="button"
 									disabled={out || item.locked || !afford || busy !== null}
-									onClick={() => void buy(item)}
+									onClick={() => buy(item)}
 									className={cx(
 										"label absolute bottom-3 left-3 flex items-center gap-1.5 rounded-xl border-2 px-3.5 py-2 transition-all duration-150",
 										"opacity-100 sm:translate-y-1.5 sm:opacity-0 sm:group-hover:translate-y-0 sm:group-hover:opacity-100 sm:group-focus-within:translate-y-0 sm:group-focus-within:opacity-100 focus-visible:translate-y-0 focus-visible:opacity-100",

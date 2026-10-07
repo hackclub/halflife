@@ -6,26 +6,16 @@ import type { z } from "zod"
 /**
  * The contract between the browser and the API.
  *
- * Neither half of this is visible to the compiler. A client sends JSON over a
- * string URL; the route parses it with a schema in another file. Get the method
- * wrong and the browser is handed a 405; get a field name wrong and `.strict()`
- * returns a 400. Both look identical from the UI — the click does nothing, the
- * optimistic state reverts on the next refresh, and nothing is logged.
+ * Neither half of this is visible to the compiler. A client sends JSON over a string URL; the route parses it with a schema in another file. Get the method wrong and the browser is handed a 405; get a field name wrong and `.strict()` returns a 400. Both look identical from the UI – the click does nothing, the optimistic state reverts on the next refresh, and nothing is logged.
  *
- * That is not hypothetical. The phone handoff read a `data` envelope the API
- * never had and threw on its first click for its entire life, and liking a reel
- * sent POST to a route that only exports PUT. Neither failed to compile, and
- * neither was caught by a verify script that exercised the library functions
- * underneath.
+ * That is not hypothetical. The phone handoff read a `data` envelope the API never had and threw on its first click for its entire life, and liking a reel sent POST to a route that only exports PUT. Neither failed to compile, and neither was caught by a verify script that exercised the library functions underneath.
  *
- * Two checks, both static — this needs no database:
+ * Two checks, both static – this needs no database:
  *
- *   1. every method a client fetches with is exported by the route it hits
- *   2. every request body a client sends parses against that route's schema
+ * 1. every method a client fetches with is exported by the route it hits
+ * 2. every request body a client sends parses against that route's schema
  *
- * The bodies below are written out by hand rather than extracted, because the
- * point is to state what the client is believed to send. When one drifts, this
- * fails and names it.
+ * The bodies below are written out by hand rather than extracted, because the point is to state what the client is believed to send. When one drifts, this fails and names it.
  *
  * Run with `pnpm verify:contracts`.
  */
@@ -54,8 +44,7 @@ function routeTable(): Map<string, Set<string>> {
 		const source = readFileSync(file, "utf8")
 		const found = new Set<string>()
 		for (const method of METHODS) {
-			// Both forms are in use: `export const POST = withRoute(...)` and
-			// `export async function POST(...)`.
+			// Both forms are in use: `export const POST = withRoute(...)` and `export async function POST(...)`.
 			if (new RegExp(`export (const|async function) ${method}\\b`).test(source)) found.add(method)
 		}
 		const url =
@@ -76,8 +65,7 @@ function clientCalls(): { file: string; path: string; methods: string[] }[] {
 		if (file.includes("/app/api/")) continue
 		const source = readFileSync(file, "utf8")
 		for (const match of source.matchAll(/fetch\(\s*(`[^`]*`|"[^"]*")([\s\S]{0,220}?)\)/g)) {
-			// Group 1 is always there when the regex matched; the fallback keeps
-			// the type honest without a non-null assertion.
+			// Group 1 is always there when the regex matched; the fallback keeps the type honest without a non-null assertion.
 			const path = match[1]?.slice(1, -1) ?? ""
 			if (!path.startsWith("/api")) continue
 			// A method can be a literal or a ternary; collect every literal offered.
@@ -91,22 +79,26 @@ function clientCalls(): { file: string; path: string; methods: string[] }[] {
 }
 
 /** The store posts through a helper rather than calling fetch directly. */
+// The `${…}` below are the shape of a path, written out by hand on purpose: the point of the table is to state what the client is believed to send, and interpolating a real value would check the wrong thing.
 const STORE_CALLS: { path: string; methods: string[] }[] = [
 	{ path: "/api/onboarding", methods: ["POST"] },
+	// biome-ignore lint/suspicious/noTemplateCurlyInString: a path shape, written out by hand
 	{ path: "/api/projects/${id}", methods: ["PATCH"] },
+	// biome-ignore lint/suspicious/noTemplateCurlyInString: a path shape, written out by hand
 	{ path: "/api/projects/${id}/sessions", methods: ["POST"] },
+	// biome-ignore lint/suspicious/noTemplateCurlyInString: a path shape, written out by hand
 	{ path: "/api/projects/${id}/submit", methods: ["POST"] },
+	// biome-ignore lint/suspicious/noTemplateCurlyInString: a path shape, written out by hand
 	{ path: "/api/projects/${id}/link-sync-repo", methods: ["POST"] },
 	{ path: "/api/posts", methods: ["POST"] },
 	{ path: "/api/goal", methods: ["PATCH"] },
 ]
 
 /**
- * The repo-sync control selects its method from a variable, so the walker above
- * cannot see which it uses. Stated here instead, which is the point of the
- * script: a method that drifts becomes a 405 the UI cannot explain.
+ * The repo-sync control selects its method from a variable, so the walker above cannot see which it uses. Stated here instead, which is the point of the script: a method that drifts becomes a 405 the UI cannot explain.
  */
 const COMPONENT_CALLS: { path: string; methods: string[] }[] = [
+	// biome-ignore lint/suspicious/noTemplateCurlyInString: a path shape, written out by hand
 	{ path: "/api/projects/${projectId}/repo-sync", methods: ["GET", "POST", "PUT"] },
 ]
 
@@ -114,11 +106,7 @@ const routes = routeTable()
 
 function routeFor(path: string): Set<string> | null {
 	const clean = (path.split("?")[0] ?? "").replace(/\$\{[^}]*\}/g, "X").replace(/\/$/, "")
-	// A static segment beats the variable one it shares a slot with — `bom/import`
-	// is its own route, not `bom/[itemId]` — and Next resolves it that way, so a
-	// client calling `bom/import` must be checked against the import route. The
-	// fewest variables is that rule spelled out; without it the walker could hand
-	// back `[itemId]` and report a POST as a 405 that Next would never send.
+	// A static segment beats the variable one it shares a slot with – `bom/import` is its own route, not `bom/[itemId]` – and Next resolves it that way, so a client calling `bom/import` must be checked against the import route. The fewest variables is that rule spelled out; without it the walker could hand back `[itemId]` and report a POST as a 405 that Next would never send.
 	let best: { methods: Set<string>; dynamic: number } | null = null
 	for (const [url, methods] of routes) {
 		if (!new RegExp(`^${url.replace(/\[[^\]]+\]/g, "[^/]+")}$`).test(clean)) continue
@@ -221,9 +209,7 @@ async function bodies() {
 		],
 		["submitPhase", submitSchema, { phase: "DESIGN", notes: "it works", attachmentKeys: ["sessions/u/cart.png"] }],
 		["submitPhase · no notes", submitSchema, { phase: "BUILD", attachmentKeys: [] }],
-		// The printer branch carries a machine and the two funding branches must
-		// not. The store sends `{ goal }` alone for those, so a schema that grew a
-		// required printer would break every one of them at once.
+		// The printer branch carries a machine and the two funding branches must not. The store sends `{ goal }` alone for those, so a schema that grew a required printer would break every one of them at once.
 		["setGoal · printer", setGoalSchema, { goal: "PRINTER", printerGoalId: "bambu-a1-mini" }],
 		["setGoal · funding all weeks", setGoalSchema, { goal: "FULL_FUNDING" }],
 		["setGoal · funding some weeks", setGoalSchema, { goal: "PARTIAL_FUNDING" }],
@@ -241,8 +227,7 @@ async function bodies() {
 		["buy", purchaseSchema, { shopItemId: "printer-ender-3-v3-se", quantity: 1 }],
 		["repoSync · on", repoSyncSettingsSchema, { enabled: true, repo: "https://github.com/maker/hackpad" }],
 		["repoSync · off", repoSyncSettingsSchema, { enabled: false }],
-		// The import body is optional in full: an empty POST is the preview, which
-		// is the harmless act, and the client only says `apply` when it means it.
+		// The import body is optional in full: an empty POST is the preview, which is the harmless act, and the client only says `apply` when it means it.
 		["bomImport · preview", bomImportSchema, {}],
 		["bomImport · apply replace", bomImportSchema, { apply: true, replace: true }],
 		[
@@ -253,9 +238,7 @@ async function bodies() {
 		["onboarding · repo skipped", onboardingStepSchema, { step: "repo", enabled: false }],
 	]
 
-	// The sync target is a repo URL the picker offered, and only that: a bare
-	// `owner/name` cannot say which forge it means, and a host-less slug is not
-	// something a picker produces.
+	// The sync target is a repo URL the picker offered, and only that: a bare `owner/name` cannot say which forge it means, and a host-less slug is not something a picker produces.
 	check(
 		"body · repoSync rejects a bare slug",
 		!repoSyncSettingsSchema.safeParse({ enabled: true, repo: "maker/hackpad" }).success,
@@ -264,8 +247,7 @@ async function bodies() {
 		"body · repoSync accepts a GitLab nested-group URL",
 		repoSyncSettingsSchema.safeParse({ enabled: true, repo: "https://gitlab.com/group/sub/repo" }).success,
 	)
-	// An empty body is a preview, not a write: the defaults have to be false on
-	// both axes or a stray POST would replace the list.
+	// An empty body is a preview, not a write: the defaults have to be false on both axes or a stray POST would replace the list.
 	const importDefaults = bomImportSchema.safeParse({})
 	check(
 		"body · bomImport defaults to a preview, not a write",
@@ -275,10 +257,7 @@ async function bodies() {
 
 	/* ── 2b. fetchWithRetry ─────────────────────────────────────────────────── */
 	//
-	// A transient failure at an identity endpoint used to abort an OAuth
-	// callback with a raw TimeoutError. The retry is the fix, and these pin the
-	// parts that matter: it retries what is worth retrying, leaves a 4xx alone,
-	// gives up after the retries, and never leaks an oversized body into memory.
+	// A transient failure at an identity endpoint used to abort an OAuth callback with a raw TimeoutError. The retry is the fix, and these pin the parts that matter: it retries what is worth retrying, leaves a 4xx alone, gives up after the retries, and never leaks an oversized body into memory.
 	{
 		const { fetchWithRetry } = await import("../src/lib/fetch-retry")
 		const realFetch = globalThis.fetch
@@ -287,7 +266,7 @@ async function bodies() {
 		const originalSetTimeout = globalThis.setTimeout
 		await (async () => {
 			globalThis.setTimeout = ((fn: () => void) => {
-				void fn()
+				fn()
 				return 0
 			}) as unknown as typeof setTimeout
 			try {
@@ -356,10 +335,7 @@ async function bodies() {
 
 	/* ── 3. Upload key ownership ───────────────────────────────────────────── */
 	//
-	// Keys are not secrets: the feed returns a full video URL for every reel, so
-	// any participant can read another's key. Every place a client hands one back
-	// has to check it, or a stranger's timelapse becomes evidence for hours
-	// nobody worked.
+	// Keys are not secrets: the feed returns a full video URL for every reel, so any participant can read another's key. Every place a client hands one back has to check it, or a stranger's timelapse becomes evidence for hours nobody worked.
 	const { isOwnedKey, isVideoBytes } = await import("../src/lib/uploads/r2")
 	const me = "cmu7848ge00004ku8jx1dqi92"
 	const you = "cmu99999900004ku8jx1dqi92"
@@ -381,9 +357,7 @@ async function bodies() {
 
 	/* ── 4. Video container signatures ─────────────────────────────────────── */
 	//
-	// A MIME type and an extension are only claims; the bytes decide. The `ftyp`
-	// box is shared with HEIC/AVIF/JPEG-2000 images, so the brand has to be a
-	// video one — otherwise a still image renamed `.mp4` becomes a reel.
+	// A MIME type and an extension are only claims; the bytes decide. The `ftyp` box is shared with HEIC/AVIF/JPEG-2000 images, so the brand has to be a video one – otherwise a still image renamed `.mp4` becomes a reel.
 	const asciiBytes = (s: string) => [...s].map((c) => c.charCodeAt(0))
 	const isoFile = (major: string, compatible: string[] = []) => {
 		const body = [
@@ -424,8 +398,7 @@ async function bodies() {
 
 	/* ── 5. Ari external ids ───────────────────────────────────────────────── */
 	//
-	// One Ari ship per (project, phase), so the external id has to survive a
-	// round trip for a webhook to find the right submission.
+	// One Ari ship per (project, phase), so the external id has to survive a round trip for a webhook to find the right submission.
 	const { ariExternalId, parseAriExternalId } = await import("../src/lib/ari-id")
 	const { Phase } = await import("../src/app/generated/prisma/enums")
 	const ariDesign = ariExternalId(me, Phase.DESIGN)
@@ -440,8 +413,7 @@ async function bodies() {
 
 	/* ── 5b. Which hand-ins are pending at Ari ─────────────────────────────── */
 	//
-	// What the hourly retry job replays and what the admin Retry button offers:
-	// in-review phases whose NEWEST open submission has no ariSubmissionId.
+	// What the hourly retry job replays and what the admin Retry button offers: in-review phases whose NEWEST open submission has no ariSubmissionId.
 	const { selectPendingShips } = await import("../src/lib/ari-pending")
 	const { PhaseStatus } = await import("../src/app/generated/prisma/enums")
 	const at = (minutes: number) => new Date(Date.UTC(2026, 0, 1, 0, minutes))
@@ -486,9 +458,7 @@ async function bodies() {
 
 	/* ── 5c. HCB disbursement reconciliation ──────────────────────────────── */
 	//
-	// The one path that decides whether a timed-out top-up is re-sent. An
-	// unreadable payload must be ambiguous, never absent: "nothing landed" is
-	// the state that pays twice.
+	// The one path that decides whether a timed-out top-up is re-sent. An unreadable payload must be ambiguous, never absent: "nothing landed" is the state that pays twice.
 	const { reconcileDisbursement } = await import("../src/lib/hcb")
 	const attemptedAt = new Date(Date.UTC(2026, 0, 1, 0, 0))
 	const row = (amountCents: number, createdAt: string | null) => ({
@@ -526,9 +496,7 @@ async function bodies() {
 
 	/* ── 5d. Hackatime project seconds ─────────────────────────────────────── */
 	//
-	// Approval reads this live, so the difference between "genuinely zero" and
-	// "Hackatime no longer lists that project" decides whether someone is paid
-	// zero silently or the decision is refused.
+	// Approval reads this live, so the difference between "genuinely zero" and "Hackatime no longer lists that project" decides whether someone is paid zero silently or the decision is refused.
 	const { projectSecondsFrom } = await import("../src/lib/hackatime")
 	const stats = (...projects: { name: string; total_seconds: number }[]) => ({ data: { projects } })
 
@@ -558,10 +526,7 @@ async function bodies() {
 
 	/* ── 5d-ii. Hackatime spans, and the overlap arithmetic ────────────────── */
 	//
-	// Someone who codes with Hackatime running and records a Lapse timelapse of
-	// the same sitting had it counted twice: once by the journal entry, once by
-	// the linked project. These decide how much comes off, so the boundaries are
-	// the whole risk — an off-by-one here is somebody underpaid.
+	// Someone who codes with Hackatime running and records a Lapse timelapse of the same sitting had it counted twice: once by the journal entry, once by the linked project. These decide how much comes off, so the boundaries are the whole risk – an off-by-one here is somebody underpaid.
 	const { spansFrom } = await import("../src/lib/hackatime")
 	const {
 		cachedSpansCover,
@@ -580,8 +545,7 @@ async function bodies() {
 		read.stale === false && read.spans.length === 2 && read.spans[0]?.start === 1000,
 	)
 
-	// An empty list is a real answer: the project was tracked at no time in the
-	// window. A missing list is not, and must never read as "no overlap".
+	// An empty list is a real answer: the project was tracked at no time in the window. A missing list is not, and must never read as "no overlap".
 	const emptyList = spansFrom(spanList())
 	check("hackatime spans · an empty list is a finding", emptyList.stale === false && emptyList.spans.length === 0)
 
@@ -602,16 +566,11 @@ async function bodies() {
 	const backwards = spansFrom(spanList({ start_time: 1600, end_time: 1000 }))
 	check("hackatime spans · a backwards span is dropped", backwards.spans.length === 0)
 
-	// The headline case: a two-hour recording, entirely inside two hours of
-	// tracked time on the linked project. All of it is double-counted.
-	// Every case below needs a window, so an absent one would make the checks
-	// vacuously true. Asserted once here rather than in each.
+	// The headline case: a two-hour recording, entirely inside two hours of tracked time on the linked project. All of it is double-counted. Every case below needs a window, so an absent one would make the checks vacuously true. Asserted once here rather than in each.
 	const recording = timelapseWindow(1_700_000_000_000, 7200)
 	check("overlap · a recording with a start and duration is a window", recording !== null)
 
-	// The subtraction as the ledger applies it: a journal entry claiming two hours
-	// with a two-hour recording, beside a link reporting two hours tracked over
-	// the same period. Five hours claimed, three hours of actual work.
+	// The subtraction as the ledger applies it: a journal entry claiming two hours with a two-hour recording, beside a link reporting two hours tracked over the same period. Five hours claimed, three hours of actual work.
 	const { rollUpHours } = await import("../src/lib/hours")
 	const { HoursSource: Source, Phase: ReviewPhase } = await import("../src/app/generated/prisma/enums")
 	const oneEntry = [
@@ -638,8 +597,7 @@ async function bodies() {
 	)
 	check("rollup · the subtracted overlap is reported", deduped.hackatimeOverlapSeconds === 7200)
 
-	// Genuinely different work on the same project stays additive: an hour of
-	// building that was never recorded, plus an hour recorded and tracked.
+	// Genuinely different work on the same project stays additive: an hour of building that was never recorded, plus an hour recorded and tracked.
 	const distinct = rollUpHours(oneEntry, [{ hoursApproved: null, cachedSeconds: 3600, cachedSpans: null }], null)
 	check(
 		"rollup · untracked hours still add to a journal entry",
@@ -648,13 +606,17 @@ async function bodies() {
 	)
 
 	// A link whose tracking is outside the recording's window is not overlap.
-	const elsewhere = rollUpHours(oneEntry, [
-		{
-			hoursApproved: null,
-			cachedSeconds: 7200,
-			cachedSpans: { from: 1_600_000_000, to: 1_601_000_000, spans: [{ start: 1_600_000_000, end: 1_600_007_200 }] },
-		},
-	], null)
+	const elsewhere = rollUpHours(
+		oneEntry,
+		[
+			{
+				hoursApproved: null,
+				cachedSeconds: 7200,
+				cachedSpans: { from: 1_600_000_000, to: 1_601_000_000, spans: [{ start: 1_600_000_000, end: 1_600_007_200 }] },
+			},
+		],
+		null,
+	)
 	check(
 		"rollup · tracking from another day is still counted",
 		elsewhere.computedTotal === 4,
@@ -669,8 +631,7 @@ async function bodies() {
 		`got ${overridden.computedTotal}`,
 	)
 
-	// The common case: nobody records anything, so there is nothing to compare and
-	// the two tools add up as they always did.
+	// The common case: nobody records anything, so there is nothing to compare and the two tools add up as they always did.
 	const noTimelapses = [{ hoursClaimed: 3, hoursApproved: null, hoursSource: Source.MANUAL }]
 	check(
 		"rollup · an unrecorded project is unchanged",
@@ -701,8 +662,7 @@ async function bodies() {
 	// Present so the enum import is exercised rather than merely referenced.
 	check("rollup · the phase enum is the one the schema defines", ReviewPhase.DESIGN === "DESIGN")
 
-	// The headline case: a two-hour recording, entirely inside the two hours of
-	// tracked time on the linked project. All of it is double-counted.
+	// The headline case: a two-hour recording, entirely inside the two hours of tracked time on the linked project. All of it is double-counted.
 	check(
 		"overlap · a recording fully inside tracked time is all overlap",
 		recording !== null && overlapSeconds([recording], [{ start: 1_700_000_000, end: 1_700_007_200 }]) === 7200,
@@ -714,8 +674,7 @@ async function bodies() {
 		recording !== null && overlapSeconds([recording], [{ start: 1_700_000_000, end: 1_700_001_800 }]) === 1800,
 	)
 
-	// Two recordings either side of a break: neither overlaps, and the gap
-	// between them is not counted as anything.
+	// Two recordings either side of a break: neither overlaps, and the gap between them is not counted as anything.
 	const twoRecordings = [timelapseWindow(1_700_000_000_000, 600), timelapseWindow(1_700_003_000_000, 600)].filter(
 		(w) => w !== null,
 	)
@@ -724,8 +683,7 @@ async function bodies() {
 		overlapSeconds(twoRecordings, [{ start: 1_700_001_000, end: 1_700_002_000 }]) === 0,
 	)
 
-	// Recording A runs into recording B: the shared minutes are claimed twice by
-	// the journal, and must be counted once before being subtracted.
+	// Recording A runs into recording B: the shared minutes are claimed twice by the journal, and must be counted once before being subtracted.
 	const overlapping = [timelapseWindow(1_700_000_000_000, 3600), timelapseWindow(1_700_001_800_000, 3600)].filter(
 		(w) => w !== null,
 	)
@@ -734,8 +692,7 @@ async function bodies() {
 		overlapSeconds(overlapping, [{ start: 1_700_003_000, end: 1_700_003_600 }]) === 600,
 	)
 
-	// Two spans either side of a gap, both inside one recording: the gap between
-	// them is not tracked time and must not be charged to Hackatime.
+	// Two spans either side of a gap, both inside one recording: the gap between them is not tracked time and must not be charged to Hackatime.
 	const hourRecording = timelapseWindow(1_700_000_000_000, 3600)
 	check(
 		"overlap · an untracked gap inside a recording is not overlap",
@@ -763,20 +720,16 @@ async function bodies() {
 			) === 3600,
 	)
 
-	// Hackatime's spans carry up to two minutes of padding past a gap, so their
-	// sum can exceed the project total. A subtraction larger than what is there
-	// would print a negative hour, which is worse than a duplicated one.
+	// Hackatime's spans carry up to two minutes of padding past a gap, so their sum can exceed the project total. A subtraction larger than what is there would print a negative hour, which is worse than a duplicated one.
 	check("overlap · a subtraction is capped at the link's own seconds", capSubtraction(3600, 7200) === 3600)
 	check("overlap · nothing to subtract from subtracts nothing", capSubtraction(0, 7200) === 0)
 	check("overlap · junk subtracts nothing", capSubtraction(Number.NaN, 7200) === 0)
 
-	// Without a start there is no window, and inventing one from the row's own
-	// created_at would subtract the wrong sitting's time.
+	// Without a start there is no window, and inventing one from the row's own created_at would subtract the wrong sitting's time.
 	check("overlap · no recording start means no window", timelapseWindow(null, 7200) === null)
 	check("overlap · a zero-length recording is no window", timelapseWindow(1_700_000_000_000, 0) === null)
 
-	// Merging is what stops two windows describing one minute from counting it
-	// twice on the way in.
+	// Merging is what stops two windows describing one minute from counting it twice on the way in.
 	check(
 		"overlap · overlapping windows merge into one",
 		mergeIntervals([
@@ -803,9 +756,7 @@ async function bodies() {
 		]).length === 2,
 	)
 
-	// Cached spans carry the window they were fetched for. A cached answer to a
-	// narrower question is not an answer, and must force a refetch rather than
-	// conclude "no overlap" about minutes it never covered.
+	// Cached spans carry the window they were fetched for. A cached answer to a narrower question is not an answer, and must force a refetch rather than conclude "no overlap" about minutes it never covered.
 	const cache = parseCachedSpans({ from: 100, to: 200, spans: [{ start: 100, end: 200 }] })
 	check("overlap · cached spans are read back", cache !== null && cache.spans.length === 1)
 	check("overlap · a cache covering the window is used", cache !== null && cachedSpansCover(cache, 120, 180) === true)
@@ -846,8 +797,7 @@ async function bodies() {
 
 	/* ── 6. Journal image count ─────────────────────────────────────────────── */
 	//
-	// The evidence bar counts pictures, so the same picture pasted twice must
-	// count once — otherwise one image copied down an entry clears it.
+	// The evidence bar counts pictures, so the same picture pasted twice must count once – otherwise one image copied down an entry clears it.
 	const { countImages } = await import("../src/components/platform/Markdown")
 	const imageCases: [string, number][] = [
 		["", 0],
@@ -864,12 +814,7 @@ async function bodies() {
 
 	/* ── 6b. Repo sync file rendering ───────────────────────────────────────── */
 	//
-	// These files land in a maker's own repository, so their contents are the one
-	// thing a person actually reads there. What the checks pin: the two paths the
-	// control promises, entries ordered oldest first (a devlog reads forward),
-	// the totals the project page shows, and the corrected value of an edited
-	// entry rather than the original — the whole reason the file is regenerated
-	// rather than appended to.
+	// These files land in a maker's own repository, so their contents are the one thing a person actually reads there. What the checks pin: the two paths the control promises, entries ordered oldest first (a devlog reads forward), the totals the project page shows, and the corrected value of an edited entry rather than the original – the whole reason the file is regenerated rather than appended to.
 	const { renderJournal, renderBom } = await import("../src/lib/repo-sync-files")
 	{
 		const project = {
@@ -900,17 +845,15 @@ async function bodies() {
 			entry({ id: "s1" }),
 		])
 		check("repo-files · journal path", journal.path === "JOURNAL.md")
-		// On the entry headings, not bare dates: the banner now carries a date too,
-		// and when the newest entry dates the file that date appears above them.
+		// On the entry headings, not bare dates: the banner now carries a date too, and when the newest entry dates the file that date appears above them.
 		check(
 			"repo-files · entries oldest first",
-			journal.content.indexOf("### 2026-10-06 — Routed it") < journal.content.indexOf("### 2026-10-08 — Later"),
+			journal.content.indexOf("### 2026-10-06 – Routed it") < journal.content.indexOf("### 2026-10-08 – Later"),
 		)
 		check("repo-files · html becomes markdown", journal.content.includes("Wired **everything** up."))
 		check("repo-files · the generated banner is present", journal.content.includes("Generated by Half Life"))
 
-		// A reviewer's adjustment is the number written, not the claim. The claim is
-		// still mentioned, but only as the parenthetical annotation beside it.
+		// A reviewer's adjustment is the number written, not the claim. The claim is still mentioned, but only as the parenthetical annotation beside it.
 		const adjusted = renderJournal(project, [entry({ hoursClaimed: 4, hoursApproved: 2 })])
 		check(
 			"repo-files · an approved adjustment wins",
@@ -968,11 +911,7 @@ async function bodies() {
 		)
 		check("repo-files · bom flags an over-budget build", over.content.includes("over the tier's funding"))
 
-		// The date in the banner has to come from the data, not the wall clock. When
-		// it was `new Date()`, two renders of identical content differed, so the blob
-		// SHA never matched, "skip unchanged files" never fired, and every debounced
-		// sync committed a no-op diff. A render now pins the date to the newest entry
-		// (or the project row), so identical content is byte-identical.
+		// The date in the banner has to come from the data, not the wall clock. When it was `new Date()`, two renders of identical content differed, so the blob SHA never matched, "skip unchanged files" never fired, and every debounced sync committed a no-op diff. A render now pins the date to the newest entry (or the project row), so identical content is byte-identical.
 		const a = renderJournal(project, [entry()])
 		const b = renderJournal(project, [entry()])
 		check("repo-files · identical content renders identical bytes", a.content === b.content)
@@ -985,8 +924,7 @@ async function bodies() {
 			(() => {
 				const stamped = a.content.match(/<!-- Generated: (.+?) -->/)?.[1]
 				if (!stamped) return false
-				// The fixture's newest entry is 2026-10-06T12:00Z. If the banner ever
-				// carries "now", it drifts forward on every run and this stays true.
+				// The fixture's newest entry is 2026-10-06T12:00Z. If the banner ever carries "now", it drifts forward on every run and this stays true.
 				return Math.abs(Date.now() - new Date(stamped).getTime()) > 60_000
 			})(),
 		)
@@ -994,11 +932,7 @@ async function bodies() {
 
 	/* ── 6bb. Reading a BOM CSV out of a repo ───────────────────────────────── */
 	//
-	// A maker's repo carries whatever their tool exported, so the importer is
-	// pinned on the shapes that actually turn up: a hand-kept spreadsheet whose
-	// price column says `Rs. 1300 (~ $15)`, a KiCad export with a commented
-	// preamble and a comma inside a quoted description, and a link column that
-	// holds `JLCPCB` as often as a URL.
+	// A maker's repo carries whatever their tool exported, so the importer is pinned on the shapes that actually turn up: a hand-kept spreadsheet whose price column says `Rs. 1300 (~ $15)`, a KiCad export with a commented preamble and a comma inside a quoted description, and a link column that holds `JLCPCB` as often as a URL.
 	const { parseBomCsv } = await import("../src/lib/bom-csv")
 	{
 		const messy = [
@@ -1048,12 +982,7 @@ async function bodies() {
 
 	/* ── 6bbb. The landing page's week-1 countdown ──────────────────────────── */
 	//
-	// The countdown is the one place a wrong number is visible to every visitor,
-	// and the arithmetic is the only part of it that can silently be wrong — the
-	// clock and the markup are not worth pinning. A span carries down the units
-	// rather than being recomputed from the total, so 90 minutes is 1h 30m and
-	// never 1h 90m; a moment already past clamps to zero rather than counting
-	// negative.
+	// The countdown is the one place a wrong number is visible to every visitor, and the arithmetic is the only part of it that can silently be wrong – the clock and the markup are not worth pinning. A span carries down the units rather than being recomputed from the total, so 90 minutes is 1h 30m and never 1h 90m; a moment already past clamps to zero rather than counting negative.
 	const { countdownParts } = await import("../src/lib/site/countdown")
 	{
 		const DAY = 24 * 60 * 60 * 1000
@@ -1089,19 +1018,9 @@ async function bodies() {
 
 	/* ── 6c. Repo references, across forges ─────────────────────────────────── */
 	//
-	// Three shapes reach the sync and all have to work. `githubRepo` on a project
-	// is a full URL; `repoSyncRepo` — the repo the sync is pinned to — is a full
-	// URL now too, but a row written before that change holds a bare `owner/name`
-	// with no host. They went through one parser that assumed a URL, so
-	// `new URL("owner/name")` read `owner` as the HOSTNAME, never matched
-	// github.com, and refused every enable with "Pick a GitHub repo". The bare
-	// form is now resolved against a named forge (the caller's), and both forms
-	// are pinned here so the columns cannot drift apart again.
+	// Three shapes reach the sync and all have to work. `githubRepo` on a project is a full URL; `repoSyncRepo` – the repo the sync is pinned to – is a full URL now too, but a row written before that change holds a bare `owner/name` with no host. They went through one parser that assumed a URL, so `new URL("owner/name")` read `owner` as the HOSTNAME, never matched github.com, and refused every enable with "Pick a GitHub repo". The bare form is now resolved against a named forge (the caller's), and both forms are pinned here so the columns cannot drift apart again.
 	//
-	// GitLab is a forge we speak now, so `gitlab.com/a/b` PARSES rather than
-	// being refused — the old expectation. What is refused is a host we do not
-	// know (Codeberg, self-hosted Gitea), which the checks warn about rather than
-	// block on.
+	// GitLab is a forge we speak now, so `gitlab.com/a/b` PARSES rather than being refused – the old expectation. What is refused is a host we do not know (Codeberg, self-hosted Gitea), which the checks warn about rather than block on.
 	const { parseRepoRef } = await import("../src/lib/repo-ref")
 	const { FORGES } = await import("../src/lib/forge")
 	{
@@ -1117,9 +1036,7 @@ async function bodies() {
 			["a scheme-less GitLab URL", "gitlab.com/group/repo", "group/repo", "gitlab"],
 		]
 		for (const [label, input, expected, forgeId] of okCases) {
-			// A bare slug can only resolve against a named forge: `Heliodex/coputer
-			// has no host to tell GitHub from GitLab, so the caller supplies the one
-			// the sync was pinned under.
+			// A bare slug can only resolve against a named forge: `Heliodex/coputer has no host to tell GitHub from GitLab, so the caller supplies the one the sync was pinned under.
 			const parsed = parseRepoRef(input, { forge: FORGES.github })
 			check(
 				`repo-ref · ${label} parses`,
@@ -1128,8 +1045,7 @@ async function bodies() {
 			)
 		}
 
-		// A bare slug with no forge named is genuinely ambiguous and must be refused
-		// rather than guessed at.
+		// A bare slug with no forge named is genuinely ambiguous and must be refused rather than guessed at.
 		check("repo-ref · a bare slug without a named forge is refused", parseRepoRef("Heliodex/coputer") === null)
 
 		const rejectCases: Array<[string, string]> = [

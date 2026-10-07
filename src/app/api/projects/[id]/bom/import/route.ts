@@ -18,22 +18,11 @@ export const dynamic = "force-dynamic"
 /**
  * Import a project's parts list from the `bom*.csv` already in its repo.
  *
- * A maker who exported a BOM from KiCad or EasyEDA has the parts listed once
- * already; retyping them onto the page is busywork that invites mismatched
- * prices. This reads that file through the same repo plumbing the pre-submission
- * checks use — the same cached file list, the same forge-aware read — and turns
- * whatever columns it recognises into lines.
+ * A maker who exported a BOM from KiCad or EasyEDA has the parts listed once already; retyping them onto the page is busywork that invites mismatched prices. This reads that file through the same repo plumbing the pre-submission checks use – the same cached file list, the same forge-aware read – and turns whatever columns it recognises into lines.
  *
- * One route, two acts. Without `apply` it only reads and answers with what it
- * found, which is what the preview shows; a maker can look while the list is
- * even locked, because looking writes nothing. With `apply` it writes, and
- * then it carries the same guards every other parts write does: submissions
- * open, the phase not frozen, the list's cap respected.
+ * One route, two acts. Without `apply` it only reads and answers with what it found, which is what the preview shows; a maker can look while the list is even locked, because looking writes nothing. With `apply` it writes, and then it carries the same guards every other parts write does: submissions open, the phase not frozen, the list's cap respected.
  *
- * The CSV is re-read on apply rather than trusting what the preview returned.
- * The preview is not a contract — the file may have moved on, and a client is
- * free to send whatever it likes — so the bytes that are parsed are always the
- * ones in the repo at the moment of the write.
+ * The CSV is re-read on apply rather than trusting what the preview returned. The preview is not a contract – the file may have moved on, and a client is free to send whatever it likes – so the bytes that are parsed are always the ones in the repo at the moment of the write.
  */
 
 type Params = { params: Promise<{ id: string }> }
@@ -41,10 +30,9 @@ type Params = { params: Promise<{ id: string }> }
 type RepoBom = { path: string; lines: ImportedBomLine[]; skipped: SkippedRow[] }
 
 /**
- * The repo's BOM CSV, found, read and parsed — or a sentence saying why not.
+ * The repo's BOM CSV, found, read and parsed – or a sentence saying why not.
  *
- * `limit` is what the import may add, so the overflow is reported as skipped
- * by the parser rather than by the caller.
+ * `limit` is what the import may add, so the overflow is reported as skipped by the parser rather than by the caller.
  */
 async function readRepoBom(repoLink: string | null, limit: number): Promise<RepoBom | { error: string }> {
 	if (!repoLink) {
@@ -70,7 +58,7 @@ async function readRepoBom(repoLink: string | null, limit: number): Promise<Repo
 	}
 	const parsed = parseBomCsv(csv, { limit })
 	if (!parsed.header) {
-		return { error: `${path} does not look like a BOM table — no header row with part names was found.` }
+		return { error: `${path} does not look like a BOM table – no header row with part names was found.` }
 	}
 	return { path, lines: parsed.lines, skipped: parsed.skipped }
 }
@@ -91,8 +79,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	if (!project) return fail("NOT_FOUND", "Project not found")
 
 	const existing = await prisma.bomItem.count({ where: { themeProjectId: id } })
-	// A replace has the whole cap to spend; an addition shares it with the lines
-	// already there.
+	// A replace has the whole cap to spend; an addition shares it with the lines already there.
 	const limit = replace ? MAX_BOM_ITEMS : Math.max(0, MAX_BOM_ITEMS - existing)
 
 	if (!apply) {
@@ -114,9 +101,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	}
 
 	await prisma.$transaction(async (tx) => {
-		// Re-read inside the transaction the write happens in, as POST /bom does:
-		// a design approval landing between the check above and the create would
-		// let lines into a list that is supposed to be final.
+		// Re-read inside the transaction the write happens in, as POST /bom does: a design approval landing between the check above and the create would let lines into a list that is supposed to be final.
 		const fresh = await tx.themeProject.findUnique({
 			where: { id },
 			select: { designStatus: true, buildStatus: true },
@@ -125,8 +110,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		const freshLock = bomLockReason(fresh)
 		if (freshLock) throw new HttpError("PHASE_LOCKED", freshLock)
 
-		// The count is what the cap is about, not the sort order — replacing
-		// clears the list, adding shares its room.
+		// The count is what the cap is about, not the sort order – replacing clears the list, adding shares its room.
 		const count = replace ? 0 : await tx.bomItem.count({ where: { themeProjectId: id } })
 		if (count + result.lines.length > MAX_BOM_ITEMS) {
 			throw new HttpError("VALIDATION_FAILED", `A parts list can have at most ${MAX_BOM_ITEMS} lines`)
@@ -142,8 +126,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 				themeProjectId: id,
 				sortOrder: base + i,
 				name: sanitize(line.name),
-				// Deliberately not filled in when the file had no column for them:
-				// the maker edits the blanks the way the form asks for.
+				// Deliberately not filled in when the file had no column for them: the maker edits the blanks the way the form asks for.
 				purpose: sanitizeOptional(line.purpose),
 				quantity: line.quantity,
 				unitCostUsd: Math.round(line.unitCostUsd * 100) / 100,

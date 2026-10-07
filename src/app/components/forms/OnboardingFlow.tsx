@@ -6,7 +6,8 @@ import { Gato, WeekPainting } from "@/components/platform/art"
 import { IconCheck } from "@/components/platform/icons"
 import { RepoSyncSettings } from "@/components/platform/RepoSyncSettings"
 import { ProjectChoiceCard, StarterProjectCard } from "@/components/platform/StarterProjectCard"
-import { Button, Chip, cx, Field, OptionRow, Panel } from "@/components/platform/ui"
+import { Button, Chip, Field, OptionRow, Panel } from "@/components/platform/ui"
+import { cx } from "@/lib/cx"
 import type { OnboardingView } from "@/lib/onboarding-view"
 import { EXAMPLE_JOURNAL_URL } from "@/lib/routes"
 
@@ -19,9 +20,7 @@ interface OnboardingResponse {
 }
 
 /**
- * Every step ends on the same bar: Back on the left, the step's one submit on
- * the right. Choosing an option only selects it; nothing is sent until this.
- * Without `onSubmit` the button submits its enclosing form.
+ * Every step ends on the same bar: Back on the left, the step's one submit on the right. Choosing an option only selects it; nothing is sent until this. Without `onSubmit` the button submits its enclosing form.
  */
 function StepActions({
 	onBack,
@@ -87,9 +86,7 @@ function Note({ children }: { children: ReactNode }) {
 }
 
 /**
- * The one onboarding interaction. It is rendered by the dashboard's Get
- * started modal; the server owns the state machine and every response returns
- * the next canonical view.
+ * The one onboarding interaction. It is rendered by the dashboard's Get started modal; the server owns the state machine and every response returns the next canonical view.
  */
 export function OnboardingFlow({
 	initial,
@@ -101,12 +98,9 @@ export function OnboardingFlow({
 	const [error, setError] = useState<string | null>(null)
 	const [title, setTitle] = useState(initial.project.title)
 	const [description, setDescription] = useState(initial.project.description)
-	// What each choice step has selected but not yet submitted, seeded from what
-	// the server already has so coming back to a step shows the earlier answer.
+	// What each choice step has selected but not yet submitted, seeded from what the server already has so coming back to a step shows the earlier answer.
 	const [experience, setExperience] = useState(initial.experience)
-	// The beginner's fork: a starter id, null for their own project, undefined
-	// for not chosen yet. Past the week step with no starter means they chose
-	// their own.
+	// The beginner's fork: a starter id, null for their own project, undefined for not chosen yet. Past the week step with no starter means they chose their own.
 	const [start, setStart] = useState<string | null | undefined>(() => {
 		if (initial.project.starterProjectId) return initial.project.starterProjectId
 		return initial.reached > initial.steps.findIndex((s) => s.id === "week") ? null : undefined
@@ -117,10 +111,7 @@ export function OnboardingFlow({
 	const step = view.steps[viewing]
 	if (!step) return null
 
-	// The server decides where an answer lands (a starter taken on the week step
-	// goes straight to time tracking; naming a project skips "Stuck? Pick one",
-	// since the starter was offered on the week step), and this mirrors it, both
-	// forward and back.
+	// The server decides where an answer lands (a starter taken on the week step goes straight to time tracking; naming a project skips "Stuck? Pick one", since the starter was offered on the week step), and this mirrors it, both forward and back.
 	const indexOf = (id: string) => view.steps.findIndex((s) => s.id === id)
 	const tookStarter = view.project.starterProjectId !== null && view.project.tierLocked
 	function backFrom(current: number): number {
@@ -152,9 +143,7 @@ export function OnboardingFlow({
 				return next
 			}
 
-			if (opts.advance !== false) {
-				setViewing((current) => Math.min(current + 1, next.steps.length - 1))
-			}
+			if (opts.advance !== false) setViewing((current) => Math.min(current + 1, next.steps.length - 1))
 			return next
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Something went wrong")
@@ -177,9 +166,7 @@ export function OnboardingFlow({
 
 	const back = viewing > 0 ? () => setViewing(backFrom) : undefined
 
-	// No panel of its own: it is the whole body of the Getting started modal,
-	// whose frame and eyebrow already say what this is. A second bordered card
-	// inside it only boxed the same content twice.
+	// No panel of its own: it is the whole body of the Getting started modal, whose frame and eyebrow already say what this is. A second bordered card inside it only boxed the same content twice.
 	return (
 		<div>
 			<div className="mb-6">
@@ -188,8 +175,7 @@ export function OnboardingFlow({
 						Step {step.number}/{view.stepCount}
 					</p>
 					{step.id === "week" && view.weekIntro ? (
-						// The week step is a reveal: its heading trails off ("this week
-						// it's...") so it leads in, and the theme it leads to is the title.
+						// The week step is a reveal: its heading trails off ("this week it's...") so it leads in, and the theme it leads to is the title.
 						<>
 							<p className="hand mt-1.5 text-[0.95rem] text-navy-soft">{step.heading}</p>
 							<h2 className="mt-0.5 text-[1.7rem] leading-tight font-extrabold tracking-[-0.025em] text-navy sm:text-[2.1rem]">
@@ -231,7 +217,7 @@ export function OnboardingFlow({
 							busy={busy}
 							onBack={back}
 							canSubmit={experience !== null}
-							onSubmit={() => void send({ step: "experience", experience })}
+							onSubmit={() => send({ step: "experience", experience })}
 						/>
 					</div>
 				) : null}
@@ -263,9 +249,7 @@ export function OnboardingFlow({
 						</div>
 
 						{view.beginner && view.starterProjects.length > 0 ? (
-							// The fork. Two ways in, side by side and the same shape, each
-							// with its own select button (the cards hold links, so the whole
-							// card cannot be one), then the step's Next.
+							// The fork. Two ways in, side by side and the same shape, each with its own select button (the cards hold links, so the whole card cannot be one), then the step's Next.
 							<>
 								<div className="space-y-3 border-t border-dashed border-line/80 pt-5">
 									<p className="text-[0.92rem] leading-relaxed text-navy-soft">
@@ -319,12 +303,12 @@ export function OnboardingFlow({
 									onBack={back}
 									canSubmit={start !== undefined}
 									onSubmit={() => {
-										if (start !== undefined) void chooseStart(start)
+										if (start !== undefined) chooseStart(start)
 									}}
 								/>
 							</>
 						) : (
-							<StepActions busy={busy} onBack={back} onSubmit={() => void send({ step: "week" })} />
+							<StepActions busy={busy} onBack={back} onSubmit={() => send({ step: "week" })} />
 						)}
 					</div>
 				) : null}
@@ -334,7 +318,7 @@ export function OnboardingFlow({
 						className="space-y-5"
 						onSubmit={(event) => {
 							event.preventDefault()
-							void sendProject()
+							sendProject()
 						}}
 					>
 						<p className="text-[0.9rem] leading-relaxed text-navy-soft">
@@ -392,7 +376,7 @@ export function OnboardingFlow({
 							busy={busy}
 							onBack={back}
 							label={idea ? "Next" : "Stick with my own idea"}
-							onSubmit={() => void send({ step: "idea", starterProjectId: idea })}
+							onSubmit={() => send({ step: "idea", starterProjectId: idea })}
 						/>
 					</div>
 				) : null}
@@ -421,13 +405,10 @@ export function OnboardingFlow({
 								const locked = busy || view.project.tierLocked
 								const headingId = `onboarding-tier-${tier.id}`
 								return (
-									<div
+									<label
 										key={tier.id}
-										onClick={() => {
-											if (!locked) setPickedTier(tier.id)
-										}}
 										className={cx(
-											"rounded-2xl has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-violet has-[input:focus-visible]:ring-offset-2",
+											"block rounded-2xl has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-violet has-[input:focus-visible]:ring-offset-2",
 											locked ? "cursor-default" : "group cursor-pointer",
 										)}
 									>
@@ -450,7 +431,7 @@ export function OnboardingFlow({
 													onChange={() => setPickedTier(tier.id)}
 												/>
 												<h3 id={headingId} className="text-[1.2rem] leading-tight font-extrabold text-navy">
-													{tier.name} — ${tier.grantUsd}{" "}
+													{tier.name} – ${tier.grantUsd}{" "}
 													<span className="font-semibold text-navy-soft">({tier.estimate})</span>
 												</h3>
 												{chosen ? (
@@ -462,11 +443,7 @@ export function OnboardingFlow({
 												) : null}
 											</div>
 											{tier.showcase.length > 0 ? (
-												// The tier line leads; the examples are its footnote,
-												// a strip of small thumbnails with their names beside
-												// them. Three columns on every tier, so the strips
-												// align down the list whatever their length, and fold
-												// to a stacked list on a phone.
+												// The tier line leads; the examples are its footnote, a strip of small thumbnails with their names beside them. Three columns on every tier, so the strips align down the list whatever their length, and fold to a stacked list on a phone.
 												<ul className="mt-3 grid gap-x-4 gap-y-2 border-t border-dashed border-line/80 pt-3 sm:grid-cols-3">
 													{tier.showcase.map((project) => (
 														<li key={project.href} className="min-w-0">
@@ -500,7 +477,7 @@ export function OnboardingFlow({
 												</ul>
 											) : null}
 										</Panel>
-									</div>
+									</label>
 								)
 							})}
 						</fieldset>
@@ -509,7 +486,7 @@ export function OnboardingFlow({
 							busy={busy}
 							onBack={back}
 							canSubmit={view.project.tierLocked || pickedTier !== null}
-							onSubmit={() => void send({ step: "tier", requestedTier: view.project.tierLocked ? null : pickedTier })}
+							onSubmit={() => send({ step: "tier", requestedTier: view.project.tierLocked ? null : pickedTier })}
 						/>
 					</div>
 				) : null}
@@ -546,7 +523,7 @@ export function OnboardingFlow({
 							busy={busy}
 							onBack={back}
 							label="Next"
-							onSubmit={() => void send({ step: "tracking", dismissed: true })}
+							onSubmit={() => send({ step: "tracking", dismissed: true })}
 						/>
 					</div>
 				) : null}
@@ -561,13 +538,13 @@ export function OnboardingFlow({
 						<RepoSyncSettings
 							projectId={view.projectId}
 							compact
-							onEnabled={() => void send({ step: "repo", enabled: true })}
+							onEnabled={() => send({ step: "repo", enabled: true })}
 						/>
 						<StepActions
 							busy={busy}
 							onBack={back}
 							label="Finish"
-							onSubmit={() => void send({ step: "repo", enabled: false })}
+							onSubmit={() => send({ step: "repo", enabled: false })}
 						/>
 					</div>
 				) : null}

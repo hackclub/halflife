@@ -1,8 +1,7 @@
 import DOMPurify from "isomorphic-dompurify"
 
 /**
- * Zod validates shape; these validate content. They are not substitutes for
- * each other, and both run on every free-text field before it is persisted.
+ * Zod validates shape; these validate content. They are not substitutes for each other, and both run on every free-text field before it is persisted.
  */
 
 /** Strips all markup. For anything stored and rendered as plain text. */

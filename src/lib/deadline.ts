@@ -1,6 +1,5 @@
 /**
- * A deadline as people read one, e.g. "Sunday, October 5 at 11:59 PM", in the
- * program's timezone.
+ * A deadline as people read one, e.g. "Sunday, October 5 at 11:59 PM", in the program's timezone.
  *
  * Pure, so the server's messages and the client's trail print it the same way.
  */

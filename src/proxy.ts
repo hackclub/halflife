@@ -46,7 +46,7 @@ function unauthorized(): NextResponse {
 /**
  * Is there plausibly a session on this request?
  *
- * Cookie PRESENCE only — nothing here is validated, and nothing may be
+ * Cookie PRESENCE only – nothing here is validated, and nothing may be
  * decided on it that matters. It picks which page to render at `/`, and the
  * page it picks runs the real check: `(app)` is guarded by
  * `requireSessionPage`, so a forged cookie buys a trip to the landing page rather
@@ -104,9 +104,9 @@ export function proxy(request: NextRequest) {
 	 * first-run intro all point at /dashboard and read it back from
 	 * `usePathname`, which a rewrite would leave reporting `/`.
 	 *
-	 * Two route groups cannot both define `/` — the landing page lives in
+	 * Two route groups cannot both define `/` – the landing page lives in
 	 * `(site)` with its own root layout and stylesheet, the trail in `(app)`
-	 * with the platform's — so this is what joins them.
+	 * with the platform's – so this is what joins them.
 	 */
 	if (request.nextUrl.pathname === "/" && looksSignedIn(request)) {
 		// Via the public origin, not `nextUrl.clone()`: behind the ingress the

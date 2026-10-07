@@ -4,20 +4,11 @@ import type { TierId } from "@/lib/config/tiers"
 /**
  * The first checkpoint.
  *
- * The comp calls this "GETTING STARTED: n/6" and the design file's own note
- * spells out the sequence:
+ * The comp calls this "GETTING STARTED: n/6" and the design file's own note spells out the sequence:
  *
- *   ask about hardware experience (will highlight appropriate funding tier
- *   when the choice shows up) / This is PCB week! If beginner: information
- *   about PCBs, else: example projects / Ask for project idea. Not sure? Pick
- *   from these options! / show tiers of funding, prompt to select (make clear
- *   this can be changed later) (if chose starter project then lock choice at
- *   tier 1) / journaling/lapse onboarding (option in corner to dismiss if
- *   you've journaled before) / exits out of first checkpoint
+ * ask about hardware experience (will highlight appropriate funding tier when the choice shows up) / This is PCB week! If beginner: information about PCBs, else: example projects / Ask for project idea. Not sure? Pick from these options! / show tiers of funding, prompt to select (make clear this can be changed later) (if chose starter project then lock choice at tier 1) / journaling/lapse onboarding (option in corner to dismiss if you've journaled before) / exits out of first checkpoint
  *
- * It is the first of a larger per-week checkpoint system in the same note
- * (idea reel, progress reel, submission checks). Only this one is built; the
- * rest needs the feed first, since every later checkpoint is a reel.
+ * It is the first of a larger per-week checkpoint system in the same note (idea reel, progress reel, submission checks). Only this one is built; the rest needs the feed first, since every later checkpoint is a reel.
  */
 
 export type OnboardingStepId = "experience" | "week" | "project" | "idea" | "tier" | "tracking" | "repo"
@@ -38,9 +29,7 @@ export const ONBOARDING_STEPS = [
 	{ id: "idea", number: 4, heading: "Stuck? Pick one of the following:", skippable: true },
 	{ id: "tier", number: 5, heading: "Choose a Tier", skippable: false },
 	{ id: "tracking", number: 6, heading: "Time Tracking", skippable: true },
-	// Optional and last: the sync is a convenience, not a step of making a
-	// project, and putting it before time tracking would make it read as one.
-	// Skippable, because plenty of people have no repo yet.
+	// Optional and last: the sync is a convenience, not a step of making a project, and putting it before time tracking would make it read as one. Skippable, because plenty of people have no repo yet.
 	{ id: "repo", number: 7, heading: "Keep it in your repo?", skippable: true },
 ] as const satisfies readonly OnboardingStep[]
 
@@ -58,9 +47,7 @@ export function stepIndexOf(id: OnboardingStepId): number {
 /**
  * Which tier to highlight, from the answer to question one.
  *
- * A suggestion in the UI and nothing more — the participant can pick any tier,
- * and the reviewer decides the real one at design approval. Someone who has
- * never touched hardware being shown Tier 3 first is the thing this avoids.
+ * A suggestion in the UI and nothing more – the participant can pick any tier, and the reviewer decides the real one at design approval. Someone who has never touched hardware being shown Tier 3 first is the thing this avoids.
  */
 export function suggestedTierFor(experience: HardwareExperience | null): TierId {
 	switch (experience) {
@@ -97,12 +84,9 @@ export const EXPERIENCE_OPTIONS = [
 ] as const
 
 /**
- * Starter projects: a real, finished build with a step-by-step guide, offered
- * to anyone who said they are new to hardware (see `seesStarterProjects`).
+ * Starter projects: a real, finished build with a step-by-step guide, offered to anyone who said they are new to hardware (see `seesStarterProjects`).
  *
- * Taking one locks the tier request to 1, so these have to be genuinely Tier 1
- * in scope. Each week is meant to get its own; until those repos exist,
- * Starbie, week one's, stands in for every theme.
+ * Taking one locks the tier request to 1, so these have to be genuinely Tier 1 in scope. Each week is meant to get its own; until those repos exist, Starbie, week one's, stands in for every theme.
  */
 export interface StarterProject {
 	readonly id: string
@@ -137,9 +121,7 @@ export function starterProjectsFor(theme: Theme): readonly StarterProject[] {
 }
 
 /**
- * Who is shown starter projects: the two answers that mean new to hardware.
- * Unlike `isBeginner`, no answer is not a yes; someone who never answered did
- * not say they were new.
+ * Who is shown starter projects: the two answers that mean new to hardware. Unlike `isBeginner`, no answer is not a yes; someone who never answered did not say they were new.
  */
 export function seesStarterProjects(experience: HardwareExperience | null): boolean {
 	return experience === HardwareExperience.FIRST_TIME || experience === HardwareExperience.A_LITTLE
@@ -149,15 +131,13 @@ export function getStarterProject(id: string): StarterProject | undefined {
 	return STARTER_PROJECTS.find((p) => p.id === id)
 }
 
-/** The tier a starter project is scoped to. Not configurable — see above. */
+/** The tier a starter project is scoped to. Not configurable – see above. */
 export const STARTER_PROJECT_TIER: TierId = 1
 
 /**
  * Step two's copy: "Each week will have a theme, this week it's..."
  *
- * The comp branches this on the answer to question one — "If beginner:
- * information about PCBs, else: example projects" — so both halves are here
- * and the step picks one.
+ * The comp branches this on the answer to question one – "If beginner: information about PCBs, else: example projects" – so both halves are here and the step picks one.
  */
 export interface WeekIntro {
 	readonly theme: Theme

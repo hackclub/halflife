@@ -3,9 +3,7 @@ import prisma from "../src/lib/prisma"
 import { backfillHelpTickets } from "../src/lib/site/ticket-store"
 
 /**
- * Seed the help-ticket history from the questions already in #half-life-help,
- * so the "N previous tickets" note on a new ticket is right for people who
- * asked before the table existed. Safe to run again.
+ * Seed the help-ticket history from the questions already in #half-life-help, so the "N previous tickets" note on a new ticket is right for people who asked before the table existed. Safe to run again.
  */
 const channel = process.env.SLACK_HELP_CHANNEL_ID
 if (!channel) {

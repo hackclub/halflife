@@ -24,21 +24,15 @@ export enum Permission {
 	/**
 	 * Post announcements to the feed, and hide reels or comments.
 	 *
-	 * Deliberately not given to REVIEWER, the volume role: moderating what a
-	 * 13-18 audience sees is a different kind of trust from deciding whether a
-	 * PCB was designed well, and the roles below are sized for the second.
+	 * Deliberately not given to REVIEWER, the volume role: moderating what a 13-18 audience sees is a different kind of trust from deciding whether a PCB was designed well, and the roles below are sized for the second.
 	 */
 	MANAGE_FEED = "MANAGE_FEED",
 }
 
 /**
- * Participants hold no role rows at all — absence of a role is the participant
- * state, which keeps the common case free of writes at signup.
+ * Participants hold no role rows at all – absence of a role is the participant state, which keeps the common case free of writes at signup.
  *
- * REVIEWER is the volume role and deliberately cannot mint credit, change
- * roles, or reverse a decision. FULFILLER exists because shipping hardware is
- * done by a larger, lower-trust group than reviewing. AUDITOR is a read-only
- * seat for oversight that isn't ADMIN.
+ * REVIEWER is the volume role and deliberately cannot mint credit, change roles, or reverse a decision. FULFILLER exists because shipping hardware is done by a larger, lower-trust group than reviewing. AUDITOR is a read-only seat for oversight that isn't ADMIN.
  */
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
 	[Role.ADMIN]: Object.values(Permission),
@@ -76,13 +70,7 @@ export async function getUserRoles(userId: string): Promise<Role[]> {
 /**
  * Roles for a user that still exists, or `null` when the row is gone.
  *
- * A session can outlive its user. The session cookie cache answers
- * `getSession` without touching the database for up to five minutes, so a
- * user deleted inside that window — by hand, or wholesale by a database
- * reset — still looks signed in, and every page then loads that user by id.
- * One query answers both "who are they" and "are they still here", so the
- * guards can turn a ghost session into a sign-out rather than let the first
- * `findUniqueOrThrow` discover it as a 500.
+ * A session can outlive its user. The session cookie cache answers `getSession` without touching the database for up to five minutes, so a user deleted inside that window – by hand, or wholesale by a database reset – still looks signed in, and every page then loads that user by id. One query answers both "who are they" and "are they still here", so the guards can turn a ghost session into a sign-out rather than let the first `findUniqueOrThrow` discover it as a 500.
  */
 export async function getUserRolesIfExists(userId: string): Promise<Role[] | null> {
 	const user = await prisma.user.findUnique({

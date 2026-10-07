@@ -12,10 +12,7 @@ function dayLabel(ymd: string, plusDays: number): string {
 }
 
 /**
- * When week 1 (PCB design) begins. Everything else is counted from it: every
- * week number, and the Sunday-midnight close that greys a week out on the
- * trail and stops it taking journal entries. So the form says what a new date
- * would do before it is saved rather than after.
+ * When week 1 (PCB design) begins. Everything else is counted from it: every week number, and the Sunday-midnight close that greys a week out on the trail and stops it taking journal entries. So the form says what a new date would do before it is saved rather than after.
  */
 export function ProgramStartForm({
 	initial,
@@ -88,7 +85,7 @@ export function ProgramStartForm({
 						}}
 						style={{ maxWidth: "12rem" }}
 					/>
-					<Button variant="primary" disabled={busy || !valid || !changed} onClick={() => void save()}>
+					<Button variant="primary" disabled={busy || !valid || !changed} onClick={() => save()}>
 						{busy ? "Saving…" : "Save start date"}
 					</Button>
 					{changed ? (

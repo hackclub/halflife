@@ -1,10 +1,7 @@
 import { FAQS } from "@/lib/site/content"
 
 /**
- * Comp geometry: a 1615-wide field of 725 × 323 plates, two up, 56px apart
- * (Figma 275:158–177). The comp's grey containing panel is dropped — its only
- * job was separating the field from the band behind it, and the palette shift
- * to periwinkle now does that.
+ * Comp geometry: a 1615-wide field of 725 × 323 plates, two up, 56px apart (Figma 275:158-177). The comp's grey containing panel is dropped – its only job was separating the field from the band behind it, and the palette shift to periwinkle now does that.
  */
 
 /** The comp's plate and the gutter between two of them. */
@@ -14,23 +11,14 @@ const GUTTER = 56
 /**
  * Every measurement of a plate is the comp's own, scaled by this.
  *
- * At full size the plates read as display type doing a body job — a 40px
- * question over a 30px answer — and the plates themselves stretched to 779
- * across the 1615 field, wider than the 725 the comp drew. So the whole card
- * comes down as one piece: shrinking the type inside a box that stayed put
- * would have left the type adrift in its own padding.
+ * At full size the plates read as display type doing a body job – a 40px question over a 30px answer – and the plates themselves stretched to 779 across the 1615 field, wider than the 725 the comp drew. So the whole card comes down as one piece: shrinking the type inside a box that stayed put would have left the type adrift in its own padding.
  *
- * One knob. Nudge it and the plate, its padding, both type sizes and the
- * gutter all move together — and the answer's measure does not move at all,
- * because a uniform scale cannot change a ratio. It sits at 43 characters
- * either way, which is the measure the comp's own numbers describe.
+ * One knob. Nudge it and the plate, its padding, both type sizes and the gutter all move together – and the answer's measure does not move at all, because a uniform scale cannot change a ratio. It sits at 43 characters either way, which is the measure the comp's own numbers describe.
  */
 const CARD_SCALE = 0.75
 
 /**
- * A comp size as a clamp. Only the fluid slope and the ceiling take the
- * scale: the rem floor is the phone's size, where the field is already one
- * column reading correctly and 0.75 of 16px body copy would be 12px.
+ * A comp size as a clamp. Only the fluid slope and the ceiling take the scale: the rem floor is the phone's size, where the field is already one column reading correctly and 0.75 of 16px body copy would be 12px.
  */
 const size = (floorRem: number, vw: number, maxPx: number) =>
 	`clamp(${floorRem}rem, ${+(vw * CARD_SCALE).toFixed(4)}vw, ${+(maxPx * CARD_SCALE).toFixed(2)}px)`
@@ -61,9 +49,7 @@ export default function Faq() {
 					className="mx-auto mt-12 grid min-[1180px]:mt-20"
 					style={{
 						maxWidth: FIELD.grid,
-						// 26rem is deliberately not scaled: it is the width at which two
-						// columns become one, not a size. Scaled with the rest it would
-						// have let a third column into the row and lost the comp's two up.
+						// 26rem is deliberately not scaled: it is the width at which two columns become one, not a size. Scaled with the rest it would have let a third column into the row and lost the comp's two up.
 						gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 26rem), 1fr))",
 						gap: FIELD.gutter,
 					}}

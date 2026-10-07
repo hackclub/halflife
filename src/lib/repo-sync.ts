@@ -12,28 +12,15 @@ import { parseRepoRef, repoRefFromLink, repoRefToUrl } from "@/lib/repo-ref"
 import { type BomLineForFile, type JournalEntry, renderBom, renderJournal } from "@/lib/repo-sync-files"
 
 /**
- * The repo sync: what actually runs when a project's devlogs or parts list need
- * to land in its repository.
+ * The repo sync: what actually runs when a project's devlogs or parts list need to land in its repository.
  *
  * Three things this module is careful about:
  *
- * 1. **It never blocks the write that asked for it.** A journal entry is saved
- *    by the person waiting on it; the commit is scheduled with `after()`, so a
- *    slow GitHub never shows up as a slow Save button. `scheduleRepoSync` is
- *    the only entry point the writers call.
- * 2. **A burst of writes becomes one commit.** `repoSyncQueuedAt` is stamped
- *    by any write that lands while a run is in flight, and the run picks it up
- *    and goes again rather than each write starting its own commit. `syncProject`
- *    loops until the flag stops moving.
- * 3. **Failure is recorded where a person will see it.** The project's
- *    `repoSyncError` is what its page renders; the run row and the audit entry
- *    are what staff read.
+ * 1. **It never blocks the write that asked for it.** A journal entry is saved by the person waiting on it; the commit is scheduled with `after()`, so a slow GitHub never shows up as a slow Save button. `scheduleRepoSync` is the only entry point the writers call.
+ * 2. **A burst of writes becomes one commit.** `repoSyncQueuedAt` is stamped by any write that lands while a run is in flight, and the run picks it up and goes again rather than each write starting its own commit. `syncProject` loops until the flag stops moving.
+ * 3. **Failure is recorded where a person will see it.** The project's `repoSyncError` is what its page renders; the run row and the audit entry are what staff read.
  *
- * Which forge a repo lives on is read from the repo link, never chosen per
- * project or per user: `repoRefFromLink` resolves the host to a forge, and
- * everything below it — credentials, the branch read, the commit — takes that
- * forge rather than assuming GitHub. The forge side is lib/forge-write; the
- * file contents are lib/repo-sync-files.
+ * Which forge a repo lives on is read from the repo link, never chosen per project or per user: `repoRefFromLink` resolves the host to a forge, and everything below it – credentials, the branch read, the commit – takes that forge rather than assuming GitHub. The forge side is lib/forge-write; the file contents are lib/repo-sync-files.
  */
 
 /** Debounce: the shortest gap between a write and its commit being started. */
@@ -48,23 +35,15 @@ const QUEUE_MAX_WAIT_MS = 60_000
 /**
  * In-process note of which projects currently have a run going.
  *
- * Not a lock — a second process is a second map, and the GitHub ref update is
- * itself guarded, so two runs racing is a lost commit rather than a corrupt
- * repo. This exists to keep one process from stacking runs on the same project,
- * which is the common case (one maker editing one project).
+ * Not a lock – a second process is a second map, and the GitHub ref update is itself guarded, so two runs racing is a lost commit rather than a corrupt repo. This exists to keep one process from stacking runs on the same project, which is the common case (one maker editing one project).
  */
 const inFlight = new Set<string>()
 
 /**
- * Ask for this project's repo to be brought up to date, after the current
- * response has gone out. Safe to call from anywhere, including a route's
- * `after()` hook: it never throws and never waits on GitHub.
+ * Ask for this project's repo to be brought up to date, after the current response has gone out. Safe to call from anywhere, including a route's `after()` hook: it never throws and never waits on GitHub.
  */
 export async function scheduleRepoSync(themeProjectId: string): Promise<void> {
-	// The read is cheap and decides everything: a project with the sync off is
-	// the common case, and there is no reason to schedule anything for it. The
-	// global switch is checked here too, so a staff kill switch stops new work
-	// without waiting for each project row.
+	// The read is cheap and decides everything: a project with the sync off is the common case, and there is no reason to schedule anything for it. The global switch is checked here too, so a staff kill switch stops new work without waiting for each project row.
 	const [project, program] = await Promise.all([
 		prisma.themeProject.findUnique({
 			where: { id: themeProjectId },
@@ -74,63 +53,54 @@ export async function scheduleRepoSync(themeProjectId: string): Promise<void> {
 	])
 	if (!project?.repoSyncEnabled || program?.repoSyncEnabled === false) return
 
-	// Stamp the request, then run. The stamp is what a run already in flight
-	// reads to know it should go again.
+	// Stamp the request, then run. The stamp is what a run already in flight reads to know it should go again.
 	await prisma.themeProject.updateMany({
 		where: { id: themeProjectId },
 		data: { repoSyncQueuedAt: new Date() },
 	})
 	if (inFlight.has(themeProjectId)) return
 
-	void runProjectSync(themeProjectId, false).catch((err) =>
+	runProjectSync(themeProjectId, false).catch((err) =>
 		console.error(`[repo-sync] unhandled failure for ${themeProjectId}:`, err),
 	)
 }
 
 /**
- * Run the sync for one project to completion, draining anything queued while it
- * ran. Resolves when there is nothing left to do, so the `after()` callback that
- * called it is not cut short.
+ * Run the sync for one project to completion, draining anything queued while it ran. Resolves when there is nothing left to do, so the `after()` callback that called it is not cut short.
  *
- * `force` is the first write of an enable: it ignores the "is the sync on" gate,
- * because at that instant it is not on yet — it is the commit that decides
- * whether it can be. Everything else cooperates with the gate.
+ * `force` is the first write of an enable: it ignores the "is the sync on" gate, because at that instant it is not on yet – it is the commit that decides whether it can be. Everything else cooperates with the gate.
  */
 export async function runProjectSync(themeProjectId: string, manual: boolean, force = false): Promise<WrittenFile[]> {
 	// Wait out another run on the same project rather than racing it for the ref.
-	if (inFlight.has(themeProjectId)) {
-		await waitForFree(themeProjectId)
-	}
+	if (inFlight.has(themeProjectId)) await waitForFree(themeProjectId)
 
 	inFlight.add(themeProjectId)
 	let written: WrittenFile[] = []
+	// A local rather than the parameter: the first pass is the manual one, and every pass after it is an ordinary one.
+	let runManual = manual
 	try {
-		// A loop, not an `if`: a write that lands during this run stamps the queue
-		// flag, and the correct response is one more run — not leaving it for a
-		// sync that may never come.
+		// A loop, not an `if`: a write that lands during this run stamps the queue flag, and the correct response is one more run – not leaving it for a sync that may never come.
 		for (let pass = 0; pass < 5; pass++) {
 			const queuedAt = await claimQueued(themeProjectId)
-			if (!queuedAt && !manual && !force) break
-			written = await syncOnce(themeProjectId, manual || pass > 0, force && pass === 0)
-			manual = false
+			if (queuedAt === null && !runManual && !force) break
+			written = await syncOnce(themeProjectId, runManual || pass > 0, force && pass === 0)
+			runManual = false
 			const stillQueued = await prisma.themeProject.findUnique({
 				where: { id: themeProjectId },
 				select: { repoSyncQueuedAt: true },
 			})
-			// Anything queued AFTER the claim means another write arrived while this
-			// pass ran.
-			if (!stillQueued?.repoSyncQueuedAt || stillQueued.repoSyncQueuedAt <= queuedAt!) break
+			// Anything queued AFTER the claim means another write arrived while this pass ran.
+			const queueTime = stillQueued?.repoSyncQueuedAt
+			if (queueTime === null || queueTime === undefined) break
+			if (queuedAt !== null && queueTime <= queuedAt) break
 		}
 	} finally {
 		inFlight.delete(themeProjectId)
 	}
 
-	// A write can land between the last queue read and the delete above: it stamps
-	// the flag, finds the project still in flight, and returns, so nobody would
-	// ever claim it. Claiming here closes that window — and if this run loses the
-	// claim to another process, that process is doing the work instead.
+	// A write can land between the last queue read and the delete above: it stamps the flag, finds the project still in flight, and returns, so nobody would ever claim it. Claiming here closes that window – and if this run loses the claim to another process, that process is doing the work instead.
 	if (await claimQueued(themeProjectId)) {
-		void runProjectSync(themeProjectId, false).catch((err) =>
+		runProjectSync(themeProjectId, false).catch((err) =>
 			console.error(`[repo-sync] straggler sync failed for ${themeProjectId}:`, err),
 		)
 	}
@@ -141,9 +111,7 @@ export async function runProjectSync(themeProjectId: string, manual: boolean, fo
 /**
  * Take the queued flag for this run.
  *
- * Conditional on it still being the value we read, so two runs cannot both
- * claim the same request. Returns the claimed timestamp, or null when there was
- * nothing waiting.
+ * Conditional on it still being the value we read, so two runs cannot both claim the same request. Returns the claimed timestamp, or null when there was nothing waiting.
  */
 async function claimQueued(themeProjectId: string): Promise<Date | null> {
 	const now = await prisma.themeProject.findUnique({
@@ -162,9 +130,7 @@ async function claimQueued(themeProjectId: string): Promise<Date | null> {
 async function waitForFree(themeProjectId: string): Promise<void> {
 	const deadline = Date.now() + QUEUE_MAX_WAIT_MS
 	await new Promise((r) => setTimeout(r, SYNC_DEBOUNCE_MS))
-	while (inFlight.has(themeProjectId) && Date.now() < deadline) {
-		await new Promise((r) => setTimeout(r, QUEUE_POLL_MS))
-	}
+	while (inFlight.has(themeProjectId) && Date.now() < deadline) await new Promise((r) => setTimeout(r, QUEUE_POLL_MS))
 }
 
 /** One commit: read the project, render its files, write them. */
@@ -192,8 +158,7 @@ async function syncOnce(themeProjectId: string, manual: boolean, force = false):
 	})
 	if (!project) return []
 
-	// Off, or switched off by staff, between the schedule and now. `force` is the
-	// first write of an enable, which runs before the switch is set.
+	// Off, or switched off by staff, between the schedule and now. `force` is the first write of an enable, which runs before the switch is set.
 	if (!force) {
 		if (!project.repoSyncEnabled) return []
 		const program = await prisma.programSettings.findUnique({
@@ -203,11 +168,7 @@ async function syncOnce(themeProjectId: string, manual: boolean, force = false):
 		if (program?.repoSyncEnabled === false) return []
 	}
 
-	// The pinned target is a full URL now, so the forge is inferable from the
-	// stored value alone. A row pinned before this change holds a bare
-	// `owner/name` with no host, which cannot say which forge it means — that one
-	// is resolved against the project's own repo link, the forge the maker was
-	// working on when the pin was written.
+	// The pinned target is a full URL now, so the forge is inferable from the stored value alone. A row pinned before this change holds a bare `owner/name` with no host, which cannot say which forge it means – that one is resolved against the project's own repo link, the forge the maker was working on when the pin was written.
 	const targetRepo = project.repoSyncRepo ?? project.githubRepo
 	const pinForge = repoRefFromLink(project.repoSyncRepo)?.forge ?? repoRefFromLink(project.githubRepo)?.forge
 	const parsed = targetRepo ? parseRepoRef(targetRepo, pinForge ? { forge: pinForge } : {}) : null
@@ -288,9 +249,7 @@ async function syncOnce(themeProjectId: string, manual: boolean, force = false):
 				data: { repoSyncedAt: new Date(), repoSyncError: null },
 			}),
 		])
-		// A run that changed nothing is not a sync worth recording: a retry, or a
-		// rebuild with identical content, should not look like activity in the
-		// audit log.
+		// A run that changed nothing is not a sync worth recording: a retry, or a rebuild with identical content, should not look like activity in the audit log.
 		if (changed.length > 0) {
 			await logAudit({
 				action: AuditAction.REPO_SYNC_SUCCESS,
@@ -313,8 +272,7 @@ async function syncOnce(themeProjectId: string, manual: boolean, force = false):
 }
 
 /**
- * Record that a run failed. `repoSyncError` is the only one of these a person
- * sees; the run row and the audit entry are for staff and for the history.
+ * Record that a run failed. `repoSyncError` is the only one of these a person sees; the run row and the audit entry are for staff and for the history.
  */
 async function recordFailure(
 	themeProjectId: string,
@@ -353,18 +311,11 @@ async function recordFailure(
 }
 
 /**
- * Turn the sync on for a project: pin the repo, verify the forge can write to
- * it, and do the first commit.
+ * Turn the sync on for a project: pin the repo, verify the forge can write to it, and do the first commit.
  *
- * Refuses rather than half-applying. Switching the sync on against a repo the
- * caller cannot push to would leave every later write failing with a 403 they
- * cannot fix from the platform, so the first commit is done here and its
- * failure means the setting never takes.
+ * Refuses rather than half-applying. Switching the sync on against a repo the caller cannot push to would leave every later write failing with a 403 they cannot fix from the platform, so the first commit is done here and its failure means the setting never takes.
  *
- * `repoUrl` is the full URL of the chosen repo, which is what gets pinned. A URL
- * rather than a slug because the forge then stays inferable from the stored
- * value on its own — the sync later reads the pin without having to remember
- * which service the picker was listing.
+ * `repoUrl` is the full URL of the chosen repo, which is what gets pinned. A URL rather than a slug because the forge then stays inferable from the stored value on its own – the sync later reads the pin without having to remember which service the picker was listing.
  */
 export async function enableRepoSync(
 	themeProjectId: string,
@@ -384,8 +335,7 @@ export async function enableRepoSync(
 	if (!creds) throw new HttpError("FORBIDDEN", `Connect your ${ref.forge.label} account first`)
 
 	const repo = ref.fullName
-	// Pin the target and clear any stale error before the first commit, so a
-	// failure here is recorded against the project the maker is looking at.
+	// Pin the target and clear any stale error before the first commit, so a failure here is recorded against the project the maker is looking at.
 	await prisma.themeProject.update({
 		where: { id: themeProjectId },
 		data: { repoSyncRepo: repoUrl, repoSyncError: null },
@@ -399,9 +349,7 @@ export async function enableRepoSync(
 		})
 		if (failed?.repoSyncError) throw new HttpError("UNPROCESSABLE", failed.repoSyncError)
 
-		// Only now is it on, and only after a commit succeeded: `repoSyncEnabled`
-		// is what the after-write job reads, so setting it before the first write
-		// would leave a project that looks synced and is not.
+		// Only now is it on, and only after a commit succeeded: `repoSyncEnabled` is what the after-write job reads, so setting it before the first write would leave a project that looks synced and is not.
 		await prisma.themeProject.update({ where: { id: themeProjectId }, data: { repoSyncEnabled: true } })
 		return { repo, files }
 	} catch (err) {
@@ -432,18 +380,14 @@ export interface RepoSyncState {
 	syncedAt: number | null
 	/** Why the last attempt failed, or null. */
 	error: string | null
-	/** Which forges the caller has linked, by id — a maker may link both. */
+	/** Which forges the caller has linked, by id – a maker may link both. */
 	linkedForges: string[]
 	/**
-	 * The project's own repo link, as the alternative the sync target is measured
-	 * against. Null when the project has none.
+	 * The project's own repo link, as the alternative the sync target is measured against. Null when the project has none.
 	 */
 	projectRepo: string | null
 	/**
-	 * Whether the project's link should be moved to the sync target, so the UI
-	 * can offer to do it in one press. True when the project has no link, or has
-	 * one that names a different repo; false when they already agree, or when the
-	 * target is not a repo Half Life can read (a bare slug, a Codeberg URL).
+	 * Whether the project's link should be moved to the sync target, so the UI can offer to do it in one press. True when the project has no link, or has one that names a different repo; false when they already agree, or when the target is not a repo Half Life can read (a bare slug, a Codeberg URL).
 	 */
 	syncRepoDiffers: boolean
 }
@@ -461,21 +405,12 @@ export async function getRepoSyncState(themeProjectId: string, userId: string): 
 	])
 	if (!project) throw new HttpError("NOT_FOUND", "Project not found")
 
-	// The pinned target is a URL now; an older row still holds a bare slug, which
-	// says nothing about its forge on its own. That one is resolved against the
-	// project's own repo link — the same fallback the sync uses — so the UI is
-	// handed a URL it can link out to rather than a bare `owner/name`.
+	// The pinned target is a URL now; an older row still holds a bare slug, which says nothing about its forge on its own. That one is resolved against the project's own repo link – the same fallback the sync uses – so the UI is handed a URL it can link out to rather than a bare `owner/name`.
 	const target = project.repoSyncRepo ?? project.githubRepo
 	const fallback = repoRefFromLink(project.githubRepo)?.forge
 	const ref = repoRefFromLink(target) ?? (target && fallback ? parseRepoRef(target, { forge: fallback }) : null)
 
-	// The link should point at the repo the sync writes to, so the offer to copy
-	// it over appears whenever the two disagree — including when the project has
-	// no link at all, which is the common case this exists for (the sync was set
-	// up first, and the project details never named a repo). A target that will
-	// not parse (a bare slug left by an older row, a Codeberg URL) is not offered:
-	// the project's repo field takes any repo URL, but writing a value we cannot
-	// even read into it would be a guess dressed as a fix.
+	// The link should point at the repo the sync writes to, so the offer to copy it over appears whenever the two disagree – including when the project has no link at all, which is the common case this exists for (the sync was set up first, and the project details never named a repo). A target that will not parse (a bare slug left by an older row, a Codeberg URL) is not offered: the project's repo field takes any repo URL, but writing a value we cannot even read into it would be a guess dressed as a fix.
 	const projectRef = repoRefFromLink(project.githubRepo)
 	const differs = Boolean(ref && (!projectRef || projectRef.fullName !== ref.fullName))
 

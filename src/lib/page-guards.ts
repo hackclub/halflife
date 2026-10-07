@@ -12,26 +12,16 @@ export interface PageContext {
 }
 
 /**
- * Page-level guards live apart from the route-handler ones because they fail
- * differently: a page redirects or 404s, a handler returns JSON. Doing this in
- * a server component (rather than a `'use client'` layout that fetches roles)
- * is what removes the auth flash and stops an unauthorised page from rendering
- * at all.
+ * Page-level guards live apart from the route-handler ones because they fail differently: a page redirects or 404s, a handler returns JSON. Doing this in a server component (rather than a `'use client'` layout that fetches roles) is what removes the auth flash and stops an unauthorised page from rendering at all.
  */
 //
-// Once per request: the layout and the page both ask, and each asking was
-// three serial queries against a remote database. React's `cache` scopes the
-// answer to one server render, so a sign-out still takes effect on the next.
+// Once per request: the layout and the page both ask, and each asking was three serial queries against a remote database. React's `cache` scopes the answer to one server render, so a sign-out still takes effect on the next.
 export const requireSessionPage = cache(async (): Promise<PageContext> => {
 	const session = await auth.api.getSession({ headers: await headers() })
-	// Via /signed-out, which clears a dead session cookie on the way to the
-	// landing page; see that route for why it cannot be `/` directly.
+	// Via /signed-out, which clears a dead session cookie on the way to the landing page; see that route for why it cannot be `/` directly.
 	if (!session) redirect("/signed-out")
 	const u = session.user
-	// The cookie cache can serve a session whose user is gone — a deleted
-	// account, or a database reset inside the cache's five-minute window — and
-	// the layout below loads that user by id. Same destination as no session at
-	// all, before the first query can turn a ghost into a 500.
+	// The cookie cache can serve a session whose user is gone – a deleted account, or a database reset inside the cache's five-minute window – and the layout below loads that user by id. Same destination as no session at all, before the first query can turn a ghost into a 500.
 	const roles = await getUserRolesIfExists(u.id)
 	if (roles === null) redirect("/signed-out")
 	return {
@@ -41,8 +31,7 @@ export const requireSessionPage = cache(async (): Promise<PageContext> => {
 })
 
 /**
- * 404 rather than 403: don't confirm that /admin exists to someone guessing
- * at URLs.
+ * 404 rather than 403: don't confirm that /admin exists to someone guessing at URLs.
  */
 export async function requirePermissionPage(permission: Permission): Promise<PageContext> {
 	const ctx = await requireSessionPage()

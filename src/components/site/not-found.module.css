@@ -34,7 +34,7 @@
 }
 
 /* The landing's ring and selection, in place of whichever document's these
-   would otherwise be — the platform's magenta ring means nothing on ink. */
+   would otherwise be – the platform's magenta ring means nothing on ink. */
 .scene :focus-visible {
 	outline: 3px solid var(--cyan);
 	outline-offset: 3px;

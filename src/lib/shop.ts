@@ -11,16 +11,12 @@ import { getShopAccess, SHOP_CLOSED_MESSAGE } from "@/lib/program"
 /**
  * The catalogue row as a participant sees it.
  *
- * `costUsd` is deliberately absent: it is what Hack Club pays for the item, not
- * what it costs the buyer. The old `...item` spread shipped it to the browser
- * in the RSC payload even though nothing rendered it.
+ * `costUsd` is deliberately absent: it is what Hack Club pays for the item, not what it costs the buyer. The old `...item` spread shipped it to the browser in the RSC payload even though nothing rendered it.
  */
 export type ShopItemPublic = Omit<ShopItem, "costUsd">
 
 /**
- * The buyer's own view of an order, shared by the purchase response and the
- * order list so the two cannot drift. `unitCostUsd` (what Hack Club pays), the
- * encrypted address/phone and `lastActorId` are staff-side and never selected.
+ * The buyer's own view of an order, shared by the purchase response and the order list so the two cannot drift. `unitCostUsd` (what Hack Club pays), the encrypted address/phone and `lastActorId` are staff-side and never selected.
  */
 export const shopOrderPublicSelect = {
 	id: true,
@@ -47,10 +43,7 @@ export const shopOrderPublicSelect = {
 export type ShopOrderPublic = Prisma.ShopOrderGetPayload<{ select: typeof shopOrderPublicSelect }>
 
 /**
- * What a FULFILL_ORDERS surface may see. `unitCostUsd` (what Hack Club pays)
- * is needed to price a shipment, but the encrypted address/phone and
- * `lastActorId` are not, and a route that returns a whole row ships them by
- * accident.
+ * What a FULFILL_ORDERS surface may see. `unitCostUsd` (what Hack Club pays) is needed to price a shipment, but the encrypted address/phone and `lastActorId` are not, and a route that returns a whole row ships them by accident.
  */
 export const shopOrderStaffSelect = {
 	id: true,
@@ -101,9 +94,7 @@ export async function listActiveShopRegions(): Promise<ShopRegionOption[]> {
 }
 
 /**
- * The region whose prices a participant sees and pays. Null is base pricing;
- * a region deactivated after being picked reads as base too, so flipping one
- * off never strands anyone on prices that no longer exist.
+ * The region whose prices a participant sees and pays. Null is base pricing; a region deactivated after being picked reads as base too, so flipping one off never strands anyone on prices that no longer exist.
  */
 async function shopRegionIdFor(userId: string): Promise<string | null> {
 	const user = await prisma.user.findUnique({
@@ -120,10 +111,7 @@ export async function getShopItemsFor(userId: string): Promise<{
 	regionId: string | null
 }> {
 	const [items, balances, qualification, orders, regions, regionId] = await Promise.all([
-		// Explicit `select`, never the whole row: a new internal column added to
-		// ShopItem must not silently start reaching participants.
-		// Printers are not sold in the shop. They stay in the catalogue — the goal
-		// tracker and printer awards read them — but never reach this list.
+		// Explicit `select`, never the whole row: a new internal column added to ShopItem must not silently start reaching participants. Printers are not sold in the shop. They stay in the catalogue – the goal tracker and printer awards read them – but never reach this list.
 		prisma.shopItem.findMany({
 			where: { active: true, category: { not: ShopItemCategory.PRINTER } },
 			orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
@@ -177,19 +165,14 @@ export async function getShopItemsFor(userId: string): Promise<{
 				lockReason = "Out of stock"
 			}
 
-			// A regional override replaces the base price wherever this
-			// participant is concerned — display and purchase read the same
-			// number, so the shelf can never advertise a price the till refuses.
+			// A regional override replaces the base price wherever this participant is concerned – display and purchase read the same number, so the shelf can never advertise a price the till refuses.
 			const { regionPrices, ...base } = item
 			const priceCredits =
 				regionId !== null
 					? (regionPrices.find((r) => r.regionId === regionId)?.priceCredits ?? item.priceCredits)
 					: item.priceCredits
 
-			// Every coin is spendable on anything, so affordability compares the
-			// whole balance against the price — display and purchase read the
-			// same number, so the shelf can never advertise a price the till
-			// refuses.
+			// Every coin is spendable on anything, so affordability compares the whole balance against the price – display and purchase read the same number, so the shelf can never advertise a price the till refuses.
 			const payableFrom = spendableFor(balances, item.category)
 			return {
 				...base,
@@ -206,12 +189,7 @@ export async function getShopItemsFor(userId: string): Promise<{
 /**
  * Buy something.
  *
- * The whole thing runs under a per-user advisory lock. The ledger's
- * `@@unique([shopOrderId, kind, bucket])` only stops one order being charged
- * twice —
- * two concurrent purchases mint two different order ids and collide with
- * nothing, so without the lock ten parallel requests all read the same balance
- * and all succeed.
+ * The whole thing runs under a per-user advisory lock. The ledger's `@@unique([shopOrderId, kind, bucket])` only stops one order being charged twice – two concurrent purchases mint two different order ids and collide with nothing, so without the lock ten parallel requests all read the same balance and all succeed.
  */
 export async function purchase(
 	userId: string,
@@ -235,10 +213,7 @@ export async function purchase(
 	return prisma.$transaction(async (tx) => {
 		await lockUserCredit(tx, userId)
 
-		// Re-checked inside the transaction: the pre-check above ran against
-		// reads taken before the lock, so a shop-close or a
-		// qualification-revoke in between must not still complete. Read off
-		// the transaction so this sees a consistent snapshot.
+		// Re-checked inside the transaction: the pre-check above ran against reads taken before the lock, so a shop-close or a qualification-revoke in between must not still complete. Read off the transaction so this sees a consistent snapshot.
 		const settings = await tx.programSettings.findUnique({ where: { id: "singleton" } })
 		if (!settings?.shopOpen) throw new HttpError("SHOP_CLOSED", SHOP_CLOSED_MESSAGE)
 		if (settings.shopClosesAt && settings.shopClosesAt <= new Date()) {
@@ -269,14 +244,11 @@ export async function purchase(
 					buildStatus: PhaseStatus.approved,
 				},
 			})
-			if (shipped < THEMES_REQUIRED_FOR_PRINTER) {
+			if (shipped < THEMES_REQUIRED_FOR_PRINTER)
 				throw new HttpError("ITEM_LOCKED", "This item is locked for your account")
-			}
 		}
 
-		// The buyer's region, re-read here rather than trusted from the shelf:
-		// the price on the order is whatever this resolves to, so display and
-		// charge cannot drift apart.
+		// The buyer's region, re-read here rather than trusted from the shelf: the price on the order is whatever this resolves to, so display and charge cannot drift apart.
 		const buyer = await tx.user.findUnique({
 			where: { id: userId },
 			select: { shopRegion: { select: { id: true, active: true } } },
@@ -289,10 +261,7 @@ export async function purchase(
 						select: { priceCredits: true },
 					})
 				: null
-		// A retried request — double-tap, proxy retry, two tabs sharing one key —
-		// resolves to the order it already made rather than charging again. The
-		// same per-user lock serializes the two, so the loser always sees the
-		// winner's row.
+		// A retried request – double-tap, proxy retry, two tabs sharing one key – resolves to the order it already made rather than charging again. The same per-user lock serializes the two, so the loser always sees the winner's row.
 		if (idempotencyKey) {
 			const existing = await tx.shopOrder.findFirst({
 				where: { userId, idempotencyKey },
@@ -303,14 +272,10 @@ export async function purchase(
 
 		// Re-read stock inside the transaction; the catalogue page may be stale.
 		const fresh = await tx.shopItem.findUnique({ where: { id: shopItemId } })
-		// A printer is hidden from the shop, so it is as good as not there: a
-		// request for one by id is refused the same way a retired item is.
-		if (!fresh?.active || fresh.category === ShopItemCategory.PRINTER) {
+		// A printer is hidden from the shop, so it is as good as not there: a request for one by id is refused the same way a retired item is.
+		if (!fresh?.active || fresh.category === ShopItemCategory.PRINTER)
 			throw new HttpError("NOT_FOUND", "Item not found")
-		}
-		if (fresh.stock !== null && fresh.stock < quantity) {
-			throw new HttpError("OUT_OF_STOCK", "Not enough stock left")
-		}
+		if (fresh.stock !== null && fresh.stock < quantity) throw new HttpError("OUT_OF_STOCK", "Not enough stock left")
 
 		if (fresh.maxPerUser > 0) {
 			const owned = await tx.shopOrder.aggregate({
@@ -345,13 +310,11 @@ export async function purchase(
 				unitCostUsd: fresh.costUsd,
 				idempotencyKey: idempotencyKey ?? null,
 			},
-			// Only the buyer's fields come back; `unitCostUsd` is stored for
-			// fulfillment but must not leave the server.
+			// Only the buyer's fields come back; `unitCostUsd` is stored for fulfillment but must not leave the server.
 			select: shopOrderPublicSelect,
 		})
 
-		// Every coin is spendable on anything, so a purchase is paid out of the
-		// whole balance.
+		// Every coin is spendable on anything, so a purchase is paid out of the whole balance.
 		if (totalCredits > 0) {
 			await appendLedgerEntry(tx, {
 				userId,
@@ -365,8 +328,7 @@ export async function purchase(
 		}
 
 		if (fresh.stock !== null) {
-			// Conditional, so stock cannot go negative even if two people buy the
-			// last unit at once — the loser's update matches nothing and rolls back.
+			// Conditional, so stock cannot go negative even if two people buy the last unit at once – the loser's update matches nothing and rolls back.
 			const claimed = await tx.shopItem.updateMany({
 				where: { id: shopItemId, stock: { gte: quantity } },
 				data: { stock: { decrement: quantity } },
@@ -381,9 +343,7 @@ export async function purchase(
 /**
  * Reject an order and refund it.
  *
- * The refund is a new positive row, never an edit to the original debit: the
- * ledger is append-only, and the history of a rejected order is part of the
- * record.
+ * The refund is a new positive row, never an edit to the original debit: the ledger is append-only, and the history of a rejected order is part of the record.
  */
 export async function rejectOrder(orderId: string, adminId: string, reason: string): Promise<ShopOrder> {
 	const target = await prisma.shopOrder.findUnique({
@@ -397,15 +357,10 @@ export async function rejectOrder(orderId: string, adminId: string, reason: stri
 
 		const order = await tx.shopOrder.findUnique({ where: { id: orderId } })
 		if (!order) throw new HttpError("NOT_FOUND", "Order not found")
-		if (order.status !== ShopOrderStatus.PENDING && order.status !== ShopOrderStatus.ON_HOLD) {
+		if (order.status !== ShopOrderStatus.PENDING && order.status !== ShopOrderStatus.ON_HOLD)
 			throw new HttpError("CONFLICT", "This order has already been decided")
-		}
 
-		// Refund each pot exactly what it paid, by reading back the purchase
-		// rows rather than assuming. Refunding the whole total as spendable would
-		// turn a rejected printer order into a laundering step: coins that could
-		// only ever have bought a printer would come back as coins that can buy
-		// anything.
+		// Refund each pot exactly what it paid, by reading back the purchase rows rather than assuming. Refunding the whole total as spendable would turn a rejected printer order into a laundering step: coins that could only ever have bought a printer would come back as coins that can buy anything.
 		const paid = await tx.ledgerEntry.groupBy({
 			by: ["bucket"],
 			where: { shopOrderId: order.id, kind: LedgerKind.SHOP_PURCHASE },
@@ -449,11 +404,7 @@ export async function rejectOrder(orderId: string, adminId: string, reason: stri
 /**
  * Mark an order shipped.
  *
- * Serialized against `rejectOrder` on the same per-user credit lock, because a
- * fulfill only reads the order and `rejectOrder` only mutates credit: without
- * a shared lock the two interleave, the refund lands and the goods still ship.
- * The conditional `updateMany` is the second guard, for a decision that landed
- * between the lock being taken and the write.
+ * Serialized against `rejectOrder` on the same per-user credit lock, because a fulfill only reads the order and `rejectOrder` only mutates credit: without a shared lock the two interleave, the refund lands and the goods still ship. The conditional `updateMany` is the second guard, for a decision that landed between the lock being taken and the write.
  */
 export async function fulfillOrder(
 	orderId: string,
@@ -471,15 +422,9 @@ export async function fulfillOrder(
 
 		const order = await tx.shopOrder.findUnique({ where: { id: orderId } })
 		if (!order) throw new HttpError("NOT_FOUND", "Order not found")
-		if (order.status === ShopOrderStatus.FULFILLED) {
-			throw new HttpError("CONFLICT", "This order is already fulfilled")
-		}
-		if (order.status === ShopOrderStatus.REJECTED) {
-			throw new HttpError("CONFLICT", "This order was rejected")
-		}
-		if (order.status === ShopOrderStatus.CANCELLED) {
-			throw new HttpError("CONFLICT", "This order was cancelled")
-		}
+		if (order.status === ShopOrderStatus.FULFILLED) throw new HttpError("CONFLICT", "This order is already fulfilled")
+		if (order.status === ShopOrderStatus.REJECTED) throw new HttpError("CONFLICT", "This order was rejected")
+		if (order.status === ShopOrderStatus.CANCELLED) throw new HttpError("CONFLICT", "This order was cancelled")
 
 		const claimed = await tx.shopOrder.updateMany({
 			where: { id: orderId, status: order.status },
@@ -491,9 +436,7 @@ export async function fulfillOrder(
 				lastActorId: adminId,
 			},
 		})
-		if (claimed.count !== 1) {
-			throw new HttpError("CONFLICT", "This order was decided by someone else")
-		}
+		if (claimed.count !== 1) throw new HttpError("CONFLICT", "This order was decided by someone else")
 
 		return tx.shopOrder.findUniqueOrThrow({ where: { id: orderId } })
 	})

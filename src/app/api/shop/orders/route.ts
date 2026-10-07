@@ -20,8 +20,7 @@ export const GET = withRoute(async (req: NextRequest) => {
 		where: { userId: gate.user.id },
 		orderBy: [{ placedAt: "desc" }, { id: "desc" }],
 		...cursorArgs(query.data.cursor, query.data.limit),
-		// The buyer's own view of the order, shared with the purchase response so
-		// the two cannot drift.
+		// The buyer's own view of the order, shared with the purchase response so the two cannot drift.
 		select: shopOrderPublicSelect,
 	})
 

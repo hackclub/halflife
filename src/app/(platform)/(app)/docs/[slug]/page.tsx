@@ -13,7 +13,7 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
 	const { slug } = await params
 	const doc = DOCS.find((d) => d.slug === slug)
-	return { title: doc ? `${doc.title} — Half Life docs` : "Docs — Half Life" }
+	return { title: doc ? `${doc.title} – Half Life docs` : "Docs – Half Life" }
 }
 
 export default async function DocPage({ params }: { params: Promise<{ slug: string }> }) {

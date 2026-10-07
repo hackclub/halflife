@@ -20,9 +20,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	if (parsed.error) return parsed.error
 	const body = parsed.data
 
-	// The tier table is the reviewer's whole vocabulary for funding. Writing a
-	// freehand dollar amount straight onto a grant row is an admin action —
-	// otherwise REVIEWER quietly carries the authority MANAGE_CREDIT withholds.
+	// The tier table is the reviewer's whole vocabulary for funding. Writing a freehand dollar amount straight onto a grant row is an admin action – otherwise REVIEWER quietly carries the authority MANAGE_CREDIT withholds.
 	if (
 		"grantUsdOverride" in body &&
 		body.grantUsdOverride !== undefined &&
@@ -46,8 +44,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		grantUsdOverride: "grantUsdOverride" in body ? (body.grantUsdOverride ?? null) : null,
 	})
 
-	// After the response: telling the maker must not hold up the reviewer, and a
-	// Slack or mail outage must not fail a decision that has already committed.
+	// After the response: telling the maker must not hold up the reviewer, and a Slack or mail outage must not fail a decision that has already committed.
 	after(async () => {
 		await notifyReviewOutcome({
 			themeProjectId: outcome.themeProjectId,
@@ -57,9 +54,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		})
 	})
 
-	// No Airtable write here. Review happens on ari.hackclub.com, which owns the
-	// YSWS row's status from the moment Half Life writes it at submit; a decision
-	// made in this console is recorded locally only.
+	// No Airtable write here. Review happens on ari.hackclub.com, which owns the YSWS row's status from the moment Half Life writes it at submit; a decision made in this console is recorded locally only.
 
 	return ok({ outcome })
 })

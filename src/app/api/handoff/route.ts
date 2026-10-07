@@ -8,9 +8,7 @@ export const dynamic = "force-dynamic"
 /**
  * The public origin the phone will be told to open.
  *
- * Configured value first: behind Orchard's ingress the request's own host is
- * the internal one, and a QR encoding `http://10.x.x.x:3000` is a QR nobody's
- * phone can reach. The request origin is only a last resort for local dev.
+ * Configured value first: behind Orchard's ingress the request's own host is the internal one, and a QR encoding `http://10.x.x.x:3000` is a QR nobody's phone can reach. The request origin is only a last resort for local dev.
  */
 function publicOrigin(req: Request): string {
 	const configured = process.env.NEXT_PUBLIC_APP_URL ?? process.env.BETTER_AUTH_URL
@@ -21,12 +19,9 @@ function publicOrigin(req: Request): string {
 /**
  * Mint a phone-handoff code and render it as a QR.
  *
- * The QR is generated HERE, server-side, and returned as SVG. Sending the
- * token to a third-party QR service would be handing an upload credential for
- * this user's account to someone else's server.
+ * The QR is generated HERE, server-side, and returned as SVG. Sending the token to a third-party QR service would be handing an upload credential for this user's account to someone else's server.
  *
- * The plaintext token exists only in this response — it is stored as a hash
- * and can never be read back.
+ * The plaintext token exists only in this response – it is stored as a hash and can never be read back.
  */
 export const POST = withRoute(async (req: Request) => {
 	const gate = await requireSession()

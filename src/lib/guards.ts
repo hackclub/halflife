@@ -27,9 +27,7 @@ async function resolve(): Promise<{ user: SessionUser; roles: Role[] } | null> {
 	const session = await auth.api.getSession({ headers: await headers() })
 	if (!session) return null
 	const u = session.user
-	// The cookie cache can serve a session whose user is gone; see
-	// getUserRolesIfExists. Treat that ghost as signed out so handlers answer
-	// 401 instead of failing later with a missing-row error.
+	// The cookie cache can serve a session whose user is gone; see getUserRolesIfExists. Treat that ghost as signed out so handlers answer 401 instead of failing later with a missing-row error.
 	const roles = await getUserRolesIfExists(u.id)
 	if (roles === null) return null
 	return {

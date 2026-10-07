@@ -9,15 +9,11 @@ type Props = {
 	/** Scales the interior fittings so a small card and a wide banner match. */
 	scale?: number
 	/**
-	 * Ground the slot sits on. `ink` is the default dark plate; `light` is for
-	 * slots that land on paper and carry the page's own ink text over them.
+	 * Ground the slot sits on. `ink` is the default dark plate; `light` is for slots that land on paper and carry the page's own ink text over them.
 	 */
 	tone?: "ink" | "light"
 	/**
-	 * A backdrop sits *behind* content rather than standing in for it. It drops
-	 * the centred caption, which would collide with whatever is set over it, and
-	 * leaves the accessibility tree, because a background image is decorative.
-	 * `label` and `ratio` still record, in source, what artwork belongs here.
+	 * A backdrop sits *behind* content rather than standing in for it. It drops the centred caption, which would collide with whatever is set over it, and leaves the accessibility tree, because a background image is decorative. `label` and `ratio` still record, in source, what artwork belongs here.
 	 */
 	backdrop?: boolean
 }
@@ -33,11 +29,7 @@ const TONES = {
 	},
 	light: {
 		ground: "bg-hl-lavender",
-		// Paper, not ink. The grid is a lighter line than its ground on the ink
-		// tone too, and here that is what keeps it safe under type: an ink grid
-		// darkened the ground enough to drop a soft label to 3.3:1, while a paper
-		// one only ever lifts it. Ink lines survive on the ticks, which are the
-		// slot's real signal and carry no text.
+		// Paper, not ink. The grid is a lighter line than its ground on the ink tone too, and here that is what keeps it safe under type: an ink grid darkened the ground enough to drop a soft label to 3.3:1, while a paper one only ever lifts it. Ink lines survive on the ticks, which are the slot's real signal and carry no text.
 		rule: "var(--color-hl-paper)",
 		edge: "border-hl-ink/40",
 		tick: "border-hl-ink",
@@ -49,8 +41,7 @@ const TONES = {
 /**
  * Reserved artwork slot.
  *
- * Drawn in the page's own silkscreen grammar — plate, registration ticks, a
- * measured grid — so an unfilled slot reads as a deliberate footprint waiting
+ * Drawn in the page's own silkscreen grammar – plate, registration ticks, a measured grid – so an unfilled slot reads as a deliberate footprint waiting
  * for its part, not as a broken image. Swap it for `next/image` when the real
  * photograph exists; the wrapper's box is already the comp's box.
  */
@@ -69,11 +60,7 @@ export default function ImageSlot({
 	return (
 		<div
 			className={`overflow-hidden ${t.ground} ${className}`}
-			// `relative` is the default containing block for the fittings below, but
-			// it lives in `style` so a caller can override it. As a class it could
-			// not be beaten by a `className` of "absolute" — same specificity, and
-			// stylesheet order decides — which silently drops positioned slots into
-			// flow. Callers that place a slot pass `position` here instead.
+			// `relative` is the default containing block for the fittings below, but it lives in `style` so a caller can override it. As a class it could not be beaten by a `className` of "absolute" – same specificity, and stylesheet order decides – which silently drops positioned slots into flow. Callers that place a slot pass `position` here instead.
 			style={{ position: "relative", ...style }}
 			{...(backdrop ? { "aria-hidden": true } : { role: "img", "aria-label": `Placeholder for ${label}` })}
 		>

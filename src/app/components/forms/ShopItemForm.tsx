@@ -6,7 +6,7 @@ import type { ShopItemCategory } from "@/app/generated/prisma/enums"
 import { uploadFile } from "@/lib/use-handoff"
 
 const CATEGORIES: { value: ShopItemCategory; label: string }[] = [
-	{ value: "PRINTER", label: "Printer — not listed in the shop" },
+	{ value: "PRINTER", label: "Printer – not listed in the shop" },
 	{ value: "PRINTER_UPGRADE", label: "Printer upgrade" },
 	{ value: "CONSUMABLE", label: "Consumable" },
 	{ value: "MISC", label: "Misc" },
@@ -36,20 +36,11 @@ const blank = {
 }
 
 /**
- * The preview URL for the image field, or null when the value is not an https
- * URL yet.
+ * The preview URL for the image field, or null when the value is not an https URL yet.
  *
- * React escapes attribute values and `<img src>` never executes `javascript:`
- * or an SVG payload, so the raw value was not an XSS hole — but CodeQL cannot
- * see either fact. `js/xss-through-dom` sees a DOM read (`e.target.value`) reach
- * a `src` write and reports it, because the guards it recognises are
- * `DomBasedXss::Sanitizer`, not a `/^https:\/\//` test. The global `.replace`
- * of HTML meta-characters below is one of them (`Xss.qll`'s
- * `MetacharEscapeSanitizer`); parse first to pin the scheme, then escape.
+ * React escapes attribute values and `<img src>` never executes `javascript:` or an SVG payload, so the raw value was not an XSS hole – but CodeQL cannot see either fact. `js/xss-through-dom` sees a DOM read (`e.target.value`) reach a `src` write and reports it, because the guards it recognises are `DomBasedXss::Sanitizer`, not a `/^https:\/\//` test. The global `.replace` of HTML meta-characters below is one of them (`Xss.qll`'s `MetacharEscapeSanitizer`); parse first to pin the scheme, then escape.
  *
- * These characters do not belong in a URL literally, and percent-encoding them
- * (rather than `encodeURI`, which would also re-encode an existing `%20` into
- * `%2520`) leaves ordinary URLs, query strings and all, exactly as they were.
+ * These characters do not belong in a URL literally, and percent-encoding them (rather than `encodeURI`, which would also re-encode an existing `%20` into `%2520`) leaves ordinary URLs, query strings and all, exactly as they were.
  */
 function previewImageUrl(value: string): string | null {
 	try {
@@ -62,10 +53,7 @@ function previewImageUrl(value: string): string | null {
 }
 
 /**
- * Add a shop item, or edit one when `item` is given. The slug is fixed once
- * an item exists, because orders and analytics refer to it. Per-person limit,
- * stock and shelf order are left to their defaults (one per person, unlimited stock, first)
- * and an edit never sends them, so an item that already has them keeps them.
+ * Add a shop item, or edit one when `item` is given. The slug is fixed once an item exists, because orders and analytics refer to it. Per-person limit, stock and shelf order are left to their defaults (one per person, unlimited stock, first) and an edit never sends them, so an item that already has them keeps them.
  */
 export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 	const router = useRouter()
@@ -213,14 +201,12 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 						onChange={(e) => {
 							const file = e.target.files?.[0]
 							e.target.value = ""
-							void uploadImage(file)
+							uploadImage(file)
 						}}
 					/>
 				</div>
 				{previewUrl ? (
-					// A plain img, as the shop itself shows it: next/image refuses any
-					// host not listed in next.config, and a pasted link can be anywhere.
-					// eslint-disable-next-line @next/next/no-img-element -- staff paste any host into the item's image field
+					// A plain img, as the shop itself shows it: next/image refuses any host not listed in next.config, and a pasted link can be anywhere. eslint-disable-next-line @next/next/no-img-element -- staff paste any host into the item's image field
 					<img
 						src={previewUrl}
 						alt=""

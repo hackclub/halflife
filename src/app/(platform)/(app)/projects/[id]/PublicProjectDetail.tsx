@@ -14,10 +14,7 @@ import type { PublicProjectData } from "@/lib/queries/project-page"
 import { Timeline } from "./Timeline"
 
 /**
- * Someone else's project: what it is, and the story of it, and nothing to
- * edit. The owner's page reads the trail's store for its name and weeks; this
- * one cannot — the store only holds the viewer's own projects — so everything
- * on it comes from the server in `data`.
+ * Someone else's project: what it is, and the story of it, and nothing to edit. The owner's page reads the trail's store for its name and weeks; this one cannot – the store only holds the viewer's own projects – so everything on it comes from the server in `data`.
  */
 export function PublicProjectDetail({ data }: { data: PublicProjectData }) {
 	const warmup = data.weekId === WARMUP_WEEK_ID

@@ -7,9 +7,7 @@ import { SHOP_CSV_COLUMNS, SHOP_CSV_MAX_ROWS, SHOP_CSV_TEMPLATE, type ShopCsvPro
 /**
  * Add many shop items from a spreadsheet export.
  *
- * All or nothing, like the route behind it: a refused file lists every line to
- * fix, so staff correct the sheet and import it again rather than working out
- * which half of it made it in.
+ * All or nothing, like the route behind it: a refused file lists every line to fix, so staff correct the sheet and import it again rather than working out which half of it made it in.
  */
 export function ShopItemImport() {
 	const router = useRouter()
@@ -103,7 +101,7 @@ export function ShopItemImport() {
 						e.target.value = ""
 					}}
 				/>
-				<Button type="button" variant="primary" disabled={!file || busy} onClick={() => void run()}>
+				<Button type="button" variant="primary" disabled={!file || busy} onClick={() => run()}>
 					{busy ? "Importing…" : "Import items"}
 				</Button>
 			</div>

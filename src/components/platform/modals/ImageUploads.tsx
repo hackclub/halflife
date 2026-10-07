@@ -15,12 +15,9 @@ export interface UploadedImage {
 }
 
 /**
- * Screenshots picked from this machine — several at once, and more later.
+ * Screenshots picked from this machine – several at once, and more later.
  *
- * Only a file picker: this is evidence that already exists on the screen it
- * was taken on, so there is nothing to record and no phone to hand off to.
- * Each file uploads on its own, so one that fails says so without losing the
- * others, and every one can be taken out again before the sheet is handed in.
+ * Only a file picker: this is evidence that already exists on the screen it was taken on, so there is nothing to record and no phone to hand off to. Each file uploads on its own, so one that fails says so without losing the others, and every one can be taken out again before the sheet is handed in.
  */
 export function ImageUploads({
 	images,
@@ -66,10 +63,7 @@ export function ImageUploads({
 					const { objectKey } = await uploadFile(file, folder, (progress) =>
 						setPending((p) => p.map((row) => (row.id === id ? { ...row, progress } : row))),
 					)
-					// Uploads are named after their bytes, so re-picking a picture
-					// already on the list hands back the key it already has. Adding it
-					// again would put two thumbnails on one object and make removing
-					// either remove both.
+					// Uploads are named after their bytes, so re-picking a picture already on the list hands back the key it already has. Adding it again would put two thumbnails on one object and make removing either remove both.
 					if (latest.current.some((img) => img.objectKey === objectKey)) return
 					const next = [...latest.current, { objectKey, previewUrl: URL.createObjectURL(file) }]
 					latest.current = next
@@ -143,7 +137,7 @@ export function ImageUploads({
 				className="sr-only"
 				tabIndex={-1}
 				aria-hidden="true"
-				onChange={(e) => void pick(e.target.files)}
+				onChange={(e) => pick(e.target.files)}
 			/>
 
 			{errors.map((e) => (

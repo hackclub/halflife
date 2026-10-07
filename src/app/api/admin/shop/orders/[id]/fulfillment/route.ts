@@ -10,8 +10,7 @@ import { orderFulfillmentSchema } from "@/lib/schemas/admin"
 type Params = { params: Promise<{ id: string }> }
 
 /**
- * Mark how an order ships and how far it has got. Bookkeeping only: it moves
- * no coins and does not touch the order's approve/reject status.
+ * Mark how an order ships and how far it has got. Bookkeeping only: it moves no coins and does not touch the order's approve/reject status.
  */
 export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 	const gate = await requirePermission(Permission.FULFILL_ORDERS)
@@ -27,11 +26,8 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 		select: { status: true, fulfillmentMethod: true, fulfillmentStage: true },
 	})
 	if (!before) return fail("NOT_FOUND", "Order not found")
-	if (!FULFILLMENT_ORDER_STATUSES.includes(before.status)) {
-		return fail("CONFLICT", "This order was rejected")
-	}
-	// The method can still be recorded — it may have gone out before the
-	// cancellation — but the stage cannot pretend it is still shipping.
+	if (!FULFILLMENT_ORDER_STATUSES.includes(before.status)) return fail("CONFLICT", "This order was rejected")
+	// The method can still be recorded – it may have gone out before the cancellation – but the stage cannot pretend it is still shipping.
 	if (
 		before.status === ShopOrderStatus.CANCELLED &&
 		body.stage !== undefined &&
@@ -40,8 +36,7 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 		return fail("CONFLICT", "The participant cancelled this order")
 	}
 
-	// Conditional on the status that was just read: an order rejected between
-	// that read and this write must not be marked as on its way out.
+	// Conditional on the status that was just read: an order rejected between that read and this write must not be marked as on its way out.
 	const updated = await prisma.shopOrder.updateMany({
 		where: { id, status: before.status },
 		data: {

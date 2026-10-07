@@ -12,16 +12,11 @@ import { type ProjectThumbnail, projectThumbnail } from "@/lib/thumbnail"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
 /**
- * A maker's profile: who they are, the projects they have started, and the
- * reels they have posted.
+ * A maker's profile: who they are, the projects they have started, and the reels they have posted.
  *
- * Display fields only, like Explore. A page about another person is where a
- * careless `select` leaks the user table, so every column is named here and the
- * avatar is the only thing built from a Slack id. The email, the encrypted
- * address and the rest never leave the database.
+ * Display fields only, like Explore. A page about another person is where a careless `select` leaks the user table, so every column is named here and the avatar is the only thing built from a Slack id. The email, the encrypted address and the rest never leave the database.
  *
- * It is not the trail's store: that only holds the viewer's own projects, so
- * everything on a profile comes from this one read.
+ * It is not the trail's store: that only holds the viewer's own projects, so everything on a profile comes from this one read.
  */
 
 export interface ProfileProject {
@@ -36,7 +31,7 @@ export interface ProfileProject {
 	/** Warm-ups are not a week of the season; the card labels them differently. */
 	warmup: boolean
 	thumbnail: ProjectThumbnail | null
-	/** Journalled hours — tracked entries contribute zero, as they do everywhere. */
+	/** Journalled hours – tracked entries contribute zero, as they do everywhere. */
 	hours: number
 	entries: number
 }
@@ -77,8 +72,7 @@ export async function getProfile(userId: string, viewerId: string): Promise<Prof
 			},
 		}),
 		prisma.themeProject.findMany({
-			// A project nobody has named is a placeholder made at sign-up, not one
-			// to show, the same rule the project page applies.
+			// A project nobody has named is a placeholder made at sign-up, not one to show, the same rule the project page applies.
 			where: { userId, deletedAt: null, namedAt: { not: null }, title: { not: "" } },
 			select: {
 				id: true,
@@ -120,8 +114,7 @@ export async function getProfile(userId: string, viewerId: string): Promise<Prof
 		const def = getThemeDef(p.theme)
 		const warmup = p.theme === Theme.WARMUP
 		const week = WEEK_META.find((w) => w.id === def.designWeek)
-		// A tracked entry's time arrives through its Hackatime link, so it adds
-		// nothing to the journalled number here either.
+		// A tracked entry's time arrives through its Hackatime link, so it adds nothing to the journalled number here either.
 		const journal = p.workSessions.filter((s) => s.hoursSource !== "HACKATIME_TRACKED")
 		const hours = journal.reduce((n, s) => n + (s.hoursApproved ?? s.hoursClaimed), 0)
 		return {
@@ -149,8 +142,7 @@ export async function getProfile(userId: string, viewerId: string): Promise<Prof
 		id: user.id,
 		name: displayName(user, "A maker"),
 		image: avatarUrl(user),
-		// Expired against today, so a run that ended weeks ago reads 0 rather
-		// than the number it reached before it broke.
+		// Expired against today, so a run that ended weeks ago reads 0 rather than the number it reached before it broke.
 		streak: streakAsOf(user, today),
 		joinedAt: (user.joinedProgramAt ?? user.createdAt).getTime(),
 		isViewer: user.id === viewerId,

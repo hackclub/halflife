@@ -3,24 +3,13 @@ import { Phase } from "@/app/generated/prisma/enums"
 import type { FileUpdate } from "@/lib/forge-write"
 
 /**
- * A project's devlogs and parts list, rendered as the markdown that lands in
- * the maker's repository.
+ * A project's devlogs and parts list, rendered as the markdown that lands in the maker's repository.
  *
- * These files are GENERATED, and regenerated whole on every sync rather than
- * appended to. That is what makes the sync idempotent: the repo's copy is a
- * projection of what the platform holds, so a corrected entry fixes the file
- * instead of leaving the old text above a correction, a deleted entry leaves no
- * orphan behind, and a retried sync produces no diff at all.
+ * These files are GENERATED, and regenerated whole on every sync rather than appended to. That is what makes the sync idempotent: the repo's copy is a projection of what the platform holds, so a corrected entry fixes the file instead of leaving the old text above a correction, a deleted entry leaves no orphan behind, and a retried sync produces no diff at all.
  *
- * "No diff at all" is load-bearing, not a nicety: the write is skipped when the
- * rendered bytes match the blob already in the repo (see `newestOf`), so the
- * debounced after-write sync does not commit on every keystroke-save — only when
- * something a reader would see actually changed.
+ * "No diff at all" is load-bearing, not a nicety: the write is skipped when the rendered bytes match the blob already in the repo (see `newestOf`), so the debounced after-write sync does not commit on every keystroke-save – only when something a reader would see actually changed.
  *
- * The banner at the top of each file says so, in the file, because the first
- * thing a maker will do is edit it by hand. It is their repo; the note tells
- * them the edit will be overwritten on the next sync rather than letting them
- * discover it.
+ * The banner at the top of each file says so, in the file, because the first thing a maker will do is edit it by hand. It is their repo; the note tells them the edit will be overwritten on the next sync rather than letting them discover it.
  */
 
 /** The two paths the sync owns, relative to the repo root. */
@@ -49,13 +38,11 @@ export interface JournalEntry {
 }
 
 /**
- * Whether an entry belongs where it does: DESIGN weeks read as designing, BUILD
- * weeks as building. Used for the heading, not for filtering — every entry is
- * written either way.
+ * Whether an entry belongs where it does: DESIGN weeks read as designing, BUILD weeks as building. Used for the heading, not for filtering – every entry is written either way.
  */
 const phaseWord = (phase: Phase) => (phase === Phase.DESIGN ? "Design" : "Build")
 
-/** `1,234.5h` — the journal's own rounding, so the file matches the page. */
+/** `1,234.5h` – the journal's own rounding, so the file matches the page. */
 function hours(n: number): string {
 	const rounded = Math.round(n * 100) / 100
 	return `${rounded}h`
@@ -78,21 +65,14 @@ function slug(text: string): string {
 /**
  * Rich journal HTML, cut down to markdown.
  *
- * The stored content is sanitised HTML (headings, lists, images, links, bold).
- * Rather than ship an HTML-to-markdown dependency for one integration, the tags
- * that matter are mapped and everything else is stripped to its text: an entry
- * with a paragraph and a photo keeps both, and an entry using a tag nothing
- * here knows about keeps its words. Images are left as their markdown form so a
- * README-style render on GitHub shows the picture.
+ * The stored content is sanitised HTML (headings, lists, images, links, bold). Rather than ship an HTML-to-markdown dependency for one integration, the tags that matter are mapped and everything else is stripped to its text: an entry with a paragraph and a photo keeps both, and an entry using a tag nothing here knows about keeps its words. Images are left as their markdown form so a README-style render on GitHub shows the picture.
  */
 function htmlToMarkdown(html: string): string {
 	const mapped = html
-		// Block ends become line breaks first, so a <p>a</p><p>b</p> does not run
-		// the two together.
+		// Block ends become line breaks first, so a <p>a</p><p>b</p> does not run the two together.
 		.replace(/<\/(p|div|h[1-6]|li|blockquote)>/gi, "\n\n")
 		.replace(/<br\s*\/?>/gi, "\n")
-		// Headings: GitHub renders `###` and is indifferent to which level was
-		// stored, so the entry's own hierarchy is kept.
+		// Headings: GitHub renders `###` and is indifferent to which level was stored, so the entry's own hierarchy is kept.
 		.replace(
 			/<h([1-6])[^>]*>(.*?)<\/h\1>/gis,
 			(_m, level: string, inner: string) => `${"#".repeat(Number(level))} ${inner.trim()}\n\n`,
@@ -107,12 +87,7 @@ function htmlToMarkdown(html: string): string {
 		.replace(/<code>(.*?)<\/code>/gis, "`$1`")
 		.replace(/<li[^>]*>/gi, "- ")
 
-	// Tags left over by the mappings above are stripped to a fixed point: deleting
-	// one match can, in general, make the text on either side join into a new tag,
-	// so a single pass is not a complete sanitizer
-	// (`js/incomplete-multi-character-sanitization`). Repeat until the string
-	// stops changing; each pass that does anything removes at least `<x>`, so it
-	// always terminates.
+	// Tags left over by the mappings above are stripped to a fixed point: deleting one match can, in general, make the text on either side join into a new tag, so a single pass is not a complete sanitizer (`js/incomplete-multi-character-sanitization`). Repeat until the string stops changing; each pass that does anything removes at least `<x>`, so it always terminates.
 	let text = mapped
 	let previous = ""
 	do {
@@ -127,10 +102,7 @@ function htmlToMarkdown(html: string): string {
 }
 
 function decodeEntities(text: string): string {
-	// `&amp;` is unescaped LAST. Decoding it first would turn the literal text
-	// `&amp;lt;` into `&lt;` and then into `<` in the same pass — unescaping
-	// twice, so text the author escaped once came out as live markup. Every other
-	// entity above must also run before this one for the same reason.
+	// `&amp;` is unescaped LAST. Decoding it first would turn the literal text `&amp;lt;` into `&lt;` and then into `<` in the same pass – unescaping twice, so text the author escaped once came out as live markup. Every other entity above must also run before this one for the same reason.
 	return text
 		.replace(/&nbsp;/g, " ")
 		.replace(/&lt;/g, "<")
@@ -145,24 +117,15 @@ function row(...cells: (string | number | null | undefined)[]): string {
 	return `| ${cells.map((c) => (c === null || c === undefined || c === "" ? "—" : String(c))).join(" | ")} |`
 }
 
-/** `$12.30` — dollars, two places, the way the BOM page shows them. */
+/** `$12.30` – dollars, two places, the way the BOM page shows them. */
 function usd(n: number): string {
 	return `$${n.toFixed(2)}`
 }
 
 /**
- * The newest moment the file's own content describes. The banner stamps this
- * rather than the wall clock, because the wall clock is the one thing that
- * always changes: with it, two syncs of identical content produced different
- * bytes, so the blob SHA never matched, and the "skip unchanged files" guard in
- * commitFiles never fired. Every debounced sync then wrote a commit with no
- * diff.
+ * The newest moment the file's own content describes. The banner stamps this rather than the wall clock, because the wall clock is the one thing that always changes: with it, two syncs of identical content produced different bytes, so the blob SHA never matched, and the "skip unchanged files" guard in commitFiles never fired. Every debounced sync then wrote a commit with no diff.
  *
- * Only the file's own content counts — deliberately not the project row's
- * `updatedAt`, which the sync itself writes `repoSyncedAt` to on every run. With
- * that in the mix each sync moved its own date forward, so the file always
- * looked changed and the guard still never fired. Date from the data, and a
- * no-op sync is byte-identical.
+ * Only the file's own content counts – deliberately not the project row's `updatedAt`, which the sync itself writes `repoSyncedAt` to on every run. With that in the mix each sync moved its own date forward, so the file always looked changed and the guard still never fired. Date from the data, and a no-op sync is byte-identical.
  */
 function newestOf(dates: Date[]): Date {
 	return dates.reduce((a, b) => (b.getTime() > a.getTime() ? b : a), new Date(0))
@@ -182,12 +145,11 @@ export interface ProjectMeta {
 }
 
 /**
- * JOURNAL.md: every devlog entry, grouped by phase and ordered oldest-first so
- * the file reads as the project's story rather than its most recent news.
+ * JOURNAL.md: every devlog entry, grouped by phase and ordered oldest-first so the file reads as the project's story rather than its most recent news.
  */
 export function renderJournal(project: ProjectMeta, entries: JournalEntry[]): FileUpdate {
 	const lines: string[] = []
-	lines.push(`# ${project.title} — devlog`, "")
+	lines.push(`# ${project.title} – devlog`, "")
 	lines.push(BANNER("devlog", project.id, newestOf(entries.map((e) => e.createdAt))).trimEnd(), "")
 	if (project.description) lines.push(`> ${project.description.replace(/\n+/g, " ")}`, "")
 	lines.push(
@@ -210,11 +172,10 @@ export function renderJournal(project: ProjectMeta, entries: JournalEntry[]): Fi
 	// Oldest first: a devlog is read forward.
 	const ordered = [...entries].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
 
-	// A contents list, because a build week can be dozens of entries and GitHub's
-	// rendering has no sidebar.
+	// A contents list, because a build week can be dozens of entries and GitHub's rendering has no sidebar.
 	lines.push("## Contents", "")
 	for (const [i, entry] of ordered.entries()) {
-		lines.push(`${i + 1}. [${dateOf(entry)} — ${entry.title}](#${slug(`${dateOf(entry)} ${entry.title}`)})`)
+		lines.push(`${i + 1}. [${dateOf(entry)} – ${entry.title}](#${slug(`${dateOf(entry)} ${entry.title}`)})`)
 	}
 	lines.push("")
 
@@ -224,7 +185,7 @@ export function renderJournal(project: ProjectMeta, entries: JournalEntry[]): Fi
 			lines.push(`## ${phaseWord(entry.phase)}`, "")
 			lastPhase = entry.phase
 		}
-		lines.push(`### ${dateOf(entry)} — ${entry.title}`, "")
+		lines.push(`### ${dateOf(entry)} – ${entry.title}`, "")
 		const claimed = entry.hoursApproved ?? entry.hoursClaimed
 		const adjusted = entry.hoursApproved !== null && entry.hoursApproved !== entry.hoursClaimed
 		lines.push(
@@ -254,9 +215,7 @@ export interface BomLineForFile {
 /**
  * BOM.md: the parts list and what it adds up to, against the tier's funding.
  *
- * The total and the remaining figure are the same arithmetic the project page
- * shows; writing them into the file means a person reading the repo can see
- * whether the build fits its budget without opening the platform.
+ * The total and the remaining figure are the same arithmetic the project page shows; writing them into the file means a person reading the repo can see whether the build fits its budget without opening the platform.
  */
 export function renderBom(
 	project: ProjectMeta,
@@ -265,7 +224,7 @@ export function renderBom(
 	grantUsd: number,
 ): FileUpdate {
 	const lines: string[] = []
-	lines.push(`# ${project.title} — bill of materials`, "")
+	lines.push(`# ${project.title} – bill of materials`, "")
 	lines.push(BANNER("parts list", project.id, newestOf(items.map((i) => i.updatedAt))).trimEnd(), "")
 	lines.push(
 		row("Week", "Tier", "Parts funding"),

@@ -26,8 +26,7 @@ export const resolveDisputeSchema = z.object({ note: boundedText(2000).optional(
 /** Sending a design's parts grant to a maker's HCB card grant. */
 export const grantSchema = z
 	.object({
-		// The design phase is the funding decision; a build grant does not exist,
-		// and accepting BUILD here sent the design's grant a second time.
+		// The design phase is the funding decision; a build grant does not exist, and accepting BUILD here sent the design's grant a second time.
 		phase: z.literal(Phase.DESIGN),
 		grantUrl: boundedText(500, 4),
 	})
@@ -44,10 +43,7 @@ export const creditAdjustSchema = z
 			.refine((n) => n !== 0, "Amount cannot be zero"),
 		reason: boundedText(1000, 1),
 		/**
-		 * Which pot to move. Defaults to spendable — an admin correcting someone's
-		 * balance almost always means ordinary coins, and topping up the printer
-		 * fund should be a deliberate choice rather than the accident of an
-		 * omitted field.
+		 * Which pot to move. Defaults to spendable – an admin correcting someone's balance almost always means ordinary coins, and topping up the printer fund should be a deliberate choice rather than the accident of an omitted field.
 		 */
 		bucket: z.enum(["SPENDABLE", "BANKED"]).default("SPENDABLE"),
 	})
@@ -90,8 +86,7 @@ export const shopItemSchema = z
 export const shopItemUpdateSchema = shopItemSchema.partial().omit({ id: true }).strict()
 
 /**
- * A sales region: a hand-assigned slug (it appears in analytics and has to
- * survive a rename) and a display name.
+ * A sales region: a hand-assigned slug (it appears in analytics and has to survive a rename) and a display name.
  */
 export const shopRegionSchema = z
 	.object({
@@ -116,8 +111,7 @@ export const shopRegionUpdateSchema = z
 	.refine((b) => b.name !== undefined || b.sortOrder !== undefined || b.active !== undefined, "Nothing to change")
 
 /**
- * One region's coin price for one shop item. Null clears the override back
- * to base pricing.
+ * One region's coin price for one shop item. Null clears the override back to base pricing.
  */
 export const itemRegionPriceSchema = z
 	.object({

@@ -13,13 +13,9 @@ import { uploadFile } from "@/lib/use-handoff"
 const COVER_TYPES = "image/png,image/jpeg,image/webp,image/gif"
 
 /**
- * The project's thumbnail — what its card and the review queue show.
+ * The project's thumbnail – what its card and the review queue show.
  *
- * Until one is uploaded the newest picture in the journal stands in, and
- * before there is one of those, the week's own scene on the week's colour, so
- * an empty project still looks like the week it belongs to rather than a grey
- * box. Changing it is one button on the image itself: pick a file, it
- * uploads, the page re-reads.
+ * Until one is uploaded the newest picture in the journal stands in, and before there is one of those, the week's own scene on the week's colour, so an empty project still looks like the week it belongs to rather than a grey box. Changing it is one button on the image itself: pick a file, it uploads, the page re-reads.
  */
 export function CoverImage({
 	projectId,
@@ -115,7 +111,7 @@ export function CoverImage({
 						className="sr-only"
 						tabIndex={-1}
 						aria-hidden="true"
-						onChange={(e) => void pick(e.target.files?.[0])}
+						onChange={(e) => pick(e.target.files?.[0])}
 					/>
 					<Button variant="ghost" size="sm" disabled={busy} onClick={() => input.current?.click()} className="-ml-3.5">
 						<IconCamera className="text-base" /> {url ? "Change thumbnail" : "Add a thumbnail"}
@@ -124,7 +120,7 @@ export function CoverImage({
 						<button
 							type="button"
 							disabled={busy}
-							onClick={() => void clear()}
+							onClick={() => clear()}
 							className="hand text-[0.8rem] text-navy-soft underline decoration-dashed underline-offset-4 hover:text-coral-deep"
 						>
 							remove

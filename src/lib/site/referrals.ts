@@ -5,28 +5,15 @@ import { fieldKey, RSVP, RSVP_TABLE_ID } from "@/lib/airtable/schema"
 /**
  * Who the referral links are bringing in.
  *
- * A referral link is `/?ref=<code>` (see /api/me/referral), and the code lands
- * on a sign-up's `referred_by` cell. So the ranking is a walk of the same
- * Airtable `Signups` list the counter and the Loops sync use — the landing form
- * writes straight there (lib/site/signups), and Postgres only holds a fallback
- * buffer, so Airtable is the only place the attribution actually lives.
+ * A referral link is `/?ref=<code>` (see /api/me/referral), and the code lands on a sign-up's `referred_by` cell. So the ranking is a walk of the same Airtable `Signups` list the counter and the Loops sync use – the landing form writes straight there (lib/site/signups), and Postgres only holds a fallback buffer, so Airtable is the only place the attribution actually lives.
  *
- * The code a link carries is the referrer's own `Loops - halfLifeReferralNumber`,
- * which sits on their sign-up row in the same list. One walk therefore yields
- * both halves: each row's own code names its `referred_by` value back to an
- * email, and `referred_by` says who the link brought in. A code with no owner
- * row (legacy, or a row since removed) still counts, with the referrer blank
- * rather than the sign-up dropped.
+ * The code a link carries is the referrer's own `Loops - halfLifeReferralNumber`, which sits on their sign-up row in the same list. One walk therefore yields both halves: each row's own code names its `referred_by` value back to an email, and `referred_by` says who the link brought in. A code with no owner row (legacy, or a row since removed) still counts, with the referrer blank rather than the sign-up dropped.
  */
 
 /**
  * The base's real column names.
  *
- * `RSVP.fields` has drifted from this base: it names `First Name` and
- * `Referred By`, and neither exists here. Airtable 422s the entire list request
- * on one unknown `fields[]`, so the names are spelled the way the base and the
- * landing's write path (lib/site/signups) actually spell them. `email` is
- * correct in the map, so it is taken through `fieldKey` like the counter does.
+ * `RSVP.fields` has drifted from this base: it names `First Name` and `Referred By`, and neither exists here. Airtable 422s the entire list request on one unknown `fields[]`, so the names are spelled the way the base and the landing's write path (lib/site/signups) actually spell them. `email` is correct in the map, so it is taken through `fieldKey` like the counter does.
  */
 const EMAIL_FIELD = fieldKey(RSVP.fields.email)
 const REFERRED_BY_FIELD = "referred_by"
@@ -66,10 +53,7 @@ interface Cached {
 let cached: Cached | null = null
 
 /**
- * The referral leaderboard, or null when Airtable is not configured or does
- * not answer. Never rejects: the cache holds the promise, so a rejection would
- * be handed to every render for the next minute instead of the short failure
- * it should be.
+ * The referral leaderboard, or null when Airtable is not configured or does not answer. Never rejects: the cache holds the promise, so a rejection would be handed to every render for the next minute instead of the short failure it should be.
  */
 export function getReferralLeaderboard(): Promise<ReferralLeaderboard | null> {
 	const now = Date.now()
@@ -81,7 +65,7 @@ export function getReferralLeaderboard(): Promise<ReferralLeaderboard | null> {
 	const value = walkReferrals(config)
 	const entry: Cached = { at: now, ttl: CACHE_TTL_MS, value }
 	cached = entry
-	void value.then((result) => {
+	value.then((result) => {
 		if (result === null && cached === entry) entry.ttl = FAILED_TTL_MS
 	})
 	return value
@@ -125,9 +109,7 @@ async function walkReferrals(
 				const code = asText(fields[REFERRAL_NUMBER_FIELD])
 				if (code && email && !owners.has(code)) owners.set(code, email)
 
-				// Attribute each person once, and to a real link: a first row with
-				// no referrer must not shadow a later one that has it, and the list
-				// can hold the same address more than once.
+				// Attribute each person once, and to a real link: a first row with no referrer must not shadow a later one that has it, and the list can hold the same address more than once.
 				const referredBy = asText(fields[REFERRED_BY_FIELD])
 				if (email && referredBy && !attributed.has(email)) attributed.set(email, referredBy)
 			}

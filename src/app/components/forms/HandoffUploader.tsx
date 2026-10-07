@@ -10,14 +10,9 @@ interface ApiError {
 /**
  * The phone half of the handoff.
  *
- * `capture="environment"` is what makes this worth building: on a phone it
- * opens the rear camera straight into the native recorder, and hands back the
- * platform's own format — an .mp4 on iOS, which is the one format everything
- * plays. A MediaRecorder implementation here would be more code, worse on iOS,
- * and would produce .webm that a chunk of the audience cannot watch.
+ * `capture="environment"` is what makes this worth building: on a phone it opens the rear camera straight into the native recorder, and hands back the platform's own format – an .mp4 on iOS, which is the one format everything plays. A MediaRecorder implementation here would be more code, worse on iOS, and would produce .webm that a chunk of the audience cannot watch.
  *
- * On a desktop browser the same input degrades to an ordinary file picker,
- * which is a perfectly good fallback.
+ * On a desktop browser the same input degrades to an ordinary file picker, which is a perfectly good fallback.
  */
 export function HandoffUploader({ token }: Readonly<{ token: string }>) {
 	const fileRef = useRef<HTMLInputElement>(null)
@@ -65,7 +60,7 @@ export function HandoffUploader({ token }: Readonly<{ token: string }>) {
 	if (state === "done") {
 		return (
 			<div className="hl-stack hl-stack--tight">
-				<Callout>Sent. Go back to your computer to finish the post — you can close this.</Callout>
+				<Callout>Sent. Go back to your computer to finish the post – you can close this.</Callout>
 			</div>
 		)
 	}
@@ -92,8 +87,7 @@ export function HandoffUploader({ token }: Readonly<{ token: string }>) {
 				<div>
 					<progress
 						max={1}
-						// No value once everything is sent: the browser draws its own
-						// "working" state while the server stores the video.
+						// No value once everything is sent: the browser draws its own "working" state while the server stores the video.
 						value={progress < 1 ? progress : undefined}
 						aria-label="Sending your video"
 						style={{ width: "100%", height: "0.6rem" }}

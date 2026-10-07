@@ -9,13 +9,9 @@ import { createReportSchema } from "@/lib/schemas/report"
 export const dynamic = "force-dynamic"
 
 /**
- * A participant flagging a reel, reel comment, project, user or devlog for
- * staff.
+ * A participant flagging a reel, reel comment, project, user or devlog for staff.
  *
- * It changes no state: the row stays up and the queue gains a row. Taking
- * something down stays a separate admin action, so a report is never a
- * silent takedown — and, because an open report per reporter per row is the
- * most the queue holds, neither is it a flood.
+ * It changes no state: the row stays up and the queue gains a row. Taking something down stays a separate admin action, so a report is never a silent takedown – and, because an open report per reporter per row is the most the queue holds, neither is it a flood.
  */
 export const POST = withRoute(async (req: Request) => {
 	const gate = await requireSession()
@@ -25,15 +21,12 @@ export const POST = withRoute(async (req: Request) => {
 	if (parsed.error) return parsed.error
 	const { target, targetId, reason, details } = parsed.data
 
-	if (rateLimitedInMemory(`report:${gate.user.id}`, 10, 60_000)) {
+	if (rateLimitedInMemory(`report:${gate.user.id}`, 10, 60_000))
 		return fail("RATE_LIMITED", "Slow down a second, then try again.")
-	}
 
 	const label = REPORT_TARGET_LABELS[target as ReportTarget].toLowerCase()
 
-	// The row has to exist, be live, and be someone else's. Each target reads
-	// its own table; the author id is what the self-report and duplicate
-	// guards below compare against.
+	// The row has to exist, be live, and be someone else's. Each target reads its own table; the author id is what the self-report and duplicate guards below compare against.
 	let authorId: string | null = null
 	if (target === "REEL") {
 		const post = await prisma.post.findUnique({
@@ -73,9 +66,7 @@ export const POST = withRoute(async (req: Request) => {
 
 	if (authorId === gate.user.id) return fail("CONFLICT", `You cannot report your own ${label}`)
 
-	// One open report per reporter per row: a second press while staff have
-	// not looked yet is a duplicate, not a new report. A decided one may be
-	// reported again — something can get worse after it was cleared.
+	// One open report per reporter per row: a second press while staff have not looked yet is a duplicate, not a new report. A decided one may be reported again – something can get worse after it was cleared.
 	const field =
 		target === "REEL"
 			? { postId: targetId }
@@ -90,11 +81,9 @@ export const POST = withRoute(async (req: Request) => {
 		where: { reporterId: gate.user.id, target, status: "OPEN", ...field },
 		select: { id: true },
 	})
-	if (dupe) return fail("CONFLICT", `You have already reported this ${label} — staff will take a look`)
+	if (dupe) return fail("CONFLICT", `You have already reported this ${label} – staff will take a look`)
 
-	// The friendly check above races a second press in flight: the partial
-	// unique indexes are the real guard, and their violation reads as the
-	// same conflict rather than a 500.
+	// The friendly check above races a second press in flight: the partial unique indexes are the real guard, and their violation reads as the same conflict rather than a 500.
 	let report: { id: string }
 	try {
 		report = await prisma.contentReport.create({
@@ -109,7 +98,7 @@ export const POST = withRoute(async (req: Request) => {
 		})
 	} catch (err) {
 		if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-			return fail("CONFLICT", `You have already reported this ${label} — staff will take a look`)
+			return fail("CONFLICT", `You have already reported this ${label} – staff will take a look`)
 		}
 		throw err
 	}

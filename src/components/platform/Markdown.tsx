@@ -2,11 +2,7 @@ import type { ReactNode } from "react"
 import { attrUrl } from "@/lib/attr-url"
 
 /**
- * Enough Markdown for a journal entry, and deliberately no more: headings,
- * emphasis, code, links, images, lists, quotes and rules. Everything renders
- * as React elements rather than injected HTML, so an entry can never smuggle
- * markup into the page — which matters because every word of this is typed by
- * a maker and, on the Explore feed, read by everybody else.
+ * Enough Markdown for a journal entry, and deliberately no more: headings, emphasis, code, links, images, lists, quotes and rules. Everything renders as React elements rather than injected HTML, so an entry can never smuggle markup into the page – which matters because every word of this is typed by a maker and, on the Explore feed, read by everybody else.
  */
 
 /** Links have to survive being typed by hand without becoming an attack. */
@@ -29,12 +25,7 @@ function safeSrc(raw: string): string | undefined {
 /**
  * What makes two image URLs the same picture.
  *
- * Uploads are named after the SHA-256 of their bytes (`contentHash` in
- * `lib/uploads/r2`), so one picture is always one filename and two URLs for
- * it differ at most in their extension. Comparing whole URLs would still count
- * the same screenshot saved once as `a.png` and once as `a.jpg` as two. Any
- * URL that does not carry such a name — an outside host, a data URI — is its
- * own identity.
+ * Uploads are named after the SHA-256 of their bytes (`contentHash` in `lib/uploads/r2`), so one picture is always one filename and two URLs for it differ at most in their extension. Comparing whole URLs would still count the same screenshot saved once as `a.png` and once as `a.jpg` as two. Any URL that does not carry such a name – an outside host, a data URI – is its own identity.
  */
 function imageIdentity(src: string): string {
 	if (src.startsWith("data:")) return src
@@ -45,15 +36,10 @@ function imageIdentity(src: string): string {
 }
 
 /**
- * How many images an entry carries. The session's evidence rule counts these
- * rather than a separate attachment list: the picture belongs in the sentence
- * that explains it, so the entry is the only place it can live.
+ * How many images an entry carries. The session's evidence rule counts these rather than a separate attachment list: the picture belongs in the sentence that explains it, so the entry is the only place it can live.
  */
 export function countImages(source: string): number {
-	// Only ones that will actually render: counting by syntax alone would let
-	// `![x](javascript:)` three times clear the bar with nothing to show. And
-	// only once each — the same picture pasted again is the same picture, so a
-	// maker cannot clear the evidence bar by repeating one image down the entry.
+	// Only ones that will actually render: counting by syntax alone would let `![x](javascript:)` three times clear the bar with nothing to show. And only once each – the same picture pasted again is the same picture, so a maker cannot clear the evidence bar by repeating one image down the entry.
 	const seen = new Set<string>()
 	for (const match of source.matchAll(/!\[[^\]]*\]\(([^)\s]+)\)/g)) {
 		const raw = match[1]
@@ -65,9 +51,7 @@ export function countImages(source: string): number {
 }
 
 /**
- * The images an entry shows, in the order it shows them. Pasted data URIs are
- * left out: they render inline, but as a thumbnail URL they would ship a whole
- * picture inside every payload that lists the project.
+ * The images an entry shows, in the order it shows them. Pasted data URIs are left out: they render inline, but as a thumbnail URL they would ship a whole picture inside every payload that lists the project.
  */
 export function imageSources(source: string): string[] {
 	const out: string[] = []
@@ -81,11 +65,7 @@ export function imageSources(source: string): string[] {
 /**
  * The opening of an entry, cut to about `limit` characters of what it says.
  *
- * Cut as Markdown rather than as a string: slicing through `![a](url)` or
- * `**bold**` would leave a half-token that renders as literal syntax, so
- * tokens are kept whole and the cut falls on a word boundary between them.
- * Images cost nothing against the limit, but only the first one is kept — an
- * excerpt that is mostly photographs is not an excerpt.
+ * Cut as Markdown rather than as a string: slicing through `![a](url)` or `**bold**` would leave a half-token that renders as literal syntax, so tokens are kept whole and the cut falls on a word boundary between them. Images cost nothing against the limit, but only the first one is kept – an excerpt that is mostly photographs is not an excerpt.
  */
 export function excerpt(source: string, limit: number): { text: string; cut: boolean } {
 	const text = source.replace(/\r\n/g, "\n")
@@ -140,19 +120,14 @@ export function excerpt(source: string, limit: number): { text: string; cut: boo
 /**
  * How much an entry actually says, for the 200-character floor.
  *
- * Images are the evidence half of an entry and are counted by `countImages`;
- * counting their markdown here too would let a pasted CDN URL — often a
- * hundred characters on its own — write most of the minimum. So every image,
- * alt text included, comes out before the length is taken: alt text is not
- * prose, and leaving it in would only move the padding into the brackets.
+ * Images are the evidence half of an entry and are counted by `countImages`; counting their markdown here too would let a pasted CDN URL – often a hundred characters on its own – write most of the minimum. So every image, alt text included, comes out before the length is taken: alt text is not prose, and leaving it in would only move the padding into the brackets.
  */
 export function proseLength(source: string): number {
 	return source.replace(/!\[[^\]]*\]\([^)]*\)/g, "").trim().length
 }
 
 /**
- * Images lead the alternation. `[alt](src)` would otherwise match the link
- * form first and leave a stray "!" sitting in front of it.
+ * Images lead the alternation. `[alt](src)` would otherwise match the link form first and leave a stray "!" sitting in front of it.
  *
  * Groups: 1 alt, 2 src, 3 code, 4 **, 5 __, 6 *, 7 _, 8 link text, 9 href.
  */
@@ -229,8 +204,7 @@ const HEADING = ["text-[1.15rem]", "text-[1.05rem]", "text-[0.98rem]"]
 
 export function Markdown({ source, className }: { source: string; className?: string }) {
 	const lines = source.replace(/\r\n/g, "\n").split("\n")
-	// Every loop below is already bounded by `lines.length`; this states that
-	// invariant in a form the compiler can use rather than asserting past it.
+	// Every loop below is already bounded by `lines.length`; this states that invariant in a form the compiler can use rather than asserting past it.
 	const at = (n: number): string => lines[n] ?? ""
 	const out: ReactNode[] = []
 	let i = 0
@@ -331,11 +305,7 @@ export function Markdown({ source, className }: { source: string; className?: st
 			para.push(at(i))
 			i += 1
 		}
-		// The exclusion above tests a PREFIX, but the handlers above match whole
-		// lines — `----` and ```` ```js foo ```` passed every handler and were also
-		// declined here, so nothing advanced `i` and the render spun forever on one
-		// line (which is exactly what a rogue journal entry did to Explore). Take
-		// the line as a paragraph so progress is unconditional.
+		// The exclusion above tests a PREFIX, but the handlers above match whole lines – `----` and ```` ```js foo ```` passed every handler and were also declined here, so nothing advanced `i` and the render spun forever on one line (which is exactly what a rogue journal entry did to Explore). Take the line as a paragraph so progress is unconditional.
 		if (para.length === 0) {
 			para.push(at(i))
 			i += 1
@@ -343,11 +313,6 @@ export function Markdown({ source, className }: { source: string; className?: st
 		out.push(<p key={key}>{inline(para.join(" "), key)}</p>)
 	}
 
-	// Callers lay entries out as a grid, and a grid item will not shrink below
-	// its longest unbroken run — a pasted image URL, a long link, a code line —
-	// so one of those used to widen the whole entry and set every paragraph
-	// scrolling sideways with it. `min-w-0` on each block lets them shrink back
-	// to the column (a `<pre>` then scrolls inside itself, as it is built to),
-	// and `overflow-wrap: anywhere` breaks a word that is wider than the line.
+	// Callers lay entries out as a grid, and a grid item will not shrink below its longest unbroken run – a pasted image URL, a long link, a code line – so one of those used to widen the whole entry and set every paragraph scrolling sideways with it. `min-w-0` on each block lets them shrink back to the column (a `<pre>` then scrolls inside itself, as it is built to), and `overflow-wrap: anywhere` breaks a word that is wider than the line.
 	return <div className={`min-w-0 [overflow-wrap:anywhere] *:min-w-0 ${className ?? ""}`}>{out}</div>
 }

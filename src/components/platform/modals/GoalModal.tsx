@@ -4,10 +4,11 @@ import { useId, useState } from "react"
 import { ParticipantGoal } from "@/app/generated/prisma/enums"
 import { PrinterPhoto } from "@/components/platform/art"
 import { IconCheck, IconClock, IconCoin } from "@/components/platform/icons"
-import { Button, cx, OptionRow } from "@/components/platform/ui"
+import { Button, OptionRow } from "@/components/platform/ui"
 import { GOAL_OPTIONS } from "@/lib/config/goal"
 import { PRINTERS, type PrinterGoal, printerById, weeksToGo } from "@/lib/config/printers"
 import { BUILD_HOURS } from "@/lib/curriculum"
+import { cx } from "@/lib/cx"
 import { useStore } from "@/lib/store"
 import { Modal, ModalTitle } from "./Modal"
 
@@ -16,19 +17,11 @@ const TEAL = "var(--color-teal-deep)"
 type Step = "goal" | "printer"
 
 /**
- * What you're here for, and — only if the answer is a printer — which machine.
+ * What you're here for, and – only if the answer is a printer – which machine.
  *
- * The order is the point. The catalogue is eight machines priced against each
- * other, and it is a meaningless question to somebody who is here for the grant
- * and never wanted a printer; so the goal is always asked first and the
- * machines are only ever shown to someone who has said they want one. Reversing
- * the two is what would make a fifteen-year-old read eight prices to work out a
- * question they hadn't been asked.
+ * The order is the point. The catalogue is eight machines priced against each other, and it is a meaningless question to somebody who is here for the grant and never wanted a printer; so the goal is always asked first and the machines are only ever shown to someone who has said they want one. Reversing the two is what would make a fifteen-year-old read eight prices to work out a question they hadn't been asked.
  *
- * The same modal does both jobs. The rail's tracker and the phone's "Change
- * printer" open it to change an answer; the prompt after the first checkpoint
- * opens it uncloseable, and is driven by `participantGoal` still being null
- * rather than by anything in this file.
+ * The same modal does both jobs. The rail's tracker and the phone's "Change printer" open it to change an answer; the prompt after the first checkpoint opens it uncloseable, and is driven by `participantGoal` still being null rather than by anything in this file.
  */
 export function GoalModal({
 	open,
@@ -48,10 +41,7 @@ export function GoalModal({
 	const [error, setError] = useState<string | null>(null)
 	const titleId = useId()
 
-	// Reopening starts from whatever is taped up now, including a goal that
-	// changed elsewhere — adjusting during render beats an effect that repaints.
-	// Opening always lands on the goal question, never mid-catalogue, so the
-	// answer is never edited by accident on the way to changing the machine.
+	// Reopening starts from whatever is taped up now, including a goal that changed elsewhere – adjusting during render beats an effect that repaints. Opening always lands on the goal question, never mid-catalogue, so the answer is never edited by accident on the way to changing the machine.
 	const [seen, setSeen] = useState({ open, goalId, participantGoal })
 	if (seen.open !== open || seen.goalId !== goalId || seen.participantGoal !== participantGoal) {
 		setSeen({ open, goalId, participantGoal })
@@ -71,8 +61,7 @@ export function GoalModal({
 		setError(null)
 		const refusal = await setParticipantGoal(goalAnswer, printer)
 		setSaving(false)
-		// A refusal keeps the sheet open with the reason on it. Closing here would
-		// leave the mandatory prompt looking finished when nothing was saved.
+		// A refusal keeps the sheet open with the reason on it. Closing here would leave the mandatory prompt looking finished when nothing was saved.
 		if (refusal) {
 			setError(refusal)
 			return
@@ -83,7 +72,7 @@ export function GoalModal({
 	function advance() {
 		setError(null)
 		if (chosen === ParticipantGoal.PRINTER) setStep("printer")
-		else void commit(chosen)
+		else commit(chosen)
 	}
 
 	return (
@@ -121,13 +110,13 @@ export function GoalModal({
 								{toGo > 0 ? (
 									weeks > 0 ? (
 										<>
-											{" — "}
+											{" – "}
 											<span className="tabular-nums">{toGo.toLocaleString()}</span> coins to go: about{" "}
 											{Math.round(goal.paceHours * 5)} coins a week to earn for {weeks} design weeks{" "}
 										</>
 									) : (
 										<>
-											{" — "}
+											{" – "}
 											<span className="tabular-nums">{toGo.toLocaleString()}</span> coins to go, and the build weeks
 											cover it at {BUILD_HOURS * 5} coins a week.{" "}
 										</>
@@ -152,7 +141,7 @@ export function GoalModal({
 									Cancel
 								</Button>
 							)}
-							<Button variant="teal" disabled={saving} onClick={() => void commit(ParticipantGoal.PRINTER, picked)}>
+							<Button variant="teal" disabled={saving} onClick={() => commit(ParticipantGoal.PRINTER, picked)}>
 								{unchanged ? "Keep this goal" : "Set this goal"} <IconCheck className="text-base" />
 							</Button>
 						</>
@@ -166,7 +155,7 @@ export function GoalModal({
 						id={titleId}
 						sub={
 							dismissible
-								? "Change this whenever you like — it decides what we build the rest of the season around."
+								? "Change this whenever you like – it decides what we build the rest of the season around."
 								: "Last thing before you get going! It decides what we build the rest of the season around, and you can change it whenever you like."
 						}
 					>
@@ -213,7 +202,7 @@ export function GoalModal({
 	)
 }
 
-/* A button, so every child below has to be phrasing content — spans, not divs. */
+/* A button, so every child below has to be phrasing content – spans, not divs. */
 function GoalCard({
 	goal,
 	selected,
@@ -228,12 +217,13 @@ function GoalCard({
 	const load = Math.round((goal.paceHours / Math.max(...PRINTERS.map((p) => p.paceHours))) * 100)
 
 	return (
+		// biome-ignore lint/a11y/useSemanticElements: a radio option drawn as a card; a real input would replace the card.
 		<button
 			type="button"
 			role="radio"
 			aria-checked={selected}
 			onClick={onSelect}
-			title={`About ${Math.round(goal.paceHours * 5)} coins to earn each design week — that pace is the same on every tier, because tier hours pay for parts while every hour past them earns. Bigger printers cost more coins to earn each week.`}
+			title={`About ${Math.round(goal.paceHours * 5)} coins to earn each design week – that pace is the same on every tier, because tier hours pay for parts while every hour past them earns. Bigger printers cost more coins to earn each week.`}
 			className={cx(
 				"sketch relative block w-full rounded-2xl px-4 pt-4 pb-3.5 text-left transition-colors duration-150 sm:px-5",
 				!selected && "hover:bg-white",

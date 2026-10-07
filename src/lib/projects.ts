@@ -3,9 +3,7 @@ import { WARMUP_WEEK_ID } from "./config/program"
 import type { Project, SessionLog, Week } from "./types"
 
 /**
- * A project is one theme carried across two weeks — designed in week N, built
- * in week N + 5 — so everything it accumulated lives under two week ids and
- * has to be gathered back into one story.
+ * A project is one theme carried across two weeks – designed in week N, built in week N + 5 – so everything it accumulated lives under two week ids and has to be gathered back into one story.
  */
 
 /** What the timeline needs to read out of a checkpoint. Structural on purpose: * the store owns this shape, and this file has no business importing it. */
@@ -39,10 +37,7 @@ export type ProjectEvent =
 
 /** The design week that owns a project, and the build week that finishes it. */
 export function projectWeeks(project: Project, weeks: Week[]): Week[] {
-	// A warm-up project has no curriculum week. Empty rather than "week 0 plus
-	// its build week": week 0 + DESIGN_WEEKS is week 5, the breadboard design
-	// week, and gathering its checkpoints would put a stranger's trail events on
-	// the warm-up card.
+	// A warm-up project has no curriculum week. Empty rather than "week 0 plus its build week": week 0 + DESIGN_WEEKS is week 5, the breadboard design week, and gathering its checkpoints would put a stranger's trail events on the warm-up card.
 	const ids = project.weekId === WARMUP_WEEK_ID ? [] : [project.weekId, project.weekId + DESIGN_WEEKS]
 	return weeks.filter((w) => ids.includes(w.id))
 }
@@ -50,10 +45,7 @@ export function projectWeeks(project: Project, weeks: Week[]): Week[] {
 /**
  * Everything the maker put on the record for this project, newest first.
  *
- * Sessions and reels are one stream rather than two lists: they happened in
- * one order, and splitting them would hide that a reel was posted in the
- * middle of a week's work rather than at the end of it. Ties break on the id
- * so the order is stable when two land in the same millisecond.
+ * Sessions and reels are one stream rather than two lists: they happened in one order, and splitting them would hide that a reel was posted in the middle of a week's work rather than at the end of it. Ties break on the id so the order is stable when two land in the same millisecond.
  */
 export function projectEvents(project: Project, weeks: Week[], read: (id: string) => CheckpointRead): ProjectEvent[] {
 	const out: ProjectEvent[] = []
@@ -67,9 +59,7 @@ export function projectEvents(project: Project, weeks: Week[], read: (id: string
 					out.push({
 						kind: "session",
 						id: entry.id,
-						// Sessions written before entries were dated carry no time. Zero
-						// rather than undefined, or the subtraction below goes NaN and
-						// takes the whole ordering with it.
+						// Sessions written before entries were dated carry no time. Zero rather than undefined, or the subtraction below goes NaN and takes the whole ordering with it.
 						at: entry.at ?? 0,
 						weekId: week.id,
 						minutes: entry.minutes,
@@ -81,9 +71,7 @@ export function projectEvents(project: Project, weeks: Week[], read: (id: string
 				out.push({
 					kind: "reel",
 					id: cp.id,
-					// Saves written before completions were dated have no time on them.
-					// Nothing sensible orders them, so they sort to the bottom rather
-					// than claiming the top with a zero.
+					// Saves written before completions were dated have no time on them. Nothing sensible orders them, so they sort to the bottom rather than claiming the top with a zero.
 					at: state.at ?? 0,
 					weekId: week.id,
 					title: cp.title,
@@ -113,9 +101,7 @@ export function projectStats(events: ProjectEvent[]) {
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 /**
- * Dates are written out by hand rather than handed to toLocaleDateString,
- * which resolves against whatever ICU data the runtime happens to carry and
- * so can disagree between the server render and the browser's.
+ * Dates are written out by hand rather than handed to toLocaleDateString, which resolves against whatever ICU data the runtime happens to carry and so can disagree between the server render and the browser's.
  */
 export function fmtDate(at: number): string {
 	if (!at) return "undated"
@@ -126,9 +112,7 @@ export function fmtDate(at: number): string {
 /**
  * The same date as `fmtDate`, from a `YYYY-MM-DD` day rather than an instant.
  *
- * The day is read as parts, not handed to `new Date`, because the string is a
- * calendar day in the PROGRAM's timezone: parsed as an instant it is UTC
- * midnight, and a reader west of UTC would be shown the day before.
+ * The day is read as parts, not handed to `new Date`, because the string is a calendar day in the PROGRAM's timezone: parsed as an instant it is UTC midnight, and a reader west of UTC would be shown the day before.
  */
 export function fmtDay(day: string): string {
 	const [year, month, date] = day.split("-").map(Number)

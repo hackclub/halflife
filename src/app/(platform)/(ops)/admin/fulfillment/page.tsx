@@ -203,7 +203,7 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 									{award.trackingNumber ? (
 										`${award.trackingCarrier ?? ""} ${award.trackingNumber}`.trim()
 									) : (
-										<span className="hl-hint">—</span>
+										<span className="hl-hint">–</span>
 									)}
 								</td>
 								<td>

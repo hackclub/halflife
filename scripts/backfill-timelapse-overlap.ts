@@ -5,25 +5,13 @@ import { lapseCredentials, verifyOwnTimelapses } from "../src/lib/lapse"
 import prisma from "../src/lib/prisma"
 
 /**
- * Fill in the two facts a timelapse row cannot be deduplicated without: WHEN the
- * recording was made, and which Hackatime project Lapse saw while it ran.
+ * Fill in the two facts a timelapse row cannot be deduplicated without: WHEN the recording was made, and which Hackatime project Lapse saw while it ran.
  *
- * Someone who codes with Hackatime running and records a Lapse timelapse of the
- * same sitting had that sitting counted twice — once by their journal entry and
- * once by the linked Hackatime project. Fixing that needs the two tools' clocks
- * to be compared, and a timelapse row only ever stored a duration. `recordedAt`
- * and `hackatimeProject` carry the rest.
+ * Someone who codes with Hackatime running and records a Lapse timelapse of the same sitting had that sitting counted twice – once by their journal entry and once by the linked Hackatime project. Fixing that needs the two tools' clocks to be compared, and a timelapse row only ever stored a duration. `recordedAt` and `hackatimeProject` carry the rest.
  *
- * Rows are asked of Lapse through each owner's own OAuth token, one request per
- * recording rather than per person, because a recording's facts are its own and a
- * token that has expired fails for one account rather than the whole run.
+ * Rows are asked of Lapse through each owner's own OAuth token, one request per recording rather than per person, because a recording's facts are its own and a token that has expired fails for one account rather than the whole run.
  *
- * Lapse tokens last 30 days and this repo cannot refresh them, so a token that
- * has lapsed means that person's recordings stay undeduplicated. That is the
- * honest outcome — a window guessed from the row's created_at (when the clip was
- * ATTACHED, possibly days later) would subtract Hackatime time from the wrong
- * sitting and underpay them. Those rows are listed at the end so they can be
- * re-run after the owner signs in with Lapse again.
+ * Lapse tokens last 30 days and this repo cannot refresh them, so a token that has lapsed means that person's recordings stay undeduplicated. That is the honest outcome – a window guessed from the row's created_at (when the clip was ATTACHED, possibly days later) would subtract Hackatime time from the wrong sitting and underpay them. Those rows are listed at the end so they can be re-run after the owner signs in with Lapse again.
  *
  * Safe to run again: it starts from the rows still missing a recording start.
  *
@@ -32,8 +20,7 @@ import prisma from "../src/lib/prisma"
 const PACE_MS = 250
 
 async function main() {
-	// One recording per row, grouped by owner so a lapsed token is discovered
-	// once instead of once per clip.
+	// One recording per row, grouped by owner so a lapsed token is discovered once instead of once per clip.
 	const rows = await prisma.sessionTimelapse.findMany({
 		where: { provider: "lapse", externalId: { not: null }, recordedAt: null, workSession: { deletedAt: null } },
 		orderBy: { id: "asc" },
@@ -74,9 +61,7 @@ async function main() {
 			const lapseId = row.externalId ?? ""
 			if (!lapseId) continue
 			try {
-				// The same ownership and processing checks the attach path makes, so a
-				// backfill can never attach facts to a recording the platform would
-				// refuse today.
+				// The same ownership and processing checks the attach path makes, so a backfill can never attach facts to a recording the platform would refuse today.
 				const [timelapse] = await verifyOwnTimelapses(userId, [lapseId])
 				if (!timelapse) continue
 				await prisma.sessionTimelapse.update({
@@ -92,9 +77,7 @@ async function main() {
 		}
 	}
 
-	// Warm the cached spans for every phase that just gained a window, so the
-	// review screen shows the deduplicated total rather than discovering the
-	// overlap at approval time.
+	// Warm the cached spans for every phase that just gained a window, so the review screen shows the deduplicated total rather than discovering the overlap at approval time.
 	const phases = new Map<string, { themeProjectId: string; phase: Phase }>()
 	for (const row of rows) {
 		phases.set(`${row.workSession.themeProjectId}:${row.workSession.phase}`, {

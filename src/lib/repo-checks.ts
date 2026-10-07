@@ -6,18 +6,11 @@ import { ForgeUnavailable, forgeGet } from "@/lib/github"
 import { type RepoRef, repoRefFromLink } from "@/lib/repo-ref"
 
 /**
- * Pre-submission repo checks, ported from Hack Club Stasis (lib/github-checks)
- * and now forge-aware.
+ * Pre-submission repo checks, ported from Hack Club Stasis (lib/github-checks) and now forge-aware.
  *
- * The checks themselves are the same on every forge — a README, photos in it,
- * and the file kinds the week exists to produce. What changes per forge is how
- * the file list and the README are read, which is why `fetchSnapshot` branches
- * and everything below it does not.
+ * The checks themselves are the same on every forge – a README, photos in it, and the file kinds the week exists to produce. What changes per forge is how the file list and the README are read, which is why `fetchSnapshot` branches and everything below it does not.
  *
- * A forge we do not speak is still a repo a maker may hand in: `checkRepo`
- * warns rather than blocks, exactly as it did for a GitLab link before GitLab
- * was understood. That path stays, because Codeberg and a self-hosted Gitea are
- * still real answers to "where is your project".
+ * A forge we do not speak is still a repo a maker may hand in: `checkRepo` warns rather than blocks, exactly as it did for a GitLab link before GitLab was understood. That path stays, because Codeberg and a self-hosted Gitea are still real answers to "where is your project".
  */
 
 export interface RepoCheck {
@@ -38,18 +31,17 @@ export interface RepoCheckResult {
 	checkedAt: string
 }
 
-/** What a forge said about a repo — everything the checks are built from. */
+/** What a forge said about a repo – everything the checks are built from. */
 type Snapshot =
 	| {
 			kind: "ok"
 			/** Lowercased, for matching. */
 			paths: string[]
-			/** The same files as the forge spells them, index for index — for links. */
+			/** The same files as the forge spells them, index for index – for links. */
 			files: string[]
 			readme: string | null
 			/**
-			 * The file list was cut short (GitHub stops at about 100,000 entries), so
-			 * a file missing from `paths` may still be in the repo.
+			 * The file list was cut short (GitHub stops at about 100,000 entries), so a file missing from `paths` may still be in the repo.
 			 */
 			truncated: boolean
 	  }
@@ -59,18 +51,12 @@ type Snapshot =
 /**
  * How long one answer from a forge is reused for a repo.
  *
- * One hand-in asks several times: the project page, the submit sheet, and the
- * submit itself, which re-checks rather than trusting the sheet. A minute is
- * short enough that a maker who has just pushed waits at most that long to see
- * it, and long enough to fold one hand-in into one fetch.
+ * One hand-in asks several times: the project page, the submit sheet, and the submit itself, which re-checks rather than trusting the sheet. A minute is short enough that a maker who has just pushed waits at most that long to see it, and long enough to fold one hand-in into one fetch.
  */
 const SNAPSHOT_TTL_MS = 60_000
 
 /**
- * How long "could not check" is reused. Short, because it is usually a blip —
- * the proxy failing for a second — and holding it for the full minute told
- * makers GitHub was down long after it was back. A rate limit is not what this
- * protects against: lib/github already refuses to call while one lasts.
+ * How long "could not check" is reused. Short, because it is usually a blip – the proxy failing for a second – and holding it for the full minute told makers GitHub was down long after it was back. A rate limit is not what this protects against: lib/github already refuses to call while one lasts.
  */
 const UNAVAILABLE_TTL_MS = 10_000
 
@@ -78,11 +64,7 @@ const UNAVAILABLE_TTL_MS = 10_000
 const SNAPSHOT_CACHE_MAX = 500
 
 /**
- * Per server process, keyed by `forge/completename` lowercased — forge names are
- * case-insensitive, and two spellings of one repo should share one fetch. The
- * value is the promise, not the result, so concurrent checks of the same repo
- * (React's double mount in dev, a page and a sheet opening together) wait on
- * one request instead of each starting their own.
+ * Per server process, keyed by `forge/completename` lowercased – forge names are case-insensitive, and two spellings of one repo should share one fetch. The value is the promise, not the result, so concurrent checks of the same repo (React's double mount in dev, a page and a sheet opening together) wait on one request instead of each starting their own.
  */
 const snapshots = new Map<string, { at: number; ttl: number; value: Promise<Snapshot> }>()
 
@@ -93,25 +75,21 @@ function snapshot(ref: RepoRef): Promise<Snapshot> {
 	if (hit && now - hit.at < hit.ttl) return hit.value
 
 	if (snapshots.size >= SNAPSHOT_CACHE_MAX) {
-		for (const [k, v] of snapshots) {
-			if (now - v.at >= v.ttl) snapshots.delete(k)
-		}
+		for (const [k, v] of snapshots) if (now - v.at >= v.ttl) snapshots.delete(k)
 		// Still full of live entries: drop the oldest. Map keeps insertion order.
-		if (snapshots.size >= SNAPSHOT_CACHE_MAX) snapshots.delete(snapshots.keys().next().value!)
+		const oldest = snapshots.keys().next()
+		if (snapshots.size >= SNAPSHOT_CACHE_MAX && !oldest.done) snapshots.delete(oldest.value)
 	}
 
-	// Never rejects. The promise is what the cache holds, so a rejected one
-	// would be handed to every check of this repo for the next minute — each of
-	// them a 500 — instead of the short-lived "could not check" it should be.
+	// Never rejects. The promise is what the cache holds, so a rejected one would be handed to every check of this repo for the next minute – each of them a 500 – instead of the short-lived "could not check" it should be.
 	const value = fetchSnapshot(ref).catch((err): Snapshot => {
 		console.warn(`[repo-checks] ${ref.forge.id}/${ref.fullName} failed unexpectedly:`, err)
 		return { kind: "unavailable", why: `${ref.forge.label} did not answer.` }
 	})
 	const entry = { at: now, ttl: SNAPSHOT_TTL_MS, value }
 	snapshots.set(key, entry)
-	// Settled, a failure is only kept briefly. Checked against the entry itself,
-	// so a newer fetch that has replaced it is left alone.
-	void value.then((snap) => {
+	// Settled, a failure is only kept briefly. Checked against the entry itself, so a newer fetch that has replaced it is left alone.
+	value.then((snap) => {
 		if (snap.kind === "unavailable" && snapshots.get(key) === entry) entry.ttl = UNAVAILABLE_TTL_MS
 	})
 	return value
@@ -123,11 +101,7 @@ function fetchSnapshot(ref: RepoRef): Promise<Snapshot> {
 }
 
 /**
- * Two requests, side by side. The file list is read at HEAD — the default
- * branch, whatever it is called — so there is no need to ask for the repo
- * first just to learn the branch name, which is what used to make this three.
- * The file list also answers whether the repo exists: 404 there means it does
- * not, or is private, which to a reviewer is the same thing.
+ * Two requests, side by side. The file list is read at HEAD – the default branch, whatever it is called – so there is no need to ask for the repo first just to learn the branch name, which is what used to make this three. The file list also answers whether the repo exists: 404 there means it does not, or is private, which to a reviewer is the same thing.
  */
 async function fetchGitHubSnapshot(ref: RepoRef): Promise<Snapshot> {
 	const forge = ref.forge
@@ -151,9 +125,7 @@ async function fetchGitHubSnapshot(ref: RepoRef): Promise<Snapshot> {
 	if (!treeRes.ok && treeRes.status !== 409) {
 		return { kind: "unavailable", why: `${forge.label} returned an error (${treeRes.status}).` }
 	}
-	// 404 is the only answer that means there is no README. Anything else is
-	// the forge failing to say, and blocking on that would tell the maker to add
-	// a README they already have.
+	// 404 is the only answer that means there is no README. Anything else is the forge failing to say, and blocking on that would tell the maker to add a README they already have.
 	if (!readmeRes.ok && readmeRes.status !== 404) {
 		return { kind: "unavailable", why: `${forge.label} returned an error (${readmeRes.status}).` }
 	}
@@ -167,9 +139,7 @@ async function fetchGitHubSnapshot(ref: RepoRef): Promise<Snapshot> {
 	let readme: string | null = null
 	if (readmeRes.ok) {
 		const r = (await readmeRes.json()) as { content?: string; encoding?: string }
-		if (r.content && r.encoding === "base64") {
-			readme = Buffer.from(r.content, "base64").toString("utf-8")
-		}
+		if (r.content && r.encoding === "base64") readme = Buffer.from(r.content, "base64").toString("utf-8")
 	}
 
 	return { kind: "ok", paths, files, readme, truncated: body.truncated === true }
@@ -180,10 +150,7 @@ async function fetchGitHubSnapshot(ref: RepoRef): Promise<Snapshot> {
  *
  * GitLab has no `truncated` flag and no README endpoint that finds the README
  * for you, so this asks for the tree and then reads the README by the name it
- * actually found. Both lists are paginated at 100, and a project with more
- * files than one page would silently look emptier than it is — which, for a
- * required-file check, means failing a maker who did the work. So the tree is
- * walked until GitLab stops offering a next page.
+ * actually found. Both lists are paginated at 100, and a project with more files than one page would silently look emptier than it is – which, for a required-file check, means failing a maker who did the work. So the tree is walked until GitLab stops offering a next page.
  */
 async function fetchGitLabSnapshot(ref: RepoRef): Promise<Snapshot> {
 	const forge = ref.forge
@@ -204,16 +171,13 @@ async function fetchGitLabSnapshot(ref: RepoRef): Promise<Snapshot> {
 	}
 
 	const files: string[] = []
-	// A generous ceiling: 100 pages of 100 is 10,000 files, which no hardware
-	// project is, and it stops a pathological repo looping here forever.
+	// A generous ceiling: 100 pages of 100 is 10,000 files, which no hardware project is, and it stops a pathological repo looping here forever.
 	const MAX_PAGES = 100
 	let page = 1
 	let res = first
 	while (page <= MAX_PAGES) {
 		const entries = (await res.json()) as { path: string; type: string }[]
-		for (const entry of entries) {
-			if (entry.type === "blob") files.push(entry.path)
-		}
+		for (const entry of entries) if (entry.type === "blob") files.push(entry.path)
 		const next = res.headers.get("x-next-page")
 		if (!next) break
 		page = Number(next)
@@ -228,25 +192,19 @@ async function fetchGitLabSnapshot(ref: RepoRef): Promise<Snapshot> {
 
 	const paths = files.map((p) => p.toLowerCase())
 	const readme = await fetchGitLabReadme(forge, project, files)
-	// GitLab lists the whole tree when asked to recurse, so a file absent from
-	// `paths` is genuinely absent — there is no "cut short" state to carry.
+	// GitLab lists the whole tree when asked to recurse, so a file absent from `paths` is genuinely absent – there is no "cut short" state to carry.
 	return { kind: "ok", paths, files, readme, truncated: false }
 }
 
 /**
  * The README's text, by the name the tree actually uses.
  *
- * GitHub has a `/readme` endpoint that finds it whatever it is called; GitLab
- * does not, so the name is taken from the file list. A repo with several
- * spellings (`README.md`, `readme.rst`) is read from the first that sorts, and
- * only the common names are tried — this is a "has a README" check, not a
- * search for any file that might be prose.
+ * GitHub has a `/readme` endpoint that finds it whatever it is called; GitLab does not, so the name is taken from the file list. A repo with several spellings (`README.md`, `readme.rst`) is read from the first that sorts, and only the common names are tried – this is a "has a README" check, not a search for any file that might be prose.
  */
 const README_NAMES = ["readme.md", "readme.markdown", "readme.rst", "readme.txt", "readme"]
 
 async function fetchGitLabReadme(forge: Forge, project: string, files: readonly string[]): Promise<string | null> {
-	// Root-level names first, then anything nested, so a docs/README does not
-	// shadow the project's own.
+	// Root-level names first, then anything nested, so a docs/README does not shadow the project's own.
 	const candidates = files
 		.filter((f) => README_NAMES.includes((f.split("/").pop() ?? "").toLowerCase()))
 		.sort((a, b) => a.split("/").length - b.split("/").length)
@@ -301,10 +259,7 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 
 	const ref = repoRefFromLink(repoLink)
 	if (!ref) {
-		// `normalizeRepo` accepts any http(s) repo — a Codeberg project is a repo
-		// too — but the checks below talk to a forge API. Warn rather than block,
-		// so the link the maker was allowed to save is one they can hand in; a
-		// reviewer opens it by hand.
+		// `normalizeRepo` accepts any http(s) repo – a Codeberg project is a repo too – but the checks below talk to a forge API. Warn rather than block, so the link the maker was allowed to save is one they can hand in; a reviewer opens it by hand.
 		const foreignHost = foreignRepoHost(repoLink)
 		if (foreignHost) return result(repoLink, [nonForgeWarn(foreignHost)], true)
 		return result(repoLink, [
@@ -370,7 +325,7 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 					key: "readme_photo",
 					label: "No photos in the README",
 					status: "fail",
-					detail: "Add at least one image of the project — a render, a screenshot of the board, or a photo.",
+					detail: "Add at least one image of the project – a render, a screenshot of the board, or a photo.",
 					blocking: true,
 				},
 	)
@@ -384,7 +339,7 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 				? { key: kind, label: def.label, status: "pass", detail: sample(found) }
 				: truncated
 					? // Not found in a list the forge cut short is not the same as not
-						// there, so it cannot block — a reviewer checks by hand instead.
+						// there, so it cannot block – a reviewer checks by hand instead.
 						{
 							key: kind,
 							label: `${def.label} not found`,
@@ -415,17 +370,9 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 /**
  * The hostname of a repo link on a service we do not speak, or null.
  *
- * `repoRefFromLink` returns null for two different things: a URL for a forge we
- * do not know (Codeberg, a self-hosted Gitea) and a string that is not a repo at
- * all. Only the first is worth a warning — the maker saved a real repo, just not
- * one these checks can read — so this tells them apart by shape: a parseable
- * URL or hostname with at least two path segments (`owner/name`), which is what
- * every forge's repo URL has.
+ * `repoRefFromLink` returns null for two different things: a URL for a forge we do not know (Codeberg, a self-hosted Gitea) and a string that is not a repo at all. Only the first is worth a warning – the maker saved a real repo, just not one these checks can read – so this tells them apart by shape: a parseable URL or hostname with at least two path segments (`owner/name`), which is what every forge's repo URL has.
  *
- * A GitLab repo with a traversal segment is *also* refused by `parseRepoRef`,
- * but it belongs to a forge we know; letting it fall through to the warning
- * would say "another service" about gitlab.com. So a known forge's host is
- * excluded here too, and such a link reads as malformed instead.
+ * A GitLab repo with a traversal segment is *also* refused by `parseRepoRef`, but it belongs to a forge we know; letting it fall through to the warning would say "another service" about gitlab.com. So a known forge's host is excluded here too, and such a link reads as malformed instead.
  */
 function foreignRepoHost(link: string): string | null {
 	const host = hostnameOf(link)
@@ -453,9 +400,7 @@ function nonForgeWarn(host: string): RepoCheck {
 /**
  * A link to the first file in the repo whose path matches, or null.
  *
- * Reads the same cached file list the checks use, so asking costs nothing
- * extra when a check has just run — which, at submit, it always has.
- * Shallowest match wins, so a root JOURNAL.md beats one in a subfolder.
+ * Reads the same cached file list the checks use, so asking costs nothing extra when a check has just run – which, at submit, it always has. Shallowest match wins, so a root JOURNAL.md beats one in a subfolder.
  */
 export async function findRepoFile(repoLink: string | null, test: RegExp): Promise<string | null> {
 	const ref = repoRefFromLink(repoLink)
@@ -469,10 +414,7 @@ export async function findRepoFile(repoLink: string | null, test: RegExp): Promi
 /**
  * The shallowest path in the repo whose name matches, or null.
  *
- * The same search `findRepoFile` runs, but returning the path rather than a
- * web link — for callers that mean to read the file's bytes rather than point
- * at it, such as the BOM import. Reads the same cached file list, so calling
- * both for one project costs one fetch.
+ * The same search `findRepoFile` runs, but returning the path rather than a web link – for callers that mean to read the file's bytes rather than point at it, such as the BOM import. Reads the same cached file list, so calling both for one project costs one fetch.
  */
 export async function findRepoFilePath(repoLink: string | null, test: RegExp): Promise<string | null> {
 	const ref = repoRefFromLink(repoLink)
@@ -486,20 +428,13 @@ export async function findRepoFilePath(repoLink: string | null, test: RegExp): P
 /**
  * The text of one file in the repo, or null when it cannot be read.
  *
- * The two forges speak differently here — GitHub's contents API answers with
- * base64, GitLab's raw endpoint with the bytes — so this is the one place that
- * difference lives. It reads the file at HEAD, the default branch, and treats
- * a missing, binary or oversized file as simply unreadable: the caller has
- * picked a path it matched in the same file list, so "not there" is a race, not
- * an error worth a different message.
+ * The two forges speak differently here – GitHub's contents API answers with base64, GitLab's raw endpoint with the bytes – so this is the one place that difference lives. It reads the file at HEAD, the default branch, and treats a missing, binary or oversized file as simply unreadable: the caller has picked a path it matched in the same file list, so "not there" is a race, not an error worth a different message.
  */
 export async function readRepoFile(repoLink: string | null, path: string): Promise<string | null> {
 	const ref = repoRefFromLink(repoLink)
 	if (!ref) return null
 
-	// GitLab takes the file path as one encoded value, slashes included, the way
-	// the README read above does; GitHub's contents API takes it as path
-	// segments, so each is encoded on its own.
+	// GitLab takes the file path as one encoded value, slashes included, the way the README read above does; GitHub's contents API takes it as path segments, so each is encoded on its own.
 	if (ref.forge.id === "gitlab") {
 		const res = await forgeGet(
 			ref.forge,
@@ -513,8 +448,7 @@ export async function readRepoFile(repoLink: string | null, path: string): Promi
 	const res = await forgeGet(ref.forge, `repos/${ref.fullName}/contents/${encoded}?ref=HEAD`)
 	if (!res.ok) return null
 	const body = (await res.json().catch(() => null)) as { content?: string; encoding?: string } | null
-	// GitHub omits `content` for files over a megabyte and sets `encoding` to
-	// `none`; a BOM CSV is never one, so that is just unreadable.
+	// GitHub omits `content` for files over a megabyte and sets `encoding` to `none`; a BOM CSV is never one, so that is just unreadable.
 	if (!body?.content || body.encoding !== "base64") return null
 	return Buffer.from(body.content, "base64").toString("utf-8")
 }

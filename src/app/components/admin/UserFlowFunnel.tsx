@@ -3,25 +3,13 @@ import { type CSSProperties, Fragment, useState } from "react"
 import { EmptyState } from "@/app/components/ui"
 import type { FlowStep } from "@/lib/queries/admin"
 
-// The reel steps a program with its reels turned off wants out of the way. The
-// funnel still fetches them (the data is cheap and shared), and the toggle just
-// filters them here, so flipping it is instant and never round-trips.
+// The reel steps a program with its reels turned off wants out of the way. The funnel still fetches them (the data is cheap and shared), and the toggle just filters them here, so flipping it is instant and never round-trips.
 const REEL_STEP_IDS = new Set(["startedUpload", "uploadedReel", "postedReel"])
 
 /**
- * The funnel as an actual funnel running down the page: each stage is a
- * trapezoid whose top edge meets the stage above it and whose bottom edge is
- * its own share of signups, so the slope between two stages *is* the
- * drop-off. Captions sit in a column to the left of the funnel, where text
- * never fights the colour for contrast, and the through/stopped share for
- * each joint is named in the connector between its two stages. Each stage is
- * heat-coloured by the share of the previous stage it lost, from blue (no
- * loss) to red (all lost).
+ * The funnel as an actual funnel running down the page: each stage is a trapezoid whose top edge meets the stage above it and whose bottom edge is its own share of signups, so the slope between two stages *is* the drop-off. Captions sit in a column to the left of the funnel, where text never fights the colour for contrast, and the through/stopped share for each joint is named in the connector between its two stages. Each stage is heat-coloured by the share of the previous stage it lost, from blue (no loss) to red (all lost).
  *
- * Hiding the reel steps is a client-side view option, not a stored setting: the
- * shares below a hidden stage are recomputed against the stage that is now
- * above it, so the drop-off across a hidden row reads as one joint rather than
- * vanishing with it.
+ * Hiding the reel steps is a client-side view option, not a stored setting: the shares below a hidden stage are recomputed against the stage that is now above it, so the drop-off across a hidden row reads as one joint rather than vanishing with it.
  */
 export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 	const [hideReel, setHideReel] = useState(false)
@@ -41,27 +29,21 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 	})
 
 	const top = total
-	// A floor so a near-total drop-off still renders as a thread rather than
-	// vanishing entirely; captions always print the true share.
+	// A floor so a near-total drop-off still renders as a thread rather than vanishing entirely; captions always print the true share.
 	const MIN_W = 2
 	const share = (n: number) => (top > 0 ? (n / top) * 100 : 0)
 	const shown = shownSteps.map((s) => (s.count === 0 ? 0 : Math.max(share(s.count), MIN_W)))
 
-	// Clamp a drop-off share to a 0–100 blend weight.
+	// Clamp a drop-off share to a 0-100 blend weight.
 	const weightOf = (dropOffPct: number) => Math.min(100, Math.max(0, dropOffPct))
 
-	// Heat of a stage, as a background from flow-through blue to total-loss
-	// red. Mixed in oklch so the middle stays vivid rather than washing out
-	// through grey the way an srgb blend does. `backgroundColor` first so
-	// browsers without color-mix still get the cold end rather than nothing.
+	// Heat of a stage, as a background from flow-through blue to total-loss red. Mixed in oklch so the middle stays vivid rather than washing out through grey the way an srgb blend does. `backgroundColor` first so browsers without color-mix still get the cold end rather than nothing.
 	const heat = (dropOffPct: number): CSSProperties => ({
 		backgroundColor: "var(--color-accent)",
 		background: `color-mix(in oklch, var(--color-danger) ${weightOf(dropOffPct)}%, var(--color-accent))`,
 	})
 
-	// The same heat for text: muted where nothing was lost, danger-ink where
-	// everything was. An unsupported color-mix just inherits body text, which
-	// still reads.
+	// The same heat for text: muted where nothing was lost, danger-ink where everything was. An unsupported color-mix just inherits body text, which still reads.
 	const heatInk = (dropOffPct: number): CSSProperties => ({
 		color: `color-mix(in oklch, var(--color-danger-ink) ${weightOf(dropOffPct)}%, var(--color-ink-muted))`,
 	})
@@ -70,8 +52,7 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 	const heatWeight = (dropOffPct: number) => 400 + Math.round(weightOf(dropOffPct) / 25) * 100
 
 	return (
-		// width:100% — the panel is a flex column, where auto margins alone
-		// shrink-wrap this to its content instead of filling the panel.
+		// width:100% – the panel is a flex column, where auto margins alone shrink-wrap this to its content instead of filling the panel.
 		<div style={{ width: "100%", maxWidth: "56rem", margin: "0 auto" }}>
 			<label
 				className="hl-row"

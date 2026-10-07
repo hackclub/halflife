@@ -28,9 +28,7 @@ function phaseOf(metadata: unknown): Phase | null {
 }
 
 /**
- * Replays hand-ins that never reached Ari — a send that failed, or one on a
- * deployment whose Ari secrets were added after the submission. Reviewers work
- * in Ari, so a ship that never arrived is a project nobody will review.
+ * Replays hand-ins that never reached Ari – a send that failed, or one on a deployment whose Ari secrets were added after the submission. Reviewers work in Ari, so a ship that never arrived is a project nobody will review.
  */
 export const POST = withRoute(async (req: NextRequest) => {
 	const denied = requireIntegrationAuth(req)
@@ -60,10 +58,7 @@ export const POST = withRoute(async (req: NextRequest) => {
 		else synced++
 	}
 
-	// Withdrawals have no row to list — the submission they belonged to was
-	// deleted on unsubmit — so a failure's only trace is its audit row. Replay
-	// the ones that no later success has resolved; `not_queued` is success
-	// (Ari had already decided or dropped it).
+	// Withdrawals have no row to list – the submission they belonged to was deleted on unsubmit – so a failure's only trace is its audit row. Replay the ones that no later success has resolved; `not_queued` is success (Ari had already decided or dropped it).
 	let withdrawn = 0
 	let withdrawFailed = 0
 	if (isAriConfigured()) {
@@ -109,9 +104,7 @@ export const POST = withRoute(async (req: NextRequest) => {
 		}
 	}
 
-	// Deferred decisions: a build approval that arrived before its design. The
-	// event is stored whole, not just an error, so applying it here is replaying
-	// the decision itself; the still-waiting ones stay for the next run.
+	// Deferred decisions: a build approval that arrived before its design. The event is stored whole, not just an error, so applying it here is replaying the decision itself; the still-waiting ones stay for the next run.
 	let deferred = 0
 	let deferredFailed = 0
 	if (isAriConfigured()) {
@@ -127,8 +120,7 @@ export const POST = withRoute(async (req: NextRequest) => {
 				await prisma.ariWebhookDelivery.update({ where: { id: row.id }, data: { appliedAt: new Date() } })
 				deferred++
 			} catch (err) {
-				// Still waiting on the design: leave it for a later run rather than
-				// counting it failed.
+				// Still waiting on the design: leave it for a later run rather than counting it failed.
 				if (err instanceof HttpError && err.code === "DESIGN_NOT_APPROVED") continue
 				deferredFailed++
 			}

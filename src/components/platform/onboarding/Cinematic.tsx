@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { Avatar } from "@/components/platform/Avatar"
 import { Gato, PrinterPhoto, WeekPainting } from "@/components/platform/art"
 import { IconCheck, IconClock, IconCoin, IconFilm, IconLock, IconPlay, IconUpload } from "@/components/platform/icons"
-import { Button, cx, onAccent } from "@/components/platform/ui"
+import { Button, onAccent } from "@/components/platform/ui"
 import { MIN_HOURS_PER_WEEK } from "@/lib/config/printers"
 import { BUILD_HOURS, checkpointsFor, WEEK_META } from "@/lib/curriculum"
 import flightControllerShot from "../../../../public/projects/flightcontroller.png"
@@ -20,8 +20,7 @@ const MOCK_REELS = [
 ]
 
 /**
- * The fly-through plays before anyone has picked a tier, so it previews the
- * tier-1 shape. The bonus node is earned, not given, so it stays off.
+ * The fly-through plays before anyone has picked a tier, so it previews the tier-1 shape. The bonus node is earned, not given, so it stays off.
  */
 const WEEKS = WEEK_META.map((meta) => ({
 	...meta,
@@ -29,29 +28,22 @@ const WEEKS = WEEK_META.map((meta) => ({
 }))
 
 import { type PrinterGoal, printerById } from "@/lib/config/printers"
+import { cx } from "@/lib/cx"
 import { useStore } from "@/lib/store"
 
 /**
- * Always the Ender 3 V3 SE, never the picked goal, even if the default goal
- * moves: it is the printer every finisher can reach, as on the trail's grand
- * prize.
+ * Always the Ender 3 V3 SE, never the picked goal, even if the default goal moves: it is the printer every finisher can reach, as on the trail's grand prize.
  */
 const GOAL = printerById("ender-3-v3-se")
 
 /**
  * The first thing anyone sees: one fall down the trail, in one direction.
  *
- * The claim Half Life makes is "ten weeks", so the intro spends its time
- * proving the distance rather than describing it. The title sits at the head
- * of the real home page; the camera lets go of it and drops through every week
- * banner in order — gathering speed, never reversing — and lands on the
- * machine at the bottom of the run. The diorama is the real home page at the
- * real proportions, so when the spotlight finds the yellow checkpoint a moment
- * later the viewer is already oriented.
+ * The claim Half Life makes is "ten weeks", so the intro spends its time proving the distance rather than describing it. The title sits at the head of the real home page; the camera lets go of it and drops through every week banner in order – gathering speed, never reversing – and lands on the machine at the bottom of the run. The diorama is the real home page at the real proportions, so when the spotlight finds the yellow checkpoint a moment later the viewer is already oriented.
  */
 
 /* ------------------------------------------------------------------ *
- * Stage layout — computed once, shared by the markup and the camera
+ * Stage layout – computed once, shared by the markup and the camera
  * ------------------------------------------------------------------ */
 const STAGE_W = 1520
 const COL_X = 760 // centre of the trail column
@@ -87,8 +79,7 @@ const BLOCKS: Block[] = []
 	}
 }
 
-// BLOCKS is built above, one entry per week, so it is never empty; the
-// fallback keeps that a compile-time fact rather than an assertion.
+// BLOCKS is built above, one entry per week, so it is never empty; the fallback keeps that a compile-time fact rather than an assertion.
 const LAST = BLOCKS[BLOCKS.length - 1] ?? { top: 0, trailTop: 0, height: 0 }
 const PRIZE_TOP = LAST.top + LAST.height + 40
 const PRIZE_CENTRE = PRIZE_TOP + PRIZE_H / 2
@@ -107,10 +98,7 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 const clamp01 = (t: number) => (t < 0 ? 0 : t > 1 ? 1 : t)
 
 /**
- * What the captions say, keyed to where the camera is rather than to the
- * clock: each line appears as the weeks it describes come into frame, so a
- * slow machine never has a caption naming weeks that are not on screen yet.
- * The banners already name each week, so a caption says only what they don't.
+ * What the captions say, keyed to where the camera is rather than to the clock: each line appears as the weeks it describes come into frame, so a slow machine never has a caption naming weeks that are not on screen yet. The banners already name each week, so a caption says only what they don't.
  */
 const article = (name: string) => (/^[aeiou]/i.test(name) ? "an" : "a")
 const SCRIPT: { fromWeek: number; fromDepth: number; line: (goal: string) => string }[] = [
@@ -137,10 +125,7 @@ const SCRIPT: { fromWeek: number; fromDepth: number; line: (goal: string) => str
 ]
 
 /**
- * The fall's speed profile: it eases off the title like something starting to
- * drop, runs fastest through the middle weeks, and spends its last stretch
- * braking onto the prize. Asymmetric on purpose — a symmetric ease reads as a
- * glide, and this is an arrival.
+ * The fall's speed profile: it eases off the title like something starting to drop, runs fastest through the middle weeks, and spends its last stretch braking onto the prize. Asymmetric on purpose – a symmetric ease reads as a glide, and this is an arrival.
  */
 function cubicBezier(x1: number, y1: number, x2: number, y2: number) {
 	const cx = 3 * x1
@@ -310,11 +295,7 @@ function Stage({ goal }: { goal: PrinterGoal }) {
 }
 
 /**
- * The week banners are chrome, not scenery: like the real trail, each one
- * parks at the top of the frame while its week is passing and is then shoved
- * off by the next. They live in screen space so the camera loop can clamp them
- * every frame — CSS sticky needs a scroll container, and the stage is a
- * transform.
+ * The week banners are chrome, not scenery: like the real trail, each one parks at the top of the frame while its week is passing and is then shoved off by the next. They live in screen space so the camera loop can clamp them every frame – CSS sticky needs a scroll container, and the stage is a transform.
  */
 function WeekBanners({ refs }: { refs: React.RefObject<(HTMLDivElement | null)[]> }) {
 	return (
@@ -336,7 +317,7 @@ function WeekBanners({ refs }: { refs: React.RefObject<(HTMLDivElement | null)[]
 				>
 					{/* The tear belongs to the plaque, never to the type. `.torn` is a
               displacement filter, so on a container it drags the glyphs about
-              with the edges — and this one is re-scaled every frame by the
+              with the edges – and this one is re-scaled every frame by the
               camera, which rasterises the filtered result at one size and
               stretches it to another. The real trail's banner separates them
               the same way. */}
@@ -373,8 +354,7 @@ export function Cinematic() {
 	/** Last painted camera position, so a skip can land from where it is. */
 	const here = useRef({ fy: TITLE_Y, scale: 1 })
 
-	// The diorama is built once and kept out of every re-render the captions
-	// trigger, so the fall stays a pure transform on a stable layer.
+	// The diorama is built once and kept out of every re-render the captions trigger, so the fall stays a pure transform on a stable layer.
 	const stage = useMemo(() => <Stage goal={GOAL} />, [])
 
 	useEffect(() => {
@@ -393,8 +373,7 @@ export function Cinematic() {
 		const platformScale = () => Math.min(window.innerWidth / 1620, window.innerHeight / 940)
 		// Close enough that the trail column and one banner fill the frame.
 		const trailScale = () => Math.min(window.innerWidth / 940, window.innerHeight / 620, 1.05)
-		// The opening frame shows the platform around the title — but never so
-		// far out on a phone that the trail under it is a smudge.
+		// The opening frame shows the platform around the title – but never so far out on a phone that the trail under it is a smudge.
 		const openScale = () => Math.max(platformScale(), Math.min(trailScale(), 0.55))
 		// The closing frame has to hold the whole prize card above the CTA.
 		const CTA_ROOM = 190
@@ -403,10 +382,7 @@ export function Cinematic() {
 		const prizeFocus = () => PRIZE_CENTRE + CTA_ROOM / 2 / prizeScale()
 
 		/**
-		 * One camera position, painted everywhere at once: the stage, the
-		 * banners that stick at the top of the frame, and the title, which is
-		 * anchored to the head of the trail but drawn at screen size so it reads
-		 * on a phone. Returns the week whose banner is on top.
+		 * One camera position, painted everywhere at once: the stage, the banners that stick at the top of the frame, and the title, which is anchored to the head of the trail but drawn at screen size so it reads on a phone. Returns the week whose banner is on top.
 		 */
 		const place = (fy: number, scale: number) => {
 			const vh = window.innerHeight
@@ -417,8 +393,7 @@ export function Cinematic() {
 				title.current.style.transform = `translateY(${((TITLE_Y - fy) * scale + vh / 2).toFixed(1)}px)`
 			}
 
-			// Sticky, by hand: a banner tracks its block until the block reaches
-			// the top of the frame, holds there, then gets pushed up by the next.
+			// Sticky, by hand: a banner tracks its block until the block reaches the top of the frame, holds there, then gets pushed up by the next.
 			const h = BANNER_H * scale
 			let pinned = -1
 			for (let i = 0; i < BLOCKS.length; i += 1) {
@@ -445,8 +420,7 @@ export function Cinematic() {
 			return
 		}
 
-		// A skip lands from wherever the camera is, so the banners and the
-		// title move with it instead of freezing mid-flight.
+		// A skip lands from wherever the camera is, so the banners and the title move with it instead of freezing mid-flight.
 		landing.current = () => {
 			const from = here.current
 			const toFy = prizeFocus()
@@ -466,14 +440,11 @@ export function Cinematic() {
 		const frame = (now: number) => {
 			if (skipped.current) return
 			const t = now - t0
-			// Everything below is one move: no pull-backs, no reversals. Until the
-			// hold is up the camera is parked on the title; after it, `depth` is
-			// how far down the run the camera is, title to prize.
+			// Everything below is one move: no pull-backs, no reversals. Until the hold is up the camera is parked on the title; after it, `depth` is how far down the run the camera is, title to prize.
 			const p = clamp01((t - T_HOLD) / T_FALL)
 			const depth = fall(p)
 			const fy = lerp(TITLE_Y, prizeFocus(), depth)
-			// Close in on the trail as the fall gathers speed, and open back out
-			// only for the landing, so the whole prize card arrives in frame.
+			// Close in on the trail as the fall gathers speed, and open back out only for the landing, so the whole prize card arrives in frame.
 			const cruising = lerp(openScale(), trailScale(), smooth(clamp01(p / 0.25)))
 			const scale = lerp(cruising, prizeScale(), smooth(clamp01((depth - 0.86) / 0.14)))
 

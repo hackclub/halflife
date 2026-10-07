@@ -16,15 +16,10 @@ export const POST = withRoute(async (req: Request) => {
 	const h = await headers()
 	const ip = clientIp(h)
 
-	// This is a public, unauthenticated write that lands a row in the drain
-	// queue (and the public counter); the landing form's limiter applies here
-	// too rather than leaving it open to a script.
-	if (rateLimited(ip ?? "unknown")) {
-		return fail("RATE_LIMITED", "Slow down a second, then try again.")
-	}
+	// This is a public, unauthenticated write that lands a row in the drain queue (and the public counter); the landing form's limiter applies here too rather than leaving it open to a script.
+	if (rateLimited(ip ?? "unknown")) return fail("RATE_LIMITED", "Slow down a second, then try again.")
 
-	// Buffered in Postgres and drained to Airtable by a job. A signup must not
-	// fail because a third party is rate-limiting us.
+	// Buffered in Postgres and drained to Airtable by a job. A signup must not fail because a third party is rate-limiting us.
 	await bufferRsvp({
 		email: parsed.data.email,
 		firstName: sanitizeOptional(parsed.data.firstName),

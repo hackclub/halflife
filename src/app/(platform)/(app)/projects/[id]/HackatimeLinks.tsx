@@ -3,8 +3,9 @@
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useState } from "react"
 import { IconClock, IconPlus, IconWarning, IconX } from "@/components/platform/icons"
-import { Button, cx, inputClass, Panel } from "@/components/platform/ui"
+import { Button, inputClass, Panel } from "@/components/platform/ui"
 import { linkHackatime } from "@/lib/auth-client"
+import { cx } from "@/lib/cx"
 import { fmtHours } from "@/lib/projects"
 import type { Phase } from "@/lib/types"
 
@@ -36,13 +37,9 @@ async function read<T>(res: Response): Promise<T> {
 /**
  * Hours that came from the editor rather than the journal.
  *
- * Firmware and CAD scripting are tracked by Hackatime, and a link here is what
- * folds that time into the week — the trail reads it back as off-book hours on
- * the next snapshot, which is why every change ends in a refresh rather than a
- * local patch. The journal is still the evidence; this is only the clock.
+ * Firmware and CAD scripting are tracked by Hackatime, and a link here is what folds that time into the week – the trail reads it back as off-book hours on the next snapshot, which is why every change ends in a refresh rather than a local patch. The journal is still the evidence; this is only the clock.
  *
- * A link a reviewer has already put hours on cannot be removed: those hours
- * are part of a decision, and the route refuses it, so the button does too.
+ * A link a reviewer has already put hours on cannot be removed: those hours are part of a decision, and the route refuses it, so the button does too.
  */
 export function HackatimeLinks({ projectId, phase }: { projectId: string; phase: Phase }) {
 	const router = useRouter()
@@ -75,9 +72,7 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 				}
 			}
 		} catch (err) {
-			// The requests never produced a response at all (offline, DNS, abort).
-			// Both reads are unusable, so fail visibly with a retry rather than
-			// leaving the panel on "checking hackatime…" forever.
+			// The requests never produced a response at all (offline, DNS, abort). Both reads are unusable, so fail visibly with a retry rather than leaving the panel on "checking hackatime…" forever.
 			console.error("[hackatime] failed to load links/account:", err)
 			setLinks([])
 			setAccount({ state: "error" })
@@ -90,12 +85,12 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 		setError(null)
 		setLinks(null)
 		setAccount({ state: "loading" })
-		void load()
+		load()
 	}, [load])
 
 	useEffect(() => {
 		// eslint-disable-next-line react-hooks/set-state-in-effect -- fetching on mount
-		void load()
+		load()
 	}, [load])
 
 	async function run(key: string, fn: () => Promise<void>) {

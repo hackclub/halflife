@@ -33,8 +33,7 @@ export function ProgramSettingsForm({
 			const res = await fetch("/api/admin/program", {
 				method: "PATCH",
 				headers: { "Content-Type": "application/json" },
-				// The start date has its own form (ProgramStartForm): moving it moves
-				// every week's lock, so it is not something to change in passing.
+				// The start date has its own form (ProgramStartForm): moving it moves every week's lock, so it is not something to change in passing.
 				body: JSON.stringify({
 					programTimezone: form.programTimezone,
 					submissionsOpen: form.submissionsOpen,

@@ -2,16 +2,14 @@
 
 import { useState } from "react"
 import { Modal, ModalTitle } from "@/components/platform/modals/Modal"
-import { Button, borderedInputClass, cx, Field, OptionRow } from "@/components/platform/ui"
+import { Button, borderedInputClass, Field, OptionRow } from "@/components/platform/ui"
+import { cx } from "@/lib/cx"
 import { REPORT_REASONS, type ReportReason, type ReportTargetInput } from "@/lib/reports"
 
 /**
  * Report something for staff: a reason picker, an optional note, and a send.
  *
- * One shared dialog for every surface (reels, comments, projects, users,
- * devlogs), so reporting reads the same everywhere. It changes no state —
- * the row stays up and the queue gains a row — and says so, so nobody files
- * a report expecting an instant takedown.
+ * One shared dialog for every surface (reels, comments, projects, users, devlogs), so reporting reads the same everywhere. It changes no state – the row stays up and the queue gains a row – and says so, so nobody files a report expecting an instant takedown.
  */
 export function ReportDialog({
 	open,
@@ -68,7 +66,7 @@ export function ReportDialog({
 				setError(payload?.error?.message ?? "That report did not send. Try again.")
 				return
 			}
-			setDone("Thanks — staff will take a look.")
+			setDone("Thanks – staff will take a look.")
 		} catch {
 			setError("Could not reach the server. Try again.")
 		} finally {
@@ -80,7 +78,7 @@ export function ReportDialog({
 		<Modal open={open} onClose={close} eyebrow="Report to staff" accent="var(--color-coral)" size="md">
 			{done ? (
 				<>
-					<ModalTitle sub="Nothing changes right away — a report puts it in front of staff, it never takes anything down by itself.">
+					<ModalTitle sub="Nothing changes right away – a report puts it in front of staff, it never takes anything down by itself.">
 						Report sent
 					</ModalTitle>
 					<p className="hand text-[0.9rem] text-navy">{done}</p>
@@ -99,6 +97,7 @@ export function ReportDialog({
 						</blockquote>
 					)}
 
+					{/* biome-ignore lint/a11y/useSemanticElements: a group of choices, not a form. */}
 					<div className="grid gap-2.5" role="group" aria-label="Reason">
 						{REPORT_REASONS.map((r) => (
 							<OptionRow key={r.id} selected={reason === r.id} onClick={() => setReason(r.id)}>
@@ -134,7 +133,7 @@ export function ReportDialog({
 						<Button variant="ghost" onClick={close} disabled={sending}>
 							Cancel
 						</Button>
-						<Button variant="solid" onClick={() => void send()} disabled={!reason || sending}>
+						<Button variant="solid" onClick={() => send()} disabled={!reason || sending}>
 							{sending ? "Sending…" : "Send report"}
 						</Button>
 					</div>

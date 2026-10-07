@@ -7,8 +7,7 @@ export const dynamic = "force-dynamic"
 type Params = { params: Promise<{ id: string }> }
 
 /**
- * Take back a public link you added — the wrong post pasted, or a post since
- * deleted. Only your own. Removing it also frees that link to be added again.
+ * Take back a public link you added – the wrong post pasted, or a post since deleted. Only your own. Removing it also frees that link to be added again.
  */
 export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 	const gate = await requireSession()

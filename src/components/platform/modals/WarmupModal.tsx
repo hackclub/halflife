@@ -5,10 +5,11 @@ import { useState } from "react"
 import { WeekPainting } from "@/components/platform/art"
 import { IconArrowRight } from "@/components/platform/icons"
 import { RepoInput, repoIsValid } from "@/components/platform/RepoField"
-import { Button, cx, Field, inputClass, OptionRow } from "@/components/platform/ui"
+import { Button, Field, inputClass, OptionRow } from "@/components/platform/ui"
 import { submitFloorFor } from "@/lib/config/printers"
 import { WARMUP_THEME } from "@/lib/config/program"
 import { BUILD_HOURS, TIERS } from "@/lib/curriculum"
+import { cx } from "@/lib/cx"
 import { normalizeRepo } from "@/lib/repo"
 import { Modal, ModalTitle } from "./Modal"
 
@@ -17,10 +18,7 @@ function fmtH(h: number) {
 }
 
 /**
- * Start a warm-up project: the season's "create a project" sheet, for any
- * hardware idea rather than a theme, plus the one question a warm-up adds —
- * whether it is handed in as a design or as a finished build. It is handed in
- * once, as that.
+ * Start a warm-up project: the season's "create a project" sheet, for any hardware idea rather than a theme, plus the one question a warm-up adds – whether it is handed in as a design or as a finished build. It is handed in once, as that.
  */
 export function WarmupModal({ onClose, closesOn }: { onClose: () => void; closesOn: string | null }) {
 	const router = useRouter()
@@ -59,7 +57,7 @@ export function WarmupModal({ onClose, closesOn }: { onClose: () => void; closes
 			router.refresh()
 			onClose()
 		} catch {
-			setError("Could not reach the server. Nothing was created — try again.")
+			setError("Could not reach the server. Nothing was created – try again.")
 		} finally {
 			setSaving(false)
 		}
@@ -86,7 +84,7 @@ export function WarmupModal({ onClose, closesOn }: { onClose: () => void; closes
 					<Button variant="outline" onClick={onClose} disabled={saving}>
 						Cancel
 					</Button>
-					<Button variant="solid" disabled={!ok || saving} onClick={() => void create()}>
+					<Button variant="solid" disabled={!ok || saving} onClick={() => create()}>
 						{saving ? "Creating…" : "Create project"} <IconArrowRight className="text-base" />
 					</Button>
 				</>
@@ -157,7 +155,7 @@ export function WarmupModal({ onClose, closesOn }: { onClose: () => void; closes
 										{t.detail}
 										{phase !== "BUILD" && (
 											<span className="mt-1 block text-navy-soft/90">
-												You can submit on tier {t.id} from {fmtH(submitFloorFor(t.fundingHours))} of design time — every
+												You can submit on tier {t.id} from {fmtH(submitFloorFor(t.fundingHours))} of design time – every
 												hour past that earns 5 spendable coins.
 											</span>
 										)}

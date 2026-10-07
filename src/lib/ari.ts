@@ -15,22 +15,13 @@ import { sanitize } from "@/lib/sanitize"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
 /**
- * Ari — the external project-review platform.
+ * Ari – the external project-review platform.
  *
- * Half Life sends each submitted (project, phase) as an Ari "ship" and receives
- * its decisions back as signed webhooks. The decision is applied through the
- * same `finalizeReview` a human console reviewer calls, so the trail, the
- * ledger and the grant all move exactly once, whether a person or Ari decided.
- * The only difference is attribution: an Ari decision has no Half Life user, so
- * `SubmissionReview.reviewerId` is null and the audit row names Ari instead.
+ * Half Life sends each submitted (project, phase) as an Ari "ship" and receives its decisions back as signed webhooks. The decision is applied through the same `finalizeReview` a human console reviewer calls, so the trail, the ledger and the grant all move exactly once, whether a person or Ari decided. The only difference is attribution: an Ari decision has no Half Life user, so `SubmissionReview.reviewerId` is null and the audit row names Ari instead.
  *
- * Ari owns the YSWS/Airtable row status once a submission is written there, so
- * this integration does not write to Airtable — it mirrors Ari's decision into
- * the participant-facing side of Half Life (status, hours, coins, printer
- * qualification).
+ * Ari owns the YSWS/Airtable row status once a submission is written there, so this integration does not write to Airtable – it mirrors Ari's decision into the participant-facing side of Half Life (status, hours, coins, printer qualification).
  *
- * Everything here no-ops when the three ARI_* secrets are unset, so local dev
- * and any deployment that has not been onboarded to Ari behave as before.
+ * Everything here no-ops when the three ARI_* secrets are unset, so local dev and any deployment that has not been onboarded to Ari behave as before.
  */
 
 export function isAriConfigured(): boolean {
@@ -44,9 +35,7 @@ export function isAriWebhookConfigured(): boolean {
 /**
  * The absolute webhook URL to paste into the Ari program settings.
  *
- * Configured origin first: behind an ingress the request's own host is the
- * internal one, and a webhook URL the Ari service cannot reach is one that
- * silently never fires. The caller may pass the request origin as a fallback
+ * Configured origin first: behind an ingress the request's own host is the internal one, and a webhook URL the Ari service cannot reach is one that silently never fires. The caller may pass the request origin as a fallback
  * for local development.
  */
 export function ariWebhookUrl(originFallback = ""): string {
@@ -57,12 +46,13 @@ export function ariWebhookUrl(originFallback = ""): string {
 let client: Ari | null = null
 
 function ari(): Ari {
-	if (!isAriConfigured()) {
-		throw new HttpError("NOT_CONFIGURED", "Ari is not configured on this deployment")
-	}
+	if (!isAriConfigured()) throw new HttpError("NOT_CONFIGURED", "Ari is not configured on this deployment")
+	const programId = process.env.ARI_PROGRAM_ID
+	const signingSecret = process.env.ARI_SIGNING_SECRET
+	if (!programId || !signingSecret) throw new Error("Ari is not configured on this deployment")
 	client ??= new Ari({
-		programId: process.env.ARI_PROGRAM_ID!,
-		signingSecret: process.env.ARI_SIGNING_SECRET!,
+		programId,
+		signingSecret,
 		...(process.env.ARI_BASE_URL ? { baseUrl: process.env.ARI_BASE_URL } : {}),
 	})
 	return client
@@ -80,11 +70,7 @@ function appUrl(): string {
 }
 
 /**
- * Ari requires a thumbnail. Prefer the project's own cover; fall back to the
- * theme painting the participant already saw for that week, so a project
- * without a cover is still reviewable rather than silently unsendable. A
- * warm-up project has no theme painting — it was never part of the season —
- * so it falls back to the programme's build artwork rather than a 404.
+ * Ari requires a thumbnail. Prefer the project's own cover; fall back to the theme painting the participant already saw for that week, so a project without a cover is still reviewable rather than silently unsendable. A warm-up project has no theme painting – it was never part of the season – so it falls back to the programme's build artwork rather than a 404.
  */
 function thumbnailFor(coverImageKey: string | null, slug: string): string {
 	const cover = publicUrlFor(coverImageKey)
@@ -92,7 +78,7 @@ function thumbnailFor(coverImageKey: string | null, slug: string): string {
 	return slug === WARMUP_THEME.slug ? `${appUrl()}/art/build.png` : `${appUrl()}/brand/themes/${slug}.png`
 }
 
-/** The build's closing reel, or null — hardware projects may omit a demo. */
+/** The build's closing reel, or null – hardware projects may omit a demo. */
 async function buildDemoUrl(userId: string, buildWeek: number): Promise<string | null> {
 	const reel = await prisma.post.findFirst({
 		where: { userId, checkpointKey: `w${buildWeek}-reel-submission`, deletedAt: null },
@@ -133,27 +119,22 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
 	})
 	if (!project) throw new HttpError("NOT_FOUND", "Project not found")
 
-	// A retry job snapshots what is pending and sends later; the maker can have
-	// unsubmitted in between. The row the decision would land on is gone, so
-	// sending would leave an untracked ship in Ari's queue.
+	// A retry job snapshots what is pending and sends later; the maker can have unsubmitted in between. The row the decision would land on is gone, so sending would leave an untracked ship in Ari's queue.
 	const phaseStatus = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
-	if (phaseStatus !== PhaseStatus.in_review) {
+	if (phaseStatus !== PhaseStatus.in_review)
 		throw new HttpError("NOT_SUBMITTED", "This phase is no longer awaiting review, so there is no ship to send")
-	}
 
 	const user = project.user
 	if (!project.title.trim()) throw new HttpError("UNPROCESSABLE", "This project has no title to send to Ari")
 	if (!project.githubRepo) throw new HttpError("UNPROCESSABLE", "This project has no repository link to send to Ari")
-	if (!user.slackId) {
+	if (!user.slackId)
 		throw new HttpError("UNPROCESSABLE", "This account has no Slack ID, so Ari cannot be told who the maker is")
-	}
 
 	const def = getThemeDef(project.theme)
 
 	const journals = project.workSessions.slice(-200).map((session) => ({
 		at: session.createdAt,
-		// A HACKATIME_TRACKED entry contributes no time here — its minutes arrive
-		// through hackatime_projects — but it is still evidence Ari should see.
+		// A HACKATIME_TRACKED entry contributes no time here – its minutes arrive through hackatime_projects – but it is still evidence Ari should see.
 		minutes:
 			session.hoursSource === HoursSource.HACKATIME_TRACKED
 				? 0
@@ -170,10 +151,7 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
 	const input: AriShipInput = {
 		external_id: ariExternalId(themeProjectId, phase),
 		title: project.title,
-		// Ari rejects an empty description. Week one's onboarding allows one, and
-		// submissions made before that was enforced would otherwise fail every
-		// retry, so fall back to the title rather than throw: the title is always
-		// present and is a truer description than a placeholder would be.
+		// Ari rejects an empty description. Week one's onboarding allows one, and submissions made before that was enforced would otherwise fail every retry, so fall back to the title rather than throw: the title is always present and is a truer description than a placeholder would be.
 		description: project.description?.trim() || project.title,
 		// Half Life is a hardware programme, so a demo video is optional.
 		track: "hardware",
@@ -182,9 +160,7 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
 			name: user.name?.trim() || user.email,
 			slack_id: user.slackId,
 			...(user.hackatimeUserId ? { hackatime_id: user.hackatimeUserId } : {}),
-			// No `program_hours`: Half Life's time is exactly the journals and
-			// Hackatime projects below, which Ari counts itself. Reporting the same
-			// hours as program-provided time would make it count them twice.
+			// No `program_hours`: Half Life's time is exactly the journals and Hackatime projects below, which Ari counts itself. Reporting the same hours as program-provided time would make it count them twice.
 		},
 		repo_url: project.githubRepo,
 		thumbnail_url: thumbnailFor(project.coverImageKey, def.slug),
@@ -212,9 +188,7 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
 // ─── Outbound ────────────────────────────────────────────────────────────────
 
 /**
- * Send a hand-in to Ari. Throws on failure so `trackSideEffect` records an
- * ARI_SYNC_FAILURE an operator can replay; the submission keeps a null
- * `ariSubmissionId`, which is what the retry job looks for.
+ * Send a hand-in to Ari. Throws on failure so `trackSideEffect` records an ARI_SYNC_FAILURE an operator can replay; the submission keeps a null `ariSubmissionId`, which is what the retry job looks for.
  */
 export async function sendSubmissionToAri(themeProjectId: string, phase: Phase) {
 	if (!isAriConfigured()) return { skipped: "not_configured" as const }
@@ -244,7 +218,7 @@ export async function withdrawSubmissionFromAri(themeProjectId: string, phase: P
 	}
 }
 
-/** Hand-ins awaiting review that never reached Ari — for the retry job and the
+/** Hand-ins awaiting review that never reached Ari – for the retry job and the
  * admin panel. Two queries total rather than two per project, because the
  * admin page renders this on every load. */
 export async function findUnsyncedAriSubmissions(): Promise<{ themeProjectId: string; phase: Phase }[]> {
@@ -261,8 +235,7 @@ export async function findUnsyncedAriSubmissions(): Promise<{ themeProjectId: st
 
 	const open = await prisma.phaseSubmission.findMany({
 		where: { themeProjectId: { in: projects.map((p) => p.id) }, resolvedAt: null },
-		// Ascending so the newest-per-key tie-break in selectPendingShips sees a
-		// stable order when two rows share a millisecond.
+		// Ascending so the newest-per-key tie-break in selectPendingShips sees a stable order when two rows share a millisecond.
 		orderBy: { createdAt: "asc" },
 		select: { themeProjectId: true, phase: true, ariSubmissionId: true, createdAt: true },
 	})
@@ -323,9 +296,7 @@ async function applyDecision(event: DecisionEvent): Promise<void> {
 	}
 	const { themeProjectId, phase } = parsed
 
-	// Prefer the row this ship was actually sent for. A withdraw-and-resubmit
-	// reuses the same external id, so a decision for the withdrawn ship must not
-	// be applied to the newer hand-in that now holds the open slot.
+	// Prefer the row this ship was actually sent for. A withdraw-and-resubmit reuses the same external id, so a decision for the withdrawn ship must not be applied to the newer hand-in that now holds the open slot.
 	const byShip = await prisma.phaseSubmission.findFirst({
 		where: { themeProjectId, phase, ariSubmissionId: event.id },
 		select: { id: true, ariSubmissionId: true, resolvedAt: true },
@@ -354,9 +325,7 @@ async function applyDecision(event: DecisionEvent): Promise<void> {
 				? ReviewResult.RETURNED
 				: ReviewResult.REJECTED
 
-	// A design approval is also the funding decision: it sets the tier and the
-	// parts grant. Ari reviews the work, not the money, so the tier is the one the
-	// maker asked for — never invented here.
+	// A design approval is also the funding decision: it sets the tier and the parts grant. Ari reviews the work, not the money, so the tier is the one the maker asked for – never invented here.
 	let tier: number | null = null
 	if (result === ReviewResult.APPROVED && phase === Phase.DESIGN) {
 		const project = await prisma.themeProject.findUnique({
@@ -371,20 +340,13 @@ async function applyDecision(event: DecisionEvent): Promise<void> {
 		tier = chosen
 	}
 
-	// A build cannot be approved before its design is. Ari reviews each phase on
-	// its own clock — and Half Life deliberately lets a build be submitted before
-	// its design is approved, so a build approval arriving first is expected, not
-	// an error. It is a decision deferred by state, so throw: the delivery is not
-	// recorded and Ari redelivers it, which is what eventually applies it once
-	// the design is approved. Checked before the claim is cleared so a deferred
-	// redelivery does not keep deleting a human reviewer's claim.
+	// A build cannot be approved before its design is. Ari reviews each phase on its own clock – and Half Life deliberately lets a build be submitted before its design is approved, so a build approval arriving first is expected, not an error. It is a decision deferred by state, so throw: the delivery is not recorded and Ari redelivers it, which is what eventually applies it once the design is approved. Checked before the claim is cleared so a deferred redelivery does not keep deleting a human reviewer's claim.
 	if (result === ReviewResult.APPROVED && phase === Phase.BUILD) {
 		const project = await prisma.themeProject.findUnique({
 			where: { id: themeProjectId },
 			select: { designStatus: true, theme: true },
 		})
-		// A warm-up project's only phase is the one the form collected, so there
-		// is no design approval to wait for.
+		// A warm-up project's only phase is the one the form collected, so there is no design approval to wait for.
 		if (project?.theme !== Theme.WARMUP && project?.designStatus !== PhaseStatus.approved) {
 			throw new HttpError(
 				"DESIGN_NOT_APPROVED",
@@ -412,12 +374,7 @@ async function applyDecision(event: DecisionEvent): Promise<void> {
 			grantUsdOverride: null,
 		})
 	} catch (err) {
-		// These mean the decision cannot or need not be applied, and retrying will
-		// not change that: the submission is already decided or was withdrawn. A
-		// build that arrived before its design is NOT in this list — that one is
-		// deferred by state and is rethrown so its delivery stays unrecorded.
-		// Anything else (including a claim that reappeared in the tiny window after
-		// we cleared it) is rethrown so Ari retries.
+		// These mean the decision cannot or need not be applied, and retrying will not change that: the submission is already decided or was withdrawn. A build that arrived before its design is NOT in this list – that one is deferred by state and is rethrown so its delivery stays unrecorded. Anything else (including a claim that reappeared in the tiny window after we cleared it) is rethrown so Ari retries.
 		if (err instanceof HttpError && (err.code === "ALREADY_RESOLVED" || err.code === "NOT_SUBMITTED")) {
 			await ignored(event, err.code.toLowerCase(), event.external_id)
 			return
@@ -444,16 +401,12 @@ async function applyDecision(event: DecisionEvent): Promise<void> {
 		},
 	})
 
-	// The decision is committed and recorded; now tell the maker. Best-effort —
-	// a Slack or mail outage must not make Ari retry a decided submission, and
-	// the project page is the source of truth if a message is missed.
+	// The decision is committed and recorded; now tell the maker. Best-effort – a Slack or mail outage must not make Ari retry a decided submission, and the project page is the source of truth if a message is missed.
 	await notifyReviewOutcome({ themeProjectId, phase, result, feedback })
 }
 
 /**
- * Undo a result Ari removed. Reverses local status and credit, marks the
- * reviews invalid, and puts the phase back in front of reviewers so it can be
- * decided again. Safe to run more than once.
+ * Undo a result Ari removed. Reverses local status and credit, marks the reviews invalid, and puts the phase back in front of reviewers so it can be decided again. Safe to run more than once.
  */
 async function applyReset(event: ResetEvent): Promise<void> {
 	const parsed = parseAriExternalId(event.external_id)
@@ -481,8 +434,7 @@ async function applyReset(event: ResetEvent): Promise<void> {
 		await ignored(event, "no submission to requeue", event.external_id)
 		return
 	}
-	// The same stale-ship rule as a decision: reopening a newer hand-in because
-	// Ari reverted an older one would erase a review it never saw.
+	// The same stale-ship rule as a decision: reopening a newer hand-in because Ari reverted an older one would erase a review it never saw.
 	if (latest.ariSubmissionId && latest.ariSubmissionId !== event.id) {
 		await ignored(event, "reset names an earlier ship of this phase", event.external_id)
 		return
@@ -555,8 +507,7 @@ async function applyShipUpdated(event: UpdatedEvent): Promise<void> {
 		targetId: parseAriExternalId(event.external_id)?.themeProjectId ?? null,
 		metadata: {
 			event: event.event,
-			// Mapped to plain values: the SDK's interface has no index signature, so
-			// it is not itself assignable to Prisma's JSON input type.
+			// Mapped to plain values: the SDK's interface has no index signature, so it is not itself assignable to Prisma's JSON input type.
 			changes: event.changes.map((change) => ({
 				field: change.field,
 				old_value: change.old_value,
@@ -568,8 +519,7 @@ async function applyShipUpdated(event: UpdatedEvent): Promise<void> {
 }
 
 async function applyUnknown(event: UnknownEvent): Promise<void> {
-	// Recorded so a new Ari event is visible, then dropped: it will be handled
-	// once the SDK and this handler know it.
+	// Recorded so a new Ari event is visible, then dropped: it will be handled once the SDK and this handler know it.
 	await logAudit({
 		action: AuditAction.ARI_WEBHOOK_IGNORED,
 		metadata: { event: event.event, eventName: event.event_name },
@@ -600,9 +550,7 @@ async function applyEvent(event: AriWebhookEvent): Promise<void> {
 }
 
 /**
- * Apply an event that was stored because the state was not ready for it — a
- * build approval that arrived before its design. Called by the `ari-retry`
- * job; the caller marks the delivery applied once this resolves.
+ * Apply an event that was stored because the state was not ready for it – a build approval that arrived before its design. Called by the `ari-retry` job; the caller marks the delivery applied once this resolves.
  */
 export async function applyStoredEvent(event: AriWebhookEvent): Promise<void> {
 	await applyEvent(event)
@@ -611,11 +559,7 @@ export async function applyStoredEvent(event: AriWebhookEvent): Promise<void> {
 /**
  * Apply one verified Ari webhook.
  *
- * Idempotent: the delivery id is checked first and recorded only after the work
- * succeeds, so a redelivery (same id) is a no-op and a failed one is retried by
- * Ari. A decision the state is not ready for is stored whole instead (see
- * below) and replayed by `ari-retry`, so it does not depend on Ari's
- * redelivery window outlasting the wait.
+ * Idempotent: the delivery id is checked first and recorded only after the work succeeds, so a redelivery (same id) is a no-op and a failed one is retried by Ari. A decision the state is not ready for is stored whole instead (see below) and replayed by `ari-retry`, so it does not depend on Ari's redelivery window outlasting the wait.
  *
  * Errors are rethrown so the route answers non-2xx.
  */
@@ -629,10 +573,7 @@ export async function applyAriWebhook(event: AriWebhookEvent, deliveryId: string
 	try {
 		await applyEvent(event)
 	} catch (err) {
-		// "Not yet", not "never": the design has to be approved before a build
-		// approval can be applied, and that ordering is normal here. Keep the
-		// whole event so the retry job can apply it later, and accept the
-		// delivery rather than asking Ari to redeliver indefinitely.
+		// "Not yet", not "never": the design has to be approved before a build approval can be applied, and that ordering is normal here. Keep the whole event so the retry job can apply it later, and accept the delivery rather than asking Ari to redeliver indefinitely.
 		if (err instanceof HttpError && err.code === "DESIGN_NOT_APPROVED") {
 			await prisma.ariWebhookDelivery.create({
 				data: {

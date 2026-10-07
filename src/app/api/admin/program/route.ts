@@ -15,10 +15,7 @@ export const GET = withRoute(async () => {
 })
 
 /**
- * The kill switches live here rather than in env vars deliberately. Stasis put
- * its submission gate in SUBMISSIONS_CLOSED and it was never flipped in the
- * dashboard, so submissions silently stayed open for two weeks after the event
- * ended. A row with a toggle and an audit trail cannot be forgotten.
+ * The kill switches live here rather than in env vars deliberately. Stasis put its submission gate in SUBMISSIONS_CLOSED and it was never flipped in the dashboard, so submissions silently stayed open for two weeks after the event ended. A row with a toggle and an audit trail cannot be forgotten.
  */
 export const PATCH = withRoute(async (req: Request) => {
 	const gate = await requirePermission(Permission.MANAGE_PROGRAM)

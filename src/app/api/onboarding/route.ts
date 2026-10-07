@@ -25,28 +25,18 @@ export const POST = withRoute(async (req: Request) => {
 	const parsed = await parseBody(req, onboardingStepSchema)
 	if (parsed.error) return parsed.error
 
-	// Get started is week 1's first checkpoint, so it waits for week 1 too. The
-	// intro and the tab tour do not: they are the browser's, and play for a new
-	// account whatever the date.
+	// Get started is week 1's first checkpoint, so it waits for week 1 too. The intro and the tab tour do not: they are the browser's, and play for a new account whatever the date.
 	await assertWeekStarted(1)
 
-	// The schema's variants line up with OnboardingAnswer one for one; the cast
-	// is only because Zod infers the literal union separately from the type the
-	// state machine declares.
+	// The schema's variants line up with OnboardingAnswer one for one; the cast is only because Zod infers the literal union separately from the type the state machine declares.
 	const result = await submitStep(gate.user.id, parsed.data as OnboardingAnswer)
 
-	// The analytics stamp for a named project: after the response, since it is
-	// nothing the person is waiting on, and quiet about its own failures.
-	if (result.touchedProject) {
-		after(() => markProjectCreated(result.state.project.id, gate.user.id))
-	}
+	// The analytics stamp for a named project: after the response, since it is nothing the person is waiting on, and quiet about its own failures.
+	if (result.touchedProject) after(() => markProjectCreated(result.state.project.id, gate.user.id))
 
-	// A repo chosen on the last step is written to GitHub after the response.
-	// Its failure is recorded on the project (and shown on its page), not thrown
-	// back at someone who has just finished setup.
+	// A repo chosen on the last step is written to GitHub after the response. Its failure is recorded on the project (and shown on its page), not thrown back at someone who has just finished setup.
 	if (result.repoRequest) {
-		// Read the repo out here: the narrowing above does not survive into the
-		// deferred closure, so the `!` that used to bridge it is not needed.
+		// Read the repo out here: the narrowing above does not survive into the deferred closure, so the `!` that used to bridge it is not needed.
 		const repo = result.repoRequest.repo
 		after(async () => {
 			try {

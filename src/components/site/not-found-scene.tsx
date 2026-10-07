@@ -10,18 +10,13 @@ import styles from "./not-found.module.css"
 /**
  * The 404: the production line, run out.
  *
- * The landing draws the programme as a line — a header plate, then a tapered
- * weld down into each station. Here the weld leaves the header and is sheared
- * off before it lands, and the station it was heading for is one of the
- * page's own reserved slots, empty, labelled with the address that was asked
+ * The landing draws the programme as a line – a header plate, then a tapered weld down into each station. Here the weld leaves the header and is sheared off before it lands, and the station it was heading for is one of the page's own reserved slots, empty, labelled with the address that was asked
  * for. Nothing enters or moves: like the landing, the drawing is complete from
  * the first paint.
  */
 
 /**
- * The cut, in the weld's own 200x120 viewBox. A sawtooth across the band a
- * little past half its run, so the end reads as sheared rather than as a band
- * that simply stopped short.
+ * The cut, in the weld's own 200x120 viewBox. A sawtooth across the band a little past half its run, so the end reads as sheared rather than as a band that simply stopped short.
  */
 const SHEAR = "M0 0H200V66L186 76L172 64L158 78L144 66L130 76L116 64L102 78L88 66L74 76L60 64L46 78L32 66L18 76L0 64Z"
 

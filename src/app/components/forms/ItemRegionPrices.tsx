@@ -4,9 +4,7 @@ import { useState } from "react"
 import { Button, Callout } from "@/app/components/ui"
 
 /**
- * One region's coin price for one shop item. Blank is base pricing: the row
- * only exists while an override does, so clearing the field deletes it and
- * the item sells at its base price again.
+ * One region's coin price for one shop item. Blank is base pricing: the row only exists while an override does, so clearing the field deletes it and the item sells at its base price again.
  */
 export function ItemRegionPrices({
 	itemId,
@@ -28,7 +26,7 @@ export function ItemRegionPrices({
 		const raw = (values[regionId] ?? "").trim()
 		const price = raw === "" ? null : Number(raw)
 		if (price !== null && (!Number.isInteger(price) || price < 0)) {
-			setError("Prices are whole coins, zero or more — or blank for base pricing.")
+			setError("Prices are whole coins, zero or more – or blank for base pricing.")
 			return
 		}
 		setBusy(regionId)
@@ -56,7 +54,7 @@ export function ItemRegionPrices({
 		<div className="hl-stack hl-stack--tight">
 			{error ? <Callout tone="danger">{error}</Callout> : null}
 			{regions.length === 0 ? (
-				<p className="hl-hint">No regions yet — add one on the shop page first.</p>
+				<p className="hl-hint">No regions yet – add one on the shop page first.</p>
 			) : (
 				<ul className="hl-stack hl-stack--tight" style={{ listStyle: "none", padding: 0, margin: 0 }}>
 					{regions.map((region) => (
@@ -78,7 +76,7 @@ export function ItemRegionPrices({
 								onChange={(e) => setValues((v) => ({ ...v, [region.id]: e.target.value }))}
 								style={{ maxWidth: "9rem" }}
 							/>
-							<Button type="button" disabled={busy !== null} onClick={() => void save(region.id)}>
+							<Button type="button" disabled={busy !== null} onClick={() => save(region.id)}>
 								{busy === region.id ? "Saving…" : "Save"}
 							</Button>
 						</li>

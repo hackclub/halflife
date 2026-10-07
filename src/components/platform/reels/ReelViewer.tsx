@@ -12,7 +12,8 @@ import {
 	IconVolumeOff,
 } from "@/components/platform/icons"
 import { ReportButton } from "@/components/platform/report/ReportButton"
-import { cx, Panel } from "@/components/platform/ui"
+import { Panel } from "@/components/platform/ui"
+import { cx } from "@/lib/cx"
 import type { FeedItem } from "@/lib/feed"
 import { useStore } from "@/lib/store"
 import { type FeedPosition, readPosition, savePosition } from "./feedPosition"
@@ -24,10 +25,7 @@ import { useFeed } from "./useFeed"
 import { RATES, usePlayerPrefs } from "./usePlayerPrefs"
 
 /**
- * The glide between reels: quick off the mark and settling into place, so the
- * next reel arrives rather than appears. Long enough to read as one card
- * handing over to the next, short enough that flicking through a dozen never
- * feels like waiting on the page.
+ * The glide between reels: quick off the mark and settling into place, so the next reel arrives rather than appears. Long enough to read as one card handing over to the next, short enough that flicking through a dozen never feels like waiting on the page.
  */
 const GLIDE_MS = 360
 const glideEase = (t: number) => 1 - (1 - t) ** 4
@@ -35,9 +33,7 @@ const glideEase = (t: number) => 1 - (1 - t) ** 4
 /** How far a wheel has to travel, in pixels, before it counts as a flick. */
 const WHEEL_FLICK = 24
 /**
- * A trackpad keeps sending wheel events for a second or so after the fingers
- * lift. One gesture is everything up to a gap this long, and it moves one reel
- * however much momentum it carries — the way a swipe on a phone does.
+ * A trackpad keeps sending wheel events for a second or so after the fingers lift. One gesture is everything up to a gap this long, and it moves one reel however much momentum it carries – the way a swipe on a phone does.
  */
 const WHEEL_GESTURE_GAP_MS = 180
 
@@ -45,16 +41,12 @@ const WHEEL_GESTURE_GAP_MS = 180
 const PREFETCH_AHEAD = 3
 
 /**
- * How many pages deep to look for where the viewer left off today before
- * giving up and starting at the top — about a hundred reels, which is more
- * than a day of the program posts.
+ * How many pages deep to look for where the viewer left off today before giving up and starting at the top – about a hundred reels, which is more than a day of the program posts.
  */
 const RESUME_MAX_PAGES = 8
 
 /**
- * Slides this far either side of the current one are real players; the rest
- * are empty frames of the same height. A feed that has paged in sixty reels
- * then holds five video elements, not sixty.
+ * Slides this far either side of the current one are real players; the rest are empty frames of the same height. A feed that has paged in sixty reels then holds five video elements, not sixty.
  */
 const MOUNTED_EITHER_SIDE = 2
 
@@ -66,10 +58,7 @@ function prefersStill() {
 }
 
 /**
- * Whether `from` sits in something that scrolls vertically on its own, which
- * a wheel over it should move rather than the reel. Whether or not it has hit
- * its end: a list that suddenly changes the reel when you reach its bottom is
- * a surprise, not a convenience.
+ * Whether `from` sits in something that scrolls vertically on its own, which a wheel over it should move rather than the reel. Whether or not it has hit its end: a list that suddenly changes the reel when you reach its bottom is a surprise, not a convenience.
  */
 function scrollsItself(from: Element): boolean {
 	for (let el: Element | null = from; el && el !== document.body; el = el.parentElement) {
@@ -82,18 +71,9 @@ function scrollsItself(from: Element): boolean {
 /**
  * The Doomscroller: one reel at a time, as a page of the platform.
  *
- * Laid out after the reel player people already know — the reel in a tall
- * column with its player underneath, the arrows and the actions beside it,
- * and the conversation in a panel alongside — but drawn in the field
- * notebook's hand: cream ground, drawn round buttons, paper panels. What is
- * on a slide moves with the slide when you scroll; the actions stay where
- * your hand is and change to the reel in front of you.
+ * Laid out after the reel player people already know – the reel in a tall column with its player underneath, the arrows and the actions beside it, and the conversation in a panel alongside – but drawn in the field notebook's hand: cream ground, drawn round buttons, paper panels. What is on a slide moves with the slide when you scroll; the actions stay where your hand is and change to the reel in front of you.
  *
- * Touch keeps the browser's own swipe: mandatory snap with `scroll-snap-stop`
- * already moves one reel per flick with the platform's momentum, and nothing
- * scripted feels as right under a thumb. Everything without a thumb — wheel,
- * trackpad, arrow keys, the arrows on screen — goes through `step`, which
- * glides exactly one reel and cannot be made to skip.
+ * Touch keeps the browser's own swipe: mandatory snap with `scroll-snap-stop` already moves one reel per flick with the platform's momentum, and nothing scripted feels as right under a thumb. Everything without a thumb – wheel, trackpad, arrow keys, the arrows on screen – goes through `step`, which glides exactly one reel and cannot be made to skip.
  */
 export function ReelViewer() {
 	const { viewer } = useStore()
@@ -101,16 +81,13 @@ export function ReelViewer() {
 	const scroller = useRef<HTMLDivElement>(null)
 	const slides = useRef<(HTMLElement | null)[]>([])
 	const [index, setIndex] = useState(0)
-	// The observer reports asynchronously, so two quick presses would both read
-	// the same stale index. Navigation moves this cursor immediately instead.
+	// The observer reports asynchronously, so two quick presses would both read the same stale index. Navigation moves this cursor immediately instead.
 	const cursor = useRef(0)
-	// The glide in progress, if any. While it runs the scroll position is ours,
-	// not the reader's, so the scroll handler leaves the cursor alone.
+	// The glide in progress, if any. While it runs the scroll position is ours, not the reader's, so the scroll handler leaves the cursor alone.
 	const glide = useRef<number | null>(null)
 
 	const [prefs, setPrefs] = usePlayerPrefs()
-	// Muted because the browser refused sound, as opposed to by choice. Kept
-	// apart so a refusal on one visit is not remembered as a preference.
+	// Muted because the browser refused sound, as opposed to by choice. Kept apart so a refusal on one visit is not remembered as a preference.
 	const [autoMuted, setAutoMuted] = useState(false)
 	const muted = prefs.muted || autoMuted
 	const [sheetOpen, setSheetOpen] = useState(false)
@@ -118,12 +95,9 @@ export function ReelViewer() {
 	const [sheetShown, setSheetShown] = useState(false)
 	// A card's comments link asks for the conversation once its reel has landed.
 	const [pendingComments, setPendingComments] = useState(false)
-	// The reel a card's link asked for, and whether that link wanted the
-	// comments. Read from the URL once, after mount, so the walk below knows to
-	// go to it rather than to wherever the viewer left off.
+	// The reel a card's link asked for, and whether that link wanted the comments. Read from the URL once, after mount, so the walk below knows to go to it rather than to wherever the viewer left off.
 	const deepLink = useRef<{ id: string; comments: boolean } | null>(null)
-	// Whether the comments have room to stand beside the reel. Only one of the
-	// two homes for them is ever mounted, so only one ever fetches.
+	// Whether the comments have room to stand beside the reel. Only one of the two homes for them is ever mounted, so only one ever fetches.
 	const [wide, setWide] = useState(false)
 	useEffect(() => {
 		const mq = window.matchMedia(COMMENTS_BESIDE)
@@ -140,10 +114,7 @@ export function ReelViewer() {
 	const onAutoMuted = useCallback(() => setAutoMuted(true), [])
 
 	const feed = useFeed()
-	// Where this viewer left off today: undefined until storage has been read,
-	// then the reel being walked to, then null once they are on it (or it could
-	// not be found). Until then the frame shows the loading shape, so the top
-	// reel does not start playing on the way down to theirs.
+	// Where this viewer left off today: undefined until storage has been read, then the reel being walked to, then null once they are on it (or it could not be found). Until then the frame shows the loading shape, so the top reel does not start playing on the way down to theirs.
 	const [resume, setResume] = useState<FeedPosition | null | undefined>(undefined)
 	const restoring = resume !== null
 	const resumePages = useRef(0)
@@ -153,11 +124,7 @@ export function ReelViewer() {
 	const last = feed.items.length
 	const current: FeedItem | undefined = restoring ? undefined : feed.items[index]
 
-	// Animated by hand rather than with `behavior: "smooth"`: inside a
-	// mandatory-snap container the smooth form is dropped outright by some
-	// engines, which left the controls doing nothing at all. Snapping is lifted
-	// for the length of the glide — otherwise the container fights every frame
-	// back to the nearest slide — and restored once it lands on one.
+	// Animated by hand rather than with `behavior: "smooth"`: inside a mandatory-snap container the smooth form is dropped outright by some engines, which left the controls doing nothing at all. Snapping is lifted for the length of the glide – otherwise the container fights every frame back to the nearest slide – and restored once it lands on one.
 	const glideTo = useCallback((to: number) => {
 		const box = scroller.current
 		if (!box) return
@@ -207,9 +174,7 @@ export function ReelViewer() {
 		[goTo],
 	)
 
-	// Scrolling by hand is the other way the cursor moves. Every slide is exactly
-	// the height of the frame, so the scroll position is the index — no observer
-	// needed, and no threshold to get wrong.
+	// Scrolling by hand is the other way the cursor moves. Every slide is exactly the height of the frame, so the scroll position is the index – no observer needed, and no threshold to get wrong.
 	useEffect(() => {
 		const box = scroller.current
 		if (!box) return
@@ -220,8 +185,7 @@ export function ReelViewer() {
 			cursor.current = n
 			setIndex(n)
 		}
-		// A thumb landing mid-glide takes over from it on the spot, rather than
-		// wrestling the animation for the next few frames.
+		// A thumb landing mid-glide takes over from it on the spot, rather than wrestling the animation for the next few frames.
 		const onTouch = () => {
 			if (glide.current === null) return
 			cancelAnimationFrame(glide.current)
@@ -236,11 +200,7 @@ export function ReelViewer() {
 		}
 	}, [last])
 
-	// One flick, one reel. Left to itself a mouse wheel lurches between snap
-	// points and a trackpad's momentum sails past three reels at once; taking
-	// the wheel over is what makes a desktop feel like a thumb on a phone.
-	// Heard on the whole window, not just the reel, so a flick anywhere on the
-	// page moves it — except over something that scrolls on its own.
+	// One flick, one reel. Left to itself a mouse wheel lurches between snap points and a trackpad's momentum sails past three reels at once; taking the wheel over is what makes a desktop feel like a thumb on a phone. Heard on the whole window, not just the reel, so a flick anywhere on the page moves it – except over something that scrolls on its own.
 	useEffect(() => {
 		const box = stage.current
 		if (!box) return
@@ -255,8 +215,7 @@ export function ReelViewer() {
 			const target = e.target instanceof Element ? e.target : null
 			// An opened caption scrolls itself.
 			if (target?.closest("[data-own-scroll]")) return
-			// Off the reel, anything with its own scroll keeps it: the comments
-			// beside the reel, a sidebar taller than the window.
+			// Off the reel, anything with its own scroll keeps it: the comments beside the reel, a sidebar taller than the window.
 			if (target && !box.contains(target) && scrollsItself(target)) return
 			e.preventDefault()
 			window.clearTimeout(quiet)
@@ -278,9 +237,7 @@ export function ReelViewer() {
 		}
 	}, [step])
 
-	// Where to land after mount. A reel card's link carries a reel id, which
-	// wins over the saved position; otherwise it is wherever they left off.
-	// Storage after mount, because the server has none and rendered without it.
+	// Where to land after mount. A reel card's link carries a reel id, which wins over the saved position; otherwise it is wherever they left off. Storage after mount, because the server has none and rendered without it.
 	useEffect(() => {
 		const params = new URLSearchParams(window.location.search)
 		const id = params.get("reel")
@@ -297,11 +254,9 @@ export function ReelViewer() {
 	const { more, done, loading, error, items, leading } = feed
 	useEffect(() => {
 		if (!resume || loading) return
-		// A link goes straight to its reel; the unseen-admin-reel rule below is
-		// for picking up where someone left off, not for following a card.
+		// A link goes straight to its reel; the unseen-admin-reel rule below is for picking up where someone left off, not for following a card.
 		const isDeep = deepLink.current !== null
-		// An admin reel they have not been shown yet goes first, exactly as it
-		// would on a fresh visit; picking up where they left off can wait.
+		// An admin reel they have not been shown yet goes first, exactly as it would on a fresh visit; picking up where they left off can wait.
 		const unseenLead = isDeep ? false : leading.some((r) => !resume.leadIds.includes(r.id))
 		const at = unseenLead ? -1 : items.findIndex((r) => r.id === resume.id)
 		if (at >= 0) {
@@ -319,8 +274,7 @@ export function ReelViewer() {
 		}
 	}, [resume, loading, items, leading, done, error, more])
 
-	// A card's comments link opens the conversation once its reel has landed.
-	// Wide, that is the panel beside the reel; below it, the sheet over it.
+	// A card's comments link opens the conversation once its reel has landed. Wide, that is the panel beside the reel; below it, the sheet over it.
 	useEffect(() => {
 		if (!pendingComments || restoring) return
 		if (wide) setPrefs({ comments: true })
@@ -347,8 +301,7 @@ export function ReelViewer() {
 		if (currentId) savePosition({ id: currentId, leadIds: leading.map((r) => r.id) })
 	}, [currentId, leading])
 
-	// Endless, the way a reel feed is: the next page is asked for a few reels
-	// before the end, so the reader scrolls into it rather than up to a wall.
+	// Endless, the way a reel feed is: the next page is asked for a few reels before the end, so the reader scrolls into it rather than up to a wall.
 	useEffect(() => {
 		if (!done && !loading && !error && last > 0 && index >= last - PREFETCH_AHEAD) more()
 	}, [index, last, done, loading, error, more])
@@ -379,12 +332,9 @@ export function ReelViewer() {
 			// A checkpoint modal can open over any route, and typing is typing.
 			if (document.querySelector("[role='dialog']")) return
 			const el = e.target
-			if (el instanceof Element && el.closest("input, textarea, select, [contenteditable='true']")) {
-				return
-			}
+			if (el instanceof Element && el.closest("input, textarea, select, [contenteditable='true']")) return
 
-			// Space is a button's own key when one has focus; anywhere else it is
-			// the player's.
+			// Space is a button's own key when one has focus; anywhere else it is the player's.
 			if (e.key === " " && !(el instanceof Element && el.closest("button, a, [role='slider']"))) {
 				e.preventDefault()
 				active.current?.toggle()
@@ -415,25 +365,17 @@ export function ReelViewer() {
 	const commentsBeside = wide && prefs.comments && current !== undefined
 
 	return (
-		// The frame is the viewport minus the app header and the bottom padding
-		// main already reserves for the phone tab bar — the Doomscroller is a page
-		// of the platform, and the rest of the platform stays around it.
+		// The frame is the viewport minus the app header and the bottom padding main already reserves for the phone tab bar – the Doomscroller is a page of the platform, and the rest of the platform stays around it.
 		<div className="flex h-[var(--frame)] justify-center gap-6 px-4 [--frame:calc(100dvh-4rem-7rem)] sm:px-6 lg:[--frame:calc(100dvh-4rem-2.5rem)]">
 			<section
 				ref={stage}
 				aria-label="Reels"
-				// A reel is portrait, so the column is only ever as wide as a 9:16
-				// card fits in the frame, less the player strip under it. From md the
-				// actions hang off its right side, so that much room is kept for them.
+				// A reel is portrait, so the column is only ever as wide as a 9:16 card fits in the frame, less the player strip under it. From md the actions hang off its right side, so that much room is kept for them.
 				className="doom-stage relative h-full w-[min(100%,26rem,calc((var(--frame)-4.25rem)*9/16))] shrink-0 md:mr-[4.75rem] md:w-[min(26rem,calc((var(--frame)-4.25rem)*9/16))]"
 			>
 				<div
 					ref={scroller}
-					// `overflow-anchor: none` because the end slide renders before the
-					// next page arrives, and the reels are then inserted ABOVE it. Scroll
-					// anchoring reads that as content growing over the reader and holds
-					// their position — which meant landing on "that is everything"
-					// instead of the newest reel, with the feed sitting unseen above it.
+					// `overflow-anchor: none` because the end slide renders before the next page arrives, and the reels are then inserted ABOVE it. Scroll anchoring reads that as content growing over the reader and holds their position – which meant landing on "that is everything" instead of the newest reel, with the feed sitting unseen above it.
 					style={{ overflowAnchor: "none" }}
 					className="snap-y-feed no-scrollbar h-full overflow-y-auto overscroll-contain"
 				>
@@ -471,7 +413,7 @@ export function ReelViewer() {
               while the first page is still in the air is what let the reels
               arrive above the reader. After that it is always there: the
               sign-off once the feed has run out, and until then the slot the
-              next page arrives into — anyone who outruns the prefetch lands
+              next page arrives into – anyone who outruns the prefetch lands
               here, and the next reel slides in where they already are. */}
 					{!restoring && (feed.items.length > 0 || !feed.loading) && (
 						<div
@@ -533,7 +475,7 @@ export function ReelViewer() {
 				{/* ---------- what stays put ---------- */}
 				{/* Hugging the reel rather than the page edge, so the actions read as
             belonging to it. Over the picture on a phone, where there is no
-            room beside it — white, as on the rail's card. */}
+            room beside it – white, as on the rail's card. */}
 				{current && (
 					<div className="absolute right-2.5 bottom-[4.75rem] z-20 flex flex-col items-center md:right-auto md:bottom-[4.25rem] md:left-full md:ml-5">
 						{/* Only where the column is tall enough to hold them above the
@@ -621,9 +563,10 @@ export function ReelViewer() {
 						sheetOpen ? "opacity-100" : "opacity-0",
 					)}
 				/>
+				{/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: the role is conditional, and aria-modal is only ever rendered alongside it. */}
 				<div
 					role={sheetOpen ? "dialog" : undefined}
-					aria-modal={sheetOpen || undefined}
+					aria-modal={sheetOpen ? true : undefined}
 					aria-label="Comments"
 					className={cx(
 						"sketch absolute inset-x-0 bottom-0 flex h-[72dvh] flex-col rounded-t-3xl bg-cream",
@@ -687,11 +630,9 @@ function NavButton({
 }
 
 /**
- * One of the reel's actions: an icon in a drawn disc, its count underneath.
- * Pressed, the disc takes the action's own colour — coral for a like, violet
+ * One of the reel's actions: an icon in a drawn disc, its count underneath. Pressed, the disc takes the action's own colour – coral for a like, violet
  * for the open conversation. Over the picture on a phone the disc is dropped
- * and the icon carries a shadow instead, so it reads on any frame without
- * boxing off the video.
+ * and the icon carries a shadow instead, so it reads on any frame without boxing off the video.
  */
 function Action({
 	label,
@@ -708,7 +649,7 @@ function Action({
 	pressed?: boolean
 	tone?: "coral" | "violet"
 	onClick?: () => void
-	/** Plays the acknowledgement when this turns true — a like landing. */
+	/** Plays the acknowledgement when this turns true – a like landing. */
 	pop?: boolean
 	/** Which reel it belongs to, so arriving on an already-liked reel does not play it. */
 	popKey?: string
@@ -734,14 +675,11 @@ function Action({
 	}, [pop, popKey])
 
 	const on = pressed && tone
-	// `field`, not `line`, at rest: it is the edge colour that clears 3:1 on
-	// the cream the disc sits on.
+	// `field`, not `line`, at rest: it is the edge colour that clears 3:1 on the cream the disc sits on.
 	const ring =
 		on === "coral" ? "var(--color-coral-deep)" : on === "violet" ? "var(--color-violet-deep)" : "var(--color-field)"
 
-	// One class per state rather than a base and an override: two utilities for
-	// the same property in the same variant are settled by stylesheet order,
-	// not by the order they are written here.
+	// One class per state rather than a base and an override: two utilities for the same property in the same variant are settled by stylesheet order, not by the order they are written here.
 	const face =
 		on === "coral"
 			? "bg-coral-deep text-white md:bg-coral/15 md:text-coral-dark"
@@ -754,13 +692,9 @@ function Action({
 			<span
 				ref={disc}
 				className={cx(
-					// The drawn outline is always there, but only inked from md: over the
-					// picture on a phone a ring would box off the video.
+					// The drawn outline is always there, but only inked from md: over the picture on a phone a ring would box off the video.
 					"sketch grid size-11 place-items-center rounded-full transition-colors [--sk-color:transparent] md:[--sk-color:var(--ring)]",
-					// Phone: over the picture, which can be any brightness — a white CAD
-					// window or a lit bench as easily as a dark one — so the icon sits
-					// on a disc of its own, as the card's mute button does. From md: a
-					// drawn paper disc beside the reel.
+					// Phone: over the picture, which can be any brightness – a white CAD window or a lit bench as easily as a dark one – so the icon sits on a disc of its own, as the card's mute button does. From md: a drawn paper disc beside the reel.
 					"backdrop-blur-sm md:backdrop-blur-none",
 					face,
 					onClick && !on && "md:group-hover:bg-mint md:group-hover:text-teal-ink",
