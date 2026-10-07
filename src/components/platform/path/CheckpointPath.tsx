@@ -34,15 +34,45 @@ const offsetAt = (i: number, phase: number) => Number((50 + AMP * Math.sin((phas
 
 /** Rows a week's trail occupies, matching WeekTrail's fork grouping (a fork's
     arms share one row — the keep/submit fork at a week's end, and week 1's
-    idea/skip fork at its start). */
-const trailRows = (week: Week): number => {
+    idea/skip fork at its start) — plus WeekTrail's ghost rows, so the wave
+    below starts where the rendered trail actually ends. */
+const trailRows = (week: Week, done: (id: string) => boolean, passed: (id: string) => boolean): number => {
 	const rows: Checkpoint[][] = []
 	for (const cp of week.checkpoints) {
 		const last = rows[rows.length - 1]
 		if (cp.branch && last?.[0]?.branch) last.push(cp)
 		else rows.push([cp])
 	}
-	return rows.length
+	return rows.length + ghostAfter(rows, done, passed).size
+}
+
+/**
+ * Where the trail can still grow: a row holding a live journal entry,
+ * followed by a reel nobody has earned yet. Every new entry lands between
+ * them — which is why the trail gets longer as devlogs are added — so a
+ * ghost row marks that stretch and the growth reads as the trail working,
+ * not shifting under you.
+ *
+ * Purely visual: it never enters week.checkpoints, so banner counts,
+ * unlocks and the current node never see it. Skipped on passed weeks, where
+ * nothing more can land, and never before an earned reel mid-chain, which
+ * is history rather than headroom.
+ */
+function ghostAfter(
+	rows: Checkpoint[][],
+	done: (id: string) => boolean,
+	passed: (id: string) => boolean,
+): Set<number> {
+	const at = new Set<number>()
+	rows.forEach((row, i) => {
+		const next = rows[i + 1]
+		if (next?.length !== 1) return
+		const [reel] = next
+		if (!reel || reel.kind !== "reel" || done(reel.id) || passed(reel.id)) return
+		if (!row.some((c) => c.kind === "journal" && !done(c.id))) return
+		at.add(i)
+	})
+	return at
 }
 
 const KIND_ICON = {
@@ -387,6 +417,8 @@ const FORK_AT: [number, number] = [24, 76]
  * road onward.
  */
 function WeekTrail({ week, currentId, phase }: { week: Week; currentId: string | null; phase: number }) {
+	const { stateOf, isPassed } = useStore()
+	const done = (id: string) => stateOf(id).done
 	// Group into rows: singles all the way down, each fork as one row of two —
 	// the opening idea/skip fork in week 1, the keep/submit fork at a week's end.
 	const rows: Checkpoint[][] = []
@@ -395,17 +427,25 @@ function WeekTrail({ week, currentId, phase }: { week: Week; currentId: string |
 		if (cp.branch && last?.[0]?.branch) last.push(cp)
 		else rows.push([cp])
 	}
+	// The ghost rows from above, woven in where they were marked: each takes
+	// a beat's stride, like the entries whose growth it stands in for.
+	const ghosts = ghostAfter(rows, done, isPassed)
+	const lined: { row: Checkpoint[]; ghost: boolean }[] = []
+	rows.forEach((row, i) => {
+		lined.push({ row, ghost: false })
+		if (ghosts.has(i)) lined.push({ row: [], ghost: true })
+	})
 
-	const placed: { row: Checkpoint[]; full: number; beats: number; beat: boolean }[] = []
+	const placed: { row: Checkpoint[]; ghost: boolean; full: number; beats: number; beat: boolean }[] = []
 	let full = 0
 	let beats = 0
-	for (const [i, row] of rows.entries()) {
+	for (const [i, { row, ghost }] of lined.entries()) {
 		if (i > 0) {
 			// The stride belongs to the row we are stepping off, not this one.
 			if (placed[i - 1]?.beat) beats += 1
 			else full += 1
 		}
-		placed.push({ row, full, beats, beat: row.every(isBeat) })
+		placed.push({ row, ghost, full, beats, beat: ghost || row.every(isBeat) })
 	}
 
 	const leftOf = (i: number, j: number) =>
@@ -420,8 +460,10 @@ function WeekTrail({ week, currentId, phase }: { week: Week; currentId: string |
 		const size = here.beat ? "var(--node-sm)" : "var(--node)"
 		// Into a fork the run splits and each arm is drawn straight to its node;
 		// down the chain the dots keep sampling the sine, so the curve they have
-		// always traced is untouched.
-		for (const [j] of next.row.entries()) {
+		// always traced is untouched. A ghost row is one slot wide, like the
+		// single node it stands between.
+		const slots = next.row.length > 0 ? next.row : [undefined]
+		for (const [j] of slots.entries()) {
 			for (const f of [0.3, 0.5, 0.7]) {
 				dots.push(
 					<span
@@ -445,33 +487,68 @@ function WeekTrail({ week, currentId, phase }: { week: Week; currentId: string |
 	return (
 		<div className="relative" style={{ height: offsetOf(full, beats, " + var(--node) + 52px") }}>
 			{dots}
-			{placed.map(({ row, full: f, beats: b }, i) => (
-				<Fragment key={row[0]?.id ?? i}>
-					{row.length > 1 && (
-						<p
-							aria-hidden="true"
-							className="hand absolute text-[0.78rem] text-navy-faint"
-							style={{
-								top: offsetOf(f, b, " + var(--node) / 2"),
-								left: "50%",
-								transform: "translate(-50%, -50%)",
-							}}
-						>
-							or
-						</p>
+			{placed.map(({ row, ghost, full: f, beats: b }, i) => (
+				<Fragment key={ghost ? `ghost-${i}` : (row[0]?.id ?? i)}>
+					{ghost ? (
+						<GhostNode top={offsetOf(f, b)} left={`${leftOf(i, 0)}%`} />
+					) : (
+						<>
+							{row.length > 1 && (
+								<p
+									aria-hidden="true"
+									className="hand absolute text-[0.78rem] text-navy-faint"
+									style={{
+										top: offsetOf(f, b, " + var(--node) / 2"),
+										left: "50%",
+										transform: "translate(-50%, -50%)",
+									}}
+								>
+									or
+								</p>
+							)}
+							{row.map((cp, j) => (
+								<CheckpointNode
+									key={cp.id}
+									checkpoint={cp}
+									top={offsetOf(f, b)}
+									left={`${leftOf(i, j)}%`}
+									isCurrent={cp.id === currentId}
+									choice={row.length > 1}
+								/>
+							))}
+						</>
 					)}
-					{row.map((cp, j) => (
-						<CheckpointNode
-							key={cp.id}
-							checkpoint={cp}
-							top={offsetOf(f, b)}
-							left={`${leftOf(i, j)}%`}
-							isCurrent={cp.id === currentId}
-							choice={row.length > 1}
-						/>
-					))}
 				</Fragment>
 			))}
+		</div>
+	)
+}
+
+/**
+ * The ghost itself: a dashed, beat-sized placeholder where future entries
+ * land, with the growth it stands for written underneath. A plus would read
+ * as something to press — it is not pressable, so it gets an ellipsis, the
+ * mark for "to be continued".
+ */
+function GhostNode({ top, left }: { top: string; left: string }) {
+	return (
+		<div
+			role="img"
+			aria-label="More journal entries land here as you log them — the trail grows"
+			className="absolute flex w-[var(--node-sm)] flex-col items-center"
+			style={{ top, left, transform: "translateX(-50%)" }}
+		>
+			<span
+				aria-hidden="true"
+				className="grid aspect-square w-full place-items-center rounded-full border-[3px] border-dashed border-line-strong/60"
+			>
+				<span aria-hidden="true" className="hand text-[0.9rem] leading-none tracking-widest text-navy-faint">
+					···
+				</span>
+			</span>
+			<p aria-hidden="true" className="hand mt-2 text-center text-[0.64rem] leading-tight text-navy-faint">
+				the trail grows here
+			</p>
 		</div>
 	)
 }
@@ -568,7 +645,7 @@ function GrandPrize() {
 }
 
 export function CheckpointPath() {
-	const { currentCheckpointId, hydrated, phase, weeks } = useStore()
+	const { currentCheckpointId, hydrated, phase, weeks, stateOf, isPassed } = useStore()
 	const scrolled = useRef(false)
 
 	useEffect(() => {
@@ -592,10 +669,11 @@ export function CheckpointPath() {
 
 	// One continuous wave down the page: each week picks up where the previous
 	// trail ended, leaving a little phase room for its separating banner.
+	const done = (id: string) => stateOf(id).done
 	const { phases: weekPhases } = weeks.reduce<{ total: number; phases: number[] }>(
 		({ total, phases }, week) => {
 			phases.push(total)
-			return { total: total + trailRows(week) + WEEK_GAP, phases }
+			return { total: total + trailRows(week, done, isPassed) + WEEK_GAP, phases }
 		},
 		{ total: 0, phases: [] },
 	)

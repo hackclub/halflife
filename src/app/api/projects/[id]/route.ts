@@ -2,7 +2,7 @@ import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
 import { markProjectCreated, recomputeWeek } from "@/lib/analytics"
 import { fail, ok, parseBody, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
-import { seesStarterProjects, starterProjectsFor } from "@/lib/config/onboarding"
+import { starterProjectsFor } from "@/lib/config/onboarding"
 import { getThemeDef } from "@/lib/config/program"
 import { requireSession } from "@/lib/guards"
 import { getHoursBreakdown } from "@/lib/hours"
@@ -79,14 +79,12 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 
 	const data = parsed.data
 
-	// A starter can only be taken if it is one this person is offered: one of
-	// this week's, and only to someone who said they are new to hardware.
+	// A starter can only be taken if it is one of this week's: anyone may
+	// switch to one from the project page after creation, beginner or not —
+	// the tier-1 scoping below is what keeps a starter a starter, not who
+	// was offered it during onboarding.
 	if (data.starterProjectId) {
-		const user = await prisma.user.findUniqueOrThrow({
-			where: { id: gate.user.id },
-			select: { hardwareExperience: true },
-		})
-		const offered = seesStarterProjects(user.hardwareExperience) ? starterProjectsFor(project.theme) : []
+		const offered = starterProjectsFor(project.theme)
 		if (!offered.some((p) => p.id === data.starterProjectId)) {
 			return fail("VALIDATION_FAILED", "That is not one of this week's starter projects")
 		}
@@ -158,8 +156,8 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 		targetType: "ThemeProject",
 		targetId: id,
 		metadata: {
-			before: { title: project.title, githubRepo: project.githubRepo },
-			after: { title: updated.title, githubRepo: updated.githubRepo },
+			before: { title: project.title, githubRepo: project.githubRepo, starterProjectId: project.starterProjectId },
+			after: { title: updated.title, githubRepo: updated.githubRepo, starterProjectId: updated.starterProjectId },
 		},
 	})
 

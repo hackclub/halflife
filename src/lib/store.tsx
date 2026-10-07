@@ -176,6 +176,8 @@ export interface ProjectPatch {
 	coverImageKey?: string | null
 	githubRepo?: string | null
 	tier?: 1 | 2 | 3
+	/** Which starter it is built from, or null for their own idea. */
+	starterProjectId?: string | null
 }
 
 interface Ctx {
@@ -722,6 +724,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 						...(patch.coverImageKey !== undefined ? { coverImageKey: patch.coverImageKey } : {}),
 						...(patch.githubRepo !== undefined ? { githubRepo: patch.githubRepo } : {}),
 						...(patch.tier !== undefined ? { requestedTier: patch.tier } : {}),
+						...(patch.starterProjectId !== undefined ? { starterProjectId: patch.starterProjectId } : {}),
 					}),
 				})
 			} catch {
@@ -741,6 +744,9 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 								...(patch.description !== undefined ? { description: patch.description.trim() } : {}),
 								...(patch.githubRepo !== undefined ? { githubRepo: patch.githubRepo } : {}),
 								...(patch.tier !== undefined ? { tier: patch.tier } : {}),
+								...(patch.starterProjectId !== undefined
+									? { starter: patch.starterProjectId !== null, starterProjectId: patch.starterProjectId }
+									: {}),
 							}
 						: p,
 				),

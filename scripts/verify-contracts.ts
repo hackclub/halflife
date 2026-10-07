@@ -168,6 +168,8 @@ async function bodies() {
 		["onboarding · tracking", onboardingStepSchema, { step: "tracking", dismissed: false }],
 		["addProject", projectUpdateSchema, { title: "Macropad", description: "Three keys.", requestedTier: 1 }],
 		["setProjectTier", projectUpdateSchema, { requestedTier: 3 }],
+		["takeStarter", projectUpdateSchema, { starterProjectId: "starbie", requestedTier: 1 }],
+		["dropStarter", projectUpdateSchema, { starterProjectId: null }],
 		[
 			"logSession",
 			sessionCreateSchema,

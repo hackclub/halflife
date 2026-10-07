@@ -55,6 +55,7 @@ export const REPO_FILE_KINDS: Record<
 			".fzpz",
 			".epcb",
 			".epro",
+			".epro2",
 			".eprj",
 			".esch",
 		],

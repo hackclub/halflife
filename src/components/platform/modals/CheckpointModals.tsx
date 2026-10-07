@@ -2011,6 +2011,8 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 	const repoReady = repoResult?.canSubmit ?? false
 
+	const hasCover = !!project?.coverImageKey
+
 	const canAdvance =
 		step === 1
 			? repoReady
@@ -2018,7 +2020,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				? clip && (works === "yes" || (works === "no" && writeup.trim().length >= 40))
 				: step === 2
 					? carts.length > 0 && !tierBlocked
-					: clip && !tierBlocked
+					: clip && !tierBlocked && hasCover
 
 	/**
 	 * Handing a week in, in the order the pieces depend on each other.
@@ -2109,6 +2111,32 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
           should find that out before working through the checklist, not after.
           It warns and does not block — the hours needed for a printer at all
           are the trail's gate, and this is the gap to the one they chose. */}
+			{!hasCover && (
+				<div
+					className="sketch mb-5 flex items-start gap-3 rounded-2xl bg-coral/10 px-5 py-4"
+					style={{ "--sk-color": "var(--color-coral)", "--sk-radius": "16px" } as React.CSSProperties}
+				>
+					<IconCamera className="mt-0.5 shrink-0 text-xl text-coral-deep" />
+					<div className="min-w-0">
+						<p className="text-[0.95rem] leading-snug font-extrabold text-coral-dark">
+							Your project needs a cover image.
+						</p>
+						<p className="mt-1 text-[0.85rem] leading-snug text-navy-soft">
+							Upload a cover image on the project page before you can submit.{" "}
+							{project && (
+								<Link
+									href={`/projects/${project.id}`}
+									onClick={() => setOpenCheckpoint(null)}
+									className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
+								>
+									Go to project page
+								</Link>
+							)}
+						</p>
+					</div>
+				</div>
+			)}
+
 			{owed > 0 && (
 				<div
 					className="sketch mb-5 flex items-start gap-3 rounded-2xl bg-coral/10 px-5 py-4"

@@ -50,6 +50,12 @@ export async function getSubmitReadiness(project: ThemeProject, phase: Phase): P
 			ok: (project.description ?? "").trim().length > 0,
 		},
 		{
+			key: "cover",
+			label: "Project has a cover image",
+			ok: !!project.coverImageKey,
+			detail: project.coverImageKey ? undefined : "Upload a cover image on the project page",
+		},
+		{
 			key: "hours",
 			label: "At least one logged work session",
 			ok: breakdown.journalEntryCount > 0 || breakdown.hackatimeHours > 0,
@@ -152,6 +158,10 @@ export async function submitPhase(
 	// this state can still be replayed by `ari-retry`.
 	if (!project.description?.trim()) {
 		throw new HttpError("UNPROCESSABLE", "Add a project description before submitting this phase")
+	}
+
+	if (!project.coverImageKey) {
+		throw new HttpError("UNPROCESSABLE", "Upload a cover image for your project before submitting this phase")
 	}
 
 	// Handing a week in is a checkpoint too; a deleted reel still owed holds it.
