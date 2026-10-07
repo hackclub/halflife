@@ -19,12 +19,21 @@ const CATEGORIES = [
 	{ label: "Everything else", match: "MISC" },
 ] as const
 
-export function ShopGrid({ items: all }: { items: readonly ShopItemView[] }) {
+export function ShopGrid({
+	items: all,
+	regions,
+	regionId,
+}: {
+	items: readonly ShopItemView[]
+	regions: { id: string; name: string }[]
+	regionId: string | null
+}) {
 	const router = useRouter()
 	const { coins } = useStore()
 	const [cat, setCat] = useState<string>("All")
 	const [busy, setBusy] = useState<string | null>(null)
 	const [error, setError] = useState<string | null>(null)
+	const [savingRegion, setSavingRegion] = useState(false)
 
 	const items = useMemo(() => {
 		const shelf = CATEGORIES.find((c) => c.label === cat)
@@ -66,6 +75,48 @@ export function ShopGrid({ items: all }: { items: readonly ShopItemView[] }) {
 
 	return (
 		<>
+			{regions.length > 0 && (
+				<div className="mb-5 flex flex-wrap items-center justify-center gap-2">
+					<label htmlFor="shop-region" className="label text-navy-soft">
+						Prices for
+					</label>
+					<select
+						id="shop-region"
+						value={regionId ?? ""}
+						disabled={savingRegion}
+						onChange={(e) => {
+							const next = e.target.value === "" ? null : e.target.value
+							setSavingRegion(true)
+							setError(null)
+							void fetch("/api/shop/region", {
+								method: "PUT",
+								headers: { "content-type": "application/json" },
+								body: JSON.stringify({ regionId: next }),
+							})
+								.then(async (res) => {
+									if (!res.ok) {
+										const payload = (await res.json().catch(() => ({}))) as {
+											error?: { message?: string }
+										}
+										setError(payload.error?.message ?? "That region did not save")
+										return
+									}
+									router.refresh()
+								})
+								.catch(() => setError("That region did not save"))
+								.finally(() => setSavingRegion(false))
+						}}
+						className="label rounded-full border-2 border-line bg-paper px-4 py-1.5 text-navy outline-none transition-colors hover:border-navy focus:border-navy disabled:opacity-60"
+					>
+						<option value="">Default pricing</option>
+						{regions.map((r) => (
+							<option key={r.id} value={r.id}>
+								{r.name}
+							</option>
+						))}
+					</select>
+				</div>
+			)}
 			<div className="mb-6 flex flex-wrap items-center justify-center gap-2">
 				{CATEGORIES.map(({ label: c }) => (
 					<button

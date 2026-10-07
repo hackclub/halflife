@@ -64,8 +64,8 @@ export const DOCS: DocArticle[] = [
 			{
 				heading: "Two ways to back your hours",
 				paragraphs: [
-					"Each session is backed by a written entry, a Lapse timelapse, or both together: pick timelapses on the entry's Timelapse tab, write on the Journal tab, and everything you pick and write lands on the same entry. Either one alone is enough.",
-					"A written entry needs its hours typed in (9.5 means nine and a half). A timelapse brings its own: the time Lapse recorded becomes the session's hours, so there is nothing to type.",
+					"Each session is backed by a written entry, a Lapse timelapse, or both together: pick timelapses on the entry's Timelapse tab, write on the Journal tab, and everything you pick and write lands on the same entry. Either one alone is enough, and together they add.",
+					"Type the hours the timelapses don't cover (9.5 means nine and a half): a 5-hour recording plus 2 additional hours logs 7. Leave the box at 0 if the recording covers it all.",
 				],
 			},
 			{
@@ -86,7 +86,7 @@ export const DOCS: DocArticle[] = [
 				paragraphs: ["The editor checks these before it will let you save, and tells you exactly what is missing."],
 				list: [
 					"At least 200 characters of writing. Images do not count toward it.",
-					"One image for every hour you claim, and never fewer than two: a 4.5-hour session needs five.",
+					"One image for every additional hour you declare, and never fewer than two: 2 additional hours need two screenshots, however long the timelapses run.",
 					"Markdown works — headings, bold, lists, code and links. Images go in with ![what it shows](link), right where they belong in the story.",
 				],
 			},

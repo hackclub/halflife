@@ -4,6 +4,7 @@ import { Avatar } from "@/components/platform/Avatar"
 import { IconArrowRight, IconClock, IconFlame } from "@/components/platform/icons"
 import { excerpt, Markdown } from "@/components/platform/Markdown"
 import { PageSign } from "@/components/platform/PageSign"
+import { ReportButton } from "@/components/platform/report/ReportButton"
 import { Panel } from "@/components/platform/ui"
 import { requireSessionPage } from "@/lib/page-guards"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
@@ -43,7 +44,7 @@ function fmtMinutes(m: number) {
 /** Roughly a long tweet: enough to know what the session was, not the whole of it. */
 const EXCERPT_CHARS = 280
 
-function Entry({ entry }: { entry: JournalRow }) {
+function Entry({ entry, viewerId }: { entry: JournalRow; viewerId: string }) {
 	const { text, cut } = excerpt(entry.body, EXCERPT_CHARS)
 	const href = `/projects/${entry.projectId}#${entry.id}`
 	return (
@@ -99,6 +100,15 @@ function Entry({ entry }: { entry: JournalRow }) {
 				<time dateTime={entry.when} className="label shrink-0 pt-1 text-navy-faint">
 					{fmtDay(entry.day)}
 				</time>
+				{entry.authorId !== viewerId && (
+					<span className="shrink-0 pt-1">
+						<ReportButton
+							target={{ type: "DEVLOG", id: entry.id }}
+							title="Report this journal entry"
+							context={text.slice(0, 280)}
+						/>
+					</span>
+				)}
 			</header>
 
 			{/* Journals are written in Markdown, images included — the pictures that
@@ -123,7 +133,7 @@ function Entry({ entry }: { entry: JournalRow }) {
 }
 
 export default async function ExplorePage() {
-	await requireSessionPage()
+	const { user } = await requireSessionPage()
 	const [entries, settings] = await Promise.all([getJournalFeed(), getProgramSettings()])
 
 	const now = new Date()
@@ -150,7 +160,7 @@ export default async function ExplorePage() {
 								<span className="h-px flex-1 bg-line" />
 							</div>
 							{items.map((e) => (
-								<Entry key={e.id} entry={e} />
+								<Entry key={e.id} entry={e} viewerId={user.id} />
 							))}
 						</section>
 					)

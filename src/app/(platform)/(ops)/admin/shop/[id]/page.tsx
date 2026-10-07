@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
+import { ItemRegionPrices } from "@/app/components/forms/ItemRegionPrices"
 import { ShopItemForm } from "@/app/components/forms/ShopItemForm"
 import { Badge, PageHeader, Panel } from "@/app/components/ui"
 import { requirePermissionPage } from "@/lib/page-guards"
@@ -12,8 +13,19 @@ export const dynamic = "force-dynamic"
 export default async function AdminShopItemPage({ params }: { params: Promise<{ id: string }> }) {
 	await requirePermissionPage(Permission.MANAGE_SHOP)
 	const { id } = await params
-	const item = await prisma.shopItem.findUnique({ where: { id } })
+	const [item, regions] = await Promise.all([
+		prisma.shopItem.findUnique({
+			where: { id },
+			include: { regionPrices: { select: { regionId: true, priceCredits: true } } },
+		}),
+		prisma.shopRegion.findMany({
+			orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+			select: { id: true, name: true },
+		}),
+	])
 	if (!item) notFound()
+
+	const overrides = new Map(item.regionPrices.map((r) => [r.regionId, r.priceCredits]))
 
 	return (
 		<div className="hl-stack">
@@ -37,6 +49,17 @@ export default async function AdminShopItemPage({ params }: { params: Promise<{ 
 						costUsd: item.costUsd,
 						requiresPrinterQualified: item.requiresPrinterQualified,
 					}}
+				/>
+			</Panel>
+			<Panel title="Regional prices">
+				<p className="hl-hint" style={{ marginBottom: "0.75rem" }}>
+					Coin prices per sales region. Base price is {item.priceCredits}; orders keep the price they were
+					charged.
+				</p>
+				<ItemRegionPrices
+					itemId={item.id}
+					basePrice={item.priceCredits}
+					regions={regions.map((r) => ({ id: r.id, name: r.name, price: overrides.get(r.id) ?? null }))}
 				/>
 			</Panel>
 		</div>

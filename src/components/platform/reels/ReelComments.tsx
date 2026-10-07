@@ -6,6 +6,7 @@ import { Avatar } from "@/components/platform/Avatar"
 import { IconSend, IconX } from "@/components/platform/icons"
 import { cx } from "@/components/platform/ui"
 import type { FeedItem } from "@/lib/feed"
+import { ReportButton } from "@/components/platform/report/ReportButton"
 import { ago, compact } from "./format"
 
 interface Comment {
@@ -266,6 +267,14 @@ export function ReelComments({
 												>
 													delete
 												</button>
+											)}
+											{!c.mine && (
+												<ReportButton
+													target={{ type: "REEL_COMMENT", id: c.id }}
+													title="Report this comment"
+													context={c.body}
+													className="text-[0.76rem]"
+												/>
 											)}
 										</p>
 									</div>

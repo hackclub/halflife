@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic"
 
 export default async function ShopPage() {
 	const { user } = await requireSessionPage()
-	const { items } = await getShopItemsFor(user.id)
+	const { items, regions, regionId } = await getShopItemsFor(user.id)
 
 	return (
 		<div className="mx-auto w-full max-w-[1040px] px-4 pt-2 sm:px-8">
@@ -35,7 +35,7 @@ export default async function ShopPage() {
 					</>
 				}
 			/>
-			<ShopGrid items={items} />
+			<ShopGrid items={items} regions={regions} regionId={regionId} />
 		</div>
 	)
 }
