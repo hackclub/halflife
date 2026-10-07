@@ -68,6 +68,56 @@ export async function bufferRsvpForUser(userId: string, email: string, name: str
 	})
 }
 
+/**
+ * Remember a row the landing form wrote straight to Airtable.
+ *
+ * `recordSignup` (lib/site/signups) POSTs to the Signups table directly when credentials are set, bypassing the drain – so without this, that row has no `RsvpBuffer` entry, no `airtableRecordId` mapping, and the Loops sync's record-id join can never find it. The one row in the live base with Loops dates is the exception that proves it: it came through the signed-in referral path, not the landing.
+ *
+ * Safe to call from the request path: never throws, never touches the Airtable row, and never flips a pending user-id stamp back to synced. When the address already has a buffer row (e.g. account creation already linked a user id whose drain stamp is still pending), only the missing record id is filled in.
+ */
+export async function recordDirectSignup(input: {
+	email: string
+	recordId: string
+	ip?: string | null
+	utmSource?: string | null
+	referredBy?: string | null
+	userId?: string | null
+}): Promise<void> {
+	try {
+		const email = input.email.trim().toLowerCase()
+		if (!email || !input.recordId) return
+		const existing = await prisma.rsvpBuffer.findUnique({ where: { email } })
+		if (!existing) {
+			await prisma.rsvpBuffer.create({
+				data: {
+					email,
+					ip: input.ip ?? null,
+					utmSource: input.utmSource ?? null,
+					referredBy: input.referredBy ?? null,
+					userId: input.userId ?? null,
+					finishedAccountCreation: !!input.userId,
+					airtableRecordId: input.recordId,
+					// A row carrying a user id still needs the drain to PATCH it upstream; anything else is already upstream.
+					syncedToAirtable: !input.userId,
+					syncedAt: input.userId ? null : new Date(),
+				},
+			})
+			return
+		}
+		const data: Record<string, unknown> = {}
+		if (!existing.airtableRecordId) data.airtableRecordId = input.recordId
+		if (input.userId && !existing.userId) {
+			data.userId = input.userId
+			data.finishedAccountCreation = true
+			data.syncedToAirtable = false
+			data.syncAttempts = 0
+		}
+		if (Object.keys(data).length > 0) await prisma.rsvpBuffer.update({ where: { email }, data: data as never })
+	} catch (err) {
+		console.error("[airtable] recordDirectSignup failed:", err)
+	}
+}
+
 export interface DrainResult {
 	attempted: number
 	created: number

@@ -1,6 +1,6 @@
 import { appendFile, mkdir, readFile } from "node:fs/promises"
 import path from "node:path"
-import { bufferRsvp } from "@/lib/airtable/rsvp"
+import { bufferRsvp, recordDirectSignup } from "@/lib/airtable/rsvp"
 import { redactForLog } from "@/lib/redact"
 
 /**
@@ -28,6 +28,8 @@ export type SignupMeta = {
 	utmSource?: string | null
 	utmMedium?: string | null
 	utmCampaign?: string | null
+	/** When the caller knows whose address this is (the signed-in referral path), link the buffer row so the drain stamps it. */
+	userId?: string | null
 }
 
 export function normalizeEmail(raw: unknown): string | null {
@@ -64,7 +66,7 @@ async function countAirtableRecords(url: string, headers: Record<string, string>
 let webhookSequence = 0
 
 export async function recordSignup(email: string, ip = "unknown", meta: SignupMeta = {}): Promise<SignupResult> {
-	const { source = "landing", ref = null, utmSource = null, utmMedium = null, utmCampaign = null } = meta
+	const { source = "landing", ref = null, utmSource = null, utmMedium = null, utmCampaign = null, userId = null } = meta
 
 	const airtableToken = process.env.AIRTABLE_API_KEY
 	const airtableBase = process.env.AIRTABLE_BASE_ID
@@ -115,9 +117,21 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 		}
 
 		const found = (await lookup.json()) as {
-			records?: Array<{ fields?: Record<string, unknown> }>
+			records?: Array<{ id?: string; fields?: Record<string, unknown> }>
 		}
 		if ((found.records?.length ?? 0) > 0) {
+			// The row already exists upstream, so remember its id: the direct path bypasses the drain, and without this the buffer – and the Loops sync's record-id join – never learns this row exists.
+			const duplicateId = found.records?.[0]?.id
+			if (duplicateId) {
+				await recordDirectSignup({
+					email,
+					recordId: duplicateId,
+					ip,
+					...(ref ? { referredBy: ref } : {}),
+					...(utmSource ? { utmSource } : {}),
+					...(userId ? { userId } : {}),
+				})
+			}
 			// The column the number is written to below; there is no `referral_code`, so reading that handed returning people a blank.
 			const existing = found.records?.[0]?.fields?.["Loops - halfLifeReferralNumber"]
 			return {
@@ -154,6 +168,22 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 		if (!response.ok) {
 			console.error(`Airtable create failed: ${response.status} ${redactForLog(await response.text())}`)
 			return bufferInstead("create failed")
+		}
+		// Remember the row the direct path just made, for the same reason as above: no buffer entry means no record-id join for the Loops sync.
+		try {
+			const created = (await response.json()) as { id?: string }
+			if (created.id) {
+				await recordDirectSignup({
+					email,
+					recordId: created.id,
+					ip,
+					...(ref ? { referredBy: ref } : {}),
+					...(utmSource ? { utmSource } : {}),
+					...(userId ? { userId } : {}),
+				})
+			}
+		} catch (err) {
+			console.error("[signup] remembering the direct-write row failed:", err)
 		}
 		return { ok: true, duplicate: false, referralCode }
 	}

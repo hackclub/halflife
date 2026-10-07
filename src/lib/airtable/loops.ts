@@ -1,12 +1,7 @@
 import "server-only"
 import { Phase } from "@/app/generated/prisma/enums"
-import {
-	AirtableError,
-	type AirtableRecord,
-	airtableFetch,
-	getAirtableConfig,
-	withRateLimitRetry,
-} from "@/lib/airtable/client"
+import { type AirtableRecord, airtableFetch, getAirtableConfig, withRateLimitRetry } from "@/lib/airtable/client"
+import { existingColumns } from "@/lib/airtable/field-probe"
 import { fieldKey, RSVP, RSVP_TABLE_ID } from "@/lib/airtable/schema"
 import { THEMES } from "@/lib/config/program"
 import prisma from "@/lib/prisma"
@@ -126,35 +121,6 @@ function unchanged(row: AirtableRecord, fields: Record<string, unknown>): boolea
 }
 
 /**
- * Whether this base has the `Half-Life User ID` column.
- *
- * Airtable 422s a list request naming a field that does not exist, and it does so for the whole request – so asking for the id column on a base without it takes the entire sync down, not just the join. One single-record probe settles it per instance instead.
- *
- * Cached because it is a property of the base, not of the run: a base either has the column or it does not, and re-probing on every sync would spend a request an hour to learn something that cannot have changed.
- */
-let hasUserIdColumn: boolean | null = null
-
-async function userIdColumnExists(config: NonNullable<ReturnType<typeof getAirtableConfig>>): Promise<boolean> {
-	if (hasUserIdColumn !== null) return hasUserIdColumn
-	try {
-		await airtableFetch(
-			config,
-			`${encodeURIComponent(TABLE)}?maxRecords=1&fields%5B%5D=${encodeURIComponent(LOOPS_FIELDS.userId)}`,
-		)
-		hasUserIdColumn = true
-	} catch (err) {
-		// Only a missing field is "absent". A rate limit or an outage is a real fault and must not be remembered as a fact about the base, or the id join would be switched off for the life of the process by one bad minute.
-		const missing = err instanceof AirtableError && err.status === 422 && err.body.includes("UNKNOWN_FIELD_NAME")
-		if (!missing) throw err
-		hasUserIdColumn = false
-		console.warn(
-			`[airtable] no \`${LOOPS_FIELDS.userId}\` column in ${TABLE}; falling back to matching Loops rows by email`,
-		)
-	}
-	return hasUserIdColumn
-}
-
-/**
  * Which Signups row, if any, is this person's.
  *
  * Split out from the sync and free of I/O so the join can be tested directly – this is the one decision that made every Loops column silently empty, and it fails quietly by design: a row that is not found is skipped and counted, not an error, so a wrong join looks exactly like a healthy run that had nothing to do.
@@ -162,7 +128,7 @@ async function userIdColumnExists(config: NonNullable<ReturnType<typeof getAirta
  * Three keys, strongest first:
  *
  * 1. **The `Half-Life User ID` column.** The designed join, and the one that survives somebody typing one address on the landing page and being issued a different one at sign-in.
- * 2. **The Airtable record id the RSVP drain recorded.** Not a fuzzy match at all: it is the row this app itself created for this person, read back out of `RsvpBuffer`. It is here because key 1 depends on a column that has to exist in the base, and on the live base it does not – so the join that needs no new column is the one that actually matches.
+ * 2. **The Airtable record id the RSVP drain recorded.** Not a fuzzy match at all: it is the row this app itself created for this person, read back out of `RsvpBuffer`. It is here because key 1 is only stamped by the drain, and rows the landing form wrote straight to Airtable never went through the drain – going forward `recordDirectSignup` remembers those rows, but rows from before that fix are only reachable this way if a buffer entry already names them.
  * 3. **Email.** The last resort, and the one that mostly fails: the Signups row holds whatever address was typed on the landing page.
  */
 export function resolveSignupRow(
@@ -201,41 +167,99 @@ async function drainedRecordRows(): Promise<Map<string, AirtableRecord>> {
 	return byRecordId
 }
 
+/**
+ * Remember the row for every user whose email still matches one.
+ *
+ * The landing form wrote straight to Airtable without leaving an
+ * `RsvpBuffer` entry (now fixed at the source by `recordDirectSignup`), so
+ * for rows from before that fix the email match is the only key that reaches
+ * them – and it stops working the moment the address changes. Persisting the
+ * (user id, record id) pair upgrades those users to the record-id join and
+ * queues the drain to stamp `Half-Life User ID` onto their row, so the match
+ * survives an email change. Only fills in what is missing and never moves a
+ * row onto a different user: a buffer row already pointing at someone else is
+ * left alone.
+ *
+ * Runs inside the sync rather than only in the one-shot backfill script so
+ * the hourly job heals itself – the way this stayed broken for months was a
+ * job that needed a manual step nobody ran. Steady-state cost is zero: users
+ * already in `known` short-circuit before any query.
+ */
+async function persistRecordLinks(
+	values: Pick<LoopsValues, "id" | "email">[],
+	byEmail: Map<string, AirtableRecord>,
+	known: Map<string, AirtableRecord>,
+): Promise<number> {
+	let linked = 0
+	for (const v of values) {
+		if (known.has(v.id)) continue
+		const row = byEmail.get(v.email.trim().toLowerCase())
+		if (!row) continue
+		const key = v.email.trim().toLowerCase()
+		const existing = await prisma.rsvpBuffer.findUnique({ where: { email: key } })
+		if (existing?.userId && existing.userId !== v.id) continue
+		if (existing?.airtableRecordId === row.id && existing?.userId === v.id) continue
+		try {
+			await prisma.rsvpBuffer.upsert({
+				where: { email: key },
+				create: {
+					email: key,
+					userId: v.id,
+					airtableRecordId: row.id,
+					finishedAccountCreation: true,
+					syncedToAirtable: false,
+					syncAttempts: 0,
+				},
+				update: {
+					userId: v.id,
+					airtableRecordId: row.id,
+					finishedAccountCreation: true,
+					syncedToAirtable: false,
+					syncAttempts: 0,
+				},
+			})
+			linked++
+		} catch (err) {
+			console.error(`[airtable] loops-sync could not link ${row.id} to ${v.id}:`, err)
+		}
+	}
+	return linked
+}
+
 /** Every row of the table, indexed by every key available. */
 async function signupRows(config: NonNullable<ReturnType<typeof getAirtableConfig>>) {
 	const byEmail = new Map<string, AirtableRecord>()
 	const byUserId = new Map<string, AirtableRecord>()
-	const withUserId = await userIdColumnExists(config)
-	const want = [
+	// Every column this sync reads or writes, asked once through the shared probe: Airtable refuses the whole list request when a `fields[]` entry names a column the table lacks, so asking for the Loops columns unconditionally is the same wholesale-422 class the drain already probes around (see lib/airtable/field-probe). Columns that do not exist are neither requested nor written.
+	const all = [
 		LOOPS_FIELDS.email,
-		...(withUserId ? [LOOPS_FIELDS.userId] : []),
+		LOOPS_FIELDS.userId,
 		LOOPS_FIELDS.lastLoginAt,
 		LOOPS_FIELDS.lastEntryAt,
 		...WEEKS.map(LOOPS_FIELDS.week),
 	]
+	const writable = await existingColumns(config, TABLE, all)
+	const want = all.filter((c) => writable.has(c))
 	const fieldsQs = want.map((f) => `fields%5B%5D=${encodeURIComponent(f)}`).join("&")
 	let offset: string | undefined
 	do {
 		const page = await withRateLimitRetry("listSignups", () =>
 			airtableFetch<{ records: AirtableRecord[]; offset?: string }>(
 				config,
-				`${encodeURIComponent(TABLE)}?pageSize=100&${fieldsQs}${offset ? `&offset=${encodeURIComponent(offset)}` : ""}`,
+				`${encodeURIComponent(TABLE)}?pageSize=100${fieldsQs ? `&${fieldsQs}` : ""}${offset ? `&offset=${encodeURIComponent(offset)}` : ""}`,
 			),
 		)
 		for (const r of page.records) {
 			const email = r.fields[LOOPS_FIELDS.email]
 			// First row wins if the list has the same address twice.
-			if (typeof email === "string" && !byEmail.has(email.trim().toLowerCase())) {
+			if (typeof email === "string" && !byEmail.has(email.trim().toLowerCase()))
 				byEmail.set(email.trim().toLowerCase(), r)
-			}
 			const userId = r.fields[LOOPS_FIELDS.userId]
-			if (typeof userId === "string" && !byUserId.has(userId.trim())) {
-				byUserId.set(userId.trim(), r)
-			}
+			if (typeof userId === "string" && !byUserId.has(userId.trim())) byUserId.set(userId.trim(), r)
 		}
 		offset = page.offset
 	} while (offset)
-	return { byEmail, byUserId }
+	return { byEmail, byUserId, writable }
 }
 
 export interface LoopsSyncResult {
@@ -249,6 +273,8 @@ export interface LoopsSyncResult {
 	matchedByEmail: number
 	/** Half Life users with no row in Signups. */
 	unmatched: number
+	/** Buffer rows newly linked to their Signups row this run (0 on a dry run). */
+	relinked: number
 	updated: number
 	unchanged: number
 	dryRun: boolean
@@ -272,6 +298,8 @@ export async function syncLoopsProperties(
 	const [values, listed, byRecordId] = await Promise.all([loopsValues(), signupRows(config), drainedRecordRows()])
 	// The drained rows are the join, not a fallback for it: a record id addresses the row directly, so a person the listing never held is still writable.
 	const rows = { ...listed, byRecordId }
+	// A dry run promises no writes, so it must not persist links either – it reports the match as-is.
+	const relinked = opts.dryRun ? 0 : await persistRecordLinks(values, listed.byEmail, byRecordId)
 	const updates: { id: string; email: string; fields: Record<string, unknown> }[] = []
 	let matched = 0
 	let matchedById = 0
@@ -286,8 +314,14 @@ export async function syncLoopsProperties(
 		else if (hit.by === "record") matchedByRecord++
 		else matchedByEmail++
 		const fields = fieldsFor(v)
-		if (unchanged(hit.row, fields)) same++
-		else updates.push({ id: hit.row.id, email: v.email, fields })
+		// Only what the table actually has: one absent column in a PATCH must not fail the nine that exist.
+		const writableFields = Object.fromEntries(Object.entries(fields).filter(([k]) => listed.writable.has(k)))
+		if (Object.keys(writableFields).length === 0) {
+			same++
+			continue
+		}
+		if (unchanged(hit.row, writableFields)) same++
+		else updates.push({ id: hit.row.id, email: v.email, fields: writableFields })
 	}
 
 	// Half the population, matching nothing, is a broken join rather than a quiet morning. Small populations are exempt: half of four users is noise, and the first signups of a new season legitimately have no Signups row yet.
@@ -299,6 +333,7 @@ export async function syncLoopsProperties(
 		matchedByRecord,
 		matchedByEmail,
 		unmatched: values.length - matched,
+		relinked,
 		updated: updates.length,
 		unchanged: same,
 		dryRun: !!opts.dryRun,
@@ -313,7 +348,7 @@ export async function syncLoopsProperties(
 				`${result.unmatched} were skipped and their Loops columns left empty. In order of likelihood: ` +
 				"their rsvp-drain row hit the attempt cap while the table was missing a column the drain sends, and a " +
 				"row at the cap is never retried – reset `syncAttempts` on those to give them another go; " +
-				`${TABLE} still has no \`${LOOPS_FIELDS.userId}\` column, so the drain cannot stamp a row with its user; ` +
+				"their Signups row was written straight from the landing page with no buffer entry naming it, so neither the user id nor the record id joins can reach it; " +
 				"or the person never had a Signups row at all.",
 		)
 	}

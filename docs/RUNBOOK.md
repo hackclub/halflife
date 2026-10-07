@@ -148,8 +148,8 @@ needs duplicating into the job.
 `loops-sync` fills `Loops - halfLifeLastLoginAt`, `Loops - halfLifeLastEntryAt`
 and the ten week checkboxes on the `Signups` table. Those columns **were not
 being filled because the sync could not find anybody's row**, not because the
-dates were wrong – measured on the live base: 0 of the first 2000 rows had any
-Loops column set, dates or weeks alike.
+dates were wrong – measured on the live base, 1 of 6348 rows has any Loops
+date set.
 
 Finding the row is a three-key join, tried strongest first:
 
@@ -159,24 +159,47 @@ Finding the row is a three-key join, tried strongest first:
    without key 1.
 3. Email, as a last resort.
 
-**On the live base key 1 does not exist.** `Half-Life User ID` answers 422
-`UNKNOWN_FIELD_NAME`; none of the other candidate columns exist either, so email
-is the only identity the table holds – and it is the one that fails, since a
-sign-up row holds whatever address was typed on the landing page while
-`User.email` is what the identity provider later issued. That is the whole bug.
+**On the live base the join still matches almost nobody – 1 row has any
+Loops date set.** All twelve Loops columns plus `Half-Life User ID` exist;
+the column was never the problem. The problem is the landing form wrote
+straight to Airtable (`recordSignup` in lib/site/signups) without leaving a
+`RsvpBuffer` entry, so neither key 1 (only the drain stamps it) nor key 2
+(only drained rows record one) can reach a landing row – and key 3 fails
+whenever the address typed on the landing page differs from the one the
+identity provider later issued, which is the normal case. That is the whole
+bug. Going forward every direct write remembers its record id in
+`RsvpBuffer` (`recordDirectSignup`), so the drain stamps key 1 and key 2
+covers the rest; rows from before that fix whose emails diverge are not
+mappable from current data and stay empty – email matches and drained rows
+are what the backfill fills.
 
 Two consequences worth knowing:
 
-- **Adding the column is a one-time Airtable change and nothing else.** Add a
-  single-line-text field named exactly `Half-Life User ID` to `Signups`. The
-  drain probes for it and starts filling it on its own within ten minutes
-  (key 2 keeps the sync working for everyone in the meantime). Rows signed up
-  before the column exists are not backfilled – for those, key 2 is the join.
-- **The drain used to fail wholesale on that column.** Airtable rejects a
-  `fields` payload naming a column the table lacks, for the *whole* record, so
-  every drained row carrying a user id lost its email, name and referral number
-  too, and after ten attempts was abandoned. The drain now probes and omits the
-  field instead.
+- **Every direct write now remembers its row.** `recordSignup`
+  (lib/site/signups) records the Airtable record id in `RsvpBuffer`
+  (`recordDirectSignup`), so the drain stamps key 1 and key 2 covers the
+  rest. The sync itself also persists the link whenever an email match finds
+  a row with no mapping yet (`relinked` in the result), so the hourly job
+  heals the join on its own – no manual step required.
+- **The drain and the sync probe for columns.** Airtable rejects a request
+  naming a column the table lacks for the *whole* request, so both jobs ask
+  which columns exist first and only send those. A renamed or deleted Loops
+  column degrades that column to unwritten rather than failing the run.
+
+Backfilling existing users (mapped rows only – no row is ever created):
+
+1. `pnpm loops:backfill` – dry run. Reports how many users link to a row
+   by email, how many are already linked, and how many have no Signups row
+   under their current address. Read-only.
+2. `pnpm loops:backfill --commit` – links what step 1 found, then runs the
+   sync for real. Run it where `DATABASE_URL` points at the real database
+   (the Orchard pod, not a dev machine), since the join is between prod
+   users and the live base.
+3. Users with no row under their current address stay empty: their landing
+   address differs from the one the identity provider issued, and nothing
+   in current data maps one to the other. The alternative – creating a new
+   row per unmatched user – would subscribe addresses to the Loops list
+   that never signed up, so it is deliberately not done.
 
 A run whose `matched` count is far below `users` sets `degraded: true` in the
 response and in the `airtable_loops` sync-run row, and logs an error. Look for

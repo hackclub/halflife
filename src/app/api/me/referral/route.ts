@@ -16,10 +16,8 @@ export const GET = withRoute(async (req: Request) => {
 	const email = normalizeEmail(gate.user.email)
 	if (!email) return fail("UNPROCESSABLE", "Your account has no email to make a referral link from")
 
-	const result = await recordSignup(email, "platform", { source: "platform" })
-	if (!result.ok || !result.referralCode) {
-		return fail("UNAVAILABLE", "Your referral link isn't available right now")
-	}
+	const result = await recordSignup(email, "platform", { source: "platform", userId: gate.user.id })
+	if (!result.ok || !result.referralCode) return fail("UNAVAILABLE", "Your referral link isn't available right now")
 
 	const origin = (process.env.NEXT_PUBLIC_APP_URL ?? process.env.BETTER_AUTH_URL ?? new URL(req.url).origin).replace(
 		/\/$/,
