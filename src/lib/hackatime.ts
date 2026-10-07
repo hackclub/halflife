@@ -1,5 +1,6 @@
 import "server-only"
 import { fetchWithRetry } from "@/lib/fetch-retry"
+import type { HackatimeSpan } from "@/lib/hours-overlap"
 import prisma from "@/lib/prisma"
 
 const BASE = process.env.HACKATIME_API_BASE ?? "https://hackatime.hackclub.com"
@@ -75,6 +76,85 @@ export async function fetchProjectSeconds(hackatimeUserId: string, project: stri
 		return projectSecondsFrom(await res.json(), project)
 	} catch (err) {
 		return { seconds: 0, stale: true, error: err instanceof Error ? err.message : String(err) }
+	}
+}
+
+/**
+ * Read a project's tracked intervals out of a Hackatime spans response.
+ *
+ * The counterpart to `projectSecondsFrom`, and for the same reason: approval
+ * reads this live, and the difference between "no overlap" and "we could not
+ * find out" decides whether somebody is paid for the same minutes twice or once.
+ * A response with no spans array is therefore stale, never an empty answer —
+ * an empty array IS a real answer here, meaning the project was tracked at no
+ * time in the window, and the two must not be confused.
+ *
+ * Malformed rows are dropped rather than failing the whole read: one bad span
+ * should cost that span, not the participant's hours. Times are seconds.
+ */
+export function spansFrom(body: unknown): { spans: HackatimeSpan[]; stale: boolean; error?: string } {
+	const raw = (body as { spans?: unknown } | null)?.spans
+	if (!Array.isArray(raw)) {
+		return { spans: [], stale: true, error: "Hackatime returned no spans" }
+	}
+
+	const spans: HackatimeSpan[] = []
+	for (const row of raw) {
+		const start = (row as { start_time?: unknown })?.start_time
+		const end = (row as { end_time?: unknown })?.end_time
+		if (
+			typeof start !== "number" ||
+			typeof end !== "number" ||
+			!Number.isFinite(start) ||
+			!Number.isFinite(end) ||
+			end <= start
+		) {
+			continue
+		}
+		spans.push({ start, end })
+	}
+	return { spans, stale: false }
+}
+
+/**
+ * Fetch the intervals a project was tracked for, over a window.
+ *
+ * This is what makes deduplication exact. `fetchProjectSeconds` answers "how
+ * much"; the spans answer "when", and only "when" can be compared against a
+ * timelapse's recording window.
+ *
+ * The window is always passed explicitly. Left to its default it would ask for
+ * ten years of heartbeats, which is a response nobody should page in on an
+ * approval path.
+ *
+ * Unauthenticated on purpose, like `fetchProjectSeconds`: Hackatime serves these
+ * public-stats lookups to anyone while a participant has public stats enabled
+ * (the default), and the alternative is asking every maker to hand us a token we
+ * would then have to store and refresh.
+ */
+export async function fetchProjectSpans(
+	hackatimeUserId: string,
+	project: string,
+	window: { fromSeconds: number; toSeconds: number },
+): Promise<{ spans: HackatimeSpan[]; stale: boolean; error?: string }> {
+	try {
+		const url = new URL(`${BASE}/api/v1/users/${encodeURIComponent(hackatimeUserId)}/heartbeats/spans`)
+		url.searchParams.set("project", project)
+		// Hackatime parses these with Time.zone.parse, so an ISO instant is
+		// unambiguous where a bare date would be read in the server's zone.
+		url.searchParams.set("start_date", new Date(window.fromSeconds * 1000).toISOString())
+		url.searchParams.set("end_date", new Date(window.toSeconds * 1000).toISOString())
+		const res = await fetchWithRetry(url, {
+			signal: AbortSignal.timeout(TIMEOUT_MS),
+			cache: "no-store",
+		})
+		// 403 is a participant who turned public stats off. That is not a
+		// transient blip and must not read as "no overlap found".
+		if (!res.ok) return { spans: [], stale: true, error: `HTTP ${res.status}` }
+
+		return spansFrom(await res.json())
+	} catch (err) {
+		return { spans: [], stale: true, error: err instanceof Error ? err.message : String(err) }
 	}
 }
 

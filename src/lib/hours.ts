@@ -2,7 +2,17 @@ import "server-only"
 import { HoursSource, Phase } from "@/app/generated/prisma/enums"
 import { COINS_PER_HOUR, MAX_COINS_PER_PROJECT } from "@/lib/config/program"
 import { getTierOrThrow, type TierId } from "@/lib/config/tiers"
-import { fetchProjectSeconds } from "@/lib/hackatime"
+import { fetchProjectSeconds, fetchProjectSpans } from "@/lib/hackatime"
+import {
+	cachedSpansCover,
+	capSubtraction,
+	type HackatimeSpan,
+	type Interval,
+	overlapSeconds,
+	parseCachedSpans,
+	spanWindowFor,
+	timelapseWindow,
+} from "@/lib/hours-overlap"
 import prisma from "@/lib/prisma"
 
 export interface HoursBreakdown {
@@ -15,6 +25,20 @@ export interface HoursBreakdown {
 	hackatimeHours: number
 	/** True when any link fell back to its cache. Blocks finalisation. */
 	hackatimeStale: boolean
+	/**
+	 * Seconds taken back off Hackatime because a journal entry with a timelapse
+	 * already claimed those same minutes. Reported so the number on the review
+	 * page is explainable rather than just smaller than Hackatime says.
+	 */
+	hackatimeOverlapSeconds: number
+	/**
+	 * True when an overlap may exist but could not be checked — the spans fetch
+	 * failed, or failed because the participant has Hackatime's public stats off.
+	 * Deliberately NOT folded into `hackatimeStale`: that one blocks an approval
+	 * outright, and a participant who turned public stats off must not become
+	 * permanently unapprovable. It surfaces as a warning to be weighed.
+	 */
+	hackatimeOverlapUnknown: boolean
 
 	/** Evidence only. Never part of any total. */
 	timelapseSeconds: number
@@ -64,46 +88,72 @@ export async function getHoursBreakdown(
 				hoursClaimed: true,
 				hoursApproved: true,
 				hoursSource: true,
-				timelapses: { select: { coveredSeconds: true } },
+				timelapses: { select: { coveredSeconds: true, recordedAt: true } },
 			},
 		}),
 		prisma.hackatimeLink.findMany({
 			where: { themeProjectId, phase },
-			select: { id: true, hackatimeProject: true, hoursApproved: true, cachedSeconds: true },
+			select: {
+				id: true,
+				hackatimeProject: true,
+				hoursApproved: true,
+				cachedSeconds: true,
+				cachedSpans: true,
+			},
 		}),
 	])
 
 	let journalHours = 0
 	let journalHoursClaimed = 0
 	let timelapseSeconds = 0
+	// The wall-clock windows this phase's journal has already claimed through a
+	// recording. Collected first because it is what every link below is measured
+	// against.
+	const journalWindows: Interval[] = []
 
 	for (const s of sessions) {
 		// A tracked entry contributes no journal time, and its timelapses must
 		// not land in a coverage ratio whose denominator excludes them either.
 		if (s.hoursSource === HoursSource.HACKATIME_TRACKED) continue
-		for (const t of s.timelapses) timelapseSeconds += t.coveredSeconds ?? 0
+		for (const t of s.timelapses) {
+			timelapseSeconds += t.coveredSeconds ?? 0
+			const window = timelapseWindow(t.recordedAt, t.coveredSeconds)
+			if (window) journalWindows.push(window)
+		}
 		journalHours += s.hoursApproved ?? s.hoursClaimed
 		journalHoursClaimed += s.hoursClaimed
 	}
 
 	let hackatimeHours = 0
 	let hackatimeStale = false
+	let hackatimeOverlapSeconds = 0
+	let hackatimeOverlapUnknown = false
 	const hackatimeUserId = project?.user.hackatimeUserId ?? null
+	// Only a phase that tracks BOTH tools can have anything to deduplicate, and
+	// when it cannot there is nothing to fetch — the spans of a link nobody's
+	// timelapse could overlap are a request nobody needs.
+	const dedupePossible = journalWindows.length > 0 && links.length > 0
+	const spanWindow = spanWindowFor(journalWindows)
+	const fromSeconds = spanWindow?.fromSeconds ?? 0
+	const toSeconds = spanWindow?.toSeconds ?? 0
 
 	for (const link of links) {
 		// A reviewer override replaces the live value permanently, so there is
-		// nothing to fetch and nothing that can go stale.
+		// nothing to fetch and nothing that can go stale. It is also a human
+		// decision made against a breakdown that already showed the overlap, so
+		// it stands untouched: the subtraction is for computed values.
 		if (link.hoursApproved !== null) {
 			hackatimeHours += link.hoursApproved
 			continue
 		}
+		let linkSeconds = 0
 		if (live && hackatimeUserId) {
 			const result = await fetchProjectSeconds(hackatimeUserId, link.hackatimeProject)
 			if (result.stale) {
 				hackatimeStale = true
-				hackatimeHours += (link.cachedSeconds ?? 0) / 3600
+				linkSeconds = link.cachedSeconds ?? 0
 			} else {
-				hackatimeHours += result.seconds / 3600
+				linkSeconds = result.seconds
 				await prisma.hackatimeLink.update({
 					where: { id: link.id },
 					data: { cachedSeconds: result.seconds, cachedAt: new Date(), lastFetchError: null },
@@ -111,8 +161,53 @@ export async function getHoursBreakdown(
 			}
 		} else {
 			if (link.cachedSeconds === null) hackatimeStale = true
-			hackatimeHours += (link.cachedSeconds ?? 0) / 3600
+			linkSeconds = link.cachedSeconds ?? 0
 		}
+
+		// Subtract the minutes this link counted that a journal entry with a
+		// recording already claimed. Without this the same sitting is paid twice.
+		if (dedupePossible) {
+			const spans = await resolveSpans(link, { live, hackatimeUserId, fromSeconds, toSeconds })
+			if (spans.stale) {
+				// Unknown, not zero: the honest answer here is that the overlap may
+				// exist. Nothing is subtracted, so the risk is the status quo
+				// double-count rather than an underpayment.
+				hackatimeOverlapUnknown = true
+				// Recorded only when a fetch was actually attempted. This runs on
+				// read paths too — the projects list breaks down every project — and a
+				// write per dashboard load to note a cache that was simply cold would
+				// be a great deal of write load for no new information.
+				if (live) {
+					await prisma.hackatimeLink.update({
+						where: { id: link.id },
+						data: { spansFetchError: spans.error ?? "unknown error" },
+					})
+				}
+			} else {
+				const overlap = capSubtraction(linkSeconds, overlapSeconds(journalWindows, spans.spans))
+				if (overlap > 0) {
+					hackatimeOverlapSeconds += overlap
+					linkSeconds -= overlap
+				}
+				// Persisted only on a fresh fetch, and with the window they were
+				// fetched for rather than as a bare array: the next read has to know
+				// whether these spans cover the window it is being asked about, and a
+				// list cannot say. Re-writing a cache that was just read from would
+				// put a write on every read of this row.
+				if (spans.fetched) {
+					await prisma.hackatimeLink.update({
+						where: { id: link.id },
+						data: {
+							cachedSpans: { from: fromSeconds, to: toSeconds, spans: spans.spans },
+							spansFetchedAt: new Date(),
+							spansFetchError: null,
+						},
+					})
+				}
+			}
+		}
+
+		hackatimeHours += linkSeconds / 3600
 	}
 
 	const claimedSeconds = journalHoursClaimed * 3600
@@ -128,11 +223,105 @@ export async function getHoursBreakdown(
 		journalEntryCount: sessions.length,
 		hackatimeHours: round2(hackatimeHours),
 		hackatimeStale,
+		hackatimeOverlapSeconds,
+		hackatimeOverlapUnknown,
 		timelapseSeconds,
 		timelapseCoverage: claimedSeconds > 0 ? Math.min(1, timelapseSeconds / claimedSeconds) : 0,
 		computedTotal,
 		frozenTotal,
 		effectiveHours: frozenTotal ?? computedTotal,
+	}
+}
+
+/**
+ * One link's tracked intervals, from cache when the cache answers the question
+ * and from Hackatime when it does not.
+ *
+ * `stale` here means "unknown", not "empty" — and it is the distinction the whole
+ * dedupe rests on. Spans that say a project was tracked at no time in the window
+ * are a finding; spans nobody could fetch are not, and treating the two alike
+ * would either subtract nothing silently or subtract something invented.
+ */
+async function resolveSpans(
+	link: { hackatimeProject: string; cachedSpans: unknown },
+	opts: { live: boolean; hackatimeUserId: string | null; fromSeconds: number; toSeconds: number },
+): Promise<{ spans: HackatimeSpan[]; stale: boolean; fetched: boolean; error?: string }> {
+	const cached = parseCachedSpans(link.cachedSpans)
+	if (cached && cachedSpansCover(cached, opts.fromSeconds, opts.toSeconds)) {
+		return { spans: cached.spans, stale: false, fetched: false }
+	}
+	if (!opts.live || !opts.hackatimeUserId) {
+		return {
+			spans: [],
+			stale: true,
+			fetched: false,
+			error: cached ? "cached spans do not cover this window" : "no cached spans",
+		}
+	}
+	const result = await fetchProjectSpans(opts.hackatimeUserId, link.hackatimeProject, {
+		fromSeconds: opts.fromSeconds,
+		toSeconds: opts.toSeconds,
+	})
+	return { ...result, fetched: true }
+}
+
+/**
+ * Warm the cached spans for a phase's links, best effort.
+ *
+ * Called when a timelapse is attached, off the response path. Without it the
+ * deduplicated number only appears once something forces a live fetch — which
+ * today means the approval itself, so a reviewer would open a submission, read
+ * one Hackatime total, and watch a different one get approved underneath them.
+ * Warming the cache when the window it depends on actually changes keeps the
+ * review screen and the decision showing the same number.
+ *
+ * Failures are swallowed on purpose: every failure mode of this already degrades
+ * to "the overlap could not be checked", which the approval path reports.
+ * Throwing would fail a journal entry over a problem that does not affect it.
+ */
+export async function refreshOverlapSpans(themeProjectId: string, phase: Phase): Promise<void> {
+	try {
+		const [project, sessions, links] = await Promise.all([
+			prisma.themeProject.findUnique({
+				where: { id: themeProjectId },
+				select: { user: { select: { hackatimeUserId: true } } },
+			}),
+			prisma.workSession.findMany({
+				where: { themeProjectId, phase, deletedAt: null, hoursSource: { not: HoursSource.HACKATIME_TRACKED } },
+				select: { timelapses: { select: { coveredSeconds: true, recordedAt: true } } },
+			}),
+			prisma.hackatimeLink.findMany({
+				where: { themeProjectId, phase, hoursApproved: null },
+				select: { id: true, hackatimeProject: true },
+			}),
+		])
+		const hackatimeUserId = project?.user.hackatimeUserId
+		if (!hackatimeUserId || links.length === 0) return
+
+		const windows = sessions.flatMap((s) =>
+			s.timelapses.flatMap((t) => {
+				const window = timelapseWindow(t.recordedAt, t.coveredSeconds)
+				return window ? [window] : []
+			}),
+		)
+		const spanWindow = spanWindowFor(windows)
+		if (!spanWindow) return
+
+		for (const link of links) {
+			const result = await fetchProjectSpans(hackatimeUserId, link.hackatimeProject, spanWindow)
+			await prisma.hackatimeLink.update({
+				where: { id: link.id },
+				data: result.stale
+					? { spansFetchError: result.error ?? "unknown error" }
+					: {
+							cachedSpans: { from: spanWindow.fromSeconds, to: spanWindow.toSeconds, spans: result.spans },
+							spansFetchedAt: new Date(),
+							spansFetchError: null,
+						},
+			})
+		}
+	} catch {
+		// A cache warm that failed is the same as one that never ran.
 	}
 }
 
@@ -148,35 +337,69 @@ export interface SessionRow {
 	hoursClaimed: number
 	hoursApproved: number | null
 	hoursSource: HoursSource
+	/**
+	 * The recording windows behind this entry, when it has any. A HACKATIME_TRACKED
+	 * entry is ignored entirely — it claims nothing — so its timelapses are not
+	 * read either.
+	 */
+	timelapses?: { recordedAt: Date | null; coveredSeconds: number | null }[]
 }
 
 export interface LinkRow {
 	hoursApproved: number | null
 	cachedSeconds: number | null
+	/** The link's tracked intervals, as cached on the row. See parseCachedSpans. */
+	cachedSpans?: unknown
 }
 
 export function rollUpHours(
 	sessions: readonly SessionRow[],
 	links: readonly LinkRow[],
 	frozenTotal: number | null,
-): { journalHours: number; hackatimeHours: number; computedTotal: number; effectiveHours: number } {
+): {
+	journalHours: number
+	hackatimeHours: number
+	hackatimeOverlapSeconds: number
+	computedTotal: number
+	effectiveHours: number
+} {
 	let journalHours = 0
+	const journalWindows: Interval[] = []
 	for (const s of sessions) {
 		// A HACKATIME_TRACKED session still exists as evidence but contributes
 		// zero: its time already arrives through the link.
 		if (s.hoursSource === HoursSource.HACKATIME_TRACKED) continue
 		journalHours += s.hoursApproved ?? s.hoursClaimed
+		for (const t of s.timelapses ?? []) {
+			const window = timelapseWindow(t.recordedAt, t.coveredSeconds)
+			if (window) journalWindows.push(window)
+		}
 	}
 
 	let hackatimeHours = 0
+	let hackatimeOverlapSeconds = 0
 	for (const link of links) {
-		hackatimeHours += link.hoursApproved ?? (link.cachedSeconds ?? 0) / 3600
+		// A reviewer override is a human decision against a breakdown that already
+		// showed the overlap. Untouched, exactly as in getHoursBreakdown.
+		if (link.hoursApproved !== null) {
+			hackatimeHours += link.hoursApproved
+			continue
+		}
+		let seconds = link.cachedSeconds ?? 0
+		const cached = parseCachedSpans(link.cachedSpans)
+		if (journalWindows.length > 0 && cached) {
+			const overlap = capSubtraction(seconds, overlapSeconds(journalWindows, cached.spans))
+			hackatimeOverlapSeconds += overlap
+			seconds -= overlap
+		}
+		hackatimeHours += seconds / 3600
 	}
 
 	const computedTotal = round2(journalHours + hackatimeHours)
 	return {
 		journalHours: round2(journalHours),
 		hackatimeHours: round2(hackatimeHours),
+		hackatimeOverlapSeconds,
 		computedTotal,
 		effectiveHours: frozenTotal ?? computedTotal,
 	}

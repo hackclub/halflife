@@ -218,12 +218,25 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 					hoursSource: true,
 					createdAt: true,
 					media: { select: { objectKey: true } },
-					timelapses: { select: { objectKey: true, externalId: true } },
+					timelapses: {
+						select: { objectKey: true, externalId: true, coveredSeconds: true, recordedAt: true },
+					},
 				},
 			}),
 			prisma.hackatimeLink.findMany({
 				where: { themeProject: { userId, deletedAt: null } },
-				select: { themeProjectId: true, phase: true, hoursApproved: true, cachedSeconds: true },
+				// cachedSpans comes along because `rollUpHours` is what the ledger
+				// uses, and a trail that reported a different Hackatime total from the
+				// one a reviewer approves is the disagreement this file already warns
+				// about — the same minutes must not be payable twice on one screen and
+				// once off it.
+				select: {
+					themeProjectId: true,
+					phase: true,
+					hoursApproved: true,
+					cachedSeconds: true,
+					cachedSpans: true,
+				},
 			}),
 			prisma.post.findMany({
 				// Every reel, not only the ones bound to a checkpoint: a project's
