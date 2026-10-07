@@ -7,6 +7,7 @@ import { AuditAction, logAudit } from "@/lib/audit"
 import { scheduledWeekFor } from "@/lib/config/program"
 import { HttpError } from "@/lib/errors"
 import { requireSession } from "@/lib/guards"
+import { refreshOverlapSpans } from "@/lib/hours"
 import { verifyOwnTimelapses } from "@/lib/lapse"
 import { cursorArgs, pageResult, paginationQuery } from "@/lib/pagination"
 import prisma from "@/lib/prisma"
@@ -174,6 +175,11 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 						// Lapse's duration is wall-clock time recorded, which is exactly
 						// what coverage is measured in.
 						coveredSeconds: t.durationSeconds,
+						// When it was recorded, and what Lapse saw on Hackatime while it
+						// ran. Together these are what stops one sitting being counted by
+						// this entry and again by the linked project.
+						recordedAt: new Date(t.createdAt),
+						hackatimeProject: t.hackatimeProject,
 					})),
 				},
 			},
@@ -202,6 +208,12 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	// The new entry lands in the repo, after this response has gone out. The
 	// scheduling read is cheap and no-ops for a project with the sync off.
 	after(() => scheduleRepoSync(id))
+
+	// Same reasoning, for the overlap cache: a recording just widened the window
+	// the Hackatime hours are deduplicated against, so the spans covering it are
+	// fetched here rather than at approval — where the reviewer would otherwise
+	// see one Hackatime total and approve a different one.
+	if (timelapses.length > 0) after(() => refreshOverlapSpans(id, data.phase))
 
 	return ok({ session }, { status: 201 })
 })

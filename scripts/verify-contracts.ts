@@ -556,6 +556,280 @@ async function bodies() {
 	const nullBody = projectSecondsFrom(null, "firmware")
 	check("hackatime · a null body is stale", nullBody.stale === true && !nullBody.notFound)
 
+	/* ── 5d-ii. Hackatime spans, and the overlap arithmetic ────────────────── */
+	//
+	// Someone who codes with Hackatime running and records a Lapse timelapse of
+	// the same sitting had it counted twice: once by the journal entry, once by
+	// the linked project. These decide how much comes off, so the boundaries are
+	// the whole risk — an off-by-one here is somebody underpaid.
+	const { spansFrom } = await import("../src/lib/hackatime")
+	const {
+		cachedSpansCover,
+		capSubtraction,
+		mergeIntervals,
+		overlapSeconds,
+		parseCachedSpans,
+		spanWindowFor,
+		timelapseWindow,
+	} = await import("../src/lib/hours-overlap")
+
+	const spanList = (...spans: { start_time: number; end_time: number }[]) => ({ spans })
+	const read = spansFrom(spanList({ start_time: 1000, end_time: 1600 }, { start_time: 1700, end_time: 2000 }))
+	check(
+		"hackatime spans · two spans are read",
+		read.stale === false && read.spans.length === 2 && read.spans[0]?.start === 1000,
+	)
+
+	// An empty list is a real answer: the project was tracked at no time in the
+	// window. A missing list is not, and must never read as "no overlap".
+	const emptyList = spansFrom(spanList())
+	check("hackatime spans · an empty list is a finding", emptyList.stale === false && emptyList.spans.length === 0)
+
+	const noSpans = spansFrom({ data: {} })
+	check("hackatime spans · a response with no spans is stale", noSpans.stale === true && noSpans.spans.length === 0)
+
+	const nullSpans = spansFrom(null)
+	check("hackatime spans · a null body is stale", nullSpans.stale === true)
+
+	// One malformed row costs that row, not the participant's hours.
+	const mixed = spansFrom(spanList({ start_time: 1000, end_time: 1600 }, { start_time: null, end_time: 5 } as never))
+	check(
+		"hackatime spans · a malformed row is dropped, the rest survive",
+		mixed.stale === false && mixed.spans.length === 1,
+	)
+
+	// A backwards span is not time anybody spent.
+	const backwards = spansFrom(spanList({ start_time: 1600, end_time: 1000 }))
+	check("hackatime spans · a backwards span is dropped", backwards.spans.length === 0)
+
+	// The headline case: a two-hour recording, entirely inside two hours of
+	// tracked time on the linked project. All of it is double-counted.
+	// Every case below needs a window, so an absent one would make the checks
+	// vacuously true. Asserted once here rather than in each.
+	const recording = timelapseWindow(1_700_000_000_000, 7200)
+	check("overlap · a recording with a start and duration is a window", recording !== null)
+
+	// The subtraction as the ledger applies it: a journal entry claiming two hours
+	// with a two-hour recording, beside a link reporting two hours tracked over
+	// the same period. Five hours claimed, three hours of actual work.
+	const { rollUpHours } = await import("../src/lib/hours")
+	const { HoursSource: Source, Phase: ReviewPhase } = await import("../src/app/generated/prisma/enums")
+	const oneEntry = [
+		{
+			hoursClaimed: 2,
+			hoursApproved: null,
+			hoursSource: Source.MANUAL,
+			timelapses: [{ recordedAt: new Date(1_700_000_000_000), coveredSeconds: 7200 }],
+		},
+	]
+	const twoHoursTracked = [
+		{
+			hoursApproved: null,
+			cachedSeconds: 7200,
+			cachedSpans: { from: 1_699_000_000, to: 1_701_000_000, spans: [{ start: 1_700_000_000, end: 1_700_007_200 }] },
+		},
+	]
+
+	const deduped = rollUpHours(oneEntry, twoHoursTracked, null)
+	check(
+		"rollup · the same sitting counts once, not twice",
+		deduped.computedTotal === 2 && deduped.journalHours === 2 && deduped.hackatimeHours === 0,
+		`got total ${deduped.computedTotal}, hackatime ${deduped.hackatimeHours}`,
+	)
+	check("rollup · the subtracted overlap is reported", deduped.hackatimeOverlapSeconds === 7200)
+
+	// Genuinely different work on the same project stays additive: an hour of
+	// building that was never recorded, plus an hour recorded and tracked.
+	const distinct = rollUpHours(oneEntry, [{ hoursApproved: null, cachedSeconds: 3600, cachedSpans: null }], null)
+	check(
+		"rollup · untracked hours still add to a journal entry",
+		distinct.computedTotal === 3,
+		`got ${distinct.computedTotal}`,
+	)
+
+	// A link whose tracking is outside the recording's window is not overlap.
+	const elsewhere = rollUpHours(oneEntry, [
+		{
+			hoursApproved: null,
+			cachedSeconds: 7200,
+			cachedSpans: { from: 1_600_000_000, to: 1_601_000_000, spans: [{ start: 1_600_000_000, end: 1_600_007_200 }] },
+		},
+	], null)
+	check(
+		"rollup · tracking from another day is still counted",
+		elsewhere.computedTotal === 4,
+		`got ${elsewhere.computedTotal}`,
+	)
+
+	// A reviewer override is a decision, not a computed value, and stands.
+	const overridden = rollUpHours(oneEntry, [{ hoursApproved: 5, cachedSeconds: 7200, cachedSpans: null }], null)
+	check(
+		"rollup · a reviewer override is not deduplicated",
+		overridden.hackatimeHours === 5 && overridden.computedTotal === 7,
+		`got ${overridden.computedTotal}`,
+	)
+
+	// The common case: nobody records anything, so there is nothing to compare and
+	// the two tools add up as they always did.
+	const noTimelapses = [{ hoursClaimed: 3, hoursApproved: null, hoursSource: Source.MANUAL }]
+	check(
+		"rollup · an unrecorded project is unchanged",
+		rollUpHours(noTimelapses, twoHoursTracked, null).computedTotal === 5,
+	)
+	check(
+		"rollup · a HACKATIME_TRACKED entry still contributes nothing",
+		rollUpHours(
+			[
+				{
+					hoursClaimed: 2,
+					hoursApproved: null,
+					hoursSource: Source.HACKATIME_TRACKED,
+					timelapses: [{ recordedAt: new Date(1_700_000_000_000), coveredSeconds: 7200 }],
+				},
+			],
+			twoHoursTracked,
+			null,
+		).computedTotal === 2,
+		"its recording must not subtract from a link that already carries its time",
+	)
+
+	// A frozen phase keeps the number it was approved at.
+	check(
+		"rollup · a frozen phase reports its frozen total",
+		rollUpHours(oneEntry, twoHoursTracked, 9).effectiveHours === 9,
+	)
+	// Present so the enum import is exercised rather than merely referenced.
+	check("rollup · the phase enum is the one the schema defines", ReviewPhase.DESIGN === "DESIGN")
+
+	// The headline case: a two-hour recording, entirely inside the two hours of
+	// tracked time on the linked project. All of it is double-counted.
+	check(
+		"overlap · a recording fully inside tracked time is all overlap",
+		recording !== null && overlapSeconds([recording], [{ start: 1_700_000_000, end: 1_700_007_200 }]) === 7200,
+	)
+
+	// A recording that overruns the tracked time gives up only what tracked.
+	check(
+		"overlap · only the tracked part of a recording is overlap",
+		recording !== null && overlapSeconds([recording], [{ start: 1_700_000_000, end: 1_700_001_800 }]) === 1800,
+	)
+
+	// Two recordings either side of a break: neither overlaps, and the gap
+	// between them is not counted as anything.
+	const twoRecordings = [timelapseWindow(1_700_000_000_000, 600), timelapseWindow(1_700_003_000_000, 600)].filter(
+		(w) => w !== null,
+	)
+	check(
+		"overlap · a tracked span between two recordings overlaps neither",
+		overlapSeconds(twoRecordings, [{ start: 1_700_001_000, end: 1_700_002_000 }]) === 0,
+	)
+
+	// Recording A runs into recording B: the shared minutes are claimed twice by
+	// the journal, and must be counted once before being subtracted.
+	const overlapping = [timelapseWindow(1_700_000_000_000, 3600), timelapseWindow(1_700_001_800_000, 3600)].filter(
+		(w) => w !== null,
+	)
+	check(
+		"overlap · a minute inside two recordings is counted once",
+		overlapSeconds(overlapping, [{ start: 1_700_003_000, end: 1_700_003_600 }]) === 600,
+	)
+
+	// Two spans either side of a gap, both inside one recording: the gap between
+	// them is not tracked time and must not be charged to Hackatime.
+	const hourRecording = timelapseWindow(1_700_000_000_000, 3600)
+	check(
+		"overlap · an untracked gap inside a recording is not overlap",
+		hourRecording !== null &&
+			overlapSeconds(
+				[hourRecording],
+				[
+					{ start: 1_700_000_000, end: 1_700_000_600 },
+					{ start: 1_700_003_000, end: 1_700_003_600 },
+				],
+			) === 1200,
+	)
+
+	// Nothing to compare, and a touching pair: 600, not 1200.
+	check("overlap · no tracked time is no overlap", overlapSeconds(twoRecordings, []) === 0)
+	check(
+		"overlap · two spans touching at a point share no time",
+		hourRecording !== null &&
+			overlapSeconds(
+				[hourRecording],
+				[
+					{ start: 1_699_999_400, end: 1_700_000_000 },
+					{ start: 1_700_000_000, end: 1_700_003_600 },
+				],
+			) === 3600,
+	)
+
+	// Hackatime's spans carry up to two minutes of padding past a gap, so their
+	// sum can exceed the project total. A subtraction larger than what is there
+	// would print a negative hour, which is worse than a duplicated one.
+	check("overlap · a subtraction is capped at the link's own seconds", capSubtraction(3600, 7200) === 3600)
+	check("overlap · nothing to subtract from subtracts nothing", capSubtraction(0, 7200) === 0)
+	check("overlap · junk subtracts nothing", capSubtraction(Number.NaN, 7200) === 0)
+
+	// Without a start there is no window, and inventing one from the row's own
+	// created_at would subtract the wrong sitting's time.
+	check("overlap · no recording start means no window", timelapseWindow(null, 7200) === null)
+	check("overlap · a zero-length recording is no window", timelapseWindow(1_700_000_000_000, 0) === null)
+
+	// Merging is what stops two windows describing one minute from counting it
+	// twice on the way in.
+	check(
+		"overlap · overlapping windows merge into one",
+		mergeIntervals([
+			{ start: 0, end: 100 },
+			{ start: 50, end: 150 },
+		]).length === 1 &&
+			mergeIntervals([
+				{ start: 0, end: 100 },
+				{ start: 50, end: 150 },
+			])[0]?.end === 150,
+	)
+	check(
+		"overlap · touching windows merge into one",
+		mergeIntervals([
+			{ start: 0, end: 100 },
+			{ start: 100, end: 200 },
+		]).length === 1,
+	)
+	check(
+		"overlap · disjoint windows stay apart",
+		mergeIntervals([
+			{ start: 0, end: 100 },
+			{ start: 200, end: 300 },
+		]).length === 2,
+	)
+
+	// Cached spans carry the window they were fetched for. A cached answer to a
+	// narrower question is not an answer, and must force a refetch rather than
+	// conclude "no overlap" about minutes it never covered.
+	const cache = parseCachedSpans({ from: 100, to: 200, spans: [{ start: 100, end: 200 }] })
+	check("overlap · cached spans are read back", cache !== null && cache.spans.length === 1)
+	check("overlap · a cache covering the window is used", cache !== null && cachedSpansCover(cache, 120, 180) === true)
+	check(
+		"overlap · a cache narrower than the window is not used",
+		cache !== null && cachedSpansCover(cache, 50, 180) === false && cachedSpansCover(cache, 120, 250) === false,
+	)
+	// A shape this did not write is no cache at all: one refetch, not a wrong answer.
+	check("overlap · an unrecognised cache shape is ignored", parseCachedSpans([{ start: 1, end: 2 }]) === null)
+	check("overlap · a null cache is ignored", parseCachedSpans(null) === null)
+
+	// The fetch window covers every recording, with slack for clock drift.
+	const fetchWindow = spanWindowFor([
+		{ start: 1_700_000_000, end: 1_700_003_600 },
+		{ start: 1_700_010_000, end: 1_700_010_600 },
+	])
+	check(
+		"overlap · the fetch window spans every recording plus an hour",
+		fetchWindow !== null &&
+			fetchWindow.fromSeconds === 1_700_000_000 - 3600 &&
+			fetchWindow.toSeconds === 1_700_010_600 + 3600,
+	)
+	check("overlap · no recordings means no window to fetch", spanWindowFor([]) === null)
+
 	/* ── 5e. Printer award transitions ─────────────────────────────────────── */
 	const { canMovePrinterAward } = await import("../src/lib/printer-award")
 	check(
