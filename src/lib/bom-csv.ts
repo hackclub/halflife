@@ -152,9 +152,9 @@ function parseRows(input: string): string[][] {
 /** Which column each field lives in, by the names its cells carry. */
 function mapHeader(row: readonly string[]): Partial<Record<Field, number>> {
 	const map: Partial<Record<Field, number>> = {}
-	row.forEach((cell, index) => {
+	for (const [index, cell] of row.entries()) {
 		const key = normalize(cell)
-		if (!key) return
+		if (!key) continue
 		for (const field of FIELD_ORDER) {
 			if (map[field] !== undefined) continue
 			if (ALIASES[field].includes(key)) {
@@ -162,7 +162,7 @@ function mapHeader(row: readonly string[]): Partial<Record<Field, number>> {
 				break
 			}
 		}
-	})
+	}
 	return map
 }
 

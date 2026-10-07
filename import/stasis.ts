@@ -344,7 +344,7 @@ async function importProjects(userIds: Set<string>): Promise<{
   let dropped = 0
 
   for (const [userId, list] of byUser) {
-    list.slice(0, 5).forEach((p, i) => {
+    for (const [i, p] of list.slice(0, 5).entries()) {
       const theme = THEME_ORDER[i]!
       const tier = p.tier && p.tier >= 1 && p.tier <= 3 ? p.tier : null
       ids.add(p.id)
@@ -377,7 +377,7 @@ async function importProjects(userIds: Set<string>): Promise<{
         deletedAt: p.deletedAt,
         deletedById: p.deletedById,
       })
-    })
+    }
     dropped += Math.max(0, list.length - 5)
   }
   if (dropped > 0) console.log(`  (dropped ${dropped} projects past each user's fifth theme slot)`)

@@ -31,8 +31,11 @@ export function Timeline({
 	const split = new Set(items.map(phaseOf).filter(Boolean)).size > 1
 	let running: "DESIGN" | "BUILD" | null = null
 	const rows: React.ReactNode[] = []
-	items.forEach((item, i) => {
-		const phase = phaseOf(item) ?? running ?? items.slice(i).map(phaseOf).find(Boolean) ?? null
+	for (const [i, item] of items.entries()) {
+		// Annotated because `running` is assigned from this on the next pass, so
+		// left to inference it is its own initializer.
+		const phase: "DESIGN" | "BUILD" | null =
+			phaseOf(item) ?? running ?? items.slice(i).map(phaseOf).find(Boolean) ?? null
 		if (split && phase && phase !== running) {
 			running = phase
 			rows.push(
@@ -59,7 +62,7 @@ export function Timeline({
 				</div>
 			</li>,
 		)
-	})
+	}
 
 	return (
 		<ol className="relative grid gap-6 before:absolute before:top-2 before:bottom-2 before:left-[15px] before:w-0.5 before:rounded-full before:bg-line">

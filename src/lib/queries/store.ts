@@ -274,7 +274,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 				}
 			}
 
-			phaseSessions.forEach((session, index) => {
+			for (const [index, session] of phaseSessions.entries()) {
 				progress[id(`entry-${index + 1}`)] = {
 					done: true,
 					at: session.createdAt.getTime(),
@@ -293,7 +293,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 						},
 					],
 				}
-			})
+			}
 
 			// The newest hand-in dates the node; the status says whether it stands. A week taken back out of review (or reopened by an admin) is draft again with its old submission rows still there, and it has to read as not handed in, or the trail would hide the Submit it needs again.
 			const submission = submissions.filter((s) => s.themeProjectId === project.id && s.phase === phase).at(-1)
@@ -323,14 +323,14 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 		}
 	}
 
-	THEMES.forEach((theme, themeIndex) => {
+	for (const [themeIndex, theme] of THEMES.entries()) {
 		const project = byTheme.get(theme.id)
-		if (!project) return
+		if (!project) continue
 		for (const phase of [Phase.DESIGN, Phase.BUILD] as const) {
 			const week = weekOf(themeIndex, phase)
 			recordPhase(project, phase, `w${week}`, week)
 		}
-	})
+	}
 
 	// Each warm-up is one submission, so only its one phase goes on the record. Its journal closes the night before week 1 opens (week 0's close), later if extended.
 	const warmups: StoreSnapshot["warmups"] = {}

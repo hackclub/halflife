@@ -53,14 +53,14 @@ const trailRows = (week: Week, done: (id: string) => boolean, passed: (id: strin
  */
 function ghostAfter(rows: Checkpoint[][], done: (id: string) => boolean, passed: (id: string) => boolean): Set<number> {
 	const at = new Set<number>()
-	rows.forEach((row, i) => {
+	for (const [i, row] of rows.entries()) {
 		const next = rows[i + 1]
-		if (next?.length !== 1) return
+		if (next?.length !== 1) continue
 		const [reel] = next
-		if (reel?.kind !== "reel" || done(reel.id) || passed(reel.id)) return
-		if (!row.some((c) => c.kind === "journal" && !done(c.id))) return
+		if (reel?.kind !== "reel" || done(reel.id) || passed(reel.id)) continue
+		if (!row.some((c) => c.kind === "journal" && !done(c.id))) continue
 		at.add(i)
-	})
+	}
 	return at
 }
 
@@ -387,10 +387,10 @@ function WeekTrail({ week, currentId, phase }: { week: Week; currentId: string |
 	// The ghost rows from above, woven in where they were marked: each takes a beat's stride, like the entries whose growth it stands in for.
 	const ghosts = ghostAfter(rows, done, isPassed)
 	const lined: { row: Checkpoint[]; ghost: boolean }[] = []
-	rows.forEach((row, i) => {
+	for (const [i, row] of rows.entries()) {
 		lined.push({ row, ghost: false })
 		if (ghosts.has(i)) lined.push({ row: [], ghost: true })
-	})
+	}
 
 	const placed: { row: Checkpoint[]; ghost: boolean; full: number; beats: number; beat: boolean }[] = []
 	let full = 0

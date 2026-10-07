@@ -136,11 +136,11 @@ export function parseShopCsv(text: string): { items: ShopCsvItem[]; problems: Sh
 					.replace(/[^a-z]/g, "")
 			],
 	)
-	head.fields.forEach((h, i) => {
+	for (const [i, h] of head.fields.entries()) {
 		if (!columns[i] && h.trim() !== "") {
 			problems.push({ line: 1, message: `Unknown column "${h.trim()}". Columns are: ${SHOP_CSV_COLUMNS.join(", ")}.` })
 		}
-	})
+	}
 	const missing = REQUIRED.filter((c) => !columns.includes(c))
 	if (missing.length > 0)
 		problems.push({ line: 1, message: `Missing column${missing.length > 1 ? "s" : ""}: ${missing.join(", ")}.` })
