@@ -2,6 +2,8 @@ import { after } from "next/server"
 import { AppShell } from "@/components/platform/shell/AppShell"
 import { touchActivity } from "@/lib/analytics"
 import { requireSessionPage } from "@/lib/page-guards"
+import { getProgramSettings } from "@/lib/program"
+import { listUpcomingEvents } from "@/lib/queries/events"
 import { getStoreSnapshot } from "@/lib/queries/store"
 import { StoreProvider } from "@/lib/store"
 
@@ -19,11 +21,25 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 	const { user } = await requireSessionPage()
 	// After the response: counting a page view must never slow one down.
 	after(() => touchActivity(user.id))
-	const snapshot = await getStoreSnapshot(user.id)
+	// The events come from here rather than from the dashboard page, because the
+	// countdown is in the shell's header and the header is in the layout: reading
+	// them per page would put a second calendar query on every route and leave the
+	// header empty on the ones that forgot.
+	//
+	// The lower bound is a cut-off, not a "has not started" filter. An event that
+	// began an hour ago and runs for two more is happening now, and dropping it
+	// would make the header count down to the next one while this one is still on.
+	const [snapshot, events, settings] = await Promise.all([
+		getStoreSnapshot(user.id),
+		listUpcomingEvents(new Date(), 24),
+		getProgramSettings(),
+	])
 
 	return (
 		<StoreProvider snapshot={snapshot}>
-			<AppShell>{children}</AppShell>
+			<AppShell events={events} programTimezone={settings.programTimezone}>
+				{children}
+			</AppShell>
 		</StoreProvider>
 	)
 }

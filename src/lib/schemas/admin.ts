@@ -1,5 +1,6 @@
 import { z } from "zod"
 import {
+	EventColour,
 	Phase,
 	PrinterAwardStatus,
 	Role,
@@ -140,6 +141,55 @@ export const orderFulfillmentSchema = z
 	})
 	.strict()
 	.refine((b) => b.method !== undefined || b.stage !== undefined, "Nothing to change")
+
+/**
+ * Creating an event on the programme calendar.
+ *
+ * `startsAt` and `endsAt` arrive as ISO strings from `datetime-local` inputs, so
+ * they are coerced rather than typed as dates on the wire. The end is optional
+ * and independent: an open call has no end, and a call with a start but a blank
+ * end is a common mistake rather than a nonsense one.
+ *
+ * `repeatWeeks` asks the route to write the whole series in one go rather than
+ * making an admin press create ten times. It is a number of *weeks*, so the
+ * occurrences land on the same weekday; the route owns the arithmetic and the
+ * audit row records how many were made.
+ */
+export const programEventCreateSchema = z
+	.object({
+		title: boundedText(120, 1),
+		colour: z.enum(EventColour).default(EventColour.SLATE),
+		description: boundedText(2000).nullable().optional(),
+		startsAt: z.coerce.date(),
+		endsAt: z.coerce.date().nullable().optional(),
+		published: z.boolean().default(true),
+		/** 1 is a one-off. Capped at a year of weeks so a stray keypress cannot ask for ten thousand rows. */
+		repeatWeeks: z.number().int().min(1).max(52).default(1),
+	})
+	.strict()
+	.refine((b) => b.endsAt === null || b.endsAt === undefined || b.endsAt > b.startsAt, {
+		message: "An event has to end after it starts",
+		path: ["endsAt"],
+	})
+
+/**
+ * Editing one occurrence.
+ *
+ * No `repeatWeeks`: a series is edited one occurrence at a time on purpose, since
+ * that is the edit that actually gets made. `null` is the clear for a nullable
+ * field, so a half-finished draft can be emptied rather than only set.
+ */
+export const programEventUpdateSchema = z
+	.object({
+		title: boundedText(120, 1).optional(),
+		colour: z.enum(EventColour).optional(),
+		description: boundedText(2000).nullable().optional(),
+		startsAt: z.coerce.date().optional(),
+		endsAt: z.coerce.date().nullable().optional(),
+		published: z.boolean().optional(),
+	})
+	.strict()
+	.refine((b) => Object.keys(b).length > 0, "Nothing to change")
 
 export const programSettingsSchema = z
 	.object({

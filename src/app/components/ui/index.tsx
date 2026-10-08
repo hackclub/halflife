@@ -36,10 +36,21 @@ export function LinkButton({
 export function Panel({
 	title,
 	actions,
+	wide,
 	children,
-}: Readonly<{ title?: ReactNode; actions?: ReactNode; children: ReactNode }>) {
+}: Readonly<{
+	title?: ReactNode
+	actions?: ReactNode
+	/**
+	 * Break out of the shell's reading column and use the full window width, for a diagram wider than that column. Pure CSS (`.hl-panel--wide`), so it never re-lays-out on its own – a measured width driven from state would resize the panel, which would re-measure it, and the diagram would jitter while the window is dragged.
+	 */
+	wide?: boolean
+	children: ReactNode
+}>) {
 	return (
-		<section className="hl-panel hl-stack hl-stack--tight">
+		<section
+			className={wide ? "hl-panel hl-stack hl-stack--tight hl-panel--wide" : "hl-panel hl-stack hl-stack--tight"}
+		>
 			{(title || actions) && (
 				<div className="hl-row" style={{ justifyContent: "space-between" }}>
 					{title ? <h2 style={{ margin: 0, fontSize: "1.05rem" }}>{title}</h2> : <span />}

@@ -1,6 +1,7 @@
 import Link from "next/link"
-import { UserFlowFunnel } from "@/app/components/admin/UserFlowFunnel"
+import { UserFlowDiagram } from "@/app/components/admin/UserFlowDiagram"
 import { EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
+import type { ReviewResult } from "@/app/generated/prisma/enums"
 import { requireAnyPermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import {
@@ -11,7 +12,9 @@ import {
 	getCountryStats,
 	getDailyActivity,
 	getFirstProjectStats,
+	getReviewerStats,
 	getUserFlowFunnel,
+	getUserFlowSankey,
 } from "@/lib/queries/admin"
 import { getLatestSyncRuns } from "@/lib/sync-run-log"
 
@@ -19,6 +22,13 @@ export const dynamic = "force-dynamic"
 
 const fmtInt = (n: number) => n.toLocaleString("en-US")
 const fmtHours = (h: number) => `${h.toLocaleString("en-US", { maximumFractionDigits: 1 })}h`
+
+/** Outcome wording, the same one a maker is told in lib/notifications. */
+const RESULT_LABEL: Record<ReviewResult, string> = {
+	APPROVED: "Approved",
+	RETURNED: "Changes requested",
+	REJECTED: "Rejected",
+}
 
 export default async function AdminOverviewPage() {
 	await requireAnyPermissionPage(
@@ -29,7 +39,7 @@ export default async function AdminOverviewPage() {
 		Permission.MANAGE_PROGRAM,
 	)
 
-	const [counters, syncs, flow, areas, countries, activity, firstProjects] = await Promise.all([
+	const [counters, syncs, flow, sankey, areas, countries, activity, firstProjects, reviewer] = await Promise.all([
 		getAdminCounters(),
 		getLatestSyncRuns([
 			"hackatime",
@@ -42,10 +52,12 @@ export default async function AdminOverviewPage() {
 			"help_ticket_summary",
 		]),
 		getUserFlowFunnel(),
+		getUserFlowSankey(),
 		getAreaStats(),
 		getCountryStats(),
 		getDailyActivity(),
 		getFirstProjectStats(),
+		getReviewerStats(),
 	])
 
 	return (
@@ -53,22 +65,41 @@ export default async function AdminOverviewPage() {
 			<PageHeader title="Overview" />
 
 			<div className="hl-row">
-				<Stat label="Awaiting review" value={counters.pendingReviews} />
 				<Stat label="Orders to fulfil" value={counters.pendingOrders} />
 				<Stat label="Participants" value={counters.participants} />
 				<Stat label="Printers earned" value={counters.shipped} />
 			</div>
 
 			<Panel
-				title="User flow"
+				title="Reviewer activity"
 				actions={
 					<span className="hl-hint" style={{ fontSize: "0.78rem" }}>
-						each step includes everyone who completed every step above it
+						mirrors Ari, so no need to open it for the totals
 					</span>
 				}
 			>
-				<UserFlowFunnel steps={flow} />
+				<div className="hl-row">
+					<Stat label="Awaiting review" value={counters.pendingReviews} />
+					<Stat label="Reviewed today" value={reviewer.reviewedToday} />
+					<Stat label="Reviewed total" value={reviewer.reviewedTotal} />
+				</div>
+				<Table head={["Outcome", "Today", "All time"]}>
+					{reviewer.byResult.map((row) => (
+						<tr key={row.result}>
+							<td>{RESULT_LABEL[row.result]}</td>
+							<td className="hl-mono">{fmtInt(row.today)}</td>
+							<td className="hl-mono">{fmtInt(row.total)}</td>
+						</tr>
+					))}
+				</Table>
+				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+					Awaiting review counts hand-ins; the other three count projects, once however many of their phases were
+					reviewed, shown by the outcome standing now – a project approved on design and sent back on build reads as
+					changes requested. Ari&apos;s decisions are included. A review an admin or Ari later undid no longer counts.
+				</p>
 			</Panel>
+
+			<UserFlowDiagram steps={flow} sankey={sankey} />
 
 			<Panel title="Users & hours by continent">
 				<div

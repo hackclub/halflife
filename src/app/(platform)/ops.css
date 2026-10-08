@@ -201,6 +201,15 @@ h4 {
 		background: var(--color-surface-raised);
 	}
 
+	/* A panel that breaks out of the shell's reading column to the full window width, for a diagram wider than the column: 1rem of breathing room each side, then edge to edge.
+	 *
+	 * `100vw` counts the vertical scrollbar, so this is a scrollbar's width wider than the readable area. That is why the shell must not clip: clipping it back into the column is what cut the panel's sides off. The overhang is absorbed by the page itself, which is why the shell carries no overflow rule.
+	 */
+	.hl-panel--wide {
+		width: calc(100vw - 2rem);
+		margin-left: calc(50% - 50vw + 1rem);
+	}
+
 	/* ── Sidebar ───────────────────────────────────────────────────────────── */
 	.hl-sidebar {
 		display: flex;
