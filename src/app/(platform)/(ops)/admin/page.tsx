@@ -6,7 +6,6 @@ import { requireAnyPermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import {
 	type DayActivity,
-	type FirstProjectStat,
 	getAdminCounters,
 	getAreaStats,
 	getCountryStats,
@@ -15,6 +14,7 @@ import {
 	getReviewerStats,
 	getUserFlowFunnel,
 	getUserFlowSankey,
+	getVerificationStats,
 } from "@/lib/queries/admin"
 import { getLatestSyncRuns } from "@/lib/sync-run-log"
 
@@ -39,26 +39,28 @@ export default async function AdminOverviewPage() {
 		Permission.MANAGE_PROGRAM,
 	)
 
-	const [counters, syncs, flow, sankey, areas, countries, activity, firstProjects, reviewer] = await Promise.all([
-		getAdminCounters(),
-		getLatestSyncRuns([
-			"hackatime",
-			"airtable_ysws",
-			"airtable_rsvp",
-			"airtable_loops",
-			"ari_ship",
-			"claim_sweep",
-			"printer_reconcile",
-			"help_ticket_summary",
-		]),
-		getUserFlowFunnel(),
-		getUserFlowSankey(),
-		getAreaStats(),
-		getCountryStats(),
-		getDailyActivity(),
-		getFirstProjectStats(),
-		getReviewerStats(),
-	])
+	const [counters, syncs, flow, sankey, areas, countries, activity, firstProjects, verification, reviewer] =
+		await Promise.all([
+			getAdminCounters(),
+			getLatestSyncRuns([
+				"hackatime",
+				"airtable_ysws",
+				"airtable_rsvp",
+				"airtable_loops",
+				"ari_ship",
+				"claim_sweep",
+				"printer_reconcile",
+				"help_ticket_summary",
+			]),
+			getUserFlowFunnel(),
+			getUserFlowSankey(),
+			getAreaStats(),
+			getCountryStats(),
+			getDailyActivity(),
+			getFirstProjectStats(),
+			getVerificationStats(),
+			getReviewerStats(),
+		])
 
 	return (
 		<div className="hl-stack">
@@ -147,10 +149,27 @@ export default async function AdminOverviewPage() {
 			</Panel>
 
 			<Panel title="First project choice">
-				<FirstProjectDonut stats={firstProjects} />
+				<ShareDonut
+					measure="First project choice"
+					empty="No finished setups yet."
+					rows={firstProjects.map((s) => ({ label: s.label, value: s.users }))}
+				/>
 				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
 					Users who finished setup and still have their week-one project. Starter names come from the catalogue; Custom
 					project means they named their own idea.
+				</p>
+			</Panel>
+
+			<Panel title="Identity verification">
+				<ShareDonut
+					measure="Identity status"
+					empty="No accounts yet."
+					rows={verification.map((s) => ({ label: s.label, value: s.users }))}
+				/>
+				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+					Hack Club Auth&apos;s own reading of each account, taken at its last sign-in or submit. Only a verified
+					identity can be paid; needs submission is somebody part-way through IDV, and not asked is an account no
+					sign-in has reported on yet.
 				</p>
 			</Panel>
 
@@ -458,11 +477,22 @@ function ActivityStrip({ days }: { days: DayActivity[] }) {
 }
 
 /**
- * First-project choice as a donut: one slice per starter plus Custom, with a legend carrying the counts. Segments are SVG circles rather than a chart dependency – the page's other visuals are hand-rolled the same way – and the figure carries a text summary so the shares do not live in colour alone.
+ * One set of named shares as a donut: every slice named in the legend beside it, with its count and its share. Segments are SVG circles rather than a chart dependency – the page's other visuals are hand-rolled the same way – and the figure carries a text summary so the shares do not live in colour alone.
+ *
+ * Two panels use it: the first-project choice, and the Hack Club Auth identity statuses. It deliberately does not fold a tail into "Other" the way the continent and country pies do – an identity status is a word an operator needs to read, not a sliver to be summarised.
  */
-function FirstProjectDonut({ stats }: { stats: FirstProjectStat[] }) {
-	const total = stats.reduce((n, s) => n + s.users, 0)
-	if (total === 0) return <EmptyState>No finished setups yet.</EmptyState>
+function ShareDonut({
+	rows,
+	measure,
+	empty,
+}: {
+	rows: { label: string; value: number }[]
+	/** What the ring counts, for the figure's accessible name. */
+	measure: string
+	empty: string
+}) {
+	const total = rows.reduce((n, r) => n + r.value, 0)
+	if (total === 0) return <EmptyState>{empty}</EmptyState>
 	const palette = [
 		"var(--color-accent)",
 		"var(--color-magenta)",
@@ -475,13 +505,13 @@ function FirstProjectDonut({ stats }: { stats: FirstProjectStat[] }) {
 	]
 	const R = 15.9155 // 100 / 2π: a share of p% is a dash of p units
 	// Segment offsets, computed up front: each slice starts where the last one ended, from path position 0 (3 o'clock). A positive dashoffset does NOT move the start forward – it starts the path that far into the pattern, eating the first segment's opening units (a grey quadrant, in the old code's case) – so the top start comes from the rotate below instead.
-	const shares = stats.map((s) => (s.users / total) * 100)
-	const segments = stats.map((s, i) => ({
-		label: s.label,
+	const shares = rows.map((r) => (r.value / total) * 100)
+	const segments = rows.map((r, i) => ({
+		label: r.label,
 		share: shares[i] ?? 0,
 		start: -shares.slice(0, i).reduce((n, p) => n + p, 0),
 	}))
-	const summary = stats.map((s) => `${s.label} ${Math.round((s.users / total) * 100)}%`).join(", ")
+	const summary = rows.map((r) => `${r.label} ${Math.round((r.value / total) * 100)}%`).join(", ")
 	return (
 		<div
 			style={{
@@ -493,7 +523,7 @@ function FirstProjectDonut({ stats }: { stats: FirstProjectStat[] }) {
 		>
 			<svg
 				role="img"
-				aria-label={`First project choice: ${summary}`}
+				aria-label={`${measure}: ${summary}`}
 				viewBox="0 0 42 42"
 				style={{ width: "11rem", height: "11rem", flexShrink: 0 }}
 			>
@@ -516,9 +546,9 @@ function FirstProjectDonut({ stats }: { stats: FirstProjectStat[] }) {
 				</g>
 			</svg>
 			<ul style={{ display: "grid", gap: "0.4rem", listStyle: "none", margin: 0, padding: 0, minWidth: 0 }}>
-				{stats.map((s, i) => (
+				{rows.map((row, i) => (
 					<li
-						key={s.label}
+						key={row.label}
 						style={{ display: "flex", alignItems: "baseline", gap: "0.5rem", fontVariantNumeric: "tabular-nums" }}
 					>
 						<span
@@ -533,10 +563,10 @@ function FirstProjectDonut({ stats }: { stats: FirstProjectStat[] }) {
 							}}
 						/>
 						<span style={{ fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-							{s.label}
+							{row.label}
 						</span>
 						<span className="hl-hint">
-							{s.users.toLocaleString("en-US")} · {Math.round((s.users / total) * 100)}%
+							{row.value.toLocaleString("en-US")} · {Math.round((row.value / total) * 100)}%
 						</span>
 					</li>
 				))}

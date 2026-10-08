@@ -913,6 +913,42 @@ export async function getFirstProjectStats(): Promise<FirstProjectStat[]> {
 		.sort((a, b) => b.users - a.users)
 }
 
+export interface VerificationStat {
+	label: string
+	users: number
+}
+
+/**
+ * How many accounts sit at each Hack Club Auth identity status.
+ *
+ * A breakdown rather than a single "verified" count, because the states either side of verified mean different things operationally: `needs_submission` is somebody mid-IDV who may yet be paid, `ineligible` is somebody who cannot be, and neither is simply "unverified".
+ *
+ * The status is HCA's own word, stored at each sign-in and submit by lib/hca-profile; a null is an account HCA has never answered for (a staff import nobody has signed in as, or an HCA that could not be reached).
+ */
+export async function getVerificationStats(): Promise<VerificationStat[]> {
+	const rows = await prisma.user.groupBy({ by: ["verificationStatus"], _count: { _all: true } })
+	return rows
+		.filter((row) => row._count._all > 0)
+		.map((row) => ({
+			label:
+				row.verificationStatus === null
+					? "Not asked"
+					: (VERIFICATION_STATUS_LABELS[row.verificationStatus] ?? row.verificationStatus),
+			users: row._count._all,
+		}))
+		.sort((a, b) => b.users - a.users)
+}
+
+/**
+ * HCA's own words for the states it reports. An unknown one is shown verbatim rather than dropped, so a status HCA adds later still shows up instead of vanishing into a hole in the ring.
+ */
+const VERIFICATION_STATUS_LABELS: Record<string, string> = {
+	verified: "Verified",
+	needs_submission: "Needs submission",
+	pending: "Pending",
+	ineligible: "Ineligible",
+}
+
 export interface ReviewerResultStat {
 	result: ReviewResult
 	/** Distinct projects whose most recent live review is this one, written today. */
