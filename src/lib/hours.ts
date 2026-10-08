@@ -405,7 +405,7 @@ export function buildCoinsFor(approvedHours: number): CoinSplit {
 /**
  * Hours to coins, rounded UP and capped.
  *
- * Up rather than down because the budget sheet paces in fractional hours – the Ender asks 3.76 a week, the A1 Mini 4.64 – and coins are whole. Flooring 4.64 * 5 = 23.2 to 23 loses a coin a week, which over five design weeks leaves an A1 Mini saver one coin short of the machine they were told they were on track for. Rounding up costs a handful of coins and keeps the promise the goal tracker makes.
+ * Up rather than down because the budget sheet paces in fractional hours – the A1 Mini asks 4.64 a week – and coins are whole. Flooring 4.64 * 5 = 23.2 to 23 loses a coin a week, which over five design weeks leaves an A1 Mini saver one coin short of the machine they were told they were on track for. Rounding up costs a handful of coins and keeps the promise the goal tracker makes.
  *
  * Capped, because `approvedHours` can come from a reviewer typing into a box and a fat-fingered 1000 should not mint five thousand coins.
  */
