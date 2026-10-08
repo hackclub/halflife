@@ -387,8 +387,9 @@ function DetailsForm({
 						})}
 						{pacingToPrinter && (
 							<p className="text-[0.82rem] leading-snug text-navy-soft">
-								Every hour past your tier&apos;s parts-funding earns <strong className="rounded bg-gold-pale px-1 text-gold-ink">5 coins</strong>, added straight to your spendable balance
-								to use on your {goal.name} or anything else – changing your goal later never changes what you earn.
+								Every hour past your tier&apos;s parts-funding earns{" "}
+								<strong className="rounded bg-gold-pale px-1 text-gold-ink">5 coins</strong>, which you can spend on
+								your {goal.name} or anything else. If you change your goal later, this doesn't affect what you earn.
 							</p>
 						)}
 					</>
