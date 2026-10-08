@@ -177,6 +177,8 @@ function DetailsForm({
 
 	// The printer goal every hour is paced against, and only when the person is actually saving toward one: "funding for all/some weeks" goals have no machine to pace to, so nothing should warn against their tier or their starter.
 	const goal = printerById(goalId)
+	const selectedTier = TIERS.find((t) => t.id === tier)
+	const readyToSubmit = selectedTier !== undefined && hours >= submitFloorFor(selectedTier.fundingHours)
 	const pacingToPrinter = participantGoal === null || participantGoal === ParticipantGoal.PRINTER
 	const hotGoal = pacingToPrinter && goal.hoursPerWeek > MIN_HOURS_PER_WEEK
 
@@ -387,9 +389,19 @@ function DetailsForm({
 						})}
 						{pacingToPrinter && (
 							<p className="text-[0.82rem] leading-snug text-navy-soft">
-								Every hour past your tier&apos;s parts-funding earns{" "}
-								<strong className="rounded bg-gold-pale px-1 text-gold-ink">5 coins</strong>, which you can spend on
-								your {goal.name} or anything else. If you change your goal later, this doesn't affect what you earn.
+								{readyToSubmit ? (
+									<>
+										Congrats, you have the hours for this tier's funding! Any more work on it earns{" "}
+										<strong className="rounded bg-gold-pale px-1 text-gold-ink">5 coins</strong> per hour, as long as
+										the time doesn&apos;t get deflated.
+									</>
+								) : (
+									<>
+										Every hour past your tier&apos;s parts-funding earns{" "}
+										<strong className="rounded bg-gold-pale px-1 text-gold-ink">5 coins</strong>, which you can spend on
+										your {goal.name} or anything else. If you change your goal later, this doesn't affect what you earn.
+									</>
+								)}
 							</p>
 						)}
 					</>
