@@ -367,12 +367,6 @@ function DetailsForm({
 							<span className="font-bold text-navy tabular-nums">{fmtHours(hours)}</span>{" "}
 							{project.weekId === WARMUP_WEEK_ID ? "on this project." : `in week ${project.weekId}.`}
 						</p>
-						{pacingToPrinter && (
-							<p className="hand text-[0.84rem] leading-snug text-navy-soft">
-								Every hour past your tier&apos;s parts-funding earns <strong className="rounded bg-gold-pale px-1 text-gold-ink">5 coins</strong>, added straight to your spendable balance
-								to use on your {goal.name} or anything else – changing your goal later never changes what you earn.
-							</p>
-						)}
 						{TIERS.map((t) => {
 							const floor = submitFloorFor(t.fundingHours)
 							const short = Math.max(0, floor - hours)
@@ -391,6 +385,12 @@ function DetailsForm({
 								</OptionRow>
 							)
 						})}
+						{pacingToPrinter && (
+							<p className="text-[0.82rem] leading-snug text-navy-soft">
+								Every hour past your tier&apos;s parts-funding earns <strong className="rounded bg-gold-pale px-1 text-gold-ink">5 coins</strong>, added straight to your spendable balance
+								to use on your {goal.name} or anything else – changing your goal later never changes what you earn.
+							</p>
+						)}
 					</>
 				) : (
 					<p className="flex flex-wrap items-center gap-2 text-[0.82rem] text-navy-soft">
