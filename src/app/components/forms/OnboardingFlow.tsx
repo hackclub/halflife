@@ -519,6 +519,9 @@ export function OnboardingFlow({
 								</Panel>
 							))}
 						</ul>
+						<p className="text-[0.9rem] leading-relaxed text-navy-soft">
+							Time spent researching may be deflated fully or partially unless it&apos;s clearly used productively – for example, taking notes from tutorials or referencing datasheets.
+						</p>
 						<StepActions
 							busy={busy}
 							onBack={back}
