@@ -1,5 +1,4 @@
 "use client"
-import { useEffect, useRef, useState } from "react"
 import { EmptyState } from "@/app/components/ui"
 import type { SankeyDiagram, SankeyNode } from "@/lib/queries/admin"
 
@@ -16,8 +15,12 @@ import type { SankeyDiagram, SankeyNode } from "@/lib/queries/admin"
 const NODE_W = 13
 /** Vertical gap between boxes in a stage. */
 const NODE_PAD = 13
-/** Horizontal room for a stage: the box, then the gap its labels need. */
-const STAGE_W = 168
+/**
+ * Horizontal room for a stage: the box, then the gap its labels need.
+ *
+ * Wide enough for the longest stage label plus a five-figure count, because the diagram no longer shrinks and a name that ran past its column would sit on the next stage's box.
+ */
+const STAGE_W = 190
 const HEADER_H = 34
 /** Room under the last stage for the axis of nothing, i.e. breathing space. */
 const FOOT_H = 10
@@ -59,25 +62,8 @@ interface Ribbon {
 
 const fmt = (n: number) => n.toLocaleString("en-US")
 
-/** Clearance inside the panel so the outermost labels are not flush against its edge. */
-const LABEL_PAD = 10
-
 export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 	const { stages, total } = diagram
-	const scroller = useRef<HTMLDivElement>(null)
-	/** Width the panel actually gave us, so the drawing can be sized to it. */
-	const [avail, setAvail] = useState(0)
-
-	useEffect(() => {
-		const el = scroller.current
-		if (!el) return
-		const read = () => setAvail(el.getBoundingClientRect().width)
-		read()
-		// A ResizeObserver rather than a window resize listener: the panel also changes width when the tab flips between the narrow funnel and the full-bleed Sankey, which fires no window resize at all.
-		const observer = new ResizeObserver(read)
-		observer.observe(el)
-		return () => observer.disconnect()
-	}, [])
 
 	if (total === 0 || diagram.nodes.length === 0) return <EmptyState>No signups yet.</EmptyState>
 
@@ -85,26 +71,22 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 	const W = xOf(stages.length - 1) + STAGE_W + 40
 
 	/**
-	 * Fit the space given rather than insisting on its own width.
+	 * Drawn at its own size inside a scroller, rather than scaled to fit the panel.
 	 *
-	 * The drawing is laid out in fixed viewBox units and the SVG scales to whatever it is given, so a narrow window shrinks the whole diagram instead of pushing its sides out of reach. Two things compensate for that shrink, because a scaled-down SVG scales its text too: type is enlarged in viewBox units by the inverse of the shrink so it still renders at its intended size, and the label slot grows with it so labels never overlap. Once a stage's share of the width can no longer hold a number plus its name, the name drops and the number stands alone, with the full label still in the tooltip.
+	 * The journey is now as long as the funnel is, so a seventeen-stage diagram squeezed into a laptop panel would take the type down with it until the labels were unreadable. A scroll is how a diagram this wide is meant to be read, and `margin: 0 auto` still centres it whenever the panel is wider than the drawing. The trade is that the type is a fixed 11 viewBox units rather than enlarged to compensate for a shrink, so the label budget below is a straight comparison in those same units.
 	 */
-	const box = Math.max(0, avail - LABEL_PAD * 2)
-	const fit = box > 0 ? Math.min(1, box / W) : 1
-	const font = Math.min(26, 11 / fit)
+	const font = 11
 	/**
 	 * The vertical slot a label needs, and the reason thin boxes still get one.
 	 *
-	 * Gating a label on the box being tall enough (the first cut of this) left every small cohort nameless, and a 1.5px box is not a hover target. Boxes in a stage are separated by NODE_PAD, so two hairline boxes often already sit further apart than a line of text is tall: their labels fit side by side without moving. Where they would not fit, the label drops into the next free slot and a leader line ties it back to its box, so a number is never lost – only nudged. The slot tracks the font so it still holds when type is enlarged to compensate for a shrink, and it is deliberately roomier than the em: a rendered text box runs to about 1.35em, and a 1.15em slot let neighbours touch.
+	 * Gating a label on the box being tall enough (the first cut of this) left every small cohort nameless, and a 1.5px box is not a hover target. Boxes in a stage are separated by NODE_PAD, so two hairline boxes often already sit further apart than a line of text is tall: their labels fit side by side without moving. Where they would not fit, the label drops into the next free slot and a leader line ties it back to its box, so a number is never lost – only nudged.
 	 */
 	const labelSlot = font * 1.45
 	/** Gap from a box to its label. */
 	const labelGap = font * 0.65
-	// A label gets the gap between its own box and the next one, which the SVG then scales: STAGE_W of viewBox units at whatever the shrink is. Measuring it in the same units as the text it has to hold is the whole point – comparing a viewBox-unit text width against a screen-pixel budget reads as "too tight" at widths where the name actually fits, and drops it for no reason.
-	const screenScale = box > 0 ? box / W : 1
-	// ~0.52em per character is a fair average for this face at these sizes. The longest label plus room for a five-figure count sets the budget for every stage.
+	// ~0.52em per character is a fair average for this face at this size. The budget is the stage's pitch less the box and the gap, because a label starts to the right of its own box: comparing against the whole stage width let the longest name run into the next column's box. `+ 8` covers a five-figure count and the space before the name.
 	const widestLabel = Math.max(...diagram.nodes.map((n) => n.label.length)) + 8
-	const showNames = font * 0.52 * widestLabel * screenScale <= STAGE_W * screenScale
+	const showNames = font * 0.52 * widestLabel <= STAGE_W - NODE_W - labelGap
 
 	const byId = new Map(diagram.nodes.map((n) => [n.id, n]))
 	const stageIndex = new Map<string, number>()
@@ -237,12 +219,13 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 
 	return (
 		<div>
-			<div ref={scroller} style={{ paddingBottom: "0.25rem" }}>
+			{/* A horizontal scroller. The journey is now as long as the funnel's, so the drawing is wider than the panel on every screen and is read by scrolling rather than by shrinking. `overscroll-behavior-x: contain` keeps a sideways trackpad flick at the end of the diagram from turning into a browser back/forward gesture. */}
+			<div style={{ overflowX: "auto", overscrollBehaviorX: "contain", paddingBottom: "0.25rem" }}>
 				<svg
 					viewBox={`0 0 ${W} ${H + HEADER_H + FOOT_H}`}
 					role="img"
 					aria-label={`Participant journey as a Sankey diagram across ${stages.length} stages. ${summary}`}
-					style={{ display: "block", width: "100%", maxWidth: `${W}px`, height: "auto" }}
+					style={{ display: "block", width: `${W}px`, height: "auto", margin: "0 auto" }}
 				>
 					<defs>
 						{ribbons.map((r, i) => (

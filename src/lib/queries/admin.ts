@@ -1041,64 +1041,70 @@ const SANKEY_OUTCOME = [
  *
  * Every stage except the first is optional, so a person contributes to the box they qualify for and the ribbon then jumps to the next stage they reach. A person who reached nothing after signing up is a ribbon that ends, which is a dead end the funnel has no way to draw.
  *
- * Where this disagrees with `getUserFlowFunnel`, this one is the literal answer and the funnel the forgiving one. The funnel treats "finished onboarding" as "did it, or already posted a reel or submitted, which presupposes it" so that a column backfilled mid-program does not shrink everything below it. Here those fallbacks are gone: the stage says what the row actually says. Read the two side by side and the gap between them is the size of that forgiveness.
+ * The journey stages are the funnel's own steps, in the funnel's order and read the funnel's way, so the two views can be laid side by side stage for stage: onboarding is broken out into each question the state machine records rather than collapsed into one "Setup" column, and the funnel's tracked-time rows stay as the activity branches below rather than being drawn twice. What the Sankey adds and the funnel cannot is the branch: the first two tracked activities as their own columns, and an outcome column that says what happened to a hand-in rather than stopping at "submitted".
+ *
+ * Every stage after the first is optional, so a person contributes to the box they qualify for and the ribbon then jumps to the next stage they reach. A person who reached nothing after signing up is a ribbon that ends, which is a dead end the funnel has no way to draw.
  *
  * The activity stages split by *rank*, not by type: a user's first tracked activity and then their second, so "devlog then reel" and "reel then devlog" are two different ribbons and can be read apart. Each kind contributes only its earliest timestamp, so one prolific maker cannot fill three boxes.
  *
  * Read straight off the tables rather than the User analytics markers wherever a marker exists only after a backfill: the funnel needs `distinct: ["userId"]` on Session for the same reason. A missing analytics column must not silently read as "nobody did this".
  */
 export async function getUserFlowSankey(): Promise<SankeyDiagram> {
-	const [users, projects, devlogs, reels, repoLinks, hackatimeLinks, timelapses, submissions] = await Promise.all([
-		prisma.user.findMany({
-			select: {
-				id: true,
-				hardwareExperience: true,
-				onboardingCompletedAt: true,
-				participantGoal: true,
-				firstProjectAt: true,
-				firstChecksPassedAt: true,
-			},
-		}),
-		// A description or a starter pick, read off live projects. Not `namedAt`: that marker was stamped later, so it misses the projects that predate it.
-		prisma.themeProject.findMany({
-			where: { deletedAt: null },
-			select: { userId: true, description: true, starterProjectId: true },
-		}),
-		// The same "a real devlog" rule as the funnel's devlogged step: a HACKATIME_TRACKED row with no timelapse is only a link, not work.
-		prisma.workSession.findMany({
-			where: {
-				deletedAt: null,
-				themeProject: { deletedAt: null },
-				OR: [{ hoursSource: { not: HoursSource.HACKATIME_TRACKED } }, { timelapses: { some: {} } }],
-			},
-			select: { createdAt: true, themeProject: { select: { userId: true } } },
-		}),
-		// A maker's own post, not a staff announcement: an announcement in their feed is not something they did.
-		prisma.post.findMany({
-			where: { deletedAt: null, kind: { not: PostKind.ANNOUNCEMENT } },
-			select: { userId: true, publishedAt: true, createdAt: true },
-		}),
-		prisma.themeProject.findMany({
-			where: {
-				deletedAt: null,
-				OR: [{ githubRepo: { not: null } }, { repoSyncRepo: { not: null } }, { repoSyncEnabled: true }],
-			},
-			select: { createdAt: true, userId: true },
-		}),
-		prisma.hackatimeLink.findMany({
-			where: { themeProject: { deletedAt: null } },
-			select: { createdAt: true, themeProject: { select: { userId: true } } },
-		}),
-		prisma.sessionTimelapse.findMany({
-			where: { workSession: { deletedAt: null, themeProject: { deletedAt: null } } },
-			select: { createdAt: true, workSession: { select: { themeProject: { select: { userId: true } } } } },
-		}),
-		// The decision on each hand-in, to end the journey in an outcome rather than at "submitted".
-		prisma.phaseSubmission.findMany({
-			where: { themeProject: { deletedAt: null } },
-			select: { resolvedAt: true, resolvedResult: true, themeProject: { select: { userId: true } } },
-		}),
-	])
+	const [users, sessions, projects, devlogs, reels, repoLinks, hackatimeLinks, timelapses, submissions] =
+		await Promise.all([
+			prisma.user.findMany({
+				select: {
+					id: true,
+					hardwareExperience: true,
+					onboardingStep: true,
+					onboardingCompletedAt: true,
+					participantGoal: true,
+					firstProjectAt: true,
+					firstChecksPassedAt: true,
+				},
+			}),
+			// A sign-in is what issues a session. Read off the table rather than the `lastLoginAt` marker, so a backfill that never ran cannot read as "nobody logged in".
+			prisma.session.findMany({ select: { userId: true }, distinct: ["userId"] }),
+			// The onboarding paper trail, per person, read off live projects. Not `namedAt`: that marker was stamped later, so it misses the projects that predate it. One read for all three, because the journey stages need them together.
+			prisma.themeProject.findMany({
+				where: { deletedAt: null },
+				select: { userId: true, description: true, starterProjectId: true, requestedTier: true },
+			}),
+			// The same "a real devlog" rule as the funnel's devlogged step: a HACKATIME_TRACKED row with no timelapse is only a link, not work.
+			prisma.workSession.findMany({
+				where: {
+					deletedAt: null,
+					themeProject: { deletedAt: null },
+					OR: [{ hoursSource: { not: HoursSource.HACKATIME_TRACKED } }, { timelapses: { some: {} } }],
+				},
+				select: { createdAt: true, themeProject: { select: { userId: true } } },
+			}),
+			// A maker's own post, not a staff announcement: an announcement in their feed is not something they did.
+			prisma.post.findMany({
+				where: { deletedAt: null, kind: { not: PostKind.ANNOUNCEMENT } },
+				select: { userId: true, publishedAt: true, createdAt: true },
+			}),
+			prisma.themeProject.findMany({
+				where: {
+					deletedAt: null,
+					OR: [{ githubRepo: { not: null } }, { repoSyncRepo: { not: null } }, { repoSyncEnabled: true }],
+				},
+				select: { createdAt: true, userId: true },
+			}),
+			prisma.hackatimeLink.findMany({
+				where: { themeProject: { deletedAt: null } },
+				select: { createdAt: true, themeProject: { select: { userId: true } } },
+			}),
+			prisma.sessionTimelapse.findMany({
+				where: { workSession: { deletedAt: null, themeProject: { deletedAt: null } } },
+				select: { createdAt: true, workSession: { select: { themeProject: { select: { userId: true } } } } },
+			}),
+			// The decision on each hand-in, to end the journey in an outcome rather than at "submitted".
+			prisma.phaseSubmission.findMany({
+				where: { themeProject: { deletedAt: null } },
+				select: { resolvedAt: true, resolvedResult: true, themeProject: { select: { userId: true } } },
+			}),
+		])
 
 	// Earliest occurrence of each activity per person. One Map of Maps, built from rows already tagged with their kind, so a kind needs no second pass.
 	const earliest = (rows: { userId: string; at: Date; key: ActivityKey }[]) => {
@@ -1133,6 +1139,17 @@ export async function getUserFlowSankey(): Promise<SankeyDiagram> {
 			.map((p) => p.userId),
 	)
 
+	// The journey stages before the branches. Read the same way the funnel reads them, so the two views line up on the path: a step is reached when the onboarding state machine is at or past it, and each accepts the branch that skips it (a starter pick jumps the project and idea questions) so nobody is drawn as having missed a step they were never asked.
+	const loggedIn = new Set(sessions.map((s) => s.userId))
+	const tookStarter = new Set(projects.filter((p) => p.starterProjectId !== null).map((p) => p.userId))
+	const pickedTier = new Set(projects.filter((p) => p.requestedTier !== null).map((p) => p.userId))
+	const ONBOARDING = {
+		week: stepIndexOf("week"),
+		idea: stepIndexOf("idea"),
+		tracking: stepIndexOf("tracking"),
+		repo: stepIndexOf("repo"),
+	} as const
+
 	// Each person's most recent decided or open hand-in, which is the one the outcome column should name.
 	const outcomeNode = new Map<string, (typeof SANKEY_OUTCOME)[number]["node"]>()
 	const OPEN = Number.NEGATIVE_INFINITY
@@ -1165,13 +1182,22 @@ export async function getUserFlowSankey(): Promise<SankeyDiagram> {
 
 	/** The person's box at each stage, null where they never got there. */
 	const boxesOf = (user: (typeof users)[number]): (string | null)[] => {
-		const started =
-			user.hardwareExperience !== null || user.onboardingCompletedAt !== null || user.firstProjectAt !== null
+		const completed = user.onboardingCompletedAt !== null
+		const started = user.hardwareExperience !== null || completed || user.firstProjectAt !== null
+		const step = user.onboardingStep
+		const reached = (n: number) => step >= n || completed
 		const [first, second] = rankedBoxes(user.id)
 		return [
 			"joined",
-			user.onboardingCompletedAt !== null ? "setupDone" : started ? "setupStarted" : "setupNone",
-			described.has(user.id) ? "namedProject" : null,
+			loggedIn.has(user.id) ? "loggedIn" : null,
+			started ? "setupStarted" : null,
+			reached(ONBOARDING.week) ? "reachedWeek" : null,
+			described.has(user.id) || completed ? "namedProject" : null,
+			reached(ONBOARDING.idea) || tookStarter.has(user.id) ? "reachedIdea" : null,
+			pickedTier.has(user.id) || tookStarter.has(user.id) || completed ? "pickedTier" : null,
+			reached(ONBOARDING.tracking) ? "reachedTracking" : null,
+			reached(ONBOARDING.repo) ? "reachedRepo" : null,
+			completed ? "setupDone" : null,
 			user.firstProjectAt !== null ? "projectLive" : null,
 			user.participantGoal !== null ? "goalSet" : null,
 			first,
@@ -1188,13 +1214,20 @@ export async function getUserFlowSankey(): Promise<SankeyDiagram> {
 		const boxes = boxesOf(user).filter((box): box is string => box !== null)
 		for (const box of boxes) counts.set(box, (counts.get(box) ?? 0) + 1)
 		for (const [from, to] of boxes.slice(1).map((box, i) => [boxes[i] as string, box] as const))
-			linkCounts.set(`${from} ${to}`, (linkCounts.get(`${from} ${to}`) ?? 0) + 1)
+			linkCounts.set(`${from}\u0000${to}`, (linkCounts.get(`${from}\u0000${to}`) ?? 0) + 1)
 	}
 
 	const stages: SankeyStage[] = [
 		{ label: "Signed up", nodes: ["joined"] },
-		{ label: "Setup", nodes: ["setupDone", "setupStarted", "setupNone"] },
+		{ label: "Logged in", nodes: ["loggedIn"] },
+		{ label: "Started onboarding", nodes: ["setupStarted"] },
+		{ label: "Reached the week step", nodes: ["reachedWeek"] },
 		{ label: "Named a project", nodes: ["namedProject"] },
+		{ label: "Reached the idea step", nodes: ["reachedIdea"] },
+		{ label: "Picked a tier", nodes: ["pickedTier"] },
+		{ label: "Reached tracking", nodes: ["reachedTracking"] },
+		{ label: "Reached the repo step", nodes: ["reachedRepo"] },
+		{ label: "Finished onboarding", nodes: ["setupDone"] },
 		{ label: "Project live", nodes: ["projectLive"] },
 		{ label: "Set a goal", nodes: ["goalSet"] },
 		{ label: "First activity", nodes: activityNodes(1) },
@@ -1206,10 +1239,15 @@ export async function getUserFlowSankey(): Promise<SankeyDiagram> {
 
 	const labels: Record<string, string> = {
 		joined: "Signed up",
-		setupDone: "Finished setup",
-		setupStarted: "Started, not finished",
-		setupNone: "Not started",
+		loggedIn: "Logged in",
+		setupStarted: "Started onboarding",
+		reachedWeek: "Reached the week step",
 		namedProject: "Named a project",
+		reachedIdea: "Reached the idea step",
+		pickedTier: "Picked a tier",
+		reachedTracking: "Reached tracking",
+		reachedRepo: "Reached the repo step",
+		setupDone: "Finished onboarding",
 		projectLive: "Project row live",
 		goalSet: "Set a goal",
 		checksPassed: "Checks passed",
@@ -1233,7 +1271,7 @@ export async function getUserFlowSankey(): Promise<SankeyDiagram> {
 		nodes,
 		links: [...linkCounts]
 			.map(([key, value]) => {
-				const [source, target] = key.split(" ")
+				const [source, target] = key.split("\u0000")
 				return { source: source as string, target: target as string, value }
 			})
 			.filter((link) => live.has(link.source) && live.has(link.target)),

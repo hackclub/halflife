@@ -10,9 +10,9 @@ import type { FlowStep, SankeyDiagram } from "@/lib/queries/admin"
  *
  * The funnel is a spine: one path, each stage the people who also cleared everything above it, so the drop-off between two stages is the number to read. It cannot show order that is not the spine's – a maker who added a devlog before posting a reel is counted in both rows with no way to say which came first, and a maker who never posts a reel reads as having dropped out.
  *
- * The Sankey is the other shape: every route side by side, so a step that happens out of order, or on a branch the spine never had, is visible as its own ribbon rather than folded into a chain. Left-to-right, because the axis is progression and the bands are the volume.
+ * The Sankey is the other shape: every route side by side, so a step that happens out of order, or on a branch the spine never had, is visible as its own ribbon rather than folded into a chain. Left-to-right, because the axis is progression and the bands are the volume. It now draws the funnel's own journey stages, so the two can be read stage for stage; what it adds is the branch – the first two tracked activities, and an outcome that says what happened to a hand-in rather than stopping at "submitted".
  *
- * The two deliberately do not agree. The funnel treats a few stages as "did it, or already did something later that presupposes it" so that a column backfilled mid-program does not shrink everything beneath it; the Sankey reports each stage literally. The gap between the two views is the size of that forgiveness, so read them together rather than picking one.
+ * The Sankey is wider than any panel, so it carries its own horizontal scroll. Read them together rather than picking one: the funnel answers "how many are left", the Sankey "which way did they go".
  */
 const TABS = [
 	{ id: "funnel", label: "Funnel", hint: "One spine, top to bottom: each stage also cleared everything above it" },
