@@ -4,22 +4,23 @@ import { useEffect, useMemo, useState } from "react"
 import { IconChevronLeft, IconChevronRight } from "@/components/platform/icons"
 import { Modal, ModalTitle } from "@/components/platform/modals/Modal"
 import { cx } from "@/lib/cx"
+import type { CalendarEvent } from "@/lib/events"
 import {
 	calendarDay,
 	dayLabel,
 	dayShort,
+	eventColour,
 	eventCountsByDay,
 	eventIsLive,
 	eventIsUpcoming,
-	eventKind,
 	eventRangeLabel,
 	eventsOnDay,
+	HUDDLE_URL,
 	monthDays,
 	monthLabel,
 	monthOf,
 	shiftMonth,
 } from "@/lib/events"
-import type { CalendarEvent } from "@/lib/events"
 
 /** Monday-first, because the programme's week closes on a Sunday. */
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const
@@ -76,14 +77,8 @@ export function EventCalendar({
 
 	const counts = useMemo(() => eventCountsByDay(events, timeZone), [events, timeZone])
 	const days = useMemo(() => monthDays(month.year, month.month), [month])
-	const upcoming = useMemo(
-		() => events.filter((event) => eventIsUpcoming(event, new Date())).slice(0, 6),
-		[events],
-	)
-	const onDay = useMemo(
-		() => (selected ? eventsOnDay(events, selected, timeZone) : []),
-		[events, selected, timeZone],
-	)
+	const upcoming = useMemo(() => events.filter((event) => eventIsUpcoming(event, new Date())).slice(0, 6), [events])
+	const onDay = useMemo(() => (selected ? eventsOnDay(events, selected, timeZone) : []), [events, selected, timeZone])
 
 	function shift(delta: number) {
 		setMonth(shiftMonth(month, delta))
@@ -160,10 +155,18 @@ export function EventCalendar({
 							type="button"
 							onClick={() => setSelected(isSelected ? null : day)}
 							aria-pressed={isSelected}
-							aria-label={count === 0 ? `${dayShort(day)}, nothing scheduled` : `${dayShort(day)}, ${count} event${count === 1 ? "" : "s"}`}
+							aria-label={
+								count === 0
+									? `${dayShort(day)}, nothing scheduled`
+									: `${dayShort(day)}, ${count} event${count === 1 ? "" : "s"}`
+							}
 							className={cx(
 								"relative flex aspect-square flex-col items-center justify-center rounded-lg text-[0.9rem] transition-colors",
-								isSelected ? "font-extrabold text-white" : count > 0 ? "font-bold text-navy hover:bg-violet-pale" : "text-navy-faint hover:bg-cream",
+								isSelected
+									? "font-extrabold text-white"
+									: count > 0
+										? "font-bold text-navy hover:bg-violet-pale"
+										: "text-navy-faint hover:bg-cream",
 								isToday && !isSelected && "ring-2 ring-navy",
 							)}
 							style={isSelected ? { background: "var(--color-violet)" } : undefined}
@@ -206,14 +209,14 @@ export function EventCalendar({
 	)
 }
 
-/** One event: when, what kind, and where to turn up. */
+/** One event: when, and where to turn up. */
 function EventRow({ event, timeZone }: { event: CalendarEvent; timeZone: string }) {
-	const kind = eventKind(event.kind)
+	const colour = eventColour(event.colour)
 	const live = eventIsLive(event, new Date())
 	return (
 		<div
 			className="sketch flex gap-3.5 bg-paper px-4 py-3.5"
-			style={{ "--sk-color": kind.accent, "--sk-radius": "14px" } as React.CSSProperties}
+			style={{ "--sk-color": colour.accent, "--sk-radius": "14px" } as React.CSSProperties}
 		>
 			<div className="w-[5.5rem] shrink-0">
 				<p className="text-[1.02rem] leading-tight font-extrabold text-navy">
@@ -224,42 +227,30 @@ function EventRow({ event, timeZone }: { event: CalendarEvent; timeZone: string 
 			<div className="min-w-0 flex-1">
 				<div className="flex flex-wrap items-center gap-2">
 					<h4 className="text-[1.02rem] leading-tight font-extrabold text-navy">{event.title}</h4>
-					<span className={cx("label rounded-full px-2 py-0.5 text-[0.58rem]", kind.chip)}>{kind.label}</span>
 					{live && (
 						<span className="label rounded-full bg-coral/15 px-2 py-0.5 text-[0.58rem] text-coral-dark">on now</span>
 					)}
 				</div>
-				{event.description ? <p className="mt-1 text-[0.87rem] leading-snug text-navy-soft">{event.description}</p> : null}
-				{event.location || event.link ? (
-					<p className="mt-1.5 text-[0.83rem] text-navy-soft">
-						{event.location ? <span>{event.location}</span> : null}
-						{event.location && event.link ? <span aria-hidden="true"> · </span> : null}
-						{event.link ? (
-							<a
-								href={event.link}
-								target="_blank"
-								rel="noreferrer"
-								className="font-semibold text-sky-ink underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
-							>
-								Join
-							</a>
-						) : null}
-					</p>
+				{event.description ? (
+					<p className="mt-1 text-[0.87rem] leading-snug text-navy-soft">{event.description}</p>
 				) : null}
+				<p className="mt-1.5 text-[0.83rem] text-navy-soft">
+					Every call happens in the{" "}
+					<a
+						href={HUDDLE_URL}
+						target="_blank"
+						rel="noreferrer"
+						className="font-semibold text-sky-ink underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
+					>
+						Half Life huddle
+					</a>
+				</p>
 			</div>
 		</div>
 	)
 }
 
-function GridButton({
-	label,
-	onClick,
-	children,
-}: {
-	label: string
-	onClick: () => void
-	children: React.ReactNode
-}) {
+function GridButton({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
 	return (
 		<button
 			type="button"
@@ -272,4 +263,3 @@ function GridButton({
 		</button>
 	)
 }
-

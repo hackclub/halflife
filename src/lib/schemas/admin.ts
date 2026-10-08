@@ -1,6 +1,6 @@
 import { z } from "zod"
 import {
-	EventKind,
+	EventColour,
 	Phase,
 	PrinterAwardStatus,
 	Role,
@@ -158,12 +158,10 @@ export const orderFulfillmentSchema = z
 export const programEventCreateSchema = z
 	.object({
 		title: boundedText(120, 1),
-		kind: z.enum(EventKind).default(EventKind.OTHER),
+		colour: z.enum(EventColour).default(EventColour.SLATE),
 		description: boundedText(2000).nullable().optional(),
 		startsAt: z.coerce.date(),
 		endsAt: z.coerce.date().nullable().optional(),
-		location: boundedText(200).nullable().optional(),
-		link: httpsUrl.nullable().optional(),
 		published: z.boolean().default(true),
 		/** 1 is a one-off. Capped at a year of weeks so a stray keypress cannot ask for ten thousand rows. */
 		repeatWeeks: z.number().int().min(1).max(52).default(1),
@@ -184,12 +182,10 @@ export const programEventCreateSchema = z
 export const programEventUpdateSchema = z
 	.object({
 		title: boundedText(120, 1).optional(),
-		kind: z.enum(EventKind).optional(),
+		colour: z.enum(EventColour).optional(),
 		description: boundedText(2000).nullable().optional(),
 		startsAt: z.coerce.date().optional(),
 		endsAt: z.coerce.date().nullable().optional(),
-		location: boundedText(200).nullable().optional(),
-		link: httpsUrl.nullable().optional(),
 		published: z.boolean().optional(),
 	})
 	.strict()

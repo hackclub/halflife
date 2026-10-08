@@ -15,12 +15,10 @@ import prisma from "@/lib/prisma"
 const SELECT = {
 	id: true,
 	title: true,
-	kind: true,
+	colour: true,
 	description: true,
 	startsAt: true,
 	endsAt: true,
-	location: true,
-	link: true,
 	published: true,
 	seriesId: true,
 } satisfies Record<string, boolean>

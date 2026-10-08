@@ -4,8 +4,8 @@ import { useState } from "react"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { EventForm } from "@/app/components/forms/EventForm"
 import { Badge, Callout, EmptyState, Panel } from "@/app/components/ui"
-import { calendarDay, dayLabel, eventKind, eventRangeLabel } from "@/lib/events"
 import type { CalendarEvent } from "@/lib/events"
+import { calendarDay, dayLabel, eventColour, eventRangeLabel } from "@/lib/events"
 
 /**
  * The admin half of the calendar: the form, and the list it writes.
@@ -18,13 +18,7 @@ import type { CalendarEvent } from "@/lib/events"
  * One row is one occurrence. A ten-week series is ten rows, because that is what
  * lets one week's call be moved without touching the other nine.
  */
-export function EventScheduleManager({
-	events,
-	timeZone,
-}: {
-	events: CalendarEvent[]
-	timeZone: string
-}) {
+export function EventScheduleManager({ events, timeZone }: { events: CalendarEvent[]; timeZone: string }) {
 	const [editing, setEditing] = useState<CalendarEvent | null>(null)
 	const today = calendarDay(new Date(), timeZone)
 
@@ -32,9 +26,7 @@ export function EventScheduleManager({
 	// has already happened. Splitting it here rather than sorting twice keeps the
 	// boundary honest – "past" is decided once, by the day.
 	const upcoming = events.filter((event) => calendarDay(event.startsAt, timeZone) >= today)
-	const past = events
-		.filter((event) => calendarDay(event.startsAt, timeZone) < today)
-		.reverse()
+	const past = events.filter((event) => calendarDay(event.startsAt, timeZone) < today).reverse()
 
 	const seriesCount = new Map<string, number>()
 	for (const event of events) {
@@ -44,7 +36,11 @@ export function EventScheduleManager({
 	return (
 		<div className="hl-stack">
 			<Panel title={editing ? "Editing an event" : "Add an event"}>
+				{/* Keyed by the row being edited, so opening a different event remounts the
+            form and its `useState` initialisers run again. Without the key the
+            first render's values stick, and Edit opens a blank form. */}
 				<EventForm
+					key={editing?.id ?? "new"}
 					events={events}
 					editing={editing}
 					// Closing on save is the whole update path: the data on screen came
@@ -93,7 +89,7 @@ function RowTable({
 					<tr>
 						<th>When</th>
 						<th>Event</th>
-						<th>Kind</th>
+						<th>Colour</th>
 						<th>Series</th>
 						<th>Visible</th>
 						<th />
@@ -101,7 +97,7 @@ function RowTable({
 				</thead>
 				<tbody>
 					{events.map((event) => {
-						const kind = eventKind(event.kind)
+						const colour = eventColour(event.colour)
 						const series = event.seriesId ? (seriesCount.get(event.seriesId) ?? 1) : 0
 						return (
 							<tr key={event.id}>
@@ -113,26 +109,21 @@ function RowTable({
 								</td>
 								<td>
 									<div>{event.title}</div>
-									{event.location ? <div className="hl-muted">{event.location}</div> : null}
-									{event.link ? (
-										<a href={event.link} target="_blank" rel="noreferrer">
-											Link
-										</a>
-									) : null}
+									{event.description ? <div className="hl-muted">{event.description}</div> : null}
 								</td>
 								<td>
-									<span
-										className="hl-badge"
-										style={{ background: kind.chip, color: "inherit" }}
-									>
-										{kind.label}
+									<span className="hl-row" style={{ gap: "0.4rem" }}>
+										<span
+											aria-hidden="true"
+											className="inline-block size-3.5 rounded-full border border-line"
+											style={{ background: colour.accent }}
+										/>
+										{colour.label}
 									</span>
 								</td>
 								<td className="hl-mono">{series > 1 ? `×${series}` : "—"}</td>
 								<td>
-									<Badge tone={event.published ? "success" : "muted"}>
-										{event.published ? "published" : "draft"}
-									</Badge>
+									<Badge tone={event.published ? "success" : "muted"}>{event.published ? "published" : "draft"}</Badge>
 								</td>
 								<td className="hl-row" style={{ gap: "0.5rem" }}>
 									<button type="button" className="hl-btn" onClick={() => onEdit(event)}>
@@ -164,9 +155,8 @@ function RowTable({
 export function EventScheduleNote({ timeZone }: { timeZone: string }) {
 	return (
 		<Callout tone="info">
-			Times are entered in your own timezone and shown to participants in the programme&apos;s ({timeZone}). A
-			repeating event is written as separate rows, so a single week can be moved or cancelled without touching
-			the rest.
+			Times are entered in your own timezone and shown to participants in the programme&apos;s ({timeZone}). A repeating
+			event is written as separate rows, so a single week can be moved or cancelled without touching the rest.
 		</Callout>
 	)
 }

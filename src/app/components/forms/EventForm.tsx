@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { Button, Callout, Field } from "@/app/components/ui"
-import { EVENT_KINDS, type CalendarEvent, eventKind } from "@/lib/events"
+import { cx } from "@/lib/cx"
+import { type CalendarEvent, EVENT_COLOURS, type EventColour, eventColour, HUDDLE_URL } from "@/lib/events"
 
 const WEEK_MS = 7 * 86_400_000
 
@@ -28,8 +29,13 @@ function seriesLabel(events: CalendarEvent[], event: CalendarEvent): string | nu
  * edited an occurrence at a time on purpose – that is the edit that gets made when
  * one week's call lands on a holiday.
  *
- * The kind is a select rather than free text because the calendar's colour comes
- * from it, and an unrecognised kind would render as "Other" after the fact.
+ * The colour is a row of swatches rather than a text select, because the colour is
+ * the only thing a participant actually sees: the field used to be a "kind" with
+ * labels nobody read, and picking the label to pick the colour was a step that
+ * asked an admin to translate in their head.
+ *
+ * There is no link field: every event is the Slack huddle, so the URL is a constant
+ * in `lib/events.ts` rather than a column nobody would ever vary.
  */
 export function EventForm({
 	events,
@@ -44,12 +50,10 @@ export function EventForm({
 }) {
 	const router = useRouter()
 	const [title, setTitle] = useState(editing?.title ?? "")
-	const [kind, setKind] = useState(editing?.kind ?? EVENT_KINDS[0].id)
+	const [colour, setColour] = useState<EventColour>(editing?.colour ?? EVENT_COLOURS[0].id)
 	const [description, setDescription] = useState(editing?.description ?? "")
 	const [startsAt, setStartsAt] = useState(editing ? toLocalInput(new Date(editing.startsAt)) : "")
 	const [endsAt, setEndsAt] = useState(editing?.endsAt ? toLocalInput(new Date(editing.endsAt)) : "")
-	const [location, setLocation] = useState(editing?.location ?? "")
-	const [link, setLink] = useState(editing?.link ?? "")
 	const [published, setPublished] = useState(editing?.published ?? true)
 	const [repeatWeeks, setRepeatWeeks] = useState(1)
 	const [busy, setBusy] = useState(false)
@@ -62,12 +66,10 @@ export function EventForm({
 
 		const body: Record<string, unknown> = {
 			title,
-			kind,
+			colour,
 			description: description || null,
 			startsAt: startsAt ? new Date(startsAt).toISOString() : null,
 			endsAt: endsAt ? new Date(endsAt).toISOString() : null,
-			location: location || null,
-			link: link || null,
 			published,
 			// Only meaningful on a create; the update schema has no such field and
 			// `.strict()` would refuse the whole body for carrying one.
@@ -112,15 +114,31 @@ export function EventForm({
 						required
 					/>
 				</Field>
-				<Field label="Kind" hint="Decides the colour it wears on the calendar.">
-					<select className="hl-select" value={kind} onChange={(e) => setKind(e.target.value as CalendarEvent["kind"])}>
-						{EVENT_KINDS.map((option) => (
-							<option key={option.id} value={option.id}>
-								{option.label}
-							</option>
+				{/* Outside `Field`, which renders a `<label>`: a radio group is not its
+            control, and nesting the two would make the label's own name ambiguous. */}
+				<div className="hl-stack hl-stack--tight" style={{ gap: "0.25rem" }}>
+					<span className="hl-label-text">Colour</span>
+					<span role="radiogroup" aria-label="Colour" className="hl-row" style={{ gap: "0.4rem", minHeight: "2.5rem" }}>
+						{EVENT_COLOURS.map((option) => (
+							// biome-ignore lint/a11y/useSemanticElements: a radio option drawn as a swatch.
+							<button
+								key={option.id}
+								type="button"
+								role="radio"
+								aria-checked={option.id === colour}
+								aria-label={option.label}
+								title={option.label}
+								onClick={() => setColour(option.id)}
+								className={cx(
+									"size-8 rounded-full border-2 transition-transform",
+									option.id === colour ? "border-navy" : "border-line hover:scale-110",
+								)}
+								style={{ background: option.accent }}
+							/>
 						))}
-					</select>
-				</Field>
+					</span>
+					<span className="hl-hint">The colour it wears on the calendar.</span>
+				</div>
 			</div>
 
 			<div className="hl-row" style={{ alignItems: "flex-end" }}>
@@ -154,57 +172,27 @@ export function EventForm({
 				/>
 			</Field>
 
-			<div className="hl-row" style={{ alignItems: "flex-end" }}>
-				<Field label="Where" hint="Optional. A room, a channel, or 'your own desk'.">
-					<input
-						className="hl-input"
-						value={location}
-						onChange={(e) => setLocation(e.target.value)}
-						placeholder="The Discord stage"
-						maxLength={200}
-					/>
-				</Field>
-				<Field label="Link" hint="Optional. https only.">
-					<input
-						className="hl-input"
-						type="url"
-						value={link}
-						onChange={(e) => setLink(e.target.value)}
-						placeholder="https://meet.google.com/…"
-					/>
-				</Field>
-			</div>
-
-			<div className="hl-row" style={{ alignItems: "flex-end" }}>
+			{editing ? (
+				<label className="hl-row" style={{ gap: "0.5rem" }}>
+					<input type="checkbox" checked={published} onChange={(e) => setPublished(e.target.checked)} />
+					<span>{published ? "Published" : "Draft (hidden from participants)"}</span>
+					{series ? <span className="hl-hint">{series}</span> : null}
+				</label>
+			) : (
 				<Field
-					label={editing ? "Visibility" : "Repeat weekly"}
-					hint={
-						editing
-							? series ?? "Publishing is what puts it on participants' calendars."
-							: "A standing weekly call is one row here, not ten. Each week is still its own occurrence, so one can be moved later."
-					}
+					label="Repeat weekly"
+					hint="A standing weekly call is one row here, not ten. Each week is still its own occurrence, so one can be moved later."
 				>
-					{editing ? (
-						<label className="hl-row" style={{ minHeight: "2.5rem" }}>
-							<input type="checkbox" checked={published} onChange={(e) => setPublished(e.target.checked)} />
-							{published ? "Published" : "Draft (hidden from participants)"}
-						</label>
-					) : (
-						<select
-							className="hl-select"
-							value={repeatWeeks}
-							onChange={(e) => setRepeatWeeks(Number(e.target.value))}
-						>
-							<option value={1}>Just this once</option>
-							<option value={2}>Every week for 2 weeks</option>
-							<option value={4}>Every week for 4 weeks</option>
-							<option value={6}>Every week for 6 weeks</option>
-							<option value={10}>Every week for all 10 weeks</option>
-							<option value={12}>Every week for 12 weeks</option>
-						</select>
-					)}
+					<select className="hl-select" value={repeatWeeks} onChange={(e) => setRepeatWeeks(Number(e.target.value))}>
+						<option value={1}>Just this once</option>
+						<option value={2}>Every week for 2 weeks</option>
+						<option value={4}>Every week for 4 weeks</option>
+						<option value={6}>Every week for 6 weeks</option>
+						<option value={10}>Every week for all 10 weeks</option>
+						<option value={12}>Every week for 12 weeks</option>
+					</select>
 				</Field>
-			</div>
+			)}
 
 			<div className="hl-row">
 				<Button type="submit" variant="primary" disabled={busy || missing}>
@@ -214,7 +202,10 @@ export function EventForm({
 					{editing ? "Cancel" : "Clear"}
 				</Button>
 				<span className="hl-hint" style={{ margin: 0 }}>
-					{eventKind(kind).label} · {published ? "published" : "draft"}
+					{eventColour(colour).label} · every event joins the{" "}
+					<a href={HUDDLE_URL} target="_blank" rel="noreferrer">
+						Slack huddle
+					</a>
 				</span>
 			</div>
 

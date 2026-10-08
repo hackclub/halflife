@@ -259,21 +259,19 @@ enum ShopFulfillmentStage {
   CANCELLED
 }
 
-/// What kind of gathering a scheduled event is. A short, fixed set because the
+/// The colour an event wears on the calendar. A short, fixed set because the
 /// whole point of it is that the calendar can be read at a glance – the weekly
 /// call has to look different from show & tell.
-enum EventKind {
-  /// An open call anyone can drop into with a mentor.
-  OFFICE_HOURS
-  /// A working session: lock in, or fix the thing that is stuck.
-  HUDDLE
-  /// Present what you built.
-  SHOW_AND_TELL
-  /// A taught session – soldering, KiCad, a first firmware flash.
-  WORKSHOP
-  /// Anything that is not work.
-  SOCIAL
-  OTHER
+///
+/// Stored as a colour rather than a kind because the colour is the only thing a
+/// participant sees: the kind was a label nobody read, and the two always agreed.
+enum EventColour {
+  CORAL
+  SKY
+  VIOLET
+  GOLD
+  TEAL
+  SLATE
 }
 
 enum PrinterAwardStatus {
@@ -1973,7 +1971,7 @@ model ProgramEvent {
   id String @id @default(cuid())
 
   title String
-  kind  EventKind @default(OTHER)
+  colour EventColour @default(SLATE)
   /// Optional. Long enough for an agenda, short enough to sit in a calendar card.
   description String?
 
@@ -1982,11 +1980,6 @@ model ProgramEvent {
   /// When it ends, when that is known. Optional because an open call has no
   /// end – and because an end that is wrong is worse than none.
   endsAt DateTime?
-
-  /// Where it happens: a room, "the Discord stage", "your own desk".
-  location String?
-  /// A call link or a sign-up page. https only, checked by httpsUrl.
-  link String?
 
   /// A draft never reaches a participant's header or calendar. The column rather
   /// than a delete because half-announced things are real, and the week before

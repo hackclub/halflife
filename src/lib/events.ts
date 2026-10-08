@@ -1,4 +1,4 @@
-import type { EventKind } from "@/app/generated/prisma/client"
+import type { EventColour } from "@/app/generated/prisma/client"
 
 /**
  * What a calendar surface needs, and nothing more.
@@ -11,72 +11,75 @@ import type { EventKind } from "@/app/generated/prisma/client"
 export interface CalendarEvent {
 	id: string
 	title: string
-	kind: EventKind
+	colour: EventColour
 	description: string | null
 	startsAt: Date
 	endsAt: Date | null
-	location: string | null
-	link: string | null
 	published: boolean
 	/** Set on every occurrence written together; null for a one-off. */
 	seriesId: string | null
 }
 
+/** Every event joins the same huddle, so the link is a constant rather than a per-event field. */
+export const HUDDLE_URL = "https://app.slack.com/huddle/T0266FRGM/C0BTE0WN23S"
+
 /**
- * The programme calendar: what kind of gathering a row is, and how to say when
- * one happens.
+ * The programme calendar: what colour a row is, and how to say when one happens.
  *
  * Split into three parts on purpose:
  *
- * - `EVENT_KINDS` is the display vocabulary. It is one list rather than two
- *   parallel maps because a kind missing from one of them is a chip that renders
- *   `undefined`, which is exactly the failure that makes a calendar look broken.
- * - The kind helpers take a whole `CalendarEvent` where they need two fields,
+ * - `EVENT_COLOURS` is the display vocabulary. It is one list rather than two
+ *   parallel maps because a colour missing from one of them is a swatch that
+ *   renders `undefined`, which is exactly the failure that makes a calendar look
+ *   broken.
+ * - The colour helpers take a whole `CalendarEvent` where they need two fields,
  *   because a caller wanting the accent of an event should not have to remember
- *   that it is keyed off `kind` and not off `id`.
+ *   that it is keyed off `colour` and not off `id`.
  * - The calendar maths works in `YYYY-MM-DD` strings in the programme's zone,
  *   the same reason `lib/program.ts` counts weeks in calendar days. Counting in
  *   elapsed milliseconds puts the late evening of a Sunday in the next column.
  */
 
-export type { EventKind }
+export type { EventColour }
 
 /**
- * The display name and accent for every kind.
+ * The display name and swatch for every colour.
  *
- * The accents are the platform palette's, and they are not arbitrary: a kind is
- * a promise about what a participant is walking into, so the ones people plan
- * around – the huddle and the show & tell – get the two colours that carry the
- * most weight elsewhere in the app, and everything routine falls to the muted
- * pair.
+ * The accents are the platform palette's, and they are not arbitrary: the ones
+ * people plan around – the huddle and the show & tell – take the colours that
+ * carry the most weight elsewhere in the app, and everything routine falls to
+ * the muted pair.
  */
-/** Named rather than picked off the end, so `eventKind` can fall back to it without an index. */
-const OTHER_KIND = {
-	id: "OTHER",
-	label: "Other",
+/** Named rather than picked off the end, so `eventColour` can fall back to it without an index. */
+const SLATE_COLOUR = {
+	id: "SLATE",
+	label: "Slate",
 	accent: "var(--color-navy-faint)",
-	chip: "bg-cream text-navy-soft",
-} as const satisfies EventKindDef
+} as const satisfies EventColourDef
 
-export const EVENT_KINDS = [
-	{ id: "HUDDLE", label: "Huddle", accent: "var(--color-coral)", chip: "bg-coral/15 text-coral-dark" },
-	{ id: "OFFICE_HOURS", label: "Office hours", accent: "var(--color-sky)", chip: "bg-sky-pale text-sky-ink" },
-	{ id: "SHOW_AND_TELL", label: "Show & tell", accent: "var(--color-violet)", chip: "bg-violet-pale text-violet-dark" },
-	{ id: "WORKSHOP", label: "Workshop", accent: "var(--color-gold)", chip: "bg-gold-pale text-gold-ink" },
-	{ id: "SOCIAL", label: "Social", accent: "var(--color-teal)", chip: "bg-mint text-teal-dark" },
-	OTHER_KIND,
-] as const satisfies readonly EventKindDef[]
+export const EVENT_COLOURS = [
+	{ id: "CORAL", label: "Coral", accent: "var(--color-coral)" },
+	{ id: "SKY", label: "Sky", accent: "var(--color-sky)" },
+	{ id: "VIOLET", label: "Violet", accent: "var(--color-violet)" },
+	{ id: "GOLD", label: "Gold", accent: "var(--color-gold)" },
+	{ id: "TEAL", label: "Teal", accent: "var(--color-teal)" },
+	SLATE_COLOUR,
+] as const satisfies readonly EventColourDef[]
 
-export type EventKindDef = { readonly id: EventKind; readonly label: string; readonly accent: string; readonly chip: string }
+export type EventColourDef = {
+	readonly id: EventColour
+	readonly label: string
+	readonly accent: string
+}
 
 /**
- * The kind's own entry, for the label, the accent and the chip class.
+ * The colour's own entry, for the label and the swatch.
  *
- * The fallback is the point: a kind added to the enum and not to the table above
- * renders as "Other" rather than crashing a participant's header on a Monday.
+ * The fallback is the point: a colour added to the enum and not to the table above
+ * renders as "Slate" rather than crashing a participant's header on a Monday.
  */
-export function eventKind(kind: EventKind): EventKindDef {
-	return EVENT_KINDS.find((k) => k.id === kind) ?? OTHER_KIND
+export function eventColour(colour: EventColour): EventColourDef {
+	return EVENT_COLOURS.find((c) => c.id === colour) ?? SLATE_COLOUR
 }
 
 /**
@@ -194,9 +197,7 @@ export function eventRangeLabel(startsAt: Date, endsAt: Date | null, timeZone: s
 	const to = eventTimeLabel(endsAt, timeZone)
 	const meridiem = /\s(AM|PM)$/.exec(from)?.[1]
 	// Same meridiem: showing it twice reads as a typo. Different: both keep theirs.
-	return meridiem && to.endsWith(meridiem)
-		? `${from.replace(/\s(AM|PM)$/, "")} – ${to}`
-		: `${from} – ${to}`
+	return meridiem && to.endsWith(meridiem) ? `${from.replace(/\s(AM|PM)$/, "")} – ${to}` : `${from} – ${to}`
 }
 
 /**

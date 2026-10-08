@@ -143,6 +143,7 @@ async function bodies() {
 	const { setGoalSchema } = await import("../src/lib/schemas/goal")
 	const { createReportSchema } = await import("../src/lib/schemas/report")
 	const { shopRegionSchema, itemRegionPriceSchema } = await import("../src/lib/schemas/admin")
+	const { programEventCreateSchema, programEventUpdateSchema } = await import("../src/lib/schemas/admin")
 	const { shopRegionPreferenceSchema } = await import("../src/lib/schemas/shop")
 
 	const journal = "x".repeat(200)
@@ -236,6 +237,21 @@ async function bodies() {
 			{ step: "repo", enabled: true, repo: "https://github.com/maker/hackpad" },
 		],
 		["onboarding · repo skipped", onboardingStepSchema, { step: "repo", enabled: false }],
+		[
+			"programEvent · create",
+			programEventCreateSchema,
+			{
+				title: "Weekly office hours",
+				colour: "CORAL",
+				description: "Bring whatever is stuck.",
+				startsAt: "2026-10-13T19:00:00.000Z",
+				endsAt: "2026-10-13T20:00:00.000Z",
+				published: true,
+				repeatWeeks: 4,
+			},
+		],
+		// The whole series is a create-only field: an edit moves one occurrence.
+		["programEvent · edit", programEventUpdateSchema, { title: "Moved to 8", colour: "SKY", endsAt: null }],
 	]
 
 	// The sync target is a repo URL the picker offered, and only that: a bare `owner/name` cannot say which forge it means, and a host-less slug is not something a picker produces.

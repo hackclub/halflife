@@ -42,8 +42,6 @@ export const POST = withRoute(async (req: Request) => {
 					...fields,
 					description: fields.description ?? null,
 					endsAt: fields.endsAt ? addWeeks(fields.endsAt, week, programTimezone) : null,
-					location: fields.location ?? null,
-					link: fields.link ?? null,
 					startsAt: addWeeks(fields.startsAt, week, programTimezone),
 					seriesId,
 					createdById: gate.user.id,
@@ -64,11 +62,9 @@ export const POST = withRoute(async (req: Request) => {
 		metadata: {
 			after: {
 				title: fields.title,
-				kind: fields.kind,
+				colour: fields.colour,
 				startsAt: fields.startsAt.toISOString(),
 				endsAt: fields.endsAt?.toISOString() ?? null,
-				location: fields.location ?? null,
-				link: fields.link ?? null,
 				published: fields.published,
 				occurrences: repeatWeeks,
 				seriesId,

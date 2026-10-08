@@ -45,20 +45,16 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 		metadata: {
 			before: {
 				title: before.title,
-				kind: before.kind,
+				colour: before.colour,
 				startsAt: before.startsAt.toISOString(),
 				endsAt: before.endsAt?.toISOString() ?? null,
-				location: before.location,
-				link: before.link,
 				published: before.published,
 			},
 			after: {
 				title: event.title,
-				kind: event.kind,
+				colour: event.colour,
 				startsAt: event.startsAt.toISOString(),
 				endsAt: event.endsAt?.toISOString() ?? null,
-				location: event.location,
-				link: event.link,
 				published: event.published,
 			},
 		},
@@ -94,7 +90,7 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 		metadata: {
 			before: {
 				title: before.title,
-				kind: before.kind,
+				colour: before.colour,
 				startsAt: before.startsAt.toISOString(),
 				endsAt: before.endsAt?.toISOString() ?? null,
 				seriesId: before.seriesId,
