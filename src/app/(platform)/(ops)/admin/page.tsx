@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { UserFlowFunnel } from "@/app/components/admin/UserFlowFunnel"
+import { UserFlowDiagram } from "@/app/components/admin/UserFlowDiagram"
 import { EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
 import type { ReviewResult } from "@/app/generated/prisma/enums"
 import { requireAnyPermissionPage } from "@/lib/page-guards"
@@ -105,7 +105,7 @@ export default async function AdminOverviewPage() {
 					</span>
 				}
 			>
-				<UserFlowFunnel steps={flow} />
+				<UserFlowDiagram steps={flow} />
 			</Panel>
 
 			<Panel title="Users & hours by continent">

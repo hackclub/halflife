@@ -1,28 +1,20 @@
 "use client"
-import { type CSSProperties, Fragment, useState } from "react"
+import { type CSSProperties, Fragment } from "react"
 import { EmptyState } from "@/app/components/ui"
 import type { FlowStep } from "@/lib/queries/admin"
-
-// The reel steps a program with its reels turned off wants out of the way. The funnel still fetches them (the data is cheap and shared), and the toggle just filters them here, so flipping it is instant and never round-trips.
-const REEL_STEP_IDS = new Set(["startedUpload", "uploadedReel", "postedReel"])
 
 // The tracked-time steps are the same cumulative rows as everything above, but they measure a different question – who produced tracked-time evidence – so they are drawn as their own section below the main funnel, hanging off its last row.
 const TRACKED_STEP_IDS = new Set(["hackatimed", "lapsed", "devlogged"])
 
 /**
  * The funnel as an actual funnel running down the page: each stage is a trapezoid whose top edge meets the stage above it and whose bottom edge is its own share of signups, so the slope between two stages *is* the drop-off. Captions sit in a column to the left of the funnel, where text never fights the colour for contrast, and the through/stopped share for each joint is named in the connector between its two stages. Each stage is heat-coloured by the share of the previous stage it lost, from blue (no loss) to red (all lost).
- *
- * Hiding the reel steps is a client-side view option, not a stored setting: the shares below a hidden stage are recomputed against the stage that is now above it, so the drop-off across a hidden row reads as one joint rather than vanishing with it.
  */
 export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
-	const [hideReel, setHideReel] = useState(false)
-
 	if (steps.length === 0) return <EmptyState>No signups yet.</EmptyState>
 
 	const total = steps[0]?.count ?? 0
-	const visible = hideReel ? steps.filter((s) => !REEL_STEP_IDS.has(s.id)) : steps
-	const main = visible.filter((s) => !TRACKED_STEP_IDS.has(s.id))
-	const tracked = visible.filter((s) => TRACKED_STEP_IDS.has(s.id))
+	const main = steps.filter((s) => !TRACKED_STEP_IDS.has(s.id))
+	const tracked = steps.filter((s) => TRACKED_STEP_IDS.has(s.id))
 
 	// Percentages against the headcount of the row above. The main funnel's first row is the baseline and by definition loses nothing; the first tracked-time row keeps its true joint against the last main row, which is the section's whole point. `firstCanDrop` is the only difference between the two calls.
 	const withPcts = (list: FlowStep[], seed: number, firstCanDrop: boolean) =>
@@ -156,19 +148,6 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 	return (
 		// width:100% – the panel is a flex column, where auto margins alone shrink-wrap this to its content instead of filling the panel.
 		<div style={{ width: "100%", maxWidth: "56rem", margin: "0 auto" }}>
-			<label
-				className="hl-row"
-				style={{
-					gap: "0.5rem",
-					justifyContent: "center",
-					marginBottom: "0.6rem",
-					cursor: "pointer",
-				}}
-			>
-				<input type="checkbox" checked={hideReel} onChange={(e) => setHideReel(e.target.checked)} />
-				<span className="hl-hint">Hide reel steps</span>
-			</label>
-
 			<div
 				className="hl-hint"
 				style={{
@@ -176,6 +155,7 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 					alignItems: "center",
 					justifyContent: "center",
 					gap: "0.5rem",
+					marginTop: "1rem",
 					marginBottom: "0.6rem",
 				}}
 			>

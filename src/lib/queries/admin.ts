@@ -478,14 +478,16 @@ export interface FlowStep {
 /**
  * The participant journey as a funnel. Each row counts people who ALSO did every step above it, so a step never has more people than the one before it and drop-off is never negative – whatever order things actually happened in.
  *
- * Steps with a named marker come from User (lib/analytics); "named a project" and the repo/devlog steps are derived from their own tables; "repo checks passed" is stamped by the preflight that gates submissions. The onboarding, goal and upload steps in between are derived as noted below.
+ * Steps with a named marker come from User (lib/analytics); "named a project" and the repo/devlog steps are derived from their own tables; "repo checks passed" is stamped by the preflight that gates submissions. The onboarding and goal steps in between are derived as noted below.
  *
- * A note on the steps added between "logged in" and "posted a reel": they rest on columns and tables that did not exist for the whole life of the program (the goal prompt shipped after the first reels; a desktop file-pick writes no upload-handoff row). Each is therefore "did this OR already did something later that presupposes it". Without the fallback, inserting a late marker would silently shrink every step below it instead of showing a real drop.
+ * The three reel steps that used to sit here ("started a reel upload", "uploaded a reel", "posted a reel") are gone. A funnel can only draw one spine, so putting reel posting on it said every maker who did not post a reel had dropped out, when a maker who is quietly journalling and building has not. Reel posting is one branch of the journey rather than a rung on it, and a branch is what the Sankey view draws: it can show a maker who added a devlog and posted a reel in either order, which a top-to-bottom funnel cannot represent at all.
+ *
+ * `posted` survives as a history guard on the onboarding and goal steps even now its own row is gone: the goal prompt shipped after the first reels, so "finished onboarding" and "set a goal" each mean "did this OR already did something later that presupposes it". Without the fallback, backfilling either column would silently shrink every step beneath it instead of showing a real drop.
  *
  * The last three rows are the tracked-time section: users with each kind of evidence that their hours were tracked – a Hackatime link, a timelapse, a manual devlog. They stay in the same cumulative chain as every other row (the component splits them off visually), so each counts submitters who also have that evidence, and "devlogged" there is the manual-session set from above.
  */
 export async function getUserFlowFunnel(): Promise<FlowStep[]> {
-	const [users, sessionUsers, projectUsers, devlogUsers, repoUsers, handoffRows, hackatimeLinkRows, timelapseRows] =
+	const [users, sessionUsers, projectUsers, devlogUsers, repoUsers, hackatimeLinkRows, timelapseRows] =
 		await Promise.all([
 			prisma.user.findMany({
 				select: {
@@ -534,8 +536,6 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 				select: { userId: true },
 				distinct: ["userId"],
 			}),
-			// Reel uploads. A row is written when the desktop mints a phone handoff; `usedAt` means the phone actually sent a file. A desktop file-pick goes straight to /api/upload and leaves no row here, which is why anyone who posted is counted as having started and finished an upload.
-			prisma.uploadHandoff.findMany({ select: { userId: true, usedAt: true } }),
 			// The tracked-time section: everyone with each kind of evidence that time was tracked. A Hackatime link backs one themed project and phase; a timelapse hangs off a session; the devlog set above covers the manual rows.
 			prisma.hackatimeLink.findMany({
 				where: { themeProject: { deletedAt: null } },
@@ -553,8 +553,6 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 	const pickedTier = new Set(projectUsers.filter((p) => p.requestedTier !== null).map((p) => p.userId))
 	const devlogs = new Set(devlogUsers.map((u) => u.id))
 	const repos = new Set(repoUsers.map((u) => u.userId))
-	const handoffs = new Set(handoffRows.map((h) => h.userId))
-	const handoffUploads = new Set(handoffRows.filter((h) => h.usedAt !== null).map((h) => h.userId))
 	const hackatimed = new Set(hackatimeLinkRows.map((l) => l.themeProject.userId))
 	const lapsed = new Set(timelapseRows.map((t) => t.workSession.themeProject.userId))
 
@@ -586,9 +584,6 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 			completed || posted || submitted,
 			u.firstProjectAt !== null,
 			u.participantGoal !== null || posted || submitted,
-			handoffs.has(u.id) || posted,
-			handoffUploads.has(u.id) || posted,
-			posted,
 			devlogs.has(u.id),
 			repos.has(u.id),
 			u.firstChecksPassedAt !== null,
@@ -617,9 +612,6 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 		{ id: "finishedOnboarding", label: "Finished onboarding", hint: "Worked through every getting-started step" },
 		{ id: "createdProject", label: "Created a project", hint: "A project row with its first marker stamped" },
 		{ id: "setGoal", label: "Set a goal", hint: "Answered what they are here for" },
-		{ id: "startedUpload", label: "Started a reel upload", hint: "Opened the recorder or minted a phone code" },
-		{ id: "uploadedReel", label: "Uploaded a reel", hint: "A video reached the bucket, posted or not" },
-		{ id: "postedReel", label: "Posted a reel", hint: "A video published to the feed" },
 		{ id: "addedDevlog", label: "Added a devlog", hint: "Logged a work session on a project" },
 		{ id: "connectedRepo", label: "Connected a repo", hint: "Linked an external repository to a project" },
 		{ id: "checksPassed", label: "Repo checks passed", hint: "Every submission repo check came back green" },
