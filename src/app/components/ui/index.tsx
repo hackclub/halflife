@@ -1,5 +1,5 @@
 import Link from "next/link"
-import type { ReactNode } from "react"
+import type { CSSProperties, ReactNode } from "react"
 
 /**
  * Presentational primitives. These are the only files besides globals.css that know about colour, spacing or type – a page composes these and never writes a raw utility class.
@@ -33,13 +33,33 @@ export function LinkButton({
 	)
 }
 
+/**
+ * Span the viewport from inside the page shell's max-width column.
+ *
+ * `100vw` counts the vertical scrollbar, so a full-bleed panel is a few pixels wider than the reader can actually see; `overflow-x: clip` on `.hl-shell` (ops.css) absorbs exactly that without turning the shell into a scroll container. `border-box` is stated rather than assumed, so the panel's own padding stays inside the viewport width.
+ */
+const FULL_BLEED: CSSProperties = {
+	boxSizing: "border-box",
+	width: "100vw",
+	marginLeft: "calc(50% - 50vw)",
+}
+
 export function Panel({
 	title,
 	actions,
+	wide,
 	children,
-}: Readonly<{ title?: ReactNode; actions?: ReactNode; children: ReactNode }>) {
+}: Readonly<{
+	title?: ReactNode
+	actions?: ReactNode
+	/**
+	 * Break out of the shell's reading column and use the full viewport width, for a diagram wider than that column. Switching it on re-lays-out the panel, so drive it from state that already lives on the client.
+	 */
+	wide?: boolean
+	children: ReactNode
+}>) {
 	return (
-		<section className="hl-panel hl-stack hl-stack--tight">
+		<section className="hl-panel hl-stack hl-stack--tight" style={wide ? FULL_BLEED : undefined}>
 			{(title || actions) && (
 				<div className="hl-row" style={{ justifyContent: "space-between" }}>
 					{title ? <h2 style={{ margin: 0, fontSize: "1.05rem" }}>{title}</h2> : <span />}

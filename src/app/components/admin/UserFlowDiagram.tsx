@@ -2,6 +2,7 @@
 import { useState } from "react"
 import { UserFlowFunnel } from "@/app/components/admin/UserFlowFunnel"
 import { UserFlowSankey } from "@/app/components/admin/UserFlowSankey"
+import { Panel } from "@/app/components/ui"
 import type { FlowStep, SankeyDiagram } from "@/lib/queries/admin"
 
 /**
@@ -44,8 +45,19 @@ export function UserFlowDiagram({ steps, sankey }: { steps: FlowStep[]; sankey: 
 		document.getElementById(`user-flow-tab-${target.id}`)?.focus()
 	}
 
+	// The Sankey is far wider than the page's reading column, so the panel goes full-bleed while it is up. The funnel is a narrow top-to-bottom shape and stays in the column, where it reads better. The tabs and the diagram live inside this panel rather than beside it, because the tab choice is what changes the panel's width – a page-level panel could not know which tab is selected.
+	const wide = active === "sankey"
+
 	return (
-		<div>
+		<Panel
+			title="User flow"
+			actions={
+				<span className="hl-hint" style={{ fontSize: "0.78rem" }}>
+					each step includes everyone who completed every step above it
+				</span>
+			}
+			wide={wide}
+		>
 			<div
 				role="tablist"
 				aria-label="User flow diagram"
@@ -82,6 +94,6 @@ export function UserFlowDiagram({ steps, sankey }: { steps: FlowStep[]; sankey: 
 			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem", textAlign: "center" }}>
 				{current?.hint}
 			</p>
-		</div>
+		</Panel>
 	)
 }

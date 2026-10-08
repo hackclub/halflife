@@ -99,16 +99,7 @@ export default async function AdminOverviewPage() {
 				</p>
 			</Panel>
 
-			<Panel
-				title="User flow"
-				actions={
-					<span className="hl-hint" style={{ fontSize: "0.78rem" }}>
-						each step includes everyone who completed every step above it
-					</span>
-				}
-			>
-				<UserFlowDiagram steps={flow} sankey={sankey} />
-			</Panel>
+			<UserFlowDiagram steps={flow} sankey={sankey} />
 
 			<Panel title="Users & hours by continent">
 				<div

@@ -20,8 +20,14 @@ const STAGE_W = 168
 const HEADER_H = 34
 /** Room under the last stage for the axis of nothing, i.e. breathing space. */
 const FOOT_H = 10
-/** Below this a box is a hairline and its label would print over its neighbours. */
-const LABEL_MIN_H = 13
+/**
+ * The vertical slot a label needs, and the reason thin boxes still get one.
+ *
+ * Gating a label on the box being tall enough (the first cut of this) left every small cohort nameless, and a 1.5px box is not a hover target. Boxes in a stage are separated by NODE_PAD, so two hairline boxes already sit further apart than a line of text is tall: their labels fit side by side without moving. Where they would not fit, the label drops into the next free slot and a leader line ties it back to its box, so a number is never lost – only nudged.
+ */
+const LABEL_H = 12
+/** Gap from a box to its label. */
+const LABEL_DX = 7
 /**
  * A floor on a BOX only, never on a ribbon.
  *
@@ -145,6 +151,42 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 	place("out")
 	place("in")
 
+	/**
+	 * Give every box a label row, not just the tall ones.
+	 *
+	 * Within a stage, boxes are stacked in y order and each label takes the next free slot below the last, so no two labels in a column can collide. A label that ends up off its own box's centre gets a leader line tying it back. Boxes are top-aligned and a sparse stage uses a fraction of the plot height, so there is nearly always room; a label is dropped only when the plot is genuinely full, which on real data never happens – every box ends up named.
+	 */
+	const labelRows = new Map<string, { y: number; home: number }>()
+	for (const stage of stages) {
+		const boxes = stage.nodes
+			.map((id) => placed.find((p) => p.id === id))
+			.filter((p): p is Placed => p !== undefined)
+			.sort((a, b) => a.y0 - b.y0)
+		if (boxes.length === 0) continue
+
+		const rows: { node: Placed; y: number; home: number }[] = []
+		let lastBottom = Number.NEGATIVE_INFINITY
+		for (const node of boxes) {
+			const home = (node.y0 + node.y1) / 2
+			// A label centred here occupies [y - LABEL_H/2, y + LABEL_H/2], so clearing the previous label's bottom edge costs half a slot, not a whole one. Reserving a whole slot shoves every label off its own box, even though boxes in a stage sit NODE_PAD apart – already more than a line of text is tall – and a diagram covered in leader lines is harder to read than one with a few.
+			const y = Math.max(home, lastBottom + LABEL_H / 2)
+			rows.push({ node, y, home })
+			lastBottom = y + LABEL_H / 2
+		}
+
+		// Lift the run only if it would fall off the bottom of the plot. Re-centring it unconditionally is worse than doing nothing: a stage whose boxes are unevenly weighted has its label run centred well below them, so every label gets dragged off a box it was already sitting on, and every one grows a leader line.
+		const first = rows[0]
+		if (!first) continue
+		const lift = Math.min(lastBottom - H, first.y - LABEL_H / 2)
+		if (lift > 0) for (const row of rows) row.y -= lift
+
+		for (const row of rows) {
+			// Off the bottom of the plot: no slot left, so this box goes unlabelled rather than printed over the caption.
+			if (row.y + LABEL_H / 2 > H) continue
+			labelRows.set(row.node.id, { y: row.y, home: row.home })
+		}
+	}
+
 	const xOf = (stage: number) => stage * STAGE_W
 	const W = xOf(stages.length - 1) + STAGE_W + 40
 
@@ -192,24 +234,39 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 							</path>
 						))}
 
+						{/* Leader lines first, so a label's halo paints over its own line. */}
+						{placed.map((node) => {
+							const slot = labelRows.get(node.id)
+							if (!slot || Math.abs(slot.y - slot.home) < 0.5) return null
+							return (
+								<line
+									key={`lead-${node.id}`}
+									x1={xOf(node.stage) + NODE_W}
+									y1={slot.home}
+									x2={xOf(node.stage) + NODE_W + LABEL_DX - 2}
+									y2={slot.y}
+									style={{ stroke: "var(--color-ink-muted)", strokeWidth: 0.75, opacity: 0.55 }}
+								/>
+							)
+						})}
+
 						{placed.map((node) => {
 							const x = xOf(node.stage)
 							const h = boxH(node.value)
-							const mid = (node.y0 + node.y1) / 2
-							const showLabel = node.y1 - node.y0 >= LABEL_MIN_H
+							const slot = labelRows.get(node.id)
 							return (
 								<g key={node.id}>
 									<rect x={x} y={node.y0} width={NODE_W} height={h} rx={2} style={{ fill: node.color }}>
 										<title>{`${node.label}: ${fmt(node.value)} ${node.value === 1 ? "person" : "people"}`}</title>
 									</rect>
-									{showLabel && (
+									{slot && (
 										<text
-											x={x + NODE_W + 7}
-											y={mid}
+											x={x + NODE_W + LABEL_DX}
+											y={slot.y}
 											dominantBaseline="middle"
 											style={{
 												fontSize: "11px",
-												// A halo in the panel's own colour, so a label stays readable where it crosses a ribbon.
+												// A halo in the panel's own colour, so a label stays readable where it crosses a ribbon or a neighbour's leader line.
 												paintOrder: "stroke",
 												stroke: "var(--color-surface-raised)",
 												strokeWidth: 3.5,
