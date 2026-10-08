@@ -40,7 +40,7 @@ export interface PrinterGoal {
 }
 
 /**
- * Nobody is asked for less than ten hours a week on tier 1. The cheapest machine works out at 9.76 on the budget sheet, so it is held here at the floor; every other goal already clears it on its own.
+ * Nobody is asked for less than ten hours a week on tier 1. The cheapest machine works out at exactly ten on the budget sheet, so the floor holds it at that; every other goal already clears it on its own.
  */
 export const TIER1_MIN_HOURS = 10
 
@@ -54,8 +54,8 @@ const SHEET: SheetRow[] = [
 		price: 199,
 		shopPrice: 218.9,
 		coins: 219,
-		hoursPerWeek: 9.76,
-		paceHours: 3.76,
+		hoursPerWeek: 10,
+		paceHours: 4,
 		kind: "bedslinger",
 		link: "https://store.creality.com/products/ender-3-v3-se-3d-printer",
 		blurb: "Perfect for beginners: easy, reliable, and ready for every project.",

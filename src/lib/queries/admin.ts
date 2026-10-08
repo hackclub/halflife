@@ -510,7 +510,13 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 					themeProjects: {
 						some: {
 							deletedAt: null,
-							workSessions: { some: { deletedAt: null, hoursSource: { not: HoursSource.HACKATIME_TRACKED } } },
+							// Same rule as the Loops lastEntryAt sync: a real entry is a session the maker wrote, or one carrying a timelapse. A HACKATIME_TRACKED row with no timelapse is only a link, not a devlog.
+							workSessions: {
+								some: {
+									deletedAt: null,
+									OR: [{ hoursSource: { not: HoursSource.HACKATIME_TRACKED } }, { timelapses: { some: {} } }],
+								},
+							},
 						},
 					},
 				},
