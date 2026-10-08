@@ -5,6 +5,8 @@ import {
 	HoursSource,
 	type PhaseStatus,
 	type ReportStatus,
+	ReviewPass,
+	ReviewResult,
 	type ShopFulfillmentMethod,
 	ShopFulfillmentStage,
 	ShopOrderStatus,
@@ -16,6 +18,7 @@ import { displayName } from "@/lib/display-name"
 import { safeDecrypt } from "@/lib/pii"
 import { getPrinterQualification } from "@/lib/printer"
 import prisma from "@/lib/prisma"
+import { getProgramSettings, startOfDay } from "@/lib/program"
 import { countryOfTimezone, REGIONS, type RegionId, regionOfTimezone } from "@/lib/regions"
 import { shopOrderStaffSelect } from "@/lib/shop"
 
@@ -915,4 +918,64 @@ export async function getFirstProjectStats(): Promise<FirstProjectStat[]> {
 			users,
 		}))
 		.sort((a, b) => b.users - a.users)
+}
+
+export interface ReviewerResultStat {
+	result: ReviewResult
+	/** Distinct projects whose most recent live review is this one, written today. */
+	today: number
+	/** The same, across the whole program. */
+	total: number
+}
+
+export interface ReviewerStats {
+	/** Distinct projects with a live review written today, program-timezone day. */
+	reviewedToday: number
+	/** Distinct projects carrying at least one live review. */
+	reviewedTotal: number
+	/** One row per outcome, so the rows add up to the two figures above them. */
+	byResult: ReviewerResultStat[]
+}
+
+/**
+ * How much has been reviewed, mirrored locally so the overview answers it without opening Ari.
+ *
+ * Counted over live decisions only. A review an admin un-approved or Ari reverted is marked `invalidated`, and a row that no longer stands is not a decision the project still has – counting it would make the total only ever grow and leave it disagreeing with Ari after a revert. Only FINAL passes count: a FIRST-pass row is advisory and moves no status and no money (see the ReviewPass enum), so including it would credit a reviewer with a decision they did not make.
+ *
+ * A project counts once however many of its phases were reviewed. A project is reviewed at most twice, design then build, and the question here is how much has had attention rather than how many hand-ins landed; `getAdminCounters`'s "awaiting review" remains the submission-level figure. The breakdown attributes each project to its most recent live review so the three outcome rows always add up to the headline above them: a project whose design was approved and whose build came back for changes reads as changes requested, which is where it actually stands.
+ *
+ * "Today" is the program timezone's day, the same boundary the activity strip and streaks use, so a review that landed at 11pm New York counts the day the dashboard is on rather than the server's.
+ *
+ * Ari's decisions are included – they reach this table through the same `finalizeReview` a console reviewer calls, and leaving them out is exactly the gap this closes.
+ */
+export async function getReviewerStats(): Promise<ReviewerStats> {
+	const [{ programTimezone }, reviews] = await Promise.all([
+		getProgramSettings(),
+		prisma.submissionReview.findMany({
+			where: { invalidated: false, pass: ReviewPass.FINAL, submission: { themeProject: { deletedAt: null } } },
+			// Newest first, so the first row seen for a project is that project's most recent live review.
+			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+			select: { result: true, createdAt: true, submission: { select: { themeProjectId: true } } },
+		}),
+	])
+
+	const since = startOfDay(new Date(), programTimezone)
+	const latest = new Map<string, { result: ReviewResult; today: boolean }>()
+	for (const review of reviews) {
+		const themeProjectId = review.submission.themeProjectId
+		if (latest.has(themeProjectId)) continue
+		latest.set(themeProjectId, { result: review.result, today: review.createdAt >= since })
+	}
+
+	const projects = [...latest.values()]
+	return {
+		// A project reviewed today can only have been reviewed today by its latest review, so this is the same set the breakdown counts.
+		reviewedToday: projects.filter((p) => p.today).length,
+		reviewedTotal: projects.length,
+		byResult: Object.values(ReviewResult).map((result) => ({
+			result,
+			today: projects.filter((p) => p.result === result && p.today).length,
+			total: projects.filter((p) => p.result === result).length,
+		})),
+	}
 }
