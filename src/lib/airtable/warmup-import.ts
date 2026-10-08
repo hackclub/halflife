@@ -258,7 +258,7 @@ const IMAGE_EXT: Record<string, string> = {
 /**
  * Airtable attachment URLs are signed and expire in about two hours, so a cover has to be copied into R2 to outlive the import. Best-effort: a missing cover is cosmetic and must not fail the project.
  */
-async function rehostScreenshot(userId: string, url: string): Promise<string | null> {
+export async function rehostScreenshot(userId: string, url: string): Promise<string | null> {
 	if (!isUploadConfigured()) return null
 	try {
 		const res = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(20_000) })
