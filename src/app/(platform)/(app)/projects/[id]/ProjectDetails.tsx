@@ -369,7 +369,7 @@ function DetailsForm({
 						</p>
 						{pacingToPrinter && (
 							<p className="hand text-[0.84rem] leading-snug text-navy-soft">
-								Every hour past your tier&apos;s parts-funding earns 5 coins, added straight to your spendable balance
+								Every hour past your tier&apos;s parts-funding earns <strong className="rounded bg-gold-pale px-1 text-gold-ink">5 coins</strong>, added straight to your spendable balance
 								to use on your {goal.name} or anything else – changing your goal later never changes what you earn.
 							</p>
 						)}

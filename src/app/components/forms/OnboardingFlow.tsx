@@ -505,7 +505,7 @@ export function OnboardingFlow({
 								here&rsquo;s an example
 							</a>
 							). A <strong className="text-navy">timelapse</strong> is a screenrecording or video of yourself working on
-							your project. Every approved hour you log past the funding for your chosen tier earns 5 coins – those funded hours pay for your parts instead. Coins are what you spend in the shop.
+							your project. Every approved hour you log past the funding for your chosen tier earns <strong className="rounded bg-gold-pale px-1 text-gold-ink">5 coins</strong> – those funded hours pay for your parts instead. Coins are what you spend in the shop.
 						</p>
 						<ul className="grid gap-3 sm:grid-cols-3">
 							{[
