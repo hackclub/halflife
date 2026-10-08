@@ -6,7 +6,7 @@ import { ShopGrid } from "./ShopGrid"
 
 export const metadata: Metadata = {
 	title: "Half Life Shop",
-	description: "Spend the coins you earned on grants, tools, parts and swag.",
+	description: "Spend the coins you earned – 5 per approved hour, once the funding for your tier has been achieved – on grants, tools, parts and swag.",
 }
 
 export const dynamic = "force-dynamic"

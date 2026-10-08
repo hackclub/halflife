@@ -36,7 +36,7 @@ export const DOCS: DocArticle[] = [
 			{
 				heading: "What you get",
 				paragraphs: [
-					"Every project gets parts funding for its tier – $30, $65 or $100 – on a card you can spend at real vendors. Going further on your projects earns coins, which you can spend in the shop.",
+				"Every project gets parts funding for its tier – $30, $65 or $100 – on a card you can spend at real vendors. Going further on your projects earns coins, which you can spend in the shop: once the funding for your chosen tier has been achieved, every extra approved hour earns 5 coins.",
 					"Finish all ten weeks and a 3D printer is yours, shipped to you. Which one is up to you: you pick it as your goal and work toward it through the season. Keep up every week and the entry machine is guaranteed; go further and you can aim higher.",
 				],
 			},
@@ -147,7 +147,7 @@ export const DOCS: DocArticle[] = [
 			{
 				heading: "Coins",
 				paragraphs: [
-					"Coins track how far you go past what your project needs. Every approved hour earns 5, and they fill your printer goal before the rest is yours to spend in the shop.",
+					"Coins track how far you go past what your project needs. The hours your tier funds pay for parts and earn no coins – coins are earned at 5 per hour, but only after that tier's funding is achieved. They fill your printer goal before the rest is yours to spend in the shop.",
 				],
 				list: [
 					"Design week: your tier's funded hours pay for your parts and earn no coins. Past them, approved time banks toward your printer goal – how much depends on the printer you picked – and anything beyond that is yours to spend.",

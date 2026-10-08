@@ -1683,7 +1683,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 											{t.detail}
 											<span className="mt-1 block text-navy-soft/90">
 												You can submit on tier {t.id} from {fmtH(t.fundingHours)} of design time – the parts-funding
-												hours and nothing more. Every hour past that earns 5 spendable coins.
+												hours and nothing more. Every hour past that (once your tier's funding is achieved) earns 5 spendable coins.
 											</span>
 										</>
 									}
