@@ -154,9 +154,19 @@ export function GoalModal({
 					<ModalTitle
 						id={titleId}
 						sub={
-							dismissible
-								? "Change this whenever you like – it decides what we build the rest of the season around. Once the funding for your chosen tier is achieved, every extra approved hour earns 5 coins."
-								: "Last thing before you get going! It decides what we build the rest of the season around, and you can change it whenever you like. Once the funding for your chosen tier is achieved, every extra approved hour earns 5 coins."
+							dismissible ? (
+								<>
+									Change this whenever you like – it decides what we build the rest of the season around. Once the
+									funding for your chosen tier is achieved, every extra approved hour earns{" "}
+									<strong className="rounded bg-gold-pale px-1 text-gold-ink">5 coins</strong>.
+								</>
+							) : (
+								<>
+									Last thing before you get going! It decides what we build the rest of the season around, and you can
+									change it whenever you like. Once the funding for your chosen tier is achieved, every extra approved
+									hour earns <strong className="rounded bg-gold-pale px-1 text-gold-ink">5 coins</strong>.
+								</>
+							)
 						}
 					>
 						What are you here for?
@@ -180,7 +190,13 @@ export function GoalModal({
 					<ModalTitle
 						id={titleId}
 						subWide
-						sub="Spend more time on your hardware projects to unlock better printers! You can change this goal anytime you'd like. Once the funding for your chosen tier is achieved, every extra approved hour earns 5 coins."
+						sub={
+							<>
+								Spend more time on your hardware projects to unlock better printers! You can change this goal anytime
+								you&apos;d like. Once the funding for your chosen tier is achieved, every extra approved hour earns{" "}
+								<strong className="rounded bg-gold-pale px-1 text-gold-ink">5 coins</strong>.
+							</>
+						}
 					>
 						What&apos;s your big prize?
 					</ModalTitle>
