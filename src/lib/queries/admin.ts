@@ -4,6 +4,7 @@ import {
 	AuditAction,
 	HoursSource,
 	type PhaseStatus,
+	PostKind,
 	type ReportStatus,
 	ReviewPass,
 	ReviewResult,
@@ -969,5 +970,273 @@ export async function getReviewerStats(): Promise<ReviewerStats> {
 			today: projects.filter((p) => p.result === result && p.today).length,
 			total: projects.filter((p) => p.result === result).length,
 		})),
+	}
+}
+
+// ─── User-flow Sankey ─────────────────────────────────────────────────────────
+
+/** One box in the Sankey: a group of users at one stage, with the people who will leave or join it. */
+export interface SankeyNode {
+	id: string
+	label: string
+	/** Users in this box. The sum over a stage is that stage's headcount, not the program total. */
+	value: number
+}
+
+/** A ribbon: the users who go from one box to the next box they reach. */
+export interface SankeyLink {
+	source: string
+	target: string
+	value: number
+}
+
+export interface SankeyStage {
+	/** Column heading. */
+	label: string
+	/** Node ids in this column, top to bottom. The order is deliberate, not by size. */
+	nodes: string[]
+}
+
+export interface SankeyDiagram {
+	stages: SankeyStage[]
+	nodes: SankeyNode[]
+	links: SankeyLink[]
+	/** Everyone who signed up: the width every ribbon is drawn against. */
+	total: number
+}
+
+/**
+ * The tracked-activity branches, in the order they stack. Each is its own ribbon rather than a funnel row, because a maker may do any combination of them – devlog and reel are not alternatives, so counting them as rows of one spine is what made the funnel wrong.
+ */
+const SANKEY_ACTIVITY = [
+	{ key: "devlog", base: "Devlog", label: "Wrote a devlog" },
+	{ key: "reel", base: "Reel", label: "Posted a reel" },
+	{ key: "repo", base: "Repo", label: "Connected a repo" },
+	{ key: "hackatime", base: "Hackatime", label: "Linked Hackatime" },
+	{ key: "timelapse", base: "Timelapse", label: "Recorded a timelapse" },
+] as const
+
+type ActivityKey = (typeof SANKEY_ACTIVITY)[number]["key"]
+
+/**
+ * Box id for one activity at one rank. The rank is in the id because the two activity columns cannot share boxes: a box is a rectangle with one x position, so one id per column is the whole point of a Sankey.
+ */
+const activityNode = (rank: number, key: ActivityKey) =>
+	`act${rank}${SANKEY_ACTIVITY.find((a) => a.key === key)?.base ?? "Unknown"}`
+
+const activityNodes = (rank: number) => SANKEY_ACTIVITY.map((a) => activityNode(rank, a.key))
+
+const SANKEY_OUTCOME = [
+	{ node: "approved", label: "Approved" },
+	{ node: "returned", label: "Changes requested" },
+	{ node: "rejected", label: "Rejected" },
+	{ node: "awaiting", label: "Awaiting review" },
+	{ node: "notSubmitted", label: "Never submitted" },
+] as const
+
+/**
+ * The journey as a Sankey: left-to-right columns of stages, a ribbon per route people actually took.
+ *
+ * This is the shape the funnel cannot draw. The funnel is one spine and every row is "also did everything above it", so it can only report cumulative survival – it cannot say that a quarter of makers journal and never post, nor that a maker who posted in week one and journalled in week four is the same shape as one who did it the other way round. Here each stage is a column and a user is in at most one box per column, so a skipped stage is a visible gap the ribbon steps over and a fork is two ribbons of different widths rather than one number.
+ *
+ * Every stage except the first is optional, so a person contributes to the box they qualify for and the ribbon then jumps to the next stage they reach. A person who reached nothing after signing up is a ribbon that ends, which is a dead end the funnel has no way to draw.
+ *
+ * Where this disagrees with `getUserFlowFunnel`, this one is the literal answer and the funnel the forgiving one. The funnel treats "finished onboarding" as "did it, or already posted a reel or submitted, which presupposes it" so that a column backfilled mid-program does not shrink everything below it. Here those fallbacks are gone: the stage says what the row actually says. Read the two side by side and the gap between them is the size of that forgiveness.
+ *
+ * The activity stages split by *rank*, not by type: a user's first tracked activity and then their second, so "devlog then reel" and "reel then devlog" are two different ribbons and can be read apart. Each kind contributes only its earliest timestamp, so one prolific maker cannot fill three boxes.
+ *
+ * Read straight off the tables rather than the User analytics markers wherever a marker exists only after a backfill: the funnel needs `distinct: ["userId"]` on Session for the same reason. A missing analytics column must not silently read as "nobody did this".
+ */
+export async function getUserFlowSankey(): Promise<SankeyDiagram> {
+	const [users, projects, devlogs, reels, repoLinks, hackatimeLinks, timelapses, submissions] = await Promise.all([
+		prisma.user.findMany({
+			select: {
+				id: true,
+				hardwareExperience: true,
+				onboardingCompletedAt: true,
+				participantGoal: true,
+				firstProjectAt: true,
+				firstChecksPassedAt: true,
+			},
+		}),
+		// A description or a starter pick, read off live projects. Not `namedAt`: that marker was stamped later, so it misses the projects that predate it.
+		prisma.themeProject.findMany({
+			where: { deletedAt: null },
+			select: { userId: true, description: true, starterProjectId: true },
+		}),
+		// The same "a real devlog" rule as the funnel's devlogged step: a HACKATIME_TRACKED row with no timelapse is only a link, not work.
+		prisma.workSession.findMany({
+			where: {
+				deletedAt: null,
+				themeProject: { deletedAt: null },
+				OR: [{ hoursSource: { not: HoursSource.HACKATIME_TRACKED } }, { timelapses: { some: {} } }],
+			},
+			select: { createdAt: true, themeProject: { select: { userId: true } } },
+		}),
+		// A maker's own post, not a staff announcement: an announcement in their feed is not something they did.
+		prisma.post.findMany({
+			where: { deletedAt: null, kind: { not: PostKind.ANNOUNCEMENT } },
+			select: { userId: true, publishedAt: true, createdAt: true },
+		}),
+		prisma.themeProject.findMany({
+			where: {
+				deletedAt: null,
+				OR: [{ githubRepo: { not: null } }, { repoSyncRepo: { not: null } }, { repoSyncEnabled: true }],
+			},
+			select: { createdAt: true, userId: true },
+		}),
+		prisma.hackatimeLink.findMany({
+			where: { themeProject: { deletedAt: null } },
+			select: { createdAt: true, themeProject: { select: { userId: true } } },
+		}),
+		prisma.sessionTimelapse.findMany({
+			where: { workSession: { deletedAt: null, themeProject: { deletedAt: null } } },
+			select: { createdAt: true, workSession: { select: { themeProject: { select: { userId: true } } } } },
+		}),
+		// The decision on each hand-in, to end the journey in an outcome rather than at "submitted".
+		prisma.phaseSubmission.findMany({
+			where: { themeProject: { deletedAt: null } },
+			select: { resolvedAt: true, resolvedResult: true, themeProject: { select: { userId: true } } },
+		}),
+	])
+
+	// Earliest occurrence of each activity per person. One Map of Maps, built from rows already tagged with their kind, so a kind needs no second pass.
+	const earliest = (rows: { userId: string; at: Date; key: ActivityKey }[]) => {
+		const byUser = new Map<string, Map<ActivityKey, Date>>()
+		for (const { userId, at, key } of rows) {
+			let seen = byUser.get(userId)
+			if (!seen) {
+				seen = new Map<ActivityKey, Date>()
+				byUser.set(userId, seen)
+			}
+			const held = seen.get(key)
+			if (!held || at < held) seen.set(key, at)
+		}
+		return byUser
+	}
+
+	const activity = earliest([
+		...devlogs.map((s) => ({ userId: s.themeProject.userId, at: s.createdAt, key: "devlog" as const })),
+		...reels.map((p) => ({ userId: p.userId, at: p.publishedAt ?? p.createdAt, key: "reel" as const })),
+		...repoLinks.map((p) => ({ userId: p.userId, at: p.createdAt, key: "repo" as const })),
+		...hackatimeLinks.map((l) => ({ userId: l.themeProject.userId, at: l.createdAt, key: "hackatime" as const })),
+		...timelapses.map((t) => ({
+			userId: t.workSession.themeProject.userId,
+			at: t.createdAt,
+			key: "timelapse" as const,
+		})),
+	])
+
+	const described = new Set(
+		projects
+			.filter((p) => (p.description !== null && p.description !== "") || p.starterProjectId !== null)
+			.map((p) => p.userId),
+	)
+
+	// Each person's most recent decided or open hand-in, which is the one the outcome column should name.
+	const outcomeNode = new Map<string, (typeof SANKEY_OUTCOME)[number]["node"]>()
+	const OPEN = Number.NEGATIVE_INFINITY
+	const handIns = new Map<string, { at: number; node: (typeof SANKEY_OUTCOME)[number]["node"] }>()
+	for (const row of submissions) {
+		const at = row.resolvedAt?.getTime() ?? OPEN
+		const node = !row.resolvedResult
+			? "awaiting"
+			: row.resolvedResult === ReviewResult.APPROVED
+				? "approved"
+				: row.resolvedResult === ReviewResult.RETURNED
+					? "returned"
+					: "rejected"
+		const held = handIns.get(row.themeProject.userId)
+		if (!held || at > held.at) handIns.set(row.themeProject.userId, { at, node })
+	}
+	for (const [userId, handIn] of handIns) outcomeNode.set(userId, handIn.node)
+
+	/** The person's first two tracked activities, oldest first, as box ids. A tuple, so both slots are always present. */
+	const rankedBoxes = (userId: string): [string | null, string | null] => {
+		const order = (entry: [ActivityKey, Date]) =>
+			entry[1].getTime() * SANKEY_ACTIVITY.length + SANKEY_ACTIVITY.findIndex((x) => x.key === entry[0])
+		const seen = [...(activity.get(userId)?.entries() ?? [])]
+			// Ties broken by the declared branch order, so the same person is always the same ribbon run to run.
+			.sort((a, b) => order(a) - order(b))
+			.slice(0, 2)
+			.map(([key], i) => activityNode(i + 1, key))
+		return [seen[0] ?? null, seen[1] ?? null]
+	}
+
+	/** The person's box at each stage, null where they never got there. */
+	const boxesOf = (user: (typeof users)[number]): (string | null)[] => {
+		const started =
+			user.hardwareExperience !== null || user.onboardingCompletedAt !== null || user.firstProjectAt !== null
+		const [first, second] = rankedBoxes(user.id)
+		return [
+			"joined",
+			user.onboardingCompletedAt !== null ? "setupDone" : started ? "setupStarted" : "setupNone",
+			described.has(user.id) ? "namedProject" : null,
+			user.firstProjectAt !== null ? "projectLive" : null,
+			user.participantGoal !== null ? "goalSet" : null,
+			first,
+			second,
+			user.firstChecksPassedAt !== null ? "checksPassed" : null,
+			outcomeNode.has(user.id) ? "handedIn" : null,
+			outcomeNode.get(user.id) ?? "neverHandedIn",
+		]
+	}
+
+	const counts = new Map<string, number>()
+	const linkCounts = new Map<string, number>()
+	for (const user of users) {
+		const boxes = boxesOf(user).filter((box): box is string => box !== null)
+		for (const box of boxes) counts.set(box, (counts.get(box) ?? 0) + 1)
+		for (const [from, to] of boxes.slice(1).map((box, i) => [boxes[i] as string, box] as const))
+			linkCounts.set(`${from} ${to}`, (linkCounts.get(`${from} ${to}`) ?? 0) + 1)
+	}
+
+	const stages: SankeyStage[] = [
+		{ label: "Signed up", nodes: ["joined"] },
+		{ label: "Setup", nodes: ["setupDone", "setupStarted", "setupNone"] },
+		{ label: "Named a project", nodes: ["namedProject"] },
+		{ label: "Project live", nodes: ["projectLive"] },
+		{ label: "Set a goal", nodes: ["goalSet"] },
+		{ label: "First activity", nodes: activityNodes(1) },
+		{ label: "Second activity", nodes: activityNodes(2) },
+		{ label: "Repo checks passed", nodes: ["checksPassed"] },
+		{ label: "Handed in", nodes: ["handedIn"] },
+		{ label: "Outcome", nodes: SANKEY_OUTCOME.map((o) => o.node) },
+	]
+
+	const labels: Record<string, string> = {
+		joined: "Signed up",
+		setupDone: "Finished setup",
+		setupStarted: "Started, not finished",
+		setupNone: "Not started",
+		namedProject: "Named a project",
+		projectLive: "Project row live",
+		goalSet: "Set a goal",
+		checksPassed: "Checks passed",
+		handedIn: "Handed in for review",
+		...Object.fromEntries(
+			SANKEY_ACTIVITY.flatMap((a) => [activityNode(1, a.key), activityNode(2, a.key)].map((id) => [id, a.label])),
+		),
+		...Object.fromEntries(SANKEY_OUTCOME.map((o) => [o.node, o.label])),
+	}
+
+	// Only boxes someone actually reached are drawn: a branch nobody took is not a finding, and an empty box in the middle of the diagram reads as a bug.
+	const nodes = stages.flatMap((stage) =>
+		stage.nodes
+			.map((id) => ({ id, label: labels[id] ?? id, value: counts.get(id) ?? 0 }))
+			.filter((node) => node.value > 0),
+	)
+	const live = new Set(nodes.map((n) => n.id))
+
+	return {
+		stages,
+		nodes,
+		links: [...linkCounts]
+			.map(([key, value]) => {
+				const [source, target] = key.split(" ")
+				return { source: source as string, target: target as string, value }
+			})
+			.filter((link) => live.has(link.source) && live.has(link.target)),
+		total: users.length,
 	}
 }

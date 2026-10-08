@@ -14,6 +14,7 @@ import {
 	getFirstProjectStats,
 	getReviewerStats,
 	getUserFlowFunnel,
+	getUserFlowSankey,
 } from "@/lib/queries/admin"
 import { getLatestSyncRuns } from "@/lib/sync-run-log"
 
@@ -38,7 +39,7 @@ export default async function AdminOverviewPage() {
 		Permission.MANAGE_PROGRAM,
 	)
 
-	const [counters, syncs, flow, areas, countries, activity, firstProjects, reviewer] = await Promise.all([
+	const [counters, syncs, flow, sankey, areas, countries, activity, firstProjects, reviewer] = await Promise.all([
 		getAdminCounters(),
 		getLatestSyncRuns([
 			"hackatime",
@@ -51,6 +52,7 @@ export default async function AdminOverviewPage() {
 			"help_ticket_summary",
 		]),
 		getUserFlowFunnel(),
+		getUserFlowSankey(),
 		getAreaStats(),
 		getCountryStats(),
 		getDailyActivity(),
@@ -105,7 +107,7 @@ export default async function AdminOverviewPage() {
 					</span>
 				}
 			>
-				<UserFlowDiagram steps={flow} />
+				<UserFlowDiagram steps={flow} sankey={sankey} />
 			</Panel>
 
 			<Panel title="Users & hours by continent">
