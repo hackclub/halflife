@@ -39,11 +39,12 @@ type SlackEvent = {
 
 /** New top-level message in #half-life-help – post it to the private
  * tickets channel with a "Mark as helped" button, reply in-thread with an "I'm all set" button the ticket's own author can use to self-resolve, and drop the pending reaction on the original so the channel shows at a glance that it's still waiting. Thread replies and anything from a bot (including our own acks) are
- * conversation on an existing ticket, not a new one. */
+ * conversation on an existing ticket, not a new one. A message that shares a file (e.g. a photo of a build) arrives with subtype `file_share`, so that one still opens a ticket – every other subtype (edits, deletes, joins, broadcasts) does not. */
 async function handleHelpMessage(event: SlackEvent) {
 	const ticketsChannel = process.env.SLACK_TICKETS_CHANNEL_ID
 	if (!ticketsChannel) return
-	if (event.subtype || event.bot_id || event.thread_ts) return
+	if (event.bot_id || event.thread_ts) return
+	if (event.subtype && event.subtype !== "file_share") return
 	if (!event.user || !event.ts || !event.channel) return
 
 	const permalink = await getPermalink(event.channel, event.ts)
