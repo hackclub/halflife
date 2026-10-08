@@ -10,7 +10,9 @@ import { uploadFile, useHandoff } from "@/lib/use-handoff"
 /**
  * Getting a video out of someone and into the bucket.
  *
- * Two routes, because the program runs on hardware that is nowhere near the machine the platform is open on. You can pick a file here, or scan a code and film on your phone – which is the one that actually gets used, since the bench and the laptop are rarely the same desk. The phone route needs no sign-in on the phone: the QR carries a single-use token that expires in minutes, so nobody has to type a Hack Club password into a borrowed handset.
+ * Three routes, because the program runs on hardware that is nowhere near the machine the platform is open on. You can pick a file, film on the device in your hand, or scan a code and film on your phone – the last of which is the one that actually gets used, since the bench and the laptop are rarely the same desk. The phone route needs no sign-in on the phone: the QR carries a single-use token that expires in minutes, so nobody has to type a Hack Club password into a borrowed handset.
+ *
+ * The file picker deliberately carries no `capture`: on a phone that hint would open the recorder, and the clip already sitting in the gallery is the more common answer for a reel filmed earlier. Filming now is its own button, and it is shown only where the pointer is coarse, because a desktop browser ignores `capture` and would open the same picker the button beside it already opens.
  *
  * Either way what is stored is an R2 object key, never a URL. URLs are minted at read time so the bucket or the CDN in front of it can move without rewriting a single stored row.
  *
@@ -32,6 +34,7 @@ export function ReelCapture({
 	const [error, setError] = useState<string | null>(null)
 	const [showQr, setShowQr] = useState(false)
 	const input = useRef<HTMLInputElement>(null)
+	const camera = useRef<HTMLInputElement>(null)
 
 	const handoff = useHandoff((key, url) => {
 		onCaptured(key, url)
@@ -90,8 +93,18 @@ export function ReelCapture({
 			{busy && <UploadProgress progress={progress} name="Your video" className="max-w-[420px]" />}
 
 			<div className="flex flex-wrap gap-2">
+				{/* No `capture`, so a phone opens the gallery rather than the recorder: the clip someone filmed earlier is the more common answer. */}
 				<Button variant="outline" disabled={busy} onClick={() => input.current?.click()}>
 					{busy ? "Uploading…" : "Choose a video"}
+				</Button>
+				{/* Films on the device in the reader's hand. Hidden where the primary pointer is fine, because a desktop browser ignores `capture` and this would be the button beside it: the variant has to be the one that hides, since the button's own `inline-flex` is emitted after `hidden` and would beat it. */}
+				<Button
+					variant="outline"
+					disabled={busy}
+					className="[@media(pointer:fine)]:hidden"
+					onClick={() => camera.current?.click()}
+				>
+					Record now
 				</Button>
 				<Button
 					variant="outline"
@@ -105,12 +118,15 @@ export function ReelCapture({
 				</Button>
 			</div>
 
+			{/* No `capture`: this one is the picker. */}
+			<input ref={input} type="file" accept="video/*" className="sr-only" onChange={(e) => pick(e.target.files?.[0])} />
+
+			{/* `capture` is a hint, not a constraint: on a phone it opens the rear camera straight into the native recorder, and hands back the platform's own format. A desktop browser ignores it, which is why the button that opens this one is hidden there. */}
 			<input
-				ref={input}
+				ref={camera}
 				type="file"
 				accept="video/*"
 				className="sr-only"
-				// `capture` is a hint, not a constraint: on a phone it opens the camera straight away, and on a laptop the browser ignores it and shows the file picker, which is exactly what is wanted in both places.
 				capture="environment"
 				onChange={(e) => pick(e.target.files?.[0])}
 			/>
