@@ -111,7 +111,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
 			"bg-coral-deep text-white border-coral-dark hover:bg-coral-dark active:translate-y-px disabled:bg-line disabled:border-line-strong",
 		outline:
 			"bg-transparent text-navy border-violet hover:bg-violet-pale active:translate-y-px disabled:text-navy-soft disabled:border-line",
-		ghost: "bg-transparent text-navy-soft border-transparent hover:text-navy hover:bg-black/5",
+		ghost: "bg-transparent text-navy-soft border-transparent hover:text-navy hover:bg-black/5 active:translate-y-px",
 	}[variant]
 
 	return (

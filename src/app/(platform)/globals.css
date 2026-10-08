@@ -92,6 +92,36 @@
 		color: inherit;
 	}
 
+	/*
+	 * Tailwind v4's preflight leaves a button on the browser's own cursor
+	 * (`default`), so every button had to ask for a pointer itself and most never
+	 * did. One rule here instead, so a new one cannot forget. `[role="button"]`
+	 * covers the handful of controls that are a link or a div by design.
+	 *
+	 * A control that wants something else – the settled checkpoint puck sets
+	 * `cursor-default` – still wins, because a utility is a later layer than this.
+	 */
+	button:not(:disabled),
+	[role="button"]:not([aria-disabled="true"]) {
+		cursor: pointer;
+	}
+
+	button:disabled,
+	[role="button"][aria-disabled="true"] {
+		cursor: not-allowed;
+	}
+
+	/*
+	 * The press every button shares, so a control that never declared an active
+	 * state still answers a tap. Anything with one of its own – the pucks sink,
+	 * Button's `active:translate-y-px`, the ops `.hl-btn` – is a later layer and
+	 * wins, so nothing moves twice.
+	 */
+	button:not(:disabled):active,
+	[role="button"]:not([aria-disabled="true"]):active {
+		transform: translateY(1px);
+	}
+
 	input::placeholder,
 	textarea::placeholder {
 		/* navy-faint: the old #8b87a8 was 3.43:1 on a white field. */

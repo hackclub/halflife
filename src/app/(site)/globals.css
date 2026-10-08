@@ -94,6 +94,29 @@ html {
 	-webkit-text-size-adjust: 100%;
 }
 
+/*
+ * Tailwind v4's preflight leaves a button on the browser's own cursor
+ * (`default`), so it has to ask for a pointer itself. The platform stylesheet
+ * carries the same rule; this page has its own.
+ */
+@layer base {
+	button:not(:disabled),
+	[role="button"]:not([aria-disabled="true"]) {
+		cursor: pointer;
+	}
+
+	button:disabled,
+	[role="button"][aria-disabled="true"] {
+		cursor: not-allowed;
+	}
+
+	/* The press, for a control with no active state of its own. */
+	button:not(:disabled):active,
+	[role="button"]:not([aria-disabled="true"]):active {
+		transform: translateY(1px);
+	}
+}
+
 @media (prefers-reduced-motion: reduce) {
 	html {
 		scroll-behavior: auto;

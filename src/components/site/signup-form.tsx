@@ -255,7 +255,7 @@ export default function SignupForm({
 						<button
 							type="submit"
 							disabled={pending}
-							className="grid shrink-0 place-items-center bg-hl-cyan px-[0.6em] text-hl-ink transition-colors hover:bg-white focus-visible:bg-white disabled:cursor-progress disabled:bg-hl-blue min-[520px]:px-[0.9em]"
+							className="grid shrink-0 place-items-center bg-hl-cyan px-[0.6em] text-hl-ink transition-colors hover:bg-white focus-visible:bg-white active:brightness-95 disabled:cursor-progress disabled:bg-hl-blue min-[520px]:px-[0.9em]"
 							style={{ height: "2.1667em" }}
 						>
 							<span
