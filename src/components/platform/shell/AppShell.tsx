@@ -19,7 +19,9 @@ import {
 } from "@/components/platform/icons"
 import { GoalModal } from "@/components/platform/modals/GoalModal"
 import { Overlays } from "@/components/platform/onboarding/Overlays"
+import { EventScheduleButton } from "@/components/platform/shell/EventScheduleButton"
 import { cx } from "@/lib/cx"
+import type { CalendarEvent } from "@/lib/events"
 import { PLATFORM_HOME } from "@/lib/routes"
 import { useStore } from "@/lib/store"
 import logoArt from "../../../../public/art/logo.png"
@@ -59,7 +61,17 @@ function StatCluster() {
 	)
 }
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({
+	children,
+	events,
+	programTimezone,
+}: {
+	children: React.ReactNode
+	/** Published events from now on, as the layout read them. */
+	events: CalendarEvent[]
+	/** The zone every deadline in the app is shown in. */
+	programTimezone: string
+}) {
 	const pathname = usePathname()
 	const { doomscrollerOpen, setDoomscroller, phase } = useStore()
 	const backdropRef = useRef<HTMLDivElement>(null)
@@ -208,6 +220,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 								</Link>
 							</>
 						)}
+
+						{/* The countdown to whatever is on the calendar next. Sits beside
+                the counters rather than in the status rail, because it is the one
+                header control that answers "what do I do next" rather than "what
+                have I done" – and it is worth a glance on every page, not only on
+                the trail. */}
+						<EventScheduleButton events={events} timeZone={programTimezone} />
 
 						<StatCluster />
 					</header>

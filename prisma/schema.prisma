@@ -259,6 +259,23 @@ enum ShopFulfillmentStage {
   CANCELLED
 }
 
+/// What kind of gathering a scheduled event is. A short, fixed set because the
+/// whole point of it is that the calendar can be read at a glance – the weekly
+/// call has to look different from show & tell.
+enum EventKind {
+  /// An open call anyone can drop into with a mentor.
+  OFFICE_HOURS
+  /// A working session: lock in, or fix the thing that is stuck.
+  HUDDLE
+  /// Present what you built.
+  SHOW_AND_TELL
+  /// A taught session – soldering, KiCad, a first firmware flash.
+  WORKSHOP
+  /// Anything that is not work.
+  SOCIAL
+  OTHER
+}
+
 enum PrinterAwardStatus {
   QUALIFIED
   ADDRESS_LOCKED
@@ -339,6 +356,12 @@ enum AuditAction {
   /// An admin putting themselves back at the start of the first checkpoint.
   ADMIN_RESET_ONBOARDING
   ADMIN_RESOLVE_DISPUTE
+  /// A change to the programme calendar: one occurrence of a scheduled event.
+  /// Repeating events are created in one request but logged as one action,
+  /// carrying the occurrence count, because the series is the unit an admin meant.
+  ADMIN_CREATE_PROGRAM_EVENT
+  ADMIN_UPDATE_PROGRAM_EVENT
+  ADMIN_DELETE_PROGRAM_EVENT
   /// A content report reviewed with action taken (or looked at and closed).
   ADMIN_RESOLVE_REPORT
   /// A content report closed as no violation.
@@ -1932,4 +1955,52 @@ model HelpTicket {
   @@index([authorSlackId, createdAt])
   @@index([resolvedAt])
   @@map("help_ticket")
+}
+
+/// One dated thing on the programme calendar: the weekly call, a lock-in
+/// huddle, a show & tell, a soldering workshop.
+///
+/// A row per occurrence rather than a recurring rule, deliberately. A standing
+/// weekly call is ten rows sharing a `seriesId`, and each can then be moved,
+/// retitled or cancelled on its own — which is what actually happens, when the
+/// week one call lands on a bank holiday. A rule would turn every cancellation
+/// into a migration.
+///
+/// Moments are stored as instants and read in `ProgramSettings.programTimezone`,
+/// like every other deadline in the app: an event is a fact about a moment, and
+/// which wall clock shows it is a question the programme already answers once.
+model ProgramEvent {
+  id String @id @default(cuid())
+
+  title String
+  kind  EventKind @default(OTHER)
+  /// Optional. Long enough for an agenda, short enough to sit in a calendar card.
+  description String?
+
+  /// When it starts. The countdown in the shell header reads this column.
+  startsAt DateTime
+  /// When it ends, when that is known. Optional because an open call has no
+  /// end – and because an end that is wrong is worse than none.
+  endsAt DateTime?
+
+  /// Where it happens: a room, "the Discord stage", "your own desk".
+  location String?
+  /// A call link or a sign-up page. https only, checked by httpsUrl.
+  link String?
+
+  /// A draft never reaches a participant's header or calendar. The column rather
+  /// than a delete because half-announced things are real, and the week before
+  /// the announcement is exactly when it is written.
+  published Boolean @default(true)
+
+  /// Shared by every occurrence created together; null for a one-off.
+  seriesId String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+
+  @@index([published, startsAt])
+  @@index([seriesId])
+  @@map("program_event")
 }
