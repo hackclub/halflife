@@ -1973,10 +1973,11 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					<IconCamera className="mt-0.5 shrink-0 text-xl text-coral-deep" />
 					<div className="min-w-0">
 						<p className="text-[0.95rem] leading-snug font-extrabold text-coral-dark">
-							Your project needs a cover image.
+							{project ? `${project.name} needs a cover image.` : "Your project needs a cover image."}
 						</p>
 						<p className="mt-1 text-[0.85rem] leading-snug text-navy-soft">
-							Upload a cover image on the project page before you can submit.{" "}
+							Upload one on that project&apos;s page before you can submit – covers are per project, so a cover
+							uploaded elsewhere does not count.{" "}
 							{project && (
 								<Link
 									href={`/projects/${project.id}`}

@@ -1,5 +1,5 @@
 import "server-only"
-import { Phase } from "@/app/generated/prisma/enums"
+import { HoursSource, Phase } from "@/app/generated/prisma/enums"
 import { type AirtableRecord, airtableFetch, getAirtableConfig, withRateLimitRetry } from "@/lib/airtable/client"
 import { existingColumns } from "@/lib/airtable/field-probe"
 import { fieldKey, RSVP, RSVP_TABLE_ID } from "@/lib/airtable/schema"
@@ -12,6 +12,8 @@ import prisma from "@/lib/prisma"
  * Twelve columns, all Half Life's to write: when someone was last seen on the site, when they last logged a journal entry, and one checkbox per program week for whether they have completed that week's first checkpoint. Everything else Half Life tracks stays in Postgres (lib/analytics) – Loops needs these, not the rest.
  *
  * "Last login" is last site access, from `lastActiveAt` (the page-view heartbeat, lib/analytics), falling back to `lastLoginAt` for someone who has signed in but not been seen since. Loops keys its re-engagement email off that, so a visit counts, not just a fresh session.
+ *
+ * "Last entry" is the newest real journal entry: a session the maker wrote themselves, or one carrying a timelapse. Hackatime-tracked rows and a bare Hackatime link are not entries, so a user with only Hackatime evidence gets nothing – and any timestamp an older sync stamped is removed on the next run.
  *
  * Rows are matched on `Half-Life User ID` where the column exists, falling back to a case-insensitive email match. The id is the reliable one and the email is the fallback, because the two genuinely disagree: the Signups table is the landing page's list, so a row's email is whatever address someone typed before they had an account, while `User.email` is what the identity provider later gave them. Measured on the dev base, 5100 of 5101 rows had no user sharing their email – matching on email alone matched one person and left every Loops column empty for the rest, which is exactly the bug this column already existed to prevent (see RSVP.fields.userId).
  *
@@ -66,7 +68,7 @@ async function loopsValues(): Promise<LoopsValues[]> {
 					namedAt: true,
 					workSessions: {
 						where: { deletedAt: null },
-						select: { phase: true, createdAt: true },
+						select: { phase: true, createdAt: true, hoursSource: true, timelapses: { select: { id: true }, take: 1 } },
 						orderBy: { createdAt: "desc" },
 					},
 				},
@@ -81,9 +83,11 @@ async function loopsValues(): Promise<LoopsValues[]> {
 			weeks[def.designWeek] = def.designWeek === 1 ? u.onboardingCompletedAt !== null : project?.namedAt != null
 			weeks[def.buildWeek] = project?.workSessions.some((s) => s.phase === Phase.BUILD) ?? false
 		}
+		// Last entry means evidence of an actual entry: a manually written session, or a session carrying a timelapse. A HACKATIME_TRACKED row only says a Hackatime project was linked and contributes nothing on its own – someone who has only linked Hackatime gets no timestamp, and a previously stamped one is cleared below.
 		const lastEntryAt = u.themeProjects
-			.map((p) => p.workSessions[0]?.createdAt)
-			.filter((d): d is Date => d instanceof Date)
+			.flatMap((p) => p.workSessions)
+			.filter((s) => s.hoursSource !== HoursSource.HACKATIME_TRACKED || s.timelapses.length > 0)
+			.map((s) => s.createdAt)
 			.reduce<Date | null>((a, b) => (a && a > b ? a : b), null)
 		// "Last login" means last time we saw them, so a page view wins over the sign-in that started the session; a sign-in with no view since still counts, so take whichever is newer.
 		const lastLoginAt = newest(u.lastLoginAt, u.lastActiveAt)
