@@ -46,15 +46,19 @@ const BACKDROP_PARALLAX = 0.35
 function StatCluster() {
 	const { coins, streak } = useStore()
 	return (
-		<div className="flex items-center gap-4 sm:gap-6">
-			<span className="flex items-center gap-1.5" title={`${coins} coins banked`}>
-				<IconCoin className="text-[1.45rem] text-orange" />
-				<span className="text-[1.15rem] leading-none font-extrabold tabular-nums text-orange-ink">{coins}</span>
+		<div className="flex shrink-0 items-center gap-2.5 sm:gap-6">
+			<span className="flex items-center gap-1 sm:gap-1.5" title={`${coins} coins banked`}>
+				<IconCoin className="text-[1.3rem] text-orange sm:text-[1.45rem]" />
+				<span className="text-[1.05rem] leading-none font-extrabold tabular-nums text-orange-ink sm:text-[1.15rem]">
+					{coins}
+				</span>
 				<span className="sr-only">coins</span>
 			</span>
-			<span className="flex items-center gap-1.5" title={`${streak} day streak`}>
-				<IconFlame className="text-[1.45rem] text-coral" />
-				<span className="text-[1.15rem] leading-none font-extrabold tabular-nums text-coral-deep">{streak}</span>
+			<span className="flex items-center gap-1 sm:gap-1.5" title={`${streak} day streak`}>
+				<IconFlame className="text-[1.3rem] text-coral sm:text-[1.45rem]" />
+				<span className="text-[1.05rem] leading-none font-extrabold tabular-nums text-coral-deep sm:text-[1.15rem]">
+					{streak}
+				</span>
 				<span className="sr-only">day streak</span>
 			</span>
 		</div>
@@ -142,9 +146,17 @@ export function AppShell({
 
 				{/* ---------- centre + feed ---------- */}
 				<div className="flex min-w-0 flex-1 flex-col">
-					<header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-dashed border-line/70 bg-cream/85 px-4 backdrop-blur-md sm:px-6 lg:border-b-0 lg:bg-transparent lg:backdrop-blur-none">
-						<Link href={PLATFORM_HOME} aria-label="Half Life home" className="w-[84px] shrink-0 lg:hidden">
-							<Image src={logoArt} alt="" priority sizes="84px" className="h-auto w-full" />
+					<header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-1.5 border-b border-dashed border-line/70 bg-cream/85 px-2 backdrop-blur-md sm:gap-3 sm:px-6 lg:border-b-0 lg:bg-transparent lg:backdrop-blur-none">
+						{/* Only from sm: on a phone the wordmark is a smudge at any size that
+                fits, and the row has a countdown, two shortcuts and two counters
+                to hold. The bottom tab bar's Home is the brand anchor down there,
+                and the left rail carries the full-size mark from lg. */}
+						<Link
+							href={PLATFORM_HOME}
+							aria-label="Half Life home"
+							className="hidden w-[64px] shrink-0 sm:block lg:hidden"
+						>
+							<Image src={logoArt} alt="" priority sizes="64px" className="h-auto w-full" />
 						</Link>
 						<div className="min-w-0 flex-1" />
 
@@ -205,18 +217,19 @@ export function AppShell({
 									onClick={() => setGoalOpen(true)}
 									aria-haspopup="dialog"
 									aria-label="Change goal"
-									className="label inline-flex items-center gap-1.5 rounded-full border-2 border-line bg-paper px-3 py-1.5 text-navy-soft transition-colors hover:border-teal hover:text-navy lg:hidden"
+									title="Change goal"
+									className="label inline-flex shrink-0 items-center gap-1 rounded-full border-2 border-line bg-paper px-2.5 py-1.5 text-navy-soft transition-colors hover:border-teal hover:text-navy sm:gap-1.5 lg:hidden"
 								>
 									<IconTrophy className="text-base" />
-									<span className="hidden md:inline">Change goal</span>
 								</button>
 								<Link
 									href="/doomscroller"
 									data-tour="doomscroller-button"
-									className="label inline-flex items-center gap-1.5 rounded-full border-2 border-line bg-paper px-3 py-1.5 text-navy-soft transition-colors hover:border-sky hover:text-navy lg:hidden"
+									aria-label="Doomscroller"
+									title="Doomscroller"
+									className="label inline-flex shrink-0 items-center gap-1 rounded-full border-2 border-line bg-paper px-2.5 py-1.5 text-navy-soft transition-colors hover:border-sky hover:text-navy sm:gap-1.5 lg:hidden"
 								>
 									<IconFilm className="text-base" />
-									<span className="hidden md:inline">Doomscroller</span>
 								</Link>
 							</>
 						)}
