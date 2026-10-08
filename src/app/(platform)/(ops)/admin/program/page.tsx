@@ -2,6 +2,7 @@ import { headers } from "next/headers"
 import Link from "next/link"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { AirtableImportForm } from "@/app/components/forms/AirtableImportForm"
+import { CsvProjectsImport } from "@/app/components/forms/CsvProjectsImport"
 import { ProgramSettingsForm } from "@/app/components/forms/ProgramSettingsForm"
 import { ProgramStartForm } from "@/app/components/forms/ProgramStartForm"
 import { Badge, EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
@@ -134,6 +135,13 @@ export default async function AdminProgramPage() {
 				) : (
 					<EmptyState>Airtable is not configured on this deployment, so there is nothing to import.</EmptyState>
 				)}
+			</Panel>
+
+			<Panel title="Warm-up projects from CSV">
+				<p className="hl-hint">
+					Import a CSV exported from Macondo (project_id, project_title, project_description, journals, tier, author_email, repository_url, thumbnail_url, and the rest). Each row becomes its own warm-up project on the same Warm Up track – a pre-season slot that does not use one of the five season themes – with an account created if the row&apos;s email has none, and one work session filed per entry in the row&apos;s journals column. Rows already imported are reported instead of duplicated, so the button is safe to run again.
+				</p>
+				<CsvProjectsImport />
 			</Panel>
 
 			<Panel title="Submissions that never reached Airtable">
