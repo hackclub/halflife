@@ -223,7 +223,7 @@ function GoalCard({
 			role="radio"
 			aria-checked={selected}
 			onClick={onSelect}
-			title={`About ${Math.round(goal.paceHours * 5)} coins to earn each design week – that pace is the same on every tier, because tier hours pay for parts while every hour past them earns. Bigger printers cost more coins to earn each week.`}
+			title={`About ${Math.round(goal.paceHours * 5)} coins to earn each design week – that pace is the same on every tier, because tier hours pay for parts while every hour past them earns 5 coins. Bigger printers cost more coins to earn each week.`}
 			className={cx(
 				"sketch relative block w-full rounded-2xl px-4 pt-4 pb-3.5 text-left transition-colors duration-150 sm:px-5",
 				!selected && "hover:bg-white",
