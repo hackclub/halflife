@@ -1,4 +1,5 @@
 "use client"
+import { useEffect, useRef, useState } from "react"
 import { EmptyState } from "@/app/components/ui"
 import type { SankeyDiagram, SankeyNode } from "@/lib/queries/admin"
 
@@ -20,14 +21,6 @@ const STAGE_W = 168
 const HEADER_H = 34
 /** Room under the last stage for the axis of nothing, i.e. breathing space. */
 const FOOT_H = 10
-/**
- * The vertical slot a label needs, and the reason thin boxes still get one.
- *
- * Gating a label on the box being tall enough (the first cut of this) left every small cohort nameless, and a 1.5px box is not a hover target. Boxes in a stage are separated by NODE_PAD, so two hairline boxes already sit further apart than a line of text is tall: their labels fit side by side without moving. Where they would not fit, the label drops into the next free slot and a leader line ties it back to its box, so a number is never lost – only nudged.
- */
-const LABEL_H = 12
-/** Gap from a box to its label. */
-const LABEL_DX = 7
 /**
  * A floor on a BOX only, never on a ribbon.
  *
@@ -66,9 +59,52 @@ interface Ribbon {
 
 const fmt = (n: number) => n.toLocaleString("en-US")
 
+/** Clearance inside the panel so the outermost labels are not flush against its edge. */
+const LABEL_PAD = 10
+
 export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 	const { stages, total } = diagram
+	const scroller = useRef<HTMLDivElement>(null)
+	/** Width the panel actually gave us, so the drawing can be sized to it. */
+	const [avail, setAvail] = useState(0)
+
+	useEffect(() => {
+		const el = scroller.current
+		if (!el) return
+		const read = () => setAvail(el.getBoundingClientRect().width)
+		read()
+		// A ResizeObserver rather than a window resize listener: the panel also changes width when the tab flips between the narrow funnel and the full-bleed Sankey, which fires no window resize at all.
+		const observer = new ResizeObserver(read)
+		observer.observe(el)
+		return () => observer.disconnect()
+	}, [])
+
 	if (total === 0 || diagram.nodes.length === 0) return <EmptyState>No signups yet.</EmptyState>
+
+	const xOf = (stage: number) => stage * STAGE_W
+	const W = xOf(stages.length - 1) + STAGE_W + 40
+
+	/**
+	 * Fit the space given rather than insisting on its own width.
+	 *
+	 * The drawing is laid out in fixed viewBox units and the SVG scales to whatever it is given, so a narrow window shrinks the whole diagram instead of pushing its sides out of reach. Two things compensate for that shrink, because a scaled-down SVG scales its text too: type is enlarged in viewBox units by the inverse of the shrink so it still renders at its intended size, and the label slot grows with it so labels never overlap. Once a stage's share of the width can no longer hold a number plus its name, the name drops and the number stands alone, with the full label still in the tooltip.
+	 */
+	const box = Math.max(0, avail - LABEL_PAD * 2)
+	const fit = box > 0 ? Math.min(1, box / W) : 1
+	const font = Math.min(26, 11 / fit)
+	/**
+	 * The vertical slot a label needs, and the reason thin boxes still get one.
+	 *
+	 * Gating a label on the box being tall enough (the first cut of this) left every small cohort nameless, and a 1.5px box is not a hover target. Boxes in a stage are separated by NODE_PAD, so two hairline boxes often already sit further apart than a line of text is tall: their labels fit side by side without moving. Where they would not fit, the label drops into the next free slot and a leader line ties it back to its box, so a number is never lost – only nudged. The slot tracks the font so it still holds when type is enlarged to compensate for a shrink, and it is deliberately roomier than the em: a rendered text box runs to about 1.35em, and a 1.15em slot let neighbours touch.
+	 */
+	const labelSlot = font * 1.45
+	/** Gap from a box to its label. */
+	const labelGap = font * 0.65
+	// A label gets the gap between its own box and the next one, which the SVG then scales: STAGE_W of viewBox units at whatever the shrink is. Measuring it in the same units as the text it has to hold is the whole point – comparing a viewBox-unit text width against a screen-pixel budget reads as "too tight" at widths where the name actually fits, and drops it for no reason.
+	const screenScale = box > 0 ? box / W : 1
+	// ~0.52em per character is a fair average for this face at these sizes. The longest label plus room for a five-figure count sets the budget for every stage.
+	const widestLabel = Math.max(...diagram.nodes.map((n) => n.label.length)) + 8
+	const showNames = font * 0.52 * widestLabel * screenScale <= STAGE_W * screenScale
 
 	const byId = new Map(diagram.nodes.map((n) => [n.id, n]))
 	const stageIndex = new Map<string, number>()
@@ -168,27 +204,24 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 		let lastBottom = Number.NEGATIVE_INFINITY
 		for (const node of boxes) {
 			const home = (node.y0 + node.y1) / 2
-			// A label centred here occupies [y - LABEL_H/2, y + LABEL_H/2], so clearing the previous label's bottom edge costs half a slot, not a whole one. Reserving a whole slot shoves every label off its own box, even though boxes in a stage sit NODE_PAD apart – already more than a line of text is tall – and a diagram covered in leader lines is harder to read than one with a few.
-			const y = Math.max(home, lastBottom + LABEL_H / 2)
+			// A label centred here occupies [y - slot/2, y + slot/2], so clearing the previous label's bottom edge costs half a slot, not a whole one. Reserving a whole slot shoves every label off its own box, even though boxes in a stage sit NODE_PAD apart – already more than a line of text is tall – and a diagram covered in leader lines is harder to read than one with a few.
+			const y = Math.max(home, lastBottom + labelSlot / 2)
 			rows.push({ node, y, home })
-			lastBottom = y + LABEL_H / 2
+			lastBottom = y + labelSlot / 2
 		}
 
 		// Lift the run only if it would fall off the bottom of the plot. Re-centring it unconditionally is worse than doing nothing: a stage whose boxes are unevenly weighted has its label run centred well below them, so every label gets dragged off a box it was already sitting on, and every one grows a leader line.
 		const first = rows[0]
 		if (!first) continue
-		const lift = Math.min(lastBottom - H, first.y - LABEL_H / 2)
+		const lift = Math.min(lastBottom - H, first.y - labelSlot / 2)
 		if (lift > 0) for (const row of rows) row.y -= lift
 
 		for (const row of rows) {
 			// Off the bottom of the plot: no slot left, so this box goes unlabelled rather than printed over the caption.
-			if (row.y + LABEL_H / 2 > H) continue
+			if (row.y + labelSlot / 2 > H) continue
 			labelRows.set(row.node.id, { y: row.y, home: row.home })
 		}
 	}
-
-	const xOf = (stage: number) => stage * STAGE_W
-	const W = xOf(stages.length - 1) + STAGE_W + 40
 
 	const ribbonPath = (r: Ribbon) => {
 		const x0 = xOf(r.source.stage) + NODE_W
@@ -204,13 +237,12 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 
 	return (
 		<div>
-			{/* The diagram is wider than the panel on most screens, so it scrolls sideways rather than squashing the ribbons until two routes are indistinguishable. */}
-			<div style={{ overflowX: "auto", paddingBottom: "0.25rem" }}>
+			<div ref={scroller} style={{ paddingBottom: "0.25rem" }}>
 				<svg
 					viewBox={`0 0 ${W} ${H + HEADER_H + FOOT_H}`}
 					role="img"
 					aria-label={`Participant journey as a Sankey diagram across ${stages.length} stages. ${summary}`}
-					style={{ display: "block", minWidth: `${W}px`, width: "100%", maxWidth: `${W}px`, height: "auto" }}
+					style={{ display: "block", width: "100%", maxWidth: `${W}px`, height: "auto" }}
 				>
 					<defs>
 						{ribbons.map((r, i) => (
@@ -243,7 +275,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 									key={`lead-${node.id}`}
 									x1={xOf(node.stage) + NODE_W}
 									y1={slot.home}
-									x2={xOf(node.stage) + NODE_W + LABEL_DX - 2}
+									x2={xOf(node.stage) + NODE_W + labelGap - 2}
 									y2={slot.y}
 									style={{ stroke: "var(--color-ink-muted)", strokeWidth: 0.75, opacity: 0.55 }}
 								/>
@@ -261,23 +293,25 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 									</rect>
 									{slot && (
 										<text
-											x={x + NODE_W + LABEL_DX}
+											x={x + NODE_W + labelGap}
 											y={slot.y}
 											dominantBaseline="middle"
 											style={{
-												fontSize: "11px",
+												fontSize: `${font}px`,
 												// A halo in the panel's own colour, so a label stays readable where it crosses a ribbon or a neighbour's leader line.
 												paintOrder: "stroke",
 												stroke: "var(--color-surface-raised)",
-												strokeWidth: 3.5,
+												strokeWidth: font * 0.32,
 												strokeLinejoin: "round",
 												fill: "var(--color-ink-strong)",
 											}}
 										>
 											{fmt(node.value)}
-											<tspan dx="4" style={{ fontWeight: 400, fill: "var(--color-ink-muted)" }}>
-												{node.label}
-											</tspan>
+											{showNames ? (
+												<tspan dx={font * 0.36} style={{ fontWeight: 400, fill: "var(--color-ink-muted)" }}>
+													{node.label}
+												</tspan>
+											) : null}
 										</text>
 									)}
 								</g>
@@ -291,7 +325,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 							x={xOf(i)}
 							y={HEADER_H - 12}
 							textAnchor="start"
-							style={{ fontSize: "11px", fontWeight: 700, fill: "var(--color-ink-muted)" }}
+							style={{ fontSize: `${font * 0.92}px`, fontWeight: 700, fill: "var(--color-ink-muted)" }}
 						>
 							{stage.label}
 						</text>
