@@ -61,7 +61,7 @@ function Entry({ entry, viewerId }: { entry: JournalRow; viewerId: string }) {
 				<Link
 					href={`/u/${entry.authorId}`}
 					aria-label={`${entry.author}'s profile`}
-					className="shrink-0 rounded-lg transition-transform hover:-translate-y-0.5"
+					className="shrink-0 rounded-lg transition-transform hover:-translate-y-0.5 active:translate-y-px"
 				>
 					{entry.authorImage ? (
 						// eslint-disable-next-line @next/next/no-img-element -- the avatar host (Slack via Cachet) is known only at runtime

@@ -300,7 +300,7 @@ export function StageSlide({
 				) : reel.project ? (
 					<Link
 						href={`/projects/${reel.project.id}`}
-						className="label absolute top-3 left-3 z-[4] max-w-[calc(100%-4.5rem)] truncate rounded-2xl bg-black/45 px-2.5 py-1 leading-[1.2] text-white backdrop-blur-sm transition-colors hover:bg-black/60 md:max-w-[calc(100%-1.5rem)]"
+						className="label absolute top-3 left-3 z-[4] max-w-[calc(100%-4.5rem)] truncate rounded-2xl bg-black/45 px-2.5 py-1 leading-[1.2] text-white backdrop-blur-sm transition-[background-color,transform] duration-150 hover:bg-black/60 active:translate-y-px md:max-w-[calc(100%-1.5rem)]"
 					>
 						{reel.project.title || reel.project.theme}
 					</Link>

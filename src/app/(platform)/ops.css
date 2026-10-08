@@ -264,6 +264,9 @@ h4 {
 	.hl-nav-item:hover {
 		color: var(--color-accent);
 	}
+	.hl-nav-item:active {
+		transform: translateY(1px);
+	}
 
 	/* ── Counters (coins, streak) ──────────────────────────────────────────── */
 	.hl-counters {
@@ -991,6 +994,9 @@ h4 {
 	}
 	.hl-nav a:hover {
 		color: var(--color-accent);
+	}
+	.hl-nav a:active {
+		transform: translateY(1px);
 	}
 
 	/* ── Layout helpers ────────────────────────────────────────────────────── */

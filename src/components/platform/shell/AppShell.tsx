@@ -154,7 +154,7 @@ export function AppShell({
 						<Link
 							href={PLATFORM_HOME}
 							aria-label="Half Life home"
-							className="hidden w-[64px] shrink-0 sm:block lg:hidden"
+							className="hidden w-[64px] shrink-0 transition-transform duration-150 hover:-translate-y-0.5 active:translate-y-px sm:block lg:hidden"
 						>
 							<Image src={logoArt} alt="" priority sizes="64px" className="h-auto w-full" />
 						</Link>
@@ -227,7 +227,7 @@ export function AppShell({
 									data-tour="doomscroller-button"
 									aria-label="Doomscroller"
 									title="Doomscroller"
-									className="label inline-flex shrink-0 items-center gap-1 rounded-full border-2 border-line bg-paper px-2.5 py-1.5 text-navy-soft transition-colors hover:border-sky hover:text-navy sm:gap-1.5 lg:hidden"
+									className="label inline-flex shrink-0 items-center gap-1 rounded-full border-2 border-line bg-paper px-2.5 py-1.5 text-navy-soft transition-[color,border-color,transform] duration-150 hover:border-sky hover:text-navy active:translate-y-px sm:gap-1.5 lg:hidden"
 								>
 									<IconFilm className="text-base" />
 								</Link>
@@ -306,8 +306,8 @@ export function AppShell({
 									href={item.href}
 									aria-current={active ? "page" : undefined}
 									className={cx(
-										"flex flex-col items-center gap-1 py-2.5 transition-colors",
-										active ? "text-navy" : "text-navy-soft",
+										"flex flex-col items-center gap-1 py-2.5 transition-[color,transform] duration-150 active:translate-y-px",
+										active ? "text-navy" : "text-navy-soft hover:text-navy",
 									)}
 								>
 									<Icon className="text-[1.45rem]" />

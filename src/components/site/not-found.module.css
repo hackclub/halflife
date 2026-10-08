@@ -64,11 +64,17 @@
 	letter-spacing: -0.045em;
 	line-height: 0.86;
 	text-decoration: none;
-	transition: color 150ms;
+	transition:
+		color 150ms,
+		opacity 150ms;
 }
 
 .wordmark:hover {
 	color: var(--paper);
+}
+
+.wordmark:active {
+	opacity: 0.75;
 }
 
 /* ── The header plate, and the weld that leaves it ────────────────────── */
@@ -242,12 +248,18 @@
 	font-size: 1.125rem;
 	font-weight: 700;
 	text-decoration: none;
-	transition: background-color 150ms;
+	transition:
+		background-color 150ms,
+		transform 150ms;
 }
 
 .primary:hover,
 .primary:focus-visible {
 	background-color: #fff;
+}
+
+.primary:active {
+	transform: translateY(1px);
 }
 
 /* The footer's link. */
@@ -260,13 +272,18 @@
 	text-underline-offset: 4px;
 	transition:
 		color 150ms,
-		text-decoration-color 150ms;
+		text-decoration-color 150ms,
+		opacity 150ms;
 }
 
 .secondary:hover,
 .secondary:focus-visible {
 	color: var(--cyan);
 	text-decoration-color: var(--cyan);
+}
+
+.secondary:active {
+	opacity: 0.75;
 }
 
 @media (min-width: 640px) {

@@ -289,7 +289,7 @@ export function ReelCard({
 							onClick={like}
 							aria-pressed={reel.likedByMe}
 							aria-label={reel.likedByMe ? "Unlike" : "Like"}
-							className="flex flex-col items-center gap-0.5 text-white transition-transform duration-150 hover:scale-110"
+							className="flex flex-col items-center gap-0.5 text-white transition-transform duration-150 hover:scale-110 active:scale-95"
 						>
 							<IconHeart
 								className={cx("text-[1.35rem]", reel.likedByMe && "text-coral")}
@@ -304,7 +304,7 @@ export function ReelCard({
 								type="button"
 								onClick={() => onComments(reel)}
 								aria-label={`Comments (${reel.commentCount})`}
-								className="flex flex-col items-center gap-0.5 text-white transition-transform duration-150 hover:scale-110"
+								className="flex flex-col items-center gap-0.5 text-white transition-transform duration-150 hover:scale-110 active:scale-95"
 							>
 								<IconComment className="text-[1.3rem]" />
 								<span className="hand text-[0.72rem] font-semibold tabular-nums [text-shadow:0_1px_3px_rgba(0,0,0,.6)]">
@@ -317,7 +317,7 @@ export function ReelCard({
 								// Every card carries a different deep link, so the rail's dozen would each prefetch their own page; a press is a deliberate one-off, not something to speculate on.
 								prefetch={false}
 								aria-label={`Comments (${reel.commentCount})`}
-								className="flex flex-col items-center gap-0.5 text-white transition-transform duration-150 hover:scale-110"
+								className="flex flex-col items-center gap-0.5 text-white transition-transform duration-150 hover:scale-110 active:scale-95"
 							>
 								<IconComment className="text-[1.3rem]" />
 								<span className="hand text-[0.72rem] font-semibold tabular-nums [text-shadow:0_1px_3px_rgba(0,0,0,.6)]">
