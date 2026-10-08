@@ -157,32 +157,39 @@ export function ShopGrid({
 							radius={20}
 							className="group flex flex-col overflow-hidden bg-paper"
 						>
-							<div className="relative grid aspect-[4/3] place-items-center bg-cream/70 p-3">
-								{/* The photo staff set on the item; until there is one, gato
-                    minding a box of parts, so the shelf never shows a hole. */}
-								{item.imageUrl ? (
-									// eslint-disable-next-line @next/next/no-img-element -- staff paste any host into the item's image field
-									<img src={item.imageUrl} alt="" loading="lazy" className="h-full w-full object-contain" />
-								) : (
-									<Gato pose="box" sizes="200px" className="sticker-shadow h-full w-auto max-w-full" />
-								)}
-								{item.stock !== null && item.stock > 0 && item.stock <= 3 && (
-									<span className="label absolute top-2.5 left-2.5 rounded-full bg-coral px-2.5 py-1 text-white">
-										Low stock
-									</span>
-								)}
-								{out && (
-									<span className="label absolute top-2.5 left-2.5 rounded-full bg-navy-soft px-2.5 py-1 text-white">
-										Sold out
-									</span>
-								)}
+							{/* The action lives under the photo on a phone and lifts onto it
+                  from sm, where a hover reveals it. A phone has no hover, so an
+                  overlaid button is always showing – and "not enough coins" over
+                  a small shelf image covered a third of the thing being bought. */}
+							<div className="relative">
+								<div className="relative grid aspect-[4/3] place-items-center bg-cream/70 p-3">
+									{/* The photo staff set on the item; until there is one, gato
+                      minding a box of parts, so the shelf never shows a hole. */}
+									{item.imageUrl ? (
+										// eslint-disable-next-line @next/next/no-img-element -- staff paste any host into the item's image field
+										<img src={item.imageUrl} alt="" loading="lazy" className="h-full w-full object-contain" />
+									) : (
+										<Gato pose="box" sizes="200px" className="sticker-shadow h-full w-auto max-w-full" />
+									)}
+									{item.stock !== null && item.stock > 0 && item.stock <= 3 && (
+										<span className="label absolute top-2.5 left-2.5 rounded-full bg-coral px-2.5 py-1 text-white">
+											Low stock
+										</span>
+									)}
+									{out && (
+										<span className="label absolute top-2.5 left-2.5 rounded-full bg-navy-soft px-2.5 py-1 text-white">
+											Sold out
+										</span>
+									)}
+								</div>
 								<button
 									type="button"
 									disabled={out || item.locked || !afford || busy !== null}
 									onClick={() => buy(item)}
 									className={cx(
-										"label absolute bottom-3 left-3 flex items-center gap-1.5 rounded-xl border-2 px-3.5 py-2 transition-all duration-150",
-										"opacity-100 sm:translate-y-1.5 sm:opacity-0 sm:group-hover:translate-y-0 sm:group-hover:opacity-100 sm:group-focus-within:translate-y-0 sm:group-focus-within:opacity-100 focus-visible:translate-y-0 focus-visible:opacity-100",
+										"label flex w-full items-center justify-center gap-1.5 border-t-2 px-3.5 py-2.5 transition-all duration-150",
+										"sm:absolute sm:bottom-3 sm:left-3 sm:w-auto sm:justify-start sm:rounded-xl sm:border-2 sm:py-2",
+										"sm:translate-y-1.5 sm:opacity-0 sm:group-hover:translate-y-0 sm:group-hover:opacity-100 sm:group-focus-within:translate-y-0 sm:group-focus-within:opacity-100 focus-visible:opacity-100",
 										has
 											? "border-teal-deep bg-teal text-white"
 											: out || !afford
