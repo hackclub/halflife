@@ -3,7 +3,8 @@ import type { Prisma } from "@/app/generated/prisma/client"
 import {
 	AuditAction,
 	HoursSource,
-	type PhaseStatus,
+	Phase,
+	PhaseStatus,
 	PostKind,
 	type ReportStatus,
 	ReviewPass,
@@ -455,7 +456,17 @@ export async function listRecentPublicReels(limit = 100) {
 
 export async function getAdminCounters() {
 	const [pendingReviews, pendingOrders, participants, shipped] = await Promise.all([
-		prisma.phaseSubmission.count({ where: { resolvedAt: null } }),
+		// Live hand-ins only: an open submission on a phase that is actually in review, on a project that still exists. Counting every unresolved row also sweeps up submissions that never reached Ari, or whose phase has moved on without the row resolving – which is exactly how this number drifts above what reviewers see in Ari.
+		prisma.phaseSubmission.count({
+			where: {
+				resolvedAt: null,
+				themeProject: { deletedAt: null },
+				OR: [
+					{ phase: Phase.DESIGN, themeProject: { designStatus: PhaseStatus.in_review } },
+					{ phase: Phase.BUILD, themeProject: { buildStatus: PhaseStatus.in_review } },
+				],
+			},
+		}),
 		prisma.shopOrder.count({ where: { status: ShopOrderStatus.PENDING } }),
 		prisma.user.count(),
 		prisma.printerAward.count({ where: { revokedAt: null } }),
