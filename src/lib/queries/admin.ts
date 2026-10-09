@@ -1339,7 +1339,12 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 			user.firstProjectAt !== null ? "projectLive" : null,
 			user.participantGoal !== null ? "goalSet" : null,
 			...activityBoxes(user.id),
-			user.firstChecksPassedAt !== null ? "checksPassed" : null,
+			// A project that never passed checks cannot be handed in – the sheet and the server both refuse it – so this box is the gate's bite: live projects stuck before review.
+			user.firstChecksPassedAt !== null
+				? "checksPassed"
+				: user.firstProjectAt !== null
+					? "checksStalled"
+					: null,
 			outcomeNode.has(user.id) ? "handedIn" : null,
 			outcomeNode.get(user.id) ?? "neverHandedIn",
 		]
@@ -1390,7 +1395,7 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 		{ label: "Project live", nodes: ["projectLive"] },
 		{ label: "Set a goal", nodes: ["goalSet"] },
 		{ label: "Activity", nodes: activityNodes() },
-		{ label: "Repo checks passed", nodes: ["checksPassed"] },
+		{ label: "Repo checks", nodes: ["checksPassed", "checksStalled"] },
 		{ label: "Handed in", nodes: ["handedIn"] },
 		{ label: "Outcome", nodes: SANKEY_OUTCOME.map((o) => o.node) },
 	]
@@ -1409,6 +1414,7 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 		projectLive: "Project row live",
 		goalSet: "Set a goal",
 		checksPassed: "Checks passed",
+		checksStalled: "Checks not passed",
 		handedIn: "Handed in for review",
 		...Object.fromEntries(SANKEY_ACTIVITY.map((a) => [activityNode(a.key), a.label])),
 		...Object.fromEntries(SANKEY_OUTCOME.map((o) => [o.node, o.label])),
