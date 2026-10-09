@@ -29,6 +29,12 @@ jobs:
       # without this. It has to come first.
       - run: pnpm exec prisma generate
 
+      # `next-env.d.ts` and `.next/types` are gitignored but required for
+      # typecheck: image imports resolve through next/image-types/global and
+      # LayoutProps through the generated route types. `next typegen` creates
+      # both without a full build.
+      - run: pnpm exec next typegen
+
       - run: pnpm typecheck
       - run: pnpm lint
 
