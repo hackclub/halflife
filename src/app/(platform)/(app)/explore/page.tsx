@@ -52,11 +52,16 @@ function Entry({ entry, viewerId }: { entry: JournalRow; viewerId: string }) {
 			as="article"
 			className="min-w-0 bg-paper px-5 py-5 [overflow-wrap:anywhere] sm:px-7 sm:py-6"
 		>
-			<header className="flex flex-wrap items-start gap-3.5">
+			{/* A grid rather than a wrapping flex row. A phone cannot hold the avatar,
+          the byline, the date and the report on one line, and letting the flex row
+          fit them all squeezed the byline into a column of single words. The date
+          and the report drop under the byline on a phone, and return to the right
+          from sm, where there is room for all four. */}
+			<header className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3.5 gap-y-2 sm:grid-cols-[auto_minmax(0,1fr)_auto]">
 				<Link
 					href={`/u/${entry.authorId}`}
 					aria-label={`${entry.author}'s profile`}
-					className="shrink-0 rounded-lg transition-transform hover:-translate-y-0.5"
+					className="shrink-0 rounded-lg transition-transform hover:-translate-y-0.5 active:translate-y-px"
 				>
 					{entry.authorImage ? (
 						// eslint-disable-next-line @next/next/no-img-element -- the avatar host (Slack via Cachet) is known only at runtime
@@ -69,7 +74,7 @@ function Entry({ entry, viewerId }: { entry: JournalRow; viewerId: string }) {
 						<Avatar name={entry.author} image={null} shape="tile" className="size-11 text-[1.15rem]" />
 					)}
 				</Link>
-				<div className="min-w-0 flex-1">
+				<div className="min-w-0">
 					<p className="text-[1.02rem] leading-tight font-extrabold text-navy [overflow-wrap:anywhere]">
 						<Link
 							href={`/u/${entry.authorId}`}
@@ -91,18 +96,18 @@ function Entry({ entry, viewerId }: { entry: JournalRow; viewerId: string }) {
 						</span>
 					</p>
 				</div>
-				<time dateTime={entry.when} className="label shrink-0 pt-1 text-navy-faint">
-					{fmtDay(entry.day)}
-				</time>
-				{entry.authorId !== viewerId && (
-					<span className="shrink-0 pt-1">
+				<div className="col-start-2 flex shrink-0 items-center justify-between gap-3 sm:col-start-3 sm:row-start-1 sm:justify-end sm:pt-1">
+					<time dateTime={entry.when} className="label text-navy-faint">
+						{fmtDay(entry.day)}
+					</time>
+					{entry.authorId !== viewerId && (
 						<ReportButton
 							target={{ type: "DEVLOG", id: entry.id }}
 							title="Report this journal entry"
 							context={text.slice(0, 280)}
 						/>
-					</span>
-				)}
+					)}
+				</div>
 			</header>
 
 			{/* Journals are written in Markdown, images included – the pictures that

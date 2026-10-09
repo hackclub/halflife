@@ -22,7 +22,7 @@
 
 display_information:
   name: Half Life Little Helper
-  description: Adds new members to Half Life channels and tracks #half-life-help tickets.
+  description: "Adds new members to Half Life channels and tracks #half-life-help tickets."
   background_color: "#1a1a1a"
 
 features:

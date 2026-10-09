@@ -259,6 +259,8 @@ env var: stasis put this in `SUBMISSIONS_CLOSED`, nobody flipped it in the
 dashboard, and submissions stayed open for two weeks after the event ended.
 Reviews and the shop stay up.
 
+**Helpers can't close tickets** – both "Mark as helped" buttons fail closed on membership of the private tickets channel (`SLACK_TICKETS_CHANNEL_ID`). If someone in `#half-life-tickets` is refused, read the app logs for `mark_helped`: `unreadable member list … missing_scope (needed groups:read)` means the manifest's `groups:read` scope was never applied – re-import `slack-app-manifest.yml` (Features → App Manifest → Save), reinstall the app to the workspace, and invite the bot into the private tickets channel. `channel_not_found` / `not_in_channel` means the bot itself is not in that channel – invite it. If there is no error line and the clicker is refused, compare the logged channel id against the channel's real id in Slack – the env var may point at a different (e.g. recreated) channel than the one the helpers sit in.
+
 **A grant row never reached Airtable** – `/admin/program` lists them with a
 retry button, and `/admin/audit?action=AIRTABLE_SYNC_FAILURE` has the errors.
 The `airtable-retry` job does the same sweep hourly.

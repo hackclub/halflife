@@ -494,7 +494,7 @@ export function ReelViewer() {
 							<Link
 								href={`/u/${current.author.id}`}
 								aria-label={`${current.author.name ?? "A maker"}'s profile`}
-								className="mb-1 rounded-full ring-2 ring-white transition-transform hover:scale-105 md:ring-navy"
+								className="mb-1 rounded-full ring-2 ring-white transition-transform hover:scale-105 active:scale-95 md:ring-navy"
 							>
 								<Avatar name={current.author.name} image={current.author.image} className="size-11 text-[1.05rem]" />
 							</Link>

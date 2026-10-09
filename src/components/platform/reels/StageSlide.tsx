@@ -300,7 +300,7 @@ export function StageSlide({
 				) : reel.project ? (
 					<Link
 						href={`/projects/${reel.project.id}`}
-						className="label absolute top-3 left-3 z-[4] max-w-[calc(100%-4.5rem)] truncate rounded-2xl bg-black/45 px-2.5 py-1 leading-[1.2] text-white backdrop-blur-sm transition-colors hover:bg-black/60 md:max-w-[calc(100%-1.5rem)]"
+						className="label absolute top-3 left-3 z-[4] max-w-[calc(100%-4.5rem)] truncate rounded-2xl bg-black/45 px-2.5 py-1 leading-[1.2] text-white backdrop-blur-sm transition-[background-color,transform] duration-150 hover:bg-black/60 active:translate-y-px md:max-w-[calc(100%-1.5rem)]"
 					>
 						{reel.project.title || reel.project.theme}
 					</Link>
@@ -312,7 +312,7 @@ export function StageSlide({
 					onClick={onToggleMute}
 					aria-label={muted ? "Turn sound on" : "Mute"}
 					aria-pressed={muted}
-					className="absolute top-2.5 right-2.5 z-[4] grid size-9 place-items-center rounded-full bg-black/40 text-white backdrop-blur-sm md:hidden"
+					className="absolute top-2.5 right-2.5 z-[4] grid size-9 place-items-center rounded-full bg-black/40 text-white backdrop-blur-sm transition-colors hover:bg-black/60 md:hidden"
 				>
 					{muted ? <IconVolumeOff className="text-[1.15rem]" /> : <IconVolume className="text-[1.15rem]" />}
 				</button>
@@ -350,7 +350,7 @@ export function StageSlide({
 								<button
 									type="button"
 									onClick={() => setExpanded((v) => !v)}
-									className="hand pointer-events-auto shrink-0 text-[0.78rem] text-white underline decoration-dashed underline-offset-4"
+									className="hand pointer-events-auto shrink-0 text-[0.78rem] text-white underline decoration-dashed underline-offset-4 transition-colors hover:decoration-solid"
 								>
 									{expanded ? "less" : "more"}
 								</button>

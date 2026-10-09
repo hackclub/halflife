@@ -264,6 +264,9 @@ h4 {
 	.hl-nav-item:hover {
 		color: var(--color-accent);
 	}
+	.hl-nav-item:active {
+		transform: translateY(1px);
+	}
 
 	/* ── Counters (coins, streak) ──────────────────────────────────────────── */
 	.hl-counters {
@@ -528,6 +531,13 @@ h4 {
 	.hl-btn--danger:hover:not(:disabled) {
 		filter: brightness(0.94);
 	}
+	/* The press, hung on the class rather than on `button` so a link styled as a
+     button (LinkButton) presses too. `filter` darkens whatever the variant's
+     fill happens to be, so one rule covers all three. */
+	.hl-btn:active:not(:disabled) {
+		transform: translateY(1px);
+		filter: brightness(0.9);
+	}
 
 	/* One visible focus treatment everywhere, since the comp specifies none. */
 	.hl-btn:focus-visible,
@@ -557,6 +567,9 @@ h4 {
 	.hl-icon-btn:hover {
 		color: var(--color-ink-strong);
 		background: var(--color-surface-sunken);
+	}
+	.hl-icon-btn:active {
+		transform: translateY(1px);
 	}
 	.hl-icon-btn:focus-visible {
 		outline: 3px solid var(--color-accent);
@@ -981,6 +994,9 @@ h4 {
 	}
 	.hl-nav a:hover {
 		color: var(--color-accent);
+	}
+	.hl-nav a:active {
+		transform: translateY(1px);
 	}
 
 	/* ── Layout helpers ────────────────────────────────────────────────────── */

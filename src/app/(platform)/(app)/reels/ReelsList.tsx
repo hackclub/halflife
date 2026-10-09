@@ -30,7 +30,7 @@ export function ReelsList({ groups }: { groups: MyReelGroup[] }) {
 				</p>
 				<Link
 					href={PLATFORM_HOME}
-					className="label mt-6 inline-flex items-center gap-1.5 rounded-full border-2 border-line px-4 py-2 text-navy-soft transition-colors hover:border-navy hover:text-navy"
+					className="label mt-6 inline-flex items-center gap-1.5 rounded-full border-2 border-line px-4 py-2 text-navy-soft transition-[color,border-color,transform] duration-150 hover:border-navy hover:text-navy active:translate-y-px"
 				>
 					Go to the map <IconArrowRight className="text-base" />
 				</Link>
@@ -40,7 +40,12 @@ export function ReelsList({ groups }: { groups: MyReelGroup[] }) {
 
 	return (
 		<>
-			<div className="grid gap-8">
+			{/* `grid-cols-1` rather than a bare grid: the implicit `auto` track takes
+          each section's max-content, and a reel row's two nowrap buttons ask for
+          more than a phone has – which pushed the whole page wider than the
+          viewport. Tailwind's `grid-cols-1` is `minmax(0, 1fr)`, so the track is
+          the column and the row wraps instead. */}
+			<div className="grid grid-cols-1 gap-8">
 				{groups.map((group) => (
 					<section key={group.project?.id ?? "none"} aria-labelledby={`reels-${group.project?.id ?? "none"}`}>
 						<div className="mb-3 flex flex-wrap items-center gap-2">
@@ -58,7 +63,7 @@ export function ReelsList({ groups }: { groups: MyReelGroup[] }) {
 							</h2>
 							{group.project && <Chip tone="muted">{group.project.theme}</Chip>}
 						</div>
-						<ul className="grid gap-3">
+						<ul className="grid grid-cols-1 gap-3">
 							{group.reels.map((reel) => (
 								<ReelRow key={reel.id} reel={reel} onAdd={() => setAdding(reel)} onChanged={() => router.refresh()} />
 							))}
@@ -162,7 +167,7 @@ function ReelRow({ reel, onAdd, onChanged }: { reel: MyReel; onAdd: () => void; 
 
 				<div className="mt-3">
 					{reel.links.length > 0 ? (
-						<ul className="grid gap-1.5" aria-label="Posted publicly on">
+						<ul className="grid grid-cols-1 gap-1.5" aria-label="Posted publicly on">
 							{reel.links.map((link) => (
 								<li key={link.id} className="flex min-w-0 items-center gap-2">
 									<span className="label shrink-0 text-violet-deep">{PLATFORM_INFO[link.platform].label}</span>
@@ -196,7 +201,9 @@ function ReelRow({ reel, onAdd, onChanged }: { reel: MyReel; onAdd: () => void; 
 					)}
 					<div className="mt-1.5 -ml-3.5 flex flex-wrap items-center gap-x-1 gap-y-1">
 						<Button variant="ghost" size="sm" onClick={onAdd}>
-							<IconPlus className="text-sm" /> Add where you posted it
+							<IconPlus className="text-sm" />
+							<span className="hidden sm:inline">Add where you posted it</span>
+							<span className="sm:hidden">Add a link</span>
 						</Button>
 						<Button
 							variant="ghost"

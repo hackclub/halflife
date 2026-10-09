@@ -133,7 +133,7 @@ export async function getPermalink(channel: string, messageTs: string): Promise<
 async function callSlackApiGet<T extends Record<string, unknown>>(
 	method: string,
 	params: Record<string, string>,
-): Promise<T & { ok: boolean; error?: string }> {
+): Promise<T & { ok: boolean; error?: string; needed?: string; provided?: string }> {
 	const token = process.env.SLACK_BOT_TOKEN
 	if (!token) throw new Error("SLACK_BOT_TOKEN is not set")
 
@@ -183,23 +183,38 @@ export async function getSlackUserName(userId: string): Promise<string> {
 let botUserId: string | null = null
 
 /**
- * Whether a Slack user is in a channel the bot can see.
+ * Whether a Slack user is in a channel the bot can see, with the reason kept when the answer is no.
  *
  * The help channel is joined by every participant, so the thread's "Mark as helped" button is gated on membership of the private tickets channel the bot posts to. Fails closed: an unreadable member list refuses the action rather than opening it to the room.
+ *
+ * `error` is set when the member list itself was unreadable – `missing_scope` because the manifest's `groups:read` was added but never re-imported and reinstalled, or `channel_not_found`/`not_in_channel` because the bot was never invited into the private channel. Callers use it to tell "you're not on the team" apart from "the check itself is broken, tell an admin", since only the first is the clicker's problem.
  */
-export async function isChannelMember(channel: string, user: string): Promise<boolean> {
+export type ChannelMembership = { member: boolean; error?: string }
+
+export async function checkChannelMembership(channel: string, user: string): Promise<ChannelMembership> {
 	let cursor: string | undefined
 	for (let page = 0; page < 10; page += 1) {
 		const result = await callSlackApiGet<{ members?: string[]; response_metadata?: { next_cursor?: string } }>(
 			"conversations.members",
 			{ channel, limit: "200", ...(cursor ? { cursor } : {}) },
 		)
-		if (!result.ok || !Array.isArray(result.members)) return false
-		if (result.members.includes(user)) return true
+		if (!result.ok || !Array.isArray(result.members)) {
+			const detail =
+				result.error === "missing_scope" && result.needed
+					? `${result.error} (needed ${result.needed})`
+					: (result.error ?? "bad_response")
+			return { member: false, error: detail }
+		}
+		if (result.members.includes(user)) return { member: true }
 		cursor = result.response_metadata?.next_cursor || undefined
-		if (!cursor) return false
+		if (!cursor) return { member: false }
 	}
-	return false
+	return { member: false }
+}
+
+export async function isChannelMember(channel: string, user: string): Promise<boolean> {
+	const membership = await checkChannelMembership(channel, user)
+	return membership.member
 }
 
 /** A message as `conversations.history` returns it, trimmed to the fields that

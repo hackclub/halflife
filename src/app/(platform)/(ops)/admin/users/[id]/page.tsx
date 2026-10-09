@@ -4,6 +4,7 @@ import { CreditGrantForm } from "@/app/components/forms/CreditGrantForm"
 import { ExtensionForm } from "@/app/components/forms/ExtensionForm"
 import { GrantForm } from "@/app/components/forms/GrantForm"
 import { RoleEditor } from "@/app/components/forms/RoleEditor"
+import { ThemeMoveForm } from "@/app/components/forms/ThemeMoveForm"
 import { Badge, EmptyState, PageHeader, Panel, Stat, statusLabel, statusTone, Table } from "@/app/components/ui"
 import { CREDIT_NAME_PLURAL, getThemeDef } from "@/lib/config/program"
 import { displayName } from "@/lib/display-name"
@@ -30,6 +31,7 @@ export default async function AdminUserPage({ params }: Props) {
 	const canManageCredit = hasPermission(roles, Permission.MANAGE_CREDIT)
 	const canManageUsers = hasPermission(roles, Permission.MANAGE_USERS)
 	const canOverride = hasPermission(roles, Permission.OVERRIDE_DECISIONS)
+	const canMoveTheme = hasPermission(roles, Permission.MANAGE_PROGRAM)
 	const canSendGrant = canManageCredit && isHcbConfigured()
 
 	return (
@@ -103,6 +105,7 @@ export default async function AdminUserPage({ params }: Props) {
 						"Grant",
 						"Hours",
 						canSendGrant ? "Send grant" : null,
+						canMoveTheme ? "Move" : null,
 						canManageUsers ? "Extension" : null,
 						canOverride ? "" : null,
 					].filter(Boolean)}
@@ -133,6 +136,11 @@ export default async function AdminUserPage({ params }: Props) {
 									) : (
 										<span className="hl-hint">–</span>
 									)}
+								</td>
+							) : null}
+							{canMoveTheme ? (
+								<td style={{ minWidth: "12rem" }}>
+									<ThemeMoveForm projectId={project.id} current={project.theme} />
 								</td>
 							) : null}
 							{canManageUsers ? (

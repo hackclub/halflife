@@ -49,7 +49,7 @@ export function ProjectsGrid() {
 				</p>
 				<Link
 					href={PLATFORM_HOME}
-					className="label mt-6 inline-flex items-center gap-1.5 rounded-full border-2 border-line px-4 py-2 text-navy-soft transition-colors hover:border-navy hover:text-navy"
+					className="label mt-6 inline-flex items-center gap-1.5 rounded-full border-2 border-line px-4 py-2 text-navy-soft transition-[color,border-color,transform] duration-150 hover:border-navy hover:text-navy active:translate-y-px"
 				>
 					Go to the trail <IconArrowRight className="text-base" />
 				</Link>

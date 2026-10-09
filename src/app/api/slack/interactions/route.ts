@@ -1,7 +1,7 @@
 import { after, NextResponse } from "next/server"
 import {
 	addReaction,
-	isChannelMember,
+	checkChannelMembership,
 	postMessage,
 	removeReaction,
 	type SlackBlock,
@@ -99,14 +99,35 @@ async function reactResolved(ref: Partial<TicketRef>) {
 
 /** Staff clicking "Mark as helped" in the tickets channel – gated on
  * membership of the private tickets channel, like the thread path below. The request signature already proves Slack sent it; this is defence in depth so a leaked message-ts pair or a future workspace-wide action with
- * the same action_id cannot resolve tickets as any Slack identity. */
+ * the same action_id cannot resolve tickets as any Slack identity. Denials answer ephemerally so the clicker knows whether they lack membership or the membership check itself is broken (missing scope, bot not in the channel), instead of the click silently doing nothing. */
 async function handleMarkHelped(payload: InteractionPayload, action: BlockAction) {
 	if (!payload.channel?.id || !payload.message?.ts) return
 
 	const ticketsChannel = process.env.SLACK_TICKETS_CHANNEL_ID
-	// The button lives on the ticket mirror, so the interaction must come from the tickets channel itself, clicked by someone in it. Fail closed when the channel is not configured – isChannelMember already does on API failure.
-	if (!ticketsChannel || payload.channel.id !== ticketsChannel) return
-	if (!(await isChannelMember(ticketsChannel, payload.user.id))) return
+	// The button lives on the ticket mirror, so the interaction must come from the tickets channel itself, clicked by someone in it. Fail closed when the channel is not configured – checkChannelMembership already does on API failure.
+	if (!ticketsChannel) {
+		console.error("mark_helped dropped: SLACK_TICKETS_CHANNEL_ID is not set")
+		return
+	}
+	if (payload.channel.id !== ticketsChannel) return
+
+	const membership = await checkChannelMembership(ticketsChannel, payload.user.id)
+	if (membership.error) {
+		console.error(
+			`mark_helped denied by unreadable member list: channel ${ticketsChannel}, user ${payload.user.id}, Slack error ${membership.error} – re-import slack-app-manifest.yml, reinstall the app, and invite the bot into the private tickets channel`,
+		)
+		if (payload.response_url)
+			await respondEphemeral(
+				payload.response_url,
+				"I couldn't verify the team list just now, so I left the ticket alone – tell an admin to check the app logs for the Slack API error.",
+			)
+		return
+	}
+	if (!membership.member) {
+		if (payload.response_url)
+			await respondEphemeral(payload.response_url, "Only the Half Life team can resolve a ticket.")
+		return
+	}
 
 	let ref: Partial<TicketRef> = {}
 	try {
@@ -213,7 +234,28 @@ async function handleThreadMarkHelped(payload: InteractionPayload, action: Block
 	}
 
 	// The help channel is open to every participant, so the button is gated on membership of the private tickets channel the bot posts to – the same people who can resolve it from there.
-	if (!ref.ticketsChannel || !(await isChannelMember(ref.ticketsChannel, payload.user.id))) {
+	if (!ref.ticketsChannel) {
+		console.error("mark_helped_from_thread dropped: ticket carries no tickets-channel reference")
+		if (payload.response_url)
+			await respondEphemeral(
+				payload.response_url,
+				"I couldn't verify the team list just now, so I left the ticket alone – tell an admin to check the app logs for the Slack API error.",
+			)
+		return
+	}
+	const membership = await checkChannelMembership(ref.ticketsChannel, payload.user.id)
+	if (membership.error) {
+		console.error(
+			`mark_helped_from_thread denied by unreadable member list: channel ${ref.ticketsChannel}, user ${payload.user.id}, Slack error ${membership.error} – re-import slack-app-manifest.yml, reinstall the app, and invite the bot into the private tickets channel`,
+		)
+		if (payload.response_url)
+			await respondEphemeral(
+				payload.response_url,
+				"I couldn't verify the team list just now, so I left the ticket alone – tell an admin to check the app logs for the Slack API error.",
+			)
+		return
+	}
+	if (!membership.member) {
 		if (payload.response_url)
 			await respondEphemeral(payload.response_url, "Only the Half Life team can resolve a ticket from the thread.")
 		return

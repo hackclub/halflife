@@ -42,11 +42,13 @@ export function EventScheduleButton({
 	const parts = countdownParts(next && now ? msUntilStart(next, now) : 0)
 	const live = next !== null && now !== null && !eventIsUpcoming(next, now)
 	// A weekly call is days away, so the days lead and the clock follows: `3d
-	// 04:12:09`, never `76:12:09`, which reads as a number nobody counts to.
+	// 04:12`, never `76:12`, which reads as a number nobody counts to. The seconds
+	// are rendered as their own node so a phone can drop them: three characters of
+	// a header row that is counted out to the pixel, and a minute still ticks.
 	const clock =
 		parts.days > 0
-			? `${parts.days}d ${pad2(parts.hours)}:${pad2(parts.minutes)}:${pad2(parts.seconds)}`
-			: `${pad2(parts.hours)}:${pad2(parts.minutes)}:${pad2(parts.seconds)}`
+			? `${parts.days}d ${pad2(parts.hours)}:${pad2(parts.minutes)}`
+			: `${pad2(parts.hours)}:${pad2(parts.minutes)}`
 
 	return (
 		<>
@@ -59,20 +61,38 @@ export function EventScheduleButton({
 					next ? `${next.title} · ${eventRangeLabel(next.startsAt, next.endsAt, timeZone)}` : "Open the event calendar"
 				}
 				className={cx(
-					"label inline-flex items-center gap-2 rounded-full border-2 bg-paper px-3 py-1.5 transition-colors",
+					"label inline-flex shrink-0 items-center gap-1.5 rounded-full border-2 bg-paper px-2 py-1.5 transition-colors sm:gap-2 sm:px-3",
 					next === null
 						? "border-line text-navy-faint"
 						: "border-line text-navy-soft hover:border-violet hover:text-navy",
 				)}
 			>
 				<IconClock className={cx("text-base", live && "text-coral")} />
-				<span className="hidden sm:inline">
+				{/* Visually hidden on a phone, where the row has no room for it, but
+            never `display: none`: the countdown is the button's only label there,
+            so it stays in the accessibility tree. */}
+				<span className="sr-only sm:not-sr-only">
 					{next === null ? "No events" : live ? "Happening now" : "Next event in"}
 				</span>
 				{/* One fixed-width slot, so the pill does not change width between the
-            placeholder and the count – or as the digits roll over. */}
-				<span className="min-w-[9ch] text-right font-extrabold tabular-nums text-navy">
-					{next === null ? "—" : now === null ? "--:--:--" : live ? "live" : clock}
+            placeholder and the count – or as the digits roll over. Narrower on a
+            phone, where the row is counted out to the pixel. */}
+				<span className="min-w-[5ch] text-right text-[0.72rem] font-extrabold tabular-nums text-navy sm:min-w-[9ch] sm:text-[0.78rem]">
+					{next === null ? (
+						"—"
+					) : now === null ? (
+						<>
+							{"--:--"}
+							<span className="hidden sm:inline">:--</span>
+						</>
+					) : live ? (
+						"live"
+					) : (
+						<>
+							{clock}
+							<span className="hidden sm:inline">:{pad2(parts.seconds)}</span>
+						</>
+					)}
 				</span>
 			</button>
 

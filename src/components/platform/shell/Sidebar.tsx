@@ -42,7 +42,11 @@ export function Sidebar({ className }: { className?: string }) {
           the place the site sent you. Sized to the rail, not to its own pixels:
           the file is drawn large, and priority because it is above the fold on
           every page. */}
-			<Link href={PLATFORM_HOME} aria-label="Half Life home" className="block w-[176px] shrink-0 xl:w-[200px]">
+			<Link
+				href={PLATFORM_HOME}
+				aria-label="Half Life home"
+				className="block w-[176px] shrink-0 transition-transform duration-150 hover:-translate-y-0.5 active:translate-y-px xl:w-[200px]"
+			>
 				<Image
 					src={logoArt}
 					alt=""
@@ -64,7 +68,7 @@ export function Sidebar({ className }: { className?: string }) {
 										href={item.href}
 										aria-current={active ? "page" : undefined}
 										className={cx(
-											"group flex items-center justify-between gap-2 border-b border-dashed border-line py-3 text-[1.02rem] transition-colors",
+											"group flex items-center justify-between gap-2 border-b border-dashed border-line py-3 text-[1.02rem] transition-[color,transform] duration-150 active:translate-y-px",
 											active ? "font-extrabold text-navy" : "font-semibold text-navy-soft hover:text-navy",
 										)}
 									>
@@ -90,7 +94,7 @@ export function Sidebar({ className }: { className?: string }) {
 				<Link
 					href={`/u/${viewer.id}`}
 					aria-label={`${viewer.name}'s profile`}
-					className="shrink-0 rounded-lg transition-transform hover:-translate-y-0.5"
+					className="shrink-0 rounded-lg transition-transform hover:-translate-y-0.5 active:translate-y-px"
 				>
 					{viewer.image ? (
 						// eslint-disable-next-line @next/next/no-img-element -- the avatar host (Slack via Cachet) is known only at runtime
