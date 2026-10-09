@@ -2,6 +2,7 @@
 import { useRef, useState } from "react"
 import { Button, Callout, Field } from "@/app/components/ui"
 import type { ShopItemCategory } from "@/app/generated/prisma/enums"
+import { IMAGE_ACCEPT } from "@/lib/uploads/image-accept"
 import { sendJson, useAction } from "@/lib/use-action"
 import { uploadFile } from "@/lib/use-handoff"
 
@@ -186,7 +187,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 					<input
 						ref={picker}
 						type="file"
-						accept="image/png,image/jpeg,image/webp,image/gif"
+						accept={IMAGE_ACCEPT}
 						hidden
 						onChange={(e) => {
 							const file = e.target.files?.[0]

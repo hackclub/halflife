@@ -43,6 +43,7 @@ import { EXAMPLE_JOURNAL_URL } from "@/lib/routes"
 import { BOM_MARGIN_USD } from "@/lib/schemas/project"
 import { useStore } from "@/lib/store"
 import type { Checkpoint, Project, Week } from "@/lib/types"
+import { IMAGE_ACCEPT } from "@/lib/uploads/image-accept"
 import { uploadFile } from "@/lib/use-handoff"
 import { ImageUploads, type UploadedImage } from "./ImageUploads"
 import { fmtDuration, LapsePicker, type LapseTimelapse } from "./LapsePicker"
@@ -861,7 +862,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						<input
 							ref={imageInput}
 							type="file"
-							accept="image/png,image/jpeg,image/webp,image/gif"
+							accept={IMAGE_ACCEPT}
 							multiple
 							className="sr-only"
 							tabIndex={-1}
