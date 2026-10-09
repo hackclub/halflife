@@ -10,6 +10,8 @@ import { streakAsOf } from "@/lib/streak"
  *
  * The one writer of the markers on User (first project, first reel, first and last submission, last login, last active), of UserDay (one row per active day, which is what DAU counts) and of UserWeek (hours per program week, and when 1h / 5h / 10h / 20h was first crossed). Signing up and onboarding are already stamped (`createdAt`, `onboardingCompletedAt`).
  *
+ * An active day is one with a time entry longer than 15 minutes – journalled, Hackatime-tracked or Lapse-backed alike, since all three are a WorkSession. Visiting the site is not activity for DAU; it only moves `lastActiveAt`.
+ *
  * Every function here is fire-and-forget safe: it never throws, because a sign-in, a post or a submit must not fail over a counter. And every one is idempotent – "first" markers are written with a `WHERE … IS NULL`, so two requests racing cannot move one, and a replay or the backfill cannot either.
  */
 
@@ -19,6 +21,9 @@ const milestoneField = (h: Milestone) => `reached${h}hAt` as const
 
 /** Page views closer together than this share one activity write. */
 const ACTIVITY_THROTTLE_MS = 5 * 60_000
+
+/** A time entry makes its day active only when it is longer than this. */
+const ACTIVE_ENTRY_MIN_HOURS = 0.25
 
 async function quietly(label: string, fn: () => Promise<unknown>): Promise<void> {
 	try {
@@ -37,7 +42,7 @@ export function markLogin(userId: string, at = new Date()): Promise<void> {
 const lastTouched = new Map<string, number>()
 
 /**
- * A page view: moves `lastActiveAt` forward and records today as an active day. Throttled to one write per person per few minutes – DAU needs a day to be counted once, not every click.
+ * A page view: moves `lastActiveAt` forward, which is what Loops reads as last site access. Not an active day – those come from time entries. Throttled to one write per person per few minutes, not one every click.
  */
 export function touchActivity(userId: string, at = new Date()): Promise<void> {
 	const prev = lastTouched.get(userId)
@@ -45,21 +50,40 @@ export function touchActivity(userId: string, at = new Date()): Promise<void> {
 	lastTouched.set(userId, at.getTime())
 	if (lastTouched.size > 10_000) lastTouched.clear()
 
-	return quietly("touchActivity", async () => {
+	return quietly("touchActivity", () => prisma.user.update({ where: { id: userId }, data: { lastActiveAt: at } }))
+}
+
+/**
+ * Rebuild one person's active days from their live time entries. Rebuilt rather than incremented, as the streak is (lib/streak): an entry can be created, edited below the threshold, deleted, or go with its project, and a counter would have to be right on every one of those paths.
+ */
+async function rebuildActiveDays(userId: string, programTimezone: string): Promise<number> {
+	const sessions = await prisma.workSession.findMany({
+		where: {
+			themeProject: { userId, deletedAt: null },
+			deletedAt: null,
+			hoursClaimed: { gt: ACTIVE_ENTRY_MIN_HOURS },
+		},
+		select: { createdAt: true, effectiveDate: true },
+	})
+	const days = new Map<string, Date>()
+	for (const s of sessions) {
+		const day = s.effectiveDate ?? effectiveDateFor(s.createdAt, programTimezone)
+		const seen = days.get(day)
+		if (seen === undefined || s.createdAt < seen) days.set(day, s.createdAt)
+	}
+	await prisma.$transaction([
+		prisma.userDay.deleteMany({ where: { userId } }),
+		prisma.userDay.createMany({ data: [...days].map(([day, firstSeenAt]) => ({ userId, day, firstSeenAt })) }),
+		prisma.user.update({ where: { id: userId }, data: { activeDays: days.size } }),
+	])
+	return days.size
+}
+
+/** Recount active days. Called after a time entry is written, edited or deleted. */
+export function recomputeActiveDays(userId: string): Promise<void> {
+	return quietly("recomputeActiveDays", async () => {
 		const { programTimezone } = await getProgramSettings()
-		const day = effectiveDateFor(at, programTimezone)
-		const created = await prisma.userDay.createMany({
-			data: [{ userId, day, firstSeenAt: at }],
-			skipDuplicates: true,
-		})
-		await prisma.user.update({
-			where: { id: userId },
-			data: {
-				lastActiveAt: at,
-				// Counted only when the day is new, so it always equals the number of UserDay rows without a count query.
-				...(created.count > 0 ? { activeDays: { increment: 1 } } : {}),
-			},
-		})
+		await rebuildActiveDays(userId, programTimezone)
 	})
 }
 
@@ -142,7 +166,7 @@ export function recomputeWeek(userId: string, week: number | null, at = new Date
 /**
  * Fill the markers in from what the database already holds, for everyone who was here before they were tracked. Safe to run again: every write only fills what is still empty (or, for weeks, recounts).
  *
- * Approximations, said plainly: a project's naming time is taken from the first audit entry that touched it, else when it was last updated; a week's milestones are stamped at the time of the session that crossed them, in order. Past page views were never recorded, so active days are rebuilt from days with a sign-in, a session, a post or a submission.
+ * Approximations, said plainly: a project's naming time is taken from the first audit entry that touched it, else when it was last updated; a week's milestones are stamped at the time of the session that crossed them, in order. Past page views were never recorded, so `lastActiveAt` is filled from the last sign-in, session, post or submission.
  */
 export async function backfillAnalytics(): Promise<Record<string, number>> {
 	const { programTimezone } = await getProgramSettings()
@@ -218,24 +242,14 @@ export async function backfillAnalytics(): Promise<Record<string, number>> {
 			await prisma.user.updateMany({ where: { id: userId, lastLoginAt: null }, data: { lastLoginAt: lastLogin } })
 		}
 
-		// Active days from everything that left a timestamp.
+		// Active days are rebuilt outright, which also clears any left from when a page view counted as one.
+		counts.days += await rebuildActiveDays(userId, programTimezone)
+
+		// Last seen, from everything that left a timestamp.
 		const moments = [...logins, ...sessions, ...posts, ...submissions].map((x) => x.createdAt)
-		const days = new Map<string, Date>()
-		for (const m of moments) {
-			const d = effectiveDateFor(m, programTimezone)
-			const seen = days.get(d)
-			if (seen === undefined || m < seen) days.set(d, m)
-		}
-		if (days.size > 0) {
-			await prisma.userDay.createMany({
-				data: [...days].map(([day, firstSeenAt]) => ({ userId, day, firstSeenAt })),
-				skipDuplicates: true,
-			})
-			const activeDays = await prisma.userDay.count({ where: { userId } })
+		if (moments.length > 0) {
 			const last = moments.reduce((a, b) => (b > a ? b : a))
-			await prisma.user.update({ where: { id: userId }, data: { activeDays } })
 			await prisma.user.updateMany({ where: { id: userId, lastActiveAt: null }, data: { lastActiveAt: last } })
-			counts.days += days.size
 		}
 
 		// Weeks: replay sessions in order so each milestone is stamped by the session that crossed it.
