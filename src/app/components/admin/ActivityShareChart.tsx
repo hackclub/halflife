@@ -2,6 +2,18 @@ import { EmptyState } from "@/app/components/ui"
 import type { ActivityShare } from "@/lib/queries/admin"
 
 /**
+ * One stable colour per activity, plus grey for the finishers who did none of them. The Sankey assigns its colours by box order, so these do not promise to match it – the axis names are this chart's legend.
+ */
+const COLUMN_COLORS: Record<string, string> = {
+	devlog: "var(--color-accent)",
+	reel: "var(--color-teal)",
+	repo: "var(--color-coin)",
+	hackatime: "var(--color-flame)",
+	timelapse: "var(--color-magenta)",
+	none: "var(--color-ink-muted)",
+}
+
+/**
  * What share of the makers who finished onboarding did each tracked activity: one column per kind, all read off the same 0–100% scale, so the heights compare directly.
  *
  * One maker counts in every column they reached – the columns add up to far more than the headcount, which is the point: onboarding finishers do several of these things, and this says which ones. The counts behind the shares ride along in each column's title and in the diagram's label, so the shape and the base are both on screen.
@@ -60,7 +72,7 @@ export function ActivityShareChart({ share }: { share: ActivityShare }) {
 						const h = a.share * plotH
 						return (
 							<g key={a.key}>
-								<rect x={xOf(i)} y={yOf(a.share)} width={colW} height={h} rx={3} style={{ fill: "var(--color-accent)" }}>
+								<rect x={xOf(i)} y={yOf(a.share)} width={colW} height={h} rx={3} style={{ fill: COLUMN_COLORS[a.key] ?? "var(--color-accent)" }}>
 									<title>{`${a.label}: ${a.users.toLocaleString("en-US")} of ${share.total.toLocaleString("en-US")} finishers (${(a.share * 100).toFixed(1)}%)`}</title>
 								</rect>
 								<text
@@ -92,7 +104,7 @@ export function ActivityShareChart({ share }: { share: ActivityShare }) {
 
 			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.5rem" }}>
 				Share of the {share.total.toLocaleString("en-US")} makers who finished onboarding who did each thing – one
-				maker counts in every column they reached.
+				maker counts in every column they reached. None is the finishers who did none of them.
 			</p>
 		</div>
 	)

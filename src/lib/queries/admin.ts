@@ -1174,8 +1174,11 @@ const activityNode = (key: ActivityKey) => `act${SANKEY_ACTIVITY.find((a) => a.k
 
 const activityNodes = () => SANKEY_ACTIVITY.map((a) => activityNode(a.key))
 
-/** The activity boxes, for recognising the fan stage when links are drawn. */
-const ACTIVITY_BOXES = new Set(activityNodes())
+/** The activity boxes, for recognising the fan stage when links are drawn. Includes the none box: it sits in the same column, though its links are exclusive like chain. */
+const ACTIVITY_BOXES = new Set([...activityNodes(), "actNone"])
+
+/** Finishers who reached none of the tracked activities. Its links are exclusive – one per person, like chain – never fanned. */
+const NONE_BOX = "actNone"
 
 const SANKEY_OUTCOME = [
 	{ node: "approved", label: "Approved" },
@@ -1319,9 +1322,11 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 	}
 	for (const [userId, handIn] of handIns) outcomeNode.set(userId, handIn.node)
 
-	/** Every tracked activity the person reached, in branch order so the boxes line up with the stage. One maker appears in as many boxes as they earned. */
-	const activityBoxes = (userId: string): string[] =>
-		SANKEY_ACTIVITY.filter((a) => activity.get(userId)?.has(a.key)).map((a) => activityNode(a.key))
+	/** Every tracked activity the person reached, in branch order so the boxes line up with the stage. One maker appears in as many boxes as they earned – or in the none box, when a finisher earned none. */
+	const activityBoxes = (userId: string, completed: boolean): string[] => {
+		const did = SANKEY_ACTIVITY.filter((a) => activity.get(userId)?.has(a.key)).map((a) => activityNode(a.key))
+		return did.length > 0 || !completed ? did : [NONE_BOX]
+	}
 
 	/** The person's box at each stage, null where they never got there. The activity boxes sit together as one block. */
 	const boxesOf = (user: (typeof users)[number]): (string | null)[] => {
@@ -1343,7 +1348,7 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 			// The complements that make the gates visible: finishers who never got a project live, or never answered the goal prompt (mostly accounts from before it shipped – it cannot be dismissed now). Scoped to finishers so the boxes stay a finding about drop-off rather than everyone who never started.
 			user.firstProjectAt !== null ? "projectLive" : completed ? "projectMissing" : null,
 			user.participantGoal !== null ? "goalSet" : completed ? "goalMissing" : null,
-			...activityBoxes(user.id),
+			...activityBoxes(user.id, completed),
 			// A project that never passed checks cannot be handed in – the sheet and the server both refuse it – so this box is the gate's bite: live projects stuck before review.
 			user.firstChecksPassedAt !== null
 				? "checksPassed"
@@ -1377,10 +1382,10 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 		// "joined" is unconditional, so a block always has a box before it.
 		const prev = boxes[firstAct - 1] as string
 		for (let i = 1; i < firstAct; i++) link(boxes[i - 1] as string, boxes[i] as string, null)
-		for (let i = firstAct; i <= lastAct; i++) link(prev, boxes[i] as string, "out")
+		for (let i = firstAct; i <= lastAct; i++) link(prev, boxes[i] as string, boxes[i] === NONE_BOX ? null : "out")
 		const next = boxes[lastAct + 1]
 		if (next) {
-			for (let i = firstAct; i <= lastAct; i++) link(boxes[i] as string, next, "in")
+			for (let i = firstAct; i <= lastAct; i++) link(boxes[i] as string, next, boxes[i] === NONE_BOX ? null : "in")
 			for (let i = lastAct + 2; i < boxes.length; i++) link(boxes[i - 1] as string, boxes[i] as string, null)
 		}
 	}
@@ -1398,7 +1403,7 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 		{ label: "Finished onboarding", nodes: ["setupDone"] },
 		{ label: "Project", nodes: ["projectLive", "projectMissing"] },
 		{ label: "Goal", nodes: ["goalSet", "goalMissing"] },
-		{ label: "Activity", nodes: activityNodes() },
+		{ label: "Activity", nodes: [...activityNodes(), NONE_BOX] },
 		{ label: "Repo checks", nodes: ["checksPassed", "checksStalled"] },
 		{ label: "Handed in", nodes: ["handedIn"] },
 		{ label: "Outcome", nodes: SANKEY_OUTCOME.map((o) => o.node) },
@@ -1423,23 +1428,37 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 		checksStalled: "Checks not passed",
 		handedIn: "Handed in for review",
 		...Object.fromEntries(SANKEY_ACTIVITY.map((a) => [activityNode(a.key), a.label])),
+		[NONE_BOX]: "None of these",
 		...Object.fromEntries(SANKEY_OUTCOME.map((o) => [o.node, o.label])),
 	}
 
-	// What share of onboarded finishers did each tracked activity: the same activity rows as the Sankey, cut to the people who finished onboarding rather than everyone who signed up.
+	// What share of onboarded finishers did each tracked activity: the same activity rows as the Sankey, cut to the people who finished onboarding rather than everyone who signed up. Largest first, so the chart reads left to right; ties keep branch order.
 	const finishers = users.filter((user) => user.onboardingCompletedAt !== null)
+	const reachedCount = (key: ActivityKey | "none") =>
+		key === "none"
+			? finishers.filter((user) => !activity.get(user.id)).length
+			: finishers.filter((user) => activity.get(user.id)?.has(key)).length
 	const activityShare: ActivityShare = {
 		total: finishers.length,
-		activities: SANKEY_ACTIVITY.map((a) => {
-			const reached = finishers.filter((user) => activity.get(user.id)?.has(a.key)).length
-			return {
-				key: a.key,
-				label: a.label,
-				base: a.base,
-				users: reached,
-				share: finishers.length === 0 ? 0 : reached / finishers.length,
-			}
-		}),
+		activities: [
+			...SANKEY_ACTIVITY.map((a) => {
+				const users = reachedCount(a.key)
+				return {
+					key: a.key,
+					label: a.label,
+					base: a.base,
+					users,
+					share: finishers.length === 0 ? 0 : users / finishers.length,
+				}
+			}),
+			{
+				key: "none",
+				label: "None of these",
+				base: "None",
+				users: reachedCount("none"),
+				share: finishers.length === 0 ? 0 : reachedCount("none") / finishers.length,
+			},
+		].sort((a, b) => b.users - a.users),
 	}
 
 	// Only boxes someone actually reached are drawn: a branch nobody took is not a finding, and an empty box in the middle of the diagram reads as a bug.
