@@ -377,25 +377,26 @@ function MetricPie({
 }
 
 /**
- * Hours logged and devlogs written per day, as two line series over a shared day axis.
+ * Hours and devlogs per day, as two lines over one shared day axis and two scales.
  *
- * Hours as a continuous line rather than the bar strip this replaced, because the shape is the question: a bar per
- * day made a steady week look like a spike next to a quiet one, since each bar was scaled to the panel rather than
- * to its neighbours. On a line, a flat stretch reads as flat.
+ * One chart rather than two stacked ones because the two move together, and that is the thing worth seeing: a day
+ * where the hours line jumps and the devlogs line does not is a long sitting, and a day where both jump is a busy
+ * one. Stacked, that comparison needed the eye to travel between panels and hold one scale in mind.
  *
- * Devlogs stay bars, under the hours line and on its own scale – they are a different magnitude (10,872 devlogs
- * against 28,063 hours) and are read as a count rather than a trend, so sharing an axis would flatten one of them
- * into nothing.
+ * Two axes because the magnitudes are unrelated – tens of thousands of devlogs against tens of thousands of hours,
+ * and either could outgrow the other as the season runs. Sharing one scale would pin the smaller series to the
+ * baseline and read as a flat line, which is worse than no line at all. The two are therefore plotted against their
+ * own maxima, and the axis each line is read against is labelled, so neither is read off the other's numbers.
  */
 function ActivityStrip({ days }: { days: DayActivity[] }) {
 	if (days.length === 0) return <EmptyState>No devlogs yet.</EmptyState>
 
 	const W = 1000
-	const H = 150
-	const PAD_L = 34
-	const PAD_R = 6
-	const PAD_T = 8
-	const PAD_B = 16
+	const H = 190
+	const PAD_L = 40
+	const PAD_R = 40
+	const PAD_T = 10
+	const PAD_B = 18
 	const plotW = W - PAD_L - PAD_R
 	const plotH = H - PAD_T - PAD_B
 
@@ -404,19 +405,26 @@ function ActivityStrip({ days }: { days: DayActivity[] }) {
 	const totalHours = days.reduce((n, d) => n + d.hours, 0)
 	const totalDevlogs = days.reduce((n, d) => n + d.devlogs, 0)
 
-	// One x per day even when there are hundreds, so a single day is a single vertex rather than a skipped
-	// segment: a polyline across index positions keeps the spacing honest at any length.
+	// One x per day even when there are hundreds, so a single day is a single vertex rather than a skipped segment.
 	const xOf = (i: number) => PAD_L + (days.length === 1 ? plotW / 2 : (i / (days.length - 1)) * plotW)
-	const yHours = (h: number) => PAD_T + plotH - (h / maxHours) * plotH
-	const hoursPath = days
-		.map((d, i) => `${i === 0 ? "M" : "L"} ${xOf(i).toFixed(1)} ${yHours(d.hours).toFixed(1)}`)
-		.join(" ")
-	const areaPath = `${hoursPath} L ${xOf(days.length - 1).toFixed(1)} ${(PAD_T + plotH).toFixed(1)} L ${xOf(0).toFixed(1)} ${(
-		PAD_T + plotH
-	).toFixed(1)} Z`
+	const yFor = (v: number, max: number) => PAD_T + plotH - (v / max) * plotH
+	const line = (pick: (d: DayActivity) => number, max: number) =>
+		days.map((d, i) => `${i === 0 ? "M" : "L"} ${xOf(i).toFixed(1)} ${yFor(pick(d), max).toFixed(1)}`).join(" ")
+	const area = (path: string) =>
+		`${path} L ${xOf(days.length - 1).toFixed(1)} ${(PAD_T + plotH).toFixed(1)} L ${xOf(0).toFixed(1)} ${(
+			PAD_T + plotH
+		).toFixed(1)} Z`
 
-	// Four gridlines, rounded to something a person would say: 0, a quarter, half, three quarters and the top.
-	const ticks = Array.from({ length: 5 }, (_, i) => (maxHours / 4) * i)
+	const hoursPath = line((d) => d.hours, maxHours)
+	const devlogsPath = line((d) => d.devlogs, maxDevlogs)
+
+	// Five lines per axis, so both scales are readable. Rounded to something a person would say rather than to the
+	// raw maximum, which on a spiky series lands on an unreadable 574.3h.
+	const steps = (max: number) => Array.from({ length: 5 }, (_, i) => (max / 4) * i)
+	const hoursTicks = steps(maxHours)
+	const devlogTicks = steps(maxDevlogs)
+	const roundTick = (n: number) => (n >= 10 ? Math.round(n) : Math.round(n * 10) / 10)
+
 	const labelEvery = Math.max(1, Math.ceil(days.length / 14))
 	const first = days[0]?.day
 	const last = days[days.length - 1]?.day
@@ -435,54 +443,94 @@ function ActivityStrip({ days }: { days: DayActivity[] }) {
 						verticalAlign: "middle",
 					}}
 				/>
-				hours ({fmtHours(totalHours)} total)
+				hours, left axis ({fmtHours(totalHours)} total)
 				<span
 					aria-hidden="true"
 					style={{
 						display: "inline-block",
 						width: "0.7rem",
-						height: "0.7rem",
-						borderRadius: "2px",
-						background: "var(--color-ink-muted)",
+						height: "0.15rem",
+						background: "var(--color-magenta)",
 						marginRight: "0.35rem",
 						marginLeft: "1rem",
-						verticalAlign: "baseline",
+						verticalAlign: "middle",
 					}}
 				/>
-				devlogs ({fmtInt(totalDevlogs)} total)
+				devlogs, right axis ({fmtInt(totalDevlogs)} total)
 			</p>
 			<div style={{ overflowX: "auto" }}>
 				<div style={{ minWidth: `${Math.max(days.length * 3, 480)}px` }}>
 					<svg
 						viewBox={`0 0 ${W} ${H}`}
 						role="img"
-						aria-label={`Hours logged per day from ${first} to ${last}, peaking at ${fmtHours(maxHours)}`}
+						aria-label={`Hours logged per day from ${first} to ${last}, peaking at ${fmtHours(
+							maxHours,
+						)}, and devlogs written per day over the same period, peaking at ${fmtInt(maxDevlogs)}`}
 						// Height left to the viewBox ratio rather than pinned: scaling to fit a fixed height would
 						// stretch the drawing non-uniformly, and the per-day dots come out as ellipses.
 						style={{ width: "100%", height: "auto", display: "block" }}
 					>
-						{ticks.map((t) => (
-							<g key={t}>
+						{hoursTicks.map((t, i) => (
+							<g key={`h${i}`}>
 								<line
 									x1={PAD_L}
 									x2={W - PAD_R}
-									y1={yHours(t)}
-									y2={yHours(t)}
+									y1={yFor(t, maxHours)}
+									y2={yFor(t, maxHours)}
 									stroke="var(--color-line-soft)"
 									strokeWidth="1"
 									vectorEffect="non-scaling-stroke"
 								/>
 								<text
 									x={PAD_L - 6}
-									y={yHours(t) + 3}
+									y={yFor(t, maxHours) + 3}
 									textAnchor="end"
-									style={{ fontSize: "9px", fill: "var(--color-ink-muted)" }}
+									style={{ fontSize: "9px", fill: "var(--color-accent-ink)" }}
 								>
-									{fmtHours(t)}
+									{fmtHours(roundTick(t)).replace("h", "")}
 								</text>
 							</g>
 						))}
-						<path d={areaPath} fill="var(--color-accent)" opacity="0.12" />
+						{devlogTicks.map((t, i) => (
+							<g key={`d${i}`}>
+								<line
+									x1={PAD_L}
+									x2={W - PAD_R}
+									y1={yFor(t, maxDevlogs)}
+									y2={yFor(t, maxDevlogs)}
+									stroke="var(--color-line-soft)"
+									strokeWidth="1"
+									strokeDasharray="2 3"
+									vectorEffect="non-scaling-stroke"
+								/>
+								<text
+									x={W - PAD_R + 6}
+									y={yFor(t, maxDevlogs) + 3}
+									textAnchor="start"
+									style={{ fontSize: "9px", fill: "var(--color-magenta)" }}
+								>
+									{fmtInt(roundTick(t))}
+								</text>
+							</g>
+						))}
+						<text
+							x={PAD_L - 6}
+							y={PAD_T - 1}
+							textAnchor="end"
+							style={{ fontSize: "8px", fill: "var(--color-ink-muted)" }}
+						>
+							h
+						</text>
+						<text
+							x={W - PAD_R + 6}
+							y={PAD_T - 1}
+							textAnchor="start"
+							style={{ fontSize: "8px", fill: "var(--color-ink-muted)" }}
+						>
+							devlogs
+						</text>
+
+						<path d={area(hoursPath)} fill="var(--color-accent)" opacity="0.1" />
 						<path
 							d={hoursPath}
 							fill="none"
@@ -491,38 +539,21 @@ function ActivityStrip({ days }: { days: DayActivity[] }) {
 							strokeLinejoin="round"
 							vectorEffect="non-scaling-stroke"
 						/>
+						<path
+							d={devlogsPath}
+							fill="none"
+							stroke="var(--color-magenta)"
+							strokeWidth="1.5"
+							strokeLinejoin="round"
+							strokeDasharray="4 2"
+							vectorEffect="non-scaling-stroke"
+						/>
 						{days.map((d, i) => (
-							<circle key={d.day} cx={xOf(i)} cy={yHours(d.hours)} r="2" fill="var(--color-accent)">
-								<title>{`${d.day}: ${fmtHours(d.hours)} logged`}</title>
+							<circle key={d.day} cx={xOf(i)} cy={yFor(d.hours, maxHours)} r="1.8" fill="var(--color-accent)">
+								<title>{`${d.day}: ${fmtHours(d.hours)} logged, ${fmtInt(d.devlogs)} devlogs`}</title>
 							</circle>
 						))}
 					</svg>
-					<div
-						role="img"
-						aria-label={`Devlogs written per day from ${first} to ${last}`}
-						style={{
-							display: "grid",
-							gridTemplateColumns: `repeat(${days.length}, 1fr)`,
-							gap: "1px",
-							alignItems: "end",
-							height: "2.5rem",
-							marginTop: "6px",
-						}}
-					>
-						{days.map((d) => (
-							<div
-								key={d.day}
-								aria-hidden="true"
-								title={`${d.day}: ${fmtInt(d.devlogs)} devlogs`}
-								style={{
-									height: `${(d.devlogs / maxDevlogs) * 100}%`,
-									minHeight: d.devlogs > 0 ? "2px" : 0,
-									background: "var(--color-ink-muted)",
-									borderRadius: "2px",
-								}}
-							/>
-						))}
-					</div>
 					<div
 						aria-hidden="true"
 						style={{
@@ -542,17 +573,20 @@ function ActivityStrip({ days }: { days: DayActivity[] }) {
 					</div>
 				</div>
 			</div>
+			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.5rem" }}>
+				Dashed is devlogs against the right axis, solid is hours against the left; each is scaled to its own maximum, so
+				compare the shapes and not the heights. Days are program-timezone effective dates – the day the work counted
+				for. Hours count journal devlogs only.
+			</p>
 		</div>
 	)
 }
 
 /**
- * How the cohort's hours are spread: one bar per bucket of participants, tallest where most people sit.
+ * How the cohort's hours are spread: one bar per band of participants, tallest where most people sit.
  *
  * Bars rather than a step line, because the question is "how many people are in each band", which is a count per
- * band and reads as a count. Every bar is labelled with its own number, so the shape never has to be read off a
- * y-axis – which matters here because the bands are unequal by design and the tallest is several times the
- * shortest.
+ * band and reads as a count. Every bar carries its own number, so the shape never has to be read off a y-axis.
  *
  * Accounts with no hours are stated as a count rather than drawn: at three quarters of the cohort, a zero bar
  * would be several times the tallest real one and would flatten the whole distribution to make room.
@@ -574,40 +608,45 @@ function HoursHistogram({ data }: { data: HoursDistribution }) {
 				<Stat label="Total hours" value={fmtHours(data.totalHours)} />
 			</div>
 			<figure style={{ margin: 0 }}>
+				{/* The plot carries its own height and its columns stretch to fill it. Both are load-bearing: a
+				    percentage bar has nothing to resolve against inside an auto-height parent, and `align-items: end`
+				    would stop the column growing into one – which is how this chart rendered no bars at all. */}
 				<div
 					role="img"
 					aria-label={`Participants by hours logged: ${summary}`}
 					style={{
 						display: "grid",
 						gridTemplateColumns: `repeat(${data.buckets.length}, 1fr)`,
-						gap: "4px",
-						alignItems: "end",
+						columnGap: "3px",
+						height: "11rem",
 					}}
 				>
 					{data.buckets.map((b) => (
-						<div
-							key={b.label}
-							style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end", gap: "0.3rem" }}
-						>
+						<div key={b.label} style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
 							<span
 								aria-hidden="true"
 								style={{
-									fontSize: "0.72rem",
+									fontSize: "0.7rem",
 									fontVariantNumeric: "tabular-nums",
 									textAlign: "center",
 									color: "var(--color-ink-muted)",
+									lineHeight: 1,
 								}}
 							>
 								{b.participants > 0 ? fmtInt(b.participants) : ""}
 							</span>
-							<div
-								title={`${b.label}h: ${fmtInt(b.participants)} participants, ${fmtHours(b.hours)} total`}
-								style={{
-									height: `${Math.max((b.participants / max) * 100, b.participants > 0 ? 1.5 : 0)}%`,
-									background: b.participants === 0 ? "var(--color-surface-sunken)" : "var(--color-accent)",
-									borderRadius: "3px 3px 0 0",
-								}}
-							/>
+							{/* flex: 1 so the bar takes the space the count label does not. */}
+							<div style={{ flex: 1, display: "flex", alignItems: "flex-end", minHeight: 0 }}>
+								<div
+									title={`${b.label}h: ${fmtInt(b.participants)} participants, ${fmtHours(b.hours)} total`}
+									style={{
+										width: "100%",
+										height: `${Math.max((b.participants / max) * 100, b.participants > 0 ? 0.8 : 0)}%`,
+										background: b.participants === 0 ? "var(--color-surface-sunken)" : "var(--color-accent)",
+										borderRadius: "3px 3px 0 0",
+									}}
+								/>
+							</div>
 						</div>
 					))}
 				</div>
@@ -616,20 +655,23 @@ function HoursHistogram({ data }: { data: HoursDistribution }) {
 					style={{
 						display: "grid",
 						gridTemplateColumns: `repeat(${data.buckets.length}, 1fr)`,
-						gap: "4px",
+						columnGap: "3px",
 						marginTop: "0.3rem",
 					}}
 				>
-					{data.buckets.map((b) => (
+					{data.buckets.map((b, i) => (
 						<span
 							key={b.label}
 							style={{
-								fontSize: "0.65rem",
+								fontSize: "0.62rem",
 								color: "var(--color-ink-muted)",
 								textAlign: "center",
 								overflow: "hidden",
 								textOverflow: "ellipsis",
 								whiteSpace: "nowrap",
+								// With this many bands the axis only has room for every other label; the count above each
+								// bar and the hover title carry the rest.
+								visibility: i % 2 === 0 ? "visible" : "hidden",
 							}}
 						>
 							{b.label}
@@ -638,10 +680,9 @@ function HoursHistogram({ data }: { data: HoursDistribution }) {
 				</figcaption>
 			</figure>
 			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
-				Bands widen as hours grow – the distribution is long-tailed, and equal bands would put almost everyone in the
-				first one. Hours count journal devlogs (reviewer-adjusted where set) plus linked Hackatime time, the same hours
-				the geography panels total. {fmtInt(data.withoutHours)} accounts have no hours at all and are left off the
-				chart; hover a bar for the band&apos;s share of the total.
+				Hours count journal devlogs (reviewer-adjusted where set) plus linked Hackatime time, the same hours the
+				geography panels total. {fmtInt(data.withoutHours)} accounts have no hours at all and are left off the chart;
+				hover a bar for the band&apos;s share of the total.
 			</p>
 		</div>
 	)

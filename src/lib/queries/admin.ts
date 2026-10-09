@@ -909,12 +909,12 @@ export interface HoursDistribution {
 /**
  * The upper bound of each bucket, in hours.
  *
- * Doubling rather than equal-width because the distribution is nothing like uniform: the median is around ten
- * hours and the top few participants have hundreds, so equal buckets would put nine tenths of everyone in the
- * first bar and push the rest off the end of the chart. The first bucket is open at zero because every account
- * here has at least some hours – the zero case is counted and reported rather than binned.
+ * Uneven, and drawn as a set of bands rather than as a continuous scale: the distribution is long-tailed, so even
+ * spacing would pile almost everyone into the first bucket. The first is open at zero because every account here
+ * has at least some hours – the zero case is counted and reported rather than binned. The trailing Infinity edge
+ * is the overflow band rather than a bound, so the tail has somewhere to land.
  */
-const HOUR_EDGES = [1, 2, 5, 10, 20, 40, 80, 160, Number.POSITIVE_INFINITY]
+export const HOUR_EDGES = [1, 2, 3, 5, 7, 10, 15, 20, 30, 40, 60, 80, 120, 160, 240, Number.POSITIVE_INFINITY]
 
 /**
  * Hours per account, bucketed, for the overview's distribution.
