@@ -1,7 +1,7 @@
 "use client"
-import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { Button, Callout, Field } from "@/app/components/ui"
+import { sendJson, useAction } from "@/lib/use-action"
 
 export function ProgramSettingsForm({
 	initial,
@@ -18,46 +18,33 @@ export function ProgramSettingsForm({
 		repoSyncEnabled: boolean
 	}
 }>) {
-	const router = useRouter()
 	const [form, setForm] = useState(initial)
-	const [busy, setBusy] = useState(false)
-	const [error, setError] = useState<string | null>(null)
 	const [saved, setSaved] = useState(false)
+	const { busy, error, run } = useAction()
 
-	async function submit(e: React.FormEvent) {
+	function submit(e: React.FormEvent) {
 		e.preventDefault()
-		setBusy(true)
-		setError(null)
 		setSaved(false)
-		try {
-			const res = await fetch("/api/admin/program", {
-				method: "PATCH",
-				headers: { "Content-Type": "application/json" },
-				// The start date has its own form (ProgramStartForm): moving it moves every week's lock, so it is not something to change in passing.
-				body: JSON.stringify({
-					programTimezone: form.programTimezone,
-					submissionsOpen: form.submissionsOpen,
-					submissionsCloseAt: form.submissionsCloseAt ? new Date(`${form.submissionsCloseAt}Z`).toISOString() : null,
-					shopOpen: form.shopOpen,
-					shopClosesAt: form.shopClosesAt ? new Date(`${form.shopClosesAt}Z`).toISOString() : null,
-					shopGraceDays: Number(form.shopGraceDays),
-					reviewClaimTtlMinutes: Number(form.reviewClaimTtlMinutes),
-					airtableSyncEnabled: form.airtableSyncEnabled,
-					repoSyncEnabled: form.repoSyncEnabled,
+		void run(
+			"submit",
+			() =>
+				sendJson("/api/admin/program", {
+					method: "PATCH",
+					// The start date has its own form (ProgramStartForm): moving it moves every week's lock, so it is not something to change in passing.
+					body: {
+						programTimezone: form.programTimezone,
+						submissionsOpen: form.submissionsOpen,
+						submissionsCloseAt: form.submissionsCloseAt ? new Date(`${form.submissionsCloseAt}Z`).toISOString() : null,
+						shopOpen: form.shopOpen,
+						shopClosesAt: form.shopClosesAt ? new Date(`${form.shopClosesAt}Z`).toISOString() : null,
+						shopGraceDays: Number(form.shopGraceDays),
+						reviewClaimTtlMinutes: Number(form.reviewClaimTtlMinutes),
+						airtableSyncEnabled: form.airtableSyncEnabled,
+						repoSyncEnabled: form.repoSyncEnabled,
+					},
 				}),
-			})
-			if (!res.ok) {
-				const payload = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
-				setError(payload.error?.message ?? `Failed (${res.status})`)
-				return
-			}
-			setSaved(true)
-			router.refresh()
-		} catch {
-			setError("Could not reach the server")
-		} finally {
-			setBusy(false)
-		}
+			() => setSaved(true),
+		)
 	}
 
 	return (
@@ -156,7 +143,7 @@ export function ProgramSettingsForm({
 			</Field>
 
 			<div>
-				<Button type="submit" variant="primary" disabled={busy}>
+				<Button type="submit" variant="primary" disabled={busy !== null}>
 					{busy ? "Saving…" : "Save settings"}
 				</Button>
 			</div>

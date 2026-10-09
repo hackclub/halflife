@@ -1,7 +1,7 @@
 "use client"
-import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { Button, Callout, Field } from "@/app/components/ui"
+import { sendJson, useAction } from "@/lib/use-action"
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -25,44 +25,26 @@ export function ProgramStartForm({
 	/** Label for each week in order, e.g. "PCBs · design". */
 	weeks: string[]
 }>) {
-	const router = useRouter()
 	const [date, setDate] = useState(initial)
-	const [busy, setBusy] = useState(false)
-	const [error, setError] = useState<string | null>(null)
 	const [saved, setSaved] = useState(false)
+	const { busy, error, run } = useAction()
 
 	const valid = /^\d{4}-\d{2}-\d{2}$/.test(date) && !Number.isNaN(Date.parse(`${date}T00:00:00Z`))
 	const monday = valid && new Date(`${date}T00:00:00Z`).getUTCDay() === 1
 	const changed = date !== initial
 
-	async function save() {
+	function save() {
 		if (
 			!window.confirm(
 				"Moving the start moves every week for everyone: weeks can lock or reopen on the map the moment this saves. Continue?",
 			)
 		)
 			return
-		setBusy(true)
-		setError(null)
-		setSaved(false)
-		try {
-			const res = await fetch("/api/admin/program", {
-				method: "PATCH",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ eventStartDate: date }),
-			})
-			if (!res.ok) {
-				const payload = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
-				setError(payload.error?.message ?? `Failed (${res.status})`)
-				return
-			}
-			setSaved(true)
-			router.refresh()
-		} catch (err) {
-			setError(err instanceof Error ? err.message : "Request failed")
-		} finally {
-			setBusy(false)
-		}
+		void run(
+			"save",
+			() => sendJson("/api/admin/program", { method: "PATCH", body: { eventStartDate: date } }),
+			() => setSaved(true),
+		)
 	}
 
 	return (
@@ -85,11 +67,11 @@ export function ProgramStartForm({
 						}}
 						style={{ maxWidth: "12rem" }}
 					/>
-					<Button variant="primary" disabled={busy || !valid || !changed} onClick={() => save()}>
+					<Button variant="primary" disabled={busy !== null || !valid || !changed} onClick={save}>
 						{busy ? "Saving…" : "Save start date"}
 					</Button>
 					{changed ? (
-						<Button disabled={busy} onClick={() => setDate(initial)}>
+						<Button disabled={busy !== null} onClick={() => setDate(initial)}>
 							Undo
 						</Button>
 					) : null}

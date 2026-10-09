@@ -1,41 +1,26 @@
 "use client"
-import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { Button, Callout, Field } from "@/app/components/ui"
+import { sendJson, useAction } from "@/lib/use-action"
 
 /**
  * Add a sales region. The slug is fixed once created – orders snapshot prices, and analytics refers to regions by id – so it should not change.
  */
 export function ShopRegionForm() {
-	const router = useRouter()
 	const [id, setId] = useState("")
 	const [name, setName] = useState("")
-	const [busy, setBusy] = useState(false)
-	const [error, setError] = useState<string | null>(null)
+	const { busy, error, run } = useAction()
 
-	async function submit(e: React.FormEvent) {
+	function submit(e: React.FormEvent) {
 		e.preventDefault()
-		setBusy(true)
-		setError(null)
-		try {
-			const res = await fetch("/api/admin/shop/regions", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ id: id.trim(), name: name.trim() }),
-			})
-			if (!res.ok) {
-				const payload = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
-				setError(payload.error?.message ?? `Failed (${res.status})`)
-				return
-			}
-			setId("")
-			setName("")
-			router.refresh()
-		} catch {
-			setError("Could not reach the server")
-		} finally {
-			setBusy(false)
-		}
+		void run(
+			"submit",
+			() => sendJson("/api/admin/shop/regions", { body: { id: id.trim(), name: name.trim() } }),
+			() => {
+				setId("")
+				setName("")
+			},
+		)
 	}
 
 	return (
@@ -63,7 +48,7 @@ export function ShopRegionForm() {
 				</Field>
 			</div>
 			<div>
-				<Button type="submit" variant="primary" disabled={busy}>
+				<Button type="submit" variant="primary" disabled={busy !== null}>
 					{busy ? "Adding…" : "Add region"}
 				</Button>
 			</div>

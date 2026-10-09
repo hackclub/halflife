@@ -1,7 +1,7 @@
 "use client"
-import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { Button, Callout } from "@/app/components/ui"
+import { sendJson, useAction } from "@/lib/use-action"
 
 /**
  * One region's coin price for one shop item. Blank is base pricing: the row only exists while an override does, so clearing the field deletes it and the item sells at its base price again.
@@ -15,39 +15,24 @@ export function ItemRegionPrices({
 	basePrice: number
 	regions: { id: string; name: string; price: number | null }[]
 }) {
-	const router = useRouter()
 	const [values, setValues] = useState<Record<string, string>>(() =>
 		Object.fromEntries(regions.map((r) => [r.id, r.price === null ? "" : String(r.price)])),
 	)
-	const [busy, setBusy] = useState<string | null>(null)
-	const [error, setError] = useState<string | null>(null)
+	const { busy, error, run, refuse } = useAction()
 
-	async function save(regionId: string) {
+	function save(regionId: string) {
 		const raw = (values[regionId] ?? "").trim()
 		const price = raw === "" ? null : Number(raw)
 		if (price !== null && (!Number.isInteger(price) || price < 0)) {
-			setError("Prices are whole coins, zero or more – or blank for base pricing.")
+			refuse("Prices are whole coins, zero or more – or blank for base pricing.")
 			return
 		}
-		setBusy(regionId)
-		setError(null)
-		try {
-			const res = await fetch(`/api/admin/shop/items/${itemId}/regions`, {
+		void run(regionId, () =>
+			sendJson(`/api/admin/shop/items/${itemId}/regions`, {
 				method: "PUT",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ regionId, priceCredits: price }),
-			})
-			if (!res.ok) {
-				const payload = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
-				setError(payload.error?.message ?? `Failed (${res.status})`)
-				return
-			}
-			router.refresh()
-		} catch {
-			setError("Could not reach the server")
-		} finally {
-			setBusy(null)
-		}
+				body: { regionId, priceCredits: price },
+			}),
+		)
 	}
 
 	return (

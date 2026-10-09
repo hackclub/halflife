@@ -1,46 +1,22 @@
 "use client"
-import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { Button, Callout, Field } from "@/app/components/ui"
+import { sendJson, useAction } from "@/lib/use-action"
 
 export function OrderDecision({ orderId }: Readonly<{ orderId: string }>) {
-	const router = useRouter()
 	const [action, setAction] = useState<"FULFILL" | "REJECT" | "HOLD">("FULFILL")
 	const [tracking, setTracking] = useState("")
 	const [carrier, setCarrier] = useState("")
 	const [reason, setReason] = useState("")
-	const [busy, setBusy] = useState(false)
-	const [error, setError] = useState<string | null>(null)
+	const { busy, error, run } = useAction()
 
-	async function submit(e: React.FormEvent) {
+	function submit(e: React.FormEvent) {
 		e.preventDefault()
-		setBusy(true)
-		setError(null)
-		try {
-			const body =
-				action === "FULFILL"
-					? {
-							action,
-							trackingNumber: tracking || undefined,
-							trackingCarrier: carrier || undefined,
-						}
-					: { action, reason }
-			const res = await fetch(`/api/admin/shop/orders/${orderId}/decision`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(body),
-			})
-			if (!res.ok) {
-				const payload = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
-				setError(payload.error?.message ?? `Failed (${res.status})`)
-				return
-			}
-			router.refresh()
-		} catch {
-			setError("Could not reach the server")
-		} finally {
-			setBusy(false)
-		}
+		const body =
+			action === "FULFILL"
+				? { action, trackingNumber: tracking || undefined, trackingCarrier: carrier || undefined }
+				: { action, reason }
+		void run("submit", () => sendJson(`/api/admin/shop/orders/${orderId}/decision`, { body }))
 	}
 
 	return (
@@ -66,7 +42,7 @@ export function OrderDecision({ orderId }: Readonly<{ orderId: string }>) {
 				</Field>
 			)}
 			<div>
-				<Button type="submit" disabled={busy}>
+				<Button type="submit" disabled={busy !== null}>
 					{busy ? "Working…" : "Apply"}
 				</Button>
 			</div>

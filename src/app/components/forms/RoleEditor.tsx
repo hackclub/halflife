@@ -1,35 +1,19 @@
 "use client"
-import { useRouter } from "next/navigation"
-import { useState } from "react"
 import { Button, Callout } from "@/app/components/ui"
+import { sendJson, useAction } from "@/lib/use-action"
 
 const ROLES = ["ADMIN", "REVIEWER", "FULFILLER", "AUDITOR"] as const
 
 export function RoleEditor({ userId, current }: Readonly<{ userId: string; current: string[] }>) {
-	const router = useRouter()
-	const [busy, setBusy] = useState<string | null>(null)
-	const [error, setError] = useState<string | null>(null)
+	const { busy, error, run } = useAction()
 
-	async function toggle(role: string, held: boolean) {
-		setBusy(role)
-		setError(null)
-		try {
-			const res = await fetch(`/api/admin/users/${userId}/roles`, {
+	function toggle(role: string, held: boolean) {
+		void run(role, () =>
+			sendJson(`/api/admin/users/${userId}/roles`, {
 				method: held ? "DELETE" : "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ role }),
-			})
-			if (!res.ok) {
-				const payload = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
-				setError(payload.error?.message ?? `Failed (${res.status})`)
-				return
-			}
-			router.refresh()
-		} catch {
-			setError("Could not reach the server")
-		} finally {
-			setBusy(null)
-		}
+				body: { role },
+			}),
+		)
 	}
 
 	return (

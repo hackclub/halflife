@@ -1,37 +1,22 @@
 "use client"
-import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { Button, Callout } from "@/app/components/ui"
+import { sendJson, useAction } from "@/lib/use-action"
 
 /** Set what one unit of an item costs Hack Club, from the catalogue row. */
 export function ItemCostField({ itemId, costUsd }: Readonly<{ itemId: string; costUsd: number | null }>) {
-	const router = useRouter()
 	const [value, setValue] = useState(costUsd === null ? "" : String(costUsd))
-	const [busy, setBusy] = useState(false)
-	const [error, setError] = useState<string | null>(null)
+	const { busy, error, run } = useAction()
 	const dirty = value !== (costUsd === null ? "" : String(costUsd))
 
-	async function submit(e: React.FormEvent) {
+	function submit(e: React.FormEvent) {
 		e.preventDefault()
-		setBusy(true)
-		setError(null)
-		try {
-			const res = await fetch(`/api/admin/shop/items/${itemId}`, {
+		void run("submit", () =>
+			sendJson(`/api/admin/shop/items/${itemId}`, {
 				method: "PATCH",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ costUsd: value === "" ? null : Number(value) }),
-			})
-			if (!res.ok) {
-				const payload = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
-				setError(payload.error?.message ?? `Failed (${res.status})`)
-				return
-			}
-			router.refresh()
-		} catch {
-			setError("Could not reach the server")
-		} finally {
-			setBusy(false)
-		}
+				body: { costUsd: value === "" ? null : Number(value) },
+			}),
+		)
 	}
 
 	return (
@@ -48,7 +33,7 @@ export function ItemCostField({ itemId, costUsd }: Readonly<{ itemId: string; co
 				style={{ width: "7rem" }}
 			/>
 			{dirty ? (
-				<Button type="submit" disabled={busy}>
+				<Button type="submit" disabled={busy !== null}>
 					{busy ? "Saving…" : "Save"}
 				</Button>
 			) : null}

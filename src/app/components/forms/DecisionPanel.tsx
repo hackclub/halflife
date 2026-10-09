@@ -2,6 +2,7 @@
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { Button, Callout, Field } from "@/app/components/ui"
+import { sendJson, useAction } from "@/lib/use-action"
 
 interface TierOption {
 	id: number
@@ -38,46 +39,32 @@ export function DecisionPanel({
 	const [reason, setReason] = useState("")
 	const [tier, setTier] = useState<string>(currentTier ? String(currentTier) : "")
 	const [hoursOverride, setHoursOverride] = useState("")
-	const [busy, setBusy] = useState(false)
-	const [error, setError] = useState<string | null>(null)
+	const { busy, error, run } = useAction()
 
 	const approvingDesign = result === "APPROVED" && phase === "DESIGN"
 
-	async function submit(e: React.FormEvent) {
+	function submit(e: React.FormEvent) {
 		e.preventDefault()
-		setBusy(true)
-		setError(null)
-		try {
-			const body =
-				result === "APPROVED"
-					? {
-							result,
-							feedback,
-							reason: reason || undefined,
-							...(tier ? { tier: Number(tier) } : {}),
-							...(hoursOverride ? { hoursOverride: Number(hoursOverride) } : {}),
-						}
-					: result === "RETURNED"
-						? { result, feedback, reason: reason || undefined }
-						: { result, feedback, reason }
-
-			const res = await fetch(`/api/review/submissions/${submissionId}/decision`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(body),
-			})
-			if (!res.ok) {
-				const payload = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
-				setError(payload.error?.message ?? `Failed (${res.status})`)
-				return
-			}
-			router.push("/review")
-			router.refresh()
-		} catch {
-			setError("Could not reach the server")
-		} finally {
-			setBusy(false)
-		}
+		const body =
+			result === "APPROVED"
+				? {
+						result,
+						feedback,
+						reason: reason || undefined,
+						...(tier ? { tier: Number(tier) } : {}),
+						...(hoursOverride ? { hoursOverride: Number(hoursOverride) } : {}),
+					}
+				: result === "RETURNED"
+					? { result, feedback, reason: reason || undefined }
+					: { result, feedback, reason }
+		void run(
+			"submit",
+			() => sendJson(`/api/review/submissions/${submissionId}/decision`, { body }),
+			() => {
+				router.push("/review")
+				router.refresh()
+			},
+		)
 	}
 
 	return (
@@ -143,7 +130,7 @@ export function DecisionPanel({
 			</Field>
 
 			<div>
-				<Button type="submit" variant="primary" disabled={busy}>
+				<Button type="submit" variant="primary" disabled={busy !== null}>
 					{busy ? "Recording…" : "Record decision"}
 				</Button>
 			</div>
