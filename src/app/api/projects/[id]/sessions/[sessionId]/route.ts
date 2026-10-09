@@ -1,6 +1,6 @@
 import { after } from "next/server"
 import { type Phase, PhaseStatus, type Theme } from "@/app/generated/prisma/enums"
-import { recomputeWeek } from "@/lib/analytics"
+import { recomputeActiveDays, recomputeWeek } from "@/lib/analytics"
 import { fail, ok, parseBody, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { scheduledWeekFor } from "@/lib/config/program"
@@ -117,6 +117,7 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 
 	if (data.hoursClaimed !== undefined || data.hoursSource !== undefined || data.timelapses !== undefined)
 		await recomputeWeek(gate.user.id, session.weekNumber)
+	if (data.hoursClaimed !== undefined) await recomputeActiveDays(gate.user.id)
 
 	// Attaching, dropping or swapping a recording moves the window Hackatime's hours are deduplicated against, so the cached spans covering it are refetched off the response path. `addIds` is the narrower truth for a pure reattach of clips already on this entry, but a removal narrows the window just as much, so the cache is warmed whenever the clip set was touched at all.
 	if (want !== null) after(() => refreshOverlapSpans(id, session.phase))
@@ -167,6 +168,7 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 	})
 
 	await recomputeWeek(gate.user.id, session.weekNumber)
+	await recomputeActiveDays(gate.user.id)
 
 	after(() => scheduleRepoSync(id))
 

@@ -518,7 +518,8 @@ model User {
   lastLoginAt       DateTime?
   /// The last page view, to within a few minutes (writes are throttled).
   lastActiveAt      DateTime?
-  /// Distinct program-timezone days with any activity; the count of UserDay.
+  /// Distinct program-timezone days with a time entry over 15 minutes; the
+  /// count of UserDay.
   activeDays        Int       @default(0)
   /// While now() is before this, the global submission gate does not apply to
   /// any of this user's phases. Stasis added per-user and per-project override
@@ -884,13 +885,15 @@ model RepoSyncRun {
   @@map("repo_sync_run")
 }
 
-/// One row per person per day they used the platform, in the program timezone.
-/// DAU for a day is the count of its rows; retention is a join over them.
+/// One row per person per day they logged a time entry over 15 minutes, in the
+/// program timezone. DAU for a day is the count of its rows; retention is a
+/// join over them. Rebuilt from WorkSession, never written directly.
 model UserDay {
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// YYYY-MM-DD in the program timezone.
   day         String
+  /// When that day's first qualifying entry was created.
   firstSeenAt DateTime @default(now())
 
   @@id([userId, day])
