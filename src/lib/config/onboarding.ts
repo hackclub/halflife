@@ -86,7 +86,7 @@ export const EXPERIENCE_OPTIONS = [
 /**
  * Starter projects: a real, finished build with a step-by-step guide, offered to anyone who said they are new to hardware (see `seesStarterProjects`).
  *
- * Taking one locks the tier request to 1, so these have to be genuinely Tier 1 in scope. Each week is meant to get its own; until those repos exist, Starbie, week one's, stands in for every theme.
+ * Taking one locks the tier request to 1, so these have to be genuinely Tier 1 in scope. Each week is meant to get its own; until those repos exist, Starbie, week one's, stands in for every theme without one.
  */
 export interface StarterProject {
 	readonly id: string
@@ -100,19 +100,28 @@ export interface StarterProject {
 	readonly guideUrl: string
 }
 
-const ALL_THEMES = [Theme.PCB, Theme.CAD, Theme.SYNTH, Theme.DISPLAYS, Theme.BREADBOARD_COMPUTER] as const
-
 export const STARTER_PROJECTS = [
 	{
 		id: "starbie",
 		// Week one's starter, in every week until each has its own repo.
-		themes: ALL_THEMES,
+		themes: [Theme.PCB, Theme.SYNTH, Theme.DISPLAYS, Theme.BREADBOARD_COMPUTER],
 		title: "Starbie",
 		// The project's own README, trimmed.
 		description: "A tiny motion-controlled digital pet, basically a desktop Tamagotchi. Totally not a Starboy.",
 		parts: ["XIAO ESP32-C3", "OLED screen", "MPU6050 motion sensor", "DHT11 sensor"],
 		repoUrl: "https://github.com/SharKingStudios/Starbie",
 		guideUrl: "https://github.com/SharKingStudios/Starbie/blob/main/Week%201%20Guide.md",
+	},
+	{
+		id: "merbl",
+		themes: [Theme.CAD],
+		title: "Merbl run",
+		// The repo has no README; this is the guide's own summary.
+		description:
+			"A custom 3D-printed marble race, designed from scratch! You'll learn how to design your own course and make cool tracks.",
+		parts: ["3D printed track"],
+		repoUrl: "https://github.com/karnxx/merbl",
+		guideUrl: "https://github.com/karnxx/merbl/blob/main/guide.md",
 	},
 ] as const satisfies readonly StarterProject[]
 
