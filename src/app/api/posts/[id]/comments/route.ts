@@ -1,4 +1,5 @@
-import { ok, parseBody, withRoute } from "@/lib/api"
+import type { NextRequest } from "next/server"
+import { ok, parseBody, parseQuery, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { addComment, getComments } from "@/lib/feed"
 import { requireSession } from "@/lib/guards"
@@ -9,19 +10,15 @@ export const dynamic = "force-dynamic"
 
 type Params = { params: Promise<{ id: string }> }
 
-export const GET = withRoute(async (req: Request, { params }: Params) => {
+export const GET = withRoute(async (req: NextRequest, { params }: Params) => {
 	const gate = await requireSession()
 	if (gate.error) return gate.error
 	const { id } = await params
 
-	const url = new URL(req.url)
-	const parsed = paginationQuery.safeParse({
-		cursor: url.searchParams.get("cursor") ?? undefined,
-		limit: url.searchParams.get("limit") ?? undefined,
-	})
-	const { cursor, limit } = parsed.success ? parsed.data : { cursor: undefined, limit: 25 }
+	const parsed = parseQuery(req, paginationQuery)
+	if (parsed.error) return parsed.error
 
-	return ok(await getComments(id, gate.user.id, { cursor, limit }))
+	return ok(await getComments(id, gate.user.id, { cursor: parsed.data.cursor, limit: parsed.data.limit }))
 })
 
 export const POST = withRoute(async (req: Request, { params }: Params) => {

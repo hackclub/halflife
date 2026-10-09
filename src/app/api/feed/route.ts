@@ -1,22 +1,24 @@
-import { ok, withRoute } from "@/lib/api"
+import type { NextRequest } from "next/server"
+import { z } from "zod"
+import { ok, parseQuery, withRoute } from "@/lib/api"
 import { getFeed } from "@/lib/feed"
 import { requireSession } from "@/lib/guards"
 import { paginationQuery } from "@/lib/pagination"
 
 export const dynamic = "force-dynamic"
 
-export const GET = withRoute(async (req: Request) => {
+// Clamped rather than validated: a zone only has to be a string short enough to be worth passing on, and an unusable one falls back inside getFeed rather than failing the whole feed.
+const feedQuery = paginationQuery.extend({ tz: z.string().max(64).optional() })
+
+export const GET = withRoute(async (req: NextRequest) => {
 	const gate = await requireSession()
 	if (gate.error) return gate.error
 
-	const url = new URL(req.url)
-	const parsed = paginationQuery.safeParse({
-		cursor: url.searchParams.get("cursor") ?? undefined,
-		limit: url.searchParams.get("limit") ?? undefined,
-	})
-	const { cursor, limit } = parsed.success ? parsed.data : { cursor: undefined, limit: 25 }
-	// The viewer's IANA zone, for what counts as today; getFeed checks it.
-	const timeZone = url.searchParams.get("tz")?.slice(0, 64) || undefined
+	const parsed = parseQuery(req, feedQuery)
+	if (parsed.error) return parsed.error
 
-	return ok(await getFeed(gate.user.id, { cursor, limit, timeZone }))
+	// The viewer's IANA zone, for what counts as today; getFeed checks it.
+	return ok(
+		await getFeed(gate.user.id, { cursor: parsed.data.cursor, limit: parsed.data.limit, timeZone: parsed.data.tz }),
+	)
 })
