@@ -181,6 +181,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 					cursor += h
 				}
 			} else {
+				let fanEnd = node.y0
 				for (const ribbon of mine.filter(nestable)) {
 					const h = ribbonH(ribbon.value)
 					if (side === "out") {
@@ -190,8 +191,10 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 						ribbon.ty0 = node.y0
 						ribbon.ty1 = node.y0 + h
 					}
+					fanEnd = Math.max(fanEnd, node.y0 + h)
 				}
-				let cursor = node.y0
+				// Chain ribbons carry disjoint users, so they stack after the fan footprint instead of under it: a big chain flow is laid out end to end rather than burying the fan. Fan users plus chain users partition the box, so this always fits.
+				let cursor = fanEnd
 				for (const ribbon of mine.filter((r) => !nestable(r))) {
 					const h = ribbonH(ribbon.value)
 					if (side === "out") {
