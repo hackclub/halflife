@@ -29,9 +29,16 @@ const FOOT_H = 10
  *
  * Flooring ribbons as well makes a box's ribbons add up to more than the box, and then the widths stop meaning what the numbers say. Real case from the dev data: 5,202 + 11 + 6 users out of 5,219 is 466.5px of true ribbon inside a 468px box, but the 11 and the 6 are each thinner than the floor and get bumped to 1.5px, so the three overrun the box by 1.5px. A sliver of a cohort then reads wider than the cohort. A box floor keeps a real-but-tiny group visible as a hairline while its ribbons stay on the true scale, so a box's ribbons always sum to the people who continued past it.
  *
- * The activity stage fans out and back in – one person feeds every box they earned – so fan ribbons share people and overlap on the fanning edge instead of stacking, or the same users would read twice. Chain ribbons carry disjoint users and stack from the same edge, on top of the fan wash so real divergences stay readable. Either footprint fits: every ribbon's people are a subset of the box's.
+ * The activity stage fans out and back in – one person feeds every box they earned. Where stacking an edge's ribbons would visibly overflow its box (past NEST_PX), the fan ribbons nest from the box edge instead and the overlap reads darker; everywhere else every ribbon stacks sequentially, so small flows stay visible rather than hiding inside bigger ones. Chain ribbons carry disjoint users and stack in both cases, on top of the fan wash when there is one so real divergences stay readable.
  */
 const MIN_BOX_H = 1.5
+
+/**
+ * Overshoot past which shared ribbons overlap instead of stacking, in viewBox units (≈ pixels at natural size).
+ *
+ * Stacking one person's units across several ribbons double-counts them – but only where it shows. A couple of units on a small box is sub-pixel while nesting would swallow its smaller flows whole, so the fan only nests past this many units of overshoot. Past it, the alternative is a visibly oversized box edge; short of it, every flow stays laid out.
+ */
+const NEST_PX = 2
 
 const PALETTE = [
 	"var(--color-accent)",
@@ -155,29 +162,50 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 					const other = (r: Ribbon) => (side === "out" ? r.target : r.source)
 					return other(a).y0 - other(b).y0
 				})
-			// Fan-out ribbons share their source's people across several activity boxes, and fan-in ribbons share their target's across the same activities coming back: on the fanning edge they nest from the box's top edge and the overlap reads darker. Every other ribbon on the edge carries disjoint users and stacks from the same edge, on top of the fan wash so real divergences stay readable. Either footprint fits: every ribbon's people are a subset of the box's.
-			const nest = (r: Ribbon) => (side === "out" ? r.fan === "out" : r.fan === "in")
-			for (const ribbon of mine.filter(nest)) {
-				const h = ribbonH(ribbon.value)
-				if (side === "out") {
-					ribbon.sy0 = node.y0
-					ribbon.sy1 = node.y0 + h
-				} else {
-					ribbon.ty0 = node.y0
-					ribbon.ty1 = node.y0 + h
+			// Fan-out ribbons share their source's people across several activity boxes, and fan-in ribbons share their target's across the same activities coming back. Stacking shared ribbons double-counts them – but only where it shows: a few units of overshoot on a small box is sub-pixel, while nesting would hide its smaller flows entirely. So the fan ribbons nest from the box's top edge only when stacking everything would visibly overflow it; otherwise every ribbon stacks sequentially and each flow stays visible.
+			const nestable = (r: Ribbon) => (side === "out" ? r.fan === "out" : r.fan === "in")
+			const boxSize = node.y1 - node.y0
+			const fanTotal = mine.filter(nestable).reduce((n, r) => n + ribbonH(r.value), 0)
+			const chainTotal = mine.filter((r) => !nestable(r)).reduce((n, r) => n + ribbonH(r.value), 0)
+			if (fanTotal + chainTotal <= boxSize + NEST_PX) {
+				let cursor = node.y0
+				for (const ribbon of mine) {
+					const h = ribbonH(ribbon.value)
+					if (side === "out") {
+						ribbon.sy0 = cursor
+						ribbon.sy1 = cursor + h
+					} else {
+						ribbon.ty0 = cursor
+						ribbon.ty1 = cursor + h
+					}
+					cursor += h
 				}
-			}
-			let cursor = node.y0
-			for (const ribbon of mine.filter((r) => !nest(r))) {
-				const h = ribbonH(ribbon.value)
-				if (side === "out") {
-					ribbon.sy0 = cursor
-					ribbon.sy1 = cursor + h
-				} else {
-					ribbon.ty0 = cursor
-					ribbon.ty1 = cursor + h
+			} else {
+				let fanEnd = node.y0
+				for (const ribbon of mine.filter(nestable)) {
+					const h = ribbonH(ribbon.value)
+					if (side === "out") {
+						ribbon.sy0 = node.y0
+						ribbon.sy1 = node.y0 + h
+					} else {
+						ribbon.ty0 = node.y0
+						ribbon.ty1 = node.y0 + h
+					}
+					fanEnd = Math.max(fanEnd, node.y0 + h)
 				}
-				cursor += h
+				// Chain ribbons carry disjoint users, so they stack after the fan footprint instead of under it: a big chain flow is laid out end to end rather than burying the fan. Fan users plus chain users partition the box, so this always fits.
+				let cursor = fanEnd
+				for (const ribbon of mine.filter((r) => !nestable(r))) {
+					const h = ribbonH(ribbon.value)
+					if (side === "out") {
+						ribbon.sy0 = cursor
+						ribbon.sy1 = cursor + h
+					} else {
+						ribbon.ty0 = cursor
+						ribbon.ty1 = cursor + h
+					}
+					cursor += h
+				}
 			}
 		}
 	}
@@ -336,8 +364,8 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.5rem" }}>
 				Every ribbon is the same thickness for the same number of people, so widths compare across the whole
 				diagram. A ribbon stepping over a column is people who skipped that stage; a ribbon that stops is people
-				whose journey ended there. The activity stage counts every kind each person reached, so ribbons sharing
-				people overlap instead of stacking – shared stretches read darker.
+				whose journey ended there. The activity stage counts every kind each person reached: ribbons sharing people
+				overlap where stacking them would visibly overflow, and stack everywhere else so small flows stay visible.
 			</p>
 		</div>
 	)
