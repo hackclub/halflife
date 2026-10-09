@@ -26,7 +26,7 @@ import { attrUrl } from "@/lib/attr-url"
 import { linkLapse } from "@/lib/auth-client"
 import type { BomLine } from "@/lib/bom"
 import { STARTER_PROJECT_TIER, starterProjectsFor } from "@/lib/config/onboarding"
-import { paceTarget, printerById, submitFloorFor } from "@/lib/config/printers"
+import { COINS_PER_HOUR, paceTarget, printerById, submitFloorFor } from "@/lib/config/printers"
 import { THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { photosRequired, TIERS } from "@/lib/curriculum"
 import { cx } from "@/lib/cx"
@@ -438,6 +438,10 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 	const hours = hoursOf(week)
 	const toFloor = Math.max(0, week.submitHours - hours)
+	// The week's earning goal, read off its own target rather than the goal catalogue: targetHours already bakes in this week's tier (weekAsk slides the funded block in underneath the pace) and earnFrom is where coins start, so their difference at the coin rate is what this tier and this goal ask together. Warm-ups have no season pace, so they keep the bare floor message.
+	const weeklyGoalCoins = Math.round((week.targetHours - week.earnFrom) * COINS_PER_HOUR)
+	const toGoal = Math.max(0, week.targetHours - hours)
+	const showGoal = week.id !== WARMUP_WEEK_ID && toGoal > 0
 
 	/**
 	 * Finishing hands the maker back to the trail rather than straight into another entry. What comes next is the trail's to say: logging these hours may have brought a reel due, or opened the fork at the end of the week, and a modal that reopens itself would march past both.
@@ -584,7 +588,23 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 										: editing
 											? "Saving replaces this entry. It keeps its place on the map."
 											: toFloor > 0
-												? `${fmtH(toFloor)} more before you can ${week.id === WARMUP_WEEK_ID ? "submit it" : "wrap up the week"}.`
+												? (
+													<>
+														{fmtH(toFloor)} more before you can{" "}
+														{week.id === WARMUP_WEEK_ID ? "submit it" : "wrap up the week"}
+														{showGoal ? (
+															<>
+																{" "}– {fmtH(toGoal)} more if you want to reach your goal of{" "}
+																<strong className="rounded bg-gold-pale px-1 text-gold-ink">
+																	{weeklyGoalCoins} coins
+																</strong>{" "}
+																per week.
+															</>
+														) : (
+															"."
+														)}
+													</>
+												)
 												: "Submit your project when it's done!"}
 						</p>
 					</div>
