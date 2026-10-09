@@ -167,6 +167,78 @@ export function monthLabel(year: number, month: number): string {
 	)
 }
 
+/** A `YYYY-MM-DD` shifted by whole days. UTC throughout: these are calendar labels, not instants. */
+function addDays(day: string, offset: number): string {
+	const [year = 1970, month = 1, dayOfMonth = 1] = day.split("-").map(Number)
+	const at = new Date(Date.UTC(year, month - 1, dayOfMonth) + offset * 86_400_000)
+	return dayKey(at.getUTCFullYear(), at.getUTCMonth() + 1, at.getUTCDate())
+}
+
+/** Monday-first index of a `YYYY-MM-DD` (0 = Monday), for the programme's Monday-to-Sunday weeks. */
+function weekdayIndex(day: string): number {
+	const [year = 1970, month = 1, dayOfMonth = 1] = day.split("-").map(Number)
+	return (new Date(Date.UTC(year, month - 1, dayOfMonth)).getUTCDay() + 6) % 7
+}
+
+/** The Monday-to-Sunday week holding `day`, as `YYYY-MM-DD` strings. */
+export function weekDays(day: string): string[] {
+	const monday = addDays(day, -weekdayIndex(day))
+	return Array.from({ length: 7 }, (_, i) => addDays(monday, i))
+}
+
+/** `day`'s week moved by `offset` weeks. */
+export function shiftWeek(day: string, offset: number): string {
+	return addDays(day, offset * 7)
+}
+
+/** "March 2 – 8, 2026", widening to months and years when the week straddles them. */
+export function weekLabel(days: readonly string[]): string {
+	const [first = "", last = ""] = [days[0], days[6]]
+	const [fy = 1970, fm = 1, fd = 1] = first.split("-").map(Number)
+	const [ly = 1970, lm = 1, ld = 1] = last.split("-").map(Number)
+	const month = (year: number, m: number) =>
+		new Intl.DateTimeFormat("en-US", { month: "long", timeZone: "UTC" }).format(new Date(Date.UTC(year, m - 1, 1)))
+	if (fy !== ly) return `${month(fy, fm)} ${fd}, ${fy} – ${month(ly, lm)} ${ld}, ${ly}`
+	if (fm !== lm) return `${month(fy, fm)} ${fd} – ${month(ly, lm)} ${ld}, ${ly}`
+	return `${month(fy, fm)} ${fd} – ${ld}, ${fy}`
+}
+
+/** Minutes from local midnight to `at` in `timeZone`. */
+export function minutesInDay(at: Date, timeZone: string): number {
+	const parts = new Intl.DateTimeFormat("en-US", { timeZone, hour: "numeric", minute: "numeric", hour12: false })
+		.formatToParts(at)
+	const get = (type: string) => Number(parts.find((part) => part.type === type)?.value ?? 0)
+	// hour12: false reports midnight as 24, which is the next day's minute zero.
+	return (get("hour") % 24) * 60 + get("minute")
+}
+
+/**
+ * An event's slice of one calendar day in `timeZone`, clipped at midnight so a
+ * block never leaks into the next column. Null when the event never touches
+ * the day. Open-ended events get a nominal half hour so they still take a
+ * block rather than vanishing.
+ */
+export function daySegment(
+	event: Pick<CalendarEvent, "startsAt" | "endsAt">,
+	day: string,
+	timeZone: string,
+): { startMin: number; endMin: number } | null {
+	const starts = calendarDay(event.startsAt, timeZone)
+	if (starts > day) return null
+	const ends = event.endsAt ? calendarDay(event.endsAt, timeZone) : starts
+	if (ends < day) return null
+	const startMin = starts < day ? 0 : minutesInDay(event.startsAt, timeZone)
+	let endMin: number
+	if (!event.endsAt) endMin = Math.min(24 * 60, startMin + 30)
+	else if (ends > day) endMin = 24 * 60
+	else {
+		endMin = minutesInDay(event.endsAt, timeZone)
+		// An event running to midnight ends the day it is on, not the next one's first minute.
+		if (endMin === 0) endMin = 24 * 60
+	}
+	return endMin <= startMin ? null : { startMin, endMin }
+}
+
 /** "Thursday, March 5" – a day's own heading, with no time attached. */
 export function dayLabel(day: string): string {
 	const { year, month } = monthOf(day)
