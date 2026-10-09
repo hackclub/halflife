@@ -35,7 +35,7 @@ export const HUDDLE_URL = "https://app.slack.com/huddle/T0266FRGM/C0BTE0WN23S"
  * - The colour helpers take a whole `CalendarEvent` where they need two fields,
  *   because a caller wanting the accent of an event should not have to remember
  *   that it is keyed off `colour` and not off `id`.
- * - The calendar maths works in `YYYY-MM-DD` strings in the programme's zone,
+ * - The calendar maths works in `YYYY-MM-DD` strings in the viewer's zone, for
  *   the same reason `lib/program.ts` counts weeks in calendar days. Counting in
  *   elapsed milliseconds puts the late evening of a Sunday in the next column.
  */
@@ -185,7 +185,7 @@ export function dayShort(day: string): string {
 	)
 }
 
-/** "7:00 PM" in the programme's zone. */
+/** "7:00 PM" in the given zone. */
 function eventTimeLabel(at: Date, timeZone: string): string {
 	return at.toLocaleTimeString("en-US", { timeZone, hour: "numeric", minute: "2-digit" })
 }

@@ -31,8 +31,8 @@ const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const
  * Built from `YYYY-MM-DD` strings rather than from `Date` arithmetic on instants,
  * for the same reason the week maths in `lib/program.ts` counts calendar days: a
  * cell is a *day on a wall*, and an instant does not name one until you say which
- * zone. Doing it in the programme's zone also means an event at 8pm New York
- * lands on the evening of that day rather than sliding onto the next one.
+ * zone. Doing it in the viewer's zone keeps an evening call on the evening of
+ * that viewer's day rather than sliding it onto the next one.
  *
  * Selecting a day lists only that day. The list underneath is otherwise the next
  * handful of events, so the calendar is useful without a click – which is what
@@ -98,7 +98,7 @@ export function EventCalendar({
 			eyebrow="Programme calendar"
 			scrollKey={`${month.year}-${month.month}-${selected ?? ""}`}
 		>
-			<ModalTitle sub="Everything scheduled for the programme, in its own timezone. Times are shown in the programme's zone rather than yours, so a call is at the hour it was announced.">
+			<ModalTitle sub="Everything scheduled for the programme, shown in your timezone.">
 				{monthLabel(month.year, month.month)}
 			</ModalTitle>
 

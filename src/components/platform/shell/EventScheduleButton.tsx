@@ -30,13 +30,18 @@ export function EventScheduleButton({
 	// Null until mounted, then the clock. Seeding it with Date.now() during render
 	// is the mismatch this whole dance exists to avoid.
 	const [now, setNow] = useState<Date | null>(null)
+	// The viewer's own zone, read from the browser after mount. The programme
+	// zone holds the fort until then: reading the browser's during render is
+	// the same hydration mismatch the null-until-mounted clock above avoids.
+	const [viewerZone, setViewerZone] = useState(timeZone)
 
 	useEffect(() => {
-		// eslint-disable-next-line react-hooks/set-state-in-effect -- the browser's clock; the server's is a different instant
+		// eslint-disable-next-line react-hooks/set-state-in-effect -- the browser's clock and zone; the server's are different ones
 		setNow(new Date())
+		setViewerZone(Intl.DateTimeFormat().resolvedOptions().timeZone ?? timeZone)
 		const timer = setInterval(() => setNow(new Date()), 1000)
 		return () => clearInterval(timer)
-	}, [])
+	}, [timeZone])
 
 	const next = useMemo(() => nextEvent(events, now ?? new Date(0)), [events, now])
 	const parts = countdownParts(next && now ? msUntilStart(next, now) : 0)
@@ -58,7 +63,7 @@ export function EventScheduleButton({
 				aria-haspopup="dialog"
 				aria-expanded={open}
 				title={
-					next ? `${next.title} · ${eventRangeLabel(next.startsAt, next.endsAt, timeZone)}` : "Open the event calendar"
+					next ? `${next.title} · ${eventRangeLabel(next.startsAt, next.endsAt, viewerZone)}` : "Open the event calendar"
 				}
 				className={cx(
 					"label inline-flex shrink-0 items-center gap-1.5 rounded-full border-2 bg-paper px-2 py-1.5 transition-colors sm:gap-2 sm:px-3",
@@ -96,7 +101,7 @@ export function EventScheduleButton({
 				</span>
 			</button>
 
-			<EventCalendar open={open} onClose={() => setOpen(false)} events={events} timeZone={timeZone} />
+			<EventCalendar open={open} onClose={() => setOpen(false)} events={events} timeZone={viewerZone} />
 		</>
 	)
 }
