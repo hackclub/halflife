@@ -2,7 +2,6 @@ import { after, NextResponse } from "next/server"
 import {
 	addReaction,
 	checkChannelMembership,
-	postMessage,
 	removeReaction,
 	type SlackBlock,
 	updateMessage,
@@ -146,19 +145,11 @@ async function handleMarkHelped(payload: InteractionPayload, action: BlockAction
 	}
 
 	if (ref.helpChannel && ref.helpTs) {
-		// Best-effort: a database hiccup must not cost the helper their ack.
+		// Best-effort: a database hiccup must not sink the resolution. Never posts in the thread – the reaction swap below is the only help-channel signal.
 		try {
 			await resolveHelpTicket({ helpChannel: ref.helpChannel, helpTs: ref.helpTs, resolvedBy: payload.user.id })
 		} catch (err) {
 			console.error(`Failed to record ticket resolution for ${ref.helpTs}: ${err}`)
-		}
-
-		try {
-			await postMessage(ref.helpChannel, helpedAck(payload.user.id), {
-				threadTs: ref.helpTs,
-			})
-		} catch (err) {
-			console.error(`Failed to post help-channel ack: ${err}`)
 		}
 	}
 
