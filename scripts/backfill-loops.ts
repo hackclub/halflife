@@ -21,7 +21,8 @@ import prisma from "../src/lib/prisma"
  *    columns onto every matched row.
  *
  * Read-only unless `--commit` is passed. Run with
- * `pnpm loops:backfill [--commit]`. In production run it where
+ * `bun --conditions=react-server scripts/backfill-loops.ts [--commit]`.
+ * In production run it where
  * `DATABASE_URL` points at the real database (the Orchard pod), not from a
  * dev machine against a local Postgres.
  */
