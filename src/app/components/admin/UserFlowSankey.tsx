@@ -84,7 +84,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 	/**
 	 * Drawn at its own size inside a scroller, rather than scaled to fit the panel.
 	 *
-	 * The journey is now as long as the funnel is, so a sixteen-stage diagram squeezed into a laptop panel would take the type down with it until the labels were unreadable. A scroll is how a diagram this wide is meant to be read, and `margin: 0 auto` still centres it whenever the panel is wider than the drawing. The trade is that the type is a fixed 11 viewBox units rather than enlarged to compensate for a shrink, so the label budget below is a straight comparison in those same units.
+	 * The journey is now as long as the funnel is, so an eighteen-stage diagram squeezed into a laptop panel would take the type down with it until the labels were unreadable. A scroll is how a diagram this wide is meant to be read, and `margin: 0 auto` still centres it whenever the panel is wider than the drawing. The trade is that the type is a fixed 11 viewBox units rather than enlarged to compensate for a shrink, so the label budget below is a straight comparison in those same units.
 	 */
 	const font = 11
 	/**

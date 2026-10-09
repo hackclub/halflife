@@ -14,7 +14,8 @@ import {
 	ShopOrderStatus,
 	Theme,
 } from "@/app/generated/prisma/enums"
-import { getStarterProject, stepIndexOf } from "@/lib/config/onboarding"
+import { getStarterProject, STARTER_PROJECT_TIER, stepIndexOf } from "@/lib/config/onboarding"
+import { isTierId, TIERS } from "@/lib/config/tiers"
 import { getBalances } from "@/lib/currency"
 import { displayName } from "@/lib/display-name"
 import { safeDecrypt } from "@/lib/pii"
@@ -1204,8 +1205,19 @@ const SANKEY_OUTCOME = [
  * Read straight off the tables rather than the User analytics markers wherever a marker exists only after a backfill: the funnel needs `distinct: ["userId"]` on Session for the same reason. A missing analytics column must not silently read as "nobody did this".
  */
 export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; activityShare: ActivityShare }> {
-	const [users, sessions, projects, devlogs, reels, repoLinks, hackatimeLinks, timelapses, submissions] =
-		await Promise.all([
+	const [
+		users,
+		sessions,
+		projects,
+		devlogs,
+		reels,
+		repoLinks,
+		hackatimeLinks,
+		timelapses,
+		submissions,
+		designHours,
+		designHackatime,
+	] = await Promise.all([
 			prisma.user.findMany({
 				select: {
 					id: true,
@@ -1222,7 +1234,7 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 			// The onboarding paper trail, per person, read off live projects. Not `namedAt`: that marker was stamped later, so it misses the projects that predate it. One read for all three, because the journey stages need them together.
 			prisma.themeProject.findMany({
 				where: { deletedAt: null },
-				select: { userId: true, description: true, starterProjectId: true, requestedTier: true },
+				select: { id: true, userId: true, createdAt: true, description: true, starterProjectId: true, requestedTier: true },
 			}),
 			// The same "a real devlog" rule as the funnel's devlogged step: a HACKATIME_TRACKED row with no timelapse is only a link, not work.
 			prisma.workSession.findMany({
@@ -1257,6 +1269,22 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 			prisma.phaseSubmission.findMany({
 				where: { themeProject: { deletedAt: null } },
 				select: { resolvedAt: true, resolvedResult: true, themeProject: { select: { userId: true } } },
+			}),
+			// Design hours per project, for the tier-requirements stage: journal claims outside the tracked-link stream, plus the Hackatime cache, so one wall hour is not counted twice in the common case. An approximation of the sheet's own arithmetic – reviewer adjustments and overlap edge cases stay server-side – but the right shape for "has this tier's floor been worked".
+			prisma.workSession.groupBy({
+				by: ["themeProjectId"],
+				where: {
+					deletedAt: null,
+					phase: Phase.DESIGN,
+					themeProject: { deletedAt: null },
+					hoursSource: { not: HoursSource.HACKATIME_TRACKED },
+				},
+				_sum: { hoursClaimed: true },
+			}),
+			prisma.hackatimeLink.groupBy({
+				by: ["themeProjectId"],
+				where: { phase: Phase.DESIGN, themeProject: { deletedAt: null } },
+				_sum: { cachedSeconds: true },
 			}),
 		])
 
@@ -1322,6 +1350,42 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 	}
 	for (const [userId, handIn] of handIns) outcomeNode.set(userId, handIn.node)
 
+	/**
+	 * The tier each person is working at, and whether they have worked its floor: the chosen tier of their most recent live project (starters count as tier 1), against design journal hours plus Hackatime cache on that project. An approximation of the submit sheet's own arithmetic, documented where the hours are read – close enough for "will they be allowed to submit", which is what this stage asks.
+	 */
+	const userTier = new Map<string, 1 | 2 | 3>()
+	const tierMet = new Map<string, boolean>()
+	{
+		const journalByProject = new Map(designHours.map((row) => [row.themeProjectId, row._sum.hoursClaimed ?? 0]))
+		const hackByProject = new Map(
+			designHackatime.map((row) => [row.themeProjectId, (row._sum.cachedSeconds ?? 0) / 3600]),
+		)
+		const latest = new Map<string, { project: (typeof projects)[number]; tier: 1 | 2 | 3 }>()
+		for (const project of projects) {
+			const raw = project.requestedTier ?? (project.starterProjectId !== null ? STARTER_PROJECT_TIER : null)
+			if (!isTierId(raw)) continue
+			const held = latest.get(project.userId)
+			if (!held || project.createdAt > held.project.createdAt) latest.set(project.userId, { project, tier: raw })
+		}
+		for (const [userId, { project, tier }] of latest) {
+			userTier.set(userId, tier)
+			const floor = TIERS.find((t) => t.id === tier)?.fundingHours ?? 0
+			const hours = (journalByProject.get(project.id) ?? 0) + (hackByProject.get(project.id) ?? 0)
+			tierMet.set(userId, hours >= floor)
+		}
+	}
+
+	/** "tier1"…"tier3" for the stage, null when they never chose one. */
+	const tierBox = (userId: string): string | null => {
+		const tier = userTier.get(userId)
+		return tier === undefined ? null : `tier${tier}`
+	}
+	/** Whether the chosen tier's floor has been worked. Never set without the tier box above it. */
+	const metBox = (userId: string): string | null => {
+		if (userTier.get(userId) === undefined) return null
+		return tierMet.get(userId) === true ? "tierMet" : "tierUnmet"
+	}
+
 	/** Users with a live project row, named or not – the marker only stamps on description, and descriptions are enforced at submit time, so the marker alone would leave this box structurally empty. */
 	const liveProjectUsers = new Set(projects.map((p) => p.userId))
 
@@ -1354,6 +1418,9 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 			...activityBoxes(user.id, completed),
 			// A project that never passed checks cannot be handed in – the sheet and the server both refuse it – so this box is the gate's bite: live projects stuck before review.
 			user.firstChecksPassedAt !== null ? "checksPassed" : user.firstProjectAt !== null ? "checksStalled" : null,
+			// The chosen tier of their latest project, and whether its funded hours have been worked – the two halves of "can they submit on it". No tier chosen, no boxes; the met box follows the tier box, never appears alone.
+			tierBox(user.id),
+			metBox(user.id),
 			// Live project row, never submitted: the hand-in that is still awaited, distinct from never starting at all. Outcome below still reads never submitted – factually true – with this box saying they have something to hand in.
 			outcomeNode.has(user.id) ? "handedIn" : liveProjectUsers.has(user.id) ? "awaitingHandIn" : null,
 			outcomeNode.get(user.id) ?? "neverHandedIn",
@@ -1405,6 +1472,8 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 		{ label: "Goal", nodes: ["goalSet", "goalMissing"] },
 		{ label: "Activity", nodes: [...activityNodes(), NONE_BOX] },
 		{ label: "Repo checks", nodes: ["checksPassed", "checksStalled"] },
+		{ label: "Tier", nodes: ["tier1", "tier2", "tier3"] },
+		{ label: "Tier hours", nodes: ["tierMet", "tierUnmet"] },
 		{ label: "Hand-in", nodes: ["handedIn", "awaitingHandIn"] },
 		{ label: "Outcome", nodes: SANKEY_OUTCOME.map((o) => o.node) },
 	]
@@ -1426,6 +1495,11 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 		goalMissing: "No goal yet",
 		checksPassed: "Checks passed",
 		checksStalled: "Checks not passed",
+		tier1: "Tier 1",
+		tier2: "Tier 2",
+		tier3: "Tier 3",
+		tierMet: "Met the hours",
+		tierUnmet: "Short on hours",
 		handedIn: "Handed in for review",
 		awaitingHandIn: "Awaiting hand-in",
 		...Object.fromEntries(SANKEY_ACTIVITY.map((a) => [activityNode(a.key), a.label])),
