@@ -51,7 +51,7 @@ export const hoursDecisionSchema = z
 						.object({
 							kind: z.literal("session"),
 							id: cuid,
-							hoursApproved: z.number().min(0).max(24),
+							hoursApproved: z.number().min(0).max(15),
 							comments: boundedText(2000).optional(),
 						})
 						.strict(),

@@ -23,8 +23,8 @@ export const sessionCreateSchema = z
 		phase: phaseSchema,
 		title: boundedText(200, 1),
 		content: boundedText(20_000).optional(),
-		// A single sitting cannot exceed a day. This is a sanity bound, not a policy.
-		hoursClaimed: z.number().min(0).max(24),
+		// A single sitting cannot exceed 15 hours. This is a sanity bound, not a policy.
+		hoursClaimed: z.number().min(0).max(15),
 		/**
 		 * MANUAL counts toward the journal total; HACKATIME_TRACKED does not, because those hours already arrive through the linked project.
 		 */

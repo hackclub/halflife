@@ -82,7 +82,7 @@ function fmtH(h: number) {
 /**
  * One devlog covers a single sitting. The server holds the same line (`sessionCreateSchema` caps `hoursClaimed` here), so the sheet refuses above it rather than failing opaquely on save.
  */
-const MAX_SESSION_HOURS = 24
+const MAX_SESSION_HOURS = 15
 
 interface JournalDraft {
 	tab: "journal" | "timelapse"
