@@ -112,9 +112,11 @@ export default async function AdminOverviewPage() {
 					))}
 				</Table>
 				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
-					Awaiting review counts hand-ins; the other three count projects, once however many of their phases were
-					reviewed, shown by the outcome standing now – a project approved on design and sent back on build reads as
-					changes requested. Ari&apos;s decisions are included. A review an admin or Ari later undid no longer counts.
+					Awaiting review counts live hand-ins – unresolved submissions on phases currently in review. A hand-in
+					that never reached Ari still counts here; the program page lists what Ari is actually holding. The other
+					three count projects, once however many of their phases were reviewed, shown by the outcome standing now –
+					a project approved on design and sent back on build reads as changes requested. Ari&apos;s decisions are
+					included. A review an admin or Ari later undid no longer counts.
 				</p>
 			</Panel>
 
@@ -559,15 +561,29 @@ function ActivityStrip({ days }: { days: DayActivity[] }) {
 								gridTemplateColumns: `repeat(${days.length}, 1fr)`,
 								gap: "1px",
 								marginTop: "4px",
+								// The plot leaves PAD_L/R for its own edges, so the labels take the same inset and sit under their ticks.
+								paddingLeft: PAD_L,
+								paddingRight: PAD_R,
 								fontSize: "0.65rem",
 								color: "var(--color-ink-muted)",
 							}}
 						>
-							{days.map((d, i) => (
-								<div key={d.day} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-									{i % labelEvery === 0 ? d.day.slice(5) : ""}
-								</div>
-							))}
+							{/* Each printed label spans its whole labelEvery block: one label per column squeezes a "MM-DD" into a few pixels on a long season and it ellipsizes to its first character ("1…", "0…"). */}
+							{days.map((d, i) =>
+								i % labelEvery === 0 ? (
+									<div
+										key={d.day}
+										style={{
+											gridColumn: `${i + 1} / span ${Math.min(labelEvery, days.length - i)}`,
+											overflow: "hidden",
+											textOverflow: "ellipsis",
+											whiteSpace: "nowrap",
+										}}
+									>
+										{d.day.slice(5)}
+									</div>
+								) : null,
+							)}
 						</div>
 					</div>
 				</div>
