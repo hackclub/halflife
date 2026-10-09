@@ -1022,6 +1022,7 @@ export function PublicReelModal({
 	videoUrl,
 	onClose,
 	start = "ask",
+	celebration,
 }: {
 	postId: string
 	eyebrow: string
@@ -1032,6 +1033,10 @@ export function PublicReelModal({
 	 * "links" skips the question – for the Reels page, where pressing "Add where you posted it" has already answered it.
 	 */
 	start?: "ask" | "links"
+	/**
+	 * Set when this sheet is the confirmation of a design hand-in: it congratulates, and says what the hours past the tier turn into once a reviewer approves them. Other callers (a reel posted mid-week, the Reels page) pass nothing and see the plain ask.
+	 */
+	celebration?: { extraHours: number }
 }) {
 	const [step, setStep] = useState<"ask" | "links" | "saved">(start)
 	const titleId = useId()
@@ -1135,6 +1140,31 @@ export function PublicReelModal({
 					</>
 				}
 			>
+				{celebration && (
+					<div
+						className="sketch mb-5 flex items-start gap-3 rounded-2xl bg-mint px-5 py-4"
+						style={{ "--sk-color": "var(--color-teal)", "--sk-radius": "16px" } as React.CSSProperties}
+					>
+						<IconCheck className="mt-0.5 shrink-0 text-xl text-teal-deep" />
+						<div className="min-w-0">
+							<p className="text-[0.95rem] leading-snug font-extrabold text-navy">
+								Congratulations – your design is handed in!
+							</p>
+							<p className="mt-1 text-[0.85rem] leading-snug text-navy-soft">
+								{celebration.extraHours > 0 ? (
+									<>
+										Once review is complete, you&apos;ll earn{" "}
+										<strong className="rounded bg-gold-pale px-1 text-gold-ink">coins</strong> at 5
+										per hour for your {fmtH(celebration.extraHours)} past your tier&apos;s funded
+										hours.
+									</>
+								) : (
+									<>It&apos;s with the reviewers now.</>
+								)}
+							</p>
+						</div>
+					</div>
+				)}
 				<ModalTitle id={titleId} sub="You'll earn coins if your post goes viral!">
 					Would you like to post your reel online?
 				</ModalTitle>
@@ -1967,6 +1997,8 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				postId={shareId}
 				eyebrow={`${weekName(week)} · Submitted`}
 				videoUrl={clipUrl}
+				// Design only: build weeks earn flat, so "past your tier" means nothing there. The hours are the week's own total – the same basis the sheet's floor and target read – though a reviewer can still adjust them.
+				celebration={!isBuild ? { extraHours: Math.max(0, hours - week.earnFrom) } : undefined}
 				onClose={() => setOpenCheckpoint(null)}
 			/>
 		)
