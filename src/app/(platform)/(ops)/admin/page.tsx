@@ -113,11 +113,11 @@ export default async function AdminOverviewPage() {
 					))}
 				</Table>
 				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
-					Awaiting review counts live hand-ins – unresolved submissions on phases currently in review. A hand-in
-					that never reached Ari still counts here; the program page lists what Ari is actually holding. The other
-					three count projects, once however many of their phases were reviewed, shown by the outcome standing now –
-					a project approved on design and sent back on build reads as changes requested. Ari&apos;s decisions are
-					included. A review an admin or Ari later undid no longer counts.
+					Awaiting review counts live hand-ins – unresolved submissions on phases currently in review. A hand-in that
+					never reached Ari still counts here; the program page lists what Ari is actually holding. The other three
+					count projects, once however many of their phases were reviewed, shown by the outcome standing now – a project
+					approved on design and sent back on build reads as changes requested. Ari&apos;s decisions are included. A
+					review an admin or Ari later undid no longer counts.
 				</p>
 			</Panel>
 

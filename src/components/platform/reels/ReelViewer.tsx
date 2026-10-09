@@ -54,8 +54,6 @@ const MOUNTED_EITHER_SIDE = 2
 /** Where the comments stop being a column beside the reel and become a sheet over it. */
 const COMMENTS_BESIDE = "(min-width: 80rem)"
 
-
-
 /**
  * Whether `from` sits in something that scrolls vertically on its own, which a wheel over it should move rather than the reel. Whether or not it has hit its end: a list that suddenly changes the reel when you reach its bottom is a surprise, not a convenience.
  */

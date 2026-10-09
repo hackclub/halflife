@@ -1353,11 +1353,7 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 			user.participantGoal !== null ? "goalSet" : completed ? "goalMissing" : null,
 			...activityBoxes(user.id, completed),
 			// A project that never passed checks cannot be handed in – the sheet and the server both refuse it – so this box is the gate's bite: live projects stuck before review.
-			user.firstChecksPassedAt !== null
-				? "checksPassed"
-				: user.firstProjectAt !== null
-					? "checksStalled"
-					: null,
+			user.firstChecksPassedAt !== null ? "checksPassed" : user.firstProjectAt !== null ? "checksStalled" : null,
 			// Live project row, never submitted: the hand-in that is still awaited, distinct from never starting at all. Outcome below still reads never submitted – factually true – with this box saying they have something to hand in.
 			outcomeNode.has(user.id) ? "handedIn" : liveProjectUsers.has(user.id) ? "awaitingHandIn" : null,
 			outcomeNode.get(user.id) ?? "neverHandedIn",

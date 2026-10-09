@@ -86,13 +86,13 @@ export function CoverImage({
 					/>
 				)}
 				{!url && fallback && (
-				<div className="absolute inset-x-0 bottom-0 bg-navy/65 px-3 py-2">
-					<p className="text-[0.74rem] font-semibold leading-snug text-white">
-						No cover image set yet – this picture is a stand-in from your work.
-					</p>
-				</div>
-			)}
-			{/* The bar sits on the picture it is replacing, where the eye already
+					<div className="absolute inset-x-0 bottom-0 bg-navy/65 px-3 py-2">
+						<p className="text-[0.74rem] font-semibold leading-snug text-white">
+							No cover image set yet – this picture is a stand-in from your work.
+						</p>
+					</div>
+				)}
+				{/* The bar sits on the picture it is replacing, where the eye already
             is, on a veil dark enough to read over any thumbnail. */}
 				{uploading && (
 					<div className="absolute inset-0 grid items-end bg-navy/45 p-3">

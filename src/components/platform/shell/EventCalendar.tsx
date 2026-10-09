@@ -110,8 +110,7 @@ export function EventCalendar({
 			const slices = events
 				.map((event) => ({ event, seg: daySegment(event, day, timeZone) }))
 				.filter(
-					(slice): slice is { event: CalendarEvent; seg: { startMin: number; endMin: number } } =>
-						slice.seg !== null,
+					(slice): slice is { event: CalendarEvent; seg: { startMin: number; endMin: number } } => slice.seg !== null,
 				)
 				.sort((a, b) => a.seg.startMin - b.seg.startMin || a.seg.endMin - b.seg.endMin)
 			// Crowds overlap transitively, so the running maximum end is the test: sorted by start, anything starting before it belongs to the crowd. Back-to-back events touch but never overlap, so each keeps the full width.
@@ -179,9 +178,7 @@ export function EventCalendar({
 			eyebrow="Programme calendar"
 			scrollKey={`${anchor}-${selected ?? ""}`}
 		>
-			<ModalTitle sub="Everything scheduled for the programme, shown in your timezone.">
-				{weekLabel(days)}
-			</ModalTitle>
+			<ModalTitle sub="Everything scheduled for the programme, shown in your timezone.">{weekLabel(days)}</ModalTitle>
 
 			<div className="flex flex-wrap items-center justify-between gap-3">
 				<div className="flex items-center gap-1.5">
@@ -261,10 +258,7 @@ export function EventCalendar({
 						})}
 					</div>
 
-					<div
-						className="grid"
-						style={{ gridTemplateColumns: "2.75rem repeat(7, minmax(0, 1fr))" }}
-					>
+					<div className="grid" style={{ gridTemplateColumns: "2.75rem repeat(7, minmax(0, 1fr))" }}>
 						<div className="relative mt-3" style={{ height: gridHeight }} aria-hidden="true">
 							{hours.map((hour) => (
 								<span

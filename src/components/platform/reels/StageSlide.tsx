@@ -10,8 +10,6 @@ import type { FeedItem } from "@/lib/feed"
 import { ago, clock } from "./format"
 import { notePlaying, noteStopped, playExclusive, sendLike } from "./ReelCard"
 
-
-
 /** Two taps closer together than this, and near enough each other, are one like. */
 const DOUBLE_TAP_MS = 280
 const DOUBLE_TAP_PX = 44

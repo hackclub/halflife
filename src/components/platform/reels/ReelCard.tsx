@@ -86,8 +86,6 @@ export function sendLike(reel: FeedItem, next: boolean, onPatch?: (id: string, p
 		.catch(() => onPatch?.(reel.id, { likedByMe: reel.likedByMe, likeCount: reel.likeCount }))
 }
 
-
-
 /**
  * The reel that has just taken the frame says so: its author, caption and counts rise into place a beat behind the video, the way a feed hands over from one clip to the next. Played by the Web Animations API rather than a class, because it has to restart on every arrival and a card scrolled back to is arriving again. It only ever animates FROM hidden: the resting state is fully visible, so a browser that never runs it shows everything.
  */

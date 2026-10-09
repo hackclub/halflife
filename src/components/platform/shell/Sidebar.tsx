@@ -96,12 +96,7 @@ export function Sidebar({ className }: { className?: string }) {
 					aria-label={`${viewer.name}'s profile`}
 					className="shrink-0 rounded-lg transition-transform hover:-translate-y-0.5 active:translate-y-px"
 				>
-					<Avatar
-						name={viewer.name}
-						image={viewer.image}
-						shape="tile"
-						className="size-[66px] text-[1.6rem]"
-					/>
+					<Avatar name={viewer.name} image={viewer.image} shape="tile" className="size-[66px] text-[1.6rem]" />
 				</Link>
 				<div className="min-w-0">
 					<Link

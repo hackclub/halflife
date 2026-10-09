@@ -63,7 +63,9 @@ export function EventScheduleButton({
 				aria-haspopup="dialog"
 				aria-expanded={open}
 				title={
-					next ? `${next.title} · ${eventRangeLabel(next.startsAt, next.endsAt, viewerZone)}` : "Open the event calendar"
+					next
+						? `${next.title} · ${eventRangeLabel(next.startsAt, next.endsAt, viewerZone)}`
+						: "Open the event calendar"
 				}
 				className={cx(
 					"label inline-flex shrink-0 items-center gap-1.5 rounded-full border-2 bg-paper px-2 py-1.5 transition-colors sm:gap-2 sm:px-3",

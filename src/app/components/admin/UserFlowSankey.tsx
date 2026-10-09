@@ -362,10 +362,10 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 			</div>
 
 			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.5rem" }}>
-				Every ribbon is the same thickness for the same number of people, so widths compare across the whole
-				diagram. A ribbon stepping over a column is people who skipped that stage; a ribbon that stops is people
-				whose journey ended there. The activity stage counts every kind each person reached: ribbons sharing people
-				overlap where stacking them would visibly overflow, and stack everywhere else so small flows stay visible.
+				Every ribbon is the same thickness for the same number of people, so widths compare across the whole diagram. A
+				ribbon stepping over a column is people who skipped that stage; a ribbon that stops is people whose journey
+				ended there. The activity stage counts every kind each person reached: ribbons sharing people overlap where
+				stacking them would visibly overflow, and stack everywhere else so small flows stay visible.
 			</p>
 		</div>
 	)

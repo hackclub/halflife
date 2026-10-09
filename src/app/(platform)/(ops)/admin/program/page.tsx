@@ -139,7 +139,11 @@ export default async function AdminProgramPage() {
 
 			<Panel title="Warm-up projects from CSV">
 				<p className="hl-hint">
-					Import a CSV exported from Macondo (project_id, project_title, project_description, journals, tier, author_email, repository_url, thumbnail_url, and the rest). Each row becomes its own warm-up project on the same Warm Up track – a pre-season slot that does not use one of the five season themes – with an account created if the row&apos;s email has none, and one work session filed per entry in the row&apos;s journals column. Rows already imported are reported instead of duplicated, so the button is safe to run again.
+					Import a CSV exported from Macondo (project_id, project_title, project_description, journals, tier,
+					author_email, repository_url, thumbnail_url, and the rest). Each row becomes its own warm-up project on the
+					same Warm Up track – a pre-season slot that does not use one of the five season themes – with an account
+					created if the row&apos;s email has none, and one work session filed per entry in the row&apos;s journals
+					column. Rows already imported are reported instead of duplicated, so the button is safe to run again.
 				</p>
 				<CsvProjectsImport />
 			</Panel>
