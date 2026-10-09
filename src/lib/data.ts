@@ -36,7 +36,7 @@ export const DOCS: DocArticle[] = [
 			{
 				heading: "What you get",
 				paragraphs: [
-				"Every project gets parts funding for its tier – $30, $65 or $100 – on a card you can spend at real vendors. Going further on your projects earns coins, which you can spend in the shop: once the funding for your chosen tier has been achieved, every extra approved hour earns 5 coins.",
+					"Every project gets parts funding for its tier – $30, $65 or $100 – on a card you can spend at real vendors. Going further on your projects earns coins, which you can spend in the shop: once the funding for your chosen tier has been achieved, every extra approved hour earns 5 coins.",
 					"Finish all ten weeks and a 3D printer is yours, shipped to you. Which one is up to you: you pick it as your goal and work toward it through the season. Keep up every week and the entry machine is guaranteed; go further and you can aim higher.",
 				],
 			},
@@ -142,7 +142,7 @@ export const DOCS: DocArticle[] = [
 				paragraphs: [
 					"Bigger builds take longer to design well, so each tier has a minimum amount of design time before you can submit:",
 				],
-				list: ["Tier 1: 10 hours.", "Tier 2: 17 hours.", "Tier 3: 24 hours."],
+				list: ["Tier 1: 6 hours.", "Tier 2: 13 hours.", "Tier 3: 20 hours."],
 			},
 			{
 				heading: "Coins",
