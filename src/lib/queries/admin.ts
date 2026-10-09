@@ -1340,8 +1340,9 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 			reached(ONBOARDING.tracking) ? "reachedTracking" : null,
 			reached(ONBOARDING.repo) ? "reachedRepo" : null,
 			completed ? "setupDone" : null,
-			user.firstProjectAt !== null ? "projectLive" : null,
-			user.participantGoal !== null ? "goalSet" : null,
+			// The complements that make the gates visible: finishers who never got a project live, or never answered the goal prompt (mostly accounts from before it shipped – it cannot be dismissed now). Scoped to finishers so the boxes stay a finding about drop-off rather than everyone who never started.
+			user.firstProjectAt !== null ? "projectLive" : completed ? "projectMissing" : null,
+			user.participantGoal !== null ? "goalSet" : completed ? "goalMissing" : null,
 			...activityBoxes(user.id),
 			// A project that never passed checks cannot be handed in – the sheet and the server both refuse it – so this box is the gate's bite: live projects stuck before review.
 			user.firstChecksPassedAt !== null
@@ -1395,8 +1396,8 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 		{ label: "Reached tracking", nodes: ["reachedTracking"] },
 		{ label: "Reached the repo step", nodes: ["reachedRepo"] },
 		{ label: "Finished onboarding", nodes: ["setupDone"] },
-		{ label: "Project live", nodes: ["projectLive"] },
-		{ label: "Set a goal", nodes: ["goalSet"] },
+		{ label: "Project", nodes: ["projectLive", "projectMissing"] },
+		{ label: "Goal", nodes: ["goalSet", "goalMissing"] },
 		{ label: "Activity", nodes: activityNodes() },
 		{ label: "Repo checks", nodes: ["checksPassed", "checksStalled"] },
 		{ label: "Handed in", nodes: ["handedIn"] },
@@ -1415,7 +1416,9 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 		reachedRepo: "Reached the repo step",
 		setupDone: "Finished onboarding",
 		projectLive: "Project row live",
+		projectMissing: "No project yet",
 		goalSet: "Set a goal",
+		goalMissing: "No goal yet",
 		checksPassed: "Checks passed",
 		checksStalled: "Checks not passed",
 		handedIn: "Handed in for review",
