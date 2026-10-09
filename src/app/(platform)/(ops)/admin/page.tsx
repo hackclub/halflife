@@ -559,15 +559,29 @@ function ActivityStrip({ days }: { days: DayActivity[] }) {
 								gridTemplateColumns: `repeat(${days.length}, 1fr)`,
 								gap: "1px",
 								marginTop: "4px",
+								// The plot leaves PAD_L/R for its own edges, so the labels take the same inset and sit under their ticks.
+								paddingLeft: PAD_L,
+								paddingRight: PAD_R,
 								fontSize: "0.65rem",
 								color: "var(--color-ink-muted)",
 							}}
 						>
-							{days.map((d, i) => (
-								<div key={d.day} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-									{i % labelEvery === 0 ? d.day.slice(5) : ""}
-								</div>
-							))}
+							{/* Each printed label spans its whole labelEvery block: one label per column squeezes a "MM-DD" into a few pixels on a long season and it ellipsizes to its first character ("1…", "0…"). */}
+							{days.map((d, i) =>
+								i % labelEvery === 0 ? (
+									<div
+										key={d.day}
+										style={{
+											gridColumn: `${i + 1} / span ${Math.min(labelEvery, days.length - i)}`,
+											overflow: "hidden",
+											textOverflow: "ellipsis",
+											whiteSpace: "nowrap",
+										}}
+									>
+										{d.day.slice(5)}
+									</div>
+								) : null,
+							)}
 						</div>
 					</div>
 				</div>
