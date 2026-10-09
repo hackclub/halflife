@@ -45,16 +45,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
 			{/* ---------- who ---------- */}
 			<Panel tone="line" radius={22} className="mt-5 bg-paper px-5 py-5 sm:px-7 sm:py-6">
 				<div className="flex flex-wrap items-center gap-4 sm:gap-5">
-					{profile.image ? (
-						// eslint-disable-next-line @next/next/no-img-element -- the avatar host (Slack via Cachet) is known only at runtime
-						<img
-							src={profile.image}
-							alt=""
-							className="size-20 shrink-0 rounded-2xl border-2 border-line bg-sky-pale object-cover"
-						/>
-					) : (
-						<Avatar name={profile.name} image={null} shape="tile" className="size-20 text-[2rem]" />
-					)}
+					<Avatar name={profile.name} image={profile.image} shape="tile" className="size-20 text-[2rem]" />
 					<div className="min-w-0 flex-1">
 						<h1 className="text-[1.5rem] leading-tight font-extrabold tracking-[-0.02em] [overflow-wrap:anywhere] text-navy sm:text-[1.9rem]">
 							{profile.name}

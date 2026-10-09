@@ -63,16 +63,7 @@ function Entry({ entry, viewerId }: { entry: JournalRow; viewerId: string }) {
 					aria-label={`${entry.author}'s profile`}
 					className="shrink-0 rounded-lg transition-transform hover:-translate-y-0.5 active:translate-y-px"
 				>
-					{entry.authorImage ? (
-						// eslint-disable-next-line @next/next/no-img-element -- the avatar host (Slack via Cachet) is known only at runtime
-						<img
-							src={entry.authorImage}
-							alt=""
-							className="size-11 rounded-lg border-2 border-line bg-sky-pale object-cover"
-						/>
-					) : (
-						<Avatar name={entry.author} image={null} shape="tile" className="size-11 text-[1.15rem]" />
-					)}
+					<Avatar name={entry.author} image={entry.authorImage} shape="tile" className="size-11 text-[1.15rem]" />
 				</Link>
 				<div className="min-w-0">
 					<p className="text-[1.02rem] leading-tight font-extrabold text-navy [overflow-wrap:anywhere]">
