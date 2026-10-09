@@ -1124,8 +1124,12 @@ export interface SankeyLink {
 	source: string
 	target: string
 	value: number
-	/** A fan ribbon: one person's unit repeated across every activity box they reached, so the same people appear in several of these. Chain ribbons carry disjoint users and stack. */
-	fan: boolean
+	/**
+	 * Which edge fans: "out" nests at the source (one person repeated across every activity they reached), "in" nests at the target (the same people arriving through several activities). Chain ribbons carry disjoint users and stack on both edges.
+	 *
+	 * A pair of boxes always fans the same way: fan links touch exactly one activity box, so the direction is fixed by which end it is on.
+	 */
+	fan: "out" | "in" | null
 }
 
 export interface SankeyStage {
@@ -1336,43 +1340,48 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 			reached(ONBOARDING.tracking) ? "reachedTracking" : null,
 			reached(ONBOARDING.repo) ? "reachedRepo" : null,
 			completed ? "setupDone" : null,
-			user.firstProjectAt !== null ? "projectLive" : null,
-			user.participantGoal !== null ? "goalSet" : null,
+			// The complements that make the gates visible: finishers who never got a project live, or never answered the goal prompt (mostly accounts from before it shipped – it cannot be dismissed now). Scoped to finishers so the boxes stay a finding about drop-off rather than everyone who never started.
+			user.firstProjectAt !== null ? "projectLive" : completed ? "projectMissing" : null,
+			user.participantGoal !== null ? "goalSet" : completed ? "goalMissing" : null,
 			...activityBoxes(user.id),
-			user.firstChecksPassedAt !== null ? "checksPassed" : null,
+			// A project that never passed checks cannot be handed in – the sheet and the server both refuse it – so this box is the gate's bite: live projects stuck before review.
+			user.firstChecksPassedAt !== null
+				? "checksPassed"
+				: user.firstProjectAt !== null
+					? "checksStalled"
+					: null,
 			outcomeNode.has(user.id) ? "handedIn" : null,
 			outcomeNode.get(user.id) ?? "neverHandedIn",
 		]
 	}
 
 	const counts = new Map<string, number>()
-	const linkCounts = new Map<string, { value: number; fan: boolean }>()
-	const link = (from: string, to: string, fan: boolean) => {
+	const linkCounts = new Map<string, { value: number; fan: "out" | "in" | null }>()
+	const link = (from: string, to: string, fan: "out" | "in" | null) => {
 		const key = `${from}\u0000${to}`
 		const held = linkCounts.get(key)
-		// A pair of boxes is always crossed the same way, so fan-ness never disagrees on one key.
 		if (held) held.value += 1
 		else linkCounts.set(key, { value: 1, fan })
 	}
 	for (const user of users) {
 		const boxes = boxesOf(user).filter((box): box is string => box !== null)
 		for (const box of boxes) counts.set(box, (counts.get(box) ?? 0) + 1)
-		// The activity block fans out and back in: one ribbon per activity the person reached, from their last box before the block and to their first box after it. Those fan ribbons share people, so they are flagged for the renderer to nest rather than stack; every other ribbon carries disjoint users and stacks.
+		// The activity block fans out and back in: one ribbon per activity the person reached, from their last box before the block and to their first box after it. Fan-out ribbons share their source's people and fan-in ribbons their target's, so each direction flags its own edge for the renderer to overlap; every other ribbon carries disjoint users and stacks.
 		const firstAct = boxes.findIndex((box) => ACTIVITY_BOXES.has(box))
 		if (firstAct === -1) {
-			for (let i = 1; i < boxes.length; i++) link(boxes[i - 1] as string, boxes[i] as string, false)
+			for (let i = 1; i < boxes.length; i++) link(boxes[i - 1] as string, boxes[i] as string, null)
 			continue
 		}
 		let lastAct = firstAct
 		while (lastAct + 1 < boxes.length && ACTIVITY_BOXES.has(boxes[lastAct + 1] as string)) lastAct++
 		// "joined" is unconditional, so a block always has a box before it.
 		const prev = boxes[firstAct - 1] as string
-		for (let i = 1; i < firstAct; i++) link(boxes[i - 1] as string, boxes[i] as string, false)
-		for (let i = firstAct; i <= lastAct; i++) link(prev, boxes[i] as string, true)
+		for (let i = 1; i < firstAct; i++) link(boxes[i - 1] as string, boxes[i] as string, null)
+		for (let i = firstAct; i <= lastAct; i++) link(prev, boxes[i] as string, "out")
 		const next = boxes[lastAct + 1]
 		if (next) {
-			for (let i = firstAct; i <= lastAct; i++) link(boxes[i] as string, next, true)
-			for (let i = lastAct + 2; i < boxes.length; i++) link(boxes[i - 1] as string, boxes[i] as string, false)
+			for (let i = firstAct; i <= lastAct; i++) link(boxes[i] as string, next, "in")
+			for (let i = lastAct + 2; i < boxes.length; i++) link(boxes[i - 1] as string, boxes[i] as string, null)
 		}
 	}
 
@@ -1387,10 +1396,10 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 		{ label: "Reached tracking", nodes: ["reachedTracking"] },
 		{ label: "Reached the repo step", nodes: ["reachedRepo"] },
 		{ label: "Finished onboarding", nodes: ["setupDone"] },
-		{ label: "Project live", nodes: ["projectLive"] },
-		{ label: "Set a goal", nodes: ["goalSet"] },
+		{ label: "Project", nodes: ["projectLive", "projectMissing"] },
+		{ label: "Goal", nodes: ["goalSet", "goalMissing"] },
 		{ label: "Activity", nodes: activityNodes() },
-		{ label: "Repo checks passed", nodes: ["checksPassed"] },
+		{ label: "Repo checks", nodes: ["checksPassed", "checksStalled"] },
 		{ label: "Handed in", nodes: ["handedIn"] },
 		{ label: "Outcome", nodes: SANKEY_OUTCOME.map((o) => o.node) },
 	]
@@ -1407,8 +1416,11 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 		reachedRepo: "Reached the repo step",
 		setupDone: "Finished onboarding",
 		projectLive: "Project row live",
+		projectMissing: "No project yet",
 		goalSet: "Set a goal",
+		goalMissing: "No goal yet",
 		checksPassed: "Checks passed",
+		checksStalled: "Checks not passed",
 		handedIn: "Handed in for review",
 		...Object.fromEntries(SANKEY_ACTIVITY.map((a) => [activityNode(a.key), a.label])),
 		...Object.fromEntries(SANKEY_OUTCOME.map((o) => [o.node, o.label])),

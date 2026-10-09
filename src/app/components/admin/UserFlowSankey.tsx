@@ -29,7 +29,7 @@ const FOOT_H = 10
  *
  * Flooring ribbons as well makes a box's ribbons add up to more than the box, and then the widths stop meaning what the numbers say. Real case from the dev data: 5,202 + 11 + 6 users out of 5,219 is 466.5px of true ribbon inside a 468px box, but the 11 and the 6 are each thinner than the floor and get bumped to 1.5px, so the three overrun the box by 1.5px. A sliver of a cohort then reads wider than the cohort. A box floor keeps a real-but-tiny group visible as a hairline while its ribbons stay on the true scale, so a box's ribbons always sum to the people who continued past it.
  *
- * The activity stage fans out and back in – one person feeds every box they earned – so its fan ribbons share people and nest from the box edge instead of stacking, or the same users would read twice. Chain ribbons carry disjoint users and stack from the same edge, on top of the fan wash so real divergences stay readable. Either footprint fits: every ribbon's people are a subset of the box's.
+ * The activity stage fans out and back in – one person feeds every box they earned – so fan ribbons share people and overlap on the fanning edge instead of stacking, or the same users would read twice. Chain ribbons carry disjoint users and stack from the same edge, on top of the fan wash so real divergences stay readable. Either footprint fits: every ribbon's people are a subset of the box's.
  */
 const MIN_BOX_H = 1.5
 
@@ -54,8 +54,8 @@ interface Ribbon {
 	source: Placed
 	target: Placed
 	value: number
-	/** A fan ribbon: its people also ride other ribbons on this edge, so it overlaps them instead of adding to them. */
-	fan: boolean
+	/** Which edge fans, if either: shared users overlap there instead of adding up. */
+	fan: "out" | "in" | null
 	/** Source-side span. */
 	sy0: number
 	sy1: number
@@ -155,8 +155,9 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 					const other = (r: Ribbon) => (side === "out" ? r.target : r.source)
 					return other(a).y0 - other(b).y0
 				})
-			// Fan ribbons share their people with each other, so they nest from the box's top edge and the overlap reads darker. Chain ribbons carry disjoint users, so they stack from the same edge – under the fan's footprint when both are present. Every ribbon's people are a subset of the box's, so the footprint always fits inside it.
-			for (const ribbon of mine.filter((r) => r.fan)) {
+			// Fan-out ribbons share their source's people across several activity boxes, and fan-in ribbons share their target's across the same activities coming back: on the fanning edge they nest from the box's top edge and the overlap reads darker. Every other ribbon on the edge carries disjoint users and stacks from the same edge, on top of the fan wash so real divergences stay readable. Either footprint fits: every ribbon's people are a subset of the box's.
+			const nest = (r: Ribbon) => (side === "out" ? r.fan === "out" : r.fan === "in")
+			for (const ribbon of mine.filter(nest)) {
 				const h = ribbonH(ribbon.value)
 				if (side === "out") {
 					ribbon.sy0 = node.y0
@@ -167,7 +168,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 				}
 			}
 			let cursor = node.y0
-			for (const ribbon of mine.filter((r) => !r.fan)) {
+			for (const ribbon of mine.filter((r) => !nest(r))) {
 				const h = ribbonH(ribbon.value)
 				if (side === "out") {
 					ribbon.sy0 = cursor
@@ -228,7 +229,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 
 	const biggest = ribbons.reduce((a, b) => (b.value > (a?.value ?? 0) ? b : a), undefined as Ribbon | undefined)
 	// Fan ribbons paint first: they are the shared-user wash underneath, and chain ribbons – real divergences sharing an edge – stay readable on top of it. Stable, so order within each group is untouched.
-	const painted = [...ribbons].sort((a, b) => Number(b.fan) - Number(a.fan))
+	const painted = [...ribbons].sort((a, b) => Number(b.fan !== null) - Number(a.fan !== null))
 	const summary = biggest
 		? `Largest route: ${fmt(biggest.value)} people from ${biggest.source.label} to ${biggest.target.label}.`
 		: ""
