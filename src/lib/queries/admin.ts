@@ -1322,6 +1322,9 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 	}
 	for (const [userId, handIn] of handIns) outcomeNode.set(userId, handIn.node)
 
+	/** Users with a live project row, named or not – the marker only stamps on description, and descriptions are enforced at submit time, so the marker alone would leave this box structurally empty. */
+	const liveProjectUsers = new Set(projects.map((p) => p.userId))
+
 	/** Every tracked activity the person reached, in branch order so the boxes line up with the stage. One maker appears in as many boxes as they earned – or in the none box, when a finisher earned none. */
 	const activityBoxes = (userId: string, completed: boolean): string[] => {
 		const did = SANKEY_ACTIVITY.filter((a) => activity.get(userId)?.has(a.key)).map((a) => activityNode(a.key))
@@ -1355,7 +1358,8 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 				: user.firstProjectAt !== null
 					? "checksStalled"
 					: null,
-			outcomeNode.has(user.id) ? "handedIn" : null,
+			// Live project row, never submitted: the hand-in that is still awaited, distinct from never starting at all. Outcome below still reads never submitted – factually true – with this box saying they have something to hand in.
+			outcomeNode.has(user.id) ? "handedIn" : liveProjectUsers.has(user.id) ? "awaitingHandIn" : null,
 			outcomeNode.get(user.id) ?? "neverHandedIn",
 		]
 	}
@@ -1405,7 +1409,7 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 		{ label: "Goal", nodes: ["goalSet", "goalMissing"] },
 		{ label: "Activity", nodes: [...activityNodes(), NONE_BOX] },
 		{ label: "Repo checks", nodes: ["checksPassed", "checksStalled"] },
-		{ label: "Handed in", nodes: ["handedIn"] },
+		{ label: "Hand-in", nodes: ["handedIn", "awaitingHandIn"] },
 		{ label: "Outcome", nodes: SANKEY_OUTCOME.map((o) => o.node) },
 	]
 
@@ -1427,6 +1431,7 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 		checksPassed: "Checks passed",
 		checksStalled: "Checks not passed",
 		handedIn: "Handed in for review",
+		awaitingHandIn: "Awaiting hand-in",
 		...Object.fromEntries(SANKEY_ACTIVITY.map((a) => [activityNode(a.key), a.label])),
 		[NONE_BOX]: "None of these",
 		...Object.fromEntries(SANKEY_OUTCOME.map((o) => [o.node, o.label])),
