@@ -42,6 +42,7 @@ import { normalizeRepo } from "@/lib/repo"
 import type { RepoCheckResult } from "@/lib/repo-checks"
 import { EXAMPLE_JOURNAL_URL } from "@/lib/routes"
 import { BOM_MARGIN_USD } from "@/lib/schemas/project"
+import { MAX_SESSION_HOURS } from "@/lib/schemas/session"
 import { useStore } from "@/lib/store"
 import type { Checkpoint, Project, Week } from "@/lib/types"
 import { IMAGE_ACCEPT } from "@/lib/uploads/image-accept"
@@ -78,11 +79,6 @@ function isWeeksProject(week: Week, project: Project): boolean {
 function fmtH(h: number) {
 	return `${to2(h)}h`
 }
-
-/**
- * One devlog covers a single sitting. The server holds the same line (`sessionCreateSchema` caps `hoursClaimed` here), so the sheet refuses above it rather than failing opaquely on save.
- */
-const MAX_SESSION_HOURS = 24
 
 interface JournalDraft {
 	tab: "journal" | "timelapse"
