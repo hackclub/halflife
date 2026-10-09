@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useId, useMemo, useRef, useState } from "react"
+import { ParticipantGoal } from "@/app/generated/prisma/enums"
 import { Gato, WeekPainting } from "@/components/platform/art"
 import {
 	IconArrowRight,
@@ -246,7 +247,7 @@ function withoutPlaceholder(body: string, placeholder: string): string {
 }
 
 export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
-	const { setOpenCheckpoint, logSession, editSession, complete, projects, stateOf, weekOfCheckpoint, hoursOf } =
+	const { setOpenCheckpoint, logSession, editSession, complete, projects, stateOf, weekOfCheckpoint, hoursOf, participantGoal } =
 		useStore()
 
 	const week = weekOfCheckpoint(checkpoint)
@@ -441,7 +442,9 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	// The week's earning goal, read off its own target rather than the goal catalogue: targetHours already bakes in this week's tier (weekAsk slides the funded block in underneath the pace) and earnFrom is where coins start, so their difference at the coin rate is what this tier and this goal ask together. Warm-ups have no season pace, so they keep the bare floor message.
 	const weeklyGoalCoins = Math.round((week.targetHours - week.earnFrom) * COINS_PER_HOUR)
 	const toGoal = Math.max(0, week.targetHours - hours)
-	const showGoal = week.id !== WARMUP_WEEK_ID && toGoal > 0
+	// Makers here for the grant have no machine to pace against – GoalTracker reads the same flag – so the weekly goal means nothing to them and they get the flat rate instead.
+	const chasingPrinter = participantGoal === null || participantGoal === ParticipantGoal.PRINTER
+	const showGoal = chasingPrinter && week.id !== WARMUP_WEEK_ID && toGoal > 0
 
 	/**
 	 * Finishing hands the maker back to the trail rather than straight into another entry. What comes next is the trail's to say: logging these hours may have brought a reel due, or opened the fork at the end of the week, and a modal that reopens itself would march past both.
@@ -599,6 +602,14 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 																	{weeklyGoalCoins} coins
 																</strong>{" "}
 																per week.
+															</>
+														) : !chasingPrinter ? (
+															<>
+																{" "}– every hour past the minimum earns{" "}
+																<strong className="rounded bg-gold-pale px-1 text-gold-ink">
+																	5 coins
+																</strong>{" "}
+																per hour.
 															</>
 														) : (
 															"."
