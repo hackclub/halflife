@@ -18,13 +18,18 @@ const timelapseSchema = z
 	})
 	.strict()
 
+/**
+ * One devlog covers a single sitting. The sheet refuses above it rather than failing opaquely on save, and the reviewer cannot approve above it either.
+ */
+export const MAX_SESSION_HOURS = 15
+
 export const sessionCreateSchema = z
 	.object({
 		phase: phaseSchema,
 		title: boundedText(200, 1),
 		content: boundedText(20_000).optional(),
-		// A single sitting cannot exceed 15 hours. This is a sanity bound, not a policy.
-		hoursClaimed: z.number().min(0).max(15),
+		// A sanity bound, not a policy.
+		hoursClaimed: z.number().min(0).max(MAX_SESSION_HOURS),
 		/**
 		 * MANUAL counts toward the journal total; HACKATIME_TRACKED does not, because those hours already arrive through the linked project.
 		 */
