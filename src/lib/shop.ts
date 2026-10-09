@@ -7,6 +7,7 @@ import { HttpError } from "@/lib/errors"
 import { getPrinterQualification } from "@/lib/printer"
 import prisma from "@/lib/prisma"
 import { getShopAccess, SHOP_CLOSED_MESSAGE } from "@/lib/program"
+import { countryOfTimezone } from "@/lib/regions"
 
 /**
  * The catalogue row as a participant sees it.
@@ -94,14 +95,21 @@ export async function listActiveShopRegions(): Promise<ShopRegionOption[]> {
 }
 
 /**
- * The region whose prices a participant sees and pays. Null is base pricing; a region deactivated after being picked reads as base too, so flipping one off never strands anyone on prices that no longer exist.
+ * The region whose prices a participant sees and pays, and the country their timezone places them in.
+ *
+ * One read of the user row for both: the shop needs the region for pricing and the country for the printer notice,
+ * and asking twice for the same row is a query the page does not need to spend. A region deactivated after being
+ * picked reads as base, so flipping one off never strands anyone on prices that no longer exist.
  */
-async function shopRegionIdFor(userId: string): Promise<string | null> {
+async function shopContextFor(userId: string): Promise<{ regionId: string | null; country: string }> {
 	const user = await prisma.user.findUnique({
 		where: { id: userId },
-		select: { shopRegion: { select: { id: true, active: true } } },
+		select: { timezone: true, shopRegion: { select: { id: true, active: true } } },
 	})
-	return user?.shopRegion?.active ? user.shopRegion.id : null
+	return {
+		regionId: user?.shopRegion?.active ? user.shopRegion.id : null,
+		country: countryOfTimezone(user?.timezone),
+	}
 }
 
 export async function getShopItemsFor(userId: string): Promise<{
@@ -109,8 +117,10 @@ export async function getShopItemsFor(userId: string): Promise<{
 	balances: Balances
 	regions: ShopRegionOption[]
 	regionId: string | null
+	/** The country the account's timezone places it in, for the printer notice. */
+	country: string
 }> {
-	const [items, balances, qualification, orders, regions, regionId] = await Promise.all([
+	const [items, balances, qualification, orders, regions, context] = await Promise.all([
 		// Explicit `select`, never the whole row: a new internal column added to ShopItem must not silently start reaching participants. Printers are not sold in the shop. They stay in the catalogue – the goal tracker and printer awards read them – but never reach this list.
 		prisma.shopItem.findMany({
 			where: { active: true, category: { not: ShopItemCategory.PRINTER } },
@@ -140,7 +150,7 @@ export async function getShopItemsFor(userId: string): Promise<{
 			_sum: { quantity: true },
 		}),
 		listActiveShopRegions(),
-		shopRegionIdFor(userId),
+		shopContextFor(userId),
 	])
 
 	const owned = new Map(orders.map((o) => [o.shopItemId, o._sum.quantity ?? 0]))
@@ -148,7 +158,8 @@ export async function getShopItemsFor(userId: string): Promise<{
 	return {
 		balances,
 		regions,
-		regionId,
+		regionId: context.regionId,
+		country: context.country,
 		items: items.map((item) => {
 			const ownedCount = owned.get(item.id) ?? 0
 			let locked = false
@@ -168,8 +179,8 @@ export async function getShopItemsFor(userId: string): Promise<{
 			// A regional override replaces the base price wherever this participant is concerned – display and purchase read the same number, so the shelf can never advertise a price the till refuses.
 			const { regionPrices, ...base } = item
 			const priceCredits =
-				regionId !== null
-					? (regionPrices.find((r) => r.regionId === regionId)?.priceCredits ?? item.priceCredits)
+				context.regionId !== null
+					? (regionPrices.find((r) => r.regionId === context.regionId)?.priceCredits ?? item.priceCredits)
 					: item.priceCredits
 
 			// Every coin is spendable on anything, so affordability compares the whole balance against the price – display and purchase read the same number, so the shelf can never advertise a price the till refuses.

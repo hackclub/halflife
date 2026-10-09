@@ -4,7 +4,7 @@ import type { DocArticle } from "./types"
 /**
  * Reference content, written rather than recorded.
  *
- * What is left in this file is the five docs pages, and they belong here: they are editorial copy with no database behind them, and putting them in Postgres would mean a migration to fix a typo. Everything else that used to live here – the reels, the journal feed, the shop shelves, the leaderboard, the signed- in user – was scaffolding for a front end with no server, and now comes from one.
+ * What is left in this file is the 5 docs pages, and they belong here: they are editorial copy with no database behind them, and putting them in Postgres would mean a migration to fix a typo. Everything else that used to live here – the reels, the journal feed, the shop shelves, the leaderboard, the signed- in user – was scaffolding for a front end with no server, and now comes from one.
  */
 
 export const DOCS: DocArticle[] = [
@@ -17,14 +17,14 @@ export const DOCS: DocArticle[] = [
 			{
 				heading: "The shape of the program",
 				paragraphs: [
-					"Half Life runs for ten weeks. The first five are design weeks: each one has a theme, and you spend it designing a project around that theme. The second five are build weeks, in the same order – on week six you build the PCB you designed on week one, on week seven the CAD part from week two, and so on.",
-					"You are not designing five things you will never make. Everything you draw in the first half arrives as real parts in the second.",
+					"Half Life runs for 10 weeks. The first 5 are design weeks: each one has a theme, and you spend it designing a project around that theme. The second 5 are build weeks, in the same order – on week 6 you build the PCB you designed on week 1, on week 7 the CAD part from week 2, and so on.",
+					"You are not designing 5 things you will never make. Everything you draw in the first half arrives as real parts in the second.",
 				],
 			},
 			{
 				heading: "Checkpoints",
 				paragraphs: [
-					"Each week is a chain of checkpoints. You cannot skip one – the next puck stays sand-coloured until the one before it is done. Most checkpoints are either a journal block (keep logging sessions until the week hits ten tracked hours) or a reel (a short video showing where you got to).",
+					"Each week is a chain of checkpoints. You cannot skip one – the next puck stays sand-coloured until the one before it is done. Most checkpoints are either a journal block (keep logging sessions until the week hits 10 tracked hours) or a reel (a short video showing where you got to).",
 					"The week ends on a submit gate. Design weeks ask for your files, a bill of materials, and a closing reel. Build weeks ask for a 30 to 60 second video of the thing working.",
 				],
 				list: [
@@ -36,8 +36,8 @@ export const DOCS: DocArticle[] = [
 			{
 				heading: "What you get",
 				paragraphs: [
-					"Every project gets parts funding for its tier – $30, $65 or $100 – on a card you can spend at real vendors. Going further on your projects earns coins, which you can spend in the shop: once the funding for your chosen tier has been achieved, every extra approved hour earns 5 coins.",
-					"Finish all ten weeks and a 3D printer is yours, shipped to you. Which one is up to you: you pick it as your goal and work toward it through the season. Keep up every week and the entry machine is guaranteed; go further and you can aim higher.",
+					"Every project gets parts funding for its tier: $30, $65, or $100; higher tiers require more hours to earn funding. Working more time on your project beyond your tier earns coins, which you can spend in the shop. That is, once the funding for your chosen tier has been achieved, every extra approved hour earns 5 coins.",
+					"If you finish all 10 weeks then a 3D printer is shipped to you. You can change your printer at any time: pick it as your goal and work toward it through the season. Earn enough coins every week and the entry-level printer is guaranteed; go further and you can aim for bigger prizes.",
 				],
 			},
 		],

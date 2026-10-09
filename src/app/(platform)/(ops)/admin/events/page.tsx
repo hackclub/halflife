@@ -27,7 +27,7 @@ export default async function AdminEventsPage() {
 				}
 			/>
 
-			<EventScheduleNote timeZone={settings.programTimezone} />
+			<EventScheduleNote />
 
 			<EventScheduleManager events={events} timeZone={settings.programTimezone} />
 		</div>

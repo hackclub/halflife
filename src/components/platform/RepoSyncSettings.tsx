@@ -7,6 +7,7 @@ import { linkForge } from "@/lib/auth-client"
 import { cx } from "@/lib/cx"
 import { displayRepo } from "@/lib/repo"
 import { useStore } from "@/lib/store"
+import { ago } from "./reels/format"
 
 /**
  * Repo sync – the control that mirrors a project's devlogs and parts list into the maker's own repository, on whichever code forge they keep it on.
@@ -48,14 +49,8 @@ const FORGES = [
 	{ id: "gitlab", label: "GitLab" },
 ] as const
 
-function when(ms: number): string {
-	const minutes = Math.round((Date.now() - ms) / 60_000)
-	if (minutes < 1) return "just now"
-	if (minutes < 60) return `${minutes} min ago`
-	const hours = Math.round(minutes / 60)
-	if (hours < 24) return `${hours} ${hours === 1 ? "hour" : "hours"} ago`
-	return new Date(ms).toLocaleDateString()
-}
+// The reels' relative-time wording, reused rather than re-spelled: "3h ago" reads the same everywhere, and this file had its own copy that said "3 hours ago" and rendered a bare locale date past a day.
+const when = (ms: number) => ago(new Date(ms))
 
 export function RepoSyncSettings({
 	projectId,

@@ -4,9 +4,8 @@ import { useRef, useState } from "react"
 import { IconUpload, IconX } from "@/components/platform/icons"
 import { UploadProgress } from "@/components/platform/UploadProgress"
 import { Button } from "@/components/platform/ui"
+import { IMAGE_ACCEPT } from "@/lib/uploads/image-accept"
 import { uploadFile } from "@/lib/use-handoff"
-
-const IMAGE_TYPES = "image/png,image/jpeg,image/webp,image/gif"
 
 export interface UploadedImage {
 	objectKey: string
@@ -132,7 +131,7 @@ export function ImageUploads({
 			<input
 				ref={input}
 				type="file"
-				accept={IMAGE_TYPES}
+				accept={IMAGE_ACCEPT}
 				multiple
 				className="sr-only"
 				tabIndex={-1}

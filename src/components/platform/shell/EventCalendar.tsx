@@ -8,36 +8,56 @@ import type { CalendarEvent } from "@/lib/events"
 import {
 	calendarDay,
 	dayLabel,
+	daySegment,
 	dayShort,
 	eventColour,
-	eventCountsByDay,
 	eventIsLive,
 	eventIsUpcoming,
 	eventRangeLabel,
 	eventsOnDay,
 	HUDDLE_URL,
-	monthDays,
-	monthLabel,
-	monthOf,
-	shiftMonth,
+	minutesInDay,
+	shiftWeek,
+	weekDays,
+	weekLabel,
 } from "@/lib/events"
 
 /** Monday-first, because the programme's week closes on a Sunday. */
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const
 
+/** Pixels per hour of grid height. Blocks scale with it, so height stays proportional to runtime. */
+const HOUR_PX = 32
+
+/** An event's clipped slice of one day, with its overlap lane for side-by-side blocks. */
+type PlacedSegment = {
+	event: CalendarEvent
+	startMin: number
+	endMin: number
+	lane: number
+	lanes: number
+}
+
+/** "7 PM" – the gutter's hour marks. */
+function hourLabel(hour: number): string {
+	const h = ((hour % 24) + 24) % 24
+	const suffix = h < 12 ? "AM" : "PM"
+	const twelve = h % 12 === 0 ? 12 : h % 12
+	return `${twelve} ${suffix}`
+}
+
 /**
- * The month view of the programme calendar, and the day it opens on.
+ * The week view of the programme calendar, and the day selected in it.
  *
- * Built from `YYYY-MM-DD` strings rather than from `Date` arithmetic on instants,
- * for the same reason the week maths in `lib/program.ts` counts calendar days: a
- * cell is a *day on a wall*, and an instant does not name one until you say which
- * zone. Doing it in the programme's zone also means an event at 8pm New York
- * lands on the evening of that day rather than sliding onto the next one.
+ * Seven columns, one per day, on a shared time axis: a block's position is its
+ * start and its height its runtime, so a two-hour call takes twice the space
+ * of a one-hour one. The axis fits the week's own events – padded by an hour
+ * either side – rather than the whole day, so an evening of calls is not a
+ * thin stripe at the bottom of an empty grid.
  *
- * Selecting a day lists only that day. The list underneath is otherwise the next
- * handful of events, so the calendar is useful without a click – which is what
- * someone opening it from the header countdown actually wants, since they are
- * usually looking for what is on *tonight*.
+ * Selecting a day lists only that day. The list underneath is otherwise the
+ * next handful of events, so the calendar is useful without a click – which is
+ * what someone opening it from the header countdown actually wants, since they
+ * are usually looking for what is on *tonight*.
  */
 export function EventCalendar({
 	open,
@@ -51,16 +71,19 @@ export function EventCalendar({
 	timeZone: string
 }) {
 	const today = useMemo(() => calendarDay(new Date(), timeZone), [timeZone])
-	const [month, setMonth] = useState(() => monthOf(today))
+	// Any day in the viewed week; the grid always shows its Monday-to-Sunday.
+	const [anchor, setAnchor] = useState(today)
 	const [selected, setSelected] = useState<string | null>(null)
 
-	// Reopening starts on the current month with nothing selected. Adjusting during
+	const days = useMemo(() => weekDays(anchor), [anchor])
+
+	// Reopening starts on the current week with nothing selected. Adjusting during
 	// render rather than in an effect: an effect would paint a frame of the old
-	// month after the dialog opened.
+	// week after the dialog opened.
 	const [seen, setSeen] = useState({ open, today })
 	if (seen.open !== open || seen.today !== today) {
 		setSeen({ open, today })
-		setMonth(monthOf(today))
+		setAnchor(today)
 		setSelected(null)
 	}
 
@@ -75,15 +98,59 @@ export function EventCalendar({
 		return () => clearInterval(timer)
 	}, [open, timeZone])
 
-	const counts = useMemo(() => eventCountsByDay(events, timeZone), [events, timeZone])
-	const days = useMemo(() => monthDays(month.year, month.month), [month])
+	// Each day's clipped segments with greedy overlap lanes, plus the week's
+	// shared hour range. Lanes are per day: overlapping blocks split their
+	// column, and a block alone keeps the full width.
+	const { segments, startHour, endHour } = useMemo(() => {
+		const placed = new Map<string, PlacedSegment[]>()
+		let earliest = Number.POSITIVE_INFINITY
+		let latest = Number.NEGATIVE_INFINITY
+		for (const day of days) {
+			const slices = events
+				.map((event) => ({ event, seg: daySegment(event, day, timeZone) }))
+				.filter(
+					(slice): slice is { event: CalendarEvent; seg: { startMin: number; endMin: number } } =>
+						slice.seg !== null,
+				)
+				.sort((a, b) => a.seg.startMin - b.seg.startMin || a.seg.endMin - b.seg.endMin)
+			const laneEnds: number[] = []
+			const dayPlaced = slices.map(({ event, seg }) => {
+				let lane = laneEnds.findIndex((end) => end <= seg.startMin)
+				if (lane === -1) {
+					lane = laneEnds.length
+					laneEnds.push(seg.endMin)
+				} else {
+					laneEnds[lane] = seg.endMin
+				}
+				earliest = Math.min(earliest, seg.startMin)
+				latest = Math.max(latest, seg.endMin)
+				return { event, ...seg, lane, lanes: 0 }
+			})
+			const lanes = Math.max(1, laneEnds.length)
+			placed.set(
+				day,
+				dayPlaced.map((segment) => ({ ...segment, lanes })),
+			)
+		}
+		if (!Number.isFinite(earliest) || !Number.isFinite(latest)) return { segments: placed, startHour: 9, endHour: 17 }
+		return {
+			segments: placed,
+			startHour: Math.max(0, Math.floor(earliest / 60) - 1),
+			endHour: Math.min(24, Math.ceil(latest / 60) + 1),
+		}
+	}, [days, events, timeZone])
+
+	const spanHours = endHour - startHour
+	const gridHeight = spanHours * HOUR_PX
+	const hours = useMemo(() => Array.from({ length: spanHours + 1 }, (_, i) => startHour + i), [startHour, spanHours])
+
 	const upcoming = useMemo(() => events.filter((event) => eventIsUpcoming(event, new Date())).slice(0, 6), [events])
 	const onDay = useMemo(() => (selected ? eventsOnDay(events, selected, timeZone) : []), [events, selected, timeZone])
 
 	function shift(delta: number) {
-		setMonth(shiftMonth(month, delta))
-		// A day number does not carry across a month boundary, so the selection
-		// drops rather than pointing at a day that is no longer drawn.
+		setAnchor(shiftWeek(anchor, delta))
+		// A day does not carry across a week boundary, so the selection drops
+		// rather than pointing at a day that is no longer drawn.
 		setSelected(null)
 	}
 
@@ -94,26 +161,26 @@ export function EventCalendar({
 			open={open}
 			onClose={onClose}
 			accent="var(--color-violet)"
-			size="lg"
+			size="xl"
 			eyebrow="Programme calendar"
-			scrollKey={`${month.year}-${month.month}-${selected ?? ""}`}
+			scrollKey={`${anchor}-${selected ?? ""}`}
 		>
-			<ModalTitle sub="Everything scheduled for the programme, in its own timezone. Times are shown in the programme's zone rather than yours, so a call is at the hour it was announced.">
-				{monthLabel(month.year, month.month)}
+			<ModalTitle sub="Everything scheduled for the programme, shown in your timezone.">
+				{weekLabel(days)}
 			</ModalTitle>
 
 			<div className="flex flex-wrap items-center justify-between gap-3">
 				<div className="flex items-center gap-1.5">
-					<GridButton label="Previous month" onClick={() => shift(-1)}>
+					<GridButton label="Previous week" onClick={() => shift(-1)}>
 						<IconChevronLeft className="text-base" />
 					</GridButton>
-					<GridButton label="Next month" onClick={() => shift(1)}>
+					<GridButton label="Next week" onClick={() => shift(1)}>
 						<IconChevronRight className="text-base" />
 					</GridButton>
 					<button
 						type="button"
 						onClick={() => {
-							setMonth(monthOf(today))
+							setAnchor(today)
 							setSelected(null)
 						}}
 						className="label ml-1 rounded-full border-2 border-line px-3 py-1 text-navy-soft transition-colors hover:border-sky hover:text-navy"
@@ -132,57 +199,105 @@ export function EventCalendar({
 				) : null}
 			</div>
 
-			{/* A grid, so a reader can see the shape of the month – which days are
-          busy, and whether the huddles are weekly – before reading any of it.
-          Buttons rather than a table because each cell is its own control. */}
-			<div className="mt-4 grid grid-cols-7 gap-1">
-				{WEEKDAYS.map((weekday) => (
-					<div key={weekday} className="label pb-1 text-center text-[0.6rem] text-navy-faint">
-						{weekday}
+			{/* The week grid, scrolling sideways on a phone where seven columns
+			cannot fit. A block's height is its runtime on the shared axis, so
+			durations compare across days as well as within one. */}
+			<div className="mt-4 overflow-x-auto">
+				<div className="min-w-[620px]">
+					<div className="grid" style={{ gridTemplateColumns: "2.75rem repeat(7, minmax(0, 1fr))" }}>
+						<span aria-hidden="true" />
+						{days.map((day, i) => {
+							const isToday = day === today
+							const isSelected = day === selected
+							return (
+								<button
+									key={day}
+									type="button"
+									onClick={() => setSelected(isSelected ? null : day)}
+									aria-pressed={isSelected}
+									aria-label={`${dayShort(day)}${(segments.get(day) ?? []).length === 0 ? ", nothing scheduled" : ""}`}
+									className={cx(
+										"flex flex-col items-center gap-0.5 rounded-t-lg px-1 pt-1.5 pb-2 transition-colors",
+										isSelected ? "bg-violet-pale/60" : "hover:bg-cream",
+									)}
+								>
+									<span
+										className={cx(
+											"label text-[0.6rem]",
+											isToday ? "text-violet-ink font-extrabold" : "text-navy-faint",
+										)}
+									>
+										{WEEKDAYS[i]}
+									</span>
+									<span
+										className={cx(
+											"grid size-7 place-items-center rounded-full text-[0.9rem] tabular-nums",
+											isToday
+												? "bg-violet font-extrabold text-white"
+												: isSelected
+													? "font-extrabold text-navy"
+													: "text-navy-soft",
+										)}
+									>
+										{Number(day.split("-")[2] ?? 0)}
+									</span>
+								</button>
+							)
+						})}
 					</div>
-				))}
-				{days.map((day, index) => {
-					// The pad cells are the days of the neighbouring months the grid
-					// has to borrow to fill its first and last rows. Rendered, not
-					// focusable: there is nothing to select on them.
-					if (!day) return <span key={`pad-${index}`} aria-hidden="true" />
-					const count = counts.get(day) ?? 0
-					const isToday = day === today
-					const isSelected = day === selected
-					return (
-						<button
-							key={day}
-							type="button"
-							onClick={() => setSelected(isSelected ? null : day)}
-							aria-pressed={isSelected}
-							aria-label={
-								count === 0
-									? `${dayShort(day)}, nothing scheduled`
-									: `${dayShort(day)}, ${count} event${count === 1 ? "" : "s"}`
-							}
-							className={cx(
-								"relative flex aspect-square flex-col items-center justify-center rounded-lg text-[0.9rem] transition-colors",
-								isSelected
-									? "font-extrabold text-white"
-									: count > 0
-										? "font-bold text-navy hover:bg-violet-pale"
-										: "text-navy-faint hover:bg-cream",
-								isToday && !isSelected && "ring-2 ring-navy",
-							)}
-							style={isSelected ? { background: "var(--color-violet)" } : undefined}
-						>
-							{Number(day.split("-")[2] ?? 0)}
-							{/* A dot rather than a count: a cell has room for one mark, and
-                  a "3" would imply it matters which three. */}
-							{count > 0 && (
+
+					<div
+						className="grid"
+						style={{ gridTemplateColumns: "2.75rem repeat(7, minmax(0, 1fr))" }}
+					>
+						<div className="relative mt-3" style={{ height: gridHeight }} aria-hidden="true">
+							{hours.map((hour) => (
 								<span
-									aria-hidden="true"
-									className={cx("absolute bottom-1 size-1.5 rounded-full", isSelected ? "bg-white" : "bg-violet")}
-								/>
-							)}
-						</button>
-					)
-				})}
+									key={hour}
+									className="label absolute right-1 text-[0.6rem] text-navy-faint"
+									style={{ top: (hour - startHour) * HOUR_PX, transform: "translateY(-50%)" }}
+								>
+									{hourLabel(hour)}
+								</span>
+							))}
+						</div>
+						{days.map((day) => {
+							const isToday = day === today
+							const isSelected = day === selected
+							return (
+								<div
+									key={day}
+									className={cx("relative mt-3 rounded-b-lg", isSelected && "bg-violet-pale/60")}
+									style={{ height: gridHeight }}
+								>
+									{hours.map((hour) => (
+										<span
+											key={hour}
+											aria-hidden="true"
+											className={cx(
+												"absolute inset-x-0 border-t",
+												hour === startHour ? "border-line" : "border-dashed border-line/70",
+											)}
+											style={{ top: (hour - startHour) * HOUR_PX }}
+										/>
+									))}
+									{(segments.get(day) ?? []).map((segment) => (
+										<EventBlock
+											key={segment.event.id}
+											segment={segment}
+											day={day}
+											startHour={startHour}
+											timeZone={timeZone}
+											isLive={eventIsLive(segment.event, new Date())}
+											onSelect={() => setSelected(day)}
+										/>
+									))}
+									{isToday && <TodayLine startHour={startHour} timeZone={timeZone} />}
+								</div>
+							)
+						})}
+					</div>
+				</div>
 			</div>
 
 			<div className="mt-6">
@@ -206,6 +321,73 @@ export function EventCalendar({
 				)}
 			</div>
 		</Modal>
+	)
+}
+
+/** One block on the grid: its top is its start, its height its runtime. */
+function EventBlock({
+	segment,
+	day,
+	startHour,
+	timeZone,
+	isLive,
+	onSelect,
+}: {
+	segment: PlacedSegment
+	day: string
+	startHour: number
+	timeZone: string
+	isLive: boolean
+	onSelect: () => void
+}) {
+	const { event, startMin, endMin, lane, lanes } = segment
+	const colour = eventColour(event.colour)
+	const range = eventRangeLabel(event.startsAt, event.endsAt, timeZone)
+	const top = ((startMin - startHour * 60) / 60) * HOUR_PX
+	// Short calls still need a tappable block; everything longer stays exact.
+	const height = Math.max(((endMin - startMin) / 60) * HOUR_PX, 20)
+	const tallEnough = height >= 44
+	return (
+		<button
+			type="button"
+			onClick={onSelect}
+			aria-label={`${event.title}, ${range}, ${dayShort(day)}`}
+			title={`${event.title} · ${range}`}
+			className="absolute"
+			style={{
+				top,
+				height,
+				left: `${(lane / lanes) * 100}%`,
+				width: `${100 / lanes}%`,
+			}}
+		>
+			<span
+				className={cx(
+					"flex h-full flex-col justify-start gap-px overflow-hidden rounded-md border-l-4 bg-paper px-1.5 py-1 text-left",
+					isLive && "ring-2 ring-coral",
+				)}
+				style={{ borderColor: colour.accent }}
+			>
+				<span className="truncate text-[0.7rem] leading-tight font-extrabold text-navy">{event.title}</span>
+				{tallEnough && <span className="truncate text-[0.62rem] leading-tight text-navy-soft">{range}</span>}
+			</span>
+		</button>
+	)
+}
+
+/** The "now" line across today's column, so a live call reads as live on the grid too. */
+function TodayLine({ startHour, timeZone }: { startHour: number; timeZone: string }) {
+	const [now, setNow] = useState(() => new Date())
+	useEffect(() => {
+		const timer = setInterval(() => setNow(new Date()), 60_000)
+		return () => clearInterval(timer)
+	}, [])
+	const top = ((minutesInDay(now, timeZone) - startHour * 60) / 60) * HOUR_PX
+	if (top < 0) return null
+	return (
+		<span aria-hidden="true" className="pointer-events-none absolute inset-x-0 z-10" style={{ top }}>
+			<span className="block border-t-2 border-coral" />
+		</span>
 	)
 }
 

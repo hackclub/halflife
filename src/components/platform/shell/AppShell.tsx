@@ -73,7 +73,7 @@ export function AppShell({
 	children: React.ReactNode
 	/** Published events from now on, as the layout read them. */
 	events: CalendarEvent[]
-	/** The zone every deadline in the app is shown in. */
+	/** The programme zone: the calendar's fallback until the browser's own zone loads. */
 	programTimezone: string
 }) {
 	const pathname = usePathname()

@@ -11,10 +11,12 @@ import {
 	getCountryStats,
 	getDailyActivity,
 	getFirstProjectStats,
+	getHoursDistribution,
 	getReviewerStats,
 	getUserFlowFunnel,
 	getUserFlowSankey,
 	getVerificationStats,
+	type HoursDistribution,
 } from "@/lib/queries/admin"
 import { getLatestSyncRuns } from "@/lib/sync-run-log"
 
@@ -22,6 +24,9 @@ export const dynamic = "force-dynamic"
 
 const fmtInt = (n: number) => n.toLocaleString("en-US")
 const fmtHours = (h: number) => `${h.toLocaleString("en-US", { maximumFractionDigits: 1 })}h`
+
+/** A share of a whole. One decimal, because the small bands are where the comparison is worth making. */
+const fmtPct = (share: number) => `${(share * 100).toFixed(1)}%`
 
 /** Outcome wording, the same one a maker is told in lib/notifications. */
 const RESULT_LABEL: Record<ReviewResult, string> = {
@@ -39,28 +44,40 @@ export default async function AdminOverviewPage() {
 		Permission.MANAGE_PROGRAM,
 	)
 
-	const [counters, syncs, flow, sankey, areas, countries, activity, firstProjects, verification, reviewer] =
-		await Promise.all([
-			getAdminCounters(),
-			getLatestSyncRuns([
-				"hackatime",
-				"airtable_ysws",
-				"airtable_rsvp",
-				"airtable_loops",
-				"ari_ship",
-				"claim_sweep",
-				"printer_reconcile",
-				"help_ticket_summary",
-			]),
-			getUserFlowFunnel(),
-			getUserFlowSankey(),
-			getAreaStats(),
-			getCountryStats(),
-			getDailyActivity(),
-			getFirstProjectStats(),
-			getVerificationStats(),
-			getReviewerStats(),
-		])
+	const [
+		counters,
+		syncs,
+		flow,
+		sankey,
+		areas,
+		countries,
+		activity,
+		hoursSpread,
+		firstProjects,
+		verification,
+		reviewer,
+	] = await Promise.all([
+		getAdminCounters(),
+		getLatestSyncRuns([
+			"hackatime",
+			"airtable_ysws",
+			"airtable_rsvp",
+			"airtable_loops",
+			"ari_ship",
+			"claim_sweep",
+			"printer_reconcile",
+			"help_ticket_summary",
+		]),
+		getUserFlowFunnel(),
+		getUserFlowSankey(),
+		getAreaStats(),
+		getCountryStats(),
+		getDailyActivity(),
+		getHoursDistribution(),
+		getFirstProjectStats(),
+		getVerificationStats(),
+		getReviewerStats(),
+	])
 
 	return (
 		<div className="hl-stack">
@@ -171,6 +188,10 @@ export default async function AdminOverviewPage() {
 					identity can be paid; needs submission is somebody part-way through IDV, and not asked is an account no
 					sign-in has reported on yet.
 				</p>
+			</Panel>
+
+			<Panel title="Hours per participant">
+				<HoursHistogram data={hoursSpread} />
 			</Panel>
 
 			<Panel title="Activity over time">
@@ -359,19 +380,277 @@ function MetricPie({
 }
 
 /**
- * Hours logged and devlogs written per day, as two strips sharing one day axis. Days are program-timezone effective dates, gap-filled first to last so the axis reads continuously; the strip scrolls sideways once the season outgrows the panel.
+ * Hours and devlogs per day, as two lines over one shared day axis and two scales.
+ *
+ * One chart rather than two stacked ones because the two move together, and that is the thing worth seeing: a day
+ * where the hours line jumps and the devlogs line does not is a long sitting, and a day where both jump is a busy
+ * one. Stacked, that comparison needed the eye to travel between panels and hold one scale in mind.
+ *
+ * Two axes because the magnitudes are unrelated and either could outgrow the other as the season runs. Sharing one
+ * scale would pin the smaller series to the baseline and read as a flat line, which is worse than no line at all.
+ * Each line is therefore drawn against its own maximum, and each axis is labelled with its series, so neither is
+ * read off the other's numbers.
+ *
+ * Drawn in pixels rather than a scaled viewBox, and that is what keeps the axes outside the scroll area. The scale
+ * labels are HTML beside the chart, so they have to line up with the gridlines to the pixel; a viewBox stretched to
+ * fit its container has no fixed pixel height to line up against, and stretching it non-uniformly to get one turns
+ * the per-day dots into ellipses.
  */
 function ActivityStrip({ days }: { days: DayActivity[] }) {
 	if (days.length === 0) return <EmptyState>No devlogs yet.</EmptyState>
+
+	const CHART_H = 200
+	const PAD_T = 10
+	const PAD_B = 8
+	const plotH = CHART_H - PAD_T - PAD_B
+	// Wide enough that a day is worth a few pixels; the container scrolls past it rather than compressing the
+	// season into something where a day is a fraction of one.
+	const chartW = Math.max(480, days.length * 3)
+	const PAD_L = 6
+	const PAD_R = 6
+	const plotW = chartW - PAD_L - PAD_R
+
 	const maxHours = Math.max(1, ...days.map((d) => d.hours))
 	const maxDevlogs = Math.max(1, ...days.map((d) => d.devlogs))
 	const totalHours = days.reduce((n, d) => n + d.hours, 0)
 	const totalDevlogs = days.reduce((n, d) => n + d.devlogs, 0)
+
+	const xOf = (i: number) => PAD_L + (days.length === 1 ? plotW / 2 : (i / (days.length - 1)) * plotW)
+	const yFor = (v: number, max: number) => PAD_T + plotH - (v / max) * plotH
+	const line = (pick: (d: DayActivity) => number, max: number) =>
+		days.map((d, i) => `${i === 0 ? "M" : "L"} ${xOf(i).toFixed(1)} ${yFor(pick(d), max).toFixed(1)}`).join(" ")
+	const hoursPath = line((d) => d.hours, maxHours)
+	const devlogsPath = line((d) => d.devlogs, maxDevlogs)
+	const areaPath = `${hoursPath} L ${xOf(days.length - 1).toFixed(1)} ${(PAD_T + plotH).toFixed(1)} L ${xOf(0).toFixed(
+		1,
+	)} ${(PAD_T + plotH).toFixed(1)} Z`
+
+	// Five per axis, so both scales are readable. Rounded to something a person would say rather than to the raw
+	// maximum, which on a spiky series lands on an unreadable 574.3h.
+	const steps = (max: number) => Array.from({ length: 5 }, (_, i) => (max / 4) * i)
+	const hoursTicks = steps(maxHours)
+	const devlogTicks = steps(maxDevlogs)
+	const roundTick = (n: number) => (n >= 10 ? Math.round(n) : Math.round(n * 10) / 10)
+
 	const labelEvery = Math.max(1, Math.ceil(days.length / 14))
-	const columns = `repeat(${days.length}, minmax(5px, 1fr))`
+	const first = days[0]?.day
+	const last = days[days.length - 1]?.day
+
 	return (
 		<div>
 			<p className="hl-hint" style={{ fontSize: "0.78rem", marginBottom: "0.75rem" }}>
+				<span
+					aria-hidden="true"
+					style={{
+						display: "inline-block",
+						width: "0.7rem",
+						height: "0.15rem",
+						background: "var(--color-accent)",
+						marginRight: "0.35rem",
+						verticalAlign: "middle",
+					}}
+				/>
+				hours ({fmtHours(totalHours)} total)
+				<span
+					aria-hidden="true"
+					style={{
+						display: "inline-block",
+						width: "0.7rem",
+						height: "0.15rem",
+						background: "var(--color-magenta)",
+						marginRight: "0.35rem",
+						marginLeft: "1rem",
+						verticalAlign: "middle",
+					}}
+				/>
+				devlogs ({fmtInt(totalDevlogs)} total)
+			</p>
+			{/* The two scale columns are grid siblings of the chart, so they share its row and never scroll; only the
+			    chart cell overflows. Each label is placed at the exact pixel its gridline sits on, so the two scales
+			    read off one row rather than eyeballed. */}
+			<div style={{ display: "grid", gridTemplateColumns: "auto minmax(0, 1fr) auto", alignItems: "start" }}>
+				<div style={{ position: "relative", width: "3.1rem", height: `${CHART_H}px` }}>
+					{hoursTicks.map((t, i) => (
+						<span
+							key={`hl${i}`}
+							aria-hidden="true"
+							style={{
+								position: "absolute",
+								right: 6,
+								top: yFor(t, maxHours),
+								transform: "translateY(-50%)",
+								fontSize: "0.65rem",
+								fontVariantNumeric: "tabular-nums",
+								color: "var(--color-accent-ink)",
+							}}
+						>
+							{fmtHours(roundTick(t)).replace("h", "")}
+						</span>
+					))}
+					<span
+						aria-hidden="true"
+						style={{
+							position: "absolute",
+							right: 6,
+							top: -1,
+							fontSize: "0.6rem",
+							color: "var(--color-ink-muted)",
+						}}
+					>
+						h
+					</span>
+				</div>
+
+				<div style={{ overflowX: "auto" }}>
+					<div style={{ width: `${chartW}px` }}>
+						<svg
+							width={chartW}
+							height={CHART_H}
+							viewBox={`0 0 ${chartW} ${CHART_H}`}
+							role="img"
+							aria-label={`Hours logged per day from ${first} to ${last}, peaking at ${fmtHours(
+								maxHours,
+							)}, and devlogs written per day over the same period, peaking at ${fmtInt(maxDevlogs)}`}
+							style={{ display: "block" }}
+						>
+							{hoursTicks.map((t, i) => (
+								<line
+									key={`hg${i}`}
+									x1={PAD_L}
+									x2={chartW - PAD_R}
+									y1={yFor(t, maxHours)}
+									y2={yFor(t, maxHours)}
+									stroke="var(--color-line-soft)"
+									strokeWidth="1"
+								/>
+							))}
+							{devlogTicks.map((t, i) => (
+								<line
+									key={`dg${i}`}
+									x1={PAD_L}
+									x2={chartW - PAD_R}
+									y1={yFor(t, maxDevlogs)}
+									y2={yFor(t, maxDevlogs)}
+									stroke="var(--color-line-soft)"
+									strokeWidth="1"
+									strokeDasharray="2 3"
+								/>
+							))}
+							<path d={areaPath} fill="var(--color-accent)" opacity="0.1" />
+							<path d={hoursPath} fill="none" stroke="var(--color-accent)" strokeWidth="1.75" strokeLinejoin="round" />
+							<path
+								d={devlogsPath}
+								fill="none"
+								stroke="var(--color-magenta)"
+								strokeWidth="1.25"
+								strokeLinejoin="round"
+								strokeDasharray="4 2"
+							/>
+							{days.map((d, i) => (
+								<circle key={d.day} cx={xOf(i)} cy={yFor(d.hours, maxHours)} r="1.6" fill="var(--color-accent)">
+									<title>{`${d.day}: ${fmtHours(d.hours)} logged, ${fmtInt(d.devlogs)} devlogs`}</title>
+								</circle>
+							))}
+						</svg>
+						<div
+							aria-hidden="true"
+							style={{
+								display: "grid",
+								gridTemplateColumns: `repeat(${days.length}, 1fr)`,
+								gap: "1px",
+								marginTop: "4px",
+								fontSize: "0.65rem",
+								color: "var(--color-ink-muted)",
+							}}
+						>
+							{days.map((d, i) => (
+								<div key={d.day} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+									{i % labelEvery === 0 ? d.day.slice(5) : ""}
+								</div>
+							))}
+						</div>
+					</div>
+				</div>
+
+				<div style={{ position: "relative", width: "3.4rem", height: `${CHART_H}px` }}>
+					{devlogTicks.map((t, i) => (
+						<span
+							key={`dl${i}`}
+							aria-hidden="true"
+							style={{
+								position: "absolute",
+								left: 6,
+								top: yFor(t, maxDevlogs),
+								transform: "translateY(-50%)",
+								fontSize: "0.65rem",
+								fontVariantNumeric: "tabular-nums",
+								color: "var(--color-magenta)",
+							}}
+						>
+							{fmtInt(roundTick(t))}
+						</span>
+					))}
+					<span
+						aria-hidden="true"
+						style={{
+							position: "absolute",
+							left: 6,
+							top: -1,
+							fontSize: "0.6rem",
+							color: "var(--color-ink-muted)",
+						}}
+					>
+						devlogs
+					</span>
+				</div>
+			</div>
+			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.5rem" }}>
+				Dashed is devlogs against the right axis, solid is hours against the left; each is scaled to its own maximum, so
+				compare the shapes and not the heights. Days are program-timezone effective dates – the day the work counted
+				for. Hours count journal devlogs only.
+			</p>
+		</div>
+	)
+}
+
+/**
+ * How the cohort's hours are spread, as two measures over each band of hours.
+ *
+ * The solid bar is the band's share of the accounts, the pale one its share of the hours. Both are drawn against
+ * one scale – the largest share either series has – so the pair can be compared directly: where the pale bar tops
+ * the solid one, that band holds more of the programme's hours than of its people, and the other way round where it
+ * does not. Scaling each series to its own maximum would look tidier and mean nothing, because a band would look
+ * hours-heavy purely because hours happen to be spread more evenly than people.
+ *
+ * The shares, not the counts, are the thing drawn: buckets are unequal by design, so a count bar would say as much
+ * about the bucket's width as about the band. The counts are still what is written above each column, because that
+ * is the number an operator actually reads off this chart.
+ */
+function HoursHistogram({ data }: { data: HoursDistribution }) {
+	if (data.withHours === 0) return <EmptyState>No hours logged yet.</EmptyState>
+
+	// Guarded because both shares divide by them: a cohort or a total that somehow came to zero would otherwise put
+	// NaN% in every tooltip and a NaN height on every bar, which is worse than a slightly wrong number.
+	const accounts = Math.max(data.withHours, 1)
+	const totalHours = Math.max(data.totalHours, 0.0001)
+
+	const shares = data.buckets.map((b) => ({ byAccounts: b.participants / accounts, byHours: b.hours / totalHours }))
+	// One scale across both series, so the taller of the two is always the full height and the comparison holds.
+	const scale = Math.max(0.0001, ...shares.flatMap((s) => [s.byAccounts, s.byHours]))
+
+	const summary = data.buckets
+		.filter((b) => b.participants > 0)
+		.map((b) => `${b.label} hours ${b.participants}`)
+		.join(", ")
+
+	return (
+		<div>
+			<div className="hl-row" style={{ gap: "1.25rem", marginBottom: "0.9rem" }}>
+				<Stat label="Accounts with hours" value={fmtInt(data.withHours)} />
+				<Stat label="Median hours" value={data.median === null ? "—" : fmtHours(data.median)} />
+				<Stat label="Total hours" value={fmtHours(data.totalHours)} />
+			</div>
+			<p className="hl-hint" style={{ fontSize: "0.75rem", margin: "0 0 0.5rem" }}>
 				<span
 					aria-hidden="true"
 					style={{
@@ -384,7 +663,7 @@ function ActivityStrip({ days }: { days: DayActivity[] }) {
 						verticalAlign: "baseline",
 					}}
 				/>
-				hours ({fmtHours(totalHours)} total)
+				share of accounts
 				<span
 					aria-hidden="true"
 					style={{
@@ -392,86 +671,125 @@ function ActivityStrip({ days }: { days: DayActivity[] }) {
 						width: "0.7rem",
 						height: "0.7rem",
 						borderRadius: "2px",
-						background: "var(--color-ink-muted)",
+						// Same colour and opacity as the bar itself, so the key and the mark cannot drift apart.
+						background: "var(--color-magenta)",
+						opacity: 0.3,
 						marginRight: "0.35rem",
 						marginLeft: "1rem",
 						verticalAlign: "baseline",
 					}}
 				/>
-				devlogs ({fmtInt(totalDevlogs)} total)
+				share of hours
 			</p>
-			<div style={{ overflowX: "auto" }}>
-				<div style={{ minWidth: `${days.length * 9}px` }}>
-					<div
-						role="img"
-						aria-label={`Hours logged per day from ${days[0]?.day} to ${days[days.length - 1]?.day}`}
-						style={{
-							display: "grid",
-							gridTemplateColumns: columns,
-							gap: "2px",
-							alignItems: "end",
-							height: "7rem",
-						}}
-					>
-						{days.map((d) => (
+			<figure style={{ margin: 0 }}>
+				{/* The plot carries its own height and its columns stretch to fill it. Both are load-bearing: a
+				    percentage bar has nothing to resolve against inside an auto-height parent, and `align-items: end`
+				    would stop the column growing into one – which is how this chart rendered no bars at all. */}
+				<div
+					role="img"
+					aria-label={`Participants and hours by hours logged: ${summary}`}
+					style={{
+						display: "grid",
+						gridTemplateColumns: `repeat(${data.buckets.length}, 1fr)`,
+						columnGap: "3px",
+						height: "11rem",
+					}}
+				>
+					{data.buckets.map((b, i) => {
+						const share = shares[i] ?? { byAccounts: 0, byHours: 0 }
+						return (
+							// The tooltip hangs on the whole column rather than on a bar. Both bars are absolutely
+							// positioned and the hours one is painted last, so a title on the solid bar would be covered
+							// by the translucent one wherever the hours bar is the taller – exactly the half of the chart
+							// the tooltip is most worth reading. The column is the common ancestor, so hovering anywhere
+							// in it, bars included, reaches the one tooltip.
 							<div
-								key={d.day}
-								aria-hidden="true"
-								title={`${d.day}: ${fmtHours(d.hours)} logged`}
-								style={{
-									height: `${(d.hours / maxHours) * 100}%`,
-									minHeight: d.hours > 0 ? "2px" : 0,
-									background: "var(--color-accent)",
-									borderRadius: "2px",
-								}}
-							/>
-						))}
-					</div>
-					<div
-						role="img"
-						aria-label={`Devlogs written per day from ${days[0]?.day} to ${days[days.length - 1]?.day}`}
-						style={{
-							display: "grid",
-							gridTemplateColumns: columns,
-							gap: "2px",
-							alignItems: "end",
-							height: "2.5rem",
-							marginTop: "4px",
-						}}
-					>
-						{days.map((d) => (
-							<div
-								key={d.day}
-								aria-hidden="true"
-								title={`${d.day}: ${fmtInt(d.devlogs)} devlogs`}
-								style={{
-									height: `${(d.devlogs / maxDevlogs) * 100}%`,
-									minHeight: d.devlogs > 0 ? "2px" : 0,
-									background: "var(--color-ink-muted)",
-									borderRadius: "2px",
-								}}
-							/>
-						))}
-					</div>
-					<div
-						aria-hidden="true"
-						style={{
-							display: "grid",
-							gridTemplateColumns: columns,
-							gap: "2px",
-							marginTop: "4px",
-							fontSize: "0.65rem",
-							color: "var(--color-ink-muted)",
-						}}
-					>
-						{days.map((d, i) => (
-							<div key={d.day} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-								{i % labelEvery === 0 ? d.day.slice(5) : ""}
+								key={b.label}
+								title={`${b.label}h: ${fmtInt(b.participants)} participants · ${fmtPct(
+									share.byAccounts,
+								)} of accounts with hours · ${fmtHours(b.hours)}, ${fmtPct(share.byHours)} of all hours`}
+								style={{ display: "flex", flexDirection: "column", minWidth: 0 }}
+							>
+								<span
+									aria-hidden="true"
+									style={{
+										fontSize: "0.7rem",
+										fontVariantNumeric: "tabular-nums",
+										textAlign: "center",
+										color: "var(--color-ink-muted)",
+										lineHeight: 1,
+										paddingBottom: "0.55rem",
+									}}
+								>
+									{b.participants > 0 ? fmtInt(b.participants) : ""}
+								</span>
+								{/* flex: 1 so the bars take the space the count label does not. Both bars are pinned to
+								    the floor and drawn full-width so they overlap; the hours bar sits on top, translucent,
+								    so a band that is hours-heavy reads as a pale cap over the solid bar and one that is
+								    people-heavy reads as a solid cap over the pale. */}
+								<div style={{ flex: 1, position: "relative", minHeight: 0 }}>
+									<div
+										style={{
+											position: "absolute",
+											left: 0,
+											right: 0,
+											bottom: 0,
+											height: `${(share.byAccounts / scale) * 100}%`,
+											background: b.participants === 0 ? "var(--color-surface-sunken)" : "var(--color-accent)",
+											borderRadius: "3px 3px 0 0",
+										}}
+									/>
+									<div
+										aria-hidden="true"
+										style={{
+											position: "absolute",
+											left: 0,
+											right: 0,
+											bottom: 0,
+											height: `${(share.byHours / scale) * 100}%`,
+											background: "var(--color-magenta)",
+											opacity: 0.3,
+											borderRadius: "3px 3px 0 0",
+										}}
+									/>
+								</div>
 							</div>
-						))}
-					</div>
+						)
+					})}
 				</div>
-			</div>
+				<figcaption
+					aria-hidden="true"
+					style={{
+						display: "grid",
+						gridTemplateColumns: `repeat(${data.buckets.length}, 1fr)`,
+						columnGap: "3px",
+						marginTop: "0.3rem",
+					}}
+				>
+					{data.buckets.map((b) => (
+						<span
+							key={b.label}
+							title={b.label}
+							style={{
+								fontSize: "0.6rem",
+								color: "var(--color-ink-muted)",
+								textAlign: "center",
+								overflow: "hidden",
+								textOverflow: "ellipsis",
+								whiteSpace: "nowrap",
+							}}
+						>
+							{b.label}
+						</span>
+					))}
+				</figcaption>
+			</figure>
+			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+				Both series share one scale, so a pale bar taller than the solid one means the band holds more of the
+				programme&apos;s hours than of its people. Hours count journal devlogs (reviewer-adjusted where set) plus linked
+				Hackatime time, the same hours the geography panels total. {fmtInt(data.withoutHours)} accounts have no hours at
+				all and are left off the chart; hover a bar for both shares.
+			</p>
 		</div>
 	)
 }

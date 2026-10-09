@@ -90,6 +90,7 @@ export const REPO_FILE_KINDS: Record<
 			".uf2",
 			".hex",
 			".bin",
+			".go",
 		],
 	},
 	logicSchematic: {

@@ -1,7 +1,8 @@
 "use client"
-import { useRouter } from "next/navigation"
+
 import { useState } from "react"
 import { Callout } from "@/app/components/ui"
+import { sendJson, useAction } from "@/lib/use-action"
 
 type Kind = "session" | "hackatime"
 
@@ -18,36 +19,16 @@ export function HoursApprovalForm(
 }
 
 function HoursApprovalFormInner({ kind, id, approved }: Readonly<{ kind: Kind; id: string; approved: number | null }>) {
-	const router = useRouter()
 	const [value, setValue] = useState(approved === null ? "" : String(approved))
-	const [busy, setBusy] = useState(false)
-	const [error, setError] = useState<string | null>(null)
+	const { busy, error, run, refuse } = useAction()
 
-	async function save() {
+	function save() {
 		const hoursApproved = Number(value)
 		if (value.trim() === "" || !Number.isFinite(hoursApproved) || hoursApproved < 0) {
-			setError("Enter a number of hours")
+			refuse("Enter a number of hours")
 			return
 		}
-		setBusy(true)
-		setError(null)
-		try {
-			const res = await fetch("/api/review/hours", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ decisions: [{ kind, id, hoursApproved }] }),
-			})
-			if (!res.ok) {
-				const payload = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
-				setError(payload.error?.message ?? `Failed (${res.status})`)
-				return
-			}
-			router.refresh()
-		} catch (err) {
-			setError(err instanceof Error ? err.message : "Request failed")
-		} finally {
-			setBusy(false)
-		}
+		void run("save", () => sendJson("/api/review/hours", { body: { decisions: [{ kind, id, hoursApproved }] } }))
 	}
 
 	return (
@@ -67,10 +48,10 @@ function HoursApprovalFormInner({ kind, id, approved }: Readonly<{ kind: Kind; i
 				step={0.25}
 				aria-label="Approved hours"
 				value={value}
-				disabled={busy}
+				disabled={busy !== null}
 				onChange={(e) => setValue(e.target.value)}
 			/>
-			<button className="hl-btn" type="submit" disabled={busy}>
+			<button className="hl-btn" type="submit" disabled={busy !== null}>
 				Save
 			</button>
 			{error ? <Callout tone="danger">{error}</Callout> : null}

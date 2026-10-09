@@ -6,6 +6,7 @@ import { Gato } from "@/components/platform/art"
 import { IconComment, IconEye, IconFilm, IconHeart, IconPlay } from "@/components/platform/icons"
 import { ReportButton } from "@/components/platform/report/ReportButton"
 import { cx } from "@/lib/cx"
+import { prefersStill } from "@/lib/reduced-motion"
 import type { FeedItem } from "@/lib/feed"
 import { useStore } from "@/lib/store"
 
@@ -85,9 +86,7 @@ export function sendLike(reel: FeedItem, next: boolean, onPatch?: (id: string, p
 		.catch(() => onPatch?.(reel.id, { likedByMe: reel.likedByMe, likeCount: reel.likeCount }))
 }
 
-function prefersStill() {
-	return window.matchMedia("(prefers-reduced-motion: reduce)").matches
-}
+
 
 /**
  * The reel that has just taken the frame says so: its author, caption and counts rise into place a beat behind the video, the way a feed hands over from one clip to the next. Played by the Web Animations API rather than a class, because it has to restart on every arrival and a card scrolled back to is arriving again. It only ever animates FROM hidden: the resting state is fully visible, so a browser that never runs it shows everything.

@@ -7,6 +7,7 @@ import { IconCheck } from "@/components/platform/icons"
 import { RepoSyncSettings } from "@/components/platform/RepoSyncSettings"
 import { ProjectChoiceCard, StarterProjectCard } from "@/components/platform/StarterProjectCard"
 import { Button, Chip, Field, OptionRow, Panel } from "@/components/platform/ui"
+import { STARTER_MODIFICATION_NOTE } from "@/lib/config/onboarding"
 import { cx } from "@/lib/cx"
 import type { OnboardingView } from "@/lib/onboarding-view"
 import { EXAMPLE_JOURNAL_URL } from "@/lib/routes"
@@ -297,6 +298,8 @@ export function OnboardingFlow({
 											</p>
 										</ProjectChoiceCard>
 									</div>
+									{/* Only once a starter is the pick: it is a rule about the choice, not about the step, and beside "make your own" it read as a warning about the whole fork. */}
+									{typeof start === "string" ? <Note>{STARTER_MODIFICATION_NOTE}</Note> : null}
 								</div>
 								<StepActions
 									busy={busy}
@@ -372,6 +375,8 @@ export function OnboardingFlow({
 								)
 							})}
 						</div>
+						{/* Only once a starter is the pick, for the same reason as the week step: the rule is about taking a starter, not about this step. */}
+						{idea !== null ? <Note>{STARTER_MODIFICATION_NOTE}</Note> : null}
 						<StepActions
 							busy={busy}
 							onBack={back}

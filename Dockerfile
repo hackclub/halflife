@@ -1,10 +1,6 @@
 # syntax=docker/dockerfile:1
 FROM oven/bun:1-alpine AS base
-# Production runs on Bun, not Node: installs, the Next build and the standalone
-# server below all execute under `bun`. Local dev and CI still use pnpm (see
-# package.json's packageManager field); the pnpm lockfile and workspace config
-# are deliberately excluded from this build context via .dockerignore so they
-# never land in the image.
+# Production runs on Bun, not Node: installs, the Next build and the standalone server below all execute under `bun`. Local dev and CI still use pnpm (see package.json's packageManager field); the pnpm lockfile and workspace config are deliberately excluded from this build context via .dockerignore so they never land in the image.
 
 # ── deps ─────────────────────────────────────────────────────────────────────
 FROM base AS deps
@@ -27,17 +23,11 @@ COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV DOCKER_BUILD=1
-# `next build` imports lib/auth.ts during static analysis and better-auth
-# refuses a short secret. This value never reaches runtime.
+# `next build` imports lib/auth.ts during static analysis and better-auth refuses a short secret. This value never reaches runtime.
 ENV BETTER_AUTH_SECRET="build-time-placeholder-must-be-32-chars-long"
 
-# These two are read *while building*, not by the running pod: next.config.ts
-# bakes NEXT_PUBLIC_UPLOAD_HOST into the image allowlist, and the client bundle
-# inlines NEXT_PUBLIC_APP_URL. Declaring them as build args is what makes
-# `docker build --build-arg ...` able to supply them — a runtime env var cannot.
-# Unset, the browser client falls back to the page origin and the server-side
-# URL builders fall back to BETTER_AUTH_URL, so only the next/image allowlist
-# (currently unused) is lost.
+# These two are read *while building*, not by the running pod: next.config.ts bakes NEXT_PUBLIC_UPLOAD_HOST into the image allowlist, and the client bundle inlines NEXT_PUBLIC_APP_URL. Declaring them as build args is what makes `docker build --build-arg ...` able to supply them — a runtime env var cannot.
+# Unset, the browser client falls back to the page origin and the server-side URL builders fall back to BETTER_AUTH_URL, so only the next/image allowlist (currently unused) is lost.
 ARG NEXT_PUBLIC_APP_URL
 ARG NEXT_PUBLIC_UPLOAD_HOST
 
@@ -67,21 +57,9 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./
 
-# `bun prisma/seed.ts` (RUNBOOK step 9) imports the printer catalogue from
-# src/lib/config, and that config reaches the Prisma enums through the `@/`
-# path alias. Neither is in the standalone trace — Next bundles the app's own
-# imports rather than shipping the source — so the config module and the
-# tsconfig whose `paths` resolves the alias have to ship as well, or a fresh
-# deploy seeds no shop items.
+# `bun prisma/seed.ts` (RUNBOOK step 9) imports the printer catalogue from src/lib/config, and that config reaches the Prisma enums through the `@/` path alias. Neither is in the standalone trace — Next bundles the app's own imports rather than shipping the source — so the config module and the tsconfig whose `paths` resolves the alias have to ship as well, or a fresh deploy seeds no shop items.
 #
-# The migration/backfill scripts in scripts/ (`bun --conditions=react-server
-# scripts/backfill-analytics.ts`, …) import from all over src/lib via relative
-# paths, and those modules reach further still — so the whole src tree ships,
-# not just the config. Without it the scripts are absent from the image and
-# there is nothing to run migrations/backfills with inside the container. Run
-# them with `bun --conditions=react-server` (the condition swaps the
-# `server-only` imports for plain ones). Bun runs TypeScript directly, so the
-# `tsx` dev dependency that local pnpm scripts use is not needed here.
+# The migration/backfill scripts in scripts/ (`bun --conditions=react-server scripts/backfill-analytics.ts`, …) import from all over src/lib via relative paths, and those modules reach further still — so the whole src tree ships, not just the config. Without it the scripts are absent from the image and there is nothing to run migrations/backfills with inside the container. Run them with `bun --conditions=react-server` (the condition swaps the `server-only` imports for plain ones). Bun runs TypeScript directly, so the `tsx` dev dependency that local pnpm scripts use is not needed here.
 COPY --from=builder --chown=nextjs:nodejs /app/src ./src
 COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
 COPY --from=builder --chown=nextjs:nodejs /app/tsconfig.json ./tsconfig.json
@@ -92,8 +70,7 @@ RUN chmod +x docker-entrypoint.sh
 USER nextjs
 EXPOSE 3000
 
-# /api/health touches Postgres, so a pod with a dead database is marked
-# unhealthy instead of serving errors on every request.
+# /api/health touches Postgres, so a pod with a dead database is marked unhealthy instead of serving errors on every request.
 # Uses $PORT so the check follows the port the server actually binds to.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=25s --retries=5 \
   CMD curl -fsS "http://127.0.0.1:${PORT:-3000}/api/health" || exit 1

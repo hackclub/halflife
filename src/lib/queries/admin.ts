@@ -780,6 +780,25 @@ async function loadRegionInputs() {
 
 type RegionInputs = Awaited<ReturnType<typeof loadRegionInputs>>
 
+/**
+ * Hours per account, read the way the ledger reads them.
+ *
+ * One definition, shared by the geography panels and the hours distribution, so the two can never disagree about what "hours" means – a total that differed between two panels on the same page would be worse than either being wrong on its own.
+ *
+ * Reviewer-approved hours replace the claimed figure wherever set; a tracked entry's hours arrive through its link, so the journal row itself contributes nothing.
+ */
+function hoursByUser(inputs: RegionInputs): Map<string, number> {
+	const hours = new Map<string, number>()
+	const add = (userId: string, value: number) => hours.set(userId, (hours.get(userId) ?? 0) + value)
+
+	for (const s of inputs.sessions) {
+		if (s.hoursSource === HoursSource.HACKATIME_TRACKED) continue
+		add(s.themeProject.userId, s.hoursApproved ?? s.hoursClaimed)
+	}
+	for (const l of inputs.links) add(l.themeProject.userId, l.hoursApproved ?? (l.cachedSeconds ?? 0) / 3600)
+	return hours
+}
+
 function aggregateByKey(inputs: RegionInputs, keyOf: (timezone: string | null) => string) {
 	const userKey = new Map(inputs.users.map((u) => [u.id, keyOf(u.timezone)]))
 	const totals = new Map<string, { users: number; hours: number }>()
@@ -793,13 +812,7 @@ function aggregateByKey(inputs: RegionInputs, keyOf: (timezone: string | null) =
 	}
 
 	for (const u of inputs.users) row(userKey.get(u.id) ?? "Unknown").users += 1
-	for (const s of inputs.sessions) {
-		// A tracked entry's hours arrive through its link, counted below – the journal row itself contributes nothing, exactly as the ledger reads it.
-		if (s.hoursSource === HoursSource.HACKATIME_TRACKED) continue
-		row(userKey.get(s.themeProject.userId) ?? "Unknown").hours += s.hoursApproved ?? s.hoursClaimed
-	}
-	for (const l of inputs.links)
-		row(userKey.get(l.themeProject.userId) ?? "Unknown").hours += l.hoursApproved ?? (l.cachedSeconds ?? 0) / 3600
+	for (const [userId, hours] of hoursByUser(inputs)) row(userKey.get(userId) ?? "Unknown").hours += hours
 	return totals
 }
 
@@ -872,6 +885,82 @@ export async function getDailyActivity(): Promise<DayActivity[]> {
 		})
 	}
 	return out
+}
+
+export interface HoursBucket {
+	/** The bucket as it reads on the axis, e.g. "10–20". */
+	label: string
+	/** Accounts whose total lands in this bucket. */
+	participants: number
+	/** Hours summed across the bucket. */
+	hours: number
+}
+
+export interface HoursDistribution {
+	buckets: HoursBucket[]
+	/** Accounts with any hours at all – the histogram's denominator. */
+	withHours: number
+	/** Accounts with none. Most of them: everyone who signed up and never logged a devlog. */
+	withoutHours: number
+	median: number | null
+	totalHours: number
+}
+
+/**
+ * The upper bound of each bucket, in hours.
+ *
+ * Uneven, and drawn as a set of bands rather than as a continuous scale: the distribution is long-tailed, so even
+ * spacing would pile almost everyone into the first bucket. The first is open at zero because every account here
+ * has at least some hours – the zero case is counted and reported rather than binned. The trailing Infinity edge
+ * is the overflow band rather than a bound, so the tail has somewhere to land.
+ */
+export const HOUR_EDGES = [1, 2, 3, 5, 7, 10, 15, 20, 30, 40, 60, 80, 120, 160, 240, Number.POSITIVE_INFINITY]
+
+/**
+ * Hours per account, bucketed, for the overview's distribution.
+ *
+ * Reads the same ledger as the geography panels (see `hoursByUser`), so this and the continent and country pies
+ * are the same hours counted two ways rather than two definitions that could drift apart.
+ *
+ * Accounts with no hours are a count and not a bar. At three quarters of all accounts, a zero bar would be four
+ * times every other and answer a question nobody asked.
+ */
+export async function getHoursDistribution(): Promise<HoursDistribution> {
+	const inputs = await loadRegionInputs()
+	const perUser = [...hoursByUser(inputs).values()].filter((h) => h > 0).sort((a, b) => a - b)
+
+	// One bucket per edge, so the trailing Infinity edge becomes the "160+" bar and catches the long tail.
+	const last = HOUR_EDGES.length - 1
+	const buckets: HoursBucket[] = HOUR_EDGES.map((upper, i) => ({
+		label: i === last ? `${HOUR_EDGES[last - 1]}+` : i === 0 ? `under ${upper}` : `${HOUR_EDGES[i - 1]}–${upper}`,
+		participants: 0,
+		hours: 0,
+	}))
+
+	for (const hours of perUser) {
+		const i = HOUR_EDGES.findIndex((upper) => hours < upper)
+		const bucket = buckets[i === -1 ? last : i]
+		if (!bucket) continue
+		bucket.participants += 1
+		bucket.hours += hours
+	}
+
+	const totalHours = perUser.reduce((n, h) => n + h, 0)
+	const middle = Math.floor(perUser.length / 2)
+	const median =
+		perUser.length === 0
+			? null
+			: perUser.length % 2 === 1
+				? (perUser[middle] as number)
+				: ((perUser[middle - 1] as number) + (perUser[middle] as number)) / 2
+
+	return {
+		buckets,
+		withHours: perUser.length,
+		withoutHours: Math.max(0, inputs.users.length - perUser.length),
+		median: median === null ? null : round1(median),
+		totalHours: round1(totalHours),
+	}
 }
 
 export interface FirstProjectStat {

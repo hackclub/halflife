@@ -1,38 +1,23 @@
 "use client"
-import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { Button, Callout, Field } from "@/app/components/ui"
+import { sendJson, useAction } from "@/lib/use-action"
 
 export function CreditGrantForm({ userId }: Readonly<{ userId: string }>) {
-	const router = useRouter()
 	const [amount, setAmount] = useState("")
 	const [reason, setReason] = useState("")
-	const [busy, setBusy] = useState(false)
-	const [error, setError] = useState<string | null>(null)
+	const { busy, error, run } = useAction()
 
-	async function submit(e: React.FormEvent) {
+	function submit(e: React.FormEvent) {
 		e.preventDefault()
-		setBusy(true)
-		setError(null)
-		try {
-			const res = await fetch("/api/admin/credits", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ userId, amount: Number(amount), reason }),
-			})
-			if (!res.ok) {
-				const payload = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
-				setError(payload.error?.message ?? `Failed (${res.status})`)
-				return
-			}
-			setAmount("")
-			setReason("")
-			router.refresh()
-		} catch {
-			setError("Could not reach the server")
-		} finally {
-			setBusy(false)
-		}
+		void run(
+			"submit",
+			() => sendJson("/api/admin/credits", { body: { userId, amount: Number(amount), reason } }),
+			() => {
+				setAmount("")
+				setReason("")
+			},
+		)
 	}
 
 	return (
@@ -51,7 +36,7 @@ export function CreditGrantForm({ userId }: Readonly<{ userId: string }>) {
 				/>
 			</Field>
 			<div>
-				<Button type="submit" disabled={busy || !amount || !reason}>
+				<Button type="submit" disabled={busy !== null || !amount || !reason}>
 					{busy ? "Applying…" : "Apply adjustment"}
 				</Button>
 			</div>

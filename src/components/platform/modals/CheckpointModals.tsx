@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useId, useMemo, useRef, useState } from "react"
+import { ParticipantGoal } from "@/app/generated/prisma/enums"
 import { Gato, WeekPainting } from "@/components/platform/art"
 import {
 	IconArrowRight,
@@ -26,7 +27,7 @@ import { attrUrl } from "@/lib/attr-url"
 import { linkLapse } from "@/lib/auth-client"
 import type { BomLine } from "@/lib/bom"
 import { STARTER_PROJECT_TIER, starterProjectsFor } from "@/lib/config/onboarding"
-import { paceTarget, printerById, submitFloorFor } from "@/lib/config/printers"
+import { COINS_PER_HOUR, paceTarget, printerById, submitFloorFor } from "@/lib/config/printers"
 import { THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { photosRequired, TIERS } from "@/lib/curriculum"
 import { cx } from "@/lib/cx"
@@ -43,6 +44,7 @@ import { EXAMPLE_JOURNAL_URL } from "@/lib/routes"
 import { BOM_MARGIN_USD } from "@/lib/schemas/project"
 import { useStore } from "@/lib/store"
 import type { Checkpoint, Project, Week } from "@/lib/types"
+import { IMAGE_ACCEPT } from "@/lib/uploads/image-accept"
 import { uploadFile } from "@/lib/use-handoff"
 import { ImageUploads, type UploadedImage } from "./ImageUploads"
 import { fmtDuration, LapsePicker, type LapseTimelapse } from "./LapsePicker"
@@ -245,8 +247,17 @@ function withoutPlaceholder(body: string, placeholder: string): string {
 }
 
 export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
-	const { setOpenCheckpoint, logSession, editSession, complete, projects, stateOf, weekOfCheckpoint, hoursOf } =
-		useStore()
+	const {
+		setOpenCheckpoint,
+		logSession,
+		editSession,
+		complete,
+		projects,
+		stateOf,
+		weekOfCheckpoint,
+		hoursOf,
+		participantGoal,
+	} = useStore()
 
 	const week = weekOfCheckpoint(checkpoint)
 
@@ -437,6 +448,12 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 	const hours = hoursOf(week)
 	const toFloor = Math.max(0, week.submitHours - hours)
+	// The week's earning goal, read off its own target rather than the goal catalogue: targetHours already bakes in this week's tier (weekAsk slides the funded block in underneath the pace) and earnFrom is where coins start, so their difference at the coin rate is what this tier and this goal ask together. Warm-ups have no season pace, so they keep the bare floor message.
+	const weeklyGoalCoins = Math.round((week.targetHours - week.earnFrom) * COINS_PER_HOUR)
+	const toGoal = Math.max(0, week.targetHours - hours)
+	// Makers here for the grant have no machine to pace against – GoalTracker reads the same flag – so the weekly goal means nothing to them and they get the flat rate instead.
+	const chasingPrinter = participantGoal === null || participantGoal === ParticipantGoal.PRINTER
+	const showGoal = chasingPrinter && week.id !== WARMUP_WEEK_ID && toGoal > 0
 
 	/**
 	 * Finishing hands the maker back to the trail rather than straight into another entry. What comes next is the trail's to say: logging these hours may have brought a reel due, or opened the fork at the end of the week, and a modal that reopens itself would march past both.
@@ -574,17 +591,37 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							)}
 							role={saveError ? "alert" : undefined}
 						>
-							{saveError
-								? saveError
-								: uploading > 0
-									? `Uploading ${uploading === 1 ? "an image" : `${uploading} images`}…`
-									: missing
-										? missing
-										: editing
-											? "Saving replaces this entry. It keeps its place on the map."
-											: toFloor > 0
-												? `${fmtH(toFloor)} more before you can ${week.id === WARMUP_WEEK_ID ? "submit it" : "wrap up the week"}.`
-												: "Submit your project when it's done!"}
+							{saveError ? (
+								saveError
+							) : uploading > 0 ? (
+								`Uploading ${uploading === 1 ? "an image" : `${uploading} images`}…`
+							) : missing ? (
+								missing
+							) : editing ? (
+								"Saving replaces this entry. It keeps its place on the map."
+							) : toFloor > 0 ? (
+								<>
+									{fmtH(toFloor)} more before you can {week.id === WARMUP_WEEK_ID ? "submit it" : "wrap up the week"}
+									{showGoal ? (
+										<>
+											{" "}
+											– {fmtH(toGoal)} more if you want to reach your goal of{" "}
+											<strong className="rounded bg-gold-pale px-1 text-gold-ink">{weeklyGoalCoins} coins</strong> per
+											week.
+										</>
+									) : !chasingPrinter ? (
+										<>
+											{" "}
+											– every hour past the minimum earns{" "}
+											<strong className="rounded bg-gold-pale px-1 text-gold-ink">5 coins</strong> per hour.
+										</>
+									) : (
+										"."
+									)}
+								</>
+							) : (
+								"Submit your project when it's done!"
+							)}
 						</p>
 					</div>
 
@@ -861,7 +898,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						<input
 							ref={imageInput}
 							type="file"
-							accept="image/png,image/jpeg,image/webp,image/gif"
+							accept={IMAGE_ACCEPT}
 							multiple
 							className="sr-only"
 							tabIndex={-1}
@@ -990,6 +1027,7 @@ export function PublicReelModal({
 	videoUrl,
 	onClose,
 	start = "ask",
+	celebration,
 }: {
 	postId: string
 	eyebrow: string
@@ -1000,6 +1038,10 @@ export function PublicReelModal({
 	 * "links" skips the question – for the Reels page, where pressing "Add where you posted it" has already answered it.
 	 */
 	start?: "ask" | "links"
+	/**
+	 * Set when this sheet is the confirmation of a design hand-in: it congratulates, and says what the hours past the tier turn into once a reviewer approves them. Other callers (a reel posted mid-week, the Reels page) pass nothing and see the plain ask.
+	 */
+	celebration?: { extraHours: number }
 }) {
 	const [step, setStep] = useState<"ask" | "links" | "saved">(start)
 	const titleId = useId()
@@ -1103,6 +1145,30 @@ export function PublicReelModal({
 					</>
 				}
 			>
+				{celebration && (
+					<div
+						className="sketch mb-5 flex items-start gap-3 rounded-2xl bg-mint px-5 py-4"
+						style={{ "--sk-color": "var(--color-teal)", "--sk-radius": "16px" } as React.CSSProperties}
+					>
+						<IconCheck className="mt-0.5 shrink-0 text-xl text-teal-deep" />
+						<div className="min-w-0">
+							<p className="text-[0.95rem] leading-snug font-extrabold text-navy">
+								Congratulations – your design is handed in!
+							</p>
+							<p className="mt-1 text-[0.85rem] leading-snug text-navy-soft">
+								{celebration.extraHours > 0 ? (
+									<>
+										Once review is complete and assuming no deflation, you&apos;ll earn{" "}
+										<strong className="rounded bg-gold-pale px-1 text-gold-ink">coins</strong> at 5 per hour for your{" "}
+										{fmtH(celebration.extraHours)} past your tier&apos;s funded hours.
+									</>
+								) : (
+									<>It&apos;s with the reviewers now.</>
+								)}
+							</p>
+						</div>
+					</div>
+				)}
 				<ModalTitle id={titleId} sub="You'll earn coins if your post goes viral!">
 					Would you like to post your reel online?
 				</ModalTitle>
@@ -1683,7 +1749,8 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 											{t.detail}
 											<span className="mt-1 block text-navy-soft/90">
 												You can submit on tier {t.id} from {fmtH(t.fundingHours)} of design time – the parts-funding
-												hours and nothing more. Every hour past that (once your tier's funding is achieved) earns 5 spendable coins.
+												hours and nothing more. Every hour past that (once your tier's funding is achieved) earns 5
+												spendable coins.
 											</span>
 										</>
 									}
@@ -1787,6 +1854,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		printerFund,
 		pendingCoins,
 		goalId,
+		setSharePost,
 	} = useStore()
 	const week = weekOfCheckpoint(checkpoint)
 	const isBuild = week.phase === "build"
@@ -1805,6 +1873,8 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	// R2 object keys, not flags: what these ask for is evidence, and a boolean was letting the form take a file and drop it on the floor. Several screenshots, because one order is often split across vendors and one checkout page is not always one screen tall.
 	const [carts, setCarts] = useState<UploadedImage[]>([])
 	const [tier, setTier] = useState<1 | 2 | 3>(project?.tier ?? 1)
+	// Makers who want nothing from the parts fund can hand in an empty BOM: the box states it, a confirm makes sure, and the flag is what lets the sheet past step 2 without carts.
+	const [declinedFunding, setDeclinedFunding] = useState(false)
 	const [clip, setClip] = useState<string | null>(null)
 	// The bucket URL of the closing clip, when there is one, so it can be saved and posted elsewhere afterwards.
 	const [clipUrl, setClipUrl] = useState<string | null>(null)
@@ -1817,7 +1887,6 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	// The closing reel once it is posted. A hand-in that fails after the reel went up reuses it on the retry rather than posting the same clip twice; a new clip clears it.
 	const [closingPostId, setClosingPostId] = useState<string | null>(null)
 	// Handed in: the reel that closed the week is offered for posting online.
-	const [shareId, setShareId] = useState<string | null>(null)
 	const [works, setWorks] = useState<"yes" | "no" | null>(null)
 	const [writeup, setWriteup] = useState("")
 	// Null while checking. The server runs the same checks at submit, so this only decides whether the sheet lets you get that far.
@@ -1867,6 +1936,9 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const tierBlocked = !isBuild && tierShort(selectedTier.fundingHours) > 0
 	// Over the tier's funding warns; past the leeway it refuses the submit, the same refusal the hours floor makes.
 	const bomBlocked = !isBuild && bomTotal > selectedTier.grantUsd + BOM_MARGIN_USD
+	// An empty BOM the maker has deliberately declined funding for. Read off the loaded list every render rather than trusted from the toggle alone, so a stale flag can never unblock a week whose parts arrived after the box was ticked.
+	const bomEmpty = !isBuild && bom !== null && bom.items.length === 0
+	const fundingDeclined = bomEmpty && declinedFunding
 
 	const repoReady = repoResult?.canSubmit ?? false
 
@@ -1878,7 +1950,8 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			: isBuild
 				? clip && (works === "yes" || (works === "no" && writeup.trim().length >= 40))
 				: step === 2
-					? carts.length > 0 && !tierBlocked && !bomBlocked
+					? // No funding, no order, no carts to screenshot: a declined empty BOM carries no cart evidence.
+						(carts.length > 0 || fundingDeclined) && !tierBlocked && !bomBlocked
 					: clip && !tierBlocked && !bomBlocked && hasCover
 
 	/**
@@ -1904,19 +1977,32 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			setSubmitError(refused)
 			return
 		}
-		if (postId) setShareId(postId)
+		// Into the store rather than local state: the refresh this triggers flips the week to in_review, and the checkpoint router shows the celebration from there so it survives.
+		if (postId)
+			setSharePost({
+				checkpointId: checkpoint.id,
+				postId,
+				eyebrow: `${weekName(week)} · Submitted`,
+				videoUrl: clipUrl,
+				// Design only: build weeks earn flat, so "past your tier" means nothing there. The hours are the week's own total – the same basis the sheet's floor and target read – though a reviewer can still adjust them.
+				celebration: !isBuild ? { extraHours: Math.max(0, hours - week.earnFrom) } : undefined,
+			})
 		else setOpenCheckpoint(null)
 	}
 
-	if (shareId) {
-		return (
-			<PublicReelModal
-				postId={shareId}
-				eyebrow={`${weekName(week)} · Submitted`}
-				videoUrl={clipUrl}
-				onClose={() => setOpenCheckpoint(null)}
-			/>
-		)
+	// Declining funding is the one choice in this sheet that an edit cannot quietly undo – once handed in without a BOM there is nothing to fund – so the box asks once more, following the repo's window.confirm precedent for irreversible choices.
+	function toggleDeclinedFunding() {
+		if (declinedFunding) {
+			setDeclinedFunding(false)
+			return
+		}
+		if (
+			window.confirm(
+				"Hand in with an empty parts list? No parts funding will be ordered for this project. You can still change your mind before you submit.",
+			)
+		) {
+			setDeclinedFunding(true)
+		}
 	}
 
 	return (
@@ -1976,8 +2062,8 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							{project ? `${project.name} needs a cover image.` : "Your project needs a cover image."}
 						</p>
 						<p className="mt-1 text-[0.85rem] leading-snug text-navy-soft">
-							Upload one on that project&apos;s page before you can submit – covers are per project, so a cover
-							uploaded elsewhere does not count.{" "}
+							Upload one on that project&apos;s page before you can submit – covers are per project, so a cover uploaded
+							elsewhere does not count.{" "}
 							{project && (
 								<Link
 									href={`/projects/${project.id}`}
@@ -2029,116 +2115,170 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 			{!isBuild && step === 2 && (
 				<div>
-					<ModalTitle sub="Every line needs a real vendor and a real price. We ask for the cart screenshot so the total is checkable.">
-						Finalise your BOM and tier
+					<ModalTitle
+						sub={
+							fundingDeclined
+								? "No parts, no order – just the tier your hours unlock."
+								: "Every line needs a real vendor and a real price. We ask for the cart screenshot so the total is checkable."
+						}
+					>
+						{fundingDeclined ? "Finalise your tier" : "Finalise your BOM and tier"}
 					</ModalTitle>
 
-					<Panel tone="line" radius={18} className="overflow-hidden bg-white">
-						{bomError ? (
-							<p role="alert" className="px-4 py-5 text-[0.86rem] font-semibold text-coral-deep">
-								{bomError}
-							</p>
-						) : !bom ? (
-							<p className="hand px-4 py-5 text-[0.88rem] text-navy-soft" aria-live="polite">
-								reading your parts list…
-							</p>
-						) : (
-							<div className="overflow-x-auto">
-								<table className="w-full min-w-[480px] text-left text-[0.86rem]">
-									<thead>
-										<tr className="border-b border-dashed border-line">
-											{["Part", "Qty", "Unit", "Total", "Vendor"].map((h) => (
-												<th key={h} scope="col" className="label px-4 py-2.5 text-navy-soft">
-													{h}
-												</th>
-											))}
-										</tr>
-									</thead>
-									<tbody>
-										{bom.items.length === 0 && (
-											<tr className="border-b border-dashed border-line/60">
-												<td colSpan={5} className="hand px-4 py-3.5 text-[0.88rem] text-coral-deep">
-													no parts listed yet. Add them on the project page before you submit this.
-												</td>
-											</tr>
-										)}
-										{bom.items.map((l) => (
-											<tr key={l.id} className="border-b border-dashed border-line/60 align-top">
-												<td className="px-4 py-2.5">
-													<span className="block font-semibold [overflow-wrap:anywhere] text-navy">{l.name}</span>
-													{l.purpose && (
-														<span className="block text-[0.8rem] leading-snug text-navy-soft">{l.purpose}</span>
-													)}
-												</td>
-												<td className="px-4 py-2.5 tabular-nums">{l.quantity}</td>
-												<td className="px-4 py-2.5 tabular-nums">${l.unitCostUsd.toFixed(2)}</td>
-												<td className="px-4 py-2.5 font-semibold text-navy tabular-nums">
-													${(l.quantity * l.unitCostUsd).toFixed(2)}
-												</td>
-												<td className="hand px-4 py-2.5 text-navy-soft">
-													{l.link ? (
-														<a
-															href={l.link}
-															target="_blank"
-															rel="noopener noreferrer"
-															className="underline decoration-line-strong underline-offset-4 hover:text-navy"
-														>
-															{l.vendor || "link"}
-														</a>
-													) : (
-														l.vendor || "—"
-													)}
-												</td>
-											</tr>
-										))}
-										<tr>
-											<td className="px-4 py-2.5">
-												<span className="block font-semibold text-navy">Tax &amp; shipping</span>
-												<span className="block text-[0.8rem] leading-snug text-navy-soft">for the whole order</span>
-											</td>
-											<td className="px-4 py-2.5 text-navy-soft">–</td>
-											<td className="px-4 py-2.5 text-navy-soft">–</td>
-											<td className="px-4 py-2.5 font-semibold text-navy tabular-nums">
-												${bom.taxShippingUsd.toFixed(2)}
-											</td>
-											<td />
-										</tr>
-									</tbody>
-								</table>
-							</div>
-						)}
-						<div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 bg-cream px-4 py-3">
-							<span className="label text-navy-soft">Cart total</span>
-							<span className="text-[1.05rem] font-extrabold text-navy tabular-nums">${bomTotal.toFixed(2)}</span>
-						</div>
-					</Panel>
-					{/* One place to change the list: the project page. The sheet reads
-              it, so what is handed in is what the maker kept there. */}
-					{project && (
-						<p className="hand mt-2 text-[0.82rem] text-navy-soft">
-							Something wrong?{" "}
-							<Link
-								href={`/projects/${project.id}#bom-title`}
-								onClick={() => setOpenCheckpoint(null)}
-								className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
+					{/* Declined funding hides the parts list and its edit note – there is nothing to check. */}
+					{!fundingDeclined && (
+						<>
+							<Panel tone="line" radius={18} className="overflow-hidden bg-white">
+								{bomError ? (
+									<p role="alert" className="px-4 py-5 text-[0.86rem] font-semibold text-coral-deep">
+										{bomError}
+									</p>
+								) : !bom ? (
+									<p className="hand px-4 py-5 text-[0.88rem] text-navy-soft" aria-live="polite">
+										reading your parts list…
+									</p>
+								) : (
+									<div className="overflow-x-auto">
+										<table className="w-full min-w-[480px] text-left text-[0.86rem]">
+											<thead>
+												<tr className="border-b border-dashed border-line">
+													{["Part", "Qty", "Unit", "Total", "Vendor"].map((h) => (
+														<th key={h} scope="col" className="label px-4 py-2.5 text-navy-soft">
+															{h}
+														</th>
+													))}
+												</tr>
+											</thead>
+											<tbody>
+												{bom.items.length === 0 && (
+													<tr className="border-b border-dashed border-line/60">
+														<td colSpan={5} className="hand px-4 py-3.5 text-[0.88rem] text-coral-deep">
+															no parts listed yet. Add them on the project page – or decline funding below – before you
+															submit this.
+														</td>
+													</tr>
+												)}
+												{bom.items.map((l) => (
+													<tr key={l.id} className="border-b border-dashed border-line/60 align-top">
+														<td className="px-4 py-2.5">
+															<span className="block font-semibold [overflow-wrap:anywhere] text-navy">{l.name}</span>
+															{l.purpose && (
+																<span className="block text-[0.8rem] leading-snug text-navy-soft">{l.purpose}</span>
+															)}
+														</td>
+														<td className="px-4 py-2.5 tabular-nums">{l.quantity}</td>
+														<td className="px-4 py-2.5 tabular-nums">${l.unitCostUsd.toFixed(2)}</td>
+														<td className="px-4 py-2.5 font-semibold text-navy tabular-nums">
+															${(l.quantity * l.unitCostUsd).toFixed(2)}
+														</td>
+														<td className="hand px-4 py-2.5 text-navy-soft">
+															{l.link ? (
+																<a
+																	href={l.link}
+																	target="_blank"
+																	rel="noopener noreferrer"
+																	className="underline decoration-line-strong underline-offset-4 hover:text-navy"
+																>
+																	{l.vendor || "link"}
+																</a>
+															) : (
+																l.vendor || "—"
+															)}
+														</td>
+													</tr>
+												))}
+												<tr>
+													<td className="px-4 py-2.5">
+														<span className="block font-semibold text-navy">Tax &amp; shipping</span>
+														<span className="block text-[0.8rem] leading-snug text-navy-soft">for the whole order</span>
+													</td>
+													<td className="px-4 py-2.5 text-navy-soft">–</td>
+													<td className="px-4 py-2.5 text-navy-soft">–</td>
+													<td className="px-4 py-2.5 font-semibold text-navy tabular-nums">
+														${bom.taxShippingUsd.toFixed(2)}
+													</td>
+													<td />
+												</tr>
+											</tbody>
+										</table>
+									</div>
+								)}
+								<div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 bg-cream px-4 py-3">
+									<span className="label text-navy-soft">Cart total</span>
+									<span className="text-[1.05rem] font-extrabold text-navy tabular-nums">${bomTotal.toFixed(2)}</span>
+								</div>
+							</Panel>
+							{/* One place to change the list: the project page. The sheet reads
+	              it, so what is handed in is what the maker kept there. */}
+							{project && (
+								<p className="hand mt-2 text-[0.82rem] text-navy-soft">
+									Something wrong?{" "}
+									<Link
+										href={`/projects/${project.id}#bom-title`}
+										onClick={() => setOpenCheckpoint(null)}
+										className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
+									>
+										Edit the parts list on the project page
+									</Link>
+									.
+								</p>
+							)}
+						</>
+					)}
+					{/* Already stocked, or building from scrap: an empty BOM with funding declined hands in as-is, no carts needed. */}
+					{bomEmpty && (
+						<button
+							type="button"
+							role="checkbox"
+							aria-checked={declinedFunding}
+							onClick={toggleDeclinedFunding}
+							className={cx(
+								"sketch mt-4 flex w-full items-start gap-3 rounded-2xl px-4 py-3.5 text-left transition-colors",
+								declinedFunding ? "bg-violet-pale" : "bg-white hover:bg-black/[.03]",
+							)}
+							style={
+								{
+									"--sk-color": declinedFunding ? "var(--color-violet)" : "var(--color-line)",
+									"--sk-radius": "16px",
+								} as React.CSSProperties
+							}
+						>
+							<span
+								aria-hidden="true"
+								className={cx(
+									"mt-[3px] grid size-[18px] shrink-0 place-items-center rounded-[6px] border-2 transition-colors",
+									declinedFunding ? "border-transparent bg-violet" : "border-line-strong",
+								)}
 							>
-								Edit the parts list on the project page
-							</Link>
-							.
-						</p>
+								{declinedFunding && <IconCheck className="text-sm text-white" />}
+							</span>
+							<span className="min-w-0">
+								<span className="block text-[0.95rem] font-extrabold text-navy">
+									I don&apos;t want parts funding for this project
+								</span>
+								<span className="hand mt-0.5 block text-[0.84rem] leading-snug text-navy-soft">
+									Hand in with an empty parts list – no carts, no order. We&apos;ll double-check before you submit.
+								</span>
+							</span>
+						</button>
 					)}
 
-					<div className="mt-8 border-t border-dashed border-line pt-6">
-						<div className="grid gap-2">
-							<p className="label flex items-center gap-2 text-navy-soft">
-								<IconCart className="text-base" /> Screenshots of your cart
-							</p>
-							<p className="text-[0.88rem] leading-snug text-navy-soft">
-								The checkout page with the total visible. Any vendor – add one per cart if the order is split.
-							</p>
-							<ImageUploads images={carts} onChange={setCarts} folder="sessions" max={10} label="Cart screenshot" />
-						</div>
-					</div>
+					{/* No order, nothing to screenshot: the carts go away with the BOM. */}
+					{!fundingDeclined && (
+						<>
+							<div className="mt-8 border-t border-dashed border-line pt-6">
+								<div className="grid gap-2">
+									<p className="label flex items-center gap-2 text-navy-soft">
+										<IconCart className="text-base" /> Screenshots of your cart
+									</p>
+									<p className="text-[0.88rem] leading-snug text-navy-soft">
+										The checkout page with the total visible. Any vendor – add one per cart if the order is split.
+									</p>
+									<ImageUploads images={carts} onChange={setCarts} folder="sessions" max={10} label="Cart screenshot" />
+								</div>
+							</div>
+						</>
+					)}
 
 					<div className="mt-8 border-t border-dashed border-line pt-6">
 						<p className="label mb-2 text-magenta">Finalise your tier</p>

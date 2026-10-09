@@ -135,6 +135,15 @@ export function getStarterProject(id: string): StarterProject | undefined {
 export const STARTER_PROJECT_TIER: TierId = 1
 
 /**
+ * What a starter has to become before it can be handed in.
+ *
+ * The guide is a starting point, not a submission, and "how much do I have to change?" comes up every cohort. Said
+ * once here so the two onboarding steps that offer a starter cannot drift apart in how they answer it.
+ */
+export const STARTER_MODIFICATION_NOTE =
+	"A starter is a starting point, not the finished project. Make it yours – it needs enough of your own changes, to the design or the code, that the result is clearly unique to you. Handing in the guide's build with only small tweaks is not enough."
+
+/**
  * Step two's copy: "Each week will have a theme, this week it's..."
  *
  * The comp branches this on the answer to question one – "If beginner: information about PCBs, else: example projects" – so both halves are here and the step picks one.

@@ -1,10 +1,31 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
+import { Fragment } from "react"
 import { ArticleLink } from "@/components/platform/docs/ArticleLink"
 import { IconArrowRight, IconChevronLeft } from "@/components/platform/icons"
 import { Panel } from "@/components/platform/ui"
 import { DOCS } from "@/lib/data"
+
+/**
+ * Wraps the 5-coins figure in the same gold pill the onboarding flow and
+ * project page use (`bg-gold-pale text-gold-ink`). Docs paragraphs are plain
+ * strings, so the highlight happens here at render time rather than in the
+ * copy itself.
+ */
+function highlightCoins(text: string): string | React.ReactNode[] {
+	const parts = text.split(/(\b5 coins\b|\b5 per hour\b)/g)
+	if (parts.length === 1) return text
+	return parts.map((part, i) =>
+		i % 2 === 1 ? (
+			<strong key={i} className="rounded bg-gold-pale px-1 text-gold-ink">
+				{part}
+			</strong>
+		) : (
+			<Fragment key={i}>{part}</Fragment>
+		),
+	)
+}
 
 export function generateStaticParams() {
 	return DOCS.map((d) => ({ slug: d.slug }))
@@ -50,7 +71,7 @@ export default async function DocPage({ params }: { params: Promise<{ slug: stri
 								<div className="mt-3 grid gap-4">
 									{block.paragraphs.map((p) => (
 										<p key={p.slice(0, 24)} className="max-w-[68ch] text-[1rem] leading-[1.75] text-navy">
-											{p}
+											{highlightCoins(p)}
 										</p>
 									))}
 								</div>

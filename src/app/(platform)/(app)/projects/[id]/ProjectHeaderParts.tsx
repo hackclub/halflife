@@ -8,9 +8,8 @@ import { UploadProgress } from "@/components/platform/UploadProgress"
 import { Button } from "@/components/platform/ui"
 import { useStore } from "@/lib/store"
 import type { ProjectThumbnail } from "@/lib/thumbnail"
+import { IMAGE_ACCEPT } from "@/lib/uploads/image-accept"
 import { uploadFile } from "@/lib/use-handoff"
-
-const COVER_TYPES = "image/png,image/jpeg,image/webp,image/gif"
 
 /**
  * The project's thumbnail – what its card and the review queue show.
@@ -114,7 +113,7 @@ export function CoverImage({
 					<input
 						ref={input}
 						type="file"
-						accept={COVER_TYPES}
+						accept={IMAGE_ACCEPT}
 						className="sr-only"
 						tabIndex={-1}
 						aria-hidden="true"

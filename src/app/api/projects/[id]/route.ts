@@ -1,5 +1,5 @@
 import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
-import { markProjectCreated, recomputeWeek } from "@/lib/analytics"
+import { markProjectCreated, recomputeActiveDays, recomputeWeek } from "@/lib/analytics"
 import { fail, ok, parseBody, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { starterProjectsFor } from "@/lib/config/onboarding"
@@ -203,6 +203,7 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 	})
 
 	for (const { weekNumber } of weeks) await recomputeWeek(gate.user.id, weekNumber)
+	await recomputeActiveDays(gate.user.id)
 
 	return ok({ ok: true })
 })

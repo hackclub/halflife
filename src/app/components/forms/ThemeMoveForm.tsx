@@ -1,48 +1,27 @@
 "use client"
-import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { Button, Callout } from "@/app/components/ui"
-import { Theme } from "@/app/generated/prisma/enums"
+import type { Theme } from "@/app/generated/prisma/enums"
 import { getThemeDef, THEMES, WARMUP_THEME } from "@/lib/config/program"
+import { sendJson, useAction } from "@/lib/use-action"
 
 const OPTIONS = [WARMUP_THEME, ...THEMES]
 
 /**
  * Re-file a project on another theme/week. The review state, tier and grant travel with it – this only changes which slot it occupies, so a warm-up can become week 1.
  */
-export function ThemeMoveForm({
-	projectId,
-	current,
-}: Readonly<{ projectId: string; current: Theme }>) {
-	const router = useRouter()
+export function ThemeMoveForm({ projectId, current }: Readonly<{ projectId: string; current: Theme }>) {
 	const [value, setValue] = useState<Theme>(current)
-	const [busy, setBusy] = useState(false)
-	const [error, setError] = useState<string | null>(null)
+	const { busy, error, run } = useAction()
 
-	async function save() {
+	function save() {
 		if (value === current) return
 		const from = getThemeDef(current).label
 		const to = getThemeDef(value).label
 		if (!window.confirm(`Move this project from ${from} to ${to}? Its reviews and grant move with it.`)) return
-		setBusy(true)
-		setError(null)
-		try {
-			const res = await fetch(`/api/admin/theme-projects/${projectId}`, {
-				method: "PATCH",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ theme: value }),
-			})
-			if (!res.ok) {
-				const payload = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
-				setError(payload.error?.message ?? `Failed (${res.status})`)
-				return
-			}
-			router.refresh()
-		} catch (err) {
-			setError(err instanceof Error ? err.message : "Request failed")
-		} finally {
-			setBusy(false)
-		}
+		void run("save", () =>
+			sendJson(`/api/admin/theme-projects/${projectId}`, { method: "PATCH", body: { theme: value } }),
+		)
 	}
 
 	return (
@@ -61,7 +40,7 @@ export function ThemeMoveForm({
 						</option>
 					))}
 				</select>
-				<Button type="button" disabled={busy || value === current} onClick={save}>
+				<Button type="button" disabled={busy !== null || value === current} onClick={save}>
 					{busy ? "Moving…" : "Move"}
 				</Button>
 			</div>

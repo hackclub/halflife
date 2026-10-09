@@ -1,8 +1,9 @@
 "use client"
-import { useRouter } from "next/navigation"
 import { useRef, useState } from "react"
 import { Button, Callout, Field } from "@/app/components/ui"
 import type { ShopItemCategory } from "@/app/generated/prisma/enums"
+import { IMAGE_ACCEPT } from "@/lib/uploads/image-accept"
+import { sendJson, useAction } from "@/lib/use-action"
 import { uploadFile } from "@/lib/use-handoff"
 
 const CATEGORIES: { value: ShopItemCategory; label: string }[] = [
@@ -56,7 +57,6 @@ function previewImageUrl(value: string): string | null {
  * Add a shop item, or edit one when `item` is given. The slug is fixed once an item exists, because orders and analytics refer to it. Per-person limit, stock and shelf order are left to their defaults (one per person, unlimited stock, first) and an edit never sends them, so an item that already has them keeps them.
  */
 export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
-	const router = useRouter()
 	const editing = item !== undefined
 	const [form, setForm] = useState(
 		item
@@ -72,10 +72,9 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 				}
 			: blank,
 	)
-	const [busy, setBusy] = useState(false)
-	const [error, setError] = useState<string | null>(null)
 	const [saved, setSaved] = useState(false)
 	const [uploading, setUploading] = useState(false)
+	const { busy, error, run, setError } = useAction()
 	const picker = useRef<HTMLInputElement>(null)
 
 	async function uploadImage(file: File | undefined) {
@@ -93,10 +92,8 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 		}
 	}
 
-	async function submit(e: React.FormEvent) {
+	function submit(e: React.FormEvent) {
 		e.preventDefault()
-		setBusy(true)
-		setError(null)
 		setSaved(false)
 		const fields = {
 			name: form.name,
@@ -107,25 +104,19 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 			costUsd: form.costUsd === "" ? null : Number(form.costUsd),
 			requiresPrinterQualified: form.requiresPrinterQualified,
 		}
-		try {
-			const res = await fetch(editing ? `/api/admin/shop/items/${item.id}` : "/api/admin/shop/items", {
-				method: editing ? "PATCH" : "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(editing ? fields : { id: form.id, ...fields }),
-			})
-			if (!res.ok) {
-				const payload = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
-				setError(payload.error?.message ?? `Failed (${res.status})`)
-				return
-			}
-			if (editing) setSaved(true)
-			else setForm(blank)
-			router.refresh()
-		} catch {
-			setError("Could not reach the server")
-		} finally {
-			setBusy(false)
-		}
+		void run(
+			"submit",
+			() =>
+				sendJson(editing ? `/api/admin/shop/items/${item.id}` : "/api/admin/shop/items", {
+					method: editing ? "PATCH" : "POST",
+					body: editing ? fields : { id: form.id, ...fields },
+				}),
+			() => {
+				// An edit stays on the page; a create clears for the next one.
+				if (editing) setSaved(true)
+				else setForm(blank)
+			},
+		)
 	}
 
 	const previewUrl = previewImageUrl(form.imageUrl)
@@ -196,7 +187,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 					<input
 						ref={picker}
 						type="file"
-						accept="image/png,image/jpeg,image/webp,image/gif"
+						accept={IMAGE_ACCEPT}
 						hidden
 						onChange={(e) => {
 							const file = e.target.files?.[0]
@@ -242,7 +233,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 				<span>Requires all five themes shipped</span>
 			</label>
 			<div>
-				<Button type="submit" variant="primary" disabled={busy || uploading}>
+				<Button type="submit" variant="primary" disabled={busy !== null || uploading}>
 					{busy ? (editing ? "Saving…" : "Creating…") : editing ? "Save changes" : "Create item"}
 				</Button>
 			</div>

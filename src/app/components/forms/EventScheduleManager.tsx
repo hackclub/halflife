@@ -152,11 +152,11 @@ function RowTable({
 }
 
 /** Kept next to the tables it explains, so the note cannot describe the old one. */
-export function EventScheduleNote({ timeZone }: { timeZone: string }) {
+export function EventScheduleNote() {
 	return (
 		<Callout tone="info">
-			Times are entered in your own timezone and shown to participants in the programme&apos;s ({timeZone}). A repeating
-			event is written as separate rows, so a single week can be moved or cancelled without touching the rest.
+			Times are entered in your own timezone and shown to participants in theirs. A repeating event is written
+			as separate rows, so a single week can be moved or cancelled without touching the rest.
 		</Callout>
 	)
 }

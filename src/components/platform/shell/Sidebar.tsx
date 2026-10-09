@@ -96,16 +96,12 @@ export function Sidebar({ className }: { className?: string }) {
 					aria-label={`${viewer.name}'s profile`}
 					className="shrink-0 rounded-lg transition-transform hover:-translate-y-0.5 active:translate-y-px"
 				>
-					{viewer.image ? (
-						// eslint-disable-next-line @next/next/no-img-element -- the avatar host (Slack via Cachet) is known only at runtime
-						<img
-							src={viewer.image}
-							alt=""
-							className="size-[66px] rounded-lg border-2 border-line bg-sky-pale object-cover"
-						/>
-					) : (
-						<Avatar name={viewer.name} image={null} shape="tile" className="size-[66px] text-[1.6rem]" />
-					)}
+					<Avatar
+						name={viewer.name}
+						image={viewer.image}
+						shape="tile"
+						className="size-[66px] text-[1.6rem]"
+					/>
 				</Link>
 				<div className="min-w-0">
 					<Link
