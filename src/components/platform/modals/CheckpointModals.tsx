@@ -1837,6 +1837,8 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	// R2 object keys, not flags: what these ask for is evidence, and a boolean was letting the form take a file and drop it on the floor. Several screenshots, because one order is often split across vendors and one checkout page is not always one screen tall.
 	const [carts, setCarts] = useState<UploadedImage[]>([])
 	const [tier, setTier] = useState<1 | 2 | 3>(project?.tier ?? 1)
+	// Makers who want nothing from the parts fund can hand in an empty BOM: the box states it, a confirm makes sure, and the flag is what lets the sheet past step 2 without carts.
+	const [declinedFunding, setDeclinedFunding] = useState(false)
 	const [clip, setClip] = useState<string | null>(null)
 	// The bucket URL of the closing clip, when there is one, so it can be saved and posted elsewhere afterwards.
 	const [clipUrl, setClipUrl] = useState<string | null>(null)
@@ -1899,6 +1901,9 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const tierBlocked = !isBuild && tierShort(selectedTier.fundingHours) > 0
 	// Over the tier's funding warns; past the leeway it refuses the submit, the same refusal the hours floor makes.
 	const bomBlocked = !isBuild && bomTotal > selectedTier.grantUsd + BOM_MARGIN_USD
+	// An empty BOM the maker has deliberately declined funding for. Read off the loaded list every render rather than trusted from the toggle alone, so a stale flag can never unblock a week whose parts arrived after the box was ticked.
+	const bomEmpty = !isBuild && bom !== null && bom.items.length === 0
+	const fundingDeclined = bomEmpty && declinedFunding
 
 	const repoReady = repoResult?.canSubmit ?? false
 
@@ -1910,7 +1915,8 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			: isBuild
 				? clip && (works === "yes" || (works === "no" && writeup.trim().length >= 40))
 				: step === 2
-					? carts.length > 0 && !tierBlocked && !bomBlocked
+					// No funding, no order, no carts to screenshot: a declined empty BOM carries no cart evidence.
+					? (carts.length > 0 || fundingDeclined) && !tierBlocked && !bomBlocked
 					: clip && !tierBlocked && !bomBlocked && hasCover
 
 	/**
@@ -1938,6 +1944,21 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		}
 		if (postId) setShareId(postId)
 		else setOpenCheckpoint(null)
+	}
+
+	// Declining funding is the one choice in this sheet that an edit cannot quietly undo – once handed in without a BOM there is nothing to fund – so the box asks once more, following the repo's window.confirm precedent for irreversible choices.
+	function toggleDeclinedFunding() {
+		if (declinedFunding) {
+			setDeclinedFunding(false)
+			return
+		}
+		if (
+			window.confirm(
+				"Hand in with an empty parts list? No parts funding will be ordered for this project. You can still change your mind before you submit.",
+			)
+		) {
+			setDeclinedFunding(true)
+		}
 	}
 
 	if (shareId) {
@@ -2090,7 +2111,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 										{bom.items.length === 0 && (
 											<tr className="border-b border-dashed border-line/60">
 												<td colSpan={5} className="hand px-4 py-3.5 text-[0.88rem] text-coral-deep">
-													no parts listed yet. Add them on the project page before you submit this.
+													no parts listed yet. Add them on the project page – or decline funding below – before you submit this.
 												</td>
 											</tr>
 										)}
@@ -2158,6 +2179,44 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							</Link>
 							.
 						</p>
+					)}
+					{/* Already stocked, or building from scrap: an empty BOM with funding declined hands in as-is, no carts needed. */}
+					{bomEmpty && (
+						<button
+							type="button"
+							role="checkbox"
+							aria-checked={declinedFunding}
+							onClick={toggleDeclinedFunding}
+							className={cx(
+								"sketch mt-4 flex w-full items-start gap-3 rounded-2xl px-4 py-3.5 text-left transition-colors",
+								declinedFunding ? "bg-violet-pale" : "bg-white hover:bg-black/[.03]",
+							)}
+							style={
+								{
+									"--sk-color": declinedFunding ? "var(--color-violet)" : "var(--color-line)",
+									"--sk-radius": "16px",
+								} as React.CSSProperties
+							}
+						>
+							<span
+								aria-hidden="true"
+								className={cx(
+									"mt-[3px] grid size-[18px] shrink-0 place-items-center rounded-[6px] border-2 transition-colors",
+									declinedFunding ? "border-transparent bg-violet" : "border-line-strong",
+								)}
+							>
+								{declinedFunding && <IconCheck className="text-sm text-white" />}
+							</span>
+							<span className="min-w-0">
+								<span className="block text-[0.95rem] font-extrabold text-navy">
+									I don&apos;t want parts funding for this project
+								</span>
+								<span className="hand mt-0.5 block text-[0.84rem] leading-snug text-navy-soft">
+									Hand in with an empty parts list – no carts, no order. We&apos;ll double-check before
+									you submit.
+								</span>
+							</span>
+						</button>
 					)}
 
 					<div className="mt-8 border-t border-dashed border-line pt-6">
