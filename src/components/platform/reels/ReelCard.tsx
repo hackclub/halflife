@@ -6,8 +6,8 @@ import { Gato } from "@/components/platform/art"
 import { IconComment, IconEye, IconFilm, IconHeart, IconPlay } from "@/components/platform/icons"
 import { ReportButton } from "@/components/platform/report/ReportButton"
 import { cx } from "@/lib/cx"
-import { prefersStill } from "@/lib/reduced-motion"
 import type { FeedItem } from "@/lib/feed"
+import { prefersStill } from "@/lib/reduced-motion"
 import { useStore } from "@/lib/store"
 
 function compact(n: number) {
