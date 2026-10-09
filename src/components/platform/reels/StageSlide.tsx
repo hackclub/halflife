@@ -5,13 +5,12 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { Gato } from "@/components/platform/art"
 import { IconFilm, IconPause, IconPlay, IconVolume, IconVolumeOff } from "@/components/platform/icons"
 import { cx } from "@/lib/cx"
+import { prefersStill } from "@/lib/reduced-motion"
 import type { FeedItem } from "@/lib/feed"
 import { ago, clock } from "./format"
 import { notePlaying, noteStopped, playExclusive, sendLike } from "./ReelCard"
 
-function prefersStill() {
-	return window.matchMedia("(prefers-reduced-motion: reduce)").matches
-}
+
 
 /** Two taps closer together than this, and near enough each other, are one like. */
 const DOUBLE_TAP_MS = 280
