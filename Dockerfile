@@ -31,7 +31,8 @@ ENV BETTER_AUTH_SECRET="build-time-placeholder-must-be-32-chars-long"
 ARG NEXT_PUBLIC_APP_URL
 ARG NEXT_PUBLIC_UPLOAD_HOST
 
-RUN bun run build
+# `compile` skips Next's own typecheck pass: CI already runs `pnpm typecheck` and `pnpm lint` on every commit before it can reach prod, so re-running tsc here (~15s) buys nothing. The cache mount keeps the incremental compile cache across builds, so small-diff deploys compile warm instead of cold.
+RUN --mount=type=cache,target=/app/.next/cache bunx next build --experimental-build-mode compile
 
 # ── runner ───────────────────────────────────────────────────────────────────
 FROM base AS runner
