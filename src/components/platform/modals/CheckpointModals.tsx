@@ -247,8 +247,17 @@ function withoutPlaceholder(body: string, placeholder: string): string {
 }
 
 export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
-	const { setOpenCheckpoint, logSession, editSession, complete, projects, stateOf, weekOfCheckpoint, hoursOf, participantGoal } =
-		useStore()
+	const {
+		setOpenCheckpoint,
+		logSession,
+		editSession,
+		complete,
+		projects,
+		stateOf,
+		weekOfCheckpoint,
+		hoursOf,
+		participantGoal,
+	} = useStore()
 
 	const week = weekOfCheckpoint(checkpoint)
 
@@ -582,41 +591,37 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							)}
 							role={saveError ? "alert" : undefined}
 						>
-							{saveError
-								? saveError
-								: uploading > 0
-									? `Uploading ${uploading === 1 ? "an image" : `${uploading} images`}…`
-									: missing
-										? missing
-										: editing
-											? "Saving replaces this entry. It keeps its place on the map."
-											: toFloor > 0
-												? (
-													<>
-														{fmtH(toFloor)} more before you can{" "}
-														{week.id === WARMUP_WEEK_ID ? "submit it" : "wrap up the week"}
-														{showGoal ? (
-															<>
-																{" "}– {fmtH(toGoal)} more if you want to reach your goal of{" "}
-																<strong className="rounded bg-gold-pale px-1 text-gold-ink">
-																	{weeklyGoalCoins} coins
-																</strong>{" "}
-																per week.
-															</>
-														) : !chasingPrinter ? (
-															<>
-																{" "}– every hour past the minimum earns{" "}
-																<strong className="rounded bg-gold-pale px-1 text-gold-ink">
-																	5 coins
-																</strong>{" "}
-																per hour.
-															</>
-														) : (
-															"."
-														)}
-													</>
-												)
-												: "Submit your project when it's done!"}
+							{saveError ? (
+								saveError
+							) : uploading > 0 ? (
+								`Uploading ${uploading === 1 ? "an image" : `${uploading} images`}…`
+							) : missing ? (
+								missing
+							) : editing ? (
+								"Saving replaces this entry. It keeps its place on the map."
+							) : toFloor > 0 ? (
+								<>
+									{fmtH(toFloor)} more before you can {week.id === WARMUP_WEEK_ID ? "submit it" : "wrap up the week"}
+									{showGoal ? (
+										<>
+											{" "}
+											– {fmtH(toGoal)} more if you want to reach your goal of{" "}
+											<strong className="rounded bg-gold-pale px-1 text-gold-ink">{weeklyGoalCoins} coins</strong> per
+											week.
+										</>
+									) : !chasingPrinter ? (
+										<>
+											{" "}
+											– every hour past the minimum earns{" "}
+											<strong className="rounded bg-gold-pale px-1 text-gold-ink">5 coins</strong> per hour.
+										</>
+									) : (
+										"."
+									)}
+								</>
+							) : (
+								"Submit your project when it's done!"
+							)}
 						</p>
 					</div>
 
@@ -1153,10 +1158,9 @@ export function PublicReelModal({
 							<p className="mt-1 text-[0.85rem] leading-snug text-navy-soft">
 								{celebration.extraHours > 0 ? (
 									<>
-										Once review is complete, you&apos;ll earn{" "}
-										<strong className="rounded bg-gold-pale px-1 text-gold-ink">coins</strong> at 5
-										per hour for your {fmtH(celebration.extraHours)} past your tier&apos;s funded
-										hours.
+										Once review is complete and assuming no deflation, you&apos;ll earn{" "}
+										<strong className="rounded bg-gold-pale px-1 text-gold-ink">coins</strong> at 5 per hour for your{" "}
+										{fmtH(celebration.extraHours)} past your tier&apos;s funded hours.
 									</>
 								) : (
 									<>It&apos;s with the reviewers now.</>
@@ -1745,7 +1749,8 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 											{t.detail}
 											<span className="mt-1 block text-navy-soft/90">
 												You can submit on tier {t.id} from {fmtH(t.fundingHours)} of design time – the parts-funding
-												hours and nothing more. Every hour past that (once your tier's funding is achieved) earns 5 spendable coins.
+												hours and nothing more. Every hour past that (once your tier's funding is achieved) earns 5
+												spendable coins.
 											</span>
 										</>
 									}
@@ -1849,6 +1854,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		printerFund,
 		pendingCoins,
 		goalId,
+		setSharePost,
 	} = useStore()
 	const week = weekOfCheckpoint(checkpoint)
 	const isBuild = week.phase === "build"
@@ -1881,7 +1887,6 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	// The closing reel once it is posted. A hand-in that fails after the reel went up reuses it on the retry rather than posting the same clip twice; a new clip clears it.
 	const [closingPostId, setClosingPostId] = useState<string | null>(null)
 	// Handed in: the reel that closed the week is offered for posting online.
-	const [shareId, setShareId] = useState<string | null>(null)
 	const [works, setWorks] = useState<"yes" | "no" | null>(null)
 	const [writeup, setWriteup] = useState("")
 	// Null while checking. The server runs the same checks at submit, so this only decides whether the sheet lets you get that far.
@@ -1945,8 +1950,8 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			: isBuild
 				? clip && (works === "yes" || (works === "no" && writeup.trim().length >= 40))
 				: step === 2
-					// No funding, no order, no carts to screenshot: a declined empty BOM carries no cart evidence.
-					? (carts.length > 0 || fundingDeclined) && !tierBlocked && !bomBlocked
+					? // No funding, no order, no carts to screenshot: a declined empty BOM carries no cart evidence.
+						(carts.length > 0 || fundingDeclined) && !tierBlocked && !bomBlocked
 					: clip && !tierBlocked && !bomBlocked && hasCover
 
 	/**
@@ -1972,7 +1977,16 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			setSubmitError(refused)
 			return
 		}
-		if (postId) setShareId(postId)
+		// Into the store rather than local state: the refresh this triggers flips the week to in_review, and the checkpoint router shows the celebration from there so it survives.
+		if (postId)
+			setSharePost({
+				checkpointId: checkpoint.id,
+				postId,
+				eyebrow: `${weekName(week)} · Submitted`,
+				videoUrl: clipUrl,
+				// Design only: build weeks earn flat, so "past your tier" means nothing there. The hours are the week's own total – the same basis the sheet's floor and target read – though a reviewer can still adjust them.
+				celebration: !isBuild ? { extraHours: Math.max(0, hours - week.earnFrom) } : undefined,
+			})
 		else setOpenCheckpoint(null)
 	}
 
@@ -1989,19 +2003,6 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		) {
 			setDeclinedFunding(true)
 		}
-	}
-
-	if (shareId) {
-		return (
-			<PublicReelModal
-				postId={shareId}
-				eyebrow={`${weekName(week)} · Submitted`}
-				videoUrl={clipUrl}
-				// Design only: build weeks earn flat, so "past your tier" means nothing there. The hours are the week's own total – the same basis the sheet's floor and target read – though a reviewer can still adjust them.
-				celebration={!isBuild ? { extraHours: Math.max(0, hours - week.earnFrom) } : undefined}
-				onClose={() => setOpenCheckpoint(null)}
-			/>
-		)
 	}
 
 	return (
@@ -2061,8 +2062,8 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							{project ? `${project.name} needs a cover image.` : "Your project needs a cover image."}
 						</p>
 						<p className="mt-1 text-[0.85rem] leading-snug text-navy-soft">
-							Upload one on that project&apos;s page before you can submit – covers are per project, so a cover
-							uploaded elsewhere does not count.{" "}
+							Upload one on that project&apos;s page before you can submit – covers are per project, so a cover uploaded
+							elsewhere does not count.{" "}
 							{project && (
 								<Link
 									href={`/projects/${project.id}`}
@@ -2152,7 +2153,8 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 												{bom.items.length === 0 && (
 													<tr className="border-b border-dashed border-line/60">
 														<td colSpan={5} className="hand px-4 py-3.5 text-[0.88rem] text-coral-deep">
-															no parts listed yet. Add them on the project page – or decline funding below – before you submit this.
+															no parts listed yet. Add them on the project page – or decline funding below – before you
+															submit this.
 														</td>
 													</tr>
 												)}
@@ -2206,22 +2208,22 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									<span className="text-[1.05rem] font-extrabold text-navy tabular-nums">${bomTotal.toFixed(2)}</span>
 								</div>
 							</Panel>
-						{/* One place to change the list: the project page. The sheet reads
+							{/* One place to change the list: the project page. The sheet reads
 	              it, so what is handed in is what the maker kept there. */}
-						{project && (
-							<p className="hand mt-2 text-[0.82rem] text-navy-soft">
-								Something wrong?{" "}
-								<Link
-									href={`/projects/${project.id}#bom-title`}
-									onClick={() => setOpenCheckpoint(null)}
-									className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
-								>
-									Edit the parts list on the project page
-								</Link>
-								.
-							</p>
-						)}
-					</>
+							{project && (
+								<p className="hand mt-2 text-[0.82rem] text-navy-soft">
+									Something wrong?{" "}
+									<Link
+										href={`/projects/${project.id}#bom-title`}
+										onClick={() => setOpenCheckpoint(null)}
+										className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
+									>
+										Edit the parts list on the project page
+									</Link>
+									.
+								</p>
+							)}
+						</>
 					)}
 					{/* Already stocked, or building from scrap: an empty BOM with funding declined hands in as-is, no carts needed. */}
 					{bomEmpty && (
@@ -2255,8 +2257,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									I don&apos;t want parts funding for this project
 								</span>
 								<span className="hand mt-0.5 block text-[0.84rem] leading-snug text-navy-soft">
-									Hand in with an empty parts list – no carts, no order. We&apos;ll double-check before
-									you submit.
+									Hand in with an empty parts list – no carts, no order. We&apos;ll double-check before you submit.
 								</span>
 							</span>
 						</button>
