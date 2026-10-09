@@ -176,11 +176,14 @@ export default async function AdminProgramPage() {
 				) : unsyncedAri.length === 0 ? (
 					<EmptyState>Every submission awaiting review is in Ari.</EmptyState>
 				) : (
-					<Table head={["Project", "Phase", ""]}>
+					<Table head={["Project", "Phase", "Why it's stuck", ""]}>
 						{unsyncedAri.map((item) => (
 							<tr key={`${item.themeProjectId}-${item.phase}`}>
 								<td className="hl-mono">{item.themeProjectId}</td>
 								<td>{item.phase.toLowerCase()}</td>
+								<td className="hand">
+									{item.reason ?? "Not attempted yet – the retry job will pick it up."}
+								</td>
 								<td>
 									<ActionButton
 										url={`/api/admin/theme-projects/${item.themeProjectId}/sync-to-ari`}
@@ -194,7 +197,8 @@ export default async function AdminProgramPage() {
 				)}
 				<p className="hl-hint">
 					A ship is what the reviewer sees, so a submission missing from Ari is a submission nobody will decide. The
-					hourly retry job replays these too; this button is for when you are looking at one now.
+					hourly retry job replays these too; this button is for when you are looking at one now. Rows failing on a
+					missing Slack account or repo need the maker, not another retry.
 				</p>
 			</Panel>
 

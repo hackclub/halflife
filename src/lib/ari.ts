@@ -219,9 +219,11 @@ export async function withdrawSubmissionFromAri(themeProjectId: string, phase: P
 }
 
 /** Hand-ins awaiting review that never reached Ari – for the retry job and the
- * admin panel. Two queries total rather than two per project, because the
+ * admin panel. Three queries total rather than several per project, because the
  * admin page renders this on every load. */
-export async function findUnsyncedAriSubmissions(): Promise<{ themeProjectId: string; phase: Phase }[]> {
+export async function findUnsyncedAriSubmissions(): Promise<
+	{ themeProjectId: string; phase: Phase; reason: string | null }[]
+> {
 	if (!isAriConfigured()) return []
 
 	const projects = await prisma.themeProject.findMany({
@@ -239,7 +241,29 @@ export async function findUnsyncedAriSubmissions(): Promise<{ themeProjectId: st
 		orderBy: { createdAt: "asc" },
 		select: { themeProjectId: true, phase: true, ariSubmissionId: true, createdAt: true },
 	})
-	return selectPendingShips(projects, open)
+	const pending = selectPendingShips(projects, open)
+	if (pending.length === 0) return []
+
+	// Why each one is stuck: the last send failure, so the panel reads "no Slack account" rather than a row to blindly retry. Withdraw failures are a different operation and live on the same action, so they are skipped here. Capped rather than per-pair queried; beyond a few hundred recent failures the oldest pairs fall back to "not attempted", which the next failure corrects.
+	const failures = await prisma.auditLog.findMany({
+		where: { action: AuditAction.ARI_SYNC_FAILURE, targetId: { in: pending.map((p) => p.themeProjectId) } },
+		orderBy: { createdAt: "desc" },
+		take: 500,
+		select: { targetId: true, metadata: true },
+	})
+	const reasonOf = (themeProjectId: string, phase: Phase): string | null => {
+		const meta = failures.find((failure) => {
+			if (failure.targetId !== themeProjectId) return false
+			const data =
+				typeof failure.metadata === "object" && failure.metadata !== null && !Array.isArray(failure.metadata)
+					? (failure.metadata as Record<string, unknown>)
+					: null
+			if (!data || "withdrawn" in data || data.phase !== phase) return false
+			return true
+		})?.metadata as { error?: unknown } | null
+		return typeof meta?.error === "string" ? meta.error : null
+	}
+	return pending.map((item) => ({ ...item, reason: reasonOf(item.themeProjectId, item.phase) }))
 }
 
 // ─── Inbound ─────────────────────────────────────────────────────────────────
