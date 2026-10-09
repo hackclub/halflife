@@ -14,6 +14,19 @@ COPY prisma ./prisma
 COPY prisma.config.ts ./
 RUN bunx prisma generate
 
+# ── prod-deps ────────────────────────────────────────────────────────────────
+# Runtime-only node_modules: the runner ships no build toolchain (typescript, eslint, tailwind, tsx, …). `prisma` itself is a production dependency, so `migrate deploy` at boot keeps working, as do the seed and backfill scripts (their only non-runtime import was `dotenv`, which is a dependency for exactly this reason). Rebuilt only when the lockfile or schema changes, like `deps` above.
+FROM base AS prod-deps
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+COPY package.json bun.lock ./
+RUN bun install --production --frozen-lockfile
+
+COPY prisma ./prisma
+COPY prisma.config.ts ./
+RUN bunx prisma generate
+
 # ── builder ──────────────────────────────────────────────────────────────────
 FROM base AS builder
 WORKDIR /app
@@ -52,9 +65,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 # `prisma migrate deploy` runs at container start, so the CLI and the schema
-# have to ship in the runtime image. node_modules is copied whole because the
-# Prisma CLI's dependency tree is hoisted and pruning it by hand is fragile.
-COPY --from=deps /app/node_modules ./node_modules
+# have to ship in the runtime image. This is the production-only tree: the
+# build toolchain stays in `deps`, which is why this layer is hundreds of MB
+# smaller than a full install.
+COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./
 

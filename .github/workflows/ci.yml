@@ -15,22 +15,31 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          version: 10.15.0
-      - uses: actions/setup-node@v4
+          bun-version: latest
+
+      - uses: actions/cache@v4
         with:
-          node-version: 22
-          cache: pnpm
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            bun-${{ runner.os }}-
 
-      - run: pnpm install --frozen-lockfile
+      - run: bun install --frozen-lockfile
 
-      # The Prisma client is gitignored, so typecheck and build both fail
-      # without this. It has to come first.
-      - run: pnpm exec prisma generate
+      # The Prisma client is gitignored, so typegen, typecheck and build all
+      # fail without this. It has to come first.
+      - run: bunx prisma generate
 
-      - run: pnpm typecheck
-      - run: pnpm lint
+      # `next-env.d.ts` and `.next/types` are gitignored but required for
+      # typecheck: image imports resolve through next/image-types/global and
+      # LayoutProps through the generated route types. `next typegen` creates
+      # both without a full build.
+      - run: bunx next typegen
+
+      - run: bun run typecheck
+      - run: bun run lint
 
       - name: Build
         env:
@@ -38,7 +47,7 @@ jobs:
           BETTER_AUTH_SECRET: ci-placeholder-secret-at-least-32-chars
           BETTER_AUTH_URL: http://localhost:3000
           DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
-        run: pnpm build
+        run: bun run build
 
   migrations:
     runs-on: ubuntu-latest
@@ -58,21 +67,25 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/halflife_ci
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          version: 10.15.0
-      - uses: actions/setup-node@v4
+          bun-version: latest
+
+      - uses: actions/cache@v4
         with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm exec prisma generate
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            bun-${{ runner.os }}-
+
+      - run: bun install --frozen-lockfile
+      - run: bunx prisma generate
 
       # Migrations must apply cleanly from nothing. Both reference programs
       # deploy migrations at container start with no CI check, which means a bad
       # migration is discovered as a crashlooping production pod.
       - name: Apply migrations from scratch
-        run: pnpm exec prisma migrate deploy
+        run: bunx prisma migrate deploy
 
       # And the committed schema has to match the migration history — the
       # failure mode where someone edits schema.prisma and forgets to migrate.
@@ -84,9 +97,10 @@ jobs:
           SHADOW_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/halflife_shadow
         run: |
           PGPASSWORD=postgres psql -h localhost -U postgres -c 'CREATE DATABASE halflife_shadow'
-          pnpm exec prisma migrate diff \
+          bunx prisma migrate diff \
             --from-migrations prisma/migrations \
             --to-schema prisma/schema.prisma \
             --exit-code
 
-      - run: pnpm db:seed
+      # tsx runs on the runner's preinstalled Node – no setup-node needed.
+      - run: bun run db:seed
