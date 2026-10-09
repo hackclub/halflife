@@ -29,7 +29,7 @@ const FOOT_H = 10
  *
  * Flooring ribbons as well makes a box's ribbons add up to more than the box, and then the widths stop meaning what the numbers say. Real case from the dev data: 5,202 + 11 + 6 users out of 5,219 is 466.5px of true ribbon inside a 468px box, but the 11 and the 6 are each thinner than the floor and get bumped to 1.5px, so the three overrun the box by 1.5px. A sliver of a cohort then reads wider than the cohort. A box floor keeps a real-but-tiny group visible as a hairline while its ribbons stay on the true scale, so a box's ribbons always sum to the people who continued past it.
  *
- * The activity stage fans out and back in – one person feeds every box they earned – so the boxes on either side of it carry more flow than headcount. Those boxes size to the flow rather than the people, or their ribbons would spill past the box. Everywhere else flow and headcount agree, so this changes nothing there.
+ * The activity stage fans out and back in – one person feeds every box they earned – so stacking its neighbours' ribbons would double-count them: two shared activities would read as twice the people. Where ribbons sharing a box carry more units than the box holds people, they nest from the same edge instead of stacking, and the shared region reads darker through the translucency. Each ribbon on its own never exceeds the box (a link's people are a subset of the box's), so nested ribbons always fit.
  */
 const MIN_BOX_H = 1.5
 
@@ -116,16 +116,8 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 	const H = 520
 	const plotH = H - (maxBoxes - 1) * NODE_PAD
 	const scale = plotH / widest
-	// What passes through each box, for the fan around the activity stage: a box there can carry more flow than headcount, and sizing to the people would spill its ribbons past it.
-	const inFlow = new Map<string, number>()
-	const outFlow = new Map<string, number>()
-	for (const link of diagram.links) {
-		inFlow.set(link.target, (inFlow.get(link.target) ?? 0) + link.value)
-		outFlow.set(link.source, (outFlow.get(link.source) ?? 0) + link.value)
-	}
-	/** Box height: floored so a real-but-tiny group is still a hairline, and raised to the flow where the fan demands it. */
-	const boxH = (node: Placed) =>
-		Math.max(MIN_BOX_H, Math.max(node.value, inFlow.get(node.id) ?? 0, outFlow.get(node.id) ?? 0) * scale)
+	/** Box height: floored so a real-but-tiny group is still a hairline. */
+	const boxH = (value: number) => Math.max(MIN_BOX_H, value * scale)
 	/** Ribbon height: never floored, so a box's ribbons always sum to its continuing headcount. */
 	const ribbonH = (value: number) => value * scale
 
@@ -135,7 +127,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 		for (const id of stage.nodes) {
 			const node = placed.find((p) => p.id === id)
 			if (!node) continue
-			const h = boxH(node)
+			const h = boxH(node.value)
 			node.y0 = y
 			node.y1 = y + h
 			y += h + NODE_PAD
@@ -161,17 +153,33 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 					const other = (r: Ribbon) => (side === "out" ? r.target : r.source)
 					return other(a).y0 - other(b).y0
 				})
-			let cursor = node.y0
-			for (const ribbon of mine) {
-				const h = ribbonH(ribbon.value)
-				if (side === "out") {
-					ribbon.sy0 = cursor
-					ribbon.sy1 = cursor + h
-				} else {
-					ribbon.ty0 = cursor
-					ribbon.ty1 = cursor + h
+			const boxSize = node.y1 - node.y0
+			const total = mine.reduce((n, r) => n + ribbonH(r.value), 0)
+			if (total <= boxSize + 1e-6) {
+				let cursor = node.y0
+				for (const ribbon of mine) {
+					const h = ribbonH(ribbon.value)
+					if (side === "out") {
+						ribbon.sy0 = cursor
+						ribbon.sy1 = cursor + h
+					} else {
+						ribbon.ty0 = cursor
+						ribbon.ty1 = cursor + h
+					}
+					cursor += h
 				}
-				cursor += h
+			} else {
+				// Shared people: the activity fan puts more units on this edge than the box holds, so stacking would double-count them. Nest every ribbon from the box's top edge instead – each one fits on its own, and the overlap reads darker. Destination order is kept, so every ribbon stays traceable to where it goes.
+				for (const ribbon of mine) {
+					const h = ribbonH(ribbon.value)
+					if (side === "out") {
+						ribbon.sy0 = node.y0
+						ribbon.sy1 = node.y0 + h
+					} else {
+						ribbon.ty0 = node.y0
+						ribbon.ty1 = node.y0 + h
+					}
+				}
 			}
 		}
 	}
@@ -276,7 +284,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 
 						{placed.map((node) => {
 							const x = xOf(node.stage)
-							const h = boxH(node)
+							const h = boxH(node.value)
 							const slot = labelRows.get(node.id)
 							return (
 								<g key={node.id}>
@@ -328,8 +336,8 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.5rem" }}>
 				Every ribbon is the same thickness for the same number of people, so widths compare across the whole
 				diagram. A ribbon stepping over a column is people who skipped that stage; a ribbon that stops is people
-				whose journey ended there. The activity stage counts every kind each person reached, so one maker can feed
-				several of its boxes – the boxes on either side of it are sized to that flow rather than the headcount.
+				whose journey ended there. The activity stage counts every kind each person reached, so ribbons sharing
+				people overlap instead of stacking – shared stretches read darker.
 			</p>
 		</div>
 	)

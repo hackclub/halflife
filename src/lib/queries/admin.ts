@@ -1350,7 +1350,7 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 	for (const user of users) {
 		const boxes = boxesOf(user).filter((box): box is string => box !== null)
 		for (const box of boxes) counts.set(box, (counts.get(box) ?? 0) + 1)
-		// The activity block fans out and back in: one ribbon per activity the person reached, from their last box before the block and to their first box after it. A person in two activities feeds two boxes, so the links around this one stage carry more units than the people – the renderer sizes those boxes to the flow.
+		// The activity block fans out and back in: one ribbon per activity the person reached, from their last box before the block and to their first box after it. A person in two activities feeds two boxes, so the links around this one stage carry more units than the people – the renderer nests ribbons that share a box instead of stacking them, so nobody is double-counted.
 		const firstAct = boxes.findIndex((box) => ACTIVITY_BOXES.has(box))
 		if (firstAct === -1) {
 			for (let i = 1; i < boxes.length; i++) link(boxes[i - 1] as string, boxes[i] as string)
