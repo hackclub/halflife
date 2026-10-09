@@ -614,21 +614,30 @@ function ActivityStrip({ days }: { days: DayActivity[] }) {
 }
 
 /**
- * How the cohort's hours are spread: one bar per band of participants, tallest where most people sit.
+ * How the cohort's hours are spread, as two measures over each band of hours.
  *
- * Bars rather than a step line, because the question is "how many people are in each band", which is a count per
- * band and reads as a count. Every bar carries its own number, so the shape never has to be read off a y-axis.
+ * The solid bar is the band's share of the accounts, the pale one its share of the hours. Both are drawn against
+ * one scale – the largest share either series has – so the pair can be compared directly: where the pale bar tops
+ * the solid one, that band holds more of the programme's hours than of its people, and the other way round where it
+ * does not. Scaling each series to its own maximum would look tidier and mean nothing, because a band would look
+ * hours-heavy purely because hours happen to be spread more evenly than people.
  *
- * Accounts with no hours are stated as a count rather than drawn: at three quarters of the cohort, a zero bar
- * would be several times the tallest real one and would flatten the whole distribution to make room.
+ * The shares, not the counts, are the thing drawn: buckets are unequal by design, so a count bar would say as much
+ * about the bucket's width as about the band. The counts are still what is written above each column, because that
+ * is the number an operator actually reads off this chart.
  */
 function HoursHistogram({ data }: { data: HoursDistribution }) {
 	if (data.withHours === 0) return <EmptyState>No hours logged yet.</EmptyState>
 
-	const max = Math.max(1, ...data.buckets.map((b) => b.participants))
-	// Guarded because the hours share divides by it: a distribution whose buckets somehow summed to zero would
-	// otherwise put NaN% in every tooltip, which is worse than a wrong number.
+	// Guarded because both shares divide by them: a cohort or a total that somehow came to zero would otherwise put
+	// NaN% in every tooltip and a NaN height on every bar, which is worse than a slightly wrong number.
+	const accounts = Math.max(data.withHours, 1)
 	const totalHours = Math.max(data.totalHours, 0.0001)
+
+	const shares = data.buckets.map((b) => ({ byAccounts: b.participants / accounts, byHours: b.hours / totalHours }))
+	// One scale across both series, so the taller of the two is always the full height and the comparison holds.
+	const scale = Math.max(0.0001, ...shares.flatMap((s) => [s.byAccounts, s.byHours]))
+
 	const summary = data.buckets
 		.filter((b) => b.participants > 0)
 		.map((b) => `${b.label} hours ${b.participants}`)
@@ -641,13 +650,44 @@ function HoursHistogram({ data }: { data: HoursDistribution }) {
 				<Stat label="Median hours" value={data.median === null ? "—" : fmtHours(data.median)} />
 				<Stat label="Total hours" value={fmtHours(data.totalHours)} />
 			</div>
+			<p className="hl-hint" style={{ fontSize: "0.75rem", margin: "0 0 0.5rem" }}>
+				<span
+					aria-hidden="true"
+					style={{
+						display: "inline-block",
+						width: "0.7rem",
+						height: "0.7rem",
+						borderRadius: "2px",
+						background: "var(--color-accent)",
+						marginRight: "0.35rem",
+						verticalAlign: "baseline",
+					}}
+				/>
+				share of accounts
+				<span
+					aria-hidden="true"
+					style={{
+						display: "inline-block",
+						width: "0.7rem",
+						height: "0.7rem",
+						borderRadius: "2px",
+						// Same colour and opacity as the bar itself, so the key and the mark cannot drift apart.
+						background: "var(--color-magenta)",
+						opacity: 0.3,
+						marginRight: "0.35rem",
+						marginLeft: "1rem",
+						verticalAlign: "baseline",
+					}}
+				/>
+				share of hours
+			</p>
 			<figure style={{ margin: 0 }}>
 				{/* The plot carries its own height and its columns stretch to fill it. Both are load-bearing: a
 				    percentage bar has nothing to resolve against inside an auto-height parent, and `align-items: end`
 				    would stop the column growing into one – which is how this chart rendered no bars at all. */}
 				<div
 					role="img"
-					aria-label={`Participants by hours logged: ${summary}`}
+					aria-label={`Participants and hours by hours logged: ${summary}`}
 					style={{
 						display: "grid",
 						gridTemplateColumns: `repeat(${data.buckets.length}, 1fr)`,
@@ -655,37 +695,59 @@ function HoursHistogram({ data }: { data: HoursDistribution }) {
 						height: "11rem",
 					}}
 				>
-					{data.buckets.map((b) => (
-						<div key={b.label} style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-							<span
-								aria-hidden="true"
-								style={{
-									fontSize: "0.7rem",
-									fontVariantNumeric: "tabular-nums",
-									textAlign: "center",
-									color: "var(--color-ink-muted)",
-									lineHeight: 1,
-									paddingBottom: "0.55rem",
-								}}
-							>
-								{b.participants > 0 ? fmtInt(b.participants) : ""}
-							</span>
-							{/* flex: 1 so the bar takes the space the count label does not. */}
-							<div style={{ flex: 1, display: "flex", alignItems: "flex-end", minHeight: 0 }}>
-								<div
-									title={`${b.label}h: ${fmtInt(b.participants)} participants · ${fmtPct(
-										b.participants / data.withHours,
-									)} of accounts with hours · ${fmtHours(b.hours)}, ${fmtPct(b.hours / totalHours)} of all hours`}
+					{data.buckets.map((b, i) => {
+						const share = shares[i] ?? { byAccounts: 0, byHours: 0 }
+						return (
+							<div key={b.label} style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+								<span
+									aria-hidden="true"
 									style={{
-										width: "100%",
-										height: `${Math.max((b.participants / max) * 100, b.participants > 0 ? 0.8 : 0)}%`,
-										background: b.participants === 0 ? "var(--color-surface-sunken)" : "var(--color-accent)",
-										borderRadius: "3px 3px 0 0",
+										fontSize: "0.7rem",
+										fontVariantNumeric: "tabular-nums",
+										textAlign: "center",
+										color: "var(--color-ink-muted)",
+										lineHeight: 1,
+										paddingBottom: "0.55rem",
 									}}
-								/>
+								>
+									{b.participants > 0 ? fmtInt(b.participants) : ""}
+								</span>
+								{/* flex: 1 so the bars take the space the count label does not. Both bars are pinned to the
+								    floor and drawn full-width so they overlap; the hours bar sits on top, translucent, so a
+								    band that is hours-heavy reads as a pale cap over the solid bar and one that is
+								    people-heavy reads as a solid cap over the pale. */}
+								<div style={{ flex: 1, position: "relative", minHeight: 0 }}>
+									<div
+										title={`${b.label}h: ${fmtInt(b.participants)} participants · ${fmtPct(
+											share.byAccounts,
+										)} of accounts with hours · ${fmtHours(b.hours)}, ${fmtPct(share.byHours)} of all hours`}
+										style={{
+											position: "absolute",
+											left: 0,
+											right: 0,
+											bottom: 0,
+											height: `${(share.byAccounts / scale) * 100}%`,
+											background: b.participants === 0 ? "var(--color-surface-sunken)" : "var(--color-accent)",
+											borderRadius: "3px 3px 0 0",
+										}}
+									/>
+									<div
+										aria-hidden="true"
+										style={{
+											position: "absolute",
+											left: 0,
+											right: 0,
+											bottom: 0,
+											height: `${(share.byHours / scale) * 100}%`,
+											background: "var(--color-magenta)",
+											opacity: 0.3,
+											borderRadius: "3px 3px 0 0",
+										}}
+									/>
+								</div>
 							</div>
-						</div>
-					))}
+						)
+					})}
 				</div>
 				<figcaption
 					aria-hidden="true"
@@ -715,9 +777,10 @@ function HoursHistogram({ data }: { data: HoursDistribution }) {
 				</figcaption>
 			</figure>
 			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
-				Hours count journal devlogs (reviewer-adjusted where set) plus linked Hackatime time, the same hours the
-				geography panels total. {fmtInt(data.withoutHours)} accounts have no hours at all and are left off the chart;
-				hover a bar for the band&apos;s share of the total.
+				Both series share one scale, so a pale bar taller than the solid one means the band holds more of the
+				programme&apos;s hours than of its people. Hours count journal devlogs (reviewer-adjusted where set) plus linked
+				Hackatime time, the same hours the geography panels total. {fmtInt(data.withoutHours)} accounts have no hours at
+				all and are left off the chart; hover a bar for both shares.
 			</p>
 		</div>
 	)
