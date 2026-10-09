@@ -698,7 +698,18 @@ function HoursHistogram({ data }: { data: HoursDistribution }) {
 					{data.buckets.map((b, i) => {
 						const share = shares[i] ?? { byAccounts: 0, byHours: 0 }
 						return (
-							<div key={b.label} style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+							// The tooltip hangs on the whole column rather than on a bar. Both bars are absolutely
+							// positioned and the hours one is painted last, so a title on the solid bar would be covered
+							// by the translucent one wherever the hours bar is the taller – exactly the half of the chart
+							// the tooltip is most worth reading. The column is the common ancestor, so hovering anywhere
+							// in it, bars included, reaches the one tooltip.
+							<div
+								key={b.label}
+								title={`${b.label}h: ${fmtInt(b.participants)} participants · ${fmtPct(
+									share.byAccounts,
+								)} of accounts with hours · ${fmtHours(b.hours)}, ${fmtPct(share.byHours)} of all hours`}
+								style={{ display: "flex", flexDirection: "column", minWidth: 0 }}
+							>
 								<span
 									aria-hidden="true"
 									style={{
@@ -712,15 +723,12 @@ function HoursHistogram({ data }: { data: HoursDistribution }) {
 								>
 									{b.participants > 0 ? fmtInt(b.participants) : ""}
 								</span>
-								{/* flex: 1 so the bars take the space the count label does not. Both bars are pinned to the
-								    floor and drawn full-width so they overlap; the hours bar sits on top, translucent, so a
-								    band that is hours-heavy reads as a pale cap over the solid bar and one that is
+								{/* flex: 1 so the bars take the space the count label does not. Both bars are pinned to
+								    the floor and drawn full-width so they overlap; the hours bar sits on top, translucent,
+								    so a band that is hours-heavy reads as a pale cap over the solid bar and one that is
 								    people-heavy reads as a solid cap over the pale. */}
 								<div style={{ flex: 1, position: "relative", minHeight: 0 }}>
 									<div
-										title={`${b.label}h: ${fmtInt(b.participants)} participants · ${fmtPct(
-											share.byAccounts,
-										)} of accounts with hours · ${fmtHours(b.hours)}, ${fmtPct(share.byHours)} of all hours`}
 										style={{
 											position: "absolute",
 											left: 0,
