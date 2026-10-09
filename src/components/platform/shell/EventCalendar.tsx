@@ -99,8 +99,9 @@ export function EventCalendar({
 	}, [open, timeZone])
 
 	// Each day's clipped segments with greedy overlap lanes, plus the week's
-	// shared hour range. Lanes are per day: overlapping blocks split their
-	// column, and a block alone keeps the full width.
+	// shared hour range. Lanes are counted per overlap crowd, not per day: two
+	// calls sharing an hour split their column, but a lone event keeps the full
+	// width even on a day that is busy elsewhere.
 	const { segments, startHour, endHour } = useMemo(() => {
 		const placed = new Map<string, PlacedSegment[]>()
 		let earliest = Number.POSITIVE_INFINITY
@@ -113,24 +114,37 @@ export function EventCalendar({
 						slice.seg !== null,
 				)
 				.sort((a, b) => a.seg.startMin - b.seg.startMin || a.seg.endMin - b.seg.endMin)
-			const laneEnds: number[] = []
-			const dayPlaced = slices.map(({ event, seg }) => {
-				let lane = laneEnds.findIndex((end) => end <= seg.startMin)
-				if (lane === -1) {
-					lane = laneEnds.length
-					laneEnds.push(seg.endMin)
+			// Crowds overlap transitively, so the running maximum end is the test: sorted by start, anything starting before it belongs to the crowd. Back-to-back events touch but never overlap, so each keeps the full width.
+			const crowds: { slices: typeof slices; end: number }[] = []
+			for (const slice of slices) {
+				const open = crowds[crowds.length - 1]
+				if (open && slice.seg.startMin < open.end) {
+					open.slices.push(slice)
+					open.end = Math.max(open.end, slice.seg.endMin)
 				} else {
-					laneEnds[lane] = seg.endMin
+					crowds.push({ slices: [slice], end: slice.seg.endMin })
 				}
-				earliest = Math.min(earliest, seg.startMin)
-				latest = Math.max(latest, seg.endMin)
-				return { event, ...seg, lane, lanes: 0 }
-			})
-			const lanes = Math.max(1, laneEnds.length)
-			placed.set(
-				day,
-				dayPlaced.map((segment) => ({ ...segment, lanes })),
-			)
+			}
+			const dayPlaced: PlacedSegment[] = []
+			for (const crowd of crowds) {
+				const laneEnds: number[] = []
+				for (const { event, seg } of crowd.slices) {
+					let lane = laneEnds.findIndex((end) => end <= seg.startMin)
+					if (lane === -1) {
+						lane = laneEnds.length
+						laneEnds.push(seg.endMin)
+					} else {
+						laneEnds[lane] = seg.endMin
+					}
+					earliest = Math.min(earliest, seg.startMin)
+					latest = Math.max(latest, seg.endMin)
+					dayPlaced.push({ event, ...seg, lane, lanes: Math.max(1, laneEnds.length) })
+				}
+				// The crowd's maximum, shared by all of it, so blocks that only brush the crowd still line up.
+				const lanes = Math.max(1, laneEnds.length)
+				for (const segment of dayPlaced.slice(-crowd.slices.length)) segment.lanes = lanes
+			}
+			placed.set(day, dayPlaced)
 		}
 		if (!Number.isFinite(earliest) || !Number.isFinite(latest)) return { segments: placed, startHour: 9, endHour: 17 }
 		return {
@@ -287,12 +301,13 @@ export function EventCalendar({
 											segment={segment}
 											day={day}
 											startHour={startHour}
+											gridHeight={gridHeight}
 											timeZone={timeZone}
 											isLive={eventIsLive(segment.event, new Date())}
 											onSelect={() => setSelected(day)}
 										/>
 									))}
-									{isToday && <TodayLine startHour={startHour} timeZone={timeZone} />}
+									{isToday && <TodayLine startHour={startHour} gridHeight={gridHeight} timeZone={timeZone} />}
 								</div>
 							)
 						})}
@@ -329,6 +344,7 @@ function EventBlock({
 	segment,
 	day,
 	startHour,
+	gridHeight,
 	timeZone,
 	isLive,
 	onSelect,
@@ -336,6 +352,7 @@ function EventBlock({
 	segment: PlacedSegment
 	day: string
 	startHour: number
+	gridHeight: number
 	timeZone: string
 	isLive: boolean
 	onSelect: () => void
@@ -344,8 +361,8 @@ function EventBlock({
 	const colour = eventColour(event.colour)
 	const range = eventRangeLabel(event.startsAt, event.endsAt, timeZone)
 	const top = ((startMin - startHour * 60) / 60) * HOUR_PX
-	// Short calls still need a tappable block; everything longer stays exact.
-	const height = Math.max(((endMin - startMin) / 60) * HOUR_PX, 20)
+	// Short calls still need a tappable block, but nothing may poke past the grid's bottom edge into the list below.
+	const height = Math.min(Math.max(((endMin - startMin) / 60) * HOUR_PX, 20), gridHeight - top)
 	const tallEnough = height >= 44
 	return (
 		<button
@@ -363,27 +380,29 @@ function EventBlock({
 		>
 			<span
 				className={cx(
-					"flex h-full flex-col justify-start gap-px overflow-hidden rounded-md border-l-4 bg-paper px-1.5 py-1 text-left",
+					"flex h-full min-w-0 flex-col justify-start gap-px overflow-hidden rounded-md border-l-4 bg-paper px-1.5 py-1 text-left",
 					isLive && "ring-2 ring-coral",
 				)}
 				style={{ borderColor: colour.accent }}
 			>
-				<span className="truncate text-[0.7rem] leading-tight font-extrabold text-navy">{event.title}</span>
+				<span className="line-clamp-2 text-[0.7rem] leading-tight font-extrabold break-words text-navy">
+					{event.title}
+				</span>
 				{tallEnough && <span className="truncate text-[0.62rem] leading-tight text-navy-soft">{range}</span>}
 			</span>
 		</button>
 	)
 }
 
-/** The "now" line across today's column, so a live call reads as live on the grid too. */
-function TodayLine({ startHour, timeZone }: { startHour: number; timeZone: string }) {
+/** The "now" line across today's column, so a live call reads as live on the grid too. Hidden when now is off the grid. */
+function TodayLine({ startHour, gridHeight, timeZone }: { startHour: number; gridHeight: number; timeZone: string }) {
 	const [now, setNow] = useState(() => new Date())
 	useEffect(() => {
 		const timer = setInterval(() => setNow(new Date()), 60_000)
 		return () => clearInterval(timer)
 	}, [])
 	const top = ((minutesInDay(now, timeZone) - startHour * 60) / 60) * HOUR_PX
-	if (top < 0) return null
+	if (top < 0 || top > gridHeight) return null
 	return (
 		<span aria-hidden="true" className="pointer-events-none absolute inset-x-0 z-10" style={{ top }}>
 			<span className="block border-t-2 border-coral" />
