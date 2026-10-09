@@ -217,7 +217,8 @@ export function EventCalendar({
 			cannot fit. A block's height is its runtime on the shared axis, so
 			durations compare across days as well as within one. */}
 			<div className="mt-4 overflow-x-auto">
-				<div className="min-w-[620px]">
+				{/* The bottom hour label centers on the last gridline, so its lower half hangs below the grid: without this padding the wrapper grows a few-pixel vertical scrollbar that clips it. */}
+				<div className="min-w-[620px] pb-4">
 					<div className="grid" style={{ gridTemplateColumns: "2.75rem repeat(7, minmax(0, 1fr))" }}>
 						<span aria-hidden="true" />
 						{days.map((day, i) => {
