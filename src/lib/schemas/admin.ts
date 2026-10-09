@@ -7,6 +7,7 @@ import {
 	ShopFulfillmentMethod,
 	ShopFulfillmentStage,
 	ShopItemCategory,
+	Theme,
 } from "@/app/generated/prisma/enums"
 import { boundedText, cuid, httpsUrl } from "@/lib/schemas/common"
 
@@ -19,7 +20,13 @@ export const userFlagsSchema = z
 	})
 	.strict()
 
-export const projectExtensionSchema = z.object({ submissionExtensionUntil: z.coerce.date().nullable() }).strict()
+export const projectExtensionSchema = z
+	.object({
+		submissionExtensionUntil: z.coerce.date().nullable().optional(),
+		theme: z.enum(Theme).optional(),
+	})
+	.strict()
+	.refine((b) => b.submissionExtensionUntil !== undefined || b.theme !== undefined, "Nothing to change")
 
 /** Closing a maker's dispute. The note is optional; it is for the record. */
 export const resolveDisputeSchema = z.object({ note: boundedText(2000).optional() }).strict()

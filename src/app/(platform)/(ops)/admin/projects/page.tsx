@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { ExtensionForm } from "@/app/components/forms/ExtensionForm"
+import { ThemeMoveForm } from "@/app/components/forms/ThemeMoveForm"
 import { Badge, EmptyState, PageHeader, Panel, statusLabel, statusTone, Table } from "@/app/components/ui"
 import { PhaseStatus, Theme } from "@/app/generated/prisma/enums"
 import { getThemeDef, THEMES } from "@/lib/config/program"
@@ -44,6 +45,7 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 	const search = await searchParams
 	const filters = filtersFrom(search)
 	const canExtend = hasPermission(roles, Permission.MANAGE_USERS)
+	const canMoveTheme = hasPermission(roles, Permission.MANAGE_PROGRAM)
 
 	const { items, nextCursor } = await listProjects({ ...filters, cursor: search.cursor, limit: 50 })
 
@@ -165,7 +167,14 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 										</Link>
 										<div className="hl-hint hl-mono">{project.user.slackId ?? project.user.email}</div>
 									</td>
-									<td>{getThemeDef(project.theme).label}</td>
+									<td>
+										{getThemeDef(project.theme).label}
+										{canMoveTheme ? (
+											<div style={{ marginTop: "0.5rem" }}>
+												<ThemeMoveForm projectId={project.id} current={project.theme} />
+											</div>
+										) : null}
+									</td>
 									<td>
 										<Badge tone={statusTone(project.designStatus)}>{statusLabel(project.designStatus)}</Badge>
 									</td>
