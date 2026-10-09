@@ -2261,19 +2261,17 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 					{/* No order, nothing to screenshot: the carts go away with the BOM. */}
 					{!fundingDeclined && (
-						<>
-							<div className="mt-8 border-t border-dashed border-line pt-6">
-								<div className="grid gap-2">
-									<p className="label flex items-center gap-2 text-navy-soft">
-										<IconCart className="text-base" /> Screenshots of your cart
-									</p>
-									<p className="text-[0.88rem] leading-snug text-navy-soft">
-										The checkout page with the total visible. Any vendor – add one per cart if the order is split.
-									</p>
-									<ImageUploads images={carts} onChange={setCarts} folder="sessions" max={10} label="Cart screenshot" />
-								</div>
+						<div className="mt-8 border-t border-dashed border-line pt-6">
+							<div className="grid gap-2">
+								<p className="label flex items-center gap-2 text-navy-soft">
+									<IconCart className="text-base" /> Screenshots of your cart
+								</p>
+								<p className="text-[0.88rem] leading-snug text-navy-soft">
+									The checkout page with the total visible. Any vendor – add one per cart if the order is split.
+								</p>
+								<ImageUploads images={carts} onChange={setCarts} folder="sessions" max={10} label="Cart screenshot" />
 							</div>
-						</>
+						</div>
 					)}
 
 					<div className="mt-8 border-t border-dashed border-line pt-6">
