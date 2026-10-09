@@ -1124,6 +1124,8 @@ export interface SankeyLink {
 	source: string
 	target: string
 	value: number
+	/** A fan ribbon: one person's unit repeated across every activity box they reached, so the same people appear in several of these. Chain ribbons carry disjoint users and stack. */
+	fan: boolean
 }
 
 export interface SankeyStage {
@@ -1344,28 +1346,33 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 	}
 
 	const counts = new Map<string, number>()
-	const linkCounts = new Map<string, number>()
-	const link = (from: string, to: string) =>
-		linkCounts.set(`${from}\u0000${to}`, (linkCounts.get(`${from}\u0000${to}`) ?? 0) + 1)
+	const linkCounts = new Map<string, { value: number; fan: boolean }>()
+	const link = (from: string, to: string, fan: boolean) => {
+		const key = `${from}\u0000${to}`
+		const held = linkCounts.get(key)
+		// A pair of boxes is always crossed the same way, so fan-ness never disagrees on one key.
+		if (held) held.value += 1
+		else linkCounts.set(key, { value: 1, fan })
+	}
 	for (const user of users) {
 		const boxes = boxesOf(user).filter((box): box is string => box !== null)
 		for (const box of boxes) counts.set(box, (counts.get(box) ?? 0) + 1)
-		// The activity block fans out and back in: one ribbon per activity the person reached, from their last box before the block and to their first box after it. A person in two activities feeds two boxes, so the links around this one stage carry more units than the people – the renderer nests ribbons that share a box instead of stacking them, so nobody is double-counted.
+		// The activity block fans out and back in: one ribbon per activity the person reached, from their last box before the block and to their first box after it. Those fan ribbons share people, so they are flagged for the renderer to nest rather than stack; every other ribbon carries disjoint users and stacks.
 		const firstAct = boxes.findIndex((box) => ACTIVITY_BOXES.has(box))
 		if (firstAct === -1) {
-			for (let i = 1; i < boxes.length; i++) link(boxes[i - 1] as string, boxes[i] as string)
+			for (let i = 1; i < boxes.length; i++) link(boxes[i - 1] as string, boxes[i] as string, false)
 			continue
 		}
 		let lastAct = firstAct
 		while (lastAct + 1 < boxes.length && ACTIVITY_BOXES.has(boxes[lastAct + 1] as string)) lastAct++
 		// "joined" is unconditional, so a block always has a box before it.
 		const prev = boxes[firstAct - 1] as string
-		for (let i = 1; i < firstAct; i++) link(boxes[i - 1] as string, boxes[i] as string)
-		for (let i = firstAct; i <= lastAct; i++) link(prev, boxes[i] as string)
+		for (let i = 1; i < firstAct; i++) link(boxes[i - 1] as string, boxes[i] as string, false)
+		for (let i = firstAct; i <= lastAct; i++) link(prev, boxes[i] as string, true)
 		const next = boxes[lastAct + 1]
 		if (next) {
-			for (let i = firstAct; i <= lastAct; i++) link(boxes[i] as string, next)
-			for (let i = lastAct + 2; i < boxes.length; i++) link(boxes[i - 1] as string, boxes[i] as string)
+			for (let i = firstAct; i <= lastAct; i++) link(boxes[i] as string, next, true)
+			for (let i = lastAct + 2; i < boxes.length; i++) link(boxes[i - 1] as string, boxes[i] as string, false)
 		}
 	}
 
@@ -1436,9 +1443,9 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 			stages,
 			nodes,
 			links: [...linkCounts]
-				.map(([key, value]) => {
+				.map(([key, entry]) => {
 					const [source, target] = key.split("\u0000")
-					return { source: source as string, target: target as string, value }
+					return { source: source as string, target: target as string, value: entry.value, fan: entry.fan }
 				})
 				.filter((link) => live.has(link.source) && live.has(link.target)),
 			total: users.length,
