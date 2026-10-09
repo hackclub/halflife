@@ -2082,103 +2082,114 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 			{!isBuild && step === 2 && (
 				<div>
-					<ModalTitle sub="Every line needs a real vendor and a real price. We ask for the cart screenshot so the total is checkable.">
-						Finalise your BOM and tier
+					<ModalTitle
+						sub={
+							fundingDeclined
+								? "No parts, no order – just the tier your hours unlock."
+								: "Every line needs a real vendor and a real price. We ask for the cart screenshot so the total is checkable."
+						}
+					>
+						{fundingDeclined ? "Finalise your tier" : "Finalise your BOM and tier"}
 					</ModalTitle>
 
-					<Panel tone="line" radius={18} className="overflow-hidden bg-white">
-						{bomError ? (
-							<p role="alert" className="px-4 py-5 text-[0.86rem] font-semibold text-coral-deep">
-								{bomError}
+					{/* Declined funding hides the parts list and its edit note – there is nothing to check. */}
+					{!fundingDeclined && (
+						<>
+							<Panel tone="line" radius={18} className="overflow-hidden bg-white">
+								{bomError ? (
+									<p role="alert" className="px-4 py-5 text-[0.86rem] font-semibold text-coral-deep">
+										{bomError}
+									</p>
+								) : !bom ? (
+									<p className="hand px-4 py-5 text-[0.88rem] text-navy-soft" aria-live="polite">
+										reading your parts list…
+									</p>
+								) : (
+									<div className="overflow-x-auto">
+										<table className="w-full min-w-[480px] text-left text-[0.86rem]">
+											<thead>
+												<tr className="border-b border-dashed border-line">
+													{["Part", "Qty", "Unit", "Total", "Vendor"].map((h) => (
+														<th key={h} scope="col" className="label px-4 py-2.5 text-navy-soft">
+															{h}
+														</th>
+													))}
+												</tr>
+											</thead>
+											<tbody>
+												{bom.items.length === 0 && (
+													<tr className="border-b border-dashed border-line/60">
+														<td colSpan={5} className="hand px-4 py-3.5 text-[0.88rem] text-coral-deep">
+															no parts listed yet. Add them on the project page – or decline funding below – before you submit this.
+														</td>
+													</tr>
+												)}
+												{bom.items.map((l) => (
+													<tr key={l.id} className="border-b border-dashed border-line/60 align-top">
+														<td className="px-4 py-2.5">
+															<span className="block font-semibold [overflow-wrap:anywhere] text-navy">{l.name}</span>
+															{l.purpose && (
+																<span className="block text-[0.8rem] leading-snug text-navy-soft">{l.purpose}</span>
+															)}
+														</td>
+														<td className="px-4 py-2.5 tabular-nums">{l.quantity}</td>
+														<td className="px-4 py-2.5 tabular-nums">${l.unitCostUsd.toFixed(2)}</td>
+														<td className="px-4 py-2.5 font-semibold text-navy tabular-nums">
+															${(l.quantity * l.unitCostUsd).toFixed(2)}
+														</td>
+														<td className="hand px-4 py-2.5 text-navy-soft">
+															{l.link ? (
+																<a
+																	href={l.link}
+																	target="_blank"
+																	rel="noopener noreferrer"
+																	className="underline decoration-line-strong underline-offset-4 hover:text-navy"
+																>
+																	{l.vendor || "link"}
+																</a>
+															) : (
+																l.vendor || "—"
+															)}
+														</td>
+													</tr>
+												))}
+												<tr>
+													<td className="px-4 py-2.5">
+														<span className="block font-semibold text-navy">Tax &amp; shipping</span>
+														<span className="block text-[0.8rem] leading-snug text-navy-soft">for the whole order</span>
+													</td>
+													<td className="px-4 py-2.5 text-navy-soft">–</td>
+													<td className="px-4 py-2.5 text-navy-soft">–</td>
+													<td className="px-4 py-2.5 font-semibold text-navy tabular-nums">
+														${bom.taxShippingUsd.toFixed(2)}
+													</td>
+													<td />
+												</tr>
+											</tbody>
+										</table>
+									</div>
+								)}
+								<div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 bg-cream px-4 py-3">
+									<span className="label text-navy-soft">Cart total</span>
+									<span className="text-[1.05rem] font-extrabold text-navy tabular-nums">${bomTotal.toFixed(2)}</span>
+								</div>
+							</Panel>
+						{/* One place to change the list: the project page. The sheet reads
+	              it, so what is handed in is what the maker kept there. */}
+						{project && (
+							<p className="hand mt-2 text-[0.82rem] text-navy-soft">
+								Something wrong?{" "}
+								<Link
+									href={`/projects/${project.id}#bom-title`}
+									onClick={() => setOpenCheckpoint(null)}
+									className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
+								>
+									Edit the parts list on the project page
+								</Link>
+								.
 							</p>
-						) : !bom ? (
-							<p className="hand px-4 py-5 text-[0.88rem] text-navy-soft" aria-live="polite">
-								reading your parts list…
-							</p>
-						) : (
-							<div className="overflow-x-auto">
-								<table className="w-full min-w-[480px] text-left text-[0.86rem]">
-									<thead>
-										<tr className="border-b border-dashed border-line">
-											{["Part", "Qty", "Unit", "Total", "Vendor"].map((h) => (
-												<th key={h} scope="col" className="label px-4 py-2.5 text-navy-soft">
-													{h}
-												</th>
-											))}
-										</tr>
-									</thead>
-									<tbody>
-										{bom.items.length === 0 && (
-											<tr className="border-b border-dashed border-line/60">
-												<td colSpan={5} className="hand px-4 py-3.5 text-[0.88rem] text-coral-deep">
-													no parts listed yet. Add them on the project page – or decline funding below – before you submit this.
-												</td>
-											</tr>
-										)}
-										{bom.items.map((l) => (
-											<tr key={l.id} className="border-b border-dashed border-line/60 align-top">
-												<td className="px-4 py-2.5">
-													<span className="block font-semibold [overflow-wrap:anywhere] text-navy">{l.name}</span>
-													{l.purpose && (
-														<span className="block text-[0.8rem] leading-snug text-navy-soft">{l.purpose}</span>
-													)}
-												</td>
-												<td className="px-4 py-2.5 tabular-nums">{l.quantity}</td>
-												<td className="px-4 py-2.5 tabular-nums">${l.unitCostUsd.toFixed(2)}</td>
-												<td className="px-4 py-2.5 font-semibold text-navy tabular-nums">
-													${(l.quantity * l.unitCostUsd).toFixed(2)}
-												</td>
-												<td className="hand px-4 py-2.5 text-navy-soft">
-													{l.link ? (
-														<a
-															href={l.link}
-															target="_blank"
-															rel="noopener noreferrer"
-															className="underline decoration-line-strong underline-offset-4 hover:text-navy"
-														>
-															{l.vendor || "link"}
-														</a>
-													) : (
-														l.vendor || "—"
-													)}
-												</td>
-											</tr>
-										))}
-										<tr>
-											<td className="px-4 py-2.5">
-												<span className="block font-semibold text-navy">Tax &amp; shipping</span>
-												<span className="block text-[0.8rem] leading-snug text-navy-soft">for the whole order</span>
-											</td>
-											<td className="px-4 py-2.5 text-navy-soft">–</td>
-											<td className="px-4 py-2.5 text-navy-soft">–</td>
-											<td className="px-4 py-2.5 font-semibold text-navy tabular-nums">
-												${bom.taxShippingUsd.toFixed(2)}
-											</td>
-											<td />
-										</tr>
-									</tbody>
-								</table>
-							</div>
 						)}
-						<div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 bg-cream px-4 py-3">
-							<span className="label text-navy-soft">Cart total</span>
-							<span className="text-[1.05rem] font-extrabold text-navy tabular-nums">${bomTotal.toFixed(2)}</span>
-						</div>
-					</Panel>
-					{/* One place to change the list: the project page. The sheet reads
-              it, so what is handed in is what the maker kept there. */}
-					{project && (
-						<p className="hand mt-2 text-[0.82rem] text-navy-soft">
-							Something wrong?{" "}
-							<Link
-								href={`/projects/${project.id}#bom-title`}
-								onClick={() => setOpenCheckpoint(null)}
-								className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
-							>
-								Edit the parts list on the project page
-							</Link>
-							.
-						</p>
+					</>
 					)}
 					{/* Already stocked, or building from scrap: an empty BOM with funding declined hands in as-is, no carts needed. */}
 					{bomEmpty && (
@@ -2219,17 +2230,22 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						</button>
 					)}
 
-					<div className="mt-8 border-t border-dashed border-line pt-6">
-						<div className="grid gap-2">
-							<p className="label flex items-center gap-2 text-navy-soft">
-								<IconCart className="text-base" /> Screenshots of your cart
-							</p>
-							<p className="text-[0.88rem] leading-snug text-navy-soft">
-								The checkout page with the total visible. Any vendor – add one per cart if the order is split.
-							</p>
-							<ImageUploads images={carts} onChange={setCarts} folder="sessions" max={10} label="Cart screenshot" />
-						</div>
-					</div>
+					{/* No order, nothing to screenshot: the carts go away with the BOM. */}
+					{!fundingDeclined && (
+						<>
+							<div className="mt-8 border-t border-dashed border-line pt-6">
+								<div className="grid gap-2">
+									<p className="label flex items-center gap-2 text-navy-soft">
+										<IconCart className="text-base" /> Screenshots of your cart
+									</p>
+									<p className="text-[0.88rem] leading-snug text-navy-soft">
+										The checkout page with the total visible. Any vendor – add one per cart if the order is split.
+									</p>
+									<ImageUploads images={carts} onChange={setCarts} folder="sessions" max={10} label="Cart screenshot" />
+								</div>
+							</div>
+						</>
+					)}
 
 					<div className="mt-8 border-t border-dashed border-line pt-6">
 						<p className="label mb-2 text-magenta">Finalise your tier</p>
