@@ -26,6 +26,9 @@ importers:
       better-auth:
         specifier: 1.7.7
         version: 1.7.7(@prisma/client@7.10.0(prisma@7.10.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@5.9.3))(typescript@5.9.3))(mysql2@3.15.3)(next@16.3.8(@babel/core@7.29.7)(@types/node@22.20.5)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(pg@8.23.1)(prisma@7.10.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@5.9.3))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      dotenv:
+        specifier: ^18.0.6
+        version: 18.0.7
       isomorphic-dompurify:
         specifier: ^4.5.0
         version: 4.5.0(@noble/hashes@2.4.0)
@@ -72,9 +75,6 @@ importers:
       babel-plugin-react-compiler:
         specifier: 1.0.0
         version: 1.0.0
-      dotenv:
-        specifier: ^18.0.6
-        version: 18.0.7
       eslint:
         specifier: ^9.39.5
         version: 9.39.5(jiti@2.7.0)
