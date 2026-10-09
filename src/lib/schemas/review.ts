@@ -3,6 +3,7 @@ import { ReviewResult } from "@/app/generated/prisma/enums"
 import { TIER_IDS } from "@/lib/config/tiers"
 import { paginationQuery } from "@/lib/pagination"
 import { boundedText, cuid, phaseSchema } from "@/lib/schemas/common"
+import { MAX_SESSION_HOURS } from "@/lib/schemas/session"
 
 const tierSchema = z
 	.number()
@@ -51,7 +52,7 @@ export const hoursDecisionSchema = z
 						.object({
 							kind: z.literal("session"),
 							id: cuid,
-							hoursApproved: z.number().min(0).max(24),
+							hoursApproved: z.number().min(0).max(MAX_SESSION_HOURS),
 							comments: boundedText(2000).optional(),
 						})
 						.strict(),

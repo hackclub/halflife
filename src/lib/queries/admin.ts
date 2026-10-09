@@ -3,7 +3,8 @@ import type { Prisma } from "@/app/generated/prisma/client"
 import {
 	AuditAction,
 	HoursSource,
-	type PhaseStatus,
+	Phase,
+	PhaseStatus,
 	PostKind,
 	type ReportStatus,
 	ReviewPass,
@@ -455,7 +456,17 @@ export async function listRecentPublicReels(limit = 100) {
 
 export async function getAdminCounters() {
 	const [pendingReviews, pendingOrders, participants, shipped] = await Promise.all([
-		prisma.phaseSubmission.count({ where: { resolvedAt: null } }),
+		// Live hand-ins only: an open submission on a phase that is actually in review, on a project that still exists. Counting every unresolved row also sweeps up submissions that never reached Ari, or whose phase has moved on without the row resolving – which is exactly how this number drifts above what reviewers see in Ari.
+		prisma.phaseSubmission.count({
+			where: {
+				resolvedAt: null,
+				themeProject: { deletedAt: null },
+				OR: [
+					{ phase: Phase.DESIGN, themeProject: { designStatus: PhaseStatus.in_review } },
+					{ phase: Phase.BUILD, themeProject: { buildStatus: PhaseStatus.in_review } },
+				],
+			},
+		}),
 		prisma.shopOrder.count({ where: { status: ShopOrderStatus.PENDING } }),
 		prisma.user.count(),
 		prisma.printerAward.count({ where: { revokedAt: null } }),
@@ -1113,6 +1124,8 @@ export interface SankeyLink {
 	source: string
 	target: string
 	value: number
+	/** A fan ribbon: one person's unit repeated across every activity box they reached, so the same people appear in several of these. Chain ribbons carry disjoint users and stack. */
+	fan: boolean
 }
 
 export interface SankeyStage {
@@ -1130,6 +1143,13 @@ export interface SankeyDiagram {
 	total: number
 }
 
+/** What share of onboarded finishers did each tracked activity: one maker counts in every column they reached. */
+export interface ActivityShare {
+	/** Makers who finished onboarding: the denominator every column reads against. */
+	total: number
+	activities: { key: string; label: string; base: string; users: number; share: number }[]
+}
+
 /**
  * The tracked-activity branches, in the order they stack. Each is its own ribbon rather than a funnel row, because a maker may do any combination of them – devlog and reel are not alternatives, so counting them as rows of one spine is what made the funnel wrong.
  */
@@ -1144,12 +1164,14 @@ const SANKEY_ACTIVITY = [
 type ActivityKey = (typeof SANKEY_ACTIVITY)[number]["key"]
 
 /**
- * Box id for one activity at one rank. The rank is in the id because the two activity columns cannot share boxes: a box is a rectangle with one x position, so one id per column is the whole point of a Sankey.
+ * Box id for one activity. One stage, so one id per kind – a box is a rectangle with one x position, and every kind gets exactly one.
  */
-const activityNode = (rank: number, key: ActivityKey) =>
-	`act${rank}${SANKEY_ACTIVITY.find((a) => a.key === key)?.base ?? "Unknown"}`
+const activityNode = (key: ActivityKey) => `act${SANKEY_ACTIVITY.find((a) => a.key === key)?.base ?? "Unknown"}`
 
-const activityNodes = (rank: number) => SANKEY_ACTIVITY.map((a) => activityNode(rank, a.key))
+const activityNodes = () => SANKEY_ACTIVITY.map((a) => activityNode(a.key))
+
+/** The activity boxes, for recognising the fan stage when links are drawn. */
+const ACTIVITY_BOXES = new Set(activityNodes())
 
 const SANKEY_OUTCOME = [
 	{ node: "approved", label: "Approved" },
@@ -1162,19 +1184,19 @@ const SANKEY_OUTCOME = [
 /**
  * The journey as a Sankey: left-to-right columns of stages, a ribbon per route people actually took.
  *
- * This is the shape the funnel cannot draw. The funnel is one spine and every row is "also did everything above it", so it can only report cumulative survival – it cannot say that a quarter of makers journal and never post, nor that a maker who posted in week one and journalled in week four is the same shape as one who did it the other way round. Here each stage is a column and a user is in at most one box per column, so a skipped stage is a visible gap the ribbon steps over and a fork is two ribbons of different widths rather than one number.
+ * This is the shape the funnel cannot draw. The funnel is one spine and every row is "also did everything above it", so it can only report cumulative survival – it cannot say that a quarter of makers journal and never post, nor that a maker who posted in week one and journalled in week four is the same shape as one who did it the other way round. Here each stage is a column and a skipped stage is a visible gap the ribbon steps over, and a fork is two ribbons of different widths rather than one number. The one exception is the activity stage, where a maker sits in every box they earned rather than at most one.
  *
  * Every stage except the first is optional, so a person contributes to the box they qualify for and the ribbon then jumps to the next stage they reach. A person who reached nothing after signing up is a ribbon that ends, which is a dead end the funnel has no way to draw.
  *
- * The journey stages are the funnel's own steps, in the funnel's order and read the funnel's way, so the two views can be laid side by side stage for stage: onboarding is broken out into each question the state machine records rather than collapsed into one "Setup" column, and the funnel's tracked-time rows stay as the activity branches below rather than being drawn twice. What the Sankey adds and the funnel cannot is the branch: the first two tracked activities as their own columns, and an outcome column that says what happened to a hand-in rather than stopping at "submitted".
+ * The journey stages are the funnel's own steps, in the funnel's order and read the funnel's way, so the two views can be laid side by side stage for stage: onboarding is broken out into each question the state machine records rather than collapsed into one "Setup" column, and the funnel's tracked-time rows stay as the activity branches below rather than being drawn twice. What the Sankey adds and the funnel cannot is the branch: one shared activity stage, and an outcome column that says what happened to a hand-in rather than stopping at "submitted".
  *
  * Every stage after the first is optional, so a person contributes to the box they qualify for and the ribbon then jumps to the next stage they reach. A person who reached nothing after signing up is a ribbon that ends, which is a dead end the funnel has no way to draw.
  *
- * The activity stages split by *rank*, not by type: a user's first tracked activity and then their second, so "devlog then reel" and "reel then devlog" are two different ribbons and can be read apart. Each kind contributes only its earliest timestamp, so one prolific maker cannot fill three boxes.
+ * The activity stage counts every kind the person reached, not a ranked first and second: a maker who both journalled and linked Hackatime feeds both boxes, so the links around this one stage carry more units than the people. Each kind still contributes only its earliest timestamp to membership, so one prolific maker cannot fill a box twice – but order between kinds is deliberately unread: "devlog then reel" and "reel then devlog" are the same pair of ribbons now, because rank told us which came first and nothing about which mattered.
  *
  * Read straight off the tables rather than the User analytics markers wherever a marker exists only after a backfill: the funnel needs `distinct: ["userId"]` on Session for the same reason. A missing analytics column must not silently read as "nobody did this".
  */
-export async function getUserFlowSankey(): Promise<SankeyDiagram> {
+export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; activityShare: ActivityShare }> {
 	const [users, sessions, projects, devlogs, reels, repoLinks, hackatimeLinks, timelapses, submissions] =
 		await Promise.all([
 			prisma.user.findMany({
@@ -1293,25 +1315,16 @@ export async function getUserFlowSankey(): Promise<SankeyDiagram> {
 	}
 	for (const [userId, handIn] of handIns) outcomeNode.set(userId, handIn.node)
 
-	/** The person's first two tracked activities, oldest first, as box ids. A tuple, so both slots are always present. */
-	const rankedBoxes = (userId: string): [string | null, string | null] => {
-		const order = (entry: [ActivityKey, Date]) =>
-			entry[1].getTime() * SANKEY_ACTIVITY.length + SANKEY_ACTIVITY.findIndex((x) => x.key === entry[0])
-		const seen = [...(activity.get(userId)?.entries() ?? [])]
-			// Ties broken by the declared branch order, so the same person is always the same ribbon run to run.
-			.sort((a, b) => order(a) - order(b))
-			.slice(0, 2)
-			.map(([key], i) => activityNode(i + 1, key))
-		return [seen[0] ?? null, seen[1] ?? null]
-	}
+	/** Every tracked activity the person reached, in branch order so the boxes line up with the stage. One maker appears in as many boxes as they earned. */
+	const activityBoxes = (userId: string): string[] =>
+		SANKEY_ACTIVITY.filter((a) => activity.get(userId)?.has(a.key)).map((a) => activityNode(a.key))
 
-	/** The person's box at each stage, null where they never got there. */
+	/** The person's box at each stage, null where they never got there. The activity boxes sit together as one block. */
 	const boxesOf = (user: (typeof users)[number]): (string | null)[] => {
 		const completed = user.onboardingCompletedAt !== null
 		const started = user.hardwareExperience !== null || completed || user.firstProjectAt !== null
 		const step = user.onboardingStep
 		const reached = (n: number) => step >= n || completed
-		const [first, second] = rankedBoxes(user.id)
 		return [
 			"joined",
 			loggedIn.has(user.id) ? "loggedIn" : null,
@@ -1325,8 +1338,7 @@ export async function getUserFlowSankey(): Promise<SankeyDiagram> {
 			completed ? "setupDone" : null,
 			user.firstProjectAt !== null ? "projectLive" : null,
 			user.participantGoal !== null ? "goalSet" : null,
-			first,
-			second,
+			...activityBoxes(user.id),
 			user.firstChecksPassedAt !== null ? "checksPassed" : null,
 			outcomeNode.has(user.id) ? "handedIn" : null,
 			outcomeNode.get(user.id) ?? "neverHandedIn",
@@ -1334,12 +1346,34 @@ export async function getUserFlowSankey(): Promise<SankeyDiagram> {
 	}
 
 	const counts = new Map<string, number>()
-	const linkCounts = new Map<string, number>()
+	const linkCounts = new Map<string, { value: number; fan: boolean }>()
+	const link = (from: string, to: string, fan: boolean) => {
+		const key = `${from}\u0000${to}`
+		const held = linkCounts.get(key)
+		// A pair of boxes is always crossed the same way, so fan-ness never disagrees on one key.
+		if (held) held.value += 1
+		else linkCounts.set(key, { value: 1, fan })
+	}
 	for (const user of users) {
 		const boxes = boxesOf(user).filter((box): box is string => box !== null)
 		for (const box of boxes) counts.set(box, (counts.get(box) ?? 0) + 1)
-		for (const [from, to] of boxes.slice(1).map((box, i) => [boxes[i] as string, box] as const))
-			linkCounts.set(`${from}\u0000${to}`, (linkCounts.get(`${from}\u0000${to}`) ?? 0) + 1)
+		// The activity block fans out and back in: one ribbon per activity the person reached, from their last box before the block and to their first box after it. Those fan ribbons share people, so they are flagged for the renderer to nest rather than stack; every other ribbon carries disjoint users and stacks.
+		const firstAct = boxes.findIndex((box) => ACTIVITY_BOXES.has(box))
+		if (firstAct === -1) {
+			for (let i = 1; i < boxes.length; i++) link(boxes[i - 1] as string, boxes[i] as string, false)
+			continue
+		}
+		let lastAct = firstAct
+		while (lastAct + 1 < boxes.length && ACTIVITY_BOXES.has(boxes[lastAct + 1] as string)) lastAct++
+		// "joined" is unconditional, so a block always has a box before it.
+		const prev = boxes[firstAct - 1] as string
+		for (let i = 1; i < firstAct; i++) link(boxes[i - 1] as string, boxes[i] as string, false)
+		for (let i = firstAct; i <= lastAct; i++) link(prev, boxes[i] as string, true)
+		const next = boxes[lastAct + 1]
+		if (next) {
+			for (let i = firstAct; i <= lastAct; i++) link(boxes[i] as string, next, true)
+			for (let i = lastAct + 2; i < boxes.length; i++) link(boxes[i - 1] as string, boxes[i] as string, false)
+		}
 	}
 
 	const stages: SankeyStage[] = [
@@ -1355,8 +1389,7 @@ export async function getUserFlowSankey(): Promise<SankeyDiagram> {
 		{ label: "Finished onboarding", nodes: ["setupDone"] },
 		{ label: "Project live", nodes: ["projectLive"] },
 		{ label: "Set a goal", nodes: ["goalSet"] },
-		{ label: "First activity", nodes: activityNodes(1) },
-		{ label: "Second activity", nodes: activityNodes(2) },
+		{ label: "Activity", nodes: activityNodes() },
 		{ label: "Repo checks passed", nodes: ["checksPassed"] },
 		{ label: "Handed in", nodes: ["handedIn"] },
 		{ label: "Outcome", nodes: SANKEY_OUTCOME.map((o) => o.node) },
@@ -1377,10 +1410,24 @@ export async function getUserFlowSankey(): Promise<SankeyDiagram> {
 		goalSet: "Set a goal",
 		checksPassed: "Checks passed",
 		handedIn: "Handed in for review",
-		...Object.fromEntries(
-			SANKEY_ACTIVITY.flatMap((a) => [activityNode(1, a.key), activityNode(2, a.key)].map((id) => [id, a.label])),
-		),
+		...Object.fromEntries(SANKEY_ACTIVITY.map((a) => [activityNode(a.key), a.label])),
 		...Object.fromEntries(SANKEY_OUTCOME.map((o) => [o.node, o.label])),
+	}
+
+	// What share of onboarded finishers did each tracked activity: the same activity rows as the Sankey, cut to the people who finished onboarding rather than everyone who signed up.
+	const finishers = users.filter((user) => user.onboardingCompletedAt !== null)
+	const activityShare: ActivityShare = {
+		total: finishers.length,
+		activities: SANKEY_ACTIVITY.map((a) => {
+			const reached = finishers.filter((user) => activity.get(user.id)?.has(a.key)).length
+			return {
+				key: a.key,
+				label: a.label,
+				base: a.base,
+				users: reached,
+				share: finishers.length === 0 ? 0 : reached / finishers.length,
+			}
+		}),
 	}
 
 	// Only boxes someone actually reached are drawn: a branch nobody took is not a finding, and an empty box in the middle of the diagram reads as a bug.
@@ -1392,14 +1439,17 @@ export async function getUserFlowSankey(): Promise<SankeyDiagram> {
 	const live = new Set(nodes.map((n) => n.id))
 
 	return {
-		stages,
-		nodes,
-		links: [...linkCounts]
-			.map(([key, value]) => {
-				const [source, target] = key.split("\u0000")
-				return { source: source as string, target: target as string, value }
-			})
-			.filter((link) => live.has(link.source) && live.has(link.target)),
-		total: users.length,
+		diagram: {
+			stages,
+			nodes,
+			links: [...linkCounts]
+				.map(([key, entry]) => {
+					const [source, target] = key.split("\u0000")
+					return { source: source as string, target: target as string, value: entry.value, fan: entry.fan }
+				})
+				.filter((link) => live.has(link.source) && live.has(link.target)),
+			total: users.length,
+		},
+		activityShare,
 	}
 }

@@ -151,6 +151,17 @@ export interface ProjectPatch {
 	starterProjectId?: string | null
 }
 
+/**
+ * The closing reel's share prompt after a hand-in: what to celebrate, and how. Kept in the store rather than in the submit sheet's own state because the hand-in's refresh flips the week to in_review underneath – a local flag renders the celebration for one frame and then the unsubmit sheet takes the modal.
+ */
+export interface SharePost {
+	checkpointId: string
+	postId: string
+	eyebrow: string
+	videoUrl: string | null
+	celebration?: { extraHours: number }
+}
+
 interface Ctx {
 	/** Who is signed in. Display fields only. */
 	viewer: StoreSnapshot["viewer"]
@@ -183,6 +194,10 @@ interface Ctx {
 	hydrated: boolean
 	/** id of the checkpoint whose modal is open, if any */
 	openCheckpoint: string | null
+	/** The share prompt waiting after a hand-in, if any. Cleared when it closes. */
+	sharePost: SharePost | null
+	/** Show the share prompt after a hand-in, or clear it. */
+	setSharePost: (share: SharePost | null) => void
 	tourStep: number
 	reducedMotion: boolean
 
@@ -424,6 +439,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	const [ceremony, setCeremony] = useState<Ceremony>(seededCeremony)
 	const [hydrated, setHydrated] = useState(false)
 	const [openCheckpoint, setOpenCheckpoint] = useState<string | null>(null)
+	const [sharePost, setSharePost] = useState<SharePost | null>(null)
 	const [tourStep, setTourStep] = useState(0)
 	const [reducedMotion, setReducedMotion] = useState(false)
 	const [bypassing, setBypassing] = useState(false)
@@ -1433,6 +1449,8 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		printerFund: facts.coins + facts.bankedCoins,
 		hydrated,
 		openCheckpoint,
+		sharePost,
+		setSharePost,
 		tourStep,
 		reducedMotion,
 		setPhase,
