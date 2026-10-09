@@ -106,7 +106,7 @@ Coolify.
    `{"ok":false}` means the database is unreachable or migrations did not run –
    look for the `[boot]` lines in `get_pod_logs`.
 
-9. **Seed.** `exec_in_pod` → `pnpm db:seed`. Idempotent; it creates the settings
+9. **Seed.** `exec_in_pod` → `bun prisma/seed.ts`. Idempotent; it creates the settings
    row and the starter shop items without overwriting anything an admin changed.
 
 10. **Enable auto-deploy** on `main` (`enable_auto_deploy`).
@@ -188,10 +188,10 @@ Two consequences worth knowing:
 
 Backfilling existing users (mapped rows only – no row is ever created):
 
-1. `pnpm loops:backfill` – dry run. Reports how many users link to a row
+1. `bun --conditions=react-server scripts/backfill-loops.ts` – dry run. Reports how many users link to a row
    by email, how many are already linked, and how many have no Signups row
    under their current address. Read-only.
-2. `pnpm loops:backfill --commit` – links what step 1 found, then runs the
+2. `bun --conditions=react-server scripts/backfill-loops.ts --commit` – links what step 1 found, then runs the
    sync for real. Run it where `DATABASE_URL` points at the real database
    (the Orchard pod, not a dev machine), since the join is between prod
    users and the live base.

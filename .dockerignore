@@ -25,5 +25,10 @@ import
 src/app/generated
 docker-compose*.yaml
 dev.sh
+# Production installs and builds with Bun (see Dockerfile), so the pnpm
+# lockfile and workspace config stay out of the build context. The files
+# themselves remain in the repo: local dev and CI still use pnpm.
+pnpm-lock.yaml
+pnpm-workspace.yaml
 docs
 README.md
