@@ -28,6 +28,8 @@ const FOOT_H = 10
  * A floor on a BOX only, never on a ribbon.
  *
  * Flooring ribbons as well makes a box's ribbons add up to more than the box, and then the widths stop meaning what the numbers say. Real case from the dev data: 5,202 + 11 + 6 users out of 5,219 is 466.5px of true ribbon inside a 468px box, but the 11 and the 6 are each thinner than the floor and get bumped to 1.5px, so the three overrun the box by 1.5px. A sliver of a cohort then reads wider than the cohort. A box floor keeps a real-but-tiny group visible as a hairline while its ribbons stay on the true scale, so a box's ribbons always sum to the people who continued past it.
+ *
+ * The activity stage fans out and back in – one person feeds every box they earned – so the boxes on either side of it carry more flow than headcount. Those boxes size to the flow rather than the people, or their ribbons would spill past the box. Everywhere else flow and headcount agree, so this changes nothing there.
  */
 const MIN_BOX_H = 1.5
 
@@ -44,7 +46,7 @@ interface Placed extends SankeyNode {
 	stage: number
 	y0: number
 	y1: number
-	/** Index into PALETTE, so two boxes of the same branch share a colour across both activity columns. */
+	/** Index into PALETTE, so each activity branch keeps its colour wherever its box sits. */
 	color: string
 }
 
@@ -73,7 +75,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 	/**
 	 * Drawn at its own size inside a scroller, rather than scaled to fit the panel.
 	 *
-	 * The journey is now as long as the funnel is, so a seventeen-stage diagram squeezed into a laptop panel would take the type down with it until the labels were unreadable. A scroll is how a diagram this wide is meant to be read, and `margin: 0 auto` still centres it whenever the panel is wider than the drawing. The trade is that the type is a fixed 11 viewBox units rather than enlarged to compensate for a shrink, so the label budget below is a straight comparison in those same units.
+	 * The journey is now as long as the funnel is, so a sixteen-stage diagram squeezed into a laptop panel would take the type down with it until the labels were unreadable. A scroll is how a diagram this wide is meant to be read, and `margin: 0 auto` still centres it whenever the panel is wider than the drawing. The trade is that the type is a fixed 11 viewBox units rather than enlarged to compensate for a shrink, so the label budget below is a straight comparison in those same units.
 	 */
 	const font = 11
 	/**
@@ -92,12 +94,11 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 	const stageIndex = new Map<string, number>()
 	for (const [i, stage] of stages.entries()) for (const id of stage.nodes) stageIndex.set(id, i)
 
-	// One colour per branch name, not per box: "Wrote a devlog" in the first-activity column and in the second are the same branch and must read as the same colour.
+	// One colour per branch: "Wrote a devlog" is one branch wherever its box sits, and must read as one colour.
 	const branchColor = new Map<string, string>()
 	for (const node of diagram.nodes) {
-		const branch = node.id.replace(/^act\d/, "act")
-		if (branchColor.has(branch)) continue
-		branchColor.set(branch, PALETTE[branchColor.size % PALETTE.length] ?? PALETTE[0] ?? "var(--color-accent)")
+		if (branchColor.has(node.id)) continue
+		branchColor.set(node.id, PALETTE[branchColor.size % PALETTE.length] ?? PALETTE[0] ?? "var(--color-accent)")
 	}
 
 	const placed: Placed[] = diagram.nodes.map((node) => ({
@@ -105,7 +106,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 		stage: stageIndex.get(node.id) ?? 0,
 		y0: 0,
 		y1: 0,
-		color: branchColor.get(node.id.replace(/^act\d/, "act")) ?? "var(--color-accent)",
+		color: branchColor.get(node.id) ?? "var(--color-accent)",
 	}))
 
 	// A single scale for the whole diagram. A stage's own boxes sum to that stage's headcount, which is at most the whole program, so sizing against the largest stage keeps every ribbon comparable.
@@ -115,8 +116,16 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 	const H = 520
 	const plotH = H - (maxBoxes - 1) * NODE_PAD
 	const scale = plotH / widest
-	/** Box height: floored so a real-but-tiny group is still a hairline. */
-	const boxH = (value: number) => Math.max(MIN_BOX_H, value * scale)
+	// What passes through each box, for the fan around the activity stage: a box there can carry more flow than headcount, and sizing to the people would spill its ribbons past it.
+	const inFlow = new Map<string, number>()
+	const outFlow = new Map<string, number>()
+	for (const link of diagram.links) {
+		inFlow.set(link.target, (inFlow.get(link.target) ?? 0) + link.value)
+		outFlow.set(link.source, (outFlow.get(link.source) ?? 0) + link.value)
+	}
+	/** Box height: floored so a real-but-tiny group is still a hairline, and raised to the flow where the fan demands it. */
+	const boxH = (node: Placed) =>
+		Math.max(MIN_BOX_H, Math.max(node.value, inFlow.get(node.id) ?? 0, outFlow.get(node.id) ?? 0) * scale)
 	/** Ribbon height: never floored, so a box's ribbons always sum to its continuing headcount. */
 	const ribbonH = (value: number) => value * scale
 
@@ -126,7 +135,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 		for (const id of stage.nodes) {
 			const node = placed.find((p) => p.id === id)
 			if (!node) continue
-			const h = boxH(node.value)
+			const h = boxH(node)
 			node.y0 = y
 			node.y1 = y + h
 			y += h + NODE_PAD
@@ -267,7 +276,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 
 						{placed.map((node) => {
 							const x = xOf(node.stage)
-							const h = boxH(node.value)
+							const h = boxH(node)
 							const slot = labelRows.get(node.id)
 							return (
 								<g key={node.id}>
@@ -317,10 +326,10 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 			</div>
 
 			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.5rem" }}>
-				Every ribbon is the same thickness for the same number of people, so widths compare across the whole diagram. A
-				ribbon stepping over a column is people who skipped that stage; a ribbon that stops is people whose journey
-				ended there. The two activity columns are what people did first and then second, so a devlog-then-reel route is
-				a different ribbon from reel-then-devlog.
+				Every ribbon is the same thickness for the same number of people, so widths compare across the whole
+				diagram. A ribbon stepping over a column is people who skipped that stage; a ribbon that stops is people
+				whose journey ended there. The activity stage counts every kind each person reached, so one maker can feed
+				several of its boxes – the boxes on either side of it are sized to that flow rather than the headcount.
 			</p>
 		</div>
 	)

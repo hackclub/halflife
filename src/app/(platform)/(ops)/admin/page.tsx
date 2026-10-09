@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { ActivityShareChart } from "@/app/components/admin/ActivityShareChart"
 import { UserFlowDiagram } from "@/app/components/admin/UserFlowDiagram"
 import { EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
 import type { ReviewResult } from "@/app/generated/prisma/enums"
@@ -48,7 +49,7 @@ export default async function AdminOverviewPage() {
 		counters,
 		syncs,
 		flow,
-		sankey,
+		sankeyData,
 		areas,
 		countries,
 		activity,
@@ -120,7 +121,11 @@ export default async function AdminOverviewPage() {
 				</p>
 			</Panel>
 
-			<UserFlowDiagram steps={flow} sankey={sankey} />
+			<UserFlowDiagram steps={flow} sankey={sankeyData.diagram} />
+
+			<Panel title="Activities after onboarding">
+				<ActivityShareChart share={sankeyData.activityShare} />
+			</Panel>
 
 			<Panel title="Users & hours by continent">
 				<div
