@@ -14,8 +14,8 @@ import {
 import { ReportButton } from "@/components/platform/report/ReportButton"
 import { Panel } from "@/components/platform/ui"
 import { cx } from "@/lib/cx"
-import { prefersStill } from "@/lib/reduced-motion"
 import type { FeedItem } from "@/lib/feed"
+import { prefersStill } from "@/lib/reduced-motion"
 import { useStore } from "@/lib/store"
 import { type FeedPosition, readPosition, savePosition } from "./feedPosition"
 import { compact } from "./format"
@@ -53,8 +53,6 @@ const MOUNTED_EITHER_SIDE = 2
 
 /** Where the comments stop being a column beside the reel and become a sheet over it. */
 const COMMENTS_BESIDE = "(min-width: 80rem)"
-
-
 
 /**
  * Whether `from` sits in something that scrolls vertically on its own, which a wheel over it should move rather than the reel. Whether or not it has hit its end: a list that suddenly changes the reel when you reach its bottom is a surprise, not a convenience.

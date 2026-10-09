@@ -205,8 +205,12 @@ export function weekLabel(days: readonly string[]): string {
 
 /** Minutes from local midnight to `at` in `timeZone`. */
 export function minutesInDay(at: Date, timeZone: string): number {
-	const parts = new Intl.DateTimeFormat("en-US", { timeZone, hour: "numeric", minute: "numeric", hour12: false })
-		.formatToParts(at)
+	const parts = new Intl.DateTimeFormat("en-US", {
+		timeZone,
+		hour: "numeric",
+		minute: "numeric",
+		hour12: false,
+	}).formatToParts(at)
 	const get = (type: string) => Number(parts.find((part) => part.type === type)?.value ?? 0)
 	// hour12: false reports midnight as 24, which is the next day's minute zero.
 	return (get("hour") % 24) * 60 + get("minute")

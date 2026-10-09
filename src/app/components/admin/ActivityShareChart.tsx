@@ -72,7 +72,14 @@ export function ActivityShareChart({ share }: { share: ActivityShare }) {
 						const h = a.share * plotH
 						return (
 							<g key={a.key}>
-								<rect x={xOf(i)} y={yOf(a.share)} width={colW} height={h} rx={3} style={{ fill: COLUMN_COLORS[a.key] ?? "var(--color-accent)" }}>
+								<rect
+									x={xOf(i)}
+									y={yOf(a.share)}
+									width={colW}
+									height={h}
+									rx={3}
+									style={{ fill: COLUMN_COLORS[a.key] ?? "var(--color-accent)" }}
+								>
 									<title>{`${a.label}: ${a.users.toLocaleString("en-US")} of ${share.total.toLocaleString("en-US")} finishers (${(a.share * 100).toFixed(1)}%)`}</title>
 								</rect>
 								<text
@@ -103,8 +110,8 @@ export function ActivityShareChart({ share }: { share: ActivityShare }) {
 			</div>
 
 			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.5rem" }}>
-				Share of the {share.total.toLocaleString("en-US")} makers who finished onboarding who did each thing – one
-				maker counts in every column they reached. None is the finishers who did none of them.
+				Share of the {share.total.toLocaleString("en-US")} makers who finished onboarding who did each thing – one maker
+				counts in every column they reached. None is the finishers who did none of them.
 			</p>
 		</div>
 	)
