@@ -42,7 +42,7 @@ import { normalizeRepo } from "@/lib/repo"
 import type { RepoCheckResult } from "@/lib/repo-checks"
 import { EXAMPLE_JOURNAL_URL } from "@/lib/routes"
 import { BOM_MARGIN_USD } from "@/lib/schemas/project"
-import { MAX_SESSION_HOURS } from "@/lib/schemas/session"
+import { MAX_SESSION_CONTENT, MAX_SESSION_HOURS } from "@/lib/schemas/session"
 import { useStore } from "@/lib/store"
 import type { Checkpoint, Project, Week } from "@/lib/types"
 import { IMAGE_ACCEPT } from "@/lib/uploads/image-accept"
@@ -134,6 +134,11 @@ const UPLOADING_PLACEHOLDER = /!\[Uploading .*?\]\(uploading:\d+\)/g
 
 function cleanBodyForAutosave(body: string): string {
 	return body.replace(UPLOADING_PLACEHOLDER, "").replace(/\n{3,}/g, "\n\n")
+}
+
+/** An entry no longer than the server will take, cut from the end. See the draft restore. */
+function withinContentLimit(body: string): string {
+	return body.length > MAX_SESSION_CONTENT ? body.slice(0, MAX_SESSION_CONTENT) : body
 }
 
 /** A draft that survives closing the sheet, reloading, or navigating away. Cleared on save. */
@@ -285,7 +290,8 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 	const [tab, setTab] = useState<"journal" | "timelapse">(editing ? "journal" : (draft?.tab ?? "journal"))
 	// The Lapse timelapses backing this session (clip state lives above, with the seed it resolves from).
-	const [body, setBody] = useState(draft?.body ?? existing?.body ?? "")
+	// A draft is cut to the box's own ceiling: autosave wrote whatever was typed, including entries past a limit the server refuses, so a draft from before `maxLength` existed restores to something that can be typed on and saved. The saved entry is not cut, because it came from the server and is already within bounds.
+	const [body, setBody] = useState(draft ? withinContentLimit(draft.body) : (existing?.body ?? ""))
 	const [preview, setPreview] = useState(false)
 	// Free text, not a number: a controlled number input that coerces as you type eats the decimal point the moment you reach for "1.5".
 	const [hoursText, setHoursText] = useState(draft?.hoursText ?? (existing ? String(to2(existing.minutes / 60)) : ""))
@@ -334,6 +340,9 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				if (!res.ok || !body) throw new Error("unresolvable")
 				seed = { picked: body.resolved ?? [], pinned: body.pinned ?? [] }
 				legacy = body.legacy ?? []
+				// Anything the resolve did not account for stays attached by id. Without this a clip the endpoint declined to read – it reads a bounded number – would fall out of the working set, and saving the edit would take it off the entry for good.
+				const accounted = new Set([...seed.picked.map((t) => t.id), ...seed.pinned, ...legacy])
+				for (const id of existing.clips) if (!accounted.has(id)) seed.pinned.push(id)
 			} catch {
 				// Lapse unreachable or unlinked: keep every stored ref by id. The server preserves what is already attached, so an edit that touches the words drops nothing.
 				seed = { picked: [], pinned: existing.clips }
@@ -841,6 +850,8 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									addJournalImages(pasted)
 								}}
 								rows={9}
+								// The server refuses a longer entry, so the box stops at the same number rather than letting the writing be done and the save refused afterwards.
+								maxLength={MAX_SESSION_CONTENT}
 								placeholder="Start typing… What did you work on? What worked and what didn't? &#10;&#10; Markdown styling enabled! Drag, drop or paste images straight in."
 								aria-label="Journal entry"
 								className={cx(
