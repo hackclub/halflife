@@ -181,9 +181,7 @@ export default async function AdminProgramPage() {
 							<tr key={`${item.themeProjectId}-${item.phase}`}>
 								<td className="hl-mono">{item.themeProjectId}</td>
 								<td>{item.phase.toLowerCase()}</td>
-								<td className="hand">
-									{item.reason ?? "Not attempted yet – the retry job will pick it up."}
-								</td>
+								<td className="hand">{item.reason ?? "Not attempted yet – the retry job will pick it up."}</td>
 								<td>
 									<ActionButton
 										url={`/api/admin/theme-projects/${item.themeProjectId}/sync-to-ari`}
