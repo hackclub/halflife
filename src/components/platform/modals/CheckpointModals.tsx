@@ -1416,14 +1416,14 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		if (!clip) return
 		setPosting(true)
 		setPostError(null)
-		const id = await postReel(checkpoint.id, caption.trim(), clip)
+		const { postId, error } = await postReel(checkpoint.id, caption.trim(), clip)
 		setPosting(false)
-		if (!id) {
-			setPostError("Your reel didn't post. Check your connection and try again.")
+		if (error) {
+			setPostError(error)
 			return
 		}
 		writeReelDraft(checkpoint.id, null)
-		setPostedId(id)
+		setPostedId(postId ?? null)
 	}
 
 	// A finished reel asks before it opens the recorder: the checkpoint is done, and another reel is an extra, so reopening one should say that rather than look like the checkpoint asking for its reel again. A draft already under way for it means that question was answered last time.
@@ -2008,8 +2008,15 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		if (project) setProjectTier(project.id, tier)
 		let postId = closingPostId
 		if (clip && !postId) {
-			postId = await postReel(reelCheckpointId, closingCaption, clip)
-			if (postId) setClosingPostId(postId)
+			const posted = await postReel(reelCheckpointId, closingCaption, clip)
+			// The button already refuses to submit without a clip, so a closing reel that did not land is the same situation and stops here too: handing the week in without it would leave a reviewer a submission with no video and the maker none the wiser.
+			if (posted.error) {
+				setSubmitting(false)
+				setSubmitError(posted.error)
+				return
+			}
+			postId = posted.postId ?? null
+			setClosingPostId(postId)
 		}
 		const refused = await submitPhase(checkpoint.id, {
 			notes: isBuild ? buildNotes : undefined,

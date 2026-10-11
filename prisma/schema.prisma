@@ -245,6 +245,8 @@ enum AuditAction {
   USER_UNLINK_HACKATIME
   USER_PLACE_ORDER
   USER_CREATE_POST
+  /// A reel post the server refused. Carries the code and its reason, because the client is shown that reason and nothing else would ever record that it was shown.
+  USER_CREATE_POST_FAILED
   USER_DELETE_POST
   USER_HANDOFF_UPLOAD
   USER_COMMENT_POST
