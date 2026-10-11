@@ -3,6 +3,7 @@ import { fail, ok, withRoute } from "@/lib/api"
 import { requireSession } from "@/lib/guards"
 import { verifyOwnTimelapses } from "@/lib/lapse"
 import prisma from "@/lib/prisma"
+import { MAX_CLIP_REF_LENGTH } from "@/lib/schemas/session"
 
 export const dynamic = "force-dynamic"
 
@@ -24,7 +25,8 @@ export const GET = withRoute(async (req: NextRequest) => {
 		.filter(Boolean)
 		.slice(0, 10)
 	if (ids.length === 0) return fail("VALIDATION_FAILED", "Name the timelapses to resolve")
-	if (ids.some((id) => id.length > 100)) return fail("VALIDATION_FAILED", "Those timelapses could not be read")
+	if (ids.some((id) => id.length > MAX_CLIP_REF_LENGTH))
+		return fail("VALIDATION_FAILED", "Those timelapses could not be read")
 
 	const forSession = params.get("forSession") ?? undefined
 	let ownExternalIds = new Set<string>()
