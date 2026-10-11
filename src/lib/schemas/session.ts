@@ -30,11 +30,18 @@ const timelapseSchema = z
  */
 export const MAX_SESSION_HOURS = 15
 
+/**
+ * How much an entry may hold, in characters.
+ *
+ * Exported because the sheet needs the same number: it puts `maxLength` on the entry box, so the ceiling is reached by running out of room rather than by a save that is refused after the writing is done.
+ */
+export const MAX_SESSION_CONTENT = 20_000
+
 export const sessionCreateSchema = z
 	.object({
 		phase: phaseSchema,
 		title: boundedText(200, 1),
-		content: boundedText(20_000).optional(),
+		content: boundedText(MAX_SESSION_CONTENT).optional(),
 		// A sanity bound, not a policy.
 		hoursClaimed: z.number().min(0).max(MAX_SESSION_HOURS),
 		/**
@@ -42,7 +49,10 @@ export const sessionCreateSchema = z
 		 */
 		hoursSource: z.enum(HoursSource).default("MANUAL"),
 		media: z.array(mediaSchema).max(10).default([]),
-		timelapses: z.array(timelapseSchema).max(5).default([]),
+		/**
+		 * Uncapped, because the picker does not cap: it lists every timelapse the maker has, and a cap the sheet does not enforce is a save refused after the clips were chosen. The work it does is bounded anyway – one verified clip per row written, against rows this account owns.
+		 */
+		timelapses: z.array(timelapseSchema).default([]),
 	})
 	.strict()
 
