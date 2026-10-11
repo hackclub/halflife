@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server"
 import { ok, withRoute } from "@/lib/api"
 import { refreshLinkCache } from "@/lib/hackatime"
+import { warmLinkSpans } from "@/lib/hours"
 import { requireIntegrationAuth } from "@/lib/integration-auth"
 import prisma from "@/lib/prisma"
 import { recordSyncRun } from "@/lib/sync-run-log"
@@ -27,7 +28,8 @@ export const POST = withRoute(async (req: NextRequest) => {
 		// Least-recently refreshed first (never-refreshed before those), so a run that hits the batch bound still advances through the whole set instead of restarting at the same head of the list every 15 minutes.
 		orderBy: { cachedAt: { sort: "asc", nulls: "first" } },
 		take: BATCH_SIZE,
-		select: { id: true },
+		// cachedSpans rides along so the warm below can tell a link that already answers from one whose cache was never written or was fetched for a narrower window.
+		select: { id: true, themeProjectId: true, phase: true, hackatimeProject: true, cachedSpans: true },
 	})
 
 	if (dryRun) {
@@ -42,10 +44,15 @@ export const POST = withRoute(async (req: NextRequest) => {
 		else updated++
 	}
 
+	// The tracked intervals the deduplication depends on, warmed here rather than only when a recording is attached or a reviewer approves. Without this the seconds above are fresh while the spans stay cold, and every screen that reads the cache in between reports the same sitting twice – which is the complaint this run exists to end.
+	const spans = await warmLinkSpans(links)
+
 	const summary = {
 		scanned: links.length,
 		updated,
 		failed,
+		spansWarmed: spans.warmed,
+		spansFailed: spans.failed,
 		limited: links.length === BATCH_SIZE,
 		durationMs: Date.now() - started,
 	}

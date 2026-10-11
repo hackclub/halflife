@@ -162,6 +162,9 @@ export interface SharePost {
 	celebration?: { extraHours: number }
 }
 
+/** What posting a reel produced: the post's id, or the sentence to show the maker. */
+export type PostReelResult = { postId: string; error?: undefined } | { postId?: undefined; error: string }
+
 interface Ctx {
 	/** Who is signed in. Display fields only. */
 	viewer: StoreSnapshot["viewer"]
@@ -223,9 +226,11 @@ interface Ctx {
 	updateProject: (id: string, patch: ProjectPatch) => Promise<string | null>
 	complete: (id: string, patch?: Partial<CheckpointState>) => void
 	/**
-	 * Post the reel a checkpoint is asking for. The video is already uploaded. Resolves to the new post's id, or null if it did not land.
+	 * Post the reel a checkpoint is asking for. The video is already uploaded.
+	 *
+	 * Resolves to the new post's id, or to the reason it did not land. The reason is the server's own rather than a guess: a maker held up by an owed reel, or by an upload the server will not accept, used to be told their connection had failed, with no way to work out why.
 	 */
-	postReel: (id: string, caption: string, objectKey: string) => Promise<string | null>
+	postReel: (id: string, caption: string, objectKey: string) => Promise<PostReelResult>
 	/** Hand a week in, with its notes and whatever evidence it collected. */
 	/** Resolves to null once submitted, or the server's reason for refusing. */
 	submitPhase: (id: string, extra?: { notes?: string; attachmentKeys?: string[] }) => Promise<string | null>
@@ -298,6 +303,12 @@ interface Ctx {
 	weekOf: (weekId: number) => Week
 	/** Hours logged across every session checkpoint in a week. */
 	weekHours: (weekId: number) => number
+	/**
+	 * Whether this week's hours may still count one sitting twice, because the overlap between a Lapse recording and Hackatime could not be checked.
+	 *
+	 * True means the number is unchecked, not wrong: the deduplication needs a Hackatime answer and there was not one. Anything showing a week total reads this so it can say which totals are provisional.
+	 */
+	overlapUnchecked: (weekId: number) => boolean
 	/**
 	 * Every hour on the record – journalled in entries and tracked some other way (Hackatime, a reviewer's adjustment) – summed across the season's weeks and every warm-up. Zero until the first session lands.
 	 */
@@ -770,13 +781,14 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	 *
 	 * `checkpointKey` is what binds the post to the node, and it has to: the 5h and the 15h reel are both PROGRESS, so counting posts by kind would tick the 15h node the moment the 5h one landed.
 	 */
-	// Resolves to the new post's id – what a public link gets attached to – or null if the post did not land. The node is patched first either way, and the refresh puts the truth back if the write failed.
+	// Resolves to the new post's id – what a public link gets attached to – or to the reason it did not land. The node is patched first either way, and the refresh puts the truth back if the write failed.
 	const postReel = useCallback(
-		async (id: string, caption: string, objectKey: string): Promise<string | null> => {
+		async (id: string, caption: string, objectKey: string): Promise<PostReelResult> => {
 			patchCheckpoint(id, { caption, artefacts: 1 })
 			const route = routeOf(id)
+			let res: Response
 			try {
-				const res = await fetch("/api/posts", {
+				res = await fetch("/api/posts", {
 					method: "POST",
 					headers: { "content-type": "application/json" },
 					body: JSON.stringify({
@@ -788,16 +800,22 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 						themeProjectId: route?.projectId ?? null,
 					}),
 				})
-				if (!res.ok) return null
-				// Re-recording an owed reel lifts the hold now rather than on the refresh, so the map opens back up the moment it is posted.
-				setFacts((f) => (f.owedReels.includes(id) ? { ...f, owedReels: f.owedReels.filter((k) => k !== id) } : f))
-				const { post } = (await res.json()) as { post?: { id?: string } }
-				return post?.id ?? null
 			} catch {
-				return null
+				// The one case the old wording was actually right for: the request never arrived.
+				return { error: "Your reel didn't post. Check your connection and try again." }
 			} finally {
 				router.refresh()
 			}
+			if (!res.ok) {
+				// No `data` envelope: ok() returns the payload itself, and only a failure is wrapped. See lib/api.ts.
+				const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
+				return { error: err?.error?.message ?? `Your reel didn't post (error ${res.status}).` }
+			}
+			// Re-recording an owed reel lifts the hold now rather than on the refresh, so the map opens back up the moment it is posted.
+			setFacts((f) => (f.owedReels.includes(id) ? { ...f, owedReels: f.owedReels.filter((k) => k !== id) } : f))
+			const { post } = (await res.json()) as { post?: { id?: string } }
+			const postId = post?.id
+			return postId ? { postId } : { error: "Your reel didn't post. Try again." }
 		},
 		[patchCheckpoint, routeOf, router],
 	)
@@ -1186,6 +1204,11 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		[weeks, facts.progress, facts.offBookHours],
 	)
 
+	const overlapUnchecked = useCallback(
+		(weekId: number) => facts.overlapUncheckedWeeks.includes(weekId),
+		[facts.overlapUncheckedWeeks],
+	)
+
 	/**
 	 * Hours logged through journal entries alone – no Hackatime, no reviewer adjustments from elsewhere. Progress reels open on this clock and not on `weekHours`: a reel answers to the devlog that earned it, so ten tracked hours somewhere else must not open a reel before the first entry is even written. Placement already reads this clock (`checkpointsFor` walks `entryMinutes`); the gate now agrees with it.
 	 */
@@ -1500,6 +1523,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		allCheckpoints,
 		weekOf,
 		weekHours,
+		overlapUnchecked,
 		totalHours,
 		pendingCoins,
 	}

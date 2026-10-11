@@ -282,6 +282,95 @@ export async function refreshOverlapSpans(themeProjectId: string, phase: Phase):
 	}
 }
 
+/** One link's identity for warming: enough to ask Hackatime again and to decide whether it needs asking. */
+export interface SpansWarmTarget {
+	id: string
+	themeProjectId: string
+	phase: Phase
+	hackatimeProject: string
+	cachedSpans?: unknown
+}
+
+/**
+ * Warm the span cache for a batch of links, for the scheduled sync.
+ *
+ * The deduplication rests entirely on cached spans, and until now only two moments ever wrote them: attaching a recording, and an approval that reads live. Every screen in between – the trail, the project page, the project cards – reads the cache, and finding it cold reports the same sitting twice with nothing on the page to say the check never ran. A participant who recorded while Lapse or Hackatime was briefly unreachable never got a warm cache at all, so their project showed the doubled total until they happened to be approved.
+ *
+ * Batched, because the sync walks every link every fifteen minutes and cannot afford a query each. The recording windows come back in one read for all the phases involved, and a Hackatime request is made only for a link that would otherwise answer from a cold cache or from one fetched for a narrower window than the one now being asked about.
+ */
+export async function warmLinkSpans(targets: readonly SpansWarmTarget[]): Promise<{ warmed: number; failed: number }> {
+	if (targets.length === 0) return { warmed: 0, failed: 0 }
+	const key = (projectId: string, phase: Phase) => `${projectId}/${phase}`
+	const projectIds = [...new Set(targets.map((t) => t.themeProjectId))]
+
+	const [sessions, projects] = await Promise.all([
+		prisma.workSession.findMany({
+			where: {
+				deletedAt: null,
+				// A HACKATIME_TRACKED entry claims nothing, so its recording is not one of the windows a link's time has to be measured against.
+				hoursSource: { not: HoursSource.HACKATIME_TRACKED },
+				OR: [...new Set(targets.map((t) => ({ themeProjectId: t.themeProjectId, phase: t.phase })))],
+			},
+			select: {
+				themeProjectId: true,
+				phase: true,
+				timelapses: { select: { coveredSeconds: true, recordedAt: true } },
+			},
+		}),
+		prisma.themeProject.findMany({
+			where: { id: { in: projectIds } },
+			select: { id: true, user: { select: { hackatimeUserId: true } } },
+		}),
+	])
+
+	const windowsByPhase = new Map<string, Interval[]>()
+	for (const s of sessions) {
+		const k = key(s.themeProjectId, s.phase)
+		const list = windowsByPhase.get(k) ?? []
+		for (const t of s.timelapses) {
+			const window = timelapseWindow(t.recordedAt, t.coveredSeconds)
+			if (window) list.push(window)
+		}
+		windowsByPhase.set(k, list)
+	}
+	const userByProject = new Map(projects.map((p) => [p.id, p.user.hackatimeUserId]))
+
+	let warmed = 0
+	let failed = 0
+	for (const target of targets) {
+		const spanWindow = spanWindowFor(windowsByPhase.get(key(target.themeProjectId, target.phase)) ?? [])
+		// No recording in this phase means nothing to deduplicate, and no request worth making.
+		if (!spanWindow) continue
+		const cached = parseCachedSpans(target.cachedSpans)
+		// Already answers the question being asked: a cache fetched for a narrower window is not an answer, so only this exact case is skipped.
+		if (cached && cachedSpansCover(cached, spanWindow.fromSeconds, spanWindow.toSeconds)) continue
+		const hackatimeUserId = userByProject.get(target.themeProjectId)
+		if (!hackatimeUserId) continue
+
+		const result = await fetchProjectSpans(hackatimeUserId, target.hackatimeProject, spanWindow)
+		if (result.stale) {
+			failed += 1
+			// Recorded, never used to decide anything. The next run tries again, and until it succeeds the reading is flagged as unchecked rather than quietly believed.
+			await prisma.hackatimeLink
+				.update({ where: { id: target.id }, data: { spansFetchError: result.error ?? "unknown error" } })
+				.catch(() => undefined)
+			continue
+		}
+		warmed += 1
+		await prisma.hackatimeLink
+			.update({
+				where: { id: target.id },
+				data: {
+					cachedSpans: { from: spanWindow.fromSeconds, to: spanWindow.toSeconds, spans: result.spans },
+					spansFetchedAt: new Date(),
+					spansFetchError: null,
+				},
+			})
+			.catch(() => undefined)
+	}
+	return { warmed, failed }
+}
+
 /**
  * The summation half of getHoursBreakdown, separated so a caller that has already loaded sessions and links in bulk can apply the SAME rules without issuing three more queries per project.
  *
@@ -312,6 +401,10 @@ export function rollUpHours(
 	journalHours: number
 	hackatimeHours: number
 	hackatimeOverlapSeconds: number
+	/**
+	 * True when this phase has a recording and at least one link whose tracked intervals could not be read – so the subtraction below did not run and the total still carries the overlap. The counterpart of `HoursBreakdown.hackatimeOverlapUnknown`, and for the same reason: a caller that shows this number cannot otherwise tell a deduplicated total from one that quietly was not.
+	 */
+	hackatimeOverlapUnknown: boolean
 	computedTotal: number
 	effectiveHours: number
 } {
@@ -329,6 +422,7 @@ export function rollUpHours(
 
 	let hackatimeHours = 0
 	let hackatimeOverlapSeconds = 0
+	let hackatimeOverlapUnknown = false
 	for (const link of links) {
 		// A reviewer override is a human decision against a breakdown that already showed the overlap. Untouched, exactly as in getHoursBreakdown.
 		if (link.hoursApproved !== null) {
@@ -337,10 +431,15 @@ export function rollUpHours(
 		}
 		let seconds = link.cachedSeconds ?? 0
 		const cached = parseCachedSpans(link.cachedSpans)
-		if (journalWindows.length > 0 && cached) {
-			const overlap = capSubtraction(seconds, overlapSeconds(journalWindows, cached.spans))
-			hackatimeOverlapSeconds += overlap
-			seconds -= overlap
+		if (journalWindows.length > 0) {
+			// Unknown, not zero. The link may well carry the same minutes the recording already claimed; nothing here can say, and reporting a deduplicated-looking total either way would be a lie.
+			if (!cached) {
+				hackatimeOverlapUnknown = true
+			} else {
+				const overlap = capSubtraction(seconds, overlapSeconds(journalWindows, cached.spans))
+				hackatimeOverlapSeconds += overlap
+				seconds -= overlap
+			}
 		}
 		hackatimeHours += seconds / 3600
 	}
@@ -350,6 +449,7 @@ export function rollUpHours(
 		journalHours: round2(journalHours),
 		hackatimeHours: round2(hackatimeHours),
 		hackatimeOverlapSeconds,
+		hackatimeOverlapUnknown,
 		computedTotal,
 		effectiveHours: frozenTotal ?? computedTotal,
 	}
