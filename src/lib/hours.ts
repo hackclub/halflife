@@ -393,6 +393,20 @@ export interface LinkRow {
 	cachedSpans?: unknown
 }
 
+/**
+ * A stored hours figure, or zero when it is not a number.
+ *
+ * These decide what people are paid, and the rows come from Prisma selects that a caller can narrow – one that forgot `hoursApproved` hands over `undefined`, which is not `null`, so the override branch below would add it and turn the entire total into NaN. NaN is worse than a wrong number here because it is not visibly wrong: it renders as `NaNh` in exactly one place, silently, and the rest of the phase still looks plausible. A missing figure is read as zero, which is a defensible total rather than a broken one.
+ */
+function storedHours(value: number | null | undefined): number {
+	return typeof value === "number" && Number.isFinite(value) ? value : 0
+}
+
+/** Whether a reviewer has set this link's hours by hand, which replaces the computed value outright. */
+function isOverride(value: number | null | undefined): value is number {
+	return typeof value === "number" && Number.isFinite(value)
+}
+
 export function rollUpHours(
 	sessions: readonly SessionRow[],
 	links: readonly LinkRow[],
@@ -413,7 +427,7 @@ export function rollUpHours(
 	for (const s of sessions) {
 		// A HACKATIME_TRACKED session still exists as evidence but contributes zero: its time already arrives through the link.
 		if (s.hoursSource === HoursSource.HACKATIME_TRACKED) continue
-		journalHours += s.hoursApproved ?? s.hoursClaimed
+		journalHours += storedHours(s.hoursApproved ?? s.hoursClaimed)
 		for (const t of s.timelapses ?? []) {
 			const window = timelapseWindow(t.recordedAt, t.coveredSeconds)
 			if (window) journalWindows.push(window)
@@ -425,11 +439,11 @@ export function rollUpHours(
 	let hackatimeOverlapUnknown = false
 	for (const link of links) {
 		// A reviewer override is a human decision against a breakdown that already showed the overlap. Untouched, exactly as in getHoursBreakdown.
-		if (link.hoursApproved !== null) {
+		if (isOverride(link.hoursApproved)) {
 			hackatimeHours += link.hoursApproved
 			continue
 		}
-		let seconds = link.cachedSeconds ?? 0
+		let seconds = storedHours(link.cachedSeconds)
 		const cached = parseCachedSpans(link.cachedSpans)
 		if (journalWindows.length > 0) {
 			// Unknown, not zero. The link may well carry the same minutes the recording already claimed; nothing here can say, and reporting a deduplicated-looking total either way would be a lie.
