@@ -575,7 +575,7 @@ function GrandPrize() {
 						{goal.name}
 					</h2>
 					<p className="mt-2 max-w-[54ch] text-[0.95rem] leading-relaxed text-navy-soft">
-						Complete each week and it's yours and shipped to your door!
+						Complete each week and it&apos;s yours and shipped to your door!
 					</p>
 				</div>
 			</div>

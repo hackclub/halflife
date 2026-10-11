@@ -391,7 +391,7 @@ function DetailsForm({
 							<p className="text-[0.82rem] leading-snug text-navy-soft">
 								{readyToSubmit ? (
 									<>
-										Congrats, you have the hours for this tier's funding! Any more work on it earns{" "}
+										Congrats, you have the hours for this tier&apos;s funding! Any more work on it earns{" "}
 										<strong className="rounded bg-gold-pale px-1 text-gold-ink">5 coins</strong> per hour, as long as
 										the time doesn&apos;t get deflated.
 									</>
@@ -399,7 +399,8 @@ function DetailsForm({
 									<>
 										Every hour past your tier&apos;s parts-funding earns{" "}
 										<strong className="rounded bg-gold-pale px-1 text-gold-ink">5 coins</strong>, which you can spend on
-										your {goal.name} or anything else. If you change your goal later, this doesn't affect what you earn.
+										your {goal.name} or anything else. If you change your goal later, this doesn&apos;t affect what you
+										earn.
 									</>
 								)}
 							</p>
