@@ -17,6 +17,12 @@ export const userFlagsSchema = z
 	.object({
 		fraudFlagged: z.boolean().optional(),
 		submissionExtensionUntil: z.coerce.date().nullable().optional(),
+		/**
+		 * Trimmed and lowercased before it is stored, because `User.email` is the key better-auth looks people up by and it lowercases on the way in - a row that kept an upper-case or untrimmed address would be invisible to its own sign-in.
+		 *
+		 * The transform is a `pipe` rather than a trailing `.transform()` because it has to run BEFORE the format check: `z.email()` on the raw value rejects a pasted address with surrounding whitespace outright, so a normal copy-and-paste would fail rather than be tidied.
+		 */
+		email: z.string().trim().toLowerCase().pipe(z.email().max(320)).optional(),
 	})
 	.strict()
 

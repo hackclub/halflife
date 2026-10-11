@@ -273,6 +273,8 @@ enum AuditAction {
   ADMIN_REVOKE_ROLE
   ADMIN_FLAG_FRAUD
   ADMIN_UNFLAG_FRAUD
+  /// An admin replacing the address on a user's row. Carries both addresses in its metadata: which one it was is the whole question when someone asks why a participant stopped getting mail.
+  ADMIN_CHANGE_EMAIL
   ADMIN_GRANT_EXTENSION
   ADMIN_MOVE_PROJECT
   ADMIN_ADJUST_CREDIT

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { CreditGrantForm } from "@/app/components/forms/CreditGrantForm"
+import { EmailForm } from "@/app/components/forms/EmailForm"
 import { ExtensionForm } from "@/app/components/forms/ExtensionForm"
 import { GrantForm } from "@/app/components/forms/GrantForm"
 import { RoleEditor } from "@/app/components/forms/RoleEditor"
@@ -52,6 +53,12 @@ export default async function AdminUserPage({ params }: Props) {
 				<Stat label="Themes shipped" value={`${printer.shippedCount} / ${printer.required}`} />
 				<Stat label="Verified" value={user.verificationStatus ?? "unknown"} />
 			</div>
+
+			{canManageUsers ? (
+				<Panel title="Email">
+					<EmailForm url={`/api/admin/users/${id}`} current={user.email} />
+				</Panel>
+			) : null}
 
 			{canManageUsers ? (
 				<Panel title="Moderation">
