@@ -82,6 +82,12 @@ export interface StoreSnapshot {
 	 */
 	offBookHours: Record<number, number>
 	/**
+	 * Trail weeks whose phase has a recording and links whose tracked intervals could not be read, so the overlap between the two could not be subtracted and the week's hours may still count one sitting twice.
+	 *
+	 * Reported rather than resolved: the dedupe needs a Hackatime answer, and where there is not one the honest thing is to say the number is unchecked rather than present it as fact. Screens showing a week total read this to say so.
+	 */
+	overlapUncheckedWeeks: number[]
+	/**
 	 * Where each week's phase stands with review, by trail week.
 	 *
 	 * Coins are minted when a reviewer approves a phase, not when hours are logged, so the balance below trails the work by a review. Anything that asks "is this week on pace" has to add back what the unreviewed weeks will bank – and to know which weeks those are, it needs this.
@@ -228,6 +234,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 	const byTheme = new Map(projects.map((p) => [p.theme, p]))
 	const progress: Record<string, CheckpointSnapshot> = {}
 	const offBookHours: Record<number, number> = {}
+	const overlapUncheckedWeeks: number[] = []
 	const phaseStatusByWeek: Record<number, PhaseStatus> = {}
 
 	// A reel posted twice for the same node keeps the newest caption; the rows are ordered oldest-first, so the last write through this loop is the newest. The node keeps the FIRST post's date, though, as the client's own patch does: posting another reel adds to the timeline, it does not move the checkpoint up it.
@@ -311,7 +318,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 
 			// What the phase is worth, minus what its entries already account for. `rollUpHours` is the function the ledger uses, so the trail's gates and the reviewer's totals cannot answer this differently.
 			const frozen = phase === Phase.DESIGN ? project.designApprovedHours : project.approvedHours
-			const { effectiveHours } = rollUpHours(phaseSessions, phaseLinks, frozen)
+			const { effectiveHours, hackatimeOverlapUnknown } = rollUpHours(phaseSessions, phaseLinks, frozen)
 			// A HACKATIME_TRACKED entry contributes zero to `effectiveHours`, so it must contribute zero here too, or the subtraction double-counts it.
 			const entryHours = phaseSessions.reduce(
 				(n, s) => n + (s.hoursSource === HoursSource.HACKATIME_TRACKED ? 0 : minutesOf(s) / 60),
@@ -319,6 +326,9 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 			)
 			const offBook = Math.max(0, round2(effectiveHours - entryHours))
 			if (week !== undefined) offBookHours[week] = offBook
+			// Collected rather than warned about here: this snapshot feeds the trail and every project page, and the thing a participant needs to know is on the week total they are reading, not in a log.
+			if (hackatimeOverlapUnknown && week !== undefined && !overlapUncheckedWeeks.includes(week))
+				overlapUncheckedWeeks.push(week)
 			return offBook
 		}
 	}
@@ -416,6 +426,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 		projectIdByWeek,
 		progress,
 		offBookHours,
+		overlapUncheckedWeeks,
 		phaseStatusByWeek,
 		weekClosesAt: closes,
 		weekOpensAt: opens,

@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { IconBook, IconChevronLeft, IconClock } from "@/components/platform/icons"
+import { IconBook, IconChevronLeft, IconClock, IconWarning } from "@/components/platform/icons"
 import { RepoChecks } from "@/components/platform/modals/RepoChecks"
 import { RepoSyncSettings } from "@/components/platform/RepoSyncSettings"
 import { Button, Chip, Panel } from "@/components/platform/ui"
@@ -410,7 +410,17 @@ function StarterGuide({ project }: { project: Project }) {
 }
 
 export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData | null }) {
-	const { projects, stateOf, weekOf, warmupWeekOf, weekHours, hoursOf, hydrated, unsubmitPhase } = useStore()
+	const {
+		projects,
+		stateOf,
+		weekOf,
+		warmupWeekOf,
+		weekHours,
+		hoursOf,
+		hydrated,
+		unsubmitPhase,
+		overlapUnchecked: overlapUncheckedWeek,
+	} = useStore()
 	const project = projects.find((p) => p.id === id)
 
 	// A miss here is real: the id is someone else's, or the project was deleted.
@@ -449,6 +459,8 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 	const grantUsd = TIERS.find((t) => t.id === project.tier)?.grantUsd ?? 0
 	// Kept in a local so the phase survives into the unsubmit handler below.
 	const inReview = data.inReview
+	// The overlap between a recording and a Hackatime link could not be checked for a phase of this project, so the total on this page may still be counting the same sitting once through each. A season project spans its design and build weeks, five apart, so either of them is enough.
+	const overlapUnchecked = overlapUncheckedWeek(project.weekId) || overlapUncheckedWeek(buildWeekId)
 
 	return (
 		<div className="mx-auto w-full max-w-[960px] px-4 pt-6 pb-10 sm:px-8">
@@ -538,8 +550,23 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 				</div>
 			</Panel>
 
-			{/* ---------- the guide a starter is built from ---------- */}
+			{/* The guide a starter is built from */}
 			<StarterGuide project={project} />
+
+			{/* A total that may still be counting one sitting twice has to say so here, where the number is read. Only the review screen carried this, so a participant whose tracked intervals could not be read saw the doubled figure presented as fact – which is the report this answers. */}
+			{overlapUnchecked && (
+				<Panel tone="line" radius={18} className="mt-5 bg-paper px-5 py-4">
+					<p className="flex items-start gap-2 text-[0.88rem] leading-snug text-navy">
+						<IconWarning className="mt-0.5 shrink-0 text-base text-gold-ink" />
+						<span>
+							The hours above might count one session twice. Where you recorded with Lapse, the same time also appears
+							as Hackatime heartbeats, so it is taken off one side and counted once — but Hackatime could not be read to
+							check which time that was, so the overlap is still in the total. It resolves itself once Hackatime answers
+							again.
+						</span>
+					</p>
+				</Panel>
+			)}
 
 			{/* ---------- the warm-up's work, and its one hand-in ---------- */}
 			{warmup && <WarmupWork projectId={project.id} />}

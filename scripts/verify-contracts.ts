@@ -678,6 +678,49 @@ async function bodies() {
 	// Present so the enum import is exercised rather than merely referenced.
 	check("rollup · the phase enum is the one the schema defines", ReviewPhase.DESIGN === "DESIGN")
 
+	// A cold span cache is the complaint this whole check exists for: the same sitting, the same link, and the total silently doubles because the subtraction could not run. The number is now flagged, so a screen showing it can say the check never happened rather than presenting an inflated total as fact.
+	const coldCache = rollUpHours(oneEntry, [{ hoursApproved: null, cachedSeconds: 7200, cachedSpans: null }], null)
+	check(
+		"rollup · a cold span cache is reported as unchecked",
+		coldCache.hackatimeOverlapUnknown === true && coldCache.hackatimeOverlapSeconds === 0,
+		`unknown=${coldCache.hackatimeOverlapUnknown} overlap=${coldCache.hackatimeOverlapSeconds}`,
+	)
+	check(
+		"rollup · an unchecked overlap leaves the double count in rather than guessing at it",
+		coldCache.computedTotal === 4,
+		`got ${coldCache.computedTotal}`,
+	)
+	check("rollup · a warm cache reports the overlap as checked", deduped.hackatimeOverlapUnknown === false)
+	check(
+		"rollup · a phase with no recording has nothing to check",
+		rollUpHours(noTimelapses, [{ hoursApproved: null, cachedSeconds: 3600, cachedSpans: null }], null)
+			.hackatimeOverlapUnknown === false,
+	)
+	// A reviewer override is a decision, not a computed value: it must not be reported as an unchecked overlap either, or every decided phase would carry a warning it cannot act on.
+	check(
+		"rollup · an overridden link is never an unchecked overlap",
+		rollUpHours(oneEntry, [{ hoursApproved: 5, cachedSeconds: 7200, cachedSpans: null }], null)
+			.hackatimeOverlapUnknown === false,
+	)
+
+	// A caller that narrows its Prisma select hands over `undefined` where a number was expected, and `undefined !== null` used to read as an override and add NaN to the total. NaN is the worst shape of wrong here: it renders as "NaNh" in one place and leaves the rest of the phase looking fine.
+	const missingOverride = rollUpHours(oneEntry, [{ cachedSeconds: 7200, cachedSpans: null }] as never, null)
+	check(
+		"rollup · a link missing hoursApproved is not read as an override",
+		Number.isFinite(missingOverride.hackatimeHours) && missingOverride.hackatimeHours === 2,
+		`got hackatime ${missingOverride.hackatimeHours}`,
+	)
+	check(
+		"rollup · a link missing cachedSeconds counts as nothing rather than NaN",
+		rollUpHours(oneEntry, [{ hoursApproved: null }] as never, null).hackatimeHours === 0,
+	)
+	const missingClaim = rollUpHours([{ hoursSource: Source.MANUAL }] as never, [], null)
+	check(
+		"rollup · a session missing its hours counts as nothing rather than NaN",
+		missingClaim.journalHours === 0 && Number.isFinite(missingClaim.computedTotal),
+		`got ${missingClaim.journalHours}`,
+	)
+
 	// The headline case: a two-hour recording, entirely inside the two hours of tracked time on the linked project. All of it is double-counted.
 	check(
 		"overlap · a recording fully inside tracked time is all overlap",
