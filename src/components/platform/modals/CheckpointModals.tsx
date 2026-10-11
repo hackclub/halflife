@@ -136,8 +136,12 @@ function cleanBodyForAutosave(body: string): string {
 	return body.replace(UPLOADING_PLACEHOLDER, "").replace(/\n{3,}/g, "\n\n")
 }
 
-/** An entry no longer than the server will take, cut from the end. See the draft restore. */
-function withinContentLimit(body: string): string {
+/**
+ * An entry no longer than the server will take, cut from the end.
+ *
+ * Every write to the box ends here. `maxLength` only covers what a person types or pastes – an image arrives as a `setBody` the browser had no say in, and costs more characters once its link is back than the placeholder that stood in for it – so the box can still be handed something the server would refuse.
+ */
+function clampToContentLimit(body: string): string {
 	return body.length > MAX_SESSION_CONTENT ? body.slice(0, MAX_SESSION_CONTENT) : body
 }
 
@@ -291,7 +295,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const [tab, setTab] = useState<"journal" | "timelapse">(editing ? "journal" : (draft?.tab ?? "journal"))
 	// The Lapse timelapses backing this session (clip state lives above, with the seed it resolves from).
 	// A draft is cut to the box's own ceiling: autosave wrote whatever was typed, including entries past a limit the server refuses, so a draft from before `maxLength` existed restores to something that can be typed on and saved. The saved entry is not cut, because it came from the server and is already within bounds.
-	const [body, setBody] = useState(draft ? withinContentLimit(draft.body) : (existing?.body ?? ""))
+	const [body, setBody] = useState(draft ? clampToContentLimit(draft.body) : (existing?.body ?? ""))
 	const [preview, setPreview] = useState(false)
 	// Free text, not a number: a controlled number input that coerces as you type eats the decimal point the moment you reach for "1.5".
 	const [hoursText, setHoursText] = useState(draft?.hoursText ?? (existing ? String(to2(existing.minutes / 60)) : ""))
@@ -510,14 +514,8 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	async function addJournalImages(sources: Iterable<ImageSource>) {
 		const all = Array.from(sources)
 		const images = all.filter((s) => !(s instanceof File) || s.type.startsWith("image/"))
-		setImageError(images.length < all.length ? "Only images can go in an entry, so the rest were left out." : null)
-		if (images.length === 0) return
-
-		const items = images.map((source) => {
-			const alt = altFor(source)
-			placeholderSeq.current += 1
-			return { source, alt, placeholder: `![Uploading ${alt}…](uploading:${placeholderSeq.current})` }
-		})
+		const notices: string[] = []
+		if (images.length < all.length) notices.push("Only images can go in an entry, so the rest were left out.")
 
 		// Each image a paragraph of its own, wherever in the text it lands.
 		const at = entry.current?.selectionEnd ?? body.length
@@ -525,10 +523,28 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		const after = body.slice(at)
 		const lead = !before.trim() || before.endsWith("\n\n") ? "" : before.endsWith("\n") ? "\n" : "\n\n"
 		const trail = !after || after.startsWith("\n") ? "" : "\n\n"
-		const block = `${lead}${items.map((i) => i.placeholder).join("\n\n")}${trail}`
-		setBody(before + block + after)
+
+		// As many as fit, in the order they were given. A picture costs more characters once its link is back than while it is still uploading, so this is the first of two asks about room, not the last.
+		const items: { source: ImageSource; alt: string; placeholder: string }[] = []
+		let block = ""
+		for (const source of images) {
+			const alt = altFor(source)
+			placeholderSeq.current += 1
+			const placeholder = `![Uploading ${alt}…](uploading:${placeholderSeq.current})`
+			const piece = items.length === 0 ? lead + placeholder : `\n\n${placeholder}`
+			if (before.length + (block + piece).length + trail.length + after.length > MAX_SESSION_CONTENT) break
+			block += piece
+			items.push({ source, alt, placeholder })
+		}
+		const short = images.length - items.length
+		if (short > 0)
+			notices.push(`This entry is full, so ${short === 1 ? "one image was" : `${short} images were`} left out.`)
+		setImageError(notices.length > 0 ? notices.join(" ") : null)
+		if (items.length === 0) return
+
+		setBody(clampToContentLimit(before + block + trail + after))
 		requestAnimationFrame(() => {
-			const caret = before.length + block.length - trail.length
+			const caret = before.length + block.length
 			entry.current?.setSelectionRange(caret, caret)
 		})
 
@@ -537,7 +553,14 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			try {
 				const { url } = await storeImage(item.source)
 				if (!url) throw new Error("Image uploads need a public URL before they can be added here")
-				swapPlaceholder(item.placeholder, `![${item.alt}](${url})`)
+				const markdown = `![${item.alt}](${url})`
+				// The second ask about room. A picture is left out whole rather than the entry cut short – the tail of an entry is somebody's writing, and half an image reads worse than none of it.
+				if (!roomFor(item.placeholder, markdown)) {
+					swapPlaceholder(item.placeholder, null)
+					setImageError(`This entry is full, so "${item.alt}" was left out.`)
+					continue
+				}
+				swapPlaceholder(item.placeholder, markdown)
 			} catch (err) {
 				swapPlaceholder(item.placeholder, null)
 				setImageError(err instanceof Error ? err.message : "The image did not upload")
@@ -545,6 +568,16 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				setUploading((n) => n - 1)
 			}
 		}
+	}
+
+	/**
+	 * Whether `markdown` still fits once it stands in for `placeholder`.
+	 *
+	 * Read off the box rather than `body`, which is the render this handler was made in and has not moved since: the uploads run one at a time, so the box has caught up by the time a link lands and `body` has not.
+	 */
+	function roomFor(placeholder: string, markdown: string): boolean {
+		const current = entry.current?.value ?? body
+		return current.length - placeholder.length + markdown.length <= MAX_SESSION_CONTENT
 	}
 
 	/**
@@ -556,9 +589,12 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			el && document.activeElement === el
 				? { start: el.selectionStart, end: el.selectionEnd, at: el.value.indexOf(placeholder), length: el.value.length }
 				: null
-		setBody((current) =>
-			replacement === null ? withoutPlaceholder(current, placeholder) : current.replace(placeholder, replacement),
-		)
+		setBody((current) => {
+			const next =
+				replacement === null ? withoutPlaceholder(current, placeholder) : current.replace(placeholder, replacement)
+			// The backstop under `roomFor`: should a link land against a box that moved underneath it, the entry is still not left longer than the server will take.
+			return clampToContentLimit(next)
+		})
 		if (!keep || keep.at < 0) return
 		requestAnimationFrame(() => {
 			const box = entry.current

@@ -17,6 +17,14 @@ export const userFlagsSchema = z
 	.object({
 		fraudFlagged: z.boolean().optional(),
 		submissionExtensionUntil: z.coerce.date().nullable().optional(),
+		/**
+		 * Trimmed, but NOT lowercased: the local part of an address is case-sensitive per RFC 5321, and folding it is a silent edit to someone's data that nobody asked for.
+		 *
+		 * `pipe` rather than a trailing `.transform()` because the trim has to run BEFORE the format check - `z.email()` on the raw value rejects a pasted address with surrounding whitespace outright, so an ordinary copy-and-paste would fail rather than be tidied.
+		 *
+		 * Case is normalised in exactly one place: the uniqueness check in the route compares insensitively, so two spellings of one address still cannot both become rows.
+		 */
+		email: z.string().trim().pipe(z.email().max(320)).optional(),
 	})
 	.strict()
 
