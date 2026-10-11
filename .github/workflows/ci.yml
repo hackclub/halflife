@@ -38,7 +38,8 @@ jobs:
       # both without a full build.
       - run: bunx next typegen
 
-      - run: bun run typecheck
+      # `bun check` rather than `bun run typecheck`: it is the built-in, reads the same tsconfig (paths, strict flags, the generated/ exclude) and enforces .next/types, so the `next typegen` step above still earns its place.
+      - run: bun check
       - run: bun run lint
 
       - name: Build
