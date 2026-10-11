@@ -59,6 +59,14 @@
 		}
 	},
 	"files": {
-		"includes": ["public/**", "!public/**/*.svg", "scripts/**", "src/**", "!src/**/*.svg"]
+		"includes": [
+			"public/**",
+			"!public/**/*.svg",
+			"scripts/**",
+			"src/**",
+			"!src/**/*.svg",
+			"*.config.mjs",
+			"*.config.ts"
+		]
 	}
 }

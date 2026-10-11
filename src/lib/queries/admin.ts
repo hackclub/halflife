@@ -1218,75 +1218,82 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 		designHours,
 		designHackatime,
 	] = await Promise.all([
-			prisma.user.findMany({
-				select: {
-					id: true,
-					hardwareExperience: true,
-					onboardingStep: true,
-					onboardingCompletedAt: true,
-					participantGoal: true,
-					firstProjectAt: true,
-					firstChecksPassedAt: true,
-				},
-			}),
-			// A sign-in is what issues a session. Read off the table rather than the `lastLoginAt` marker, so a backfill that never ran cannot read as "nobody logged in".
-			prisma.session.findMany({ select: { userId: true }, distinct: ["userId"] }),
-			// The onboarding paper trail, per person, read off live projects. Not `namedAt`: that marker was stamped later, so it misses the projects that predate it. One read for all three, because the journey stages need them together.
-			prisma.themeProject.findMany({
-				where: { deletedAt: null },
-				select: { id: true, userId: true, createdAt: true, description: true, starterProjectId: true, requestedTier: true },
-			}),
-			// The same "a real devlog" rule as the funnel's devlogged step: a HACKATIME_TRACKED row with no timelapse is only a link, not work.
-			prisma.workSession.findMany({
-				where: {
-					deletedAt: null,
-					themeProject: { deletedAt: null },
-					OR: [{ hoursSource: { not: HoursSource.HACKATIME_TRACKED } }, { timelapses: { some: {} } }],
-				},
-				select: { createdAt: true, themeProject: { select: { userId: true } } },
-			}),
-			// A maker's own post, not a staff announcement: an announcement in their feed is not something they did.
-			prisma.post.findMany({
-				where: { deletedAt: null, kind: { not: PostKind.ANNOUNCEMENT } },
-				select: { userId: true, publishedAt: true, createdAt: true },
-			}),
-			prisma.themeProject.findMany({
-				where: {
-					deletedAt: null,
-					OR: [{ githubRepo: { not: null } }, { repoSyncRepo: { not: null } }, { repoSyncEnabled: true }],
-				},
-				select: { createdAt: true, userId: true },
-			}),
-			prisma.hackatimeLink.findMany({
-				where: { themeProject: { deletedAt: null } },
-				select: { createdAt: true, themeProject: { select: { userId: true } } },
-			}),
-			prisma.sessionTimelapse.findMany({
-				where: { workSession: { deletedAt: null, themeProject: { deletedAt: null } } },
-				select: { createdAt: true, workSession: { select: { themeProject: { select: { userId: true } } } } },
-			}),
-			// The decision on each hand-in, to end the journey in an outcome rather than at "submitted".
-			prisma.phaseSubmission.findMany({
-				where: { themeProject: { deletedAt: null } },
-				select: { resolvedAt: true, resolvedResult: true, themeProject: { select: { userId: true } } },
-			}),
-			// Design hours per project, for the tier-requirements stage: journal claims outside the tracked-link stream, plus the Hackatime cache, so one wall hour is not counted twice in the common case. An approximation of the sheet's own arithmetic – reviewer adjustments and overlap edge cases stay server-side – but the right shape for "has this tier's floor been worked".
-			prisma.workSession.groupBy({
-				by: ["themeProjectId"],
-				where: {
-					deletedAt: null,
-					phase: Phase.DESIGN,
-					themeProject: { deletedAt: null },
-					hoursSource: { not: HoursSource.HACKATIME_TRACKED },
-				},
-				_sum: { hoursClaimed: true },
-			}),
-			prisma.hackatimeLink.groupBy({
-				by: ["themeProjectId"],
-				where: { phase: Phase.DESIGN, themeProject: { deletedAt: null } },
-				_sum: { cachedSeconds: true },
-			}),
-		])
+		prisma.user.findMany({
+			select: {
+				id: true,
+				hardwareExperience: true,
+				onboardingStep: true,
+				onboardingCompletedAt: true,
+				participantGoal: true,
+				firstProjectAt: true,
+				firstChecksPassedAt: true,
+			},
+		}),
+		// A sign-in is what issues a session. Read off the table rather than the `lastLoginAt` marker, so a backfill that never ran cannot read as "nobody logged in".
+		prisma.session.findMany({ select: { userId: true }, distinct: ["userId"] }),
+		// The onboarding paper trail, per person, read off live projects. Not `namedAt`: that marker was stamped later, so it misses the projects that predate it. One read for all three, because the journey stages need them together.
+		prisma.themeProject.findMany({
+			where: { deletedAt: null },
+			select: {
+				id: true,
+				userId: true,
+				createdAt: true,
+				description: true,
+				starterProjectId: true,
+				requestedTier: true,
+			},
+		}),
+		// The same "a real devlog" rule as the funnel's devlogged step: a HACKATIME_TRACKED row with no timelapse is only a link, not work.
+		prisma.workSession.findMany({
+			where: {
+				deletedAt: null,
+				themeProject: { deletedAt: null },
+				OR: [{ hoursSource: { not: HoursSource.HACKATIME_TRACKED } }, { timelapses: { some: {} } }],
+			},
+			select: { createdAt: true, themeProject: { select: { userId: true } } },
+		}),
+		// A maker's own post, not a staff announcement: an announcement in their feed is not something they did.
+		prisma.post.findMany({
+			where: { deletedAt: null, kind: { not: PostKind.ANNOUNCEMENT } },
+			select: { userId: true, publishedAt: true, createdAt: true },
+		}),
+		prisma.themeProject.findMany({
+			where: {
+				deletedAt: null,
+				OR: [{ githubRepo: { not: null } }, { repoSyncRepo: { not: null } }, { repoSyncEnabled: true }],
+			},
+			select: { createdAt: true, userId: true },
+		}),
+		prisma.hackatimeLink.findMany({
+			where: { themeProject: { deletedAt: null } },
+			select: { createdAt: true, themeProject: { select: { userId: true } } },
+		}),
+		prisma.sessionTimelapse.findMany({
+			where: { workSession: { deletedAt: null, themeProject: { deletedAt: null } } },
+			select: { createdAt: true, workSession: { select: { themeProject: { select: { userId: true } } } } },
+		}),
+		// The decision on each hand-in, to end the journey in an outcome rather than at "submitted".
+		prisma.phaseSubmission.findMany({
+			where: { themeProject: { deletedAt: null } },
+			select: { resolvedAt: true, resolvedResult: true, themeProject: { select: { userId: true } } },
+		}),
+		// Design hours per project, for the tier-requirements stage: journal claims outside the tracked-link stream, plus the Hackatime cache, so one wall hour is not counted twice in the common case. An approximation of the sheet's own arithmetic – reviewer adjustments and overlap edge cases stay server-side – but the right shape for "has this tier's floor been worked".
+		prisma.workSession.groupBy({
+			by: ["themeProjectId"],
+			where: {
+				deletedAt: null,
+				phase: Phase.DESIGN,
+				themeProject: { deletedAt: null },
+				hoursSource: { not: HoursSource.HACKATIME_TRACKED },
+			},
+			_sum: { hoursClaimed: true },
+		}),
+		prisma.hackatimeLink.groupBy({
+			by: ["themeProjectId"],
+			where: { phase: Phase.DESIGN, themeProject: { deletedAt: null } },
+			_sum: { cachedSeconds: true },
+		}),
+	])
 
 	// Earliest occurrence of each activity per person. One Map of Maps, built from rows already tagged with their kind, so a kind needs no second pass.
 	const earliest = (rows: { userId: string; at: Date; key: ActivityKey }[]) => {
