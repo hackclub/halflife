@@ -4,7 +4,6 @@ import { Phase, PhaseStatus, Theme } from "@/app/generated/prisma/enums"
 import { scheduledWeekFor } from "@/lib/config/program"
 import { lockUserCredit } from "@/lib/currency"
 import { HttpError } from "@/lib/errors"
-import { syncHcaProfile } from "@/lib/hca-profile"
 import { getHoursBreakdown } from "@/lib/hours"
 import prisma from "@/lib/prisma"
 import {
@@ -155,22 +154,12 @@ export async function submitPhase(
 	if (breakdown.journalEntryCount === 0 && breakdown.hackatimeHours === 0)
 		throw new HttpError("UNPROCESSABLE", "Log at least one work session before submitting this phase")
 
-	// Identity verification is gated here rather than at signup, so people can explore and log work before they have finished verifying.
+	// An account under review is stopped here. Identity verification is not: it is asked of the shop instead (see lib/shop), so a maker can explore, journal and hand work in without having verified, and meets it only when they try to spend.
 	const user = await prisma.user.findUnique({
 		where: { id: userId },
-		select: { verificationStatus: true, fraudFlagged: true },
+		select: { fraudFlagged: true },
 	})
 	if (user?.fraudFlagged) throw new HttpError("FORBIDDEN", "Your account is under review. Reach out in Slack.")
-	// The stored status is from the last sign-in. Someone who finished verifying since then is verified now, so HCA is asked again before anyone is turned away – and only then, so a verified maker's submit costs no extra call.
-	let verificationStatus = user?.verificationStatus ?? null
-	if (process.env.SKIP_YSWS_VERIFICATION_CHECK !== "true" && verificationStatus !== "verified")
-		verificationStatus = (await syncHcaProfile(userId)) ?? verificationStatus
-	if (process.env.SKIP_YSWS_VERIFICATION_CHECK !== "true" && verificationStatus !== "verified") {
-		throw new HttpError(
-			"NOT_VERIFIED",
-			"Identity verification is required before submitting. Verify at identity.hackclub.com.",
-		)
-	}
 
 	// The repo checks, run here rather than trusted from the sheet: what the maker was shown a minute ago is not an authorisation. They exist so a maker fixes what would get the week rejected before it is handed in, so a blocking failure refuses with its own reason. GitHub being unreachable never blocks.
 	const repoChecks = await checkRepo(project.githubRepo, project.theme)

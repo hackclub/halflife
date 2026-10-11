@@ -359,7 +359,7 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 						key: kind,
 						label: `${def.label} not found`,
 						status: "warn",
-						detail: `${def.missing}. Not required, but worth adding.`,
+						detail: `${def.missing}. Not required; add it if it fits your project.`,
 					},
 		)
 	}

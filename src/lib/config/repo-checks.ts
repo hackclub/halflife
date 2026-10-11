@@ -109,8 +109,8 @@ export const THEME_REPO_REQUIREMENTS: Record<
 	Theme,
 	{ required: readonly RepoFileKind[]; recommended: readonly RepoFileKind[] }
 > = {
-	// A PCB week's board has to do something, so the code that runs on it is part of the hand-in, not an extra.
-	[Theme.PCB]: { required: ["pcbSource", "firmware"], recommended: ["pcbFab", "bom"] },
+	// The board files are the week. Firmware is recommended rather than required: an analogue board – a preamp, a power supply, a sensor front end – has nothing to flash, and asking one for code it will never run turned a finished analogue project into a hand-in the checks refused.
+	[Theme.PCB]: { required: ["pcbSource"], recommended: ["pcbFab", "bom", "firmware"] },
 	[Theme.CAD]: { required: ["cadSource"], recommended: ["cadModel"] },
 	[Theme.SYNTH]: { required: ["logicSchematic"], recommended: ["firmware"] },
 	[Theme.DISPLAYS]: { required: ["firmware"], recommended: ["logicSchematic"] },
