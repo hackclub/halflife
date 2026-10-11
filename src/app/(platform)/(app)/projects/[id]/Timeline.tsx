@@ -203,13 +203,27 @@ function Body({ item, allowReport }: { item: TimelineItem; allowReport: boolean 
  */
 function EntryBody({ source }: { source: string }) {
 	const box = useRef<HTMLDivElement>(null)
+	const content = useRef<HTMLDivElement>(null)
 	const [long, setLong] = useState(false)
 	const [open, setOpen] = useState(false)
 
+	// Measured, because a character count cannot know how tall a picture turns out to be – and an entry is mostly pictures. They carry `loading="lazy"` and no intrinsic size, so one that has not arrived yet is not the height it will be: measured once at mount, every image-heavy entry read as short, the box clipped to a fixed height regardless, and the rest of it sat behind `overflow:hidden` with neither the fade nor the toggle to reach it. The measurement is therefore taken twice over – the entry inside the box against the box's own clipped height – and repeated whenever the entry changes size.
+	//
+	// The box is the wrong thing to measure on its own: while it is clipped it can only ever report its own clipped size.
 	useLayoutEffect(() => {
-		const el = box.current
-		if (el) setLong(el.scrollHeight > el.clientHeight + 4)
-	}, [source])
+		const el = content.current
+		const clipped = box.current
+		if (!el || !clipped) return
+		const measure = () => {
+			// Unfolded there is no clip to compare against, and asking again would take "fold it back up" away the moment it was pressed.
+			if (open) return setLong(true)
+			setLong(el.offsetHeight > clipped.clientHeight + 4)
+		}
+		measure()
+		const ro = new ResizeObserver(measure)
+		ro.observe(el)
+		return () => ro.disconnect()
+	}, [source, open])
 
 	return (
 		<>
@@ -221,7 +235,9 @@ function EntryBody({ source }: { source: string }) {
 					!open && long && "[mask-image:linear-gradient(to_bottom,#000_70%,transparent)]",
 				)}
 			>
-				<Markdown source={source} className="grid gap-2.5 text-[0.9rem] leading-relaxed text-navy" />
+				<div ref={content}>
+					<Markdown source={source} className="grid gap-2.5 text-[0.9rem] leading-relaxed text-navy" />
+				</div>
 			</div>
 			{long && (
 				<button
