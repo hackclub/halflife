@@ -8,7 +8,7 @@ import { sendJson, useAction } from "@/lib/use-action"
  *
  * For someone who asked Hack Club to delete their identity: HCA holds the address the account was made with, the person no longer receives mail there, and every notification this platform sends goes to that stored address. Staff put the one they can read in here instead.
  *
- * The typed value is only ever a suggestion - the server lowercases it and refuses an address another user already holds, so a mistyped duplicate comes back as a sentence rather than a constraint error.
+ * The typed value is only ever a suggestion - the server refuses an address another user already holds under any capitalisation, so a mistyped duplicate comes back as a sentence rather than a constraint error.
  */
 export function EmailForm({
 	url,
@@ -47,7 +47,7 @@ export function EmailForm({
 			</p>
 			<Field
 				label="New email"
-				hint="Their own address, not a forwarding one. Lowercased, checked against every other user, and cleared of the verified flag - an address nobody proved cannot stay marked as proven."
+				hint="Their own address, not a forwarding one. Stored exactly as typed, and checked against every other user regardless of capitalisation."
 			>
 				<input
 					className="hl-input"

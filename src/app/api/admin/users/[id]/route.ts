@@ -36,10 +36,14 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 	})
 	if (!before) return fail("NOT_FOUND", "User not found")
 
-	// `email` is unique, so the address has to be checked before the write rather than left to the constraint: P2002 arrives as an opaque Prisma error the admin reads as "Something went wrong".
+	// `User.email` has a plain btree unique index, which is case-SENSITIVE: two spellings of one address are two legal rows to Postgres. The address is stored exactly as typed (see the schema), so the duplicate check has to be the case-insensitive one or `Ada@x.com` and `ada@x.com` could both become accounts - and better-auth would then resolve either spelling to whichever row it found first.
 	const emailChanged = parsed.data.email !== undefined && parsed.data.email !== before.email
 	if (emailChanged) {
-		const taken = await prisma.user.findUnique({ where: { email: parsed.data.email }, select: { id: true } })
+		const taken = await prisma.user.findFirst({
+			// `id: { not: id }` so retyping this user's own address with different capitalisation is a rewrite of their row, not a collision with it - the insensitive comparison would otherwise match the user against themselves.
+			where: { id: { not: id }, email: { equals: parsed.data.email, mode: "insensitive" } },
+			select: { id: true },
+		})
 		if (taken) return fail("CONFLICT", "Another user already has that email address")
 	}
 
