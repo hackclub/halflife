@@ -270,3 +270,15 @@ export async function syncHcaProfile(userId: string): Promise<string | null> {
 		return null
 	}
 }
+
+/**
+ * Whether this account has cleared Hack Club Auth's identity check, asking HCA again when the stored answer is not yes.
+ *
+ * The stored status is from the last sign-in, so someone who verified since is verified now rather than turned away for a stale `pending`. HCA is only asked when the answer would otherwise be a refusal, so a verified account costs no extra call. `syncHcaProfile` never throws and resolves to null when HCA cannot be asked, so an outage degrades to the last known status rather than failing the action that asked.
+ */
+export async function isIdentityVerified(userId: string): Promise<boolean> {
+	if (process.env.SKIP_YSWS_VERIFICATION_CHECK === "true") return true
+	const user = await prisma.user.findUnique({ where: { id: userId }, select: { verificationStatus: true } })
+	if (user?.verificationStatus === "verified") return true
+	return (await syncHcaProfile(userId)) === "verified"
+}

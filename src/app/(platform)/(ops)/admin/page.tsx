@@ -191,8 +191,8 @@ export default async function AdminOverviewPage() {
 					rows={verification.map((s) => ({ label: s.label, value: s.users }))}
 				/>
 				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
-					Hack Club Auth&apos;s own reading of each account, taken at its last sign-in or submit. Only a verified
-					identity can be paid; needs submission is somebody part-way through IDV, and not asked is an account no
+					Hack Club Auth&apos;s own reading of each account, taken at its last sign-in or purchase. Only a verified
+					identity can be paid; needs verification is somebody part-way through IDV, and not asked is an account no
 					sign-in has reported on yet.
 				</p>
 			</Panel>

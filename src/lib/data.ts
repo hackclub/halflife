@@ -229,7 +229,7 @@ export const DOCS: DocArticle[] = [
 			{
 				heading: "Before your first submit",
 				paragraphs: [
-					"You need at least one logged session for the week, and your Hack Club identity has to be verified at identity.hackclub.com. You can explore and journal before verifying; only submitting waits for it.",
+					"You need at least one logged session for the week. Your Hack Club identity has to be verified at identity.hackclub.com before you can buy anything in the shop – you can explore, journal and submit without it.",
 				],
 			},
 			{
