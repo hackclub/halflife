@@ -57,7 +57,7 @@ while doing nothing.
 ## Why two jobs use the cluster-internal URL
 
 `loops-sync` and `rsvp-drain` talk to the Airtable base in batches of ten
-records across ~6,350 rows, so they run for minutes. Cloudflare sits in front of
+records across 6,348 rows, so they run for minutes. Cloudflare sits in front of
 `halflife.hackclub.com` and caps the proxy read timeout at about 100 seconds, so
 a request through the public ingress comes back `504` no matter how the step is
 configured – the route's own `maxDuration` of 300s is already past what the edge

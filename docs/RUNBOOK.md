@@ -114,9 +114,16 @@ Coolify.
 11. **Sign in once** with an address listed in `SUPERADMIN_EMAILS` and confirm
     `/admin` loads.
 
-12. **Create the jobs** (see below), then `run_job` each one immediately and
-    read `get_job_run_logs`. Do not wait for the first scheduled fire to find a
-    typo in a URL.
+12. **Create the jobs** with `orchard job create` from the committed step files
+    in `jobs/steps/` – see `jobs/README.md` for the commands and the crons, and
+    the section below for why they are shaped the way they are. Then run each one
+    by hand (`orchard job run <id> --wait`) and read the response
+    (`orchard job-run logs <run-id>`). Do not wait for the first scheduled fire
+    to find a typo in a URL.
+
+    Pass UUIDs, never names or slugs: `orchard job get <name>` and
+    `--project <slug>` both answer 500 (`project "…" not found by slug or id`).
+    The project and deployment UUIDs are in `jobs/README.md`.
 
 13. **Notifications.** `create_notification_channel` (Slack webhook), then two
     rules: one for `deploy.failed`, `pod.crashing`, `job.failed`,
@@ -130,18 +137,66 @@ Coolify.
 
 Orchard jobs of `type: "app"` run a command inside the deployment's own image
 with its environment, so `INTEGRATION_API_KEY` is already present and never
-needs duplicating into the job.
+needs duplicating into the job. `type: "script"` does neither – see below.
 
-| Job | Cron (UTC) | Endpoint |
-|---|---|---|
-| `hackatime-sync` | `*/15 * * * *` | `POST /api/integrations/hackatime-sync` |
-| `airtable-retry` | `17 * * * *` | `POST /api/integrations/airtable-retry` |
-| `loops-sync` | `41 * * * *` | `POST /api/integrations/loops-sync` |
-| `ari-retry` | `23 * * * *` | `POST /api/integrations/ari-retry` |
-| `rsvp-drain` | `*/10 * * * *` | `POST /api/integrations/rsvp-drain` |
-| `claim-sweep` | `*/5 * * * *` | `POST /api/integrations/claim-sweep` |
-| `printer-reconcile` | `0 8 * * *` | `POST /api/integrations/printer-reconcile` |
-| `slack-ticket-summary` | `0 9 * * *` | `POST /api/integrations/slack-ticket-summary` |
+The step files these jobs were created from are committed in `jobs/steps/`, with
+the commands and the reasoning in `jobs/README.md`.
+
+| Job | Cron (UTC) | Endpoint | Reached via |
+|---|---|---|---|
+| `claim-sweep` | `*/5 * * * *` | `POST /api/integrations/claim-sweep` | ingress |
+| `hackatime-sync` | `*/15 * * * *` | `POST /api/integrations/hackatime-sync` | ingress |
+| `rsvp-drain` | `*/10 * * * *` | `POST /api/integrations/rsvp-drain` | **internal** |
+| `airtable-retry` | `17 * * * *` | `POST /api/integrations/airtable-retry` | ingress |
+| `ari-retry` | `23 * * * *` | `POST /api/integrations/ari-retry` | ingress |
+| `loops-sync` | `41 * * * *` | `POST /api/integrations/loops-sync` | **internal** |
+| `printer-reconcile` | `0 8 * * *` | `POST /api/integrations/printer-reconcile` | ingress |
+| `slack-ticket-summary` | `0 9 * * *` | `POST /api/integrations/slack-ticket-summary` | ingress |
+
+"internal" means the ClusterIP, not the vanity domain – see **Cloudflare kills
+anything over ~100 seconds** below. Everything else goes through the public
+ingress like a browser would.
+
+Each step is a **JSON array of step objects**, not a job – the CLI models a job
+as an ordered pipeline of steps, so a lone object is rejected:
+
+```jsonc
+[
+  {
+    "name": "post",
+    "type": "app",
+    "deploymentId": "<deployment uuid>",
+    "timeoutSeconds": 600,
+    "retries": 2,
+    "command": "curl -fsS --max-time 570 -X POST -H \"Authorization: Bearer $INTEGRATION_API_KEY\" https://<host>/api/integrations/<name>"
+  }
+]
+```
+
+`orchard job create --name <job> --steps <file> --cron '<cron>'` takes that
+array; the crons and the committed files are in `jobs/`.
+
+Five details that decide whether this works or quietly rots:
+
+- **`type: "app"`, never `type: "script"`.** A `script` step runs in Orchard's
+  own sandbox image, which has no `curl`, and the job dies instantly with
+  `step-1.sh: line 1: curl: command not found`. The sandbox also keeps none of
+  the deployment's environment, so `envVars` on a script step does not rescue it.
+  The app image installs `curl` (see the `Dockerfile`), which is what makes the
+  command work at all.
+- **`curl -f`.** Without it, curl exits 0 on a 500 and the job stays green
+  forever while doing nothing. This is the most common way self-hosted cron goes
+  silent.
+- **`concurrencyPolicy: "forbid"`**, so a slow sync does not stack up behind
+  itself every fifteen minutes.
+- **`--max-time` under `timeoutSeconds`**, so a timeout surfaces as a clean curl
+  failure rather than a killed pod. The route's own `maxDuration` is not a useful
+  upper bound here: these routes declare 300, but on a long-running server Next
+  does not enforce it, so the step's own timeout is what actually applies. See
+  below for why that forces 1800 on two of them.
+- **Never put `INTEGRATION_API_KEY` in `envVars`.** An `app` step inherits the
+  deployment environment already; a job that hardcodes it leaks the production
+  key into the job definition and into every log of it.
 
 ### The Loops columns (`loops-sync`)
 
@@ -206,32 +261,35 @@ response and in the `airtable_loops` sync-run row, and logs an error. Look for
 that flag before trusting a run: a row that is not found is skipped and counted
 rather than raised, which is exactly how this stayed invisible.
 
-Each step:
+### Cloudflare kills anything over ~100 seconds
 
-```jsonc
-{
-  "type": "app",
-  "name": "post",
-  "deploymentId": "<deployment uuid>",
-  "timeoutSeconds": 600,
-  "retries": 2,
-  "command": "curl -fsS --max-time 570 -X POST -H \"Authorization: Bearer $INTEGRATION_API_KEY\" https://<host>/api/integrations/<name>"
-}
+`halflife.hackclub.com` sits behind Cloudflare, which caps the proxy read timeout
+at roughly 100 seconds. `loops-sync` and `rsvp-drain` batch ten Airtable records
+per request across 6,348 rows and run for minutes – a measured `loops-sync` run
+took 10m38s – so through the public ingress they return `504` on every attempt no
+matter how the step is configured. Raising `timeoutSeconds` does not help: the
+edge has already given up, and the failure looks identical to a dead app
+(`curl: (22) The requested URL returned error: 504`).
+
+Those two point at the ClusterIP instead, which resolves in-cluster and skips
+Cloudflare entirely:
+
+```
+http://half-life.ysws-half-life.svc.cluster.local:3000/api/integrations/<name>
 ```
 
-Three details that decide whether this works or quietly rots:
+That is the `internalUrl` on the deployment, and the job's pod sits in the same
+namespace, so no extra config is needed. It also means `timeoutSeconds` has to be
+real – those two carry `1800` with `--max-time 1740`, and the runbook's original
+`600` would have killed a 10-minute sync. If the edge limit is ever raised, or
+these two routes get faster, they can go back to the ingress like the rest.
 
-- **`curl -f`.** Without it, curl exits 0 on a 500 and the job stays green
-  forever while doing nothing. This is the most common way self-hosted cron goes
-  silent.
-- **`concurrencyPolicy: "forbid"`**, so a slow sync does not stack up behind
-  itself every fifteen minutes.
-- **`--max-time` under `timeoutSeconds`**, and the route's `maxDuration` under
-  that, so a timeout surfaces as a clean curl failure rather than a killed pod.
+The same limit applies to anything else slow behind the vanity domain, including
+real users on a slow page – these jobs dodged it, the app did not.
 
-The jobs hit the public ingress, and `src/proxy.ts` already excludes
-`/api/integrations` from basic auth – verify that before enabling
-`REQUIRE_BASICAUTH`, or every job goes red at once.
+`src/proxy.ts` runs for these too and already excludes `/api/integrations` from
+basic auth, so `REQUIRE_BASICAUTH` does not block either path – verify that
+before enabling it, or every job goes red at once.
 
 Most of these routes accept `?dryRun=true` and return what they would have
 done without writing (`printer-reconcile` writes a run record either way).
@@ -250,8 +308,17 @@ up.
 `get_pod_logs` has the Prisma error. Fix forward with a new migration. Restore a
 backup only if data was lost.
 
-**A job went red** – `list_job_runs` → `get_job_run_logs`, then `run_job` by
-hand. Reproduce with `?dryRun=true` first.
+**A job went red** – `orchard job runs <id>` then `orchard job-run logs <run-id>`,
+then `orchard job run <id> --wait` by hand. Reproduce with `?dryRun=true` first.
+
+Triage by the status code in the step log, because they mean different things:
+
+- **`UNAUTHENTICATED` (401)** – wrong or missing key. An `app` step should already
+  be inheriting it, so check the step is not a `script` step.
+- **`504`** – not a job problem and not a dead app. Cloudflare timed out at ~100s;
+  see **Cloudflare kills anything over ~100 seconds**.
+- **`curl: command not found`** – the step is `type: "script"`. It has to be
+  `type: "app"`.
 
 **Stop participant writes right now** – flip *Submissions open* off at
 `/admin/program`. It is a database row with an audit trail, deliberately not an
