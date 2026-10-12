@@ -1,0 +1,10 @@
+[
+  {
+    "name": "hackatime-sync",
+    "type": "app",
+    "deploymentId": "ea4c54b5-429f-4725-bb50-2532312c4a5c",
+    "timeoutSeconds": 600,
+    "retries": 2,
+    "command": "curl -fsS --max-time 570 -X POST -H \"Authorization: Bearer $INTEGRATION_API_KEY\" https://halflife.hackclub.com/api/integrations/hackatime-sync"
+  }
+]

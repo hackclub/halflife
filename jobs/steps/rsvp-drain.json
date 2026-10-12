@@ -1,0 +1,10 @@
+[
+  {
+    "name": "rsvp-drain",
+    "type": "app",
+    "deploymentId": "ea4c54b5-429f-4725-bb50-2532312c4a5c",
+    "timeoutSeconds": 1800,
+    "retries": 2,
+    "command": "curl -fsS --max-time 1740 -X POST -H \"Authorization: Bearer $INTEGRATION_API_KEY\" http://half-life.ysws-half-life.svc.cluster.local:3000/api/integrations/rsvp-drain"
+  }
+]
