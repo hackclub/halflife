@@ -69,11 +69,13 @@ is in the same namespace, so it reaches the service directly. `src/proxy.ts`
 still runs, and `/api/integrations` is already excluded from basic auth there, so
 `REQUIRE_BASICAUTH` does not get in the way.
 
-Every one of these routes declares `maxDuration = 300`, which is already past
-what the edge will wait for – that is the whole problem, and it is why
-`--max-time 570` in the steps files is generous rather than aspirational. If the
-Cloudflare limit is ever raised, or these two routes get faster, they can go back
-to the public ingress like the rest.
+All eight routes declare `maxDuration = 300`. On a long-running server Next does
+not enforce that, so a route that overruns it keeps going and the step's own
+timeout is what finally applies – which is why the two internal jobs carry
+`timeoutSeconds: 1800` and `--max-time 1740` rather than the 600 the rest use. A
+measured `loops-sync` run took 10m38s. The runbook's suggested `timeoutSeconds:
+600` would have killed it. If the Cloudflare limit is ever raised, or these two
+routes get faster, they can go back to the public ingress like the rest.
 
 ## Verifying a change
 
