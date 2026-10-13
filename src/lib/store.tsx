@@ -1340,15 +1340,21 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	)
 
 	/**
-	 * Whether a week still stands between the trail and the week after it. A week holds the next one shut until it is handed in – except a week that passed with nothing in it, which can never be handed in and would otherwise dead-end the rest of the season.
+	 * Whether a week still stands between the trail and the week after it.
+	 *
+	 * Only the clock does. A week holds the next one shut while it is still running and stops the moment it closes, handed in or not.
+	 *
+	 * It used to also stop for a week that closed with hours in it, on the reasoning that such a week can still be handed in. But "can be handed in" is not "can be handed in by everyone": a week is refused below its tier's funded block, and the tier is picked by the maker, so somebody who worked two hours towards a tier that wants nine can never hand that week in. The condition then never cleared and the remaining nine weeks sat shut behind a hand-in that was impossible – the exact dead end the empty-week exception was written to prevent, one hour too far along to catch.
+	 *
+	 * Nothing is lost by not waiting: a passed week's Submit stays open for anyone who does reach the floor, so the work can still be handed in late. And a week that is still running keeps holding the next one, which is what an extension has to mean.
 	 */
 	const owesSubmit = useCallback(
 		(week: Week): boolean => {
 			const submit = week.checkpoints.find((c) => c.kind === "submit")
 			if (!submit || (save.progress[submit.id]?.done ?? false)) return false
-			return !(weekPassed(week.id) && weekHours(week.id) === 0)
+			return !weekPassed(week.id)
 		},
-		[save.progress, weekPassed, weekHours],
+		[save.progress, weekPassed],
 	)
 
 	/**
