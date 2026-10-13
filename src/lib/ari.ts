@@ -426,7 +426,14 @@ async function applyDecision(event: DecisionEvent): Promise<void> {
 	})
 
 	// The decision is committed and recorded; now tell the maker. Best-effort – a Slack or mail outage must not make Ari retry a decided submission, and the project page is the source of truth if a message is missed.
-	await notifyReviewOutcome({ themeProjectId, phase, result, feedback })
+	await notifyReviewOutcome({
+		themeProjectId,
+		phase,
+		result,
+		// Ari's own note, not the fallback: `feedback` above has already been defaulted so the review row and the project page always have something to show, and quoting that back to the maker as "the reviewer's note" says the headline twice and tells them nothing they can act on.
+		note: event.review.note_to_maker?.trim() || null,
+		decidedBy: "ari",
+	})
 }
 
 /**
