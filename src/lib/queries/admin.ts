@@ -844,29 +844,41 @@ export interface DayActivity {
 	devlogs: number
 	/** Journal hours that day, reviewer-adjusted where set. */
 	hours: number
+	/** Distinct people who wrote one of those devlogs. The denominator for a per-user reading of the same day. */
+	users: number
 }
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/
 
 /**
  * Devlogs written and hours logged per day, gap-filled from the first active day to the last so the strip chart reads continuously. Days are program-timezone effective dates – the day the work counted for, not the instant it was typed.
+ *
+ * The distinct people behind each day come along too, because the totals and the per-user reading are the same rows and re-reading them for a second chart would be the same query twice. A person is counted once however many devlogs they wrote, so it is people rather than entries.
  */
 export async function getDailyActivity(): Promise<DayActivity[]> {
 	const sessions = await prisma.workSession.findMany({
 		where: { deletedAt: null, themeProject: { deletedAt: null } },
-		select: { effectiveDate: true, hoursClaimed: true, hoursApproved: true, hoursSource: true },
+		select: {
+			effectiveDate: true,
+			hoursClaimed: true,
+			hoursApproved: true,
+			hoursSource: true,
+			// A session belongs to the project, not the person, so the user is reached through it.
+			themeProject: { select: { userId: true } },
+		},
 	})
 
-	const byDay = new Map<string, { devlogs: number; hours: number }>()
+	const byDay = new Map<string, { devlogs: number; hours: number; users: Set<string> }>()
 	for (const s of sessions) {
 		const day = s.effectiveDate
 		if (!day || !DAY.test(day)) continue
 		let row = byDay.get(day)
 		if (!row) {
-			row = { devlogs: 0, hours: 0 }
+			row = { devlogs: 0, hours: 0, users: new Set<string>() }
 			byDay.set(day, row)
 		}
 		row.devlogs += 1
+		row.users.add(s.themeProject.userId)
 		if (s.hoursSource !== HoursSource.HACKATIME_TRACKED) row.hours += s.hoursApproved ?? s.hoursClaimed
 	}
 
@@ -881,6 +893,7 @@ export async function getDailyActivity(): Promise<DayActivity[]> {
 			day,
 			devlogs: row?.devlogs ?? 0,
 			hours: Math.round((row?.hours ?? 0) * 10) / 10,
+			users: row?.users.size ?? 0,
 		})
 	}
 	return out

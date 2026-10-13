@@ -218,6 +218,15 @@ export default async function AdminOverviewPage() {
 				</p>
 			</Panel>
 
+			<Panel title="Activity per user over time">
+				<ActivityStrip days={activity} perUser />
+				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+					One person&apos;s average working day rather than the programme&apos;s total. Read beside the chart above, the
+					totals say how much was done and this says how thinly it was spread – so a busy day and a flat average
+					together mean the work was going somewhere, and both rising means more people joined in.
+				</p>
+			</Panel>
+
 			<Panel
 				title="Scheduled jobs"
 				actions={<Link href="/admin/audit?action=AIRTABLE_SYNC_FAILURE">Sync failures</Link>}
@@ -408,13 +417,26 @@ function MetricPie({
  * Each line is therefore drawn against its own maximum, and each axis is labelled with its series, so neither is
  * read off the other's numbers.
  *
+ * `perUser` divides each day by the people who logged something that day rather than plotting the totals. It is the
+ * same chart otherwise, deliberately: the shapes are meant to be laid side by side, and a second component that drew
+ * a slightly different grid would defeat that. It answers a different question – not how much the programme did, but
+ * how much one person's working day held – so the two are read together, the totals for volume and these for whether
+ * that volume is spread thin. A day with a single contributor reads tall here, because that is what an average over
+ * one person is, and nothing in the data can say otherwise.
+ *
  * Drawn in pixels rather than a scaled viewBox, and that is what keeps the axes outside the scroll area. The scale
  * labels are HTML beside the chart, so they have to line up with the gridlines to the pixel; a viewBox stretched to
  * fit its container has no fixed pixel height to line up against, and stretching it non-uniformly to get one turns
  * the per-day dots into ellipses.
  */
-function ActivityStrip({ days }: { days: DayActivity[] }) {
+function ActivityStrip({ days, perUser = false }: { days: DayActivity[]; perUser?: boolean }) {
 	if (days.length === 0) return <EmptyState>No devlogs yet.</EmptyState>
+
+	// A gap-filled day with no contributors has no average to take and no activity to take it from, so it reads as
+	// zero. Left as `value / users` it would divide by zero into NaN and put a hole in the path.
+	const perActiveUser = (value: number, users: number) => (users > 0 ? value / users : 0)
+	const hoursOf = (d: DayActivity) => (perUser ? perActiveUser(d.hours, d.users) : d.hours)
+	const devlogsOf = (d: DayActivity) => (perUser ? perActiveUser(d.devlogs, d.users) : d.devlogs)
 
 	const CHART_H = 200
 	const PAD_T = 10
@@ -427,17 +449,30 @@ function ActivityStrip({ days }: { days: DayActivity[] }) {
 	const PAD_R = 6
 	const plotW = chartW - PAD_L - PAD_R
 
-	const maxHours = Math.max(1, ...days.map((d) => d.hours))
-	const maxDevlogs = Math.max(1, ...days.map((d) => d.devlogs))
-	const totalHours = days.reduce((n, d) => n + d.hours, 0)
-	const totalDevlogs = days.reduce((n, d) => n + d.devlogs, 0)
+	const maxHours = Math.max(1, ...days.map(hoursOf))
+	const maxDevlogs = Math.max(1, ...days.map(devlogsOf))
+	// The span's own figure, for the legend. On the per-user chart this is the mean of what is drawn rather than a
+	// total, so it is divided by the days on the axis – including the quiet ones, since those are plotted too.
+	const sumHours = days.reduce((n, d) => n + hoursOf(d), 0)
+	const sumDevlogs = days.reduce((n, d) => n + devlogsOf(d), 0)
+	const meanHours = sumHours / days.length
+	const meanDevlogs = sumDevlogs / days.length
+
+	// The count axis keeps a decimal per user, where a total would round a fraction of a devlog to nothing.
+	const fmtCount = (v: number) => (perUser ? v.toLocaleString("en-US", { maximumFractionDigits: 1 }) : fmtInt(v))
+	const legendHours = perUser
+		? `hours per user (averaging ${fmtHours(meanHours)})`
+		: `hours (${fmtHours(sumHours)} total)`
+	const legendDevlogs = perUser
+		? `devlogs per user (averaging ${fmtCount(meanDevlogs)})`
+		: `devlogs (${fmtInt(sumDevlogs)} total)`
 
 	const xOf = (i: number) => PAD_L + (days.length === 1 ? plotW / 2 : (i / (days.length - 1)) * plotW)
 	const yFor = (v: number, max: number) => PAD_T + plotH - (v / max) * plotH
 	const line = (pick: (d: DayActivity) => number, max: number) =>
 		days.map((d, i) => `${i === 0 ? "M" : "L"} ${xOf(i).toFixed(1)} ${yFor(pick(d), max).toFixed(1)}`).join(" ")
-	const hoursPath = line((d) => d.hours, maxHours)
-	const devlogsPath = line((d) => d.devlogs, maxDevlogs)
+	const hoursPath = line(hoursOf, maxHours)
+	const devlogsPath = line(devlogsOf, maxDevlogs)
 	const areaPath = `${hoursPath} L ${xOf(days.length - 1).toFixed(1)} ${(PAD_T + plotH).toFixed(1)} L ${xOf(0).toFixed(
 		1,
 	)} ${(PAD_T + plotH).toFixed(1)} Z`
@@ -452,6 +487,10 @@ function ActivityStrip({ days }: { days: DayActivity[] }) {
 	const labelEvery = Math.max(1, Math.ceil(days.length / 14))
 	const first = days[0]?.day
 	const last = days[days.length - 1]?.day
+	const what = perUser ? "per active user " : ""
+	const note = perUser
+		? " Each line is divided by the people who logged something that day, so a quiet day with one contributor reads tall."
+		: ""
 
 	return (
 		<div>
@@ -467,7 +506,7 @@ function ActivityStrip({ days }: { days: DayActivity[] }) {
 						verticalAlign: "middle",
 					}}
 				/>
-				hours ({fmtHours(totalHours)} total)
+				{legendHours}
 				<span
 					aria-hidden="true"
 					style={{
@@ -480,7 +519,7 @@ function ActivityStrip({ days }: { days: DayActivity[] }) {
 						verticalAlign: "middle",
 					}}
 				/>
-				devlogs ({fmtInt(totalDevlogs)} total)
+				{legendDevlogs}
 			</p>
 			{/* The two scale columns are grid siblings of the chart, so they share its row and never scroll; only the
 			    chart cell overflows. Each label is placed at the exact pixel its gridline sits on, so the two scales
@@ -525,9 +564,9 @@ function ActivityStrip({ days }: { days: DayActivity[] }) {
 							height={CHART_H}
 							viewBox={`0 0 ${chartW} ${CHART_H}`}
 							role="img"
-							aria-label={`Hours logged per day from ${first} to ${last}, peaking at ${fmtHours(
+							aria-label={`Hours logged ${what}per day from ${first} to ${last}, peaking at ${fmtHours(
 								maxHours,
-							)}, and devlogs written per day over the same period, peaking at ${fmtInt(maxDevlogs)}`}
+							)}, and devlogs written ${what}per day over the same period, peaking at ${fmtCount(maxDevlogs)}`}
 							style={{ display: "block" }}
 						>
 							{hoursTicks.map((t, i) => (
@@ -564,8 +603,12 @@ function ActivityStrip({ days }: { days: DayActivity[] }) {
 								strokeDasharray="4 2"
 							/>
 							{days.map((d, i) => (
-								<circle key={d.day} cx={xOf(i)} cy={yFor(d.hours, maxHours)} r="1.6" fill="var(--color-accent)">
-									<title>{`${d.day}: ${fmtHours(d.hours)} logged, ${fmtInt(d.devlogs)} devlogs`}</title>
+								<circle key={d.day} cx={xOf(i)} cy={yFor(hoursOf(d), maxHours)} r="1.6" fill="var(--color-accent)">
+									<title>
+										{perUser
+											? `${d.day}: ${fmtHours(hoursOf(d))} and ${fmtCount(devlogsOf(d))} devlogs per user, across ${fmtInt(d.users)} ${d.users === 1 ? "person" : "people"}`
+											: `${d.day}: ${fmtHours(d.hours)} logged, ${fmtInt(d.devlogs)} devlogs`}
+									</title>
 								</circle>
 							))}
 						</svg>
@@ -618,7 +661,7 @@ function ActivityStrip({ days }: { days: DayActivity[] }) {
 								color: "var(--color-magenta)",
 							}}
 						>
-							{fmtInt(roundTick(t))}
+							{fmtCount(roundTick(t))}
 						</span>
 					))}
 					<span
@@ -638,7 +681,7 @@ function ActivityStrip({ days }: { days: DayActivity[] }) {
 			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.5rem" }}>
 				Dashed is devlogs against the right axis, solid is hours against the left; each is scaled to its own maximum, so
 				compare the shapes and not the heights. Days are program-timezone effective dates – the day the work counted
-				for. Hours count journal devlogs only.
+				for. Hours count journal devlogs only.{note}
 			</p>
 		</div>
 	)
