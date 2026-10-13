@@ -438,8 +438,13 @@ function ActivityStrip({ days, perUser = false }: { days: DayActivity[]; perUser
 	const hoursOf = (d: DayActivity) => (perUser ? perActiveUser(d.hours, d.users) : d.hours)
 	const devlogsOf = (d: DayActivity) => (perUser ? perActiveUser(d.devlogs, d.users) : d.devlogs)
 
-	const CHART_H = 200
-	const PAD_T = 10
+	// A band above the plot for the axis captions ("h", "devlogs"). Without it they shared a line with the topmost
+	// tick label: a tick at the maximum lands exactly on the plot's top edge, and that is where the caption sits, so
+	// "38" printed over "h". The height grows by the band rather than the plot shrinking, so the data area and the
+	// gridline spacing are the size they were.
+	const CAPTION_H = 14
+	const CHART_H = 200 + CAPTION_H
+	const PAD_T = 10 + CAPTION_H
 	const PAD_B = 8
 	const plotH = CHART_H - PAD_T - PAD_B
 	// Wide enough that a day is worth a few pixels; the container scrolls past it rather than compressing the
@@ -550,6 +555,9 @@ function ActivityStrip({ days, perUser = false }: { days: DayActivity[]; perUser
 							right: 6,
 							top: -1,
 							fontSize: "0.6rem",
+							// Pinned so the caption's box is its own height rather than an inherited line-height's: the
+							// band below it is what keeps it clear of the top tick label, and that budget has to be knowable.
+							lineHeight: 1,
 							color: "var(--color-ink-muted)",
 						}}
 					>
@@ -671,6 +679,8 @@ function ActivityStrip({ days, perUser = false }: { days: DayActivity[]; perUser
 							left: 6,
 							top: -1,
 							fontSize: "0.6rem",
+							// The same pinned box as the hours caption: one band, two captions, both meant to clear the tick.
+							lineHeight: 1,
 							color: "var(--color-ink-muted)",
 						}}
 					>
