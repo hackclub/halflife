@@ -96,8 +96,7 @@ export const RSVP = {
 		// The landing's spellings, because the landing writes them itself: `utm_source` and `referred_by`, not `UTM Source` and `Referred By`. Same failure as `ip` and a worse one – referral attribution is the thing this list exists for, and it was being dropped on every buffered row (see lib/site/referrals, which had to bypass this map to read it).
 		utmSource: f<string>("fldRsvpUtmSource", "utm_source"),
 		referredBy: f<string>("fldRsvpReferredBy", "referred_by"),
-		// Still not a column on the live base, so the drain skips it and the probe says so once per deploy. Left in the map deliberately: the drain fills it the moment somebody creates it, which is the whole point of probing rather than assuming.
-		signupPage: f<string>("fldRsvpSignupPage", "Loops - halfLifeSignUpPage"),
+		// `signupPage` used to sit here as `Loops - halfLifeSignUpPage`. Pruned: the base has no such column and never did, and the `Loops - …` family in it is Loops-owned and date-shaped (`halfLifeSignUpAt`, `halfLifeLastLoginAt`, `halfLifeReferralNumber`), so this was a column that was planned and never created rather than one whose spelling had drifted. Left in the map, it cost a probe per deploy to keep learning that.
 		finishedAccountCreation: f<boolean>("fldRsvpFinished", "Finished Account Creation"),
 		// Stasis joins RSVPs to users on email alone, which breaks when someone RSVPs with a personal address and signs in through HCA with a school one.
 		userId: f<string>("fldRsvpUserId", "Half-Life User ID"),
