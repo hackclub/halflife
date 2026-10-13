@@ -497,68 +497,58 @@ export interface FlowStep {
  *
  * `posted` survives as a history guard on the onboarding and goal steps even now its own row is gone: the goal prompt shipped after the first reels, so "finished onboarding" and "set a goal" each mean "did this OR already did something later that presupposes it". Without the fallback, backfilling either column would silently shrink every step beneath it instead of showing a real drop.
  *
- * The last three rows are the tracked-time section: users with each kind of evidence that their hours were tracked – a Hackatime link, a timelapse, a manual devlog. They stay in the same cumulative chain as every other row (the component splits them off visually), so each counts submitters who also have that evidence, and "devlogged" there is the manual-session set from above.
+ * The tracked-time rows that used to end this funnel ("Hackatimed", "Lapsed", "Devlogged") are gone, and two queries with them. Counted on a cumulative spine they asked a question the spine cannot answer: "of the people who got this far, how many have a Hackatime link" reads a maker who journals competently and never links Hackatime as a drop-off, when they did not drop out of anything – they took a different route through the same week. Activity is a set of branches rather than rungs, and branches are what the Sankey view draws: there they sit in one activity stage as ribbons of whatever width they really are, in any order, which is the only shape that can show a maker who both journalled and linked Hackatime. One fact, drawn once, rather than drawn twice in two shapes that disagree.
  */
 export async function getUserFlowFunnel(): Promise<FlowStep[]> {
-	const [users, sessionUsers, projectUsers, devlogUsers, repoUsers, hackatimeLinkRows, timelapseRows] =
-		await Promise.all([
-			prisma.user.findMany({
-				select: {
-					id: true,
-					hardwareExperience: true,
-					onboardingStep: true,
-					onboardingCompletedAt: true,
-					participantGoal: true,
-					firstProjectAt: true,
-					firstReelAt: true,
-					firstChecksPassedAt: true,
-					firstSubmissionAt: true,
-				},
-			}),
-			// People who logged in: a sign-in is what issues a session. Derived from the table rather than the lastLoginAt marker, so the funnel does not depend on the analytics backfill having run.
-			prisma.session.findMany({ select: { userId: true }, distinct: ["userId"] }),
-			// The onboarding paper trail, per person, read off their live projects: a description means they named something, a starter means they took one of the catalogue's, and a requested tier means they answered the tier question. One read for all three because the funnel needs them together.
-			prisma.themeProject.findMany({
-				where: { deletedAt: null },
-				select: { userId: true, description: true, starterProjectId: true, requestedTier: true },
-			}),
-			// People who added a devlog: a project with a real work session on it.
-			prisma.user.findMany({
-				where: {
-					themeProjects: {
-						some: {
-							deletedAt: null,
-							// Same rule as the Loops lastEntryAt sync: a real entry is a session the maker wrote, or one carrying a timelapse. A HACKATIME_TRACKED row with no timelapse is only a link, not a devlog.
-							workSessions: {
-								some: {
-									deletedAt: null,
-									OR: [{ hoursSource: { not: HoursSource.HACKATIME_TRACKED } }, { timelapses: { some: {} } }],
-								},
+	const [users, sessionUsers, projectUsers, devlogUsers, repoUsers] = await Promise.all([
+		prisma.user.findMany({
+			select: {
+				id: true,
+				hardwareExperience: true,
+				onboardingStep: true,
+				onboardingCompletedAt: true,
+				participantGoal: true,
+				firstProjectAt: true,
+				firstReelAt: true,
+				firstChecksPassedAt: true,
+				firstSubmissionAt: true,
+			},
+		}),
+		// People who logged in: a sign-in is what issues a session. Derived from the table rather than the lastLoginAt marker, so the funnel does not depend on the analytics backfill having run.
+		prisma.session.findMany({ select: { userId: true }, distinct: ["userId"] }),
+		// The onboarding paper trail, per person, read off their live projects: a description means they named something, a starter means they took one of the catalogue's, and a requested tier means they answered the tier question. One read for all three because the funnel needs them together.
+		prisma.themeProject.findMany({
+			where: { deletedAt: null },
+			select: { userId: true, description: true, starterProjectId: true, requestedTier: true },
+		}),
+		// People who added a devlog: a project with a real work session on it.
+		prisma.user.findMany({
+			where: {
+				themeProjects: {
+					some: {
+						deletedAt: null,
+						// Same rule as the Loops lastEntryAt sync: a real entry is a session the maker wrote, or one carrying a timelapse. A HACKATIME_TRACKED row with no timelapse is only a link, not a devlog.
+						workSessions: {
+							some: {
+								deletedAt: null,
+								OR: [{ hoursSource: { not: HoursSource.HACKATIME_TRACKED } }, { timelapses: { some: {} } }],
 							},
 						},
 					},
 				},
-				select: { id: true },
-			}),
-			// People who connected a repository to a project.
-			prisma.themeProject.findMany({
-				where: {
-					deletedAt: null,
-					OR: [{ githubRepo: { not: null } }, { repoSyncRepo: { not: null } }, { repoSyncEnabled: true }],
-				},
-				select: { userId: true },
-				distinct: ["userId"],
-			}),
-			// The tracked-time section: everyone with each kind of evidence that time was tracked. A Hackatime link backs one themed project and phase; a timelapse hangs off a session; the devlog set above covers the manual rows.
-			prisma.hackatimeLink.findMany({
-				where: { themeProject: { deletedAt: null } },
-				select: { themeProject: { select: { userId: true } } },
-			}),
-			prisma.sessionTimelapse.findMany({
-				where: { workSession: { deletedAt: null, themeProject: { deletedAt: null } } },
-				select: { workSession: { select: { themeProject: { select: { userId: true } } } } },
-			}),
-		])
+			},
+			select: { id: true },
+		}),
+		// People who connected a repository to a project.
+		prisma.themeProject.findMany({
+			where: {
+				deletedAt: null,
+				OR: [{ githubRepo: { not: null } }, { repoSyncRepo: { not: null } }, { repoSyncEnabled: true }],
+			},
+			select: { userId: true },
+			distinct: ["userId"],
+		}),
+	])
 
 	const sessions = new Set(sessionUsers.map((s) => s.userId))
 	const named = new Set(projectUsers.filter((p) => p.description !== null && p.description !== "").map((p) => p.userId))
@@ -566,8 +556,6 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 	const pickedTier = new Set(projectUsers.filter((p) => p.requestedTier !== null).map((p) => p.userId))
 	const devlogs = new Set(devlogUsers.map((u) => u.id))
 	const repos = new Set(repoUsers.map((u) => u.userId))
-	const hackatimed = new Set(hackatimeLinkRows.map((l) => l.themeProject.userId))
-	const lapsed = new Set(timelapseRows.map((t) => t.workSession.themeProject.userId))
 
 	// One boolean per step per person, in funnel order; steps[0] (signup) is true for everyone. The `|| posted` / `|| submitted` fallbacks are the history guard described above the function – do not drop them.
 	//
@@ -601,9 +589,6 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 			repos.has(u.id),
 			u.firstChecksPassedAt !== null,
 			submitted,
-			hackatimed.has(u.id),
-			lapsed.has(u.id),
-			devlogs.has(u.id),
 		]
 	})
 	const total = users.length
@@ -629,9 +614,6 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 		{ id: "connectedRepo", label: "Connected a repo", hint: "Linked an external repository to a project" },
 		{ id: "checksPassed", label: "Repo checks passed", hint: "Every submission repo check came back green" },
 		{ id: "submitted", label: "Submitted a project", hint: "Handed a phase in for review" },
-		{ id: "hackatimed", label: "Hackatimed", hint: "Linked a Hackatime project to a project" },
-		{ id: "lapsed", label: "Lapsed", hint: "Attached a timelapse to a session" },
-		{ id: "devlogged", label: "Devlogged", hint: "Logged a manual work session" },
 	] as const
 
 	const steps: FlowStep[] = []
@@ -1196,7 +1178,7 @@ const SANKEY_OUTCOME = [
  *
  * Every stage except the first is optional, so a person contributes to the box they qualify for and the ribbon then jumps to the next stage they reach. A person who reached nothing after signing up is a ribbon that ends, which is a dead end the funnel has no way to draw.
  *
- * The journey stages are the funnel's own steps, in the funnel's order and read the funnel's way, so the two views can be laid side by side stage for stage: onboarding is broken out into each question the state machine records rather than collapsed into one "Setup" column, and the funnel's tracked-time rows stay as the activity branches below rather than being drawn twice. What the Sankey adds and the funnel cannot is the branch: one shared activity stage, and an outcome column that says what happened to a hand-in rather than stopping at "submitted".
+ * The journey stages are the funnel's own steps, in the funnel's order and read the funnel's way, so the two views can be laid side by side stage for stage: onboarding is broken out into each question the state machine records rather than collapsed into one "Setup" column. What the Sankey adds and the funnel cannot is the branch: one shared activity stage, where devlogs, Hackatime, Lapse and reels sit as ribbons of whatever width they really are, and an outcome column that says what happened to a hand-in rather than stopping at "submitted". The tracked-time evidence is drawn here and nowhere else – the funnel used to carry those rows as its own section, which put the same fact in two shapes that could not both be right.
  *
  * Every stage after the first is optional, so a person contributes to the box they qualify for and the ribbon then jumps to the next stage they reach. A person who reached nothing after signing up is a ribbon that ends, which is a dead end the funnel has no way to draw.
  *
