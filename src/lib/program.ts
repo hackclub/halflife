@@ -1,7 +1,7 @@
 import "server-only"
 import { cache } from "react"
 import type { ProgramSettings } from "@/app/generated/prisma/client"
-import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
+import { PhaseStatus } from "@/app/generated/prisma/enums"
 import { DEFAULT_EVENT_START_DATE, DEFAULT_PROGRAM_TIMEZONE, TOTAL_WEEKS } from "@/lib/config/program"
 import { HttpError } from "@/lib/errors"
 import prisma from "@/lib/prisma"
@@ -338,10 +338,6 @@ export async function getShopAccess(userId: string): Promise<ShopAccess> {
 
 export const SHOP_CLOSED_MESSAGE =
 	"The shop is closed. It stays open while you have work awaiting review, and for a short window after your last review."
-
-export function phaseStatusField(phase: Phase): "designStatus" | "buildStatus" {
-	return phase === Phase.DESIGN ? "designStatus" : "buildStatus"
-}
 
 /**
  * A decided phase is frozen. Its entries are the record the decision was made against, so no edit, delete or new entry may land until an admin returns it or un-approves it – either of which moves it back to `update_requested`.

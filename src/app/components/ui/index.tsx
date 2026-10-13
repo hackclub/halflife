@@ -135,24 +135,6 @@ export function Avatar({
 	)
 }
 
-export function CloseIcon({ size = 18 }: Readonly<{ size?: number }>) {
-	return (
-		<svg
-			viewBox="0 0 24 24"
-			width={size}
-			height={size}
-			fill="none"
-			stroke="currentColor"
-			strokeWidth="2.5"
-			strokeLinecap="round"
-			aria-hidden="true"
-			focusable="false"
-		>
-			<path d="M6 6l12 12M18 6L6 18" />
-		</svg>
-	)
-}
-
 export function Stat({ label, value }: Readonly<{ label: string; value: ReactNode }>) {
 	return (
 		<div className="hl-stat">

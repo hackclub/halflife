@@ -24,54 +24,6 @@ export function statusFor(project: ThemeProject, phase: Phase): PhaseStatus {
 	return phase === Phase.DESIGN ? project.designStatus : project.buildStatus
 }
 
-export interface ReadinessCheck {
-	key: string
-	label: string
-	ok: boolean
-	detail?: string
-}
-
-/**
- * The readiness checklist shown before submitting. This is UI: the submit route recomputes eligibility server-side, because a checklist rendered five minutes ago is not an authorisation.
- */
-export async function getSubmitReadiness(project: ThemeProject, phase: Phase): Promise<ReadinessCheck[]> {
-	const breakdown = await getHoursBreakdown(project.id, phase)
-	const checks: ReadinessCheck[] = [
-		{
-			key: "title",
-			label: "Project has a title",
-			ok: project.title.trim().length > 0,
-		},
-		{
-			key: "description",
-			label: "Project has a description",
-			ok: (project.description ?? "").trim().length > 0,
-		},
-		{
-			key: "cover",
-			label: "Project has a cover image",
-			ok: !!project.coverImageKey,
-			detail: project.coverImageKey ? undefined : "Upload a photo or screenshot of the project on the project page",
-		},
-		{
-			key: "hours",
-			label: "At least one logged work session",
-			ok: breakdown.journalEntryCount > 0 || breakdown.hackatimeHours > 0,
-			detail: `${breakdown.computedTotal}h logged`,
-		},
-	]
-
-	if (phase === Phase.BUILD) {
-		checks.push({
-			key: "design",
-			label: "Design phase submitted",
-			ok: project.designStatus !== PhaseStatus.draft,
-			detail: project.designStatus === PhaseStatus.draft ? "Submit your design before submitting the build" : undefined,
-		})
-	}
-	return checks
-}
-
 /**
  * Whether a phase can be submitted right now.
  *
@@ -138,7 +90,7 @@ export async function submitPhase(
 	const eligible = canSubmitPhase(project, phase)
 	if (!eligible.ok) throw new HttpError(eligible.code, eligible.message)
 
-	// The readiness checklist calls a description required, and the Ari SDK refuses a ship without one. Week one's onboarding lets the maker leave it blank (the project form for other weeks does not), so a blank description used to pass submit and then fail the Ari send silently in the `after` hook – the maker saw success and no reviewer ever saw the project. Enforce it here, beside the hours check, so the refusal reaches the person who can fix it. `buildShipInput` keeps a fallback too, so hand-ins already stuck in this state can still be replayed by `ari-retry`.
+	// The Ari SDK refuses a ship without a description. Week one's onboarding lets the maker leave it blank (the project form for other weeks does not), so a blank description used to pass submit and then fail the Ari send silently in the `after` hook – the maker saw success and no reviewer ever saw the project. Enforce it here, beside the hours check, so the refusal reaches the person who can fix it. `buildShipInput` keeps a fallback too, so hand-ins already stuck in this state can still be replayed by `ari-retry`.
 	if (!project.description?.trim())
 		throw new HttpError("UNPROCESSABLE", "Add a project description before submitting this phase")
 

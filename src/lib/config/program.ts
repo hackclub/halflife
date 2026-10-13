@@ -6,7 +6,6 @@ import { Phase, Theme } from "@/app/generated/prisma/enums"
 
 /** Shown wherever the currency is named. One line to rename it everywhere. */
 export const CREDIT_NAME_PLURAL = "coins"
-export const CREDIT_NAME_SINGULAR = "coin"
 
 /**
  * One coin is one dollar, and an hour of work is worth five of them.
@@ -136,10 +135,6 @@ export function getThemeDef(theme: Theme): ThemeDef {
 	const def = theme === Theme.WARMUP ? WARMUP_THEME : THEMES.find((t) => t.id === theme)
 	if (!def) throw new Error(`Unknown theme: ${theme}`)
 	return def
-}
-
-export function themeDefBySlug(slug: string): ThemeDef | undefined {
-	return slug === WARMUP_THEME.slug ? WARMUP_THEME : THEMES.find((t) => t.slug === slug)
 }
 
 /** The theme and phase a given program week is scheduled for. */

@@ -139,19 +139,3 @@ export function isTierId(id: unknown): id is TierId {
 	return typeof id === "number" && TIER_IDS.includes(id as TierId)
 }
 
-/**
- * The tier an hour count falls into, for suggesting a default to a reviewer.
- *
- * Compares against `fundingHours`: someone who worked 14 hours has cleared Tier 2's funded block even though they are short of what a full Tier 2 week asks, and the reviewer wants Tier 2 offered so they can see that.
- */
-export function suggestTierForHours(hours: number): TierId {
-	let suggested: TierId = ENTRY_TIER.id
-	for (const tier of TIERS) if (hours >= tier.fundingHours) suggested = tier.id
-	return suggested
-}
-
-/** Airtable's `Complexity Tier` single-select label. */
-export function tierAirtableLabel(id: number): string {
-	const tier = getTier(id)
-	return tier ? `Complexity ${tier.name}` : ""
-}

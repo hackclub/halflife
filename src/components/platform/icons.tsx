@@ -92,12 +92,6 @@ export const IconLock = (p: P) => (
 	</Ico>
 )
 
-export const IconStar = (p: P) => (
-	<Ico {...p}>
-		<path d="m12 3.4 2.7 5.5 6 .9-4.3 4.2 1 6-5.4-2.8-5.4 2.8 1-6L3.3 9.8l6-.9Z" />
-	</Ico>
-)
-
 export const IconPlay = (p: P) => (
 	<Ico {...p}>
 		<path d="M8.4 5.6 18.6 12 8.4 18.4Z" />
@@ -121,12 +115,6 @@ export const IconVolumeOff = (p: P) => (
 	<Ico {...p}>
 		<path d="M4.4 9.4h3.2l4.6-3.8v12.8l-4.6-3.8H4.4Z" />
 		<path d="m15.4 9.6 4.8 4.8M20.2 9.6l-4.8 4.8" />
-	</Ico>
-)
-
-export const IconArrowUp = (p: P) => (
-	<Ico {...p}>
-		<path d="M12 19.2V4.8M6 10.8l6-6 6 6" />
 	</Ico>
 )
 
@@ -237,12 +225,6 @@ export const IconEye = (p: P) => (
 	</Ico>
 )
 
-export const IconMaximize = (p: P) => (
-	<Ico {...p}>
-		<path d="M9 4.6H4.6V9M15 4.6h4.4V9M9 19.4H4.6V15M15 19.4h4.4V15" />
-	</Ico>
-)
-
 export const IconLogout = (p: P) => (
 	<Ico {...p}>
 		<path d="M14.6 7.4V5.6a1.6 1.6 0 0 0-1.6-1.6H6.2a1.6 1.6 0 0 0-1.6 1.6v12.8a1.6 1.6 0 0 0 1.6 1.6H13a1.6 1.6 0 0 0 1.6-1.6v-1.8" />
@@ -272,22 +254,9 @@ export const IconCart = (p: P) => (
 	</Ico>
 )
 
-export const IconSparkle = (p: P) => (
-	<Ico {...p}>
-		<path d="M12 3.6c.8 4 1.8 5 5.8 5.8-4 .8-5 1.8-5.8 5.8-.8-4-1.8-5-5.8-5.8 4-.8 5-1.8 5.8-5.8Z" />
-		<path d="M18.4 15.2c.4 1.9.9 2.4 2.8 2.8-1.9.4-2.4.9-2.8 2.8-.4-1.9-.9-2.4-2.8-2.8 1.9-.4 2.4-.9 2.8-2.8Z" />
-	</Ico>
-)
-
 export const IconArrowRight = (p: P) => (
 	<Ico {...p}>
 		<path d="M4.6 12h14.8M13.6 6.2 19.4 12l-5.8 5.8" />
-	</Ico>
-)
-
-export const IconMenu = (p: P) => (
-	<Ico {...p}>
-		<path d="M4.4 7.4h15.2M4.4 12h15.2M4.4 16.6h15.2" />
 	</Ico>
 )
 

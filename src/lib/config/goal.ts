@@ -34,14 +34,3 @@ export const GOAL_OPTIONS: readonly GoalOption[] = [
 	},
 ]
 
-/** Whether an answer is one of the three. Guards a value that arrived from
- * outside – a stale client bundle, a hand-edited request body – before it is
- * compared or stored. */
-export function isParticipantGoal(value: unknown): value is ParticipantGoal {
-	return GOAL_OPTIONS.some((option) => option.value === value)
-}
-
-export function goalOption(value: ParticipantGoal): GoalOption {
-	// The cast is because GOAL_OPTIONS is a readonly tuple whose first member TS will not narrow for the reader – but the printer answer is written first and nothing removes it, so the fallback is unreachable in practice.
-	return GOAL_OPTIONS.find((option) => option.value === value) ?? (GOAL_OPTIONS[0] as GoalOption)
-}

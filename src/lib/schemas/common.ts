@@ -23,4 +23,3 @@ export function boundedText(max: number, min = 0) {
 	return z.string().trim().min(min).max(max)
 }
 
-export const reasonText = boundedText(2000, 1)

@@ -315,17 +315,3 @@ export function checkpointsFor(
 
 	return out
 }
-
-export const SUBMIT_FILES_DESIGN = [
-	{ id: "schematic", label: "Schematic (.kicad_sch or PDF)", hint: "Every net named, no floating pins." },
-	{ id: "layout", label: "Board layout (.kicad_pcb)", hint: "Source file, not just an export." },
-	{ id: "gerbers", label: "Gerbers + drill files (.zip)", hint: "The exact zip you would hand a fab." },
-	{ id: "readme", label: "README with build notes", hint: "What it does, what you would change." },
-	{ id: "photos", label: "Renders or screenshots", hint: "At least one 3D view of the board." },
-]
-
-export const SUBMIT_FILES_BUILD = [
-	{ id: "demo", label: "30-60 second working demo", hint: "Show it doing the thing, with your voice over it." },
-	{ id: "photos", label: "Three photos of the finished build", hint: "Front, back, and one detail shot." },
-	{ id: "notes", label: "Assembly notes", hint: "What you got wrong the first time." },
-]

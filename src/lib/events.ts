@@ -118,23 +118,6 @@ export function calendarDay(at: Date, timeZone: string): string {
 	}).format(at)
 }
 
-/**
- * Every calendar day in a month, as `YYYY-MM-DD`, padded at the front to a whole
- * number of weeks so the grid rows are full.
- *
- * The grid starts on Monday, not Sunday: a programme that runs to a Sunday close
- * reads better with Monday at the top, and every other row is seven days either
- * way.
- */
-export function monthDays(year: number, month: number): string[] {
-	// Day 0 of the next month is the last day of this one.
-	const last = new Date(Date.UTC(year, month, 0)).getUTCDate()
-	const days = Array.from({ length: last }, (_, i) => dayKey(year, month, i + 1))
-	// getUTCDay is 0 for Sunday, so Monday-first is a shift of one.
-	const lead = (new Date(Date.UTC(year, month - 1, 1)).getUTCDay() + 6) % 7
-	return [...Array.from({ length: lead }, () => ""), ...days]
-}
-
 /** `YYYY-MM-DD` for a year/month/day, zero-padded. */
 export function dayKey(year: number, month: number, day: number): string {
 	const pad = (n: number) => n.toString().padStart(2, "0")
@@ -145,26 +128,6 @@ export function dayKey(year: number, month: number, day: number): string {
 export function monthOf(day: string): { year: number; month: number } {
 	const [year, month] = day.split("-").map(Number)
 	return { year: year ?? 1970, month: month ?? 1 }
-}
-
-/**
- * The month `offset` months from the one `month` names, normalised.
- *
- * `month + offset` can land outside 1-12 (stepping back from January gives 0), so
- * it is run through a Date purely for its normalisation – UTC, because these are
- * calendar labels and a zone would only add the ambiguity this file exists to
- * avoid.
- */
-export function shiftMonth(month: { year: number; month: number }, offset: number): { year: number; month: number } {
-	const shifted = new Date(Date.UTC(month.year, month.month - 1 + offset, 1))
-	return { year: shifted.getUTCFullYear(), month: shifted.getUTCMonth() + 1 }
-}
-
-/** "March 2026" – the grid's own heading, with no day attached. */
-export function monthLabel(year: number, month: number): string {
-	return new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "UTC" }).format(
-		new Date(Date.UTC(year, month - 1, 1)),
-	)
 }
 
 /** A `YYYY-MM-DD` shifted by whole days. UTC throughout: these are calendar labels, not instants. */
@@ -285,21 +248,6 @@ export function eventRangeLabel(startsAt: Date, endsAt: Date | null, timeZone: s
  */
 export function eventsOnDay<T extends CalendarEvent>(events: readonly T[], day: string, timeZone: string): T[] {
 	return events.filter((event) => calendarDay(event.startsAt, timeZone) === day)
-}
-
-/**
- * How many events each day in the month has, keyed by `YYYY-MM-DD`.
- *
- * Counted rather than kept as a set because a cell with two events should read
- * as busier than one with a single.
- */
-export function eventCountsByDay(events: readonly CalendarEvent[], timeZone: string): Map<string, number> {
-	const counts = new Map<string, number>()
-	for (const event of events) {
-		const day = calendarDay(event.startsAt, timeZone)
-		counts.set(day, (counts.get(day) ?? 0) + 1)
-	}
-	return counts
 }
 
 /** The soonest event that has not finished, or null when the programme is clear. */
