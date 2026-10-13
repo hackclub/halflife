@@ -433,7 +433,7 @@ function MetricPie({
 }
 
 /**
- * The grid both activity charts draw on, shared so a change to one is a change to both.
+ * The grid every activity chart draws on, shared so a change to one is a change to all.
  *
  * The top inset is a caption band: a tick at the maximum lands exactly on the plot's top edge, and the axis caption
  * sits above it, so without the band "38" prints over "h". The height carries that band rather than the plot losing
@@ -442,8 +442,19 @@ function MetricPie({
 const CHART_H = 214
 const PAD_T = 24
 const PAD_B = 8
-const PAD_L = 6
-const PAD_R = 6
+
+/**
+ * The x axis is a share of the chart's own width and the y axis is in pixels, which is what lets a chart fill whatever
+ * panel it lands in without being measured. A percentage resolves against the SVG's viewport, so there is no viewBox
+ * and no scale factor for the HTML scale labels to fall out of step with, and the dots stay round because nothing is
+ * being stretched.
+ *
+ * The cost of that choice is that x can never ride in a `d` attribute – path data takes user units only – so the lines
+ * are drawn one segment per pair of points. It replaced a fixed pixel width per chart, which left most of a wide panel
+ * empty; `EDGE` is what keeps the first and last marks off the sides.
+ */
+const EDGE = 0.012
+const pct = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
 
 /**
  * Hours and devlogs per day, as two lines over one shared day axis and two scales.
@@ -463,11 +474,6 @@ const PAD_R = 6
  * how much one person's working day held – so the two are read together, the totals for volume and these for whether
  * that volume is spread thin. A day with a single contributor reads tall here, because that is what an average over
  * one person is, and nothing in the data can say otherwise.
- *
- * Drawn in pixels rather than a scaled viewBox, and that is what keeps the axes outside the scroll area. The scale
- * labels are HTML beside the chart, so they have to line up with the gridlines to the pixel; a viewBox stretched to
- * fit its container has no fixed pixel height to line up against, and stretching it non-uniformly to get one turns
- * the per-day dots into ellipses.
  */
 function ActivityStrip({ days, perUser = false }: { days: DayActivity[]; perUser?: boolean }) {
 	if (days.length === 0) return <EmptyState>No devlogs yet.</EmptyState>
@@ -479,10 +485,6 @@ function ActivityStrip({ days, perUser = false }: { days: DayActivity[]; perUser
 	const devlogsOf = (d: DayActivity) => (perUser ? perActiveUser(d.devlogs, d.users) : d.devlogs)
 
 	const plotH = CHART_H - PAD_T - PAD_B
-	// Wide enough that a day is worth a few pixels; the container scrolls past it rather than compressing the
-	// season into something where a day is a fraction of one.
-	const chartW = Math.max(480, days.length * 3)
-	const plotW = chartW - PAD_L - PAD_R
 
 	const maxHours = Math.max(1, ...days.map(hoursOf))
 	const maxDevlogs = Math.max(1, ...days.map(devlogsOf))
@@ -502,15 +504,24 @@ function ActivityStrip({ days, perUser = false }: { days: DayActivity[]; perUser
 		? `devlogs per user (averaging ${fmtCount(meanDevlogs)})`
 		: `devlogs (${fmtInt(sumDevlogs)} total)`
 
-	const xOf = (i: number) => PAD_L + (days.length === 1 ? plotW / 2 : (i / (days.length - 1)) * plotW)
+	const xOf = (i: number) => (days.length === 1 ? 0.5 : EDGE + (i / (days.length - 1)) * (1 - 2 * EDGE))
 	const yFor = (v: number, max: number) => PAD_T + plotH - (v / max) * plotH
-	const line = (pick: (d: DayActivity) => number, max: number) =>
-		days.map((d, i) => `${i === 0 ? "M" : "L"} ${xOf(i).toFixed(1)} ${yFor(pick(d), max).toFixed(1)}`).join(" ")
-	const hoursPath = line(hoursOf, maxHours)
-	const devlogsPath = line(devlogsOf, maxDevlogs)
-	const areaPath = `${hoursPath} L ${xOf(days.length - 1).toFixed(1)} ${(PAD_T + plotH).toFixed(1)} L ${xOf(0).toFixed(
-		1,
-	)} ${(PAD_T + plotH).toFixed(1)} Z`
+	const points = (pick: (d: DayActivity) => number, max: number) =>
+		days.map((d, i) => ({ x: xOf(i), y: yFor(pick(d), max) }))
+	/** One segment per pair of points, because a `d` attribute cannot carry the percentage x. */
+	const segments = (at: { x: number; y: number }[]) =>
+		at.slice(1).map((point, i) => {
+			const previous = at[i] ?? point
+			return { x1: previous.x, y1: previous.y, x2: point.x, y2: point.y }
+		})
+	const hoursSegments = segments(points(hoursOf, maxHours))
+	const devlogsSegments = segments(points(devlogsOf, maxDevlogs))
+	/** The fill under the hours line, as a column per day rather than a closed path, for the same reason. */
+	const areaBars = days.map((d, i) => ({
+		x: xOf(i),
+		width: (i === days.length - 1 ? 1 - EDGE : xOf(i + 1)) - xOf(i),
+		y: yFor(hoursOf(d), maxHours),
+	}))
 
 	// Five per axis, so both scales are readable. Rounded to something a person would say rather than to the raw
 	// maximum, which on a spiky series lands on an unreadable 574.3h.
@@ -556,9 +567,8 @@ function ActivityStrip({ days, perUser = false }: { days: DayActivity[]; perUser
 				/>
 				{legendDevlogs}
 			</p>
-			{/* The two scale columns are grid siblings of the chart, so they share its row and never scroll; only the
-			    chart cell overflows. Each label is placed at the exact pixel its gridline sits on, so the two scales
-			    read off one row rather than eyeballed. */}
+			{/* The two scale columns are grid siblings of the chart, so they share its row. Each label is placed at the
+			    exact pixel its gridline sits on, so the two scales read off one row rather than eyeballed. */}
 			<div style={{ display: "grid", gridTemplateColumns: "auto minmax(0, 1fr) auto", alignItems: "start" }}>
 				<div style={{ position: "relative", width: "3.1rem", height: `${CHART_H}px` }}>
 					{hoursTicks.map((t, i) => (
@@ -595,92 +605,115 @@ function ActivityStrip({ days, perUser = false }: { days: DayActivity[]; perUser
 					</span>
 				</div>
 
-				<div style={{ overflowX: "auto" }}>
-					<div style={{ width: `${chartW}px` }}>
-						<svg
-							width={chartW}
-							height={CHART_H}
-							viewBox={`0 0 ${chartW} ${CHART_H}`}
-							role="img"
-							aria-label={`Hours logged ${what}per day from ${first} to ${last}, peaking at ${fmtHours(
-								maxHours,
-							)}, and devlogs written ${what}per day over the same period, peaking at ${fmtCount(maxDevlogs)}`}
-							style={{ display: "block" }}
-						>
-							{hoursTicks.map((t, i) => (
-								<line
-									key={`hg${i}`}
-									x1={PAD_L}
-									x2={chartW - PAD_R}
-									y1={yFor(t, maxHours)}
-									y2={yFor(t, maxHours)}
-									stroke="var(--color-line-soft)"
-									strokeWidth="1"
-								/>
-							))}
-							{devlogTicks.map((t, i) => (
-								<line
-									key={`dg${i}`}
-									x1={PAD_L}
-									x2={chartW - PAD_R}
-									y1={yFor(t, maxDevlogs)}
-									y2={yFor(t, maxDevlogs)}
-									stroke="var(--color-line-soft)"
-									strokeWidth="1"
-									strokeDasharray="2 3"
-								/>
-							))}
-							<path d={areaPath} fill="var(--color-accent)" opacity="0.1" />
-							<path d={hoursPath} fill="none" stroke="var(--color-accent)" strokeWidth="1.75" strokeLinejoin="round" />
-							<path
-								d={devlogsPath}
-								fill="none"
+				<div>
+					<svg
+						width="100%"
+						height={CHART_H}
+						role="img"
+						aria-label={`Hours logged ${what}per day from ${first} to ${last}, peaking at ${fmtHours(
+							maxHours,
+						)}, and devlogs written ${what}per day over the same period, peaking at ${fmtCount(maxDevlogs)}`}
+						style={{ display: "block" }}
+					>
+						{hoursTicks.map((t, i) => (
+							<line
+								key={`hg${i}`}
+								x1={pct(EDGE)}
+								x2={pct(1 - EDGE)}
+								y1={yFor(t, maxHours)}
+								y2={yFor(t, maxHours)}
+								stroke="var(--color-line-soft)"
+								strokeWidth="1"
+							/>
+						))}
+						{devlogTicks.map((t, i) => (
+							<line
+								key={`dg${i}`}
+								x1={pct(EDGE)}
+								x2={pct(1 - EDGE)}
+								y1={yFor(t, maxDevlogs)}
+								y2={yFor(t, maxDevlogs)}
+								stroke="var(--color-line-soft)"
+								strokeWidth="1"
+								strokeDasharray="2 3"
+							/>
+						))}
+						{areaBars.map((bar, i) => (
+							<rect
+								key={`a${i}`}
+								x={pct(bar.x)}
+								y={bar.y}
+								width={pct(bar.width)}
+								height={PAD_T + plotH - bar.y}
+								fill="var(--color-accent)"
+								opacity="0.1"
+							/>
+						))}
+						{hoursSegments.map((segment, i) => (
+							<line
+								key={`h${i}`}
+								x1={pct(segment.x1)}
+								y1={segment.y1}
+								x2={pct(segment.x2)}
+								y2={segment.y2}
+								stroke="var(--color-accent)"
+								strokeWidth="1.75"
+								strokeLinecap="round"
+							/>
+						))}
+						{devlogsSegments.map((segment, i) => (
+							<line
+								key={`d${i}`}
+								x1={pct(segment.x1)}
+								y1={segment.y1}
+								x2={pct(segment.x2)}
+								y2={segment.y2}
 								stroke="var(--color-magenta)"
 								strokeWidth="1.25"
-								strokeLinejoin="round"
+								strokeLinecap="round"
 								strokeDasharray="4 2"
 							/>
-							{days.map((d, i) => (
-								<circle key={d.day} cx={xOf(i)} cy={yFor(hoursOf(d), maxHours)} r="1.6" fill="var(--color-accent)">
-									<title>
-										{perUser
-											? `${d.day}: ${fmtHours(hoursOf(d))} and ${fmtCount(devlogsOf(d))} devlogs per user, across ${fmtInt(d.users)} ${d.users === 1 ? "person" : "people"}`
-											: `${d.day}: ${fmtHours(d.hours)} logged, ${fmtInt(d.devlogs)} devlogs`}
-									</title>
-								</circle>
-							))}
-						</svg>
-						<div
-							aria-hidden="true"
-							style={{
-								display: "grid",
-								gridTemplateColumns: `repeat(${days.length}, 1fr)`,
-								gap: "1px",
-								marginTop: "4px",
-								// The plot leaves PAD_L/R for its own edges, so the labels take the same inset and sit under their ticks.
-								paddingLeft: PAD_L,
-								paddingRight: PAD_R,
-								fontSize: "0.65rem",
-								color: "var(--color-ink-muted)",
-							}}
-						>
-							{/* Each printed label spans its whole labelEvery block: one label per column squeezes a "MM-DD" into a few pixels on a long season and it ellipsizes to its first character ("1…", "0…"). */}
-							{days.map((d, i) =>
-								i % labelEvery === 0 ? (
-									<div
-										key={d.day}
-										style={{
-											gridColumn: `${i + 1} / span ${Math.min(labelEvery, days.length - i)}`,
-											overflow: "hidden",
-											textOverflow: "ellipsis",
-											whiteSpace: "nowrap",
-										}}
-									>
-										{d.day.slice(5)}
-									</div>
-								) : null,
-							)}
-						</div>
+						))}
+						{days.map((d, i) => (
+							<circle key={d.day} cx={pct(xOf(i))} cy={yFor(hoursOf(d), maxHours)} r="1.6" fill="var(--color-accent)">
+								<title>
+									{perUser
+										? `${d.day}: ${fmtHours(hoursOf(d))} and ${fmtCount(devlogsOf(d))} devlogs per user, across ${fmtInt(d.users)} ${d.users === 1 ? "person" : "people"}`
+										: `${d.day}: ${fmtHours(d.hours)} logged, ${fmtInt(d.devlogs)} devlogs`}
+								</title>
+							</circle>
+						))}
+					</svg>
+					<div
+						aria-hidden="true"
+						style={{
+							display: "grid",
+							gridTemplateColumns: `repeat(${days.length}, 1fr)`,
+							gap: "1px",
+							marginTop: "4px",
+							// The plot leaves EDGE either side, so the labels take the same inset and sit under their ticks.
+							paddingLeft: pct(EDGE),
+							paddingRight: pct(EDGE),
+							fontSize: "0.65rem",
+							color: "var(--color-ink-muted)",
+						}}
+					>
+						{/* Each printed label spans its whole labelEvery block: one label per column squeezes a "MM-DD" into a few pixels on a long season and it ellipsizes to its first character ("1…", "0…"). */}
+						{days.map((d, i) =>
+							i % labelEvery === 0 ? (
+								<div
+									key={d.day}
+									style={{
+										gridColumn: `${i + 1} / span ${Math.min(labelEvery, days.length - i)}`,
+										overflow: "hidden",
+										textOverflow: "ellipsis",
+										whiteSpace: "nowrap",
+									}}
+								>
+									{d.day.slice(5)}
+								</div>
+							) : null,
+						)}
 					</div>
 				</div>
 
@@ -747,8 +780,6 @@ function GoalHoursChart({ days }: { days: GoalDayActivity[] }) {
 	if (days.length === 0) return <EmptyState>No hours logged since anyone answered the goal prompt.</EmptyState>
 
 	const plotH = CHART_H - PAD_T - PAD_B
-	const chartW = Math.max(480, days.length * 3)
-	const plotW = chartW - PAD_L - PAD_R
 
 	// A goal nobody worked towards that day has no average to take, so it reads as zero rather than dividing by nobody.
 	const perUser = (hours: number, users: number) => (users > 0 ? hours / users : 0)
@@ -768,10 +799,14 @@ function GoalHoursChart({ days }: { days: GoalDayActivity[] }) {
 	// One maximum across all three: the comparison between the lines is the chart.
 	const maxHours = Math.max(1, ...lines.flatMap((l) => l.values))
 
-	const xOf = (i: number) => PAD_L + (days.length === 1 ? plotW / 2 : (i / (days.length - 1)) * plotW)
+	const xOf = (i: number) => (days.length === 1 ? 0.5 : EDGE + (i / (days.length - 1)) * (1 - 2 * EDGE))
 	const yFor = (v: number) => PAD_T + plotH - (v / maxHours) * plotH
-	const path = (values: number[]) =>
-		values.map((v, i) => `${i === 0 ? "M" : "L"} ${xOf(i).toFixed(1)} ${yFor(v).toFixed(1)}`).join(" ")
+	/** One segment per pair of points: a `d` attribute cannot carry the percentage x. */
+	const segments = (values: number[]) =>
+		values.slice(1).map((value, i) => {
+			const previous = values[i] ?? value
+			return { x1: xOf(i), y1: yFor(previous), x2: xOf(i + 1), y2: yFor(value) }
+		})
 
 	const ticks = Array.from({ length: 5 }, (_, i) => (maxHours / 4) * i)
 	const roundTick = (n: number) => (n >= 10 ? Math.round(n) : Math.round(n * 10) / 10)
@@ -841,83 +876,84 @@ function GoalHoursChart({ days }: { days: GoalDayActivity[] }) {
 					</span>
 				</div>
 
-				<div style={{ overflowX: "auto" }}>
-					<div style={{ width: `${chartW}px` }}>
-						<svg
-							width={chartW}
-							height={CHART_H}
-							viewBox={`0 0 ${chartW} ${CHART_H}`}
-							role="img"
-							aria-label={`Hours per active user per day from ${first} to ${last}, one line per goal: ${lines
-								.map((l) => `${l.label} peaking at ${fmtHours(Math.max(...l.values))}`)
-								.join("; ")}`}
-							style={{ display: "block" }}
-						>
-							{ticks.map((t, i) => (
+				<div>
+					<svg
+						width="100%"
+						height={CHART_H}
+						role="img"
+						aria-label={`Hours per active user per day from ${first} to ${last}, one line per goal: ${lines
+							.map((l) => `${l.label} peaking at ${fmtHours(Math.max(...l.values))}`)
+							.join("; ")}`}
+						style={{ display: "block" }}
+					>
+						{ticks.map((t, i) => (
+							<line
+								key={`gg${i}`}
+								x1={pct(EDGE)}
+								x2={pct(1 - EDGE)}
+								y1={yFor(t)}
+								y2={yFor(t)}
+								stroke="var(--color-line-soft)"
+								strokeWidth="1"
+							/>
+						))}
+						{lines.map((line) =>
+							segments(line.values).map((segment, i) => (
 								<line
-									key={`gg${i}`}
-									x1={PAD_L}
-									x2={chartW - PAD_R}
-									y1={yFor(t)}
-									y2={yFor(t)}
-									stroke="var(--color-line-soft)"
-									strokeWidth="1"
-								/>
-							))}
-							{lines.map((line) => (
-								<path
-									key={line.label}
-									d={path(line.values)}
-									fill="none"
+									key={`${line.label}-${i}`}
+									x1={pct(segment.x1)}
+									y1={segment.y1}
+									x2={pct(segment.x2)}
+									y2={segment.y2}
 									stroke={line.colour}
 									strokeWidth="1.75"
-									strokeLinejoin="round"
+									strokeLinecap="round"
 								/>
-							))}
-							{days.map((d, i) =>
-								lines.map((line) => (
-									<circle
-										key={`${d.day}-${line.label}`}
-										cx={xOf(i)}
-										cy={yFor(line.values[i] ?? 0)}
-										r="1.6"
-										fill={line.colour}
-									>
-										<title>{title(d)}</title>
-									</circle>
-								)),
-							)}
-						</svg>
-						<div
-							aria-hidden="true"
-							style={{
-								display: "grid",
-								gridTemplateColumns: `repeat(${days.length}, 1fr)`,
-								gap: "1px",
-								marginTop: "4px",
-								// The plot leaves PAD_L/R for its own edges, so the labels take the same inset and sit under their ticks.
-								paddingLeft: PAD_L,
-								paddingRight: PAD_R,
-								fontSize: "0.65rem",
-								color: "var(--color-ink-muted)",
-							}}
-						>
-							{days.map((d, i) =>
-								i % labelEvery === 0 ? (
-									<div
-										key={d.day}
-										style={{
-											gridColumn: `${i + 1} / span ${Math.min(labelEvery, days.length - i)}`,
-											overflow: "hidden",
-											textOverflow: "ellipsis",
-											whiteSpace: "nowrap",
-										}}
-									>
-										{d.day.slice(5)}
-									</div>
-								) : null,
-							)}
-						</div>
+							)),
+						)}
+						{days.map((d, i) =>
+							lines.map((line) => (
+								<circle
+									key={`${d.day}-${line.label}`}
+									cx={pct(xOf(i))}
+									cy={yFor(line.values[i] ?? 0)}
+									r="1.6"
+									fill={line.colour}
+								>
+									<title>{title(d)}</title>
+								</circle>
+							)),
+						)}
+					</svg>
+					<div
+						aria-hidden="true"
+						style={{
+							display: "grid",
+							gridTemplateColumns: `repeat(${days.length}, 1fr)`,
+							gap: "1px",
+							marginTop: "4px",
+							// The plot leaves EDGE either side, so the labels take the same inset and sit under their ticks.
+							paddingLeft: pct(EDGE),
+							paddingRight: pct(EDGE),
+							fontSize: "0.65rem",
+							color: "var(--color-ink-muted)",
+						}}
+					>
+						{days.map((d, i) =>
+							i % labelEvery === 0 ? (
+								<div
+									key={d.day}
+									style={{
+										gridColumn: `${i + 1} / span ${Math.min(labelEvery, days.length - i)}`,
+										overflow: "hidden",
+										textOverflow: "ellipsis",
+										whiteSpace: "nowrap",
+									}}
+								>
+									{d.day.slice(5)}
+								</div>
+							) : null,
+						)}
 					</div>
 				</div>
 			</div>
@@ -951,20 +987,24 @@ function ProjectsByWeekChart({ weeks }: { weeks: WeekProjectCluster[] }) {
 		return <EmptyState>No project has been started yet.</EmptyState>
 
 	const plotH = CHART_H - PAD_T - PAD_B
-	const chartW = Math.max(560, weeks.length * 56)
-	const plotW = chartW - PAD_L - PAD_R
-	// Four bars to a cluster, sized off the stride so the labels – one grid cell per cluster – still land under them.
-	const stride = plotW / weeks.length
-	const BAR_GAP = 2
-	const barW = Math.max(3, Math.min(11, (stride - 3 * BAR_GAP - 12) / 4))
-	const clusterW = PROJECT_KIND.length * barW + (PROJECT_KIND.length - 1) * BAR_GAP
+	// Four bars to a cluster, sized as shares of the stride so the labels – one grid cell per cluster – still land
+	// under their own bars at any panel width.
+	const stride = (1 - 2 * EDGE) / weeks.length
+	// The four bars take most of a cluster and the rest is the gutter between clusters. The gaps inside a cluster are
+	// shares of the cluster rather than of the whole width: eleven clusters leave a stride under a tenth of the width,
+	// so a gap sized against the width would be wider than the bars it is meant to separate.
+	const CLUSTER_FILL = 0.62
+	const BAR_GAP_SHARE = 0.12
+	const clusterW = CLUSTER_FILL * stride
+	const BAR_GAP = clusterW * BAR_GAP_SHARE
+	const barW = (clusterW - (PROJECT_KIND.length - 1) * BAR_GAP) / PROJECT_KIND.length
 
 	// These are counts, so the top is rounded up to a whole number of tick steps: a gridline labelled 9.25 would be nonsense on an axis of projects.
 	const axisMax = Math.max(4, Math.ceil(Math.max(1, ...totals) / 4) * 4)
 	const ticks = Array.from({ length: 5 }, (_, i) => (axisMax / 4) * i)
 
 	const yFor = (v: number) => PAD_T + plotH - (v / axisMax) * plotH
-	const centreOf = (i: number) => PAD_L + (i + 0.5) * stride
+	const centreOf = (i: number) => EDGE + (i + 0.5) * stride
 	const nameOf = (week: WeekProjectCluster) =>
 		week.phase === Phase.DESIGN
 			? `${week.label} design week`
@@ -1040,85 +1080,82 @@ function ProjectsByWeekChart({ weeks }: { weeks: WeekProjectCluster[] }) {
 					</span>
 				</div>
 
-				<div style={{ overflowX: "auto" }}>
-					<div style={{ width: `${chartW}px` }}>
-						<svg
-							width={chartW}
-							height={CHART_H}
-							viewBox={`0 0 ${chartW} ${CHART_H}`}
-							role="img"
-							aria-label={`Projects being built for each week: ${weeks
-								.map((week, i) => `${nameOf(week)} ${fmtInt(totals[i] ?? 0)}`)
-								.join(", ")}`}
-							style={{ display: "block" }}
-						>
-							{ticks.map((t, i) => (
-								<line
-									key={`pg${i}`}
-									x1={PAD_L}
-									x2={chartW - PAD_R}
-									y1={yFor(t)}
-									y2={yFor(t)}
-									stroke="var(--color-line-soft)"
-									strokeWidth="1"
-								/>
-							))}
-							{weeks.map((week, i) =>
-								PROJECT_KIND.map((kind, k) => {
-									const count = week[kind.key]
-									if (count === 0) return null
-									const top = yFor(count)
-									return (
-										<rect
-											key={`${week.week}-${kind.key}`}
-											x={centreOf(i) - clusterW / 2 + k * (barW + BAR_GAP)}
-											y={top}
-											width={barW}
-											height={PAD_T + plotH - top}
-											fill={kind.colour}
-										>
-											<title>{`${nameOf(week)} · ${kind.label}: ${fmtInt(count)}`}</title>
-										</rect>
-									)
-								}),
-							)}
-						</svg>
-						<div
-							style={{
-								display: "grid",
-								gridTemplateColumns: `repeat(${weeks.length}, 1fr)`,
-								paddingLeft: PAD_L,
-								paddingRight: PAD_R,
-								marginTop: "4px",
-								fontSize: "0.6rem",
-								textAlign: "center",
-								color: "var(--color-ink-muted)",
-							}}
-						>
-							{weeks.map((week) => (
-								<div key={week.week} style={{ overflowWrap: "anywhere" }}>
-									{week.label}
-								</div>
-							))}
-						</div>
-						<div
-							style={{
-								display: "grid",
-								gridTemplateColumns: `repeat(${weeks.length}, 1fr)`,
-								paddingLeft: PAD_L,
-								paddingRight: PAD_R,
-								marginTop: "2px",
-								fontSize: "0.58rem",
-								textAlign: "center",
-								color: "var(--color-ink-muted)",
-							}}
-						>
-							{bands.map((band) => (
-								<div key={band.text} style={{ gridColumn: `${band.at + 1} / span ${band.span}` }}>
-									{band.text}
-								</div>
-							))}
-						</div>
+				<div>
+					<svg
+						width="100%"
+						height={CHART_H}
+						role="img"
+						aria-label={`Projects being built for each week: ${weeks
+							.map((week, i) => `${nameOf(week)} ${fmtInt(totals[i] ?? 0)}`)
+							.join(", ")}`}
+						style={{ display: "block" }}
+					>
+						{ticks.map((t, i) => (
+							<line
+								key={`pg${i}`}
+								x1={pct(EDGE)}
+								x2={pct(1 - EDGE)}
+								y1={yFor(t)}
+								y2={yFor(t)}
+								stroke="var(--color-line-soft)"
+								strokeWidth="1"
+							/>
+						))}
+						{weeks.map((week, i) =>
+							PROJECT_KIND.map((kind, k) => {
+								const count = week[kind.key]
+								if (count === 0) return null
+								const top = yFor(count)
+								return (
+									<rect
+										key={`${week.week}-${kind.key}`}
+										x={pct(centreOf(i) - clusterW / 2 + k * (barW + BAR_GAP))}
+										y={top}
+										width={pct(barW)}
+										height={PAD_T + plotH - top}
+										fill={kind.colour}
+									>
+										<title>{`${nameOf(week)} · ${kind.label}: ${fmtInt(count)}`}</title>
+									</rect>
+								)
+							}),
+						)}
+					</svg>
+					<div
+						style={{
+							display: "grid",
+							gridTemplateColumns: `repeat(${weeks.length}, 1fr)`,
+							paddingLeft: pct(EDGE),
+							paddingRight: pct(EDGE),
+							marginTop: "4px",
+							fontSize: "0.6rem",
+							textAlign: "center",
+							color: "var(--color-ink-muted)",
+						}}
+					>
+						{weeks.map((week) => (
+							<div key={week.week} style={{ overflowWrap: "anywhere" }}>
+								{week.label}
+							</div>
+						))}
+					</div>
+					<div
+						style={{
+							display: "grid",
+							gridTemplateColumns: `repeat(${weeks.length}, 1fr)`,
+							paddingLeft: pct(EDGE),
+							paddingRight: pct(EDGE),
+							marginTop: "2px",
+							fontSize: "0.58rem",
+							textAlign: "center",
+							color: "var(--color-ink-muted)",
+						}}
+					>
+						{bands.map((band) => (
+							<div key={band.text} style={{ gridColumn: `${band.at + 1} / span ${band.span}` }}>
+								{band.text}
+							</div>
+						))}
 					</div>
 				</div>
 			</div>
