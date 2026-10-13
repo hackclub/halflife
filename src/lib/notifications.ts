@@ -1,4 +1,5 @@
 import "server-only"
+import type { Prisma } from "@/app/generated/prisma/client"
 import { Phase, ReviewResult } from "@/app/generated/prisma/enums"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { getThemeDef } from "@/lib/config/program"
@@ -100,11 +101,33 @@ export function reviewOutcomeMessage(
 }
 
 /**
+ * The message for a hand-in that never reached review.
+ *
+ * Deliberately not built from a review outcome: nothing has been reviewed, so there is no verdict to report and no reviewer to name. Calling this "changes requested" would describe a decision nobody made.
+ *
+ * The reason is the send's own refusal rather than a person's note, so it reads as one of our paragraphs instead of the boxed quote a reviewer's words get. That also means it can change between attempts as the maker edits - only the project page follows it, because the notice itself is owed once.
+ */
+export function shipFailedMessage(source: { title: string; phase: Phase; reason: string }): {
+	subject: string
+	prose: string[]
+} {
+	const phase = source.phase === Phase.DESIGN ? "design" : "build"
+	return {
+		subject: `Your ${phase} for ${source.title} has not reached review`,
+		prose: [
+			`Your ${phase} for ${source.title} was handed in, but it could not be sent for review, so nothing has been reviewed yet.`,
+			source.reason,
+			"Fix that on the project page, then hand it in again – if the week still shows as in review, take it back first.",
+		],
+	}
+}
+
+/**
  * The message as flat paragraphs, in the one order every plain-text channel wants.
  *
  * Ours first and the reviewer's last, so the note lands under the line that explains it. One definition instead of each caller reassembling the message, because the order is part of what the note means.
  */
-function plainLines(message: ReviewOutcomeMessage): string[] {
+function plainLines(message: { prose: readonly string[]; note: string | null }): string[] {
 	return [...message.prose, ...(message.note ? [message.note] : [])]
 }
 
@@ -122,22 +145,27 @@ function reviewInk(result: ReviewResult): string {
 const EMAIL_FONT = "font-family:system-ui,-apple-system,'Segoe UI',sans-serif"
 
 /**
- * The email body for a review outcome.
+ * The email body for a notice to a maker.
  *
  * Tables with inline styles, because there is nothing a mail client could load: no stylesheet, and so no flexbox or grid either. Colours are platform tokens from DESIGN.md, so the mail reads as the same place the trail does.
  *
- * The note is the only thing in here that is not a paragraph. It keeps its whitespace and gets a tinted box with the decision's own colour on its edge, set apart from our prose so a maker can tell whose words they are reading – the treatment the project page already gives a review comment (Timeline.tsx).
+ * The note is the only thing in here that is not a paragraph. It keeps its whitespace and gets a tinted box with the notice's own colour on its edge, set apart from our prose so a maker can tell whose words they are reading – the treatment the project page already gives a review comment (Timeline.tsx). A notice whose reason is ours rather than a person's passes none, and says it in `prose` instead.
  */
 function emailHtml(input: {
 	greeting: string
-	message: ReviewOutcomeMessage
-	ink: string
+	/** The body, in order. The first line is set as the headline. */
+	prose: readonly string[]
+	/** A reviewer's own words, boxed and labelled, or null when nobody typed any. */
+	note: string | null
+	/** The accent for the note's box and its rule. Unused when there is no note to draw one around. */
+	ink?: string
 	url: string | null
 }): string {
-	const headline = input.message.prose[0] ?? ""
-	const rest = input.message.prose.slice(1)
-	const note = input.message.note
-		? `<div style="margin-top:8px;border-left:3px solid ${input.ink};border-radius:0 8px 8px 0;background-color:#f4f4f8;padding:14px 16px;${EMAIL_FONT};font-size:15px;line-height:1.6;color:#1c1a59;white-space:pre-line;overflow-wrap:anywhere">${escapeHtml(input.message.note)}</div>`
+	const ink = input.ink ?? "#4a4785"
+	const headline = input.prose[0] ?? ""
+	const rest = input.prose.slice(1)
+	const note = input.note
+		? `<div style="margin-top:8px;border-left:3px solid ${ink};border-radius:0 8px 8px 0;background-color:#f4f4f8;padding:14px 16px;${EMAIL_FONT};font-size:15px;line-height:1.6;color:#1c1a59;white-space:pre-line;overflow-wrap:anywhere">${escapeHtml(input.note)}</div>`
 		: ""
 
 	return [
@@ -162,6 +190,66 @@ function emailHtml(input: {
 	]
 		.filter(Boolean)
 		.join("\n")
+}
+
+/**
+ * Write one notice to every channel the maker is reachable by.
+ *
+ * The one place that knows a maker is reached by a Slack DM and an email, what each of them looks like, and that neither may fail the other. A notice that is owed is owed however the person prefers to be told, so both are attempted and each records its own failure rather than the second being skipped because the first threw.
+ *
+ * `note` is a reviewer's own words when there are any, sent as a boxed quote; a notice whose reason is ours (a failed send, say) leaves it null and says so in `prose` instead.
+ */
+async function deliverToMaker(input: {
+	themeProjectId: string
+	phase: Phase
+	/** Recorded on the audit rows, so a channel failure names the notice it belonged to. */
+	kind: string
+	subject: string
+	prose: readonly string[]
+	note: string | null
+	/** The accent for the note's box. Omitted by a notice that has no reviewer's words to draw one around. */
+	ink?: string
+	user: { name: string | null; email: string | null; slackId: string | null }
+	/** Extra fields for the audit rows, for a notice whose kind and phase alone do not say enough. */
+	meta?: Prisma.InputJsonObject
+}): Promise<void> {
+	const { email, slackId } = input.user
+	const lines = plainLines(input)
+	const url = projectUrl(input.themeProjectId)
+	const firstName = input.user.name?.trim().split(/\s+/)[0] || "there"
+
+	const ctx = {
+		actorId: null,
+		targetType: "ThemeProject",
+		targetId: input.themeProjectId,
+		metadata: { kind: input.kind, phase: input.phase, ...input.meta },
+	}
+
+	if (slackId) {
+		const link = url ? `\n<${url}|Open the project>` : ""
+		await trackSideEffect("slack", ctx, () => sendDM(slackId, `${lines.join("\n\n")}${link}`))
+	}
+
+	if (email) {
+		const text = [
+			`Hi ${firstName}`,
+			"",
+			...lines,
+			...(url ? ["", `Open the project: ${url}`] : []),
+			"",
+			"– Half Life",
+		].join("\n")
+
+		const html = emailHtml({
+			greeting: `Hi ${escapeHtml(firstName)}`,
+			prose: input.prose,
+			note: input.note,
+			ink: input.ink,
+			url,
+		})
+
+		await trackSideEffect("email", ctx, () => sendEmail({ to: email, subject: input.subject, text, html }))
+	}
 }
 
 /**
@@ -203,44 +291,65 @@ async function deliverReviewOutcome(notice: ReviewOutcomeNotice): Promise<void> 
 	})
 	if (!project) return
 
-	const { email, slackId } = project.user
 	const title = project.title.trim() || getThemeDef(project.theme).label
 	const message = reviewOutcomeMessage(notice, { phase: notice.phase, title })
-	const { subject } = message
-	const lines = plainLines(message)
-	const url = projectUrl(notice.themeProjectId)
-	const firstName = project.user.name?.trim().split(/\s+/)[0] || "there"
 
-	const ctx = {
-		actorId: null,
-		targetType: "ThemeProject",
-		targetId: notice.themeProjectId,
-		metadata: { kind: "review_outcome", phase: notice.phase, result: notice.result, decidedBy: notice.decidedBy },
-	}
+	await deliverToMaker({
+		themeProjectId: notice.themeProjectId,
+		phase: notice.phase,
+		kind: "review_outcome",
+		subject: message.subject,
+		prose: message.prose,
+		note: message.note,
+		ink: reviewInk(notice.result),
+		user: project.user,
+		meta: { result: notice.result, decidedBy: notice.decidedBy },
+	})
+}
 
-	if (slackId) {
-		const link = url ? `\n<${url}|Open the project>` : ""
-		await trackSideEffect("slack", ctx, () => sendDM(slackId, `${lines.join("\n\n")}${link}`))
-	}
-
-	if (email) {
-		const text = [
-			`Hi ${firstName}`,
-			"",
-			...lines,
-			...(url ? ["", `Open the project: ${url}`] : []),
-			"",
-			"– Half Life",
-		].join("\n")
-
-		const html = emailHtml({
-			greeting: `Hi ${escapeHtml(firstName)}`,
-			message,
-			ink: reviewInk(notice.result),
-			url,
+/**
+ * Tell the maker their hand-in never reached review.
+ *
+ * Owed once per stuck hand-in, and the caller decides that: this is the message, and `sendSubmissionToAri` only reaches for it on the transition into a stuck state. Best-effort like every other notice – the caller is the hourly retry job, and a mail outage must not turn one stuck hand-in into a failing job.
+ */
+export async function notifyShipFailed(input: { themeProjectId: string; phase: Phase; reason: string }): Promise<void> {
+	try {
+		const project = await prisma.themeProject.findUnique({
+			where: { id: input.themeProjectId },
+			select: {
+				title: true,
+				theme: true,
+				user: { select: { name: true, email: true, slackId: true } },
+			},
 		})
+		if (!project) return
 
-		await trackSideEffect("email", ctx, () => sendEmail({ to: email, subject, text, html }))
+		const title = project.title.trim() || getThemeDef(project.theme).label
+		const message = shipFailedMessage({ title, phase: input.phase, reason: input.reason })
+
+		await deliverToMaker({
+			themeProjectId: input.themeProjectId,
+			phase: input.phase,
+			kind: "ari_ship_failed",
+			subject: message.subject,
+			prose: message.prose,
+			note: null,
+			user: project.user,
+		})
+	} catch (err) {
+		const message = err instanceof Error ? err.message : String(err)
+		console.error(`[notifications] ship failure notice failed for ${input.themeProjectId}:`, err)
+		await logAudit({
+			action: AuditAction.NOTIFICATION_FAILURE,
+			targetType: "ThemeProject",
+			targetId: input.themeProjectId,
+			metadata: {
+				kind: "ari_ship_failed",
+				phase: input.phase,
+				stage: "before_channels",
+				error: message,
+			},
+		}).catch(() => undefined)
 	}
 }
 

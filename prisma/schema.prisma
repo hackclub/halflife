@@ -889,6 +889,11 @@ model PhaseSubmission {
   ariDecision     String?
   ariSyncedAt     DateTime?
 
+  /// Set when a send failed for a reason a retry cannot fix - an unparseable repo link, a missing title, an account with no Slack id. Cleared by a later success.
+  ///
+  /// Two jobs. The transition from null to non-null is the single moment the maker is told: the retry job replays every unsent hand-in hourly, so without a mark to read it would send the same notice on every attempt. And the value is what the project page shows in place of a bare "in review", so a maker who never opened the message still finds out.
+  ariShipError String?
+
   /// Non-null means this submission is resolved and immutable.
   resolvedAt     DateTime?
   resolvedResult ReviewResult?

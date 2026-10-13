@@ -343,6 +343,16 @@ function ReviewState({
 								</p>
 							)}
 
+							{p.shipError && (
+								<div className="rounded-xl bg-coral/10 px-3.5 py-3">
+									<p className="text-[0.88rem] font-extrabold text-coral-dark">This hand-in has not reached review</p>
+									<p className="mt-1 text-[0.86rem] leading-snug text-navy-soft">{p.shipError}</p>
+									<p className="mt-1 text-[0.86rem] leading-snug text-navy-soft">
+										Fix that, then hand it in again – take the week back first if it is still in review.
+									</p>
+								</div>
+							)}
+
 							{p.disputedAt !== null ? (
 								<p className="hand text-[0.84rem] text-navy-soft">
 									{p.disputeResolved

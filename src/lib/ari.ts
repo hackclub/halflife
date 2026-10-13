@@ -1,5 +1,5 @@
 import "server-only"
-import { Ari, AriApiError, type AriReview, type AriShipInput, type AriWebhookEvent } from "@hackclub/ari"
+import { Ari, AriApiError, AriInputError, type AriReview, type AriShipInput, type AriWebhookEvent } from "@hackclub/ari"
 import type { Prisma } from "@/app/generated/prisma/client"
 import { HoursSource, Phase, PhaseStatus, ReviewResult, Theme } from "@/app/generated/prisma/enums"
 import { ariExternalId, parseAriExternalId } from "@/lib/ari-id"
@@ -8,7 +8,7 @@ import { AuditAction, logAudit } from "@/lib/audit"
 import { getThemeDef, WARMUP_THEME } from "@/lib/config/program"
 import { isTierId } from "@/lib/config/tiers"
 import { HttpError } from "@/lib/errors"
-import { notifyReviewOutcome } from "@/lib/notifications"
+import { notifyReviewOutcome, notifyShipFailed } from "@/lib/notifications"
 import prisma from "@/lib/prisma"
 import { normalizeRepo } from "@/lib/repo"
 import { finalizeReview, reopenPhase, unapprovePhase } from "@/lib/review"
@@ -197,21 +197,67 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
 // ─── Outbound ────────────────────────────────────────────────────────────────
 
 /**
+ * A send failure a retry cannot fix, as the reason to tell the maker, or null when retrying may still work.
+ *
+ * Two sources, and they are the whole set. The guards in `buildShipInput` refuse a hand-in we already know Ari will not take - no title, no repo link, a link that is not a web address, an account with no Slack id. The SDK's own `validateShip` refuses the rest of its field rules before it ever opens a request. Neither changes on its own, so replaying them hourly is the retry job talking to itself.
+ *
+ * Everything else - a timeout, a 5xx, a rate limit - is left alone: those are what the retry is for, and a notice on each would turn a brief Ari outage into mail to everyone mid-hand-in.
+ */
+function terminalShipFailure(err: unknown): string | null {
+	if (err instanceof HttpError && err.code === "UNPROCESSABLE") return err.message
+	if (err instanceof AriInputError) return err.message
+	return null
+}
+
+/**
+ * Write down a send that a retry cannot fix, and tell the maker the first time it happens.
+ *
+ * The marker is what makes the notice once per stuck hand-in rather than once per hour: `ari-retry` replays every unsent hand-in, and the row it would re-read held nothing until the first terminal failure. A later success clears it, and unsubmitting deletes the row, so a fresh hand-in earns a fresh notice.
+ *
+ * Never throws. It runs on the way out of a send that has already failed, and swallowing its own trouble is what lets that failure keep travelling to `trackSideEffect`, where it becomes the audit row an operator replays.
+ */
+async function noteShipFailure(themeProjectId: string, phase: Phase, reason: string): Promise<void> {
+	try {
+		const submission = await prisma.phaseSubmission.findFirst({
+			where: { themeProjectId, phase, resolvedAt: null },
+			orderBy: { createdAt: "desc" },
+			select: { id: true, ariShipError: true },
+		})
+		if (!submission) return
+
+		const firstTime = submission.ariShipError === null
+		await prisma.phaseSubmission.update({ where: { id: submission.id }, data: { ariShipError: reason } })
+		if (!firstTime) return
+
+		await notifyShipFailed({ themeProjectId, phase, reason })
+	} catch (err) {
+		console.error(`[ari] could not record the ship failure for ${themeProjectId}:`, err)
+	}
+}
+
+/**
  * Send a hand-in to Ari. Throws on failure so `trackSideEffect` records an ARI_SYNC_FAILURE an operator can replay; the submission keeps a null `ariSubmissionId`, which is what the retry job looks for.
  */
 export async function sendSubmissionToAri(themeProjectId: string, phase: Phase) {
 	if (!isAriConfigured()) return { skipped: "not_configured" as const }
 
-	const { input, submissionId } = await buildShipInput(themeProjectId, phase)
-	const result = await ari().ships.create(input)
+	try {
+		const { input, submissionId } = await buildShipInput(themeProjectId, phase)
+		const result = await ari().ships.create(input)
 
-	if (submissionId) {
-		await prisma.phaseSubmission.update({
-			where: { id: submissionId },
-			data: { ariSubmissionId: result.id, ariSyncedAt: new Date() },
-		})
+		if (submissionId) {
+			await prisma.phaseSubmission.update({
+				where: { id: submissionId },
+				// The error is cleared with the send: a hand-in that reached Ari is not stuck, and the marker is only ever about the current attempt.
+				data: { ariSubmissionId: result.id, ariSyncedAt: new Date(), ariShipError: null },
+			})
+		}
+		return { id: result.id, status: result.status }
+	} catch (err) {
+		const reason = terminalShipFailure(err)
+		if (reason) await noteShipFailure(themeProjectId, phase, reason)
+		throw err
 	}
-	return { id: result.id, status: result.status }
 }
 
 /** Withdraw an open hand-in from Ari (the participant took it back). */
