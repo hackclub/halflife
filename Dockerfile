@@ -1,4 +1,9 @@
 # syntax=docker/dockerfile:1
+
+# Declared before the first FROM because that is the only scope a FROM line can read an ARG from; inside a stage it would be invisible to the `next-cache` FROM below.
+# See that stage for what this image is.
+ARG NEXT_CACHE_IMAGE=alpine:3
+
 FROM oven/bun:1-alpine AS base
 # Production runs on Bun, not Node: installs, the Next build and the standalone server below all execute under `bun`. Local dev and CI still use pnpm (see package.json's packageManager field); the pnpm lockfile and workspace config are deliberately excluded from this build context via .dockerignore so they never land in the image.
 
@@ -27,6 +32,15 @@ COPY prisma ./prisma
 COPY prisma.config.ts ./
 RUN bunx prisma generate
 
+# ── next-cache ───────────────────────────────────────────────────────────────
+# The Turbopack cache as an image, so a build can start warm.
+#
+# The `--mount=type=cache` this replaced could not do it. A cache mount lives in the builder's own state, and here the builder is a fresh pod per build; it is also never part of the cache export, which carries layers only. So every deploy saw an empty directory and recompiled from scratch – measured at 26s cold against 1s warm on this app, with a two-file diff landing at 13s.
+#
+# Defaulted to an image with no cache in it, so a build without the cache image (a fresh environment, the first deploy after this change) starts cold rather than failing. The `mkdir` is what makes that work: whatever the source image carried, `/cache` exists from here on, so the copy in the builder cannot fail on a missing directory. (`NEXT_CACHE_IMAGE` is declared at the top of this file, because a FROM can only read an ARG from before the first FROM.)
+FROM ${NEXT_CACHE_IMAGE} AS next-cache
+RUN mkdir -p /cache
+
 # ── builder ──────────────────────────────────────────────────────────────────
 FROM base AS builder
 WORKDIR /app
@@ -44,8 +58,22 @@ ENV BETTER_AUTH_SECRET="build-time-placeholder-must-be-32-chars-long"
 ARG NEXT_PUBLIC_APP_URL
 ARG NEXT_PUBLIC_UPLOAD_HOST
 
-# `compile` skips Next's own typecheck pass: CI already runs `pnpm typecheck` and `pnpm lint` on every commit before it can reach prod, so re-running tsc here (~15s) buys nothing. The cache mount keeps the incremental compile cache across builds, so small-diff deploys compile warm instead of cold.
-RUN --mount=type=cache,target=/app/.next/cache bunx next build --experimental-build-mode compile
+# `compile` skips Next's own typecheck pass: CI already runs `pnpm typecheck` and `pnpm lint` on every commit before it can reach prod, so re-running tsc here (~15s) buys nothing.
+#
+# The published cache lands straight where Turbopack looks for it, before the build rather than after, and the copy is a plain `COPY --from` on purpose: a `--mount=…,from=<stage>` is not treated as a stage dependency by every builder (buildah skips the source stage and then fails to resolve the mount), where a COPY is. Empty is the normal first-run state and builds cold.
+COPY --from=next-cache /cache .next/cache
+RUN bunx next build --experimental-build-mode compile
+
+# ── next-cache-image ─────────────────────────────────────────────────────────
+# What the refresh job publishes: the cache the build just produced, and nothing else.
+#
+#     docker build --target next-cache-image -t <registry>/halflife-next-cache:main .
+#
+# The smallest image with a shell in it, rather than `scratch`: the consumer stage runs `mkdir -p /cache`, and an image without a shell cannot run anything at all.
+# So this is alpine plus one layer of cache, and a deploy consumes it with
+# `--build-arg NEXT_CACHE_IMAGE=<that tag>`. Worth refreshing on merges to the deploy branch rather than per deploy: the layer is ~260MB, and a fresh digest costs a fetch that eats most of the compile time it saves.
+FROM alpine:3 AS next-cache-image
+COPY --from=builder /app/.next/cache /cache
 
 # ── runner ───────────────────────────────────────────────────────────────────
 FROM base AS runner
