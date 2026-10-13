@@ -116,9 +116,9 @@ function fetchSnapshot(ref: RepoRef): Promise<Snapshot> {
  */
 const DESIGN_JSON_MAX = 5
 
-/** Directories no design is exported into, and the usual suspects in a JavaScript repo. */
+/** Directories no design is exported into, and the usual suspects in a JavaScript repo. Case-blind, like every other path test here. */
 const DESIGN_JSON_SKIP =
-	/(^|\/)(node_modules|dist|build|out|coverage|vendor|\.next|package-lock\.json|yarn\.lock|pnpm-lock\.yaml)/
+	/(^|\/)(node_modules|dist|build|out|coverage|vendor|\.next|package-lock\.json|yarn\.lock|pnpm-lock\.yaml)/i
 
 /**
  * Which of the repo's `.json` files are a board or a schematic, by reading the plausible ones.
