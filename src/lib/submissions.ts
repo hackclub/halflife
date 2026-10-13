@@ -143,7 +143,10 @@ export async function submitPhase(
 		throw new HttpError("UNPROCESSABLE", "Add a project description before submitting this phase")
 
 	if (!project.coverImageKey)
-		throw new HttpError("UNPROCESSABLE", "Upload a cover image for your project before submitting this phase")
+		throw new HttpError(
+			"UNPROCESSABLE",
+			"Upload a photo or screenshot of the project as its cover before submitting this phase",
+		)
 
 	// Handing a week in is a checkpoint too; a deleted reel still owed holds it.
 	await assertNoOwedReel(userId)
