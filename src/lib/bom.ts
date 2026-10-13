@@ -1,5 +1,8 @@
 import "server-only"
-import { PhaseStatus } from "@/app/generated/prisma/enums"
+import type { ThemeProject } from "@/app/generated/prisma/client"
+import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
+import { bomTotalUsd, type PartsFunding, partsFunding } from "@/lib/bom-policy"
+import { ENTRY_TIER, getTier } from "@/lib/config/tiers"
 import prisma from "@/lib/prisma"
 import { sanitize, sanitizeOptional } from "@/lib/sanitize"
 import type { BomItemInput } from "@/lib/schemas/project"
@@ -20,6 +23,26 @@ export interface BomLine {
 	vendor: string | null
 	link: string | null
 	updatedAt: Date
+}
+
+/**
+ * What this project's parts list asks against the tier it is asking for, read from the database.
+ *
+ * The submit gate's side of the rule in `lib/bom-policy`, and deliberately not the sheet's: the numbers here are the ones the maker is bound by, worked out from the stored cart and the stored tier request rather than from whatever was on screen when they pressed submit.
+ *
+ * `requestedTier` is the maker's ask and `tier` the reviewer's decision, so a project whose design is already approved is priced against what was actually paid out. A build never asks for parts money, so its total is nothing and it can never need agreeing to anything.
+ */
+export async function partsFundingFor(
+	project: Pick<ThemeProject, "id" | "tier" | "requestedTier" | "bomTaxShippingUsd">,
+	phase: Phase,
+): Promise<PartsFunding> {
+	const capUsd = getTier(project.tier ?? project.requestedTier ?? ENTRY_TIER.id)?.grantUsd ?? ENTRY_TIER.grantUsd
+	if (phase !== Phase.DESIGN) return partsFunding(0, capUsd)
+	const items = await prisma.bomItem.findMany({
+		where: { themeProjectId: project.id },
+		select: { quantity: true, unitCostUsd: true },
+	})
+	return partsFunding(bomTotalUsd(items, project.bomTaxShippingUsd), capUsd)
 }
 
 export function listBom(themeProjectId: string): Promise<BomLine[]> {

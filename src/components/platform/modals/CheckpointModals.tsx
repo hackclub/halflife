@@ -26,6 +26,7 @@ import { Button, borderedInputClass, Chip, Field, inputClass, OptionRow, Panel }
 import { attrUrl } from "@/lib/attr-url"
 import { linkLapse } from "@/lib/auth-client"
 import type { BomLine } from "@/lib/bom"
+import { BOM_MARGIN_USD, bomTotalUsd, partsFunding } from "@/lib/bom-policy"
 import { STARTER_PROJECT_TIER, starterProjectsFor } from "@/lib/config/onboarding"
 import { COINS_PER_HOUR, paceTarget, printerById, submitFloorFor } from "@/lib/config/printers"
 import { THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
@@ -41,7 +42,6 @@ import {
 import { normalizeRepo } from "@/lib/repo"
 import type { RepoCheckResult } from "@/lib/repo-checks"
 import { EXAMPLE_JOURNAL_URL } from "@/lib/routes"
-import { BOM_MARGIN_USD } from "@/lib/schemas/project"
 import { MAX_SESSION_CONTENT, MAX_SESSION_HOURS } from "@/lib/schemas/session"
 import { useStore } from "@/lib/store"
 import type { Checkpoint, Project, Week } from "@/lib/types"
@@ -1918,6 +1918,8 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const [tier, setTier] = useState<1 | 2 | 3>(project?.tier ?? 1)
 	// Makers who want nothing from the parts fund can hand in an empty BOM: the box states it, a confirm makes sure, and the flag is what lets the sheet past step 2 without carts.
 	const [declinedFunding, setDeclinedFunding] = useState(false)
+	// A cart past the tier's funding: the maker ticks this to say they will cover the shortfall themselves. Held in local state like the decline above, because it is a statement about this hand-in and the server re-reads the numbers before it believes it.
+	const [acceptsPartialFunding, setAcceptsPartialFunding] = useState(false)
 	const [clip, setClip] = useState<string | null>(null)
 	// The bucket URL of the closing clip, when there is one, so it can be saved and posted elsewhere afterwards.
 	const [clipUrl, setClipUrl] = useState<string | null>(null)
@@ -1962,10 +1964,8 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			live = false
 		}
 	}, [isBuild, project?.id]) // eslint-disable-line react-hooks/exhaustive-deps -- the id is the input
-	const bomTotal = useMemo(
-		() => (bom?.items.reduce((n, l) => n + l.quantity * l.unitCostUsd, 0) ?? 0) + (bom?.taxShippingUsd ?? 0),
-		[bom],
-	)
+	// The same arithmetic the submit gate reads (lib/bom-policy), so the total on screen is the total being held to.
+	const bomTotal = useMemo(() => bomTotalUsd(bom?.items ?? [], bom?.taxShippingUsd), [bom])
 
 	/**
 	 * A tier is a claim about hours as much as about money: its funded block has to be covered, and everything past it earns. Tier 2 funds thirteen hours, so thirteen hours pay for the project and the fourteenth already earns – which is why the tier cannot be raised at the last moment on hours that were only ever enough for a smaller one.
@@ -1977,11 +1977,14 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const tierShort = (fundingHours: number) => Math.max(0, tierFloor(fundingHours) - hours)
 	const selectedTier = TIERS.find((t) => t.id === tier) ?? TIERS[0]
 	const tierBlocked = !isBuild && tierShort(selectedTier.fundingHours) > 0
-	// Over the tier's funding warns; past the leeway it refuses the submit, the same refusal the hours floor makes.
-	const bomBlocked = !isBuild && bomTotal > selectedTier.grantUsd + BOM_MARGIN_USD
+	// Over the tier's funding warns; past the leeway the grant covers only part of the cart, which is allowed but has to be agreed to rather than discovered at review.
+	const funding = partsFunding(bomTotal, selectedTier.grantUsd)
+	const bomOverCap = !isBuild && funding.needsAgreement
 	// An empty BOM the maker has deliberately declined funding for. Read off the loaded list every render rather than trusted from the toggle alone, so a stale flag can never unblock a week whose parts arrived after the box was ticked.
 	const bomEmpty = !isBuild && bom !== null && bom.items.length === 0
 	const fundingDeclined = bomEmpty && declinedFunding
+	// Same reading for the partial-funding box: honoured only while the cart is actually over, so raising the tier or editing the parts list back under it retires the tick on its own.
+	const partialFunding = bomOverCap && acceptsPartialFunding
 
 	const repoReady = repoResult?.canSubmit ?? false
 
@@ -1994,8 +1997,8 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				? clip && (works === "yes" || (works === "no" && writeup.trim().length >= 40))
 				: step === 2
 					? // No funding, no order, no carts to screenshot: a declined empty BOM carries no cart evidence.
-						(carts.length > 0 || fundingDeclined) && !tierBlocked && !bomBlocked
-					: clip && !tierBlocked && !bomBlocked && hasCover
+						(carts.length > 0 || fundingDeclined) && !tierBlocked && partialFunding
+					: clip && !tierBlocked && partialFunding && hasCover
 
 	/**
 	 * Handing a week in, in the order the pieces depend on each other.
@@ -2021,6 +2024,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		const refused = await submitPhase(checkpoint.id, {
 			notes: isBuild ? buildNotes : undefined,
 			attachmentKeys: carts.map((c) => c.objectKey),
+			partialFundingAccepted: partialFunding,
 		})
 		setSubmitting(false)
 		if (refused) {
@@ -2388,7 +2392,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 										{short === 0 && over && (
 											<span className="hand mt-1 block text-[0.74rem] leading-snug text-coral-deep">
 												{bomTotal > t.grantUsd + BOM_MARGIN_USD
-													? `Cart over by $${(bomTotal - t.grantUsd).toFixed(2)} – past the $${BOM_MARGIN_USD} margin, no submit on this tier`
+													? `Cart over by $${(bomTotal - t.grantUsd).toFixed(2)} – only $${t.grantUsd} of it funded, and you have to agree to that below`
 													: `Cart over by $${(bomTotal - t.grantUsd).toFixed(2)} – within the $${BOM_MARGIN_USD} margin, you can still submit`}
 											</span>
 										)}
@@ -2396,6 +2400,47 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								)
 							})}
 						</div>
+
+						{/* A cart past the tier's funding still hands in, as a grant that covers part of it – so the box saying so is a requirement rather than a note, and the shortfall is named in dollars rather than left to be found later. It sits under the tier picker because it is that choice it is about, and it disappears the moment a tier that covers the cart is picked. */}
+						{bomOverCap && (
+							<button
+								type="button"
+								role="checkbox"
+								aria-checked={partialFunding}
+								onClick={() => setAcceptsPartialFunding((v) => !v)}
+								className={cx(
+									"sketch mt-4 flex w-full items-start gap-3 rounded-2xl px-4 py-3.5 text-left transition-colors",
+									partialFunding ? "bg-violet-pale" : "bg-white hover:bg-black/[.03]",
+								)}
+								style={
+									{
+										"--sk-color": partialFunding ? "var(--color-violet)" : "var(--color-line)",
+										"--sk-radius": "16px",
+									} as React.CSSProperties
+								}
+							>
+								<span
+									aria-hidden="true"
+									className={cx(
+										"mt-[3px] grid size-[18px] shrink-0 place-items-center rounded-[6px] border-2 transition-colors",
+										partialFunding ? "border-transparent bg-violet" : "border-line-strong",
+									)}
+								>
+									{partialFunding && <IconCheck className="text-sm text-white" />}
+								</span>
+								<span className="min-w-0">
+									<span className="block text-[0.95rem] font-extrabold text-navy">
+										I understand this project gets partial funding
+									</span>
+									<span className="hand mt-0.5 block text-[0.84rem] leading-snug text-navy-soft">
+										Your parts list is ${funding.totalUsd.toFixed(2)} and {selectedTier.name} funds $
+										{selectedTier.grantUsd}, so ${funding.shortfallUsd.toFixed(2)} of it is yours to pay. Tick this to
+										hand the week in anyway. A reviewer can still move you up a tier, but that shortfall is yours unless
+										they do.
+									</span>
+								</span>
+							</button>
+						)}
 					</div>
 				</div>
 			)}

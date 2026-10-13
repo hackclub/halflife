@@ -7,8 +7,8 @@ import { IconArrowDown, IconPencil, IconPlus, IconX } from "@/components/platfor
 import { Modal, ModalTitle } from "@/components/platform/modals/Modal"
 import { Button, inputClass } from "@/components/platform/ui"
 import type { BomLine } from "@/lib/bom"
+import { BOM_MARGIN_USD, bomTotalUsd } from "@/lib/bom-policy"
 import { cx } from "@/lib/cx"
-import { BOM_MARGIN_USD } from "@/lib/schemas/project"
 
 const usd = (n: number) => `$${n.toFixed(2)}`
 
@@ -108,10 +108,10 @@ export function BomEditor({
 	const [importError, setImportError] = useState<string | null>(null)
 	const [preview, setPreview] = useState<ImportPreview | null>(null)
 
-	const parts = items.reduce((n, l) => n + l.quantity * l.unitCostUsd, 0)
-	const total = parts + taxShipping
+	// The same arithmetic the submit gate reads, so the number warning here is the number being held to there.
+	const total = bomTotalUsd(items, taxShipping)
 	const over = total > grantUsd
-	// Past the funding it warns; past the margin it also blocks the week's submit.
+	// Past the funding it warns; past the margin handing it in means partial funding, which the submit sheet asks about.
 	const pastMargin = total > grantUsd + BOM_MARGIN_USD
 
 	function open(target: "new" | BomLine) {
@@ -410,7 +410,7 @@ export function BomEditor({
 					{over && (
 						<span className="hand block text-[0.84rem] text-coral-deep">
 							{pastMargin
-								? `${usd(total - grantUsd)} over and past the $${BOM_MARGIN_USD} margin – cut parts or ask for a higher tier before you can submit.`
+								? `${usd(total - grantUsd)} over – you can still submit, but only $${grantUsd} of it will be funded and you'll cover the rest.`
 								: `${usd(total - grantUsd)} over – still within the $${BOM_MARGIN_USD} margin, so you can submit, but cut parts or ask for a higher tier if you can.`}
 						</span>
 					)}

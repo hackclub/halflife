@@ -1,6 +1,7 @@
 import "server-only"
 import type { ThemeProject } from "@/app/generated/prisma/client"
 import { Phase, PhaseStatus, Theme } from "@/app/generated/prisma/enums"
+import { partsFundingFor } from "@/lib/bom"
 import { scheduledWeekFor } from "@/lib/config/program"
 import { lockUserCredit } from "@/lib/currency"
 import { HttpError } from "@/lib/errors"
@@ -123,6 +124,7 @@ export async function submitPhase(
 	phase: Phase,
 	notes: string | null,
 	attachmentKeys: string[] = [],
+	partialFundingAccepted = false,
 ) {
 	const project = await prisma.themeProject.findFirst({
 		where: { id: themeProjectId, userId, deletedAt: null },
@@ -172,6 +174,19 @@ export async function submitPhase(
 		)
 	}
 
+	// A cart past the tier's funding is not a refusal, it is a grant that covers part of it – which is something the maker has to agree to rather than something this route infers. The numbers come from the database and never from the sheet: a list edited in another tab, or a tier request changed since the page was opened, decide what the maker is agreeing to.
+	const funding = await partsFundingFor(project, phase)
+	if (funding.needsAgreement && !partialFundingAccepted) {
+		throw new HttpError(
+			"UNPROCESSABLE",
+			`Your parts list is $${funding.totalUsd.toFixed(2)} and this tier funds $${funding.capUsd}, so $${funding.shortfallUsd.toFixed(2)} of it is yours to pay. Confirm you understand that before submitting.`,
+			{ details: funding },
+		)
+	}
+
+	// Only a design submission carries parts money, and only one that is actually over records the agreement: the same arithmetic that let it through is what writes the row, so a stale tick on a cart that no longer needs it leaves nothing behind.
+	const agreedPartial = funding.needsAgreement && partialFundingAccepted
+
 	const settings = await getProgramSettings()
 	const now = new Date()
 	const submittedInWeek = weekNumberForDate(settings.eventStartDate, now, settings.programTimezone)
@@ -202,6 +217,9 @@ export async function submitPhase(
 				scheduledWeek,
 				// Analytics only. Nothing gates on lateness – a late joiner has to be able to finish.
 				onTime: submittedInWeek > 0 && submittedInWeek <= scheduledWeek,
+				partialFundingAccepted: agreedPartial,
+				requestedBomUsd: agreedPartial ? funding.totalUsd : null,
+				fundingCapUsd: agreedPartial ? funding.capUsd : null,
 			},
 		})
 	})

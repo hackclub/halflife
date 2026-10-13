@@ -233,7 +233,10 @@ interface Ctx {
 	postReel: (id: string, caption: string, objectKey: string) => Promise<PostReelResult>
 	/** Hand a week in, with its notes and whatever evidence it collected. */
 	/** Resolves to null once submitted, or the server's reason for refusing. */
-	submitPhase: (id: string, extra?: { notes?: string; attachmentKeys?: string[] }) => Promise<string | null>
+	submitPhase: (
+		id: string,
+		extra?: { notes?: string; attachmentKeys?: string[]; partialFundingAccepted?: boolean },
+	) => Promise<string | null>
 	/**
 	 * Resolves to null once the entry is saved, or to the server's reason for refusing it – Lapse may say a timelapse is not yours, is still processing, or already backs another entry, and the sheet has to stay open to say so.
 	 */
@@ -822,7 +825,10 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 
 	// Server first, like logSession: the submit route runs the repo checks and can refuse, and a week shown as handed in that then quietly reopens on the next refresh is worse than a sheet that says what is wrong.
 	const submitPhase = useCallback(
-		async (id: string, extra: { notes?: string; attachmentKeys?: string[] } = {}): Promise<string | null> => {
+		async (
+			id: string,
+			extra: { notes?: string; attachmentKeys?: string[]; partialFundingAccepted?: boolean } = {},
+		): Promise<string | null> => {
 			const route = routeOf(id)
 			if (!route) return "This week has no project to submit."
 			let res: Response
@@ -834,6 +840,8 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 						phase: route.phase,
 						...(extra.notes ? { notes: extra.notes } : {}),
 						attachmentKeys: extra.attachmentKeys ?? [],
+						// Only ever sent as true, so a stale tick from a cart that has since shrunk cannot ride along on the next one.
+						...(extra.partialFundingAccepted ? { partialFundingAccepted: true } : {}),
 					}),
 				})
 			} catch {
