@@ -5,7 +5,6 @@ import { type ApiErrorBody, fail } from "@/lib/api"
 import { auth } from "@/lib/auth"
 import {
 	getUserRolesIfExists,
-	hasAnyPermission,
 	hasPermission,
 	hasRole,
 	type Permission,
@@ -51,15 +50,6 @@ export async function requirePermission(permission: Permission): Promise<Guard> 
 	return ctx
 }
 
-export async function requireAnyPermission(...permissions: Permission[]): Promise<Guard> {
-	const ctx = await resolve()
-	if (!ctx) return { error: fail("UNAUTHENTICATED", "Sign in to continue") }
-	if (!hasAnyPermission(ctx.roles, permissions)) {
-		return { error: fail("FORBIDDEN", `Requires one of: ${permissions.join(", ")}`) }
-	}
-	return ctx
-}
-
 export async function requireRole(role: Role): Promise<Guard> {
 	const ctx = await resolve()
 	if (!ctx) return { error: fail("UNAUTHENTICATED", "Sign in to continue") }
@@ -67,9 +57,4 @@ export async function requireRole(role: Role): Promise<Guard> {
 		return { error: fail("FORBIDDEN", `Requires the ${role} role`) }
 	}
 	return ctx
-}
-
-/** Optional session, for routes that behave differently when signed in. */
-export async function optionalSession(): Promise<{ user: SessionUser; roles: Role[] } | null> {
-	return resolve()
 }

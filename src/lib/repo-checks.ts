@@ -1,6 +1,6 @@
 import "server-only"
 import type { Theme } from "@/app/generated/prisma/enums"
-import { REPO_FILE_KINDS, type RepoFileKind, THEME_REPO_REQUIREMENTS } from "@/lib/config/repo-checks"
+import { DESIGN_JSON, REPO_FILE_KINDS, type RepoFileKind, THEME_REPO_REQUIREMENTS } from "@/lib/config/repo-checks"
 import { type Forge, fileUrl, forgeByHostname, hostnameOf } from "@/lib/forge"
 import { ForgeUnavailable, forgeGet } from "@/lib/github"
 import { type RepoRef, repoRefFromLink } from "@/lib/repo-ref"
@@ -44,9 +44,18 @@ type Snapshot =
 			 * The file list was cut short (GitHub stops at about 100,000 entries), so a file missing from `paths` may still be in the repo.
 			 */
 			truncated: boolean
+			/**
+			 * Which of the repo's `.json` files are a board or a schematic, by reading them (see DESIGN_JSON).
+			 *
+			 * A function rather than a list, because reading costs a request per file and only a kind that has found nothing by name ever asks – most repos never do, and a repo that does asks once and the answer is held for as long as the snapshot is.
+			 */
+			designs: () => Promise<string[]>
 	  }
 	| { kind: "not-found" }
 	| { kind: "unavailable"; why: string }
+
+/** A snapshot the forge answered for, which is the only one the checks are built from. */
+type RepoSnapshot = Extract<Snapshot, { kind: "ok" }>
 
 /**
  * How long one answer from a forge is reused for a repo.
@@ -101,6 +110,66 @@ function fetchSnapshot(ref: RepoRef): Promise<Snapshot> {
 }
 
 /**
+ * How many `.json` files one repo may have opened to find a design in them.
+ *
+ * Every one is a request, and a firmware repo carries its share of JSON, so only the plausible candidates are opened and only up to this many – shallowest first, which is where a design usually lands. Missing one is the mild end of this deal: the kind reads as not found and a reviewer opens the repo, rather than a design being wrongly credited.
+ */
+const DESIGN_JSON_MAX = 5
+
+/** Directories no design is exported into, and the usual suspects in a JavaScript repo. Case-blind, like every other path test here. */
+const DESIGN_JSON_SKIP =
+	/(^|\/)(node_modules|dist|build|out|coverage|vendor|\.next|package-lock\.json|yarn\.lock|pnpm-lock\.yaml)/i
+
+/**
+ * Which of the repo's `.json` files are a board or a schematic, by reading the plausible ones.
+ *
+ * Asked at most once per snapshot, whatever asks: a hand-in checks the same repo three times over, and the answer for all three is the same answer.
+ */
+function designFinder(ref: RepoRef, files: readonly string[]): () => Promise<string[]> {
+	let answer: Promise<string[]> | null = null
+	return () => (answer ??= findDesignJson(ref, files))
+}
+
+async function findDesignJson(ref: RepoRef, files: readonly string[]): Promise<string[]> {
+	const candidates = files
+		.filter((p) => p.toLowerCase().endsWith(DESIGN_JSON.extension) && !DESIGN_JSON_SKIP.test(p))
+		.sort((a, b) => a.split("/").length - b.split("/").length || a.length - b.length)
+		.slice(0, DESIGN_JSON_MAX)
+	if (candidates.length === 0) return []
+
+	const texts = await Promise.all(
+		candidates.map((path) =>
+			// A forge that will not serve one file is the same as that file being unreadable: the kind goes on not being found, which a reviewer looks at by hand rather than a blocked hand-in.
+			readRepoFileAt(ref, path).catch((err) => {
+				console.warn(`[repo-checks] could not read ${ref.forge.id}/${ref.fullName}/${path}:`, err)
+				return null
+			}),
+		),
+	)
+
+	const designs: string[] = []
+	for (const [i, text] of texts.entries()) {
+		const path = candidates[i]
+		if (path && text && isDesignJson(text)) designs.push(path.toLowerCase())
+	}
+	return designs
+}
+
+/**
+ * Whether a `.json` file says, in its opening, that it is a design.
+ *
+ * Only the opening is read: EasyEDA Standard puts the document type in `head`, Pro in the first record of the log, and either can be several megabytes of shape data after that. A file whose type is a number rather than a name is only believed when something else from the same editor is there too, since `"docType": "3"` on its own is a coincidence waiting to happen.
+ */
+function isDesignJson(text: string): boolean {
+	const opening = text.slice(0, DESIGN_JSON.headerChars)
+	const found = DESIGN_JSON.docType.exec(opening)
+	if (!found?.[1]) return false
+	const docType = found[1].toLowerCase()
+	if (DESIGN_JSON.named.has(docType)) return true
+	return DESIGN_JSON.numeric.has(docType) && DESIGN_JSON.fingerprint.test(opening)
+}
+
+/**
  * Two requests, side by side. The file list is read at HEAD – the default branch, whatever it is called – so there is no need to ask for the repo first just to learn the branch name, which is what used to make this three. The file list also answers whether the repo exists: 404 there means it does not, or is private, which to a reviewer is the same thing.
  */
 async function fetchGitHubSnapshot(ref: RepoRef): Promise<Snapshot> {
@@ -142,7 +211,7 @@ async function fetchGitHubSnapshot(ref: RepoRef): Promise<Snapshot> {
 		if (r.content && r.encoding === "base64") readme = Buffer.from(r.content, "base64").toString("utf-8")
 	}
 
-	return { kind: "ok", paths, files, readme, truncated: body.truncated === true }
+	return { kind: "ok", paths, files, readme, truncated: body.truncated === true, designs: designFinder(ref, files) }
 }
 
 /**
@@ -193,7 +262,7 @@ async function fetchGitLabSnapshot(ref: RepoRef): Promise<Snapshot> {
 	const paths = files.map((p) => p.toLowerCase())
 	const readme = await fetchGitLabReadme(forge, project, files)
 	// GitLab lists the whole tree when asked to recurse, so a file absent from `paths` is genuinely absent – there is no "cut short" state to carry.
-	return { kind: "ok", paths, files, readme, truncated: false }
+	return { kind: "ok", paths, files, readme, truncated: false, designs: designFinder(ref, files) }
 }
 
 /**
@@ -219,11 +288,23 @@ async function fetchGitLabReadme(forge: Forge, project: string, files: readonly 
 /** Stasis's image test: markdown or HTML images, or an image file named in it. */
 const README_IMAGE = /!\[.*?\]\(.*?\)|<img\s+[^>]*src\s*=|\.png|\.jpe?g|\.gif|\.webp|\.svg/i
 
-function matches(kind: RepoFileKind, paths: readonly string[]): string[] {
+/** The paths in the repo that satisfy a file kind by name. */
+function namedMatches(kind: RepoFileKind, snap: RepoSnapshot): string[] {
 	const def = REPO_FILE_KINDS[kind]
-	return paths.filter((p) =>
-		def.pattern ? def.pattern.test(p) : (def.extensions ?? []).some((ext) => p.endsWith(ext)),
-	)
+	const pattern = def.pattern
+	if (pattern) return snap.paths.filter((p) => pattern.test(p))
+	return snap.paths.filter((p) => (def.extensions ?? []).some((ext) => p.endsWith(ext)))
+}
+
+/**
+ * The paths that satisfy a file kind.
+ *
+ * `designs` are the repo's JSON designs, which have to be read rather than matched by name (see DESIGN_JSON). A kind that accepts one falls back to them only when its own extensions found nothing, so a repo with a `.kicad_pcb` in it is never asked to have its JSON opened.
+ */
+function matches(kind: RepoFileKind, snap: RepoSnapshot, designs: readonly string[]): string[] {
+	const named = namedMatches(kind, snap)
+	if (named.length > 0 || !REPO_FILE_KINDS[kind].json) return named
+	return [...designs]
 }
 
 function sample(found: readonly string[]): string {
@@ -303,7 +384,15 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 			},
 		])
 	}
-	const { paths, readme, truncated } = snap
+	const { readme, truncated } = snap
+
+	const { required, recommended } = THEME_REPO_REQUIREMENTS[theme]
+	// Reading the repo's JSON is what finds an EasyEDA design, so it is done only when a kind that accepts one has found nothing by name – which for a PCB week is a repo exported from EasyEDA, and for every other repo never happens.
+	const designs = [...required, ...recommended].some(
+		(kind) => REPO_FILE_KINDS[kind].json && namedMatches(kind, snap).length === 0,
+	)
+		? await snap.designs()
+		: []
 
 	const checks: RepoCheck[] = [{ key: "repo", label: `Public ${forge.label} repo`, status: "pass", detail: name }]
 
@@ -330,9 +419,8 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 				},
 	)
 
-	const { required, recommended } = THEME_REPO_REQUIREMENTS[theme]
 	for (const kind of required) {
-		const found = matches(kind, paths)
+		const found = matches(kind, snap, designs)
 		const def = REPO_FILE_KINDS[kind]
 		checks.push(
 			found.length > 0
@@ -350,7 +438,7 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 		)
 	}
 	for (const kind of recommended) {
-		const found = matches(kind, paths)
+		const found = matches(kind, snap, designs)
 		const def = REPO_FILE_KINDS[kind]
 		checks.push(
 			found.length > 0
@@ -433,7 +521,11 @@ export async function findRepoFilePath(repoLink: string | null, test: RegExp): P
 export async function readRepoFile(repoLink: string | null, path: string): Promise<string | null> {
 	const ref = repoRefFromLink(repoLink)
 	if (!ref) return null
+	return readRepoFileAt(ref, path)
+}
 
+/** The same read, for a repo already resolved to a forge – so a caller holding a `RepoRef` does not resolve it twice. */
+async function readRepoFileAt(ref: RepoRef, path: string): Promise<string | null> {
 	// GitLab takes the file path as one encoded value, slashes included, the way the README read above does; GitHub's contents API takes it as path segments, so each is encoded on its own.
 	if (ref.forge.id === "gitlab") {
 		const res = await forgeGet(

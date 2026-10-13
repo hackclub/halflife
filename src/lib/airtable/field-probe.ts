@@ -51,12 +51,6 @@ export async function columnExists(config: AirtableConfig, tableId: string, colu
 	}
 }
 
-/** Test seam: forget what has been probed. */
-export function resetColumnProbes(): void {
-	probed.clear()
-	absentSince.clear()
-}
-
 /**
  * The subset of `columns` the table actually has, probed once and cached.
  *

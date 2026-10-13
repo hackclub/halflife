@@ -869,6 +869,14 @@ model PhaseSubmission {
   scheduledWeek   Int?
   onTime          Boolean @default(false)
 
+  /// The parts list ran past what the tier being asked for funds, and the maker ticked the box saying they know they will only be funded up to the tier and will cover the rest themselves.
+  ///
+  /// A design submission only, and only when the cart was actually over the margin - below that a slightly-over cart has always submitted as itself. Recorded here rather than left to the review conversation because it is a statement made about a specific cart at a specific moment: the cart stays editable until design approval, and the tier table is expected to move mid-program, so neither the number they agreed to nor the cap they agreed under can be reconstructed from the project row afterwards.
+  partialFundingAccepted Boolean @default(false)
+  /// The cart total shown when they ticked the box, and the tier funding they were told covers it. Null on every submission that did not need the agreement.
+  requestedBomUsd Float?
+  fundingCapUsd   Int?
+
   /// Set by an advisory first-pass review. Unused while v1 runs single-pass.
   preReviewed   Boolean   @default(false)
   preReviewedAt DateTime?
@@ -880,6 +888,11 @@ model PhaseSubmission {
   ariStatus       String?
   ariDecision     String?
   ariSyncedAt     DateTime?
+
+  /// Set when a send failed for a reason a retry cannot fix - an unparseable repo link, a missing title, an account with no Slack id. Cleared by a later success.
+  ///
+  /// Two jobs. The transition from null to non-null is the single moment the maker is told: the retry job replays every unsent hand-in hourly, so without a mark to read it would send the same notice on every attempt. And the value is what the project page shows in place of a bare "in review", so a maker who never opened the message still finds out.
+  ariShipError String?
 
   /// Non-null means this submission is resolved and immutable.
   resolvedAt     DateTime?

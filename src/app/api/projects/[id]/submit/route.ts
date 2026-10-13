@@ -28,6 +28,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		parsed.data.phase,
 		sanitizeOptional(parsed.data.notes),
 		parsed.data.attachmentKeys,
+		parsed.data.partialFundingAccepted,
 	)
 
 	await markSubmission(gate.user.id)
@@ -38,7 +39,14 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		actorEmail: gate.user.email,
 		targetType: "ThemeProject",
 		targetId: id,
-		metadata: { phase: parsed.data.phase, submissionId: submission.id },
+		metadata: {
+			phase: parsed.data.phase,
+			submissionId: submission.id,
+			// What the maker agreed to, if they had to agree to anything: an over-budget cart is funded up to the tier and the rest is theirs.
+			...(submission.partialFundingAccepted
+				? { requestedBomUsd: submission.requestedBomUsd, fundingCapUsd: submission.fundingCapUsd }
+				: {}),
+		},
 	})
 
 	// Into the YSWS table as "Pending Review" – the table reviewers work from on ari.hackclub.com. After the response, so a slow Airtable never holds up a hand-in; a failure lands in the audit log and the retry job replays it.

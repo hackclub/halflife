@@ -13,10 +13,10 @@ import { fieldKey, RSVP, RSVP_TABLE_ID } from "@/lib/airtable/schema"
 /**
  * The base's real column names.
  *
- * `RSVP.fields` has drifted from this base: it names `First Name` and `Referred By`, and neither exists here. Airtable 422s the entire list request on one unknown `fields[]`, so the names are spelled the way the base and the landing's write path (lib/site/signups) actually spell them. `email` is correct in the map, so it is taken through `fieldKey` like the counter does.
+ * `referred_by` used to be spelled out by hand here, because `RSVP.fields` named it `Referred By` and Airtable 422s the entire list request on one unknown `fields[]`. The map is right now – the landing writes `referred_by` itself (lib/site/signups), and the map says so – so the name comes through `fieldKey` like `email` always has, and there is one spelling of it in the codebase rather than two.
  */
 const EMAIL_FIELD = fieldKey(RSVP.fields.email)
-const REFERRED_BY_FIELD = "referred_by"
+const REFERRED_BY_FIELD = fieldKey(RSVP.fields.referredBy)
 const REFERRAL_NUMBER_FIELD = "Loops - halfLifeReferralNumber"
 
 /** Airtable's page size, and the walk's memory bound. */

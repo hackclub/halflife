@@ -3,6 +3,7 @@ import type { Prisma } from "@/app/generated/prisma/client"
 import {
 	AuditAction,
 	HoursSource,
+	type ParticipantGoal,
 	Phase,
 	PhaseStatus,
 	PostKind,
@@ -14,7 +15,9 @@ import {
 	ShopOrderStatus,
 	Theme,
 } from "@/app/generated/prisma/enums"
+import { GOAL_OPTIONS } from "@/lib/config/goal"
 import { getStarterProject, STARTER_PROJECT_TIER, stepIndexOf } from "@/lib/config/onboarding"
+import { getThemeDef, scheduleForWeek, TOTAL_WEEKS, WARMUP_THEME, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { isTierId, TIERS } from "@/lib/config/tiers"
 import { getBalances } from "@/lib/currency"
 import { displayName } from "@/lib/display-name"
@@ -456,23 +459,28 @@ export async function listRecentPublicReels(limit = 100) {
 }
 
 export async function getAdminCounters() {
-	const [pendingReviews, pendingOrders, participants, shipped] = await Promise.all([
-		// Live hand-ins only: an open submission on a phase that is actually in review, on a project that still exists. Counting every unresolved row also sweeps up submissions that never reached Ari, or whose phase has moved on without the row resolving – which is exactly how this number drifts above what reviewers see in Ari.
-		prisma.phaseSubmission.count({
-			where: {
-				resolvedAt: null,
-				themeProject: { deletedAt: null },
-				OR: [
-					{ phase: Phase.DESIGN, themeProject: { designStatus: PhaseStatus.in_review } },
-					{ phase: Phase.BUILD, themeProject: { buildStatus: PhaseStatus.in_review } },
-				],
-			},
-		}),
+	// A live hand-in: an open submission on a phase that is actually in review, on a project that still exists. The phase check matters on its own – counting every unresolved row also sweeps up submissions whose phase has moved on without the row resolving.
+	const liveHandIn: Prisma.PhaseSubmissionWhereInput = {
+		resolvedAt: null,
+		themeProject: { deletedAt: null },
+		OR: [
+			{ phase: Phase.DESIGN, themeProject: { designStatus: PhaseStatus.in_review } },
+			{ phase: Phase.BUILD, themeProject: { buildStatus: PhaseStatus.in_review } },
+		],
+	}
+
+	const [pendingReviews, pendingReviewsUnsent, pendingOrders, participants, shipped] = await Promise.all([
+		// Sent, and Ari holds it. This is the number that answers "how much is in the review queue", and the only one comparable to Ari's own pending count.
+		//
+		// `ariSubmissionId` is the marker rather than `ariStatus`, which only a decision or a reset ever writes and so says nothing about a ship nobody has opened yet.
+		prisma.phaseSubmission.count({ where: { ...liveHandIn, ariSubmissionId: { not: null } } }),
+		// Never reached Ari: the send failed and the retry has not got it through yet. Counted apart because folding it in is how this panel's "awaiting review" drifted hundreds above the queue reviewers actually had – a hand-in Ari has never seen is not waiting for review, it is waiting for us.
+		prisma.phaseSubmission.count({ where: { ...liveHandIn, ariSubmissionId: null } }),
 		prisma.shopOrder.count({ where: { status: ShopOrderStatus.PENDING } }),
 		prisma.user.count(),
 		prisma.printerAward.count({ where: { revokedAt: null } }),
 	])
-	return { pendingReviews, pendingOrders, participants, shipped }
+	return { pendingReviews, pendingReviewsUnsent, pendingOrders, participants, shipped }
 }
 
 export interface FlowStep {
@@ -497,68 +505,58 @@ export interface FlowStep {
  *
  * `posted` survives as a history guard on the onboarding and goal steps even now its own row is gone: the goal prompt shipped after the first reels, so "finished onboarding" and "set a goal" each mean "did this OR already did something later that presupposes it". Without the fallback, backfilling either column would silently shrink every step beneath it instead of showing a real drop.
  *
- * The last three rows are the tracked-time section: users with each kind of evidence that their hours were tracked – a Hackatime link, a timelapse, a manual devlog. They stay in the same cumulative chain as every other row (the component splits them off visually), so each counts submitters who also have that evidence, and "devlogged" there is the manual-session set from above.
+ * The tracked-time rows that used to end this funnel ("Hackatimed", "Lapsed", "Devlogged") are gone, and two queries with them. Counted on a cumulative spine they asked a question the spine cannot answer: "of the people who got this far, how many have a Hackatime link" reads a maker who journals competently and never links Hackatime as a drop-off, when they did not drop out of anything – they took a different route through the same week. Activity is a set of branches rather than rungs, and branches are what the Sankey view draws: there they sit in one activity stage as ribbons of whatever width they really are, in any order, which is the only shape that can show a maker who both journalled and linked Hackatime. One fact, drawn once, rather than drawn twice in two shapes that disagree.
  */
 export async function getUserFlowFunnel(): Promise<FlowStep[]> {
-	const [users, sessionUsers, projectUsers, devlogUsers, repoUsers, hackatimeLinkRows, timelapseRows] =
-		await Promise.all([
-			prisma.user.findMany({
-				select: {
-					id: true,
-					hardwareExperience: true,
-					onboardingStep: true,
-					onboardingCompletedAt: true,
-					participantGoal: true,
-					firstProjectAt: true,
-					firstReelAt: true,
-					firstChecksPassedAt: true,
-					firstSubmissionAt: true,
-				},
-			}),
-			// People who logged in: a sign-in is what issues a session. Derived from the table rather than the lastLoginAt marker, so the funnel does not depend on the analytics backfill having run.
-			prisma.session.findMany({ select: { userId: true }, distinct: ["userId"] }),
-			// The onboarding paper trail, per person, read off their live projects: a description means they named something, a starter means they took one of the catalogue's, and a requested tier means they answered the tier question. One read for all three because the funnel needs them together.
-			prisma.themeProject.findMany({
-				where: { deletedAt: null },
-				select: { userId: true, description: true, starterProjectId: true, requestedTier: true },
-			}),
-			// People who added a devlog: a project with a real work session on it.
-			prisma.user.findMany({
-				where: {
-					themeProjects: {
-						some: {
-							deletedAt: null,
-							// Same rule as the Loops lastEntryAt sync: a real entry is a session the maker wrote, or one carrying a timelapse. A HACKATIME_TRACKED row with no timelapse is only a link, not a devlog.
-							workSessions: {
-								some: {
-									deletedAt: null,
-									OR: [{ hoursSource: { not: HoursSource.HACKATIME_TRACKED } }, { timelapses: { some: {} } }],
-								},
+	const [users, sessionUsers, projectUsers, devlogUsers, repoUsers] = await Promise.all([
+		prisma.user.findMany({
+			select: {
+				id: true,
+				hardwareExperience: true,
+				onboardingStep: true,
+				onboardingCompletedAt: true,
+				participantGoal: true,
+				firstProjectAt: true,
+				firstReelAt: true,
+				firstChecksPassedAt: true,
+				firstSubmissionAt: true,
+			},
+		}),
+		// People who logged in: a sign-in is what issues a session. Derived from the table rather than the lastLoginAt marker, so the funnel does not depend on the analytics backfill having run.
+		prisma.session.findMany({ select: { userId: true }, distinct: ["userId"] }),
+		// The onboarding paper trail, per person, read off their live projects: a description means they named something, a starter means they took one of the catalogue's, and a requested tier means they answered the tier question. One read for all three because the funnel needs them together.
+		prisma.themeProject.findMany({
+			where: { deletedAt: null },
+			select: { userId: true, description: true, starterProjectId: true, requestedTier: true },
+		}),
+		// People who added a devlog: a project with a real work session on it.
+		prisma.user.findMany({
+			where: {
+				themeProjects: {
+					some: {
+						deletedAt: null,
+						// Same rule as the Loops lastEntryAt sync: a real entry is a session the maker wrote, or one carrying a timelapse. A HACKATIME_TRACKED row with no timelapse is only a link, not a devlog.
+						workSessions: {
+							some: {
+								deletedAt: null,
+								OR: [{ hoursSource: { not: HoursSource.HACKATIME_TRACKED } }, { timelapses: { some: {} } }],
 							},
 						},
 					},
 				},
-				select: { id: true },
-			}),
-			// People who connected a repository to a project.
-			prisma.themeProject.findMany({
-				where: {
-					deletedAt: null,
-					OR: [{ githubRepo: { not: null } }, { repoSyncRepo: { not: null } }, { repoSyncEnabled: true }],
-				},
-				select: { userId: true },
-				distinct: ["userId"],
-			}),
-			// The tracked-time section: everyone with each kind of evidence that time was tracked. A Hackatime link backs one themed project and phase; a timelapse hangs off a session; the devlog set above covers the manual rows.
-			prisma.hackatimeLink.findMany({
-				where: { themeProject: { deletedAt: null } },
-				select: { themeProject: { select: { userId: true } } },
-			}),
-			prisma.sessionTimelapse.findMany({
-				where: { workSession: { deletedAt: null, themeProject: { deletedAt: null } } },
-				select: { workSession: { select: { themeProject: { select: { userId: true } } } } },
-			}),
-		])
+			},
+			select: { id: true },
+		}),
+		// People who connected a repository to a project.
+		prisma.themeProject.findMany({
+			where: {
+				deletedAt: null,
+				OR: [{ githubRepo: { not: null } }, { repoSyncRepo: { not: null } }, { repoSyncEnabled: true }],
+			},
+			select: { userId: true },
+			distinct: ["userId"],
+		}),
+	])
 
 	const sessions = new Set(sessionUsers.map((s) => s.userId))
 	const named = new Set(projectUsers.filter((p) => p.description !== null && p.description !== "").map((p) => p.userId))
@@ -566,8 +564,6 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 	const pickedTier = new Set(projectUsers.filter((p) => p.requestedTier !== null).map((p) => p.userId))
 	const devlogs = new Set(devlogUsers.map((u) => u.id))
 	const repos = new Set(repoUsers.map((u) => u.userId))
-	const hackatimed = new Set(hackatimeLinkRows.map((l) => l.themeProject.userId))
-	const lapsed = new Set(timelapseRows.map((t) => t.workSession.themeProject.userId))
 
 	// One boolean per step per person, in funnel order; steps[0] (signup) is true for everyone. The `|| posted` / `|| submitted` fallbacks are the history guard described above the function – do not drop them.
 	//
@@ -601,9 +597,6 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 			repos.has(u.id),
 			u.firstChecksPassedAt !== null,
 			submitted,
-			hackatimed.has(u.id),
-			lapsed.has(u.id),
-			devlogs.has(u.id),
 		]
 	})
 	const total = users.length
@@ -629,9 +622,6 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 		{ id: "connectedRepo", label: "Connected a repo", hint: "Linked an external repository to a project" },
 		{ id: "checksPassed", label: "Repo checks passed", hint: "Every submission repo check came back green" },
 		{ id: "submitted", label: "Submitted a project", hint: "Handed a phase in for review" },
-		{ id: "hackatimed", label: "Hackatimed", hint: "Linked a Hackatime project to a project" },
-		{ id: "lapsed", label: "Lapsed", hint: "Attached a timelapse to a session" },
-		{ id: "devlogged", label: "Devlogged", hint: "Logged a manual work session" },
 	] as const
 
 	const steps: FlowStep[] = []
@@ -857,29 +847,41 @@ export interface DayActivity {
 	devlogs: number
 	/** Journal hours that day, reviewer-adjusted where set. */
 	hours: number
+	/** Distinct people who wrote one of those devlogs. The denominator for a per-user reading of the same day. */
+	users: number
 }
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/
 
 /**
  * Devlogs written and hours logged per day, gap-filled from the first active day to the last so the strip chart reads continuously. Days are program-timezone effective dates – the day the work counted for, not the instant it was typed.
+ *
+ * The distinct people behind each day come along too, because the totals and the per-user reading are the same rows and re-reading them for a second chart would be the same query twice. A person is counted once however many devlogs they wrote, so it is people rather than entries.
  */
 export async function getDailyActivity(): Promise<DayActivity[]> {
 	const sessions = await prisma.workSession.findMany({
 		where: { deletedAt: null, themeProject: { deletedAt: null } },
-		select: { effectiveDate: true, hoursClaimed: true, hoursApproved: true, hoursSource: true },
+		select: {
+			effectiveDate: true,
+			hoursClaimed: true,
+			hoursApproved: true,
+			hoursSource: true,
+			// A session belongs to the project, not the person, so the user is reached through it.
+			themeProject: { select: { userId: true } },
+		},
 	})
 
-	const byDay = new Map<string, { devlogs: number; hours: number }>()
+	const byDay = new Map<string, { devlogs: number; hours: number; users: Set<string> }>()
 	for (const s of sessions) {
 		const day = s.effectiveDate
 		if (!day || !DAY.test(day)) continue
 		let row = byDay.get(day)
 		if (!row) {
-			row = { devlogs: 0, hours: 0 }
+			row = { devlogs: 0, hours: 0, users: new Set<string>() }
 			byDay.set(day, row)
 		}
 		row.devlogs += 1
+		row.users.add(s.themeProject.userId)
 		if (s.hoursSource !== HoursSource.HACKATIME_TRACKED) row.hours += s.hoursApproved ?? s.hoursClaimed
 	}
 
@@ -894,6 +896,73 @@ export async function getDailyActivity(): Promise<DayActivity[]> {
 			day,
 			devlogs: row?.devlogs ?? 0,
 			hours: Math.round((row?.hours ?? 0) * 10) / 10,
+			users: row?.users.size ?? 0,
+		})
+	}
+	return out
+}
+
+export interface GoalDayActivity {
+	/** YYYY-MM-DD in the program timezone, as the journal stamped it. */
+	day: string
+	/** Journal hours and the people behind them, one entry per answer to the goal prompt, in `GOAL_OPTIONS` order. */
+	byGoal: { goal: ParticipantGoal; hours: number; users: number }[]
+}
+
+/**
+ * The same hours `getDailyActivity` counts, per day and split by what each person said they are here for.
+ *
+ * A separate read rather than a nested map on `DayActivity`: only one chart wants the split, and every other reader of the daily figures would carry it. It is the same rows either way – the same exclusions, the same gap-filling – so the two charts cannot disagree about a day they both draw.
+ *
+ * A maker who has not answered the prompt yet belongs to no line. The question is held open until it is answered, but it is asked after the first checkpoint, so the earliest days are largely people who had not been asked; reading an empty start as "nobody was working towards anything" would be reading the prompt's timing rather than the work.
+ */
+export async function getDailyActivityByGoal(): Promise<GoalDayActivity[]> {
+	const sessions = await prisma.workSession.findMany({
+		where: { deletedAt: null, themeProject: { deletedAt: null } },
+		select: {
+			effectiveDate: true,
+			hoursClaimed: true,
+			hoursApproved: true,
+			hoursSource: true,
+			themeProject: { select: { userId: true, user: { select: { participantGoal: true } } } },
+		},
+	})
+
+	const byDay = new Map<string, Map<ParticipantGoal, { hours: number; users: Set<string> }>>()
+	for (const s of sessions) {
+		const day = s.effectiveDate
+		const goal = s.themeProject.user.participantGoal
+		if (!day || !DAY.test(day) || !goal) continue
+		let goals = byDay.get(day)
+		if (!goals) {
+			goals = new Map()
+			byDay.set(day, goals)
+		}
+		let row = goals.get(goal)
+		if (!row) {
+			row = { hours: 0, users: new Set<string>() }
+			goals.set(goal, row)
+		}
+		// The person counts as active for their goal whatever the entry's source, but only a journal entry carries
+		// journal hours – a HACKATIME_TRACKED one arrives through the link, the same exclusion `getDailyActivity` makes.
+		row.users.add(s.themeProject.userId)
+		if (s.hoursSource !== HoursSource.HACKATIME_TRACKED) row.hours += s.hoursApproved ?? s.hoursClaimed
+	}
+
+	const days = [...byDay.keys()].sort()
+	if (days.length === 0) return []
+	const out: GoalDayActivity[] = []
+	const [first, last] = [days[0] as string, days[days.length - 1] as string]
+	for (let at = Date.parse(`${first}T00:00:00Z`); at <= Date.parse(`${last}T00:00:00Z`); at += 86_400_000) {
+		const day = new Date(at).toISOString().slice(0, 10)
+		const goals = byDay.get(day)
+		out.push({
+			day,
+			byGoal: GOAL_OPTIONS.map((option) => ({
+				goal: option.value,
+				hours: Math.round((goals?.get(option.value)?.hours ?? 0) * 10) / 10,
+				users: goals?.get(option.value)?.users.size ?? 0,
+			})),
 		})
 	}
 	return out
@@ -1014,6 +1083,86 @@ export async function getFirstProjectStats(): Promise<FirstProjectStat[]> {
 		.sort((a, b) => b.users - a.users)
 }
 
+/** The four columns each week's cluster is split into. */
+export interface WeekProjectCluster {
+	/** 0 for the warm-up import, then the ten program weeks in order. */
+	week: number
+	/** What the axis prints: the theme, or the warm-up track. */
+	label: string
+	/** Which half of the season this week is, or null for the warm-up import, which is not scheduled at all. */
+	phase: Phase | null
+	/** Projects that took one of the suggested starter ideas. Locked to Tier 1, so never also a custom column. */
+	starter: number
+	tier1: number
+	tier2: number
+	tier3: number
+}
+
+/**
+ * Which column a project belongs in.
+ *
+ * A starter is its own column rather than a tier: picking one locks the request to Tier 1, so counting it as a custom tier-1 would make the two indistinguishable, and which of them a week is funding is exactly the question.
+ *
+ * The tier is `tier ?? requestedTier` – the reviewer's once they have set one, the maker's ask until then – the same resolution `lib/bom` and the admin project filters use. Null is only legal alongside a starter, which returned above, so anything left over is a tier-1 request.
+ */
+function projectColumn(project: {
+	starterProjectId: string | null
+	tier: number | null
+	requestedTier: number | null
+}): "starter" | "tier1" | "tier2" | "tier3" {
+	if (project.starterProjectId) return "starter"
+	const tier = project.tier ?? project.requestedTier
+	if (tier === 2) return "tier2"
+	if (tier === 3) return "tier3"
+	return "tier1"
+}
+
+/**
+ * How many projects are being built for each week, split by what kind of project each one is.
+ *
+ * "Being built" is `namedAt`, the marker `lib/airtable/loops` reads to say a week's project is under way. Every account is handed all five theme rows at sign-up, so counting rows would draw sign-ups times five and nothing else; a row nobody has named is a slot, not a project.
+ *
+ * A project is counted in both weeks its theme is scheduled for – a PCB project is for week 1 and week 6 – because that is what it is for. Counting only hand-ins instead would leave everything still in progress out of a chart about what people are building, and that is most of what an upcoming week is being asked to fund.
+ *
+ * Every week gets a cluster whether or not anyone is on it, so the axis draws the whole season rather than the part of it that has been reached.
+ */
+export async function getProjectsByWeek(): Promise<WeekProjectCluster[]> {
+	const projects = await prisma.themeProject.findMany({
+		where: { deletedAt: null, namedAt: { not: null } },
+		select: { theme: true, starterProjectId: true, tier: true, requestedTier: true },
+	})
+
+	const clusters = new Map<number, WeekProjectCluster>()
+	const at = (week: number, label: string, phase: Phase | null) => {
+		let cluster = clusters.get(week)
+		if (!cluster) {
+			cluster = { week, label, phase, starter: 0, tier1: 0, tier2: 0, tier3: 0 }
+			clusters.set(week, cluster)
+		}
+		return cluster
+	}
+
+	at(WARMUP_WEEK_ID, WARMUP_THEME.label, null)
+	for (let week = 1; week <= TOTAL_WEEKS; week++) {
+		const scheduled = scheduleForWeek(week)
+		at(week, scheduled ? scheduled.theme.label : `Week ${week}`, scheduled?.phase ?? null)
+	}
+
+	for (const project of projects) {
+		const def = getThemeDef(project.theme)
+		const weeks = project.theme === Theme.WARMUP ? [WARMUP_WEEK_ID] : [def.designWeek, def.buildWeek]
+		const column = projectColumn(project)
+		for (const week of weeks) {
+			const cluster = clusters.get(week)
+			// A theme scheduled outside the season draws nowhere rather than inventing a cluster for itself.
+			if (!cluster) continue
+			cluster[column] += 1
+		}
+	}
+
+	return [...clusters.values()].sort((a, b) => a.week - b.week)
+}
+
 export interface VerificationStat {
 	label: string
 	users: number
@@ -1072,7 +1221,7 @@ export interface ReviewerStats {
  *
  * Counted over live decisions only. A review an admin un-approved or Ari reverted is marked `invalidated`, and a row that no longer stands is not a decision the project still has – counting it would make the total only ever grow and leave it disagreeing with Ari after a revert. Only FINAL passes count: a FIRST-pass row is advisory and moves no status and no money (see the ReviewPass enum), so including it would credit a reviewer with a decision they did not make.
  *
- * A project counts once however many of its phases were reviewed. A project is reviewed at most twice, design then build, and the question here is how much has had attention rather than how many hand-ins landed; `getAdminCounters`'s "awaiting review" remains the submission-level figure. The breakdown attributes each project to its most recent live review so the three outcome rows always add up to the headline above them: a project whose design was approved and whose build came back for changes reads as changes requested, which is where it actually stands.
+ * A project counts once however many of its phases were reviewed. A project is reviewed at most twice, design then build, and the question here is how much has had attention rather than how many hand-ins landed; `getAdminCounters`'s "awaiting review" remains the submission-level figure. Neither is meant to equal a total in Ari's own UI, which counts ships rather than projects, so a reader comparing the two is comparing two different questions. The breakdown attributes each project to its most recent live review so the three outcome rows always add up to the headline above them: a project whose design was approved and whose build came back for changes reads as changes requested, which is where it actually stands.
  *
  * "Today" is the program timezone's day, the same boundary the activity strip and streaks use, so a review that landed at 11pm New York counts the day the dashboard is on rather than the server's.
  *
@@ -1196,7 +1345,7 @@ const SANKEY_OUTCOME = [
  *
  * Every stage except the first is optional, so a person contributes to the box they qualify for and the ribbon then jumps to the next stage they reach. A person who reached nothing after signing up is a ribbon that ends, which is a dead end the funnel has no way to draw.
  *
- * The journey stages are the funnel's own steps, in the funnel's order and read the funnel's way, so the two views can be laid side by side stage for stage: onboarding is broken out into each question the state machine records rather than collapsed into one "Setup" column, and the funnel's tracked-time rows stay as the activity branches below rather than being drawn twice. What the Sankey adds and the funnel cannot is the branch: one shared activity stage, and an outcome column that says what happened to a hand-in rather than stopping at "submitted".
+ * The journey stages are the funnel's own steps, in the funnel's order and read the funnel's way, so the two views can be laid side by side stage for stage: onboarding is broken out into each question the state machine records rather than collapsed into one "Setup" column. What the Sankey adds and the funnel cannot is the branch: one shared activity stage, where devlogs, Hackatime, Lapse and reels sit as ribbons of whatever width they really are, and an outcome column that says what happened to a hand-in rather than stopping at "submitted". The tracked-time evidence is drawn here and nowhere else – the funnel used to carry those rows as its own section, which put the same fact in two shapes that could not both be right.
  *
  * Every stage after the first is optional, so a person contributes to the box they qualify for and the ribbon then jumps to the next stage they reach. A person who reached nothing after signing up is a ribbon that ends, which is a dead end the funnel has no way to draw.
  *

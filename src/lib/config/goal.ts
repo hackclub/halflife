@@ -12,6 +12,8 @@ import { ParticipantGoal } from "@/app/generated/prisma/enums"
 export interface GoalOption {
 	readonly value: ParticipantGoal
 	readonly label: string
+	/** The same answer where a sentence will not fit – a chart legend, a table column. */
+	readonly short: string
 	/** The one line that goes under the label, and the thing staff quote. */
 	readonly hint: string
 }
@@ -20,28 +22,19 @@ export const GOAL_OPTIONS: readonly GoalOption[] = [
 	{
 		value: ParticipantGoal.PRINTER,
 		label: "A 3D printer",
+		short: "3D printer",
 		hint: "Work towards one of the eight printers at the end of the season.",
 	},
 	{
 		value: ParticipantGoal.FULL_FUNDING,
 		label: "Just funding, for all ten weeks",
+		short: "Funding, all weeks",
 		hint: "The per-project hardware grant, every week, and no prize to pace against.",
 	},
 	{
 		value: ParticipantGoal.PARTIAL_FUNDING,
 		label: "Funding for some of the weeks",
+		short: "Funding, some weeks",
 		hint: "Join for part of the run and claim the grant on the weeks you're here for.",
 	},
 ]
-
-/** Whether an answer is one of the three. Guards a value that arrived from
- * outside – a stale client bundle, a hand-edited request body – before it is
- * compared or stored. */
-export function isParticipantGoal(value: unknown): value is ParticipantGoal {
-	return GOAL_OPTIONS.some((option) => option.value === value)
-}
-
-export function goalOption(value: ParticipantGoal): GoalOption {
-	// The cast is because GOAL_OPTIONS is a readonly tuple whose first member TS will not narrow for the reader – but the printer answer is written first and nothing removes it, so the fallback is unreachable in practice.
-	return GOAL_OPTIONS.find((option) => option.value === value) ?? (GOAL_OPTIONS[0] as GoalOption)
-}

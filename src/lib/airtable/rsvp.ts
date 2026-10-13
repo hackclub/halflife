@@ -169,6 +169,7 @@ export async function drainRsvpBuffer(limit = 50, opts: { dryRun?: boolean } = {
 
 	for (const row of pending) {
 		try {
+			// `RsvpBuffer.signupPage` is deliberately absent: the base has no column for it (see RSVP.fields), so a row still carrying one writes everything else and drops that. The field is left on the buffer because /api/rsvp accepts it from outside this repo; the day a column exists, it belongs back in this list.
 			const values = {
 				email: row.email,
 				firstName: row.firstName ?? undefined,
@@ -176,7 +177,6 @@ export async function drainRsvpBuffer(limit = 50, opts: { dryRun?: boolean } = {
 				pronouns: row.pronouns ?? undefined,
 				ip: row.ip ?? undefined,
 				utmSource: row.utmSource ?? undefined,
-				signupPage: row.signupPage ?? undefined,
 				referredBy: row.referredBy ?? undefined,
 				finishedAccountCreation: row.finishedAccountCreation,
 				userId: row.userId ?? undefined,

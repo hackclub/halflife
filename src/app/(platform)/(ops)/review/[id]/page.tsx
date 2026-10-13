@@ -150,6 +150,14 @@ export default async function ReviewDetailPage({ params }: Props) {
 				) : (
 					<p className="hl-hint">No repository linked.</p>
 				)}
+				{submission.partialFundingAccepted && (
+					<Callout tone="info">
+						<strong>Partial funding accepted.</strong> Their parts list came to $
+						{submission.requestedBomUsd?.toFixed(2) ?? "?"} against a ${submission.fundingCapUsd ?? "?"} tier, so they
+						have already agreed to cover the difference themselves. It is not a reason to return it – the box is what
+						the submit sheet requires of any over-budget design – but the grant you set decides what they actually get.
+					</Callout>
+				)}
 				{submission.notes ? (
 					<Callout>
 						<strong>Submission note:</strong> {submission.notes}

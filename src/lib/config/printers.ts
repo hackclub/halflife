@@ -201,9 +201,6 @@ export const PRINTERS: PrinterGoal[] = SHEET.map((p) => ({
 
 export const DEFAULT_GOAL_ID = "ender-3-v3-se"
 
-/** The steepest weekly commitment on the board – the scale everything else reads against. */
-export const MAX_HOURS_PER_WEEK = Math.max(...PRINTERS.map((p) => p.hoursPerWeek))
-
 /**
  * The gentlest, which is the cheapest machine's pace. It used to gate submission; now the submit floor is the funded hours and this is only the threshold for "that starter will not fill your week" style warnings. It is read off the board rather than restated so that repricing the catalogue moves it with it.
  */

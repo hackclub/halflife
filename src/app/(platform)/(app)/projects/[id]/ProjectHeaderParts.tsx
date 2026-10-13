@@ -136,7 +136,8 @@ export function CoverImage({
 			)}
 			{!locked && (
 				<p className="hand mt-1 text-[0.8rem] leading-snug text-navy-soft">
-					Use a photo of the project itself, or a screenshot of the design.
+					Your cover has to be a photo or screenshot of the project itself – the first thing a reviewer sees, so not a
+					logo or a stock photo.
 				</p>
 			)}
 			{error && (

@@ -10,10 +10,6 @@ import "server-only"
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails"
 
-export function isEmailConfigured(): boolean {
-	return Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM)
-}
-
 export interface EmailInput {
 	to: string
 	subject: string

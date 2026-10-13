@@ -2,22 +2,27 @@ import Link from "next/link"
 import { ActivityShareChart } from "@/app/components/admin/ActivityShareChart"
 import { UserFlowDiagram } from "@/app/components/admin/UserFlowDiagram"
 import { EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
-import type { ReviewResult } from "@/app/generated/prisma/enums"
+import { type ParticipantGoal, Phase, type ReviewResult } from "@/app/generated/prisma/enums"
+import { GOAL_OPTIONS } from "@/lib/config/goal"
 import { requireAnyPermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import {
 	type DayActivity,
+	type GoalDayActivity,
 	getAdminCounters,
 	getAreaStats,
 	getCountryStats,
 	getDailyActivity,
+	getDailyActivityByGoal,
 	getFirstProjectStats,
 	getHoursDistribution,
+	getProjectsByWeek,
 	getReviewerStats,
 	getUserFlowFunnel,
 	getUserFlowSankey,
 	getVerificationStats,
 	type HoursDistribution,
+	type WeekProjectCluster,
 } from "@/lib/queries/admin"
 import { getLatestSyncRuns } from "@/lib/sync-run-log"
 
@@ -53,6 +58,8 @@ export default async function AdminOverviewPage() {
 		areas,
 		countries,
 		activity,
+		activityByGoal,
+		projectsByWeek,
 		hoursSpread,
 		firstProjects,
 		verification,
@@ -74,6 +81,8 @@ export default async function AdminOverviewPage() {
 		getAreaStats(),
 		getCountryStats(),
 		getDailyActivity(),
+		getDailyActivityByGoal(),
+		getProjectsByWeek(),
 		getHoursDistribution(),
 		getFirstProjectStats(),
 		getVerificationStats(),
@@ -94,15 +103,22 @@ export default async function AdminOverviewPage() {
 				title="Reviewer activity"
 				actions={
 					<span className="hl-hint" style={{ fontSize: "0.78rem" }}>
-						mirrors Ari, so no need to open it for the totals
+						the headline counts hand-ins, the outcome rows count projects
 					</span>
 				}
 			>
 				<div className="hl-row">
 					<Stat label="Awaiting review" value={counters.pendingReviews} />
 					<Stat label="Reviewed today" value={reviewer.reviewedToday} />
-					<Stat label="Reviewed total" value={reviewer.reviewedTotal} />
+					<Stat label="Projects reviewed" value={reviewer.reviewedTotal} />
 				</div>
+				{counters.pendingReviewsUnsent > 0 && (
+					<p className="hl-hint" style={{ fontSize: "0.8rem", marginTop: "0.5rem" }}>
+						<span className="hl-mono">{fmtInt(counters.pendingReviewsUnsent)}</span> more are handed in and in review
+						here but never reached Ari, so no reviewer has them –{" "}
+						<Link href="/admin/program">what broke, and a Retry for each</Link>.
+					</p>
+				)}
 				<Table head={["Outcome", "Today", "All time"]}>
 					{reviewer.byResult.map((row) => (
 						<tr key={row.result}>
@@ -113,11 +129,14 @@ export default async function AdminOverviewPage() {
 					))}
 				</Table>
 				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
-					Awaiting review counts live hand-ins – unresolved submissions on phases currently in review. A hand-in that
-					never reached Ari still counts here; the program page lists what Ari is actually holding. The other three
-					count projects, once however many of their phases were reviewed, shown by the outcome standing now – a project
-					approved on design and sent back on build reads as changes requested. Ari&apos;s decisions are included. A
-					review an admin or Ari later undid no longer counts.
+					Awaiting review counts live hand-ins that reached Ari – unresolved submissions on phases currently in review,
+					on projects that still exist. It is the figure comparable to Ari&apos;s own pending count, and the one to read
+					when asking what is waiting on a reviewer; anything Ari never received is counted apart above, because a
+					hand-in Ari has never seen is not waiting for review. The other three count projects, once however many of
+					their phases were reviewed, shown by the outcome standing now – a project approved on design and sent back on
+					build reads as changes requested. That is deliberately a different question from Ari&apos;s reviewed count, so
+					the two will not agree. Ari&apos;s decisions are included. A review an admin or Ari later undid no longer
+					counts.
 				</p>
 			</Panel>
 
@@ -205,6 +224,33 @@ export default async function AdminOverviewPage() {
 				<ActivityStrip days={activity} />
 				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
 					Days are program-timezone effective dates – the day the work counted for. Hours count journal devlogs only.
+				</p>
+			</Panel>
+
+			<Panel title="Activity per user over time">
+				<ActivityStrip days={activity} perUser />
+				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+					One person&apos;s average working day rather than the programme&apos;s total. Read beside the chart above, the
+					totals say how much was done and this says how thinly it was spread – so a busy day and a flat average
+					together mean the work was going somewhere, and both rising means more people joined in.
+				</p>
+			</Panel>
+
+			<Panel title="Hours per user by goal">
+				<GoalHoursChart days={activityByGoal} />
+				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+					The same hours split by what each maker said they are here for. Where the three lines separate, the goal
+					question is saying something about effort; where they move together, it is saying something about the
+					programme.
+				</p>
+			</Panel>
+
+			<Panel title="Projects per week">
+				<ProjectsByWeekChart weeks={projectsByWeek} />
+				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+					What people are building, by the week it is for. Each project lands in both of its theme&apos;s weeks, so the
+					two PCBs clusters are one cohort read twice – which is the point when the question is what a week is being
+					asked to fund.
 				</p>
 			</Panel>
 
@@ -387,6 +433,30 @@ function MetricPie({
 }
 
 /**
+ * The grid every activity chart draws on, shared so a change to one is a change to all.
+ *
+ * The top inset is a caption band: a tick at the maximum lands exactly on the plot's top edge, and the axis caption
+ * sits above it, so without the band "38" prints over "h". The height carries that band rather than the plot losing
+ * it, so the data area and the gridline spacing are the size they were.
+ */
+const CHART_H = 214
+const PAD_T = 24
+const PAD_B = 8
+
+/**
+ * The x axis is a share of the chart's own width and the y axis is in pixels, which is what lets a chart fill whatever
+ * panel it lands in without being measured. A percentage resolves against the SVG's viewport, so there is no viewBox
+ * and no scale factor for the HTML scale labels to fall out of step with, and the dots stay round because nothing is
+ * being stretched.
+ *
+ * The cost of that choice is that x can never ride in a `d` attribute – path data takes user units only – so the lines
+ * are drawn one segment per pair of points. It replaced a fixed pixel width per chart, which left most of a wide panel
+ * empty; `EDGE` is what keeps the first and last marks off the sides.
+ */
+const EDGE = 0.012
+const pct = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
+
+/**
  * Hours and devlogs per day, as two lines over one shared day axis and two scales.
  *
  * One chart rather than two stacked ones because the two move together, and that is the thing worth seeing: a day
@@ -398,39 +468,60 @@ function MetricPie({
  * Each line is therefore drawn against its own maximum, and each axis is labelled with its series, so neither is
  * read off the other's numbers.
  *
- * Drawn in pixels rather than a scaled viewBox, and that is what keeps the axes outside the scroll area. The scale
- * labels are HTML beside the chart, so they have to line up with the gridlines to the pixel; a viewBox stretched to
- * fit its container has no fixed pixel height to line up against, and stretching it non-uniformly to get one turns
- * the per-day dots into ellipses.
+ * `perUser` divides each day by the people who logged something that day rather than plotting the totals. It is the
+ * same chart otherwise, deliberately: the shapes are meant to be laid side by side, and a second component that drew
+ * a slightly different grid would defeat that. It answers a different question – not how much the programme did, but
+ * how much one person's working day held – so the two are read together, the totals for volume and these for whether
+ * that volume is spread thin. A day with a single contributor reads tall here, because that is what an average over
+ * one person is, and nothing in the data can say otherwise.
  */
-function ActivityStrip({ days }: { days: DayActivity[] }) {
+function ActivityStrip({ days, perUser = false }: { days: DayActivity[]; perUser?: boolean }) {
 	if (days.length === 0) return <EmptyState>No devlogs yet.</EmptyState>
 
-	const CHART_H = 200
-	const PAD_T = 10
-	const PAD_B = 8
+	// A gap-filled day with no contributors has no average to take and no activity to take it from, so it reads as
+	// zero. Left as `value / users` it would divide by zero into NaN and put a hole in the path.
+	const perActiveUser = (value: number, users: number) => (users > 0 ? value / users : 0)
+	const hoursOf = (d: DayActivity) => (perUser ? perActiveUser(d.hours, d.users) : d.hours)
+	const devlogsOf = (d: DayActivity) => (perUser ? perActiveUser(d.devlogs, d.users) : d.devlogs)
+
 	const plotH = CHART_H - PAD_T - PAD_B
-	// Wide enough that a day is worth a few pixels; the container scrolls past it rather than compressing the
-	// season into something where a day is a fraction of one.
-	const chartW = Math.max(480, days.length * 3)
-	const PAD_L = 6
-	const PAD_R = 6
-	const plotW = chartW - PAD_L - PAD_R
 
-	const maxHours = Math.max(1, ...days.map((d) => d.hours))
-	const maxDevlogs = Math.max(1, ...days.map((d) => d.devlogs))
-	const totalHours = days.reduce((n, d) => n + d.hours, 0)
-	const totalDevlogs = days.reduce((n, d) => n + d.devlogs, 0)
+	const maxHours = Math.max(1, ...days.map(hoursOf))
+	const maxDevlogs = Math.max(1, ...days.map(devlogsOf))
+	// The span's own figure, for the legend. On the per-user chart this is the mean of what is drawn rather than a
+	// total, so it is divided by the days on the axis – including the quiet ones, since those are plotted too.
+	const sumHours = days.reduce((n, d) => n + hoursOf(d), 0)
+	const sumDevlogs = days.reduce((n, d) => n + devlogsOf(d), 0)
+	const meanHours = sumHours / days.length
+	const meanDevlogs = sumDevlogs / days.length
 
-	const xOf = (i: number) => PAD_L + (days.length === 1 ? plotW / 2 : (i / (days.length - 1)) * plotW)
+	// The count axis keeps a decimal per user, where a total would round a fraction of a devlog to nothing.
+	const fmtCount = (v: number) => (perUser ? v.toLocaleString("en-US", { maximumFractionDigits: 1 }) : fmtInt(v))
+	const legendHours = perUser
+		? `hours per user (averaging ${fmtHours(meanHours)})`
+		: `hours (${fmtHours(sumHours)} total)`
+	const legendDevlogs = perUser
+		? `devlogs per user (averaging ${fmtCount(meanDevlogs)})`
+		: `devlogs (${fmtInt(sumDevlogs)} total)`
+
+	const xOf = (i: number) => (days.length === 1 ? 0.5 : EDGE + (i / (days.length - 1)) * (1 - 2 * EDGE))
 	const yFor = (v: number, max: number) => PAD_T + plotH - (v / max) * plotH
-	const line = (pick: (d: DayActivity) => number, max: number) =>
-		days.map((d, i) => `${i === 0 ? "M" : "L"} ${xOf(i).toFixed(1)} ${yFor(pick(d), max).toFixed(1)}`).join(" ")
-	const hoursPath = line((d) => d.hours, maxHours)
-	const devlogsPath = line((d) => d.devlogs, maxDevlogs)
-	const areaPath = `${hoursPath} L ${xOf(days.length - 1).toFixed(1)} ${(PAD_T + plotH).toFixed(1)} L ${xOf(0).toFixed(
-		1,
-	)} ${(PAD_T + plotH).toFixed(1)} Z`
+	const points = (pick: (d: DayActivity) => number, max: number) =>
+		days.map((d, i) => ({ x: xOf(i), y: yFor(pick(d), max) }))
+	/** One segment per pair of points, because a `d` attribute cannot carry the percentage x. */
+	const segments = (at: { x: number; y: number }[]) =>
+		at.slice(1).map((point, i) => {
+			const previous = at[i] ?? point
+			return { x1: previous.x, y1: previous.y, x2: point.x, y2: point.y }
+		})
+	const hoursSegments = segments(points(hoursOf, maxHours))
+	const devlogsSegments = segments(points(devlogsOf, maxDevlogs))
+	/** The fill under the hours line, as a column per day rather than a closed path, for the same reason. */
+	const areaBars = days.map((d, i) => ({
+		x: xOf(i),
+		width: (i === days.length - 1 ? 1 - EDGE : xOf(i + 1)) - xOf(i),
+		y: yFor(hoursOf(d), maxHours),
+	}))
 
 	// Five per axis, so both scales are readable. Rounded to something a person would say rather than to the raw
 	// maximum, which on a spiky series lands on an unreadable 574.3h.
@@ -442,6 +533,10 @@ function ActivityStrip({ days }: { days: DayActivity[] }) {
 	const labelEvery = Math.max(1, Math.ceil(days.length / 14))
 	const first = days[0]?.day
 	const last = days[days.length - 1]?.day
+	const what = perUser ? "per active user " : ""
+	const note = perUser
+		? " Each line is divided by the people who logged something that day, so a quiet day with one contributor reads tall."
+		: ""
 
 	return (
 		<div>
@@ -457,7 +552,7 @@ function ActivityStrip({ days }: { days: DayActivity[] }) {
 						verticalAlign: "middle",
 					}}
 				/>
-				hours ({fmtHours(totalHours)} total)
+				{legendHours}
 				<span
 					aria-hidden="true"
 					style={{
@@ -470,11 +565,10 @@ function ActivityStrip({ days }: { days: DayActivity[] }) {
 						verticalAlign: "middle",
 					}}
 				/>
-				devlogs ({fmtInt(totalDevlogs)} total)
+				{legendDevlogs}
 			</p>
-			{/* The two scale columns are grid siblings of the chart, so they share its row and never scroll; only the
-			    chart cell overflows. Each label is placed at the exact pixel its gridline sits on, so the two scales
-			    read off one row rather than eyeballed. */}
+			{/* The two scale columns are grid siblings of the chart, so they share its row. Each label is placed at the
+			    exact pixel its gridline sits on, so the two scales read off one row rather than eyeballed. */}
 			<div style={{ display: "grid", gridTemplateColumns: "auto minmax(0, 1fr) auto", alignItems: "start" }}>
 				<div style={{ position: "relative", width: "3.1rem", height: `${CHART_H}px` }}>
 					{hoursTicks.map((t, i) => (
@@ -501,6 +595,9 @@ function ActivityStrip({ days }: { days: DayActivity[] }) {
 							right: 6,
 							top: -1,
 							fontSize: "0.6rem",
+							// Pinned so the caption's box is its own height rather than an inherited line-height's: the
+							// band below it is what keeps it clear of the top tick label, and that budget has to be knowable.
+							lineHeight: 1,
 							color: "var(--color-ink-muted)",
 						}}
 					>
@@ -508,88 +605,115 @@ function ActivityStrip({ days }: { days: DayActivity[] }) {
 					</span>
 				</div>
 
-				<div style={{ overflowX: "auto" }}>
-					<div style={{ width: `${chartW}px` }}>
-						<svg
-							width={chartW}
-							height={CHART_H}
-							viewBox={`0 0 ${chartW} ${CHART_H}`}
-							role="img"
-							aria-label={`Hours logged per day from ${first} to ${last}, peaking at ${fmtHours(
-								maxHours,
-							)}, and devlogs written per day over the same period, peaking at ${fmtInt(maxDevlogs)}`}
-							style={{ display: "block" }}
-						>
-							{hoursTicks.map((t, i) => (
-								<line
-									key={`hg${i}`}
-									x1={PAD_L}
-									x2={chartW - PAD_R}
-									y1={yFor(t, maxHours)}
-									y2={yFor(t, maxHours)}
-									stroke="var(--color-line-soft)"
-									strokeWidth="1"
-								/>
-							))}
-							{devlogTicks.map((t, i) => (
-								<line
-									key={`dg${i}`}
-									x1={PAD_L}
-									x2={chartW - PAD_R}
-									y1={yFor(t, maxDevlogs)}
-									y2={yFor(t, maxDevlogs)}
-									stroke="var(--color-line-soft)"
-									strokeWidth="1"
-									strokeDasharray="2 3"
-								/>
-							))}
-							<path d={areaPath} fill="var(--color-accent)" opacity="0.1" />
-							<path d={hoursPath} fill="none" stroke="var(--color-accent)" strokeWidth="1.75" strokeLinejoin="round" />
-							<path
-								d={devlogsPath}
-								fill="none"
+				<div>
+					<svg
+						width="100%"
+						height={CHART_H}
+						role="img"
+						aria-label={`Hours logged ${what}per day from ${first} to ${last}, peaking at ${fmtHours(
+							maxHours,
+						)}, and devlogs written ${what}per day over the same period, peaking at ${fmtCount(maxDevlogs)}`}
+						style={{ display: "block" }}
+					>
+						{hoursTicks.map((t, i) => (
+							<line
+								key={`hg${i}`}
+								x1={pct(EDGE)}
+								x2={pct(1 - EDGE)}
+								y1={yFor(t, maxHours)}
+								y2={yFor(t, maxHours)}
+								stroke="var(--color-line-soft)"
+								strokeWidth="1"
+							/>
+						))}
+						{devlogTicks.map((t, i) => (
+							<line
+								key={`dg${i}`}
+								x1={pct(EDGE)}
+								x2={pct(1 - EDGE)}
+								y1={yFor(t, maxDevlogs)}
+								y2={yFor(t, maxDevlogs)}
+								stroke="var(--color-line-soft)"
+								strokeWidth="1"
+								strokeDasharray="2 3"
+							/>
+						))}
+						{areaBars.map((bar, i) => (
+							<rect
+								key={`a${i}`}
+								x={pct(bar.x)}
+								y={bar.y}
+								width={pct(bar.width)}
+								height={PAD_T + plotH - bar.y}
+								fill="var(--color-accent)"
+								opacity="0.1"
+							/>
+						))}
+						{hoursSegments.map((segment, i) => (
+							<line
+								key={`h${i}`}
+								x1={pct(segment.x1)}
+								y1={segment.y1}
+								x2={pct(segment.x2)}
+								y2={segment.y2}
+								stroke="var(--color-accent)"
+								strokeWidth="1.75"
+								strokeLinecap="round"
+							/>
+						))}
+						{devlogsSegments.map((segment, i) => (
+							<line
+								key={`d${i}`}
+								x1={pct(segment.x1)}
+								y1={segment.y1}
+								x2={pct(segment.x2)}
+								y2={segment.y2}
 								stroke="var(--color-magenta)"
 								strokeWidth="1.25"
-								strokeLinejoin="round"
+								strokeLinecap="round"
 								strokeDasharray="4 2"
 							/>
-							{days.map((d, i) => (
-								<circle key={d.day} cx={xOf(i)} cy={yFor(d.hours, maxHours)} r="1.6" fill="var(--color-accent)">
-									<title>{`${d.day}: ${fmtHours(d.hours)} logged, ${fmtInt(d.devlogs)} devlogs`}</title>
-								</circle>
-							))}
-						</svg>
-						<div
-							aria-hidden="true"
-							style={{
-								display: "grid",
-								gridTemplateColumns: `repeat(${days.length}, 1fr)`,
-								gap: "1px",
-								marginTop: "4px",
-								// The plot leaves PAD_L/R for its own edges, so the labels take the same inset and sit under their ticks.
-								paddingLeft: PAD_L,
-								paddingRight: PAD_R,
-								fontSize: "0.65rem",
-								color: "var(--color-ink-muted)",
-							}}
-						>
-							{/* Each printed label spans its whole labelEvery block: one label per column squeezes a "MM-DD" into a few pixels on a long season and it ellipsizes to its first character ("1…", "0…"). */}
-							{days.map((d, i) =>
-								i % labelEvery === 0 ? (
-									<div
-										key={d.day}
-										style={{
-											gridColumn: `${i + 1} / span ${Math.min(labelEvery, days.length - i)}`,
-											overflow: "hidden",
-											textOverflow: "ellipsis",
-											whiteSpace: "nowrap",
-										}}
-									>
-										{d.day.slice(5)}
-									</div>
-								) : null,
-							)}
-						</div>
+						))}
+						{days.map((d, i) => (
+							<circle key={d.day} cx={pct(xOf(i))} cy={yFor(hoursOf(d), maxHours)} r="1.6" fill="var(--color-accent)">
+								<title>
+									{perUser
+										? `${d.day}: ${fmtHours(hoursOf(d))} and ${fmtCount(devlogsOf(d))} devlogs per user, across ${fmtInt(d.users)} ${d.users === 1 ? "person" : "people"}`
+										: `${d.day}: ${fmtHours(d.hours)} logged, ${fmtInt(d.devlogs)} devlogs`}
+								</title>
+							</circle>
+						))}
+					</svg>
+					<div
+						aria-hidden="true"
+						style={{
+							display: "grid",
+							gridTemplateColumns: `repeat(${days.length}, 1fr)`,
+							gap: "1px",
+							marginTop: "4px",
+							// The plot leaves EDGE either side, so the labels take the same inset and sit under their ticks.
+							paddingLeft: pct(EDGE),
+							paddingRight: pct(EDGE),
+							fontSize: "0.65rem",
+							color: "var(--color-ink-muted)",
+						}}
+					>
+						{/* Each printed label spans its whole labelEvery block: one label per column squeezes a "MM-DD" into a few pixels on a long season and it ellipsizes to its first character ("1…", "0…"). */}
+						{days.map((d, i) =>
+							i % labelEvery === 0 ? (
+								<div
+									key={d.day}
+									style={{
+										gridColumn: `${i + 1} / span ${Math.min(labelEvery, days.length - i)}`,
+										overflow: "hidden",
+										textOverflow: "ellipsis",
+										whiteSpace: "nowrap",
+									}}
+								>
+									{d.day.slice(5)}
+								</div>
+							) : null,
+						)}
 					</div>
 				</div>
 
@@ -608,7 +732,7 @@ function ActivityStrip({ days }: { days: DayActivity[] }) {
 								color: "var(--color-magenta)",
 							}}
 						>
-							{fmtInt(roundTick(t))}
+							{fmtCount(roundTick(t))}
 						</span>
 					))}
 					<span
@@ -618,6 +742,8 @@ function ActivityStrip({ days }: { days: DayActivity[] }) {
 							left: 6,
 							top: -1,
 							fontSize: "0.6rem",
+							// The same pinned box as the hours caption: one band, two captions, both meant to clear the tick.
+							lineHeight: 1,
 							color: "var(--color-ink-muted)",
 						}}
 					>
@@ -628,7 +754,416 @@ function ActivityStrip({ days }: { days: DayActivity[] }) {
 			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.5rem" }}>
 				Dashed is devlogs against the right axis, solid is hours against the left; each is scaled to its own maximum, so
 				compare the shapes and not the heights. Days are program-timezone effective dates – the day the work counted
-				for. Hours count journal devlogs only.
+				for. Hours count journal devlogs only.{note}
+			</p>
+		</div>
+	)
+}
+
+/** One line per answer to the goal prompt, in `GOAL_OPTIONS` order. */
+const GOAL_LINE_COLOUR: Record<ParticipantGoal, string> = {
+	PRINTER: "var(--color-accent)",
+	FULL_FUNDING: "var(--color-teal)",
+	PARTIAL_FUNDING: "var(--color-coin)",
+}
+
+/**
+ * Journal hours per active user per day, one line per answer to the goal prompt.
+ *
+ * One axis, unlike `ActivityStrip`: all three lines are the same measure, so they are directly comparable and a shared scale is the whole point. Scaling each to its own maximum would make three groups doing very different amounts look like three groups doing the same, which is the one thing this chart exists to tell apart.
+ *
+ * The gaps are the other half of the reading. A goal whose line stops is a goal nobody is still working towards, and the totals chart above cannot show that at all, because it adds everyone together.
+ *
+ * The denominator is the people working towards that goal who logged something that day – the same convention the per-user chart uses, so it is the two read together that answer "who is still here, and are they doing more or less". The head count is on the tooltip, which is where it matters.
+ */
+function GoalHoursChart({ days }: { days: GoalDayActivity[] }) {
+	if (days.length === 0) return <EmptyState>No hours logged since anyone answered the goal prompt.</EmptyState>
+
+	const plotH = CHART_H - PAD_T - PAD_B
+
+	// A goal nobody worked towards that day has no average to take, so it reads as zero rather than dividing by nobody.
+	const perUser = (hours: number, users: number) => (users > 0 ? hours / users : 0)
+	const lines = GOAL_OPTIONS.map((option) => {
+		const values = days.map((d) => {
+			const goal = d.byGoal.find((g) => g.goal === option.value)
+			return goal ? perUser(goal.hours, goal.users) : 0
+		})
+		return {
+			label: option.short,
+			colour: GOAL_LINE_COLOUR[option.value],
+			values,
+			mean: values.reduce((n, v) => n + v, 0) / days.length,
+		}
+	})
+
+	// One maximum across all three: the comparison between the lines is the chart.
+	const maxHours = Math.max(1, ...lines.flatMap((l) => l.values))
+
+	const xOf = (i: number) => (days.length === 1 ? 0.5 : EDGE + (i / (days.length - 1)) * (1 - 2 * EDGE))
+	const yFor = (v: number) => PAD_T + plotH - (v / maxHours) * plotH
+	/** One segment per pair of points: a `d` attribute cannot carry the percentage x. */
+	const segments = (values: number[]) =>
+		values.slice(1).map((value, i) => {
+			const previous = values[i] ?? value
+			return { x1: xOf(i), y1: yFor(previous), x2: xOf(i + 1), y2: yFor(value) }
+		})
+
+	const ticks = Array.from({ length: 5 }, (_, i) => (maxHours / 4) * i)
+	const roundTick = (n: number) => (n >= 10 ? Math.round(n) : Math.round(n * 10) / 10)
+	const labelEvery = Math.max(1, Math.ceil(days.length / 14))
+	const first = days[0]?.day
+	const last = days[days.length - 1]?.day
+	// One title per day on every line's dot, so hovering any of the three gives the whole day rather than a third of it.
+	const title = (d: GoalDayActivity) =>
+		`${d.day}: ${d.byGoal
+			.map(
+				(g) =>
+					`${GOAL_OPTIONS.find((o) => o.value === g.goal)?.short ?? g.goal} ${fmtHours(perUser(g.hours, g.users))}`,
+			)
+			.join(", ")} per person`
+
+	return (
+		<div>
+			<p className="hl-hint" style={{ fontSize: "0.78rem", marginBottom: "0.75rem" }}>
+				{lines.map((line, i) => (
+					<span key={line.label} style={{ marginLeft: i === 0 ? 0 : "1rem" }}>
+						<span
+							aria-hidden="true"
+							style={{
+								display: "inline-block",
+								width: "0.7rem",
+								height: "0.15rem",
+								background: line.colour,
+								marginRight: "0.35rem",
+								verticalAlign: "middle",
+							}}
+						/>
+						{line.label} (averaging {fmtHours(line.mean)})
+					</span>
+				))}
+			</p>
+			<div style={{ display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)", alignItems: "start" }}>
+				<div style={{ position: "relative", width: "3.1rem", height: `${CHART_H}px` }}>
+					{ticks.map((t, i) => (
+						<span
+							key={`g${i}`}
+							aria-hidden="true"
+							style={{
+								position: "absolute",
+								right: 6,
+								top: yFor(t),
+								transform: "translateY(-50%)",
+								fontSize: "0.65rem",
+								fontVariantNumeric: "tabular-nums",
+								color: "var(--color-accent-ink)",
+							}}
+						>
+							{fmtHours(roundTick(t)).replace("h", "")}
+						</span>
+					))}
+					<span
+						aria-hidden="true"
+						style={{
+							position: "absolute",
+							right: 6,
+							top: -1,
+							fontSize: "0.6rem",
+							lineHeight: 1,
+							color: "var(--color-ink-muted)",
+						}}
+					>
+						h
+					</span>
+				</div>
+
+				<div>
+					<svg
+						width="100%"
+						height={CHART_H}
+						role="img"
+						aria-label={`Hours per active user per day from ${first} to ${last}, one line per goal: ${lines
+							.map((l) => `${l.label} peaking at ${fmtHours(Math.max(...l.values))}`)
+							.join("; ")}`}
+						style={{ display: "block" }}
+					>
+						{ticks.map((t, i) => (
+							<line
+								key={`gg${i}`}
+								x1={pct(EDGE)}
+								x2={pct(1 - EDGE)}
+								y1={yFor(t)}
+								y2={yFor(t)}
+								stroke="var(--color-line-soft)"
+								strokeWidth="1"
+							/>
+						))}
+						{lines.map((line) =>
+							segments(line.values).map((segment, i) => (
+								<line
+									key={`${line.label}-${i}`}
+									x1={pct(segment.x1)}
+									y1={segment.y1}
+									x2={pct(segment.x2)}
+									y2={segment.y2}
+									stroke={line.colour}
+									strokeWidth="1.75"
+									strokeLinecap="round"
+								/>
+							)),
+						)}
+						{days.map((d, i) =>
+							lines.map((line) => (
+								<circle
+									key={`${d.day}-${line.label}`}
+									cx={pct(xOf(i))}
+									cy={yFor(line.values[i] ?? 0)}
+									r="1.6"
+									fill={line.colour}
+								>
+									<title>{title(d)}</title>
+								</circle>
+							)),
+						)}
+					</svg>
+					<div
+						aria-hidden="true"
+						style={{
+							display: "grid",
+							gridTemplateColumns: `repeat(${days.length}, 1fr)`,
+							gap: "1px",
+							marginTop: "4px",
+							// The plot leaves EDGE either side, so the labels take the same inset and sit under their ticks.
+							paddingLeft: pct(EDGE),
+							paddingRight: pct(EDGE),
+							fontSize: "0.65rem",
+							color: "var(--color-ink-muted)",
+						}}
+					>
+						{days.map((d, i) =>
+							i % labelEvery === 0 ? (
+								<div
+									key={d.day}
+									style={{
+										gridColumn: `${i + 1} / span ${Math.min(labelEvery, days.length - i)}`,
+										overflow: "hidden",
+										textOverflow: "ellipsis",
+										whiteSpace: "nowrap",
+									}}
+								>
+									{d.day.slice(5)}
+								</div>
+							) : null,
+						)}
+					</div>
+				</div>
+			</div>
+			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.5rem" }}>
+				Hours per person who logged something that day, so a line says what one of those people did rather than how many
+				there were. All three share one scale, so the lines can be read against each other. A maker who has not answered
+				the goal prompt yet is on no line. Days are program-timezone effective dates; hours count journal devlogs only.
+			</p>
+		</div>
+	)
+}
+
+/** The four columns every cluster is split into, in the order they are drawn. */
+const PROJECT_KIND = [
+	{ key: "starter", label: "Starter project", colour: "var(--color-magenta)" },
+	{ key: "tier1", label: "Custom, tier 1", colour: "var(--color-accent)" },
+	{ key: "tier2", label: "Custom, tier 2", colour: "var(--color-teal)" },
+	{ key: "tier3", label: "Custom, tier 3", colour: "var(--color-coin)" },
+] as const
+
+/**
+ * One column cluster per week, each split into the four kinds of project.
+ *
+ * The clusters are the warm-up import and then the ten weeks, and those ten are five themes twice – so a cluster is labelled with the theme and the band beneath it names the half of the season, because "PCBs" is week 1 and week 6 and only the band says which. A project is counted in both of its theme's weeks, which is what it is for.
+ *
+ * Bars are drawn in pixels like the line charts and for the same reason: the axis labels are HTML in a grid of one cell per cluster, and only a fixed stride puts each label under its own bars.
+ */
+function ProjectsByWeekChart({ weeks }: { weeks: WeekProjectCluster[] }) {
+	const totals = weeks.map((week) => PROJECT_KIND.reduce((n, kind) => n + week[kind.key], 0))
+	if (totals.length === 0 || totals.every((t) => t === 0))
+		return <EmptyState>No project has been started yet.</EmptyState>
+
+	const plotH = CHART_H - PAD_T - PAD_B
+	// Four bars to a cluster, sized as shares of the stride so the labels – one grid cell per cluster – still land
+	// under their own bars at any panel width.
+	const stride = (1 - 2 * EDGE) / weeks.length
+	// The four bars take most of a cluster and the rest is the gutter between clusters. The gaps inside a cluster are
+	// shares of the cluster rather than of the whole width: eleven clusters leave a stride under a tenth of the width,
+	// so a gap sized against the width would be wider than the bars it is meant to separate.
+	const CLUSTER_FILL = 0.62
+	const BAR_GAP_SHARE = 0.12
+	const clusterW = CLUSTER_FILL * stride
+	const BAR_GAP = clusterW * BAR_GAP_SHARE
+	const barW = (clusterW - (PROJECT_KIND.length - 1) * BAR_GAP) / PROJECT_KIND.length
+
+	// These are counts, so the top is rounded up to a whole number of tick steps: a gridline labelled 9.25 would be nonsense on an axis of projects.
+	const axisMax = Math.max(4, Math.ceil(Math.max(1, ...totals) / 4) * 4)
+	const ticks = Array.from({ length: 5 }, (_, i) => (axisMax / 4) * i)
+
+	const yFor = (v: number) => PAD_T + plotH - (v / axisMax) * plotH
+	const centreOf = (i: number) => EDGE + (i + 0.5) * stride
+	const nameOf = (week: WeekProjectCluster) =>
+		week.phase === Phase.DESIGN
+			? `${week.label} design week`
+			: week.phase === Phase.BUILD
+				? `${week.label} build week`
+				: "Warm-up"
+
+	// One band per half of the season, read off the clusters rather than assumed: they are contiguous in week order, so a phase's first index and its count are all the grid needs.
+	const bands = [
+		{ phase: null, text: "warm-up" },
+		{ phase: Phase.DESIGN, text: "design · weeks 1-5" },
+		{ phase: Phase.BUILD, text: "build · weeks 6-10" },
+	]
+		.map((band) => ({
+			...band,
+			at: weeks.findIndex((week) => week.phase === band.phase),
+			span: weeks.filter((week) => week.phase === band.phase).length,
+		}))
+		.filter((band) => band.span > 0)
+
+	return (
+		<div>
+			<p className="hl-hint" style={{ fontSize: "0.78rem", marginBottom: "0.75rem" }}>
+				{PROJECT_KIND.map((kind, i) => (
+					<span key={kind.key} style={{ marginLeft: i === 0 ? 0 : "1rem" }}>
+						<span
+							aria-hidden="true"
+							style={{
+								display: "inline-block",
+								width: "0.7rem",
+								height: "0.7rem",
+								borderRadius: "2px",
+								background: kind.colour,
+								marginRight: "0.35rem",
+								verticalAlign: "middle",
+							}}
+						/>
+						{kind.label}
+					</span>
+				))}
+			</p>
+			<div style={{ display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)", alignItems: "start" }}>
+				<div style={{ position: "relative", width: "3.1rem", height: `${CHART_H}px` }}>
+					{ticks.map((t, i) => (
+						<span
+							key={`p${i}`}
+							aria-hidden="true"
+							style={{
+								position: "absolute",
+								right: 6,
+								top: yFor(t),
+								transform: "translateY(-50%)",
+								fontSize: "0.65rem",
+								fontVariantNumeric: "tabular-nums",
+								color: "var(--color-accent-ink)",
+							}}
+						>
+							{fmtInt(t)}
+						</span>
+					))}
+					<span
+						aria-hidden="true"
+						style={{
+							position: "absolute",
+							right: 6,
+							top: -1,
+							fontSize: "0.6rem",
+							lineHeight: 1,
+							color: "var(--color-ink-muted)",
+						}}
+					>
+						projects
+					</span>
+				</div>
+
+				<div>
+					<svg
+						width="100%"
+						height={CHART_H}
+						role="img"
+						aria-label={`Projects being built for each week: ${weeks
+							.map((week, i) => `${nameOf(week)} ${fmtInt(totals[i] ?? 0)}`)
+							.join(", ")}`}
+						style={{ display: "block" }}
+					>
+						{ticks.map((t, i) => (
+							<line
+								key={`pg${i}`}
+								x1={pct(EDGE)}
+								x2={pct(1 - EDGE)}
+								y1={yFor(t)}
+								y2={yFor(t)}
+								stroke="var(--color-line-soft)"
+								strokeWidth="1"
+							/>
+						))}
+						{weeks.map((week, i) =>
+							PROJECT_KIND.map((kind, k) => {
+								const count = week[kind.key]
+								if (count === 0) return null
+								const top = yFor(count)
+								return (
+									<rect
+										key={`${week.week}-${kind.key}`}
+										x={pct(centreOf(i) - clusterW / 2 + k * (barW + BAR_GAP))}
+										y={top}
+										width={pct(barW)}
+										height={PAD_T + plotH - top}
+										fill={kind.colour}
+									>
+										<title>{`${nameOf(week)} · ${kind.label}: ${fmtInt(count)}`}</title>
+									</rect>
+								)
+							}),
+						)}
+					</svg>
+					<div
+						style={{
+							display: "grid",
+							gridTemplateColumns: `repeat(${weeks.length}, 1fr)`,
+							paddingLeft: pct(EDGE),
+							paddingRight: pct(EDGE),
+							marginTop: "4px",
+							fontSize: "0.6rem",
+							textAlign: "center",
+							color: "var(--color-ink-muted)",
+						}}
+					>
+						{weeks.map((week) => (
+							<div key={week.week} style={{ overflowWrap: "anywhere" }}>
+								{week.label}
+							</div>
+						))}
+					</div>
+					<div
+						style={{
+							display: "grid",
+							gridTemplateColumns: `repeat(${weeks.length}, 1fr)`,
+							paddingLeft: pct(EDGE),
+							paddingRight: pct(EDGE),
+							marginTop: "2px",
+							fontSize: "0.58rem",
+							textAlign: "center",
+							color: "var(--color-ink-muted)",
+						}}
+					>
+						{bands.map((band) => (
+							<div key={band.text} style={{ gridColumn: `${band.at + 1} / span ${band.span}` }}>
+								{band.text}
+							</div>
+						))}
+					</div>
+				</div>
+			</div>
+			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.5rem" }}>
+				Projects that have been started, each counted in both weeks its theme runs in – so the two PCBs clusters are one
+				cohort read twice, which is what a week has to fund. The tier is the reviewer&apos;s once they have set one, and
+				what the maker asked for until then; a starter project is its own column because picking one locks the request
+				to Tier 1.
 			</p>
 		</div>
 	)

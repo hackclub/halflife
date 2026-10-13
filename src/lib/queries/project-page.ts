@@ -76,6 +76,8 @@ export interface PhaseReview {
 	disputedAt: number | null
 	/** Whether staff have closed that dispute. */
 	disputeResolved: boolean
+	/** Why the maker's open hand-in never reached Ari, when it did not. Null once it has, or when there is no open hand-in. */
+	shipError: string | null
 }
 
 export interface ProjectPageData {
@@ -193,6 +195,7 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 					createdAt: true,
 					resolvedAt: true,
 					resolvedResult: true,
+					ariShipError: true,
 					dispute: { select: { createdAt: true, resolvedAt: true } },
 				},
 			},
@@ -244,6 +247,10 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 			const disputed = project.submissions
 				.filter((s) => s.phase === phase && s.dispute)
 				.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
+			// Only an open hand-in can be stuck: one that was decided had its marker cleared by the send that succeeded, and one that was withdrawn was deleted outright.
+			const openShip = project.submissions
+				.filter((s) => s.phase === phase && s.resolvedAt === null)
+				.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
 			return {
 				phase,
 				status: isDesign ? project.designStatus : project.buildStatus,
@@ -252,6 +259,7 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 				reviewedAt: (isDesign ? project.designReviewedAt : project.buildReviewedAt)?.getTime() ?? null,
 				disputedAt: disputed?.dispute?.createdAt.getTime() ?? null,
 				disputeResolved: Boolean(disputed?.dispute?.resolvedAt),
+				shipError: openShip?.ariShipError ?? null,
 			}
 		})
 		.filter((p) => p.status !== PhaseStatus.draft || p.submittedAt !== null)

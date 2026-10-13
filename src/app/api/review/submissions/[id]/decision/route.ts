@@ -50,7 +50,9 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 			themeProjectId: outcome.themeProjectId,
 			phase: outcome.phase,
 			result: outcome.result,
-			feedback,
+			// A console reviewer always writes the note themselves, so an empty one is an empty one rather than a missing field.
+			note: feedback || null,
+			decidedBy: "console",
 		})
 	})
 

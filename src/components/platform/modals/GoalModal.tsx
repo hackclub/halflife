@@ -9,7 +9,7 @@ import { GOAL_OPTIONS } from "@/lib/config/goal"
 import { PRINTERS, type PrinterGoal, printerById, weeksToGo } from "@/lib/config/printers"
 import { BUILD_HOURS } from "@/lib/curriculum"
 import { cx } from "@/lib/cx"
-import { useStore } from "@/lib/store"
+import { usePrinterPace, useStore, weekListPhrase } from "@/lib/store"
 import { Modal, ModalTitle } from "./Modal"
 
 const TEAL = "var(--color-teal-deep)"
@@ -34,6 +34,7 @@ export function GoalModal({
 	dismissible?: boolean
 }) {
 	const { goalId, participantGoal, printerFund, setParticipantGoal } = useStore()
+	const pace = usePrinterPace()
 	const [step, setStep] = useState<Step>("goal")
 	const [chosen, setChosen] = useState<ParticipantGoal>(ParticipantGoal.PRINTER)
 	const [picked, setPicked] = useState(goalId)
@@ -200,6 +201,29 @@ export function GoalModal({
 					>
 						What&apos;s your big prize?
 					</ModalTitle>
+
+					{/* The fine print, at the moment the machine is chosen rather than months later: a printer is earned week by week, so the pace on the cards is a commitment rather than a price. When weeks have already gone unapproved it stops being advice and becomes the second half of the warning the new-project sheet gives, off the same numbers. */}
+					<div
+						className={cx(
+							"mt-1 mb-5 rounded-xl px-3.5 py-2.5 text-[0.84rem] leading-snug",
+							pace.missedWeeks.length > 0 ? "bg-coral/10 text-coral-dark" : "bg-gold-pale/60 text-navy",
+						)}
+					>
+						{pace.missedWeeks.length > 0 ? (
+							<>
+								<span className="font-extrabold">A printer is earned, not guaranteed.</span>{" "}
+								{weekListPhrase(pace.missedWeeks)} passed without being approved, and coins only come from an approved
+								week – so you may not earn enough coins for a {goal.name}. The bigger prizes need all five themes
+								finished, too.
+							</>
+						) : (
+							<>
+								<span className="font-extrabold">A printer is earned, not guaranteed.</span> {goal.name} asks about{" "}
+								{Math.round(goal.paceHours * 5)} coins every design week, so matching that pace each week is what earns
+								it. The bigger prizes need all five themes finished, too.
+							</>
+						)}
+					</div>
 
 					<div role="radiogroup" aria-labelledby={titleId} className="grid gap-x-4 gap-y-6 sm:grid-cols-2">
 						{PRINTERS.map((p) => (

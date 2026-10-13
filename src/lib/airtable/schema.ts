@@ -91,10 +91,12 @@ export const RSVP = {
 		firstName: f<string>("fldRsvpFirstName", "First Name"),
 		lastName: f<string>("fldRsvpLastName", "Last Name"),
 		pronouns: f<string>("fldRsvpPronouns", "Pronouns"),
-		ip: f<string>("fldRsvpIp", "IP"),
-		utmSource: f<string>("fldRsvpUtmSource", "UTM Source"),
-		referredBy: f<string>("fldRsvpReferredBy", "Referred By"),
-		signupPage: f<string>("fldRsvpSignupPage", "Loops - halfLifeSignUpPage"),
+		// Lowercase too, and this map said `IP` for as long as it has existed: the probe could never find it, so every row that went through the drain lost its address while the landing's own direct write (lib/site/signups) kept it. The base has the column; only the spelling was wrong.
+		ip: f<string>("fldRsvpIp", "ip"),
+		// The landing's spellings, because the landing writes them itself: `utm_source` and `referred_by`, not `UTM Source` and `Referred By`. Same failure as `ip` and a worse one – referral attribution is the thing this list exists for, and it was being dropped on every buffered row (see lib/site/referrals, which had to bypass this map to read it).
+		utmSource: f<string>("fldRsvpUtmSource", "utm_source"),
+		referredBy: f<string>("fldRsvpReferredBy", "referred_by"),
+		// `signupPage` used to sit here as `Loops - halfLifeSignUpPage`. Pruned: the base has no such column and never did, and the `Loops - …` family in it is Loops-owned and date-shaped (`halfLifeSignUpAt`, `halfLifeLastLoginAt`, `halfLifeReferralNumber`), so this was a column that was planned and never created rather than one whose spelling had drifted. Left in the map, it cost a probe per deploy to keep learning that.
 		finishedAccountCreation: f<boolean>("fldRsvpFinished", "Finished Account Creation"),
 		// Stasis joins RSVPs to users on email alone, which breaks when someone RSVPs with a personal address and signs in through HCA with a school one.
 		userId: f<string>("fldRsvpUserId", "Half-Life User ID"),

@@ -19,6 +19,32 @@ import { Theme } from "@/app/generated/prisma/enums"
  */
 export const BOM_CSV_PATTERN = /(^|\/)[^/]*bom[^/]*\.csv$/i
 
+/**
+ * How a `.json` in the repo can stand in for a board or a schematic.
+ *
+ * EasyEDA – and JLCPCB, which is the same editor – export a design as JSON, and for plenty of makers that export is the only copy of the board in the repo. But `.json` is also every package manifest, lockfile and tsconfig in every firmware repo, so the extension on its own proves nothing: a repo whose "PCB design file" is its `package.json` has not designed a board. The file's name cannot settle it either, since a design may be called `board.json`, `main.json` or anything else. So a `.json` counts only once it has been read and has said what it is.
+ *
+ * Both formats name the document in the opening, which is all that is read – a design can run to megabytes of compressed shape data:
+ * - Standard edition writes one JSON document whose `head` carries a numeric `docType`: 1 schematic, 3 board, 5 a multi-sheet schematic project.
+ * - Pro edition writes a log of `||`-joined records whose header record carries a named one: `PCB`, `SCH`, `SCH_PAGE`, `BOARD`.
+ *
+ * Library types are deliberately absent – a footprint, symbol or device library is not a design of anything – and Standard's bare numbers, which could belong to anything, are only accepted alongside `editorVersion` or `canvas`, which nothing else writes there.
+ */
+export const DESIGN_JSON = Object.freeze({
+	/** The extension to look for. Far too common to accept unread. */
+	extension: ".json",
+	/** How much of the file to look at: either format names the document at the very top. */
+	headerChars: 8192,
+	/** The document type, as either format spells it, wherever in the opening it sits. */
+	docType: /"docType"\s*:\s*"([^"]{1,24})"/i,
+	/** Pro's names, lowercased – they say what the document is on their own. */
+	named: new Set(["sch", "pcb", "sch_page", "board"]),
+	/** Standard's numbers: 1 schematic, 3 board, 5 schematic project. */
+	numeric: new Set(["1", "3", "5"]),
+	/** Something else from the same editor, which a bare number in the wild does not carry. */
+	fingerprint: /"editorVersion"|"canvas"/i,
+})
+
 export type RepoFileKind =
 	| "pcbSource" // board and schematic sources
 	| "pcbFab" // gerbers and drill files
@@ -30,7 +56,14 @@ export type RepoFileKind =
 
 export const REPO_FILE_KINDS: Record<
 	RepoFileKind,
-	{ label: string; missing: string; extensions?: readonly string[]; pattern?: RegExp }
+	{
+		label: string
+		missing: string
+		extensions?: readonly string[]
+		pattern?: RegExp
+		/** Set for the kinds a read design file can satisfy too – see DESIGN_JSON. */
+		json?: typeof DESIGN_JSON
+	}
 > = {
 	pcbSource: {
 		label: "PCB design files",
@@ -51,6 +84,7 @@ export const REPO_FILE_KINDS: Record<
 			".eprj",
 			".esch",
 		],
+		json: DESIGN_JSON,
 	},
 	pcbFab: {
 		label: "Fabrication files",
@@ -95,8 +129,9 @@ export const REPO_FILE_KINDS: Record<
 	},
 	logicSchematic: {
 		label: "Schematic",
-		missing: "No schematic found – KiCad, Logisim (.circ) or Digital (.dig) files all count",
+		missing: "No schematic found – KiCad, Logisim (.circ), Digital (.dig) or an exported EasyEDA file all count",
 		extensions: [".kicad_sch", ".kicad_pro", ".kicad_pcb", ".sch", ".schdoc", ".esch", ".fzz", ".circ", ".dig"],
+		json: DESIGN_JSON,
 	},
 	bom: {
 		label: "BOM CSV",

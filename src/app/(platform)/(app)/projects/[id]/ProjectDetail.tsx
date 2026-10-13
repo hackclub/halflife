@@ -271,7 +271,9 @@ function WarmupWork({ projectId }: { projectId: string }) {
 								</span>
 							)}
 							{canSubmit && !hasCover && (
-								<span className="hand text-[0.84rem] text-coral-deep">Upload a cover image to submit</span>
+								<span className="hand text-[0.84rem] text-coral-deep">
+									Upload a photo or screenshot of the project to submit
+								</span>
 							)}
 						</div>
 						{passed && (
@@ -339,6 +341,16 @@ function ReviewState({
 								<p className="rounded-xl bg-cream px-3.5 py-2.5 text-[0.9rem] leading-snug text-navy-soft">
 									{p.comments}
 								</p>
+							)}
+
+							{p.shipError && (
+								<div className="rounded-xl bg-coral/10 px-3.5 py-3">
+									<p className="text-[0.88rem] font-extrabold text-coral-dark">This hand-in has not reached review</p>
+									<p className="mt-1 text-[0.86rem] leading-snug text-navy-soft">{p.shipError}</p>
+									<p className="mt-1 text-[0.86rem] leading-snug text-navy-soft">
+										Fix that, then hand it in again – take the week back first if it is still in review.
+									</p>
+								</div>
 							)}
 
 							{p.disputedAt !== null ? (

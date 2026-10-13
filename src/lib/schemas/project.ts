@@ -28,6 +28,12 @@ export const submitSchema = z
 		notes: boundedText(4000).optional(),
 		/** R2 keys for evidence handed in with the submission. */
 		attachmentKeys: z.array(z.string().max(500)).max(10).default([]),
+		/**
+		 * The maker ticked the box saying they know a cart past the tier's funding is only partly funded and they will cover the rest.
+		 *
+		 * An assertion, not permission: the route works out from the database whether the cart is actually over, and ignores this on one that is not, so a stale tick left over from a bigger cart cannot get a small one through.
+		 */
+		partialFundingAccepted: z.boolean().default(false),
 	})
 	.strict()
 
@@ -73,11 +79,6 @@ export type BomItemInput = z.infer<typeof bomItemSchema>
 
 /** A bill of materials' tax and shipping total. Null clears it back to zero. */
 export const bomExtrasSchema = z.object({ taxShippingUsd: z.number().min(0).max(10_000).nullable() }).strict()
-
-/**
- * How far past a tier's funding a cart may run before the week cannot be submitted. Within it, an over-budget cart is a warning, not a refusal.
- */
-export const BOM_MARGIN_USD = 3
 
 /**
  * Reading a project's BOM CSV into its parts list.

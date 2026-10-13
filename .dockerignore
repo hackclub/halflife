@@ -2,6 +2,8 @@ node_modules
 .next
 out
 coverage
+# Any local scratch. `next build` with a `distDir` outside the project lands here (it joins the path onto the root), and a stray one is a ~1GB build context.
+tmp
 .git
 .gitignore
 Dockerfile*

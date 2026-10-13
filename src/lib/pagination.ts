@@ -32,4 +32,3 @@ export function pageResult<T extends { id: string }>(
  * Always order by a compound key ending in `id`. Ordering by a timestamp alone skips or repeats rows whenever two records share a millisecond.
  */
 export const NEWEST_FIRST = [{ createdAt: "desc" }, { id: "desc" }] as const
-export const OLDEST_FIRST = [{ createdAt: "asc" }, { id: "asc" }] as const

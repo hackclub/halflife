@@ -3,40 +3,33 @@ import { type CSSProperties, Fragment } from "react"
 import { EmptyState } from "@/app/components/ui"
 import type { FlowStep } from "@/lib/queries/admin"
 
-// The tracked-time steps are the same cumulative rows as everything above, but they measure a different question – who produced tracked-time evidence – so they are drawn as their own section below the main funnel, hanging off its last row.
-const TRACKED_STEP_IDS = new Set(["hackatimed", "lapsed", "devlogged"])
-
 /**
  * The funnel as an actual funnel running down the page: each stage is a trapezoid whose top edge meets the stage above it and whose bottom edge is its own share of signups, so the slope between two stages *is* the drop-off. Captions sit in a column to the left of the funnel, where text never fights the colour for contrast, and the through/stopped share for each joint is named in the connector between its two stages. Each stage is heat-coloured by the share of the previous stage it lost, from blue (no loss) to red (all lost).
+ *
+ * One spine, and nothing hung off the end of it. The tracked-time rows this used to draw below the last row are gone from the query with them: on a cumulative spine "of the people who got this far, how many linked Hackatime" reads a competent maker who journals and never links as a drop-off, when they dropped out of nothing. That is a branch, and the Sankey tab draws branches – devlogs, Hackatime, Lapse and reels in one activity stage, in any order, at their real widths.
  */
 export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 	if (steps.length === 0) return <EmptyState>No signups yet.</EmptyState>
 
 	const total = steps[0]?.count ?? 0
-	const main = steps.filter((s) => !TRACKED_STEP_IDS.has(s.id))
-	const tracked = steps.filter((s) => TRACKED_STEP_IDS.has(s.id))
 
-	// Percentages against the headcount of the row above. The main funnel's first row is the baseline and by definition loses nothing; the first tracked-time row keeps its true joint against the last main row, which is the section's whole point. `firstCanDrop` is the only difference between the two calls.
-	const withPcts = (list: FlowStep[], seed: number, firstCanDrop: boolean) =>
-		list.map((s, i) => {
-			const prev = i === 0 ? seed : (list[i - 1]?.count ?? seed)
-			return {
-				...s,
-				retainPct: prev === 0 ? 0 : Math.round((s.count / prev) * 1000) / 10,
-				dropOffPct: (i > 0 || firstCanDrop) && prev > 0 ? Math.round(((prev - s.count) / prev) * 1000) / 10 : 0,
-				ofSignupsPct: total === 0 ? 0 : Math.round((s.count / total) * 1000) / 10,
-			}
-		})
-	const mainRows = withPcts(main, total, false)
-	const trackedRows = withPcts(tracked, main[main.length - 1]?.count ?? 0, true)
+	// Percentages against the headcount of the row above. The first row is the baseline and by definition loses nothing.
+	const rows = steps.map((s, i) => {
+		const prev = i === 0 ? total : (steps[i - 1]?.count ?? total)
+		return {
+			...s,
+			retainPct: prev === 0 ? 0 : Math.round((s.count / prev) * 1000) / 10,
+			dropOffPct: i > 0 && prev > 0 ? Math.round(((prev - s.count) / prev) * 1000) / 10 : 0,
+			ofSignupsPct: total === 0 ? 0 : Math.round((s.count / total) * 1000) / 10,
+		}
+	})
 
 	const top = total
 	// A floor so a near-total drop-off still renders as a thread rather than vanishing entirely; captions always print the true share.
 	const MIN_W = 2
 	const share = (n: number) => (top > 0 ? (n / top) * 100 : 0)
 	const widthOf = (n: number) => (n === 0 ? 0 : Math.max(share(n), MIN_W))
-	const mainWidths = mainRows.map((s) => widthOf(s.count))
-	const trackedWidths = trackedRows.map((s) => widthOf(s.count))
+	const widths = rows.map((s) => widthOf(s.count))
 
 	// Clamp a drop-off share to a 0-100 blend weight.
 	const weightOf = (dropOffPct: number) => Math.min(100, Math.max(0, dropOffPct))
@@ -181,34 +174,8 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 					alignItems: "center",
 				}}
 			>
-				{mainRows.map((s, i) =>
-					row(s, i === 0 ? 100 : (mainWidths[i - 1] ?? 100), mainWidths[i] ?? 0, mainRows[i - 1]?.label, i === 0),
-				)}
-				{trackedRows.length > 0 && (
-					<Fragment key="tracked-time">
-						<div
-							style={{
-								gridColumn: "1 / -1",
-								fontWeight: 700,
-								fontSize: "0.8rem",
-								textTransform: "uppercase",
-								letterSpacing: "0.08em",
-								paddingTop: "1rem",
-							}}
-							className="hl-hint"
-						>
-							Tracked time
-						</div>
-						{trackedRows.map((s, i) =>
-							row(
-								s,
-								i === 0 ? (mainWidths[mainWidths.length - 1] ?? 100) : (trackedWidths[i - 1] ?? 100),
-								trackedWidths[i] ?? 0,
-								i === 0 ? mainRows[mainRows.length - 1]?.label : trackedRows[i - 1]?.label,
-								false,
-							),
-						)}
-					</Fragment>
+				{rows.map((s, i) =>
+					row(s, i === 0 ? 100 : (widths[i - 1] ?? 100), widths[i] ?? 0, rows[i - 1]?.label, i === 0),
 				)}
 			</div>
 		</div>

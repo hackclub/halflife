@@ -2,8 +2,8 @@
 
 import { useRouter } from "next/navigation"
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
-import type { ParticipantGoal } from "@/app/generated/prisma/enums"
-import { COINS_PER_HOUR, printerById, submitFloorFor, weekAsk } from "./config/printers"
+import { ParticipantGoal } from "@/app/generated/prisma/enums"
+import { COINS_PER_HOUR, type PrinterGoal, printerById, submitFloorFor, weekAsk } from "./config/printers"
 import { DESIGN_WEEKS, ONBOARDING_CHECKPOINT_ID, WARMUP_THEME, WARMUP_WEEK_ID } from "./config/program"
 import { BUILD_HOURS, checkpointsFor, TIERS, WEEK_META } from "./curriculum"
 import { formatDeadline } from "./deadline"
@@ -233,7 +233,10 @@ interface Ctx {
 	postReel: (id: string, caption: string, objectKey: string) => Promise<PostReelResult>
 	/** Hand a week in, with its notes and whatever evidence it collected. */
 	/** Resolves to null once submitted, or the server's reason for refusing. */
-	submitPhase: (id: string, extra?: { notes?: string; attachmentKeys?: string[] }) => Promise<string | null>
+	submitPhase: (
+		id: string,
+		extra?: { notes?: string; attachmentKeys?: string[]; partialFundingAccepted?: boolean },
+	) => Promise<string | null>
 	/**
 	 * Resolves to null once the entry is saved, or to the server's reason for refusing it – Lapse may say a timelapse is not yours, is still processing, or already backs another entry, and the sheet has to stay open to say so.
 	 */
@@ -822,7 +825,10 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 
 	// Server first, like logSession: the submit route runs the repo checks and can refuse, and a week shown as handed in that then quietly reopens on the next refresh is worse than a sheet that says what is wrong.
 	const submitPhase = useCallback(
-		async (id: string, extra: { notes?: string; attachmentKeys?: string[] } = {}): Promise<string | null> => {
+		async (
+			id: string,
+			extra: { notes?: string; attachmentKeys?: string[]; partialFundingAccepted?: boolean } = {},
+		): Promise<string | null> => {
 			const route = routeOf(id)
 			if (!route) return "This week has no project to submit."
 			let res: Response
@@ -834,6 +840,8 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 						phase: route.phase,
 						...(extra.notes ? { notes: extra.notes } : {}),
 						attachmentKeys: extra.attachmentKeys ?? [],
+						// Only ever sent as true, so a stale tick from a cart that has since shrunk cannot ride along on the next one.
+						...(extra.partialFundingAccepted ? { partialFundingAccepted: true } : {}),
 					}),
 				})
 			} catch {
@@ -999,6 +1007,30 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	// The printer you are saving for sets how many hours a week you need to earn, and that number is the same on every tier – the tier only decides how many funded hours sit underneath it.
 	const goal = printerById(save.goalId)
 
+	/**
+	 * The minutes behind each written devlog in a week, with the time that did not arrive through one – Hackatime, a reviewer's adjustment – folded onto the last of them.
+	 *
+	 * That is where it belongs: it is the work done since that devlog, so the entry the next progress reel answers to is the one it landed on. Folded rather than added at the week level because tracked hours on their own, before anything has been written up, are not a reel anyone has something to show – so a week with no entry yet still runs on entries alone.
+	 *
+	 * One array, read both by the placement of the reels (`checkpointsFor` walks it) and by the gate that unlocks them, because a trail that places a reel on one entry and opens it on another is a trail that has said two things at once.
+	 */
+	const writtenMinutes = useCallback(
+		(weekId: number): number[] => {
+			const written: number[] = []
+			for (;;) {
+				const entry = save.progress[`w${weekId}-entry-${written.length + 1}`]
+				if (!entry?.done) break
+				written.push(entry.minutes)
+			}
+			const offBook = facts.offBookHours[weekId] ?? 0
+			// Only onto a devlog that exists: a week with nothing written keeps its reel clock on entries alone.
+			const last = written.length - 1
+			if (last >= 0 && offBook > 0) written[last] = (written[last] ?? 0) + offBook * 60
+			return written
+		},
+		[save.progress, facts.offBookHours],
+	)
+
 	const weeks = useMemo<Week[]>(
 		() =>
 			WEEK_META.map((meta) => {
@@ -1009,13 +1041,6 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				const target = build ? BUILD_HOURS : weekAsk(goal.hoursPerWeek, tier.fundingHours)
 				// The same ask at the cheapest machine's pace: the least a week can be worth and still leave a printer at the end of the season.
 				const submitHours = build ? BUILD_HOURS : submitFloorFor(tier.fundingHours)
-				// The trail is as long as the work was: every finished entry is a node, and one more waits at the end for the entry about to be written. The minutes come along because reels are placed where the clock crossed.
-				const written: number[] = []
-				for (;;) {
-					const done = save.progress[`w${meta.id}-entry-${written.length + 1}`]
-					if (!done?.done) break
-					written.push(done.minutes)
-				}
 				return {
 					...meta,
 					tier: tierId,
@@ -1026,7 +1051,8 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 					submitHours,
 					checkpoints: checkpointsFor(
 						meta,
-						written,
+						// The trail is as long as the work was: every finished entry is a node, and one more waits at the end for the entry about to be written. The minutes come along because reels are placed where the clock crossed.
+						writtenMinutes(meta.id),
 						(cid) => save.progress[cid]?.done ?? false,
 						submitHours,
 						// Onboarding made week one's project and it has since been deleted: `projects` only lists live, named ones.
@@ -1036,7 +1062,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 					),
 				}
 			}),
-		[tierForWeek, goal, save.progress, save.projects],
+		[tierForWeek, goal, writtenMinutes, save.progress, save.projects],
 	)
 
 	// Each warm-up, as a week of its own that the trail never draws.
@@ -1190,9 +1216,9 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	)
 
 	/**
-	 * What a week is worth, for the gates that ask what it is worth rather than what was journalled: Submit's floor, the keep/submit fork, and the pace math. Progress reels are the exception – they open on `journalHours` below, the same clock their nodes are placed on.
+	 * What a week is worth, for the gates that ask what it is worth rather than what its devlogs carry: Submit's floor and the pace math.
 	 *
-	 * Journalled entries plus whatever arrived another way – Hackatime link time, and any hours a reviewer adjusted. The two are added here rather than folded into the entries upstream because reels are placed where the JOURNAL crossed a reel's mark: fold Hackatime in and a progress reel lands on a node the participant never wrote.
+	 * Journalled entries plus whatever arrived another way – Hackatime link time, and any hours a reviewer adjusted – and unlike `reelHours` below it counts the off-book half even in a week with nothing written, because Submit and the coins are owed for the work rather than for the write-up of it.
 	 */
 	const weekHours = useCallback(
 		(weekId: number) => {
@@ -1210,16 +1236,13 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	)
 
 	/**
-	 * Hours logged through journal entries alone – no Hackatime, no reviewer adjustments from elsewhere. Progress reels open on this clock and not on `weekHours`: a reel answers to the devlog that earned it, so ten tracked hours somewhere else must not open a reel before the first entry is even written. Placement already reads this clock (`checkpointsFor` walks `entryMinutes`); the gate now agrees with it.
+	 * Hours on the reel clock: what the written devlogs carry, the last of them including the time tracked since it was written.
+	 *
+	 * The very same array the reels are placed on, so a reel cannot be placed after one entry and opened by another. `weekHours` is the same figure for any week that has been written up, and differs only in the case it must: a week with nothing written yet, where tracked hours count towards Submit and towards the coins but no reel is due, because there is no devlog for it to answer to.
 	 */
-	const journalHours = useCallback(
-		(weekId: number) => {
-			const week = weeks.find((w) => w.id === weekId)
-			if (!week) return 0
-			const mins = week.checkpoints.reduce((n, c) => n + (facts.progress[c.id]?.minutes ?? 0), 0)
-			return mins / 60
-		},
-		[weeks, facts.progress],
+	const reelHours = useCallback(
+		(weekId: number) => writtenMinutes(weekId).reduce((n, m) => n + m, 0) / 60,
+		[writtenMinutes],
 	)
 
 	// The same questions asked of a week object, so a sheet can serve a warm-up (which has no week number of its own) as readily as a season week.
@@ -1358,8 +1381,8 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			if (self.kind === "submit" && weekPassed(week.id)) return true
 
 			if (self.atHours !== undefined) {
-				// A progress reel is earned by journalled hours alone (see `journalHours`); Submit and "Keep working" read what the week is worth in total. Only progress reels carry atHours besides those two, so `kind` is the whole distinction.
-				const hours = self.kind === "reel" ? journalHours(week.id) : weekHours(week.id)
+				// A progress reel is earned by the hours the devlogs carry, tracked time included once the week has been written up (see `reelHours`); Submit and "Keep working" read what the week is worth in total. Only progress reels carry atHours besides those two, so `kind` is the whole distinction.
+				const hours = self.kind === "reel" ? reelHours(week.id) : weekHours(week.id)
 				// Unwritten entries never block a milestone – the clock does. Neither does a milestone that is not due yet: the reel waiting at 30h cannot hold up a Submit that opened at 23.76h.
 				//
 				// "Keep working" rides this rule too, at atHours 0. A reel that has come due is the cadence asking to be paid before the week runs on; letting the fork's other arm open around it would make every progress reel skippable forever.
@@ -1383,7 +1406,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			weeks,
 			save.progress,
 			weekHours,
-			journalHours,
+			reelHours,
 		],
 	)
 
@@ -1428,7 +1451,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			if (!week || !self) return null
 
 			if (self.atHours !== undefined) {
-				const hours = self.kind === "reel" ? journalHours(week.id) : weekHours(week.id)
+				const hours = self.kind === "reel" ? reelHours(week.id) : weekHours(week.id)
 				const owed = withoutOptionalIdea(list.slice(0, i)).find(
 					(c) => c.kind !== "journal" && (c.atHours ?? 0) <= hours && !done(c),
 				)
@@ -1451,7 +1474,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			weeks,
 			save.progress,
 			weekHours,
-			journalHours,
+			reelHours,
 		],
 	)
 
@@ -1535,6 +1558,45 @@ export function useStore(): Ctx {
 	const ctx = useContext(StoreContext)
 	if (!ctx) throw new Error("useStore must be used inside StoreProvider")
 	return ctx
+}
+
+export interface PrinterPace {
+	/** The machine being saved for. Null when this participant is here for the grant, where there is no pace to miss. */
+	printer: PrinterGoal | null
+	/** Coins a design week has to earn to stay on that machine's pace. */
+	perWeekCoins: number
+	/**
+	 * Weeks before this one that closed without an approval, most recent first. Coins only come from an approved week, so these are coins nobody can earn back – which is the whole of the printer's fine print, and what both surfaces below need to say.
+	 */
+	missedWeeks: number[]
+}
+
+/**
+ * How someone is doing against the printer they are saving for, for the two places that have to say so.
+ *
+ * One definition rather than two, because the goal sheet and the new-project sheet both ask the same two questions – what pace does this machine need, and has any week already closed without being approved – and the answer has to be the same in both or the platform is arguing with itself about whether somebody is behind.
+ *
+ * Only a printer has a pace. A funding-only answer returns a null printer rather than a default machine, so a caller that has not checked falls back to its own wording instead of warning someone about a goal they never set.
+ */
+export function usePrinterPace(): PrinterPace {
+	const { goalId, participantGoal, weeks, weekPassed, statusOf } = useStore()
+	const printer = participantGoal === null || participantGoal === ParticipantGoal.PRINTER ? printerById(goalId) : null
+	// A week that closed while still a draft holds nothing reviewable, and a rejected one was decided against; neither will pay now. A week in review, or one sent back for changes, is deliberately not counted: it can still be decided and still pay, and telling someone they are behind on a week a reviewer has not opened yet is a nag with no action behind it.
+	const missedWeeks = weeks
+		.filter((w) => weekPassed(w.id) && (statusOf(w) === "draft" || statusOf(w) === "rejected"))
+		.map((w) => w.id)
+		.reverse()
+	return { printer, perWeekCoins: printer ? Math.round(printer.paceHours * COINS_PER_HOUR) : 0, missedWeeks }
+}
+
+/**
+ * The weeks a maker has behind them, as they would say it: "Week 2", "Weeks 2 and 4", "Weeks 1, 2 and 4". Newest first, because the most recent miss is the one they remember.
+ */
+export function weekListPhrase(weeks: readonly number[]): string {
+	const parts = weeks.map((w) => String(w))
+	if (parts.length === 0) return "No weeks"
+	if (parts.length === 1) return `Week ${parts[0]}`
+	return `Weeks ${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`
 }
 
 /** Recommended tier from the onboarding experience answer. */
