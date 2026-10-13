@@ -94,15 +94,22 @@ export default async function AdminOverviewPage() {
 				title="Reviewer activity"
 				actions={
 					<span className="hl-hint" style={{ fontSize: "0.78rem" }}>
-						mirrors Ari, so no need to open it for the totals
+						the headline counts hand-ins, the outcome rows count projects
 					</span>
 				}
 			>
 				<div className="hl-row">
 					<Stat label="Awaiting review" value={counters.pendingReviews} />
 					<Stat label="Reviewed today" value={reviewer.reviewedToday} />
-					<Stat label="Reviewed total" value={reviewer.reviewedTotal} />
+					<Stat label="Projects reviewed" value={reviewer.reviewedTotal} />
 				</div>
+				{counters.pendingReviewsUnsent > 0 && (
+					<p className="hl-hint" style={{ fontSize: "0.8rem", marginTop: "0.5rem" }}>
+						<span className="hl-mono">{fmtInt(counters.pendingReviewsUnsent)}</span> more are handed in and in review
+						here but never reached Ari, so no reviewer has them –{" "}
+						<Link href="/admin/program">what broke, and a Retry for each</Link>.
+					</p>
+				)}
 				<Table head={["Outcome", "Today", "All time"]}>
 					{reviewer.byResult.map((row) => (
 						<tr key={row.result}>
@@ -113,11 +120,14 @@ export default async function AdminOverviewPage() {
 					))}
 				</Table>
 				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
-					Awaiting review counts live hand-ins – unresolved submissions on phases currently in review. A hand-in that
-					never reached Ari still counts here; the program page lists what Ari is actually holding. The other three
-					count projects, once however many of their phases were reviewed, shown by the outcome standing now – a project
-					approved on design and sent back on build reads as changes requested. Ari&apos;s decisions are included. A
-					review an admin or Ari later undid no longer counts.
+					Awaiting review counts live hand-ins that reached Ari – unresolved submissions on phases currently in review,
+					on projects that still exist. It is the figure comparable to Ari&apos;s own pending count, and the one to read
+					when asking what is waiting on a reviewer; anything Ari never received is counted apart above, because a
+					hand-in Ari has never seen is not waiting for review. The other three count projects, once however many of
+					their phases were reviewed, shown by the outcome standing now – a project approved on design and sent back on
+					build reads as changes requested. That is deliberately a different question from Ari&apos;s reviewed count, so
+					the two will not agree. Ari&apos;s decisions are included. A review an admin or Ari later undid no longer
+					counts.
 				</p>
 			</Panel>
 

@@ -456,23 +456,28 @@ export async function listRecentPublicReels(limit = 100) {
 }
 
 export async function getAdminCounters() {
-	const [pendingReviews, pendingOrders, participants, shipped] = await Promise.all([
-		// Live hand-ins only: an open submission on a phase that is actually in review, on a project that still exists. Counting every unresolved row also sweeps up submissions that never reached Ari, or whose phase has moved on without the row resolving – which is exactly how this number drifts above what reviewers see in Ari.
-		prisma.phaseSubmission.count({
-			where: {
-				resolvedAt: null,
-				themeProject: { deletedAt: null },
-				OR: [
-					{ phase: Phase.DESIGN, themeProject: { designStatus: PhaseStatus.in_review } },
-					{ phase: Phase.BUILD, themeProject: { buildStatus: PhaseStatus.in_review } },
-				],
-			},
-		}),
+	// A live hand-in: an open submission on a phase that is actually in review, on a project that still exists. The phase check matters on its own – counting every unresolved row also sweeps up submissions whose phase has moved on without the row resolving.
+	const liveHandIn: Prisma.PhaseSubmissionWhereInput = {
+		resolvedAt: null,
+		themeProject: { deletedAt: null },
+		OR: [
+			{ phase: Phase.DESIGN, themeProject: { designStatus: PhaseStatus.in_review } },
+			{ phase: Phase.BUILD, themeProject: { buildStatus: PhaseStatus.in_review } },
+		],
+	}
+
+	const [pendingReviews, pendingReviewsUnsent, pendingOrders, participants, shipped] = await Promise.all([
+		// Sent, and Ari holds it. This is the number that answers "how much is in the review queue", and the only one comparable to Ari's own pending count.
+		//
+		// `ariSubmissionId` is the marker rather than `ariStatus`, which only a decision or a reset ever writes and so says nothing about a ship nobody has opened yet.
+		prisma.phaseSubmission.count({ where: { ...liveHandIn, ariSubmissionId: { not: null } } }),
+		// Never reached Ari: the send failed and the retry has not got it through yet. Counted apart because folding it in is how this panel's "awaiting review" drifted hundreds above the queue reviewers actually had – a hand-in Ari has never seen is not waiting for review, it is waiting for us.
+		prisma.phaseSubmission.count({ where: { ...liveHandIn, ariSubmissionId: null } }),
 		prisma.shopOrder.count({ where: { status: ShopOrderStatus.PENDING } }),
 		prisma.user.count(),
 		prisma.printerAward.count({ where: { revokedAt: null } }),
 	])
-	return { pendingReviews, pendingOrders, participants, shipped }
+	return { pendingReviews, pendingReviewsUnsent, pendingOrders, participants, shipped }
 }
 
 export interface FlowStep {
@@ -1054,7 +1059,7 @@ export interface ReviewerStats {
  *
  * Counted over live decisions only. A review an admin un-approved or Ari reverted is marked `invalidated`, and a row that no longer stands is not a decision the project still has – counting it would make the total only ever grow and leave it disagreeing with Ari after a revert. Only FINAL passes count: a FIRST-pass row is advisory and moves no status and no money (see the ReviewPass enum), so including it would credit a reviewer with a decision they did not make.
  *
- * A project counts once however many of its phases were reviewed. A project is reviewed at most twice, design then build, and the question here is how much has had attention rather than how many hand-ins landed; `getAdminCounters`'s "awaiting review" remains the submission-level figure. The breakdown attributes each project to its most recent live review so the three outcome rows always add up to the headline above them: a project whose design was approved and whose build came back for changes reads as changes requested, which is where it actually stands.
+ * A project counts once however many of its phases were reviewed. A project is reviewed at most twice, design then build, and the question here is how much has had attention rather than how many hand-ins landed; `getAdminCounters`'s "awaiting review" remains the submission-level figure. Neither is meant to equal a total in Ari's own UI, which counts ships rather than projects, so a reader comparing the two is comparing two different questions. The breakdown attributes each project to its most recent live review so the three outcome rows always add up to the headline above them: a project whose design was approved and whose build came back for changes reads as changes requested, which is where it actually stands.
  *
  * "Today" is the program timezone's day, the same boundary the activity strip and streaks use, so a review that landed at 11pm New York counts the day the dashboard is on rather than the server's.
  *
