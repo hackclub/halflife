@@ -16,6 +16,7 @@ import { HttpError } from "@/lib/errors"
 import { encryptPII, isPiiConfigured } from "@/lib/pii"
 import prisma from "@/lib/prisma"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
+import { normalizeRepo } from "@/lib/repo"
 import { trackSideEffect } from "@/lib/side-effects"
 import { buildObjectKey, isUploadConfigured, MAX_UPLOAD_BYTES, putObject } from "@/lib/uploads/r2"
 
@@ -369,7 +370,8 @@ async function importRow(
 					theme: Theme.WARMUP,
 					title: row.title,
 					description: row.description,
-					githubRepo: row.repoUrl,
+					// The form's "Code URL" is free text, and the playable-url fallback is not a repo at all, so the value is run through the repo field's own rule: a bare `github.com/me/thing` gains its scheme, and anything that will not parse becomes null rather than a link nothing can open.
+					githubRepo: normalizeRepo(row.repoUrl ?? "").url,
 					requestedTier: tierForRequestedFunding(row.requestedFunding),
 					namedAt: createdAt,
 					createdAt,

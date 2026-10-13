@@ -10,6 +10,7 @@ import { isTierId } from "@/lib/config/tiers"
 import { HttpError } from "@/lib/errors"
 import { notifyReviewOutcome } from "@/lib/notifications"
 import prisma from "@/lib/prisma"
+import { normalizeRepo } from "@/lib/repo"
 import { finalizeReview, reopenPhase, unapprovePhase } from "@/lib/review"
 import { sanitize } from "@/lib/sanitize"
 import { publicUrlFor } from "@/lib/uploads/r2"
@@ -130,6 +131,14 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
 	if (!user.slackId)
 		throw new HttpError("UNPROCESSABLE", "This account has no Slack ID, so Ari cannot be told who the maker is")
 
+	// Ari validates `repo_url` as an absolute http(s) URL, and the stored link is not always one: the project form enforces that, but the warm-up importers write `githubRepo` straight from a spreadsheet cell, where a maker is as likely to have typed `github.com/me/thing` with the scheme left off. `normalizeRepo` is the same rule the repo field itself applies, so a link that would have saved fine had it been typed on the project page is sent rather than failing the whole ship – and one that will not parse is refused here, naming the link, instead of coming back from Ari as a bare field error that leaves the project retrying on the hour with nothing an operator can act on.
+	const repoUrl = normalizeRepo(project.githubRepo).url
+	if (!repoUrl)
+		throw new HttpError(
+			"UNPROCESSABLE",
+			`This project's repo link is not a web address, so it cannot be sent to Ari: ${project.githubRepo}`,
+		)
+
 	const def = getThemeDef(project.theme)
 
 	const journals = project.workSessions.slice(-200).map((session) => ({
@@ -162,7 +171,7 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
 			...(user.hackatimeUserId ? { hackatime_id: user.hackatimeUserId } : {}),
 			// No `program_hours`: Half Life's time is exactly the journals and Hackatime projects below, which Ari counts itself. Reporting the same hours as program-provided time would make it count them twice.
 		},
-		repo_url: project.githubRepo,
+		repo_url: repoUrl,
 		thumbnail_url: thumbnailFor(project.coverImageKey, def.slug),
 		...(demoUrl ? { demo_url: demoUrl } : {}),
 		// Only ask Ari to check elapsed-time evidence when there is a timelapse.

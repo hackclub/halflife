@@ -4,6 +4,7 @@ import { AuditAction, logAuditTx } from "@/lib/audit"
 import { HttpError } from "@/lib/errors"
 import prisma from "@/lib/prisma"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
+import { normalizeRepo } from "@/lib/repo"
 
 /**
  * Projects submitted through Macondo (macondo.hackclub.com), taken out as a CSV and brought in as warm-up projects.
@@ -359,7 +360,8 @@ export async function importMacondoProjects(actor: ImportActor, csv: string): Pr
 					theme: Theme.WARMUP,
 					title: row.title,
 					description: row.description,
-					githubRepo: row.repoUrl,
+					// The cell is free text from a sheet, so it is run through the same rule the repo field uses; an address that will not parse becomes null rather than a link nothing can open.
+					githubRepo: normalizeRepo(row.repoUrl ?? "").url,
 					requestedTier: row.tier ?? 1,
 					warmupPhase: Phase.BUILD,
 					namedAt: createdAt,
