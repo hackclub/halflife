@@ -51,7 +51,7 @@ export async function getSubmitReadiness(project: ThemeProject, phase: Phase): P
 			key: "cover",
 			label: "Project has a cover image",
 			ok: !!project.coverImageKey,
-			detail: project.coverImageKey ? undefined : "Upload a cover image on the project page",
+			detail: project.coverImageKey ? undefined : "Upload a photo or screenshot of the project on the project page",
 		},
 		{
 			key: "hours",

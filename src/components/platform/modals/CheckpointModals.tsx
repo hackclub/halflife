@@ -1709,7 +1709,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							{weekListPhrase(pace.missedWeeks)} passed without being approved, and coins only come from an approved
 							week. A <span className="font-bold text-navy">{pace.printer.name}</span> asks about{" "}
 							<span className="font-bold text-navy tabular-nums">{pace.perWeekCoins}</span> coins every design week, so
-							you may not be eligible for it – and the bigger prizes need all five themes finished. A bigger week later
+							you may not be eligible for it – the bigger prizes need all 5 themes finished. A bigger week later
 							can make some of it up.
 						</p>
 					</div>
@@ -2139,8 +2139,8 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							{project ? `${project.name} needs a cover image.` : "Your project needs a cover image."}
 						</p>
 						<p className="mt-1 text-[0.85rem] leading-snug text-navy-soft">
-							Upload one on that project&apos;s page before you can submit – covers are per project, so a cover uploaded
-							elsewhere does not count.{" "}
+							Upload a photo or screenshot of the project on that project&apos;s page before you can submit – covers are
+							per project, so a cover uploaded elsewhere does not count.{" "}
 							{project && (
 								<Link
 									href={`/projects/${project.id}`}
