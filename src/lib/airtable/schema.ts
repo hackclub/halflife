@@ -91,9 +91,12 @@ export const RSVP = {
 		firstName: f<string>("fldRsvpFirstName", "First Name"),
 		lastName: f<string>("fldRsvpLastName", "Last Name"),
 		pronouns: f<string>("fldRsvpPronouns", "Pronouns"),
-		ip: f<string>("fldRsvpIp", "IP"),
-		utmSource: f<string>("fldRsvpUtmSource", "UTM Source"),
-		referredBy: f<string>("fldRsvpReferredBy", "Referred By"),
+		// Lowercase too, and this map said `IP` for as long as it has existed: the probe could never find it, so every row that went through the drain lost its address while the landing's own direct write (lib/site/signups) kept it. The base has the column; only the spelling was wrong.
+		ip: f<string>("fldRsvpIp", "ip"),
+		// The landing's spellings, because the landing writes them itself: `utm_source` and `referred_by`, not `UTM Source` and `Referred By`. Same failure as `ip` and a worse one – referral attribution is the thing this list exists for, and it was being dropped on every buffered row (see lib/site/referrals, which had to bypass this map to read it).
+		utmSource: f<string>("fldRsvpUtmSource", "utm_source"),
+		referredBy: f<string>("fldRsvpReferredBy", "referred_by"),
+		// Still not a column on the live base, so the drain skips it and the probe says so once per deploy. Left in the map deliberately: the drain fills it the moment somebody creates it, which is the whole point of probing rather than assuming.
 		signupPage: f<string>("fldRsvpSignupPage", "Loops - halfLifeSignUpPage"),
 		finishedAccountCreation: f<boolean>("fldRsvpFinished", "Finished Account Creation"),
 		// Stasis joins RSVPs to users on email alone, which breaks when someone RSVPs with a personal address and signs in through HCA with a school one.
