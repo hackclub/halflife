@@ -43,7 +43,7 @@ import { normalizeRepo } from "@/lib/repo"
 import type { RepoCheckResult } from "@/lib/repo-checks"
 import { EXAMPLE_JOURNAL_URL } from "@/lib/routes"
 import { MAX_SESSION_CONTENT, MAX_SESSION_HOURS } from "@/lib/schemas/session"
-import { useStore } from "@/lib/store"
+import { usePrinterPace, useStore, weekListPhrase } from "@/lib/store"
 import type { Checkpoint, Project, Week } from "@/lib/types"
 import { IMAGE_ACCEPT } from "@/lib/uploads/image-accept"
 import { uploadFile } from "@/lib/use-handoff"
@@ -1629,6 +1629,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const { setOpenCheckpoint, complete, addProject, ensureProject, experience, weekOf } = useStore()
 	const week = weekOf(checkpoint.weekId)
+	const pace = usePrinterPace()
 	// Opening "create a project" is what makes the week's project row – not signing up, when nobody knows yet whether they will get this far.
 	useEffect(() => {
 		ensureProject(checkpoint.weekId)
@@ -1692,6 +1693,28 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			}
 		>
 			<ModalTitle sub={week.summary}>{week.headline}</ModalTitle>
+
+			{/* Starting a week with weeks already behind you is when the printer's fine print matters, and about the last moment it is any use: the coins being paced toward come from approved weeks, and some of those have gone. Only somebody saving for a machine hears it – a funding-only maker has no prize to fall short of. */}
+			{pace.printer && pace.missedWeeks.length > 0 && (
+				<div
+					className="sketch mb-5 flex items-start gap-3 rounded-2xl bg-coral/10 px-5 py-4"
+					style={{ "--sk-color": "var(--color-coral)", "--sk-radius": "16px" } as React.CSSProperties}
+				>
+					<IconWarning className="mt-0.5 shrink-0 text-xl text-coral-deep" />
+					<div className="min-w-0">
+						<p className="text-[0.95rem] leading-snug font-extrabold text-coral-dark">
+							You&apos;re behind on your printer goal.
+						</p>
+						<p className="mt-1 text-[0.85rem] leading-snug text-navy-soft">
+							{weekListPhrase(pace.missedWeeks)} passed without being approved, and coins only come from an approved
+							week. A <span className="font-bold text-navy">{pace.printer.name}</span> asks about{" "}
+							<span className="font-bold text-navy tabular-nums">{pace.perWeekCoins}</span> coins every design week, so
+							you may not be eligible for it – and the bigger prizes need all five themes finished. A bigger week later
+							can make some of it up.
+						</p>
+					</div>
+				</div>
+			)}
 
 			<div className="grid gap-6 lg:grid-cols-[1fr_230px] lg:items-start">
 				<div className="grid gap-4">

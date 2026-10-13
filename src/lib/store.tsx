@@ -2,8 +2,8 @@
 
 import { useRouter } from "next/navigation"
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
-import type { ParticipantGoal } from "@/app/generated/prisma/enums"
-import { COINS_PER_HOUR, printerById, submitFloorFor, weekAsk } from "./config/printers"
+import { ParticipantGoal } from "@/app/generated/prisma/enums"
+import { COINS_PER_HOUR, type PrinterGoal, printerById, submitFloorFor, weekAsk } from "./config/printers"
 import { DESIGN_WEEKS, ONBOARDING_CHECKPOINT_ID, WARMUP_THEME, WARMUP_WEEK_ID } from "./config/program"
 import { BUILD_HOURS, checkpointsFor, TIERS, WEEK_META } from "./curriculum"
 import { formatDeadline } from "./deadline"
@@ -1558,6 +1558,45 @@ export function useStore(): Ctx {
 	const ctx = useContext(StoreContext)
 	if (!ctx) throw new Error("useStore must be used inside StoreProvider")
 	return ctx
+}
+
+export interface PrinterPace {
+	/** The machine being saved for. Null when this participant is here for the grant, where there is no pace to miss. */
+	printer: PrinterGoal | null
+	/** Coins a design week has to earn to stay on that machine's pace. */
+	perWeekCoins: number
+	/**
+	 * Weeks before this one that closed without an approval, most recent first. Coins only come from an approved week, so these are coins nobody can earn back – which is the whole of the printer's fine print, and what both surfaces below need to say.
+	 */
+	missedWeeks: number[]
+}
+
+/**
+ * How someone is doing against the printer they are saving for, for the two places that have to say so.
+ *
+ * One definition rather than two, because the goal sheet and the new-project sheet both ask the same two questions – what pace does this machine need, and has any week already closed without being approved – and the answer has to be the same in both or the platform is arguing with itself about whether somebody is behind.
+ *
+ * Only a printer has a pace. A funding-only answer returns a null printer rather than a default machine, so a caller that has not checked falls back to its own wording instead of warning someone about a goal they never set.
+ */
+export function usePrinterPace(): PrinterPace {
+	const { goalId, participantGoal, weeks, weekPassed, statusOf } = useStore()
+	const printer = participantGoal === null || participantGoal === ParticipantGoal.PRINTER ? printerById(goalId) : null
+	// A week that closed while still a draft holds nothing reviewable, and a rejected one was decided against; neither will pay now. A week in review, or one sent back for changes, is deliberately not counted: it can still be decided and still pay, and telling someone they are behind on a week a reviewer has not opened yet is a nag with no action behind it.
+	const missedWeeks = weeks
+		.filter((w) => weekPassed(w.id) && (statusOf(w) === "draft" || statusOf(w) === "rejected"))
+		.map((w) => w.id)
+		.reverse()
+	return { printer, perWeekCoins: printer ? Math.round(printer.paceHours * COINS_PER_HOUR) : 0, missedWeeks }
+}
+
+/**
+ * The weeks a maker has behind them, as they would say it: "Week 2", "Weeks 2 and 4", "Weeks 1, 2 and 4". Newest first, because the most recent miss is the one they remember.
+ */
+export function weekListPhrase(weeks: readonly number[]): string {
+	const parts = weeks.map((w) => String(w))
+	if (parts.length === 0) return "No weeks"
+	if (parts.length === 1) return `Week ${parts[0]}`
+	return `Weeks ${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`
 }
 
 /** Recommended tier from the onboarding experience answer. */
