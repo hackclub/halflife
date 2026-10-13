@@ -72,6 +72,18 @@ function headline(
 	}
 }
 
+export interface ReviewOutcomeMessage {
+	subject: string
+	/** Our words, in order. The reviewer's note is deliberately not among them. */
+	prose: string[]
+	/**
+	 * The reviewer's own words, or null.
+	 *
+	 * Kept as its own field rather than a paragraph among the rest, because it is the one part a human typed and the only part with line breaks worth keeping. An email that folds it into a `<p>` collapses every newline into a space, which is how a note that asked for three separate things arrives as one sentence.
+	 */
+	note: string | null
+}
+
 /**
  * The message a decision produces, as pure data.
  *
@@ -80,11 +92,76 @@ function headline(
 export function reviewOutcomeMessage(
 	notice: Pick<ReviewOutcomeNotice, "result" | "decidedBy" | "note">,
 	context: { phase: Phase; title: string },
-): { subject: string; lines: string[] } {
+): ReviewOutcomeMessage {
 	const phaseLabel = context.phase === Phase.DESIGN ? "design" : "build"
 	const { subject, body, next } = headline(notice.result, phaseLabel, context.title, notice.decidedBy)
 	const note = notice.note?.trim() || ""
-	return { subject, lines: [body, ...(next ? [next] : []), ...(note ? [note] : [])] }
+	return { subject, prose: [body, ...(next ? [next] : [])], note: note || null }
+}
+
+/**
+ * The message as flat paragraphs, in the one order every plain-text channel wants.
+ *
+ * Ours first and the reviewer's last, so the note lands under the line that explains it. One definition instead of each caller reassembling the message, because the order is part of what the note means.
+ */
+function plainLines(message: ReviewOutcomeMessage): string[] {
+	return [...message.prose, ...(message.note ? [message.note] : [])]
+}
+
+/**
+ * The colour a decision wears, in the platform's own state inks.
+ *
+ * Orange for a phase sent back for changes and coral for one rejected, matching `lib/review-state.ts`; teal for an approval, which reaches the same mailer. The ink tones rather than the fills, because both places this goes are small text on white.
+ */
+function reviewInk(result: ReviewResult): string {
+	if (result === ReviewResult.REJECTED) return "#a53131"
+	if (result === ReviewResult.APPROVED) return "#037365"
+	return "#8c5507"
+}
+
+const EMAIL_FONT = "font-family:system-ui,-apple-system,'Segoe UI',sans-serif"
+
+/**
+ * The email body for a review outcome.
+ *
+ * Tables with inline styles, because there is nothing a mail client could load: no stylesheet, and so no flexbox or grid either. Colours are platform tokens from DESIGN.md, so the mail reads as the same place the trail does.
+ *
+ * The note is the only thing in here that is not a paragraph. It keeps its whitespace and gets a tinted box with the decision's own colour on its edge, set apart from our prose so a maker can tell whose words they are reading – the treatment the project page already gives a review comment (Timeline.tsx).
+ */
+function emailHtml(input: {
+	greeting: string
+	message: ReviewOutcomeMessage
+	ink: string
+	url: string | null
+}): string {
+	const headline = input.message.prose[0] ?? ""
+	const rest = input.message.prose.slice(1)
+	const note = input.message.note
+		? `<div style="margin-top:8px;border-left:3px solid ${input.ink};border-radius:0 8px 8px 0;background-color:#f4f4f8;padding:14px 16px;${EMAIL_FONT};font-size:15px;line-height:1.6;color:#1c1a59;white-space:pre-line;overflow-wrap:anywhere">${escapeHtml(input.message.note)}</div>`
+		: ""
+
+	return [
+		`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#fcf7f7" style="background-color:#fcf7f7;border-collapse:collapse">`,
+		`<tr><td align="center" style="padding:32px 16px">`,
+		`<table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="width:560px;max-width:100%;background-color:#ffffff;border-radius:16px">`,
+		`<tr><td style="padding:28px 32px 0;${EMAIL_FONT};font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#4a4785">Half Life</td></tr>`,
+		`<tr><td style="padding:14px 32px 0;${EMAIL_FONT};font-size:15px;line-height:1.6;color:#1c1a59">${input.greeting}</td></tr>`,
+		`<tr><td style="padding:6px 32px 0;${EMAIL_FONT};font-size:22px;font-weight:800;line-height:1.3;color:#1c1a59">${escapeHtml(headline)}</td></tr>`,
+		note
+			? `<tr><td style="padding:20px 32px 0"><div style="${EMAIL_FONT};font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#4a4785">From your reviewer</div>${note}</td></tr>`
+			: "",
+		...rest.map(
+			(line) =>
+				`<tr><td style="padding:12px 32px 0;${EMAIL_FONT};font-size:15px;line-height:1.6;color:#1c1a59">${escapeHtml(line)}</td></tr>`,
+		),
+		input.url
+			? `<tr><td style="padding:24px 32px 0"><table role="presentation" cellpadding="0" cellspacing="0" border="0" bgcolor="#a47cc0" style="border-radius:10px;box-shadow:0 2px 0 #7b519b"><tr><td align="center" style="padding:12px 22px;${EMAIL_FONT};font-size:15px;font-weight:700"><a href="${escapeHtml(input.url)}" style="color:#1c1a59;text-decoration:none">Open the project</a></td></tr></table></td></tr>`
+			: "",
+		`<tr><td style="padding:32px 32px 4px;${EMAIL_FONT};font-size:14px;line-height:1.6;color:#4a4785">– Half Life</td></tr>`,
+		"</table></td></tr></table>",
+	]
+		.filter(Boolean)
+		.join("\n")
 }
 
 /**
@@ -128,7 +205,9 @@ async function deliverReviewOutcome(notice: ReviewOutcomeNotice): Promise<void> 
 
 	const { email, slackId } = project.user
 	const title = project.title.trim() || getThemeDef(project.theme).label
-	const { subject, lines } = reviewOutcomeMessage(notice, { phase: notice.phase, title })
+	const message = reviewOutcomeMessage(notice, { phase: notice.phase, title })
+	const { subject } = message
+	const lines = plainLines(message)
 	const url = projectUrl(notice.themeProjectId)
 	const firstName = project.user.name?.trim().split(/\s+/)[0] || "there"
 
@@ -146,7 +225,7 @@ async function deliverReviewOutcome(notice: ReviewOutcomeNotice): Promise<void> 
 
 	if (email) {
 		const text = [
-			`Hi ${firstName},`,
+			`Hi ${firstName}`,
 			"",
 			...lines,
 			...(url ? ["", `Open the project: ${url}`] : []),
@@ -154,16 +233,12 @@ async function deliverReviewOutcome(notice: ReviewOutcomeNotice): Promise<void> 
 			"– Half Life",
 		].join("\n")
 
-		const html = [
-			`<div style="font-family:system-ui,-apple-system,sans-serif;line-height:1.5;color:#262a2d">`,
-			`<p>Hi ${escapeHtml(firstName)},</p>`,
-			...lines.map((line) => `<p>${escapeHtml(line)}</p>`),
-			url ? `<p><a href="${url}" style="color:#2e8cae">Open the project</a></p>` : "",
-			`<p style="color:#4a4785">– Half Life</p>`,
-			"</div>",
-		]
-			.filter(Boolean)
-			.join("\n")
+		const html = emailHtml({
+			greeting: `Hi ${escapeHtml(firstName)}`,
+			message,
+			ink: reviewInk(notice.result),
+			url,
+		})
 
 		await trackSideEffect("email", ctx, () => sendEmail({ to: email, subject, text, html }))
 	}
