@@ -12,6 +12,8 @@ import { ParticipantGoal } from "@/app/generated/prisma/enums"
 export interface GoalOption {
 	readonly value: ParticipantGoal
 	readonly label: string
+	/** The same answer where a sentence will not fit – a chart legend, a table column. */
+	readonly short: string
 	/** The one line that goes under the label, and the thing staff quote. */
 	readonly hint: string
 }
@@ -20,17 +22,19 @@ export const GOAL_OPTIONS: readonly GoalOption[] = [
 	{
 		value: ParticipantGoal.PRINTER,
 		label: "A 3D printer",
+		short: "3D printer",
 		hint: "Work towards one of the eight printers at the end of the season.",
 	},
 	{
 		value: ParticipantGoal.FULL_FUNDING,
 		label: "Just funding, for all ten weeks",
+		short: "Funding, all weeks",
 		hint: "The per-project hardware grant, every week, and no prize to pace against.",
 	},
 	{
 		value: ParticipantGoal.PARTIAL_FUNDING,
 		label: "Funding for some of the weeks",
+		short: "Funding, some weeks",
 		hint: "Join for part of the run and claim the grant on the weeks you're here for.",
 	},
 ]
-

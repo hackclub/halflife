@@ -2,15 +2,18 @@ import Link from "next/link"
 import { ActivityShareChart } from "@/app/components/admin/ActivityShareChart"
 import { UserFlowDiagram } from "@/app/components/admin/UserFlowDiagram"
 import { EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
-import type { ReviewResult } from "@/app/generated/prisma/enums"
+import type { ParticipantGoal, ReviewResult } from "@/app/generated/prisma/enums"
+import { GOAL_OPTIONS } from "@/lib/config/goal"
 import { requireAnyPermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import {
 	type DayActivity,
+	type GoalDayActivity,
 	getAdminCounters,
 	getAreaStats,
 	getCountryStats,
 	getDailyActivity,
+	getDailyActivityByGoal,
 	getFirstProjectStats,
 	getHoursDistribution,
 	getReviewerStats,
@@ -53,6 +56,7 @@ export default async function AdminOverviewPage() {
 		areas,
 		countries,
 		activity,
+		activityByGoal,
 		hoursSpread,
 		firstProjects,
 		verification,
@@ -74,6 +78,7 @@ export default async function AdminOverviewPage() {
 		getAreaStats(),
 		getCountryStats(),
 		getDailyActivity(),
+		getDailyActivityByGoal(),
 		getHoursDistribution(),
 		getFirstProjectStats(),
 		getVerificationStats(),
@@ -224,6 +229,15 @@ export default async function AdminOverviewPage() {
 					One person&apos;s average working day rather than the programme&apos;s total. Read beside the chart above, the
 					totals say how much was done and this says how thinly it was spread – so a busy day and a flat average
 					together mean the work was going somewhere, and both rising means more people joined in.
+				</p>
+			</Panel>
+
+			<Panel title="Hours per user by goal">
+				<GoalHoursChart days={activityByGoal} />
+				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+					The same hours split by what each maker said they are here for. Where the three lines separate, the goal
+					question is saying something about effort; where they move together, it is saying something about the
+					programme.
 				</p>
 			</Panel>
 
@@ -406,6 +420,19 @@ function MetricPie({
 }
 
 /**
+ * The grid both activity charts draw on, shared so a change to one is a change to both.
+ *
+ * The top inset is a caption band: a tick at the maximum lands exactly on the plot's top edge, and the axis caption
+ * sits above it, so without the band "38" prints over "h". The height carries that band rather than the plot losing
+ * it, so the data area and the gridline spacing are the size they were.
+ */
+const CHART_H = 214
+const PAD_T = 24
+const PAD_B = 8
+const PAD_L = 6
+const PAD_R = 6
+
+/**
  * Hours and devlogs per day, as two lines over one shared day axis and two scales.
  *
  * One chart rather than two stacked ones because the two move together, and that is the thing worth seeing: a day
@@ -438,20 +465,10 @@ function ActivityStrip({ days, perUser = false }: { days: DayActivity[]; perUser
 	const hoursOf = (d: DayActivity) => (perUser ? perActiveUser(d.hours, d.users) : d.hours)
 	const devlogsOf = (d: DayActivity) => (perUser ? perActiveUser(d.devlogs, d.users) : d.devlogs)
 
-	// A band above the plot for the axis captions ("h", "devlogs"). Without it they shared a line with the topmost
-	// tick label: a tick at the maximum lands exactly on the plot's top edge, and that is where the caption sits, so
-	// "38" printed over "h". The height grows by the band rather than the plot shrinking, so the data area and the
-	// gridline spacing are the size they were.
-	const CAPTION_H = 14
-	const CHART_H = 200 + CAPTION_H
-	const PAD_T = 10 + CAPTION_H
-	const PAD_B = 8
 	const plotH = CHART_H - PAD_T - PAD_B
 	// Wide enough that a day is worth a few pixels; the container scrolls past it rather than compressing the
 	// season into something where a day is a fraction of one.
 	const chartW = Math.max(480, days.length * 3)
-	const PAD_L = 6
-	const PAD_R = 6
 	const plotW = chartW - PAD_L - PAD_R
 
 	const maxHours = Math.max(1, ...days.map(hoursOf))
@@ -692,6 +709,209 @@ function ActivityStrip({ days, perUser = false }: { days: DayActivity[]; perUser
 				Dashed is devlogs against the right axis, solid is hours against the left; each is scaled to its own maximum, so
 				compare the shapes and not the heights. Days are program-timezone effective dates – the day the work counted
 				for. Hours count journal devlogs only.{note}
+			</p>
+		</div>
+	)
+}
+
+/** One line per answer to the goal prompt, in `GOAL_OPTIONS` order. */
+const GOAL_LINE_COLOUR: Record<ParticipantGoal, string> = {
+	PRINTER: "var(--color-accent)",
+	FULL_FUNDING: "var(--color-teal)",
+	PARTIAL_FUNDING: "var(--color-coin)",
+}
+
+/**
+ * Journal hours per active user per day, one line per answer to the goal prompt.
+ *
+ * One axis, unlike `ActivityStrip`: all three lines are the same measure, so they are directly comparable and a shared scale is the whole point. Scaling each to its own maximum would make three groups doing very different amounts look like three groups doing the same, which is the one thing this chart exists to tell apart.
+ *
+ * The gaps are the other half of the reading. A goal whose line stops is a goal nobody is still working towards, and the totals chart above cannot show that at all, because it adds everyone together.
+ *
+ * The denominator is the people working towards that goal who logged something that day – the same convention the per-user chart uses, so it is the two read together that answer "who is still here, and are they doing more or less". The head count is on the tooltip, which is where it matters.
+ */
+function GoalHoursChart({ days }: { days: GoalDayActivity[] }) {
+	if (days.length === 0) return <EmptyState>No hours logged since anyone answered the goal prompt.</EmptyState>
+
+	const plotH = CHART_H - PAD_T - PAD_B
+	const chartW = Math.max(480, days.length * 3)
+	const plotW = chartW - PAD_L - PAD_R
+
+	// A goal nobody worked towards that day has no average to take, so it reads as zero rather than dividing by nobody.
+	const perUser = (hours: number, users: number) => (users > 0 ? hours / users : 0)
+	const lines = GOAL_OPTIONS.map((option) => {
+		const values = days.map((d) => {
+			const goal = d.byGoal.find((g) => g.goal === option.value)
+			return goal ? perUser(goal.hours, goal.users) : 0
+		})
+		return {
+			label: option.short,
+			colour: GOAL_LINE_COLOUR[option.value],
+			values,
+			mean: values.reduce((n, v) => n + v, 0) / days.length,
+		}
+	})
+
+	// One maximum across all three: the comparison between the lines is the chart.
+	const maxHours = Math.max(1, ...lines.flatMap((l) => l.values))
+
+	const xOf = (i: number) => PAD_L + (days.length === 1 ? plotW / 2 : (i / (days.length - 1)) * plotW)
+	const yFor = (v: number) => PAD_T + plotH - (v / maxHours) * plotH
+	const path = (values: number[]) =>
+		values.map((v, i) => `${i === 0 ? "M" : "L"} ${xOf(i).toFixed(1)} ${yFor(v).toFixed(1)}`).join(" ")
+
+	const ticks = Array.from({ length: 5 }, (_, i) => (maxHours / 4) * i)
+	const roundTick = (n: number) => (n >= 10 ? Math.round(n) : Math.round(n * 10) / 10)
+	const labelEvery = Math.max(1, Math.ceil(days.length / 14))
+	const first = days[0]?.day
+	const last = days[days.length - 1]?.day
+	// One title per day on every line's dot, so hovering any of the three gives the whole day rather than a third of it.
+	const title = (d: GoalDayActivity) =>
+		`${d.day}: ${d.byGoal
+			.map(
+				(g) =>
+					`${GOAL_OPTIONS.find((o) => o.value === g.goal)?.short ?? g.goal} ${fmtHours(perUser(g.hours, g.users))}`,
+			)
+			.join(", ")} per person`
+
+	return (
+		<div>
+			<p className="hl-hint" style={{ fontSize: "0.78rem", marginBottom: "0.75rem" }}>
+				{lines.map((line, i) => (
+					<span key={line.label} style={{ marginLeft: i === 0 ? 0 : "1rem" }}>
+						<span
+							aria-hidden="true"
+							style={{
+								display: "inline-block",
+								width: "0.7rem",
+								height: "0.15rem",
+								background: line.colour,
+								marginRight: "0.35rem",
+								verticalAlign: "middle",
+							}}
+						/>
+						{line.label} (averaging {fmtHours(line.mean)})
+					</span>
+				))}
+			</p>
+			<div style={{ display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)", alignItems: "start" }}>
+				<div style={{ position: "relative", width: "3.1rem", height: `${CHART_H}px` }}>
+					{ticks.map((t, i) => (
+						<span
+							key={`g${i}`}
+							aria-hidden="true"
+							style={{
+								position: "absolute",
+								right: 6,
+								top: yFor(t),
+								transform: "translateY(-50%)",
+								fontSize: "0.65rem",
+								fontVariantNumeric: "tabular-nums",
+								color: "var(--color-accent-ink)",
+							}}
+						>
+							{fmtHours(roundTick(t)).replace("h", "")}
+						</span>
+					))}
+					<span
+						aria-hidden="true"
+						style={{
+							position: "absolute",
+							right: 6,
+							top: -1,
+							fontSize: "0.6rem",
+							lineHeight: 1,
+							color: "var(--color-ink-muted)",
+						}}
+					>
+						h
+					</span>
+				</div>
+
+				<div style={{ overflowX: "auto" }}>
+					<div style={{ width: `${chartW}px` }}>
+						<svg
+							width={chartW}
+							height={CHART_H}
+							viewBox={`0 0 ${chartW} ${CHART_H}`}
+							role="img"
+							aria-label={`Hours per active user per day from ${first} to ${last}, one line per goal: ${lines
+								.map((l) => `${l.label} peaking at ${fmtHours(Math.max(...l.values))}`)
+								.join("; ")}`}
+							style={{ display: "block" }}
+						>
+							{ticks.map((t, i) => (
+								<line
+									key={`gg${i}`}
+									x1={PAD_L}
+									x2={chartW - PAD_R}
+									y1={yFor(t)}
+									y2={yFor(t)}
+									stroke="var(--color-line-soft)"
+									strokeWidth="1"
+								/>
+							))}
+							{lines.map((line) => (
+								<path
+									key={line.label}
+									d={path(line.values)}
+									fill="none"
+									stroke={line.colour}
+									strokeWidth="1.75"
+									strokeLinejoin="round"
+								/>
+							))}
+							{days.map((d, i) =>
+								lines.map((line) => (
+									<circle
+										key={`${d.day}-${line.label}`}
+										cx={xOf(i)}
+										cy={yFor(line.values[i] ?? 0)}
+										r="1.6"
+										fill={line.colour}
+									>
+										<title>{title(d)}</title>
+									</circle>
+								)),
+							)}
+						</svg>
+						<div
+							aria-hidden="true"
+							style={{
+								display: "grid",
+								gridTemplateColumns: `repeat(${days.length}, 1fr)`,
+								gap: "1px",
+								marginTop: "4px",
+								// The plot leaves PAD_L/R for its own edges, so the labels take the same inset and sit under their ticks.
+								paddingLeft: PAD_L,
+								paddingRight: PAD_R,
+								fontSize: "0.65rem",
+								color: "var(--color-ink-muted)",
+							}}
+						>
+							{days.map((d, i) =>
+								i % labelEvery === 0 ? (
+									<div
+										key={d.day}
+										style={{
+											gridColumn: `${i + 1} / span ${Math.min(labelEvery, days.length - i)}`,
+											overflow: "hidden",
+											textOverflow: "ellipsis",
+											whiteSpace: "nowrap",
+										}}
+									>
+										{d.day.slice(5)}
+									</div>
+								) : null,
+							)}
+						</div>
+					</div>
+				</div>
+			</div>
+			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.5rem" }}>
+				Hours per person who logged something that day, so a line says what one of those people did rather than how many
+				there were. All three share one scale, so the lines can be read against each other. A maker who has not answered
+				the goal prompt yet is on no line. Days are program-timezone effective dates; hours count journal devlogs only.
 			</p>
 		</div>
 	)

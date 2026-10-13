@@ -3,6 +3,7 @@ import type { Prisma } from "@/app/generated/prisma/client"
 import {
 	AuditAction,
 	HoursSource,
+	type ParticipantGoal,
 	Phase,
 	PhaseStatus,
 	PostKind,
@@ -14,6 +15,7 @@ import {
 	ShopOrderStatus,
 	Theme,
 } from "@/app/generated/prisma/enums"
+import { GOAL_OPTIONS } from "@/lib/config/goal"
 import { getStarterProject, STARTER_PROJECT_TIER, stepIndexOf } from "@/lib/config/onboarding"
 import { isTierId, TIERS } from "@/lib/config/tiers"
 import { getBalances } from "@/lib/currency"
@@ -894,6 +896,72 @@ export async function getDailyActivity(): Promise<DayActivity[]> {
 			devlogs: row?.devlogs ?? 0,
 			hours: Math.round((row?.hours ?? 0) * 10) / 10,
 			users: row?.users.size ?? 0,
+		})
+	}
+	return out
+}
+
+export interface GoalDayActivity {
+	/** YYYY-MM-DD in the program timezone, as the journal stamped it. */
+	day: string
+	/** Journal hours and the people behind them, one entry per answer to the goal prompt, in `GOAL_OPTIONS` order. */
+	byGoal: { goal: ParticipantGoal; hours: number; users: number }[]
+}
+
+/**
+ * The same hours `getDailyActivity` counts, per day and split by what each person said they are here for.
+ *
+ * A separate read rather than a nested map on `DayActivity`: only one chart wants the split, and every other reader of the daily figures would carry it. It is the same rows either way – the same exclusions, the same gap-filling – so the two charts cannot disagree about a day they both draw.
+ *
+ * A maker who has not answered the prompt yet belongs to no line. The question is held open until it is answered, but it is asked after the first checkpoint, so the earliest days are largely people who had not been asked; reading an empty start as "nobody was working towards anything" would be reading the prompt's timing rather than the work.
+ */
+export async function getDailyActivityByGoal(): Promise<GoalDayActivity[]> {
+	const sessions = await prisma.workSession.findMany({
+		where: { deletedAt: null, themeProject: { deletedAt: null } },
+		select: {
+			effectiveDate: true,
+			hoursClaimed: true,
+			hoursApproved: true,
+			hoursSource: true,
+			themeProject: { select: { userId: true, user: { select: { participantGoal: true } } } },
+		},
+	})
+
+	const byDay = new Map<string, Map<ParticipantGoal, { hours: number; users: Set<string> }>>()
+	for (const s of sessions) {
+		const day = s.effectiveDate
+		const goal = s.themeProject.user.participantGoal
+		if (!day || !DAY.test(day) || !goal) continue
+		let goals = byDay.get(day)
+		if (!goals) {
+			goals = new Map()
+			byDay.set(day, goals)
+		}
+		let row = goals.get(goal)
+		if (!row) {
+			row = { hours: 0, users: new Set<string>() }
+			goals.set(goal, row)
+		}
+		// The person counts as active for their goal whatever the entry's source, but only a journal entry carries
+		// journal hours – a HACKATIME_TRACKED one arrives through the link, the same exclusion `getDailyActivity` makes.
+		row.users.add(s.themeProject.userId)
+		if (s.hoursSource !== HoursSource.HACKATIME_TRACKED) row.hours += s.hoursApproved ?? s.hoursClaimed
+	}
+
+	const days = [...byDay.keys()].sort()
+	if (days.length === 0) return []
+	const out: GoalDayActivity[] = []
+	const [first, last] = [days[0] as string, days[days.length - 1] as string]
+	for (let at = Date.parse(`${first}T00:00:00Z`); at <= Date.parse(`${last}T00:00:00Z`); at += 86_400_000) {
+		const day = new Date(at).toISOString().slice(0, 10)
+		const goals = byDay.get(day)
+		out.push({
+			day,
+			byGoal: GOAL_OPTIONS.map((option) => ({
+				goal: option.value,
+				hours: Math.round((goals?.get(option.value)?.hours ?? 0) * 10) / 10,
+				users: goals?.get(option.value)?.users.size ?? 0,
+			})),
 		})
 	}
 	return out
