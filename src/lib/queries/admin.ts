@@ -17,6 +17,7 @@ import {
 } from "@/app/generated/prisma/enums"
 import { GOAL_OPTIONS } from "@/lib/config/goal"
 import { getStarterProject, STARTER_PROJECT_TIER, stepIndexOf } from "@/lib/config/onboarding"
+import { getThemeDef, scheduleForWeek, TOTAL_WEEKS, WARMUP_THEME, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { isTierId, TIERS } from "@/lib/config/tiers"
 import { getBalances } from "@/lib/currency"
 import { displayName } from "@/lib/display-name"
@@ -1080,6 +1081,86 @@ export async function getFirstProjectStats(): Promise<FirstProjectStat[]> {
 			users,
 		}))
 		.sort((a, b) => b.users - a.users)
+}
+
+/** The four columns each week's cluster is split into. */
+export interface WeekProjectCluster {
+	/** 0 for the warm-up import, then the ten program weeks in order. */
+	week: number
+	/** What the axis prints: the theme, or the warm-up track. */
+	label: string
+	/** Which half of the season this week is, or null for the warm-up import, which is not scheduled at all. */
+	phase: Phase | null
+	/** Projects that took one of the suggested starter ideas. Locked to Tier 1, so never also a custom column. */
+	starter: number
+	tier1: number
+	tier2: number
+	tier3: number
+}
+
+/**
+ * Which column a project belongs in.
+ *
+ * A starter is its own column rather than a tier: picking one locks the request to Tier 1, so counting it as a custom tier-1 would make the two indistinguishable, and which of them a week is funding is exactly the question.
+ *
+ * The tier is `tier ?? requestedTier` – the reviewer's once they have set one, the maker's ask until then – the same resolution `lib/bom` and the admin project filters use. Null is only legal alongside a starter, which returned above, so anything left over is a tier-1 request.
+ */
+function projectColumn(project: {
+	starterProjectId: string | null
+	tier: number | null
+	requestedTier: number | null
+}): "starter" | "tier1" | "tier2" | "tier3" {
+	if (project.starterProjectId) return "starter"
+	const tier = project.tier ?? project.requestedTier
+	if (tier === 2) return "tier2"
+	if (tier === 3) return "tier3"
+	return "tier1"
+}
+
+/**
+ * How many projects are being built for each week, split by what kind of project each one is.
+ *
+ * "Being built" is `namedAt`, the marker `lib/airtable/loops` reads to say a week's project is under way. Every account is handed all five theme rows at sign-up, so counting rows would draw sign-ups times five and nothing else; a row nobody has named is a slot, not a project.
+ *
+ * A project is counted in both weeks its theme is scheduled for – a PCB project is for week 1 and week 6 – because that is what it is for. Counting only hand-ins instead would leave everything still in progress out of a chart about what people are building, and that is most of what an upcoming week is being asked to fund.
+ *
+ * Every week gets a cluster whether or not anyone is on it, so the axis draws the whole season rather than the part of it that has been reached.
+ */
+export async function getProjectsByWeek(): Promise<WeekProjectCluster[]> {
+	const projects = await prisma.themeProject.findMany({
+		where: { deletedAt: null, namedAt: { not: null } },
+		select: { theme: true, starterProjectId: true, tier: true, requestedTier: true },
+	})
+
+	const clusters = new Map<number, WeekProjectCluster>()
+	const at = (week: number, label: string, phase: Phase | null) => {
+		let cluster = clusters.get(week)
+		if (!cluster) {
+			cluster = { week, label, phase, starter: 0, tier1: 0, tier2: 0, tier3: 0 }
+			clusters.set(week, cluster)
+		}
+		return cluster
+	}
+
+	at(WARMUP_WEEK_ID, WARMUP_THEME.label, null)
+	for (let week = 1; week <= TOTAL_WEEKS; week++) {
+		const scheduled = scheduleForWeek(week)
+		at(week, scheduled ? scheduled.theme.label : `Week ${week}`, scheduled?.phase ?? null)
+	}
+
+	for (const project of projects) {
+		const def = getThemeDef(project.theme)
+		const weeks = project.theme === Theme.WARMUP ? [WARMUP_WEEK_ID] : [def.designWeek, def.buildWeek]
+		const column = projectColumn(project)
+		for (const week of weeks) {
+			const cluster = clusters.get(week)
+			// A theme scheduled outside the season draws nowhere rather than inventing a cluster for itself.
+			if (!cluster) continue
+			cluster[column] += 1
+		}
+	}
+
+	return [...clusters.values()].sort((a, b) => a.week - b.week)
 }
 
 export interface VerificationStat {
