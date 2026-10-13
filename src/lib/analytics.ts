@@ -10,7 +10,7 @@ import { streakAsOf } from "@/lib/streak"
  *
  * The one writer of the markers on User (first project, first reel, first and last submission, last login, last active), of UserDay (one row per active day, which is what DAU counts) and of UserWeek (hours per program week, and when 1h / 5h / 10h / 20h was first crossed). Signing up and onboarding are already stamped (`createdAt`, `onboardingCompletedAt`).
  *
- * An active day is one with a time entry longer than 15 minutes – journalled, Hackatime-tracked or Lapse-backed alike, since all three are a WorkSession. Visiting the site is not activity for DAU; it only moves `lastActiveAt`.
+ * An active day is one whose time entries total at least 15 minutes – journalled, Hackatime-tracked or Lapse-backed alike, since all three are a WorkSession. Visiting the site is not activity for DAU; it only moves `lastActiveAt`.
  *
  * Every function here is fire-and-forget safe: it never throws, because a sign-in, a post or a submit must not fail over a counter. And every one is idempotent – "first" markers are written with a `WHERE … IS NULL`, so two requests racing cannot move one, and a replay or the backfill cannot either.
  */
@@ -22,8 +22,15 @@ const milestoneField = (h: Milestone) => `reached${h}hAt` as const
 /** Page views closer together than this share one activity write. */
 const ACTIVITY_THROTTLE_MS = 5 * 60_000
 
-/** A time entry makes its day active only when it is longer than this. */
-const ACTIVE_ENTRY_MIN_HOURS = 0.25
+/** A day counts as active once its entries total this much. */
+const ACTIVE_DAY_MIN_HOURS = 0.25
+
+/**
+ * The day total, rounded at microseconds of an hour before it is compared.
+ *
+ * It is a sum of doubles, so a day that is exactly 15 minutes can land a hair under it: ten 1.5-minute entries sum to 0.24999999999999997, which a bare `>= 0.25` would drop. Tighter than any real entry, so the boundary stays where it says it is.
+ */
+const roundHours = (hours: number): number => Math.round(hours * 1e6) / 1e6
 
 async function quietly(label: string, fn: () => Promise<unknown>): Promise<void> {
 	try {
@@ -55,28 +62,36 @@ export function touchActivity(userId: string, at = new Date()): Promise<void> {
 
 /**
  * Rebuild one person's active days from their live time entries. Rebuilt rather than incremented, as the streak is (lib/streak): an entry can be created, edited below the threshold, deleted, or go with its project, and a counter would have to be right on every one of those paths.
+ *
+ * The bar is on the day's total rather than on one entry, so two ten-minute entries make a day active just as one twenty-minute entry does. That is why the sum happens here and not as a filter in SQL.
  */
 async function rebuildActiveDays(userId: string, programTimezone: string): Promise<number> {
 	const sessions = await prisma.workSession.findMany({
 		where: {
 			themeProject: { userId, deletedAt: null },
 			deletedAt: null,
-			hoursClaimed: { gt: ACTIVE_ENTRY_MIN_HOURS },
 		},
-		select: { createdAt: true, effectiveDate: true },
+		select: { createdAt: true, effectiveDate: true, hoursClaimed: true },
 	})
-	const days = new Map<string, Date>()
+	// day → the day's total hours and the earliest entry that fell on it, in one pass.
+	const totals = new Map<string, { hours: number; firstSeenAt: Date }>()
 	for (const s of sessions) {
 		const day = s.effectiveDate ?? effectiveDateFor(s.createdAt, programTimezone)
-		const seen = days.get(day)
-		if (seen === undefined || s.createdAt < seen) days.set(day, s.createdAt)
+		const seen = totals.get(day)
+		if (seen === undefined) {
+			totals.set(day, { hours: s.hoursClaimed, firstSeenAt: s.createdAt })
+			continue
+		}
+		seen.hours += s.hoursClaimed
+		if (s.createdAt < seen.firstSeenAt) seen.firstSeenAt = s.createdAt
 	}
+	const days = [...totals].filter(([, day]) => roundHours(day.hours) >= ACTIVE_DAY_MIN_HOURS)
 	await prisma.$transaction([
 		prisma.userDay.deleteMany({ where: { userId } }),
-		prisma.userDay.createMany({ data: [...days].map(([day, firstSeenAt]) => ({ userId, day, firstSeenAt })) }),
-		prisma.user.update({ where: { id: userId }, data: { activeDays: days.size } }),
+		prisma.userDay.createMany({ data: days.map(([day, { firstSeenAt }]) => ({ userId, day, firstSeenAt })) }),
+		prisma.user.update({ where: { id: userId }, data: { activeDays: days.length } }),
 	])
-	return days.size
+	return days.length
 }
 
 /** Recount active days. Called after a time entry is written, edited or deleted. */
