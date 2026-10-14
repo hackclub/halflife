@@ -27,7 +27,7 @@ import { attrUrl } from "@/lib/attr-url"
 import { linkLapse } from "@/lib/auth-client"
 import type { BomLine } from "@/lib/bom"
 import { BOM_MARGIN_USD, bomTotalUsd, partsFunding } from "@/lib/bom-policy"
-import { STARTER_PROJECT_TIER, starterProjectsFor } from "@/lib/config/onboarding"
+import { STARTER_MODIFICATION_NOTE, STARTER_PROJECT_TIER, starterProjectsFor } from "@/lib/config/onboarding"
 import { COINS_PER_HOUR, paceTarget, printerById, submitFloorFor } from "@/lib/config/printers"
 import { THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { photosRequired, TIERS } from "@/lib/curriculum"
@@ -1679,38 +1679,39 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			eyebrow={`Week ${week.id} · ${week.fullName}`}
 			footer={
 				<>
-					<p className="hand mr-auto hidden text-[0.78rem] text-navy-soft sm:block">
-						Tier can be changed any time before you submit this week.
-					</p>
 					{stage === "details" && starters.length > 0 && (
 						<Button type="button" variant="outline" className="mr-auto" onClick={() => setStage("choose")}>
 							Back
 						</Button>
 					)}
-					<Button variant="outline" onClick={() => setOpenCheckpoint(null)}>
-						Cancel
-					</Button>
-					<Button
-						variant="solid"
-						disabled={!ok}
-						onClick={() => {
-							addProject({
-								name: name.trim(),
-								description: desc.trim(),
-								weekId: week.id,
-								tier,
-								starter: starterId !== null,
-								starterProjectId: starterId,
-								githubRepo: normalizeRepo(repo).url,
-								designStatus: "draft",
-								buildStatus: "draft",
-							})
-							complete(checkpoint.id, { artefacts: 1 })
-							setOpenCheckpoint(null)
-						}}
-					>
-						Create project <IconArrowRight className="text-base" />
-					</Button>
+					{stage === "choose" && starters.length > 0 && (
+						<Button variant="solid" disabled={pick === undefined} onClick={advance}>
+							Next <IconArrowRight className="text-base" />
+						</Button>
+					)}
+					{stage === "details" && (
+						<Button
+							variant="solid"
+							disabled={!ok}
+							onClick={() => {
+								addProject({
+									name: name.trim(),
+									description: desc.trim(),
+									weekId: week.id,
+									tier,
+									starter: starterId !== null,
+									starterProjectId: starterId,
+									githubRepo: normalizeRepo(repo).url,
+									designStatus: "draft",
+									buildStatus: "draft",
+								})
+								complete(checkpoint.id, { artefacts: 1 })
+								setOpenCheckpoint(null)
+							}}
+						>
+							Create project <IconArrowRight className="text-base" />
+						</Button>
+					)}
 				</>
 			}
 		>
@@ -1752,8 +1753,15 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							stacked
 							chosen={pick === s.id}
 							action={
-								<Button type="button" variant={pick === s.id ? "solid" : "outline"} size="sm" onClick={() => takeStarter(s)}>
-									{pick === s.id ? "Selected" : `Build ${s.title}`}
+								<Button
+									type="button"
+									variant={pick === s.id ? "teal" : "outline"}
+									size="sm"
+									aria-pressed={pick === s.id}
+									onClick={() => takeStarter(s)}
+								>
+									Build {s.title}
+									{pick === s.id ? <IconCheck className="text-base" /> : null}
 								</Button>
 							}
 						/>
@@ -1766,8 +1774,15 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						label="Custom project"
 						title="Your own idea"
 						action={
-							<Button type="button" variant={pick === null ? "solid" : "outline"} size="sm" onClick={chooseCustom}>
-								{pick === null ? "Selected" : "Make a custom project"}
+							<Button
+								type="button"
+								variant={pick === null ? "teal" : "outline"}
+								size="sm"
+								aria-pressed={pick === null}
+								onClick={chooseCustom}
+							>
+								Make a custom project
+								{pick === null ? <IconCheck className="text-base" /> : null}
 							</Button>
 						}
 					>
@@ -1775,16 +1790,20 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							Make your own project! It can be anything you want.
 						</p>
 					</ProjectChoiceCard>
-					<div className="col-span-full mt-4 flex justify-end">
-						<Button type="button" variant="solid" disabled={pick === undefined} onClick={advance}>
-							Next <IconArrowRight className="text-base" />
-						</Button>
-					</div>
+					{/* Only once a starter is the pick: it is a rule about the choice, not about the step, and beside "make your own" it read as a warning about the whole fork. */}
+					{typeof pick === "string" && (
+						<div className="mt-3 rounded-2xl border-2 border-dashed border-gold-deep/40 bg-gold-pale/50 px-4 py-3 text-[0.86rem] leading-relaxed text-navy-soft sm:col-span-2">
+							{STARTER_MODIFICATION_NOTE}
+						</div>
+					)}
 				</div>
 			) : (
 				<div className="grid gap-6 lg:grid-cols-[1fr_230px] lg:items-start">
 				<div className="grid gap-4">
 					<p className="label mb-2 text-left text-violet-deep">Step 2 / 2</p>
+					<p className="hand mb-2 text-left text-[0.8rem] text-navy-soft">
+						Tier can be changed any time before you submit this week.
+					</p>
 					{starterId !== null && (
 						<div className="flex flex-wrap items-center gap-x-4 gap-y-2">
 							<Chip tone="teal">
