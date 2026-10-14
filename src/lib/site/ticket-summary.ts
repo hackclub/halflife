@@ -1,12 +1,5 @@
 import { getSlackUserNames } from "./slack"
-import {
-	countedLine,
-	creditedLine,
-	LEADERBOARD_LIMIT,
-	leaderboardLine,
-	renderSummary,
-	type SummaryBoard,
-} from "./summary"
+import { countedLine, creditedLine, rankedShareBoard, renderSummary, type SummaryBoard } from "./summary"
 import type { HelpTicketStats } from "./ticket-store"
 
 /**
@@ -22,22 +15,15 @@ export async function buildTicketSummary(stats: HelpTicketStats): Promise<string
 	// Resolved across both boards in one call: the same helpers usually sit on each, and the second concurrent users.info for a name already being fetched is the request that gets the post rate-limited.
 	const names = await getSlackUserNames([...daily, ...global].map((entry) => entry.resolvedBy))
 
-	const board = (title: string, rows: typeof daily): SummaryBoard => ({
-		title,
-		total: rows.length,
-		lines: rows
-			.slice(0, LEADERBOARD_LIMIT)
-			.map((entry, index) =>
-				leaderboardLine(
-					index + 1,
-					names.get(entry.resolvedBy) ?? `<@${entry.resolvedBy}>`,
-					entry.closed,
-					"closed",
-					"ticket",
-					"tickets",
-				),
-			),
-	})
+	const board = (title: string, rows: typeof daily): SummaryBoard =>
+		rankedShareBoard(
+			title,
+			rows.map((entry) => ({
+				name: names.get(entry.resolvedBy) ?? `<@${entry.resolvedBy}>`,
+				count: entry.closed,
+			})),
+			rows.reduce((n, entry) => n + entry.closed, 0),
+		)
 
 	return renderSummary({
 		headline: `${countedLine(stats.opened, { singular: "ticket", plural: "tickets" }, { singular: "was opened", plural: "were opened" })} and ${creditedLine(stats.closed, "close")}`,
