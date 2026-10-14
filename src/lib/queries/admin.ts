@@ -1177,6 +1177,27 @@ function projectColumn(project: {
 	return "tier1"
 }
 
+/** One column of the season, before any measure is put in it. */
+interface WeekSlot {
+	week: number
+	label: string
+	phase: Phase | null
+}
+
+/**
+ * Every week of the season in order: the warm-up import, then the ten scheduled weeks.
+ *
+ * Shared by the two per-week charts so their axes cannot drift – both draw one column per entry here, which is what makes them readable side by side. A week the schedule has nothing for is still a column, labelled by number, so the axis draws the whole season rather than the part of it that has been reached.
+ */
+function weekSlots(): WeekSlot[] {
+	const slots: WeekSlot[] = [{ week: WARMUP_WEEK_ID, label: WARMUP_THEME.label, phase: null }]
+	for (let week = 1; week <= TOTAL_WEEKS; week++) {
+		const scheduled = scheduleForWeek(week)
+		slots.push({ week, label: scheduled ? scheduled.theme.label : `Week ${week}`, phase: scheduled?.phase ?? null })
+	}
+	return slots
+}
+
 /**
  * How many projects are being built for each week, split by what kind of project each one is.
  *
@@ -1193,19 +1214,8 @@ export async function getProjectsByWeek(): Promise<WeekProjectCluster[]> {
 	})
 
 	const clusters = new Map<number, WeekProjectCluster>()
-	const at = (week: number, label: string, phase: Phase | null) => {
-		let cluster = clusters.get(week)
-		if (!cluster) {
-			cluster = { week, label, phase, starter: 0, tier1: 0, tier2: 0, tier3: 0 }
-			clusters.set(week, cluster)
-		}
-		return cluster
-	}
-
-	at(WARMUP_WEEK_ID, WARMUP_THEME.label, null)
-	for (let week = 1; week <= TOTAL_WEEKS; week++) {
-		const scheduled = scheduleForWeek(week)
-		at(week, scheduled ? scheduled.theme.label : `Week ${week}`, scheduled?.phase ?? null)
+	for (const slot of weekSlots()) {
+		clusters.set(slot.week, { ...slot, starter: 0, tier1: 0, tier2: 0, tier3: 0 })
 	}
 
 	for (const project of projects) {
@@ -1218,6 +1228,97 @@ export async function getProjectsByWeek(): Promise<WeekProjectCluster[]> {
 			if (!cluster) continue
 			cluster[column] += 1
 		}
+	}
+
+	return [...clusters.values()].sort((a, b) => a.week - b.week)
+}
+
+export interface WeekHoursCluster {
+	/** 0 for the warm-up import, then the ten program weeks in order. */
+	week: number
+	/** What the axis prints: the theme, or the warm-up track. */
+	label: string
+	/** Which half of the season this week is, or null for the warm-up import, which is not scheduled at all. */
+	phase: Phase | null
+	/** Hours logged by starter projects in this week, and so on down the four columns. */
+	starter: number
+	tier1: number
+	tier2: number
+	tier3: number
+}
+
+/**
+ * The week a phase's hours belong to: the theme's own design or build week, or the warm-up track for everything off-season.
+ *
+ * The same two weeks `getProjectsByWeek` counts a project into, so the two charts describe one cohort. Phase decides which of the two, which is what keeps every logged hour counted exactly once – a build week's column is the build phases of its projects, not their design phases as well.
+ */
+function weekOfPhase(theme: Theme, phase: Phase): number {
+	if (theme === Theme.WARMUP) return WARMUP_WEEK_ID
+	const def = getThemeDef(theme)
+	return phase === Phase.DESIGN ? def.designWeek : def.buildWeek
+}
+
+/**
+ * Hours logged for each week, split by what kind of project each hour belongs to.
+ *
+ * The companion to `getProjectsByWeek`: the same eleven columns and the same four kinds, measured in the hours the week's projects have actually put in rather than how many of them there are. Read together, one says how many projects a week is being asked to fund and this says how much work those projects represent.
+ *
+ * Each hour is counted once. A project's phases are attributed to their own weeks rather than the whole project being counted in both – an hours chart that added a project's build hours to its design week as well would not be measuring anything that happened. The warm-up track is one column because a warm-up is one submission with one phase, so there is no second week to separate out.
+ *
+ * The hours are the ledger's, through `rollUpHours` on each (project, phase) – the same call the project page and the reviewer's numbers use, so a sitting that was both journalled and tracked is not counted twice here either. A project named but never logged against contributes nothing, which is why a week can be busy on the projects chart and flat on this one.
+ */
+export async function getHoursByWeek(): Promise<WeekHoursCluster[]> {
+	const projects = await prisma.themeProject.findMany({
+		where: { deletedAt: null, namedAt: { not: null } },
+		select: {
+			theme: true,
+			starterProjectId: true,
+			tier: true,
+			requestedTier: true,
+			workSessions: {
+				where: { deletedAt: null },
+				select: {
+					phase: true,
+					hoursClaimed: true,
+					hoursApproved: true,
+					hoursSource: true,
+					timelapses: { select: { coveredSeconds: true, recordedAt: true } },
+				},
+			},
+			hackatimeLinks: {
+				select: { phase: true, hoursApproved: true, cachedSeconds: true, cachedSpans: true },
+			},
+		},
+	})
+
+	const clusters = new Map<number, WeekHoursCluster>()
+	for (const slot of weekSlots()) {
+		clusters.set(slot.week, { ...slot, starter: 0, tier1: 0, tier2: 0, tier3: 0 })
+	}
+
+	for (const project of projects) {
+		const column = projectColumn(project)
+
+		// Grouped by phase, because `rollUpHours` can only subtract a link's overlap against the recordings beside it in the same phase.
+		for (const phase of [Phase.DESIGN, Phase.BUILD]) {
+			const sessions = project.workSessions.filter((s) => s.phase === phase)
+			const links = project.hackatimeLinks.filter((l) => l.phase === phase)
+			if (sessions.length === 0 && links.length === 0) continue
+
+			const { computedTotal } = rollUpHours(sessions, links, null)
+			const cluster = clusters.get(weekOfPhase(project.theme, phase))
+			// A theme scheduled outside the season draws nowhere rather than inventing a column for itself.
+			if (!cluster) continue
+			cluster[column] += computedTotal
+		}
+	}
+
+	// Rounded once per column rather than per project, so a week's total is not a sum of eleven hundred individually-rounded hours.
+	for (const cluster of clusters.values()) {
+		cluster.starter = round1(cluster.starter)
+		cluster.tier1 = round1(cluster.tier1)
+		cluster.tier2 = round1(cluster.tier2)
+		cluster.tier3 = round1(cluster.tier3)
 	}
 
 	return [...clusters.values()].sort((a, b) => a.week - b.week)

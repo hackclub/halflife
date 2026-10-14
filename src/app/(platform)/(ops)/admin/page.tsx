@@ -15,6 +15,7 @@ import {
 	getDailyActivity,
 	getDailyActivityByGoal,
 	getFirstProjectStats,
+	getHoursByWeek,
 	getHoursDistribution,
 	getProjectReviewStatuses,
 	getProjectsByWeek,
@@ -23,6 +24,7 @@ import {
 	getUserFlowSankey,
 	getVerificationStats,
 	type HoursDistribution,
+	type WeekHoursCluster,
 	type WeekProjectCluster,
 } from "@/lib/queries/admin"
 import { getLatestSyncRuns } from "@/lib/sync-run-log"
@@ -61,6 +63,7 @@ export default async function AdminOverviewPage() {
 		activity,
 		activityByGoal,
 		projectsByWeek,
+		hoursByWeek,
 		hoursSpread,
 		firstProjects,
 		projectReviewStatuses,
@@ -86,6 +89,7 @@ export default async function AdminOverviewPage() {
 		getDailyActivity(),
 		getDailyActivityByGoal(),
 		getProjectsByWeek(),
+		getHoursByWeek(),
 		getHoursDistribution(),
 		getFirstProjectStats(),
 		getProjectReviewStatuses(),
@@ -148,12 +152,12 @@ export default async function AdminOverviewPage() {
 					))}
 				</Table>
 				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
-					The ring counts ships the way Ari does – one slice per (project, phase) hand-in, by the decision standing
-					on it now. A design approved long ago still reads as approved even once its build is handed in, and a
-					sent-back design only leaves changes requested when it is resubmitted. Pending is unresolved hand-ins Ari
-					holds; anything Ari never received is counted apart above, because a hand-in Ari has never seen is not on
-					its board. Console decisions are included. A review an admin later undid still reads by the submission it
-					decided, since the hand-in itself stays resolved.
+					The ring counts ships the way Ari does – one slice per (project, phase) hand-in, by the decision standing on
+					it now. A design approved long ago still reads as approved even once its build is handed in, and a sent-back
+					design only leaves changes requested when it is resubmitted. Pending is unresolved hand-ins Ari holds;
+					anything Ari never received is counted apart above, because a hand-in Ari has never seen is not on its board.
+					Console decisions are included. A review an admin later undid still reads by the submission it decided, since
+					the hand-in itself stays resolved.
 				</p>
 			</Panel>
 
@@ -269,6 +273,9 @@ export default async function AdminOverviewPage() {
 					two PCBs clusters are one cohort read twice – which is the point when the question is what a week is being
 					asked to fund.
 				</p>
+			</Panel>
+			<Panel title="Hours per week">
+				<HoursByWeekChart weeks={hoursByWeek} />
 			</Panel>
 
 			<Panel
@@ -445,9 +452,7 @@ function MetricPie({
 								<td style={{ padding: "0.15rem 0.75rem 0.15rem 0", textAlign: "right", whiteSpace: "nowrap" }}>
 									{format(s.value)}
 								</td>
-								<td style={{ padding: "0.15rem 0", textAlign: "right", whiteSpace: "nowrap" }}>
-									{s.pct.toFixed(1)}%
-								</td>
+								<td style={{ padding: "0.15rem 0", textAlign: "right", whiteSpace: "nowrap" }}>{s.pct.toFixed(1)}%</td>
 							</tr>
 						))}
 					</tbody>
@@ -999,6 +1004,105 @@ const PROJECT_KIND = [
 	{ key: "tier3", label: "Custom, tier 3", colour: "var(--color-coin)" },
 ] as const
 
+/** A week of the season as either per-week chart draws it. */
+type WeekColumn = { week: number; label: string; phase: Phase | null }
+
+/** What a week is called in a tooltip – the theme alone does not say whether it is the design half or the build half. */
+const weekNameOf = (week: WeekColumn) =>
+	week.phase === Phase.DESIGN
+		? `${week.label} design week`
+		: week.phase === Phase.BUILD
+			? `${week.label} build week`
+			: "Warm-up"
+
+/**
+ * The season's two halves, as spans of columns to label beneath the axis.
+ *
+ * Read off the columns rather than assumed: they are contiguous in week order, so a phase's first index and its count are all the grid needs, and a season with a different number of design or build weeks still labels itself correctly.
+ */
+function seasonBands(weeks: WeekColumn[]) {
+	return [
+		{ phase: null, text: "warm-up" },
+		{ phase: Phase.DESIGN, text: "design · weeks 1-5" },
+		{ phase: Phase.BUILD, text: "build · weeks 6-10" },
+	]
+		.map((band) => ({
+			...band,
+			at: weeks.findIndex((week) => week.phase === band.phase),
+			span: weeks.filter((week) => week.phase === band.phase).length,
+		}))
+		.filter((band) => band.span > 0)
+}
+
+/** The four kinds, as the swatch-and-label row both per-week charts put above their plot. */
+function ProjectKindLegend() {
+	return (
+		<p className="hl-hint" style={{ fontSize: "0.78rem", marginBottom: "0.75rem" }}>
+			{PROJECT_KIND.map((kind, i) => (
+				<span key={kind.key} style={{ marginLeft: i === 0 ? 0 : "1rem" }}>
+					<span
+						aria-hidden="true"
+						style={{
+							display: "inline-block",
+							width: "0.7rem",
+							height: "0.7rem",
+							borderRadius: "2px",
+							background: kind.colour,
+							marginRight: "0.35rem",
+							verticalAlign: "middle",
+						}}
+					/>
+					{kind.label}
+				</span>
+			))}
+		</p>
+	)
+}
+
+/** The theme names and the season bands under the plot, one grid cell per column so a label lands under its own bars. */
+function WeekAxisLabels({ weeks }: { weeks: WeekColumn[] }) {
+	return (
+		<>
+			<div
+				style={{
+					display: "grid",
+					gridTemplateColumns: `repeat(${weeks.length}, 1fr)`,
+					paddingLeft: pct(EDGE),
+					paddingRight: pct(EDGE),
+					marginTop: "4px",
+					fontSize: "0.6rem",
+					textAlign: "center",
+					color: "var(--color-ink-muted)",
+				}}
+			>
+				{weeks.map((week) => (
+					<div key={week.week} style={{ overflowWrap: "anywhere" }}>
+						{week.label}
+					</div>
+				))}
+			</div>
+			<div
+				style={{
+					display: "grid",
+					gridTemplateColumns: `repeat(${weeks.length}, 1fr)`,
+					paddingLeft: pct(EDGE),
+					paddingRight: pct(EDGE),
+					marginTop: "2px",
+					fontSize: "0.58rem",
+					textAlign: "center",
+					color: "var(--color-ink-muted)",
+				}}
+			>
+				{seasonBands(weeks).map((band) => (
+					<div key={band.text} style={{ gridColumn: `${band.at + 1} / span ${band.span}` }}>
+						{band.text}
+					</div>
+				))}
+			</div>
+		</>
+	)
+}
+
 /**
  * One column cluster per week, each split into the four kinds of project.
  *
@@ -1030,47 +1134,10 @@ function ProjectsByWeekChart({ weeks }: { weeks: WeekProjectCluster[] }) {
 
 	const yFor = (v: number) => PAD_T + plotH - (v / axisMax) * plotH
 	const centreOf = (i: number) => EDGE + (i + 0.5) * stride
-	const nameOf = (week: WeekProjectCluster) =>
-		week.phase === Phase.DESIGN
-			? `${week.label} design week`
-			: week.phase === Phase.BUILD
-				? `${week.label} build week`
-				: "Warm-up"
-
-	// One band per half of the season, read off the clusters rather than assumed: they are contiguous in week order, so a phase's first index and its count are all the grid needs.
-	const bands = [
-		{ phase: null, text: "warm-up" },
-		{ phase: Phase.DESIGN, text: "design · weeks 1-5" },
-		{ phase: Phase.BUILD, text: "build · weeks 6-10" },
-	]
-		.map((band) => ({
-			...band,
-			at: weeks.findIndex((week) => week.phase === band.phase),
-			span: weeks.filter((week) => week.phase === band.phase).length,
-		}))
-		.filter((band) => band.span > 0)
 
 	return (
 		<div>
-			<p className="hl-hint" style={{ fontSize: "0.78rem", marginBottom: "0.75rem" }}>
-				{PROJECT_KIND.map((kind, i) => (
-					<span key={kind.key} style={{ marginLeft: i === 0 ? 0 : "1rem" }}>
-						<span
-							aria-hidden="true"
-							style={{
-								display: "inline-block",
-								width: "0.7rem",
-								height: "0.7rem",
-								borderRadius: "2px",
-								background: kind.colour,
-								marginRight: "0.35rem",
-								verticalAlign: "middle",
-							}}
-						/>
-						{kind.label}
-					</span>
-				))}
-			</p>
+			<ProjectKindLegend />
 			<div style={{ display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)", alignItems: "start" }}>
 				<div style={{ position: "relative", width: "3.1rem", height: `${CHART_H}px` }}>
 					{ticks.map((t, i) => (
@@ -1111,7 +1178,7 @@ function ProjectsByWeekChart({ weeks }: { weeks: WeekProjectCluster[] }) {
 						height={CHART_H}
 						role="img"
 						aria-label={`Projects being built for each week: ${weeks
-							.map((week, i) => `${nameOf(week)} ${fmtInt(totals[i] ?? 0)}`)
+							.map((week, i) => `${weekNameOf(week)} ${fmtInt(totals[i] ?? 0)}`)
 							.join(", ")}`}
 						style={{ display: "block" }}
 					>
@@ -1140,48 +1207,13 @@ function ProjectsByWeekChart({ weeks }: { weeks: WeekProjectCluster[] }) {
 										height={PAD_T + plotH - top}
 										fill={kind.colour}
 									>
-										<title>{`${nameOf(week)} · ${kind.label}: ${fmtInt(count)}`}</title>
+										<title>{`${weekNameOf(week)} · ${kind.label}: ${fmtInt(count)}`}</title>
 									</rect>
 								)
 							}),
 						)}
 					</svg>
-					<div
-						style={{
-							display: "grid",
-							gridTemplateColumns: `repeat(${weeks.length}, 1fr)`,
-							paddingLeft: pct(EDGE),
-							paddingRight: pct(EDGE),
-							marginTop: "4px",
-							fontSize: "0.6rem",
-							textAlign: "center",
-							color: "var(--color-ink-muted)",
-						}}
-					>
-						{weeks.map((week) => (
-							<div key={week.week} style={{ overflowWrap: "anywhere" }}>
-								{week.label}
-							</div>
-						))}
-					</div>
-					<div
-						style={{
-							display: "grid",
-							gridTemplateColumns: `repeat(${weeks.length}, 1fr)`,
-							paddingLeft: pct(EDGE),
-							paddingRight: pct(EDGE),
-							marginTop: "2px",
-							fontSize: "0.58rem",
-							textAlign: "center",
-							color: "var(--color-ink-muted)",
-						}}
-					>
-						{bands.map((band) => (
-							<div key={band.text} style={{ gridColumn: `${band.at + 1} / span ${band.span}` }}>
-								{band.text}
-							</div>
-						))}
-					</div>
+					<WeekAxisLabels weeks={weeks} />
 				</div>
 			</div>
 			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.5rem" }}>
@@ -1189,6 +1221,135 @@ function ProjectsByWeekChart({ weeks }: { weeks: WeekProjectCluster[] }) {
 				cohort read twice, which is what a week has to fund. The tier is the reviewer&apos;s once they have set one, and
 				what the maker asked for until then; a starter project is its own column because picking one locks the request
 				to Tier 1.
+			</p>
+		</div>
+	)
+}
+
+/** An axis top a person can read hours off: 1, 2, 2.5 or 5 times a power of ten. */
+function niceHoursMax(max: number): number {
+	if (max <= 0) return 1
+	const magnitude = 10 ** Math.floor(Math.log10(max))
+	for (const step of [1, 2, 2.5, 5]) if (max <= step * magnitude) return step * magnitude
+	return 10 * magnitude
+}
+
+/**
+ * One stacked column per week, each split into the four kinds of project.
+ *
+ * The companion to the projects chart and deliberately the same shape: same eleven columns, same order of the four kinds, same bands beneath the axis. One says how many projects a week is being asked to fund, this says how much work they are – so they are read side by side rather than one instead of the other.
+ *
+ * Stacked rather than four bars to a cluster, because the question here is the week's total and how it splits, not four separate totals. That is also what makes the two charts worth having both: a cluster of four bars answers "how does starter compare with tier 3 here", and a stack answers "which week is carrying the work, and whose".
+ *
+ * Counted once, which is the difference from the projects chart's "one cohort read twice": an hour belongs to the phase it was logged in, so a build phase's hours land in the build week and nowhere else. The caption says so, because a reader who notices the two charts disagreeing about the shape of the season should be told why rather than left to guess.
+ */
+function HoursByWeekChart({ weeks }: { weeks: WeekHoursCluster[] }) {
+	const totals = weeks.map((week) => PROJECT_KIND.reduce((n, kind) => n + week[kind.key], 0))
+	if (totals.length === 0 || totals.every((t) => t === 0))
+		return <EmptyState>No hours have been logged yet.</EmptyState>
+
+	const plotH = CHART_H - PAD_T - PAD_B
+	// One bar per week rather than four: the stack is one column, so it takes most of the stride and the rest is the gutter between weeks.
+	const stride = (1 - 2 * EDGE) / weeks.length
+	const barW = 0.62 * stride
+
+	const axisMax = niceHoursMax(Math.max(...totals))
+	const ticks = Array.from({ length: 5 }, (_, i) => (axisMax / 4) * i)
+
+	const yFor = (v: number) => PAD_T + plotH - (v / axisMax) * plotH
+	const centreOf = (i: number) => EDGE + (i + 0.5) * stride
+
+	return (
+		<div>
+			<ProjectKindLegend />
+			<div style={{ display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)", alignItems: "start" }}>
+				<div style={{ position: "relative", width: "3.1rem", height: `${CHART_H}px` }}>
+					{ticks.map((t, i) => (
+						<span
+							key={`h${i}`}
+							aria-hidden="true"
+							style={{
+								position: "absolute",
+								right: 6,
+								top: yFor(t),
+								transform: "translateY(-50%)",
+								fontSize: "0.65rem",
+								fontVariantNumeric: "tabular-nums",
+								color: "var(--color-accent-ink)",
+							}}
+						>
+							{fmtInt(t)}
+						</span>
+					))}
+					<span
+						aria-hidden="true"
+						style={{
+							position: "absolute",
+							right: 6,
+							top: -1,
+							fontSize: "0.6rem",
+							lineHeight: 1,
+							color: "var(--color-ink-muted)",
+						}}
+					>
+						hours
+					</span>
+				</div>
+
+				<div>
+					<svg
+						width="100%"
+						height={CHART_H}
+						role="img"
+						aria-label={`Hours logged for each week: ${weeks
+							.map((week, i) => `${weekNameOf(week)} ${fmtHours(totals[i] ?? 0)}`)
+							.join(", ")}`}
+						style={{ display: "block" }}
+					>
+						{ticks.map((t, i) => (
+							<line
+								key={`hg${i}`}
+								x1={pct(EDGE)}
+								x2={pct(1 - EDGE)}
+								y1={yFor(t)}
+								y2={yFor(t)}
+								stroke="var(--color-line-soft)"
+								strokeWidth="1"
+							/>
+						))}
+						{weeks.map((week, i) => {
+							// Stacked from the floor up in legend order, so a segment's colour is findable without reading the tooltip. Each rect spans its own band of the stack: the running total before it is the bottom edge, after it the top.
+							let stacked = 0
+							return PROJECT_KIND.map((kind) => {
+								const value = week[kind.key]
+								if (value === 0) return null
+								const bottom = yFor(stacked)
+								stacked += value
+								const top = yFor(stacked)
+								return (
+									<rect
+										key={`${week.week}-${kind.key}`}
+										x={pct(centreOf(i) - barW / 2)}
+										y={top}
+										width={pct(barW)}
+										height={bottom - top}
+										fill={kind.colour}
+									>
+										<title>{`${weekNameOf(week)} · ${kind.label}: ${fmtHours(value)}`}</title>
+									</rect>
+								)
+							})
+						})}
+					</svg>
+					<WeekAxisLabels weeks={weeks} />
+				</div>
+			</div>
+			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.5rem" }}>
+				Hours logged for each week, attributed to the phase they were logged in – so a week&apos;s column is its own
+				part of its projects, not their whole story, and every hour is counted once. The same projects the chart above
+				counts, read as work rather than as headcount; a week can be busy there and flat here when its projects are
+				named but nothing has been logged against them yet. Hours are the ledger&apos;s, so a session that was both
+				journalled and tracked counts once.
 			</p>
 		</div>
 	)
@@ -1481,9 +1642,7 @@ function ShareDonut({
 							<td style={{ padding: "0.2rem 0.75rem 0.2rem 0", textAlign: "right" }}>
 								{row.value.toLocaleString("en-US")}
 							</td>
-							<td style={{ padding: "0.2rem 0", textAlign: "right" }}>
-								{Math.round((row.value / total) * 100)}%
-							</td>
+							<td style={{ padding: "0.2rem 0", textAlign: "right" }}>{Math.round((row.value / total) * 100)}%</td>
 						</tr>
 					))}
 				</tbody>
