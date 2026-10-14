@@ -2,13 +2,7 @@ import prisma from "@/lib/prisma"
 import type { ProjectReviewStats, WeekReviewProgress } from "./review-store"
 import { ANONYMOUS_ARI } from "./review-store"
 import { getSlackUserNames } from "./slack"
-import {
-	countedLine,
-	creditedLine,
-	LEADERBOARD_LIMIT,
-	renderSummary,
-	type SummaryBoard,
-} from "./summary"
+import { countedLine, creditedLine, LEADERBOARD_LIMIT, renderSummary, type SummaryBoard } from "./summary"
 
 /**
  * The daily project-review summary, the same post as the ticket summary with review nouns.
@@ -90,11 +84,7 @@ function weekProgressSection(byWeek: WeekReviewProgress[]): SummaryBoard | null 
  *
  * One fence holds the whole board, so names, bars, counts and shares all line up – split across a table and a separate chart the two could never share columns. Shares read against every review behind the board, not just the ten printed, so they do not sum to 100 when the overflow note says more were cut. An empty board stays an empty board, and the shared "no one yet" fallback says so.
  */
-function rankedBoard(
-	title: string,
-	rows: ProjectReviewStats["leaderboard"],
-	names: Map<string, string>,
-): SummaryBoard {
+function rankedBoard(title: string, rows: ProjectReviewStats["leaderboard"], names: Map<string, string>): SummaryBoard {
 	const shown = rows.slice(0, LEADERBOARD_LIMIT)
 	if (shown.length === 0) return { title, total: 0, lines: [] }
 	const total = rows.reduce((n, row) => n + row.reviewed, 0)
@@ -130,7 +120,7 @@ export async function buildReviewSummary(stats: ProjectReviewStats): Promise<str
 		)} and ${creditedLine(stats.reviewed, "review")}`,
 		boards: [
 			rankedBoard(":yay-peace: today's leaderboard", daily, names),
-			rankedBoard(":yay-blush-2: all-time leaderboard", global),
+			rankedBoard(":yay-blush-2: all-time leaderboard", global, names),
 			...(weekly ? [weekly] : []),
 		],
 	})
