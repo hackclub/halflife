@@ -414,38 +414,46 @@ function MetricPie({
 						total {title.toLowerCase()}
 					</text>
 				</svg>
-				<ul
+				<table
 					style={{
-						listStyle: "none",
-						margin: 0,
-						padding: 0,
-						display: "grid",
-						gap: "0.3rem",
+						borderCollapse: "collapse",
+						fontVariantNumeric: "tabular-nums",
+						fontSize: "0.82rem",
 						minWidth: "10rem",
 						flex: "1 1 10rem",
 					}}
 				>
-					{colored.map((s) => (
-						<li key={s.label} style={{ display: "flex", alignItems: "baseline", gap: "0.45rem", fontSize: "0.82rem" }}>
-							<span
-								aria-hidden="true"
-								style={{
-									display: "inline-block",
-									width: "0.7rem",
-									height: "0.7rem",
-									borderRadius: "3px",
-									background: s.color,
-									flexShrink: 0,
-									alignSelf: "center",
-								}}
-							/>
-							<span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.label}</span>
-							<span style={{ marginLeft: "auto", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
-								{format(s.value)} · {s.pct.toFixed(1)}%
-							</span>
-						</li>
-					))}
-				</ul>
+					<tbody>
+						{colored.map((s) => (
+							<tr key={s.label}>
+								<td style={{ padding: "0.15rem 0.75rem 0.15rem 0" }}>
+									<span style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem" }}>
+										<span
+											aria-hidden="true"
+											style={{
+												display: "inline-block",
+												width: "0.7rem",
+												height: "0.7rem",
+												borderRadius: "3px",
+												background: s.color,
+												flexShrink: 0,
+											}}
+										/>
+										<span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+											{s.label}
+										</span>
+									</span>
+								</td>
+								<td style={{ padding: "0.15rem 0.75rem 0.15rem 0", textAlign: "right", whiteSpace: "nowrap" }}>
+									{format(s.value)}
+								</td>
+								<td style={{ padding: "0.15rem 0", textAlign: "right", whiteSpace: "nowrap" }}>
+									{s.pct.toFixed(1)}%
+								</td>
+							</tr>
+						))}
+					</tbody>
+				</table>
 			</div>
 		</figure>
 	)
