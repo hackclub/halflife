@@ -147,6 +147,8 @@ function CheckpointNode({
 								? "this week has been reviewed."
 								: null
 	const locked = !unlocked ? lockReason(checkpoint.id) : null
+	// The puck's own disabled rule: what the button below actually refuses. The attention animation is meant to say "press here", so it is only honest while pressing would do something – a node that has passed but still opens keeps it, a settled one does not.
+	const clickable = unlocked && !settled
 	// Finished and still reachable: hovering says so, and says what a click does now – edit the entry, or post another reel.
 	const doneTip = st.done && unlocked && !passed
 	const Icon = held ? IconLock : st.done ? IconCheck : unlocked ? KIND_ICON[checkpoint.kind] : IconLock
@@ -172,7 +174,9 @@ function CheckpointNode({
 				>
 					<div
 						className={cx(
-							"sketch relative rounded-2xl px-3.5 py-2 text-center motion-safe:animate-[hl-bob_2.4s_ease-in-out_infinite]",
+							"sketch relative rounded-2xl px-3.5 py-2 text-center",
+							// Only while the node is actually pressable: a callout that bobs on a button that does nothing is the trail telling a lie.
+							clickable && "motion-safe:animate-[hl-bob_2.4s_ease-in-out_infinite]",
 							gold ? "bg-gold text-navy" : "bg-navy text-white",
 						)}
 						style={
@@ -273,8 +277,8 @@ function CheckpointNode({
 					nodeTone(checkpoint.kind, st.done, unlocked, passed, held),
 					// The puck's own disabled rule reads as refusal. A finished checkpoint is not refusing anything.
 					settled && "cursor-default",
-					// The next step taps itself, so the trail shows where to press.
-					(isCurrent || choice) && "puck-next",
+					// The next step taps itself, so the trail shows where to press – but only while pressing would work.
+					(isCurrent || choice) && clickable && "puck-next",
 				)}
 			>
 				<span className="puck-face">
