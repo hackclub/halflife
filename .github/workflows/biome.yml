@@ -9,6 +9,11 @@ concurrency:
   group: biome-${{ github.ref }}
   cancel-in-progress: true
 
+# Read-only beyond doubt, and stated rather than inherited. Without this the token gets whatever the repository or its organisation defaults to, which for anything created before February 2023 is read-write. Nothing here writes: every step reads the checkout and reports. The cache is not affected – actions/cache authenticates with the
+# Actions runtime token, not GITHUB_TOKEN – so `contents: read` is the whole of what this workflow needs.
+permissions:
+  contents: read
+
 jobs:
   biome:
     runs-on: ubuntu-latest
