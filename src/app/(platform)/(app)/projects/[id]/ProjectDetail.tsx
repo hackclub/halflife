@@ -82,6 +82,7 @@ function DisputeForm({
 	const [error, setError] = useState<string | null>(null)
 
 	async function submit() {
+		if (saving) return
 		if (note.trim().length < 10) return setError("Tell us what looks wrong – a sentence is enough.")
 		setSaving(true)
 		setError(null)
@@ -108,7 +109,8 @@ function DisputeForm({
 	return (
 		<div className="grid gap-2.5 rounded-xl border-2 border-line bg-cream/60 p-3.5">
 			<label htmlFor={`dispute-${phase}`} className="label text-violet-deep">
-				What looks wrong?
+				What looks wrong?{" "}
+				<span className="hand font-normal normal-case text-navy-soft">(a sentence is enough, 10+ characters)</span>
 			</label>
 			<textarea
 				id={`dispute-${phase}`}
@@ -122,6 +124,9 @@ function DisputeForm({
 				placeholder="The build works – the video runs at 1:20."
 				className="block w-full rounded-xl border-2 border-field bg-white px-3.5 py-2.5 text-[0.9rem] text-navy outline-none placeholder:text-navy-faint transition-colors hover:border-navy-soft focus:border-violet"
 			/>
+			<p className="hand text-right text-[0.76rem] text-navy-soft tabular-nums" aria-live="polite">
+				{note.trim().length}/10 minimum
+			</p>
 			{error && (
 				<p role="alert" className="text-[0.82rem] font-semibold text-coral-deep">
 					{error}
@@ -262,7 +267,12 @@ function WarmupWork({ projectId }: { projectId: string }) {
 									Log a session
 								</Button>
 							)}
-							<Button variant="solid" disabled={!canActuallySubmit} onClick={() => setOpenCheckpoint(submitId)}>
+							<Button
+								variant="solid"
+								disabled={!canActuallySubmit}
+								aria-describedby={canSubmit && !hasCover ? "warmup-cover-hint" : undefined}
+								onClick={() => setOpenCheckpoint(submitId)}
+							>
 								{build ? "Submit your build" : "Submit your design"}
 							</Button>
 							{!canSubmit && short > 0 && (
@@ -271,7 +281,7 @@ function WarmupWork({ projectId }: { projectId: string }) {
 								</span>
 							)}
 							{canSubmit && !hasCover && (
-								<span className="hand text-[0.84rem] text-coral-deep">
+								<span id="warmup-cover-hint" className="hand text-[0.84rem] text-coral-deep">
 									Upload a photo or screenshot of the project to submit
 								</span>
 							)}

@@ -158,6 +158,7 @@ function Body({ item, allowReport }: { item: TimelineItem; allowReport: boolean 
 						preload={item.thumbnailUrl ? "none" : "metadata"}
 						controls
 						playsInline
+						aria-label={item.caption ? `Reel: ${item.caption}` : "Project reel"}
 						className="mt-3 aspect-[9/16] w-full max-w-[180px] rounded-2xl bg-navy object-cover"
 					/>
 				)}

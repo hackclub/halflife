@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { fmtInt } from "@/lib/numbers"
 
 /** How often to ask again. A number that moves is the point; a fast poll is not. */
 const REFRESH_MS = 60_000
@@ -60,7 +61,7 @@ export default function SignupCounter({ className = "", style }: { className?: s
 						className="align-middle font-display font-bold tabular-nums"
 						style={{ fontSize: "1.5em", lineHeight: 1 }}
 					>
-						{count.toLocaleString("en-US")}
+						{fmtInt(count)}
 					</span>{" "}
 					<span className="align-middle font-display" style={{ fontSize: "0.75em" }}>
 						people have signed up

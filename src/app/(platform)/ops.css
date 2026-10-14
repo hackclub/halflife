@@ -672,47 +672,6 @@ h4 {
 		color: var(--color-ink-muted);
 	}
 
-	/* ── Hand-drawn edges ──────────────────────────────────────────────────── */
-	/*
-   * `.hl-wobbly` drops the CSS border and makes room for a <WobbleBorder/>,
-   * which draws the same outline as a displaced SVG stroke. See Wobble.tsx for
-   * why it is generated rather than exported.
-   */
-	.hl-wobbly {
-		position: relative;
-		/* biome-ignore lint/complexity/noImportantStyles: the outline is a drawn SVG
-		   instead of a CSS border, and this class rides along with .hl-btn, whose
-		   :hover, :disabled and --primary variants all set a border-colour at a higher
-		   specificity. Enumerating those here would drift the moment a variant is
-		   added; overriding the property outright cannot. */
-		border-color: transparent !important;
-	}
-	.hl-wobble-svg {
-		position: absolute;
-		inset: 0;
-		width: 100%;
-		height: 100%;
-		pointer-events: none;
-		overflow: visible;
-	}
-	/*
-   * Geometry is set HERE rather than as SVG attributes: `width="calc(100% -
-   * 4px)"` is not valid on an SVG <rect> and silently collapses the shape,
-   * which shows up as gaps in the border. The CSS geometry properties take
-   * calc() and do what the attribute could not.
-   */
-	.hl-wobble-svg rect {
-		x: 2px;
-		y: 2px;
-		width: calc(100% - 4px);
-		height: calc(100% - 4px);
-	}
-	.hl-wobble-rule {
-		display: block;
-		width: 100%;
-		height: 10px;
-		overflow: visible;
-	}
 	/* ── The week banner ───────────────────────────────────────────────────── */
 	/*
    * The comp's banner is painted art with a torn edge, exported from the file

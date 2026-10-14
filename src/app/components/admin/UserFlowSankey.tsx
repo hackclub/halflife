@@ -1,5 +1,6 @@
 "use client"
 import { EmptyState } from "@/app/components/ui"
+import { fmtInt as fmt } from "@/lib/numbers"
 import type { SankeyDiagram, SankeyNode } from "@/lib/queries/admin"
 
 /**
@@ -70,8 +71,6 @@ interface Ribbon {
 	ty0: number
 	ty1: number
 }
-
-const fmt = (n: number) => n.toLocaleString("en-US")
 
 export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 	const { stages, total } = diagram

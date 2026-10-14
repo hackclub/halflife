@@ -156,6 +156,7 @@ export function BomEditor({
 	}
 
 	async function save() {
+		if (saving) return
 		// Every field, because a reviewer prices the tier from this list: a line without a vendor, a link or a price is one they cannot check.
 		const quantity = /^\d+$/.test(draft.quantity.trim()) ? Number(draft.quantity) : Number.NaN
 		const unitCostUsd = draft.unitCostUsd.trim() ? Number(draft.unitCostUsd) : Number.NaN
@@ -200,6 +201,7 @@ export function BomEditor({
 	}
 
 	async function remove(line: BomLine) {
+		if (saving) return
 		const done = await send("DELETE", `/api/projects/${projectId}/bom/${line.id}`)
 		if (done && editing === line.id) setEditing(null)
 	}
@@ -254,6 +256,7 @@ export function BomEditor({
 	}
 
 	async function saveTaxShipping(value: number) {
+		if (saving) return false
 		if (value === taxShipping) return true
 		setSaving(true)
 		setError(null)
@@ -664,6 +667,7 @@ function ExtraRow({
 							placeholder="0.00"
 							disabled={disabled}
 							aria-invalid={invalid || undefined}
+							aria-describedby={invalid ? `${id}-error` : undefined}
 							onChange={(e) => {
 								setDraft(e.target.value)
 								if (invalid) setInvalid(false)
@@ -682,6 +686,11 @@ function ExtraRow({
 								invalid && "border-coral-deep! text-coral-deep",
 							)}
 						/>
+						{invalid && (
+							<p id={`${id}-error`} role="alert" className="hand mt-1 text-[0.76rem] text-coral-deep">
+								Enter 0 or more, e.g. 12.50.
+							</p>
+						)}
 					</span>
 				)}
 			</td>

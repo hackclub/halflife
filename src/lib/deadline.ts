@@ -9,3 +9,10 @@ export function formatDeadline(at: Date | number, timeZone: string, style: "long
 	const time = shown.toLocaleTimeString("en-US", { timeZone, hour: "numeric", minute: "2-digit" })
 	return `${day} at ${time}`
 }
+
+/**
+ * A calendar date the short way – "Oct 5". For incidental dates (a submitted stamp, a series range), where the weekday and year the deadline formatter carries would be noise.
+ */
+export function formatShortDate(at: Date | number | string): string {
+	return new Date(at).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+}

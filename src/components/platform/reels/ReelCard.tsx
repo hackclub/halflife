@@ -9,10 +9,7 @@ import { cx } from "@/lib/cx"
 import type { FeedItem } from "@/lib/feed"
 import { prefersStill } from "@/lib/reduced-motion"
 import { useStore } from "@/lib/store"
-
-function compact(n: number) {
-	return n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k` : `${n}`
-}
+import { compact } from "./format"
 
 /**
  * How much of a card has to be on screen for it to be the current reel. With every card at least the height of its column, two can never both clear this, so "current" is always one card or none.

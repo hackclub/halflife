@@ -101,7 +101,13 @@ export function GoalModal({
 								</Button>
 							)}
 							<Button variant="teal" onClick={advance} disabled={saving}>
-								Continue <IconCheck className="text-base" />
+								{saving ? (
+									"Saving…"
+								) : (
+									<>
+										Continue <IconCheck className="text-base" />
+									</>
+								)}
 							</Button>
 						</>
 					) : (

@@ -32,6 +32,7 @@ import { COINS_PER_HOUR, paceTarget, printerById, submitFloorFor } from "@/lib/c
 import { THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { photosRequired, TIERS } from "@/lib/curriculum"
 import { cx } from "@/lib/cx"
+import { formatShortDate } from "@/lib/deadline"
 import {
 	PLATFORM_INFO,
 	PUBLIC_REEL_HASHTAG,
@@ -468,6 +469,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	 * Finishing hands the maker back to the trail rather than straight into another entry. What comes next is the trail's to say: logging these hours may have brought a reel due, or opened the fork at the end of the week, and a modal that reopens itself would march past both.
 	 */
 	async function save() {
+		if (saving || uploading > 0) return
 		setSaving(true)
 		setSaveError(null)
 		if (editing) {
@@ -778,13 +780,14 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									? "On top of your timelapses – 0 if the recording covers it all."
 									: "(9.5 is 9 and a half hours)"
 							}
+							id="journal-hours"
 						>
 							<input
+								id="journal-hours"
 								value={hoursText}
 								onChange={(e) => setHoursText(e.target.value.replace(/[^\d.]/g, ""))}
 								inputMode="decimal"
 								placeholder="0"
-								aria-label="Hours spent on this session"
 								aria-invalid={overCap || undefined}
 								className={cx(borderedInputClass, "tabular-nums")}
 							/>
@@ -1138,6 +1141,7 @@ export function PublicReelModal({
 	const filled = PUBLIC_REEL_PLATFORMS.filter((p) => values[p].trim())
 
 	async function save() {
+		if (saving) return
 		// The same check the server runs, so a wrong link is named on its field before anything is sent.
 		const found: Partial<Record<PublicReelPlatform, string>> = {}
 		for (const p of filled) {
@@ -1417,7 +1421,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const [postedId, setPostedId] = useState<string | null>(null)
 
 	async function post() {
-		if (!clip) return
+		if (!clip || posting) return
 		setPosting(true)
 		setPostError(null)
 		const { postId, error } = await postReel(checkpoint.id, caption.trim(), clip)
@@ -1496,7 +1500,11 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							{postError}
 						</p>
 					) : postBlocker ? (
-						<p role="status" className="hand mr-auto min-w-0 flex-1 text-[0.84rem] leading-snug text-coral-deep">
+						<p
+							id="reel-caption-blocker"
+							role="status"
+							className="hand mr-auto min-w-0 flex-1 text-[0.84rem] leading-snug text-coral-deep"
+						>
 							{postBlocker}
 						</p>
 					) : (
@@ -1558,6 +1566,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						<input
 							id="reel-caption"
 							value={caption}
+							aria-describedby={postBlocker ? "reel-caption-blocker" : undefined}
 							aria-invalid={!captionReady || undefined}
 							onChange={(e) => setCaption(e.target.value)}
 							placeholder="routed the whole board without a single ratline left"
@@ -1972,7 +1981,7 @@ export function UnsubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		>
 			<ModalTitle
 				id={titleId}
-				sub={`${handedIn ? `Submitted ${new Date(handedIn).toLocaleDateString("en-US", { month: "short", day: "numeric" })}. ` : ""}Unsubmitting takes it out of the review queue so you can change your entries, parts list or project details. Submit it again from this checkpoint when you're done.`}
+				sub={`${handedIn ? `Submitted ${formatShortDate(handedIn)}. ` : ""}Unsubmitting takes it out of the review queue so you can change your entries, parts list or project details. Submit it again from this checkpoint when you're done.`}
 			>
 				This week is waiting for review
 			</ModalTitle>
@@ -2101,6 +2110,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	 * The tier first, because it is what the reviewer will be deciding against. Then the closing reel, awaited, so the submission a reviewer opens – and the YSWS row written just after it, which looks the reel up – already has the video rather than one arriving behind it. It is posted once: a retry after a refused hand-in reuses it. The submission last, and only once it has gone through is the reel offered for posting online.
 	 */
 	async function submit() {
+		if (submitting) return
 		setSubmitting(true)
 		setSubmitError(null)
 		if (project) setProjectTier(project.id, tier)
@@ -2175,6 +2185,11 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					{step === 1 && !submitError && !repoReady && repoResult && (
 						<p className="hand mr-auto min-w-0 flex-1 text-[0.78rem] leading-snug text-coral-deep">
 							Fix the repo checks above to carry on.
+						</p>
+					)}
+					{step === 1 && !submitError && !repoReady && repoResult === null && (
+						<p role="status" className="hand mr-auto min-w-0 flex-1 text-[0.78rem] leading-snug text-navy-soft">
+							Checking your repo…
 						</p>
 					)}
 					{step < total ? (

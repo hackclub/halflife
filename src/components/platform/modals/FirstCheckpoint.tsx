@@ -59,7 +59,9 @@ export function FirstCheckpoint() {
 	if (!view) {
 		return (
 			<Modal open onClose={close} accent="var(--color-gold-deep)" eyebrow="Getting started">
-				<p className="hand text-navy-soft">Loading your project setup…</p>
+				<p role="status" className="hand text-navy-soft">
+					Loading your project setup…
+				</p>
 			</Modal>
 		)
 	}

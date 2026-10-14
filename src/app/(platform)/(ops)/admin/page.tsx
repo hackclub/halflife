@@ -4,6 +4,7 @@ import { UserFlowDiagram } from "@/app/components/admin/UserFlowDiagram"
 import { EmptyState, PageHeader, Panel, Stat, Table } from "@/app/components/ui"
 import { type ParticipantGoal, Phase, type ReviewResult } from "@/app/generated/prisma/enums"
 import { GOAL_OPTIONS } from "@/lib/config/goal"
+import { fmtInt } from "@/lib/numbers"
 import { requireAnyPermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import {
@@ -31,7 +32,6 @@ import { getLatestSyncRuns } from "@/lib/sync-run-log"
 
 export const dynamic = "force-dynamic"
 
-const fmtInt = (n: number) => n.toLocaleString("en-US")
 const fmtHours = (h: number) => `${h.toLocaleString("en-US", { maximumFractionDigits: 1 })}h`
 
 /** A share of a whole. One decimal, because the small bands are where the comparison is worth making. */
@@ -1659,9 +1659,7 @@ function ShareDonut({
 									<span style={{ fontWeight: 700 }}>{row.label}</span>
 								</span>
 							</td>
-							<td style={{ padding: "0.2rem 0.75rem 0.2rem 0", textAlign: "right" }}>
-								{row.value.toLocaleString("en-US")}
-							</td>
+							<td style={{ padding: "0.2rem 0.75rem 0.2rem 0", textAlign: "right" }}>{fmtInt(row.value)}</td>
 							<td style={{ padding: "0.2rem 0", textAlign: "right" }}>{Math.round((row.value / total) * 100)}%</td>
 						</tr>
 					))}
