@@ -1,5 +1,5 @@
 import prisma from "@/lib/prisma"
-import type { ProjectReviewStats } from "./review-store"
+import type { ProjectReviewStats, WeekReviewProgress } from "./review-store"
 import { ANONYMOUS_ARI } from "./review-store"
 import { getSlackUserNames } from "./slack"
 import {
@@ -56,6 +56,36 @@ async function namesFor(entries: ProjectReviewStats["leaderboard"]): Promise<Map
 	return names
 }
 
+/** How wide each week's bar is, in characters. Fixed, so every row is the same length and the counts line up. */
+const WEEK_BAR_WIDTH = 10
+
+/**
+ * One week's progress as a text bar: `week 1 · PCBs  ██████░░░░   12/20 ·  60%`.
+ *
+ * Inside a fenced block Slack renders monospace, so the label is padded to the longest week, the bar is a fixed width, and the count and share are padded too – every column lands in the same place on every row. A week with no named projects yet reads `0/0 · 0%` rather than dividing by zero.
+ */
+function weekBarLine(row: WeekReviewProgress, labelWidth: number, countWidth: number): string {
+	const share = row.total === 0 ? 0 : row.reviewed / row.total
+	const filled = Math.round(share * WEEK_BAR_WIDTH)
+	const bar = "█".repeat(filled) + "░".repeat(WEEK_BAR_WIDTH - filled)
+	const count = `${row.reviewed}/${row.total}`.padStart(countWidth)
+	const pct = `${Math.round(share * 100)}%`.padStart(4)
+	return `${`week ${row.week} · ${row.label}`.padEnd(labelWidth)} ${bar} ${count} · ${pct}`
+}
+
+/**
+ * The per-week progress section, or null before the programme starts.
+ *
+ * Fenced so Slack renders it monospace – without the fence the bars wobble in a proportional font and the columns stop lining up. A `SummaryBoard` rather than a special case, so the overflow note and the "no one yet" fallback keep working the way the leaderboards use them; with at most five weeks neither can trigger.
+ */
+function weekProgressSection(byWeek: WeekReviewProgress[]): SummaryBoard | null {
+	if (byWeek.length === 0) return null
+	const labelWidth = Math.max(...byWeek.map((row) => `week ${row.week} · ${row.label}`.length))
+	const countWidth = Math.max(...byWeek.map((row) => `${row.reviewed}/${row.total}`.length))
+	const lines = ["```", ...byWeek.map((row) => weekBarLine(row, labelWidth, countWidth)), "```"]
+	return { title: ":bar-chart: reviewed by week", total: byWeek.length, lines }
+}
+
 export async function buildReviewSummary(stats: ProjectReviewStats): Promise<string> {
 	const daily = stats.leaderboard
 	const global = stats.globalLeaderboard
@@ -78,12 +108,18 @@ export async function buildReviewSummary(stats: ProjectReviewStats): Promise<str
 			),
 	})
 
+	const weekly = weekProgressSection(stats.byWeek)
+
 	return renderSummary({
 		headline: `${countedLine(
 			stats.submitted,
 			{ singular: "submission", plural: "submissions" },
 			{ singular: "was handed in", plural: "were handed in" },
 		)} and ${creditedLine(stats.reviewed, "review")}`,
-		boards: [board(":yay-peace: today's leaderboard", daily), board(":yay-blush-2: all-time leaderboard", global)],
+		boards: [
+			board(":yay-peace: today's leaderboard", daily),
+			board(":yay-blush-2: all-time leaderboard", global),
+			...(weekly ? [weekly] : []),
+		],
 	})
 }
