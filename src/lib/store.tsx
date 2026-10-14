@@ -8,6 +8,7 @@ import { DESIGN_WEEKS, ONBOARDING_CHECKPOINT_ID, WARMUP_THEME, WARMUP_WEEK_ID } 
 import { BUILD_HOURS, checkpointsFor, TIERS, WEEK_META } from "./curriculum"
 import { formatDeadline } from "./deadline"
 import type { StoreSnapshot } from "./queries/store"
+import { DEFAULT_SESSION_TITLE } from "./schemas/session"
 import type { Checkpoint, Experience, Project, SessionLog, Week, WeekMeta } from "./types"
 
 /**
@@ -1107,7 +1108,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 						body: JSON.stringify({
 							phase: route.phase,
 							// The journal's first line stands in for a title. The form asks for one piece of writing, and inventing a second field to satisfy the column would put a box on screen that exists only because of the schema.
-							title: body.trim().split("\n")[0]?.slice(0, 200) || "Work session",
+							title: body.trim().split("\n")[0]?.slice(0, 200) || DEFAULT_SESSION_TITLE,
 							content: body,
 							hoursClaimed: Math.round((minutes / 60) * 100) / 100,
 							timelapses: evidence.clips.map((lapseId) => ({ lapseId })),
@@ -1172,7 +1173,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 					method: "PATCH",
 					headers: { "content-type": "application/json" },
 					body: JSON.stringify({
-						title: body.trim().split("\n")[0]?.slice(0, 200) || "Work session",
+						title: body.trim().split("\n")[0]?.slice(0, 200) || DEFAULT_SESSION_TITLE,
 						content: body,
 						hoursClaimed: Math.round((minutes / 60) * 100) / 100,
 						timelapses: evidence.clips.map((lapseId) => ({ lapseId })),
