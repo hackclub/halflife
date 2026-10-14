@@ -44,6 +44,12 @@ export function CoverImage({
 
 	async function pick(file: File | undefined) {
 		if (!file) return
+		// The input's `accept` is advisory: a renamed file picked on purpose sails through it and fails confusingly at the upload.
+		if (!file.type.startsWith("image/")) {
+			setError("That file is not an image – pick a PNG or JPEG.")
+			if (input.current) input.current.value = ""
+			return
+		}
 		setBusy(true)
 		setUploading(true)
 		setProgress(null)

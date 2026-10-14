@@ -1,5 +1,5 @@
 import "server-only"
-import type { Prisma } from "@/app/generated/prisma/client"
+import type { AuditLog, LedgerEntry, Prisma } from "@/app/generated/prisma/client"
 import {
 	AuditAction,
 	HoursSource,
@@ -10,6 +10,7 @@ import {
 	type ReportStatus,
 	ReviewPass,
 	ReviewResult,
+	type Role,
 	type ShopFulfillmentMethod,
 	ShopFulfillmentStage,
 	ShopOrderStatus,
@@ -19,21 +20,34 @@ import { GOAL_OPTIONS } from "@/lib/config/goal"
 import { getStarterProject, STARTER_PROJECT_TIER, stepIndexOf } from "@/lib/config/onboarding"
 import { getThemeDef, scheduleForWeek, TOTAL_WEEKS, WARMUP_THEME, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { isTierId, TIERS } from "@/lib/config/tiers"
-import { getBalances } from "@/lib/currency"
+import { type Balances, getBalances } from "@/lib/currency"
 import { displayName } from "@/lib/display-name"
 import { type LinkRow, rollUpHours, type SessionRow } from "@/lib/hours"
 import { pctOf, round1 } from "@/lib/numbers"
 import { safeDecrypt } from "@/lib/pii"
-import { getPrinterQualification } from "@/lib/printer"
+import { getPrinterQualification, type PrinterQualification } from "@/lib/printer"
 import prisma from "@/lib/prisma"
 import { getProgramSettings, startOfDay } from "@/lib/program"
 import { countryOfTimezone, REGIONS, type RegionId, regionOfTimezone } from "@/lib/regions"
 import { shopOrderStaffSelect } from "@/lib/shop"
 
+/** One row of the admin user directory, with contact and risk fields blanked unless the caller may see PII. */
+export type DirectoryUser = {
+	id: string
+	name: string | null
+	displayName: string | null
+	email: string
+	slackId: string | null
+	verificationStatus: string | null
+	fraudFlagged: boolean
+	createdAt: Date
+	roles: { role: Role }[]
+}
+
 export async function listUsers(
 	opts: { q?: string; cursor?: string; limit: number },
 	flags?: { includePii?: boolean },
-) {
+): Promise<{ items: DirectoryUser[]; nextCursor: string | null }> {
 	const includePii = flags?.includePii ?? false
 	const rows = await prisma.user.findMany({
 		where: opts.q
@@ -70,7 +84,7 @@ export async function listUsers(
 	return { items, nextCursor: hasMore && last ? last.id : null }
 }
 
-export interface ProjectFilters {
+export type ProjectFilters = {
 	/** Matches the project's title, description or repo, or its owner's name, email or Slack ID. */
 	q?: string
 	theme?: Theme
@@ -85,7 +99,35 @@ export interface ProjectFilters {
 	unstarted?: boolean
 }
 
-export async function listProjects(opts: ProjectFilters & { cursor?: string; limit: number }) {
+/** One row of the admin project directory, with its owner's directory fields. */
+export type ProjectDirectoryRow = Prisma.ThemeProjectGetPayload<{ select: typeof projectDirectorySelect }>
+
+const projectDirectorySelect = {
+	id: true,
+	theme: true,
+	title: true,
+	githubRepo: true,
+	designStatus: true,
+	buildStatus: true,
+	tier: true,
+	requestedTier: true,
+	submissionExtensionUntil: true,
+	updatedAt: true,
+	user: {
+		select: {
+			id: true,
+			name: true,
+			displayName: true,
+			email: true,
+			slackId: true,
+			submissionExtensionUntil: true,
+		},
+	},
+} satisfies Prisma.ThemeProjectSelect
+
+export async function listProjects(
+	opts: ProjectFilters & { cursor?: string; limit: number },
+): Promise<{ items: ProjectDirectoryRow[]; nextCursor: string | null }> {
 	const now = new Date()
 	const q = opts.q?.trim()
 	const where: Prisma.ThemeProjectWhereInput = {
@@ -123,28 +165,7 @@ export async function listProjects(opts: ProjectFilters & { cursor?: string; lim
 		orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
 		take: opts.limit + 1,
 		...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
-		select: {
-			id: true,
-			theme: true,
-			title: true,
-			githubRepo: true,
-			designStatus: true,
-			buildStatus: true,
-			tier: true,
-			requestedTier: true,
-			submissionExtensionUntil: true,
-			updatedAt: true,
-			user: {
-				select: {
-					id: true,
-					name: true,
-					displayName: true,
-					email: true,
-					slackId: true,
-					submissionExtensionUntil: true,
-				},
-			},
-		},
+		select: projectDirectorySelect,
 	})
 	const hasMore = rows.length > opts.limit
 	const items = hasMore ? rows.slice(0, opts.limit) : rows
@@ -152,44 +173,69 @@ export async function listProjects(opts: ProjectFilters & { cursor?: string; lim
 	return { items, nextCursor: hasMore && last ? last.id : null }
 }
 
-export async function getUserDetail(userId: string, flags?: { includeSensitive?: boolean }) {
+const userDetailSelect = {
+	id: true,
+	name: true,
+	displayName: true,
+	email: true,
+	slackId: true,
+	slackDisplayName: true,
+	verificationStatus: true,
+	hackatimeUserId: true,
+	fraudFlagged: true,
+	submissionExtensionUntil: true,
+	createdAt: true,
+	joinedProgramAt: true,
+	roles: { select: { role: true, grantedAt: true, grantedBy: true } },
+	themeProjects: {
+		where: { deletedAt: null },
+		select: {
+			id: true,
+			theme: true,
+			title: true,
+			designStatus: true,
+			buildStatus: true,
+			tier: true,
+			grantUsd: true,
+			approvedHours: true,
+			designBankedCoins: true,
+			designSpendableCoins: true,
+			buildCoins: true,
+			submissionExtensionUntil: true,
+			hcbGrantTopUps: { where: { phase: "DESIGN", sentAt: { not: null } }, select: { id: true } },
+		},
+	},
+	printerAward: true,
+} satisfies Prisma.UserSelect
+
+/** The admin user profile: the selected columns plus money sections both branches fill. */
+export type UserDetail = Prisma.UserGetPayload<{ select: typeof userDetailSelect }>
+
+const userDetailOrderSelect = {
+	id: true,
+	orderNumber: true,
+	itemNameSnapshot: true,
+	totalCredits: true,
+	status: true,
+} satisfies Prisma.ShopOrderSelect
+
+/** The 25 most recent orders on the user page: number, item, credit total and status only. */
+export type UserDetailOrder = Prisma.ShopOrderGetPayload<{ select: typeof userDetailOrderSelect }>
+
+export async function getUserDetail(
+	userId: string,
+	flags?: { includeSensitive?: boolean },
+): Promise<{
+	user: UserDetail
+	balances: Balances
+	ledger: LedgerEntry[]
+	orders: UserDetailOrder[]
+	printer: PrinterQualification
+} | null> {
 	const includeSensitive = flags?.includeSensitive ?? false
 	const user = await prisma.user.findUnique({
 		where: { id: userId },
-		select: {
-			id: true,
-			name: true,
-			displayName: true,
-			email: true,
-			slackId: true,
-			slackDisplayName: true,
-			verificationStatus: true,
-			hackatimeUserId: true,
-			fraudFlagged: true,
-			submissionExtensionUntil: true,
-			createdAt: true,
-			joinedProgramAt: true,
-			roles: { select: { role: true, grantedAt: true, grantedBy: true } },
-			themeProjects: {
-				where: { deletedAt: null },
-				select: {
-					id: true,
-					theme: true,
-					title: true,
-					designStatus: true,
-					buildStatus: true,
-					tier: true,
-					grantUsd: true,
-					approvedHours: true,
-					designBankedCoins: true,
-					designSpendableCoins: true,
-					buildCoins: true,
-					submissionExtensionUntil: true,
-					hcbGrantTopUps: { where: { phase: "DESIGN", sentAt: { not: null } }, select: { id: true } },
-				},
-			},
-			printerAward: true,
-		},
+		select: userDetailSelect,
 	})
 	if (!user) return null
 
@@ -225,7 +271,7 @@ export async function getUserDetail(userId: string, flags?: { includeSensitive?:
 			orderBy: { placedAt: "desc" },
 			take: 25,
 			// The user page lists the number, item, credit total and status only; internal cost and encrypted columns are not part of VIEW_USERS.
-			select: { id: true, orderNumber: true, itemNameSnapshot: true, totalCredits: true, status: true },
+			select: userDetailOrderSelect,
 		}),
 		getPrinterQualification(userId),
 	])
@@ -233,18 +279,27 @@ export async function getUserDetail(userId: string, flags?: { includeSensitive?:
 	return { user, balances, ledger, orders, printer }
 }
 
-export async function listOrders(opts: { status?: ShopOrderStatus; cursor?: string; limit: number }) {
+/** One row of the admin order directory: the staff-safe columns plus buyer and item names. */
+export type OrderDirectoryRow = Prisma.ShopOrderGetPayload<{ select: typeof orderDirectorySelect }>
+
+const orderDirectorySelect = {
+	...shopOrderStaffSelect,
+	user: { select: { id: true, name: true, displayName: true, email: true } },
+	shopItem: { select: { id: true, name: true } },
+} satisfies Prisma.ShopOrderSelect
+
+export async function listOrders(opts: {
+	status?: ShopOrderStatus
+	cursor?: string
+	limit: number
+}): Promise<{ items: OrderDirectoryRow[]; nextCursor: string | null }> {
 	const rows = await prisma.shopOrder.findMany({
 		where: opts.status ? { status: opts.status } : undefined,
 		orderBy: [{ placedAt: "desc" }, { id: "desc" }],
 		take: opts.limit + 1,
 		...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
 		// Explicit select, not `include`: a whole-row response carries the encrypted address/phone and `lastActorId` this API has no use for.
-		select: {
-			...shopOrderStaffSelect,
-			user: { select: { id: true, name: true, displayName: true, email: true } },
-			shopItem: { select: { id: true, name: true } },
-		},
+		select: orderDirectorySelect,
 	})
 	const hasMore = rows.length > opts.limit
 	const items = hasMore ? rows.slice(0, opts.limit) : rows
@@ -269,7 +324,7 @@ export const fulfillmentStageOf = (order: {
 }): ShopFulfillmentStage =>
 	order.status === ShopOrderStatus.CANCELLED ? ShopFulfillmentStage.CANCELLED : order.fulfillmentStage
 
-export interface FulfillmentFilters {
+export type FulfillmentFilters = {
 	/** Inclusive, from the start of this instant. */
 	placedFrom?: Date
 	/** Exclusive. */
@@ -284,7 +339,25 @@ export interface FulfillmentFilters {
  *
  * The country is the one on their HCA profile now, not at order time: it is what the parcel will actually be addressed to. It is decrypted here and only the plain country leaves this function – never the ciphertext.
  */
-export async function listFulfillmentOrders(filters: FulfillmentFilters, opts: { cursor?: string; limit: number }) {
+/** One row of the fulfilment sheet: the order with its resolved stage, dollar total and buyer. */
+export type FulfillmentOrderRow = {
+	id: string
+	orderNumber: number
+	quantity: number
+	itemNameSnapshot: string
+	status: ShopOrderStatus
+	fulfillmentMethod: ShopFulfillmentMethod | null
+	fulfillmentStage: ShopFulfillmentStage
+	placedAt: Date
+	totalUsd: number | null
+	country: string | null
+	user: { id: string; name: string | null; email: string }
+}
+
+export async function listFulfillmentOrders(
+	filters: FulfillmentFilters,
+	opts: { cursor?: string; limit: number },
+): Promise<{ items: FulfillmentOrderRow[]; nextCursor: string | null }> {
 	const where: Prisma.ShopOrderWhereInput = {
 		status: { in: FULFILLMENT_ORDER_STATUSES },
 		...(filters.placedFrom || filters.placedBefore
@@ -357,7 +430,12 @@ export function isAuditAction(value: string): value is AuditAction {
 	return (Object.values(AuditAction) as string[]).includes(value)
 }
 
-export async function listAuditLog(opts: { action?: string; targetId?: string; cursor?: string; limit: number }) {
+export async function listAuditLog(opts: {
+	action?: string
+	targetId?: string
+	cursor?: string
+	limit: number
+}): Promise<{ items: AuditLog[]; nextCursor: string | null }> {
 	const rows = await prisma.auditLog.findMany({
 		where: {
 			// The page's filter box takes free text, so an unrecognised action is treated as no filter rather than a Prisma enum error; the API route rejects it properly with a 400.
@@ -377,24 +455,32 @@ export async function listAuditLog(opts: { action?: string; targetId?: string; c
 /**
  * Awards to ship, newest qualification first. `encryptedAddress` is read only to answer "is an address locked on file"; the ciphertext never leaves the server.
  */
-export async function listPrinterAwards(limit = 100) {
+/** Printer awards with the ciphertext folded into an on-file flag. */
+export type PrinterAwardRow = Omit<
+	Prisma.PrinterAwardGetPayload<{ select: typeof printerAwardSelect }>,
+	"encryptedAddress"
+> & { addressOnFile: boolean }
+
+const printerAwardSelect = {
+	id: true,
+	status: true,
+	qualifiedAt: true,
+	addressLockedAt: true,
+	encryptedAddress: true,
+	trackingNumber: true,
+	trackingCarrier: true,
+	shippedAt: true,
+	deliveredAt: true,
+	revokedAt: true,
+	revokedReason: true,
+	user: { select: { id: true, name: true, displayName: true, email: true } },
+} satisfies Prisma.PrinterAwardSelect
+
+export async function listPrinterAwards(limit = 100): Promise<PrinterAwardRow[]> {
 	const rows = await prisma.printerAward.findMany({
 		orderBy: [{ qualifiedAt: "desc" }],
 		take: limit,
-		select: {
-			id: true,
-			status: true,
-			qualifiedAt: true,
-			addressLockedAt: true,
-			encryptedAddress: true,
-			trackingNumber: true,
-			trackingCarrier: true,
-			shippedAt: true,
-			deliveredAt: true,
-			revokedAt: true,
-			revokedReason: true,
-			user: { select: { id: true, name: true, displayName: true, email: true } },
-		},
+		select: printerAwardSelect,
 	})
 	return rows.map(({ encryptedAddress, ...award }) => ({
 		...award,
@@ -403,64 +489,85 @@ export async function listPrinterAwards(limit = 100) {
 }
 
 /** Recent live reels, newest first, for the moderation panel. */
-export async function listRecentPostsForModeration(limit = 25) {
+/** One row of the listRecentPostsForModeration list. */
+export type ModeratedPost = Prisma.PostGetPayload<{ select: typeof moderatedPostSelect }>
+
+const moderatedPostSelect = {
+	id: true,
+	kind: true,
+	caption: true,
+	hiddenAt: true,
+	hiddenReason: true,
+	publishedAt: true,
+	createdAt: true,
+	user: { select: { id: true, name: true, displayName: true, email: true } },
+	themeProject: { select: { id: true, title: true } },
+} satisfies Prisma.PostSelect
+
+export async function listRecentPostsForModeration(limit = 25): Promise<ModeratedPost[]> {
 	return prisma.post.findMany({
 		where: { deletedAt: null },
 		orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
 		take: limit,
-		select: {
-			id: true,
-			kind: true,
-			caption: true,
-			hiddenAt: true,
-			hiddenReason: true,
-			publishedAt: true,
-			createdAt: true,
-			user: { select: { id: true, name: true, displayName: true, email: true } },
-			themeProject: { select: { id: true, title: true } },
-		},
+		select: moderatedPostSelect,
 	})
 }
 
 /**
  * Recent live comments, newest first. A comment on a soft-deleted post is not shown – nobody can reach it to report it – but a hidden comment stays in the list so staff can see it was handled.
  */
-export async function listRecentCommentsForModeration(limit = 25) {
+/** One row of the listRecentCommentsForModeration list. */
+export type ModeratedComment = Prisma.PostCommentGetPayload<{ select: typeof moderatedCommentSelect }>
+
+const moderatedCommentSelect = {
+	id: true,
+	body: true,
+	hiddenAt: true,
+	hiddenReason: true,
+	createdAt: true,
+	user: { select: { id: true, name: true, displayName: true, email: true } },
+	post: { select: { id: true, caption: true } },
+} satisfies Prisma.PostCommentSelect
+
+export async function listRecentCommentsForModeration(limit = 25): Promise<ModeratedComment[]> {
 	return prisma.postComment.findMany({
 		where: { deletedAt: null, post: { deletedAt: null } },
 		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
 		take: limit,
-		select: {
-			id: true,
-			body: true,
-			hiddenAt: true,
-			hiddenReason: true,
-			createdAt: true,
-			user: { select: { id: true, name: true, displayName: true, email: true } },
-			post: { select: { id: true, caption: true } },
-		},
+		select: moderatedCommentSelect,
 	})
 }
 
 /** Public reel links, newest first, so staff can find a post that went viral. */
-export async function listRecentPublicReels(limit = 100) {
+/** One row of the public-reel directory. */
+export type PublicReelRow = Prisma.PublicReelGetPayload<{ select: typeof publicReelSelect }>
+
+const publicReelSelect = {
+	id: true,
+	url: true,
+	platform: true,
+	email: true,
+	postedAt: true,
+	user: { select: { id: true, name: true, displayName: true } },
+	post: { select: { id: true, caption: true } },
+	themeProject: { select: { id: true, title: true } },
+} satisfies Prisma.PublicReelSelect
+
+export async function listRecentPublicReels(limit = 100): Promise<PublicReelRow[]> {
 	return prisma.publicReel.findMany({
 		orderBy: [{ postedAt: "desc" }, { id: "desc" }],
 		take: limit,
-		select: {
-			id: true,
-			url: true,
-			platform: true,
-			email: true,
-			postedAt: true,
-			user: { select: { id: true, name: true, displayName: true } },
-			post: { select: { id: true, caption: true } },
-			themeProject: { select: { id: true, title: true } },
-		},
+		select: publicReelSelect,
 	})
 }
 
-export async function getAdminCounters() {
+export async function getAdminCounters(): Promise<{
+	pendingReviews: number
+	pendingReviewsUnsent: number
+	pendingOrders: number
+	participants: number
+	shipped: number
+}> {
 	// A live hand-in: an open submission on a phase that is actually in review, on a project that still exists. The phase check matters on its own – counting every unresolved row also sweeps up submissions whose phase has moved on without the row resolving.
 	const liveHandIn: Prisma.PhaseSubmissionWhereInput = {
 		resolvedAt: null,
@@ -485,7 +592,7 @@ export async function getAdminCounters() {
 	return { pendingReviews, pendingReviewsUnsent, pendingOrders, participants, shipped }
 }
 
-export interface FlowStep {
+export type FlowStep = {
 	id: string
 	label: string
 	hint: string
@@ -656,78 +763,81 @@ export type ReportStatusFilter = ReportStatus | "ALL"
 /**
  * The moderation queue for user reports: who flagged what, why, and what staff did about it. Newest first, with the reported row's own preview and author alongside, so a report reads without opening five tabs. Cursor- paged like the audit log, so a busy queue never silently drops its tail.
  */
+const contentReportSelect = {
+	id: true,
+	target: true,
+	reason: true,
+	details: true,
+	status: true,
+	createdAt: true,
+	resolvedAt: true,
+	resolvedById: true,
+	reporter: { select: { id: true, name: true, displayName: true, email: true } },
+	post: {
+		select: {
+			id: true,
+			caption: true,
+			hiddenAt: true,
+			deletedAt: true,
+			user: { select: { id: true, name: true, displayName: true } },
+		},
+	},
+	comment: {
+		select: {
+			id: true,
+			body: true,
+			hiddenAt: true,
+			deletedAt: true,
+			postId: true,
+			user: { select: { id: true, name: true, displayName: true } },
+		},
+	},
+	themeProject: {
+		select: {
+			id: true,
+			title: true,
+			deletedAt: true,
+			user: { select: { id: true, name: true, displayName: true } },
+		},
+	},
+	targetUser: { select: { id: true, name: true, displayName: true } },
+	workSession: {
+		select: {
+			id: true,
+			title: true,
+			content: true,
+			deletedAt: true,
+			themeProject: {
+				select: {
+					id: true,
+					title: true,
+					user: { select: { id: true, name: true, displayName: true } },
+				},
+			},
+		},
+	},
+} satisfies Prisma.ContentReportSelect
+
+/** One row of the content-report directory, with every reportable target attached. */
+export type ContentReportRow = Prisma.ContentReportGetPayload<{ select: typeof contentReportSelect }>
+
 export async function listContentReports(
 	status: ReportStatusFilter = "OPEN",
 	opts: { cursor?: string; limit?: number } = {},
-) {
+): Promise<{ items: ContentReportRow[]; nextCursor: string | null }> {
 	const limit = opts.limit ?? 50
 	const rows = await prisma.contentReport.findMany({
 		where: status === "ALL" ? undefined : { status },
 		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
 		take: limit + 1,
 		...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
-		select: {
-			id: true,
-			target: true,
-			reason: true,
-			details: true,
-			status: true,
-			createdAt: true,
-			resolvedAt: true,
-			resolvedById: true,
-			reporter: { select: { id: true, name: true, displayName: true, email: true } },
-			post: {
-				select: {
-					id: true,
-					caption: true,
-					hiddenAt: true,
-					deletedAt: true,
-					user: { select: { id: true, name: true, displayName: true } },
-				},
-			},
-			comment: {
-				select: {
-					id: true,
-					body: true,
-					hiddenAt: true,
-					deletedAt: true,
-					postId: true,
-					user: { select: { id: true, name: true, displayName: true } },
-				},
-			},
-			themeProject: {
-				select: {
-					id: true,
-					title: true,
-					deletedAt: true,
-					user: { select: { id: true, name: true, displayName: true } },
-				},
-			},
-			targetUser: { select: { id: true, name: true, displayName: true } },
-			workSession: {
-				select: {
-					id: true,
-					title: true,
-					content: true,
-					deletedAt: true,
-					themeProject: {
-						select: {
-							id: true,
-							title: true,
-							user: { select: { id: true, name: true, displayName: true } },
-						},
-					},
-				},
-			},
-		},
+		select: contentReportSelect,
 	})
 	const hasMore = rows.length > limit
 	const items = hasMore ? rows.slice(0, limit) : rows
 	const last = items[items.length - 1]
 	return { items, nextCursor: hasMore && last ? last.id : null }
 }
-
-export type ContentReportRow = Awaited<ReturnType<typeof listContentReports>>["items"][number]
 
 export async function countContentReports(): Promise<Record<ReportStatus, number>> {
 	const groups = await prisma.contentReport.groupBy({ by: ["status"], _count: { _all: true } })
@@ -736,7 +846,7 @@ export async function countContentReports(): Promise<Record<ReportStatus, number
 	return counts
 }
 
-export interface AreaStat {
+export type AreaStat = {
 	id: RegionId
 	label: string
 	/** Accounts whose timezone maps here. */
@@ -747,7 +857,7 @@ export interface AreaStat {
 	hours: number
 }
 
-export interface CountryStat {
+export type CountryStat = {
 	country: string
 	/** Accounts whose timezone maps here. */
 	users: number
@@ -795,13 +905,13 @@ async function loadRegionInputs() {
 type RegionInputs = Awaited<ReturnType<typeof loadRegionInputs>>
 
 /** One (project, phase) worth of hours, ready to roll up. */
-interface HoursByPhase {
+type HoursByPhase = {
 	userId: string
 	sessions: SessionRow[]
 	links: LinkRow[]
 }
 
-export interface HoursByUser {
+export type HoursByUser = {
 	/** Total hours per account. An account with nothing logged is absent rather than present at zero. */
 	hours: Map<string, number>
 	/**
@@ -892,7 +1002,7 @@ export async function getCountryStats(): Promise<CountryStat[]> {
 		.sort((a, b) => rankLast(b.country, b.users) - rankLast(a.country, a.users))
 }
 
-export interface DayActivity {
+export type DayActivity = {
 	/** YYYY-MM-DD in the program timezone, as the journal stamped it. */
 	day: string
 	devlogs: number
@@ -953,7 +1063,7 @@ export async function getDailyActivity(): Promise<DayActivity[]> {
 	return out
 }
 
-export interface GoalDayActivity {
+export type GoalDayActivity = {
 	/** YYYY-MM-DD in the program timezone, as the journal stamped it. */
 	day: string
 	/** Journal hours and the people behind them, one entry per answer to the goal prompt, in `GOAL_OPTIONS` order. */
@@ -1019,8 +1129,8 @@ export async function getDailyActivityByGoal(): Promise<GoalDayActivity[]> {
 	return out
 }
 
-export interface HoursBucket {
-	/** The bucket as it reads on the axis, e.g. "10–20". */
+export type HoursBucket = {
+	/** The bucket as it reads on the axis, e.g. "10-20". */
 	label: string
 	/** Accounts whose total lands in this bucket. */
 	participants: number
@@ -1028,7 +1138,7 @@ export interface HoursBucket {
 	hours: number
 }
 
-export interface HoursDistribution {
+export type HoursDistribution = {
 	buckets: HoursBucket[]
 	/** Accounts with any hours at all – the histogram's denominator. */
 	withHours: number
@@ -1104,7 +1214,7 @@ export async function getHoursDistribution(): Promise<HoursDistribution> {
 	}
 }
 
-export interface FirstProjectStat {
+export type FirstProjectStat = {
 	/** Starter title, or "Custom project" for a self-named idea. */
 	label: string
 	starter: boolean
@@ -1144,7 +1254,7 @@ export async function getFirstProjectStats(): Promise<FirstProjectStat[]> {
 }
 
 /** The four columns each week's cluster is split into. */
-export interface WeekProjectCluster {
+export type WeekProjectCluster = {
 	/** 0 for the warm-up import, then the ten program weeks in order. */
 	week: number
 	/** What the axis prints: the theme, or the warm-up track. */
@@ -1178,7 +1288,7 @@ function projectColumn(project: {
 }
 
 /** One column of the season, before any measure is put in it. */
-interface WeekSlot {
+type WeekSlot = {
 	week: number
 	label: string
 	phase: Phase | null
@@ -1241,7 +1351,7 @@ export async function getProjectsByWeek(): Promise<WeekProjectCluster[]> {
 	return [...clusters.values()].sort((a, b) => a.week - b.week)
 }
 
-export interface WeekHoursCluster {
+export type WeekHoursCluster = {
 	/** 0 for the warm-up import, then the ten program weeks in order. */
 	week: number
 	/** What the axis prints: the theme, or the warm-up track. */
@@ -1332,7 +1442,7 @@ export async function getHoursByWeek(): Promise<WeekHoursCluster[]> {
 	return [...clusters.values()].sort((a, b) => a.week - b.week)
 }
 
-export interface VerificationStat {
+export type VerificationStat = {
 	label: string
 	users: number
 }
@@ -1368,7 +1478,7 @@ const VERIFICATION_STATUS_LABELS: Record<string, string> = {
 	ineligible: "Ineligible",
 }
 
-export interface ReviewerResultStat {
+export type ReviewerResultStat = {
 	result: ReviewResult
 	/** Distinct projects whose most recent live review is this one, written today. */
 	today: number
@@ -1376,7 +1486,7 @@ export interface ReviewerResultStat {
 	total: number
 }
 
-export interface ReviewerStats {
+export type ReviewerStats = {
 	/** Distinct projects with a live review written today, program-timezone day. */
 	reviewedToday: number
 	/** Distinct projects carrying at least one live review. */
@@ -1428,7 +1538,7 @@ export async function getReviewerStats(): Promise<ReviewerStats> {
 	}
 }
 
-export interface ProjectReviewStatusStat {
+export type ProjectReviewStatusStat = {
 	label: string
 	value: number
 }
@@ -1502,7 +1612,7 @@ function ariToResult(decision: string | null): ReviewResult | null {
 // ─── User-flow Sankey ─────────────────────────────────────────────────────────
 
 /** One box in the Sankey: a group of users at one stage, with the people who will leave or join it. */
-export interface SankeyNode {
+export type SankeyNode = {
 	id: string
 	label: string
 	/** Users in this box. The sum over a stage is that stage's headcount, not the program total. */
@@ -1510,7 +1620,7 @@ export interface SankeyNode {
 }
 
 /** A ribbon: the users who go from one box to the next box they reach. */
-export interface SankeyLink {
+export type SankeyLink = {
 	source: string
 	target: string
 	value: number
@@ -1522,14 +1632,14 @@ export interface SankeyLink {
 	fan: "out" | "in" | null
 }
 
-export interface SankeyStage {
+export type SankeyStage = {
 	/** Column heading. */
 	label: string
 	/** Node ids in this column, top to bottom. The order is deliberate, not by size. */
 	nodes: string[]
 }
 
-export interface SankeyDiagram {
+export type SankeyDiagram = {
 	stages: SankeyStage[]
 	nodes: SankeyNode[]
 	links: SankeyLink[]
@@ -1538,7 +1648,7 @@ export interface SankeyDiagram {
 }
 
 /** What share of onboarded finishers did each tracked activity: one maker counts in every column they reached. */
-export interface ActivityShare {
+export type ActivityShare = {
 	/** Makers who finished onboarding: the denominator every column reads against. */
 	total: number
 	activities: { key: string; label: string; base: string; users: number; share: number }[]

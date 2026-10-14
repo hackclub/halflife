@@ -13,7 +13,7 @@ import type { TierId } from "@/lib/config/tiers"
 
 export type OnboardingStepId = "experience" | "week" | "project" | "idea" | "tier" | "tracking" | "repo"
 
-export interface OnboardingStep {
+export type OnboardingStep = {
 	readonly id: OnboardingStepId
 	/** 1-based, and what renders as the "n/6" counter. */
 	readonly number: number
@@ -88,7 +88,7 @@ export const EXPERIENCE_OPTIONS = [
  *
  * Taking one locks the tier request to 1, so these have to be genuinely Tier 1 in scope. Each week is meant to get its own; until those repos exist, Starbie, week one's, stands in for every theme without one.
  */
-export interface StarterProject {
+export type StarterProject = {
 	readonly id: string
 	/** The weeks it is offered in. */
 	readonly themes: readonly Theme[]
@@ -157,7 +157,7 @@ export const STARTER_MODIFICATION_NOTE =
  *
  * The comp branches this on the answer to question one – "If beginner: information about PCBs, else: example projects" – so both halves are here and the step picks one.
  */
-export interface WeekIntro {
+export type WeekIntro = {
 	readonly theme: Theme
 	readonly kicker: string
 	readonly headline: string

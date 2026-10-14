@@ -35,7 +35,7 @@ const BANNER = (what: string, projectId: string, generatedAt: Date, link: string
 	`> [!NOTE]\n> This ${what} is mirrored from [Half Life](https://halflife.hackclub.com) – [open the project](${link}). ` +
 	`Editing it here will not change the platform's copy, and the next sync overwrites this file.\n`
 
-export interface JournalEntry {
+export type JournalEntry = {
 	id: string
 	phase: Phase
 	title: string
@@ -162,12 +162,12 @@ function newestOf(dates: Date[]): Date {
 /**
  * What a renderer returns: a file to write, never a deletion. Deletions only enter the sync's file set as explicit entries (see `legacyBomDeletion`), so narrowing here keeps every `.content` read below null-safe without assertions.
  */
-export interface RenderedFile {
+export type RenderedFile = {
 	path: string
 	content: string
 }
 
-export interface ProjectMeta {
+export type ProjectMeta = {
 	id: string
 	title: string
 	description: string | null
@@ -232,15 +232,13 @@ export function renderJournal(project: ProjectMeta, entries: JournalEntry[]): Re
 			"",
 		)
 		if (entry.content) lines.push(htmlToMarkdown(entry.content), "")
-		for (const clip of entry.timelapses) {
-			if (clip.url) lines.push(`[Timelapse](${clip.url})`, "")
-		}
+		for (const clip of entry.timelapses) if (clip.url) lines.push(`[Timelapse](${clip.url})`, "")
 	}
 
 	return { path: JOURNAL_PATH, content: lines.join("\n") }
 }
 
-export interface BomLineForFile {
+export type BomLineForFile = {
 	name: string
 	purpose: string | null
 	quantity: number

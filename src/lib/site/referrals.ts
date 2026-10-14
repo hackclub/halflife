@@ -27,14 +27,14 @@ const CACHE_TTL_MS = 60_000
 /** A failure is held briefly so a blip does not pin an empty table for a minute. */
 const FAILED_TTL_MS = 15_000
 
-export interface ReferralLeaderRow {
+export type ReferralLeaderRow = {
 	code: string
 	/** The code owner's address, when their own sign-up row is still present. */
 	email: string | null
 	signups: number
 }
 
-export interface ReferralLeaderboard {
+export type ReferralLeaderboard = {
 	/** Highest-signup links first. */
 	rows: ReferralLeaderRow[]
 	/** Distinct people attributed to any referral link. */
@@ -43,7 +43,7 @@ export interface ReferralLeaderboard {
 	activeCodes: number
 }
 
-interface Cached {
+type Cached = {
 	at: number
 	ttl: number
 	value: Promise<ReferralLeaderboard | null>

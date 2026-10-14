@@ -2,14 +2,7 @@ import prisma from "@/lib/prisma"
 import type { ProjectReviewStats, WeekReviewProgress } from "./review-store"
 import { ANONYMOUS_ARI } from "./review-store"
 import { getSlackUserNames } from "./slack"
-import {
-	countedLine,
-	creditedLine,
-	LEADERBOARD_LIMIT,
-	leaderboardLine,
-	renderSummary,
-	type SummaryBoard,
-} from "./summary"
+import { countedLine, creditedLine, rankedShareBoard, renderSummary, type SummaryBoard } from "./summary"
 
 /**
  * The daily project-review summary, the same post as the ticket summary with review nouns.
@@ -57,7 +50,7 @@ async function namesFor(entries: ProjectReviewStats["leaderboard"]): Promise<Map
 }
 
 /** How wide each week's bar is, in characters. Fixed, so every row is the same length and the counts line up. */
-const WEEK_BAR_WIDTH = 10
+const SHARE_BAR_WIDTH = 10
 
 /**
  * One week's progress as a text bar: `week 1 · PCBs  ██████░░░░   12/20 ·  60%`.
@@ -66,8 +59,8 @@ const WEEK_BAR_WIDTH = 10
  */
 function weekBarLine(row: WeekReviewProgress, labelWidth: number, countWidth: number): string {
 	const share = row.total === 0 ? 0 : row.reviewed / row.total
-	const filled = Math.round(share * WEEK_BAR_WIDTH)
-	const bar = "█".repeat(filled) + "░".repeat(WEEK_BAR_WIDTH - filled)
+	const filled = Math.round(share * SHARE_BAR_WIDTH)
+	const bar = "█".repeat(filled) + "░".repeat(SHARE_BAR_WIDTH - filled)
 	const count = `${row.reviewed}/${row.total}`.padStart(countWidth)
 	const pct = `${Math.round(share * 100)}%`.padStart(4)
 	return `${`week ${row.week} · ${row.label}`.padEnd(labelWidth)} ${bar} ${count} · ${pct}`
@@ -91,23 +84,6 @@ export async function buildReviewSummary(stats: ProjectReviewStats): Promise<str
 	const global = stats.globalLeaderboard
 	const names = await namesFor([...daily, ...global])
 
-	const board = (title: string, rows: typeof daily): SummaryBoard => ({
-		title,
-		total: rows.length,
-		lines: rows
-			.slice(0, LEADERBOARD_LIMIT)
-			.map((entry, index) =>
-				leaderboardLine(
-					index + 1,
-					names.get(entry.email) ?? entry.email,
-					entry.reviewed,
-					"reviewed",
-					"submission",
-					"submissions",
-				),
-			),
-	})
-
 	const weekly = weekProgressSection(stats.byWeek)
 
 	return renderSummary({
@@ -117,8 +93,16 @@ export async function buildReviewSummary(stats: ProjectReviewStats): Promise<str
 			{ singular: "was handed in", plural: "were handed in" },
 		)} and ${creditedLine(stats.reviewed, "review")}`,
 		boards: [
-			board(":yay-peace: today's leaderboard", daily),
-			board(":yay-blush-2: all-time leaderboard", global),
+			rankedShareBoard(
+				":yay-peace: today's leaderboard",
+				daily.map((row) => ({ name: names.get(row.email) ?? row.email, count: row.reviewed })),
+				daily.reduce((n, row) => n + row.reviewed, 0),
+			),
+			rankedShareBoard(
+				":yay-blush-2: all-time leaderboard",
+				global.map((row) => ({ name: names.get(row.email) ?? row.email, count: row.reviewed })),
+				global.reduce((n, row) => n + row.reviewed, 0),
+			),
 			...(weekly ? [weekly] : []),
 		],
 	})

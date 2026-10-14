@@ -183,7 +183,10 @@ function ReelRow({ reel, onAdd, onChanged }: { reel: MyReel; onAdd: () => void; 
 										type="button"
 										onClick={() => remove(link.id)}
 										disabled={removing !== null}
-										aria-label={`Remove the ${PLATFORM_INFO[link.platform].label} link`}
+										aria-label={
+											removing === link.id ? "Removing…" : `Remove the ${PLATFORM_INFO[link.platform].label} link`
+										}
+										aria-live="polite"
 										className="grid size-8 shrink-0 place-items-center rounded-full text-navy-soft transition-colors hover:bg-coral/10 hover:text-coral-deep disabled:opacity-50"
 									>
 										<IconX className="text-sm" />

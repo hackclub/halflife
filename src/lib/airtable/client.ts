@@ -2,7 +2,7 @@ import "server-only"
 
 const API_BASE = "https://api.airtable.com/v0"
 
-export interface AirtableConfig {
+export type AirtableConfig = {
 	apiKey: string
 	baseId: string
 }
@@ -113,7 +113,7 @@ export async function airtableFetch<T>(config: AirtableConfig, path: string, ini
 	return (await res.json()) as T
 }
 
-export interface AirtableRecord {
+export type AirtableRecord = {
 	id: string
 	fields: Record<string, unknown>
 	createdTime?: string

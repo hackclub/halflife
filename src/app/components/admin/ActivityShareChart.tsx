@@ -1,4 +1,5 @@
 import { EmptyState } from "@/app/components/ui"
+import { fmtInt } from "@/lib/numbers"
 import type { ActivityShare } from "@/lib/queries/admin"
 
 /**
@@ -14,7 +15,7 @@ const COLUMN_COLORS: Record<string, string> = {
 }
 
 /**
- * What share of the makers who finished onboarding did each tracked activity: one column per kind, all read off the same 0–100% scale, so the heights compare directly.
+ * What share of the makers who finished onboarding did each tracked activity: one column per kind, all read off the same 0-100% scale, so the heights compare directly.
  *
  * One maker counts in every column they reached – the columns add up to far more than the headcount, which is the point: onboarding finishers do several of these things, and this says which ones. The counts behind the shares ride along in each column's title and in the diagram's label, so the shape and the base are both on screen.
  */
@@ -43,7 +44,7 @@ export function ActivityShareChart({ share }: { share: ActivityShare }) {
 				<svg
 					viewBox={`0 0 ${W} ${H}`}
 					role="img"
-					aria-label={`Share of the ${share.total.toLocaleString("en-US")} makers who finished onboarding who did each activity: ${summary}`}
+					aria-label={`Share of the ${fmtInt(share.total)} makers who finished onboarding who did each activity: ${summary}`}
 					style={{ display: "block", width: "100%", minWidth: "380px", height: "auto" }}
 				>
 					{[0, 0.25, 0.5, 0.75, 1].map((t) => (
@@ -80,7 +81,7 @@ export function ActivityShareChart({ share }: { share: ActivityShare }) {
 									rx={3}
 									style={{ fill: COLUMN_COLORS[a.key] ?? "var(--color-accent)" }}
 								>
-									<title>{`${a.label}: ${a.users.toLocaleString("en-US")} of ${share.total.toLocaleString("en-US")} finishers (${(a.share * 100).toFixed(1)}%)`}</title>
+									<title>{`${a.label}: ${fmtInt(a.users)} of ${fmtInt(share.total)} finishers (${(a.share * 100).toFixed(1)}%)`}</title>
 								</rect>
 								<text
 									x={xOf(i) + colW / 2}
@@ -110,8 +111,8 @@ export function ActivityShareChart({ share }: { share: ActivityShare }) {
 			</div>
 
 			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.5rem" }}>
-				Share of the {share.total.toLocaleString("en-US")} makers who finished onboarding who did each thing – one maker
-				counts in every column they reached. None is the finishers who did none of them.
+				Share of the {fmtInt(share.total)} makers who finished onboarding who did each thing – one maker counts in every
+				column they reached. None is the finishers who did none of them.
 			</p>
 		</div>
 	)

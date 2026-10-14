@@ -11,7 +11,7 @@ export type CheckpointKind =
 	| "submit" // the week gate
 	| "demo" // build-week working-project video
 
-export interface Checkpoint {
+export type Checkpoint = {
 	id: string
 	weekId: number
 	kind: CheckpointKind
@@ -36,7 +36,7 @@ export interface Checkpoint {
 }
 
 /** One saved journal session: the entry, the time claimed, and the evidence. */
-export interface SessionLog {
+export type SessionLog = {
 	id: string
 	minutes: number
 	body: string
@@ -49,7 +49,7 @@ export interface SessionLog {
 }
 
 /** Everything about a week that does not depend on the maker's tier. */
-export interface WeekMeta {
+export type WeekMeta = {
 	id: number
 	phase: Phase
 	/** "PCB", "CAD"… used for the banner eyebrow and the shop/docs cross-links. */
@@ -88,7 +88,7 @@ export interface Week extends WeekMeta {
 	checkpoints: Checkpoint[]
 }
 
-export interface Tier {
+export type Tier = {
 	id: 1 | 2 | 3
 	funding: number
 	hours: string
@@ -98,7 +98,7 @@ export interface Tier {
 	fundingHours: number
 }
 
-export interface Project {
+export type Project = {
 	id: string
 	name: string
 	description: string
@@ -122,7 +122,7 @@ export interface Project {
 
 export type Experience = "first" | "little" | "some" | "lots"
 
-export interface JournalEntry {
+export type JournalEntry = {
 	id: string
 	author: string
 	avatar: string
@@ -135,7 +135,7 @@ export interface JournalEntry {
 	media?: { kind: "board" | "cad" | "scope" | "bench"; caption: string }
 }
 
-export interface Reel {
+export type Reel = {
 	id: string
 	author: string
 	handle: string
@@ -148,7 +148,7 @@ export interface Reel {
 	scene: "pcb" | "cad" | "synth" | "display" | "bread" | "hq"
 }
 
-export interface ShopItem {
+export type ShopItem = {
 	id: string
 	name: string
 	blurb: string
@@ -158,7 +158,7 @@ export interface ShopItem {
 	stock: "in" | "low" | "out"
 }
 
-export interface DocArticle {
+export type DocArticle = {
 	slug: string
 	title: string
 	section: string

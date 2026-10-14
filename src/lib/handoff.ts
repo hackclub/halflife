@@ -31,7 +31,7 @@ function hashToken(token: string): string {
 	return createHash("sha256").update(token).digest("hex")
 }
 
-export interface NewHandoff {
+export type NewHandoff = {
 	id: string
 	/** The only time the plaintext token exists. Never stored, never logged. */
 	token: string
@@ -63,7 +63,7 @@ export async function createHandoff(userId: string): Promise<NewHandoff> {
 	return { id: handoff.id, token, expiresAt: handoff.expiresAt }
 }
 
-export interface HandoffTarget {
+export type HandoffTarget = {
 	id: string
 	userId: string
 	expiresAt: Date
@@ -94,7 +94,7 @@ export async function resolveHandoff(token: string): Promise<HandoffTarget | nul
 	return { id: row.id, userId: row.userId, expiresAt: row.expiresAt }
 }
 
-export interface HandoffUploadResult {
+export type HandoffUploadResult = {
 	objectKey: string
 }
 
@@ -111,9 +111,8 @@ export async function completeHandoff(
 	if (!target) throw new HttpError("NOT_FOUND", "This link has expired or has already been used")
 
 	if (!file.type.startsWith(ALLOWED_PREFIX)) throw new HttpError("VALIDATION_FAILED", "That is not a video")
-	if (file.size > MAX_UPLOAD_BYTES) {
+	if (file.size > MAX_UPLOAD_BYTES)
 		throw new HttpError("VALIDATION_FAILED", `Videos must be under ${MAX_UPLOAD_BYTES} bytes`)
-	}
 	const check = validateUpload(file.name, file.type, file.size)
 	if (!check.ok) throw new HttpError("VALIDATION_FAILED", check.reason)
 

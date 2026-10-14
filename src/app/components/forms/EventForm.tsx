@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { Button, Callout, Field } from "@/app/components/ui"
 import { cx } from "@/lib/cx"
+import { formatShortDate } from "@/lib/deadline"
 import { type CalendarEvent, EVENT_COLOURS, type EventColour, eventColour, HUDDLE_URL } from "@/lib/events"
 
 const WEEK_MS = 7 * 86_400_000
@@ -213,8 +214,7 @@ export function EventForm({
               about to write before writing it. */}
 			{!editing && repeatWeeks > 1 && startsAt ? (
 				<p className="hl-hint" style={{ margin: 0 }}>
-					{repeatWeeks} occurrences, every {WEEK_MS / 86_400_000} days from{" "}
-					{new Date(startsAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })} to{" "}
+					{repeatWeeks} occurrences, every {WEEK_MS / 86_400_000} days from {formatShortDate(startsAt)} to{" "}
 					{new Date(new Date(startsAt).getTime() + (repeatWeeks - 1) * WEEK_MS).toLocaleDateString("en-US", {
 						month: "short",
 						day: "numeric",

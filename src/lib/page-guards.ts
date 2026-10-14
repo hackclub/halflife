@@ -6,7 +6,7 @@ import { auth } from "@/lib/auth"
 import type { SessionUser } from "@/lib/guards"
 import { getUserRolesIfExists, hasAnyPermission, hasPermission, type Permission, type Role } from "@/lib/permissions"
 
-export interface PageContext {
+export type PageContext = {
 	user: SessionUser
 	roles: Role[]
 }

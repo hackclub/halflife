@@ -1,12 +1,13 @@
 import "server-only"
+import type { HackatimeLink, Prisma, SessionMedia } from "@/app/generated/prisma/client"
 import { Phase } from "@/app/generated/prisma/enums"
 import { getThemeDef, projectDisplayTitle } from "@/lib/config/program"
 import { displayName } from "@/lib/display-name"
-import { getHoursBreakdown } from "@/lib/hours"
+import { getHoursBreakdown, type HoursBreakdown } from "@/lib/hours"
 import prisma from "@/lib/prisma"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
-export interface QueueItem {
+export type QueueItem = {
 	id: string
 	themeProjectId: string
 	phase: Phase
@@ -89,38 +90,66 @@ export async function getReviewQueue(opts: {
 	}
 }
 
+/** The submission row with everything its review page renders: project, maker, claim, dispute and reviews. */
+export type SubmissionDetail = Prisma.PhaseSubmissionGetPayload<{ include: typeof submissionDetailInclude }>
+
+/** A devlog session with its evidence resolved to URLs for the review page. */
+export type ReviewSession = Omit<
+	Prisma.WorkSessionGetPayload<{ include: { media: true; timelapses: true } }>,
+	"media"
+> & { media: (SessionMedia & { url: string | null })[] }
+
+/** A prior decision on any of the project's submissions: who wrote it and which phase it decided. */
+export type PriorReview = Prisma.SubmissionReviewGetPayload<{
+	include: { reviewer: { select: { name: true; displayName: true } }; submission: { select: { phase: true } } }
+}>
+
+/** Everything the review page renders for one submission. */
+export type SubmissionDetailView = {
+	submission: SubmissionDetail
+	claimLive: boolean
+	themeLabel: string
+	coverImageUrl: string | null
+	breakdown: HoursBreakdown
+	sessions: ReviewSession[]
+	links: HackatimeLink[]
+	priorReviews: PriorReview[]
+}
+
+const submissionDetailInclude = {
+	themeProject: {
+		include: {
+			user: {
+				select: {
+					id: true,
+					name: true,
+					displayName: true,
+					email: true,
+					slackId: true,
+					verificationStatus: true,
+					fraudFlagged: true,
+				},
+			},
+		},
+	},
+	claim: { include: { reviewer: { select: { id: true, name: true, displayName: true } } } },
+	dispute: true,
+	reviews: {
+		orderBy: { createdAt: "desc" },
+		include: { reviewer: { select: { id: true, name: true, displayName: true } } },
+	},
+} as const satisfies Prisma.PhaseSubmissionInclude
+
 export async function getSubmissionDetail(
 	submissionId: string,
 	reviewerId?: string,
 	flags?: { includeContact?: boolean; includeRiskFlags?: boolean },
-) {
+): Promise<SubmissionDetailView | null> {
 	const includeContact = flags?.includeContact ?? false
 	const includeRiskFlags = flags?.includeRiskFlags ?? false
 	const submission = await prisma.phaseSubmission.findUnique({
 		where: { id: submissionId },
-		include: {
-			themeProject: {
-				include: {
-					user: {
-						select: {
-							id: true,
-							name: true,
-							displayName: true,
-							email: true,
-							slackId: true,
-							verificationStatus: true,
-							fraudFlagged: true,
-						},
-					},
-				},
-			},
-			claim: { include: { reviewer: { select: { id: true, name: true, displayName: true } } } },
-			dispute: true,
-			reviews: {
-				orderBy: { createdAt: "desc" },
-				include: { reviewer: { select: { id: true, name: true, displayName: true } } },
-			},
-		},
+		include: submissionDetailInclude,
 	})
 	if (!submission) return null
 	// Your own work is not reviewable by you, so it is not visible here either. Null rather than a 403: the review surface should not confirm that this is a submission you merely lack rights over.
@@ -184,7 +213,7 @@ export async function getSubmissionDetail(
 	}
 }
 
-export interface OpenDispute {
+export type OpenDispute = {
 	id: string
 	note: string
 	createdAt: Date

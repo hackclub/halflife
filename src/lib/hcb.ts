@@ -103,7 +103,7 @@ export function parseGrantHashid(input: string): string | null {
 	return /\/grants\/([A-Za-z0-9]{4,32})/.exec(url.pathname)?.[1] ?? null
 }
 
-export interface TopUpResult {
+export type TopUpResult = {
 	transactionId: string | null
 }
 
@@ -122,7 +122,7 @@ export async function topUpCardGrant(grantHashid: string, amountCents: number): 
 	return { transactionId: data.disbursements?.[0]?.transaction_id ?? null }
 }
 
-export interface GrantDisbursement {
+export type GrantDisbursement = {
 	transactionId: string | null
 	/** Every HCB disbursement carries an amount; a row without one is not trusted. */
 	amountCents: number

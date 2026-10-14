@@ -116,9 +116,7 @@ async function via(forge: Forge, route: Route, path: string): Promise<Response> 
 	let why = `${forge.label} did not answer.`
 	let timeouts = 0
 	for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
-		if (Date.now() < blockedUntil[route]) {
-			throw new ForgeUnavailable(`${forge.label} is rate-limiting us right now.`)
-		}
+		if (Date.now() < blockedUntil[route]) throw new ForgeUnavailable(`${forge.label} is rate-limiting us right now.`)
 		if (attempt > 0) await sleep(RETRY_DELAYS_MS[attempt - 1] ?? 1000)
 
 		const { url, headers } = request(route, path)

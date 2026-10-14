@@ -13,7 +13,7 @@ import { Theme } from "@/app/generated/prisma/enums"
  *
  * This is why there is no `bankHours` here any more. It used to be a tier property (2/5/10), which quietly made the expensive machines unreachable from Tier 1 and the cheap ones over-funded from Tier 3.
  */
-export interface Tier {
+export type Tier = {
 	readonly id: 1 | 2 | 3
 	readonly name: string
 	/** Grant paid through the YSWS pipeline, in whole USD. */
@@ -31,7 +31,7 @@ export interface Tier {
 	readonly showcase: Partial<Record<Theme, readonly TierShowcaseProject[]>>
 }
 
-export interface TierShowcaseProject {
+export type TierShowcaseProject = {
 	readonly title: string
 	/** A picture of the finished board. Remote hosts must be in next.config's remotePatterns. */
 	readonly image: string

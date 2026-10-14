@@ -46,9 +46,8 @@ async function listSignupEmails(
 		total += page.records.length
 		for (const r of page.records) {
 			const email = r.fields[LOOPS_FIELDS.email]
-			if (typeof email === "string" && !byEmail.has(email.trim().toLowerCase())) {
+			if (typeof email === "string" && !byEmail.has(email.trim().toLowerCase()))
 				byEmail.set(email.trim().toLowerCase(), r.id)
-			}
 		}
 		offset = page.offset
 	} while (offset)

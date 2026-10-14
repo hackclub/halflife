@@ -11,7 +11,7 @@ export { TIERS } from "./config/tiers"
  * Ten weeks: five design weeks, then the same five themes built for real. A design week opens by settling what is being made – the yellow onboarding checkpoint in week 1, the project form after that – and then pitches it in the idea reel before a single hour is logged against it. Week 1 is the exception: the reel is optional there, offered side by side with the first devlog entry instead of gating it. Build weeks skip both and end on a working-demo video.
  */
 
-interface ThemeSeed {
+type ThemeSeed = {
 	theme: string
 	designHeadline: string
 	buildHeadline: string
@@ -157,6 +157,35 @@ export function progressReelHours(phase: Phase, k: number): number {
 	// 5h, 15h, 25h… – the first under the cheapest tier's floor, then every ten.
 	if (k <= 1) return 5
 	return 5 + (k - 1) * 10
+}
+
+/**
+ * Whether a running week still stands between the trail and the week after it.
+ *
+ * Pure, and apart from the store, because this rule has been wrong twice in opposite directions and both times the
+ * symptom was the same: the rest of the season shut behind a hand-in that could not be made.
+ *
+ * - A week that has been handed in holds nothing.
+ * - A week that has closed holds nothing. Its Submit stays open so late work can still go in, and waiting on a
+ *   hand-in that may never come would shut every week after it for good.
+ * - A week that is still running holds the next one only while its own hand-in is open. Below the week's floor there
+ *   is nothing to hand in yet – and a week is extended precisely when its maker is behind, so holding them would
+ *   turn asking for more time into being locked out of the season. A maker who *can* hand in and has not is still
+ *   held, which is the nudge an extension is meant to keep.
+ */
+export function weekHoldsNext(input: {
+	/** The week's Submit has been made. */
+	submitted: boolean
+	/** The week's clock has run out. */
+	passed: boolean
+	/** Hours logged against the week. */
+	hours: number
+	/** The hours its Submit opens at. */
+	floor: number
+}): boolean {
+	if (input.submitted) return false
+	if (input.passed) return false
+	return input.hours >= input.floor
 }
 
 /**

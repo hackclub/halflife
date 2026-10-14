@@ -210,6 +210,8 @@ async function bodies() {
 		],
 		["submitPhase", submitSchema, { phase: "DESIGN", notes: "it works", attachmentKeys: ["sessions/u/cart.png"] }],
 		["submitPhase · no notes", submitSchema, { phase: "BUILD", attachmentKeys: [] }],
+		// Declining is a plain flag like the partial agreement: absent means false, and strict mode still refuses unknown keys.
+		["submitPhase · declined funding", submitSchema, { phase: "DESIGN", fundingDeclined: true }],
 		// The printer branch carries a machine and the two funding branches must not. The store sends `{ goal }` alone for those, so a schema that grew a required printer would break every one of them at once.
 		["setGoal · printer", setGoalSchema, { goal: "PRINTER", printerGoalId: "bambu-a1-mini" }],
 		["setGoal · funding all weeks", setGoalSchema, { goal: "FULL_FUNDING" }],
@@ -367,9 +369,8 @@ async function bodies() {
 		["a.mp4", false],
 		["", false],
 	]
-	for (const [key, owned] of keyCases) {
+	for (const [key, owned] of keyCases)
 		check(`key · ${key || "(empty)"} ${owned ? "is mine" : "is not mine"}`, isOwnedKey(me, key) === owned)
-	}
 
 	/* ── 4. Video container signatures ─────────────────────────────────────── */
 	//
@@ -408,9 +409,8 @@ async function bodies() {
 		["webm · magic only", new Uint8Array([0x1a, 0x45, 0xdf, 0xa3, 0, 0, 0, 0, 0, 0, 0, 0]), false],
 		["plain text", new TextEncoder().encode("hello world!"), false],
 	]
-	for (const [name, bytes, isVideo] of videoCases) {
+	for (const [name, bytes, isVideo] of videoCases)
 		check(`bytes · ${name} ${isVideo ? "is video" : "is not video"}`, isVideoBytes(bytes) === isVideo)
-	}
 
 	/* ── 5. Ari external ids ───────────────────────────────────────────────── */
 	//
@@ -867,9 +867,8 @@ async function bodies() {
 		["![a](javascript:alert(1))", 0],
 		["![a](https://x/a.png)![b](javascript:x)", 1],
 	]
-	for (const [source, expected] of imageCases) {
+	for (const [source, expected] of imageCases)
 		check(`images · "${source.slice(0, 40)}" → ${expected}`, countImages(source) === expected)
-	}
 
 	/* ── 6b. Repo sync file rendering ───────────────────────────────────────── */
 	//
@@ -985,6 +984,19 @@ async function bodies() {
 		check("repo-files · legacy bom deletion path", legacy.path === LEGACY_BOM_PATH && LEGACY_BOM_PATH === "BOM.md")
 		check("repo-files · legacy bom deletion is a delete", legacy.content === null)
 
+		// The BOM is what a PCB design week's funding is asked against, so its absence blocks the hand-in rather than warning. Pinned because the two lists are plain arrays a later edit can quietly re-sort a kind out of.
+		const { THEME_REPO_REQUIREMENTS, BOM_CSV_PATTERN } = await import("../src/lib/config/repo-checks")
+		const { Theme } = await import("../src/app/generated/prisma/enums")
+		check("repo-checks · a PCB repo must carry a BOM", THEME_REPO_REQUIREMENTS[Theme.PCB].required.includes("bom"))
+		check(
+			"repo-checks · the BOM is no longer merely recommended",
+			!THEME_REPO_REQUIREMENTS[Theme.PCB].recommended.includes("bom"),
+		)
+		check(
+			"repo-checks · the BOM pattern is the one the check reads",
+			BOM_CSV_PATTERN.test("BOM.csv") && BOM_CSV_PATTERN.test("hardware/bom-v2.csv") && !BOM_CSV_PATTERN.test("bom.md"),
+		)
+
 		// The date in the banner has to come from the data, not the wall clock. When it was `new Date()`, two renders of identical content differed, so the blob SHA never matched, "skip unchanged files" never fired, and every debounced sync committed a no-op diff. A render now pins the date to the newest entry (or the project row), so identical content is byte-identical.
 		const a = renderJournal(project, [entry()])
 		const b = renderJournal(project, [entry()])
@@ -1053,6 +1065,31 @@ async function bodies() {
 			capped.lines.length === 1 && capped.skipped.some((s) => s.reason === "beyond the parts-list limit"),
 		)
 	}
+
+	/* ── 6bba. Whether a week holds the next one shut ───────────────────────── */
+	//
+	// The gate that decides whether the trail's next week is reachable. It has been wrong twice in opposite
+	// directions, both times shutting the rest of the season behind a hand-in that could not be made: once for a week
+	// that closed with hours in it, and once for a week that was extended, which is granted precisely to the makers
+	// who have not reached the floor. Pinned because the symptom is a dead end rather than a wrong number.
+	const { weekHoldsNext } = await import("../src/lib/curriculum")
+	check(
+		"week-gate · an extended week below its floor does not hold the next",
+		!weekHoldsNext({ submitted: false, passed: false, hours: 3, floor: 9 }),
+	)
+	check(
+		"week-gate · an extended week that can be handed in still holds the next",
+		weekHoldsNext({ submitted: false, passed: false, hours: 9, floor: 9 }),
+	)
+	check(
+		"week-gate · a handed-in week holds nothing",
+		!weekHoldsNext({ submitted: true, passed: false, hours: 0, floor: 9 }),
+	)
+	check(
+		"week-gate · a closed week holds nothing, floor or not",
+		!weekHoldsNext({ submitted: false, passed: true, hours: 3, floor: 9 }) &&
+			!weekHoldsNext({ submitted: false, passed: true, hours: 30, floor: 9 }),
+	)
 
 	/* ── 6bbb. The landing page's week-1 countdown ──────────────────────────── */
 	//

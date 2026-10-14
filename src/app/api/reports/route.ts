@@ -97,9 +97,8 @@ export const POST = withRoute(async (req: Request) => {
 			select: { id: true },
 		})
 	} catch (err) {
-		if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+		if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002")
 			return fail("CONFLICT", `You have already reported this ${label} – staff will take a look`)
-		}
 		throw err
 	}
 

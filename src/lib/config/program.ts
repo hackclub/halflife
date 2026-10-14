@@ -53,7 +53,7 @@ export const ONBOARDING_CHECKPOINT_ID = "w1-onboard"
  */
 export const STREAK_GRACE_DAYS = 1
 
-export interface ThemeDef {
+export type ThemeDef = {
 	readonly id: Theme
 	readonly slug: string
 	readonly label: string

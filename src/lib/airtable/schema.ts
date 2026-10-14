@@ -9,7 +9,7 @@
  * The `fld…` ids are filled in once, from `GET https://api.airtable.com/v0/meta/bases/{baseId}/tables`, by running `yarn tsx scripts/dump-airtable-schema.ts` against the created base. Until then the writer falls back to names – see FIELD_MODE below.
  */
 
-export interface FieldDef<T = unknown> {
+export type FieldDef<T = unknown> = {
 	readonly id: string
 	readonly name: string
 	readonly __type?: T

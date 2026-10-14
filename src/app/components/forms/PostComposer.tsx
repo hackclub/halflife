@@ -5,11 +5,11 @@ import { PhoneHandoff } from "@/app/components/forms/PhoneHandoff"
 import { Button, Callout, Field, Panel } from "@/app/components/ui"
 import { postForm } from "@/lib/upload-progress"
 
-interface ApiError {
+type ApiError = {
 	error?: { message?: string }
 }
 
-export interface ComposerProject {
+export type ComposerProject = {
 	id: string
 	label: string
 }

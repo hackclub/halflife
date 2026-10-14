@@ -8,7 +8,7 @@
  * Deliberately pure (no server-only) so both the server queries and a renderer can name it. Same rule as lib/avatar.ts.
  */
 
-interface Person {
+type Person = {
 	name?: string | null
 	displayName?: string | null
 }

@@ -32,7 +32,7 @@ export async function recordSyncRun(
 	}
 }
 
-export interface LatestSyncRun {
+export type LatestSyncRun = {
 	syncKey: string
 	lastRunAt: Date
 	result: unknown

@@ -14,7 +14,7 @@ const CATEGORIES: { value: ShopItemCategory; label: string }[] = [
 ]
 
 /** The fields an existing item is edited from. */
-export interface ShopItemInitial {
+export type ShopItemInitial = {
 	id: string
 	name: string
 	description: string

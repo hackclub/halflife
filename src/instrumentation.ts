@@ -9,7 +9,7 @@
  * sign-in, and can only be checked on the HCA app itself; docs/RUNBOOK has it
  * on the pre-launch list.
  */
-export function register() {
+export function register(): void {
 	if (process.env.PULL_HCA_PII === "true" && !process.env.PII_ENCRYPTION_KEY) {
 		console.error(
 			"[config] PULL_HCA_PII=true but PII_ENCRYPTION_KEY is not set; address and birthday will not be stored",

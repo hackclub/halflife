@@ -17,7 +17,7 @@ import { postMessage, sendDM } from "@/lib/slack"
  * Called after the decision transaction has committed, from both decision paths (the console route and the Ari webhook), so the two cannot drift.
  */
 
-export interface ReviewOutcomeNotice {
+export type ReviewOutcomeNotice = {
 	themeProjectId: string
 	phase: Phase
 	result: ReviewResult
@@ -69,7 +69,7 @@ function headline(
 	}
 }
 
-export interface ReviewOutcomeMessage {
+export type ReviewOutcomeMessage = {
 	subject: string
 	/** Our words, in order. The reviewer's note is deliberately not among them. */
 	prose: string[]

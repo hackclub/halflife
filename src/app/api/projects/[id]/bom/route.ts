@@ -67,9 +67,8 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 			_count: true,
 			_max: { sortOrder: true },
 		})
-		if (last._count >= MAX_BOM_ITEMS) {
+		if (last._count >= MAX_BOM_ITEMS)
 			throw new HttpError("VALIDATION_FAILED", `A parts list can have at most ${MAX_BOM_ITEMS} lines`)
-		}
 
 		await tx.bomItem.create({
 			data: {

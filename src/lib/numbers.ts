@@ -15,3 +15,6 @@ export const round1 = (n: number): number => Math.round(n * 10) / 10
  * `whole === 0` is 0 rather than NaN or Infinity: every caller is a ratio of two headcounts, and an empty stage is a real state rather than an error.
  */
 export const pctOf = (part: number, whole: number): number => (whole === 0 ? 0 : round1((part / whole) * 100))
+
+/** Whole people and counts with thousands separators: 1234 -> "1,234". The admin charts each defined this inline until a change to the locale had to be found in four files. */
+export const fmtInt = (n: number): string => n.toLocaleString("en-US")

@@ -35,7 +35,7 @@ async function sumFor(tx: Tx, where: Prisma.LedgerEntryWhereInput): Promise<numb
 }
 
 /** A single spendable pot, plus its legacy split. Every balance read should go through this. */
-export interface Balances {
+export type Balances = {
 	/** Every coin. Buys anything in the shop, printers included. */
 	spendable: number
 	/**
@@ -69,7 +69,7 @@ export async function getEarnedCredit(tx: Tx, userId: string): Promise<number> {
 	return sumFor(tx, { userId, kind: { in: EARNING_KINDS } })
 }
 
-export interface LedgerEntryParams {
+export type LedgerEntryParams = {
 	userId: string
 	kind: LedgerKind
 	/** Which pot to move. Defaults to SPENDABLE; only the forced savings differ. */
@@ -106,7 +106,7 @@ export async function appendLedgerEntry(tx: Tx, params: LedgerEntryParams): Prom
 	})
 }
 
-export interface ReconcileParams {
+export type ReconcileParams = {
 	userId: string
 	themeProjectId: string
 	kind: LedgerKind

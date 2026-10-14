@@ -1,4 +1,5 @@
 import "server-only"
+import type { NextResponse } from "next/server"
 import { fail, ok } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import type { Guard } from "@/lib/guards"
@@ -28,7 +29,7 @@ export async function decideReport(
 	gate: Guard & { user: { id: string; email: string } },
 	id: string,
 	outcome: Outcome,
-) {
+): Promise<NextResponse> {
 	const report = await prisma.contentReport.findUnique({ where: { id }, select: { status: true } })
 	if (!report) return fail("NOT_FOUND", "Report not found")
 	if (report.status !== "OPEN") return fail("CONFLICT", "This report was already decided")

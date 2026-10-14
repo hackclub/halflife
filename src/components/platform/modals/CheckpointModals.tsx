@@ -32,6 +32,7 @@ import { COINS_PER_HOUR, paceTarget, printerById, submitFloorFor } from "@/lib/c
 import { THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { photosRequired, TIERS } from "@/lib/curriculum"
 import { cx } from "@/lib/cx"
+import { formatShortDate } from "@/lib/deadline"
 import {
 	PLATFORM_INFO,
 	PUBLIC_REEL_HASHTAG,
@@ -80,7 +81,7 @@ function fmtH(h: number) {
 	return `${to2(h)}h`
 }
 
-interface JournalDraft {
+type JournalDraft = {
 	tab: "journal" | "timelapse"
 	body: string
 	hoursText: string
@@ -468,6 +469,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	 * Finishing hands the maker back to the trail rather than straight into another entry. What comes next is the trail's to say: logging these hours may have brought a reel due, or opened the fork at the end of the week, and a modal that reopens itself would march past both.
 	 */
 	async function save() {
+		if (saving || uploading > 0) return
 		setSaving(true)
 		setSaveError(null)
 		if (editing) {
@@ -778,13 +780,14 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									? "On top of your timelapses – 0 if the recording covers it all."
 									: "(9.5 is 9 and a half hours)"
 							}
+							id="journal-hours"
 						>
 							<input
+								id="journal-hours"
 								value={hoursText}
 								onChange={(e) => setHoursText(e.target.value.replace(/[^\d.]/g, ""))}
 								inputMode="decimal"
 								placeholder="0"
-								aria-label="Hours spent on this session"
 								aria-invalid={overCap || undefined}
 								className={cx(borderedInputClass, "tabular-nums")}
 							/>
@@ -1032,7 +1035,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 /* ================================================================== *
  * Reel
  * ================================================================== */
-interface ReelDraft {
+type ReelDraft = {
 	clip: string
 	/** The bucket's URL for the clip, never a blob URL: those die with the page. */
 	url: string | null
@@ -1138,6 +1141,7 @@ export function PublicReelModal({
 	const filled = PUBLIC_REEL_PLATFORMS.filter((p) => values[p].trim())
 
 	async function save() {
+		if (saving) return
 		// The same check the server runs, so a wrong link is named on its field before anything is sent.
 		const found: Partial<Record<PublicReelPlatform, string>> = {}
 		for (const p of filled) {
@@ -1417,7 +1421,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const [postedId, setPostedId] = useState<string | null>(null)
 
 	async function post() {
-		if (!clip) return
+		if (!clip || posting) return
 		setPosting(true)
 		setPostError(null)
 		const { postId, error } = await postReel(checkpoint.id, caption.trim(), clip)
@@ -1496,7 +1500,11 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							{postError}
 						</p>
 					) : postBlocker ? (
-						<p role="status" className="hand mr-auto min-w-0 flex-1 text-[0.84rem] leading-snug text-coral-deep">
+						<p
+							id="reel-caption-blocker"
+							role="status"
+							className="hand mr-auto min-w-0 flex-1 text-[0.84rem] leading-snug text-coral-deep"
+						>
 							{postBlocker}
 						</p>
 					) : (
@@ -1558,6 +1566,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						<input
 							id="reel-caption"
 							value={caption}
+							aria-describedby={postBlocker ? "reel-caption-blocker" : undefined}
 							aria-invalid={!captionReady || undefined}
 							onChange={(e) => setCaption(e.target.value)}
 							placeholder="routed the whole board without a single ratline left"
@@ -1972,7 +1981,7 @@ export function UnsubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		>
 			<ModalTitle
 				id={titleId}
-				sub={`${handedIn ? `Submitted ${new Date(handedIn).toLocaleDateString("en-US", { month: "short", day: "numeric" })}. ` : ""}Unsubmitting takes it out of the review queue so you can change your entries, parts list or project details. Submit it again from this checkpoint when you're done.`}
+				sub={`${handedIn ? `Submitted ${formatShortDate(handedIn)}. ` : ""}Unsubmitting takes it out of the review queue so you can change your entries, parts list or project details. Submit it again from this checkpoint when you're done.`}
 			>
 				This week is waiting for review
 			</ModalTitle>
@@ -2075,11 +2084,14 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	// Over the tier's funding warns; past the leeway the grant covers only part of the cart, which is allowed but has to be agreed to rather than discovered at review.
 	const funding = partsFunding(bomTotal, selectedTier.grantUsd)
 	const bomOverCap = !isBuild && funding.needsAgreement
-	// An empty BOM the maker has deliberately declined funding for. Read off the loaded list every render rather than trusted from the toggle alone, so a stale flag can never unblock a week whose parts arrived after the box was ticked.
+	// No BOM, no carts, no order: declining funding is how an empty parts list hands in. Read off the loaded list every render rather than trusted from the toggle alone, so a stale flag can never unblock a week whose parts arrived after the box was ticked.
 	const bomEmpty = !isBuild && bom !== null && bom.items.length === 0
-	const fundingDeclined = bomEmpty && declinedFunding
-	// Same reading for the partial-funding box: honoured only while the cart is actually over, so raising the tier or editing the parts list back under it retires the tick on its own.
-	const partialFunding = bomOverCap && acceptsPartialFunding
+	// Declining is a stated preference, not a reading of the list: it holds with parts or without, and only while the list has loaded – unticked until the box is actually on screen.
+	const fundingDeclined = !isBuild && declinedFunding && bom !== null
+	// Same reading for the partial-funding box: honoured only while the cart is actually over, so raising the tier or editing the parts list back under it retires the tick on its own. Declining wins over agreeing: no funding means nothing to agree to.
+	const partialFunding = bomOverCap && acceptsPartialFunding && !fundingDeclined
+	// The gate needs the agreement only when there is something to agree to: under budget there is nothing, and declined means no grant at all.
+	const fundingOk = fundingDeclined || !bomOverCap || acceptsPartialFunding
 
 	const repoReady = repoResult?.canSubmit ?? false
 
@@ -2092,8 +2104,34 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				? clip && (works === "yes" || (works === "no" && writeup.trim().length >= 40))
 				: step === 2
 					? // No funding, no order, no carts to screenshot: a declined empty BOM carries no cart evidence.
-						(carts.length > 0 || fundingDeclined) && !tierBlocked && partialFunding
-					: clip && !tierBlocked && partialFunding && hasCover
+						(carts.length > 0 || fundingDeclined) && !tierBlocked && fundingOk
+					: clip && !tierBlocked && fundingOk && hasCover
+
+	/**
+	 * Why the button at the foot is greyed, in the maker's terms, or null when it is live.
+	 *
+	 * The button has always been disabled for exactly these reasons; what it never did was say which one was in the way, so a maker missing a cart screenshot met a dead Next with nothing on screen to explain it. The branches mirror `canAdvance` above step for step – a line here while the button is live would be worse than the silence it replaced.
+	 *
+	 * Step 1 keeps its own pair of lines at the foot: the repo check has a "still running" state the others do not. The cover banner at the top of the body is repeated here on purpose – it is a long scroll away from the button it blocks.
+	 */
+	function nextBlocker(): string | null {
+		if (step === 1) return null
+		// These two block whichever of the later steps is showing.
+		if (tierBlocked)
+			return `Your tier needs ${fmtH(tierShort(selectedTier.fundingHours))} more design time than you have logged this week. Pick a tier you have earned.`
+		if (!fundingOk) return "Tick the box agreeing to cover the part of the cart the grant does not."
+		if (isBuild)
+			return !clip
+				? "Record your demo video to carry on."
+				: works === "no" && writeup.trim().length < 40
+					? "Say what needs to change – a sentence or two."
+					: null
+		if (step === 2)
+			return carts.length === 0 && !fundingDeclined ? "Add a screenshot of your cart above to carry on." : null
+		if (!clip) return "Record your closing reel to carry on."
+		if (!hasCover) return "Add a cover image to your project before you can submit."
+		return null
+	}
 
 	/**
 	 * Handing a week in, in the order the pieces depend on each other.
@@ -2101,6 +2139,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	 * The tier first, because it is what the reviewer will be deciding against. Then the closing reel, awaited, so the submission a reviewer opens – and the YSWS row written just after it, which looks the reel up – already has the video rather than one arriving behind it. It is posted once: a retry after a refused hand-in reuses it. The submission last, and only once it has gone through is the reel offered for posting online.
 	 */
 	async function submit() {
+		if (submitting) return
 		setSubmitting(true)
 		setSubmitError(null)
 		if (project) setProjectTier(project.id, tier)
@@ -2120,6 +2159,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			notes: isBuild ? buildNotes : undefined,
 			attachmentKeys: carts.map((c) => c.objectKey),
 			partialFundingAccepted: partialFunding,
+			fundingDeclined,
 		})
 		setSubmitting(false)
 		if (refused) {
@@ -2139,7 +2179,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		else setOpenCheckpoint(null)
 	}
 
-	// Declining funding is the one choice in this sheet that an edit cannot quietly undo – once handed in without a BOM there is nothing to fund – so the box asks once more, following the repo's window.confirm precedent for irreversible choices.
+	// Declining funding is the one choice in this sheet that an edit cannot quietly undo – once handed in without it there is no grant to order – so the box asks once more, following the repo's window.confirm precedent for irreversible choices.
 	function toggleDeclinedFunding() {
 		if (declinedFunding) {
 			setDeclinedFunding(false)
@@ -2147,10 +2187,13 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		}
 		if (
 			window.confirm(
-				"Hand in with an empty parts list? No parts funding will be ordered for this project. You can still change your mind before you submit.",
+				bomEmpty
+					? "Hand in with an empty parts list? No parts funding will be ordered for this project. You can still change your mind before you submit."
+					: "Hand in without any parts funding? Your parts list stays on the project for the reviewer to see, but approving it orders no grant. You can still change your mind before you submit.",
 			)
 		) {
 			setDeclinedFunding(true)
+			setAcceptsPartialFunding(false)
 		}
 	}
 
@@ -2175,6 +2218,16 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					{step === 1 && !submitError && !repoReady && repoResult && (
 						<p className="hand mr-auto min-w-0 flex-1 text-[0.78rem] leading-snug text-coral-deep">
 							Fix the repo checks above to carry on.
+						</p>
+					)}
+					{step === 1 && !submitError && !repoReady && repoResult === null && (
+						<p role="status" className="hand mr-auto min-w-0 flex-1 text-[0.78rem] leading-snug text-navy-soft">
+							Checking your repo…
+						</p>
+					)}
+					{step > 1 && !submitError && nextBlocker() && (
+						<p role="alert" className="hand mr-auto min-w-0 flex-1 text-[0.78rem] leading-snug text-coral-deep">
+							{nextBlocker()}
 						</p>
 					)}
 					{step < total ? (
@@ -2374,8 +2427,8 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							)}
 						</>
 					)}
-					{/* Already stocked, or building from scrap: an empty BOM with funding declined hands in as-is, no carts needed. */}
-					{bomEmpty && (
+					{/* Already stocked, or building from scrap: declining funding hands the week in with no grant and no order. An empty BOM needs it; a stocked one takes it as a choice. */}
+					{!isBuild && bom !== null && (
 						<label
 							className={cx(
 								"sketch mt-4 flex w-full cursor-pointer items-start gap-3 rounded-2xl px-4 py-3.5 text-left transition-colors has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-violet has-[input:focus-visible]:ring-offset-2",
@@ -2403,7 +2456,9 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									I don&apos;t want parts funding for this project
 								</span>
 								<span className="hand mt-0.5 block text-[0.84rem] leading-snug text-navy-soft">
-									Hand in with an empty parts list – no carts, no order. We&apos;ll double-check before you submit.
+									{bomEmpty
+										? "Hand in with an empty parts list – no carts, no order. We'll double-check before you submit."
+										: "Your parts list stays for the reviewer to see, but approving it orders no grant – fund the build yourself. We'll double-check before you submit."}
 								</span>
 							</span>
 						</label>
@@ -2420,6 +2475,16 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									The checkout page with the total visible. Any vendor – add one per cart if the order is split.
 								</p>
 								<ImageUploads images={carts} onChange={setCarts} folder="sessions" max={10} label="Cart screenshot" />
+								{/* The gate below is `carts.length > 0`, and until now nothing on screen said so: the Next button simply stayed grey. Named here, next to the box that clears it. */}
+								{carts.length === 0 && (
+									<p className="mt-1 flex items-start gap-1.5 text-[0.84rem] leading-snug text-coral-deep">
+										<IconWarning className="mt-0.5 shrink-0 text-sm" />
+										<span>
+											At least one cart screenshot is needed before you can carry on – it is what the parts total is
+											checked against. One per cart if the order is split across vendors.
+										</span>
+									</p>
+								)}
 							</div>
 						</div>
 					)}
@@ -2511,7 +2576,10 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									type="checkbox"
 									className="sr-only"
 									checked={partialFunding}
-									onChange={(e) => setAcceptsPartialFunding(e.target.checked)}
+									onChange={(e) => {
+										setAcceptsPartialFunding(e.target.checked)
+										if (e.target.checked) setDeclinedFunding(false)
+									}}
 								/>
 								<span
 									aria-hidden="true"

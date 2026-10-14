@@ -19,7 +19,7 @@ import { publicUrlFor } from "@/lib/uploads/r2"
  * It is not the trail's store: that only holds the viewer's own projects, so everything on a profile comes from this one read.
  */
 
-export interface ProfileProject {
+export type ProfileProject = {
 	id: string
 	title: string
 	/** The theme's name, "Warm Up" for a warm-up project. */
@@ -36,7 +36,7 @@ export interface ProfileProject {
 	entries: number
 }
 
-export interface ProfileData {
+export type ProfileData = {
 	id: string
 	name: string
 	image: string | null

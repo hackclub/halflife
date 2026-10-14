@@ -18,7 +18,7 @@ const DOUBLE_TAP_PX = 44
 const HEART_SVG =
 	'<svg viewBox="0 0 24 24" width="100%" height="100%" aria-hidden="true"><path d="M12 21s-8.6-5-8.6-10.6A4.8 4.8 0 0 1 12 7.8a4.8 4.8 0 0 1 8.6 2.6C20.6 16 12 21 12 21Z" fill="currentColor" stroke="#ffffff" stroke-width="1.4" stroke-linejoin="round"/></svg>'
 
-export interface SlideHandle {
+export type SlideHandle = {
 	toggle: () => void
 }
 
@@ -112,9 +112,7 @@ export function StageSlide({
 		let raf = 0
 		const tick = () => {
 			const el = video.current
-			if (el && fill.current && el.duration) {
-				fill.current.style.transform = `scaleX(${el.currentTime / el.duration})`
-			}
+			if (el && fill.current && el.duration) fill.current.style.transform = `scaleX(${el.currentTime / el.duration})`
 			raf = requestAnimationFrame(tick)
 		}
 		raf = requestAnimationFrame(tick)
@@ -150,9 +148,8 @@ export function StageSlide({
 		const el = video.current
 		if (!el) return
 		setTime({ now: el.currentTime, total: el.duration || reel.durationSeconds || 0 })
-		if (!playing && fill.current && el.duration) {
+		if (!playing && fill.current && el.duration)
 			fill.current.style.transform = `scaleX(${el.currentTime / el.duration})`
-		}
 		if (counted.current) return
 		let watched = 0
 		for (let i = 0; i < el.played.length; i++) watched += el.played.end(i) - el.played.start(i)

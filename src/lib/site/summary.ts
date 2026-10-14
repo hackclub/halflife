@@ -47,18 +47,6 @@ export function creditedLine(count: number, verb: string): string {
 	return `you managed to ${verb} ${count} of them! congrats!! :D`
 }
 
-/** One board's rows, already named and ranked – "1. Someone - 4 closed tickets". */
-export function leaderboardLine(
-	rank: number,
-	name: string,
-	count: number,
-	action: string,
-	singular: string,
-	plural: string,
-): string {
-	return `${rank}. ${name} - ${count} ${action} ${count === 1 ? singular : plural}`
-}
-
 /**
  * A board's heading, its rows, and the overflow note when there were more helpers than rows.
  *
@@ -70,8 +58,35 @@ export function boardSection(title: string, total: number, lines: readonly strin
 	return section
 }
 
+/** How wide a share bar is, in characters. Fixed, so every row is the same length and the counts line up. */
+export const SHARE_BAR_WIDTH = 10
+
+/**
+ * A leaderboard with the share chart merged into each row: ` 1. ██████░░░░  Bunny Pranav  164 ·  29%`.
+ *
+ * One fence holds the whole board, so bars, names, counts and shares all line up – Slack only renders monospace in fences, and split across a table and a separate chart the two could never share columns. Shares read against the full `total` behind the board, not just the rows printed, so they do not sum to 100 when the overflow note says more were cut. An empty board stays an empty board, and the shared "no one yet" fallback says so.
+ */
+export function rankedShareBoard(title: string, items: { name: string; count: number }[], total: number): SummaryBoard {
+	const shown = items.slice(0, LEADERBOARD_LIMIT)
+	if (shown.length === 0) return { title, total: 0, lines: [] }
+	const nameWidth = Math.max(...shown.map((item) => item.name.length))
+	const countWidth = Math.max(...shown.map((item) => `${item.count}`.length))
+	const rankWidth = `${shown.length}`.length + 1
+	const lines = [
+		"```",
+		...shown.map((item, index) => {
+			const share = total === 0 ? 0 : item.count / total
+			const filled = Math.round(share * SHARE_BAR_WIDTH)
+			const bar = "█".repeat(filled) + "░".repeat(SHARE_BAR_WIDTH - filled)
+			return `${`${index + 1}.`.padStart(rankWidth)} ${bar}  ${item.name.padEnd(nameWidth)} ${`${item.count}`.padStart(countWidth)} · ${`${Math.round(share * 100)}%`.padStart(4)}`
+		}),
+		"```",
+	]
+	return { title, total: items.length, lines }
+}
+
 /** One leaderboard as it appears in a post, before the names in it have been resolved. */
-export interface SummaryBoard {
+export type SummaryBoard = {
 	title: string
 	/** The board's real length, for the overflow note. */
 	total: number

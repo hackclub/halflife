@@ -20,7 +20,7 @@ const ME_URL = process.env.HCA_ME_URL ?? "https://auth.hackclub.com/api/v1/me"
 
 const TIMEOUT_MS = 10_000
 
-export interface HcaAddress {
+export type HcaAddress = {
 	line1: string | null
 	line2: string | null
 	city: string | null
@@ -30,7 +30,7 @@ export interface HcaAddress {
 }
 
 /** One HCA identity, whichever endpoint each field came from. */
-export interface HcaIdentity {
+export type HcaIdentity = {
 	/** The OIDC subject – what the account row is keyed on. */
 	sub: string | null
 	email: string | null
@@ -55,7 +55,7 @@ export interface HcaIdentity {
  *
  * So the document is wanted but never depended on. When it answers, it is used; when it does not, the endpoints fall back to HCA's published, stable routes – the same paths its `auth` app mounts (`/oauth/authorize`, `/oauth/token` from Doorkeeper, `/oauth/userinfo` and `/oauth/discovery/keys` from doorkeeper-openid_connect). These are what the discovery document returns, so the fallback is not a guess about a different service; it is the same answer with the network taken out of the path. `userinfo_endpoint` and `issuer` default to the base, and `HCA_*` env overrides win if a deployment needs a different host.
  */
-export interface HcaEndpoints {
+export type HcaEndpoints = {
 	authorizationUrl: string
 	tokenUrl: string
 	userinfoUrl: string

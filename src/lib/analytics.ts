@@ -300,7 +300,7 @@ export async function backfillAnalytics(): Promise<Record<string, number>> {
 }
 
 /** Everything tracked about one person, flattened for an export row. */
-export interface UserAnalyticsRow {
+export type UserAnalyticsRow = {
 	userId: string
 	email: string
 	signedUpAt: Date
@@ -391,7 +391,11 @@ export async function getUserAnalytics(): Promise<UserAnalyticsRow[]> {
 /**
  * The program-wide numbers: DAU per day, the funnel with drop-off at each step, and how many people crossed each hour milestone in each week.
  */
-export async function getAnalyticsSummary(days = 30) {
+export async function getAnalyticsSummary(days = 30): Promise<{
+	dau: { day: string; users: number }[]
+	funnel: { step: string; count: number; dropOffPct: number; ofSignUpsPct: number }[]
+	weeklyMilestones: { week: number; over1h: number; over5h: number; over10h: number; over20h: number }[]
+}> {
 	const { programTimezone } = await getProgramSettings()
 	const since = effectiveDateFor(new Date(Date.now() - days * 86_400_000), programTimezone)
 

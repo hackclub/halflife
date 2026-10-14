@@ -48,7 +48,7 @@ export function safeDecrypt(payload: string | null | undefined): string | null {
 	}
 }
 
-export interface DecryptedAddress {
+export type DecryptedAddress = {
 	line1: string | null
 	line2: string | null
 	city: string | null

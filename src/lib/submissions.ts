@@ -1,5 +1,5 @@
 import "server-only"
-import type { ThemeProject } from "@/app/generated/prisma/client"
+import type { PhaseSubmission, ThemeProject } from "@/app/generated/prisma/client"
 import { Phase, PhaseStatus, Theme } from "@/app/generated/prisma/enums"
 import { partsFundingFor } from "@/lib/bom"
 import { scheduledWeekFor } from "@/lib/config/program"
@@ -77,7 +77,8 @@ export async function submitPhase(
 	notes: string | null,
 	attachmentKeys: string[] = [],
 	partialFundingAccepted = false,
-) {
+	fundingDeclined = false,
+): Promise<PhaseSubmission> {
 	const project = await prisma.themeProject.findFirst({
 		where: { id: themeProjectId, userId, deletedAt: null },
 	})
@@ -139,8 +140,12 @@ export async function submitPhase(
 		)
 	}
 
-	// Only a design submission carries parts money, and only one that is actually over records the agreement: the same arithmetic that let it through is what writes the row, so a stale tick on a cart that no longer needs it leaves nothing behind.
-	const agreedPartial = funding.needsAgreement && partialFundingAccepted
+	// Parts money is a design-week question, so declining it on any other phase is refused rather than recorded: a flag the reviewer cannot act on would only confuse the decision.
+	if (fundingDeclined && phase !== Phase.DESIGN)
+		throw new HttpError("VALIDATION_FAILED", "Parts funding is only decided on the design week")
+
+	// Only a design submission carries parts money, and only one that is actually over records the agreement: the same arithmetic that let it through is what writes the row, so a stale tick on a cart that no longer needs it leaves nothing behind. Declining wins over agreeing: a maker who wants nothing funded has nothing to agree to.
+	const agreedPartial = funding.needsAgreement && partialFundingAccepted && !fundingDeclined
 
 	const settings = await getProgramSettings()
 	const now = new Date()
@@ -175,12 +180,13 @@ export async function submitPhase(
 				partialFundingAccepted: agreedPartial,
 				requestedBomUsd: agreedPartial ? funding.totalUsd : null,
 				fundingCapUsd: agreedPartial ? funding.capUsd : null,
+				fundingDeclined: phase === Phase.DESIGN && fundingDeclined,
 			},
 		})
 	})
 }
 
-export async function unsubmitPhase(userId: string, themeProjectId: string, phase: Phase) {
+export async function unsubmitPhase(userId: string, themeProjectId: string, phase: Phase): Promise<void> {
 	const project = await prisma.themeProject.findFirst({
 		where: { id: themeProjectId, userId, deletedAt: null },
 	})

@@ -5,7 +5,7 @@ import { type ApiErrorBody, fail } from "@/lib/api"
 import { auth } from "@/lib/auth"
 import { getUserRolesIfExists, hasPermission, hasRole, type Permission, type Role } from "@/lib/permissions"
 
-export interface SessionUser {
+export type SessionUser = {
 	id: string
 	email: string
 	name: string | null

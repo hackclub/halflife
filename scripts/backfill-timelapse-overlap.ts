@@ -85,9 +85,7 @@ async function main() {
 			phase: row.workSession.phase,
 		})
 	}
-	for (const target of phases.values()) {
-		await refreshOverlapSpans(target.themeProjectId, target.phase)
-	}
+	for (const target of phases.values()) await refreshOverlapSpans(target.themeProjectId, target.phase)
 
 	console.log(
 		`timelapse overlap: ${filled} of ${rows.length} recordings given a start time, ${unfillable} left undeduplicated, ${((Date.now() - started) / 1000).toFixed(1)}s`,

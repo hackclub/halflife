@@ -34,6 +34,10 @@ export const submitSchema = z
 		 * An assertion, not permission: the route works out from the database whether the cart is actually over, and ignores this on one that is not, so a stale tick left over from a bigger cart cannot get a small one through.
 		 */
 		partialFundingAccepted: z.boolean().default(false),
+		/**
+		 * The maker ticked the box saying they want no parts funding for this project. Design only: a build carries no parts money, so the route refuses it there rather than recording a meaningless flag.
+		 */
+		fundingDeclined: z.boolean().default(false),
 	})
 	.strict()
 

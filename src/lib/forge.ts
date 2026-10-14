@@ -16,7 +16,7 @@ import "server-only"
 /** The two forges configured today. A Codeberg/Gitea entry would join them. */
 export type ForgeId = "github" | "gitlab"
 
-export interface Forge {
+export type Forge = {
 	id: ForgeId
 	/** What the maker sees: "GitHub", "GitLab". */
 	label: string

@@ -17,7 +17,7 @@ import { publicUrlFor } from "@/lib/uploads/r2"
  * The store knows a session happened and how long it was, which is all the trail needs. The project page is the full record – the timelapses behind each entry, the reels themselves, when each week was handed in and what the reviewer said – so it reads the rows directly rather than widening a snapshot every other page has to download.
  */
 
-export interface TimelineLapse {
+export type TimelineLapse = {
 	id: string
 	thumbnailUrl: string | null
 	/** Where to watch it: Lapse's own page, or the uploaded file. */
@@ -63,7 +63,7 @@ export type TimelineItem =
 	  }
 
 /** One phase's review state, for the block above the repo checks. */
-export interface PhaseReview {
+export type PhaseReview = {
 	phase: Phase
 	status: PhaseStatus
 	/** The reviewer's note on the latest decision, if any. */
@@ -80,7 +80,7 @@ export interface PhaseReview {
 	shipError: string | null
 }
 
-export interface ProjectPageData {
+export type ProjectPageData = {
 	/** The thumbnail the maker chose, if any. */
 	coverImageUrl: string | null
 	/** What stands in until they choose one: a journal image, then a reel frame. */
@@ -292,7 +292,7 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
  *
  * Only what is already public elsewhere: the entries Explore shows, the reels the Doomscroller shows (published ones – a hidden or processing reel is nobody's business but its author's), and the project's name and picture. No parts list, no repo checks, no review comments, no submissions: those are between the maker and their reviewer. Author by display name only, as lib/queries/community has it.
  */
-export interface PublicProjectData {
+export type PublicProjectData = {
 	id: string
 	title: string
 	description: string

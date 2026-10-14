@@ -9,7 +9,7 @@
 import { round2 } from "@/lib/money"
 
 /** A BOM line as far as the money is concerned – what both the database rows and the API's own type satisfy. */
-export interface PricedLine {
+export type PricedLine = {
 	quantity: number
 	unitCostUsd: number
 }
@@ -28,7 +28,7 @@ export function bomTotalUsd(items: readonly PricedLine[], taxShippingUsd: number
  */
 export const BOM_MARGIN_USD = 3
 
-export interface PartsFunding {
+export type PartsFunding = {
 	/** What the parts list costs. */
 	totalUsd: number
 	/** What the tier funds. This is the whole grant, not a share of one. */

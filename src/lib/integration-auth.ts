@@ -17,9 +17,7 @@ function matches(presented: string, expected: string): boolean {
  */
 export function requireBearerAuth(request: NextRequest, envVars: string[]): NextResponse<ApiErrorBody> | null {
 	const expected = envVars.map((v) => process.env[v]).filter((v): v is string => !!v)
-	if (expected.length === 0) {
-		return fail("NOT_CONFIGURED", `Set one of ${envVars.join(", ")} to enable this endpoint`)
-	}
+	if (expected.length === 0) return fail("NOT_CONFIGURED", `Set one of ${envVars.join(", ")} to enable this endpoint`)
 
 	const header = request.headers.get("authorization") ?? ""
 	const match = header.match(/^Bearer\s+(.+)$/i)
@@ -30,7 +28,7 @@ export function requireBearerAuth(request: NextRequest, envVars: string[]): Next
 	return null
 }
 
-export function requireIntegrationAuth(request: NextRequest) {
+export function requireIntegrationAuth(request: NextRequest): NextResponse<ApiErrorBody> | null {
 	return requireBearerAuth(request, ["INTEGRATION_API_KEY"])
 }
 

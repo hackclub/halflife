@@ -14,9 +14,7 @@ if (!channel) {
 backfillHelpTickets(channel)
 	.then((result) => {
 		console.log("help tickets backfilled:", result)
-		if (!result.exhausted) {
-			console.warn("channel history was not fully walked; run again to continue")
-		}
+		if (!result.exhausted) console.warn("channel history was not fully walked; run again to continue")
 	})
 	.catch((err) => {
 		console.error(err)

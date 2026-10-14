@@ -16,7 +16,7 @@ import { postForm } from "@/lib/upload-progress"
  * A successful response from this API is the payload itself. There is no `data` envelope – `ok()` in lib/api.ts calls `NextResponse.json(body)` directly, and only `fail()` wraps, in `{ error: { code, message } }`. Reading `payload.data` here is how this feature spent its whole life throwing "cannot read properties of undefined".
  */
 
-export interface MintedHandoff {
+export type MintedHandoff = {
 	id: string
 	/** Rendered SVG, produced server-side. The token never leaves this origin. */
 	qrSvg: string
@@ -28,7 +28,13 @@ export type HandoffStatus = "idle" | "minting" | "waiting" | "ready" | "expired"
 
 const POLL_MS = 2500
 
-export function useHandoff(onReady: (objectKey: string, url: string | null) => void) {
+export function useHandoff(onReady: (objectKey: string, url: string | null) => void): {
+	minted: MintedHandoff | null
+	status: HandoffStatus
+	error: string | null
+	mint: () => Promise<void>
+	cancel: () => void
+} {
 	const [minted, setMinted] = useState<MintedHandoff | null>(null)
 	const [status, setStatus] = useState<HandoffStatus>("idle")
 	const [error, setError] = useState<string | null>(null)

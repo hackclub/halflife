@@ -5,7 +5,7 @@ import { createContext, type ReactNode, useCallback, useContext, useEffect, useM
 import { ParticipantGoal } from "@/app/generated/prisma/enums"
 import { COINS_PER_HOUR, type PrinterGoal, printerById, submitFloorFor, weekAsk } from "./config/printers"
 import { DESIGN_WEEKS, ONBOARDING_CHECKPOINT_ID, WARMUP_THEME, WARMUP_WEEK_ID } from "./config/program"
-import { BUILD_HOURS, checkpointsFor, TIERS, WEEK_META } from "./curriculum"
+import { BUILD_HOURS, checkpointsFor, TIERS, WEEK_META, weekHoldsNext } from "./curriculum"
 import { formatDeadline } from "./deadline"
 import type { StoreSnapshot } from "./queries/store"
 import { DEFAULT_SESSION_TITLE } from "./schemas/session"
@@ -34,7 +34,7 @@ export type IntroPhase =
 	| "tour" // spotlight each tab in turn
 	| "done"
 
-export interface CheckpointState {
+export type CheckpointState = {
 	done: boolean
 	/** When it was completed, epoch ms. Undefined on saves written before this. */
 	at?: number
@@ -53,7 +53,7 @@ export interface CheckpointState {
  *
  * Kept apart from the facts deliberately. If any of this lived on the server, signing in on a second device would drop you into the middle of a tab tour you had already finished, and a schema migration would be needed to change the order of the intro.
  */
-interface Ceremony {
+type Ceremony = {
 	version: 4
 	phase: IntroPhase
 	doomscrollerOpen: boolean
@@ -142,7 +142,7 @@ function seededCeremony(): Ceremony {
 }
 
 /** The details a maker can change on their own project, all optional. */
-export interface ProjectPatch {
+export type ProjectPatch = {
 	name?: string
 	description?: string
 	coverImageKey?: string | null
@@ -155,7 +155,7 @@ export interface ProjectPatch {
 /**
  * The closing reel's share prompt after a hand-in: what to celebrate, and how. Kept in the store rather than in the submit sheet's own state because the hand-in's refresh flips the week to in_review underneath – a local flag renders the celebration for one frame and then the unsubmit sheet takes the modal.
  */
-export interface SharePost {
+export type SharePost = {
 	checkpointId: string
 	postId: string
 	eyebrow: string
@@ -166,7 +166,7 @@ export interface SharePost {
 /** What posting a reel produced: the post's id, or the sentence to show the maker. */
 export type PostReelResult = { postId: string; error?: undefined } | { postId?: undefined; error: string }
 
-interface Ctx {
+type Ctx = {
 	/** Who is signed in. Display fields only. */
 	viewer: StoreSnapshot["viewer"]
 	phase: IntroPhase
@@ -236,7 +236,12 @@ interface Ctx {
 	/** Resolves to null once submitted, or the server's reason for refusing. */
 	submitPhase: (
 		id: string,
-		extra?: { notes?: string; attachmentKeys?: string[]; partialFundingAccepted?: boolean },
+		extra?: {
+			notes?: string
+			attachmentKeys?: string[]
+			partialFundingAccepted?: boolean
+			fundingDeclined?: boolean
+		},
 	) => Promise<string | null>
 	/**
 	 * Resolves to null once the entry is saved, or to the server's reason for refusing it – Lapse may say a timelapse is not yours, is still processing, or already backs another entry, and the sheet has to stay open to say so.
@@ -828,7 +833,12 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	const submitPhase = useCallback(
 		async (
 			id: string,
-			extra: { notes?: string; attachmentKeys?: string[]; partialFundingAccepted?: boolean } = {},
+			extra: {
+				notes?: string
+				attachmentKeys?: string[]
+				partialFundingAccepted?: boolean
+				fundingDeclined?: boolean
+			} = {},
 		): Promise<string | null> => {
 			const route = routeOf(id)
 			if (!route) return "This week has no project to submit."
@@ -841,8 +851,9 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 						phase: route.phase,
 						...(extra.notes ? { notes: extra.notes } : {}),
 						attachmentKeys: extra.attachmentKeys ?? [],
-						// Only ever sent as true, so a stale tick from a cart that has since shrunk cannot ride along on the next one.
+						// Only ever sent as true, so a stale tick from a cart that has since shrunk cannot ride along on the next one. Same for a declined grant: the server records what this hand-in said, not what a previous one did.
 						...(extra.partialFundingAccepted ? { partialFundingAccepted: true } : {}),
+						...(extra.fundingDeclined ? { fundingDeclined: true } : {}),
 					}),
 				})
 			} catch {
@@ -1341,21 +1352,22 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	)
 
 	/**
-	 * Whether a week still stands between the trail and the week after it.
-	 *
-	 * Only the clock does. A week holds the next one shut while it is still running and stops the moment it closes, handed in or not.
+	 * Whether a week still stands between the trail and the week after it – the rule itself is `weekHoldsNext`.
 	 *
 	 * It used to also stop for a week that closed with hours in it, on the reasoning that such a week can still be handed in. But "can be handed in" is not "can be handed in by everyone": a week is refused below its tier's funded block, and the tier is picked by the maker, so somebody who worked two hours towards a tier that wants nine can never hand that week in. The condition then never cleared and the remaining nine weeks sat shut behind a hand-in that was impossible – the exact dead end the empty-week exception was written to prevent, one hour too far along to catch.
-	 *
-	 * Nothing is lost by not waiting: a passed week's Submit stays open for anyone who does reach the floor, so the work can still be handed in late. And a week that is still running keeps holding the next one, which is what an extension has to mean.
 	 */
 	const owesSubmit = useCallback(
 		(week: Week): boolean => {
 			const submit = week.checkpoints.find((c) => c.kind === "submit")
-			if (!submit || (save.progress[submit.id]?.done ?? false)) return false
-			return !weekPassed(week.id)
+			if (!submit) return false
+			return weekHoldsNext({
+				submitted: save.progress[submit.id]?.done ?? false,
+				passed: weekPassed(week.id),
+				hours: weekHours(week.id),
+				floor: submit.atHours ?? 0,
+			})
 		},
-		[save.progress, weekPassed],
+		[save.progress, weekPassed, weekHours],
 	)
 
 	/**
@@ -1567,7 +1579,7 @@ export function useStore(): Ctx {
 	return ctx
 }
 
-export interface PrinterPace {
+export type PrinterPace = {
 	/** The machine being saved for. Null when this participant is here for the grant, where there is no pace to miss. */
 	printer: PrinterGoal | null
 	/** Coins a design week has to earn to stay on that machine's pace. */

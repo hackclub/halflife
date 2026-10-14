@@ -215,7 +215,7 @@ export function formatProgramDate(date: Date, timeZone: string): string {
 
 export type SubmissionAccessReason = "OPEN" | "USER_EXTENSION" | "PROJECT_EXTENSION" | "CLOSED" | "NOT_STARTED"
 
-export interface SubmissionAccess {
+export type SubmissionAccess = {
 	open: boolean
 	reason: SubmissionAccessReason
 	closesAt: Date | null
@@ -284,7 +284,7 @@ export const SUBMISSIONS_CLOSED_MESSAGE = "Submissions are closed. If you need a
 
 export type ShopAccessReason = "OPEN" | "PENDING_REVIEW" | "GRACE_PERIOD" | "CLOSED"
 
-export interface ShopAccess {
+export type ShopAccess = {
 	open: boolean
 	reason: ShopAccessReason
 	closesAt: Date | null

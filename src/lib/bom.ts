@@ -14,7 +14,7 @@ import type { BomItemInput } from "@/lib/schemas/project"
 /** Plenty for a hand-built board, and a ceiling on a runaway script. */
 export const MAX_BOM_ITEMS = 80
 
-export interface BomLine {
+export type BomLine = {
 	id: string
 	name: string
 	purpose: string | null
@@ -75,7 +75,14 @@ export function bomLockReason(project: { designStatus: PhaseStatus; buildStatus:
 }
 
 /** The fields a write may set, cleaned the way every other maker text is. */
-export function bomData(input: Partial<BomItemInput>) {
+export function bomData(input: Partial<BomItemInput>): {
+	name?: string
+	purpose?: string | null
+	quantity?: number
+	unitCostUsd?: number
+	vendor?: string | null
+	link?: string | null
+} {
 	return {
 		...(input.name !== undefined ? { name: sanitize(input.name) } : {}),
 		...(input.purpose !== undefined ? { purpose: sanitizeOptional(input.purpose) } : {}),

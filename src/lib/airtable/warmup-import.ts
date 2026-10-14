@@ -35,7 +35,7 @@ import { buildObjectKey, isUploadConfigured, MAX_UPLOAD_BYTES, putObject } from 
 
 const IMPORT_ACTION = AuditAction.ADMIN_IMPORT_AIRTABLE_PROJECT
 
-export interface WarmupImportOutcome {
+export type WarmupImportOutcome = {
 	recordId: string
 	email: string | null
 	status: "imported" | "already_imported" | "skipped" | "failed"
@@ -47,7 +47,7 @@ export interface WarmupImportOutcome {
 	ari: "sent" | "failed" | "not_configured" | "not_attempted"
 }
 
-export interface WarmupImportSummary {
+export type WarmupImportSummary = {
 	table: string
 	fetched: number
 	imported: number
@@ -58,7 +58,7 @@ export interface WarmupImportSummary {
 	outcomes: WarmupImportOutcome[]
 }
 
-interface ImportActor {
+type ImportActor = {
 	id: string
 	email: string | null
 }
@@ -128,7 +128,7 @@ function tierForRequestedFunding(usd: number | null): number {
 	return TIERS[TIERS.length - 1]?.id ?? 3
 }
 
-interface ParsedWarmupRow {
+type ParsedWarmupRow = {
 	email: string
 	name: string | null
 	slackId: string | null

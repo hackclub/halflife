@@ -3,7 +3,7 @@ import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { Button, Callout } from "@/app/components/ui"
 
-interface ImportOutcome {
+type ImportOutcome = {
 	recordId: string
 	email: string | null
 	status: "imported" | "already_imported" | "skipped" | "failed"
@@ -12,7 +12,7 @@ interface ImportOutcome {
 	ari: "sent" | "failed" | "not_configured" | "not_attempted"
 }
 
-interface ImportSummary {
+type ImportSummary = {
 	table: string
 	fetched: number
 	imported: number

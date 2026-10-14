@@ -16,7 +16,7 @@ import {
 import { round2 } from "@/lib/money"
 import prisma from "@/lib/prisma"
 
-export interface HoursBreakdown {
+export type HoursBreakdown = {
 	/** Sum over MANUAL sessions of (hoursApproved ?? hoursClaimed). */
 	journalHours: number
 	/** The same sum of hoursClaimed only, so the UI can show reviewer deflation. */
@@ -284,7 +284,7 @@ export async function refreshOverlapSpans(themeProjectId: string, phase: Phase):
 }
 
 /** One link's identity for warming: enough to ask Hackatime again and to decide whether it needs asking. */
-export interface SpansWarmTarget {
+export type SpansWarmTarget = {
 	id: string
 	themeProjectId: string
 	phase: Phase
@@ -377,7 +377,7 @@ export async function warmLinkSpans(targets: readonly SpansWarmTarget[]): Promis
  *
  * Extracted rather than reimplemented: these rules decide what people are paid, and a second copy that drifts is a second answer to "how many hours is this".
  */
-export interface SessionRow {
+export type SessionRow = {
 	hoursClaimed: number
 	hoursApproved: number | null
 	hoursSource: HoursSource
@@ -387,7 +387,7 @@ export interface SessionRow {
 	timelapses?: { recordedAt: Date | null; coveredSeconds: number | null }[]
 }
 
-export interface LinkRow {
+export type LinkRow = {
 	hoursApproved: number | null
 	cachedSeconds: number | null
 	/** The link's tracked intervals, as cached on the row. See parseCachedSpans. */

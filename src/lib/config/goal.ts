@@ -9,7 +9,7 @@ import { ParticipantGoal } from "@/app/generated/prisma/enums"
  *
  * The order is the order they are read in, and it is deliberate: the printer is first because it is the answer most people arrive with, and funding is second because it is the one the program most needs to hear. Neither funding answer is a lesser version of the other – "some weeks" is a real answer and is not phrased as a smaller version of "all of them".
  */
-export interface GoalOption {
+export type GoalOption = {
 	readonly value: ParticipantGoal
 	readonly label: string
 	/** The same answer where a sentence will not fit – a chart legend, a table column. */

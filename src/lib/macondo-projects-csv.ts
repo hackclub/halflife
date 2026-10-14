@@ -123,14 +123,14 @@ const HEADER_ALIASES: Record<string, Column> = {
 	macondo: "macondo_url",
 }
 
-export interface MacondoJournal {
+export type MacondoJournal = {
 	title: string | null
 	content: string | null
 	createdAt: Date | null
 	hours: number
 }
 
-export interface MacondoRow {
+export type MacondoRow = {
 	projectId: string
 	title: string
 	description: string | null
@@ -146,7 +146,7 @@ export interface MacondoRow {
 	journals: MacondoJournal[]
 }
 
-export interface CsvProblem {
+export type CsvProblem = {
 	line: number
 	message: string
 }
@@ -203,9 +203,8 @@ export function parseProjectsCsv(text: string): { rows: MacondoRow[]; problems: 
 	)
 	const problems: CsvProblem[] = []
 	const missing: Column[] = []
-	for (const required of ["project_id", "project_title", "author_email"] as Column[]) {
+	for (const required of ["project_id", "project_title", "author_email"] as Column[])
 		if (!columns.includes(required)) missing.push(required)
-	}
 	if (missing.length > 0)
 		problems.push({ line: 1, message: `Missing column${missing.length > 1 ? "s" : ""}: ${missing.join(", ")}.` })
 	if (problems.length > 0) return { rows: [], problems }
@@ -271,7 +270,7 @@ export function parseProjectsCsv(text: string): { rows: MacondoRow[]; problems: 
 	return problems.length > 0 ? { rows: [], problems } : { rows, problems }
 }
 
-export interface CsvImportOutcome {
+export type CsvImportOutcome = {
 	projectId: string
 	email: string
 	title: string
@@ -295,7 +294,7 @@ async function importedProjectIds(): Promise<Set<string>> {
 	return out
 }
 
-export interface CsvImportSummary {
+export type CsvImportSummary = {
 	read: number
 	imported: number
 	alreadyImported: number
@@ -303,7 +302,7 @@ export interface CsvImportSummary {
 	outcomes: CsvImportOutcome[]
 }
 
-interface ImportActor {
+type ImportActor = {
 	id: string
 	email: string | null
 }

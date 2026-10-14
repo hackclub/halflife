@@ -108,7 +108,7 @@ export function ReelCapture({
 				</Button>
 				<Button
 					variant="outline"
-					disabled={handoff.status === "minting"}
+					disabled={busy || handoff.status === "minting"}
 					onClick={() => {
 						setShowQr(true)
 						handoff.mint()
@@ -119,7 +119,15 @@ export function ReelCapture({
 			</div>
 
 			{/* No `capture`: this one is the picker. */}
-			<input ref={input} type="file" accept="video/*" className="sr-only" onChange={(e) => pick(e.target.files?.[0])} />
+			<input
+				ref={input}
+				type="file"
+				accept="video/*"
+				className="sr-only"
+				tabIndex={-1}
+				aria-hidden="true"
+				onChange={(e) => pick(e.target.files?.[0])}
+			/>
 
 			{/* `capture` is a hint, not a constraint: on a phone it opens the rear camera straight into the native recorder, and hands back the platform's own format. A desktop browser ignores it, which is why the button that opens this one is hidden there. */}
 			<input
@@ -127,6 +135,8 @@ export function ReelCapture({
 				type="file"
 				accept="video/*"
 				className="sr-only"
+				tabIndex={-1}
+				aria-hidden="true"
 				capture="environment"
 				onChange={(e) => pick(e.target.files?.[0])}
 			/>

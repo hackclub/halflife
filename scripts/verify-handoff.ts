@@ -66,9 +66,7 @@ async function main() {
 	})
 
 	const uploadsReady = isUploadConfigured()
-	if (!uploadsReady) {
-		console.log("NOTE  uploads are not configured; skipping the R2 round trip\n")
-	}
+	if (!uploadsReady) console.log("NOTE  uploads are not configured; skipping the R2 round trip\n")
 
 	// ── The token is never stored ──────────────────────────────────────────────
 	const handoff = await createHandoff(owner.id)

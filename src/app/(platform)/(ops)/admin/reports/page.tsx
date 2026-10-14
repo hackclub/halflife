@@ -190,7 +190,7 @@ function ReportRow({ report }: { report: ContentReportRow }) {
 	)
 }
 
-interface Subject {
+type Subject = {
 	preview: string
 	href: string
 	author: string

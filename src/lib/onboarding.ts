@@ -31,7 +31,7 @@ import { sanitize, sanitizeHtml } from "@/lib/sanitize"
 /** The theme the first checkpoint runs against. The comp: "This is PCB week!" */
 export const ONBOARDING_THEME: Theme = Theme.PCB
 
-export interface OnboardingState {
+export type OnboardingState = {
 	completed: boolean
 	/** Furthest step reached, 0-based. */
 	reached: number
@@ -135,7 +135,7 @@ export type OnboardingAnswer =
 	| { step: "tracking"; dismissed: boolean }
 	| { step: "repo"; enabled: boolean; repo?: string | null }
 
-export interface AdvanceResult {
+export type AdvanceResult = {
 	state: OnboardingState
 	completed: boolean
 	/**

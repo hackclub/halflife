@@ -85,7 +85,7 @@ export async function sweepExpiredClaims(): Promise<number> {
 
 // ─── Decisions ───────────────────────────────────────────────────────────────
 
-export interface FinalizeInput {
+export type FinalizeInput = {
 	submissionId: string
 	/** Null when the decision was made by Ari, not by a Half Life user. */
 	reviewerId: string | null
@@ -103,7 +103,7 @@ export interface FinalizeInput {
 	grantUsdOverride?: number | null
 }
 
-export interface FinalizeOutcome {
+export type FinalizeOutcome = {
 	themeProjectId: string
 	phase: Phase
 	result: ReviewResult
@@ -174,9 +174,10 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 
 	const approvedHours = approving ? (input.hoursOverride ?? breakdown.computedTotal) : null
 
+	// A declined grant defaults to nothing: the maker asked for no parts money, so approving the design must not mint one behind their back. An explicit reviewer override still wins – setting a number there is a deliberate choice, not an accident.
 	const grantUsd =
 		approving && phase === Phase.DESIGN && tier
-			? (input.grantUsdOverride ?? getTierOrThrow(tier).grantUsd)
+			? (input.grantUsdOverride ?? (submission.fundingDeclined ? 0 : getTierOrThrow(tier).grantUsd))
 			: project.grantUsd
 
 	// The machine this participant is saving for is frozen alongside the tier for the pacing displays: it no longer sizes the payout, but the goal tracker still reads it to say what this week's work means for the goal. Someone who never chose one is paced against the default.

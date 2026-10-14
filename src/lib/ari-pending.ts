@@ -5,13 +5,13 @@ import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
  *
  * Pure so `verify:contracts` can pin the selection rules without a database – this decides what the hourly retry job replays and what the admin's Retry button is offered, and getting it wrong either resends a ship Ari already has or leaves a hand-in nobody will ever review.
  */
-export interface PendingShipProject {
+export type PendingShipProject = {
 	id: string
 	designStatus: PhaseStatus
 	buildStatus: PhaseStatus
 }
 
-export interface PendingShipSubmission {
+export type PendingShipSubmission = {
 	themeProjectId: string
 	phase: Phase
 	ariSubmissionId: string | null

@@ -4,7 +4,7 @@ import { IconBook, IconFile } from "@/components/platform/icons"
 import { Panel } from "@/components/platform/ui"
 import { cx } from "@/lib/cx"
 
-export interface StarterProjectCardData {
+export type StarterProjectCardData = {
 	id: string
 	title: string
 	description: string
