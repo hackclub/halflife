@@ -6,7 +6,6 @@ import {
 	countedLine,
 	creditedLine,
 	LEADERBOARD_LIMIT,
-	leaderboardLine,
 	renderSummary,
 	type SummaryBoard,
 } from "./summary"
@@ -86,27 +85,40 @@ function weekProgressSection(byWeek: WeekReviewProgress[]): SummaryBoard | null 
 	return { title: ":bar-chart: reviewed by week", total: byWeek.length, lines }
 }
 
+/**
+ * A leaderboard with the share chart merged into each row: ` 1. Bunny Pranav  ██████░░░░  164 ·  29%`.
+ *
+ * One fence holds the whole board, so names, bars, counts and shares all line up – split across a table and a separate chart the two could never share columns. Shares read against every review behind the board, not just the ten printed, so they do not sum to 100 when the overflow note says more were cut. An empty board stays an empty board, and the shared "no one yet" fallback says so.
+ */
+function rankedBoard(
+	title: string,
+	rows: ProjectReviewStats["leaderboard"],
+	names: Map<string, string>,
+): SummaryBoard {
+	const shown = rows.slice(0, LEADERBOARD_LIMIT)
+	if (shown.length === 0) return { title, total: 0, lines: [] }
+	const total = rows.reduce((n, row) => n + row.reviewed, 0)
+	const labelled = shown.map((row) => ({ name: names.get(row.email) ?? row.email, reviewed: row.reviewed }))
+	const nameWidth = Math.max(...labelled.map((row) => row.name.length))
+	const countWidth = Math.max(...labelled.map((row) => `${row.reviewed}`.length))
+	const rankWidth = `${shown.length}`.length + 1
+	const lines = [
+		"```",
+		...labelled.map((row, index) => {
+			const share = total === 0 ? 0 : row.reviewed / total
+			const filled = Math.round(share * WEEK_BAR_WIDTH)
+			const bar = "█".repeat(filled) + "░".repeat(WEEK_BAR_WIDTH - filled)
+			return `${`${index + 1}.`.padStart(rankWidth)} ${row.name.padEnd(nameWidth)} ${bar} ${`${row.reviewed}`.padStart(countWidth)} · ${`${Math.round(share * 100)}%`.padStart(4)}`
+		}),
+		"```",
+	]
+	return { title, total: rows.length, lines }
+}
+
 export async function buildReviewSummary(stats: ProjectReviewStats): Promise<string> {
 	const daily = stats.leaderboard
 	const global = stats.globalLeaderboard
 	const names = await namesFor([...daily, ...global])
-
-	const board = (title: string, rows: typeof daily): SummaryBoard => ({
-		title,
-		total: rows.length,
-		lines: rows
-			.slice(0, LEADERBOARD_LIMIT)
-			.map((entry, index) =>
-				leaderboardLine(
-					index + 1,
-					names.get(entry.email) ?? entry.email,
-					entry.reviewed,
-					"reviewed",
-					"submission",
-					"submissions",
-				),
-			),
-	})
 
 	const weekly = weekProgressSection(stats.byWeek)
 
@@ -117,8 +129,8 @@ export async function buildReviewSummary(stats: ProjectReviewStats): Promise<str
 			{ singular: "was handed in", plural: "were handed in" },
 		)} and ${creditedLine(stats.reviewed, "review")}`,
 		boards: [
-			board(":yay-peace: today's leaderboard", daily),
-			board(":yay-blush-2: all-time leaderboard", global),
+			rankedBoard(":yay-peace: today's leaderboard", daily, names),
+			rankedBoard(":yay-blush-2: all-time leaderboard", global),
 			...(weekly ? [weekly] : []),
 		],
 	})
