@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma"
 import type { ProjectReviewStats } from "./review-store"
+import { ANONYMOUS_ARI } from "./review-store"
 import { getSlackUserNames } from "./slack"
 import {
 	countedLine,
@@ -16,24 +17,43 @@ import {
  * Reviewers are Half Life users rather than Slack ids, so the board's keys have to be resolved to a Slack account before a name can be asked for. One query and one batched lookup cover both boards: the daily ten are usually also on the all-time ten, and users.info is rate-limited.
  */
 
-/** Display names for both boards at once, falling back to the Half Life name so a missing Slack link is never a broken summary. */
+/**
+ * Display names for both boards at once.
+ *
+ * Emails are matched to accounts case-insensitively, since the address recorded at decision time is whatever the reviewer typed or Ari reported. An address with no account – an external Ari reviewer – falls back to the name recorded beside it on the review, then to the address itself, so the row always has something to print. Ari's anonymous decisions are simply Ari.
+ */
 async function namesFor(entries: ProjectReviewStats["leaderboard"]): Promise<Map<string, string>> {
-	const ids = [...new Set(entries.map((entry) => entry.reviewerId))]
-	if (ids.length === 0) return new Map()
+	const names = new Map<string, string>()
+	const emails = [...new Set(entries.map((entry) => entry.email))].filter((email) => email !== ANONYMOUS_ARI)
+	if (emails.length === 0) {
+		for (const entry of entries) names.set(entry.email, "Ari")
+		return names
+	}
 
 	const users = await prisma.user.findMany({
-		where: { id: { in: ids } },
-		select: { id: true, slackId: true, name: true, displayName: true },
+		where: { email: { in: emails } },
+		select: { email: true, slackId: true, name: true, displayName: true },
 	})
+	const byEmail = new Map(users.map((user) => [user.email.trim().toLowerCase(), user]))
 
 	const slackNames = await getSlackUserNames(users.flatMap((user) => (user.slackId ? [user.slackId] : [])))
 
-	return new Map(
-		users.map((user) => [
-			user.id,
-			(user.slackId ? slackNames.get(user.slackId) : null) ?? user.displayName ?? user.name ?? user.id,
-		]),
-	)
+	for (const entry of entries) {
+		if (entry.email === ANONYMOUS_ARI) {
+			names.set(entry.email, "Ari")
+			continue
+		}
+		const user = byEmail.get(entry.email.trim().toLowerCase())
+		names.set(
+			entry.email,
+			(user?.slackId ? slackNames.get(user.slackId) : null) ??
+				user?.displayName ??
+				user?.name ??
+				entry.name ??
+				entry.email,
+		)
+	}
+	return names
 }
 
 export async function buildReviewSummary(stats: ProjectReviewStats): Promise<string> {
@@ -49,7 +69,7 @@ export async function buildReviewSummary(stats: ProjectReviewStats): Promise<str
 			.map((entry, index) =>
 				leaderboardLine(
 					index + 1,
-					names.get(entry.reviewerId) ?? entry.reviewerId,
+					names.get(entry.email) ?? entry.email,
 					entry.reviewed,
 					"reviewed",
 					"submission",

@@ -240,6 +240,9 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 			data: {
 				submissionId: input.submissionId,
 				reviewerId: input.reviewerId,
+				// Who decided, as contact details rather than only an account link: Ari's reviewers hold no Half Life account, so `reviewerId` is null for every Ari decision and the email is the only attribution the leaderboard has. Console reviewers carry both.
+				reviewerEmail: input.reviewerEmail,
+				reviewerName: input.reviewerName,
 				pass: ReviewPass.FINAL,
 				result: input.result,
 				feedback: input.feedback,
