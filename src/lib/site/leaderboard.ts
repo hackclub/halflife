@@ -13,7 +13,7 @@ export interface Ranked<K extends string> {
 /**
  * Counts rows per key and ranks them, busiest first, ties broken by key.
  *
- * `keyOf` returning nullish drops the row, which is how the ticket board leaves out a ticket with no closer and the review board leaves out Ari's decisions. `skip` drops a row that does have a key but should not count – a ticket closed by the person who asked it, for instance, which would otherwise read as a helper.
+ * `keyOf` returning nullish drops the row, which is how the ticket board leaves out a ticket with no closer. `skip` drops a row that does have a key but should not count – a ticket closed by the person who asked it, for instance, which would otherwise read as a helper.
  */
 export function tallyBoard<T, K extends string>(
 	rows: readonly T[],

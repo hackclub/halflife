@@ -936,6 +936,11 @@ model SubmissionReview {
   reviewerId   String?
   reviewer     User?           @relation("SubmissionReviewer", fields: [reviewerId], references: [id], onDelete: Restrict)
 
+  /// Who actually decided, as an email. Set for every decision – a console reviewer's own address, or the Ari reviewer's address from the webhook – so leaderboards and histories can credit the person even when they hold no Half Life account and `reviewerId` is null. Backfilled from the audit rows for decisions that predate the column.
+  reviewerEmail String?
+  /// The reviewer's name as reported alongside the email, for display when no user row matches it. Best-effort: present on Ari decisions, which carry no account to join against.
+  reviewerName String?
+
   pass   ReviewPass   @default(FINAL)
   result ReviewResult
 

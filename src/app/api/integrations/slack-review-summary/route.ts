@@ -7,7 +7,7 @@ import { summarySince } from "@/lib/site/summary"
 import { recordSyncRun } from "@/lib/sync-run-log"
 
 /**
- * Posts the daily project-review summary to `#half-life-review`: how many phases were handed in in the last 24 hours, how many were reviewed, and who reviewed the most.
+ * Posts the daily project-review summary to `#half-life-review`: how many phases were handed in in the last 24 hours, how many were reviewed, who reviewed the most, and per-week review progress bars.
  *
  * Run by an Orchard `app` job once a day; see `docs/RUNBOOK.md`. Both counts read the review tables rather than Ari – a decision reaches `SubmissionReview` through the same `finalizeReview` a console reviewer calls, so Ari's calls are counted here too.
  *

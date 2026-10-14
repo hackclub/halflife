@@ -9,6 +9,10 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Read-only, for the same reason as biome.yml: nothing here writes to the repository. Both jobs read the checkout and report, and the migrations job resets a throwaway Postgres service container rather than anything shared. Stated explicitly so the token cannot inherit a read-write default from an older repository or organisation.
+permissions:
+  contents: read
+
 jobs:
   verify:
     runs-on: ubuntu-latest
