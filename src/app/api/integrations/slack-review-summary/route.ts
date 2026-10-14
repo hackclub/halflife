@@ -1,9 +1,9 @@
 import type { NextRequest } from "next/server"
 import { fail, ok, withRoute } from "@/lib/api"
 import { requireIntegrationAuth } from "@/lib/integration-auth"
-import { postMessage } from "@/lib/site/slack"
 import { getProjectReviewStats } from "@/lib/site/review-store"
 import { buildReviewSummary } from "@/lib/site/review-summary"
+import { postMessage } from "@/lib/site/slack"
 import { recordSyncRun } from "@/lib/sync-run-log"
 
 const WINDOW_MS = 24 * 60 * 60 * 1000

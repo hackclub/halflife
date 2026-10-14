@@ -1,8 +1,8 @@
 import "server-only"
 
-import prisma from "@/lib/prisma"
 import type { Prisma } from "@/app/generated/prisma/client"
 import { ReviewPass } from "@/app/generated/prisma/enums"
+import prisma from "@/lib/prisma"
 
 export interface ProjectReviewStats {
 	/** Phase submissions handed in since `since`, by `createdAt`. */

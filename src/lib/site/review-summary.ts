@@ -1,6 +1,6 @@
-import { getSlackUserName } from "./slack"
-import type { ProjectReviewStats } from "./review-store"
 import prisma from "@/lib/prisma"
+import type { ProjectReviewStats } from "./review-store"
+import { getSlackUserName } from "./slack"
 
 const LEADERBOARD_LIMIT = 10
 
