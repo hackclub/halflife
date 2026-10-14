@@ -158,6 +158,12 @@ export default async function ReviewDetailPage({ params }: Props) {
 						the submit sheet requires of any over-budget design – but the grant you set decides what they actually get.
 					</Callout>
 				)}
+				{submission.fundingDeclined && (
+					<Callout tone="info">
+						<strong>Funding declined.</strong> They asked for no parts money on this project, so approving it grants $0
+						unless you set an explicit override. Their hours still earn coins as usual – only the grant is off.
+					</Callout>
+				)}
 				{submission.notes ? (
 					<Callout>
 						<strong>Submission note:</strong> {submission.notes}

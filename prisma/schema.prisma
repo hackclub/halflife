@@ -873,6 +873,8 @@ model PhaseSubmission {
   ///
   /// A design submission only, and only when the cart was actually over the margin - below that a slightly-over cart has always submitted as itself. Recorded here rather than left to the review conversation because it is a statement made about a specific cart at a specific moment: the cart stays editable until design approval, and the tier table is expected to move mid-program, so neither the number they agreed to nor the cap they agreed under can be reconstructed from the project row afterwards.
   partialFundingAccepted Boolean @default(false)
+  /// The maker ticked the box saying they want no parts funding for this project – scrounged parts, their own stock, or a sponsor. A design submission only: a build carries no parts money, so there is nothing to decline there. Recorded for the reviewer rather than inferred from an empty parts list, because a declined list can still be full.
+  fundingDeclined Boolean @default(false)
   /// The cart total shown when they ticked the box, and the tier funding they were told covers it. Null on every submission that did not need the agreement.
   requestedBomUsd Float?
   fundingCapUsd   Int?

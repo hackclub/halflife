@@ -29,6 +29,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		sanitizeOptional(parsed.data.notes),
 		parsed.data.attachmentKeys,
 		parsed.data.partialFundingAccepted,
+		parsed.data.fundingDeclined,
 	)
 
 	await markSubmission(gate.user.id)
@@ -42,10 +43,11 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		metadata: {
 			phase: parsed.data.phase,
 			submissionId: submission.id,
-			// What the maker agreed to, if they had to agree to anything: an over-budget cart is funded up to the tier and the rest is theirs.
+			// What the maker agreed to, if they had to agree to anything: an over-budget cart is funded up to the tier and the rest is theirs, or nothing at all when they declined funding.
 			...(submission.partialFundingAccepted
 				? { requestedBomUsd: submission.requestedBomUsd, fundingCapUsd: submission.fundingCapUsd }
 				: {}),
+			...(submission.fundingDeclined ? { fundingDeclined: true } : {}),
 		},
 	})
 

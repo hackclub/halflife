@@ -236,7 +236,12 @@ type Ctx = {
 	/** Resolves to null once submitted, or the server's reason for refusing. */
 	submitPhase: (
 		id: string,
-		extra?: { notes?: string; attachmentKeys?: string[]; partialFundingAccepted?: boolean },
+		extra?: {
+			notes?: string
+			attachmentKeys?: string[]
+			partialFundingAccepted?: boolean
+			fundingDeclined?: boolean
+		},
 	) => Promise<string | null>
 	/**
 	 * Resolves to null once the entry is saved, or to the server's reason for refusing it – Lapse may say a timelapse is not yours, is still processing, or already backs another entry, and the sheet has to stay open to say so.
@@ -828,7 +833,12 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	const submitPhase = useCallback(
 		async (
 			id: string,
-			extra: { notes?: string; attachmentKeys?: string[]; partialFundingAccepted?: boolean } = {},
+			extra: {
+				notes?: string
+				attachmentKeys?: string[]
+				partialFundingAccepted?: boolean
+				fundingDeclined?: boolean
+			} = {},
 		): Promise<string | null> => {
 			const route = routeOf(id)
 			if (!route) return "This week has no project to submit."
@@ -841,8 +851,9 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 						phase: route.phase,
 						...(extra.notes ? { notes: extra.notes } : {}),
 						attachmentKeys: extra.attachmentKeys ?? [],
-						// Only ever sent as true, so a stale tick from a cart that has since shrunk cannot ride along on the next one.
+						// Only ever sent as true, so a stale tick from a cart that has since shrunk cannot ride along on the next one. Same for a declined grant: the server records what this hand-in said, not what a previous one did.
 						...(extra.partialFundingAccepted ? { partialFundingAccepted: true } : {}),
+						...(extra.fundingDeclined ? { fundingDeclined: true } : {}),
 					}),
 				})
 			} catch {

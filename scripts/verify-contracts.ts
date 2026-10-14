@@ -210,6 +210,8 @@ async function bodies() {
 		],
 		["submitPhase", submitSchema, { phase: "DESIGN", notes: "it works", attachmentKeys: ["sessions/u/cart.png"] }],
 		["submitPhase · no notes", submitSchema, { phase: "BUILD", attachmentKeys: [] }],
+		// Declining is a plain flag like the partial agreement: absent means false, and strict mode still refuses unknown keys.
+		["submitPhase · declined funding", submitSchema, { phase: "DESIGN", fundingDeclined: true }],
 		// The printer branch carries a machine and the two funding branches must not. The store sends `{ goal }` alone for those, so a schema that grew a required printer would break every one of them at once.
 		["setGoal · printer", setGoalSchema, { goal: "PRINTER", printerGoalId: "bambu-a1-mini" }],
 		["setGoal · funding all weeks", setGoalSchema, { goal: "FULL_FUNDING" }],
