@@ -1732,8 +1732,8 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							{weekListPhrase(pace.missedWeeks)} passed without being approved, and coins only come from an approved
 							week. A <span className="font-bold text-navy">{pace.printer.name}</span> asks about{" "}
 							<span className="font-bold text-navy tabular-nums">{pace.perWeekCoins}</span> coins every design week, so
-							you may not be eligible for it – the bigger prizes need all 5 themes finished. A bigger week later
-							can make some of it up.
+							you may not be eligible for it – the bigger prizes need all 5 themes finished. A bigger week later can
+							make some of it up.
 						</p>
 					</div>
 				</div>
@@ -1741,11 +1741,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 			{stage === "choose" ? (
 				<div className="grid gap-3 sm:grid-cols-2">
-					{starters.length > 0 && (
-						<p className="col-span-full label mb-2 text-left text-violet-deep">
-							Step 1 / 2
-						</p>
-					)}
+					{starters.length > 0 && <p className="col-span-full label mb-2 text-left text-violet-deep">Step 1 / 2</p>}
 					{starters.map((s) => (
 						<StarterProjectCard
 							key={s.id}
@@ -1799,118 +1795,123 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				</div>
 			) : (
 				<div className="grid gap-6 lg:grid-cols-[1fr_230px] lg:items-start">
-				<div className="grid gap-4">
-					<p className="label mb-2 text-left text-violet-deep">Step 2 / 2</p>
-					<p className="hand mb-2 text-left text-[0.8rem] text-navy-soft">
-						Tier can be changed any time before you submit this week.
-					</p>
-					{starterId !== null && (
-						<div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-							<Chip tone="teal">
-								<IconCheck className="text-[0.9rem]" /> Building {starters.find((s) => s.id === starterId)?.title ?? "starter"}
-							</Chip>
-							<button type="button" onClick={() => setStage("choose")} className="hand text-[0.82rem] text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy">
-								Choose a different starting point
-							</button>
-						</div>
-					)}
-					<Field label="Project name" hint="Give it a cool name." id="np-name">
-						<input
-							id="np-name"
-							value={name}
-							onChange={(e) => setName(e.target.value)}
-							placeholder={`My ${week.theme.toLowerCase()} project`}
-							className={inputClass}
-						/>
-					</Field>
-					<Field label="Project description" hint="What it does, and what makes it yours." id="np-desc">
-						<textarea
-							id="np-desc"
-							value={desc}
-							onChange={(e) => setDesc(e.target.value)}
-							rows={3}
-							placeholder={week.examples[0]}
-							className={cx(inputClass, "resize-none")}
-						/>
-					</Field>
-					<RepoInput id="np-repo" value={repo} onChange={setRepo} />
-
-					<button
-						type="button"
-						onClick={() => setShowExamples((v) => !v)}
-						className="hand self-start text-[0.82rem] text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
-					>
-						{showExamples ? "Hide examples" : "Stuck? See what other people are making"}
-					</button>
-					{showExamples && (
-						<ul className="grid gap-2">
-							{week.examples.map((e) => (
-								<li key={e}>
-									<button
-										type="button"
-										onClick={() => setDesc(e)}
-										className="sketch w-full rounded-xl bg-white px-4 py-2.5 text-left text-[0.9rem] leading-snug text-navy transition-colors hover:bg-violet-pale/60"
-										style={{ "--sk-radius": "12px" } as React.CSSProperties}
-									>
-										{e}
-									</button>
-								</li>
-							))}
-						</ul>
-					)}
-
-					<div className="mt-2">
-						<p className="label mb-2 text-violet-deep">Funding tier</p>
+					<div className="grid gap-4">
+						<p className="label mb-2 text-left text-violet-deep">Step 2 / 2</p>
+						<p className="hand mb-2 text-left text-[0.8rem] text-navy-soft">
+							Tier can be changed any time before you submit this week.
+						</p>
 						{starterId !== null && (
-							<p className="hand mb-2.5 text-[0.82rem] text-navy-soft">
-								Starter projects are Tier 1. Switch to your own idea to choose a different tier.
-							</p>
+							<div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+								<Chip tone="teal">
+									<IconCheck className="text-[0.9rem]" /> Building{" "}
+									{starters.find((s) => s.id === starterId)?.title ?? "starter"}
+								</Chip>
+								<button
+									type="button"
+									onClick={() => setStage("choose")}
+									className="hand text-[0.82rem] text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
+								>
+									Choose a different starting point
+								</button>
+							</div>
 						)}
-						{/* The hours quoted here are the funded block, which is exactly
+						<Field label="Project name" hint="Give it a cool name." id="np-name">
+							<input
+								id="np-name"
+								value={name}
+								onChange={(e) => setName(e.target.value)}
+								placeholder={`My ${week.theme.toLowerCase()} project`}
+								className={inputClass}
+							/>
+						</Field>
+						<Field label="Project description" hint="What it does, and what makes it yours." id="np-desc">
+							<textarea
+								id="np-desc"
+								value={desc}
+								onChange={(e) => setDesc(e.target.value)}
+								rows={3}
+								placeholder={week.examples[0]}
+								className={cx(inputClass, "resize-none")}
+							/>
+						</Field>
+						<RepoInput id="np-repo" value={repo} onChange={setRepo} />
+
+						<button
+							type="button"
+							onClick={() => setShowExamples((v) => !v)}
+							className="hand self-start text-[0.82rem] text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
+						>
+							{showExamples ? "Hide examples" : "Stuck? See what other people are making"}
+						</button>
+						{showExamples && (
+							<ul className="grid gap-2">
+								{week.examples.map((e) => (
+									<li key={e}>
+										<button
+											type="button"
+											onClick={() => setDesc(e)}
+											className="sketch w-full rounded-xl bg-white px-4 py-2.5 text-left text-[0.9rem] leading-snug text-navy transition-colors hover:bg-violet-pale/60"
+											style={{ "--sk-radius": "12px" } as React.CSSProperties}
+										>
+											{e}
+										</button>
+									</li>
+								))}
+							</ul>
+						)}
+
+						<div className="mt-2">
+							<p className="label mb-2 text-violet-deep">Funding tier</p>
+							{starterId !== null && (
+								<p className="hand mb-2.5 text-[0.82rem] text-navy-soft">
+									Starter projects are Tier 1. Switch to your own idea to choose a different tier.
+								</p>
+							)}
+							{/* The hours quoted here are the funded block, which is exactly
                 what the submit gate holds you to. The funded hours buy the
                 parts; every hour past them earns spendable coins. */}
-						<div className="grid gap-2.5">
-							{TIERS.map((t) => (
-								<OptionRow
-									key={t.id}
-									selected={tier === t.id}
-									disabled={starterId !== null && t.id !== STARTER_PROJECT_TIER}
-									onClick={() => setTier(t.id)}
-									hint={
-										<>
-											{t.detail}
-											<span className="mt-1 block text-navy-soft/90">
-												You can submit on tier {t.id} from {fmtH(t.fundingHours)} of design time – the parts-funding
-												hours and nothing more. Every hour past that (once your tier&apos;s funding is achieved) earns 5
-												spendable coins.
+							<div className="grid gap-2.5">
+								{TIERS.map((t) => (
+									<OptionRow
+										key={t.id}
+										selected={tier === t.id}
+										disabled={starterId !== null && t.id !== STARTER_PROJECT_TIER}
+										onClick={() => setTier(t.id)}
+										hint={
+											<>
+												{t.detail}
+												<span className="mt-1 block text-navy-soft/90">
+													You can submit on tier {t.id} from {fmtH(t.fundingHours)} of design time – the parts-funding
+													hours and nothing more. Every hour past that (once your tier&apos;s funding is achieved) earns
+													5 spendable coins.
+												</span>
+											</>
+										}
+									>
+										<span className="flex flex-wrap items-baseline gap-x-2.5">
+											<span className="text-[0.98rem] font-extrabold text-navy">Tier {t.id}</span>
+											<span className="hand text-[0.86rem] text-teal-ink">${t.grantUsd} for parts</span>
+											<span className="hand text-[0.8rem] text-navy-soft">
+												· {fmtH(submitFloorFor(t.fundingHours))} to submit
 											</span>
-										</>
-									}
-								>
-									<span className="flex flex-wrap items-baseline gap-x-2.5">
-										<span className="text-[0.98rem] font-extrabold text-navy">Tier {t.id}</span>
-										<span className="hand text-[0.86rem] text-teal-ink">${t.grantUsd} for parts</span>
-										<span className="hand text-[0.8rem] text-navy-soft">
-											· {fmtH(submitFloorFor(t.fundingHours))} to submit
 										</span>
-									</span>
-								</OptionRow>
-							))}
+									</OptionRow>
+								))}
+							</div>
 						</div>
 					</div>
-				</div>
 
-				<div className="order-first lg:order-none">
-					<div className="overflow-hidden rounded-2xl p-4" style={{ background: week.accent }}>
-						<WeekPainting
-							theme={week.theme}
-							sizes="(min-width: 1024px) 198px, 220px"
-							className="sticker-shadow mx-auto aspect-square w-full max-w-[220px]"
-						/>
+					<div className="order-first lg:order-none">
+						<div className="overflow-hidden rounded-2xl p-4" style={{ background: week.accent }}>
+							<WeekPainting
+								theme={week.theme}
+								sizes="(min-width: 1024px) 198px, 220px"
+								className="sticker-shadow mx-auto aspect-square w-full max-w-[220px]"
+							/>
+						</div>
+						<p className="mt-3 text-[0.86rem] leading-snug text-navy-soft">{week.primer.split(". ")[0]}.</p>
 					</div>
-					<p className="mt-3 text-[0.86rem] leading-snug text-navy-soft">{week.primer.split(". ")[0]}.</p>
 				</div>
-			</div>
 			)}
 		</Modal>
 	)

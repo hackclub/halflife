@@ -36,10 +36,7 @@ async function boardLines(board: HelpTicketStats["leaderboard"]): Promise<string
 
 /** The header and rows for one board, with the overflow note under it. */
 function boardSection(title: string, board: HelpTicketStats["leaderboard"], lines: string[]): string[] {
-	const section = [
-		title,
-		...(lines.length > 0 ? lines : ["no one yet – there's still time... :yay-bazooka:"]),
-	]
+	const section = [title, ...(lines.length > 0 ? lines : ["no one yet – there's still time... :yay-bazooka:"])]
 	if (board.length > LEADERBOARD_LIMIT) section.push(`(plus ${board.length - LEADERBOARD_LIMIT} more)`)
 	return section
 }

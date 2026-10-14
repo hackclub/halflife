@@ -3,13 +3,7 @@ import { headers } from "next/headers"
 import type { NextResponse } from "next/server"
 import { type ApiErrorBody, fail } from "@/lib/api"
 import { auth } from "@/lib/auth"
-import {
-	getUserRolesIfExists,
-	hasPermission,
-	hasRole,
-	type Permission,
-	type Role,
-} from "@/lib/permissions"
+import { getUserRolesIfExists, hasPermission, hasRole, type Permission, type Role } from "@/lib/permissions"
 
 export interface SessionUser {
 	id: string

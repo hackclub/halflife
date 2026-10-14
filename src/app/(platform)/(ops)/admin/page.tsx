@@ -111,7 +111,15 @@ export default async function AdminOverviewPage() {
 					</span>
 				}
 			>
-				<div style={{ display: "flex", flexWrap: "wrap", gap: "1.5rem", alignItems: "center", justifyContent: "space-between" }}>
+				<div
+					style={{
+						display: "flex",
+						flexWrap: "wrap",
+						gap: "1.5rem",
+						alignItems: "center",
+						justifyContent: "space-between",
+					}}
+				>
 					<ShareDonut
 						measure="Project review status"
 						empty="No projects with a review state yet."

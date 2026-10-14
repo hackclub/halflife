@@ -22,4 +22,3 @@ export const httpsUrl = z
 export function boundedText(max: number, min = 0) {
 	return z.string().trim().min(min).max(max)
 }
-

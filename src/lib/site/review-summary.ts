@@ -35,19 +35,14 @@ async function namesFor(entries: ProjectReviewStats["leaderboard"]): Promise<Map
 		await Promise.all(
 			ids.map(async (id) => {
 				const user = byId.get(id)
-				const name = user?.slackId
-					? await getSlackUserName(user.slackId)
-					: (user?.displayName || user?.name || id)
+				const name = user?.slackId ? await getSlackUserName(user.slackId) : user?.displayName || user?.name || id
 				return [id, name] as const
 			}),
 		),
 	)
 }
 
-function boardLines(
-	board: ProjectReviewStats["leaderboard"],
-	names: Map<string, string>,
-): string[] {
+function boardLines(board: ProjectReviewStats["leaderboard"], names: Map<string, string>): string[] {
 	return board
 		.slice(0, LEADERBOARD_LIMIT)
 		.map((entry, index) => leaderboardLine(index + 1, names.get(entry.reviewerId) ?? entry.reviewerId, entry.reviewed))
@@ -55,10 +50,7 @@ function boardLines(
 
 /** The header and rows for one board, with the overflow note under it. */
 function boardSection(title: string, board: ProjectReviewStats["leaderboard"], lines: string[]): string[] {
-	const section = [
-		title,
-		...(lines.length > 0 ? lines : ["no one yet – there's still time... :yay-bazooka:"]),
-	]
+	const section = [title, ...(lines.length > 0 ? lines : ["no one yet – there's still time... :yay-bazooka:"])]
 	if (board.length > LEADERBOARD_LIMIT) section.push(`(plus ${board.length - LEADERBOARD_LIMIT} more)`)
 	return section
 }
@@ -75,6 +67,10 @@ export async function buildReviewSummary(stats: ProjectReviewStats): Promise<str
 		"",
 		...boardSection(":yay-peace: today's leaderboard", stats.leaderboard, boardLines(stats.leaderboard, names)),
 		"",
-		...boardSection(":yay-blush-2: all-time leaderboard", stats.globalLeaderboard, boardLines(stats.globalLeaderboard, names)),
+		...boardSection(
+			":yay-blush-2: all-time leaderboard",
+			stats.globalLeaderboard,
+			boardLines(stats.globalLeaderboard, names),
+		),
 	].join("\n")
 }
