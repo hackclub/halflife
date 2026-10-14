@@ -46,6 +46,19 @@ export async function resolveHelpTicket(input: {
 	})
 }
 
+/**
+ * Opens a solved ticket back up, from the reopen button on its thread message.
+ *
+ * Returns whether anything actually reopened. A double-clicked button (or a Slack redelivery) arrives twice with the same stale blocks: the first delivery clears the row and the second must change nothing, so the caller only rewrites messages when this is true. The `resolvedAt: not-null` guard is the mirror of resolve's own, for the same race.
+ */
+export async function reopenHelpTicket(input: { helpChannel: string; helpTs: string }): Promise<boolean> {
+	const { count } = await prisma.helpTicket.updateMany({
+		where: { helpChannel: input.helpChannel, helpTs: input.helpTs, resolvedAt: { not: null } },
+		data: { resolvedAt: null, resolvedBy: null },
+	})
+	return count > 0
+}
+
 export type HelpTicketStats = {
 	/** Tickets opened since `since`, by `createdAt`. */
 	opened: number

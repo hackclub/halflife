@@ -2,20 +2,26 @@ import { after, NextResponse } from "next/server"
 import {
 	addReaction,
 	checkChannelMembership,
+	postMessage,
 	removeReaction,
 	type SlackBlock,
 	updateMessage,
 	verifySlackRequest,
 } from "@/lib/site/slack"
-import { resolveHelpTicket } from "@/lib/site/ticket-store"
+import { countPriorHelpTickets, reopenHelpTicket, resolveHelpTicket } from "@/lib/site/ticket-store"
 import {
 	deleteTicketMessage,
 	helpedAck,
+	MARK_HELPED_BUTTON,
 	PENDING_REACTION,
 	RESOLVED_REACTION,
+	reopenBlocks,
+	reopenedAck,
 	resolveBlocks,
 	selfResolvedAck,
+	TICKET_ACTIONS_BLOCK_ID,
 	type TicketRef,
+	ticketHistory,
 	ticketSection,
 } from "@/lib/site/tickets"
 
@@ -94,6 +100,19 @@ async function reactResolved(ref: Partial<TicketRef>) {
 	} catch (err) {
 		console.error(`Failed to add resolved reaction: ${err}`)
 	}
+}
+
+/** The reopen button's value, or undefined when the ref is too malformed to rebuild from. The ticket resolves either way – a thread without a way back is degraded, not broken. */
+function reopenRefFrom(ref: Partial<TicketRef & { ticketsChannel: string }>) {
+	return ref.authorId && ref.helpChannel && ref.helpTs && ref.ticketsChannel
+		? {
+				helpChannel: ref.helpChannel,
+				helpTs: ref.helpTs,
+				authorId: ref.authorId,
+				permalink: ref.permalink ?? null,
+				ticketsChannel: ref.ticketsChannel,
+			}
+		: undefined
 }
 
 /** Staff clicking "Mark as helped" in the tickets channel – gated on
@@ -182,7 +201,7 @@ async function handleSelfResolve(payload: InteractionPayload, action: BlockActio
 		payload.channel.id,
 		payload.message.ts,
 		selfResolvedAck(),
-		resolveBlocks(payload.message.blocks, payload.user.id),
+		resolveBlocks(payload.message.blocks, payload.user.id, undefined, reopenRefFrom(ref)),
 	)
 
 	if (ref.helpChannel && ref.helpTs) {
@@ -255,7 +274,7 @@ async function handleThreadMarkHelped(payload: InteractionPayload, action: Block
 		payload.channel.id,
 		payload.message.ts,
 		helpedAck(payload.user.id),
-		resolveBlocks(payload.message.blocks, payload.user.id),
+		resolveBlocks(payload.message.blocks, payload.user.id, undefined, reopenRefFrom(ref)),
 	)
 
 	if (ref.helpChannel && ref.helpTs) {
@@ -281,6 +300,132 @@ async function handleThreadMarkHelped(payload: InteractionPayload, action: Block
 	}
 
 	await reactResolved(ref)
+}
+
+/** The reopen button on a resolved thread message – the asker whose problem came back, or a helper who sees it needs more.
+ * Gated like the resolve buttons: the author, or the team that owns the tickets channel. Anyone else gets an ephemeral denial rather than a silent nothing. */
+async function handleReopen(payload: InteractionPayload, action: BlockAction) {
+	if (!payload.channel?.id || !payload.message?.ts) return
+
+	let ref: Partial<TicketRef & { ticketsChannel: string }> = {}
+	try {
+		ref = action.value ? JSON.parse(action.value) : {}
+	} catch {
+		return
+	}
+	if (!ref.authorId || !ref.helpChannel || !ref.helpTs) return
+	const ticketsChannel = ref.ticketsChannel ?? process.env.SLACK_TICKETS_CHANNEL_ID
+	if (!ticketsChannel) {
+		console.error("reopen_ticket dropped: no tickets channel on the ref or in env")
+		if (payload.response_url)
+			await respondEphemeral(
+				payload.response_url,
+				"I couldn't figure out where the tickets live, so I left this one alone – tell an admin to check the app logs.",
+			)
+		return
+	}
+
+	const isAuthor = payload.user.id === ref.authorId
+	const membership = isAuthor ? null : await checkChannelMembership(ticketsChannel, payload.user.id)
+	if (!isAuthor && (membership?.error || !membership?.member)) {
+		if (membership?.error)
+			console.error(
+				`reopen_ticket denied by unreadable member list: channel ${ticketsChannel}, user ${payload.user.id}, Slack error ${membership.error}`,
+			)
+		if (payload.response_url)
+			await respondEphemeral(
+				payload.response_url,
+				membership?.error
+					? "I couldn't verify the team list just now, so I left this one alone – tell an admin to check the app logs for the Slack API error."
+					: "Only the person who asked, or the Half Life team, can reopen a ticket.",
+			)
+		return
+	}
+
+	// The database first: a double-clicked button arrives twice with the same stale blocks, and only the first may rewrite anything. A ticket with no row (asked before the table existed) reopens purely in Slack.
+	let reopened = false
+	try {
+		reopened = await reopenHelpTicket({ helpChannel: ref.helpChannel, helpTs: ref.helpTs })
+	} catch (err) {
+		console.error(`Failed to reopen ticket ${ref.helpTs}: ${err}`)
+	}
+	if (!reopened) return
+
+	// Back in the queue: the mirror was deleted on resolve, so staff need a fresh one. Best-effort like the rest of this file – the thread below reopens regardless.
+	// The row itself counts in the history read, so one is subtracted: at creation the row does not exist yet and the count excludes it.
+	let ticketsTs: string | null = null
+	try {
+		const priorTickets = Math.max(0, (await countPriorHelpTickets(ref.authorId)) - 1)
+		const threadRef = {
+			helpChannel: ref.helpChannel,
+			helpTs: ref.helpTs,
+			authorId: ref.authorId,
+			permalink: ref.permalink ?? null,
+		}
+		const mirrorBlocks: SlackBlock[] = [ticketSection(threadRef)]
+		mirrorBlocks.push(ticketHistory(ref.authorId, priorTickets))
+		mirrorBlocks.push({
+			type: "actions",
+			block_id: TICKET_ACTIONS_BLOCK_ID,
+			elements: [
+				{
+					type: "button",
+					text: { type: "plain_text", text: MARK_HELPED_BUTTON, emoji: true },
+					style: "primary",
+					action_id: "mark_helped",
+					value: JSON.stringify(threadRef),
+				},
+			],
+		})
+		const mirror = await postMessage(
+			ticketsChannel,
+			threadRef.permalink
+				? `Reopened ticket from <@${ref.authorId}>: ${threadRef.permalink}`
+				: `Reopened ticket from <@${ref.authorId}>`,
+			{ blocks: mirrorBlocks, unfurlLinks: true },
+		)
+		if (mirror.ok && mirror.ts) ticketsTs = mirror.ts
+		else
+			console.error(
+				`[slack] reopened ticket mirror post to ${ticketsChannel} failed (${mirror.error ?? "no message ts"})`,
+			)
+	} catch (err) {
+		console.error(`[slack] failed to re-queue reopened ticket ${ref.helpTs}: ${err}`)
+	}
+
+	// The thread goes back to exactly the open state: reminders-era buttons rebuilt with the fresh mirror reference, reopen button and resolved note stripped.
+	const threadRef = {
+		helpChannel: ref.helpChannel,
+		helpTs: ref.helpTs,
+		authorId: ref.authorId,
+		permalink: ref.permalink ?? null,
+		ticketsChannel,
+		...(ticketsTs ? { ticketsTs } : {}),
+	}
+	try {
+		await updateMessage(
+			payload.channel.id,
+			payload.message.ts,
+			reopenedAck(),
+			reopenBlocks(payload.message.blocks, threadRef),
+		)
+	} catch (err) {
+		console.error(`Failed to rewrite reopened thread message ${ref.helpTs}: ${err}`)
+	}
+
+	// Reactions swap back: done off, waiting on.
+	if (ref.helpChannel && ref.helpTs) {
+		try {
+			await removeReaction(ref.helpChannel, ref.helpTs, RESOLVED_REACTION)
+		} catch (err) {
+			console.error(`Failed to clear the resolved reaction: ${err}`)
+		}
+		try {
+			await addReaction(ref.helpChannel, ref.helpTs, PENDING_REACTION)
+		} catch (err) {
+			console.error(`Failed to re-add the pending reaction: ${err}`)
+		}
+	}
 }
 
 export async function POST(request: Request): Promise<NextResponse> {
@@ -327,6 +472,8 @@ export async function POST(request: Request): Promise<NextResponse> {
 					await handleSelfResolve(payload, action)
 				} else if (action?.action_id === "mark_helped_from_thread") {
 					await handleThreadMarkHelped(payload, action)
+				} else if (action?.action_id === "reopen_ticket") {
+					await handleReopen(payload, action)
 				}
 			} catch (err) {
 				// The response is already sent and Slack has its 200, so the log is the only trace a failure leaves.

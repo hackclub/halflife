@@ -1147,6 +1147,71 @@ async function bodies() {
 		}
 	}
 
+	/* ── 6d. Ticket message buttons, resolve and reopen ─────────────────────── */
+	//
+	// A resolved thread message carries exactly one way back (the reopen button), and resolving strips every action block so a stale button can never act twice. Reopening restores the two resolution buttons with the fresh mirror reference. Pinned because the button values are the only state the stateless Slack flow has – a dropped field strands the ticket.
+	const tickets = await import("../src/lib/site/tickets")
+	{
+		const ref = {
+			helpChannel: "C1",
+			helpTs: "111.222",
+			authorId: "U1",
+			permalink: null,
+			ticketsChannel: "C2",
+			ticketsTs: "333.444",
+		}
+		const actions = tickets.threadResolveActions(ref)
+		const elements = (actions.elements ?? []) as { action_id: string; value?: string }[]
+		const buttons = elements.filter((el) => typeof el.action_id === "string")
+		check(
+			"tickets · resolve actions carry both buttons",
+			actions.block_id === "self_resolve_actions" && buttons.length === 2,
+		)
+		check(
+			"tickets · button values round-trip the ref",
+			buttons.every((b) => {
+				try {
+					const parsed = JSON.parse(b.value ?? "")
+					return parsed.helpTs === ref.helpTs && parsed.ticketsTs === ref.ticketsTs
+				} catch {
+					return false
+				}
+			}),
+		)
+
+		const open = [{ type: "section", text: { type: "mrkdwn", text: "reminders" } }, actions]
+		const atResolve = { ...ref, ticketsTs: "555.666" }
+		const resolved = tickets.resolveBlocks(open, "U9", undefined, atResolve)
+		const resolvedIds = resolved.map((b) => b.block_id)
+		check(
+			"tickets · resolving swaps actions for note plus reopen",
+			!resolvedIds.includes("self_resolve_actions") &&
+				resolvedIds.includes("ticket_resolved") &&
+				resolvedIds.includes("reopen_actions"),
+		)
+		check(
+			"tickets · reminders survive resolving",
+			resolved.some((b) => b.type === "section"),
+		)
+
+		const atReopen = { ...ref, ticketsTs: "777.888" }
+		const reopened = tickets.reopenBlocks(resolved, atReopen)
+		const reopenedIds = reopened.map((b) => b.block_id)
+		check(
+			"tickets · reopening restores resolve buttons with the fresh mirror",
+			reopenedIds.includes("self_resolve_actions") &&
+				!reopenedIds.includes("reopen_actions") &&
+				!reopenedIds.includes("ticket_resolved"),
+		)
+		const restored = reopened.find((b) => b.block_id === "self_resolve_actions")
+		const restoredElements = ((restored?.elements ?? []) as { value?: string }[])
+		const restoredValues = restoredElements.map((el) => String(el.value ?? ""))
+		check(
+			"tickets · restored buttons point at the new mirror",
+			restoredValues.length === 2 && restoredValues.every((v) => v.includes("777.888")),
+		)
+	}
+
 	for (const [name, schema, body] of cases) {
 		const parsed = schema.safeParse(body)
 		check(

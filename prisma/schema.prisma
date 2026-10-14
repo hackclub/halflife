@@ -1622,9 +1622,9 @@ model HelpTicket {
   helpChannel   String
   helpTs        String
   createdAt     DateTime  @default(now())
-  /// When the ticket was resolved, from any of the three buttons; null while it is still waiting. Set once - a second resolution does not overwrite it, so the daily summary counts each ticket exactly once.
+  /// When the ticket was resolved, from any of the three buttons; null while it is still waiting. Set once per resolution – reopening clears it so a second resolution writes anew, which is what lets a solved-then-reopened ticket count its final close rather than its first.
   resolvedAt    DateTime?
-  /// The Slack user who resolved it: the helper for either "Mark as helped" button, the asker themselves for "I'm all set". Null until resolved.
+  /// The Slack user who resolved it: the helper for either "Mark as helped" button, the asker themselves for "I'm all set". Null until resolved, and cleared on reopen like resolvedAt.
   resolvedBy    String?
 
   @@unique([helpChannel, helpTs])
