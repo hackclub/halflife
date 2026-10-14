@@ -13,7 +13,7 @@ type Params = { params: Promise<{ id: string }> }
 /**
  * Point a project's repo link at the repo its sync writes to.
  *
- * A maker can turn the sync on before the project details ever name a repo, and the two fields are independent: `repoSyncRepo` is where the derived JOURNAL.md and BOM.md land, `githubRepo` is the project's own link a reviewer opens and the pre-submission checks read. Nothing copies one onto the other, so a maker who picks their repo in the sync box alone ends up with a project the checks call "No repo yet" and a sync that is happily writing to a repo the project does not point at.
+ * A maker can turn the sync on before the project details ever name a repo, and the two fields are independent: `repoSyncRepo` is where the derived JOURNAL.md and BOM.csv land, `githubRepo` is the project's own link a reviewer opens and the pre-submission checks read. Nothing copies one onto the other, so a maker who picks their repo in the sync box alone ends up with a project the checks call "No repo yet" and a sync that is happily writing to a repo the project does not point at.
  *
  * This closes that gap with one press. It is not a general "copy the sync repo over the link" – the button that calls it appears only when the two are actually different repos (see `syncRepoDiffers`), and the URL it writes is taken from the sync's own stored target server-side, never from the client, so a caller cannot use it to point their project at a repo of their choosing.
  *

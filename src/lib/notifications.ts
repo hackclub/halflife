@@ -1,6 +1,7 @@
 import "server-only"
 import type { Prisma } from "@/app/generated/prisma/client"
 import { Phase, ReviewResult } from "@/app/generated/prisma/enums"
+import { projectUrl } from "@/lib/app-url"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { projectDisplayTitle } from "@/lib/config/program"
 import { sendEmail } from "@/lib/email"
@@ -28,11 +29,6 @@ export interface ReviewOutcomeNotice {
 	note: string | null
 	/** Which surface decided it, so the message can say who is asking. */
 	decidedBy: "ari" | "console"
-}
-
-function projectUrl(id: string): string | null {
-	const base = (process.env.NEXT_PUBLIC_APP_URL ?? process.env.BETTER_AUTH_URL ?? "").replace(/\/$/, "")
-	return base ? `${base}/projects/${id}` : null
 }
 
 const HTML_ESCAPES: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }

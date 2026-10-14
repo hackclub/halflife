@@ -196,8 +196,8 @@ export function RepoSyncSettings({
 				</p>
 				<p className="text-[0.85rem] leading-relaxed text-navy-soft">
 					Your journal entries land in <code className="hand text-navy">JOURNAL.md</code> and your parts list in{" "}
-					<code className="hand text-navy">BOM.md</code>, in the repo&apos;s default branch. Each new entry updates them
-					automatically.
+					<code className="hand text-navy">BOM.csv</code>, in the repo&apos;s default branch. Each new entry updates
+					them automatically.
 				</p>
 
 				{state.error && (
@@ -250,7 +250,7 @@ export function RepoSyncSettings({
 			<p className="text-[0.9rem] leading-relaxed text-navy-soft">
 				{compact
 					? "Keep your devlogs and parts list in your project's repo."
-					: "Pick the repository to mirror this project into. Your journal entries become JOURNAL.md and your parts list becomes BOM.md, updated automatically as you log work."}
+					: "Pick the repository to mirror this project into. Your journal entries become JOURNAL.md and your parts list becomes BOM.csv, updated automatically as you log work."}
 			</p>
 
 			{state.reposError ? (
@@ -325,7 +325,7 @@ export function RepoSyncSettings({
 				})}
 			</div>
 			<p className={cx("hand text-[0.8rem] text-navy-soft", compact && "hidden")}>
-				it writes JOURNAL.md and BOM.md to the repo&apos;s default branch, with one commit per update.
+				it writes JOURNAL.md and BOM.csv to the repo&apos;s default branch, with one commit per update.
 			</p>
 		</div>
 	)
