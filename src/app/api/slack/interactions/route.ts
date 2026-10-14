@@ -283,7 +283,7 @@ async function handleThreadMarkHelped(payload: InteractionPayload, action: Block
 	await reactResolved(ref)
 }
 
-export async function POST(request: Request) {
+export async function POST(request: Request): Promise<NextResponse> {
 	const rawBody = await request.text()
 
 	const verified = verifySlackRequest(

@@ -50,9 +50,7 @@ async function countAirtableRecords(url: string, headers: Record<string, string>
 		const params = new URLSearchParams({ pageSize: "100", "fields[]": "email" })
 		if (offset) params.set("offset", offset)
 		const res = await fetch(`${url}?${params.toString()}`, { headers })
-		if (!res.ok) {
-			throw new Error(`${res.status} ${await res.text()}`)
-		}
+		if (!res.ok) throw new Error(`${res.status} ${await res.text()}`)
 		const data = (await res.json()) as { records?: unknown[]; offset?: string }
 		count += data.records?.length ?? 0
 		offset = data.offset

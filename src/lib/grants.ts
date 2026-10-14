@@ -66,7 +66,7 @@ async function memoOrReport(
 	}
 }
 
-export interface SendGrantInput {
+export type SendGrantInput = {
 	themeProjectId: string
 	phase: Phase
 	/** The HCB grant link (or bare hashid) an admin pasted. */
@@ -75,7 +75,7 @@ export interface SendGrantInput {
 	adminEmail: string | null
 }
 
-export interface SendGrantResult {
+export type SendGrantResult = {
 	amountCents: number
 	transactionId: string | null
 	/** True when a grant had already been sent for this project and phase. */

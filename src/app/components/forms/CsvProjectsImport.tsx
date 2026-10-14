@@ -3,7 +3,7 @@ import { useRouter } from "next/navigation"
 import { useRef, useState } from "react"
 import { Button, Callout } from "@/app/components/ui"
 
-interface CsvOutcome {
+type CsvOutcome = {
 	projectId: string
 	email: string
 	title: string
@@ -11,7 +11,7 @@ interface CsvOutcome {
 	reason: string | null
 }
 
-interface CsvSummary {
+type CsvSummary = {
 	read: number
 	imported: number
 	alreadyImported: number

@@ -13,14 +13,14 @@ import { warmupPhaseOf } from "@/lib/warmup"
  * Their own reels only, and including ones a moderator took out of the feed – the author still sees those, as the feed's own rule has it. A removed reel is gone for them too.
  */
 
-export interface MyPublicLink {
+export type MyPublicLink = {
 	id: string
 	platform: PublicReelPlatform
 	url: string
 	postedAt: number
 }
 
-export interface MyReel {
+export type MyReel = {
 	id: string
 	/** What the reel was for, in the trail's words: "Idea reel", "2.5h progress reel". */
 	title: string
@@ -38,7 +38,7 @@ export interface MyReel {
 	reopensCheckpoint: boolean
 }
 
-export interface MyReelGroup {
+export type MyReelGroup = {
 	/** Null for reels posted outside any project. */
 	project: { id: string; title: string; theme: string } | null
 	reels: MyReel[]

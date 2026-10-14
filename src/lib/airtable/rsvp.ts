@@ -10,7 +10,7 @@ import { existingColumns } from "@/lib/airtable/field-probe"
 import { fieldKey, formulaRef, RSVP } from "@/lib/airtable/schema"
 import prisma from "@/lib/prisma"
 
-export interface RsvpInput {
+export type RsvpInput = {
 	email: string
 	firstName?: string | null
 	lastName?: string | null
@@ -118,7 +118,7 @@ export async function recordDirectSignup(input: {
 	}
 }
 
-export interface DrainResult {
+export type DrainResult = {
 	attempted: number
 	created: number
 	updated: number

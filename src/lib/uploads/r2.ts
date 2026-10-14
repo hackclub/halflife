@@ -108,7 +108,7 @@ export function isVideoBytes(bytes: Uint8Array): boolean {
 export const UPLOAD_FOLDERS = ["sessions", "covers", "timelapses", "posts", "shop"] as const
 export type UploadFolder = (typeof UPLOAD_FOLDERS)[number]
 
-export interface UploadedObjectSummary {
+export type UploadedObjectSummary = {
 	key: string
 	size: number
 	lastModified: Date | null
@@ -116,7 +116,7 @@ export interface UploadedObjectSummary {
 	url: string | null
 }
 
-export interface UploadedObjectPage {
+export type UploadedObjectPage = {
 	objects: UploadedObjectSummary[]
 	nextCursor: string | null
 	prefix: string

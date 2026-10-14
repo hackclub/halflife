@@ -81,7 +81,7 @@ function fmtH(h: number) {
 	return `${to2(h)}h`
 }
 
-interface JournalDraft {
+type JournalDraft = {
 	tab: "journal" | "timelapse"
 	body: string
 	hoursText: string
@@ -1035,7 +1035,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 /* ================================================================== *
  * Reel
  * ================================================================== */
-interface ReelDraft {
+type ReelDraft = {
 	clip: string
 	/** The bucket's URL for the clip, never a blob URL: those die with the page. */
 	url: string | null

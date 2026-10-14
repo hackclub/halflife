@@ -5,7 +5,7 @@
  */
 const KEY = "halflife.doomscroller.position.v1"
 
-export interface FeedPosition {
+export type FeedPosition = {
 	/** The reel they were on. */
 	id: string
 	/** The admin reels they had been shown leading the feed, so one posted since can still go first. */

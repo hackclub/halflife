@@ -11,7 +11,10 @@ export const paginationQuery = z.object({
 export type PaginationQuery = z.infer<typeof paginationQuery>
 
 /** Prisma args for a cursor page. Fetches one extra row to detect "has more". */
-export function cursorArgs(cursor: string | undefined, limit: number) {
+export function cursorArgs(
+	cursor: string | undefined,
+	limit: number,
+): { take: number; cursor?: { id: string }; skip?: number } {
 	return {
 		take: limit + 1,
 		...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),

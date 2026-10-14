@@ -50,9 +50,8 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	)
 
 	// A skip means Airtable was never asked, or the row could not be built – report it instead of showing the admin a green result for nothing.
-	if (result && "skipped" in result) {
+	if (result && "skipped" in result)
 		return fail("UNAVAILABLE", `Airtable did not take the sync (${result.skipped}); check the deployment configuration`)
-	}
 
 	return ok({ result })
 })

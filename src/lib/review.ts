@@ -85,7 +85,7 @@ export async function sweepExpiredClaims(): Promise<number> {
 
 // ─── Decisions ───────────────────────────────────────────────────────────────
 
-export interface FinalizeInput {
+export type FinalizeInput = {
 	submissionId: string
 	/** Null when the decision was made by Ari, not by a Half Life user. */
 	reviewerId: string | null
@@ -103,7 +103,7 @@ export interface FinalizeInput {
 	grantUsdOverride?: number | null
 }
 
-export interface FinalizeOutcome {
+export type FinalizeOutcome = {
 	themeProjectId: string
 	phase: Phase
 	result: ReviewResult

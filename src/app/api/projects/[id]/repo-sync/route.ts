@@ -107,9 +107,8 @@ export const PUT = withRoute(async (_req: Request, { params }: Params) => {
 	const ref = repoRefFromLink(state.repo)
 	const forge: Forge | null = ref?.forge ?? null
 	if (!forge) throw new HttpError("UNPROCESSABLE", "The pinned repo is not one Half Life can write to.")
-	if (!(await forgeCredentials(gate.user.id, forge))) {
+	if (!(await forgeCredentials(gate.user.id, forge)))
 		throw new HttpError("FORBIDDEN", `Connect your ${forge.label} account first`)
-	}
 
 	const files = await runProjectSync(id, true)
 	const after = await getRepoSyncState(id, gate.user.id)

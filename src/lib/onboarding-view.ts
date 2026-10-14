@@ -5,7 +5,7 @@ import { TIERS } from "@/lib/config/tiers"
 import { WEEK_META } from "@/lib/curriculum"
 
 /** A starter project as the client shows it: everything but which weeks it belongs to. */
-export interface StarterProjectView {
+export type StarterProjectView = {
 	id: string
 	title: string
 	description: string
@@ -14,7 +14,7 @@ export interface StarterProjectView {
 	guideUrl: string
 }
 
-export interface OnboardingStateData {
+export type OnboardingStateData = {
 	reached: number
 	stepCount: number
 	completed: boolean
@@ -32,7 +32,7 @@ export interface OnboardingStateData {
 	trackingDismissed: boolean
 }
 
-export interface OnboardingView {
+export type OnboardingView = {
 	reached: number
 	stepCount: number
 	completed: boolean

@@ -15,7 +15,7 @@ const COLUMN_COLORS: Record<string, string> = {
 }
 
 /**
- * What share of the makers who finished onboarding did each tracked activity: one column per kind, all read off the same 0–100% scale, so the heights compare directly.
+ * What share of the makers who finished onboarding did each tracked activity: one column per kind, all read off the same 0-100% scale, so the heights compare directly.
  *
  * One maker counts in every column they reached – the columns add up to far more than the headcount, which is the point: onboarding finishers do several of these things, and this says which ones. The counts behind the shares ride along in each column's title and in the diagram's label, so the shape and the base are both on screen.
  */

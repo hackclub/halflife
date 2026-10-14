@@ -86,7 +86,7 @@ export function rankedShareBoard(title: string, items: { name: string; count: nu
 }
 
 /** One leaderboard as it appears in a post, before the names in it have been resolved. */
-export interface SummaryBoard {
+export type SummaryBoard = {
 	title: string
 	/** The board's real length, for the overflow note. */
 	total: number

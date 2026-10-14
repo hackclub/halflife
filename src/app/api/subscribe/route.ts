@@ -3,7 +3,7 @@ import { parseBody } from "@/lib/api"
 import { subscribeSchema } from "@/lib/schemas/admin"
 import { clientIp, normalizeEmail, rateLimited, recordSignup } from "@/lib/site/signups"
 
-export async function POST(request: Request) {
+export async function POST(request: Request): Promise<NextResponse> {
 	const ip = clientIp(request.headers)
 
 	if (rateLimited(ip)) {

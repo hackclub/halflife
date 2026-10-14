@@ -6,7 +6,7 @@ import prisma from "@/lib/prisma"
 const BASE = process.env.HACKATIME_API_BASE ?? "https://hackatime.hackclub.com"
 const TIMEOUT_MS = 10_000
 
-export interface HackatimeFetch {
+export type HackatimeFetch = {
 	seconds: number
 	/** True when the number came from cache or a failure, not a live fetch. */
 	stale: boolean
@@ -17,7 +17,7 @@ export interface HackatimeFetch {
 	notFound?: boolean
 }
 
-interface StatsBody {
+type StatsBody = {
 	data?: { projects?: { name?: unknown; total_seconds?: unknown }[] }
 }
 

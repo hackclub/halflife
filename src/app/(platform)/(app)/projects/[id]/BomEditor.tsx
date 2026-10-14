@@ -13,7 +13,7 @@ import { cx } from "@/lib/cx"
 const usd = (n: number) => `$${n.toFixed(2)}`
 
 /** What the import route reports after reading the repo's CSV. */
-interface ImportPreview {
+type ImportPreview = {
 	path: string
 	lines: {
 		name: string

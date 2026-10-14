@@ -27,9 +27,7 @@ async function main() {
 
 	for (const table of body.tables) {
 		console.log(`\n# ${table.name}  (${table.id})`)
-		for (const field of table.fields) {
-			console.log(`  ${field.id}  ${field.type.padEnd(20)} ${field.name}`)
-		}
+		for (const field of table.fields) console.log(`  ${field.id}  ${field.type.padEnd(20)} ${field.name}`)
 	}
 	console.log("\nPaste these ids into lib/airtable/schema.ts, then set AIRTABLE_USE_FIELD_IDS=true.")
 }

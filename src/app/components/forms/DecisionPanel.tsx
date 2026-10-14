@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Button, Callout, Field } from "@/app/components/ui"
 import { sendJson, useAction } from "@/lib/use-action"
 
-interface TierOption {
+type TierOption = {
 	id: number
 	name: string
 	grantUsd: number

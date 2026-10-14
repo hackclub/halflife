@@ -49,7 +49,7 @@ import { warmupPhaseOf } from "@/lib/warmup"
  */
 
 /** One checkpoint's state, in the shape the client store keeps them. */
-export interface CheckpointSnapshot {
+export type CheckpointSnapshot = {
 	done: boolean
 	at?: number
 	caption?: string
@@ -58,7 +58,7 @@ export interface CheckpointSnapshot {
 	log: SessionLog[]
 }
 
-export interface StoreSnapshot {
+export type StoreSnapshot = {
 	/** What the participant is here for, or null if not yet answered. */
 	participantGoal: ParticipantGoal | null
 	/**
@@ -443,7 +443,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 	}
 }
 
-interface SessionRow {
+type SessionRow = {
 	hoursClaimed: number
 	hoursApproved: number | null
 }

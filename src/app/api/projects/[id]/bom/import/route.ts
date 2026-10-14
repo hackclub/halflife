@@ -96,9 +96,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 
 	const result = await readRepoBom(project.githubRepo, limit)
 	if ("error" in result) return fail("UNPROCESSABLE", result.error)
-	if (result.lines.length === 0) {
-		return fail("UNPROCESSABLE", `No parts with a name were found in ${result.path}.`)
-	}
+	if (result.lines.length === 0) return fail("UNPROCESSABLE", `No parts with a name were found in ${result.path}.`)
 
 	await prisma.$transaction(async (tx) => {
 		// Re-read inside the transaction the write happens in, as POST /bom does: a design approval landing between the check above and the create would let lines into a list that is supposed to be final.
@@ -112,9 +110,8 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 
 		// The count is what the cap is about, not the sort order – replacing clears the list, adding shares its room.
 		const count = replace ? 0 : await tx.bomItem.count({ where: { themeProjectId: id } })
-		if (count + result.lines.length > MAX_BOM_ITEMS) {
+		if (count + result.lines.length > MAX_BOM_ITEMS)
 			throw new HttpError("VALIDATION_FAILED", `A parts list can have at most ${MAX_BOM_ITEMS} lines`)
-		}
 		const last = replace
 			? null
 			: await tx.bomItem.aggregate({ where: { themeProjectId: id }, _max: { sortOrder: true } })

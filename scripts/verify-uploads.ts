@@ -28,9 +28,7 @@ async function main() {
 
 	// ── Configuration ──────────────────────────────────────────────────────────
 	const required = ["S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY", "S3_BUCKET_NAME", "S3_ENDPOINT"] as const
-	for (const name of required) {
-		check(`${name} is set`, !!process.env[name])
-	}
+	for (const name of required) check(`${name} is set`, !!process.env[name])
 	check("isUploadConfigured()", isUploadConfigured())
 
 	const publicBase = process.env.S3_PUBLIC_URL

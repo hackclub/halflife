@@ -379,7 +379,7 @@ export async function disableRepoSync(themeProjectId: string, userId: string): P
 }
 
 /** What the project page and settings need to render the control. */
-export interface RepoSyncState {
+export type RepoSyncState = {
 	enabled: boolean
 	/** The repo the sync writes to, or null when it is off. */
 	repo: string | null

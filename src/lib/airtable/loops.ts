@@ -35,7 +35,7 @@ export const LOOPS_FIELDS = {
 const WEEKS = Array.from({ length: 10 }, (_, i) => i + 1)
 
 /** What Loops should hold for one person. */
-interface LoopsValues {
+type LoopsValues = {
 	id: string
 	email: string
 	/** Airtable's "last login": last site access, or the sign-in before it. */
@@ -266,7 +266,7 @@ async function signupRows(config: NonNullable<ReturnType<typeof getAirtableConfi
 	return { byEmail, byUserId, writable }
 }
 
-export interface LoopsSyncResult {
+export type LoopsSyncResult = {
 	users: number
 	matched: number
 	/** Rows found by `Half-Life User ID`. */

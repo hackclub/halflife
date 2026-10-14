@@ -9,7 +9,15 @@ import type { FeedItem, FeedPage } from "@/lib/feed"
  *
  * Today's admin reels come back as their own list rather than spliced in. Paginating one cursor across two orderings is how a feed starts skipping rows, so the server keeps them apart and they are simply put first here.
  */
-export function useFeed(limit = 12) {
+export function useFeed(limit = 12): {
+	items: FeedItem[]
+	leading: FeedItem[]
+	loading: boolean
+	error: string | null
+	done: boolean
+	more: () => void
+	patch: (id: string, next: Partial<FeedItem>) => void
+} {
 	const [items, setItems] = useState<FeedItem[]>([])
 	// Today's admin reels, as the first page put them in front of the rest.
 	const [leading, setLeading] = useState<FeedItem[]>([])

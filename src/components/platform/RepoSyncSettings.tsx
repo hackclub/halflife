@@ -17,7 +17,7 @@ import { ago } from "./reels/format"
  * The first commit happens when the sync is switched on (the server does it before the setting takes), so "on" always means "the files are in the repo", never a promise that the next write will try.
  */
 
-interface WritableRepo {
+type WritableRepo = {
 	fullName: string
 	name: string
 	ownerPath: string
@@ -28,7 +28,7 @@ interface WritableRepo {
 	pushedAt: string | null
 }
 
-interface SyncState {
+type SyncState = {
 	enabled: boolean
 	repo: string | null
 	forge: string | null

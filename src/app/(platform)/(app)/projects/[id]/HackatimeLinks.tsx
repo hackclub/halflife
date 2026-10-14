@@ -9,7 +9,7 @@ import { cx } from "@/lib/cx"
 import { fmtHours } from "@/lib/projects"
 import type { Phase } from "@/lib/types"
 
-interface Link {
+type Link = {
 	id: string
 	hackatimeProject: string
 	phase: "DESIGN" | "BUILD"

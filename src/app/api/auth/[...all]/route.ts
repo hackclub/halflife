@@ -13,7 +13,7 @@ const handler = toNextJsHandler(auth)
  *
  * Every other callback failure – an invalid code, a missing email, a provider we do not trust – is left to better-auth, because those are real and their page is the right one.
  */
-export async function GET(request: Request) {
+export async function GET(request: Request): Promise<Response> {
 	const response = await handler.GET(request)
 
 	const location = response.headers.get("location")

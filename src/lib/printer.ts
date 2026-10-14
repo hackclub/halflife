@@ -8,14 +8,14 @@ import { decryptUserPII, encryptPII, isPiiConfigured } from "@/lib/pii"
 import { canMovePrinterAward, PRINTER_AWARD_LABELS } from "@/lib/printer-award"
 import prisma from "@/lib/prisma"
 
-export interface ThemeProgress {
+export type ThemeProgress = {
 	theme: Theme
 	design: boolean
 	build: boolean
 	shipped: boolean
 }
 
-export interface PrinterQualification {
+export type PrinterQualification = {
 	qualified: boolean
 	shippedCount: number
 	required: number
@@ -103,7 +103,7 @@ export async function findPrinterAwardMismatches(): Promise<{ userId: string; em
 	return mismatches
 }
 
-export interface PrinterAwardUpdate {
+export type PrinterAwardUpdate = {
 	status: PrinterAwardStatus
 	trackingNumber?: string | null
 	trackingCarrier?: string | null

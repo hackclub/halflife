@@ -46,7 +46,7 @@ export async function resolveHelpTicket(input: {
 	})
 }
 
-export interface HelpTicketStats {
+export type HelpTicketStats = {
 	/** Tickets opened since `since`, by `createdAt`. */
 	opened: number
 	/** Tickets resolved since `since`, by `resolvedAt`, whoever resolved them. */

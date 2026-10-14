@@ -58,7 +58,7 @@ interface Placed extends SankeyNode {
 	color: string
 }
 
-interface Ribbon {
+type Ribbon = {
 	source: Placed
 	target: Placed
 	value: number

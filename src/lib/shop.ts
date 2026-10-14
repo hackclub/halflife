@@ -82,7 +82,7 @@ export interface ShopItemView extends ShopItemPublic {
 }
 
 /** Regions staff sell to, for the shop's price picker. Active only. */
-export interface ShopRegionOption {
+export type ShopRegionOption = {
 	id: string
 	name: string
 }
@@ -225,9 +225,8 @@ export async function purchase(
 
 	if (item.requiresPrinterQualified) {
 		const qualification = await getPrinterQualification(userId)
-		if (!qualification.qualified) {
+		if (!qualification.qualified)
 			throw new HttpError("ITEM_LOCKED", `Ship all ${qualification.required} themes to unlock this`)
-		}
 	}
 
 	return prisma.$transaction(async (tx) => {
@@ -306,18 +305,16 @@ export async function purchase(
 				},
 				_sum: { quantity: true },
 			})
-			if ((owned._sum.quantity ?? 0) + quantity > fresh.maxPerUser) {
+			if ((owned._sum.quantity ?? 0) + quantity > fresh.maxPerUser)
 				throw new HttpError("PURCHASE_LIMIT", `Limit ${fresh.maxPerUser} per person`)
-			}
 		}
 
 		const unitPrice = regional?.priceCredits ?? fresh.priceCredits
 		const totalCredits = unitPrice * quantity
 		const balances = await getBalances(tx, userId)
 		const payableFrom = spendableFor(balances, fresh.category)
-		if (payableFrom < totalCredits) {
+		if (payableFrom < totalCredits)
 			throw new HttpError("INSUFFICIENT_CREDIT", `You need ${totalCredits - payableFrom} more to buy this`)
-		}
 
 		const order = await tx.shopOrder.create({
 			data: {

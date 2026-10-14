@@ -7,7 +7,7 @@ import prisma from "@/lib/prisma"
 import { currentWeekNumber } from "@/lib/program"
 import { tallyBoard } from "./leaderboard"
 
-export interface ProjectReviewStats {
+export type ProjectReviewStats = {
 	/** Phase submissions handed in since `since`, by `createdAt`. */
 	submitted: number
 	/** Submissions decided since `since`, by the moment they were decided, whoever decided them – including Ari. */
@@ -27,7 +27,7 @@ export interface ProjectReviewStats {
 }
 
 /** One row of either board: who (by email), how many, and the name recorded beside the address for display when no account matches it. */
-export interface BoardEntry {
+export type BoardEntry = {
 	email: string
 	reviewed: number
 	name: string | null
@@ -67,8 +67,8 @@ function reviewerBoard(
 }
 
 /** One design week's review progress: named projects, and how many have at least one live review. */
-export interface WeekReviewProgress {
-	/** The design week number, 1–5. */
+export type WeekReviewProgress = {
+	/** The design week number, 1-5. */
 	week: number
 	/** The theme's own label, e.g. PCBs. */
 	label: string

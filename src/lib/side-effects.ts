@@ -2,7 +2,7 @@ import "server-only"
 import type { Prisma } from "@/app/generated/prisma/client"
 import { AuditAction, logAudit } from "@/lib/audit"
 
-export interface SideEffectContext {
+export type SideEffectContext = {
 	actorId: string | null
 	actorEmail?: string | null
 	targetType: string

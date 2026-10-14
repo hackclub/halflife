@@ -4,7 +4,7 @@ import { HttpError } from "@/lib/errors"
 
 type Tx = Prisma.TransactionClient
 
-export interface FreshTimelapse {
+export type FreshTimelapse = {
 	id: string
 	title: string
 	playbackUrl: string | null

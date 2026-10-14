@@ -21,7 +21,7 @@ export function lapseTimelapseUrl(id: string): string {
 
 const TIMEOUT_MS = 10_000
 
-export interface LapseTimelapse {
+export type LapseTimelapse = {
 	id: string
 	title: string
 	/** Wall-clock seconds recorded – Lapse derives it from the snapshots. */
@@ -35,7 +35,7 @@ export interface LapseTimelapse {
 	ownerId: string
 }
 
-interface RawTimelapse {
+type RawTimelapse = {
 	id: string
 	name: string
 	duration: number
@@ -64,7 +64,7 @@ function toTimelapse(t: RawTimelapse): LapseTimelapse {
 const NOT_LINKED = () => new HttpError("LAPSE_NOT_LINKED", "Sign in with Lapse to pick your timelapses")
 
 /** The user's Lapse identity and a token that is still good, or a refusal. */
-export async function lapseCredentials(userId: string) {
+export async function lapseCredentials(userId: string): Promise<{ lapseUserId: string; accessToken: string }> {
 	const account = await prisma.account.findFirst({
 		where: { userId, providerId: "lapse" },
 		orderBy: { updatedAt: "desc" },
@@ -109,7 +109,10 @@ async function call<T>(accessToken: string, path: string, query?: Record<string,
 }
 
 /** A page of the user's published timelapses, newest first. */
-export async function listMyTimelapses(userId: string, cursor?: string) {
+export async function listMyTimelapses(
+	userId: string,
+	cursor?: string,
+): Promise<{ timelapses: LapseTimelapse[]; nextCursor: string | null }> {
 	const { accessToken } = await lapseCredentials(userId)
 	const data = await call<{ timelapses: RawTimelapse[]; nextCursor: string | null }>(
 		accessToken,
@@ -124,7 +127,7 @@ export async function listMyTimelapses(userId: string, cursor?: string) {
  *
  * The id alone proves nothing – Lapse ids show up in every share link – so this is the same rule the R2 uploads had ("evidence has to be your own"), asked of the system that actually knows. Refused as a whole rather than filtered: a participant who thinks they attached a timelapse and finds it missing at review has been failed silently.
  */
-export async function verifyOwnTimelapses(userId: string, ids: readonly string[]) {
+export async function verifyOwnTimelapses(userId: string, ids: readonly string[]): Promise<LapseTimelapse[]> {
 	if (ids.length === 0) return []
 	const { lapseUserId, accessToken } = await lapseCredentials(userId)
 
@@ -135,15 +138,11 @@ export async function verifyOwnTimelapses(userId: string, ids: readonly string[]
 	)
 
 	for (const t of found) {
-		if (t.ownerId !== lapseUserId) {
+		if (t.ownerId !== lapseUserId)
 			throw new HttpError("VALIDATION_FAILED", `"${t.title}" is not one of your timelapses`)
-		}
-		if (t.visibility === "FAILED_PROCESSING") {
+		if (t.visibility === "FAILED_PROCESSING")
 			throw new HttpError("VALIDATION_FAILED", `"${t.title}" failed processing on Lapse`)
-		}
-		if (!t.playbackUrl) {
-			throw new HttpError("VALIDATION_FAILED", `"${t.title}" is still processing on Lapse`)
-		}
+		if (!t.playbackUrl) throw new HttpError("VALIDATION_FAILED", `"${t.title}" is still processing on Lapse`)
 	}
 	return found
 }

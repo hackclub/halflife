@@ -32,7 +32,7 @@ const TIMEOUT_MS = 15_000
 /**
  * The caller's forge identity and a token, or null when they have not linked that forge. A revoked or expired token reads the same as never having linked: the UI offers the forge again rather than showing an error nobody can act on.
  */
-export interface ForgeCredentials {
+export type ForgeCredentials = {
 	forge: Forge
 	/** The account's login on that forge, from the account row. */
 	login: string
@@ -94,14 +94,13 @@ async function call(creds: ForgeCredentials, path: string, init: RequestInit): P
 		throw new ForgeWriteUnavailable(`${forge.label} did not answer.`)
 	}
 	// 401/403 are the two ways a token says it may not do this: revoked, or lacking the scope. Neither is retried here – the caller records it and the maker relinks.
-	if (res.status === 401 || res.status === 403) {
+	if (res.status === 401 || res.status === 403)
 		throw new HttpError("FORBIDDEN", `${forge.label} refused that – reconnect ${forge.label} and try again.`)
-	}
 	return res
 }
 
 /** A repo the caller can push to, as the picker shows it. */
-export interface WritableRepo {
+export type WritableRepo = {
 	/** `owner/name`, or `group/subgroup/name` on GitLab. */
 	fullName: string
 	name: string
@@ -242,7 +241,7 @@ async function listGitLabRepos(creds: ForgeCredentials): Promise<WritableRepo[]>
 	)
 }
 
-export interface FileUpdate {
+export type FileUpdate = {
 	path: string
 	/**
 	 * The file's new bytes, or null to delete the path.
@@ -252,7 +251,7 @@ export interface FileUpdate {
 	content: string | null
 }
 
-export interface WrittenFile {
+export type WrittenFile = {
 	path: string
 	/** The blob sha the forge answered with, for the run history. */
 	sha: string
@@ -321,9 +320,7 @@ async function commitGitHub(
 		await initializeEmptyGitHubRepo(creds, ref, branch, first, message)
 		refRes = await call(creds, `${base}/git/ref/heads/${encodeURIComponent(branch)}`, { method: "GET" })
 	}
-	if (refRes.status === 404) {
-		throw new HttpError("UNPROCESSABLE", `The repo has no branch called ${branch}.`)
-	}
+	if (refRes.status === 404) throw new HttpError("UNPROCESSABLE", `The repo has no branch called ${branch}.`)
 	if (!refRes.ok) throw new ForgeWriteUnavailable(`${creds.forge.label} did not answer.`)
 	const parentSha = ((await refRes.json()) as { object: { sha: string } }).object.sha
 
@@ -483,9 +480,7 @@ async function commitGitLab(
 			method: "GET",
 		},
 	)
-	if (treeRes.status === 404) {
-		throw new HttpError("UNPROCESSABLE", `The repo has no branch called ${branch}.`)
-	}
+	if (treeRes.status === 404) throw new HttpError("UNPROCESSABLE", `The repo has no branch called ${branch}.`)
 	if (!treeRes.ok) throw new ForgeWriteUnavailable(`${creds.forge.label} did not answer.`)
 
 	// The listing is paginated; walk it so a repo with many files does not make an existing file look new (which would fail the commit with "file exists").

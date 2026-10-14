@@ -12,17 +12,22 @@ export function u(px: number): string {
 }
 
 /** Absolute box, in comp pixels. */
-export function box(x: number, y: number, w: number, h: number) {
+export function box(
+	x: number,
+	y: number,
+	w: number,
+	h: number,
+): { readonly left: string; readonly top: string; readonly width: string; readonly height: string } {
 	return { left: u(x), top: u(y), width: u(w), height: u(h) } as const
 }
 
 /** Absolute origin only – lets content size itself. */
-export function at(x: number, y: number) {
+export function at(x: number, y: number): { readonly left: string; readonly top: string } {
 	return { left: u(x), top: u(y) } as const
 }
 
 /** Type set in comp pixels. */
-export function type(size: number, lineHeight = 1.05) {
+export function type(size: number, lineHeight = 1.05): { readonly fontSize: string; readonly lineHeight: number } {
 	return { fontSize: u(size), lineHeight } as const
 }
 
@@ -40,7 +45,11 @@ export const BAND_TAPER = 1.6
  *
  * The ends are horizontal cuts, not perpendicular ones, because that is how they meet the plates. So an end's thickness is its edge foreshortened by the axis's own slope, and the edge that delivers a wanted thickness is that thickness divided back out – which is why the paths carry no round numbers.
  */
-export function band(from: readonly [number, number], to: readonly [number, number], mean: number) {
+export function band(
+	from: readonly [number, number],
+	to: readonly [number, number],
+	mean: number,
+): { x: number; y: number; w: number; h: number; d: string } {
 	const [x0, y0] = from
 	const [x1, y1] = to
 	const dx = x1 - x0
@@ -87,7 +96,7 @@ export function weld(
 	exit: { plate: Plate; at: number; rise: number },
 	entry: { plate: Plate; at: number; drop: number },
 	mean: number,
-) {
+): { x: number; y: number; w: number; h: number; d: string } {
 	return band(
 		[exit.plate.x + exit.plate.w * exit.at, exit.plate.y + exit.plate.h - exit.rise],
 		[entry.plate.x + entry.plate.w * entry.at, entry.plate.y + entry.drop],
@@ -116,7 +125,12 @@ export function stackWeld(lean: "left" | "right"): string {
 }
 
 /** A plate's absolute box, for `style`. */
-export function plateBox(p: Plate) {
+export function plateBox(p: Plate): {
+	readonly left: string
+	readonly top: string
+	readonly width: string
+	readonly height: string
+} {
 	return box(p.x, p.y, p.w, p.h)
 }
 
@@ -145,6 +159,6 @@ export const SWASH_INSET_Y = "1.8em"
  *
  * So in the stage the box is given its width instead of finding it, and this is the arithmetic: the line is the middle 75%, so the box is the line over 0.75. The stacked layout needs none of this – its tagline wraps inside a column that is already explicit.
  */
-export function swashBoxWidth(lineRun: number) {
+export function swashBoxWidth(lineRun: number): number {
 	return lineRun / (1 - 2 * SWASH_INSET_X)
 }

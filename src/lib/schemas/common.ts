@@ -19,6 +19,6 @@ export const httpsUrl = z
 		}
 	}, "Must be an https URL")
 
-export function boundedText(max: number, min = 0) {
+export function boundedText(max: number, min = 0): z.ZodString {
 	return z.string().trim().min(min).max(max)
 }

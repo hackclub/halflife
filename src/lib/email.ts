@@ -10,7 +10,7 @@ import "server-only"
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails"
 
-export interface EmailInput {
+export type EmailInput = {
 	to: string
 	subject: string
 	text: string

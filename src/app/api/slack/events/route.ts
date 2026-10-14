@@ -202,7 +202,7 @@ async function handleMainChannelJoin(event: SlackEvent) {
 	await Promise.all(targets.map((channel) => inviteToChannel(channel, joined)))
 }
 
-export async function POST(request: Request) {
+export async function POST(request: Request): Promise<NextResponse> {
 	const rawBody = await request.text()
 
 	const verified = verifySlackRequest(

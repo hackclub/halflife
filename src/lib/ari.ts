@@ -88,7 +88,7 @@ async function buildDemoUrl(userId: string, buildWeek: number): Promise<string |
 	return publicUrlFor(reel?.objectKey ?? null)
 }
 
-interface ShipBundle {
+type ShipBundle = {
 	input: AriShipInput
 	submissionId: string | null
 }
@@ -237,7 +237,10 @@ async function noteShipFailure(themeProjectId: string, phase: Phase, reason: str
 /**
  * Send a hand-in to Ari. Throws on failure so `trackSideEffect` records an ARI_SYNC_FAILURE an operator can replay; the submission keeps a null `ariSubmissionId`, which is what the retry job looks for.
  */
-export async function sendSubmissionToAri(themeProjectId: string, phase: Phase) {
+export async function sendSubmissionToAri(
+	themeProjectId: string,
+	phase: Phase,
+): Promise<{ skipped: "not_configured" } | { id: string; status: "accepted" | "duplicate" }> {
 	if (!isAriConfigured()) return { skipped: "not_configured" as const }
 
 	try {
@@ -260,7 +263,10 @@ export async function sendSubmissionToAri(themeProjectId: string, phase: Phase) 
 }
 
 /** Withdraw an open hand-in from Ari (the participant took it back). */
-export async function withdrawSubmissionFromAri(themeProjectId: string, phase: Phase) {
+export async function withdrawSubmissionFromAri(
+	themeProjectId: string,
+	phase: Phase,
+): Promise<{ skipped: "not_configured" } | { status: "withdrawn" | "not_queued" }> {
 	if (!isAriConfigured()) return { skipped: "not_configured" as const }
 	try {
 		const result = await ari().ships.withdraw(ariExternalId(themeProjectId, phase))

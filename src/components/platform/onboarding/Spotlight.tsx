@@ -5,7 +5,7 @@ import { IconArrowRight } from "@/components/platform/icons"
 import { Button } from "@/components/platform/ui"
 import { cx } from "@/lib/cx"
 
-export interface Rect {
+export type Rect = {
 	top: number
 	left: number
 	width: number

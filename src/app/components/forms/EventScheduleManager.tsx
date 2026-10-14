@@ -29,9 +29,8 @@ export function EventScheduleManager({ events, timeZone }: { events: CalendarEve
 	const past = events.filter((event) => calendarDay(event.startsAt, timeZone) < today).reverse()
 
 	const seriesCount = new Map<string, number>()
-	for (const event of events) {
+	for (const event of events)
 		if (event.seriesId) seriesCount.set(event.seriesId, (seriesCount.get(event.seriesId) ?? 0) + 1)
-	}
 
 	return (
 		<div className="hl-stack">

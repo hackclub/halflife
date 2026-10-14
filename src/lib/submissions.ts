@@ -1,5 +1,5 @@
 import "server-only"
-import type { ThemeProject } from "@/app/generated/prisma/client"
+import type { PhaseSubmission, ThemeProject } from "@/app/generated/prisma/client"
 import { Phase, PhaseStatus, Theme } from "@/app/generated/prisma/enums"
 import { partsFundingFor } from "@/lib/bom"
 import { scheduledWeekFor } from "@/lib/config/program"
@@ -77,7 +77,7 @@ export async function submitPhase(
 	notes: string | null,
 	attachmentKeys: string[] = [],
 	partialFundingAccepted = false,
-) {
+): Promise<PhaseSubmission> {
 	const project = await prisma.themeProject.findFirst({
 		where: { id: themeProjectId, userId, deletedAt: null },
 	})
@@ -180,7 +180,7 @@ export async function submitPhase(
 	})
 }
 
-export async function unsubmitPhase(userId: string, themeProjectId: string, phase: Phase) {
+export async function unsubmitPhase(userId: string, themeProjectId: string, phase: Phase): Promise<void> {
 	const project = await prisma.themeProject.findFirst({
 		where: { id: themeProjectId, userId, deletedAt: null },
 	})

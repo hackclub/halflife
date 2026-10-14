@@ -41,9 +41,8 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	})
 	for (const row of taken) {
 		const link = links.find((l) => l.url === row.url)
-		if (link && row.userId !== gate.user.id) {
+		if (link && row.userId !== gate.user.id)
 			errors[link.platform] = `That ${PLATFORM_INFO[link.platform].label} post has already been added by someone else.`
-		}
 	}
 	if (Object.keys(errors).length > 0) {
 		return fail("VALIDATION_FAILED", Object.values(errors)[0] ?? "Check your links", { fields: errors })

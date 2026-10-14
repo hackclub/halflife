@@ -27,7 +27,7 @@ function daysBetween(earlier: string, later: string): number {
 	return Math.round((b - a) / 86_400_000)
 }
 
-export interface StreakState {
+export type StreakState = {
 	current: number
 	longest: number
 	lastDate: string | null

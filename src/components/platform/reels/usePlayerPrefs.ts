@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from "react"
  *
  * Per browser, in localStorage, the way the rest of the ceremony is kept: nobody else ever needs to read it, and a new laptop starting from the defaults is no loss. Every read and write is guarded – a private window or blocked storage just means the defaults, every visit.
  */
-export interface PlayerPrefs {
+export type PlayerPrefs = {
 	muted: boolean
 	rate: number
 	autoScroll: boolean
@@ -18,7 +18,7 @@ const DEFAULTS: PlayerPrefs = { muted: false, rate: 1, autoScroll: false, commen
 
 export const RATES = [1, 1.5, 2, 0.5] as const
 
-export function usePlayerPrefs() {
+export function usePlayerPrefs(): readonly [PlayerPrefs, (patch: Partial<PlayerPrefs>) => void] {
 	const [prefs, setPrefs] = useState<PlayerPrefs>(DEFAULTS)
 
 	// After mount, because the server has no storage and must render the defaults; reading it during render would tear hydration.

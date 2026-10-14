@@ -9,7 +9,7 @@ import { cx } from "@/lib/cx"
 import type { FeedItem } from "@/lib/feed"
 import { ago, compact } from "./format"
 
-interface Comment {
+type Comment = {
 	id: string
 	body: string
 	createdAt: string
@@ -17,7 +17,7 @@ interface Comment {
 	mine: boolean
 }
 
-interface Thread {
+type Thread = {
 	items: Comment[]
 	nextCursor: string | null
 	status: "loading" | "ready" | "error"

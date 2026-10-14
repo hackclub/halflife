@@ -582,7 +582,7 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 						<IconWarning className="mt-0.5 shrink-0 text-base text-gold-ink" />
 						<span>
 							The hours above might count one session twice. Where you recorded with Lapse, the same time also appears
-							as Hackatime heartbeats, so it is taken off one side and counted once — but Hackatime could not be read to
+							as Hackatime heartbeats, so it is taken off one side and counted once – but Hackatime could not be read to
 							check which time that was, so the overlap is still in the total. It resolves itself once Hackatime answers
 							again.
 						</span>

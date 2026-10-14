@@ -61,7 +61,7 @@ function looksSignedIn(request: NextRequest): boolean {
 	return request.cookies.has("better-auth.session_token") || request.cookies.has("__Secure-better-auth.session_token")
 }
 
-export function proxy(request: NextRequest) {
+export function proxy(request: NextRequest): NextResponse | undefined {
 	if (process.env.REQUIRE_BASICAUTH === "true") {
 		const expectedUser = process.env.BASICAUTH_USERNAME
 		const expectedPass = process.env.BASICAUTH_PASSWORD

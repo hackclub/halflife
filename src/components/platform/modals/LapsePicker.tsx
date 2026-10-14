@@ -5,7 +5,7 @@ import { IconArrowRight, IconCheck, IconClock, IconFilm, IconWarning } from "@/c
 import { Button, Chip } from "@/components/platform/ui"
 import { cx } from "@/lib/cx"
 
-export interface LapseTimelapse {
+export type LapseTimelapse = {
 	id: string
 	title: string
 	durationSeconds: number

@@ -6,7 +6,7 @@ import prisma from "@/lib/prisma"
 
 export { AuditAction }
 
-export interface AuditInput {
+export type AuditInput = {
 	action: AuditAction
 	actorId?: string | null
 	actorEmail?: string | null

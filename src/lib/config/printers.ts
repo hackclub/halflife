@@ -14,7 +14,7 @@ import { ENTRY_TIER } from "./tiers"
 
 export type PrinterKind = "bedslinger" | "corexy" | "resin" | "cnc"
 
-export interface PrinterGoal {
+export type PrinterGoal = {
 	id: string
 	name: string
 	/** Sticker price, before anyone ships anything. */

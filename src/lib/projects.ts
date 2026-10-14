@@ -7,7 +7,7 @@ import type { Project, SessionLog, Week } from "./types"
  */
 
 /** What the timeline needs to read out of a checkpoint. Structural on purpose: * the store owns this shape, and this file has no business importing it. */
-export interface CheckpointRead {
+export type CheckpointRead = {
 	done: boolean
 	at?: number
 	caption?: string
@@ -86,7 +86,12 @@ export function projectEvents(project: Project, weeks: Week[], read: (id: string
 }
 
 /** The running totals a project card and its header both want. */
-export function projectStats(events: ProjectEvent[]) {
+export function projectStats(events: ProjectEvent[]): {
+	sessions: number
+	reels: number
+	hours: number
+	started: number
+} {
 	const sessions = events.filter((e) => e.kind === "session")
 	const minutes = sessions.reduce((n, e) => n + (e.kind === "session" ? e.minutes : 0), 0)
 	const started = events[events.length - 1]?.at ?? 0

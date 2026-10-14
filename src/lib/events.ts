@@ -8,7 +8,7 @@ import type { EventColour } from "@/app/generated/prisma/client"
  * and the participant's calendar render the same shape from the same projection,
  * so a field cannot be present on one and missing on the other.
  */
-export interface CalendarEvent {
+export type CalendarEvent = {
 	id: string
 	title: string
 	colour: EventColour

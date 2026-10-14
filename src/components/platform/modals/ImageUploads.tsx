@@ -7,7 +7,7 @@ import { Button } from "@/components/platform/ui"
 import { IMAGE_ACCEPT } from "@/lib/uploads/image-accept"
 import { uploadFile } from "@/lib/use-handoff"
 
-export interface UploadedImage {
+export type UploadedImage = {
 	objectKey: string
 	/** A local preview, so the thumbnail shows before the bucket serves it. */
 	previewUrl: string
@@ -49,9 +49,8 @@ export function ImageUploads({
 		const chosen = Array.from(files)
 		const taken = chosen.slice(0, Math.max(0, room))
 		const problems: string[] = []
-		if (chosen.length > taken.length) {
+		if (chosen.length > taken.length)
 			problems.push(`Only ${max} screenshots fit, so ${chosen.length - taken.length} were left out.`)
-		}
 		setErrors(problems)
 		const batch = taken.map((file) => ({ file, id: crypto.randomUUID() }))
 		setPending((p) => [...p, ...batch.map(({ file, id }) => ({ id, name: file.name, progress: null }))])

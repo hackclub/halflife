@@ -42,9 +42,7 @@ export const POST = withRoute(async (req: Request) => {
 		if (!file.type.startsWith("image/")) return fail("VALIDATION_FAILED", "Shop images must be pictures")
 	}
 
-	if (file.size > MAX_UPLOAD_BYTES) {
-		return fail("VALIDATION_FAILED", `Files must be under ${MAX_UPLOAD_BYTES} bytes`)
-	}
+	if (file.size > MAX_UPLOAD_BYTES) return fail("VALIDATION_FAILED", `Files must be under ${MAX_UPLOAD_BYTES} bytes`)
 
 	if (folder === "posts" && !file.type.startsWith("video/"))
 		return fail("VALIDATION_FAILED", "Reel uploads must be video files")

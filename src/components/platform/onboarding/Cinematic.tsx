@@ -62,7 +62,7 @@ const STICK = 18
 
 const nodeX = (i: number) => COL_X + AMP * Math.sin(i * 1.02)
 
-interface Block {
+type Block = {
 	top: number
 	trailTop: number
 	height: number
@@ -389,9 +389,7 @@ export function Cinematic() {
 			node.style.transform =
 				`translate(-50%, -50%) scale(${scale.toFixed(4)}) ` +
 				`translate(${STAGE_W / 2 - COL_X}px, ${STAGE_H / 2 - fy}px)`
-			if (title.current) {
-				title.current.style.transform = `translateY(${((TITLE_Y - fy) * scale + vh / 2).toFixed(1)}px)`
-			}
+			if (title.current) title.current.style.transform = `translateY(${((TITLE_Y - fy) * scale + vh / 2).toFixed(1)}px)`
 
 			// Sticky, by hand: a banner tracks its block until the block reaches the top of the frame, holds there, then gets pushed up by the next.
 			const h = BANNER_H * scale

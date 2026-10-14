@@ -23,14 +23,14 @@ import { isOwnedKey, publicUrlFor } from "@/lib/uploads/r2"
 /** Where reel uploads live in the bucket. Keys are validated against this. */
 export const POST_UPLOAD_FOLDER = "posts"
 
-export interface FeedAuthor {
+export type FeedAuthor = {
 	id: string
 	name: string | null
 	image: string | null
 	streak: number
 }
 
-export interface FeedItem {
+export type FeedItem = {
 	id: string
 	kind: PostKind
 	caption: string
@@ -104,7 +104,7 @@ const visible: Prisma.PostWhereInput = {
 	deletedAt: null,
 }
 
-export interface FeedPage {
+export type FeedPage = {
 	items: FeedItem[]
 	nextCursor: string | null
 	/**
@@ -192,7 +192,7 @@ export async function getCreatorReels(creatorId: string, viewerId: string, limit
 	return rows.map((p) => toFeedItem(p, likedIds))
 }
 
-export interface CreatePostInput {
+export type CreatePostInput = {
 	userId: string
 	kind: PostKind
 	caption: string
@@ -217,9 +217,8 @@ export interface CreatePostInput {
  */
 function assertOwnedKey(userId: string, key: string, field: string): void {
 	// Ownership plus the folder: a reel's video has to be in the posts folder, so a key that is genuinely yours but was uploaded as session evidence cannot be re-filed as a reel.
-	if (!isOwnedKey(userId, key) || !key.startsWith(`${POST_UPLOAD_FOLDER}/`)) {
+	if (!isOwnedKey(userId, key) || !key.startsWith(`${POST_UPLOAD_FOLDER}/`))
 		throw new HttpError("VALIDATION_FAILED", `That ${field} is not one of your uploads`)
-	}
 }
 
 export async function createPost(input: CreatePostInput): Promise<FeedItem> {
@@ -341,7 +340,7 @@ export async function setLike(
 	})
 }
 
-export interface CommentView {
+export type CommentView = {
 	id: string
 	body: string
 	createdAt: Date
