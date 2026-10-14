@@ -1340,6 +1340,24 @@ function HoursByWeekChart({ weeks }: { weeks: WeekHoursCluster[] }) {
 								)
 							})
 						})}
+						{/* The week's total above its column. The stack answers the shape; this answers "how much", which is the number a reader would otherwise have to add up from the tooltips. Skipped at zero, where there is no bar to sit above and a row of "0h" would only add noise. */}
+						{weeks.map((week, i) => {
+							const total = totals[i] ?? 0
+							if (total === 0) return null
+							return (
+								<text
+									key={`hlab-${week.week}`}
+									x={pct(centreOf(i))}
+									y={yFor(total) - 4}
+									textAnchor="middle"
+									fontSize="0.6rem"
+									style={{ fontVariantNumeric: "tabular-nums" }}
+									fill="var(--color-ink-muted)"
+								>
+									{fmtHours(total)}
+								</text>
+							)
+						})}
 					</svg>
 					<WeekAxisLabels weeks={weeks} />
 				</div>
