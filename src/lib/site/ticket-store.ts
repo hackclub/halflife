@@ -1,6 +1,7 @@
 import "server-only"
 
 import prisma from "@/lib/prisma"
+import { tallyBoard } from "./leaderboard"
 import { listChannelHistory, type SlackHistoryMessage } from "./slack"
 
 /**
@@ -62,14 +63,11 @@ export interface HelpTicketStats {
 
 /** Closers only: the helpers' competition, with self-resolutions left out. */
 function closerBoard(rows: { resolvedBy: string | null; authorSlackId: string }[]): HelpTicketStats["leaderboard"] {
-	const counts = new Map<string, number>()
-	for (const row of rows) {
-		if (!row.resolvedBy || row.resolvedBy === row.authorSlackId) continue
-		counts.set(row.resolvedBy, (counts.get(row.resolvedBy) ?? 0) + 1)
-	}
-	return [...counts.entries()]
-		.map(([resolvedBy, closed]) => ({ resolvedBy, closed }))
-		.sort((a, b) => b.closed - a.closed || a.resolvedBy.localeCompare(b.resolvedBy))
+	return tallyBoard(
+		rows,
+		(row) => row.resolvedBy,
+		(row, key) => key === row.authorSlackId,
+	).map(({ key: resolvedBy, count: closed }) => ({ resolvedBy, closed }))
 }
 
 /** The counts behind the daily summary. `since` is normally 24 hours ago. */

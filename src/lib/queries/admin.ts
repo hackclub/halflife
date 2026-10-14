@@ -21,6 +21,7 @@ import { getThemeDef, scheduleForWeek, TOTAL_WEEKS, WARMUP_THEME, WARMUP_WEEK_ID
 import { isTierId, TIERS } from "@/lib/config/tiers"
 import { getBalances } from "@/lib/currency"
 import { displayName } from "@/lib/display-name"
+import { pctOf, round1 } from "@/lib/numbers"
 import { safeDecrypt } from "@/lib/pii"
 import { getPrinterQualification } from "@/lib/printer"
 import prisma from "@/lib/prisma"
@@ -641,9 +642,9 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 		steps.push({
 			...def,
 			count,
-			retainPct: prev === 0 ? 0 : Math.round((count / prev) * 1000) / 10,
-			dropOffPct: n === 0 || prev === 0 ? 0 : Math.round(((prev - count) / prev) * 1000) / 10,
-			ofSignupsPct: total === 0 ? 0 : Math.round((count / total) * 1000) / 10,
+			retainPct: pctOf(count, prev),
+			dropOffPct: n === 0 ? 0 : pctOf(prev - count, prev),
+			ofSignupsPct: pctOf(count, total),
 		})
 	}
 	return steps
@@ -752,8 +753,6 @@ export interface CountryStat {
 	/** Hours logged by those accounts, as above. */
 	hours: number
 }
-
-const round1 = (n: number) => Math.round(n * 10) / 10
 
 /**
  * Users and hours per region, for the overview's geography section.
@@ -895,7 +894,7 @@ export async function getDailyActivity(): Promise<DayActivity[]> {
 		out.push({
 			day,
 			devlogs: row?.devlogs ?? 0,
-			hours: Math.round((row?.hours ?? 0) * 10) / 10,
+			hours: round1(row?.hours ?? 0),
 			users: row?.users.size ?? 0,
 		})
 	}
@@ -960,7 +959,7 @@ export async function getDailyActivityByGoal(): Promise<GoalDayActivity[]> {
 			day,
 			byGoal: GOAL_OPTIONS.map((option) => ({
 				goal: option.value,
-				hours: Math.round((goals?.get(option.value)?.hours ?? 0) * 10) / 10,
+				hours: round1(goals?.get(option.value)?.hours ?? 0),
 				users: goals?.get(option.value)?.users.size ?? 0,
 			})),
 		})

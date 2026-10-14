@@ -13,6 +13,7 @@ import {
 	spanWindowFor,
 	timelapseWindow,
 } from "@/lib/hours-overlap"
+import { round2 } from "@/lib/money"
 import prisma from "@/lib/prisma"
 
 export interface HoursBreakdown {
@@ -525,8 +526,4 @@ export function buildCoinsFor(approvedHours: number): CoinSplit {
  */
 function earnCoins(hours: number): number {
 	return Math.min(Math.ceil(hours * COINS_PER_HOUR), MAX_COINS_PER_PROJECT)
-}
-
-function round2(n: number): number {
-	return Math.round(n * 100) / 100
 }

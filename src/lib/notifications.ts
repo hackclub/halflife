@@ -2,7 +2,7 @@ import "server-only"
 import type { Prisma } from "@/app/generated/prisma/client"
 import { Phase, ReviewResult } from "@/app/generated/prisma/enums"
 import { AuditAction, logAudit } from "@/lib/audit"
-import { getThemeDef } from "@/lib/config/program"
+import { projectDisplayTitle } from "@/lib/config/program"
 import { sendEmail } from "@/lib/email"
 import prisma from "@/lib/prisma"
 import { trackSideEffect } from "@/lib/side-effects"
@@ -291,7 +291,7 @@ async function deliverReviewOutcome(notice: ReviewOutcomeNotice): Promise<void> 
 	})
 	if (!project) return
 
-	const title = project.title.trim() || getThemeDef(project.theme).label
+	const title = projectDisplayTitle(project)
 	const message = reviewOutcomeMessage(notice, { phase: notice.phase, title })
 
 	await deliverToMaker({
@@ -324,7 +324,7 @@ export async function notifyShipFailed(input: { themeProjectId: string; phase: P
 		})
 		if (!project) return
 
-		const title = project.title.trim() || getThemeDef(project.theme).label
+		const title = projectDisplayTitle(project)
 		const message = shipFailedMessage({ title, phase: input.phase, reason: input.reason })
 
 		await deliverToMaker({

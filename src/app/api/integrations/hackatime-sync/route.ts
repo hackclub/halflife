@@ -1,8 +1,8 @@
 import type { NextRequest } from "next/server"
-import { ok, withRoute } from "@/lib/api"
+import { ok } from "@/lib/api"
 import { refreshLinkCache } from "@/lib/hackatime"
 import { warmLinkSpans } from "@/lib/hours"
-import { requireIntegrationAuth } from "@/lib/integration-auth"
+import { wantsDryRun, withIntegrationRoute } from "@/lib/integration-route"
 import prisma from "@/lib/prisma"
 import { recordSyncRun } from "@/lib/sync-run-log"
 
@@ -16,11 +16,8 @@ const BATCH_SIZE = 200
 /**
  * Every integration route takes `?dryRun=true` and returns what it would have done without writing. This is the single thing that makes scheduled work debuggable in production.
  */
-export const POST = withRoute(async (req: NextRequest) => {
-	const denied = requireIntegrationAuth(req)
-	if (denied) return denied
-
-	const dryRun = req.nextUrl.searchParams.get("dryRun") === "true"
+export const POST = withIntegrationRoute(async (req: NextRequest) => {
+	const dryRun = wantsDryRun(req)
 	const started = Date.now()
 
 	const links = await prisma.hackatimeLink.findMany({

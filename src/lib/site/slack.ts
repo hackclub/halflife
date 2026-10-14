@@ -154,6 +154,13 @@ async function callSlackApiGet<T extends Record<string, unknown>>(
 const slackUserNameCache = new Map<string, string>()
 
 /**
+ * In-flight lookups, so two callers wanting the same name at once share one `users.info` call rather than racing a second identical request.
+ *
+ * A summary posts a daily board and an all-time board, and the same people are usually on both. Without this the cache only helps the *second* call, and by then the first has already gone out – so every shared name cost two requests.
+ */
+const slackUserNamePending = new Map<string, Promise<string>>()
+
+/**
  * A user's display name for the daily summary's leaderboard.
  *
  * A `<@id>` mention would be simpler, but it notifies the person every single day, which is a poor trade for a stats post. Falls back to the mention only when the lookup fails, so the name is never the reason a summary breaks. Cached for the life of the instance: the summary asks once per closer, and a display name does not change mid-process.
@@ -162,22 +169,46 @@ export async function getSlackUserName(userId: string): Promise<string> {
 	const cached = slackUserNameCache.get(userId)
 	if (cached) return cached
 
+	const pending = slackUserNamePending.get(userId)
+	if (pending) return pending
+
+	const lookup = resolveSlackUserName(userId).then((name) => {
+		slackUserNamePending.delete(userId)
+		if (!name) return `<@${userId}>`
+		slackUserNameCache.set(userId, name)
+		return name
+	})
+	slackUserNamePending.set(userId, lookup)
+	return lookup
+}
+
+/**
+ * One `users.info` with nothing cached – see `getSlackUserName`, which owns the cache, the in-flight dedupe and the mention fallback.
+ *
+ * Null when Slack answers with no name for them, rather than throwing: a lookup miss is never the reason a summary should fail.
+ */
+async function resolveSlackUserName(userId: string): Promise<string | null> {
 	try {
 		const result = await callSlackApiGet<{
 			user?: { real_name?: string; profile?: { display_name?: string; real_name?: string } }
 		}>("users.info", { user: userId })
-		const name = result.ok
-			? result.user?.profile?.display_name || result.user?.profile?.real_name || result.user?.real_name || null
-			: null
-		if (name) {
-			slackUserNameCache.set(userId, name)
-			return name
-		}
+		if (!result.ok) return null
+		return result.user?.profile?.display_name || result.user?.profile?.real_name || result.user?.real_name || null
 	} catch {
-		// No token, or Slack unreachable – the mention below still reads fine.
+		// No token, or Slack unreachable – the mention still reads fine.
+		return null
 	}
+}
 
-	return `<@${userId}>`
+/**
+ * Display names for several users at once, for a post that names the same people in more than one board.
+ *
+ * `users.info` is rate-limited, and a leaderboard is exactly the shape that trips it: two boards of ten drawn from the same handful of people. Deduplicated here so a caller passes whatever ids it has and the limit is respected regardless of how much they overlap. Unknown ids still resolve to their mention, matching the single-id path.
+ */
+export async function getSlackUserNames(userIds: readonly string[]): Promise<Map<string, string>> {
+	const ids = [...new Set(userIds)]
+	const names = await Promise.all(ids.map(async (id) => [id, await getSlackUserName(id)] as const))
+	return new Map(names)
 }
 
 let botUserId: string | null = null

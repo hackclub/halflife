@@ -3,6 +3,7 @@ import "server-only"
 import type { Prisma } from "@/app/generated/prisma/client"
 import { ReviewPass } from "@/app/generated/prisma/enums"
 import prisma from "@/lib/prisma"
+import { tallyBoard } from "./leaderboard"
 
 export interface ProjectReviewStats {
 	/** Phase submissions handed in since `since`, by `createdAt`. */
@@ -21,14 +22,10 @@ export interface ProjectReviewStats {
 
 /** Human reviewers only: Ari carries no Half Life user and is not competing. */
 function reviewerBoard(rows: { reviewerId: string | null }[]): ProjectReviewStats["leaderboard"] {
-	const counts = new Map<string, number>()
-	for (const row of rows) {
-		if (!row.reviewerId) continue
-		counts.set(row.reviewerId, (counts.get(row.reviewerId) ?? 0) + 1)
-	}
-	return [...counts.entries()]
-		.map(([reviewerId, reviewed]) => ({ reviewerId, reviewed }))
-		.sort((a, b) => b.reviewed - a.reviewed || a.reviewerId.localeCompare(b.reviewerId))
+	return tallyBoard(rows, (row) => row.reviewerId).map(({ key: reviewerId, count: reviewed }) => ({
+		reviewerId,
+		reviewed,
+	}))
 }
 
 /** The counts behind the daily project review summary. `since` is normally 24 hours ago. */
