@@ -54,28 +54,45 @@ export interface HelpTicketStats {
 	 * Who closed what, busiest first. Self-resolutions are left out: the leaderboard is the helpers' competition, and an asker clicking "I'm all set" on their own ticket would read as a helper. Ties break by id so the order is stable between runs.
 	 */
 	leaderboard: { resolvedBy: string; closed: number }[]
+	/**
+	 * The same board over every ticket on file rather than the last day. Read separately instead of by folding daily runs together: the leaderboard's ranking changes as names resolve and a run that has not fired yet would leave a gap, whereas one query over the table is whatever has actually been closed.
+	 */
+	globalLeaderboard: { resolvedBy: string; closed: number }[]
+}
+
+/** Closers only: the helpers' competition, with self-resolutions left out. */
+function closerBoard(rows: { resolvedBy: string | null; authorSlackId: string }[]): HelpTicketStats["leaderboard"] {
+	const counts = new Map<string, number>()
+	for (const row of rows) {
+		if (!row.resolvedBy || row.resolvedBy === row.authorSlackId) continue
+		counts.set(row.resolvedBy, (counts.get(row.resolvedBy) ?? 0) + 1)
+	}
+	return [...counts.entries()]
+		.map(([resolvedBy, closed]) => ({ resolvedBy, closed }))
+		.sort((a, b) => b.closed - a.closed || a.resolvedBy.localeCompare(b.resolvedBy))
 }
 
 /** The counts behind the daily summary. `since` is normally 24 hours ago. */
 export async function getHelpTicketStats(since: Date): Promise<HelpTicketStats> {
-	const [opened, closedRows] = await Promise.all([
+	const [opened, closedRows, allClosedRows] = await Promise.all([
 		prisma.helpTicket.count({ where: { createdAt: { gte: since } } }),
 		prisma.helpTicket.findMany({
 			where: { resolvedAt: { gte: since }, resolvedBy: { not: null } },
 			select: { resolvedBy: true, authorSlackId: true },
 		}),
+		// Every closed ticket ever, for the all-time board under the daily one.
+		prisma.helpTicket.findMany({
+			where: { resolvedAt: { not: null }, resolvedBy: { not: null } },
+			select: { resolvedBy: true, authorSlackId: true },
+		}),
 	])
 
-	const counts = new Map<string, number>()
-	for (const row of closedRows) {
-		if (!row.resolvedBy || row.resolvedBy === row.authorSlackId) continue
-		counts.set(row.resolvedBy, (counts.get(row.resolvedBy) ?? 0) + 1)
+	return {
+		opened,
+		closed: closedRows.length,
+		leaderboard: closerBoard(closedRows),
+		globalLeaderboard: closerBoard(allClosedRows),
 	}
-	const leaderboard = [...counts.entries()]
-		.map(([resolvedBy, closed]) => ({ resolvedBy, closed }))
-		.sort((a, b) => b.closed - a.closed || a.resolvedBy.localeCompare(b.resolvedBy))
-
-	return { opened, closed: closedRows.length, leaderboard }
 }
 
 /** A history message that opened a ticket, under the same guards

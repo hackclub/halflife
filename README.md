@@ -143,9 +143,10 @@ comments in that file for the exact steps), then set:
 | `SLACK_BULLETIN_CHANNEL_ID`   | `#half-life-bulletin`'s channel ID                          |
 | `SLACK_HELP_CHANNEL_ID`       | `#half-life-help`'s channel ID                               |
 | `SLACK_TICKETS_CHANNEL_ID`    | private channel new/resolved tickets get posted to         |
+| `SLACK_REVIEW_CHANNEL_ID`     | `#half-life-review`: review disputes and the daily review summary |
 
-The bot needs to be a member of all four channels — invite it manually after
-installing.
+The bot needs to be a member of all of these channels – invite it manually
+after installing.
 
 ### 5. Facts to confirm before launch
 

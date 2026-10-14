@@ -21,13 +21,13 @@ import {
 import { countImages, Markdown, proseLength } from "@/components/platform/Markdown"
 import { RepoInput, repoIsValid } from "@/components/platform/RepoField"
 import { ReelCapture } from "@/components/platform/reels/ReelCapture"
-import { StarterProjectCard } from "@/components/platform/StarterProjectCard"
+import { ProjectChoiceCard, StarterProjectCard } from "@/components/platform/StarterProjectCard"
 import { Button, borderedInputClass, Chip, Field, inputClass, OptionRow, Panel } from "@/components/platform/ui"
 import { attrUrl } from "@/lib/attr-url"
 import { linkLapse } from "@/lib/auth-client"
 import type { BomLine } from "@/lib/bom"
 import { BOM_MARGIN_USD, bomTotalUsd, partsFunding } from "@/lib/bom-policy"
-import { STARTER_PROJECT_TIER, starterProjectsFor } from "@/lib/config/onboarding"
+import { STARTER_MODIFICATION_NOTE, STARTER_PROJECT_TIER, starterProjectsFor } from "@/lib/config/onboarding"
 import { COINS_PER_HOUR, paceTarget, printerById, submitFloorFor } from "@/lib/config/printers"
 import { THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { photosRequired, TIERS } from "@/lib/curriculum"
@@ -1496,7 +1496,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							{postBlocker}
 						</p>
 					) : (
-						<p className="hand mr-auto hidden text-[0.78rem] text-navy-soft sm:block">
+						<p className="hand hidden text-[0.78rem] text-navy-soft sm:block">
 							Reels post straight to the Doomscroller.
 						</p>
 					)}
@@ -1644,11 +1644,28 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const starters = theme && (experience === "first" || experience === "little") ? starterProjectsFor(theme) : []
 	// Taking one fills the form in and holds the tier at 1, as onboarding does.
 	const [starterId, setStarterId] = useState<string | null>(null)
+	const [pick, setPick] = useState<string | null | undefined>(undefined)
+	const [stage, setStage] = useState<"choose" | "details">(starters.length > 0 ? "choose" : "details")
 	const takeStarter = (s: (typeof starters)[number]) => {
-		setStarterId(s.id)
-		setName(s.title)
-		setDesc(s.description)
-		setTier(STARTER_PROJECT_TIER)
+		setPick(s.id)
+	}
+	const chooseCustom = () => {
+		setPick(null)
+	}
+	const advance = () => {
+		if (pick === undefined) return
+		if (pick === null) {
+			setStarterId(null)
+		} else {
+			const s = starters.find((x) => x.id === pick)
+			setStarterId(pick)
+			if (s) {
+				setName(s.title)
+				setDesc(s.description)
+			}
+			setTier(STARTER_PROJECT_TIER)
+		}
+		setStage("details")
 	}
 
 	const ok = name.trim().length > 1 && desc.trim().length > 4 && repoIsValid(repo)
@@ -1662,33 +1679,39 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			eyebrow={`Week ${week.id} · ${week.fullName}`}
 			footer={
 				<>
-					<p className="hand mr-auto hidden text-[0.78rem] text-navy-soft sm:block">
-						Tier can be changed any time before you submit this week.
-					</p>
-					<Button variant="outline" onClick={() => setOpenCheckpoint(null)}>
-						Cancel
-					</Button>
-					<Button
-						variant="solid"
-						disabled={!ok}
-						onClick={() => {
-							addProject({
-								name: name.trim(),
-								description: desc.trim(),
-								weekId: week.id,
-								tier,
-								starter: starterId !== null,
-								starterProjectId: starterId,
-								githubRepo: normalizeRepo(repo).url,
-								designStatus: "draft",
-								buildStatus: "draft",
-							})
-							complete(checkpoint.id, { artefacts: 1 })
-							setOpenCheckpoint(null)
-						}}
-					>
-						Create project <IconArrowRight className="text-base" />
-					</Button>
+					{stage === "details" && starters.length > 0 && (
+						<Button type="button" variant="outline" className="mr-auto" onClick={() => setStage("choose")}>
+							Back
+						</Button>
+					)}
+					{stage === "choose" && starters.length > 0 && (
+						<Button variant="solid" disabled={pick === undefined} onClick={advance}>
+							Next <IconArrowRight className="text-base" />
+						</Button>
+					)}
+					{stage === "details" && (
+						<Button
+							variant="solid"
+							disabled={!ok}
+							onClick={() => {
+								addProject({
+									name: name.trim(),
+									description: desc.trim(),
+									weekId: week.id,
+									tier,
+									starter: starterId !== null,
+									starterProjectId: starterId,
+									githubRepo: normalizeRepo(repo).url,
+									designStatus: "draft",
+									buildStatus: "draft",
+								})
+								complete(checkpoint.id, { artefacts: 1 })
+								setOpenCheckpoint(null)
+							}}
+						>
+							Create project <IconArrowRight className="text-base" />
+						</Button>
+					)}
 				</>
 			}
 		>
@@ -1709,142 +1732,187 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							{weekListPhrase(pace.missedWeeks)} passed without being approved, and coins only come from an approved
 							week. A <span className="font-bold text-navy">{pace.printer.name}</span> asks about{" "}
 							<span className="font-bold text-navy tabular-nums">{pace.perWeekCoins}</span> coins every design week, so
-							you may not be eligible for it – the bigger prizes need all 5 themes finished. A bigger week later
-							can make some of it up.
+							you may not be eligible for it – the bigger prizes need all 5 themes finished. A bigger week later can
+							make some of it up.
 						</p>
 					</div>
 				</div>
 			)}
 
-			<div className="grid gap-6 lg:grid-cols-[1fr_230px] lg:items-start">
-				<div className="grid gap-4">
-					{starters.map((s) => {
-						const chosen = starterId === s.id
-						return (
-							<StarterProjectCard
-								key={s.id}
-								starter={s}
-								chosen={chosen}
-								action={
-									chosen ? (
-										<span className="flex flex-wrap items-center gap-x-4 gap-y-2">
-											<Chip tone="teal">
-												<IconCheck className="text-[0.9rem]" /> Building {s.title}
-											</Chip>
-											<button
-												type="button"
-												onClick={() => setStarterId(null)}
-												className="hand text-[0.82rem] text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
-											>
-												Use my own idea instead
-											</button>
-										</span>
-									) : (
-										<Button variant="outline" size="sm" onClick={() => takeStarter(s)}>
-											Build {s.title}
-										</Button>
-									)
-								}
-							/>
-						)
-					})}
-					<Field label="Project name" hint="Give it a cool name." id="np-name">
-						<input
-							id="np-name"
-							value={name}
-							onChange={(e) => setName(e.target.value)}
-							placeholder={`My ${week.theme.toLowerCase()} project`}
-							className={inputClass}
+			{stage === "choose" ? (
+				<div className="grid gap-3 sm:grid-cols-2">
+					{starters.length > 0 && <p className="col-span-full label mb-2 text-left text-violet-deep">Step 1 / 2</p>}
+					{starters.map((s) => (
+						<StarterProjectCard
+							key={s.id}
+							starter={s}
+							stacked
+							chosen={pick === s.id}
+							action={
+								<Button
+									type="button"
+									variant={pick === s.id ? "teal" : "outline"}
+									size="sm"
+									aria-pressed={pick === s.id}
+									onClick={() => takeStarter(s)}
+								>
+									Build {s.title}
+									{pick === s.id ? <IconCheck className="text-base" /> : null}
+								</Button>
+							}
 						/>
-					</Field>
-					<Field label="Project description" hint="What it does, and what makes it yours." id="np-desc">
-						<textarea
-							id="np-desc"
-							value={desc}
-							onChange={(e) => setDesc(e.target.value)}
-							rows={3}
-							placeholder={week.examples[0]}
-							className={cx(inputClass, "resize-none")}
-						/>
-					</Field>
-					<RepoInput id="np-repo" value={repo} onChange={setRepo} />
-
-					<button
-						type="button"
-						onClick={() => setShowExamples((v) => !v)}
-						className="hand self-start text-[0.82rem] text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
+					))}
+					<ProjectChoiceCard
+						stacked
+						chosen={pick === null}
+						tileClassName="bg-violet-pale"
+						art={<Gato pose="schematic" sizes="260px" className="h-[140px] w-auto" />}
+						label="Custom project"
+						title="Your own idea"
+						action={
+							<Button
+								type="button"
+								variant={pick === null ? "teal" : "outline"}
+								size="sm"
+								aria-pressed={pick === null}
+								onClick={chooseCustom}
+							>
+								Make a custom project
+								{pick === null ? <IconCheck className="text-base" /> : null}
+							</Button>
+						}
 					>
-						{showExamples ? "Hide examples" : "Stuck? See what other people are making"}
-					</button>
-					{showExamples && (
-						<ul className="grid gap-2">
-							{week.examples.map((e) => (
-								<li key={e}>
-									<button
-										type="button"
-										onClick={() => setDesc(e)}
-										className="sketch w-full rounded-xl bg-white px-4 py-2.5 text-left text-[0.9rem] leading-snug text-navy transition-colors hover:bg-violet-pale/60"
-										style={{ "--sk-radius": "12px" } as React.CSSProperties}
-									>
-										{e}
-									</button>
-								</li>
-							))}
-						</ul>
+						<p className="mt-1.5 text-[0.88rem] leading-relaxed text-navy-soft">
+							Make your own project! It can be anything you want.
+						</p>
+					</ProjectChoiceCard>
+					{/* Only once a starter is the pick: it is a rule about the choice, not about the step, and beside "make your own" it read as a warning about the whole fork. */}
+					{typeof pick === "string" && (
+						<div className="mt-3 rounded-2xl border-2 border-dashed border-gold-deep/40 bg-gold-pale/50 px-4 py-3 text-[0.86rem] leading-relaxed text-navy-soft sm:col-span-2">
+							{STARTER_MODIFICATION_NOTE}
+						</div>
 					)}
-
-					<div className="mt-2">
-						<p className="label mb-2 text-violet-deep">Funding tier</p>
+				</div>
+			) : (
+				<div className="grid gap-6 lg:grid-cols-[1fr_230px] lg:items-start">
+					<div className="grid gap-4">
+						<p className="label mb-2 text-left text-violet-deep">Step 2 / 2</p>
+						<p className="hand mb-2 text-left text-[0.8rem] text-navy-soft">
+							Tier can be changed any time before you submit this week.
+						</p>
 						{starterId !== null && (
-							<p className="hand mb-2.5 text-[0.82rem] text-navy-soft">
-								Starter projects are Tier 1. Switch to your own idea to choose a different tier.
-							</p>
+							<div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+								<Chip tone="teal">
+									<IconCheck className="text-[0.9rem]" /> Building{" "}
+									{starters.find((s) => s.id === starterId)?.title ?? "starter"}
+								</Chip>
+								<button
+									type="button"
+									onClick={() => setStage("choose")}
+									className="hand text-[0.82rem] text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
+								>
+									Choose a different starting point
+								</button>
+							</div>
 						)}
-						{/* The hours quoted here are the funded block, which is exactly
+						<Field label="Project name" hint="Give it a cool name." id="np-name">
+							<input
+								id="np-name"
+								value={name}
+								onChange={(e) => setName(e.target.value)}
+								placeholder={`My ${week.theme.toLowerCase()} project`}
+								className={inputClass}
+							/>
+						</Field>
+						<Field label="Project description" hint="What it does, and what makes it yours." id="np-desc">
+							<textarea
+								id="np-desc"
+								value={desc}
+								onChange={(e) => setDesc(e.target.value)}
+								rows={3}
+								placeholder={week.examples[0]}
+								className={cx(inputClass, "resize-none")}
+							/>
+						</Field>
+						<RepoInput id="np-repo" value={repo} onChange={setRepo} />
+
+						<button
+							type="button"
+							onClick={() => setShowExamples((v) => !v)}
+							className="hand self-start text-[0.82rem] text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
+						>
+							{showExamples ? "Hide examples" : "Stuck? See what other people are making"}
+						</button>
+						{showExamples && (
+							<ul className="grid gap-2">
+								{week.examples.map((e) => (
+									<li key={e}>
+										<button
+											type="button"
+											onClick={() => setDesc(e)}
+											className="sketch w-full rounded-xl bg-white px-4 py-2.5 text-left text-[0.9rem] leading-snug text-navy transition-colors hover:bg-violet-pale/60"
+											style={{ "--sk-radius": "12px" } as React.CSSProperties}
+										>
+											{e}
+										</button>
+									</li>
+								))}
+							</ul>
+						)}
+
+						<div className="mt-2">
+							<p className="label mb-2 text-violet-deep">Funding tier</p>
+							{starterId !== null && (
+								<p className="hand mb-2.5 text-[0.82rem] text-navy-soft">
+									Starter projects are Tier 1. Switch to your own idea to choose a different tier.
+								</p>
+							)}
+							{/* The hours quoted here are the funded block, which is exactly
                 what the submit gate holds you to. The funded hours buy the
                 parts; every hour past them earns spendable coins. */}
-						<div className="grid gap-2.5">
-							{TIERS.map((t) => (
-								<OptionRow
-									key={t.id}
-									selected={tier === t.id}
-									disabled={starterId !== null && t.id !== STARTER_PROJECT_TIER}
-									onClick={() => setTier(t.id)}
-									hint={
-										<>
-											{t.detail}
-											<span className="mt-1 block text-navy-soft/90">
-												You can submit on tier {t.id} from {fmtH(t.fundingHours)} of design time – the parts-funding
-												hours and nothing more. Every hour past that (once your tier&apos;s funding is achieved) earns 5
-												spendable coins.
+							<div className="grid gap-2.5">
+								{TIERS.map((t) => (
+									<OptionRow
+										key={t.id}
+										selected={tier === t.id}
+										disabled={starterId !== null && t.id !== STARTER_PROJECT_TIER}
+										onClick={() => setTier(t.id)}
+										hint={
+											<>
+												{t.detail}
+												<span className="mt-1 block text-navy-soft/90">
+													You can submit on tier {t.id} from {fmtH(t.fundingHours)} of design time – the parts-funding
+													hours and nothing more. Every hour past that (once your tier&apos;s funding is achieved) earns
+													5 spendable coins.
+												</span>
+											</>
+										}
+									>
+										<span className="flex flex-wrap items-baseline gap-x-2.5">
+											<span className="text-[0.98rem] font-extrabold text-navy">Tier {t.id}</span>
+											<span className="hand text-[0.86rem] text-teal-ink">${t.grantUsd} for parts</span>
+											<span className="hand text-[0.8rem] text-navy-soft">
+												· {fmtH(submitFloorFor(t.fundingHours))} to submit
 											</span>
-										</>
-									}
-								>
-									<span className="flex flex-wrap items-baseline gap-x-2.5">
-										<span className="text-[0.98rem] font-extrabold text-navy">Tier {t.id}</span>
-										<span className="hand text-[0.86rem] text-teal-ink">${t.grantUsd} for parts</span>
-										<span className="hand text-[0.8rem] text-navy-soft">
-											· {fmtH(submitFloorFor(t.fundingHours))} to submit
 										</span>
-									</span>
-								</OptionRow>
-							))}
+									</OptionRow>
+								))}
+							</div>
 						</div>
 					</div>
-				</div>
 
-				<div className="order-first lg:order-none">
-					<div className="overflow-hidden rounded-2xl p-4" style={{ background: week.accent }}>
-						<WeekPainting
-							theme={week.theme}
-							sizes="(min-width: 1024px) 198px, 220px"
-							className="sticker-shadow mx-auto aspect-square w-full max-w-[220px]"
-						/>
+					<div className="order-first lg:order-none">
+						<div className="overflow-hidden rounded-2xl p-4" style={{ background: week.accent }}>
+							<WeekPainting
+								theme={week.theme}
+								sizes="(min-width: 1024px) 198px, 220px"
+								className="sticker-shadow mx-auto aspect-square w-full max-w-[220px]"
+							/>
+						</div>
+						<p className="mt-3 text-[0.86rem] leading-snug text-navy-soft">{week.primer.split(". ")[0]}.</p>
 					</div>
-					<p className="mt-3 text-[0.86rem] leading-snug text-navy-soft">{week.primer.split(". ")[0]}.</p>
 				</div>
-			</div>
+			)}
 		</Modal>
 	)
 }

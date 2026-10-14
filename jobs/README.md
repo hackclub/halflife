@@ -33,6 +33,7 @@ the step list and leaves the run history alone.
 | `loops-sync` | `41 * * * *` | cluster-internal |
 | `printer-reconcile` | `0 8 * * *` | public ingress |
 | `slack-ticket-summary` | `0 9 * * *` | public ingress |
+| `slack-review-summary` | `0 9 * * *` | public ingress |
 
 ## Three things that decide whether this works
 

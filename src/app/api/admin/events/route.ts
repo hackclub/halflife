@@ -3,7 +3,7 @@ import { AuditAction, logAudit } from "@/lib/audit"
 import { requirePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import prisma from "@/lib/prisma"
-import { getProgramSettings } from "@/lib/program"
+import { getProgramSettings, startOfDay } from "@/lib/program"
 import { programEventCreateSchema } from "@/lib/schemas/admin"
 
 export const dynamic = "force-dynamic"
@@ -117,3 +117,24 @@ function zoneOffsetMs(at: number, timeZone: string): number {
 	const wall = Date.UTC(...wallFields(new Date(at), timeZone))
 	return wall - (at - (at % 1000))
 }
+
+export const DELETE = withRoute(async (_req: Request) => {
+	const gate = await requirePermission(Permission.MANAGE_PROGRAM)
+	if (gate.error) return gate.error
+
+	const { programTimezone } = await getProgramSettings()
+	const threshold = startOfDay(new Date(), programTimezone)
+
+	const { count } = await prisma.programEvent.deleteMany({ where: { startsAt: { gte: threshold } } })
+
+	await logAudit({
+		action: AuditAction.ADMIN_DELETE_PROGRAM_EVENT,
+		actorId: gate.user.id,
+		actorEmail: gate.user.email,
+		targetType: "ProgramEvent",
+		targetId: null,
+		metadata: { upcomingCleared: count, threshold: threshold.toISOString() },
+	})
+
+	return ok({ deleted: count })
+})

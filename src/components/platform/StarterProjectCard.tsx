@@ -24,6 +24,7 @@ const LINK =
 export function ProjectChoiceCard({
 	art,
 	tileClassName,
+	flush = false,
 	label,
 	title,
 	children,
@@ -35,6 +36,8 @@ export function ProjectChoiceCard({
 	art: ReactNode
 	/** The tile's ground, chosen to suit the picture on it. */
 	tileClassName: string
+	/** Drop the tile's own padding, for a render that carries its own background and should run to the tile's edges. */
+	flush?: boolean
 	label: string
 	title: string
 	children: ReactNode
@@ -57,7 +60,8 @@ export function ProjectChoiceCard({
 			>
 				<div
 					className={cx(
-						"grid shrink-0 place-items-center rounded-xl px-5 py-4",
+						"grid shrink-0 place-items-center rounded-xl",
+						!flush && "px-5 py-4",
 						!stacked && "@md:w-[190px] @md:self-stretch",
 						tileClassName,
 					)}
@@ -96,8 +100,9 @@ export function StarterProjectCard({
 }) {
 	return (
 		<ProjectChoiceCard
-			// A dark ground, because the board is gold and the renders are cut out: on paper or cream the edges of the star wash away.
-			tileClassName="bg-navy"
+			// A dark ground, because the board is gold and the renders are cut out: on paper or cream the edges of the star wash away. Merbl's render is a photo on its own white ground, so it takes a white tile with no padding instead rather than sitting in a navy frame.
+			tileClassName={starter.id === "merbl" ? "bg-white" : "bg-navy"}
+			flush={starter.id === "merbl"}
 			art={
 				<StarterRender
 					id={starter.id}

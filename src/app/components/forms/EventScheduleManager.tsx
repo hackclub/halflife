@@ -54,7 +54,20 @@ export function EventScheduleManager({ events, timeZone }: { events: CalendarEve
 				) : null}
 			</Panel>
 
-			<Panel title={`Upcoming (${upcoming.length})`}>
+			<Panel
+				title={`Upcoming (${upcoming.length})`}
+				actions={
+					upcoming.length > 0 ? (
+						<ActionButton
+							url="/api/admin/events"
+							method="DELETE"
+							label="Clear all upcoming"
+							variant="danger"
+							confirm={`Delete all ${upcoming.length} upcoming event${upcoming.length === 1 ? "" : "s"}? This cannot be undone.`}
+						/>
+					) : undefined
+				}
+			>
 				{upcoming.length === 0 ? (
 					<EmptyState>Nothing scheduled.</EmptyState>
 				) : (
