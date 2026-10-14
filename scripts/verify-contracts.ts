@@ -367,9 +367,8 @@ async function bodies() {
 		["a.mp4", false],
 		["", false],
 	]
-	for (const [key, owned] of keyCases) {
+	for (const [key, owned] of keyCases)
 		check(`key · ${key || "(empty)"} ${owned ? "is mine" : "is not mine"}`, isOwnedKey(me, key) === owned)
-	}
 
 	/* ── 4. Video container signatures ─────────────────────────────────────── */
 	//
@@ -408,9 +407,8 @@ async function bodies() {
 		["webm · magic only", new Uint8Array([0x1a, 0x45, 0xdf, 0xa3, 0, 0, 0, 0, 0, 0, 0, 0]), false],
 		["plain text", new TextEncoder().encode("hello world!"), false],
 	]
-	for (const [name, bytes, isVideo] of videoCases) {
+	for (const [name, bytes, isVideo] of videoCases)
 		check(`bytes · ${name} ${isVideo ? "is video" : "is not video"}`, isVideoBytes(bytes) === isVideo)
-	}
 
 	/* ── 5. Ari external ids ───────────────────────────────────────────────── */
 	//
@@ -867,9 +865,8 @@ async function bodies() {
 		["![a](javascript:alert(1))", 0],
 		["![a](https://x/a.png)![b](javascript:x)", 1],
 	]
-	for (const [source, expected] of imageCases) {
+	for (const [source, expected] of imageCases)
 		check(`images · "${source.slice(0, 40)}" → ${expected}`, countImages(source) === expected)
-	}
 
 	/* ── 6b. Repo sync file rendering ───────────────────────────────────────── */
 	//
@@ -1066,6 +1063,31 @@ async function bodies() {
 			capped.lines.length === 1 && capped.skipped.some((s) => s.reason === "beyond the parts-list limit"),
 		)
 	}
+
+	/* ── 6bba. Whether a week holds the next one shut ───────────────────────── */
+	//
+	// The gate that decides whether the trail's next week is reachable. It has been wrong twice in opposite
+	// directions, both times shutting the rest of the season behind a hand-in that could not be made: once for a week
+	// that closed with hours in it, and once for a week that was extended, which is granted precisely to the makers
+	// who have not reached the floor. Pinned because the symptom is a dead end rather than a wrong number.
+	const { weekHoldsNext } = await import("../src/lib/curriculum")
+	check(
+		"week-gate · an extended week below its floor does not hold the next",
+		!weekHoldsNext({ submitted: false, passed: false, hours: 3, floor: 9 }),
+	)
+	check(
+		"week-gate · an extended week that can be handed in still holds the next",
+		weekHoldsNext({ submitted: false, passed: false, hours: 9, floor: 9 }),
+	)
+	check(
+		"week-gate · a handed-in week holds nothing",
+		!weekHoldsNext({ submitted: true, passed: false, hours: 0, floor: 9 }),
+	)
+	check(
+		"week-gate · a closed week holds nothing, floor or not",
+		!weekHoldsNext({ submitted: false, passed: true, hours: 3, floor: 9 }) &&
+			!weekHoldsNext({ submitted: false, passed: true, hours: 30, floor: 9 }),
+	)
 
 	/* ── 6bbb. The landing page's week-1 countdown ──────────────────────────── */
 	//
