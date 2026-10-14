@@ -1066,31 +1066,6 @@ async function bodies() {
 		)
 	}
 
-	/* ── 6bba. Whether a week holds the next one shut ───────────────────────── */
-	//
-	// The gate that decides whether the trail's next week is reachable. It has been wrong twice in opposite
-	// directions, both times shutting the rest of the season behind a hand-in that could not be made: once for a week
-	// that closed with hours in it, and once for a week that was extended, which is granted precisely to the makers
-	// who have not reached the floor. Pinned because the symptom is a dead end rather than a wrong number.
-	const { weekHoldsNext } = await import("../src/lib/curriculum")
-	check(
-		"week-gate · an extended week below its floor does not hold the next",
-		!weekHoldsNext({ submitted: false, passed: false, hours: 3, floor: 9 }),
-	)
-	check(
-		"week-gate · an extended week that can be handed in still holds the next",
-		weekHoldsNext({ submitted: false, passed: false, hours: 9, floor: 9 }),
-	)
-	check(
-		"week-gate · a handed-in week holds nothing",
-		!weekHoldsNext({ submitted: true, passed: false, hours: 0, floor: 9 }),
-	)
-	check(
-		"week-gate · a closed week holds nothing, floor or not",
-		!weekHoldsNext({ submitted: false, passed: true, hours: 3, floor: 9 }) &&
-			!weekHoldsNext({ submitted: false, passed: true, hours: 30, floor: 9 }),
-	)
-
 	/* ── 6bbb. The landing page's week-1 countdown ──────────────────────────── */
 	//
 	// The countdown is the one place a wrong number is visible to every visitor, and the arithmetic is the only part of it that can silently be wrong – the clock and the markup are not worth pinning. A span carries down the units rather than being recomputed from the total, so 90 minutes is 1h 30m and never 1h 90m; a moment already past clamps to zero rather than counting negative.

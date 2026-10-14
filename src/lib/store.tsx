@@ -5,7 +5,7 @@ import { createContext, type ReactNode, useCallback, useContext, useEffect, useM
 import { ParticipantGoal } from "@/app/generated/prisma/enums"
 import { COINS_PER_HOUR, type PrinterGoal, printerById, submitFloorFor, weekAsk } from "./config/printers"
 import { DESIGN_WEEKS, ONBOARDING_CHECKPOINT_ID, WARMUP_THEME, WARMUP_WEEK_ID } from "./config/program"
-import { BUILD_HOURS, checkpointsFor, TIERS, WEEK_META, weekHoldsNext } from "./curriculum"
+import { BUILD_HOURS, checkpointsFor, TIERS, WEEK_META } from "./curriculum"
 import { formatDeadline } from "./deadline"
 import type { StoreSnapshot } from "./queries/store"
 import { DEFAULT_SESSION_TITLE } from "./schemas/session"
@@ -1352,26 +1352,11 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	)
 
 	/**
-	 * Whether a week still stands between the trail and the week after it – the rule itself is `weekHoldsNext`.
+	 * Weeks do not hold each other. A week opens on its Monday whatever the week before it did, so a maker who never handed one in can still start the next – the clock is the only thing that orders them.
 	 *
-	 * It used to also stop for a week that closed with hours in it, on the reasoning that such a week can still be handed in. But "can be handed in" is not "can be handed in by everyone": a week is refused below its tier's funded block, and the tier is picked by the maker, so somebody who worked two hours towards a tier that wants nine can never hand that week in. The condition then never cleared and the remaining nine weeks sat shut behind a hand-in that was impossible – the exact dead end the empty-week exception was written to prevent, one hour too far along to catch.
-	 */
-	const owesSubmit = useCallback(
-		(week: Week): boolean => {
-			const submit = week.checkpoints.find((c) => c.kind === "submit")
-			if (!submit) return false
-			return weekHoldsNext({
-				submitted: save.progress[submit.id]?.done ?? false,
-				passed: weekPassed(week.id),
-				hours: weekHours(week.id),
-				floor: submit.atHours ?? 0,
-			})
-		},
-		[save.progress, weekPassed, weekHours],
-	)
-
-	/**
-	 * Four rules, and only four break the sequence:
+	 * It used to be otherwise: an unhanded-in week kept the next shut until it was submitted. That dead-ended anyone who could not reach that week's floor – the tier is the maker's own choice, and a week below its floor cannot be handed in at all – and it also punished asking for an extension, which is granted precisely when a maker is behind. Nothing is lost by not waiting: a passed week's Submit stays open for anyone who does reach the floor, so late work can still go in.
+	 *
+	 * What does still break the sequence:
 	 * - a week that has passed is shut, all but the Submit it still owes – which opens whatever the hours say, since no more can be logged;
 	 * - anything on the clock (the milestone reels, and Submit itself) opens on the week's hours, so a half-written entry never traps you and the choice to wrap up is always live. Everything else unlocks in order, as it always has – except week 1's idea reel, which is the optional arm of the opening fork and never holds anything shut (see WEEK1_IDEA_REEL_ID).
 	 */
@@ -1387,9 +1372,6 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			// Nothing on a week opens before its Monday, Get started included.
 			const opening = weeks[wi]
 			if (opening && !weekStarted(opening.id)) return false
-
-			const prev = weeks[wi - 1]
-			if (prev && owesSubmit(prev)) return false
 
 			const week = weeks[wi]
 			const list = week?.checkpoints ?? []
@@ -1415,18 +1397,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 
 			return withoutOptionalIdea(list.slice(0, i)).every(done)
 		},
-		[
-			isPassed,
-			isHeld,
-			facts.owedReels,
-			owesSubmit,
-			weekPassed,
-			weekStarted,
-			weeks,
-			save.progress,
-			weekHours,
-			reelHours,
-		],
+		[isPassed, isHeld, facts.owedReels, weekPassed, weekStarted, weeks, save.progress, weekHours, reelHours],
 	)
 
 	// What the trail lets you click. An admin bypassing the locks can open anything; the server still has the last word on whatever is saved from a node opened that way. "Start here" keeps to the real rules above.
@@ -1435,7 +1406,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	/**
 	 * Why a checkpoint is shut, in the maker's terms. Null when it is open.
 	 *
-	 * It walks the same three rules as isUnlocked, in the same order, and lives next to it so the two cannot drift: a trail that says one thing and does another is worse than a trail that says nothing. Each branch names the one thing standing in the way rather than listing everything outstanding – only the first is actionable anyway.
+	 * It walks the same rules as isUnlocked, in the same order, and lives next to it so the two cannot drift: a trail that says one thing and does another is worse than a trail that says nothing. Each branch names the one thing standing in the way rather than listing everything outstanding – only the first is actionable anyway.
 	 */
 	const lockReason = useCallback(
 		(id: string): string | null => {
@@ -1459,9 +1430,6 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				const day = weekOpensOn(opening.id)
 				return day ? `Week ${opening.id} opens ${day}.` : `Week ${opening.id} has not opened yet.`
 			}
-
-			const prev = weeks[wi - 1]
-			if (prev && owesSubmit(prev)) return `Submit week ${prev.id} first.`
 
 			const week = weeks[wi]
 			const list = week?.checkpoints ?? []
@@ -1487,7 +1455,6 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			isPassed,
 			isHeld,
 			facts.owedReels,
-			owesSubmit,
 			weekStarted,
 			weekOpensOn,
 			weeks,
