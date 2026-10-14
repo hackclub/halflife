@@ -2110,26 +2110,28 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	/**
 	 * Why the button at the foot is greyed, in the maker's terms, or null when it is live.
 	 *
-	 * The button has always been disabled for exactly these reasons; what it never did was say which one was in the way, so a maker missing a cart screenshot met a dead Next with nothing on screen to explain it. Step 1 keeps its own pair of lines below – the repo check has a "still running" state the others do not – and the cover banner at the top of the body is repeated here on purpose: it is a long scroll away from the button it blocks.
+	 * The button has always been disabled for exactly these reasons; what it never did was say which one was in the way, so a maker missing a cart screenshot met a dead Next with nothing on screen to explain it. The branches mirror `canAdvance` above step for step – a line here while the button is live would be worse than the silence it replaced.
+	 *
+	 * Step 1 keeps its own pair of lines at the foot: the repo check has a "still running" state the others do not. The cover banner at the top of the body is repeated here on purpose – it is a long scroll away from the button it blocks.
 	 */
-	const nextBlocker =
-		step === 1
-			? null
-			: tierBlocked
-				? `Your tier needs ${fmtH(tierShort(selectedTier.fundingHours))} more design time than you have logged this week. Pick a tier you have earned.`
-				: !fundingOk
-					? "Tick the box agreeing to cover the part of the cart the grant does not."
-					: !isBuild && step === 2 && carts.length === 0 && !fundingDeclined
-						? "Add a screenshot of your cart above to carry on."
-						: !clip
-							? isBuild
-								? "Record your demo video to carry on."
-								: "Record your closing reel to carry on."
-							: isBuild && works === "no" && writeup.trim().length < 40
-								? "Say what needs to change – a sentence or two."
-								: !hasCover
-									? "Add a cover image to your project before you can submit."
-									: null
+	function nextBlocker(): string | null {
+		if (step === 1) return null
+		// These two block whichever of the later steps is showing.
+		if (tierBlocked)
+			return `Your tier needs ${fmtH(tierShort(selectedTier.fundingHours))} more design time than you have logged this week. Pick a tier you have earned.`
+		if (!fundingOk) return "Tick the box agreeing to cover the part of the cart the grant does not."
+		if (isBuild)
+			return !clip
+				? "Record your demo video to carry on."
+				: works === "no" && writeup.trim().length < 40
+					? "Say what needs to change – a sentence or two."
+					: null
+		if (step === 2)
+			return carts.length === 0 && !fundingDeclined ? "Add a screenshot of your cart above to carry on." : null
+		if (!clip) return "Record your closing reel to carry on."
+		if (!hasCover) return "Add a cover image to your project before you can submit."
+		return null
+	}
 
 	/**
 	 * Handing a week in, in the order the pieces depend on each other.
@@ -2223,9 +2225,9 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							Checking your repo…
 						</p>
 					)}
-					{step > 1 && !submitError && nextBlocker && (
+					{step > 1 && !submitError && nextBlocker() && (
 						<p role="alert" className="hand mr-auto min-w-0 flex-1 text-[0.78rem] leading-snug text-coral-deep">
-							{nextBlocker}
+							{nextBlocker()}
 						</p>
 					)}
 					{step < total ? (
