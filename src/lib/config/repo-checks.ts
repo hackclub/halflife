@@ -144,8 +144,8 @@ export const THEME_REPO_REQUIREMENTS: Record<
 	Theme,
 	{ required: readonly RepoFileKind[]; recommended: readonly RepoFileKind[] }
 > = {
-	// The board files are the week. Firmware is recommended rather than required: an analogue board – a preamp, a power supply, a sensor front end – has nothing to flash, and asking one for code it will never run turned a finished analogue project into a hand-in the checks refused.
-	[Theme.PCB]: { required: ["pcbSource"], recommended: ["pcbFab", "bom", "firmware"] },
+	// The board files are the week, and the BOM is what the parts funding is asked against – a design week hands in a cart to be funded, so a repo without its parts list is a hand-in a reviewer cannot price. Firmware is recommended rather than required: an analogue board – a preamp, a power supply, a sensor front end – has nothing to flash, and asking one for code it will never run turned a finished analogue project into a hand-in the checks refused.
+	[Theme.PCB]: { required: ["pcbSource", "bom"], recommended: ["pcbFab", "firmware"] },
 	[Theme.CAD]: { required: ["cadSource"], recommended: ["cadModel"] },
 	[Theme.SYNTH]: { required: ["logicSchematic"], recommended: ["firmware"] },
 	[Theme.DISPLAYS]: { required: ["firmware"], recommended: ["logicSchematic"] },

@@ -985,6 +985,19 @@ async function bodies() {
 		check("repo-files · legacy bom deletion path", legacy.path === LEGACY_BOM_PATH && LEGACY_BOM_PATH === "BOM.md")
 		check("repo-files · legacy bom deletion is a delete", legacy.content === null)
 
+		// The BOM is what a PCB design week's funding is asked against, so its absence blocks the hand-in rather than warning. Pinned because the two lists are plain arrays a later edit can quietly re-sort a kind out of.
+		const { THEME_REPO_REQUIREMENTS, BOM_CSV_PATTERN } = await import("../src/lib/config/repo-checks")
+		const { Theme } = await import("../src/app/generated/prisma/enums")
+		check("repo-checks · a PCB repo must carry a BOM", THEME_REPO_REQUIREMENTS[Theme.PCB].required.includes("bom"))
+		check(
+			"repo-checks · the BOM is no longer merely recommended",
+			!THEME_REPO_REQUIREMENTS[Theme.PCB].recommended.includes("bom"),
+		)
+		check(
+			"repo-checks · the BOM pattern is the one the check reads",
+			BOM_CSV_PATTERN.test("BOM.csv") && BOM_CSV_PATTERN.test("hardware/bom-v2.csv") && !BOM_CSV_PATTERN.test("bom.md"),
+		)
+
 		// The date in the banner has to come from the data, not the wall clock. When it was `new Date()`, two renders of identical content differed, so the blob SHA never matched, "skip unchanged files" never fired, and every debounced sync committed a no-op diff. A render now pins the date to the newest entry (or the project row), so identical content is byte-identical.
 		const a = renderJournal(project, [entry()])
 		const b = renderJournal(project, [entry()])
