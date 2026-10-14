@@ -77,6 +77,7 @@ export default async function AdminOverviewPage() {
 			"claim_sweep",
 			"printer_reconcile",
 			"help_ticket_summary",
+			"project_review_summary",
 		]),
 		getUserFlowFunnel(),
 		getUserFlowSankey(),

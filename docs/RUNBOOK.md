@@ -152,6 +152,7 @@ the commands and the reasoning in `jobs/README.md`.
 | `loops-sync` | `41 * * * *` | `POST /api/integrations/loops-sync` | **internal** |
 | `printer-reconcile` | `0 8 * * *` | `POST /api/integrations/printer-reconcile` | ingress |
 | `slack-ticket-summary` | `0 9 * * *` | `POST /api/integrations/slack-ticket-summary` | ingress |
+| `slack-review-summary` | `0 9 * * *` | `POST /api/integrations/slack-review-summary` | ingress |
 
 "internal" means the ClusterIP, not the vanity domain – see **Cloudflare kills
 anything over ~100 seconds** below. Everything else goes through the public

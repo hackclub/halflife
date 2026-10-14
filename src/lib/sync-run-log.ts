@@ -12,6 +12,7 @@ export type SyncKey =
 	| "claim_sweep"
 	| "printer_reconcile"
 	| "help_ticket_summary"
+	| "project_review_summary"
 
 /**
  * One row per successful run. Failures go to the audit log instead, so a timestamp in this table always means a real round trip completed.
