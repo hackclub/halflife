@@ -269,9 +269,9 @@ export default async function AdminOverviewPage() {
 			<Panel title="Projects per week">
 				<ProjectsByWeekChart weeks={projectsByWeek} />
 				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
-					What people are building, by the week it is for. Each project lands in both of its theme&apos;s weeks, so the
-					two PCBs clusters are one cohort read twice – which is the point when the question is what a week is being
-					asked to fund.
+					What people are building, by the week it is for. A project sits in its theme&apos;s design week once the
+					design has been handed in, and in the build week once the build has – so the two PCBs blocks are different
+					projects, not one cohort counted twice.
 				</p>
 			</Panel>
 			<Panel title="Hours per week">
@@ -1217,10 +1217,12 @@ function ProjectsByWeekChart({ weeks }: { weeks: WeekProjectCluster[] }) {
 				</div>
 			</div>
 			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.5rem" }}>
-				Projects that have been started, each counted in both weeks its theme runs in – so the two PCBs clusters are one
-				cohort read twice, which is what a week has to fund. The tier is the reviewer&apos;s once they have set one, and
-				what the maker asked for until then; a starter project is its own column because picking one locks the request
-				to Tier 1.
+				Their stage, by the week that stage runs in: a project is in a week&apos;s column once that phase has been
+				handed in, and appears in both of its theme&apos;s weeks only when it has reached both stages – design months
+				before the build is a different piece of work. A project that has been described and not yet handed in is in no
+				column, because no week is funding anything for it yet. The tier is the reviewer&apos;s once they have set one,
+				and what the maker asked for until then; a starter project is its own column because picking one locks the
+				request to Tier 1.
 			</p>
 		</div>
 	)
@@ -1237,11 +1239,11 @@ function niceHoursMax(max: number): number {
 /**
  * One stacked column per week, each split into the four kinds of project.
  *
- * The companion to the projects chart and deliberately the same shape: same eleven columns, same order of the four kinds, same bands beneath the axis. One says how many projects a week is being asked to fund, this says how much work they are – so they are read side by side rather than one instead of the other.
+ * The companion to the projects chart and deliberately the same shape: same eleven columns, same order of the four kinds, same bands beneath the axis. One says how many projects are in each stage, this says how much work they are – so they are read side by side rather than one instead of the other.
  *
  * Stacked rather than four bars to a cluster, because the question here is the week's total and how it splits, not four separate totals. That is also what makes the two charts worth having both: a cluster of four bars answers "how does starter compare with tier 3 here", and a stack answers "which week is carrying the work, and whose".
  *
- * Counted once, which is the difference from the projects chart's "one cohort read twice": an hour belongs to the phase it was logged in, so a build phase's hours land in the build week and nowhere else. The caption says so, because a reader who notices the two charts disagreeing about the shape of the season should be told why rather than left to guess.
+ * Both charts attribute by phase, so a project's build week is its build work in each: the same threshold decides when a project appears in the projects chart and when its hours start counting here.
  */
 function HoursByWeekChart({ weeks }: { weeks: WeekHoursCluster[] }) {
 	const totals = weeks.map((week) => PROJECT_KIND.reduce((n, kind) => n + week[kind.key], 0))
