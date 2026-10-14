@@ -1362,8 +1362,20 @@ function HoursHistogram({ data }: { data: HoursDistribution }) {
 			<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
 				Both series share one scale, so a pale bar taller than the solid one means the band holds more of the
 				programme&apos;s hours than of its people. Hours count journal devlogs (reviewer-adjusted where set) plus linked
-				Hackatime time, the same hours the geography panels total. {fmtInt(data.withoutHours)} accounts have no hours at
-				all and are left off the chart; hover a bar for both shares.
+				Hackatime time, the same hours the geography panels total, and a sitting that was both journalled and tracked
+				counts once rather than twice. {fmtInt(data.withoutHours)} accounts have no hours at all and are left off the
+				chart; hover a bar for both shares.
+				{data.overlapUnknownPhases > 0 && (
+					<>
+						{" "}
+						<b>
+							{fmtInt(data.overlapUnknownPhases)} phase{data.overlapUnknownPhases === 1 ? "" : "s"} could not have its
+							Hackatime overlap measured, so those hours are counted on both sides and every total here reads high by up
+							to that much.
+						</b>{" "}
+						The tracked intervals are cached, and `hackatime-sync` warms them every fifteen minutes.
+					</>
+				)}
 			</p>
 		</div>
 	)
