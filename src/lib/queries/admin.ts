@@ -1325,29 +1325,53 @@ export interface ProjectReviewStatusStat {
 }
 
 /**
- * How many live projects stand at each review status: pending (in review), needs changes, rejected or approved. Each project is counted once, by its most pressing current state, so the four slices add up to the projects with any review activity rather than to the hand-ins in Ari's queue.
+ * The review board as Ari shows it: one row per ship, by the decision standing on it now.
+ *
+ * Ari counts ships, not projects – a (project, phase) hand-in – so this counts the latest submission per phase rather than reading the project's status columns. The columns answer a different question: they follow the phase's *current* step, so a design approved long ago reads as pending once its build is handed in, and a sent-back design reads as pending the moment it is resubmitted. That is why the old version showed everything as pending while Ari showed hundreds of standing decisions.
+ *
+ * Each phase contributes at most one slice, decided by its newest submission: an unresolved hand-in Ari holds is pending; a decided one reads from its live FINAL review, falling back to the submission's own recorded result. An un-approval invalidates the review without reopening the submission, so a decided submission with no live review left keeps its recorded result rather than vanishing. A hand-in Ari never received (`ariSubmissionId` null) is counted nowhere – it is not on Ari's board either, and the reviewer-activity panel already counts it apart.
  */
 export async function getProjectReviewStatuses(): Promise<ProjectReviewStatusStat[]> {
-	const projects = await prisma.themeProject.findMany({
-		where: { deletedAt: null },
-		select: { designStatus: true, buildStatus: true },
+	const submissions = await prisma.phaseSubmission.findMany({
+		where: { themeProject: { deletedAt: null } },
+		// Newest first, so the first row seen for a phase is that phase's current ship.
+		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+		select: {
+			themeProjectId: true,
+			phase: true,
+			resolvedAt: true,
+			resolvedResult: true,
+			ariSubmissionId: true,
+			ariDecision: true,
+			reviews: {
+				where: { invalidated: false, pass: ReviewPass.FINAL },
+				orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+				take: 1,
+				select: { result: true },
+			},
+		},
 	})
+
+	const latest = new Map<string, (typeof submissions)[number]>()
+	for (const submission of submissions) {
+		const key = `${submission.themeProjectId}:${submission.phase}`
+		if (!latest.has(key)) latest.set(key, submission)
+	}
 
 	let pending = 0
 	let needsChanges = 0
 	let rejected = 0
 	let approved = 0
-	for (const project of projects) {
-		const statuses = [project.designStatus, project.buildStatus]
-		if (statuses.includes(PhaseStatus.rejected)) {
-			rejected += 1
-		} else if (statuses.includes(PhaseStatus.update_requested)) {
-			needsChanges += 1
-		} else if (statuses.includes(PhaseStatus.in_review)) {
-			pending += 1
-		} else if (statuses.includes(PhaseStatus.approved)) {
-			approved += 1
+	for (const submission of latest.values()) {
+		if (submission.resolvedAt === null) {
+			if (submission.ariSubmissionId !== null) pending += 1
+			continue
 		}
+		const result = submission.reviews[0]?.result ?? submission.resolvedResult ?? ariToResult(submission.ariDecision)
+		if (result === ReviewResult.APPROVED) approved += 1
+		else if (result === ReviewResult.RETURNED) needsChanges += 1
+		else if (result === ReviewResult.REJECTED) rejected += 1
+		// A resolved submission with no recorded outcome at all is corrupt data, not a slice: counted nowhere rather than misfiled.
 	}
 
 	return [
@@ -1356,6 +1380,14 @@ export async function getProjectReviewStatuses(): Promise<ProjectReviewStatusSta
 		{ label: "Rejected", value: rejected },
 		{ label: "Pending", value: pending },
 	]
+}
+
+/** The decision string Ari reports, back into the enum the reviews table speaks. */
+function ariToResult(decision: string | null): ReviewResult | null {
+	if (decision === "approved") return ReviewResult.APPROVED
+	if (decision === "changes") return ReviewResult.RETURNED
+	if (decision === "rejected") return ReviewResult.REJECTED
+	return null
 }
 
 // ─── User-flow Sankey ─────────────────────────────────────────────────────────

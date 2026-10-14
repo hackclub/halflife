@@ -148,14 +148,12 @@ export default async function AdminOverviewPage() {
 					))}
 				</Table>
 				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
-					Awaiting review counts live hand-ins that reached Ari – unresolved submissions on phases currently in review,
-					on projects that still exist. It is the figure comparable to Ari&apos;s own pending count, and the one to read
-					when asking what is waiting on a reviewer; anything Ari never received is counted apart above, because a
-					hand-in Ari has never seen is not waiting for review. The other three count projects, once however many of
-					their phases were reviewed, shown by the outcome standing now – a project approved on design and sent back on
-					build reads as changes requested. That is deliberately a different question from Ari&apos;s reviewed count, so
-					the two will not agree. Ari&apos;s decisions are included. A review an admin or Ari later undid no longer
-					counts.
+					The ring counts ships the way Ari does – one slice per (project, phase) hand-in, by the decision standing
+					on it now. A design approved long ago still reads as approved even once its build is handed in, and a
+					sent-back design only leaves changes requested when it is resubmitted. Pending is unresolved hand-ins Ari
+					holds; anything Ari never received is counted apart above, because a hand-in Ari has never seen is not on
+					its board. Console decisions are included. A review an admin later undid still reads by the submission it
+					decided, since the hand-in itself stays resolved.
 				</p>
 			</Panel>
 
@@ -414,38 +412,46 @@ function MetricPie({
 						total {title.toLowerCase()}
 					</text>
 				</svg>
-				<ul
+				<table
 					style={{
-						listStyle: "none",
-						margin: 0,
-						padding: 0,
-						display: "grid",
-						gap: "0.3rem",
+						borderCollapse: "collapse",
+						fontVariantNumeric: "tabular-nums",
+						fontSize: "0.82rem",
 						minWidth: "10rem",
 						flex: "1 1 10rem",
 					}}
 				>
-					{colored.map((s) => (
-						<li key={s.label} style={{ display: "flex", alignItems: "baseline", gap: "0.45rem", fontSize: "0.82rem" }}>
-							<span
-								aria-hidden="true"
-								style={{
-									display: "inline-block",
-									width: "0.7rem",
-									height: "0.7rem",
-									borderRadius: "3px",
-									background: s.color,
-									flexShrink: 0,
-									alignSelf: "center",
-								}}
-							/>
-							<span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.label}</span>
-							<span style={{ marginLeft: "auto", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
-								{format(s.value)} · {s.pct.toFixed(1)}%
-							</span>
-						</li>
-					))}
-				</ul>
+					<tbody>
+						{colored.map((s) => (
+							<tr key={s.label}>
+								<td style={{ padding: "0.15rem 0.75rem 0.15rem 0" }}>
+									<span style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem" }}>
+										<span
+											aria-hidden="true"
+											style={{
+												display: "inline-block",
+												width: "0.7rem",
+												height: "0.7rem",
+												borderRadius: "3px",
+												background: s.color,
+												flexShrink: 0,
+											}}
+										/>
+										<span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+											{s.label}
+										</span>
+									</span>
+								</td>
+								<td style={{ padding: "0.15rem 0.75rem 0.15rem 0", textAlign: "right", whiteSpace: "nowrap" }}>
+									{format(s.value)}
+								</td>
+								<td style={{ padding: "0.15rem 0", textAlign: "right", whiteSpace: "nowrap" }}>
+									{s.pct.toFixed(1)}%
+								</td>
+							</tr>
+						))}
+					</tbody>
+				</table>
 			</div>
 		</figure>
 	)
@@ -1453,32 +1459,35 @@ function ShareDonut({
 					))}
 				</g>
 			</svg>
-			<ul style={{ display: "grid", gap: "0.4rem", listStyle: "none", margin: 0, padding: 0, minWidth: 0 }}>
-				{rows.map((row, i) => (
-					<li
-						key={row.label}
-						style={{ display: "flex", alignItems: "baseline", gap: "0.5rem", fontVariantNumeric: "tabular-nums" }}
-					>
-						<span
-							aria-hidden="true"
-							style={{
-								width: "0.7rem",
-								height: "0.7rem",
-								borderRadius: "2px",
-								background: colors?.[i] ?? palette[i % palette.length],
-								flexShrink: 0,
-								alignSelf: "center",
-							}}
-						/>
-						<span style={{ fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-							{row.label}
-						</span>
-						<span className="hl-hint">
-							{row.value.toLocaleString("en-US")} · {Math.round((row.value / total) * 100)}%
-						</span>
-					</li>
-				))}
-			</ul>
+			<table style={{ borderCollapse: "collapse", fontVariantNumeric: "tabular-nums" }}>
+				<tbody>
+					{rows.map((row, i) => (
+						<tr key={row.label}>
+							<td style={{ padding: "0.2rem 0.75rem 0.2rem 0" }}>
+								<span style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem" }}>
+									<span
+										aria-hidden="true"
+										style={{
+											width: "0.7rem",
+											height: "0.7rem",
+											borderRadius: "2px",
+											background: colors?.[i] ?? palette[i % palette.length],
+											flexShrink: 0,
+										}}
+									/>
+									<span style={{ fontWeight: 700 }}>{row.label}</span>
+								</span>
+							</td>
+							<td style={{ padding: "0.2rem 0.75rem 0.2rem 0", textAlign: "right" }}>
+								{row.value.toLocaleString("en-US")}
+							</td>
+							<td style={{ padding: "0.2rem 0", textAlign: "right" }}>
+								{Math.round((row.value / total) * 100)}%
+							</td>
+						</tr>
+					))}
+				</tbody>
+			</table>
 		</div>
 	)
 }
