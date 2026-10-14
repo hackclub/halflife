@@ -80,9 +80,9 @@ function weekProgressSection(byWeek: WeekReviewProgress[]): SummaryBoard | null 
 }
 
 /**
- * A leaderboard with the share chart merged into each row: ` 1. Bunny Pranav  ██████░░░░  164 ·  29%`.
+ * A leaderboard with the share chart merged into each row: ` 1. ██████░░░░  Bunny Pranav  164 ·  29%`.
  *
- * One fence holds the whole board, so names, bars, counts and shares all line up – split across a table and a separate chart the two could never share columns. Shares read against every review behind the board, not just the ten printed, so they do not sum to 100 when the overflow note says more were cut. An empty board stays an empty board, and the shared "no one yet" fallback says so.
+ * One fence holds the whole board, so bars, names, counts and shares all line up – split across a table and a separate chart the two could never share columns. Shares read against every review behind the board, not just the ten printed, so they do not sum to 100 when the overflow note says more were cut. An empty board stays an empty board, and the shared "no one yet" fallback says so.
  */
 function rankedBoard(title: string, rows: ProjectReviewStats["leaderboard"], names: Map<string, string>): SummaryBoard {
 	const shown = rows.slice(0, LEADERBOARD_LIMIT)
@@ -98,7 +98,7 @@ function rankedBoard(title: string, rows: ProjectReviewStats["leaderboard"], nam
 			const share = total === 0 ? 0 : row.reviewed / total
 			const filled = Math.round(share * WEEK_BAR_WIDTH)
 			const bar = "█".repeat(filled) + "░".repeat(WEEK_BAR_WIDTH - filled)
-			return `${`${index + 1}.`.padStart(rankWidth)} ${row.name.padEnd(nameWidth)} ${bar} ${`${row.reviewed}`.padStart(countWidth)} · ${`${Math.round(share * 100)}%`.padStart(4)}`
+			return `${`${index + 1}.`.padStart(rankWidth)} ${bar}  ${row.name.padEnd(nameWidth)} ${`${row.reviewed}`.padStart(countWidth)} · ${`${Math.round(share * 100)}%`.padStart(4)}`
 		}),
 		"```",
 	]
