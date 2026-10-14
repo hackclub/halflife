@@ -4,7 +4,7 @@ import type { HelpTicketStats } from "./ticket-store"
 /**
  * The daily ticket summary, in the cat's voice the rest of the bot uses.
  *
- * It deliberately keeps to what the table can actually answer: how many tickets were opened, how many were closed, and who closed them. The Stasis sample this is modelled on also listed "assigned" and "still open" counts and a set of ageing tickets – none of which Half Life tracks. The table is also seeded by a backfill, so every pre-launch question looks unresolved; a "still open" number built from it would be wrong rather than merely absent, which is why there isn't one.
+ * It deliberately keeps to what the table can actually answer: how many tickets were opened, how many were closed, and who closed them – over the last day, and over every ticket on file. The Stasis sample this is modelled on also listed "assigned" and "still open" counts and a set of ageing tickets – none of which Half Life tracks. The table is also seeded by a backfill, so every pre-launch question looks unresolved; a "still open" number built from it would be wrong rather than merely absent, which is why there isn't one.
  */
 
 const LEADERBOARD_LIMIT = 10
@@ -25,26 +25,36 @@ function leaderboardLine(rank: number, name: string, closed: number): string {
 	return `${rank}. ${name} - ${closed} closed ${closed === 1 ? "ticket" : "tickets"}`
 }
 
-export async function buildTicketSummary(stats: HelpTicketStats): Promise<string> {
-	const board = await Promise.all(
-		stats.leaderboard
+/** The name lookups for one board, resolved together so both boards' rows are ordered the same way. */
+async function boardLines(board: HelpTicketStats["leaderboard"]): Promise<string[]> {
+	return Promise.all(
+		board
 			.slice(0, LEADERBOARD_LIMIT)
 			.map(async (entry, index) => leaderboardLine(index + 1, await getSlackUserName(entry.resolvedBy), entry.closed)),
 	)
+}
 
-	const lines = [
+/** The header and rows for one board, with the overflow note under it. */
+function boardSection(title: string, board: HelpTicketStats["leaderboard"], lines: string[]): string[] {
+	const section = [
+		title,
+		...(lines.length > 0 ? lines : ["no one yet – there's still time... :yay-bazooka:"]),
+	]
+	if (board.length > LEADERBOARD_LIMIT) section.push(`(plus ${board.length - LEADERBOARD_LIMIT} more)`)
+	return section
+}
+
+export async function buildTicketSummary(stats: HelpTicketStats): Promise<string> {
+	const [daily, global] = await Promise.all([boardLines(stats.leaderboard), boardLines(stats.globalLeaderboard)])
+
+	return [
 		"um, um, hi there! hope i'm not disturbing you, but i just wanted to let you know that i've got some stats for you! :yay:",
 		"",
 		":mc-clock: in the last 24 hours...",
 		`:yay-love: ${openedLine(stats.opened)} and ${closedLine(stats.closed)}`,
 		"",
-		":yay-peace: today's leaderboard",
-		...(board.length > 0 ? board : ["no one yet – there's still time... :yay-bazooka:"]),
-	]
-
-	if (stats.leaderboard.length > LEADERBOARD_LIMIT) {
-		lines.push(`(plus ${stats.leaderboard.length - LEADERBOARD_LIMIT} more)`)
-	}
-
-	return lines.join("\n")
+		...boardSection(":yay-peace: today's leaderboard", stats.leaderboard, daily),
+		"",
+		...boardSection(":yay-blush-2: all-time leaderboard", stats.globalLeaderboard, global),
+	].join("\n")
 }
