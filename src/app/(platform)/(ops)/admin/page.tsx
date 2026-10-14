@@ -1453,32 +1453,35 @@ function ShareDonut({
 					))}
 				</g>
 			</svg>
-			<ul style={{ display: "grid", gap: "0.4rem", listStyle: "none", margin: 0, padding: 0, minWidth: 0 }}>
-				{rows.map((row, i) => (
-					<li
-						key={row.label}
-						style={{ display: "flex", alignItems: "baseline", gap: "0.5rem", fontVariantNumeric: "tabular-nums" }}
-					>
-						<span
-							aria-hidden="true"
-							style={{
-								width: "0.7rem",
-								height: "0.7rem",
-								borderRadius: "2px",
-								background: colors?.[i] ?? palette[i % palette.length],
-								flexShrink: 0,
-								alignSelf: "center",
-							}}
-						/>
-						<span style={{ fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-							{row.label}
-						</span>
-						<span className="hl-hint">
-							{row.value.toLocaleString("en-US")} · {Math.round((row.value / total) * 100)}%
-						</span>
-					</li>
-				))}
-			</ul>
+			<table style={{ borderCollapse: "collapse", fontVariantNumeric: "tabular-nums" }}>
+				<tbody>
+					{rows.map((row, i) => (
+						<tr key={row.label}>
+							<td style={{ padding: "0.2rem 0.75rem 0.2rem 0" }}>
+								<span style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem" }}>
+									<span
+										aria-hidden="true"
+										style={{
+											width: "0.7rem",
+											height: "0.7rem",
+											borderRadius: "2px",
+											background: colors?.[i] ?? palette[i % palette.length],
+											flexShrink: 0,
+										}}
+									/>
+									<span style={{ fontWeight: 700 }}>{row.label}</span>
+								</span>
+							</td>
+							<td style={{ padding: "0.2rem 0.75rem 0.2rem 0", textAlign: "right" }}>
+								{row.value.toLocaleString("en-US")}
+							</td>
+							<td style={{ padding: "0.2rem 0", textAlign: "right" }}>
+								{Math.round((row.value / total) * 100)}%
+							</td>
+						</tr>
+					))}
+				</tbody>
+			</table>
 		</div>
 	)
 }
