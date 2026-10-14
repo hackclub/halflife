@@ -1259,6 +1259,45 @@ export async function getReviewerStats(): Promise<ReviewerStats> {
 	}
 }
 
+export interface ProjectReviewStatusStat {
+	label: string
+	value: number
+}
+
+/**
+ * How many live projects stand at each review status: pending (in review), needs changes, rejected or approved. Each project is counted once, by its most pressing current state, so the four slices add up to the projects with any review activity rather than to the hand-ins in Ari's queue.
+ */
+export async function getProjectReviewStatuses(): Promise<ProjectReviewStatusStat[]> {
+	const projects = await prisma.themeProject.findMany({
+		where: { deletedAt: null },
+		select: { designStatus: true, buildStatus: true },
+	})
+
+	let pending = 0
+	let needsChanges = 0
+	let rejected = 0
+	let approved = 0
+	for (const project of projects) {
+		const statuses = [project.designStatus, project.buildStatus]
+		if (statuses.includes(PhaseStatus.rejected)) {
+			rejected += 1
+		} else if (statuses.includes(PhaseStatus.update_requested)) {
+			needsChanges += 1
+		} else if (statuses.includes(PhaseStatus.in_review)) {
+			pending += 1
+		} else if (statuses.includes(PhaseStatus.approved)) {
+			approved += 1
+		}
+	}
+
+	return [
+		{ label: "Approved", value: approved },
+		{ label: "Needs changes", value: needsChanges },
+		{ label: "Rejected", value: rejected },
+		{ label: "Pending", value: pending },
+	]
+}
+
 // ─── User-flow Sankey ─────────────────────────────────────────────────────────
 
 /** One box in the Sankey: a group of users at one stage, with the people who will leave or join it. */

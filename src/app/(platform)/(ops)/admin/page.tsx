@@ -16,6 +16,7 @@ import {
 	getDailyActivityByGoal,
 	getFirstProjectStats,
 	getHoursDistribution,
+	getProjectReviewStatuses,
 	getProjectsByWeek,
 	getReviewerStats,
 	getUserFlowFunnel,
@@ -62,6 +63,7 @@ export default async function AdminOverviewPage() {
 		projectsByWeek,
 		hoursSpread,
 		firstProjects,
+		projectReviewStatuses,
 		verification,
 		reviewer,
 	] = await Promise.all([
@@ -85,6 +87,7 @@ export default async function AdminOverviewPage() {
 		getProjectsByWeek(),
 		getHoursDistribution(),
 		getFirstProjectStats(),
+		getProjectReviewStatuses(),
 		getVerificationStats(),
 		getReviewerStats(),
 	])
@@ -107,10 +110,17 @@ export default async function AdminOverviewPage() {
 					</span>
 				}
 			>
-				<div className="hl-row">
-					<Stat label="Awaiting review" value={counters.pendingReviews} />
-					<Stat label="Reviewed today" value={reviewer.reviewedToday} />
-					<Stat label="Projects reviewed" value={reviewer.reviewedTotal} />
+				<div style={{ display: "flex", flexWrap: "wrap", gap: "1.5rem", alignItems: "center", justifyContent: "space-between" }}>
+					<ShareDonut
+						measure="Project review status"
+						empty="No projects with a review state yet."
+						rows={projectReviewStatuses.map((s) => ({ label: s.label, value: s.value }))}
+						colors={["var(--color-teal)", "var(--color-coin)", "var(--color-flame)", "var(--color-accent)"]}
+					/>
+					<div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+						<Stat label="Reviewed today" value={reviewer.reviewedToday} />
+						<Stat label="Projects reviewed" value={reviewer.reviewedTotal} />
+					</div>
 				</div>
 				{counters.pendingReviewsUnsent > 0 && (
 					<p className="hl-hint" style={{ fontSize: "0.8rem", marginTop: "0.5rem" }}>
@@ -1359,11 +1369,14 @@ function ShareDonut({
 	rows,
 	measure,
 	empty,
+	colors,
 }: {
 	rows: { label: string; value: number }[]
 	/** What the ring counts, for the figure's accessible name. */
 	measure: string
 	empty: string
+	/** Optional per-slice colors, in row order. Falls back to the default palette. */
+	colors?: string[]
 }) {
 	const total = rows.reduce((n, r) => n + r.value, 0)
 	if (total === 0) return <EmptyState>{empty}</EmptyState>
@@ -1411,7 +1424,7 @@ function ShareDonut({
 							cy="21"
 							r={R}
 							fill="none"
-							stroke={palette[i % palette.length]}
+							stroke={colors?.[i] ?? palette[i % palette.length]}
 							strokeWidth="7"
 							strokeDasharray={`${Math.max(seg.share - 0.6, 0)} 100`}
 							strokeDashoffset={seg.start}
@@ -1431,7 +1444,7 @@ function ShareDonut({
 								width: "0.7rem",
 								height: "0.7rem",
 								borderRadius: "2px",
-								background: palette[i % palette.length],
+								background: colors?.[i] ?? palette[i % palette.length],
 								flexShrink: 0,
 								alignSelf: "center",
 							}}
