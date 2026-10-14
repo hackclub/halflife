@@ -1,6 +1,7 @@
 import "server-only"
 import { HoursSource } from "@/app/generated/prisma/enums"
 import { getBalances } from "@/lib/currency"
+import { pctOf } from "@/lib/numbers"
 import prisma from "@/lib/prisma"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
 import { streakAsOf } from "@/lib/streak"
@@ -431,9 +432,9 @@ export async function getAnalyticsSummary(days = 30) {
 			step,
 			count,
 			// Share of the previous step that did not make it to this one.
-			dropOffPct: i === 0 || prev === 0 ? 0 : Math.round(((prev - count) / prev) * 1000) / 10,
+			dropOffPct: i === 0 ? 0 : pctOf(prev - count, prev),
 			// Share of everyone who signed up that got this far.
-			ofSignUpsPct: total === 0 ? 0 : Math.round((count / total) * 1000) / 10,
+			ofSignUpsPct: pctOf(count, total),
 		}
 	})
 

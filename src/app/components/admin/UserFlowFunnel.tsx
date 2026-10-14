@@ -1,6 +1,7 @@
 "use client"
 import { type CSSProperties, Fragment } from "react"
 import { EmptyState } from "@/app/components/ui"
+import { pctOf } from "@/lib/numbers"
 import type { FlowStep } from "@/lib/queries/admin"
 
 /**
@@ -18,9 +19,9 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 		const prev = i === 0 ? total : (steps[i - 1]?.count ?? total)
 		return {
 			...s,
-			retainPct: prev === 0 ? 0 : Math.round((s.count / prev) * 1000) / 10,
-			dropOffPct: i > 0 && prev > 0 ? Math.round(((prev - s.count) / prev) * 1000) / 10 : 0,
-			ofSignupsPct: total === 0 ? 0 : Math.round((s.count / total) * 1000) / 10,
+			retainPct: pctOf(s.count, prev),
+			dropOffPct: i > 0 ? pctOf(prev - s.count, prev) : 0,
+			ofSignupsPct: pctOf(s.count, total),
 		}
 	})
 

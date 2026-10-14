@@ -1,26 +1,22 @@
 import prisma from "@/lib/prisma"
 import type { ProjectReviewStats } from "./review-store"
-import { getSlackUserName } from "./slack"
+import { getSlackUserNames } from "./slack"
+import {
+	countedLine,
+	creditedLine,
+	LEADERBOARD_LIMIT,
+	leaderboardLine,
+	renderSummary,
+	type SummaryBoard,
+} from "./summary"
 
-const LEADERBOARD_LIMIT = 10
+/**
+ * The daily project-review summary, the same post as the ticket summary with review nouns.
+ *
+ * Reviewers are Half Life users rather than Slack ids, so the board's keys have to be resolved to a Slack account before a name can be asked for. One query and one batched lookup cover both boards: the daily ten are usually also on the all-time ten, and users.info is rate-limited.
+ */
 
-function submittedLine(submitted: number): string {
-	if (submitted === 0) return "no new submissions were handed in"
-	if (submitted === 1) return "1 total submission was handed in"
-	return `${submitted} total submissions were handed in`
-}
-
-function reviewedLine(reviewed: number): string {
-	if (reviewed === 0) return "you didn't review any of them this time :("
-	if (reviewed === 1) return "you managed to review 1 of them! congrats!! :D"
-	return `you managed to review ${reviewed} of them! congrats!! :D`
-}
-
-function leaderboardLine(rank: number, name: string, reviewed: number): string {
-	return `${rank}. ${name} - ${reviewed} reviewed ${reviewed === 1 ? "submission" : "submissions"}`
-}
-
-/** A Slack display name per reviewer, looked up once for both boards and falling back to the Half Life name so a lookup miss is never a broken summary. */
+/** Display names for both boards at once, falling back to the Half Life name so a missing Slack link is never a broken summary. */
 async function namesFor(entries: ProjectReviewStats["leaderboard"]): Promise<Map<string, string>> {
 	const ids = [...new Set(entries.map((entry) => entry.reviewerId))]
 	if (ids.length === 0) return new Map()
@@ -29,48 +25,45 @@ async function namesFor(entries: ProjectReviewStats["leaderboard"]): Promise<Map
 		where: { id: { in: ids } },
 		select: { id: true, slackId: true, name: true, displayName: true },
 	})
-	const byId = new Map(users.map((user) => [user.id, user]))
+
+	const slackNames = await getSlackUserNames(users.flatMap((user) => (user.slackId ? [user.slackId] : [])))
 
 	return new Map(
-		await Promise.all(
-			ids.map(async (id) => {
-				const user = byId.get(id)
-				const name = user?.slackId ? await getSlackUserName(user.slackId) : user?.displayName || user?.name || id
-				return [id, name] as const
-			}),
-		),
+		users.map((user) => [
+			user.id,
+			(user.slackId ? slackNames.get(user.slackId) : null) ?? user.displayName ?? user.name ?? user.id,
+		]),
 	)
 }
 
-function boardLines(board: ProjectReviewStats["leaderboard"], names: Map<string, string>): string[] {
-	return board
-		.slice(0, LEADERBOARD_LIMIT)
-		.map((entry, index) => leaderboardLine(index + 1, names.get(entry.reviewerId) ?? entry.reviewerId, entry.reviewed))
-}
-
-/** The header and rows for one board, with the overflow note under it. */
-function boardSection(title: string, board: ProjectReviewStats["leaderboard"], lines: string[]): string[] {
-	const section = [title, ...(lines.length > 0 ? lines : ["no one yet – there's still time... :yay-bazooka:"])]
-	if (board.length > LEADERBOARD_LIMIT) section.push(`(plus ${board.length - LEADERBOARD_LIMIT} more)`)
-	return section
-}
-
 export async function buildReviewSummary(stats: ProjectReviewStats): Promise<string> {
-	// One lookup for both boards: the daily ten are usually also on the all-time ten, and users.info is a rate-limited call.
-	const names = await namesFor([...stats.leaderboard, ...stats.globalLeaderboard])
+	const daily = stats.leaderboard
+	const global = stats.globalLeaderboard
+	const names = await namesFor([...daily, ...global])
 
-	return [
-		"um, um, hi there! hope i'm not disturbing you, but i just wanted to let you know that i've got some stats for you! :yay:",
-		"",
-		":mc-clock: in the last 24 hours...",
-		`:yay-love: ${submittedLine(stats.submitted)} and ${reviewedLine(stats.reviewed)}`,
-		"",
-		...boardSection(":yay-peace: today's leaderboard", stats.leaderboard, boardLines(stats.leaderboard, names)),
-		"",
-		...boardSection(
-			":yay-blush-2: all-time leaderboard",
-			stats.globalLeaderboard,
-			boardLines(stats.globalLeaderboard, names),
-		),
-	].join("\n")
+	const board = (title: string, rows: typeof daily): SummaryBoard => ({
+		title,
+		total: rows.length,
+		lines: rows
+			.slice(0, LEADERBOARD_LIMIT)
+			.map((entry, index) =>
+				leaderboardLine(
+					index + 1,
+					names.get(entry.reviewerId) ?? entry.reviewerId,
+					entry.reviewed,
+					"reviewed",
+					"submission",
+					"submissions",
+				),
+			),
+	})
+
+	return renderSummary({
+		headline: `${countedLine(
+			stats.submitted,
+			{ singular: "submission", plural: "submissions" },
+			{ singular: "was handed in", plural: "were handed in" },
+		)} and ${creditedLine(stats.reviewed, "review")}`,
+		boards: [board(":yay-peace: today's leaderboard", daily), board(":yay-blush-2: all-time leaderboard", global)],
+	})
 }

@@ -37,6 +37,13 @@ export const MAX_SESSION_HOURS = 15
  */
 export const MAX_SESSION_CONTENT = 20_000
 
+/**
+ * What an entry is called when it has no opening line.
+ *
+ * The journal asks for one piece of writing and fills the title column from its first line, so this stands in when there is none. It is also how an entry with nothing written is recognised: Explore drops the ones carrying it alongside empty content, which are cards with no words on them.
+ */
+export const DEFAULT_SESSION_TITLE = "Work session"
+
 export const sessionCreateSchema = z
 	.object({
 		phase: phaseSchema,

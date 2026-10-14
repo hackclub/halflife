@@ -137,6 +137,15 @@ export function getThemeDef(theme: Theme): ThemeDef {
 	return def
 }
 
+/**
+ * What to call a project in front of somebody else.
+ *
+ * A maker may leave the title blank, and a blank title is not a name – so every notice, dispute thread and review queue row falls back to the week's own label. It was written out four times, and the copy in `airtable/sync` is the dangerous kind: a fallback that differs by one word reads as a different project rather than as a bug.
+ */
+export function projectDisplayTitle(project: { title: string; theme: Theme }): string {
+	return project.title.trim() || getThemeDef(project.theme).label
+}
+
 /** The theme and phase a given program week is scheduled for. */
 export function scheduleForWeek(week: number): { theme: ThemeDef; phase: Phase } | null {
 	const design = THEMES.find((t) => t.designWeek === week)

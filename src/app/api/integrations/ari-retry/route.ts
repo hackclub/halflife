@@ -2,7 +2,7 @@ import type { AriWebhookEvent } from "@hackclub/ari"
 import type { NextRequest } from "next/server"
 import { Prisma } from "@/app/generated/prisma/client"
 import { Phase } from "@/app/generated/prisma/enums"
-import { ok, withRoute } from "@/lib/api"
+import { ok } from "@/lib/api"
 import {
 	applyStoredEvent,
 	findUnsyncedAriSubmissions,
@@ -12,7 +12,7 @@ import {
 } from "@/lib/ari"
 import { AuditAction } from "@/lib/audit"
 import { HttpError } from "@/lib/errors"
-import { requireIntegrationAuth } from "@/lib/integration-auth"
+import { wantsDryRun, withIntegrationRoute } from "@/lib/integration-route"
 import prisma from "@/lib/prisma"
 import { trackSideEffect } from "@/lib/side-effects"
 import { recordSyncRun } from "@/lib/sync-run-log"
@@ -30,11 +30,8 @@ function phaseOf(metadata: unknown): Phase | null {
 /**
  * Replays hand-ins that never reached Ari – a send that failed, or one on a deployment whose Ari secrets were added after the submission. Reviewers work in Ari, so a ship that never arrived is a project nobody will review.
  */
-export const POST = withRoute(async (req: NextRequest) => {
-	const denied = requireIntegrationAuth(req)
-	if (denied) return denied
-
-	const dryRun = req.nextUrl.searchParams.get("dryRun") === "true"
+export const POST = withIntegrationRoute(async (req: NextRequest) => {
+	const dryRun = wantsDryRun(req)
 	const pending = await findUnsyncedAriSubmissions()
 
 	if (dryRun) return ok({ dryRun: true, pending })

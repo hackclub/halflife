@@ -8,6 +8,7 @@ import { AuditAction, logAudit } from "@/lib/audit"
 import { getThemeDef, WARMUP_THEME } from "@/lib/config/program"
 import { isTierId } from "@/lib/config/tiers"
 import { HttpError } from "@/lib/errors"
+import { round2 } from "@/lib/money"
 import { notifyReviewOutcome, notifyShipFailed } from "@/lib/notifications"
 import prisma from "@/lib/prisma"
 import { normalizeRepo } from "@/lib/repo"
@@ -58,8 +59,6 @@ function ari(): Ari {
 	})
 	return client
 }
-
-const round2 = (n: number) => Math.round(n * 100) / 100
 
 // Re-exported so callers can treat the Ari integration as one module.
 export { ariExternalId, parseAriExternalId }

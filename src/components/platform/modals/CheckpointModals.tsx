@@ -919,6 +919,10 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						)}
 					</div>
 
+					<p className="hand mt-2 text-[0.78rem] leading-snug text-navy-soft">
+						Reviewers approve your hours and funding from these entries, so make the description thorough: say what you
+						built, what broke, and what&apos;s next, with lots of screenshots and photos where you can.
+					</p>
 					<div className="mt-2 flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
 						<p
 							className={cx(

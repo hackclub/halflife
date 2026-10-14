@@ -21,6 +21,7 @@ import {
 import { getBalances } from "@/lib/currency"
 import { displayName } from "@/lib/display-name"
 import { rollUpHours } from "@/lib/hours"
+import { round2 } from "@/lib/money"
 import { getUserRoles, hasRole } from "@/lib/permissions"
 import prisma from "@/lib/prisma"
 import { effectiveDateFor, effectiveWeekClose, getProgramSettings, weekClosesAt, weekOpensAt } from "@/lib/program"
@@ -454,8 +455,4 @@ function minutesOf(session: SessionRow): number {
 
 function clampTier(tier: number): 1 | 2 | 3 {
 	return tier === 2 || tier === 3 ? tier : 1
-}
-
-function round2(n: number): number {
-	return Math.round(n * 100) / 100
 }

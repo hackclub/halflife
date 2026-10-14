@@ -4,6 +4,7 @@ import { getThemeDef } from "@/lib/config/program"
 import { displayName } from "@/lib/display-name"
 import prisma from "@/lib/prisma"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
+import { DEFAULT_SESSION_TITLE } from "@/lib/schemas/session"
 import { streakAsOf } from "@/lib/streak"
 
 /**
@@ -16,6 +17,8 @@ import { streakAsOf } from "@/lib/streak"
  * Object keys are deliberately NOT here. R2 serves them publicly, so a key is a capability to fetch that file – and the journal's photographs already ride inside the body as Markdown, which is the copy this page renders. Shipping the keys as well put every participant's session media into every other participant's page payload for nothing.
  *
  * Journal bodies are shown as written. Participants write them knowing a reviewer will read them, and the program already publishes reels to the Doomscroller, so the audience is peers either way – but it is a real choice and this is where it is made. Soft-deleted sessions and deleted projects are excluded, so removing an entry removes it here too.
+ *
+ * Empty entries are left out as well. A session whose writer left the entry blank is stored with the fallback title and no content, and it would otherwise render as a card carrying a byline and a title and nothing else. An entry that genuinely opens with that line has a body behind it, so it survives.
  */
 
 export interface JournalRow {
@@ -38,7 +41,12 @@ const FEED_LIMIT = 60
 export async function getJournalFeed(): Promise<JournalRow[]> {
 	const [sessions, settings] = await Promise.all([
 		prisma.workSession.findMany({
-			where: { deletedAt: null, themeProject: { deletedAt: null } },
+			// `NOT` negates the pair, so an entry survives when it carries a body: a writer who really typed the fallback line as their opening has content behind the title, and is not caught here.
+			where: {
+				deletedAt: null,
+				themeProject: { deletedAt: null },
+				NOT: { title: DEFAULT_SESSION_TITLE, content: null },
+			},
 			// The id breaks ties, so two entries saved in the same millisecond keep one order between loads.
 			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
 			take: FEED_LIMIT,

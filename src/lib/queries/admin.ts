@@ -21,6 +21,8 @@ import { getThemeDef, scheduleForWeek, TOTAL_WEEKS, WARMUP_THEME, WARMUP_WEEK_ID
 import { isTierId, TIERS } from "@/lib/config/tiers"
 import { getBalances } from "@/lib/currency"
 import { displayName } from "@/lib/display-name"
+import { type LinkRow, rollUpHours, type SessionRow } from "@/lib/hours"
+import { pctOf, round1 } from "@/lib/numbers"
 import { safeDecrypt } from "@/lib/pii"
 import { getPrinterQualification } from "@/lib/printer"
 import prisma from "@/lib/prisma"
@@ -641,9 +643,9 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 		steps.push({
 			...def,
 			count,
-			retainPct: prev === 0 ? 0 : Math.round((count / prev) * 1000) / 10,
-			dropOffPct: n === 0 || prev === 0 ? 0 : Math.round(((prev - count) / prev) * 1000) / 10,
-			ofSignupsPct: total === 0 ? 0 : Math.round((count / total) * 1000) / 10,
+			retainPct: pctOf(count, prev),
+			dropOffPct: n === 0 ? 0 : pctOf(prev - count, prev),
+			ofSignupsPct: pctOf(count, total),
 		})
 	}
 	return steps
@@ -740,7 +742,7 @@ export interface AreaStat {
 	/** Accounts whose timezone maps here. */
 	users: number
 	/**
-	 * Hours logged by those accounts: journal sessions (reviewer-adjusted where set) plus linked Hackatime time. A session already counted through a Hackatime link contributes nothing on its own, exactly as the ledger reads it.
+	 * Hours logged by those accounts: journal sessions (reviewer-adjusted where set) plus linked Hackatime time, with a sitting that was both journalled and tracked counted once rather than twice. A HACKATIME_TRACKED session contributes nothing on its own, exactly as the ledger reads it.
 	 */
 	hours: number
 }
@@ -753,12 +755,12 @@ export interface CountryStat {
 	hours: number
 }
 
-const round1 = (n: number) => Math.round(n * 10) / 10
-
 /**
  * Users and hours per region, for the overview's geography section.
  *
  * Regions come from each account's timezone – the only per-user geography with real coverage (see lib/regions). Hours are attributed to the author's region, never to a project's.
+ *
+ * `timelapses` and `cachedSpans` are selected even though this file is a report rather than a ledger, because `rollUpHours` is what decides whether a sitting is counted once or twice and it can only answer from those two. Reading the cache without them is how this panel came to report the same hours twice: the seconds were fresh and the spans were never asked for, so there was nothing to subtract against.
  */
 async function loadRegionInputs() {
 	const [users, sessions, links] = await Promise.all([
@@ -769,12 +771,22 @@ async function loadRegionInputs() {
 				hoursClaimed: true,
 				hoursApproved: true,
 				hoursSource: true,
+				themeProjectId: true,
+				phase: true,
 				themeProject: { select: { userId: true } },
+				timelapses: { select: { coveredSeconds: true, recordedAt: true } },
 			},
 		}),
 		prisma.hackatimeLink.findMany({
 			where: { themeProject: { deletedAt: null } },
-			select: { hoursApproved: true, cachedSeconds: true, themeProject: { select: { userId: true } } },
+			select: {
+				hoursApproved: true,
+				cachedSeconds: true,
+				cachedSpans: true,
+				themeProjectId: true,
+				phase: true,
+				themeProject: { select: { userId: true } },
+			},
 		}),
 	])
 	return { users, sessions, links }
@@ -782,26 +794,63 @@ async function loadRegionInputs() {
 
 type RegionInputs = Awaited<ReturnType<typeof loadRegionInputs>>
 
+/** One (project, phase) worth of hours, ready to roll up. */
+interface HoursByPhase {
+	userId: string
+	sessions: SessionRow[]
+	links: LinkRow[]
+}
+
+export interface HoursByUser {
+	/** Total hours per account. An account with nothing logged is absent rather than present at zero. */
+	hours: Map<string, number>
+	/**
+	 * Phases where a link's minutes could not be measured against the journal's recordings, so the overlap was not subtracted.
+	 *
+	 * Non-zero means some of these totals are an over-count, and it says how much is unverified rather than leaving a deduplicated-looking number to be read as one. It is cold when the span cache is cold: `hackatime-sync` warms it every 15 minutes, and a phase that has never had one warmed is the reason the ledger reports the same unknown.
+	 */
+	overlapUnknownPhases: number
+}
+
 /**
  * Hours per account, read the way the ledger reads them.
  *
  * One definition, shared by the geography panels and the hours distribution, so the two can never disagree about what "hours" means – a total that differed between two panels on the same page would be worse than either being wrong on its own.
  *
- * Reviewer-approved hours replace the claimed figure wherever set; a tracked entry's hours arrive through its link, so the journal row itself contributes nothing.
+ * Reviewer-approved hours replace the claimed figure wherever set; a tracked entry's hours arrive through its link, so the journal row itself contributes nothing. And the minutes a link counted that a timelapse recording of the same sitting already claimed are subtracted, because that is the same subtraction `rollUpHours` makes when a reviewer approves the phase – this used to add both sides of that overlap, so a recorded session that was also tracked was reported twice. Going through `rollUpHours` rather than repeating its arithmetic is the point: the rules here decide what people are paid, and a second copy that drifts is a second answer to "how many hours is this".
+ *
+ * Grouped by project *and* phase, which is the only level at which an overlap can be measured: a link double-counts the journal entries beside it in the same phase, and pooling a design's recording against a build's tracked time would subtract minutes that were never the same sitting.
+ *
+ * `frozenTotal` is deliberately not passed. These are the hours people logged, not the hours they were credited – the reviewer's frozen total is one number per (project, phase) and belongs on the project page, where a participant is reading their own.
  */
-function hoursByUser(inputs: RegionInputs): Map<string, number> {
-	const hours = new Map<string, number>()
-	const add = (userId: string, value: number) => hours.set(userId, (hours.get(userId) ?? 0) + value)
-
-	for (const s of inputs.sessions) {
-		if (s.hoursSource === HoursSource.HACKATIME_TRACKED) continue
-		add(s.themeProject.userId, s.hoursApproved ?? s.hoursClaimed)
+function hoursByUser(inputs: RegionInputs): HoursByUser {
+	const phaseKey = (themeProjectId: string, phase: Phase) => `${themeProjectId}:${phase}`
+	const phases = new Map<string, HoursByPhase>()
+	const forPhase = (themeProjectId: string, phase: Phase, userId: string): HoursByPhase => {
+		const key = phaseKey(themeProjectId, phase)
+		let held = phases.get(key)
+		if (!held) {
+			held = { userId, sessions: [], links: [] }
+			phases.set(key, held)
+		}
+		return held
 	}
-	for (const l of inputs.links) add(l.themeProject.userId, l.hoursApproved ?? (l.cachedSeconds ?? 0) / 3600)
-	return hours
+
+	for (const s of inputs.sessions) forPhase(s.themeProjectId, s.phase, s.themeProject.userId).sessions.push(s)
+	for (const l of inputs.links) forPhase(l.themeProjectId, l.phase, l.themeProject.userId).links.push(l)
+
+	const hours = new Map<string, number>()
+	let overlapUnknownPhases = 0
+	for (const held of phases.values()) {
+		const { computedTotal, hackatimeOverlapUnknown } = rollUpHours(held.sessions, held.links, null)
+		if (hackatimeOverlapUnknown) overlapUnknownPhases += 1
+		hours.set(held.userId, (hours.get(held.userId) ?? 0) + computedTotal)
+	}
+
+	return { hours, overlapUnknownPhases }
 }
 
-function aggregateByKey(inputs: RegionInputs, keyOf: (timezone: string | null) => string) {
+function aggregateByKey(inputs: RegionInputs, byUser: HoursByUser, keyOf: (timezone: string | null) => string) {
 	const userKey = new Map(inputs.users.map((u) => [u.id, keyOf(u.timezone)]))
 	const totals = new Map<string, { users: number; hours: number }>()
 	const row = (key: string) => {
@@ -814,7 +863,7 @@ function aggregateByKey(inputs: RegionInputs, keyOf: (timezone: string | null) =
 	}
 
 	for (const u of inputs.users) row(userKey.get(u.id) ?? "Unknown").users += 1
-	for (const [userId, hours] of hoursByUser(inputs)) row(userKey.get(userId) ?? "Unknown").hours += hours
+	for (const [userId, hours] of byUser.hours) row(userKey.get(userId) ?? "Unknown").hours += hours
 	return totals
 }
 
@@ -823,7 +872,8 @@ const rankLast = (key: string, users: number) => (key === "Unknown" ? -1 : users
 
 /** Users and hours per continent/area bucket. Ranked by users. */
 export async function getAreaStats(): Promise<AreaStat[]> {
-	const totals = aggregateByKey(await loadRegionInputs(), (tz) => regionOfTimezone(tz))
+	const inputs = await loadRegionInputs()
+	const totals = aggregateByKey(inputs, hoursByUser(inputs), (tz) => regionOfTimezone(tz))
 	return REGIONS.map(({ id, label }) => ({
 		id,
 		label,
@@ -834,7 +884,8 @@ export async function getAreaStats(): Promise<AreaStat[]> {
 
 /** Users and hours per country, from each account's timezone. Ranked by users. */
 export async function getCountryStats(): Promise<CountryStat[]> {
-	const totals = aggregateByKey(await loadRegionInputs(), countryOfTimezone)
+	const inputs = await loadRegionInputs()
+	const totals = aggregateByKey(inputs, hoursByUser(inputs), countryOfTimezone)
 	return [...totals]
 		.filter(([, t]) => t.users > 0 || t.hours > 0)
 		.map(([country, t]) => ({ country, users: t.users, hours: round1(t.hours) }))
@@ -895,7 +946,7 @@ export async function getDailyActivity(): Promise<DayActivity[]> {
 		out.push({
 			day,
 			devlogs: row?.devlogs ?? 0,
-			hours: Math.round((row?.hours ?? 0) * 10) / 10,
+			hours: round1(row?.hours ?? 0),
 			users: row?.users.size ?? 0,
 		})
 	}
@@ -960,7 +1011,7 @@ export async function getDailyActivityByGoal(): Promise<GoalDayActivity[]> {
 			day,
 			byGoal: GOAL_OPTIONS.map((option) => ({
 				goal: option.value,
-				hours: Math.round((goals?.get(option.value)?.hours ?? 0) * 10) / 10,
+				hours: round1(goals?.get(option.value)?.hours ?? 0),
 				users: goals?.get(option.value)?.users.size ?? 0,
 			})),
 		})
@@ -985,6 +1036,12 @@ export interface HoursDistribution {
 	withoutHours: number
 	median: number | null
 	totalHours: number
+	/**
+	 * Phases whose Hackatime overlap could not be measured, so their hours are counted on both sides and every total here is an over-count.
+	 *
+	 * Non-zero is a cache that has not caught up, not a calculation that went wrong – `hackatime-sync` warms the tracked intervals every 15 minutes. Surfaced rather than silently reported as deduplicated, because a total that looks like it has been deduplicated and has not is the harder error to catch later.
+	 */
+	overlapUnknownPhases: number
 }
 
 /**
@@ -1000,15 +1057,17 @@ export const HOUR_EDGES = [1, 2, 3, 5, 7, 10, 15, 20, 30, 40, 60, 80, 120, 160, 
 /**
  * Hours per account, bucketed, for the overview's distribution.
  *
- * Reads the same ledger as the geography panels (see `hoursByUser`), so this and the continent and country pies
- * are the same hours counted two ways rather than two definitions that could drift apart.
+ * Reads the same ledger as the geography panels (`hoursByUser`, which runs every one of these hours through `rollUpHours`), so this
+ * and the continent and country pies are the same hours counted two ways rather than two definitions that could drift apart – which is
+ * what they used to be, and they had: this panel added both sides of a timelapse overlap the ledger subtracts.
  *
  * Accounts with no hours are a count and not a bar. At three quarters of all accounts, a zero bar would be four
  * times every other and answer a question nobody asked.
  */
 export async function getHoursDistribution(): Promise<HoursDistribution> {
 	const inputs = await loadRegionInputs()
-	const perUser = [...hoursByUser(inputs).values()].filter((h) => h > 0).sort((a, b) => a - b)
+	const byUser = hoursByUser(inputs)
+	const perUser = [...byUser.hours.values()].filter((h) => h > 0).sort((a, b) => a - b)
 
 	// One bucket per edge, so the trailing Infinity edge becomes the "160+" bar and catches the long tail.
 	const last = HOUR_EDGES.length - 1
@@ -1041,6 +1100,7 @@ export async function getHoursDistribution(): Promise<HoursDistribution> {
 		withoutHours: Math.max(0, inputs.users.length - perUser.length),
 		median: median === null ? null : round1(median),
 		totalHours: round1(totalHours),
+		overlapUnknownPhases: byUser.overlapUnknownPhases,
 	}
 }
 

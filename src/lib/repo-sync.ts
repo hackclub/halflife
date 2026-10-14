@@ -3,13 +3,18 @@ import { Theme } from "@/app/generated/prisma/enums"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { listBom } from "@/lib/bom"
 import { getThemeDef, WARMUP_WEEK_ID } from "@/lib/config/program"
-import { TIERS } from "@/lib/config/tiers"
 import { HttpError } from "@/lib/errors"
 import { ALL_FORGES } from "@/lib/forge"
 import { commitFiles, defaultBranchOf, forgeCredentials, type WrittenFile } from "@/lib/forge-write"
 import prisma from "@/lib/prisma"
 import { parseRepoRef, repoRefFromLink, repoRefToUrl } from "@/lib/repo-ref"
-import { type BomLineForFile, type JournalEntry, renderBom, renderJournal } from "@/lib/repo-sync-files"
+import {
+	type BomLineForFile,
+	type JournalEntry,
+	legacyBomDeletion,
+	renderBom,
+	renderJournal,
+} from "@/lib/repo-sync-files"
 
 /**
  * The repo sync: what actually runs when a project's devlogs or parts list need to land in its repository.
@@ -195,7 +200,6 @@ async function syncOnce(themeProjectId: string, manual: boolean, force = false):
 		const themeDef = getThemeDef(project.theme)
 		const weekId = isWarmup ? WARMUP_WEEK_ID : themeDef.designWeek
 		const tier = project.tier ?? project.requestedTier ?? 1
-		const grantUsd = TIERS.find((t) => t.id === tier)?.grantUsd ?? 0
 
 		const meta = {
 			id: project.id,
@@ -230,7 +234,12 @@ async function syncOnce(themeProjectId: string, manual: boolean, force = false):
 			updatedAt: l.updatedAt,
 		}))
 
-		const files = [renderJournal(meta, entries), renderBom(meta, bomLines, project.bomTaxShippingUsd ?? 0, grantUsd)]
+		const files = [
+			renderJournal(meta, entries),
+			renderBom(bomLines, project.bomTaxShippingUsd ?? 0),
+			// The BOM used to be markdown at BOM.md; the CSV replaces it, and the old file is deleted so a repo never carries both.
+			legacyBomDeletion(),
+		]
 
 		const branch = await defaultBranchOf(creds, parsed)
 		const written = await commitFiles(creds, parsed, branch, files, `Sync ${meta.title} from Half Life`)

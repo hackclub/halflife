@@ -244,7 +244,12 @@ async function listGitLabRepos(creds: ForgeCredentials): Promise<WritableRepo[]>
 
 export interface FileUpdate {
 	path: string
-	content: string
+	/**
+	 * The file's new bytes, or null to delete the path.
+	 *
+	 * Null is how a renamed sync output removes what it used to own: the BOM moved from BOM.md to BOM.csv, and repos synced before the move carry the old file until something deletes it. A delete for a path that is not there is a no-op, so sending it on every sync is idempotent rather than a migration with state to track.
+	 */
+	content: string | null
 }
 
 export interface WrittenFile {
@@ -259,7 +264,7 @@ export interface WrittenFile {
 /**
  * Write a set of files to one branch in one commit.
  *
- * A file whose contents already match is left alone rather than rewritten, so the common case – a journal entry that changed nothing about BOM.md, or a retried sync – produces no commit at all. Both implementations honour that, and both make the whole set land atomically or not at all.
+ * A file whose contents already match is left alone rather than rewritten, so the common case – a journal entry that changed nothing about BOM.csv, or a retried sync – produces no commit at all. Both implementations honour that, and both make the whole set land atomically or not at all.
  */
 export async function commitFiles(
 	creds: ForgeCredentials,
@@ -310,7 +315,8 @@ async function commitGitHub(
 	// An empty repository is the one case where there is no tip to read: GitHub answers 409 ("Git Repository is empty") and refuses the whole Git Data API until the repo has a commit. The Contents API is the documented way in – writing one file initialises the repository and its first branch – after which the read below works as usual. That first file lands in its own commit; the rest still land together in one.
 	let refRes = await call(creds, `${base}/git/ref/heads/${encodeURIComponent(branch)}`, { method: "GET" })
 	if (refRes.status === 409) {
-		const first = files[0]
+		// A deletion cannot initialise a repo – there is nothing to delete from an empty one, and the Contents API needs content to write.
+		const first = files.find((f): f is { path: string; content: string } => f.content !== null)
 		if (!first) return []
 		await initializeEmptyGitHubRepo(creds, ref, branch, first, message)
 		refRes = await call(creds, `${base}/git/ref/heads/${encodeURIComponent(branch)}`, { method: "GET" })
@@ -328,10 +334,20 @@ async function commitGitHub(
 	// One blob per changed file, in parallel. Unchanged ones are skipped before a blob is ever made: comparing requires their current blob sha, which the tree listing already gives us.
 	const current = await currentBlobShas(creds, base, treeSha)
 	const written: WrittenFile[] = []
-	const entries: { path: string; sha: string }[] = []
+	const entries: { path: string; sha: string | null }[] = []
 
 	await Promise.all(
 		files.map(async (file) => {
+			// A deletion: nothing to hash or upload. Absent from the tree means there is nothing to do; present means a tree entry with a null sha, which is how the Git Data API deletes.
+			if (file.content === null) {
+				if (!current.has(file.path)) {
+					written.push({ path: file.path, sha: "", bytes: 0, unchanged: true })
+					return
+				}
+				entries.push({ path: file.path, sha: null })
+				written.push({ path: file.path, sha: "", bytes: 0, unchanged: false })
+				return
+			}
 			const sha = blobSha(file.content)
 			if (current.get(file.path) === sha) {
 				written.push({ path: file.path, sha, bytes: byteLength(file.content), unchanged: true })
@@ -360,7 +376,10 @@ async function commitGitHub(
 		headers: { "content-type": "application/json" },
 		body: JSON.stringify({
 			base_tree: treeSha,
-			tree: entries.map((e) => ({ path: e.path, mode: "100644", type: "blob", sha: e.sha })),
+			// A null sha deletes the path; anything else (re)writes it.
+			tree: entries.map((e) =>
+				e.sha === null ? { path: e.path, sha: null } : { path: e.path, mode: "100644", type: "blob", sha: e.sha },
+			),
 		}),
 	})
 	if (!treeRes.ok) throw new ForgeWriteUnavailable(`${creds.forge.label} did not answer.`)
@@ -396,7 +415,7 @@ async function initializeEmptyGitHubRepo(
 	creds: ForgeCredentials,
 	ref: RepoRef,
 	branch: string,
-	file: FileUpdate,
+	file: { path: string; content: string },
 	message: string,
 ): Promise<void> {
 	const path = file.path.split("/").map(encodeURIComponent).join("/")
@@ -491,12 +510,25 @@ async function commitGitLab(
 		page = Number(next)
 	}
 
-	const actions: { action: "create" | "update"; file_path: string; content: string }[] = []
+	const actions: (
+		| { action: "create" | "update"; file_path: string; content: string }
+		| { action: "delete"; file_path: string }
+	)[] = []
 	const written: WrittenFile[] = []
 
 	// Read each candidate file's current content to decide no-op vs update.
 	await Promise.all(
 		files.map(async (file) => {
+			// A deletion needs no raw read: the tree listing is the whole answer. Absent means nothing to do; present means a delete action.
+			if (file.content === null) {
+				if (!existing.has(file.path)) {
+					written.push({ path: file.path, sha: "", bytes: 0, unchanged: true })
+					return
+				}
+				actions.push({ action: "delete", file_path: file.path })
+				written.push({ path: file.path, sha: "", bytes: 0, unchanged: false })
+				return
+			}
 			const path = encodeURIComponent(file.path)
 			const res = await call(
 				creds,

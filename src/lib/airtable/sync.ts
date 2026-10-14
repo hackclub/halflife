@@ -2,10 +2,12 @@ import "server-only"
 import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
 import { fieldKey, toFields, YSWS_PENDING_REVIEW, YSWS_SUBMISSION } from "@/lib/airtable/schema"
 import { deleteUnifiedRecords, deleteYswsRecord, writeYswsRecord } from "@/lib/airtable/ysws"
+import { bomTotalUsd } from "@/lib/bom-policy"
 import { getThemeDef } from "@/lib/config/program"
 import { syncHcaProfile } from "@/lib/hca-profile"
 import { getHoursBreakdown } from "@/lib/hours"
 import { lapseTimelapseUrl } from "@/lib/lapse"
+import { round2 } from "@/lib/money"
 import { decryptUserPII } from "@/lib/pii"
 import prisma from "@/lib/prisma"
 import { getProgramSettings } from "@/lib/program"
@@ -18,8 +20,6 @@ import { publicUrlFor } from "@/lib/uploads/r2"
  *
  * Half Life has no review page of its own: reviewers work on ari.hackclub.com, straight from this table. So the row is the submission, and everything a reviewer needs to judge it goes into it here – the repo, the hours, the timelapses, the parts money, the address to ship to.
  */
-
-const round2 = (n: number) => Math.round(n * 100) / 100
 
 /** YYYY-MM-DD, in UTC – the program's week maths is UTC-anchored too. */
 const ymd = (d: Date) => d.toISOString().slice(0, 10)
@@ -74,9 +74,7 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 	const weekEnd = new Date(weekStart.getTime() + 6 * 86_400_000)
 
 	const breakdown = await getHoursBreakdown(themeProjectId, phase)
-	const bomTotal = round2(
-		project.bomItems.reduce((n, l) => n + l.quantity * l.unitCostUsd, 0) + (project.bomTaxShippingUsd ?? 0),
-	)
+	const bomTotal = bomTotalUsd(project.bomItems, project.bomTaxShippingUsd)
 
 	// A design is judged from its repo; a build from the video of it working – the closing reel the submit sheet asks for, posted under this week's key.
 	let playableUrl = project.githubRepo ?? ""

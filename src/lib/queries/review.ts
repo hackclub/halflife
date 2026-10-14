@@ -1,6 +1,6 @@
 import "server-only"
 import { Phase } from "@/app/generated/prisma/enums"
-import { getThemeDef } from "@/lib/config/program"
+import { getThemeDef, projectDisplayTitle } from "@/lib/config/program"
 import { displayName } from "@/lib/display-name"
 import { getHoursBreakdown } from "@/lib/hours"
 import prisma from "@/lib/prisma"
@@ -233,7 +233,7 @@ export async function getOpenDisputes(): Promise<OpenDispute[]> {
 		phase: d.submission.phase,
 		submissionId: d.submission.id,
 		themeProjectId: d.submission.themeProject.id,
-		projectTitle: d.submission.themeProject.title.trim() || getThemeDef(d.submission.themeProject.theme).label,
+		projectTitle: projectDisplayTitle(d.submission.themeProject),
 		themeLabel: getThemeDef(d.submission.themeProject.theme).label,
 		participant: displayName(d.submission.themeProject.user, d.submission.themeProject.user.email),
 	}))

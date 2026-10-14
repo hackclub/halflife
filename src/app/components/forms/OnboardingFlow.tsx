@@ -543,7 +543,7 @@ export function OnboardingFlow({
 					<div className="space-y-5">
 						<p className="text-[0.92rem] leading-relaxed text-navy-soft">
 							Want your devlogs and parts list in your project&rsquo;s repo? Turn the sync on and Half Life keeps{" "}
-							<code className="hand text-navy">JOURNAL.md</code> and <code className="hand text-navy">BOM.md</code> up
+							<code className="hand text-navy">JOURNAL.md</code> and <code className="hand text-navy">BOM.csv</code> up
 							to date in it as you work. You can turn it on later from the project page, so this is optional.
 						</p>
 						<RepoSyncSettings

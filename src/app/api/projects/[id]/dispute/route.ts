@@ -1,6 +1,6 @@
 import { fail, ok, parseBody, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
-import { getThemeDef } from "@/lib/config/program"
+import { projectDisplayTitle } from "@/lib/config/program"
 import { requireSession } from "@/lib/guards"
 import { notifyStaffDispute } from "@/lib/notifications"
 import prisma from "@/lib/prisma"
@@ -59,7 +59,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 
 	await notifyStaffDispute({
 		themeProjectId: id,
-		title: project.title.trim() || getThemeDef(project.theme).label,
+		title: projectDisplayTitle(project),
 		phase,
 		note,
 		participant: gate.user.name ?? gate.user.email,

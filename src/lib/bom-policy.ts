@@ -6,6 +6,8 @@
  * It says nothing about how much a grant pays. A design's funding is the tier's flat `grantUsd` and always was; what this decides is whether a cart that outruns it can still be handed in, and what the maker has to be told before they do.
  */
 
+import { round2 } from "@/lib/money"
+
 /** A BOM line as far as the money is concerned – what both the database rows and the API's own type satisfy. */
 export interface PricedLine {
 	quantity: number
@@ -43,9 +45,4 @@ export interface PartsFunding {
 export function partsFunding(totalUsd: number, capUsd: number): PartsFunding {
 	const shortfallUsd = Math.max(0, round2(totalUsd - capUsd))
 	return { totalUsd, capUsd, shortfallUsd, needsAgreement: shortfallUsd > BOM_MARGIN_USD }
-}
-
-/** Cents, so a cart of thirds does not read $65.66999999. */
-function round2(n: number): number {
-	return Math.round(n * 100) / 100
 }
