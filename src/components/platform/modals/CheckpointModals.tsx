@@ -21,7 +21,7 @@ import {
 import { countImages, Markdown, proseLength } from "@/components/platform/Markdown"
 import { RepoInput, repoIsValid } from "@/components/platform/RepoField"
 import { ReelCapture } from "@/components/platform/reels/ReelCapture"
-import { StarterProjectCard } from "@/components/platform/StarterProjectCard"
+import { ProjectChoiceCard, StarterProjectCard } from "@/components/platform/StarterProjectCard"
 import { Button, borderedInputClass, Chip, Field, inputClass, OptionRow, Panel } from "@/components/platform/ui"
 import { attrUrl } from "@/lib/attr-url"
 import { linkLapse } from "@/lib/auth-client"
@@ -1644,11 +1644,17 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const starters = theme && (experience === "first" || experience === "little") ? starterProjectsFor(theme) : []
 	// Taking one fills the form in and holds the tier at 1, as onboarding does.
 	const [starterId, setStarterId] = useState<string | null>(null)
+	const [stage, setStage] = useState<"choose" | "details">(starters.length > 0 ? "choose" : "details")
 	const takeStarter = (s: (typeof starters)[number]) => {
 		setStarterId(s.id)
 		setName(s.title)
 		setDesc(s.description)
 		setTier(STARTER_PROJECT_TIER)
+		setStage("details")
+	}
+	const chooseCustom = () => {
+		setStarterId(null)
+		setStage("details")
 	}
 
 	const ok = name.trim().length > 1 && desc.trim().length > 4 && repoIsValid(repo)
@@ -1716,38 +1722,50 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				</div>
 			)}
 
-			<div className="grid gap-6 lg:grid-cols-[1fr_230px] lg:items-start">
+			{stage === "choose" ? (
+				<div className="grid gap-3 sm:grid-cols-2">
+					{starters.map((s) => (
+						<StarterProjectCard
+							key={s.id}
+							starter={s}
+							stacked
+							action={
+								<Button type="button" variant="outline" size="sm" onClick={() => takeStarter(s)}>
+									Build {s.title}
+								</Button>
+							}
+						/>
+					))}
+					<ProjectChoiceCard
+						stacked
+						tileClassName="bg-violet-pale"
+						art={<Gato pose="schematic" sizes="260px" className="h-[140px] w-auto" />}
+						label="Custom project"
+						title="Your own idea"
+						action={
+							<Button type="button" variant="outline" size="sm" onClick={chooseCustom}>
+								Make a custom project
+							</Button>
+						}
+					>
+						<p className="mt-1.5 text-[0.88rem] leading-relaxed text-navy-soft">
+							Make your own project! It can be anything you want.
+						</p>
+					</ProjectChoiceCard>
+				</div>
+			) : (
+				<div className="grid gap-6 lg:grid-cols-[1fr_230px] lg:items-start">
 				<div className="grid gap-4">
-					{starters.map((s) => {
-						const chosen = starterId === s.id
-						return (
-							<StarterProjectCard
-								key={s.id}
-								starter={s}
-								chosen={chosen}
-								action={
-									chosen ? (
-										<span className="flex flex-wrap items-center gap-x-4 gap-y-2">
-											<Chip tone="teal">
-												<IconCheck className="text-[0.9rem]" /> Building {s.title}
-											</Chip>
-											<button
-												type="button"
-												onClick={() => setStarterId(null)}
-												className="hand text-[0.82rem] text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
-											>
-												Use my own idea instead
-											</button>
-										</span>
-									) : (
-										<Button variant="outline" size="sm" onClick={() => takeStarter(s)}>
-											Build {s.title}
-										</Button>
-									)
-								}
-							/>
-						)
-					})}
+					{starterId !== null && (
+						<div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+							<Chip tone="teal">
+								<IconCheck className="text-[0.9rem]" /> Building {starters.find((s) => s.id === starterId)?.title ?? "starter"}
+							</Chip>
+							<button type="button" onClick={() => setStage("choose")} className="hand text-[0.82rem] text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy">
+								Choose a different starting point
+							</button>
+						</div>
+					)}
 					<Field label="Project name" hint="Give it a cool name." id="np-name">
 						<input
 							id="np-name"
@@ -1845,6 +1863,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					<p className="mt-3 text-[0.86rem] leading-snug text-navy-soft">{week.primer.split(". ")[0]}.</p>
 				</div>
 			</div>
+			)}
 		</Modal>
 	)
 }
