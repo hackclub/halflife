@@ -2376,13 +2376,9 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					)}
 					{/* Already stocked, or building from scrap: an empty BOM with funding declined hands in as-is, no carts needed. */}
 					{bomEmpty && (
-						<button
-							type="button"
-							role="checkbox"
-							aria-checked={declinedFunding}
-							onClick={toggleDeclinedFunding}
+						<label
 							className={cx(
-								"sketch mt-4 flex w-full items-start gap-3 rounded-2xl px-4 py-3.5 text-left transition-colors",
+								"sketch mt-4 flex w-full cursor-pointer items-start gap-3 rounded-2xl px-4 py-3.5 text-left transition-colors has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-violet has-[input:focus-visible]:ring-offset-2",
 								declinedFunding ? "bg-violet-pale" : "bg-white hover:bg-black/[.03]",
 							)}
 							style={
@@ -2392,6 +2388,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								} as React.CSSProperties
 							}
 						>
+							<input type="checkbox" className="sr-only" checked={declinedFunding} onChange={toggleDeclinedFunding} />
 							<span
 								aria-hidden="true"
 								className={cx(
@@ -2409,7 +2406,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									Hand in with an empty parts list – no carts, no order. We&apos;ll double-check before you submit.
 								</span>
 							</span>
-						</button>
+						</label>
 					)}
 
 					{/* No order, nothing to screenshot: the carts go away with the BOM. */}
@@ -2498,13 +2495,9 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 						{/* A cart past the tier's funding still hands in, as a grant that covers part of it – so the box saying so is a requirement rather than a note, and the shortfall is named in dollars rather than left to be found later. It sits under the tier picker because it is that choice it is about, and it disappears the moment a tier that covers the cart is picked. */}
 						{bomOverCap && (
-							<button
-								type="button"
-								role="checkbox"
-								aria-checked={partialFunding}
-								onClick={() => setAcceptsPartialFunding((v) => !v)}
+							<label
 								className={cx(
-									"sketch mt-4 flex w-full items-start gap-3 rounded-2xl px-4 py-3.5 text-left transition-colors",
+									"sketch mt-4 flex w-full cursor-pointer items-start gap-3 rounded-2xl px-4 py-3.5 text-left transition-colors has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-violet has-[input:focus-visible]:ring-offset-2",
 									partialFunding ? "bg-violet-pale" : "bg-white hover:bg-black/[.03]",
 								)}
 								style={
@@ -2514,6 +2507,12 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									} as React.CSSProperties
 								}
 							>
+								<input
+									type="checkbox"
+									className="sr-only"
+									checked={partialFunding}
+									onChange={(e) => setAcceptsPartialFunding(e.target.checked)}
+								/>
 								<span
 									aria-hidden="true"
 									className={cx(
@@ -2534,7 +2533,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 										they do.
 									</span>
 								</span>
-							</button>
+							</label>
 						)}
 					</div>
 				</div>
