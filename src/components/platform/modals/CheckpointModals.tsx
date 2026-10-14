@@ -1496,7 +1496,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							{postBlocker}
 						</p>
 					) : (
-						<p className="hand mr-auto hidden text-[0.78rem] text-navy-soft sm:block">
+						<p className="hand hidden text-[0.78rem] text-navy-soft sm:block">
 							Reels post straight to the Doomscroller.
 						</p>
 					)}
@@ -1644,16 +1644,27 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const starters = theme && (experience === "first" || experience === "little") ? starterProjectsFor(theme) : []
 	// Taking one fills the form in and holds the tier at 1, as onboarding does.
 	const [starterId, setStarterId] = useState<string | null>(null)
+	const [pick, setPick] = useState<string | null | undefined>(undefined)
 	const [stage, setStage] = useState<"choose" | "details">(starters.length > 0 ? "choose" : "details")
 	const takeStarter = (s: (typeof starters)[number]) => {
-		setStarterId(s.id)
-		setName(s.title)
-		setDesc(s.description)
-		setTier(STARTER_PROJECT_TIER)
-		setStage("details")
+		setPick(s.id)
 	}
 	const chooseCustom = () => {
-		setStarterId(null)
+		setPick(null)
+	}
+	const advance = () => {
+		if (pick === undefined) return
+		if (pick === null) {
+			setStarterId(null)
+		} else {
+			const s = starters.find((x) => x.id === pick)
+			setStarterId(pick)
+			if (s) {
+				setName(s.title)
+				setDesc(s.description)
+			}
+			setTier(STARTER_PROJECT_TIER)
+		}
 		setStage("details")
 	}
 
@@ -1671,6 +1682,11 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					<p className="hand mr-auto hidden text-[0.78rem] text-navy-soft sm:block">
 						Tier can be changed any time before you submit this week.
 					</p>
+					{stage === "details" && starters.length > 0 && (
+						<Button type="button" variant="outline" className="mr-auto" onClick={() => setStage("choose")}>
+							Back
+						</Button>
+					)}
 					<Button variant="outline" onClick={() => setOpenCheckpoint(null)}>
 						Cancel
 					</Button>
@@ -1724,27 +1740,34 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 			{stage === "choose" ? (
 				<div className="grid gap-3 sm:grid-cols-2">
+					{starters.length > 0 && (
+						<p className="col-span-full label mb-2 text-left text-violet-deep">
+							Step 1 / 2
+						</p>
+					)}
 					{starters.map((s) => (
 						<StarterProjectCard
 							key={s.id}
 							starter={s}
 							stacked
+							chosen={pick === s.id}
 							action={
-								<Button type="button" variant="outline" size="sm" onClick={() => takeStarter(s)}>
-									Build {s.title}
+								<Button type="button" variant={pick === s.id ? "solid" : "outline"} size="sm" onClick={() => takeStarter(s)}>
+									{pick === s.id ? "Selected" : `Build ${s.title}`}
 								</Button>
 							}
 						/>
 					))}
 					<ProjectChoiceCard
 						stacked
+						chosen={pick === null}
 						tileClassName="bg-violet-pale"
 						art={<Gato pose="schematic" sizes="260px" className="h-[140px] w-auto" />}
 						label="Custom project"
 						title="Your own idea"
 						action={
-							<Button type="button" variant="outline" size="sm" onClick={chooseCustom}>
-								Make a custom project
+							<Button type="button" variant={pick === null ? "solid" : "outline"} size="sm" onClick={chooseCustom}>
+								{pick === null ? "Selected" : "Make a custom project"}
 							</Button>
 						}
 					>
@@ -1752,10 +1775,16 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							Make your own project! It can be anything you want.
 						</p>
 					</ProjectChoiceCard>
+					<div className="col-span-full mt-4 flex justify-end">
+						<Button type="button" variant="solid" disabled={pick === undefined} onClick={advance}>
+							Next <IconArrowRight className="text-base" />
+						</Button>
+					</div>
 				</div>
 			) : (
 				<div className="grid gap-6 lg:grid-cols-[1fr_230px] lg:items-start">
 				<div className="grid gap-4">
+					<p className="label mb-2 text-left text-violet-deep">Step 2 / 2</p>
 					{starterId !== null && (
 						<div className="flex flex-wrap items-center gap-x-4 gap-y-2">
 							<Chip tone="teal">
