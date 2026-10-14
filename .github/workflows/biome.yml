@@ -1,0 +1,35 @@
+name: Biome
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: biome-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  biome:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            bun-${{ runner.os }}-
+
+      - run: bun install --frozen-lockfile
+
+      # The gate: lint, formatter and import organisation in one. Fails on anything `biome check --write` would change.
+      - run: bunx biome check .
+
+      # The formatter on its own: exits non-zero with a readable diff when a file is unformatted, and changes nothing.
+      - run: bunx biome format .
