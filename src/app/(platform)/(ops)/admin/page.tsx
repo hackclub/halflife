@@ -148,14 +148,12 @@ export default async function AdminOverviewPage() {
 					))}
 				</Table>
 				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
-					Awaiting review counts live hand-ins that reached Ari – unresolved submissions on phases currently in review,
-					on projects that still exist. It is the figure comparable to Ari&apos;s own pending count, and the one to read
-					when asking what is waiting on a reviewer; anything Ari never received is counted apart above, because a
-					hand-in Ari has never seen is not waiting for review. The other three count projects, once however many of
-					their phases were reviewed, shown by the outcome standing now – a project approved on design and sent back on
-					build reads as changes requested. That is deliberately a different question from Ari&apos;s reviewed count, so
-					the two will not agree. Ari&apos;s decisions are included. A review an admin or Ari later undid no longer
-					counts.
+					The ring counts ships the way Ari does – one slice per (project, phase) hand-in, by the decision standing
+					on it now. A design approved long ago still reads as approved even once its build is handed in, and a
+					sent-back design only leaves changes requested when it is resubmitted. Pending is unresolved hand-ins Ari
+					holds; anything Ari never received is counted apart above, because a hand-in Ari has never seen is not on
+					its board. Console decisions are included. A review an admin later undid still reads by the submission it
+					decided, since the hand-in itself stays resolved.
 				</p>
 			</Panel>
 
