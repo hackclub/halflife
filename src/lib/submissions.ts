@@ -1,5 +1,5 @@
 import "server-only"
-import type { PhaseSubmission, ThemeProject } from "@/app/generated/prisma/client"
+import type { PhaseSubmission, ProgramSettings, ThemeProject } from "@/app/generated/prisma/client"
 import { Phase, PhaseStatus, Theme } from "@/app/generated/prisma/enums"
 import { partsFundingFor } from "@/lib/bom"
 import { scheduledWeekFor } from "@/lib/config/program"
@@ -68,6 +68,22 @@ export function canSubmitPhase(
 		}
 	}
 	return { ok: true }
+}
+
+/**
+ * The same decision `getSubmissionAccess` makes, taken from columns read on the transaction client. `getProgramSettings` caches the settings row for the request, so only a read on `tx` sees a submissions toggle that commits between the route's pre-check and the write.
+ */
+function accessOpenOnClient(
+	settings: Pick<ProgramSettings, "submissionsOpen" | "submissionsCloseAt"> | null,
+	userExtension: Date | null | undefined,
+	projectExtension: Date | null | undefined,
+	now: Date,
+): boolean {
+	if (!settings) return false
+	if (settings.submissionsOpen && (!settings.submissionsCloseAt || settings.submissionsCloseAt > now)) return true
+	if (userExtension && userExtension > now) return true
+	if (projectExtension && projectExtension > now) return true
+	return false
 }
 
 export async function submitPhase(
@@ -153,6 +169,21 @@ export async function submitPhase(
 	const scheduledWeek = scheduledWeekFor(project.theme, phase)
 
 	return prisma.$transaction(async (tx) => {
+		// The gate is re-read on the transaction client: `getProgramSettings` caches the settings row for this request, so the pre-check above cannot see a submissions toggle, and a week can start or close between it and this write. Either would otherwise file a submission into a closed week.
+		const [accessSettings, accessUser, accessProject] = await Promise.all([
+			tx.programSettings.findUnique({ where: { id: "singleton" } }),
+			tx.user.findUnique({ where: { id: userId }, select: { submissionExtensionUntil: true } }),
+			tx.themeProject.findUnique({ where: { id: themeProjectId }, select: { submissionExtensionUntil: true } }),
+		])
+		const stillOpen = accessOpenOnClient(
+			accessSettings,
+			accessUser?.submissionExtensionUntil,
+			accessProject?.submissionExtensionUntil,
+			new Date(),
+		)
+		if (!stillOpen) throw new HttpError("SUBMISSIONS_CLOSED", SUBMISSIONS_CLOSED_MESSAGE)
+		await assertWeekStarted(scheduledWeekFor(project.theme, phase))
+
 		// Claim the phase first, conditionally on it still being one that can be submitted. Two concurrent submits both read the same outside state, so without this both would create an open submission and both flip the status; the row lock makes the loser's update match nothing.
 		const claimed = await tx.themeProject.updateMany({
 			where: {

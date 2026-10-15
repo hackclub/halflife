@@ -241,7 +241,9 @@ export const auth = betterAuth({
 						}
 						// Before better-auth decides whether this identity may attach to an existing user. A row made by a staff import has no HCA account and is not verified, which would dead-end the sign-in at `account_not_linked`; when HCA vouches for the address, that proof is adopted here so the normal linking path can run. See `adoptHcaVerifiedEmail`.
 						if (await adoptHcaVerifiedEmail(identity.email, identity.emailVerified))
-							console.info(`[auth] adopted HCA's verified address for ${identity.email} to allow account linking`)
+							console.info(
+								`[auth] adopted HCA's verified address for ${redactForLog(identity.email)} to allow account linking`,
+							)
 						return {
 							id: identity.sub,
 							// HCA is configured from discovery, so better-auth treats it as OIDC and keys the account on `sub`, not `id`. Without it the sign-in fails with OAUTH_ACCOUNT_SUBJECT_INVALID. Same value as before, so existing accounts are still found.

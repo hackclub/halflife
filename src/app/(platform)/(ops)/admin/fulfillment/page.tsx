@@ -130,7 +130,7 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 							<tr key={order.id}>
 								<td className="hl-mono">{order.orderNumber}</td>
 								<td>
-									<Link href={`/admin/users/${order.user.id}`}>{displayName(order.user, order.user.email)}</Link>
+									<Link href={`/admin/users/${order.user.id}`}>{displayName(order.user)}</Link>
 									{order.status === "PENDING" || order.status === "ON_HOLD" ? (
 										<div>
 											<Badge tone="warning">{order.status.toLowerCase().replace("_", " ")}</Badge>
@@ -184,7 +184,7 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 						{awards.map((award) => (
 							<tr key={award.id}>
 								<td>
-									<Link href={`/admin/users/${award.user.id}`}>{displayName(award.user, award.user.email)}</Link>
+									<Link href={`/admin/users/${award.user.id}`}>{displayName(award.user)}</Link>
 								</td>
 								<td className="hl-mono">{placedFormat.format(award.qualifiedAt)}</td>
 								<td>

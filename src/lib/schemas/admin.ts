@@ -88,7 +88,7 @@ export const shopItemSchema = z
 		description: boundedText(2000, 1),
 		imageUrl: httpsUrl.nullable().optional(),
 		category: z.enum(ShopItemCategory).default("PRINTER_UPGRADE"),
-		priceCredits: z.number().int().min(0),
+		priceCredits: z.number().int().min(0).max(1_000_000),
 		/** Dollars, rounded to the cent on write. */
 		costUsd: z.number().min(0).max(100_000).nullable().optional(),
 		maxPerUser: z.number().int().min(0).default(1),
@@ -132,7 +132,7 @@ export const shopRegionUpdateSchema = z
 export const itemRegionPriceSchema = z
 	.object({
 		regionId: boundedText(64, 1),
-		priceCredits: z.number().int().min(0).nullable(),
+		priceCredits: z.number().int().min(0).max(1_000_000).nullable(),
 	})
 	.strict()
 

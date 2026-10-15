@@ -13,11 +13,14 @@ import { cursorArgs, pageResult, paginationQuery } from "@/lib/pagination"
 import prisma from "@/lib/prisma"
 import {
 	assertWeekStarted,
+	effectiveWeekClose,
+	getProgramSettings,
 	getSubmissionAccess,
 	isPhaseDecided,
 	isWeekOpen,
 	SUBMISSIONS_CLOSED_MESSAGE,
 	WEEK_CLOSED_MESSAGE,
+	weekClosesAt,
 } from "@/lib/program"
 import { assertNoOwedReel } from "@/lib/reel-gate"
 import { scheduleRepoSync } from "@/lib/repo-sync"
@@ -127,6 +130,28 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 				throw new HttpError("CONFLICT", `"${title}" already backs another journal entry`)
 			}
 		}
+
+		// The gates above are the fast fail; the phase and the week are re-read on the transaction client immediately before the write so a submit or a week that closes in between cannot file an entry into a frozen phase or a passed week.
+		const current = await tx.themeProject.findUnique({
+			where: { id },
+			select: { designStatus: true, buildStatus: true, submissionExtensionUntil: true },
+		})
+		const currentStatus = data.phase === "DESIGN" ? current?.designStatus : current?.buildStatus
+		if (currentStatus === PhaseStatus.in_review)
+			throw new HttpError("PHASE_LOCKED", "This phase is in review – unsubmit before logging more work")
+		if (currentStatus && isPhaseDecided(currentStatus))
+			throw new HttpError("PHASE_LOCKED", "This phase has been submitted and decided, so new entries cannot be added")
+		const weekUser = await tx.user.findUnique({
+			where: { id: gate.user.id },
+			select: { submissionExtensionUntil: true },
+		})
+		const settings = await getProgramSettings()
+		const closesAt = effectiveWeekClose(
+			weekClosesAt(settings, week),
+			weekUser?.submissionExtensionUntil,
+			current?.submissionExtensionUntil,
+		)
+		if (new Date() >= closesAt) throw new HttpError("WEEK_CLOSED", WEEK_CLOSED_MESSAGE)
 
 		const created = await tx.workSession.create({
 			data: {

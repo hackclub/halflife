@@ -255,6 +255,11 @@ export async function notifyShipFailed(input: { themeProjectId: string; phase: P
 	}
 }
 
+/** Escapes the three characters Slack mrkdwn gives meaning to, so interpolated text cannot become a mention or a link. */
+function escapeSlackText(value: string): string {
+	return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+}
+
 /**
  * Ask staff to look again at a decision a maker has disputed.
  *
@@ -271,12 +276,13 @@ export async function notifyStaffDispute(input: {
 	if (!channel) return
 	const phase = input.phase === Phase.DESIGN ? "design" : "build"
 	const url = projectUrl(input.themeProjectId)
-	const quoted = input.note
+	// A participant's words land in staff's channel, where `<@U…>` and `<!channel>` are live mentions and `<url|text>` is a link; quoting does not neutralise them, so the three characters Slack mrkdwn gives meaning to are escaped.
+	const quoted = escapeSlackText(input.note)
 		.trim()
 		.split("\n")
 		.map((line) => `> ${line}`)
 		.join("\n")
-	const text = `Review dispute on *${input.title}* (${phase}) by ${input.participant}:\n\n${quoted}${
+	const text = `Review dispute on *${escapeSlackText(input.title)}* (${phase}) by ${escapeSlackText(input.participant)}:\n\n${quoted}${
 		url ? `\n\n<${url}|Open the project>` : ""
 	}`
 	await trackSideEffect(
