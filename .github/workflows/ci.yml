@@ -19,7 +19,7 @@ jobs:
         timeout-minutes: 15
         steps:
             - uses: actions/checkout@v5
-            # No bun-version: setup-bun reads packageManager (bun@1.4.2), which
+            # No bun-version: setup-bun reads packageManager (bun@1.4.3), which
             # hits the runner tool cache instead of downloading `latest` every
             # run, and keeps CI on the same toolchain as local dev.
             - uses: oven-sh/setup-bun@v2
