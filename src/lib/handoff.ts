@@ -167,10 +167,11 @@ export async function getHandoffStatus(id: string, userId: string): Promise<Hand
 	return { state: "waiting", expiresAt: row.expiresAt }
 }
 
-/** Mark a handoff as picked up, so the desktop stops polling it. */
-export async function claimHandoff(id: string, userId: string): Promise<void> {
-	await prisma.uploadHandoff.updateMany({
+/** Mark a handoff as picked up, so the desktop stops polling it. Returns whether a row was actually claimed. */
+export async function claimHandoff(id: string, userId: string): Promise<boolean> {
+	const result = await prisma.uploadHandoff.updateMany({
 		where: { id, userId },
 		data: { claimedAt: new Date() },
 	})
+	return result.count === 1
 }

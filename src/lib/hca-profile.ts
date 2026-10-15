@@ -214,17 +214,23 @@ export function encryptedFieldsFrom(identity: HcaIdentity): Record<string, strin
  *
  * When HCA itself reports the address verified, that is the same ownership proof better-auth would accept, so it is copied onto the matching row and the normal signing-in path completes. An unverified claim changes nothing: it must not become a way into a pre-created account.
  *
- * The address is matched exactly as better-auth matches it – lowercased, as its own `findUserByEmail` does – so the row repaired here is the row it will look up next.
+ * Two conditions keep this from becoming a way to re-verify an address a human typed into the admin panel onto somebody else's account:
+ *
+ *   (a) The address is matched case-insensitively (like better-auth's own `findUserByEmail`), so the repaired row is the one it will look up next.
+ *   (b) A row that already has a linked `Account` is left alone: a typed address only ever sits on a staff-import row that has not signed in yet. Adoption only ever repairs those account-less rows.
  *
  * Returns whether a row was changed, so the caller can say so in the log.
  */
 export async function adoptHcaVerifiedEmail(email: string, emailVerified: boolean): Promise<boolean> {
 	if (!emailVerified) return false
-	const user = await prisma.user.findUnique({
-		where: { email: email.toLowerCase() },
+	const user = await prisma.user.findFirst({
+		where: { email: { equals: email, mode: "insensitive" } },
 		select: { id: true, emailVerified: true },
 	})
 	if (!user || user.emailVerified) return false
+	// An already-linked account proves its own ownership; adopting onto it would let an admin-typed address be re-verified, so only account-less (staff-import) rows are repaired here.
+	const accountCount = await prisma.account.count({ where: { userId: user.id } })
+	if (accountCount > 0) return false
 	await prisma.user.update({ where: { id: user.id }, data: { emailVerified: true } })
 	return true
 }
