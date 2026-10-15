@@ -40,7 +40,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
 					<EmptyState>No users match.</EmptyState>
 				) : (
 					<Table head={["Name", "Email", "Roles", "Verified", "Joined"]}>
-						{items.map((user) => (
+						{items.map(user => (
 							<tr key={user.id}>
 								<td>
 									<Link href={`/admin/users/${user.id}`}>{displayName(user) ?? "—"}</Link>
@@ -55,7 +55,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
 									{user.roles.length === 0 ? (
 										<span className="hl-hint">participant</span>
 									) : (
-										user.roles.map((r) => (
+										user.roles.map(r => (
 											<Badge key={r.role} tone="muted">
 												{r.role.toLowerCase()}
 											</Badge>

@@ -180,7 +180,7 @@ export function GoalModal({
 					</ModalTitle>
 
 					<div role="radiogroup" aria-labelledby={titleId} className="mt-2 grid gap-3">
-						{GOAL_OPTIONS.map((option) => (
+						{GOAL_OPTIONS.map(option => (
 							<OptionRow
 								key={option.value}
 								selected={option.value === chosen}
@@ -232,7 +232,7 @@ export function GoalModal({
 					</div>
 
 					<div role="radiogroup" aria-labelledby={titleId} className="grid gap-x-4 gap-y-6 sm:grid-cols-2">
-						{PRINTERS.map((p) => (
+						{PRINTERS.map(p => (
 							<GoalCard
 								key={p.id}
 								goal={p}
@@ -260,7 +260,7 @@ function GoalCard({
 	current: boolean
 	onSelect: () => void
 }) {
-	const load = Math.round((goal.paceHours / Math.max(...PRINTERS.map((p) => p.paceHours))) * 100)
+	const load = Math.round((goal.paceHours / Math.max(...PRINTERS.map(p => p.paceHours))) * 100)
 
 	return (
 		// biome-ignore lint/a11y/useSemanticElements: a radio option drawn as a card; a real input would replace the card.

@@ -84,7 +84,7 @@ export function RepoSyncSettings({
 			setState(body as SyncState)
 			// Pre-select the repo a project already points at, if it is one of the writable ones, so re-enabling does not need the picker used again.
 			const current = body.repo as string | null
-			setPicked((p) => p ?? (body.repos as WritableRepo[]).find((r) => r.url === current)?.url ?? null)
+			setPicked(p => p ?? (body.repos as WritableRepo[]).find(r => r.url === current)?.url ?? null)
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Could not load the sync settings")
 		} finally {
@@ -163,7 +163,7 @@ export function RepoSyncSettings({
 					</p>
 				)}
 				<div className="flex flex-wrap gap-2">
-					{FORGES.map((forge) => (
+					{FORGES.map(forge => (
 						<Button
 							key={forge.id}
 							variant="solid"
@@ -270,11 +270,11 @@ export function RepoSyncSettings({
 					<span className="label text-violet-deep">Repository</span>
 					<select
 						value={picked ?? ""}
-						onChange={(e) => setPicked(e.target.value || null)}
+						onChange={e => setPicked(e.target.value || null)}
 						className="block w-full rounded-xl border-2 border-field bg-white px-3.5 py-2.5 text-[0.9rem] text-navy outline-none transition-colors hover:border-navy-soft focus:border-violet"
 					>
 						<option value="">Choose a repo…</option>
-						{state.repos.map((r) => (
+						{state.repos.map(r => (
 							<option key={r.url} value={r.url}>
 								{r.fullName}
 								{r.private ? " (private)" : ""}
@@ -306,8 +306,8 @@ export function RepoSyncSettings({
 				<Button variant="ghost" size="sm" disabled={busy || loading} onClick={() => load()}>
 					Check again
 				</Button>
-				{state.linkedForges.map((id) => {
-					const forge = FORGES.find((f) => f.id === id)
+				{state.linkedForges.map(id => {
+					const forge = FORGES.find(f => f.id === id)
 					if (!forge) return null
 					return (
 						<Button

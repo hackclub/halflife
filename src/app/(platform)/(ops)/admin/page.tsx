@@ -132,7 +132,7 @@ export default async function AdminOverviewPage() {
 					<ShareDonut
 						measure="Project review status"
 						empty="No projects with a review state yet."
-						rows={projectReviewStatuses.map((s) => ({ label: s.label, value: s.value }))}
+						rows={projectReviewStatuses.map(s => ({ label: s.label, value: s.value }))}
 						colors={["var(--color-teal)", "var(--color-coin)", "var(--color-flame)", "var(--color-accent)"]}
 					/>
 					<div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
@@ -148,7 +148,7 @@ export default async function AdminOverviewPage() {
 					</p>
 				)}
 				<Table head={["Outcome", "Today", "All time"]}>
-					{reviewer.byResult.map((row) => (
+					{reviewer.byResult.map(row => (
 						<tr key={row.result}>
 							<td>{RESULT_LABEL[row.result]}</td>
 							<td className="hl-mono">{fmtInt(row.today)}</td>
@@ -181,8 +181,8 @@ export default async function AdminOverviewPage() {
 						alignItems: "start",
 					}}
 				>
-					<MetricPie title="Users" rows={areas} pick={(r) => r.users} format={fmtInt} />
-					<MetricPie title="Hours" rows={areas} pick={(r) => r.hours} format={fmtHours} />
+					<MetricPie title="Users" rows={areas} pick={r => r.users} format={fmtInt} />
+					<MetricPie title="Hours" rows={areas} pick={r => r.hours} format={fmtHours} />
 				</div>
 				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
 					Continents group each account&apos;s timezone; Unknown has none on file. Hours count journal devlogs
@@ -201,14 +201,14 @@ export default async function AdminOverviewPage() {
 				>
 					<MetricPie
 						title="Users"
-						rows={countries.map((c) => ({ label: c.country, users: c.users, hours: c.hours }))}
-						pick={(r) => r.users}
+						rows={countries.map(c => ({ label: c.country, users: c.users, hours: c.hours }))}
+						pick={r => r.users}
 						format={fmtInt}
 					/>
 					<MetricPie
 						title="Hours"
-						rows={countries.map((c) => ({ label: c.country, users: c.users, hours: c.hours }))}
-						pick={(r) => r.hours}
+						rows={countries.map(c => ({ label: c.country, users: c.users, hours: c.hours }))}
+						pick={r => r.hours}
 						format={fmtHours}
 					/>
 				</div>
@@ -221,7 +221,7 @@ export default async function AdminOverviewPage() {
 				<ShareDonut
 					measure="First project choice"
 					empty="No finished setups yet."
-					rows={firstProjects.map((s) => ({ label: s.label, value: s.users }))}
+					rows={firstProjects.map(s => ({ label: s.label, value: s.users }))}
 				/>
 				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
 					Users who finished setup and still have their week-one project. Starter names come from the catalogue; Custom
@@ -233,7 +233,7 @@ export default async function AdminOverviewPage() {
 				<ShareDonut
 					measure="Identity status"
 					empty="No accounts yet."
-					rows={verification.map((s) => ({ label: s.label, value: s.users }))}
+					rows={verification.map(s => ({ label: s.label, value: s.users }))}
 				/>
 				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
 					Hack Club Auth&apos;s own reading of each account, taken at its last sign-in or purchase. Only a verified
@@ -300,7 +300,7 @@ export default async function AdminOverviewPage() {
 					<EmptyState>No job has completed yet. Run them by hand from Orchard to check the wiring.</EmptyState>
 				) : (
 					<Table head={["Job", "Last success", "Result"]}>
-						{syncs.map((run) => (
+						{syncs.map(run => (
 							<tr key={run.syncKey}>
 								<td className="hl-mono">{run.syncKey}</td>
 								<td className="hl-mono">{run.lastRunAt.toLocaleString()}</td>
@@ -329,8 +329,8 @@ function MetricPie({
 	format: (n: number) => string
 }) {
 	const ranked = rows
-		.map((r) => ({ label: r.label, value: pick(r) }))
-		.filter((s) => s.value > 0)
+		.map(r => ({ label: r.label, value: pick(r) }))
+		.filter(s => s.value > 0)
 		.sort((a, b) => b.value - a.value)
 	const total = ranked.reduce((n, s) => n + s.value, 0)
 	if (total === 0) return <EmptyState>No data yet.</EmptyState>
@@ -373,7 +373,7 @@ function MetricPie({
 	}
 
 	let angle = 0
-	const wedges = colored.map((s) => {
+	const wedges = colored.map(s => {
 		const sweep = (s.value / total) * 360
 		const w = { ...s, from: angle, sweep }
 		angle += sweep
@@ -382,7 +382,7 @@ function MetricPie({
 
 	const summary = colored
 		.slice(0, 3)
-		.map((s) => `${s.label} ${s.pct.toFixed(1)}%`)
+		.map(s => `${s.label} ${s.pct.toFixed(1)}%`)
 		.join(", ")
 
 	return (
@@ -403,7 +403,7 @@ function MetricPie({
 							<circle cx={CX} cy={CY} r={HOLE} fill="#fff" />
 						</>
 					) : (
-						wedges.map((w) => {
+						wedges.map(w => {
 							const to = w.from + w.sweep
 							const outerFrom = point(R, w.from)
 							const outerTo = point(R, to)
@@ -443,7 +443,7 @@ function MetricPie({
 					}}
 				>
 					<tbody>
-						{colored.map((s) => (
+						{colored.map(s => (
 							<tr key={s.label}>
 								<td style={{ padding: "0.15rem 0.75rem 0.15rem 0" }}>
 									<span style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem" }}>
@@ -816,7 +816,7 @@ function DauChart({ days }: { days: ActiveDay[] }) {
 
 	const plotH = CHART_H - PAD_T - PAD_B
 
-	const values = days.map((d) => d.users)
+	const values = days.map(d => d.users)
 	// At least 1, so a stretch with nobody active draws along the baseline rather than dividing by zero.
 	const max = Math.max(1, ...values)
 	const peak = Math.max(...values)
@@ -1001,9 +1001,9 @@ function GoalHoursChart({ days }: { days: GoalDayActivity[] }) {
 
 	// A goal nobody worked towards that day has no average to take, so it reads as zero rather than dividing by nobody.
 	const perUser = (hours: number, users: number) => (users > 0 ? hours / users : 0)
-	const lines = GOAL_OPTIONS.map((option) => {
-		const values = days.map((d) => {
-			const goal = d.byGoal.find((g) => g.goal === option.value)
+	const lines = GOAL_OPTIONS.map(option => {
+		const values = days.map(d => {
+			const goal = d.byGoal.find(g => g.goal === option.value)
 			return goal ? perUser(goal.hours, goal.users) : 0
 		})
 		return {
@@ -1015,7 +1015,7 @@ function GoalHoursChart({ days }: { days: GoalDayActivity[] }) {
 	})
 
 	// One maximum across all three: the comparison between the lines is the chart.
-	const maxHours = Math.max(1, ...lines.flatMap((l) => l.values))
+	const maxHours = Math.max(1, ...lines.flatMap(l => l.values))
 
 	const xOf = (i: number) => (days.length === 1 ? 0.5 : EDGE + (i / (days.length - 1)) * (1 - 2 * EDGE))
 	const yFor = (v: number) => PAD_T + plotH - (v / maxHours) * plotH
@@ -1034,10 +1034,7 @@ function GoalHoursChart({ days }: { days: GoalDayActivity[] }) {
 	// One title per day on every line's dot, so hovering any of the three gives the whole day rather than a third of it.
 	const title = (d: GoalDayActivity) =>
 		`${d.day}: ${d.byGoal
-			.map(
-				(g) =>
-					`${GOAL_OPTIONS.find((o) => o.value === g.goal)?.short ?? g.goal} ${fmtHours(perUser(g.hours, g.users))}`,
-			)
+			.map(g => `${GOAL_OPTIONS.find(o => o.value === g.goal)?.short ?? g.goal} ${fmtHours(perUser(g.hours, g.users))}`)
 			.join(", ")} per person`
 
 	return (
@@ -1100,7 +1097,7 @@ function GoalHoursChart({ days }: { days: GoalDayActivity[] }) {
 						height={CHART_H}
 						role="img"
 						aria-label={`Hours per active user per day from ${first} to ${last}, one line per goal: ${lines
-							.map((l) => `${l.label} peaking at ${fmtHours(Math.max(...l.values))}`)
+							.map(l => `${l.label} peaking at ${fmtHours(Math.max(...l.values))}`)
 							.join("; ")}`}
 						style={{ display: "block" }}
 					>
@@ -1115,7 +1112,7 @@ function GoalHoursChart({ days }: { days: GoalDayActivity[] }) {
 								strokeWidth="1"
 							/>
 						))}
-						{lines.map((line) =>
+						{lines.map(line =>
 							segments(line.values).map((segment, i) => (
 								<line
 									key={`${line.label}-${i}`}
@@ -1130,7 +1127,7 @@ function GoalHoursChart({ days }: { days: GoalDayActivity[] }) {
 							)),
 						)}
 						{days.map((d, i) =>
-							lines.map((line) => (
+							lines.map(line => (
 								<circle
 									key={`${d.day}-${line.label}`}
 									cx={pct(xOf(i))}
@@ -1214,12 +1211,12 @@ function seasonBands(weeks: WeekColumn[]) {
 		{ phase: Phase.DESIGN, text: "design · weeks 1-5" },
 		{ phase: Phase.BUILD, text: "build · weeks 6-10" },
 	]
-		.map((band) => ({
+		.map(band => ({
 			...band,
-			at: weeks.findIndex((week) => week.phase === band.phase),
-			span: weeks.filter((week) => week.phase === band.phase).length,
+			at: weeks.findIndex(week => week.phase === band.phase),
+			span: weeks.filter(week => week.phase === band.phase).length,
 		}))
-		.filter((band) => band.span > 0)
+		.filter(band => band.span > 0)
 }
 
 /** The four kinds, as the swatch-and-label row both per-week charts put above their plot. */
@@ -1263,7 +1260,7 @@ function WeekAxisLabels({ weeks }: { weeks: WeekColumn[] }) {
 					color: "var(--color-ink-muted)",
 				}}
 			>
-				{weeks.map((week) => (
+				{weeks.map(week => (
 					<div key={week.week} style={{ overflowWrap: "anywhere" }}>
 						{week.label}
 					</div>
@@ -1281,7 +1278,7 @@ function WeekAxisLabels({ weeks }: { weeks: WeekColumn[] }) {
 					color: "var(--color-ink-muted)",
 				}}
 			>
-				{seasonBands(weeks).map((band) => (
+				{seasonBands(weeks).map(band => (
 					<div key={band.text} style={{ gridColumn: `${band.at + 1} / span ${band.span}` }}>
 						{band.text}
 					</div>
@@ -1299,8 +1296,8 @@ function WeekAxisLabels({ weeks }: { weeks: WeekColumn[] }) {
  * Bars are drawn in pixels like the line charts and for the same reason: the axis labels are HTML in a grid of one cell per cluster, and only a fixed stride puts each label under its own bars.
  */
 function ProjectsByWeekChart({ weeks }: { weeks: WeekProjectCluster[] }) {
-	const totals = weeks.map((week) => PROJECT_KIND.reduce((n, kind) => n + week[kind.key], 0))
-	if (totals.length === 0 || totals.every((t) => t === 0))
+	const totals = weeks.map(week => PROJECT_KIND.reduce((n, kind) => n + week[kind.key], 0))
+	if (totals.length === 0 || totals.every(t => t === 0))
 		return <EmptyState>No project has been started yet.</EmptyState>
 
 	const plotH = CHART_H - PAD_T - PAD_B
@@ -1434,9 +1431,8 @@ function niceHoursMax(max: number): number {
  * Both charts attribute by phase, so a project's build week is its build work in each: the same threshold decides when a project appears in the projects chart and when its hours start counting here.
  */
 function HoursByWeekChart({ weeks }: { weeks: WeekHoursCluster[] }) {
-	const totals = weeks.map((week) => PROJECT_KIND.reduce((n, kind) => n + week[kind.key], 0))
-	if (totals.length === 0 || totals.every((t) => t === 0))
-		return <EmptyState>No hours have been logged yet.</EmptyState>
+	const totals = weeks.map(week => PROJECT_KIND.reduce((n, kind) => n + week[kind.key], 0))
+	if (totals.length === 0 || totals.every(t => t === 0)) return <EmptyState>No hours have been logged yet.</EmptyState>
 
 	const plotH = CHART_H - PAD_T - PAD_B
 	// One bar per week rather than four: the stack is one column, so it takes most of the stride and the rest is the gutter between weeks.
@@ -1510,7 +1506,7 @@ function HoursByWeekChart({ weeks }: { weeks: WeekHoursCluster[] }) {
 						{weeks.map((week, i) => {
 							// Stacked from the floor up in legend order, so a segment's colour is findable without reading the tooltip. Each rect spans its own band of the stack: the running total before it is the bottom edge, after it the top.
 							let stacked = 0
-							return PROJECT_KIND.map((kind) => {
+							return PROJECT_KIND.map(kind => {
 								const value = week[kind.key]
 								if (value === 0) return null
 								const bottom = yFor(stacked)
@@ -1584,13 +1580,13 @@ function HoursHistogram({ data }: { data: HoursDistribution }) {
 	const accounts = Math.max(data.withHours, 1)
 	const totalHours = Math.max(data.totalHours, 0.0001)
 
-	const shares = data.buckets.map((b) => ({ byAccounts: b.participants / accounts, byHours: b.hours / totalHours }))
+	const shares = data.buckets.map(b => ({ byAccounts: b.participants / accounts, byHours: b.hours / totalHours }))
 	// One scale across both series, so the taller of the two is always the full height and the comparison holds.
-	const scale = Math.max(0.0001, ...shares.flatMap((s) => [s.byAccounts, s.byHours]))
+	const scale = Math.max(0.0001, ...shares.flatMap(s => [s.byAccounts, s.byHours]))
 
 	const summary = data.buckets
-		.filter((b) => b.participants > 0)
-		.map((b) => `${b.label} hours ${b.participants}`)
+		.filter(b => b.participants > 0)
+		.map(b => `${b.label} hours ${b.participants}`)
 		.join(", ")
 
 	return (
@@ -1716,7 +1712,7 @@ function HoursHistogram({ data }: { data: HoursDistribution }) {
 						marginTop: "0.3rem",
 					}}
 				>
-					{data.buckets.map((b) => (
+					{data.buckets.map(b => (
 						<span
 							key={b.label}
 							title={b.label}
@@ -1788,13 +1784,13 @@ function ShareDonut({
 	]
 	const R = 15.9155 // 100 / 2π: a share of p% is a dash of p units
 	// Segment offsets, computed up front: each slice starts where the last one ended, from path position 0 (3 o'clock). A positive dashoffset does NOT move the start forward – it starts the path that far into the pattern, eating the first segment's opening units (a grey quadrant, in the old code's case) – so the top start comes from the rotate below instead.
-	const shares = rows.map((r) => (r.value / total) * 100)
+	const shares = rows.map(r => (r.value / total) * 100)
 	const segments = rows.map((r, i) => ({
 		label: r.label,
 		share: shares[i] ?? 0,
 		start: -shares.slice(0, i).reduce((n, p) => n + p, 0),
 	}))
-	const summary = rows.map((r) => `${r.label} ${Math.round((r.value / total) * 100)}%`).join(", ")
+	const summary = rows.map(r => `${r.label} ${Math.round((r.value / total) * 100)}%`).join(", ")
 	return (
 		<div
 			style={{

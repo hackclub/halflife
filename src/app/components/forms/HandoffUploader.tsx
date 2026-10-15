@@ -77,7 +77,7 @@ export function HandoffUploader({ token }: Readonly<{ token: string }>) {
 					accept="video/*"
 					capture="environment"
 					disabled={state === "uploading"}
-					onChange={(e) => setFileName(e.target.files?.[0]?.name ?? null)}
+					onChange={e => setFileName(e.target.files?.[0]?.name ?? null)}
 				/>
 			</Field>
 

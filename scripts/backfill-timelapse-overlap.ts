@@ -73,7 +73,7 @@ async function main() {
 				// Gone private, deleted, or still processing. Same as unattached.
 				unfillable += 1
 			}
-			await new Promise((resolve) => setTimeout(resolve, PACE_MS))
+			await new Promise(resolve => setTimeout(resolve, PACE_MS))
 		}
 	}
 
@@ -97,7 +97,7 @@ async function main() {
 }
 
 main()
-	.catch((err) => {
+	.catch(err => {
 		console.error(err)
 		process.exit(1)
 	})

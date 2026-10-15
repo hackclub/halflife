@@ -254,8 +254,8 @@ export function ReelViewer() {
 		// A link goes straight to its reel; the unseen-admin-reel rule below is for picking up where someone left off, not for following a card.
 		const isDeep = deepLink.current !== null
 		// An admin reel they have not been shown yet goes first, exactly as it would on a fresh visit; picking up where they left off can wait.
-		const unseenLead = isDeep ? false : leading.some((r) => !resume.leadIds.includes(r.id))
-		const at = unseenLead ? -1 : items.findIndex((r) => r.id === resume.id)
+		const unseenLead = isDeep ? false : leading.some(r => !resume.leadIds.includes(r.id))
+		const at = unseenLead ? -1 : items.findIndex(r => r.id === resume.id)
 		if (at >= 0) {
 			landOn.current = at
 			cursor.current = at
@@ -295,7 +295,7 @@ export function ReelViewer() {
 	// Remembered as they go, not on leaving: a closed tab gets no last word.
 	const currentId = current?.id
 	useEffect(() => {
-		if (currentId) savePosition({ id: currentId, leadIds: leading.map((r) => r.id) })
+		if (currentId) savePosition({ id: currentId, leadIds: leading.map(r => r.id) })
 	}, [currentId, leading])
 
 	// Endless, the way a reel feed is: the next page is asked for a few reels before the end, so the reader scrolls into it rather than up to a wall.
@@ -380,7 +380,7 @@ export function ReelViewer() {
 						<div
 							key={reel.id}
 							data-slide={i}
-							ref={(el) => {
+							ref={el => {
 								slides.current[i] = el
 							}}
 							aria-hidden={i !== index || undefined}
@@ -415,7 +415,7 @@ export function ReelViewer() {
 					{!restoring && (feed.items.length > 0 || !feed.loading) && (
 						<div
 							data-slide={last}
-							ref={(el) => {
+							ref={el => {
 								slides.current[last] = el
 							}}
 							className="snap-item flex h-full flex-col items-center justify-center gap-2 py-3 text-center"
@@ -572,7 +572,7 @@ export function ReelViewer() {
 						sheetOpen ? "translate-y-0" : "translate-y-[calc(100%+3rem)]",
 					)}
 					style={{ "--sk-color": "var(--color-navy)", "--sk-radius": "24px" } as React.CSSProperties}
-					onTransitionEnd={(e) => {
+					onTransitionEnd={e => {
 						if (e.target === e.currentTarget && !sheetOpen) setSheetShown(false)
 					}}
 				>

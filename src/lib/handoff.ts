@@ -49,7 +49,7 @@ export async function createHandoff(userId: string): Promise<NewHandoff> {
 	const token = randomBytes(32).toString("base64url")
 	const expiresAt = new Date(Date.now() + HANDOFF_TTL_MINUTES * 60_000)
 
-	const handoff = await prisma.$transaction(async (tx) => {
+	const handoff = await prisma.$transaction(async tx => {
 		await tx.uploadHandoff.updateMany({
 			where: { userId, usedAt: null, expiresAt: { gt: new Date() } },
 			data: { expiresAt: new Date() },

@@ -109,7 +109,7 @@ function wallFields(at: Date, timeZone: string): [number, number, number, number
 		minute: "numeric",
 		second: "numeric",
 	}).formatToParts(at)
-	const value = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find((p) => p.type === type)?.value ?? 0)
+	const value = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find(p => p.type === type)?.value ?? 0)
 	return [value("year"), value("month") - 1, value("day"), value("hour"), value("minute"), value("second")]
 }
 

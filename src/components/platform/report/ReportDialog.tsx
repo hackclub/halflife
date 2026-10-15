@@ -99,7 +99,7 @@ export function ReportDialog({
 
 					{/* biome-ignore lint/a11y/useSemanticElements: a group of choices, not a form. */}
 					<div className="grid gap-2.5" role="group" aria-label="Reason">
-						{REPORT_REASONS.map((r) => (
+						{REPORT_REASONS.map(r => (
 							<OptionRow key={r.id} selected={reason === r.id} onClick={() => setReason(r.id)}>
 								<span className="text-[0.95rem] font-bold text-navy">{r.label}</span>
 							</OptionRow>
@@ -111,7 +111,7 @@ export function ReportDialog({
 							<textarea
 								id="report-details"
 								value={details}
-								onChange={(e) => setDetails(e.target.value)}
+								onChange={e => setDetails(e.target.value)}
 								rows={3}
 								maxLength={2000}
 								placeholder="What should staff look at?"

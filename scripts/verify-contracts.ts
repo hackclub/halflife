@@ -29,7 +29,7 @@ function check(label: string, ok: boolean, detail = "") {
 /* ── 1. Methods ──────────────────────────────────────────────────────────── */
 
 function walk(dir: string): string[] {
-	return readdirSync(dir).flatMap((entry) => {
+	return readdirSync(dir).flatMap(entry => {
 		const full = join(dir, entry)
 		return statSync(full).isDirectory() ? walk(full) : full.endsWith(".ts") || full.endsWith(".tsx") ? [full] : []
 	})
@@ -52,7 +52,7 @@ function routeTable(): Map<string, Set<string>> {
 			// Either separator: `relative` hands back backslashes on Windows.
 			relative("src/app", file.replace(/[\\/]route\.ts$/, ""))
 				.split(/[\\/]/)
-				.filter((segment) => !segment.startsWith("("))
+				.filter(segment => !segment.startsWith("("))
 				.join("/")
 		table.set(url, found)
 	}
@@ -70,7 +70,7 @@ function clientCalls(): { file: string; path: string; methods: string[] }[] {
 			if (!path.startsWith("/api")) continue
 			// A method can be a literal or a ternary; collect every literal offered.
 			const methods = [...(match[2] ?? "").matchAll(/method:\s*(?:\w+\s*\?\s*)?"(\w+)"(?:\s*:\s*"(\w+)")?/g)]
-				.flatMap((m) => [m[1], m[2]])
+				.flatMap(m => [m[1], m[2]])
 				.filter((m): m is string => Boolean(m))
 			calls.push({ file, path, methods: methods.length ? methods : ["GET"] })
 		}
@@ -118,8 +118,8 @@ function routeFor(path: string): Set<string> | null {
 
 for (const call of [
 	...clientCalls(),
-	...STORE_CALLS.map((c) => ({ ...c, file: "src/lib/store.tsx" })),
-	...COMPONENT_CALLS.map((c) => ({ ...c, file: "src/components/platform/RepoSyncSettings.tsx" })),
+	...STORE_CALLS.map(c => ({ ...c, file: "src/lib/store.tsx" })),
+	...COMPONENT_CALLS.map(c => ({ ...c, file: "src/components/platform/RepoSyncSettings.tsx" })),
 ]) {
 	const exported = routeFor(call.path)
 	const label = `${call.path} [${call.methods.join("/")}]`
@@ -127,7 +127,7 @@ for (const call of [
 		check(label, false, "no route handles this path")
 		continue
 	}
-	const missing = call.methods.filter((m) => !exported.has(m))
+	const missing = call.methods.filter(m => !exported.has(m))
 	check(label, missing.length === 0, `route exports ${[...exported].sort().join("/") || "nothing"}`)
 }
 
@@ -375,7 +375,7 @@ async function bodies() {
 	/* ── 4. Video container signatures ─────────────────────────────────────── */
 	//
 	// A MIME type and an extension are only claims; the bytes decide. The `ftyp` box is shared with HEIC/AVIF/JPEG-2000 images, so the brand has to be a video one – otherwise a still image renamed `.mp4` becomes a reel.
-	const asciiBytes = (s: string) => [...s].map((c) => c.charCodeAt(0))
+	const asciiBytes = (s: string) => [...s].map(c => c.charCodeAt(0))
 	const isoFile = (major: string, compatible: string[] = []) => {
 		const body = [
 			0,
@@ -735,7 +735,7 @@ async function bodies() {
 
 	// Two recordings either side of a break: neither overlaps, and the gap between them is not counted as anything.
 	const twoRecordings = [timelapseWindow(1_700_000_000_000, 600), timelapseWindow(1_700_003_000_000, 600)].filter(
-		(w) => w !== null,
+		w => w !== null,
 	)
 	check(
 		"overlap · a tracked span between two recordings overlaps neither",
@@ -744,7 +744,7 @@ async function bodies() {
 
 	// Recording A runs into recording B: the shared minutes are claimed twice by the journal, and must be counted once before being subtracted.
 	const overlapping = [timelapseWindow(1_700_000_000_000, 3600), timelapseWindow(1_700_001_800_000, 3600)].filter(
-		(w) => w !== null,
+		w => w !== null,
 	)
 	check(
 		"overlap · a minute inside two recordings is counted once",
@@ -1033,7 +1033,7 @@ async function bodies() {
 		check("bom-csv · the header is found", parsed.header?.[0] === "Item")
 		check(
 			"bom-csv · the shipping line is not a part",
-			parsed.skipped.some((s) => s.name === "Shipping (Guesstimate)"),
+			parsed.skipped.some(s => s.name === "Shipping (Guesstimate)"),
 		)
 		check("bom-csv · a dollar amount is read out of a rupee price", parsed.lines[0]?.unitCostUsd === 15)
 		check("bom-csv · a count in words becomes a number", parsed.lines[0]?.quantity === 1)
@@ -1062,7 +1062,7 @@ async function bodies() {
 		const capped = parseBomCsv(kicad, { limit: 1 })
 		check(
 			"bom-csv · the limit is reported rather than silently dropped",
-			capped.lines.length === 1 && capped.skipped.some((s) => s.reason === "beyond the parts-list limit"),
+			capped.lines.length === 1 && capped.skipped.some(s => s.reason === "beyond the parts-list limit"),
 		)
 	}
 
@@ -1162,14 +1162,14 @@ async function bodies() {
 		}
 		const actions = tickets.threadResolveActions(ref)
 		const elements = (actions.elements ?? []) as { action_id: string; value?: string }[]
-		const buttons = elements.filter((el) => typeof el.action_id === "string")
+		const buttons = elements.filter(el => typeof el.action_id === "string")
 		check(
 			"tickets · resolve actions carry both buttons",
 			actions.block_id === "self_resolve_actions" && buttons.length === 2,
 		)
 		check(
 			"tickets · button values round-trip the ref",
-			buttons.every((b) => {
+			buttons.every(b => {
 				try {
 					const parsed = JSON.parse(b.value ?? "")
 					return parsed.helpTs === ref.helpTs && parsed.ticketsTs === ref.ticketsTs
@@ -1182,7 +1182,7 @@ async function bodies() {
 		const open = [{ type: "section", text: { type: "mrkdwn", text: "reminders" } }, actions]
 		const atResolve = { ...ref, ticketsTs: "555.666" }
 		const resolved = tickets.resolveBlocks(open, "U9", undefined, atResolve)
-		const resolvedIds = resolved.map((b) => b.block_id)
+		const resolvedIds = resolved.map(b => b.block_id)
 		check(
 			"tickets · resolving swaps actions for note plus reopen",
 			!resolvedIds.includes("self_resolve_actions") &&
@@ -1191,24 +1191,24 @@ async function bodies() {
 		)
 		check(
 			"tickets · reminders survive resolving",
-			resolved.some((b) => b.type === "section"),
+			resolved.some(b => b.type === "section"),
 		)
 
 		const atReopen = { ...ref, ticketsTs: "777.888" }
 		const reopened = tickets.reopenBlocks(resolved, atReopen)
-		const reopenedIds = reopened.map((b) => b.block_id)
+		const reopenedIds = reopened.map(b => b.block_id)
 		check(
 			"tickets · reopening restores resolve buttons with the fresh mirror",
 			reopenedIds.includes("self_resolve_actions") &&
 				!reopenedIds.includes("reopen_actions") &&
 				!reopenedIds.includes("ticket_resolved"),
 		)
-		const restored = reopened.find((b) => b.block_id === "self_resolve_actions")
+		const restored = reopened.find(b => b.block_id === "self_resolve_actions")
 		const restoredElements = (restored?.elements ?? []) as { value?: string }[]
-		const restoredValues = restoredElements.map((el) => String(el.value ?? ""))
+		const restoredValues = restoredElements.map(el => String(el.value ?? ""))
 		check(
 			"tickets · restored buttons point at the new mirror",
-			restoredValues.length === 2 && restoredValues.every((v) => v.includes("777.888")),
+			restoredValues.length === 2 && restoredValues.every(v => v.includes("777.888")),
 		)
 	}
 
@@ -1217,7 +1217,7 @@ async function bodies() {
 		check(
 			`body · ${name}`,
 			parsed.success,
-			parsed.success ? "" : parsed.error.issues.map((i) => `${i.path.join(".") || "(root)"} ${i.message}`).join("; "),
+			parsed.success ? "" : parsed.error.issues.map(i => `${i.path.join(".") || "(root)"} ${i.message}`).join("; "),
 		)
 	}
 }
@@ -1227,7 +1227,7 @@ bodies()
 		console.log(failures === 0 ? "\nAll contract checks passed." : `\n${failures} check(s) failed.`)
 		process.exitCode = failures === 0 ? 0 : 1
 	})
-	.catch((err) => {
+	.catch(err => {
 		console.error(err)
 		process.exitCode = 1
 	})

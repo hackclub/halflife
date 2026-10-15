@@ -144,13 +144,13 @@ export function PostComposer({
 					value={caption}
 					maxLength={2000}
 					disabled={busy}
-					onChange={(e) => setCaption(e.target.value)}
+					onChange={e => setCaption(e.target.value)}
 				/>
 			</Field>
 
 			<Field label="What kind of reel is this?">
-				<select className="hl-select" value={kind} disabled={busy} onChange={(e) => setKind(e.target.value)}>
-					{KIND_OPTIONS.map((option) => (
+				<select className="hl-select" value={kind} disabled={busy} onChange={e => setKind(e.target.value)}>
+					{KIND_OPTIONS.map(option => (
 						<option key={option.value} value={option.value}>
 							{option.label}
 						</option>
@@ -160,9 +160,9 @@ export function PostComposer({
 			</Field>
 
 			<Field label="About a project?" hint="Optional. Idea and progress reels usually are.">
-				<select className="hl-select" value={projectId} disabled={busy} onChange={(e) => setProjectId(e.target.value)}>
+				<select className="hl-select" value={projectId} disabled={busy} onChange={e => setProjectId(e.target.value)}>
 					<option value="">Not about a project</option>
-					{projects.map((project) => (
+					{projects.map(project => (
 						<option key={project.id} value={project.id}>
 							{project.label}
 						</option>

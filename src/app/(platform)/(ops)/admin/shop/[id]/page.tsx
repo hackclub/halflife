@@ -25,7 +25,7 @@ export default async function AdminShopItemPage({ params }: { params: Promise<{ 
 	])
 	if (!item) notFound()
 
-	const overrides = new Map(item.regionPrices.map((r) => [r.regionId, r.priceCredits]))
+	const overrides = new Map(item.regionPrices.map(r => [r.regionId, r.priceCredits]))
 
 	return (
 		<div className="hl-stack">
@@ -58,7 +58,7 @@ export default async function AdminShopItemPage({ params }: { params: Promise<{ 
 				<ItemRegionPrices
 					itemId={item.id}
 					basePrice={item.priceCredits}
-					regions={regions.map((r) => ({ id: r.id, name: r.name, price: overrides.get(r.id) ?? null }))}
+					regions={regions.map(r => ({ id: r.id, name: r.name, price: overrides.get(r.id) ?? null }))}
 				/>
 			</Panel>
 		</div>

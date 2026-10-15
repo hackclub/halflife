@@ -46,9 +46,9 @@ export const GET = withRoute(async (_req: Request, { params }: Params) => {
 		project: {
 			...project,
 			coverImageUrl: publicUrlFor(project.coverImageKey),
-			workSessions: project.workSessions.map((s) => ({
+			workSessions: project.workSessions.map(s => ({
 				...s,
-				media: s.media.map((m) => ({ ...m, url: publicUrlFor(m.objectKey) })),
+				media: s.media.map(m => ({ ...m, url: publicUrlFor(m.objectKey) })),
 			})),
 		},
 		theme: getThemeDef(project.theme),
@@ -81,7 +81,7 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 	// A starter can only be taken if it is one of this week's: anyone may switch to one from the project page after creation, beginner or not – the tier-1 scoping below is what keeps a starter a starter, not who was offered it during onboarding.
 	if (data.starterProjectId) {
 		const offered = starterProjectsFor(project.theme)
-		if (!offered.some((p) => p.id === data.starterProjectId))
+		if (!offered.some(p => p.id === data.starterProjectId))
 			return fail("VALIDATION_FAILED", "That is not one of this week's starter projects")
 	}
 	// The starter the project will have after this request, since the same request may be the one taking it or dropping it.
@@ -118,7 +118,7 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 			...(data.coverImageKey !== undefined ? { coverImageKey: data.coverImageKey } : {}),
 			...(data.artifactLinks !== undefined
 				? {
-						artifactLinks: data.artifactLinks.map((l) => ({
+						artifactLinks: data.artifactLinks.map(l => ({
 							label: sanitize(l.label),
 							url: l.url,
 						})),
@@ -169,7 +169,7 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 		distinct: ["weekNumber"],
 	})
 
-	const deleted = await prisma.$transaction(async (tx) => {
+	const deleted = await prisma.$transaction(async tx => {
 		// Re-read the project and its block status inside the transaction, so a grant, top-up, or dispute committing in the window is caught before the soft delete rather than after.
 		const fresh = await tx.themeProject.findFirst({
 			where: { id, userId: gate.user.id, deletedAt: null },

@@ -55,7 +55,7 @@ export function EmailForm({
 					value={value}
 					maxLength={320}
 					placeholder="participant@example.com"
-					onChange={(e) => setValue(e.target.value)}
+					onChange={e => setValue(e.target.value)}
 					style={{ maxWidth: "24rem" }}
 				/>
 			</Field>

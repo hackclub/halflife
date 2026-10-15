@@ -37,12 +37,12 @@ export async function reconcileSessionTimelapses(
 		where: { workSessionId: sessionId },
 		select: { id: true, provider: true, externalId: true },
 	})
-	const have = new Set(rows.flatMap((r) => (r.provider === "lapse" && r.externalId ? [r.externalId] : [])))
+	const have = new Set(rows.flatMap(r => (r.provider === "lapse" && r.externalId ? [r.externalId] : [])))
 	const removeIds = rows
-		.filter((r) => r.provider === "lapse" && r.externalId && !want.includes(r.externalId))
-		.map((r) => r.id)
-	const addIds = want.filter((id) => !have.has(id))
-	const adding = fresh.filter((t) => addIds.includes(t.id))
+		.filter(r => r.provider === "lapse" && r.externalId && !want.includes(r.externalId))
+		.map(r => r.id)
+	const addIds = want.filter(id => !have.has(id))
+	const adding = fresh.filter(t => addIds.includes(t.id))
 
 	for (const lapseId of [...addIds].sort()) {
 		await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`lapse:${lapseId}`}, 0))`
@@ -59,7 +59,7 @@ export async function reconcileSessionTimelapses(
 			select: { externalId: true },
 		})
 		if (taken) {
-			const title = fresh.find((t) => t.id === taken.externalId)?.title ?? "That timelapse"
+			const title = fresh.find(t => t.id === taken.externalId)?.title ?? "That timelapse"
 			throw new HttpError("CONFLICT", `"${title}" already backs another journal entry`)
 		}
 	}
@@ -68,7 +68,7 @@ export async function reconcileSessionTimelapses(
 	}
 	if (adding.length > 0) {
 		await tx.sessionTimelapse.createMany({
-			data: adding.map((t) => ({
+			data: adding.map(t => ({
 				workSessionId: sessionId,
 				provider: "lapse",
 				externalId: t.id,
@@ -81,5 +81,5 @@ export async function reconcileSessionTimelapses(
 			})),
 		})
 	}
-	return { added: adding.map((t) => t.id), removed: removeIds }
+	return { added: adding.map(t => t.id), removed: removeIds }
 }

@@ -104,7 +104,7 @@ export function OnboardingFlow({
 	// The beginner's fork: a starter id, null for their own project, undefined for not chosen yet. Past the week step with no starter means they chose their own.
 	const [start, setStart] = useState<string | null | undefined>(() => {
 		if (initial.project.starterProjectId) return initial.project.starterProjectId
-		return initial.reached > initial.steps.findIndex((s) => s.id === "week") ? null : undefined
+		return initial.reached > initial.steps.findIndex(s => s.id === "week") ? null : undefined
 	})
 	const [idea, setIdea] = useState<string | null>(initial.project.starterProjectId)
 	const [pickedTier, setPickedTier] = useState<number | null>(initial.project.requestedTier)
@@ -113,7 +113,7 @@ export function OnboardingFlow({
 	if (!step) return null
 
 	// The server decides where an answer lands (a starter taken on the week step goes straight to time tracking; naming a project skips "Stuck? Pick one", since the starter was offered on the week step), and this mirrors it, both forward and back.
-	const indexOf = (id: string) => view.steps.findIndex((s) => s.id === id)
+	const indexOf = (id: string) => view.steps.findIndex(s => s.id === id)
 	const tookStarter = view.project.starterProjectId !== null && view.project.tierLocked
 	function backFrom(current: number): number {
 		const id = view.steps[current]?.id
@@ -144,7 +144,7 @@ export function OnboardingFlow({
 				return next
 			}
 
-			if (opts.advance !== false) setViewing((current) => Math.min(current + 1, next.steps.length - 1))
+			if (opts.advance !== false) setViewing(current => Math.min(current + 1, next.steps.length - 1))
 			return next
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Something went wrong")
@@ -201,7 +201,7 @@ export function OnboardingFlow({
 				{step.id === "experience" ? (
 					<div className="space-y-6">
 						<div className="space-y-3">
-							{view.experienceOptions.map((option) => (
+							{view.experienceOptions.map(option => (
 								<OptionRow
 									key={option.value}
 									tone="gold"
@@ -240,7 +240,7 @@ export function OnboardingFlow({
 									<>
 										<p className="text-[0.92rem] text-navy-soft">Some places to start, if you want one:</p>
 										<ul className="list-disc space-y-1 pl-5 text-[0.9rem] text-navy-soft">
-											{view.weekIntro.examples.map((example) => (
+											{view.weekIntro.examples.map(example => (
 												<li key={example}>{example}</li>
 											))}
 										</ul>
@@ -258,7 +258,7 @@ export function OnboardingFlow({
 										project, with a guide that walks you through every step. Or make a project of your own.
 									</p>
 									<div className="grid gap-3 sm:grid-cols-2">
-										{view.starterProjects.map((starter) => {
+										{view.starterProjects.map(starter => {
 											const chosen = start === starter.id
 											return (
 												<StarterProjectCard
@@ -319,7 +319,7 @@ export function OnboardingFlow({
 				{step.id === "project" ? (
 					<form
 						className="space-y-5"
-						onSubmit={(event) => {
+						onSubmit={event => {
 							event.preventDefault()
 							sendProject()
 						}}
@@ -333,7 +333,7 @@ export function OnboardingFlow({
 								className={projectInputClass}
 								value={title}
 								maxLength={120}
-								onChange={(event) => setTitle(event.target.value)}
+								onChange={event => setTitle(event.target.value)}
 							/>
 						</Field>
 						<Field id="onboarding-project-description" label="Project description">
@@ -342,7 +342,7 @@ export function OnboardingFlow({
 								className={`${projectInputClass} min-h-28 resize-y`}
 								value={description}
 								maxLength={5000}
-								onChange={(event) => setDescription(event.target.value)}
+								onChange={event => setDescription(event.target.value)}
 							/>
 						</Field>
 						<StepActions busy={busy} onBack={back} />
@@ -356,7 +356,7 @@ export function OnboardingFlow({
 							1, since starters are Tier 1 work. Stick with your own idea if you want a bigger tier.
 						</p>
 						<div className="grid gap-3">
-							{view.starterProjects.map((starter) => {
+							{view.starterProjects.map(starter => {
 								const chosen = idea === starter.id
 								return (
 									<StarterProjectCard
@@ -405,7 +405,7 @@ export function OnboardingFlow({
                 keyboards and screen readers. */}
 						<fieldset className="grid gap-3">
 							<legend className="sr-only">Tier</legend>
-							{view.tiers.map((tier) => {
+							{view.tiers.map(tier => {
 								const chosen = view.project.tierLocked ? tier.id === 1 : pickedTier === tier.id
 								const locked = busy || view.project.tierLocked
 								const headingId = `onboarding-tier-${tier.id}`
@@ -450,14 +450,14 @@ export function OnboardingFlow({
 											{tier.showcase.length > 0 ? (
 												// The tier line leads; the examples are its footnote, a strip of small thumbnails with their names beside them. Three columns on every tier, so the strips align down the list whatever their length, and fold to a stacked list on a phone.
 												<ul className="mt-3 grid gap-x-4 gap-y-2 border-t border-dashed border-line/80 pt-3 sm:grid-cols-3">
-													{tier.showcase.map((project) => (
+													{tier.showcase.map(project => (
 														<li key={project.href} className="min-w-0">
 															<a
 																href={project.href}
 																target="_blank"
 																rel="noopener noreferrer"
 																// Following the link is not a vote for the tier.
-																onClick={(event) => event.stopPropagation()}
+																onClick={event => event.stopPropagation()}
 																className="group/example -m-1 flex items-center gap-2.5 rounded-lg p-1 outline-none focus-visible:ring-2 focus-visible:ring-violet"
 															>
 																{/* Cropped to one frame: at this size a uniform

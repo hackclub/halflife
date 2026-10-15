@@ -61,7 +61,7 @@ async function main() {
 	}
 
 	const events = await prisma.auditLog.findMany({
-		where: { action: AuditAction.AIRTABLE_SYNC_SUCCESS, targetId: { in: projects.map((p) => p.id) } },
+		where: { action: AuditAction.AIRTABLE_SYNC_SUCCESS, targetId: { in: projects.map(p => p.id) } },
 		orderBy: { createdAt: "desc" },
 		select: { targetId: true, metadata: true },
 	})
@@ -105,7 +105,7 @@ async function main() {
 }
 
 main()
-	.catch((err) => {
+	.catch(err => {
 		console.error(err)
 		process.exitCode = 1
 	})

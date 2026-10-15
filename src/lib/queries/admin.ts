@@ -78,7 +78,7 @@ export async function listUsers(
 	})
 	const hasMore = rows.length > opts.limit
 	// Contact + risk fields only leave the server for ADMIN/AUDITOR. REVIEWER/FULFILLER get the directory (names + roles) with no emails, Slack ids or fraud flags to scrape. Callers pass includePii explicitly; the default is stripped.
-	const items = (hasMore ? rows.slice(0, opts.limit) : rows).map((row) =>
+	const items = (hasMore ? rows.slice(0, opts.limit) : rows).map(row =>
 		includePii ? row : { ...row, email: "", slackId: null, verificationStatus: null, fraudFlagged: false },
 	)
 	const last = items[items.length - 1]
@@ -261,7 +261,7 @@ export async function getUserDetail(
 	}
 
 	const [balances, ledger, orders, printer] = await Promise.all([
-		prisma.$transaction((tx) => getBalances(tx, userId)),
+		prisma.$transaction(tx => getBalances(tx, userId)),
 		prisma.ledgerEntry.findMany({
 			where: { userId },
 			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -668,12 +668,12 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 		}),
 	])
 
-	const sessions = new Set(sessionUsers.map((s) => s.userId))
-	const named = new Set(projectUsers.filter((p) => p.description !== null && p.description !== "").map((p) => p.userId))
-	const tookStarter = new Set(projectUsers.filter((p) => p.starterProjectId !== null).map((p) => p.userId))
-	const pickedTier = new Set(projectUsers.filter((p) => p.requestedTier !== null).map((p) => p.userId))
-	const devlogs = new Set(devlogUsers.map((u) => u.id))
-	const repos = new Set(repoUsers.map((u) => u.userId))
+	const sessions = new Set(sessionUsers.map(s => s.userId))
+	const named = new Set(projectUsers.filter(p => p.description !== null && p.description !== "").map(p => p.userId))
+	const tookStarter = new Set(projectUsers.filter(p => p.starterProjectId !== null).map(p => p.userId))
+	const pickedTier = new Set(projectUsers.filter(p => p.requestedTier !== null).map(p => p.userId))
+	const devlogs = new Set(devlogUsers.map(u => u.id))
+	const repos = new Set(repoUsers.map(u => u.userId))
 
 	// One boolean per step per person, in funnel order; steps[0] (signup) is true for everyone. The `|| posted` / `|| submitted` fallbacks are the history guard described above the function – do not drop them.
 	//
@@ -684,7 +684,7 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 		tracking: stepIndexOf("tracking"),
 		repo: stepIndexOf("repo"),
 	} as const
-	const flags = users.map((u) => {
+	const flags = users.map(u => {
 		const posted = u.firstReelAt !== null
 		const submitted = u.firstSubmissionAt !== null
 		const completed = u.onboardingCompletedAt !== null
@@ -962,7 +962,7 @@ function hoursByUser(inputs: RegionInputs): HoursByUser {
 }
 
 function aggregateByKey(inputs: RegionInputs, byUser: HoursByUser, keyOf: (timezone: string | null) => string) {
-	const userKey = new Map(inputs.users.map((u) => [u.id, keyOf(u.timezone)]))
+	const userKey = new Map(inputs.users.map(u => [u.id, keyOf(u.timezone)]))
 	const totals = new Map<string, { users: number; hours: number }>()
 	const row = (key: string) => {
 		let r = totals.get(key)
@@ -984,7 +984,7 @@ const rankLast = (key: string, users: number) => (key === "Unknown" ? -1 : users
 /** Users and hours per continent/area bucket. Ranked by users. */
 export async function getAreaStats(): Promise<AreaStat[]> {
 	const inputs = await loadRegionInputs()
-	const totals = aggregateByKey(inputs, hoursByUser(inputs), (tz) => regionOfTimezone(tz))
+	const totals = aggregateByKey(inputs, hoursByUser(inputs), tz => regionOfTimezone(tz))
 	return REGIONS.map(({ id, label }) => ({
 		id,
 		label,
@@ -1184,7 +1184,7 @@ export async function getDailyActivityByGoal(): Promise<GoalDayActivity[]> {
 		const goals = byDay.get(day)
 		out.push({
 			day,
-			byGoal: GOAL_OPTIONS.map((option) => ({
+			byGoal: GOAL_OPTIONS.map(option => ({
 				goal: option.value,
 				hours: round1(goals?.get(option.value)?.hours ?? 0),
 				users: goals?.get(option.value)?.users.size ?? 0,
@@ -1242,7 +1242,7 @@ export const HOUR_EDGES = [1, 2, 3, 5, 7, 10, 15, 20, 30, 40, 60, 80, 120, 160, 
 export async function getHoursDistribution(): Promise<HoursDistribution> {
 	const inputs = await loadRegionInputs()
 	const byUser = hoursByUser(inputs)
-	const perUser = [...byUser.hours.values()].filter((h) => h > 0).sort((a, b) => a - b)
+	const perUser = [...byUser.hours.values()].filter(h => h > 0).sort((a, b) => a - b)
 
 	// One bucket per edge, so the trailing Infinity edge becomes the "160+" bar and catches the long tail.
 	const last = HOUR_EDGES.length - 1
@@ -1253,7 +1253,7 @@ export async function getHoursDistribution(): Promise<HoursDistribution> {
 	}))
 
 	for (const hours of perUser) {
-		const i = HOUR_EDGES.findIndex((upper) => hours < upper)
+		const i = HOUR_EDGES.findIndex(upper => hours < upper)
 		const bucket = buckets[i === -1 ? last : i]
 		if (!bucket) continue
 		bucket.participants += 1
@@ -1305,7 +1305,7 @@ export async function getFirstProjectStats(): Promise<FirstProjectStat[]> {
 		getStarterProject(id)?.title ??
 		id
 			.split(/[-_]/)
-			.map((w) => (w ? w[0]?.toUpperCase() + w.slice(1) : w))
+			.map(w => (w ? w[0]?.toUpperCase() + w.slice(1) : w))
 			.join(" ")
 
 	return [...counts]
@@ -1484,8 +1484,8 @@ export async function getHoursByWeek(): Promise<WeekHoursCluster[]> {
 
 		// Grouped by phase, because `rollUpHours` can only subtract a link's overlap against the recordings beside it in the same phase.
 		for (const phase of [Phase.DESIGN, Phase.BUILD]) {
-			const sessions = project.workSessions.filter((s) => s.phase === phase)
-			const links = project.hackatimeLinks.filter((l) => l.phase === phase)
+			const sessions = project.workSessions.filter(s => s.phase === phase)
+			const links = project.hackatimeLinks.filter(l => l.phase === phase)
 			if (sessions.length === 0 && links.length === 0) continue
 
 			const { computedTotal } = rollUpHours(sessions, links, null)
@@ -1522,8 +1522,8 @@ export type VerificationStat = {
 export async function getVerificationStats(): Promise<VerificationStat[]> {
 	const rows = await prisma.user.groupBy({ by: ["verificationStatus"], _count: { _all: true } })
 	return rows
-		.filter((row) => row._count._all > 0)
-		.map((row) => ({
+		.filter(row => row._count._all > 0)
+		.map(row => ({
 			label:
 				row.verificationStatus === null
 					? "Not asked"
@@ -1593,12 +1593,12 @@ export async function getReviewerStats(): Promise<ReviewerStats> {
 	const projects = [...latest.values()]
 	return {
 		// A project reviewed today can only have been reviewed today by its latest review, so this is the same set the breakdown counts.
-		reviewedToday: projects.filter((p) => p.today).length,
+		reviewedToday: projects.filter(p => p.today).length,
 		reviewedTotal: projects.length,
-		byResult: Object.values(ReviewResult).map((result) => ({
+		byResult: Object.values(ReviewResult).map(result => ({
 			result,
-			today: projects.filter((p) => p.result === result && p.today).length,
-			total: projects.filter((p) => p.result === result).length,
+			today: projects.filter(p => p.result === result && p.today).length,
+			total: projects.filter(p => p.result === result).length,
 		})),
 	}
 }
@@ -1737,9 +1737,9 @@ type ActivityKey = (typeof SANKEY_ACTIVITY)[number]["key"]
 /**
  * Box id for one activity. One stage, so one id per kind – a box is a rectangle with one x position, and every kind gets exactly one.
  */
-const activityNode = (key: ActivityKey) => `act${SANKEY_ACTIVITY.find((a) => a.key === key)?.base ?? "Unknown"}`
+const activityNode = (key: ActivityKey) => `act${SANKEY_ACTIVITY.find(a => a.key === key)?.base ?? "Unknown"}`
 
-const activityNodes = () => SANKEY_ACTIVITY.map((a) => activityNode(a.key))
+const activityNodes = () => SANKEY_ACTIVITY.map(a => activityNode(a.key))
 
 /** The activity boxes, for recognising the fan stage when links are drawn. Includes the none box: it sits in the same column, though its links are exclusive like chain. */
 const ACTIVITY_BOXES = new Set([...activityNodes(), "actNone"])
@@ -1877,11 +1877,11 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 	}
 
 	const activity = earliest([
-		...devlogs.map((s) => ({ userId: s.themeProject.userId, at: s.createdAt, key: "devlog" as const })),
-		...reels.map((p) => ({ userId: p.userId, at: p.publishedAt ?? p.createdAt, key: "reel" as const })),
-		...repoLinks.map((p) => ({ userId: p.userId, at: p.createdAt, key: "repo" as const })),
-		...hackatimeLinks.map((l) => ({ userId: l.themeProject.userId, at: l.createdAt, key: "hackatime" as const })),
-		...timelapses.map((t) => ({
+		...devlogs.map(s => ({ userId: s.themeProject.userId, at: s.createdAt, key: "devlog" as const })),
+		...reels.map(p => ({ userId: p.userId, at: p.publishedAt ?? p.createdAt, key: "reel" as const })),
+		...repoLinks.map(p => ({ userId: p.userId, at: p.createdAt, key: "repo" as const })),
+		...hackatimeLinks.map(l => ({ userId: l.themeProject.userId, at: l.createdAt, key: "hackatime" as const })),
+		...timelapses.map(t => ({
 			userId: t.workSession.themeProject.userId,
 			at: t.createdAt,
 			key: "timelapse" as const,
@@ -1890,14 +1890,14 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 
 	const described = new Set(
 		projects
-			.filter((p) => (p.description !== null && p.description !== "") || p.starterProjectId !== null)
-			.map((p) => p.userId),
+			.filter(p => (p.description !== null && p.description !== "") || p.starterProjectId !== null)
+			.map(p => p.userId),
 	)
 
 	// The journey stages before the branches. Read the same way the funnel reads them, so the two views line up on the path: a step is reached when the onboarding state machine is at or past it, and each accepts the branch that skips it (a starter pick jumps the project and idea questions) so nobody is drawn as having missed a step they were never asked.
-	const loggedIn = new Set(sessions.map((s) => s.userId))
-	const tookStarter = new Set(projects.filter((p) => p.starterProjectId !== null).map((p) => p.userId))
-	const pickedTier = new Set(projects.filter((p) => p.requestedTier !== null).map((p) => p.userId))
+	const loggedIn = new Set(sessions.map(s => s.userId))
+	const tookStarter = new Set(projects.filter(p => p.starterProjectId !== null).map(p => p.userId))
+	const pickedTier = new Set(projects.filter(p => p.requestedTier !== null).map(p => p.userId))
 	const ONBOARDING = {
 		week: stepIndexOf("week"),
 		idea: stepIndexOf("idea"),
@@ -1929,9 +1929,9 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 	const userTier = new Map<string, 1 | 2 | 3>()
 	const tierMet = new Map<string, boolean>()
 	{
-		const journalByProject = new Map(designHours.map((row) => [row.themeProjectId, row._sum.hoursClaimed ?? 0]))
+		const journalByProject = new Map(designHours.map(row => [row.themeProjectId, row._sum.hoursClaimed ?? 0]))
 		const hackByProject = new Map(
-			designHackatime.map((row) => [row.themeProjectId, (row._sum.cachedSeconds ?? 0) / 3600]),
+			designHackatime.map(row => [row.themeProjectId, (row._sum.cachedSeconds ?? 0) / 3600]),
 		)
 		const latest = new Map<string, { project: (typeof projects)[number]; tier: 1 | 2 | 3 }>()
 		for (const project of projects) {
@@ -1942,7 +1942,7 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 		}
 		for (const [userId, { project, tier }] of latest) {
 			userTier.set(userId, tier)
-			const floor = TIERS.find((t) => t.id === tier)?.fundingHours ?? 0
+			const floor = TIERS.find(t => t.id === tier)?.fundingHours ?? 0
 			const hours = (journalByProject.get(project.id) ?? 0) + (hackByProject.get(project.id) ?? 0)
 			tierMet.set(userId, hours >= floor)
 		}
@@ -1960,11 +1960,11 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 	}
 
 	/** Users with a live project row, named or not – the marker only stamps on description, and descriptions are enforced at submit time, so the marker alone would leave this box structurally empty. */
-	const liveProjectUsers = new Set(projects.map((p) => p.userId))
+	const liveProjectUsers = new Set(projects.map(p => p.userId))
 
 	/** Every tracked activity the person reached, in branch order so the boxes line up with the stage. One maker appears in as many boxes as they earned – or in the none box, when a finisher earned none. */
 	const activityBoxes = (userId: string, completed: boolean): string[] => {
-		const did = SANKEY_ACTIVITY.filter((a) => activity.get(userId)?.has(a.key)).map((a) => activityNode(a.key))
+		const did = SANKEY_ACTIVITY.filter(a => activity.get(userId)?.has(a.key)).map(a => activityNode(a.key))
 		return did.length > 0 || !completed ? did : [NONE_BOX]
 	}
 
@@ -2012,7 +2012,7 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 		const boxes = boxesOf(user).filter((box): box is string => box !== null)
 		for (const box of boxes) counts.set(box, (counts.get(box) ?? 0) + 1)
 		// The activity block fans out and back in: one ribbon per activity the person reached, from their last box before the block and to their first box after it. Fan-out ribbons share their source's people and fan-in ribbons their target's, so each direction flags its own edge for the renderer to overlap; every other ribbon carries disjoint users and stacks.
-		const firstAct = boxes.findIndex((box) => ACTIVITY_BOXES.has(box))
+		const firstAct = boxes.findIndex(box => ACTIVITY_BOXES.has(box))
 		if (firstAct === -1) {
 			for (let i = 1; i < boxes.length; i++) link(boxes[i - 1] as string, boxes[i] as string, null)
 			continue
@@ -2048,7 +2048,7 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 		{ label: "Tier", nodes: ["tier1", "tier2", "tier3"] },
 		{ label: "Tier hours", nodes: ["tierMet", "tierUnmet"] },
 		{ label: "Hand-in", nodes: ["handedIn", "awaitingHandIn"] },
-		{ label: "Outcome", nodes: SANKEY_OUTCOME.map((o) => o.node) },
+		{ label: "Outcome", nodes: SANKEY_OUTCOME.map(o => o.node) },
 	]
 
 	const labels: Record<string, string> = {
@@ -2075,21 +2075,21 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 		tierUnmet: "Short on hours",
 		handedIn: "Handed in for review",
 		awaitingHandIn: "Awaiting hand-in",
-		...Object.fromEntries(SANKEY_ACTIVITY.map((a) => [activityNode(a.key), a.label])),
+		...Object.fromEntries(SANKEY_ACTIVITY.map(a => [activityNode(a.key), a.label])),
 		[NONE_BOX]: "None of these",
-		...Object.fromEntries(SANKEY_OUTCOME.map((o) => [o.node, o.label])),
+		...Object.fromEntries(SANKEY_OUTCOME.map(o => [o.node, o.label])),
 	}
 
 	// What share of onboarded finishers did each tracked activity: the same activity rows as the Sankey, cut to the people who finished onboarding rather than everyone who signed up. Largest first, so the chart reads left to right; ties keep branch order.
-	const finishers = users.filter((user) => user.onboardingCompletedAt !== null)
+	const finishers = users.filter(user => user.onboardingCompletedAt !== null)
 	const reachedCount = (key: ActivityKey | "none") =>
 		key === "none"
-			? finishers.filter((user) => !activity.get(user.id)).length
-			: finishers.filter((user) => activity.get(user.id)?.has(key)).length
+			? finishers.filter(user => !activity.get(user.id)).length
+			: finishers.filter(user => activity.get(user.id)?.has(key)).length
 	const activityShare: ActivityShare = {
 		total: finishers.length,
 		activities: [
-			...SANKEY_ACTIVITY.map((a) => {
+			...SANKEY_ACTIVITY.map(a => {
 				const users = reachedCount(a.key)
 				return {
 					key: a.key,
@@ -2110,12 +2110,10 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 	}
 
 	// Only boxes someone actually reached are drawn: a branch nobody took is not a finding, and an empty box in the middle of the diagram reads as a bug.
-	const nodes = stages.flatMap((stage) =>
-		stage.nodes
-			.map((id) => ({ id, label: labels[id] ?? id, value: counts.get(id) ?? 0 }))
-			.filter((node) => node.value > 0),
+	const nodes = stages.flatMap(stage =>
+		stage.nodes.map(id => ({ id, label: labels[id] ?? id, value: counts.get(id) ?? 0 })).filter(node => node.value > 0),
 	)
-	const live = new Set(nodes.map((n) => n.id))
+	const live = new Set(nodes.map(n => n.id))
 
 	return {
 		diagram: {
@@ -2126,7 +2124,7 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 					const [source, target] = key.split("\u0000")
 					return { source: source as string, target: target as string, value: entry.value, fan: entry.fan }
 				})
-				.filter((link) => live.has(link.source) && live.has(link.target)),
+				.filter(link => live.has(link.source) && live.has(link.target)),
 			total: users.length,
 		},
 		activityShare,

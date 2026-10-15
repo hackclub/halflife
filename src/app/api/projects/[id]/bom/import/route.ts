@@ -98,7 +98,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	if ("error" in result) return fail("UNPROCESSABLE", result.error)
 	if (result.lines.length === 0) return fail("UNPROCESSABLE", `No parts with a name were found in ${result.path}.`)
 
-	await prisma.$transaction(async (tx) => {
+	await prisma.$transaction(async tx => {
 		// Re-read inside the transaction the write happens in, as POST /bom does: a design approval landing between the check above and the create would let lines into a list that is supposed to be final.
 		const fresh = await tx.themeProject.findUnique({
 			where: { id },

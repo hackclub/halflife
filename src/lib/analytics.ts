@@ -271,7 +271,7 @@ export async function backfillAnalytics(): Promise<Record<string, number>> {
 		counts.days += await rebuildActiveDays(userId, programTimezone)
 
 		// Last seen, from everything that left a timestamp.
-		const moments = [...logins, ...sessions, ...posts, ...submissions].map((x) => x.createdAt)
+		const moments = [...logins, ...sessions, ...posts, ...submissions].map(x => x.createdAt)
 		if (moments.length > 0) {
 			const last = moments.reduce((a, b) => (b > a ? b : a))
 			await prisma.user.updateMany({ where: { id: userId, lastActiveAt: null }, data: { lastActiveAt: last } })
@@ -364,7 +364,7 @@ export async function getUserAnalytics(): Promise<UserAnalyticsRow[]> {
 	})
 	const out: UserAnalyticsRow[] = []
 	for (const u of users) {
-		const balances = await prisma.$transaction((tx) => getBalances(tx, u.id))
+		const balances = await prisma.$transaction(tx => getBalances(tx, u.id))
 		out.push({
 			userId: u.id,
 			email: u.email,
@@ -425,10 +425,10 @@ export async function getAnalyticsSummary(days = 30): Promise<{
 
 	// A strict funnel: each step counts only people who also did every step before it, so a step never has more people than the one above it (and drop-off is never negative), whatever order things happened in.
 	const reached = (n: number) =>
-		people.filter((u) =>
+		people.filter(u =>
 			[u.onboardingCompletedAt, u.firstProjectAt, u.firstReelAt, u.firstSubmissionAt]
 				.slice(0, n)
-				.every((t) => t !== null),
+				.every(t => t !== null),
 		).length
 	const total = people.length
 	const steps = [
@@ -462,7 +462,7 @@ export async function getAnalyticsSummary(days = 30): Promise<{
 	}
 
 	return {
-		dau: dau.map((d) => ({ day: d.day, users: d._count._all })),
+		dau: dau.map(d => ({ day: d.day, users: d._count._all })),
 		funnel,
 		weeklyMilestones: [...byWeek.values()].sort((a, b) => a.week - b.week),
 	}

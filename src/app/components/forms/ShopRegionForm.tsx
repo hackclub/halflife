@@ -34,7 +34,7 @@ export function ShopRegionForm() {
 						required
 						pattern="[a-z0-9][a-z0-9-]*"
 						placeholder="eu"
-						onChange={(e) => setId(e.target.value)}
+						onChange={e => setId(e.target.value)}
 					/>
 				</Field>
 				<Field label="Name">
@@ -43,7 +43,7 @@ export function ShopRegionForm() {
 						value={name}
 						required
 						placeholder="Europe"
-						onChange={(e) => setName(e.target.value)}
+						onChange={e => setName(e.target.value)}
 					/>
 				</Field>
 			</div>

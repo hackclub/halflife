@@ -35,7 +35,7 @@ export function DoomscrollerFeed({ onClose, className }: { onClose?: () => void;
           as a stack of cards, and a bar down its edge only narrowed them. It
           still scrolls by wheel, trackpad and touch. */}
 			<div className="no-scrollbar snap-y-feed -mx-1 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-1 pb-1">
-				{feed.items.map((r) => (
+				{feed.items.map(r => (
 					<ReelCard
 						key={r.id}
 						reel={r}

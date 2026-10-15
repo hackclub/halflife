@@ -76,15 +76,15 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 		where: { workSessionId: sessionId },
 		select: { id: true, provider: true, externalId: true, objectKey: true },
 	})
-	const r2Keys = new Set(rows.flatMap((r) => (r.objectKey ? [r.objectKey] : [])))
-	const have = new Set(rows.flatMap((r) => (r.provider === "lapse" && r.externalId ? [r.externalId] : [])))
+	const r2Keys = new Set(rows.flatMap(r => (r.objectKey ? [r.objectKey] : [])))
+	const have = new Set(rows.flatMap(r => (r.provider === "lapse" && r.externalId ? [r.externalId] : [])))
 	const want =
 		data.timelapses !== undefined
-			? [...new Set(data.timelapses.map((t) => t.lapseId).filter((id) => !r2Keys.has(id)))]
+			? [...new Set(data.timelapses.map(t => t.lapseId).filter(id => !r2Keys.has(id)))]
 			: null
-	const addIds = want ? want.filter((id) => !have.has(id)) : []
+	const addIds = want ? want.filter(id => !have.has(id)) : []
 	// Same rule as creation, asked of Lapse rather than trusted from the sheet. Only brand-new ids are verified; everything already attached stays without a round trip. Verified for its side effects here (ownership, published, processed) and mapped to the shape the reconciler writes: `LapseTimelapse.createdAt` is epoch ms and becomes the recording's start, which is what makes this clip's wall-clock window comparable with Hackatime's tracked intervals.
-	const fresh = (await verifyOwnTimelapses(gate.user.id, addIds)).map((t) => ({
+	const fresh = (await verifyOwnTimelapses(gate.user.id, addIds)).map(t => ({
 		id: t.id,
 		title: t.title,
 		playbackUrl: t.playbackUrl,
@@ -94,7 +94,7 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 		hackatimeProject: t.hackatimeProject,
 	}))
 
-	const updated = await prisma.$transaction(async (tx) => {
+	const updated = await prisma.$transaction(async tx => {
 		if (want !== null) await reconcileSessionTimelapses(tx, sessionId, want, fresh)
 		// Conditional on the phase still being editable and the entry still unreviewed: a submit or a decision that commits between the checks above and this write makes it match nothing, and the edit is refused rather than landing on a frozen week.
 		const changed = await tx.workSession.updateMany({
@@ -166,7 +166,7 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 	if (!(await weekOpenFor(gate.user.id, id, session))) return fail("WEEK_CLOSED", WEEK_CLOSED_MESSAGE)
 
 	// Deleting the only session on a day removes that day from the run, so the streak has to be recomputed with it. PATCH does not, because it cannot change `effectiveDate` – the set of journalled days is the same after it.
-	await prisma.$transaction(async (tx) => {
+	await prisma.$transaction(async tx => {
 		// Conditional on the phase still being editable and the entry still unreviewed: a submit or a review that commits between the checks above and this write makes it match nothing, and the entry stays.
 		const deleted = await tx.workSession.updateMany({
 			where: {

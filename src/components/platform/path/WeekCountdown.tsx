@@ -68,7 +68,7 @@ export function WeekCountdown({ week }: { week: Week }) {
 						aria-hidden="true"
 						className="mt-1.5 flex items-start justify-center gap-2 font-extrabold tabular-nums sm:gap-4"
 					>
-						{COUNTDOWN_UNITS.map((unit) => (
+						{COUNTDOWN_UNITS.map(unit => (
 							<span key={unit.key} className="flex min-w-0 flex-col items-center">
 								<span className="text-[1.9rem] leading-none tracking-[-0.03em] sm:text-[2.7rem]">
 									{parts === null ? "--" : unit.key === "days" ? parts.days : pad2(parts[unit.key])}

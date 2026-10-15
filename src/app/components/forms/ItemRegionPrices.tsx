@@ -16,7 +16,7 @@ export function ItemRegionPrices({
 	regions: { id: string; name: string; price: number | null }[]
 }) {
 	const [values, setValues] = useState<Record<string, string>>(() =>
-		Object.fromEntries(regions.map((r) => [r.id, r.price === null ? "" : String(r.price)])),
+		Object.fromEntries(regions.map(r => [r.id, r.price === null ? "" : String(r.price)])),
 	)
 	const { busy, error, run, refuse } = useAction()
 
@@ -42,7 +42,7 @@ export function ItemRegionPrices({
 				<p className="hl-hint">No regions yet – add one on the shop page first.</p>
 			) : (
 				<ul className="hl-stack hl-stack--tight" style={{ listStyle: "none", padding: 0, margin: 0 }}>
-					{regions.map((region) => (
+					{regions.map(region => (
 						<li key={region.id} className="hl-row" style={{ alignItems: "end" }}>
 							<span style={{ minWidth: "10rem" }}>
 								<span className="hl-label-text">{region.name}</span>
@@ -58,7 +58,7 @@ export function ItemRegionPrices({
 								placeholder={String(basePrice)}
 								aria-label={`Price in coins for ${region.name}`}
 								value={values[region.id] ?? ""}
-								onChange={(e) => setValues((v) => ({ ...v, [region.id]: e.target.value }))}
+								onChange={e => setValues(v => ({ ...v, [region.id]: e.target.value }))}
 								style={{ maxWidth: "9rem" }}
 							/>
 							<Button type="button" disabled={busy !== null} onClick={() => save(region.id)}>

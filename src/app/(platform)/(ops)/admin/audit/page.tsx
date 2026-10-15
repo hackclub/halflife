@@ -45,7 +45,7 @@ export default async function AdminAuditPage({ searchParams }: Props) {
 					<EmptyState>Nothing recorded yet.</EmptyState>
 				) : (
 					<Table head={["When", "Action", "Actor", "Target", "Detail"]}>
-						{items.map((entry) => (
+						{items.map(entry => (
 							<tr key={entry.id}>
 								<td className="hl-mono">{entry.createdAt.toLocaleString()}</td>
 								<td className="hl-mono">{entry.action}</td>

@@ -93,7 +93,7 @@ export function ShopItemImport() {
 					type="file"
 					accept=".csv,text/csv"
 					hidden
-					onChange={(e) => {
+					onChange={e => {
 						setFile(e.target.files?.[0] ?? null)
 						setError(null)
 						setProblems([])

@@ -63,7 +63,7 @@ const TOUR = [
 
 function CheckpointModal({ id }: { id: string }) {
 	const { allCheckpoints, weekOfCheckpoint, statusOf, sharePost, setSharePost, setOpenCheckpoint } = useStore()
-	const cp = allCheckpoints.find((c) => c.id === id)
+	const cp = allCheckpoints.find(c => c.id === id)
 	if (!cp) return null
 	// A hand-in that posted its closing reel celebrates first. The hand-in's refresh flips the week to in_review underneath, and without this branch the unsubmit sheet below would take the modal a frame after the celebration lands.
 	if (sharePost && sharePost.checkpointId === id) {

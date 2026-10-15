@@ -80,7 +80,7 @@ export function AirtableImportForm({
 		}
 	}
 
-	const problems = summary?.outcomes.filter((o) => o.status === "skipped" || o.status === "failed") ?? []
+	const problems = summary?.outcomes.filter(o => o.status === "skipped" || o.status === "failed") ?? []
 
 	return (
 		<div className="hl-stack hl-stack--tight">
@@ -97,7 +97,7 @@ export function AirtableImportForm({
 					</p>
 					{problems.length > 0 ? (
 						<ul className="hl-stack hl-stack--tight" style={{ marginTop: "0.5rem", paddingLeft: "1rem" }}>
-							{problems.map((outcome) => (
+							{problems.map(outcome => (
 								<li key={outcome.recordId} className="hl-hint">
 									<span className="hl-mono">{outcome.recordId}</span>
 									{outcome.email ? ` · ${outcome.email}` : ""} · {STATUS_LABEL[outcome.status]}

@@ -195,7 +195,7 @@ export async function listUploadedObjects(
 		)
 
 		return {
-			objects: (result.Contents ?? []).flatMap((object) => {
+			objects: (result.Contents ?? []).flatMap(object => {
 				if (!object.Key) return []
 				const key =
 					bucketPrefix && object.Key.startsWith(bucketPrefix) ? object.Key.slice(bucketPrefix.length) : object.Key

@@ -156,7 +156,7 @@ export function resolveBlocks(
 	ref?: TicketRef & { ticketsChannel: string },
 ): SlackBlock[] {
 	const kept = (blocks ?? []).filter(
-		(block) =>
+		block =>
 			block.block_id !== TICKET_ACTIONS_BLOCK_ID &&
 			block.block_id !== SELF_RESOLVE_ACTIONS_BLOCK_ID &&
 			block.block_id !== REOPEN_ACTIONS_BLOCK_ID &&
@@ -173,7 +173,7 @@ export function reopenBlocks(
 	ref: TicketRef & { ticketsChannel: string; ticketsTs?: string },
 ): SlackBlock[] {
 	const kept = (blocks ?? []).filter(
-		(block) => block.block_id !== REOPEN_ACTIONS_BLOCK_ID && block.block_id !== RESOLVED_CONTEXT_BLOCK_ID,
+		block => block.block_id !== REOPEN_ACTIONS_BLOCK_ID && block.block_id !== RESOLVED_CONTEXT_BLOCK_ID,
 	)
 	kept.push(threadResolveActions(ref))
 	return kept

@@ -68,7 +68,7 @@ async function main() {
 	const buffers = await prisma.rsvpBuffer.findMany({
 		select: { email: true, userId: true, airtableRecordId: true, syncedToAirtable: true },
 	})
-	const bufferByEmail = new Map(buffers.map((b) => [b.email.trim().toLowerCase(), b]))
+	const bufferByEmail = new Map(buffers.map(b => [b.email.trim().toLowerCase(), b]))
 	console.log(`Users: ${users.length}, buffer rows: ${buffers.length}`)
 
 	let alreadyLinked = 0
@@ -144,7 +144,7 @@ async function main() {
 }
 
 main()
-	.catch((err) => {
+	.catch(err => {
 		console.error(err)
 		process.exitCode = 1
 	})

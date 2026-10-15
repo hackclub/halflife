@@ -76,12 +76,12 @@ export default async function AdminProgramPage() {
 			/>
 
 			<Panel title="Program start">
-				<ProgramStartForm initial={startYmd} timezone={settings.programTimezone} weeks={schedule.map((w) => w.label)} />
+				<ProgramStartForm initial={startYmd} timezone={settings.programTimezone} weeks={schedule.map(w => w.label)} />
 			</Panel>
 
 			<Panel title="Schedule">
 				<Table head={["Week", "Theme", "Runs", "Closes", ""]}>
-					{schedule.map((w) => (
+					{schedule.map(w => (
 						<tr key={w.week}>
 							<td className="hl-mono">{w.week}</td>
 							<td>{w.label}</td>
@@ -153,7 +153,7 @@ export default async function AdminProgramPage() {
 					<EmptyState>Every submission awaiting review is in the YSWS table.</EmptyState>
 				) : (
 					<Table head={["Project", "Phase", ""]}>
-						{unsynced.map((item) => (
+						{unsynced.map(item => (
 							<tr key={`${item.themeProjectId}-${item.phase}`}>
 								<td className="hl-mono">{item.themeProjectId}</td>
 								<td>{item.phase.toLowerCase()}</td>
@@ -177,7 +177,7 @@ export default async function AdminProgramPage() {
 					<EmptyState>Every submission awaiting review is in Ari.</EmptyState>
 				) : (
 					<Table head={["Project", "Phase", "Why it's stuck", ""]}>
-						{unsyncedAri.map((item) => (
+						{unsyncedAri.map(item => (
 							<tr key={`${item.themeProjectId}-${item.phase}`}>
 								<td className="hl-mono">{item.themeProjectId}</td>
 								<td>{item.phase.toLowerCase()}</td>
@@ -205,7 +205,7 @@ export default async function AdminProgramPage() {
 					<EmptyState>No maker is waiting on a second look.</EmptyState>
 				) : (
 					<Table head={["Project", "Phase", "Maker", "Asked", ""]}>
-						{disputes.map((d) => (
+						{disputes.map(d => (
 							<tr key={d.id}>
 								<td>{d.projectTitle}</td>
 								<td>{d.phase.toLowerCase()}</td>
@@ -264,7 +264,7 @@ export default async function AdminProgramPage() {
             every review freezes the numbers it used, so changing them never
             rewrites anyone's history. */}
 				<Table head={["Tier", "Grant", "Funded hours", "Submit floor"]}>
-					{TIERS.map((tier) => (
+					{TIERS.map(tier => (
 						<tr key={tier.id}>
 							<td>{tier.name}</td>
 							<td>${tier.grantUsd}</td>
@@ -280,7 +280,7 @@ export default async function AdminProgramPage() {
 
 				<h2>Printer goals</h2>
 				<Table head={["Printer", "Coins", "Earn pace / design week", "Tier 1 ask"]}>
-					{PRINTERS.map((printer) => (
+					{PRINTERS.map(printer => (
 						<tr key={printer.id}>
 							<td>{printer.name}</td>
 							<td>{printer.coins}</td>

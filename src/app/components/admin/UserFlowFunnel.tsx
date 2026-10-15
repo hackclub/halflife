@@ -30,7 +30,7 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 	const MIN_W = 2
 	const share = (n: number) => (top > 0 ? (n / top) * 100 : 0)
 	const widthOf = (n: number) => (n === 0 ? 0 : Math.max(share(n), MIN_W))
-	const widths = rows.map((s) => widthOf(s.count))
+	const widths = rows.map(s => widthOf(s.count))
 
 	// Clamp a drop-off share to a 0-100 blend weight.
 	const weightOf = (dropOffPct: number) => Math.min(100, Math.max(0, dropOffPct))

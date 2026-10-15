@@ -132,7 +132,7 @@ export const WARMUP_THEME: ThemeDef = {
 export const WARMUP_WEEK_ID = 0
 
 export function getThemeDef(theme: Theme): ThemeDef {
-	const def = theme === Theme.WARMUP ? WARMUP_THEME : THEMES.find((t) => t.id === theme)
+	const def = theme === Theme.WARMUP ? WARMUP_THEME : THEMES.find(t => t.id === theme)
 	if (!def) throw new Error(`Unknown theme: ${theme}`)
 	return def
 }
@@ -148,9 +148,9 @@ export function projectDisplayTitle(project: { title: string; theme: Theme }): s
 
 /** The theme and phase a given program week is scheduled for. */
 export function scheduleForWeek(week: number): { theme: ThemeDef; phase: Phase } | null {
-	const design = THEMES.find((t) => t.designWeek === week)
+	const design = THEMES.find(t => t.designWeek === week)
 	if (design) return { theme: design, phase: Phase.DESIGN }
-	const build = THEMES.find((t) => t.buildWeek === week)
+	const build = THEMES.find(t => t.buildWeek === week)
 	if (build) return { theme: build, phase: Phase.BUILD }
 	return null
 }

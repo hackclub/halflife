@@ -47,7 +47,7 @@ function previewImageUrl(value: string): string | null {
 	try {
 		const url = new URL(value.trim())
 		if (url.protocol !== "https:") return null
-		return url.href.replace(/[<>"']/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)
+		return url.href.replace(/[<>"']/g, c => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)
 	} catch {
 		return null
 	}
@@ -84,7 +84,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 		try {
 			const { url } = await uploadFile(file, "shop")
 			if (!url) throw new Error("Uploads have no public URL on this deployment (S3_PUBLIC_URL)")
-			setForm((f) => ({ ...f, imageUrl: url }))
+			setForm(f => ({ ...f, imageUrl: url }))
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "The image did not upload")
 		} finally {
@@ -139,7 +139,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 					required
 					readOnly={editing}
 					pattern="[a-z0-9][a-z0-9-]*"
-					onChange={(e) => setForm({ ...form, id: e.target.value })}
+					onChange={e => setForm({ ...form, id: e.target.value })}
 				/>
 			</Field>
 			<Field label="Name">
@@ -147,7 +147,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 					className="hl-input"
 					value={form.name}
 					required
-					onChange={(e) => setForm({ ...form, name: e.target.value })}
+					onChange={e => setForm({ ...form, name: e.target.value })}
 				/>
 			</Field>
 			<Field label="Description">
@@ -155,16 +155,16 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 					className="hl-textarea"
 					value={form.description}
 					required
-					onChange={(e) => setForm({ ...form, description: e.target.value })}
+					onChange={e => setForm({ ...form, description: e.target.value })}
 				/>
 			</Field>
 			<Field label="Category" hint="Printers are not listed in the shop; everything else is paid for in coins.">
 				<select
 					className="hl-select"
 					value={form.category}
-					onChange={(e) => setForm({ ...form, category: e.target.value as ShopItemCategory })}
+					onChange={e => setForm({ ...form, category: e.target.value as ShopItemCategory })}
 				>
-					{CATEGORIES.map((c) => (
+					{CATEGORIES.map(c => (
 						<option key={c.value} value={c.value}>
 							{c.label}
 						</option>
@@ -179,7 +179,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 						placeholder="https://…"
 						value={form.imageUrl}
 						style={{ flex: "1 1 16rem" }}
-						onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
+						onChange={e => setForm({ ...form, imageUrl: e.target.value })}
 					/>
 					<Button type="button" disabled={uploading} onClick={() => picker.current?.click()}>
 						{uploading ? "Uploading…" : "Upload"}
@@ -189,7 +189,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 						type="file"
 						accept={IMAGE_ACCEPT}
 						hidden
-						onChange={(e) => {
+						onChange={e => {
 							const file = e.target.files?.[0]
 							e.target.value = ""
 							uploadImage(file)
@@ -211,7 +211,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 					type="number"
 					min="0"
 					value={form.priceCredits}
-					onChange={(e) => setForm({ ...form, priceCredits: e.target.value })}
+					onChange={e => setForm({ ...form, priceCredits: e.target.value })}
 				/>
 			</Field>
 			<Field label="Cost to us (USD)" hint="Per unit, tax and shipping included. Shown on the fulfillment sheet.">
@@ -221,14 +221,14 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 					min="0"
 					step="0.01"
 					value={form.costUsd}
-					onChange={(e) => setForm({ ...form, costUsd: e.target.value })}
+					onChange={e => setForm({ ...form, costUsd: e.target.value })}
 				/>
 			</Field>
 			<label className="hl-row" style={{ gap: "0.5rem" }}>
 				<input
 					type="checkbox"
 					checked={form.requiresPrinterQualified}
-					onChange={(e) => setForm({ ...form, requiresPrinterQualified: e.target.checked })}
+					onChange={e => setForm({ ...form, requiresPrinterQualified: e.target.checked })}
 				/>
 				<span>Requires all five themes shipped</span>
 			</label>

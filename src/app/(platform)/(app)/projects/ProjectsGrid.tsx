@@ -57,7 +57,7 @@ export function ProjectsGrid() {
 		)
 	}
 
-	const anyReviewState = projects.some((p) => reviewTone(p.designStatus, p.buildStatus) !== "line")
+	const anyReviewState = projects.some(p => reviewTone(p.designStatus, p.buildStatus) !== "line")
 
 	return (
 		<>
@@ -72,7 +72,7 @@ export function ProjectsGrid() {
 			)}
 
 			<ul className="grid gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-3">
-				{projects.map((project) => {
+				{projects.map(project => {
 					const warmup = project.weekId === WARMUP_WEEK_ID
 					const week = (warmup ? warmupWeekOf(project.id) : null) ?? weekOf(project.weekId)
 					const events = projectEvents(project, weeks, stateOf)

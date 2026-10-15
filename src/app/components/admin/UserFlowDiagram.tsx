@@ -27,7 +27,7 @@ type TabId = (typeof TABS)[number]["id"]
 
 export function UserFlowDiagram({ steps, sankey }: { steps: FlowStep[]; sankey: SankeyDiagram }) {
 	const [active, setActive] = useState<TabId>("funnel")
-	const index = TABS.findIndex((t) => t.id === active)
+	const index = TABS.findIndex(t => t.id === active)
 	const current = TABS[index] ?? TABS[0]
 
 	/**
@@ -64,7 +64,7 @@ export function UserFlowDiagram({ steps, sankey }: { steps: FlowStep[]; sankey: 
 				onKeyDown={onKeyDown}
 				style={{ display: "flex", gap: "0.5rem", justifyContent: "center" }}
 			>
-				{TABS.map((tab) => {
+				{TABS.map(tab => {
 					const selected = tab.id === active
 					return (
 						<button

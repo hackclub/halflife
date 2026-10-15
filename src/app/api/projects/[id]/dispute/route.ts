@@ -33,7 +33,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	if (!project) return fail("NOT_FOUND", "Project not found")
 
 	// Wrap the status check, submission selection and dispute creation in one transaction so a dispute cannot attach to a submission that has since been resolved superseded or a phase that has since moved.
-	const submissionId = await prisma.$transaction(async (tx) => {
+	const submissionId = await prisma.$transaction(async tx => {
 		const fresh = await tx.themeProject.findFirst({
 			where: { id, userId: gate.user.id, deletedAt: null },
 			select: { designStatus: true, buildStatus: true },

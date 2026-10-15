@@ -193,7 +193,7 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 				break
 			}
 			// Only one this person was actually offered: the list depends on their answer to question one, and posting an id is not an answer.
-			const starter = before.starterProjects.find((p) => p.id === answer.starterProjectId)
+			const starter = before.starterProjects.find(p => p.id === answer.starterProjectId)
 			if (!starter) throw new HttpError("VALIDATION_FAILED", "That is not one of the suggestions")
 			projectData.starterProjectId = starter.id
 			projectData.title = starter.title
@@ -218,7 +218,7 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 				break
 			}
 			// Only one this person was actually offered: the list depends on their answer to question one, and posting an id is not an answer.
-			const starter = before.starterProjects.find((p) => p.id === answer.starterProjectId)
+			const starter = before.starterProjects.find(p => p.id === answer.starterProjectId)
 			if (!starter) throw new HttpError("VALIDATION_FAILED", "That is not one of the suggestions")
 			projectData.starterProjectId = starter.id
 			projectData.title = starter.title
@@ -281,7 +281,7 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 		projectAfter,
 		userAfter,
 		reached: reachedAfter,
-	} = await prisma.$transaction(async (tx) => {
+	} = await prisma.$transaction(async tx => {
 		// Re-read on the transaction client, so a concurrent step/project change cannot land a write against a stale snapshot.
 		const txUser = await tx.user.findUniqueOrThrow({
 			where: { id: userId },

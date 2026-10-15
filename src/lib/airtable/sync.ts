@@ -117,15 +117,15 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 	}
 
 	const lapseLinks = project.workSessions
-		.flatMap((s) => s.timelapses)
-		.map((t) =>
+		.flatMap(s => s.timelapses)
+		.map(t =>
 			t.provider === "lapse" && t.externalId
 				? lapseTimelapseUrl(t.externalId)
 				: (t.playbackUrl ?? publicUrlFor(t.objectKey)),
 		)
 		.filter((u): u is string => !!u)
 
-	const hackatime = project.hackatimeLinks.map((l) => `${l.hackatimeProject} (${ymd(weekStart)} to ${ymd(weekEnd)})`)
+	const hackatime = project.hackatimeLinks.map(l => `${l.hackatimeProject} (${ymd(weekStart)} to ${ymd(weekEnd)})`)
 
 	const [firstName, ...rest] = (user.name ?? "").trim().split(/\s+/)
 	const tier = project.tier ?? project.requestedTier
@@ -182,7 +182,7 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
  */
 async function withYswsWriteLock<T>(themeProjectId: string, phase: Phase, fn: () => Promise<T>): Promise<T> {
 	return prisma.$transaction(
-		async (tx) => {
+		async tx => {
 			await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`ysws:${themeProjectId}:${phase}`}, 0))`
 			return fn()
 		},
@@ -293,7 +293,7 @@ export async function findUnsyncedSubmissions(): Promise<{ themeProjectId: strin
 	if (pending.length === 0) return []
 
 	const synced = await prisma.auditLog.findMany({
-		where: { action: "AIRTABLE_SYNC_SUCCESS", targetId: { in: pending.map((p) => p.id) } },
+		where: { action: "AIRTABLE_SYNC_SUCCESS", targetId: { in: pending.map(p => p.id) } },
 		select: { targetId: true, createdAt: true, metadata: true },
 	})
 
@@ -302,9 +302,9 @@ export async function findUnsyncedSubmissions(): Promise<{ themeProjectId: strin
 		for (const phase of [Phase.DESIGN, Phase.BUILD] as const) {
 			const status = phase === Phase.DESIGN ? p.designStatus : p.buildStatus
 			if (status !== PhaseStatus.in_review) continue
-			const submittedAt = p.submissions.find((s) => s.phase === phase)?.createdAt
+			const submittedAt = p.submissions.find(s => s.phase === phase)?.createdAt
 			// Written since the latest hand-in counts; an older write was for a submission that has since been taken back and handed in again.
-			const written = synced.some((s) => {
+			const written = synced.some(s => {
 				const meta = s.metadata as { phase?: string; recordId?: string } | null
 				return (
 					s.targetId === p.id &&

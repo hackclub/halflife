@@ -26,7 +26,7 @@ export const PATCH = withRoute(async (req: Request) => {
 
 	let printer: string | null = null
 	if (goal === ParticipantGoal.PRINTER) {
-		const found = printerGoalId ? PRINTERS.find((p) => p.id === printerGoalId) : null
+		const found = printerGoalId ? PRINTERS.find(p => p.id === printerGoalId) : null
 		if (!found) return fail("VALIDATION_FAILED", "Pick a printer to go with that goal")
 		printer = found.id
 	}

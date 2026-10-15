@@ -52,7 +52,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	if (locked) return fail("PHASE_LOCKED", locked)
 
 	const input = parsed.data
-	await prisma.$transaction(async (tx) => {
+	await prisma.$transaction(async tx => {
 		// Re-read inside the transaction the write happens in: a design approval landing between the check above and the create would let a line into a list that is supposed to be final.
 		const fresh = await tx.themeProject.findUnique({
 			where: { id },

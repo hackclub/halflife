@@ -60,7 +60,7 @@ async function throttle(): Promise<void> {
 	const slot = Math.max(now, nextSlot)
 	nextSlot = slot + MIN_INTERVAL_MS
 	const wait = slot - now
-	if (wait > 0) await new Promise((r) => setTimeout(r, wait))
+	if (wait > 0) await new Promise(r => setTimeout(r, wait))
 }
 
 /**
@@ -90,7 +90,7 @@ export async function withRateLimitRetry<T>(
 			console.warn(
 				`[airtable] ${operation} attempt ${attempt} failed (${err instanceof Error ? err.message : err}); retrying in ${Math.round(wait)}ms`,
 			)
-			await new Promise((r) => setTimeout(r, wait))
+			await new Promise(r => setTimeout(r, wait))
 		}
 	}
 }

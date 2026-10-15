@@ -93,7 +93,7 @@ export function EventCalendar({
 		if (!open) return
 		const timer = setInterval(() => {
 			const current = calendarDay(new Date(), timeZone)
-			setSeen((prev) => (prev.today === current ? prev : { open: true, today: current }))
+			setSeen(prev => (prev.today === current ? prev : { open: true, today: current }))
 		}, 60_000)
 		return () => clearInterval(timer)
 	}, [open, timeZone])
@@ -108,7 +108,7 @@ export function EventCalendar({
 		let latest = Number.NEGATIVE_INFINITY
 		for (const day of days) {
 			const slices = events
-				.map((event) => ({ event, seg: daySegment(event, day, timeZone) }))
+				.map(event => ({ event, seg: daySegment(event, day, timeZone) }))
 				.filter(
 					(slice): slice is { event: CalendarEvent; seg: { startMin: number; endMin: number } } => slice.seg !== null,
 				)
@@ -128,7 +128,7 @@ export function EventCalendar({
 			for (const crowd of crowds) {
 				const laneEnds: number[] = []
 				for (const { event, seg } of crowd.slices) {
-					let lane = laneEnds.findIndex((end) => end <= seg.startMin)
+					let lane = laneEnds.findIndex(end => end <= seg.startMin)
 					if (lane === -1) {
 						lane = laneEnds.length
 						laneEnds.push(seg.endMin)
@@ -157,7 +157,7 @@ export function EventCalendar({
 	const gridHeight = spanHours * HOUR_PX
 	const hours = useMemo(() => Array.from({ length: spanHours + 1 }, (_, i) => startHour + i), [startHour, spanHours])
 
-	const upcoming = useMemo(() => events.filter((event) => eventIsUpcoming(event, new Date())).slice(0, 6), [events])
+	const upcoming = useMemo(() => events.filter(event => eventIsUpcoming(event, new Date())).slice(0, 6), [events])
 	const onDay = useMemo(() => (selected ? eventsOnDay(events, selected, timeZone) : []), [events, selected, timeZone])
 
 	function shift(delta: number) {
@@ -260,7 +260,7 @@ export function EventCalendar({
 
 					<div className="grid" style={{ gridTemplateColumns: "2.75rem repeat(7, minmax(0, 1fr))" }}>
 						<div className="relative mt-3" style={{ height: gridHeight }} aria-hidden="true">
-							{hours.map((hour) => (
+							{hours.map(hour => (
 								<span
 									key={hour}
 									className="label absolute right-1 text-[0.6rem] text-navy-faint"
@@ -270,7 +270,7 @@ export function EventCalendar({
 								</span>
 							))}
 						</div>
-						{days.map((day) => {
+						{days.map(day => {
 							const isToday = day === today
 							const isSelected = day === selected
 							return (
@@ -279,7 +279,7 @@ export function EventCalendar({
 									className={cx("relative mt-3 rounded-b-lg", isSelected && "bg-violet-pale/60")}
 									style={{ height: gridHeight }}
 								>
-									{hours.map((hour) => (
+									{hours.map(hour => (
 										<span
 											key={hour}
 											aria-hidden="true"
@@ -290,7 +290,7 @@ export function EventCalendar({
 											style={{ top: (hour - startHour) * HOUR_PX }}
 										/>
 									))}
-									{(segments.get(day) ?? []).map((segment) => (
+									{(segments.get(day) ?? []).map(segment => (
 										<EventBlock
 											key={segment.event.id}
 											segment={segment}
@@ -322,7 +322,7 @@ export function EventCalendar({
 					</p>
 				) : (
 					<ul className="mt-3 grid gap-3">
-						{listed.map((event) => (
+						{listed.map(event => (
 							<li key={event.id}>
 								<EventRow event={event} timeZone={timeZone} />
 							</li>

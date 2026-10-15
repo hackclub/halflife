@@ -48,11 +48,11 @@ export function permissionsFor(roles: Role[]): Permission[] {
 }
 
 export function hasPermission(roles: Role[], permission: Permission): boolean {
-	return roles.some((role) => ROLE_PERMISSIONS[role]?.includes(permission))
+	return roles.some(role => ROLE_PERMISSIONS[role]?.includes(permission))
 }
 
 export function hasAnyPermission(roles: Role[], permissions: Permission[]): boolean {
-	return permissions.some((p) => hasPermission(roles, p))
+	return permissions.some(p => hasPermission(roles, p))
 }
 
 export function hasRole(roles: Role[], role: Role): boolean {
@@ -64,7 +64,7 @@ export async function getUserRoles(userId: string): Promise<Role[]> {
 		where: { userId },
 		select: { role: true },
 	})
-	return rows.map((r) => r.role)
+	return rows.map(r => r.role)
 }
 
 /**
@@ -77,5 +77,5 @@ export async function getUserRolesIfExists(userId: string): Promise<Role[] | nul
 		where: { id: userId },
 		select: { roles: { select: { role: true } } },
 	})
-	return user ? user.roles.map((r) => r.role) : null
+	return user ? user.roles.map(r => r.role) : null
 }

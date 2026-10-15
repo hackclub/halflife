@@ -20,7 +20,7 @@ export function RoleEditor({ userId, current }: Readonly<{ userId: string; curre
 		<div className="hl-stack hl-stack--tight">
 			{error ? <Callout tone="danger">{error}</Callout> : null}
 			<div className="hl-row">
-				{ROLES.map((role) => {
+				{ROLES.map(role => {
 					const held = current.includes(role)
 					return (
 						<Button

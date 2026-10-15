@@ -15,7 +15,7 @@ export type Rect = {
 function firstVisible(selector: string): HTMLElement | null {
 	if (!selector) return null
 	const nodes = Array.from(document.querySelectorAll<HTMLElement>(selector))
-	return nodes.find((n) => n.getBoundingClientRect().width > 0) ?? null
+	return nodes.find(n => n.getBoundingClientRect().width > 0) ?? null
 }
 
 const same = (a: Rect | null, b: Rect | null) =>
@@ -90,13 +90,13 @@ export function Spotlight({
 				width: Math.round(r.width + pad * 2),
 				height: Math.round(r.height + pad * 2),
 			}
-			setRect((prev) => (same(prev, next) ? prev : next))
+			setRect(prev => (same(prev, next) ? prev : next))
 		}
 
 		// The second target is cleared when it goes, unlike the first. It is a panel that can be closed and a rail that disappears with the viewport, so a stale hole would sit over live page rather than over the thing it was cut for.
 		const other = also ? firstVisible(also) : null
 		if (!other) {
-			setAlsoRect((prev) => (prev === null ? prev : null))
+			setAlsoRect(prev => (prev === null ? prev : null))
 			return
 		}
 		const r = other.getBoundingClientRect()
@@ -106,7 +106,7 @@ export function Spotlight({
 			width: Math.round(r.width + pad * 2),
 			height: Math.round(r.height + pad * 2),
 		}
-		setAlsoRect((prev) => (same(prev, next) ? prev : next))
+		setAlsoRect(prev => (same(prev, next) ? prev : next))
 	}, [selector, also, pad])
 
 	/**

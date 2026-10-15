@@ -102,7 +102,7 @@ function records(text: string): { line: number; fields: string[] }[] {
 		out.push({ line: start, fields })
 	}
 	// Spreadsheets pad the end with empty rows; they are not items.
-	return out.filter((r) => r.fields.some((f) => f.trim() !== ""))
+	return out.filter(r => r.fields.some(f => f.trim() !== ""))
 }
 
 function bool(raw: string): boolean | undefined | "bad" {
@@ -128,7 +128,7 @@ export function parseShopCsv(text: string): { items: ShopCsvItem[]; problems: Sh
 
 	const problems: ShopCsvProblem[] = []
 	const columns = head.fields.map(
-		(h) =>
+		h =>
 			HEADER_ALIASES[
 				h
 					.trim()
@@ -141,7 +141,7 @@ export function parseShopCsv(text: string): { items: ShopCsvItem[]; problems: Sh
 			problems.push({ line: 1, message: `Unknown column "${h.trim()}". Columns are: ${SHOP_CSV_COLUMNS.join(", ")}.` })
 		}
 	}
-	const missing = REQUIRED.filter((c) => !columns.includes(c))
+	const missing = REQUIRED.filter(c => !columns.includes(c))
 	if (missing.length > 0)
 		problems.push({ line: 1, message: `Missing column${missing.length > 1 ? "s" : ""}: ${missing.join(", ")}.` })
 	if (problems.length > 0) return { items: [], problems }

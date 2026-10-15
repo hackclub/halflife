@@ -148,24 +148,24 @@ export async function getFeed(
 	}
 
 	// Each reel once: the leading ones are taken out of the page below them. A later page can still carry one, which the client drops as already seen.
-	const leadIds = new Set(leading.map((p) => p.id))
+	const leadIds = new Set(leading.map(p => p.id))
 	const page = pageResult(rows, opts.limit)
-	const pageItems = page.items.filter((p) => !leadIds.has(p.id))
+	const pageItems = page.items.filter(p => !leadIds.has(p.id))
 	const all = [...leading, ...pageItems]
 
 	// One query for the viewer's likes across the whole page, rather than a correlated exists() per row.
 	const liked = all.length
 		? await prisma.postLike.findMany({
-				where: { userId: viewerId, postId: { in: all.map((p) => p.id) } },
+				where: { userId: viewerId, postId: { in: all.map(p => p.id) } },
 				select: { postId: true },
 			})
 		: []
-	const likedIds = new Set(liked.map((l) => l.postId))
+	const likedIds = new Set(liked.map(l => l.postId))
 
 	return {
-		items: pageItems.map((p) => toFeedItem(p, likedIds)),
+		items: pageItems.map(p => toFeedItem(p, likedIds)),
 		nextCursor: page.nextCursor,
-		leading: leading.map((p) => toFeedItem(p, likedIds)),
+		leading: leading.map(p => toFeedItem(p, likedIds)),
 	}
 }
 
@@ -185,11 +185,11 @@ export async function getCreatorReels(creatorId: string, viewerId: string, limit
 
 	// One query for the viewer's likes across the whole set, exactly as the feed.
 	const liked = await prisma.postLike.findMany({
-		where: { userId: viewerId, postId: { in: rows.map((p) => p.id) } },
+		where: { userId: viewerId, postId: { in: rows.map(p => p.id) } },
 		select: { postId: true },
 	})
-	const likedIds = new Set(liked.map((l) => l.postId))
-	return rows.map((p) => toFeedItem(p, likedIds))
+	const likedIds = new Set(liked.map(l => l.postId))
+	return rows.map(p => toFeedItem(p, likedIds))
 }
 
 export type CreatePostInput = {
@@ -241,7 +241,7 @@ export async function createPost(input: CreatePostInput): Promise<FeedItem> {
 	const weekNumber = await currentWeekNumber()
 
 	// The reel and the streak day it earns land together: a rolled-back post must not leave a day behind, exactly as a rolled-back devlog must not.
-	const post = await prisma.$transaction(async (tx) => {
+	const post = await prisma.$transaction(async tx => {
 		const created = await tx.post.create({
 			data: {
 				userId: input.userId,
@@ -282,7 +282,7 @@ export async function createPost(input: CreatePostInput): Promise<FeedItem> {
  * The unique key does the work: a repeat view is a failed insert, so the count only moves when a genuinely new viewer arrives. This matters because the program pays prizes on virality – a number anyone can inflate by refreshing is a number that decides who gets a drawing tablet.
  */
 export async function recordView(postId: string, userId: string): Promise<number> {
-	return prisma.$transaction(async (tx) => {
+	return prisma.$transaction(async tx => {
 		// Only a live, published reel counts. Without this, views keep accruing on a hidden or deleted post, and the virality number those prizes rest on could be moved for a reel that is out of the feed.
 		const post = await tx.post.findFirst({ where: { id: postId, ...visible }, select: { id: true } })
 		if (!post) throw new HttpError("NOT_FOUND", "Post not found")
@@ -315,7 +315,7 @@ export async function setLike(
 	userId: string,
 	liked: boolean,
 ): Promise<{ likeCount: number; likedByMe: boolean }> {
-	return prisma.$transaction(async (tx) => {
+	return prisma.$transaction(async tx => {
 		const post = await tx.post.findFirst({ where: { id: postId, ...visible }, select: { id: true } })
 		if (!post) throw new HttpError("NOT_FOUND", "Post not found")
 
@@ -366,7 +366,7 @@ export async function getComments(
 	})
 	const page = pageResult(rows, opts.limit)
 	return {
-		items: page.items.map((c) => ({
+		items: page.items.map(c => ({
 			id: c.id,
 			body: c.body,
 			createdAt: c.createdAt,
@@ -381,7 +381,7 @@ export async function addComment(postId: string, userId: string, body: string): 
 	const clean = sanitize(body)
 	if (!clean) throw new HttpError("VALIDATION_FAILED", "Say something")
 
-	return prisma.$transaction(async (tx) => {
+	return prisma.$transaction(async tx => {
 		const post = await tx.post.findFirst({ where: { id: postId, ...visible }, select: { id: true } })
 		if (!post) throw new HttpError("NOT_FOUND", "Post not found")
 
@@ -403,7 +403,7 @@ export async function addComment(postId: string, userId: string, body: string): 
 
 /** Delete your own comment. Moderators use `hideComment` instead. */
 export async function deleteOwnComment(commentId: string, userId: string): Promise<void> {
-	await prisma.$transaction(async (tx) => {
+	await prisma.$transaction(async tx => {
 		// `hiddenAt: null` too: a moderator-hidden comment already had its decrement when it was hidden, so letting the owner delete it as well would take the count down a second time and could drive it negative.
 		const { count } = await tx.postComment.updateMany({
 			where: { id: commentId, userId, deletedAt: null, hiddenAt: null },
@@ -423,7 +423,7 @@ export async function deleteOwnComment(commentId: string, userId: string): Promi
 
 /** Soft-delete your own reel. */
 export async function deleteOwnPost(postId: string, userId: string): Promise<void> {
-	await prisma.$transaction(async (tx) => {
+	await prisma.$transaction(async tx => {
 		const { count } = await tx.post.updateMany({
 			where: { id: postId, userId, deletedAt: null },
 			data: { deletedAt: new Date(), status: PostStatus.REMOVED },
@@ -458,7 +458,7 @@ export async function restorePost(postId: string): Promise<void> {
 }
 
 export async function hideComment(commentId: string, moderatorId: string, reason: string): Promise<void> {
-	await prisma.$transaction(async (tx) => {
+	await prisma.$transaction(async tx => {
 		const { count } = await tx.postComment.updateMany({
 			where: { id: commentId, hiddenAt: null, deletedAt: null },
 			data: { hiddenAt: new Date(), hiddenById: moderatorId, hiddenReason: sanitize(reason) },

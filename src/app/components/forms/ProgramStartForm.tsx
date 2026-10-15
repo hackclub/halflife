@@ -61,7 +61,7 @@ export function ProgramStartForm({
 						className="hl-input"
 						type="date"
 						value={date}
-						onChange={(e) => {
+						onChange={e => {
 							setDate(e.target.value)
 							setSaved(false)
 						}}

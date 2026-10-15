@@ -127,8 +127,8 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 			await read(await fetch(`/api/projects/${projectId}/hackatime/${id}`, { method: "DELETE" }))
 		})
 
-	const linkedNames = new Set(links?.map((l) => l.hackatimeProject))
-	const available = account.state === "linked" ? account.projects.filter((p) => !linkedNames.has(p.name)) : []
+	const linkedNames = new Set(links?.map(l => l.hackatimeProject))
+	const available = account.state === "linked" ? account.projects.filter(p => !linkedNames.has(p.name)) : []
 
 	return (
 		<>
@@ -164,7 +164,7 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 					<>
 						{links.length > 0 && (
 							<ul className="mt-4 grid gap-2">
-								{links.map((l) => (
+								{links.map(l => (
 									<li
 										key={l.id}
 										className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl bg-cream px-3.5 py-2.5"
@@ -219,14 +219,14 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 								<select
 									id={`hackatime-${projectId}`}
 									value={picked}
-									onChange={(e) => setPicked(e.target.value)}
+									onChange={e => setPicked(e.target.value)}
 									disabled={available.length === 0 || busy !== null}
 									className={cx(inputClass, "min-w-0 flex-1 py-2.5 disabled:text-navy-soft")}
 								>
 									<option value="">
 										{available.length === 0 ? "No other Hackatime projects yet" : "Pick a Hackatime project…"}
 									</option>
-									{available.map((p) => (
+									{available.map(p => (
 										<option key={p.name} value={p.name}>
 											{p.name} · {fmtHours(p.totalSeconds / 3600)}
 										</option>

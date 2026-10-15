@@ -35,7 +35,7 @@ export default function WeekCountdown() {
 				const body = (await res.json()) as { weekOpensAt?: unknown; programEndsAt?: unknown }
 				if (!live || !Array.isArray(body.weekOpensAt) || typeof body.programEndsAt !== "string") return
 				setSchedule({
-					opens: body.weekOpensAt.map((at) => new Date(String(at)).getTime()),
+					opens: body.weekOpensAt.map(at => new Date(String(at)).getTime()),
 					endsAt: new Date(body.programEndsAt).getTime(),
 				})
 			} catch {
@@ -57,7 +57,7 @@ export default function WeekCountdown() {
 	/**
 	 * How many weeks have opened – which is the week running, since the programme runs one to ten. Null until the schedule lands, and that is what holds the placeholder up.
 	 */
-	const opened = schedule !== null && now !== null ? schedule.opens.filter((at) => at <= now).length : null
+	const opened = schedule !== null && now !== null ? schedule.opens.filter(at => at <= now).length : null
 	const over = schedule !== null && now !== null && now >= schedule.endsAt
 	const counting = opened === null || opened === 0
 	const label = counting ? "week 1 starts in" : over ? "the program is over" : `week ${opened} is open`
@@ -77,7 +77,7 @@ export default function WeekCountdown() {
 						className="mt-0.5 flex items-baseline justify-center gap-[0.4em] font-display font-bold tabular-nums"
 						style={{ fontSize: "clamp(1.5rem, 6vw, 2.25rem)", lineHeight: 1 }}
 					>
-						{COUNTDOWN_UNITS.map((unit) => (
+						{COUNTDOWN_UNITS.map(unit => (
 							<span key={unit.key} className="inline-flex flex-col items-center" style={{ lineHeight: 1 }}>
 								<span style={{ fontSize: "1em" }}>
 									{parts === null ? "--" : unit.key === "days" ? parts.days : pad2(parts[unit.key])}

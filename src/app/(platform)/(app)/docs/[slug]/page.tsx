@@ -28,21 +28,21 @@ function highlightCoins(text: string): string | React.ReactNode[] {
 }
 
 export function generateStaticParams() {
-	return DOCS.map((d) => ({ slug: d.slug }))
+	return DOCS.map(d => ({ slug: d.slug }))
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
 	const { slug } = await params
-	const doc = DOCS.find((d) => d.slug === slug)
+	const doc = DOCS.find(d => d.slug === slug)
 	return { title: doc ? `${doc.title} – Half Life docs` : "Docs – Half Life" }
 }
 
 export default async function DocPage({ params }: { params: Promise<{ slug: string }> }) {
 	const { slug } = await params
-	const doc = DOCS.find((d) => d.slug === slug)
+	const doc = DOCS.find(d => d.slug === slug)
 	if (!doc) notFound()
 
-	const i = DOCS.findIndex((d) => d.slug === slug)
+	const i = DOCS.findIndex(d => d.slug === slug)
 	const next = DOCS[i + 1]
 
 	return (
@@ -63,13 +63,13 @@ export default async function DocPage({ params }: { params: Promise<{ slug: stri
 					<p className="mt-3 max-w-[60ch] text-[1.05rem] leading-relaxed text-navy-soft">{doc.summary}</p>
 
 					<div className="mt-9 grid gap-9">
-						{doc.body.map((block) => (
+						{doc.body.map(block => (
 							<section key={block.heading} id={block.heading.toLowerCase().replace(/\s+/g, "-")}>
 								<h2 className="text-[1.4rem] leading-tight font-extrabold tracking-[-0.025em] text-navy">
 									{block.heading}
 								</h2>
 								<div className="mt-3 grid gap-4">
-									{block.paragraphs.map((p) => (
+									{block.paragraphs.map(p => (
 										<p key={p.slice(0, 24)} className="max-w-[68ch] text-[1rem] leading-[1.75] text-navy">
 											{highlightCoins(p)}
 										</p>
@@ -77,7 +77,7 @@ export default async function DocPage({ params }: { params: Promise<{ slug: stri
 								</div>
 								{block.list && (
 									<ul className="mt-4 grid max-w-[64ch] gap-2">
-										{block.list.map((li) => (
+										{block.list.map(li => (
 											<li key={li} className="flex gap-3 text-[0.96rem] leading-relaxed text-navy">
 												<span aria-hidden="true" className="mt-2.5 size-1.5 shrink-0 rounded-full bg-teal" />
 												{li}
@@ -117,7 +117,7 @@ export default async function DocPage({ params }: { params: Promise<{ slug: stri
 				<nav aria-label="On this page" className="hidden lg:sticky lg:top-24 lg:block">
 					<p className="label mb-3 text-navy-faint">On this page</p>
 					<ul className="grid gap-2 border-l border-dashed border-line pl-4">
-						{doc.body.map((b) => (
+						{doc.body.map(b => (
 							<li key={b.heading}>
 								<a
 									href={`#${b.heading.toLowerCase().replace(/\s+/g, "-")}`}

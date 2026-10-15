@@ -33,9 +33,9 @@ function rejectedFields(err: AirtableError, fields: Record<string, unknown>): st
 	} catch {
 		// Not JSON; search the raw text.
 	}
-	const byName = Object.keys(fields).filter((k) => message.includes(`"${k}"`))
+	const byName = Object.keys(fields).filter(k => message.includes(`"${k}"`))
 	if (byName.length > 0) return byName
-	return Object.keys(fields).filter((k) => {
+	return Object.keys(fields).filter(k => {
 		const v = fields[k]
 		return (
 			(typeof v === "string" && v.length > 0 && message.includes(v)) ||
@@ -139,7 +139,7 @@ export async function writeYswsRecord(
 			const bad = err.status === 422 ? rejectedFields(err, current) : []
 			if (bad.length === 0 || dropped.length + bad.length > MAX_DROPPED_FIELDS) throw err
 			console.warn(
-				`[airtable] YSWS refused ${bad.map((b) => `"${b}"`).join(", ")}; writing without: ${err.body.slice(0, 200)}`,
+				`[airtable] YSWS refused ${bad.map(b => `"${b}"`).join(", ")}; writing without: ${err.body.slice(0, 200)}`,
 			)
 			for (const b of bad) delete current[b]
 			dropped.push(...bad)
@@ -220,12 +220,12 @@ export async function deleteUnifiedRecords(
 	const table = process.env.AIRTABLE_UNIFIED_APPROVED_TABLE
 	if (!apiKey || !baseId || !table) return { deleted: [], skipped: "not_configured" }
 
-	const query = recordIds.map((id) => `records[]=${encodeURIComponent(id)}`).join("&")
+	const query = recordIds.map(id => `records[]=${encodeURIComponent(id)}`).join("&")
 	try {
 		const result = await withRateLimitRetry("deleteUnifiedRecords", () =>
 			airtableFetch<{ records: { id: string }[] }>({ apiKey, baseId }, `${table}?${query}`, { method: "DELETE" }),
 		)
-		return { deleted: result.records.map((r) => r.id) }
+		return { deleted: result.records.map(r => r.id) }
 	} catch (err) {
 		if (err instanceof AirtableError && err.isPermission) {
 			return { deleted: [], skipped: "no_write_access", error: err.message }

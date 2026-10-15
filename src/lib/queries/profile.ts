@@ -110,12 +110,12 @@ export async function getProfile(userId: string, viewerId: string): Promise<Prof
 		return da - db
 	})
 
-	const shaped: ProfileProject[] = ordered.map((p) => {
+	const shaped: ProfileProject[] = ordered.map(p => {
 		const def = getThemeDef(p.theme)
 		const warmup = p.theme === Theme.WARMUP
-		const week = WEEK_META.find((w) => w.id === def.designWeek)
+		const week = WEEK_META.find(w => w.id === def.designWeek)
 		// A tracked entry's time arrives through its Hackatime link, so it adds nothing to the journalled number here either.
-		const journal = p.workSessions.filter((s) => s.hoursSource !== "HACKATIME_TRACKED")
+		const journal = p.workSessions.filter(s => s.hoursSource !== "HACKATIME_TRACKED")
 		const hours = journal.reduce((n, s) => n + (s.hoursApproved ?? s.hoursClaimed), 0)
 		return {
 			id: p.id,
@@ -126,8 +126,8 @@ export async function getProfile(userId: string, viewerId: string): Promise<Prof
 			warmup,
 			thumbnail: projectThumbnail(
 				publicUrlFor(p.coverImageKey),
-				p.workSessions.map((s) => ({ createdAt: s.createdAt, content: s.content })),
-				p.posts.map((post) => ({
+				p.workSessions.map(s => ({ createdAt: s.createdAt, content: s.content })),
+				p.posts.map(post => ({
 					createdAt: post.createdAt,
 					thumbnailUrl: publicUrlFor(post.thumbnailKey),
 					videoUrl: publicUrlFor(post.objectKey),

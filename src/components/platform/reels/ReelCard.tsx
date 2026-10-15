@@ -71,7 +71,7 @@ export function sendLike(reel: FeedItem, next: boolean, onPatch?: (id: string, p
 		headers: { "content-type": "application/json" },
 		body: JSON.stringify({ liked: next }),
 	})
-		.then(async (res) => {
+		.then(async res => {
 			if (!res.ok) {
 				// Refused: put it back as it was.
 				onPatch?.(reel.id, { likedByMe: reel.likedByMe, likeCount: reel.likeCount })
@@ -212,11 +212,11 @@ export function ReelCard({
 					loop
 					preload={reel.thumbnailUrl ? "none" : "metadata"}
 					// The element is the truth about whether it is playing: it can be paused by the observer, by another card starting, or by the browser refusing autoplay, none of which pass through the button.
-					onPlay={(e) => {
+					onPlay={e => {
 						notePlaying(e.currentTarget)
 						setPlaying(true)
 					}}
-					onPause={(e) => {
+					onPause={e => {
 						noteStopped(e.currentTarget)
 						setPlaying(false)
 					}}

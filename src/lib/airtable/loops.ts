@@ -76,18 +76,18 @@ async function loopsValues(): Promise<LoopsValues[]> {
 		},
 	})
 
-	return users.map((u) => {
+	return users.map(u => {
 		const weeks: Record<number, boolean> = {}
 		for (const def of THEMES) {
-			const project = u.themeProjects.find((p) => p.theme === def.id)
+			const project = u.themeProjects.find(p => p.theme === def.id)
 			weeks[def.designWeek] = def.designWeek === 1 ? u.onboardingCompletedAt !== null : project?.namedAt != null
-			weeks[def.buildWeek] = project?.workSessions.some((s) => s.phase === Phase.BUILD) ?? false
+			weeks[def.buildWeek] = project?.workSessions.some(s => s.phase === Phase.BUILD) ?? false
 		}
 		// Last entry means evidence of an actual entry: a manually written session, or a session carrying a timelapse. A HACKATIME_TRACKED row only says a Hackatime project was linked and contributes nothing on its own – someone who has only linked Hackatime gets no timestamp, and a previously stamped one is cleared below.
 		const lastEntryAt = u.themeProjects
-			.flatMap((p) => p.workSessions)
-			.filter((s) => s.hoursSource !== HoursSource.HACKATIME_TRACKED || s.timelapses.length > 0)
-			.map((s) => s.createdAt)
+			.flatMap(p => p.workSessions)
+			.filter(s => s.hoursSource !== HoursSource.HACKATIME_TRACKED || s.timelapses.length > 0)
+			.map(s => s.createdAt)
 			.reduce<Date | null>((a, b) => (a && a > b ? a : b), null)
 		// "Last login" means last time we saw them, so a page view wins over the sign-in that started the session; a sign-in with no view since still counts, so take whichever is newer.
 		const lastLoginAt = newest(u.lastLoginAt, u.lastActiveAt)
@@ -243,8 +243,8 @@ async function signupRows(config: NonNullable<ReturnType<typeof getAirtableConfi
 		...WEEKS.map(LOOPS_FIELDS.week),
 	]
 	const writable = await existingColumns(config, TABLE, all)
-	const want = all.filter((c) => writable.has(c))
-	const fieldsQs = want.map((f) => `fields%5B%5D=${encodeURIComponent(f)}`).join("&")
+	const want = all.filter(c => writable.has(c))
+	const fieldsQs = want.map(f => `fields%5B%5D=${encodeURIComponent(f)}`).join("&")
 	let offset: string | undefined
 	do {
 		const page = await withRateLimitRetry("listSignups", () =>

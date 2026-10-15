@@ -185,7 +185,7 @@ export function reconcileDisbursement(
 	// Unreadable is not absent. If we could not parse what HCB holds, the only safe answer is to send the admin to look, never to retry the top-up.
 	if (list.kind === "unreadable") return { kind: "ambiguous" }
 
-	const sameAmount = list.rows.filter((d) => d.amountCents === amountCents)
+	const sameAmount = list.rows.filter(d => d.amountCents === amountCents)
 	if (sameAmount.length === 0) return { kind: "absent" }
 
 	const dated: { at: number; transactionId: string | null }[] = []
@@ -196,7 +196,7 @@ export function reconcileDisbursement(
 	}
 
 	const after = attemptedAt.getTime() - TOPUP_SKEW_MS
-	const inWindow = dated.filter((d) => d.at >= after)
+	const inWindow = dated.filter(d => d.at >= after)
 	if (inWindow.length === 1) return { kind: "landed", transactionId: inWindow[0]?.transactionId ?? null }
 	if (inWindow.length > 1) return { kind: "ambiguous" }
 	return { kind: "absent" }

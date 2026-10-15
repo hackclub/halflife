@@ -24,14 +24,14 @@ export const GET = withRoute(async () => {
 		focus: scheduled ? { theme: scheduled.theme.slug, phase: scheduled.phase } : null,
 		submissionsOpen: settings.submissionsOpen,
 		shopOpen: settings.shopOpen,
-		themes: THEMES.map((t) => ({
+		themes: THEMES.map(t => ({
 			slug: t.slug,
 			label: t.label,
 			blurb: t.blurb,
 			designWeek: t.designWeek,
 			buildWeek: t.buildWeek,
 		})),
-		tiers: TIERS.map((t) => ({
+		tiers: TIERS.map(t => ({
 			id: t.id,
 			name: t.name,
 			grantUsd: t.grantUsd,

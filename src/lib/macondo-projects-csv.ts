@@ -57,7 +57,7 @@ function records(text: string): { line: number; fields: string[] }[] {
 		fields.push(field)
 		out.push({ line: start, fields })
 	}
-	return out.filter((r) => r.fields.some((f) => f.trim() !== ""))
+	return out.filter(r => r.fields.some(f => f.trim() !== ""))
 }
 
 // Only ever read through `typeof` below, to derive the `Column` union that keeps HEADER_ALIASES honest - every alias has to name a real column. That is a type-position use, which this rule cannot see (the config is not type-aware), hence the disable.
@@ -193,7 +193,7 @@ export function parseProjectsCsv(text: string): { rows: MacondoRow[]; problems: 
 	if (!head) return { rows: [], problems: [{ line: 0, message: "The file is empty." }] }
 
 	const columns = head.fields.map(
-		(h) =>
+		h =>
 			HEADER_ALIASES[
 				h
 					.trim()
@@ -413,7 +413,7 @@ export async function importMacondoProjects(actor: ImportActor, csv: string): Pr
 				}
 			}
 
-			await prisma.$transaction(async (tx) => {
+			await prisma.$transaction(async tx => {
 				await logAuditTx(tx, {
 					action: AuditAction.ADMIN_IMPORT_AIRTABLE_PROJECT,
 					actorId: actor.id,

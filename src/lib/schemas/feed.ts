@@ -60,7 +60,7 @@ export const publicReelLinksSchema = z
 			)
 			.min(1, "Add at least one link")
 			.max(4)
-			.refine((links) => new Set(links.map((l) => l.platform)).size === links.length, {
+			.refine(links => new Set(links.map(l => l.platform)).size === links.length, {
 				message: "One link per platform",
 			}),
 	})

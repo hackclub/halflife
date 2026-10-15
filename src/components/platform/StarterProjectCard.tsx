@@ -121,7 +121,7 @@ export function StarterProjectCard({
 			<p className="mt-1.5 text-[0.88rem] leading-relaxed text-navy-soft">{starter.description}</p>
 
 			<ul aria-label="On the board" className="mt-3 flex flex-wrap gap-1.5">
-				{starter.parts.map((part) => (
+				{starter.parts.map(part => (
 					<li key={part} className="rounded-full bg-cream px-2.5 py-1 text-[0.74rem] font-semibold text-navy-soft">
 						{part}
 					</li>

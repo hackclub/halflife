@@ -18,12 +18,12 @@ import { Timeline } from "./Timeline"
  */
 export function PublicProjectDetail({ data }: { data: PublicProjectData }) {
 	const warmup = data.weekId === WARMUP_WEEK_ID
-	const week = WEEK_META.find((w) => w.id === data.weekId) ?? WEEK_META[0]
+	const week = WEEK_META.find(w => w.id === data.weekId) ?? WEEK_META[0]
 	const buildWeekId = data.weekId + DESIGN_WEEKS
 	const weekFor = (phase: "DESIGN" | "BUILD") =>
 		warmup ? WARMUP_WEEK_ID : phase === "DESIGN" ? data.weekId : buildWeekId
 
-	const sessions = data.timeline.flatMap((t) => (t.kind === "session" ? [t] : []))
+	const sessions = data.timeline.flatMap(t => (t.kind === "session" ? [t] : []))
 	const hours = sessions.reduce((n, s) => n + (s.approvedHours ?? s.hours), 0)
 
 	return (

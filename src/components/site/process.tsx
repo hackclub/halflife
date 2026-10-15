@@ -233,7 +233,7 @@ const EXTRA_SIZES = "220px"
 function WeekList() {
 	return (
 		<ul className="sr-only">
-			{[DESIGN_WEEKS.lead, ...DESIGN_WEEKS.rest].map((week) => (
+			{[DESIGN_WEEKS.lead, ...DESIGN_WEEKS.rest].map(week => (
 				<li key={week.subject}>{`${week.week}: ${week.subject}`}</li>
 			))}
 		</ul>
@@ -303,7 +303,7 @@ export default function Process() {
 
 				{/* Decorative, and drawn before the plates so that if a plate is ever
             resized past one of them the plate wins the overlap. */}
-				{EXTRAS.map((extra) => (
+				{EXTRAS.map(extra => (
 					<div
 						key={extra.src.src}
 						aria-hidden
@@ -448,7 +448,7 @@ export default function Process() {
 				<Aside aside={community} origin={[59, 2367 + SHIFT]} />
 
 				{/* The welds, drawn last so they ride over the plates they join */}
-				{WELDS.map((w) => {
+				{WELDS.map(w => {
 					const b = weld(w.exit, w.entry, w.mean)
 					return (
 						<svg

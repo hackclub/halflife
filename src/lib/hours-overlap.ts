@@ -35,8 +35,8 @@ export type HackatimeSpan = Interval
  */
 export function mergeIntervals(intervals: readonly Interval[]): Interval[] {
 	const clean: Interval[] = intervals
-		.filter((i) => Number.isFinite(i?.start) && Number.isFinite(i?.end) && (i?.end ?? 0) > (i?.start ?? 0))
-		.map((i) => ({ start: i.start, end: i.end }))
+		.filter(i => Number.isFinite(i?.start) && Number.isFinite(i?.end) && (i?.end ?? 0) > (i?.start ?? 0))
+		.map(i => ({ start: i.start, end: i.end }))
 		.sort((a, b) => a.start - b.start)
 	const first = clean[0]
 	if (!first) return []

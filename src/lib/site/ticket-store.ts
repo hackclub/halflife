@@ -78,7 +78,7 @@ export type HelpTicketStats = {
 function closerBoard(rows: { resolvedBy: string | null; authorSlackId: string }[]): HelpTicketStats["leaderboard"] {
 	return tallyBoard(
 		rows,
-		(row) => row.resolvedBy,
+		row => row.resolvedBy,
 		(row, key) => key === row.authorSlackId,
 	).map(({ key: resolvedBy, count: closed }) => ({ resolvedBy, closed }))
 }
@@ -133,7 +133,7 @@ export async function backfillHelpTickets(channel: string): Promise<{
 	exhausted: boolean
 }> {
 	const { messages, exhausted } = await listChannelHistory(channel)
-	const rows = messages.filter(isTicketOpeningMessage).map((message) => ({
+	const rows = messages.filter(isTicketOpeningMessage).map(message => ({
 		authorSlackId: message.user,
 		helpChannel: channel,
 		helpTs: message.ts,

@@ -35,7 +35,7 @@ async function main() {
 	// Every Signups row carrying a timestamp, plus the keys the join needs.
 	const withTimestamp: AirtableRecord[] = []
 	const want = [LOOPS_FIELDS.email, LOOPS_FIELDS.userId, LOOPS_FIELDS.lastEntryAt]
-	const fieldsQs = want.map((f) => `fields%5B%5D=${encodeURIComponent(f)}`).join("&")
+	const fieldsQs = want.map(f => `fields%5B%5D=${encodeURIComponent(f)}`).join("&")
 	let offset: string | undefined
 	do {
 		const page = await withRateLimitRetry("listSignups", () =>
@@ -66,8 +66,8 @@ async function main() {
 		},
 		select: { id: true, email: true },
 	})
-	const qualifiedIds = new Set(qualifiers.map((u) => u.id))
-	const qualifiedEmails = new Map(qualifiers.map((u) => [u.email.trim().toLowerCase(), u.id]))
+	const qualifiedIds = new Set(qualifiers.map(u => u.id))
+	const qualifiedEmails = new Map(qualifiers.map(u => [u.email.trim().toLowerCase(), u.id]))
 
 	// The join keys the sync would use: the row's own user id column, the RSVP
 	// drain's record id, and email.
@@ -131,7 +131,7 @@ async function main() {
 			airtableFetch(config, encodeURIComponent(RSVP_TABLE_ID), {
 				method: "PATCH",
 				body: JSON.stringify({
-					records: batch.map((r) => ({ id: r.id, fields: { [LOOPS_FIELDS.lastEntryAt]: null } })),
+					records: batch.map(r => ({ id: r.id, fields: { [LOOPS_FIELDS.lastEntryAt]: null } })),
 					typecast: false,
 				}),
 			}),
@@ -141,7 +141,7 @@ async function main() {
 }
 
 main()
-	.catch((err) => {
+	.catch(err => {
 		console.error(err)
 		process.exitCode = 1
 	})

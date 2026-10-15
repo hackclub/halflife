@@ -91,7 +91,7 @@ export function Modal({
 			}
 			if (e.key !== "Tab" || !node) return
 			const items = Array.from(node.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
-				(el) => el.offsetParent !== null || el === document.activeElement,
+				el => el.offsetParent !== null || el === document.activeElement,
 			)
 			const firstEl = items[0]
 			const lastEl = items[items.length - 1]

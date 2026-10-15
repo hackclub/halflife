@@ -193,7 +193,7 @@ export const BUILD_WEEK_COINS = BUILD_HOURS * COINS_PER_HOUR * BUILD_WEEKS
 /**
  * Column 4 is the economy and is left exactly as the sheet has it – every tier earns the same hours for the same machine. The ten-hour floor only touches the tier-1 hours figure the goal picker shows; it must never reach the pace hours, or the sheet's arithmetic stops landing on the price.
  */
-export const PRINTERS: PrinterGoal[] = SHEET.map((p) => ({
+export const PRINTERS: PrinterGoal[] = SHEET.map(p => ({
 	...p,
 	hoursPerWeek: Math.max(TIER1_MIN_HOURS, p.hoursPerWeek),
 	coinsPerWeek: p.paceHours * COINS_PER_HOUR,
@@ -204,7 +204,7 @@ export const DEFAULT_GOAL_ID = "ender-3-v3-se"
 /**
  * The gentlest, which is the cheapest machine's pace. It used to gate submission; now the submit floor is the funded hours and this is only the threshold for "that starter will not fill your week" style warnings. It is read off the board rather than restated so that repricing the catalogue moves it with it.
  */
-export const MIN_HOURS_PER_WEEK = Math.min(...PRINTERS.map((p) => p.hoursPerWeek))
+export const MIN_HOURS_PER_WEEK = Math.min(...PRINTERS.map(p => p.hoursPerWeek))
 
 /**
  * What a design week asks of you, for a weekly earning pace and a tier.
@@ -227,7 +227,7 @@ export function paceTarget(goal: PrinterGoal, weekId: number): number {
 }
 
 export function printerById(id: string): PrinterGoal {
-	const found = PRINTERS.find((p) => p.id === id) ?? PRINTERS.find((p) => p.id === DEFAULT_GOAL_ID)
+	const found = PRINTERS.find(p => p.id === id) ?? PRINTERS.find(p => p.id === DEFAULT_GOAL_ID)
 	if (!found) throw new Error(`no printer goal for ${id}, and ${DEFAULT_GOAL_ID} is missing from the catalogue`)
 	return found
 }

@@ -34,7 +34,7 @@ export const projectExtensionSchema = z
 		theme: z.enum(Theme).optional(),
 	})
 	.strict()
-	.refine((b) => b.submissionExtensionUntil !== undefined || b.theme !== undefined, "Nothing to change")
+	.refine(b => b.submissionExtensionUntil !== undefined || b.theme !== undefined, "Nothing to change")
 
 /** Closing a maker's dispute. The note is optional; it is for the record. */
 export const resolveDisputeSchema = z.object({ note: boundedText(2000).optional() }).strict()
@@ -56,7 +56,7 @@ export const creditAdjustSchema = z
 			.int()
 			.min(-10_000, "Amount must be within ±10,000 per adjustment")
 			.max(10_000, "Amount must be within ±10,000 per adjustment")
-			.refine((n) => n !== 0, "Amount cannot be zero"),
+			.refine(n => n !== 0, "Amount cannot be zero"),
 		reason: boundedText(1000, 1),
 		/**
 		 * Which pot to move. Defaults to spendable – an admin correcting someone's balance almost always means ordinary coins, and topping up the printer fund should be a deliberate choice rather than the accident of an omitted field.
@@ -124,7 +124,7 @@ export const shopRegionUpdateSchema = z
 		active: z.boolean().optional(),
 	})
 	.strict()
-	.refine((b) => b.name !== undefined || b.sortOrder !== undefined || b.active !== undefined, "Nothing to change")
+	.refine(b => b.name !== undefined || b.sortOrder !== undefined || b.active !== undefined, "Nothing to change")
 
 /**
  * One region's coin price for one shop item. Null clears the override back to base pricing.
@@ -155,7 +155,7 @@ export const orderFulfillmentSchema = z
 		stage: z.enum(ShopFulfillmentStage).optional(),
 	})
 	.strict()
-	.refine((b) => b.method !== undefined || b.stage !== undefined, "Nothing to change")
+	.refine(b => b.method !== undefined || b.stage !== undefined, "Nothing to change")
 
 /**
  * Creating an event on the programme calendar.
@@ -182,7 +182,7 @@ export const programEventCreateSchema = z
 		repeatWeeks: z.number().int().min(1).max(52).default(1),
 	})
 	.strict()
-	.refine((b) => b.endsAt === null || b.endsAt === undefined || b.endsAt > b.startsAt, {
+	.refine(b => b.endsAt === null || b.endsAt === undefined || b.endsAt > b.startsAt, {
 		message: "An event has to end after it starts",
 		path: ["endsAt"],
 	})
@@ -204,7 +204,7 @@ export const programEventUpdateSchema = z
 		published: z.boolean().optional(),
 	})
 	.strict()
-	.refine((b) => Object.keys(b).length > 0, "Nothing to change")
+	.refine(b => Object.keys(b).length > 0, "Nothing to change")
 
 export const programSettingsSchema = z
 	.object({

@@ -90,8 +90,8 @@ async function main() {
 		})
 	}
 
-	const spendable = async () => (await prisma.$transaction((tx) => getBalances(tx, participant.id))).spendable
-	const banked = async () => (await prisma.$transaction((tx) => getBalances(tx, participant.id))).banked
+	const spendable = async () => (await prisma.$transaction(tx => getBalances(tx, participant.id))).spendable
+	const banked = async () => (await prisma.$transaction(tx => getBalances(tx, participant.id))).banked
 
 	check("starting balance", await spendable(), 0)
 
@@ -173,7 +173,7 @@ async function main() {
 	})
 
 	const attempts = await Promise.allSettled(Array.from({ length: 8 }, () => purchase(participant.id, item.id, 1)))
-	const succeeded = attempts.filter((a) => a.status === "fulfilled").length
+	const succeeded = attempts.filter(a => a.status === "fulfilled").length
 	check("only one of eight concurrent purchases succeeds", succeeded, 1)
 
 	check("balance never goes negative", await spendable(), 0)
@@ -210,8 +210,8 @@ async function main() {
 			verificationStatus: "verified",
 		},
 	})
-	const saverSpendable = async () => (await prisma.$transaction((tx) => getBalances(tx, saver.id))).spendable
-	const saverBanked = async () => (await prisma.$transaction((tx) => getBalances(tx, saver.id))).banked
+	const saverSpendable = async () => (await prisma.$transaction(tx => getBalances(tx, saver.id))).spendable
+	const saverBanked = async () => (await prisma.$transaction(tx => getBalances(tx, saver.id))).banked
 
 	const designProject = await prisma.themeProject.create({
 		data: {
@@ -299,7 +299,7 @@ async function main() {
 	process.exit(failures === 0 ? 0 : 1)
 }
 
-main().catch(async (err) => {
+main().catch(async err => {
 	console.error(err)
 	await prisma.$disconnect()
 	process.exit(1)

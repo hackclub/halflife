@@ -31,16 +31,16 @@ export const POST = withRoute(async (req: Request) => {
 	}
 
 	const taken = await prisma.shopItem.findMany({
-		where: { id: { in: items.map((i) => i.id) } },
+		where: { id: { in: items.map(i => i.id) } },
 		select: { id: true },
 	})
 	if (taken.length > 0) {
 		return fail("CONFLICT", "Nothing was imported. These slugs already exist.", {
-			problems: taken.map((t) => ({ line: 0, message: `Slug "${t.id}" already exists. Edit it from its own page.` })),
+			problems: taken.map(t => ({ line: 0, message: `Slug "${t.id}" already exists. Edit it from its own page.` })),
 		})
 	}
 
-	const data = items.map((item) => ({
+	const data = items.map(item => ({
 		...item,
 		name: sanitize(item.name),
 		description: sanitize(item.description),
@@ -51,7 +51,7 @@ export const POST = withRoute(async (req: Request) => {
 	await prisma.shopItem.createMany({ data })
 
 	await Promise.all(
-		data.map((item) =>
+		data.map(item =>
 			logAudit({
 				action: AuditAction.ADMIN_CREATE_SHOP_ITEM,
 				actorId: gate.user.id,
@@ -63,5 +63,5 @@ export const POST = withRoute(async (req: Request) => {
 		),
 	)
 
-	return ok({ created: data.length, ids: data.map((i) => i.id) }, { status: 201 })
+	return ok({ created: data.length, ids: data.map(i => i.id) }, { status: 201 })
 })

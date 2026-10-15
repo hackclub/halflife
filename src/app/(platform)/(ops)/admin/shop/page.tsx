@@ -40,7 +40,7 @@ export default async function AdminShopPage() {
 					<EmptyState>No items yet.</EmptyState>
 				) : (
 					<Table head={["Slug", "Name", "Category", "Price", "Cost (USD)", "Stock", "Gated", "Active", ""]}>
-						{items.map((item) => (
+						{items.map(item => (
 							<tr key={item.id}>
 								<td className="hl-mono">{item.id}</td>
 								<td>
@@ -95,7 +95,7 @@ export default async function AdminShopPage() {
 				</p>
 				{regions.length > 0 && (
 					<Table head={["Slug", "Name", "Overrides", "Active", ""]}>
-						{regions.map((region) => (
+						{regions.map(region => (
 							<tr key={region.id}>
 								<td className="hl-mono">{region.id}</td>
 								<td>{region.name}</td>

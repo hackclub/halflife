@@ -82,7 +82,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
 						Projects
 					</h2>
 					<ul className="grid gap-4 sm:grid-cols-2">
-						{profile.projects.map((project) => (
+						{profile.projects.map(project => (
 							<Panel key={project.id} as="li" tone="line" radius={20} className="overflow-hidden bg-paper">
 								<Link href={`/projects/${project.id}`} className="group flex h-full flex-col">
 									<span

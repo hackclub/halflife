@@ -30,7 +30,7 @@ export function OrderFulfillment({
 				aria-label="Shipping method"
 				value={method ?? ""}
 				disabled={busy !== null}
-				onChange={(e) => save({ method: e.target.value === "" ? null : (e.target.value as ShopFulfillmentMethod) })}
+				onChange={e => save({ method: e.target.value === "" ? null : (e.target.value as ShopFulfillmentMethod) })}
 			>
 				<option value="">Method not chosen</option>
 				{Object.entries(METHOD_LABELS).map(([value, label]) => (
@@ -44,7 +44,7 @@ export function OrderFulfillment({
 				aria-label="Fulfilment stage"
 				value={stage}
 				disabled={busy !== null || cancelled}
-				onChange={(e) => save({ stage: e.target.value as ShopFulfillmentStage })}
+				onChange={e => save({ stage: e.target.value as ShopFulfillmentStage })}
 			>
 				{Object.entries(STAGE_LABELS).map(([value, label]) => (
 					<option key={value} value={value}>

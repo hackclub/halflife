@@ -115,7 +115,7 @@ function DisputeForm({
 			<textarea
 				id={`dispute-${phase}`}
 				value={note}
-				onChange={(e) => {
+				onChange={e => {
 					setNote(e.target.value)
 					if (error) setError(null)
 				}}
@@ -217,7 +217,7 @@ function WarmupWork({ projectId }: { projectId: string }) {
 	const { warmupWeekOf, hoursOf, passedOf, statusOf, deadlineOf, stateOf, setOpenCheckpoint, projects } = useStore()
 	const warmupWeek = warmupWeekOf(projectId)
 	if (!warmupWeek) return null
-	const project = projects.find((p) => p.id === projectId)
+	const project = projects.find(p => p.id === projectId)
 
 	const build = warmupWeek.phase === "build"
 	const hours = hoursOf(warmupWeek)
@@ -228,9 +228,9 @@ function WarmupWork({ projectId }: { projectId: string }) {
 	const deadline = deadlineOf(warmupWeek)
 	const submitId = `wu-${projectId}-submit`
 
-	const entries = warmupWeek.checkpoints.filter((c) => c.kind === "journal")
-	const written = entries.filter((c) => stateOf(c.id).done)
-	const next = entries.find((c) => !stateOf(c.id).done)
+	const entries = warmupWeek.checkpoints.filter(c => c.kind === "journal")
+	const written = entries.filter(c => stateOf(c.id).done)
+	const next = entries.find(c => !stateOf(c.id).done)
 	// Once the journal has closed, what there is can still be handed in, as a season week that has passed can.
 	const canSubmit = !handedIn && (hours >= need || (passed && hours > 0))
 	const short = Math.max(0, need - hours)
@@ -294,7 +294,7 @@ function WarmupWork({ projectId }: { projectId: string }) {
 						{written.length > 0 && !passed && (
 							<p className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[0.84rem] text-navy-soft">
 								<span>Edit an entry:</span>
-								{written.map((c) => (
+								{written.map(c => (
 									<button
 										key={c.id}
 										type="button"
@@ -332,7 +332,7 @@ function ReviewState({
 	return (
 		<Panel tone="line" radius={20} className="bg-paper px-5 py-5 sm:px-6">
 			<ul className="grid gap-5">
-				{phases.map((p) => {
+				{phases.map(p => {
 					const negative = p.status === "update_requested" || p.status === "rejected"
 					return (
 						<li key={p.phase} className="grid gap-2.5">
@@ -443,7 +443,7 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 		unsubmitPhase,
 		overlapUnchecked: overlapUncheckedWeek,
 	} = useStore()
-	const project = projects.find((p) => p.id === id)
+	const project = projects.find(p => p.id === id)
 
 	// A miss here is real: the id is someone else's, or the project was deleted.
 	if (!project || !data) {
@@ -470,15 +470,15 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 	const weekFor = (phase: "DESIGN" | "BUILD") =>
 		warmup ? WARMUP_WEEK_ID : phase === "DESIGN" ? project.weekId : buildWeekId
 
-	const sessions = data.timeline.flatMap((t) => (t.kind === "session" ? [t] : []))
+	const sessions = data.timeline.flatMap(t => (t.kind === "session" ? [t] : []))
 	// Journal sessions plus everything that arrived another way (Hackatime link time, reviewer adjustments) – the same accounting the sidebar total and the project cards read, so the three never disagree. A season project spans its design week and its build week.
 	const hours = warmup ? hoursOf(week) : weekHours(project.weekId) + weekHours(buildWeekId)
 	const started = data.timeline.at(-1)?.at ?? 0
 
 	// The tier stops being editable the moment the design week is handed in – that submission is what claimed it, and the build week only inherits it. A warm-up's one submit claims it the same way.
-	const submit = week.checkpoints.find((c) => c.kind === "submit")
+	const submit = week.checkpoints.find(c => c.kind === "submit")
 	const submitted = submit ? stateOf(submit.id).done : false
-	const grantUsd = TIERS.find((t) => t.id === project.tier)?.grantUsd ?? 0
+	const grantUsd = TIERS.find(t => t.id === project.tier)?.grantUsd ?? 0
 	// Kept in a local so the phase survives into the unsubmit handler below.
 	const inReview = data.inReview
 	// The overlap between a recording and a Hackatime link could not be checked for a phase of this project, so the total on this page may still be counting the same sitting once through each. A season project spans its design and build weeks, five apart, so either of them is enough.

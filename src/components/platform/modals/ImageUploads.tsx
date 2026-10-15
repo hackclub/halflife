@@ -52,24 +52,24 @@ export function ImageUploads({
 		if (chosen.length > taken.length)
 			problems.push(`Only ${max} screenshots fit, so ${chosen.length - taken.length} were left out.`)
 		setErrors(problems)
-		const batch = taken.map((file) => ({ file, id: crypto.randomUUID() }))
-		setPending((p) => [...p, ...batch.map(({ file, id }) => ({ id, name: file.name, progress: null }))])
+		const batch = taken.map(file => ({ file, id: crypto.randomUUID() }))
+		setPending(p => [...p, ...batch.map(({ file, id }) => ({ id, name: file.name, progress: null }))])
 
 		await Promise.all(
 			batch.map(async ({ file, id }) => {
 				try {
-					const { objectKey } = await uploadFile(file, folder, (progress) =>
-						setPending((p) => p.map((row) => (row.id === id ? { ...row, progress } : row))),
+					const { objectKey } = await uploadFile(file, folder, progress =>
+						setPending(p => p.map(row => (row.id === id ? { ...row, progress } : row))),
 					)
 					// Uploads are named after their bytes, so re-picking a picture already on the list hands back the key it already has. Adding it again would put two thumbnails on one object and make removing either remove both.
-					if (latest.current.some((img) => img.objectKey === objectKey)) return
+					if (latest.current.some(img => img.objectKey === objectKey)) return
 					const next = [...latest.current, { objectKey, previewUrl: URL.createObjectURL(file) }]
 					latest.current = next
 					onChange(next)
 				} catch (err) {
-					setErrors((e) => [...e, `${file.name}: ${err instanceof Error ? err.message : "did not upload"}`])
+					setErrors(e => [...e, `${file.name}: ${err instanceof Error ? err.message : "did not upload"}`])
 				} finally {
-					setPending((p) => p.filter((row) => row.id !== id))
+					setPending(p => p.filter(row => row.id !== id))
 				}
 			}),
 		)
@@ -77,9 +77,9 @@ export function ImageUploads({
 	}
 
 	function remove(key: string) {
-		const target = images.find((i) => i.objectKey === key)
+		const target = images.find(i => i.objectKey === key)
 		if (target) URL.revokeObjectURL(target.previewUrl)
-		onChange(images.filter((i) => i.objectKey !== key))
+		onChange(images.filter(i => i.objectKey !== key))
 	}
 
 	return (
@@ -109,7 +109,7 @@ export function ImageUploads({
 
 			{pending.length > 0 && (
 				<ul className="grid max-w-[420px] gap-2.5" aria-label="Uploading">
-					{pending.map((row) => (
+					{pending.map(row => (
 						<li key={row.id}>
 							<UploadProgress name={row.name} progress={row.progress} />
 						</li>
@@ -135,10 +135,10 @@ export function ImageUploads({
 				className="sr-only"
 				tabIndex={-1}
 				aria-hidden="true"
-				onChange={(e) => pick(e.target.files)}
+				onChange={e => pick(e.target.files)}
 			/>
 
-			{errors.map((e) => (
+			{errors.map(e => (
 				<p key={e} role="alert" className="text-[0.84rem] font-semibold text-coral-deep">
 					{e}
 				</p>

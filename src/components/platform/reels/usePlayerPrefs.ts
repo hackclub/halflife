@@ -40,7 +40,7 @@ export function usePlayerPrefs(): readonly [PlayerPrefs, (patch: Partial<PlayerP
 	}, [])
 
 	const update = useCallback((patch: Partial<PlayerPrefs>) => {
-		setPrefs((prev) => {
+		setPrefs(prev => {
 			const next = { ...prev, ...patch }
 			try {
 				window.localStorage.setItem(KEY, JSON.stringify(next))

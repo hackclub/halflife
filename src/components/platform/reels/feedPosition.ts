@@ -23,7 +23,7 @@ export function readPosition(): FeedPosition | null {
 		if (!raw) return null
 		const saved = JSON.parse(raw) as Partial<FeedPosition & { day: string }>
 		if (saved.day !== today() || typeof saved.id !== "string") return null
-		const leadIds = Array.isArray(saved.leadIds) ? saved.leadIds.filter((x) => typeof x === "string") : []
+		const leadIds = Array.isArray(saved.leadIds) ? saved.leadIds.filter(x => typeof x === "string") : []
 		return { id: saved.id, leadIds }
 	} catch {
 		return null

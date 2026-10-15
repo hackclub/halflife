@@ -26,7 +26,7 @@ function preview(text: string, max = 90): string {
 	return flat.length > max ? `${flat.slice(0, max - 1)}…` : flat
 }
 
-const REASON_LABELS = Object.fromEntries(REPORT_REASONS.map((r) => [r.id, r.label])) as Record<ReportReason, string>
+const REASON_LABELS = Object.fromEntries(REPORT_REASONS.map(r => [r.id, r.label])) as Record<ReportReason, string>
 
 function reasonTone(reason: ReportReason): "success" | "warning" | "danger" | "muted" {
 	return reason === "MISCONDUCT" ? "danger" : reason === "SPAM" ? "warning" : "muted"
@@ -57,7 +57,7 @@ export default async function AdminReportsPage({
 
 	const { status, cursor } = await searchParams
 	const filter: Filter = filterFor(status)
-	const active = FILTERS.find((f) => f.id === filter) ?? ({ id: "open", label: "Open", status: "OPEN" } as const)
+	const active = FILTERS.find(f => f.id === filter) ?? ({ id: "open", label: "Open", status: "OPEN" } as const)
 
 	const [counts, { items: reports, nextCursor }] = await Promise.all([
 		countContentReports(),
@@ -69,7 +69,7 @@ export default async function AdminReportsPage({
 			<div className="hl-row" style={{ justifyContent: "space-between" }}>
 				<h1 style={{ margin: 0 }}>Reports</h1>
 				<div className="hl-row">
-					{FILTERS.map((f) => (
+					{FILTERS.map(f => (
 						<Link
 							key={f.id}
 							href={f.id === "open" ? "/admin/reports" : `/admin/reports?status=${f.id}`}
@@ -92,7 +92,7 @@ export default async function AdminReportsPage({
 					</EmptyState>
 				) : (
 					<Table head={["Reported", "Reason", "Reporter", "Received", "Status", ""]}>
-						{reports.map((report) => (
+						{reports.map(report => (
 							<ReportRow key={report.id} report={report} />
 						))}
 					</Table>

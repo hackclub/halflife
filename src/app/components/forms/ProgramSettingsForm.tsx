@@ -56,7 +56,7 @@ export function ProgramSettingsForm({
 				<input
 					className="hl-input"
 					value={form.programTimezone}
-					onChange={(e) => setForm({ ...form, programTimezone: e.target.value })}
+					onChange={e => setForm({ ...form, programTimezone: e.target.value })}
 				/>
 			</Field>
 
@@ -64,7 +64,7 @@ export function ProgramSettingsForm({
 				<input
 					type="checkbox"
 					checked={form.submissionsOpen}
-					onChange={(e) => setForm({ ...form, submissionsOpen: e.target.checked })}
+					onChange={e => setForm({ ...form, submissionsOpen: e.target.checked })}
 				/>
 				<span>Submissions open</span>
 			</label>
@@ -77,7 +77,7 @@ export function ProgramSettingsForm({
 					className="hl-input"
 					type="datetime-local"
 					value={form.submissionsCloseAt ?? ""}
-					onChange={(e) => setForm({ ...form, submissionsCloseAt: e.target.value || null })}
+					onChange={e => setForm({ ...form, submissionsCloseAt: e.target.value || null })}
 				/>
 			</Field>
 
@@ -85,7 +85,7 @@ export function ProgramSettingsForm({
 				<input
 					type="checkbox"
 					checked={form.shopOpen}
-					onChange={(e) => setForm({ ...form, shopOpen: e.target.checked })}
+					onChange={e => setForm({ ...form, shopOpen: e.target.checked })}
 				/>
 				<span>Shop open</span>
 			</label>
@@ -98,7 +98,7 @@ export function ProgramSettingsForm({
 					className="hl-input"
 					type="datetime-local"
 					value={form.shopClosesAt ?? ""}
-					onChange={(e) => setForm({ ...form, shopClosesAt: e.target.value || null })}
+					onChange={e => setForm({ ...form, shopClosesAt: e.target.value || null })}
 				/>
 			</Field>
 
@@ -106,7 +106,7 @@ export function ProgramSettingsForm({
 				<input
 					type="checkbox"
 					checked={form.airtableSyncEnabled}
-					onChange={(e) => setForm({ ...form, airtableSyncEnabled: e.target.checked })}
+					onChange={e => setForm({ ...form, airtableSyncEnabled: e.target.checked })}
 				/>
 				<span>Push approvals to Airtable</span>
 			</label>
@@ -115,7 +115,7 @@ export function ProgramSettingsForm({
 				<input
 					type="checkbox"
 					checked={form.repoSyncEnabled}
-					onChange={(e) => setForm({ ...form, repoSyncEnabled: e.target.checked })}
+					onChange={e => setForm({ ...form, repoSyncEnabled: e.target.checked })}
 				/>
 				<span>Sync devlogs and BOMs to repos</span>
 			</label>
@@ -127,7 +127,7 @@ export function ProgramSettingsForm({
 					min="0"
 					max="90"
 					value={form.shopGraceDays}
-					onChange={(e) => setForm({ ...form, shopGraceDays: Number(e.target.value) })}
+					onChange={e => setForm({ ...form, shopGraceDays: Number(e.target.value) })}
 				/>
 			</Field>
 
@@ -138,7 +138,7 @@ export function ProgramSettingsForm({
 					min="5"
 					max="240"
 					value={form.reviewClaimTtlMinutes}
-					onChange={(e) => setForm({ ...form, reviewClaimTtlMinutes: Number(e.target.value) })}
+					onChange={e => setForm({ ...form, reviewClaimTtlMinutes: Number(e.target.value) })}
 				/>
 			</Field>
 

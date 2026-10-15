@@ -36,7 +36,7 @@ export function ActivityShareChart({ share }: { share: ActivityShare }) {
 	const xOf = (i: number) => PAD_L + slot * i + (slot - colW) / 2
 	const yOf = (share_: number) => PAD_T + plotH - share_ * plotH
 
-	const summary = share.activities.map((a) => `${a.base} ${(a.share * 100).toFixed(1)}%`).join(", ")
+	const summary = share.activities.map(a => `${a.base} ${(a.share * 100).toFixed(1)}%`).join(", ")
 
 	return (
 		<div>
@@ -47,7 +47,7 @@ export function ActivityShareChart({ share }: { share: ActivityShare }) {
 					aria-label={`Share of the ${fmtInt(share.total)} makers who finished onboarding who did each activity: ${summary}`}
 					style={{ display: "block", width: "100%", minWidth: "380px", height: "auto" }}
 				>
-					{[0, 0.25, 0.5, 0.75, 1].map((t) => (
+					{[0, 0.25, 0.5, 0.75, 1].map(t => (
 						<g key={t}>
 							<line
 								x1={PAD_L}

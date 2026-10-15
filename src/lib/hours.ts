@@ -256,8 +256,8 @@ export async function refreshOverlapSpans(themeProjectId: string, phase: Phase):
 		const hackatimeUserId = project?.user.hackatimeUserId
 		if (!hackatimeUserId || links.length === 0) return
 
-		const windows = sessions.flatMap((s) =>
-			s.timelapses.flatMap((t) => {
+		const windows = sessions.flatMap(s =>
+			s.timelapses.flatMap(t => {
 				const window = timelapseWindow(t.recordedAt, t.coveredSeconds)
 				return window ? [window] : []
 			}),
@@ -302,7 +302,7 @@ export type SpansWarmTarget = {
 export async function warmLinkSpans(targets: readonly SpansWarmTarget[]): Promise<{ warmed: number; failed: number }> {
 	if (targets.length === 0) return { warmed: 0, failed: 0 }
 	const key = (projectId: string, phase: Phase) => `${projectId}/${phase}`
-	const projectIds = [...new Set(targets.map((t) => t.themeProjectId))]
+	const projectIds = [...new Set(targets.map(t => t.themeProjectId))]
 
 	const [sessions, projects] = await Promise.all([
 		prisma.workSession.findMany({
@@ -310,7 +310,7 @@ export async function warmLinkSpans(targets: readonly SpansWarmTarget[]): Promis
 				deletedAt: null,
 				// A HACKATIME_TRACKED entry claims nothing, so its recording is not one of the windows a link's time has to be measured against.
 				hoursSource: { not: HoursSource.HACKATIME_TRACKED },
-				OR: [...new Set(targets.map((t) => ({ themeProjectId: t.themeProjectId, phase: t.phase })))],
+				OR: [...new Set(targets.map(t => ({ themeProjectId: t.themeProjectId, phase: t.phase })))],
 			},
 			select: {
 				themeProjectId: true,
@@ -334,7 +334,7 @@ export async function warmLinkSpans(targets: readonly SpansWarmTarget[]): Promis
 		}
 		windowsByPhase.set(k, list)
 	}
-	const userByProject = new Map(projects.map((p) => [p.id, p.user.hackatimeUserId]))
+	const userByProject = new Map(projects.map(p => [p.id, p.user.hackatimeUserId]))
 
 	let warmed = 0
 	let failed = 0

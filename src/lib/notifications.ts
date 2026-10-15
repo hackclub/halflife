@@ -280,7 +280,7 @@ export async function notifyStaffDispute(input: {
 	const quoted = escapeSlackText(input.note)
 		.trim()
 		.split("\n")
-		.map((line) => `> ${line}`)
+		.map(line => `> ${line}`)
 		.join("\n")
 	const text = `Review dispute on *${escapeSlackText(input.title)}* (${phase}) by ${escapeSlackText(input.participant)}:\n\n${quoted}${
 		url ? `\n\n<${url}|Open the project>` : ""

@@ -94,7 +94,7 @@ export function StageSlide({
 		if (prefersStill()) return
 		el.currentTime = 0
 		let cancelled = false
-		playExclusive(el).then(async (ok) => {
+		playExclusive(el).then(async ok => {
 			if (ok || cancelled || el.muted) return
 			// Sound before the reader has touched the page is the browser's to refuse, and it does. Muted playback it always allows, so the reel plays silently and the page offers the sound back.
 			el.muted = true
@@ -238,18 +238,18 @@ export function StageSlide({
 						loop={!autoScroll}
 						// The reel on screen is worth buffering ahead; its mounted neighbours fetch just enough to show a first frame, which is what makes a swipe land on a picture rather than a blank card.
 						preload={active ? "auto" : "metadata"}
-						onPlay={(e) => {
+						onPlay={e => {
 							notePlaying(e.currentTarget)
 							setPlaying(true)
 						}}
-						onPause={(e) => {
+						onPause={e => {
 							noteStopped(e.currentTarget)
 							setPlaying(false)
 						}}
 						onEnded={() => {
 							if (autoScroll && active) onEnded()
 						}}
-						onLoadedMetadata={(e) => setTime({ now: e.currentTarget.currentTime, total: e.currentTarget.duration })}
+						onLoadedMetadata={e => setTime({ now: e.currentTarget.currentTime, total: e.currentTarget.duration })}
 						onTimeUpdate={onTime}
 						className={cx("absolute inset-0 size-full", portrait ? "object-cover" : "object-contain")}
 					/>
@@ -343,7 +343,7 @@ export function StageSlide({
 							{(clamped || expanded) && (
 								<button
 									type="button"
-									onClick={() => setExpanded((v) => !v)}
+									onClick={() => setExpanded(v => !v)}
 									className="hand pointer-events-auto shrink-0 text-[0.78rem] text-white underline decoration-dashed underline-offset-4 transition-colors hover:decoration-solid"
 								>
 									{expanded ? "less" : "more"}
@@ -362,14 +362,14 @@ export function StageSlide({
 					aria-valuemax={Math.round(time.total)}
 					aria-valuenow={Math.round(time.now)}
 					aria-valuetext={`${clock(time.now)} of ${clock(time.total)}`}
-					onPointerDown={(e) => {
+					onPointerDown={e => {
 						e.currentTarget.setPointerCapture(e.pointerId)
 						seekTo(e.clientX, e.currentTarget)
 					}}
-					onPointerMove={(e) => {
+					onPointerMove={e => {
 						if (e.currentTarget.hasPointerCapture(e.pointerId)) seekTo(e.clientX, e.currentTarget)
 					}}
-					onKeyDown={(e) => {
+					onKeyDown={e => {
 						const el = video.current
 						if (!el || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return
 						// Claimed here so the page's own arrow-key navigation leaves it be.

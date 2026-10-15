@@ -45,7 +45,7 @@ export function PrinterAwardForm({ awardId, status }: Readonly<{ awardId: string
 		<form
 			className="hl-stack hl-stack--tight"
 			style={{ gap: "0.4rem", minWidth: "12rem" }}
-			onSubmit={(e) => {
+			onSubmit={e => {
 				e.preventDefault()
 				save()
 			}}
@@ -55,10 +55,10 @@ export function PrinterAwardForm({ awardId, status }: Readonly<{ awardId: string
 				aria-label="Next printer award status"
 				value={next}
 				disabled={busy !== null}
-				onChange={(e) => setNext(e.target.value as PrinterAwardStatus | "")}
+				onChange={e => setNext(e.target.value as PrinterAwardStatus | "")}
 			>
 				<option value="">Move to…</option>
-				{options.map((value) => (
+				{options.map(value => (
 					<option key={value} value={value}>
 						{PRINTER_AWARD_LABELS[value]}
 					</option>
@@ -71,14 +71,14 @@ export function PrinterAwardForm({ awardId, status }: Readonly<{ awardId: string
 						placeholder="Tracking number"
 						value={trackingNumber}
 						disabled={busy !== null}
-						onChange={(e) => setTrackingNumber(e.target.value)}
+						onChange={e => setTrackingNumber(e.target.value)}
 					/>
 					<input
 						className="hl-input"
 						placeholder="Carrier"
 						value={trackingCarrier}
 						disabled={busy !== null}
-						onChange={(e) => setTrackingCarrier(e.target.value)}
+						onChange={e => setTrackingCarrier(e.target.value)}
 					/>
 				</>
 			) : null}
@@ -88,7 +88,7 @@ export function PrinterAwardForm({ awardId, status }: Readonly<{ awardId: string
 					placeholder={next === "REVOKED" ? "Reason (required)" : "Note (optional)"}
 					value={note}
 					disabled={busy !== null}
-					onChange={(e) => setNote(e.target.value)}
+					onChange={e => setNote(e.target.value)}
 				/>
 			) : null}
 			<button

@@ -95,10 +95,10 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 	/** Gap from a box to its label. */
 	const labelGap = font * 0.65
 	// ~0.52em per character is a fair average for this face at this size. The budget is the stage's pitch less the box and the gap, because a label starts to the right of its own box: comparing against the whole stage width let the longest name run into the next column's box. `+ 8` covers a five-figure count and the space before the name.
-	const widestLabel = Math.max(...diagram.nodes.map((n) => n.label.length)) + 8
+	const widestLabel = Math.max(...diagram.nodes.map(n => n.label.length)) + 8
 	const showNames = font * 0.52 * widestLabel <= STAGE_W - NODE_W - labelGap
 
-	const byId = new Map(diagram.nodes.map((n) => [n.id, n]))
+	const byId = new Map(diagram.nodes.map(n => [n.id, n]))
 	const stageIndex = new Map<string, number>()
 	for (const [i, stage] of stages.entries()) for (const id of stage.nodes) stageIndex.set(id, i)
 
@@ -109,7 +109,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 		branchColor.set(node.id, PALETTE[branchColor.size % PALETTE.length] ?? PALETTE[0] ?? "var(--color-accent)")
 	}
 
-	const placed: Placed[] = diagram.nodes.map((node) => ({
+	const placed: Placed[] = diagram.nodes.map(node => ({
 		...node,
 		stage: stageIndex.get(node.id) ?? 0,
 		y0: 0,
@@ -118,9 +118,9 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 	}))
 
 	// A single scale for the whole diagram. A stage's own boxes sum to that stage's headcount, which is at most the whole program, so sizing against the largest stage keeps every ribbon comparable.
-	const stageHeads = stages.map((stage) => stage.nodes.reduce((sum, id) => sum + (byId.get(id)?.value ?? 0), 0))
+	const stageHeads = stages.map(stage => stage.nodes.reduce((sum, id) => sum + (byId.get(id)?.value ?? 0), 0))
 	const widest = Math.max(1, ...stageHeads)
-	const maxBoxes = Math.max(1, ...stages.map((s) => s.nodes.length))
+	const maxBoxes = Math.max(1, ...stages.map(s => s.nodes.length))
 	const H = 520
 	const plotH = H - (maxBoxes - 1) * NODE_PAD
 	const scale = plotH / widest
@@ -133,7 +133,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 	for (const stage of stages) {
 		let y = 0
 		for (const id of stage.nodes) {
-			const node = placed.find((p) => p.id === id)
+			const node = placed.find(p => p.id === id)
 			if (!node) continue
 			const h = boxH(node.value)
 			node.y0 = y
@@ -144,9 +144,9 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 
 	// Ribbons get their two ends assigned in two passes, because a ribbon's source span belongs to its source box's cursor and its target span to its target box's – and each box has one of each.
 	const ribbons: Ribbon[] = diagram.links
-		.map((link) => {
-			const source = placed.find((p) => p.id === link.source)
-			const target = placed.find((p) => p.id === link.target)
+		.map(link => {
+			const source = placed.find(p => p.id === link.source)
+			const target = placed.find(p => p.id === link.target)
 			if (!source || !target) return null
 			return { source, target, value: link.value, fan: link.fan, sy0: 0, sy1: 0, ty0: 0, ty1: 0 }
 		})
@@ -155,7 +155,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 	const place = (side: "out" | "in") => {
 		for (const node of placed) {
 			const mine = ribbons
-				.filter((r) => (side === "out" ? r.source === node : r.target === node))
+				.filter(r => (side === "out" ? r.source === node : r.target === node))
 				// Order by where the other end sits, so ribbons leave a box in the order their destinations are stacked.
 				.sort((a, b) => {
 					const other = (r: Ribbon) => (side === "out" ? r.target : r.source)
@@ -165,7 +165,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 			const nestable = (r: Ribbon) => (side === "out" ? r.fan === "out" : r.fan === "in")
 			const boxSize = node.y1 - node.y0
 			const fanTotal = mine.filter(nestable).reduce((n, r) => n + ribbonH(r.value), 0)
-			const chainTotal = mine.filter((r) => !nestable(r)).reduce((n, r) => n + ribbonH(r.value), 0)
+			const chainTotal = mine.filter(r => !nestable(r)).reduce((n, r) => n + ribbonH(r.value), 0)
 			if (fanTotal + chainTotal <= boxSize + NEST_PX) {
 				let cursor = node.y0
 				for (const ribbon of mine) {
@@ -194,7 +194,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 				}
 				// Chain ribbons carry disjoint users, so they stack after the fan footprint instead of under it: a big chain flow is laid out end to end rather than burying the fan. Fan users plus chain users partition the box, so this always fits.
 				let cursor = fanEnd
-				for (const ribbon of mine.filter((r) => !nestable(r))) {
+				for (const ribbon of mine.filter(r => !nestable(r))) {
 					const h = ribbonH(ribbon.value)
 					if (side === "out") {
 						ribbon.sy0 = cursor
@@ -219,7 +219,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 	const labelRows = new Map<string, { y: number; home: number }>()
 	for (const stage of stages) {
 		const boxes = stage.nodes
-			.map((id) => placed.find((p) => p.id === id))
+			.map(id => placed.find(p => p.id === id))
 			.filter((p): p is Placed => p !== undefined)
 			.sort((a, b) => a.y0 - b.y0)
 		if (boxes.length === 0) continue
@@ -294,7 +294,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 						))}
 
 						{/* Leader lines first, so a label's halo paints over its own line. */}
-						{placed.map((node) => {
+						{placed.map(node => {
 							const slot = labelRows.get(node.id)
 							if (!slot || Math.abs(slot.y - slot.home) < 0.5) return null
 							return (
@@ -309,7 +309,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 							)
 						})}
 
-						{placed.map((node) => {
+						{placed.map(node => {
 							const x = xOf(node.stage)
 							const h = boxH(node.value)
 							const slot = labelRows.get(node.id)

@@ -81,7 +81,7 @@ export function CsvProjectsImport() {
 		}
 	}
 
-	const failures = summary?.outcomes.filter((o) => o.status === "failed") ?? []
+	const failures = summary?.outcomes.filter(o => o.status === "failed") ?? []
 
 	return (
 		<div className="hl-stack hl-stack--tight">
@@ -90,7 +90,7 @@ export function CsvProjectsImport() {
 			{problems.length > 0 ? (
 				<Callout>
 					<ul className="hl-stack hl-stack--tight" style={{ marginTop: "0.5rem", paddingLeft: "1rem" }}>
-						{problems.map((p) => (
+						{problems.map(p => (
 							<li key={`${p.line}-${p.message}`} className="hl-hint">
 								Line {p.line}: {p.message}
 							</li>
@@ -107,7 +107,7 @@ export function CsvProjectsImport() {
 					</p>
 					{failures.length > 0 ? (
 						<ul className="hl-stack hl-stack--tight" style={{ marginTop: "0.5rem", paddingLeft: "1rem" }}>
-							{failures.map((o) => (
+							{failures.map(o => (
 								<li key={o.projectId} className="hl-hint">
 									<span className="hl-mono">{o.projectId}</span> · {o.email} · failed
 									{o.reason ? ` – ${o.reason}` : ""}
@@ -124,7 +124,7 @@ export function CsvProjectsImport() {
 					type="file"
 					accept=".csv,text/csv,text/plain"
 					className="block text-[0.85rem]"
-					onChange={(e) => {
+					onChange={e => {
 						setFile(e.target.files?.[0] ?? null)
 						setSummary(null)
 						setError(null)

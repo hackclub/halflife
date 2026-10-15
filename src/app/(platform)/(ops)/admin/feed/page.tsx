@@ -44,7 +44,7 @@ export default async function AdminFeedPage() {
 		listRecentPublicReels(),
 	])
 
-	const options: ComposerProject[] = projects.map((project) => ({
+	const options: ComposerProject[] = projects.map(project => ({
 		id: project.id,
 		label: project.title || getThemeDef(project.theme).label,
 	}))
@@ -63,7 +63,7 @@ export default async function AdminFeedPage() {
 					<EmptyState>No reels yet.</EmptyState>
 				) : (
 					<Table head={["Author", "Reel", "Posted", ""]}>
-						{posts.map((post) => (
+						{posts.map(post => (
 							<tr key={post.id}>
 								<td>
 									<Link href={`/admin/users/${post.user.id}`}>{displayName(post.user, post.user.email)}</Link>
@@ -110,7 +110,7 @@ export default async function AdminFeedPage() {
 					<EmptyState>No comments yet.</EmptyState>
 				) : (
 					<Table head={["Author", "Comment", "Posted", ""]}>
-						{comments.map((comment) => (
+						{comments.map(comment => (
 							<tr key={comment.id}>
 								<td>{displayName(comment.user, comment.user.email)}</td>
 								<td>
@@ -145,7 +145,7 @@ export default async function AdminFeedPage() {
 					<EmptyState>No public links claimed yet.</EmptyState>
 				) : (
 					<Table head={["Platform", "Maker", "Link", "Reel", "Added"]}>
-						{publicReels.map((reel) => (
+						{publicReels.map(reel => (
 							<tr key={reel.id}>
 								<td>{reel.platform.toLowerCase()}</td>
 								<td>

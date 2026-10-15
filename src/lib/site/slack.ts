@@ -188,7 +188,7 @@ export async function getSlackUserName(userId: string): Promise<string> {
 	const pending = slackUserNamePending.get(userId)
 	if (pending) return pending
 
-	const lookup = resolveSlackUserName(userId).then((name) => {
+	const lookup = resolveSlackUserName(userId).then(name => {
 		slackUserNamePending.delete(userId)
 		if (!name) return `<@${userId}>`
 		slackUserNameCache.set(userId, name)
@@ -223,7 +223,7 @@ async function resolveSlackUserName(userId: string): Promise<string | null> {
  */
 export async function getSlackUserNames(userIds: readonly string[]): Promise<Map<string, string>> {
 	const ids = [...new Set(userIds)]
-	const names = await Promise.all(ids.map(async (id) => [id, await getSlackUserName(id)] as const))
+	const names = await Promise.all(ids.map(async id => [id, await getSlackUserName(id)] as const))
 	return new Map(names)
 }
 

@@ -37,7 +37,7 @@ async function main() {
 			left += 1
 			console.warn(`no answer from HCA for ${user.id}; they keep the full name until their next sign-in`)
 		}
-		await new Promise((resolve) => setTimeout(resolve, PACE_MS))
+		await new Promise(resolve => setTimeout(resolve, PACE_MS))
 	}
 
 	console.log(
@@ -46,7 +46,7 @@ async function main() {
 }
 
 main()
-	.catch((err) => {
+	.catch(err => {
 		console.error(err)
 		process.exit(1)
 	})

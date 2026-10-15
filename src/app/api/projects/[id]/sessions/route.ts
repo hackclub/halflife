@@ -56,9 +56,9 @@ export const GET = withRoute(async (req: NextRequest, { params }: Params) => {
 
 	const page = pageResult(rows, query.data.limit)
 	return ok({
-		items: page.items.map((s) => ({
+		items: page.items.map(s => ({
 			...s,
-			media: s.media.map((m) => ({ ...m, url: publicUrlFor(m.objectKey) })),
+			media: s.media.map(m => ({ ...m, url: publicUrlFor(m.objectKey) })),
 		})),
 		nextCursor: page.nextCursor,
 	})
@@ -101,17 +101,17 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	// Evidence has to be the claimant's own. Keys are not secrets – the feed hands out a full video URL for every reel – so without this someone could attach a stranger's timelapse as proof of hours they did not work, which is the one thing the timelapse rule exists to make hard.
 	//
 	// Rejected rather than quietly dropped: a participant who thinks they attached a clip and finds it missing at review has been failed silently.
-	const foreign = data.media.map((m) => m.objectKey).filter((key) => !isOwnedKey(gate.user.id, key))
+	const foreign = data.media.map(m => m.objectKey).filter(key => !isOwnedKey(gate.user.id, key))
 	if (foreign.length > 0) return fail("VALIDATION_FAILED", "Those uploads are not yours")
 
 	// Timelapses are the same rule asked of Lapse: each must be the caller's own, published, and done processing. And one recording backs one session – otherwise the same footage could be offered as proof twice. That check is read-then-create, so it happens inside the transaction under a lock on the recording; two parallel submits of the same clip otherwise both pass it.
-	const lapseIds = [...new Set(data.timelapses.map((t) => t.lapseId))]
+	const lapseIds = [...new Set(data.timelapses.map(t => t.lapseId))]
 	const timelapses = await verifyOwnTimelapses(gate.user.id, lapseIds)
 
 	const timing = await stampSessionTiming(new Date())
 
 	// One transaction: a session and the streak it feeds have to land together, or a rolled-back write leaves an inflated streak with nothing behind it.
-	const session = await prisma.$transaction(async (tx) => {
+	const session = await prisma.$transaction(async tx => {
 		if (lapseIds.length > 0) {
 			// Sorted so two requests naming the same recordings cannot deadlock on each other's locks.
 			for (const lapseId of [...lapseIds].sort()) {
@@ -126,7 +126,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 				select: { externalId: true },
 			})
 			if (taken) {
-				const title = timelapses.find((t) => t.id === taken.externalId)?.title ?? "That timelapse"
+				const title = timelapses.find(t => t.id === taken.externalId)?.title ?? "That timelapse"
 				throw new HttpError("CONFLICT", `"${title}" already backs another journal entry`)
 			}
 		}
@@ -173,7 +173,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 					})),
 				},
 				timelapses: {
-					create: timelapses.map((t) => ({
+					create: timelapses.map(t => ({
 						provider: "lapse",
 						externalId: t.id,
 						playbackUrl: t.playbackUrl,

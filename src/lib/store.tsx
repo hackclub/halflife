@@ -85,14 +85,14 @@ export const PASSED_REASON = "This week has passed!"
  * Week 1's idea reel is optional: it sits beside the first devlog entry as a choice rather than gating it. The trail still lists it, and it stays postable, but nothing past the fork ever waits on it – so every gate below reads predecessors with this id filtered out.
  */
 export const WEEK1_IDEA_REEL_ID = "w1-reel-idea"
-const withoutOptionalIdea = (list: Checkpoint[]) => list.filter((c) => c.id !== WEEK1_IDEA_REEL_ID)
+const withoutOptionalIdea = (list: Checkpoint[]) => list.filter(c => c.id !== WEEK1_IDEA_REEL_ID)
 
 /**
  * A warm-up project's own week: a chain of entries with one live one waiting, then its single submit, keyed `wu-<project id>-…` because a maker may hold several warm-ups and none of them has a week number. The same tier floors as a season week, since it is handed in the same way.
  */
 function warmupWeek(project: Project, build: boolean, isDone: (id: string) => boolean): Week {
 	const key = (suffix: string) => `wu-${project.id}-${suffix}`
-	const tier = TIERS.find((t) => t.id === project.tier) ?? TIERS[0]
+	const tier = TIERS.find(t => t.id === project.tier) ?? TIERS[0]
 	const submitHours = build ? BUILD_HOURS : submitFloorFor(tier.fundingHours)
 	const meta: WeekMeta = {
 		id: WARMUP_WEEK_ID,
@@ -383,9 +383,9 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		const next = [
 			...Object.values(facts.weekClosesAt),
 			...Object.values(facts.weekOpensAt),
-			...Object.values(facts.warmups).map((w) => w.closesAt),
+			...Object.values(facts.warmups).map(w => w.closesAt),
 		]
-			.filter((at) => at > now)
+			.filter(at => at > now)
 			.sort((a, b) => a - b)[0]
 		if (next === undefined) return
 		const t = window.setTimeout(() => setNow(Date.now()), Math.min(next - now, 2 ** 31 - 1))
@@ -536,7 +536,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 
 	const setPhase = useCallback(
 		(next: IntroPhase) =>
-			setCeremony((c) => {
+			setCeremony(c => {
 				// The tour plays once. Someone who took it while week 1 was shut finishes Get started straight onto the trail, not into it again.
 				const phase = next === "tour" && c.toured && !c.replaying ? "done" : next
 				return {
@@ -549,10 +549,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		[],
 	)
 
-	const finishTour = useCallback(
-		() => setCeremony((c) => ({ ...c, phase: "done", replaying: false, toured: true })),
-		[],
-	)
+	const finishTour = useCallback(() => setCeremony(c => ({ ...c, phase: "done", replaying: false, toured: true })), [])
 
 	// In flight per week, so a checkpoint opened twice in a row asks once.
 	const ensuring = useRef(new Map<number, Promise<string | null>>())
@@ -572,7 +569,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 					})
 					if (!res.ok) return null
 					const { id } = (await res.json()) as { id: string }
-					setFacts((f) => ({ ...f, projectIdByWeek: { ...f.projectIdByWeek, [weekId]: id } }))
+					setFacts(f => ({ ...f, projectIdByWeek: { ...f.projectIdByWeek, [weekId]: id } }))
 					return id
 				} catch {
 					return null
@@ -595,8 +592,8 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				// Normally made when the checkpoint opened; made here if that request had not landed yet, so a quick "Create project" still has a row.
 				const id = await ensureProject(p.weekId)
 				if (!id) return
-				setFacts((f) =>
-					f.projects.some((existing) => existing.weekId === p.weekId)
+				setFacts(f =>
+					f.projects.some(existing => existing.weekId === p.weekId)
 						? f
 						: { ...f, projects: [...f.projects, { ...p, id }] },
 				)
@@ -637,9 +634,9 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
 				return err?.error?.message ?? "That did not save. Try again."
 			}
-			setFacts((f) => ({
+			setFacts(f => ({
 				...f,
-				projects: f.projects.map((p) => (p.id === id ? { ...p, githubRepo: url } : p)),
+				projects: f.projects.map(p => (p.id === id ? { ...p, githubRepo: url } : p)),
 			}))
 			router.refresh()
 			return null
@@ -661,9 +658,9 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			} | null
 			if (!res.ok) return body?.error?.message ?? "That did not save. Try again."
 			const url = body?.githubRepo ?? null
-			setFacts((f) => ({
+			setFacts(f => ({
 				...f,
-				projects: f.projects.map((p) => (p.id === id ? { ...p, githubRepo: url } : p)),
+				projects: f.projects.map(p => (p.id === id ? { ...p, githubRepo: url } : p)),
 			}))
 			router.refresh()
 			return null
@@ -694,9 +691,9 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
 				return err?.error?.message ?? "That did not save. Try again."
 			}
-			setFacts((f) => ({
+			setFacts(f => ({
 				...f,
-				projects: f.projects.map((p) =>
+				projects: f.projects.map(p =>
 					p.id === id
 						? {
 								...p,
@@ -720,9 +717,9 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 
 	const setProjectTier = useCallback(
 		(id: string, tier: 1 | 2 | 3) => {
-			setFacts((f) => ({
+			setFacts(f => ({
 				...f,
-				projects: f.projects.map((p) => (p.id === id ? { ...p, tier } : p)),
+				projects: f.projects.map(p => (p.id === id ? { ...p, tier } : p)),
 			}))
 			send(`/api/projects/${id}`, { requestedTier: tier }, "PATCH").finally(() => router.refresh())
 		},
@@ -750,7 +747,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 
 	const patchCheckpoint = useCallback(
 		(id: string, patch: Partial<CheckpointState>) =>
-			setFacts((f) => {
+			setFacts(f => {
 				const prev = { ...EMPTY, ...f.progress[id] }
 				return {
 					...f,
@@ -821,7 +818,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				return { error: err?.error?.message ?? `Your reel didn't post (error ${res.status}).` }
 			}
 			// Re-recording an owed reel lifts the hold now rather than on the refresh, so the map opens back up the moment it is posted.
-			setFacts((f) => (f.owedReels.includes(id) ? { ...f, owedReels: f.owedReels.filter((k) => k !== id) } : f))
+			setFacts(f => (f.owedReels.includes(id) ? { ...f, owedReels: f.owedReels.filter(k => k !== id) } : f))
 			const { post } = (await res.json()) as { post?: { id?: string } }
 			const postId = post?.id
 			return postId ? { postId } : { error: "Your reel didn't post. Try again." }
@@ -897,7 +894,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			if (fromCheckpoint) {
 				const weekId = Number(/^w(\d+)-/.exec(target)?.[1])
 				if (Number.isInteger(weekId)) {
-					setFacts((f) => ({
+					setFacts(f => ({
 						...f,
 						phaseStatusByWeek: { ...f.phaseStatusByWeek, [weekId]: "draft" },
 						progress: { ...f.progress, [target]: { ...EMPTY, ...f.progress[target], done: false } },
@@ -910,10 +907,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		[routeOf, router],
 	)
 
-	const setDoomscroller = useCallback(
-		(doomscrollerOpen: boolean) => setCeremony((c) => ({ ...c, doomscrollerOpen })),
-		[],
-	)
+	const setDoomscroller = useCallback((doomscrollerOpen: boolean) => setCeremony(c => ({ ...c, doomscrollerOpen })), [])
 
 	/**
 	 * The first checkpoint answered its last question.
@@ -921,7 +915,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	 * Patched here rather than left to the refresh that follows, because the gate that holds the goal prompt open is `onboardingDone && participantGoal === null`. Waiting for the round-trip would put the tab tour's spotlight on screen for the length of the request and then cover it with the prompt. The API has already confirmed this, so it is a fact and not a guess.
 	 */
 	const finishOnboarding = useCallback(() => {
-		setFacts((f) => ({ ...f, onboardingDone: true }))
+		setFacts(f => ({ ...f, onboardingDone: true }))
 	}, [])
 
 	/**
@@ -941,7 +935,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 					body: JSON.stringify(printerGoalId ? { goal, printerGoalId } : { goal }),
 				})
 				if (res.ok) {
-					setFacts((f) => ({ ...f, participantGoal: goal, goalId: printerGoalId ?? f.goalId }))
+					setFacts(f => ({ ...f, participantGoal: goal, goalId: printerGoalId ?? f.goalId }))
 				} else {
 					const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
 					refusal = err?.error?.message ?? "That did not save. Try again."
@@ -992,7 +986,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		} catch {
 			/* nothing to clear */
 		}
-		setFacts((f) => ({ ...f, onboardingDone: false }))
+		setFacts(f => ({ ...f, onboardingDone: false }))
 		setCeremony(seededCeremony())
 		setTourStep(0)
 		setOpenCheckpoint(null)
@@ -1009,7 +1003,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	const tierForWeek = useCallback(
 		(weekId: number): 1 | 2 | 3 => {
 			const designWeek = weekId > 5 ? weekId - 5 : weekId
-			const own = save.projects.find((p) => p.weekId === designWeek)
+			const own = save.projects.find(p => p.weekId === designWeek)
 			if (own) return own.tier
 			return save.projects[save.projects.length - 1]?.tier ?? recommendedTier(save.experience)
 		},
@@ -1045,9 +1039,9 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 
 	const weeks = useMemo<Week[]>(
 		() =>
-			WEEK_META.map((meta) => {
+			WEEK_META.map(meta => {
 				const tierId = tierForWeek(meta.id)
-				const tier = TIERS.find((t) => t.id === tierId) ?? TIERS[0]
+				const tier = TIERS.find(t => t.id === tierId) ?? TIERS[0]
 				const build = meta.phase === "build"
 				// Column 5 is the tier-1 week and is already floored to a flat 10 hours, so every other tier is that plus the extra hours its grant funds.
 				const target = build ? BUILD_HOURS : weekAsk(goal.hoursPerWeek, tier.fundingHours)
@@ -1065,12 +1059,12 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 						meta,
 						// The trail is as long as the work was: every finished entry is a node, and one more waits at the end for the entry about to be written. The minutes come along because reels are placed where the clock crossed.
 						writtenMinutes(meta.id),
-						(cid) => save.progress[cid]?.done ?? false,
+						cid => save.progress[cid]?.done ?? false,
 						submitHours,
 						// Onboarding made week one's project and it has since been deleted: `projects` only lists live, named ones.
 						meta.id === 1 &&
 							(save.progress[ONBOARDING_CHECKPOINT_ID]?.done ?? false) &&
-							!save.projects.some((p) => p.weekId === 1),
+							!save.projects.some(p => p.weekId === 1),
 					),
 				}
 			}),
@@ -1080,19 +1074,19 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	// Each warm-up, as a week of its own that the trail never draws.
 	const warmupWeeks = useMemo<Week[]>(
 		() =>
-			save.projects.flatMap((project) => {
+			save.projects.flatMap(project => {
 				const info = facts.warmups[project.id]
 				if (project.weekId !== WARMUP_WEEK_ID || !info) return []
-				return [warmupWeek(project, info.phase === "build", (id) => save.progress[id]?.done ?? false)]
+				return [warmupWeek(project, info.phase === "build", id => save.progress[id]?.done ?? false)]
 			}),
 		[save.projects, facts.warmups, save.progress],
 	)
 
 	// Every checkpoint a modal can open, the warm-ups' included. The trail itself draws `weeks` only.
-	const allCheckpoints = useMemo(() => [...weeks, ...warmupWeeks].flatMap((w) => w.checkpoints), [weeks, warmupWeeks])
+	const allCheckpoints = useMemo(() => [...weeks, ...warmupWeeks].flatMap(w => w.checkpoints), [weeks, warmupWeeks])
 
 	const warmupWeekOf = useCallback(
-		(projectId: string) => warmupWeeks.find((w) => w.projectId === projectId) ?? null,
+		(projectId: string) => warmupWeeks.find(w => w.projectId === projectId) ?? null,
 		[warmupWeeks],
 	)
 
@@ -1122,7 +1116,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 							title: body.trim().split("\n")[0]?.slice(0, 200) || DEFAULT_SESSION_TITLE,
 							content: body,
 							hoursClaimed: Math.round((minutes / 60) * 100) / 100,
-							timelapses: evidence.clips.map((lapseId) => ({ lapseId })),
+							timelapses: evidence.clips.map(lapseId => ({ lapseId })),
 						}),
 					})
 				} catch {
@@ -1134,7 +1128,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				}
 			}
 
-			setFacts((f) => {
+			setFacts(f => {
 				const prev = { ...EMPTY, ...f.progress[id] }
 				const entry: SessionLog = {
 					id: `${id}-s${prev.log.length + 1}`,
@@ -1187,7 +1181,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 						title: body.trim().split("\n")[0]?.slice(0, 200) || DEFAULT_SESSION_TITLE,
 						content: body,
 						hoursClaimed: Math.round((minutes / 60) * 100) / 100,
-						timelapses: evidence.clips.map((lapseId) => ({ lapseId })),
+						timelapses: evidence.clips.map(lapseId => ({ lapseId })),
 					}),
 				})
 			} catch {
@@ -1197,7 +1191,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
 				return err?.error?.message ?? "The entry was not saved. Try again."
 			}
-			setFacts((f) => {
+			setFacts(f => {
 				const prev = { ...EMPTY, ...f.progress[id] }
 				return {
 					...f,
@@ -1219,7 +1213,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 
 	const weekOf = useCallback(
 		(weekId: number): Week => {
-			const week = weeks.find((w) => w.id === weekId) ?? weeks[0]
+			const week = weeks.find(w => w.id === weekId) ?? weeks[0]
 			// The curriculum is a compile-time constant with ten weeks in it, so an empty list is a broken build rather than a state to render around.
 			if (!week) throw new Error("The curriculum has no weeks in it")
 			return week
@@ -1234,7 +1228,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	 */
 	const weekHours = useCallback(
 		(weekId: number) => {
-			const week = weeks.find((w) => w.id === weekId)
+			const week = weeks.find(w => w.id === weekId)
 			if (!week) return 0
 			const mins = week.checkpoints.reduce((n, c) => n + (facts.progress[c.id]?.minutes ?? 0), 0)
 			return mins / 60 + (facts.offBookHours[weekId] ?? 0)
@@ -1260,7 +1254,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	// The same questions asked of a week object, so a sheet can serve a warm-up (which has no week number of its own) as readily as a season week.
 	const weekOfCheckpoint = useCallback(
 		(checkpoint: Checkpoint): Week =>
-			warmupWeeks.find((w) => w.checkpoints.some((c) => c.id === checkpoint.id)) ?? weekOf(checkpoint.weekId),
+			warmupWeeks.find(w => w.checkpoints.some(c => c.id === checkpoint.id)) ?? weekOf(checkpoint.weekId),
 		[warmupWeeks, weekOf],
 	)
 	const hoursOf = useCallback(
@@ -1302,7 +1296,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	const statusOf = useCallback(
 		(week: Week): string => {
 			if (!week.projectId) return phaseStatusOf(week.id)
-			const project = save.projects.find((p) => p.id === week.projectId)
+			const project = save.projects.find(p => p.id === week.projectId)
 			return (week.phase === "build" ? project?.buildStatus : project?.designStatus) ?? "draft"
 		},
 		[phaseStatusOf, save.projects],
@@ -1314,7 +1308,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	const pendingCoins = useCallback(
 		(weekId: number) =>
 			weeks
-				.filter((w) => w.id <= weekId)
+				.filter(w => w.id <= weekId)
 				.reduce((n, w) => {
 					const status = facts.phaseStatusByWeek[w.id]
 					if (status === "approved" || status === "rejected") return n
@@ -1330,8 +1324,8 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	 */
 	const isPassed = useCallback(
 		(id: string): boolean => {
-			const week = [...weeks, ...warmupWeeks].find((w) => w.checkpoints.some((c) => c.id === id))
-			const self = week?.checkpoints.find((c) => c.id === id)
+			const week = [...weeks, ...warmupWeeks].find(w => w.checkpoints.some(c => c.id === id))
+			const self = week?.checkpoints.find(c => c.id === id)
 			if (!week || !self || !passedOf(week)) return false
 			const done = save.progress[id]?.done ?? false
 			if (self.kind === "onboarding" && !done) return false
@@ -1367,7 +1361,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			if (isPassed(id)) return false
 			if (isHeld(id)) return false
 			const done = (c: Checkpoint) => save.progress[c.id]?.done ?? false
-			const wi = weeks.findIndex((w) => w.checkpoints.some((c) => c.id === id))
+			const wi = weeks.findIndex(w => w.checkpoints.some(c => c.id === id))
 			if (wi === -1) return false
 			// Nothing on a week opens before its Monday, Get started included.
 			const opening = weeks[wi]
@@ -1375,7 +1369,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 
 			const week = weeks[wi]
 			const list = week?.checkpoints ?? []
-			const i = list.findIndex((c) => c.id === id)
+			const i = list.findIndex(c => c.id === id)
 			const self = list[i]
 			if (!week || !self) return false
 
@@ -1390,7 +1384,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				//
 				// Week 1's idea reel is the exception: it is the optional arm of the opening fork, so it never holds the clock's milestones or Submit shut, whichever arm the maker took.
 				const gates = withoutOptionalIdea(list.slice(0, i)).filter(
-					(c) => c.kind !== "journal" && (c.atHours ?? 0) <= hours,
+					c => c.kind !== "journal" && (c.atHours ?? 0) <= hours,
 				)
 				return gates.every(done) && hours >= self.atHours
 			}
@@ -1417,12 +1411,12 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			if (isPassed(id)) return PASSED_REASON
 			if (isHeld(id)) {
 				const owedId = facts.owedReels[0]
-				const owed = weeks.flatMap((w) => w.checkpoints).find((c) => c.id === owedId)
+				const owed = weeks.flatMap(w => w.checkpoints).find(c => c.id === owedId)
 				return owed ? `Re-record ${owed.title} first. You deleted it.` : "Re-record the reel you deleted first."
 			}
 
 			const done = (c: Checkpoint) => save.progress[c.id]?.done ?? false
-			const wi = weeks.findIndex((w) => w.checkpoints.some((c) => c.id === id))
+			const wi = weeks.findIndex(w => w.checkpoints.some(c => c.id === id))
 			if (wi === -1) return null
 
 			const opening = weeks[wi]
@@ -1433,21 +1427,21 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 
 			const week = weeks[wi]
 			const list = week?.checkpoints ?? []
-			const i = list.findIndex((c) => c.id === id)
+			const i = list.findIndex(c => c.id === id)
 			const self = list[i]
 			if (!week || !self) return null
 
 			if (self.atHours !== undefined) {
 				const hours = self.kind === "reel" ? reelHours(week.id) : weekHours(week.id)
 				const owed = withoutOptionalIdea(list.slice(0, i)).find(
-					(c) => c.kind !== "journal" && (c.atHours ?? 0) <= hours && !done(c),
+					c => c.kind !== "journal" && (c.atHours ?? 0) <= hours && !done(c),
 				)
 				if (owed) return firstFinish(owed)
 				const toGo = Math.round((self.atHours - hours) * 100) / 100
 				return `Opens at ${self.atHours}h logged this week – ${toGo}h to go.`
 			}
 
-			const blocker = withoutOptionalIdea(list.slice(0, i)).find((c) => !done(c))
+			const blocker = withoutOptionalIdea(list.slice(0, i)).find(c => !done(c))
 			return blocker ? firstFinish(blocker) : null
 		},
 		[
@@ -1468,7 +1462,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		// Once the first devlog is written the opening fork is settled on the skip arm, so the unposted idea reel stops being the trail's answer to "where next" – it stays open as an extra, not as the current.
 		const skipSettled = save.progress["w1-entry-1"]?.done ?? false
 		const next = allCheckpoints.find(
-			(c) => !(save.progress[c.id]?.done ?? false) && isUnlocked(c.id) && !(skipSettled && c.id === WEEK1_IDEA_REEL_ID),
+			c => !(save.progress[c.id]?.done ?? false) && isUnlocked(c.id) && !(skipSettled && c.id === WEEK1_IDEA_REEL_ID),
 		)
 		return next?.id ?? null
 	}, [allCheckpoints, save.progress, isUnlocked])
@@ -1569,8 +1563,8 @@ export function usePrinterPace(): PrinterPace {
 	const printer = participantGoal === null || participantGoal === ParticipantGoal.PRINTER ? printerById(goalId) : null
 	// A week that closed while still a draft holds nothing reviewable, and a rejected one was decided against; neither will pay now. A week in review, or one sent back for changes, is deliberately not counted: it can still be decided and still pay, and telling someone they are behind on a week a reviewer has not opened yet is a nag with no action behind it.
 	const missedWeeks = weeks
-		.filter((w) => weekPassed(w.id) && (statusOf(w) === "draft" || statusOf(w) === "rejected"))
-		.map((w) => w.id)
+		.filter(w => weekPassed(w.id) && (statusOf(w) === "draft" || statusOf(w) === "rejected"))
+		.map(w => w.id)
 		.reverse()
 	return { printer, perWeekCoins: printer ? Math.round(printer.paceHours * COINS_PER_HOUR) : 0, missedWeeks }
 }
@@ -1579,7 +1573,7 @@ export function usePrinterPace(): PrinterPace {
  * The weeks a maker has behind them, as they would say it: "Week 2", "Weeks 2 and 4", "Weeks 1, 2 and 4". Newest first, because the most recent miss is the one they remember.
  */
 export function weekListPhrase(weeks: readonly number[]): string {
-	const parts = weeks.map((w) => String(w))
+	const parts = weeks.map(w => String(w))
 	if (parts.length === 0) return "No weeks"
 	if (parts.length === 1) return `Week ${parts[0]}`
 	return `Weeks ${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`

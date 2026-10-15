@@ -98,7 +98,7 @@ function snapshot(ref: RepoRef): Promise<Snapshot> {
 	const entry = { at: now, ttl: SNAPSHOT_TTL_MS, value }
 	snapshots.set(key, entry)
 	// Settled, a failure is only kept briefly. Checked against the entry itself, so a newer fetch that has replaced it is left alone.
-	value.then((snap) => {
+	value.then(snap => {
 		if (snap.kind === "unavailable" && snapshots.get(key) === entry) entry.ttl = UNAVAILABLE_TTL_MS
 	})
 	return value
@@ -132,15 +132,15 @@ function designFinder(ref: RepoRef, files: readonly string[]): () => Promise<str
 
 async function findDesignJson(ref: RepoRef, files: readonly string[]): Promise<string[]> {
 	const candidates = files
-		.filter((p) => p.toLowerCase().endsWith(DESIGN_JSON.extension) && !DESIGN_JSON_SKIP.test(p))
+		.filter(p => p.toLowerCase().endsWith(DESIGN_JSON.extension) && !DESIGN_JSON_SKIP.test(p))
 		.sort((a, b) => a.split("/").length - b.split("/").length || a.length - b.length)
 		.slice(0, DESIGN_JSON_MAX)
 	if (candidates.length === 0) return []
 
 	const texts = await Promise.all(
-		candidates.map((path) =>
+		candidates.map(path =>
 			// A forge that will not serve one file is the same as that file being unreadable: the kind goes on not being found, which a reviewer looks at by hand rather than a blocked hand-in.
-			readRepoFileAt(ref, path).catch((err) => {
+			readRepoFileAt(ref, path).catch(err => {
 				console.warn(`[repo-checks] could not read ${ref.forge.id}/${ref.fullName}/${path}:`, err)
 				return null
 			}),
@@ -202,8 +202,8 @@ async function fetchGitHubSnapshot(ref: RepoRef): Promise<Snapshot> {
 	const body = treeRes.ok
 		? ((await treeRes.json()) as { tree?: { path: string; type: string }[]; truncated?: boolean })
 		: { tree: [], truncated: false }
-	const files = (body.tree ?? []).filter((f) => f.type === "blob").map((f) => f.path)
-	const paths = files.map((p) => p.toLowerCase())
+	const files = (body.tree ?? []).filter(f => f.type === "blob").map(f => f.path)
+	const paths = files.map(p => p.toLowerCase())
 
 	let readme: string | null = null
 	if (readmeRes.ok) {
@@ -259,7 +259,7 @@ async function fetchGitLabSnapshot(ref: RepoRef): Promise<Snapshot> {
 		res = more
 	}
 
-	const paths = files.map((p) => p.toLowerCase())
+	const paths = files.map(p => p.toLowerCase())
 	const readme = await fetchGitLabReadme(forge, project, files)
 	// GitLab lists the whole tree when asked to recurse, so a file absent from `paths` is genuinely absent – there is no "cut short" state to carry.
 	return { kind: "ok", paths, files, readme, truncated: false, designs: designFinder(ref, files) }
@@ -275,7 +275,7 @@ const README_NAMES = ["readme.md", "readme.markdown", "readme.rst", "readme.txt"
 async function fetchGitLabReadme(forge: Forge, project: string, files: readonly string[]): Promise<string | null> {
 	// Root-level names first, then anything nested, so a docs/README does not shadow the project's own.
 	const candidates = files
-		.filter((f) => README_NAMES.includes((f.split("/").pop() ?? "").toLowerCase()))
+		.filter(f => README_NAMES.includes((f.split("/").pop() ?? "").toLowerCase()))
 		.sort((a, b) => a.split("/").length - b.split("/").length)
 	const name = candidates[0]
 	if (!name) return null
@@ -292,8 +292,8 @@ const README_IMAGE = /!\[.*?\]\(.*?\)|<img\s+[^>]*src\s*=|\.png|\.jpe?g|\.gif|\.
 function namedMatches(kind: RepoFileKind, snap: RepoSnapshot): string[] {
 	const def = REPO_FILE_KINDS[kind]
 	const pattern = def.pattern
-	if (pattern) return snap.paths.filter((p) => pattern.test(p))
-	return snap.paths.filter((p) => (def.extensions ?? []).some((ext) => p.endsWith(ext)))
+	if (pattern) return snap.paths.filter(p => pattern.test(p))
+	return snap.paths.filter(p => (def.extensions ?? []).some(ext => p.endsWith(ext)))
 }
 
 /**
@@ -310,7 +310,7 @@ function matches(kind: RepoFileKind, snap: RepoSnapshot, designs: readonly strin
 function sample(found: readonly string[]): string {
 	const shown = found
 		.slice(0, 3)
-		.map((p) => p.split("/").pop())
+		.map(p => p.split("/").pop())
 		.join(", ")
 	return found.length > 3 ? `${shown} and ${found.length - 3} more` : shown
 }
@@ -319,7 +319,7 @@ function result(repo: string | null, checks: RepoCheck[], unavailable = false): 
 	return {
 		repo,
 		checks,
-		canSubmit: !checks.some((c) => c.blocking && c.status === "fail"),
+		canSubmit: !checks.some(c => c.blocking && c.status === "fail"),
 		unavailable,
 		checkedAt: new Date().toISOString(),
 	}
@@ -389,7 +389,7 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 	const { required, recommended } = THEME_REPO_REQUIREMENTS[theme]
 	// Reading the repo's JSON is what finds an EasyEDA design, so it is done only when a kind that accepts one has found nothing by name – which for a PCB week is a repo exported from EasyEDA, and for every other repo never happens.
 	const designs = [...required, ...recommended].some(
-		(kind) => REPO_FILE_KINDS[kind].json && namedMatches(kind, snap).length === 0,
+		kind => REPO_FILE_KINDS[kind].json && namedMatches(kind, snap).length === 0,
 	)
 		? await snap.designs()
 		: []
@@ -509,7 +509,7 @@ export async function findRepoFilePath(repoLink: string | null, test: RegExp): P
 	if (!ref) return null
 	const snap = await snapshot(ref)
 	if (snap.kind !== "ok") return null
-	const hits = snap.files.filter((f) => test.test(f)).sort((a, b) => a.split("/").length - b.split("/").length)
+	const hits = snap.files.filter(f => test.test(f)).sort((a, b) => a.split("/").length - b.split("/").length)
 	return hits[0] ?? null
 }
 

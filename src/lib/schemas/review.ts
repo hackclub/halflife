@@ -8,7 +8,7 @@ import { MAX_SESSION_HOURS } from "@/lib/schemas/session"
 const tierSchema = z
 	.number()
 	.int()
-	.refine((n) => (TIER_IDS as readonly number[]).includes(n), {
+	.refine(n => (TIER_IDS as readonly number[]).includes(n), {
 		message: `Tier must be one of ${TIER_IDS.join(", ")}`,
 	})
 

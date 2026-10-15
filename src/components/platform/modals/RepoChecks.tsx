@@ -85,7 +85,7 @@ export function RepoChecks({
 		run()
 	}, [run])
 
-	const blocking = data?.checks.filter((c) => c.blocking && c.status === "fail").length ?? 0
+	const blocking = data?.checks.filter(c => c.blocking && c.status === "fail").length ?? 0
 
 	return (
 		<section
@@ -140,7 +140,7 @@ export function RepoChecks({
 								: "Everything this week needs is in the repo."}
 					</p>
 					<ul className={cx("mt-3 grid gap-1.5", loading && "opacity-60")}>
-						{data.checks.map((c) => (
+						{data.checks.map(c => (
 							<CheckRow key={c.key} check={c} />
 						))}
 					</ul>

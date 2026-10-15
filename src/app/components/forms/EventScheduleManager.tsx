@@ -25,8 +25,8 @@ export function EventScheduleManager({ events, timeZone }: { events: CalendarEve
 	// The list reads in the order people ask questions in: what's next, then what
 	// has already happened. Splitting it here rather than sorting twice keeps the
 	// boundary honest – "past" is decided once, by the day.
-	const upcoming = events.filter((event) => calendarDay(event.startsAt, timeZone) >= today)
-	const past = events.filter((event) => calendarDay(event.startsAt, timeZone) < today).reverse()
+	const upcoming = events.filter(event => calendarDay(event.startsAt, timeZone) >= today)
+	const past = events.filter(event => calendarDay(event.startsAt, timeZone) < today).reverse()
 
 	const seriesCount = new Map<string, number>()
 	for (const event of events)
@@ -108,7 +108,7 @@ function RowTable({
 					</tr>
 				</thead>
 				<tbody>
-					{events.map((event) => {
+					{events.map(event => {
 						const colour = eventColour(event.colour)
 						const series = event.seriesId ? (seriesCount.get(event.seriesId) ?? 1) : 0
 						return (

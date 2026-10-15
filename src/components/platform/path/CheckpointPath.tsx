@@ -59,7 +59,7 @@ function ghostAfter(rows: Checkpoint[][], done: (id: string) => boolean, passed:
 		if (next?.length !== 1) continue
 		const [reel] = next
 		if (reel?.kind !== "reel" || done(reel.id) || passed(reel.id)) continue
-		if (!row.some((c) => c.kind === "journal" && !done(c.id))) continue
+		if (!row.some(c => c.kind === "journal" && !done(c.id))) continue
 		at.add(i)
 	}
 	return at
@@ -311,7 +311,7 @@ function CheckpointNode({
 
 function WeekBanner({ week, index }: { week: Week; index: number }) {
 	const { stateOf } = useStore()
-	const done = week.checkpoints.filter((c) => stateOf(c.id).done).length
+	const done = week.checkpoints.filter(c => stateOf(c.id).done).length
 
 	return (
 		<div data-week-banner="" className="sticky top-16 z-10 -mx-1 px-1 pt-4 pb-3">
@@ -518,7 +518,7 @@ function StarterGuideBanner({ week }: { week: Week }) {
 	const submitted = stateOf(`w${week.id}-submit`).done
 	// A build week inherits its design week's project, exactly as the project modal's week matching does.
 	const designWeekId = week.phase === "build" ? week.id - 5 : week.id
-	const project = projects.find((p) => p.weekId === designWeekId)
+	const project = projects.find(p => p.weekId === designWeekId)
 	const starter = project?.starterProjectId ? getStarterProject(project.starterProjectId) : undefined
 	if (submitted || !starter || !project) return null
 

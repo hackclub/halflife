@@ -139,8 +139,8 @@ export default async function ExplorePage() {
 			/>
 
 			<div className="grid grid-cols-[minmax(0,1fr)] gap-6">
-				{GROUPS.map((group) => {
-					const items = entries.filter((e) => groupFor(e.day, today, yesterday) === group)
+				{GROUPS.map(group => {
+					const items = entries.filter(e => groupFor(e.day, today, yesterday) === group)
 					if (items.length === 0) return null
 					return (
 						<section key={group} className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5">
@@ -149,7 +149,7 @@ export default async function ExplorePage() {
 								<h2 className="label text-navy-faint">{group}</h2>
 								<span className="h-px flex-1 bg-line" />
 							</div>
-							{items.map((e) => (
+							{items.map(e => (
 								<Entry key={e.id} entry={e} viewerId={user.id} />
 							))}
 						</section>

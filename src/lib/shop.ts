@@ -143,7 +143,7 @@ export async function getShopItemsFor(userId: string): Promise<{
 				regionPrices: { select: { regionId: true, priceCredits: true } },
 			},
 		}),
-		prisma.$transaction((tx) => getBalances(tx, userId)),
+		prisma.$transaction(tx => getBalances(tx, userId)),
 		getPrinterQualification(userId),
 		prisma.shopOrder.groupBy({
 			by: ["shopItemId"],
@@ -154,14 +154,14 @@ export async function getShopItemsFor(userId: string): Promise<{
 		shopContextFor(userId),
 	])
 
-	const owned = new Map(orders.map((o) => [o.shopItemId, o._sum.quantity ?? 0]))
+	const owned = new Map(orders.map(o => [o.shopItemId, o._sum.quantity ?? 0]))
 
 	return {
 		balances,
 		regions,
 		regionId: context.regionId,
 		country: context.country,
-		items: items.map((item) => {
+		items: items.map(item => {
 			const ownedCount = owned.get(item.id) ?? 0
 			let locked = false
 			let lockReason: string | null = null
@@ -181,7 +181,7 @@ export async function getShopItemsFor(userId: string): Promise<{
 			const { regionPrices, ...base } = item
 			const priceCredits =
 				context.regionId !== null
-					? (regionPrices.find((r) => r.regionId === context.regionId)?.priceCredits ?? item.priceCredits)
+					? (regionPrices.find(r => r.regionId === context.regionId)?.priceCredits ?? item.priceCredits)
 					: item.priceCredits
 
 			// Every coin is spendable on anything, so affordability compares the whole balance against the price – display and purchase read the same number, so the shelf can never advertise a price the till refuses.
@@ -229,7 +229,7 @@ export async function purchase(
 			throw new HttpError("ITEM_LOCKED", `Ship all ${qualification.required} themes to unlock this`)
 	}
 
-	return prisma.$transaction(async (tx) => {
+	return prisma.$transaction(async tx => {
 		await lockUserCredit(tx, userId)
 
 		// Re-checked inside the transaction: the pre-check above ran against reads taken before the lock, so a shop-close or a qualification-revoke in between must not still complete. Read off the transaction so this sees a consistent snapshot.
@@ -369,7 +369,7 @@ export async function rejectOrder(orderId: string, adminId: string, reason: stri
 	})
 	if (!target) throw new HttpError("NOT_FOUND", "Order not found")
 
-	return prisma.$transaction(async (tx) => {
+	return prisma.$transaction(async tx => {
 		await lockUserCredit(tx, target.userId)
 
 		const order = await tx.shopOrder.findUnique({ where: { id: orderId } })
@@ -434,7 +434,7 @@ export async function fulfillOrder(
 	})
 	if (!target) throw new HttpError("NOT_FOUND", "Order not found")
 
-	return prisma.$transaction(async (tx) => {
+	return prisma.$transaction(async tx => {
 		await lockUserCredit(tx, target.userId)
 
 		const order = await tx.shopOrder.findUnique({ where: { id: orderId } })

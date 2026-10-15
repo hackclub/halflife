@@ -53,14 +53,14 @@ export const GET = withRoute(async (req: NextRequest) => {
 
 	const page = pageResult(rows, parsed.data.limit)
 	return ok({
-		items: page.items.map((u) => ({
+		items: page.items.map(u => ({
 			id: u.id,
 			name: u.name,
 			verificationStatus: u.verificationStatus,
 			createdAt: u.createdAt,
 			updatedAt: u.updatedAt,
 			...(internal ? { email: u.email, slackId: u.slackId } : {}),
-			themeProjects: u.themeProjects.map((p) => ({
+			themeProjects: u.themeProjects.map(p => ({
 				...p,
 				themeLabel: getThemeDef(p.theme).label,
 			})),

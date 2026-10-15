@@ -35,8 +35,8 @@ export const GET = withRoute(async () => {
 				submissionExtensionUntil: true,
 			},
 		}),
-		prisma.$transaction((tx) => getBalances(tx, gate.user.id)),
-		prisma.$transaction((tx) => getEarnedCredit(tx, gate.user.id)),
+		prisma.$transaction(tx => getBalances(tx, gate.user.id)),
+		prisma.$transaction(tx => getEarnedCredit(tx, gate.user.id)),
 		getPrinterQualification(gate.user.id),
 	])
 

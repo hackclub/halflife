@@ -48,7 +48,7 @@ const FIELD_NAMES: Record<keyof Draft, string> = {
 
 /** "Fill out the required fields", naming the ones that are missing. */
 function requiredMessage(fields: (keyof Draft)[]) {
-	return `Fill out the required fields: ${fields.map((k) => FIELD_NAMES[k]).join(", ")}.`
+	return `Fill out the required fields: ${fields.map(k => FIELD_NAMES[k]).join(", ")}.`
 }
 
 const EMPTY: Draft = { name: "", purpose: "", quantity: "1", unitCostUsd: "", vendor: "", link: "" }
@@ -288,10 +288,10 @@ export function BomEditor({
 		required: true,
 		"aria-invalid": invalid.has(key) || undefined,
 		onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
-			setDraft((d) => ({ ...d, [key]: e.target.value }))
+			setDraft(d => ({ ...d, [key]: e.target.value }))
 			if (error) setError(null)
 			if (invalid.has(key)) {
-				setInvalid((s) => {
+				setInvalid(s => {
 					const next = new Set(s)
 					next.delete(key)
 					return next
@@ -316,7 +316,7 @@ export function BomEditor({
 				<table className="w-full min-w-[480px] text-left text-[0.86rem]">
 					<thead>
 						<tr className="border-b border-dashed border-line">
-							{["Part", "Qty", "Unit", "Total", "Vendor"].map((h) => (
+							{["Part", "Qty", "Unit", "Total", "Vendor"].map(h => (
 								<th key={h} scope="col" className="label px-3 py-2 text-navy-soft first:pl-0">
 									{h}
 								</th>
@@ -336,7 +336,7 @@ export function BomEditor({
 								</td>
 							</tr>
 						)}
-						{items.map((l) => (
+						{items.map(l => (
 							<tr
 								key={l.id}
 								className={cx(
@@ -436,16 +436,16 @@ export function BomEditor({
 				<form
 					noValidate
 					className="mt-4 grid gap-3 rounded-2xl bg-black/[.03] p-4"
-					onSubmit={(e) => {
+					onSubmit={e => {
 						e.preventDefault()
 						save()
 					}}
-					onKeyDown={(e) => {
+					onKeyDown={e => {
 						if (e.key === "Escape") setEditing(null)
 					}}
 				>
 					<p className="text-[0.9rem] font-extrabold text-navy">
-						{editing === "new" ? "Add a part" : `Edit ${items.find((l) => l.id === editing)?.name ?? "part"}`}
+						{editing === "new" ? "Add a part" : `Edit ${items.find(l => l.id === editing)?.name ?? "part"}`}
 					</p>
 					<p className="-mt-2 text-[0.8rem] text-navy-soft">
 						You can lump all of your passive components together (LEDs, resistors, diodes, transistors, etc) into one
@@ -566,7 +566,7 @@ export function BomEditor({
 									<table className="w-full min-w-[440px] text-left text-[0.85rem]">
 										<thead>
 											<tr className="border-b border-dashed border-line">
-												{["Part", "Qty", "Unit", "Vendor"].map((h) => (
+												{["Part", "Qty", "Unit", "Vendor"].map(h => (
 													<th key={h} scope="col" className="label px-3 py-2 text-navy-soft first:pl-0">
 														{h}
 													</th>
@@ -596,7 +596,7 @@ export function BomEditor({
 							<div className="rounded-xl bg-black/[.03] px-3.5 py-3">
 								<p className="label text-violet-deep">Skipped {preview.skipped.length}</p>
 								<ul className="mt-1.5 grid gap-1">
-									{preview.skipped.map((s) => (
+									{preview.skipped.map(s => (
 										<li key={s.row} className="text-[0.82rem] leading-snug text-navy-soft">
 											<span className="font-semibold text-navy">{s.name || `line ${s.row}`}</span> – {s.reason}
 										</li>
@@ -668,12 +668,12 @@ function ExtraRow({
 							disabled={disabled}
 							aria-invalid={invalid || undefined}
 							aria-describedby={invalid ? `${id}-error` : undefined}
-							onChange={(e) => {
+							onChange={e => {
 								setDraft(e.target.value)
 								if (invalid) setInvalid(false)
 							}}
 							onBlur={() => commit()}
-							onKeyDown={(e) => {
+							onKeyDown={e => {
 								if (e.key === "Enter") {
 									e.preventDefault()
 									e.currentTarget.blur()

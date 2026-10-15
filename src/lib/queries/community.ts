@@ -84,7 +84,7 @@ export async function getJournalFeed(): Promise<JournalRow[]> {
 
 	const today = effectiveDateFor(new Date(), settings.programTimezone)
 
-	return sessions.map((session) => {
+	return sessions.map(session => {
 		const project = session.themeProject
 		return {
 			id: session.id,

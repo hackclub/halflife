@@ -27,7 +27,7 @@ export function RepoInput({ value, onChange, id }: { value: string; onChange: (v
 			<input
 				id={id}
 				value={value}
-				onChange={(e) => onChange(e.target.value)}
+				onChange={e => onChange(e.target.value)}
 				onBlur={() => setTouched(true)}
 				inputMode="url"
 				autoComplete="url"
@@ -131,7 +131,7 @@ export function RepoEditor({ project, className }: { project: Project; className
 	return (
 		<form
 			className={cx("grid gap-2", className)}
-			onSubmit={(e) => {
+			onSubmit={e => {
 				e.preventDefault()
 				save()
 			}}
@@ -142,11 +142,11 @@ export function RepoEditor({ project, className }: { project: Project; className
 			<input
 				id={id}
 				value={draft}
-				onChange={(e) => {
+				onChange={e => {
 					setDraft(e.target.value)
 					if (error) setError(null)
 				}}
-				onKeyDown={(e) => {
+				onKeyDown={e => {
 					if (e.key === "Escape") setEditing(false)
 				}}
 				inputMode="url"

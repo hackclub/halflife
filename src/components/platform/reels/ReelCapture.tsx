@@ -126,7 +126,7 @@ export function ReelCapture({
 				className="sr-only"
 				tabIndex={-1}
 				aria-hidden="true"
-				onChange={(e) => pick(e.target.files?.[0])}
+				onChange={e => pick(e.target.files?.[0])}
 			/>
 
 			{/* `capture` is a hint, not a constraint: on a phone it opens the rear camera straight into the native recorder, and hands back the platform's own format. A desktop browser ignores it, which is why the button that opens this one is hidden there. */}
@@ -138,7 +138,7 @@ export function ReelCapture({
 				tabIndex={-1}
 				aria-hidden="true"
 				capture="environment"
-				onChange={(e) => pick(e.target.files?.[0])}
+				onChange={e => pick(e.target.files?.[0])}
 			/>
 
 			{showQr && handoff.minted && handoff.status === "waiting" && (

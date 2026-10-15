@@ -15,7 +15,7 @@ export function postForm(
 		xhr.open("POST", url)
 		xhr.responseType = "text"
 		if (onProgress) {
-			xhr.upload.onprogress = (e) => {
+			xhr.upload.onprogress = e => {
 				if (e.lengthComputable && e.total > 0) onProgress(Math.min(1, e.loaded / e.total))
 			}
 			xhr.upload.onload = () => onProgress(1)

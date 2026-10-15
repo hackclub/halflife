@@ -19,7 +19,7 @@ export const POST = withRoute(async (req: Request) => {
 	if (!target) return fail("NOT_FOUND", "User not found")
 
 	const entry = await prisma
-		.$transaction(async (tx) => {
+		.$transaction(async tx => {
 			await lockUserCredit(tx, userId)
 			const balances = await getBalances(tx, userId)
 			// Guard the pot being moved, not the combined total: a clawback that the total can absorb may still take the spendable pot negative, and banked coins are not available to cover it.

@@ -76,7 +76,7 @@ export function forgeByHostname(hostname: string): Forge | null {
 		.replace(/^www\./, "")
 	for (const forge of ALL_FORGES) {
 		if (forge.hostname === host) return forge
-		if (forge.aliases.some((a) => a.replace(/^www\./, "") === host)) return forge
+		if (forge.aliases.some(a => a.replace(/^www\./, "") === host)) return forge
 	}
 	return null
 }

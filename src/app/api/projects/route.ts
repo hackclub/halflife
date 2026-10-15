@@ -19,7 +19,7 @@ export const GET = withRoute(async () => {
 	})
 
 	const items = await Promise.all(
-		projects.map(async (project) => {
+		projects.map(async project => {
 			const [design, build] = await Promise.all([
 				getHoursBreakdown(project.id, Phase.DESIGN),
 				getHoursBreakdown(project.id, Phase.BUILD),

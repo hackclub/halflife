@@ -22,7 +22,7 @@ const MOCK_REELS = [
 /**
  * The fly-through plays before anyone has picked a tier, so it previews the tier-1 shape. The bonus node is earned, not given, so it stays off.
  */
-const WEEKS = WEEK_META.map((meta) => ({
+const WEEKS = WEEK_META.map(meta => ({
 	...meta,
 	checkpoints: checkpointsFor(meta, [], () => false, meta.phase === "build" ? BUILD_HOURS : MIN_HOURS_PER_WEEK),
 }))
@@ -120,7 +120,7 @@ const SCRIPT: { fromWeek: number; fromDepth: number; line: (goal: string) => str
 	{
 		fromWeek: 1,
 		fromDepth: 0.94,
-		line: (goal) => `At the end, you get ${article(goal)} ${goal} shipped right to you!.`,
+		line: goal => `At the end, you get ${article(goal)} ${goal} shipped right to you!.`,
 	},
 ]
 
@@ -216,7 +216,7 @@ function Stage({ goal }: { goal: PrinterGoal }) {
 				<MiniPanel className="p-3.5">
 					<p className="label mb-3 text-navy-faint">The Doomscroller</p>
 					<div className="flex flex-col gap-3">
-						{MOCK_REELS.map((r) => (
+						{MOCK_REELS.map(r => (
 							<div
 								key={r.who}
 								className="relative overflow-hidden rounded-xl bg-navy"
@@ -266,7 +266,7 @@ function Stage({ goal }: { goal: PrinterGoal }) {
 						})}
 
 						{week.checkpoints.slice(0, -1).map((_, i) =>
-							[0.35, 0.65].map((f) => (
+							[0.35, 0.65].map(f => (
 								<span
 									key={`${i}-${f}`}
 									className="absolute size-[6px] rounded-full bg-line-strong/45"
@@ -303,7 +303,7 @@ function WeekBanners({ refs }: { refs: React.RefObject<(HTMLDivElement | null)[]
 			{WEEKS.map((week, i) => (
 				<div
 					key={week.id}
-					ref={(el) => {
+					ref={el => {
 						refs.current[i] = el
 					}}
 					className="absolute top-0 left-1/2"
@@ -455,7 +455,7 @@ export function Cinematic() {
 					if (s && week >= s.fromWeek && depth >= s.fromDepth) idx = i
 				}
 			}
-			setBeat((b) => (b === idx ? b : idx))
+			setBeat(b => (b === idx ? b : idx))
 
 			if (t >= T_END) {
 				setEnded(true)

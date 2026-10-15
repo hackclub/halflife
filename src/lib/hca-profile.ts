@@ -137,7 +137,7 @@ const str = (v: unknown): string | null => (typeof v === "string" && v.trim() ? 
 /** The address to ship to: the one marked primary, else the first. */
 function addressFrom(me: Record<string, unknown> | null, userinfo: Record<string, unknown> | null): HcaAddress | null {
 	const list = Array.isArray(me?.addresses) ? (me.addresses as Record<string, unknown>[]) : []
-	const a = list.find((x) => x?.primary === true) ?? list[0]
+	const a = list.find(x => x?.primary === true) ?? list[0]
 	if (a) {
 		return {
 			line1: str(a.line_1),
@@ -268,7 +268,7 @@ export async function syncHcaProfile(userId: string): Promise<string | null> {
 		if (identity.slackId) {
 			await prisma.user
 				.update({ where: { id: userId }, data: { slackId: identity.slackId } })
-				.catch((err) => console.warn(`[hca] slack id for ${userId} not stored:`, err))
+				.catch(err => console.warn(`[hca] slack id for ${userId} not stored:`, err))
 		}
 		return identity.verificationStatus
 	} catch (err) {

@@ -105,7 +105,7 @@ export async function getMyReels(userId: string): Promise<MyReelGroup[]> {
 		const project = p.themeProject && !p.themeProject.deletedAt ? p.themeProject : null
 		const key = project?.id ?? "none"
 		if (!groups.has(key)) {
-			const theme = project ? THEMES.find((t) => t.id === project.theme) : undefined
+			const theme = project ? THEMES.find(t => t.id === project.theme) : undefined
 			groups.set(key, {
 				project: project
 					? {
@@ -125,7 +125,7 @@ export async function getMyReels(userId: string): Promise<MyReelGroup[]> {
 			videoUrl: publicUrlFor(p.objectKey),
 			thumbnailUrl: publicUrlFor(p.thumbnailKey),
 			status: p.status,
-			links: p.publicReels.map((l) => ({
+			links: p.publicReels.map(l => ({
 				id: l.id,
 				platform: l.platform,
 				url: l.url,
@@ -140,7 +140,7 @@ export async function getMyReels(userId: string): Promise<MyReelGroup[]> {
 	// Projects in trail order, so PCB reads before CAD whatever was posted last; reels outside any project come after them.
 	const order = (g: MyReelGroup) => {
 		if (!g.project) return Number.MAX_SAFE_INTEGER
-		const i = THEMES.findIndex((t) => t.label === g.project?.theme)
+		const i = THEMES.findIndex(t => t.label === g.project?.theme)
 		return i === -1 ? THEMES.length : i
 	}
 	return [...groups.values()].sort((a, b) => order(a) - order(b))

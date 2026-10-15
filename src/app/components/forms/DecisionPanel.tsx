@@ -75,7 +75,7 @@ export function DecisionPanel({
 			) : null}
 
 			<Field label="Decision">
-				<select className="hl-select" value={result} onChange={(e) => setResult(e.target.value as typeof result)}>
+				<select className="hl-select" value={result} onChange={e => setResult(e.target.value as typeof result)}>
 					<option value="APPROVED">Approve</option>
 					<option value="RETURNED">Send back for changes</option>
 					<option value="REJECTED">Reject</option>
@@ -84,9 +84,9 @@ export function DecisionPanel({
 
 			{approvingDesign ? (
 				<Field label="Funding tier" hint="This sets the parts budget. Required when approving a design.">
-					<select className="hl-select" value={tier} required onChange={(e) => setTier(e.target.value)}>
+					<select className="hl-select" value={tier} required onChange={e => setTier(e.target.value)}>
 						<option value="">Choose a tier…</option>
-						{tiers.map((t) => (
+						{tiers.map(t => (
 							<option key={t.id} value={t.id}>
 								{t.name} – ${t.grantUsd} for parts, submit from {t.fundingHours}h of design time
 							</option>
@@ -104,7 +104,7 @@ export function DecisionPanel({
 						step="0.25"
 						value={hoursOverride}
 						placeholder={String(computedHours)}
-						onChange={(e) => setHoursOverride(e.target.value)}
+						onChange={e => setHoursOverride(e.target.value)}
 					/>
 				</Field>
 			) : null}
@@ -115,7 +115,7 @@ export function DecisionPanel({
 					value={feedback}
 					required={result !== "APPROVED"}
 					maxLength={8000}
-					onChange={(e) => setFeedback(e.target.value)}
+					onChange={e => setFeedback(e.target.value)}
 				/>
 			</Field>
 
@@ -125,7 +125,7 @@ export function DecisionPanel({
 					value={reason}
 					required={result === "REJECTED"}
 					maxLength={8000}
-					onChange={(e) => setReason(e.target.value)}
+					onChange={e => setReason(e.target.value)}
 				/>
 			</Field>
 

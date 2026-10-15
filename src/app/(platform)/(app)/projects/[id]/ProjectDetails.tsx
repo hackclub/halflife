@@ -177,7 +177,7 @@ function DetailsForm({
 
 	// The printer goal every hour is paced against, and only when the person is actually saving toward one: "funding for all/some weeks" goals have no machine to pace to, so nothing should warn against their tier or their starter.
 	const goal = printerById(goalId)
-	const selectedTier = TIERS.find((t) => t.id === tier)
+	const selectedTier = TIERS.find(t => t.id === tier)
 	const readyToSubmit = selectedTier !== undefined && hours >= submitFloorFor(selectedTier.fundingHours)
 	const pacingToPrinter = participantGoal === null || participantGoal === ParticipantGoal.PRINTER
 	const hotGoal = pacingToPrinter && goal.hoursPerWeek > MIN_HOURS_PER_WEEK
@@ -219,11 +219,11 @@ function DetailsForm({
 		<form
 			aria-label="Edit project details"
 			className="grid gap-4"
-			onSubmit={(e) => {
+			onSubmit={e => {
 				e.preventDefault()
 				save()
 			}}
-			onKeyDown={(e) => {
+			onKeyDown={e => {
 				if (e.key === "Escape" && !saving) onDone()
 			}}
 		>
@@ -234,7 +234,7 @@ function DetailsForm({
 				<input
 					id={`${id}-name`}
 					value={name}
-					onChange={(e) => {
+					onChange={e => {
 						setName(e.target.value)
 						if (error) setError(null)
 					}}
@@ -251,7 +251,7 @@ function DetailsForm({
 				<textarea
 					id={`${id}-desc`}
 					value={description}
-					onChange={(e) => setDescription(e.target.value)}
+					onChange={e => setDescription(e.target.value)}
 					rows={4}
 					maxLength={4000}
 					placeholder="What it is, and what it will do when it works."
@@ -266,7 +266,7 @@ function DetailsForm({
 				<input
 					id={`${id}-repo`}
 					value={repo}
-					onChange={(e) => {
+					onChange={e => {
 						setRepo(e.target.value)
 						if (error) setError(null)
 					}}
@@ -294,7 +294,7 @@ function DetailsForm({
 							of its parts-funding to stay on pace.
 						</p>
 					)}
-					{starters.map((s) => {
+					{starters.map(s => {
 						const chosen = starterId === s.id
 						return (
 							<StarterProjectCard
@@ -369,7 +369,7 @@ function DetailsForm({
 							<span className="font-bold text-navy tabular-nums">{fmtHours(hours)}</span>{" "}
 							{project.weekId === WARMUP_WEEK_ID ? "on this project." : `in week ${project.weekId}.`}
 						</p>
-						{TIERS.map((t) => {
+						{TIERS.map(t => {
 							const floor = submitFloorFor(t.fundingHours)
 							const short = Math.max(0, floor - hours)
 							return (

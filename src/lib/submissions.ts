@@ -121,7 +121,7 @@ export async function submitPhase(
 	await assertNoOwedReel(userId)
 
 	// A submission must not be able to file someone else's evidence as its own. Refuse rather than filter: silently dropping a stranger's key hands back a success with the evidence missing, which the maker only finds out at review.
-	const foreign = attachmentKeys.filter((key) => !isOwnedKey(userId, key))
+	const foreign = attachmentKeys.filter(key => !isOwnedKey(userId, key))
 	if (foreign.length > 0) throw new HttpError("VALIDATION_FAILED", "Those uploads are not yours")
 
 	const breakdown = await getHoursBreakdown(themeProjectId, phase)
@@ -138,7 +138,7 @@ export async function submitPhase(
 	// The repo checks, run here rather than trusted from the sheet: what the maker was shown a minute ago is not an authorisation. They exist so a maker fixes what would get the week rejected before it is handed in, so a blocking failure refuses with its own reason. GitHub being unreachable never blocks.
 	const repoChecks = await checkRepo(project.githubRepo, project.theme)
 	if (!repoChecks.canSubmit) {
-		const first = repoChecks.checks.find((c) => c.blocking && c.status === "fail")
+		const first = repoChecks.checks.find(c => c.blocking && c.status === "fail")
 		throw new HttpError(
 			"UNPROCESSABLE",
 			first ? `${first.label}. ${first.detail ?? ""}`.trim() : "The repo is missing something this week needs",
@@ -168,7 +168,7 @@ export async function submitPhase(
 	const submittedInWeek = weekNumberForDate(settings.eventStartDate, now, settings.programTimezone)
 	const scheduledWeek = scheduledWeekFor(project.theme, phase)
 
-	return prisma.$transaction(async (tx) => {
+	return prisma.$transaction(async tx => {
 		// The gate is re-read on the transaction client: `getProgramSettings` caches the settings row for this request, so the pre-check above cannot see a submissions toggle, and a week can start or close between it and this write. Either would otherwise file a submission into a closed week.
 		const [accessSettings, accessUser, accessProject] = await Promise.all([
 			tx.programSettings.findUnique({ where: { id: "singleton" } }),
@@ -226,7 +226,7 @@ export async function unsubmitPhase(userId: string, themeProjectId: string, phas
 	if (statusFor(project, phase) !== PhaseStatus.in_review)
 		throw new HttpError("NOT_SUBMITTED", "This phase is not awaiting review")
 
-	return prisma.$transaction(async (tx) => {
+	return prisma.$transaction(async tx => {
 		// Serialize against the review path. finalizeReview takes this same per-user credit lock before it re-reads the submission, so holding it here means a decision cannot land between our read and our delete.
 		await lockUserCredit(tx, project.userId)
 

@@ -297,7 +297,7 @@ export function AppShell({
 				className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-cream/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden"
 			>
 				<ul className="mx-auto flex max-w-lg">
-					{TAB_NAV.map((item) => {
+					{TAB_NAV.map(item => {
 						const Icon = MOBILE_ICONS[item.href as keyof typeof MOBILE_ICONS]
 						const active = item.href === PLATFORM_HOME ? pathname === PLATFORM_HOME : pathname.startsWith(item.href)
 						return (

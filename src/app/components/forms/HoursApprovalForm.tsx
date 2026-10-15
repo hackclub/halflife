@@ -35,7 +35,7 @@ function HoursApprovalFormInner({ kind, id, approved }: Readonly<{ kind: Kind; i
 		<form
 			className="hl-stack hl-stack--tight"
 			style={{ gap: "0.3rem", minWidth: "6rem" }}
-			onSubmit={(e) => {
+			onSubmit={e => {
 				e.preventDefault()
 				save()
 			}}
@@ -49,7 +49,7 @@ function HoursApprovalFormInner({ kind, id, approved }: Readonly<{ kind: Kind; i
 				aria-label="Approved hours"
 				value={value}
 				disabled={busy !== null}
-				onChange={(e) => setValue(e.target.value)}
+				onChange={e => setValue(e.target.value)}
 			/>
 			<button className="hl-btn" type="submit" disabled={busy !== null}>
 				Save

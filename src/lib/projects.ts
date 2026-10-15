@@ -39,7 +39,7 @@ export type ProjectEvent =
 export function projectWeeks(project: Project, weeks: Week[]): Week[] {
 	// A warm-up project has no curriculum week. Empty rather than "week 0 plus its build week": week 0 + DESIGN_WEEKS is week 5, the breadboard design week, and gathering its checkpoints would put a stranger's trail events on the warm-up card.
 	const ids = project.weekId === WARMUP_WEEK_ID ? [] : [project.weekId, project.weekId + DESIGN_WEEKS]
-	return weeks.filter((w) => ids.includes(w.id))
+	return weeks.filter(w => ids.includes(w.id))
 }
 
 /**
@@ -92,7 +92,7 @@ export function projectStats(events: ProjectEvent[]): {
 	hours: number
 	started: number
 } {
-	const sessions = events.filter((e) => e.kind === "session")
+	const sessions = events.filter(e => e.kind === "session")
 	const minutes = sessions.reduce((n, e) => n + (e.kind === "session" ? e.minutes : 0), 0)
 	const started = events[events.length - 1]?.at ?? 0
 	return {

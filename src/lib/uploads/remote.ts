@@ -72,7 +72,7 @@ function safeLookup(
 		if (err) return callback(err, "")
 		const list = addresses as LookupAddress[]
 		const first = list[0]
-		if (!first || list.some((a) => isBlocked(a.address, a.family))) {
+		if (!first || list.some(a => isBlocked(a.address, a.family))) {
 			return callback(Object.assign(new Error(`Refused to connect to ${hostname}`), { code: "EBLOCKED" }), "")
 		}
 		if (options.all) callback(null, list)

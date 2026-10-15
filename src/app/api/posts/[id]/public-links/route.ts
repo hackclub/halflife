@@ -36,11 +36,11 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	}
 
 	const taken = await prisma.publicReel.findMany({
-		where: { url: { in: links.map((l) => l.url) } },
+		where: { url: { in: links.map(l => l.url) } },
 		select: { url: true, userId: true },
 	})
 	for (const row of taken) {
-		const link = links.find((l) => l.url === row.url)
+		const link = links.find(l => l.url === row.url)
 		if (link && row.userId !== gate.user.id)
 			errors[link.platform] = `That ${PLATFORM_INFO[link.platform].label} post has already been added by someone else.`
 	}
@@ -48,11 +48,11 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		return fail("VALIDATION_FAILED", Object.values(errors)[0] ?? "Check your links", { fields: errors })
 	}
 
-	const mine = new Set(taken.map((t) => t.url))
-	const fresh = links.filter((l) => !mine.has(l.url))
+	const mine = new Set(taken.map(t => t.url))
+	const fresh = links.filter(l => !mine.has(l.url))
 	if (fresh.length > 0) {
 		await prisma.publicReel.createMany({
-			data: fresh.map((l) => ({
+			data: fresh.map(l => ({
 				url: l.url,
 				platform: l.platform,
 				email: gate.user.email,

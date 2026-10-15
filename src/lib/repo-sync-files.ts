@@ -127,7 +127,7 @@ function decodeEntities(text: string): string {
 
 /** A table row, keeping empty cells rather than dropping the column. */
 function row(...cells: (string | number | null | undefined)[]): string {
-	return `| ${cells.map((c) => (c === null || c === undefined || c === "" ? "—" : String(c))).join(" | ")} |`
+	return `| ${cells.map(c => (c === null || c === undefined || c === "" ? "—" : String(c))).join(" | ")} |`
 }
 
 /**
@@ -187,7 +187,7 @@ export function renderJournal(project: ProjectMeta, entries: JournalEntry[]): Re
 	const lines: string[] = []
 	lines.push(`# ${project.title} – devlog`, "")
 	lines.push(
-		BANNER("devlog", project.id, newestOf(entries.map((e) => e.createdAt)), projectUrl(project.id)).trimEnd(),
+		BANNER("devlog", project.id, newestOf(entries.map(e => e.createdAt)), projectUrl(project.id)).trimEnd(),
 		"",
 	)
 	if (project.description) lines.push(`> ${project.description.replace(/\n+/g, " ")}`, "")

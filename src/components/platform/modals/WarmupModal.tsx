@@ -106,7 +106,7 @@ export function WarmupModal({ onClose, closesOn }: { onClose: () => void; closes
 						<input
 							id="wu-name"
 							value={name}
-							onChange={(e) => setName(e.target.value)}
+							onChange={e => setName(e.target.value)}
 							placeholder="My warm-up project"
 							maxLength={120}
 							className={inputClass}
@@ -116,7 +116,7 @@ export function WarmupModal({ onClose, closesOn }: { onClose: () => void; closes
 						<textarea
 							id="wu-desc"
 							value={desc}
-							onChange={(e) => setDesc(e.target.value)}
+							onChange={e => setDesc(e.target.value)}
 							rows={3}
 							maxLength={4000}
 							placeholder="A macropad with a rotary encoder for my editing shortcuts"
@@ -145,7 +145,7 @@ export function WarmupModal({ onClose, closesOn }: { onClose: () => void; closes
 
 					<fieldset className="mt-2 grid gap-2.5">
 						<legend className="label mb-2 text-violet-deep">Funding tier</legend>
-						{TIERS.map((t) => (
+						{TIERS.map(t => (
 							<OptionRow
 								key={t.id}
 								selected={tier === t.id}

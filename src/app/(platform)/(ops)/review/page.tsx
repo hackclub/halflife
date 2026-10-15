@@ -48,7 +48,7 @@ export default async function ReviewQueuePage({ searchParams }: Props) {
 					<EmptyState>Queue is empty.</EmptyState>
 				) : (
 					<Table head={["Theme", "Phase", "Participant", "Waiting since", "Claim", ""]}>
-						{queue.items.map((item) => (
+						{queue.items.map(item => (
 							<tr key={item.id}>
 								<td>
 									{item.themeLabel}

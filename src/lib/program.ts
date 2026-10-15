@@ -145,7 +145,7 @@ function zoneOffsetMs(at: number, timeZone: string): number {
 		minute: "numeric",
 		second: "numeric",
 	}).formatToParts(new Date(at))
-	const part = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find((p) => p.type === type)?.value ?? 0)
+	const part = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find(p => p.type === type)?.value ?? 0)
 	const wall = Date.UTC(part("year"), part("month") - 1, part("day"), part("hour"), part("minute"), part("second"))
 	return wall - (at - (at % 1000))
 }

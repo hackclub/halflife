@@ -41,7 +41,7 @@ export function stepAt(index: number): OnboardingStep | undefined {
 }
 
 export function stepIndexOf(id: OnboardingStepId): number {
-	return ONBOARDING_STEPS.findIndex((s) => s.id === id)
+	return ONBOARDING_STEPS.findIndex(s => s.id === id)
 }
 
 /**
@@ -126,7 +126,7 @@ export const STARTER_PROJECTS = [
 ] as const satisfies readonly StarterProject[]
 
 export function starterProjectsFor(theme: Theme): readonly StarterProject[] {
-	return STARTER_PROJECTS.filter((p) => (p.themes as readonly Theme[]).includes(theme))
+	return STARTER_PROJECTS.filter(p => (p.themes as readonly Theme[]).includes(theme))
 }
 
 /**
@@ -137,7 +137,7 @@ export function seesStarterProjects(experience: HardwareExperience | null): bool
 }
 
 export function getStarterProject(id: string): StarterProject | undefined {
-	return STARTER_PROJECTS.find((p) => p.id === id)
+	return STARTER_PROJECTS.find(p => p.id === id)
 }
 
 /** The tier a starter project is scoped to. Not configurable – see above. */
@@ -179,7 +179,7 @@ export const WEEK_INTROS = [
 ] as const satisfies readonly WeekIntro[]
 
 export function weekIntroFor(theme: Theme): WeekIntro | undefined {
-	return WEEK_INTROS.find((w) => w.theme === theme)
+	return WEEK_INTROS.find(w => w.theme === theme)
 }
 
 /** Whether step two should show the primer rather than the examples. */

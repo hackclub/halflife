@@ -28,7 +28,7 @@ export const NAV = [
 /**
  * The phone tab bar divides into equal cells, six at most: six 60px cells is what a 360px screen holds with the uppercase labels still readable. The Doomscroller gets in through the header link below lg instead of taking one.
  */
-export const TAB_NAV = NAV.filter((item) => item.href !== "/doomscroller")
+export const TAB_NAV = NAV.filter(item => item.href !== "/doomscroller")
 
 export function Sidebar({ className }: { className?: string }) {
 	const pathname = usePathname()
@@ -60,7 +60,7 @@ export function Sidebar({ className }: { className?: string }) {
 				<span aria-hidden="true" className="torn-soft absolute -top-3.5 left-8 h-8 w-20 rounded-t-lg bg-coral" />
 				<nav className="relative px-5">
 					<ul>
-						{NAV.map((item) => {
+						{NAV.map(item => {
 							const active = item.href === PLATFORM_HOME ? pathname === PLATFORM_HOME : pathname.startsWith(item.href)
 							return (
 								<li key={item.href} data-tour={item.tourId} className="relative">

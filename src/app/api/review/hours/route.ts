@@ -20,11 +20,11 @@ export const POST = withRoute(async (req: Request) => {
 	const parsed = await parseBody(req, hoursDecisionSchema)
 	if (parsed.error) return parsed.error
 
-	const sessionIds = parsed.data.decisions.filter((d) => d.kind === "session").map((d) => d.id)
-	const linkIds = parsed.data.decisions.filter((d) => d.kind === "hackatime").map((d) => d.id)
+	const sessionIds = parsed.data.decisions.filter(d => d.kind === "session").map(d => d.id)
+	const linkIds = parsed.data.decisions.filter(d => d.kind === "hackatime").map(d => d.id)
 	const now = new Date()
 
-	const applied = await prisma.$transaction(async (tx) => {
+	const applied = await prisma.$transaction(async tx => {
 		const [sessions, links] = await Promise.all([
 			sessionIds.length
 				? tx.workSession.findMany({
@@ -56,7 +56,7 @@ export const POST = withRoute(async (req: Request) => {
 
 		// Approving hours is the other half of the money path, so it needs the same rule the decision route has: nobody rules on their own work.
 		const all = [...sessions, ...links]
-		if (all.some((row) => row.themeProject.userId === gate.user.id))
+		if (all.some(row => row.themeProject.userId === gate.user.id))
 			throw new HttpError("FORBIDDEN", "You cannot approve hours on your own work")
 
 		for (const row of all) {
@@ -66,16 +66,16 @@ export const POST = withRoute(async (req: Request) => {
 		}
 
 		// Ari owns its own decisions, but a claim another Half Life reviewer holds is theirs until it expires.
-		const pairs = [...new Map(all.map((row) => [`${row.themeProjectId}:${row.phase}`, row])).values()]
+		const pairs = [...new Map(all.map(row => [`${row.themeProjectId}:${row.phase}`, row])).values()]
 		const openSubmissions = await tx.phaseSubmission.findMany({
 			where: {
 				resolvedAt: null,
-				OR: pairs.map((row) => ({ themeProjectId: row.themeProjectId, phase: row.phase })),
+				OR: pairs.map(row => ({ themeProjectId: row.themeProjectId, phase: row.phase })),
 			},
 			select: { claim: { select: { reviewerId: true, expiresAt: true } } },
 		})
 		const blocked = openSubmissions.some(
-			(submission) =>
+			submission =>
 				submission.claim && submission.claim.reviewerId !== gate.user.id && submission.claim.expiresAt > now,
 		)
 		if (blocked) throw new HttpError("CLAIMED_BY_OTHER", "Another reviewer is deciding this phase right now")

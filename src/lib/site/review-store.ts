@@ -52,15 +52,15 @@ function reviewerBoard(
 	usersById: Map<string, { email: string }>,
 ): ProjectReviewStats["leaderboard"] {
 	const names = new Map<string, string>()
-	const keyed = rows.map((row) => {
+	const keyed = rows.map(row => {
 		const key = emailKey(row.reviewerEmail ?? (row.reviewerId ? usersById.get(row.reviewerId)?.email : null))
 		if (key !== null && row.reviewerName && !names.has(key)) names.set(key, row.reviewerName)
 		return key
 	})
-	const anonymous = keyed.filter((key) => key === null).length
+	const anonymous = keyed.filter(key => key === null).length
 	const board: ProjectReviewStats["leaderboard"] = tallyBoard(
-		keyed.filter((key) => key !== null),
-		(key) => key,
+		keyed.filter(key => key !== null),
+		key => key,
 	).map(({ key: email, count: reviewed }) => ({ email, reviewed, name: names.get(email) ?? null }))
 	if (anonymous > 0) board.push({ email: ANONYMOUS_ARI, reviewed: anonymous, name: "Ari" })
 	return board.sort((a, b) => b.reviewed - a.reviewed || a.email.localeCompare(b.email))
@@ -85,9 +85,9 @@ export type WeekReviewProgress = {
  */
 async function getWeekReviewProgress(): Promise<WeekReviewProgress[]> {
 	const now = await currentWeekNumber()
-	const started = THEMES.filter((t) => t.designWeek <= now)
+	const started = THEMES.filter(t => t.designWeek <= now)
 	if (started.length === 0) return []
-	const themes = started.map((t) => t.id)
+	const themes = started.map(t => t.id)
 
 	const [projects, reviews] = await Promise.all([
 		prisma.themeProject.findMany({
@@ -120,7 +120,7 @@ async function getWeekReviewProgress(): Promise<WeekReviewProgress[]> {
 	}
 
 	return started
-		.map((theme) => ({
+		.map(theme => ({
 			week: theme.designWeek,
 			label: theme.label,
 			reviewed: reviewed.get(theme.id)?.size ?? 0,
@@ -152,7 +152,7 @@ export async function getProjectReviewStats(since: Date): Promise<ProjectReviewS
 
 	// Canonical emails for console reviewers, so a decision-time address in a different case still lands on the same row.
 	const reviewerIds = [
-		...new Set([...reviewRows, ...allReviewRows].flatMap((row) => (row.reviewerId ? [row.reviewerId] : []))),
+		...new Set([...reviewRows, ...allReviewRows].flatMap(row => (row.reviewerId ? [row.reviewerId] : []))),
 	]
 	const usersById = new Map(
 		(
@@ -160,7 +160,7 @@ export async function getProjectReviewStats(since: Date): Promise<ProjectReviewS
 				where: { id: { in: reviewerIds } },
 				select: { id: true, email: true },
 			})
-		).map((user) => [user.id, { email: user.email }]),
+		).map(user => [user.id, { email: user.email }]),
 	)
 
 	return {

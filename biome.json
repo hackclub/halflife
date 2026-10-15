@@ -48,7 +48,7 @@
 		"formatter": {
 			"semicolons": "asNeeded",
 			"trailingCommas": "all",
-			"arrowParentheses": "always",
+			"arrowParentheses": "asNeeded",
 			"bracketSameLine": false
 		}
 	},

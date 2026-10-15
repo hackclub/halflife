@@ -25,7 +25,7 @@ export const GET = withRoute(async (_req: Request, { params }: Params) => {
 	if (!project) return fail("NOT_FOUND", "Project not found")
 
 	return ok({
-		links: project.hackatimeLinks.map((l) => ({
+		links: project.hackatimeLinks.map(l => ({
 			id: l.id,
 			hackatimeProject: l.hackatimeProject,
 			phase: l.phase,
@@ -98,7 +98,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		)
 	}
 
-	const link = await prisma.$transaction(async (tx) => {
+	const link = await prisma.$transaction(async tx => {
 		// Re-read the phase on the transaction client immediately before the link lands: a submit that commits between the checks above and this create would otherwise attach hours to a phase the decision has already frozen.
 		const current = await tx.themeProject.findUnique({
 			where: { id },

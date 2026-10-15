@@ -82,11 +82,11 @@ export function toOnboardingView(state: OnboardingStateData): OnboardingView {
 		suggestedTier: state.suggestedTier,
 		beginner: isBeginner(state.experience),
 		projectId: state.project.id,
-		steps: ONBOARDING_STEPS.map((step) => ({ ...step })),
+		steps: ONBOARDING_STEPS.map(step => ({ ...step })),
 		experienceOptions: EXPERIENCE_OPTIONS,
 		weekIntro: intro
 			? {
-					painting: WEEK_META[THEMES.findIndex((t) => t.id === intro.theme)]?.theme ?? "",
+					painting: WEEK_META[THEMES.findIndex(t => t.id === intro.theme)]?.theme ?? "",
 					kicker: intro.kicker,
 					headline: intro.headline,
 					primer: intro.primer,
@@ -100,7 +100,7 @@ export function toOnboardingView(state: OnboardingStateData): OnboardingView {
 			starterProjectId: state.project.starterProjectId,
 			tierLocked: state.project.tierLocked,
 		},
-		starterProjects: state.starterProjects.map((p) => ({
+		starterProjects: state.starterProjects.map(p => ({
 			id: p.id,
 			title: p.title,
 			description: p.description,
@@ -108,7 +108,7 @@ export function toOnboardingView(state: OnboardingStateData): OnboardingView {
 			repoUrl: p.repoUrl,
 			guideUrl: p.guideUrl,
 		})),
-		tiers: TIERS.map((tier) => ({
+		tiers: TIERS.map(tier => ({
 			id: tier.id,
 			name: tier.name,
 			grantUsd: tier.grantUsd,

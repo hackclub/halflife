@@ -311,7 +311,7 @@ async function importRow(
 	].filter((part): part is string => !!part)
 
 	return prisma.$transaction(
-		async (tx) => {
+		async tx => {
 			await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`warmup-import:${row.email}`}, 0))`
 
 			// Two runs of the same click (two admins, two tabs) both read their "not imported yet" snapshot before either transaction started. Since warm-up rows are no longer held unique by `(userId, theme)`, the insert below would happily make a second project for one Airtable row; this re-read under the lock is what keeps a row to one project.
@@ -530,7 +530,7 @@ export async function importWarmupProjects(actor: ImportActor): Promise<WarmupIm
 		}
 	}
 
-	const count = (status: WarmupImportOutcome["status"]) => outcomes.filter((o) => o.status === status).length
+	const count = (status: WarmupImportOutcome["status"]) => outcomes.filter(o => o.status === status).length
 	return {
 		table: YSWS_SUBMISSION.tableId,
 		fetched: records.length,
@@ -538,7 +538,7 @@ export async function importWarmupProjects(actor: ImportActor): Promise<WarmupIm
 		alreadyImported: count("already_imported"),
 		skipped: count("skipped"),
 		failed: count("failed"),
-		ariSent: outcomes.filter((o) => o.ari === "sent").length,
+		ariSent: outcomes.filter(o => o.ari === "sent").length,
 		outcomes,
 	}
 }

@@ -176,7 +176,7 @@ export default async function ReviewDetailPage({ params }: Props) {
 					<EmptyState>No sessions logged for this phase.</EmptyState>
 				) : (
 					<Table head={["Date", "What", "Claimed", "Approved", "Evidence"]}>
-						{detail.sessions.map((session) => (
+						{detail.sessions.map(session => (
 							<tr key={session.id}>
 								<td className="hl-mono">{session.effectiveDate ?? "—"}</td>
 								<td>
@@ -201,12 +201,12 @@ export default async function ReviewDetailPage({ params }: Props) {
 									/>
 								</td>
 								<td>
-									{session.media.map((m) => (
+									{session.media.map(m => (
 										<a key={m.id} href={m.url ?? "#"} style={{ marginRight: "0.5rem" }}>
 											{m.type.toLowerCase()}
 										</a>
 									))}
-									{session.timelapses.map((t) => (
+									{session.timelapses.map(t => (
 										<a
 											key={t.id}
 											href={
@@ -232,7 +232,7 @@ export default async function ReviewDetailPage({ params }: Props) {
 			{detail.links.length > 0 ? (
 				<Panel title="Hackatime links">
 					<Table head={["Project", "Hours", "Cached", "Error"]}>
-						{detail.links.map((link) => (
+						{detail.links.map(link => (
 							<tr key={link.id}>
 								<td className="hl-mono">{link.hackatimeProject}</td>
 								<td>
@@ -255,7 +255,7 @@ export default async function ReviewDetailPage({ params }: Props) {
 			{detail.priorReviews.length > 0 ? (
 				<Panel title="Earlier decisions on this project">
 					<Table head={["When", "Phase", "Result", "Reviewer", "Feedback"]}>
-						{detail.priorReviews.map((review) => (
+						{detail.priorReviews.map(review => (
 							<tr key={review.id}>
 								<td className="hl-mono">{review.createdAt.toDateString()}</td>
 								<td>{review.submission.phase.toLowerCase()}</td>
@@ -283,7 +283,7 @@ export default async function ReviewDetailPage({ params }: Props) {
 				<DecisionPanel
 					submissionId={id}
 					phase={submission.phase}
-					tiers={TIERS.map((t) => ({
+					tiers={TIERS.map(t => ({
 						id: t.id,
 						name: t.name,
 						grantUsd: t.grantUsd,

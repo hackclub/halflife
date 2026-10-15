@@ -27,11 +27,11 @@ const STATUSES = Object.values(PhaseStatus)
 
 /** Anything unrecognised in the query string is dropped, not trusted. */
 function filtersFrom(s: Search): ProjectFilters {
-	const status = (v?: string) => STATUSES.find((x) => x === v)
+	const status = (v?: string) => STATUSES.find(x => x === v)
 	const tier = Number(s.tier)
 	return {
 		q: s.q?.trim() || undefined,
-		theme: Object.values(Theme).find((t) => t === s.theme),
+		theme: Object.values(Theme).find(t => t === s.theme),
 		designStatus: status(s.design),
 		buildStatus: status(s.build),
 		tier: tier === 1 || tier === 2 || tier === 3 ? tier : undefined,
@@ -75,7 +75,7 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 					/>
 					<select className="hl-input" name="theme" defaultValue={filters.theme ?? ""} style={{ maxWidth: "12rem" }}>
 						<option value="">Any theme</option>
-						{THEMES.map((t) => (
+						{THEMES.map(t => (
 							<option key={t.id} value={t.id}>
 								{t.label}
 							</option>
@@ -89,7 +89,7 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 						style={{ maxWidth: "12rem" }}
 					>
 						<option value="">Design: any</option>
-						{STATUSES.map((s) => (
+						{STATUSES.map(s => (
 							<option key={s} value={s}>
 								Design: {statusLabel(s)}
 							</option>
@@ -102,7 +102,7 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 						style={{ maxWidth: "12rem" }}
 					>
 						<option value="">Build: any</option>
-						{STATUSES.map((s) => (
+						{STATUSES.map(s => (
 							<option key={s} value={s}>
 								Build: {statusLabel(s)}
 							</option>
@@ -141,7 +141,7 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 					<EmptyState>No projects match.</EmptyState>
 				) : (
 					<Table head={["Project", "Owner", "Theme", "Design", "Build", "Tier", "Extension"]}>
-						{items.map((project) => {
+						{items.map(project => {
 							const userExt =
 								project.user.submissionExtensionUntil && project.user.submissionExtensionUntil > now
 									? project.user.submissionExtensionUntil

@@ -85,7 +85,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		metadata: {
 			enabled: true,
 			repo,
-			files: files.map((f) => ({ path: f.path, bytes: f.bytes })),
+			files: files.map(f => ({ path: f.path, bytes: f.bytes })),
 		},
 	})
 

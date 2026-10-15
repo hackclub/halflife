@@ -228,7 +228,7 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 	try {
 		const lines = (await readFile(STORE_FILE, "utf8")).split("\n").filter(Boolean)
 		lineCount = lines.length
-		const match = lines.find((line) => line.includes(`"email":"${email}"`))
+		const match = lines.find(line => line.includes(`"email":"${email}"`))
 		if (match) {
 			duplicate = true
 			try {
@@ -270,7 +270,7 @@ export function clientIp(h: { get(name: string): string | null }): string {
 	const forwarded = h.get("x-forwarded-for")
 	const last = forwarded
 		?.split(",")
-		.map((part) => part.trim())
+		.map(part => part.trim())
 		.filter(Boolean)
 		.at(-1)
 	return last || h.get("x-real-ip")?.trim() || "unknown"
@@ -285,7 +285,7 @@ const hits = new Map<string, number[]>()
 
 export function rateLimited(key: string): boolean {
 	const now = Date.now()
-	const recent = (hits.get(key) ?? []).filter((at) => now - at < WINDOW_MS)
+	const recent = (hits.get(key) ?? []).filter(at => now - at < WINDOW_MS)
 	recent.push(now)
 	hits.set(key, recent)
 

@@ -232,7 +232,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 		],
 	)
 
-	const byTheme = new Map(projects.map((p) => [p.theme, p]))
+	const byTheme = new Map(projects.map(p => [p.theme, p]))
 	const progress: Record<string, CheckpointSnapshot> = {}
 	const offBookHours: Record<number, number> = {}
 	const overlapUncheckedWeeks: number[] = []
@@ -266,8 +266,8 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 		{
 			const id = (suffix: string) => `${prefix}-${suffix}`
 
-			const phaseSessions = sessions.filter((s) => s.themeProjectId === project.id && s.phase === phase)
-			const phaseLinks = links.filter((l) => l.themeProjectId === project.id && l.phase === phase)
+			const phaseSessions = sessions.filter(s => s.themeProjectId === project.id && s.phase === phase)
+			const phaseLinks = links.filter(l => l.themeProjectId === project.id && l.phase === phase)
 
 			// Week one's project comes into existence through the first checkpoint rather than a project form, so the node that stands for it is different and is already recorded above. A warm-up has no such node at all.
 			if (phase === Phase.DESIGN && week !== undefined && week > 1) {
@@ -294,7 +294,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 							minutes: minutesOf(session),
 							body: session.content ?? session.title,
 							at: session.createdAt.getTime(),
-							clips: session.timelapses.flatMap((t) => {
+							clips: session.timelapses.flatMap(t => {
 								const ref = t.externalId ?? t.objectKey
 								return ref ? [ref] : []
 							}),
@@ -304,7 +304,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 			}
 
 			// The newest hand-in dates the node; the status says whether it stands. A week taken back out of review (or reopened by an admin) is draft again with its old submission rows still there, and it has to read as not handed in, or the trail would hide the Submit it needs again.
-			const submission = submissions.filter((s) => s.themeProjectId === project.id && s.phase === phase).at(-1)
+			const submission = submissions.filter(s => s.themeProjectId === project.id && s.phase === phase).at(-1)
 			const status = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
 			if (week !== undefined) phaseStatusByWeek[week] = status
 			if (status !== PhaseStatus.draft) {
@@ -363,7 +363,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 	for (const project of projects) {
 		// A warm-up project has no curriculum week to be addressed by, and a maker may hold several of them, so week 0 would have to pick one of them arbitrarily. They are reached through the projects list instead.
 		if (project.theme === Theme.WARMUP) continue
-		const themeIndex = THEMES.findIndex((t) => t.id === project.theme)
+		const themeIndex = THEMES.findIndex(t => t.id === project.theme)
 		if (themeIndex !== -1) projectIdByWeek[weekOf(themeIndex, Phase.DESIGN)] = project.id
 	}
 
@@ -391,9 +391,9 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 		onboardingDone: user.onboardingCompletedAt !== null,
 		// Null is the answer "not yet", and it is what holds the mandatory goal prompt open. It is read here rather than derived from the ceremony state because it is a fact about the person, not about this browser.
 		participantGoal: user.participantGoal,
-		projects: projects.flatMap((project) => {
+		projects: projects.flatMap(project => {
 			const warmup = project.theme === Theme.WARMUP
-			const themeIndex = THEMES.findIndex((t) => t.id === project.theme)
+			const themeIndex = THEMES.findIndex(t => t.id === project.theme)
 			const tier = project.tier ?? project.requestedTier
 			// A project whose checkpoint was opened but never finished is not one the trail should list: the row exists from the moment "create a project" is opened, before anything has been decided about it.
 			if ((!warmup && themeIndex === -1) || !project.title || !tier) return []
@@ -412,10 +412,10 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 					buildStatus: project.buildStatus,
 					thumbnail: projectThumbnail(
 						publicUrlFor(project.coverImageKey),
-						sessions.filter((s) => s.themeProjectId === project.id),
+						sessions.filter(s => s.themeProjectId === project.id),
 						posts
-							.filter((p) => p.themeProjectId === project.id)
-							.map((p) => ({
+							.filter(p => p.themeProjectId === project.id)
+							.map(p => ({
 								createdAt: p.createdAt,
 								thumbnailUrl: publicUrlFor(p.thumbnailKey),
 								videoUrl: publicUrlFor(p.objectKey),

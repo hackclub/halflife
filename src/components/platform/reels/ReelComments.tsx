@@ -59,7 +59,7 @@ export function ReelComments({
 	const thread = reelId ? threads[reelId] : undefined
 
 	const patchThread = useCallback((id: string, next: (prev: Thread | undefined) => Thread) => {
-		setThreads((all) => ({ ...all, [id]: next(all[id]) }))
+		setThreads(all => ({ ...all, [id]: next(all[id]) }))
 	}, [])
 
 	// Everything it sets lands after the await, so it is safe to start from an effect. Callers that want the "loading" state shown mark it themselves.
@@ -71,17 +71,17 @@ export function ReelComments({
 				const res = await fetch(`/api/posts/${id}/comments?${query}`)
 				if (!res.ok) throw new Error(String(res.status))
 				const page = (await res.json()) as { items: Comment[]; nextCursor: string | null }
-				patchThread(id, (prev) => {
+				patchThread(id, prev => {
 					const had = cursor ? (prev?.items ?? []) : []
-					const seen = new Set(had.map((c) => c.id))
+					const seen = new Set(had.map(c => c.id))
 					return {
-						items: [...had, ...page.items.filter((c) => !seen.has(c.id))],
+						items: [...had, ...page.items.filter(c => !seen.has(c.id))],
 						nextCursor: page.nextCursor,
 						status: "ready",
 					}
 				})
 			} catch {
-				patchThread(id, (prev) => ({
+				patchThread(id, prev => ({
 					items: prev?.items ?? [],
 					nextCursor: prev?.nextCursor ?? null,
 					status: "error",
@@ -93,7 +93,7 @@ export function ReelComments({
 
 	/** A fetch the reader asked for – retry, or the next page – shows that it is working. */
 	function fetchAgain(id: string, cursor: string | null) {
-		patchThread(id, (prev) => ({
+		patchThread(id, prev => ({
 			items: prev?.items ?? [],
 			nextCursor: prev?.nextCursor ?? null,
 			status: "loading",
@@ -136,7 +136,7 @@ export function ReelComments({
 			}
 			const { comment } = (await res.json()) as { comment: Comment }
 			// Newest first, so the new comment goes to the top of the thread, not the end of it.
-			patchThread(reel.id, (prev) => ({
+			patchThread(reel.id, prev => ({
 				items: [comment, ...(prev?.items ?? [])],
 				nextCursor: prev?.nextCursor ?? null,
 				status: "ready",
@@ -158,17 +158,17 @@ export function ReelComments({
 		const count = reel.commentCount
 		// Gone at once; put back where it was if the server says no.
 		let at = -1
-		patchThread(id, (prev) => {
+		patchThread(id, prev => {
 			const items = prev?.items ?? []
-			at = items.findIndex((x) => x.id === c.id)
-			return { items: items.filter((x) => x.id !== c.id), nextCursor: prev?.nextCursor ?? null, status: "ready" }
+			at = items.findIndex(x => x.id === c.id)
+			return { items: items.filter(x => x.id !== c.id), nextCursor: prev?.nextCursor ?? null, status: "ready" }
 		})
 		onPatch(id, { commentCount: Math.max(0, count - 1) })
 		try {
 			const res = await fetch(`/api/comments/${c.id}`, { method: "DELETE" })
 			if (!res.ok) throw new Error(String(res.status))
 		} catch {
-			patchThread(id, (prev) => {
+			patchThread(id, prev => {
 				const items = [...(prev?.items ?? [])]
 				items.splice(at < 0 ? items.length : at, 0, c)
 				return { items, nextCursor: prev?.nextCursor ?? null, status: "ready" }
@@ -201,7 +201,7 @@ export function ReelComments({
 			<div className="thin-scroll min-h-0 flex-1 overflow-y-auto px-5 py-4">
 				{!reel ? null : !thread || (thread.status === "loading" && thread.items.length === 0) ? (
 					<ul aria-label="Loading comments" className="grid gap-5">
-						{[0, 1, 2].map((i) => (
+						{[0, 1, 2].map(i => (
 							<li key={i} className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-3 motion-safe:animate-pulse">
 								<span className="size-9 rounded-full bg-black/[.06]" />
 								<span className="grid content-start gap-2 pt-1">
@@ -230,7 +230,7 @@ export function ReelComments({
 				) : (
 					<>
 						<ol ref={list} className="grid gap-5">
-							{thread.items.map((c) => (
+							{thread.items.map(c => (
 								<li key={c.id} className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-3">
 									<Avatar name={c.author.name} image={c.author.image} className="size-9 text-[0.88rem]" />
 									<div className="min-w-0">
@@ -296,7 +296,7 @@ export function ReelComments({
 					<input
 						id={`${uid}-comment`}
 						value={draft}
-						onChange={(e) => setDraft(e.target.value)}
+						onChange={e => setDraft(e.target.value)}
 						maxLength={MAX_LENGTH}
 						disabled={!reel}
 						autoComplete="off"

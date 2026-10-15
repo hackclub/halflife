@@ -70,7 +70,7 @@ export async function getReviewQueue(opts: {
 	const now = Date.now()
 
 	return {
-		items: page.map((row) => ({
+		items: page.map(row => ({
 			id: row.id,
 			themeProjectId: row.themeProject.id,
 			phase: row.phase,
@@ -204,9 +204,9 @@ export async function getSubmissionDetail(
 		themeLabel: getThemeDef(submission.themeProject.theme).label,
 		coverImageUrl: publicUrlFor(submission.themeProject.coverImageKey),
 		breakdown,
-		sessions: sessions.map((s) => ({
+		sessions: sessions.map(s => ({
 			...s,
-			media: s.media.map((m) => ({ ...m, url: publicUrlFor(m.objectKey) })),
+			media: s.media.map(m => ({ ...m, url: publicUrlFor(m.objectKey) })),
 		})),
 		links,
 		priorReviews,
@@ -255,7 +255,7 @@ export async function getOpenDisputes(): Promise<OpenDispute[]> {
 		},
 	})
 
-	return rows.map((d) => ({
+	return rows.map(d => ({
 		id: d.id,
 		note: d.note,
 		createdAt: d.createdAt,

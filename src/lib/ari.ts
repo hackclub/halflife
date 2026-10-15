@@ -141,7 +141,7 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
 
 	const def = getThemeDef(project.theme)
 
-	const journals = project.workSessions.slice(-200).map((session) => ({
+	const journals = project.workSessions.slice(-200).map(session => ({
 		at: session.createdAt,
 		// A HACKATIME_TRACKED entry contributes no time here – its minutes arrive through hackatime_projects – but it is still evidence Ari should see.
 		minutes:
@@ -151,11 +151,11 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
 		text: sanitize(session.content ?? session.title) || session.title || "Journal entry",
 	}))
 
-	const phaseSubmissions = project.submissions.filter((s) => s.phase === phase)
-	const openSubmission = phaseSubmissions.find((s) => s.resolvedAt === null) ?? phaseSubmissions[0] ?? null
-	const isUpdate = phaseSubmissions.some((s) => s.resolvedAt !== null)
+	const phaseSubmissions = project.submissions.filter(s => s.phase === phase)
+	const openSubmission = phaseSubmissions.find(s => s.resolvedAt === null) ?? phaseSubmissions[0] ?? null
+	const isUpdate = phaseSubmissions.some(s => s.resolvedAt !== null)
 	const demoUrl = phase === Phase.BUILD ? await buildDemoUrl(project.userId, def.buildWeek) : null
-	const hasTimelapse = project.workSessions.some((s) => s.timelapses.length > 0)
+	const hasTimelapse = project.workSessions.some(s => s.timelapses.length > 0)
 
 	const input: AriShipInput = {
 		external_id: ariExternalId(themeProjectId, phase),
@@ -177,7 +177,7 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
 		// Only ask Ari to check elapsed-time evidence when there is a timelapse.
 		evidence: hasTimelapse ? ["commits", "devlog", "elapsed"] : ["commits", "devlog"],
 		...(project.hackatimeLinks.length > 0
-			? { hackatime_projects: project.hackatimeLinks.map((l) => l.hackatimeProject) }
+			? { hackatime_projects: project.hackatimeLinks.map(l => l.hackatimeProject) }
 			: {}),
 		...(journals.length > 0 ? { journals } : {}),
 		meta: {
@@ -297,7 +297,7 @@ export async function findUnsyncedAriSubmissions(): Promise<
 	if (projects.length === 0) return []
 
 	const open = await prisma.phaseSubmission.findMany({
-		where: { themeProjectId: { in: projects.map((p) => p.id) }, resolvedAt: null },
+		where: { themeProjectId: { in: projects.map(p => p.id) }, resolvedAt: null },
 		// Ascending so the newest-per-key tie-break in selectPendingShips sees a stable order when two rows share a millisecond.
 		orderBy: { createdAt: "asc" },
 		select: { themeProjectId: true, phase: true, ariSubmissionId: true, createdAt: true },
@@ -307,13 +307,13 @@ export async function findUnsyncedAriSubmissions(): Promise<
 
 	// Why each one is stuck: the last send failure, so the panel reads "no Slack account" rather than a row to blindly retry. Withdraw failures are a different operation and live on the same action, so they are skipped here. Capped rather than per-pair queried; beyond a few hundred recent failures the oldest pairs fall back to "not attempted", which the next failure corrects.
 	const failures = await prisma.auditLog.findMany({
-		where: { action: AuditAction.ARI_SYNC_FAILURE, targetId: { in: pending.map((p) => p.themeProjectId) } },
+		where: { action: AuditAction.ARI_SYNC_FAILURE, targetId: { in: pending.map(p => p.themeProjectId) } },
 		orderBy: { createdAt: "desc" },
 		take: 500,
 		select: { targetId: true, metadata: true },
 	})
 	const reasonOf = (themeProjectId: string, phase: Phase): string | null => {
-		const meta = failures.find((failure) => {
+		const meta = failures.find(failure => {
 			if (failure.targetId !== themeProjectId) return false
 			const data =
 				typeof failure.metadata === "object" && failure.metadata !== null && !Array.isArray(failure.metadata)
@@ -324,7 +324,7 @@ export async function findUnsyncedAriSubmissions(): Promise<
 		})?.metadata as { error?: unknown } | null
 		return typeof meta?.error === "string" ? meta.error : null
 	}
-	return pending.map((item) => ({ ...item, reason: reasonOf(item.themeProjectId, item.phase) }))
+	return pending.map(item => ({ ...item, reason: reasonOf(item.themeProjectId, item.phase) }))
 }
 
 // ─── Inbound ─────────────────────────────────────────────────────────────────
@@ -545,7 +545,7 @@ async function applyReset(event: ResetEvent): Promise<void> {
 		await reopenPhase(themeProjectId, phase, null, null, reason)
 	}
 
-	await prisma.$transaction(async (tx) => {
+	await prisma.$transaction(async tx => {
 		await tx.submissionReview.updateMany({
 			where: { submission: { themeProjectId, phase }, invalidated: false },
 			data: { invalidated: true, invalidatedAt: new Date() },
@@ -610,7 +610,7 @@ async function applyShipUpdated(event: UpdatedEvent): Promise<void> {
 		metadata: {
 			event: event.event,
 			// Mapped to plain values: the SDK's interface has no index signature, so it is not itself assignable to Prisma's JSON input type.
-			changes: event.changes.map((change) => ({
+			changes: event.changes.map(change => ({
 				field: change.field,
 				old_value: change.old_value,
 				new_value: change.new_value,

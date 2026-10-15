@@ -32,7 +32,7 @@ export const GET = withRoute(async (req: NextRequest) => {
 	const used = await prisma.sessionTimelapse.findMany({
 		where: {
 			provider: "lapse",
-			externalId: { in: page.timelapses.map((t) => t.id) },
+			externalId: { in: page.timelapses.map(t => t.id) },
 			workSession: {
 				deletedAt: null,
 				themeProject: { deletedAt: null },
@@ -41,10 +41,10 @@ export const GET = withRoute(async (req: NextRequest) => {
 		},
 		select: { externalId: true },
 	})
-	const attached = new Set(used.map((u) => u.externalId))
+	const attached = new Set(used.map(u => u.externalId))
 
 	return ok({
-		timelapses: page.timelapses.map((t) => ({
+		timelapses: page.timelapses.map(t => ({
 			id: t.id,
 			title: t.title,
 			durationSeconds: t.durationSeconds,

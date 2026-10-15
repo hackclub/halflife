@@ -46,7 +46,7 @@ export function ReelsList({ groups }: { groups: MyReelGroup[] }) {
           viewport. Tailwind's `grid-cols-1` is `minmax(0, 1fr)`, so the track is
           the column and the row wraps instead. */}
 			<div className="grid grid-cols-1 gap-8">
-				{groups.map((group) => (
+				{groups.map(group => (
 					<section key={group.project?.id ?? "none"} aria-labelledby={`reels-${group.project?.id ?? "none"}`}>
 						<div className="mb-3 flex flex-wrap items-center gap-2">
 							<h2 id={`reels-${group.project?.id ?? "none"}`} className="label text-violet-deep">
@@ -64,7 +64,7 @@ export function ReelsList({ groups }: { groups: MyReelGroup[] }) {
 							{group.project && <Chip tone="muted">{group.project.theme}</Chip>}
 						</div>
 						<ul className="grid grid-cols-1 gap-3">
-							{group.reels.map((reel) => (
+							{group.reels.map(reel => (
 								<ReelRow key={reel.id} reel={reel} onAdd={() => setAdding(reel)} onChanged={() => router.refresh()} />
 							))}
 						</ul>
@@ -168,7 +168,7 @@ function ReelRow({ reel, onAdd, onChanged }: { reel: MyReel; onAdd: () => void; 
 				<div className="mt-3">
 					{reel.links.length > 0 ? (
 						<ul className="grid grid-cols-1 gap-1.5" aria-label="Posted publicly on">
-							{reel.links.map((link) => (
+							{reel.links.map(link => (
 								<li key={link.id} className="flex min-w-0 items-center gap-2">
 									<span className="label shrink-0 text-violet-deep">{PLATFORM_INFO[link.platform].label}</span>
 									<a

@@ -65,7 +65,7 @@ export function getReferralLeaderboard(): Promise<ReferralLeaderboard | null> {
 	const value = walkReferrals(config)
 	const entry: Cached = { at: now, ttl: CACHE_TTL_MS, value }
 	cached = entry
-	value.then((result) => {
+	value.then(result => {
 		if (result === null && cached === entry) entry.ttl = FAILED_TTL_MS
 	})
 	return value
@@ -82,7 +82,7 @@ async function walkReferrals(
 	config: NonNullable<ReturnType<typeof getAirtableConfig>>,
 ): Promise<ReferralLeaderboard | null> {
 	const want = [EMAIL_FIELD, REFERRED_BY_FIELD, REFERRAL_NUMBER_FIELD]
-		.map((field) => `fields%5B%5D=${encodeURIComponent(field)}`)
+		.map(field => `fields%5B%5D=${encodeURIComponent(field)}`)
 		.join("&")
 
 	/** code → the email that owns it, for naming the link's author. */

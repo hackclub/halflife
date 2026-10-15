@@ -41,7 +41,7 @@ export type LatestSyncRun = {
 
 export async function getLatestSyncRuns(keys: SyncKey[]): Promise<LatestSyncRun[]> {
 	const rows = await Promise.all(
-		keys.map((syncKey) =>
+		keys.map(syncKey =>
 			prisma.syncRunLog.findFirst({
 				where: { syncKey },
 				orderBy: { createdAt: "desc" },
@@ -51,7 +51,7 @@ export async function getLatestSyncRuns(keys: SyncKey[]): Promise<LatestSyncRun[
 	)
 	return rows
 		.filter((r): r is NonNullable<typeof r> => r !== null)
-		.map((r) => ({
+		.map(r => ({
 			syncKey: r.syncKey,
 			lastRunAt: r.createdAt,
 			result: r.result,

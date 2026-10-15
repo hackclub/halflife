@@ -168,7 +168,7 @@ export function LapsePicker({
 		)
 	}
 
-	const pickedIds = new Set(picked.map((p) => p.id))
+	const pickedIds = new Set(picked.map(p => p.id))
 
 	return (
 		<div>
@@ -198,7 +198,7 @@ export function LapsePicker({
 				</div>
 			) : (
 				<ul className="grid gap-2.5 sm:grid-cols-2">
-					{load.items.map((t) => {
+					{load.items.map(t => {
 						const selected = pickedIds.has(t.id)
 						const blocked = !selected && (t.processing || t.attached || t.visibility === "FAILED_PROCESSING")
 						const why = t.attached

@@ -32,7 +32,7 @@ export function projectSecondsFrom(body: unknown, project: string): HackatimeFet
 		return { seconds: 0, stale: true, error: "Hackatime returned no project list" }
 	}
 
-	const match = projects.find((p) => p?.name === project)
+	const match = projects.find(p => p?.name === project)
 	if (!match) {
 		return {
 			seconds: 0,
@@ -141,7 +141,7 @@ export async function listUserProjects(hackatimeUserId: string): Promise<{ name:
 		const body = (await res.json()) as {
 			data?: { projects?: { name: string; total_seconds: number }[] }
 		}
-		return (body.data?.projects ?? []).map((p) => ({
+		return (body.data?.projects ?? []).map(p => ({
 			name: p.name,
 			totalSeconds: p.total_seconds,
 		}))

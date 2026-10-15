@@ -59,7 +59,7 @@ export function ExtensionForm({
 			</p>
 			<form
 				className="hl-row"
-				onSubmit={(e) => {
+				onSubmit={e => {
 					e.preventDefault()
 					if (value) save(new Date(value))
 				}}
@@ -68,7 +68,7 @@ export function ExtensionForm({
 					className="hl-input"
 					type="datetime-local"
 					value={value}
-					onChange={(e) => setValue(e.target.value)}
+					onChange={e => setValue(e.target.value)}
 					aria-label="Extend until"
 					style={{ maxWidth: "14rem" }}
 				/>

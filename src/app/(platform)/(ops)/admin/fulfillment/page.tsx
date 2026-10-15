@@ -39,8 +39,8 @@ function filtersFrom(s: Search): FulfillmentFilters {
 		placedFrom: utcDay(s.from),
 		// The "to" day is inclusive, so the bound is the midnight after it.
 		placedBefore: to ? new Date(to.getTime() + DAY_MS) : undefined,
-		method: s.method === "NONE" ? "NONE" : Object.values(ShopFulfillmentMethod).find((m) => m === s.method),
-		stage: Object.values(ShopFulfillmentStage).find((x) => x === s.stage),
+		method: s.method === "NONE" ? "NONE" : Object.values(ShopFulfillmentMethod).find(m => m === s.method),
+		stage: Object.values(ShopFulfillmentStage).find(x => x === s.stage),
 	}
 }
 
@@ -126,7 +126,7 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 					<EmptyState>No orders match.</EmptyState>
 				) : (
 					<Table head={["#", "Participant", "Item", "Cost (USD)", "Country", "Placed", "Fulfillment", "Decision"]}>
-						{items.map((order) => (
+						{items.map(order => (
 							<tr key={order.id}>
 								<td className="hl-mono">{order.orderNumber}</td>
 								<td>
@@ -181,7 +181,7 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 					<EmptyState>Nobody has shipped all five themes yet.</EmptyState>
 				) : (
 					<Table head={["Participant", "Qualified", "Status", "Address", "Tracking", "Update"]}>
-						{awards.map((award) => (
+						{awards.map(award => (
 							<tr key={award.id}>
 								<td>
 									<Link href={`/admin/users/${award.user.id}`}>{displayName(award.user)}</Link>

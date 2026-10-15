@@ -119,7 +119,7 @@ const LIMITER_MAX_KEYS = 10_000
 
 export function rateLimitedInMemory(key: string, max = 10, windowMs = 60_000): boolean {
 	const now = Date.now()
-	const recent = (limiterHits.get(key) ?? []).filter((at) => now - at < windowMs)
+	const recent = (limiterHits.get(key) ?? []).filter(at => now - at < windowMs)
 	if (recent.length >= max) {
 		limiterHits.set(key, recent)
 		return true

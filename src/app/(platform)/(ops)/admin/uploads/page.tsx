@@ -45,7 +45,7 @@ function keyParts(key: string): { folder: string; owner: string } {
 export default async function AdminUploadsPage({ searchParams }: Props) {
 	await requirePermissionPage(Permission.VIEW_UPLOADS)
 	const search = await searchParams
-	const folder = UPLOAD_FOLDERS.find((value) => value === search.folder)
+	const folder = UPLOAD_FOLDERS.find(value => value === search.folder)
 	const prefix = folder ? `${folder}/` : ""
 
 	let listing: Awaited<ReturnType<typeof listUploadedObjects>> | null = null
@@ -77,7 +77,7 @@ export default async function AdminUploadsPage({ searchParams }: Props) {
 						<span className="hl-label-text">Folder</span>
 						<select className="hl-input" name="folder" defaultValue={folder ?? ""} style={{ maxWidth: "16rem" }}>
 							<option value="">All folders</option>
-							{UPLOAD_FOLDERS.map((value) => (
+							{UPLOAD_FOLDERS.map(value => (
 								<option key={value} value={value}>
 									{FOLDER_LABELS[value]}
 								</option>
@@ -103,7 +103,7 @@ export default async function AdminUploadsPage({ searchParams }: Props) {
 			) : listing ? (
 				<Panel>
 					<Table head={["Key", "Folder", "Owner", "Size", "Modified", "File"]}>
-						{listing.objects.map((object) => {
+						{listing.objects.map(object => {
 							const parts = keyParts(object.key)
 							return (
 								<tr key={object.key}>

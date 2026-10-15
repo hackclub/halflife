@@ -186,21 +186,21 @@ const IMAGE_ADDRESS = /^(https?:\/\/|data:image\/)/i
  * The images in a drop. Files when there are any; otherwise a picture dragged off another page, which arrives as the page's markup for it (read in an inert document, so nothing loads) and failing that as a bare address that looks like an image. A plain link comes back empty.
  */
 function droppedImages(transfer: DataTransfer): ImageSource[] {
-	const files = Array.from(transfer.files).filter((f) => f.type.startsWith("image/"))
+	const files = Array.from(transfer.files).filter(f => f.type.startsWith("image/"))
 	if (files.length > 0) return files
 	const html = transfer.getData("text/html")
 	if (html) {
 		const found = Array.from(new DOMParser().parseFromString(html, "text/html").images)
-			.map((img) => ({ url: img.getAttribute("src")?.trim() ?? "", alt: img.alt }))
-			.filter((img) => IMAGE_ADDRESS.test(img.url))
+			.map(img => ({ url: img.getAttribute("src")?.trim() ?? "", alt: img.alt }))
+			.filter(img => IMAGE_ADDRESS.test(img.url))
 		if (found.length > 0) return found
 	}
 	return transfer
 		.getData("text/uri-list")
 		.split(/\r?\n/)
-		.map((line) => line.trim())
-		.filter((line) => line && !line.startsWith("#") && /^https?:\/\/\S+\.(png|jpe?g|gif|webp)(?:[?#]\S*)?$/i.test(line))
-		.map((url) => ({ url, alt: "" }))
+		.map(line => line.trim())
+		.filter(line => line && !line.startsWith("#") && /^https?:\/\/\S+\.(png|jpe?g|gif|webp)(?:[?#]\S*)?$/i.test(line))
+		.map(url => ({ url, alt: "" }))
 }
 
 /** Alt text for an image: what the page called it, else its file name. */
@@ -346,7 +346,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				seed = { picked: body.resolved ?? [], pinned: body.pinned ?? [] }
 				legacy = body.legacy ?? []
 				// Anything the resolve did not account for stays attached by id. Without this a clip the endpoint declined to read – it reads a bounded number – would fall out of the working set, and saving the edit would take it off the entry for good.
-				const accounted = new Set([...seed.picked.map((t) => t.id), ...seed.pinned, ...legacy])
+				const accounted = new Set([...seed.picked.map(t => t.id), ...seed.pinned, ...legacy])
 				for (const id of existing.clips) if (!accounted.has(id)) seed.pinned.push(id)
 			} catch {
 				// Lapse unreachable or unlinked: keep every stored ref by id. The server preserves what is already attached, so an edit that touches the words drops nothing.
@@ -384,8 +384,8 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			pinned.length > 0 ||
 			(!editing && tab !== "journal")
 		// Clips compare as sets against the seed: reordering a pick is not a change.
-		const workingIds = [...picked.map((t) => t.id), ...pinned].sort()
-		const seedIds = [...clipSeed.picked.map((t) => t.id), ...clipSeed.pinned].sort()
+		const workingIds = [...picked.map(t => t.id), ...pinned].sort()
+		const seedIds = [...clipSeed.picked.map(t => t.id), ...clipSeed.pinned].sort()
 		const clipsMatch = workingIds.length === seedIds.length && workingIds.every((id, i) => seedIds[i] === id)
 		const matchesSaved = editing && cleanBody === baselineBody && hoursText === baselineHours && clipsMatch
 		if (!hasContent || matchesSaved) {
@@ -418,7 +418,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 	// The fallback is for a season sheet opened before its project row landed; it must never pick the warm-up project, which has no season week.
 	const project =
-		projects.find((p) => isWeeksProject(week, p)) ?? projects.find((p) => p.weekId !== WARMUP_WEEK_ID) ?? projects[0]
+		projects.find(p => isWeeksProject(week, p)) ?? projects.find(p => p.weekId !== WARMUP_WEEK_ID) ?? projects[0]
 
 	// The claim is what the maker types. The photographs are what makes it a claim rather than a number, which is why the bar rises with it – and they are counted out of the entry itself, so every picture sits in the sentence that explains it instead of in a tray underneath.
 	const typed = Math.max(0, Number(hoursText) || 0)
@@ -475,7 +475,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		if (editing) {
 			// The full set the server reconciles against: Lapse picks and pins plus the older uploads, which the server keeps silently – sending them keeps the local snapshot agreeing with it until the refresh.
 			const refused = await editSession(checkpoint.id, sessionMinutes, body.trim(), {
-				clips: [...legacyKept, ...pinned, ...picked.map((t) => t.id)],
+				clips: [...legacyKept, ...pinned, ...picked.map(t => t.id)],
 			})
 			setSaving(false)
 			if (refused) setSaveError(refused)
@@ -486,7 +486,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			return
 		}
 		const refused = await logSession(checkpoint.id, sessionMinutes, body.trim(), {
-			clips: picked.map((t) => t.id),
+			clips: picked.map(t => t.id),
 		})
 		setSaving(false)
 		if (refused) {
@@ -515,7 +515,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	 */
 	async function addJournalImages(sources: Iterable<ImageSource>) {
 		const all = Array.from(sources)
-		const images = all.filter((s) => !(s instanceof File) || s.type.startsWith("image/"))
+		const images = all.filter(s => !(s instanceof File) || s.type.startsWith("image/"))
 		const notices: string[] = []
 		if (images.length < all.length) notices.push("Only images can go in an entry, so the rest were left out.")
 
@@ -550,7 +550,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			entry.current?.setSelectionRange(caret, caret)
 		})
 
-		setUploading((n) => n + items.length)
+		setUploading(n => n + items.length)
 		for (const item of items) {
 			try {
 				const { url } = await storeImage(item.source)
@@ -567,7 +567,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				swapPlaceholder(item.placeholder, null)
 				setImageError(err instanceof Error ? err.message : "The image did not upload")
 			} finally {
-				setUploading((n) => n - 1)
+				setUploading(n => n - 1)
 			}
 		}
 	}
@@ -591,7 +591,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			el && document.activeElement === el
 				? { start: el.selectionStart, end: el.selectionEnd, at: el.value.indexOf(placeholder), length: el.value.length }
 				: null
-		setBody((current) => {
+		setBody(current => {
 			const next =
 				replacement === null ? withoutPlaceholder(current, placeholder) : current.replace(placeholder, replacement)
 			// The backstop under `roomFor`: should a link land against a box that moved underneath it, the entry is still not left longer than the server will take.
@@ -609,7 +609,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 	// A drag that could be carrying an image: files, or a picture dragged off another page, which comes as markup and an address rather than a file. Dragging a selection around the entry is plain text, and not ours.
 	const mightBeImage = (e: React.DragEvent) =>
-		["Files", "text/html", "text/uri-list"].some((t) => e.dataTransfer.types.includes(t))
+		["Files", "text/html", "text/uri-list"].some(t => e.dataTransfer.types.includes(t))
 
 	return (
 		<Modal
@@ -682,7 +682,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					className="sketch flex gap-1 rounded-full bg-white p-1"
 					style={{ "--sk-radius": "999px" } as React.CSSProperties}
 				>
-					{(["journal", "timelapse"] as const).map((t) => (
+					{(["journal", "timelapse"] as const).map(t => (
 						<button
 							key={t}
 							type="button"
@@ -735,21 +735,21 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				// The whole sheet takes a drop, not just the box: a picture let go an inch off the textarea would otherwise open in the tab and take the unsaved entry with it.
 				// biome-ignore lint/a11y/noStaticElementInteractions: a drop target, not a control; dragging is not a keyboard gesture, and the sheet stays reachable through its fields.
 				<div
-					onDragEnter={(e) => {
+					onDragEnter={e => {
 						if (!mightBeImage(e)) return
 						e.preventDefault()
 						dragDepth.current += 1
 						setDragging(true)
 					}}
-					onDragOver={(e) => {
+					onDragOver={e => {
 						if (mightBeImage(e)) e.preventDefault()
 					}}
-					onDragLeave={(e) => {
+					onDragLeave={e => {
 						if (!mightBeImage(e)) return
 						dragDepth.current = Math.max(0, dragDepth.current - 1)
 						if (dragDepth.current === 0) setDragging(false)
 					}}
-					onDrop={(e) => {
+					onDrop={e => {
 						dragDepth.current = 0
 						setDragging(false)
 						const found = droppedImages(e.dataTransfer)
@@ -785,7 +785,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							<input
 								id="journal-hours"
 								value={hoursText}
-								onChange={(e) => setHoursText(e.target.value.replace(/[^\d.]/g, ""))}
+								onChange={e => setHoursText(e.target.value.replace(/[^\d.]/g, ""))}
 								inputMode="decimal"
 								placeholder="0"
 								aria-invalid={overCap || undefined}
@@ -854,7 +854,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							)}
 							<button
 								type="button"
-								onClick={() => setPreview((v) => !v)}
+								onClick={() => setPreview(v => !v)}
 								aria-pressed={preview}
 								className={cx(
 									"label inline-flex items-center gap-1.5 rounded-full border-2 px-3 py-1.5 transition-colors",
@@ -880,10 +880,10 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							<textarea
 								ref={entry}
 								value={body}
-								onChange={(e) => setBody(e.target.value)}
-								onPaste={(e) => {
+								onChange={e => setBody(e.target.value)}
+								onPaste={e => {
 									// A screenshot on the clipboard goes up like a dropped one; pasted text is left to the textarea.
-									const pasted = Array.from(e.clipboardData.files).filter((f) => f.type.startsWith("image/"))
+									const pasted = Array.from(e.clipboardData.files).filter(f => f.type.startsWith("image/"))
 									if (pasted.length === 0) return
 									e.preventDefault()
 									addJournalImages(pasted)
@@ -953,7 +953,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							className="sr-only"
 							tabIndex={-1}
 							aria-hidden="true"
-							onChange={(event) => {
+							onChange={event => {
 								// Copied out first: clearing the input empties the live list.
 								const files = Array.from(event.target.files ?? [])
 								event.target.value = ""
@@ -983,7 +983,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						<div className="mb-3 grid justify-items-center gap-1.5">
 							{/* Clips Lapse would not re-verify stay by id: listed so they
 							    can still be taken off, rather than stuck on forever. */}
-							{pinned.map((id) => (
+							{pinned.map(id => (
 								<p
 									key={id}
 									className="hand flex flex-wrap items-center justify-center gap-x-2 text-center text-[0.78rem] text-navy-soft"
@@ -993,7 +993,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 										type="button"
 										onClick={() => {
 											clipsTouchedRef.current = true
-											setPinned((prev) => prev.filter((x) => x !== id))
+											setPinned(prev => prev.filter(x => x !== id))
 										}}
 										className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
 									>
@@ -1013,9 +1013,9 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						picked={picked}
 						onSignIn={signInWithLapse}
 						forSession={editing ? existing?.id : undefined}
-						onToggle={(t) => {
+						onToggle={t => {
 							clipsTouchedRef.current = true
-							setPicked((p) => (p.some((x) => x.id === t.id) ? p.filter((x) => x.id !== t.id) : [...p, t]))
+							setPicked(p => (p.some(x => x.id === t.id) ? p.filter(x => x.id !== t.id) : [...p, t]))
 						}}
 					/>
 
@@ -1132,13 +1132,13 @@ export function PublicReelModal({
 		try {
 			await navigator.clipboard.writeText(text)
 			setCopied(which)
-			window.setTimeout(() => setCopied((c) => (c === which ? null : c)), 2000)
+			window.setTimeout(() => setCopied(c => (c === which ? null : c)), 2000)
 		} catch {
 			// Clipboard refused: the text is on screen and selectable.
 		}
 	}
 
-	const filled = PUBLIC_REEL_PLATFORMS.filter((p) => values[p].trim())
+	const filled = PUBLIC_REEL_PLATFORMS.filter(p => values[p].trim())
 
 	async function save() {
 		if (saving) return
@@ -1157,7 +1157,7 @@ export function PublicReelModal({
 			const res = await fetch(`/api/posts/${postId}/public-links`, {
 				method: "POST",
 				headers: { "content-type": "application/json" },
-				body: JSON.stringify({ links: filled.map((platform) => ({ platform, url: values[platform] })) }),
+				body: JSON.stringify({ links: filled.map(platform => ({ platform, url: values[platform] })) }),
 			})
 			if (!res.ok) {
 				const body = (await res.json().catch(() => null)) as {
@@ -1337,7 +1337,7 @@ export function PublicReelModal({
 			</ModalTitle>
 
 			<div className="grid gap-4 sm:grid-cols-2">
-				{PUBLIC_REEL_PLATFORMS.map((p) => {
+				{PUBLIC_REEL_PLATFORMS.map(p => {
 					const info = PLATFORM_INFO[p]
 					const fieldId = `${titleId}-${p}`
 					const error = errors[p]
@@ -1349,9 +1349,9 @@ export function PublicReelModal({
 							<input
 								id={fieldId}
 								value={values[p]}
-								onChange={(e) => {
+								onChange={e => {
 									const v = e.target.value
-									setValues((prev) => ({ ...prev, [p]: v }))
+									setValues(prev => ({ ...prev, [p]: v }))
 									if (errors[p]) setErrors(({ [p]: _, ...rest }) => rest)
 								}}
 								inputMode="url"
@@ -1568,7 +1568,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							value={caption}
 							aria-describedby={postBlocker ? "reel-caption-blocker" : undefined}
 							aria-invalid={!captionReady || undefined}
-							onChange={(e) => setCaption(e.target.value)}
+							onChange={e => setCaption(e.target.value)}
 							placeholder="routed the whole board without a single ratline left"
 							className={inputClass}
 						/>
@@ -1599,7 +1599,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 										/>
 										<button
 											type="button"
-											onClick={() => setMuted((m) => !m)}
+											onClick={() => setMuted(m => !m)}
 											aria-pressed={!muted}
 											aria-label={muted ? "Unmute the preview" : "Mute the preview"}
 											className="absolute top-2 right-2 z-10 grid size-9 place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm transition-colors hover:bg-black/75"
@@ -1670,7 +1670,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		if (pick === null) {
 			setStarterId(null)
 		} else {
-			const s = starters.find((x) => x.id === pick)
+			const s = starters.find(x => x.id === pick)
 			setStarterId(pick)
 			if (s) {
 				setName(s.title)
@@ -1755,7 +1755,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			{stage === "choose" ? (
 				<div className="grid gap-3 sm:grid-cols-2">
 					{starters.length > 0 && <p className="col-span-full label mb-2 text-left text-violet-deep">Step 1 / 2</p>}
-					{starters.map((s) => (
+					{starters.map(s => (
 						<StarterProjectCard
 							key={s.id}
 							starter={s}
@@ -1817,7 +1817,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							<div className="flex flex-wrap items-center gap-x-4 gap-y-2">
 								<Chip tone="teal">
 									<IconCheck className="text-[0.9rem]" /> Building{" "}
-									{starters.find((s) => s.id === starterId)?.title ?? "starter"}
+									{starters.find(s => s.id === starterId)?.title ?? "starter"}
 								</Chip>
 								<button
 									type="button"
@@ -1832,7 +1832,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							<input
 								id="np-name"
 								value={name}
-								onChange={(e) => setName(e.target.value)}
+								onChange={e => setName(e.target.value)}
 								placeholder={`My ${week.theme.toLowerCase()} project`}
 								className={inputClass}
 							/>
@@ -1841,7 +1841,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							<textarea
 								id="np-desc"
 								value={desc}
-								onChange={(e) => setDesc(e.target.value)}
+								onChange={e => setDesc(e.target.value)}
 								rows={3}
 								placeholder={week.examples[0]}
 								className={cx(inputClass, "resize-none")}
@@ -1851,14 +1851,14 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 						<button
 							type="button"
-							onClick={() => setShowExamples((v) => !v)}
+							onClick={() => setShowExamples(v => !v)}
 							className="hand self-start text-[0.82rem] text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
 						>
 							{showExamples ? "Hide examples" : "Stuck? See what other people are making"}
 						</button>
 						{showExamples && (
 							<ul className="grid gap-2">
-								{week.examples.map((e) => (
+								{week.examples.map(e => (
 									<li key={e}>
 										<button
 											type="button"
@@ -1884,7 +1884,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
                 what the submit gate holds you to. The funded hours buy the
                 parts; every hour past them earns spendable coins. */}
 							<div className="grid gap-2.5">
-								{TIERS.map((t) => (
+								{TIERS.map(t => (
 									<OptionRow
 										key={t.id}
 										selected={tier === t.id}
@@ -2014,7 +2014,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 	// The fallback is for a season sheet opened before its project row landed; it must never pick the warm-up project, which has no season week.
 	const project =
-		projects.find((p) => isWeeksProject(week, p)) ?? projects.find((p) => p.weekId !== WARMUP_WEEK_ID) ?? projects[0]
+		projects.find(p => isWeeksProject(week, p)) ?? projects.find(p => p.weekId !== WARMUP_WEEK_ID) ?? projects[0]
 
 	const [step, setStep] = useState(1)
 	// R2 object keys, not flags: what these ask for is evidence, and a boolean was letting the form take a file and drop it on the floor. Several screenshots, because one order is often split across vendors and one checkout page is not always one screen tall.
@@ -2058,7 +2058,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		if (isBuild || !project) return
 		let live = true
 		fetch(`/api/projects/${project.id}/bom`, { cache: "no-store" })
-			.then(async (res) => {
+			.then(async res => {
 				const body = await res.json().catch(() => null)
 				if (!res.ok) throw new Error(body?.error?.message ?? "Could not load the parts list")
 				if (live) setBom({ items: body.items, taxShippingUsd: body.taxShippingUsd ?? 0 })
@@ -2079,7 +2079,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const hours = hoursOf(week)
 	const tierFloor = submitFloorFor
 	const tierShort = (fundingHours: number) => Math.max(0, tierFloor(fundingHours) - hours)
-	const selectedTier = TIERS.find((t) => t.id === tier) ?? TIERS[0]
+	const selectedTier = TIERS.find(t => t.id === tier) ?? TIERS[0]
 	const tierBlocked = !isBuild && tierShort(selectedTier.fundingHours) > 0
 	// Over the tier's funding warns; past the leeway the grant covers only part of the cart, which is allowed but has to be agreed to rather than discovered at review.
 	const funding = partsFunding(bomTotal, selectedTier.grantUsd)
@@ -2157,7 +2157,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		}
 		const refused = await submitPhase(checkpoint.id, {
 			notes: isBuild ? buildNotes : undefined,
-			attachmentKeys: carts.map((c) => c.objectKey),
+			attachmentKeys: carts.map(c => c.objectKey),
 			partialFundingAccepted: partialFunding,
 			fundingDeclined,
 		})
@@ -2207,7 +2207,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			eyebrow={`Submit ${week.id === WARMUP_WEEK_ID ? "your warm-up" : `week ${week.id}`} · ${step}/${total}`}
 			footer={
 				<>
-					<Button variant="outline" onClick={() => (step === 1 ? setOpenCheckpoint(null) : setStep((s) => s - 1))}>
+					<Button variant="outline" onClick={() => (step === 1 ? setOpenCheckpoint(null) : setStep(s => s - 1))}>
 						{step === 1 ? "Not yet" : "Back"}
 					</Button>
 					{submitError && (
@@ -2231,7 +2231,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						</p>
 					)}
 					{step < total ? (
-						<Button variant="solid" disabled={!canAdvance} onClick={() => setStep((s) => s + 1)}>
+						<Button variant="solid" disabled={!canAdvance} onClick={() => setStep(s => s + 1)}>
 							Next <IconArrowRight className="text-base" />
 						</Button>
 					) : (
@@ -2344,7 +2344,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 										<table className="w-full min-w-[480px] text-left text-[0.86rem]">
 											<thead>
 												<tr className="border-b border-dashed border-line">
-													{["Part", "Qty", "Unit", "Total", "Vendor"].map((h) => (
+													{["Part", "Qty", "Unit", "Total", "Vendor"].map(h => (
 														<th key={h} scope="col" className="label px-4 py-2.5 text-navy-soft">
 															{h}
 														</th>
@@ -2360,7 +2360,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 														</td>
 													</tr>
 												)}
-												{bom.items.map((l) => (
+												{bom.items.map(l => (
 													<tr key={l.id} className="border-b border-dashed border-line/60 align-top">
 														<td className="px-4 py-2.5">
 															<span className="block font-semibold [overflow-wrap:anywhere] text-navy">{l.name}</span>
@@ -2497,7 +2497,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							<span className="font-bold text-navy tabular-nums">{fmtH(hours)}</span> logged this week.
 						</p>
 						<div className="grid gap-2.5 sm:grid-cols-3">
-							{TIERS.map((t) => {
+							{TIERS.map(t => {
 								const on = tier === t.id
 								const over = bomTotal > t.grantUsd
 								const short = tierShort(t.fundingHours)
@@ -2576,7 +2576,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									type="checkbox"
 									className="sr-only"
 									checked={partialFunding}
-									onChange={(e) => {
+									onChange={e => {
 										setAcceptsPartialFunding(e.target.checked)
 										if (e.target.checked) setDeclinedFunding(false)
 									}}
@@ -2661,7 +2661,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 											id="writeup"
 											rows={5}
 											value={writeup}
-											onChange={(e) => setWriteup(e.target.value)}
+											onChange={e => setWriteup(e.target.value)}
 											placeholder="The display initialises but stays blank. I think the reset pin is floating – next revision ties it through a 10k to 3V3 and I will bodge it in the meantime."
 											className={cx(inputClass, "resize-none")}
 										/>

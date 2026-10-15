@@ -18,7 +18,7 @@ function toLocalInput(date: Date): string {
 /** The label for a series, so "the weekly call" reads as one thing on the list. */
 function seriesLabel(events: CalendarEvent[], event: CalendarEvent): string | null {
 	if (!event.seriesId) return null
-	const count = events.filter((e) => e.seriesId === event.seriesId).length
+	const count = events.filter(e => e.seriesId === event.seriesId).length
 	return count > 1 ? `${count} in this series` : null
 }
 
@@ -109,7 +109,7 @@ export function EventForm({
 					<input
 						className="hl-input"
 						value={title}
-						onChange={(e) => setTitle(e.target.value)}
+						onChange={e => setTitle(e.target.value)}
 						placeholder="Weekly office hours"
 						maxLength={120}
 						required
@@ -120,7 +120,7 @@ export function EventForm({
 				<div className="hl-stack hl-stack--tight" style={{ gap: "0.25rem" }}>
 					<span className="hl-label-text">Colour</span>
 					<span role="radiogroup" aria-label="Colour" className="hl-row" style={{ gap: "0.4rem", minHeight: "2.5rem" }}>
-						{EVENT_COLOURS.map((option) => (
+						{EVENT_COLOURS.map(option => (
 							// biome-ignore lint/a11y/useSemanticElements: a radio option drawn as a swatch.
 							<button
 								key={option.id}
@@ -148,7 +148,7 @@ export function EventForm({
 						className="hl-input"
 						type="datetime-local"
 						value={startsAt}
-						onChange={(e) => setStartsAt(e.target.value)}
+						onChange={e => setStartsAt(e.target.value)}
 						required
 					/>
 				</Field>
@@ -157,7 +157,7 @@ export function EventForm({
 						className="hl-input"
 						type="datetime-local"
 						value={endsAt}
-						onChange={(e) => setEndsAt(e.target.value)}
+						onChange={e => setEndsAt(e.target.value)}
 						min={startsAt || undefined}
 					/>
 				</Field>
@@ -167,7 +167,7 @@ export function EventForm({
 				<textarea
 					className="hl-textarea"
 					value={description}
-					onChange={(e) => setDescription(e.target.value)}
+					onChange={e => setDescription(e.target.value)}
 					rows={3}
 					maxLength={2000}
 				/>
@@ -175,7 +175,7 @@ export function EventForm({
 
 			{editing ? (
 				<label className="hl-row" style={{ gap: "0.5rem" }}>
-					<input type="checkbox" checked={published} onChange={(e) => setPublished(e.target.checked)} />
+					<input type="checkbox" checked={published} onChange={e => setPublished(e.target.checked)} />
 					<span>{published ? "Published" : "Draft (hidden from participants)"}</span>
 					{series ? <span className="hl-hint">{series}</span> : null}
 				</label>
@@ -184,7 +184,7 @@ export function EventForm({
 					label="Repeat weekly"
 					hint="A standing weekly call is one row here, not ten. Each week is still its own occurrence, so one can be moved later."
 				>
-					<select className="hl-select" value={repeatWeeks} onChange={(e) => setRepeatWeeks(Number(e.target.value))}>
+					<select className="hl-select" value={repeatWeeks} onChange={e => setRepeatWeeks(Number(e.target.value))}>
 						<option value={1}>Just this once</option>
 						<option value={2}>Every week for 2 weeks</option>
 						<option value={4}>Every week for 4 weeks</option>

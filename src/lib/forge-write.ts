@@ -87,7 +87,7 @@ let inFlightCalls = 0
 const waiting: (() => void)[] = []
 
 async function slot(): Promise<() => void> {
-	if (inFlightCalls >= MAX_IN_FLIGHT) await new Promise<void>((go) => waiting.push(go))
+	if (inFlightCalls >= MAX_IN_FLIGHT) await new Promise<void>(go => waiting.push(go))
 	inFlightCalls++
 	return () => {
 		inFlightCalls--
@@ -95,7 +95,7 @@ async function slot(): Promise<() => void> {
 	}
 }
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
 /**
  * How long an answer asks us to wait, in ms, when it is a rate limit that says so.
@@ -343,13 +343,13 @@ async function listGitHubRepos(creds: ForgeCredentials): Promise<WritableRepo[]>
 	return (
 		repos
 			// A repo can turn up on two pages when a push lands mid-listing – the `sort=pushed` key moved underneath us. One entry per repo either way.
-			.filter((r) => {
+			.filter(r => {
 				if (seen.has(r.full_name)) return false
 				seen.add(r.full_name)
 				return true
 			})
-			.filter((r) => r.permissions?.push === true || r.permissions?.admin === true || r.permissions?.maintain === true)
-			.map((r) => ({
+			.filter(r => r.permissions?.push === true || r.permissions?.admin === true || r.permissions?.maintain === true)
+			.map(r => ({
 				fullName: r.full_name,
 				name: r.name,
 				ownerPath: r.owner.login,
@@ -391,12 +391,12 @@ async function listGitLabRepos(creds: ForgeCredentials): Promise<WritableRepo[]>
 	return (
 		projects
 			// Same mid-listing shuffle as GitHub's `sort=pushed`: one entry per project even when activity moves one across a page boundary.
-			.filter((p) => {
+			.filter(p => {
 				if (seen.has(p.path_with_namespace)) return false
 				seen.add(p.path_with_namespace)
 				return true
 			})
-			.map((p) => ({
+			.map(p => ({
 				fullName: p.path_with_namespace,
 				name: p.name,
 				ownerPath: p.namespace.full_path,
@@ -502,7 +502,7 @@ async function commitGitHub(
 	const entries: { path: string; sha: string | null }[] = []
 
 	await Promise.all(
-		files.map(async (file) => {
+		files.map(async file => {
 			// A deletion: nothing to hash or upload. Absent from the tree means there is nothing to do; present means a tree entry with a null sha, which is how the Git Data API deletes.
 			if (file.content === null) {
 				if (!current.has(file.path)) {
@@ -542,7 +542,7 @@ async function commitGitHub(
 		body: JSON.stringify({
 			base_tree: treeSha,
 			// A null sha deletes the path; anything else (re)writes it.
-			tree: entries.map((e) =>
+			tree: entries.map(e =>
 				e.sha === null ? { path: e.path, sha: null } : { path: e.path, mode: "100644", type: "blob", sha: e.sha },
 			),
 		}),
@@ -681,7 +681,7 @@ async function commitGitLab(
 
 	// Read each candidate file's current content to decide no-op vs update.
 	await Promise.all(
-		files.map(async (file) => {
+		files.map(async file => {
 			// A deletion needs no raw read: the tree listing is the whole answer. Absent means nothing to do; present means a delete action.
 			if (file.content === null) {
 				if (!existing.has(file.path)) {
@@ -733,7 +733,5 @@ async function commitGitLab(
 	const commit = (await commitRes.json()) as { id: string }
 
 	// GitLab's commit response carries the commit sha, not per-file shas, so the run history records that per file. It is what a maker would look up anyway.
-	return written
-		.map((w) => ({ ...w, sha: w.unchanged ? w.sha : commit.id }))
-		.sort((a, b) => a.path.localeCompare(b.path))
+	return written.map(w => ({ ...w, sha: w.unchanged ? w.sha : commit.id })).sort((a, b) => a.path.localeCompare(b.path))
 }

@@ -144,7 +144,7 @@ function sessionItem(s: Prisma.WorkSessionGetPayload<{ select: typeof SESSION_SE
 		hours: s.hoursClaimed,
 		approvedHours: s.hoursApproved !== null && s.hoursApproved !== s.hoursClaimed ? s.hoursApproved : null,
 		body: s.content ?? s.title,
-		lapses: s.timelapses.map((t) => ({
+		lapses: s.timelapses.map(t => ({
 			id: t.id,
 			thumbnailUrl: t.thumbnailUrl,
 			href:
@@ -239,17 +239,17 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 
 	// Both phases, in order, but only the ones that have left draft – a fresh project's page should not carry a "not started" row for each week.
 	const phases: PhaseReview[] = ([Phase.DESIGN, Phase.BUILD] as const)
-		.map((phase) => {
+		.map(phase => {
 			const isDesign = phase === Phase.DESIGN
 			const latest = project.submissions
-				.filter((s) => s.phase === phase)
+				.filter(s => s.phase === phase)
 				.reduce<Date | null>((at, s) => (!at || s.createdAt > at ? s.createdAt : at), null)
 			const disputed = project.submissions
-				.filter((s) => s.phase === phase && s.dispute)
+				.filter(s => s.phase === phase && s.dispute)
 				.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
 			// Only an open hand-in can be stuck: one that was decided had its marker cleared by the send that succeeded, and one that was withdrawn was deleted outright.
 			const openShip = project.submissions
-				.filter((s) => s.phase === phase && s.resolvedAt === null)
+				.filter(s => s.phase === phase && s.resolvedAt === null)
 				.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
 			return {
 				phase,
@@ -262,14 +262,14 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 				shipError: openShip?.ariShipError ?? null,
 			}
 		})
-		.filter((p) => p.status !== PhaseStatus.draft || p.submittedAt !== null)
+		.filter(p => p.status !== PhaseStatus.draft || p.submittedAt !== null)
 
 	return {
 		coverImageUrl: publicUrlFor(project.coverImageKey),
 		fallbackThumbnail: projectThumbnail(
 			null,
 			project.workSessions,
-			project.posts.map((p) => ({
+			project.posts.map(p => ({
 				createdAt: p.createdAt,
 				thumbnailUrl: publicUrlFor(p.thumbnailKey),
 				videoUrl: publicUrlFor(p.objectKey),
@@ -325,7 +325,7 @@ export async function getPublicProjectPage(id: string): Promise<PublicProjectDat
 	})
 	if (!project) return null
 
-	const themeIndex = THEMES.findIndex((t) => t.id === project.theme)
+	const themeIndex = THEMES.findIndex(t => t.id === project.theme)
 	const timeline = [...project.workSessions.map(sessionItem), ...project.posts.map(reelItem)]
 	timeline.sort((a, b) => b.at - a.at || b.id.localeCompare(a.id))
 
@@ -339,7 +339,7 @@ export async function getPublicProjectPage(id: string): Promise<PublicProjectDat
 		thumbnail: projectThumbnail(
 			publicUrlFor(project.coverImageKey),
 			project.workSessions,
-			project.posts.map((p) => ({
+			project.posts.map(p => ({
 				createdAt: p.createdAt,
 				thumbnailUrl: publicUrlFor(p.thumbnailKey),
 				videoUrl: publicUrlFor(p.objectKey),

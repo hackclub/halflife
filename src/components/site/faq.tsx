@@ -54,7 +54,7 @@ export default function Faq() {
 						gap: FIELD.gutter,
 					}}
 				>
-					{FAQS.map((faq) => (
+					{FAQS.map(faq => (
 						<div
 							key={faq.q}
 							className="flex flex-col bg-hl-ink text-hl-blue rounded-md"

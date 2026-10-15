@@ -20,14 +20,14 @@ async function main() {
 	if (candidates.length === 0) return
 
 	// Console reviewers are identified by their account, no audit read needed.
-	const reviewerIds = [...new Set(candidates.flatMap((r) => (r.reviewerId ? [r.reviewerId] : [])))]
+	const reviewerIds = [...new Set(candidates.flatMap(r => (r.reviewerId ? [r.reviewerId] : [])))]
 	const usersById = new Map(
 		(
 			await prisma.user.findMany({
 				where: { id: { in: reviewerIds } },
 				select: { id: true, email: true },
 			})
-		).map((u) => [u.id, u.email]),
+		).map(u => [u.id, u.email]),
 	)
 
 	let filled = 0
@@ -35,7 +35,7 @@ async function main() {
 	for (let i = 0; i < candidates.length; i += BATCH) {
 		const batch = candidates.slice(i, i + BATCH)
 		await Promise.all(
-			batch.map(async (review) => {
+			batch.map(async review => {
 				// The account first: a console reviewer's address is their own, whatever the audit rows say.
 				const accountEmail = review.reviewerId ? usersById.get(review.reviewerId) : null
 				if (accountEmail) {
@@ -79,7 +79,7 @@ async function main() {
 }
 
 main()
-	.catch((err) => {
+	.catch(err => {
 		console.error(err)
 		process.exitCode = 1
 	})

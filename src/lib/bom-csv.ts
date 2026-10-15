@@ -298,7 +298,7 @@ export function parseBomCsv(text: string, opts: { limit?: number } = {}): Parsed
 
 	for (let i = index + 1; i < rows.length; i++) {
 		const cells = rows[i] ?? []
-		if (cells.every((c) => c.trim() === "")) continue
+		if (cells.every(c => c.trim() === "")) continue
 
 		// 1-based, counting the header as line 1 of the file as a person sees it.
 		const rowNumber = i + 1

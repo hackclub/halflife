@@ -39,8 +39,8 @@ export function ShopGrid({
 	const keys = useRef(new Map<string, string>())
 
 	const items = useMemo(() => {
-		const shelf = CATEGORIES.find((c) => c.label === cat)
-		return !shelf?.match ? all : all.filter((i) => i.category === shelf.match)
+		const shelf = CATEGORIES.find(c => c.label === cat)
+		return !shelf?.match ? all : all.filter(i => i.category === shelf.match)
 	}, [all, cat])
 
 	/**
@@ -87,7 +87,7 @@ export function ShopGrid({
 						id="shop-region"
 						value={regionId ?? ""}
 						disabled={savingRegion}
-						onChange={(e) => {
+						onChange={e => {
 							const next = e.target.value === "" ? null : e.target.value
 							setSavingRegion(true)
 							setError(null)
@@ -96,7 +96,7 @@ export function ShopGrid({
 								headers: { "content-type": "application/json" },
 								body: JSON.stringify({ regionId: next }),
 							})
-								.then(async (res) => {
+								.then(async res => {
 									if (!res.ok) {
 										const payload = (await res.json().catch(() => ({}))) as {
 											error?: { message?: string }
@@ -112,7 +112,7 @@ export function ShopGrid({
 						className="label rounded-full border-2 border-line bg-paper px-4 py-1.5 text-navy outline-none transition-colors hover:border-navy focus:border-navy disabled:opacity-60"
 					>
 						<option value="">Default pricing</option>
-						{regions.map((r) => (
+						{regions.map(r => (
 							<option key={r.id} value={r.id}>
 								{r.name}
 							</option>
@@ -149,7 +149,7 @@ export function ShopGrid({
 			)}
 
 			<ul className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-3">
-				{items.map((item) => {
+				{items.map(item => {
 					const has = item.ownedCount > 0
 					const out = item.stock !== null && item.stock <= 0
 					// One pot: affordability reads the same whole balance the till does, so the shelf can never refuse what the server would take.

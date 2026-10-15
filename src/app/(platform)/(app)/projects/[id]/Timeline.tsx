@@ -243,7 +243,7 @@ function EntryBody({ source }: { source: string }) {
 			{long && (
 				<button
 					type="button"
-					onClick={() => setOpen((v) => !v)}
+					onClick={() => setOpen(v => !v)}
 					aria-expanded={open}
 					className="hand mt-1.5 text-[0.84rem] text-violet-deep underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
 				>

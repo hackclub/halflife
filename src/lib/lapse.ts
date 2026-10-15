@@ -132,7 +132,7 @@ export async function verifyOwnTimelapses(userId: string, ids: readonly string[]
 	const { lapseUserId, accessToken } = await lapseCredentials(userId)
 
 	const found = await Promise.all(
-		ids.map(async (id) =>
+		ids.map(async id =>
 			toTimelapse((await call<{ timelapse: RawTimelapse }>(accessToken, "/timelapse/query", { id })).timelapse),
 		),
 	)

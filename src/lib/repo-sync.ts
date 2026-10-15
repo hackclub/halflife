@@ -65,7 +65,7 @@ export async function scheduleRepoSync(themeProjectId: string): Promise<void> {
 	})
 	if (inFlight.has(themeProjectId)) return
 
-	runProjectSync(themeProjectId, false).catch((err) =>
+	runProjectSync(themeProjectId, false).catch(err =>
 		console.error(`[repo-sync] unhandled failure for ${themeProjectId}:`, err),
 	)
 }
@@ -105,7 +105,7 @@ export async function runProjectSync(themeProjectId: string, manual: boolean, fo
 
 	// A write can land between the last queue read and the delete above: it stamps the flag, finds the project still in flight, and returns, so nobody would ever claim it. Claiming here closes that window – and if this run loses the claim to another process, that process is doing the work instead.
 	if (await claimQueued(themeProjectId)) {
-		runProjectSync(themeProjectId, false).catch((err) =>
+		runProjectSync(themeProjectId, false).catch(err =>
 			console.error(`[repo-sync] straggler sync failed for ${themeProjectId}:`, err),
 		)
 	}
@@ -134,8 +134,8 @@ async function claimQueued(themeProjectId: string): Promise<Date | null> {
 
 async function waitForFree(themeProjectId: string): Promise<void> {
 	const deadline = Date.now() + QUEUE_MAX_WAIT_MS
-	await new Promise((r) => setTimeout(r, SYNC_DEBOUNCE_MS))
-	while (inFlight.has(themeProjectId) && Date.now() < deadline) await new Promise((r) => setTimeout(r, QUEUE_POLL_MS))
+	await new Promise(r => setTimeout(r, SYNC_DEBOUNCE_MS))
+	while (inFlight.has(themeProjectId) && Date.now() < deadline) await new Promise(r => setTimeout(r, QUEUE_POLL_MS))
 }
 
 /** One commit: read the project, render its files, write them. */
@@ -212,7 +212,7 @@ async function syncOnce(themeProjectId: string, manual: boolean, force = false):
 			repoUrl: project.githubRepo,
 		}
 
-		const entries: JournalEntry[] = project.workSessions.map((s) => ({
+		const entries: JournalEntry[] = project.workSessions.map(s => ({
 			id: s.id,
 			phase: s.phase,
 			title: s.title,
@@ -221,10 +221,10 @@ async function syncOnce(themeProjectId: string, manual: boolean, force = false):
 			hoursApproved: s.hoursApproved,
 			effectiveDate: s.effectiveDate,
 			createdAt: s.createdAt,
-			timelapses: s.timelapses.map((t) => ({ url: t.playbackUrl })),
+			timelapses: s.timelapses.map(t => ({ url: t.playbackUrl })),
 		}))
 		const bom = await listBom(project.id)
-		const bomLines: BomLineForFile[] = bom.map((l) => ({
+		const bomLines: BomLineForFile[] = bom.map(l => ({
 			name: l.name,
 			purpose: l.purpose,
 			quantity: l.quantity,
@@ -244,12 +244,12 @@ async function syncOnce(themeProjectId: string, manual: boolean, force = false):
 		const branch = await defaultBranchOf(creds, parsed)
 		const written = await commitFiles(creds, parsed, branch, files, `Sync ${meta.title} from Half Life`)
 
-		const changed = written.filter((f) => !f.unchanged)
+		const changed = written.filter(f => !f.unchanged)
 		await prisma.$transaction([
 			prisma.repoSyncRun.update({
 				where: { id: run.id },
 				data: {
-					files: written.map((f) => ({ path: f.path, sha: f.sha, bytes: f.bytes, unchanged: f.unchanged })),
+					files: written.map(f => ({ path: f.path, sha: f.sha, bytes: f.bytes, unchanged: f.unchanged })),
 					finishedAt: new Date(),
 				},
 			}),
@@ -268,7 +268,7 @@ async function syncOnce(themeProjectId: string, manual: boolean, force = false):
 				metadata: {
 					repo,
 					manual,
-					files: written.map((f) => ({ path: f.path, bytes: f.bytes })),
+					files: written.map(f => ({ path: f.path, bytes: f.bytes })),
 				},
 			})
 		}
@@ -308,7 +308,7 @@ async function recordFailure(
 					]),
 			prisma.themeProject.update({ where: { id: themeProjectId }, data: { repoSyncError: message } }),
 		])
-		.catch((err) => console.error("[repo-sync] failed to record failure:", err))
+		.catch(err => console.error("[repo-sync] failed to record failure:", err))
 
 	await logAudit({
 		action: AuditAction.REPO_SYNC_FAILURE,
@@ -408,7 +408,7 @@ export async function getRepoSyncState(themeProjectId: string, userId: string): 
 			select: { repoSyncEnabled: true, repoSyncRepo: true, githubRepo: true, repoSyncedAt: true, repoSyncError: true },
 		}),
 		prisma.account.findMany({
-			where: { userId, providerId: { in: ALL_FORGES.map((f) => f.id) } },
+			where: { userId, providerId: { in: ALL_FORGES.map(f => f.id) } },
 			select: { providerId: true, accessToken: true },
 		}),
 	])
@@ -429,7 +429,7 @@ export async function getRepoSyncState(themeProjectId: string, userId: string): 
 		forge: ref?.forge.id ?? null,
 		syncedAt: project.repoSyncedAt?.getTime() ?? null,
 		error: project.repoSyncError,
-		linkedForges: accounts.filter((a) => a.accessToken).map((a) => a.providerId),
+		linkedForges: accounts.filter(a => a.accessToken).map(a => a.providerId),
 		projectRepo: project.githubRepo,
 		syncRepoDiffers: differs,
 	}

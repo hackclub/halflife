@@ -92,7 +92,7 @@ export default async function AdminUserPage({ params }: Props) {
 
 			{canManageRoles ? (
 				<Panel title="Roles">
-					<RoleEditor userId={id} current={user.roles.map((r) => r.role)} />
+					<RoleEditor userId={id} current={user.roles.map(r => r.role)} />
 				</Panel>
 			) : null}
 
@@ -117,7 +117,7 @@ export default async function AdminUserPage({ params }: Props) {
 						canOverride ? "" : null,
 					].filter(Boolean)}
 				>
-					{user.themeProjects.map((project) => (
+					{user.themeProjects.map(project => (
 						<tr key={project.id} id={`project-${project.id}`}>
 							<td>
 								{getThemeDef(project.theme).label}
@@ -202,7 +202,7 @@ export default async function AdminUserPage({ params }: Props) {
 					<EmptyState>No entries.</EmptyState>
 				) : (
 					<Table head={["When", "Kind", "Note", "Amount", "Balance"]}>
-						{ledger.map((entry) => (
+						{ledger.map(entry => (
 							<tr key={entry.id}>
 								<td className="hl-mono">{entry.createdAt.toLocaleString()}</td>
 								<td className="hl-mono">{entry.kind}</td>
@@ -220,7 +220,7 @@ export default async function AdminUserPage({ params }: Props) {
 					<EmptyState>No orders.</EmptyState>
 				) : (
 					<Table head={["#", "Item", "Cost", "Status"]}>
-						{orders.map((order) => (
+						{orders.map(order => (
 							<tr key={order.id}>
 								<td className="hl-mono">{order.orderNumber}</td>
 								<td>{order.itemNameSnapshot}</td>

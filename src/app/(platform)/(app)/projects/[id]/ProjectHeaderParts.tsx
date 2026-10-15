@@ -123,7 +123,7 @@ export function CoverImage({
 						className="sr-only"
 						tabIndex={-1}
 						aria-hidden="true"
-						onChange={(e) => pick(e.target.files?.[0])}
+						onChange={e => pick(e.target.files?.[0])}
 					/>
 					<Button variant="ghost" size="sm" disabled={busy} onClick={() => input.current?.click()} className="-ml-3.5">
 						<IconCamera className="text-base" /> {url ? "Change cover image" : "Add a cover image"}

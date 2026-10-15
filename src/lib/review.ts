@@ -204,7 +204,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 				? PhaseStatus.update_requested
 				: PhaseStatus.rejected
 
-	const outcome = await prisma.$transaction(async (tx) => {
+	const outcome = await prisma.$transaction(async tx => {
 		// reconcileGrant reads a running sum and writes a delta against it, so it needs the same serialization the shop does.
 		await lockUserCredit(tx, project.userId)
 
@@ -441,7 +441,7 @@ export async function unapprovePhase(
 	const status = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
 	if (status !== PhaseStatus.approved) throw new HttpError("CONFLICT", "That phase is not approved")
 
-	await prisma.$transaction(async (tx) => {
+	await prisma.$transaction(async tx => {
 		await lockUserCredit(tx, project.userId)
 
 		// Re-read under the lock: the fast check above ran against a read taken before it, and a decision or re-approval can have committed since.

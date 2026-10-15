@@ -49,7 +49,7 @@ export const DELETE = withRoute(async (req: Request, { params }: Params) => {
 	if (parsed.error) return parsed.error
 
 	// Locking everyone out of the admin surface is not a recoverable mistake in a deployment where nobody has shell access. The check and the delete run in one transaction under an advisory lock: two concurrent revokes of the two remaining admins would otherwise both count two and both delete.
-	await prisma.$transaction(async (tx) => {
+	await prisma.$transaction(async tx => {
 		if (parsed.data.role === Role.ADMIN) {
 			await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended('admin-roles', 0))`
 			const target = await tx.userRole.findUnique({

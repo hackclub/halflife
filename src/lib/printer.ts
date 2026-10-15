@@ -32,16 +32,16 @@ export async function getPrinterQualification(userId: string): Promise<PrinterQu
 		where: { userId, deletedAt: null },
 		select: { theme: true, designStatus: true, buildStatus: true, buildReviewedAt: true },
 	})
-	const byTheme = new Map(projects.map((p) => [p.theme, p]))
+	const byTheme = new Map(projects.map(p => [p.theme, p]))
 
-	const progress: ThemeProgress[] = THEMES.map((def) => {
+	const progress: ThemeProgress[] = THEMES.map(def => {
 		const p = byTheme.get(def.id)
 		const design = p?.designStatus === PhaseStatus.approved
 		const build = p?.buildStatus === PhaseStatus.approved
 		return { theme: def.id, design, build, shipped: design && build }
 	})
 
-	const shippedCount = progress.filter((p) => p.shipped).length
+	const shippedCount = progress.filter(p => p.shipped).length
 	return {
 		qualified: shippedCount >= THEMES_REQUIRED_FOR_PRINTER,
 		shippedCount,
@@ -73,7 +73,7 @@ export async function ensurePrinterAward(tx: Prisma.TransactionClient, userId: s
 			userId,
 			qualifiedAt: new Date(),
 			// Snapshot the evidence so a later un-approval doesn't erase why this award exists.
-			qualifyingSnapshot: projects.map((p) => ({
+			qualifyingSnapshot: projects.map(p => ({
 				theme: p.theme,
 				buildReviewedAt: p.buildReviewedAt?.toISOString() ?? null,
 			})),

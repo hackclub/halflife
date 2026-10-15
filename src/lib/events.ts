@@ -79,7 +79,7 @@ export type EventColourDef = {
  * renders as "Slate" rather than crashing a participant's header on a Monday.
  */
 export function eventColour(colour: EventColour): EventColourDef {
-	return EVENT_COLOURS.find((c) => c.id === colour) ?? SLATE_COLOUR
+	return EVENT_COLOURS.find(c => c.id === colour) ?? SLATE_COLOUR
 }
 
 /**
@@ -174,7 +174,7 @@ export function minutesInDay(at: Date, timeZone: string): number {
 		minute: "numeric",
 		hour12: false,
 	}).formatToParts(at)
-	const get = (type: string) => Number(parts.find((part) => part.type === type)?.value ?? 0)
+	const get = (type: string) => Number(parts.find(part => part.type === type)?.value ?? 0)
 	// hour12: false reports midnight as 24, which is the next day's minute zero.
 	return (get("hour") % 24) * 60 + get("minute")
 }
@@ -247,7 +247,7 @@ export function eventRangeLabel(startsAt: Date, endsAt: Date | null, timeZone: s
  * wrong in the direction that matters.
  */
 export function eventsOnDay<T extends CalendarEvent>(events: readonly T[], day: string, timeZone: string): T[] {
-	return events.filter((event) => calendarDay(event.startsAt, timeZone) === day)
+	return events.filter(event => calendarDay(event.startsAt, timeZone) === day)
 }
 
 /** The soonest event that has not finished, or null when the programme is clear. */
@@ -255,6 +255,6 @@ export function nextEvent<T extends CalendarEvent>(events: readonly T[], now: Da
 	return (
 		[...events]
 			.sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime())
-			.find((event) => eventIsUpcoming(event, now)) ?? null
+			.find(event => eventIsUpcoming(event, now)) ?? null
 	)
 }

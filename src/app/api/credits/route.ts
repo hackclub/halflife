@@ -15,8 +15,8 @@ export const GET = withRoute(async (req: NextRequest) => {
 	if (query.error) return query.error
 
 	const [balances, earned, page] = await Promise.all([
-		prisma.$transaction((tx) => getBalances(tx, gate.user.id)),
-		prisma.$transaction((tx) => getEarnedCredit(tx, gate.user.id)),
+		prisma.$transaction(tx => getBalances(tx, gate.user.id)),
+		prisma.$transaction(tx => getEarnedCredit(tx, gate.user.id)),
 		getLedgerPage(gate.user.id, query.data.cursor, query.data.limit),
 	])
 

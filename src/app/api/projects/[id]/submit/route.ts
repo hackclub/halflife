@@ -90,7 +90,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 			select: { id: true },
 		})
 		for (const link of links)
-			await refreshLinkCache(link.id).catch((err) => console.error("[submit] hackatime refresh failed:", err))
+			await refreshLinkCache(link.id).catch(err => console.error("[submit] hackatime refresh failed:", err))
 	})
 
 	return ok({ submission }, { status: 201 })

@@ -11,18 +11,18 @@ export const metadata: Metadata = {
 }
 
 export default function DocsIndex() {
-	const sections = Array.from(new Set(DOCS.map((d) => d.section)))
+	const sections = Array.from(new Set(DOCS.map(d => d.section)))
 
 	return (
 		<div className="mx-auto w-full max-w-[800px] px-4 pt-2 sm:px-8">
 			<PageSign label="DOCS" color="var(--color-teal)" ink="#ffffff" sub="Confused? Start here!" />
 
 			<div className="grid gap-9">
-				{sections.map((section) => (
+				{sections.map(section => (
 					<section key={section}>
 						<h2 className="label mb-3 text-navy-faint">{section}</h2>
 						<ul className="grid gap-3">
-							{DOCS.filter((d) => d.section === section).map((doc) => (
+							{DOCS.filter(d => d.section === section).map(doc => (
 								<Panel key={doc.slug} as="li" tone="line" radius={18} className="bg-paper">
 									<ArticleLink
 										href={`/docs/${doc.slug}`}

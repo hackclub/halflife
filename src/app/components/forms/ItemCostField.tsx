@@ -29,7 +29,7 @@ export function ItemCostField({ itemId, costUsd }: Readonly<{ itemId: string; co
 				aria-label="Cost in USD"
 				placeholder="not set"
 				value={value}
-				onChange={(e) => setValue(e.target.value)}
+				onChange={e => setValue(e.target.value)}
 				style={{ width: "7rem" }}
 			/>
 			{dirty ? (

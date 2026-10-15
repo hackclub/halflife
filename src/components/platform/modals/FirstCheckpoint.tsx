@@ -49,7 +49,7 @@ export function FirstCheckpoint() {
 		return (
 			<Modal open onClose={close} accent="var(--color-gold-deep)" eyebrow="Getting started">
 				<ModalTitle sub={error}>Something went wrong</ModalTitle>
-				<Button variant="outline" onClick={() => setAttempt((value) => value + 1)}>
+				<Button variant="outline" onClick={() => setAttempt(value => value + 1)}>
 					Try again
 				</Button>
 			</Modal>
