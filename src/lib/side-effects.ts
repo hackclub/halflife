@@ -16,7 +16,7 @@ export type SideEffectContext = {
  * The reviewer never sees these failures – the audit log is the operational signal an admin queries to spot a regression, and the recovery route (`POST /api/admin/theme-projects/[id]/sync-to-airtable`) is how they fix it.
  */
 export async function trackSideEffect<T>(
-	kind: "airtable" | "slack" | "ari" | "email",
+	kind: "airtable" | "slack" | "ari",
 	ctx: SideEffectContext,
 	fn: () => Promise<T>,
 	opts: {

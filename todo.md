@@ -9,7 +9,7 @@ that remain before launch.
 | # | Item | State |
 | --- | --- | --- |
 | 1 | Register the Ari callback URL | Built; operator panel at `/admin/program` shows the URL + config state. External: register it and set the secrets. |
-| 2 | Notify participants of review outcomes | Built — Slack DM + email, all three outcomes, both decision paths (console + Ari). External: email credentials. |
+| 2 | Notify participants of review outcomes | Built — Slack DM, all three outcomes, both decision paths (console + Ari). Email is a Loops workflow off the Airtable row. External: configure that workflow. |
 | 3 | Submission state across the projects UI | Built — card borders, per-phase chips, legend; the project page has a Review block above the repo checks. |
 | 4 | Review actions on the project page | Built — resubmit (opens the submit sheet) and dispute (flags for staff, changes no state). |
 | 5 | Project placeholder from a reel or devlog | Built — cover → newest journal image → newest reel frame (thumbnail, else a video's first frame). |
@@ -21,12 +21,13 @@ that remain before launch.
   "Send grant" action is a deliberate **manual fallback**, not the normal path.
   It is idempotent within Half Life but does **not** know what the pipeline has
   paid, so enabling both can double-pay. See `docs/BACKEND.md` → Payouts.
-- **Email — Resend.** `sendEmail` (Resend's HTTP API, no SDK) sends a text and
-  an HTML body; unconfigured, the send fails and the notifier records a
-  `NOTIFICATION_FAILURE` audit row, so a deployment missing credentials is
-  visible in ops.
-- **Notifications — all three outcomes, to the maker, Slack DM + email.**
-  `approved`, `changes requested` and `rejected` all notify.
+- **Email — Loops, off Airtable.** Half Life does not mail anyone. It writes
+  the decision to `Loops - halfLifeReviewStatus` on the submission's row (see
+  `syncReviewStatusToYsws` in `src/lib/airtable/sync.ts`) and a Loops workflow
+  sends from there. The Resend path was removed rather than kept as a second
+  sender.
+- **Notifications — all three outcomes, to the maker, Slack DM plus the Loops
+  email.** `approved`, `changes requested` and `rejected` all notify.
 - **Green border — the current phase approved.** The design until the build
   starts, the build once it has. A passed design with the build not begun reads
   green.
@@ -36,7 +37,9 @@ that remain before launch.
 1. **Ari:** register `https://<host>/api/integrations/ari/webhook`, set
    `ARI_PROGRAM_ID` / `ARI_SIGNING_SECRET` / `ARI_WEBHOOK_SECRET`, create the
    `ari-retry` job.
-2. **Email:** set `RESEND_API_KEY` and a verified `EMAIL_FROM`.
+2. **Email:** build the Loops workflow on the Airtable base – it reads
+   `Loops - halfLifeReviewStatus` and sends for `Approved`,
+   `Changes Requested` and `Rejected`.
 3. **HCB (only if the manual fallback is wanted):** register the OAuth app,
    invite it to the org as a manager, run a $1 top-up on a test org, and decide
    where the rotated refresh token is persisted.
