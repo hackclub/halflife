@@ -1,7 +1,7 @@
 import "dotenv/config"
 import { HttpError } from "../src/lib/errors"
 import { FORGES } from "../src/lib/forge"
-import { defaultBranchOf } from "../src/lib/forge-write"
+import { commitFiles, defaultBranchOf } from "../src/lib/forge-write"
 import type { RepoRef } from "../src/lib/repo-ref"
 
 /**
@@ -9,7 +9,7 @@ import type { RepoRef } from "../src/lib/repo-ref"
  *
  * The failure this pins down: writing had none of the read path's retries, so a dropped connection, a slow moment or a rate limit was recorded against the project as "GitHub did not answer" – and a rate-limit 403 was reported as "refused that, reconnect GitHub", which is advice that cannot help. `call` now classifies an answer and retries what another attempt could clear.
  *
- * `defaultBranchOf` is driven here because it is exactly one `call`, so a scripted `fetch` sees every attempt. Credentials are built by hand, so no database is touched beyond the import.
+ * `defaultBranchOf` is driven for the status cases because it is exactly one `call`, so a scripted `fetch` sees every attempt. A whole `commitFiles` is then driven to pin the tree it builds, including the legacy BOM.md deletion. Credentials are built by hand, so no database is touched beyond the import.
  *
  * Run with `bun --conditions=react-server scripts/verify-forge-write.ts`.
  */
@@ -171,6 +171,59 @@ async function main() {
 			"503 exhausted · reads as the forge having a problem",
 			!r.ok && message.includes("having a problem (503)"),
 			message,
+		)
+	}
+
+	// A whole commit, with BOM.md still in the repo so the legacy deletion is sent. Every tree entry needs a mode and a type, the null-sha deletion included: omitting them made GitHub answer "Must supply a valid tree.mode".
+	{
+		type TreeEntry = { mode?: string; path: string; sha: string | null; type?: string }
+		// A holder rather than a `let`: the tree body is captured inside the fetch closure, and a plain `let` would be narrowed to null across it.
+		const captured: { tree: TreeEntry[] | null } = { tree: null }
+		let blobs = 0
+		globalThis.fetch = (async (url: string, init: RequestInit = {}) => {
+			const method = init.method ?? "GET"
+			const u = String(url)
+			const json = (body: unknown, status = 200) =>
+				new Response(JSON.stringify(body), { headers: { "content-type": "application/json" }, status })
+			if (method === "GET" && u.includes("/git/ref/heads/")) return json({ object: { sha: "parent" } })
+			if (method === "GET" && u.includes("/git/commits/parent")) return json({ tree: { sha: "tree0" } })
+			// The old BOM.md is still present, which is what makes the sync send a deletion for it.
+			if (method === "GET" && u.includes("/git/trees/tree0"))
+				return json({ tree: [{ mode: "100644", path: "BOM.md", sha: "old", type: "blob" }] })
+			if (method === "POST" && u.endsWith("/git/blobs")) return json({ sha: `blob${blobs++}` })
+			if (method === "POST" && u.endsWith("/git/trees")) {
+				captured.tree = (JSON.parse(String(init.body)) as { tree: TreeEntry[] }).tree
+				return json({ sha: "tree1" })
+			}
+			if (method === "POST" && u.endsWith("/git/commits")) return json({ sha: "commit1" })
+			if (method === "PATCH" && u.includes("/git/refs/heads/")) return json({})
+			return json({ message: `unexpected ${method} ${u}` }, 500)
+		}) as typeof fetch
+
+		await commitFiles(
+			creds,
+			ref,
+			"main",
+			[
+				{ content: "# Journal\n", path: "JOURNAL.md" },
+				{ content: "name,qty\n", path: "BOM.csv" },
+				{ content: null, path: "BOM.md" },
+			],
+			"Sync from Half Life",
+		)
+
+		const entries = captured.tree ?? []
+		const deletion = entries.find(e => e.path === "BOM.md")
+		const write = entries.find(e => e.path === "JOURNAL.md")
+		check(
+			"tree · a deletion entry carries a mode and type",
+			deletion?.mode === "100644" && deletion?.type === "blob" && deletion?.sha === null,
+			JSON.stringify(deletion),
+		)
+		check(
+			"tree · a write entry carries a mode and type",
+			write?.mode === "100644" && write?.type === "blob" && typeof write.sha === "string" && write.sha.length > 0,
+			JSON.stringify(write),
 		)
 	}
 

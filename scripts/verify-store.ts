@@ -140,7 +140,7 @@ async function main() {
 
 	// ── The first checkpoint ──────────────────────────────────────────────────
 	//
-	// The store replays the modal's six answers through the onboarding state machine one request at a time, because the machine refuses a step ahead of the furthest one reached. That refusal is what stops anyone arriving at a funded project without being asked what they are building – and it also means the store's sequence has to be exactly right, or onboarding never completes and the modal reappears forever with nothing in the log to say why. This replays that sequence in the order the store sends it.
+	// The store replays the modal's seven answers through the onboarding state machine one request at a time, because the machine refuses a step ahead of the furthest one reached. That refusal is what stops anyone arriving at a funded project without being asked what they are building – and it also means the store's sequence has to be exactly right, or onboarding never completes and the modal reappears forever with nothing in the log to say why. This replays that sequence in the order the store sends it.
 	const { submitStep } = await import("../src/lib/onboarding")
 
 	const fresh = await prisma.user.create({
@@ -163,6 +163,7 @@ async function main() {
 	await submitStep(fresh.id, { starterProjectId: null, step: "idea" })
 	await submitStep(fresh.id, { requestedTier: 2, step: "tier" })
 	await submitStep(fresh.id, { dismissed: false, step: "tracking" })
+	await submitStep(fresh.id, { enabled: false, step: "repo" })
 
 	const onboarded = await getStoreSnapshot(fresh.id)
 	check("the store's sequence completes onboarding", onboarded.onboardingDone, true)
@@ -175,12 +176,12 @@ async function main() {
 	await prisma.user.delete({ where: { id: user.id } })
 
 	console.log(failures === 0 ? "\nAll store checks passed." : `\n${failures} check(s) failed.`)
-	process.exitCode = failures === 0 ? 0 : 1
+	await prisma.$disconnect()
+	process.exit(failures === 0 ? 0 : 1)
 }
 
-main()
-	.catch(err => {
-		console.error(err)
-		process.exitCode = 1
-	})
-	.finally(() => prisma.$disconnect())
+main().catch(async err => {
+	console.error(err)
+	await prisma.$disconnect()
+	process.exit(1)
+})

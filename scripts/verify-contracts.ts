@@ -64,18 +64,45 @@ function clientCalls(): { file: string; path: string; methods: string[] }[] {
 	for (const file of [...walk("src/app"), ...walk("src/lib"), ...walk("src/components")]) {
 		if (file.includes("/app/api/")) continue
 		const source = readFileSync(file, "utf8")
-		for (const match of source.matchAll(/fetch\(\s*(`[^`]*`|"[^"]*")([\s\S]{0,220}?)\)/g)) {
+		for (const match of source.matchAll(/fetch\(\s*(`[^`]*`|"[^"]*"|'[^']*')/g)) {
 			// Group 1 is always there when the regex matched; the fallback keeps the type honest without a non-null assertion.
 			const path = match[1]?.slice(1, -1) ?? ""
 			if (!path.startsWith("/api")) continue
+			// The options object follows the URL. Capturing up to the first `)`
+			// used to end inside `JSON.stringify(...)` whenever a body is
+			// serialised before `method:` is stated, so every such call read as
+			// GET. Scan to the fetch's own closing paren instead.
+			const options = fetchOptions(source, (match.index ?? 0) + match[0].length)
 			// A method can be a literal or a ternary; collect every literal offered.
-			const methods = [...(match[2] ?? "").matchAll(/method:\s*(?:\w+\s*\?\s*)?"(\w+)"(?:\s*:\s*"(\w+)")?/g)]
+			const methods = [...options.matchAll(/method:\s*(?:\w+\s*\?\s*)?"(\w+)"(?:\s*:\s*"(\w+)")?/g)]
 				.flatMap(m => [m[1], m[2]])
 				.filter((m): m is string => Boolean(m))
 			calls.push({ file, methods: methods.length ? methods : ["GET"], path })
 		}
 	}
 	return calls
+}
+
+/**
+ * The text of a `fetch(url, ...)` call from just after the URL literal through
+ * its closing paren, tracking depth past nested calls and skipping string
+ * literals, so `method:` is read from the whole options object.
+ */
+function fetchOptions(source: string, from: number): string {
+	let depth = 1 // inside fetch's own paren
+	let i = from
+	let quote: string | null = null
+	while (i < source.length && depth > 0 && i - from < 2000) {
+		const c = source[i]
+		if (quote) {
+			if (c === "\\") i++
+			else if (c === quote) quote = null
+		} else if (c === '"' || c === "'" || c === "`") quote = c
+		else if (c === "(") depth++
+		else if (c === ")") depth--
+		i++
+	}
+	return source.slice(from, i)
 }
 
 /** The store posts through a helper rather than calling fetch directly. */
@@ -227,7 +254,11 @@ async function bodies() {
 			createReportSchema,
 			{ details: "same clip five times", reason: "SPAM", target: "REEL", targetId: "cmxxxxxxxxxxxxxxxxxxxxxxx" },
 		],
-		["buy", purchaseSchema, { quantity: 1, shopItemId: "printer-ender-3-v3-se" }],
+		[
+			"buy",
+			purchaseSchema,
+			{ idempotencyKey: "01234567-89ab-cdef-0123-456789abcdef", quantity: 1, shopItemId: "printer-ender-3-v3-se" },
+		],
 		["repoSync · on", repoSyncSettingsSchema, { enabled: true, repo: "https://github.com/maker/hackpad" }],
 		["repoSync · off", repoSyncSettingsSchema, { enabled: false }],
 		// The import body is optional in full: an empty POST is the preview, which is the harmless act, and the client only says `apply` when it means it.

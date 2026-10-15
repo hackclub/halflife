@@ -9,7 +9,9 @@ concurrency:
     group: ci-${{ github.ref }}
     cancel-in-progress: true
 
-# Read-only, for the same reason as biome.yml: nothing here writes to the repository. Both jobs read the checkout and report, and the migrations job resets a throwaway Postgres service container rather than anything shared. Stated explicitly so the token cannot inherit a read-write default from an older repository or organisation.
+# Read-only: nothing here writes to the repository. The job reads the checkout and reports. Stated explicitly so the token cannot inherit a read-write default from an older repository or organisation.
+# Note: there is no database in CI, so nothing here may dial one. The
+# DB-backed checks (migrate deploy, seed, verify:ledger/onboarding/feed/store/handoff) run locally against a scratch database instead.
 permissions:
     contents: read
 
@@ -68,70 +70,24 @@ jobs:
                   wait $LINT_PID || LINT_STATUS=$?
                   exit $(( CHECK_STATUS || LINT_STATUS ))
 
+            # Static regression checks: no database, no network, no secrets.
+            # verify-loops pins the Signups join (id over email, skip-not-throw);
+            # verify-contracts pins the client↔API contract (fetch methods vs
+            # route exports, request bodies vs zod schemas, plus pure-lib pins);
+            # verify-forge-write pins the write path's retry/classification with a
+            # scripted fetch. All hermetic: no database, no network, no secrets.
+            - name: Static regression checks
+              run: |
+                  bun run verify:loops
+                  bun run verify:contracts
+                  bun run verify:forge-write
+
             - name: Build
               env:
                   CI: "true"
                   BETTER_AUTH_SECRET: ci-placeholder-secret-at-least-32-chars
                   BETTER_AUTH_URL: http://localhost:3000
+                  # Never dialed: the build does not touch the database, but
+                  # Prisma client initialisation requires the variable present.
                   DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
               run: bun run build
-
-    migrations:
-        runs-on: ubuntu-latest
-        timeout-minutes: 10
-        services:
-            postgres:
-                image: postgres:17-alpine
-                env:
-                    POSTGRES_USER: postgres
-                    POSTGRES_PASSWORD: postgres
-                    POSTGRES_DB: halflife_ci
-                ports: ["5432:5432"]
-                # 1s health polling (was 5s) so the job starts as soon as Postgres
-                # is ready, and a tmpfs data dir so migrations and the seed run
-                # in RAM instead of on the runner's disk.
-                options: >-
-                    --health-cmd pg_isready --health-interval 1s
-                    --health-timeout 2s --health-retries 15
-                    --tmpfs /var/lib/postgresql/data
-        env:
-            DATABASE_URL: postgresql://postgres:postgres@localhost:5432/halflife_ci
-        steps:
-            - uses: actions/checkout@v5
-            # Same pinned-toolchain reasoning as the verify job: omit bun-version
-            # so setup-bun reads packageManager and hits the tool cache.
-            - uses: oven-sh/setup-bun@v2
-
-            - uses: actions/cache@v4
-              with:
-                  path: ~/.bun/install/cache
-                  key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-                  restore-keys: |
-                      bun-${{ runner.os }}-
-
-            - run: bun install --frozen-lockfile
-            - run: bunx prisma generate
-
-            # Migrations must apply cleanly from nothing. Both reference programs
-            # deploy migrations at container start with no CI check, which means a bad
-            # migration is discovered as a crashlooping production pod.
-            - name: Apply migrations from scratch
-              run: bunx prisma migrate deploy
-
-            # And the committed schema has to match the migration history — the
-            # failure mode where someone edits schema.prisma and forgets to migrate.
-            # Prisma 7 takes the shadow database URL from prisma.config.ts, so this
-            # needs a database it is allowed to reset — hence a separate one from the
-            # migration target above.
-            - name: Schema matches migrations
-              env:
-                  SHADOW_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/halflife_shadow
-              run: |
-                  PGPASSWORD=postgres psql -h localhost -U postgres -c 'CREATE DATABASE halflife_shadow'
-                  bunx prisma migrate diff \
-                    --from-migrations prisma/migrations \
-                    --to-schema prisma/schema.prisma \
-                    --exit-code
-
-            # The seed runs under Bun (`bun prisma/seed.ts`), so no setup-node needed.
-            - run: bun run db:seed

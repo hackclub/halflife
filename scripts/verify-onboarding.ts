@@ -55,7 +55,7 @@ async function main() {
 	const start = await getOnboardingState(user.id)
 	check("starts at step 0", start.reached, 0)
 	check("first step is the experience question", start.current?.id, "experience")
-	check("six steps", start.stepCount, 6)
+	check("seven steps", start.stepCount, 7)
 	check("provisioned the PCB project", typeof start.project.id, "string")
 	check("needs onboarding", await needsOnboarding(user.id), true)
 
@@ -124,8 +124,13 @@ async function main() {
 	check("onboarding never set a grant", project.grantUsd, null)
 	check("the request is recorded separately", project.requestedTier, 3)
 
-	// ── 6. Tracking, and completion ────────────────────────────────────────────
-	const done = await submitStep(user.id, { dismissed: true, step: "tracking" })
+	// ── 6. Tracking, then the repo step, and completion ─────────────────────────
+	// Tracking is second-to-last: answering it moves on to the repo step, and
+	// only the repo answer stamps the checkpoint complete.
+	const afterTracking = await submitStep(user.id, { dismissed: true, step: "tracking" })
+	check("tracking moves on to the repo step", afterTracking.state.current?.id, "repo")
+	check("not complete before the last step", afterTracking.completed, false)
+	const done = await submitStep(user.id, { enabled: false, step: "repo" })
 	check("completing reports completion", done.completed, true)
 	check("state says completed", done.state.completed, true)
 	check("no longer needs onboarding", await needsOnboarding(user.id), false)
