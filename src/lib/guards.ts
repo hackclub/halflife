@@ -10,6 +10,8 @@ export type SessionUser = {
 	email: string
 	name: string | null
 	image: string | null
+	/** The IANA zone on file, so the shell only sends the browser's own when it differs. Null until one is captured (see app/api/me/timezone). */
+	timezone: string | null
 }
 
 export type Guard =
@@ -25,7 +27,7 @@ async function resolve(): Promise<{ user: SessionUser; roles: Role[] } | null> {
 	if (roles === null) return null
 	return {
 		roles,
-		user: { email: u.email, id: u.id, image: u.image ?? null, name: u.name ?? null },
+		user: { email: u.email, id: u.id, image: u.image ?? null, name: u.name ?? null, timezone: u.timezone ?? null },
 	}
 }
 

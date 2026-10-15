@@ -69,12 +69,15 @@ export function AppShell({
 	children,
 	events,
 	programTimezone,
+	timezone,
 }: {
 	children: React.ReactNode
 	/** Published events from now on, as the layout read them. */
 	events: CalendarEvent[]
 	/** The programme zone: the calendar's fallback until the browser's own zone loads. */
 	programTimezone: string
+	/** The zone already on file for this account, so the browser's own is only sent when it differs. */
+	timezone: string | null
 }) {
 	const pathname = usePathname()
 	const { doomscrollerOpen, setDoomscroller, phase } = useStore()
@@ -120,6 +123,19 @@ export function AppShell({
 			window.removeEventListener("scroll", paint)
 		}
 	}, [])
+
+	// The account's zone, from the browser it is being used in.
+	//
+	// The zone is the only per-user geography the admin panels have (lib/regions), and no sign-in carries it: HCA's identity has none, and `User.timezone` is `input: false`, so nothing writes it. Sending it here, on the first page of a session, is what fills it – and what backfills every account made before this existed, the next time its owner opens the app. Sent only when it differs from the zone on file, so an unchanged one costs no write; a failure is silent, because nothing on the page depends on it and the next load tries again.
+	useEffect(() => {
+		const zone = Intl.DateTimeFormat().resolvedOptions().timeZone
+		if (!zone || zone === timezone) return
+		fetch("/api/me/timezone", {
+			body: JSON.stringify({ timezone: zone }),
+			headers: { "content-type": "application/json" },
+			method: "PUT",
+		}).catch(() => {})
+	}, [timezone])
 
 	return (
 		<>

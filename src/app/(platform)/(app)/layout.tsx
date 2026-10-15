@@ -37,7 +37,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
 	return (
 		<StoreProvider snapshot={snapshot}>
-			<AppShell events={events} programTimezone={settings.programTimezone}>
+			<AppShell events={events} programTimezone={settings.programTimezone} timezone={user.timezone}>
 				{children}
 			</AppShell>
 		</StoreProvider>
