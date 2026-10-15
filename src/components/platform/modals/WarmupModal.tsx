@@ -38,15 +38,15 @@ export function WarmupModal({ onClose, closesOn }: { onClose: () => void; closes
 		setError(null)
 		try {
 			const res = await fetch("/api/projects/warmup", {
-				method: "POST",
-				headers: { "content-type": "application/json" },
 				body: JSON.stringify({
-					title: name.trim(),
 					description: desc.trim(),
 					githubRepo: normalizeRepo(repo).url,
-					requestedTier: tier,
 					phase,
+					requestedTier: tier,
+					title: name.trim(),
 				}),
+				headers: { "content-type": "application/json" },
+				method: "POST",
 			})
 			const payload = (await res.json().catch(() => null)) as { id?: string; error?: { message?: string } } | null
 			if (!res.ok || !payload?.id) {

@@ -36,7 +36,7 @@ export function PhoneHandoff({ onReady }: Readonly<{ onReady: (objectKey: string
 						aria-label="QR code linking to the upload page"
 						dangerouslySetInnerHTML={{ __html: minted.qrSvg }}
 						role="img"
-						style={{ width: 200, height: 200 }}
+						style={{ height: 200, width: 200 }}
 					/>
 					<p className="hl-hint" style={{ margin: 0 }}>
 						Scan it with your phone camera. The code works once and expires shortly.

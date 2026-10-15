@@ -88,7 +88,7 @@ export function HandoffUploader({ token }: Readonly<{ token: string }>) {
 					<progress
 						aria-label="Sending your video"
 						max={1}
-						style={{ width: "100%", height: "0.6rem" }}
+						style={{ height: "0.6rem", width: "100%" }}
 						// No value once everything is sent: the browser draws its own "working" state while the server stores the video.
 						value={progress < 1 ? progress : undefined}
 					/>

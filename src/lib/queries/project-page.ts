@@ -104,102 +104,102 @@ export type ProjectPageData = {
 }
 
 const SESSION_SELECT = {
+	content: true,
+	createdAt: true,
+	hoursApproved: true,
+	hoursClaimed: true,
 	id: true,
 	phase: true,
-	title: true,
-	content: true,
-	hoursClaimed: true,
-	hoursApproved: true,
-	createdAt: true,
 	timelapses: {
+		orderBy: { createdAt: "asc" },
 		select: {
-			id: true,
-			provider: true,
+			coveredSeconds: true,
 			externalId: true,
+			id: true,
 			objectKey: true,
 			playbackUrl: true,
+			provider: true,
 			thumbnailUrl: true,
-			coveredSeconds: true,
 		},
-		orderBy: { createdAt: "asc" },
 	},
+	title: true,
 } satisfies Prisma.WorkSessionSelect
 
 const POST_SELECT = {
-	id: true,
 	caption: true,
-	objectKey: true,
-	thumbnailKey: true,
-	status: true,
 	createdAt: true,
+	id: true,
+	objectKey: true,
 	publishedAt: true,
+	status: true,
+	thumbnailKey: true,
 } satisfies Prisma.PostSelect
 
 function sessionItem(s: Prisma.WorkSessionGetPayload<{ select: typeof SESSION_SELECT }>): TimelineItem {
 	return {
-		kind: "session",
-		id: s.id,
-		at: s.createdAt.getTime(),
-		phase: s.phase,
-		hours: s.hoursClaimed,
 		approvedHours: s.hoursApproved !== null && s.hoursApproved !== s.hoursClaimed ? s.hoursApproved : null,
+		at: s.createdAt.getTime(),
 		body: s.content ?? s.title,
+		hours: s.hoursClaimed,
+		id: s.id,
+		kind: "session",
 		lapses: s.timelapses.map(t => ({
-			id: t.id,
-			thumbnailUrl: t.thumbnailUrl,
+			coveredSeconds: t.coveredSeconds,
 			href:
 				t.provider === "lapse" && t.externalId
 					? lapseTimelapseUrl(t.externalId)
 					: (t.playbackUrl ?? publicUrlFor(t.objectKey)),
-			coveredSeconds: t.coveredSeconds,
+			id: t.id,
+			thumbnailUrl: t.thumbnailUrl,
 		})),
+		phase: s.phase,
 	}
 }
 
 function reelItem(p: Prisma.PostGetPayload<{ select: typeof POST_SELECT }>): TimelineItem {
 	return {
-		kind: "reel",
-		id: p.id,
 		at: (p.publishedAt ?? p.createdAt).getTime(),
 		caption: p.caption,
-		videoUrl: publicUrlFor(p.objectKey),
-		thumbnailUrl: publicUrlFor(p.thumbnailKey),
+		id: p.id,
+		kind: "reel",
 		status: p.status,
+		thumbnailUrl: publicUrlFor(p.thumbnailKey),
+		videoUrl: publicUrlFor(p.objectKey),
 	}
 }
 
 export async function getProjectPage(userId: string, id: string): Promise<ProjectPageData | null> {
 	const project = await prisma.themeProject.findFirst({
-		where: { id, userId, deletedAt: null },
 		select: {
-			id: true,
-			grantEmittedAt: true,
-			coverImageKey: true,
 			bomTaxShippingUsd: true,
-			designStatus: true,
-			buildStatus: true,
-			designReviewComments: true,
 			buildReviewComments: true,
-			designReviewedAt: true,
 			buildReviewedAt: true,
-			workSessions: { where: { deletedAt: null }, select: SESSION_SELECT },
+			buildStatus: true,
+			coverImageKey: true,
+			designReviewComments: true,
+			designReviewedAt: true,
+			designStatus: true,
+			grantEmittedAt: true,
+			id: true,
 			posts: {
-				// Their own reels, including one a moderator took out of the feed – the author still sees those, as the feed's own rule has it.
-				where: { deletedAt: null, userId, status: { not: PostStatus.REMOVED } },
 				select: POST_SELECT,
+				// Their own reels, including one a moderator took out of the feed – the author still sees those, as the feed's own rule has it.
+				where: { deletedAt: null, status: { not: PostStatus.REMOVED }, userId },
 			},
 			submissions: {
 				select: {
+					ariShipError: true,
+					createdAt: true,
+					dispute: { select: { createdAt: true, resolvedAt: true } },
 					id: true,
 					phase: true,
-					createdAt: true,
 					resolvedAt: true,
 					resolvedResult: true,
-					ariShipError: true,
-					dispute: { select: { createdAt: true, resolvedAt: true } },
 				},
 			},
+			workSessions: { select: SESSION_SELECT, where: { deletedAt: null } },
 		},
+		where: { deletedAt: null, id, userId },
 	})
 	if (!project) return null
 
@@ -208,23 +208,23 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 	// A resolved submission is two moments – handed in, then decided – and the gap between them is part of the story. Only the latest decision per phase has comments on the project row, so older ones are shown without them.
 	const latestResolved = new Map<Phase, string>()
 	for (const sub of [...project.submissions].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())) {
-		timeline.push({ kind: "submitted", id: `${sub.id}-in`, at: sub.createdAt.getTime(), phase: sub.phase })
+		timeline.push({ at: sub.createdAt.getTime(), id: `${sub.id}-in`, kind: "submitted", phase: sub.phase })
 		if (sub.resolvedAt && sub.resolvedResult) latestResolved.set(sub.phase, sub.id)
 	}
 	for (const sub of project.submissions) {
 		if (!sub.resolvedAt || !sub.resolvedResult) continue
 		const latest = latestResolved.get(sub.phase) === sub.id
 		timeline.push({
-			kind: "reviewed",
-			id: `${sub.id}-out`,
 			at: sub.resolvedAt.getTime(),
-			phase: sub.phase,
-			result: sub.resolvedResult,
 			comments: latest
 				? sub.phase === Phase.DESIGN
 					? project.designReviewComments
 					: project.buildReviewComments
 				: null,
+			id: `${sub.id}-out`,
+			kind: "reviewed",
+			phase: sub.phase,
+			result: sub.resolvedResult,
 		})
 	}
 
@@ -252,20 +252,25 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 				.filter(s => s.phase === phase && s.resolvedAt === null)
 				.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
 			return {
-				phase,
-				status: isDesign ? project.designStatus : project.buildStatus,
 				comments: isDesign ? project.designReviewComments : project.buildReviewComments,
-				submittedAt: latest?.getTime() ?? null,
-				reviewedAt: (isDesign ? project.designReviewedAt : project.buildReviewedAt)?.getTime() ?? null,
 				disputedAt: disputed?.dispute?.createdAt.getTime() ?? null,
 				disputeResolved: Boolean(disputed?.dispute?.resolvedAt),
+				phase,
+				reviewedAt: (isDesign ? project.designReviewedAt : project.buildReviewedAt)?.getTime() ?? null,
 				shipError: openShip?.ariShipError ?? null,
+				status: isDesign ? project.designStatus : project.buildStatus,
+				submittedAt: latest?.getTime() ?? null,
 			}
 		})
 		.filter(p => p.status !== PhaseStatus.draft || p.submittedAt !== null)
 
 	return {
+		bom: await listBom(project.id),
+		bomLocked: bomLockReason(project),
+		bomTaxShippingUsd: project.bomTaxShippingUsd ?? 0,
 		coverImageUrl: publicUrlFor(project.coverImageKey),
+		deleteBlocked: await deleteBlockReason(project),
+		editLocked: inReview ? "In review, so it can't be edited. Unsubmit to change it" : null,
 		fallbackThumbnail: projectThumbnail(
 			null,
 			project.workSessions,
@@ -275,15 +280,10 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 				videoUrl: publicUrlFor(p.objectKey),
 			})),
 		),
-		timeline,
-		bom: await listBom(project.id),
-		bomTaxShippingUsd: project.bomTaxShippingUsd ?? 0,
-		bomLocked: bomLockReason(project),
-		editLocked: inReview ? "In review, so it can't be edited. Unsubmit to change it" : null,
 		inReview,
-		deleteBlocked: await deleteBlockReason(project),
 		phases,
 		repoSync: await getRepoSyncState(project.id, userId),
+		timeline,
 	}
 }
 
@@ -307,21 +307,21 @@ export type PublicProjectData = {
 
 export async function getPublicProjectPage(id: string): Promise<PublicProjectData | null> {
 	const project = await prisma.themeProject.findFirst({
-		// A row nobody has started is a placeholder made at sign-up, not a project.
-		where: { id, deletedAt: null, namedAt: { not: null } },
 		select: {
+			coverImageKey: true,
+			description: true,
 			id: true,
+			posts: {
+				select: POST_SELECT,
+				where: { deletedAt: null, status: PostStatus.PUBLISHED },
+			},
 			theme: true,
 			title: true,
-			description: true,
-			coverImageKey: true,
-			user: { select: { id: true, name: true, displayName: true } },
-			workSessions: { where: { deletedAt: null }, select: SESSION_SELECT },
-			posts: {
-				where: { deletedAt: null, status: PostStatus.PUBLISHED },
-				select: POST_SELECT,
-			},
+			user: { select: { displayName: true, id: true, name: true } },
+			workSessions: { select: SESSION_SELECT, where: { deletedAt: null } },
 		},
+		// A row nobody has started is a placeholder made at sign-up, not a project.
+		where: { deletedAt: null, id, namedAt: { not: null } },
 	})
 	if (!project) return null
 
@@ -330,12 +330,10 @@ export async function getPublicProjectPage(id: string): Promise<PublicProjectDat
 	timeline.sort((a, b) => b.at - a.at || b.id.localeCompare(a.id))
 
 	return {
-		id: project.id,
-		title: project.title,
-		description: project.description ?? "",
 		author: displayName(project.user, "A maker"),
 		authorId: project.user.id,
-		weekId: themeIndex === -1 ? WARMUP_WEEK_ID : themeIndex + 1,
+		description: project.description ?? "",
+		id: project.id,
 		thumbnail: projectThumbnail(
 			publicUrlFor(project.coverImageKey),
 			project.workSessions,
@@ -346,5 +344,7 @@ export async function getPublicProjectPage(id: string): Promise<PublicProjectDat
 			})),
 		),
 		timeline,
+		title: project.title,
+		weekId: themeIndex === -1 ? WARMUP_WEEK_ID : themeIndex + 1,
 	}
 }

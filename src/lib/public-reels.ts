@@ -9,24 +9,24 @@ export type PublicReelPlatform = (typeof PUBLIC_REEL_PLATFORMS)[number]
 
 export const PLATFORM_INFO: Record<PublicReelPlatform, { label: string; example: string; hosts: string[] }> = {
 	INSTAGRAM: {
-		label: "Instagram",
 		example: "instagram.com/reel/…",
 		hosts: ["instagram.com"],
+		label: "Instagram",
 	},
 	TIKTOK: {
-		label: "TikTok",
 		example: "tiktok.com/@you/video/…",
 		hosts: ["tiktok.com", "vm.tiktok.com", "vt.tiktok.com"],
+		label: "TikTok",
 	},
 	X: {
-		label: "X (Twitter)",
 		example: "x.com/you/status/…",
 		hosts: ["x.com", "twitter.com"],
+		label: "X (Twitter)",
 	},
 	YOUTUBE: {
-		label: "YouTube Shorts",
 		example: "youtube.com/shorts/…",
 		hosts: ["youtube.com", "youtu.be"],
+		label: "YouTube Shorts",
 	},
 }
 

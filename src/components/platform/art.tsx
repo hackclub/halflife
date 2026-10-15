@@ -30,7 +30,7 @@ import gatoSchematic from "../../../public/brand/gato/schematic.png"
  * ------------------------------------------------------------------ */
 export function SketchDefs() {
 	return (
-		<svg aria-hidden="true" focusable="false" style={{ position: "absolute", width: 0, height: 0, overflow: "hidden" }}>
+		<svg aria-hidden="true" focusable="false" style={{ height: 0, overflow: "hidden", position: "absolute", width: 0 }}>
 			<defs>
 				<filter height="124%" id="hl-wobble" width="124%" x="-12%" y="-12%">
 					<feTurbulence baseFrequency="0.018" numOctaves="3" result="n" seed="7" type="fractalNoise" />
@@ -62,9 +62,9 @@ export function SketchDefs() {
  * ------------------------------------------------------------------ */
 
 const GATO: Record<"head" | "box" | "confused" | "schematic", StaticImageData> = {
-	head: gatoHead,
 	box: gatoBox,
 	confused: gatoConfused,
+	head: gatoHead,
 	schematic: gatoSchematic,
 }
 
@@ -96,11 +96,11 @@ export function Gato({
  * The programme's own painted stickers, one per theme, from `public/art/weeks` – the same files the landing page's "how does it work?" plate shows. Each source is a 3000px square of 2-4 MB, which is why this goes through `next/image` and names the size it is shown at. A theme with no painting shows nothing rather than a stand-in.
  */
 const WEEK_PAINTINGS: Partial<Record<string, StaticImageData>> = {
-	PCB: pcbPainting,
-	CAD: cadPainting,
-	Music: musicPainting,
-	Displays: displayPainting,
 	"Breadboard computer": breadboardPainting,
+	CAD: cadPainting,
+	Displays: displayPainting,
+	Music: musicPainting,
+	PCB: pcbPainting,
 	// The warm-up has no theme to paint. It is "your own idea", which is the Gato that stands for that on onboarding's custom-project card.
 	"Warm Up": gatoSchematic,
 }
@@ -136,14 +136,14 @@ export function WeekPainting({
  * Each file is the maker's shot trimmed to the machine and set on white at 560px square, the machine standing on a common floor so a row of them lines up. That is the largest place one is shown – the onboarding prize, at 280px – at twice the pixels, and `next/image` cuts it down for the small tiles.
  */
 const PRINTER_PHOTOS: Partial<Record<string, StaticImageData>> = {
-	"ender-3-v3-se": ender3V3SePhoto,
+	"bambu-a1": bambuA1Photo,
 	"bambu-a1-mini": bambuA1MiniPhoto,
+	"bambu-p1s": bambuP1sPhoto,
+	"elegoo-centauri-2": centauri2Photo,
 	"elegoo-mars-4": mars5Photo,
 	"elegoo-neptune-4": neptune4Photo,
+	"ender-3-v3-se": ender3V3SePhoto,
 	"monoprice-cnc": monopriceCncPhoto,
-	"elegoo-centauri-2": centauri2Photo,
-	"bambu-a1": bambuA1Photo,
-	"bambu-p1s": bambuP1sPhoto,
 }
 
 /**
@@ -179,8 +179,8 @@ export function PrinterPhoto({
  * Each starter project's own render, from its repo's `Renders` folder, trimmed to the board with its transparency kept. Keyed by starter id; a starter with no render shows nothing.
  */
 const STARTER_RENDERS: Partial<Record<string, StaticImageData>> = {
-	starbie: starbieRender,
 	merbl: merblRender,
+	starbie: starbieRender,
 }
 
 export function StarterRender({

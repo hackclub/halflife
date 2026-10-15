@@ -98,12 +98,12 @@ export async function withRateLimitRetry<T>(
 export async function airtableFetch<T>(config: AirtableConfig, path: string, init: RequestInit = {}): Promise<T> {
 	const res = await fetch(`${API_BASE}/${config.baseId}/${path}`, {
 		...init,
+		cache: "no-store",
 		headers: {
 			Authorization: `Bearer ${config.apiKey}`,
 			"Content-Type": "application/json",
 			...init.headers,
 		},
-		cache: "no-store",
 		signal: AbortSignal.timeout(20_000),
 	})
 	if (!res.ok) {

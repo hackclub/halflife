@@ -31,11 +31,11 @@ import { Sidebar, TAB_NAV } from "./Sidebar"
 
 const MOBILE_ICONS = {
 	[PLATFORM_HOME]: IconHome,
-	"/projects": IconPencil,
-	"/explore": IconCompass,
-	"/shop": IconBag,
 	"/docs": IconBook,
+	"/explore": IconCompass,
+	"/projects": IconPencil,
 	"/reels": IconFilm,
+	"/shop": IconBag,
 } as const
 
 /**
@@ -87,7 +87,7 @@ export function AppShell({
 	// The status rail is the map's companion: open on the trail, where the goal is what the whole page is measured against, and folded away everywhere else so a project, the shop or the docs get the width. A toggle holds only for the page it was pressed on – the next page starts from its own default, so opening it once on the shop does not squeeze every page after.
 	const [railChoice, setRailChoice] = useState<{ path: string; open: boolean } | null>(null)
 	const railOpen = railChoice?.path === pathname ? railChoice.open : pathname === PLATFORM_HOME
-	const setRailOpen = (open: boolean) => setRailChoice({ path: pathname, open })
+	const setRailOpen = (open: boolean) => setRailChoice({ open, path: pathname })
 
 	// Below lg the status rail is gone, so this is the only way to the goal tracker on a phone. It opens the same picker the rail's "View more" does.
 	const [goalOpen, setGoalOpen] = useState(false)

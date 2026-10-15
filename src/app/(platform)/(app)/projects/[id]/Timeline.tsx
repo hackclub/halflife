@@ -75,14 +75,14 @@ export function Timeline({
 function Marker({ item }: { item: TimelineItem }) {
 	const look =
 		item.kind === "session"
-			? { tone: "bg-violet-pale text-violet-deep", icon: <IconPencil className="text-[0.85rem]" /> }
+			? { icon: <IconPencil className="text-[0.85rem]" />, tone: "bg-violet-pale text-violet-deep" }
 			: item.kind === "reel"
-				? { tone: "bg-sky-pale text-sky-ink", icon: <IconFilm className="text-[0.9rem]" /> }
+				? { icon: <IconFilm className="text-[0.9rem]" />, tone: "bg-sky-pale text-sky-ink" }
 				: item.kind === "submitted"
-					? { tone: "bg-gold-pale text-gold-ink", icon: <IconCheck className="text-[0.8rem]" strokeWidth={3} /> }
+					? { icon: <IconCheck className="text-[0.8rem]" strokeWidth={3} />, tone: "bg-gold-pale text-gold-ink" }
 					: item.result === "APPROVED"
-						? { tone: "bg-mint text-teal-ink", icon: <IconCheck className="text-[0.8rem]" strokeWidth={3} /> }
-						: { tone: "bg-coral/15 text-coral-dark", icon: <IconWarning className="text-[0.85rem]" /> }
+						? { icon: <IconCheck className="text-[0.8rem]" strokeWidth={3} />, tone: "bg-mint text-teal-ink" }
+						: { icon: <IconWarning className="text-[0.85rem]" />, tone: "bg-coral/15 text-coral-dark" }
 	return (
 		<span
 			aria-hidden="true"
@@ -97,7 +97,7 @@ function When({ at }: { at: number }) {
 	return <span className="hand ml-auto shrink-0 text-[0.84rem] text-navy-soft tabular-nums">{fmtDate(at)}</span>
 }
 
-const PHASE = { DESIGN: "design", BUILD: "build" } as const
+const PHASE = { BUILD: "build", DESIGN: "design" } as const
 
 function Body({ item, allowReport }: { item: TimelineItem; allowReport: boolean }) {
 	if (item.kind === "session") {
@@ -115,7 +115,7 @@ function Body({ item, allowReport }: { item: TimelineItem; allowReport: boolean 
 						<ReportButton
 							className="text-[0.76rem]"
 							context={item.body.slice(0, 280)}
-							target={{ type: "DEVLOG", id: item.id }}
+							target={{ id: item.id, type: "DEVLOG" }}
 							title="Report this journal entry"
 						/>
 					)}
@@ -138,7 +138,7 @@ function Body({ item, allowReport }: { item: TimelineItem; allowReport: boolean 
 						<ReportButton
 							className="text-[0.76rem]"
 							context={item.caption || undefined}
-							target={{ type: "REEL", id: item.id }}
+							target={{ id: item.id, type: "REEL" }}
 							title="Report this reel"
 						/>
 					)}
@@ -179,8 +179,8 @@ function Body({ item, allowReport }: { item: TimelineItem; allowReport: boolean 
 
 	const verdict = {
 		APPROVED: { text: "approved", tone: "text-teal-ink" },
-		RETURNED: { text: "sent back for changes", tone: "text-coral-deep" },
 		REJECTED: { text: "rejected", tone: "text-coral-deep" },
+		RETURNED: { text: "sent back for changes", tone: "text-coral-deep" },
 	}[item.result]
 	return (
 		<div>

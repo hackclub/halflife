@@ -14,8 +14,8 @@ type Params = { params: Promise<{ id: string }> }
 
 async function ownProject(userId: string, id: string) {
 	return prisma.themeProject.findFirst({
-		where: { id, userId, deletedAt: null },
-		select: { id: true, designStatus: true, buildStatus: true, bomTaxShippingUsd: true },
+		select: { bomTaxShippingUsd: true, buildStatus: true, designStatus: true, id: true },
+		where: { deletedAt: null, id, userId },
 	})
 }
 
@@ -29,8 +29,8 @@ export const GET = withRoute(async (_req: Request, { params }: Params) => {
 
 	return ok({
 		items: await listBom(project.id),
-		taxShippingUsd: project.bomTaxShippingUsd ?? 0,
 		locked: bomLockReason(project),
+		taxShippingUsd: project.bomTaxShippingUsd ?? 0,
 	})
 })
 
@@ -55,27 +55,27 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	await prisma.$transaction(async tx => {
 		// Re-read inside the transaction the write happens in: a design approval landing between the check above and the create would let a line into a list that is supposed to be final.
 		const fresh = await tx.themeProject.findUnique({
+			select: { buildStatus: true, designStatus: true },
 			where: { id },
-			select: { designStatus: true, buildStatus: true },
 		})
 		if (!fresh) throw new HttpError("NOT_FOUND", "Project not found")
 		const freshLock = bomLockReason(fresh)
 		if (freshLock) throw new HttpError("PHASE_LOCKED", freshLock)
 
 		const last = await tx.bomItem.aggregate({
-			where: { themeProjectId: id },
 			_count: true,
 			_max: { sortOrder: true },
+			where: { themeProjectId: id },
 		})
 		if (last._count >= MAX_BOM_ITEMS)
 			throw new HttpError("VALIDATION_FAILED", `A parts list can have at most ${MAX_BOM_ITEMS} lines`)
 
 		await tx.bomItem.create({
 			data: {
-				themeProjectId: id,
-				sortOrder: (last._max.sortOrder ?? -1) + 1,
 				name: input.name,
 				quantity: input.quantity,
+				sortOrder: (last._max.sortOrder ?? -1) + 1,
+				themeProjectId: id,
 				unitCostUsd: input.unitCostUsd,
 				...bomData(input),
 			},
@@ -108,9 +108,9 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 	if (locked) return fail("PHASE_LOCKED", locked)
 
 	const updated = await prisma.themeProject.update({
-		where: { id },
 		data: { bomTaxShippingUsd: cents(parsed.data.taxShippingUsd) },
 		select: { bomTaxShippingUsd: true },
+		where: { id },
 	})
 
 	after(() => scheduleRepoSync(id))

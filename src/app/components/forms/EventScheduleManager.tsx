@@ -47,7 +47,7 @@ export function EventScheduleManager({ events, timeZone }: { events: CalendarEve
 					onDone={() => setEditing(null)}
 				/>
 				{editing ? (
-					<p className="hl-hint" style={{ marginTop: "0.75rem", marginBottom: 0 }}>
+					<p className="hl-hint" style={{ marginBottom: 0, marginTop: "0.75rem" }}>
 						Editing this one week only. The rest of its series are separate rows.
 					</p>
 				) : null}

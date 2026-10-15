@@ -31,20 +31,20 @@ export const POST = withRoute(async (req: Request) => {
 	const item = await prisma.shopItem.create({
 		data: {
 			...data,
-			name: sanitize(data.name),
+			costUsd: dollars(data.costUsd ?? null),
 			description: sanitize(data.description),
 			imageUrl: data.imageUrl ?? null,
-			costUsd: dollars(data.costUsd ?? null),
+			name: sanitize(data.name),
 		},
 	})
 
 	await logAudit({
 		action: AuditAction.ADMIN_CREATE_SHOP_ITEM,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "ShopItem",
+		actorId: gate.user.id,
+		metadata: { after: { costUsd: item.costUsd, name: item.name, priceCredits: item.priceCredits } },
 		targetId: item.id,
-		metadata: { after: { name: item.name, priceCredits: item.priceCredits, costUsd: item.costUsd } },
+		targetType: "ShopItem",
 	})
 
 	return ok({ item }, { status: 201 })

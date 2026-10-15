@@ -20,21 +20,21 @@ export type GoalOption = {
 
 export const GOAL_OPTIONS: readonly GoalOption[] = [
 	{
-		value: ParticipantGoal.PRINTER,
+		hint: "Work towards one of the eight printers at the end of the season.",
 		label: "A 3D printer",
 		short: "3D printer",
-		hint: "Work towards one of the eight printers at the end of the season.",
+		value: ParticipantGoal.PRINTER,
 	},
 	{
-		value: ParticipantGoal.FULL_FUNDING,
+		hint: "The per-project hardware grant, every week, and no prize to pace against.",
 		label: "Just funding, for all ten weeks",
 		short: "Funding, all weeks",
-		hint: "The per-project hardware grant, every week, and no prize to pace against.",
+		value: ParticipantGoal.FULL_FUNDING,
 	},
 	{
-		value: ParticipantGoal.PARTIAL_FUNDING,
+		hint: "Join for part of the run and claim the grant on the weeks you're here for.",
 		label: "Funding for some of the weeks",
 		short: "Funding, some weeks",
-		hint: "Join for part of the run and claim the grant on the weeks you're here for.",
+		value: ParticipantGoal.PARTIAL_FUNDING,
 	},
 ]

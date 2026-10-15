@@ -16,17 +16,17 @@ export const POST = withRoute(async (_req: Request, { params }: Params) => {
 		return fail(
 			"CLAIMED_BY_OTHER",
 			`${result.heldByName ?? "Another reviewer"} is reviewing this until ${result.expiresAt.toISOString()}`,
-			{ heldBy: result.heldBy, expiresAt: result.expiresAt },
+			{ expiresAt: result.expiresAt, heldBy: result.heldBy },
 		)
 	}
 
 	await logAudit({
 		action: AuditAction.REVIEW_CLAIM,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "PhaseSubmission",
-		targetId: id,
+		actorId: gate.user.id,
 		metadata: { expiresAt: result.expiresAt.toISOString() },
+		targetId: id,
+		targetType: "PhaseSubmission",
 	})
 
 	return ok({ expiresAt: result.expiresAt })
@@ -41,10 +41,10 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 
 	await logAudit({
 		action: AuditAction.REVIEW_RELEASE,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "PhaseSubmission",
+		actorId: gate.user.id,
 		targetId: id,
+		targetType: "PhaseSubmission",
 	})
 
 	return ok({ ok: true })

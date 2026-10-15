@@ -111,10 +111,10 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 
 	const placed: Placed[] = diagram.nodes.map(node => ({
 		...node,
+		color: branchColor.get(node.id) ?? "var(--color-accent)",
 		stage: stageIndex.get(node.id) ?? 0,
 		y0: 0,
 		y1: 0,
-		color: branchColor.get(node.id) ?? "var(--color-accent)",
 	}))
 
 	// A single scale for the whole diagram. A stage's own boxes sum to that stage's headcount, which is at most the whole program, so sizing against the largest stage keeps every ribbon comparable.
@@ -148,7 +148,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 			const source = placed.find(p => p.id === link.source)
 			const target = placed.find(p => p.id === link.target)
 			if (!source || !target) return null
-			return { source, target, value: link.value, fan: link.fan, sy0: 0, sy1: 0, ty0: 0, ty1: 0 }
+			return { fan: link.fan, source, sy0: 0, sy1: 0, target, ty0: 0, ty1: 0, value: link.value }
 		})
 		.filter((r): r is Ribbon => r !== null)
 
@@ -230,7 +230,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 			const home = (node.y0 + node.y1) / 2
 			// A label centred here occupies [y - slot/2, y + slot/2], so clearing the previous label's bottom edge costs half a slot, not a whole one. Reserving a whole slot shoves every label off its own box, even though boxes in a stage sit NODE_PAD apart – already more than a line of text is tall – and a diagram covered in leader lines is harder to read than one with a few.
 			const y = Math.max(home, lastBottom + labelSlot / 2)
-			rows.push({ node, y, home })
+			rows.push({ home, node, y })
 			lastBottom = y + labelSlot / 2
 		}
 
@@ -243,7 +243,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 		for (const row of rows) {
 			// Off the bottom of the plot: no slot left, so this box goes unlabelled rather than printed over the caption.
 			if (row.y + labelSlot / 2 > H) continue
-			labelRows.set(row.node.id, { y: row.y, home: row.home })
+			labelRows.set(row.node.id, { home: row.home, y: row.y })
 		}
 	}
 
@@ -268,7 +268,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 				<svg
 					aria-label={`Participant journey as a Sankey diagram across ${stages.length} stages. ${summary}`}
 					role="img"
-					style={{ display: "block", width: `${W}px`, height: "auto", margin: "0 auto" }}
+					style={{ display: "block", height: "auto", margin: "0 auto", width: `${W}px` }}
 					viewBox={`0 0 ${W} ${H + HEADER_H + FOOT_H}`}
 				>
 					<defs>
@@ -300,7 +300,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 							return (
 								<line
 									key={`lead-${node.id}`}
-									style={{ stroke: "var(--color-ink-muted)", strokeWidth: 0.75, opacity: 0.55 }}
+									style={{ opacity: 0.55, stroke: "var(--color-ink-muted)", strokeWidth: 0.75 }}
 									x1={xOf(node.stage) + NODE_W}
 									x2={xOf(node.stage) + NODE_W + labelGap - 2}
 									y1={slot.home}
@@ -322,20 +322,20 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 										<text
 											dominantBaseline="middle"
 											style={{
+												fill: "var(--color-ink-strong)",
 												fontSize: `${font}px`,
 												// A halo in the panel's own colour, so a label stays readable where it crosses a ribbon or a neighbour's leader line.
 												paintOrder: "stroke",
 												stroke: "var(--color-surface-raised)",
-												strokeWidth: font * 0.32,
 												strokeLinejoin: "round",
-												fill: "var(--color-ink-strong)",
+												strokeWidth: font * 0.32,
 											}}
 											x={x + NODE_W + labelGap}
 											y={slot.y}
 										>
 											{fmt(node.value)}
 											{showNames ? (
-												<tspan dx={font * 0.36} style={{ fontWeight: 400, fill: "var(--color-ink-muted)" }}>
+												<tspan dx={font * 0.36} style={{ fill: "var(--color-ink-muted)", fontWeight: 400 }}>
 													{node.label}
 												</tspan>
 											) : null}
@@ -349,7 +349,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 					{stages.map((stage, i) => (
 						<text
 							key={stage.label}
-							style={{ fontSize: `${font * 0.92}px`, fontWeight: 700, fill: "var(--color-ink-muted)" }}
+							style={{ fill: "var(--color-ink-muted)", fontSize: `${font * 0.92}px`, fontWeight: 700 }}
 							textAnchor="start"
 							x={xOf(i)}
 							y={HEADER_H - 12}

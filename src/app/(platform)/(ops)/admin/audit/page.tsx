@@ -12,7 +12,7 @@ export default async function AdminAuditPage({ searchParams }: Props) {
 	await requirePermissionPage(Permission.VIEW_AUDIT_LOG)
 	const { action, targetId, cursor } = await searchParams
 
-	const { items, nextCursor } = await listAuditLog({ action, targetId, cursor, limit: 50 })
+	const { items, nextCursor } = await listAuditLog({ action, cursor, limit: 50, targetId })
 
 	return (
 		<div className="hl-stack">

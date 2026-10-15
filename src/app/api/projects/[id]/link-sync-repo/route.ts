@@ -25,8 +25,8 @@ export const POST = withRoute(async (_req: Request, { params }: Params) => {
 	const { id } = await params
 
 	const project = await prisma.themeProject.findFirst({
-		where: { id, userId: gate.user.id, deletedAt: null },
-		select: { id: true, githubRepo: true, designStatus: true, buildStatus: true },
+		select: { buildStatus: true, designStatus: true, githubRepo: true, id: true },
+		where: { deletedAt: null, id, userId: gate.user.id },
 	})
 	if (!project) return fail("NOT_FOUND", "Project not found")
 
@@ -42,29 +42,29 @@ export const POST = withRoute(async (_req: Request, { params }: Params) => {
 
 	// Conditional on the statuses just checked, so a review that lands between the read and the write is not edited out from under. It also repeats the "still different" test against the current link, in case another tab changed it while this one was deciding to press the button.
 	const claimed = await prisma.themeProject.updateMany({
+		data: { githubRepo: syncRepo },
 		where: {
+			buildStatus: { notIn: [PhaseStatus.in_review, PhaseStatus.approved] },
+			deletedAt: null,
+			designStatus: { notIn: [PhaseStatus.in_review, PhaseStatus.approved] },
+			githubRepo: project.githubRepo,
 			id,
 			userId: gate.user.id,
-			deletedAt: null,
-			githubRepo: project.githubRepo,
-			designStatus: { notIn: [PhaseStatus.in_review, PhaseStatus.approved] },
-			buildStatus: { notIn: [PhaseStatus.in_review, PhaseStatus.approved] },
 		},
-		data: { githubRepo: syncRepo },
 	})
 	if (claimed.count === 0) return fail("PHASE_LOCKED", "This project just changed – reload and try again")
 
 	await logAudit({
 		action: AuditAction.USER_UPDATE_PROJECT,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "ThemeProject",
-		targetId: id,
+		actorId: gate.user.id,
 		metadata: {
-			before: { githubRepo: project.githubRepo },
 			after: { githubRepo: syncRepo },
+			before: { githubRepo: project.githubRepo },
 			via: "link-sync-repo",
 		},
+		targetId: id,
+		targetType: "ThemeProject",
 	})
 
 	// The link moved, so any sync that was using the old one is stale. This is a no-op when the sync is off or was writing elsewhere; when it was writing to a bare slug that matched neither, the fresh sync now follows the link.

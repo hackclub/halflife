@@ -14,5 +14,5 @@ export const GET = withRoute(async () => {
 		getShopAccess(gate.user.id),
 	])
 
-	return ok({ items, balances, regions, regionId, access })
+	return ok({ access, balances, items, regionId, regions })
 })

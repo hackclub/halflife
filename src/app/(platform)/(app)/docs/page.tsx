@@ -6,8 +6,8 @@ import { Panel } from "@/components/platform/ui"
 import { DOCS } from "@/lib/data"
 
 export const metadata: Metadata = {
-	title: "Half Life Docs",
 	description: "How the program works, how hours are counted, and what reviewers look for.",
+	title: "Half Life Docs",
 }
 
 export default function DocsIndex() {

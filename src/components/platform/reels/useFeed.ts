@@ -66,11 +66,11 @@ export function useFeed(limit = 12): {
 	}, [load])
 
 	return {
+		done,
+		error,
 		items,
 		leading,
 		loading,
-		error,
-		done,
 		// `load` never raises the loading flag itself: everything it sets happens after an await, which is what keeps the mount effect free of the synchronous setState that cascades renders. Asking for more is a click, so it can flip the flag here.
 		more: useCallback(() => {
 			setLoading(true)

@@ -43,9 +43,9 @@ export function GoalModal({
 	const titleId = useId()
 
 	// Reopening starts from whatever is taped up now, including a goal that changed elsewhere – adjusting during render beats an effect that repaints. Opening always lands on the goal question, never mid-catalogue, so the answer is never edited by accident on the way to changing the machine.
-	const [seen, setSeen] = useState({ open, goalId, participantGoal })
+	const [seen, setSeen] = useState({ goalId, open, participantGoal })
 	if (seen.open !== open || seen.goalId !== goalId || seen.participantGoal !== participantGoal) {
-		setSeen({ open, goalId, participantGoal })
+		setSeen({ goalId, open, participantGoal })
 		setStep("goal")
 		setChosen(participantGoal ?? ParticipantGoal.PRINTER)
 		setPicked(goalId)

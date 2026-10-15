@@ -24,40 +24,40 @@ import { Spotlight } from "./Spotlight"
  */
 const TOUR = [
 	{
+		body: "Here's the main map, where you can log time for your projects, post reels to the Doomscroller, and submit your projects.",
 		selector: '[data-tour="nav-home"]',
 		title: "Home",
-		body: "Here's the main map, where you can log time for your projects, post reels to the Doomscroller, and submit your projects.",
 	},
 	{
-		selector: '[data-tour="nav-doomscroller"], [data-tour="doomscroller-button"]',
 		also: '[data-tour="doomscroller"]',
-		title: "The Doomscroller",
 		body: "Every teenager working on Half Life will be posting short videos about their projects to the platform! Now you can doomscroll forever (technically productive).",
+		selector: '[data-tour="nav-doomscroller"], [data-tour="doomscroller-button"]',
+		title: "The Doomscroller",
 	},
 	{
+		body: "Here's where you manage your projects and edit their details. You can also view your journal entries, lapses, and reels in chronological order.",
 		selector: '[data-tour="nav-projects"]',
 		title: "Projects",
-		body: "Here's where you manage your projects and edit their details. You can also view your journal entries, lapses, and reels in chronological order.",
 	},
 	{
+		body: "Manage all the reels you've posted to the platform! If you post them online, add your sharable links here so you can get coins if you go viral!",
 		selector: '[data-tour="nav-reels"]',
 		title: "Reels",
-		body: "Manage all the reels you've posted to the platform! If you post them online, add your sharable links here so you can get coins if you go viral!",
 	},
 	{
+		body: "A feed of all the journal entries teenagers are making around the world.",
 		selector: '[data-tour="nav-explore"]',
 		title: "Explore",
-		body: "A feed of all the journal entries teenagers are making around the world.",
 	},
 	{
+		body: "See what you can buy with your coins!",
 		selector: '[data-tour="nav-shop"]',
 		title: "Shop",
-		body: "See what you can buy with your coins!",
 	},
 	{
+		body: "Confused? Learn how tiers work, what counts as a session, and the checklist reviewers actually use when they read your submission.",
 		selector: '[data-tour="nav-docs"]',
 		title: "Docs",
-		body: "Confused? Learn how tiers work, what counts as a session, and the checklist reviewers actually use when they read your submission.",
 	},
 ]
 

@@ -33,7 +33,7 @@ export function EmailForm({
 		if (!window.confirm(`Change ${current} to ${trimmed}? Notifications go to the new address from now on.`)) return
 		void run(
 			"save",
-			() => sendJson(url, { method: "PATCH", body: { email: trimmed } }),
+			() => sendJson(url, { body: { email: trimmed }, method: "PATCH" }),
 			() => setValue(""),
 		)
 	}

@@ -16,8 +16,8 @@ type Params = { params: Promise<{ id: string; itemId: string }> }
  */
 async function guard(userId: string, id: string, itemId: string) {
 	const item = await prisma.bomItem.findFirst({
-		where: { id: itemId, themeProjectId: id, themeProject: { userId, deletedAt: null } },
-		select: { id: true, themeProject: { select: { designStatus: true, buildStatus: true } } },
+		select: { id: true, themeProject: { select: { buildStatus: true, designStatus: true } } },
+		where: { id: itemId, themeProject: { deletedAt: null, userId }, themeProjectId: id },
 	})
 	if (!item) return { error: fail("NOT_FOUND", "Part not found") }
 
@@ -39,7 +39,7 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 	const g = await guard(gate.user.id, id, itemId)
 	if (g.error) return g.error
 
-	await prisma.bomItem.update({ where: { id: itemId }, data: bomData(parsed.data) })
+	await prisma.bomItem.update({ data: bomData(parsed.data), where: { id: itemId } })
 	after(() => scheduleRepoSync(id))
 	return ok({ items: await listBom(id) })
 })

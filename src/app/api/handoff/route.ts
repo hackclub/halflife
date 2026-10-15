@@ -35,19 +35,19 @@ export const POST = withRoute(async (req: Request) => {
 	const url = `${publicOrigin(req)}/r/${handoff.token}`
 
 	const qrSvg = await QRCode.toString(url, {
-		type: "svg",
 		errorCorrectionLevel: "M",
 		margin: 1,
+		type: "svg",
 		width: 200,
 	})
 
 	return ok(
 		{
+			expiresAt: handoff.expiresAt,
 			id: handoff.id,
 			qrSvg,
-			url,
-			expiresAt: handoff.expiresAt,
 			ttlMinutes: HANDOFF_TTL_MINUTES,
+			url,
 		},
 		{ status: 201 },
 	)

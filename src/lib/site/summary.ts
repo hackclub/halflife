@@ -68,7 +68,7 @@ export const SHARE_BAR_WIDTH = 20
  */
 export function rankedShareBoard(title: string, items: { name: string; count: number }[], total: number): SummaryBoard {
 	const shown = items.slice(0, LEADERBOARD_LIMIT)
-	if (shown.length === 0) return { title, total: 0, lines: [] }
+	if (shown.length === 0) return { lines: [], title, total: 0 }
 	const nameWidth = Math.max(...shown.map(item => item.name.length))
 	const countWidth = Math.max(...shown.map(item => `${item.count}`.length))
 	const rankWidth = `${shown.length}`.length + 1
@@ -82,7 +82,7 @@ export function rankedShareBoard(title: string, items: { name: string; count: nu
 		}),
 		"```",
 	]
-	return { title, total: items.length, lines }
+	return { lines, title, total: items.length }
 }
 
 /** One leaderboard as it appears in a post, before the names in it have been resolved. */

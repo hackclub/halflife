@@ -14,8 +14,8 @@ import { PLATFORM_HOME } from "@/lib/routes"
 import { ProfileReels } from "./ProfileReels"
 
 export const metadata: Metadata = {
-	title: "Half Life Profile",
 	description: "A maker's projects and the reels they have posted.",
+	title: "Half Life Profile",
 }
 
 export const dynamic = "force-dynamic"
@@ -66,7 +66,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
 							{!profile.isViewer && (
 								<ReportButton
 									context={`${profile.name}'s profile`}
-									target={{ type: "USER", id: profile.id }}
+									target={{ id: profile.id, type: "USER" }}
 									title={`Report ${profile.name}`}
 								/>
 							)}

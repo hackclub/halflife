@@ -14,7 +14,7 @@ export type PlayerPrefs = {
 }
 
 const KEY = "halflife.player.v1"
-const DEFAULTS: PlayerPrefs = { muted: false, rate: 1, autoScroll: false, comments: true }
+const DEFAULTS: PlayerPrefs = { autoScroll: false, comments: true, muted: false, rate: 1 }
 
 export const RATES = [1, 1.5, 2, 0.5] as const
 
@@ -29,10 +29,10 @@ export function usePlayerPrefs(): readonly [PlayerPrefs, (patch: Partial<PlayerP
 			const saved = JSON.parse(raw) as Partial<PlayerPrefs>
 			// eslint-disable-next-line react-hooks/set-state-in-effect -- hydrating from localStorage
 			setPrefs({
-				muted: typeof saved.muted === "boolean" ? saved.muted : DEFAULTS.muted,
-				rate: RATES.includes(saved.rate as (typeof RATES)[number]) ? (saved.rate as number) : DEFAULTS.rate,
 				autoScroll: typeof saved.autoScroll === "boolean" ? saved.autoScroll : DEFAULTS.autoScroll,
 				comments: typeof saved.comments === "boolean" ? saved.comments : DEFAULTS.comments,
+				muted: typeof saved.muted === "boolean" ? saved.muted : DEFAULTS.muted,
+				rate: RATES.includes(saved.rate as (typeof RATES)[number]) ? (saved.rate as number) : DEFAULTS.rate,
 			})
 		} catch {
 			/* storage unavailable – the defaults stand */

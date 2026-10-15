@@ -51,6 +51,8 @@ export async function listUsers(
 ): Promise<{ items: DirectoryUser[]; nextCursor: string | null }> {
 	const includePii = flags?.includePii ?? false
 	const rows = await prisma.user.findMany({
+		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+		take: opts.limit + 1,
 		where: opts.q
 			? {
 					OR: [
@@ -61,25 +63,23 @@ export async function listUsers(
 					],
 				}
 			: undefined,
-		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-		take: opts.limit + 1,
 		...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
 		select: {
-			id: true,
-			name: true,
+			createdAt: true,
 			displayName: true,
 			email: true,
+			fraudFlagged: true,
+			id: true,
+			name: true,
+			roles: { select: { role: true } },
 			slackId: true,
 			verificationStatus: true,
-			fraudFlagged: true,
-			createdAt: true,
-			roles: { select: { role: true } },
 		},
 	})
 	const hasMore = rows.length > opts.limit
 	// Contact + risk fields only leave the server for ADMIN/AUDITOR. REVIEWER/FULFILLER get the directory (names + roles) with no emails, Slack ids or fraud flags to scrape. Callers pass includePii explicitly; the default is stripped.
 	const items = (hasMore ? rows.slice(0, opts.limit) : rows).map(row =>
-		includePii ? row : { ...row, email: "", slackId: null, verificationStatus: null, fraudFlagged: false },
+		includePii ? row : { ...row, email: "", fraudFlagged: false, slackId: null, verificationStatus: null },
 	)
 	const last = items[items.length - 1]
 	return { items, nextCursor: hasMore && last ? last.id : null }
@@ -104,22 +104,22 @@ export type ProjectFilters = {
 export type ProjectDirectoryRow = Prisma.ThemeProjectGetPayload<{ select: typeof projectDirectorySelect }>
 
 const projectDirectorySelect = {
-	id: true,
-	theme: true,
-	title: true,
-	githubRepo: true,
-	designStatus: true,
 	buildStatus: true,
-	tier: true,
+	designStatus: true,
+	githubRepo: true,
+	id: true,
 	requestedTier: true,
 	submissionExtensionUntil: true,
+	theme: true,
+	tier: true,
+	title: true,
 	updatedAt: true,
 	user: {
 		select: {
-			id: true,
-			name: true,
 			displayName: true,
 			email: true,
+			id: true,
+			name: true,
 			slackId: true,
 			submissionExtensionUntil: true,
 		},
@@ -137,7 +137,7 @@ export async function listProjects(
 		...(opts.theme ? { theme: opts.theme } : {}),
 		...(opts.designStatus ? { designStatus: opts.designStatus } : {}),
 		...(opts.buildStatus ? { buildStatus: opts.buildStatus } : {}),
-		...(opts.tier ? { OR: [{ tier: opts.tier }, { tier: null, requestedTier: opts.tier }] } : {}),
+		...(opts.tier ? { OR: [{ tier: opts.tier }, { requestedTier: opts.tier, tier: null }] } : {}),
 		AND: [
 			q
 				? {
@@ -162,9 +162,9 @@ export async function listProjects(
 	}
 
 	const rows = await prisma.themeProject.findMany({
-		where,
 		orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
 		take: opts.limit + 1,
+		where,
 		...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
 		select: projectDirectorySelect,
 	})
@@ -175,38 +175,38 @@ export async function listProjects(
 }
 
 const userDetailSelect = {
-	id: true,
-	name: true,
+	createdAt: true,
 	displayName: true,
 	email: true,
-	slackId: true,
-	slackDisplayName: true,
-	verificationStatus: true,
-	hackatimeUserId: true,
 	fraudFlagged: true,
-	submissionExtensionUntil: true,
-	createdAt: true,
+	hackatimeUserId: true,
+	id: true,
 	joinedProgramAt: true,
-	roles: { select: { role: true, grantedAt: true, grantedBy: true } },
+	name: true,
+	printerAward: true,
+	roles: { select: { grantedAt: true, grantedBy: true, role: true } },
+	slackDisplayName: true,
+	slackId: true,
+	submissionExtensionUntil: true,
 	themeProjects: {
-		where: { deletedAt: null },
 		select: {
-			id: true,
-			theme: true,
-			title: true,
-			designStatus: true,
-			buildStatus: true,
-			tier: true,
-			grantUsd: true,
 			approvedHours: true,
+			buildCoins: true,
+			buildStatus: true,
 			designBankedCoins: true,
 			designSpendableCoins: true,
-			buildCoins: true,
+			designStatus: true,
+			grantUsd: true,
+			hcbGrantTopUps: { select: { id: true }, where: { phase: "DESIGN", sentAt: { not: null } } },
+			id: true,
 			submissionExtensionUntil: true,
-			hcbGrantTopUps: { where: { phase: "DESIGN", sentAt: { not: null } }, select: { id: true } },
+			theme: true,
+			tier: true,
+			title: true,
 		},
+		where: { deletedAt: null },
 	},
-	printerAward: true,
+	verificationStatus: true,
 } satisfies Prisma.UserSelect
 
 /** The admin user profile: the selected columns plus money sections both branches fill. */
@@ -214,10 +214,10 @@ export type UserDetail = Prisma.UserGetPayload<{ select: typeof userDetailSelect
 
 const userDetailOrderSelect = {
 	id: true,
-	orderNumber: true,
 	itemNameSnapshot: true,
-	totalCredits: true,
+	orderNumber: true,
 	status: true,
+	totalCredits: true,
 } satisfies Prisma.ShopOrderSelect
 
 /** The 25 most recent orders on the user page: number, item, credit total and status only. */
@@ -235,8 +235,8 @@ export async function getUserDetail(
 } | null> {
 	const includeSensitive = flags?.includeSensitive ?? false
 	const user = await prisma.user.findUnique({
-		where: { id: userId },
 		select: userDetailSelect,
+		where: { id: userId },
 	})
 	if (!user) return null
 
@@ -244,40 +244,40 @@ export async function getUserDetail(
 	if (!includeSensitive) {
 		const printer = await getPrinterQualification(userId)
 		return {
-			user: {
-				...user,
-				email: "",
-				slackId: null,
-				slackDisplayName: null,
-				verificationStatus: null,
-				hackatimeUserId: null,
-				fraudFlagged: false,
-			},
-			balances: { spendable: 0, banked: 0, total: 0 },
+			balances: { banked: 0, spendable: 0, total: 0 },
 			ledger: [],
 			orders: [],
 			printer,
+			user: {
+				...user,
+				email: "",
+				fraudFlagged: false,
+				hackatimeUserId: null,
+				slackDisplayName: null,
+				slackId: null,
+				verificationStatus: null,
+			},
 		}
 	}
 
 	const [balances, ledger, orders, printer] = await Promise.all([
 		prisma.$transaction(tx => getBalances(tx, userId)),
 		prisma.ledgerEntry.findMany({
-			where: { userId },
 			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
 			take: 50,
+			where: { userId },
 		}),
 		prisma.shopOrder.findMany({
-			where: { userId },
 			orderBy: { placedAt: "desc" },
-			take: 25,
 			// The user page lists the number, item, credit total and status only; internal cost and encrypted columns are not part of VIEW_USERS.
 			select: userDetailOrderSelect,
+			take: 25,
+			where: { userId },
 		}),
 		getPrinterQualification(userId),
 	])
 
-	return { user, balances, ledger, orders, printer }
+	return { balances, ledger, orders, printer, user }
 }
 
 /** One row of the admin order directory: the staff-safe columns plus buyer and item names. */
@@ -285,8 +285,8 @@ export type OrderDirectoryRow = Prisma.ShopOrderGetPayload<{ select: typeof orde
 
 const orderDirectorySelect = {
 	...shopOrderStaffSelect,
-	user: { select: { id: true, name: true, displayName: true } },
 	shopItem: { select: { id: true, name: true } },
+	user: { select: { displayName: true, id: true, name: true } },
 } satisfies Prisma.ShopOrderSelect
 
 export async function listOrders(opts: {
@@ -295,9 +295,9 @@ export async function listOrders(opts: {
 	limit: number
 }): Promise<{ items: OrderDirectoryRow[]; nextCursor: string | null }> {
 	const rows = await prisma.shopOrder.findMany({
-		where: opts.status ? { status: opts.status } : undefined,
 		orderBy: [{ placedAt: "desc" }, { id: "desc" }],
 		take: opts.limit + 1,
+		where: opts.status ? { status: opts.status } : undefined,
 		...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
 		// Explicit select, not `include`: a whole-row response carries the encrypted address/phone and `lastActorId` this API has no use for.
 		select: orderDirectorySelect,
@@ -380,31 +380,31 @@ export async function listFulfillmentOrders(
 				}
 			: filters.stage
 				? {
-						fulfillmentStage: filters.stage,
 						// A cancelled order shows as cancelled, so it matches no other stage.
 						AND: [{ status: { not: ShopOrderStatus.CANCELLED } }],
+						fulfillmentStage: filters.stage,
 					}
 				: {}),
 	}
 
 	const rows = await prisma.shopOrder.findMany({
-		where,
 		orderBy: [{ placedAt: "desc" }, { id: "desc" }],
 		take: opts.limit + 1,
+		where,
 		...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
 		select: {
-			id: true,
-			orderNumber: true,
-			quantity: true,
-			itemNameSnapshot: true,
-			unitCostUsd: true,
-			status: true,
 			fulfillmentMethod: true,
 			fulfillmentStage: true,
+			id: true,
+			itemNameSnapshot: true,
+			orderNumber: true,
 			placedAt: true,
+			quantity: true,
 			shopItem: { select: { costUsd: true } },
+			status: true,
+			unitCostUsd: true,
 			user: {
-				select: { id: true, name: true, displayName: true, encryptedAddressCountry: true },
+				select: { displayName: true, encryptedAddressCountry: true, id: true, name: true },
 			},
 		},
 	})
@@ -417,9 +417,9 @@ export async function listFulfillmentOrders(
 		const unit = unitCostUsd ?? shopItem.costUsd
 		return {
 			...order,
+			country: safeDecrypt(user.encryptedAddressCountry),
 			fulfillmentStage: fulfillmentStageOf(order),
 			totalUsd: unit === null ? null : unit * order.quantity,
-			country: safeDecrypt(user.encryptedAddressCountry),
 			user: { id: user.id, name: displayName(user) },
 		}
 	})
@@ -438,13 +438,13 @@ export async function listAuditLog(opts: {
 	limit: number
 }): Promise<{ items: AuditLog[]; nextCursor: string | null }> {
 	const rows = await prisma.auditLog.findMany({
+		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+		take: opts.limit + 1,
 		where: {
 			// The page's filter box takes free text, so an unrecognised action is treated as no filter rather than a Prisma enum error; the API route rejects it properly with a 400.
 			...(opts.action && isAuditAction(opts.action) ? { action: opts.action } : {}),
 			...(opts.targetId ? { targetId: opts.targetId } : {}),
 		},
-		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-		take: opts.limit + 1,
 		...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
 	})
 	const hasMore = rows.length > opts.limit
@@ -463,25 +463,25 @@ export type PrinterAwardRow = Omit<
 > & { addressOnFile: boolean }
 
 const printerAwardSelect = {
-	id: true,
-	status: true,
-	qualifiedAt: true,
 	addressLockedAt: true,
-	encryptedAddress: true,
-	trackingNumber: true,
-	trackingCarrier: true,
-	shippedAt: true,
 	deliveredAt: true,
+	encryptedAddress: true,
+	id: true,
+	qualifiedAt: true,
 	revokedAt: true,
 	revokedReason: true,
-	user: { select: { id: true, name: true, displayName: true } },
+	shippedAt: true,
+	status: true,
+	trackingCarrier: true,
+	trackingNumber: true,
+	user: { select: { displayName: true, id: true, name: true } },
 } satisfies Prisma.PrinterAwardSelect
 
 export async function listPrinterAwards(limit = 100): Promise<PrinterAwardRow[]> {
 	const rows = await prisma.printerAward.findMany({
 		orderBy: [{ qualifiedAt: "desc" }],
-		take: limit,
 		select: printerAwardSelect,
+		take: limit,
 	})
 	return rows.map(({ encryptedAddress, ...award }) => ({
 		...award,
@@ -494,23 +494,23 @@ export async function listPrinterAwards(limit = 100): Promise<PrinterAwardRow[]>
 export type ModeratedPost = Prisma.PostGetPayload<{ select: typeof moderatedPostSelect }>
 
 const moderatedPostSelect = {
-	id: true,
-	kind: true,
 	caption: true,
+	createdAt: true,
 	hiddenAt: true,
 	hiddenReason: true,
+	id: true,
+	kind: true,
 	publishedAt: true,
-	createdAt: true,
-	user: { select: { id: true, name: true, displayName: true, email: true } },
 	themeProject: { select: { id: true, title: true } },
+	user: { select: { displayName: true, email: true, id: true, name: true } },
 } satisfies Prisma.PostSelect
 
 export async function listRecentPostsForModeration(limit = 25): Promise<ModeratedPost[]> {
 	return prisma.post.findMany({
-		where: { deletedAt: null },
 		orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
-		take: limit,
 		select: moderatedPostSelect,
+		take: limit,
+		where: { deletedAt: null },
 	})
 }
 
@@ -521,21 +521,21 @@ export async function listRecentPostsForModeration(limit = 25): Promise<Moderate
 export type ModeratedComment = Prisma.PostCommentGetPayload<{ select: typeof moderatedCommentSelect }>
 
 const moderatedCommentSelect = {
-	id: true,
 	body: true,
+	createdAt: true,
 	hiddenAt: true,
 	hiddenReason: true,
-	createdAt: true,
-	user: { select: { id: true, name: true, displayName: true, email: true } },
-	post: { select: { id: true, caption: true } },
+	id: true,
+	post: { select: { caption: true, id: true } },
+	user: { select: { displayName: true, email: true, id: true, name: true } },
 } satisfies Prisma.PostCommentSelect
 
 export async function listRecentCommentsForModeration(limit = 25): Promise<ModeratedComment[]> {
 	return prisma.postComment.findMany({
-		where: { deletedAt: null, post: { deletedAt: null } },
 		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-		take: limit,
 		select: moderatedCommentSelect,
+		take: limit,
+		where: { deletedAt: null, post: { deletedAt: null } },
 	})
 }
 
@@ -544,21 +544,21 @@ export async function listRecentCommentsForModeration(limit = 25): Promise<Moder
 export type PublicReelRow = Prisma.PublicReelGetPayload<{ select: typeof publicReelSelect }>
 
 const publicReelSelect = {
-	id: true,
-	url: true,
-	platform: true,
 	email: true,
+	id: true,
+	platform: true,
+	post: { select: { caption: true, id: true } },
 	postedAt: true,
-	user: { select: { id: true, name: true, displayName: true } },
-	post: { select: { id: true, caption: true } },
 	themeProject: { select: { id: true, title: true } },
+	url: true,
+	user: { select: { displayName: true, id: true, name: true } },
 } satisfies Prisma.PublicReelSelect
 
 export async function listRecentPublicReels(limit = 100): Promise<PublicReelRow[]> {
 	return prisma.publicReel.findMany({
 		orderBy: [{ postedAt: "desc" }, { id: "desc" }],
-		take: limit,
 		select: publicReelSelect,
+		take: limit,
 	})
 }
 
@@ -571,12 +571,12 @@ export async function getAdminCounters(): Promise<{
 }> {
 	// A live hand-in: an open submission on a phase that is actually in review, on a project that still exists. The phase check matters on its own – counting every unresolved row also sweeps up submissions whose phase has moved on without the row resolving.
 	const liveHandIn: Prisma.PhaseSubmissionWhereInput = {
-		resolvedAt: null,
-		themeProject: { deletedAt: null },
 		OR: [
 			{ phase: Phase.DESIGN, themeProject: { designStatus: PhaseStatus.in_review } },
 			{ phase: Phase.BUILD, themeProject: { buildStatus: PhaseStatus.in_review } },
 		],
+		resolvedAt: null,
+		themeProject: { deletedAt: null },
 	}
 
 	const [pendingReviews, pendingReviewsUnsent, pendingOrders, participants, shipped] = await Promise.all([
@@ -590,7 +590,7 @@ export async function getAdminCounters(): Promise<{
 		prisma.user.count(),
 		prisma.printerAward.count({ where: { revokedAt: null } }),
 	])
-	return { pendingReviews, pendingReviewsUnsent, pendingOrders, participants, shipped }
+	return { participants, pendingOrders, pendingReviews, pendingReviewsUnsent, shipped }
 }
 
 export type FlowStep = {
@@ -621,26 +621,27 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 	const [users, sessionUsers, projectUsers, devlogUsers, repoUsers] = await Promise.all([
 		prisma.user.findMany({
 			select: {
-				id: true,
-				hardwareExperience: true,
-				onboardingStep: true,
-				onboardingCompletedAt: true,
-				participantGoal: true,
+				firstChecksPassedAt: true,
 				firstProjectAt: true,
 				firstReelAt: true,
-				firstChecksPassedAt: true,
 				firstSubmissionAt: true,
+				hardwareExperience: true,
+				id: true,
+				onboardingCompletedAt: true,
+				onboardingStep: true,
+				participantGoal: true,
 			},
 		}),
 		// People who logged in: a sign-in is what issues a session. Derived from the table rather than the lastLoginAt marker, so the funnel does not depend on the analytics backfill having run.
-		prisma.session.findMany({ select: { userId: true }, distinct: ["userId"] }),
+		prisma.session.findMany({ distinct: ["userId"], select: { userId: true } }),
 		// The onboarding paper trail, per person, read off their live projects: a description means they named something, a starter means they took one of the catalogue's, and a requested tier means they answered the tier question. One read for all three because the funnel needs them together.
 		prisma.themeProject.findMany({
+			select: { description: true, requestedTier: true, starterProjectId: true, userId: true },
 			where: { deletedAt: null },
-			select: { userId: true, description: true, starterProjectId: true, requestedTier: true },
 		}),
 		// People who added a devlog: a project with a real work session on it.
 		prisma.user.findMany({
+			select: { id: true },
 			where: {
 				themeProjects: {
 					some: {
@@ -655,16 +656,15 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 					},
 				},
 			},
-			select: { id: true },
 		}),
 		// People who connected a repository to a project.
 		prisma.themeProject.findMany({
+			distinct: ["userId"],
+			select: { userId: true },
 			where: {
 				deletedAt: null,
 				OR: [{ githubRepo: { not: null } }, { repoSyncRepo: { not: null } }, { repoSyncEnabled: true }],
 			},
-			select: { userId: true },
-			distinct: ["userId"],
 		}),
 	])
 
@@ -679,10 +679,10 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 	//
 	// The onboarding steps between "started" and "finished" are read from `onboardingStep` (the furthest step reached, 0-based) rather than from a marker per step, because that one column is the state machine's own answer and predates nothing. Each carries `|| completed` so a person who finished is never missing from an earlier row, and each also accepts the branch that skips it: a starter pick jumps the project and idea steps, so "named or picked" and "tier settled" are ORs, not a single column.
 	const ONBOARDING = {
-		week: stepIndexOf("week"),
 		idea: stepIndexOf("idea"),
-		tracking: stepIndexOf("tracking"),
 		repo: stepIndexOf("repo"),
+		tracking: stepIndexOf("tracking"),
+		week: stepIndexOf("week"),
 	} as const
 	const flags = users.map(u => {
 		const posted = u.firstReelAt !== null
@@ -712,26 +712,26 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 	const total = users.length
 
 	const defs = [
-		{ id: "signedUp", label: "Signed up", hint: "Account in the database" },
-		{ id: "loggedIn", label: "Logged in", hint: "At least one sign-in" },
-		{ id: "startedOnboarding", label: "Started onboarding", hint: "Answered the first getting-started question" },
-		{ id: "reachedWeek", label: "Reached the week step", hint: "Saw what this week's theme is" },
+		{ hint: "Account in the database", id: "signedUp", label: "Signed up" },
+		{ hint: "At least one sign-in", id: "loggedIn", label: "Logged in" },
+		{ hint: "Answered the first getting-started question", id: "startedOnboarding", label: "Started onboarding" },
+		{ hint: "Saw what this week's theme is", id: "reachedWeek", label: "Reached the week step" },
 		{
+			hint: "Described a project, or took a starter",
 			id: "namedProject",
 			label: "Named or picked a project",
-			hint: "Described a project, or took a starter",
 		},
-		{ id: "reachedIdea", label: "Reached the idea step", hint: "Passed the project step to the starter ideas" },
-		{ id: "pickedTier", label: "Picked a tier", hint: "Answered the tier question, or took a starter" },
-		{ id: "reachedTracking", label: "Reached time tracking", hint: "Saw how hours are logged" },
-		{ id: "reachedRepo", label: "Reached the repo step", hint: "Saw the optional repo-linking question" },
-		{ id: "finishedOnboarding", label: "Finished onboarding", hint: "Worked through every getting-started step" },
-		{ id: "createdProject", label: "Created a project", hint: "A project row with its first marker stamped" },
-		{ id: "setGoal", label: "Set a goal", hint: "Answered what they are here for" },
-		{ id: "addedDevlog", label: "Added a devlog", hint: "Logged a work session on a project" },
-		{ id: "connectedRepo", label: "Connected a repo", hint: "Linked an external repository to a project" },
-		{ id: "checksPassed", label: "Repo checks passed", hint: "Every submission repo check came back green" },
-		{ id: "submitted", label: "Submitted a project", hint: "Handed a phase in for review" },
+		{ hint: "Passed the project step to the starter ideas", id: "reachedIdea", label: "Reached the idea step" },
+		{ hint: "Answered the tier question, or took a starter", id: "pickedTier", label: "Picked a tier" },
+		{ hint: "Saw how hours are logged", id: "reachedTracking", label: "Reached time tracking" },
+		{ hint: "Saw the optional repo-linking question", id: "reachedRepo", label: "Reached the repo step" },
+		{ hint: "Worked through every getting-started step", id: "finishedOnboarding", label: "Finished onboarding" },
+		{ hint: "A project row with its first marker stamped", id: "createdProject", label: "Created a project" },
+		{ hint: "Answered what they are here for", id: "setGoal", label: "Set a goal" },
+		{ hint: "Logged a work session on a project", id: "addedDevlog", label: "Added a devlog" },
+		{ hint: "Linked an external repository to a project", id: "connectedRepo", label: "Connected a repo" },
+		{ hint: "Every submission repo check came back green", id: "checksPassed", label: "Repo checks passed" },
+		{ hint: "Handed a phase in for review", id: "submitted", label: "Submitted a project" },
 	] as const
 
 	const steps: FlowStep[] = []
@@ -751,9 +751,9 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 		steps.push({
 			...def,
 			count,
-			retainPct: pctOf(count, prev),
 			dropOffPct: n === 0 ? 0 : pctOf(prev - count, prev),
 			ofSignupsPct: pctOf(count, total),
+			retainPct: pctOf(count, prev),
 		})
 	}
 	return steps
@@ -765,56 +765,56 @@ export type ReportStatusFilter = ReportStatus | "ALL"
  * The moderation queue for user reports: who flagged what, why, and what staff did about it. Newest first, with the reported row's own preview and author alongside, so a report reads without opening five tabs. Cursor- paged like the audit log, so a busy queue never silently drops its tail.
  */
 const contentReportSelect = {
-	id: true,
-	target: true,
-	reason: true,
-	details: true,
-	status: true,
-	createdAt: true,
-	resolvedAt: true,
-	resolvedById: true,
-	reporter: { select: { id: true, name: true, displayName: true, email: true } },
-	post: {
-		select: {
-			id: true,
-			caption: true,
-			hiddenAt: true,
-			deletedAt: true,
-			user: { select: { id: true, name: true, displayName: true } },
-		},
-	},
 	comment: {
 		select: {
-			id: true,
 			body: true,
-			hiddenAt: true,
 			deletedAt: true,
+			hiddenAt: true,
+			id: true,
 			postId: true,
-			user: { select: { id: true, name: true, displayName: true } },
+			user: { select: { displayName: true, id: true, name: true } },
 		},
 	},
+	createdAt: true,
+	details: true,
+	id: true,
+	post: {
+		select: {
+			caption: true,
+			deletedAt: true,
+			hiddenAt: true,
+			id: true,
+			user: { select: { displayName: true, id: true, name: true } },
+		},
+	},
+	reason: true,
+	reporter: { select: { displayName: true, email: true, id: true, name: true } },
+	resolvedAt: true,
+	resolvedById: true,
+	status: true,
+	target: true,
+	targetUser: { select: { displayName: true, id: true, name: true } },
 	themeProject: {
 		select: {
+			deletedAt: true,
 			id: true,
 			title: true,
-			deletedAt: true,
-			user: { select: { id: true, name: true, displayName: true } },
+			user: { select: { displayName: true, id: true, name: true } },
 		},
 	},
-	targetUser: { select: { id: true, name: true, displayName: true } },
 	workSession: {
 		select: {
-			id: true,
-			title: true,
 			content: true,
 			deletedAt: true,
+			id: true,
 			themeProject: {
 				select: {
 					id: true,
 					title: true,
-					user: { select: { id: true, name: true, displayName: true } },
+					user: { select: { displayName: true, id: true, name: true } },
 				},
 			},
+			title: true,
 		},
 	},
 } satisfies Prisma.ContentReportSelect
@@ -828,9 +828,9 @@ export async function listContentReports(
 ): Promise<{ items: ContentReportRow[]; nextCursor: string | null }> {
 	const limit = opts.limit ?? 50
 	const rows = await prisma.contentReport.findMany({
-		where: status === "ALL" ? undefined : { status },
 		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
 		take: limit + 1,
+		where: status === "ALL" ? undefined : { status },
 		...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
 		select: contentReportSelect,
 	})
@@ -841,8 +841,8 @@ export async function listContentReports(
 }
 
 export async function countContentReports(): Promise<Record<ReportStatus, number>> {
-	const groups = await prisma.contentReport.groupBy({ by: ["status"], _count: { _all: true } })
-	const counts: Record<ReportStatus, number> = { OPEN: 0, RESOLVED: 0, DISMISSED: 0 }
+	const groups = await prisma.contentReport.groupBy({ _count: { _all: true }, by: ["status"] })
+	const counts: Record<ReportStatus, number> = { DISMISSED: 0, OPEN: 0, RESOLVED: 0 }
 	for (const group of groups) counts[group.status] = group._count._all
 	return counts
 }
@@ -877,30 +877,30 @@ async function loadRegionInputs() {
 	const [users, sessions, links] = await Promise.all([
 		prisma.user.findMany({ select: { id: true, timezone: true } }),
 		prisma.workSession.findMany({
-			where: { deletedAt: null, themeProject: { deletedAt: null } },
 			select: {
-				hoursClaimed: true,
 				hoursApproved: true,
+				hoursClaimed: true,
 				hoursSource: true,
-				themeProjectId: true,
 				phase: true,
 				themeProject: { select: { userId: true } },
+				themeProjectId: true,
 				timelapses: { select: { coveredSeconds: true, recordedAt: true } },
 			},
+			where: { deletedAt: null, themeProject: { deletedAt: null } },
 		}),
 		prisma.hackatimeLink.findMany({
-			where: { themeProject: { deletedAt: null } },
 			select: {
-				hoursApproved: true,
 				cachedSeconds: true,
 				cachedSpans: true,
-				themeProjectId: true,
+				hoursApproved: true,
 				phase: true,
 				themeProject: { select: { userId: true } },
+				themeProjectId: true,
 			},
+			where: { themeProject: { deletedAt: null } },
 		}),
 	])
-	return { users, sessions, links }
+	return { links, sessions, users }
 }
 
 type RegionInputs = Awaited<ReturnType<typeof loadRegionInputs>>
@@ -941,7 +941,7 @@ function hoursByUser(inputs: RegionInputs): HoursByUser {
 		const key = phaseKey(themeProjectId, phase)
 		let held = phases.get(key)
 		if (!held) {
-			held = { userId, sessions: [], links: [] }
+			held = { links: [], sessions: [], userId }
 			phases.set(key, held)
 		}
 		return held
@@ -967,7 +967,7 @@ function aggregateByKey(inputs: RegionInputs, byUser: HoursByUser, keyOf: (timez
 	const row = (key: string) => {
 		let r = totals.get(key)
 		if (!r) {
-			r = { users: 0, hours: 0 }
+			r = { hours: 0, users: 0 }
 			totals.set(key, r)
 		}
 		return r
@@ -986,10 +986,10 @@ export async function getAreaStats(): Promise<AreaStat[]> {
 	const inputs = await loadRegionInputs()
 	const totals = aggregateByKey(inputs, hoursByUser(inputs), tz => regionOfTimezone(tz))
 	return REGIONS.map(({ id, label }) => ({
+		hours: round1(totals.get(id)?.hours ?? 0),
 		id,
 		label,
 		users: totals.get(id)?.users ?? 0,
-		hours: round1(totals.get(id)?.hours ?? 0),
 	})).sort((a, b) => rankLast(b.label, b.users) - rankLast(a.label, a.users))
 }
 
@@ -999,7 +999,7 @@ export async function getCountryStats(): Promise<CountryStat[]> {
 	const totals = aggregateByKey(inputs, hoursByUser(inputs), countryOfTimezone)
 	return [...totals]
 		.filter(([, t]) => t.users > 0 || t.hours > 0)
-		.map(([country, t]) => ({ country, users: t.users, hours: round1(t.hours) }))
+		.map(([country, t]) => ({ country, hours: round1(t.hours), users: t.users }))
 		.sort((a, b) => rankLast(b.country, b.users) - rankLast(a.country, a.users))
 }
 
@@ -1022,15 +1022,15 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/
  */
 export async function getDailyActivity(): Promise<DayActivity[]> {
 	const sessions = await prisma.workSession.findMany({
-		where: { deletedAt: null, themeProject: { deletedAt: null } },
 		select: {
 			effectiveDate: true,
-			hoursClaimed: true,
 			hoursApproved: true,
+			hoursClaimed: true,
 			hoursSource: true,
 			// A session belongs to the project, not the person, so the user is reached through it.
 			themeProject: { select: { userId: true } },
 		},
+		where: { deletedAt: null, themeProject: { deletedAt: null } },
 	})
 
 	const byDay = new Map<string, { devlogs: number; hours: number; users: Set<string> }>()
@@ -1085,14 +1085,14 @@ export async function getDailyActiveUsers(): Promise<{ days: ActiveDay[]; today:
 	const today = effectiveDateFor(new Date(), programTimezone)
 
 	const sessions = await prisma.workSession.findMany({
-		where: { deletedAt: null, themeProject: { deletedAt: null } },
 		select: {
-			effectiveDate: true,
 			createdAt: true,
+			effectiveDate: true,
 			hoursClaimed: true,
 			// A session belongs to the project, not the person, so the user is reached through it.
 			themeProject: { select: { userId: true } },
 		},
+		where: { deletedAt: null, themeProject: { deletedAt: null } },
 	})
 
 	// day → (user → that person's hours that day), so the threshold is applied to a whole day rather than one entry.
@@ -1144,14 +1144,14 @@ export type GoalDayActivity = {
  */
 export async function getDailyActivityByGoal(): Promise<GoalDayActivity[]> {
 	const sessions = await prisma.workSession.findMany({
-		where: { deletedAt: null, themeProject: { deletedAt: null } },
 		select: {
 			effectiveDate: true,
-			hoursClaimed: true,
 			hoursApproved: true,
+			hoursClaimed: true,
 			hoursSource: true,
-			themeProject: { select: { userId: true, user: { select: { participantGoal: true } } } },
+			themeProject: { select: { user: { select: { participantGoal: true } }, userId: true } },
 		},
+		where: { deletedAt: null, themeProject: { deletedAt: null } },
 	})
 
 	const byDay = new Map<string, Map<ParticipantGoal, { hours: number; users: Set<string> }>>()
@@ -1183,12 +1183,12 @@ export async function getDailyActivityByGoal(): Promise<GoalDayActivity[]> {
 		const day = new Date(at).toISOString().slice(0, 10)
 		const goals = byDay.get(day)
 		out.push({
-			day,
 			byGoal: GOAL_OPTIONS.map(option => ({
 				goal: option.value,
 				hours: round1(goals?.get(option.value)?.hours ?? 0),
 				users: goals?.get(option.value)?.users.size ?? 0,
 			})),
+			day,
 		})
 	}
 	return out
@@ -1247,9 +1247,9 @@ export async function getHoursDistribution(): Promise<HoursDistribution> {
 	// One bucket per edge, so the trailing Infinity edge becomes the "160+" bar and catches the long tail.
 	const last = HOUR_EDGES.length - 1
 	const buckets: HoursBucket[] = HOUR_EDGES.map((upper, i) => ({
+		hours: 0,
 		label: i === last ? `${HOUR_EDGES[last - 1]}+` : i === 0 ? `under ${upper}` : `${HOUR_EDGES[i - 1]}–${upper}`,
 		participants: 0,
-		hours: 0,
 	}))
 
 	for (const hours of perUser) {
@@ -1271,11 +1271,11 @@ export async function getHoursDistribution(): Promise<HoursDistribution> {
 
 	return {
 		buckets,
+		median: median === null ? null : round1(median),
+		overlapUnknownPhases: byUser.overlapUnknownPhases,
+		totalHours: round1(totalHours),
 		withHours: perUser.length,
 		withoutHours: Math.max(0, inputs.users.length - perUser.length),
-		median: median === null ? null : round1(median),
-		totalHours: round1(totalHours),
-		overlapUnknownPhases: byUser.overlapUnknownPhases,
 	}
 }
 
@@ -1293,8 +1293,8 @@ export type FirstProjectStat = {
  */
 export async function getFirstProjectStats(): Promise<FirstProjectStat[]> {
 	const rows = await prisma.themeProject.findMany({
-		where: { theme: Theme.PCB, deletedAt: null, user: { onboardingCompletedAt: { not: null } } },
 		select: { starterProjectId: true },
+		where: { deletedAt: null, theme: Theme.PCB, user: { onboardingCompletedAt: { not: null } } },
 	})
 
 	const counts = new Map<string | null, number>()
@@ -1365,10 +1365,10 @@ type WeekSlot = {
  * Shared by the two per-week charts so their axes cannot drift – both draw one column per entry here, which is what makes them readable side by side. A week the schedule has nothing for is still a column, labelled by number, so the axis draws the whole season rather than the part of it that has been reached.
  */
 function weekSlots(): WeekSlot[] {
-	const slots: WeekSlot[] = [{ week: WARMUP_WEEK_ID, label: WARMUP_THEME.label, phase: null }]
+	const slots: WeekSlot[] = [{ label: WARMUP_THEME.label, phase: null, week: WARMUP_WEEK_ID }]
 	for (let week = 1; week <= TOTAL_WEEKS; week++) {
 		const scheduled = scheduleForWeek(week)
-		slots.push({ week, label: scheduled ? scheduled.theme.label : `Week ${week}`, phase: scheduled?.phase ?? null })
+		slots.push({ label: scheduled ? scheduled.theme.label : `Week ${week}`, phase: scheduled?.phase ?? null, week })
 	}
 	return slots
 }
@@ -1384,15 +1384,15 @@ function weekSlots(): WeekSlot[] {
  */
 export async function getProjectsByWeek(): Promise<WeekProjectCluster[]> {
 	const projects = await prisma.themeProject.findMany({
-		where: { deletedAt: null },
 		select: {
-			theme: true,
-			starterProjectId: true,
-			tier: true,
-			requestedTier: true,
-			designStatus: true,
 			buildStatus: true,
+			designStatus: true,
+			requestedTier: true,
+			starterProjectId: true,
+			theme: true,
+			tier: true,
 		},
+		where: { deletedAt: null },
 	})
 
 	const clusters = new Map<number, WeekProjectCluster>()
@@ -1452,26 +1452,26 @@ function weekOfPhase(theme: Theme, phase: Phase): number {
  */
 export async function getHoursByWeek(): Promise<WeekHoursCluster[]> {
 	const projects = await prisma.themeProject.findMany({
-		where: { deletedAt: null, namedAt: { not: null } },
 		select: {
-			theme: true,
-			starterProjectId: true,
-			tier: true,
+			hackatimeLinks: {
+				select: { cachedSeconds: true, cachedSpans: true, hoursApproved: true, phase: true },
+			},
 			requestedTier: true,
+			starterProjectId: true,
+			theme: true,
+			tier: true,
 			workSessions: {
-				where: { deletedAt: null },
 				select: {
-					phase: true,
-					hoursClaimed: true,
 					hoursApproved: true,
+					hoursClaimed: true,
 					hoursSource: true,
+					phase: true,
 					timelapses: { select: { coveredSeconds: true, recordedAt: true } },
 				},
-			},
-			hackatimeLinks: {
-				select: { phase: true, hoursApproved: true, cachedSeconds: true, cachedSpans: true },
+				where: { deletedAt: null },
 			},
 		},
+		where: { deletedAt: null, namedAt: { not: null } },
 	})
 
 	const clusters = new Map<number, WeekHoursCluster>()
@@ -1520,7 +1520,7 @@ export type VerificationStat = {
  * The status is HCA's own word, stored at each sign-in and submit by lib/hca-profile; a null is an account HCA has never answered for (a staff import nobody has signed in as, or an HCA that could not be reached).
  */
 export async function getVerificationStats(): Promise<VerificationStat[]> {
-	const rows = await prisma.user.groupBy({ by: ["verificationStatus"], _count: { _all: true } })
+	const rows = await prisma.user.groupBy({ _count: { _all: true }, by: ["verificationStatus"] })
 	return rows
 		.filter(row => row._count._all > 0)
 		.map(row => ({
@@ -1537,10 +1537,10 @@ export async function getVerificationStats(): Promise<VerificationStat[]> {
  * HCA's own words for the states it reports. An unknown one is shown verbatim rather than dropped, so a status HCA adds later still shows up instead of vanishing into a hole in the ring.
  */
 const VERIFICATION_STATUS_LABELS: Record<string, string> = {
-	verified: "Verified",
+	ineligible: "Ineligible",
 	needs_submission: "Needs submission",
 	pending: "Pending",
-	ineligible: "Ineligible",
+	verified: "Verified",
 }
 
 export type ReviewerResultStat = {
@@ -1575,10 +1575,10 @@ export async function getReviewerStats(): Promise<ReviewerStats> {
 	const [{ programTimezone }, reviews] = await Promise.all([
 		getProgramSettings(),
 		prisma.submissionReview.findMany({
-			where: { invalidated: false, pass: ReviewPass.FINAL, submission: { themeProject: { deletedAt: null } } },
 			// Newest first, so the first row seen for a project is that project's most recent live review.
 			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-			select: { result: true, createdAt: true, submission: { select: { themeProjectId: true } } },
+			select: { createdAt: true, result: true, submission: { select: { themeProjectId: true } } },
+			where: { invalidated: false, pass: ReviewPass.FINAL, submission: { themeProject: { deletedAt: null } } },
 		}),
 	])
 
@@ -1592,14 +1592,14 @@ export async function getReviewerStats(): Promise<ReviewerStats> {
 
 	const projects = [...latest.values()]
 	return {
-		// A project reviewed today can only have been reviewed today by its latest review, so this is the same set the breakdown counts.
-		reviewedToday: projects.filter(p => p.today).length,
-		reviewedTotal: projects.length,
 		byResult: Object.values(ReviewResult).map(result => ({
 			result,
 			today: projects.filter(p => p.result === result && p.today).length,
 			total: projects.filter(p => p.result === result).length,
 		})),
+		// A project reviewed today can only have been reviewed today by its latest review, so this is the same set the breakdown counts.
+		reviewedToday: projects.filter(p => p.today).length,
+		reviewedTotal: projects.length,
 	}
 }
 
@@ -1617,23 +1617,23 @@ export type ProjectReviewStatusStat = {
  */
 export async function getProjectReviewStatuses(): Promise<ProjectReviewStatusStat[]> {
 	const submissions = await prisma.phaseSubmission.findMany({
-		where: { themeProject: { deletedAt: null } },
 		// Newest first, so the first row seen for a phase is that phase's current ship.
 		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
 		select: {
-			themeProjectId: true,
+			ariDecision: true,
+			ariSubmissionId: true,
 			phase: true,
 			resolvedAt: true,
 			resolvedResult: true,
-			ariSubmissionId: true,
-			ariDecision: true,
 			reviews: {
-				where: { invalidated: false, pass: ReviewPass.FINAL },
 				orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-				take: 1,
 				select: { result: true },
+				take: 1,
+				where: { invalidated: false, pass: ReviewPass.FINAL },
 			},
+			themeProjectId: true,
 		},
+		where: { themeProject: { deletedAt: null } },
 	})
 
 	const latest = new Map<string, (typeof submissions)[number]>()
@@ -1725,11 +1725,11 @@ export type ActivityShare = {
  * The tracked-activity branches, in the order they stack. Each is its own ribbon rather than a funnel row, because a maker may do any combination of them – devlog and reel are not alternatives, so counting them as rows of one spine is what made the funnel wrong.
  */
 const SANKEY_ACTIVITY = [
-	{ key: "devlog", base: "Devlog", label: "Wrote a devlog" },
-	{ key: "reel", base: "Reel", label: "Posted a reel" },
-	{ key: "repo", base: "Repo", label: "Connected a repo" },
-	{ key: "hackatime", base: "Hackatime", label: "Linked Hackatime" },
-	{ key: "timelapse", base: "Timelapse", label: "Recorded a timelapse" },
+	{ base: "Devlog", key: "devlog", label: "Wrote a devlog" },
+	{ base: "Reel", key: "reel", label: "Posted a reel" },
+	{ base: "Repo", key: "repo", label: "Connected a repo" },
+	{ base: "Hackatime", key: "hackatime", label: "Linked Hackatime" },
+	{ base: "Timelapse", key: "timelapse", label: "Recorded a timelapse" },
 ] as const
 
 type ActivityKey = (typeof SANKEY_ACTIVITY)[number]["key"]
@@ -1748,11 +1748,11 @@ const ACTIVITY_BOXES = new Set([...activityNodes(), "actNone"])
 const NONE_BOX = "actNone"
 
 const SANKEY_OUTCOME = [
-	{ node: "approved", label: "Approved" },
-	{ node: "returned", label: "Changes requested" },
-	{ node: "rejected", label: "Rejected" },
-	{ node: "awaiting", label: "Awaiting review" },
-	{ node: "notSubmitted", label: "Never submitted" },
+	{ label: "Approved", node: "approved" },
+	{ label: "Changes requested", node: "returned" },
+	{ label: "Rejected", node: "rejected" },
+	{ label: "Awaiting review", node: "awaiting" },
+	{ label: "Never submitted", node: "notSubmitted" },
 ] as const
 
 /**
@@ -1786,78 +1786,78 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 	] = await Promise.all([
 		prisma.user.findMany({
 			select: {
-				id: true,
-				hardwareExperience: true,
-				onboardingStep: true,
-				onboardingCompletedAt: true,
-				participantGoal: true,
-				firstProjectAt: true,
 				firstChecksPassedAt: true,
+				firstProjectAt: true,
+				hardwareExperience: true,
+				id: true,
+				onboardingCompletedAt: true,
+				onboardingStep: true,
+				participantGoal: true,
 			},
 		}),
 		// A sign-in is what issues a session. Read off the table rather than the `lastLoginAt` marker, so a backfill that never ran cannot read as "nobody logged in".
-		prisma.session.findMany({ select: { userId: true }, distinct: ["userId"] }),
+		prisma.session.findMany({ distinct: ["userId"], select: { userId: true } }),
 		// The onboarding paper trail, per person, read off live projects. Not `namedAt`: that marker was stamped later, so it misses the projects that predate it. One read for all three, because the journey stages need them together.
 		prisma.themeProject.findMany({
-			where: { deletedAt: null },
 			select: {
-				id: true,
-				userId: true,
 				createdAt: true,
 				description: true,
-				starterProjectId: true,
+				id: true,
 				requestedTier: true,
+				starterProjectId: true,
+				userId: true,
 			},
+			where: { deletedAt: null },
 		}),
 		// The same "a real devlog" rule as the funnel's devlogged step: a HACKATIME_TRACKED row with no timelapse is only a link, not work.
 		prisma.workSession.findMany({
+			select: { createdAt: true, themeProject: { select: { userId: true } } },
 			where: {
 				deletedAt: null,
-				themeProject: { deletedAt: null },
 				OR: [{ hoursSource: { not: HoursSource.HACKATIME_TRACKED } }, { timelapses: { some: {} } }],
+				themeProject: { deletedAt: null },
 			},
-			select: { createdAt: true, themeProject: { select: { userId: true } } },
 		}),
 		// A maker's own post, not a staff announcement: an announcement in their feed is not something they did.
 		prisma.post.findMany({
+			select: { createdAt: true, publishedAt: true, userId: true },
 			where: { deletedAt: null, kind: { not: PostKind.ANNOUNCEMENT } },
-			select: { userId: true, publishedAt: true, createdAt: true },
 		}),
 		prisma.themeProject.findMany({
+			select: { createdAt: true, userId: true },
 			where: {
 				deletedAt: null,
 				OR: [{ githubRepo: { not: null } }, { repoSyncRepo: { not: null } }, { repoSyncEnabled: true }],
 			},
-			select: { createdAt: true, userId: true },
 		}),
 		prisma.hackatimeLink.findMany({
-			where: { themeProject: { deletedAt: null } },
 			select: { createdAt: true, themeProject: { select: { userId: true } } },
+			where: { themeProject: { deletedAt: null } },
 		}),
 		prisma.sessionTimelapse.findMany({
-			where: { workSession: { deletedAt: null, themeProject: { deletedAt: null } } },
 			select: { createdAt: true, workSession: { select: { themeProject: { select: { userId: true } } } } },
+			where: { workSession: { deletedAt: null, themeProject: { deletedAt: null } } },
 		}),
 		// The decision on each hand-in, to end the journey in an outcome rather than at "submitted".
 		prisma.phaseSubmission.findMany({
-			where: { themeProject: { deletedAt: null } },
 			select: { resolvedAt: true, resolvedResult: true, themeProject: { select: { userId: true } } },
+			where: { themeProject: { deletedAt: null } },
 		}),
 		// Design hours per project, for the tier-requirements stage: journal claims outside the tracked-link stream, plus the Hackatime cache, so one wall hour is not counted twice in the common case. An approximation of the sheet's own arithmetic – reviewer adjustments and overlap edge cases stay server-side – but the right shape for "has this tier's floor been worked".
 		prisma.workSession.groupBy({
+			_sum: { hoursClaimed: true },
 			by: ["themeProjectId"],
 			where: {
 				deletedAt: null,
+				hoursSource: { not: HoursSource.HACKATIME_TRACKED },
 				phase: Phase.DESIGN,
 				themeProject: { deletedAt: null },
-				hoursSource: { not: HoursSource.HACKATIME_TRACKED },
 			},
-			_sum: { hoursClaimed: true },
 		}),
 		prisma.hackatimeLink.groupBy({
+			_sum: { cachedSeconds: true },
 			by: ["themeProjectId"],
 			where: { phase: Phase.DESIGN, themeProject: { deletedAt: null } },
-			_sum: { cachedSeconds: true },
 		}),
 	])
 
@@ -1877,14 +1877,14 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 	}
 
 	const activity = earliest([
-		...devlogs.map(s => ({ userId: s.themeProject.userId, at: s.createdAt, key: "devlog" as const })),
-		...reels.map(p => ({ userId: p.userId, at: p.publishedAt ?? p.createdAt, key: "reel" as const })),
-		...repoLinks.map(p => ({ userId: p.userId, at: p.createdAt, key: "repo" as const })),
-		...hackatimeLinks.map(l => ({ userId: l.themeProject.userId, at: l.createdAt, key: "hackatime" as const })),
+		...devlogs.map(s => ({ at: s.createdAt, key: "devlog" as const, userId: s.themeProject.userId })),
+		...reels.map(p => ({ at: p.publishedAt ?? p.createdAt, key: "reel" as const, userId: p.userId })),
+		...repoLinks.map(p => ({ at: p.createdAt, key: "repo" as const, userId: p.userId })),
+		...hackatimeLinks.map(l => ({ at: l.createdAt, key: "hackatime" as const, userId: l.themeProject.userId })),
 		...timelapses.map(t => ({
-			userId: t.workSession.themeProject.userId,
 			at: t.createdAt,
 			key: "timelapse" as const,
+			userId: t.workSession.themeProject.userId,
 		})),
 	])
 
@@ -1899,10 +1899,10 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 	const tookStarter = new Set(projects.filter(p => p.starterProjectId !== null).map(p => p.userId))
 	const pickedTier = new Set(projects.filter(p => p.requestedTier !== null).map(p => p.userId))
 	const ONBOARDING = {
-		week: stepIndexOf("week"),
 		idea: stepIndexOf("idea"),
-		tracking: stepIndexOf("tracking"),
 		repo: stepIndexOf("repo"),
+		tracking: stepIndexOf("tracking"),
+		week: stepIndexOf("week"),
 	} as const
 
 	// Each person's most recent decided or open hand-in, which is the one the outcome column should name.
@@ -2006,7 +2006,7 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 		const key = `${from}\u0000${to}`
 		const held = linkCounts.get(key)
 		if (held) held.value += 1
-		else linkCounts.set(key, { value: 1, fan })
+		else linkCounts.set(key, { fan, value: 1 })
 	}
 	for (const user of users) {
 		const boxes = boxesOf(user).filter((box): box is string => box !== null)
@@ -2052,29 +2052,29 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 	]
 
 	const labels: Record<string, string> = {
-		joined: "Signed up",
-		loggedIn: "Logged in",
-		setupStarted: "Started onboarding",
-		reachedWeek: "Reached the week step",
-		namedProject: "Named a project",
-		reachedIdea: "Reached the idea step",
-		pickedTier: "Picked a tier",
-		reachedTracking: "Reached tracking",
-		reachedRepo: "Reached the repo step",
-		setupDone: "Finished onboarding",
-		projectLive: "Project row live",
-		projectMissing: "No project yet",
-		goalSet: "Set a goal",
-		goalMissing: "No goal yet",
+		awaitingHandIn: "Awaiting hand-in",
 		checksPassed: "Checks passed",
 		checksStalled: "Checks not passed",
+		goalMissing: "No goal yet",
+		goalSet: "Set a goal",
+		handedIn: "Handed in for review",
+		joined: "Signed up",
+		loggedIn: "Logged in",
+		namedProject: "Named a project",
+		pickedTier: "Picked a tier",
+		projectLive: "Project row live",
+		projectMissing: "No project yet",
+		reachedIdea: "Reached the idea step",
+		reachedRepo: "Reached the repo step",
+		reachedTracking: "Reached tracking",
+		reachedWeek: "Reached the week step",
+		setupDone: "Finished onboarding",
+		setupStarted: "Started onboarding",
 		tier1: "Tier 1",
 		tier2: "Tier 2",
 		tier3: "Tier 3",
 		tierMet: "Met the hours",
 		tierUnmet: "Short on hours",
-		handedIn: "Handed in for review",
-		awaitingHandIn: "Awaiting hand-in",
 		...Object.fromEntries(SANKEY_ACTIVITY.map(a => [activityNode(a.key), a.label])),
 		[NONE_BOX]: "None of these",
 		...Object.fromEntries(SANKEY_OUTCOME.map(o => [o.node, o.label])),
@@ -2087,26 +2087,26 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 			? finishers.filter(user => !activity.get(user.id)).length
 			: finishers.filter(user => activity.get(user.id)?.has(key)).length
 	const activityShare: ActivityShare = {
-		total: finishers.length,
 		activities: [
 			...SANKEY_ACTIVITY.map(a => {
 				const users = reachedCount(a.key)
 				return {
+					base: a.base,
 					key: a.key,
 					label: a.label,
-					base: a.base,
-					users,
 					share: finishers.length === 0 ? 0 : users / finishers.length,
+					users,
 				}
 			}),
 			{
+				base: "None",
 				key: "none",
 				label: "None of these",
-				base: "None",
-				users: reachedCount("none"),
 				share: finishers.length === 0 ? 0 : reachedCount("none") / finishers.length,
+				users: reachedCount("none"),
 			},
 		].sort((a, b) => b.users - a.users),
+		total: finishers.length,
 	}
 
 	// Only boxes someone actually reached are drawn: a branch nobody took is not a finding, and an empty box in the middle of the diagram reads as a bug.
@@ -2116,17 +2116,17 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 	const live = new Set(nodes.map(n => n.id))
 
 	return {
+		activityShare,
 		diagram: {
-			stages,
-			nodes,
 			links: [...linkCounts]
 				.map(([key, entry]) => {
 					const [source, target] = key.split("\u0000")
-					return { source: source as string, target: target as string, value: entry.value, fan: entry.fan }
+					return { fan: entry.fan, source: source as string, target: target as string, value: entry.value }
 				})
 				.filter(link => live.has(link.source) && live.has(link.target)),
+			nodes,
+			stages,
 			total: users.length,
 		},
-		activityShare,
 	}
 }

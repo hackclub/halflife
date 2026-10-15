@@ -67,44 +67,44 @@ export type ThemeDef = {
 // designWeek/buildWeek are written out rather than derived from array index. `index + 1` / `index + 6` is exactly the implicit coupling that breaks the day someone inserts a pilot week zero.
 export const THEMES = [
 	{
-		id: Theme.PCB,
-		slug: "pcb",
-		label: "PCBs",
 		blurb: "Design a printed circuit board, then have it fabbed and assemble it.",
-		designWeek: 1,
 		buildWeek: 6,
+		designWeek: 1,
+		id: Theme.PCB,
+		label: "PCBs",
+		slug: "pcb",
 	},
 	{
-		id: Theme.CAD,
-		slug: "cad",
-		label: "CAD",
 		blurb: "Model something in CAD, then print or machine it.",
-		designWeek: 2,
 		buildWeek: 7,
+		designWeek: 2,
+		id: Theme.CAD,
+		label: "CAD",
+		slug: "cad",
 	},
 	{
-		id: Theme.SYNTH,
-		slug: "synth",
-		label: "Music",
 		blurb: "Design a sound-making circuit, then build and play it.",
-		designWeek: 3,
 		buildWeek: 8,
+		designWeek: 3,
+		id: Theme.SYNTH,
+		label: "Music",
+		slug: "synth",
 	},
 	{
-		id: Theme.DISPLAYS,
-		slug: "displays",
-		label: "Displays",
 		blurb: "Design something that drives a display, then wire it up.",
-		designWeek: 4,
 		buildWeek: 9,
+		designWeek: 4,
+		id: Theme.DISPLAYS,
+		label: "Displays",
+		slug: "displays",
 	},
 	{
-		id: Theme.BREADBOARD_COMPUTER,
-		slug: "breadboard",
-		label: "Breadboard Computer",
 		blurb: "Design a computer from discrete logic, then breadboard it.",
-		designWeek: 5,
 		buildWeek: 10,
+		designWeek: 5,
+		id: Theme.BREADBOARD_COMPUTER,
+		label: "Breadboard Computer",
+		slug: "breadboard",
 	},
 ] as const satisfies readonly ThemeDef[]
 
@@ -116,12 +116,12 @@ export type ThemeSlug = (typeof THEMES)[number]["slug"]
  * Deliberately not in `THEMES`: `THEMES` is the ten-week season, and a sixth entry there would invent an eleventh week, count toward printer qualification, and collide with a season slot when a project's week is derived from its index. Iteration over the season reads `THEMES`; anything that only needs a theme's label or slug asks `getThemeDef`, which knows this one too. Its weeks are 0 because it is not scheduled at all.
  */
 export const WARMUP_THEME: ThemeDef = {
-	id: Theme.WARMUP,
-	slug: "warmup",
-	label: "Warm Up",
 	blurb: "A project submitted during the pre-season warm-up weeks.",
-	designWeek: 0,
 	buildWeek: 0,
+	designWeek: 0,
+	id: Theme.WARMUP,
+	label: "Warm Up",
+	slug: "warmup",
 }
 
 /**
@@ -149,9 +149,9 @@ export function projectDisplayTitle(project: { title: string; theme: Theme }): s
 /** The theme and phase a given program week is scheduled for. */
 export function scheduleForWeek(week: number): { theme: ThemeDef; phase: Phase } | null {
 	const design = THEMES.find(t => t.designWeek === week)
-	if (design) return { theme: design, phase: Phase.DESIGN }
+	if (design) return { phase: Phase.DESIGN, theme: design }
 	const build = THEMES.find(t => t.buildWeek === week)
-	if (build) return { theme: build, phase: Phase.BUILD }
+	if (build) return { phase: Phase.BUILD, theme: build }
 	return null
 }
 

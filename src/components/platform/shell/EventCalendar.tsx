@@ -121,7 +121,7 @@ export function EventCalendar({
 					open.slices.push(slice)
 					open.end = Math.max(open.end, slice.seg.endMin)
 				} else {
-					crowds.push({ slices: [slice], end: slice.seg.endMin })
+					crowds.push({ end: slice.seg.endMin, slices: [slice] })
 				}
 			}
 			const dayPlaced: PlacedSegment[] = []
@@ -145,11 +145,11 @@ export function EventCalendar({
 			}
 			placed.set(day, dayPlaced)
 		}
-		if (!Number.isFinite(earliest) || !Number.isFinite(latest)) return { segments: placed, startHour: 9, endHour: 17 }
+		if (!Number.isFinite(earliest) || !Number.isFinite(latest)) return { endHour: 17, segments: placed, startHour: 9 }
 		return {
+			endHour: Math.min(24, Math.ceil(latest / 60) + 1),
 			segments: placed,
 			startHour: Math.max(0, Math.floor(earliest / 60) - 1),
-			endHour: Math.min(24, Math.ceil(latest / 60) + 1),
 		}
 	}, [days, events, timeZone])
 
@@ -365,9 +365,9 @@ function EventBlock({
 			className="absolute"
 			onClick={onSelect}
 			style={{
-				top,
 				height,
 				left: `${(lane / lanes) * 100}%`,
+				top,
 				width: `${100 / lanes}%`,
 			}}
 			title={`${event.title} · ${range}`}

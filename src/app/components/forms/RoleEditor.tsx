@@ -10,8 +10,8 @@ export function RoleEditor({ userId, current }: Readonly<{ userId: string; curre
 	function toggle(role: string, held: boolean) {
 		void run(role, () =>
 			sendJson(`/api/admin/users/${userId}/roles`, {
-				method: held ? "DELETE" : "POST",
 				body: { role },
+				method: held ? "DELETE" : "POST",
 			}),
 		)
 	}

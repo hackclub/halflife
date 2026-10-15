@@ -44,12 +44,12 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		// Both actions leave the phase on "needs changes", so the row follows it there rather than keeping the decision that was just undone – and the note goes with that decision, so it is replaced by the admin's reason.
 		await mirrorReviewDecision(id, phase, reviewStatusFor(PhaseStatus.update_requested), note || null)
 		await notifyReviewOutcome({
-			themeProjectId: id,
+			decidedBy: "console",
+			note: note || null,
 			phase,
 			// Returned, not rejected: the maker can act on this one, which is exactly what `next` tells them.
 			result: "RETURNED",
-			note: note || null,
-			decidedBy: "console",
+			themeProjectId: id,
 		})
 	})
 

@@ -68,7 +68,7 @@ export function PublicProjectDetail({ data }: { data: PublicProjectData }) {
 							</span>{" "}
 							<ReportButton
 								context={data.description || data.title}
-								target={{ type: "PROJECT", id: data.id }}
+								target={{ id: data.id, type: "PROJECT" }}
 								title="Report this project"
 							/>
 						</p>

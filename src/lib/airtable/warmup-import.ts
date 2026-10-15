@@ -171,31 +171,31 @@ function parseRow(record: AirtableRecord): { ok: true; row: ParsedWarmupRow } | 
 	return {
 		ok: true,
 		row: {
-			email,
-			name,
-			slackId: cleanExternalId(readString(record, f.slackId)),
-			hackatimeId: cleanExternalId(readString(record, f.hackatimeId)),
-			title,
-			description: readString(record, f.description),
-			// A warm-up form's "Code URL" is the repo; the playable link is a fallback so a project without one still has something a reviewer and the repo checks can open.
-			repoUrl: readString(record, f.codeUrl) ?? readString(record, f.playableUrl),
-			journalUrl: readString(record, f.journalUrl),
-			playableUrl: readString(record, f.playableUrl),
-			lapseLinks: readString(record, f.lapseLinks),
-			screenshotUrl: readAttachmentUrl(record, f.screenshot),
-			phase: phaseForStage(readString(record, f.stage)),
-			hours: hours !== null && hours > 0 ? Math.round(hours * 100) / 100 : null,
-			requestedFunding: readNumber(record, f.requestedFunding),
-			createdAt: recordDate(record),
 			address: {
+				birthday: readString(record, f.birthday),
+				city: readString(record, f.city),
+				country: readString(record, f.country),
 				line1: readString(record, f.addressLine1),
 				line2: readString(record, f.addressLine2),
-				city: readString(record, f.city),
 				state: readString(record, f.state),
 				zip: readString(record, f.zip),
-				country: readString(record, f.country),
-				birthday: readString(record, f.birthday),
 			},
+			createdAt: recordDate(record),
+			description: readString(record, f.description),
+			email,
+			hackatimeId: cleanExternalId(readString(record, f.hackatimeId)),
+			hours: hours !== null && hours > 0 ? Math.round(hours * 100) / 100 : null,
+			journalUrl: readString(record, f.journalUrl),
+			lapseLinks: readString(record, f.lapseLinks),
+			name,
+			phase: phaseForStage(readString(record, f.stage)),
+			playableUrl: readString(record, f.playableUrl),
+			// A warm-up form's "Code URL" is the repo; the playable link is a fallback so a project without one still has something a reviewer and the repo checks can open.
+			repoUrl: readString(record, f.codeUrl) ?? readString(record, f.playableUrl),
+			requestedFunding: readNumber(record, f.requestedFunding),
+			screenshotUrl: readAttachmentUrl(record, f.screenshot),
+			slackId: cleanExternalId(readString(record, f.slackId)),
+			title,
 		},
 	}
 }
@@ -223,8 +223,8 @@ async function listWarmupRecords(config: AirtableConfig): Promise<AirtableRecord
 /** Airtable record id → the local project it was imported as. */
 async function importedRecordIds(): Promise<Map<string, string>> {
 	const rows = await prisma.auditLog.findMany({
+		select: { metadata: true, targetId: true },
 		where: { action: IMPORT_ACTION },
-		select: { targetId: true, metadata: true },
 	})
 	const out = new Map<string, string>()
 	for (const row of rows) {
@@ -237,8 +237,8 @@ async function importedRecordIds(): Promise<Map<string, string>> {
 /** Rows Half Life's own submit flow wrote, which are already local submissions. */
 async function halfLifeWrittenRecordIds(): Promise<Set<string>> {
 	const rows = await prisma.auditLog.findMany({
-		where: { action: AuditAction.AIRTABLE_SYNC_SUCCESS },
 		select: { metadata: true },
+		where: { action: AuditAction.AIRTABLE_SYNC_SUCCESS },
 	})
 	const out = new Set<string>()
 	for (const row of rows) {
@@ -316,36 +316,36 @@ async function importRow(
 
 			// Two runs of the same click (two admins, two tabs) both read their "not imported yet" snapshot before either transaction started. Since warm-up rows are no longer held unique by `(userId, theme)`, the insert below would happily make a second project for one Airtable row; this re-read under the lock is what keeps a row to one project.
 			const raced = await tx.auditLog.findFirst({
-				where: { action: IMPORT_ACTION, metadata: { path: ["airtableRecordId"], equals: record.id } },
 				select: { targetId: true },
+				where: { action: IMPORT_ACTION, metadata: { equals: record.id, path: ["airtableRecordId"] } },
 			})
 			if (raced?.targetId) {
 				return {
-					status: "skipped" as const,
 					reason: "another import run filed this row first",
-					userId: null,
+					status: "skipped" as const,
 					themeProjectId: raced.targetId,
+					userId: null,
 				}
 			}
 
 			let user = await tx.user.findFirst({
-				where: { email: { equals: row.email, mode: "insensitive" } },
 				select: { id: true },
+				where: { email: { equals: row.email, mode: "insensitive" } },
 			})
 			let createdUser = false
 			if (!user) {
 				const slackTaken = row.slackId
-					? await tx.user.findFirst({ where: { slackId: row.slackId }, select: { id: true } })
+					? await tx.user.findFirst({ select: { id: true }, where: { slackId: row.slackId } })
 					: null
 				const hackatimeTaken = row.hackatimeId
-					? await tx.user.findFirst({ where: { hackatimeUserId: row.hackatimeId }, select: { id: true } })
+					? await tx.user.findFirst({ select: { id: true }, where: { hackatimeUserId: row.hackatimeId } })
 					: null
 				user = await tx.user.create({
 					data: {
 						email: row.email,
-						name: row.name,
 						emailVerified: false,
 						joinedProgramAt: createdAt,
+						name: row.name,
 						...(row.slackId && !slackTaken ? { slackId: row.slackId } : {}),
 						...(row.hackatimeId && !hackatimeTaken ? { hackatimeUserId: row.hackatimeId } : {}),
 						...encryptedPiiFields(row),
@@ -357,15 +357,15 @@ async function importRow(
 
 			const project = await tx.themeProject.create({
 				data: {
-					userId: user.id,
-					theme: Theme.WARMUP,
-					title: row.title,
+					createdAt,
 					description: row.description,
 					// The form's "Code URL" is free text, and the playable-url fallback is not a repo at all, so the value is run through the repo field's own rule: a bare `github.com/me/thing` gains its scheme, and anything that will not parse becomes null rather than a link nothing can open.
 					githubRepo: normalizeRepo(row.repoUrl ?? "").url,
-					requestedTier: tierForRequestedFunding(row.requestedFunding),
 					namedAt: createdAt,
-					createdAt,
+					requestedTier: tierForRequestedFunding(row.requestedFunding),
+					theme: Theme.WARMUP,
+					title: row.title,
+					userId: user.id,
 					...(phase === Phase.DESIGN ? { designStatus: PhaseStatus.in_review } : {}),
 					...(phase === Phase.BUILD ? { buildStatus: PhaseStatus.in_review } : {}),
 				},
@@ -375,60 +375,60 @@ async function importRow(
 			if (journalParts.length > 0 || row.hours !== null) {
 				await tx.workSession.create({
 					data: {
-						themeProjectId: project.id,
-						phase,
-						title: `${row.title} – warm-up submission`,
 						content: journalParts.length > 0 ? journalParts.join("\n\n") : null,
+						createdAt,
+						effectiveDate: effectiveDateFor(createdAt, programTimezone),
 						hoursClaimed: row.hours ?? 0,
 						hoursSource: HoursSource.MANUAL,
+						phase,
+						themeProjectId: project.id,
+						title: `${row.title} – warm-up submission`,
 						weekNumber: 0,
-						effectiveDate: effectiveDateFor(createdAt, programTimezone),
-						createdAt,
 					},
 				})
 			}
 
 			await tx.phaseSubmission.create({
 				data: {
-					themeProjectId: project.id,
-					phase,
-					submittedInWeek: 0,
-					scheduledWeek: 0,
-					onTime: false,
 					createdAt,
+					onTime: false,
+					phase,
+					scheduledWeek: 0,
+					submittedInWeek: 0,
+					themeProjectId: project.id,
 				},
 			})
 
 			// The row already exists in the table – it is where this import came from – so record its record id the same way a successful write does. That is what keeps the retry job from posting a second copy, lets a resubmission update this row instead of creating one, and lets an unsubmit remove it (see lib/airtable/sync). Nothing was written to Airtable here; `imported` says where the id came from.
 			await logAuditTx(tx, {
 				action: AuditAction.AIRTABLE_SYNC_SUCCESS,
-				actorId: actor.id,
 				actorEmail: actor.email,
-				targetType: "ThemeProject",
+				actorId: actor.id,
+				metadata: { imported: true, phase, recordId: record.id, sourceTable: YSWS_SUBMISSION.tableId },
 				targetId: project.id,
-				metadata: { phase, recordId: record.id, imported: true, sourceTable: YSWS_SUBMISSION.tableId },
+				targetType: "ThemeProject",
 			})
 
 			await logAuditTx(tx, {
 				action: IMPORT_ACTION,
-				actorId: actor.id,
 				actorEmail: actor.email,
-				targetType: "ThemeProject",
-				targetId: project.id,
+				actorId: actor.id,
 				metadata: {
 					airtableRecordId: record.id,
-					sourceTable: YSWS_SUBMISSION.tableId,
+					createdUser,
 					email: row.email,
 					phase,
-					createdUser,
+					sourceTable: YSWS_SUBMISSION.tableId,
 				},
+				targetId: project.id,
+				targetType: "ThemeProject",
 			})
 
 			return {
-				status: "imported" as const,
 				reason: createdUser ? "created the maker's account" : null,
-				userId: user.id,
+				status: "imported" as const,
 				themeProjectId: project.id,
+				userId: user.id,
 			}
 		},
 		{ timeout: 30_000 },
@@ -444,11 +444,11 @@ async function sendToAri(
 	const result = await trackSideEffect(
 		"ari",
 		{
-			actorId: actor.id,
 			actorEmail: actor.email,
-			targetType: "ThemeProject",
-			targetId: themeProjectId,
+			actorId: actor.id,
 			metadata: { phase, warmupImport: true },
+			targetId: themeProjectId,
+			targetType: "ThemeProject",
 		},
 		() => sendSubmissionToAri(themeProjectId, phase),
 	)
@@ -474,13 +474,13 @@ export async function importWarmupProjects(actor: ImportActor): Promise<WarmupIm
 	const outcomes: WarmupImportOutcome[] = []
 	for (const record of records) {
 		const base: WarmupImportOutcome = {
-			recordId: record.id,
-			email: null,
-			status: "failed",
-			reason: null,
-			userId: null,
-			themeProjectId: null,
 			ari: "not_attempted",
+			email: null,
+			reason: null,
+			recordId: record.id,
+			status: "failed",
+			themeProjectId: null,
+			userId: null,
 		}
 
 		if (imported.has(record.id)) {
@@ -488,13 +488,13 @@ export async function importWarmupProjects(actor: ImportActor): Promise<WarmupIm
 			continue
 		}
 		if (written.has(record.id)) {
-			outcomes.push({ ...base, status: "skipped", reason: "Half Life already writes this Airtable row" })
+			outcomes.push({ ...base, reason: "Half Life already writes this Airtable row", status: "skipped" })
 			continue
 		}
 
 		const parsed = parseRow(record)
 		if (!parsed.ok) {
-			outcomes.push({ ...base, status: "skipped", reason: parsed.reason })
+			outcomes.push({ ...base, reason: parsed.reason, status: "skipped" })
 			continue
 		}
 
@@ -503,17 +503,17 @@ export async function importWarmupProjects(actor: ImportActor): Promise<WarmupIm
 			const outcome: WarmupImportOutcome = {
 				...base,
 				email: parsed.row.email,
-				status: result.status,
 				reason: result.reason,
-				userId: result.userId,
+				status: result.status,
 				themeProjectId: result.themeProjectId,
+				userId: result.userId,
 			}
 
 			if (result.status === "imported") {
 				if (parsed.row.screenshotUrl) {
 					const key = await rehostScreenshot(result.userId, parsed.row.screenshotUrl)
 					if (key) {
-						await prisma.themeProject.update({ where: { id: result.themeProjectId }, data: { coverImageKey: key } })
+						await prisma.themeProject.update({ data: { coverImageKey: key }, where: { id: result.themeProjectId } })
 					}
 				}
 				outcome.ari = await sendToAri(result.themeProjectId, parsed.row.phase, actor)
@@ -532,13 +532,13 @@ export async function importWarmupProjects(actor: ImportActor): Promise<WarmupIm
 
 	const count = (status: WarmupImportOutcome["status"]) => outcomes.filter(o => o.status === status).length
 	return {
-		table: YSWS_SUBMISSION.tableId,
+		alreadyImported: count("already_imported"),
+		ariSent: outcomes.filter(o => o.ari === "sent").length,
+		failed: count("failed"),
 		fetched: records.length,
 		imported: count("imported"),
-		alreadyImported: count("already_imported"),
-		skipped: count("skipped"),
-		failed: count("failed"),
-		ariSent: outcomes.filter(o => o.ari === "sent").length,
 		outcomes,
+		skipped: count("skipped"),
+		table: YSWS_SUBMISSION.tableId,
 	}
 }

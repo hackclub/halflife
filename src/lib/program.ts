@@ -19,8 +19,8 @@ export const getProgramSettings = cache(async (): Promise<ProgramSettings> => {
 	if (existing) return existing
 	return prisma.programSettings.create({
 		data: {
-			id: "singleton",
 			eventStartDate: new Date(`${DEFAULT_EVENT_START_DATE}T00:00:00.000Z`),
+			id: "singleton",
 			programTimezone: DEFAULT_PROGRAM_TIMEZONE,
 		},
 	})
@@ -57,7 +57,7 @@ export function weekDateRange(start: Date, week: number): { start: Date; end: Da
 	const weekStart = new Date(start.getTime() + (week - 1) * WEEK_MS)
 	// End of the last day, not the start of the next week, so a "closes on" label reads correctly.
 	const weekEnd = new Date(weekStart.getTime() + WEEK_MS - 1)
-	return { start: weekStart, end: weekEnd }
+	return { end: weekEnd, start: weekStart }
 }
 
 /**
@@ -136,14 +136,14 @@ export function isTimeZone(timeZone: string): boolean {
 /** How far ahead of UTC a timezone's wall clock is at an instant, in ms. */
 function zoneOffsetMs(at: number, timeZone: string): number {
 	const parts = new Intl.DateTimeFormat("en-US", {
-		timeZone,
-		hourCycle: "h23",
-		year: "numeric",
-		month: "numeric",
 		day: "numeric",
 		hour: "numeric",
+		hourCycle: "h23",
 		minute: "numeric",
+		month: "numeric",
 		second: "numeric",
+		timeZone,
+		year: "numeric",
 	}).formatToParts(new Date(at))
 	const part = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find(p => p.type === type)?.value ?? 0)
 	const wall = Date.UTC(part("year"), part("month") - 1, part("day"), part("hour"), part("minute"), part("second"))
@@ -167,12 +167,12 @@ export async function isWeekOpen(userId: string, themeProjectId: string, week: n
 	const [settings, user, project] = await Promise.all([
 		getProgramSettings(),
 		prisma.user.findUnique({
-			where: { id: userId },
 			select: { submissionExtensionUntil: true },
+			where: { id: userId },
 		}),
 		prisma.themeProject.findUnique({
-			where: { id: themeProjectId },
 			select: { submissionExtensionUntil: true },
+			where: { id: themeProjectId },
 		}),
 	])
 	const closesAt = effectiveWeekClose(
@@ -195,18 +195,18 @@ export async function currentWeekNumber(): Promise<number> {
  */
 export function effectiveDateFor(date: Date, timeZone: string): string {
 	return new Intl.DateTimeFormat("en-CA", {
+		day: "2-digit",
+		month: "2-digit",
 		timeZone,
 		year: "numeric",
-		month: "2-digit",
-		day: "2-digit",
 	}).format(date)
 }
 
 export function formatProgramDate(date: Date, timeZone: string): string {
 	return date.toLocaleDateString("en-US", {
-		timeZone,
-		month: "long",
 		day: "numeric",
+		month: "long",
+		timeZone,
 		year: "numeric",
 	})
 }
@@ -232,13 +232,13 @@ export async function getSubmissionAccess(userId: string, themeProjectId?: strin
 	const [settings, user, project] = await Promise.all([
 		getProgramSettings(),
 		prisma.user.findUnique({
-			where: { id: userId },
 			select: { submissionExtensionUntil: true },
+			where: { id: userId },
 		}),
 		themeProjectId
 			? prisma.themeProject.findUnique({
-					where: { id: themeProjectId },
 					select: { submissionExtensionUntil: true },
+					where: { id: themeProjectId },
 				})
 			: Promise.resolve(null),
 	])
@@ -250,33 +250,33 @@ export async function getSubmissionAccess(userId: string, themeProjectId?: strin
 
 	if (globallyOpen) {
 		return {
-			open: true,
-			reason: "OPEN",
 			closesAt: settings.submissionsCloseAt,
 			extensionUntil: null,
+			open: true,
+			reason: "OPEN",
 		}
 	}
 	if (userExt && userExt > now) {
 		return {
-			open: true,
-			reason: "USER_EXTENSION",
 			closesAt: settings.submissionsCloseAt,
 			extensionUntil: userExt,
+			open: true,
+			reason: "USER_EXTENSION",
 		}
 	}
 	if (projectExt && projectExt > now) {
 		return {
-			open: true,
-			reason: "PROJECT_EXTENSION",
 			closesAt: settings.submissionsCloseAt,
 			extensionUntil: projectExt,
+			open: true,
+			reason: "PROJECT_EXTENSION",
 		}
 	}
 	return {
-		open: false,
-		reason: "CLOSED",
 		closesAt: settings.submissionsCloseAt,
 		extensionUntil: null,
+		open: false,
+		reason: "CLOSED",
 	}
 }
 
@@ -302,25 +302,25 @@ export async function getShopAccess(userId: string): Promise<ShopAccess> {
 	const beforeClose = !closesAt || closesAt > now
 
 	if (settings.shopOpen && beforeClose) {
-		return { open: true, reason: "OPEN", closesAt, graceUntil: null }
+		return { closesAt, graceUntil: null, open: true, reason: "OPEN" }
 	}
 	if (!settings.shopOpen) {
-		return { open: false, reason: "CLOSED", closesAt, graceUntil: null }
+		return { closesAt, graceUntil: null, open: false, reason: "CLOSED" }
 	}
 
 	const [awaitingReview, lastReview] = await Promise.all([
 		prisma.themeProject.count({
-			where: { userId, deletedAt: null, OR: [{ designStatus: "in_review" }, { buildStatus: "in_review" }] },
+			where: { deletedAt: null, OR: [{ designStatus: "in_review" }, { buildStatus: "in_review" }], userId },
 		}),
 		// The last review is a max over every project's two review dates, not the most recently *updated* row: editing a title or granting an extension bumps `updatedAt` without touching a review, which would mask a review that just landed and close the grace window early.
 		prisma.themeProject.aggregate({
-			where: { userId, deletedAt: null },
-			_max: { designReviewedAt: true, buildReviewedAt: true },
+			_max: { buildReviewedAt: true, designReviewedAt: true },
+			where: { deletedAt: null, userId },
 		}),
 	])
 
 	if (awaitingReview > 0) {
-		return { open: true, reason: "PENDING_REVIEW", closesAt, graceUntil: null }
+		return { closesAt, graceUntil: null, open: true, reason: "PENDING_REVIEW" }
 	}
 
 	const reviewedAt = [lastReview._max.designReviewedAt, lastReview._max.buildReviewedAt]
@@ -330,10 +330,10 @@ export async function getShopAccess(userId: string): Promise<ShopAccess> {
 	if (reviewedAt) {
 		const graceUntil = new Date(reviewedAt.getTime() + settings.shopGraceDays * DAY_MS)
 		if (graceUntil > now) {
-			return { open: true, reason: "GRACE_PERIOD", closesAt, graceUntil }
+			return { closesAt, graceUntil, open: true, reason: "GRACE_PERIOD" }
 		}
 	}
-	return { open: false, reason: "CLOSED", closesAt, graceUntil: null }
+	return { closesAt, graceUntil: null, open: false, reason: "CLOSED" }
 }
 
 export const SHOP_CLOSED_MESSAGE =

@@ -49,15 +49,15 @@ type RawTimelapse = {
 
 function toTimelapse(t: RawTimelapse): LapseTimelapse {
 	return {
-		id: t.id,
-		title: t.name,
-		durationSeconds: Math.max(0, Math.round(t.duration)),
-		visibility: t.visibility,
 		createdAt: t.createdAt,
+		durationSeconds: Math.max(0, Math.round(t.duration)),
+		hackatimeProject: t.private?.hackatimeProject ?? null,
+		id: t.id,
+		ownerId: t.owner.id,
 		playbackUrl: t.playbackUrl,
 		thumbnailUrl: t.thumbnailUrl,
-		hackatimeProject: t.private?.hackatimeProject ?? null,
-		ownerId: t.owner.id,
+		title: t.name,
+		visibility: t.visibility,
 	}
 }
 
@@ -66,13 +66,13 @@ const NOT_LINKED = () => new HttpError("LAPSE_NOT_LINKED", "Sign in with Lapse t
 /** The user's Lapse identity and a token that is still good, or a refusal. */
 export async function lapseCredentials(userId: string): Promise<{ lapseUserId: string; accessToken: string }> {
 	const account = await prisma.account.findFirst({
-		where: { userId, providerId: "lapse" },
 		orderBy: { updatedAt: "desc" },
-		select: { accountId: true, accessToken: true, accessTokenExpiresAt: true },
+		select: { accessToken: true, accessTokenExpiresAt: true, accountId: true },
+		where: { providerId: "lapse", userId },
 	})
 	if (!account?.accessToken) throw NOT_LINKED()
 	if (account.accessTokenExpiresAt && account.accessTokenExpiresAt.getTime() <= Date.now()) throw NOT_LINKED()
-	return { lapseUserId: account.accountId, accessToken: account.accessToken }
+	return { accessToken: account.accessToken, lapseUserId: account.accountId }
 }
 
 /**
@@ -85,9 +85,9 @@ async function call<T>(accessToken: string, path: string, query?: Record<string,
 	let res: Response
 	try {
 		res = await fetch(url, {
-			headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
-			signal: AbortSignal.timeout(TIMEOUT_MS),
 			cache: "no-store",
+			headers: { Accept: "application/json", Authorization: `Bearer ${accessToken}` },
+			signal: AbortSignal.timeout(TIMEOUT_MS),
 		})
 	} catch {
 		throw new HttpError("LAPSE_UNAVAILABLE", "Lapse is not answering right now – try again in a minute")
@@ -119,7 +119,7 @@ export async function listMyTimelapses(
 		"/timelapse/myPublishedTimelapses",
 		{ limit: "50", ...(cursor ? { cursor } : {}) },
 	)
-	return { timelapses: data.timelapses.map(toTimelapse), nextCursor: data.nextCursor }
+	return { nextCursor: data.nextCursor, timelapses: data.timelapses.map(toTimelapse) }
 }
 
 /**

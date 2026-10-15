@@ -9,10 +9,10 @@ import { boundedText, cuid } from "@/lib/schemas/common"
  */
 export const createReportSchema = z
 	.object({
-		target: z.enum(ReportTarget),
-		targetId: cuid,
-		reason: z.enum(ReportReason),
 		/** Optional context in the reporter's own words. */
 		details: boundedText(2000).optional(),
+		reason: z.enum(ReportReason),
+		target: z.enum(ReportTarget),
+		targetId: cuid,
 	})
 	.strict()

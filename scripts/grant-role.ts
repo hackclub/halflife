@@ -27,9 +27,9 @@ async function main() {
 	}
 
 	await prisma.userRole.upsert({
-		where: { userId_role: { userId: user.id, role } },
-		create: { userId: user.id, role, grantedBy: "cli" },
+		create: { grantedBy: "cli", role, userId: user.id },
 		update: {},
+		where: { userId_role: { role, userId: user.id } },
 	})
 	console.log(`granted ${role} to ${email}`)
 }

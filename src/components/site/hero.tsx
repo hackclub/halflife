@@ -22,7 +22,7 @@ import flagArt from "../../../public/art/hackclub-flag.svg"
  *
  * Everything set on the plate scales by the same factor and moves with it, so the comp's internal composition survives intact at a smaller size rather than being re-fitted by hand: offsets are still measured from the comp's own plate origin, and only where that origin lands has changed. Every number below is still the literal Figma pixel DESIGN.md says it is.
  */
-const PLATE = { x: 276, y: 98, w: 1256, h: 677 } as const
+const PLATE = { h: 677, w: 1256, x: 276, y: 98 } as const
 const PLATE_SCALE = 864 / PLATE.w
 const PLATE_W = PLATE.w * PLATE_SCALE
 const PLATE_H = PLATE.h * PLATE_SCALE
@@ -96,8 +96,8 @@ const TAGLINE_RUN = 830
  * `minHeight`, not `height`: at the comp's 466 a wordmark this size spilled out of its grid row and into the scroll cue's. The width is the comp's half-grid plate outright, and deliberately not the mark's: the column has to hold a 585 tagline and a 596 form whatever the wordmark above them is doing, so a mark taken below the column's width shrinks alone rather than crushing the two rows under it.
  */
 const PLATE_SIZE = {
-	width: u(PLATE_W),
 	minHeight: u(PLATE_H),
+	width: u(PLATE_W),
 } as const
 
 /** A comp length on the plate. */
@@ -250,7 +250,7 @@ export default function Hero() {
               puts it in the tagline's company (32.8) rather than the eligibility
               note's. Social proof that is quieter than the fine print is not
               doing the job it is here for – least of all directly under it. */}
-					<SignupCounter style={{ marginTop: onPlateU(40), fontSize: onPlateU(42) }} />
+					<SignupCounter style={{ fontSize: onPlateU(42), marginTop: onPlateU(40) }} />
 				</div>
 
 				<ScrollCue className="row-start-3 self-end" fontSize={u(22)} style={{ marginBottom: u(56) }} />
@@ -448,11 +448,11 @@ function HeroArt() {
 					src={bgArt}
 					style={{
 						maskImage: ART_FADE,
-						maskSize: "100% 100%",
 						maskRepeat: "no-repeat",
+						maskSize: "100% 100%",
 						WebkitMaskImage: ART_FADE,
-						WebkitMaskSize: "100% 100%",
 						WebkitMaskRepeat: "no-repeat",
+						WebkitMaskSize: "100% 100%",
 					}}
 				/>
 			</div>

@@ -125,9 +125,9 @@ export function ReelComments({
 		setSendError(null)
 		try {
 			const res = await fetch(`/api/posts/${reel.id}/comments`, {
-				method: "POST",
-				headers: { "content-type": "application/json" },
 				body: JSON.stringify({ body }),
+				headers: { "content-type": "application/json" },
+				method: "POST",
 			})
 			if (!res.ok) {
 				const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
@@ -261,7 +261,7 @@ export function ReelComments({
 												<ReportButton
 													className="text-[0.76rem]"
 													context={c.body}
-													target={{ type: "REEL_COMMENT", id: c.id }}
+													target={{ id: c.id, type: "REEL_COMMENT" }}
 													title="Report this comment"
 												/>
 											)}

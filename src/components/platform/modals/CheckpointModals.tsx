@@ -191,7 +191,7 @@ function droppedImages(transfer: DataTransfer): ImageSource[] {
 	const html = transfer.getData("text/html")
 	if (html) {
 		const found = Array.from(new DOMParser().parseFromString(html, "text/html").images)
-			.map(img => ({ url: img.getAttribute("src")?.trim() ?? "", alt: img.alt }))
+			.map(img => ({ alt: img.alt, url: img.getAttribute("src")?.trim() ?? "" }))
 			.filter(img => IMAGE_ADDRESS.test(img.url))
 		if (found.length > 0) return found
 	}
@@ -200,7 +200,7 @@ function droppedImages(transfer: DataTransfer): ImageSource[] {
 		.split(/\r?\n/)
 		.map(line => line.trim())
 		.filter(line => line && !line.startsWith("#") && /^https?:\/\/\S+\.(png|jpe?g|gif|webp)(?:[?#]\S*)?$/i.test(line))
-		.map(url => ({ url, alt: "" }))
+		.map(url => ({ alt: "", url }))
 }
 
 /** Alt text for an image: what the page called it, else its file name. */
@@ -233,9 +233,9 @@ async function storeImage(source: ImageSource): Promise<{ url: string | null }> 
 		return uploadFile(new File([blob], `image.${ext}`, { type: blob.type }), "sessions")
 	}
 	const res = await fetch("/api/upload/from-url", {
-		method: "POST",
-		headers: { "content-type": "application/json" },
 		body: JSON.stringify({ url: source.url }),
+		headers: { "content-type": "application/json" },
+		method: "POST",
 	})
 	const payload = (await res.json().catch(() => null)) as {
 		url?: string | null
@@ -335,7 +335,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			let seed: { picked: LapseTimelapse[]; pinned: string[] } = { picked: [], pinned: [] }
 			let legacy: string[] = []
 			try {
-				const query = new URLSearchParams({ ids: existing.clips.join(","), forSession: existing.id })
+				const query = new URLSearchParams({ forSession: existing.id, ids: existing.clips.join(",") })
 				const res = await fetch(`/api/lapse/timelapses/resolve?${query}`, { cache: "no-store" })
 				const body = (await res.json().catch(() => null)) as {
 					resolved?: LapseTimelapse[]
@@ -392,7 +392,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			writeJournalAutosave(checkpoint.id, null)
 			return
 		}
-		writeJournalAutosave(checkpoint.id, { tab, body: cleanBody, hoursText, picked, pinned, legacy: legacyKept })
+		writeJournalAutosave(checkpoint.id, { body: cleanBody, hoursText, legacy: legacyKept, picked, pinned, tab })
 	}, [checkpoint.id, tab, body, hoursText, picked, pinned, legacyKept, clipSeed, editing, baselineBody, baselineHours])
 
 	const hasUnsavedWork =
@@ -500,12 +500,12 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 	async function signInWithLapse() {
 		stashJournalDraft(checkpoint.id, {
-			tab: "timelapse",
 			body: cleanBodyForAutosave(body),
 			hoursText,
+			legacy: legacyKept,
 			picked,
 			pinned,
-			legacy: legacyKept,
+			tab: "timelapse",
 		})
 		await linkLapse(`${window.location.pathname}?journal=${encodeURIComponent(checkpoint.id)}`)
 	}
@@ -536,7 +536,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			const piece = items.length === 0 ? lead + placeholder : `\n\n${placeholder}`
 			if (before.length + (block + piece).length + trail.length + after.length > MAX_SESSION_CONTENT) break
 			block += piece
-			items.push({ source, alt, placeholder })
+			items.push({ alt, placeholder, source })
 		}
 		const short = images.length - items.length
 		if (short > 0)
@@ -589,7 +589,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		const el = entry.current
 		const keep =
 			el && document.activeElement === el
-				? { start: el.selectionStart, end: el.selectionEnd, at: el.value.indexOf(placeholder), length: el.value.length }
+				? { at: el.value.indexOf(placeholder), end: el.selectionEnd, length: el.value.length, start: el.selectionStart }
 				: null
 		setBody(current => {
 			const next =
@@ -1118,7 +1118,7 @@ export function PublicReelModal({
 				const res = await fetch("/api/me/referral", { cache: "no-store" })
 				const body = (await res.json().catch(() => null)) as { link?: string } | null
 				if (cancelled) return
-				setReferral(res.ok && body?.link ? { state: "ready", link: body.link } : { state: "error" })
+				setReferral(res.ok && body?.link ? { link: body.link, state: "ready" } : { state: "error" })
 			} catch {
 				if (!cancelled) setReferral({ state: "error" })
 			}
@@ -1155,9 +1155,9 @@ export function PublicReelModal({
 		setSaving(true)
 		try {
 			const res = await fetch(`/api/posts/${postId}/public-links`, {
-				method: "POST",
-				headers: { "content-type": "application/json" },
 				body: JSON.stringify({ links: filled.map(platform => ({ platform, url: values[platform] })) }),
+				headers: { "content-type": "application/json" },
+				method: "POST",
 			})
 			if (!res.ok) {
 				const body = (await res.json().catch(() => null)) as {
@@ -1511,7 +1511,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					)}
 					<Button
 						onClick={() => {
-							writeReelDraft(checkpoint.id, clip || caption.trim() ? { clip: clip ?? "", url: clipUrl, caption } : null)
+							writeReelDraft(checkpoint.id, clip || caption.trim() ? { caption, clip: clip ?? "", url: clipUrl } : null)
 							setOpenCheckpoint(null)
 						}}
 						variant="outline"
@@ -1704,15 +1704,15 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							disabled={!ok}
 							onClick={() => {
 								addProject({
-									name: name.trim(),
+									buildStatus: "draft",
 									description: desc.trim(),
-									weekId: week.id,
-									tier,
+									designStatus: "draft",
+									githubRepo: normalizeRepo(repo).url,
+									name: name.trim(),
 									starter: starterId !== null,
 									starterProjectId: starterId,
-									githubRepo: normalizeRepo(repo).url,
-									designStatus: "draft",
-									buildStatus: "draft",
+									tier,
+									weekId: week.id,
 								})
 								complete(checkpoint.id, { artefacts: 1 })
 								setOpenCheckpoint(null)
@@ -2156,10 +2156,10 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			setClosingPostId(postId)
 		}
 		const refused = await submitPhase(checkpoint.id, {
-			notes: isBuild ? buildNotes : undefined,
 			attachmentKeys: carts.map(c => c.objectKey),
-			partialFundingAccepted: partialFunding,
 			fundingDeclined,
+			notes: isBuild ? buildNotes : undefined,
+			partialFundingAccepted: partialFunding,
 		})
 		setSubmitting(false)
 		if (refused) {
@@ -2169,12 +2169,12 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		// Into the store rather than local state: the refresh this triggers flips the week to in_review, and the checkpoint router shows the celebration from there so it survives.
 		if (postId)
 			setSharePost({
-				checkpointId: checkpoint.id,
-				postId,
-				eyebrow: `${weekName(week)} · Submitted`,
-				videoUrl: clipUrl,
 				// Design only: build weeks earn flat, so "past your tier" means nothing there. The hours are the week's own total – the same basis the sheet's floor and target read – though a reviewer can still adjust them.
 				celebration: !isBuild ? { extraHours: Math.max(0, hours - week.earnFrom) } : undefined,
+				checkpointId: checkpoint.id,
+				eyebrow: `${weekName(week)} · Submitted`,
+				postId,
+				videoUrl: clipUrl,
 			})
 		else setOpenCheckpoint(null)
 	}

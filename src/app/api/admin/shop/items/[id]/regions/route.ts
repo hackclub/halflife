@@ -22,38 +22,38 @@ export const PUT = withRoute(async (req: Request, { params }: Params) => {
 	const { regionId, priceCredits } = parsed.data
 
 	const [item, region] = await Promise.all([
-		prisma.shopItem.findUnique({ where: { id }, select: { id: true, priceCredits: true } }),
-		prisma.shopRegion.findUnique({ where: { id: regionId }, select: { id: true, name: true } }),
+		prisma.shopItem.findUnique({ select: { id: true, priceCredits: true }, where: { id } }),
+		prisma.shopRegion.findUnique({ select: { id: true, name: true }, where: { id: regionId } }),
 	])
 	if (!item) return fail("NOT_FOUND", "Item not found")
 	if (!region) return fail("NOT_FOUND", "Region not found")
 
 	const before = await prisma.shopItemRegionPrice.findUnique({
-		where: { shopItemId_regionId: { shopItemId: id, regionId } },
 		select: { priceCredits: true },
+		where: { shopItemId_regionId: { regionId, shopItemId: id } },
 	})
 
 	if (priceCredits === null) {
-		await prisma.shopItemRegionPrice.deleteMany({ where: { shopItemId: id, regionId } })
+		await prisma.shopItemRegionPrice.deleteMany({ where: { regionId, shopItemId: id } })
 	} else {
 		await prisma.shopItemRegionPrice.upsert({
-			where: { shopItemId_regionId: { shopItemId: id, regionId } },
-			create: { shopItemId: id, regionId, priceCredits },
+			create: { priceCredits, regionId, shopItemId: id },
 			update: { priceCredits },
+			where: { shopItemId_regionId: { regionId, shopItemId: id } },
 		})
 	}
 
 	await logAudit({
 		action: AuditAction.ADMIN_SET_REGION_PRICE,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "ShopItem",
-		targetId: id,
+		actorId: gate.user.id,
 		metadata: {
-			regionId,
-			before: before?.priceCredits ?? item.priceCredits,
 			after: priceCredits ?? item.priceCredits,
+			before: before?.priceCredits ?? item.priceCredits,
+			regionId,
 		},
+		targetId: id,
+		targetType: "ShopItem",
 	})
 
 	return ok({ priceCredits })

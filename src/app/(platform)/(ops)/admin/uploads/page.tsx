@@ -13,11 +13,11 @@ type Search = {
 type Props = { searchParams: Promise<Search> }
 
 const FOLDER_LABELS: Record<UploadFolder, string> = {
-	sessions: "Session evidence",
 	covers: "Cover images",
-	timelapses: "Timelapses",
 	posts: "Reels",
+	sessions: "Session evidence",
 	shop: "Shop images",
+	timelapses: "Timelapses",
 }
 
 const modifiedFormat = new Intl.DateTimeFormat("en-US", {
@@ -52,7 +52,7 @@ export default async function AdminUploadsPage({ searchParams }: Props) {
 	let listError: string | null = null
 	if (isUploadConfigured()) {
 		try {
-			listing = await listUploadedObjects({ prefix, cursor: search.cursor, limit: 100 })
+			listing = await listUploadedObjects({ cursor: search.cursor, limit: 100, prefix })
 		} catch (error) {
 			console.error("[admin] failed to list uploads:", error)
 			listError = "The upload bucket could not be listed. Check its S3 configuration and credentials."
@@ -72,7 +72,7 @@ export default async function AdminUploadsPage({ searchParams }: Props) {
 			<PageHeader subtitle="Every object currently in the R2 bucket. This page is read-only." title="Uploads" />
 
 			<Panel>
-				<form className="hl-row" method="get" style={{ flexWrap: "wrap", alignItems: "center" }}>
+				<form className="hl-row" method="get" style={{ alignItems: "center", flexWrap: "wrap" }}>
 					<label className="hl-stack hl-stack--tight" style={{ gap: "0.25rem" }}>
 						<span className="hl-label-text">Folder</span>
 						<select className="hl-input" defaultValue={folder ?? ""} name="folder" style={{ maxWidth: "16rem" }}>

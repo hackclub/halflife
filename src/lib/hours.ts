@@ -64,31 +64,31 @@ export async function getHoursBreakdown(
 
 	const [project, sessions, links] = await Promise.all([
 		prisma.themeProject.findUnique({
-			where: { id: themeProjectId },
 			select: {
 				approvedHours: true,
 				designApprovedHours: true,
 				user: { select: { hackatimeUserId: true } },
 			},
+			where: { id: themeProjectId },
 		}),
 		prisma.workSession.findMany({
-			where: { themeProjectId, phase, deletedAt: null },
 			select: {
-				hoursClaimed: true,
 				hoursApproved: true,
+				hoursClaimed: true,
 				hoursSource: true,
 				timelapses: { select: { coveredSeconds: true, recordedAt: true } },
 			},
+			where: { deletedAt: null, phase, themeProjectId },
 		}),
 		prisma.hackatimeLink.findMany({
-			where: { themeProjectId, phase },
 			select: {
-				id: true,
-				hackatimeProject: true,
-				hoursApproved: true,
 				cachedSeconds: true,
 				cachedSpans: true,
+				hackatimeProject: true,
+				hoursApproved: true,
+				id: true,
 			},
+			where: { phase, themeProjectId },
 		}),
 	])
 
@@ -136,8 +136,8 @@ export async function getHoursBreakdown(
 			} else {
 				linkSeconds = result.seconds
 				await prisma.hackatimeLink.update({
+					data: { cachedAt: new Date(), cachedSeconds: result.seconds, lastFetchError: null },
 					where: { id: link.id },
-					data: { cachedSeconds: result.seconds, cachedAt: new Date(), lastFetchError: null },
 				})
 			}
 		} else {
@@ -147,15 +147,15 @@ export async function getHoursBreakdown(
 
 		// Subtract the minutes this link counted that a journal entry with a recording already claimed. Without this the same sitting is paid twice.
 		if (dedupePossible) {
-			const spans = await resolveSpans(link, { live, hackatimeUserId, fromSeconds, toSeconds })
+			const spans = await resolveSpans(link, { fromSeconds, hackatimeUserId, live, toSeconds })
 			if (spans.stale) {
 				// Unknown, not zero: the honest answer here is that the overlap may exist. Nothing is subtracted, so the risk is the status quo double-count rather than an underpayment.
 				hackatimeOverlapUnknown = true
 				// Recorded only when a fetch was actually attempted. This runs on read paths too – the projects list breaks down every project – and a write per dashboard load to note a cache that was simply cold would be a great deal of write load for no new information.
 				if (live) {
 					await prisma.hackatimeLink.update({
-						where: { id: link.id },
 						data: { spansFetchError: spans.error ?? "unknown error" },
+						where: { id: link.id },
 					})
 				}
 			} else {
@@ -167,12 +167,12 @@ export async function getHoursBreakdown(
 				// Persisted only on a fresh fetch, and with the window they were fetched for rather than as a bare array: the next read has to know whether these spans cover the window it is being asked about, and a list cannot say. Re-writing a cache that was just read from would put a write on every read of this row.
 				if (spans.fetched) {
 					await prisma.hackatimeLink.update({
-						where: { id: link.id },
 						data: {
-							cachedSpans: { from: fromSeconds, to: toSeconds, spans: spans.spans },
-							spansFetchedAt: new Date(),
+							cachedSpans: { from: fromSeconds, spans: spans.spans, to: toSeconds },
 							spansFetchError: null,
+							spansFetchedAt: new Date(),
 						},
+						where: { id: link.id },
 					})
 				}
 			}
@@ -187,18 +187,18 @@ export async function getHoursBreakdown(
 	const frozenTotal = (phase === Phase.DESIGN ? project?.designApprovedHours : project?.approvedHours) ?? null
 
 	return {
-		journalHours: round2(journalHours),
-		journalHoursClaimed: round2(journalHoursClaimed),
-		journalEntryCount: sessions.length,
+		computedTotal,
+		effectiveHours: frozenTotal ?? computedTotal,
+		frozenTotal,
 		hackatimeHours: round2(hackatimeHours),
-		hackatimeStale,
 		hackatimeOverlapSeconds,
 		hackatimeOverlapUnknown,
-		timelapseSeconds,
+		hackatimeStale,
+		journalEntryCount: sessions.length,
+		journalHours: round2(journalHours),
+		journalHoursClaimed: round2(journalHoursClaimed),
 		timelapseCoverage: claimedSeconds > 0 ? Math.min(1, timelapseSeconds / claimedSeconds) : 0,
-		computedTotal,
-		frozenTotal,
-		effectiveHours: frozenTotal ?? computedTotal,
+		timelapseSeconds,
 	}
 }
 
@@ -213,14 +213,14 @@ async function resolveSpans(
 ): Promise<{ spans: HackatimeSpan[]; stale: boolean; fetched: boolean; error?: string }> {
 	const cached = parseCachedSpans(link.cachedSpans)
 	if (cached && cachedSpansCover(cached, opts.fromSeconds, opts.toSeconds)) {
-		return { spans: cached.spans, stale: false, fetched: false }
+		return { fetched: false, spans: cached.spans, stale: false }
 	}
 	if (!opts.live || !opts.hackatimeUserId) {
 		return {
+			error: cached ? "cached spans do not cover this window" : "no cached spans",
+			fetched: false,
 			spans: [],
 			stale: true,
-			fetched: false,
-			error: cached ? "cached spans do not cover this window" : "no cached spans",
 		}
 	}
 	const result = await fetchProjectSpans(opts.hackatimeUserId, link.hackatimeProject, {
@@ -241,16 +241,16 @@ export async function refreshOverlapSpans(themeProjectId: string, phase: Phase):
 	try {
 		const [project, sessions, links] = await Promise.all([
 			prisma.themeProject.findUnique({
-				where: { id: themeProjectId },
 				select: { user: { select: { hackatimeUserId: true } } },
+				where: { id: themeProjectId },
 			}),
 			prisma.workSession.findMany({
-				where: { themeProjectId, phase, deletedAt: null, hoursSource: { not: HoursSource.HACKATIME_TRACKED } },
 				select: { timelapses: { select: { coveredSeconds: true, recordedAt: true } } },
+				where: { deletedAt: null, hoursSource: { not: HoursSource.HACKATIME_TRACKED }, phase, themeProjectId },
 			}),
 			prisma.hackatimeLink.findMany({
-				where: { themeProjectId, phase, hoursApproved: null },
-				select: { id: true, hackatimeProject: true },
+				select: { hackatimeProject: true, id: true },
+				where: { hoursApproved: null, phase, themeProjectId },
 			}),
 		])
 		const hackatimeUserId = project?.user.hackatimeUserId
@@ -268,14 +268,14 @@ export async function refreshOverlapSpans(themeProjectId: string, phase: Phase):
 		for (const link of links) {
 			const result = await fetchProjectSpans(hackatimeUserId, link.hackatimeProject, spanWindow)
 			await prisma.hackatimeLink.update({
-				where: { id: link.id },
 				data: result.stale
 					? { spansFetchError: result.error ?? "unknown error" }
 					: {
-							cachedSpans: { from: spanWindow.fromSeconds, to: spanWindow.toSeconds, spans: result.spans },
-							spansFetchedAt: new Date(),
+							cachedSpans: { from: spanWindow.fromSeconds, spans: result.spans, to: spanWindow.toSeconds },
 							spansFetchError: null,
+							spansFetchedAt: new Date(),
 						},
+				where: { id: link.id },
 			})
 		}
 	} catch {
@@ -300,27 +300,27 @@ export type SpansWarmTarget = {
  * Batched, because the sync walks every link every fifteen minutes and cannot afford a query each. The recording windows come back in one read for all the phases involved, and a Hackatime request is made only for a link that would otherwise answer from a cold cache or from one fetched for a narrower window than the one now being asked about.
  */
 export async function warmLinkSpans(targets: readonly SpansWarmTarget[]): Promise<{ warmed: number; failed: number }> {
-	if (targets.length === 0) return { warmed: 0, failed: 0 }
+	if (targets.length === 0) return { failed: 0, warmed: 0 }
 	const key = (projectId: string, phase: Phase) => `${projectId}/${phase}`
 	const projectIds = [...new Set(targets.map(t => t.themeProjectId))]
 
 	const [sessions, projects] = await Promise.all([
 		prisma.workSession.findMany({
+			select: {
+				phase: true,
+				themeProjectId: true,
+				timelapses: { select: { coveredSeconds: true, recordedAt: true } },
+			},
 			where: {
 				deletedAt: null,
 				// A HACKATIME_TRACKED entry claims nothing, so its recording is not one of the windows a link's time has to be measured against.
 				hoursSource: { not: HoursSource.HACKATIME_TRACKED },
-				OR: [...new Set(targets.map(t => ({ themeProjectId: t.themeProjectId, phase: t.phase })))],
-			},
-			select: {
-				themeProjectId: true,
-				phase: true,
-				timelapses: { select: { coveredSeconds: true, recordedAt: true } },
+				OR: [...new Set(targets.map(t => ({ phase: t.phase, themeProjectId: t.themeProjectId })))],
 			},
 		}),
 		prisma.themeProject.findMany({
-			where: { id: { in: projectIds } },
 			select: { id: true, user: { select: { hackatimeUserId: true } } },
+			where: { id: { in: projectIds } },
 		}),
 	])
 
@@ -353,23 +353,23 @@ export async function warmLinkSpans(targets: readonly SpansWarmTarget[]): Promis
 			failed += 1
 			// Recorded, never used to decide anything. The next run tries again, and until it succeeds the reading is flagged as unchecked rather than quietly believed.
 			await prisma.hackatimeLink
-				.update({ where: { id: target.id }, data: { spansFetchError: result.error ?? "unknown error" } })
+				.update({ data: { spansFetchError: result.error ?? "unknown error" }, where: { id: target.id } })
 				.catch(() => undefined)
 			continue
 		}
 		warmed += 1
 		await prisma.hackatimeLink
 			.update({
-				where: { id: target.id },
 				data: {
-					cachedSpans: { from: spanWindow.fromSeconds, to: spanWindow.toSeconds, spans: result.spans },
-					spansFetchedAt: new Date(),
+					cachedSpans: { from: spanWindow.fromSeconds, spans: result.spans, to: spanWindow.toSeconds },
 					spansFetchError: null,
+					spansFetchedAt: new Date(),
 				},
+				where: { id: target.id },
 			})
 			.catch(() => undefined)
 	}
-	return { warmed, failed }
+	return { failed, warmed }
 }
 
 /**
@@ -461,12 +461,12 @@ export function rollUpHours(
 
 	const computedTotal = round2(journalHours + hackatimeHours)
 	return {
-		journalHours: round2(journalHours),
+		computedTotal,
+		effectiveHours: frozenTotal ?? computedTotal,
 		hackatimeHours: round2(hackatimeHours),
 		hackatimeOverlapSeconds,
 		hackatimeOverlapUnknown,
-		computedTotal,
-		effectiveHours: frozenTotal ?? computedTotal,
+		journalHours: round2(journalHours),
 	}
 }
 

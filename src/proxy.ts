@@ -38,8 +38,8 @@ function securityHeaders(res: NextResponse): NextResponse {
 
 function unauthorized(): NextResponse {
 	return new NextResponse("Authentication required", {
-		status: 401,
 		headers: { "WWW-Authenticate": 'Basic realm="Half-Life"' },
+		status: 401,
 	})
 }
 

@@ -28,7 +28,7 @@ function HoursApprovalFormInner({ kind, id, approved }: Readonly<{ kind: Kind; i
 			refuse("Enter a number of hours")
 			return
 		}
-		void run("save", () => sendJson("/api/review/hours", { body: { decisions: [{ kind, id, hoursApproved }] } }))
+		void run("save", () => sendJson("/api/review/hours", { body: { decisions: [{ hoursApproved, id, kind }] } }))
 	}
 
 	return (

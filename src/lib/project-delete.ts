@@ -35,7 +35,7 @@ export async function deleteBlockReason(
 	const [ledger, topUps, disputes] = await Promise.all([
 		db.ledgerEntry.count({ where: { themeProjectId: project.id } }),
 		db.hcbGrantTopUp.count({ where: { themeProjectId: project.id } }),
-		db.reviewDispute.count({ where: { submission: { themeProjectId: project.id }, resolvedAt: null } }),
+		db.reviewDispute.count({ where: { resolvedAt: null, submission: { themeProjectId: project.id } } }),
 	])
 	if (ledger > 0 || topUps > 0) return "This project has earned coins or funding, so it can't be deleted"
 	if (disputes > 0) return "A reviewer is still taking a second look, so it can't be deleted yet"

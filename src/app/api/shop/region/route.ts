@@ -17,12 +17,12 @@ export const PUT = withRoute(async (req: Request) => {
 	const { regionId } = parsed.data
 
 	if (regionId !== null) {
-		const region = await prisma.shopRegion.findUnique({ where: { id: regionId }, select: { active: true } })
+		const region = await prisma.shopRegion.findUnique({ select: { active: true }, where: { id: regionId } })
 		if (!region) return fail("NOT_FOUND", "Region not found")
 		if (!region.active) return fail("CONFLICT", "That region is not available right now")
 	}
 
-	await prisma.user.update({ where: { id: gate.user.id }, data: { shopRegionId: regionId } })
+	await prisma.user.update({ data: { shopRegionId: regionId }, where: { id: gate.user.id } })
 
 	return ok({ regionId })
 })

@@ -29,7 +29,7 @@ const HEADER = plate(474, HEADER_LEAD, 918, 201)
  *
  * Its run and its two overlaps are named here rather than inside `WELDS` because `SHIFT` is derived from them: the room the header needs above step 1 is the header's own height plus this band's run, less the ends it buries in each. Change the run and the programme moves to suit it.
  */
-const LEAD_WELD = { run: 106, rise: 6, drop: 15, mean: 70.6 } as const
+const LEAD_WELD = { drop: 15, mean: 70.6, rise: 6, run: 106 } as const
 
 /**
  * How much step 1 grew when its heading came back, and therefore how far everything under it moved.
@@ -55,10 +55,10 @@ const SHIFT = HEADER.y + HEADER.h - LEAD_WELD.rise + LEAD_WELD.run - LEAD_WELD.d
  * takes and the three below it take as a shift, and `SHIFT` for the room the header and its weld now need above all four. Both were counted into these numbers by hand before, which is why the record of them lived in prose.
  */
 const PLATES = {
-	header: HEADER,
+	build: plate(57, 1406 + STEP_ONE_GROWTH + SHIFT, 958, 582),
 	design: plate(57, 59 + STEP_ONE_GROWTH + SHIFT, 975, 547 + STEP_ONE_GROWTH),
 	funding: plate(812, 836 + STEP_ONE_GROWTH + SHIFT, 823, 445),
-	build: plate(57, 1406 + STEP_ONE_GROWTH + SHIFT, 958, 582),
+	header: HEADER,
 	printer: plate(731, 2143 + STEP_ONE_GROWTH + SHIFT, 943, 458),
 } as const
 
@@ -71,35 +71,35 @@ const PLATES = {
  */
 const WELDS = [
 	{
-		id: "how-to-one",
-		exit: {
-			plate: PLATES.header,
-			at: 383.5 / PLATES.header.w,
-			rise: LEAD_WELD.rise,
-		},
 		entry: {
-			plate: PLATES.design,
 			at: 763.75 / PLATES.design.w,
 			drop: LEAD_WELD.drop,
+			plate: PLATES.design,
 		},
+		exit: {
+			at: 383.5 / PLATES.header.w,
+			plate: PLATES.header,
+			rise: LEAD_WELD.rise,
+		},
+		id: "how-to-one",
 		mean: LEAD_WELD.mean,
 	},
 	{
+		entry: { at: 155.25 / PLATES.funding.w, drop: 12.5, plate: PLATES.funding },
+		exit: { at: 778.25 / PLATES.design.w, plate: PLATES.design, rise: 16.5 },
 		id: "one-to-two",
-		exit: { plate: PLATES.design, at: 778.25 / PLATES.design.w, rise: 16.5 },
-		entry: { plate: PLATES.funding, at: 155.25 / PLATES.funding.w, drop: 12.5 },
 		mean: 92.2,
 	},
 	{
+		entry: { at: 803 / PLATES.build.w, drop: 26.5, plate: PLATES.build },
+		exit: { at: 148.5 / PLATES.funding.w, plate: PLATES.funding, rise: 28.5 },
 		id: "two-to-three",
-		exit: { plate: PLATES.funding, at: 148.5 / PLATES.funding.w, rise: 28.5 },
-		entry: { plate: PLATES.build, at: 803 / PLATES.build.w, drop: 26.5 },
 		mean: 102.2,
 	},
 	{
+		entry: { at: 178.5 / PLATES.printer.w, drop: 22, plate: PLATES.printer },
+		exit: { at: 693.25 / PLATES.build.w, plate: PLATES.build, rise: 6.5 },
 		id: "three-to-four",
-		exit: { plate: PLATES.build, at: 693.25 / PLATES.build.w, rise: 6.5 },
-		entry: { plate: PLATES.printer, at: 178.5 / PLATES.printer.w, drop: 22 },
 		mean: 120.3,
 	},
 ] as const
@@ -129,10 +129,10 @@ const WELDS = [
 const HOW_LABEL = "how does it work?"
 
 const STEP_ART_SIZES = {
+	stacked: "(min-width: 640px) 610px, 100vw",
 	stage: "510px",
 	/** Step 1's picture runs its plate's full 975 units, 666px at the 1180 cap. */
 	weeks: "670px",
-	stacked: "(min-width: 640px) 610px, 100vw",
 } as const
 
 /**
@@ -214,12 +214,12 @@ function StepArt({
  * The five below step 1 carry `STEP_ONE_GROWTH` on their y, which is what keeps those clearances the numbers they were: the hammer still sits 105 to the right of step 3 and overlaps its lower half by 156, and the tightest of the six is still gatohead's 38 under step 3. Only gatoandspirit stays put – it is beside step 1 rather than below it, clear of the taller plate by 258 across, and the plate grew downward.
  */
 const EXTRAS = [
-	{ src: gatoandspirit, x: 1290, y: 300, w: 300, h: 255 },
-	{ src: spiritguy, x: 120, y: 955, w: 190 / 2, h: 293 / 2 },
-	{ src: gatointube, x: 400, y: 1155, w: 230, h: 272 },
-	{ src: gatoycaja, x: 1180, y: 1425, w: 170, h: 172 },
-	{ src: hammer, x: 1120, y: 1937, w: 310, h: 271 },
-	{ src: gatohead, x: 180, y: 2131, w: 230, h: 198 },
+	{ h: 255, src: gatoandspirit, w: 300, x: 1290, y: 300 },
+	{ h: 293 / 2, src: spiritguy, w: 190 / 2, x: 120, y: 955 },
+	{ h: 272, src: gatointube, w: 230, x: 400, y: 1155 },
+	{ h: 172, src: gatoycaja, w: 170, x: 1180, y: 1425 },
+	{ h: 271, src: hammer, w: 310, x: 1120, y: 1937 },
+	{ h: 198, src: gatohead, w: 230, x: 180, y: 2131 },
 ] as const
 
 /** The widest of them is 310 comp units, 212px at the 1180 cap. */
@@ -275,8 +275,8 @@ export default function Process() {
 			<div
 				className="stage hidden min-[1180px]:block"
 				style={{
-					maxWidth: STAGE_CAP,
 					aspectRatio: `${COMP_WIDTH} / ${STAGE_H}`,
+					maxWidth: STAGE_CAP,
 				}}
 			>
 				{/* The section's own heading, and the plate the first weld leaves.
@@ -292,8 +292,8 @@ export default function Process() {
 						style={{
 							// The comp's own 100, which is now 68px at every width this layout runs at – the same trade `STAGE_CAP` already makes for the four step titles below, and the size a 1180 screen has always shown this line at.
 							fontSize: u(100),
-							lineHeight: 1,
 							letterSpacing: "-0.03em",
+							lineHeight: 1,
 						}}
 					>
 						{HOW_LABEL}
@@ -353,9 +353,9 @@ export default function Process() {
 						className="absolute text-center font-display font-bold text-balance"
 						style={{
 							...at(68, 38),
-							width: u(839),
 							fontSize: u(40),
 							lineHeight: 1.1,
+							width: u(839),
 						}}
 					>
 						{design.title}
@@ -375,9 +375,9 @@ export default function Process() {
 						className="absolute font-display font-bold"
 						style={{
 							...at(94, 38),
-							width: u(690),
 							fontSize: u(40),
 							lineHeight: 1.1,
+							width: u(690),
 						}}
 					>
 						{funding.title}
@@ -404,9 +404,9 @@ export default function Process() {
 						className="absolute font-display font-bold"
 						style={{
 							...at(68, 42),
-							width: u(821),
 							fontSize: u(40),
 							lineHeight: 1.1,
+							width: u(821),
 						}}
 					>
 						{build.title}
@@ -426,9 +426,9 @@ export default function Process() {
 						className="absolute font-display font-bold"
 						style={{
 							...at(69, 52),
-							width: u(700),
 							fontSize: u(40),
 							lineHeight: 1.1,
+							width: u(700),
 						}}
 					>
 						{printer.title}
@@ -638,15 +638,15 @@ function StackWeld({
  * It is a flow box now: one padding value on each axis, one gap, and the title and body both centred, so the two plates space themselves identically whatever their copy does. The comp's own type sizes are kept; only the spacing is re-derived.
  */
 const ASIDE = {
-	/** The comp's plate. Height is a floor, not a fixed size, so a title that
-	 *  wraps lengthens the plate instead of crushing the gap below it. */
-	w: 555,
+	bodySize: 22.269,
+	gap: 18,
 	minH: 261.227,
 	padX: 34,
 	padY: 30,
-	gap: 18,
 	titleSize: 30.833,
-	bodySize: 22.269,
+	/** The comp's plate. Height is a floor, not a fixed size, so a title that
+	 *  wraps lengthens the plate instead of crushing the gap below it. */
+	w: 555,
 } as const
 
 /**
@@ -676,9 +676,9 @@ function Aside(props: AsideProps) {
 			className="absolute flex flex-col justify-center rounded-xl bg-hl-lavender text-center text-hl-indigo"
 			style={{
 				...at(props.origin[0], props.origin[1]),
-				width: u(ASIDE.w),
 				minHeight: u(ASIDE.minH),
 				padding: `${u(ASIDE.padY)} ${u(ASIDE.padX)}`,
+				width: u(ASIDE.w),
 			}}
 		>
 			<h3 className="font-display font-bold" style={{ fontSize: u(ASIDE.titleSize), lineHeight: 1.15 }}>
@@ -686,9 +686,9 @@ function Aside(props: AsideProps) {
 			</h3>
 			<p
 				style={{
-					marginTop: u(ASIDE.gap),
 					fontSize: u(ASIDE.bodySize),
 					lineHeight: 1.5,
+					marginTop: u(ASIDE.gap),
 				}}
 			>
 				{aside.body}

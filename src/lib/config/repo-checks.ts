@@ -31,18 +31,18 @@ export const BOM_CSV_PATTERN = /(^|\/)[^/]*bom[^/]*\.csv$/i
  * Library types are deliberately absent – a footprint, symbol or device library is not a design of anything – and Standard's bare numbers, which could belong to anything, are only accepted alongside `editorVersion` or `canvas`, which nothing else writes there.
  */
 export const DESIGN_JSON = Object.freeze({
-	/** The extension to look for. Far too common to accept unread. */
-	extension: ".json",
-	/** How much of the file to look at: either format names the document at the very top. */
-	headerChars: 8192,
 	/** The document type, as either format spells it, wherever in the opening it sits. */
 	docType: /"docType"\s*:\s*"([^"]{1,24})"/i,
+	/** The extension to look for. Far too common to accept unread. */
+	extension: ".json",
+	/** Something else from the same editor, which a bare number in the wild does not carry. */
+	fingerprint: /"editorVersion"|"canvas"/i,
+	/** How much of the file to look at: either format names the document at the very top. */
+	headerChars: 8192,
 	/** Pro's names, lowercased – they say what the document is on their own. */
 	named: new Set(["sch", "pcb", "sch_page", "board"]),
 	/** Standard's numbers: 1 schematic, 3 board, 5 schematic project. */
 	numeric: new Set(["1", "3", "5"]),
-	/** Something else from the same editor, which a bare number in the wild does not carry. */
-	fingerprint: /"editorVersion"|"canvas"/i,
 })
 
 export type RepoFileKind =
@@ -65,47 +65,22 @@ export const REPO_FILE_KINDS: Record<
 		json?: typeof DESIGN_JSON
 	}
 > = {
-	pcbSource: {
-		label: "PCB design files",
-		missing: "No board or schematic files (.kicad_pcb, .kicad_sch, .brd, EasyEDA…) found",
-		extensions: [
-			".kicad_pcb",
-			".kicad_sch",
-			".kicad_pro",
-			".brd",
-			".sch",
-			".pcbdoc",
-			".schdoc",
-			".fzz",
-			".fzpz",
-			".epcb",
-			".epro",
-			".epro2",
-			".eprj",
-			".esch",
-		],
-		json: DESIGN_JSON,
-	},
-	pcbFab: {
-		label: "Fabrication files",
-		missing: "No Gerber or drill files (or a zip of them) found",
-		// A .zip counts, as in Stasis: most fab houses take the Gerbers as one zipped export, and that is often all a repo carries.
-		extensions: [".gbr", ".gbl", ".gtl", ".gbs", ".gts", ".gbo", ".gto", ".gko", ".drl", ".zip"],
-	},
-	cadSource: {
-		label: "CAD source files",
-		missing: "No editable CAD files (.step, .f3d, .scad, .fcstd…) found",
-		extensions: [".f3d", ".step", ".stp", ".fcstd", ".scad", ".blend", ".sldprt", ".sldasm", ".iges", ".igs"],
+	bom: {
+		label: "BOM CSV",
+		missing: "No bom*.csv found",
+		pattern: BOM_CSV_PATTERN,
 	},
 	cadModel: {
+		extensions: [".stl", ".obj", ".3mf"],
 		label: "Printable models",
 		missing: "No printable models (.stl, .3mf, .obj) found",
-		extensions: [".stl", ".obj", ".3mf"],
+	},
+	cadSource: {
+		extensions: [".f3d", ".step", ".stp", ".fcstd", ".scad", ".blend", ".sldprt", ".sldasm", ".iges", ".igs"],
+		label: "CAD source files",
+		missing: "No editable CAD files (.step, .f3d, .scad, .fcstd…) found",
 	},
 	firmware: {
-		label: "Firmware",
-		missing:
-			"No firmware found – Arduino (.ino), C/C++, MicroPython or CircuitPython (.py), Rust and the like all count",
 		// .mpy is precompiled MicroPython/CircuitPython; .uf2/.hex/.bin are built images, which count when the source lives elsewhere.
 		extensions: [
 			".ino",
@@ -126,17 +101,42 @@ export const REPO_FILE_KINDS: Record<
 			".bin",
 			".go",
 		],
+		label: "Firmware",
+		missing:
+			"No firmware found – Arduino (.ino), C/C++, MicroPython or CircuitPython (.py), Rust and the like all count",
 	},
 	logicSchematic: {
-		label: "Schematic",
-		missing: "No schematic found – KiCad, Logisim (.circ), Digital (.dig) or an exported EasyEDA file all count",
 		extensions: [".kicad_sch", ".kicad_pro", ".kicad_pcb", ".sch", ".schdoc", ".esch", ".fzz", ".circ", ".dig"],
 		json: DESIGN_JSON,
+		label: "Schematic",
+		missing: "No schematic found – KiCad, Logisim (.circ), Digital (.dig) or an exported EasyEDA file all count",
 	},
-	bom: {
-		label: "BOM CSV",
-		missing: "No bom*.csv found",
-		pattern: BOM_CSV_PATTERN,
+	pcbFab: {
+		// A .zip counts, as in Stasis: most fab houses take the Gerbers as one zipped export, and that is often all a repo carries.
+		extensions: [".gbr", ".gbl", ".gtl", ".gbs", ".gts", ".gbo", ".gto", ".gko", ".drl", ".zip"],
+		label: "Fabrication files",
+		missing: "No Gerber or drill files (or a zip of them) found",
+	},
+	pcbSource: {
+		extensions: [
+			".kicad_pcb",
+			".kicad_sch",
+			".kicad_pro",
+			".brd",
+			".sch",
+			".pcbdoc",
+			".schdoc",
+			".fzz",
+			".fzpz",
+			".epcb",
+			".epro",
+			".epro2",
+			".eprj",
+			".esch",
+		],
+		json: DESIGN_JSON,
+		label: "PCB design files",
+		missing: "No board or schematic files (.kicad_pcb, .kicad_sch, .brd, EasyEDA…) found",
 	},
 }
 
@@ -145,11 +145,11 @@ export const THEME_REPO_REQUIREMENTS: Record<
 	{ required: readonly RepoFileKind[]; recommended: readonly RepoFileKind[] }
 > = {
 	// The board files are the week, and the BOM is what the parts funding is asked against – a design week hands in a cart to be funded, so a repo without its parts list is a hand-in a reviewer cannot price. Firmware is recommended rather than required: an analogue board – a preamp, a power supply, a sensor front end – has nothing to flash, and asking one for code it will never run turned a finished analogue project into a hand-in the checks refused.
-	[Theme.PCB]: { required: ["pcbSource", "bom"], recommended: ["pcbFab", "firmware"] },
-	[Theme.CAD]: { required: ["cadSource"], recommended: ["cadModel"] },
-	[Theme.SYNTH]: { required: ["logicSchematic"], recommended: ["firmware"] },
-	[Theme.DISPLAYS]: { required: ["firmware"], recommended: ["logicSchematic"] },
-	[Theme.BREADBOARD_COMPUTER]: { required: ["logicSchematic"], recommended: [] },
+	[Theme.PCB]: { recommended: ["pcbFab", "firmware"], required: ["pcbSource", "bom"] },
+	[Theme.CAD]: { recommended: ["cadModel"], required: ["cadSource"] },
+	[Theme.SYNTH]: { recommended: ["firmware"], required: ["logicSchematic"] },
+	[Theme.DISPLAYS]: { recommended: ["logicSchematic"], required: ["firmware"] },
+	[Theme.BREADBOARD_COMPUTER]: { recommended: [], required: ["logicSchematic"] },
 	// A warm-up project is any hardware project, so nothing over and above the README and photos every hand-in owes (see lib/repo-checks) is demanded of its repo.
-	[Theme.WARMUP]: { required: [], recommended: [] },
+	[Theme.WARMUP]: { recommended: [], required: [] },
 }

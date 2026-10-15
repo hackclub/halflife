@@ -13,14 +13,14 @@ export function ItemCostField({ itemId, costUsd }: Readonly<{ itemId: string; co
 		e.preventDefault()
 		void run("submit", () =>
 			sendJson(`/api/admin/shop/items/${itemId}`, {
-				method: "PATCH",
 				body: { costUsd: value === "" ? null : Number(value) },
+				method: "PATCH",
 			}),
 		)
 	}
 
 	return (
-		<form className="hl-row" onSubmit={submit} style={{ gap: "0.4rem", flexWrap: "nowrap" }}>
+		<form className="hl-row" onSubmit={submit} style={{ flexWrap: "nowrap", gap: "0.4rem" }}>
 			<input
 				aria-label="Cost in USD"
 				className="hl-input"

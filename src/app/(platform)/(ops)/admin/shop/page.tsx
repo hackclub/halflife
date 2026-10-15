@@ -13,10 +13,10 @@ import prisma from "@/lib/prisma"
 export const dynamic = "force-dynamic"
 
 const CATEGORY_LABEL: Record<ShopItemCategory, string> = {
-	PRINTER: "printer",
-	PRINTER_UPGRADE: "upgrade",
 	CONSUMABLE: "consumable",
 	MISC: "misc",
+	PRINTER: "printer",
+	PRINTER_UPGRADE: "upgrade",
 }
 
 export default async function AdminShopPage() {
@@ -27,7 +27,7 @@ export default async function AdminShopPage() {
 		}),
 		prisma.shopRegion.findMany({
 			orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-			select: { id: true, name: true, active: true, _count: { select: { prices: true } } },
+			select: { _count: { select: { prices: true } }, active: true, id: true, name: true },
 		}),
 	])
 

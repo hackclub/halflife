@@ -27,7 +27,7 @@ export function postForm(
 			} catch {
 				json = null
 			}
-			resolve({ ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status, json })
+			resolve({ json, ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status })
 		}
 		xhr.onerror = () => reject(new Error("The upload did not get through. Check your connection and try again."))
 		xhr.onabort = () => reject(new Error("The upload was cancelled."))

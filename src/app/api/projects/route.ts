@@ -15,7 +15,7 @@ export const GET = withRoute(async () => {
 	if (gate.error) return gate.error
 
 	const projects = await prisma.themeProject.findMany({
-		where: { userId: gate.user.id, deletedAt: null },
+		where: { deletedAt: null, userId: gate.user.id },
 	})
 
 	const items = await Promise.all(
@@ -26,18 +26,18 @@ export const GET = withRoute(async () => {
 			])
 			const def = getThemeDef(project.theme)
 			return {
-				id: project.id,
-				theme: project.theme,
-				slug: def.slug,
-				label: def.label,
-				title: project.title,
-				designStatus: project.designStatus,
 				buildStatus: project.buildStatus,
-				designWeek: def.designWeek,
 				buildWeek: def.buildWeek,
-				tier: project.tier,
+				designStatus: project.designStatus,
+				designWeek: def.designWeek,
 				grantUsd: project.grantUsd,
-				hours: { design: design.effectiveHours, build: build.effectiveHours },
+				hours: { build: build.effectiveHours, design: design.effectiveHours },
+				id: project.id,
+				label: def.label,
+				slug: def.slug,
+				theme: project.theme,
+				tier: project.tier,
+				title: project.title,
 			}
 		}),
 	)

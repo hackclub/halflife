@@ -24,8 +24,8 @@ async function namesFor(entries: ProjectReviewStats["leaderboard"]): Promise<Map
 	}
 
 	const users = await prisma.user.findMany({
+		select: { displayName: true, email: true, name: true, slackId: true },
 		where: { email: { in: emails } },
-		select: { email: true, slackId: true, name: true, displayName: true },
 	})
 	const byEmail = new Map(users.map(user => [user.email.trim().toLowerCase(), user]))
 
@@ -76,7 +76,7 @@ function weekProgressSection(byWeek: WeekReviewProgress[]): SummaryBoard | null 
 	const labelWidth = Math.max(...byWeek.map(row => `week ${row.week} · ${row.label}`.length))
 	const countWidth = Math.max(...byWeek.map(row => `${row.reviewed}/${row.total}`.length))
 	const lines = ["```", ...byWeek.map(row => weekBarLine(row, labelWidth, countWidth)), "```"]
-	return { title: ":bar-chart: reviewed by week", total: byWeek.length, lines }
+	return { lines, title: ":bar-chart: reviewed by week", total: byWeek.length }
 }
 
 export async function buildReviewSummary(stats: ProjectReviewStats): Promise<string> {
@@ -87,23 +87,23 @@ export async function buildReviewSummary(stats: ProjectReviewStats): Promise<str
 	const weekly = weekProgressSection(stats.byWeek)
 
 	return renderSummary({
-		headline: `${countedLine(
-			stats.submitted,
-			{ singular: "submission", plural: "submissions" },
-			{ singular: "was handed in", plural: "were handed in" },
-		)} and ${creditedLine(stats.reviewed, "review")}`,
 		boards: [
 			rankedShareBoard(
 				":yay-peace: today's leaderboard",
-				daily.map(row => ({ name: names.get(row.email) ?? row.email, count: row.reviewed })),
+				daily.map(row => ({ count: row.reviewed, name: names.get(row.email) ?? row.email })),
 				daily.reduce((n, row) => n + row.reviewed, 0),
 			),
 			rankedShareBoard(
 				":yay-blush-2: all-time leaderboard",
-				global.map(row => ({ name: names.get(row.email) ?? row.email, count: row.reviewed })),
+				global.map(row => ({ count: row.reviewed, name: names.get(row.email) ?? row.email })),
 				global.reduce((n, row) => n + row.reviewed, 0),
 			),
 			...(weekly ? [weekly] : []),
 		],
+		headline: `${countedLine(
+			stats.submitted,
+			{ plural: "submissions", singular: "submission" },
+			{ plural: "were handed in", singular: "was handed in" },
+		)} and ${creditedLine(stats.reviewed, "review")}`,
 	})
 }

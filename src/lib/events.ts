@@ -52,17 +52,17 @@ export type { EventColour }
  */
 /** Named rather than picked off the end, so `eventColour` can fall back to it without an index. */
 const SLATE_COLOUR = {
+	accent: "var(--color-navy-faint)",
 	id: "SLATE",
 	label: "Slate",
-	accent: "var(--color-navy-faint)",
 } as const satisfies EventColourDef
 
 export const EVENT_COLOURS = [
-	{ id: "CORAL", label: "Coral", accent: "var(--color-coral)" },
-	{ id: "SKY", label: "Sky", accent: "var(--color-sky)" },
-	{ id: "VIOLET", label: "Violet", accent: "var(--color-violet)" },
-	{ id: "GOLD", label: "Gold", accent: "var(--color-gold)" },
-	{ id: "TEAL", label: "Teal", accent: "var(--color-teal)" },
+	{ accent: "var(--color-coral)", id: "CORAL", label: "Coral" },
+	{ accent: "var(--color-sky)", id: "SKY", label: "Sky" },
+	{ accent: "var(--color-violet)", id: "VIOLET", label: "Violet" },
+	{ accent: "var(--color-gold)", id: "GOLD", label: "Gold" },
+	{ accent: "var(--color-teal)", id: "TEAL", label: "Teal" },
 	SLATE_COLOUR,
 ] as const satisfies readonly EventColourDef[]
 
@@ -111,10 +111,10 @@ export function calendarDay(at: Date, timeZone: string): string {
 	// en-CA formats as YYYY-MM-DD, which is the one thing Intl gives us that is
 	// sortable as a string and readable as a date without parsing it back.
 	return new Intl.DateTimeFormat("en-CA", {
+		day: "2-digit",
+		month: "2-digit",
 		timeZone,
 		year: "numeric",
-		month: "2-digit",
-		day: "2-digit",
 	}).format(at)
 }
 
@@ -127,7 +127,7 @@ export function dayKey(year: number, month: number, day: number): string {
 /** The month a day string belongs to, for opening the grid on the right one. */
 export function monthOf(day: string): { year: number; month: number } {
 	const [year, month] = day.split("-").map(Number)
-	return { year: year ?? 1970, month: month ?? 1 }
+	return { month: month ?? 1, year: year ?? 1970 }
 }
 
 /** A `YYYY-MM-DD` shifted by whole days. UTC throughout: these are calendar labels, not instants. */
@@ -169,10 +169,10 @@ export function weekLabel(days: readonly string[]): string {
 /** Minutes from local midnight to `at` in `timeZone`. */
 export function minutesInDay(at: Date, timeZone: string): number {
 	const parts = new Intl.DateTimeFormat("en-US", {
-		timeZone,
 		hour: "numeric",
-		minute: "numeric",
 		hour12: false,
+		minute: "numeric",
+		timeZone,
 	}).formatToParts(at)
 	const get = (type: string) => Number(parts.find(part => part.type === type)?.value ?? 0)
 	// hour12: false reports midnight as 24, which is the next day's minute zero.
@@ -203,14 +203,14 @@ export function daySegment(
 		// An event running to midnight ends the day it is on, not the next one's first minute.
 		if (endMin === 0) endMin = 24 * 60
 	}
-	return endMin <= startMin ? null : { startMin, endMin }
+	return endMin <= startMin ? null : { endMin, startMin }
 }
 
 /** "Thursday, March 5" – a day's own heading, with no time attached. */
 export function dayLabel(day: string): string {
 	const { year, month } = monthOf(day)
 	const dayOfMonth = Number(day.split("-")[2] ?? 1)
-	return new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "UTC" }).format(
+	return new Intl.DateTimeFormat("en-US", { day: "numeric", month: "long", timeZone: "UTC", weekday: "long" }).format(
 		new Date(Date.UTC(year, month - 1, dayOfMonth)),
 	)
 }
@@ -219,14 +219,14 @@ export function dayLabel(day: string): string {
 export function dayShort(day: string): string {
 	const { year, month } = monthOf(day)
 	const dayOfMonth = Number(day.split("-")[2] ?? 1)
-	return new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" }).format(
+	return new Intl.DateTimeFormat("en-US", { day: "numeric", month: "short", timeZone: "UTC", weekday: "short" }).format(
 		new Date(Date.UTC(year, month - 1, dayOfMonth)),
 	)
 }
 
 /** "7:00 PM" in the given zone. */
 function eventTimeLabel(at: Date, timeZone: string): string {
-	return at.toLocaleTimeString("en-US", { timeZone, hour: "numeric", minute: "2-digit" })
+	return at.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone })
 }
 
 /** "7:00 – 8:00 PM", collapsing the meridiem when both ends share one. */

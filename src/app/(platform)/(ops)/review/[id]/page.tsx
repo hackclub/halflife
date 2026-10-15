@@ -287,10 +287,10 @@ export default async function ReviewDetailPage({ params }: Props) {
 					phase={submission.phase}
 					submissionId={id}
 					tiers={TIERS.map(t => ({
+						fundingHours: t.fundingHours,
+						grantUsd: t.grantUsd,
 						id: t.id,
 						name: t.name,
-						grantUsd: t.grantUsd,
-						fundingHours: t.fundingHours,
 						submitFloorHours: submitFloorFor(t.fundingHours),
 					}))}
 				/>

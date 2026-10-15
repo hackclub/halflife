@@ -36,7 +36,7 @@ export function selectPendingShips(
 			const status = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
 			if (status !== PhaseStatus.in_review) continue
 			const submission = newest.get(`${project.id}:${phase}`)
-			if (submission && !submission.ariSubmissionId) out.push({ themeProjectId: project.id, phase })
+			if (submission && !submission.ariSubmissionId) out.push({ phase, themeProjectId: project.id })
 		}
 	}
 	return out

@@ -19,6 +19,6 @@ export const POST = withRoute(async () => {
 	const gate = await requirePermission(Permission.MANAGE_PROGRAM)
 	if (gate.error) return gate.error
 
-	const summary = await importWarmupProjects({ id: gate.user.id, email: gate.user.email })
+	const summary = await importWarmupProjects({ email: gate.user.email, id: gate.user.id })
 	return ok({ summary })
 })

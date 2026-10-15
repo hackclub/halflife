@@ -51,6 +51,7 @@ async function main() {
 
 	// The people who genuinely have an entry: a written devlog or a timelapse.
 	const qualifiers = await prisma.user.findMany({
+		select: { email: true, id: true },
 		where: {
 			themeProjects: {
 				some: {
@@ -64,7 +65,6 @@ async function main() {
 				},
 			},
 		},
-		select: { id: true, email: true },
 	})
 	const qualifiedIds = new Set(qualifiers.map(u => u.id))
 	const qualifiedEmails = new Map(qualifiers.map(u => [u.email.trim().toLowerCase(), u.id]))
@@ -72,7 +72,7 @@ async function main() {
 	// The join keys the sync would use: the row's own user id column, the RSVP
 	// drain's record id, and email.
 	const buffers = await prisma.rsvpBuffer.findMany({
-		select: { email: true, userId: true, airtableRecordId: true },
+		select: { airtableRecordId: true, email: true, userId: true },
 	})
 	const bufferByRecord = new Map<string, string>()
 	const bufferByEmail = new Map<string, string>()
@@ -83,7 +83,7 @@ async function main() {
 			bufferByEmail.set(b.email.trim().toLowerCase(), b.userId)
 	}
 	const usersByEmail = new Map<string, string>()
-	for (const u of await prisma.user.findMany({ select: { id: true, email: true } }))
+	for (const u of await prisma.user.findMany({ select: { email: true, id: true } }))
 		usersByEmail.set(u.email.trim().toLowerCase(), u.id)
 
 	const matchedStale: AirtableRecord[] = []
@@ -129,11 +129,11 @@ async function main() {
 		const batch = matchedStale.slice(i, i + 10)
 		await withRateLimitRetry("clearLastEntryAt", () =>
 			airtableFetch(config, encodeURIComponent(RSVP_TABLE_ID), {
-				method: "PATCH",
 				body: JSON.stringify({
-					records: batch.map(r => ({ id: r.id, fields: { [LOOPS_FIELDS.lastEntryAt]: null } })),
+					records: batch.map(r => ({ fields: { [LOOPS_FIELDS.lastEntryAt]: null }, id: r.id })),
 					typecast: false,
 				}),
+				method: "PATCH",
 			}),
 		)
 	}

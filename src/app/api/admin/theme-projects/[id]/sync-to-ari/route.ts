@@ -32,8 +32,8 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 
 	// A ship is a hand-in, so only a phase awaiting review has one to send: a draft was never submitted, and a decided phase is already Ari's record.
 	const project = await prisma.themeProject.findFirst({
-		where: { id, deletedAt: null },
-		select: { designStatus: true, buildStatus: true },
+		select: { buildStatus: true, designStatus: true },
+		where: { deletedAt: null, id },
 	})
 	if (!project) return fail("NOT_FOUND", "Project not found")
 	const status = parsed.data.phase === "DESIGN" ? project.designStatus : project.buildStatus
@@ -42,9 +42,9 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 
 	// A hand-in that already reached Ari has nothing to retry; resending is harmless there (Ari dedupes by external id) but the button should say so rather than perform a no-op round trip.
 	const open = await prisma.phaseSubmission.findFirst({
-		where: { themeProjectId: id, phase: parsed.data.phase, resolvedAt: null },
 		orderBy: { createdAt: "desc" },
 		select: { ariSubmissionId: true },
+		where: { phase: parsed.data.phase, resolvedAt: null, themeProjectId: id },
 	})
 	if (open?.ariSubmissionId) return fail("CONFLICT", "That submission already reached Ari – there is nothing to retry")
 
@@ -52,11 +52,11 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		const result = await trackSideEffect(
 			"ari",
 			{
-				actorId: gate.user.id,
 				actorEmail: gate.user.email,
-				targetType: "ThemeProject",
+				actorId: gate.user.id,
+				metadata: { manual: true, phase: parsed.data.phase },
 				targetId: id,
-				metadata: { phase: parsed.data.phase, manual: true },
+				targetType: "ThemeProject",
 			},
 			() => sendSubmissionToAri(id, parsed.data.phase),
 			// The audit row is written either way; rethrowing lets a refusal that names a missing field reach the admin instead of a generic failure.

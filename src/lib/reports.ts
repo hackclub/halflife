@@ -19,15 +19,15 @@ export const REPORT_REASONS: { id: ReportReason; label: string }[] = [
 ]
 
 export const REPORT_TARGET_LABELS: Record<ReportTarget, string> = {
+	DEVLOG: "Devlog",
+	PROJECT: "Project",
 	REEL: "Reel",
 	REEL_COMMENT: "Reel comment",
-	PROJECT: "Project",
 	USER: "User",
-	DEVLOG: "Devlog",
 }
 
 export const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
+	DISMISSED: "Dismissed",
 	OPEN: "Open",
 	RESOLVED: "Resolved",
-	DISMISSED: "Dismissed",
 }

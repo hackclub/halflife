@@ -16,9 +16,9 @@ import {
 export const dynamic = "force-dynamic"
 
 const whenFormat = new Intl.DateTimeFormat("en-US", {
-	timeZone: "UTC",
 	dateStyle: "medium",
 	timeStyle: "short",
+	timeZone: "UTC",
 })
 
 function preview(text: string, max = 90): string {
@@ -36,8 +36,8 @@ export default async function AdminFeedPage() {
 
 	const [projects, posts, comments, publicReels] = await Promise.all([
 		prisma.themeProject.findMany({
-			where: { userId: user.id, deletedAt: null },
 			select: { id: true, theme: true, title: true },
+			where: { deletedAt: null, userId: user.id },
 		}),
 		listRecentPostsForModeration(),
 		listRecentCommentsForModeration(),

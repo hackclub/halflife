@@ -61,8 +61,8 @@ function reviewerBoard(
 	const board: ProjectReviewStats["leaderboard"] = tallyBoard(
 		keyed.filter(key => key !== null),
 		key => key,
-	).map(({ key: email, count: reviewed }) => ({ email, reviewed, name: names.get(email) ?? null }))
-	if (anonymous > 0) board.push({ email: ANONYMOUS_ARI, reviewed: anonymous, name: "Ari" })
+	).map(({ key: email, count: reviewed }) => ({ email, name: names.get(email) ?? null, reviewed }))
+	if (anonymous > 0) board.push({ email: ANONYMOUS_ARI, name: "Ari", reviewed: anonymous })
 	return board.sort((a, b) => b.reviewed - a.reviewed || a.email.localeCompare(b.email))
 }
 
@@ -91,10 +91,11 @@ async function getWeekReviewProgress(): Promise<WeekReviewProgress[]> {
 
 	const [projects, reviews] = await Promise.all([
 		prisma.themeProject.findMany({
-			where: { deletedAt: null, namedAt: { not: null }, theme: { in: themes } },
 			select: { theme: true },
+			where: { deletedAt: null, namedAt: { not: null }, theme: { in: themes } },
 		}),
 		prisma.submissionReview.findMany({
+			select: { submission: { select: { themeProject: { select: { theme: true } }, themeProjectId: true } } },
 			where: {
 				invalidated: false,
 				pass: ReviewPass.FINAL,
@@ -102,7 +103,6 @@ async function getWeekReviewProgress(): Promise<WeekReviewProgress[]> {
 					themeProject: { deletedAt: null, namedAt: { not: null }, theme: { in: themes } },
 				},
 			},
-			select: { submission: { select: { themeProjectId: true, themeProject: { select: { theme: true } } } } },
 		}),
 	])
 
@@ -121,10 +121,10 @@ async function getWeekReviewProgress(): Promise<WeekReviewProgress[]> {
 
 	return started
 		.map(theme => ({
-			week: theme.designWeek,
 			label: theme.label,
 			reviewed: reviewed.get(theme.id)?.size ?? 0,
 			total: totals.get(theme.id) ?? 0,
+			week: theme.designWeek,
 		}))
 		.sort((a, b) => a.week - b.week)
 }
@@ -139,13 +139,13 @@ export async function getProjectReviewStats(since: Date): Promise<ProjectReviewS
 	const [submitted, reviewRows, allReviewRows, byWeek] = await Promise.all([
 		prisma.phaseSubmission.count({ where: { createdAt: { gte: since } } }),
 		prisma.submissionReview.findMany({
+			select: { reviewerEmail: true, reviewerId: true, reviewerName: true },
 			where: { ...live, createdAt: { gte: since } },
-			select: { reviewerId: true, reviewerEmail: true, reviewerName: true },
 		}),
 		// Every live review ever, for the all-time board under the daily one.
 		prisma.submissionReview.findMany({
+			select: { reviewerEmail: true, reviewerId: true, reviewerName: true },
 			where: live,
-			select: { reviewerId: true, reviewerEmail: true, reviewerName: true },
 		}),
 		getWeekReviewProgress(),
 	])
@@ -157,17 +157,17 @@ export async function getProjectReviewStats(since: Date): Promise<ProjectReviewS
 	const usersById = new Map(
 		(
 			await prisma.user.findMany({
+				select: { email: true, id: true },
 				where: { id: { in: reviewerIds } },
-				select: { id: true, email: true },
 			})
 		).map(user => [user.id, { email: user.email }]),
 	)
 
 	return {
-		submitted,
-		reviewed: reviewRows.length,
-		leaderboard: reviewerBoard(reviewRows, usersById),
-		globalLeaderboard: reviewerBoard(allReviewRows, usersById),
 		byWeek,
+		globalLeaderboard: reviewerBoard(allReviewRows, usersById),
+		leaderboard: reviewerBoard(reviewRows, usersById),
+		reviewed: reviewRows.length,
+		submitted,
 	}
 }

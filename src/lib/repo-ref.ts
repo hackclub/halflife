@@ -84,7 +84,7 @@ function fromSegments(forge: Forge, segments: string[]): RepoRef | null {
 	if ([...ownerSegments, repo].some(s => s === "." || s === "..")) return null
 
 	const ownerPath = ownerSegments.join("/")
-	return { forge, ownerPath, repo, fullName: `${ownerPath}/${repo}` }
+	return { forge, fullName: `${ownerPath}/${repo}`, ownerPath, repo }
 }
 
 /**

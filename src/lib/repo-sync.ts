@@ -51,17 +51,17 @@ export async function scheduleRepoSync(themeProjectId: string): Promise<void> {
 	// The read is cheap and decides everything: a project with the sync off is the common case, and there is no reason to schedule anything for it. The global switch is checked here too, so a staff kill switch stops new work without waiting for each project row.
 	const [project, program] = await Promise.all([
 		prisma.themeProject.findUnique({
-			where: { id: themeProjectId },
 			select: { repoSyncEnabled: true, repoSyncQueuedAt: true },
+			where: { id: themeProjectId },
 		}),
-		prisma.programSettings.findUnique({ where: { id: "singleton" }, select: { repoSyncEnabled: true } }),
+		prisma.programSettings.findUnique({ select: { repoSyncEnabled: true }, where: { id: "singleton" } }),
 	])
 	if (!project?.repoSyncEnabled || program?.repoSyncEnabled === false) return
 
 	// Stamp the request, then run. The stamp is what a run already in flight reads to know it should go again.
 	await prisma.themeProject.updateMany({
-		where: { id: themeProjectId },
 		data: { repoSyncQueuedAt: new Date() },
+		where: { id: themeProjectId },
 	})
 	if (inFlight.has(themeProjectId)) return
 
@@ -91,8 +91,8 @@ export async function runProjectSync(themeProjectId: string, manual: boolean, fo
 			written = await syncOnce(themeProjectId, runManual || pass > 0, force && pass === 0)
 			runManual = false
 			const stillQueued = await prisma.themeProject.findUnique({
-				where: { id: themeProjectId },
 				select: { repoSyncQueuedAt: true },
+				where: { id: themeProjectId },
 			})
 			// Anything queued AFTER the claim means another write arrived while this pass ran.
 			const queueTime = stillQueued?.repoSyncQueuedAt
@@ -120,14 +120,14 @@ export async function runProjectSync(themeProjectId: string, manual: boolean, fo
  */
 async function claimQueued(themeProjectId: string): Promise<Date | null> {
 	const now = await prisma.themeProject.findUnique({
-		where: { id: themeProjectId },
 		select: { repoSyncQueuedAt: true },
+		where: { id: themeProjectId },
 	})
 	const queuedAt = now?.repoSyncQueuedAt
 	if (!queuedAt) return null
 	const claimed = await prisma.themeProject.updateMany({
-		where: { id: themeProjectId, repoSyncQueuedAt: queuedAt },
 		data: { repoSyncQueuedAt: null },
+		where: { id: themeProjectId, repoSyncQueuedAt: queuedAt },
 	})
 	return claimed.count > 0 ? queuedAt : null
 }
@@ -141,25 +141,25 @@ async function waitForFree(themeProjectId: string): Promise<void> {
 /** One commit: read the project, render its files, write them. */
 async function syncOnce(themeProjectId: string, manual: boolean, force = false): Promise<WrittenFile[]> {
 	const project = await prisma.themeProject.findUnique({
-		where: { id: themeProjectId },
 		include: {
+			user: { select: { email: true, id: true } },
 			workSessions: {
-				where: { deletedAt: null },
 				orderBy: { createdAt: "asc" },
 				select: {
+					content: true,
+					createdAt: true,
+					effectiveDate: true,
+					hoursApproved: true,
+					hoursClaimed: true,
 					id: true,
 					phase: true,
+					timelapses: { select: { externalId: true, objectKey: true, playbackUrl: true, provider: true } },
 					title: true,
-					content: true,
-					hoursClaimed: true,
-					hoursApproved: true,
-					effectiveDate: true,
-					createdAt: true,
-					timelapses: { select: { playbackUrl: true, objectKey: true, provider: true, externalId: true } },
 				},
+				where: { deletedAt: null },
 			},
-			user: { select: { id: true, email: true } },
 		},
+		where: { id: themeProjectId },
 	})
 	if (!project) return []
 
@@ -167,8 +167,8 @@ async function syncOnce(themeProjectId: string, manual: boolean, force = false):
 	if (!force) {
 		if (!project.repoSyncEnabled) return []
 		const program = await prisma.programSettings.findUnique({
-			where: { id: "singleton" },
 			select: { repoSyncEnabled: true },
+			where: { id: "singleton" },
 		})
 		if (program?.repoSyncEnabled === false) return []
 	}
@@ -191,7 +191,7 @@ async function syncOnce(themeProjectId: string, manual: boolean, force = false):
 	}
 
 	const run = await prisma.repoSyncRun.create({
-		data: { themeProjectId: project.id, repo, manual },
+		data: { manual, repo, themeProjectId: project.id },
 		select: { id: true },
 	})
 
@@ -202,36 +202,36 @@ async function syncOnce(themeProjectId: string, manual: boolean, force = false):
 		const tier = project.tier ?? project.requestedTier ?? 1
 
 		const meta = {
-			id: project.id,
-			title: project.title || themeDef.label,
 			description: project.description,
-			weekId,
+			id: project.id,
 			isWarmup,
+			repoUrl: project.githubRepo,
 			themeLabel: themeDef.label,
 			tier,
-			repoUrl: project.githubRepo,
+			title: project.title || themeDef.label,
+			weekId,
 		}
 
 		const entries: JournalEntry[] = project.workSessions.map(s => ({
+			content: s.content,
+			createdAt: s.createdAt,
+			effectiveDate: s.effectiveDate,
+			hoursApproved: s.hoursApproved,
+			hoursClaimed: s.hoursClaimed,
 			id: s.id,
 			phase: s.phase,
-			title: s.title,
-			content: s.content,
-			hoursClaimed: s.hoursClaimed,
-			hoursApproved: s.hoursApproved,
-			effectiveDate: s.effectiveDate,
-			createdAt: s.createdAt,
 			timelapses: s.timelapses.map(t => ({ url: t.playbackUrl })),
+			title: s.title,
 		}))
 		const bom = await listBom(project.id)
 		const bomLines: BomLineForFile[] = bom.map(l => ({
+			link: l.link,
 			name: l.name,
 			purpose: l.purpose,
 			quantity: l.quantity,
 			unitCostUsd: l.unitCostUsd,
-			vendor: l.vendor,
-			link: l.link,
 			updatedAt: l.updatedAt,
+			vendor: l.vendor,
 		}))
 
 		const files = [
@@ -247,15 +247,15 @@ async function syncOnce(themeProjectId: string, manual: boolean, force = false):
 		const changed = written.filter(f => !f.unchanged)
 		await prisma.$transaction([
 			prisma.repoSyncRun.update({
-				where: { id: run.id },
 				data: {
-					files: written.map(f => ({ path: f.path, sha: f.sha, bytes: f.bytes, unchanged: f.unchanged })),
+					files: written.map(f => ({ bytes: f.bytes, path: f.path, sha: f.sha, unchanged: f.unchanged })),
 					finishedAt: new Date(),
 				},
+				where: { id: run.id },
 			}),
 			prisma.themeProject.update({
+				data: { repoSyncError: null, repoSyncedAt: new Date() },
 				where: { id: project.id },
-				data: { repoSyncedAt: new Date(), repoSyncError: null },
 			}),
 		])
 		// A run that changed nothing is not a sync worth recording: a retry, or a rebuild with identical content, should not look like activity in the audit log.
@@ -263,13 +263,13 @@ async function syncOnce(themeProjectId: string, manual: boolean, force = false):
 			await logAudit({
 				action: AuditAction.REPO_SYNC_SUCCESS,
 				actorId: null,
-				targetType: "ThemeProject",
-				targetId: project.id,
 				metadata: {
-					repo,
+					files: written.map(f => ({ bytes: f.bytes, path: f.path })),
 					manual,
-					files: written.map(f => ({ path: f.path, bytes: f.bytes })),
+					repo,
 				},
+				targetId: project.id,
+				targetType: "ThemeProject",
 			})
 		}
 		return written
@@ -297,25 +297,25 @@ async function recordFailure(
 			...(runId
 				? [
 						prisma.repoSyncRun.update({
-							where: { id: runId },
 							data: { error: message, finishedAt: new Date() },
+							where: { id: runId },
 						}),
 					]
 				: [
 						prisma.repoSyncRun.create({
-							data: { themeProjectId, repo, error: message, manual, finishedAt: new Date() },
+							data: { error: message, finishedAt: new Date(), manual, repo, themeProjectId },
 						}),
 					]),
-			prisma.themeProject.update({ where: { id: themeProjectId }, data: { repoSyncError: message } }),
+			prisma.themeProject.update({ data: { repoSyncError: message }, where: { id: themeProjectId } }),
 		])
 		.catch(err => console.error("[repo-sync] failed to record failure:", err))
 
 	await logAudit({
 		action: AuditAction.REPO_SYNC_FAILURE,
 		actorId: null,
-		targetType: "ThemeProject",
+		metadata: { error: message, manual, repo, userId },
 		targetId: themeProjectId,
-		metadata: { repo, manual, userId, error: message },
+		targetType: "ThemeProject",
 	})
 }
 
@@ -332,8 +332,8 @@ export async function enableRepoSync(
 	repoUrl: string,
 ): Promise<{ repo: string; files: WrittenFile[] }> {
 	const project = await prisma.themeProject.findFirst({
-		where: { id: themeProjectId, userId, deletedAt: null },
-		select: { id: true, githubRepo: true },
+		select: { githubRepo: true, id: true },
+		where: { deletedAt: null, id: themeProjectId, userId },
 	})
 	if (!project) throw new HttpError("NOT_FOUND", "Project not found")
 
@@ -346,24 +346,24 @@ export async function enableRepoSync(
 	const repo = ref.fullName
 	// Pin the target and clear any stale error before the first commit, so a failure here is recorded against the project the maker is looking at.
 	await prisma.themeProject.update({
+		data: { repoSyncError: null, repoSyncRepo: repoUrl },
 		where: { id: themeProjectId },
-		data: { repoSyncRepo: repoUrl, repoSyncError: null },
 	})
 
 	try {
 		const files = await runProjectSync(themeProjectId, true, true)
 		const failed = await prisma.themeProject.findUnique({
-			where: { id: themeProjectId },
 			select: { repoSyncError: true },
+			where: { id: themeProjectId },
 		})
 		if (failed?.repoSyncError) throw new HttpError("UNPROCESSABLE", failed.repoSyncError)
 
 		// Only now is it on, and only after a commit succeeded: `repoSyncEnabled` is what the after-write job reads, so setting it before the first write would leave a project that looks synced and is not.
-		await prisma.themeProject.update({ where: { id: themeProjectId }, data: { repoSyncEnabled: true } })
-		return { repo, files }
+		await prisma.themeProject.update({ data: { repoSyncEnabled: true }, where: { id: themeProjectId } })
+		return { files, repo }
 	} catch (err) {
 		await prisma.themeProject
-			.update({ where: { id: themeProjectId }, data: { repoSyncRepo: null, repoSyncEnabled: false } })
+			.update({ data: { repoSyncEnabled: false, repoSyncRepo: null }, where: { id: themeProjectId } })
 			.catch(() => undefined)
 		throw err
 	}
@@ -372,8 +372,8 @@ export async function enableRepoSync(
 /** Switch the sync off. The files already in the repo are left where they are. */
 export async function disableRepoSync(themeProjectId: string, userId: string): Promise<void> {
 	const updated = await prisma.themeProject.updateMany({
-		where: { id: themeProjectId, userId, deletedAt: null },
-		data: { repoSyncEnabled: false, repoSyncQueuedAt: null, repoSyncError: null },
+		data: { repoSyncEnabled: false, repoSyncError: null, repoSyncQueuedAt: null },
+		where: { deletedAt: null, id: themeProjectId, userId },
 	})
 	if (updated.count === 0) throw new HttpError("NOT_FOUND", "Project not found")
 }
@@ -404,12 +404,12 @@ export type RepoSyncState = {
 export async function getRepoSyncState(themeProjectId: string, userId: string): Promise<RepoSyncState> {
 	const [project, accounts] = await Promise.all([
 		prisma.themeProject.findFirst({
+			select: { githubRepo: true, repoSyncEnabled: true, repoSyncError: true, repoSyncedAt: true, repoSyncRepo: true },
 			where: { id: themeProjectId, userId },
-			select: { repoSyncEnabled: true, repoSyncRepo: true, githubRepo: true, repoSyncedAt: true, repoSyncError: true },
 		}),
 		prisma.account.findMany({
-			where: { userId, providerId: { in: ALL_FORGES.map(f => f.id) } },
-			select: { providerId: true, accessToken: true },
+			select: { accessToken: true, providerId: true },
+			where: { providerId: { in: ALL_FORGES.map(f => f.id) }, userId },
 		}),
 	])
 	if (!project) throw new HttpError("NOT_FOUND", "Project not found")
@@ -425,12 +425,12 @@ export async function getRepoSyncState(themeProjectId: string, userId: string): 
 
 	return {
 		enabled: project.repoSyncEnabled,
-		repo: ref ? repoRefToUrl(ref) : target,
-		forge: ref?.forge.id ?? null,
-		syncedAt: project.repoSyncedAt?.getTime() ?? null,
 		error: project.repoSyncError,
+		forge: ref?.forge.id ?? null,
 		linkedForges: accounts.filter(a => a.accessToken).map(a => a.providerId),
 		projectRepo: project.githubRepo,
+		repo: ref ? repoRefToUrl(ref) : target,
+		syncedAt: project.repoSyncedAt?.getTime() ?? null,
 		syncRepoDiffers: differs,
 	}
 }

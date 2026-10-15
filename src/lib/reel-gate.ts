@@ -56,8 +56,8 @@ export async function reelLockReason(
 	const week = weekOfKey(checkpointKey)
 	if (!week || !themeProjectId) return null
 	const project = await prisma.themeProject.findUnique({
+		select: { buildStatus: true, designStatus: true },
 		where: { id: themeProjectId },
-		select: { designStatus: true, buildStatus: true },
 	})
 	if (!project) return null
 	const phase = week > DESIGN_WEEKS ? Phase.BUILD : Phase.DESIGN
@@ -72,8 +72,8 @@ export async function reelLockReason(
 /** The reel checkpoints this maker deleted and has not re-recorded yet. */
 export async function getOwedReelKeys(userId: string): Promise<string[]> {
 	const deleted = await prisma.post.findMany({
-		where: { userId, status: PostStatus.REMOVED, deletedAt: { not: null }, checkpointKey: { not: null } },
 		select: { checkpointKey: true, themeProjectId: true },
+		where: { checkpointKey: { not: null }, deletedAt: { not: null }, status: PostStatus.REMOVED, userId },
 	})
 	const projectByKey = new Map<string, string | null>()
 	for (const p of deleted)
@@ -81,8 +81,8 @@ export async function getOwedReelKeys(userId: string): Promise<string[]> {
 	if (projectByKey.size === 0) return []
 
 	const live = await prisma.post.findMany({
-		where: { userId, deletedAt: null, checkpointKey: { in: [...projectByKey.keys()] } },
 		select: { checkpointKey: true },
+		where: { checkpointKey: { in: [...projectByKey.keys()] }, deletedAt: null, userId },
 	})
 	for (const p of live) if (p.checkpointKey) projectByKey.delete(p.checkpointKey)
 

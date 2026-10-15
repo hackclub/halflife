@@ -18,35 +18,35 @@ import topLeft2 from "../../../public/art/borders/topleftcorner2.png"
  * `corner` is not a placement choice, it is what each file is drawn for, which its own name states. There is no `toprightcorner` in the set, so no box can be wrapped on all four, and nothing here pretends otherwise.
  */
 const DECALS = {
-	topLeft: {
-		src: topLeft,
-		corner: "top-left",
-		pad: { left: 0.183, top: 0.108, right: 0.071, bottom: 0.103 },
-		inkW: 0.746,
-	},
-	topLeft2: {
-		src: topLeft2,
-		corner: "top-left",
-		pad: { left: 0.17, top: 0.195, right: 0.185, bottom: 0.19 },
-		inkW: 0.645,
-	},
 	bottomLeft: {
-		src: bottomLeft,
 		corner: "bottom-left",
-		pad: { left: 0.206, top: 0.183, right: 0.164, bottom: 0.187 },
 		inkW: 0.63,
+		pad: { bottom: 0.187, left: 0.206, right: 0.164, top: 0.183 },
+		src: bottomLeft,
 	},
 	bottomRight: {
-		src: bottomRight,
 		corner: "bottom-right",
-		pad: { left: 0.132, top: 0.155, right: 0.154, bottom: 0.082 },
 		inkW: 0.714,
+		pad: { bottom: 0.082, left: 0.132, right: 0.154, top: 0.155 },
+		src: bottomRight,
 	},
 	bottomRight2: {
-		src: bottomRight2,
 		corner: "bottom-right",
-		pad: { left: 0.218, top: 0.165, right: 0.039, bottom: 0.078 },
 		inkW: 0.743,
+		pad: { bottom: 0.078, left: 0.218, right: 0.039, top: 0.165 },
+		src: bottomRight2,
+	},
+	topLeft: {
+		corner: "top-left",
+		inkW: 0.746,
+		pad: { bottom: 0.103, left: 0.183, right: 0.071, top: 0.108 },
+		src: topLeft,
+	},
+	topLeft2: {
+		corner: "top-left",
+		inkW: 0.645,
+		pad: { bottom: 0.19, left: 0.17, right: 0.185, top: 0.195 },
+		src: topLeft2,
 	},
 } as const satisfies Record<
 	string,
@@ -133,11 +133,11 @@ export default function CornerDecal({
 			sizes="190px"
 			src={src}
 			style={{
+				height: "auto",
 				opacity: PRINT,
+				width: `${(size * 100).toFixed(3)}%`,
 				// Under the plate's content but over its background. The plates carry `isolate` so this cannot escape into the page behind them.
 				zIndex: over ? undefined : -1,
-				width: `${(size * 100).toFixed(3)}%`,
-				height: "auto",
 				[fromLeft ? "left" : "right"]: INSET,
 				[fromTop ? "top" : "bottom"]: INSET,
 				transform: `translate(${shiftX.toFixed(2)}%, ${shiftY.toFixed(2)}%)`,

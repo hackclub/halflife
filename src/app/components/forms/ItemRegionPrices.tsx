@@ -29,8 +29,8 @@ export function ItemRegionPrices({
 		}
 		void run(regionId, () =>
 			sendJson(`/api/admin/shop/items/${itemId}/regions`, {
+				body: { priceCredits: price, regionId },
 				method: "PUT",
-				body: { regionId, priceCredits: price },
 			}),
 		)
 	}
@@ -41,7 +41,7 @@ export function ItemRegionPrices({
 			{regions.length === 0 ? (
 				<p className="hl-hint">No regions yet – add one on the shop page first.</p>
 			) : (
-				<ul className="hl-stack hl-stack--tight" style={{ listStyle: "none", padding: 0, margin: 0 }}>
+				<ul className="hl-stack hl-stack--tight" style={{ listStyle: "none", margin: 0, padding: 0 }}>
 					{regions.map(region => (
 						<li className="hl-row" key={region.id} style={{ alignItems: "end" }}>
 							<span style={{ minWidth: "10rem" }}>

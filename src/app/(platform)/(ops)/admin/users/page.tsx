@@ -14,7 +14,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
 	const { q, cursor } = await searchParams
 
 	const includePii = hasRole(roles, Role.ADMIN) || hasRole(roles, Role.AUDITOR)
-	const { items, nextCursor } = await listUsers({ q, cursor, limit: 50 }, { includePii })
+	const { items, nextCursor } = await listUsers({ cursor, limit: 50, q }, { includePii })
 
 	return (
 		<div className="hl-stack">

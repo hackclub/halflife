@@ -211,7 +211,7 @@ async function fetchGitHubSnapshot(ref: RepoRef): Promise<Snapshot> {
 		if (r.content && r.encoding === "base64") readme = Buffer.from(r.content, "base64").toString("utf-8")
 	}
 
-	return { kind: "ok", paths, files, readme, truncated: body.truncated === true, designs: designFinder(ref, files) }
+	return { designs: designFinder(ref, files), files, kind: "ok", paths, readme, truncated: body.truncated === true }
 }
 
 /**
@@ -262,7 +262,7 @@ async function fetchGitLabSnapshot(ref: RepoRef): Promise<Snapshot> {
 	const paths = files.map(p => p.toLowerCase())
 	const readme = await fetchGitLabReadme(forge, project, files)
 	// GitLab lists the whole tree when asked to recurse, so a file absent from `paths` is genuinely absent – there is no "cut short" state to carry.
-	return { kind: "ok", paths, files, readme, truncated: false, designs: designFinder(ref, files) }
+	return { designs: designFinder(ref, files), files, kind: "ok", paths, readme, truncated: false }
 }
 
 /**
@@ -317,11 +317,11 @@ function sample(found: readonly string[]): string {
 
 function result(repo: string | null, checks: RepoCheck[], unavailable = false): RepoCheckResult {
 	return {
-		repo,
-		checks,
 		canSubmit: !checks.some(c => c.blocking && c.status === "fail"),
-		unavailable,
 		checkedAt: new Date().toISOString(),
+		checks,
+		repo,
+		unavailable,
 	}
 }
 
@@ -329,11 +329,11 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 	if (!repoLink) {
 		return result(null, [
 			{
+				blocking: true,
+				detail: `Add your project's repo so a reviewer can see the files. Select "Edit details" above and add to the "Repo link" field.`,
 				key: "repo",
 				label: "No repo yet",
 				status: "fail",
-				detail: `Add your project's repo so a reviewer can see the files. Select "Edit details" above and add to the "Repo link" field.`,
-				blocking: true,
 			},
 		])
 	}
@@ -345,11 +345,11 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 		if (foreignHost) return result(repoLink, [nonForgeWarn(foreignHost)], true)
 		return result(repoLink, [
 			{
+				blocking: true,
+				detail: "Use the link to the repo itself, like github.com/you/your-project.",
 				key: "repo",
 				label: "Not a repo link",
 				status: "fail",
-				detail: "Use the link to the repo itself, like github.com/you/your-project.",
-				blocking: true,
 			},
 		])
 	}
@@ -362,10 +362,10 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 			repoLink,
 			[
 				{
+					detail: `${why} You can still submit; a reviewer will check the repo by hand.`,
 					key: "repo",
 					label: "Could not check the repo",
 					status: "warn",
-					detail: `${why} You can still submit; a reviewer will check the repo by hand.`,
 				},
 			],
 			true,
@@ -376,11 +376,11 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 	if (snap.kind === "not-found") {
 		return result(repoLink, [
 			{
+				blocking: true,
+				detail: `${name} does not exist or is private. Make it public so a reviewer can open it.`,
 				key: "repo",
 				label: "Repo not found",
 				status: "fail",
-				detail: `${name} does not exist or is private. Make it public so a reviewer can open it.`,
-				blocking: true,
 			},
 		])
 	}
@@ -394,28 +394,28 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 		? await snap.designs()
 		: []
 
-	const checks: RepoCheck[] = [{ key: "repo", label: `Public ${forge.label} repo`, status: "pass", detail: name }]
+	const checks: RepoCheck[] = [{ detail: name, key: "repo", label: `Public ${forge.label} repo`, status: "pass" }]
 
 	checks.push(
 		readme !== null
 			? { key: "readme", label: "README", status: "pass" }
 			: {
+					blocking: true,
+					detail: "Add a README.md saying what the project is and how it works.",
 					key: "readme",
 					label: "README missing",
 					status: "fail",
-					detail: "Add a README.md saying what the project is and how it works.",
-					blocking: true,
 				},
 	)
 	checks.push(
 		readme !== null && README_IMAGE.test(readme)
 			? { key: "readme_photo", label: "Photos in the README", status: "pass" }
 			: {
+					blocking: true,
+					detail: "Add at least one image of the project – a render, a screenshot of the board, or a photo.",
 					key: "readme_photo",
 					label: "No photos in the README",
 					status: "fail",
-					detail: "Add at least one image of the project – a render, a screenshot of the board, or a photo.",
-					blocking: true,
 				},
 	)
 
@@ -424,17 +424,17 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 		const def = REPO_FILE_KINDS[kind]
 		checks.push(
 			found.length > 0
-				? { key: kind, label: def.label, status: "pass", detail: sample(found) }
+				? { detail: sample(found), key: kind, label: def.label, status: "pass" }
 				: truncated
 					? // Not found in a list the forge cut short is not the same as not
 						// there, so it cannot block – a reviewer checks by hand instead.
 						{
+							detail: `The repo is too big for ${forge.label} to list in full, so this could not be confirmed. ${def.missing}`,
 							key: kind,
 							label: `${def.label} not found`,
 							status: "warn",
-							detail: `The repo is too big for ${forge.label} to list in full, so this could not be confirmed. ${def.missing}`,
 						}
-					: { key: kind, label: `${def.label} missing`, status: "fail", detail: def.missing, blocking: true },
+					: { blocking: true, detail: def.missing, key: kind, label: `${def.label} missing`, status: "fail" },
 		)
 	}
 	for (const kind of recommended) {
@@ -442,12 +442,12 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 		const def = REPO_FILE_KINDS[kind]
 		checks.push(
 			found.length > 0
-				? { key: kind, label: def.label, status: "pass", detail: sample(found) }
+				? { detail: sample(found), key: kind, label: def.label, status: "pass" }
 				: {
+						detail: `${def.missing}. Not required; add it if it fits your project.`,
 						key: kind,
 						label: `${def.label} not found`,
 						status: "warn",
-						detail: `${def.missing}. Not required; add it if it fits your project.`,
 					},
 		)
 	}
@@ -478,10 +478,10 @@ function foreignRepoHost(link: string): string | null {
 /** A repo on a host we cannot read: a hand-check, not a failure. */
 function nonForgeWarn(host: string): RepoCheck {
 	return {
+		detail: `${host} is not a service Half Life can read, so these file checks cannot run. You can still submit; a reviewer will open the repo by hand.`,
 		key: "repo",
 		label: "Repo is on another service",
 		status: "warn",
-		detail: `${host} is not a service Half Life can read, so these file checks cannot run. You can still submit; a reviewer will open the repo by hand.`,
 	}
 }
 

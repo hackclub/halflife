@@ -7,8 +7,8 @@ import { PublicProjectDetail } from "./PublicProjectDetail"
 export const dynamic = "force-dynamic"
 
 export const metadata: Metadata = {
-	title: "Half Life Project",
 	description: "Everything logged against one project, newest first.",
+	title: "Half Life Project",
 }
 
 export default async function ProjectPage({ params }: { params: Promise<{ id: string }> }) {

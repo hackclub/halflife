@@ -25,7 +25,7 @@ export const LEGACY_BOM_PATH = "BOM.md"
 
 /** The standing deletion of the old BOM path, for the sync's file set. */
 export function legacyBomDeletion(): FileUpdate {
-	return { path: LEGACY_BOM_PATH, content: null }
+	return { content: null, path: LEGACY_BOM_PATH }
 }
 
 const BANNER = (what: string, projectId: string, generatedAt: Date, link: string) =>
@@ -205,7 +205,7 @@ export function renderJournal(project: ProjectMeta, entries: JournalEntry[]): Re
 
 	if (entries.length === 0) {
 		lines.push("_No entries logged yet._", "")
-		return { path: JOURNAL_PATH, content: lines.join("\n") }
+		return { content: lines.join("\n"), path: JOURNAL_PATH }
 	}
 
 	// Oldest first: a devlog is read forward.
@@ -235,7 +235,7 @@ export function renderJournal(project: ProjectMeta, entries: JournalEntry[]): Re
 		for (const clip of entry.timelapses) if (clip.url) lines.push(`[Timelapse](${clip.url})`, "")
 	}
 
-	return { path: JOURNAL_PATH, content: lines.join("\n") }
+	return { content: lines.join("\n"), path: JOURNAL_PATH }
 }
 
 export type BomLineForFile = {
@@ -276,5 +276,5 @@ export function renderBom(items: BomLineForFile[], taxShippingUsd: number): Rend
 		)
 	}
 	csv.push(csvRow(["Estimated total shipping", 1, "", "", usd(taxShippingUsd), ""]))
-	return { path: BOM_PATH, content: `${csv.join("\n")}\n` }
+	return { content: `${csv.join("\n")}\n`, path: BOM_PATH }
 }

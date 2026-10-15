@@ -3,14 +3,13 @@ import { boundedText, httpsUrl, phaseSchema } from "@/lib/schemas/common"
 
 export const projectUpdateSchema = z
 	.object({
-		title: boundedText(120, 1).optional(),
-		description: boundedText(4000).optional(),
-		githubRepo: httpsUrl.nullable().optional(),
-		coverImageKey: z.string().max(500).nullable().optional(),
 		artifactLinks: z
 			.array(z.object({ label: boundedText(80, 1), url: httpsUrl }))
 			.max(10)
 			.optional(),
+		coverImageKey: z.string().max(500).nullable().optional(),
+		description: boundedText(4000).optional(),
+		githubRepo: httpsUrl.nullable().optional(),
 		/**
 		 * The tier the participant is ASKING for. Never the assigned one: that is a reviewer's decision at design approval, because it is parts money.
 		 */
@@ -19,25 +18,26 @@ export const projectUpdateSchema = z
 		 * Taking one of the week's starter projects, or null to go back to your own idea. The route checks it is one this person is offered.
 		 */
 		starterProjectId: z.string().trim().min(1).max(64).nullable().optional(),
+		title: boundedText(120, 1).optional(),
 	})
 	.strict()
 
 export const submitSchema = z
 	.object({
-		phase: phaseSchema,
-		notes: boundedText(4000).optional(),
 		/** R2 keys for evidence handed in with the submission. */
 		attachmentKeys: z.array(z.string().max(500)).max(10).default([]),
+		/**
+		 * The maker ticked the box saying they want no parts funding for this project. Design only: a build carries no parts money, so the route refuses it there rather than recording a meaningless flag.
+		 */
+		fundingDeclined: z.boolean().default(false),
+		notes: boundedText(4000).optional(),
 		/**
 		 * The maker ticked the box saying they know a cart past the tier's funding is only partly funded and they will cover the rest.
 		 *
 		 * An assertion, not permission: the route works out from the database whether the cart is actually over, and ignores this on one that is not, so a stale tick left over from a bigger cart cannot get a small one through.
 		 */
 		partialFundingAccepted: z.boolean().default(false),
-		/**
-		 * The maker ticked the box saying they want no parts funding for this project. Design only: a build carries no parts money, so the route refuses it there rather than recording a meaningless flag.
-		 */
-		fundingDeclined: z.boolean().default(false),
+		phase: phaseSchema,
 	})
 	.strict()
 
@@ -50,8 +50,8 @@ export const unsubmitSchema = z.object({ phase: phaseSchema }).strict()
  */
 export const disputeSchema = z
 	.object({
-		phase: phaseSchema,
 		note: boundedText(2000, 10),
+		phase: phaseSchema,
 	})
 	.strict()
 
@@ -67,13 +67,13 @@ export type ProjectUpdateInput = z.infer<typeof projectUpdateSchema>
 /** One line of a bill of materials, as the maker writes it. */
 export const bomItemSchema = z
 	.object({
+		link: httpsUrl,
 		name: boundedText(120, 1),
 		// Every field is required: a reviewer prices the tier from this list, and a line without a vendor, a link or a price is one they cannot check.
 		purpose: boundedText(200, 1),
 		quantity: z.number().int().min(1).max(10_000),
 		unitCostUsd: z.number().positive().max(10_000),
 		vendor: boundedText(80, 1),
-		link: httpsUrl,
 	})
 	.strict()
 

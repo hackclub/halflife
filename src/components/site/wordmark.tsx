@@ -52,7 +52,7 @@ export default function Wordmark({
 				{/* `mx-auto` so the box still centres when a caller hands the tag a
             full-width class: the artwork is narrower than the tag now, and a
             block child does not answer to the plate's `text-center`. */}
-				<span className="relative mx-auto block" style={{ width: artWidth, aspectRatio: String(LOGO_ASPECT) }}>
+				<span className="relative mx-auto block" style={{ aspectRatio: String(LOGO_ASPECT), width: artWidth }}>
 					{/* Contain, not cover. Cover was there to trim transparent air off a
               file that had some; with the box now cut from the file's own
               proportions the two agree, so neither fits differently – and

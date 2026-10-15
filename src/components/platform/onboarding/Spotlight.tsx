@@ -85,10 +85,10 @@ export function Spotlight({
 		if (el) {
 			const r = el.getBoundingClientRect()
 			const next = {
-				top: Math.round(r.top - pad),
-				left: Math.round(r.left - pad),
-				width: Math.round(r.width + pad * 2),
 				height: Math.round(r.height + pad * 2),
+				left: Math.round(r.left - pad),
+				top: Math.round(r.top - pad),
+				width: Math.round(r.width + pad * 2),
 			}
 			setRect(prev => (same(prev, next) ? prev : next))
 		}
@@ -101,10 +101,10 @@ export function Spotlight({
 		}
 		const r = other.getBoundingClientRect()
 		const next = {
-			top: Math.round(r.top - pad),
-			left: Math.round(r.left - pad),
-			width: Math.round(r.width + pad * 2),
 			height: Math.round(r.height + pad * 2),
+			left: Math.round(r.left - pad),
+			top: Math.round(r.top - pad),
+			width: Math.round(r.width + pad * 2),
 		}
 		setAlsoRect(prev => (same(prev, next) ? prev : next))
 	}, [selector, also, pad])
@@ -123,7 +123,7 @@ export function Spotlight({
 	}, [measure])
 
 	useEffect(() => {
-		firstVisible(selector)?.scrollIntoView({ block: "center", behavior: "smooth" })
+		firstVisible(selector)?.scrollIntoView({ behavior: "smooth", block: "center" })
 		follow()
 		const onMove = () => follow()
 		window.addEventListener("scroll", onMove, true)
@@ -217,11 +217,11 @@ export function Spotlight({
 	// Closed, the second window is a point at the middle of where it will be, so it opens outward from its own centre instead of unrolling from a corner.
 	const opening = (r: Rect) =>
 		revealed
-			? { transform: `translate(${r.left}px, ${r.top}px)`, width: r.width, height: r.height }
+			? { height: r.height, transform: `translate(${r.left}px, ${r.top}px)`, width: r.width }
 			: {
+					height: 0,
 					transform: `translate(${r.left + r.width / 2}px, ${r.top + r.height / 2}px)`,
 					width: 0,
-					height: 0,
 				}
 
 	const open = `transform 420ms 760ms ${EASE}, width 420ms 760ms ${EASE}, height 420ms 760ms ${EASE}`
@@ -229,12 +229,12 @@ export function Spotlight({
 	// The line is a dashed marker stroke revealed by a wipe rather than by a marching dash pattern, so it reads as being drawn rather than as traffic.
 	const wipe = line
 		? {
-				x: Math.min(line.from.x, line.to.x) - 6,
-				y: Math.min(line.from.y, line.to.y) - 8,
-				w: Math.abs(line.to.x - line.from.x) + 12,
 				h: Math.abs(line.to.y - line.from.y) + 16,
 				// The left edge the wipe starts from, kept on the object so the render does not have to reach back through a nullable `line`.
 				startX: line.from.x - 6,
+				w: Math.abs(line.to.x - line.from.x) + 12,
+				x: Math.min(line.from.x, line.to.x) - 6,
+				y: Math.min(line.from.y, line.to.y) - 8,
 			}
 		: null
 
@@ -351,11 +351,11 @@ export function Spotlight({
 				role="dialog"
 				style={
 					{
-						top: cardTop,
-						left: cardLeft,
-						width: cardW,
 						"--sk-color": "var(--color-gold-deep)",
 						"--sk-radius": "18px",
+						left: cardLeft,
+						top: cardTop,
+						width: cardW,
 					} as React.CSSProperties
 				}
 			>

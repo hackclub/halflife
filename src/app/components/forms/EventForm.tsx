@@ -66,12 +66,12 @@ export function EventForm({
 		setError(null)
 
 		const body: Record<string, unknown> = {
-			title,
 			colour,
 			description: description || null,
-			startsAt: startsAt ? new Date(startsAt).toISOString() : null,
 			endsAt: endsAt ? new Date(endsAt).toISOString() : null,
 			published,
+			startsAt: startsAt ? new Date(startsAt).toISOString() : null,
+			title,
 			// Only meaningful on a create; the update schema has no such field and
 			// `.strict()` would refuse the whole body for carrying one.
 			...(editing ? {} : { repeatWeeks }),
@@ -79,9 +79,9 @@ export function EventForm({
 
 		try {
 			const res = await fetch(editing ? `/api/admin/events/${editing.id}` : "/api/admin/events", {
-				method: editing ? "PATCH" : "POST",
-				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify(body),
+				headers: { "Content-Type": "application/json" },
+				method: editing ? "PATCH" : "POST",
 			})
 			if (!res.ok) {
 				const payload = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
@@ -216,8 +216,8 @@ export function EventForm({
 				<p className="hl-hint" style={{ margin: 0 }}>
 					{repeatWeeks} occurrences, every {WEEK_MS / 86_400_000} days from {formatShortDate(startsAt)} to{" "}
 					{new Date(new Date(startsAt).getTime() + (repeatWeeks - 1) * WEEK_MS).toLocaleDateString("en-US", {
-						month: "short",
 						day: "numeric",
+						month: "short",
 						year: "numeric",
 					})}
 					.

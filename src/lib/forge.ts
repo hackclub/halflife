@@ -40,28 +40,28 @@ export type Forge = {
 
 export const FORGES: Record<ForgeId, Forge> = {
 	github: {
-		id: "github",
-		label: "GitHub",
-		hostname: "github.com",
 		aliases: ["www.github.com"],
 		blobSegment: "blob",
+		hostname: "github.com",
+		id: "github",
+		label: "GitHub",
 		nestedGroups: false,
+		newAppUrl: "https://github.com/settings/applications/new",
 		// `repo` rather than `public_repo`: a maker's project repo may be private, and the difference only shows up the first day someone links a private repo and every write 403s. `read:user` is what lets the picker read their login.
 		scopes: ["read:user", "repo"],
-		newAppUrl: "https://github.com/settings/applications/new",
 	},
 	gitlab: {
-		id: "gitlab",
-		label: "GitLab",
-		hostname: "gitlab.com",
 		aliases: ["www.gitlab.com"],
 		blobSegment: "-/blob",
+		hostname: "gitlab.com",
+		id: "gitlab",
+		label: "GitLab",
 		nestedGroups: true,
+		newAppUrl: "https://gitlab.com/-/user_settings/applications",
 		// `api` covers reading a repo's files AND creating a commit through the Commits API, which `write_repository` alone does not (that is Git-over- HTTP only – the docs are explicit that it is "not using the API"). `read_user` is the picker's equivalent of GitHub's `read:user`.
 		//
 		// `api` is broad – it is read/write over every project the person can see. GitLab offers nothing narrower that still covers "commit to an arbitrary project the maker names", so this is asked for at link time and explained in the picker, exactly as GitHub's `repo` scope is.
 		scopes: ["api", "read_user"],
-		newAppUrl: "https://gitlab.com/-/user_settings/applications",
 	},
 }
 

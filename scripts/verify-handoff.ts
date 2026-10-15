@@ -46,10 +46,10 @@ async function refused(label: string, fn: () => Promise<unknown>): Promise<void>
 function fakeVideo() {
 	const bytes = Buffer.from("00000018667479706d703432000000006d70343269736f6d", "hex")
 	return {
-		name: "clip.mp4",
-		type: "video/mp4",
-		size: bytes.byteLength,
 		bytes: async () => bytes,
+		name: "clip.mp4",
+		size: bytes.byteLength,
+		type: "video/mp4",
 	}
 }
 
@@ -71,8 +71,8 @@ async function main() {
 	// ── The token is never stored ──────────────────────────────────────────────
 	const handoff = await createHandoff(owner.id)
 	const row = await prisma.uploadHandoff.findUniqueOrThrow({
+		select: { objectKey: true, tokenHash: true, usedAt: true, userId: true },
 		where: { id: handoff.id },
-		select: { tokenHash: true, userId: true, usedAt: true, objectKey: true },
 	})
 	check("token is not stored in plaintext", row.tokenHash === handoff.token, false)
 	check("what is stored is its SHA-256", row.tokenHash, createHash("sha256").update(handoff.token).digest("hex"))
@@ -95,8 +95,8 @@ async function main() {
 	// ── Expiry is enforced server-side ─────────────────────────────────────────
 	const expiring = await createHandoff(owner.id)
 	await prisma.uploadHandoff.update({
-		where: { id: expiring.id },
 		data: { expiresAt: new Date(Date.now() - 1000) },
+		where: { id: expiring.id },
 	})
 	check("an expired token does not resolve", await resolveHandoff(expiring.token), null)
 	await refused("an expired token cannot upload", () => completeHandoff(expiring.token, fakeVideo()))
@@ -110,10 +110,10 @@ async function main() {
 	// ── Content type ───────────────────────────────────────────────────────────
 	await refused("a non-video is rejected", () =>
 		completeHandoff(live.token, {
-			name: "notes.txt",
-			type: "text/plain",
-			size: 10,
 			bytes: async () => Buffer.from("plain text"),
+			name: "notes.txt",
+			size: 10,
+			type: "text/plain",
 		}),
 	)
 	check("a rejected upload does not spend the code", (await resolveHandoff(live.token))?.id, live.id)

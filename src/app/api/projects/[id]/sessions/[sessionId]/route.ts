@@ -29,13 +29,13 @@ const EDITABLE_PHASE_STATUSES = [PhaseStatus.draft, PhaseStatus.update_requested
 
 async function loadOwned(userId: string, projectId: string, sessionId: string) {
 	return prisma.workSession.findFirst({
+		include: { themeProject: { select: { buildStatus: true, designStatus: true, theme: true } } },
 		where: {
-			id: sessionId,
-			themeProjectId: projectId,
 			deletedAt: null,
-			themeProject: { userId, deletedAt: null },
+			id: sessionId,
+			themeProject: { deletedAt: null, userId },
+			themeProjectId: projectId,
 		},
-		include: { themeProject: { select: { theme: true, designStatus: true, buildStatus: true } } },
 	})
 }
 
@@ -73,8 +73,8 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 
 	// Timelapse re-attachment. `timelapses`, when present, is the full desired set of LAPSE clips: rows for ids already on this session are kept without re-verification, so a clip that went private since does not fail an unrelated words edit; brand-new ids go through the same ownership and single-use checks as creation; lapse rows for anything else come off. Ids naming this session's own older R2 uploads are kept silently – those rows predate Lapse and are never touched here.
 	const rows = await prisma.sessionTimelapse.findMany({
+		select: { externalId: true, id: true, objectKey: true, provider: true },
 		where: { workSessionId: sessionId },
-		select: { id: true, provider: true, externalId: true, objectKey: true },
 	})
 	const r2Keys = new Set(rows.flatMap(r => (r.objectKey ? [r.objectKey] : [])))
 	const have = new Set(rows.flatMap(r => (r.provider === "lapse" && r.externalId ? [r.externalId] : [])))
@@ -85,34 +85,34 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 	const addIds = want ? want.filter(id => !have.has(id)) : []
 	// Same rule as creation, asked of Lapse rather than trusted from the sheet. Only brand-new ids are verified; everything already attached stays without a round trip. Verified for its side effects here (ownership, published, processed) and mapped to the shape the reconciler writes: `LapseTimelapse.createdAt` is epoch ms and becomes the recording's start, which is what makes this clip's wall-clock window comparable with Hackatime's tracked intervals.
 	const fresh = (await verifyOwnTimelapses(gate.user.id, addIds)).map(t => ({
-		id: t.id,
-		title: t.title,
-		playbackUrl: t.playbackUrl,
-		thumbnailUrl: t.thumbnailUrl,
 		durationSeconds: t.durationSeconds,
-		recordedAt: t.createdAt,
 		hackatimeProject: t.hackatimeProject,
+		id: t.id,
+		playbackUrl: t.playbackUrl,
+		recordedAt: t.createdAt,
+		thumbnailUrl: t.thumbnailUrl,
+		title: t.title,
 	}))
 
 	const updated = await prisma.$transaction(async tx => {
 		if (want !== null) await reconcileSessionTimelapses(tx, sessionId, want, fresh)
 		// Conditional on the phase still being editable and the entry still unreviewed: a submit or a decision that commits between the checks above and this write makes it match nothing, and the edit is refused rather than landing on a frozen week.
 		const changed = await tx.workSession.updateMany({
-			where: {
-				id: sessionId,
-				themeProjectId: id,
-				deletedAt: null,
-				hoursApproved: null,
-				OR: [
-					{ phase: Phase.DESIGN, themeProject: { designStatus: { in: EDITABLE_PHASE_STATUSES } } },
-					{ phase: Phase.BUILD, themeProject: { buildStatus: { in: EDITABLE_PHASE_STATUSES } } },
-				],
-			},
 			data: {
 				...(data.title !== undefined ? { title: sanitize(data.title) } : {}),
 				...(data.content !== undefined ? { content: data.content ? sanitizeHtml(data.content) : null } : {}),
 				...(data.hoursClaimed !== undefined ? { hoursClaimed: data.hoursClaimed } : {}),
 				...(data.hoursSource !== undefined ? { hoursSource: data.hoursSource } : {}),
+			},
+			where: {
+				deletedAt: null,
+				hoursApproved: null,
+				id: sessionId,
+				OR: [
+					{ phase: Phase.DESIGN, themeProject: { designStatus: { in: EDITABLE_PHASE_STATUSES } } },
+					{ phase: Phase.BUILD, themeProject: { buildStatus: { in: EDITABLE_PHASE_STATUSES } } },
+				],
+				themeProjectId: id,
 			},
 		})
 		if (changed.count !== 1) throw new HttpError("PHASE_LOCKED", "This week moved while its entry was being edited")
@@ -121,14 +121,14 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 
 	await logAudit({
 		action: AuditAction.USER_UPDATE_SESSION,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "WorkSession",
-		targetId: sessionId,
+		actorId: gate.user.id,
 		metadata: {
-			before: { hoursClaimed: session.hoursClaimed, title: session.title, timelapses: [...have] },
-			after: { hoursClaimed: updated.hoursClaimed, title: updated.title, timelapses: want ?? [...have] },
+			after: { hoursClaimed: updated.hoursClaimed, timelapses: want ?? [...have], title: updated.title },
+			before: { hoursClaimed: session.hoursClaimed, timelapses: [...have], title: session.title },
 		},
+		targetId: sessionId,
+		targetType: "WorkSession",
 	})
 
 	if (data.hoursClaimed !== undefined || data.hoursSource !== undefined || data.timelapses !== undefined)
@@ -169,17 +169,17 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 	await prisma.$transaction(async tx => {
 		// Conditional on the phase still being editable and the entry still unreviewed: a submit or a review that commits between the checks above and this write makes it match nothing, and the entry stays.
 		const deleted = await tx.workSession.updateMany({
+			data: { deletedAt: new Date() },
 			where: {
-				id: sessionId,
-				themeProjectId: id,
 				deletedAt: null,
 				hoursApproved: null,
+				id: sessionId,
 				OR: [
 					{ phase: Phase.DESIGN, themeProject: { designStatus: { in: EDITABLE_PHASE_STATUSES } } },
 					{ phase: Phase.BUILD, themeProject: { buildStatus: { in: EDITABLE_PHASE_STATUSES } } },
 				],
+				themeProjectId: id,
 			},
-			data: { deletedAt: new Date() },
 		})
 		if (deleted.count !== 1) throw new HttpError("PHASE_LOCKED", "This week moved while its entry was being deleted")
 		await recomputeStreak(tx, gate.user.id)
@@ -187,11 +187,11 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 
 	await logAudit({
 		action: AuditAction.USER_DELETE_SESSION,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "WorkSession",
+		actorId: gate.user.id,
+		metadata: { hoursClaimed: session.hoursClaimed, themeProjectId: id },
 		targetId: sessionId,
-		metadata: { themeProjectId: id, hoursClaimed: session.hoursClaimed },
+		targetType: "WorkSession",
 	})
 
 	await recomputeWeek(gate.user.id, session.weekNumber)

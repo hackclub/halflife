@@ -10,8 +10,8 @@ export const GET = withRoute(async () => {
 	if (gate.error) return gate.error
 
 	const user = await prisma.user.findUnique({
-		where: { id: gate.user.id },
 		select: { hackatimeUserId: true },
+		where: { id: gate.user.id },
 	})
 	if (!user?.hackatimeUserId) return fail("HACKATIME_NOT_LINKED", "Link your Hackatime account first")
 

@@ -17,14 +17,14 @@ function parseMaxBytes(raw: string | undefined): number {
 export const MAX_UPLOAD_BYTES = parseMaxBytes(process.env.UPLOAD_MAX_BYTES)
 
 const EXTENSION_MIME: Record<string, string[]> = {
-	jpg: ["image/jpeg"],
-	jpeg: ["image/jpeg"],
-	png: ["image/png"],
 	gif: ["image/gif"],
-	webp: ["image/webp"],
-	mp4: ["video/mp4"],
-	webm: ["video/webm"],
+	jpeg: ["image/jpeg"],
+	jpg: ["image/jpeg"],
 	mov: ["video/quicktime"],
+	mp4: ["video/mp4"],
+	png: ["image/png"],
+	webm: ["video/webm"],
+	webp: ["image/webp"],
 }
 
 /**
@@ -140,9 +140,9 @@ function credentials() {
 
 function client(): S3Client {
 	return new S3Client({
-		region: "auto",
-		endpoint: process.env.S3_ENDPOINT,
 		credentials: credentials(),
+		endpoint: process.env.S3_ENDPOINT,
+		region: "auto",
 	})
 }
 
@@ -162,15 +162,15 @@ function endpointIncludesBucket(): boolean {
 function listingClient(): S3Client {
 	const endpoint = process.env.S3_ENDPOINT
 	if (!endpoint || !endpointIncludesBucket()) {
-		return new S3Client({ region: "auto", endpoint, credentials: credentials() })
+		return new S3Client({ credentials: credentials(), endpoint, region: "auto" })
 	}
 
 	const root = new URL(endpoint)
 	root.pathname = root.pathname.replace(/\/[^/]+$/, "")
 	return new S3Client({
-		region: "auto",
-		endpoint: root.toString().replace(/\/$/, ""),
 		credentials: credentials(),
+		endpoint: root.toString().replace(/\/$/, ""),
+		region: "auto",
 	})
 }
 
@@ -188,13 +188,14 @@ export async function listUploadedObjects(
 		const result = await listingClient().send(
 			new ListObjectsV2Command({
 				Bucket: bucket,
-				Prefix: requestPrefix || undefined,
-				MaxKeys: Math.min(Math.max(opts.limit ?? 100, 1), 1000),
 				ContinuationToken: opts.cursor || undefined,
+				MaxKeys: Math.min(Math.max(opts.limit ?? 100, 1), 1000),
+				Prefix: requestPrefix || undefined,
 			}),
 		)
 
 		return {
+			nextCursor: result.IsTruncated ? (result.NextContinuationToken ?? null) : null,
 			objects: (result.Contents ?? []).flatMap(object => {
 				if (!object.Key) return []
 				const key =
@@ -202,14 +203,13 @@ export async function listUploadedObjects(
 				return [
 					{
 						key,
-						size: object.Size ?? 0,
 						lastModified: object.LastModified ?? null,
+						size: object.Size ?? 0,
 						storageClass: object.StorageClass ?? null,
 						url: publicUrlFor(key),
 					},
 				]
 			}),
-			nextCursor: result.IsTruncated ? (result.NextContinuationToken ?? null) : null,
 			prefix,
 		}
 	} catch (err) {
@@ -232,7 +232,7 @@ export function validateUpload(
 	if (!allowed.includes(contentType)) {
 		return { ok: false, reason: `Content type ${contentType} does not match .${ext}` }
 	}
-	return { ok: true, ext }
+	return { ext, ok: true }
 }
 
 /**
@@ -271,10 +271,10 @@ export async function putObject(key: string, body: Buffer, contentType: string):
 	try {
 		await client().send(
 			new PutObjectCommand({
-				Bucket: process.env.S3_BUCKET_NAME,
-				Key: key,
 				Body: body,
+				Bucket: process.env.S3_BUCKET_NAME,
 				ContentType: contentType,
+				Key: key,
 			}),
 		)
 	} catch (err) {

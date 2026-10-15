@@ -24,28 +24,28 @@ export const POST = withRoute(async (req: Request) => {
 		const roles = await getUserRoles(gate.user.id)
 
 		const post = await createPost({
-			userId: gate.user.id,
-			kind: parsed.data.kind,
+			byteSize: parsed.data.byteSize ?? null,
+			canManageFeed: hasPermission(roles, Permission.MANAGE_FEED),
 			caption: parsed.data.caption,
-			objectKey: parsed.data.objectKey,
-			thumbnailKey: parsed.data.thumbnailKey ?? null,
-			themeProjectId: parsed.data.themeProjectId ?? null,
 			checkpointKey: parsed.data.checkpointKey ?? null,
 			contentType: parsed.data.contentType ?? null,
-			byteSize: parsed.data.byteSize ?? null,
 			durationSeconds: parsed.data.durationSeconds ?? null,
-			width: parsed.data.width ?? null,
 			height: parsed.data.height ?? null,
-			canManageFeed: hasPermission(roles, Permission.MANAGE_FEED),
+			kind: parsed.data.kind,
+			objectKey: parsed.data.objectKey,
+			themeProjectId: parsed.data.themeProjectId ?? null,
+			thumbnailKey: parsed.data.thumbnailKey ?? null,
+			userId: gate.user.id,
+			width: parsed.data.width ?? null,
 		})
 
 		await logAudit({
 			action: AuditAction.USER_CREATE_POST,
-			actorId: gate.user.id,
 			actorEmail: gate.user.email,
-			targetType: "Post",
-			targetId: post.id,
+			actorId: gate.user.id,
 			metadata: { kind: post.kind, themeProjectId: post.project?.id ?? null },
+			targetId: post.id,
+			targetType: "Post",
 		})
 
 		return ok({ post }, { status: 201 })
@@ -71,14 +71,14 @@ async function logPostRefusal(userId: string, actorEmail: string, req: Request, 
 	}
 	await logAudit({
 		action: AuditAction.USER_CREATE_POST_FAILED,
-		actorId: userId,
 		actorEmail,
-		targetType: "User",
-		targetId: userId,
+		actorId: userId,
 		metadata: {
 			code,
 			reason: err instanceof Error ? err.message : String(err),
 			...(checkpointKey ? { checkpointKey } : {}),
 		},
+		targetId: userId,
+		targetType: "User",
 	})
 }

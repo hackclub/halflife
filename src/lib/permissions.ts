@@ -61,8 +61,8 @@ export function hasRole(roles: Role[], role: Role): boolean {
 
 export async function getUserRoles(userId: string): Promise<Role[]> {
 	const rows = await prisma.userRole.findMany({
-		where: { userId },
 		select: { role: true },
+		where: { userId },
 	})
 	return rows.map(r => r.role)
 }
@@ -74,8 +74,8 @@ export async function getUserRoles(userId: string): Promise<Role[]> {
  */
 export async function getUserRolesIfExists(userId: string): Promise<Role[] | null> {
 	const user = await prisma.user.findUnique({
-		where: { id: userId },
 		select: { roles: { select: { role: true } } },
+		where: { id: userId },
 	})
 	return user ? user.roles.map(r => r.role) : null
 }

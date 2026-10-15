@@ -56,9 +56,9 @@ export function ShopGrid({
 			const key = keys.current.get(item.id) ?? crypto.randomUUID()
 			keys.current.set(item.id, key)
 			const res = await fetch("/api/shop/orders", {
-				method: "POST",
+				body: JSON.stringify({ idempotencyKey: key, quantity: 1, shopItemId: item.id }),
 				headers: { "content-type": "application/json" },
-				body: JSON.stringify({ shopItemId: item.id, quantity: 1, idempotencyKey: key }),
+				method: "POST",
 			})
 			if (!res.ok) {
 				const payload = (await res.json().catch(() => ({}))) as {
@@ -92,9 +92,9 @@ export function ShopGrid({
 							setSavingRegion(true)
 							setError(null)
 							fetch("/api/shop/region", {
-								method: "PUT",
-								headers: { "content-type": "application/json" },
 								body: JSON.stringify({ regionId: next }),
+								headers: { "content-type": "application/json" },
+								method: "PUT",
 							})
 								.then(async res => {
 									if (!res.ok) {

@@ -7,10 +7,10 @@ import { sendJson, useAction } from "@/lib/use-action"
 import { uploadFile } from "@/lib/use-handoff"
 
 const CATEGORIES: { value: ShopItemCategory; label: string }[] = [
-	{ value: "PRINTER", label: "Printer – not listed in the shop" },
-	{ value: "PRINTER_UPGRADE", label: "Printer upgrade" },
-	{ value: "CONSUMABLE", label: "Consumable" },
-	{ value: "MISC", label: "Misc" },
+	{ label: "Printer – not listed in the shop", value: "PRINTER" },
+	{ label: "Printer upgrade", value: "PRINTER_UPGRADE" },
+	{ label: "Consumable", value: "CONSUMABLE" },
+	{ label: "Misc", value: "MISC" },
 ]
 
 /** The fields an existing item is edited from. */
@@ -26,13 +26,13 @@ export type ShopItemInitial = {
 }
 
 const blank = {
-	id: "",
-	name: "",
-	description: "",
-	imageUrl: "",
 	category: "PRINTER_UPGRADE" as ShopItemCategory,
-	priceCredits: "50",
 	costUsd: "",
+	description: "",
+	id: "",
+	imageUrl: "",
+	name: "",
+	priceCredits: "50",
 	requiresPrinterQualified: true,
 }
 
@@ -61,13 +61,13 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 	const [form, setForm] = useState(
 		item
 			? {
-					id: item.id,
-					name: item.name,
-					description: item.description,
-					imageUrl: item.imageUrl ?? "",
 					category: item.category,
-					priceCredits: String(item.priceCredits),
 					costUsd: item.costUsd === null ? "" : String(item.costUsd),
+					description: item.description,
+					id: item.id,
+					imageUrl: item.imageUrl ?? "",
+					name: item.name,
+					priceCredits: String(item.priceCredits),
 					requiresPrinterQualified: item.requiresPrinterQualified,
 				}
 			: blank,
@@ -96,20 +96,20 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 		e.preventDefault()
 		setSaved(false)
 		const fields = {
-			name: form.name,
+			category: form.category,
+			costUsd: form.costUsd === "" ? null : Number(form.costUsd),
 			description: form.description,
 			imageUrl: form.imageUrl.trim() === "" ? null : form.imageUrl.trim(),
-			category: form.category,
+			name: form.name,
 			priceCredits: Number(form.priceCredits),
-			costUsd: form.costUsd === "" ? null : Number(form.costUsd),
 			requiresPrinterQualified: form.requiresPrinterQualified,
 		}
 		void run(
 			"submit",
 			() =>
 				sendJson(editing ? `/api/admin/shop/items/${item.id}` : "/api/admin/shop/items", {
-					method: editing ? "PATCH" : "POST",
 					body: editing ? fields : { id: form.id, ...fields },
+					method: editing ? "PATCH" : "POST",
 				}),
 			() => {
 				// An edit stays on the page; a create clears for the next one.
@@ -172,7 +172,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 				</select>
 			</Field>
 			<Field hint="Paste an https link, or upload one. Blank for no picture." label="Image">
-				<div className="hl-row" style={{ gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+				<div className="hl-row" style={{ alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
 					<input
 						className="hl-input"
 						onChange={e => setForm({ ...form, imageUrl: e.target.value })}
@@ -201,7 +201,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 					<img
 						alt=""
 						src={previewUrl}
-						style={{ width: "7rem", height: "7rem", objectFit: "contain", marginTop: "0.5rem" }}
+						style={{ height: "7rem", marginTop: "0.5rem", objectFit: "contain", width: "7rem" }}
 					/>
 				) : null}
 			</Field>

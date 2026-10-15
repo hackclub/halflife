@@ -26,9 +26,9 @@ export function ShopItemImport() {
 		setCreated(null)
 		try {
 			const res = await fetch("/api/admin/shop/items/import", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ csv: await file.text() }),
+				headers: { "Content-Type": "application/json" },
+				method: "POST",
 			})
 			const payload = (await res.json().catch(() => ({}))) as {
 				created?: number
@@ -83,7 +83,7 @@ export function ShopItemImport() {
 				</Callout>
 			) : null}
 
-			<div className="hl-row" style={{ gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+			<div className="hl-row" style={{ alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
 				<Button disabled={busy} onClick={() => picker.current?.click()} type="button">
 					{file ? "Choose another file" : "Choose a CSV"}
 				</Button>

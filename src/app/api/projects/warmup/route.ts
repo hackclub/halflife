@@ -14,12 +14,12 @@ export const dynamic = "force-dynamic"
 
 const createSchema = z
 	.object({
-		title: boundedText(120, 1),
 		description: boundedText(4000).optional(),
 		githubRepo: httpsUrl.nullable().optional(),
-		requestedTier: z.union([z.literal(1), z.literal(2), z.literal(3)]),
 		/** DESIGN asks for parts funding; BUILD hands in something already built. */
 		phase: phaseSchema,
+		requestedTier: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+		title: boundedText(120, 1),
 	})
 	.strict()
 
@@ -41,12 +41,12 @@ export const POST = withRoute(async (req: Request) => {
 
 	const project = await prisma.themeProject.create({
 		data: {
-			userId: gate.user.id,
-			theme: Theme.WARMUP,
-			title: data.title,
 			description: data.description?.trim() || null,
 			githubRepo: data.githubRepo ?? null,
 			requestedTier: data.requestedTier,
+			theme: Theme.WARMUP,
+			title: data.title,
+			userId: gate.user.id,
 			warmupPhase: data.phase === "BUILD" ? Phase.BUILD : Phase.DESIGN,
 		},
 		select: { id: true },
@@ -56,11 +56,11 @@ export const POST = withRoute(async (req: Request) => {
 	after(() =>
 		logAudit({
 			action: AuditAction.USER_UPDATE_PROJECT,
-			actorId: gate.user.id,
 			actorEmail: gate.user.email,
-			targetType: "ThemeProject",
-			targetId: project.id,
+			actorId: gate.user.id,
 			metadata: { created: WARMUP_THEME.slug, phase: data.phase, requestedTier: data.requestedTier },
+			targetId: project.id,
+			targetType: "ThemeProject",
 		}),
 	)
 

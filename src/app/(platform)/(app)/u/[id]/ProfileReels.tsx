@@ -54,7 +54,7 @@ export function ProfileReels({ initial }: { initial: FeedItem[] }) {
 						onClose={closeComments}
 						onPatch={patch}
 						reel={active}
-						viewer={{ name: viewer.name, image: viewer.image }}
+						viewer={{ image: viewer.image, name: viewer.name }}
 					/>
 				</Modal>
 			)}

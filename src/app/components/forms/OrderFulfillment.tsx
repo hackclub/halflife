@@ -20,7 +20,7 @@ export function OrderFulfillment({
 	const { busy, error, run } = useAction()
 
 	function save(body: { method?: ShopFulfillmentMethod | null; stage?: ShopFulfillmentStage }) {
-		void run("save", () => sendJson(`/api/admin/shop/orders/${orderId}/fulfillment`, { method: "PATCH", body }))
+		void run("save", () => sendJson(`/api/admin/shop/orders/${orderId}/fulfillment`, { body, method: "PATCH" }))
 	}
 
 	return (

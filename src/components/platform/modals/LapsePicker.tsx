@@ -78,9 +78,9 @@ export function LapsePicker({
 		try {
 			const page = await fetchPage(undefined, forSession)
 			if ("unlinked" in page) setLoad({ state: "unlinked" })
-			else setLoad({ state: "ready", items: page.timelapses, nextCursor: page.nextCursor })
+			else setLoad({ items: page.timelapses, nextCursor: page.nextCursor, state: "ready" })
 		} catch (err) {
-			setLoad({ state: "error", message: (err as Error).message })
+			setLoad({ message: (err as Error).message, state: "error" })
 		}
 	}, [forSession])
 
@@ -97,12 +97,12 @@ export function LapsePicker({
 			if ("unlinked" in page) setLoad({ state: "unlinked" })
 			else
 				setLoad({
-					state: "ready",
 					items: [...load.items, ...page.timelapses],
 					nextCursor: page.nextCursor,
+					state: "ready",
 				})
 		} catch (err) {
-			setLoad({ state: "error", message: (err as Error).message })
+			setLoad({ message: (err as Error).message, state: "error" })
 		} finally {
 			setMore(false)
 		}
@@ -249,7 +249,7 @@ export function LapsePicker({
 												<IconClock className="text-xs" /> {fmtDuration(t.durationSeconds)}
 											</span>
 											<span>
-												{new Date(t.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+												{new Date(t.createdAt).toLocaleDateString(undefined, { day: "numeric", month: "short" })}
 											</span>
 											{t.visibility === "UNLISTED" && <span>unlisted</span>}
 										</span>

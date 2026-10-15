@@ -35,8 +35,8 @@ export default function WeekCountdown() {
 				const body = (await res.json()) as { weekOpensAt?: unknown; programEndsAt?: unknown }
 				if (!live || !Array.isArray(body.weekOpensAt) || typeof body.programEndsAt !== "string") return
 				setSchedule({
-					opens: body.weekOpensAt.map(at => new Date(String(at)).getTime()),
 					endsAt: new Date(body.programEndsAt).getTime(),
+					opens: body.weekOpensAt.map(at => new Date(String(at)).getTime()),
 				})
 			} catch {
 				// Offline or the endpoint is down: keep the placeholder.

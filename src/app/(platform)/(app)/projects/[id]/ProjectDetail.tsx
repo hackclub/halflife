@@ -88,9 +88,9 @@ function DisputeForm({
 		setError(null)
 		try {
 			const res = await fetch(`/api/projects/${projectId}/dispute`, {
-				method: "POST",
+				body: JSON.stringify({ note: note.trim(), phase }),
 				headers: { "content-type": "application/json" },
-				body: JSON.stringify({ phase, note: note.trim() }),
+				method: "POST",
 			})
 			if (!res.ok) {
 				const payload = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
@@ -562,7 +562,7 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 											// A warm-up project has no checkpoint of its own to address it by (several share week 0), so it names itself; a season week resolves through its checkpoint.
 											run: () =>
 												unsubmitPhase(
-													warmup ? { projectId: project.id, phase: inReview } : `w${weekFor(inReview)}-submit`,
+													warmup ? { phase: inReview, projectId: project.id } : `w${weekFor(inReview)}-submit`,
 												),
 										}
 									: undefined

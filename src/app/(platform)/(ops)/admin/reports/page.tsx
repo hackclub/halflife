@@ -16,9 +16,9 @@ import { REPORT_REASONS, REPORT_STATUS_LABELS, REPORT_TARGET_LABELS } from "@/li
 export const dynamic = "force-dynamic"
 
 const whenFormat = new Intl.DateTimeFormat("en-US", {
-	timeZone: "UTC",
 	dateStyle: "medium",
 	timeStyle: "short",
+	timeZone: "UTC",
 })
 
 function preview(text: string, max = 90): string {
@@ -204,83 +204,83 @@ type Subject = {
 
 function subjectOf(report: ContentReportRow): Subject {
 	const none: Subject = {
-		preview: "",
-		href: "#",
 		author: "—",
 		gone: true,
-		kind: "",
 		hidden: false,
-		hideUrl: null,
 		hideLabel: "Hide",
+		hideUrl: null,
+		href: "#",
+		kind: "",
+		preview: "",
 		restoreUrl: null,
 	}
 	if (report.target === "REEL" && report.post) {
 		const post = report.post
 		return {
-			preview: post.caption,
-			href: `/doomscroller?reel=${post.id}`,
 			author: displayName(post.user) ?? "a maker",
 			gone: post.deletedAt !== null,
-			kind: "reel",
 			hidden: post.hiddenAt !== null,
-			hideUrl: post.hiddenAt ? null : `/api/admin/posts/${post.id}/moderate`,
 			hideLabel: "Hide",
+			hideUrl: post.hiddenAt ? null : `/api/admin/posts/${post.id}/moderate`,
+			href: `/doomscroller?reel=${post.id}`,
+			kind: "reel",
+			preview: post.caption,
 			restoreUrl: post.hiddenAt ? `/api/admin/posts/${post.id}/moderate` : null,
 		}
 	}
 	if (report.target === "REEL_COMMENT" && report.comment) {
 		const comment = report.comment
 		return {
-			preview: comment.body,
-			href: `/doomscroller?reel=${comment.postId}&comments=1`,
 			author: displayName(comment.user) ?? "a maker",
 			gone: comment.deletedAt !== null,
-			kind: "comment",
 			hidden: comment.hiddenAt !== null,
-			hideUrl: comment.hiddenAt ? null : `/api/admin/comments/${comment.id}/moderate`,
 			hideLabel: "Hide",
+			hideUrl: comment.hiddenAt ? null : `/api/admin/comments/${comment.id}/moderate`,
+			href: `/doomscroller?reel=${comment.postId}&comments=1`,
+			kind: "comment",
+			preview: comment.body,
 			restoreUrl: null,
 		}
 	}
 	if (report.target === "PROJECT" && report.themeProject) {
 		const project = report.themeProject
 		return {
-			preview: project.title || "untitled project",
-			href: `/projects/${project.id}`,
 			author: displayName(project.user) ?? "a maker",
 			gone: project.deletedAt !== null,
-			kind: "project",
 			hidden: false,
-			hideUrl: null,
 			hideLabel: "Hide",
+			hideUrl: null,
+			href: `/projects/${project.id}`,
+			kind: "project",
+			preview: project.title || "untitled project",
 			restoreUrl: null,
 		}
 	}
 	if (report.target === "USER" && report.targetUser) {
 		const user = report.targetUser
 		return {
-			preview: displayName(user) ?? "a maker",
-			href: `/admin/users/${user.id}`,
 			author: displayName(user) ?? "a maker",
 			gone: false,
-			kind: "user",
 			hidden: false,
-			hideUrl: null,
 			hideLabel: "Hide",
+			hideUrl: null,
+			href: `/admin/users/${user.id}`,
+			kind: "user",
+			preview: displayName(user) ?? "a maker",
 			restoreUrl: null,
 		}
 	}
 	if (report.target === "DEVLOG" && report.workSession) {
 		const session = report.workSession
 		return {
-			preview: session.content ?? session.title,
-			href: `/projects/${session.themeProject.id}#${session.id}`,
 			author: displayName(session.themeProject.user) ?? "a maker",
 			gone: session.deletedAt !== null,
-			kind: "entry",
 			hidden: false,
-			hideUrl: null,
 			hideLabel: "Hide",
+			hideUrl: null,
+			href: `/projects/${session.themeProject.id}#${session.id}`,
+			kind: "entry",
+			preview: session.content ?? session.title,
 			restoreUrl: null,
 		}
 	}

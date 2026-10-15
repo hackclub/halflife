@@ -5,8 +5,8 @@ import { getMyReels } from "@/lib/queries/reels"
 import { ReelsList } from "./ReelsList"
 
 export const metadata: Metadata = {
-	title: "Half Life Reels",
 	description: "Your reels, by project, and everywhere you have posted them.",
+	title: "Half Life Reels",
 }
 
 export const dynamic = "force-dynamic"

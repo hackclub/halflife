@@ -114,7 +114,7 @@ export function excerpt(source: string, limit: number): { text: string; cut: boo
 	}
 	if (!cut && spend(last, text.length)) cut = true
 
-	return cut ? { text: `${text.slice(0, end).trimEnd()}…`, cut } : { text, cut }
+	return cut ? { cut, text: `${text.slice(0, end).trimEnd()}…` } : { cut, text }
 }
 
 /**

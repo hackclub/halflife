@@ -127,9 +127,9 @@ export function OnboardingFlow({
 		setError(null)
 		try {
 			const res = await fetch("/api/onboarding", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify(body),
+				headers: { "Content-Type": "application/json" },
+				method: "POST",
 			})
 			const payload = (await res.json().catch(() => null)) as OnboardingResponse | null
 			if (!res.ok || !payload?.onboarding) {
@@ -155,13 +155,13 @@ export function OnboardingFlow({
 	}
 
 	async function sendProject() {
-		const next = await send({ step: "project", title, description }, { advance: false })
+		const next = await send({ description, step: "project", title }, { advance: false })
 		if (next && !next.completed) setViewing(indexOf("tier"))
 	}
 
 	/** The beginner's fork on the week step: a starter, or their own project. */
 	async function chooseStart(starterProjectId: string | null) {
-		const next = await send({ step: "week", starterProjectId }, { advance: false })
+		const next = await send({ starterProjectId, step: "week" }, { advance: false })
 		if (next && !next.completed) setViewing(indexOf(starterProjectId ? "tracking" : "project"))
 	}
 
@@ -218,7 +218,7 @@ export function OnboardingFlow({
 							busy={busy}
 							canSubmit={experience !== null}
 							onBack={back}
-							onSubmit={() => send({ step: "experience", experience })}
+							onSubmit={() => send({ experience, step: "experience" })}
 						/>
 					</div>
 				) : null}
@@ -381,7 +381,7 @@ export function OnboardingFlow({
 							busy={busy}
 							label={idea ? "Next" : "Stick with my own idea"}
 							onBack={back}
-							onSubmit={() => send({ step: "idea", starterProjectId: idea })}
+							onSubmit={() => send({ starterProjectId: idea, step: "idea" })}
 						/>
 					</div>
 				) : null}
@@ -491,7 +491,7 @@ export function OnboardingFlow({
 							busy={busy}
 							canSubmit={view.project.tierLocked || pickedTier !== null}
 							onBack={back}
-							onSubmit={() => send({ step: "tier", requestedTier: view.project.tierLocked ? null : pickedTier })}
+							onSubmit={() => send({ requestedTier: view.project.tierLocked ? null : pickedTier, step: "tier" })}
 						/>
 					</div>
 				) : null}
@@ -534,7 +534,7 @@ export function OnboardingFlow({
 							busy={busy}
 							label="Next"
 							onBack={back}
-							onSubmit={() => send({ step: "tracking", dismissed: true })}
+							onSubmit={() => send({ dismissed: true, step: "tracking" })}
 						/>
 					</div>
 				) : null}
@@ -548,14 +548,14 @@ export function OnboardingFlow({
 						</p>
 						<RepoSyncSettings
 							compact
-							onEnabled={() => send({ step: "repo", enabled: true })}
+							onEnabled={() => send({ enabled: true, step: "repo" })}
 							projectId={view.projectId}
 						/>
 						<StepActions
 							busy={busy}
 							label="Finish"
 							onBack={back}
-							onSubmit={() => send({ step: "repo", enabled: false })}
+							onSubmit={() => send({ enabled: false, step: "repo" })}
 						/>
 					</div>
 				) : null}

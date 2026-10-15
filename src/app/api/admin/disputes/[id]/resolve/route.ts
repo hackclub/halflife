@@ -21,18 +21,18 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	if (parsed.error) return parsed.error
 
 	const closed = await prisma.reviewDispute.updateMany({
+		data: { resolutionNote: parsed.data.note ?? null, resolvedAt: new Date(), resolvedById: gate.user.id },
 		where: { id, resolvedAt: null },
-		data: { resolvedAt: new Date(), resolvedById: gate.user.id, resolutionNote: parsed.data.note ?? null },
 	})
 	if (closed.count === 0) return fail("CONFLICT", "That dispute is already resolved")
 
 	await logAudit({
 		action: AuditAction.ADMIN_RESOLVE_DISPUTE,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "ReviewDispute",
-		targetId: id,
+		actorId: gate.user.id,
 		metadata: { note: parsed.data.note ?? null },
+		targetId: id,
+		targetType: "ReviewDispute",
 	})
 
 	return ok({ resolved: true })

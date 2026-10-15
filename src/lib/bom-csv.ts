@@ -47,6 +47,16 @@ type Field = "name" | "purpose" | "quantity" | "unitCostUsd" | "vendor" | "link"
 
 /** Normalised header names, tried in this order when a field is ambiguous. */
 const ALIASES: Record<Field, readonly string[]> = {
+	link: [
+		"link",
+		"url",
+		"product link",
+		"product url",
+		"supplier link",
+		"supplier part url",
+		"buy link",
+		"purchase link",
+	],
 	name: [
 		"item",
 		"name",
@@ -78,16 +88,6 @@ const ALIASES: Record<Field, readonly string[]> = {
 		"unit price each",
 	],
 	vendor: ["vendor", "supplier", "manufacturer", "distributor", "mfr", "seller", "store", "source"],
-	link: [
-		"link",
-		"url",
-		"product link",
-		"product url",
-		"supplier link",
-		"supplier part url",
-		"buy link",
-		"purchase link",
-	],
 }
 
 const FIELD_ORDER: readonly Field[] = ["name", "purpose", "quantity", "unitCostUsd", "vendor", "link"]
@@ -240,16 +240,16 @@ function parseLink(value: string | undefined): string | null {
  * Common suppliers, so `lcsc.com` reads as LCSC rather than Lcsc. Anything not here still gets the registrable label, title-cased, which is close enough to edit and better than a blank next to a link the maker already has.
  */
 const KNOWN_VENDORS: Record<string, string> = {
-	"lcsc.com": "LCSC",
-	"jlcpcb.com": "JLCPCB",
-	"mouser.com": "Mouser",
-	"digikey.com": "DigiKey",
+	"adafruit.com": "Adafruit",
+	"aliexpress.com": "AliExpress",
 	"amazon.com": "Amazon",
 	"amazon.in": "Amazon",
-	"aliexpress.com": "AliExpress",
-	"adafruit.com": "Adafruit",
-	"sparkfun.com": "SparkFun",
+	"digikey.com": "DigiKey",
+	"jlcpcb.com": "JLCPCB",
+	"lcsc.com": "LCSC",
+	"mouser.com": "Mouser",
 	"robu.in": "Robu",
+	"sparkfun.com": "SparkFun",
 	"stackskb.com": "StacksKB",
 	"thecosmicbyte.com": "Cosmic Byte",
 }
@@ -304,25 +304,25 @@ export function parseBomCsv(text: string, opts: { limit?: number } = {}): Parsed
 		const rowNumber = i + 1
 		const name = cleanName(cells[nameCol] ?? "")
 		if (!name) {
-			skipped.push({ row: rowNumber, name: "", reason: "no part name" })
+			skipped.push({ name: "", reason: "no part name", row: rowNumber })
 			continue
 		}
 		if (ALIASES.name.includes(normalize(name))) {
-			skipped.push({ row: rowNumber, name, reason: "repeats the header" })
+			skipped.push({ name, reason: "repeats the header", row: rowNumber })
 			continue
 		}
 		if (NOT_A_PART.test(name)) {
-			skipped.push({ row: rowNumber, name, reason: "looks like an order total, not a part" })
+			skipped.push({ name, reason: "looks like an order total, not a part", row: rowNumber })
 			continue
 		}
 
 		const price = parseUsd(map.unitCostUsd !== undefined ? cells[map.unitCostUsd] : undefined)
 		if (price !== null && price > MAX_IMPORT_PRICE) {
-			skipped.push({ row: rowNumber, name, reason: `unit price is above $${MAX_IMPORT_PRICE}` })
+			skipped.push({ name, reason: `unit price is above $${MAX_IMPORT_PRICE}`, row: rowNumber })
 			continue
 		}
 		if (lines.length >= limit) {
-			skipped.push({ row: rowNumber, name, reason: "beyond the parts-list limit" })
+			skipped.push({ name, reason: "beyond the parts-list limit", row: rowNumber })
 			continue
 		}
 
@@ -331,12 +331,12 @@ export function parseBomCsv(text: string, opts: { limit?: number } = {}): Parsed
 			clean(map.vendor !== undefined ? cells[map.vendor] : undefined, MAX_IMPORT_VENDOR) ?? vendorFromLink(link)
 
 		lines.push({
+			link,
 			name,
 			purpose: purposeCol !== undefined ? clean(cells[purposeCol], 200) : null,
 			quantity: parseQuantity(map.quantity !== undefined ? cells[map.quantity] : undefined),
 			unitCostUsd: price ?? 0,
 			vendor,
-			link,
 		})
 	}
 

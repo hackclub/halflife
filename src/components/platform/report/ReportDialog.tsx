@@ -50,14 +50,14 @@ export function ReportDialog({
 		setError(null)
 		try {
 			const res = await fetch("/api/reports", {
-				method: "POST",
-				headers: { "content-type": "application/json" },
 				body: JSON.stringify({
+					reason,
 					target: target.type,
 					targetId: target.id,
-					reason,
 					...(details.trim() ? { details: details.trim() } : {}),
 				}),
+				headers: { "content-type": "application/json" },
+				method: "POST",
 			})
 			if (!res.ok) {
 				const payload = (await res.json().catch(() => null)) as {

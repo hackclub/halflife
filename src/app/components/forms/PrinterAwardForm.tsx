@@ -25,12 +25,12 @@ export function PrinterAwardForm({ awardId, status }: Readonly<{ awardId: string
 			"save",
 			() =>
 				sendJson(`/api/admin/printer-awards/${awardId}`, {
-					method: "PATCH",
 					body: {
 						status,
-						...(status === "SHIPPED" || status === "DELIVERED" ? { trackingNumber, trackingCarrier } : {}),
+						...(status === "SHIPPED" || status === "DELIVERED" ? { trackingCarrier, trackingNumber } : {}),
 						note,
 					},
+					method: "PATCH",
 				}),
 			() => {
 				setNext("")

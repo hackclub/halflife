@@ -27,16 +27,16 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	const note = sanitize(parsed.data.note)
 
 	const project = await prisma.themeProject.findFirst({
-		where: { id, userId: gate.user.id, deletedAt: null },
-		select: { id: true, title: true, theme: true },
+		select: { id: true, theme: true, title: true },
+		where: { deletedAt: null, id, userId: gate.user.id },
 	})
 	if (!project) return fail("NOT_FOUND", "Project not found")
 
 	// Wrap the status check, submission selection and dispute creation in one transaction so a dispute cannot attach to a submission that has since been resolved superseded or a phase that has since moved.
 	const submissionId = await prisma.$transaction(async tx => {
 		const fresh = await tx.themeProject.findFirst({
-			where: { id, userId: gate.user.id, deletedAt: null },
-			select: { designStatus: true, buildStatus: true },
+			select: { buildStatus: true, designStatus: true },
+			where: { deletedAt: null, id, userId: gate.user.id },
 		})
 		if (!fresh) throw new HttpError("NOT_FOUND", "Project not found")
 
@@ -45,15 +45,15 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 			throw new HttpError("CONFLICT", "Only a review that asked for changes or rejected the work can be disputed")
 
 		const submission = await tx.phaseSubmission.findFirst({
-			where: { themeProjectId: id, phase, resolvedAt: { not: null } },
 			orderBy: { resolvedAt: "desc" },
 			select: { id: true },
+			where: { phase, resolvedAt: { not: null }, themeProjectId: id },
 		})
 		if (!submission) throw new HttpError("NOT_FOUND", "There is no decided submission to dispute")
 
 		try {
 			await tx.reviewDispute.create({
-				data: { submissionId: submission.id, userId: gate.user.id, note },
+				data: { note, submissionId: submission.id, userId: gate.user.id },
 			})
 		} catch {
 			// The unique submissionId is the guard: one second look per decision.
@@ -65,19 +65,19 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 
 	await logAudit({
 		action: AuditAction.USER_DISPUTE_REVIEW,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "ThemeProject",
-		targetId: id,
+		actorId: gate.user.id,
 		metadata: { phase, submissionId },
+		targetId: id,
+		targetType: "ThemeProject",
 	})
 
 	await notifyStaffDispute({
-		themeProjectId: id,
-		title: projectDisplayTitle(project),
-		phase,
 		note,
 		participant: gate.user.name ?? gate.user.email,
+		phase,
+		themeProjectId: id,
+		title: projectDisplayTitle(project),
 	})
 
 	return ok({ disputed: true }, { status: 201 })

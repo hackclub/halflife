@@ -23,38 +23,38 @@ export const GET = withRoute(async (req: NextRequest) => {
 	const forSession = req.nextUrl.searchParams.get("forSession") ?? undefined
 	if (forSession) {
 		const own = await prisma.workSession.findFirst({
-			where: { id: forSession, deletedAt: null, themeProject: { userId: gate.user.id, deletedAt: null } },
 			select: { id: true },
+			where: { deletedAt: null, id: forSession, themeProject: { deletedAt: null, userId: gate.user.id } },
 		})
 		if (own) excludeSession = own.id
 	}
 
 	const used = await prisma.sessionTimelapse.findMany({
+		select: { externalId: true },
 		where: {
-			provider: "lapse",
 			externalId: { in: page.timelapses.map(t => t.id) },
+			provider: "lapse",
 			workSession: {
 				deletedAt: null,
 				themeProject: { deletedAt: null },
 				...(excludeSession ? { id: { not: excludeSession } } : {}),
 			},
 		},
-		select: { externalId: true },
 	})
 	const attached = new Set(used.map(u => u.externalId))
 
 	return ok({
-		timelapses: page.timelapses.map(t => ({
-			id: t.id,
-			title: t.title,
-			durationSeconds: t.durationSeconds,
-			visibility: t.visibility,
-			createdAt: t.createdAt,
-			thumbnailUrl: t.thumbnailUrl,
-			hackatimeProject: t.hackatimeProject,
-			processing: t.playbackUrl === null,
-			attached: attached.has(t.id),
-		})),
 		nextCursor: page.nextCursor,
+		timelapses: page.timelapses.map(t => ({
+			attached: attached.has(t.id),
+			createdAt: t.createdAt,
+			durationSeconds: t.durationSeconds,
+			hackatimeProject: t.hackatimeProject,
+			id: t.id,
+			processing: t.playbackUrl === null,
+			thumbnailUrl: t.thumbnailUrl,
+			title: t.title,
+			visibility: t.visibility,
+		})),
 	})
 })

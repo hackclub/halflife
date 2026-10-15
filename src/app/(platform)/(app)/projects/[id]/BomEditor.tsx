@@ -38,12 +38,12 @@ type Draft = {
 }
 
 const FIELD_NAMES: Record<keyof Draft, string> = {
+	link: "Link",
 	name: "Part",
 	purpose: "What it's for",
 	quantity: "Qty",
 	unitCostUsd: "Unit $",
 	vendor: "Vendor",
-	link: "Link",
 }
 
 /** "Fill out the required fields", naming the ones that are missing. */
@@ -51,16 +51,16 @@ function requiredMessage(fields: (keyof Draft)[]) {
 	return `Fill out the required fields: ${fields.map(k => FIELD_NAMES[k]).join(", ")}.`
 }
 
-const EMPTY: Draft = { name: "", purpose: "", quantity: "1", unitCostUsd: "", vendor: "", link: "" }
+const EMPTY: Draft = { link: "", name: "", purpose: "", quantity: "1", unitCostUsd: "", vendor: "" }
 
 function draftOf(line: BomLine): Draft {
 	return {
+		link: line.link ?? "",
 		name: line.name,
 		purpose: line.purpose ?? "",
 		quantity: String(line.quantity),
 		unitCostUsd: line.unitCostUsd ? String(line.unitCostUsd) : "",
 		vendor: line.vendor ?? "",
-		link: line.link ?? "",
 	}
 }
 
@@ -126,9 +126,9 @@ export function BomEditor({
 		setError(null)
 		try {
 			const res = await fetch(path, {
-				method,
-				headers: body ? { "content-type": "application/json" } : undefined,
 				body: body ? JSON.stringify(body) : undefined,
+				headers: body ? { "content-type": "application/json" } : undefined,
+				method,
 			})
 			const payload = await res.json().catch(() => null)
 			if (!res.ok) {
@@ -180,12 +180,12 @@ export function BomEditor({
 		if (bad.size > 0) return setError(requiredMessage([...bad]))
 
 		const body = {
+			link,
 			name: draft.name.trim(),
 			purpose: draft.purpose.trim(),
 			quantity,
 			unitCostUsd,
 			vendor: draft.vendor.trim(),
-			link,
 		}
 		const done =
 			editing === "new"
@@ -214,9 +214,9 @@ export function BomEditor({
 		setImportLoading(true)
 		try {
 			const res = await fetch(`/api/projects/${projectId}/bom/import`, {
-				method: "POST",
-				headers: { "content-type": "application/json" },
 				body: JSON.stringify({ apply: false }),
+				headers: { "content-type": "application/json" },
+				method: "POST",
 			})
 			const payload = await res.json().catch(() => null)
 			if (!res.ok) {
@@ -236,9 +236,9 @@ export function BomEditor({
 		setImportError(null)
 		try {
 			const res = await fetch(`/api/projects/${projectId}/bom/import`, {
-				method: "POST",
-				headers: { "content-type": "application/json" },
 				body: JSON.stringify({ apply: true, replace }),
+				headers: { "content-type": "application/json" },
+				method: "POST",
 			})
 			const payload = await res.json().catch(() => null)
 			if (!res.ok) {
@@ -262,9 +262,9 @@ export function BomEditor({
 		setError(null)
 		try {
 			const res = await fetch(`/api/projects/${projectId}/bom`, {
-				method: "PATCH",
-				headers: { "content-type": "application/json" },
 				body: JSON.stringify({ taxShippingUsd: value }),
+				headers: { "content-type": "application/json" },
+				method: "PATCH",
 			})
 			const payload = await res.json().catch(() => null)
 			if (!res.ok) {
@@ -283,10 +283,10 @@ export function BomEditor({
 	}
 
 	const field = (key: keyof Draft) => ({
-		id: `${id}-${key}`,
-		value: draft[key],
-		required: true,
 		"aria-invalid": invalid.has(key) || undefined,
+		// A red border rather than a ring. `inputClass` carries its own border now, so the invalid colour is `!`: two border colours in one layer are settled by whichever Tailwind happens to emit last.
+		className: cx(inputClass, "py-2 text-[0.88rem]", invalid.has(key) && "border-coral-deep! bg-coral/5"),
+		id: `${id}-${key}`,
 		onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
 			setDraft(d => ({ ...d, [key]: e.target.value }))
 			if (error) setError(null)
@@ -298,8 +298,8 @@ export function BomEditor({
 				})
 			}
 		},
-		// A red border rather than a ring. `inputClass` carries its own border now, so the invalid colour is `!`: two border colours in one layer are settled by whichever Tailwind happens to emit last.
-		className: cx(inputClass, "py-2 text-[0.88rem]", invalid.has(key) && "border-coral-deep! bg-coral/5"),
+		required: true,
+		value: draft[key],
 	})
 
 	return (

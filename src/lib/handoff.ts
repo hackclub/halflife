@@ -51,16 +51,16 @@ export async function createHandoff(userId: string): Promise<NewHandoff> {
 
 	const handoff = await prisma.$transaction(async tx => {
 		await tx.uploadHandoff.updateMany({
-			where: { userId, usedAt: null, expiresAt: { gt: new Date() } },
 			data: { expiresAt: new Date() },
+			where: { expiresAt: { gt: new Date() }, usedAt: null, userId },
 		})
 		return tx.uploadHandoff.create({
-			data: { tokenHash: hashToken(token), userId, expiresAt },
-			select: { id: true, expiresAt: true },
+			data: { expiresAt, tokenHash: hashToken(token), userId },
+			select: { expiresAt: true, id: true },
 		})
 	})
 
-	return { id: handoff.id, token, expiresAt: handoff.expiresAt }
+	return { expiresAt: handoff.expiresAt, id: handoff.id, token }
 }
 
 export type HandoffTarget = {
@@ -79,8 +79,8 @@ export async function resolveHandoff(token: string): Promise<HandoffTarget | nul
 	const tokenHash = hashToken(token)
 
 	const row = await prisma.uploadHandoff.findUnique({
+		select: { expiresAt: true, id: true, tokenHash: true, usedAt: true, userId: true },
 		where: { tokenHash },
-		select: { id: true, userId: true, expiresAt: true, usedAt: true, tokenHash: true },
 	})
 	if (!row) return null
 
@@ -91,7 +91,7 @@ export async function resolveHandoff(token: string): Promise<HandoffTarget | nul
 	if (row.usedAt) return null
 	if (row.expiresAt <= new Date()) return null
 
-	return { id: row.id, userId: row.userId, expiresAt: row.expiresAt }
+	return { expiresAt: row.expiresAt, id: row.id, userId: row.userId }
 }
 
 export type HandoffUploadResult = {
@@ -121,8 +121,8 @@ export async function completeHandoff(
 
 	// Claim first. Losing this race means another phone already used the code.
 	const claimed = await prisma.uploadHandoff.updateMany({
-		where: { id: target.id, usedAt: null, expiresAt: { gt: new Date() } },
 		data: { usedAt: new Date() },
+		where: { expiresAt: { gt: new Date() }, id: target.id, usedAt: null },
 	})
 	if (claimed.count !== 1) throw new HttpError("CONFLICT", "This link has already been used")
 
@@ -133,8 +133,8 @@ export async function completeHandoff(
 	await putObject(key, bytes, file.type)
 
 	await prisma.uploadHandoff.update({
+		data: { byteSize: file.size, contentType: file.type, objectKey: key },
 		where: { id: target.id },
-		data: { objectKey: key, contentType: file.type, byteSize: file.size },
 	})
 
 	return { objectKey: key }
@@ -148,30 +148,30 @@ export type HandoffStatus =
 /** What the desktop polls. Scoped to the owner, so ids are not guessable keys. */
 export async function getHandoffStatus(id: string, userId: string): Promise<HandoffStatus | null> {
 	const row = await prisma.uploadHandoff.findFirst({
+		select: { contentType: true, expiresAt: true, objectKey: true, usedAt: true },
 		where: { id, userId },
-		select: { expiresAt: true, usedAt: true, objectKey: true, contentType: true },
 	})
 	if (!row) return null
 
 	if (row.objectKey) {
 		// The URL comes along so the desktop can play what the phone filmed before it is posted; it is minted here, at read time, like every other one.
 		return {
-			state: "ready",
-			objectKey: row.objectKey,
 			contentType: row.contentType,
+			objectKey: row.objectKey,
+			state: "ready",
 			url: publicUrlFor(row.objectKey),
 		}
 	}
 	// Expiry only ends the wait while nothing has been uploaded; a video that landed a second before the deadline is still the user's.
 	if (row.expiresAt <= new Date()) return { state: "expired" }
-	return { state: "waiting", expiresAt: row.expiresAt }
+	return { expiresAt: row.expiresAt, state: "waiting" }
 }
 
 /** Mark a handoff as picked up, so the desktop stops polling it. Returns whether a row was actually claimed. */
 export async function claimHandoff(id: string, userId: string): Promise<boolean> {
 	const result = await prisma.uploadHandoff.updateMany({
-		where: { id, userId },
 		data: { claimedAt: new Date() },
+		where: { id, userId },
 	})
 	return result.count === 1
 }

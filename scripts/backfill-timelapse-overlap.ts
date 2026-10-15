@@ -22,13 +22,13 @@ const PACE_MS = 250
 async function main() {
 	// One recording per row, grouped by owner so a lapsed token is discovered once instead of once per clip.
 	const rows = await prisma.sessionTimelapse.findMany({
-		where: { provider: "lapse", externalId: { not: null }, recordedAt: null, workSession: { deletedAt: null } },
 		orderBy: { id: "asc" },
 		select: {
-			id: true,
 			externalId: true,
-			workSession: { select: { themeProjectId: true, phase: true, themeProject: { select: { userId: true } } } },
+			id: true,
+			workSession: { select: { phase: true, themeProject: { select: { userId: true } }, themeProjectId: true } },
 		},
+		where: { externalId: { not: null }, provider: "lapse", recordedAt: null, workSession: { deletedAt: null } },
 	})
 	if (rows.length === 0) {
 		console.log("every Lapse timelapse already records when it was made")
@@ -65,8 +65,8 @@ async function main() {
 				const [timelapse] = await verifyOwnTimelapses(userId, [lapseId])
 				if (!timelapse) continue
 				await prisma.sessionTimelapse.update({
+					data: { hackatimeProject: timelapse.hackatimeProject, recordedAt: new Date(timelapse.createdAt) },
 					where: { id: row.id },
-					data: { recordedAt: new Date(timelapse.createdAt), hackatimeProject: timelapse.hackatimeProject },
 				})
 				filled += 1
 			} catch {
@@ -81,8 +81,8 @@ async function main() {
 	const phases = new Map<string, { themeProjectId: string; phase: Phase }>()
 	for (const row of rows) {
 		phases.set(`${row.workSession.themeProjectId}:${row.workSession.phase}`, {
-			themeProjectId: row.workSession.themeProjectId,
 			phase: row.workSession.phase,
+			themeProjectId: row.workSession.themeProjectId,
 		})
 	}
 	for (const target of phases.values()) await refreshOverlapSpans(target.themeProjectId, target.phase)

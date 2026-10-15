@@ -20,21 +20,21 @@ type Props = {
 
 const TONES = {
 	ink: {
+		caption: "text-hl-cyan/70",
+		edge: "border-hl-cyan/45",
 		ground: "bg-hl-ink",
 		rule: "var(--color-hl-cyan)",
-		edge: "border-hl-cyan/45",
 		tick: "border-hl-cyan",
 		title: "text-hl-cyan",
-		caption: "text-hl-cyan/70",
 	},
 	light: {
+		caption: "text-hl-ink-soft",
+		edge: "border-hl-ink/40",
 		ground: "bg-hl-lavender",
 		// Paper, not ink. The grid is a lighter line than its ground on the ink tone too, and here that is what keeps it safe under type: an ink grid darkened the ground enough to drop a soft label to 3.3:1, while a paper one only ever lifts it. Ink lines survive on the ticks, which are the slot's real signal and carry no text.
 		rule: "var(--color-hl-paper)",
-		edge: "border-hl-ink/40",
 		tick: "border-hl-ink",
 		title: "text-hl-ink",
-		caption: "text-hl-ink-soft",
 	},
 } as const
 
@@ -62,7 +62,7 @@ export default function ImageSlot({
 			className={`overflow-hidden ${t.ground} ${className}`}
 			// `relative` is the default containing block for the fittings below, but it lives in `style` so a caller can override it. As a class it could not be beaten by a `className` of "absolute" – same specificity, and stylesheet order decides – which silently drops positioned slots into flow. Callers that place a slot pass `position` here instead.
 			style={{ position: "relative", ...style }}
-			{...(backdrop ? { "aria-hidden": true } : { role: "img", "aria-label": `Placeholder for ${label}` })}
+			{...(backdrop ? { "aria-hidden": true } : { "aria-label": `Placeholder for ${label}`, role: "img" })}
 		>
 			{/* measured grid */}
 			<div
@@ -89,7 +89,7 @@ export default function ImageSlot({
 					aria-hidden
 					className={`pointer-events-none absolute ${pos} ${edges} ${t.tick}`}
 					key={pos}
-					style={{ width: tick, height: tick }}
+					style={{ height: tick, width: tick }}
 				/>
 			))}
 
@@ -109,8 +109,8 @@ export default function ImageSlot({
 						className={t.caption}
 						style={{
 							fontSize: `${0.75 * scale}rem`,
-							letterSpacing: "0.1em",
 							fontVariantNumeric: "tabular-nums",
+							letterSpacing: "0.1em",
 						}}
 					>
 						{ratio}

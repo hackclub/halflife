@@ -39,13 +39,13 @@ export async function logAudit(input: AuditInput): Promise<void> {
 		await prisma.auditLog.create({
 			data: {
 				action: input.action,
-				actorId: input.actorId ?? null,
 				actorEmail: input.actorEmail ?? null,
+				actorId: input.actorId ?? null,
 				actorIp: ip,
 				actorUserAgent: userAgent,
-				targetType: input.targetType ?? null,
-				targetId: input.targetId ?? null,
 				metadata: input.metadata,
+				targetId: input.targetId ?? null,
+				targetType: input.targetType ?? null,
 			},
 		})
 	} catch (err) {
@@ -63,13 +63,13 @@ export async function logAuditTx(
 	await tx.auditLog.create({
 		data: {
 			action: input.action,
-			actorId: input.actorId ?? null,
 			actorEmail: input.actorEmail ?? null,
+			actorId: input.actorId ?? null,
 			actorIp: input.ip ?? null,
 			actorUserAgent: input.userAgent ?? null,
-			targetType: input.targetType ?? null,
-			targetId: input.targetId ?? null,
 			metadata: input.metadata,
+			targetId: input.targetId ?? null,
+			targetType: input.targetType ?? null,
 		},
 	})
 }

@@ -16,10 +16,10 @@ export default async function ReviewQueuePage({ searchParams }: Props) {
 	const selected = phase === "DESIGN" ? Phase.DESIGN : phase === "BUILD" ? Phase.BUILD : undefined
 
 	const queue = await getReviewQueue({
-		reviewerId: user.id,
-		phase: selected,
 		cursor,
 		limit: 50,
+		phase: selected,
+		reviewerId: user.id,
 	})
 
 	return (

@@ -75,45 +75,45 @@ export function toOnboardingView(state: OnboardingStateData): OnboardingView {
 	const intro = weekIntroFor(Theme.PCB)
 
 	return {
-		reached: state.reached,
-		stepCount: state.stepCount,
+		beginner: isBeginner(state.experience),
 		completed: state.completed,
 		experience: state.experience,
-		suggestedTier: state.suggestedTier,
-		beginner: isBeginner(state.experience),
-		projectId: state.project.id,
-		steps: ONBOARDING_STEPS.map(step => ({ ...step })),
 		experienceOptions: EXPERIENCE_OPTIONS,
-		weekIntro: intro
-			? {
-					painting: WEEK_META[THEMES.findIndex(t => t.id === intro.theme)]?.theme ?? "",
-					kicker: intro.kicker,
-					headline: intro.headline,
-					primer: intro.primer,
-					examples: [...intro.examples],
-				}
-			: null,
 		project: {
-			title: state.project.title,
 			description: state.project.description ?? "",
 			requestedTier: state.project.requestedTier,
 			starterProjectId: state.project.starterProjectId,
 			tierLocked: state.project.tierLocked,
+			title: state.project.title,
 		},
+		projectId: state.project.id,
+		reached: state.reached,
 		starterProjects: state.starterProjects.map(p => ({
-			id: p.id,
-			title: p.title,
 			description: p.description,
+			guideUrl: p.guideUrl,
+			id: p.id,
 			parts: [...p.parts],
 			repoUrl: p.repoUrl,
-			guideUrl: p.guideUrl,
+			title: p.title,
 		})),
+		stepCount: state.stepCount,
+		steps: ONBOARDING_STEPS.map(step => ({ ...step })),
+		suggestedTier: state.suggestedTier,
 		tiers: TIERS.map(tier => ({
+			estimate: tier.estimate,
+			grantUsd: tier.grantUsd,
 			id: tier.id,
 			name: tier.name,
-			grantUsd: tier.grantUsd,
-			estimate: tier.estimate,
 			showcase: [...(tier.showcase[Theme.PCB] ?? [])],
 		})),
+		weekIntro: intro
+			? {
+					examples: [...intro.examples],
+					headline: intro.headline,
+					kicker: intro.kicker,
+					painting: WEEK_META[THEMES.findIndex(t => t.id === intro.theme)]?.theme ?? "",
+					primer: intro.primer,
+				}
+			: null,
 	}
 }

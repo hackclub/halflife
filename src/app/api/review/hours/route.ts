@@ -28,24 +28,24 @@ export const POST = withRoute(async (req: Request) => {
 		const [sessions, links] = await Promise.all([
 			sessionIds.length
 				? tx.workSession.findMany({
-						where: { id: { in: sessionIds }, deletedAt: null },
 						select: {
 							id: true,
 							phase: true,
+							themeProject: { select: { buildStatus: true, designStatus: true, userId: true } },
 							themeProjectId: true,
-							themeProject: { select: { userId: true, designStatus: true, buildStatus: true } },
 						},
+						where: { deletedAt: null, id: { in: sessionIds } },
 					})
 				: [],
 			linkIds.length
 				? tx.hackatimeLink.findMany({
-						where: { id: { in: linkIds } },
 						select: {
 							id: true,
 							phase: true,
+							themeProject: { select: { buildStatus: true, designStatus: true, userId: true } },
 							themeProjectId: true,
-							themeProject: { select: { userId: true, designStatus: true, buildStatus: true } },
 						},
+						where: { id: { in: linkIds } },
 					})
 				: [],
 		])
@@ -68,11 +68,11 @@ export const POST = withRoute(async (req: Request) => {
 		// Ari owns its own decisions, but a claim another Half Life reviewer holds is theirs until it expires.
 		const pairs = [...new Map(all.map(row => [`${row.themeProjectId}:${row.phase}`, row])).values()]
 		const openSubmissions = await tx.phaseSubmission.findMany({
+			select: { claim: { select: { expiresAt: true, reviewerId: true } } },
 			where: {
+				OR: pairs.map(row => ({ phase: row.phase, themeProjectId: row.themeProjectId })),
 				resolvedAt: null,
-				OR: pairs.map(row => ({ themeProjectId: row.themeProjectId, phase: row.phase })),
 			},
-			select: { claim: { select: { reviewerId: true, expiresAt: true } } },
 		})
 		const blocked = openSubmissions.some(
 			submission =>
@@ -85,40 +85,18 @@ export const POST = withRoute(async (req: Request) => {
 		for (const decision of parsed.data.decisions) {
 			if (decision.kind === "session") {
 				const before = await tx.workSession.findUnique({
-					where: { id: decision.id },
 					select: { hoursApproved: true },
+					where: { id: decision.id },
 				})
 				if (!before) throw new HttpError("NOT_FOUND", "One of those entries no longer exists")
 				// Conditional on the phase still being in review: a decision or a withdrawal that commits between the checks above and this write makes it match nothing, and the batch rolls back.
 				const updated = await tx.workSession.updateMany({
-					where: {
-						id: decision.id,
-						OR: [
-							{ phase: Phase.DESIGN, themeProject: { designStatus: PhaseStatus.in_review } },
-							{ phase: Phase.BUILD, themeProject: { buildStatus: PhaseStatus.in_review } },
-						],
-					},
 					data: {
 						hoursApproved: decision.hoursApproved,
 						reviewComments: sanitizeOptional(decision.comments),
 						reviewedAt: now,
 						reviewedById: gate.user.id,
 					},
-				})
-				if (updated.count !== 1) throw new HttpError("PHASE_LOCKED", "The phase moved while its hours were approved")
-				changes.push({
-					kind: "session",
-					id: decision.id,
-					before: before.hoursApproved,
-					after: decision.hoursApproved,
-				})
-			} else {
-				const before = await tx.hackatimeLink.findUnique({
-					where: { id: decision.id },
-					select: { hoursApproved: true },
-				})
-				if (!before) throw new HttpError("NOT_FOUND", "One of those entries no longer exists")
-				const updated = await tx.hackatimeLink.updateMany({
 					where: {
 						id: decision.id,
 						OR: [
@@ -126,18 +104,40 @@ export const POST = withRoute(async (req: Request) => {
 							{ phase: Phase.BUILD, themeProject: { buildStatus: PhaseStatus.in_review } },
 						],
 					},
+				})
+				if (updated.count !== 1) throw new HttpError("PHASE_LOCKED", "The phase moved while its hours were approved")
+				changes.push({
+					after: decision.hoursApproved,
+					before: before.hoursApproved,
+					id: decision.id,
+					kind: "session",
+				})
+			} else {
+				const before = await tx.hackatimeLink.findUnique({
+					select: { hoursApproved: true },
+					where: { id: decision.id },
+				})
+				if (!before) throw new HttpError("NOT_FOUND", "One of those entries no longer exists")
+				const updated = await tx.hackatimeLink.updateMany({
 					data: {
 						hoursApproved: decision.hoursApproved,
 						reviewedAt: now,
 						reviewedById: gate.user.id,
 					},
+					where: {
+						id: decision.id,
+						OR: [
+							{ phase: Phase.DESIGN, themeProject: { designStatus: PhaseStatus.in_review } },
+							{ phase: Phase.BUILD, themeProject: { buildStatus: PhaseStatus.in_review } },
+						],
+					},
 				})
 				if (updated.count !== 1) throw new HttpError("PHASE_LOCKED", "The phase moved while its hours were approved")
 				changes.push({
-					kind: "hackatime",
-					id: decision.id,
-					before: before.hoursApproved,
 					after: decision.hoursApproved,
+					before: before.hoursApproved,
+					id: decision.id,
+					kind: "hackatime",
 				})
 			}
 		}
@@ -146,12 +146,12 @@ export const POST = withRoute(async (req: Request) => {
 
 	await logAudit({
 		action: AuditAction.REVIEW_APPROVE_HOURS,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "WorkSession",
-		targetId: applied[0]?.id ?? null,
+		actorId: gate.user.id,
 		metadata: { changes: applied },
+		targetId: applied[0]?.id ?? null,
+		targetType: "WorkSession",
 	})
 
-	return ok({ updated: applied.length, changes: applied })
+	return ok({ changes: applied, updated: applied.length })
 })

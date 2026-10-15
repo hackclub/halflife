@@ -15,11 +15,11 @@ import type { FlowStep, SankeyDiagram } from "@/lib/queries/admin"
  * The Sankey is wider than any panel, so it carries its own horizontal scroll. Read them together rather than picking one: the funnel answers "how many are left", the Sankey "which way did they go".
  */
 const TABS = [
-	{ id: "funnel", label: "Funnel", hint: "One spine, top to bottom: each stage also cleared everything above it" },
+	{ hint: "One spine, top to bottom: each stage also cleared everything above it", id: "funnel", label: "Funnel" },
 	{
+		hint: "Every route at once, left to right: out-of-order and side steps get their own ribbon",
 		id: "sankey",
 		label: "Sankey",
-		hint: "Every route at once, left to right: out-of-order and side steps get their own ribbon",
 	},
 ] as const
 

@@ -41,7 +41,7 @@ export function RepoChecks({
 			const res = await fetch(`/api/projects/${project.id}/repo-sync`, { cache: "no-store" })
 			if (!res.ok) return
 			const body = (await res.json()) as { repo?: string | null; syncRepoDiffers?: boolean }
-			setSyncRepo(body.repo && body.syncRepoDiffers ? { repo: body.repo, differs: true } : null)
+			setSyncRepo(body.repo && body.syncRepoDiffers ? { differs: true, repo: body.repo } : null)
 		} catch {
 			// Best effort: the shortcut is a convenience, not the check itself.
 		}

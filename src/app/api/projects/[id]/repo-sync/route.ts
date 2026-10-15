@@ -54,8 +54,8 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 
 	// A project that is gone, or someone else's, is a 404 either way – same as every other project route.
 	const owned = await prisma.themeProject.findFirst({
-		where: { id, userId: gate.user.id, deletedAt: null },
 		select: { id: true },
+		where: { deletedAt: null, id, userId: gate.user.id },
 	})
 	if (!owned) return fail("NOT_FOUND", "Project not found")
 
@@ -63,11 +63,11 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		await disableRepoSync(id, gate.user.id)
 		await logAudit({
 			action: AuditAction.USER_UPDATE_REPO_SYNC,
-			actorId: gate.user.id,
 			actorEmail: gate.user.email,
-			targetType: "ThemeProject",
-			targetId: id,
+			actorId: gate.user.id,
 			metadata: { enabled: false },
+			targetId: id,
+			targetType: "ThemeProject",
 		})
 		return ok(await getRepoSyncState(id, gate.user.id))
 	}
@@ -78,15 +78,15 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 
 	await logAudit({
 		action: AuditAction.USER_UPDATE_REPO_SYNC,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "ThemeProject",
-		targetId: id,
+		actorId: gate.user.id,
 		metadata: {
 			enabled: true,
+			files: files.map(f => ({ bytes: f.bytes, path: f.path })),
 			repo,
-			files: files.map(f => ({ path: f.path, bytes: f.bytes })),
 		},
+		targetId: id,
+		targetType: "ThemeProject",
 	})
 
 	return ok({ ...(await getRepoSyncState(id, gate.user.id)), synced: files.length > 0 })

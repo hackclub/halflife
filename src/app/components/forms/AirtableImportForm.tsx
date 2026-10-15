@@ -24,17 +24,17 @@ type ImportSummary = {
 }
 
 const STATUS_LABEL: Record<ImportOutcome["status"], string> = {
-	imported: "imported",
 	already_imported: "already imported",
-	skipped: "skipped",
 	failed: "failed",
+	imported: "imported",
+	skipped: "skipped",
 }
 
 const ARI_LABEL: Record<ImportOutcome["ari"], string> = {
-	sent: "sent to Ari",
 	failed: "Ari send failed",
-	not_configured: "Ari not configured",
 	not_attempted: "",
+	not_configured: "Ari not configured",
+	sent: "sent to Ari",
 }
 
 /**

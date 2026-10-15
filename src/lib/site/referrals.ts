@@ -127,5 +127,5 @@ async function walkReferrals(
 		.map(([code, signups]) => ({ code, email: owners.get(code) ?? null, signups }))
 		.sort((a, b) => b.signups - a.signups || a.code.localeCompare(b.code, undefined, { numeric: true }))
 
-	return { rows, referred: attributed.size, activeCodes: rows.length }
+	return { activeCodes: rows.length, referred: attributed.size, rows }
 }

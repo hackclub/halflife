@@ -24,18 +24,18 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 
 	if (body.action === "FULFILL") {
 		const order = await fulfillOrder(id, gate.user.id, {
-			number: body.trackingNumber ? sanitize(body.trackingNumber) : null,
 			carrier: body.trackingCarrier ? sanitize(body.trackingCarrier) : null,
+			number: body.trackingNumber ? sanitize(body.trackingNumber) : null,
 		})
 		await logAudit({
 			action: AuditAction.ADMIN_FULFILL_ORDER,
-			actorId: gate.user.id,
 			actorEmail: gate.user.email,
-			targetType: "ShopOrder",
+			actorId: gate.user.id,
+			metadata: { after: { status: order.status }, before: { status: before.status } },
 			targetId: id,
-			metadata: { before: { status: before.status }, after: { status: order.status } },
+			targetType: "ShopOrder",
 		})
-		return ok({ order: await prisma.shopOrder.findUniqueOrThrow({ where: { id }, select: shopOrderStaffSelect }) })
+		return ok({ order: await prisma.shopOrder.findUniqueOrThrow({ select: shopOrderStaffSelect, where: { id } }) })
 	}
 
 	if (body.action === "REJECT") {
@@ -43,32 +43,32 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		const order = await rejectOrder(id, gate.user.id, sanitize(body.reason))
 		await logAudit({
 			action: AuditAction.ADMIN_REJECT_ORDER,
-			actorId: gate.user.id,
 			actorEmail: gate.user.email,
-			targetType: "ShopOrder",
-			targetId: id,
+			actorId: gate.user.id,
 			metadata: {
+				after: { status: order.status },
+				before: { status: before.status },
 				reason: body.reason,
 				refunded: order.totalCredits,
-				before: { status: before.status },
-				after: { status: order.status },
 			},
+			targetId: id,
+			targetType: "ShopOrder",
 		})
-		return ok({ order: await prisma.shopOrder.findUniqueOrThrow({ where: { id }, select: shopOrderStaffSelect }) })
+		return ok({ order: await prisma.shopOrder.findUniqueOrThrow({ select: shopOrderStaffSelect, where: { id } }) })
 	}
 
 	if (before.status !== ShopOrderStatus.PENDING) return fail("CONFLICT", "Only a pending order can be put on hold")
 	// Conditional on the status just read: a concurrent fulfil or reject landing between the read and the write must not be overwritten back to ON_HOLD.
 	const held = await prisma.shopOrder.updateMany({
-		where: { id, status: ShopOrderStatus.PENDING },
 		data: {
-			status: ShopOrderStatus.ON_HOLD,
-			holdReason: sanitize(body.reason),
 			heldAt: new Date(),
+			holdReason: sanitize(body.reason),
 			lastActorId: gate.user.id,
+			status: ShopOrderStatus.ON_HOLD,
 		},
+		where: { id, status: ShopOrderStatus.PENDING },
 	})
 	if (held.count !== 1) return fail("CONFLICT", "This order was decided by someone else")
-	const order = await prisma.shopOrder.findUniqueOrThrow({ where: { id }, select: shopOrderStaffSelect })
+	const order = await prisma.shopOrder.findUniqueOrThrow({ select: shopOrderStaffSelect, where: { id } })
 	return ok({ order })
 })

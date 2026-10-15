@@ -21,18 +21,18 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 	const before = await prisma.shopRegion.findUnique({ where: { id } })
 	if (!before) return fail("NOT_FOUND", "Region not found")
 
-	const region = await prisma.shopRegion.update({ where: { id }, data })
+	const region = await prisma.shopRegion.update({ data, where: { id } })
 
 	await logAudit({
 		action: AuditAction.ADMIN_UPDATE_SHOP_REGION,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "ShopRegion",
-		targetId: id,
+		actorId: gate.user.id,
 		metadata: {
-			before: { name: before.name, sortOrder: before.sortOrder, active: before.active },
-			after: { name: region.name, sortOrder: region.sortOrder, active: region.active },
+			after: { active: region.active, name: region.name, sortOrder: region.sortOrder },
+			before: { active: before.active, name: before.name, sortOrder: before.sortOrder },
 		},
+		targetId: id,
+		targetType: "ShopRegion",
 	})
 
 	return ok({ region })

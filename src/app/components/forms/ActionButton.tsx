@@ -42,7 +42,7 @@ export function ActionButton({
 		}
 		void run(
 			"submit",
-			() => sendJson(url, { method, body: payload }),
+			() => sendJson(url, { body: payload, method }),
 			() => onDone?.(),
 		)
 	}

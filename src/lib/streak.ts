@@ -40,7 +40,7 @@ export type StreakState = {
  */
 export function streakFromDays(daysDesc: readonly string[]): StreakState {
 	const first = daysDesc[0]
-	if (!first) return { current: 0, longest: 0, lastDate: null }
+	if (!first) return { current: 0, lastDate: null, longest: 0 }
 
 	let current = 1
 	let longest = 1
@@ -61,7 +61,7 @@ export function streakFromDays(daysDesc: readonly string[]): StreakState {
 		if (run === i + 1) current = run
 	}
 
-	return { current, longest: Math.max(longest, current), lastDate: first }
+	return { current, lastDate: first, longest: Math.max(longest, current) }
 }
 
 /**
@@ -74,18 +74,18 @@ async function activeDaysDesc(tx: Tx, userId: string): Promise<string[]> {
 
 	const [sessions, posts] = await Promise.all([
 		tx.workSession.findMany({
+			distinct: ["effectiveDate"],
+			select: { effectiveDate: true },
 			where: {
-				themeProject: { userId, deletedAt: null },
 				deletedAt: null,
 				effectiveDate: { not: null },
+				themeProject: { deletedAt: null, userId },
 			},
-			select: { effectiveDate: true },
-			distinct: ["effectiveDate"],
 		}),
 		// Soft-deleted reels are gone, so the day they carried goes with them. Hidden ones still count: the day was worked whatever a moderator later did with the post. ANNOUNCEMENTs are HQ's, never a participant's.
 		tx.post.findMany({
-			where: { userId, deletedAt: null, kind: { not: PostKind.ANNOUNCEMENT } },
-			select: { publishedAt: true, createdAt: true },
+			select: { createdAt: true, publishedAt: true },
+			where: { deletedAt: null, kind: { not: PostKind.ANNOUNCEMENT }, userId },
 		}),
 	])
 
@@ -106,12 +106,12 @@ export async function recomputeStreak(tx: Tx, userId: string): Promise<StreakSta
 	const state = streakFromDays(await activeDaysDesc(tx, userId))
 
 	await tx.user.update({
-		where: { id: userId },
 		data: {
 			currentStreak: state.current,
-			longestStreak: state.longest,
 			lastStreakDate: state.lastDate,
+			longestStreak: state.longest,
 		},
+		where: { id: userId },
 	})
 
 	return state

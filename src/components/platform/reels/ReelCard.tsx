@@ -65,22 +65,22 @@ export function pauseReels() {
  */
 export function sendLike(reel: FeedItem, next: boolean, onPatch?: (id: string, patch: Partial<FeedItem>) => void) {
 	if (reel.likedByMe === next) return
-	onPatch?.(reel.id, { likedByMe: next, likeCount: reel.likeCount + (next ? 1 : -1) })
+	onPatch?.(reel.id, { likeCount: reel.likeCount + (next ? 1 : -1), likedByMe: next })
 	fetch(`/api/posts/${reel.id}/like`, {
-		method: "PUT",
-		headers: { "content-type": "application/json" },
 		body: JSON.stringify({ liked: next }),
+		headers: { "content-type": "application/json" },
+		method: "PUT",
 	})
 		.then(async res => {
 			if (!res.ok) {
 				// Refused: put it back as it was.
-				onPatch?.(reel.id, { likedByMe: reel.likedByMe, likeCount: reel.likeCount })
+				onPatch?.(reel.id, { likeCount: reel.likeCount, likedByMe: reel.likedByMe })
 				return
 			}
 			const payload = (await res.json()) as { likeCount?: number }
 			if (typeof payload.likeCount === "number") onPatch?.(reel.id, { likeCount: payload.likeCount })
 		})
-		.catch(() => onPatch?.(reel.id, { likedByMe: reel.likedByMe, likeCount: reel.likeCount }))
+		.catch(() => onPatch?.(reel.id, { likeCount: reel.likeCount, likedByMe: reel.likedByMe }))
 }
 
 /**
@@ -91,8 +91,8 @@ const ARRIVE: Keyframe[] = [
 	{ opacity: 1, transform: "none" },
 ]
 const ARRIVE_TIMING: KeyframeAnimationOptions = {
-	duration: 420,
 	delay: 90,
+	duration: 420,
 	easing: "cubic-bezier(0.16, 1, 0.3, 1)",
 	fill: "backwards",
 }
@@ -330,7 +330,7 @@ export function ReelCard({
 						{reel.author.id !== viewer.id && (
 							<ReportButton
 								context={reel.caption || undefined}
-								target={{ type: "REEL", id: reel.id }}
+								target={{ id: reel.id, type: "REEL" }}
 								title="Report this reel"
 								tone="inverse"
 							/>

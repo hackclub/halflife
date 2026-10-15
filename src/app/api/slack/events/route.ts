@@ -49,9 +49,9 @@ async function handleHelpMessage(event: SlackEvent) {
 	const permalink = await getPermalink(event.channel, event.ts)
 
 	const ref: TicketRef = {
+		authorId: event.user,
 		helpChannel: event.channel,
 		helpTs: event.ts,
-		authorId: event.user,
 		permalink,
 	}
 
@@ -66,17 +66,17 @@ async function handleHelpMessage(event: SlackEvent) {
 	const ticketBlocks: SlackBlock[] = [ticketSection(ref)]
 	if (priorTickets !== null) ticketBlocks.push(ticketHistory(ref.authorId, priorTickets))
 	ticketBlocks.push({
-		type: "actions",
 		block_id: TICKET_ACTIONS_BLOCK_ID,
 		elements: [
 			{
-				type: "button",
-				text: { type: "plain_text", text: MARK_HELPED_BUTTON, emoji: true },
-				style: "primary",
 				action_id: "mark_helped",
+				style: "primary",
+				text: { emoji: true, text: MARK_HELPED_BUTTON, type: "plain_text" },
+				type: "button",
 				value: JSON.stringify(ref),
 			},
 		],
+		type: "actions",
 	})
 
 	// The permalink rides in the top-level text as well as the section block: Slack unfurls text-based links only there, never inside blocks, so this is what gets the original message previewed under the ticket.
@@ -120,43 +120,43 @@ async function handleHelpMessage(event: SlackEvent) {
 
 	const selfResolveBlocks: SlackBlock[] = [
 		{
-			type: "section",
 			text: {
-				type: "mrkdwn",
 				text: HELP_THREAD_REMINDERS,
+				type: "mrkdwn",
 			},
+			type: "section",
 		},
 		{
-			type: "card",
-			icon: {
-				type: "image",
-				image_url: "https://user-cdn.hackclub-assets.com/01a087a6-3340-75f4-bed9-26f40c4fffe7/gato_schematic.png",
-				alt_text: "Gato",
-			},
-			title: {
-				type: "mrkdwn",
-				text: FAQ_CARD_TITLE,
-				verbatim: false,
-			},
 			actions: [
 				{
-					type: "button",
-					text: {
-						type: "plain_text",
-						text: FAQ_CARD_BUTTON,
-					},
-					url: "https://hackclub.enterprise.slack.com/docs/T0266FRGM/F0C0Q6UEPCH",
 					action_id: "faq_link_click",
+					text: {
+						text: FAQ_CARD_BUTTON,
+						type: "plain_text",
+					},
+					type: "button",
+					url: "https://hackclub.enterprise.slack.com/docs/T0266FRGM/F0C0Q6UEPCH",
 				},
 			],
+			icon: {
+				alt_text: "Gato",
+				image_url: "https://user-cdn.hackclub-assets.com/01a087a6-3340-75f4-bed9-26f40c4fffe7/gato_schematic.png",
+				type: "image",
+			},
+			title: {
+				text: FAQ_CARD_TITLE,
+				type: "mrkdwn",
+				verbatim: false,
+			},
+			type: "card",
 		},
 		threadResolveActions(resolveRef),
 	]
 
 	// The thread's top-level text repeats the reminders above rather than carrying new information: it's what a notification preview shows, and it's what a screen reader reads out.
 	await postMessage(ref.helpChannel, HELP_THREAD_REMINDERS, {
-		threadTs: ref.helpTs,
 		blocks: selfResolveBlocks,
+		threadTs: ref.helpTs,
 	})
 }
 

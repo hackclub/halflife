@@ -41,15 +41,15 @@ async function accessToken(force = false): Promise<string> {
 	if (!id || !secret || !refresh) throw new HttpError("NOT_CONFIGURED", "HCB is not configured on this deployment")
 
 	const res = await fetch(`${base()}/api/v4/oauth/token`, {
-		method: "POST",
-		headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json" },
 		body: new URLSearchParams({
 			client_id: id,
 			client_secret: secret,
-			refresh_token: refresh,
-			redirect_uri: process.env.HCB_REDIRECT_URI ?? "",
 			grant_type: "refresh_token",
+			redirect_uri: process.env.HCB_REDIRECT_URI ?? "",
+			refresh_token: refresh,
 		}),
+		headers: { accept: "application/json", "content-type": "application/x-www-form-urlencoded" },
+		method: "POST",
 		signal: AbortSignal.timeout(15_000),
 	})
 	if (!res.ok) throw new HttpError("INTERNAL", `HCB token refresh failed (${res.status})`)
@@ -58,7 +58,7 @@ async function accessToken(force = false): Promise<string> {
 	if (!data.access_token) throw new HttpError("INTERNAL", "HCB token refresh returned no access token")
 	// Default an hour when HCB does not say; either way the token is now bounded rather than cached for the life of the process.
 	const lifetimeMs = (typeof data.expires_in === "number" && data.expires_in > 0 ? data.expires_in : 3600) * 1000
-	cachedToken = { token: data.access_token, expiresAt: Date.now() + lifetimeMs }
+	cachedToken = { expiresAt: Date.now() + lifetimeMs, token: data.access_token }
 	if (data.refresh_token && data.refresh_token !== refresh) {
 		// HCB rotates refresh tokens, and an env var cannot be rewritten. This token is used for the life of the process; persisting the new one (see docs) is what keeps the next process able to refresh.
 		console.warn("[hcb] refresh token rotated; persist the new value or the next refresh will fail")
@@ -75,7 +75,7 @@ async function hcbFetch(path: string, init: RequestInit & { timeoutMs?: number }
 		const token = await accessToken(attempt > 0)
 		const res = await fetch(`${base()}${path}`, {
 			...rest,
-			headers: { authorization: `Bearer ${token}`, accept: "application/json", ...headers },
+			headers: { accept: "application/json", authorization: `Bearer ${token}`, ...headers },
 			signal: AbortSignal.timeout(timeoutMs),
 		})
 		if (res.status === 401 && attempt === 0 && !process.env.HCB_ACCESS_TOKEN) {
@@ -109,9 +109,9 @@ export type TopUpResult = {
 
 export async function topUpCardGrant(grantHashid: string, amountCents: number): Promise<TopUpResult> {
 	const res = await hcbFetch(`/api/v4/card_grants/${encodeURIComponent(grantHashid)}/topup?expand=disbursements,user`, {
-		method: "POST",
-		headers: { "content-type": "application/json" },
 		body: JSON.stringify({ amount_cents: amountCents }),
+		headers: { "content-type": "application/json" },
+		method: "POST",
 		timeoutMs: 20_000,
 	})
 	if (!res.ok) {
@@ -160,10 +160,10 @@ export async function listCardGrantDisbursements(grantHashid: string): Promise<G
 		const d = entry as Record<string, unknown>
 		if (typeof d.amount_cents !== "number" || !Number.isFinite(d.amount_cents)) return { kind: "unreadable" }
 		rows.push({
-			transactionId: typeof d.transaction_id === "string" ? d.transaction_id : null,
 			amountCents: d.amount_cents,
-			memo: typeof d.memo === "string" ? d.memo : null,
 			createdAt: typeof d.created_at === "string" ? d.created_at : null,
+			memo: typeof d.memo === "string" ? d.memo : null,
+			transactionId: typeof d.transaction_id === "string" ? d.transaction_id : null,
 		})
 	}
 	return { kind: "listed", rows }
@@ -209,9 +209,9 @@ export async function memoTransaction(transactionId: string, memo: string): Prom
 	const res = await hcbFetch(
 		`/api/v4/organizations/${encodeURIComponent(slug)}/transactions/${encodeURIComponent(transactionId)}`,
 		{
-			method: "PUT",
-			headers: { "content-type": "application/json" },
 			body: JSON.stringify({ memo }),
+			headers: { "content-type": "application/json" },
+			method: "PUT",
 		},
 	)
 	if (!res.ok) throw new HttpError("INTERNAL", `HCB memo update failed (${res.status})`)

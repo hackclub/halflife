@@ -20,7 +20,7 @@ export function ThemeMoveForm({ projectId, current }: Readonly<{ projectId: stri
 		const to = getThemeDef(value).label
 		if (!window.confirm(`Move this project from ${from} to ${to}? Its reviews and grant move with it.`)) return
 		void run("save", () =>
-			sendJson(`/api/admin/theme-projects/${projectId}`, { method: "PATCH", body: { theme: value } }),
+			sendJson(`/api/admin/theme-projects/${projectId}`, { body: { theme: value }, method: "PATCH" }),
 		)
 	}
 

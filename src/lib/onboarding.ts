@@ -57,17 +57,17 @@ export async function getOnboardingState(userId: string): Promise<OnboardingStat
 	// One round trip for both reads. Onboarding is week one's "create a project" checkpoint, so it is where the PCB project comes into being, but only the first visit needs to make it: every later step finds the row already there, and ensuring it up front cost each of them a query of its own.
 	const [user, found] = await Promise.all([
 		prisma.user.findUniqueOrThrow({
-			where: { id: userId },
 			select: {
 				hardwareExperience: true,
-				onboardingStep: true,
 				onboardingCompletedAt: true,
+				onboardingStep: true,
 				trackingTutorialDismissedAt: true,
 			},
+			where: { id: userId },
 		}),
 		prisma.themeProject.findFirst({
-			where: { userId, theme: ONBOARDING_THEME, deletedAt: null },
 			select: PROJECT_SELECT,
+			where: { deletedAt: null, theme: ONBOARDING_THEME, userId },
 		}),
 	])
 	const project = found ?? pickProject(await ensureThemeProject(userId, ONBOARDING_THEME))
@@ -76,27 +76,27 @@ export async function getOnboardingState(userId: string): Promise<OnboardingStat
 
 	return {
 		completed: user.onboardingCompletedAt !== null,
-		reached,
 		current: stepAt(reached) ?? null,
-		stepCount: ONBOARDING_STEP_COUNT,
 		experience: user.hardwareExperience,
-		suggestedTier: suggestedTierFor(user.hardwareExperience),
 		project: {
 			...project,
 			tierLocked: project.starterProjectId !== null,
 		},
+		reached,
 		starterProjects: startersShownTo(user.hardwareExperience),
+		stepCount: ONBOARDING_STEP_COUNT,
+		suggestedTier: suggestedTierFor(user.hardwareExperience),
 		trackingDismissed: user.trackingTutorialDismissedAt !== null,
 	}
 }
 
 /** The project fields the flow reads and writes. */
 const PROJECT_SELECT = {
-	id: true,
-	title: true,
 	description: true,
+	id: true,
 	requestedTier: true,
 	starterProjectId: true,
+	title: true,
 } as const
 
 function pickProject(p: {
@@ -107,11 +107,11 @@ function pickProject(p: {
 	starterProjectId: string | null
 }) {
 	return {
-		id: p.id,
-		title: p.title,
 		description: p.description,
+		id: p.id,
 		requestedTier: p.requestedTier,
 		starterProjectId: p.starterProjectId,
+		title: p.title,
 	}
 }
 
@@ -259,7 +259,6 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 	const next = tookStarter ? stepIndexOf("tracking") : answer.step === "project" ? stepIndexOf("idea") + 1 : index + 1
 	// Only ever forward: re-answering step 3 from step 5 must not rewind anyone. The transaction re-reads the marker and takes the max against its own fresh value.
 	const userWrite = {
-		where: { id: userId },
 		data: {
 			...userData,
 			// Keeps the statement non-empty for an informational answer (the PCB week has no fields of its own) without writing the marker here; the guarded update below owns it.
@@ -267,10 +266,11 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 		},
 		select: {
 			hardwareExperience: true,
-			onboardingStep: true,
 			onboardingCompletedAt: true,
+			onboardingStep: true,
 			trackingTutorialDismissedAt: true,
 		},
+		where: { id: userId },
 	} as const
 	const touchesProject = Object.keys(projectData).length > 0
 
@@ -284,17 +284,17 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 	} = await prisma.$transaction(async tx => {
 		// Re-read on the transaction client, so a concurrent step/project change cannot land a write against a stale snapshot.
 		const txUser = await tx.user.findUniqueOrThrow({
-			where: { id: userId },
 			select: {
 				hardwareExperience: true,
-				onboardingStep: true,
 				onboardingCompletedAt: true,
+				onboardingStep: true,
 				trackingTutorialDismissedAt: true,
 			},
+			where: { id: userId },
 		})
 		const txProject = await tx.themeProject.findFirst({
-			where: { userId, theme: ONBOARDING_THEME, deletedAt: null },
 			select: PROJECT_SELECT,
+			where: { deletedAt: null, theme: ONBOARDING_THEME, userId },
 		})
 		const freshReached = clampStep(txUser.onboardingStep)
 		if (index > freshReached) throw new HttpError("VALIDATION_FAILED", "Finish the earlier steps first")
@@ -305,9 +305,9 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 
 		const projectAfter = touchesProject
 			? await tx.themeProject.update({
-					where: { id: targetProjectId },
 					data: projectData,
 					select: PROJECT_SELECT,
+					where: { id: targetProjectId },
 				})
 			: (txProject ?? before.project)
 		const userAfter = await tx.user.update({
@@ -321,30 +321,30 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 
 		// Raise the furthest-reached marker, never lower it: two answers in flight read the same snapshot, and the slower one must not rewind the faster one.
 		await tx.user.updateMany({
-			where: { id: userId, onboardingStep: { lt: reachedNow } },
 			data: { onboardingStep: reachedNow },
+			where: { id: userId, onboardingStep: { lt: reachedNow } },
 		})
 
-		return { projectAfter, userAfter, reached: reachedNow }
+		return { projectAfter, reached: reachedNow, userAfter }
 	})
 
 	const state: OnboardingState = {
 		...before,
 		completed: userAfter.onboardingCompletedAt !== null,
-		reached: reachedAfter,
 		current: stepAt(reachedAfter) ?? null,
 		experience: userAfter.hardwareExperience,
-		suggestedTier: suggestedTierFor(userAfter.hardwareExperience),
 		project: {
 			...projectAfter,
 			tierLocked: projectAfter.starterProjectId !== null,
 		},
+		reached: reachedAfter,
 		// Re-read, not carried over: answering question one changes who is offered them.
 		starterProjects: startersShownTo(userAfter.hardwareExperience),
+		suggestedTier: suggestedTierFor(userAfter.hardwareExperience),
 		trackingDismissed: userAfter.trackingTutorialDismissedAt !== null,
 	}
 
-	return { state, completed: userAfter.onboardingCompletedAt !== null, touchedProject: touchesProject, repoRequest }
+	return { completed: userAfter.onboardingCompletedAt !== null, repoRequest, state, touchedProject: touchesProject }
 }
 
 /**
@@ -355,17 +355,17 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 export async function resetOnboarding(userId: string): Promise<void> {
 	await prisma.$transaction([
 		prisma.user.update({
-			where: { id: userId },
 			data: {
-				onboardingStep: 0,
-				onboardingCompletedAt: null,
 				hardwareExperience: null,
+				onboardingCompletedAt: null,
+				onboardingStep: 0,
 				trackingTutorialDismissedAt: null,
 			},
+			where: { id: userId },
 		}),
 		prisma.themeProject.updateMany({
-			where: { userId, theme: ONBOARDING_THEME, deletedAt: null },
 			data: { starterProjectId: null },
+			where: { deletedAt: null, theme: ONBOARDING_THEME, userId },
 		}),
 	])
 }
@@ -377,20 +377,20 @@ export async function resetOnboarding(userId: string): Promise<void> {
  */
 export async function needsOnboarding(userId: string): Promise<boolean> {
 	const user = await prisma.user.findUnique({
-		where: { id: userId },
 		select: { onboardingCompletedAt: true },
+		where: { id: userId },
 	})
 	if (!user || user.onboardingCompletedAt) return false
 
 	const started = await prisma.themeProject.count({
 		where: {
-			userId,
 			deletedAt: null,
 			OR: [
 				{ designStatus: { not: PhaseStatus.draft } },
 				{ buildStatus: { not: PhaseStatus.draft } },
 				{ workSessions: { some: { deletedAt: null } } },
 			],
+			userId,
 		},
 	})
 	return started === 0

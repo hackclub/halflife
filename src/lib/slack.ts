@@ -16,12 +16,12 @@ async function slackCall<T>(method: string, body: Record<string, unknown>): Prom
 	if (!bot) throw new Error("SLACK_BOT_TOKEN is not set")
 
 	const res = await fetch(`${SLACK_API}/${method}`, {
-		method: "POST",
+		body: JSON.stringify(body),
 		headers: {
 			Authorization: `Bearer ${bot}`,
 			"Content-Type": "application/json; charset=utf-8",
 		},
-		body: JSON.stringify(body),
+		method: "POST",
 		signal: AbortSignal.timeout(10_000),
 	})
 	const data = (await res.json()) as { ok: boolean; error?: string }
@@ -47,8 +47,8 @@ export async function getSlackProfile(
 		}
 		if (!data.ok || !data.user?.profile) return null
 		return {
-			image: data.user.profile.image_512 ?? null,
 			displayName: data.user.profile.display_name || data.user.profile.real_name || null,
+			image: data.user.profile.image_512 ?? null,
 		}
 	} catch {
 		return null

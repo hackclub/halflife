@@ -176,9 +176,9 @@ export function StageSlide({
 			.animate(
 				[
 					{ opacity: 0, transform: at(0, 0.3) },
-					{ opacity: 1, transform: at(0, 1.18), offset: 0.16 },
-					{ opacity: 1, transform: at(0, 0.94), offset: 0.3 },
-					{ opacity: 1, transform: at(0, 1), offset: 0.55 },
+					{ offset: 0.16, opacity: 1, transform: at(0, 1.18) },
+					{ offset: 0.3, opacity: 1, transform: at(0, 0.94) },
+					{ offset: 0.55, opacity: 1, transform: at(0, 1) },
 					{ opacity: 0, transform: at(80, 1.3) },
 				],
 				{ duration: 900, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },

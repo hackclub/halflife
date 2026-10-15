@@ -29,25 +29,25 @@ export type RsvpInput = {
 export async function bufferRsvp(input: RsvpInput): Promise<{ buffered: true }> {
 	const email = input.email.trim().toLowerCase()
 	await prisma.rsvpBuffer.upsert({
-		where: { email },
 		create: {
 			email,
 			firstName: input.firstName ?? null,
+			ip: input.ip ?? null,
 			lastName: input.lastName ?? null,
 			pronouns: input.pronouns ?? null,
-			ip: input.ip ?? null,
-			utmSource: input.utmSource ?? null,
-			signupPage: input.signupPage ?? null,
 			referredBy: input.referredBy ?? null,
+			signupPage: input.signupPage ?? null,
+			utmSource: input.utmSource ?? null,
 		},
 		// Re-RSVPing must not clobber attribution captured the first time, and it resets the failure count: a row that hit the drain's attempt cap while Airtable was down must be retried when the person comes back, not left permanently invisible.
 		update: {
 			firstName: input.firstName ?? undefined,
 			lastName: input.lastName ?? undefined,
 			pronouns: input.pronouns ?? undefined,
-			syncedToAirtable: false,
 			syncAttempts: 0,
+			syncedToAirtable: false,
 		},
+		where: { email },
 	})
 	return { buffered: true }
 }
@@ -56,15 +56,15 @@ export async function bufferRsvp(input: RsvpInput): Promise<{ buffered: true }> 
 export async function bufferRsvpForUser(userId: string, email: string, name: string | null): Promise<void> {
 	const [firstName, ...rest] = (name ?? "").trim().split(/\s+/)
 	await prisma.rsvpBuffer.upsert({
-		where: { email: email.trim().toLowerCase() },
 		create: {
 			email: email.trim().toLowerCase(),
+			finishedAccountCreation: true,
 			firstName: firstName || null,
 			lastName: rest.length > 0 ? rest.join(" ") : null,
 			userId,
-			finishedAccountCreation: true,
 		},
-		update: { userId, finishedAccountCreation: true, syncedToAirtable: false, syncAttempts: 0 },
+		update: { finishedAccountCreation: true, syncAttempts: 0, syncedToAirtable: false, userId },
+		where: { email: email.trim().toLowerCase() },
 	})
 }
 
@@ -90,16 +90,16 @@ export async function recordDirectSignup(input: {
 		if (!existing) {
 			await prisma.rsvpBuffer.create({
 				data: {
-					email,
-					ip: input.ip ?? null,
-					utmSource: input.utmSource ?? null,
-					referredBy: input.referredBy ?? null,
-					userId: input.userId ?? null,
-					finishedAccountCreation: !!input.userId,
 					airtableRecordId: input.recordId,
+					email,
+					finishedAccountCreation: !!input.userId,
+					ip: input.ip ?? null,
+					referredBy: input.referredBy ?? null,
+					syncedAt: input.userId ? null : new Date(),
 					// A row carrying a user id still needs the drain to PATCH it upstream; anything else is already upstream.
 					syncedToAirtable: !input.userId,
-					syncedAt: input.userId ? null : new Date(),
+					userId: input.userId ?? null,
+					utmSource: input.utmSource ?? null,
 				},
 			})
 			return
@@ -112,7 +112,7 @@ export async function recordDirectSignup(input: {
 			data.syncedToAirtable = false
 			data.syncAttempts = 0
 		}
-		if (Object.keys(data).length > 0) await prisma.rsvpBuffer.update({ where: { email }, data: data as never })
+		if (Object.keys(data).length > 0) await prisma.rsvpBuffer.update({ data: data as never, where: { email } })
 	} catch (err) {
 		console.error("[airtable] recordDirectSignup failed:", err)
 	}
@@ -136,21 +136,21 @@ export type DrainResult = {
 export async function drainRsvpBuffer(limit = 50, opts: { dryRun?: boolean } = {}): Promise<DrainResult> {
 	const config = getAirtableConfig()
 	if (!config) {
-		return { attempted: 0, created: 0, updated: 0, failed: 0, skippedUserId: 0, skipped: "not_configured" }
+		return { attempted: 0, created: 0, failed: 0, skipped: "not_configured", skippedUserId: 0, updated: 0 }
 	}
 
 	const pending = await prisma.rsvpBuffer.findMany({
-		where: { syncedToAirtable: false, syncAttempts: { lt: 10 } },
 		orderBy: { createdAt: "asc" },
 		take: limit,
+		where: { syncAttempts: { lt: 10 }, syncedToAirtable: false },
 	})
 
 	const result: DrainResult = {
 		attempted: pending.length,
 		created: 0,
-		updated: 0,
 		failed: 0,
 		skippedUserId: 0,
+		updated: 0,
 	}
 	if (opts.dryRun) return result
 
@@ -172,14 +172,14 @@ export async function drainRsvpBuffer(limit = 50, opts: { dryRun?: boolean } = {
 			// `RsvpBuffer.signupPage` is deliberately absent: the base has no column for it (see RSVP.fields), so a row still carrying one writes everything else and drops that. The field is left on the buffer because /api/rsvp accepts it from outside this repo; the day a column exists, it belongs back in this list.
 			const values = {
 				email: row.email,
+				finishedAccountCreation: row.finishedAccountCreation,
 				firstName: row.firstName ?? undefined,
+				ip: row.ip ?? undefined,
 				lastName: row.lastName ?? undefined,
 				pronouns: row.pronouns ?? undefined,
-				ip: row.ip ?? undefined,
-				utmSource: row.utmSource ?? undefined,
 				referredBy: row.referredBy ?? undefined,
-				finishedAccountCreation: row.finishedAccountCreation,
 				userId: row.userId ?? undefined,
+				utmSource: row.utmSource ?? undefined,
 			}
 			// Only the columns this table actually has, so one absent column cannot cost the row the seven that are present.
 			const fields: Record<string, unknown> = {}
@@ -195,20 +195,20 @@ export async function drainRsvpBuffer(limit = 50, opts: { dryRun?: boolean } = {
 				// Once the row exists upstream, updates are a patch by id rather than a formula search.
 				await withRateLimitRetry("updateRsvp", () =>
 					airtableFetch(config, `${RSVP.tableId}/${recordId}`, {
-						method: "PATCH",
 						body: JSON.stringify({ fields }),
+						method: "PATCH",
 					}),
 				)
 				result.updated++
 			} else {
 				const upserted = await withRateLimitRetry("upsertRsvp", () =>
 					airtableFetch<{ records: AirtableRecord[]; updatedRecords?: string[] }>(config, RSVP.tableId, {
-						method: "PATCH",
 						body: JSON.stringify({
 							performUpsert: { fieldsToMergeOn: [fieldKey(RSVP.fields.email)] },
 							records: [{ fields }],
 							typecast: false,
 						}),
+						method: "PATCH",
 					}),
 				)
 				recordId = upserted.records[0]?.id ?? null
@@ -217,22 +217,22 @@ export async function drainRsvpBuffer(limit = 50, opts: { dryRun?: boolean } = {
 			}
 
 			await prisma.rsvpBuffer.update({
-				where: { id: row.id },
 				data: {
-					syncedToAirtable: true,
-					syncedAt: new Date(),
 					airtableRecordId: recordId,
 					lastSyncError: null,
+					syncedAt: new Date(),
+					syncedToAirtable: true,
 				},
+				where: { id: row.id },
 			})
 		} catch (err) {
 			result.failed++
 			await prisma.rsvpBuffer.update({
-				where: { id: row.id },
 				data: {
-					syncAttempts: { increment: 1 },
 					lastSyncError: err instanceof Error ? err.message : String(err),
+					syncAttempts: { increment: 1 },
 				},
+				where: { id: row.id },
 			})
 		}
 	}

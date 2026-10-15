@@ -25,8 +25,8 @@ export const requireSessionPage = cache(async (): Promise<PageContext> => {
 	const roles = await getUserRolesIfExists(u.id)
 	if (roles === null) redirect("/signed-out")
 	return {
-		user: { id: u.id, email: u.email, name: u.name ?? null, image: u.image ?? null },
 		roles,
+		user: { email: u.email, id: u.id, image: u.image ?? null, name: u.name ?? null },
 	}
 })
 

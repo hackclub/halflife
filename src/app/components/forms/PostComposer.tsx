@@ -15,10 +15,10 @@ export type ComposerProject = {
 }
 
 const KIND_OPTIONS = [
-	{ value: "FREEFORM", label: "Just posting" },
-	{ value: "IDEA", label: "Idea reel" },
-	{ value: "PROGRESS", label: "Progress reel" },
-	{ value: "SUBMISSION", label: "Submission reel" },
+	{ label: "Just posting", value: "FREEFORM" },
+	{ label: "Idea reel", value: "IDEA" },
+	{ label: "Progress reel", value: "PROGRESS" },
+	{ label: "Submission reel", value: "SUBMISSION" },
 ] as const
 
 /**
@@ -90,14 +90,14 @@ export function PostComposer({
 
 			setStage("posting")
 			const created = await fetch("/api/posts", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
-					kind,
 					caption,
+					kind,
 					objectKey,
 					themeProjectId: projectId === "" ? null : projectId,
 				}),
+				headers: { "Content-Type": "application/json" },
+				method: "POST",
 			})
 			if (!created.ok) {
 				const payload = (await created.json().catch(() => ({}))) as ApiError
@@ -175,7 +175,7 @@ export function PostComposer({
 					<progress
 						aria-label="Uploading the video"
 						max={1}
-						style={{ width: "100%", height: "0.6rem" }}
+						style={{ height: "0.6rem", width: "100%" }}
 						value={progress < 1 ? progress : undefined}
 					/>
 					<p className="hl-hint">{progress < 1 ? `Uploading… ${Math.round(progress * 100)}%` : "Sent. Storing it…"}</p>

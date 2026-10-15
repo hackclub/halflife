@@ -50,15 +50,15 @@ export default async function AdminProgramPage() {
 		const range = weekDateRange(settings.eventStartDate, n)
 		const closesAt = weekClosesAt(settings, n)
 		const opensAt = weekOpensAt(settings, n)
-		const day = { timeZone: "UTC", weekday: "short", month: "short", day: "numeric" } as const
+		const day = { day: "numeric", month: "short", timeZone: "UTC", weekday: "short" } as const
 		return {
-			week: n,
+			closes: formatDeadline(closesAt, settings.programTimezone, "short"),
 			label: slot ? `${slot.theme.label} · ${slot.phase === Phase.DESIGN ? "design" : "build"}` : "—",
 			runs: range
 				? `${range.start.toLocaleDateString("en-US", day)} – ${new Date(range.start.getTime() + 6 * 86_400_000).toLocaleDateString("en-US", day)}`
 				: "—",
-			closes: formatDeadline(closesAt, settings.programTimezone, "short"),
 			state: now >= closesAt ? "passed" : now >= opensAt ? "current" : "upcoming",
+			week: n,
 		}
 	})
 
@@ -107,15 +107,15 @@ export default async function AdminProgramPage() {
             submissions stayed open for two weeks after the event ended. */}
 				<ProgramSettingsForm
 					initial={{
+						airtableSyncEnabled: settings.airtableSyncEnabled,
 						programTimezone: settings.programTimezone,
-						submissionsOpen: settings.submissionsOpen,
-						submissionsCloseAt: settings.submissionsCloseAt?.toISOString().slice(0, 16) ?? null,
-						shopOpen: settings.shopOpen,
+						repoSyncEnabled: settings.repoSyncEnabled,
+						reviewClaimTtlMinutes: settings.reviewClaimTtlMinutes,
 						shopClosesAt: settings.shopClosesAt?.toISOString().slice(0, 16) ?? null,
 						shopGraceDays: settings.shopGraceDays,
-						reviewClaimTtlMinutes: settings.reviewClaimTtlMinutes,
-						airtableSyncEnabled: settings.airtableSyncEnabled,
-						repoSyncEnabled: settings.repoSyncEnabled,
+						shopOpen: settings.shopOpen,
+						submissionsCloseAt: settings.submissionsCloseAt?.toISOString().slice(0, 16) ?? null,
+						submissionsOpen: settings.submissionsOpen,
 					}}
 				/>
 			</Panel>

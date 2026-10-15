@@ -25,20 +25,20 @@ export function reviewTone(design: PhaseStatus, build: PhaseStatus): ReviewTone 
 
 /** Plain words, not the enum. */
 export const REVIEW_STATUS_TEXT: Record<PhaseStatus, string> = {
+	approved: "approved",
 	draft: "not started",
 	in_review: "in review",
-	update_requested: "needs changes",
-	approved: "approved",
 	rejected: "rejected",
+	update_requested: "needs changes",
 }
 
 /** Tailwind background for a state's dot, in the platform's own state colours. */
 export const REVIEW_STATUS_DOT: Record<PhaseStatus, string> = {
+	approved: "bg-teal",
 	draft: "bg-line-strong",
 	in_review: "bg-sky",
-	update_requested: "bg-orange",
-	approved: "bg-teal",
 	rejected: "bg-coral",
+	update_requested: "bg-orange",
 }
 
 /** The platform `Chip` tone for a state. */

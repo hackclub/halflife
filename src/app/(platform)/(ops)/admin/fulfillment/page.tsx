@@ -36,28 +36,28 @@ function utcDay(v?: string): Date | undefined {
 function filtersFrom(s: Search): FulfillmentFilters {
 	const to = utcDay(s.to)
 	return {
-		placedFrom: utcDay(s.from),
+		method: s.method === "NONE" ? "NONE" : Object.values(ShopFulfillmentMethod).find(m => m === s.method),
 		// The "to" day is inclusive, so the bound is the midnight after it.
 		placedBefore: to ? new Date(to.getTime() + DAY_MS) : undefined,
-		method: s.method === "NONE" ? "NONE" : Object.values(ShopFulfillmentMethod).find(m => m === s.method),
+		placedFrom: utcDay(s.from),
 		stage: Object.values(ShopFulfillmentStage).find(x => x === s.stage),
 	}
 }
 
 const placedFormat = new Intl.DateTimeFormat("en-US", {
-	timeZone: "UTC",
 	dateStyle: "medium",
 	timeStyle: "short",
+	timeZone: "UTC",
 })
 
 /** Award-state colours, matching the badge tones the console already uses. */
 const AWARD_TONES = {
-	QUALIFIED: "muted",
 	ADDRESS_LOCKED: "warning",
-	PACKING: "warning",
-	SHIPPED: "success",
 	DELIVERED: "success",
+	PACKING: "warning",
+	QUALIFIED: "muted",
 	REVOKED: "danger",
+	SHIPPED: "success",
 } as const
 
 export default async function AdminFulfillmentPage({ searchParams }: Props) {
@@ -85,7 +85,7 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 			<PageHeader subtitle="Every order that was not rejected, including cancelled ones." title="Fulfillment" />
 
 			<Panel>
-				<form className="hl-row" method="get" style={{ flexWrap: "wrap", alignItems: "flex-end" }}>
+				<form className="hl-row" method="get" style={{ alignItems: "flex-end", flexWrap: "wrap" }}>
 					<label className="hl-stack hl-stack--tight" style={{ gap: "0.25rem" }}>
 						<span className="hl-label-text">Placed from</span>
 						<input className="hl-input" defaultValue={search.from ?? ""} name="from" type="date" />

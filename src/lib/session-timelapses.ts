@@ -34,8 +34,8 @@ export async function reconcileSessionTimelapses(
 	fresh: FreshTimelapse[],
 ): Promise<{ added: string[]; removed: string[] }> {
 	const rows = await tx.sessionTimelapse.findMany({
+		select: { externalId: true, id: true, provider: true },
 		where: { workSessionId: sessionId },
-		select: { id: true, provider: true, externalId: true },
 	})
 	const have = new Set(rows.flatMap(r => (r.provider === "lapse" && r.externalId ? [r.externalId] : [])))
 	const removeIds = rows
@@ -50,13 +50,13 @@ export async function reconcileSessionTimelapses(
 	if (addIds.length > 0) {
 		// This session's own rows do not count: keeping a clip is not taking it from anywhere.
 		const taken = await tx.sessionTimelapse.findFirst({
-			where: {
-				provider: "lapse",
-				externalId: { in: addIds },
-				workSessionId: { not: sessionId },
-				workSession: { deletedAt: null, themeProject: { deletedAt: null } },
-			},
 			select: { externalId: true },
+			where: {
+				externalId: { in: addIds },
+				provider: "lapse",
+				workSession: { deletedAt: null, themeProject: { deletedAt: null } },
+				workSessionId: { not: sessionId },
+			},
 		})
 		if (taken) {
 			const title = fresh.find(t => t.id === taken.externalId)?.title ?? "That timelapse"
@@ -69,15 +69,15 @@ export async function reconcileSessionTimelapses(
 	if (adding.length > 0) {
 		await tx.sessionTimelapse.createMany({
 			data: adding.map(t => ({
-				workSessionId: sessionId,
-				provider: "lapse",
-				externalId: t.id,
-				playbackUrl: t.playbackUrl,
-				thumbnailUrl: t.thumbnailUrl,
 				coveredSeconds: t.durationSeconds,
+				externalId: t.id,
+				hackatimeProject: t.hackatimeProject,
+				playbackUrl: t.playbackUrl,
+				provider: "lapse",
 				// The recording's own start, and the project Lapse saw while it ran, so the hours rollup can intersect this window with Hackatime's spans instead of paying for the same sitting twice.
 				recordedAt: t.recordedAt === null ? null : new Date(t.recordedAt),
-				hackatimeProject: t.hackatimeProject,
+				thumbnailUrl: t.thumbnailUrl,
+				workSessionId: sessionId,
 			})),
 		})
 	}

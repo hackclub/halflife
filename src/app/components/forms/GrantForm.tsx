@@ -26,7 +26,7 @@ export function GrantForm({
 			"send",
 			() =>
 				sendJson<{ alreadySent?: boolean }>(`/api/admin/theme-projects/${projectId}/grant`, {
-					body: { phase: "DESIGN", grantUrl },
+					body: { grantUrl, phase: "DESIGN" },
 				}),
 			data => {
 				setMessage(data.alreadySent ? "already sent" : "sent")

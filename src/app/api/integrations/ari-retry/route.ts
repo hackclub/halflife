@@ -44,9 +44,9 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 			"ari",
 			{
 				actorId: null,
-				targetType: "ThemeProject",
-				targetId: item.themeProjectId,
 				metadata: { phase: item.phase, retry: true },
+				targetId: item.themeProjectId,
+				targetType: "ThemeProject",
 			},
 			() => sendSubmissionToAri(item.themeProjectId, item.phase),
 		)
@@ -60,15 +60,15 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 	let withdrawFailed = 0
 	if (isAriConfigured()) {
 		const failures = await prisma.auditLog.findMany({
+			orderBy: { createdAt: "desc" },
+			select: { createdAt: true, metadata: true, targetId: true },
+			take: 50,
 			where: {
 				action: AuditAction.ARI_SYNC_FAILURE,
-				targetId: { not: null },
 				createdAt: { gte: new Date(Date.now() - WITHDRAW_REPLAY_WINDOW_MS) },
-				metadata: { path: ["withdrawn"], equals: true },
+				metadata: { equals: true, path: ["withdrawn"] },
+				targetId: { not: null },
 			},
-			orderBy: { createdAt: "desc" },
-			take: 50,
-			select: { targetId: true, metadata: true, createdAt: true },
 		})
 
 		const attempted = new Set<string>()
@@ -81,19 +81,19 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 			attempted.add(key)
 
 			const resolved = await prisma.auditLog.findFirst({
+				select: { id: true },
 				where: {
 					action: AuditAction.ARI_SYNC_SUCCESS,
-					targetId,
 					createdAt: { gt: failure.createdAt },
-					metadata: { path: ["withdrawn"], equals: true },
+					metadata: { equals: true, path: ["withdrawn"] },
+					targetId,
 				},
-				select: { id: true },
 			})
 			if (resolved) continue
 
 			const result = await trackSideEffect(
 				"ari",
-				{ actorId: null, targetType: "ThemeProject", targetId, metadata: { phase, withdrawn: true, retry: true } },
+				{ actorId: null, metadata: { phase, retry: true, withdrawn: true }, targetId, targetType: "ThemeProject" },
 				() => withdrawSubmissionFromAri(targetId, phase),
 			)
 			if (result) withdrawn++
@@ -106,15 +106,15 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 	let deferredFailed = 0
 	if (isAriConfigured()) {
 		const waiting = await prisma.ariWebhookDelivery.findMany({
-			where: { appliedAt: null, payload: { not: Prisma.DbNull } },
 			orderBy: { receivedAt: "asc" },
-			take: 25,
 			select: { id: true, payload: true },
+			take: 25,
+			where: { appliedAt: null, payload: { not: Prisma.DbNull } },
 		})
 		for (const row of waiting) {
 			try {
 				await applyStoredEvent(row.payload as unknown as AriWebhookEvent)
-				await prisma.ariWebhookDelivery.update({ where: { id: row.id }, data: { appliedAt: new Date() } })
+				await prisma.ariWebhookDelivery.update({ data: { appliedAt: new Date() }, where: { id: row.id } })
 				deferred++
 			} catch (err) {
 				// Still waiting on the design: leave it for a later run rather than counting it failed.
@@ -126,13 +126,13 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 
 	const summary = {
 		attempted: pending.length,
-		synced,
-		skipped,
-		failed,
-		withdrawn,
-		withdrawFailed,
 		deferred,
 		deferredFailed,
+		failed,
+		skipped,
+		synced,
+		withdrawFailed,
+		withdrawn,
 	}
 	await recordSyncRun("ari_ship", summary)
 	return ok(summary)

@@ -29,16 +29,16 @@ type StatsBody = {
 export function projectSecondsFrom(body: unknown, project: string): HackatimeFetch {
 	const projects = (body as StatsBody | null)?.data?.projects
 	if (!Array.isArray(projects)) {
-		return { seconds: 0, stale: true, error: "Hackatime returned no project list" }
+		return { error: "Hackatime returned no project list", seconds: 0, stale: true }
 	}
 
 	const match = projects.find(p => p?.name === project)
 	if (!match) {
 		return {
+			error: `Hackatime does not list a project named "${project}"`,
+			notFound: true,
 			seconds: 0,
 			stale: true,
-			notFound: true,
-			error: `Hackatime does not list a project named "${project}"`,
 		}
 	}
 
@@ -57,14 +57,14 @@ export async function fetchProjectSeconds(hackatimeUserId: string, project: stri
 		const url = new URL(`${BASE}/api/v1/users/${encodeURIComponent(hackatimeUserId)}/stats`)
 		url.searchParams.set("features", "projects")
 		const res = await fetchWithRetry(url, {
-			signal: AbortSignal.timeout(TIMEOUT_MS),
 			cache: "no-store",
+			signal: AbortSignal.timeout(TIMEOUT_MS),
 		})
-		if (!res.ok) return { seconds: 0, stale: true, error: `HTTP ${res.status}` }
+		if (!res.ok) return { error: `HTTP ${res.status}`, seconds: 0, stale: true }
 
 		return projectSecondsFrom(await res.json(), project)
 	} catch (err) {
-		return { seconds: 0, stale: true, error: err instanceof Error ? err.message : String(err) }
+		return { error: err instanceof Error ? err.message : String(err), seconds: 0, stale: true }
 	}
 }
 
@@ -78,7 +78,7 @@ export async function fetchProjectSeconds(hackatimeUserId: string, project: stri
 export function spansFrom(body: unknown): { spans: HackatimeSpan[]; stale: boolean; error?: string } {
 	const raw = (body as { spans?: unknown } | null)?.spans
 	if (!Array.isArray(raw)) {
-		return { spans: [], stale: true, error: "Hackatime returned no spans" }
+		return { error: "Hackatime returned no spans", spans: [], stale: true }
 	}
 
 	const spans: HackatimeSpan[] = []
@@ -94,7 +94,7 @@ export function spansFrom(body: unknown): { spans: HackatimeSpan[]; stale: boole
 		) {
 			continue
 		}
-		spans.push({ start, end })
+		spans.push({ end, start })
 	}
 	return { spans, stale: false }
 }
@@ -120,15 +120,15 @@ export async function fetchProjectSpans(
 		url.searchParams.set("start_date", new Date(window.fromSeconds * 1000).toISOString())
 		url.searchParams.set("end_date", new Date(window.toSeconds * 1000).toISOString())
 		const res = await fetchWithRetry(url, {
-			signal: AbortSignal.timeout(TIMEOUT_MS),
 			cache: "no-store",
+			signal: AbortSignal.timeout(TIMEOUT_MS),
 		})
 		// 403 is a participant who turned public stats off. That is not a transient blip and must not read as "no overlap found".
-		if (!res.ok) return { spans: [], stale: true, error: `HTTP ${res.status}` }
+		if (!res.ok) return { error: `HTTP ${res.status}`, spans: [], stale: true }
 
 		return spansFrom(await res.json())
 	} catch (err) {
-		return { spans: [], stale: true, error: err instanceof Error ? err.message : String(err) }
+		return { error: err instanceof Error ? err.message : String(err), spans: [], stale: true }
 	}
 }
 
@@ -136,7 +136,7 @@ export async function listUserProjects(hackatimeUserId: string): Promise<{ name:
 	try {
 		const url = new URL(`${BASE}/api/v1/users/${encodeURIComponent(hackatimeUserId)}/stats`)
 		url.searchParams.set("features", "projects")
-		const res = await fetchWithRetry(url, { signal: AbortSignal.timeout(TIMEOUT_MS), cache: "no-store" })
+		const res = await fetchWithRetry(url, { cache: "no-store", signal: AbortSignal.timeout(TIMEOUT_MS) })
 		if (!res.ok) return []
 		const body = (await res.json()) as {
 			data?: { projects?: { name: string; total_seconds: number }[] }
@@ -153,29 +153,29 @@ export async function listUserProjects(hackatimeUserId: string): Promise<{ name:
 /** Refresh one link's cached total. Used by the sync job and on demand. */
 export async function refreshLinkCache(linkId: string): Promise<HackatimeFetch> {
 	const link = await prisma.hackatimeLink.findUnique({
-		where: { id: linkId },
 		include: { themeProject: { select: { user: { select: { hackatimeUserId: true } } } } },
+		where: { id: linkId },
 	})
-	if (!link) return { seconds: 0, stale: true, error: "link not found" }
+	if (!link) return { error: "link not found", seconds: 0, stale: true }
 
 	const hackatimeUserId = link.themeProject.user.hackatimeUserId
 	if (!hackatimeUserId) {
-		return { seconds: link.cachedSeconds ?? 0, stale: true, error: "user has no linked Hackatime account" }
+		return { error: "user has no linked Hackatime account", seconds: link.cachedSeconds ?? 0, stale: true }
 	}
 
 	const result = await fetchProjectSeconds(hackatimeUserId, link.hackatimeProject)
 	if (result.stale) {
 		await prisma.hackatimeLink.update({
-			where: { id: linkId },
 			data: { lastFetchError: result.error ?? "unknown error" },
+			where: { id: linkId },
 		})
 		// Fall back to the last good value rather than reporting zero.
-		return { seconds: link.cachedSeconds ?? 0, stale: true, error: result.error }
+		return { error: result.error, seconds: link.cachedSeconds ?? 0, stale: true }
 	}
 
 	await prisma.hackatimeLink.update({
+		data: { cachedAt: new Date(), cachedSeconds: result.seconds, lastFetchError: null },
 		where: { id: linkId },
-		data: { cachedSeconds: result.seconds, cachedAt: new Date(), lastFetchError: null },
 	})
 	return result
 }

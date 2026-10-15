@@ -18,27 +18,27 @@ const tierSchema = z
 export const decisionSchema = z.discriminatedUnion("result", [
 	z
 		.object({
-			result: z.literal(ReviewResult.APPROVED),
 			feedback: boundedText(8000).default(""),
+			grantUsdOverride: z.number().int().min(0).max(500).optional(),
+			hoursOverride: z.number().min(0).max(168).optional(),
 			reason: boundedText(8000).optional(),
+			result: z.literal(ReviewResult.APPROVED),
 			/** Required when approving a design; ignored on a build. */
 			tier: tierSchema.optional(),
-			hoursOverride: z.number().min(0).max(168).optional(),
-			grantUsdOverride: z.number().int().min(0).max(500).optional(),
 		})
 		.strict(),
 	z
 		.object({
-			result: z.literal(ReviewResult.RETURNED),
 			feedback: boundedText(8000, 1),
 			reason: boundedText(8000).optional(),
+			result: z.literal(ReviewResult.RETURNED),
 		})
 		.strict(),
 	z
 		.object({
-			result: z.literal(ReviewResult.REJECTED),
 			feedback: boundedText(8000, 1),
 			reason: boundedText(8000, 1),
+			result: z.literal(ReviewResult.REJECTED),
 		})
 		.strict(),
 ])
@@ -50,18 +50,18 @@ export const hoursDecisionSchema = z
 				z.discriminatedUnion("kind", [
 					z
 						.object({
-							kind: z.literal("session"),
-							id: cuid,
-							hoursApproved: z.number().min(0).max(MAX_SESSION_HOURS),
 							comments: boundedText(2000).optional(),
+							hoursApproved: z.number().min(0).max(MAX_SESSION_HOURS),
+							id: cuid,
+							kind: z.literal("session"),
 						})
 						.strict(),
 					z
 						.object({
-							kind: z.literal("hackatime"),
-							id: cuid,
 							// Matches the decision override ceiling, so per-source approvals cannot exceed what a decision-level override allows.
 							hoursApproved: z.number().min(0).max(168),
+							id: cuid,
+							kind: z.literal("hackatime"),
 						})
 						.strict(),
 				]),

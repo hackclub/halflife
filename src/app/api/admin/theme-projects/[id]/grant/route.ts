@@ -22,11 +22,11 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	if (parsed.error) return parsed.error
 
 	const result = await sendGrant({
-		themeProjectId: id,
-		phase: parsed.data.phase,
-		grantUrl: parsed.data.grantUrl,
-		adminId: gate.user.id,
 		adminEmail: gate.user.email,
+		adminId: gate.user.id,
+		grantUrl: parsed.data.grantUrl,
+		phase: parsed.data.phase,
+		themeProjectId: id,
 	})
 	return ok(result)
 })

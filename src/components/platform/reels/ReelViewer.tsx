@@ -239,7 +239,7 @@ export function ReelViewer() {
 		const params = new URLSearchParams(window.location.search)
 		const id = params.get("reel")
 		if (id) {
-			deepLink.current = { id, comments: params.get("comments") === "1" }
+			deepLink.current = { comments: params.get("comments") === "1", id }
 			// eslint-disable-next-line react-hooks/set-state-in-effect -- reading the URL after mount
 			setResume({ id, leadIds: [] })
 			return
@@ -522,7 +522,7 @@ export function ReelViewer() {
 							{current.author.id !== viewer.id && (
 								<ReportButton
 									context={current.caption || undefined}
-									target={{ type: "REEL", id: current.id }}
+									target={{ id: current.id, type: "REEL" }}
 									title="Report this reel"
 									tone="adaptive"
 								/>
@@ -663,8 +663,8 @@ function Action({
 		disc.current?.animate(
 			[
 				{ transform: "scale(1)" },
-				{ transform: "scale(1.28)", offset: 0.35 },
-				{ transform: "scale(0.94)", offset: 0.7 },
+				{ offset: 0.35, transform: "scale(1.28)" },
+				{ offset: 0.7, transform: "scale(0.94)" },
 				{ transform: "scale(1)" },
 			],
 			{ duration: 420, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },

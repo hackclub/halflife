@@ -33,13 +33,13 @@ export const GET = withRoute(async (req: NextRequest) => {
 	let ownExternalIds = new Set<string>()
 	if (forSession) {
 		const session = await prisma.workSession.findFirst({
-			where: { id: forSession, deletedAt: null, themeProject: { userId: gate.user.id, deletedAt: null } },
 			select: { id: true },
+			where: { deletedAt: null, id: forSession, themeProject: { deletedAt: null, userId: gate.user.id } },
 		})
 		if (!session) return fail("NOT_FOUND", "Session not found")
 		const rows = await prisma.sessionTimelapse.findMany({
-			where: { workSessionId: forSession, provider: "lapse", externalId: { in: ids } },
 			select: { externalId: true },
+			where: { externalId: { in: ids }, provider: "lapse", workSessionId: forSession },
 		})
 		ownExternalIds = new Set(rows.flatMap(r => (r.externalId ? [r.externalId] : [])))
 	}
@@ -71,21 +71,21 @@ export const GET = withRoute(async (req: NextRequest) => {
 				continue
 			}
 			resolved.push({
-				id: t.id,
-				title: t.title,
-				durationSeconds: t.durationSeconds,
-				visibility: t.visibility,
-				createdAt: t.createdAt,
-				thumbnailUrl: t.thumbnailUrl,
-				hackatimeProject: t.hackatimeProject,
-				processing: t.playbackUrl === null,
 				// About to be selected, which is what unblocks a picked row – the flag only ever stops somebody else's clip.
 				attached: false,
+				createdAt: t.createdAt,
+				durationSeconds: t.durationSeconds,
+				hackatimeProject: t.hackatimeProject,
+				id: t.id,
+				processing: t.playbackUrl === null,
+				thumbnailUrl: t.thumbnailUrl,
+				title: t.title,
+				visibility: t.visibility,
 			})
 		} catch {
 			pinned.push(id)
 		}
 	}
 
-	return ok({ resolved, pinned, legacy })
+	return ok({ legacy, pinned, resolved })
 })

@@ -52,7 +52,7 @@ async function quietly(label: string, fn: () => Promise<unknown>): Promise<void>
 
 /** A new sign-in. */
 export function markLogin(userId: string, at = new Date()): Promise<void> {
-	return quietly("markLogin", () => prisma.user.update({ where: { id: userId }, data: { lastLoginAt: at } }))
+	return quietly("markLogin", () => prisma.user.update({ data: { lastLoginAt: at }, where: { id: userId } }))
 }
 
 // Per process, so a burst of page views costs one write, not one each. The database value is the truth; this only saves round trips.
@@ -67,7 +67,7 @@ export function touchActivity(userId: string, at = new Date()): Promise<void> {
 	lastTouched.set(userId, at.getTime())
 	if (lastTouched.size > 10_000) lastTouched.clear()
 
-	return quietly("touchActivity", () => prisma.user.update({ where: { id: userId }, data: { lastActiveAt: at } }))
+	return quietly("touchActivity", () => prisma.user.update({ data: { lastActiveAt: at }, where: { id: userId } }))
 }
 
 /**
@@ -77,11 +77,11 @@ export function touchActivity(userId: string, at = new Date()): Promise<void> {
  */
 async function rebuildActiveDays(userId: string, programTimezone: string): Promise<number> {
 	const sessions = await prisma.workSession.findMany({
-		where: {
-			themeProject: { userId, deletedAt: null },
-			deletedAt: null,
-		},
 		select: { createdAt: true, effectiveDate: true, hoursClaimed: true },
+		where: {
+			deletedAt: null,
+			themeProject: { deletedAt: null, userId },
+		},
 	})
 	// day → the day's total hours and the earliest entry that fell on it, in one pass.
 	const totals = new Map<string, { hours: number; firstSeenAt: Date }>()
@@ -89,7 +89,7 @@ async function rebuildActiveDays(userId: string, programTimezone: string): Promi
 		const day = s.effectiveDate ?? effectiveDateFor(s.createdAt, programTimezone)
 		const seen = totals.get(day)
 		if (seen === undefined) {
-			totals.set(day, { hours: s.hoursClaimed, firstSeenAt: s.createdAt })
+			totals.set(day, { firstSeenAt: s.createdAt, hours: s.hoursClaimed })
 			continue
 		}
 		seen.hours += s.hoursClaimed
@@ -98,8 +98,8 @@ async function rebuildActiveDays(userId: string, programTimezone: string): Promi
 	const days = [...totals].filter(([, day]) => isActiveDay(day.hours))
 	await prisma.$transaction([
 		prisma.userDay.deleteMany({ where: { userId } }),
-		prisma.userDay.createMany({ data: days.map(([day, { firstSeenAt }]) => ({ userId, day, firstSeenAt })) }),
-		prisma.user.update({ where: { id: userId }, data: { activeDays: days.length } }),
+		prisma.userDay.createMany({ data: days.map(([day, { firstSeenAt }]) => ({ day, firstSeenAt, userId })) }),
+		prisma.user.update({ data: { activeDays: days.length }, where: { id: userId } }),
 	])
 	return days.length
 }
@@ -125,34 +125,34 @@ function isCreated(p: { description: string | null; tier: number | null; request
 export function markProjectCreated(themeProjectId: string, userId: string, at = new Date()): Promise<void> {
 	return quietly("markProjectCreated", async () => {
 		const p = await prisma.themeProject.findUnique({
+			select: { description: true, namedAt: true, requestedTier: true, tier: true },
 			where: { id: themeProjectId },
-			select: { description: true, tier: true, requestedTier: true, namedAt: true },
 		})
 		if (!p || p.namedAt || !isCreated(p)) return
-		await prisma.themeProject.updateMany({ where: { id: themeProjectId, namedAt: null }, data: { namedAt: at } })
-		await prisma.user.updateMany({ where: { id: userId, firstProjectAt: null }, data: { firstProjectAt: at } })
+		await prisma.themeProject.updateMany({ data: { namedAt: at }, where: { id: themeProjectId, namedAt: null } })
+		await prisma.user.updateMany({ data: { firstProjectAt: at }, where: { firstProjectAt: null, id: userId } })
 	})
 }
 
 /** A reel was posted. */
 export function markReel(userId: string, at = new Date()): Promise<void> {
 	return quietly("markReel", () =>
-		prisma.user.updateMany({ where: { id: userId, firstReelAt: null }, data: { firstReelAt: at } }),
+		prisma.user.updateMany({ data: { firstReelAt: at }, where: { firstReelAt: null, id: userId } }),
 	)
 }
 
 /** A phase was handed in. */
 export function markSubmission(userId: string, at = new Date()): Promise<void> {
 	return quietly("markSubmission", async () => {
-		await prisma.user.updateMany({ where: { id: userId, firstSubmissionAt: null }, data: { firstSubmissionAt: at } })
-		await prisma.user.update({ where: { id: userId }, data: { lastSubmissionAt: at } })
+		await prisma.user.updateMany({ data: { firstSubmissionAt: at }, where: { firstSubmissionAt: null, id: userId } })
+		await prisma.user.update({ data: { lastSubmissionAt: at }, where: { id: userId } })
 	})
 }
 
 /** The repo file checks first passed: the preflight that gates submissions. */
 export function markChecksPassed(userId: string, at = new Date()): Promise<void> {
 	return quietly("markChecksPassed", () =>
-		prisma.user.updateMany({ where: { id: userId, firstChecksPassedAt: null }, data: { firstChecksPassedAt: at } }),
+		prisma.user.updateMany({ data: { firstChecksPassedAt: at }, where: { firstChecksPassedAt: null, id: userId } }),
 	)
 }
 
@@ -163,26 +163,26 @@ export function recomputeWeek(userId: string, week: number | null, at = new Date
 	if (!week || week < 1) return Promise.resolve()
 	return quietly("recomputeWeek", async () => {
 		const sum = await prisma.workSession.aggregate({
+			_sum: { hoursClaimed: true },
 			// HACKATIME_TRACKED sessions contribute zero to every paid total (lib/hours), so they must not inflate the weekly analytics either.
 			where: {
-				weekNumber: week,
 				deletedAt: null,
-				themeProject: { userId, deletedAt: null },
 				hoursSource: { not: HoursSource.HACKATIME_TRACKED },
+				themeProject: { deletedAt: null, userId },
+				weekNumber: week,
 			},
-			_sum: { hoursClaimed: true },
 		})
 		const hours = Math.round((sum._sum.hoursClaimed ?? 0) * 100) / 100
 		await prisma.userWeek.upsert({
-			where: { userId_week: { userId, week } },
-			create: { userId, week, hours },
+			create: { hours, userId, week },
 			update: { hours },
+			where: { userId_week: { userId, week } },
 		})
 		for (const h of HOUR_MILESTONES) {
 			if (hours < h) break
 			await prisma.userWeek.updateMany({
-				where: { userId, week, [milestoneField(h)]: null },
 				data: { [milestoneField(h)]: at },
+				where: { userId, week, [milestoneField(h)]: null },
 			})
 		}
 	})
@@ -196,61 +196,61 @@ export function recomputeWeek(userId: string, week: number | null, at = new Date
 export async function backfillAnalytics(): Promise<Record<string, number>> {
 	const { programTimezone } = await getProgramSettings()
 	const users = await prisma.user.findMany({ select: { id: true } })
-	const counts = { users: users.length, projects: 0, days: 0, weeks: 0 }
+	const counts = { days: 0, projects: 0, users: users.length, weeks: 0 }
 
 	for (const { id: userId } of users) {
 		const [projects, posts, submissions, logins, sessions] = await Promise.all([
 			prisma.themeProject.findMany({
-				where: { userId, deletedAt: null },
-				select: { id: true, namedAt: true, updatedAt: true, description: true, tier: true, requestedTier: true },
+				select: { description: true, id: true, namedAt: true, requestedTier: true, tier: true, updatedAt: true },
+				where: { deletedAt: null, userId },
 			}),
 			prisma.post.findMany({
-				where: { userId, deletedAt: null },
-				select: { createdAt: true },
 				orderBy: { createdAt: "asc" },
+				select: { createdAt: true },
+				where: { deletedAt: null, userId },
 			}),
 			prisma.phaseSubmission.findMany({
-				where: { themeProject: { userId } },
-				select: { createdAt: true },
 				orderBy: { createdAt: "asc" },
+				select: { createdAt: true },
+				where: { themeProject: { userId } },
 			}),
-			prisma.session.findMany({ where: { userId }, select: { createdAt: true }, orderBy: { createdAt: "asc" } }),
+			prisma.session.findMany({ orderBy: { createdAt: "asc" }, select: { createdAt: true }, where: { userId } }),
 			prisma.workSession.findMany({
+				orderBy: { createdAt: "asc" },
+				select: { createdAt: true, hoursClaimed: true, weekNumber: true },
 				where: {
-					themeProject: { userId, deletedAt: null },
 					deletedAt: null,
 					// The backfill must apply the same exclusion as recomputeWeek, or running it re-inflates every tracked session's week.
 					hoursSource: { not: HoursSource.HACKATIME_TRACKED },
+					themeProject: { deletedAt: null, userId },
 				},
-				select: { createdAt: true, weekNumber: true, hoursClaimed: true },
-				orderBy: { createdAt: "asc" },
 			}),
 		])
 
 		for (const p of projects) {
 			if (!isCreated(p)) {
 				// Not started yet, whatever an earlier backfill said.
-				if (p.namedAt) await prisma.themeProject.update({ where: { id: p.id }, data: { namedAt: null } })
+				if (p.namedAt) await prisma.themeProject.update({ data: { namedAt: null }, where: { id: p.id } })
 				continue
 			}
 			const firstTouch = await prisma.auditLog.findFirst({
-				where: { targetId: p.id, action: "USER_UPDATE_PROJECT" },
 				orderBy: { createdAt: "asc" },
 				select: { createdAt: true },
+				where: { action: "USER_UPDATE_PROJECT", targetId: p.id },
 			})
 			await prisma.themeProject.update({
-				where: { id: p.id },
 				data: { namedAt: firstTouch?.createdAt ?? p.updatedAt },
+				where: { id: p.id },
 			})
 			counts.projects++
 		}
 		// The earliest started project, or none: settled from the rows above.
 		const first = await prisma.themeProject.findFirst({
-			where: { userId, namedAt: { not: null } },
 			orderBy: { namedAt: "asc" },
 			select: { namedAt: true },
+			where: { namedAt: { not: null }, userId },
 		})
-		await prisma.user.update({ where: { id: userId }, data: { firstProjectAt: first?.namedAt ?? null } })
+		await prisma.user.update({ data: { firstProjectAt: first?.namedAt ?? null }, where: { id: userId } })
 
 		if (posts[0]) await markReel(userId, posts[0].createdAt)
 		// The first and last of the list, named rather than indexed twice: the narrowing is what keeps the write off `undefined` without an assertion.
@@ -258,13 +258,13 @@ export async function backfillAnalytics(): Promise<Record<string, number>> {
 		const lastSubmission = submissions[submissions.length - 1]
 		if (firstSubmission && lastSubmission) {
 			await prisma.user.update({
-				where: { id: userId },
 				data: { firstSubmissionAt: firstSubmission.createdAt, lastSubmissionAt: lastSubmission.createdAt },
+				where: { id: userId },
 			})
 		}
 		const lastLogin = logins[logins.length - 1]?.createdAt
 		if (lastLogin) {
-			await prisma.user.updateMany({ where: { id: userId, lastLoginAt: null }, data: { lastLoginAt: lastLogin } })
+			await prisma.user.updateMany({ data: { lastLoginAt: lastLogin }, where: { id: userId, lastLoginAt: null } })
 		}
 
 		// Active days are rebuilt outright, which also clears any left from when a page view counted as one.
@@ -274,7 +274,7 @@ export async function backfillAnalytics(): Promise<Record<string, number>> {
 		const moments = [...logins, ...sessions, ...posts, ...submissions].map(x => x.createdAt)
 		if (moments.length > 0) {
 			const last = moments.reduce((a, b) => (b > a ? b : a))
-			await prisma.user.updateMany({ where: { id: userId, lastActiveAt: null }, data: { lastActiveAt: last } })
+			await prisma.user.updateMany({ data: { lastActiveAt: last }, where: { id: userId, lastActiveAt: null } })
 		}
 
 		// Weeks: replay sessions in order so each milestone is stamped by the session that crossed it.
@@ -295,12 +295,12 @@ export async function backfillAnalytics(): Promise<Record<string, number>> {
 			}
 			const hours = Math.round(running * 100) / 100
 			await prisma.userWeek.upsert({
-				where: { userId_week: { userId, week } },
-				create: { userId, week, hours, ...reached },
+				create: { hours, userId, week, ...reached },
 				update: { hours },
+				where: { userId_week: { userId, week } },
 			})
 			for (const [field, at] of Object.entries(reached)) {
-				await prisma.userWeek.updateMany({ where: { userId, week, [field]: null }, data: { [field]: at } })
+				await prisma.userWeek.updateMany({ data: { [field]: at }, where: { userId, week, [field]: null } })
 			}
 			counts.weeks++
 		}
@@ -344,53 +344,53 @@ export async function getUserAnalytics(): Promise<UserAnalyticsRow[]> {
 	const users = await prisma.user.findMany({
 		orderBy: { createdAt: "asc" },
 		select: {
-			id: true,
-			email: true,
+			activeDays: true,
+			activityWeeks: { orderBy: { week: "asc" } },
 			createdAt: true,
-			onboardingCompletedAt: true,
+			currentStreak: true,
+			email: true,
+			firstChecksPassedAt: true,
 			firstProjectAt: true,
 			firstReelAt: true,
 			firstSubmissionAt: true,
-			lastSubmissionAt: true,
-			firstChecksPassedAt: true,
-			lastLoginAt: true,
+			id: true,
 			lastActiveAt: true,
-			activeDays: true,
-			currentStreak: true,
-			longestStreak: true,
+			lastLoginAt: true,
 			lastStreakDate: true,
-			activityWeeks: { orderBy: { week: "asc" } },
+			lastSubmissionAt: true,
+			longestStreak: true,
+			onboardingCompletedAt: true,
 		},
 	})
 	const out: UserAnalyticsRow[] = []
 	for (const u of users) {
 		const balances = await prisma.$transaction(tx => getBalances(tx, u.id))
 		out.push({
-			userId: u.id,
+			activeDays: u.activeDays,
+			bankedCoins: balances.banked,
+			coins: balances.spendable,
+			// The stored column is a cache only correct as of the last devlog or reel; an export that reads it directly calls a lapsed run current.
+			currentStreak: streakAsOf(u, today),
 			email: u.email,
-			signedUpAt: u.createdAt,
-			onboardedAt: u.onboardingCompletedAt,
+			firstChecksPassedAt: u.firstChecksPassedAt,
 			firstProjectAt: u.firstProjectAt,
 			firstReelAt: u.firstReelAt,
 			firstSubmissionAt: u.firstSubmissionAt,
-			lastSubmissionAt: u.lastSubmissionAt,
-			firstChecksPassedAt: u.firstChecksPassedAt,
-			lastLoginAt: u.lastLoginAt,
 			lastActiveAt: u.lastActiveAt,
-			activeDays: u.activeDays,
-			totalHours: Math.round(u.activityWeeks.reduce((n, w) => n + w.hours, 0) * 100) / 100,
-			coins: balances.spendable,
-			bankedCoins: balances.banked,
-			// The stored column is a cache only correct as of the last devlog or reel; an export that reads it directly calls a lapsed run current.
-			currentStreak: streakAsOf(u, today),
+			lastLoginAt: u.lastLoginAt,
+			lastSubmissionAt: u.lastSubmissionAt,
 			longestStreak: u.longestStreak,
+			onboardedAt: u.onboardingCompletedAt,
+			signedUpAt: u.createdAt,
+			totalHours: Math.round(u.activityWeeks.reduce((n, w) => n + w.hours, 0) * 100) / 100,
+			userId: u.id,
 			weeks: u.activityWeeks.map(({ week, hours, reached1hAt, reached5hAt, reached10hAt, reached20hAt }) => ({
-				week,
 				hours,
 				reached1hAt,
 				reached5hAt,
 				reached10hAt,
 				reached20hAt,
+				week,
 			})),
 		})
 	}
@@ -410,16 +410,16 @@ export async function getAnalyticsSummary(days = 30): Promise<{
 
 	const [dau, people, weeks] = await Promise.all([
 		prisma.userDay.groupBy({
-			by: ["day"],
-			where: { day: { gte: since } },
 			_count: { _all: true },
+			by: ["day"],
 			orderBy: { day: "asc" },
+			where: { day: { gte: since } },
 		}),
 		prisma.user.findMany({
-			select: { onboardingCompletedAt: true, firstProjectAt: true, firstReelAt: true, firstSubmissionAt: true },
+			select: { firstProjectAt: true, firstReelAt: true, firstSubmissionAt: true, onboardingCompletedAt: true },
 		}),
 		prisma.userWeek.findMany({
-			select: { week: true, reached1hAt: true, reached5hAt: true, reached10hAt: true, reached20hAt: true },
+			select: { reached1hAt: true, reached5hAt: true, reached10hAt: true, reached20hAt: true, week: true },
 		}),
 	])
 
@@ -442,18 +442,18 @@ export async function getAnalyticsSummary(days = 30): Promise<{
 		// The step before this one, or this one at the top of the funnel. The fallback is unreachable – `i` is always within `steps` – but it keeps the arithmetic off `undefined` without an assertion.
 		const prev = i === 0 ? count : (steps[i - 1]?.[1] ?? count)
 		return {
-			step,
 			count,
 			// Share of the previous step that did not make it to this one.
 			dropOffPct: i === 0 ? 0 : pctOf(prev - count, prev),
 			// Share of everyone who signed up that got this far.
 			ofSignUpsPct: pctOf(count, total),
+			step,
 		}
 	})
 
 	const byWeek = new Map<number, { week: number; over1h: number; over5h: number; over10h: number; over20h: number }>()
 	for (const w of weeks) {
-		const row = byWeek.get(w.week) ?? { week: w.week, over1h: 0, over5h: 0, over10h: 0, over20h: 0 }
+		const row = byWeek.get(w.week) ?? { over1h: 0, over5h: 0, over10h: 0, over20h: 0, week: w.week }
 		if (w.reached1hAt) row.over1h++
 		if (w.reached5hAt) row.over5h++
 		if (w.reached10hAt) row.over10h++

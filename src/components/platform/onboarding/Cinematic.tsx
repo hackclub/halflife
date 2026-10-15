@@ -14,9 +14,9 @@ import macropadShot from "../../../../public/projects/macropad.png"
 
 /** The mock Doomscroller's three reels, on photos of real projects makers built. */
 const MOCK_REELS = [
-	{ who: "Half Life HQ", shot: macropadShot },
-	{ who: "Joe Bob", shot: hexapodShot },
-	{ who: "Froppii", shot: flightControllerShot },
+	{ shot: macropadShot, who: "Half Life HQ" },
+	{ shot: hexapodShot, who: "Joe Bob" },
+	{ shot: flightControllerShot, who: "Froppii" },
 ]
 
 /**
@@ -74,13 +74,13 @@ const BLOCKS: Block[] = []
 	for (const w of WEEKS) {
 		const trailH = (w.checkpoints.length - 1) * STEP + PUCK
 		const height = BANNER_H + BANNER_GAP + trailH + WEEK_GAP
-		BLOCKS.push({ top: y, trailTop: y + BANNER_H + BANNER_GAP, height })
+		BLOCKS.push({ height, top: y, trailTop: y + BANNER_H + BANNER_GAP })
 		y += height
 	}
 }
 
 // BLOCKS is built above, one entry per week, so it is never empty; the fallback keeps that a compile-time fact rather than an assertion.
-const LAST = BLOCKS[BLOCKS.length - 1] ?? { top: 0, trailTop: 0, height: 0 }
+const LAST = BLOCKS[BLOCKS.length - 1] ?? { height: 0, top: 0, trailTop: 0 }
 const PRIZE_TOP = LAST.top + LAST.height + 40
 const PRIZE_CENTRE = PRIZE_TOP + PRIZE_H / 2
 const STAGE_H = PRIZE_TOP + PRIZE_H + 140
@@ -103,23 +103,23 @@ const clamp01 = (t: number) => (t < 0 ? 0 : t > 1 ? 1 : t)
 const article = (name: string) => (/^[aeiou]/i.test(name) ? "an" : "a")
 const SCRIPT: { fromWeek: number; fromDepth: number; line: (goal: string) => string }[] = [
 	{
-		fromWeek: 1,
 		fromDepth: 0,
+		fromWeek: 1,
 		line: () => "This is your map. Every week is a set of checkpoints: journal your progress, film a reel, submit.",
 	},
 	{
-		fromWeek: 3,
 		fromDepth: 0,
+		fromWeek: 3,
 		line: () => "Weeks 1 to 5, you design: a PCB, a 3D model, an instrument, a display and a breadboard computer.",
 	},
 	{
-		fromWeek: 6,
 		fromDepth: 0,
+		fromWeek: 6,
 		line: () => "Weeks 6 to 10, the parts arrive and you build all five for real.",
 	},
 	{
-		fromWeek: 1,
 		fromDepth: 0.94,
+		fromWeek: 1,
 		line: goal => `At the end, you get ${article(goal)} ${goal} shipped right to you!.`,
 	},
 ]
@@ -159,18 +159,18 @@ function MiniPanel({ className, children }: { className?: string; children?: Rea
 }
 
 const KIND_ICON = {
+	bonus: IconCoin,
+	demo: IconUpload,
+	journal: IconClock,
 	onboarding: IconPlay,
 	project: IconCoin,
-	journal: IconClock,
 	reel: IconFilm,
 	submit: IconUpload,
-	demo: IconUpload,
-	bonus: IconCoin,
 } as const
 
 function Stage({ goal }: { goal: PrinterGoal }) {
 	return (
-		<div className="relative" style={{ width: STAGE_W, height: STAGE_H }}>
+		<div className="relative" style={{ height: STAGE_H, width: STAGE_W }}>
 			{/* ---- the shell, in frame while the camera is still at the top ---- */}
 			<div className="absolute top-[40px] left-[40px] flex w-[300px] flex-col gap-5">
 				<Gato className="h-auto w-[86px]" sizes="172px" />
@@ -247,7 +247,7 @@ function Stage({ goal }: { goal: PrinterGoal }) {
 								<div
 									className="absolute"
 									key={cp.id}
-									style={{ top: b.trailTop + i * STEP, left: nodeX(i) - PUCK / 2, width: PUCK }}
+									style={{ left: nodeX(i) - PUCK / 2, top: b.trailTop + i * STEP, width: PUCK }}
 								>
 									<div
 										className={cx(
@@ -271,8 +271,8 @@ function Stage({ goal }: { goal: PrinterGoal }) {
 									className="absolute size-[6px] rounded-full bg-line-strong/45"
 									key={`${i}-${f}`}
 									style={{
-										top: b.trailTop + (i + f) * STEP + PUCK / 2 - 3,
 										left: nodeX(i + f) - 3,
+										top: b.trailTop + (i + f) * STEP + PUCK / 2 - 3,
 									}}
 								/>
 							)),
@@ -284,7 +284,7 @@ function Stage({ goal }: { goal: PrinterGoal }) {
 			{/* ---- the prize, at the bottom of the run ---- */}
 			<div
 				className="absolute flex flex-col items-center rounded-3xl border-[3px] border-gold-deep bg-gold-pale px-12 py-8"
-				style={{ top: PRIZE_TOP, left: COL_X - 300, width: 600, height: PRIZE_H }}
+				style={{ height: PRIZE_H, left: COL_X - 300, top: PRIZE_TOP, width: 600 }}
 			>
 				<PrinterPhoto className="mt-3 size-[280px] rounded-2xl border border-gold-deep/40" id={goal.id} sizes="560px" />
 				<p className="mt-3 text-[2rem] leading-none font-extrabold tracking-[-0.03em] text-navy">{goal.name}</p>
@@ -308,11 +308,11 @@ function WeekBanners({ refs }: { refs: React.RefObject<(HTMLDivElement | null)[]
 						refs.current[i] = el
 					}}
 					style={{
-						width: 760,
+						display: "none",
 						height: BANNER_H,
 						marginLeft: -380,
 						transformOrigin: "center top",
-						display: "none",
+						width: 760,
 					}}
 				>
 					{/* The tear belongs to the plaque, never to the type. `.torn` is a
@@ -483,7 +483,7 @@ export function Cinematic() {
 				<div
 					className="absolute top-1/2 left-1/2 will-change-transform"
 					ref={camera}
-					style={{ width: STAGE_W, height: STAGE_H }}
+					style={{ height: STAGE_H, width: STAGE_W }}
 				>
 					{stage}
 				</div>

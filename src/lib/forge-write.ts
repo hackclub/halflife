@@ -62,9 +62,9 @@ export class ForgeWriteUnavailable extends Error {}
  */
 export async function forgeCredentials(userId: string, forge: Forge): Promise<ForgeCredentials | null> {
 	const account = await prisma.account.findFirst({
-		where: { userId, providerId: forge.id },
 		orderBy: { updatedAt: "desc" },
-		select: { id: true, accountId: true, accessToken: true },
+		select: { accessToken: true, accountId: true, id: true },
+		where: { providerId: forge.id, userId },
 	})
 	if (!account?.accessToken) return null
 
@@ -79,7 +79,7 @@ export async function forgeCredentials(userId: string, forge: Forge): Promise<Fo
 		console.warn(`[forge-write] token refresh for ${forge.id} failed:`, err)
 	}
 
-	return { forge, login: account.accountId, accessToken }
+	return { accessToken, forge, login: account.accountId }
 }
 
 /** In flight at once. A burst of syncs waits here rather than all hitting one forge at once. */
@@ -216,9 +216,9 @@ async function call(creds: ForgeCredentials, path: string, init: RequestInit): P
 		try {
 			res = await fetch(url, {
 				...init,
+				cache: "no-store",
 				headers: { ...headers, ...(init.headers ?? {}) },
 				signal: AbortSignal.timeout(TIMEOUT_MS),
-				cache: "no-store",
 			})
 		} catch (err) {
 			// The maker sees the network wording; the cause is for whoever runs this.
@@ -350,13 +350,13 @@ async function listGitHubRepos(creds: ForgeCredentials): Promise<WritableRepo[]>
 			})
 			.filter(r => r.permissions?.push === true || r.permissions?.admin === true || r.permissions?.maintain === true)
 			.map(r => ({
+				defaultBranch: r.default_branch,
 				fullName: r.full_name,
 				name: r.name,
 				ownerPath: r.owner.login,
-				url: repoUrl(creds.forge, r.owner.login, r.name),
 				private: r.private,
-				defaultBranch: r.default_branch,
 				pushedAt: r.pushed_at,
+				url: repoUrl(creds.forge, r.owner.login, r.name),
 			}))
 	)
 }
@@ -397,14 +397,14 @@ async function listGitLabRepos(creds: ForgeCredentials): Promise<WritableRepo[]>
 				return true
 			})
 			.map(p => ({
+				// GitLab answers null for a project with no commits yet. The default branch of such a project is `main`, and a commit has to name one, so that is what it falls back to.
+				defaultBranch: p.default_branch ?? "main",
 				fullName: p.path_with_namespace,
 				name: p.name,
 				ownerPath: p.namespace.full_path,
-				url: repoUrl(creds.forge, p.namespace.full_path, p.path),
 				private: p.visibility !== "public",
-				// GitLab answers null for a project with no commits yet. The default branch of such a project is `main`, and a commit has to name one, so that is what it falls back to.
-				defaultBranch: p.default_branch ?? "main",
 				pushedAt: p.last_activity_at,
+				url: repoUrl(creds.forge, p.namespace.full_path, p.path),
 			}))
 	)
 }
@@ -506,28 +506,28 @@ async function commitGitHub(
 			// A deletion: nothing to hash or upload. Absent from the tree means there is nothing to do; present means a tree entry with a null sha, which is how the Git Data API deletes.
 			if (file.content === null) {
 				if (!current.has(file.path)) {
-					written.push({ path: file.path, sha: "", bytes: 0, unchanged: true })
+					written.push({ bytes: 0, path: file.path, sha: "", unchanged: true })
 					return
 				}
 				entries.push({ path: file.path, sha: null })
-				written.push({ path: file.path, sha: "", bytes: 0, unchanged: false })
+				written.push({ bytes: 0, path: file.path, sha: "", unchanged: false })
 				return
 			}
 			const sha = blobSha(file.content)
 			if (current.get(file.path) === sha) {
-				written.push({ path: file.path, sha, bytes: byteLength(file.content), unchanged: true })
+				written.push({ bytes: byteLength(file.content), path: file.path, sha, unchanged: true })
 				// Still in the tree – an unchanged file is simply not re-added.
 				return
 			}
 			const blobRes = await call(creds, `${base}/git/blobs`, {
-				method: "POST",
-				headers: { "content-type": "application/json" },
 				body: JSON.stringify({ content: file.content, encoding: "utf-8" }),
+				headers: { "content-type": "application/json" },
+				method: "POST",
 			})
 			if (!blobRes.ok) await throwForgeError(creds.forge, blobRes)
 			const blob = (await blobRes.json()) as { sha: string }
 			entries.push({ path: file.path, sha: blob.sha })
-			written.push({ path: file.path, sha: blob.sha, bytes: byteLength(file.content), unchanged: false })
+			written.push({ bytes: byteLength(file.content), path: file.path, sha: blob.sha, unchanged: false })
 		}),
 	)
 
@@ -537,32 +537,32 @@ async function commitGitHub(
 	}
 
 	const treeRes = await call(creds, `${base}/git/trees`, {
-		method: "POST",
-		headers: { "content-type": "application/json" },
 		body: JSON.stringify({
 			base_tree: treeSha,
 			// A null sha deletes the path; anything else (re)writes it.
 			tree: entries.map(e =>
-				e.sha === null ? { path: e.path, sha: null } : { path: e.path, mode: "100644", type: "blob", sha: e.sha },
+				e.sha === null ? { path: e.path, sha: null } : { mode: "100644", path: e.path, sha: e.sha, type: "blob" },
 			),
 		}),
+		headers: { "content-type": "application/json" },
+		method: "POST",
 	})
 	if (!treeRes.ok) await throwForgeError(creds.forge, treeRes)
 	const newTree = ((await treeRes.json()) as { sha: string }).sha
 
 	const newCommitRes = await call(creds, `${base}/git/commits`, {
-		method: "POST",
+		body: JSON.stringify({ message, parents: [parentSha], tree: newTree }),
 		headers: { "content-type": "application/json" },
-		body: JSON.stringify({ message, tree: newTree, parents: [parentSha] }),
+		method: "POST",
 	})
 	if (!newCommitRes.ok) await throwForgeError(creds.forge, newCommitRes)
 	const commit = ((await newCommitRes.json()) as { sha: string }).sha
 
 	// Guarded: only fast-forward if the ref is still where we read it. A concurrent push makes this a 422 and nothing is written, which is the correct outcome – the next sync reads the new tip and commits on top of it.
 	const updateRes = await call(creds, `${base}/git/refs/heads/${encodeURIComponent(branch)}`, {
-		method: "PATCH",
+		body: JSON.stringify({ force: false, sha: commit }),
 		headers: { "content-type": "application/json" },
-		body: JSON.stringify({ sha: commit, force: false }),
+		method: "PATCH",
 	})
 	if (updateRes.status === 422)
 		throw new HttpError("CONFLICT", "The repo moved while syncing. Nothing was written; try again.")
@@ -585,14 +585,14 @@ async function initializeEmptyGitHubRepo(
 ): Promise<void> {
 	const path = file.path.split("/").map(encodeURIComponent).join("/")
 	const res = await call(creds, `repos/${ref.fullName}/contents/${path}`, {
-		method: "PUT",
-		headers: { "content-type": "application/json" },
 		body: JSON.stringify({
-			message,
+			branch,
 			// The Contents API wants the bytes base64-encoded, not the text.
 			content: Buffer.from(file.content, "utf-8").toString("base64"),
-			branch,
+			message,
 		}),
+		headers: { "content-type": "application/json" },
+		method: "PUT",
 	})
 	if (!res.ok) await throwForgeError(creds.forge, res)
 }
@@ -685,11 +685,11 @@ async function commitGitLab(
 			// A deletion needs no raw read: the tree listing is the whole answer. Absent means nothing to do; present means a delete action.
 			if (file.content === null) {
 				if (!existing.has(file.path)) {
-					written.push({ path: file.path, sha: "", bytes: 0, unchanged: true })
+					written.push({ bytes: 0, path: file.path, sha: "", unchanged: true })
 					return
 				}
 				actions.push({ action: "delete", file_path: file.path })
-				written.push({ path: file.path, sha: "", bytes: 0, unchanged: false })
+				written.push({ bytes: 0, path: file.path, sha: "", unchanged: false })
 				return
 			}
 			const path = encodeURIComponent(file.path)
@@ -705,26 +705,26 @@ async function commitGitLab(
 			const current = present && res.ok ? await res.text() : null
 
 			if (present && current === file.content) {
-				written.push({ path: file.path, sha: "", bytes: byteLength(file.content), unchanged: true })
+				written.push({ bytes: byteLength(file.content), path: file.path, sha: "", unchanged: true })
 				return
 			}
 			// The tree listing is the authority on create-vs-update; the raw read is only for the no-op check. A file the tree did not list is a create even if the raw read happened to answer.
 			const isNew = !existing.has(file.path)
 			actions.push({
 				action: isNew ? "create" : "update",
-				file_path: file.path,
 				content: file.content,
+				file_path: file.path,
 			})
-			written.push({ path: file.path, sha: "", bytes: byteLength(file.content), unchanged: false })
+			written.push({ bytes: byteLength(file.content), path: file.path, sha: "", unchanged: false })
 		}),
 	)
 
 	if (actions.length === 0) return written.sort((a, b) => a.path.localeCompare(b.path))
 
 	const commitRes = await call(creds, `projects/${project}/repository/commits`, {
-		method: "POST",
+		body: JSON.stringify({ actions, branch, commit_message: message }),
 		headers: { "content-type": "application/json" },
-		body: JSON.stringify({ branch, commit_message: message, actions }),
+		method: "POST",
 	})
 	// GitLab answers 409 when the branch moved under us, which is the same finding as GitHub's 422 on a non-fast-forward ref update.
 	if (commitRes.status === 409)

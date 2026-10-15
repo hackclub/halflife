@@ -19,14 +19,14 @@ export async function buildTicketSummary(stats: HelpTicketStats): Promise<string
 		rankedShareBoard(
 			title,
 			rows.map(entry => ({
-				name: names.get(entry.resolvedBy) ?? `<@${entry.resolvedBy}>`,
 				count: entry.closed,
+				name: names.get(entry.resolvedBy) ?? `<@${entry.resolvedBy}>`,
 			})),
 			rows.reduce((n, entry) => n + entry.closed, 0),
 		)
 
 	return renderSummary({
-		headline: `${countedLine(stats.opened, { singular: "ticket", plural: "tickets" }, { singular: "was opened", plural: "were opened" })} and ${creditedLine(stats.closed, "close")}`,
 		boards: [board(":yay-peace: today's leaderboard", daily), board(":yay-blush-2: all-time leaderboard", global)],
+		headline: `${countedLine(stats.opened, { plural: "tickets", singular: "ticket" }, { plural: "were opened", singular: "was opened" })} and ${creditedLine(stats.closed, "close")}`,
 	})
 }

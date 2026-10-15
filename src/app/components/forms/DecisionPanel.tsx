@@ -48,15 +48,15 @@ export function DecisionPanel({
 		const body =
 			result === "APPROVED"
 				? {
-						result,
 						feedback,
 						reason: reason || undefined,
+						result,
 						...(tier ? { tier: Number(tier) } : {}),
 						...(hoursOverride ? { hoursOverride: Number(hoursOverride) } : {}),
 					}
 				: result === "RETURNED"
-					? { result, feedback, reason: reason || undefined }
-					: { result, feedback, reason }
+					? { feedback, reason: reason || undefined, result }
+					: { feedback, reason, result }
 		void run(
 			"submit",
 			() => sendJson(`/api/review/submissions/${submissionId}/decision`, { body }),

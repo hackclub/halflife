@@ -21,16 +21,16 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 	const started = Date.now()
 
 	const links = await prisma.hackatimeLink.findMany({
-		where: { hoursApproved: null },
 		// Least-recently refreshed first (never-refreshed before those), so a run that hits the batch bound still advances through the whole set instead of restarting at the same head of the list every 15 minutes.
-		orderBy: { cachedAt: { sort: "asc", nulls: "first" } },
-		take: BATCH_SIZE,
+		orderBy: { cachedAt: { nulls: "first", sort: "asc" } },
 		// cachedSpans rides along so the warm below can tell a link that already answers from one whose cache was never written or was fetched for a narrower window.
-		select: { id: true, themeProjectId: true, phase: true, hackatimeProject: true, cachedSpans: true },
+		select: { cachedSpans: true, hackatimeProject: true, id: true, phase: true, themeProjectId: true },
+		take: BATCH_SIZE,
+		where: { hoursApproved: null },
 	})
 
 	if (dryRun) {
-		return ok({ dryRun: true, scanned: links.length, updated: 0, failed: 0 })
+		return ok({ dryRun: true, failed: 0, scanned: links.length, updated: 0 })
 	}
 
 	let updated = 0
@@ -45,13 +45,13 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 	const spans = await warmLinkSpans(links)
 
 	const summary = {
-		scanned: links.length,
-		updated,
-		failed,
-		spansWarmed: spans.warmed,
-		spansFailed: spans.failed,
-		limited: links.length === BATCH_SIZE,
 		durationMs: Date.now() - started,
+		failed,
+		limited: links.length === BATCH_SIZE,
+		scanned: links.length,
+		spansFailed: spans.failed,
+		spansWarmed: spans.warmed,
+		updated,
 	}
 	await recordSyncRun("hackatime", summary)
 	return ok(summary)

@@ -48,9 +48,9 @@ export function CsvProjectsImport() {
 		setSummary(null)
 		try {
 			const res = await fetch("/api/admin/program/import-projects-csv", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ csv: await file.text() }),
+				headers: { "Content-Type": "application/json" },
+				method: "POST",
 			})
 			const payload = (await res.json().catch(() => ({}))) as {
 				read?: number
@@ -66,11 +66,11 @@ export function CsvProjectsImport() {
 				return
 			}
 			setSummary({
-				read: payload.read ?? 0,
-				imported: payload.imported ?? 0,
 				alreadyImported: payload.alreadyImported ?? 0,
 				failed: payload.failed ?? 0,
+				imported: payload.imported ?? 0,
 				outcomes: payload.outcomes ?? [],
+				read: payload.read ?? 0,
 			})
 			setFile(null)
 			router.refresh()

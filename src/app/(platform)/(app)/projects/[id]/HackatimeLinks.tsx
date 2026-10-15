@@ -63,11 +63,11 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 			}
 			try {
 				const { projects } = await read<{ projects: { name: string; totalSeconds: number }[] }>(projectsRes)
-				setAccount({ state: "linked", projects })
+				setAccount({ projects, state: "linked" })
 			} catch (err) {
 				if ((err as { code?: string }).code === "HACKATIME_NOT_LINKED") setAccount({ state: "unlinked" })
 				else {
-					setAccount({ state: "linked", projects: [] })
+					setAccount({ projects: [], state: "linked" })
 					setError((err as Error).message)
 				}
 			}
@@ -111,12 +111,12 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 		run("link", async () => {
 			await read(
 				await fetch(`/api/projects/${projectId}/hackatime`, {
-					method: "POST",
-					headers: { "content-type": "application/json" },
 					body: JSON.stringify({
 						hackatimeProject: picked,
 						phase: phase === "build" ? "BUILD" : "DESIGN",
 					}),
+					headers: { "content-type": "application/json" },
+					method: "POST",
 				}),
 			)
 			setPicked("")

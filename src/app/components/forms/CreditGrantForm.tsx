@@ -12,7 +12,7 @@ export function CreditGrantForm({ userId }: Readonly<{ userId: string }>) {
 		e.preventDefault()
 		void run(
 			"submit",
-			() => sendJson("/api/admin/credits", { body: { userId, amount: Number(amount), reason } }),
+			() => sendJson("/api/admin/credits", { body: { amount: Number(amount), reason, userId } }),
 			() => {
 				setAmount("")
 				setReason("")

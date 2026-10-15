@@ -19,19 +19,19 @@ export function signInWith(
 	loginHint?: string,
 ): ReturnType<typeof authClient.signIn.social> {
 	return authClient.signIn.social({
-		provider: providerId,
 		callbackURL,
+		provider: providerId,
 		...(loginHint ? { loginHint } : {}),
 	})
 }
 
 export function linkHackatime(callbackURL = "/dashboard"): ReturnType<typeof authClient.linkSocial> {
-	return authClient.linkSocial({ provider: "hackatime", callbackURL })
+	return authClient.linkSocial({ callbackURL, provider: "hackatime" })
 }
 
 /** Timelapses are recorded on Lapse; linking is what lets us list them. */
 export function linkLapse(callbackURL = "/dashboard"): ReturnType<typeof authClient.linkSocial> {
-	return authClient.linkSocial({ provider: "lapse", callbackURL })
+	return authClient.linkSocial({ callbackURL, provider: "lapse" })
 }
 
 /**
@@ -41,5 +41,5 @@ export function linkForge(
 	forge: "github" | "gitlab",
 	callbackURL = "/dashboard",
 ): ReturnType<typeof authClient.linkSocial> {
-	return authClient.linkSocial({ provider: forge, callbackURL })
+	return authClient.linkSocial({ callbackURL, provider: forge })
 }

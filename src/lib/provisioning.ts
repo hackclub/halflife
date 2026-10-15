@@ -17,16 +17,16 @@ export async function ensureThemeProject(userId: string, theme: Theme): Promise<
 
 	// Most onboarding reads happen after the row already exists. Avoid a pointless write/round-trip on that hot path; the unique constraint still makes the create branch safe when two tabs open the checkpoint together.
 	const existing = await prisma.themeProject.findFirst({
-		where: { userId, theme, deletedAt: null },
+		where: { deletedAt: null, theme, userId },
 	})
 	if (existing) return existing
 
 	await prisma.themeProject.createMany({
-		data: [{ userId, theme, title: def.label }],
+		data: [{ theme, title: def.label, userId }],
 		skipDuplicates: true,
 	})
 	return prisma.themeProject.findFirstOrThrow({
-		where: { userId, theme, deletedAt: null },
+		where: { deletedAt: null, theme, userId },
 	})
 }
 

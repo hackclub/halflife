@@ -12,8 +12,8 @@ import { fmtDay } from "@/lib/projects"
 import { getJournalFeed, type JournalRow } from "@/lib/queries/community"
 
 export const metadata: Metadata = {
-	title: "Half Life Explore",
 	description: "Journal entries from everyone building hardware this week.",
+	title: "Half Life Explore",
 }
 
 export const dynamic = "force-dynamic"
@@ -94,7 +94,7 @@ function Entry({ entry, viewerId }: { entry: JournalRow; viewerId: string }) {
 					{entry.authorId !== viewerId && (
 						<ReportButton
 							context={text.slice(0, 280)}
-							target={{ type: "DEVLOG", id: entry.id }}
+							target={{ id: entry.id, type: "DEVLOG" }}
 							title="Report this journal entry"
 						/>
 					)}

@@ -31,8 +31,8 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 	if (parsed.error) return parsed.error
 
 	const before = await prisma.user.findUnique({
+		select: { email: true, fraudFlagged: true, submissionExtensionUntil: true },
 		where: { id },
-		select: { fraudFlagged: true, submissionExtensionUntil: true, email: true },
 	})
 	if (!before) return fail("NOT_FOUND", "User not found")
 
@@ -40,15 +40,14 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 	const emailChanged = parsed.data.email !== undefined && parsed.data.email !== before.email
 	if (emailChanged) {
 		const taken = await prisma.user.findFirst({
-			// `id: { not: id }` so retyping this user's own address with different capitalisation is a rewrite of their row, not a collision with it - the insensitive comparison would otherwise match the user against themselves.
-			where: { id: { not: id }, email: { equals: parsed.data.email, mode: "insensitive" } },
 			select: { id: true },
+			// `id: { not: id }` so retyping this user's own address with different capitalisation is a rewrite of their row, not a collision with it - the insensitive comparison would otherwise match the user against themselves.
+			where: { email: { equals: parsed.data.email, mode: "insensitive" }, id: { not: id } },
 		})
 		if (taken) return fail("CONFLICT", "Another user already has that email address")
 	}
 
 	const updated = await prisma.user.update({
-		where: { id },
 		data: {
 			...(parsed.data.fraudFlagged !== undefined ? { fraudFlagged: parsed.data.fraudFlagged } : {}),
 			...(parsed.data.submissionExtensionUntil !== undefined
@@ -58,40 +57,41 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 			// Provenance is withdrawn with the address. Until now `email` was only ever written by an identity provider, so `findUserByEmail` matching it meant the address genuinely belonged to the HCA identity signing in - and better-auth's implicit account linking (lib/auth.ts trusts the hca provider, and `requireLocalEmailVerified` defaults true) will attach an incoming HCA identity to ANY row whose address matches when that row is `emailVerified`. An address a human typed into the admin panel has no such proof, so the flag must not stay set for a linked account. Clearing it is the main guard; adoptHcaVerifiedEmail (lib/hca-profile) reinforces it by refusing to re-verify any row that already has a linked Account, though it still repairs account-less staff-import rows - so the flag (not the address) is what separates a typed address from a verified one. The next sign-in still works, because it resolves on the HCA account row (providerId + sub) rather than on the address.
 			...(emailChanged ? { emailVerified: false } : {}),
 		},
-		select: { id: true, fraudFlagged: true, submissionExtensionUntil: true, email: true, emailVerified: true },
+		select: { email: true, emailVerified: true, fraudFlagged: true, id: true, submissionExtensionUntil: true },
+		where: { id },
 	})
 
 	if (parsed.data.fraudFlagged !== undefined && parsed.data.fraudFlagged !== before.fraudFlagged) {
 		await logAudit({
 			action: parsed.data.fraudFlagged ? AuditAction.ADMIN_FLAG_FRAUD : AuditAction.ADMIN_UNFLAG_FRAUD,
-			actorId: gate.user.id,
 			actorEmail: gate.user.email,
-			targetType: "User",
+			actorId: gate.user.id,
+			metadata: { after: parsed.data.fraudFlagged, before: before.fraudFlagged },
 			targetId: id,
-			metadata: { before: before.fraudFlagged, after: parsed.data.fraudFlagged },
+			targetType: "User",
 		})
 	}
 	if (emailChanged) {
 		await logAudit({
 			action: AuditAction.ADMIN_CHANGE_EMAIL,
-			actorId: gate.user.id,
 			actorEmail: gate.user.email,
-			targetType: "User",
+			actorId: gate.user.id,
+			metadata: { after: parsed.data.email, before: before.email, emailVerified: false },
 			targetId: id,
-			metadata: { before: before.email, after: parsed.data.email, emailVerified: false },
+			targetType: "User",
 		})
 	}
 	if (parsed.data.submissionExtensionUntil !== undefined) {
 		await logAudit({
 			action: AuditAction.ADMIN_GRANT_EXTENSION,
-			actorId: gate.user.id,
 			actorEmail: gate.user.email,
-			targetType: "User",
-			targetId: id,
+			actorId: gate.user.id,
 			metadata: {
-				before: before.submissionExtensionUntil?.toISOString() ?? null,
 				after: parsed.data.submissionExtensionUntil?.toISOString() ?? null,
+				before: before.submissionExtensionUntil?.toISOString() ?? null,
 			},
+			targetId: id,
+			targetType: "User",
 		})
 	}
 

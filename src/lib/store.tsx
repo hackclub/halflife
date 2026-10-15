@@ -76,7 +76,7 @@ const KEY = "halflife.ceremony.v4"
  */
 const BYPASS_KEY = "halflife.bypass-locks"
 
-const EMPTY: CheckpointState = { done: false, minutes: 0, artefacts: 0, log: [] }
+const EMPTY: CheckpointState = { artefacts: 0, done: false, log: [], minutes: 0 }
 
 /** What a checkpoint on a passed week says when it is hovered. */
 export const PASSED_REASON = "This week has passed!"
@@ -95,50 +95,50 @@ function warmupWeek(project: Project, build: boolean, isDone: (id: string) => bo
 	const tier = TIERS.find(t => t.id === project.tier) ?? TIERS[0]
 	const submitHours = build ? BUILD_HOURS : submitFloorFor(tier.fundingHours)
 	const meta: WeekMeta = {
-		id: WARMUP_WEEK_ID,
-		phase: build ? "build" : "design",
-		theme: WARMUP_THEME.label,
-		headline: "WARM UP",
-		fullName: "Warm-up project",
-		summary: "Any hardware project, before week 1 opens.",
-		primer: "",
-		examples: [],
 		accent: "var(--color-violet-pale)",
 		accentDeep: "var(--color-violet-deep)",
+		examples: [],
+		fullName: "Warm-up project",
+		headline: "WARM UP",
+		id: WARMUP_WEEK_ID,
+		phase: build ? "build" : "design",
+		primer: "",
+		summary: "Any hardware project, before week 1 opens.",
+		theme: WARMUP_THEME.label,
 	}
 	let written = 0
 	while (isDone(key(`entry-${written + 1}`))) written += 1
 	const entries: Checkpoint[] = Array.from({ length: written + 1 }, (_, i) => ({
-		id: key(`entry-${i + 1}`),
-		weekId: WARMUP_WEEK_ID,
-		kind: "journal",
-		title: `Entry ${i + 1}`,
 		blurb: "Journal your progress with pictures and screenshots!",
 		entryTarget: 1,
+		id: key(`entry-${i + 1}`),
+		kind: "journal",
+		title: `Entry ${i + 1}`,
+		weekId: WARMUP_WEEK_ID,
 	}))
 	return {
 		...meta,
-		projectId: project.id,
-		tier: tier.id,
-		fundingHours: build ? BUILD_HOURS : tier.fundingHours,
-		earnFrom: build ? 0 : tier.fundingHours,
-		targetHours: submitHours,
-		submitHours,
 		checkpoints: [
 			...entries,
 			{
+				blurb: "Submit your warm-up project.",
 				id: key("submit"),
-				weekId: WARMUP_WEEK_ID,
 				kind: "submit",
 				title: build ? "Submit your build" : "Submit your design",
-				blurb: "Submit your warm-up project.",
+				weekId: WARMUP_WEEK_ID,
 			},
 		],
+		earnFrom: build ? 0 : tier.fundingHours,
+		fundingHours: build ? BUILD_HOURS : tier.fundingHours,
+		projectId: project.id,
+		submitHours,
+		targetHours: submitHours,
+		tier: tier.id,
 	}
 }
 
 function seededCeremony(): Ceremony {
-	return { version: 4, phase: "cinematic", doomscrollerOpen: true }
+	return { doomscrollerOpen: true, phase: "cinematic", version: 4 }
 }
 
 /** The details a maker can change on their own project, all optional. */
@@ -354,9 +354,9 @@ const StoreContext = createContext<Ctx | null>(null)
 async function send(path: string, body: unknown, method = "POST"): Promise<boolean> {
 	try {
 		const res = await fetch(path, {
-			method,
-			headers: { "content-type": "application/json" },
 			body: JSON.stringify(body),
+			headers: { "content-type": "application/json" },
+			method,
 		})
 		return res.ok
 	} catch {
@@ -411,10 +411,10 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	const dayLabel = useCallback(
 		(at: number) =>
 			new Date(at).toLocaleDateString("en-US", {
+				day: "numeric",
+				month: "long",
 				timeZone: facts.programTimezone,
 				weekday: "long",
-				month: "long",
-				day: "numeric",
 			}),
 		[facts.programTimezone],
 	)
@@ -563,9 +563,9 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			const request = (async () => {
 				try {
 					const res = await fetch("/api/projects", {
-						method: "POST",
-						headers: { "content-type": "application/json" },
 						body: JSON.stringify({ weekId }),
+						headers: { "content-type": "application/json" },
+						method: "POST",
 					})
 					if (!res.ok) return null
 					const { id } = (await res.json()) as { id: string }
@@ -600,9 +600,9 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				await send(
 					`/api/projects/${id}`,
 					{
-						title: p.name,
 						description: p.description,
 						requestedTier: p.tier,
+						title: p.name,
 						...(p.githubRepo ? { githubRepo: p.githubRepo } : {}),
 						...(p.starterProjectId !== undefined ? { starterProjectId: p.starterProjectId } : {}),
 					},
@@ -623,9 +623,9 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			let res: Response
 			try {
 				res = await fetch(`/api/projects/${id}`, {
-					method: "PATCH",
-					headers: { "content-type": "application/json" },
 					body: JSON.stringify({ githubRepo: url }),
+					headers: { "content-type": "application/json" },
+					method: "PATCH",
 				})
 			} catch {
 				return "Could not reach the server. Try again."
@@ -673,8 +673,6 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			let res: Response
 			try {
 				res = await fetch(`/api/projects/${id}`, {
-					method: "PATCH",
-					headers: { "content-type": "application/json" },
 					body: JSON.stringify({
 						...(patch.name !== undefined ? { title: patch.name } : {}),
 						...(patch.description !== undefined ? { description: patch.description } : {}),
@@ -683,6 +681,8 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 						...(patch.tier !== undefined ? { requestedTier: patch.tier } : {}),
 						...(patch.starterProjectId !== undefined ? { starterProjectId: patch.starterProjectId } : {}),
 					}),
+					headers: { "content-type": "application/json" },
+					method: "PATCH",
 				})
 			} catch {
 				return "Could not reach the server. Try again."
@@ -733,14 +733,14 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			const warmup = /^wu-([A-Za-z0-9_]+)-(?:entry-\d+|submit|reel-submission)$/.exec(checkpointId)
 			if (warmup?.[1]) {
 				const info = facts.warmups[warmup[1]]
-				return info ? { projectId: warmup[1], phase: info.phase === "build" ? "BUILD" : "DESIGN" } : null
+				return info ? { phase: info.phase === "build" ? "BUILD" : "DESIGN", projectId: warmup[1] } : null
 			}
 			const weekId = Number(/^w(\d+)-/.exec(checkpointId)?.[1])
 			if (!Number.isInteger(weekId) || weekId < 0) return null
 			const designWeek = weekId > DESIGN_WEEKS ? weekId - DESIGN_WEEKS : weekId
 			const projectId = facts.projectIdByWeek[designWeek]
 			if (!projectId) return null
-			return { projectId, phase: weekId > DESIGN_WEEKS ? "BUILD" : "DESIGN" }
+			return { phase: weekId > DESIGN_WEEKS ? "BUILD" : "DESIGN", projectId }
 		},
 		[facts.projectIdByWeek, facts.warmups],
 	)
@@ -790,21 +790,21 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	// Resolves to the new post's id – what a public link gets attached to – or to the reason it did not land. The node is patched first either way, and the refresh puts the truth back if the write failed.
 	const postReel = useCallback(
 		async (id: string, caption: string, objectKey: string): Promise<PostReelResult> => {
-			patchCheckpoint(id, { caption, artefacts: 1 })
+			patchCheckpoint(id, { artefacts: 1, caption })
 			const route = routeOf(id)
 			let res: Response
 			try {
 				res = await fetch("/api/posts", {
-					method: "POST",
-					headers: { "content-type": "application/json" },
 					body: JSON.stringify({
+						caption,
+						checkpointKey: id,
 						// Three occasions, three kinds: the pitch at the start of a design week, the ones that mark the hours, and the one that closes a week inside Submit.
 						kind: id.endsWith("-reel-idea") ? "IDEA" : id.endsWith("-reel-submission") ? "SUBMISSION" : "PROGRESS",
-						caption,
 						objectKey,
-						checkpointKey: id,
 						themeProjectId: route?.projectId ?? null,
 					}),
+					headers: { "content-type": "application/json" },
+					method: "POST",
 				})
 			} catch {
 				// The one case the old wording was actually right for: the request never arrived.
@@ -842,8 +842,6 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			let res: Response
 			try {
 				res = await fetch(`/api/projects/${route.projectId}/submit`, {
-					method: "POST",
-					headers: { "content-type": "application/json" },
 					body: JSON.stringify({
 						phase: route.phase,
 						...(extra.notes ? { notes: extra.notes } : {}),
@@ -852,6 +850,8 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 						...(extra.partialFundingAccepted ? { partialFundingAccepted: true } : {}),
 						...(extra.fundingDeclined ? { fundingDeclined: true } : {}),
 					}),
+					headers: { "content-type": "application/json" },
+					method: "POST",
 				})
 			} catch {
 				return "Could not reach the server. Nothing was submitted – try again."
@@ -875,14 +875,14 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	const unsubmitPhase = useCallback(
 		async (target: string | { projectId: string; phase: "DESIGN" | "BUILD" }): Promise<string | null> => {
 			const fromCheckpoint = typeof target === "string"
-			const route = fromCheckpoint ? routeOf(target) : { projectId: target.projectId, phase: target.phase }
+			const route = fromCheckpoint ? routeOf(target) : { phase: target.phase, projectId: target.projectId }
 			if (!route) return "This week has no project to unsubmit."
 			let res: Response
 			try {
 				res = await fetch(`/api/projects/${route.projectId}/unsubmit`, {
-					method: "POST",
-					headers: { "content-type": "application/json" },
 					body: JSON.stringify({ phase: route.phase }),
+					headers: { "content-type": "application/json" },
+					method: "POST",
 				})
 			} catch {
 				return "Could not reach the server. Nothing changed – try again."
@@ -930,12 +930,12 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			let refusal: string | null = null
 			try {
 				const res = await fetch("/api/goal", {
-					method: "PATCH",
-					headers: { "content-type": "application/json" },
 					body: JSON.stringify(printerGoalId ? { goal, printerGoalId } : { goal }),
+					headers: { "content-type": "application/json" },
+					method: "PATCH",
 				})
 				if (res.ok) {
-					setFacts(f => ({ ...f, participantGoal: goal, goalId: printerGoalId ?? f.goalId }))
+					setFacts(f => ({ ...f, goalId: printerGoalId ?? f.goalId, participantGoal: goal }))
 				} else {
 					const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
 					refusal = err?.error?.message ?? "That did not save. Try again."
@@ -1049,12 +1049,6 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				const submitHours = build ? BUILD_HOURS : submitFloorFor(tier.fundingHours)
 				return {
 					...meta,
-					tier: tierId,
-					fundingHours: build ? BUILD_HOURS : tier.fundingHours,
-					// Build-week hours all bank; the grant paid for the design week.
-					earnFrom: build ? 0 : tier.fundingHours,
-					targetHours: target,
-					submitHours,
 					checkpoints: checkpointsFor(
 						meta,
 						// The trail is as long as the work was: every finished entry is a node, and one more waits at the end for the entry about to be written. The minutes come along because reels are placed where the clock crossed.
@@ -1066,6 +1060,12 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 							&& (save.progress[ONBOARDING_CHECKPOINT_ID]?.done ?? false)
 							&& !save.projects.some(p => p.weekId === 1),
 					),
+					// Build-week hours all bank; the grant paid for the design week.
+					earnFrom: build ? 0 : tier.fundingHours,
+					fundingHours: build ? BUILD_HOURS : tier.fundingHours,
+					submitHours,
+					targetHours: target,
+					tier: tierId,
 				}
 			}),
 		[tierForWeek, goal, writtenMinutes, save.progress, save.projects],
@@ -1108,16 +1108,16 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				let res: Response
 				try {
 					res = await fetch(`/api/projects/${route.projectId}/sessions`, {
-						method: "POST",
-						headers: { "content-type": "application/json" },
 						body: JSON.stringify({
-							phase: route.phase,
-							// The journal's first line stands in for a title. The form asks for one piece of writing, and inventing a second field to satisfy the column would put a box on screen that exists only because of the schema.
-							title: body.trim().split("\n")[0]?.slice(0, 200) || DEFAULT_SESSION_TITLE,
 							content: body,
 							hoursClaimed: Math.round((minutes / 60) * 100) / 100,
+							phase: route.phase,
 							timelapses: evidence.clips.map(lapseId => ({ lapseId })),
+							// The journal's first line stands in for a title. The form asks for one piece of writing, and inventing a second field to satisfy the column would put a box on screen that exists only because of the schema.
+							title: body.trim().split("\n")[0]?.slice(0, 200) || DEFAULT_SESSION_TITLE,
 						}),
+						headers: { "content-type": "application/json" },
+						method: "POST",
 					})
 				} catch {
 					return "Could not reach the server. Your entry is still here – try again."
@@ -1131,10 +1131,10 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			setFacts(f => {
 				const prev = { ...EMPTY, ...f.progress[id] }
 				const entry: SessionLog = {
+					at: Date.now(),
+					body,
 					id: `${id}-s${prev.log.length + 1}`,
 					minutes,
-					body,
-					at: Date.now(),
 					...evidence,
 				}
 				return {
@@ -1143,10 +1143,10 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 						...f.progress,
 						[id]: {
 							...prev,
-							done: true,
 							at: prev.at ?? Date.now(),
-							minutes: prev.minutes + minutes,
+							done: true,
 							log: [...prev.log, entry],
+							minutes: prev.minutes + minutes,
 						},
 					},
 				}
@@ -1175,14 +1175,14 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			let res: Response
 			try {
 				res = await fetch(`/api/projects/${route.projectId}/sessions/${entry.id}`, {
-					method: "PATCH",
-					headers: { "content-type": "application/json" },
 					body: JSON.stringify({
-						title: body.trim().split("\n")[0]?.slice(0, 200) || DEFAULT_SESSION_TITLE,
 						content: body,
 						hoursClaimed: Math.round((minutes / 60) * 100) / 100,
 						timelapses: evidence.clips.map(lapseId => ({ lapseId })),
+						title: body.trim().split("\n")[0]?.slice(0, 200) || DEFAULT_SESSION_TITLE,
 					}),
+					headers: { "content-type": "application/json" },
+					method: "PATCH",
 				})
 			} catch {
 				return "Could not reach the server. Your changes are still here – try again."
@@ -1199,8 +1199,8 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 						...f.progress,
 						[id]: {
 							...prev,
+							log: prev.log.map((l, i) => (i === 0 ? { ...l, body, clips: evidence.clips, minutes } : l)),
 							minutes,
-							log: prev.log.map((l, i) => (i === 0 ? { ...l, minutes, body, clips: evidence.clips } : l)),
 						},
 					},
 				}
@@ -1469,66 +1469,66 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 
 	const value: Ctx = {
 		...facts,
-		phase,
+		addProject,
+		allCheckpoints,
+		bypassLocks,
+		complete,
+		currentCheckpointId,
+		deadlineOf,
 		doomscrollerOpen: ceremony.doomscrollerOpen,
+		editSession,
+		ensureProject,
+		finishOnboarding,
+		finishTour,
+		hoursOf,
+		hydrated,
+		isHeld,
+		isPassed,
+		isUnlocked: isOpen,
+		linkSyncRepoToProject,
+		lockReason,
+		logSession,
+		openCheckpoint,
+		overlapUnchecked,
+		passedOf,
+		pendingCoins,
+		phase,
+		phaseStatusOf,
+		postReel,
 		// A printer can be paid for out of either pot, so the goal tracker reads the total. Everything else in the shop takes `coins` alone.
 		printerFund: facts.coins + facts.bankedCoins,
-		hydrated,
-		openCheckpoint,
-		sharePost,
-		setSharePost,
-		tourStep,
+		redoOnboarding,
 		reducedMotion,
+		reset,
+		setBypassLocks,
+		setDoomscroller,
+		setOpenCheckpoint,
+		setParticipantGoal,
 		setPhase,
-		finishTour,
-		setTourStep,
-		addProject,
-		ensureProject,
-		setProjectTier,
 		setProjectRepo,
-		linkSyncRepoToProject,
-		updateProject,
-		complete,
-		postReel,
-		submitPhase,
-		logSession,
-		editSession,
+		setProjectTier,
+		setSharePost,
+		setTourStep,
+		sharePost,
 		stateOf,
-		isUnlocked: isOpen,
-		isPassed,
-		isHeld,
+		statusOf,
+		submitPhase,
+		totalHours,
+		tourStep,
+		unsubmitPhase,
+		updateProject,
+		warmupDeadline,
+		warmupWeekOf,
+		weekClosesAtMs,
+		weekDeadline,
+		weekHours,
+		weekOf,
+		weekOfCheckpoint,
+		weekOpensOn,
 		weekPassed,
 		weekStarted,
-		weekOpensOn,
-		weekDeadline,
-		weekClosesAtMs,
-		warmupDeadline,
 		weekSubmitted,
-		phaseStatusOf,
-		unsubmitPhase,
-		lockReason,
-		currentCheckpointId,
-		setOpenCheckpoint,
-		setDoomscroller,
-		setParticipantGoal,
-		finishOnboarding,
-		reset,
-		redoOnboarding,
-		bypassLocks,
-		setBypassLocks,
 		weeks,
-		warmupWeekOf,
-		weekOfCheckpoint,
-		hoursOf,
-		passedOf,
-		statusOf,
-		deadlineOf,
-		allCheckpoints,
-		weekOf,
-		weekHours,
-		overlapUnchecked,
-		totalHours,
-		pendingCoins,
 	}
 
 	return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>
@@ -1566,7 +1566,7 @@ export function usePrinterPace(): PrinterPace {
 		.filter(w => weekPassed(w.id) && (statusOf(w) === "draft" || statusOf(w) === "rejected"))
 		.map(w => w.id)
 		.reverse()
-	return { printer, perWeekCoins: printer ? Math.round(printer.paceHours * COINS_PER_HOUR) : 0, missedWeeks }
+	return { missedWeeks, perWeekCoins: printer ? Math.round(printer.paceHours * COINS_PER_HOUR) : 0, printer }
 }
 
 /**

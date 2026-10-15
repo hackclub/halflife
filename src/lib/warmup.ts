@@ -23,8 +23,8 @@ export async function warmupCreationWindow(): Promise<{ open: boolean; closesAt:
 	const settings = await getProgramSettings()
 	const closesAt = weekClosesAt(settings, WARMUP_WEEK_ID)
 	return {
-		open: new Date() < closesAt,
 		closesAt,
 		closesOn: formatDeadline(closesAt, settings.programTimezone),
+		open: new Date() < closesAt,
 	}
 }

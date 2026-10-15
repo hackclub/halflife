@@ -30,12 +30,12 @@ function filtersFrom(s: Search): ProjectFilters {
 	const status = (v?: string) => STATUSES.find(x => x === v)
 	const tier = Number(s.tier)
 	return {
+		buildStatus: status(s.build),
+		designStatus: status(s.design),
+		extended: s.extended === "1",
 		q: s.q?.trim() || undefined,
 		theme: Object.values(Theme).find(t => t === s.theme),
-		designStatus: status(s.design),
-		buildStatus: status(s.build),
 		tier: tier === 1 || tier === 2 || tier === 3 ? tier : undefined,
-		extended: s.extended === "1",
 		unstarted: s.unstarted === "1",
 	}
 }
@@ -65,7 +65,7 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 			/>
 
 			<Panel>
-				<form className="hl-row" method="get" style={{ flexWrap: "wrap", alignItems: "flex-end" }}>
+				<form className="hl-row" method="get" style={{ alignItems: "flex-end", flexWrap: "wrap" }}>
 					<input
 						className="hl-input"
 						defaultValue={search.q ?? ""}

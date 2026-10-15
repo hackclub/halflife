@@ -102,9 +102,9 @@ export function RepoSyncSettings({
 		setError(null)
 		try {
 			const res = await fetch(`/api/projects/${projectId}/repo-sync`, {
-				method,
-				headers: body ? { "content-type": "application/json" } : undefined,
 				body: body ? JSON.stringify(body) : undefined,
+				headers: body ? { "content-type": "application/json" } : undefined,
+				method,
 			})
 			const payload = await res.json().catch(() => null)
 			if (!res.ok) {

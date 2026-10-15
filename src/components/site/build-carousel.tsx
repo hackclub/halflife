@@ -199,8 +199,8 @@ export default function BuildCarousel() {
 			<div
 				className="px-4 sm:px-8"
 				style={{
-					paddingTop: "clamp(2rem, 2.546cqw, 44px)",
 					paddingBottom: "clamp(2rem, 5.613cqw, 97px)",
+					paddingTop: "clamp(2rem, 2.546cqw, 44px)",
 				}}
 			>
 				<h2
@@ -241,12 +241,12 @@ export default function BuildCarousel() {
 								role={copy === 0 ? "group" : undefined}
 								style={
 									{
-										width: CARD_W,
-										aspectRatio: CARD_RATIO,
-										borderRadius: CARD_RADIUS,
-										border: `${CARD_BORDER} solid var(--color-hl-yellow-pale)`,
 										// An absolutely positioned child is laid out against the padding box, so the overlay needs the frame's own width to reach back over it. It is a clamp, so it travels as a custom property rather than being written out twice.
 										"--hl-card-frame": CARD_BORDER,
+										aspectRatio: CARD_RATIO,
+										border: `${CARD_BORDER} solid var(--color-hl-yellow-pale)`,
+										borderRadius: CARD_RADIUS,
+										width: CARD_W,
 									} as CSSProperties
 								}
 							>

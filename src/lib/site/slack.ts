@@ -39,12 +39,12 @@ async function callSlackApi<T extends Record<string, unknown>>(
 	if (!token) throw new Error("SLACK_BOT_TOKEN is not set")
 
 	const res = await fetch(`https://slack.com/api/${method}`, {
-		method: "POST",
-		headers: {
-			"content-type": "application/json; charset=utf-8",
-			authorization: `Bearer ${token}`,
-		},
 		body: JSON.stringify(params),
+		headers: {
+			authorization: `Bearer ${token}`,
+			"content-type": "application/json; charset=utf-8",
+		},
+		method: "POST",
 		// Callers run inside `after` callbacks on the Events API path, where a hung request holds the callback open until the platform kills it. Cap it so a stalled call surfaces as a log line instead.
 		signal: AbortSignal.timeout(10_000),
 	})
@@ -70,9 +70,9 @@ export async function postMessage(
 	opts: { blocks?: SlackBlock[]; threadTs?: string; unfurlLinks?: boolean } = {},
 ): SlackResult<{ ts?: string; channel?: string }> {
 	return callSlackApi<{ ts?: string; channel?: string }>("chat.postMessage", {
+		blocks: opts.blocks,
 		channel,
 		text,
-		blocks: opts.blocks,
 		thread_ts: opts.threadTs,
 		// `undefined` drops out of JSON.stringify, so callers that don't care get Slack's default; the ticket post passes true explicitly.
 		unfurl_links: opts.unfurlLinks,
@@ -85,7 +85,7 @@ export async function updateMessage(
 	text: string,
 	blocks?: SlackBlock[],
 ): SlackResult<Record<string, unknown>> {
-	return callSlackApi("chat.update", { channel, ts, text, blocks })
+	return callSlackApi("chat.update", { blocks, channel, text, ts })
 }
 
 /** Drops a reaction on a message: the pending one when a #half-life-help
@@ -96,7 +96,7 @@ export async function addReaction(
 	timestamp: string,
 	name: string,
 ): SlackResult<Record<string, unknown>> {
-	return callSlackApi("reactions.add", { channel, timestamp, name }, ["already_reacted"])
+	return callSlackApi("reactions.add", { channel, name, timestamp }, ["already_reacted"])
 }
 
 /** Takes a reaction back off a message, the other half of swapping a
@@ -107,7 +107,7 @@ export async function removeReaction(
 	timestamp: string,
 	name: string,
 ): SlackResult<Record<string, unknown>> {
-	return callSlackApi("reactions.remove", { channel, timestamp, name }, ["no_reaction"])
+	return callSlackApi("reactions.remove", { channel, name, timestamp }, ["no_reaction"])
 }
 
 /** A bot token may delete only messages that bot posted, which is the whole
@@ -157,8 +157,8 @@ async function callSlackApiGet<T extends Record<string, unknown>>(
 
 	const url = `https://slack.com/api/${method}?${new URLSearchParams(params)}`
 	const res = await fetch(url, {
-		method: "GET",
 		headers: { authorization: `Bearer ${token}` },
+		method: "GET",
 		signal: AbortSignal.timeout(10_000),
 	})
 
@@ -250,7 +250,7 @@ export async function checkChannelMembership(channel: string, user: string): Pro
 				result.error === "missing_scope" && result.needed
 					? `${result.error} (needed ${result.needed})`
 					: (result.error ?? "bad_response")
-			return { member: false, error: detail }
+			return { error: detail, member: false }
 		}
 		if (result.members.includes(user)) return { member: true }
 		cursor = result.response_metadata?.next_cursor || undefined
@@ -297,9 +297,9 @@ export async function listChannelHistory(
 		if (!result.ok) throw new Error(`conversations.history failed: ${result.error ?? "unknown error"}`)
 		messages.push(...(result.messages ?? []))
 		cursor = result.response_metadata?.next_cursor || undefined
-		if (!cursor) return { messages, exhausted: true }
+		if (!cursor) return { exhausted: true, messages }
 	}
-	return { messages, exhausted: false }
+	return { exhausted: false, messages }
 }
 
 /** Cached for the life of the instance – this never changes for a given

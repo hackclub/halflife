@@ -38,7 +38,7 @@ export function ExtensionForm({
 	function save(until: Date | null) {
 		void run(
 			"save",
-			() => sendJson(url, { method: "PATCH", body: { submissionExtensionUntil: until?.toISOString() ?? null } }),
+			() => sendJson(url, { body: { submissionExtensionUntil: until?.toISOString() ?? null }, method: "PATCH" }),
 			() => setValue(until ? toLocalInput(until) : ""),
 		)
 	}

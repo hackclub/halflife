@@ -36,7 +36,7 @@ export type HackatimeSpan = Interval
 export function mergeIntervals(intervals: readonly Interval[]): Interval[] {
 	const clean: Interval[] = intervals
 		.filter(i => Number.isFinite(i?.start) && Number.isFinite(i?.end) && (i?.end ?? 0) > (i?.start ?? 0))
-		.map(i => ({ start: i.start, end: i.end }))
+		.map(i => ({ end: i.end, start: i.start }))
 		.sort((a, b) => a.start - b.start)
 	const first = clean[0]
 	if (!first) return []
@@ -107,7 +107,7 @@ export function timelapseWindow(recordedAtMs: number | Date | null, coveredSecon
 
 	const startSeconds = start / 1000
 	const duration = Math.round(coveredSeconds as number)
-	return { start: startSeconds, end: startSeconds + duration }
+	return { end: startSeconds + duration, start: startSeconds }
 }
 
 /**
@@ -137,9 +137,9 @@ export function parseCachedSpans(value: unknown): CachedSpans | null {
 		const end = (row as { end?: unknown } | null)?.end
 		if (typeof start !== "number" || typeof end !== "number") continue
 		if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) continue
-		spans.push({ start, end })
+		spans.push({ end, start })
 	}
-	return { from: raw.from, to: raw.to, spans }
+	return { from: raw.from, spans, to: raw.to }
 }
 
 /** Whether a cached answer covers the window it is being used for. */

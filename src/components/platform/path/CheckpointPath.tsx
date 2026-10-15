@@ -66,12 +66,12 @@ function ghostAfter(rows: Checkpoint[][], done: (id: string) => boolean, passed:
 }
 
 const KIND_ICON = {
+	demo: IconPlay,
+	journal: IconClock,
 	onboarding: IconPlay,
 	project: IconPencil,
-	journal: IconClock,
 	reel: IconFilm,
 	submit: IconUpload,
-	demo: IconPlay,
 } as const
 
 /**
@@ -165,7 +165,7 @@ function CheckpointNode({
 				isBeat(checkpoint) ? "w-[var(--node-sm)]" : "w-[var(--node)]",
 			)}
 			data-cp={checkpoint.id}
-			style={{ top, left, transform: "translateX(-50%)" }}
+			style={{ left, top, transform: "translateX(-50%)" }}
 		>
 			{isCurrent && !choice && phase !== "aim" && (
 				<div
@@ -393,8 +393,8 @@ function WeekTrail({ week, currentId, phase }: { week: Week; currentId: string |
 	const ghosts = ghostAfter(rows, done, isPassed)
 	const lined: { row: Checkpoint[]; ghost: boolean }[] = []
 	for (const [i, row] of rows.entries()) {
-		lined.push({ row, ghost: false })
-		if (ghosts.has(i)) lined.push({ row: [], ghost: true })
+		lined.push({ ghost: false, row })
+		if (ghosts.has(i)) lined.push({ ghost: true, row: [] })
 	}
 
 	const placed: { row: Checkpoint[]; ghost: boolean; full: number; beats: number; beat: boolean }[] = []
@@ -406,7 +406,7 @@ function WeekTrail({ week, currentId, phase }: { week: Week; currentId: string |
 			if (placed[i - 1]?.beat) beats += 1
 			else full += 1
 		}
-		placed.push({ row, ghost, full, beats, beat: ghost || row.every(isBeat) })
+		placed.push({ beat: ghost || row.every(isBeat), beats, full, ghost, row })
 	}
 
 	const leftOf = (i: number, j: number) =>
@@ -429,11 +429,11 @@ function WeekTrail({ week, currentId, phase }: { week: Week; currentId: string |
 						className="absolute size-[7px] rounded-full bg-line-strong/45"
 						key={`${i}-${j}-${f}`}
 						style={{
-							top: offsetOf(here.full, here.beats, ` + ${f} * ${stride} + ${size} / 2`),
 							left:
 								next.row.length > 1
 									? `${leftOf(i, 0) + ((FORK_AT[j] ?? FORK_AT[0]) - leftOf(i, 0)) * f}%`
 									: `${offsetAt(i + f, phase)}%`,
+							top: offsetOf(here.full, here.beats, ` + ${f} * ${stride} + ${size} / 2`),
 							transform: "translate(-50%, -50%)",
 						}}
 					/>,
@@ -456,8 +456,8 @@ function WeekTrail({ week, currentId, phase }: { week: Week; currentId: string |
 									aria-hidden="true"
 									className="hand absolute text-[0.78rem] text-navy-faint"
 									style={{
-										top: offsetOf(f, b, " + var(--node) / 2"),
 										left: "50%",
+										top: offsetOf(f, b, " + var(--node) / 2"),
 										transform: "translate(-50%, -50%)",
 									}}
 								>
@@ -491,7 +491,7 @@ function GhostNode({ top, left }: { top: string; left: string }) {
 			aria-label="More journal entries land here as you log them – the trail grows"
 			className="absolute flex w-[var(--node-sm)] flex-col items-center"
 			role="img"
-			style={{ top, left, transform: "translateX(-50%)" }}
+			style={{ left, top, transform: "translateX(-50%)" }}
 		>
 			<span
 				aria-hidden="true"
@@ -597,7 +597,7 @@ export function CheckpointPath() {
 		scrolled.current = true
 		const node = document.querySelector<HTMLElement>(`[data-cp="${currentCheckpointId}"]`)
 		if (!node) return
-		node.scrollIntoView({ block: "center", behavior: "auto" })
+		node.scrollIntoView({ behavior: "auto", block: "center" })
 
 		// The week banner is sticky, so centring the node can park its callout underneath it. Hand back whatever the banner took, plus a little air. A node on a fork row has no callout – there the node's own top is the edge that has to clear.
 		const banner = node.closest("section")?.querySelector<HTMLElement>("[data-week-banner]")
@@ -612,9 +612,9 @@ export function CheckpointPath() {
 	const { phases: weekPhases } = weeks.reduce<{ total: number; phases: number[] }>(
 		({ total, phases }, week) => {
 			phases.push(total)
-			return { total: total + trailRows(week, done, isPassed) + WEEK_GAP, phases }
+			return { phases, total: total + trailRows(week, done, isPassed) + WEEK_GAP }
 		},
-		{ total: 0, phases: [] },
+		{ phases: [], total: 0 },
 	)
 
 	return (
@@ -622,15 +622,15 @@ export function CheckpointPath() {
 			className="mx-auto w-full max-w-[720px] px-4 sm:px-8"
 			style={
 				{
-					"--node": "clamp(72px, 13.5vw, 98px)",
-					"--step": "clamp(140px, 20vw, 162px)",
-					/* An entry is a beat, not a milestone: smaller puck, shorter stride,
-             so a twenty-entry week stays a trail instead of a corridor. */
-					"--node-sm": "clamp(42px, 7.5vw, 54px)",
-					"--step-sm": "clamp(100px, 13vw, 116px)",
 					/* Room between a week banner and its first puck for the callout
              that hangs above the current checkpoint, bob included. */
 					"--lead": "clamp(70px, 9vw, 80px)",
+					"--node": "clamp(72px, 13.5vw, 98px)",
+					/* An entry is a beat, not a milestone: smaller puck, shorter stride,
+             so a twenty-entry week stays a trail instead of a corridor. */
+					"--node-sm": "clamp(42px, 7.5vw, 54px)",
+					"--step": "clamp(140px, 20vw, 162px)",
+					"--step-sm": "clamp(100px, 13vw, 116px)",
 				} as React.CSSProperties
 			}
 		>

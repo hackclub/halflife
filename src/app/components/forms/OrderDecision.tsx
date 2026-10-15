@@ -14,7 +14,7 @@ export function OrderDecision({ orderId }: Readonly<{ orderId: string }>) {
 		e.preventDefault()
 		const body =
 			action === "FULFILL"
-				? { action, trackingNumber: tracking || undefined, trackingCarrier: carrier || undefined }
+				? { action, trackingCarrier: carrier || undefined, trackingNumber: tracking || undefined }
 				: { action, reason }
 		void run("submit", () => sendJson(`/api/admin/shop/orders/${orderId}/decision`, { body }))
 	}

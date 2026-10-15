@@ -24,9 +24,9 @@ export async function rememberHelpTicket(input: {
 	helpTs: string
 }): Promise<void> {
 	await prisma.helpTicket.upsert({
-		where: { helpChannel_helpTs: { helpChannel: input.helpChannel, helpTs: input.helpTs } },
 		create: input,
 		update: {},
+		where: { helpChannel_helpTs: { helpChannel: input.helpChannel, helpTs: input.helpTs } },
 	})
 }
 
@@ -41,8 +41,8 @@ export async function resolveHelpTicket(input: {
 	resolvedBy: string
 }): Promise<void> {
 	await prisma.helpTicket.updateMany({
-		where: { helpChannel: input.helpChannel, helpTs: input.helpTs, resolvedAt: null },
 		data: { resolvedAt: new Date(), resolvedBy: input.resolvedBy },
+		where: { helpChannel: input.helpChannel, helpTs: input.helpTs, resolvedAt: null },
 	})
 }
 
@@ -53,8 +53,8 @@ export async function resolveHelpTicket(input: {
  */
 export async function reopenHelpTicket(input: { helpChannel: string; helpTs: string }): Promise<boolean> {
 	const { count } = await prisma.helpTicket.updateMany({
-		where: { helpChannel: input.helpChannel, helpTs: input.helpTs, resolvedAt: { not: null } },
 		data: { resolvedAt: null, resolvedBy: null },
+		where: { helpChannel: input.helpChannel, helpTs: input.helpTs, resolvedAt: { not: null } },
 	})
 	return count > 0
 }
@@ -80,7 +80,7 @@ function closerBoard(rows: { resolvedBy: string | null; authorSlackId: string }[
 		rows,
 		row => row.resolvedBy,
 		(row, key) => key === row.authorSlackId,
-	).map(({ key: resolvedBy, count: closed }) => ({ resolvedBy, closed }))
+	).map(({ key: resolvedBy, count: closed }) => ({ closed, resolvedBy }))
 }
 
 /** The counts behind the daily summary. `since` is normally 24 hours ago. */
@@ -88,21 +88,21 @@ export async function getHelpTicketStats(since: Date): Promise<HelpTicketStats> 
 	const [opened, closedRows, allClosedRows] = await Promise.all([
 		prisma.helpTicket.count({ where: { createdAt: { gte: since } } }),
 		prisma.helpTicket.findMany({
+			select: { authorSlackId: true, resolvedBy: true },
 			where: { resolvedAt: { gte: since }, resolvedBy: { not: null } },
-			select: { resolvedBy: true, authorSlackId: true },
 		}),
 		// Every closed ticket ever, for the all-time board under the daily one.
 		prisma.helpTicket.findMany({
+			select: { authorSlackId: true, resolvedBy: true },
 			where: { resolvedAt: { not: null }, resolvedBy: { not: null } },
-			select: { resolvedBy: true, authorSlackId: true },
 		}),
 	])
 
 	return {
-		opened,
 		closed: closedRows.length,
-		leaderboard: closerBoard(closedRows),
 		globalLeaderboard: closerBoard(allClosedRows),
+		leaderboard: closerBoard(closedRows),
+		opened,
 	}
 }
 
@@ -135,10 +135,10 @@ export async function backfillHelpTickets(channel: string): Promise<{
 	const { messages, exhausted } = await listChannelHistory(channel)
 	const rows = messages.filter(isTicketOpeningMessage).map(message => ({
 		authorSlackId: message.user,
-		helpChannel: channel,
-		helpTs: message.ts,
 		// The question's own time, not the backfill's, so the rows order as the conversation actually happened.
 		createdAt: new Date(Number(message.ts) * 1000),
+		helpChannel: channel,
+		helpTs: message.ts,
 	}))
 
 	// Chunked so a long channel does not exceed one INSERT's parameter limit; `skipDuplicates` is the idempotency.
@@ -152,5 +152,5 @@ export async function backfillHelpTickets(channel: string): Promise<{
 		created += result.count
 	}
 
-	return { scanned: messages.length, created, exhausted }
+	return { created, exhausted, scanned: messages.length }
 }

@@ -88,7 +88,7 @@ export function reviewOutcomeMessage(
 	const phaseLabel = context.phase === Phase.DESIGN ? "design" : "build"
 	const { body, next } = headline(notice.result, phaseLabel, context.title, notice.decidedBy)
 	const note = notice.note?.trim() || ""
-	return { prose: [body, ...(next ? [next] : [])], note: note || null }
+	return { note: note || null, prose: [body, ...(next ? [next] : [])] }
 }
 
 /**
@@ -149,9 +149,9 @@ async function deliverToMaker(input: {
 		"slack",
 		{
 			actorId: null,
-			targetType: "ThemeProject",
-			targetId: input.themeProjectId,
 			metadata: { kind: input.kind, phase: input.phase, ...input.meta },
+			targetId: input.themeProjectId,
+			targetType: "ThemeProject",
 		},
 		() => sendDM(slackId, `${lines.join("\n\n")}${link}`),
 	)
@@ -170,29 +170,29 @@ export async function notifyReviewOutcome(notice: ReviewOutcomeNotice): Promise<
 		console.error(`[notifications] review outcome notice failed for ${notice.themeProjectId}:`, err)
 		await logAudit({
 			action: AuditAction.NOTIFICATION_FAILURE,
-			targetType: "ThemeProject",
-			targetId: notice.themeProjectId,
 			metadata: {
+				decidedBy: notice.decidedBy,
+				error: message,
 				kind: "review_outcome",
 				phase: notice.phase,
 				result: notice.result,
-				decidedBy: notice.decidedBy,
 				// Which half of the send gave up. The channel records its own; this is everything before it, which is exactly the part nothing else watches.
 				stage: "before_channels",
-				error: message,
 			},
+			targetId: notice.themeProjectId,
+			targetType: "ThemeProject",
 		}).catch(() => undefined)
 	}
 }
 
 async function deliverReviewOutcome(notice: ReviewOutcomeNotice): Promise<void> {
 	const project = await prisma.themeProject.findUnique({
-		where: { id: notice.themeProjectId },
 		select: {
-			title: true,
 			theme: true,
+			title: true,
 			user: { select: { slackId: true } },
 		},
+		where: { id: notice.themeProjectId },
 	})
 	if (!project) return
 
@@ -200,13 +200,13 @@ async function deliverReviewOutcome(notice: ReviewOutcomeNotice): Promise<void> 
 	const message = reviewOutcomeMessage(notice, { phase: notice.phase, title })
 
 	await deliverToMaker({
-		themeProjectId: notice.themeProjectId,
-		phase: notice.phase,
 		kind: "review_outcome",
-		prose: message.prose,
+		meta: { decidedBy: notice.decidedBy, result: notice.result },
 		note: message.note,
+		phase: notice.phase,
+		prose: message.prose,
 		slackId: project.user.slackId,
-		meta: { result: notice.result, decidedBy: notice.decidedBy },
+		themeProjectId: notice.themeProjectId,
 	})
 }
 
@@ -218,39 +218,39 @@ async function deliverReviewOutcome(notice: ReviewOutcomeNotice): Promise<void> 
 export async function notifyShipFailed(input: { themeProjectId: string; phase: Phase; reason: string }): Promise<void> {
 	try {
 		const project = await prisma.themeProject.findUnique({
-			where: { id: input.themeProjectId },
 			select: {
-				title: true,
 				theme: true,
+				title: true,
 				user: { select: { slackId: true } },
 			},
+			where: { id: input.themeProjectId },
 		})
 		if (!project) return
 
 		const title = projectDisplayTitle(project)
-		const message = shipFailedMessage({ title, phase: input.phase, reason: input.reason })
+		const message = shipFailedMessage({ phase: input.phase, reason: input.reason, title })
 
 		await deliverToMaker({
-			themeProjectId: input.themeProjectId,
-			phase: input.phase,
 			kind: "ari_ship_failed",
-			prose: message.prose,
 			note: null,
+			phase: input.phase,
+			prose: message.prose,
 			slackId: project.user.slackId,
+			themeProjectId: input.themeProjectId,
 		})
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err)
 		console.error(`[notifications] ship failure notice failed for ${input.themeProjectId}:`, err)
 		await logAudit({
 			action: AuditAction.NOTIFICATION_FAILURE,
-			targetType: "ThemeProject",
-			targetId: input.themeProjectId,
 			metadata: {
+				error: message,
 				kind: "ari_ship_failed",
 				phase: input.phase,
 				stage: "before_channels",
-				error: message,
 			},
+			targetId: input.themeProjectId,
+			targetType: "ThemeProject",
 		}).catch(() => undefined)
 	}
 }
@@ -287,7 +287,7 @@ export async function notifyStaffDispute(input: {
 	}`
 	await trackSideEffect(
 		"slack",
-		{ actorId: null, targetType: "ThemeProject", targetId: input.themeProjectId, metadata: { kind: "review_dispute" } },
+		{ actorId: null, metadata: { kind: "review_dispute" }, targetId: input.themeProjectId, targetType: "ThemeProject" },
 		() => postMessage(channel, text),
 	)
 }

@@ -25,10 +25,10 @@ const TABLE = RSVP_TABLE_ID
 export const LOOPS_FIELDS = {
 	// The same column the RSVP drain writes. See RSVP.fields.email: the live column is lowercase, and Airtable field names are case-sensitive – naming it `Email` made the list request a 422 that stopped this sync ever running.
 	email: fieldKey(RSVP.fields.email),
+	lastEntryAt: "Loops - halfLifeLastEntryAt",
+	lastLoginAt: "Loops - halfLifeLastLoginAt",
 	// The join key, when the base has it. See the note above.
 	userId: fieldKey(RSVP.fields.userId),
-	lastLoginAt: "Loops - halfLifeLastLoginAt",
-	lastEntryAt: "Loops - halfLifeLastEntryAt",
 	week: (n: number) => `Loops - halfLifeWeek${n}Project`,
 } as const
 
@@ -56,22 +56,22 @@ type LoopsValues = {
 async function loopsValues(): Promise<LoopsValues[]> {
 	const users = await prisma.user.findMany({
 		select: {
-			id: true,
 			email: true,
-			lastLoginAt: true,
+			id: true,
 			lastActiveAt: true,
+			lastLoginAt: true,
 			onboardingCompletedAt: true,
 			themeProjects: {
-				where: { deletedAt: null },
 				select: {
-					theme: true,
 					namedAt: true,
+					theme: true,
 					workSessions: {
-						where: { deletedAt: null },
-						select: { phase: true, createdAt: true, hoursSource: true, timelapses: { select: { id: true }, take: 1 } },
 						orderBy: { createdAt: "desc" },
+						select: { createdAt: true, hoursSource: true, phase: true, timelapses: { select: { id: true }, take: 1 } },
+						where: { deletedAt: null },
 					},
 				},
+				where: { deletedAt: null },
 			},
 		},
 	})
@@ -91,7 +91,7 @@ async function loopsValues(): Promise<LoopsValues[]> {
 			.reduce<Date | null>((a, b) => (a && a > b ? a : b), null)
 		// "Last login" means last time we saw them, so a page view wins over the sign-in that started the session; a sign-in with no view since still counts, so take whichever is newer.
 		const lastLoginAt = newest(u.lastLoginAt, u.lastActiveAt)
-		return { id: u.id, email: u.email, lastLoginAt, lastEntryAt, weeks }
+		return { email: u.email, id: u.id, lastEntryAt, lastLoginAt, weeks }
 	})
 }
 
@@ -144,11 +144,11 @@ export function resolveSignupRow(
 	},
 ): { row: AirtableRecord; by: "id" | "record" | "email" } | null {
 	const byId = rows.byUserId.get(value.id)
-	if (byId) return { row: byId, by: "id" }
+	if (byId) return { by: "id", row: byId }
 	const byRecord = rows.byRecordId?.get(value.id)
-	if (byRecord) return { row: byRecord, by: "record" }
+	if (byRecord) return { by: "record", row: byRecord }
 	const byEmail = rows.byEmail.get(value.email.trim().toLowerCase())
-	return byEmail ? { row: byEmail, by: "email" } : null
+	return byEmail ? { by: "email", row: byEmail } : null
 }
 
 /**
@@ -159,13 +159,13 @@ export function resolveSignupRow(
 async function drainedRecordRows(): Promise<Map<string, AirtableRecord>> {
 	const byRecordId = new Map<string, AirtableRecord>()
 	const rows = await prisma.rsvpBuffer.findMany({
-		where: { userId: { not: null }, airtableRecordId: { not: null } },
-		select: { userId: true, airtableRecordId: true },
+		select: { airtableRecordId: true, userId: true },
+		where: { airtableRecordId: { not: null }, userId: { not: null } },
 	})
 	for (const row of rows) {
 		// The row id in the listing and the one the drain recorded are the same thing, so this needs no second request: a placeholder is enough for the join, and the write below addresses the real record by that id.
 		if (row.userId && row.airtableRecordId && !byRecordId.has(row.userId)) {
-			byRecordId.set(row.userId, { id: row.airtableRecordId, fields: {} })
+			byRecordId.set(row.userId, { fields: {}, id: row.airtableRecordId })
 		}
 	}
 	return byRecordId
@@ -205,22 +205,22 @@ async function persistRecordLinks(
 		if (existing?.airtableRecordId === row.id && existing?.userId === v.id) continue
 		try {
 			await prisma.rsvpBuffer.upsert({
-				where: { email: key },
 				create: {
-					email: key,
-					userId: v.id,
 					airtableRecordId: row.id,
+					email: key,
 					finishedAccountCreation: true,
-					syncedToAirtable: false,
 					syncAttempts: 0,
+					syncedToAirtable: false,
+					userId: v.id,
 				},
 				update: {
-					userId: v.id,
 					airtableRecordId: row.id,
 					finishedAccountCreation: true,
-					syncedToAirtable: false,
 					syncAttempts: 0,
+					syncedToAirtable: false,
+					userId: v.id,
 				},
+				where: { email: key },
 			})
 			linked++
 		} catch (err) {
@@ -325,23 +325,23 @@ export async function syncLoopsProperties(
 			continue
 		}
 		if (unchanged(hit.row, writableFields)) same++
-		else updates.push({ id: hit.row.id, email: v.email, fields: writableFields })
+		else updates.push({ email: v.email, fields: writableFields, id: hit.row.id })
 	}
 
 	// Half the population, matching nothing, is a broken join rather than a quiet morning. Small populations are exempt: half of four users is noise, and the first signups of a new season legitimately have no Signups row yet.
 	const degraded = values.length >= 50 && matched * 2 < values.length
 	const result: LoopsSyncResult = {
-		users: values.length,
+		degraded,
+		dryRun: !!opts.dryRun,
 		matched,
+		matchedByEmail,
 		matchedById,
 		matchedByRecord,
-		matchedByEmail,
-		unmatched: values.length - matched,
 		relinked,
-		updated: updates.length,
 		unchanged: same,
-		dryRun: !!opts.dryRun,
-		degraded,
+		unmatched: values.length - matched,
+		updated: updates.length,
+		users: values.length,
 	}
 
 	// A join that stops matching does not throw: rows are skipped and counted, so the run reports success while writing nothing, and the only symptom is that the columns stay empty. That is precisely how this went unnoticed, so a collapse in the match rate is called out loudly rather than returned as a number somebody has to notice. Most often it means the base has no `Half-Life User ID` column, or the RSVP drain has not been running to fill it – either way the fix is on the Airtable side, not here.
@@ -365,11 +365,11 @@ export async function syncLoopsProperties(
 		const batch = updates.slice(i, i + 10)
 		await withRateLimitRetry("updateSignups", () =>
 			airtableFetch(config, encodeURIComponent(TABLE), {
-				method: "PATCH",
 				body: JSON.stringify({
-					records: batch.map(({ id, fields }) => ({ id, fields })),
+					records: batch.map(({ id, fields }) => ({ fields, id })),
 					typecast: false,
 				}),
+				method: "PATCH",
 			}),
 		)
 	}

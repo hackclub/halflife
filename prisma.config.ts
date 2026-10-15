@@ -10,8 +10,6 @@ const PLACEHOLDER = "postgresql://placeholder:placeholder@localhost:5432/placeho
 const shadowDatabaseUrl = process.env.SHADOW_DATABASE_URL
 
 export default defineConfig({
-	schema: "prisma/schema.prisma",
-	migrations: { path: "prisma/migrations", seed: "tsx prisma/seed.ts" },
 	datasource: {
 		// Prisma 7 takes the CLI's connection URL from here rather than the schema.
 		// The placeholder keeps `prisma validate` and `prisma generate` working in a
@@ -19,4 +17,6 @@ export default defineConfig({
 		url: process.env.DATABASE_URL ?? PLACEHOLDER,
 		...(shadowDatabaseUrl ? { shadowDatabaseUrl } : {}),
 	},
+	migrations: { path: "prisma/migrations", seed: "tsx prisma/seed.ts" },
+	schema: "prisma/schema.prisma",
 })

@@ -5,19 +5,19 @@
  */
 export function normalizeRepo(input: string): { url: string | null; error: string | null } {
 	const raw = input.trim()
-	if (!raw) return { url: null, error: null }
+	if (!raw) return { error: null, url: null }
 	const withScheme = /^[a-z][a-z\d+.-]*:\/\//i.test(raw) ? raw : `https://${raw}`
 	try {
 		const parsed = new URL(withScheme)
 		if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
-			return { url: null, error: "That needs to be a web link." }
+			return { error: "That needs to be a web link.", url: null }
 		}
 		if (!parsed.hostname.includes(".")) {
-			return { url: null, error: "That does not look like a repo link." }
+			return { error: "That does not look like a repo link.", url: null }
 		}
-		return { url: parsed.toString().replace(/\/$/, ""), error: null }
+		return { error: null, url: parsed.toString().replace(/\/$/, "") }
 	} catch {
-		return { url: null, error: "That does not look like a repo link." }
+		return { error: "That does not look like a repo link.", url: null }
 	}
 }
 

@@ -29,19 +29,19 @@ export function ProgramSettingsForm({
 			"submit",
 			() =>
 				sendJson("/api/admin/program", {
-					method: "PATCH",
 					// The start date has its own form (ProgramStartForm): moving it moves every week's lock, so it is not something to change in passing.
 					body: {
+						airtableSyncEnabled: form.airtableSyncEnabled,
 						programTimezone: form.programTimezone,
-						submissionsOpen: form.submissionsOpen,
-						submissionsCloseAt: form.submissionsCloseAt ? new Date(`${form.submissionsCloseAt}Z`).toISOString() : null,
-						shopOpen: form.shopOpen,
+						repoSyncEnabled: form.repoSyncEnabled,
+						reviewClaimTtlMinutes: Number(form.reviewClaimTtlMinutes),
 						shopClosesAt: form.shopClosesAt ? new Date(`${form.shopClosesAt}Z`).toISOString() : null,
 						shopGraceDays: Number(form.shopGraceDays),
-						reviewClaimTtlMinutes: Number(form.reviewClaimTtlMinutes),
-						airtableSyncEnabled: form.airtableSyncEnabled,
-						repoSyncEnabled: form.repoSyncEnabled,
+						shopOpen: form.shopOpen,
+						submissionsCloseAt: form.submissionsCloseAt ? new Date(`${form.submissionsCloseAt}Z`).toISOString() : null,
+						submissionsOpen: form.submissionsOpen,
 					},
+					method: "PATCH",
 				}),
 			() => setSaved(true),
 		)

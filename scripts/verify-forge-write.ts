@@ -21,7 +21,7 @@ function check(label: string, ok: boolean, detail = "") {
 }
 
 const forge = FORGES.github
-const creds = { forge, login: "maker", accessToken: "token" }
+const creds = { accessToken: "token", forge, login: "maker" }
 const ref = { fullName: "owner/repo" } as RepoRef
 
 type Step = { status: number; body?: unknown; headers?: Record<string, string>; throw?: boolean }
@@ -35,8 +35,8 @@ globalThis.fetch = (async () => {
 	if (!step) throw new Error("fetch called with no scripted step")
 	if (step.throw) throw new TypeError("fetch failed")
 	return new Response(step.body === undefined ? null : JSON.stringify(step.body), {
-		status: step.status,
 		headers: { "content-type": "application/json", ...(step.headers ?? {}) },
+		status: step.status,
 	})
 }) as typeof fetch
 
@@ -46,7 +46,7 @@ async function run(steps: Step[]): Promise<{ ok: true; value: string } | { ok: f
 	try {
 		return { ok: true, value: await defaultBranchOf(creds, ref) }
 	} catch (err) {
-		return { ok: false, err }
+		return { err, ok: false }
 	}
 }
 
@@ -54,8 +54,8 @@ async function main() {
 	// A transient 5xx is the forge failing at its end, and another attempt clears it.
 	{
 		const r = await run([
-			{ status: 500, body: { message: "server error" } },
-			{ status: 200, body: { default_branch: "main" } },
+			{ body: { message: "server error" }, status: 500 },
+			{ body: { default_branch: "main" }, status: 200 },
 		])
 		check("5xx · retried to success", r.ok && r.value === "main", JSON.stringify(r))
 		check("5xx · took two attempts", calls === 2, `calls=${calls}`)
@@ -65,10 +65,10 @@ async function main() {
 	{
 		const r = await run([
 			{
-				status: 403,
 				headers: { "x-ratelimit-remaining": "0", "x-ratelimit-reset": `${Math.ceil(Date.now() / 1000)}` },
+				status: 403,
 			},
-			{ status: 200, body: { default_branch: "main" } },
+			{ body: { default_branch: "main" }, status: 200 },
 		])
 		check("403 primary rate limit · waited out, not read as a refusal", r.ok && r.value === "main", JSON.stringify(r))
 	}
@@ -76,15 +76,15 @@ async function main() {
 	// GitHub's secondary rate limit: 403 carrying a retry-after.
 	{
 		const r = await run([
-			{ status: 403, headers: { "retry-after": "1" } },
-			{ status: 200, body: { default_branch: "main" } },
+			{ headers: { "retry-after": "1" }, status: 403 },
+			{ body: { default_branch: "main" }, status: 200 },
 		])
 		check("403 secondary rate limit · waited out, not read as a refusal", r.ok && r.value === "main", JSON.stringify(r))
 	}
 
 	// A 401 is a sign-in to redo, and says so specifically.
 	{
-		const r = await run([{ status: 401, body: { message: "Bad credentials" } }])
+		const r = await run([{ body: { message: "Bad credentials" }, status: 401 }])
 		const err = r.ok ? null : r.err
 		check(
 			"401 · reads as a sign-in to reconnect",
@@ -96,7 +96,7 @@ async function main() {
 
 	// A 403 with no rate-limit header is the genuine refusal a maker must act on, and names permissions.
 	{
-		const r = await run([{ status: 403, body: { message: "Resource not accessible by integration" } }])
+		const r = await run([{ body: { message: "Resource not accessible by integration" }, status: 403 }])
 		const err = r.ok ? null : r.err
 		check(
 			"403 plain · reads as a permissions problem to reconnect over",
@@ -108,7 +108,7 @@ async function main() {
 
 	// An exhausted 429 says so, rather than the old catch-all that blamed silence.
 	{
-		const always = { status: 429, headers: { "retry-after": "1" } }
+		const always = { headers: { "retry-after": "1" }, status: 429 }
 		const r = await run([always, always, always, always])
 		const err = r.ok ? null : r.err
 		check(
@@ -122,7 +122,7 @@ async function main() {
 	{
 		const r = await run([
 			{ status: 0, throw: true },
-			{ status: 200, body: { default_branch: "main" } },
+			{ body: { default_branch: "main" }, status: 200 },
 		])
 		check("transport failure · retried to success", r.ok && r.value === "main", JSON.stringify(r))
 	}
@@ -141,7 +141,7 @@ async function main() {
 
 	// A 422 gets its own sentence, and quotes the forge's own reason.
 	{
-		const r = await run([{ status: 422, body: { message: "Protected branch update failed" } }])
+		const r = await run([{ body: { message: "Protected branch update failed" }, status: 422 }])
 		const err = r.ok ? null : r.err
 		const message = err instanceof Error ? err.message : String(err)
 		check(
@@ -154,7 +154,7 @@ async function main() {
 
 	// Any other status is named with its code, and repeats the forge's message.
 	{
-		const r = await run([{ status: 400, body: { message: "Problems parsing JSON" } }])
+		const r = await run([{ body: { message: "Problems parsing JSON" }, status: 400 }])
 		const err = r.ok ? null : r.err
 		const message = err instanceof Error ? err.message : String(err)
 		check("400 · named with its status code", !r.ok && message.includes("returned an error (400)"), message)
@@ -163,7 +163,7 @@ async function main() {
 
 	// A 500 that survives every retry reads as the forge's own problem, and is not quoted as if the maker caused it.
 	{
-		const always = { status: 503, body: { message: "Server Error" } }
+		const always = { body: { message: "Server Error" }, status: 503 }
 		const r = await run([always, always, always, always])
 		const err = r.ok ? null : r.err
 		const message = err instanceof Error ? err.message : String(err)

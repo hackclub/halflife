@@ -13,14 +13,14 @@ import prisma from "@/lib/prisma"
  */
 
 const SELECT = {
-	id: true,
-	title: true,
 	colour: true,
 	description: true,
-	startsAt: true,
 	endsAt: true,
+	id: true,
 	published: true,
 	seriesId: true,
+	startsAt: true,
+	title: true,
 } satisfies Record<string, boolean>
 
 /**
@@ -33,10 +33,10 @@ const SELECT = {
  */
 export async function listUpcomingEvents(from: Date, take: number): Promise<CalendarEvent[]> {
 	return prisma.programEvent.findMany({
-		where: { published: true, startsAt: { gte: from } },
 		orderBy: { startsAt: "asc" },
-		take,
 		select: SELECT,
+		take,
+		where: { published: true, startsAt: { gte: from } },
 	})
 }
 

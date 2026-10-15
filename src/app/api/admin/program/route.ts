@@ -26,32 +26,32 @@ export const PATCH = withRoute(async (req: Request) => {
 
 	const before = await getProgramSettings()
 	const settings = await prisma.programSettings.update({
-		where: { id: "singleton" },
 		data: { ...parsed.data, updatedById: gate.user.id },
+		where: { id: "singleton" },
 	})
 
 	await logAudit({
 		action: AuditAction.ADMIN_UPDATE_PROGRAM_SETTINGS,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "ProgramSettings",
-		targetId: "singleton",
+		actorId: gate.user.id,
 		metadata: {
-			before: {
-				submissionsOpen: before.submissionsOpen,
-				shopOpen: before.shopOpen,
-				eventStartDate: before.eventStartDate.toISOString(),
-				airtableSyncEnabled: before.airtableSyncEnabled,
-				repoSyncEnabled: before.repoSyncEnabled,
-			},
 			after: {
-				submissionsOpen: settings.submissionsOpen,
-				shopOpen: settings.shopOpen,
-				eventStartDate: settings.eventStartDate.toISOString(),
 				airtableSyncEnabled: settings.airtableSyncEnabled,
+				eventStartDate: settings.eventStartDate.toISOString(),
 				repoSyncEnabled: settings.repoSyncEnabled,
+				shopOpen: settings.shopOpen,
+				submissionsOpen: settings.submissionsOpen,
+			},
+			before: {
+				airtableSyncEnabled: before.airtableSyncEnabled,
+				eventStartDate: before.eventStartDate.toISOString(),
+				repoSyncEnabled: before.repoSyncEnabled,
+				shopOpen: before.shopOpen,
+				submissionsOpen: before.submissionsOpen,
 			},
 		},
+		targetId: "singleton",
+		targetType: "ProgramSettings",
 	})
 
 	return ok({ settings })

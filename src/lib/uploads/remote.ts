@@ -96,9 +96,9 @@ function get(url: URL, signal: AbortSignal): Promise<IncomingMessage> {
 		const req = client.get(
 			url,
 			{
+				headers: { accept: "image/png,image/jpeg,image/gif,image/webp", "user-agent": "HalfLife-ImageImport/1.0" },
 				lookup: safeLookup,
 				signal,
-				headers: { accept: "image/png,image/jpeg,image/gif,image/webp", "user-agent": "HalfLife-ImageImport/1.0" },
 			},
 			resolve,
 		)
@@ -123,20 +123,20 @@ async function readCapped(res: IncomingMessage, maxBytes: number): Promise<Buffe
 /** What the bytes are, from their first few, or null if not an image we take. */
 export function sniffImage(bytes: Buffer): { ext: string; contentType: string } | null {
 	if (bytes.length >= 8 && bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
-		return { ext: "png", contentType: "image/png" }
+		return { contentType: "image/png", ext: "png" }
 	}
 	if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
-		return { ext: "jpg", contentType: "image/jpeg" }
+		return { contentType: "image/jpeg", ext: "jpg" }
 	}
 	if (bytes.length >= 6 && /^GIF8[79]a$/.test(bytes.subarray(0, 6).toString("latin1"))) {
-		return { ext: "gif", contentType: "image/gif" }
+		return { contentType: "image/gif", ext: "gif" }
 	}
 	if (
 		bytes.length >= 12
 		&& bytes.subarray(0, 4).toString("latin1") === "RIFF"
 		&& bytes.subarray(8, 12).toString("latin1") === "WEBP"
 	) {
-		return { ext: "webp", contentType: "image/webp" }
+		return { contentType: "image/webp", ext: "webp" }
 	}
 	return null
 }

@@ -140,89 +140,89 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 	const [user, projects, sessions, links, posts, submissions, balances, settings, owedReels, roles] = await Promise.all(
 		[
 			prisma.user.findUniqueOrThrow({
-				where: { id: userId },
 				select: {
-					name: true,
-					displayName: true,
-					image: true,
-					slackId: true,
-					hardwareExperience: true,
-					onboardingCompletedAt: true,
-					printerGoalId: true,
-					participantGoal: true,
 					currentStreak: true,
+					displayName: true,
+					hardwareExperience: true,
+					image: true,
 					lastStreakDate: true,
+					name: true,
+					onboardingCompletedAt: true,
+					participantGoal: true,
+					printerGoalId: true,
+					slackId: true,
 					submissionExtensionUntil: true,
 				},
+				where: { id: userId },
 			}),
 			prisma.themeProject.findMany({
-				where: { userId, deletedAt: null },
 				select: {
-					id: true,
-					theme: true,
-					title: true,
+					approvedHours: true,
+					buildStatus: true,
+					coverImageKey: true,
 					description: true,
-					tier: true,
+					designApprovedHours: true,
+					designStatus: true,
+					githubRepo: true,
+					id: true,
 					requestedTier: true,
 					starterProjectId: true,
-					warmupPhase: true,
-					githubRepo: true,
-					coverImageKey: true,
-					designStatus: true,
-					buildStatus: true,
-					designApprovedHours: true,
-					approvedHours: true,
 					submissionExtensionUntil: true,
+					theme: true,
+					tier: true,
+					title: true,
+					warmupPhase: true,
 				},
+				where: { deletedAt: null, userId },
 			}),
 			// Ordered, because the trail's Nth entry node IS the Nth session written.
 			prisma.workSession.findMany({
-				where: { themeProject: { userId, deletedAt: null }, deletedAt: null },
 				orderBy: [{ createdAt: "asc" }, { id: "asc" }],
 				select: {
-					id: true,
-					themeProjectId: true,
-					phase: true,
 					content: true,
-					title: true,
-					hoursClaimed: true,
-					hoursApproved: true,
-					hoursSource: true,
 					createdAt: true,
+					hoursApproved: true,
+					hoursClaimed: true,
+					hoursSource: true,
+					id: true,
 					media: { select: { objectKey: true } },
+					phase: true,
+					themeProjectId: true,
 					timelapses: {
-						select: { objectKey: true, externalId: true, coveredSeconds: true, recordedAt: true },
+						select: { coveredSeconds: true, externalId: true, objectKey: true, recordedAt: true },
 					},
+					title: true,
 				},
+				where: { deletedAt: null, themeProject: { deletedAt: null, userId } },
 			}),
 			prisma.hackatimeLink.findMany({
-				where: { themeProject: { userId, deletedAt: null } },
 				// cachedSpans comes along because `rollUpHours` is what the ledger uses, and a trail that reported a different Hackatime total from the one a reviewer approves is the disagreement this file already warns about – the same minutes must not be payable twice on one screen and once off it.
 				select: {
-					themeProjectId: true,
-					phase: true,
-					hoursApproved: true,
 					cachedSeconds: true,
 					cachedSpans: true,
+					hoursApproved: true,
+					phase: true,
+					themeProjectId: true,
 				},
+				where: { themeProject: { deletedAt: null, userId } },
 			}),
 			prisma.post.findMany({
-				// Every reel, not only the ones bound to a checkpoint: a project's stand-in picture may come from any of them (see the thumbnail below).
-				where: { userId, deletedAt: null },
 				orderBy: { createdAt: "asc" },
 				select: {
-					checkpointKey: true,
 					caption: true,
+					checkpointKey: true,
 					createdAt: true,
+					objectKey: true,
 					themeProjectId: true,
 					thumbnailKey: true,
-					objectKey: true,
 				},
+				// Every reel, not only the ones bound to a checkpoint: a project's stand-in picture may come from any of them (see the thumbnail below).
+				where: { deletedAt: null, userId },
 			}),
 			prisma.phaseSubmission.findMany({
-				where: { themeProject: { userId, deletedAt: null } },
 				orderBy: { createdAt: "asc" },
-				select: { themeProjectId: true, phase: true, createdAt: true },
+				select: { createdAt: true, phase: true, themeProjectId: true },
+				where: { themeProject: { deletedAt: null, userId } },
 			}),
 			// Not in a transaction: this is a read for display, and BEGIN and COMMIT are two more round trips to a database ~110ms away from a laptop – the slowest part of the whole snapshot. Spending still reads its balance inside the transaction that spends it.
 			getBalances(prisma, userId),
@@ -242,22 +242,22 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 	for (const post of posts) {
 		if (!post.checkpointKey) continue
 		progress[post.checkpointKey] = {
-			done: true,
+			artefacts: 1,
 			at: progress[post.checkpointKey]?.at ?? post.createdAt.getTime(),
 			caption: post.caption,
-			minutes: 0,
-			artefacts: 1,
+			done: true,
 			log: [],
+			minutes: 0,
 		}
 	}
 
 	if (user.onboardingCompletedAt) {
 		progress[ONBOARDING_CHECKPOINT_ID] = {
-			done: true,
-			at: user.onboardingCompletedAt.getTime(),
-			minutes: 0,
 			artefacts: 0,
+			at: user.onboardingCompletedAt.getTime(),
+			done: true,
 			log: [],
+			minutes: 0,
 		}
 	}
 
@@ -274,32 +274,32 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 				const tier = project.tier ?? project.requestedTier
 				if (project.title && project.description && tier) {
 					progress[id("project")] = {
-						done: true,
-						minutes: 0,
 						artefacts: 0,
+						done: true,
 						log: [],
+						minutes: 0,
 					}
 				}
 			}
 
 			for (const [index, session] of phaseSessions.entries()) {
 				progress[id(`entry-${index + 1}`)] = {
-					done: true,
-					at: session.createdAt.getTime(),
-					minutes: minutesOf(session),
 					artefacts: session.media.length,
+					at: session.createdAt.getTime(),
+					done: true,
 					log: [
 						{
-							id: session.id,
-							minutes: minutesOf(session),
-							body: session.content ?? session.title,
 							at: session.createdAt.getTime(),
+							body: session.content ?? session.title,
 							clips: session.timelapses.flatMap(t => {
 								const ref = t.externalId ?? t.objectKey
 								return ref ? [ref] : []
 							}),
+							id: session.id,
+							minutes: minutesOf(session),
 						},
 					],
+					minutes: minutesOf(session),
 				}
 			}
 
@@ -309,11 +309,11 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 			if (week !== undefined) phaseStatusByWeek[week] = status
 			if (status !== PhaseStatus.draft) {
 				progress[id("submit")] = {
-					done: true,
-					at: submission?.createdAt.getTime(),
-					minutes: 0,
 					artefacts: 0,
+					at: submission?.createdAt.getTime(),
+					done: true,
 					log: [],
+					minutes: 0,
 				}
 			}
 
@@ -349,13 +349,13 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 		if (project.theme !== Theme.WARMUP) continue
 		const phase = warmupPhaseOf(project)
 		warmups[project.id] = {
-			phase: phase === Phase.BUILD ? "build" : "design",
-			offBookHours: recordPhase(project, phase, `wu-${project.id}`),
 			closesAt: effectiveWeekClose(
 				weekClosesAt(settings, WARMUP_WEEK_ID),
 				user.submissionExtensionUntil,
 				project.submissionExtensionUntil,
 			).getTime(),
+			offBookHours: recordPhase(project, phase, `wu-${project.id}`),
+			phase: phase === Phase.BUILD ? "build" : "design",
 		}
 	}
 
@@ -381,16 +381,21 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 	}
 
 	return {
-		viewer: {
-			id: userId,
-			name: displayName(user, "You"),
-			image: avatarUrl(user),
-			isAdmin: hasRole(roles, Role.ADMIN),
-		},
+		bankedCoins: balances.banked,
+		coins: balances.spendable,
 		experience: user.hardwareExperience ? EXPERIENCE[user.hardwareExperience] : null,
+		goalId: user.printerGoalId ?? DEFAULT_GOAL_ID,
+		now: Date.now(),
+		offBookHours,
 		onboardingDone: user.onboardingCompletedAt !== null,
+		overlapUncheckedWeeks,
+		owedReels,
 		// Null is the answer "not yet", and it is what holds the mandatory goal prompt open. It is read here rather than derived from the ceremony state because it is a fact about the person, not about this browser.
 		participantGoal: user.participantGoal,
+		phaseStatusByWeek,
+		programTimezone: settings.programTimezone,
+		progress,
+		projectIdByWeek,
 		projects: projects.flatMap(project => {
 			const warmup = project.theme === Theme.WARMUP
 			const themeIndex = THEMES.findIndex(t => t.id === project.theme)
@@ -399,17 +404,15 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 			if ((!warmup && themeIndex === -1) || !project.title || !tier) return []
 			return [
 				{
+					buildStatus: project.buildStatus,
+					coverImageKey: project.coverImageKey,
+					description: project.description ?? "",
+					designStatus: project.designStatus,
+					githubRepo: project.githubRepo,
 					id: project.id,
 					name: project.title,
-					description: project.description ?? "",
-					weekId: warmup ? WARMUP_WEEK_ID : weekOf(themeIndex, Phase.DESIGN),
-					tier: clampTier(tier),
 					starter: project.starterProjectId !== null,
 					starterProjectId: project.starterProjectId,
-					githubRepo: project.githubRepo,
-					coverImageKey: project.coverImageKey,
-					designStatus: project.designStatus,
-					buildStatus: project.buildStatus,
 					thumbnail: projectThumbnail(
 						publicUrlFor(project.coverImageKey),
 						sessions.filter(s => s.themeProjectId === project.id),
@@ -421,25 +424,22 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 								videoUrl: publicUrlFor(p.objectKey),
 							})),
 					),
+					tier: clampTier(tier),
+					weekId: warmup ? WARMUP_WEEK_ID : weekOf(themeIndex, Phase.DESIGN),
 				},
 			]
 		}),
-		projectIdByWeek,
-		progress,
-		offBookHours,
-		overlapUncheckedWeeks,
-		phaseStatusByWeek,
+		streak: streakAsOf(user, effectiveDateFor(new Date(), settings.programTimezone)),
+		viewer: {
+			id: userId,
+			image: avatarUrl(user),
+			isAdmin: hasRole(roles, Role.ADMIN),
+			name: displayName(user, "You"),
+		},
+		warmups,
+		warmupsCloseAt: weekClosesAt(settings, WARMUP_WEEK_ID).getTime(),
 		weekClosesAt: closes,
 		weekOpensAt: opens,
-		warmupsCloseAt: weekClosesAt(settings, WARMUP_WEEK_ID).getTime(),
-		warmups,
-		programTimezone: settings.programTimezone,
-		now: Date.now(),
-		coins: balances.spendable,
-		bankedCoins: balances.banked,
-		streak: streakAsOf(user, effectiveDateFor(new Date(), settings.programTimezone)),
-		goalId: user.printerGoalId ?? DEFAULT_GOAL_ID,
-		owedReels,
 	}
 }
 

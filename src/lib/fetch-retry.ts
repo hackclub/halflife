@@ -76,7 +76,7 @@ export async function fetchWithRetry(url: string | URL, options: FetchRetryOptio
 				lastError = new Error("response too large")
 				continue
 			}
-			return new Response(body, { status: res.status, statusText: res.statusText, headers: res.headers })
+			return new Response(body, { headers: res.headers, status: res.status, statusText: res.statusText })
 		} catch (err) {
 			lastError = err
 			if (attempt < retries && unreachable(err)) continue
