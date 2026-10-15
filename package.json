@@ -23,6 +23,7 @@
     "streaks:recompute": "bun --conditions=react-server scripts/recompute-streaks.ts",
     "hours:backfill-overlap": "bun --conditions=react-server scripts/backfill-timelapse-overlap.ts",
     "reviews:backfill-identities": "bun --conditions=react-server scripts/backfill-review-identities.ts",
+    "reviews:backfill-ari": "bun --conditions=react-server scripts/backfill-ari-reviews.ts",
     "import:stasis": "bun import/stasis.ts",
     "import:check": "bun import/check.ts",
     "import:dump": "bun import/dump.ts",
@@ -70,6 +71,6 @@
     "eslint-config-next": "16.3.8",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.23.15",
-    "typescript": "^5.9.3"
+    "typescript": "~6.0.3"
   }
 }

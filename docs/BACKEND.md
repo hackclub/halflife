@@ -131,6 +131,20 @@ and it refuses an already-resolved submission.
   `review.reverted` / `review.requeued` undo the local status and credit and put
   the phase back in review; `review.fraud` flags the maker on a failed verdict;
   `ship.updated` and unknown events are recorded and ignored.
+- **A delivery can be lost, so decisions are also pulled.** The webhook is
+  fire-and-forget: a delivery sent while the endpoint was unregistered,
+  misconfigured or briefly unreachable is gone, and the hand-in sits decided at
+  Ari while Half Life still shows it pending – the admin "Reviewer activity"
+  ring then reads hundreds of hand-ins more pending than Ari's own board.
+  `reconcileAriDecisions` (`lib/ari.ts`) asks `ari.ships.status` for each open
+  hand-in and applies any standing decision through the same `finalizeReview`
+  the webhook calls. `ari-retry` runs a bounded pass every hour, and
+  `pnpm reviews:backfill-ari` (dry run; `--commit` writes) drains a backlog in
+  one go. `status` carries the decision but not the note, hours or reviewer, so
+  a replayed approval is paid on Half Life's own hours roll-up; check the few
+  approvals rather than trusting them blind. Makers are not notified by a bulk
+  replay by default (`--announce` opts in) – mirror the row afterwards with
+  `airtable:backfill-review`.
 
 ---
 

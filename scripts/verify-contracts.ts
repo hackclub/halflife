@@ -503,6 +503,36 @@ async function bodies() {
 	check("ari · pending: no submissions means nothing pending", selectPendingShips(projects, []).length === 0)
 	check("ari · pending: no projects means nothing pending", selectPendingShips([], []).length === 0)
 
+	/* ── 5b-ii. The decision standing on a ship ────────────────────────────── */
+	//
+	// What the reconciliation applies when a webhook delivery never arrived. Ari's decision vocabulary ("changes") and its event name ("review.changes") are the two halves that could drift apart silently, and a decided ship must never be read from a phase that is not final.
+	const { standingDecision } = await import("../src/lib/ari-standing")
+	check(
+		"ari · standing: approved maps to its event",
+		standingDecision({ decision: "approved", phase: "reviewed" })?.event === "review.approved",
+	)
+	check(
+		"ari · standing: changes maps to its event",
+		standingDecision({ decision: "changes", phase: "reviewed" })?.event === "review.changes",
+	)
+	check(
+		"ari · standing: rejected maps to its event",
+		standingDecision({ decision: "rejected", phase: "reviewed" })?.event === "review.rejected",
+	)
+	check("ari · standing: a queued ship has no decision", standingDecision({ decision: null, phase: "review" }) === null)
+	check(
+		"ari · standing: a withdrawn ship has no decision",
+		standingDecision({ decision: "approved", phase: "withdrawn" }) === null,
+	)
+	check(
+		"ari · standing: a reverted ship has no decision",
+		standingDecision({ decision: "changes", phase: "reverted" }) === null,
+	)
+	check(
+		"ari · standing: reviewed with no decision is not a decision",
+		standingDecision({ decision: null, phase: "reviewed" }) === null,
+	)
+
 	/* ── 5c. HCB disbursement reconciliation ──────────────────────────────── */
 	//
 	// The one path that decides whether a timed-out top-up is re-sent. An unreadable payload must be ambiguous, never absent: "nothing landed" is the state that pays twice.

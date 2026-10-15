@@ -1,10 +1,19 @@
 import "server-only"
-import { Ari, AriApiError, AriInputError, type AriReview, type AriShipInput, type AriWebhookEvent } from "@hackclub/ari"
+import {
+	Ari,
+	AriApiError,
+	AriInputError,
+	type AriReview,
+	type AriShipInput,
+	type AriShipStatus,
+	type AriWebhookEvent,
+} from "@hackclub/ari"
 import type { Prisma } from "@/app/generated/prisma/client"
 import { HoursSource, Phase, PhaseStatus, ReviewResult, Theme } from "@/app/generated/prisma/enums"
 import { mirrorReviewDecision, reviewStatusFor, reviewStatusForResult } from "@/lib/airtable/sync"
 import { ariExternalId, parseAriExternalId } from "@/lib/ari-id"
 import { selectPendingShips } from "@/lib/ari-pending"
+import { type StandingDecision, standingDecision } from "@/lib/ari-standing"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { getThemeDef, WARMUP_THEME } from "@/lib/config/program"
 import { isTierId } from "@/lib/config/tiers"
@@ -378,7 +387,7 @@ async function ignored(event: AriWebhookEvent, reason: string, externalId: strin
 	})
 }
 
-async function applyDecision(event: DecisionEvent): Promise<void> {
+async function applyDecision(event: DecisionEvent, opts: { announce?: boolean } = {}): Promise<void> {
 	const parsed = parseAriExternalId(event.external_id)
 	if (!parsed) {
 		await ignored(event, "unparseable external_id", event.external_id)
@@ -494,17 +503,23 @@ async function applyDecision(event: DecisionEvent): Promise<void> {
 	})
 
 	// The row carries the decision too, for Loops. Best-effort like the notice below: the review is already committed, and a decided submission must not be redelivered over a base that is briefly unreachable.
-	await mirrorReviewDecision(themeProjectId, phase, reviewStatusForResult(result), makerNote)
+	//
+	// A reconciliation that replays a backlog skips both this and the notice below: the maker is told once, by the live webhook, and a run that decided hundreds of old hand-ins at once must not turn into hundreds of late messages. The Airtable backfill mirrors the state afterwards instead.
+	if (opts.announce !== false) {
+		await mirrorReviewDecision(themeProjectId, phase, reviewStatusForResult(result), makerNote)
+	}
 
 	// The decision is committed and recorded; now tell the maker. Best-effort – a Slack outage must not make Ari retry a decided submission, and the project page is the source of truth if a message is missed.
-	await notifyReviewOutcome({
-		decidedBy: "ari",
-		// Ari's own note, not the fallback: `feedback` above has already been defaulted so the review row and the project page always have something to show, and quoting that back to the maker as "the reviewer's note" says the headline twice and tells them nothing they can act on.
-		note: makerNote,
-		phase,
-		result,
-		themeProjectId,
-	})
+	if (opts.announce !== false) {
+		await notifyReviewOutcome({
+			decidedBy: "ari",
+			// Ari's own note, not the fallback: `feedback` above has already been defaulted so the review row and the project page always have something to show, and quoting that back to the maker as "the reviewer's note" says the headline twice and tells them nothing they can act on.
+			note: makerNote,
+			phase,
+			result,
+			themeProjectId,
+		})
+	}
 }
 
 /**
@@ -705,4 +720,162 @@ export async function applyAriWebhook(event: AriWebhookEvent, deliveryId: string
 	await prisma.ariWebhookDelivery.create({
 		data: { ariSubmissionId, deliveryId, event: event.event, externalId },
 	})
+}
+
+// ─── Reconciliation ──────────────────────────────────────────────────────────
+
+/** What a reconciliation pass did. The job and the manual backfill report the same shape. */
+export type ReconcileSummary = {
+	/** Hand-ins whose standing decision was applied. */
+	applied: number
+	/** Open hand-ins examined at Ari. */
+	checked: number
+	/** Open hand-ins Ari reports a final decision for. */
+	decided: number
+	/** Builds held back because their design is not approved yet – applied by a later pass. */
+	deferred: number
+	/** Status reads or applications that errored; retried next pass. */
+	failed: number
+	/** Hand-ins Ari still holds open. */
+	pending: number
+	/** Decided ships whose newest ship is not this hand-in (withdrawn and resubmitted). */
+	skipped: number
+}
+
+/**
+ * A decision as the webhook names it, built from a ship's standing state.
+ *
+ * `ari.ships.status` reports only the decision, not the review that carried it: no note, no approved hours, no reviewer. So the review is stubbed with the fields the decision path ignores, and `finalizeReview` supplies the fallbacks it always does – the maker-facing note reads as Ari's generic sentence and an approval's hours come from the local hours roll-up. Everything the status endpoint does not carry is therefore reconstructed rather than replayed, which is why this is a recovery path for a delivery that never arrived, not the normal one.
+ */
+function decisionEventFromStatus(status: AriShipStatus, standing: StandingDecision): DecisionEvent {
+	// The union discriminates on the decision, so each arm is built whole rather than spread from a common base – a spread would widen `event` and `decision` into independent unions the type no longer correlates.
+	const maker = { email: "", name: "", slack_id: null }
+	const review = { note_to_maker: "", reviewer: null }
+	const ship = {
+		authors: [],
+		demo_url: null,
+		description: null,
+		hackatime_projects: [],
+		repo_url: "",
+		thumbnail_url: null,
+		title: "",
+		track: "hardware" as const,
+	}
+	if (standing.decision === "approved")
+		return {
+			decision: "approved",
+			event: "review.approved",
+			external_id: status.external_id,
+			id: status.id,
+			maker,
+			review,
+			ship,
+		}
+	if (standing.decision === "changes")
+		return {
+			decision: "changes",
+			event: "review.changes",
+			external_id: status.external_id,
+			id: status.id,
+			maker,
+			review,
+			ship,
+		}
+	return {
+		decision: "rejected",
+		event: "review.rejected",
+		external_id: status.external_id,
+		id: status.id,
+		maker,
+		review,
+		ship,
+	}
+}
+
+/**
+ * Replay decisions Ari holds but the webhook never delivered.
+ *
+ * The webhook is the only path a decision normally takes into Half Life, and it is fire-and-forget: Ari signs each delivery, but a delivery sent while the endpoint was misconfigured, unregistered or unreachable is simply gone. The ship still carries its result at Ari, though, so this asks `ari.ships.status` for each open hand-in and applies whatever final decision it finds through the same `applyDecision` the webhook calls – so the ledger, the tier and the phase all move exactly as they would have.
+ *
+ * Candidates are the open hand-ins the site still believes are in review – the same set `getAdminCounters` calls live hand-ins, and the same set a decision would have resolved. They are examined in a shuffled order and a capped run takes only the first `limit` of them: a fixed prefix would starve the rest once the older ones turned out to be genuinely pending, because the same few would be re-read on every run and the tail never reached. Rotation means a capped job still covers everything over enough runs. Re-running is safe: a hand-in the previous pass resolved is no longer open, and `finalizeReview` refuses one that is.
+ *
+ * `commit` false reports what it would apply and writes nothing, which is what the backfill script defaults to. `announce` is off by default: a backlog replay can decide hundreds of hand-ins at once, and the maker is told by the live webhook in the normal case – turning a recovery run into hundreds of late Slack DMs and Loops emails is not the intent. Read `docs/RUNBOOK.md` before announcing a bulk run.
+ */
+export async function reconcileAriDecisions(
+	opts: { announce?: boolean; commit?: boolean; limit?: number } = {},
+): Promise<ReconcileSummary> {
+	const summary: ReconcileSummary = {
+		applied: 0,
+		checked: 0,
+		decided: 0,
+		deferred: 0,
+		failed: 0,
+		pending: 0,
+		skipped: 0,
+	}
+	if (!isAriConfigured()) return summary
+
+	const candidates = await prisma.phaseSubmission.findMany({
+		select: { ariSubmissionId: true, phase: true, themeProjectId: true },
+		where: {
+			ariSubmissionId: { not: null },
+			OR: [
+				{ phase: Phase.DESIGN, themeProject: { designStatus: PhaseStatus.in_review } },
+				{ phase: Phase.BUILD, themeProject: { buildStatus: PhaseStatus.in_review } },
+			],
+			resolvedAt: null,
+			themeProject: { deletedAt: null },
+		},
+	})
+	// Shuffled rather than ordered: see the header. Sort keys are only for the shuffle and carry no meaning.
+	const open = candidates
+		.map(value => ({ order: Math.random(), value }))
+		.sort((a, b) => a.order - b.order)
+		.slice(0, opts.limit ?? 2000)
+		.map(entry => entry.value)
+
+	for (const submission of open) {
+		summary.checked += 1
+
+		let status: AriShipStatus
+		try {
+			status = await ari().ships.status({ external_id: ariExternalId(submission.themeProjectId, submission.phase) })
+		} catch (err) {
+			summary.failed += 1
+			console.error(`[ari] reconcile: status failed for ${submission.themeProjectId}:${submission.phase}`, err)
+			continue
+		}
+
+		const standing = standingDecision(status)
+		if (!standing) {
+			summary.pending += 1
+			continue
+		}
+		summary.decided += 1
+		if (!opts.commit) continue
+
+		// Ari reports the newest ship for the external id. When that is not the ship this hand-in was sent as, the hand-in was withdrawn and resubmitted and the decision names the older ship – left alone, exactly as the webhook leaves it.
+		if (submission.ariSubmissionId !== null && submission.ariSubmissionId !== status.id) {
+			summary.skipped += 1
+			continue
+		}
+
+		try {
+			await applyDecision(decisionEventFromStatus(status, standing), { announce: opts.announce === true })
+			summary.applied += 1
+		} catch (err) {
+			// A build approved before its design is expected here: it is deferred by state, not failed, and the next pass applies it once the design lands.
+			if (err instanceof HttpError && err.code === "DESIGN_NOT_APPROVED") {
+				summary.deferred += 1
+				continue
+			}
+			summary.failed += 1
+			console.error(
+				`[ari] reconcile: could not apply ${standing.decision} for ${submission.themeProjectId}:${submission.phase}`,
+				err,
+			)
+		}
+	}
+
+	return summary
 }

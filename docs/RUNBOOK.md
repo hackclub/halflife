@@ -39,6 +39,13 @@ Coolify.
    job below so a failed send is replayed, and note that failed sends are also
    listed with a **Retry** button on `/admin/program`.
 
+   **A decision the webhook never delivered is a backlog, not a loss.** The
+   webhook is fire-and-forget, so registering it late (or an outage while it was
+   down) leaves hand-ins decided in Ari and still pending here. `ari-retry`
+   reconciles that every run, and
+   `bun --conditions=react-server scripts/backfill-ari-reviews.ts [--commit]`
+   drains it in one pass. See [BACKEND.md](./BACKEND.md) → Reviewing with Ari.
+
 3. **Create the project and database.**
 
    ```
