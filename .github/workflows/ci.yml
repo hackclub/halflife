@@ -158,11 +158,13 @@ jobs:
             # concurrent-purchase lock, single-pot minting); verify-onboarding
             # pins the first checkpoint (no step-skipping, tier/requestedTier
             # split); verify-feed pins the doomscroller; verify-store pins the
-            # database→trail seam; verify-handoff pins the phone handoff.
+            # database→trail seam.
+            # Not here: verify-handoff requires R2 credentials (minting fails
+            # closed when uploads are unconfigured), and CI has no bucket – it
+            # runs locally with S3_* set.
             - name: DB regression checks
               run: |
                   bun run verify:ledger
                   bun run verify:onboarding
                   bun run verify:feed
                   bun run verify:store
-                  bun run verify:handoff

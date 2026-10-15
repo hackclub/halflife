@@ -14,7 +14,10 @@ import { PrismaClient } from "../src/app/generated/prisma/client"
  * 4. The object key is built from the handoff's OWNER, so a token can only ever write into the prefix of the person who generated it.
  * 5. Minting a new code retires the previous one, so a code photographed off a screen does not stay live.
  *
- * The R2 round trip is skipped when uploads are not configured; everything else runs regardless.
+ * Requires uploads to be configured (S3_ACCESS_KEY_ID/SECRET, S3_BUCKET_NAME,
+ * S3_ENDPOINT): minting itself refuses when R2 is absent, so the check fails
+ * closed without credentials rather than passing vacuously. The uploaded round
+ * trip object is deleted afterwards.
  *
  * Run with `pnpm verify:handoff` against a scratch database.
  */
@@ -58,15 +61,21 @@ async function main() {
 	const { isUploadConfigured, deleteObject } = await import("../src/lib/uploads/r2")
 
 	const stamp = Date.now()
+
+	// Minting refuses when R2 is absent, so fail closed here with a reason
+	// instead of half-running into that refusal below.
+	if (!isUploadConfigured()) {
+		console.error("FAIL  uploads are not configured (S3_ACCESS_KEY_ID/SECRET, S3_BUCKET_NAME, S3_ENDPOINT required)")
+		await prisma.$disconnect()
+		process.exit(1)
+	}
+
 	const owner = await prisma.user.create({
 		data: { email: `handoff-owner-${stamp}@example.test`, name: "Owner" },
 	})
 	const stranger = await prisma.user.create({
 		data: { email: `handoff-stranger-${stamp}@example.test`, name: "Stranger" },
 	})
-
-	const uploadsReady = isUploadConfigured()
-	if (!uploadsReady) console.log("NOTE  uploads are not configured; skipping the R2 round trip\n")
 
 	// ── The token is never stored ──────────────────────────────────────────────
 	const handoff = await createHandoff(owner.id)
@@ -119,24 +128,22 @@ async function main() {
 	check("a rejected upload does not spend the code", (await resolveHandoff(live.token))?.id, live.id)
 
 	// ── The round trip ─────────────────────────────────────────────────────────
-	if (uploadsReady) {
-		const result = await completeHandoff(live.token, fakeVideo())
+	const result = await completeHandoff(live.token, fakeVideo())
 
-		// The whole security model in one assertion: the key is derived from the handoff's owner, so a token cannot write anywhere but its own prefix.
-		check("the object key is under the OWNER's prefix", result.objectKey.startsWith(`posts/${owner.id}/`), true)
-		check("and not the stranger's", result.objectKey.includes(stranger.id), false)
+	// The whole security model in one assertion: the key is derived from the handoff's owner, so a token cannot write anywhere but its own prefix.
+	check("the object key is under the OWNER's prefix", result.objectKey.startsWith(`posts/${owner.id}/`), true)
+	check("and not the stranger's", result.objectKey.includes(stranger.id), false)
 
-		const ready = await getHandoffStatus(live.id, owner.id)
-		check("status flips to ready", ready?.state, "ready")
-		check("and carries the key", ready?.state === "ready" ? ready.objectKey : null, result.objectKey)
+	const ready = await getHandoffStatus(live.id, owner.id)
+	check("status flips to ready", ready?.state, "ready")
+	check("and carries the key", ready?.state === "ready" ? ready.objectKey : null, result.objectKey)
 
-		// Single use, which is what stops a photographed QR being replayed.
-		check("the spent token no longer resolves", await resolveHandoff(live.token), null)
-		await refused("a spent token cannot upload again", () => completeHandoff(live.token, fakeVideo()))
+	// Single use, which is what stops a photographed QR being replayed.
+	check("the spent token no longer resolves", await resolveHandoff(live.token), null)
+	await refused("a spent token cannot upload again", () => completeHandoff(live.token, fakeVideo()))
 
-		await deleteObject(result.objectKey)
-		console.log(`      (cleaned up ${result.objectKey})`)
-	}
+	await deleteObject(result.objectKey)
+	console.log(`      (cleaned up ${result.objectKey})`)
 
 	await prisma.user.deleteMany({ where: { id: { in: [owner.id, stranger.id] } } })
 
