@@ -18,8 +18,8 @@ function isLoopbackHost(host: string): boolean {
 function trustedForwardedHost(value: string | null): string | null {
 	const host = value?.split(",")[0]?.trim()
 	if (!host) return null
-	// Pod/internal addresses are deliberately NOT trusted here: the Host header fallback already covers direct pod access, and trusting a forwarded `10.x`/`0.0.0.0` would let a forged header steer redirects.
-	if (TRUSTED_HOSTS.has(host.toLowerCase()) || TRUSTED_HOST.test(host) || isLoopbackHost(host)) return host
+	// Pod/internal addresses and loopback are deliberately NOT trusted here: the Host header fallback already covers direct pod access and local development, and trusting a forwarded `10.x`/`0.0.0.0`/`localhost` would let a forged header steer redirects.
+	if (TRUSTED_HOSTS.has(host.toLowerCase()) || TRUSTED_HOST.test(host)) return host
 	return null
 }
 

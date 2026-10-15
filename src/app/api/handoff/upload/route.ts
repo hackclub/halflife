@@ -1,6 +1,7 @@
-import { fail, ok, parseUploadForm, withRoute } from "@/lib/api"
+import { fail, ok, parseUploadForm, rateLimitedInMemory, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { completeHandoff, resolveHandoff } from "@/lib/handoff"
+import { clientIp } from "@/lib/site/signups"
 import { isUploadConfigured, MAX_UPLOAD_BYTES } from "@/lib/uploads/r2"
 
 export const dynamic = "force-dynamic"
@@ -14,6 +15,10 @@ export const maxDuration = 60
 export const POST = withRoute(async (req: Request) => {
 	// Checked here as well as at mint time: a deployment can lose its bucket between the QR being generated and the phone finishing a recording, and the phone should be told that rather than handed a 500.
 	if (!isUploadConfigured()) return fail("NOT_CONFIGURED", "File uploads are not configured on this deployment")
+
+	// The token is the only credential and it lives inside the form, so without this a caller could loop the largest allowed body until the process runs out of memory before any token is ever read.
+	if (rateLimitedInMemory(`handoff-upload:${clientIp(req.headers)}`))
+		return fail("RATE_LIMITED", "Too many uploads at once – wait a minute and try again")
 
 	// Capped before it is parsed, because this route has no session and the token is inside the form: `req.formData()` would otherwise buffer whatever the caller sends before any credential is checked.
 	const parsed = await parseUploadForm(req, MAX_UPLOAD_BYTES)

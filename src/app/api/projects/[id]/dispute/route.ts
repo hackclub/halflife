@@ -4,6 +4,7 @@ import { projectDisplayTitle } from "@/lib/config/program"
 import { requireSession } from "@/lib/guards"
 import { notifyStaffDispute } from "@/lib/notifications"
 import prisma from "@/lib/prisma"
+import { sanitize } from "@/lib/sanitize"
 import { disputeSchema } from "@/lib/schemas/project"
 
 type Params = { params: Promise<{ id: string }> }
@@ -20,7 +21,9 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 
 	const parsed = await parseBody(req, disputeSchema)
 	if (parsed.error) return parsed.error
-	const { phase, note } = parsed.data
+	const { phase } = parsed.data
+	// Stored as plain text elsewhere, so it is stripped of markup on the way in too.
+	const note = sanitize(parsed.data.note)
 
 	const project = await prisma.themeProject.findFirst({
 		where: { id, userId: gate.user.id, deletedAt: null },
