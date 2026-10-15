@@ -1,111 +1,111 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
-  pull_request:
+    push:
+        branches: [main]
+    pull_request:
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+    group: ci-${{ github.ref }}
+    cancel-in-progress: true
 
 # Read-only, for the same reason as biome.yml: nothing here writes to the repository. Both jobs read the checkout and report, and the migrations job resets a throwaway Postgres service container rather than anything shared. Stated explicitly so the token cannot inherit a read-write default from an older repository or organisation.
 permissions:
-  contents: read
+    contents: read
 
 jobs:
-  verify:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
+    verify:
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        steps:
+            - uses: actions/checkout@v4
+            - uses: oven-sh/setup-bun@v2
+              with:
+                  bun-version: latest
 
-      - uses: actions/cache@v4
-        with:
-          path: ~/.bun/install/cache
-          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-          restore-keys: |
-            bun-${{ runner.os }}-
+            - uses: actions/cache@v4
+              with:
+                  path: ~/.bun/install/cache
+                  key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+                  restore-keys: |
+                      bun-${{ runner.os }}-
 
-      - run: bun install --frozen-lockfile
+            - run: bun install --frozen-lockfile
 
-      # The Prisma client is gitignored, so typegen, typecheck and build all
-      # fail without this. It has to come first.
-      - run: bunx prisma generate
+            # The Prisma client is gitignored, so typegen, typecheck and build all
+            # fail without this. It has to come first.
+            - run: bunx prisma generate
 
-      # `next-env.d.ts` and `.next/types` are gitignored but required for
-      # typecheck: image imports resolve through next/image-types/global and
-      # LayoutProps through the generated route types. `next typegen` creates
-      # both without a full build.
-      - run: bunx next typegen
+            # `next-env.d.ts` and `.next/types` are gitignored but required for
+            # typecheck: image imports resolve through next/image-types/global and
+            # LayoutProps through the generated route types. `next typegen` creates
+            # both without a full build.
+            - run: bunx next typegen
 
-      # `bun check` rather than `bun run typecheck`: it is the built-in, reads the same tsconfig (paths, strict flags, the generated/ exclude) and enforces .next/types, so the `next typegen` step above still earns its place.
-      - run: bun check
-      - run: bun run lint
+            # `bun check` rather than `bun run typecheck`: it is the built-in, reads the same tsconfig (paths, strict flags, the generated/ exclude) and enforces .next/types, so the `next typegen` step above still earns its place.
+            - run: bun check
+            - run: bun run lint
 
-      - name: Build
+            - name: Build
+              env:
+                  CI: "true"
+                  BETTER_AUTH_SECRET: ci-placeholder-secret-at-least-32-chars
+                  BETTER_AUTH_URL: http://localhost:3000
+                  DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
+              run: bun run build
+
+    migrations:
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        services:
+            postgres:
+                image: postgres:17-alpine
+                env:
+                    POSTGRES_USER: postgres
+                    POSTGRES_PASSWORD: postgres
+                    POSTGRES_DB: halflife_ci
+                ports: ["5432:5432"]
+                options: >-
+                    --health-cmd pg_isready --health-interval 5s
+                    --health-timeout 5s --health-retries 10
         env:
-          CI: "true"
-          BETTER_AUTH_SECRET: ci-placeholder-secret-at-least-32-chars
-          BETTER_AUTH_URL: http://localhost:3000
-          DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
-        run: bun run build
+            DATABASE_URL: postgresql://postgres:postgres@localhost:5432/halflife_ci
+        steps:
+            - uses: actions/checkout@v4
+            - uses: oven-sh/setup-bun@v2
+              with:
+                  bun-version: latest
 
-  migrations:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: halflife_ci
-        ports: ["5432:5432"]
-        options: >-
-          --health-cmd pg_isready --health-interval 5s
-          --health-timeout 5s --health-retries 10
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/halflife_ci
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
+            - uses: actions/cache@v4
+              with:
+                  path: ~/.bun/install/cache
+                  key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+                  restore-keys: |
+                      bun-${{ runner.os }}-
 
-      - uses: actions/cache@v4
-        with:
-          path: ~/.bun/install/cache
-          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-          restore-keys: |
-            bun-${{ runner.os }}-
+            - run: bun install --frozen-lockfile
+            - run: bunx prisma generate
 
-      - run: bun install --frozen-lockfile
-      - run: bunx prisma generate
+            # Migrations must apply cleanly from nothing. Both reference programs
+            # deploy migrations at container start with no CI check, which means a bad
+            # migration is discovered as a crashlooping production pod.
+            - name: Apply migrations from scratch
+              run: bunx prisma migrate deploy
 
-      # Migrations must apply cleanly from nothing. Both reference programs
-      # deploy migrations at container start with no CI check, which means a bad
-      # migration is discovered as a crashlooping production pod.
-      - name: Apply migrations from scratch
-        run: bunx prisma migrate deploy
+            # And the committed schema has to match the migration history — the
+            # failure mode where someone edits schema.prisma and forgets to migrate.
+            # Prisma 7 takes the shadow database URL from prisma.config.ts, so this
+            # needs a database it is allowed to reset — hence a separate one from the
+            # migration target above.
+            - name: Schema matches migrations
+              env:
+                  SHADOW_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/halflife_shadow
+              run: |
+                  PGPASSWORD=postgres psql -h localhost -U postgres -c 'CREATE DATABASE halflife_shadow'
+                  bunx prisma migrate diff \
+                    --from-migrations prisma/migrations \
+                    --to-schema prisma/schema.prisma \
+                    --exit-code
 
-      # And the committed schema has to match the migration history — the
-      # failure mode where someone edits schema.prisma and forgets to migrate.
-      # Prisma 7 takes the shadow database URL from prisma.config.ts, so this
-      # needs a database it is allowed to reset — hence a separate one from the
-      # migration target above.
-      - name: Schema matches migrations
-        env:
-          SHADOW_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/halflife_shadow
-        run: |
-          PGPASSWORD=postgres psql -h localhost -U postgres -c 'CREATE DATABASE halflife_shadow'
-          bunx prisma migrate diff \
-            --from-migrations prisma/migrations \
-            --to-schema prisma/schema.prisma \
-            --exit-code
-
-      # tsx runs on the runner's preinstalled Node – no setup-node needed.
-      - run: bun run db:seed
+            # tsx runs on the runner's preinstalled Node – no setup-node needed.
+            - run: bun run db:seed
