@@ -50,12 +50,12 @@ async function namesFor(entries: ProjectReviewStats["leaderboard"]): Promise<Map
 }
 
 /** How wide each week's bar is, in characters. Fixed, so every row is the same length and the counts line up. */
-const SHARE_BAR_WIDTH = 10
+const SHARE_BAR_WIDTH = 20
 
 /**
- * One week's progress as a text bar: `week 1 · PCBs  ██████░░░░   12/20 ·  60%`.
+ * One week's progress as a text bar: `week 1 · PCBs  ████████████░░░░░░░░   12/20  60%`.
  *
- * Inside a fenced block Slack renders monospace, so the label is padded to the longest week, the bar is a fixed width, and the count and share are padded too – every column lands in the same place on every row. A week with no named projects yet reads `0/0 · 0%` rather than dividing by zero.
+ * Inside a fenced block Slack renders monospace, so the label is padded to the longest week, the bar is a fixed width, and the count and share are padded too – every column lands in the same place on every row. A week with no named projects yet reads `0/0 0%` rather than dividing by zero.
  */
 function weekBarLine(row: WeekReviewProgress, labelWidth: number, countWidth: number): string {
 	const share = row.total === 0 ? 0 : row.reviewed / row.total
@@ -63,7 +63,7 @@ function weekBarLine(row: WeekReviewProgress, labelWidth: number, countWidth: nu
 	const bar = "█".repeat(filled) + "░".repeat(SHARE_BAR_WIDTH - filled)
 	const count = `${row.reviewed}/${row.total}`.padStart(countWidth)
 	const pct = `${Math.round(share * 100)}%`.padStart(4)
-	return `${`week ${row.week} · ${row.label}`.padEnd(labelWidth)} ${bar} ${count} · ${pct}`
+	return `${`week ${row.week} · ${row.label}`.padEnd(labelWidth)} ${bar} ${count} ${pct}`
 }
 
 /**

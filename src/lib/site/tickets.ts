@@ -14,6 +14,10 @@ export type TicketRef = {
 
 export const TICKET_ACTIONS_BLOCK_ID = "ticket_actions"
 export const SELF_RESOLVE_ACTIONS_BLOCK_ID = "self_resolve_actions"
+/** Carries the reopen button on a resolved thread message. Its own id so resolving again strips it like the other action blocks. */
+export const REOPEN_ACTIONS_BLOCK_ID = "reopen_actions"
+/** Identifies the "✅ helped by" note, so reopening can take it back off. */
+export const RESOLVED_CONTEXT_BLOCK_ID = "ticket_resolved"
 
 /**
  * Everything the bot says to a participant, in one place so the voice stays one voice.
@@ -34,6 +38,8 @@ export const FAQ_CARD_BUTTON = "read the faq"
 export const SELF_RESOLVE_BUTTON = "i've got it, thanks"
 
 export const MARK_HELPED_BUTTON = "mark as helped"
+
+export const REOPEN_BUTTON = "reopen ticket"
 
 /** The workspace's custom "loading" emoji, dropped on the original question
  * the moment its ticket is opened, so a question in #half-life-help reads as still waiting from the channel list. Same caveat as below: it's the custom emoji's exact name, and it only resolves if an emoji by that name exists in
@@ -56,6 +62,50 @@ export function helpedAck(helperId: string): string {
  * they'd be pinging themselves over their own click. */
 export function selfResolvedAck(): string {
 	return "oh! you've marked this as resolved – thanks for letting us know! if you need anything else, just send another message in #half-life-help and someone'll be happy to help :D"
+}
+
+/** Posted when a solved ticket is opened back up. The queue wording is deliberate: reopening puts it back in front of staff, so the message says so rather than pretending nothing changed. */
+export function reopenedAck(): string {
+	return "oh! this one's open again – i've put it back in the helpers' queue, someone'll pick it up :D"
+}
+
+/** The thread's two resolution buttons, with values carrying where the tickets-channel mirror lives. Shared by ticket creation and reopening: a reopened ticket goes back to exactly the state a new one starts in, so the two cannot drift apart. The mirror ts is optional because a failed repost still reopens the thread – resolving from it then just skips the dead mirror. */
+export function threadResolveActions(ref: TicketRef & { ticketsChannel: string; ticketsTs?: string }): SlackBlock {
+	return {
+		type: "actions",
+		block_id: SELF_RESOLVE_ACTIONS_BLOCK_ID,
+		elements: [
+			{
+				type: "button",
+				text: { type: "plain_text", text: SELF_RESOLVE_BUTTON, emoji: true },
+				action_id: "mark_resolved_by_author",
+				value: JSON.stringify(ref),
+			},
+			{
+				type: "button",
+				text: { type: "plain_text", text: MARK_HELPED_BUTTON, emoji: true },
+				style: "primary",
+				action_id: "mark_helped_from_thread",
+				value: JSON.stringify(ref),
+			},
+		],
+	}
+}
+
+/** The single reopen button for a resolved thread message. The value carries the full ticket ref so reopening needs no database read to rebuild the buttons. */
+export function reopenActions(ref: TicketRef & { ticketsChannel: string }): SlackBlock {
+	return {
+		type: "actions",
+		block_id: REOPEN_ACTIONS_BLOCK_ID,
+		elements: [
+			{
+				type: "button",
+				text: { type: "plain_text", text: REOPEN_BUTTON, emoji: true },
+				action_id: "reopen_ticket",
+				value: JSON.stringify(ref),
+			},
+		],
+	}
 }
 
 /** Links to the original rather than copying it: a quoted copy can't be
@@ -88,6 +138,7 @@ export function ticketHistory(authorId: string, priorTickets: number): SlackBloc
 export function resolvedContext(byUserId: string, note?: string): SlackBlock {
 	return {
 		type: "context",
+		block_id: RESOLVED_CONTEXT_BLOCK_ID,
 		elements: [
 			{
 				type: "mrkdwn",
@@ -97,13 +148,34 @@ export function resolvedContext(byUserId: string, note?: string): SlackBlock {
 	}
 }
 
-/** Strips whichever action block is present and appends a resolved note –
- * shared by both buttons since a message only ever carries one of the two. */
-export function resolveBlocks(blocks: SlackBlock[] | undefined, byUserId: string, note?: string): SlackBlock[] {
+/** Strips whichever action blocks are present and appends a resolved note plus a reopen button – shared by all three resolution buttons since a message only ever carries one action block. The reopen button rides the same ref the resolution just consumed, so reopening rebuilds from it. */
+export function resolveBlocks(
+	blocks: SlackBlock[] | undefined,
+	byUserId: string,
+	note?: string,
+	ref?: TicketRef & { ticketsChannel: string },
+): SlackBlock[] {
 	const kept = (blocks ?? []).filter(
-		(block) => block.block_id !== TICKET_ACTIONS_BLOCK_ID && block.block_id !== SELF_RESOLVE_ACTIONS_BLOCK_ID,
+		(block) =>
+			block.block_id !== TICKET_ACTIONS_BLOCK_ID &&
+			block.block_id !== SELF_RESOLVE_ACTIONS_BLOCK_ID &&
+			block.block_id !== REOPEN_ACTIONS_BLOCK_ID &&
+			block.block_id !== RESOLVED_CONTEXT_BLOCK_ID,
 	)
 	kept.push(resolvedContext(byUserId, note))
+	if (ref) kept.push(reopenActions(ref))
+	return kept
+}
+
+/** Reopens a resolved thread message: the reopen button and the resolved note come off, the two resolution buttons go back on with the fresh mirror reference. Anything else on the message – reminders, FAQ card – stays exactly where it was. */
+export function reopenBlocks(
+	blocks: SlackBlock[] | undefined,
+	ref: TicketRef & { ticketsChannel: string; ticketsTs?: string },
+): SlackBlock[] {
+	const kept = (blocks ?? []).filter(
+		(block) => block.block_id !== REOPEN_ACTIONS_BLOCK_ID && block.block_id !== RESOLVED_CONTEXT_BLOCK_ID,
+	)
+	kept.push(threadResolveActions(ref))
 	return kept
 }
 

@@ -1,4 +1,5 @@
 import { after } from "next/server"
+import { mirrorReviewDecision, reviewStatusForResult } from "@/lib/airtable/sync"
 import { fail, ok, parseBody, withRoute } from "@/lib/api"
 import { requirePermission } from "@/lib/guards"
 import { notifyReviewOutcome } from "@/lib/notifications"
@@ -44,8 +45,15 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		grantUsdOverride: "grantUsdOverride" in body ? (body.grantUsdOverride ?? null) : null,
 	})
 
-	// After the response: telling the maker must not hold up the reviewer, and a Slack or mail outage must not fail a decision that has already committed.
+	// After the response: moving the row and telling the maker must not hold up the reviewer, and a Slack or Airtable outage must not fail a decision that has already committed.
 	after(async () => {
+		// The row's Loops columns, so a decision made here reaches Loops the same way an Ari one does.
+		await mirrorReviewDecision(
+			outcome.themeProjectId,
+			outcome.phase,
+			reviewStatusForResult(outcome.result),
+			feedback || null,
+		)
 		await notifyReviewOutcome({
 			themeProjectId: outcome.themeProjectId,
 			phase: outcome.phase,
@@ -55,8 +63,6 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 			decidedBy: "console",
 		})
 	})
-
-	// No Airtable write here. Review happens on ari.hackclub.com, which owns the YSWS row's status from the moment Half Life writes it at submit; a decision made in this console is recorded locally only.
 
 	return ok({ outcome })
 })

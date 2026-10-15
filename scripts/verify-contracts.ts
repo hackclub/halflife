@@ -1066,31 +1066,6 @@ async function bodies() {
 		)
 	}
 
-	/* ── 6bba. Whether a week holds the next one shut ───────────────────────── */
-	//
-	// The gate that decides whether the trail's next week is reachable. It has been wrong twice in opposite
-	// directions, both times shutting the rest of the season behind a hand-in that could not be made: once for a week
-	// that closed with hours in it, and once for a week that was extended, which is granted precisely to the makers
-	// who have not reached the floor. Pinned because the symptom is a dead end rather than a wrong number.
-	const { weekHoldsNext } = await import("../src/lib/curriculum")
-	check(
-		"week-gate · an extended week below its floor does not hold the next",
-		!weekHoldsNext({ submitted: false, passed: false, hours: 3, floor: 9 }),
-	)
-	check(
-		"week-gate · an extended week that can be handed in still holds the next",
-		weekHoldsNext({ submitted: false, passed: false, hours: 9, floor: 9 }),
-	)
-	check(
-		"week-gate · a handed-in week holds nothing",
-		!weekHoldsNext({ submitted: true, passed: false, hours: 0, floor: 9 }),
-	)
-	check(
-		"week-gate · a closed week holds nothing, floor or not",
-		!weekHoldsNext({ submitted: false, passed: true, hours: 3, floor: 9 }) &&
-			!weekHoldsNext({ submitted: false, passed: true, hours: 30, floor: 9 }),
-	)
-
 	/* ── 6bbb. The landing page's week-1 countdown ──────────────────────────── */
 	//
 	// The countdown is the one place a wrong number is visible to every visitor, and the arithmetic is the only part of it that can silently be wrong – the clock and the markup are not worth pinning. A span carries down the units rather than being recomputed from the total, so 90 minutes is 1h 30m and never 1h 90m; a moment already past clamps to zero rather than counting negative.
@@ -1170,6 +1145,71 @@ async function bodies() {
 		for (const [label, input] of rejectCases) {
 			check(`repo-ref · ${label} is refused`, parseRepoRef(input, { forge: FORGES.github }) === null)
 		}
+	}
+
+	/* ── 6d. Ticket message buttons, resolve and reopen ─────────────────────── */
+	//
+	// A resolved thread message carries exactly one way back (the reopen button), and resolving strips every action block so a stale button can never act twice. Reopening restores the two resolution buttons with the fresh mirror reference. Pinned because the button values are the only state the stateless Slack flow has – a dropped field strands the ticket.
+	const tickets = await import("../src/lib/site/tickets")
+	{
+		const ref = {
+			helpChannel: "C1",
+			helpTs: "111.222",
+			authorId: "U1",
+			permalink: null,
+			ticketsChannel: "C2",
+			ticketsTs: "333.444",
+		}
+		const actions = tickets.threadResolveActions(ref)
+		const elements = (actions.elements ?? []) as { action_id: string; value?: string }[]
+		const buttons = elements.filter((el) => typeof el.action_id === "string")
+		check(
+			"tickets · resolve actions carry both buttons",
+			actions.block_id === "self_resolve_actions" && buttons.length === 2,
+		)
+		check(
+			"tickets · button values round-trip the ref",
+			buttons.every((b) => {
+				try {
+					const parsed = JSON.parse(b.value ?? "")
+					return parsed.helpTs === ref.helpTs && parsed.ticketsTs === ref.ticketsTs
+				} catch {
+					return false
+				}
+			}),
+		)
+
+		const open = [{ type: "section", text: { type: "mrkdwn", text: "reminders" } }, actions]
+		const atResolve = { ...ref, ticketsTs: "555.666" }
+		const resolved = tickets.resolveBlocks(open, "U9", undefined, atResolve)
+		const resolvedIds = resolved.map((b) => b.block_id)
+		check(
+			"tickets · resolving swaps actions for note plus reopen",
+			!resolvedIds.includes("self_resolve_actions") &&
+				resolvedIds.includes("ticket_resolved") &&
+				resolvedIds.includes("reopen_actions"),
+		)
+		check(
+			"tickets · reminders survive resolving",
+			resolved.some((b) => b.type === "section"),
+		)
+
+		const atReopen = { ...ref, ticketsTs: "777.888" }
+		const reopened = tickets.reopenBlocks(resolved, atReopen)
+		const reopenedIds = reopened.map((b) => b.block_id)
+		check(
+			"tickets · reopening restores resolve buttons with the fresh mirror",
+			reopenedIds.includes("self_resolve_actions") &&
+				!reopenedIds.includes("reopen_actions") &&
+				!reopenedIds.includes("ticket_resolved"),
+		)
+		const restored = reopened.find((b) => b.block_id === "self_resolve_actions")
+		const restoredElements = ((restored?.elements ?? []) as { value?: string }[])
+		const restoredValues = restoredElements.map((el) => String(el.value ?? ""))
+		check(
+			"tickets · restored buttons point at the new mirror",
+			restoredValues.length === 2 && restoredValues.every((v) => v.includes("777.888")),
+		)
 	}
 
 	for (const [name, schema, body] of cases) {

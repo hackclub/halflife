@@ -44,7 +44,7 @@ export function countedLine(
  */
 export function creditedLine(count: number, verb: string): string {
 	if (count === 0) return `you didn't ${verb} any of them this time :(`
-	return `you managed to ${verb} ${count} of them! congrats!! :D`
+	return `you managed to ${verb} ${count}! congrats!! :D`
 }
 
 /**
@@ -59,10 +59,10 @@ export function boardSection(title: string, total: number, lines: readonly strin
 }
 
 /** How wide a share bar is, in characters. Fixed, so every row is the same length and the counts line up. */
-export const SHARE_BAR_WIDTH = 10
+export const SHARE_BAR_WIDTH = 20
 
 /**
- * A leaderboard with the share chart merged into each row: ` 1. ██████░░░░  Bunny Pranav  164 ·  29%`.
+ * A leaderboard with the share chart merged into each row: ` 1. ████████████░░░░░░░░  Bunny Pranav  164  29%`.
  *
  * One fence holds the whole board, so bars, names, counts and shares all line up – Slack only renders monospace in fences, and split across a table and a separate chart the two could never share columns. Shares read against the full `total` behind the board, not just the rows printed, so they do not sum to 100 when the overflow note says more were cut. An empty board stays an empty board, and the shared "no one yet" fallback says so.
  */
@@ -78,7 +78,7 @@ export function rankedShareBoard(title: string, items: { name: string; count: nu
 			const share = total === 0 ? 0 : item.count / total
 			const filled = Math.round(share * SHARE_BAR_WIDTH)
 			const bar = "█".repeat(filled) + "░".repeat(SHARE_BAR_WIDTH - filled)
-			return `${`${index + 1}.`.padStart(rankWidth)} ${bar}  ${item.name.padEnd(nameWidth)} ${`${item.count}`.padStart(countWidth)} · ${`${Math.round(share * 100)}%`.padStart(4)}`
+			return `${`${index + 1}.`.padStart(rankWidth)} ${bar}  ${item.name.padEnd(nameWidth)} ${`${item.count}`.padStart(countWidth)} ${`${Math.round(share * 100)}%`.padStart(4)}`
 		}),
 		"```",
 	]

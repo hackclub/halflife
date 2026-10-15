@@ -149,6 +149,37 @@ export async function writeYswsRecord(
 }
 
 /**
+ * Move one existing row on, by record id.
+ *
+ * The difference from `writeYswsRecord` is what a missing row means. That one adopts a match or creates, because it is the write that has to land; this one is only ever called for a row Half Life already recorded an id for, so a 404 is the row having been taken back – reported, never turned into a new row that nobody reviewed.
+ *
+ * Deliberately a straight PATCH rather than a copy of the drop-and-retry above: shedding a field there keeps a submission arriving, but a field Airtable refuses is one it did not write, and retrying without it would report an update that never happened. The error body names the column and value Airtable refused, which is the whole diagnosis for a status that is not an option on the column, say.
+ */
+export async function updateYswsRecord(
+	recordId: string,
+	fields: Record<string, unknown>,
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+	const config = getAirtableConfig()
+	if (!config) return { ok: false, reason: "not_configured" }
+	try {
+		await withRateLimitRetry("updateYswsSubmission", () =>
+			airtableFetch<{ records: AirtableRecord[] }>(config, YSWS_SUBMISSION.tableId, {
+				method: "PATCH",
+				body: JSON.stringify({ records: [{ id: recordId, fields }], typecast: false }),
+			}),
+		)
+		return { ok: true }
+	} catch (err) {
+		if (err instanceof AirtableError && (err.status === 404 || err.body.includes("ROW_DOES_NOT_EXIST")))
+			return { ok: false, reason: "row_gone" }
+		return {
+			ok: false,
+			reason: err instanceof AirtableError ? `${err.status}: ${err.body.slice(0, 200)}` : "unknown",
+		}
+	}
+}
+
+/**
  * Delete one row by record id, reporting its unified-base twin (if the pipeline has made one) so that can be removed by exact id too.
  */
 export async function deleteYswsRecord(

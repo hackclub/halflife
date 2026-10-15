@@ -2,6 +2,7 @@ import "server-only"
 import { Ari, AriApiError, AriInputError, type AriReview, type AriShipInput, type AriWebhookEvent } from "@hackclub/ari"
 import type { Prisma } from "@/app/generated/prisma/client"
 import { HoursSource, Phase, PhaseStatus, ReviewResult, Theme } from "@/app/generated/prisma/enums"
+import { mirrorReviewDecision, reviewStatusFor, reviewStatusForResult } from "@/lib/airtable/sync"
 import { ariExternalId, parseAriExternalId } from "@/lib/ari-id"
 import { selectPendingShips } from "@/lib/ari-pending"
 import { AuditAction, logAudit } from "@/lib/audit"
@@ -21,7 +22,7 @@ import { publicUrlFor } from "@/lib/uploads/r2"
  *
  * Half Life sends each submitted (project, phase) as an Ari "ship" and receives its decisions back as signed webhooks. The decision is applied through the same `finalizeReview` a human console reviewer calls, so the trail, the ledger and the grant all move exactly once, whether a person or Ari decided. The only difference is attribution: an Ari decision has no Half Life user, so `SubmissionReview.reviewerId` is null and the audit row names Ari instead.
  *
- * Ari owns the YSWS/Airtable row status once a submission is written there, so this integration does not write to Airtable – it mirrors Ari's decision into the participant-facing side of Half Life (status, hours, coins, printer qualification).
+ * Ari owns the decision, and it is mirrored into the participant-facing side of Half Life (status, hours, coins, printer qualification). The one thing written back to Airtable is the decision itself – `Loops - halfLifeReviewStatus` and `Loops - halfLifeReviewerNotes`, which Loops reads to email the maker. A decision writes nothing to the base on its own, so both are put on the row here (see `mirrorReviewDecision`).
  *
  * Everything here no-ops when the three ARI_* secrets are unset, so local dev and any deployment that has not been onboarded to Ari behave as before.
  */
@@ -443,6 +444,8 @@ async function applyDecision(event: DecisionEvent): Promise<void> {
 	await prisma.reviewClaim.deleteMany({ where: { submissionId: submission.id } })
 
 	const feedback = event.review.note_to_maker?.trim() || defaultFeedback(result)
+	// The note without the fallback above: it is the reviewer's own words, and an invented one would say the headline twice wherever it is quoted – the Slack DM and the row's Loops column.
+	const makerNote = event.review.note_to_maker?.trim() || null
 
 	try {
 		await finalizeReview({
@@ -485,13 +488,16 @@ async function applyDecision(event: DecisionEvent): Promise<void> {
 		},
 	})
 
-	// The decision is committed and recorded; now tell the maker. Best-effort – a Slack or mail outage must not make Ari retry a decided submission, and the project page is the source of truth if a message is missed.
+	// The row carries the decision too, for Loops. Best-effort like the notice below: the review is already committed, and a decided submission must not be redelivered over a base that is briefly unreachable.
+	await mirrorReviewDecision(themeProjectId, phase, reviewStatusForResult(result), makerNote)
+
+	// The decision is committed and recorded; now tell the maker. Best-effort – a Slack outage must not make Ari retry a decided submission, and the project page is the source of truth if a message is missed.
 	await notifyReviewOutcome({
 		themeProjectId,
 		phase,
 		result,
 		// Ari's own note, not the fallback: `feedback` above has already been defaulted so the review row and the project page always have something to show, and quoting that back to the maker as "the reviewer's note" says the headline twice and tells them nothing they can act on.
-		note: event.review.note_to_maker?.trim() || null,
+		note: makerNote,
 		decidedBy: "ari",
 	})
 }
@@ -560,6 +566,11 @@ async function applyReset(event: ResetEvent): Promise<void> {
 		targetId: themeProjectId,
 		metadata: { event: event.event, phase, undone: status },
 	})
+
+	// The phase is back with the maker – unapproving and reopening both land on `update_requested`, and a phase already in front of reviewers stays there – so the row follows the state rather than being reset to "Pending Review", which the project would not be in. The note goes with the decision it belonged to: it is cleared, so an email for whatever comes next cannot quote words that no longer stand.
+	const after =
+		status === PhaseStatus.approved || status === PhaseStatus.rejected ? PhaseStatus.update_requested : status
+	await mirrorReviewDecision(themeProjectId, phase, reviewStatusFor(after), null)
 }
 
 /** An optional post-approval fraud check. A failure flags the maker. */

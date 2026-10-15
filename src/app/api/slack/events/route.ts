@@ -15,10 +15,9 @@ import {
 	HELP_THREAD_REMINDERS,
 	MARK_HELPED_BUTTON,
 	PENDING_REACTION,
-	SELF_RESOLVE_ACTIONS_BLOCK_ID,
-	SELF_RESOLVE_BUTTON,
 	TICKET_ACTIONS_BLOCK_ID,
 	type TicketRef,
+	threadResolveActions,
 	ticketHistory,
 	ticketSection,
 } from "@/lib/site/tickets"
@@ -113,11 +112,11 @@ async function handleHelpMessage(event: SlackEvent) {
 	}
 
 	// Carried by both buttons: the author's self-resolve and the helpers' in-thread "Mark as helped" both need the tickets-channel target to sync.
-	const resolveValue = JSON.stringify({
+	const resolveRef = {
 		...ref,
 		ticketsChannel,
 		ticketsTs: ticketMessage.ts,
-	})
+	}
 
 	const selfResolveBlocks: SlackBlock[] = [
 		{
@@ -151,25 +150,7 @@ async function handleHelpMessage(event: SlackEvent) {
 				},
 			],
 		},
-		{
-			type: "actions",
-			block_id: SELF_RESOLVE_ACTIONS_BLOCK_ID,
-			elements: [
-				{
-					type: "button",
-					text: { type: "plain_text", text: SELF_RESOLVE_BUTTON, emoji: true },
-					action_id: "mark_resolved_by_author",
-					value: resolveValue,
-				},
-				{
-					type: "button",
-					text: { type: "plain_text", text: MARK_HELPED_BUTTON, emoji: true },
-					style: "primary",
-					action_id: "mark_helped_from_thread",
-					value: resolveValue,
-				},
-			],
-		},
+		threadResolveActions(resolveRef),
 	]
 
 	// The thread's top-level text repeats the reminders above rather than carrying new information: it's what a notification preview shows, and it's what a screen reader reads out.
