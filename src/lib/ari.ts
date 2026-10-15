@@ -358,7 +358,12 @@ function approvedHoursFrom(review: AriReview): number | null {
 	return null
 }
 
-function defaultFeedback(result: ReviewResult): string {
+/**
+ * The words a decision falls back to when the reviewer wrote no note.
+ *
+ * `finalizeReview` needs something to show, so the stored review and the project page carry this; the maker's notice and the row's `Loops - halfLifeReviewerNotes` column deliberately carry nothing instead (see the callers). Exported because the review-status backfill has to recognise this fallback to reconstruct that empty note rather than quote the sentence the maker already read as the headline.
+ */
+export function defaultFeedback(result: ReviewResult): string {
 	if (result === ReviewResult.APPROVED) return "Approved by Ari."
 	if (result === ReviewResult.RETURNED) return "Ari asked for changes before this can be approved."
 	return "Ari rejected this submission."

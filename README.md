@@ -126,11 +126,13 @@ Either button resolves the ticket: the bot **deletes its own message** in the
 tickets channel, so a resolved ticket leaves the queue instead of lingering
 there struck through, and it edits its own button message in `#half-life-help`
 in place. The thread keeps the question and the "you're all set" ack, so the
-record survives where anyone would look for it. There's no database; each
-button's own `value` carries the pointer(s) it needs back to the other
-message(s). One known gap: if staff resolve a ticket first, the author's
-button is left active, and clicking it afterward does nothing to the tickets
-channel — the message is already gone — though it still acks the thread.
+record survives where anyone would look for it. A button's own `value` carries
+the pointer to the other message it has to touch, except that the
+tickets-channel button – clicked from the other side – reads the help thread
+back to find the reminder it rewrites. One known gap: if staff resolve a ticket
+first, the author's button is left active, and clicking it afterward does
+nothing to the tickets channel — the message is already gone — though it still
+acks the thread.
 
 Create the app from `slack-app-manifest.yml` at the repo root (see the
 comments in that file for the exact steps), then set:

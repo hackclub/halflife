@@ -275,6 +275,27 @@ export type SlackHistoryMessage = {
 	thread_ts?: string
 }
 
+/** A message as `conversations.replies` returns it, carrying the blocks a
+ * caller needs to rewrite one. */
+export type SlackThreadMessage = SlackHistoryMessage & { blocks?: SlackBlock[] }
+
+/**
+ * Every message in one thread, oldest first – the parent question and its replies.
+ *
+ * The tickets-channel "mark as helped" button resolves a ticket from a different channel than the thread it belongs to, so unlike the in-thread button it cannot read the reminder message it has to rewrite off the interaction payload. This is how it finds that message.
+ *
+ * Throws on a Slack error rather than returning a short list, like `listChannelHistory`, so a failed read surfaces in the caller's guard instead of silently leaving the thread unresolved. The reminder is the thread's first reply, so one page of Slack's default `limit` always covers it – a help thread never runs long enough to page.
+ */
+export async function getThreadReplies(channel: string, ts: string): Promise<SlackThreadMessage[]> {
+	const result = await callSlackApiGet<{ messages?: SlackThreadMessage[] }>("conversations.replies", {
+		channel,
+		limit: "200",
+		ts,
+	})
+	if (!result.ok) throw new Error(`conversations.replies failed: ${result.error ?? "unknown error"}`)
+	return result.messages ?? []
+}
+
 /**
  * Walks a channel's whole history and hands back every message it saw.
  *

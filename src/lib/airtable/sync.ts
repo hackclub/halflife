@@ -46,6 +46,26 @@ async function lastRecordId(themeProjectId: string, phase: Phase): Promise<strin
 }
 
 /**
+ * The newest record id each (project, phase) was written to, folded from audit rows a caller has already read.
+ *
+ * `lastRecordId` answers the same question for one submission at a time, which is what the live writers need. A backfill walks every project instead, where a lookup per phase is an N+1 read over thousands of rows, so it reads all the `AIRTABLE_SYNC_SUCCESS` rows once and folds them here. The rule is the same: rows arrive newest first, and a later `removed` beats an older record id, so a submission taken back on unsubmit reads as never written rather than at a row that no longer exists.
+ */
+export function recordIdsFromSyncEvents(events: { targetId: string | null; metadata: unknown }[]): Map<string, string> {
+	const byPhase = new Map<string, string>()
+	const settled = new Set<string>()
+	for (const row of events) {
+		const meta = row.metadata as { phase?: string; recordId?: string; removed?: boolean } | null
+		if (!row.targetId || !meta?.phase) continue
+		const key = `${row.targetId}:${meta.phase}`
+		// Newest first, so the first row seen for a phase is the one that stands.
+		if (settled.has(key)) continue
+		settled.add(key)
+		if (!meta.removed && typeof meta.recordId === "string") byPhase.set(key, meta.recordId)
+	}
+	return byPhase
+}
+
+/**
  * The Loops status for a phase in this state.
  *
  * A row is not only written at hand-in: a re-submission and an admin refresh write it again, and both used to stamp "Pending Review" unconditionally – which would put a decided row back to pending and have Loops tell the maker it was never reviewed. Reading the state means the column always says what the phase is, whichever write last touched it. `draft` never has a row at all, and reads as pending only so this is total.

@@ -2,6 +2,7 @@ import { after, NextResponse } from "next/server"
 import {
 	addReaction,
 	checkChannelMembership,
+	getThreadReplies,
 	postMessage,
 	removeReaction,
 	type SlackBlock,
@@ -10,6 +11,7 @@ import {
 } from "@/lib/site/slack"
 import { countPriorHelpTickets, reopenHelpTicket, resolveHelpTicket } from "@/lib/site/ticket-store"
 import {
+	carriesResolveActions,
 	deleteTicketMessage,
 	helpedAck,
 	MARK_HELPED_BUTTON,
@@ -117,7 +119,9 @@ function reopenRefFrom(ref: Partial<TicketRef & { ticketsChannel: string }>) {
 
 /** Staff clicking "Mark as helped" in the tickets channel – gated on
  * membership of the private tickets channel, like the thread path below. The request signature already proves Slack sent it; this is defence in depth so a leaked message-ts pair or a future workspace-wide action with
- * the same action_id cannot resolve tickets as any Slack identity. Denials answer ephemerally so the clicker knows whether they lack membership or the membership check itself is broken (missing scope, bot not in the channel), instead of the click silently doing nothing. */
+ * the same action_id cannot resolve tickets as any Slack identity. Denials answer ephemerally so the clicker knows whether they lack membership or the membership check itself is broken (missing scope, bot not in the channel), instead of the click silently doing nothing.
+ *
+ * Resolving here lands where the in-thread button lands: the help thread's reminder is rewritten into its resolved state, and the tickets-channel mirror leaves the queue. The mirror is the message the button was clicked on, so its coordinates are on the payload rather than the ref. */
 async function handleMarkHelped(payload: InteractionPayload, action: BlockAction) {
 	if (!payload.channel?.id || !payload.message?.ts) return
 
@@ -151,24 +155,47 @@ async function handleMarkHelped(payload: InteractionPayload, action: BlockAction
 	try {
 		ref = action.value ? JSON.parse(action.value) : {}
 	} catch {
-		// Malformed value – still resolve the tickets-channel message below.
+		// Malformed value – still clear the mirror below.
 	}
 
-	// Always edits rather than deletes: the mirror stays as the record of who helped, with its button stripped.
-	await updateMessage(
-		payload.channel.id,
-		payload.message.ts,
-		`Ticket resolved by <@${payload.user.id}>`,
-		resolveBlocks(payload.message.blocks, payload.user.id),
-	)
-
 	if (ref.helpChannel && ref.helpTs) {
-		// Best-effort: a database hiccup must not sink the resolution. Never posts in the thread – the reaction swap below is the only help-channel signal.
+		// The thread reminder's ts is not carried on this payload, so read the thread to find it and make the same rewrite the in-thread button makes. The mirror is clicked from the tickets channel while the reminder lives in the help thread, which is why this path needs the read and the in-thread path does not. Best-effort like the rest of the file – a failed read must not leave the ticket sitting in the queue or the database.
+		try {
+			const replies = await getThreadReplies(ref.helpChannel, ref.helpTs)
+			const reminder = replies.find(reply => carriesResolveActions(reply.blocks))
+			if (reminder?.ts) {
+				const reopenRef = reopenRefFrom({ ...ref, ticketsChannel })
+				await updateMessage(
+					ref.helpChannel,
+					reminder.ts,
+					helpedAck(payload.user.id),
+					resolveBlocks(reminder.blocks, payload.user.id, undefined, reopenRef),
+				)
+			} else {
+				console.error(`mark_helped found no reminder to mark helped in thread ${ref.helpTs}`)
+			}
+		} catch (err) {
+			console.error(`Failed to mark help thread ${ref.helpTs} as helped: ${err}`)
+		}
+
+		// Best-effort: a database hiccup must not sink the resolution.
 		try {
 			await resolveHelpTicket({ helpChannel: ref.helpChannel, helpTs: ref.helpTs, resolvedBy: payload.user.id })
 		} catch (err) {
 			console.error(`Failed to record ticket resolution for ${ref.helpTs}: ${err}`)
 		}
+	}
+
+	// Out of the queue, like the in-thread path. Fall back to editing it into its resolved state if the delete fails, so a ticket is never left sitting there with a live button.
+	try {
+		if (!(await deleteTicketMessage(payload.channel.id, payload.message.ts))) {
+			await updateMessage(payload.channel.id, payload.message.ts, `Ticket resolved by <@${payload.user.id}>`, [
+				ticketSection(ref as TicketRef),
+				...resolveBlocks(undefined, payload.user.id),
+			])
+		}
+	} catch (err) {
+		console.error(`Failed to clear the tickets-channel message: ${err}`)
 	}
 
 	await reactResolved(ref)

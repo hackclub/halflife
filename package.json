@@ -29,6 +29,7 @@
     "verify:ledger": "bun --conditions=react-server scripts/verify-ledger.ts",
     "dump-airtable-schema": "bun --conditions=react-server scripts/dump-airtable-schema.ts",
     "airtable:backfill-starters": "bun --conditions=react-server scripts/backfill-airtable-starters.ts",
+    "airtable:backfill-review": "bun --conditions=react-server scripts/backfill-airtable-review.ts",
     "verify:onboarding": "bun --conditions=react-server scripts/verify-onboarding.ts",
     "verify:loops": "bun --conditions=react-server scripts/verify-loops.ts",
     "verify:loops-entries": "bun --conditions=react-server scripts/verify-loops-entries.ts",
