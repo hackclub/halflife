@@ -22,10 +22,11 @@ that remain before launch.
   It is idempotent within Half Life but does **not** know what the pipeline has
   paid, so enabling both can double-pay. See `docs/BACKEND.md` → Payouts.
 - **Email — Loops, off Airtable.** Half Life does not mail anyone. It writes
-  the decision to `Loops - halfLifeReviewStatus` on the submission's row (see
-  `syncReviewStatusToYsws` in `src/lib/airtable/sync.ts`) and a Loops workflow
-  sends from there. The Resend path was removed rather than kept as a second
-  sender.
+  the decision to the submission's row – `Loops - halfLifeReviewStatus` and the
+  reviewer's note in `Loops - halfLifeReviewerNotes` (see
+  `syncReviewDecisionToYsws` in `src/lib/airtable/sync.ts`) – and a Loops
+  workflow sends from there. The Resend path was removed rather than kept as a
+  second sender.
 - **Notifications — all three outcomes, to the maker, Slack DM plus the Loops
   email.** `approved`, `changes requested` and `rejected` all notify.
 - **Green border — the current phase approved.** The design until the build
@@ -38,8 +39,8 @@ that remain before launch.
    `ARI_PROGRAM_ID` / `ARI_SIGNING_SECRET` / `ARI_WEBHOOK_SECRET`, create the
    `ari-retry` job.
 2. **Email:** build the Loops workflow on the Airtable base – it reads
-   `Loops - halfLifeReviewStatus` and sends for `Approved`,
-   `Changes Requested` and `Rejected`.
+   `Loops - halfLifeReviewStatus` (and quotes `Loops - halfLifeReviewerNotes`)
+   and sends for `Approved`, `Changes Requested` and `Rejected`.
 3. **HCB (only if the manual fallback is wanted):** register the OAuth app,
    invite it to the org as a manager, run a $1 top-up on a test org, and decide
    where the rotated refresh token is persisted.

@@ -56,7 +56,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		})
 	})
 
-	// No Airtable write here. Review happens on ari.hackclub.com, which owns the YSWS row's status from the moment Half Life writes it at submit; a decision made in this console is recorded locally only.
+	// No Airtable write here. Only the Ari decision path mirrors onto the row (see lib/ari), so a decision made in this console leaves the row's Loops columns where they are: it is recorded locally and the maker hears about it by Slack, but no Loops email is sent for it.
 
 	return ok({ outcome })
 })

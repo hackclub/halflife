@@ -192,26 +192,33 @@ export async function syncSubmissionToYsws(
 }
 
 /**
- * Move a submission's row on to the decision Ari just reached.
+ * Move a submission's row on to the decision Ari just reached: the status Loops triggers on, and the reviewer's note the email quotes.
  *
- * Half Life writes the row as "Pending Review" and reviewers work from ari.hackclub.com, but a decision there changes nothing in the base – without this the row sits at "Pending Review" forever, and that column is how Loops tells a maker their work was decided (see YSWS_REVIEW_STATUS in lib/airtable/schema).
+ * Half Life writes the row as "Pending Review" and reviewers work from ari.hackclub.com, but a decision there changes nothing in the base – without this the status sits at "Pending Review" forever and the note is never written, and those columns are how Loops tells a maker their work was decided (see YSWS_REVIEW_STATUS in lib/airtable/schema).
  *
  * Best-effort, and only ever after the fact: the review is already committed in Postgres by the time this runs, so a base that is briefly unreachable must not throw and turn a decided submission into one Ari redelivers. No row is not a failure either – a submission written before this sync existed has no record id, and one taken back has none any more.
+ *
+ * The two columns are separate requests on purpose. The status is the load-bearing one Loops triggers on; the note is a bonus, and a notes column that refuses its value (a type this deployment cannot see without schema access) must not cost the status its update. Each failure is therefore named by the column it belongs to.
  */
-export async function syncReviewStatusToYsws(
+export async function syncReviewDecisionToYsws(
 	themeProjectId: string,
 	phase: Phase,
 	status: string,
-): Promise<{ updated: boolean; reason?: string }> {
+	note: string | null,
+): Promise<{ updated: boolean; reason?: string; noteFailed?: string }> {
 	const settings = await getProgramSettings()
 	if (!settings.airtableSyncEnabled) return { updated: false, reason: "sync_disabled" }
 	// The id lives in the audit row each successful write left (see lastRecordId), not in a column of ours.
 	const recordId = await lastRecordId(themeProjectId, phase)
 	if (!recordId) return { updated: false, reason: "no_row" }
-	const result = await updateYswsRecord(recordId, {
-		[fieldKey(YSWS_SUBMISSION.fields.reviewStatus)]: status,
-	})
-	return result.ok ? { updated: true } : { updated: false, reason: result.reason }
+
+	const { reviewStatus, reviewerNotes } = YSWS_SUBMISSION.fields
+	const moved = await updateYswsRecord(recordId, { [fieldKey(reviewStatus)]: status })
+	if (!moved.ok) return { updated: false, reason: moved.reason }
+
+	// `null` clears the column: a decision with no note must not leave the previous decision's words on the row for an email to quote back. A refusal here is reported separately, so the status is still counted as moved.
+	const noted = await updateYswsRecord(recordId, { [fieldKey(reviewerNotes)]: note ?? "" })
+	return noted.ok ? { updated: true } : { updated: true, noteFailed: noted.reason }
 }
 
 /** Remove a submission's row, and its unified-base twin, when it is taken back. */
