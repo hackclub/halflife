@@ -37,6 +37,7 @@
     "verify:handoff": "bun --conditions=react-server scripts/verify-handoff.ts",
     "verify:store": "bun --conditions=react-server scripts/verify-store.ts",
     "verify:contracts": "bun --conditions=react-server scripts/verify-contracts.ts",
+    "verify:forge-write": "bun --conditions=react-server scripts/verify-forge-write.ts",
     "verify:pii": "bun --conditions=react-server scripts/verify-pii.ts"
   },
   "dependencies": {

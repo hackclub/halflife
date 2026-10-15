@@ -13,7 +13,7 @@ import type { RepoRef } from "@/lib/repo-ref"
  * Two differences from the read path matter:
  *
  * - It is the participant's own token, not the shared gh-proxy pool. Reading a public repo is a thing the program does for everyone; writing to someone's repository is done as them, with the access they granted, and must never ride on a token belonging to the program. The proxy pool could not write even if it were offered.
- * - There is no retry-and-back-off machinery here. A commit is not a check: a failure is recorded against the project (and left for the next write, or the maker's own "Sync now") rather than retried in a loop that could interleave with the next entry's sync.
+ * - It cannot fall back to the read path's retry-and-back-off machinery: that is built around the shared tokens and the proxy pool. A single HTTP call is retried briefly and rate limits are respected in `call` below, because a dropped connection or a secondary rate limit is the same blip the read path was built to absorb – but a commit that exhausts those is still recorded against the project (and left for the next write, or the maker's own "Sync now") rather than retried as a whole, which could interleave with the next entry's sync.
  *
  * ## Why this file is long
  *
@@ -28,6 +28,18 @@ import type { RepoRef } from "@/lib/repo-ref"
 
 /** Long enough for a commit, short enough that a stalled call does not hold a job. */
 const TIMEOUT_MS = 15_000
+
+/** Attempts after the first that one call gets when the failure is one a retry could clear. */
+const RETRY_DELAYS_MS = [300, 1000, 2500]
+
+/** Wait before each retry of a plain transport or 5xx failure, when the answer did not name one itself. */
+const RETRY_FALLBACK_MS = 1000
+
+/** In flight at once across every write call. Far under any forge's per-second quota, and low enough that a wave of syncs queues rather than every project firing at once and tripping GitHub's secondary (content-creation) limit. */
+const MAX_IN_FLIGHT = 4
+
+/** Longest one call will sit out a rate limit before giving up; the project keeps its error and the next write tries again. */
+const MAX_RATE_LIMIT_WAIT_MS = 30_000
 
 /**
  * The caller's forge identity and a token, or null when they have not linked that forge. A revoked or expired token reads the same as never having linked: the UI offers the forge again rather than showing an error nobody can act on.
@@ -69,6 +81,62 @@ export async function forgeCredentials(userId: string, forge: Forge): Promise<Fo
 
 	return { forge, login: account.accountId, accessToken }
 }
+
+/** In flight at once. A burst of syncs waits here rather than all hitting one forge at once. */
+let inFlightCalls = 0
+const waiting: (() => void)[] = []
+
+async function slot(): Promise<() => void> {
+	if (inFlightCalls >= MAX_IN_FLIGHT) await new Promise<void>((go) => waiting.push(go))
+	inFlightCalls++
+	return () => {
+		inFlightCalls--
+		waiting.shift()?.()
+	}
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+/**
+ * How long an answer asks us to wait, in ms, when it is a rate limit that says so.
+ *
+ * The two forges spell the reset differently and GitHub sends a delay on one header and an epoch second on another, so both are read: `retry-after` as seconds from now, else `x-ratelimit-reset` / `ratelimit-reset` as an epoch.
+ */
+function retryAfterMs(res: Response): number | null {
+	const retryAfter = Number(res.headers.get("retry-after"))
+	if (Number.isFinite(retryAfter) && retryAfter > 0) return retryAfter * 1000
+	const reset = Number(res.headers.get("x-ratelimit-reset") ?? res.headers.get("ratelimit-reset"))
+	if (Number.isFinite(reset) && reset > 0) return reset * 1000 - Date.now()
+	return null
+}
+
+/**
+ * Whether an answer is a rate limit rather than a real refusal, and the shortest wait that could clear it.
+ *
+ * GitHub answers **403** for both "this token may not do that" and "you have exhausted the quota", so the status alone cannot tell them apart. The headers do: a primary limit leaves `x-ratelimit-remaining` at 0, and a secondary limit – the per-IP, content-creation one a burst of commits trips – arrives with a `retry-after`. A 403 with neither header is the genuine "reconnect your account" case, and returning null here is what sends it down that path.
+ */
+function rateLimitWait(res: Response): number | null {
+	if (res.status === 429) return Math.max(1000, retryAfterMs(res) ?? 60_000)
+	if (res.status !== 403) return null
+	const remaining = res.headers.get("x-ratelimit-remaining") ?? res.headers.get("ratelimit-remaining")
+	if (remaining === "0") return Math.max(1000, retryAfterMs(res) ?? 60_000)
+	const retryAfter = Number(res.headers.get("retry-after"))
+	if (Number.isFinite(retryAfter) && retryAfter > 0) return Math.max(1000, retryAfter * 1000)
+	return null
+}
+
+/** The error for a response the caller has not singled out a status for: it came back, and it said no. */
+function forgeError(forge: Forge, res: Response): ForgeWriteUnavailable {
+	return new ForgeWriteUnavailable(`${forge.label} returned an error (${res.status}).`)
+}
+
+/**
+ * One authenticated request, with a short retry for what another attempt could clear.
+ *
+ * The read path (lib/github) has had this from the start: a dropped connection, a slow moment or a rate limit is retried a couple of times before a person is told anything. Writing had none, so every such blip was recorded against the project as "GitHub did not answer" and left for the next entry – which met the same blip. That is what this fixes, at the level of one HTTP call rather than the whole commit: a retry here cannot interleave with the next entry's sync, because the sync that owns the commit is still the one waiting on it.
+ *
+ * Retrying is safe because GitHub's Git Data API is written for it: a blob, tree or commit created twice leaves an unreferenced object that is garbage-collected, and the one ref update is guarded on the tip it read, so a lost race is a refused fast-forward rather than a lost commit.
+ */
 async function call(creds: ForgeCredentials, path: string, init: RequestInit): Promise<Response> {
 	const forge = creds.forge
 	const url = forge.id === "gitlab" ? `https://gitlab.com/api/v4/${path}` : `https://api.github.com/${path}`
@@ -82,21 +150,64 @@ async function call(creds: ForgeCredentials, path: string, init: RequestInit): P
 					"X-GitHub-Api-Version": "2022-11-28",
 				}
 
-	let res: Response
-	try {
-		res = await fetch(url, {
-			...init,
-			headers: { ...headers, ...(init.headers ?? {}) },
-			signal: AbortSignal.timeout(TIMEOUT_MS),
-			cache: "no-store",
-		})
-	} catch {
-		throw new ForgeWriteUnavailable(`${forge.label} did not answer.`)
+	const method = init.method ?? "GET"
+	// What the maker is told if every attempt fails. Transport failures leave it at "did not answer"; a named answer overwrites it with what actually happened.
+	let why = `${forge.label} did not answer.`
+
+	for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+		const release = await slot()
+		let res: Response | null = null
+		try {
+			res = await fetch(url, {
+				...init,
+				headers: { ...headers, ...(init.headers ?? {}) },
+				signal: AbortSignal.timeout(TIMEOUT_MS),
+				cache: "no-store",
+			})
+		} catch (err) {
+			// The maker sees "did not answer"; the cause is for whoever runs this.
+			console.warn(`[forge-write] ${forge.id} ${method} ${path} failed (attempt ${attempt + 1}):`, err)
+			why = `${forge.label} did not answer.`
+		} finally {
+			release()
+		}
+		if (!res) {
+			if (attempt < RETRY_DELAYS_MS.length) await sleep(RETRY_DELAYS_MS[attempt] ?? RETRY_FALLBACK_MS)
+			continue
+		}
+
+		// A rate limit is not a refusal: wait out the window it named and try again, up to the cap. The last wait is the one that gives up.
+		const wait = rateLimitWait(res)
+		if (wait !== null) {
+			why = `${forge.label} is rate-limiting us right now.`
+			if (attempt === RETRY_DELAYS_MS.length) break
+			const capped = Math.min(MAX_RATE_LIMIT_WAIT_MS, Math.max(RETRY_DELAYS_MS[attempt] ?? RETRY_FALLBACK_MS, wait))
+			console.warn(
+				`[forge-write] ${forge.id} ${method} ${path} rate limited (attempt ${attempt + 1}); waiting ${capped}ms`,
+			)
+			await sleep(capped)
+			continue
+		}
+
+		// A 5xx is the forge failing at its end, which another attempt often clears. The body is logged for whoever runs this; it is not returned to a maker.
+		if (res.status >= 500) {
+			why = `${forge.label} returned an error (${res.status}).`
+			if (attempt === RETRY_DELAYS_MS.length) break
+			const body = await res.text().catch(() => "")
+			console.warn(
+				`[forge-write] ${forge.id} ${method} ${path} → ${res.status} (attempt ${attempt + 1}): ${body.slice(0, 200)}`,
+			)
+			await sleep(RETRY_DELAYS_MS[attempt] ?? RETRY_FALLBACK_MS)
+			continue
+		}
+
+		// 401/403 are the two ways a token says it may not do this: revoked, or lacking the scope. A rate-limit 403 was caught above, so this is the genuine refusal – and reconnecting is the fix. Neither is retried here.
+		if (res.status === 401 || res.status === 403)
+			throw new HttpError("FORBIDDEN", `${forge.label} refused that – reconnect ${forge.label} and try again.`)
+		return res
 	}
-	// 401/403 are the two ways a token says it may not do this: revoked, or lacking the scope. Neither is retried here – the caller records it and the maker relinks.
-	if (res.status === 401 || res.status === 403)
-		throw new HttpError("FORBIDDEN", `${forge.label} refused that – reconnect ${forge.label} and try again.`)
-	return res
+
+	throw new ForgeWriteUnavailable(why)
 }
 
 /** A repo the caller can push to, as the picker shows it. */
@@ -167,7 +278,7 @@ async function listGitHubRepos(creds: ForgeCredentials): Promise<WritableRepo[]>
 			break
 		}
 		const res = await call(creds, path, { method: "GET" })
-		if (!res.ok) throw new ForgeWriteUnavailable(`${creds.forge.label} did not answer.`)
+		if (!res.ok) throw forgeError(creds.forge, res)
 		repos.push(...((await res.json()) as GitHubRepo[]))
 		path = nextPagePath(res.headers.get("Link"), "https://api.github.com/")
 	}
@@ -215,7 +326,7 @@ async function listGitLabRepos(creds: ForgeCredentials): Promise<WritableRepo[]>
 			break
 		}
 		const res = await call(creds, path, { method: "GET" })
-		if (!res.ok) throw new ForgeWriteUnavailable(`${creds.forge.label} did not answer.`)
+		if (!res.ok) throw forgeError(creds.forge, res)
 		projects.push(...((await res.json()) as GitLabProject[]))
 		path = nextPagePath(res.headers.get("Link"), "https://gitlab.com/api/v4/")
 	}
@@ -285,14 +396,14 @@ export async function defaultBranchOf(creds: ForgeCredentials, ref: RepoRef): Pr
 	if (creds.forge.id === "gitlab") {
 		const res = await call(creds, `projects/${encodeURIComponent(ref.fullName)}`, { method: "GET" })
 		if (res.status === 404) throw new HttpError("NOT_FOUND", `${ref.fullName} does not exist or is not visible.`)
-		if (!res.ok) throw new ForgeWriteUnavailable(`${creds.forge.label} did not answer.`)
+		if (!res.ok) throw forgeError(creds.forge, res)
 		const body = (await res.json()) as { default_branch: string | null }
 		return body.default_branch ?? "main"
 	}
 
 	const res = await call(creds, `repos/${ref.fullName}`, { method: "GET" })
 	if (res.status === 404) throw new HttpError("NOT_FOUND", `${ref.fullName} does not exist or is not visible.`)
-	if (!res.ok) throw new ForgeWriteUnavailable(`${creds.forge.label} did not answer.`)
+	if (!res.ok) throw forgeError(creds.forge, res)
 	const body = (await res.json()) as { default_branch: string | null }
 	// An empty repo may answer null; the branch the first commit names has to come from somewhere, and `main` is what GitHub itself would create.
 	return body.default_branch ?? "main"
@@ -321,11 +432,11 @@ async function commitGitHub(
 		refRes = await call(creds, `${base}/git/ref/heads/${encodeURIComponent(branch)}`, { method: "GET" })
 	}
 	if (refRes.status === 404) throw new HttpError("UNPROCESSABLE", `The repo has no branch called ${branch}.`)
-	if (!refRes.ok) throw new ForgeWriteUnavailable(`${creds.forge.label} did not answer.`)
+	if (!refRes.ok) throw forgeError(creds.forge, refRes)
 	const parentSha = ((await refRes.json()) as { object: { sha: string } }).object.sha
 
 	const commitRes = await call(creds, `${base}/git/commits/${parentSha}`, { method: "GET" })
-	if (!commitRes.ok) throw new ForgeWriteUnavailable(`${creds.forge.label} did not answer.`)
+	if (!commitRes.ok) throw forgeError(creds.forge, commitRes)
 	const treeSha = ((await commitRes.json()) as { tree: { sha: string } }).tree.sha
 
 	// One blob per changed file, in parallel. Unchanged ones are skipped before a blob is ever made: comparing requires their current blob sha, which the tree listing already gives us.
@@ -356,7 +467,7 @@ async function commitGitHub(
 				headers: { "content-type": "application/json" },
 				body: JSON.stringify({ content: file.content, encoding: "utf-8" }),
 			})
-			if (!blobRes.ok) throw new ForgeWriteUnavailable(`${creds.forge.label} did not answer.`)
+			if (!blobRes.ok) throw forgeError(creds.forge, blobRes)
 			const blob = (await blobRes.json()) as { sha: string }
 			entries.push({ path: file.path, sha: blob.sha })
 			written.push({ path: file.path, sha: blob.sha, bytes: byteLength(file.content), unchanged: false })
@@ -379,7 +490,7 @@ async function commitGitHub(
 			),
 		}),
 	})
-	if (!treeRes.ok) throw new ForgeWriteUnavailable(`${creds.forge.label} did not answer.`)
+	if (!treeRes.ok) throw forgeError(creds.forge, treeRes)
 	const newTree = ((await treeRes.json()) as { sha: string }).sha
 
 	const newCommitRes = await call(creds, `${base}/git/commits`, {
@@ -387,7 +498,7 @@ async function commitGitHub(
 		headers: { "content-type": "application/json" },
 		body: JSON.stringify({ message, tree: newTree, parents: [parentSha] }),
 	})
-	if (!newCommitRes.ok) throw new ForgeWriteUnavailable(`${creds.forge.label} did not answer.`)
+	if (!newCommitRes.ok) throw forgeError(creds.forge, newCommitRes)
 	const commit = ((await newCommitRes.json()) as { sha: string }).sha
 
 	// Guarded: only fast-forward if the ref is still where we read it. A concurrent push makes this a 422 and nothing is written, which is the correct outcome – the next sync reads the new tip and commits on top of it.
@@ -398,7 +509,7 @@ async function commitGitHub(
 	})
 	if (updateRes.status === 422)
 		throw new HttpError("CONFLICT", "The repo moved while syncing. Nothing was written; try again.")
-	if (!updateRes.ok) throw new ForgeWriteUnavailable(`${creds.forge.label} did not answer.`)
+	if (!updateRes.ok) throw forgeError(creds.forge, updateRes)
 
 	return written.sort((a, b) => a.path.localeCompare(b.path))
 }
@@ -426,7 +537,7 @@ async function initializeEmptyGitHubRepo(
 			branch,
 		}),
 	})
-	if (!res.ok) throw new ForgeWriteUnavailable(`${creds.forge.label} did not answer.`)
+	if (!res.ok) throw forgeError(creds.forge, res)
 }
 
 /** `path -> blob sha` for one tree, so an unchanged file can be spotted. */
@@ -481,7 +592,7 @@ async function commitGitLab(
 		},
 	)
 	if (treeRes.status === 404) throw new HttpError("UNPROCESSABLE", `The repo has no branch called ${branch}.`)
-	if (!treeRes.ok) throw new ForgeWriteUnavailable(`${creds.forge.label} did not answer.`)
+	if (!treeRes.ok) throw forgeError(creds.forge, treeRes)
 
 	// The listing is paginated; walk it so a repo with many files does not make an existing file look new (which would fail the commit with "file exists").
 	const existing = new Map<string, string>()
@@ -561,7 +672,7 @@ async function commitGitLab(
 	// GitLab answers 409 when the branch moved under us, which is the same finding as GitHub's 422 on a non-fast-forward ref update.
 	if (commitRes.status === 409)
 		throw new HttpError("CONFLICT", "The repo moved while syncing. Nothing was written; try again.")
-	if (!commitRes.ok) throw new ForgeWriteUnavailable(`${creds.forge.label} did not answer.`)
+	if (!commitRes.ok) throw forgeError(creds.forge, commitRes)
 	const commit = (await commitRes.json()) as { id: string }
 
 	// GitLab's commit response carries the commit sha, not per-file shas, so the run history records that per file. It is what a maker would look up anyway.
