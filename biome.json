@@ -8,7 +8,9 @@
 				"useSortedAttributes": "on",
 				"useSortedEnumMembers": "on",
 				"useSortedInterfaceMembers": "on",
-				"useSortedKeys": "on"
+				"useSortedKeys": "on",
+				"useSortedPackageJson": "on",
+				"useSortedProperties": "on"
 			}
 		},
 		"enabled": true

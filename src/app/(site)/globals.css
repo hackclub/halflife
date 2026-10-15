@@ -124,15 +124,15 @@ html {
 }
 
 body {
-	background-color: var(--color-hl-ink);
-	color: var(--color-hl-paper);
-	font-family: var(--font-body);
 	overflow-x: hidden;
+	font-family: var(--font-body);
+	color: var(--color-hl-paper);
+	background-color: var(--color-hl-ink);
 }
 
 ::selection {
-	background-color: var(--color-hl-cyan);
 	color: var(--color-hl-ink);
+	background-color: var(--color-hl-cyan);
 }
 
 /* Masterpiece is a single 400 brush weight, already heavy, with strokes that
@@ -156,11 +156,11 @@ body {
    breakpoints. Below 1180px the sections switch to flow layout.
    ───────────────────────────────────────────────────────────── */
 .stage {
-	container-type: inline-size;
 	position: relative;
 	width: 100%;
 	max-width: 1728px;
 	margin-inline: auto;
+	container-type: inline-size;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -191,8 +191,8 @@ body {
 }
 
 .hl-field ::selection {
-	background-color: var(--color-hl-cyan);
 	color: var(--color-hl-ink);
+	background-color: var(--color-hl-cyan);
 }
 
 /* The scroll cue. The belt says there is more sideways; this says there is
@@ -272,7 +272,6 @@ body {
 }
 
 .hl-ground-tile::before {
-	content: "";
 	position: absolute;
 	inset: 0;
 	/* Behind the box's own content, in front of its background. `isolate` on
@@ -280,6 +279,7 @@ body {
      so the painting, the hero and the process stage all paint over it. */
 	z-index: -1;
 	pointer-events: none;
+	content: "";
 
 	background-image: url("/art/tile.png?v=1");
 	background-repeat: repeat;
@@ -294,6 +294,7 @@ body {
      the desktop tile exactly the size it already was, and the 200px floor
      stops it dissolving into noise on the narrowest phones. */
 	background-size: 1000px auto;
+	opacity: 0.1;
 
 	/* Black and white, and quiet. A pseudo-element is what buys these: `filter`
      and `opacity` apply to an element, never to a `background-image`, so on
@@ -301,7 +302,6 @@ body {
      with the ground. Nothing else lives in here, so both land on the tile
      alone. It costs no DOM node and nothing in the accessibility tree. */
 	filter: grayscale(1);
-	opacity: 0.1;
 }
 
 .hl-ground-hex {
@@ -322,9 +322,26 @@ body {
      an image with no intrinsic dimensions is drawn at the size of its box is
      what makes this work, and a browser falling back to 300x150 instead would
      tile a rotated lattice and seam it. */
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='a' width='40' height='59.428' patternTransform='rotate(20)' patternUnits='userSpaceOnUse'%3E%3Cpath fill='none' stroke='%23A2C4DA' stroke-opacity='.12' stroke-linecap='square' d='M0 70.975V47.881m20-1.692L8.535 52.808v13.239L20 72.667l11.465-6.62V52.808zm0-32.95 11.465-6.62V-6.619L20-13.24 8.535-6.619V6.619L20 13.24m8.535 4.927v13.238L40 38.024l11.465-6.62V18.166L40 11.546zM20 36.333 0 47.88m0 0v23.094m0 0 20 11.548 20-11.548V47.88m0 0L20 36.333m0 0 20 11.549M0 11.547l-11.465 6.619v13.239L0 38.025l11.465-6.62v-13.24L0 11.548v-23.094l20-11.547 20 11.547v23.094M20 36.333V13.24'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='800%25' height='800%25' fill='url(%23a)'/%3E%3C/svg%3E");
+	/* The supplied pattern, in the band's own colour: a hexagonal lattice on a
+     40x59.428 tile, turned 20 degrees. Two changes to what came in, the same
+     two the process band's arcs needed. The stroke was #ecc94b; it is the
+     card yellow, because this band has no cyan left anywhere in it – the belt
+     gave up its blue, the cards are yellow on ink – so cyan would be importing
+     an accent the section does not use, where yellow is already its own. And
+     the pattern's opaque #2b2b31 ground rect is dropped so the section's ink
+     shows through and stays the one place that colour is set.
+
+     The hex is written out because a data URI is a separate document that no
+     custom property reaches into; this copy has to be kept in step with
+     `--color-hl-yellow` by hand.
+
+     Size and repeat are pinned for the same reason as the arcs: the rule that
+     an image with no intrinsic dimensions is drawn at the size of its box is
+     what makes this work, and a browser falling back to 300x150 instead would
+     tile a rotated lattice and seam it. */
 	background-repeat: no-repeat;
 	background-size: 100% 100%;
-	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='a' width='40' height='59.428' patternTransform='rotate(20)' patternUnits='userSpaceOnUse'%3E%3Cpath fill='none' stroke='%23A2C4DA' stroke-opacity='.12' stroke-linecap='square' d='M0 70.975V47.881m20-1.692L8.535 52.808v13.239L20 72.667l11.465-6.62V52.808zm0-32.95 11.465-6.62V-6.619L20-13.24 8.535-6.619V6.619L20 13.24m8.535 4.927v13.238L40 38.024l11.465-6.62V18.166L40 11.546zM20 36.333 0 47.88m0 0v23.094m0 0 20 11.548 20-11.548V47.88m0 0L20 36.333m0 0 20 11.549M0 11.547l-11.465 6.619v13.239L0 38.025l11.465-6.62v-13.24L0 11.548v-23.094l20-11.547 20 11.547v23.094M20 36.333V13.24'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='800%25' height='800%25' fill='url(%23a)'/%3E%3C/svg%3E");
 }
 
 .hl-ground-mesh {
@@ -351,9 +368,32 @@ body {
      The hex is written out because a data URI is a separate document that no
      custom property reaches into; this copy has to be kept in step with
      `--color-hl-yellow-pale` by hand. */
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='a' width='69.283' height='40' patternTransform='rotate(5)' patternUnits='userSpaceOnUse'%3E%3Cpath fill='none' stroke='%23fffcd8' stroke-opacity='.08' d='M46.189-20 57.736 0M46.189 20l11.547 20m-46.189 0 11.547 20M11.547 0l11.547 20m40.415 30H40.415M28.868 30H5.774m23.094-40H5.774m57.735 20H40.415m0 20L28.868 50m11.547-60L28.868 10m46.188 0L63.509 30M5.774 10-5.773 30m75.056 10H46.189L34.64 20 46.19 0h23.094q5.77 10 11.546 20zM57.736 60H34.64L23.094 40l11.547-20h23.095l11.547 20zm0-40H34.64L23.094 0l11.547-20h23.095L69.283 0c-3.87 6.7-8.118 14.06-11.547 20zM34.64 60H11.547L0 40l11.547-20h23.094L46.19 40zm0-40H11.547L0 0l11.547-20h23.094L46.19 0zM23.094 40H0l-5.773-10-5.774-10L0 0h23.094l11.547 20z'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='800%25' height='800%25' fill='url(%23a)'/%3E%3C/svg%3E");
+	/* The supplied pattern, on the carousel card's own field: a triangulated
+     lattice on a 69.283x40 tile, turned 5 degrees. The same two changes the
+     other two bands needed. Its stroke was #ecc94b, the yellow this page does
+     not have; it is `--color-hl-yellow-pale`, which is already the card's
+     border and its caption band – so the lattice reads as the card's frame
+     material carried across its field rather than a fourth colour. And the
+     pattern's opaque #2b2b31 ground rect is gone, so the card's blue shows
+     through and stays the one place that colour is set.
+
+     Opacity is .18 where the section bands run .12. Those sit on ink and have
+     the full luminance range to be quiet in; this sits on a mid-tone blue,
+     where .12 composites to within 19 of the ground and disappears.
+
+     The supplied `scale(3)` is dropped. Rotation and geometry are the
+     pattern's identity, but scale is a fit to the surface, and this is the one
+     of these that grounds a card rather than a section: at 3 the tile is
+     208x120 against a 346x223 photo field – 1.7 tiles across, which reads as
+     three stray diagonals. At 1 it is five tiles across and reads as the
+     lattice it is.
+
+     The hex is written out because a data URI is a separate document that no
+     custom property reaches into; this copy has to be kept in step with
+     `--color-hl-yellow-pale` by hand. */
 	background-repeat: no-repeat;
 	background-size: 100% 100%;
-	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='a' width='69.283' height='40' patternTransform='rotate(5)' patternUnits='userSpaceOnUse'%3E%3Cpath fill='none' stroke='%23fffcd8' stroke-opacity='.08' d='M46.189-20 57.736 0M46.189 20l11.547 20m-46.189 0 11.547 20M11.547 0l11.547 20m40.415 30H40.415M28.868 30H5.774m23.094-40H5.774m57.735 20H40.415m0 20L28.868 50m11.547-60L28.868 10m46.188 0L63.509 30M5.774 10-5.773 30m75.056 10H46.189L34.64 20 46.19 0h23.094q5.77 10 11.546 20zM57.736 60H34.64L23.094 40l11.547-20h23.095l11.547 20zm0-40H34.64L23.094 0l11.547-20h23.095L69.283 0c-3.87 6.7-8.118 14.06-11.547 20zM34.64 60H11.547L0 40l11.547-20h23.094L46.19 40zm0-40H11.547L0 0l11.547-20h23.094L46.19 0zM23.094 40H0l-5.773-10-5.774-10L0 0h23.094l11.547 20z'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='800%25' height='800%25' fill='url(%23a)'/%3E%3C/svg%3E");
 }
 
 .hl-ground-hatch {
