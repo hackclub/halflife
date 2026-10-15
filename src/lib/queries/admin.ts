@@ -1671,6 +1671,8 @@ function ariToResult(decision: string | null): ReviewResult | null {
 	if (decision === "approved") return ReviewResult.APPROVED
 	if (decision === "changes") return ReviewResult.RETURNED
 	if (decision === "rejected") return ReviewResult.REJECTED
+	// Ari is an external system, so a decision string we do not know is a vocabulary drift, not corrupt local data: log it rather than let the submission vanish from the chart silently.
+	if (decision !== null) console.warn(`[admin] unrecognised Ari decision "${decision}"; counted nowhere`)
 	return null
 }
 

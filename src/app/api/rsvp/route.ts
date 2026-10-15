@@ -10,14 +10,14 @@ export const dynamic = "force-dynamic"
 export const GET = withRoute(async () => ok({ count: await getRsvpCount() }))
 
 export const POST = withRoute(async (req: Request) => {
-	const parsed = await parseBody(req, rsvpSchema)
-	if (parsed.error) return parsed.error
-
 	const h = await headers()
 	const ip = clientIp(h)
 
-	// This is a public, unauthenticated write that lands a row in the drain queue (and the public counter); the landing form's limiter applies here too rather than leaving it open to a script.
+	// This is a public, unauthenticated write that lands a row in the drain queue (and the public counter); the landing form's limiter applies here too rather than leaving it open to a script. Checked before the body is parsed, so an over-limit caller cannot make the server buffer a body first.
 	if (rateLimited(ip ?? "unknown")) return fail("RATE_LIMITED", "Slow down a second, then try again.")
+
+	const parsed = await parseBody(req, rsvpSchema)
+	if (parsed.error) return parsed.error
 
 	// Buffered in Postgres and drained to Airtable by a job. A signup must not fail because a third party is rate-limiting us.
 	await bufferRsvp({
