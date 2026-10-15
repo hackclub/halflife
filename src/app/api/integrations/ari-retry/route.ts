@@ -7,6 +7,7 @@ import {
 	applyStoredEvent,
 	findUnsyncedAriSubmissions,
 	isAriConfigured,
+	reconcileAriDecisions,
 	sendSubmissionToAri,
 	withdrawSubmissionFromAri,
 } from "@/lib/ari"
@@ -29,6 +30,8 @@ function phaseOf(metadata: unknown): Phase | null {
 
 /**
  * Replays hand-ins that never reached Ari – a send that failed, or one on a deployment whose Ari secrets were added after the submission. Reviewers work in Ari, so a ship that never arrived is a project nobody will review.
+ *
+ * It also reconciles the other direction: a decision Ari holds but the webhook never delivered. The webhook is fire-and-forget, so a delivery sent before the endpoint was registered – or during an outage – is simply gone, and the hand-in sits decided at Ari while Half Life still shows it pending. `reconcileAriDecisions` asks Ari for each open hand-in's standing decision and applies it; the pass is bounded and shuffled, so a steady state costs a couple of hundred reads an hour rather than an unbounded sweep and no hand-in is starved by the ones before it.
  */
 export const POST = withIntegrationRoute(async (req: NextRequest) => {
 	const dryRun = wantsDryRun(req)
@@ -124,11 +127,22 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 		}
 	}
 
+	// Missed decisions: a delivery the webhook never received leaves a hand-in open here while Ari has decided it. Bounded and shuffled, so the job stays inside its timeout, no hand-in is starved, and a backlog clears over a few runs. Quiet – the maker was told by the webhook in the normal case, and a catch-up must not become a flood.
+	let reconciled = 0
+	let reconciledApplied = 0
+	if (isAriConfigured()) {
+		const result = await reconcileAriDecisions({ commit: true, limit: 150 })
+		reconciled = result.checked
+		reconciledApplied = result.applied
+	}
+
 	const summary = {
 		attempted: pending.length,
 		deferred,
 		deferredFailed,
 		failed,
+		reconciled,
+		reconciledApplied,
 		skipped,
 		synced,
 		withdrawFailed,
