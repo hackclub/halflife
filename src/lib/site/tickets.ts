@@ -148,6 +148,15 @@ export function resolvedContext(byUserId: string, note?: string): SlackBlock {
 	}
 }
 
+/** Whether a thread message is the bot's reminder carrying the resolution buttons – the one both "Mark as helped" buttons rewrite. Matches the open buttons or the reopen button a resolved thread carries, so the tickets-channel handler still finds the message when a second resolution races the first. */
+export function carriesResolveActions(blocks: SlackBlock[] | undefined): boolean {
+	return Boolean(
+		blocks?.some(
+			block => block.block_id === SELF_RESOLVE_ACTIONS_BLOCK_ID || block.block_id === REOPEN_ACTIONS_BLOCK_ID,
+		),
+	)
+}
+
 /** Strips whichever action blocks are present and appends a resolved note plus a reopen button – shared by all three resolution buttons since a message only ever carries one action block. The reopen button rides the same ref the resolution just consumed, so reopening rebuilds from it. */
 export function resolveBlocks(
 	blocks: SlackBlock[] | undefined,

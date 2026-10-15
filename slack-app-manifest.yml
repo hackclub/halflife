@@ -34,7 +34,9 @@ oauth_config:
     scopes:
         bot:
             # Required for message.channels, which is how a new #half-life-help post
-            # is noticed and turned into a ticket.
+            # is noticed and turned into a ticket, and for conversations.replies on
+            # that channel — the read the tickets-channel "mark as helped" button
+            # makes to find the thread reminder it rewrites (lib/site/slack.getThreadReplies).
             - channels:history
             # Required for member_joined_channel on public channels — the trigger for
             # the auto-invite. Without it the event never arrives.
