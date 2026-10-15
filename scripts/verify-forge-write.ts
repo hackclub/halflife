@@ -82,13 +82,25 @@ async function main() {
 		check("403 secondary rate limit · waited out, not read as a refusal", r.ok && r.value === "main", JSON.stringify(r))
 	}
 
-	// A 403 with no rate-limit header is the genuine refusal a maker must act on.
+	// A 401 is a sign-in to redo, and says so specifically.
+	{
+		const r = await run([{ status: 401, body: { message: "Bad credentials" } }])
+		const err = r.ok ? null : r.err
+		check(
+			"401 · reads as a sign-in to reconnect",
+			!r.ok && err instanceof HttpError && err.message.includes("sign-in is no longer valid"),
+			err instanceof Error ? err.message : String(err),
+		)
+		check("401 · not retried", calls === 1, `calls=${calls}`)
+	}
+
+	// A 403 with no rate-limit header is the genuine refusal a maker must act on, and names permissions.
 	{
 		const r = await run([{ status: 403, body: { message: "Resource not accessible by integration" } }])
 		const err = r.ok ? null : r.err
 		check(
-			"403 plain · reads as refused, reconnect",
-			!r.ok && err instanceof HttpError && err.message.includes("refused that"),
+			"403 plain · reads as a permissions problem to reconnect over",
+			!r.ok && err instanceof HttpError && err.message.includes("refused this"),
 			err instanceof Error ? err.message : String(err),
 		)
 		check("403 plain · not retried", calls === 1, `calls=${calls}`)
@@ -127,14 +139,38 @@ async function main() {
 		check("404 · not retried", calls === 1, `calls=${calls}`)
 	}
 
-	// Any other error status is named, rather than blamed on silence.
+	// A 422 gets its own sentence, and quotes the forge's own reason.
 	{
-		const r = await run([{ status: 422, body: { message: "no" } }])
+		const r = await run([{ status: 422, body: { message: "Protected branch update failed" } }])
 		const err = r.ok ? null : r.err
+		const message = err instanceof Error ? err.message : String(err)
 		check(
-			"422 · named as an error status",
-			!r.ok && err instanceof Error && err.message.includes("returned an error (422)"),
-			err instanceof Error ? err.message : String(err),
+			"422 · named as a commit the forge would not take",
+			!r.ok && message.includes("would not accept the commit"),
+			message,
+		)
+		check("422 · quotes GitHub's own reason", message.includes("Protected branch update failed"), message)
+	}
+
+	// Any other status is named with its code, and repeats the forge's message.
+	{
+		const r = await run([{ status: 400, body: { message: "Problems parsing JSON" } }])
+		const err = r.ok ? null : r.err
+		const message = err instanceof Error ? err.message : String(err)
+		check("400 · named with its status code", !r.ok && message.includes("returned an error (400)"), message)
+		check("400 · surfaces the body message", message.includes("Problems parsing JSON"), message)
+	}
+
+	// A 500 that survives every retry reads as the forge's own problem, and is not quoted as if the maker caused it.
+	{
+		const always = { status: 503, body: { message: "Server Error" } }
+		const r = await run([always, always, always, always])
+		const err = r.ok ? null : r.err
+		const message = err instanceof Error ? err.message : String(err)
+		check(
+			"503 exhausted · reads as the forge having a problem",
+			!r.ok && message.includes("having a problem (503)"),
+			message,
 		)
 	}
 

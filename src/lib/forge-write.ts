@@ -125,9 +125,65 @@ function rateLimitWait(res: Response): number | null {
 	return null
 }
 
-/** The error for a response the caller has not singled out a status for: it came back, and it said no. */
-function forgeError(forge: Forge, res: Response): ForgeWriteUnavailable {
-	return new ForgeWriteUnavailable(`${forge.label} returned an error (${res.status}).`)
+/**
+ * The forge's own sentence from an error body, when it left one worth repeating.
+ *
+ * Both forges answer a 4xx with JSON that explains it better than the status can – GitHub's "Protected branch update failed", "Resource not accessible by integration", "Repository is empty"; GitLab's `message`/`error`. It is read, tidied and capped here rather than shown raw, so an HTML error page or a wall of links cannot land on a maker's project page.
+ */
+async function apiDetail(res: Response): Promise<string | null> {
+	let text: string
+	try {
+		text = await res.text()
+	} catch {
+		return null
+	}
+	if (!text) return null
+
+	let message = text
+	try {
+		const body = JSON.parse(text) as { message?: unknown; error?: unknown }
+		const said = body.message ?? body.error
+		if (typeof said === "string") message = said
+	} catch {
+		// Not JSON: a proxy page or a plain-text error, where the text itself is the only detail there is.
+	}
+
+	message = message.replace(/\s+/g, " ").trim()
+	// An HTML page has no sentence to quote, and reading a regex tag out of one helps nobody.
+	if (!message || /<[a-z!/]/i.test(message)) return null
+	return message.length > 200 ? `${message.slice(0, 199)}…` : message
+}
+
+/**
+ * The maker-facing sentence for an answer that came back an error.
+ *
+ * One status is not one problem, so each says what its own fix is: a 401 is a sign-in to redo, a 403 is permissions to check, a 404 is a repo or branch to find, a 5xx is the forge's own bad day to wait out. The forge's own `message` is quoted after that when it adds something the lead does not, because it often names the exact rule that refused.
+ */
+async function errorMessage(forge: Forge, res: Response): Promise<string> {
+	if (res.status === 401)
+		return `Your ${forge.label} sign-in is no longer valid – reconnect ${forge.label} and try again.`
+	if (res.status === 403)
+		return `${forge.label} refused this – reconnect ${forge.label} and try again, or check your write access to the repo.`
+	if (res.status === 404) return `The repo or branch was not found, or your ${forge.label} account cannot see it.`
+	if (res.status === 429) return `${forge.label} is rate-limiting us right now; wait a minute and try again.`
+	if (res.status >= 500)
+		return `${forge.label} is having a problem (${res.status}); this is usually temporary, so try the sync again shortly.`
+
+	const detail = await apiDetail(res)
+	const lead =
+		res.status === 409
+			? `${forge.label} reported a conflict – the repo changed while syncing; nothing was written, so try again.`
+			: res.status === 422
+				? `${forge.label} would not accept the commit.`
+				: `${forge.label} returned an error (${res.status}).`
+	return detail ? `${lead} ${forge.label} said: "${detail}"` : lead
+}
+
+/**
+ * Read the answer and throw the maker-facing error for it. Typed `never`, so a call site reads as the end of its branch and the compiler agrees it cannot fall through to the `res.ok` path.
+ */
+async function throwForgeError(forge: Forge, res: Response): Promise<never> {
+	throw new ForgeWriteUnavailable(await errorMessage(forge, res))
 }
 
 /**
@@ -151,8 +207,8 @@ async function call(creds: ForgeCredentials, path: string, init: RequestInit): P
 				}
 
 	const method = init.method ?? "GET"
-	// What the maker is told if every attempt fails. Transport failures leave it at "did not answer"; a named answer overwrites it with what actually happened.
-	let why = `${forge.label} did not answer.`
+	// What the maker is told if every attempt fails. A transport failure leaves this at the network wording; a named answer replaces it with the sentence for its status.
+	let why = `${forge.label} did not answer after several attempts; this is usually a temporary network or ${forge.label} problem, so try again.`
 
 	for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
 		const release = await slot()
@@ -165,9 +221,9 @@ async function call(creds: ForgeCredentials, path: string, init: RequestInit): P
 				cache: "no-store",
 			})
 		} catch (err) {
-			// The maker sees "did not answer"; the cause is for whoever runs this.
+			// The maker sees the network wording; the cause is for whoever runs this.
 			console.warn(`[forge-write] ${forge.id} ${method} ${path} failed (attempt ${attempt + 1}):`, err)
-			why = `${forge.label} did not answer.`
+			why = `${forge.label} did not answer after several attempts; this is usually a temporary network or ${forge.label} problem, so try again.`
 		} finally {
 			release()
 		}
@@ -179,7 +235,7 @@ async function call(creds: ForgeCredentials, path: string, init: RequestInit): P
 		// A rate limit is not a refusal: wait out the window it named and try again, up to the cap. The last wait is the one that gives up.
 		const wait = rateLimitWait(res)
 		if (wait !== null) {
-			why = `${forge.label} is rate-limiting us right now.`
+			why = `${forge.label} is rate-limiting us right now; wait a minute and try again.`
 			if (attempt === RETRY_DELAYS_MS.length) break
 			const capped = Math.min(MAX_RATE_LIMIT_WAIT_MS, Math.max(RETRY_DELAYS_MS[attempt] ?? RETRY_FALLBACK_MS, wait))
 			console.warn(
@@ -191,8 +247,10 @@ async function call(creds: ForgeCredentials, path: string, init: RequestInit): P
 
 		// A 5xx is the forge failing at its end, which another attempt often clears. The body is logged for whoever runs this; it is not returned to a maker.
 		if (res.status >= 500) {
-			why = `${forge.label} returned an error (${res.status}).`
-			if (attempt === RETRY_DELAYS_MS.length) break
+			if (attempt === RETRY_DELAYS_MS.length) {
+				why = await errorMessage(forge, res)
+				break
+			}
 			const body = await res.text().catch(() => "")
 			console.warn(
 				`[forge-write] ${forge.id} ${method} ${path} → ${res.status} (attempt ${attempt + 1}): ${body.slice(0, 200)}`,
@@ -201,9 +259,8 @@ async function call(creds: ForgeCredentials, path: string, init: RequestInit): P
 			continue
 		}
 
-		// 401/403 are the two ways a token says it may not do this: revoked, or lacking the scope. A rate-limit 403 was caught above, so this is the genuine refusal – and reconnecting is the fix. Neither is retried here.
-		if (res.status === 401 || res.status === 403)
-			throw new HttpError("FORBIDDEN", `${forge.label} refused that – reconnect ${forge.label} and try again.`)
+		// 401/403 are the two ways a token says it may not do this: revoked, or lacking the scope. A rate-limit 403 was caught above, so this is the genuine refusal. Neither is retried here, and each says which fix it needs.
+		if (res.status === 401 || res.status === 403) throw new HttpError("FORBIDDEN", await errorMessage(forge, res))
 		return res
 	}
 
@@ -278,7 +335,7 @@ async function listGitHubRepos(creds: ForgeCredentials): Promise<WritableRepo[]>
 			break
 		}
 		const res = await call(creds, path, { method: "GET" })
-		if (!res.ok) throw forgeError(creds.forge, res)
+		if (!res.ok) await throwForgeError(creds.forge, res)
 		repos.push(...((await res.json()) as GitHubRepo[]))
 		path = nextPagePath(res.headers.get("Link"), "https://api.github.com/")
 	}
@@ -326,7 +383,7 @@ async function listGitLabRepos(creds: ForgeCredentials): Promise<WritableRepo[]>
 			break
 		}
 		const res = await call(creds, path, { method: "GET" })
-		if (!res.ok) throw forgeError(creds.forge, res)
+		if (!res.ok) await throwForgeError(creds.forge, res)
 		projects.push(...((await res.json()) as GitLabProject[]))
 		path = nextPagePath(res.headers.get("Link"), "https://gitlab.com/api/v4/")
 	}
@@ -396,14 +453,14 @@ export async function defaultBranchOf(creds: ForgeCredentials, ref: RepoRef): Pr
 	if (creds.forge.id === "gitlab") {
 		const res = await call(creds, `projects/${encodeURIComponent(ref.fullName)}`, { method: "GET" })
 		if (res.status === 404) throw new HttpError("NOT_FOUND", `${ref.fullName} does not exist or is not visible.`)
-		if (!res.ok) throw forgeError(creds.forge, res)
+		if (!res.ok) await throwForgeError(creds.forge, res)
 		const body = (await res.json()) as { default_branch: string | null }
 		return body.default_branch ?? "main"
 	}
 
 	const res = await call(creds, `repos/${ref.fullName}`, { method: "GET" })
 	if (res.status === 404) throw new HttpError("NOT_FOUND", `${ref.fullName} does not exist or is not visible.`)
-	if (!res.ok) throw forgeError(creds.forge, res)
+	if (!res.ok) await throwForgeError(creds.forge, res)
 	const body = (await res.json()) as { default_branch: string | null }
 	// An empty repo may answer null; the branch the first commit names has to come from somewhere, and `main` is what GitHub itself would create.
 	return body.default_branch ?? "main"
@@ -432,11 +489,11 @@ async function commitGitHub(
 		refRes = await call(creds, `${base}/git/ref/heads/${encodeURIComponent(branch)}`, { method: "GET" })
 	}
 	if (refRes.status === 404) throw new HttpError("UNPROCESSABLE", `The repo has no branch called ${branch}.`)
-	if (!refRes.ok) throw forgeError(creds.forge, refRes)
+	if (!refRes.ok) await throwForgeError(creds.forge, refRes)
 	const parentSha = ((await refRes.json()) as { object: { sha: string } }).object.sha
 
 	const commitRes = await call(creds, `${base}/git/commits/${parentSha}`, { method: "GET" })
-	if (!commitRes.ok) throw forgeError(creds.forge, commitRes)
+	if (!commitRes.ok) await throwForgeError(creds.forge, commitRes)
 	const treeSha = ((await commitRes.json()) as { tree: { sha: string } }).tree.sha
 
 	// One blob per changed file, in parallel. Unchanged ones are skipped before a blob is ever made: comparing requires their current blob sha, which the tree listing already gives us.
@@ -467,7 +524,7 @@ async function commitGitHub(
 				headers: { "content-type": "application/json" },
 				body: JSON.stringify({ content: file.content, encoding: "utf-8" }),
 			})
-			if (!blobRes.ok) throw forgeError(creds.forge, blobRes)
+			if (!blobRes.ok) await throwForgeError(creds.forge, blobRes)
 			const blob = (await blobRes.json()) as { sha: string }
 			entries.push({ path: file.path, sha: blob.sha })
 			written.push({ path: file.path, sha: blob.sha, bytes: byteLength(file.content), unchanged: false })
@@ -490,7 +547,7 @@ async function commitGitHub(
 			),
 		}),
 	})
-	if (!treeRes.ok) throw forgeError(creds.forge, treeRes)
+	if (!treeRes.ok) await throwForgeError(creds.forge, treeRes)
 	const newTree = ((await treeRes.json()) as { sha: string }).sha
 
 	const newCommitRes = await call(creds, `${base}/git/commits`, {
@@ -498,7 +555,7 @@ async function commitGitHub(
 		headers: { "content-type": "application/json" },
 		body: JSON.stringify({ message, tree: newTree, parents: [parentSha] }),
 	})
-	if (!newCommitRes.ok) throw forgeError(creds.forge, newCommitRes)
+	if (!newCommitRes.ok) await throwForgeError(creds.forge, newCommitRes)
 	const commit = ((await newCommitRes.json()) as { sha: string }).sha
 
 	// Guarded: only fast-forward if the ref is still where we read it. A concurrent push makes this a 422 and nothing is written, which is the correct outcome – the next sync reads the new tip and commits on top of it.
@@ -509,7 +566,7 @@ async function commitGitHub(
 	})
 	if (updateRes.status === 422)
 		throw new HttpError("CONFLICT", "The repo moved while syncing. Nothing was written; try again.")
-	if (!updateRes.ok) throw forgeError(creds.forge, updateRes)
+	if (!updateRes.ok) await throwForgeError(creds.forge, updateRes)
 
 	return written.sort((a, b) => a.path.localeCompare(b.path))
 }
@@ -537,7 +594,7 @@ async function initializeEmptyGitHubRepo(
 			branch,
 		}),
 	})
-	if (!res.ok) throw forgeError(creds.forge, res)
+	if (!res.ok) await throwForgeError(creds.forge, res)
 }
 
 /** `path -> blob sha` for one tree, so an unchanged file can be spotted. */
@@ -592,7 +649,7 @@ async function commitGitLab(
 		},
 	)
 	if (treeRes.status === 404) throw new HttpError("UNPROCESSABLE", `The repo has no branch called ${branch}.`)
-	if (!treeRes.ok) throw forgeError(creds.forge, treeRes)
+	if (!treeRes.ok) await throwForgeError(creds.forge, treeRes)
 
 	// The listing is paginated; walk it so a repo with many files does not make an existing file look new (which would fail the commit with "file exists").
 	const existing = new Map<string, string>()
@@ -672,7 +729,7 @@ async function commitGitLab(
 	// GitLab answers 409 when the branch moved under us, which is the same finding as GitHub's 422 on a non-fast-forward ref update.
 	if (commitRes.status === 409)
 		throw new HttpError("CONFLICT", "The repo moved while syncing. Nothing was written; try again.")
-	if (!commitRes.ok) throw forgeError(creds.forge, commitRes)
+	if (!commitRes.ok) await throwForgeError(creds.forge, commitRes)
 	const commit = (await commitRes.json()) as { id: string }
 
 	// GitLab's commit response carries the commit sha, not per-file shas, so the run history records that per file. It is what a maker would look up anyway.
