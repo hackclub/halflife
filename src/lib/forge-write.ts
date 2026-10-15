@@ -539,10 +539,8 @@ async function commitGitHub(
 	const treeRes = await call(creds, `${base}/git/trees`, {
 		body: JSON.stringify({
 			base_tree: treeSha,
-			// A null sha deletes the path; anything else (re)writes it.
-			tree: entries.map(e =>
-				e.sha === null ? { path: e.path, sha: null } : { mode: "100644", path: e.path, sha: e.sha, type: "blob" },
-			),
+			// A null sha deletes the path and anything else rewrites it, but every entry still carries mode and type – GitHub rejects a null-sha entry that omits them with "Must supply a valid tree.mode", which is what a legacy BOM.md deletion used to return.
+			tree: entries.map(e => ({ mode: "100644", path: e.path, sha: e.sha, type: "blob" })),
 		}),
 		headers: { "content-type": "application/json" },
 		method: "POST",
