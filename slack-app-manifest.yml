@@ -21,62 +21,62 @@
 #      (right-click a channel → View channel details, ID is at the bottom).
 
 display_information:
-  name: Half Life Little Helper
-  description: "Adds new members to Half Life channels and tracks #half-life-help tickets."
-  background_color: "#1a1a1a"
+    name: Half Life Little Helper
+    description: "Adds new members to Half Life channels and tracks #half-life-help tickets."
+    background_color: "#1a1a1a"
 
 features:
-  bot_user:
-    display_name: Half Life Little Helper
-    always_online: true
+    bot_user:
+        display_name: Half Life Little Helper
+        always_online: true
 
 oauth_config:
-  scopes:
-    bot:
-      # Required for message.channels, which is how a new #half-life-help post
-      # is noticed and turned into a ticket.
-      - channels:history
-      # Required for member_joined_channel on public channels — the trigger for
-      # the auto-invite. Without it the event never arrives.
-      - channels:read
-      # conversations.members, which is how the #half-life-help thread's "mark
-      # as helped" button decides whether the clicker is in the private tickets
-      # channel (lib/site/slack.isChannelMember). channels:read only lists a
-      # PUBLIC channel's members; a private one needs groups:read, and the bot
-      # must be in the channel. Without this the membership check fails closed
-      # and every helper — staff included — is told they're not on the team.
-      - groups:read
-      # conversations.invite takes this for public channels, which is all the
-      # auto-invite needs. channels:manage would also work but additionally
-      # grants archive/rename/kick, which nothing here calls.
-      - channels:write.invites
-      # Every post, button update, and ticket removal goes through
-      # chat.postMessage/chat.update/chat.delete. chat.delete needs no scope of
-      # its own and a bot token may delete its own messages, which is the only
-      # kind this app ever removes. Posting into the private tickets channel
-      # needs only this plus membership — but READING its member list is the
-      # groups:read call above, which is why a groups scope is present now.
-      - chat:write
-      # conversations.open (sendDM) accepts this, im:write, groups:write, or
-      # channels:manage — this is the narrow one, and all it grants is starting
-      # a DM with someone.
-      - im:write
-      # users.info, behind getSlackProfile's avatar/display-name enrichment
-      - users:read
-      # reactions.add/reactions.remove, which mark the original question
-      # pending when its ticket opens and swap that for the done emoji once it
-      # is resolved. Without this the calls come back `missing_scope`.
-      - reactions:write
+    scopes:
+        bot:
+            # Required for message.channels, which is how a new #half-life-help post
+            # is noticed and turned into a ticket.
+            - channels:history
+            # Required for member_joined_channel on public channels — the trigger for
+            # the auto-invite. Without it the event never arrives.
+            - channels:read
+            # conversations.members, which is how the #half-life-help thread's "mark
+            # as helped" button decides whether the clicker is in the private tickets
+            # channel (lib/site/slack.isChannelMember). channels:read only lists a
+            # PUBLIC channel's members; a private one needs groups:read, and the bot
+            # must be in the channel. Without this the membership check fails closed
+            # and every helper — staff included — is told they're not on the team.
+            - groups:read
+            # conversations.invite takes this for public channels, which is all the
+            # auto-invite needs. channels:manage would also work but additionally
+            # grants archive/rename/kick, which nothing here calls.
+            - channels:write.invites
+            # Every post, button update, and ticket removal goes through
+            # chat.postMessage/chat.update/chat.delete. chat.delete needs no scope of
+            # its own and a bot token may delete its own messages, which is the only
+            # kind this app ever removes. Posting into the private tickets channel
+            # needs only this plus membership — but READING its member list is the
+            # groups:read call above, which is why a groups scope is present now.
+            - chat:write
+            # conversations.open (sendDM) accepts this, im:write, groups:write, or
+            # channels:manage — this is the narrow one, and all it grants is starting
+            # a DM with someone.
+            - im:write
+            # users.info, behind getSlackProfile's avatar/display-name enrichment
+            - users:read
+            # reactions.add/reactions.remove, which mark the original question
+            # pending when its ticket opens and swap that for the done emoji once it
+            # is resolved. Without this the calls come back `missing_scope`.
+            - reactions:write
 
 settings:
-  event_subscriptions:
-    request_url: https://halflife.hackclub.com/api/slack/events
-    bot_events:
-      - member_joined_channel
-      - message.channels
-  interactivity:
-    is_enabled: true
-    request_url: https://halflife.hackclub.com/api/slack/interactions
-  org_deploy_enabled: false
-  socket_mode_enabled: false
-  token_rotation_enabled: false
+    event_subscriptions:
+        request_url: https://halflife.hackclub.com/api/slack/events
+        bot_events:
+            - member_joined_channel
+            - message.channels
+    interactivity:
+        is_enabled: true
+        request_url: https://halflife.hackclub.com/api/slack/interactions
+    org_deploy_enabled: false
+    socket_mode_enabled: false
+    token_rotation_enabled: false

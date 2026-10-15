@@ -1,40 +1,61 @@
 name: Biome
 
 on:
-  push:
-    branches: [main]
-  pull_request:
+    push:
+        branches: [main]
+    pull_request:
 
 concurrency:
-  group: biome-${{ github.ref }}
-  cancel-in-progress: true
+    group: biome-${{ github.ref }}
+    cancel-in-progress: true
 
-# Read-only beyond doubt, and stated rather than inherited. Without this the token gets whatever the repository or its organisation defaults to, which for anything created before February 2023 is read-write. Nothing here writes: every step reads the checkout and reports. The cache is not affected – actions/cache authenticates with the
-# Actions runtime token, not GITHUB_TOKEN – so `contents: read` is the whole of what this workflow needs.
+# This workflow rewrites files and commits the fixes, so it needs write access to
+# repository contents. The cache still authenticates via the Actions runtime token.
 permissions:
-  contents: read
+    contents: write
 
 jobs:
-  biome:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
+    biome:
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  ref: ${{ github.head_ref || github.ref_name }}
+                  token: ${{ secrets.GITHUB_TOKEN }}
+            - uses: oven-sh/setup-bun@v2
+              with:
+                  bun-version: latest
 
-      - uses: actions/cache@v4
-        with:
-          path: ~/.bun/install/cache
-          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-          restore-keys: |
-            bun-${{ runner.os }}-
+            - uses: actions/cache@v4
+              with:
+                  path: ~/.bun/install/cache
+                  key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+                  restore-keys: |
+                      bun-${{ runner.os }}-
 
-      - run: bun install --frozen-lockfile
+            - run: bun install --frozen-lockfile
 
-      # The gate: lint, formatter and import organisation in one. Fails on anything `biome check --write` would change.
-      - run: bunx biome check .
+            - name: Format files with Biome
+              run: bunx biome format --write .
+            - name: Commit formatting fixes
+              run: |
+                  git config user.name "github-actions[bot]"
+                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                  git add -A
+                  if ! git diff --cached --quiet; then
+                    git commit -m "Format files with Biome"
+                    git push
+                  fi
 
-      # The formatter on its own: exits non-zero with a readable diff when a file is unformatted, and changes nothing.
-      - run: bunx biome format .
+            - name: Biome lint check fixes
+              run: bunx biome check --write .
+            - name: Commit lint fixes
+              run: |
+                  git config user.name "github-actions[bot]"
+                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                  git add -A
+                  if ! git diff --cached --quiet; then
+                    git commit -m "Biome lint check fixes"
+                    git push
+                  fi

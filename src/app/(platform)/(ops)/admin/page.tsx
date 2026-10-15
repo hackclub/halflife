@@ -8,11 +8,13 @@ import { fmtInt } from "@/lib/numbers"
 import { requireAnyPermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import {
+	type ActiveDay,
 	type DayActivity,
 	type GoalDayActivity,
 	getAdminCounters,
 	getAreaStats,
 	getCountryStats,
+	getDailyActiveUsers,
 	getDailyActivity,
 	getDailyActivityByGoal,
 	getFirstProjectStats,
@@ -61,6 +63,7 @@ export default async function AdminOverviewPage() {
 		areas,
 		countries,
 		activity,
+		activeUsers,
 		activityByGoal,
 		projectsByWeek,
 		hoursByWeek,
@@ -87,6 +90,7 @@ export default async function AdminOverviewPage() {
 		getAreaStats(),
 		getCountryStats(),
 		getDailyActivity(),
+		getDailyActiveUsers(),
 		getDailyActivityByGoal(),
 		getProjectsByWeek(),
 		getHoursByWeek(),
@@ -104,6 +108,7 @@ export default async function AdminOverviewPage() {
 			<div className="hl-row">
 				<Stat label="Orders to fulfil" value={counters.pendingOrders} />
 				<Stat label="Participants" value={counters.participants} />
+				<Stat label="Active today" value={activeUsers.today} />
 				<Stat label="Printers earned" value={counters.shipped} />
 			</div>
 
@@ -239,6 +244,15 @@ export default async function AdminOverviewPage() {
 
 			<Panel title="Hours per participant">
 				<HoursHistogram data={hoursSpread} />
+			</Panel>
+
+			<Panel title="Daily active users">
+				<DauChart days={activeUsers.days} />
+				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
+					A person counts once a day, and only once that day&apos;s tracked time reaches 15 minutes – a visit with no
+					time logged does not count, and neither do three devlogs where one would have done. Days are program-timezone
+					effective dates, the day the work counted for.
+				</p>
 			</Panel>
 
 			<Panel title="Activity over time">
@@ -786,6 +800,180 @@ function ActivityStrip({ days, perUser = false }: { days: DayActivity[]; perUser
 				compare the shapes and not the heights. Days are program-timezone effective dates – the day the work counted
 				for. Hours count journal devlogs only.{note}
 			</p>
+		</div>
+	)
+}
+
+/**
+ * People active per day, as one line.
+ *
+ * Active is "tracked at least 15 minutes that day", the bar `UserDay` is built on (lib/analytics), so this draws the DAU the analytics export reports rather than counting it a second way. It is people, not entries: someone with three devlogs and someone with one count the same, which is why this line sits so much lower than the hours drawn below it.
+ *
+ * One line on one axis, so there is no second scale and no dashed series – the whole reading is where the line sits and how many are under it.
+ */
+function DauChart({ days }: { days: ActiveDay[] }) {
+	if (days.length === 0) return <EmptyState>Nobody has tracked 15 minutes in a day yet.</EmptyState>
+
+	const plotH = CHART_H - PAD_T - PAD_B
+
+	const values = days.map((d) => d.users)
+	// At least 1, so a stretch with nobody active draws along the baseline rather than dividing by zero.
+	const max = Math.max(1, ...values)
+	const peak = Math.max(...values)
+	const mean = values.reduce((n, v) => n + v, 0) / days.length
+
+	const xOf = (i: number) => (days.length === 1 ? 0.5 : EDGE + (i / (days.length - 1)) * (1 - 2 * EDGE))
+	const yFor = (v: number) => PAD_T + plotH - (v / max) * plotH
+	const at = days.map((d, i) => ({ x: xOf(i), y: yFor(d.users) }))
+	/** One segment per pair of points, because a `d` attribute cannot carry the percentage x. */
+	const segments = at.slice(1).map((point, i) => {
+		const previous = at[i] ?? point
+		return { x1: previous.x, y1: previous.y, x2: point.x, y2: point.y }
+	})
+	/** The fill under the line, as a column per day rather than a closed path, for the same reason. */
+	const areaBars = days.map((d, i) => ({
+		x: xOf(i),
+		width: (i === days.length - 1 ? 1 - EDGE : xOf(i + 1)) - xOf(i),
+		y: yFor(d.users),
+	}))
+
+	// Five ticks rounded to whole people: a head count has no meaningful fraction, so the axis is in the integers the line is.
+	const ticks = Array.from({ length: 5 }, (_, i) => Math.round((max / 4) * i))
+	const labelEvery = Math.max(1, Math.ceil(days.length / 14))
+	const first = days[0]?.day
+	const last = days[days.length - 1]?.day
+
+	return (
+		<div>
+			<p className="hl-hint" style={{ fontSize: "0.78rem", marginBottom: "0.75rem" }}>
+				<span
+					aria-hidden="true"
+					style={{
+						display: "inline-block",
+						width: "0.7rem",
+						height: "0.15rem",
+						background: "var(--color-teal)",
+						marginRight: "0.35rem",
+						verticalAlign: "middle",
+					}}
+				/>
+				active users (15+ minutes tracked) – averaging {fmtInt(Math.round(mean))} a day, peaking at {fmtInt(peak)}
+			</p>
+			{/* One scale column, pinned to the chart's own row so each label sits on the gridline it names. */}
+			<div style={{ display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)", alignItems: "start" }}>
+				<div style={{ position: "relative", width: "2.6rem", height: `${CHART_H}px` }}>
+					{ticks.map((t, i) => (
+						<span
+							key={`t${i}`}
+							aria-hidden="true"
+							style={{
+								position: "absolute",
+								right: 6,
+								top: yFor(t),
+								transform: "translateY(-50%)",
+								fontSize: "0.65rem",
+								fontVariantNumeric: "tabular-nums",
+								color: "var(--color-teal-ink)",
+							}}
+						>
+							{fmtInt(t)}
+						</span>
+					))}
+					<span
+						aria-hidden="true"
+						style={{
+							position: "absolute",
+							right: 6,
+							top: -1,
+							fontSize: "0.6rem",
+							lineHeight: 1,
+							color: "var(--color-ink-muted)",
+						}}
+					>
+						users
+					</span>
+				</div>
+
+				<div>
+					<svg
+						width="100%"
+						height={CHART_H}
+						role="img"
+						aria-label={`Daily active users from ${first} to ${last}: averaging ${fmtInt(Math.round(mean))} a day and peaking at ${fmtInt(peak)}`}
+						style={{ display: "block" }}
+					>
+						{ticks.map((t, i) => (
+							<line
+								key={`g${i}`}
+								x1={pct(EDGE)}
+								x2={pct(1 - EDGE)}
+								y1={yFor(t)}
+								y2={yFor(t)}
+								stroke="var(--color-line-soft)"
+								strokeWidth="1"
+							/>
+						))}
+						{areaBars.map((bar, i) => (
+							<rect
+								key={`a${i}`}
+								x={pct(bar.x)}
+								y={bar.y}
+								width={pct(bar.width)}
+								height={PAD_T + plotH - bar.y}
+								fill="var(--color-teal)"
+								opacity="0.1"
+							/>
+						))}
+						{segments.map((segment, i) => (
+							<line
+								key={`l${i}`}
+								x1={pct(segment.x1)}
+								y1={segment.y1}
+								x2={pct(segment.x2)}
+								y2={segment.y2}
+								stroke="var(--color-teal)"
+								strokeWidth="1.75"
+								strokeLinecap="round"
+							/>
+						))}
+						{days.map((d, i) => (
+							<circle key={d.day} cx={pct(xOf(i))} cy={yFor(d.users)} r="1.6" fill="var(--color-teal)">
+								<title>{`${d.day}: ${fmtInt(d.users)} active ${d.users === 1 ? "person" : "people"}`}</title>
+							</circle>
+						))}
+					</svg>
+					<div
+						aria-hidden="true"
+						style={{
+							display: "grid",
+							gridTemplateColumns: `repeat(${days.length}, 1fr)`,
+							gap: "1px",
+							marginTop: "4px",
+							// The plot leaves EDGE either side, so the labels take the same inset and sit under their dots.
+							paddingLeft: pct(EDGE),
+							paddingRight: pct(EDGE),
+							fontSize: "0.65rem",
+							color: "var(--color-ink-muted)",
+						}}
+					>
+						{days.map((d, i) =>
+							i % labelEvery === 0 ? (
+								<div
+									key={d.day}
+									style={{
+										gridColumn: `${i + 1} / span ${Math.min(labelEvery, days.length - i)}`,
+										overflow: "hidden",
+										textOverflow: "ellipsis",
+										whiteSpace: "nowrap",
+									}}
+								>
+									{d.day.slice(5)}
+								</div>
+							) : null,
+						)}
+					</div>
+				</div>
+			</div>
 		</div>
 	)
 }

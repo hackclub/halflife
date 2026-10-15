@@ -33,6 +33,15 @@ const ACTIVE_DAY_MIN_HOURS = 0.25
  */
 const roundHours = (hours: number): number => Math.round(hours * 1e6) / 1e6
 
+/**
+ * Whether a day's tracked time reaches the active bar.
+ *
+ * The one expression of the rule, shared by the per-person rebuild below and the admin overview's DAU chart: two copies would be two answers to "how many people were active" that could drift apart, which is the whole reason `UserDay` exists to hold one.
+ */
+export function isActiveDay(hours: number): boolean {
+	return roundHours(hours) >= ACTIVE_DAY_MIN_HOURS
+}
+
 async function quietly(label: string, fn: () => Promise<unknown>): Promise<void> {
 	try {
 		await fn()
@@ -86,7 +95,7 @@ async function rebuildActiveDays(userId: string, programTimezone: string): Promi
 		seen.hours += s.hoursClaimed
 		if (s.createdAt < seen.firstSeenAt) seen.firstSeenAt = s.createdAt
 	}
-	const days = [...totals].filter(([, day]) => roundHours(day.hours) >= ACTIVE_DAY_MIN_HOURS)
+	const days = [...totals].filter(([, day]) => isActiveDay(day.hours))
 	await prisma.$transaction([
 		prisma.userDay.deleteMany({ where: { userId } }),
 		prisma.userDay.createMany({ data: days.map(([day, { firstSeenAt }]) => ({ userId, day, firstSeenAt })) }),

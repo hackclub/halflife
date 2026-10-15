@@ -1204,7 +1204,7 @@ async function bodies() {
 				!reopenedIds.includes("ticket_resolved"),
 		)
 		const restored = reopened.find((b) => b.block_id === "self_resolve_actions")
-		const restoredElements = ((restored?.elements ?? []) as { value?: string }[])
+		const restoredElements = (restored?.elements ?? []) as { value?: string }[]
 		const restoredValues = restoredElements.map((el) => String(el.value ?? ""))
 		check(
 			"tickets · restored buttons point at the new mirror",
