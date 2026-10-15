@@ -16,6 +16,7 @@ import {
 	ShopOrderStatus,
 	Theme,
 } from "@/app/generated/prisma/enums"
+import { isActiveDay } from "@/lib/analytics"
 import { GOAL_OPTIONS } from "@/lib/config/goal"
 import { getStarterProject, STARTER_PROJECT_TIER, stepIndexOf } from "@/lib/config/onboarding"
 import { getThemeDef, scheduleForWeek, TOTAL_WEEKS, WARMUP_THEME, WARMUP_WEEK_ID } from "@/lib/config/program"
@@ -27,7 +28,7 @@ import { pctOf, round1 } from "@/lib/numbers"
 import { safeDecrypt } from "@/lib/pii"
 import { getPrinterQualification, type PrinterQualification } from "@/lib/printer"
 import prisma from "@/lib/prisma"
-import { getProgramSettings, startOfDay } from "@/lib/program"
+import { effectiveDateFor, getProgramSettings, startOfDay } from "@/lib/program"
 import { countryOfTimezone, REGIONS, type RegionId, regionOfTimezone } from "@/lib/regions"
 import { shopOrderStaffSelect } from "@/lib/shop"
 
@@ -1061,6 +1062,70 @@ export async function getDailyActivity(): Promise<DayActivity[]> {
 		})
 	}
 	return out
+}
+
+export type ActiveDay = {
+	/** YYYY-MM-DD in the program timezone. */
+	day: string
+	/** People whose tracked time that day reached 15 minutes. */
+	users: number
+}
+
+/**
+ * Daily active users – people whose tracked time on a day reached 15 minutes – and today's count.
+ *
+ * Derived from the sessions themselves rather than read off `UserDay`, which is the same figure stored: that table is only rebuilt when somebody writes a session, so a deployment whose `analytics:backfill` has not run reads nearly empty there, while every other chart on this page reads the sessions directly. The rule is the one `UserDay` is built on (`isActiveDay`), applied in aggregate, so the two cannot mean different things – only one of them can be stale.
+ *
+ * A person counts once a day however many entries they wrote, and the bar is on the day's total rather than one entry: two ten-minute entries make a day active just as one twenty-minute entry does.
+ *
+ * Gap-filled from the first active day through today, so a quiet day is a zero on the line rather than a missing point and the last point is today – the same day the counter beside the chart reports.
+ */
+export async function getDailyActiveUsers(): Promise<{ days: ActiveDay[]; today: number }> {
+	const { programTimezone } = await getProgramSettings()
+	const today = effectiveDateFor(new Date(), programTimezone)
+
+	const sessions = await prisma.workSession.findMany({
+		where: { deletedAt: null, themeProject: { deletedAt: null } },
+		select: {
+			effectiveDate: true,
+			createdAt: true,
+			hoursClaimed: true,
+			// A session belongs to the project, not the person, so the user is reached through it.
+			themeProject: { select: { userId: true } },
+		},
+	})
+
+	// day → (user → that person's hours that day), so the threshold is applied to a whole day rather than one entry.
+	const totals = new Map<string, Map<string, number>>()
+	for (const s of sessions) {
+		const day = s.effectiveDate ?? effectiveDateFor(s.createdAt, programTimezone)
+		let users = totals.get(day)
+		if (!users) {
+			users = new Map()
+			totals.set(day, users)
+		}
+		users.set(s.themeProject.userId, (users.get(s.themeProject.userId) ?? 0) + s.hoursClaimed)
+	}
+
+	const byDay = new Map<string, number>()
+	let first: string | null = null
+	for (const [day, users] of totals) {
+		let active = 0
+		for (const hours of users.values()) if (isActiveDay(hours)) active++
+		if (active === 0) continue
+		byDay.set(day, active)
+		if (first === null || day < first) first = day
+	}
+
+	const activeToday = byDay.get(today) ?? 0
+	if (!first) return { days: [], today: activeToday }
+
+	const days: ActiveDay[] = []
+	for (let at = Date.parse(`${first}T00:00:00Z`); at <= Date.parse(`${today}T00:00:00Z`); at += 86_400_000) {
+		const day = new Date(at).toISOString().slice(0, 10)
+		days.push({ day, users: byDay.get(day) ?? 0 })
+	}
+	return { days, today: activeToday }
 }
 
 export type GoalDayActivity = {
