@@ -178,6 +178,12 @@ export function parseShopCsv(text: string): { items: ShopCsvItem[]; problems: Sh
 		const gated = bool(cell("gated"))
 		if (gated === "bad") say(`Gated "${cell("gated").trim()}" should be yes or no.`)
 
+		// Number("") is 0, so a blank cell would import a free item; it is refused like any other bad value.
+		if (cell("price").trim() === "") {
+			say("price: Price is required.")
+			continue
+		}
+
 		const cost = cell("cost").trim()
 		const image = cell("image").trim()
 		const parsed = shopItemSchema.safeParse({

@@ -162,6 +162,8 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 		tier = chosen
 	}
 
+	// Frozen before the snapshot read, so sessions created after it are not stamped as reviewed below.
+	const snapshotAt = new Date()
 	const breakdown = await getHoursBreakdown(project.id, phase, { live: approving })
 	// A reviewer (human or Ari) who supplied the hours explicitly has already covered the underpayment risk that a stale Hackatime reading creates, so staleness must not block a decision that does not depend on the live value.
 	if (approving && input.hoursOverride == null && breakdown.hackatimeStale) {
@@ -231,8 +233,15 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 
 		if (approving) {
 			// Accept every unreviewed session at its claimed hours, so the per-session numbers stay consistent with the frozen total.
+			// Only sessions in the snapshot: one created after it was never counted in the frozen total.
 			await tx.workSession.updateMany({
-				where: { themeProjectId: project.id, phase, deletedAt: null, hoursApproved: null },
+				where: {
+					themeProjectId: project.id,
+					phase,
+					deletedAt: null,
+					hoursApproved: null,
+					createdAt: { lt: snapshotAt },
+				},
 				data: { reviewedAt: new Date(), reviewedById: input.reviewerId },
 			})
 		}

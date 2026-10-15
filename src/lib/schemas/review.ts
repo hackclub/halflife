@@ -60,7 +60,8 @@ export const hoursDecisionSchema = z
 						.object({
 							kind: z.literal("hackatime"),
 							id: cuid,
-							hoursApproved: z.number().min(0).max(2000),
+							// Matches the decision override ceiling, so per-source approvals cannot exceed what a decision-level override allows.
+							hoursApproved: z.number().min(0).max(168),
 						})
 						.strict(),
 				]),
