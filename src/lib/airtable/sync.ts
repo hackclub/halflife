@@ -307,10 +307,10 @@ export async function findUnsyncedSubmissions(): Promise<{ themeProjectId: strin
 			const written = synced.some(s => {
 				const meta = s.metadata as { phase?: string; recordId?: string } | null
 				return (
-					s.targetId === p.id &&
-					meta?.phase === phase &&
-					typeof meta.recordId === "string" &&
-					(!submittedAt || s.createdAt >= submittedAt)
+					s.targetId === p.id
+					&& meta?.phase === phase
+					&& typeof meta.recordId === "string"
+					&& (!submittedAt || s.createdAt >= submittedAt)
 				)
 			})
 			if (!written) out.push({ themeProjectId: p.id, phase })

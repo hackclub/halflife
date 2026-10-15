@@ -14,9 +14,9 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 		// Said out loud, because a base without the user-id column drains cleanly forever while quietly never filling it, and the column is what the Loops sync joins on.
 		if (result.skippedUserId > 0) {
 			console.warn(
-				`[airtable] rsvp-drain wrote ${result.updated + result.created} row(s) but skipped the user id on ` +
-					`${result.skippedUserId} of them: the Signups table has no \`Half-Life User ID\` column. Add it and ` +
-					"the next run fills it.",
+				`[airtable] rsvp-drain wrote ${result.updated + result.created} row(s) but skipped the user id on `
+					+ `${result.skippedUserId} of them: the Signups table has no \`Half-Life User ID\` column. Add it and `
+					+ "the next run fills it.",
 			)
 		}
 	}

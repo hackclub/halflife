@@ -1302,8 +1302,8 @@ export async function getFirstProjectStats(): Promise<FirstProjectStat[]> {
 
 	// Starter ids outlive the catalogue: resolve a title when one exists, else show the id prettified rather than dropped.
 	const pretty = (id: string) =>
-		getStarterProject(id)?.title ??
-		id
+		getStarterProject(id)?.title
+		?? id
 			.split(/[-_]/)
 			.map(w => (w ? w[0]?.toUpperCase() + w.slice(1) : w))
 			.join(" ")

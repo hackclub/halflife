@@ -162,8 +162,8 @@ export async function drainRsvpBuffer(limit = 50, opts: { dryRun?: boolean } = {
 	if (skippedColumns.length > 0) {
 		// Said once per drain, naming them, because "the RSVP drain is failing" is otherwise indistinguishable from "Airtable is down".
 		console.warn(
-			`[airtable] rsvp-drain: ${RSVP.tableId} has no column(s) ${skippedColumns.join(", ")}; those values are not ` +
-				"sent. Everything else in the row is still written.",
+			`[airtable] rsvp-drain: ${RSVP.tableId} has no column(s) ${skippedColumns.join(", ")}; those values are not `
+				+ "sent. Everything else in the row is still written.",
 		)
 	}
 

@@ -296,11 +296,11 @@ export function Markdown({ source, className }: { source: string; className?: st
 		// A paragraph runs until a blank line or the start of another block.
 		const para: string[] = []
 		while (
-			i < lines.length &&
-			at(i).trim() &&
-			!/^(#{1,3}\s|>|```|---|\*\*\*|___)/.test(at(i)) &&
-			!bullet.test(at(i)) &&
-			!number.test(at(i))
+			i < lines.length
+			&& at(i).trim()
+			&& !/^(#{1,3}\s|>|```|---|\*\*\*|___)/.test(at(i))
+			&& !bullet.test(at(i))
+			&& !number.test(at(i))
 		) {
 			para.push(at(i))
 			i += 1

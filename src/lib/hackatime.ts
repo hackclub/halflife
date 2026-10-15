@@ -86,11 +86,11 @@ export function spansFrom(body: unknown): { spans: HackatimeSpan[]; stale: boole
 		const start = (row as { start_time?: unknown })?.start_time
 		const end = (row as { end_time?: unknown })?.end_time
 		if (
-			typeof start !== "number" ||
-			typeof end !== "number" ||
-			!Number.isFinite(start) ||
-			!Number.isFinite(end) ||
-			end <= start
+			typeof start !== "number"
+			|| typeof end !== "number"
+			|| !Number.isFinite(start)
+			|| !Number.isFinite(end)
+			|| end <= start
 		) {
 			continue
 		}

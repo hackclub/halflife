@@ -48,9 +48,9 @@ function routeTable(): Map<string, Set<string>> {
 			if (new RegExp(`export (const|async function) ${method}\\b`).test(source)) found.add(method)
 		}
 		const url =
-			"/" +
+			"/"
 			// Either separator: `relative` hands back backslashes on Windows.
-			relative("src/app", file.replace(/[\\/]route\.ts$/, ""))
+			+ relative("src/app", file.replace(/[\\/]route\.ts$/, ""))
 				.split(/[\\/]/)
 				.filter(segment => !segment.startsWith("("))
 				.join("/")
@@ -699,8 +699,8 @@ async function bodies() {
 	// A reviewer override is a decision, not a computed value: it must not be reported as an unchecked overlap either, or every decided phase would carry a warning it cannot act on.
 	check(
 		"rollup · an overridden link is never an unchecked overlap",
-		rollUpHours(oneEntry, [{ hoursApproved: 5, cachedSeconds: 7200, cachedSpans: null }], null)
-			.hackatimeOverlapUnknown === false,
+		rollUpHours(oneEntry, [{ hoursApproved: 5, cachedSeconds: 7200, cachedSpans: null }], null).hackatimeOverlapUnknown
+			=== false,
 	)
 
 	// A caller that narrows its Prisma select hands over `undefined` where a number was expected, and `undefined !== null` used to read as an override and add NaN to the total. NaN is the worst shape of wrong here: it renders as "NaNh" in one place and leaves the rest of the phase looking fine.
@@ -755,8 +755,8 @@ async function bodies() {
 	const hourRecording = timelapseWindow(1_700_000_000_000, 3600)
 	check(
 		"overlap · an untracked gap inside a recording is not overlap",
-		hourRecording !== null &&
-			overlapSeconds(
+		hourRecording !== null
+			&& overlapSeconds(
 				[hourRecording],
 				[
 					{ start: 1_700_000_000, end: 1_700_000_600 },
@@ -769,8 +769,8 @@ async function bodies() {
 	check("overlap · no tracked time is no overlap", overlapSeconds(twoRecordings, []) === 0)
 	check(
 		"overlap · two spans touching at a point share no time",
-		hourRecording !== null &&
-			overlapSeconds(
+		hourRecording !== null
+			&& overlapSeconds(
 				[hourRecording],
 				[
 					{ start: 1_699_999_400, end: 1_700_000_000 },
@@ -794,8 +794,8 @@ async function bodies() {
 		mergeIntervals([
 			{ start: 0, end: 100 },
 			{ start: 50, end: 150 },
-		]).length === 1 &&
-			mergeIntervals([
+		]).length === 1
+			&& mergeIntervals([
 				{ start: 0, end: 100 },
 				{ start: 50, end: 150 },
 			])[0]?.end === 150,
@@ -834,9 +834,9 @@ async function bodies() {
 	])
 	check(
 		"overlap · the fetch window spans every recording plus an hour",
-		fetchWindow !== null &&
-			fetchWindow.fromSeconds === 1_700_000_000 - 3600 &&
-			fetchWindow.toSeconds === 1_700_010_600 + 3600,
+		fetchWindow !== null
+			&& fetchWindow.fromSeconds === 1_700_000_000 - 3600
+			&& fetchWindow.toSeconds === 1_700_010_600 + 3600,
 	)
 	check("overlap · no recordings means no window to fetch", spanWindowFor([]) === null)
 
@@ -1077,8 +1077,8 @@ async function bodies() {
 
 		check(
 			"countdown · a full span splits into its units",
-			JSON.stringify(countdownParts(3 * DAY + 9 * HOUR + 37 * MIN + 11 * 1000)) ===
-				JSON.stringify({ days: 3, hours: 9, minutes: 37, seconds: 11 }),
+			JSON.stringify(countdownParts(3 * DAY + 9 * HOUR + 37 * MIN + 11 * 1000))
+				=== JSON.stringify({ days: 3, hours: 9, minutes: 37, seconds: 11 }),
 		)
 		check(
 			"countdown · minutes carry into hours",
@@ -1185,9 +1185,9 @@ async function bodies() {
 		const resolvedIds = resolved.map(b => b.block_id)
 		check(
 			"tickets · resolving swaps actions for note plus reopen",
-			!resolvedIds.includes("self_resolve_actions") &&
-				resolvedIds.includes("ticket_resolved") &&
-				resolvedIds.includes("reopen_actions"),
+			!resolvedIds.includes("self_resolve_actions")
+				&& resolvedIds.includes("ticket_resolved")
+				&& resolvedIds.includes("reopen_actions"),
 		)
 		check(
 			"tickets · reminders survive resolving",
@@ -1199,9 +1199,9 @@ async function bodies() {
 		const reopenedIds = reopened.map(b => b.block_id)
 		check(
 			"tickets · reopening restores resolve buttons with the fresh mirror",
-			reopenedIds.includes("self_resolve_actions") &&
-				!reopenedIds.includes("reopen_actions") &&
-				!reopenedIds.includes("ticket_resolved"),
+			reopenedIds.includes("self_resolve_actions")
+				&& !reopenedIds.includes("reopen_actions")
+				&& !reopenedIds.includes("ticket_resolved"),
 		)
 		const restored = reopened.find(b => b.block_id === "self_resolve_actions")
 		const restoredElements = (restored?.elements ?? []) as { value?: string }[]

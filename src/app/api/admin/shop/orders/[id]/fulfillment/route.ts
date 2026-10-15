@@ -29,9 +29,9 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 	if (!FULFILLMENT_ORDER_STATUSES.includes(before.status)) return fail("CONFLICT", "This order was rejected")
 	// The method can still be recorded – it may have gone out before the cancellation – but the stage cannot pretend it is still shipping.
 	if (
-		before.status === ShopOrderStatus.CANCELLED &&
-		body.stage !== undefined &&
-		body.stage !== ShopFulfillmentStage.CANCELLED
+		before.status === ShopOrderStatus.CANCELLED
+		&& body.stage !== undefined
+		&& body.stage !== ShopFulfillmentStage.CANCELLED
 	) {
 		return fail("CONFLICT", "The participant cancelled this order")
 	}

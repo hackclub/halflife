@@ -89,8 +89,8 @@ export function ProjectDetails({
 							{locked}.
 						</p>
 					)}
-					{unsubmit &&
-						(confirming ? (
+					{unsubmit
+						&& (confirming ? (
 							<div className="flex max-w-[16rem] flex-col items-end gap-1.5 text-right">
 								<p className="text-[0.82rem] leading-snug text-navy">
 									Take {unsubmit.label} out of review? You can submit it again when you&apos;re done.

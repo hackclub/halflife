@@ -38,8 +38,8 @@ function rejectedFields(err: AirtableError, fields: Record<string, unknown>): st
 	return Object.keys(fields).filter(k => {
 		const v = fields[k]
 		return (
-			(typeof v === "string" && v.length > 0 && message.includes(v)) ||
-			(typeof v === "number" && message.includes(`"${v}"`))
+			(typeof v === "string" && v.length > 0 && message.includes(v))
+			|| (typeof v === "number" && message.includes(`"${v}"`))
 		)
 	})
 }
@@ -57,12 +57,12 @@ async function findExistingRow(
 	const projectName = fields[fieldKey(YSWS_SUBMISSION.fields.projectName)]
 	const stage = fields[fieldKey(YSWS_SUBMISSION.fields.stage)]
 	if (
-		typeof email !== "string" ||
-		email.length === 0 ||
-		typeof projectName !== "string" ||
-		projectName.length === 0 ||
-		typeof stage !== "string" ||
-		stage.length === 0
+		typeof email !== "string"
+		|| email.length === 0
+		|| typeof projectName !== "string"
+		|| projectName.length === 0
+		|| typeof stage !== "string"
+		|| stage.length === 0
 	) {
 		return null
 	}

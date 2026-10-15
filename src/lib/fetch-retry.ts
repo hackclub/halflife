@@ -29,12 +29,12 @@ function unreachable(err: unknown): boolean {
 	if (!(err instanceof Error)) return true
 	const code = (err as { cause?: { code?: string } }).cause?.code ?? (err as { code?: string }).code
 	if (
-		code === "ECONNRESET" ||
-		code === "ECONNREFUSED" ||
-		code === "ETIMEDOUT" ||
-		code === "EAI_AGAIN" ||
-		code === "UND_ERR_CONNECT_TIMEOUT" ||
-		code === "UND_ERR_SOCKET"
+		code === "ECONNRESET"
+		|| code === "ECONNREFUSED"
+		|| code === "ETIMEDOUT"
+		|| code === "EAI_AGAIN"
+		|| code === "UND_ERR_CONNECT_TIMEOUT"
+		|| code === "UND_ERR_SOCKET"
 	) {
 		return true
 	}

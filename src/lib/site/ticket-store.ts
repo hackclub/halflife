@@ -113,12 +113,12 @@ function isTicketOpeningMessage(
 	message: SlackHistoryMessage,
 ): message is SlackHistoryMessage & { user: string; ts: string } {
 	return (
-		message.type === "message" &&
-		(!message.subtype || message.subtype === "file_share") &&
-		!message.bot_id &&
-		Boolean(message.user) &&
-		Boolean(message.ts) &&
-		(!message.thread_ts || message.thread_ts === message.ts)
+		message.type === "message"
+		&& (!message.subtype || message.subtype === "file_share")
+		&& !message.bot_id
+		&& Boolean(message.user)
+		&& Boolean(message.ts)
+		&& (!message.thread_ts || message.thread_ts === message.ts)
 	)
 }
 

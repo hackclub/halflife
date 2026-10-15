@@ -347,13 +347,13 @@ export async function syncLoopsProperties(
 	// A join that stops matching does not throw: rows are skipped and counted, so the run reports success while writing nothing, and the only symptom is that the columns stay empty. That is precisely how this went unnoticed, so a collapse in the match rate is called out loudly rather than returned as a number somebody has to notice. Most often it means the base has no `Half-Life User ID` column, or the RSVP drain has not been running to fill it – either way the fix is on the Airtable side, not here.
 	if (degraded) {
 		console.error(
-			`[airtable] Loops sync matched only ${matched}/${values.length} Half Life users to a Signups row ` +
-				`(${matchedById} by id, ${matchedByRecord} by drained record id, ${matchedByEmail} by email) – ` +
-				`${result.unmatched} were skipped and their Loops columns left empty. In order of likelihood: ` +
-				"their rsvp-drain row hit the attempt cap while the table was missing a column the drain sends, and a " +
-				"row at the cap is never retried – reset `syncAttempts` on those to give them another go; " +
-				"their Signups row was written straight from the landing page with no buffer entry naming it, so neither the user id nor the record id joins can reach it; " +
-				"or the person never had a Signups row at all.",
+			`[airtable] Loops sync matched only ${matched}/${values.length} Half Life users to a Signups row `
+				+ `(${matchedById} by id, ${matchedByRecord} by drained record id, ${matchedByEmail} by email) – `
+				+ `${result.unmatched} were skipped and their Loops columns left empty. In order of likelihood: `
+				+ "their rsvp-drain row hit the attempt cap while the table was missing a column the drain sends, and a "
+				+ "row at the cap is never retried – reset `syncAttempts` on those to give them another go; "
+				+ "their Signups row was written straight from the landing page with no buffer entry naming it, so neither the user id nor the record id joins can reach it; "
+				+ "or the person never had a Signups row at all.",
 		)
 	}
 	if (opts.dryRun) {

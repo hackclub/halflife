@@ -200,8 +200,8 @@ export function parseShopCsv(text: string): { items: ShopCsvItem[]; problems: Sh
 		if (!parsed.success) {
 			for (const issue of parsed.error.issues) {
 				const field =
-					{ id: "slug", priceCredits: "price", costUsd: "cost", imageUrl: "image" }[String(issue.path[0])] ??
-					String(issue.path[0] ?? "row")
+					{ id: "slug", priceCredits: "price", costUsd: "cost", imageUrl: "image" }[String(issue.path[0])]
+					?? String(issue.path[0] ?? "row")
 				say(`${field}: ${issue.message}`)
 			}
 			continue

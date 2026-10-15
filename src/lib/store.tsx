@@ -1062,9 +1062,9 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 						cid => save.progress[cid]?.done ?? false,
 						submitHours,
 						// Onboarding made week one's project and it has since been deleted: `projects` only lists live, named ones.
-						meta.id === 1 &&
-							(save.progress[ONBOARDING_CHECKPOINT_ID]?.done ?? false) &&
-							!save.projects.some(p => p.weekId === 1),
+						meta.id === 1
+							&& (save.progress[ONBOARDING_CHECKPOINT_ID]?.done ?? false)
+							&& !save.projects.some(p => p.weekId === 1),
 					),
 				}
 			}),
@@ -1270,8 +1270,8 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	 */
 	const totalHours = useMemo(
 		() =>
-			weeks.reduce((n, w) => n + weekHours(w.id), 0) +
-			save.projects.reduce((n, p) => {
+			weeks.reduce((n, w) => n + weekHours(w.id), 0)
+			+ save.projects.reduce((n, p) => {
 				const week = p.weekId === WARMUP_WEEK_ID ? warmupWeekOf(p.id) : null
 				return week ? n + hoursOf(week) : n
 			}, 0),

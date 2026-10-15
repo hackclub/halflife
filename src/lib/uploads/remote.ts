@@ -132,9 +132,9 @@ export function sniffImage(bytes: Buffer): { ext: string; contentType: string } 
 		return { ext: "gif", contentType: "image/gif" }
 	}
 	if (
-		bytes.length >= 12 &&
-		bytes.subarray(0, 4).toString("latin1") === "RIFF" &&
-		bytes.subarray(8, 12).toString("latin1") === "WEBP"
+		bytes.length >= 12
+		&& bytes.subarray(0, 4).toString("latin1") === "RIFF"
+		&& bytes.subarray(8, 12).toString("latin1") === "WEBP"
 	) {
 		return { ext: "webp", contentType: "image/webp" }
 	}

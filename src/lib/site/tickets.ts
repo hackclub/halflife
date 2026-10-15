@@ -157,10 +157,10 @@ export function resolveBlocks(
 ): SlackBlock[] {
 	const kept = (blocks ?? []).filter(
 		block =>
-			block.block_id !== TICKET_ACTIONS_BLOCK_ID &&
-			block.block_id !== SELF_RESOLVE_ACTIONS_BLOCK_ID &&
-			block.block_id !== REOPEN_ACTIONS_BLOCK_ID &&
-			block.block_id !== RESOLVED_CONTEXT_BLOCK_ID,
+			block.block_id !== TICKET_ACTIONS_BLOCK_ID
+			&& block.block_id !== SELF_RESOLVE_ACTIONS_BLOCK_ID
+			&& block.block_id !== REOPEN_ACTIONS_BLOCK_ID
+			&& block.block_id !== RESOLVED_CONTEXT_BLOCK_ID,
 	)
 	kept.push(resolvedContext(byUserId, note))
 	if (ref) kept.push(reopenActions(ref))

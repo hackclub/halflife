@@ -146,10 +146,10 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 
 	// A build cannot be approved before its design is. Submitting out of order is fine – see canSubmitPhase – but paying out of order is not. A warm-up project has no design to wait for: its one phase is whatever the form collected.
 	if (
-		approving &&
-		phase === Phase.BUILD &&
-		project.theme !== Theme.WARMUP &&
-		project.designStatus !== PhaseStatus.approved
+		approving
+		&& phase === Phase.BUILD
+		&& project.theme !== Theme.WARMUP
+		&& project.designStatus !== PhaseStatus.approved
 	) {
 		throw new HttpError("DESIGN_NOT_APPROVED", "Approve the design phase for this theme before approving the build")
 	}

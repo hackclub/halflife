@@ -124,10 +124,10 @@ export type UploadedObjectPage = {
 
 export function isUploadConfigured(): boolean {
 	return !!(
-		process.env.S3_ACCESS_KEY_ID &&
-		process.env.S3_SECRET_ACCESS_KEY &&
-		process.env.S3_BUCKET_NAME &&
-		process.env.S3_ENDPOINT
+		process.env.S3_ACCESS_KEY_ID
+		&& process.env.S3_SECRET_ACCESS_KEY
+		&& process.env.S3_BUCKET_NAME
+		&& process.env.S3_ENDPOINT
 	)
 }
 
@@ -293,8 +293,8 @@ function asConfigError(err: unknown): unknown {
 	const fault = (err as { $fault?: string })?.$fault
 	const name = (err as { name?: string })?.name
 	const credentialFault =
-		fault === "client" &&
-		["InvalidArgument", "InvalidAccessKeyId", "SignatureDoesNotMatch", "AccessDenied", "NoSuchBucket"].includes(
+		fault === "client"
+		&& ["InvalidArgument", "InvalidAccessKeyId", "SignatureDoesNotMatch", "AccessDenied", "NoSuchBucket"].includes(
 			name ?? "",
 		)
 	if (!credentialFault) return err

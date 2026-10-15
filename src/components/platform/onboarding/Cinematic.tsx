@@ -387,8 +387,8 @@ export function Cinematic() {
 		const place = (fy: number, scale: number) => {
 			const vh = window.innerHeight
 			node.style.transform =
-				`translate(-50%, -50%) scale(${scale.toFixed(4)}) ` +
-				`translate(${STAGE_W / 2 - COL_X}px, ${STAGE_H / 2 - fy}px)`
+				`translate(-50%, -50%) scale(${scale.toFixed(4)}) `
+				+ `translate(${STAGE_W / 2 - COL_X}px, ${STAGE_H / 2 - fy}px)`
 			if (title.current) title.current.style.transform = `translateY(${((TITLE_Y - fy) * scale + vh / 2).toFixed(1)}px)`
 
 			// Sticky, by hand: a banner tracks its block until the block reaches the top of the frame, holds there, then gets pushed up by the next.

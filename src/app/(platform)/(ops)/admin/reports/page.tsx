@@ -148,9 +148,9 @@ function ReportRow({ report }: { report: ContentReportRow }) {
 			</td>
 			<td>
 				<div className="hl-row">
-					{!subject.gone &&
-						(subject.hideUrl || subject.restoreUrl || subject.hidden) &&
-						(subject.hidden ? (
+					{!subject.gone
+						&& (subject.hideUrl || subject.restoreUrl || subject.hidden)
+						&& (subject.hidden ? (
 							subject.restoreUrl ? (
 								<ActionButton
 									url={subject.restoreUrl}

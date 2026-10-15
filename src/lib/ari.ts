@@ -342,16 +342,16 @@ function ariReviewerLabel(review: AriReview): string {
 /** Ari's approved time is authoritative; fall back to its minutes breakdown. */
 function approvedHoursFrom(review: AriReview): number | null {
 	if (
-		typeof review.approved_hours === "number" &&
-		Number.isFinite(review.approved_hours) &&
-		review.approved_hours >= 0
+		typeof review.approved_hours === "number"
+		&& Number.isFinite(review.approved_hours)
+		&& review.approved_hours >= 0
 	) {
 		return round2(review.approved_hours)
 	}
 	if (
-		typeof review.approved_minutes === "number" &&
-		Number.isFinite(review.approved_minutes) &&
-		review.approved_minutes >= 0
+		typeof review.approved_minutes === "number"
+		&& Number.isFinite(review.approved_minutes)
+		&& review.approved_minutes >= 0
 	) {
 		return round2(review.approved_minutes / 60)
 	}
@@ -387,8 +387,8 @@ async function applyDecision(event: DecisionEvent): Promise<void> {
 		select: { id: true, ariSubmissionId: true, resolvedAt: true },
 	})
 	const open =
-		byShip ??
-		(await prisma.phaseSubmission.findFirst({
+		byShip
+		?? (await prisma.phaseSubmission.findFirst({
 			where: { themeProjectId, phase, resolvedAt: null },
 			orderBy: { createdAt: "desc" },
 			select: { id: true, ariSubmissionId: true, resolvedAt: true },

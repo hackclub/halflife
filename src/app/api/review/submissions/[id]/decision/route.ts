@@ -23,9 +23,9 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 
 	// The tier table is the reviewer's whole vocabulary for funding. Writing a freehand dollar amount straight onto a grant row is an admin action – otherwise REVIEWER quietly carries the authority MANAGE_CREDIT withholds.
 	if (
-		"grantUsdOverride" in body &&
-		body.grantUsdOverride !== undefined &&
-		!hasPermission(gate.roles, Permission.MANAGE_CREDIT)
+		"grantUsdOverride" in body
+		&& body.grantUsdOverride !== undefined
+		&& !hasPermission(gate.roles, Permission.MANAGE_CREDIT)
 	) {
 		return fail("FORBIDDEN", "Overriding the grant amount requires the MANAGE_CREDIT permission")
 	}

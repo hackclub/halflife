@@ -343,8 +343,8 @@ export async function importMacondoProjects(actor: ImportActor, csv: string): Pr
 				(await prisma.user.findFirst({
 					where: { email: { equals: row.email, mode: "insensitive" } },
 					select: { id: true },
-				})) ??
-				(await prisma.user.create({
+				}))
+				?? (await prisma.user.create({
 					data: {
 						email: row.email,
 						emailVerified: false,

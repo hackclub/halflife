@@ -39,11 +39,11 @@ async function namesFor(entries: ProjectReviewStats["leaderboard"]): Promise<Map
 		const user = byEmail.get(entry.email.trim().toLowerCase())
 		names.set(
 			entry.email,
-			(user?.slackId ? slackNames.get(user.slackId) : null) ??
-				user?.displayName ??
-				user?.name ??
-				entry.name ??
-				entry.email,
+			(user?.slackId ? slackNames.get(user.slackId) : null)
+				?? user?.displayName
+				?? user?.name
+				?? entry.name
+				?? entry.email,
 		)
 	}
 	return names

@@ -107,12 +107,12 @@ function isJournalDraft(value: unknown): value is JournalDraft {
 	if (typeof value !== "object" || value === null) return false
 	const v = value as Record<string, unknown>
 	return (
-		(v.tab === "journal" || v.tab === "timelapse") &&
-		typeof v.body === "string" &&
-		typeof v.hoursText === "string" &&
-		Array.isArray(v.picked) &&
-		(!("pinned" in v) || Array.isArray((v as { pinned?: unknown }).pinned)) &&
-		(!("legacy" in v) || Array.isArray((v as { legacy?: unknown }).legacy))
+		(v.tab === "journal" || v.tab === "timelapse")
+		&& typeof v.body === "string"
+		&& typeof v.hoursText === "string"
+		&& Array.isArray(v.picked)
+		&& (!("pinned" in v) || Array.isArray((v as { pinned?: unknown }).pinned))
+		&& (!("legacy" in v) || Array.isArray((v as { legacy?: unknown }).legacy))
 	)
 }
 
@@ -378,11 +378,11 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	useEffect(() => {
 		const cleanBody = cleanBodyForAutosave(body)
 		const hasContent =
-			cleanBody.trim() !== "" ||
-			hoursText.trim() !== "" ||
-			picked.length > 0 ||
-			pinned.length > 0 ||
-			(!editing && tab !== "journal")
+			cleanBody.trim() !== ""
+			|| hoursText.trim() !== ""
+			|| picked.length > 0
+			|| pinned.length > 0
+			|| (!editing && tab !== "journal")
 		// Clips compare as sets against the seed: reordering a pick is not a change.
 		const workingIds = [...picked.map(t => t.id), ...pinned].sort()
 		const seedIds = [...clipSeed.picked.map(t => t.id), ...clipSeed.pinned].sort()

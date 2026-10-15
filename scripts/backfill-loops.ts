@@ -134,9 +134,9 @@ async function main() {
 		console.log(`loops sync skipped: ${result.skipped}`)
 	} else {
 		console.log(
-			`loops sync (${result.dryRun ? "dry run" : "commit"}): users=${result.users} matched=${result.matched} ` +
-				`(by id=${result.matchedById}, by record=${result.matchedByRecord}, by email=${result.matchedByEmail}) ` +
-				`relinked=${result.relinked} unmatched=${result.unmatched} updated=${result.updated} unchanged=${result.unchanged} degraded=${result.degraded}`,
+			`loops sync (${result.dryRun ? "dry run" : "commit"}): users=${result.users} matched=${result.matched} `
+				+ `(by id=${result.matchedById}, by record=${result.matchedByRecord}, by email=${result.matchedByEmail}) `
+				+ `relinked=${result.relinked} unmatched=${result.unmatched} updated=${result.updated} unchanged=${result.unchanged} degraded=${result.degraded}`,
 		)
 		if (result.preview?.length) console.log("preview:", JSON.stringify(result.preview, null, 1))
 		if (!commit) console.log("Pass --commit to link buffer rows and write the Loops columns.")

@@ -93,18 +93,18 @@ async function main() {
 		const rowUserId = r.fields[LOOPS_FIELDS.userId]
 		const rowEmail = r.fields[LOOPS_FIELDS.email]
 		const userId =
-			(typeof rowUserId === "string" && rowUserId) ||
-			bufferByRecord.get(r.id) ||
-			(typeof rowEmail === "string" &&
-				(bufferByEmail.get(rowEmail.trim().toLowerCase()) ?? usersByEmail.get(rowEmail.trim().toLowerCase()))) ||
-			null
+			(typeof rowUserId === "string" && rowUserId)
+			|| bufferByRecord.get(r.id)
+			|| (typeof rowEmail === "string"
+				&& (bufferByEmail.get(rowEmail.trim().toLowerCase()) ?? usersByEmail.get(rowEmail.trim().toLowerCase())))
+			|| null
 		if (!userId) {
 			unmatched.push(r)
 			continue
 		}
 		if (
-			qualifiedIds.has(userId) ||
-			qualifiedEmails.has(typeof rowEmail === "string" ? rowEmail.trim().toLowerCase() : "")
+			qualifiedIds.has(userId)
+			|| qualifiedEmails.has(typeof rowEmail === "string" ? rowEmail.trim().toLowerCase() : "")
 		)
 			fine++
 		else matchedStale.push(r)
