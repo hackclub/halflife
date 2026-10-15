@@ -70,16 +70,15 @@ jobs:
 
             # Static regression checks: no database, no network, no secrets.
             # verify-loops pins the Signups join (id over email, skip-not-throw);
+            # verify-contracts pins the client↔API contract (fetch methods vs
+            # route exports, request bodies vs zod schemas, plus pure-lib pins);
             # verify-forge-write pins the write path's retry/classification with a
-            # scripted fetch. Both are fast and hermetic, so they live in this job
-            # rather than needing the Postgres service below.
-            # Deliberately excluded: verify-contracts is currently red on main
-            # (fetch-method walker misses methods when JSON.stringify precedes
-            # `method:`, plus the buy fixture predates the required
-            # idempotencyKey) – wire it up once the script is fixed, not before.
+            # scripted fetch. All hermetic, so they live in this job rather than
+            # needing the Postgres service below.
             - name: Static regression checks
               run: |
                   bun run verify:loops
+                  bun run verify:contracts
                   bun run verify:forge-write
 
             - name: Build
@@ -152,17 +151,18 @@ jobs:
 
             # DB regression checks, against the freshly migrated + seeded throwaway
             # database above – the same harness the scripts ask for ("against a
-            # scratch database"). Both self-seed timestamped fixtures and delete
+            # scratch database"). Each self-seeds timestamped fixtures and deletes
             # them afterwards; verify-handoff additionally skips its R2 round trip
             # when uploads are unconfigured (as here), so no secrets needed.
-            # Deliberately excluded for now – each fails on main, so wiring them
-            # in would keep CI red:
-            # - verify-ledger: buys a printer through the shop path, but printers
-            #   are now hidden from the shop (src/lib/shop.ts refuses PRINTER
-            #   category) – script predates that split.
-            # - verify-onboarding / verify-store: expect a six-step sequence, but
-            #   onboarding now has seven steps – scripts need the new step added.
+            # verify-ledger pins the money path (approve/unapprove idempotence,
+            # concurrent-purchase lock, single-pot minting); verify-onboarding
+            # pins the first checkpoint (no step-skipping, tier/requestedTier
+            # split); verify-feed pins the doomscroller; verify-store pins the
+            # database→trail seam; verify-handoff pins the phone handoff.
             - name: DB regression checks
               run: |
+                  bun run verify:ledger
+                  bun run verify:onboarding
                   bun run verify:feed
+                  bun run verify:store
                   bun run verify:handoff

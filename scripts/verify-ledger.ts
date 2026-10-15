@@ -266,10 +266,14 @@ async function main() {
 	check("spendable coins buy an upgrade", await saverSpendable(), expectedDesign.spendable - 10)
 	check("the purchase moved nothing locked", await saverBanked(), 0)
 
-	// A printer priced at everything left must succeed too, and empty the pot.
+	// A second upgrade-category item priced at everything left must succeed too,
+	// and empty the pot. Printers themselves are no longer shop-buyable – the
+	// shop hides the PRINTER category and purchase() refuses it, since machines
+	// leave through the goal flow – so the pot-emptying purchase is exercised
+	// with the same buyable category as the upgrade above.
 	const printerItem = await prisma.shopItem.create({
 		data: {
-			category: ShopItemCategory.PRINTER,
+			category: ShopItemCategory.PRINTER_UPGRADE,
 			description: "Priced at the rest of the design mint.",
 			id: `ledger-check-printer-${stamp}`,
 			maxPerUser: 0,
