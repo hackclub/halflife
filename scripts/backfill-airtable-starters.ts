@@ -3,6 +3,7 @@ import { AuditAction, Phase } from "../src/app/generated/prisma/enums"
 import { getAirtableConfig } from "../src/lib/airtable/client"
 import { columnExists } from "../src/lib/airtable/field-probe"
 import { fieldKey, YSWS_SUBMISSION } from "../src/lib/airtable/schema"
+import { recordIdsFromSyncEvents } from "../src/lib/airtable/sync"
 import { updateYswsRecord } from "../src/lib/airtable/ysws"
 import prisma from "../src/lib/prisma"
 
@@ -19,22 +20,6 @@ import prisma from "../src/lib/prisma"
  */
 
 const commit = process.argv.includes("--commit")
-
-/** The newest record id per `<projectId>:<phase>` that has not since been removed. */
-function latestRecordIds(events: { targetId: string | null; metadata: unknown }[]): Map<string, string> {
-	const byPhase = new Map<string, string>()
-	const settled = new Set<string>()
-	for (const row of events) {
-		const meta = row.metadata as { phase?: string; recordId?: string; removed?: boolean } | null
-		if (!row.targetId || !meta?.phase) continue
-		const key = `${row.targetId}:${meta.phase}`
-		// The rows arrive newest first, so the first one seen for a phase is the one that stands.
-		if (settled.has(key)) continue
-		settled.add(key)
-		if (!meta.removed && typeof meta.recordId === "string") byPhase.set(key, meta.recordId)
-	}
-	return byPhase
-}
 
 async function main() {
 	const config = getAirtableConfig()
@@ -65,7 +50,7 @@ async function main() {
 		select: { metadata: true, targetId: true },
 		where: { action: AuditAction.AIRTABLE_SYNC_SUCCESS, targetId: { in: projects.map(p => p.id) } },
 	})
-	const records = latestRecordIds(events)
+	const records = recordIdsFromSyncEvents(events)
 
 	const targets: { title: string; phase: Phase; recordId: string }[] = []
 	let withoutRow = 0
