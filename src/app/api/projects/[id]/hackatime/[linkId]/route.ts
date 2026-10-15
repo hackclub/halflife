@@ -1,4 +1,4 @@
-import { PhaseStatus } from "@/app/generated/prisma/enums"
+import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
 import { fail, ok, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { requireSession } from "@/lib/guards"
@@ -6,6 +6,9 @@ import prisma from "@/lib/prisma"
 import { getSubmissionAccess, isPhaseDecided, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
 
 type Params = { params: Promise<{ id: string; linkId: string }> }
+
+/** Statuses in which a phase's links may still be removed: a draft, or one an admin or reviewer sent back for changes. */
+const EDITABLE_PHASE_STATUSES = [PhaseStatus.draft, PhaseStatus.update_requested]
 
 export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 	const gate = await requireSession()
@@ -36,7 +39,19 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 	// A reviewer-set override is part of a decision; removing the link would silently drop hours someone was already credited for.
 	if (link.hoursApproved !== null) return fail("PHASE_LOCKED", "A reviewer has set hours on this link")
 
-	await prisma.hackatimeLink.delete({ where: { id: linkId } })
+	// Conditional on the phase still being editable and the link still unreviewed: a submit or a decision that commits between the checks above and this delete makes it match nothing, and the link stays.
+	const removed = await prisma.hackatimeLink.deleteMany({
+		where: {
+			id: linkId,
+			themeProjectId: id,
+			hoursApproved: null,
+			OR: [
+				{ phase: Phase.DESIGN, themeProject: { designStatus: { in: EDITABLE_PHASE_STATUSES } } },
+				{ phase: Phase.BUILD, themeProject: { buildStatus: { in: EDITABLE_PHASE_STATUSES } } },
+			],
+		},
+	})
+	if (removed.count !== 1) return fail("PHASE_LOCKED", "This phase moved while its link was being removed")
 
 	await logAudit({
 		action: AuditAction.USER_UNLINK_HACKATIME,
