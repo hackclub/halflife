@@ -22,8 +22,8 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	if (parsed.error) return parsed.error
 
 	const post = await prisma.post.findFirst({
-		where: { id, userId: gate.user.id, deletedAt: null },
 		select: { id: true, themeProjectId: true },
+		where: { deletedAt: null, id, userId: gate.user.id },
 	})
 	if (!post) return fail("NOT_FOUND", "Reel not found")
 
@@ -36,11 +36,11 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	}
 
 	const taken = await prisma.publicReel.findMany({
-		where: { url: { in: links.map((l) => l.url) } },
 		select: { url: true, userId: true },
+		where: { url: { in: links.map(l => l.url) } },
 	})
 	for (const row of taken) {
-		const link = links.find((l) => l.url === row.url)
+		const link = links.find(l => l.url === row.url)
 		if (link && row.userId !== gate.user.id)
 			errors[link.platform] = `That ${PLATFORM_INFO[link.platform].label} post has already been added by someone else.`
 	}
@@ -48,17 +48,17 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		return fail("VALIDATION_FAILED", Object.values(errors)[0] ?? "Check your links", { fields: errors })
 	}
 
-	const mine = new Set(taken.map((t) => t.url))
-	const fresh = links.filter((l) => !mine.has(l.url))
+	const mine = new Set(taken.map(t => t.url))
+	const fresh = links.filter(l => !mine.has(l.url))
 	if (fresh.length > 0) {
 		await prisma.publicReel.createMany({
-			data: fresh.map((l) => ({
-				url: l.url,
-				platform: l.platform,
+			data: fresh.map(l => ({
 				email: gate.user.email,
-				userId: gate.user.id,
+				platform: l.platform,
 				postId: post.id,
 				themeProjectId: post.themeProjectId,
+				url: l.url,
+				userId: gate.user.id,
 			})),
 			// Two tabs sending the same link at once: the unique url settles it.
 			skipDuplicates: true,

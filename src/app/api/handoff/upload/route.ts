@@ -35,20 +35,20 @@ export const POST = withRoute(async (req: Request) => {
 	const target = await resolveHandoff(token)
 
 	const result = await completeHandoff(token, {
-		name: file.name,
-		type: file.type,
-		size: file.size,
 		bytes: async () => Buffer.from(await file.arrayBuffer()),
+		name: file.name,
+		size: file.size,
+		type: file.type,
 	})
 
 	if (target) {
 		await logAudit({
 			action: AuditAction.USER_HANDOFF_UPLOAD,
-			actorId: target.userId,
 			actorEmail: null,
-			targetType: "UploadHandoff",
+			actorId: target.userId,
+			metadata: { byteSize: file.size, objectKey: result.objectKey },
 			targetId: target.id,
-			metadata: { objectKey: result.objectKey, byteSize: file.size },
+			targetType: "UploadHandoff",
 		})
 	}
 

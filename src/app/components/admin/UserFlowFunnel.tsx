@@ -19,9 +19,9 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 		const prev = i === 0 ? total : (steps[i - 1]?.count ?? total)
 		return {
 			...s,
-			retainPct: pctOf(s.count, prev),
 			dropOffPct: i > 0 ? pctOf(prev - s.count, prev) : 0,
 			ofSignupsPct: pctOf(s.count, total),
+			retainPct: pctOf(s.count, prev),
 		}
 	})
 
@@ -30,15 +30,15 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 	const MIN_W = 2
 	const share = (n: number) => (top > 0 ? (n / top) * 100 : 0)
 	const widthOf = (n: number) => (n === 0 ? 0 : Math.max(share(n), MIN_W))
-	const widths = rows.map((s) => widthOf(s.count))
+	const widths = rows.map(s => widthOf(s.count))
 
 	// Clamp a drop-off share to a 0-100 blend weight.
 	const weightOf = (dropOffPct: number) => Math.min(100, Math.max(0, dropOffPct))
 
 	// Heat of a stage, as a background from flow-through blue to total-loss red. Mixed in oklch so the middle stays vivid rather than washing out through grey the way an srgb blend does. `backgroundColor` first so browsers without color-mix still get the cold end rather than nothing.
 	const heat = (dropOffPct: number): CSSProperties => ({
-		backgroundColor: "var(--color-accent)",
 		background: `color-mix(in oklch, var(--color-danger) ${weightOf(dropOffPct)}%, var(--color-accent))`,
+		backgroundColor: "var(--color-accent)",
 	})
 
 	// The same heat for text: muted where nothing was lost, danger-ink where everything was. An unsupported color-mix just inherits body text, which still reads.
@@ -61,13 +61,13 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 				<>
 					<div />
 					<div
-						role="note"
 						aria-label={`${s.retainPct}% continued and ${s.dropOffPct}% stopped between ${prevLabel} and ${s.label}`}
+						role="note"
 						style={{
-							textAlign: "center",
 							fontSize: "0.78rem",
-							fontWeight: heatWeight(s.dropOffPct),
 							fontVariantNumeric: "tabular-nums",
+							fontWeight: heatWeight(s.dropOffPct),
+							textAlign: "center",
 							...heatInk(s.dropOffPct),
 						}}
 					>
@@ -76,11 +76,11 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 				</>
 			)}
 
-			<div style={{ minWidth: 0, minHeight: "3.8rem" }}>
+			<div style={{ minHeight: "3.8rem", minWidth: 0 }}>
 				<div style={{ fontWeight: 700 }}>
 					{s.label}
 					{baseline && (
-						<span className="hl-hint" style={{ fontWeight: 400, fontSize: "0.72rem" }}>
+						<span className="hl-hint" style={{ fontSize: "0.72rem", fontWeight: 400 }}>
 							{" "}
 							· baseline
 						</span>
@@ -93,13 +93,13 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 
 			<div
 				aria-hidden="true"
+				style={{ height: "2.75rem", position: "relative" }}
 				title={`${s.label}: ${s.count} people · ${s.hint}`}
-				style={{ position: "relative", height: "2.75rem" }}
 			>
 				<div
 					style={{
-						position: "absolute",
 						inset: 0,
+						position: "absolute",
 						...heat(s.dropOffPct),
 						clipPath: `polygon(${(100 - prevWidth) / 2}% 0, ${(100 + prevWidth) / 2}% 0, ${(100 + bottomWidth) / 2}% 100%, ${(100 - bottomWidth) / 2}% 100%)`,
 					}}
@@ -109,28 +109,28 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
                         the band onto the panel. */}
 				<span
 					style={{
-						position: "absolute",
-						inset: 0,
 						display: "grid",
+						inset: 0,
 						placeItems: "center",
+						position: "absolute",
 					}}
 				>
 					<span
 						style={{
-							fontWeight: 800,
-							fontVariantNumeric: "tabular-nums",
-							fontSize: "0.88rem",
-							lineHeight: 1.35,
-							color: "#fff",
-							padding: "0 0.4rem",
-							borderRadius: "999px",
 							background: "rgba(0,0,0,.4)",
+							borderRadius: "999px",
+							color: "#fff",
+							fontSize: "0.88rem",
+							fontVariantNumeric: "tabular-nums",
+							fontWeight: 800,
+							lineHeight: 1.35,
+							padding: "0 0.4rem",
 							whiteSpace: "nowrap",
 						}}
 					>
 						{s.count}
 						{baseline ? " users " : " "}
-						<span style={{ fontWeight: 400, fontSize: "0.74rem" }}>
+						<span style={{ fontSize: "0.74rem", fontWeight: 400 }}>
 							· {s.ofSignupsPct}%{baseline ? " of signups" : ""}
 						</span>
 					</span>
@@ -141,26 +141,26 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 
 	return (
 		// width:100% – the panel is a flex column, where auto margins alone shrink-wrap this to its content instead of filling the panel.
-		<div style={{ width: "100%", maxWidth: "56rem", margin: "0 auto" }}>
+		<div style={{ margin: "0 auto", maxWidth: "56rem", width: "100%" }}>
 			<div
 				className="hl-hint"
 				style={{
-					display: "flex",
 					alignItems: "center",
-					justifyContent: "center",
+					display: "flex",
 					gap: "0.5rem",
-					marginTop: "1rem",
+					justifyContent: "center",
 					marginBottom: "0.6rem",
+					marginTop: "1rem",
 				}}
 			>
 				<span>no loss</span>
 				<span
 					aria-hidden="true"
 					style={{
-						width: "9rem",
-						height: "0.65rem",
-						borderRadius: "999px",
 						background: "linear-gradient(90deg in oklch, var(--color-accent), var(--color-danger))",
+						borderRadius: "999px",
+						height: "0.65rem",
+						width: "9rem",
 					}}
 				/>
 				<span>all lost</span>
@@ -168,11 +168,11 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 
 			<div
 				style={{
+					alignItems: "center",
+					columnGap: "1rem",
 					display: "grid",
 					gridTemplateColumns: "15rem minmax(0,1fr)",
-					columnGap: "1rem",
 					rowGap: "0.1rem",
-					alignItems: "center",
 				}}
 			>
 				{rows.map((s, i) =>

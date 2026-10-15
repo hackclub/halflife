@@ -31,37 +31,37 @@ export const POST = withRoute(async (req: Request) => {
 	}
 
 	const taken = await prisma.shopItem.findMany({
-		where: { id: { in: items.map((i) => i.id) } },
 		select: { id: true },
+		where: { id: { in: items.map(i => i.id) } },
 	})
 	if (taken.length > 0) {
 		return fail("CONFLICT", "Nothing was imported. These slugs already exist.", {
-			problems: taken.map((t) => ({ line: 0, message: `Slug "${t.id}" already exists. Edit it from its own page.` })),
+			problems: taken.map(t => ({ line: 0, message: `Slug "${t.id}" already exists. Edit it from its own page.` })),
 		})
 	}
 
-	const data = items.map((item) => ({
+	const data = items.map(item => ({
 		...item,
-		name: sanitize(item.name),
+		costUsd: dollars(item.costUsd ?? null),
 		description: sanitize(item.description),
 		imageUrl: item.imageUrl ?? null,
-		costUsd: dollars(item.costUsd ?? null),
+		name: sanitize(item.name),
 	}))
 	// createMany is one statement, so a slug added in the meantime fails the whole batch rather than leaving half of it behind.
 	await prisma.shopItem.createMany({ data })
 
 	await Promise.all(
-		data.map((item) =>
+		data.map(item =>
 			logAudit({
 				action: AuditAction.ADMIN_CREATE_SHOP_ITEM,
-				actorId: gate.user.id,
 				actorEmail: gate.user.email,
-				targetType: "ShopItem",
+				actorId: gate.user.id,
+				metadata: { after: { costUsd: item.costUsd, name: item.name, priceCredits: item.priceCredits }, via: "csv" },
 				targetId: item.id,
-				metadata: { after: { name: item.name, priceCredits: item.priceCredits, costUsd: item.costUsd }, via: "csv" },
+				targetType: "ShopItem",
 			}),
 		),
 	)
 
-	return ok({ created: data.length, ids: data.map((i) => i.id) }, { status: 201 })
+	return ok({ created: data.length, ids: data.map(i => i.id) }, { status: 201 })
 })

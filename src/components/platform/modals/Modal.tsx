@@ -91,7 +91,7 @@ export function Modal({
 			}
 			if (e.key !== "Tab" || !node) return
 			const items = Array.from(node.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
-				(el) => el.offsetParent !== null || el === document.activeElement,
+				el => el.offsetParent !== null || el === document.activeElement,
 			)
 			const firstEl = items[0]
 			const lastEl = items[items.length - 1]
@@ -119,31 +119,31 @@ export function Modal({
 
 	if (!open || !isClient) return null
 
-	const width = { md: "max-w-[720px]", lg: "max-w-[880px]", xl: "max-w-[1020px]" }[size]
+	const width = { lg: "max-w-[880px]", md: "max-w-[720px]", xl: "max-w-[1020px]" }[size]
 
 	// Straight onto the body: several callers sit inside sticky panels, and a sticky ancestor is its own stacking context that a z-index cannot escape.
 	return createPortal(
 		<div className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center sm:p-6">
 			<div
 				aria-hidden="true"
-				onClick={close}
 				className="absolute inset-0 bg-navy/45 backdrop-blur-[3px] motion-safe:animate-[hl-pop_.3s_ease-out]"
+				onClick={close}
 			/>
 
 			<div
-				ref={ref}
-				role="dialog"
-				aria-modal="true"
-				aria-labelledby={labelledBy ?? titleId}
 				// If no ModalTitle rendered, `titleId` points at nothing: AT ignores the dangling reference and falls back to this label, so a forgotten title no longer means an unnamed dialog.
 				aria-label={labelledBy ? undefined : typeof eyebrow === "string" && eyebrow ? eyebrow : "Dialog"}
-				tabIndex={-1}
+				aria-labelledby={labelledBy ?? titleId}
+				aria-modal="true"
 				className={cx(
 					"sketch sketch-2 relative flex max-h-[92dvh] w-full flex-col bg-cream outline-none motion-safe:animate-[hl-rise_.42s_cubic-bezier(.16,1,.3,1)]",
 					"rounded-t-3xl sm:rounded-3xl",
 					width,
 				)}
+				ref={ref}
+				role="dialog"
 				style={{ "--sk-color": accent, "--sk-radius": "26px" } as React.CSSProperties}
+				tabIndex={-1}
 			>
 				<div className="flex shrink-0 items-start justify-between gap-4 px-5 pt-4 sm:px-8 sm:pt-6">
 					<span className="label pt-1" style={{ color: accentText(accent) }}>
@@ -151,18 +151,18 @@ export function Modal({
 					</span>
 					{dismissible && (
 						<button
-							type="button"
-							onClick={onClose}
 							aria-label="Close"
 							className="sketch grid size-8 shrink-0 place-items-center rounded-lg text-navy-soft transition-colors hover:bg-white hover:text-navy"
+							onClick={onClose}
 							style={{ "--sk-radius": "9px" } as React.CSSProperties}
+							type="button"
 						>
 							<IconX className="text-base" />
 						</button>
 					)}
 				</div>
 
-				<div ref={body} className="thin-scroll min-h-0 flex-1 overflow-y-auto px-5 pt-3 pb-6 sm:px-8 sm:pt-5">
+				<div className="thin-scroll min-h-0 flex-1 overflow-y-auto px-5 pt-3 pb-6 sm:px-8 sm:pt-5" ref={body}>
 					<ModalTitleId.Provider value={titleId}>{children}</ModalTitleId.Provider>
 				</div>
 
@@ -196,8 +196,8 @@ export function ModalTitle({
 	return (
 		<div className="mb-5">
 			<h2
-				id={id ?? dialogTitleId}
 				className="text-[1.5rem] leading-tight font-extrabold tracking-[-0.02em] text-navy sm:text-[1.85rem]"
+				id={id ?? dialogTitleId}
 			>
 				{children}
 			</h2>

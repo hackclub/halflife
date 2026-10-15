@@ -15,9 +15,9 @@ const PACE_MS = 250
 
 async function main() {
 	const users = await prisma.user.findMany({
-		where: { displayName: null, accounts: { some: { providerId: "hca" } } },
 		orderBy: { createdAt: "asc" },
 		select: { id: true },
+		where: { accounts: { some: { providerId: "hca" } }, displayName: null },
 	})
 	if (users.length === 0) {
 		console.log("every account with an HCA identity already has a display name")
@@ -30,14 +30,14 @@ async function main() {
 	for (const user of users) {
 		// Also refreshes the verification status and the address on file, which is what a sign-in would have done anyway. Never throws.
 		await syncHcaProfile(user.id)
-		const row = await prisma.user.findUnique({ where: { id: user.id }, select: { displayName: true } })
+		const row = await prisma.user.findUnique({ select: { displayName: true }, where: { id: user.id } })
 		if (row?.displayName) {
 			filled += 1
 		} else {
 			left += 1
 			console.warn(`no answer from HCA for ${user.id}; they keep the full name until their next sign-in`)
 		}
-		await new Promise((resolve) => setTimeout(resolve, PACE_MS))
+		await new Promise(resolve => setTimeout(resolve, PACE_MS))
 	}
 
 	console.log(
@@ -46,7 +46,7 @@ async function main() {
 }
 
 main()
-	.catch((err) => {
+	.catch(err => {
 		console.error(err)
 		process.exit(1)
 	})

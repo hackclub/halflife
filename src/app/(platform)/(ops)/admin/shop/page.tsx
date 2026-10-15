@@ -13,10 +13,10 @@ import prisma from "@/lib/prisma"
 export const dynamic = "force-dynamic"
 
 const CATEGORY_LABEL: Record<ShopItemCategory, string> = {
-	PRINTER: "printer",
-	PRINTER_UPGRADE: "upgrade",
 	CONSUMABLE: "consumable",
 	MISC: "misc",
+	PRINTER: "printer",
+	PRINTER_UPGRADE: "upgrade",
 }
 
 export default async function AdminShopPage() {
@@ -27,7 +27,7 @@ export default async function AdminShopPage() {
 		}),
 		prisma.shopRegion.findMany({
 			orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-			select: { id: true, name: true, active: true, _count: { select: { prices: true } } },
+			select: { _count: { select: { prices: true } }, active: true, id: true, name: true },
 		}),
 	])
 
@@ -40,7 +40,7 @@ export default async function AdminShopPage() {
 					<EmptyState>No items yet.</EmptyState>
 				) : (
 					<Table head={["Slug", "Name", "Category", "Price", "Cost (USD)", "Stock", "Gated", "Active", ""]}>
-						{items.map((item) => (
+						{items.map(item => (
 							<tr key={item.id}>
 								<td className="hl-mono">{item.id}</td>
 								<td>
@@ -49,7 +49,7 @@ export default async function AdminShopPage() {
 								<td>{CATEGORY_LABEL[item.category]}</td>
 								<td>{item.priceCredits}</td>
 								<td>
-									<ItemCostField itemId={item.id} costUsd={item.costUsd} />
+									<ItemCostField costUsd={item.costUsd} itemId={item.id} />
 								</td>
 								<td>{item.stock ?? "∞"}</td>
 								<td>{item.requiresPrinterQualified ? "all 5 themes" : "no"}</td>
@@ -60,17 +60,17 @@ export default async function AdminShopPage() {
 									<Link href={`/admin/shop/${item.id}`}>Edit</Link>
 									{item.active ? (
 										<ActionButton
-											url={`/api/admin/shop/items/${item.id}`}
-											method="DELETE"
-											label="Retire"
 											confirm="Retire this item? Existing orders keep working."
+											label="Retire"
+											method="DELETE"
+											url={`/api/admin/shop/items/${item.id}`}
 										/>
 									) : (
 										<ActionButton
-											url={`/api/admin/shop/items/${item.id}`}
-											method="PATCH"
 											body={{ active: true }}
 											label="Re-list"
+											method="PATCH"
+											url={`/api/admin/shop/items/${item.id}`}
 										/>
 									)}
 								</td>
@@ -95,7 +95,7 @@ export default async function AdminShopPage() {
 				</p>
 				{regions.length > 0 && (
 					<Table head={["Slug", "Name", "Overrides", "Active", ""]}>
-						{regions.map((region) => (
+						{regions.map(region => (
 							<tr key={region.id}>
 								<td className="hl-mono">{region.id}</td>
 								<td>{region.name}</td>
@@ -105,15 +105,15 @@ export default async function AdminShopPage() {
 								</td>
 								<td>
 									<ActionButton
-										url={`/api/admin/shop/regions/${region.id}`}
-										method="PATCH"
 										body={{ active: !region.active }}
-										label={region.active ? "Switch off" : "Switch on"}
 										confirm={
 											region.active
 												? "Switch this region off? Everyone on it falls back to base pricing."
 												: "Switch this region on?"
 										}
+										label={region.active ? "Switch off" : "Switch on"}
+										method="PATCH"
+										url={`/api/admin/shop/regions/${region.id}`}
 									/>
 								</td>
 							</tr>

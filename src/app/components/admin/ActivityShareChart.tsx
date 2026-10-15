@@ -7,11 +7,11 @@ import type { ActivityShare } from "@/lib/queries/admin"
  */
 const COLUMN_COLORS: Record<string, string> = {
 	devlog: "var(--color-accent)",
+	hackatime: "var(--color-flame)",
+	none: "var(--color-ink-muted)",
 	reel: "var(--color-teal)",
 	repo: "var(--color-coin)",
-	hackatime: "var(--color-flame)",
 	timelapse: "var(--color-magenta)",
-	none: "var(--color-ink-muted)",
 }
 
 /**
@@ -36,34 +36,34 @@ export function ActivityShareChart({ share }: { share: ActivityShare }) {
 	const xOf = (i: number) => PAD_L + slot * i + (slot - colW) / 2
 	const yOf = (share_: number) => PAD_T + plotH - share_ * plotH
 
-	const summary = share.activities.map((a) => `${a.base} ${(a.share * 100).toFixed(1)}%`).join(", ")
+	const summary = share.activities.map(a => `${a.base} ${(a.share * 100).toFixed(1)}%`).join(", ")
 
 	return (
 		<div>
 			<div style={{ overflowX: "auto" }}>
 				<svg
-					viewBox={`0 0 ${W} ${H}`}
-					role="img"
 					aria-label={`Share of the ${fmtInt(share.total)} makers who finished onboarding who did each activity: ${summary}`}
-					style={{ display: "block", width: "100%", minWidth: "380px", height: "auto" }}
+					role="img"
+					style={{ display: "block", height: "auto", minWidth: "380px", width: "100%" }}
+					viewBox={`0 0 ${W} ${H}`}
 				>
-					{[0, 0.25, 0.5, 0.75, 1].map((t) => (
+					{[0, 0.25, 0.5, 0.75, 1].map(t => (
 						<g key={t}>
 							<line
+								stroke="var(--color-line-soft)"
+								strokeWidth="1"
 								x1={PAD_L}
 								x2={W - PAD_R}
 								y1={yOf(t)}
 								y2={yOf(t)}
-								stroke="var(--color-line-soft)"
-								strokeWidth="1"
 								{...(t === 0 ? {} : { strokeDasharray: "2 3" })}
 							/>
 							<text
+								dominantBaseline="middle"
+								style={{ fill: "var(--color-ink-muted)", fontSize: "10px", fontVariantNumeric: "tabular-nums" }}
+								textAnchor="end"
 								x={PAD_L - 6}
 								y={yOf(t)}
-								textAnchor="end"
-								dominantBaseline="middle"
-								style={{ fontSize: "10px", fill: "var(--color-ink-muted)", fontVariantNumeric: "tabular-nums" }}
 							>
 								{`${t * 100}%`}
 							</text>
@@ -74,33 +74,33 @@ export function ActivityShareChart({ share }: { share: ActivityShare }) {
 						return (
 							<g key={a.key}>
 								<rect
-									x={xOf(i)}
-									y={yOf(a.share)}
-									width={colW}
 									height={h}
 									rx={3}
 									style={{ fill: COLUMN_COLORS[a.key] ?? "var(--color-accent)" }}
+									width={colW}
+									x={xOf(i)}
+									y={yOf(a.share)}
 								>
 									<title>{`${a.label}: ${fmtInt(a.users)} of ${fmtInt(share.total)} finishers (${(a.share * 100).toFixed(1)}%)`}</title>
 								</rect>
 								<text
+									style={{
+										fill: "var(--color-ink-strong)",
+										fontSize: "11px",
+										fontVariantNumeric: "tabular-nums",
+										fontWeight: 700,
+									}}
+									textAnchor="middle"
 									x={xOf(i) + colW / 2}
 									y={yOf(a.share) - 7}
-									textAnchor="middle"
-									style={{
-										fontSize: "11px",
-										fontWeight: 700,
-										fill: "var(--color-ink-strong)",
-										fontVariantNumeric: "tabular-nums",
-									}}
 								>
 									{(a.share * 100).toFixed(1)}%
 								</text>
 								<text
+									style={{ fill: "var(--color-ink-muted)", fontSize: "11px" }}
+									textAnchor="middle"
 									x={xOf(i) + colW / 2}
 									y={H - PAD_B + 18}
-									textAnchor="middle"
-									style={{ fontSize: "11px", fill: "var(--color-ink-muted)" }}
 								>
 									{a.base}
 								</text>

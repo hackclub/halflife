@@ -70,13 +70,13 @@ export function decryptUserPII(user: {
 	encryptedPhone?: string | null
 }): DecryptedAddress {
 	return {
+		birthday: safeDecrypt(user.encryptedBirthday),
+		city: safeDecrypt(user.encryptedAddressCity),
+		country: safeDecrypt(user.encryptedAddressCountry),
 		line1: safeDecrypt(user.encryptedAddressStreet),
 		line2: safeDecrypt(user.encryptedAddressLine2),
-		city: safeDecrypt(user.encryptedAddressCity),
+		phone: safeDecrypt(user.encryptedPhone),
 		state: safeDecrypt(user.encryptedAddressState),
 		zip: safeDecrypt(user.encryptedAddressZip),
-		country: safeDecrypt(user.encryptedAddressCountry),
-		birthday: safeDecrypt(user.encryptedBirthday),
-		phone: safeDecrypt(user.encryptedPhone),
 	}
 }

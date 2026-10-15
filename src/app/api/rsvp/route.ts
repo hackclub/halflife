@@ -23,12 +23,12 @@ export const POST = withRoute(async (req: Request) => {
 	await bufferRsvp({
 		email: parsed.data.email,
 		firstName: sanitizeOptional(parsed.data.firstName),
+		ip,
 		lastName: sanitizeOptional(parsed.data.lastName),
 		pronouns: sanitizeOptional(parsed.data.pronouns),
-		utmSource: sanitizeOptional(parsed.data.utmSource),
-		signupPage: sanitizeOptional(parsed.data.signupPage),
 		referredBy: sanitizeOptional(parsed.data.referredBy),
-		ip,
+		signupPage: sanitizeOptional(parsed.data.signupPage),
+		utmSource: sanitizeOptional(parsed.data.utmSource),
 	})
 
 	return ok({ ok: true }, { status: 201 })

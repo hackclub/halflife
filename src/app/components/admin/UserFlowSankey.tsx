@@ -51,11 +51,11 @@ const PALETTE = [
 ]
 
 interface Placed extends SankeyNode {
+	/** Index into PALETTE, so each activity branch keeps its colour wherever its box sits. */
+	color: string
 	stage: number
 	y0: number
 	y1: number
-	/** Index into PALETTE, so each activity branch keeps its colour wherever its box sits. */
-	color: string
 }
 
 type Ribbon = {
@@ -95,10 +95,10 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 	/** Gap from a box to its label. */
 	const labelGap = font * 0.65
 	// ~0.52em per character is a fair average for this face at this size. The budget is the stage's pitch less the box and the gap, because a label starts to the right of its own box: comparing against the whole stage width let the longest name run into the next column's box. `+ 8` covers a five-figure count and the space before the name.
-	const widestLabel = Math.max(...diagram.nodes.map((n) => n.label.length)) + 8
+	const widestLabel = Math.max(...diagram.nodes.map(n => n.label.length)) + 8
 	const showNames = font * 0.52 * widestLabel <= STAGE_W - NODE_W - labelGap
 
-	const byId = new Map(diagram.nodes.map((n) => [n.id, n]))
+	const byId = new Map(diagram.nodes.map(n => [n.id, n]))
 	const stageIndex = new Map<string, number>()
 	for (const [i, stage] of stages.entries()) for (const id of stage.nodes) stageIndex.set(id, i)
 
@@ -109,18 +109,18 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 		branchColor.set(node.id, PALETTE[branchColor.size % PALETTE.length] ?? PALETTE[0] ?? "var(--color-accent)")
 	}
 
-	const placed: Placed[] = diagram.nodes.map((node) => ({
+	const placed: Placed[] = diagram.nodes.map(node => ({
 		...node,
+		color: branchColor.get(node.id) ?? "var(--color-accent)",
 		stage: stageIndex.get(node.id) ?? 0,
 		y0: 0,
 		y1: 0,
-		color: branchColor.get(node.id) ?? "var(--color-accent)",
 	}))
 
 	// A single scale for the whole diagram. A stage's own boxes sum to that stage's headcount, which is at most the whole program, so sizing against the largest stage keeps every ribbon comparable.
-	const stageHeads = stages.map((stage) => stage.nodes.reduce((sum, id) => sum + (byId.get(id)?.value ?? 0), 0))
+	const stageHeads = stages.map(stage => stage.nodes.reduce((sum, id) => sum + (byId.get(id)?.value ?? 0), 0))
 	const widest = Math.max(1, ...stageHeads)
-	const maxBoxes = Math.max(1, ...stages.map((s) => s.nodes.length))
+	const maxBoxes = Math.max(1, ...stages.map(s => s.nodes.length))
 	const H = 520
 	const plotH = H - (maxBoxes - 1) * NODE_PAD
 	const scale = plotH / widest
@@ -133,7 +133,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 	for (const stage of stages) {
 		let y = 0
 		for (const id of stage.nodes) {
-			const node = placed.find((p) => p.id === id)
+			const node = placed.find(p => p.id === id)
 			if (!node) continue
 			const h = boxH(node.value)
 			node.y0 = y
@@ -144,18 +144,18 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 
 	// Ribbons get their two ends assigned in two passes, because a ribbon's source span belongs to its source box's cursor and its target span to its target box's – and each box has one of each.
 	const ribbons: Ribbon[] = diagram.links
-		.map((link) => {
-			const source = placed.find((p) => p.id === link.source)
-			const target = placed.find((p) => p.id === link.target)
+		.map(link => {
+			const source = placed.find(p => p.id === link.source)
+			const target = placed.find(p => p.id === link.target)
 			if (!source || !target) return null
-			return { source, target, value: link.value, fan: link.fan, sy0: 0, sy1: 0, ty0: 0, ty1: 0 }
+			return { fan: link.fan, source, sy0: 0, sy1: 0, target, ty0: 0, ty1: 0, value: link.value }
 		})
 		.filter((r): r is Ribbon => r !== null)
 
 	const place = (side: "out" | "in") => {
 		for (const node of placed) {
 			const mine = ribbons
-				.filter((r) => (side === "out" ? r.source === node : r.target === node))
+				.filter(r => (side === "out" ? r.source === node : r.target === node))
 				// Order by where the other end sits, so ribbons leave a box in the order their destinations are stacked.
 				.sort((a, b) => {
 					const other = (r: Ribbon) => (side === "out" ? r.target : r.source)
@@ -165,7 +165,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 			const nestable = (r: Ribbon) => (side === "out" ? r.fan === "out" : r.fan === "in")
 			const boxSize = node.y1 - node.y0
 			const fanTotal = mine.filter(nestable).reduce((n, r) => n + ribbonH(r.value), 0)
-			const chainTotal = mine.filter((r) => !nestable(r)).reduce((n, r) => n + ribbonH(r.value), 0)
+			const chainTotal = mine.filter(r => !nestable(r)).reduce((n, r) => n + ribbonH(r.value), 0)
 			if (fanTotal + chainTotal <= boxSize + NEST_PX) {
 				let cursor = node.y0
 				for (const ribbon of mine) {
@@ -194,7 +194,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 				}
 				// Chain ribbons carry disjoint users, so they stack after the fan footprint instead of under it: a big chain flow is laid out end to end rather than burying the fan. Fan users plus chain users partition the box, so this always fits.
 				let cursor = fanEnd
-				for (const ribbon of mine.filter((r) => !nestable(r))) {
+				for (const ribbon of mine.filter(r => !nestable(r))) {
 					const h = ribbonH(ribbon.value)
 					if (side === "out") {
 						ribbon.sy0 = cursor
@@ -219,7 +219,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 	const labelRows = new Map<string, { y: number; home: number }>()
 	for (const stage of stages) {
 		const boxes = stage.nodes
-			.map((id) => placed.find((p) => p.id === id))
+			.map(id => placed.find(p => p.id === id))
 			.filter((p): p is Placed => p !== undefined)
 			.sort((a, b) => a.y0 - b.y0)
 		if (boxes.length === 0) continue
@@ -230,7 +230,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 			const home = (node.y0 + node.y1) / 2
 			// A label centred here occupies [y - slot/2, y + slot/2], so clearing the previous label's bottom edge costs half a slot, not a whole one. Reserving a whole slot shoves every label off its own box, even though boxes in a stage sit NODE_PAD apart – already more than a line of text is tall – and a diagram covered in leader lines is harder to read than one with a few.
 			const y = Math.max(home, lastBottom + labelSlot / 2)
-			rows.push({ node, y, home })
+			rows.push({ home, node, y })
 			lastBottom = y + labelSlot / 2
 		}
 
@@ -243,7 +243,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 		for (const row of rows) {
 			// Off the bottom of the plot: no slot left, so this box goes unlabelled rather than printed over the caption.
 			if (row.y + labelSlot / 2 > H) continue
-			labelRows.set(row.node.id, { y: row.y, home: row.home })
+			labelRows.set(row.node.id, { home: row.home, y: row.y })
 		}
 	}
 
@@ -266,17 +266,17 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 			{/* A horizontal scroller. The journey is now as long as the funnel's, so the drawing is wider than the panel on every screen and is read by scrolling rather than by shrinking. `overscroll-behavior-x: contain` keeps a sideways trackpad flick at the end of the diagram from turning into a browser back/forward gesture. */}
 			<div style={{ overflowX: "auto", overscrollBehaviorX: "contain", paddingBottom: "0.25rem" }}>
 				<svg
-					viewBox={`0 0 ${W} ${H + HEADER_H + FOOT_H}`}
-					role="img"
 					aria-label={`Participant journey as a Sankey diagram across ${stages.length} stages. ${summary}`}
-					style={{ display: "block", width: `${W}px`, height: "auto", margin: "0 auto" }}
+					role="img"
+					style={{ display: "block", height: "auto", margin: "0 auto", width: `${W}px` }}
+					viewBox={`0 0 ${W} ${H + HEADER_H + FOOT_H}`}
 				>
 					<defs>
 						{painted.map((r, i) => (
 							<linearGradient
-								key={r.source.id + r.target.id}
-								id={`sankey-grad-${i}`}
 								gradientUnits="userSpaceOnUse"
+								id={`sankey-grad-${i}`}
+								key={r.source.id + r.target.id}
 								x1="0"
 								x2={W}
 							>
@@ -288,54 +288,54 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 
 					<g transform={`translate(0 ${HEADER_H})`}>
 						{painted.map((r, i) => (
-							<path key={r.source.id + r.target.id} d={ribbonPath(r)} fill={`url(#sankey-grad-${i})`}>
+							<path d={ribbonPath(r)} fill={`url(#sankey-grad-${i})`} key={r.source.id + r.target.id}>
 								<title>{`${fmt(r.value)} people: ${r.source.label} → ${r.target.label}`}</title>
 							</path>
 						))}
 
 						{/* Leader lines first, so a label's halo paints over its own line. */}
-						{placed.map((node) => {
+						{placed.map(node => {
 							const slot = labelRows.get(node.id)
 							if (!slot || Math.abs(slot.y - slot.home) < 0.5) return null
 							return (
 								<line
 									key={`lead-${node.id}`}
+									style={{ opacity: 0.55, stroke: "var(--color-ink-muted)", strokeWidth: 0.75 }}
 									x1={xOf(node.stage) + NODE_W}
-									y1={slot.home}
 									x2={xOf(node.stage) + NODE_W + labelGap - 2}
+									y1={slot.home}
 									y2={slot.y}
-									style={{ stroke: "var(--color-ink-muted)", strokeWidth: 0.75, opacity: 0.55 }}
 								/>
 							)
 						})}
 
-						{placed.map((node) => {
+						{placed.map(node => {
 							const x = xOf(node.stage)
 							const h = boxH(node.value)
 							const slot = labelRows.get(node.id)
 							return (
 								<g key={node.id}>
-									<rect x={x} y={node.y0} width={NODE_W} height={h} rx={2} style={{ fill: node.color }}>
+									<rect height={h} rx={2} style={{ fill: node.color }} width={NODE_W} x={x} y={node.y0}>
 										<title>{`${node.label}: ${fmt(node.value)} ${node.value === 1 ? "person" : "people"}`}</title>
 									</rect>
 									{slot && (
 										<text
-											x={x + NODE_W + labelGap}
-											y={slot.y}
 											dominantBaseline="middle"
 											style={{
+												fill: "var(--color-ink-strong)",
 												fontSize: `${font}px`,
 												// A halo in the panel's own colour, so a label stays readable where it crosses a ribbon or a neighbour's leader line.
 												paintOrder: "stroke",
 												stroke: "var(--color-surface-raised)",
-												strokeWidth: font * 0.32,
 												strokeLinejoin: "round",
-												fill: "var(--color-ink-strong)",
+												strokeWidth: font * 0.32,
 											}}
+											x={x + NODE_W + labelGap}
+											y={slot.y}
 										>
 											{fmt(node.value)}
 											{showNames ? (
-												<tspan dx={font * 0.36} style={{ fontWeight: 400, fill: "var(--color-ink-muted)" }}>
+												<tspan dx={font * 0.36} style={{ fill: "var(--color-ink-muted)", fontWeight: 400 }}>
 													{node.label}
 												</tspan>
 											) : null}
@@ -349,10 +349,10 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 					{stages.map((stage, i) => (
 						<text
 							key={stage.label}
+							style={{ fill: "var(--color-ink-muted)", fontSize: `${font * 0.92}px`, fontWeight: 700 }}
+							textAnchor="start"
 							x={xOf(i)}
 							y={HEADER_H - 12}
-							textAnchor="start"
-							style={{ fontSize: `${font * 0.92}px`, fontWeight: 700, fill: "var(--color-ink-muted)" }}
 						>
 							{stage.label}
 						</text>

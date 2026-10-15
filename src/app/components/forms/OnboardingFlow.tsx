@@ -39,13 +39,13 @@ function StepActions({
 	return (
 		<div className="flex items-center justify-between gap-3 border-t border-dashed border-line/80 pt-5">
 			{onBack ? (
-				<Button type="button" variant="outline" onClick={onBack} disabled={busy}>
+				<Button disabled={busy} onClick={onBack} type="button" variant="outline">
 					Back
 				</Button>
 			) : (
 				<span />
 			)}
-			<Button type={onSubmit ? "button" : "submit"} variant="gold" onClick={onSubmit} disabled={busy || !canSubmit}>
+			<Button disabled={busy || !canSubmit} onClick={onSubmit} type={onSubmit ? "button" : "submit"} variant="gold">
 				{busy ? "Saving…" : label}
 			</Button>
 		</div>
@@ -66,11 +66,11 @@ function SelectButton({
 }) {
 	return (
 		<Button
-			type="button"
-			variant={selected ? "teal" : "outline"}
 			aria-pressed={selected}
 			disabled={disabled}
 			onClick={onClick}
+			type="button"
+			variant={selected ? "teal" : "outline"}
 		>
 			{label}
 			{selected ? <IconCheck className="text-base" /> : null}
@@ -104,7 +104,7 @@ export function OnboardingFlow({
 	// The beginner's fork: a starter id, null for their own project, undefined for not chosen yet. Past the week step with no starter means they chose their own.
 	const [start, setStart] = useState<string | null | undefined>(() => {
 		if (initial.project.starterProjectId) return initial.project.starterProjectId
-		return initial.reached > initial.steps.findIndex((s) => s.id === "week") ? null : undefined
+		return initial.reached > initial.steps.findIndex(s => s.id === "week") ? null : undefined
 	})
 	const [idea, setIdea] = useState<string | null>(initial.project.starterProjectId)
 	const [pickedTier, setPickedTier] = useState<number | null>(initial.project.requestedTier)
@@ -113,7 +113,7 @@ export function OnboardingFlow({
 	if (!step) return null
 
 	// The server decides where an answer lands (a starter taken on the week step goes straight to time tracking; naming a project skips "Stuck? Pick one", since the starter was offered on the week step), and this mirrors it, both forward and back.
-	const indexOf = (id: string) => view.steps.findIndex((s) => s.id === id)
+	const indexOf = (id: string) => view.steps.findIndex(s => s.id === id)
 	const tookStarter = view.project.starterProjectId !== null && view.project.tierLocked
 	function backFrom(current: number): number {
 		const id = view.steps[current]?.id
@@ -127,9 +127,9 @@ export function OnboardingFlow({
 		setError(null)
 		try {
 			const res = await fetch("/api/onboarding", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify(body),
+				headers: { "Content-Type": "application/json" },
+				method: "POST",
 			})
 			const payload = (await res.json().catch(() => null)) as OnboardingResponse | null
 			if (!res.ok || !payload?.onboarding) {
@@ -144,7 +144,7 @@ export function OnboardingFlow({
 				return next
 			}
 
-			if (opts.advance !== false) setViewing((current) => Math.min(current + 1, next.steps.length - 1))
+			if (opts.advance !== false) setViewing(current => Math.min(current + 1, next.steps.length - 1))
 			return next
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Something went wrong")
@@ -155,13 +155,13 @@ export function OnboardingFlow({
 	}
 
 	async function sendProject() {
-		const next = await send({ step: "project", title, description }, { advance: false })
+		const next = await send({ description, step: "project", title }, { advance: false })
 		if (next && !next.completed) setViewing(indexOf("tier"))
 	}
 
 	/** The beginner's fork on the week step: a starter, or their own project. */
 	async function chooseStart(starterProjectId: string | null) {
-		const next = await send({ step: "week", starterProjectId }, { advance: false })
+		const next = await send({ starterProjectId, step: "week" }, { advance: false })
 		if (next && !next.completed) setViewing(indexOf(starterProjectId ? "tracking" : "project"))
 	}
 
@@ -192,7 +192,7 @@ export function OnboardingFlow({
 			</div>
 
 			{error ? (
-				<p role="alert" className="mb-5 rounded-xl bg-coral/10 px-4 py-3 text-[0.86rem] font-semibold text-coral-dark">
+				<p className="mb-5 rounded-xl bg-coral/10 px-4 py-3 text-[0.86rem] font-semibold text-coral-dark" role="alert">
 					{error}
 				</p>
 			) : null}
@@ -201,14 +201,14 @@ export function OnboardingFlow({
 				{step.id === "experience" ? (
 					<div className="space-y-6">
 						<div className="space-y-3">
-							{view.experienceOptions.map((option) => (
+							{view.experienceOptions.map(option => (
 								<OptionRow
-									key={option.value}
-									tone="gold"
-									selected={experience === option.value}
 									disabled={busy}
 									hint={option.hint}
+									key={option.value}
 									onClick={() => setExperience(option.value)}
+									selected={experience === option.value}
+									tone="gold"
 								>
 									<span className="text-[0.95rem] font-extrabold text-navy">{option.label}</span>
 								</OptionRow>
@@ -216,9 +216,9 @@ export function OnboardingFlow({
 						</div>
 						<StepActions
 							busy={busy}
-							onBack={back}
 							canSubmit={experience !== null}
-							onSubmit={() => send({ step: "experience", experience })}
+							onBack={back}
+							onSubmit={() => send({ experience, step: "experience" })}
 						/>
 					</div>
 				) : null}
@@ -228,10 +228,10 @@ export function OnboardingFlow({
 						{/* What the week is: its painting, then the words. */}
 						<div className="flex items-start gap-4 sm:gap-6">
 							<WeekPainting
-								theme={view.weekIntro.painting}
 								alt=""
-								sizes="(min-width: 640px) 120px, 84px"
 								className="sticker-shadow size-[84px] shrink-0 sm:size-[120px]"
+								sizes="(min-width: 640px) 120px, 84px"
+								theme={view.weekIntro.painting}
 							/>
 							<div className="min-w-0 flex-1 space-y-2">
 								{view.beginner ? (
@@ -240,7 +240,7 @@ export function OnboardingFlow({
 									<>
 										<p className="text-[0.92rem] text-navy-soft">Some places to start, if you want one:</p>
 										<ul className="list-disc space-y-1 pl-5 text-[0.9rem] text-navy-soft">
-											{view.weekIntro.examples.map((example) => (
+											{view.weekIntro.examples.map(example => (
 												<li key={example}>{example}</li>
 											))}
 										</ul>
@@ -258,40 +258,40 @@ export function OnboardingFlow({
 										project, with a guide that walks you through every step. Or make a project of your own.
 									</p>
 									<div className="grid gap-3 sm:grid-cols-2">
-										{view.starterProjects.map((starter) => {
+										{view.starterProjects.map(starter => {
 											const chosen = start === starter.id
 											return (
 												<StarterProjectCard
-													key={starter.id}
-													starter={starter}
-													chosen={chosen}
-													stacked
 													action={
 														<SelectButton
-															selected={chosen}
 															disabled={busy}
-															onClick={() => setStart(starter.id)}
 															label={`Build ${starter.title}`}
+															onClick={() => setStart(starter.id)}
+															selected={chosen}
 														/>
 													}
+													chosen={chosen}
+													key={starter.id}
+													stacked
+													starter={starter}
 												/>
 											)
 										})}
 										<ProjectChoiceCard
-											stacked
-											chosen={start === null}
-											tileClassName="bg-violet-pale"
-											art={<Gato pose="schematic" sizes="260px" className="h-[140px] w-auto" />}
-											label="Custom project"
-											title="Your own idea"
 											action={
 												<SelectButton
-													selected={start === null}
 													disabled={busy}
-													onClick={() => setStart(null)}
 													label="Make a custom project"
+													onClick={() => setStart(null)}
+													selected={start === null}
 												/>
 											}
+											art={<Gato className="h-[140px] w-auto" pose="schematic" sizes="260px" />}
+											chosen={start === null}
+											label="Custom project"
+											stacked
+											tileClassName="bg-violet-pale"
+											title="Your own idea"
 										>
 											<p className="mt-1.5 text-[0.88rem] leading-relaxed text-navy-soft">
 												Make your own project! It can be anything you want.
@@ -303,8 +303,8 @@ export function OnboardingFlow({
 								</div>
 								<StepActions
 									busy={busy}
-									onBack={back}
 									canSubmit={start !== undefined}
+									onBack={back}
 									onSubmit={() => {
 										if (start !== undefined) chooseStart(start)
 									}}
@@ -319,7 +319,7 @@ export function OnboardingFlow({
 				{step.id === "project" ? (
 					<form
 						className="space-y-5"
-						onSubmit={(event) => {
+						onSubmit={event => {
 							event.preventDefault()
 							sendProject()
 						}}
@@ -327,22 +327,22 @@ export function OnboardingFlow({
 						<p className="text-[0.9rem] leading-relaxed text-navy-soft">
 							Tell us about your project! You can always edit this later.
 						</p>
-						<Field id="onboarding-project-name" label="Project name" hint="Give it a cool name!">
+						<Field hint="Give it a cool name!" id="onboarding-project-name" label="Project name">
 							<input
-								id="onboarding-project-name"
 								className={projectInputClass}
-								value={title}
+								id="onboarding-project-name"
 								maxLength={120}
-								onChange={(event) => setTitle(event.target.value)}
+								onChange={event => setTitle(event.target.value)}
+								value={title}
 							/>
 						</Field>
 						<Field id="onboarding-project-description" label="Project description">
 							<textarea
-								id="onboarding-project-description"
 								className={`${projectInputClass} min-h-28 resize-y`}
-								value={description}
+								id="onboarding-project-description"
 								maxLength={5000}
-								onChange={(event) => setDescription(event.target.value)}
+								onChange={event => setDescription(event.target.value)}
+								value={description}
 							/>
 						</Field>
 						<StepActions busy={busy} onBack={back} />
@@ -356,21 +356,21 @@ export function OnboardingFlow({
 							1, since starters are Tier 1 work. Stick with your own idea if you want a bigger tier.
 						</p>
 						<div className="grid gap-3">
-							{view.starterProjects.map((starter) => {
+							{view.starterProjects.map(starter => {
 								const chosen = idea === starter.id
 								return (
 									<StarterProjectCard
-										key={starter.id}
-										starter={starter}
-										chosen={chosen}
 										action={
 											<SelectButton
-												selected={chosen}
 												disabled={busy}
-												onClick={() => setIdea(chosen ? null : starter.id)}
 												label={`Build ${starter.title}`}
+												onClick={() => setIdea(chosen ? null : starter.id)}
+												selected={chosen}
 											/>
 										}
+										chosen={chosen}
+										key={starter.id}
+										starter={starter}
 									/>
 								)
 							})}
@@ -379,9 +379,9 @@ export function OnboardingFlow({
 						{idea !== null ? <Note>{STARTER_MODIFICATION_NOTE}</Note> : null}
 						<StepActions
 							busy={busy}
-							onBack={back}
 							label={idea ? "Next" : "Stick with my own idea"}
-							onSubmit={() => send({ step: "idea", starterProjectId: idea })}
+							onBack={back}
+							onSubmit={() => send({ starterProjectId: idea, step: "idea" })}
 						/>
 					</div>
 				) : null}
@@ -405,37 +405,37 @@ export function OnboardingFlow({
                 keyboards and screen readers. */}
 						<fieldset className="grid gap-3">
 							<legend className="sr-only">Tier</legend>
-							{view.tiers.map((tier) => {
+							{view.tiers.map(tier => {
 								const chosen = view.project.tierLocked ? tier.id === 1 : pickedTier === tier.id
 								const locked = busy || view.project.tierLocked
 								const headingId = `onboarding-tier-${tier.id}`
 								return (
 									<label
-										key={tier.id}
 										className={cx(
 											"block rounded-2xl has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-violet has-[input:focus-visible]:ring-offset-2",
 											locked ? "cursor-default" : "group cursor-pointer",
 										)}
+										key={tier.id}
 									>
 										<Panel
-											tone={chosen ? "gold" : "line"}
-											radius={16}
 											className={cx(
 												"px-4 py-3.5 transition-colors sm:px-5 sm:py-4",
 												chosen ? "bg-gold-pale/40" : "bg-white group-hover:bg-black/[.015]",
 											)}
+											radius={16}
+											tone={chosen ? "gold" : "line"}
 										>
 											<div className="flex items-center justify-between gap-3">
 												<input
-													type="radio"
-													name="onboarding-tier"
-													className="sr-only"
-													checked={chosen}
-													disabled={locked}
 													aria-labelledby={headingId}
+													checked={chosen}
+													className="sr-only"
+													disabled={locked}
+													name="onboarding-tier"
 													onChange={() => setPickedTier(tier.id)}
+													type="radio"
 												/>
-												<h3 id={headingId} className="text-[1.2rem] leading-tight font-extrabold text-navy">
+												<h3 className="text-[1.2rem] leading-tight font-extrabold text-navy" id={headingId}>
 													{tier.name} – ${tier.grantUsd}{" "}
 													<span className="font-semibold text-navy-soft">({tier.estimate})</span>
 												</h3>
@@ -450,26 +450,26 @@ export function OnboardingFlow({
 											{tier.showcase.length > 0 ? (
 												// The tier line leads; the examples are its footnote, a strip of small thumbnails with their names beside them. Three columns on every tier, so the strips align down the list whatever their length, and fold to a stacked list on a phone.
 												<ul className="mt-3 grid gap-x-4 gap-y-2 border-t border-dashed border-line/80 pt-3 sm:grid-cols-3">
-													{tier.showcase.map((project) => (
-														<li key={project.href} className="min-w-0">
+													{tier.showcase.map(project => (
+														<li className="min-w-0" key={project.href}>
 															<a
-																href={project.href}
-																target="_blank"
-																rel="noopener noreferrer"
-																// Following the link is not a vote for the tier.
-																onClick={(event) => event.stopPropagation()}
 																className="group/example -m-1 flex items-center gap-2.5 rounded-lg p-1 outline-none focus-visible:ring-2 focus-visible:ring-violet"
+																href={project.href}
+																// Following the link is not a vote for the tier.
+																onClick={event => event.stopPropagation()}
+																rel="noopener noreferrer"
+																target="_blank"
 															>
 																{/* Cropped to one frame: at this size a uniform
                                     row reads better than slivers and posts, and
                                     the repo has the whole board. */}
 																<span className="relative block h-11 w-14 shrink-0 overflow-hidden rounded-md bg-white shadow-[0_1px_2px_rgb(28_26_89/0.12)] ring-1 ring-line/70">
 																	<Image
-																		src={project.image}
 																		alt=""
+																		className="object-cover transition-transform duration-300 ease-out group-hover/example:scale-[1.08]"
 																		fill
 																		sizes="112px"
-																		className="object-cover transition-transform duration-300 ease-out group-hover/example:scale-[1.08]"
+																		src={project.image}
 																	/>
 																</span>
 																<span className="min-w-0 text-[0.8rem] leading-snug text-navy-soft decoration-dashed underline-offset-[3px] group-hover/example:text-navy group-hover/example:underline">
@@ -489,9 +489,9 @@ export function OnboardingFlow({
 						{/* A starter's tier is already set, so its Next carries no tier. */}
 						<StepActions
 							busy={busy}
-							onBack={back}
 							canSubmit={view.project.tierLocked || pickedTier !== null}
-							onSubmit={() => send({ step: "tier", requestedTier: view.project.tierLocked ? null : pickedTier })}
+							onBack={back}
+							onSubmit={() => send({ requestedTier: view.project.tierLocked ? null : pickedTier, step: "tier" })}
 						/>
 					</div>
 				) : null}
@@ -502,10 +502,10 @@ export function OnboardingFlow({
 							Tracking progress of your project is mandatory, and you log it in two ways. A{" "}
 							<strong className="text-navy">journal</strong> entry is a detailed writeup of what you did in a session (
 							<a
-								href={EXAMPLE_JOURNAL_URL}
-								target="_blank"
-								rel="noopener noreferrer"
 								className="font-semibold text-sky-ink underline decoration-dashed underline-offset-4 hover:text-navy"
+								href={EXAMPLE_JOURNAL_URL}
+								rel="noopener noreferrer"
+								target="_blank"
 							>
 								here&rsquo;s an example
 							</a>
@@ -520,7 +520,7 @@ export function OnboardingFlow({
 								["Journal", "Write what you did, what broke, and what is next after each session."],
 								["Keep it daily", "Logging on the day is worth doing: your streak counts days you journalled."],
 							].map(([heading, body]) => (
-								<Panel key={heading} as="li" tone="line" radius={16} className="bg-white p-4">
+								<Panel as="li" className="bg-white p-4" key={heading} radius={16} tone="line">
 									<h3 className="text-[0.92rem] font-extrabold text-navy">{heading}</h3>
 									<p className="mt-2 text-[0.8rem] leading-relaxed text-navy-soft">{body}</p>
 								</Panel>
@@ -532,9 +532,9 @@ export function OnboardingFlow({
 						</p>
 						<StepActions
 							busy={busy}
-							onBack={back}
 							label="Next"
-							onSubmit={() => send({ step: "tracking", dismissed: true })}
+							onBack={back}
+							onSubmit={() => send({ dismissed: true, step: "tracking" })}
 						/>
 					</div>
 				) : null}
@@ -547,15 +547,15 @@ export function OnboardingFlow({
 							to date in it as you work. You can turn it on later from the project page, so this is optional.
 						</p>
 						<RepoSyncSettings
-							projectId={view.projectId}
 							compact
-							onEnabled={() => send({ step: "repo", enabled: true })}
+							onEnabled={() => send({ enabled: true, step: "repo" })}
+							projectId={view.projectId}
 						/>
 						<StepActions
 							busy={busy}
-							onBack={back}
 							label="Finish"
-							onSubmit={() => send({ step: "repo", enabled: false })}
+							onBack={back}
+							onSubmit={() => send({ enabled: false, step: "repo" })}
 						/>
 					</div>
 				) : null}

@@ -17,19 +17,19 @@ import { countedLine, creditedLine, rankedShareBoard, renderSummary, type Summar
  */
 async function namesFor(entries: ProjectReviewStats["leaderboard"]): Promise<Map<string, string>> {
 	const names = new Map<string, string>()
-	const emails = [...new Set(entries.map((entry) => entry.email))].filter((email) => email !== ANONYMOUS_ARI)
+	const emails = [...new Set(entries.map(entry => entry.email))].filter(email => email !== ANONYMOUS_ARI)
 	if (emails.length === 0) {
 		for (const entry of entries) names.set(entry.email, "Ari")
 		return names
 	}
 
 	const users = await prisma.user.findMany({
+		select: { displayName: true, email: true, name: true, slackId: true },
 		where: { email: { in: emails } },
-		select: { email: true, slackId: true, name: true, displayName: true },
 	})
-	const byEmail = new Map(users.map((user) => [user.email.trim().toLowerCase(), user]))
+	const byEmail = new Map(users.map(user => [user.email.trim().toLowerCase(), user]))
 
-	const slackNames = await getSlackUserNames(users.flatMap((user) => (user.slackId ? [user.slackId] : [])))
+	const slackNames = await getSlackUserNames(users.flatMap(user => (user.slackId ? [user.slackId] : [])))
 
 	for (const entry of entries) {
 		if (entry.email === ANONYMOUS_ARI) {
@@ -39,11 +39,11 @@ async function namesFor(entries: ProjectReviewStats["leaderboard"]): Promise<Map
 		const user = byEmail.get(entry.email.trim().toLowerCase())
 		names.set(
 			entry.email,
-			(user?.slackId ? slackNames.get(user.slackId) : null) ??
-				user?.displayName ??
-				user?.name ??
-				entry.name ??
-				entry.email,
+			(user?.slackId ? slackNames.get(user.slackId) : null)
+				?? user?.displayName
+				?? user?.name
+				?? entry.name
+				?? entry.email,
 		)
 	}
 	return names
@@ -73,10 +73,10 @@ function weekBarLine(row: WeekReviewProgress, labelWidth: number, countWidth: nu
  */
 function weekProgressSection(byWeek: WeekReviewProgress[]): SummaryBoard | null {
 	if (byWeek.length === 0) return null
-	const labelWidth = Math.max(...byWeek.map((row) => `week ${row.week} · ${row.label}`.length))
-	const countWidth = Math.max(...byWeek.map((row) => `${row.reviewed}/${row.total}`.length))
-	const lines = ["```", ...byWeek.map((row) => weekBarLine(row, labelWidth, countWidth)), "```"]
-	return { title: ":bar-chart: reviewed by week", total: byWeek.length, lines }
+	const labelWidth = Math.max(...byWeek.map(row => `week ${row.week} · ${row.label}`.length))
+	const countWidth = Math.max(...byWeek.map(row => `${row.reviewed}/${row.total}`.length))
+	const lines = ["```", ...byWeek.map(row => weekBarLine(row, labelWidth, countWidth)), "```"]
+	return { lines, title: ":bar-chart: reviewed by week", total: byWeek.length }
 }
 
 export async function buildReviewSummary(stats: ProjectReviewStats): Promise<string> {
@@ -87,23 +87,23 @@ export async function buildReviewSummary(stats: ProjectReviewStats): Promise<str
 	const weekly = weekProgressSection(stats.byWeek)
 
 	return renderSummary({
-		headline: `${countedLine(
-			stats.submitted,
-			{ singular: "submission", plural: "submissions" },
-			{ singular: "was handed in", plural: "were handed in" },
-		)} and ${creditedLine(stats.reviewed, "review")}`,
 		boards: [
 			rankedShareBoard(
 				":yay-peace: today's leaderboard",
-				daily.map((row) => ({ name: names.get(row.email) ?? row.email, count: row.reviewed })),
+				daily.map(row => ({ count: row.reviewed, name: names.get(row.email) ?? row.email })),
 				daily.reduce((n, row) => n + row.reviewed, 0),
 			),
 			rankedShareBoard(
 				":yay-blush-2: all-time leaderboard",
-				global.map((row) => ({ name: names.get(row.email) ?? row.email, count: row.reviewed })),
+				global.map(row => ({ count: row.reviewed, name: names.get(row.email) ?? row.email })),
 				global.reduce((n, row) => n + row.reviewed, 0),
 			),
 			...(weekly ? [weekly] : []),
 		],
+		headline: `${countedLine(
+			stats.submitted,
+			{ plural: "submissions", singular: "submission" },
+			{ plural: "were handed in", singular: "was handed in" },
+		)} and ${creditedLine(stats.reviewed, "review")}`,
 	})
 }

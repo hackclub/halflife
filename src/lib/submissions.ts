@@ -36,35 +36,35 @@ export function canSubmitPhase(
 	// A warm-up is one submission, as the phase it was made for: a design asking for funding, or a finished build. Never the other, never both.
 	if (project.theme === Theme.WARMUP && phase !== warmupPhaseOf(project)) {
 		return {
-			ok: false,
 			code: "PHASE_LOCKED",
 			message:
 				warmupPhaseOf(project) === Phase.DESIGN
 					? "This warm-up project is submitted as a design"
 					: "This warm-up project is submitted as a finished build",
+			ok: false,
 		}
 	}
 
 	const status = statusFor(project, phase)
 	if (status === PhaseStatus.in_review) {
-		return { ok: false, code: "ALREADY_SUBMITTED", message: "This phase is already in review" }
+		return { code: "ALREADY_SUBMITTED", message: "This phase is already in review", ok: false }
 	}
 	if (status === PhaseStatus.approved) {
-		return { ok: false, code: "PHASE_LOCKED", message: "This phase is already approved" }
+		return { code: "PHASE_LOCKED", message: "This phase is already approved", ok: false }
 	}
 	if (status === PhaseStatus.rejected) {
 		return {
-			ok: false,
 			code: "PHASE_LOCKED",
 			message: "This phase was rejected. Ask an admin to reopen it.",
+			ok: false,
 		}
 	}
 	// A warm-up project is one phase by nature – it was handed in through the pre-season form, not designed and then built – so the design-first rule does not apply to it.
 	if (phase === Phase.BUILD && project.theme !== Theme.WARMUP && project.designStatus === PhaseStatus.draft) {
 		return {
-			ok: false,
 			code: "PHASE_LOCKED",
 			message: "Submit your design for this theme before submitting the build",
+			ok: false,
 		}
 	}
 	return { ok: true }
@@ -96,7 +96,7 @@ export async function submitPhase(
 	fundingDeclined = false,
 ): Promise<PhaseSubmission> {
 	const project = await prisma.themeProject.findFirst({
-		where: { id: themeProjectId, userId, deletedAt: null },
+		where: { deletedAt: null, id: themeProjectId, userId },
 	})
 	if (!project) throw new HttpError("NOT_FOUND", "Project not found")
 
@@ -121,7 +121,7 @@ export async function submitPhase(
 	await assertNoOwedReel(userId)
 
 	// A submission must not be able to file someone else's evidence as its own. Refuse rather than filter: silently dropping a stranger's key hands back a success with the evidence missing, which the maker only finds out at review.
-	const foreign = attachmentKeys.filter((key) => !isOwnedKey(userId, key))
+	const foreign = attachmentKeys.filter(key => !isOwnedKey(userId, key))
 	if (foreign.length > 0) throw new HttpError("VALIDATION_FAILED", "Those uploads are not yours")
 
 	const breakdown = await getHoursBreakdown(themeProjectId, phase)
@@ -130,15 +130,15 @@ export async function submitPhase(
 
 	// An account under review is stopped here. Identity verification is not: it is asked of the shop instead (see lib/shop), so a maker can explore, journal and hand work in without having verified, and meets it only when they try to spend.
 	const user = await prisma.user.findUnique({
-		where: { id: userId },
 		select: { fraudFlagged: true },
+		where: { id: userId },
 	})
 	if (user?.fraudFlagged) throw new HttpError("FORBIDDEN", "Your account is under review. Reach out in Slack.")
 
 	// The repo checks, run here rather than trusted from the sheet: what the maker was shown a minute ago is not an authorisation. They exist so a maker fixes what would get the week rejected before it is handed in, so a blocking failure refuses with its own reason. GitHub being unreachable never blocks.
 	const repoChecks = await checkRepo(project.githubRepo, project.theme)
 	if (!repoChecks.canSubmit) {
-		const first = repoChecks.checks.find((c) => c.blocking && c.status === "fail")
+		const first = repoChecks.checks.find(c => c.blocking && c.status === "fail")
 		throw new HttpError(
 			"UNPROCESSABLE",
 			first ? `${first.label}. ${first.detail ?? ""}`.trim() : "The repo is missing something this week needs",
@@ -168,12 +168,12 @@ export async function submitPhase(
 	const submittedInWeek = weekNumberForDate(settings.eventStartDate, now, settings.programTimezone)
 	const scheduledWeek = scheduledWeekFor(project.theme, phase)
 
-	return prisma.$transaction(async (tx) => {
+	return prisma.$transaction(async tx => {
 		// The gate is re-read on the transaction client: `getProgramSettings` caches the settings row for this request, so the pre-check above cannot see a submissions toggle, and a week can start or close between it and this write. Either would otherwise file a submission into a closed week.
 		const [accessSettings, accessUser, accessProject] = await Promise.all([
 			tx.programSettings.findUnique({ where: { id: "singleton" } }),
-			tx.user.findUnique({ where: { id: userId }, select: { submissionExtensionUntil: true } }),
-			tx.themeProject.findUnique({ where: { id: themeProjectId }, select: { submissionExtensionUntil: true } }),
+			tx.user.findUnique({ select: { submissionExtensionUntil: true }, where: { id: userId } }),
+			tx.themeProject.findUnique({ select: { submissionExtensionUntil: true }, where: { id: themeProjectId } }),
 		])
 		const stillOpen = accessOpenOnClient(
 			accessSettings,
@@ -186,32 +186,32 @@ export async function submitPhase(
 
 		// Claim the phase first, conditionally on it still being one that can be submitted. Two concurrent submits both read the same outside state, so without this both would create an open submission and both flip the status; the row lock makes the loser's update match nothing.
 		const claimed = await tx.themeProject.updateMany({
+			data: phase === Phase.DESIGN ? { designStatus: PhaseStatus.in_review } : { buildStatus: PhaseStatus.in_review },
 			where: {
+				deletedAt: null,
 				id: themeProjectId,
 				userId,
-				deletedAt: null,
 				...(phase === Phase.DESIGN
 					? { designStatus: { in: [PhaseStatus.draft, PhaseStatus.update_requested] } }
 					: { buildStatus: { in: [PhaseStatus.draft, PhaseStatus.update_requested] } }),
 			},
-			data: phase === Phase.DESIGN ? { designStatus: PhaseStatus.in_review } : { buildStatus: PhaseStatus.in_review },
 		})
 		if (claimed.count !== 1) throw new HttpError("ALREADY_SUBMITTED", "This phase is already in review")
 
 		return tx.phaseSubmission.create({
 			data: {
-				themeProjectId,
-				phase,
-				notes,
 				attachmentKeys,
-				submittedInWeek,
-				scheduledWeek,
+				fundingCapUsd: agreedPartial ? funding.capUsd : null,
+				fundingDeclined: phase === Phase.DESIGN && fundingDeclined,
+				notes,
 				// Analytics only. Nothing gates on lateness – a late joiner has to be able to finish.
 				onTime: submittedInWeek > 0 && submittedInWeek <= scheduledWeek,
 				partialFundingAccepted: agreedPartial,
+				phase,
 				requestedBomUsd: agreedPartial ? funding.totalUsd : null,
-				fundingCapUsd: agreedPartial ? funding.capUsd : null,
-				fundingDeclined: phase === Phase.DESIGN && fundingDeclined,
+				scheduledWeek,
+				submittedInWeek,
+				themeProjectId,
 			},
 		})
 	})
@@ -219,29 +219,29 @@ export async function submitPhase(
 
 export async function unsubmitPhase(userId: string, themeProjectId: string, phase: Phase): Promise<void> {
 	const project = await prisma.themeProject.findFirst({
-		where: { id: themeProjectId, userId, deletedAt: null },
+		where: { deletedAt: null, id: themeProjectId, userId },
 	})
 	if (!project) throw new HttpError("NOT_FOUND", "Project not found")
 
 	if (statusFor(project, phase) !== PhaseStatus.in_review)
 		throw new HttpError("NOT_SUBMITTED", "This phase is not awaiting review")
 
-	return prisma.$transaction(async (tx) => {
+	return prisma.$transaction(async tx => {
 		// Serialize against the review path. finalizeReview takes this same per-user credit lock before it re-reads the submission, so holding it here means a decision cannot land between our read and our delete.
 		await lockUserCredit(tx, project.userId)
 
 		// Everything below is re-read under the lock; the checks above are the fast fail for the ordinary case.
 		const current = await tx.themeProject.findUniqueOrThrow({
+			select: { buildStatus: true, designStatus: true },
 			where: { id: themeProjectId },
-			select: { designStatus: true, buildStatus: true },
 		})
 		if ((phase === Phase.DESIGN ? current.designStatus : current.buildStatus) !== PhaseStatus.in_review)
 			throw new HttpError("NOT_SUBMITTED", "This phase is not awaiting review")
 
 		const open = await tx.phaseSubmission.findFirst({
-			where: { themeProjectId, phase, resolvedAt: null },
-			orderBy: { createdAt: "desc" },
 			include: { claim: true },
+			orderBy: { createdAt: "desc" },
+			where: { phase, resolvedAt: null, themeProjectId },
 		})
 		if (!open) throw new HttpError("NOT_SUBMITTED", "No open submission found")
 
@@ -254,11 +254,11 @@ export async function unsubmitPhase(userId: string, themeProjectId: string, phas
 		if (withdrawn.count !== 1) throw new HttpError("ALREADY_RESOLVED", "This submission has already been decided")
 
 		const flipped = await tx.themeProject.updateMany({
+			data: phase === Phase.DESIGN ? { designStatus: PhaseStatus.draft } : { buildStatus: PhaseStatus.draft },
 			where: {
 				id: themeProjectId,
 				...(phase === Phase.DESIGN ? { designStatus: PhaseStatus.in_review } : { buildStatus: PhaseStatus.in_review }),
 			},
-			data: phase === Phase.DESIGN ? { designStatus: PhaseStatus.draft } : { buildStatus: PhaseStatus.draft },
 		})
 		if (flipped.count !== 1) throw new HttpError("CONFLICT", "This project moved while it was being withdrawn")
 	})

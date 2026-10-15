@@ -16,25 +16,25 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	const parsed = await parseBody(req, roleChangeSchema)
 	if (parsed.error) return parsed.error
 
-	const user = await prisma.user.findUnique({ where: { id }, select: { id: true } })
+	const user = await prisma.user.findUnique({ select: { id: true }, where: { id } })
 	if (!user) return fail("NOT_FOUND", "User not found")
 
 	const existing = await prisma.userRole.findUnique({
-		where: { userId_role: { userId: id, role: parsed.data.role } },
+		where: { userId_role: { role: parsed.data.role, userId: id } },
 	})
 	if (existing) return fail("CONFLICT", "That user already holds this role")
 
 	await prisma.userRole.create({
-		data: { userId: id, role: parsed.data.role, grantedBy: gate.user.id },
+		data: { grantedBy: gate.user.id, role: parsed.data.role, userId: id },
 	})
 
 	await logAudit({
 		action: AuditAction.ADMIN_GRANT_ROLE,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "User",
-		targetId: id,
+		actorId: gate.user.id,
 		metadata: { role: parsed.data.role },
+		targetId: id,
+		targetType: "User",
 	})
 
 	return ok({ ok: true }, { status: 201 })
@@ -49,11 +49,11 @@ export const DELETE = withRoute(async (req: Request, { params }: Params) => {
 	if (parsed.error) return parsed.error
 
 	// Locking everyone out of the admin surface is not a recoverable mistake in a deployment where nobody has shell access. The check and the delete run in one transaction under an advisory lock: two concurrent revokes of the two remaining admins would otherwise both count two and both delete.
-	await prisma.$transaction(async (tx) => {
+	await prisma.$transaction(async tx => {
 		if (parsed.data.role === Role.ADMIN) {
 			await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended('admin-roles', 0))`
 			const target = await tx.userRole.findUnique({
-				where: { userId_role: { userId: id, role: Role.ADMIN } },
+				where: { userId_role: { role: Role.ADMIN, userId: id } },
 			})
 			if (target) {
 				const admins = await tx.userRole.count({ where: { role: Role.ADMIN } })
@@ -61,16 +61,16 @@ export const DELETE = withRoute(async (req: Request, { params }: Params) => {
 			}
 		}
 
-		await tx.userRole.deleteMany({ where: { userId: id, role: parsed.data.role } })
+		await tx.userRole.deleteMany({ where: { role: parsed.data.role, userId: id } })
 	})
 
 	await logAudit({
 		action: AuditAction.ADMIN_REVOKE_ROLE,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "User",
-		targetId: id,
+		actorId: gate.user.id,
 		metadata: { role: parsed.data.role },
+		targetId: id,
+		targetType: "User",
 	})
 
 	return ok({ ok: true })

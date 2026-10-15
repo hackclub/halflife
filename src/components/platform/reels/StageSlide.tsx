@@ -94,7 +94,7 @@ export function StageSlide({
 		if (prefersStill()) return
 		el.currentTime = 0
 		let cancelled = false
-		playExclusive(el).then(async (ok) => {
+		playExclusive(el).then(async ok => {
 			if (ok || cancelled || el.muted) return
 			// Sound before the reader has touched the page is the browser's to refuse, and it does. Muted playback it always allows, so the reel plays silently and the page offers the sound back.
 			el.muted = true
@@ -176,9 +176,9 @@ export function StageSlide({
 			.animate(
 				[
 					{ opacity: 0, transform: at(0, 0.3) },
-					{ opacity: 1, transform: at(0, 1.18), offset: 0.16 },
-					{ opacity: 1, transform: at(0, 0.94), offset: 0.3 },
-					{ opacity: 1, transform: at(0, 1), offset: 0.55 },
+					{ offset: 0.16, opacity: 1, transform: at(0, 1.18) },
+					{ offset: 0.3, opacity: 1, transform: at(0, 0.94) },
+					{ offset: 0.55, opacity: 1, transform: at(0, 1) },
 					{ opacity: 0, transform: at(80, 1.3) },
 				],
 				{ duration: 900, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
@@ -231,27 +231,27 @@ export function StageSlide({
 				{reel.videoUrl ? (
 					// biome-ignore lint/a11y/useMediaCaption: a participant upload, and there is no caption file to point a track at. An empty track is announced as an empty caption, which is worse than none.
 					<video
-						ref={video}
-						src={reel.thumbnailUrl ? reel.videoUrl : `${reel.videoUrl}#t=0.1`}
-						poster={reel.thumbnailUrl ?? undefined}
-						playsInline
+						className={cx("absolute inset-0 size-full", portrait ? "object-cover" : "object-contain")}
 						loop={!autoScroll}
-						// The reel on screen is worth buffering ahead; its mounted neighbours fetch just enough to show a first frame, which is what makes a swipe land on a picture rather than a blank card.
-						preload={active ? "auto" : "metadata"}
-						onPlay={(e) => {
-							notePlaying(e.currentTarget)
-							setPlaying(true)
-						}}
-						onPause={(e) => {
-							noteStopped(e.currentTarget)
-							setPlaying(false)
-						}}
 						onEnded={() => {
 							if (autoScroll && active) onEnded()
 						}}
-						onLoadedMetadata={(e) => setTime({ now: e.currentTarget.currentTime, total: e.currentTarget.duration })}
+						onLoadedMetadata={e => setTime({ now: e.currentTarget.currentTime, total: e.currentTarget.duration })}
+						onPause={e => {
+							noteStopped(e.currentTarget)
+							setPlaying(false)
+						}}
+						onPlay={e => {
+							notePlaying(e.currentTarget)
+							setPlaying(true)
+						}}
 						onTimeUpdate={onTime}
-						className={cx("absolute inset-0 size-full", portrait ? "object-cover" : "object-contain")}
+						playsInline
+						poster={reel.thumbnailUrl ?? undefined}
+						// The reel on screen is worth buffering ahead; its mounted neighbours fetch just enough to show a first frame, which is what makes a swipe land on a picture rather than a blank card.
+						preload={active ? "auto" : "metadata"}
+						ref={video}
+						src={reel.thumbnailUrl ? reel.videoUrl : `${reel.videoUrl}#t=0.1`}
 					/>
 				) : (
 					// No URL is a deployment without a public bucket URL, not a reel without a video. Saying so beats standing a picture in for it.
@@ -264,11 +264,11 @@ export function StageSlide({
 				)}
 
 				<button
-					type="button"
-					onClick={onSurfaceClick}
-					disabled={!reel.videoUrl}
 					aria-label={`${playing ? "Pause" : "Play"} reel by ${who}. Double-tap to like.`}
 					className="absolute inset-0 z-[1] touch-manipulation focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-sky focus-visible:ring-inset"
+					disabled={!reel.videoUrl}
+					onClick={onSurfaceClick}
+					type="button"
 				/>
 
 				<div
@@ -283,18 +283,18 @@ export function StageSlide({
 					</span>
 				</div>
 
-				<div ref={bursts} aria-hidden="true" className="pointer-events-none absolute inset-0 z-[3] overflow-hidden" />
+				<div aria-hidden="true" className="pointer-events-none absolute inset-0 z-[3] overflow-hidden" ref={bursts} />
 
 				{/* The project on a tag in the corner, as on the rail's card. */}
 				{announcement ? (
 					<span className="label absolute top-3 left-3 z-[4] flex items-center gap-1.5 rounded-2xl bg-coral px-2.5 py-1 text-white">
-						<Gato sizes="28px" className="h-auto w-4" />
+						<Gato className="h-auto w-4" sizes="28px" />
 						From HQ
 					</span>
 				) : reel.project ? (
 					<Link
-						href={`/projects/${reel.project.id}`}
 						className="label absolute top-3 left-3 z-[4] max-w-[calc(100%-4.5rem)] truncate rounded-2xl bg-black/45 px-2.5 py-1 leading-[1.2] text-white backdrop-blur-sm transition-[background-color,transform] duration-150 hover:bg-black/60 active:translate-y-px md:max-w-[calc(100%-1.5rem)]"
+						href={`/projects/${reel.project.id}`}
 					>
 						{reel.project.title || reel.project.theme}
 					</Link>
@@ -302,11 +302,11 @@ export function StageSlide({
 
 				{/* On a phone there is no player strip, so the sound lives up here. */}
 				<button
-					type="button"
-					onClick={onToggleMute}
 					aria-label={muted ? "Turn sound on" : "Mute"}
 					aria-pressed={muted}
 					className="absolute top-2.5 right-2.5 z-[4] grid size-9 place-items-center rounded-full bg-black/40 text-white backdrop-blur-sm transition-colors hover:bg-black/60 md:hidden"
+					onClick={onToggleMute}
+					type="button"
 				>
 					{muted ? <IconVolumeOff className="text-[1.15rem]" /> : <IconVolume className="text-[1.15rem]" />}
 				</button>
@@ -318,8 +318,8 @@ export function StageSlide({
                 back from the surface that pauses and likes; the timestamp and the
                 caption stay inert over the picture. */}
 						<Link
-							href={`/u/${reel.author.id}`}
 							className="pointer-events-auto min-w-0 truncate text-[0.9rem] font-extrabold text-white [text-shadow:0_1px_3px_rgba(0,0,0,.6)] hover:underline hover:decoration-dashed hover:underline-offset-4"
+							href={`/u/${reel.author.id}`}
 						>
 							{who}
 						</Link>
@@ -330,21 +330,21 @@ export function StageSlide({
 					{reel.caption && (
 						<div className={cx("mt-1 flex items-end gap-2.5", expanded && "pointer-events-auto")}>
 							<p
-								ref={caption}
-								// Opened, the caption can outgrow its space and scrolls itself; the page's wheel handler leaves anything marked so alone.
-								data-own-scroll={expanded || undefined}
 								className={cx(
 									"min-w-0 flex-1 text-[0.8rem] leading-snug whitespace-pre-line [overflow-wrap:anywhere] text-white/90",
 									expanded ? "thin-scroll max-h-[34vh] overflow-y-auto" : "line-clamp-2",
 								)}
+								// Opened, the caption can outgrow its space and scrolls itself; the page's wheel handler leaves anything marked so alone.
+								data-own-scroll={expanded || undefined}
+								ref={caption}
 							>
 								{reel.caption}
 							</p>
 							{(clamped || expanded) && (
 								<button
-									type="button"
-									onClick={() => setExpanded((v) => !v)}
 									className="hand pointer-events-auto shrink-0 text-[0.78rem] text-white underline decoration-dashed underline-offset-4 transition-colors hover:decoration-solid"
+									onClick={() => setExpanded(v => !v)}
+									type="button"
 								>
 									{expanded ? "less" : "more"}
 								</button>
@@ -355,31 +355,31 @@ export function StageSlide({
 
 				{/* ---------- how far through ---------- */}
 				<div
-					role="slider"
-					tabIndex={reel.videoUrl ? 0 : -1}
 					aria-label="Seek"
-					aria-valuemin={0}
 					aria-valuemax={Math.round(time.total)}
+					aria-valuemin={0}
 					aria-valuenow={Math.round(time.now)}
 					aria-valuetext={`${clock(time.now)} of ${clock(time.total)}`}
-					onPointerDown={(e) => {
-						e.currentTarget.setPointerCapture(e.pointerId)
-						seekTo(e.clientX, e.currentTarget)
-					}}
-					onPointerMove={(e) => {
-						if (e.currentTarget.hasPointerCapture(e.pointerId)) seekTo(e.clientX, e.currentTarget)
-					}}
-					onKeyDown={(e) => {
+					className="group/seek absolute inset-x-0 bottom-0 z-[5] flex h-3.5 cursor-pointer touch-none items-end focus-visible:outline-none"
+					onKeyDown={e => {
 						const el = video.current
 						if (!el || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return
 						// Claimed here so the page's own arrow-key navigation leaves it be.
 						e.preventDefault()
 						el.currentTime = Math.max(0, Math.min(el.duration || 0, el.currentTime + (e.key === "ArrowRight" ? 5 : -5)))
 					}}
-					className="group/seek absolute inset-x-0 bottom-0 z-[5] flex h-3.5 cursor-pointer touch-none items-end focus-visible:outline-none"
+					onPointerDown={e => {
+						e.currentTarget.setPointerCapture(e.pointerId)
+						seekTo(e.clientX, e.currentTarget)
+					}}
+					onPointerMove={e => {
+						if (e.currentTarget.hasPointerCapture(e.pointerId)) seekTo(e.clientX, e.currentTarget)
+					}}
+					role="slider"
+					tabIndex={reel.videoUrl ? 0 : -1}
 				>
 					<div className="relative h-[3px] w-full bg-white/25 transition-[height] duration-150 group-hover/seek:h-[5px] group-focus-visible/seek:h-[5px]">
-						<div ref={fill} className="absolute inset-0 origin-left scale-x-0 bg-teal-mid" />
+						<div className="absolute inset-0 origin-left scale-x-0 bg-teal-mid" ref={fill} />
 					</div>
 				</div>
 			</article>
@@ -389,7 +389,7 @@ export function StageSlide({
           auto-scroll goes first and speed second; play, the clock and the
           sound always stay. */}
 			<div className="@container mt-2.5 hidden h-10 shrink-0 items-center gap-2.5 text-navy md:flex">
-				<RoundControl label={playing ? "Pause" : "Play"} onClick={toggle} disabled={!reel.videoUrl}>
+				<RoundControl disabled={!reel.videoUrl} label={playing ? "Pause" : "Play"} onClick={toggle}>
 					{playing ? <IconPause className="text-[1rem]" /> : <IconPlay className="ml-0.5 text-[1.05rem]" />}
 				</RoundControl>
 				<p className="hand text-[0.8rem] text-navy-soft tabular-nums">
@@ -398,12 +398,12 @@ export function StageSlide({
 
 				<div className="ml-auto flex items-center gap-2">
 					<button
-						type="button"
-						role="switch"
 						aria-checked={autoScroll}
-						onClick={onToggleAutoScroll}
-						title="Move on to the next reel when this one ends"
 						className="hidden items-center gap-2 rounded-full py-1 pr-1 pl-1.5 transition-colors hover:bg-black/5 @xs:flex"
+						onClick={onToggleAutoScroll}
+						role="switch"
+						title="Move on to the next reel when this one ends"
+						type="button"
 					>
 						<span className="label text-navy-soft">Auto</span>
 						<span
@@ -422,10 +422,10 @@ export function StageSlide({
 						</span>
 					</button>
 					<button
-						type="button"
-						onClick={onCycleRate}
 						aria-label={`Playback speed ${rate} times. Change speed.`}
 						className="label hidden min-w-[3rem] rounded-full bg-black/5 px-2.5 py-1.5 text-navy-soft tabular-nums transition-colors hover:bg-sky-pale hover:text-sky-ink @2xs:inline-block"
+						onClick={onCycleRate}
+						type="button"
 					>
 						{rate.toFixed(1)}x
 					</button>
@@ -454,13 +454,13 @@ function RoundControl({
 }) {
 	return (
 		<button
-			type="button"
-			onClick={onClick}
-			disabled={disabled}
 			aria-label={label}
 			aria-pressed={pressed}
 			className="sketch grid size-9 place-items-center rounded-full bg-paper text-navy transition-colors hover:bg-mint hover:text-teal-ink disabled:cursor-not-allowed disabled:text-navy-faint"
+			disabled={disabled}
+			onClick={onClick}
 			style={{ "--sk-color": "var(--color-line-strong)", "--sk-radius": "999px" } as React.CSSProperties}
+			type="button"
 		>
 			{children}
 		</button>

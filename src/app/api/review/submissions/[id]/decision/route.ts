@@ -23,9 +23,9 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 
 	// The tier table is the reviewer's whole vocabulary for funding. Writing a freehand dollar amount straight onto a grant row is an admin action – otherwise REVIEWER quietly carries the authority MANAGE_CREDIT withholds.
 	if (
-		"grantUsdOverride" in body &&
-		body.grantUsdOverride !== undefined &&
-		!hasPermission(gate.roles, Permission.MANAGE_CREDIT)
+		"grantUsdOverride" in body
+		&& body.grantUsdOverride !== undefined
+		&& !hasPermission(gate.roles, Permission.MANAGE_CREDIT)
 	) {
 		return fail("FORBIDDEN", "Overriding the grant amount requires the MANAGE_CREDIT permission")
 	}
@@ -33,16 +33,16 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	const feedback = sanitize(body.feedback ?? "")
 
 	const outcome = await finalizeReview({
-		submissionId: id,
+		feedback,
+		grantUsdOverride: "grantUsdOverride" in body ? (body.grantUsdOverride ?? null) : null,
+		hoursOverride: "hoursOverride" in body ? (body.hoursOverride ?? null) : null,
+		reason: "reason" in body ? sanitizeOptional(body.reason) : null,
+		result: body.result,
+		reviewerEmail: gate.user.email,
 		reviewerId: gate.user.id,
 		reviewerName: gate.user.name,
-		reviewerEmail: gate.user.email,
-		result: body.result,
-		feedback,
-		reason: "reason" in body ? sanitizeOptional(body.reason) : null,
+		submissionId: id,
 		tier: "tier" in body ? (body.tier ?? null) : null,
-		hoursOverride: "hoursOverride" in body ? (body.hoursOverride ?? null) : null,
-		grantUsdOverride: "grantUsdOverride" in body ? (body.grantUsdOverride ?? null) : null,
 	})
 
 	// After the response: moving the row and telling the maker must not hold up the reviewer, and a Slack or Airtable outage must not fail a decision that has already committed.
@@ -55,12 +55,12 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 			feedback || null,
 		)
 		await notifyReviewOutcome({
-			themeProjectId: outcome.themeProjectId,
-			phase: outcome.phase,
-			result: outcome.result,
+			decidedBy: "console",
 			// A console reviewer always writes the note themselves, so an empty one is an empty one rather than a missing field.
 			note: feedback || null,
-			decidedBy: "console",
+			phase: outcome.phase,
+			result: outcome.result,
+			themeProjectId: outcome.themeProjectId,
 		})
 	})
 

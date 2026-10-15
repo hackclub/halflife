@@ -24,7 +24,7 @@ export async function recordSyncRun(
 ): Promise<void> {
 	try {
 		await prisma.syncRunLog.create({
-			data: { syncKey, result: result ?? undefined, actorId },
+			data: { actorId, result: result ?? undefined, syncKey },
 		})
 	} catch (err) {
 		// Never fail a sync because its bookkeeping row didn't land.
@@ -41,20 +41,20 @@ export type LatestSyncRun = {
 
 export async function getLatestSyncRuns(keys: SyncKey[]): Promise<LatestSyncRun[]> {
 	const rows = await Promise.all(
-		keys.map((syncKey) =>
+		keys.map(syncKey =>
 			prisma.syncRunLog.findFirst({
-				where: { syncKey },
+				include: { actor: { select: { email: true, id: true, name: true } } },
 				orderBy: { createdAt: "desc" },
-				include: { actor: { select: { id: true, name: true, email: true } } },
+				where: { syncKey },
 			}),
 		),
 	)
 	return rows
 		.filter((r): r is NonNullable<typeof r> => r !== null)
-		.map((r) => ({
-			syncKey: r.syncKey,
+		.map(r => ({
+			actor: r.actor,
 			lastRunAt: r.createdAt,
 			result: r.result,
-			actor: r.actor,
+			syncKey: r.syncKey,
 		}))
 }

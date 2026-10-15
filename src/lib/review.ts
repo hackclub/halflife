@@ -35,8 +35,8 @@ export type ClaimResult =
  */
 export async function claimSubmission(submissionId: string, reviewerId: string): Promise<ClaimResult> {
 	const owner = await prisma.phaseSubmission.findUnique({
-		where: { id: submissionId },
 		select: { themeProject: { select: { userId: true } } },
+		where: { id: submissionId },
 	})
 	if (!owner) throw new HttpError("NOT_FOUND", "Submission not found")
 	if (owner.themeProject.userId === reviewerId)
@@ -47,24 +47,24 @@ export async function claimSubmission(submissionId: string, reviewerId: string):
 
 	// Opportunistically clear a dead reviewer's lock so a queue isn't blocked for up to a full sweep interval.
 	await prisma.reviewClaim.deleteMany({
-		where: { submissionId, OR: [{ expiresAt: { lt: new Date() } }, { reviewerId }] },
+		where: { OR: [{ expiresAt: { lt: new Date() } }, { reviewerId }], submissionId },
 	})
 
 	try {
-		await prisma.reviewClaim.create({ data: { submissionId, reviewerId, expiresAt } })
-		return { ok: true, expiresAt }
+		await prisma.reviewClaim.create({ data: { expiresAt, reviewerId, submissionId } })
+		return { expiresAt, ok: true }
 	} catch {
 		const held = await prisma.reviewClaim.findUnique({
+			include: { reviewer: { select: { displayName: true, name: true } } },
 			where: { submissionId },
-			include: { reviewer: { select: { name: true, displayName: true } } },
 		})
 		if (!held) throw new HttpError("CONFLICT", "Could not claim this submission")
 		return {
-			ok: false,
+			expiresAt: held.expiresAt,
 			heldBy: held.reviewerId,
 			// The claim conflict is shown on the queue, so it names them the way the queue does.
 			heldByName: displayName(held.reviewer),
-			expiresAt: held.expiresAt,
+			ok: false,
 		}
 	}
 }
@@ -122,13 +122,13 @@ export type FinalizeOutcome = {
  */
 export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutcome> {
 	const submission = await prisma.phaseSubmission.findUnique({
-		where: { id: input.submissionId },
 		include: {
+			claim: true,
 			themeProject: {
 				include: { user: { select: { id: true, printerGoalId: true } } },
 			},
-			claim: true,
 		},
+		where: { id: input.submissionId },
 	})
 	if (!submission) throw new HttpError("NOT_FOUND", "Submission not found")
 
@@ -146,10 +146,10 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 
 	// A build cannot be approved before its design is. Submitting out of order is fine – see canSubmitPhase – but paying out of order is not. A warm-up project has no design to wait for: its one phase is whatever the form collected.
 	if (
-		approving &&
-		phase === Phase.BUILD &&
-		project.theme !== Theme.WARMUP &&
-		project.designStatus !== PhaseStatus.approved
+		approving
+		&& phase === Phase.BUILD
+		&& project.theme !== Theme.WARMUP
+		&& project.designStatus !== PhaseStatus.approved
 	) {
 		throw new HttpError("DESIGN_NOT_APPROVED", "Approve the design phase for this theme before approving the build")
 	}
@@ -204,14 +204,14 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 				? PhaseStatus.update_requested
 				: PhaseStatus.rejected
 
-	const outcome = await prisma.$transaction(async (tx) => {
+	const outcome = await prisma.$transaction(async tx => {
 		// reconcileGrant reads a running sum and writes a delta against it, so it needs the same serialization the shop does.
 		await lockUserCredit(tx, project.userId)
 
 		// Re-read inside the transaction: the review page may have been open for a while, and the participant may have withdrawn in the meantime.
 		const fresh = await tx.phaseSubmission.findUnique({
-			where: { id: input.submissionId },
 			select: { resolvedAt: true },
+			where: { id: input.submissionId },
 		})
 		if (!fresh) throw new HttpError("NOT_SUBMITTED", "This submission has been withdrawn")
 		if (fresh.resolvedAt) throw new HttpError("ALREADY_RESOLVED", "Already decided")
@@ -224,8 +224,8 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 		// Re-check the design ordering under the same per-user lock the un-approve path takes. The check before the transaction ran against a read taken before the live Hackatime fetch; an admin can un-approve the design in that window, and a build approval must not pay out of order. Taking the lock first means this read sees either the un-approval (and refuses) or blocks it until this decision has committed.
 		if (approving && phase === Phase.BUILD) {
 			const design = await tx.themeProject.findUnique({
-				where: { id: project.id },
 				select: { designStatus: true, theme: true },
+				where: { id: project.id },
 			})
 			if (design?.theme !== Theme.WARMUP && design?.designStatus !== PhaseStatus.approved)
 				throw new HttpError("DESIGN_NOT_APPROVED", "Approve the design phase for this theme before approving the build")
@@ -235,76 +235,76 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 			// Accept every unreviewed session at its claimed hours, so the per-session numbers stay consistent with the frozen total.
 			// Only sessions in the snapshot: one created after it was never counted in the frozen total.
 			await tx.workSession.updateMany({
+				data: { reviewedAt: new Date(), reviewedById: input.reviewerId },
 				where: {
-					themeProjectId: project.id,
-					phase,
+					createdAt: { lt: snapshotAt },
 					deletedAt: null,
 					hoursApproved: null,
-					createdAt: { lt: snapshotAt },
+					phase,
+					themeProjectId: project.id,
 				},
-				data: { reviewedAt: new Date(), reviewedById: input.reviewerId },
 			})
 		}
 
 		await tx.submissionReview.create({
 			data: {
-				submissionId: input.submissionId,
-				reviewerId: input.reviewerId,
-				// Who decided, as contact details rather than only an account link: Ari's reviewers hold no Half Life account, so `reviewerId` is null for every Ari decision and the email is the only attribution the leaderboard has. Console reviewers carry both.
-				reviewerEmail: input.reviewerEmail,
-				reviewerName: input.reviewerName,
-				pass: ReviewPass.FINAL,
-				result: input.result,
 				feedback: input.feedback,
-				reason: input.reason ?? null,
-				hoursOverride: input.hoursOverride ?? null,
-				tierOverride: input.tier ?? null,
-				grantUsdOverride: input.grantUsdOverride ?? null,
+				frozenApprovedHours: approvedHours,
+				frozenBankedCoins: coins?.banked ?? null,
+				frozenBankHours: goal.paceHours,
+				frozenEntryCount: breakdown.journalEntryCount,
+				frozenFundingHours: tierDef?.fundingHours ?? null,
+				frozenGrantUsd: grantUsd,
+				frozenHackatimeHours: breakdown.hackatimeHours,
 				// Freeze what the reviewer was looking at. The tier table is expected to change mid-program, so without these there is no way to reconstruct why anyone was paid what they were paid.
 				frozenJournalHours: breakdown.journalHours,
-				frozenHackatimeHours: breakdown.hackatimeHours,
-				frozenTimelapseSeconds: breakdown.timelapseSeconds,
-				frozenEntryCount: breakdown.journalEntryCount,
-				frozenApprovedHours: approvedHours,
-				frozenTier: tier,
-				frozenGrantUsd: grantUsd,
-				frozenBankedCoins: coins?.banked ?? null,
-				frozenSpendableCoins: coins?.spendable ?? null,
-				frozenFundingHours: tierDef?.fundingHours ?? null,
-				frozenBankHours: goal.paceHours,
 				frozenPrinterGoalId: goal.id,
+				frozenSpendableCoins: coins?.spendable ?? null,
+				frozenTier: tier,
+				frozenTimelapseSeconds: breakdown.timelapseSeconds,
+				grantUsdOverride: input.grantUsdOverride ?? null,
+				hoursOverride: input.hoursOverride ?? null,
+				pass: ReviewPass.FINAL,
+				reason: input.reason ?? null,
+				result: input.result,
+				// Who decided, as contact details rather than only an account link: Ari's reviewers hold no Half Life account, so `reviewerId` is null for every Ari decision and the email is the only attribution the leaderboard has. Console reviewers carry both.
+				reviewerEmail: input.reviewerEmail,
+				reviewerId: input.reviewerId,
+				reviewerName: input.reviewerName,
+				submissionId: input.submissionId,
+				tierOverride: input.tier ?? null,
 			},
 		})
 
 		await tx.phaseSubmission.update({
-			where: { id: input.submissionId },
 			data: { resolvedAt: new Date(), resolvedResult: input.result },
+			where: { id: input.submissionId },
 		})
 
 		const projectUpdate: Prisma.ThemeProjectUpdateInput =
 			phase === Phase.DESIGN
 				? {
-						designStatus: nextStatus,
 						designReviewComments: input.feedback,
 						designReviewedAt: new Date(),
 						designReviewedById: input.reviewerId,
+						designStatus: nextStatus,
 						...(approving
 							? {
-									tier,
-									grantUsd,
-									grantEmittedAt: new Date(),
 									designApprovedHours: approvedHours,
 									designApprovedHoursAt: new Date(),
 									designBankedCoins: coins?.banked ?? null,
 									designSpendableCoins: coins?.spendable ?? null,
+									grantEmittedAt: new Date(),
+									grantUsd,
+									tier,
 								}
 							: {}),
 					}
 				: {
-						buildStatus: nextStatus,
 						buildReviewComments: input.feedback,
 						buildReviewedAt: new Date(),
 						buildReviewedById: input.reviewerId,
+						buildStatus: nextStatus,
 						...(approving
 							? {
 									approvedHours,
@@ -315,62 +315,62 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 							: {}),
 					}
 
-		await tx.themeProject.update({ where: { id: project.id }, data: projectUpdate })
+		await tx.themeProject.update({ data: projectUpdate, where: { id: project.id } })
 
 		// Credit is reconciled to a target rather than appended, so approving the same build five times converges instead of compounding.
 		if (phase === Phase.DESIGN) {
 			// The legacy locked half and the spendable half are separate kinds, so an un-approval can zero each one independently and neither has to work out which share of a combined number was its own. New approvals always target zero for the locked half – every coin is spendable now – which also migrates an old approval to the single pot the next time it is re-decided, with no change to its total.
 			await reconcileGrant(tx, {
-				userId: project.userId,
-				themeProjectId: project.id,
-				kind: LedgerKind.DESIGN_BANKED_HOURS,
 				bucket: CoinBucket.BANKED,
-				target: approving ? (coins?.banked ?? 0) : 0,
+				createdById: input.reviewerId,
+				kind: LedgerKind.DESIGN_BANKED_HOURS,
 				note:
 					approving && tierDef
 						? `${approvedHours}h approved: ${tierDef.fundingHours}h funded at $${tierDef.grantUsd}, ${coins?.spendable ?? 0} coins spendable`
 						: "Design approval withdrawn",
-				createdById: input.reviewerId,
+				target: approving ? (coins?.banked ?? 0) : 0,
+				themeProjectId: project.id,
+				userId: project.userId,
 			})
 			await reconcileGrant(tx, {
-				userId: project.userId,
-				themeProjectId: project.id,
+				createdById: input.reviewerId,
 				kind: LedgerKind.DESIGN_EXCESS_HOURS,
-				target: approving ? (coins?.spendable ?? 0) : 0,
 				note:
 					approving && tierDef
 						? `Hours beyond Tier ${tier}'s ${tierDef.fundingHours}h funded, spendable on anything`
 						: "Design approval withdrawn",
-				createdById: input.reviewerId,
+				target: approving ? (coins?.spendable ?? 0) : 0,
+				themeProjectId: project.id,
+				userId: project.userId,
 			})
 		}
 
 		if (phase === Phase.BUILD) {
 			// Two kinds for the same reason as a design approval: reconcileGrant sums by kind, so folding the legacy locked half into the spendable kind would reconcile each against the other's running total. New approvals target zero for the locked half.
 			await reconcileGrant(tx, {
-				userId: project.userId,
-				themeProjectId: project.id,
-				kind: LedgerKind.BUILD_BANKED_HOURS,
 				bucket: CoinBucket.BANKED,
-				target: approving ? (coins?.banked ?? 0) : 0,
+				createdById: input.reviewerId,
+				kind: LedgerKind.BUILD_BANKED_HOURS,
 				note: approving ? `${approvedHours}h of build work, all spendable` : "Build approval withdrawn",
-				createdById: input.reviewerId,
+				target: approving ? (coins?.banked ?? 0) : 0,
+				themeProjectId: project.id,
+				userId: project.userId,
 			})
 			await reconcileGrant(tx, {
-				userId: project.userId,
-				themeProjectId: project.id,
+				createdById: input.reviewerId,
 				kind: LedgerKind.BUILD_HOURS,
-				target: approving ? (coins?.spendable ?? 0) : 0,
 				note: approving ? `${approvedHours}h of build work, spendable on anything` : "Build approval withdrawn",
-				createdById: input.reviewerId,
+				target: approving ? (coins?.spendable ?? 0) : 0,
+				themeProjectId: project.id,
+				userId: project.userId,
 			})
 			await reconcileGrant(tx, {
-				userId: project.userId,
-				themeProjectId: project.id,
-				kind: LedgerKind.THEME_COMPLETION_BONUS,
-				target: approving ? THEME_COMPLETION_BONUS : 0,
-				note: `${getThemeDef(project.theme).label} shipped`,
 				createdById: input.reviewerId,
+				kind: LedgerKind.THEME_COMPLETION_BONUS,
+				note: `${getThemeDef(project.theme).label} shipped`,
+				target: approving ? THEME_COMPLETION_BONUS : 0,
+				themeProjectId: project.id,
+				userId: project.userId,
 			})
 		}
 
@@ -379,14 +379,14 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 		const award = approving ? await ensurePrinterAward(tx, project.userId) : null
 
 		return {
-			themeProjectId: project.id,
-			phase,
-			result: input.result,
 			approvedHours,
-			tier,
-			grantUsd,
 			coins,
+			grantUsd,
+			phase,
 			printerQualified: !!award,
+			result: input.result,
+			themeProjectId: project.id,
+			tier,
 		}
 	})
 
@@ -397,27 +397,27 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 				: input.result === ReviewResult.RETURNED
 					? AuditAction.REVIEW_RETURN
 					: AuditAction.REVIEW_REJECT,
-		actorId: input.reviewerId,
 		actorEmail: input.reviewerEmail,
-		targetType: "ThemeProject",
-		targetId: project.id,
+		actorId: input.reviewerId,
 		metadata: {
-			phase,
-			submissionId: input.submissionId,
-			before: {
-				status: phase === Phase.DESIGN ? project.designStatus : project.buildStatus,
-				tier: project.tier,
-				grantUsd: project.grantUsd,
-				approvedHours: project.approvedHours,
-			},
 			after: {
-				status: nextStatus,
-				tier: outcome.tier,
-				grantUsd: outcome.grantUsd,
 				approvedHours: outcome.approvedHours,
 				coins: outcome.coins,
+				grantUsd: outcome.grantUsd,
+				status: nextStatus,
+				tier: outcome.tier,
 			},
+			before: {
+				approvedHours: project.approvedHours,
+				grantUsd: project.grantUsd,
+				status: phase === Phase.DESIGN ? project.designStatus : project.buildStatus,
+				tier: project.tier,
+			},
+			phase,
+			submissionId: input.submissionId,
 		},
+		targetId: project.id,
+		targetType: "ThemeProject",
 	})
 
 	return outcome
@@ -441,13 +441,13 @@ export async function unapprovePhase(
 	const status = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
 	if (status !== PhaseStatus.approved) throw new HttpError("CONFLICT", "That phase is not approved")
 
-	await prisma.$transaction(async (tx) => {
+	await prisma.$transaction(async tx => {
 		await lockUserCredit(tx, project.userId)
 
 		// Re-read under the lock: the fast check above ran against a read taken before it, and a decision or re-approval can have committed since.
 		const fresh = await tx.themeProject.findUnique({
+			select: { buildStatus: true, designStatus: true },
 			where: { id: themeProjectId },
-			select: { designStatus: true, buildStatus: true },
 		})
 		if ((phase === Phase.DESIGN ? fresh?.designStatus : fresh?.buildStatus) !== PhaseStatus.approved)
 			throw new HttpError("CONFLICT", "That phase is no longer approved")
@@ -455,15 +455,15 @@ export async function unapprovePhase(
 		// A grant send holds no credit lock while HCB is called, so a design un-approval must not race it: the money would be sent for an approval that no longer stands, and the sent row would block a later send. `sendGrant` marks the row errored before it throws, which is what lets this same check pass on the retry after the window.
 		if (phase === Phase.DESIGN) {
 			const inFlight = await tx.hcbGrantTopUp.findFirst({
+				select: { id: true },
 				where: {
-					userId: project.userId,
-					themeProjectId,
+					createdAt: { gt: new Date(Date.now() - ABANDONED_ATTEMPT_MS) },
+					error: null,
 					phase: Phase.DESIGN,
 					sentAt: null,
-					error: null,
-					createdAt: { gt: new Date(Date.now() - ABANDONED_ATTEMPT_MS) },
+					themeProjectId,
+					userId: project.userId,
 				},
-				select: { id: true },
 			})
 			if (inFlight) {
 				throw new HttpError(
@@ -474,92 +474,92 @@ export async function unapprovePhase(
 		}
 
 		await tx.submissionReview.updateMany({
-			where: { submission: { themeProjectId, phase }, invalidated: false },
 			data: { invalidated: true, invalidatedAt: new Date() },
+			where: { invalidated: false, submission: { phase, themeProjectId } },
 		})
 
 		await tx.themeProject.update({
-			where: { id: themeProjectId },
 			data:
 				phase === Phase.DESIGN
 					? {
-							designStatus: PhaseStatus.update_requested,
-							designReviewComments: reason,
-							tier: null,
-							grantUsd: null,
-							grantEmittedAt: null,
 							designApprovedHours: null,
 							designApprovedHoursAt: null,
 							designBankedCoins: null,
+							designReviewComments: reason,
 							designSpendableCoins: null,
+							designStatus: PhaseStatus.update_requested,
+							grantEmittedAt: null,
+							grantUsd: null,
+							tier: null,
 						}
 					: {
-							buildStatus: PhaseStatus.update_requested,
-							buildReviewComments: reason,
 							approvedHours: null,
 							approvedHoursAt: null,
 							buildCoins: null,
+							buildReviewComments: reason,
+							buildStatus: PhaseStatus.update_requested,
 						},
+			where: { id: themeProjectId },
 		})
 
 		if (phase === Phase.DESIGN) {
 			// Includes the banked half. Forced savings are still savings someone was credited for work that is no longer approved, so they unwind too – otherwise un-approving a design leaves free printer money behind.
 			await reconcileGrant(tx, {
-				userId: project.userId,
-				themeProjectId,
-				kind: LedgerKind.DESIGN_BANKED_HOURS,
 				bucket: CoinBucket.BANKED,
-				target: 0,
-				note: `Design un-approved: ${reason}`,
 				createdById: adminId,
+				kind: LedgerKind.DESIGN_BANKED_HOURS,
+				note: `Design un-approved: ${reason}`,
+				target: 0,
+				themeProjectId,
+				userId: project.userId,
 			})
 			await reconcileGrant(tx, {
-				userId: project.userId,
-				themeProjectId,
-				kind: LedgerKind.DESIGN_EXCESS_HOURS,
-				target: 0,
-				note: `Design un-approved: ${reason}`,
 				createdById: adminId,
+				kind: LedgerKind.DESIGN_EXCESS_HOURS,
+				note: `Design un-approved: ${reason}`,
+				target: 0,
+				themeProjectId,
+				userId: project.userId,
 			})
 		}
 
 		if (phase === Phase.BUILD) {
 			// The banked half unwinds too, for the same reason the design's does: forced savings are still savings credited for work no longer approved.
 			await reconcileGrant(tx, {
-				userId: project.userId,
-				themeProjectId,
-				kind: LedgerKind.BUILD_BANKED_HOURS,
 				bucket: CoinBucket.BANKED,
-				target: 0,
-				note: `Build un-approved: ${reason}`,
 				createdById: adminId,
+				kind: LedgerKind.BUILD_BANKED_HOURS,
+				note: `Build un-approved: ${reason}`,
+				target: 0,
+				themeProjectId,
+				userId: project.userId,
 			})
 			await reconcileGrant(tx, {
-				userId: project.userId,
-				themeProjectId,
+				createdById: adminId,
 				kind: LedgerKind.BUILD_HOURS,
-				target: 0,
 				note: `Build un-approved: ${reason}`,
-				createdById: adminId,
+				target: 0,
+				themeProjectId,
+				userId: project.userId,
 			})
 			await reconcileGrant(tx, {
-				userId: project.userId,
-				themeProjectId,
-				kind: LedgerKind.THEME_COMPLETION_BONUS,
-				target: 0,
-				note: `Build un-approved: ${reason}`,
 				createdById: adminId,
+				kind: LedgerKind.THEME_COMPLETION_BONUS,
+				note: `Build un-approved: ${reason}`,
+				target: 0,
+				themeProjectId,
+				userId: project.userId,
 			})
 		}
 	})
 
 	await logAudit({
 		action: AuditAction.ADMIN_UNAPPROVE_PHASE,
-		actorId: adminId,
 		actorEmail: adminEmail,
-		targetType: "ThemeProject",
+		actorId: adminId,
+		metadata: { before: { status: PhaseStatus.approved }, phase, reason },
 		targetId: themeProjectId,
-		metadata: { phase, reason, before: { status: PhaseStatus.approved } },
+		targetType: "ThemeProject",
 	})
 }
 
@@ -579,23 +579,23 @@ export async function reopenPhase(
 
 	// Conditional on the status that was read: an admin double-click, or a reopen racing a resubmission, must not overwrite a newer state.
 	const reopened = await prisma.themeProject.updateMany({
+		data:
+			phase === Phase.DESIGN
+				? { designReviewComments: reason, designStatus: PhaseStatus.update_requested }
+				: { buildReviewComments: reason, buildStatus: PhaseStatus.update_requested },
 		where: {
 			id: themeProjectId,
 			...(phase === Phase.DESIGN ? { designStatus: PhaseStatus.rejected } : { buildStatus: PhaseStatus.rejected }),
 		},
-		data:
-			phase === Phase.DESIGN
-				? { designStatus: PhaseStatus.update_requested, designReviewComments: reason }
-				: { buildStatus: PhaseStatus.update_requested, buildReviewComments: reason },
 	})
 	if (reopened.count !== 1) throw new HttpError("CONFLICT", "That phase moved while it was being reopened")
 
 	await logAudit({
 		action: AuditAction.ADMIN_REOPEN_PHASE,
-		actorId: adminId,
 		actorEmail: adminEmail,
-		targetType: "ThemeProject",
-		targetId: themeProjectId,
+		actorId: adminId,
 		metadata: { phase, reason },
+		targetId: themeProjectId,
+		targetType: "ThemeProject",
 	})
 }

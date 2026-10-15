@@ -16,15 +16,15 @@ export default async function ReviewQueuePage({ searchParams }: Props) {
 	const selected = phase === "DESIGN" ? Phase.DESIGN : phase === "BUILD" ? Phase.BUILD : undefined
 
 	const queue = await getReviewQueue({
-		reviewerId: user.id,
-		phase: selected,
 		cursor,
 		limit: 50,
+		phase: selected,
+		reviewerId: user.id,
 	})
 
 	return (
 		<div className="hl-stack">
-			<PageHeader title="Review queue" subtitle="Oldest submissions first." />
+			<PageHeader subtitle="Oldest submissions first." title="Review queue" />
 
 			<div className="hl-row">
 				<Stat label="Design waiting" value={queue.counts.design} />
@@ -32,13 +32,13 @@ export default async function ReviewQueuePage({ searchParams }: Props) {
 			</div>
 
 			<div className="hl-row">
-				<Link href="/review" className="hl-btn">
+				<Link className="hl-btn" href="/review">
 					All
 				</Link>
-				<Link href="/review?phase=DESIGN" className="hl-btn">
+				<Link className="hl-btn" href="/review?phase=DESIGN">
 					Design
 				</Link>
-				<Link href="/review?phase=BUILD" className="hl-btn">
+				<Link className="hl-btn" href="/review?phase=BUILD">
 					Build
 				</Link>
 			</div>
@@ -48,7 +48,7 @@ export default async function ReviewQueuePage({ searchParams }: Props) {
 					<EmptyState>Queue is empty.</EmptyState>
 				) : (
 					<Table head={["Theme", "Phase", "Participant", "Waiting since", "Claim", ""]}>
-						{queue.items.map((item) => (
+						{queue.items.map(item => (
 							<tr key={item.id}>
 								<td>
 									{item.themeLabel}

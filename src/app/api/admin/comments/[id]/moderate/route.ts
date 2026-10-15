@@ -24,11 +24,11 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 
 	await logAudit({
 		action: AuditAction.ADMIN_HIDE_COMMENT,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "PostComment",
-		targetId: id,
+		actorId: gate.user.id,
 		metadata: { reason: parsed.data.reason },
+		targetId: id,
+		targetType: "PostComment",
 	})
 
 	return ok({ hidden: true })

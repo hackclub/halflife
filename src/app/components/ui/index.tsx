@@ -8,9 +8,9 @@ import type { ReactNode } from "react"
 type Variant = "default" | "primary" | "danger"
 
 const variantClass: Record<Variant, string> = {
+	danger: "hl-btn hl-btn--danger",
 	default: "hl-btn",
 	primary: "hl-btn hl-btn--primary",
-	danger: "hl-btn hl-btn--danger",
 }
 
 export function Button({
@@ -27,7 +27,7 @@ export function LinkButton({
 	children,
 }: Readonly<{ href: string; variant?: Variant; children: ReactNode }>) {
 	return (
-		<Link href={href} className={variantClass[variant]}>
+		<Link className={variantClass[variant]} href={href}>
 			{children}
 		</Link>
 	)
@@ -53,7 +53,7 @@ export function Panel({
 		>
 			{(title || actions) && (
 				<div className="hl-row" style={{ justifyContent: "space-between" }}>
-					{title ? <h2 style={{ margin: 0, fontSize: "1.05rem" }}>{title}</h2> : <span />}
+					{title ? <h2 style={{ fontSize: "1.05rem", margin: 0 }}>{title}</h2> : <span />}
 					{actions}
 				</div>
 			)}
@@ -75,7 +75,7 @@ export function PageHeader({
 	return (
 		<header>
 			<div className="hl-sign">
-				<div className="hl-sign-straps" aria-hidden="true">
+				<div aria-hidden="true" className="hl-sign-straps">
 					<span className="hl-sign-strap" />
 					<span className="hl-sign-strap" />
 				</div>
@@ -125,12 +125,12 @@ export function Avatar({
 	const className = `hl-avatar${large ? " hl-avatar--lg" : ""}`
 	if (src) {
 		// eslint-disable-next-line @next/next/no-img-element
-		return <img className={className} src={src} alt={alt} />
+		return <img alt={alt} className={className} src={src} />
 	}
 	return (
-		<span className={`${className} hl-avatar--fallback`} role="img" aria-label={alt || "No picture set"}>
+		<span aria-label={alt || "No picture set"} className={`${className} hl-avatar--fallback`} role="img">
 			{/* eslint-disable-next-line @next/next/no-img-element */}
-			<img src="/brand/gato/schematic.png" alt="" />
+			<img alt="" src="/brand/gato/schematic.png" />
 		</span>
 	)
 }

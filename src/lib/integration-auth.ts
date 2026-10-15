@@ -16,7 +16,7 @@ function matches(presented: string, expected: string): boolean {
  * An unset env var yields 503, never an open route: a machine endpoint that silently stops checking its key is worse than one that stops working.
  */
 export function requireBearerAuth(request: NextRequest, envVars: string[]): NextResponse<ApiErrorBody> | null {
-	const expected = envVars.map((v) => process.env[v]).filter((v): v is string => !!v)
+	const expected = envVars.map(v => process.env[v]).filter((v): v is string => !!v)
 	if (expected.length === 0) return fail("NOT_CONFIGURED", `Set one of ${envVars.join(", ")} to enable this endpoint`)
 
 	const header = request.headers.get("authorization") ?? ""
@@ -24,7 +24,7 @@ export function requireBearerAuth(request: NextRequest, envVars: string[]): Next
 	if (!match?.[1]) return fail("UNAUTHENTICATED", "Missing bearer token")
 
 	const presented = match[1].trim()
-	if (!expected.some((token) => matches(presented, token))) return fail("UNAUTHENTICATED", "Invalid bearer token")
+	if (!expected.some(token => matches(presented, token))) return fail("UNAUTHENTICATED", "Invalid bearer token")
 	return null
 }
 

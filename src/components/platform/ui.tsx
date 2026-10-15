@@ -25,14 +25,14 @@ export function Panel({
 	as?: "div" | "section" | "article" | "aside" | "li"
 }) {
 	const color = {
+		coral: "var(--color-coral)",
+		gold: "var(--color-gold-deep)",
 		line: "var(--color-line)",
-		violet: "var(--color-violet)",
+		navy: "var(--color-navy)",
+		orange: "var(--color-orange)",
 		sky: "var(--color-sky)",
 		teal: "var(--color-teal)",
-		orange: "var(--color-orange)",
-		gold: "var(--color-gold-deep)",
-		coral: "var(--color-coral)",
-		navy: "var(--color-navy)",
+		violet: "var(--color-violet)",
 	}[tone]
 
 	return (
@@ -56,12 +56,12 @@ export function Panel({
  * Accent text
  * ------------------------------------------------------------------ */
 const ACCENT_TEXT: Record<string, string> = {
+	"var(--color-coral)": "var(--color-coral-deep)",
+	"var(--color-gold)": "var(--color-gold-ink)",
+	"var(--color-orange)": "var(--color-orange-ink)",
 	"var(--color-sky)": "var(--color-sky-ink)",
 	"var(--color-teal)": "var(--color-teal-ink)",
-	"var(--color-orange)": "var(--color-orange-ink)",
 	"var(--color-violet)": "var(--color-violet-deep)",
-	"var(--color-gold)": "var(--color-gold-ink)",
-	"var(--color-coral)": "var(--color-coral-deep)",
 }
 
 /**
@@ -78,8 +78,8 @@ export function accentText(accent: string): string {
  */
 export function onAccent(accent: string): { text: string; pill: string } {
 	return accent === "var(--color-magenta)"
-		? { text: "#ffffff", pill: "rgb(0 0 0 / 0.15)" }
-		: { text: "var(--color-navy)", pill: "rgb(255 255 255 / 0.25)" }
+		? { pill: "rgb(0 0 0 / 0.15)", text: "#ffffff" }
+		: { pill: "rgb(255 255 255 / 0.25)", text: "var(--color-navy)" }
 }
 
 /* ------------------------------------------------------------------ *
@@ -96,27 +96,26 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
 	ref,
 ) {
 	const sizes = {
-		sm: "h-9 px-3.5 text-[0.76rem]",
-		md: "h-11 px-5 text-[0.85rem]",
 		lg: "h-13 px-7 text-[0.95rem]",
+		md: "h-11 px-5 text-[0.85rem]",
+		sm: "h-9 px-3.5 text-[0.76rem]",
 	}[size]
 
 	const variants = {
+		coral:
+			"bg-coral-deep text-white border-coral-dark hover:bg-coral-dark active:translate-y-px disabled:bg-line disabled:border-line-strong",
+		ghost: "bg-transparent text-navy-soft border-transparent hover:text-navy hover:bg-black/5 active:translate-y-px",
+		gold: "bg-gold text-navy border-gold-deep hover:brightness-105 active:translate-y-px disabled:bg-line disabled:border-line-strong disabled:text-navy-soft",
+		outline:
+			"bg-transparent text-navy border-violet hover:bg-violet-pale active:translate-y-px disabled:text-navy-soft disabled:border-line",
 		// Each solid fill is the deep tone, rimmed and hovered one darker: a white label on the plain violet, teal and coral read 3.37, 2.80 and 3.33:1.
 		solid:
 			"bg-violet-deep text-white border-violet-dark hover:bg-violet-dark active:translate-y-px disabled:bg-line disabled:border-line-strong",
-		gold: "bg-gold text-navy border-gold-deep hover:brightness-105 active:translate-y-px disabled:bg-line disabled:border-line-strong disabled:text-navy-soft",
 		teal: "bg-teal-deep text-white border-teal-dark hover:bg-teal-dark active:translate-y-px disabled:bg-line disabled:border-line-strong",
-		coral:
-			"bg-coral-deep text-white border-coral-dark hover:bg-coral-dark active:translate-y-px disabled:bg-line disabled:border-line-strong",
-		outline:
-			"bg-transparent text-navy border-violet hover:bg-violet-pale active:translate-y-px disabled:text-navy-soft disabled:border-line",
-		ghost: "bg-transparent text-navy-soft border-transparent hover:text-navy hover:bg-black/5 active:translate-y-px",
 	}[variant]
 
 	return (
 		<button
-			ref={ref}
 			className={cx(
 				"label inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border-2 whitespace-nowrap",
 				"transition-[background-color,color,transform,filter] duration-150",
@@ -126,6 +125,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
 				full && "w-full",
 				className,
 			)}
+			ref={ref}
 			{...rest}
 		>
 			{children}
@@ -182,26 +182,25 @@ export function OptionRow({
 	hint?: ReactNode
 }) {
 	const ring = {
-		violet: "var(--color-violet)",
 		gold: "var(--color-gold-deep)",
 		sky: "var(--color-sky-deep)",
+		violet: "var(--color-violet)",
 	}[tone]
 	const fill = {
-		violet: "var(--color-violet-pale)",
 		gold: "var(--color-gold-pale)",
 		sky: "var(--color-sky-pale)",
+		violet: "var(--color-violet-pale)",
 	}[tone]
 
 	return (
 		<button
-			type="button"
-			onClick={onClick}
-			disabled={disabled}
 			aria-pressed={selected}
 			className={cx(
 				"sketch group relative block w-full rounded-2xl px-5 py-3.5 text-left transition-colors duration-150",
 				disabled ? "cursor-not-allowed opacity-55" : "hover:bg-white",
 			)}
+			disabled={disabled}
+			onClick={onClick}
 			style={
 				{
 					"--sk-color": ring,
@@ -209,6 +208,7 @@ export function OptionRow({
 					background: selected ? fill : "var(--color-paper)",
 				} as React.CSSProperties
 			}
+			type="button"
 		>
 			<span className="flex items-center gap-3">
 				<span
@@ -245,21 +245,21 @@ export function Meter({
 	className?: string
 }) {
 	const pct = max <= 0 ? 0 : Math.min(100, Math.round((value / max) * 100))
-	const fill = { teal: "var(--color-teal)", gold: "var(--color-gold)", sky: "var(--color-sky)" }[tone]
-	const track = { teal: "var(--color-mint)", gold: "var(--color-gold-pale)", sky: "var(--color-sky-pale)" }[tone]
+	const fill = { gold: "var(--color-gold)", sky: "var(--color-sky)", teal: "var(--color-teal)" }[tone]
+	const track = { gold: "var(--color-gold-pale)", sky: "var(--color-sky-pale)", teal: "var(--color-mint)" }[tone]
 	return (
 		<div
-			className={cx("relative h-5 w-full overflow-hidden rounded-full", className)}
-			style={{ background: track }}
-			role="progressbar"
-			aria-valuenow={value}
-			aria-valuemin={0}
-			aria-valuemax={max}
 			aria-label={label ?? "Progress"}
+			aria-valuemax={max}
+			aria-valuemin={0}
+			aria-valuenow={value}
+			className={cx("relative h-5 w-full overflow-hidden rounded-full", className)}
+			role="progressbar"
+			style={{ background: track }}
 		>
 			<div
 				className="h-full rounded-full transition-[width] duration-700 ease-out"
-				style={{ width: `${pct}%`, background: fill }}
+				style={{ background: fill, width: `${pct}%` }}
 			/>
 			{label && (
 				<span className="hand absolute inset-0 grid place-items-center text-[0.68rem] font-semibold text-navy">
@@ -283,12 +283,12 @@ export function Chip({
 	className?: string
 }) {
 	const tones = {
+		coral: "bg-coral/15 text-coral-dark",
+		gold: "bg-gold-pale text-gold-ink",
+		muted: "bg-black/5 text-navy-soft",
 		sky: "bg-sky-pale text-sky-ink",
 		teal: "bg-mint text-teal-ink",
-		gold: "bg-gold-pale text-gold-ink",
-		coral: "bg-coral/15 text-coral-dark",
 		violet: "bg-violet-pale text-violet-deep",
-		muted: "bg-black/5 text-navy-soft",
 	}[tone]
 	return (
 		<span className={cx("label inline-flex items-center gap-1.5 rounded-full px-2.5 py-1", tones, className)}>
@@ -313,7 +313,7 @@ export function Field({
 }) {
 	return (
 		<div>
-			<label htmlFor={id} className="label block text-violet-deep">
+			<label className="label block text-violet-deep" htmlFor={id}>
 				{label}
 			</label>
 			{hint && <p className="mt-0.5 text-[0.78rem] text-navy-soft">{hint}</p>}

@@ -51,10 +51,10 @@ async function main() {
 		data: { email: `reel-viewer-${stamp}@example.test`, name: "Viewer" },
 	})
 	const project = await prisma.themeProject.create({
-		data: { userId: author.id, theme: Theme.PCB, title: "Reel project" },
+		data: { theme: Theme.PCB, title: "Reel project", userId: author.id },
 	})
 	const otherProject = await prisma.themeProject.create({
-		data: { userId: viewer.id, theme: Theme.PCB, title: "Not yours" },
+		data: { theme: Theme.PCB, title: "Not yours", userId: viewer.id },
 	})
 
 	const key = (userId: string) => `posts/${userId}/${crypto.randomUUID()}.mp4`
@@ -62,62 +62,62 @@ async function main() {
 	// ── Object key ownership ───────────────────────────────────────────────────
 	await refused("cannot post someone else's upload", () =>
 		createPost({
-			userId: author.id,
-			kind: PostKind.FREEFORM,
-			caption: "stolen",
-			objectKey: key(viewer.id),
 			canManageFeed: false,
+			caption: "stolen",
+			kind: PostKind.FREEFORM,
+			objectKey: key(viewer.id),
+			userId: author.id,
 		}),
 	)
 	await refused("cannot post a key outside the posts folder", () =>
 		createPost({
-			userId: author.id,
-			kind: PostKind.FREEFORM,
-			caption: "wrong folder",
-			objectKey: `sessions/${author.id}/whatever.mp4`,
 			canManageFeed: false,
+			caption: "wrong folder",
+			kind: PostKind.FREEFORM,
+			objectKey: `sessions/${author.id}/whatever.mp4`,
+			userId: author.id,
 		}),
 	)
 	await refused("cannot traverse out of the prefix", () =>
 		createPost({
-			userId: author.id,
-			kind: PostKind.FREEFORM,
-			caption: "traversal",
-			objectKey: `posts/${author.id}/../${viewer.id}/theirs.mp4`,
 			canManageFeed: false,
+			caption: "traversal",
+			kind: PostKind.FREEFORM,
+			objectKey: `posts/${author.id}/../${viewer.id}/theirs.mp4`,
+			userId: author.id,
 		}),
 	)
 	await refused("cannot attach a reel to someone else's project", () =>
 		createPost({
-			userId: author.id,
-			kind: PostKind.IDEA,
+			canManageFeed: false,
 			caption: "not my project",
+			kind: PostKind.IDEA,
 			objectKey: key(author.id),
 			themeProjectId: otherProject.id,
-			canManageFeed: false,
+			userId: author.id,
 		}),
 	)
 
 	// ── Announcements are staff-only ───────────────────────────────────────────
 	await refused("a participant cannot post an announcement", () =>
 		createPost({
-			userId: author.id,
-			kind: PostKind.ANNOUNCEMENT,
-			caption: "hi from 'HQ'",
-			objectKey: key(author.id),
 			canManageFeed: false,
+			caption: "hi from 'HQ'",
+			kind: PostKind.ANNOUNCEMENT,
+			objectKey: key(author.id),
+			userId: author.id,
 		}),
 	)
 
 	// ── The happy path ─────────────────────────────────────────────────────────
 	const post = await createPost({
-		userId: author.id,
-		kind: PostKind.IDEA,
+		canManageFeed: false,
 		caption: "Here is what I'm making",
+		durationSeconds: 42,
+		kind: PostKind.IDEA,
 		objectKey: key(author.id),
 		themeProjectId: project.id,
-		durationSeconds: 42,
-		canManageFeed: false,
+		userId: author.id,
 	})
 	check("post is published immediately", post.publishedAt !== null, true)
 	check("kind recorded for the checkpoint lookup", post.kind, PostKind.IDEA)
@@ -148,8 +148,8 @@ async function main() {
 	const commentA = await addComment(post.id, viewer.id, "This rules")
 	const commentB = await addComment(post.id, author.id, "thanks!")
 	const afterComments = await prisma.post.findUniqueOrThrow({
-		where: { id: post.id },
 		select: { commentCount: true },
+		where: { id: post.id },
 	})
 	check("comment count tracks comments", afterComments.commentCount, 2)
 
@@ -161,8 +161,8 @@ async function main() {
 
 	await deleteOwnComment(commentB.id, author.id)
 	const afterDelete = await prisma.post.findUniqueOrThrow({
-		where: { id: post.id },
 		select: { commentCount: true },
+		where: { id: post.id },
 	})
 	check("deleting a comment decrements", afterDelete.commentCount, 1)
 
@@ -170,8 +170,8 @@ async function main() {
 
 	await hideComment(commentA.id, author.id, "off topic")
 	const afterHide = await prisma.post.findUniqueOrThrow({
-		where: { id: post.id },
 		select: { commentCount: true },
+		where: { id: post.id },
 	})
 	check("hiding a comment decrements too", afterHide.commentCount, 0)
 	const afterHideList = await getComments(post.id, viewer.id, { limit: 25 })
@@ -182,18 +182,18 @@ async function main() {
 		data: { email: `hq-${stamp}@example.test`, name: "HQ" },
 	})
 	const announcement = await createPost({
-		userId: staff.id,
-		kind: PostKind.ANNOUNCEMENT,
-		caption: "Week 1 starts now",
-		objectKey: key(staff.id),
 		canManageFeed: true,
+		caption: "Week 1 starts now",
+		kind: PostKind.ANNOUNCEMENT,
+		objectKey: key(staff.id),
+		userId: staff.id,
 	})
 
 	const notAdmin = await getFeed(viewer.id, { limit: 25 })
 	check("a non-admin's post does not lead", notAdmin.leading.length, 0)
 	check("so it is paged with the rest", notAdmin.items.length, 2)
 
-	await prisma.userRole.create({ data: { userId: staff.id, role: Role.ADMIN } })
+	await prisma.userRole.create({ data: { role: Role.ADMIN, userId: staff.id } })
 	const page = await getFeed(viewer.id, { limit: 25, timeZone: "Asia/Kolkata" })
 	check("an admin's reel from today leads", page.leading.length, 1)
 	check("the leading one is the announcement", page.leading[0]?.kind, PostKind.ANNOUNCEMENT)
@@ -204,13 +204,13 @@ async function main() {
 	// From the next day it goes back to its place by date.
 	const posted = new Date()
 	await prisma.post.update({
-		where: { id: announcement.id },
 		data: { publishedAt: new Date(posted.getTime() - 3 * 24 * 60 * 60 * 1000) },
+		where: { id: announcement.id },
 	})
 	const later = await getFeed(viewer.id, { limit: 25 })
 	check("an older admin reel no longer leads", later.leading.length, 0)
 	check("it is paged by date, after the newer reel", later.items.at(-1)?.id, announcement.id)
-	await prisma.post.update({ where: { id: announcement.id }, data: { publishedAt: posted } })
+	await prisma.post.update({ data: { publishedAt: posted }, where: { id: announcement.id } })
 
 	// ── Moderation ─────────────────────────────────────────────────────────────
 	await hidePost(post.id, staff.id, "not related to the program")
@@ -225,8 +225,8 @@ async function main() {
 	const deletedFeed = await getFeed(viewer.id, { limit: 25 })
 	check("a deleted reel leaves the feed", deletedFeed.items.length, 0)
 	const stillThere = await prisma.post.findUniqueOrThrow({
+		select: { deletedAt: true, status: true },
 		where: { id: post.id },
-		select: { status: true, deletedAt: true },
 	})
 	check("deletion is soft", stillThere.status, PostStatus.REMOVED)
 	check("and stamped", stillThere.deletedAt !== null, true)
@@ -239,7 +239,7 @@ async function main() {
 	process.exit(failures === 0 ? 0 : 1)
 }
 
-main().catch(async (err) => {
+main().catch(async err => {
 	console.error(err)
 	await prisma.$disconnect()
 	process.exit(1)

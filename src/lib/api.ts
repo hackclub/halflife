@@ -104,7 +104,7 @@ export async function parseUploadForm(request: Request, maxFileBytes: number): P
 	// Rebuild a request so the runtime's multipart parser does the parsing rather than hand-rolling boundaries.
 	const headers = new Headers(request.headers)
 	headers.delete("content-length")
-	const buffered = new Request(request.url, { method: "POST", headers, body: Buffer.concat(chunks) })
+	const buffered = new Request(request.url, { body: Buffer.concat(chunks), headers, method: "POST" })
 	const form = await buffered.formData().catch(() => null)
 	return form ? { data: form } : { error: invalid() }
 }
@@ -119,7 +119,7 @@ const LIMITER_MAX_KEYS = 10_000
 
 export function rateLimitedInMemory(key: string, max = 10, windowMs = 60_000): boolean {
 	const now = Date.now()
-	const recent = (limiterHits.get(key) ?? []).filter((at) => now - at < windowMs)
+	const recent = (limiterHits.get(key) ?? []).filter(at => now - at < windowMs)
 	if (recent.length >= max) {
 		limiterHits.set(key, recent)
 		return true

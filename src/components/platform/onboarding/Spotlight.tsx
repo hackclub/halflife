@@ -15,7 +15,7 @@ export type Rect = {
 function firstVisible(selector: string): HTMLElement | null {
 	if (!selector) return null
 	const nodes = Array.from(document.querySelectorAll<HTMLElement>(selector))
-	return nodes.find((n) => n.getBoundingClientRect().width > 0) ?? null
+	return nodes.find(n => n.getBoundingClientRect().width > 0) ?? null
 }
 
 const same = (a: Rect | null, b: Rect | null) =>
@@ -85,28 +85,28 @@ export function Spotlight({
 		if (el) {
 			const r = el.getBoundingClientRect()
 			const next = {
-				top: Math.round(r.top - pad),
-				left: Math.round(r.left - pad),
-				width: Math.round(r.width + pad * 2),
 				height: Math.round(r.height + pad * 2),
+				left: Math.round(r.left - pad),
+				top: Math.round(r.top - pad),
+				width: Math.round(r.width + pad * 2),
 			}
-			setRect((prev) => (same(prev, next) ? prev : next))
+			setRect(prev => (same(prev, next) ? prev : next))
 		}
 
 		// The second target is cleared when it goes, unlike the first. It is a panel that can be closed and a rail that disappears with the viewport, so a stale hole would sit over live page rather than over the thing it was cut for.
 		const other = also ? firstVisible(also) : null
 		if (!other) {
-			setAlsoRect((prev) => (prev === null ? prev : null))
+			setAlsoRect(prev => (prev === null ? prev : null))
 			return
 		}
 		const r = other.getBoundingClientRect()
 		const next = {
-			top: Math.round(r.top - pad),
-			left: Math.round(r.left - pad),
-			width: Math.round(r.width + pad * 2),
 			height: Math.round(r.height + pad * 2),
+			left: Math.round(r.left - pad),
+			top: Math.round(r.top - pad),
+			width: Math.round(r.width + pad * 2),
 		}
-		setAlsoRect((prev) => (same(prev, next) ? prev : next))
+		setAlsoRect(prev => (same(prev, next) ? prev : next))
 	}, [selector, also, pad])
 
 	/**
@@ -123,7 +123,7 @@ export function Spotlight({
 	}, [measure])
 
 	useEffect(() => {
-		firstVisible(selector)?.scrollIntoView({ block: "center", behavior: "smooth" })
+		firstVisible(selector)?.scrollIntoView({ behavior: "smooth", block: "center" })
 		follow()
 		const onMove = () => follow()
 		window.addEventListener("scroll", onMove, true)
@@ -160,8 +160,8 @@ export function Spotlight({
 			// The tour's click-anywhere shortcut is a background affordance. It must not steal Enter from a textarea (it should insert a newline) or from a button (the browser should activate that button normally).
 			const target = e.target
 			if (
-				target instanceof HTMLElement &&
-				target.closest("a, button, input, textarea, select, [contenteditable='true']")
+				target instanceof HTMLElement
+				&& target.closest("a, button, input, textarea, select, [contenteditable='true']")
 			) {
 				return
 			}
@@ -217,11 +217,11 @@ export function Spotlight({
 	// Closed, the second window is a point at the middle of where it will be, so it opens outward from its own centre instead of unrolling from a corner.
 	const opening = (r: Rect) =>
 		revealed
-			? { transform: `translate(${r.left}px, ${r.top}px)`, width: r.width, height: r.height }
+			? { height: r.height, transform: `translate(${r.left}px, ${r.top}px)`, width: r.width }
 			: {
+					height: 0,
 					transform: `translate(${r.left + r.width / 2}px, ${r.top + r.height / 2}px)`,
 					width: 0,
-					height: 0,
 				}
 
 	const open = `transform 420ms 760ms ${EASE}, width 420ms 760ms ${EASE}, height 420ms 760ms ${EASE}`
@@ -229,12 +229,12 @@ export function Spotlight({
 	// The line is a dashed marker stroke revealed by a wipe rather than by a marching dash pattern, so it reads as being drawn rather than as traffic.
 	const wipe = line
 		? {
-				x: Math.min(line.from.x, line.to.x) - 6,
-				y: Math.min(line.from.y, line.to.y) - 8,
-				w: Math.abs(line.to.x - line.from.x) + 12,
 				h: Math.abs(line.to.y - line.from.y) + 16,
 				// The left edge the wipe starts from, kept on the object so the render does not have to reach back through a nullable `line`.
 				startX: line.from.x - 6,
+				w: Math.abs(line.to.x - line.from.x) + 12,
+				x: Math.min(line.from.x, line.to.x) - 6,
+				y: Math.min(line.from.y, line.to.y) - 8,
 			}
 		: null
 
@@ -242,10 +242,10 @@ export function Spotlight({
 		<div className="pointer-events-none fixed inset-0 z-[80]">
 			{clickAnywhere && (
 				<button
-					type="button"
 					aria-label="Next"
-					onClick={onNext}
 					className="pointer-events-auto absolute inset-0 cursor-pointer"
+					onClick={onNext}
+					type="button"
 				/>
 			)}
 
@@ -256,92 +256,91 @@ export function Spotlight({
 			>
 				<defs>
 					<mask id={`${uid}-holes`}>
-						<rect x={0} y={0} width="100%" height="100%" fill="white" />
+						<rect fill="white" height="100%" width="100%" x={0} y={0} />
 						{rect && (
 							<rect
+								fill="black"
+								height={rect.height}
+								rx={radius}
+								style={{ transform: `translate(${rect.left}px, ${rect.top}px)`, transition: travel }}
+								width={rect.width}
 								x={0}
 								y={0}
-								rx={radius}
-								width={rect.width}
-								height={rect.height}
-								fill="black"
-								style={{ transform: `translate(${rect.left}px, ${rect.top}px)`, transition: travel }}
 							/>
 						)}
 						{alsoRect && (
-							<rect x={0} y={0} rx={radius} fill="black" style={{ ...opening(alsoRect), transition: open }} />
+							<rect fill="black" rx={radius} style={{ ...opening(alsoRect), transition: open }} x={0} y={0} />
 						)}
 					</mask>
 
 					{wipe && (
 						<mask id={`${uid}-wipe`}>
 							<rect
-								x={0}
-								y={wipe.y}
-								height={wipe.h}
-								width={revealed ? wipe.w : 0}
 								fill="white"
+								height={wipe.h}
 								style={{
 									transform: `translate(${revealed ? wipe.x : wipe.startX}px, 0)`,
 									transition: `transform 620ms 220ms ${EASE}, width 620ms 220ms ${EASE}`,
 								}}
+								width={revealed ? wipe.w : 0}
+								x={0}
+								y={wipe.y}
 							/>
 						</mask>
 					)}
 				</defs>
 
 				<rect
+					fill="rgba(19,17,62,.62)"
+					height="100%"
+					mask={rect ? `url(#${uid}-holes)` : undefined}
+					width="100%"
 					x={0}
 					y={0}
-					width="100%"
-					height="100%"
-					fill="rgba(19,17,62,.62)"
-					mask={rect ? `url(#${uid}-holes)` : undefined}
 				/>
 
 				{line && (
 					<path
 						d={line.d}
 						fill="none"
-						stroke="rgba(255,255,255,.78)"
-						strokeWidth={2.5}
-						strokeLinecap="round"
-						strokeDasharray="7 6"
 						mask={`url(#${uid}-wipe)`}
+						stroke="rgba(255,255,255,.78)"
+						strokeDasharray="7 6"
+						strokeLinecap="round"
+						strokeWidth={2.5}
 					/>
 				)}
 
 				{rect && (
 					<rect
+						fill="none"
+						height={rect.height}
+						rx={radius}
+						stroke="rgba(255,255,255,.9)"
+						strokeDasharray="9 7"
+						strokeWidth={3}
+						style={{ transform: `translate(${rect.left}px, ${rect.top}px)`, transition: travel }}
+						width={rect.width}
 						x={0}
 						y={0}
-						rx={radius}
-						width={rect.width}
-						height={rect.height}
-						fill="none"
-						stroke="rgba(255,255,255,.9)"
-						strokeWidth={3}
-						strokeDasharray="9 7"
-						style={{ transform: `translate(${rect.left}px, ${rect.top}px)`, transition: travel }}
 					/>
 				)}
 
 				{alsoRect && (
 					<rect
+						fill="none"
+						rx={radius}
+						stroke="rgba(255,255,255,.9)"
+						strokeDasharray="9 7"
+						strokeWidth={3}
+						style={{ ...opening(alsoRect), transition: open }}
 						x={0}
 						y={0}
-						rx={radius}
-						fill="none"
-						stroke="rgba(255,255,255,.9)"
-						strokeWidth={3}
-						strokeDasharray="9 7"
-						style={{ ...opening(alsoRect), transition: open }}
 					/>
 				)}
 			</svg>
 
 			<div
-				role="dialog"
 				aria-label={title}
 				className={cx(
 					"sketch sketch-2 pointer-events-auto absolute rounded-2xl bg-cream p-4 lift-shadow",
@@ -349,17 +348,18 @@ export function Spotlight({
 						? "transition-[top,left,width] duration-[520ms] ease-[cubic-bezier(.16,1,.3,1)]"
 						: "motion-safe:animate-[hl-pop_.36s_cubic-bezier(.16,1,.3,1)]",
 				)}
+				role="dialog"
 				style={
 					{
-						top: cardTop,
-						left: cardLeft,
-						width: cardW,
 						"--sk-color": "var(--color-gold-deep)",
 						"--sk-radius": "18px",
+						left: cardLeft,
+						top: cardTop,
+						width: cardW,
 					} as React.CSSProperties
 				}
 			>
-				<div key={title} className="motion-safe:animate-[hl-rise_.4s_.12s_cubic-bezier(.16,1,.3,1)_both]">
+				<div className="motion-safe:animate-[hl-rise_.4s_.12s_cubic-bezier(.16,1,.3,1)_both]" key={title}>
 					{typeof step === "number" && typeof total === "number" && (
 						<p className="label mb-1.5 text-gold-ink">
 							Tour {step}/{total}
@@ -369,14 +369,14 @@ export function Spotlight({
 					<p className="mt-1.5 text-[0.86rem] leading-snug text-navy-soft">{body}</p>
 				</div>
 				<div className="mt-3.5 flex items-center gap-2">
-					<Button size="sm" variant="gold" onClick={onNext}>
+					<Button onClick={onNext} size="sm" variant="gold">
 						{cta ?? "Got it"} <IconArrowRight className="text-sm" />
 					</Button>
 					{onSkip && (
 						<button
-							type="button"
-							onClick={onSkip}
 							className="hand text-[0.78rem] text-navy-soft underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
+							onClick={onSkip}
+							type="button"
 						>
 							Skip tour
 						</button>

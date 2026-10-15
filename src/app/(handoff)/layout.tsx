@@ -3,9 +3,9 @@ import type { Metadata } from "next"
 import "../(platform)/ops.css"
 
 export const metadata: Metadata = {
-	title: "Record for Half-Life",
 	// This page is reached from a QR code and is a one-shot upload target. Nothing about it should ever be indexed or shared onward.
-	robots: { index: false, follow: false },
+	robots: { follow: false, index: false },
+	title: "Record for Half-Life",
 }
 
 /**

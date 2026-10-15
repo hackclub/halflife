@@ -10,28 +10,28 @@ import prisma from "../src/lib/prisma"
  */
 async function main() {
 	const before = await prisma.ledgerEntry.groupBy({
-		by: ["bucket"],
-		_sum: { amount: true },
 		_count: true,
+		_sum: { amount: true },
+		by: ["bucket"],
 	})
 	console.log("before:", JSON.stringify(before))
 
 	const moved = await prisma.ledgerEntry.updateMany({
-		where: { bucket: "BANKED" },
 		data: { bucket: "SPENDABLE" },
+		where: { bucket: "BANKED" },
 	})
 	console.log(`moved ${moved.count} BANKED rows to SPENDABLE`)
 
 	const after = await prisma.ledgerEntry.groupBy({
-		by: ["bucket"],
-		_sum: { amount: true },
 		_count: true,
+		_sum: { amount: true },
+		by: ["bucket"],
 	})
 	console.log("after:", JSON.stringify(after))
 }
 
 main()
-	.catch((err) => {
+	.catch(err => {
 		console.error(err)
 		process.exitCode = 1
 	})

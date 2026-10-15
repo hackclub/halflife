@@ -18,24 +18,24 @@ import { Timeline } from "./Timeline"
  */
 export function PublicProjectDetail({ data }: { data: PublicProjectData }) {
 	const warmup = data.weekId === WARMUP_WEEK_ID
-	const week = WEEK_META.find((w) => w.id === data.weekId) ?? WEEK_META[0]
+	const week = WEEK_META.find(w => w.id === data.weekId) ?? WEEK_META[0]
 	const buildWeekId = data.weekId + DESIGN_WEEKS
 	const weekFor = (phase: "DESIGN" | "BUILD") =>
 		warmup ? WARMUP_WEEK_ID : phase === "DESIGN" ? data.weekId : buildWeekId
 
-	const sessions = data.timeline.flatMap((t) => (t.kind === "session" ? [t] : []))
+	const sessions = data.timeline.flatMap(t => (t.kind === "session" ? [t] : []))
 	const hours = sessions.reduce((n, s) => n + (s.approvedHours ?? s.hours), 0)
 
 	return (
 		<div className="mx-auto w-full max-w-[960px] px-4 pt-6 pb-10 sm:px-8">
 			<Link
-				href="/explore"
 				className="label inline-flex items-center gap-1.5 text-navy-soft transition-colors hover:text-navy"
+				href="/explore"
 			>
 				<IconChevronLeft className="text-base" /> Explore
 			</Link>
 
-			<Panel tone="line" radius={22} className="@container mt-5 bg-paper px-5 py-5 sm:px-7 sm:py-6">
+			<Panel className="@container mt-5 bg-paper px-5 py-5 sm:px-7 sm:py-6" radius={22} tone="line">
 				<div className="grid gap-5 @3xl:grid-cols-[minmax(0,1fr)_260px] @3xl:gap-8">
 					<div
 						className="relative grid aspect-[21/9] place-items-center overflow-hidden rounded-2xl @3xl:col-start-2 @3xl:aspect-[4/3]"
@@ -44,13 +44,13 @@ export function PublicProjectDetail({ data }: { data: PublicProjectData }) {
 						}}
 					>
 						{data.thumbnail ? (
-							<ProjectThumb thumb={data.thumbnail} className="h-full w-full" />
+							<ProjectThumb className="h-full w-full" thumb={data.thumbnail} />
 						) : (
 							<WeekPainting
-								theme={warmup ? WARMUP_THEME.label : (week?.theme ?? "PCB")}
 								alt=""
-								sizes="(min-width: 768px) 360px, 50vw"
 								className="sticker-shadow aspect-square h-[82%] max-w-full"
+								sizes="(min-width: 768px) 360px, 50vw"
+								theme={warmup ? WARMUP_THEME.label : (week?.theme ?? "PCB")}
 							/>
 						)}
 					</div>
@@ -58,8 +58,8 @@ export function PublicProjectDetail({ data }: { data: PublicProjectData }) {
 						<p className="label text-navy-soft">
 							by{" "}
 							<Link
-								href={`/u/${data.authorId}`}
 								className="text-navy-soft hover:text-navy hover:underline hover:decoration-dashed hover:underline-offset-4"
+								href={`/u/${data.authorId}`}
 							>
 								{data.author}
 							</Link>{" "}
@@ -67,9 +67,9 @@ export function PublicProjectDetail({ data }: { data: PublicProjectData }) {
 								·
 							</span>{" "}
 							<ReportButton
-								target={{ type: "PROJECT", id: data.id }}
-								title="Report this project"
 								context={data.description || data.title}
+								target={{ id: data.id, type: "PROJECT" }}
+								title="Report this project"
 							/>
 						</p>
 						<h1 className="mt-1 text-[1.6rem] leading-tight font-extrabold tracking-[-0.02em] [overflow-wrap:anywhere] text-navy sm:text-[1.9rem]">
@@ -106,16 +106,16 @@ export function PublicProjectDetail({ data }: { data: PublicProjectData }) {
 
 			<section aria-labelledby="timeline-title" className="mt-8">
 				<div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-					<h2 id="timeline-title" className="label text-violet-deep">
+					<h2 className="label text-violet-deep" id="timeline-title">
 						Timeline
 					</h2>
 					{data.timeline.length > 0 && <span className="hand text-[0.84rem] text-navy-soft">newest first</span>}
 				</div>
-				<Panel tone="line" radius={20} className="bg-paper px-5 py-6 sm:px-6">
+				<Panel className="bg-paper px-5 py-6 sm:px-6" radius={20} tone="line">
 					{data.timeline.length === 0 ? (
 						<p className="hand py-8 text-center text-[0.9rem] text-navy-soft">nothing on the record yet.</p>
 					) : (
-						<Timeline items={data.timeline} weekFor={weekFor} allowReport />
+						<Timeline allowReport items={data.timeline} weekFor={weekFor} />
 					)}
 				</Panel>
 			</section>

@@ -31,11 +31,11 @@ import { Sidebar, TAB_NAV } from "./Sidebar"
 
 const MOBILE_ICONS = {
 	[PLATFORM_HOME]: IconHome,
-	"/projects": IconPencil,
-	"/explore": IconCompass,
-	"/shop": IconBag,
 	"/docs": IconBook,
+	"/explore": IconCompass,
+	"/projects": IconPencil,
 	"/reels": IconFilm,
+	"/shop": IconBag,
 } as const
 
 /**
@@ -87,7 +87,7 @@ export function AppShell({
 	// The status rail is the map's companion: open on the trail, where the goal is what the whole page is measured against, and folded away everywhere else so a project, the shop or the docs get the width. A toggle holds only for the page it was pressed on – the next page starts from its own default, so opening it once on the shop does not squeeze every page after.
 	const [railChoice, setRailChoice] = useState<{ path: string; open: boolean } | null>(null)
 	const railOpen = railChoice?.path === pathname ? railChoice.open : pathname === PLATFORM_HOME
-	const setRailOpen = (open: boolean) => setRailChoice({ path: pathname, open })
+	const setRailOpen = (open: boolean) => setRailChoice({ open, path: pathname })
 
 	// Below lg the status rail is gone, so this is the only way to the goal tracker on a phone. It opens the same picker the rail's "View more" does.
 	const [goalOpen, setGoalOpen] = useState(false)
@@ -124,20 +124,20 @@ export function AppShell({
 	return (
 		<>
 			<a
-				href="#main"
 				className="label sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:rounded-lg focus:bg-navy focus:px-4 focus:py-2.5 focus:text-white"
+				href="#main"
 			>
 				Skip to content
 			</a>
 
 			<div
-				ref={backdropRef}
+				aria-hidden={cinematic || undefined}
 				className={cx(
 					"shell-backdrop relative z-10 flex w-full transition-[filter,opacity] duration-500",
 					cinematic && "pointer-events-none",
 				)}
-				aria-hidden={cinematic || undefined}
 				inert={cinematic || undefined}
+				ref={backdropRef}
 			>
 				{/* ---------- left rail ---------- */}
 				<aside className="sticky top-0 hidden h-dvh w-[246px] shrink-0 overflow-y-auto border-r border-dashed border-line bg-paper px-5 py-6 lg:block xl:w-[286px] xl:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -152,11 +152,11 @@ export function AppShell({
                 to hold. The bottom tab bar's Home is the brand anchor down there,
                 and the left rail carries the full-size mark from lg. */}
 						<Link
-							href={PLATFORM_HOME}
 							aria-label="Half Life home"
 							className="hidden w-[64px] shrink-0 transition-transform duration-150 hover:-translate-y-0.5 active:translate-y-px sm:block lg:hidden"
+							href={PLATFORM_HOME}
 						>
-							<Image src={logoArt} alt="" priority sizes="64px" className="h-auto w-full" />
+							<Image alt="" className="h-auto w-full" priority sizes="64px" src={logoArt} />
 						</Link>
 						<div className="min-w-0 flex-1" />
 
@@ -165,9 +165,9 @@ export function AppShell({
                 item while doing something different. */}
 						{railOpen && !rail && !onDoomscroller && (
 							<button
-								type="button"
-								onClick={() => setDoomscroller(true)}
 								className="label hidden items-center gap-1.5 rounded-full border-2 border-line bg-paper px-3 py-1.5 text-navy-soft transition-colors hover:border-sky hover:text-navy xl:inline-flex"
+								onClick={() => setDoomscroller(true)}
+								type="button"
 							>
 								<IconFilm className="text-base" /> Doomscroller
 							</button>
@@ -179,26 +179,26 @@ export function AppShell({
                 rail itself is showing what it hides. */}
 						{railOpen ? (
 							<button
-								type="button"
-								onClick={() => setRailOpen(false)}
-								aria-expanded="true"
 								aria-controls="status-rail"
+								aria-expanded="true"
 								aria-label="Hide the goal and Doomscroller"
-								title="Hide the goal and Doomscroller"
 								className="hidden size-9 place-items-center rounded-full border-2 border-line bg-paper text-navy-soft transition-colors hover:border-violet hover:text-navy xl:grid"
+								onClick={() => setRailOpen(false)}
+								title="Hide the goal and Doomscroller"
+								type="button"
 							>
 								<IconChevronRight className="text-base" />
 							</button>
 						) : (
 							<button
-								type="button"
+								aria-controls="status-rail"
+								aria-expanded="false"
+								className="label hidden items-center gap-1.5 rounded-full border-2 border-line bg-paper px-3 py-1.5 text-navy-soft transition-colors hover:border-violet hover:text-navy xl:inline-flex"
 								onClick={() => {
 									setRailOpen(true)
 									if (!onDoomscroller) setDoomscroller(true)
 								}}
-								aria-expanded="false"
-								aria-controls="status-rail"
-								className="label hidden items-center gap-1.5 rounded-full border-2 border-line bg-paper px-3 py-1.5 text-navy-soft transition-colors hover:border-violet hover:text-navy xl:inline-flex"
+								type="button"
 							>
 								<IconChevronLeft className="text-base" /> Goal &amp; Doomscroller
 							</button>
@@ -213,21 +213,21 @@ export function AppShell({
 						{!onDoomscroller && (
 							<>
 								<button
-									type="button"
-									onClick={() => setGoalOpen(true)}
 									aria-haspopup="dialog"
 									aria-label="Change goal"
-									title="Change goal"
 									className="label inline-flex shrink-0 items-center gap-1 rounded-full border-2 border-line bg-paper px-2.5 py-1.5 text-navy-soft transition-colors hover:border-teal hover:text-navy sm:gap-1.5 lg:hidden"
+									onClick={() => setGoalOpen(true)}
+									title="Change goal"
+									type="button"
 								>
 									<IconTrophy className="text-base" />
 								</button>
 								<Link
-									href="/doomscroller"
-									data-tour="doomscroller-button"
 									aria-label="Doomscroller"
-									title="Doomscroller"
 									className="label inline-flex shrink-0 items-center gap-1 rounded-full border-2 border-line bg-paper px-2.5 py-1.5 text-navy-soft transition-[color,border-color,transform] duration-150 hover:border-sky hover:text-navy active:translate-y-px sm:gap-1.5 lg:hidden"
+									data-tour="doomscroller-button"
+									href="/doomscroller"
+									title="Doomscroller"
 								>
 									<IconFilm className="text-base" />
 								</Link>
@@ -245,7 +245,7 @@ export function AppShell({
 					</header>
 
 					<div className="flex min-w-0 flex-1">
-						<main id="main" className="min-w-0 flex-1 pb-28 lg:pb-10">
+						<main className="min-w-0 flex-1 pb-28 lg:pb-10" id="main">
 							{children}
 						</main>
 
@@ -255,13 +255,13 @@ export function AppShell({
                 the room; the content keeps its full width while it goes, so it
                 is clipped away rather than squashed. */}
 						<aside
-							id="status-rail"
-							inert={!railOpen}
 							className={cx(
 								"sticky top-16 hidden h-[calc(100dvh-4rem)] shrink-0 justify-end overflow-hidden xl:flex",
 								"transition-[width,opacity] duration-420 ease-out-expo motion-reduce:transition-none",
 								railOpen ? "w-79 opacity-100 2xl:w-[352px]" : "w-0 opacity-0",
 							)}
+							id="status-rail"
+							inert={!railOpen}
 						>
 							<div className="flex h-full w-full min-w-0 flex-col py-4 pr-5 pl-1 2xl:pr-7">
 								<GoalTracker className="shrink-0" />
@@ -270,13 +270,13 @@ export function AppShell({
                     rather than vanishing – closing is often something the page
                     did, not something the reader asked for. */}
 								<div
-									data-tour={rail ? "doomscroller" : undefined}
-									inert={!rail}
 									className={cx(
 										"flex min-h-0 overflow-hidden",
 										"transition-[flex-grow,margin,opacity] duration-[420ms] ease-[cubic-bezier(.16,1,.3,1)]",
 										rail ? "mt-4 flex-1 opacity-100" : "mt-0 flex-[0_1_0%] opacity-0",
 									)}
+									data-tour={rail ? "doomscroller" : undefined}
+									inert={!rail}
 								>
 									{/* Not even mounted under the full-page player: hidden, its
                       cards would still fetch every reel's opening seconds a
@@ -297,18 +297,18 @@ export function AppShell({
 				className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-cream/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden"
 			>
 				<ul className="mx-auto flex max-w-lg">
-					{TAB_NAV.map((item) => {
+					{TAB_NAV.map(item => {
 						const Icon = MOBILE_ICONS[item.href as keyof typeof MOBILE_ICONS]
 						const active = item.href === PLATFORM_HOME ? pathname === PLATFORM_HOME : pathname.startsWith(item.href)
 						return (
-							<li key={item.href} data-tour={item.tourId} className="min-w-0 flex-1">
+							<li className="min-w-0 flex-1" data-tour={item.tourId} key={item.href}>
 								<Link
-									href={item.href}
 									aria-current={active ? "page" : undefined}
 									className={cx(
 										"flex flex-col items-center gap-1 py-2.5 transition-[color,transform] duration-150 active:translate-y-px",
 										active ? "text-navy" : "text-navy-soft hover:text-navy",
 									)}
+									href={item.href}
 								>
 									<Icon className="text-[1.45rem]" />
 									<span className="label w-full truncate text-center text-[0.6rem] tracking-[0.06em]">
@@ -326,7 +326,7 @@ export function AppShell({
 			</nav>
 
 			<Overlays />
-			<GoalModal open={goalOpen} onClose={() => setGoalOpen(false)} />
+			<GoalModal onClose={() => setGoalOpen(false)} open={goalOpen} />
 		</>
 	)
 }

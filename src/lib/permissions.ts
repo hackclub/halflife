@@ -5,28 +5,28 @@ import prisma from "@/lib/prisma"
 export { Role }
 
 export enum Permission {
-	/** Claim and decide design/build submissions. */
-	REVIEW_SUBMISSIONS = "REVIEW_SUBMISSIONS",
-	/** Approve or override journal-session and Hackatime hours. */
-	REVIEW_HOURS = "REVIEW_HOURS",
-	/** Un-approve or reopen a decided phase. Deliberately narrower than reviewing. */
-	OVERRIDE_DECISIONS = "OVERRIDE_DECISIONS",
-	VIEW_USERS = "VIEW_USERS",
-	MANAGE_USERS = "MANAGE_USERS",
-	MANAGE_ROLES = "MANAGE_ROLES",
-	MANAGE_CREDIT = "MANAGE_CREDIT",
-	MANAGE_SHOP = "MANAGE_SHOP",
 	FULFILL_ORDERS = "FULFILL_ORDERS",
-	MANAGE_PROGRAM = "MANAGE_PROGRAM",
-	VIEW_AUDIT_LOG = "VIEW_AUDIT_LOG",
-	/** Read the upload bucket index; no mutation permission is implied. */
-	VIEW_UPLOADS = "VIEW_UPLOADS",
+	MANAGE_CREDIT = "MANAGE_CREDIT",
 	/**
 	 * Post announcements to the feed, and hide reels or comments.
 	 *
 	 * Deliberately not given to REVIEWER, the volume role: moderating what a 13-18 audience sees is a different kind of trust from deciding whether a PCB was designed well, and the roles below are sized for the second.
 	 */
 	MANAGE_FEED = "MANAGE_FEED",
+	MANAGE_PROGRAM = "MANAGE_PROGRAM",
+	MANAGE_ROLES = "MANAGE_ROLES",
+	MANAGE_SHOP = "MANAGE_SHOP",
+	MANAGE_USERS = "MANAGE_USERS",
+	/** Un-approve or reopen a decided phase. Deliberately narrower than reviewing. */
+	OVERRIDE_DECISIONS = "OVERRIDE_DECISIONS",
+	/** Approve or override journal-session and Hackatime hours. */
+	REVIEW_HOURS = "REVIEW_HOURS",
+	/** Claim and decide design/build submissions. */
+	REVIEW_SUBMISSIONS = "REVIEW_SUBMISSIONS",
+	VIEW_AUDIT_LOG = "VIEW_AUDIT_LOG",
+	/** Read the upload bucket index; no mutation permission is implied. */
+	VIEW_UPLOADS = "VIEW_UPLOADS",
+	VIEW_USERS = "VIEW_USERS",
 }
 
 /**
@@ -48,11 +48,11 @@ export function permissionsFor(roles: Role[]): Permission[] {
 }
 
 export function hasPermission(roles: Role[], permission: Permission): boolean {
-	return roles.some((role) => ROLE_PERMISSIONS[role]?.includes(permission))
+	return roles.some(role => ROLE_PERMISSIONS[role]?.includes(permission))
 }
 
 export function hasAnyPermission(roles: Role[], permissions: Permission[]): boolean {
-	return permissions.some((p) => hasPermission(roles, p))
+	return permissions.some(p => hasPermission(roles, p))
 }
 
 export function hasRole(roles: Role[], role: Role): boolean {
@@ -61,10 +61,10 @@ export function hasRole(roles: Role[], role: Role): boolean {
 
 export async function getUserRoles(userId: string): Promise<Role[]> {
 	const rows = await prisma.userRole.findMany({
-		where: { userId },
 		select: { role: true },
+		where: { userId },
 	})
-	return rows.map((r) => r.role)
+	return rows.map(r => r.role)
 }
 
 /**
@@ -74,8 +74,8 @@ export async function getUserRoles(userId: string): Promise<Role[]> {
  */
 export async function getUserRolesIfExists(userId: string): Promise<Role[] | null> {
 	const user = await prisma.user.findUnique({
-		where: { id: userId },
 		select: { roles: { select: { role: true } } },
+		where: { id: userId },
 	})
-	return user ? user.roles.map((r) => r.role) : null
+	return user ? user.roles.map(r => r.role) : null
 }

@@ -13,11 +13,11 @@ type Search = {
 type Props = { searchParams: Promise<Search> }
 
 const FOLDER_LABELS: Record<UploadFolder, string> = {
-	sessions: "Session evidence",
 	covers: "Cover images",
-	timelapses: "Timelapses",
 	posts: "Reels",
+	sessions: "Session evidence",
 	shop: "Shop images",
+	timelapses: "Timelapses",
 }
 
 const modifiedFormat = new Intl.DateTimeFormat("en-US", {
@@ -45,14 +45,14 @@ function keyParts(key: string): { folder: string; owner: string } {
 export default async function AdminUploadsPage({ searchParams }: Props) {
 	await requirePermissionPage(Permission.VIEW_UPLOADS)
 	const search = await searchParams
-	const folder = UPLOAD_FOLDERS.find((value) => value === search.folder)
+	const folder = UPLOAD_FOLDERS.find(value => value === search.folder)
 	const prefix = folder ? `${folder}/` : ""
 
 	let listing: Awaited<ReturnType<typeof listUploadedObjects>> | null = null
 	let listError: string | null = null
 	if (isUploadConfigured()) {
 		try {
-			listing = await listUploadedObjects({ prefix, cursor: search.cursor, limit: 100 })
+			listing = await listUploadedObjects({ cursor: search.cursor, limit: 100, prefix })
 		} catch (error) {
 			console.error("[admin] failed to list uploads:", error)
 			listError = "The upload bucket could not be listed. Check its S3 configuration and credentials."
@@ -69,15 +69,15 @@ export default async function AdminUploadsPage({ searchParams }: Props) {
 
 	return (
 		<div className="hl-stack">
-			<PageHeader title="Uploads" subtitle="Every object currently in the R2 bucket. This page is read-only." />
+			<PageHeader subtitle="Every object currently in the R2 bucket. This page is read-only." title="Uploads" />
 
 			<Panel>
-				<form method="get" className="hl-row" style={{ flexWrap: "wrap", alignItems: "center" }}>
+				<form className="hl-row" method="get" style={{ alignItems: "center", flexWrap: "wrap" }}>
 					<label className="hl-stack hl-stack--tight" style={{ gap: "0.25rem" }}>
 						<span className="hl-label-text">Folder</span>
-						<select className="hl-input" name="folder" defaultValue={folder ?? ""} style={{ maxWidth: "16rem" }}>
+						<select className="hl-input" defaultValue={folder ?? ""} name="folder" style={{ maxWidth: "16rem" }}>
 							<option value="">All folders</option>
-							{UPLOAD_FOLDERS.map((value) => (
+							{UPLOAD_FOLDERS.map(value => (
 								<option key={value} value={value}>
 									{FOLDER_LABELS[value]}
 								</option>
@@ -87,7 +87,7 @@ export default async function AdminUploadsPage({ searchParams }: Props) {
 					<button className="hl-btn" type="submit">
 						Filter
 					</button>
-					<Link href="/admin/uploads" className="hl-hint">
+					<Link className="hl-hint" href="/admin/uploads">
 						Reset
 					</Link>
 				</form>
@@ -103,7 +103,7 @@ export default async function AdminUploadsPage({ searchParams }: Props) {
 			) : listing ? (
 				<Panel>
 					<Table head={["Key", "Folder", "Owner", "Size", "Modified", "File"]}>
-						{listing.objects.map((object) => {
+						{listing.objects.map(object => {
 							const parts = keyParts(object.key)
 							return (
 								<tr key={object.key}>
@@ -118,7 +118,7 @@ export default async function AdminUploadsPage({ searchParams }: Props) {
 									<td className="hl-mono">{object.lastModified ? modifiedFormat.format(object.lastModified) : "—"}</td>
 									<td>
 										{object.url ? (
-											<a href={object.url} target="_blank" rel="noreferrer">
+											<a href={object.url} rel="noreferrer" target="_blank">
 												Open
 											</a>
 										) : (

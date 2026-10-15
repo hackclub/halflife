@@ -60,7 +60,7 @@ async function readRepoBom(repoLink: string | null, limit: number): Promise<Repo
 	if (!parsed.header) {
 		return { error: `${path} does not look like a BOM table – no header row with part names was found.` }
 	}
-	return { path, lines: parsed.lines, skipped: parsed.skipped }
+	return { lines: parsed.lines, path, skipped: parsed.skipped }
 }
 
 export const POST = withRoute(async (req: Request, { params }: Params) => {
@@ -73,8 +73,8 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	const { apply, replace } = parsed.data
 
 	const project = await prisma.themeProject.findFirst({
-		where: { id, userId: gate.user.id, deletedAt: null },
-		select: { id: true, githubRepo: true, designStatus: true, buildStatus: true },
+		select: { buildStatus: true, designStatus: true, githubRepo: true, id: true },
+		where: { deletedAt: null, id, userId: gate.user.id },
 	})
 	if (!project) return fail("NOT_FOUND", "Project not found")
 
@@ -85,7 +85,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	if (!apply) {
 		const result = await readRepoBom(project.githubRepo, limit)
 		if ("error" in result) return fail("UNPROCESSABLE", result.error)
-		return ok({ ...result, existing, replace, applied: false })
+		return ok({ ...result, applied: false, existing, replace })
 	}
 
 	// The write half. Same checks as POST /bom, in the same order.
@@ -98,11 +98,11 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	if ("error" in result) return fail("UNPROCESSABLE", result.error)
 	if (result.lines.length === 0) return fail("UNPROCESSABLE", `No parts with a name were found in ${result.path}.`)
 
-	await prisma.$transaction(async (tx) => {
+	await prisma.$transaction(async tx => {
 		// Re-read inside the transaction the write happens in, as POST /bom does: a design approval landing between the check above and the create would let lines into a list that is supposed to be final.
 		const fresh = await tx.themeProject.findUnique({
+			select: { buildStatus: true, designStatus: true },
 			where: { id },
-			select: { designStatus: true, buildStatus: true },
 		})
 		if (!fresh) throw new HttpError("NOT_FOUND", "Project not found")
 		const freshLock = bomLockReason(fresh)
@@ -114,21 +114,21 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 			throw new HttpError("VALIDATION_FAILED", `A parts list can have at most ${MAX_BOM_ITEMS} lines`)
 		const last = replace
 			? null
-			: await tx.bomItem.aggregate({ where: { themeProjectId: id }, _max: { sortOrder: true } })
+			: await tx.bomItem.aggregate({ _max: { sortOrder: true }, where: { themeProjectId: id } })
 		const base = replace ? 0 : (last?._max.sortOrder ?? -1) + 1
 
 		if (replace) await tx.bomItem.deleteMany({ where: { themeProjectId: id } })
 		await tx.bomItem.createMany({
 			data: result.lines.map((line, i) => ({
-				themeProjectId: id,
-				sortOrder: base + i,
+				link: line.link || null,
 				name: sanitize(line.name),
 				// Deliberately not filled in when the file had no column for them: the maker edits the blanks the way the form asks for.
 				purpose: sanitizeOptional(line.purpose),
 				quantity: line.quantity,
+				sortOrder: base + i,
+				themeProjectId: id,
 				unitCostUsd: Math.round(line.unitCostUsd * 100) / 100,
 				vendor: sanitizeOptional(line.vendor),
-				link: line.link || null,
 			})),
 		})
 	})
@@ -136,10 +136,10 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	after(() => scheduleRepoSync(id))
 
 	return ok({
+		imported: result.lines.length,
 		items: await listBom(id),
 		path: result.path,
-		imported: result.lines.length,
-		skipped: result.skipped,
 		replaced: replace,
+		skipped: result.skipped,
 	})
 })

@@ -6,15 +6,15 @@ import DOMPurify from "isomorphic-dompurify"
 
 /** Strips all markup. For anything stored and rendered as plain text. */
 export function sanitize(input: string): string {
-	return DOMPurify.sanitize(input, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] }).trim()
+	return DOMPurify.sanitize(input, { ALLOWED_ATTR: [], ALLOWED_TAGS: [] }).trim()
 }
 
 /** Allows safe markup. Only for journal content, which renders as rich text. */
 export function sanitizeHtml(input: string): string {
 	return DOMPurify.sanitize(input, {
-		ALLOWED_TAGS: ["b", "i", "em", "strong", "a", "p", "br", "ul", "ol", "li", "blockquote", "code", "pre"],
-		ALLOWED_ATTR: ["href", "title", "target", "rel"],
 		ALLOW_DATA_ATTR: false,
+		ALLOWED_ATTR: ["href", "title", "target", "rel"],
+		ALLOWED_TAGS: ["b", "i", "em", "strong", "a", "p", "br", "ul", "ol", "li", "blockquote", "code", "pre"],
 		FORBID_ATTR: ["style", "on*"],
 	})
 }

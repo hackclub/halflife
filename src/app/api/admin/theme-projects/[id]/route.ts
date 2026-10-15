@@ -20,8 +20,8 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 	if (parsed.error) return parsed.error
 
 	const before = await prisma.themeProject.findFirst({
-		where: { id, deletedAt: null },
-		select: { userId: true, theme: true, submissionExtensionUntil: true },
+		select: { submissionExtensionUntil: true, theme: true, userId: true },
+		where: { deletedAt: null, id },
 	})
 	if (!before) return fail("NOT_FOUND", "Project not found")
 
@@ -32,8 +32,8 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 	if (parsed.data.theme !== undefined && parsed.data.theme !== before.theme) {
 		if (parsed.data.theme !== Theme.WARMUP) {
 			const clash = await prisma.themeProject.findFirst({
-				where: { userId: before.userId, theme: parsed.data.theme, deletedAt: null, id: { not: id } },
 				select: { id: true },
+				where: { deletedAt: null, id: { not: id }, theme: parsed.data.theme, userId: before.userId },
 			})
 			if (clash) return fail("CONFLICT", "That maker already has a live project on the target theme")
 		}
@@ -47,9 +47,9 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 	let updated: { id: string; theme: Theme; submissionExtensionUntil: Date | null }
 	try {
 		updated = await prisma.themeProject.update({
-			where: { id },
 			data,
-			select: { id: true, theme: true, submissionExtensionUntil: true },
+			select: { id: true, submissionExtensionUntil: true, theme: true },
+			where: { id },
 		})
 	} catch {
 		return fail("CONFLICT", "That maker already has a live project on the target theme")
@@ -58,25 +58,25 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 	if (data.submissionExtensionUntil !== undefined) {
 		await logAudit({
 			action: AuditAction.ADMIN_GRANT_EXTENSION,
-			actorId: gate.user.id,
 			actorEmail: gate.user.email,
-			targetType: "ThemeProject",
-			targetId: id,
+			actorId: gate.user.id,
 			metadata: {
-				before: before.submissionExtensionUntil?.toISOString() ?? null,
 				after: updated.submissionExtensionUntil?.toISOString() ?? null,
+				before: before.submissionExtensionUntil?.toISOString() ?? null,
 			},
+			targetId: id,
+			targetType: "ThemeProject",
 		})
 	}
 
 	if (data.theme !== undefined) {
 		await logAudit({
 			action: AuditAction.ADMIN_MOVE_PROJECT,
-			actorId: gate.user.id,
 			actorEmail: gate.user.email,
-			targetType: "ThemeProject",
+			actorId: gate.user.id,
+			metadata: { after: updated.theme, before: before.theme },
 			targetId: id,
-			metadata: { before: before.theme, after: updated.theme },
+			targetType: "ThemeProject",
 		})
 	}
 

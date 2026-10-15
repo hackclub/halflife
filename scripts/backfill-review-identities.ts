@@ -13,21 +13,21 @@ const BATCH = 500
 
 async function main() {
 	const candidates = await prisma.submissionReview.findMany({
+		select: { createdAt: true, id: true, reviewerId: true, submissionId: true },
 		where: { reviewerEmail: null },
-		select: { id: true, submissionId: true, reviewerId: true, createdAt: true },
 	})
 	console.log(`reviews without an address: ${candidates.length}`)
 	if (candidates.length === 0) return
 
 	// Console reviewers are identified by their account, no audit read needed.
-	const reviewerIds = [...new Set(candidates.flatMap((r) => (r.reviewerId ? [r.reviewerId] : [])))]
+	const reviewerIds = [...new Set(candidates.flatMap(r => (r.reviewerId ? [r.reviewerId] : [])))]
 	const usersById = new Map(
 		(
 			await prisma.user.findMany({
+				select: { email: true, id: true },
 				where: { id: { in: reviewerIds } },
-				select: { id: true, email: true },
 			})
-		).map((u) => [u.id, u.email]),
+		).map(u => [u.id, u.email]),
 	)
 
 	let filled = 0
@@ -35,30 +35,30 @@ async function main() {
 	for (let i = 0; i < candidates.length; i += BATCH) {
 		const batch = candidates.slice(i, i + BATCH)
 		await Promise.all(
-			batch.map(async (review) => {
+			batch.map(async review => {
 				// The account first: a console reviewer's address is their own, whatever the audit rows say.
 				const accountEmail = review.reviewerId ? usersById.get(review.reviewerId) : null
 				if (accountEmail) {
 					await prisma.submissionReview.update({
-						where: { id: review.id },
 						data: { reviewerEmail: accountEmail },
+						where: { id: review.id },
 					})
 					filled += 1
 					return
 				}
 				// Otherwise the latest decision audit for this submission – one row per decision, so a re-decision after an un-approval attributes what stands.
 				const audit = await prisma.auditLog.findFirst({
-					where: {
-						action: { in: [AuditAction.REVIEW_APPROVE, AuditAction.REVIEW_RETURN, AuditAction.REVIEW_REJECT] },
-						metadata: { path: ["submissionId"], equals: review.submissionId },
-					},
 					orderBy: [{ createdAt: "desc" }, { id: "desc" }],
 					select: { actorEmail: true },
+					where: {
+						action: { in: [AuditAction.REVIEW_APPROVE, AuditAction.REVIEW_RETURN, AuditAction.REVIEW_REJECT] },
+						metadata: { equals: review.submissionId, path: ["submissionId"] },
+					},
 				})
 				if (audit?.actorEmail) {
 					await prisma.submissionReview.update({
-						where: { id: review.id },
 						data: { reviewerEmail: audit.actorEmail },
+						where: { id: review.id },
 					})
 					filled += 1
 				} else {
@@ -79,7 +79,7 @@ async function main() {
 }
 
 main()
-	.catch((err) => {
+	.catch(err => {
 		console.error(err)
 		process.exitCode = 1
 	})

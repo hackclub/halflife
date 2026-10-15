@@ -63,11 +63,11 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 			}
 			try {
 				const { projects } = await read<{ projects: { name: string; totalSeconds: number }[] }>(projectsRes)
-				setAccount({ state: "linked", projects })
+				setAccount({ projects, state: "linked" })
 			} catch (err) {
 				if ((err as { code?: string }).code === "HACKATIME_NOT_LINKED") setAccount({ state: "unlinked" })
 				else {
-					setAccount({ state: "linked", projects: [] })
+					setAccount({ projects: [], state: "linked" })
 					setError((err as Error).message)
 				}
 			}
@@ -111,12 +111,12 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 		run("link", async () => {
 			await read(
 				await fetch(`/api/projects/${projectId}/hackatime`, {
-					method: "POST",
-					headers: { "content-type": "application/json" },
 					body: JSON.stringify({
 						hackatimeProject: picked,
 						phase: phase === "build" ? "BUILD" : "DESIGN",
 					}),
+					headers: { "content-type": "application/json" },
+					method: "POST",
 				}),
 			)
 			setPicked("")
@@ -127,36 +127,36 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 			await read(await fetch(`/api/projects/${projectId}/hackatime/${id}`, { method: "DELETE" }))
 		})
 
-	const linkedNames = new Set(links?.map((l) => l.hackatimeProject))
-	const available = account.state === "linked" ? account.projects.filter((p) => !linkedNames.has(p.name)) : []
+	const linkedNames = new Set(links?.map(l => l.hackatimeProject))
+	const available = account.state === "linked" ? account.projects.filter(p => !linkedNames.has(p.name)) : []
 
 	return (
 		<>
 			<h2 className="label mt-8 mb-3 text-violet-deep">Hackatime</h2>
-			<Panel tone="line" radius={18} className="bg-paper px-5 py-5 sm:px-6">
+			<Panel className="bg-paper px-5 py-5 sm:px-6" radius={18} tone="line">
 				<p className="max-w-[62ch] text-[0.9rem] leading-snug text-navy-soft">
 					Code hours count too: link the Hackatime project you wrote them in.
 				</p>
 
 				{error && account.state !== "error" && (
 					<p
-						role="alert"
 						className="mt-4 flex items-start gap-2 rounded-xl bg-coral/10 px-3.5 py-2.5 text-[0.85rem] font-semibold text-coral-dark"
+						role="alert"
 					>
 						<IconWarning className="mt-0.5 shrink-0 text-base" /> {error}
 					</p>
 				)}
 
 				{links === null || account.state === "loading" ? (
-					<p className="hand mt-4 text-[0.84rem] text-navy-soft" aria-live="polite">
+					<p aria-live="polite" className="hand mt-4 text-[0.84rem] text-navy-soft">
 						checking hackatime…
 					</p>
 				) : account.state === "error" ? (
 					<div className="mt-4 flex flex-wrap items-center gap-3">
-						<Button variant="outline" onClick={retry} disabled={busy !== null}>
+						<Button disabled={busy !== null} onClick={retry} variant="outline">
 							Try again
 						</Button>
-						<span role="alert" className="hand text-[0.84rem] text-coral-deep">
+						<span className="hand text-[0.84rem] text-coral-deep" role="alert">
 							{error ?? "Hackatime could not be loaded."}
 						</span>
 					</div>
@@ -164,10 +164,10 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 					<>
 						{links.length > 0 && (
 							<ul className="mt-4 grid gap-2">
-								{links.map((l) => (
+								{links.map(l => (
 									<li
-										key={l.id}
 										className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl bg-cream px-3.5 py-2.5"
+										key={l.id}
 									>
 										<span className="min-w-0 flex-1 truncate font-bold text-navy">{l.hackatimeProject}</span>
 										<span className="hand inline-flex items-center gap-1.5 text-[0.84rem] text-teal-ink tabular-nums">
@@ -180,14 +180,14 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 											</span>
 										)}
 										<Button
-											variant="ghost"
-											size="sm"
-											onClick={() => unlink(l.id)}
+											aria-label={`Unlink ${l.hackatimeProject}`}
 											disabled={busy !== null || l.hoursApproved !== null}
+											onClick={() => unlink(l.id)}
+											size="sm"
 											title={
 												l.hoursApproved !== null ? "A reviewer has set hours on this link, so it stays" : undefined
 											}
-											aria-label={`Unlink ${l.hackatimeProject}`}
+											variant="ghost"
 										>
 											<IconX className="text-sm" /> {busy === l.id ? "Unlinking…" : "Unlink"}
 										</Button>
@@ -199,13 +199,13 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 						{account.state === "unlinked" ? (
 							<div className="mt-4 flex flex-wrap items-center gap-3">
 								<Button
-									variant="teal"
 									disabled={busy !== null}
 									onClick={() =>
 										run("account", async () => {
 											await linkHackatime(`/projects/${projectId}`)
 										})
 									}
+									variant="teal"
 								>
 									{busy === "account" ? "Redirecting…" : "Connect Hackatime"}
 								</Button>
@@ -213,26 +213,26 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 							</div>
 						) : (
 							<div className="mt-4 flex flex-col gap-2.5 sm:flex-row sm:items-center">
-								<label htmlFor={`hackatime-${projectId}`} className="sr-only">
+								<label className="sr-only" htmlFor={`hackatime-${projectId}`}>
 									Hackatime project
 								</label>
 								<select
-									id={`hackatime-${projectId}`}
-									value={picked}
-									onChange={(e) => setPicked(e.target.value)}
-									disabled={available.length === 0 || busy !== null}
 									className={cx(inputClass, "min-w-0 flex-1 py-2.5 disabled:text-navy-soft")}
+									disabled={available.length === 0 || busy !== null}
+									id={`hackatime-${projectId}`}
+									onChange={e => setPicked(e.target.value)}
+									value={picked}
 								>
 									<option value="">
 										{available.length === 0 ? "No other Hackatime projects yet" : "Pick a Hackatime project…"}
 									</option>
-									{available.map((p) => (
+									{available.map(p => (
 										<option key={p.name} value={p.name}>
 											{p.name} · {fmtHours(p.totalSeconds / 3600)}
 										</option>
 									))}
 								</select>
-								<Button variant="outline" onClick={link} disabled={!picked || busy !== null}>
+								<Button disabled={!picked || busy !== null} onClick={link} variant="outline">
 									<IconPlus className="text-sm" /> {busy === "link" ? "Linking…" : "Link project"}
 								</Button>
 							</div>

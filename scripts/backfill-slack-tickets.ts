@@ -12,11 +12,11 @@ if (!channel) {
 }
 
 backfillHelpTickets(channel)
-	.then((result) => {
+	.then(result => {
 		console.log("help tickets backfilled:", result)
 		if (!result.exhausted) console.warn("channel history was not fully walked; run again to continue")
 	})
-	.catch((err) => {
+	.catch(err => {
 		console.error(err)
 		process.exitCode = 1
 	})

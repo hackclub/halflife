@@ -16,12 +16,12 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 	const { id, linkId } = await params
 
 	const link = await prisma.hackatimeLink.findFirst({
+		include: { themeProject: { select: { buildStatus: true, designStatus: true } } },
 		where: {
 			id: linkId,
+			themeProject: { deletedAt: null, userId: gate.user.id },
 			themeProjectId: id,
-			themeProject: { userId: gate.user.id, deletedAt: null },
 		},
-		include: { themeProject: { select: { designStatus: true, buildStatus: true } } },
 	})
 	if (!link) return fail("NOT_FOUND", "Link not found")
 
@@ -42,24 +42,24 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 	// Conditional on the phase still being editable and the link still unreviewed: a submit or a decision that commits between the checks above and this delete makes it match nothing, and the link stays.
 	const removed = await prisma.hackatimeLink.deleteMany({
 		where: {
-			id: linkId,
-			themeProjectId: id,
 			hoursApproved: null,
+			id: linkId,
 			OR: [
 				{ phase: Phase.DESIGN, themeProject: { designStatus: { in: EDITABLE_PHASE_STATUSES } } },
 				{ phase: Phase.BUILD, themeProject: { buildStatus: { in: EDITABLE_PHASE_STATUSES } } },
 			],
+			themeProjectId: id,
 		},
 	})
 	if (removed.count !== 1) return fail("PHASE_LOCKED", "This phase moved while its link was being removed")
 
 	await logAudit({
 		action: AuditAction.USER_UNLINK_HACKATIME,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "HackatimeLink",
+		actorId: gate.user.id,
+		metadata: { hackatimeProject: link.hackatimeProject, themeProjectId: id },
 		targetId: linkId,
-		metadata: { themeProjectId: id, hackatimeProject: link.hackatimeProject },
+		targetType: "HackatimeLink",
 	})
 
 	return ok({ ok: true })

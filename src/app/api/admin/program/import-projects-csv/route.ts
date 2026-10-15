@@ -19,5 +19,5 @@ export const POST = withRoute(async (req: Request) => {
 	const parsed = await parseBody(req, importSchema)
 	if (parsed.error) return parsed.error
 
-	return ok(await importMacondoProjects({ id: gate.user.id, email: gate.user.email }, parsed.data.csv))
+	return ok(await importMacondoProjects({ email: gate.user.email, id: gate.user.id }, parsed.data.csv))
 })

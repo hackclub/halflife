@@ -22,11 +22,11 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 
 	await logAudit({
 		action: AuditAction.ADMIN_HIDE_POST,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "Post",
-		targetId: id,
+		actorId: gate.user.id,
 		metadata: { reason: parsed.data.reason },
+		targetId: id,
+		targetType: "Post",
 	})
 
 	return ok({ hidden: true })
@@ -42,10 +42,10 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 
 	await logAudit({
 		action: AuditAction.ADMIN_RESTORE_POST,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "Post",
+		actorId: gate.user.id,
 		targetId: id,
+		targetType: "Post",
 	})
 
 	return ok({ restored: true })

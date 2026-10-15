@@ -42,14 +42,14 @@ export function ActionButton({
 		}
 		void run(
 			"submit",
-			() => sendJson(url, { method, body: payload }),
+			() => sendJson(url, { body: payload, method }),
 			() => onDone?.(),
 		)
 	}
 
 	return (
 		<span className="hl-stack hl-stack--tight">
-			<Button variant={variant} disabled={busy !== null || disabled} onClick={submit}>
+			<Button disabled={busy !== null || disabled} onClick={submit} variant={variant}>
 				{busy ? (pendingLabel ?? "Working…") : label}
 			</Button>
 			{error ? <Callout tone="danger">{error}</Callout> : null}

@@ -44,5 +44,5 @@ export type PartsFunding = {
 /** The rule, in one place: a cart against a tier's grant. */
 export function partsFunding(totalUsd: number, capUsd: number): PartsFunding {
 	const shortfallUsd = Math.max(0, round2(totalUsd - capUsd))
-	return { totalUsd, capUsd, shortfallUsd, needsAgreement: shortfallUsd > BOM_MARGIN_USD }
+	return { capUsd, needsAgreement: shortfallUsd > BOM_MARGIN_USD, shortfallUsd, totalUsd }
 }

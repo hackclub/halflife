@@ -15,11 +15,11 @@ export const POST = withRoute(async (req: Request) => {
 	if (parsed.error) return parsed.error
 	const { userId, amount, reason, bucket } = parsed.data
 
-	const target = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } })
+	const target = await prisma.user.findUnique({ select: { id: true }, where: { id: userId } })
 	if (!target) return fail("NOT_FOUND", "User not found")
 
 	const entry = await prisma
-		.$transaction(async (tx) => {
+		.$transaction(async tx => {
 			await lockUserCredit(tx, userId)
 			const balances = await getBalances(tx, userId)
 			// Guard the pot being moved, not the combined total: a clawback that the total can absorb may still take the spendable pot negative, and banked coins are not available to cover it.
@@ -32,12 +32,12 @@ export const POST = withRoute(async (req: Request) => {
 				})
 			}
 			return appendLedgerEntry(tx, {
-				userId,
-				kind: LedgerKind.ADMIN_ADJUSTMENT,
-				bucket: bucket === "BANKED" ? CoinBucket.BANKED : CoinBucket.SPENDABLE,
 				amount,
-				note: sanitize(reason),
+				bucket: bucket === "BANKED" ? CoinBucket.BANKED : CoinBucket.SPENDABLE,
 				createdById: gate.user.id,
+				kind: LedgerKind.ADMIN_ADJUSTMENT,
+				note: sanitize(reason),
+				userId,
 			})
 		})
 		.catch((err: unknown) => {
@@ -49,17 +49,17 @@ export const POST = withRoute(async (req: Request) => {
 
 	await logAudit({
 		action: AuditAction.ADMIN_ADJUST_CREDIT,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "User",
-		targetId: userId,
+		actorId: gate.user.id,
 		metadata: {
-			amount,
-			reason,
-			bucket,
-			before: entry.balanceBefore,
 			after: entry.balanceAfter,
+			amount,
+			before: entry.balanceBefore,
+			bucket,
+			reason,
 		},
+		targetId: userId,
+		targetType: "User",
 	})
 
 	return ok({ entry }, { status: 201 })

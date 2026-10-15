@@ -14,18 +14,18 @@ export default async function AdminUsersPage({ searchParams }: Props) {
 	const { q, cursor } = await searchParams
 
 	const includePii = hasRole(roles, Role.ADMIN) || hasRole(roles, Role.AUDITOR)
-	const { items, nextCursor } = await listUsers({ q, cursor, limit: 50 }, { includePii })
+	const { items, nextCursor } = await listUsers({ cursor, limit: 50, q }, { includePii })
 
 	return (
 		<div className="hl-stack">
 			<PageHeader title="Users" />
 
 			<Panel>
-				<form method="get" className="hl-row">
+				<form className="hl-row" method="get">
 					<input
 						className="hl-input"
-						name="q"
 						defaultValue={q ?? ""}
+						name="q"
 						placeholder="Search by name, email or Slack ID"
 						style={{ maxWidth: "24rem" }}
 					/>
@@ -40,7 +40,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
 					<EmptyState>No users match.</EmptyState>
 				) : (
 					<Table head={["Name", "Email", "Roles", "Verified", "Joined"]}>
-						{items.map((user) => (
+						{items.map(user => (
 							<tr key={user.id}>
 								<td>
 									<Link href={`/admin/users/${user.id}`}>{displayName(user) ?? "—"}</Link>
@@ -55,7 +55,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
 									{user.roles.length === 0 ? (
 										<span className="hl-hint">participant</span>
 									) : (
-										user.roles.map((r) => (
+										user.roles.map(r => (
 											<Badge key={r.role} tone="muted">
 												{r.role.toLowerCase()}
 											</Badge>

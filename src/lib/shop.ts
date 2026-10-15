@@ -21,25 +21,25 @@ export type ShopItemPublic = Omit<ShopItem, "costUsd">
  * The buyer's own view of an order, shared by the purchase response and the order list so the two cannot drift. `unitCostUsd` (what Hack Club pays), the encrypted address/phone and `lastActorId` are staff-side and never selected.
  */
 export const shopOrderPublicSelect = {
-	id: true,
-	orderNumber: true,
-	shopItemId: true,
-	quantity: true,
-	unitCredits: true,
-	totalCredits: true,
-	itemNameSnapshot: true,
-	status: true,
-	holdReason: true,
-	rejectionReason: true,
-	trackingNumber: true,
-	trackingCarrier: true,
+	fulfilledAt: true,
 	fulfillmentMethod: true,
 	fulfillmentStage: true,
 	fulfillmentUpdatedAt: true,
-	placedAt: true,
 	heldAt: true,
+	holdReason: true,
+	id: true,
+	itemNameSnapshot: true,
+	orderNumber: true,
+	placedAt: true,
+	quantity: true,
 	rejectedAt: true,
-	fulfilledAt: true,
+	rejectionReason: true,
+	shopItemId: true,
+	status: true,
+	totalCredits: true,
+	trackingCarrier: true,
+	trackingNumber: true,
+	unitCredits: true,
 } satisfies Prisma.ShopOrderSelect
 
 export type ShopOrderPublic = Prisma.ShopOrderGetPayload<{ select: typeof shopOrderPublicSelect }>
@@ -48,27 +48,27 @@ export type ShopOrderPublic = Prisma.ShopOrderGetPayload<{ select: typeof shopOr
  * What a FULFILL_ORDERS surface may see. `unitCostUsd` (what Hack Club pays) is needed to price a shipment, but the encrypted address/phone and `lastActorId` are not, and a route that returns a whole row ships them by accident.
  */
 export const shopOrderStaffSelect = {
-	id: true,
-	orderNumber: true,
-	userId: true,
-	shopItemId: true,
-	quantity: true,
-	unitCredits: true,
-	totalCredits: true,
-	itemNameSnapshot: true,
-	unitCostUsd: true,
-	status: true,
-	holdReason: true,
-	rejectionReason: true,
-	trackingNumber: true,
-	trackingCarrier: true,
+	fulfilledAt: true,
 	fulfillmentMethod: true,
 	fulfillmentStage: true,
 	fulfillmentUpdatedAt: true,
-	placedAt: true,
 	heldAt: true,
+	holdReason: true,
+	id: true,
+	itemNameSnapshot: true,
+	orderNumber: true,
+	placedAt: true,
+	quantity: true,
 	rejectedAt: true,
-	fulfilledAt: true,
+	rejectionReason: true,
+	shopItemId: true,
+	status: true,
+	totalCredits: true,
+	trackingCarrier: true,
+	trackingNumber: true,
+	unitCostUsd: true,
+	unitCredits: true,
+	userId: true,
 } satisfies Prisma.ShopOrderSelect
 
 export type ShopOrderStaff = Prisma.ShopOrderGetPayload<{ select: typeof shopOrderStaffSelect }>
@@ -89,9 +89,9 @@ export type ShopRegionOption = {
 
 export async function listActiveShopRegions(): Promise<ShopRegionOption[]> {
 	return prisma.shopRegion.findMany({
-		where: { active: true },
 		orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
 		select: { id: true, name: true },
+		where: { active: true },
 	})
 }
 
@@ -104,12 +104,12 @@ export async function listActiveShopRegions(): Promise<ShopRegionOption[]> {
  */
 async function shopContextFor(userId: string): Promise<{ regionId: string | null; country: string }> {
 	const user = await prisma.user.findUnique({
+		select: { shopRegion: { select: { active: true, id: true } }, timezone: true },
 		where: { id: userId },
-		select: { timezone: true, shopRegion: { select: { id: true, active: true } } },
 	})
 	return {
-		regionId: user?.shopRegion?.active ? user.shopRegion.id : null,
 		country: countryOfTimezone(user?.timezone),
+		regionId: user?.shopRegion?.active ? user.shopRegion.id : null,
 	}
 }
 
@@ -124,44 +124,42 @@ export async function getShopItemsFor(userId: string): Promise<{
 	const [items, balances, qualification, orders, regions, context] = await Promise.all([
 		// Explicit `select`, never the whole row: a new internal column added to ShopItem must not silently start reaching participants. Printers are not sold in the shop. They stay in the catalogue – the goal tracker and printer awards read them – but never reach this list.
 		prisma.shopItem.findMany({
-			where: { active: true, category: { not: ShopItemCategory.PRINTER } },
 			orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
 			select: {
-				id: true,
-				name: true,
-				description: true,
-				imageUrl: true,
-				category: true,
-				priceCredits: true,
-				maxPerUser: true,
-				stock: true,
-				requiresPrinterQualified: true,
 				active: true,
-				sortOrder: true,
+				category: true,
 				createdAt: true,
+				description: true,
+				id: true,
+				imageUrl: true,
+				maxPerUser: true,
+				name: true,
+				priceCredits: true,
+				regionPrices: { select: { priceCredits: true, regionId: true } },
+				requiresPrinterQualified: true,
+				sortOrder: true,
+				stock: true,
 				updatedAt: true,
-				regionPrices: { select: { regionId: true, priceCredits: true } },
 			},
+			where: { active: true, category: { not: ShopItemCategory.PRINTER } },
 		}),
-		prisma.$transaction((tx) => getBalances(tx, userId)),
+		prisma.$transaction(tx => getBalances(tx, userId)),
 		getPrinterQualification(userId),
 		prisma.shopOrder.groupBy({
-			by: ["shopItemId"],
-			where: { userId, status: { notIn: [ShopOrderStatus.REJECTED, ShopOrderStatus.CANCELLED] } },
 			_sum: { quantity: true },
+			by: ["shopItemId"],
+			where: { status: { notIn: [ShopOrderStatus.REJECTED, ShopOrderStatus.CANCELLED] }, userId },
 		}),
 		listActiveShopRegions(),
 		shopContextFor(userId),
 	])
 
-	const owned = new Map(orders.map((o) => [o.shopItemId, o._sum.quantity ?? 0]))
+	const owned = new Map(orders.map(o => [o.shopItemId, o._sum.quantity ?? 0]))
 
 	return {
 		balances,
-		regions,
-		regionId: context.regionId,
 		country: context.country,
-		items: items.map((item) => {
+		items: items.map(item => {
 			const ownedCount = owned.get(item.id) ?? 0
 			let locked = false
 			let lockReason: string | null = null
@@ -181,20 +179,22 @@ export async function getShopItemsFor(userId: string): Promise<{
 			const { regionPrices, ...base } = item
 			const priceCredits =
 				context.regionId !== null
-					? (regionPrices.find((r) => r.regionId === context.regionId)?.priceCredits ?? item.priceCredits)
+					? (regionPrices.find(r => r.regionId === context.regionId)?.priceCredits ?? item.priceCredits)
 					: item.priceCredits
 
 			// Every coin is spendable on anything, so affordability compares the whole balance against the price – display and purchase read the same number, so the shelf can never advertise a price the till refuses.
 			const payableFrom = spendableFor(balances, item.category)
 			return {
 				...base,
-				priceCredits,
-				ownedCount,
 				affordable: payableFrom >= priceCredits,
 				locked,
 				lockReason,
+				ownedCount,
+				priceCredits,
 			}
 		}),
+		regionId: context.regionId,
+		regions,
 	}
 }
 
@@ -229,7 +229,7 @@ export async function purchase(
 			throw new HttpError("ITEM_LOCKED", `Ship all ${qualification.required} themes to unlock this`)
 	}
 
-	return prisma.$transaction(async (tx) => {
+	return prisma.$transaction(async tx => {
 		await lockUserCredit(tx, userId)
 
 		// Re-checked inside the transaction: the pre-check above ran against reads taken before the lock, so a shop-close or a qualification-revoke in between must not still complete. Read off the transaction so this sees a consistent snapshot.
@@ -238,11 +238,11 @@ export async function purchase(
 		if (settings.shopClosesAt && settings.shopClosesAt <= new Date()) {
 			const [awaitingReview, lastReview] = await Promise.all([
 				tx.themeProject.count({
-					where: { userId, deletedAt: null, OR: [{ designStatus: "in_review" }, { buildStatus: "in_review" }] },
+					where: { deletedAt: null, OR: [{ designStatus: "in_review" }, { buildStatus: "in_review" }], userId },
 				}),
 				tx.themeProject.aggregate({
-					where: { userId, deletedAt: null },
-					_max: { designReviewedAt: true, buildReviewedAt: true },
+					_max: { buildReviewedAt: true, designReviewedAt: true },
+					where: { deletedAt: null, userId },
 				}),
 			])
 			let inGrace = awaitingReview > 0
@@ -257,10 +257,10 @@ export async function purchase(
 		if (item.requiresPrinterQualified) {
 			const shipped = await tx.themeProject.count({
 				where: {
-					userId,
+					buildStatus: PhaseStatus.approved,
 					deletedAt: null,
 					designStatus: PhaseStatus.approved,
-					buildStatus: PhaseStatus.approved,
+					userId,
 				},
 			})
 			if (shipped < THEMES_REQUIRED_FOR_PRINTER)
@@ -269,22 +269,22 @@ export async function purchase(
 
 		// The buyer's region, re-read here rather than trusted from the shelf: the price on the order is whatever this resolves to, so display and charge cannot drift apart.
 		const buyer = await tx.user.findUnique({
+			select: { shopRegion: { select: { active: true, id: true } } },
 			where: { id: userId },
-			select: { shopRegion: { select: { id: true, active: true } } },
 		})
 		const buyerRegionId = buyer?.shopRegion?.active ? buyer.shopRegion.id : null
 		const regional =
 			buyerRegionId !== null
 				? await tx.shopItemRegionPrice.findUnique({
-						where: { shopItemId_regionId: { shopItemId, regionId: buyerRegionId } },
 						select: { priceCredits: true },
+						where: { shopItemId_regionId: { regionId: buyerRegionId, shopItemId } },
 					})
 				: null
 		// A retried request – double-tap, proxy retry, two tabs sharing one key – resolves to the order it already made rather than charging again. The same per-user lock serializes the two, so the loser always sees the winner's row.
 		if (idempotencyKey) {
 			const existing = await tx.shopOrder.findFirst({
-				where: { userId, idempotencyKey },
 				select: shopOrderPublicSelect,
+				where: { idempotencyKey, userId },
 			})
 			if (existing) return existing
 		}
@@ -298,12 +298,12 @@ export async function purchase(
 
 		if (fresh.maxPerUser > 0) {
 			const owned = await tx.shopOrder.aggregate({
+				_sum: { quantity: true },
 				where: {
-					userId,
 					shopItemId,
 					status: { notIn: [ShopOrderStatus.REJECTED, ShopOrderStatus.CANCELLED] },
+					userId,
 				},
-				_sum: { quantity: true },
 			})
 			if ((owned._sum.quantity ?? 0) + quantity > fresh.maxPerUser)
 				throw new HttpError("PURCHASE_LIMIT", `Limit ${fresh.maxPerUser} per person`)
@@ -318,14 +318,14 @@ export async function purchase(
 
 		const order = await tx.shopOrder.create({
 			data: {
-				userId,
-				shopItemId,
-				quantity,
-				unitCredits: unitPrice,
-				totalCredits,
-				itemNameSnapshot: fresh.name,
-				unitCostUsd: fresh.costUsd,
 				idempotencyKey: idempotencyKey ?? null,
+				itemNameSnapshot: fresh.name,
+				quantity,
+				shopItemId,
+				totalCredits,
+				unitCostUsd: fresh.costUsd,
+				unitCredits: unitPrice,
+				userId,
 			},
 			// Only the buyer's fields come back; `unitCostUsd` is stored for fulfillment but must not leave the server.
 			select: shopOrderPublicSelect,
@@ -334,21 +334,21 @@ export async function purchase(
 		// Every coin is spendable on anything, so a purchase is paid out of the whole balance.
 		if (totalCredits > 0) {
 			await appendLedgerEntry(tx, {
-				userId,
-				kind: LedgerKind.SHOP_PURCHASE,
-				bucket: CoinBucket.SPENDABLE,
 				amount: -totalCredits,
+				bucket: CoinBucket.SPENDABLE,
+				createdById: userId,
+				kind: LedgerKind.SHOP_PURCHASE,
 				note: `${quantity}× ${fresh.name}`,
 				shopOrderId: order.id,
-				createdById: userId,
+				userId,
 			})
 		}
 
 		if (fresh.stock !== null) {
 			// Conditional, so stock cannot go negative even if two people buy the last unit at once – the loser's update matches nothing and rolls back.
 			const claimed = await tx.shopItem.updateMany({
-				where: { id: shopItemId, stock: { gte: quantity } },
 				data: { stock: { decrement: quantity } },
+				where: { id: shopItemId, stock: { gte: quantity } },
 			})
 			if (claimed.count !== 1) throw new HttpError("OUT_OF_STOCK", "Not enough stock left")
 		}
@@ -364,12 +364,12 @@ export async function purchase(
  */
 export async function rejectOrder(orderId: string, adminId: string, reason: string): Promise<ShopOrder> {
 	const target = await prisma.shopOrder.findUnique({
-		where: { id: orderId },
 		select: { userId: true },
+		where: { id: orderId },
 	})
 	if (!target) throw new HttpError("NOT_FOUND", "Order not found")
 
-	return prisma.$transaction(async (tx) => {
+	return prisma.$transaction(async tx => {
 		await lockUserCredit(tx, target.userId)
 
 		const order = await tx.shopOrder.findUnique({ where: { id: orderId } })
@@ -379,9 +379,9 @@ export async function rejectOrder(orderId: string, adminId: string, reason: stri
 
 		// Refund each pot exactly what it paid, by reading back the purchase rows rather than assuming. Refunding the whole total as spendable would turn a rejected printer order into a laundering step: coins that could only ever have bought a printer would come back as coins that can buy anything.
 		const paid = await tx.ledgerEntry.groupBy({
-			by: ["bucket"],
-			where: { shopOrderId: order.id, kind: LedgerKind.SHOP_PURCHASE },
 			_sum: { amount: true },
+			by: ["bucket"],
+			where: { kind: LedgerKind.SHOP_PURCHASE, shopOrderId: order.id },
 		})
 
 		for (const row of paid) {
@@ -389,31 +389,31 @@ export async function rejectOrder(orderId: string, adminId: string, reason: stri
 			const amount = -(row._sum.amount ?? 0)
 			if (amount <= 0) continue
 			await appendLedgerEntry(tx, {
-				userId: order.userId,
-				kind: LedgerKind.SHOP_REFUND,
-				bucket: row.bucket,
 				amount,
+				bucket: row.bucket,
+				createdById: adminId,
+				kind: LedgerKind.SHOP_REFUND,
 				note: `Refund for order #${order.orderNumber}: ${reason}`,
 				shopOrderId: order.id,
-				createdById: adminId,
+				userId: order.userId,
 			})
 		}
 
 		if (order.shopItemId) {
 			await tx.shopItem.updateMany({
-				where: { id: order.shopItemId, stock: { not: null } },
 				data: { stock: { increment: order.quantity } },
+				where: { id: order.shopItemId, stock: { not: null } },
 			})
 		}
 
 		return tx.shopOrder.update({
-			where: { id: orderId },
 			data: {
-				status: ShopOrderStatus.REJECTED,
-				rejectionReason: reason,
-				rejectedAt: new Date(),
 				lastActorId: adminId,
+				rejectedAt: new Date(),
+				rejectionReason: reason,
+				status: ShopOrderStatus.REJECTED,
 			},
+			where: { id: orderId },
 		})
 	})
 }
@@ -429,12 +429,12 @@ export async function fulfillOrder(
 	tracking: { number?: string | null; carrier?: string | null },
 ): Promise<ShopOrder> {
 	const target = await prisma.shopOrder.findUnique({
-		where: { id: orderId },
 		select: { userId: true },
+		where: { id: orderId },
 	})
 	if (!target) throw new HttpError("NOT_FOUND", "Order not found")
 
-	return prisma.$transaction(async (tx) => {
+	return prisma.$transaction(async tx => {
 		await lockUserCredit(tx, target.userId)
 
 		const order = await tx.shopOrder.findUnique({ where: { id: orderId } })
@@ -444,14 +444,14 @@ export async function fulfillOrder(
 		if (order.status === ShopOrderStatus.CANCELLED) throw new HttpError("CONFLICT", "This order was cancelled")
 
 		const claimed = await tx.shopOrder.updateMany({
-			where: { id: orderId, status: order.status },
 			data: {
-				status: ShopOrderStatus.FULFILLED,
 				fulfilledAt: new Date(),
-				trackingNumber: tracking.number ?? null,
-				trackingCarrier: tracking.carrier ?? null,
 				lastActorId: adminId,
+				status: ShopOrderStatus.FULFILLED,
+				trackingCarrier: tracking.carrier ?? null,
+				trackingNumber: tracking.number ?? null,
 			},
+			where: { id: orderId, status: order.status },
 		})
 		if (claimed.count !== 1) throw new HttpError("CONFLICT", "This order was decided by someone else")
 

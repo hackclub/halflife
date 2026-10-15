@@ -20,7 +20,7 @@ export function ThemeMoveForm({ projectId, current }: Readonly<{ projectId: stri
 		const to = getThemeDef(value).label
 		if (!window.confirm(`Move this project from ${from} to ${to}? Its reviews and grant move with it.`)) return
 		void run("save", () =>
-			sendJson(`/api/admin/theme-projects/${projectId}`, { method: "PATCH", body: { theme: value } }),
+			sendJson(`/api/admin/theme-projects/${projectId}`, { body: { theme: value }, method: "PATCH" }),
 		)
 	}
 
@@ -28,19 +28,19 @@ export function ThemeMoveForm({ projectId, current }: Readonly<{ projectId: stri
 		<div className="hl-stack hl-stack--tight">
 			<div className="hl-row">
 				<select
-					className="hl-input"
-					value={value}
-					onChange={(e) => setValue(e.target.value as Theme)}
 					aria-label="Move project to theme"
+					className="hl-input"
+					onChange={e => setValue(e.target.value as Theme)}
 					style={{ maxWidth: "12rem" }}
+					value={value}
 				>
-					{OPTIONS.map((t) => (
+					{OPTIONS.map(t => (
 						<option key={t.id} value={t.id}>
 							{t.label}
 						</option>
 					))}
 				</select>
-				<Button type="button" disabled={busy !== null || value === current} onClick={save}>
+				<Button disabled={busy !== null || value === current} onClick={save} type="button">
 					{busy ? "Moving…" : "Move"}
 				</Button>
 			</div>

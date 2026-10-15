@@ -114,7 +114,7 @@ export function useHandoff(onReady: (objectKey: string, url: string | null) => v
 		setStatus("idle")
 	}, [stop])
 
-	return { minted, status, error, mint, cancel }
+	return { cancel, error, mint, minted, status }
 }
 
 /**

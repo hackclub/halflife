@@ -27,18 +27,18 @@ export function UploadProgress({
 		<div className={cx("grid gap-1", className)}>
 			<div className="flex items-baseline justify-between gap-3 text-[0.78rem]">
 				{name && <span className="min-w-0 truncate font-semibold text-navy">{name}</span>}
-				<span className="hand ml-auto shrink-0 text-navy-soft tabular-nums" aria-hidden="true">
+				<span aria-hidden="true" className="hand ml-auto shrink-0 text-navy-soft tabular-nums">
 					{storing ? "storing…" : `${pct}%`}
 				</span>
 			</div>
 			<div
-				role="progressbar"
 				aria-label={name ? `Uploading ${name}` : "Uploading"}
-				aria-valuemin={0}
 				aria-valuemax={100}
+				aria-valuemin={0}
 				aria-valuenow={storing ? undefined : pct}
 				aria-valuetext={storing ? "Sent, storing the file" : `${pct}% sent`}
 				className="relative h-2 overflow-hidden rounded-full bg-mint"
+				role="progressbar"
 			>
 				<div
 					className="h-full rounded-full bg-teal transition-[width] duration-150 ease-out"

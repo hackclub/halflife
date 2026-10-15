@@ -29,12 +29,12 @@ function unreachable(err: unknown): boolean {
 	if (!(err instanceof Error)) return true
 	const code = (err as { cause?: { code?: string } }).cause?.code ?? (err as { code?: string }).code
 	if (
-		code === "ECONNRESET" ||
-		code === "ECONNREFUSED" ||
-		code === "ETIMEDOUT" ||
-		code === "EAI_AGAIN" ||
-		code === "UND_ERR_CONNECT_TIMEOUT" ||
-		code === "UND_ERR_SOCKET"
+		code === "ECONNRESET"
+		|| code === "ECONNREFUSED"
+		|| code === "ETIMEDOUT"
+		|| code === "EAI_AGAIN"
+		|| code === "UND_ERR_CONNECT_TIMEOUT"
+		|| code === "UND_ERR_SOCKET"
 	) {
 		return true
 	}
@@ -63,7 +63,7 @@ export async function fetchWithRetry(url: string | URL, options: FetchRetryOptio
 	let lastError: unknown = null
 
 	for (let attempt = 0; attempt <= retries; attempt++) {
-		if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS_MS[attempt - 1] ?? 1000))
+		if (attempt > 0) await new Promise(resolve => setTimeout(resolve, RETRY_DELAYS_MS[attempt - 1] ?? 1000))
 		try {
 			const res = await fetch(url, init)
 			// A 5xx is worth another go; a 4xx is a real answer.
@@ -76,7 +76,7 @@ export async function fetchWithRetry(url: string | URL, options: FetchRetryOptio
 				lastError = new Error("response too large")
 				continue
 			}
-			return new Response(body, { status: res.status, statusText: res.statusText, headers: res.headers })
+			return new Response(body, { headers: res.headers, status: res.status, statusText: res.statusText })
 		} catch (err) {
 			lastError = err
 			if (attempt < retries && unreachable(err)) continue

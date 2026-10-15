@@ -50,22 +50,21 @@ export default async function AdminProgramPage() {
 		const range = weekDateRange(settings.eventStartDate, n)
 		const closesAt = weekClosesAt(settings, n)
 		const opensAt = weekOpensAt(settings, n)
-		const day = { timeZone: "UTC", weekday: "short", month: "short", day: "numeric" } as const
+		const day = { day: "numeric", month: "short", timeZone: "UTC", weekday: "short" } as const
 		return {
-			week: n,
+			closes: formatDeadline(closesAt, settings.programTimezone, "short"),
 			label: slot ? `${slot.theme.label} · ${slot.phase === Phase.DESIGN ? "design" : "build"}` : "—",
 			runs: range
 				? `${range.start.toLocaleDateString("en-US", day)} – ${new Date(range.start.getTime() + 6 * 86_400_000).toLocaleDateString("en-US", day)}`
 				: "—",
-			closes: formatDeadline(closesAt, settings.programTimezone, "short"),
 			state: now >= closesAt ? "passed" : now >= opensAt ? "current" : "upcoming",
+			week: n,
 		}
 	})
 
 	return (
 		<div className="hl-stack">
 			<PageHeader
-				title="Program settings"
 				subtitle={
 					week < 1
 						? "The program has not started yet."
@@ -73,15 +72,16 @@ export default async function AdminProgramPage() {
 							? "The program is over."
 							: `Currently week ${week} of ${TOTAL_WEEKS}.`
 				}
+				title="Program settings"
 			/>
 
 			<Panel title="Program start">
-				<ProgramStartForm initial={startYmd} timezone={settings.programTimezone} weeks={schedule.map((w) => w.label)} />
+				<ProgramStartForm initial={startYmd} timezone={settings.programTimezone} weeks={schedule.map(w => w.label)} />
 			</Panel>
 
 			<Panel title="Schedule">
 				<Table head={["Week", "Theme", "Runs", "Closes", ""]}>
-					{schedule.map((w) => (
+					{schedule.map(w => (
 						<tr key={w.week}>
 							<td className="hl-mono">{w.week}</td>
 							<td>{w.label}</td>
@@ -107,15 +107,15 @@ export default async function AdminProgramPage() {
             submissions stayed open for two weeks after the event ended. */}
 				<ProgramSettingsForm
 					initial={{
+						airtableSyncEnabled: settings.airtableSyncEnabled,
 						programTimezone: settings.programTimezone,
-						submissionsOpen: settings.submissionsOpen,
-						submissionsCloseAt: settings.submissionsCloseAt?.toISOString().slice(0, 16) ?? null,
-						shopOpen: settings.shopOpen,
+						repoSyncEnabled: settings.repoSyncEnabled,
+						reviewClaimTtlMinutes: settings.reviewClaimTtlMinutes,
 						shopClosesAt: settings.shopClosesAt?.toISOString().slice(0, 16) ?? null,
 						shopGraceDays: settings.shopGraceDays,
-						reviewClaimTtlMinutes: settings.reviewClaimTtlMinutes,
-						airtableSyncEnabled: settings.airtableSyncEnabled,
-						repoSyncEnabled: settings.repoSyncEnabled,
+						shopOpen: settings.shopOpen,
+						submissionsCloseAt: settings.submissionsCloseAt?.toISOString().slice(0, 16) ?? null,
+						submissionsOpen: settings.submissionsOpen,
 					}}
 				/>
 			</Panel>
@@ -153,15 +153,15 @@ export default async function AdminProgramPage() {
 					<EmptyState>Every submission awaiting review is in the YSWS table.</EmptyState>
 				) : (
 					<Table head={["Project", "Phase", ""]}>
-						{unsynced.map((item) => (
+						{unsynced.map(item => (
 							<tr key={`${item.themeProjectId}-${item.phase}`}>
 								<td className="hl-mono">{item.themeProjectId}</td>
 								<td>{item.phase.toLowerCase()}</td>
 								<td>
 									<ActionButton
-										url={`/api/admin/theme-projects/${item.themeProjectId}/sync-to-airtable`}
 										body={{ phase: item.phase }}
 										label="Retry"
+										url={`/api/admin/theme-projects/${item.themeProjectId}/sync-to-airtable`}
 									/>
 								</td>
 							</tr>
@@ -177,16 +177,16 @@ export default async function AdminProgramPage() {
 					<EmptyState>Every submission awaiting review is in Ari.</EmptyState>
 				) : (
 					<Table head={["Project", "Phase", "Why it's stuck", ""]}>
-						{unsyncedAri.map((item) => (
+						{unsyncedAri.map(item => (
 							<tr key={`${item.themeProjectId}-${item.phase}`}>
 								<td className="hl-mono">{item.themeProjectId}</td>
 								<td>{item.phase.toLowerCase()}</td>
 								<td className="hand">{item.reason ?? "Not attempted yet – the retry job will pick it up."}</td>
 								<td>
 									<ActionButton
-										url={`/api/admin/theme-projects/${item.themeProjectId}/sync-to-ari`}
 										body={{ phase: item.phase }}
 										label="Retry"
+										url={`/api/admin/theme-projects/${item.themeProjectId}/sync-to-ari`}
 									/>
 								</td>
 							</tr>
@@ -205,7 +205,7 @@ export default async function AdminProgramPage() {
 					<EmptyState>No maker is waiting on a second look.</EmptyState>
 				) : (
 					<Table head={["Project", "Phase", "Maker", "Asked", ""]}>
-						{disputes.map((d) => (
+						{disputes.map(d => (
 							<tr key={d.id}>
 								<td>{d.projectTitle}</td>
 								<td>{d.phase.toLowerCase()}</td>
@@ -214,10 +214,10 @@ export default async function AdminProgramPage() {
 								<td className="hl-row">
 									<Link href={`/review/${d.submissionId}`}>Read</Link>
 									<ActionButton
-										url={`/api/admin/disputes/${d.id}/resolve`}
 										body={{}}
-										label="Resolve"
 										confirm="Mark this dispute as looked at? The decision itself does not change."
+										label="Resolve"
+										url={`/api/admin/disputes/${d.id}/resolve`}
 									/>
 								</td>
 							</tr>
@@ -264,7 +264,7 @@ export default async function AdminProgramPage() {
             every review freezes the numbers it used, so changing them never
             rewrites anyone's history. */}
 				<Table head={["Tier", "Grant", "Funded hours", "Submit floor"]}>
-					{TIERS.map((tier) => (
+					{TIERS.map(tier => (
 						<tr key={tier.id}>
 							<td>{tier.name}</td>
 							<td>${tier.grantUsd}</td>
@@ -280,7 +280,7 @@ export default async function AdminProgramPage() {
 
 				<h2>Printer goals</h2>
 				<Table head={["Printer", "Coins", "Earn pace / design week", "Tier 1 ask"]}>
-					{PRINTERS.map((printer) => (
+					{PRINTERS.map(printer => (
 						<tr key={printer.id}>
 							<td>{printer.name}</td>
 							<td>{printer.coins}</td>

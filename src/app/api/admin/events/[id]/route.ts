@@ -34,30 +34,30 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 	const endsAt = data.endsAt === undefined ? before.endsAt : data.endsAt
 	if (endsAt && endsAt <= startsAt) return fail("VALIDATION_FAILED", "An event has to end after it starts")
 
-	const event = await prisma.programEvent.update({ where: { id }, data })
+	const event = await prisma.programEvent.update({ data, where: { id } })
 
 	await logAudit({
 		action: AuditAction.ADMIN_UPDATE_PROGRAM_EVENT,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "ProgramEvent",
-		targetId: id,
+		actorId: gate.user.id,
 		metadata: {
-			before: {
-				title: before.title,
-				colour: before.colour,
-				startsAt: before.startsAt.toISOString(),
-				endsAt: before.endsAt?.toISOString() ?? null,
-				published: before.published,
-			},
 			after: {
-				title: event.title,
 				colour: event.colour,
-				startsAt: event.startsAt.toISOString(),
 				endsAt: event.endsAt?.toISOString() ?? null,
 				published: event.published,
+				startsAt: event.startsAt.toISOString(),
+				title: event.title,
+			},
+			before: {
+				colour: before.colour,
+				endsAt: before.endsAt?.toISOString() ?? null,
+				published: before.published,
+				startsAt: before.startsAt.toISOString(),
+				title: before.title,
 			},
 		},
+		targetId: id,
+		targetType: "ProgramEvent",
 	})
 
 	return ok({ event })
@@ -83,19 +83,19 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 
 	await logAudit({
 		action: AuditAction.ADMIN_DELETE_PROGRAM_EVENT,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "ProgramEvent",
-		targetId: id,
+		actorId: gate.user.id,
 		metadata: {
 			before: {
-				title: before.title,
 				colour: before.colour,
-				startsAt: before.startsAt.toISOString(),
 				endsAt: before.endsAt?.toISOString() ?? null,
 				seriesId: before.seriesId,
+				startsAt: before.startsAt.toISOString(),
+				title: before.title,
 			},
 		},
+		targetId: id,
+		targetType: "ProgramEvent",
 	})
 
 	return ok({ id })

@@ -10,8 +10,8 @@ export function RoleEditor({ userId, current }: Readonly<{ userId: string; curre
 	function toggle(role: string, held: boolean) {
 		void run(role, () =>
 			sendJson(`/api/admin/users/${userId}/roles`, {
-				method: held ? "DELETE" : "POST",
 				body: { role },
+				method: held ? "DELETE" : "POST",
 			}),
 		)
 	}
@@ -20,14 +20,14 @@ export function RoleEditor({ userId, current }: Readonly<{ userId: string; curre
 		<div className="hl-stack hl-stack--tight">
 			{error ? <Callout tone="danger">{error}</Callout> : null}
 			<div className="hl-row">
-				{ROLES.map((role) => {
+				{ROLES.map(role => {
 					const held = current.includes(role)
 					return (
 						<Button
-							key={role}
-							variant={held ? "danger" : "default"}
 							disabled={busy !== null}
+							key={role}
 							onClick={() => toggle(role, held)}
+							variant={held ? "danger" : "default"}
 						>
 							{held ? `Remove ${role.toLowerCase()}` : `Grant ${role.toLowerCase()}`}
 						</Button>

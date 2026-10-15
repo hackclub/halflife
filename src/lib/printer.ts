@@ -29,24 +29,24 @@ export type PrinterQualification = {
  */
 export async function getPrinterQualification(userId: string): Promise<PrinterQualification> {
 	const projects = await prisma.themeProject.findMany({
-		where: { userId, deletedAt: null },
-		select: { theme: true, designStatus: true, buildStatus: true, buildReviewedAt: true },
+		select: { buildReviewedAt: true, buildStatus: true, designStatus: true, theme: true },
+		where: { deletedAt: null, userId },
 	})
-	const byTheme = new Map(projects.map((p) => [p.theme, p]))
+	const byTheme = new Map(projects.map(p => [p.theme, p]))
 
-	const progress: ThemeProgress[] = THEMES.map((def) => {
+	const progress: ThemeProgress[] = THEMES.map(def => {
 		const p = byTheme.get(def.id)
 		const design = p?.designStatus === PhaseStatus.approved
 		const build = p?.buildStatus === PhaseStatus.approved
-		return { theme: def.id, design, build, shipped: design && build }
+		return { build, design, shipped: design && build, theme: def.id }
 	})
 
-	const shippedCount = progress.filter((p) => p.shipped).length
+	const shippedCount = progress.filter(p => p.shipped).length
 	return {
-		qualified: shippedCount >= THEMES_REQUIRED_FOR_PRINTER,
-		shippedCount,
-		required: THEMES_REQUIRED_FOR_PRINTER,
 		progress,
+		qualified: shippedCount >= THEMES_REQUIRED_FOR_PRINTER,
+		required: THEMES_REQUIRED_FOR_PRINTER,
+		shippedCount,
 	}
 }
 
@@ -55,13 +55,13 @@ export async function getPrinterQualification(userId: string): Promise<PrinterQu
  */
 export async function ensurePrinterAward(tx: Prisma.TransactionClient, userId: string): Promise<PrinterAward | null> {
 	const projects = await tx.themeProject.findMany({
+		select: { buildReviewedAt: true, theme: true },
 		where: {
-			userId,
+			buildStatus: PhaseStatus.approved,
 			deletedAt: null,
 			designStatus: PhaseStatus.approved,
-			buildStatus: PhaseStatus.approved,
+			userId,
 		},
-		select: { theme: true, buildReviewedAt: true },
 	})
 	if (projects.length < THEMES_REQUIRED_FOR_PRINTER) return null
 
@@ -70,13 +70,13 @@ export async function ensurePrinterAward(tx: Prisma.TransactionClient, userId: s
 
 	return tx.printerAward.create({
 		data: {
-			userId,
 			qualifiedAt: new Date(),
 			// Snapshot the evidence so a later un-approval doesn't erase why this award exists.
-			qualifyingSnapshot: projects.map((p) => ({
-				theme: p.theme,
+			qualifyingSnapshot: projects.map(p => ({
 				buildReviewedAt: p.buildReviewedAt?.toISOString() ?? null,
+				theme: p.theme,
 			})),
+			userId,
 		},
 	})
 }
@@ -86,17 +86,17 @@ export async function ensurePrinterAward(tx: Prisma.TransactionClient, userId: s
  */
 export async function findPrinterAwardMismatches(): Promise<{ userId: string; email: string; shippedCount: number }[]> {
 	const awards = await prisma.printerAward.findMany({
+		select: { user: { select: { email: true } }, userId: true },
 		where: { revokedAt: null },
-		select: { userId: true, user: { select: { email: true } } },
 	})
 	const mismatches: { userId: string; email: string; shippedCount: number }[] = []
 	for (const award of awards) {
 		const q = await getPrinterQualification(award.userId)
 		if (!q.qualified) {
 			mismatches.push({
-				userId: award.userId,
 				email: award.user.email,
 				shippedCount: q.shippedCount,
+				userId: award.userId,
 			})
 		}
 	}
@@ -123,20 +123,20 @@ export async function updatePrinterAwardStatus(
 	adminEmail: string | null,
 ): Promise<PrinterAward> {
 	const award = await prisma.printerAward.findUnique({
-		where: { id: awardId },
 		include: {
 			user: {
 				select: {
-					encryptedAddressStreet: true,
-					encryptedAddressLine2: true,
 					encryptedAddressCity: true,
-					encryptedAddressState: true,
-					encryptedAddressZip: true,
 					encryptedAddressCountry: true,
+					encryptedAddressLine2: true,
+					encryptedAddressState: true,
+					encryptedAddressStreet: true,
+					encryptedAddressZip: true,
 					encryptedPhone: true,
 				},
 			},
 		},
+		where: { id: awardId },
 	})
 	if (!award) throw new HttpError("NOT_FOUND", "Printer award not found")
 
@@ -184,25 +184,25 @@ export async function updatePrinterAwardStatus(
 	}
 
 	const moved = await prisma.printerAward.updateMany({
-		where: { id: awardId, status: award.status, revokedAt: null },
 		data,
+		where: { id: awardId, revokedAt: null, status: award.status },
 	})
 	if (moved.count !== 1)
 		throw new HttpError("CONFLICT", "The award moved while this was being saved – reload and try again")
 
 	await logAudit({
 		action: input.status === "REVOKED" ? AuditAction.PRINTER_REVOKED : AuditAction.PRINTER_STATUS_CHANGE,
-		actorId: adminId,
 		actorEmail: adminEmail,
-		targetType: "PrinterAward",
-		targetId: awardId,
+		actorId: adminId,
 		metadata: {
-			userId: award.userId,
-			before: award.status,
 			after: input.status,
+			before: award.status,
 			note: input.note.trim() || null,
+			userId: award.userId,
 			...(input.trackingNumber !== undefined ? { trackingNumber } : {}),
 		},
+		targetId: awardId,
+		targetType: "PrinterAward",
 	})
 
 	return prisma.printerAward.findUniqueOrThrow({ where: { id: awardId } })

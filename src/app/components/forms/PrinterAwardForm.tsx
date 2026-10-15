@@ -25,12 +25,12 @@ export function PrinterAwardForm({ awardId, status }: Readonly<{ awardId: string
 			"save",
 			() =>
 				sendJson(`/api/admin/printer-awards/${awardId}`, {
-					method: "PATCH",
 					body: {
 						status,
-						...(status === "SHIPPED" || status === "DELIVERED" ? { trackingNumber, trackingCarrier } : {}),
+						...(status === "SHIPPED" || status === "DELIVERED" ? { trackingCarrier, trackingNumber } : {}),
 						note,
 					},
+					method: "PATCH",
 				}),
 			() => {
 				setNext("")
@@ -44,21 +44,21 @@ export function PrinterAwardForm({ awardId, status }: Readonly<{ awardId: string
 	return (
 		<form
 			className="hl-stack hl-stack--tight"
-			style={{ gap: "0.4rem", minWidth: "12rem" }}
-			onSubmit={(e) => {
+			onSubmit={e => {
 				e.preventDefault()
 				save()
 			}}
+			style={{ gap: "0.4rem", minWidth: "12rem" }}
 		>
 			<select
-				className="hl-select"
 				aria-label="Next printer award status"
-				value={next}
+				className="hl-select"
 				disabled={busy !== null}
-				onChange={(e) => setNext(e.target.value as PrinterAwardStatus | "")}
+				onChange={e => setNext(e.target.value as PrinterAwardStatus | "")}
+				value={next}
 			>
 				<option value="">Move to…</option>
-				{options.map((value) => (
+				{options.map(value => (
 					<option key={value} value={value}>
 						{PRINTER_AWARD_LABELS[value]}
 					</option>
@@ -68,33 +68,33 @@ export function PrinterAwardForm({ awardId, status }: Readonly<{ awardId: string
 				<>
 					<input
 						className="hl-input"
+						disabled={busy !== null}
+						onChange={e => setTrackingNumber(e.target.value)}
 						placeholder="Tracking number"
 						value={trackingNumber}
-						disabled={busy !== null}
-						onChange={(e) => setTrackingNumber(e.target.value)}
 					/>
 					<input
 						className="hl-input"
+						disabled={busy !== null}
+						onChange={e => setTrackingCarrier(e.target.value)}
 						placeholder="Carrier"
 						value={trackingCarrier}
-						disabled={busy !== null}
-						onChange={(e) => setTrackingCarrier(e.target.value)}
 					/>
 				</>
 			) : null}
 			{next ? (
 				<input
 					className="hl-input"
+					disabled={busy !== null}
+					onChange={e => setNote(e.target.value)}
 					placeholder={next === "REVOKED" ? "Reason (required)" : "Note (optional)"}
 					value={note}
-					disabled={busy !== null}
-					onChange={(e) => setNote(e.target.value)}
 				/>
 			) : null}
 			<button
 				className="hl-btn"
-				type="submit"
 				disabled={busy !== null || !next || (next === "REVOKED" && !note.trim())}
+				type="submit"
 			>
 				Save
 			</button>

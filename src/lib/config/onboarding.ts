@@ -23,14 +23,14 @@ export type OnboardingStep = {
 }
 
 export const ONBOARDING_STEPS = [
-	{ id: "experience", number: 1, heading: "Have you built hardware before?", skippable: false },
-	{ id: "week", number: 2, heading: "Each week has a theme, this week it's...", skippable: false },
-	{ id: "project", number: 3, heading: "Make your first project!", skippable: false },
-	{ id: "idea", number: 4, heading: "Stuck? Pick one of the following:", skippable: true },
-	{ id: "tier", number: 5, heading: "Choose a Tier", skippable: false },
-	{ id: "tracking", number: 6, heading: "Time Tracking", skippable: true },
+	{ heading: "Have you built hardware before?", id: "experience", number: 1, skippable: false },
+	{ heading: "Each week has a theme, this week it's...", id: "week", number: 2, skippable: false },
+	{ heading: "Make your first project!", id: "project", number: 3, skippable: false },
+	{ heading: "Stuck? Pick one of the following:", id: "idea", number: 4, skippable: true },
+	{ heading: "Choose a Tier", id: "tier", number: 5, skippable: false },
+	{ heading: "Time Tracking", id: "tracking", number: 6, skippable: true },
 	// Optional and last: the sync is a convenience, not a step of making a project, and putting it before time tracking would make it read as one. Skippable, because plenty of people have no repo yet.
-	{ id: "repo", number: 7, heading: "Keep it in your repo?", skippable: true },
+	{ heading: "Keep it in your repo?", id: "repo", number: 7, skippable: true },
 ] as const satisfies readonly OnboardingStep[]
 
 export const ONBOARDING_STEP_COUNT = ONBOARDING_STEPS.length
@@ -41,7 +41,7 @@ export function stepAt(index: number): OnboardingStep | undefined {
 }
 
 export function stepIndexOf(id: OnboardingStepId): number {
-	return ONBOARDING_STEPS.findIndex((s) => s.id === id)
+	return ONBOARDING_STEPS.findIndex(s => s.id === id)
 }
 
 /**
@@ -62,24 +62,24 @@ export function suggestedTierFor(experience: HardwareExperience | null): TierId 
 
 export const EXPERIENCE_OPTIONS = [
 	{
-		value: HardwareExperience.FIRST_TIME,
-		label: "this is my first time!",
 		hint: "Day 1 or 1 Day, you know?",
+		label: "this is my first time!",
+		value: HardwareExperience.FIRST_TIME,
 	},
 	{
-		value: HardwareExperience.A_LITTLE,
-		label: "just a little...",
 		hint: "Messed around with breadboards, maybe a blinking LED.",
+		label: "just a little...",
+		value: HardwareExperience.A_LITTLE,
 	},
 	{
-		value: HardwareExperience.A_GOOD_AMOUNT,
-		label: "yeah, I've built a good amount",
 		hint: "You've shipped a project that works.",
+		label: "yeah, I've built a good amount",
+		value: HardwareExperience.A_GOOD_AMOUNT,
 	},
 	{
-		value: HardwareExperience.ITS_LIFE,
-		label: "call me the hardware wizard",
 		hint: "You've built a lot of projects, from PCBs to 3D prints.",
+		label: "call me the hardware wizard",
+		value: HardwareExperience.ITS_LIFE,
 	},
 ] as const
 
@@ -102,31 +102,31 @@ export type StarterProject = {
 
 export const STARTER_PROJECTS = [
 	{
+		// The project's own README, trimmed.
+		description: "A tiny motion-controlled digital pet, basically a desktop Tamagotchi. Totally not a Starboy.",
+		guideUrl: "https://github.com/SharKingStudios/Starbie/blob/main/Week%201%20Guide.md",
 		id: "starbie",
+		parts: ["XIAO ESP32-C3", "OLED screen", "MPU6050 motion sensor", "DHT11 sensor"],
+		repoUrl: "https://github.com/SharKingStudios/Starbie",
 		// Week one's starter, in every week until each has its own repo.
 		themes: [Theme.PCB, Theme.SYNTH, Theme.DISPLAYS, Theme.BREADBOARD_COMPUTER],
 		title: "Starbie",
-		// The project's own README, trimmed.
-		description: "A tiny motion-controlled digital pet, basically a desktop Tamagotchi. Totally not a Starboy.",
-		parts: ["XIAO ESP32-C3", "OLED screen", "MPU6050 motion sensor", "DHT11 sensor"],
-		repoUrl: "https://github.com/SharKingStudios/Starbie",
-		guideUrl: "https://github.com/SharKingStudios/Starbie/blob/main/Week%201%20Guide.md",
 	},
 	{
-		id: "merbl",
-		themes: [Theme.CAD],
-		title: "Merbl run",
 		// The repo has no README; this is the guide's own summary.
 		description:
 			"A custom 3D-printed marble race, designed from scratch! You'll learn how to design your own course and make cool tracks.",
+		guideUrl: "https://github.com/karnxx/merbl/blob/main/guide.md",
+		id: "merbl",
 		parts: ["3D printed track"],
 		repoUrl: "https://github.com/karnxx/merbl",
-		guideUrl: "https://github.com/karnxx/merbl/blob/main/guide.md",
+		themes: [Theme.CAD],
+		title: "Merbl run",
 	},
 ] as const satisfies readonly StarterProject[]
 
 export function starterProjectsFor(theme: Theme): readonly StarterProject[] {
-	return STARTER_PROJECTS.filter((p) => (p.themes as readonly Theme[]).includes(theme))
+	return STARTER_PROJECTS.filter(p => (p.themes as readonly Theme[]).includes(theme))
 }
 
 /**
@@ -137,7 +137,7 @@ export function seesStarterProjects(experience: HardwareExperience | null): bool
 }
 
 export function getStarterProject(id: string): StarterProject | undefined {
-	return STARTER_PROJECTS.find((p) => p.id === id)
+	return STARTER_PROJECTS.find(p => p.id === id)
 }
 
 /** The tier a starter project is scoped to. Not configurable – see above. */
@@ -169,17 +169,17 @@ export type WeekIntro = {
 
 export const WEEK_INTROS = [
 	{
-		theme: Theme.PCB,
-		kicker: "Printed Circuit Board Week",
+		examples: ["A PCB keychain!", "A flight controller!", "A devboard from your favorite microcontroller!"],
 		headline: "DESIGN YOUR PCB",
+		kicker: "Printed Circuit Board Week",
 		primer:
 			"A printed circuit board is a sheet of fibreglass with copper traces etched into it, so components solder straight onto the board instead of being wired by hand.",
-		examples: ["A PCB keychain!", "A flight controller!", "A devboard from your favorite microcontroller!"],
+		theme: Theme.PCB,
 	},
 ] as const satisfies readonly WeekIntro[]
 
 export function weekIntroFor(theme: Theme): WeekIntro | undefined {
-	return WEEK_INTROS.find((w) => w.theme === theme)
+	return WEEK_INTROS.find(w => w.theme === theme)
 }
 
 /** Whether step two should show the primer rather than the examples. */

@@ -15,8 +15,8 @@ export default async function AdminShopItemPage({ params }: { params: Promise<{ 
 	const { id } = await params
 	const [item, regions] = await Promise.all([
 		prisma.shopItem.findUnique({
+			include: { regionPrices: { select: { priceCredits: true, regionId: true } } },
 			where: { id },
-			include: { regionPrices: { select: { regionId: true, priceCredits: true } } },
 		}),
 		prisma.shopRegion.findMany({
 			orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
@@ -25,7 +25,7 @@ export default async function AdminShopItemPage({ params }: { params: Promise<{ 
 	])
 	if (!item) notFound()
 
-	const overrides = new Map(item.regionPrices.map((r) => [r.regionId, r.priceCredits]))
+	const overrides = new Map(item.regionPrices.map(r => [r.regionId, r.priceCredits]))
 
 	return (
 		<div className="hl-stack">
@@ -40,13 +40,13 @@ export default async function AdminShopItemPage({ params }: { params: Promise<{ 
 				</p>
 				<ShopItemForm
 					item={{
-						id: item.id,
-						name: item.name,
-						description: item.description,
-						imageUrl: item.imageUrl,
 						category: item.category,
-						priceCredits: item.priceCredits,
 						costUsd: item.costUsd,
+						description: item.description,
+						id: item.id,
+						imageUrl: item.imageUrl,
+						name: item.name,
+						priceCredits: item.priceCredits,
 						requiresPrinterQualified: item.requiresPrinterQualified,
 					}}
 				/>
@@ -56,9 +56,9 @@ export default async function AdminShopItemPage({ params }: { params: Promise<{ 
 					Coin prices per sales region. Base price is {item.priceCredits}; orders keep the price they were charged.
 				</p>
 				<ItemRegionPrices
-					itemId={item.id}
 					basePrice={item.priceCredits}
-					regions={regions.map((r) => ({ id: r.id, name: r.name, price: overrides.get(r.id) ?? null }))}
+					itemId={item.id}
+					regions={regions.map(r => ({ id: r.id, name: r.name, price: overrides.get(r.id) ?? null }))}
 				/>
 			</Panel>
 		</div>

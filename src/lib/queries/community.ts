@@ -41,42 +41,42 @@ const FEED_LIMIT = 60
 export async function getJournalFeed(): Promise<JournalRow[]> {
 	const [sessions, settings] = await Promise.all([
 		prisma.workSession.findMany({
-			// `NOT` negates the pair, so an entry survives when it carries a body: a writer who really typed the fallback line as their opening has content behind the title, and is not caught here.
-			where: {
-				deletedAt: null,
-				themeProject: { deletedAt: null },
-				NOT: { title: DEFAULT_SESSION_TITLE, content: null },
-			},
 			// The id breaks ties, so two entries saved in the same millisecond keep one order between loads.
 			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-			take: FEED_LIMIT,
 			select: {
-				id: true,
 				content: true,
-				title: true,
-				hoursClaimed: true,
-				hoursApproved: true,
-				hoursSource: true,
-				effectiveDate: true,
 				createdAt: true,
+				effectiveDate: true,
+				hoursApproved: true,
+				hoursClaimed: true,
+				hoursSource: true,
+				id: true,
 				themeProject: {
 					select: {
 						id: true,
-						title: true,
 						theme: true,
+						title: true,
 						user: {
 							select: {
-								id: true,
-								name: true,
-								displayName: true,
-								image: true,
-								slackId: true,
 								currentStreak: true,
+								displayName: true,
+								id: true,
+								image: true,
 								lastStreakDate: true,
+								name: true,
+								slackId: true,
 							},
 						},
 					},
 				},
+				title: true,
+			},
+			take: FEED_LIMIT,
+			// `NOT` negates the pair, so an entry survives when it carries a body: a writer who really typed the fallback line as their opening has content behind the title, and is not caught here.
+			where: {
+				deletedAt: null,
+				NOT: { content: null, title: DEFAULT_SESSION_TITLE },
+				themeProject: { deletedAt: null },
 			},
 		}),
 		getProgramSettings(),
@@ -84,24 +84,24 @@ export async function getJournalFeed(): Promise<JournalRow[]> {
 
 	const today = effectiveDateFor(new Date(), settings.programTimezone)
 
-	return sessions.map((session) => {
+	return sessions.map(session => {
 		const project = session.themeProject
 		return {
-			id: session.id,
 			author: displayName(project.user, "A maker"),
 			authorId: project.user.id,
 			authorImage: avatarUrl(project.user),
-			// Expired against today, so a run that ended weeks ago reads 0 rather than the number it reached before it broke.
-			streak: streakAsOf(project.user, today),
-			projectId: project.id,
-			project: project.title || getThemeDef(project.theme).label,
 			body: session.content ?? session.title,
+			day: session.effectiveDate ?? effectiveDateFor(session.createdAt, settings.programTimezone),
+			id: session.id,
 			// A tracked entry's time arrives (and is paid) through the Hackatime link, so advertising its claimed minutes here would show hours the paid totals deliberately exclude.
 			minutes:
 				session.hoursSource === "HACKATIME_TRACKED"
 					? 0
 					: Math.round((session.hoursApproved ?? session.hoursClaimed) * 60),
-			day: session.effectiveDate ?? effectiveDateFor(session.createdAt, settings.programTimezone),
+			project: project.title || getThemeDef(project.theme).label,
+			projectId: project.id,
+			// Expired against today, so a run that ended weeks ago reads 0 rather than the number it reached before it broke.
+			streak: streakAsOf(project.user, today),
 			when: session.createdAt.toISOString(),
 		}
 	})

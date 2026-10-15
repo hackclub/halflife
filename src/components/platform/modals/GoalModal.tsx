@@ -43,9 +43,9 @@ export function GoalModal({
 	const titleId = useId()
 
 	// Reopening starts from whatever is taped up now, including a goal that changed elsewhere – adjusting during render beats an effect that repaints. Opening always lands on the goal question, never mid-catalogue, so the answer is never edited by accident on the way to changing the machine.
-	const [seen, setSeen] = useState({ open, goalId, participantGoal })
+	const [seen, setSeen] = useState({ goalId, open, participantGoal })
 	if (seen.open !== open || seen.goalId !== goalId || seen.participantGoal !== participantGoal) {
-		setSeen({ open, goalId, participantGoal })
+		setSeen({ goalId, open, participantGoal })
 		setStep("goal")
 		setChosen(participantGoal ?? ParticipantGoal.PRINTER)
 		setPicked(goalId)
@@ -78,29 +78,24 @@ export function GoalModal({
 
 	return (
 		<Modal
-			open={open}
-			onClose={onClose}
 			accent={TEAL}
-			size={step === "goal" ? "md" : "xl"}
-			labelledBy={titleId}
-			eyebrow={dismissible ? "Your goal" : "One more thing"}
 			dismissible={dismissible}
-			scrollKey={step}
+			eyebrow={dismissible ? "Your goal" : "One more thing"}
 			footer={
 				<>
 					{error && (
-						<p role="alert" className="hand mr-auto w-full text-[0.82rem] leading-snug text-coral-deep sm:w-auto">
+						<p className="hand mr-auto w-full text-[0.82rem] leading-snug text-coral-deep sm:w-auto" role="alert">
 							{error}
 						</p>
 					)}
 					{step === "goal" ? (
 						<>
 							{dismissible && (
-								<Button variant="outline" onClick={onClose}>
+								<Button onClick={onClose} variant="outline">
 									Cancel
 								</Button>
 							)}
-							<Button variant="teal" onClick={advance} disabled={saving}>
+							<Button disabled={saving} onClick={advance} variant="teal">
 								{saving ? (
 									"Saving…"
 								) : (
@@ -132,29 +127,34 @@ export function GoalModal({
 									<> you&apos;ve reached this printer goal! </>
 								)}
 								<a
-									href={goal.link}
-									target="_blank"
-									rel="noreferrer"
 									className="font-semibold whitespace-nowrap text-sky-ink underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
+									href={goal.link}
+									rel="noreferrer"
+									target="_blank"
 								>
 									Link to printer
 								</a>
 							</p>
-							<Button variant="ghost" onClick={() => setStep("goal")} disabled={saving}>
+							<Button disabled={saving} onClick={() => setStep("goal")} variant="ghost">
 								Back
 							</Button>
 							{dismissible && (
-								<Button variant="outline" onClick={onClose}>
+								<Button onClick={onClose} variant="outline">
 									Cancel
 								</Button>
 							)}
-							<Button variant="teal" disabled={saving} onClick={() => commit(ParticipantGoal.PRINTER, picked)}>
+							<Button disabled={saving} onClick={() => commit(ParticipantGoal.PRINTER, picked)} variant="teal">
 								{unchanged ? "Keep this goal" : "Set this goal"} <IconCheck className="text-base" />
 							</Button>
 						</>
 					)}
 				</>
 			}
+			labelledBy={titleId}
+			onClose={onClose}
+			open={open}
+			scrollKey={step}
+			size={step === "goal" ? "md" : "xl"}
 		>
 			{step === "goal" ? (
 				<>
@@ -179,13 +179,13 @@ export function GoalModal({
 						What are you here for?
 					</ModalTitle>
 
-					<div role="radiogroup" aria-labelledby={titleId} className="mt-2 grid gap-3">
-						{GOAL_OPTIONS.map((option) => (
+					<div aria-labelledby={titleId} className="mt-2 grid gap-3" role="radiogroup">
+						{GOAL_OPTIONS.map(option => (
 							<OptionRow
-								key={option.value}
-								selected={option.value === chosen}
-								onClick={() => setChosen(option.value)}
 								hint={option.hint}
+								key={option.value}
+								onClick={() => setChosen(option.value)}
+								selected={option.value === chosen}
 							>
 								<span className="block text-[0.98rem] font-extrabold text-navy">{option.label}</span>
 							</OptionRow>
@@ -196,7 +196,6 @@ export function GoalModal({
 				<>
 					<ModalTitle
 						id={titleId}
-						subWide
 						sub={
 							<>
 								Spend more time on your hardware projects to unlock better printers! You can change this goal anytime
@@ -204,6 +203,7 @@ export function GoalModal({
 								<strong className="rounded bg-gold-pale px-1 text-gold-ink">5 coins</strong>.
 							</>
 						}
+						subWide
 					>
 						What&apos;s your big prize?
 					</ModalTitle>
@@ -231,14 +231,14 @@ export function GoalModal({
 						)}
 					</div>
 
-					<div role="radiogroup" aria-labelledby={titleId} className="grid gap-x-4 gap-y-6 sm:grid-cols-2">
-						{PRINTERS.map((p) => (
+					<div aria-labelledby={titleId} className="grid gap-x-4 gap-y-6 sm:grid-cols-2" role="radiogroup">
+						{PRINTERS.map(p => (
 							<GoalCard
-								key={p.id}
-								goal={p}
 								current={p.id === goalId}
-								selected={p.id === picked}
+								goal={p}
+								key={p.id}
 								onSelect={() => setPicked(p.id)}
+								selected={p.id === picked}
 							/>
 						))}
 					</div>
@@ -260,20 +260,18 @@ function GoalCard({
 	current: boolean
 	onSelect: () => void
 }) {
-	const load = Math.round((goal.paceHours / Math.max(...PRINTERS.map((p) => p.paceHours))) * 100)
+	const load = Math.round((goal.paceHours / Math.max(...PRINTERS.map(p => p.paceHours))) * 100)
 
 	return (
 		// biome-ignore lint/a11y/useSemanticElements: a radio option drawn as a card; a real input would replace the card.
 		<button
-			type="button"
-			role="radio"
 			aria-checked={selected}
-			onClick={onSelect}
-			title={`About ${Math.round(goal.paceHours * 5)} coins to earn each design week – that pace is the same on every tier, because tier hours pay for parts while every hour past them earns 5 coins. Bigger printers cost more coins to earn each week.`}
 			className={cx(
 				"sketch relative block w-full rounded-2xl px-4 pt-4 pb-3.5 text-left transition-colors duration-150 sm:px-5",
 				!selected && "hover:bg-white",
 			)}
+			onClick={onSelect}
+			role="radio"
 			style={
 				{
 					"--sk-color": selected ? "var(--color-teal-deep)" : "var(--color-line)",
@@ -281,6 +279,8 @@ function GoalCard({
 					background: selected ? "color-mix(in srgb, var(--color-mint) 52%, #fff)" : "var(--color-paper)",
 				} as React.CSSProperties
 			}
+			title={`About ${Math.round(goal.paceHours * 5)} coins to earn each design week – that pace is the same on every tier, because tier hours pay for parts while every hour past them earns 5 coins. Bigger printers cost more coins to earn each week.`}
+			type="button"
 		>
 			{/* the strip of tape that holds the one you chose to the wall */}
 			{selected && (
@@ -300,9 +300,9 @@ function GoalCard({
 				{/* the maker's photo on its own white ground, so it reads as a photo
             on the mint of a selected card as much as on the paper of the rest */}
 				<PrinterPhoto
+					className="size-[76px] shrink-0 rounded-xl border border-line/80 lg:size-[88px]"
 					id={goal.id}
 					sizes="(min-width: 1024px) 88px, 76px"
-					className="size-[76px] shrink-0 rounded-xl border border-line/80 lg:size-[88px]"
 				/>
 
 				<span className="min-w-0 flex-1">

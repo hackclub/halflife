@@ -59,19 +59,19 @@ function ghostAfter(rows: Checkpoint[][], done: (id: string) => boolean, passed:
 		if (next?.length !== 1) continue
 		const [reel] = next
 		if (reel?.kind !== "reel" || done(reel.id) || passed(reel.id)) continue
-		if (!row.some((c) => c.kind === "journal" && !done(c.id))) continue
+		if (!row.some(c => c.kind === "journal" && !done(c.id))) continue
 		at.add(i)
 	}
 	return at
 }
 
 const KIND_ICON = {
+	demo: IconPlay,
+	journal: IconClock,
 	onboarding: IconPlay,
 	project: IconPencil,
-	journal: IconClock,
 	reel: IconFilm,
 	submit: IconUpload,
-	demo: IconPlay,
 } as const
 
 /**
@@ -159,18 +159,18 @@ function CheckpointNode({
 
 	return (
 		<div
-			data-cp={checkpoint.id}
 			// No z-index: the week banner is a sticky header and has to win. Nodes paint in DOM order, which already puts each callout over the node above it, and --lead keeps the first one clear of the banner.
 			className={cx(
 				"group absolute flex flex-col items-center",
 				isBeat(checkpoint) ? "w-[var(--node-sm)]" : "w-[var(--node)]",
 			)}
-			style={{ top, left, transform: "translateX(-50%)" }}
+			data-cp={checkpoint.id}
+			style={{ left, top, transform: "translateX(-50%)" }}
 		>
 			{isCurrent && !choice && phase !== "aim" && (
 				<div
-					data-callout=""
 					className="pointer-events-none absolute bottom-[calc(100%_+_10px)] z-20 w-max max-w-[min(11rem,38vw)]"
+					data-callout=""
 				>
 					<div
 						className={cx(
@@ -261,10 +261,6 @@ function CheckpointNode({
 			)}
 
 			<button
-				type="button"
-				data-tour={checkpoint.kind === "onboarding" ? "first-checkpoint" : undefined}
-				disabled={!unlocked || settled}
-				onClick={() => setOpenCheckpoint(checkpoint.id)}
 				aria-label={
 					locked
 						? `${checkpoint.title} – ${status}. ${locked}`
@@ -280,6 +276,10 @@ function CheckpointNode({
 					// The next step taps itself, so the trail shows where to press – but only while pressing would work.
 					(isCurrent || choice) && clickable && "puck-next",
 				)}
+				data-tour={checkpoint.kind === "onboarding" ? "first-checkpoint" : undefined}
+				disabled={!unlocked || settled}
+				onClick={() => setOpenCheckpoint(checkpoint.id)}
+				type="button"
 			>
 				<span className="puck-face">
 					<Icon
@@ -311,10 +311,10 @@ function CheckpointNode({
 
 function WeekBanner({ week, index }: { week: Week; index: number }) {
 	const { stateOf } = useStore()
-	const done = week.checkpoints.filter((c) => stateOf(c.id).done).length
+	const done = week.checkpoints.filter(c => stateOf(c.id).done).length
 
 	return (
-		<div data-week-banner="" className="sticky top-16 z-10 -mx-1 px-1 pt-4 pb-3">
+		<div className="sticky top-16 z-10 -mx-1 px-1 pt-4 pb-3" data-week-banner="">
 			<div className="relative">
 				<div
 					aria-hidden="true"
@@ -346,9 +346,9 @@ function WeekBanner({ week, index }: { week: Week; index: number }) {
               `sticker-shadow` rather than a plain drop, because a die-cut
               sticker is exactly what that shadow is for. */}
 					<WeekPainting
-						theme={week.theme}
-						sizes="(min-width: 768px) 88px, 76px"
 						className="sticker-shadow hidden h-[76px] w-[76px] shrink-0 sm:block md:h-[88px] md:w-[88px]"
+						sizes="(min-width: 768px) 88px, 76px"
+						theme={week.theme}
 					/>
 					<div className="flex shrink-0 flex-col items-end gap-1.5">
 						<span
@@ -357,7 +357,7 @@ function WeekBanner({ week, index }: { week: Week; index: number }) {
 						>
 							{done}/{week.checkpoints.length}
 						</span>
-						{index === 0 && <IconChevronsUp className="hidden text-lg opacity-70 sm:block" aria-hidden="true" />}
+						{index === 0 && <IconChevronsUp aria-hidden="true" className="hidden text-lg opacity-70 sm:block" />}
 					</div>
 				</div>
 			</div>
@@ -393,8 +393,8 @@ function WeekTrail({ week, currentId, phase }: { week: Week; currentId: string |
 	const ghosts = ghostAfter(rows, done, isPassed)
 	const lined: { row: Checkpoint[]; ghost: boolean }[] = []
 	for (const [i, row] of rows.entries()) {
-		lined.push({ row, ghost: false })
-		if (ghosts.has(i)) lined.push({ row: [], ghost: true })
+		lined.push({ ghost: false, row })
+		if (ghosts.has(i)) lined.push({ ghost: true, row: [] })
 	}
 
 	const placed: { row: Checkpoint[]; ghost: boolean; full: number; beats: number; beat: boolean }[] = []
@@ -406,7 +406,7 @@ function WeekTrail({ week, currentId, phase }: { week: Week; currentId: string |
 			if (placed[i - 1]?.beat) beats += 1
 			else full += 1
 		}
-		placed.push({ row, ghost, full, beats, beat: ghost || row.every(isBeat) })
+		placed.push({ beat: ghost || row.every(isBeat), beats, full, ghost, row })
 	}
 
 	const leftOf = (i: number, j: number) =>
@@ -425,15 +425,15 @@ function WeekTrail({ week, currentId, phase }: { week: Week; currentId: string |
 			for (const f of [0.3, 0.5, 0.7]) {
 				dots.push(
 					<span
-						key={`${i}-${j}-${f}`}
 						aria-hidden="true"
 						className="absolute size-[7px] rounded-full bg-line-strong/45"
+						key={`${i}-${j}-${f}`}
 						style={{
-							top: offsetOf(here.full, here.beats, ` + ${f} * ${stride} + ${size} / 2`),
 							left:
 								next.row.length > 1
 									? `${leftOf(i, 0) + ((FORK_AT[j] ?? FORK_AT[0]) - leftOf(i, 0)) * f}%`
 									: `${offsetAt(i + f, phase)}%`,
+							top: offsetOf(here.full, here.beats, ` + ${f} * ${stride} + ${size} / 2`),
 							transform: "translate(-50%, -50%)",
 						}}
 					/>,
@@ -448,7 +448,7 @@ function WeekTrail({ week, currentId, phase }: { week: Week; currentId: string |
 			{placed.map(({ row, ghost, full: f, beats: b }, i) => (
 				<Fragment key={ghost ? `ghost-${i}` : (row[0]?.id ?? i)}>
 					{ghost ? (
-						<GhostNode top={offsetOf(f, b)} left={`${leftOf(i, 0)}%`} />
+						<GhostNode left={`${leftOf(i, 0)}%`} top={offsetOf(f, b)} />
 					) : (
 						<>
 							{row.length > 1 && (
@@ -456,8 +456,8 @@ function WeekTrail({ week, currentId, phase }: { week: Week; currentId: string |
 									aria-hidden="true"
 									className="hand absolute text-[0.78rem] text-navy-faint"
 									style={{
-										top: offsetOf(f, b, " + var(--node) / 2"),
 										left: "50%",
+										top: offsetOf(f, b, " + var(--node) / 2"),
 										transform: "translate(-50%, -50%)",
 									}}
 								>
@@ -466,12 +466,12 @@ function WeekTrail({ week, currentId, phase }: { week: Week; currentId: string |
 							)}
 							{row.map((cp, j) => (
 								<CheckpointNode
-									key={cp.id}
 									checkpoint={cp}
-									top={offsetOf(f, b)}
-									left={`${leftOf(i, j)}%`}
-									isCurrent={cp.id === currentId}
 									choice={row.length > 1}
+									isCurrent={cp.id === currentId}
+									key={cp.id}
+									left={`${leftOf(i, j)}%`}
+									top={offsetOf(f, b)}
 								/>
 							))}
 						</>
@@ -488,10 +488,10 @@ function WeekTrail({ week, currentId, phase }: { week: Week; currentId: string |
 function GhostNode({ top, left }: { top: string; left: string }) {
 	return (
 		<div
-			role="img"
 			aria-label="More journal entries land here as you log them – the trail grows"
 			className="absolute flex w-[var(--node-sm)] flex-col items-center"
-			style={{ top, left, transform: "translateX(-50%)" }}
+			role="img"
+			style={{ left, top, transform: "translateX(-50%)" }}
 		>
 			<span
 				aria-hidden="true"
@@ -518,23 +518,23 @@ function StarterGuideBanner({ week }: { week: Week }) {
 	const submitted = stateOf(`w${week.id}-submit`).done
 	// A build week inherits its design week's project, exactly as the project modal's week matching does.
 	const designWeekId = week.phase === "build" ? week.id - 5 : week.id
-	const project = projects.find((p) => p.weekId === designWeekId)
+	const project = projects.find(p => p.weekId === designWeekId)
 	const starter = project?.starterProjectId ? getStarterProject(project.starterProjectId) : undefined
 	if (submitted || !starter || !project) return null
 
 	return (
 		<div className="mb-1 px-1">
-			<Panel tone="gold" radius={16} className="bg-gold-pale/70 px-4 py-3">
+			<Panel className="bg-gold-pale/70 px-4 py-3" radius={16} tone="gold">
 				<div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
 					<p className="min-w-0 flex-1 text-[0.85rem] leading-snug text-navy">
 						<span className="label text-gold-ink">Starter project · </span>
 						Building <strong className="font-extrabold">{project.name}</strong>? The guide walks you through every step.
 					</p>
 					<a
-						href={starter.guideUrl}
-						target="_blank"
-						rel="noopener noreferrer"
 						className="inline-flex shrink-0 items-center gap-1.5 text-[0.85rem] font-semibold text-sky-ink underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
+						href={starter.guideUrl}
+						rel="noopener noreferrer"
+						target="_blank"
 					>
 						<IconBook className="text-[1rem]" /> Read the guide
 					</a>
@@ -546,9 +546,9 @@ function StarterGuideBanner({ week }: { week: Week }) {
 
 function PhaseDivider() {
 	return (
-		<div className="relative my-10 flex items-center gap-4" aria-hidden="true">
+		<div aria-hidden="true" className="relative my-10 flex items-center gap-4">
 			<span className="h-px flex-1 bg-line" />
-			<Panel tone="teal" radius={999} className="bg-mint px-5 py-2">
+			<Panel className="bg-mint px-5 py-2" radius={999} tone="teal">
 				<p className="label text-teal-ink">Halfway! Now it&apos;s time to build</p>
 			</Panel>
 			<span className="h-px flex-1 bg-line" />
@@ -566,12 +566,12 @@ function GrandPrize() {
 	const goal = printerById(goalId)
 
 	return (
-		<Panel tone="gold" radius={24} className="relative mt-12 overflow-hidden bg-gold-pale px-6 py-8 sm:px-10">
+		<Panel className="relative mt-12 overflow-hidden bg-gold-pale px-6 py-8 sm:px-10" radius={24} tone="gold">
 			<div className="flex flex-col items-center gap-6 text-center sm:flex-row sm:text-left">
 				<PrinterPhoto
+					className="size-40 shrink-0 rounded-2xl border border-gold-deep/40 sm:size-48"
 					id="ender-3-v3-se"
 					sizes="(min-width: 640px) 192px, 160px"
-					className="size-40 shrink-0 rounded-2xl border border-gold-deep/40 sm:size-48"
 				/>
 				<div className="min-w-0">
 					<Chip tone="gold">Finish all ten weeks</Chip>
@@ -597,7 +597,7 @@ export function CheckpointPath() {
 		scrolled.current = true
 		const node = document.querySelector<HTMLElement>(`[data-cp="${currentCheckpointId}"]`)
 		if (!node) return
-		node.scrollIntoView({ block: "center", behavior: "auto" })
+		node.scrollIntoView({ behavior: "auto", block: "center" })
 
 		// The week banner is sticky, so centring the node can park its callout underneath it. Hand back whatever the banner took, plus a little air. A node on a fork row has no callout – there the node's own top is the edge that has to clear.
 		const banner = node.closest("section")?.querySelector<HTMLElement>("[data-week-banner]")
@@ -612,9 +612,9 @@ export function CheckpointPath() {
 	const { phases: weekPhases } = weeks.reduce<{ total: number; phases: number[] }>(
 		({ total, phases }, week) => {
 			phases.push(total)
-			return { total: total + trailRows(week, done, isPassed) + WEEK_GAP, phases }
+			return { phases, total: total + trailRows(week, done, isPassed) + WEEK_GAP }
 		},
-		{ total: 0, phases: [] },
+		{ phases: [], total: 0 },
 	)
 
 	return (
@@ -622,27 +622,27 @@ export function CheckpointPath() {
 			className="mx-auto w-full max-w-[720px] px-4 sm:px-8"
 			style={
 				{
-					"--node": "clamp(72px, 13.5vw, 98px)",
-					"--step": "clamp(140px, 20vw, 162px)",
-					/* An entry is a beat, not a milestone: smaller puck, shorter stride,
-             so a twenty-entry week stays a trail instead of a corridor. */
-					"--node-sm": "clamp(42px, 7.5vw, 54px)",
-					"--step-sm": "clamp(100px, 13vw, 116px)",
 					/* Room between a week banner and its first puck for the callout
              that hangs above the current checkpoint, bob included. */
 					"--lead": "clamp(70px, 9vw, 80px)",
+					"--node": "clamp(72px, 13.5vw, 98px)",
+					/* An entry is a beat, not a milestone: smaller puck, shorter stride,
+             so a twenty-entry week stays a trail instead of a corridor. */
+					"--node-sm": "clamp(42px, 7.5vw, 54px)",
+					"--step": "clamp(140px, 20vw, 162px)",
+					"--step-sm": "clamp(100px, 13vw, 116px)",
 				} as React.CSSProperties
 			}
 		>
 			{weeks.map((week, wi) => (
-				<section key={week.id} aria-labelledby={`week-${week.id}`}>
+				<section aria-labelledby={`week-${week.id}`} key={week.id}>
 					{wi === 5 && <PhaseDivider />}
-					<h3 id={`week-${week.id}`} className="sr-only">
+					<h3 className="sr-only" id={`week-${week.id}`}>
 						Week {week.id}: {week.fullName}
 					</h3>
-					<WeekBanner week={week} index={wi} />
+					<WeekBanner index={wi} week={week} />
 					<StarterGuideBanner week={week} />
-					<WeekTrail week={week} currentId={currentCheckpointId} phase={weekPhases[wi] ?? 0} />
+					<WeekTrail currentId={currentCheckpointId} phase={weekPhases[wi] ?? 0} week={week} />
 					<WeekCountdown week={week} />
 				</section>
 			))}

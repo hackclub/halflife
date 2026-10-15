@@ -38,15 +38,15 @@ export function WarmupModal({ onClose, closesOn }: { onClose: () => void; closes
 		setError(null)
 		try {
 			const res = await fetch("/api/projects/warmup", {
-				method: "POST",
-				headers: { "content-type": "application/json" },
 				body: JSON.stringify({
-					title: name.trim(),
 					description: desc.trim(),
 					githubRepo: normalizeRepo(repo).url,
-					requestedTier: tier,
 					phase,
+					requestedTier: tier,
+					title: name.trim(),
 				}),
+				headers: { "content-type": "application/json" },
+				method: "POST",
 			})
 			const payload = (await res.json().catch(() => null)) as { id?: string; error?: { message?: string } } | null
 			if (!res.ok || !payload?.id) {
@@ -65,15 +65,12 @@ export function WarmupModal({ onClose, closesOn }: { onClose: () => void; closes
 
 	return (
 		<Modal
-			open
-			onClose={onClose}
 			accent="var(--color-violet)"
-			size="lg"
 			eyebrow="Warm-up project"
 			footer={
 				<>
 					{error ? (
-						<p role="alert" className="hand mr-auto min-w-0 flex-1 text-[0.78rem] leading-snug text-coral-deep">
+						<p className="hand mr-auto min-w-0 flex-1 text-[0.78rem] leading-snug text-coral-deep" role="alert">
 							{error}
 						</p>
 					) : (
@@ -81,14 +78,17 @@ export function WarmupModal({ onClose, closesOn }: { onClose: () => void; closes
 							Tier can be changed any time before you submit.
 						</p>
 					)}
-					<Button variant="outline" onClick={onClose} disabled={saving}>
+					<Button disabled={saving} onClick={onClose} variant="outline">
 						Cancel
 					</Button>
-					<Button variant="solid" disabled={!ok || saving} onClick={() => create()}>
+					<Button disabled={!ok || saving} onClick={() => create()} variant="solid">
 						{saving ? "Creating…" : "Create project"} <IconArrowRight className="text-base" />
 					</Button>
 				</>
 			}
+			onClose={onClose}
+			open
+			size="lg"
 		>
 			<ModalTitle
 				sub={
@@ -102,42 +102,42 @@ export function WarmupModal({ onClose, closesOn }: { onClose: () => void; closes
 
 			<div className="grid gap-6 lg:grid-cols-[1fr_230px] lg:items-start">
 				<div className="grid gap-4">
-					<Field label="Project name" hint="Give it a cool name." id="wu-name">
+					<Field hint="Give it a cool name." id="wu-name" label="Project name">
 						<input
-							id="wu-name"
-							value={name}
-							onChange={(e) => setName(e.target.value)}
-							placeholder="My warm-up project"
-							maxLength={120}
 							className={inputClass}
+							id="wu-name"
+							maxLength={120}
+							onChange={e => setName(e.target.value)}
+							placeholder="My warm-up project"
+							value={name}
 						/>
 					</Field>
-					<Field label="Project description" hint="What it does, and what makes it yours." id="wu-desc">
+					<Field hint="What it does, and what makes it yours." id="wu-desc" label="Project description">
 						<textarea
-							id="wu-desc"
-							value={desc}
-							onChange={(e) => setDesc(e.target.value)}
-							rows={3}
-							maxLength={4000}
-							placeholder="A macropad with a rotary encoder for my editing shortcuts"
 							className={cx(inputClass, "resize-none")}
+							id="wu-desc"
+							maxLength={4000}
+							onChange={e => setDesc(e.target.value)}
+							placeholder="A macropad with a rotary encoder for my editing shortcuts"
+							rows={3}
+							value={desc}
 						/>
 					</Field>
-					<RepoInput id="wu-repo" value={repo} onChange={setRepo} />
+					<RepoInput id="wu-repo" onChange={setRepo} value={repo} />
 
 					<fieldset className="mt-2 grid gap-2.5">
 						<legend className="label mb-2 text-violet-deep">What will you submit?</legend>
 						<OptionRow
-							selected={phase === "DESIGN"}
-							onClick={() => setPhase("DESIGN")}
 							hint="Design it and submit it with a parts list to get it funded."
+							onClick={() => setPhase("DESIGN")}
+							selected={phase === "DESIGN"}
 						>
 							<span className="text-[0.98rem] font-extrabold text-navy">A design</span>
 						</OptionRow>
 						<OptionRow
-							selected={phase === "BUILD"}
-							onClick={() => setPhase("BUILD")}
 							hint="You already have the parts. Build it and submit a demo of it working."
+							onClick={() => setPhase("BUILD")}
+							selected={phase === "BUILD"}
 						>
 							<span className="text-[0.98rem] font-extrabold text-navy">A finished build</span>
 						</OptionRow>
@@ -145,11 +145,8 @@ export function WarmupModal({ onClose, closesOn }: { onClose: () => void; closes
 
 					<fieldset className="mt-2 grid gap-2.5">
 						<legend className="label mb-2 text-violet-deep">Funding tier</legend>
-						{TIERS.map((t) => (
+						{TIERS.map(t => (
 							<OptionRow
-								key={t.id}
-								selected={tier === t.id}
-								onClick={() => setTier(t.id)}
 								hint={
 									<>
 										{t.detail}
@@ -161,6 +158,9 @@ export function WarmupModal({ onClose, closesOn }: { onClose: () => void; closes
 										)}
 									</>
 								}
+								key={t.id}
+								onClick={() => setTier(t.id)}
+								selected={tier === t.id}
 							>
 								<span className="flex flex-wrap items-baseline gap-x-2.5">
 									<span className="text-[0.98rem] font-extrabold text-navy">Tier {t.id}</span>
@@ -177,10 +177,10 @@ export function WarmupModal({ onClose, closesOn }: { onClose: () => void; closes
 				<div className="order-first lg:order-none">
 					<div className="overflow-hidden rounded-2xl bg-violet-pale p-4">
 						<WeekPainting
-							theme={WARMUP_THEME.label}
 							alt=""
-							sizes="(min-width: 1024px) 198px, 220px"
 							className="mx-auto aspect-square w-full max-w-[220px]"
+							sizes="(min-width: 1024px) 198px, 220px"
+							theme={WARMUP_THEME.label}
 						/>
 					</div>
 					<p className="mt-3 text-[0.86rem] leading-snug text-navy-soft">

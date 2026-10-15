@@ -84,7 +84,7 @@ export function RepoSyncSettings({
 			setState(body as SyncState)
 			// Pre-select the repo a project already points at, if it is one of the writable ones, so re-enabling does not need the picker used again.
 			const current = body.repo as string | null
-			setPicked((p) => p ?? (body.repos as WritableRepo[]).find((r) => r.url === current)?.url ?? null)
+			setPicked(p => p ?? (body.repos as WritableRepo[]).find(r => r.url === current)?.url ?? null)
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Could not load the sync settings")
 		} finally {
@@ -102,9 +102,9 @@ export function RepoSyncSettings({
 		setError(null)
 		try {
 			const res = await fetch(`/api/projects/${projectId}/repo-sync`, {
-				method,
-				headers: body ? { "content-type": "application/json" } : undefined,
 				body: body ? JSON.stringify(body) : undefined,
+				headers: body ? { "content-type": "application/json" } : undefined,
+				method,
 			})
 			const payload = await res.json().catch(() => null)
 			if (!res.ok) {
@@ -135,14 +135,14 @@ export function RepoSyncSettings({
 
 	if (loading && !state) {
 		return (
-			<p className="hand text-[0.84rem] text-navy-soft" aria-live="polite">
+			<p aria-live="polite" className="hand text-[0.84rem] text-navy-soft">
 				checking your repos…
 			</p>
 		)
 	}
 	if (!state) {
 		return (
-			<p role="alert" className="text-[0.85rem] font-semibold text-coral-deep">
+			<p className="text-[0.85rem] font-semibold text-coral-deep" role="alert">
 				{error ?? "Could not load the sync settings"}
 			</p>
 		)
@@ -158,16 +158,16 @@ export function RepoSyncSettings({
 						: "Connect the code forge your project lives on – GitHub or GitLab – to mirror this project's devlogs and parts list into its repository. Syncing needs permission to write to the repo you choose; nothing else on your account is touched."}
 				</p>
 				{error && (
-					<p role="alert" className="text-[0.85rem] font-semibold text-coral-deep">
+					<p className="text-[0.85rem] font-semibold text-coral-deep" role="alert">
 						{error}
 					</p>
 				)}
 				<div className="flex flex-wrap gap-2">
-					{FORGES.map((forge) => (
+					{FORGES.map(forge => (
 						<Button
 							key={forge.id}
-							variant="solid"
 							onClick={() => linkForge(forge.id, window.location.pathname + window.location.search)}
+							variant="solid"
 						>
 							Connect {forge.label}
 						</Button>
@@ -185,10 +185,10 @@ export function RepoSyncSettings({
 						<IconCheck className="text-sm" /> Syncing
 					</Chip>
 					<a
-						href={state.repo ?? "#"}
-						target="_blank"
-						rel="noopener noreferrer"
 						className="text-[0.9rem] font-semibold text-navy underline decoration-line-strong decoration-dashed underline-offset-4 transition-colors hover:decoration-violet"
+						href={state.repo ?? "#"}
+						rel="noopener noreferrer"
+						target="_blank"
 					>
 						{state.repo ? state.repo.replace(/^https?:\/\//, "") : "the repo"}
 					</a>
@@ -202,8 +202,8 @@ export function RepoSyncSettings({
 
 				{state.error && (
 					<p
-						role="alert"
 						className="flex items-start gap-2 rounded-xl bg-coral/10 px-3.5 py-2.5 text-[0.85rem] font-semibold text-coral-deep"
+						role="alert"
 					>
 						<IconWarning className="mt-0.5 shrink-0" />
 						{/* The server's message is now complete for its own status – rate limit, outage, permissions, a moved repo – so nothing forge-specific is appended here. The "Reconnect" buttons below are the standing offer. */}
@@ -211,17 +211,17 @@ export function RepoSyncSettings({
 					</p>
 				)}
 				{error && (
-					<p role="alert" className="text-[0.85rem] font-semibold text-coral-deep">
+					<p className="text-[0.85rem] font-semibold text-coral-deep" role="alert">
 						{error}
 					</p>
 				)}
 
 				{state.syncRepoDiffers && !linked && (
 					<LinkProjectButton
-						repo={state.repo}
-						existing={state.projectRepo}
 						busy={linking}
+						existing={state.projectRepo}
 						onClick={() => linkProject()}
+						repo={state.repo}
 					/>
 				)}
 				{linked && (
@@ -231,10 +231,10 @@ export function RepoSyncSettings({
 				)}
 
 				<div className="flex flex-wrap gap-2">
-					<Button variant="outline" size="sm" disabled={busy} onClick={() => send("PUT")}>
+					<Button disabled={busy} onClick={() => send("PUT")} size="sm" variant="outline">
 						{busy ? "Syncing…" : "Sync now"}
 					</Button>
-					<Button variant="ghost" size="sm" disabled={busy} onClick={() => send("POST", { enabled: false })}>
+					<Button disabled={busy} onClick={() => send("POST", { enabled: false })} size="sm" variant="ghost">
 						Turn off
 					</Button>
 				</div>
@@ -252,7 +252,7 @@ export function RepoSyncSettings({
 			</p>
 
 			{state.reposError ? (
-				<p role="alert" className="text-[0.85rem] font-semibold text-coral-deep">
+				<p className="text-[0.85rem] font-semibold text-coral-deep" role="alert">
 					{state.reposError}
 				</p>
 			) : state.repos.length === 0 ? (
@@ -269,12 +269,12 @@ export function RepoSyncSettings({
 				<label className="grid gap-1.5">
 					<span className="label text-violet-deep">Repository</span>
 					<select
-						value={picked ?? ""}
-						onChange={(e) => setPicked(e.target.value || null)}
 						className="block w-full rounded-xl border-2 border-field bg-white px-3.5 py-2.5 text-[0.9rem] text-navy outline-none transition-colors hover:border-navy-soft focus:border-violet"
+						onChange={e => setPicked(e.target.value || null)}
+						value={picked ?? ""}
 					>
 						<option value="">Choose a repo…</option>
-						{state.repos.map((r) => (
+						{state.repos.map(r => (
 							<option key={r.url} value={r.url}>
 								{r.fullName}
 								{r.private ? " (private)" : ""}
@@ -285,37 +285,37 @@ export function RepoSyncSettings({
 			)}
 
 			{error && (
-				<p role="alert" className="text-[0.85rem] font-semibold text-coral-deep">
+				<p className="text-[0.85rem] font-semibold text-coral-deep" role="alert">
 					{error}
 				</p>
 			)}
 
 			<div className="flex flex-wrap gap-2">
 				<Button
-					variant="solid"
-					size="sm"
 					disabled={busy || !picked}
 					onClick={() => {
 						void (async () => {
 							if (await send("POST", { enabled: true, repo: picked })) onEnabled?.()
 						})()
 					}}
+					size="sm"
+					variant="solid"
 				>
 					{busy ? "Writing to the repo…" : "Turn on syncing"}
 				</Button>
-				<Button variant="ghost" size="sm" disabled={busy || loading} onClick={() => load()}>
+				<Button disabled={busy || loading} onClick={() => load()} size="sm" variant="ghost">
 					Check again
 				</Button>
-				{state.linkedForges.map((id) => {
-					const forge = FORGES.find((f) => f.id === id)
+				{state.linkedForges.map(id => {
+					const forge = FORGES.find(f => f.id === id)
 					if (!forge) return null
 					return (
 						<Button
-							key={id}
-							variant="outline"
-							size="sm"
 							disabled={busy}
+							key={id}
 							onClick={() => linkForge(forge.id, window.location.pathname + window.location.search)}
+							size="sm"
+							variant="outline"
 						>
 							Reconnect {forge.label}
 						</Button>
@@ -350,7 +350,7 @@ function LinkProjectButton({
 		<p className="rounded-xl bg-gold-pale/60 px-3.5 py-2.5 text-[0.85rem] leading-relaxed text-navy">
 			The sync writes to <span className="font-semibold">{to}</span>, but the project links to{" "}
 			<span className="font-semibold">{existing ? displayRepo(existing) : "no repo"}</span>.{" "}
-			<Button variant="outline" size="sm" disabled={busy} className="ml-1 align-baseline" onClick={onClick}>
+			<Button className="ml-1 align-baseline" disabled={busy} onClick={onClick} size="sm" variant="outline">
 				{busy ? "Linking…" : "Link this project to that repo"}
 			</Button>
 		</p>

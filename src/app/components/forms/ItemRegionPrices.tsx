@@ -16,7 +16,7 @@ export function ItemRegionPrices({
 	regions: { id: string; name: string; price: number | null }[]
 }) {
 	const [values, setValues] = useState<Record<string, string>>(() =>
-		Object.fromEntries(regions.map((r) => [r.id, r.price === null ? "" : String(r.price)])),
+		Object.fromEntries(regions.map(r => [r.id, r.price === null ? "" : String(r.price)])),
 	)
 	const { busy, error, run, refuse } = useAction()
 
@@ -29,8 +29,8 @@ export function ItemRegionPrices({
 		}
 		void run(regionId, () =>
 			sendJson(`/api/admin/shop/items/${itemId}/regions`, {
+				body: { priceCredits: price, regionId },
 				method: "PUT",
-				body: { regionId, priceCredits: price },
 			}),
 		)
 	}
@@ -41,9 +41,9 @@ export function ItemRegionPrices({
 			{regions.length === 0 ? (
 				<p className="hl-hint">No regions yet – add one on the shop page first.</p>
 			) : (
-				<ul className="hl-stack hl-stack--tight" style={{ listStyle: "none", padding: 0, margin: 0 }}>
-					{regions.map((region) => (
-						<li key={region.id} className="hl-row" style={{ alignItems: "end" }}>
+				<ul className="hl-stack hl-stack--tight" style={{ listStyle: "none", margin: 0, padding: 0 }}>
+					{regions.map(region => (
+						<li className="hl-row" key={region.id} style={{ alignItems: "end" }}>
 							<span style={{ minWidth: "10rem" }}>
 								<span className="hl-label-text">{region.name}</span>
 								<span className="hl-hint" style={{ display: "block" }}>
@@ -51,17 +51,17 @@ export function ItemRegionPrices({
 								</span>
 							</span>
 							<input
-								className="hl-input"
-								type="number"
-								min="0"
-								step="1"
-								placeholder={String(basePrice)}
 								aria-label={`Price in coins for ${region.name}`}
-								value={values[region.id] ?? ""}
-								onChange={(e) => setValues((v) => ({ ...v, [region.id]: e.target.value }))}
+								className="hl-input"
+								min="0"
+								onChange={e => setValues(v => ({ ...v, [region.id]: e.target.value }))}
+								placeholder={String(basePrice)}
+								step="1"
 								style={{ maxWidth: "9rem" }}
+								type="number"
+								value={values[region.id] ?? ""}
 							/>
-							<Button type="button" disabled={busy !== null} onClick={() => save(region.id)}>
+							<Button disabled={busy !== null} onClick={() => save(region.id)} type="button">
 								{busy === region.id ? "Saving…" : "Save"}
 							</Button>
 						</li>

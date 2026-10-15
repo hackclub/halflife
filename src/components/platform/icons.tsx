@@ -9,15 +9,15 @@ type P = SVGProps<SVGSVGElement>
 function Ico({ children, ...p }: P & { children: React.ReactNode }) {
 	return (
 		<svg
-			viewBox="0 0 24 24"
+			aria-hidden="true"
 			fill="none"
+			height="1em"
 			stroke="currentColor"
-			strokeWidth={1.8}
 			strokeLinecap="round"
 			strokeLinejoin="round"
-			aria-hidden="true"
+			strokeWidth={1.8}
+			viewBox="0 0 24 24"
 			width="1em"
-			height="1em"
 			{...p}
 		>
 			{children}
@@ -86,7 +86,7 @@ export const IconCheck = (p: P) => (
 
 export const IconLock = (p: P) => (
 	<Ico {...p}>
-		<rect x="4.8" y="10.4" width="14.4" height="9.4" rx="2.2" />
+		<rect height="9.4" rx="2.2" width="14.4" x="4.8" y="10.4" />
 		<path d="M8.2 10.4V7.8a3.8 3.8 0 0 1 7.6 0v2.6" />
 		<path d="M12 14.2v2" />
 	</Ico>
@@ -132,7 +132,7 @@ export const IconSend = (p: P) => (
 
 export const IconFilm = (p: P) => (
 	<Ico {...p}>
-		<rect x="3.4" y="5.4" width="17.2" height="13.2" rx="2.2" />
+		<rect height="13.2" rx="2.2" width="17.2" x="3.4" y="5.4" />
 		<path d="M8 5.4v13.2M16 5.4v13.2M3.4 12h17.2M3.4 8.7h4.6M3.4 15.3h4.6M16 8.7h4.6M16 15.3h4.6" />
 	</Ico>
 )
@@ -269,7 +269,7 @@ export const IconWarning = (p: P) => (
 
 export const IconMic = (p: P) => (
 	<Ico {...p}>
-		<rect x="9" y="3.4" width="6" height="11" rx="3" />
+		<rect height="11" rx="3" width="6" x="9" y="3.4" />
 		<path d="M5.6 12a6.4 6.4 0 0 0 12.8 0M12 18.4v2.2" />
 	</Ico>
 )

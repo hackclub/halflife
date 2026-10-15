@@ -16,10 +16,10 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 
 	await logAudit({
 		action: AuditAction.USER_DELETE_COMMENT,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "PostComment",
+		actorId: gate.user.id,
 		targetId: id,
+		targetType: "PostComment",
 	})
 
 	return ok({ deleted: true })

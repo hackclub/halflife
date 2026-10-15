@@ -66,18 +66,18 @@ export function HandoffUploader({ token }: Readonly<{ token: string }>) {
 	}
 
 	return (
-		<form onSubmit={submit} className="hl-stack hl-stack--tight">
+		<form className="hl-stack hl-stack--tight" onSubmit={submit}>
 			{error ? <Callout tone="danger">{error}</Callout> : null}
 
-			<Field label="Video" hint="Tap to record, or pick one you already have.">
+			<Field hint="Tap to record, or pick one you already have." label="Video">
 				<input
-					ref={fileRef}
-					className="hl-input"
-					type="file"
 					accept="video/*"
 					capture="environment"
+					className="hl-input"
 					disabled={state === "uploading"}
-					onChange={(e) => setFileName(e.target.files?.[0]?.name ?? null)}
+					onChange={e => setFileName(e.target.files?.[0]?.name ?? null)}
+					ref={fileRef}
+					type="file"
 				/>
 			</Field>
 
@@ -86,18 +86,18 @@ export function HandoffUploader({ token }: Readonly<{ token: string }>) {
 			{state === "uploading" ? (
 				<div>
 					<progress
+						aria-label="Sending your video"
 						max={1}
+						style={{ height: "0.6rem", width: "100%" }}
 						// No value once everything is sent: the browser draws its own "working" state while the server stores the video.
 						value={progress < 1 ? progress : undefined}
-						aria-label="Sending your video"
-						style={{ width: "100%", height: "0.6rem" }}
 					/>
 					<p className="hl-hint">{progress < 1 ? `Sending… ${Math.round(progress * 100)}%` : "Sent. Saving it…"}</p>
 				</div>
 			) : null}
 
 			<div>
-				<Button type="submit" variant="primary" disabled={state === "uploading"}>
+				<Button disabled={state === "uploading"} type="submit" variant="primary">
 					{state === "uploading" ? "Sending…" : "Send to my computer"}
 				</Button>
 			</div>

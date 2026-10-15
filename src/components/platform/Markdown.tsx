@@ -114,7 +114,7 @@ export function excerpt(source: string, limit: number): { text: string; cut: boo
 	}
 	if (!cut && spend(last, text.length)) cut = true
 
-	return cut ? { text: `${text.slice(0, end).trimEnd()}…`, cut } : { text, cut }
+	return cut ? { cut, text: `${text.slice(0, end).trimEnd()}…` } : { cut, text }
 }
 
 /**
@@ -150,27 +150,27 @@ function inline(text: string, key: string): ReactNode[] {
 				src ? (
 					// eslint-disable-next-line @next/next/no-img-element -- arbitrary remote source typed by the maker
 					<img
-						key={k}
-						src={attrUrl(src)}
 						alt={m[1]}
-						loading="lazy"
 						className="my-1 block max-w-full rounded-xl border-2 border-line"
+						key={k}
+						loading="lazy"
+						src={attrUrl(src)}
 					/>
 				) : (
-					<span key={k} className="hand text-navy-soft">
+					<span className="hand text-navy-soft" key={k}>
 						{m[1] || "image"}
 					</span>
 				),
 			)
 		} else if (m[3] !== undefined) {
 			out.push(
-				<code key={k} className="rounded bg-violet-pale px-1 py-0.5 font-mono text-[0.88em] text-violet-deep">
+				<code className="rounded bg-violet-pale px-1 py-0.5 font-mono text-[0.88em] text-violet-deep" key={k}>
 					{m[3]}
 				</code>,
 			)
 		} else if (m[4] !== undefined || m[5] !== undefined) {
 			out.push(
-				<strong key={k} className="font-extrabold text-navy">
+				<strong className="font-extrabold text-navy" key={k}>
 					{m[4] ?? m[5]}
 				</strong>,
 			)
@@ -181,11 +181,11 @@ function inline(text: string, key: string): ReactNode[] {
 			out.push(
 				href ? (
 					<a
-						key={k}
-						href={attrUrl(href)}
-						target="_blank"
-						rel="noreferrer"
 						className="font-semibold text-sky-ink underline decoration-2 underline-offset-[3px] transition-colors hover:text-coral-deep hover:decoration-coral"
+						href={attrUrl(href)}
+						key={k}
+						rel="noreferrer"
+						target="_blank"
 					>
 						{m[8]}
 					</a>
@@ -230,8 +230,8 @@ export function Markdown({ source, className }: { source: string; className?: st
 			i += 1
 			out.push(
 				<pre
-					key={key}
 					className="thin-scroll overflow-x-auto rounded-xl bg-navy px-3.5 py-3 font-mono text-[0.8rem] leading-relaxed text-white"
+					key={key}
 				>
 					<code>{body.join("\n")}</code>
 				</pre>,
@@ -240,7 +240,7 @@ export function Markdown({ source, className }: { source: string; className?: st
 		}
 
 		if (/^(?:-{3,}|\*{3,}|_{3,})\s*$/.test(line)) {
-			out.push(<hr key={key} className="border-t border-dashed border-line" />)
+			out.push(<hr className="border-t border-dashed border-line" key={key} />)
 			i += 1
 			continue
 		}
@@ -250,7 +250,7 @@ export function Markdown({ source, className }: { source: string; className?: st
 			const level = (heading[1] ?? "#").length
 			const Tag = (["h3", "h4", "h5"] as const)[level - 1] ?? "h3"
 			out.push(
-				<Tag key={key} className={`${HEADING[level - 1] ?? HEADING[0]} leading-tight font-extrabold text-navy`}>
+				<Tag className={`${HEADING[level - 1] ?? HEADING[0]} leading-tight font-extrabold text-navy`} key={key}>
 					{inline(heading[2] ?? "", key)}
 				</Tag>,
 			)
@@ -265,7 +265,7 @@ export function Markdown({ source, className }: { source: string; className?: st
 				i += 1
 			}
 			out.push(
-				<blockquote key={key} className="border-l-2 border-violet pl-3.5 text-navy-soft italic">
+				<blockquote className="border-l-2 border-violet pl-3.5 text-navy-soft italic" key={key}>
 					{inline(body.join(" "), key)}
 				</blockquote>,
 			)
@@ -284,7 +284,7 @@ export function Markdown({ source, className }: { source: string; className?: st
 			}
 			const List = ordered ? "ol" : "ul"
 			out.push(
-				<List key={key} className={`grid gap-1 pl-5 ${ordered ? "list-decimal" : "list-disc"} marker:text-navy-faint`}>
+				<List className={`grid gap-1 pl-5 ${ordered ? "list-decimal" : "list-disc"} marker:text-navy-faint`} key={key}>
 					{items.map((item, n) => (
 						<li key={`${key}-${n}`}>{inline(item, `${key}-${n}`)}</li>
 					))}
@@ -296,11 +296,11 @@ export function Markdown({ source, className }: { source: string; className?: st
 		// A paragraph runs until a blank line or the start of another block.
 		const para: string[] = []
 		while (
-			i < lines.length &&
-			at(i).trim() &&
-			!/^(#{1,3}\s|>|```|---|\*\*\*|___)/.test(at(i)) &&
-			!bullet.test(at(i)) &&
-			!number.test(at(i))
+			i < lines.length
+			&& at(i).trim()
+			&& !/^(#{1,3}\s|>|```|---|\*\*\*|___)/.test(at(i))
+			&& !bullet.test(at(i))
+			&& !number.test(at(i))
 		) {
 			para.push(at(i))
 			i += 1

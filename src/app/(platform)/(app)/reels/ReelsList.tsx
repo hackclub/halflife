@@ -22,15 +22,15 @@ export function ReelsList({ groups }: { groups: MyReelGroup[] }) {
 
 	if (groups.length === 0) {
 		return (
-			<Panel tone="line" radius={20} className="bg-paper px-6 py-14 text-center">
+			<Panel className="bg-paper px-6 py-14 text-center" radius={20} tone="line">
 				<p className="text-[1.05rem] font-extrabold text-navy">No reels yet</p>
 				<p className="hand mx-auto mt-2 max-w-[44ch] text-[0.9rem] leading-relaxed text-navy-soft">
 					reels are posted from the checkpoints on your map: an idea reel to start each design week, then progress reels
 					as the hours add up – from five hours in a design week, then every ten, and from two and a half in a build.
 				</p>
 				<Link
-					href={PLATFORM_HOME}
 					className="label mt-6 inline-flex items-center gap-1.5 rounded-full border-2 border-line px-4 py-2 text-navy-soft transition-[color,border-color,transform] duration-150 hover:border-navy hover:text-navy active:translate-y-px"
+					href={PLATFORM_HOME}
 				>
 					Go to the map <IconArrowRight className="text-base" />
 				</Link>
@@ -46,14 +46,14 @@ export function ReelsList({ groups }: { groups: MyReelGroup[] }) {
           viewport. Tailwind's `grid-cols-1` is `minmax(0, 1fr)`, so the track is
           the column and the row wraps instead. */}
 			<div className="grid grid-cols-1 gap-8">
-				{groups.map((group) => (
-					<section key={group.project?.id ?? "none"} aria-labelledby={`reels-${group.project?.id ?? "none"}`}>
+				{groups.map(group => (
+					<section aria-labelledby={`reels-${group.project?.id ?? "none"}`} key={group.project?.id ?? "none"}>
 						<div className="mb-3 flex flex-wrap items-center gap-2">
-							<h2 id={`reels-${group.project?.id ?? "none"}`} className="label text-violet-deep">
+							<h2 className="label text-violet-deep" id={`reels-${group.project?.id ?? "none"}`}>
 								{group.project ? (
 									<Link
-										href={`/projects/${group.project.id}`}
 										className="hover:underline hover:decoration-2 hover:underline-offset-4"
+										href={`/projects/${group.project.id}`}
 									>
 										{group.project.title}
 									</Link>
@@ -64,8 +64,8 @@ export function ReelsList({ groups }: { groups: MyReelGroup[] }) {
 							{group.project && <Chip tone="muted">{group.project.theme}</Chip>}
 						</div>
 						<ul className="grid grid-cols-1 gap-3">
-							{group.reels.map((reel) => (
-								<ReelRow key={reel.id} reel={reel} onAdd={() => setAdding(reel)} onChanged={() => router.refresh()} />
+							{group.reels.map(reel => (
+								<ReelRow key={reel.id} onAdd={() => setAdding(reel)} onChanged={() => router.refresh()} reel={reel} />
 							))}
 						</ul>
 					</section>
@@ -74,14 +74,14 @@ export function ReelsList({ groups }: { groups: MyReelGroup[] }) {
 
 			{adding && (
 				<PublicReelModal
-					postId={adding.id}
 					eyebrow={adding.title}
-					videoUrl={adding.videoUrl}
-					start="links"
 					onClose={() => {
 						setAdding(null)
 						router.refresh()
 					}}
+					postId={adding.id}
+					start="links"
+					videoUrl={adding.videoUrl}
 				/>
 			)}
 		</>
@@ -128,7 +128,7 @@ function ReelRow({ reel, onAdd, onChanged }: { reel: MyReel; onAdd: () => void; 
 	}
 
 	return (
-		<Panel tone="line" radius={18} as="li" className="flex gap-4 bg-paper p-3.5 sm:gap-5 sm:p-4">
+		<Panel as="li" className="flex gap-4 bg-paper p-3.5 sm:gap-5 sm:p-4" radius={18} tone="line">
 			{/* The reel itself, small and playable. Metadata only until played, so
           a page of reels is not a page of downloads. */}
 			<div className="w-[84px] shrink-0 sm:w-[96px]">
@@ -136,13 +136,13 @@ function ReelRow({ reel, onAdd, onChanged }: { reel: MyReel; onAdd: () => void; 
 					{reel.videoUrl ? (
 						// biome-ignore lint/a11y/useMediaCaption: a participant upload, and there is no caption file to point a track at. An empty track is announced as an empty caption, which is worse than none.
 						<video
-							src={reel.thumbnailUrl ? reel.videoUrl : `${reel.videoUrl}#t=0.1`}
-							poster={reel.thumbnailUrl ?? undefined}
-							preload="metadata"
-							controls
-							playsInline
 							aria-label={`${reel.title}: ${reel.caption}`}
 							className="absolute inset-0 size-full object-cover"
+							controls
+							playsInline
+							poster={reel.thumbnailUrl ?? undefined}
+							preload="metadata"
+							src={reel.thumbnailUrl ? reel.videoUrl : `${reel.videoUrl}#t=0.1`}
 						/>
 					) : (
 						<div className="absolute inset-0 grid place-items-center">
@@ -167,27 +167,27 @@ function ReelRow({ reel, onAdd, onChanged }: { reel: MyReel; onAdd: () => void; 
 
 				<div className="mt-3">
 					{reel.links.length > 0 ? (
-						<ul className="grid grid-cols-1 gap-1.5" aria-label="Posted publicly on">
-							{reel.links.map((link) => (
-								<li key={link.id} className="flex min-w-0 items-center gap-2">
+						<ul aria-label="Posted publicly on" className="grid grid-cols-1 gap-1.5">
+							{reel.links.map(link => (
+								<li className="flex min-w-0 items-center gap-2" key={link.id}>
 									<span className="label shrink-0 text-violet-deep">{PLATFORM_INFO[link.platform].label}</span>
 									<a
-										href={link.url}
-										target="_blank"
-										rel="noopener noreferrer"
 										className="min-w-0 truncate text-[0.86rem] text-navy underline decoration-line-strong decoration-dashed underline-offset-4 transition-colors hover:decoration-violet"
+										href={link.url}
+										rel="noopener noreferrer"
+										target="_blank"
 									>
 										{link.url.replace(/^https:\/\//, "")}
 									</a>
 									<button
-										type="button"
-										onClick={() => remove(link.id)}
-										disabled={removing !== null}
 										aria-label={
 											removing === link.id ? "Removing…" : `Remove the ${PLATFORM_INFO[link.platform].label} link`
 										}
 										aria-live="polite"
 										className="grid size-8 shrink-0 place-items-center rounded-full text-navy-soft transition-colors hover:bg-coral/10 hover:text-coral-deep disabled:opacity-50"
+										disabled={removing !== null}
+										onClick={() => remove(link.id)}
+										type="button"
 									>
 										<IconX className="text-sm" />
 									</button>
@@ -198,23 +198,23 @@ function ReelRow({ reel, onAdd, onChanged }: { reel: MyReel; onAdd: () => void; 
 						<p className="hand text-[0.84rem] text-navy-soft">not posted anywhere else yet.</p>
 					)}
 					{error && (
-						<p role="alert" className="hand mt-1 text-[0.84rem] text-coral-deep">
+						<p className="hand mt-1 text-[0.84rem] text-coral-deep" role="alert">
 							{error}
 						</p>
 					)}
 					<div className="mt-1.5 -ml-3.5 flex flex-wrap items-center gap-x-1 gap-y-1">
-						<Button variant="ghost" size="sm" onClick={onAdd}>
+						<Button onClick={onAdd} size="sm" variant="ghost">
 							<IconPlus className="text-sm" />
 							<span className="hidden sm:inline">Add where you posted it</span>
 							<span className="sm:hidden">Add a link</span>
 						</Button>
 						<Button
-							variant="ghost"
-							size="sm"
-							onClick={() => setConfirming(true)}
-							disabled={reel.deleteLocked !== null || confirming}
 							aria-expanded={confirming}
 							className="hover:text-coral-deep"
+							disabled={reel.deleteLocked !== null || confirming}
+							onClick={() => setConfirming(true)}
+							size="sm"
+							variant="ghost"
 						>
 							<IconTrash className="text-sm" /> Delete reel
 						</Button>
@@ -222,14 +222,14 @@ function ReelRow({ reel, onAdd, onChanged }: { reel: MyReel; onAdd: () => void; 
 					{/* A disabled control stays where it lives and says why. */}
 					{reel.deleteLocked && <p className="hand pl-0.5 text-[0.84rem] text-navy-soft">{reel.deleteLocked}</p>}
 
-					{confirming && (
+					{confirming ? (
 						// biome-ignore lint/a11y/useSemanticElements: a confirmation box, not a form.
 						<div
-							role="group"
 							aria-labelledby={`delete-${reel.id}`}
 							className="mt-2 rounded-xl border-2 border-coral-deep bg-coral/5 px-3.5 py-3"
+							role="group"
 						>
-							<p id={`delete-${reel.id}`} className="text-[0.9rem] leading-snug font-bold text-navy">
+							<p className="text-[0.9rem] leading-snug font-bold text-navy" id={`delete-${reel.id}`}>
 								Delete this reel for good?
 							</p>
 							<p className="mt-1 text-[0.86rem] leading-snug text-navy-soft">
@@ -238,15 +238,15 @@ function ReelRow({ reel, onAdd, onChanged }: { reel: MyReel; onAdd: () => void; 
 									: "It comes off the platform everywhere. Links to where you posted it go with it."}
 							</p>
 							<div className="mt-2.5 flex flex-wrap gap-2">
-								<Button variant="coral" size="sm" onClick={() => deleteReel()} disabled={deleting}>
+								<Button disabled={deleting} onClick={() => deleteReel()} size="sm" variant="coral">
 									{deleting ? "Deleting…" : "Delete reel"}
 								</Button>
-								<Button variant="ghost" size="sm" onClick={() => setConfirming(false)} disabled={deleting}>
+								<Button disabled={deleting} onClick={() => setConfirming(false)} size="sm" variant="ghost">
 									Keep it
 								</Button>
 							</div>
 						</div>
-					)}
+					) : null}
 				</div>
 			</div>
 		</Panel>

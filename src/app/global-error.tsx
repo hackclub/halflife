@@ -23,7 +23,7 @@ export default function GlobalError({ reset }: Readonly<{ error: Error; reset: (
 			<body>
 				<h1>Something broke</h1>
 				<p>The error has been logged. Try again, and tell us in Slack if it keeps happening.</p>
-				<button type="button" onClick={reset}>
+				<button onClick={reset} type="button">
 					Try again
 				</button>
 			</body>

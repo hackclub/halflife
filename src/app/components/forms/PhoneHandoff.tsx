@@ -21,7 +21,7 @@ export function PhoneHandoff({ onReady }: Readonly<{ onReady: (objectKey: string
 						Record on your phone instead – scan a code, film it, and the video lands here. No signing in on the phone.
 					</p>
 					<div>
-						<Button onClick={mint} disabled={busy}>
+						<Button disabled={busy} onClick={mint}>
 							{busy ? "Making a code…" : "Record on my phone"}
 						</Button>
 					</div>
@@ -33,10 +33,10 @@ export function PhoneHandoff({ onReady }: Readonly<{ onReady: (objectKey: string
 					{/* Server-rendered SVG from our own origin – the token is never sent
               to a third-party QR service. */}
 					<div
-						role="img"
 						aria-label="QR code linking to the upload page"
 						dangerouslySetInnerHTML={{ __html: minted.qrSvg }}
-						style={{ width: 200, height: 200 }}
+						role="img"
+						style={{ height: 200, width: 200 }}
 					/>
 					<p className="hl-hint" style={{ margin: 0 }}>
 						Scan it with your phone camera. The code works once and expires shortly.
@@ -57,7 +57,7 @@ export function PhoneHandoff({ onReady }: Readonly<{ onReady: (objectKey: string
 				<div className="hl-stack hl-stack--tight">
 					<Callout tone="warning">That code expired before anything arrived.</Callout>
 					<div>
-						<Button onClick={mint} disabled={busy}>
+						<Button disabled={busy} onClick={mint}>
 							Make a new code
 						</Button>
 					</div>

@@ -30,35 +30,35 @@ export const POST = withRoute(async (req: Request) => {
 	let authorId: string | null = null
 	if (target === "REEL") {
 		const post = await prisma.post.findUnique({
+			select: { deletedAt: true, hiddenAt: true, userId: true },
 			where: { id: targetId },
-			select: { userId: true, deletedAt: true, hiddenAt: true },
 		})
 		if (!post || post.deletedAt) return fail("NOT_FOUND", "That reel no longer exists")
 		if (post.hiddenAt) return fail("CONFLICT", "That reel was already taken down")
 		authorId = post.userId
 	} else if (target === "REEL_COMMENT") {
 		const comment = await prisma.postComment.findUnique({
+			select: { deletedAt: true, hiddenAt: true, userId: true },
 			where: { id: targetId },
-			select: { userId: true, deletedAt: true, hiddenAt: true },
 		})
 		if (!comment || comment.deletedAt) return fail("NOT_FOUND", "That comment no longer exists")
 		if (comment.hiddenAt) return fail("CONFLICT", "That comment was already taken down")
 		authorId = comment.userId
 	} else if (target === "PROJECT") {
 		const project = await prisma.themeProject.findFirst({
-			where: { id: targetId, deletedAt: null },
 			select: { userId: true },
+			where: { deletedAt: null, id: targetId },
 		})
 		if (!project) return fail("NOT_FOUND", "That project no longer exists")
 		authorId = project.userId
 	} else if (target === "USER") {
-		const user = await prisma.user.findUnique({ where: { id: targetId }, select: { id: true } })
+		const user = await prisma.user.findUnique({ select: { id: true }, where: { id: targetId } })
 		if (!user) return fail("NOT_FOUND", "That user no longer exists")
 		authorId = user.id
 	} else {
 		const session = await prisma.workSession.findFirst({
-			where: { id: targetId, deletedAt: null, themeProject: { deletedAt: null } },
 			select: { themeProject: { select: { userId: true } } },
+			where: { deletedAt: null, id: targetId, themeProject: { deletedAt: null } },
 		})
 		if (!session) return fail("NOT_FOUND", "That entry no longer exists")
 		authorId = session.themeProject.userId
@@ -78,8 +78,8 @@ export const POST = withRoute(async (req: Request) => {
 						? { targetUserId: targetId }
 						: { workSessionId: targetId }
 	const dupe = await prisma.contentReport.findFirst({
-		where: { reporterId: gate.user.id, target, status: "OPEN", ...field },
 		select: { id: true },
+		where: { reporterId: gate.user.id, status: "OPEN", target, ...field },
 	})
 	if (dupe) return fail("CONFLICT", `You have already reported this ${label} – staff will take a look`)
 
@@ -88,10 +88,10 @@ export const POST = withRoute(async (req: Request) => {
 	try {
 		report = await prisma.contentReport.create({
 			data: {
+				details: details?.trim() ? details.trim() : null,
+				reason,
 				reporterId: gate.user.id,
 				target,
-				reason,
-				details: details?.trim() ? details.trim() : null,
 				...field,
 			},
 			select: { id: true },
@@ -104,8 +104,10 @@ export const POST = withRoute(async (req: Request) => {
 
 	await logAudit({
 		action: AuditAction.USER_CREATE_REPORT,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
+		actorId: gate.user.id,
+		metadata: { reason, reportId: report.id },
+		targetId,
 		targetType:
 			target === "REEL"
 				? "Post"
@@ -116,8 +118,6 @@ export const POST = withRoute(async (req: Request) => {
 						: target === "USER"
 							? "User"
 							: "WorkSession",
-		targetId,
-		metadata: { reportId: report.id, reason },
 	})
 
 	return ok({ reported: true }, { status: 201 })

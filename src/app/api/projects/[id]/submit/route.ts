@@ -36,19 +36,19 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 
 	await logAudit({
 		action: AuditAction.USER_SUBMIT_PHASE,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "ThemeProject",
-		targetId: id,
+		actorId: gate.user.id,
 		metadata: {
 			phase: parsed.data.phase,
 			submissionId: submission.id,
 			// What the maker agreed to, if they had to agree to anything: an over-budget cart is funded up to the tier and the rest is theirs, or nothing at all when they declined funding.
 			...(submission.partialFundingAccepted
-				? { requestedBomUsd: submission.requestedBomUsd, fundingCapUsd: submission.fundingCapUsd }
+				? { fundingCapUsd: submission.fundingCapUsd, requestedBomUsd: submission.requestedBomUsd }
 				: {}),
 			...(submission.fundingDeclined ? { fundingDeclined: true } : {}),
 		},
+		targetId: id,
+		targetType: "ThemeProject",
 	})
 
 	// Into the YSWS table as "Pending Review" – the table reviewers work from on ari.hackclub.com. After the response, so a slow Airtable never holds up a hand-in; a failure lands in the audit log and the retry job replays it.
@@ -56,11 +56,11 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		await trackSideEffect(
 			"airtable",
 			{
-				actorId: gate.user.id,
 				actorEmail: gate.user.email,
-				targetType: "ThemeProject",
-				targetId: id,
+				actorId: gate.user.id,
 				metadata: { phase: parsed.data.phase },
+				targetId: id,
+				targetType: "ThemeProject",
 			},
 			() => syncSubmissionToYsws(id, parsed.data.phase),
 		)
@@ -72,11 +72,11 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 			await trackSideEffect(
 				"ari",
 				{
-					actorId: gate.user.id,
 					actorEmail: gate.user.email,
-					targetType: "ThemeProject",
-					targetId: id,
+					actorId: gate.user.id,
 					metadata: { phase: parsed.data.phase },
+					targetId: id,
+					targetType: "ThemeProject",
 				},
 				() => sendSubmissionToAri(id, parsed.data.phase),
 			)
@@ -86,11 +86,11 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	// Warm the Hackatime cache now so the reviewer opens a page with fresh numbers instead of waiting on the API. The participant does not need to wait for it.
 	after(async () => {
 		const links = await prisma.hackatimeLink.findMany({
-			where: { themeProjectId: id, phase: parsed.data.phase },
 			select: { id: true },
+			where: { phase: parsed.data.phase, themeProjectId: id },
 		})
 		for (const link of links)
-			await refreshLinkCache(link.id).catch((err) => console.error("[submit] hackatime refresh failed:", err))
+			await refreshLinkCache(link.id).catch(err => console.error("[submit] hackatime refresh failed:", err))
 	})
 
 	return ok({ submission }, { status: 201 })

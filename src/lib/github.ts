@@ -19,7 +19,7 @@ import type { Forge } from "@/lib/forge"
 /**
  * How long one attempt may take. The proxy usually answers in a second or two but now and then sits on a request for twenty; cutting it off at six and asking again is faster than waiting, since the retry nearly always lands. Direct calls get longer: they are the last resort, and a big repo's file list can genuinely take a while.
  */
-const TIMEOUT_MS: Record<Route, number> = { proxy: 6_000, "github-direct": 10_000, "gitlab-direct": 10_000 }
+const TIMEOUT_MS: Record<Route, number> = { "github-direct": 10_000, "gitlab-direct": 10_000, proxy: 6_000 }
 
 /** Slow attempts a route gets before we stop waiting on it. */
 const MAX_TIMEOUTS = 2
@@ -41,12 +41,12 @@ export class ForgeUnavailable extends Error {}
  */
 type Route = "proxy" | "github-direct" | "gitlab-direct"
 
-const blockedUntil: Record<Route, number> = { proxy: 0, "github-direct": 0, "gitlab-direct": 0 }
+const blockedUntil: Record<Route, number> = { "github-direct": 0, "gitlab-direct": 0, proxy: 0 }
 let inFlight = 0
 const waiting: (() => void)[] = []
 
 async function slot(): Promise<() => void> {
-	if (inFlight >= MAX_IN_FLIGHT) await new Promise<void>((go) => waiting.push(go))
+	if (inFlight >= MAX_IN_FLIGHT) await new Promise<void>(go => waiting.push(go))
 	inFlight++
 	return () => {
 		inFlight--
@@ -54,7 +54,7 @@ async function slot(): Promise<() => void> {
 	}
 }
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
 /** How long a rate-limited answer asks us to wait, in ms, if it says. */
 function backoffFrom(res: Response): number | null {
@@ -83,29 +83,29 @@ function request(route: Route, path: string): { url: string; headers: Record<str
 		const apiKey = process.env.GH_PROXY_API_KEY
 		if (!apiKey) throw new Error("GH_PROXY_API_KEY is not set on this deployment")
 		return {
-			url: `https://gh-proxy.hackclub.com/gh/${path}${path.includes("?") ? "&" : "?"}_t=${Date.now()}`,
 			headers: { Accept: "application/vnd.github+json", "X-API-Key": apiKey },
+			url: `https://gh-proxy.hackclub.com/gh/${path}${path.includes("?") ? "&" : "?"}_t=${Date.now()}`,
 		}
 	}
 
 	if (route === "gitlab-direct") {
 		const token = process.env.GITLAB_TOKEN
 		return {
-			url: `https://gitlab.com/api/v4/${path}`,
 			headers: {
 				Accept: "application/json",
 				...(token ? { Authorization: `Bearer ${token}` } : {}),
 			},
+			url: `https://gitlab.com/api/v4/${path}`,
 		}
 	}
 
 	const token = process.env.GITHUB_TOKEN
 	return {
-		url: `https://api.github.com/${path}`,
 		headers: {
 			Accept: "application/vnd.github+json",
 			...(token ? { Authorization: `Bearer ${token}` } : {}),
 		},
+		url: `https://api.github.com/${path}`,
 	}
 }
 
@@ -123,10 +123,10 @@ async function via(forge: Forge, route: Route, path: string): Promise<Response> 
 		const release = await slot()
 		let res: Response | null = null
 		try {
-			const raw = await fetch(url, { headers, cache: "no-store", signal: AbortSignal.timeout(TIMEOUT_MS[route]) })
+			const raw = await fetch(url, { cache: "no-store", headers, signal: AbortSignal.timeout(TIMEOUT_MS[route]) })
 			// Read the body here, inside the same timeout and the same retry. The timeout covers the download as well as the headers, so a slow file list used to abort mid-read in the caller – outside every catch – and surface as a 500. Buffered, a slow body is just a slow attempt.
 			const body = await raw.arrayBuffer()
-			res = new Response(body, { status: raw.status, statusText: raw.statusText, headers: raw.headers })
+			res = new Response(body, { headers: raw.headers, status: raw.status, statusText: raw.statusText })
 		} catch (err) {
 			// The maker sees "did not answer"; the cause is for whoever runs this.
 			console.warn(`[forge] ${forge.id} ${route} GET ${path} failed (attempt ${attempt + 1}):`, err)

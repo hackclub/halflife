@@ -23,8 +23,8 @@ export default async function HandoffPage({ params }: { params: Promise<{ token:
 	return (
 		<div className="hl-stack">
 			<PageHeader
-				title="Record your reel"
 				subtitle="Your video goes straight to your Half Life account. You don't need to sign in here."
+				title="Record your reel"
 			/>
 			<Panel>
 				<HandoffUploader token={token} />

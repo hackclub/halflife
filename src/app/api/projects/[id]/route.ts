@@ -23,16 +23,16 @@ export const GET = withRoute(async (_req: Request, { params }: Params) => {
 	const { id } = await params
 
 	const project = await prisma.themeProject.findFirst({
-		where: { id, userId: gate.user.id, deletedAt: null },
 		include: {
-			workSessions: {
-				where: { deletedAt: null },
-				orderBy: { createdAt: "desc" },
-				include: { media: true, timelapses: true },
-			},
 			hackatimeLinks: true,
 			submissions: { orderBy: { createdAt: "desc" }, take: 10 },
+			workSessions: {
+				include: { media: true, timelapses: true },
+				orderBy: { createdAt: "desc" },
+				where: { deletedAt: null },
+			},
 		},
+		where: { deletedAt: null, id, userId: gate.user.id },
 	})
 	// 404 rather than 403 for someone else's project: don't leak the ID space.
 	if (!project) return fail("NOT_FOUND", "Project not found")
@@ -43,16 +43,16 @@ export const GET = withRoute(async (_req: Request, { params }: Params) => {
 	])
 
 	return ok({
+		hours: { build, design },
 		project: {
 			...project,
 			coverImageUrl: publicUrlFor(project.coverImageKey),
-			workSessions: project.workSessions.map((s) => ({
+			workSessions: project.workSessions.map(s => ({
 				...s,
-				media: s.media.map((m) => ({ ...m, url: publicUrlFor(m.objectKey) })),
+				media: s.media.map(m => ({ ...m, url: publicUrlFor(m.objectKey) })),
 			})),
 		},
 		theme: getThemeDef(project.theme),
-		hours: { design, build },
 	})
 })
 
@@ -65,7 +65,7 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 	if (parsed.error) return parsed.error
 
 	const project = await prisma.themeProject.findFirst({
-		where: { id, userId: gate.user.id, deletedAt: null },
+		where: { deletedAt: null, id, userId: gate.user.id },
 	})
 	if (!project) return fail("NOT_FOUND", "Project not found")
 
@@ -81,7 +81,7 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 	// A starter can only be taken if it is one of this week's: anyone may switch to one from the project page after creation, beginner or not – the tier-1 scoping below is what keeps a starter a starter, not who was offered it during onboarding.
 	if (data.starterProjectId) {
 		const offered = starterProjectsFor(project.theme)
-		if (!offered.some((p) => p.id === data.starterProjectId))
+		if (!offered.some(p => p.id === data.starterProjectId))
 			return fail("VALIDATION_FAILED", "That is not one of this week's starter projects")
 	}
 	// The starter the project will have after this request, since the same request may be the one taking it or dropping it.
@@ -100,14 +100,13 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 
 	// A cover is a key, and a key is a path into the bucket: only one this user uploaded as a cover, or a project could point its cover at anyone's file. `isOwnedKey` refuses path tricks (`..`, `%2e%2e`); the prefix pins it to the covers folder, so a key genuinely yours but uploaded as session evidence cannot be re-filed as a cover.
 	if (
-		data.coverImageKey &&
-		(!isOwnedKey(gate.user.id, data.coverImageKey) || !data.coverImageKey.startsWith("covers/"))
+		data.coverImageKey
+		&& (!isOwnedKey(gate.user.id, data.coverImageKey) || !data.coverImageKey.startsWith("covers/"))
 	) {
 		return fail("VALIDATION_FAILED", "Upload the cover image first")
 	}
 
 	const updated = await prisma.themeProject.update({
-		where: { id },
 		data: {
 			...(data.title !== undefined ? { title: sanitize(data.title) } : {}),
 			...(data.description !== undefined ? { description: sanitizeOptional(data.description) } : {}),
@@ -118,13 +117,14 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 			...(data.coverImageKey !== undefined ? { coverImageKey: data.coverImageKey } : {}),
 			...(data.artifactLinks !== undefined
 				? {
-						artifactLinks: data.artifactLinks.map((l) => ({
+						artifactLinks: data.artifactLinks.map(l => ({
 							label: sanitize(l.label),
 							url: l.url,
 						})),
 					}
 				: {}),
 		},
+		where: { id },
 	})
 
 	// A project counts as started once it has a description and a tier; the row itself has existed since sign-up.
@@ -132,14 +132,14 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 
 	await logAudit({
 		action: AuditAction.USER_UPDATE_PROJECT,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "ThemeProject",
-		targetId: id,
+		actorId: gate.user.id,
 		metadata: {
-			before: { title: project.title, githubRepo: project.githubRepo, starterProjectId: project.starterProjectId },
-			after: { title: updated.title, githubRepo: updated.githubRepo, starterProjectId: updated.starterProjectId },
+			after: { githubRepo: updated.githubRepo, starterProjectId: updated.starterProjectId, title: updated.title },
+			before: { githubRepo: project.githubRepo, starterProjectId: project.starterProjectId, title: project.title },
 		},
+		targetId: id,
+		targetType: "ThemeProject",
 	})
 
 	return ok({ project: updated })
@@ -154,8 +154,8 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 	const { id } = await params
 
 	const project = await prisma.themeProject.findFirst({
-		where: { id, userId: gate.user.id, deletedAt: null },
-		select: { id: true, theme: true, title: true, designStatus: true, buildStatus: true, grantEmittedAt: true },
+		select: { buildStatus: true, designStatus: true, grantEmittedAt: true, id: true, theme: true, title: true },
+		where: { deletedAt: null, id, userId: gate.user.id },
 	})
 	if (!project) return fail("NOT_FOUND", "Project not found")
 
@@ -164,16 +164,16 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 
 	// Its entries stop counting with it, so the weeks they fell in are recounted.
 	const weeks = await prisma.workSession.findMany({
-		where: { themeProjectId: id, deletedAt: null },
-		select: { weekNumber: true },
 		distinct: ["weekNumber"],
+		select: { weekNumber: true },
+		where: { deletedAt: null, themeProjectId: id },
 	})
 
-	const deleted = await prisma.$transaction(async (tx) => {
+	const deleted = await prisma.$transaction(async tx => {
 		// Re-read the project and its block status inside the transaction, so a grant, top-up, or dispute committing in the window is caught before the soft delete rather than after.
 		const fresh = await tx.themeProject.findFirst({
-			where: { id, userId: gate.user.id, deletedAt: null },
-			select: { id: true, designStatus: true, buildStatus: true, grantEmittedAt: true },
+			select: { buildStatus: true, designStatus: true, grantEmittedAt: true, id: true },
+			where: { deletedAt: null, id, userId: gate.user.id },
 		})
 		if (!fresh) throw new HttpError("NOT_FOUND", "Project not found")
 		const blocked = await deleteBlockReason(fresh, tx)
@@ -182,19 +182,19 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 		// Conditional on the statuses just checked, so a submit that lands between the check and here is not deleted out from under its reviewer.
 		const now = new Date()
 		const { count } = await tx.themeProject.updateMany({
+			data: { deletedAt: now, deletedById: gate.user.id },
 			where: {
-				id,
+				buildStatus: { notIn: [PhaseStatus.in_review, PhaseStatus.approved] },
 				deletedAt: null,
 				designStatus: { notIn: [PhaseStatus.in_review, PhaseStatus.approved] },
-				buildStatus: { notIn: [PhaseStatus.in_review, PhaseStatus.approved] },
+				id,
 			},
-			data: { deletedAt: now, deletedById: gate.user.id },
 		})
 		if (count > 0) {
 			// Its sessions go with it, so their timelapses are free to back a new project's entries (the taken-check ignores deleted sessions) and no query that only filters sessions on `deletedAt` keeps counting them.
 			await tx.workSession.updateMany({
-				where: { themeProjectId: id, deletedAt: null },
 				data: { deletedAt: now },
+				where: { deletedAt: null, themeProjectId: id },
 			})
 			// The streak only counts days journalled on live projects.
 			await recomputeStreak(tx, gate.user.id)
@@ -205,11 +205,11 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 
 	await logAudit({
 		action: AuditAction.USER_DELETE_PROJECT,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "ThemeProject",
-		targetId: id,
+		actorId: gate.user.id,
 		metadata: { theme: project.theme, title: project.title },
+		targetId: id,
+		targetType: "ThemeProject",
 	})
 
 	for (const { weekNumber } of weeks) await recomputeWeek(gate.user.id, weekNumber)

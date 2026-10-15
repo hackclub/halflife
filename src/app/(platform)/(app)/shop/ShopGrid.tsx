@@ -39,8 +39,8 @@ export function ShopGrid({
 	const keys = useRef(new Map<string, string>())
 
 	const items = useMemo(() => {
-		const shelf = CATEGORIES.find((c) => c.label === cat)
-		return !shelf?.match ? all : all.filter((i) => i.category === shelf.match)
+		const shelf = CATEGORIES.find(c => c.label === cat)
+		return !shelf?.match ? all : all.filter(i => i.category === shelf.match)
 	}, [all, cat])
 
 	/**
@@ -56,9 +56,9 @@ export function ShopGrid({
 			const key = keys.current.get(item.id) ?? crypto.randomUUID()
 			keys.current.set(item.id, key)
 			const res = await fetch("/api/shop/orders", {
-				method: "POST",
+				body: JSON.stringify({ idempotencyKey: key, quantity: 1, shopItemId: item.id }),
 				headers: { "content-type": "application/json" },
-				body: JSON.stringify({ shopItemId: item.id, quantity: 1, idempotencyKey: key }),
+				method: "POST",
 			})
 			if (!res.ok) {
 				const payload = (await res.json().catch(() => ({}))) as {
@@ -80,23 +80,23 @@ export function ShopGrid({
 		<>
 			{regions.length > 0 && (
 				<div className="mb-5 flex flex-wrap items-center justify-center gap-2">
-					<label htmlFor="shop-region" className="label text-navy-soft">
+					<label className="label text-navy-soft" htmlFor="shop-region">
 						Prices for
 					</label>
 					<select
-						id="shop-region"
-						value={regionId ?? ""}
+						className="label rounded-full border-2 border-line bg-paper px-4 py-1.5 text-navy outline-none transition-colors hover:border-navy focus:border-navy disabled:opacity-60"
 						disabled={savingRegion}
-						onChange={(e) => {
+						id="shop-region"
+						onChange={e => {
 							const next = e.target.value === "" ? null : e.target.value
 							setSavingRegion(true)
 							setError(null)
 							fetch("/api/shop/region", {
-								method: "PUT",
-								headers: { "content-type": "application/json" },
 								body: JSON.stringify({ regionId: next }),
+								headers: { "content-type": "application/json" },
+								method: "PUT",
 							})
-								.then(async (res) => {
+								.then(async res => {
 									if (!res.ok) {
 										const payload = (await res.json().catch(() => ({}))) as {
 											error?: { message?: string }
@@ -109,10 +109,10 @@ export function ShopGrid({
 								.catch(() => setError("That region did not save"))
 								.finally(() => setSavingRegion(false))
 						}}
-						className="label rounded-full border-2 border-line bg-paper px-4 py-1.5 text-navy outline-none transition-colors hover:border-navy focus:border-navy disabled:opacity-60"
+						value={regionId ?? ""}
 					>
 						<option value="">Default pricing</option>
-						{regions.map((r) => (
+						{regions.map(r => (
 							<option key={r.id} value={r.id}>
 								{r.name}
 							</option>
@@ -123,9 +123,6 @@ export function ShopGrid({
 			<div className="mb-6 flex flex-wrap items-center justify-center gap-2">
 				{CATEGORIES.map(({ label: c }) => (
 					<button
-						key={c}
-						type="button"
-						onClick={() => setCat(c)}
 						aria-pressed={cat === c}
 						className={cx(
 							"label rounded-full border-2 px-4 py-1.5 transition-colors",
@@ -133,6 +130,9 @@ export function ShopGrid({
 								? "border-navy bg-navy text-white"
 								: "border-line text-navy-soft hover:border-navy hover:text-navy",
 						)}
+						key={c}
+						onClick={() => setCat(c)}
+						type="button"
 					>
 						{c}
 					</button>
@@ -141,26 +141,26 @@ export function ShopGrid({
 
 			{error && (
 				<p
-					role="alert"
 					className="mb-5 rounded-xl border-2 border-coral bg-cream px-4 py-3 text-[0.9rem] font-semibold text-coral-deep"
+					role="alert"
 				>
 					{error}
 				</p>
 			)}
 
 			<ul className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-3">
-				{items.map((item) => {
+				{items.map(item => {
 					const has = item.ownedCount > 0
 					const out = item.stock !== null && item.stock <= 0
 					// One pot: affordability reads the same whole balance the till does, so the shelf can never refuse what the server would take.
 					const afford = printerFund >= item.priceCredits
 					return (
 						<Panel
-							key={item.id}
 							as="li"
-							tone="line"
-							radius={20}
 							className="group flex flex-col overflow-hidden bg-paper"
+							key={item.id}
+							radius={20}
+							tone="line"
 						>
 							{/* The action lives under the photo on a phone and lifts onto it
                   from sm, where a hover reveals it. A phone has no hover, so an
@@ -172,9 +172,9 @@ export function ShopGrid({
                       minding a box of parts, so the shelf never shows a hole. */}
 									{item.imageUrl ? (
 										// eslint-disable-next-line @next/next/no-img-element -- staff paste any host into the item's image field
-										<img src={item.imageUrl} alt="" loading="lazy" className="h-full w-full object-contain" />
+										<img alt="" className="h-full w-full object-contain" loading="lazy" src={item.imageUrl} />
 									) : (
-										<Gato pose="box" sizes="200px" className="sticker-shadow h-full w-auto max-w-full" />
+										<Gato className="sticker-shadow h-full w-auto max-w-full" pose="box" sizes="200px" />
 									)}
 									{item.stock !== null && item.stock > 0 && item.stock <= 3 && (
 										<span className="label absolute top-2.5 left-2.5 rounded-full bg-coral px-2.5 py-1 text-white">
@@ -188,9 +188,6 @@ export function ShopGrid({
 									)}
 								</div>
 								<button
-									type="button"
-									disabled={out || item.locked || !afford || busy !== null}
-									onClick={() => buy(item)}
 									className={cx(
 										"label flex w-full items-center justify-center gap-1.5 border-t-2 px-3.5 py-2.5 transition-all duration-150",
 										"sm:absolute sm:bottom-3 sm:left-3 sm:w-auto sm:justify-start sm:rounded-xl sm:border-2 sm:py-2",
@@ -201,6 +198,9 @@ export function ShopGrid({
 												? "cursor-not-allowed border-line bg-cream text-navy-soft"
 												: "border-teal-deep bg-teal-mid text-navy hover:bg-teal hover:text-white",
 									)}
+									disabled={out || item.locked || !afford || busy !== null}
+									onClick={() => buy(item)}
+									type="button"
 								>
 									{busy === item.id ? (
 										"Ordering…"

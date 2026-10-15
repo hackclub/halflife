@@ -24,17 +24,17 @@ type ImportSummary = {
 }
 
 const STATUS_LABEL: Record<ImportOutcome["status"], string> = {
-	imported: "imported",
 	already_imported: "already imported",
-	skipped: "skipped",
 	failed: "failed",
+	imported: "imported",
+	skipped: "skipped",
 }
 
 const ARI_LABEL: Record<ImportOutcome["ari"], string> = {
-	sent: "sent to Ari",
 	failed: "Ari send failed",
-	not_configured: "Ari not configured",
 	not_attempted: "",
+	not_configured: "Ari not configured",
+	sent: "sent to Ari",
 }
 
 /**
@@ -80,7 +80,7 @@ export function AirtableImportForm({
 		}
 	}
 
-	const problems = summary?.outcomes.filter((o) => o.status === "skipped" || o.status === "failed") ?? []
+	const problems = summary?.outcomes.filter(o => o.status === "skipped" || o.status === "failed") ?? []
 
 	return (
 		<div className="hl-stack hl-stack--tight">
@@ -97,8 +97,8 @@ export function AirtableImportForm({
 					</p>
 					{problems.length > 0 ? (
 						<ul className="hl-stack hl-stack--tight" style={{ marginTop: "0.5rem", paddingLeft: "1rem" }}>
-							{problems.map((outcome) => (
-								<li key={outcome.recordId} className="hl-hint">
+							{problems.map(outcome => (
+								<li className="hl-hint" key={outcome.recordId}>
 									<span className="hl-mono">{outcome.recordId}</span>
 									{outcome.email ? ` · ${outcome.email}` : ""} · {STATUS_LABEL[outcome.status]}
 									{outcome.reason ? ` – ${outcome.reason}` : ""}
@@ -111,7 +111,7 @@ export function AirtableImportForm({
 			) : null}
 
 			<div>
-				<Button variant="primary" disabled={busy} onClick={() => run()}>
+				<Button disabled={busy} onClick={() => run()} variant="primary">
 					{busy ? "Importing… (this can take a few minutes)" : "Import projects from Airtable"}
 				</Button>
 			</div>

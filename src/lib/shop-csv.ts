@@ -20,31 +20,31 @@ type Column = (typeof SHOP_CSV_COLUMNS)[number]
 
 /** Spreadsheet headings people actually type, folded onto the columns. */
 const HEADER_ALIASES: Record<string, Column> = {
-	slug: "slug",
-	id: "slug",
-	name: "name",
-	description: "description",
-	price: "price",
-	pricecredits: "price",
-	coins: "price",
 	category: "category",
+	coins: "price",
 	cost: "cost",
 	costusd: "cost",
+	description: "description",
+	gated: "gated",
+	id: "slug",
 	image: "image",
 	imageurl: "image",
-	gated: "gated",
+	name: "name",
+	price: "price",
+	pricecredits: "price",
 	requiresprinterqualified: "gated",
+	slug: "slug",
 }
 
 const REQUIRED: Column[] = ["slug", "name", "description", "price"]
 
 const CATEGORY_ALIASES: Record<string, ShopItemCategory> = {
+	CONSUMABLE: ShopItemCategory.CONSUMABLE,
+	EVERYTHING_ELSE: ShopItemCategory.MISC,
+	MISC: ShopItemCategory.MISC,
 	PRINTER: ShopItemCategory.PRINTER,
 	PRINTER_UPGRADE: ShopItemCategory.PRINTER_UPGRADE,
 	UPGRADE: ShopItemCategory.PRINTER_UPGRADE,
-	CONSUMABLE: ShopItemCategory.CONSUMABLE,
-	MISC: ShopItemCategory.MISC,
-	EVERYTHING_ELSE: ShopItemCategory.MISC,
 }
 
 export type ShopCsvItem = z.output<typeof shopItemSchema>
@@ -90,7 +90,7 @@ function records(text: string): { line: number; fields: string[] }[] {
 		} else if (c === "\n" || c === "\r") {
 			if (c === "\r" && src[i + 1] === "\n") i += 1
 			fields.push(field)
-			out.push({ line: start, fields })
+			out.push({ fields, line: start })
 			fields = []
 			field = ""
 			line += 1
@@ -99,10 +99,10 @@ function records(text: string): { line: number; fields: string[] }[] {
 	}
 	if (field !== "" || fields.length > 0) {
 		fields.push(field)
-		out.push({ line: start, fields })
+		out.push({ fields, line: start })
 	}
 	// Spreadsheets pad the end with empty rows; they are not items.
-	return out.filter((r) => r.fields.some((f) => f.trim() !== ""))
+	return out.filter(r => r.fields.some(f => f.trim() !== ""))
 }
 
 function bool(raw: string): boolean | undefined | "bad" {
@@ -128,7 +128,7 @@ export function parseShopCsv(text: string): { items: ShopCsvItem[]; problems: Sh
 
 	const problems: ShopCsvProblem[] = []
 	const columns = head.fields.map(
-		(h) =>
+		h =>
 			HEADER_ALIASES[
 				h
 					.trim()
@@ -141,7 +141,7 @@ export function parseShopCsv(text: string): { items: ShopCsvItem[]; problems: Sh
 			problems.push({ line: 1, message: `Unknown column "${h.trim()}". Columns are: ${SHOP_CSV_COLUMNS.join(", ")}.` })
 		}
 	}
-	const missing = REQUIRED.filter((c) => !columns.includes(c))
+	const missing = REQUIRED.filter(c => !columns.includes(c))
 	if (missing.length > 0)
 		problems.push({ line: 1, message: `Missing column${missing.length > 1 ? "s" : ""}: ${missing.join(", ")}.` })
 	if (problems.length > 0) return { items: [], problems }
@@ -187,9 +187,9 @@ export function parseShopCsv(text: string): { items: ShopCsvItem[]; problems: Sh
 		const cost = cell("cost").trim()
 		const image = cell("image").trim()
 		const parsed = shopItemSchema.safeParse({
+			description: cell("description").trim(),
 			id: cell("slug").trim(),
 			name: cell("name").trim(),
-			description: cell("description").trim(),
 			priceCredits: num(cell("price")),
 			...(categoryValue ? { category: categoryValue } : {}),
 			costUsd: cost === "" ? null : num(cost),
@@ -200,8 +200,8 @@ export function parseShopCsv(text: string): { items: ShopCsvItem[]; problems: Sh
 		if (!parsed.success) {
 			for (const issue of parsed.error.issues) {
 				const field =
-					{ id: "slug", priceCredits: "price", costUsd: "cost", imageUrl: "image" }[String(issue.path[0])] ??
-					String(issue.path[0] ?? "row")
+					{ costUsd: "cost", id: "slug", imageUrl: "image", priceCredits: "price" }[String(issue.path[0])]
+					?? String(issue.path[0] ?? "row")
 				say(`${field}: ${issue.message}`)
 			}
 			continue

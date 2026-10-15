@@ -26,9 +26,9 @@ export function GrantForm({
 			"send",
 			() =>
 				sendJson<{ alreadySent?: boolean }>(`/api/admin/theme-projects/${projectId}/grant`, {
-					body: { phase: "DESIGN", grantUrl },
+					body: { grantUrl, phase: "DESIGN" },
 				}),
-			(data) => {
+			data => {
 				setMessage(data.alreadySent ? "already sent" : "sent")
 				setGrantUrl("")
 			},
@@ -38,14 +38,14 @@ export function GrantForm({
 	return (
 		<span className="hl-stack hl-stack--tight">
 			<input
+				aria-label="HCB grant link"
 				className="hl-input"
+				disabled={busy !== null}
+				onChange={e => setGrantUrl(e.target.value)}
 				placeholder="hcb.hackclub.com/grants/…"
 				value={grantUrl}
-				onChange={(e) => setGrantUrl(e.target.value)}
-				disabled={busy !== null}
-				aria-label="HCB grant link"
 			/>
-			<Button variant="primary" disabled={busy !== null || !grantUrl.trim()} onClick={send}>
+			<Button disabled={busy !== null || !grantUrl.trim()} onClick={send} variant="primary">
 				{busy ? "Sending…" : `Send $${amountUsd}`}
 			</Button>
 			{error ? <Callout tone="danger">{error}</Callout> : null}

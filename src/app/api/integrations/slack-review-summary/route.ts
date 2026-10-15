@@ -30,9 +30,9 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 	await postSlackOrThrow(channel, await buildReviewSummary(stats))
 
 	await recordSyncRun("project_review_summary", {
-		submitted: stats.submitted,
 		reviewed: stats.reviewed,
 		reviewers: stats.leaderboard.length,
+		submitted: stats.submitted,
 	})
-	return ok({ posted: true, channel, submitted: stats.submitted, reviewed: stats.reviewed })
+	return ok({ channel, posted: true, reviewed: stats.reviewed, submitted: stats.submitted })
 })

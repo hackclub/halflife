@@ -75,14 +75,14 @@ export function hcaEndpoints(): Promise<HcaEndpoints> {
 async function resolveHcaEndpoints(): Promise<HcaEndpoints> {
 	const staticEndpoints: HcaEndpoints = {
 		authorizationUrl: process.env.HCA_AUTHORIZATION_URL ?? "https://auth.hackclub.com/oauth/authorize",
+		discovered: false,
+		issuer: process.env.HCA_ISSUER ?? "https://auth.hackclub.com",
+		jwksUrl: process.env.HCA_JWKS_URL ?? "https://auth.hackclub.com/oauth/discovery/keys",
 		tokenUrl: process.env.HCA_TOKEN_URL ?? "https://auth.hackclub.com/oauth/token",
 		userinfoUrl: process.env.HCA_USERINFO_URL ?? "https://auth.hackclub.com/oauth/userinfo",
-		jwksUrl: process.env.HCA_JWKS_URL ?? "https://auth.hackclub.com/oauth/discovery/keys",
-		issuer: process.env.HCA_ISSUER ?? "https://auth.hackclub.com",
-		discovered: false,
 	}
 	try {
-		const res = await fetchWithRetry(DISCOVERY_URL, { signal: AbortSignal.timeout(TIMEOUT_MS), retries: 2 })
+		const res = await fetchWithRetry(DISCOVERY_URL, { retries: 2, signal: AbortSignal.timeout(TIMEOUT_MS) })
 		if (!res.ok) {
 			console.warn(`[hca] discovery returned ${res.status}; using the built-in endpoints`)
 			return staticEndpoints
@@ -97,11 +97,11 @@ async function resolveHcaEndpoints(): Promise<HcaEndpoints> {
 		return {
 			// Each field falls back on its own, so a partial document still helps.
 			authorizationUrl: config.authorization_endpoint ?? staticEndpoints.authorizationUrl,
+			discovered: true,
+			issuer: config.issuer ?? staticEndpoints.issuer,
+			jwksUrl: config.jwks_uri ?? staticEndpoints.jwksUrl,
 			tokenUrl: config.token_endpoint ?? staticEndpoints.tokenUrl,
 			userinfoUrl: config.userinfo_endpoint ?? staticEndpoints.userinfoUrl,
-			jwksUrl: config.jwks_uri ?? staticEndpoints.jwksUrl,
-			issuer: config.issuer ?? staticEndpoints.issuer,
-			discovered: true,
 		}
 	} catch (err) {
 		console.warn("[hca] discovery fetch failed; using the built-in endpoints:", err)
@@ -117,8 +117,8 @@ async function getJson(url: string, accessToken: string): Promise<Record<string,
 	try {
 		// Retried, like the forges' identity calls (lib/fetch-retry). A dropped packet here used to abort the OAuth callback with a raw TimeoutError.
 		const res = await fetchWithRetry(url, {
-			headers: { Authorization: `Bearer ${accessToken}` },
 			cache: "no-store",
+			headers: { Authorization: `Bearer ${accessToken}` },
 			signal: AbortSignal.timeout(TIMEOUT_MS),
 		})
 		if (!res.ok) {
@@ -137,15 +137,15 @@ const str = (v: unknown): string | null => (typeof v === "string" && v.trim() ? 
 /** The address to ship to: the one marked primary, else the first. */
 function addressFrom(me: Record<string, unknown> | null, userinfo: Record<string, unknown> | null): HcaAddress | null {
 	const list = Array.isArray(me?.addresses) ? (me.addresses as Record<string, unknown>[]) : []
-	const a = list.find((x) => x?.primary === true) ?? list[0]
+	const a = list.find(x => x?.primary === true) ?? list[0]
 	if (a) {
 		return {
+			city: str(a.city),
+			country: str(a.country),
 			line1: str(a.line_1),
 			line2: str(a.line_2),
-			city: str(a.city),
 			state: str(a.state),
 			zip: str(a.postal_code),
-			country: str(a.country),
 		}
 	}
 	// The standard OIDC claim, when the `address` scope puts it there instead.
@@ -153,12 +153,12 @@ function addressFrom(me: Record<string, unknown> | null, userinfo: Record<string
 	if (o && typeof o === "object") {
 		const [line1, ...more] = (str(o.street_address) ?? "").split(/\r?\n/)
 		return {
+			city: str(o.locality),
+			country: str(o.country),
 			line1: str(line1),
 			line2: str(more.join(", ")),
-			city: str(o.locality),
 			state: str(o.region),
 			zip: str(o.postal_code),
-			country: str(o.country),
 		}
 	}
 	return null
@@ -177,18 +177,18 @@ export async function fetchHcaIdentity(accessToken: string): Promise<HcaIdentity
 		str(userinfo?.name) ?? ([str(userinfo?.given_name), str(userinfo?.family_name)].filter(Boolean).join(" ") || null)
 
 	return {
-		sub: str(userinfo?.sub) ?? str(me?.id),
+		address: addressFrom(me, userinfo),
+		birthdate: str(userinfo?.birthdate) ?? str(me?.birthday),
 		email,
 		// HCA signs people in by emailing them a code, so the address it holds is one they have proven they read. The explicit claim wins when present.
 		emailVerified: typeof userinfo?.email_verified === "boolean" ? userinfo.email_verified : email !== null,
+		image: str(userinfo?.picture),
 		name,
 		// The `profile` scope's nickname claim. HCA answers it from its own name field, and `/api/v1/me` carries no equivalent, so unlike the others there is no second endpoint to fall back to – a missing one leaves null and the display falls back to `name`.
 		nickname: str(userinfo?.nickname),
-		image: str(userinfo?.picture),
 		slackId: str(userinfo?.slack_id) ?? str(me?.slack_id),
+		sub: str(userinfo?.sub) ?? str(me?.id),
 		verificationStatus: str(userinfo?.verification_status) ?? str(me?.verification_status),
-		address: addressFrom(me, userinfo),
-		birthdate: str(userinfo?.birthdate) ?? str(me?.birthday),
 	}
 }
 
@@ -224,14 +224,14 @@ export function encryptedFieldsFrom(identity: HcaIdentity): Record<string, strin
 export async function adoptHcaVerifiedEmail(email: string, emailVerified: boolean): Promise<boolean> {
 	if (!emailVerified) return false
 	const user = await prisma.user.findFirst({
+		select: { emailVerified: true, id: true },
 		where: { email: { equals: email, mode: "insensitive" } },
-		select: { id: true, emailVerified: true },
 	})
 	if (!user || user.emailVerified) return false
 	// An already-linked account proves its own ownership; adopting onto it would let an admin-typed address be re-verified, so only account-less (staff-import) rows are repaired here.
 	const accountCount = await prisma.account.count({ where: { userId: user.id } })
 	if (accountCount > 0) return false
-	await prisma.user.update({ where: { id: user.id }, data: { emailVerified: true } })
+	await prisma.user.update({ data: { emailVerified: true }, where: { id: user.id } })
 	return true
 }
 
@@ -245,8 +245,8 @@ export async function syncHcaProfile(userId: string): Promise<string | null> {
 		// Imported here, not at the top: lib/auth calls this from its own hooks.
 		const { auth } = await import("@/lib/auth")
 		const account = await prisma.account.findFirst({
-			where: { userId, providerId: "hca" },
 			select: { id: true },
+			where: { providerId: "hca", userId },
 		})
 		if (!account) return null
 		// Refreshes the token first if it has expired. No request headers, so better-auth takes this as the trusted server-side call it is.
@@ -255,7 +255,6 @@ export async function syncHcaProfile(userId: string): Promise<string | null> {
 
 		const identity = await fetchHcaIdentity(accessToken)
 		await prisma.user.update({
-			where: { id: userId },
 			data: {
 				// Only what HCA actually said: a missing field leaves the stored value.
 				...(identity.verificationStatus ? { verificationStatus: identity.verificationStatus } : {}),
@@ -263,12 +262,13 @@ export async function syncHcaProfile(userId: string): Promise<string | null> {
 				...(identity.nickname ? { displayName: identity.nickname } : {}),
 				...encryptedFieldsFrom(identity),
 			},
+			where: { id: userId },
 		})
 		// Apart, because slackId is unique: a clash with another row must not cost this user their verification status.
 		if (identity.slackId) {
 			await prisma.user
-				.update({ where: { id: userId }, data: { slackId: identity.slackId } })
-				.catch((err) => console.warn(`[hca] slack id for ${userId} not stored:`, err))
+				.update({ data: { slackId: identity.slackId }, where: { id: userId } })
+				.catch(err => console.warn(`[hca] slack id for ${userId} not stored:`, err))
 		}
 		return identity.verificationStatus
 	} catch (err) {
@@ -284,7 +284,7 @@ export async function syncHcaProfile(userId: string): Promise<string | null> {
  */
 export async function isIdentityVerified(userId: string): Promise<boolean> {
 	if (process.env.SKIP_YSWS_VERIFICATION_CHECK === "true") return true
-	const user = await prisma.user.findUnique({ where: { id: userId }, select: { verificationStatus: true } })
+	const user = await prisma.user.findUnique({ select: { verificationStatus: true }, where: { id: userId } })
 	if (user?.verificationStatus === "verified") return true
 	return (await syncHcaProfile(userId)) === "verified"
 }

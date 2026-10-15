@@ -73,9 +73,9 @@ async function respondEphemeral(responseUrl: string, text: string) {
 
 	try {
 		await fetch(target, {
-			method: "POST",
+			body: JSON.stringify({ replace_original: false, response_type: "ephemeral", text }),
 			headers: { "content-type": "application/json" },
-			body: JSON.stringify({ response_type: "ephemeral", replace_original: false, text }),
+			method: "POST",
 			signal: AbortSignal.timeout(10_000),
 		})
 	} catch (err) {
@@ -106,9 +106,9 @@ async function reactResolved(ref: Partial<TicketRef>) {
 function reopenRefFrom(ref: Partial<TicketRef & { ticketsChannel: string }>) {
 	return ref.authorId && ref.helpChannel && ref.helpTs && ref.ticketsChannel
 		? {
+				authorId: ref.authorId,
 				helpChannel: ref.helpChannel,
 				helpTs: ref.helpTs,
-				authorId: ref.authorId,
 				permalink: ref.permalink ?? null,
 				ticketsChannel: ref.ticketsChannel,
 			}
@@ -357,25 +357,25 @@ async function handleReopen(payload: InteractionPayload, action: BlockAction) {
 	try {
 		const priorTickets = Math.max(0, (await countPriorHelpTickets(ref.authorId)) - 1)
 		const threadRef = {
+			authorId: ref.authorId,
 			helpChannel: ref.helpChannel,
 			helpTs: ref.helpTs,
-			authorId: ref.authorId,
 			permalink: ref.permalink ?? null,
 		}
 		const mirrorBlocks: SlackBlock[] = [ticketSection(threadRef)]
 		mirrorBlocks.push(ticketHistory(ref.authorId, priorTickets))
 		mirrorBlocks.push({
-			type: "actions",
 			block_id: TICKET_ACTIONS_BLOCK_ID,
 			elements: [
 				{
-					type: "button",
-					text: { type: "plain_text", text: MARK_HELPED_BUTTON, emoji: true },
-					style: "primary",
 					action_id: "mark_helped",
+					style: "primary",
+					text: { emoji: true, text: MARK_HELPED_BUTTON, type: "plain_text" },
+					type: "button",
 					value: JSON.stringify(threadRef),
 				},
 			],
+			type: "actions",
 		})
 		const mirror = await postMessage(
 			ticketsChannel,
@@ -395,9 +395,9 @@ async function handleReopen(payload: InteractionPayload, action: BlockAction) {
 
 	// The thread goes back to exactly the open state: reminders-era buttons rebuilt with the fresh mirror reference, reopen button and resolved note stripped.
 	const threadRef = {
+		authorId: ref.authorId,
 		helpChannel: ref.helpChannel,
 		helpTs: ref.helpTs,
-		authorId: ref.authorId,
 		permalink: ref.permalink ?? null,
 		ticketsChannel,
 		...(ticketsTs ? { ticketsTs } : {}),

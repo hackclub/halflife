@@ -22,7 +22,7 @@ import flagArt from "../../../public/art/hackclub-flag.svg"
  *
  * Everything set on the plate scales by the same factor and moves with it, so the comp's internal composition survives intact at a smaller size rather than being re-fitted by hand: offsets are still measured from the comp's own plate origin, and only where that origin lands has changed. Every number below is still the literal Figma pixel DESIGN.md says it is.
  */
-const PLATE = { x: 276, y: 98, w: 1256, h: 677 } as const
+const PLATE = { h: 677, w: 1256, x: 276, y: 98 } as const
 const PLATE_SCALE = 864 / PLATE.w
 const PLATE_W = PLATE.w * PLATE_SCALE
 const PLATE_H = PLATE.h * PLATE_SCALE
@@ -96,8 +96,8 @@ const TAGLINE_RUN = 830
  * `minHeight`, not `height`: at the comp's 466 a wordmark this size spilled out of its grid row and into the scroll cue's. The width is the comp's half-grid plate outright, and deliberately not the mark's: the column has to hold a 585 tagline and a 596 form whatever the wordmark above them is doing, so a mark taken below the column's width shrinks alone rather than crushing the two rows under it.
  */
 const PLATE_SIZE = {
-	width: u(PLATE_W),
 	minHeight: u(PLATE_H),
+	width: u(PLATE_W),
 } as const
 
 /** A comp length on the plate. */
@@ -114,7 +114,7 @@ function onPlateU(px: number) {
  */
 export default function Hero() {
 	return (
-		<section id="signup" className="relative z-10 isolate">
+		<section className="relative z-10 isolate" id="signup">
 			<HeroArt />
 			<HackClubFlag />
 			<LoginMark />
@@ -173,7 +173,7 @@ export default function Hero() {
               to the cap and 35% of the composition after it. `fontSize` is
               still here for the live-type branch, which renders if LOGO_SRC is
               ever cleared again. */}
-					<Wordmark as="h1" art artWidth={LOGO_STAGE_W} fontSize={onPlateU(226.768)} className="w-full" />
+					<Wordmark art artWidth={LOGO_STAGE_W} as="h1" className="w-full" fontSize={onPlateU(226.768)} />
 
 					{/* One line, and sized so it stays one line.
 
@@ -223,10 +223,6 @@ export default function Hero() {
               sits below it: the same 48 the counter used to stand off the mark
               by, so the mark and the ask keep the distance they had. */}
 					<SignupForm
-						style={{
-							marginTop: onPlateU(48),
-							width: u(swashBoxWidth(TAGLINE_RUN)),
-						}}
 						fontSize={onPlateU(30)}
 						intro={
 							<p
@@ -236,6 +232,10 @@ export default function Hero() {
 								{BRAND.tagline}
 							</p>
 						}
+						style={{
+							marginTop: onPlateU(48),
+							width: u(swashBoxWidth(TAGLINE_RUN)),
+						}}
 					/>
 
 					{/* The social proof, under the ask: below the field and below the
@@ -250,10 +250,10 @@ export default function Hero() {
               puts it in the tagline's company (32.8) rather than the eligibility
               note's. Social proof that is quieter than the fine print is not
               doing the job it is here for – least of all directly under it. */}
-					<SignupCounter style={{ marginTop: onPlateU(40), fontSize: onPlateU(42) }} />
+					<SignupCounter style={{ fontSize: onPlateU(42), marginTop: onPlateU(40) }} />
 				</div>
 
-				<ScrollCue className="row-start-3 self-end" style={{ marginBottom: u(56) }} fontSize={u(22)} />
+				<ScrollCue className="row-start-3 self-end" fontSize={u(22)} style={{ marginBottom: u(56) }} />
 			</div>
 
 			{/* ── Stacked layout, below 1180px ───────────────────────────────── */}
@@ -302,13 +302,13 @@ export default function Hero() {
                 width is a custom property because `artWidth` is an inline
                 style, which cannot change at a breakpoint. */}
 						<Wordmark
-							as="h1"
 							art
 							artWidth="var(--logo-w)"
-							sizes="(min-width: 640px) 269px, 95vw"
-							fontSize="clamp(3.2rem, 15vw, 7.5rem)"
+							as="h1"
 							// The 42vw / 16.8rem is the tablet width argued for above.
 							className="left-1/2 w-[95vw] -translate-x-1/2 [--logo-w:100%] sm:left-auto sm:w-full sm:translate-x-0 sm:[--logo-w:min(42vw,16.8rem)]"
+							fontSize="clamp(3.2rem, 15vw, 7.5rem)"
+							sizes="(min-width: 640px) 269px, 95vw"
 						/>
 						<SignupForm
 							className="mt-5"
@@ -375,9 +375,9 @@ function ScrollCue({
 }) {
 	return (
 		<a
-			href="#how-it-works"
 			// `py-1.5` is the tap target, not spacing: the word is a 16-22px line, and 12px of vertical padding is what takes the box past the 24px floor.
 			className={`inline-block px-2 py-1.5 font-display font-bold uppercase text-hl-paper decoration-hl-cyan decoration-2 underline-offset-[0.3em] hover:underline ${className}`}
+			href="#how-it-works"
 			style={{ ...style, fontSize, letterSpacing: "0.14em" }}
 		>
 			{children}
@@ -397,12 +397,12 @@ function ScrollCue({
 function HackClubFlag() {
 	return (
 		<a
-			href="https://hackclub.com"
-			target="_blank"
-			rel="noopener noreferrer"
 			className="absolute top-1 left-1 z-20 w-[clamp(6.5rem,11vw,10rem)]"
+			href="https://hackclub.com"
+			rel="noopener noreferrer"
+			target="_blank"
 		>
-			<Image src={flagArt} alt="Hack Club" priority className="w-full" />
+			<Image alt="Hack Club" className="w-full" priority src={flagArt} />
 		</a>
 	)
 }
@@ -439,20 +439,20 @@ function HeroArt() {
             at the size of its box by a rule worth stating rather than leaning
             on silently. `-webkit-` alongside, for Safari before 15.4. */}
 				<Image
-					src={bgArt}
 					alt=""
+					className="object-cover"
 					fill
 					priority
-					sizes="100vw"
 					quality={90}
-					className="object-cover"
+					sizes="100vw"
+					src={bgArt}
 					style={{
 						maskImage: ART_FADE,
-						maskSize: "100% 100%",
 						maskRepeat: "no-repeat",
+						maskSize: "100% 100%",
 						WebkitMaskImage: ART_FADE,
-						WebkitMaskSize: "100% 100%",
 						WebkitMaskRepeat: "no-repeat",
+						WebkitMaskSize: "100% 100%",
 					}}
 				/>
 			</div>

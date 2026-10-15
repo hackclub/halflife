@@ -13,12 +13,12 @@ export function PlausibleAnalytics() {
 			<Script src="https://plausible.io/js/pa-2AUFAV5QT0nnEWNJcAR12.js" strategy="afterInteractive" />
 			{/* Plausible's fixed init stub; nothing from a user goes into it. */}
 			<Script
-				id="plausible-init"
-				strategy="afterInteractive"
 				dangerouslySetInnerHTML={{
 					__html:
 						"window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init()",
 				}}
+				id="plausible-init"
+				strategy="afterInteractive"
 			/>
 		</>
 	)

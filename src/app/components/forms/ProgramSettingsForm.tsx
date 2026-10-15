@@ -29,121 +29,121 @@ export function ProgramSettingsForm({
 			"submit",
 			() =>
 				sendJson("/api/admin/program", {
-					method: "PATCH",
 					// The start date has its own form (ProgramStartForm): moving it moves every week's lock, so it is not something to change in passing.
 					body: {
+						airtableSyncEnabled: form.airtableSyncEnabled,
 						programTimezone: form.programTimezone,
-						submissionsOpen: form.submissionsOpen,
-						submissionsCloseAt: form.submissionsCloseAt ? new Date(`${form.submissionsCloseAt}Z`).toISOString() : null,
-						shopOpen: form.shopOpen,
+						repoSyncEnabled: form.repoSyncEnabled,
+						reviewClaimTtlMinutes: Number(form.reviewClaimTtlMinutes),
 						shopClosesAt: form.shopClosesAt ? new Date(`${form.shopClosesAt}Z`).toISOString() : null,
 						shopGraceDays: Number(form.shopGraceDays),
-						reviewClaimTtlMinutes: Number(form.reviewClaimTtlMinutes),
-						airtableSyncEnabled: form.airtableSyncEnabled,
-						repoSyncEnabled: form.repoSyncEnabled,
+						shopOpen: form.shopOpen,
+						submissionsCloseAt: form.submissionsCloseAt ? new Date(`${form.submissionsCloseAt}Z`).toISOString() : null,
+						submissionsOpen: form.submissionsOpen,
 					},
+					method: "PATCH",
 				}),
 			() => setSaved(true),
 		)
 	}
 
 	return (
-		<form onSubmit={submit} className="hl-stack hl-stack--tight">
+		<form className="hl-stack hl-stack--tight" onSubmit={submit}>
 			{error ? <Callout tone="danger">{error}</Callout> : null}
 			{saved ? <Callout>Saved.</Callout> : null}
 
-			<Field label="Timezone" hint="Used for week boundaries and journal dates.">
+			<Field hint="Used for week boundaries and journal dates." label="Timezone">
 				<input
 					className="hl-input"
+					onChange={e => setForm({ ...form, programTimezone: e.target.value })}
 					value={form.programTimezone}
-					onChange={(e) => setForm({ ...form, programTimezone: e.target.value })}
 				/>
 			</Field>
 
 			<label className="hl-row" style={{ gap: "0.5rem" }}>
 				<input
-					type="checkbox"
 					checked={form.submissionsOpen}
-					onChange={(e) => setForm({ ...form, submissionsOpen: e.target.checked })}
+					onChange={e => setForm({ ...form, submissionsOpen: e.target.checked })}
+					type="checkbox"
 				/>
 				<span>Submissions open</span>
 			</label>
 
 			<Field
-				label="Submissions close (UTC, optional)"
 				hint="Closes submissions at this instant even while the toggle is on. Blank never closes."
+				label="Submissions close (UTC, optional)"
 			>
 				<input
 					className="hl-input"
+					onChange={e => setForm({ ...form, submissionsCloseAt: e.target.value || null })}
 					type="datetime-local"
 					value={form.submissionsCloseAt ?? ""}
-					onChange={(e) => setForm({ ...form, submissionsCloseAt: e.target.value || null })}
 				/>
 			</Field>
 
 			<label className="hl-row" style={{ gap: "0.5rem" }}>
 				<input
-					type="checkbox"
 					checked={form.shopOpen}
-					onChange={(e) => setForm({ ...form, shopOpen: e.target.checked })}
+					onChange={e => setForm({ ...form, shopOpen: e.target.checked })}
+					type="checkbox"
 				/>
 				<span>Shop open</span>
 			</label>
 
 			<Field
-				label="Shop closes (UTC, optional)"
 				hint="Closes the shop at this instant; the grace window still applies after a review."
+				label="Shop closes (UTC, optional)"
 			>
 				<input
 					className="hl-input"
+					onChange={e => setForm({ ...form, shopClosesAt: e.target.value || null })}
 					type="datetime-local"
 					value={form.shopClosesAt ?? ""}
-					onChange={(e) => setForm({ ...form, shopClosesAt: e.target.value || null })}
 				/>
 			</Field>
 
 			<label className="hl-row" style={{ gap: "0.5rem" }}>
 				<input
-					type="checkbox"
 					checked={form.airtableSyncEnabled}
-					onChange={(e) => setForm({ ...form, airtableSyncEnabled: e.target.checked })}
+					onChange={e => setForm({ ...form, airtableSyncEnabled: e.target.checked })}
+					type="checkbox"
 				/>
 				<span>Push approvals to Airtable</span>
 			</label>
 
 			<label className="hl-row" style={{ gap: "0.5rem" }}>
 				<input
-					type="checkbox"
 					checked={form.repoSyncEnabled}
-					onChange={(e) => setForm({ ...form, repoSyncEnabled: e.target.checked })}
+					onChange={e => setForm({ ...form, repoSyncEnabled: e.target.checked })}
+					type="checkbox"
 				/>
 				<span>Sync devlogs and BOMs to repos</span>
 			</label>
 
-			<Field label="Shop grace days" hint="How long the shop stays open after someone's last review.">
+			<Field hint="How long the shop stays open after someone's last review." label="Shop grace days">
 				<input
 					className="hl-input"
-					type="number"
-					min="0"
 					max="90"
+					min="0"
+					onChange={e => setForm({ ...form, shopGraceDays: Number(e.target.value) })}
+					type="number"
 					value={form.shopGraceDays}
-					onChange={(e) => setForm({ ...form, shopGraceDays: Number(e.target.value) })}
 				/>
 			</Field>
 
 			<Field label="Review claim TTL (minutes)">
 				<input
 					className="hl-input"
-					type="number"
-					min="5"
 					max="240"
+					min="5"
+					onChange={e => setForm({ ...form, reviewClaimTtlMinutes: Number(e.target.value) })}
+					type="number"
 					value={form.reviewClaimTtlMinutes}
-					onChange={(e) => setForm({ ...form, reviewClaimTtlMinutes: Number(e.target.value) })}
 				/>
 			</Field>
 
 			<div>
-				<Button type="submit" variant="primary" disabled={busy !== null}>
+				<Button disabled={busy !== null} type="submit" variant="primary">
 					{busy ? "Saving…" : "Save settings"}
 				</Button>
 			</div>

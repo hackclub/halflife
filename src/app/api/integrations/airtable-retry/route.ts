@@ -24,9 +24,9 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 			"airtable",
 			{
 				actorId: null,
-				targetType: "ThemeProject",
-				targetId: item.themeProjectId,
 				metadata: { phase: item.phase, retry: true },
+				targetId: item.themeProjectId,
+				targetType: "ThemeProject",
 			},
 			() => syncSubmissionToYsws(item.themeProjectId, item.phase),
 		)
@@ -35,7 +35,7 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 		else synced++
 	}
 
-	const summary = { attempted: pending.length, synced, skipped, failed }
+	const summary = { attempted: pending.length, failed, skipped, synced }
 	await recordSyncRun("airtable_ysws", summary)
 	return ok(summary)
 })

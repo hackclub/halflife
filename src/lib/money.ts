@@ -10,6 +10,6 @@ export const round2 = (n: number): number => Math.round(n * 100) / 100
 /** Round to the cent, keeping null as "not set" – for a column that is genuinely absent rather than zero. */
 export const dollars = (n: number | null) => (n === null ? null : round2(n))
 
-const usdFormat = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" })
+const usdFormat = new Intl.NumberFormat("en-US", { currency: "USD", style: "currency" })
 
 export const formatUsd = (n: number) => usdFormat.format(n)

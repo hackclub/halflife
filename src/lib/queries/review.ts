@@ -42,22 +42,22 @@ export async function getReviewQueue(opts: {
 
 	const [rows, designCount, buildCount] = await Promise.all([
 		prisma.phaseSubmission.findMany({
-			where,
 			// Oldest first: a review queue that surfaces the newest work leaves the people who submitted first waiting longest.
 			orderBy: [{ createdAt: "asc" }, { id: "asc" }],
 			take: opts.limit + 1,
+			where,
 			...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
 			include: {
+				claim: { include: { reviewer: { select: { displayName: true, id: true, name: true } } } },
 				themeProject: {
 					select: {
 						id: true,
 						theme: true,
-						title: true,
 						tier: true,
-						user: { select: { id: true, name: true, displayName: true } },
+						title: true,
+						user: { select: { displayName: true, id: true, name: true } },
 					},
 				},
-				claim: { include: { reviewer: { select: { id: true, name: true, displayName: true } } } },
 			},
 		}),
 		prisma.phaseSubmission.count({ where: { ...where, phase: Phase.DESIGN } }),
@@ -70,23 +70,23 @@ export async function getReviewQueue(opts: {
 	const now = Date.now()
 
 	return {
-		items: page.map((row) => ({
+		counts: { build: buildCount, design: designCount },
+		items: page.map(row => ({
+			claimExpiresAt: row.claim?.expiresAt ?? null,
+			claimedBy: row.claim ? { id: row.claim.reviewer.id, name: displayName(row.claim.reviewer) } : null,
+			claimLive: !!row.claim && row.claim.expiresAt.getTime() > now,
 			id: row.id,
-			themeProjectId: row.themeProject.id,
-			phase: row.phase,
-			themeLabel: getThemeDef(row.themeProject.theme).label,
-			projectTitle: row.themeProject.title,
+			onTime: row.onTime,
 			participant: { ...row.themeProject.user, name: displayName(row.themeProject.user) },
+			phase: row.phase,
+			projectTitle: row.themeProject.title,
 			submittedAt: row.createdAt,
 			submittedInWeek: row.submittedInWeek,
-			onTime: row.onTime,
-			claimedBy: row.claim ? { id: row.claim.reviewer.id, name: displayName(row.claim.reviewer) } : null,
-			claimExpiresAt: row.claim?.expiresAt ?? null,
-			claimLive: !!row.claim && row.claim.expiresAt.getTime() > now,
+			themeLabel: getThemeDef(row.themeProject.theme).label,
+			themeProjectId: row.themeProject.id,
 			tier: row.themeProject.tier,
 		})),
 		nextCursor: hasMore && last ? last.id : null,
-		counts: { design: designCount, build: buildCount },
 	}
 }
 
@@ -117,26 +117,26 @@ export type SubmissionDetailView = {
 }
 
 const submissionDetailInclude = {
+	claim: { include: { reviewer: { select: { displayName: true, id: true, name: true } } } },
+	dispute: true,
+	reviews: {
+		include: { reviewer: { select: { displayName: true, id: true, name: true } } },
+		orderBy: { createdAt: "desc" },
+	},
 	themeProject: {
 		include: {
 			user: {
 				select: {
-					id: true,
-					name: true,
 					displayName: true,
 					email: true,
+					fraudFlagged: true,
+					id: true,
+					name: true,
 					slackId: true,
 					verificationStatus: true,
-					fraudFlagged: true,
 				},
 			},
 		},
-	},
-	claim: { include: { reviewer: { select: { id: true, name: true, displayName: true } } } },
-	dispute: true,
-	reviews: {
-		orderBy: { createdAt: "desc" },
-		include: { reviewer: { select: { id: true, name: true, displayName: true } } },
 	},
 } as const satisfies Prisma.PhaseSubmissionInclude
 
@@ -148,8 +148,8 @@ export async function getSubmissionDetail(
 	const includeContact = flags?.includeContact ?? false
 	const includeRiskFlags = flags?.includeRiskFlags ?? false
 	const submission = await prisma.phaseSubmission.findUnique({
-		where: { id: submissionId },
 		include: submissionDetailInclude,
+		where: { id: submissionId },
 	})
 	if (!submission) return null
 	// Your own work is not reviewable by you, so it is not visible here either. Null rather than a 403: the review surface should not confirm that this is a submission you merely lack rights over.
@@ -176,40 +176,40 @@ export async function getSubmissionDetail(
 	const [breakdown, sessions, links, priorReviews] = await Promise.all([
 		getHoursBreakdown(submission.themeProjectId, submission.phase, { live: false }),
 		prisma.workSession.findMany({
-			where: {
-				themeProjectId: submission.themeProjectId,
-				phase: submission.phase,
-				deletedAt: null,
-			},
-			orderBy: { createdAt: "asc" },
 			include: { media: true, timelapses: true },
+			orderBy: { createdAt: "asc" },
+			where: {
+				deletedAt: null,
+				phase: submission.phase,
+				themeProjectId: submission.themeProjectId,
+			},
 		}),
 		prisma.hackatimeLink.findMany({
-			where: { themeProjectId: submission.themeProjectId, phase: submission.phase },
+			where: { phase: submission.phase, themeProjectId: submission.themeProjectId },
 		}),
 		prisma.submissionReview.findMany({
-			where: { submission: { themeProjectId: submission.themeProjectId } },
-			orderBy: { createdAt: "desc" },
-			take: 20,
 			include: {
-				reviewer: { select: { name: true, displayName: true } },
+				reviewer: { select: { displayName: true, name: true } },
 				submission: { select: { phase: true } },
 			},
+			orderBy: { createdAt: "desc" },
+			take: 20,
+			where: { submission: { themeProjectId: submission.themeProjectId } },
 		}),
 	])
 
 	return {
-		submission,
-		claimLive: !!submission.claim && submission.claim.expiresAt.getTime() > Date.now(),
-		themeLabel: getThemeDef(submission.themeProject.theme).label,
-		coverImageUrl: publicUrlFor(submission.themeProject.coverImageKey),
 		breakdown,
-		sessions: sessions.map((s) => ({
-			...s,
-			media: s.media.map((m) => ({ ...m, url: publicUrlFor(m.objectKey) })),
-		})),
+		claimLive: !!submission.claim && submission.claim.expiresAt.getTime() > Date.now(),
+		coverImageUrl: publicUrlFor(submission.themeProject.coverImageKey),
 		links,
 		priorReviews,
+		sessions: sessions.map(s => ({
+			...s,
+			media: s.media.map(m => ({ ...m, url: publicUrlFor(m.objectKey) })),
+		})),
+		submission,
+		themeLabel: getThemeDef(submission.themeProject.theme).label,
 	}
 }
 
@@ -232,12 +232,11 @@ export type OpenDispute = {
  */
 export async function getOpenDisputes(): Promise<OpenDispute[]> {
 	const rows = await prisma.reviewDispute.findMany({
-		where: { resolvedAt: null },
 		orderBy: { createdAt: "asc" },
 		select: {
+			createdAt: true,
 			id: true,
 			note: true,
-			createdAt: true,
 			submission: {
 				select: {
 					id: true,
@@ -245,25 +244,26 @@ export async function getOpenDisputes(): Promise<OpenDispute[]> {
 					themeProject: {
 						select: {
 							id: true,
-							title: true,
 							theme: true,
-							user: { select: { name: true, displayName: true, email: true } },
+							title: true,
+							user: { select: { displayName: true, email: true, name: true } },
 						},
 					},
 				},
 			},
 		},
+		where: { resolvedAt: null },
 	})
 
-	return rows.map((d) => ({
+	return rows.map(d => ({
+		createdAt: d.createdAt,
 		id: d.id,
 		note: d.note,
-		createdAt: d.createdAt,
-		phase: d.submission.phase,
-		submissionId: d.submission.id,
-		themeProjectId: d.submission.themeProject.id,
-		projectTitle: projectDisplayTitle(d.submission.themeProject),
-		themeLabel: getThemeDef(d.submission.themeProject.theme).label,
 		participant: displayName(d.submission.themeProject.user, d.submission.themeProject.user.email),
+		phase: d.submission.phase,
+		projectTitle: projectDisplayTitle(d.submission.themeProject),
+		submissionId: d.submission.id,
+		themeLabel: getThemeDef(d.submission.themeProject.theme).label,
+		themeProjectId: d.submission.themeProject.id,
 	}))
 }

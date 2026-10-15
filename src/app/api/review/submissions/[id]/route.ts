@@ -15,9 +15,9 @@ export const GET = withRoute(async (_req: Request, { params }: Params) => {
 	const detail = await getSubmissionDetail(id, gate.user.id, {
 		includeContact: hasRole(gate.roles, Role.ADMIN) || hasRole(gate.roles, Role.AUDITOR),
 		includeRiskFlags:
-			hasRole(gate.roles, Role.ADMIN) ||
-			hasRole(gate.roles, Role.AUDITOR) ||
-			hasPermission(gate.roles, Permission.REVIEW_HOURS),
+			hasRole(gate.roles, Role.ADMIN)
+			|| hasRole(gate.roles, Role.AUDITOR)
+			|| hasPermission(gate.roles, Permission.REVIEW_HOURS),
 	})
 	if (!detail) return fail("NOT_FOUND", "Submission not found")
 	return ok(detail)

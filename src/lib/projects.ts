@@ -39,7 +39,7 @@ export type ProjectEvent =
 export function projectWeeks(project: Project, weeks: Week[]): Week[] {
 	// A warm-up project has no curriculum week. Empty rather than "week 0 plus its build week": week 0 + DESIGN_WEEKS is week 5, the breadboard design week, and gathering its checkpoints would put a stranger's trail events on the warm-up card.
 	const ids = project.weekId === WARMUP_WEEK_ID ? [] : [project.weekId, project.weekId + DESIGN_WEEKS]
-	return weeks.filter((w) => ids.includes(w.id))
+	return weeks.filter(w => ids.includes(w.id))
 }
 
 /**
@@ -57,26 +57,26 @@ export function projectEvents(project: Project, weeks: Week[], read: (id: string
 			if (cp.kind === "journal") {
 				for (const entry of state.log) {
 					out.push({
-						kind: "session",
-						id: entry.id,
 						// Sessions written before entries were dated carry no time. Zero rather than undefined, or the subtraction below goes NaN and takes the whole ordering with it.
 						at: entry.at ?? 0,
-						weekId: week.id,
-						minutes: entry.minutes,
 						body: entry.body,
 						clips: entry.clips ?? [],
+						id: entry.id,
+						kind: "session",
+						minutes: entry.minutes,
+						weekId: week.id,
 					})
 				}
 			} else if (cp.kind === "reel" && state.done) {
 				out.push({
-					kind: "reel",
-					id: cp.id,
 					// Saves written before completions were dated have no time on them. Nothing sensible orders them, so they sort to the bottom rather than claiming the top with a zero.
 					at: state.at ?? 0,
-					weekId: week.id,
-					title: cp.title,
-					caption: state.caption ?? "",
 					brief: cp.reelBrief ?? "",
+					caption: state.caption ?? "",
+					id: cp.id,
+					kind: "reel",
+					title: cp.title,
+					weekId: week.id,
 				})
 			}
 		}
@@ -92,13 +92,13 @@ export function projectStats(events: ProjectEvent[]): {
 	hours: number
 	started: number
 } {
-	const sessions = events.filter((e) => e.kind === "session")
+	const sessions = events.filter(e => e.kind === "session")
 	const minutes = sessions.reduce((n, e) => n + (e.kind === "session" ? e.minutes : 0), 0)
 	const started = events[events.length - 1]?.at ?? 0
 	return {
-		sessions: sessions.length,
-		reels: events.length - sessions.length,
 		hours: minutes / 60,
+		reels: events.length - sessions.length,
+		sessions: sessions.length,
 		started,
 	}
 }

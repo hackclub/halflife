@@ -47,7 +47,7 @@ async function countAirtableRecords(url: string, headers: Record<string, string>
 	let count = 0
 	let offset: string | undefined
 	do {
-		const params = new URLSearchParams({ pageSize: "100", "fields[]": "email" })
+		const params = new URLSearchParams({ "fields[]": "email", pageSize: "100" })
 		if (offset) params.set("offset", offset)
 		const res = await fetch(`${url}?${params.toString()}`, { headers })
 		if (!res.ok) throw new Error(`${res.status} ${await res.text()}`)
@@ -74,8 +74,8 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 		const table = encodeURIComponent(process.env.AIRTABLE_TABLE_NAME ?? process.env.AIRTABLE_RSVP_TABLE_ID ?? "Signups")
 		const url = `https://api.airtable.com/v0/${airtableBase}/${table}`
 		const headers = {
-			"content-type": "application/json",
 			authorization: `Bearer ${airtableToken}`,
+			"content-type": "application/json",
 		}
 
 		/**
@@ -95,12 +95,12 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 			} catch (err) {
 				console.error("[signup] buffering the signup also failed:", err)
 				return {
+					error: "We couldn't reach the signup list. Try again in a moment.",
 					ok: false,
 					status: 502,
-					error: "We couldn't reach the signup list. Try again in a moment.",
 				}
 			}
-			return { ok: true, duplicate: false, referralCode: "" }
+			return { duplicate: false, ok: true, referralCode: "" }
 		}
 
 		// Airtable has no unique-field constraint to lean on, so duplicates are caught with a lookup before the write – same contract the other two sinks give the caller.
@@ -123,8 +123,8 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 			if (duplicateId) {
 				await recordDirectSignup({
 					email,
-					recordId: duplicateId,
 					ip,
+					recordId: duplicateId,
 					...(ref ? { referredBy: ref } : {}),
 					...(utmSource ? { utmSource } : {}),
 					...(userId ? { userId } : {}),
@@ -133,8 +133,8 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 			// The column the number is written to below; there is no `referral_code`, so reading that handed returning people a blank.
 			const existing = found.records?.[0]?.fields?.["Loops - halfLifeReferralNumber"]
 			return {
-				ok: true,
 				duplicate: true,
+				ok: true,
 				referralCode: existing == null ? "" : String(existing),
 			}
 		}
@@ -148,19 +148,19 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 		}
 
 		const response = await fetch(url, {
-			method: "POST",
-			headers,
 			body: JSON.stringify({
 				fields: {
 					email,
 					ip,
 					"Loops - halfLifeReferralNumber": referralCode,
 					referred_by: ref ?? undefined,
-					utm_source: utmSource ?? undefined,
-					utm_medium: utmMedium ?? undefined,
 					utm_campaign: utmCampaign ?? undefined,
+					utm_medium: utmMedium ?? undefined,
+					utm_source: utmSource ?? undefined,
 				},
 			}),
+			headers,
+			method: "POST",
 		})
 
 		if (!response.ok) {
@@ -173,8 +173,8 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 			if (created.id) {
 				await recordDirectSignup({
 					email,
-					recordId: created.id,
 					ip,
+					recordId: created.id,
 					...(ref ? { referredBy: ref } : {}),
 					...(utmSource ? { utmSource } : {}),
 					...(userId ? { userId } : {}),
@@ -183,7 +183,7 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 		} catch (err) {
 			console.error("[signup] remembering the direct-write row failed:", err)
 		}
-		return { ok: true, duplicate: false, referralCode }
+		return { duplicate: false, ok: true, referralCode }
 	}
 
 	const webhook = process.env.SIGNUP_WEBHOOK_URL
@@ -193,31 +193,31 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 		const entry = {
 			email,
 			ip,
-			source,
-			referralCode,
 			ref,
-			utmSource,
-			utmMedium,
+			referralCode,
+			source,
 			utmCampaign,
+			utmMedium,
+			utmSource,
 		}
 		const token = process.env.SIGNUP_WEBHOOK_TOKEN
 		const response = await fetch(webhook, {
-			method: "POST",
+			body: JSON.stringify(entry),
 			headers: {
 				"content-type": "application/json",
 				...(token ? { authorization: `Bearer ${token}` } : {}),
 			},
-			body: JSON.stringify(entry),
+			method: "POST",
 		})
 
 		if (!response.ok) {
 			return {
+				error: "We couldn't reach the signup list. Try again in a moment.",
 				ok: false,
 				status: 502,
-				error: "We couldn't reach the signup list. Try again in a moment.",
 			}
 		}
-		return { ok: true, duplicate: false, referralCode }
+		return { duplicate: false, ok: true, referralCode }
 	}
 
 	await mkdir(STORE_DIR, { recursive: true })
@@ -228,7 +228,7 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 	try {
 		const lines = (await readFile(STORE_FILE, "utf8")).split("\n").filter(Boolean)
 		lineCount = lines.length
-		const match = lines.find((line) => line.includes(`"email":"${email}"`))
+		const match = lines.find(line => line.includes(`"email":"${email}"`))
 		if (match) {
 			duplicate = true
 			try {
@@ -246,17 +246,17 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 		const entry = {
 			email,
 			ip,
-			source,
-			referralCode,
 			ref,
-			utmSource,
-			utmMedium,
+			referralCode,
+			source,
 			utmCampaign,
+			utmMedium,
+			utmSource,
 		}
 		await appendFile(STORE_FILE, `${JSON.stringify(entry)}\n`, "utf8")
 	}
 
-	return { ok: true, duplicate, referralCode }
+	return { duplicate, ok: true, referralCode }
 }
 
 /**
@@ -270,7 +270,7 @@ export function clientIp(h: { get(name: string): string | null }): string {
 	const forwarded = h.get("x-forwarded-for")
 	const last = forwarded
 		?.split(",")
-		.map((part) => part.trim())
+		.map(part => part.trim())
 		.filter(Boolean)
 		.at(-1)
 	return last || h.get("x-real-ip")?.trim() || "unknown"
@@ -285,7 +285,7 @@ const hits = new Map<string, number[]>()
 
 export function rateLimited(key: string): boolean {
 	const now = Date.now()
-	const recent = (hits.get(key) ?? []).filter((at) => now - at < WINDOW_MS)
+	const recent = (hits.get(key) ?? []).filter(at => now - at < WINDOW_MS)
 	recent.push(now)
 	hits.set(key, recent)
 

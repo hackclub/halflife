@@ -14,15 +14,15 @@ import macropadShot from "../../../../public/projects/macropad.png"
 
 /** The mock Doomscroller's three reels, on photos of real projects makers built. */
 const MOCK_REELS = [
-	{ who: "Half Life HQ", shot: macropadShot },
-	{ who: "Joe Bob", shot: hexapodShot },
-	{ who: "Froppii", shot: flightControllerShot },
+	{ shot: macropadShot, who: "Half Life HQ" },
+	{ shot: hexapodShot, who: "Joe Bob" },
+	{ shot: flightControllerShot, who: "Froppii" },
 ]
 
 /**
  * The fly-through plays before anyone has picked a tier, so it previews the tier-1 shape. The bonus node is earned, not given, so it stays off.
  */
-const WEEKS = WEEK_META.map((meta) => ({
+const WEEKS = WEEK_META.map(meta => ({
 	...meta,
 	checkpoints: checkpointsFor(meta, [], () => false, meta.phase === "build" ? BUILD_HOURS : MIN_HOURS_PER_WEEK),
 }))
@@ -74,13 +74,13 @@ const BLOCKS: Block[] = []
 	for (const w of WEEKS) {
 		const trailH = (w.checkpoints.length - 1) * STEP + PUCK
 		const height = BANNER_H + BANNER_GAP + trailH + WEEK_GAP
-		BLOCKS.push({ top: y, trailTop: y + BANNER_H + BANNER_GAP, height })
+		BLOCKS.push({ height, top: y, trailTop: y + BANNER_H + BANNER_GAP })
 		y += height
 	}
 }
 
 // BLOCKS is built above, one entry per week, so it is never empty; the fallback keeps that a compile-time fact rather than an assertion.
-const LAST = BLOCKS[BLOCKS.length - 1] ?? { top: 0, trailTop: 0, height: 0 }
+const LAST = BLOCKS[BLOCKS.length - 1] ?? { height: 0, top: 0, trailTop: 0 }
 const PRIZE_TOP = LAST.top + LAST.height + 40
 const PRIZE_CENTRE = PRIZE_TOP + PRIZE_H / 2
 const STAGE_H = PRIZE_TOP + PRIZE_H + 140
@@ -103,24 +103,24 @@ const clamp01 = (t: number) => (t < 0 ? 0 : t > 1 ? 1 : t)
 const article = (name: string) => (/^[aeiou]/i.test(name) ? "an" : "a")
 const SCRIPT: { fromWeek: number; fromDepth: number; line: (goal: string) => string }[] = [
 	{
-		fromWeek: 1,
 		fromDepth: 0,
+		fromWeek: 1,
 		line: () => "This is your map. Every week is a set of checkpoints: journal your progress, film a reel, submit.",
 	},
 	{
-		fromWeek: 3,
 		fromDepth: 0,
+		fromWeek: 3,
 		line: () => "Weeks 1 to 5, you design: a PCB, a 3D model, an instrument, a display and a breadboard computer.",
 	},
 	{
-		fromWeek: 6,
 		fromDepth: 0,
+		fromWeek: 6,
 		line: () => "Weeks 6 to 10, the parts arrive and you build all five for real.",
 	},
 	{
-		fromWeek: 1,
 		fromDepth: 0.94,
-		line: (goal) => `At the end, you get ${article(goal)} ${goal} shipped right to you!.`,
+		fromWeek: 1,
+		line: goal => `At the end, you get ${article(goal)} ${goal} shipped right to you!.`,
 	},
 ]
 
@@ -159,29 +159,29 @@ function MiniPanel({ className, children }: { className?: string; children?: Rea
 }
 
 const KIND_ICON = {
+	bonus: IconCoin,
+	demo: IconUpload,
+	journal: IconClock,
 	onboarding: IconPlay,
 	project: IconCoin,
-	journal: IconClock,
 	reel: IconFilm,
 	submit: IconUpload,
-	demo: IconUpload,
-	bonus: IconCoin,
 } as const
 
 function Stage({ goal }: { goal: PrinterGoal }) {
 	return (
-		<div className="relative" style={{ width: STAGE_W, height: STAGE_H }}>
+		<div className="relative" style={{ height: STAGE_H, width: STAGE_W }}>
 			{/* ---- the shell, in frame while the camera is still at the top ---- */}
 			<div className="absolute top-[40px] left-[40px] flex w-[300px] flex-col gap-5">
 				<Gato className="h-auto w-[86px]" sizes="172px" />
 				<MiniPanel className="px-5 py-4">
 					{["Home", "Projects", "Reels", "Explore", "Shop"].map((l, i) => (
 						<p
-							key={l}
 							className={cx(
 								"border-b border-dashed border-line py-2.5 text-[1.05rem] last:border-0",
 								i === 0 ? "font-extrabold text-navy" : "font-semibold text-navy-soft",
 							)}
+							key={l}
 						>
 							{l}
 						</p>
@@ -190,9 +190,9 @@ function Stage({ goal }: { goal: PrinterGoal }) {
 				<MiniPanel className="relative overflow-hidden px-5 py-4">
 					{/* as on the real goal card: the photo on its tile, inside the corner */}
 					<PrinterPhoto
+						className="absolute top-3 right-3 size-16 rounded-xl border border-line/80"
 						id={goal.id}
 						sizes="128px"
-						className="absolute top-3 right-3 size-16 rounded-xl border border-line/80"
 					/>
 					<p className="max-w-[60%] text-[0.95rem] leading-snug font-semibold text-navy">
 						You are on track to get a <span className="text-teal-ink">{goal.name}</span>
@@ -202,7 +202,7 @@ function Stage({ goal }: { goal: PrinterGoal }) {
 					</div>
 				</MiniPanel>
 				<MiniPanel className="flex items-center gap-3 p-3">
-					<Avatar name="John Cena" image={null} shape="tile" className="size-[60px] text-[1.5rem]" />
+					<Avatar className="size-[60px] text-[1.5rem]" image={null} name="John Cena" shape="tile" />
 					<div>
 						<p className="text-[1rem] font-extrabold text-navy">John Cena</p>
 						<p className="hand text-[0.82rem] text-navy-soft">@johncena</p>
@@ -216,13 +216,13 @@ function Stage({ goal }: { goal: PrinterGoal }) {
 				<MiniPanel className="p-3.5">
 					<p className="label mb-3 text-navy-faint">The Doomscroller</p>
 					<div className="flex flex-col gap-3">
-						{MOCK_REELS.map((r) => (
+						{MOCK_REELS.map(r => (
 							<div
-								key={r.who}
 								className="relative overflow-hidden rounded-xl bg-navy"
+								key={r.who}
 								style={{ aspectRatio: "9 / 13" }}
 							>
-								<Image src={r.shot} alt="" fill sizes="552px" className="object-cover" />
+								<Image alt="" className="object-cover" fill sizes="552px" src={r.shot} />
 								<div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent p-2.5 pt-8">
 									<p className="text-[0.72rem] font-bold text-white">{r.who}</p>
 								</div>
@@ -245,9 +245,9 @@ function Stage({ goal }: { goal: PrinterGoal }) {
 							const Icon = done ? IconCheck : live ? KIND_ICON[cp.kind] : IconLock
 							return (
 								<div
-									key={cp.id}
 									className="absolute"
-									style={{ top: b.trailTop + i * STEP, left: nodeX(i) - PUCK / 2, width: PUCK }}
+									key={cp.id}
+									style={{ left: nodeX(i) - PUCK / 2, top: b.trailTop + i * STEP, width: PUCK }}
 								>
 									<div
 										className={cx(
@@ -266,13 +266,13 @@ function Stage({ goal }: { goal: PrinterGoal }) {
 						})}
 
 						{week.checkpoints.slice(0, -1).map((_, i) =>
-							[0.35, 0.65].map((f) => (
+							[0.35, 0.65].map(f => (
 								<span
-									key={`${i}-${f}`}
 									className="absolute size-[6px] rounded-full bg-line-strong/45"
+									key={`${i}-${f}`}
 									style={{
-										top: b.trailTop + (i + f) * STEP + PUCK / 2 - 3,
 										left: nodeX(i + f) - 3,
+										top: b.trailTop + (i + f) * STEP + PUCK / 2 - 3,
 									}}
 								/>
 							)),
@@ -284,9 +284,9 @@ function Stage({ goal }: { goal: PrinterGoal }) {
 			{/* ---- the prize, at the bottom of the run ---- */}
 			<div
 				className="absolute flex flex-col items-center rounded-3xl border-[3px] border-gold-deep bg-gold-pale px-12 py-8"
-				style={{ top: PRIZE_TOP, left: COL_X - 300, width: 600, height: PRIZE_H }}
+				style={{ height: PRIZE_H, left: COL_X - 300, top: PRIZE_TOP, width: 600 }}
 			>
-				<PrinterPhoto id={goal.id} sizes="560px" className="mt-3 size-[280px] rounded-2xl border border-gold-deep/40" />
+				<PrinterPhoto className="mt-3 size-[280px] rounded-2xl border border-gold-deep/40" id={goal.id} sizes="560px" />
 				<p className="mt-3 text-[2rem] leading-none font-extrabold tracking-[-0.03em] text-navy">{goal.name}</p>
 				<p className="hand mt-2 text-[1rem] text-navy-soft">finish all ten weeks!</p>
 			</div>
@@ -302,17 +302,17 @@ function WeekBanners({ refs }: { refs: React.RefObject<(HTMLDivElement | null)[]
 		<div aria-hidden="true" className="pointer-events-none absolute inset-0 z-10 overflow-hidden">
 			{WEEKS.map((week, i) => (
 				<div
+					className="absolute top-0 left-1/2"
 					key={week.id}
-					ref={(el) => {
+					ref={el => {
 						refs.current[i] = el
 					}}
-					className="absolute top-0 left-1/2"
 					style={{
-						width: 760,
+						display: "none",
 						height: BANNER_H,
 						marginLeft: -380,
 						transformOrigin: "center top",
-						display: "none",
+						width: 760,
 					}}
 				>
 					{/* The tear belongs to the plaque, never to the type. `.torn` is a
@@ -331,7 +331,7 @@ function WeekBanners({ refs }: { refs: React.RefObject<(HTMLDivElement | null)[]
 								{week.headline}
 							</p>
 						</div>
-						<WeekPainting theme={week.theme} alt="" sizes="112px" className="sticker-shadow size-14 shrink-0" />
+						<WeekPainting alt="" className="sticker-shadow size-14 shrink-0" sizes="112px" theme={week.theme} />
 					</div>
 				</div>
 			))}
@@ -387,8 +387,8 @@ export function Cinematic() {
 		const place = (fy: number, scale: number) => {
 			const vh = window.innerHeight
 			node.style.transform =
-				`translate(-50%, -50%) scale(${scale.toFixed(4)}) ` +
-				`translate(${STAGE_W / 2 - COL_X}px, ${STAGE_H / 2 - fy}px)`
+				`translate(-50%, -50%) scale(${scale.toFixed(4)}) `
+				+ `translate(${STAGE_W / 2 - COL_X}px, ${STAGE_H / 2 - fy}px)`
 			if (title.current) title.current.style.transform = `translateY(${((TITLE_Y - fy) * scale + vh / 2).toFixed(1)}px)`
 
 			// Sticky, by hand: a banner tracks its block until the block reaches the top of the frame, holds there, then gets pushed up by the next.
@@ -455,7 +455,7 @@ export function Cinematic() {
 					if (s && week >= s.fromWeek && depth >= s.fromDepth) idx = i
 				}
 			}
-			setBeat((b) => (b === idx ? b : idx))
+			setBeat(b => (b === idx ? b : idx))
 
 			if (t >= T_END) {
 				setEnded(true)
@@ -481,9 +481,9 @@ export function Cinematic() {
 		<div className="fixed inset-0 z-[90] overflow-hidden bg-cream">
 			<div aria-hidden="true" className="absolute inset-0 z-0 overflow-hidden">
 				<div
-					ref={camera}
 					className="absolute top-1/2 left-1/2 will-change-transform"
-					style={{ width: STAGE_W, height: STAGE_H }}
+					ref={camera}
+					style={{ height: STAGE_H, width: STAGE_W }}
 				>
 					{stage}
 				</div>
@@ -495,13 +495,13 @@ export function Cinematic() {
 			    leaves the frame the way the weeks do, by the camera falling away
 			    from it. */}
 			<div
-				ref={title}
 				className="pointer-events-none absolute inset-x-0 top-0 z-20 px-6 text-center"
+				ref={title}
 				style={{ transform: "translateY(50vh)" }}
 			>
 				<div className="-translate-y-1/2">
 					<div className="motion-safe:animate-[hl-rise_.6s_cubic-bezier(.16,1,.3,1)_both]">
-						<Gato sizes="300px" className="mx-auto h-auto w-[clamp(84px,13vw,132px)]" />
+						<Gato className="mx-auto h-auto w-[clamp(84px,13vw,132px)]" sizes="300px" />
 						<h1 className="mt-5 text-[clamp(3rem,12vw,6rem)] leading-[0.86] font-extrabold tracking-[-0.04em] text-navy">
 							HALF LIFE
 						</h1>
@@ -516,8 +516,8 @@ export function Cinematic() {
 			{line && !ended && (
 				<div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center px-5 pb-20 sm:pb-12">
 					<p
-						key={beat}
 						className="sketch sketch-2 max-w-[40rem] rounded-2xl bg-cream px-6 py-4 text-center text-[clamp(1.05rem,2.4vw,1.35rem)] leading-snug font-extrabold tracking-[-0.02em] text-balance text-navy lift-shadow motion-safe:animate-[hl-rise_.4s_cubic-bezier(.16,1,.3,1)_both]"
+						key={beat}
 						style={{ "--sk-color": "var(--color-navy)", "--sk-radius": "18px" } as React.CSSProperties}
 					>
 						{line.line(GOAL.name)}
@@ -536,7 +536,7 @@ export function Cinematic() {
 						<h2 className="mt-1.5 text-[clamp(1.2rem,3.2vw,1.6rem)] leading-tight font-extrabold tracking-[-0.03em] text-navy">
 							Become an expert in 10 weeks, get a 3D printer
 						</h2>
-						<Button variant="gold" size="lg" full className="mt-4" onClick={() => setPhase("aim")}>
+						<Button className="mt-4" full onClick={() => setPhase("aim")} size="lg" variant="gold">
 							Get started
 						</Button>
 					</div>
@@ -545,9 +545,9 @@ export function Cinematic() {
 
 			{!ended && (
 				<button
-					type="button"
-					onClick={skip}
 					className="label absolute top-5 right-5 z-30 rounded-full border-2 border-line bg-cream/80 px-4 py-2 text-navy-soft backdrop-blur-sm transition-colors hover:border-navy hover:text-navy"
+					onClick={skip}
+					type="button"
 				>
 					Skip intro
 				</button>

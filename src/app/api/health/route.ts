@@ -6,10 +6,10 @@ export const dynamic = "force-dynamic"
 
 export async function GET(): Promise<NextResponse> {
 	// A pod with no auth secret boots, passes a database-only healthcheck, and 500s on every page that touches auth. Fail the check instead, so the orchestrator sees the misconfiguration rather than a healthy-looking pod.
-	const missing = ["DATABASE_URL", "BETTER_AUTH_SECRET"].filter((name) => !process.env[name])
+	const missing = ["DATABASE_URL", "BETTER_AUTH_SECRET"].filter(name => !process.env[name])
 	if (missing.length > 0) {
 		console.error(`[health] missing required configuration: ${missing.join(", ")}`)
-		return NextResponse.json({ ok: false, error: "missing configuration" }, { status: 503 })
+		return NextResponse.json({ error: "missing configuration", ok: false }, { status: 503 })
 	}
 
 	try {
@@ -17,6 +17,6 @@ export async function GET(): Promise<NextResponse> {
 		return NextResponse.json({ ok: true })
 	} catch (err) {
 		console.error("[health] database check failed:", err)
-		return NextResponse.json({ ok: false, error: "database unreachable" }, { status: 503 })
+		return NextResponse.json({ error: "database unreachable", ok: false }, { status: 503 })
 	}
 }

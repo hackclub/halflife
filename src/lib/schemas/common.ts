@@ -10,7 +10,7 @@ export const httpsUrl = z
 	.string()
 	.trim()
 	.max(1000)
-	.refine((v) => {
+	.refine(v => {
 		try {
 			const parsed = new URL(v)
 			return parsed.protocol === "https:"

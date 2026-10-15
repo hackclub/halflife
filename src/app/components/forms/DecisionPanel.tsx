@@ -48,15 +48,15 @@ export function DecisionPanel({
 		const body =
 			result === "APPROVED"
 				? {
-						result,
 						feedback,
 						reason: reason || undefined,
+						result,
 						...(tier ? { tier: Number(tier) } : {}),
 						...(hoursOverride ? { hoursOverride: Number(hoursOverride) } : {}),
 					}
 				: result === "RETURNED"
-					? { result, feedback, reason: reason || undefined }
-					: { result, feedback, reason }
+					? { feedback, reason: reason || undefined, result }
+					: { feedback, reason, result }
 		void run(
 			"submit",
 			() => sendJson(`/api/review/submissions/${submissionId}/decision`, { body }),
@@ -68,14 +68,14 @@ export function DecisionPanel({
 	}
 
 	return (
-		<form onSubmit={submit} className="hl-stack hl-stack--tight">
+		<form className="hl-stack hl-stack--tight" onSubmit={submit}>
 			{error ? <Callout tone="danger">{error}</Callout> : null}
 			{!claimedByMe ? (
 				<Callout tone="warning">You have not claimed this. Claim it first so nobody duplicates your work.</Callout>
 			) : null}
 
 			<Field label="Decision">
-				<select className="hl-select" value={result} onChange={(e) => setResult(e.target.value as typeof result)}>
+				<select className="hl-select" onChange={e => setResult(e.target.value as typeof result)} value={result}>
 					<option value="APPROVED">Approve</option>
 					<option value="RETURNED">Send back for changes</option>
 					<option value="REJECTED">Reject</option>
@@ -83,10 +83,10 @@ export function DecisionPanel({
 			</Field>
 
 			{approvingDesign ? (
-				<Field label="Funding tier" hint="This sets the parts budget. Required when approving a design.">
-					<select className="hl-select" value={tier} required onChange={(e) => setTier(e.target.value)}>
+				<Field hint="This sets the parts budget. Required when approving a design." label="Funding tier">
+					<select className="hl-select" onChange={e => setTier(e.target.value)} required value={tier}>
 						<option value="">Choose a tier…</option>
-						{tiers.map((t) => (
+						{tiers.map(t => (
 							<option key={t.id} value={t.id}>
 								{t.name} – ${t.grantUsd} for parts, submit from {t.fundingHours}h of design time
 							</option>
@@ -96,41 +96,41 @@ export function DecisionPanel({
 			) : null}
 
 			{result === "APPROVED" ? (
-				<Field label="Hours override" hint={`Leave blank to accept the computed ${computedHours}h.`}>
+				<Field hint={`Leave blank to accept the computed ${computedHours}h.`} label="Hours override">
 					<input
 						className="hl-input"
-						type="number"
 						min="0"
-						step="0.25"
-						value={hoursOverride}
+						onChange={e => setHoursOverride(e.target.value)}
 						placeholder={String(computedHours)}
-						onChange={(e) => setHoursOverride(e.target.value)}
+						step="0.25"
+						type="number"
+						value={hoursOverride}
 					/>
 				</Field>
 			) : null}
 
-			<Field label="Feedback to the participant" hint="They see this verbatim.">
+			<Field hint="They see this verbatim." label="Feedback to the participant">
 				<textarea
 					className="hl-textarea"
-					value={feedback}
-					required={result !== "APPROVED"}
 					maxLength={8000}
-					onChange={(e) => setFeedback(e.target.value)}
+					onChange={e => setFeedback(e.target.value)}
+					required={result !== "APPROVED"}
+					value={feedback}
 				/>
 			</Field>
 
-			<Field label="Internal note" hint="Never shown to the participant. Feeds the grant record's justification.">
+			<Field hint="Never shown to the participant. Feeds the grant record's justification." label="Internal note">
 				<textarea
 					className="hl-textarea"
-					value={reason}
-					required={result === "REJECTED"}
 					maxLength={8000}
-					onChange={(e) => setReason(e.target.value)}
+					onChange={e => setReason(e.target.value)}
+					required={result === "REJECTED"}
+					value={reason}
 				/>
 			</Field>
 
 			<div>
-				<Button type="submit" variant="primary" disabled={busy !== null}>
+				<Button disabled={busy !== null} type="submit" variant="primary">
 					{busy ? "Recording…" : "Record decision"}
 				</Button>
 			</div>

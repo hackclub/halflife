@@ -25,8 +25,8 @@ export function EventScheduleManager({ events, timeZone }: { events: CalendarEve
 	// The list reads in the order people ask questions in: what's next, then what
 	// has already happened. Splitting it here rather than sorting twice keeps the
 	// boundary honest – "past" is decided once, by the day.
-	const upcoming = events.filter((event) => calendarDay(event.startsAt, timeZone) >= today)
-	const past = events.filter((event) => calendarDay(event.startsAt, timeZone) < today).reverse()
+	const upcoming = events.filter(event => calendarDay(event.startsAt, timeZone) >= today)
+	const past = events.filter(event => calendarDay(event.startsAt, timeZone) < today).reverse()
 
 	const seriesCount = new Map<string, number>()
 	for (const event of events)
@@ -39,44 +39,44 @@ export function EventScheduleManager({ events, timeZone }: { events: CalendarEve
             form and its `useState` initialisers run again. Without the key the
             first render's values stick, and Edit opens a blank form. */}
 				<EventForm
-					key={editing?.id ?? "new"}
-					events={events}
 					editing={editing}
+					events={events}
+					key={editing?.id ?? "new"}
 					// Closing on save is the whole update path: the data on screen came
 					// from the server, so a refresh is what puts the new row in it.
 					onDone={() => setEditing(null)}
 				/>
 				{editing ? (
-					<p className="hl-hint" style={{ marginTop: "0.75rem", marginBottom: 0 }}>
+					<p className="hl-hint" style={{ marginBottom: 0, marginTop: "0.75rem" }}>
 						Editing this one week only. The rest of its series are separate rows.
 					</p>
 				) : null}
 			</Panel>
 
 			<Panel
-				title={`Upcoming (${upcoming.length})`}
 				actions={
 					upcoming.length > 0 ? (
 						<ActionButton
-							url="/api/admin/events"
-							method="DELETE"
-							label="Clear all upcoming"
-							variant="danger"
 							confirm={`Delete all ${upcoming.length} upcoming event${upcoming.length === 1 ? "" : "s"}? This cannot be undone.`}
+							label="Clear all upcoming"
+							method="DELETE"
+							url="/api/admin/events"
+							variant="danger"
 						/>
 					) : undefined
 				}
+				title={`Upcoming (${upcoming.length})`}
 			>
 				{upcoming.length === 0 ? (
 					<EmptyState>Nothing scheduled.</EmptyState>
 				) : (
-					<RowTable events={upcoming} timeZone={timeZone} seriesCount={seriesCount} onEdit={setEditing} />
+					<RowTable events={upcoming} onEdit={setEditing} seriesCount={seriesCount} timeZone={timeZone} />
 				)}
 			</Panel>
 
 			{past.length > 0 && (
 				<Panel title={`Past (${past.length})`}>
-					<RowTable events={past} timeZone={timeZone} seriesCount={seriesCount} onEdit={setEditing} />
+					<RowTable events={past} onEdit={setEditing} seriesCount={seriesCount} timeZone={timeZone} />
 				</Panel>
 			)}
 		</div>
@@ -108,7 +108,7 @@ function RowTable({
 					</tr>
 				</thead>
 				<tbody>
-					{events.map((event) => {
+					{events.map(event => {
 						const colour = eventColour(event.colour)
 						const series = event.seriesId ? (seriesCount.get(event.seriesId) ?? 1) : 0
 						return (
@@ -138,20 +138,20 @@ function RowTable({
 									<Badge tone={event.published ? "success" : "muted"}>{event.published ? "published" : "draft"}</Badge>
 								</td>
 								<td className="hl-row" style={{ gap: "0.5rem" }}>
-									<button type="button" className="hl-btn" onClick={() => onEdit(event)}>
+									<button className="hl-btn" onClick={() => onEdit(event)} type="button">
 										Edit
 									</button>
 									<ActionButton
-										url={`/api/admin/events/${event.id}`}
-										method="PATCH"
 										body={{ published: !event.published }}
 										label={event.published ? "Unpublish" : "Publish"}
+										method="PATCH"
+										url={`/api/admin/events/${event.id}`}
 									/>
 									<ActionButton
-										url={`/api/admin/events/${event.id}`}
-										method="DELETE"
-										label="Delete"
 										confirm={`Delete "${event.title}" on ${dayLabel(calendarDay(event.startsAt, timeZone))}? This cannot be undone. Unpublish it instead if it still happens.`}
+										label="Delete"
+										method="DELETE"
+										url={`/api/admin/events/${event.id}`}
 									/>
 								</td>
 							</tr>

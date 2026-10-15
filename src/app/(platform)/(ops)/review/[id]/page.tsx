@@ -44,13 +44,13 @@ export default async function ReviewDetailPage({ params }: Props) {
 	return (
 		<div className="hl-stack">
 			<PageHeader
-				title={`${detail.themeLabel} – ${submission.phase.toLowerCase()}`}
-				subtitle={`${project.user.email ? displayName(project.user, project.user.email) : (displayName(project.user) ?? "—")} · submitted ${submission.createdAt.toDateString()}`}
 				actions={
 					<Badge tone={statusTone(submission.phase === "DESIGN" ? project.designStatus : project.buildStatus)}>
 						{statusLabel(submission.phase === "DESIGN" ? project.designStatus : project.buildStatus)}
 					</Badge>
 				}
+				subtitle={`${project.user.email ? displayName(project.user, project.user.email) : (displayName(project.user) ?? "—")} · submitted ${submission.createdAt.toDateString()}`}
+				title={`${detail.themeLabel} – ${submission.phase.toLowerCase()}`}
 			/>
 
 			{project.user.fraudFlagged ? (
@@ -73,10 +73,10 @@ export default async function ReviewDetailPage({ params }: Props) {
 					<strong>The maker disputes this decision.</strong> {submission.dispute.note}
 					<div style={{ marginTop: "0.5rem" }}>
 						<ActionButton
-							url={`/api/admin/disputes/${submission.dispute.id}/resolve`}
 							body={{}}
-							label="Mark as looked at"
 							confirm="Close this dispute? The decision itself does not change."
+							label="Mark as looked at"
+							url={`/api/admin/disputes/${submission.dispute.id}/resolve`}
 						/>
 					</div>
 				</Callout>
@@ -89,7 +89,6 @@ export default async function ReviewDetailPage({ params }: Props) {
 			) : null}
 
 			<Panel
-				title="Claim"
 				actions={
 					claimLive ? (
 						<Badge tone="warning">
@@ -100,12 +99,13 @@ export default async function ReviewDetailPage({ params }: Props) {
 						<Badge tone="muted">unclaimed</Badge>
 					)
 				}
+				title="Claim"
 			>
 				<div className="hl-row">
 					{!claimedByMe ? (
-						<ActionButton url={`/api/review/submissions/${id}/claim`} label="Claim" variant="primary" />
+						<ActionButton label="Claim" url={`/api/review/submissions/${id}/claim`} variant="primary" />
 					) : (
-						<ActionButton url={`/api/review/submissions/${id}/claim`} method="DELETE" label="Release" />
+						<ActionButton label="Release" method="DELETE" url={`/api/review/submissions/${id}/claim`} />
 					)}
 				</div>
 			</Panel>
@@ -143,7 +143,7 @@ export default async function ReviewDetailPage({ params }: Props) {
 				<p className="hl-muted">{project.description ?? "No description."}</p>
 				{project.githubRepo ? (
 					<p>
-						<a href={project.githubRepo} target="_blank" rel="noreferrer">
+						<a href={project.githubRepo} rel="noreferrer" target="_blank">
 							{project.githubRepo}
 						</a>
 					</p>
@@ -176,7 +176,7 @@ export default async function ReviewDetailPage({ params }: Props) {
 					<EmptyState>No sessions logged for this phase.</EmptyState>
 				) : (
 					<Table head={["Date", "What", "Claimed", "Approved", "Evidence"]}>
-						{detail.sessions.map((session) => (
+						{detail.sessions.map(session => (
 							<tr key={session.id}>
 								<td className="hl-mono">{session.effectiveDate ?? "—"}</td>
 								<td>
@@ -194,29 +194,29 @@ export default async function ReviewDetailPage({ params }: Props) {
 								<td>
 									<div className="hl-mono">{session.hoursApproved ?? "—"}</div>
 									<HoursApprovalForm
-										kind="session"
-										id={session.id}
-										claimed={claimedByMe}
 										approved={session.hoursApproved}
+										claimed={claimedByMe}
+										id={session.id}
+										kind="session"
 									/>
 								</td>
 								<td>
-									{session.media.map((m) => (
-										<a key={m.id} href={m.url ?? "#"} style={{ marginRight: "0.5rem" }}>
+									{session.media.map(m => (
+										<a href={m.url ?? "#"} key={m.id} style={{ marginRight: "0.5rem" }}>
 											{m.type.toLowerCase()}
 										</a>
 									))}
-									{session.timelapses.map((t) => (
+									{session.timelapses.map(t => (
 										<a
-											key={t.id}
 											href={
 												t.provider === "lapse" && t.externalId
 													? lapseTimelapseUrl(t.externalId)
 													: (t.playbackUrl ?? "#")
 											}
-											target="_blank"
+											key={t.id}
 											rel="noreferrer"
 											style={{ marginRight: "0.5rem" }}
+											target="_blank"
 										>
 											{t.provider === "lapse" ? "lapse" : "timelapse"}
 											{t.coveredSeconds ? ` (${Math.round(t.coveredSeconds / 60)}m)` : ""}
@@ -232,16 +232,16 @@ export default async function ReviewDetailPage({ params }: Props) {
 			{detail.links.length > 0 ? (
 				<Panel title="Hackatime links">
 					<Table head={["Project", "Hours", "Cached", "Error"]}>
-						{detail.links.map((link) => (
+						{detail.links.map(link => (
 							<tr key={link.id}>
 								<td className="hl-mono">{link.hackatimeProject}</td>
 								<td>
 									<div>{(link.hoursApproved ?? (link.cachedSeconds ?? 0) / 3600).toFixed(1)}h</div>
 									<HoursApprovalForm
-										kind="hackatime"
-										id={link.id}
-										claimed={claimedByMe}
 										approved={link.hoursApproved}
+										claimed={claimedByMe}
+										id={link.id}
+										kind="hackatime"
 									/>
 								</td>
 								<td className="hl-mono">{link.cachedAt?.toLocaleString() ?? "never"}</td>
@@ -255,7 +255,7 @@ export default async function ReviewDetailPage({ params }: Props) {
 			{detail.priorReviews.length > 0 ? (
 				<Panel title="Earlier decisions on this project">
 					<Table head={["When", "Phase", "Result", "Reviewer", "Feedback"]}>
-						{detail.priorReviews.map((review) => (
+						{detail.priorReviews.map(review => (
 							<tr key={review.id}>
 								<td className="hl-mono">{review.createdAt.toDateString()}</td>
 								<td>{review.submission.phase.toLowerCase()}</td>
@@ -281,18 +281,18 @@ export default async function ReviewDetailPage({ params }: Props) {
 
 			<Panel title="Decision">
 				<DecisionPanel
-					submissionId={id}
+					claimedByMe={claimedByMe}
+					computedHours={breakdown.computedTotal}
+					currentTier={project.tier}
 					phase={submission.phase}
-					tiers={TIERS.map((t) => ({
+					submissionId={id}
+					tiers={TIERS.map(t => ({
+						fundingHours: t.fundingHours,
+						grantUsd: t.grantUsd,
 						id: t.id,
 						name: t.name,
-						grantUsd: t.grantUsd,
-						fundingHours: t.fundingHours,
 						submitFloorHours: submitFloorFor(t.fundingHours),
 					}))}
-					currentTier={project.tier}
-					computedHours={breakdown.computedTotal}
-					claimedByMe={claimedByMe}
 				/>
 			</Panel>
 

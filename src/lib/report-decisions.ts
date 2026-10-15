@@ -16,13 +16,13 @@ export type Outcome = "RESOLVED" | "DISMISSED"
 
 /** The reply key each outcome reports itself under. */
 const replyKey: Record<Outcome, "resolved" | "dismissed"> = {
-	RESOLVED: "resolved",
 	DISMISSED: "dismissed",
+	RESOLVED: "resolved",
 }
 
 const auditAction: Record<Outcome, AuditAction> = {
-	RESOLVED: AuditAction.ADMIN_RESOLVE_REPORT,
 	DISMISSED: AuditAction.ADMIN_DISMISS_REPORT,
+	RESOLVED: AuditAction.ADMIN_RESOLVE_REPORT,
 }
 
 export async function decideReport(
@@ -30,23 +30,23 @@ export async function decideReport(
 	id: string,
 	outcome: Outcome,
 ): Promise<NextResponse> {
-	const report = await prisma.contentReport.findUnique({ where: { id }, select: { status: true } })
+	const report = await prisma.contentReport.findUnique({ select: { status: true }, where: { id } })
 	if (!report) return fail("NOT_FOUND", "Report not found")
 	if (report.status !== "OPEN") return fail("CONFLICT", "This report was already decided")
 
 	// Conditional, so two admins deciding at once cannot both succeed: the loser matches no OPEN row and gets the same conflict as a late arrival.
 	const updated = await prisma.contentReport.updateMany({
+		data: { resolvedAt: new Date(), resolvedById: gate.user.id, status: outcome },
 		where: { id, status: "OPEN" },
-		data: { status: outcome, resolvedAt: new Date(), resolvedById: gate.user.id },
 	})
 	if (updated.count === 0) return fail("CONFLICT", "This report was already decided")
 
 	await logAudit({
 		action: auditAction[outcome],
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "ContentReport",
+		actorId: gate.user.id,
 		targetId: id,
+		targetType: "ContentReport",
 	})
 
 	return ok({ [replyKey[outcome]]: true })

@@ -17,8 +17,8 @@ export const GET = withRoute(async (req: NextRequest) => {
 	if (query.error) return query.error
 
 	const rows = await prisma.shopOrder.findMany({
-		where: { userId: gate.user.id },
 		orderBy: [{ placedAt: "desc" }, { id: "desc" }],
+		where: { userId: gate.user.id },
 		...cursorArgs(query.data.cursor, query.data.limit),
 		// The buyer's own view of the order, shared with the purchase response so the two cannot drift.
 		select: shopOrderPublicSelect,
@@ -38,15 +38,15 @@ export const POST = withRoute(async (req: Request) => {
 
 	await logAudit({
 		action: AuditAction.USER_PLACE_ORDER,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "ShopOrder",
-		targetId: order.id,
+		actorId: gate.user.id,
 		metadata: {
-			shopItemId: parsed.data.shopItemId,
 			quantity: order.quantity,
+			shopItemId: parsed.data.shopItemId,
 			totalCredits: order.totalCredits,
 		},
+		targetId: order.id,
+		targetType: "ShopOrder",
 	})
 
 	return ok({ order }, { status: 201 })

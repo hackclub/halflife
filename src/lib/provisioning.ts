@@ -12,25 +12,25 @@ import prisma from "@/lib/prisma"
  * Idempotent: the `(userId, theme)` unique constraint plus `skipDuplicates` means opening the checkpoint twice, or two tabs racing, is still one row. Resolves to the row either way.
  */
 export async function ensureThemeProject(userId: string, theme: Theme): Promise<ThemeProject> {
-	const def = THEMES.find((t) => t.id === theme)
+	const def = THEMES.find(t => t.id === theme)
 	if (!def) throw new Error(`Unknown theme ${theme}`)
 
 	// Most onboarding reads happen after the row already exists. Avoid a pointless write/round-trip on that hot path; the unique constraint still makes the create branch safe when two tabs open the checkpoint together.
 	const existing = await prisma.themeProject.findFirst({
-		where: { userId, theme, deletedAt: null },
+		where: { deletedAt: null, theme, userId },
 	})
 	if (existing) return existing
 
 	await prisma.themeProject.createMany({
-		data: [{ userId, theme, title: def.label }],
+		data: [{ theme, title: def.label, userId }],
 		skipDuplicates: true,
 	})
 	return prisma.themeProject.findFirstOrThrow({
-		where: { userId, theme, deletedAt: null },
+		where: { deletedAt: null, theme, userId },
 	})
 }
 
 /** The theme a design week belongs to, or null for a week that is not one. */
 export function themeForDesignWeek(weekId: number): Theme | null {
-	return THEMES.find((t) => t.designWeek === weekId)?.id ?? null
+	return THEMES.find(t => t.designWeek === weekId)?.id ?? null
 }

@@ -24,31 +24,31 @@ export function ShopRegionForm() {
 	}
 
 	return (
-		<form onSubmit={submit} className="hl-stack hl-stack--tight">
+		<form className="hl-stack hl-stack--tight" onSubmit={submit}>
 			{error ? <Callout tone="danger">{error}</Callout> : null}
 			<div className="hl-row">
 				<Field label="Slug">
 					<input
 						className="hl-input hl-mono"
-						value={id}
-						required
+						onChange={e => setId(e.target.value)}
 						pattern="[a-z0-9][a-z0-9-]*"
 						placeholder="eu"
-						onChange={(e) => setId(e.target.value)}
+						required
+						value={id}
 					/>
 				</Field>
 				<Field label="Name">
 					<input
 						className="hl-input"
-						value={name}
-						required
+						onChange={e => setName(e.target.value)}
 						placeholder="Europe"
-						onChange={(e) => setName(e.target.value)}
+						required
+						value={name}
 					/>
 				</Field>
 			</div>
 			<div>
-				<Button type="submit" variant="primary" disabled={busy !== null}>
+				<Button disabled={busy !== null} type="submit" variant="primary">
 					{busy ? "Adding…" : "Add region"}
 				</Button>
 			</div>

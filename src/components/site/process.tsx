@@ -29,7 +29,7 @@ const HEADER = plate(474, HEADER_LEAD, 918, 201)
  *
  * Its run and its two overlaps are named here rather than inside `WELDS` because `SHIFT` is derived from them: the room the header needs above step 1 is the header's own height plus this band's run, less the ends it buries in each. Change the run and the programme moves to suit it.
  */
-const LEAD_WELD = { run: 106, rise: 6, drop: 15, mean: 70.6 } as const
+const LEAD_WELD = { drop: 15, mean: 70.6, rise: 6, run: 106 } as const
 
 /**
  * How much step 1 grew when its heading came back, and therefore how far everything under it moved.
@@ -55,10 +55,10 @@ const SHIFT = HEADER.y + HEADER.h - LEAD_WELD.rise + LEAD_WELD.run - LEAD_WELD.d
  * takes and the three below it take as a shift, and `SHIFT` for the room the header and its weld now need above all four. Both were counted into these numbers by hand before, which is why the record of them lived in prose.
  */
 const PLATES = {
-	header: HEADER,
+	build: plate(57, 1406 + STEP_ONE_GROWTH + SHIFT, 958, 582),
 	design: plate(57, 59 + STEP_ONE_GROWTH + SHIFT, 975, 547 + STEP_ONE_GROWTH),
 	funding: plate(812, 836 + STEP_ONE_GROWTH + SHIFT, 823, 445),
-	build: plate(57, 1406 + STEP_ONE_GROWTH + SHIFT, 958, 582),
+	header: HEADER,
 	printer: plate(731, 2143 + STEP_ONE_GROWTH + SHIFT, 943, 458),
 } as const
 
@@ -71,35 +71,35 @@ const PLATES = {
  */
 const WELDS = [
 	{
-		id: "how-to-one",
-		exit: {
-			plate: PLATES.header,
-			at: 383.5 / PLATES.header.w,
-			rise: LEAD_WELD.rise,
-		},
 		entry: {
-			plate: PLATES.design,
 			at: 763.75 / PLATES.design.w,
 			drop: LEAD_WELD.drop,
+			plate: PLATES.design,
 		},
+		exit: {
+			at: 383.5 / PLATES.header.w,
+			plate: PLATES.header,
+			rise: LEAD_WELD.rise,
+		},
+		id: "how-to-one",
 		mean: LEAD_WELD.mean,
 	},
 	{
+		entry: { at: 155.25 / PLATES.funding.w, drop: 12.5, plate: PLATES.funding },
+		exit: { at: 778.25 / PLATES.design.w, plate: PLATES.design, rise: 16.5 },
 		id: "one-to-two",
-		exit: { plate: PLATES.design, at: 778.25 / PLATES.design.w, rise: 16.5 },
-		entry: { plate: PLATES.funding, at: 155.25 / PLATES.funding.w, drop: 12.5 },
 		mean: 92.2,
 	},
 	{
+		entry: { at: 803 / PLATES.build.w, drop: 26.5, plate: PLATES.build },
+		exit: { at: 148.5 / PLATES.funding.w, plate: PLATES.funding, rise: 28.5 },
 		id: "two-to-three",
-		exit: { plate: PLATES.funding, at: 148.5 / PLATES.funding.w, rise: 28.5 },
-		entry: { plate: PLATES.build, at: 803 / PLATES.build.w, drop: 26.5 },
 		mean: 102.2,
 	},
 	{
+		entry: { at: 178.5 / PLATES.printer.w, drop: 22, plate: PLATES.printer },
+		exit: { at: 693.25 / PLATES.build.w, plate: PLATES.build, rise: 6.5 },
 		id: "three-to-four",
-		exit: { plate: PLATES.build, at: 693.25 / PLATES.build.w, rise: 6.5 },
-		entry: { plate: PLATES.printer, at: 178.5 / PLATES.printer.w, drop: 22 },
 		mean: 120.3,
 	},
 ] as const
@@ -129,10 +129,10 @@ const WELDS = [
 const HOW_LABEL = "how does it work?"
 
 const STEP_ART_SIZES = {
+	stacked: "(min-width: 640px) 610px, 100vw",
 	stage: "510px",
 	/** Step 1's picture runs its plate's full 975 units, 666px at the 1180 cap. */
 	weeks: "670px",
-	stacked: "(min-width: 640px) 610px, 100vw",
 } as const
 
 /**
@@ -178,7 +178,7 @@ function StepArt({
 
 	if (!step.art) {
 		return (
-			<ImageSlot label={step.slot.label} ratio={step.slot.ratio} className={className} style={style} scale={scale} />
+			<ImageSlot className={className} label={step.slot.label} ratio={step.slot.ratio} scale={scale} style={style} />
 		)
 	}
 
@@ -193,7 +193,7 @@ function StepArt({
           footprint label. If either picture turns out to carry information the
           heading does not – an order-flow diagram would – it wants real alt
           text rather than this. */}
-			<Image src={step.art} alt="" fill sizes={sizes} quality={90} className="object-cover" />
+			<Image alt="" className="object-cover" fill quality={90} sizes={sizes} src={step.art} />
 		</div>
 	)
 }
@@ -214,12 +214,12 @@ function StepArt({
  * The five below step 1 carry `STEP_ONE_GROWTH` on their y, which is what keeps those clearances the numbers they were: the hammer still sits 105 to the right of step 3 and overlaps its lower half by 156, and the tightest of the six is still gatohead's 38 under step 3. Only gatoandspirit stays put – it is beside step 1 rather than below it, clear of the taller plate by 258 across, and the plate grew downward.
  */
 const EXTRAS = [
-	{ src: gatoandspirit, x: 1290, y: 300, w: 300, h: 255 },
-	{ src: spiritguy, x: 120, y: 955, w: 190 / 2, h: 293 / 2 },
-	{ src: gatointube, x: 400, y: 1155, w: 230, h: 272 },
-	{ src: gatoycaja, x: 1180, y: 1425, w: 170, h: 172 },
-	{ src: hammer, x: 1120, y: 1937, w: 310, h: 271 },
-	{ src: gatohead, x: 180, y: 2131, w: 230, h: 198 },
+	{ h: 255, src: gatoandspirit, w: 300, x: 1290, y: 300 },
+	{ h: 293 / 2, src: spiritguy, w: 190 / 2, x: 120, y: 955 },
+	{ h: 272, src: gatointube, w: 230, x: 400, y: 1155 },
+	{ h: 172, src: gatoycaja, w: 170, x: 1180, y: 1425 },
+	{ h: 271, src: hammer, w: 310, x: 1120, y: 1937 },
+	{ h: 198, src: gatohead, w: 230, x: 180, y: 2131 },
 ] as const
 
 /** The widest of them is 310 comp units, 212px at the 1180 cap. */
@@ -233,7 +233,7 @@ const EXTRA_SIZES = "220px"
 function WeekList() {
 	return (
 		<ul className="sr-only">
-			{[DESIGN_WEEKS.lead, ...DESIGN_WEEKS.rest].map((week) => (
+			{[DESIGN_WEEKS.lead, ...DESIGN_WEEKS.rest].map(week => (
 				<li key={week.subject}>{`${week.week}: ${week.subject}`}</li>
 			))}
 		</ul>
@@ -245,7 +245,7 @@ export default function Process() {
 	const [viral, community] = ASIDES
 
 	return (
-		<section id="how-it-works" aria-label="How Half Life works" className="relative z-0 isolate min-[1180px]:pb-[10vh]">
+		<section aria-label="How Half Life works" className="relative z-0 isolate min-[1180px]:pb-[10vh]" id="how-it-works">
 			{/* ── Comp reproduction, 1180px and up ───────────────────────────── */}
 			{/* Every child here is absolutely positioned, so the stage has no
           intrinsic height and has to be told one – as a ratio of its own
@@ -275,8 +275,8 @@ export default function Process() {
 			<div
 				className="stage hidden min-[1180px]:block"
 				style={{
-					maxWidth: STAGE_CAP,
 					aspectRatio: `${COMP_WIDTH} / ${STAGE_H}`,
+					maxWidth: STAGE_CAP,
 				}}
 			>
 				{/* The section's own heading, and the plate the first weld leaves.
@@ -292,8 +292,8 @@ export default function Process() {
 						style={{
 							// The comp's own 100, which is now 68px at every width this layout runs at – the same trade `STAGE_CAP` already makes for the four step titles below, and the size a 1180 screen has always shown this line at.
 							fontSize: u(100),
-							lineHeight: 1,
 							letterSpacing: "-0.03em",
+							lineHeight: 1,
 						}}
 					>
 						{HOW_LABEL}
@@ -303,14 +303,14 @@ export default function Process() {
 
 				{/* Decorative, and drawn before the plates so that if a plate is ever
             resized past one of them the plate wins the overlap. */}
-				{EXTRAS.map((extra) => (
+				{EXTRAS.map(extra => (
 					<div
-						key={extra.src.src}
 						aria-hidden
 						className="absolute"
+						key={extra.src.src}
 						style={box(extra.x, extra.y + SHIFT, extra.w, extra.h)}
 					>
-						<Image src={extra.src} alt="" fill sizes={EXTRA_SIZES} quality={90} className="object-contain" />
+						<Image alt="" className="object-contain" fill quality={90} sizes={EXTRA_SIZES} src={extra.src} />
 					</div>
 				))}
 
@@ -353,16 +353,16 @@ export default function Process() {
 						className="absolute text-center font-display font-bold text-balance"
 						style={{
 							...at(68, 38),
-							width: u(839),
 							fontSize: u(40),
 							lineHeight: 1.1,
+							width: u(839),
 						}}
 					>
 						{design.title}
 					</h3>
 					{design.art ? (
 						<div className="absolute" style={box(0, 92, 975, 548)}>
-							<Image src={design.art} alt="" fill sizes={STEP_ART_SIZES.weeks} quality={90} className="object-cover" />
+							<Image alt="" className="object-cover" fill quality={90} sizes={STEP_ART_SIZES.weeks} src={design.art} />
 						</div>
 					) : null}
 					<WeekList />
@@ -375,18 +375,18 @@ export default function Process() {
 						className="absolute font-display font-bold"
 						style={{
 							...at(94, 38),
-							width: u(690),
 							fontSize: u(40),
 							lineHeight: 1.1,
+							width: u(690),
 						}}
 					>
 						{funding.title}
 					</h3>
 					<StepArt
-						step={funding}
-						style={{ ...box(53, 109, 736, 235), position: "absolute" }}
 						scale={1.05}
 						sizes={STEP_ART_SIZES.stage}
+						step={funding}
+						style={{ ...box(53, 109, 736, 235), position: "absolute" }}
 					/>
 					<p
 						className="absolute whitespace-nowrap font-semibold opacity-60"
@@ -404,18 +404,18 @@ export default function Process() {
 						className="absolute font-display font-bold"
 						style={{
 							...at(68, 42),
-							width: u(821),
 							fontSize: u(40),
 							lineHeight: 1.1,
+							width: u(821),
 						}}
 					>
 						{build.title}
 					</h3>
 					<StepArt
-						step={build}
-						style={{ ...box(111, 158, 736, 328), position: "absolute" }}
 						scale={1.35}
 						sizes={STEP_ART_SIZES.stage}
+						step={build}
+						style={{ ...box(111, 158, 736, 328), position: "absolute" }}
 					/>
 					{/* Parked: corner decals, to be placed later. <CornerDecal decal="topLeft2" /> */}
 				</div>
@@ -426,18 +426,18 @@ export default function Process() {
 						className="absolute font-display font-bold"
 						style={{
 							...at(69, 52),
-							width: u(700),
 							fontSize: u(40),
 							lineHeight: 1.1,
+							width: u(700),
 						}}
 					>
 						{printer.title}
 					</h3>
 					<StepArt
-						step={printer}
-						style={{ ...box(106, 140, 736, 257), position: "absolute" }}
 						scale={1.35}
 						sizes={STEP_ART_SIZES.stage}
+						step={printer}
+						style={{ ...box(106, 140, 736, 257), position: "absolute" }}
 					/>
 					{/* Parked: corner decals, to be placed later. <CornerDecal decal="bottomLeft" /> */}
 				</div>
@@ -448,17 +448,17 @@ export default function Process() {
 				<Aside aside={community} origin={[59, 2367 + SHIFT]} />
 
 				{/* The welds, drawn last so they ride over the plates they join */}
-				{WELDS.map((w) => {
+				{WELDS.map(w => {
 					const b = weld(w.exit, w.entry, w.mean)
 					return (
 						<svg
-							key={w.id}
+							aria-hidden
 							className="absolute"
+							fill="none"
+							key={w.id}
+							preserveAspectRatio="none"
 							style={box(b.x, b.y, b.w, b.h)}
 							viewBox={`0 0 ${b.w} ${b.h}`}
-							preserveAspectRatio="none"
-							fill="none"
-							aria-hidden
 						>
 							{/* The bands are the plates' own material, not a rule drawn
                   between them – they ride over the plates they join, so a band
@@ -502,7 +502,7 @@ export default function Process() {
 						>
 							{HOW_LABEL}
 						</h2>
-						<StackWeld lean="right" anchor />
+						<StackWeld anchor lean="right" />
 					</div>
 
 					<ol className="flex flex-col">
@@ -518,12 +518,12 @@ export default function Process() {
 								{design.art ? (
 									<div className="relative mt-6 aspect-[1920/1080] w-full overflow-hidden">
 										<Image
-											src={design.art}
 											alt=""
-											fill
-											sizes={STEP_ART_SIZES.stacked}
-											quality={90}
 											className="object-cover"
+											fill
+											quality={90}
+											sizes={STEP_ART_SIZES.stacked}
+											src={design.art}
 										/>
 									</div>
 								) : null}
@@ -536,7 +536,7 @@ export default function Process() {
 						<li>
 							<Plate>
 								<h3 className="font-display text-2xl font-bold sm:text-3xl">{funding.title}</h3>
-								<StepArt step={funding} className="mt-6 aspect-[11876/3790] w-full" sizes={STEP_ART_SIZES.stacked} />
+								<StepArt className="mt-6 aspect-[11876/3790] w-full" sizes={STEP_ART_SIZES.stacked} step={funding} />
 								<p className="mt-4 font-semibold opacity-40">{funding.caption}</p>
 							</Plate>
 						</li>
@@ -546,7 +546,7 @@ export default function Process() {
 						<li>
 							<Plate>
 								<h3 className="font-display text-2xl font-bold sm:text-3xl">{build.title}</h3>
-								<StepArt step={build} className="mt-6 aspect-[9673/4315] w-full" sizes={STEP_ART_SIZES.stacked} />
+								<StepArt className="mt-6 aspect-[9673/4315] w-full" sizes={STEP_ART_SIZES.stacked} step={build} />
 							</Plate>
 						</li>
 
@@ -555,7 +555,7 @@ export default function Process() {
 						<li>
 							<Plate>
 								<h3 className="font-display text-2xl font-bold sm:text-3xl">{printer.title}</h3>
-								<StepArt step={printer} className="mt-6 aspect-[8439/2948] w-full" sizes={STEP_ART_SIZES.stacked} />
+								<StepArt className="mt-6 aspect-[8439/2948] w-full" sizes={STEP_ART_SIZES.stacked} step={printer} />
 							</Plate>
 						</li>
 					</ol>
@@ -611,18 +611,18 @@ function StackWeld({
 }) {
 	const Tag = anchor ? "div" : "li"
 	return (
-		<Tag role="presentation" aria-hidden className={anchor ? "flex" : "flex justify-center"}>
+		<Tag aria-hidden className={anchor ? "flex" : "flex justify-center"} role="presentation">
 			<svg
 				aria-hidden
-				viewBox={`0 0 ${STACK_VIEW.w} ${STACK_VIEW.h}`}
-				preserveAspectRatio="none"
-				fill="none"
 				className={`h-16 w-40 sm:h-24 sm:w-56${
 					// 41.78% is the fraction of its plate the stage's own header weld leaves at, so the margin puts this box's left edge there and the translate walks it back by the 35% of its own width that the run's exit sits at – landing the exit itself on 41.78%.
 					//
 					// The translate is what makes this one pair of values rather than one per breakpoint: it is a share of whatever width the box currently has, so `w-40` and `sm:w-56` both come out anchored with nothing to keep in step. The `calc()` this replaces needed the box's width spelled out, and Tailwind generated the base rule but not the `sm:` one, so the weld would have jumped off the plate at 640px.
 					anchor ? " ml-[41.78%] -translate-x-[35%]" : ""
 				}`}
+				fill="none"
+				preserveAspectRatio="none"
+				viewBox={`0 0 ${STACK_VIEW.w} ${STACK_VIEW.h}`}
 			>
 				<path d={stackWeld(lean)} fill="var(--color-hl-lavender-pale)" />
 			</svg>
@@ -638,15 +638,15 @@ function StackWeld({
  * It is a flow box now: one padding value on each axis, one gap, and the title and body both centred, so the two plates space themselves identically whatever their copy does. The comp's own type sizes are kept; only the spacing is re-derived.
  */
 const ASIDE = {
-	/** The comp's plate. Height is a floor, not a fixed size, so a title that
-	 *  wraps lengthens the plate instead of crushing the gap below it. */
-	w: 555,
+	bodySize: 22.269,
+	gap: 18,
 	minH: 261.227,
 	padX: 34,
 	padY: 30,
-	gap: 18,
 	titleSize: 30.833,
-	bodySize: 22.269,
+	/** The comp's plate. Height is a floor, not a fixed size, so a title that
+	 *  wraps lengthens the plate instead of crushing the gap below it. */
+	w: 555,
 } as const
 
 /**
@@ -676,9 +676,9 @@ function Aside(props: AsideProps) {
 			className="absolute flex flex-col justify-center rounded-xl bg-hl-lavender text-center text-hl-indigo"
 			style={{
 				...at(props.origin[0], props.origin[1]),
-				width: u(ASIDE.w),
 				minHeight: u(ASIDE.minH),
 				padding: `${u(ASIDE.padY)} ${u(ASIDE.padX)}`,
+				width: u(ASIDE.w),
 			}}
 		>
 			<h3 className="font-display font-bold" style={{ fontSize: u(ASIDE.titleSize), lineHeight: 1.15 }}>
@@ -686,9 +686,9 @@ function Aside(props: AsideProps) {
 			</h3>
 			<p
 				style={{
-					marginTop: u(ASIDE.gap),
 					fontSize: u(ASIDE.bodySize),
 					lineHeight: 1.5,
+					marginTop: u(ASIDE.gap),
 				}}
 			>
 				{aside.body}

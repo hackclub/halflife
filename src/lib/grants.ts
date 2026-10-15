@@ -42,11 +42,11 @@ async function memoOrReport(
 	if (!transactionId) {
 		await logAudit({
 			action: AuditAction.ADMIN_SEND_GRANT,
-			actorId: ctx.adminId,
 			actorEmail: ctx.adminEmail,
-			targetType: "ThemeProject",
+			actorId: ctx.adminId,
+			metadata: { memo, memoFailed: true, reason: "HCB returned no transaction id" },
 			targetId: ctx.projectId,
-			metadata: { memoFailed: true, reason: "HCB returned no transaction id", memo },
+			targetType: "ThemeProject",
 		})
 		return
 	}
@@ -57,11 +57,11 @@ async function memoOrReport(
 		console.error("[hcb] memo failed:", err)
 		await logAudit({
 			action: AuditAction.ADMIN_SEND_GRANT,
-			actorId: ctx.adminId,
 			actorEmail: ctx.adminEmail,
-			targetType: "ThemeProject",
+			actorId: ctx.adminId,
+			metadata: { error: message, memo, memoFailed: true, transactionId },
 			targetId: ctx.projectId,
-			metadata: { memoFailed: true, transactionId, error: message, memo },
+			targetType: "ThemeProject",
 		})
 	}
 }
@@ -93,8 +93,8 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 	if (!hashid) throw new HttpError("VALIDATION_FAILED", "That is not an HCB grant link")
 
 	const project = await prisma.themeProject.findFirst({
-		where: { id: input.themeProjectId, deletedAt: null },
-		select: { id: true, userId: true, title: true, theme: true, tier: true, grantUsd: true, designStatus: true },
+		select: { designStatus: true, grantUsd: true, id: true, theme: true, tier: true, title: true, userId: true },
+		where: { deletedAt: null, id: input.themeProjectId },
 	})
 	if (!project) throw new HttpError("NOT_FOUND", "Project not found")
 	if (project.designStatus !== PhaseStatus.approved || !project.grantUsd)
@@ -102,13 +102,13 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 	const amountCents = Math.round(project.grantUsd * 100)
 	const memo = `[grant] ${project.title || "Half Life project"} – Half Life tier ${project.tier ?? "?"}`
 
-	const key = { userId: project.userId, themeProjectId: project.id, phase: input.phase }
+	const key = { phase: input.phase, themeProjectId: project.id, userId: project.userId }
 
 	// Claim the slot before HCB is called, so two clicks cannot both send.
 	let rowId: string
 	try {
 		const created = await prisma.hcbGrantTopUp.create({
-			data: { ...key, grantHashid: hashid, amountCents, createdById: input.adminId },
+			data: { ...key, amountCents, createdById: input.adminId, grantHashid: hashid },
 			select: { id: true },
 		})
 		rowId = created.id
@@ -116,7 +116,7 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 		const existing = await prisma.hcbGrantTopUp.findUnique({ where: { userId_themeProjectId_phase: key } })
 		if (!existing) throw new HttpError("CONFLICT", "Could not start the grant")
 		if (existing.sentAt) {
-			return { amountCents: existing.amountCents, transactionId: existing.transactionId, alreadySent: true }
+			return { alreadySent: true, amountCents: existing.amountCents, transactionId: existing.transactionId }
 		}
 
 		// A row with no error normally means a request is running right now, and two of those must not both send. A crash strands a row the same way, so only a row old enough to be abandoned gets past this.
@@ -136,35 +136,35 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 		}
 		if (reconciled.kind === "landed") {
 			await prisma.hcbGrantTopUp.update({
+				data: { error: null, sentAt: new Date(), transactionId: reconciled.transactionId },
 				where: { id: existing.id },
-				data: { sentAt: new Date(), transactionId: reconciled.transactionId, error: null },
 			})
 			await memoOrReport(reconciled.transactionId, memo, {
-				projectId: project.id,
-				adminId: input.adminId,
 				adminEmail: input.adminEmail,
+				adminId: input.adminId,
+				projectId: project.id,
 			})
 			await logAudit({
 				action: AuditAction.ADMIN_SEND_GRANT,
-				actorId: input.adminId,
 				actorEmail: input.adminEmail,
-				targetType: "ThemeProject",
-				targetId: project.id,
+				actorId: input.adminId,
 				metadata: {
-					phase: input.phase,
-					grantHashid: existing.grantHashid,
 					amountCents: existing.amountCents,
-					transactionId: reconciled.transactionId,
+					grantHashid: existing.grantHashid,
+					phase: input.phase,
 					reconciled: true,
+					transactionId: reconciled.transactionId,
 				},
+				targetId: project.id,
+				targetType: "ThemeProject",
 			})
-			return { amountCents: existing.amountCents, transactionId: reconciled.transactionId, alreadySent: true }
+			return { alreadySent: true, amountCents: existing.amountCents, transactionId: reconciled.transactionId }
 		}
 
 		// Nothing landed, so the retry may claim the row. Comparing `createdAt` makes that a CAS: a concurrent retry bumps it and the loser matches nothing. Refreshing it also restarts the abandoned-attempt window.
 		const reclaimed = await prisma.hcbGrantTopUp.updateMany({
-			where: { id: existing.id, sentAt: null, createdAt: existing.createdAt },
-			data: { grantHashid: hashid, amountCents, error: null, createdById: input.adminId, createdAt: new Date() },
+			data: { amountCents, createdAt: new Date(), createdById: input.adminId, error: null, grantHashid: hashid },
+			where: { createdAt: existing.createdAt, id: existing.id, sentAt: null },
 		})
 		if (reclaimed.count === 0) throw new HttpError("CONFLICT", "A grant for this project is already being sent")
 		rowId = existing.id
@@ -172,19 +172,19 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 
 	// The approval this grant is for can be reversed while HCB is being called. Un-approve refuses while a row like this is in flight (see review.unapprovePhase), so this last read closes the rest of the window.
 	const current = await prisma.themeProject.findUnique({
-		where: { id: project.id },
 		select: { designStatus: true, grantUsd: true },
+		where: { id: project.id },
 	})
 	if (current?.designStatus !== PhaseStatus.approved || !current.grantUsd) {
 		await prisma.hcbGrantTopUp
-			.update({ where: { id: rowId }, data: { error: "The design was un-approved before the grant was sent" } })
+			.update({ data: { error: "The design was un-approved before the grant was sent" }, where: { id: rowId } })
 			.catch(() => undefined)
 		throw new HttpError("CONFLICT", "The design is no longer approved, so no grant is due")
 	}
 	// The amount was captured before HCB was called; if the grant was edited since – including by a retry reclaiming the row above – paying the stale figure sends the wrong money. Fail closed instead.
 	if (Math.round(current.grantUsd * 100) !== amountCents) {
 		await prisma.hcbGrantTopUp
-			.update({ where: { id: rowId }, data: { error: "The grant amount changed before the top-up was sent" } })
+			.update({ data: { error: "The grant amount changed before the top-up was sent" }, where: { id: rowId } })
 			.catch(() => undefined)
 		throw new HttpError("CONFLICT", "The grant amount changed – reload and try again")
 	}
@@ -192,23 +192,23 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 	try {
 		const { transactionId } = await topUpCardGrant(hashid, amountCents)
 		await memoOrReport(transactionId, memo, {
-			projectId: project.id,
-			adminId: input.adminId,
 			adminEmail: input.adminEmail,
+			adminId: input.adminId,
+			projectId: project.id,
 		})
-		await prisma.hcbGrantTopUp.update({ where: { id: rowId }, data: { transactionId, sentAt: new Date() } })
+		await prisma.hcbGrantTopUp.update({ data: { sentAt: new Date(), transactionId }, where: { id: rowId } })
 		await logAudit({
 			action: AuditAction.ADMIN_SEND_GRANT,
-			actorId: input.adminId,
 			actorEmail: input.adminEmail,
-			targetType: "ThemeProject",
+			actorId: input.adminId,
+			metadata: { amountCents, grantHashid: hashid, phase: input.phase, transactionId },
 			targetId: project.id,
-			metadata: { phase: input.phase, grantHashid: hashid, amountCents, transactionId },
+			targetType: "ThemeProject",
 		})
-		return { amountCents, transactionId, alreadySent: false }
+		return { alreadySent: false, amountCents, transactionId }
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err)
-		await prisma.hcbGrantTopUp.update({ where: { id: rowId }, data: { error: message } }).catch(() => undefined)
+		await prisma.hcbGrantTopUp.update({ data: { error: message }, where: { id: rowId } }).catch(() => undefined)
 		throw err
 	}
 }

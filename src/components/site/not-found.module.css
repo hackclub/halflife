@@ -23,14 +23,14 @@
 	/* Above the platform's fixed graph-paper layer, which sits at z-index 0. */
 	position: relative;
 	z-index: 1;
-	isolation: isolate;
 	display: flex;
 	min-height: 100dvh;
 	padding: clamp(2.5rem, 8vh, 5rem) 1rem;
-	background-color: var(--ink);
-	color: var(--paper);
 	font-family: var(--font-open-sans), ui-sans-serif, system-ui, sans-serif;
 	-webkit-font-smoothing: antialiased;
+	color: var(--paper);
+	background-color: var(--ink);
+	isolation: isolate;
 }
 
 /* The landing's ring and selection, in place of whichever document's these
@@ -42,8 +42,8 @@
 }
 
 .scene ::selection {
-	background-color: var(--cyan);
 	color: var(--ink);
+	background-color: var(--cyan);
 }
 
 .column {
@@ -57,12 +57,12 @@
 .wordmark {
 	display: inline-block;
 	margin-bottom: clamp(2.25rem, 7vh, 4rem);
-	color: var(--cyan);
 	font-family: var(--font-masterpiece), var(--font-ubuntu), ui-sans-serif, sans-serif;
 	font-size: clamp(2.25rem, 7vw, 3rem);
 	font-synthesis-weight: none;
-	letter-spacing: -0.045em;
 	line-height: 0.86;
+	color: var(--cyan);
+	letter-spacing: -0.045em;
 	text-decoration: none;
 	transition:
 		color 150ms,
@@ -131,34 +131,34 @@
 	min-height: 14rem;
 	padding: 2.75rem 1.5rem;
 	overflow: hidden;
-	background-color: var(--ink);
 	text-align: center;
+	background-color: var(--ink);
 }
 
 .grid {
 	position: absolute;
 	inset: 0;
-	opacity: 0.3;
+	pointer-events: none;
 	background-image:
 		repeating-linear-gradient(to right, var(--cyan) 0 1px, transparent 1px 2.25rem),
 		repeating-linear-gradient(to bottom, var(--cyan) 0 1px, transparent 1px 2.25rem);
+	opacity: 0.3;
 	mask-image: radial-gradient(120% 120% at 50% 50%, #000 25%, transparent 78%);
-	pointer-events: none;
 }
 
 .edge {
 	position: absolute;
 	inset: 0;
-	border: 2px solid color-mix(in srgb, var(--cyan) 45%, transparent);
 	pointer-events: none;
+	border: 2px solid color-mix(in srgb, var(--cyan) 45%, transparent);
 }
 
 .tick {
 	position: absolute;
 	width: 1.75rem;
 	height: 1.75rem;
-	border: 0 solid var(--cyan);
 	pointer-events: none;
+	border: 0 solid var(--cyan);
 }
 
 .tl {
@@ -180,10 +180,10 @@
 	border-left-width: 2px;
 }
 .br {
-	bottom: 0;
 	right: 0;
-	border-bottom-width: 2px;
+	bottom: 0;
 	border-right-width: 2px;
+	border-bottom-width: 2px;
 }
 
 .body {
@@ -196,13 +196,13 @@
 
 .label {
 	margin: 0;
-	color: var(--cyan);
 	font-family: var(--font-ubuntu), ui-sans-serif, system-ui, sans-serif;
 	font-size: 1.25rem;
 	font-weight: 700;
-	letter-spacing: 0.14em;
 	line-height: 1.1;
+	color: var(--cyan);
 	text-transform: uppercase;
+	letter-spacing: 0.14em;
 }
 
 /* The address that was asked for. Data, so it wraps anywhere rather than
@@ -210,9 +210,9 @@
 .path {
 	max-width: 100%;
 	margin-top: 0.5rem;
-	color: var(--cyan-soft);
 	font-size: 0.9rem;
 	font-variant-numeric: tabular-nums;
+	color: var(--cyan-soft);
 	letter-spacing: 0.06em;
 	overflow-wrap: anywhere;
 }
@@ -220,9 +220,9 @@
 .text {
 	max-width: 34ch;
 	margin: 1.25rem 0 0;
-	color: var(--paper-soft);
 	font-size: 1rem;
 	line-height: 1.6;
+	color: var(--paper-soft);
 	text-wrap: pretty;
 }
 
@@ -231,8 +231,8 @@
 .actions {
 	display: flex;
 	flex-wrap: wrap;
-	align-items: center;
 	gap: 1rem 2rem;
+	align-items: center;
 	margin-top: 2rem;
 }
 
@@ -242,12 +242,12 @@
 	align-items: center;
 	height: 2.875rem;
 	padding: 0 1.25em;
-	background-color: var(--cyan);
-	color: var(--ink);
 	font-family: var(--font-ubuntu), ui-sans-serif, system-ui, sans-serif;
 	font-size: 1.125rem;
 	font-weight: 700;
+	color: var(--ink);
 	text-decoration: none;
+	background-color: var(--cyan);
 	transition:
 		background-color 150ms,
 		transform 150ms;
@@ -264,11 +264,11 @@
 
 /* The footer's link. */
 .secondary {
-	color: var(--paper);
 	font-size: 1rem;
+	color: var(--paper);
 	text-decoration: underline;
-	text-decoration-color: color-mix(in srgb, var(--paper) 25%, transparent);
 	text-decoration-thickness: 2px;
+	text-decoration-color: color-mix(in srgb, var(--paper) 25%, transparent);
 	text-underline-offset: 4px;
 	transition:
 		color 150ms,

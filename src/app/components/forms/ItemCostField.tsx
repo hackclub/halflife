@@ -13,27 +13,27 @@ export function ItemCostField({ itemId, costUsd }: Readonly<{ itemId: string; co
 		e.preventDefault()
 		void run("submit", () =>
 			sendJson(`/api/admin/shop/items/${itemId}`, {
-				method: "PATCH",
 				body: { costUsd: value === "" ? null : Number(value) },
+				method: "PATCH",
 			}),
 		)
 	}
 
 	return (
-		<form onSubmit={submit} className="hl-row" style={{ gap: "0.4rem", flexWrap: "nowrap" }}>
+		<form className="hl-row" onSubmit={submit} style={{ flexWrap: "nowrap", gap: "0.4rem" }}>
 			<input
-				className="hl-input"
-				type="number"
-				min="0"
-				step="0.01"
 				aria-label="Cost in USD"
+				className="hl-input"
+				min="0"
+				onChange={e => setValue(e.target.value)}
 				placeholder="not set"
-				value={value}
-				onChange={(e) => setValue(e.target.value)}
+				step="0.01"
 				style={{ width: "7rem" }}
+				type="number"
+				value={value}
 			/>
 			{dirty ? (
-				<Button type="submit" disabled={busy !== null}>
+				<Button disabled={busy !== null} type="submit">
 					{busy ? "Saving…" : "Save"}
 				</Button>
 			) : null}

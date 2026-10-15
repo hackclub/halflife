@@ -62,17 +62,17 @@ export function ReelCapture({
 
 	if (objectKey) {
 		return (
-			<Panel tone="teal" radius={16} className="flex items-center gap-3 bg-cream px-4 py-3">
+			<Panel className="flex items-center gap-3 bg-cream px-4 py-3" radius={16} tone="teal">
 				<IconFilm className="shrink-0 text-[1.4rem] text-teal-ink" />
 				<p className="min-w-0 flex-1 text-[0.9rem] leading-snug font-semibold text-navy">
 					{label} is uploaded and ready to post.
 				</p>
 				<Button
-					variant="outline"
 					onClick={() => {
 						onCaptured(null)
 						handoff.cancel()
 					}}
+					variant="outline"
 				>
 					Replace
 				</Button>
@@ -90,29 +90,29 @@ export function ReelCapture({
 
 			{/* A reel is the biggest thing anyone uploads here, often over school
           wifi – without a bar, a minute of sending looks like a hang. */}
-			{busy && <UploadProgress progress={progress} name="Your video" className="max-w-[420px]" />}
+			{busy && <UploadProgress className="max-w-[420px]" name="Your video" progress={progress} />}
 
 			<div className="flex flex-wrap gap-2">
 				{/* No `capture`, so a phone opens the gallery rather than the recorder: the clip someone filmed earlier is the more common answer. */}
-				<Button variant="outline" disabled={busy} onClick={() => input.current?.click()}>
+				<Button disabled={busy} onClick={() => input.current?.click()} variant="outline">
 					{busy ? "Uploading…" : "Choose a video"}
 				</Button>
 				{/* Films on the device in the reader's hand. Hidden where the primary pointer is fine, because a desktop browser ignores `capture` and this would be the button beside it: the variant has to be the one that hides, since the button's own `inline-flex` is emitted after `hidden` and would beat it. */}
 				<Button
-					variant="outline"
-					disabled={busy}
 					className="[@media(pointer:fine)]:hidden"
+					disabled={busy}
 					onClick={() => camera.current?.click()}
+					variant="outline"
 				>
 					Record now
 				</Button>
 				<Button
-					variant="outline"
 					disabled={busy || handoff.status === "minting"}
 					onClick={() => {
 						setShowQr(true)
 						handoff.mint()
 					}}
+					variant="outline"
 				>
 					{handoff.status === "minting" ? "Making a code…" : "Record on my phone"}
 				</Button>
@@ -120,39 +120,39 @@ export function ReelCapture({
 
 			{/* No `capture`: this one is the picker. */}
 			<input
-				ref={input}
-				type="file"
 				accept="video/*"
-				className="sr-only"
-				tabIndex={-1}
 				aria-hidden="true"
-				onChange={(e) => pick(e.target.files?.[0])}
+				className="sr-only"
+				onChange={e => pick(e.target.files?.[0])}
+				ref={input}
+				tabIndex={-1}
+				type="file"
 			/>
 
 			{/* `capture` is a hint, not a constraint: on a phone it opens the rear camera straight into the native recorder, and hands back the platform's own format. A desktop browser ignores it, which is why the button that opens this one is hidden there. */}
 			<input
-				ref={camera}
-				type="file"
 				accept="video/*"
-				className="sr-only"
-				tabIndex={-1}
 				aria-hidden="true"
 				capture="environment"
-				onChange={(e) => pick(e.target.files?.[0])}
+				className="sr-only"
+				onChange={e => pick(e.target.files?.[0])}
+				ref={camera}
+				tabIndex={-1}
+				type="file"
 			/>
 
 			{showQr && handoff.minted && handoff.status === "waiting" && (
-				<Panel tone="line" radius={16} className="grid justify-items-center gap-3 bg-paper p-5">
+				<Panel className="grid justify-items-center gap-3 bg-paper p-5" radius={16} tone="line">
 					{/* Server-rendered SVG from our own origin – the token is never sent
               to a third-party QR service.
               The SVG carries its own width, so it is forced to the box rather
               than trusted to fit: at its natural 200px it overflowed and sat on
               top of the caption. */}
 					<div
-						role="img"
 						aria-label="QR code linking to the upload page"
 						className="w-[180px] [&>svg]:block [&>svg]:h-auto [&>svg]:w-full"
 						dangerouslySetInnerHTML={{ __html: handoff.minted.qrSvg }}
+						role="img"
 					/>
 					<p className="hand text-center text-[0.85rem] text-navy-soft">
 						Scan it, film it, and the video lands here. Works once, expires shortly.

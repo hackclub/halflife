@@ -16,12 +16,12 @@ import jukeboxPhoto from "../../../public/projects/jukebox.png"
 import macropadPhoto from "../../../public/projects/macropad.png"
 
 export const BRAND = {
-	name: "Half Life",
-	tagline: "become a hardware expert in 10 weeks, get a 3D printer",
 	/**
 	 * Under the email field. The one line here that is not the comp's: it was asked for directly, and it is the two things someone hesitating over the field wants settled before they type. Lowercase to match the tagline above it; en dash because 13-18 is a range.
 	 */
 	eligibility: "teens 13-18. no experience necessary. free to participate.",
+	name: "Half Life",
+	tagline: "become a hardware expert in 10 weeks, get a 3D printer",
 } as const
 
 export type DesignWeek = {
@@ -37,15 +37,15 @@ export type DesignWeek = {
 
 /** Week 1 leads at display scale; weeks 2-5 sit beneath it. */
 export const DESIGN_WEEKS: { lead: DesignWeek; rest: DesignWeek[] } = {
-	lead: { subject: "PCBs", week: "week 1", art: "/art/weeks/PCB.png" },
+	lead: { art: "/art/weeks/PCB.png", subject: "PCBs", week: "week 1" },
 	rest: [
-		{ subject: "CAD", week: "week 2", art: "/art/weeks/cad.png" },
+		{ art: "/art/weeks/cad.png", subject: "CAD", week: "week 2" },
 		{ subject: "music", week: "week 3" },
-		{ subject: "displays", week: "week 4", art: "/art/weeks/display.png" },
+		{ art: "/art/weeks/display.png", subject: "displays", week: "week 4" },
 		{
+			art: "/art/weeks/breadboard.png",
 			subject: "breadboard logic",
 			week: "week 5",
-			art: "/art/weeks/breadboard.png",
 		},
 	],
 }
@@ -69,28 +69,28 @@ export type Step = {
  *  and gives each one its own plate. */
 export const STEPS: [Step, Step, Step, Step] = [
 	{
+		art: allWeeksArt,
 		id: "design",
 		title: "spend 5 weeks designing 5 projects",
-		art: allWeeksArt,
 	},
 	{
-		id: "funding",
-		title: "get funding and order your parts!",
 		art: getFundingArt,
-		slot: { label: "order flow", ratio: "736 × 155" },
 		caption: "up to $100 per project!",
+		id: "funding",
+		slot: { label: "order flow", ratio: "736 × 155" },
+		title: "get funding and order your parts!",
 	},
 	{
-		id: "build",
-		title: "then spend 5 weeks building your projects!",
 		art: buildArt,
+		id: "build",
 		slot: { label: "build photo", ratio: "736 × 269" },
+		title: "then spend 5 weeks building your projects!",
 	},
 	{
-		id: "printer",
-		title: "get a 3D printer!",
 		art: prizesArt,
+		id: "printer",
 		slot: { label: "prize lineup", ratio: "736 × 269" },
+		title: "get a 3D printer!",
 	},
 ]
 
@@ -99,14 +99,14 @@ export type Aside = { id: string; title: string; body: string }
 /** Exactly two; each is placed at its own offset on the process band. */
 export const ASIDES: [Aside, Aside] = [
 	{
+		body: "Make videos, posts, and blogs about your Half Life projects! If they hit our virality threshold, you'll earn extra prizes like plushies, drawing tablets, and iPads!",
 		id: "viral",
 		title: "earn more prizes by going viral!",
-		body: "Make videos, posts, and blogs about your Half Life projects! If they hit our virality threshold, you'll earn extra prizes like plushies, drawing tablets, and iPads!",
 	},
 	{
+		body: "Hack Club has a community of over 100,000 teenagers from around the globe, who all love building projects and learning how to build projects. Join now at hackclub.com/slack!",
 		id: "community",
 		title: "there are thousands of us!",
-		body: "Hack Club has a community of over 100,000 teenagers from around the globe, who all love building projects and learning how to build projects. Join now at hackclub.com/slack!",
 	},
 ]
 
@@ -129,41 +129,41 @@ export type BuildCard = {
 
 export const BUILD_CARDS: BuildCard[] = [
 	{
+		credit: "by Joshua, 18, from Quebec",
 		id: "hexapod",
 		label: "Hexapod robot",
-		credit: "by Joshua, 18, from Quebec",
 		photo: hexapodPhoto,
 		repo: "https://github.com/Josh4minee/HEX-B12.V1",
 		slot: { label: "project photo", ratio: "329 x 377" },
 	},
 	{
+		credit: "by Dani, 17, from New York",
 		id: "jukebox",
 		label: "Minecraft Jukebox",
-		credit: "by Dani, 17, from New York",
 		photo: jukeboxPhoto,
 		repo: "https://github.com/danieliscrazy/Jukebox",
 		slot: { label: "project photo", ratio: "329 x 377" },
 	},
 	{
+		credit: "by Nirvaan, 14, from New Jersey",
 		id: "macropad",
 		label: "12-key Macropad",
-		credit: "by Nirvaan, 14, from New Jersey",
 		photo: macropadPhoto,
 		repo: "https://github.com/OakTreeWC/12KEMPV2.1",
 		slot: { label: "project photo", ratio: "329 x 377" },
 	},
 	{
+		credit: "by Archit, 15, from Australia",
 		id: "flightcontroller",
 		label: "Rocket Flight Controller",
-		credit: "by Archit, 15, from Australia",
 		photo: flightControllerPhoto,
 		repo: "https://github.com/codinga593/IRIS",
 		slot: { label: "project photo", ratio: "329 x 377" },
 	},
 	{
+		credit: "by Cyao, 18, from France",
 		id: "icepi",
 		label: "Icepi Zero FPGA Devboard",
-		credit: "by Cyao, 18, from France",
 		photo: icepiPhoto,
 		repo: "https://github.com/cheyao/icepi-zero",
 		slot: { label: "project photo", ratio: "329 x 377" },
@@ -174,28 +174,28 @@ export type Faq = { q: string; a: string }
 
 export const FAQS: Faq[] = [
 	{
-		q: "Who is this for?",
 		a: "Half Life is for teenagers 13-18 (inclusive)! Whether you've never touched hardware before or you're a multiplexing master, Half Life is your place to become a well-rounded hardware expert.",
+		q: "Who is this for?",
 	},
 	{
-		q: "I don't know hardware!",
 		a: "That's okay! We have guided projects and hardware experts to help you out. Half Life is for beginners, experts, and all the levels in between.",
+		q: "I don't know hardware!",
 	},
 	{
-		q: "Is this free?",
 		a: "Yep! Hack Club programs are free to participate in. We provide funding for hardware projects and all prizes (like 3D printers) are free! We do not cover customs costs.",
+		q: "Is this free?",
 	},
 	{
-		q: "When does this start?",
 		a: "Half Life is running for 10 weeks! September 14th to October 4th will be warmup weeks 1-3 (where you can submit any hardware project and get funding from up $100), and then PCB Week will start!",
+		q: "When does this start?",
 	},
 	{
-		q: "What's Hack Club?",
 		a: "Hack Club is a 501(c)(3) nonprofit that helps teenagers around the world build technical projects and go on awesome adventures!",
+		q: "What's Hack Club?",
 	},
 	{
-		q: "What do I get?",
 		a: "Up to $100 of funding per project, a 3D printer for finishing all ten weeks, and extra prizes (like plushies, drawing tablets, and iPads) for going above and beyond.",
+		q: "What do I get?",
 	},
 ]
 
@@ -206,27 +206,27 @@ export const FOOTER_COLUMNS = [
 	{
 		heading: "Half Life",
 		links: [
-			{ label: "How it works", href: "#how-it-works" },
-			{ label: "What you can build", href: "#what-can-i-build" },
-			{ label: "FAQ", href: "#faq" },
-			{ label: "Sign up", href: "#signup" },
+			{ href: "#how-it-works", label: "How it works" },
+			{ href: "#what-can-i-build", label: "What you can build" },
+			{ href: "#faq", label: "FAQ" },
+			{ href: "#signup", label: "Sign up" },
 		],
 	},
 	{
 		heading: "Hack Club",
 		links: [
-			{ label: "hackclub.com", href: "https://hackclub.com" },
-			{ label: "Philosophy", href: "https://hackclub.com/philosophy" },
-			{ label: "Team", href: "https://hackclub.com/team" },
-			{ label: "Donate", href: "https://hackclub.com/donate" },
+			{ href: "https://hackclub.com", label: "hackclub.com" },
+			{ href: "https://hackclub.com/philosophy", label: "Philosophy" },
+			{ href: "https://hackclub.com/team", label: "Team" },
+			{ href: "https://hackclub.com/donate", label: "Donate" },
 		],
 	},
 	{
 		heading: "Community",
 		links: [
-			{ label: "Slack", href: "https://hackclub.com/slack" },
-			{ label: "GitHub", href: "https://github.com/hackclub" },
-			{ label: "Conduct", href: "https://hackclub.com/conduct" },
+			{ href: "https://hackclub.com/slack", label: "Slack" },
+			{ href: "https://github.com/hackclub", label: "GitHub" },
+			{ href: "https://hackclub.com/conduct", label: "Conduct" },
 		],
 	},
 ] as const

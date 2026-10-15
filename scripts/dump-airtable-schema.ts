@@ -32,7 +32,7 @@ async function main() {
 	console.log("\nPaste these ids into lib/airtable/schema.ts, then set AIRTABLE_USE_FIELD_IDS=true.")
 }
 
-main().catch((err) => {
+main().catch(err => {
 	console.error(err)
 	process.exit(1)
 })

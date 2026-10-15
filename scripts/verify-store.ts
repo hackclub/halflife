@@ -38,9 +38,9 @@ async function main() {
 	const user = await prisma.user.create({
 		data: {
 			email: `store-check-${stamp}@example.test`,
+			joinedProgramAt: new Date(),
 			name: "Store Check",
 			verificationStatus: "verified",
-			joinedProgramAt: new Date(),
 		},
 	})
 
@@ -51,7 +51,7 @@ async function main() {
 	check("creating a project is idempotent", made, 5)
 
 	const pcb = await prisma.themeProject.findFirstOrThrow({
-		where: { userId: user.id, theme: Theme.PCB },
+		where: { theme: Theme.PCB, userId: user.id },
 	})
 
 	// Nothing named yet: the row exists, but the trail must not claim it.
@@ -61,21 +61,21 @@ async function main() {
 	check("no checkpoints are done", Object.keys(blank.progress).length, 0)
 
 	await prisma.themeProject.update({
+		data: { description: "Three keys.", requestedTier: 2, title: "Macropad" },
 		where: { id: pcb.id },
-		data: { title: "Macropad", description: "Three keys.", requestedTier: 2 },
 	})
 
 	// Three sessions, written in order. Their order IS the node order.
 	for (const [index, hours] of [1.5, 2, 3].entries()) {
 		await prisma.workSession.create({
 			data: {
-				themeProjectId: pcb.id,
-				phase: Phase.DESIGN,
-				title: `Session ${index + 1}`,
 				content: `Body ${index + 1}`,
-				hoursClaimed: hours,
-				effectiveDate: "2026-09-10",
 				createdAt: new Date(stamp + index * 1000),
+				effectiveDate: "2026-09-10",
+				hoursClaimed: hours,
+				phase: Phase.DESIGN,
+				themeProjectId: pcb.id,
+				title: `Session ${index + 1}`,
 			},
 		})
 	}
@@ -83,24 +83,24 @@ async function main() {
 	// Two reels, on nodes that are ten hours apart. Only one has been earned, and counting by kind would tick both.
 	await prisma.post.create({
 		data: {
-			userId: user.id,
-			themeProjectId: pcb.id,
-			kind: PostKind.PROGRESS,
 			caption: "Ten hours in.",
-			objectKey: `posts/${user.id}/a.mp4`,
 			checkpointKey: "w1-reel-1",
-			status: PostStatus.PUBLISHED,
+			kind: PostKind.PROGRESS,
+			objectKey: `posts/${user.id}/a.mp4`,
 			publishedAt: new Date(),
+			status: PostStatus.PUBLISHED,
+			themeProjectId: pcb.id,
+			userId: user.id,
 		},
 	})
 
 	// Time that never passed through a journal entry.
 	await prisma.hackatimeLink.create({
 		data: {
-			themeProjectId: pcb.id,
-			phase: Phase.DESIGN,
-			hackatimeProject: "macropad",
 			cachedSeconds: 7200,
+			hackatimeProject: "macropad",
+			phase: Phase.DESIGN,
+			themeProjectId: pcb.id,
 		},
 	})
 
@@ -126,11 +126,11 @@ async function main() {
 	check("the week is not submitted", snap.progress["w1-submit"], undefined)
 
 	await prisma.phaseSubmission.create({
-		data: { themeProjectId: pcb.id, phase: Phase.DESIGN },
+		data: { phase: Phase.DESIGN, themeProjectId: pcb.id },
 	})
 	await prisma.themeProject.update({
-		where: { id: pcb.id },
 		data: { designStatus: PhaseStatus.in_review },
+		where: { id: pcb.id },
 	})
 
 	const submitted = await getStoreSnapshot(user.id)
@@ -146,23 +146,23 @@ async function main() {
 	const fresh = await prisma.user.create({
 		data: {
 			email: `store-onboard-${stamp}@example.test`,
+			joinedProgramAt: new Date(),
 			name: "Onboard Check",
 			verificationStatus: "verified",
-			joinedProgramAt: new Date(),
 		},
 	})
 	// No project yet: onboarding is week one's "create a project" checkpoint and makes the PCB row itself.
 
-	await submitStep(fresh.id, { step: "experience", experience: "A_LITTLE" })
+	await submitStep(fresh.id, { experience: "A_LITTLE", step: "experience" })
 	await submitStep(fresh.id, { step: "week" })
 	await submitStep(fresh.id, {
+		description: "My handle in copper.",
 		step: "project",
 		title: "Blinky badge",
-		description: "My handle in copper.",
 	})
-	await submitStep(fresh.id, { step: "idea", starterProjectId: null })
-	await submitStep(fresh.id, { step: "tier", requestedTier: 2 })
-	await submitStep(fresh.id, { step: "tracking", dismissed: false })
+	await submitStep(fresh.id, { starterProjectId: null, step: "idea" })
+	await submitStep(fresh.id, { requestedTier: 2, step: "tier" })
+	await submitStep(fresh.id, { dismissed: false, step: "tracking" })
 
 	const onboarded = await getStoreSnapshot(fresh.id)
 	check("the store's sequence completes onboarding", onboarded.onboardingDone, true)
@@ -179,7 +179,7 @@ async function main() {
 }
 
 main()
-	.catch((err) => {
+	.catch(err => {
 		console.error(err)
 		process.exitCode = 1
 	})

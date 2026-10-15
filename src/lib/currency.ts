@@ -30,7 +30,7 @@ const EARNING_KINDS: LedgerKind[] = [
 ]
 
 async function sumFor(tx: Tx, where: Prisma.LedgerEntryWhereInput): Promise<number> {
-	const { _sum } = await tx.ledgerEntry.aggregate({ where, _sum: { amount: true } })
+	const { _sum } = await tx.ledgerEntry.aggregate({ _sum: { amount: true }, where })
 	return _sum.amount ?? 0
 }
 
@@ -51,10 +51,10 @@ export type Balances = {
  */
 export async function getBalances(tx: Tx, userId: string): Promise<Balances> {
 	const [spendable, banked] = await Promise.all([
-		sumFor(tx, { userId, bucket: CoinBucket.SPENDABLE }),
-		sumFor(tx, { userId, bucket: CoinBucket.BANKED }),
+		sumFor(tx, { bucket: CoinBucket.SPENDABLE, userId }),
+		sumFor(tx, { bucket: CoinBucket.BANKED, userId }),
 	])
-	return { spendable, banked, total: spendable + banked }
+	return { banked, spendable, total: spendable + banked }
 }
 
 /**
@@ -66,7 +66,7 @@ export function spendableFor(balances: Balances, _category: ShopItemCategory): n
 
 /** Lifetime earnings, ignoring spending. For progress displays. */
 export async function getEarnedCredit(tx: Tx, userId: string): Promise<number> {
-	return sumFor(tx, { userId, kind: { in: EARNING_KINDS } })
+	return sumFor(tx, { kind: { in: EARNING_KINDS }, userId })
 }
 
 export type LedgerEntryParams = {
@@ -89,19 +89,19 @@ export type LedgerEntryParams = {
 export async function appendLedgerEntry(tx: Tx, params: LedgerEntryParams): Promise<LedgerEntry> {
 	const bucket = params.bucket ?? CoinBucket.SPENDABLE
 	// Scoped to the bucket: a combined figure here would make the audit columns disagree with the balance the participant was actually shown and spent against, which is the one question these columns exist to answer.
-	const balanceBefore = await sumFor(tx, { userId: params.userId, bucket })
+	const balanceBefore = await sumFor(tx, { bucket, userId: params.userId })
 	return tx.ledgerEntry.create({
 		data: {
-			userId: params.userId,
-			kind: params.kind,
-			bucket,
 			amount: params.amount,
-			note: params.note ?? null,
-			themeProjectId: params.themeProjectId ?? null,
-			shopOrderId: params.shopOrderId ?? null,
-			createdById: params.createdById ?? null,
-			balanceBefore,
 			balanceAfter: balanceBefore + params.amount,
+			balanceBefore,
+			bucket,
+			createdById: params.createdById ?? null,
+			kind: params.kind,
+			note: params.note ?? null,
+			shopOrderId: params.shopOrderId ?? null,
+			themeProjectId: params.themeProjectId ?? null,
+			userId: params.userId,
 		},
 	})
 }
@@ -131,21 +131,21 @@ export type ReconcileParams = {
  */
 export async function reconcileGrant(tx: Tx, params: ReconcileParams): Promise<LedgerEntry | null> {
 	const current = await sumFor(tx, {
-		userId: params.userId,
-		themeProjectId: params.themeProjectId,
 		kind: params.kind,
+		themeProjectId: params.themeProjectId,
+		userId: params.userId,
 	})
 	const delta = params.target - current
 	if (delta === 0) return null
 
 	return appendLedgerEntry(tx, {
-		userId: params.userId,
-		kind: params.kind,
-		bucket: params.bucket ?? CoinBucket.SPENDABLE,
 		amount: delta,
+		bucket: params.bucket ?? CoinBucket.SPENDABLE,
+		createdById: params.createdById ?? null,
+		kind: params.kind,
 		note: params.note,
 		themeProjectId: params.themeProjectId,
-		createdById: params.createdById ?? null,
+		userId: params.userId,
 	})
 }
 
@@ -155,9 +155,9 @@ export async function getLedgerPage(
 	limit: number,
 ): Promise<{ items: LedgerEntry[]; nextCursor: string | null }> {
 	const rows = await prisma.ledgerEntry.findMany({
-		where: { userId },
 		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
 		take: limit + 1,
+		where: { userId },
 		...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
 	})
 	const hasMore = rows.length > limit

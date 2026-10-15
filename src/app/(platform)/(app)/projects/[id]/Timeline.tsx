@@ -40,7 +40,7 @@ export function Timeline({
 		if (split && phase && phase !== running) {
 			running = phase
 			rows.push(
-				<li key={`week-${phase}`} className="relative grid grid-cols-[32px_minmax(0,1fr)] gap-x-4">
+				<li className="relative grid grid-cols-[32px_minmax(0,1fr)] gap-x-4" key={`week-${phase}`}>
 					<span
 						aria-hidden="true"
 						className="relative z-10 mx-auto mt-1.5 size-2.5 rounded-full bg-violet ring-4 ring-paper"
@@ -56,10 +56,10 @@ export function Timeline({
 		}
 		rows.push(
 			// The id is the anchor Explore's "See more" links to, so the entry someone was reading is the one they land on.
-			<li key={item.id} id={item.id} className="relative grid scroll-mt-24 grid-cols-[32px_minmax(0,1fr)] gap-x-4">
+			<li className="relative grid scroll-mt-24 grid-cols-[32px_minmax(0,1fr)] gap-x-4" id={item.id} key={item.id}>
 				<Marker item={item} />
 				<div className="min-w-0 pt-1">
-					<Body item={item} allowReport={allowReport} />
+					<Body allowReport={allowReport} item={item} />
 				</div>
 			</li>,
 		)
@@ -75,14 +75,14 @@ export function Timeline({
 function Marker({ item }: { item: TimelineItem }) {
 	const look =
 		item.kind === "session"
-			? { tone: "bg-violet-pale text-violet-deep", icon: <IconPencil className="text-[0.85rem]" /> }
+			? { icon: <IconPencil className="text-[0.85rem]" />, tone: "bg-violet-pale text-violet-deep" }
 			: item.kind === "reel"
-				? { tone: "bg-sky-pale text-sky-ink", icon: <IconFilm className="text-[0.9rem]" /> }
+				? { icon: <IconFilm className="text-[0.9rem]" />, tone: "bg-sky-pale text-sky-ink" }
 				: item.kind === "submitted"
-					? { tone: "bg-gold-pale text-gold-ink", icon: <IconCheck className="text-[0.8rem]" strokeWidth={3} /> }
+					? { icon: <IconCheck className="text-[0.8rem]" strokeWidth={3} />, tone: "bg-gold-pale text-gold-ink" }
 					: item.result === "APPROVED"
-						? { tone: "bg-mint text-teal-ink", icon: <IconCheck className="text-[0.8rem]" strokeWidth={3} /> }
-						: { tone: "bg-coral/15 text-coral-dark", icon: <IconWarning className="text-[0.85rem]" /> }
+						? { icon: <IconCheck className="text-[0.8rem]" strokeWidth={3} />, tone: "bg-mint text-teal-ink" }
+						: { icon: <IconWarning className="text-[0.85rem]" />, tone: "bg-coral/15 text-coral-dark" }
 	return (
 		<span
 			aria-hidden="true"
@@ -97,7 +97,7 @@ function When({ at }: { at: number }) {
 	return <span className="hand ml-auto shrink-0 text-[0.84rem] text-navy-soft tabular-nums">{fmtDate(at)}</span>
 }
 
-const PHASE = { DESIGN: "design", BUILD: "build" } as const
+const PHASE = { BUILD: "build", DESIGN: "design" } as const
 
 function Body({ item, allowReport }: { item: TimelineItem; allowReport: boolean }) {
 	if (item.kind === "session") {
@@ -113,10 +113,10 @@ function Body({ item, allowReport }: { item: TimelineItem; allowReport: boolean 
 					</span>
 					{allowReport && (
 						<ReportButton
-							target={{ type: "DEVLOG", id: item.id }}
-							title="Report this journal entry"
-							context={item.body.slice(0, 280)}
 							className="text-[0.76rem]"
+							context={item.body.slice(0, 280)}
+							target={{ id: item.id, type: "DEVLOG" }}
+							title="Report this journal entry"
 						/>
 					)}
 					<When at={item.at} />
@@ -136,10 +136,10 @@ function Body({ item, allowReport }: { item: TimelineItem; allowReport: boolean 
 					{item.status === "HIDDEN" && <Chip tone="coral">Hidden from the feed</Chip>}
 					{allowReport && (
 						<ReportButton
-							target={{ type: "REEL", id: item.id }}
-							title="Report this reel"
-							context={item.caption || undefined}
 							className="text-[0.76rem]"
+							context={item.caption || undefined}
+							target={{ id: item.id, type: "REEL" }}
+							title="Report this reel"
 						/>
 					)}
 					<When at={item.at} />
@@ -149,19 +149,19 @@ function Body({ item, allowReport }: { item: TimelineItem; allowReport: boolean 
 						{item.caption}
 					</p>
 				)}
-				{item.videoUrl && (
+				{item.videoUrl ? (
 					// Nothing autoplays and nothing preloads past the poster: a timeline of reels loading at once is a page that eats a phone's data.
 					// biome-ignore lint/a11y/useMediaCaption: a participant upload, and there is no caption file to point a track at. An empty track is announced as an empty caption, which is worse than none.
 					<video
-						src={item.thumbnailUrl ? item.videoUrl : `${item.videoUrl}#t=0.1`}
-						poster={item.thumbnailUrl ?? undefined}
-						preload={item.thumbnailUrl ? "none" : "metadata"}
-						controls
-						playsInline
 						aria-label={item.caption ? `Reel: ${item.caption}` : "Project reel"}
 						className="mt-3 aspect-[9/16] w-full max-w-[180px] rounded-2xl bg-navy object-cover"
+						controls
+						playsInline
+						poster={item.thumbnailUrl ?? undefined}
+						preload={item.thumbnailUrl ? "none" : "metadata"}
+						src={item.thumbnailUrl ? item.videoUrl : `${item.videoUrl}#t=0.1`}
 					/>
-				)}
+				) : null}
 			</article>
 		)
 	}
@@ -179,8 +179,8 @@ function Body({ item, allowReport }: { item: TimelineItem; allowReport: boolean 
 
 	const verdict = {
 		APPROVED: { text: "approved", tone: "text-teal-ink" },
-		RETURNED: { text: "sent back for changes", tone: "text-coral-deep" },
 		REJECTED: { text: "rejected", tone: "text-coral-deep" },
+		RETURNED: { text: "sent back for changes", tone: "text-coral-deep" },
 	}[item.result]
 	return (
 		<div>
@@ -229,23 +229,23 @@ function EntryBody({ source }: { source: string }) {
 	return (
 		<>
 			<div
-				ref={box}
 				className={cx(
 					"relative mt-2 max-w-[68ch]",
 					!open && "max-h-[18rem] overflow-hidden",
 					!open && long && "[mask-image:linear-gradient(to_bottom,#000_70%,transparent)]",
 				)}
+				ref={box}
 			>
 				<div ref={content}>
-					<Markdown source={source} className="grid gap-2.5 text-[0.9rem] leading-relaxed text-navy" />
+					<Markdown className="grid gap-2.5 text-[0.9rem] leading-relaxed text-navy" source={source} />
 				</div>
 			</div>
 			{long && (
 				<button
-					type="button"
-					onClick={() => setOpen((v) => !v)}
 					aria-expanded={open}
 					className="hand mt-1.5 text-[0.84rem] text-violet-deep underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
+					onClick={() => setOpen(v => !v)}
+					type="button"
 				>
 					{open ? "fold it back up" : "show the whole entry"}
 				</button>
@@ -265,14 +265,14 @@ function footage(seconds: number | null) {
  */
 function Lapses({ lapses }: { lapses: TimelineLapse[] }) {
 	return (
-		<ul className="mt-3 flex flex-wrap gap-2.5" aria-label="Timelapses">
+		<ul aria-label="Timelapses" className="mt-3 flex flex-wrap gap-2.5">
 			{lapses.map((l, i) => {
 				const inner = (
 					<>
 						<span className="relative block aspect-video w-40 overflow-hidden rounded-xl bg-navy/90">
 							{l.thumbnailUrl ? (
 								// eslint-disable-next-line @next/next/no-img-element -- Lapse's own CDN, not ours to optimise
-								<img src={l.thumbnailUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
+								<img alt="" className="h-full w-full object-cover" loading="lazy" src={l.thumbnailUrl} />
 							) : null}
 							<span className="absolute inset-0 grid place-items-center">
 								<span className="grid size-8 place-items-center rounded-full bg-white/90 text-navy shadow-[0_2px_8px_rgb(0_0_0/0.25)]">
@@ -290,10 +290,10 @@ function Lapses({ lapses }: { lapses: TimelineLapse[] }) {
 					<li key={l.id}>
 						{l.href ? (
 							<a
-								href={l.href}
-								target="_blank"
-								rel="noopener noreferrer"
 								className="block rounded-xl transition-transform hover:-translate-y-0.5"
+								href={l.href}
+								rel="noopener noreferrer"
+								target="_blank"
 							>
 								{inner}
 							</a>

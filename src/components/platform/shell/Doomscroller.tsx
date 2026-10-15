@@ -13,19 +13,19 @@ export function DoomscrollerFeed({ onClose, className }: { onClose?: () => void;
 	const [watching, setWatching] = useState(false)
 
 	return (
-		<Panel tone="line" radius={18} className={cx("flex min-h-0 flex-col bg-cream/60 p-3.5", className)} as="aside">
+		<Panel as="aside" className={cx("flex min-h-0 flex-col bg-cream/60 p-3.5", className)} radius={18} tone="line">
 			<div className="mb-3 flex shrink-0 items-center justify-between gap-2 px-0.5">
 				<h2 className="label text-navy-faint">The Doomscroller</h2>
 				{onClose && (
 					<button
-						type="button"
+						aria-label="Hide the Doomscroller"
+						className="grid size-7 place-items-center rounded-full text-navy-faint transition-colors hover:bg-black/5 hover:text-navy"
 						// Closing collapses the rail over a few hundred milliseconds, and the observer only lets go once the reel has shrunk out of view. Silencing it on the press is what makes the close feel instant.
 						onClick={() => {
 							pauseReels()
 							onClose()
 						}}
-						aria-label="Hide the Doomscroller"
-						className="grid size-7 place-items-center rounded-full text-navy-faint transition-colors hover:bg-black/5 hover:text-navy"
+						type="button"
 					>
 						<IconX className="text-base" />
 					</button>
@@ -35,14 +35,14 @@ export function DoomscrollerFeed({ onClose, className }: { onClose?: () => void;
           as a stack of cards, and a bar down its edge only narrowed them. It
           still scrolls by wheel, trackpad and touch. */}
 			<div className="no-scrollbar snap-y-feed -mx-1 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-1 pb-1">
-				{feed.items.map((r) => (
+				{feed.items.map(r => (
 					<ReelCard
-						key={r.id}
-						reel={r}
-						onPatch={feed.patch}
 						autoplay={watching}
-						onPlayPress={() => setWatching(true)}
 						className="snap-item h-full min-h-[380px] shrink-0"
+						key={r.id}
+						onPatch={feed.patch}
+						onPlayPress={() => setWatching(true)}
+						reel={r}
 					/>
 				))}
 				{feed.error && <p className="hand shrink-0 py-6 text-center text-[0.8rem] text-coral-deep">{feed.error}</p>}
@@ -53,10 +53,10 @@ export function DoomscrollerFeed({ onClose, className }: { onClose?: () => void;
 				)}
 				{feed.items.length > 0 && !feed.done && (
 					<button
-						type="button"
-						onClick={feed.more}
-						disabled={feed.loading}
 						className="label shrink-0 rounded-full border-2 border-line py-2 text-navy-soft transition-colors hover:border-navy hover:text-navy"
+						disabled={feed.loading}
+						onClick={feed.more}
+						type="button"
 					>
 						{feed.loading ? "Loading…" : "More"}
 					</button>

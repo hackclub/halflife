@@ -9,10 +9,6 @@ import type { DocArticle } from "./types"
 
 export const DOCS: DocArticle[] = [
 	{
-		slug: "how-it-works",
-		title: "How Half Life works",
-		section: "Start here",
-		summary: "What's all this then?",
 		body: [
 			{
 				heading: "The shape of the program",
@@ -23,14 +19,14 @@ export const DOCS: DocArticle[] = [
 			},
 			{
 				heading: "Checkpoints",
-				paragraphs: [
-					"Each week is a chain of checkpoints. You cannot skip one – the next puck stays sand-coloured until the one before it is done. Most checkpoints are either a journal block (keep logging sessions until the week hits 10 tracked hours) or a reel (a short video showing where you got to).",
-					"The week ends on a submit gate. Design weeks ask for your files, a bill of materials, and a closing reel. Build weeks ask for a 30 to 60 second video of the thing working.",
-				],
 				list: [
 					"Journal checkpoints unlock at zero hours and close at the hour target.",
 					"Reels are 30 seconds minimum and can be filmed on a phone.",
 					"Submit gates are reviewed by a human, usually within two days.",
+				],
+				paragraphs: [
+					"Each week is a chain of checkpoints. You cannot skip one – the next puck stays sand-coloured until the one before it is done. Most checkpoints are either a journal block (keep logging sessions until the week hits 10 tracked hours) or a reel (a short video showing where you got to).",
+					"The week ends on a submit gate. Design weeks ask for your files, a bill of materials, and a closing reel. Build weeks ask for a 30 to 60 second video of the thing working.",
 				],
 			},
 			{
@@ -41,13 +37,12 @@ export const DOCS: DocArticle[] = [
 				],
 			},
 		],
+		section: "Start here",
+		slug: "how-it-works",
+		summary: "What's all this then?",
+		title: "How Half Life works",
 	},
 	{
-		slug: "journalling",
-		title: "Journalling and timelapses",
-		section: "Start here",
-		summary:
-			"What counts as a session, how to write an entry a reviewer can check, and how Lapse timelapses back your hours.",
 		body: [
 			{
 				heading: "What a session is",
@@ -65,31 +60,29 @@ export const DOCS: DocArticle[] = [
 			},
 			{
 				heading: "Recording with Lapse",
-				paragraphs: [
-					"Lapse (lapse.hackclub.com) is Hack Club's timelapse app, and it is the only one the platform takes. Start a recording when you sit down to work and it captures your screen or your camera while you go.",
-					"You can pause or stop a timelapse at any time. Pause it when you step away – to eat, to answer a message, to wait for a print – and pick it back up when you return, so the recording, and the hours it counts, are only the time you were actually working.",
-					"When the session is done, publish the timelapse on Lapse as Unlisted or Public. A private timelapse cannot be watched by a reviewer, so it cannot back any hours, and it will not show up to pick. Then open the entry on your map, switch to the Timelapse tab, sign in with Lapse if it asks (a sign-in lasts about a month), and pick it. Each timelapse can back one entry only.",
-				],
 				list: [
 					"Screen recording for CAD, KiCad, and firmware.",
 					"A phone on a stand, pointed at the bench, for soldering and assembly.",
 					"Both at once when you are switching between the screen and the bench.",
 				],
+				paragraphs: [
+					"Lapse (lapse.hackclub.com) is Hack Club's timelapse app, and it is the only one the platform takes. Start a recording when you sit down to work and it captures your screen or your camera while you go.",
+					"You can pause or stop a timelapse at any time. Pause it when you step away – to eat, to answer a message, to wait for a print – and pick it back up when you return, so the recording, and the hours it counts, are only the time you were actually working.",
+					"When the session is done, publish the timelapse on Lapse as Unlisted or Public. A private timelapse cannot be watched by a reviewer, so it cannot back any hours, and it will not show up to pick. Then open the entry on your map, switch to the Timelapse tab, sign in with Lapse if it asks (a sign-in lasts about a month), and pick it. Each timelapse can back one entry only.",
+				],
 			},
 			{
 				heading: "The rules a written entry has to meet",
-				paragraphs: ["The editor checks these before it will let you save, and tells you exactly what is missing."],
 				list: [
 					"At least 200 characters of writing. Images do not count toward it.",
 					"One image for every additional hour you declare, and never fewer than two: 2 additional hours need two screenshots, however long the timelapses run.",
 					"Markdown works – headings, bold, lists, code and links. Images go in with ![what it shows](link), right where they belong in the story.",
 				],
+				paragraphs: ["The editor checks these before it will let you save, and tells you exactly what is missing."],
 			},
 			{
 				heading: "Writing an entry worth reading",
-				paragraphs: [
-					"The best entries read like a note to yourself three weeks from now, because that is exactly who ends up reading them – you, and a reviewer. Tell the story of the session in the order it happened, and be specific: the part number, the error message, the file you changed. A good entry has these parts:",
-				],
+				link: { href: EXAMPLE_JOURNAL_URL, label: "See an example journal" },
 				list: [
 					'A headline that says what happened: "Got the screen to work!!" beats "Day 4".',
 					"What you set out to do, and why it was hard. The problem is half the story.",
@@ -98,7 +91,9 @@ export const DOCS: DocArticle[] = [
 					"A one-line tl;dr at the end, so a reviewer skimming a week of entries knows what each one was.",
 					"What is next, so the following session starts where this one stopped.",
 				],
-				link: { href: EXAMPLE_JOURNAL_URL, label: "See an example journal" },
+				paragraphs: [
+					"The best entries read like a note to yourself three weeks from now, because that is exactly who ends up reading them – you, and a reviewer. Tell the story of the session in the order it happened, and be specific: the part number, the error message, the file you changed. A good entry has these parts:",
+				],
 			},
 			{
 				heading: "Make it yours",
@@ -113,22 +108,23 @@ export const DOCS: DocArticle[] = [
 				],
 			},
 		],
+		section: "Start here",
+		slug: "journalling",
+		summary:
+			"What counts as a session, how to write an entry a reviewer can check, and how Lapse timelapses back your hours.",
+		title: "Journalling and timelapses",
 	},
 	{
-		slug: "tiers",
-		title: "Funding tiers",
-		section: "Funding",
-		summary: "What each tier covers, how much design time it asks for, and how coins work.",
 		body: [
 			{
 				heading: "The three tiers",
-				paragraphs: [
-					"Every project gets funding for its parts, and your tier sets how much. Pick the one that fits the size of what you want to build.",
-				],
 				list: [
 					"Tier 1: $30, for a focused build like your first board.",
 					"Tier 2: $65, for a board with more going on.",
 					"Tier 3: $100, for an ambitious build.",
+				],
+				paragraphs: [
+					"Every project gets funding for its parts, and your tier sets how much. Pick the one that fits the size of what you want to build.",
 				],
 			},
 			{
@@ -139,21 +135,21 @@ export const DOCS: DocArticle[] = [
 			},
 			{
 				heading: "Time to submit",
+				list: ["Tier 1: 6 hours.", "Tier 2: 13 hours.", "Tier 3: 20 hours."],
 				paragraphs: [
 					"Bigger builds take longer to design well, so each tier has a minimum amount of design time before you can submit:",
 				],
-				list: ["Tier 1: 6 hours.", "Tier 2: 13 hours.", "Tier 3: 20 hours."],
 			},
 			{
 				heading: "Coins",
-				paragraphs: [
-					"Coins track how far you go past what your project needs. The hours your tier funds pay for parts and earn no coins – coins are earned at 5 per hour, but only after that tier's funding is achieved. They fill your printer goal before the rest is yours to spend in the shop.",
-				],
 				list: [
 					"Design week: your tier's funded hours pay for your parts and earn no coins. Past them, approved time banks toward your printer goal – how much depends on the printer you picked – and anything beyond that is yours to spend.",
 					"Build week: nothing is funded, so every hour earns coins: the first 5 bank toward your printer goal, and the rest are yours to spend.",
 					"Each submission is capped at 250 spendable coins (50 hours).",
 					"Ship a theme (design and build both approved): 25 bonus coins to spend.",
+				],
+				paragraphs: [
+					"Coins track how far you go past what your project needs. The hours your tier funds pay for parts and earn no coins – coins are earned at 5 per hour, but only after that tier's funding is achieved. They fill your printer goal before the rest is yours to spend in the shop.",
 				],
 			},
 			{
@@ -163,12 +159,12 @@ export const DOCS: DocArticle[] = [
 				],
 			},
 		],
+		section: "Funding",
+		slug: "tiers",
+		summary: "What each tier covers, how much design time it asks for, and how coins work.",
+		title: "Funding tiers",
 	},
 	{
-		slug: "submitting",
-		title: "Shipping a week",
-		section: "Shipping",
-		summary: "What your repo needs, what the submit sheet asks for, and what reviewers check.",
 		body: [
 			{
 				heading: "What shipping means",
@@ -178,9 +174,6 @@ export const DOCS: DocArticle[] = [
 			},
 			{
 				heading: "Your repo",
-				paragraphs: [
-					"The submit sheet checks your repo before it lets you submit. A missing README, a README with no photos, or a missing required file blocks the submit and tells you what to add. Recommended files are flagged but never block.",
-				],
 				list: [
 					"Every week: a public repo, with a README that has photos in it.",
 					"PCB week: board and schematic source files (.kicad_pcb, .kicad_sch), and firmware for the board (Arduino .ino, C/C++, MicroPython or CircuitPython). Recommended: Gerbers (a .zip is fine) and a bom.csv.",
@@ -189,18 +182,21 @@ export const DOCS: DocArticle[] = [
 					"Displays week: firmware or code. Recommended: a schematic.",
 					"Breadboard computer week: a schematic (KiCad, Logisim or Digital).",
 				],
+				paragraphs: [
+					"The submit sheet checks your repo before it lets you submit. A missing README, a README with no photos, or a missing required file blocks the submit and tells you what to add. Recommended files are flagged but never block.",
+				],
 			},
 			{
 				heading: "A README worth reading",
-				paragraphs: [
-					"A folder of files and two sentences is not documentation. Write the README for someone who has never heard of your project and wants to build one:",
-				],
 				list: [
 					"What it is, and why you made it.",
 					"How it works: how the parts fit together.",
 					"Photos and screenshots: the schematic, the board layout, the 3D model, and the real thing once it exists.",
 					"A wiring diagram, if anything is wired by hand.",
 					"The bill of materials, as a table with links to where each part is bought.",
+				],
+				paragraphs: [
+					"A folder of files and two sentences is not documentation. Write the README for someone who has never heard of your project and wants to build one:",
 				],
 			},
 			{
@@ -211,13 +207,13 @@ export const DOCS: DocArticle[] = [
 			},
 			{
 				heading: "Handing in a design week",
-				paragraphs: ["After the repo check, the submit sheet asks for three things:"],
 				list: [
 					"Your bill of materials, with a real vendor and a real price on every line.",
 					"Screenshots of your cart with the total visible, one per vendor if the order is split, so the total can be checked.",
 					"Your tier. Your hours have to reach that tier's minimum; the sheet shows which tiers they cover.",
 					"A closing reel: pan across the schematic, the layout and the render, and talk over it.",
 				],
+				paragraphs: ["After the repo check, the submit sheet asks for three things:"],
 			},
 			{
 				heading: "Handing in a build week",
@@ -235,9 +231,6 @@ export const DOCS: DocArticle[] = [
 			},
 			{
 				heading: "What gets a week sent back",
-				paragraphs: [
-					"Reviewers can approve a week, send it back with changes to make, or reject it. A week sent back can be fixed and submitted again. The usual reasons:",
-				],
 				list: [
 					"The README does not explain the project, or has no photos.",
 					"Source files are missing, or only exports are there.",
@@ -245,14 +238,17 @@ export const DOCS: DocArticle[] = [
 					"The BOM does not match the cart, or has no real prices.",
 					"Work that is not yours: copied designs, or a README or journal written by AI.",
 				],
+				paragraphs: [
+					"Reviewers can approve a week, send it back with changes to make, or reject it. A week sent back can be fixed and submitted again. The usual reasons:",
+				],
 			},
 		],
+		section: "Shipping",
+		slug: "submitting",
+		summary: "What your repo needs, what the submit sheet asks for, and what reviewers check.",
+		title: "Shipping a week",
 	},
 	{
-		slug: "reels",
-		title: "Making a reel",
-		section: "Shipping",
-		summary: "Thirty seconds, one idea, no editing required.",
 		body: [
 			{
 				heading: "The format",
@@ -267,5 +263,9 @@ export const DOCS: DocArticle[] = [
 				],
 			},
 		],
+		section: "Shipping",
+		slug: "reels",
+		summary: "Thirty seconds, one idea, no editing required.",
+		title: "Making a reel",
 	},
 ]

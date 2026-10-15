@@ -239,7 +239,7 @@ export function ReelViewer() {
 		const params = new URLSearchParams(window.location.search)
 		const id = params.get("reel")
 		if (id) {
-			deepLink.current = { id, comments: params.get("comments") === "1" }
+			deepLink.current = { comments: params.get("comments") === "1", id }
 			// eslint-disable-next-line react-hooks/set-state-in-effect -- reading the URL after mount
 			setResume({ id, leadIds: [] })
 			return
@@ -254,8 +254,8 @@ export function ReelViewer() {
 		// A link goes straight to its reel; the unseen-admin-reel rule below is for picking up where someone left off, not for following a card.
 		const isDeep = deepLink.current !== null
 		// An admin reel they have not been shown yet goes first, exactly as it would on a fresh visit; picking up where they left off can wait.
-		const unseenLead = isDeep ? false : leading.some((r) => !resume.leadIds.includes(r.id))
-		const at = unseenLead ? -1 : items.findIndex((r) => r.id === resume.id)
+		const unseenLead = isDeep ? false : leading.some(r => !resume.leadIds.includes(r.id))
+		const at = unseenLead ? -1 : items.findIndex(r => r.id === resume.id)
 		if (at >= 0) {
 			landOn.current = at
 			cursor.current = at
@@ -295,7 +295,7 @@ export function ReelViewer() {
 	// Remembered as they go, not on leaving: a closed tab gets no last word.
 	const currentId = current?.id
 	useEffect(() => {
-		if (currentId) savePosition({ id: currentId, leadIds: leading.map((r) => r.id) })
+		if (currentId) savePosition({ id: currentId, leadIds: leading.map(r => r.id) })
 	}, [currentId, leading])
 
 	// Endless, the way a reel feed is: the next page is asked for a few reels before the end, so the reader scrolls into it rather than up to a wall.
@@ -365,41 +365,41 @@ export function ReelViewer() {
 		// The frame is the viewport minus the app header and the bottom padding main already reserves for the phone tab bar – the Doomscroller is a page of the platform, and the rest of the platform stays around it.
 		<div className="flex h-[var(--frame)] justify-center gap-6 px-4 [--frame:calc(100dvh-4rem-7rem)] sm:px-6 lg:[--frame:calc(100dvh-4rem-2.5rem)]">
 			<section
-				ref={stage}
 				aria-label="Reels"
 				// A reel is portrait, so the column is only ever as wide as a 9:16 card fits in the frame, less the player strip under it. From md the actions hang off its right side, so that much room is kept for them.
 				className="doom-stage relative h-full w-[min(100%,26rem,calc((var(--frame)-4.25rem)*9/16))] shrink-0 md:mr-[4.75rem] md:w-[min(26rem,calc((var(--frame)-4.25rem)*9/16))]"
+				ref={stage}
 			>
 				<div
+					className="snap-y-feed no-scrollbar h-full overflow-y-auto overscroll-contain"
 					ref={scroller}
 					// `overflow-anchor: none` because the end slide renders before the next page arrives, and the reels are then inserted ABOVE it. Scroll anchoring reads that as content growing over the reader and holds their position – which meant landing on "that is everything" instead of the newest reel, with the feed sitting unseen above it.
 					style={{ overflowAnchor: "none" }}
-					className="snap-y-feed no-scrollbar h-full overflow-y-auto overscroll-contain"
 				>
 					{(restoring ? [] : feed.items).map((reel, i) => (
 						<div
-							key={reel.id}
+							aria-hidden={i !== index || undefined}
+							className="snap-item h-full"
 							data-slide={i}
-							ref={(el) => {
+							inert={i !== index}
+							key={reel.id}
+							ref={el => {
 								slides.current[i] = el
 							}}
-							aria-hidden={i !== index || undefined}
-							inert={i !== index}
-							className="snap-item h-full"
 						>
 							{Math.abs(i - index) <= MOUNTED_EITHER_SIDE ? (
 								<StageSlide
-									reel={reel}
 									active={i === index}
-									muted={muted}
-									rate={prefs.rate}
 									autoScroll={prefs.autoScroll}
+									muted={muted}
 									onAutoMuted={onAutoMuted}
-									onToggleMute={toggleMute}
 									onCycleRate={cycleRate}
-									onToggleAutoScroll={toggleAutoScroll}
 									onEnded={advance}
 									onPatch={feed.patch}
+									onToggleAutoScroll={toggleAutoScroll}
+									onToggleMute={toggleMute}
+									rate={prefs.rate}
+									reel={reel}
 									register={register}
 								/>
 							) : null}
@@ -414,19 +414,19 @@ export function ReelViewer() {
               here, and the next reel slides in where they already are. */}
 					{!restoring && (feed.items.length > 0 || !feed.loading) && (
 						<div
+							className="snap-item flex h-full flex-col items-center justify-center gap-2 py-3 text-center"
 							data-slide={last}
-							ref={(el) => {
+							ref={el => {
 								slides.current[last] = el
 							}}
-							className="snap-item flex h-full flex-col items-center justify-center gap-2 py-3 text-center"
 						>
 							{feed.error ? (
 								<>
 									<p className="hand text-[1.05rem] text-coral-deep">{feed.error}</p>
 									<button
-										type="button"
-										onClick={feed.more}
 										className="label mt-1 rounded-full border-2 border-line px-4 py-2 text-navy-soft transition-colors hover:border-navy hover:text-navy"
+										onClick={feed.more}
+										type="button"
 									>
 										Try again
 									</button>
@@ -460,10 +460,10 @@ export function ReelViewer() {
             "Start here" callout does. */}
 				{autoMuted && !prefs.muted && current && (
 					<button
-						type="button"
-						onClick={toggleMute}
 						className="sketch label absolute top-6 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-2xl bg-navy px-3.5 py-2 whitespace-nowrap text-white transition-transform hover:scale-[1.03] motion-safe:animate-[hl-pop_320ms_cubic-bezier(.16,1,.3,1)]"
+						onClick={toggleMute}
 						style={{ "--sk-color": "var(--color-navy)", "--sk-radius": "14px" } as React.CSSProperties}
+						type="button"
 					>
 						<IconVolumeOff className="text-[1rem]" /> Tap for sound
 					</button>
@@ -479,51 +479,51 @@ export function ReelViewer() {
                 actions (see .doom-stage); the wheel and the keys still move
                 the reel when it is not. */}
 						<div className="doom-arrows mb-6 hidden flex-col gap-2.5 md:flex">
-							<NavButton label="Previous reel" disabled={index === 0} onClick={() => step(-1)}>
+							<NavButton disabled={index === 0} label="Previous reel" onClick={() => step(-1)}>
 								<IconChevronUp className="text-xl" />
 							</NavButton>
-							<NavButton label="Next reel" disabled={index >= last} onClick={() => step(1)}>
+							<NavButton disabled={index >= last} label="Next reel" onClick={() => step(1)}>
 								<IconChevronDown className="text-xl" />
 							</NavButton>
 						</div>
 
 						<div className="flex flex-col items-center gap-3.5">
 							<Link
-								href={`/u/${current.author.id}`}
 								aria-label={`${current.author.name ?? "A maker"}'s profile`}
 								className="mb-1 rounded-full ring-2 ring-white transition-transform hover:scale-105 active:scale-95 md:ring-navy"
+								href={`/u/${current.author.id}`}
 							>
-								<Avatar name={current.author.name} image={current.author.image} className="size-11 text-[1.05rem]" />
+								<Avatar className="size-11 text-[1.05rem]" image={current.author.image} name={current.author.name} />
 							</Link>
 
 							<Action
-								label={current.likedByMe ? "Unlike" : "Like"}
-								pressed={current.likedByMe}
-								tone="coral"
 								count={current.likeCount}
+								label={current.likedByMe ? "Unlike" : "Like"}
 								onClick={() => sendLike(current, !current.likedByMe, feed.patch)}
 								pop={current.likedByMe}
 								popKey={current.id}
+								pressed={current.likedByMe}
+								tone="coral"
 							>
 								<IconHeart className="text-[1.35rem]" fill={current.likedByMe ? "currentColor" : "none"} />
 							</Action>
 							<Action
+								count={current.commentCount}
 								label={`Comments (${current.commentCount})`}
+								onClick={openComments}
 								pressed={wide ? commentsBeside : sheetOpen}
 								tone="violet"
-								count={current.commentCount}
-								onClick={openComments}
 							>
 								<IconComment className="text-[1.3rem]" />
 							</Action>
-							<Action label={`${current.viewCount} views`} count={current.viewCount}>
+							<Action count={current.viewCount} label={`${current.viewCount} views`}>
 								<IconEye className="text-[1.3rem]" />
 							</Action>
 							{current.author.id !== viewer.id && (
 								<ReportButton
-									target={{ type: "REEL", id: current.id }}
-									title="Report this reel"
 									context={current.caption || undefined}
+									target={{ id: current.id, type: "REEL" }}
+									title="Report this reel"
 									tone="adaptive"
 								/>
 							)}
@@ -535,55 +535,55 @@ export function ReelViewer() {
 			{/* ---------- the conversation, beside the reel ---------- */}
 			{commentsBeside && (
 				<Panel
-					tone="line"
-					radius={18}
 					as="aside"
 					className="my-3 flex w-[21rem] shrink-0 flex-col bg-paper 2xl:w-[24rem]"
+					radius={18}
+					tone="line"
 				>
 					<ReelComments
+						className="h-full w-full"
+						onClose={() => setPrefs({ comments: false })}
+						onPatch={feed.patch}
 						reel={current ?? null}
 						viewer={viewer}
-						onPatch={feed.patch}
-						onClose={() => setPrefs({ comments: false })}
-						className="h-full w-full"
 					/>
 				</Panel>
 			)}
 
 			{/* ---------- the conversation, over it ---------- */}
-			<div inert={!sheetOpen} className={cx("fixed inset-0 z-[60]", !sheetOpen && "pointer-events-none")}>
+			<div className={cx("fixed inset-0 z-[60]", !sheetOpen && "pointer-events-none")} inert={!sheetOpen}>
 				<div
 					aria-hidden="true"
-					onClick={() => setSheetOpen(false)}
 					className={cx(
 						"absolute inset-0 bg-navy/30 backdrop-blur-[2px] transition-opacity duration-300",
 						sheetOpen ? "opacity-100" : "opacity-0",
 					)}
+					onClick={() => setSheetOpen(false)}
 				/>
 				{/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: the role is conditional, and aria-modal is only ever rendered alongside it. */}
 				<div
-					role={sheetOpen ? "dialog" : undefined}
-					aria-modal={sheetOpen ? true : undefined}
 					aria-label="Comments"
+					aria-modal={sheetOpen ? true : undefined}
 					className={cx(
 						"sketch absolute inset-x-0 bottom-0 flex h-[72dvh] flex-col rounded-t-3xl bg-cream",
 						"transition-transform duration-[380ms] ease-[cubic-bezier(.16,1,.3,1)] motion-reduce:transition-none",
 						"md:inset-x-auto md:right-6 md:bottom-6 md:h-[min(42rem,calc(100dvh-3rem))] md:w-[24rem] md:rounded-3xl",
 						sheetOpen ? "translate-y-0" : "translate-y-[calc(100%+3rem)]",
 					)}
-					style={{ "--sk-color": "var(--color-navy)", "--sk-radius": "24px" } as React.CSSProperties}
-					onTransitionEnd={(e) => {
+					onTransitionEnd={e => {
 						if (e.target === e.currentTarget && !sheetOpen) setSheetShown(false)
 					}}
+					role={sheetOpen ? "dialog" : undefined}
+					style={{ "--sk-color": "var(--color-navy)", "--sk-radius": "24px" } as React.CSSProperties}
 				>
 					<span aria-hidden="true" className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-line md:hidden" />
 					{sheetShown && (
 						<ReelComments
+							className="min-h-0 flex-1"
+							onClose={() => setSheetOpen(false)}
+							onPatch={feed.patch}
 							reel={current ?? null}
 							viewer={viewer}
-							onPatch={feed.patch}
-							onClose={() => setSheetOpen(false)}
-							className="min-h-0 flex-1"
 						/>
 					)}
 				</div>
@@ -606,20 +606,20 @@ function NavButton({
 }) {
 	return (
 		<button
-			type="button"
-			onClick={onClick}
-			disabled={disabled}
 			aria-label={label}
 			className={cx(
 				"sketch grid size-11 place-items-center rounded-full bg-paper transition-colors",
 				disabled ? "cursor-not-allowed text-navy-faint/60" : "text-navy hover:bg-mint hover:text-teal-ink",
 			)}
+			disabled={disabled}
+			onClick={onClick}
 			style={
 				{
 					"--sk-color": disabled ? "var(--color-line)" : "var(--color-teal)",
 					"--sk-radius": "999px",
 				} as React.CSSProperties
 			}
+			type="button"
 		>
 			{children}
 		</button>
@@ -663,8 +663,8 @@ function Action({
 		disc.current?.animate(
 			[
 				{ transform: "scale(1)" },
-				{ transform: "scale(1.28)", offset: 0.35 },
-				{ transform: "scale(0.94)", offset: 0.7 },
+				{ offset: 0.35, transform: "scale(1.28)" },
+				{ offset: 0.7, transform: "scale(0.94)" },
 				{ transform: "scale(1)" },
 			],
 			{ duration: 420, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
@@ -687,7 +687,6 @@ function Action({
 	const body = (
 		<>
 			<span
-				ref={disc}
 				className={cx(
 					// The drawn outline is always there, but only inked from md: over the picture on a phone a ring would box off the video.
 					"sketch grid size-11 place-items-center rounded-full transition-colors [--sk-color:transparent] md:[--sk-color:var(--ring)]",
@@ -696,6 +695,7 @@ function Action({
 					face,
 					onClick && !on && "md:group-hover:bg-mint md:group-hover:text-teal-ink",
 				)}
+				ref={disc}
 				style={{ "--ring": ring, "--sk-radius": "999px" } as React.CSSProperties}
 			>
 				{children}
@@ -710,16 +710,16 @@ function Action({
 
 	return onClick ? (
 		<button
-			type="button"
-			onClick={onClick}
 			aria-label={label}
 			aria-pressed={pressed}
 			className="group flex flex-col items-center gap-1"
+			onClick={onClick}
+			type="button"
 		>
 			{body}
 		</button>
 	) : (
-		<span role="img" aria-label={label} className="flex flex-col items-center gap-1">
+		<span aria-label={label} className="flex flex-col items-center gap-1" role="img">
 			{body}
 		</span>
 	)

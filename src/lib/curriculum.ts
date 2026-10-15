@@ -25,89 +25,89 @@ type ThemeSeed = {
 
 const THEMES: ThemeSeed[] = [
 	{
-		theme: "PCB",
-		designHeadline: "DESIGN YOUR PCB",
+		accent: "var(--color-sky)",
+		accentDeep: "var(--color-sky-deep)",
 		buildHeadline: "BUILD YOUR PCB",
-		fullName: "Printed Circuit Board Week",
-		summary: "Draw up a schematic, make a BOM, and route your board!",
-		primer:
-			"A PCB is the flat green (or purple, or black) board inside every piece of electronics. Copper lines etched onto it replace the messy wires you would otherwise solder by hand. You will draw a schematic – a diagram of which part connects to which – then lay those parts out on a board and let the software route copper between them. At the end you export a set of Gerber files and a real factory turns them into a board you can hold.",
+		designHeadline: "DESIGN YOUR PCB",
 		examples: [
 			"A macropad with hot-swap sockets and per-key LEDs",
 			"An ESP32 dev board with a built-in battery charger",
 			"A USB-C power delivery trigger you can set with a dial",
 			"A badge PCB shaped like your handle, with blinky eyes",
 		],
-		accent: "var(--color-sky)",
-		accentDeep: "var(--color-sky-deep)",
+		fullName: "Printed Circuit Board Week",
+		primer:
+			"A PCB is the flat green (or purple, or black) board inside every piece of electronics. Copper lines etched onto it replace the messy wires you would otherwise solder by hand. You will draw a schematic – a diagram of which part connects to which – then lay those parts out on a board and let the software route copper between them. At the end you export a set of Gerber files and a real factory turns them into a board you can hold.",
+		summary: "Draw up a schematic, make a BOM, and route your board!",
+		theme: "PCB",
 	},
 	{
-		theme: "CAD",
-		designHeadline: "MODEL YOUR PART",
+		accent: "var(--color-teal)",
+		accentDeep: "var(--color-teal-deep)",
 		buildHeadline: "PRINT YOUR PART",
-		fullName: "Computer Aided Design Week",
-		summary: "Make some awesome 3D models (remember tolerances!)",
-		primer:
-			"CAD is drawing an object as a solid with exact dimensions instead of a sketch. You start from a 2D sketch, pull it into 3D, then cut and round it until it is the shape you want. The hard part is not the software – it is tolerance: a hole modelled at exactly 3mm will not fit a 3mm screw once the printer squishes plastic into it.",
+		designHeadline: "MODEL YOUR PART",
 		examples: [
 			"An enclosure for the PCB you designed in week 1",
 			"A desk arm that clamps a phone at eye height",
 			"A parametric spool holder that fits any spool width",
 			"A mechanical keyboard case with a gasket mount",
 		],
-		accent: "var(--color-teal)",
-		accentDeep: "var(--color-teal-deep)",
+		fullName: "Computer Aided Design Week",
+		primer:
+			"CAD is drawing an object as a solid with exact dimensions instead of a sketch. You start from a 2D sketch, pull it into 3D, then cut and round it until it is the shape you want. The hard part is not the software – it is tolerance: a hole modelled at exactly 3mm will not fit a 3mm screw once the printer squishes plastic into it.",
+		summary: "Make some awesome 3D models (remember tolerances!)",
+		theme: "CAD",
 	},
 	{
-		theme: "Music",
-		designHeadline: "DESIGN YOUR INSTRUMENT",
+		accent: "var(--color-magenta)",
+		accentDeep: "#7d0f6c",
 		buildHeadline: "WIRE YOUR INSTRUMENT",
-		fullName: "Music Week",
-		summary: "MAKE. SOME. NOOOOOOOOOOOOOISE.",
-		primer:
-			"Music week is circuits that turn voltage into sound. The simplest instrument is an oscillator – a circuit that flips a pin on and off fast enough to hear – plus something to shape the volume over time. Add a filter and you have a voice. You can build this from a 555 timer, from op-amps, or from a microcontroller running a wavetable. All three count.",
+		designHeadline: "DESIGN YOUR INSTRUMENT",
 		examples: [
 			"A 555-based drone machine with three detuned oscillators",
 			"A MIDI controller with velocity-sensitive pads",
 			"A Eurorack-format LFO module in 4HP",
 			"A pocket sampler that records to an SD card",
 		],
-		accent: "var(--color-magenta)",
-		accentDeep: "#7d0f6c",
+		fullName: "Music Week",
+		primer:
+			"Music week is circuits that turn voltage into sound. The simplest instrument is an oscillator – a circuit that flips a pin on and off fast enough to hear – plus something to shape the volume over time. Add a filter and you have a voice. You can build this from a 555 timer, from op-amps, or from a microcontroller running a wavetable. All three count.",
+		summary: "MAKE. SOME. NOOOOOOOOOOOOOISE.",
+		theme: "Music",
 	},
 	{
-		theme: "Displays",
-		designHeadline: "DESIGN WITH DISPLAYS",
+		accent: "var(--color-orange)",
+		accentDeep: "var(--color-orange-deep)",
 		buildHeadline: "DRIVE YOUR DISPLAY",
-		fullName: "Displays Week",
-		summary: "TFT? OLED? Nixie tubes? Neopixels? LED matrices?",
-		primer:
-			"Displays are the fastest way to make a project feel finished. E-paper sips power and holds an image with none. OLED is crisp and tiny. LED matrices are bright enough to read across a room. Each one talks a different protocol – SPI, I2C, or raw shift registers – and the driver you pick decides how much of your microcontroller is left over for anything else.",
+		designHeadline: "DESIGN WITH DISPLAYS",
 		examples: [
 			"An e-paper name badge that updates over Bluetooth",
 			"A 32x32 LED matrix that mirrors your now-playing track",
 			"A split-flap display driven by stepper motors",
 			"A tiny OLED wristwatch with a custom watchface",
 		],
-		accent: "var(--color-orange)",
-		accentDeep: "var(--color-orange-deep)",
+		fullName: "Displays Week",
+		primer:
+			"Displays are the fastest way to make a project feel finished. E-paper sips power and holds an image with none. OLED is crisp and tiny. LED matrices are bright enough to read across a room. Each one talks a different protocol – SPI, I2C, or raw shift registers – and the driver you pick decides how much of your microcontroller is left over for anything else.",
+		summary: "TFT? OLED? Nixie tubes? Neopixels? LED matrices?",
+		theme: "Displays",
 	},
 	{
-		theme: "Breadboard computer",
-		designHeadline: "DESIGN YOUR COMPUTER",
+		accent: "var(--color-violet)",
+		accentDeep: "var(--color-violet-deep)",
 		buildHeadline: "BUILD YOUR COMPUTER",
-		fullName: "Breadboard Computer Week",
-		summary: "Plan your circuit! Simulate some gates!",
-		primer:
-			"Underneath every processor is a clock, a register, an adder and some way to decide what happens next. Wire those four things together out of 74-series logic chips and you have a computer – slow, hot, and entirely yours. Start with the clock module, get an LED blinking at a speed you can follow, then add a register you can load by hand.",
+		designHeadline: "DESIGN YOUR COMPUTER",
 		examples: [
 			"An 8-bit SAP-1 computer across four breadboards",
 			"A 4-bit ALU with carry-lookahead you can single-step",
 			"A relay-based adder you can hear compute",
 			"A programmable clock module with manual step mode",
 		],
-		accent: "var(--color-violet)",
-		accentDeep: "var(--color-violet-deep)",
+		fullName: "Breadboard Computer Week",
+		primer:
+			"Underneath every processor is a clock, a register, an adder and some way to decide what happens next. Wire those four things together out of 74-series logic chips and you have a computer – slow, hot, and entirely yours. Start with the clock module, get an LED blinking at a speed you can follow, then add a register you can load by hand.",
+		summary: "Plan your circuit! Simulate some gates!",
+		theme: "Breadboard computer",
 	},
 ]
 
@@ -116,28 +116,28 @@ const cp = (c: Checkpoint): Checkpoint => c
 /** Every week's fixed half – everything that does not depend on the tier. */
 export const WEEK_META: WeekMeta[] = [
 	...THEMES.map((seed, i) => ({
+		accent: seed.accent,
+		accentDeep: seed.accentDeep,
+		examples: seed.examples,
+		fullName: seed.fullName,
+		headline: seed.designHeadline,
 		id: i + 1,
 		phase: "design" as Phase,
-		theme: seed.theme,
-		headline: seed.designHeadline,
-		fullName: seed.fullName,
-		summary: seed.summary,
 		primer: seed.primer,
-		examples: seed.examples,
-		accent: seed.accent,
-		accentDeep: seed.accentDeep,
+		summary: seed.summary,
+		theme: seed.theme,
 	})),
 	...THEMES.map((seed, i) => ({
-		id: i + 6,
-		phase: "build" as Phase,
-		theme: seed.theme,
-		headline: seed.buildHeadline,
-		fullName: `${seed.fullName} – Build`,
-		summary: `Assemble the ${seed.theme.toLowerCase()} project you designed in week ${i + 1}.`,
-		primer: seed.primer,
-		examples: seed.examples,
 		accent: seed.accent,
 		accentDeep: seed.accentDeep,
+		examples: seed.examples,
+		fullName: `${seed.fullName} – Build`,
+		headline: seed.buildHeadline,
+		id: i + 6,
+		phase: "build" as Phase,
+		primer: seed.primer,
+		summary: `Assemble the ${seed.theme.toLowerCase()} project you designed in week ${i + 1}.`,
+		theme: seed.theme,
 	})),
 ]
 
@@ -196,32 +196,32 @@ export function checkpointsFor(
 
 	const entry = (n: number, branch?: "keep" | "skip") =>
 		cp({
-			id: id(`entry-${n}`),
-			weekId: meta.id,
-			kind: "journal",
-			title: branch === "keep" ? "Keep working" : `Entry ${n}`,
-			blurb: "Journal your progress with pictures and screenshots! More nodes will show up once you start journaling.",
-			entryTarget: 1,
-			branch,
 			// The fork's working arm answers to the week's clock rather than to the node before it, so a reel that has fallen due holds it shut exactly as it holds Submit shut. Zero, because carrying on is never gated on hours of its own – only on what the hours have already earned. The week-1 skip arm is an ordinary journal node: it unlocks off the setup before it, not off the clock.
 			atHours: branch === "keep" ? 0 : undefined,
+			blurb: "Journal your progress with pictures and screenshots! More nodes will show up once you start journaling.",
+			branch,
+			entryTarget: 1,
+			id: id(`entry-${n}`),
+			kind: "journal",
+			title: branch === "keep" ? "Keep working" : `Entry ${n}`,
+			weekId: meta.id,
 		})
 
 	const milestoneReel = (k: number) =>
 		cp({
-			id: id(`reel-${k}`),
-			weekId: meta.id,
-			kind: "reel",
 			atHours: progressReelHours(meta.phase, k),
-			title: `${progressReelHours(meta.phase, k)}h progress reel`,
 			blurb:
 				k === 1
 					? `Show off the progress you've made after ${progressReelHours(meta.phase, k)} hours!`
 					: "What has changed since the last one.",
+			id: id(`reel-${k}`),
+			kind: "reel",
 			reelBrief:
 				k === 1
 					? "Screen-share what you have and narrate one decision you reversed."
 					: "Put the last version next to this one and say what moved.",
+			title: `${progressReelHours(meta.phase, k)}h progress reel`,
+			weekId: meta.id,
 		})
 
 	// Past the submit floor the live entry leaves the chain and pairs with Submit as a fork, so the walk stops one short of it. A submitted week has no live entry at all – the route is settled and the trail shows only what happened.
@@ -246,31 +246,31 @@ export function checkpointsFor(
 	if (meta.phase === "design") {
 		// Week 1 only: the pitch is a choice, not a gate. Both arms carry a branch so the renderer lays them side by side with an "or" between them, exactly as it does the keep/submit fork at the end of a week.
 		const ideaReel = cp({
-			id: id("reel-idea"),
-			weekId: meta.id,
-			kind: "reel",
-			title: "Idea reel",
 			blurb: "A short video about your awesome project idea!",
-			reelBrief: "Talk about the idea you're thinking about designing this week.",
 			branch: meta.id === 1 ? "idea" : undefined,
+			id: id("reel-idea"),
+			kind: "reel",
+			reelBrief: "Talk about the idea you're thinking about designing this week.",
+			title: "Idea reel",
+			weekId: meta.id,
 		})
 
 		// Every design week opens the same way: say what you are making, then start logging the making of it. Week one differs only in how the project comes into existence – the questionnaire stands in for the form, and the pitch follows it exactly as it does every other week.
 		const newProject = cp({
+			blurb: `Create your ${meta.theme.toLowerCase()} project!`,
 			id: id("project"),
-			weekId: meta.id,
 			kind: "project",
 			title: "New project",
-			blurb: `Create your ${meta.theme.toLowerCase()} project!`,
+			weekId: meta.id,
 		})
 		if (meta.id === 1) {
 			out.push(
 				cp({
+					blurb: "Six short questions, then we're off!",
 					id: id("onboard"),
-					weekId: meta.id,
 					kind: "onboarding",
 					title: "Get started",
-					blurb: "Six short questions, then we're off!",
+					weekId: meta.id,
 				}),
 			)
 			if (needsProject) out.push(newProject)
@@ -298,15 +298,15 @@ export function checkpointsFor(
 	if (!submitted && !forked) out.push(milestoneReel(reels + 1))
 
 	const submit = cp({
-		id: id("submit"),
-		weekId: meta.id,
 		// Opens on the week's submit floor – the moment wrapping up becomes a real choice rather than the only road left.
 		atHours: floorHours,
-		kind: "submit",
-		title: forked ? "Submit project" : "Submit",
 		blurb:
 			meta.phase === "build" ? "A working video demo or a write-up of what needs changing." : "Submit your project!",
 		branch: forked ? "submit" : undefined,
+		id: id("submit"),
+		kind: "submit",
+		title: forked ? "Submit project" : "Submit",
+		weekId: meta.id,
 	})
 
 	// The fork. Both halves are the last row of the week and the renderer lays them side by side; ordering them keep-then-submit is what puts carrying on on the left, which is the one the trail has been travelling towards.

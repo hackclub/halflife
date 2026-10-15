@@ -22,10 +22,10 @@ export const POST = withRoute(async () => {
 	after(() =>
 		logAudit({
 			action: AuditAction.ADMIN_RESET_ONBOARDING,
-			actorId: gate.user.id,
 			actorEmail: gate.user.email,
-			targetType: "User",
+			actorId: gate.user.id,
 			targetId: gate.user.id,
+			targetType: "User",
 		}),
 	)
 

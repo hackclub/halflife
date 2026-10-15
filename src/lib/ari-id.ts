@@ -16,5 +16,5 @@ export function parseAriExternalId(externalId: string): { themeProjectId: string
 	if (at <= 0) return null
 	const suffix = externalId.slice(at + 1)
 	if (suffix !== "design" && suffix !== "build") return null
-	return { themeProjectId: externalId.slice(0, at), phase: suffix === "design" ? Phase.DESIGN : Phase.BUILD }
+	return { phase: suffix === "design" ? Phase.DESIGN : Phase.BUILD, themeProjectId: externalId.slice(0, at) }
 }

@@ -27,15 +27,15 @@ const STATUSES = Object.values(PhaseStatus)
 
 /** Anything unrecognised in the query string is dropped, not trusted. */
 function filtersFrom(s: Search): ProjectFilters {
-	const status = (v?: string) => STATUSES.find((x) => x === v)
+	const status = (v?: string) => STATUSES.find(x => x === v)
 	const tier = Number(s.tier)
 	return {
-		q: s.q?.trim() || undefined,
-		theme: Object.values(Theme).find((t) => t === s.theme),
-		designStatus: status(s.design),
 		buildStatus: status(s.build),
-		tier: tier === 1 || tier === 2 || tier === 3 ? tier : undefined,
+		designStatus: status(s.design),
 		extended: s.extended === "1",
+		q: s.q?.trim() || undefined,
+		theme: Object.values(Theme).find(t => t === s.theme),
+		tier: tier === 1 || tier === 2 || tier === 3 ? tier : undefined,
 		unstarted: s.unstarted === "1",
 	}
 }
@@ -60,22 +60,22 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 	return (
 		<div className="hl-stack">
 			<PageHeader
-				title="Projects"
 				subtitle="Search by title, description, repo, project ID, or the owner's name, email or Slack ID."
+				title="Projects"
 			/>
 
 			<Panel>
-				<form method="get" className="hl-row" style={{ flexWrap: "wrap", alignItems: "flex-end" }}>
+				<form className="hl-row" method="get" style={{ alignItems: "flex-end", flexWrap: "wrap" }}>
 					<input
 						className="hl-input"
-						name="q"
 						defaultValue={search.q ?? ""}
+						name="q"
 						placeholder="Search projects or owners"
 						style={{ maxWidth: "20rem" }}
 					/>
-					<select className="hl-input" name="theme" defaultValue={filters.theme ?? ""} style={{ maxWidth: "12rem" }}>
+					<select className="hl-input" defaultValue={filters.theme ?? ""} name="theme" style={{ maxWidth: "12rem" }}>
 						<option value="">Any theme</option>
-						{THEMES.map((t) => (
+						{THEMES.map(t => (
 							<option key={t.id} value={t.id}>
 								{t.label}
 							</option>
@@ -84,12 +84,12 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 					</select>
 					<select
 						className="hl-input"
-						name="design"
 						defaultValue={filters.designStatus ?? ""}
+						name="design"
 						style={{ maxWidth: "12rem" }}
 					>
 						<option value="">Design: any</option>
-						{STATUSES.map((s) => (
+						{STATUSES.map(s => (
 							<option key={s} value={s}>
 								Design: {statusLabel(s)}
 							</option>
@@ -97,12 +97,12 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 					</select>
 					<select
 						className="hl-input"
-						name="build"
 						defaultValue={filters.buildStatus ?? ""}
+						name="build"
 						style={{ maxWidth: "12rem" }}
 					>
 						<option value="">Build: any</option>
-						{STATUSES.map((s) => (
+						{STATUSES.map(s => (
 							<option key={s} value={s}>
 								Build: {statusLabel(s)}
 							</option>
@@ -110,8 +110,8 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 					</select>
 					<select
 						className="hl-input"
-						name="tier"
 						defaultValue={filters.tier ? String(filters.tier) : ""}
+						name="tier"
 						style={{ maxWidth: "9rem" }}
 					>
 						<option value="">Any tier</option>
@@ -120,17 +120,17 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 						<option value="3">Tier 3</option>
 					</select>
 					<label className="hl-row" style={{ gap: "0.35rem" }}>
-						<input type="checkbox" name="extended" value="1" defaultChecked={filters.extended} />
+						<input defaultChecked={filters.extended} name="extended" type="checkbox" value="1" />
 						Extension running
 					</label>
 					<label className="hl-row" style={{ gap: "0.35rem" }}>
-						<input type="checkbox" name="unstarted" value="1" defaultChecked={filters.unstarted} />
+						<input defaultChecked={filters.unstarted} name="unstarted" type="checkbox" value="1" />
 						Include unstarted
 					</label>
 					<button className="hl-btn" type="submit">
 						Search
 					</button>
-					<Link href="/admin/projects" className="hl-hint">
+					<Link className="hl-hint" href="/admin/projects">
 						Reset
 					</Link>
 				</form>
@@ -141,7 +141,7 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 					<EmptyState>No projects match.</EmptyState>
 				) : (
 					<Table head={["Project", "Owner", "Theme", "Design", "Build", "Tier", "Extension"]}>
-						{items.map((project) => {
+						{items.map(project => {
 							const userExt =
 								project.user.submissionExtensionUntil && project.user.submissionExtensionUntil > now
 									? project.user.submissionExtensionUntil
@@ -171,7 +171,7 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 										{getThemeDef(project.theme).label}
 										{canMoveTheme ? (
 											<div style={{ marginTop: "0.5rem" }}>
-												<ThemeMoveForm projectId={project.id} current={project.theme} />
+												<ThemeMoveForm current={project.theme} projectId={project.id} />
 											</div>
 										) : null}
 									</td>
@@ -185,8 +185,8 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 									<td style={{ minWidth: "18rem" }}>
 										{canExtend ? (
 											<ExtensionForm
-												url={`/api/admin/theme-projects/${project.id}`}
 												current={project.submissionExtensionUntil?.toISOString() ?? null}
+												url={`/api/admin/theme-projects/${project.id}`}
 											/>
 										) : project.submissionExtensionUntil ? (
 											<span className="hl-mono">{project.submissionExtensionUntil.toLocaleString()}</span>

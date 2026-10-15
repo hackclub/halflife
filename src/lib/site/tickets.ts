@@ -72,39 +72,39 @@ export function reopenedAck(): string {
 /** The thread's two resolution buttons, with values carrying where the tickets-channel mirror lives. Shared by ticket creation and reopening: a reopened ticket goes back to exactly the state a new one starts in, so the two cannot drift apart. The mirror ts is optional because a failed repost still reopens the thread – resolving from it then just skips the dead mirror. */
 export function threadResolveActions(ref: TicketRef & { ticketsChannel: string; ticketsTs?: string }): SlackBlock {
 	return {
-		type: "actions",
 		block_id: SELF_RESOLVE_ACTIONS_BLOCK_ID,
 		elements: [
 			{
-				type: "button",
-				text: { type: "plain_text", text: SELF_RESOLVE_BUTTON, emoji: true },
 				action_id: "mark_resolved_by_author",
+				text: { emoji: true, text: SELF_RESOLVE_BUTTON, type: "plain_text" },
+				type: "button",
 				value: JSON.stringify(ref),
 			},
 			{
-				type: "button",
-				text: { type: "plain_text", text: MARK_HELPED_BUTTON, emoji: true },
-				style: "primary",
 				action_id: "mark_helped_from_thread",
+				style: "primary",
+				text: { emoji: true, text: MARK_HELPED_BUTTON, type: "plain_text" },
+				type: "button",
 				value: JSON.stringify(ref),
 			},
 		],
+		type: "actions",
 	}
 }
 
 /** The single reopen button for a resolved thread message. The value carries the full ticket ref so reopening needs no database read to rebuild the buttons. */
 export function reopenActions(ref: TicketRef & { ticketsChannel: string }): SlackBlock {
 	return {
-		type: "actions",
 		block_id: REOPEN_ACTIONS_BLOCK_ID,
 		elements: [
 			{
-				type: "button",
-				text: { type: "plain_text", text: REOPEN_BUTTON, emoji: true },
 				action_id: "reopen_ticket",
+				text: { emoji: true, text: REOPEN_BUTTON, type: "plain_text" },
+				type: "button",
 				value: JSON.stringify(ref),
 			},
 		],
+		type: "actions",
 	}
 }
 
@@ -113,13 +113,13 @@ export function reopenActions(ref: TicketRef & { ticketsChannel: string }): Slac
  * message where unfurling is available. */
 export function ticketSection(ref: TicketRef): SlackBlock {
 	return {
-		type: "section",
 		text: {
-			type: "mrkdwn",
 			text: ref.permalink
 				? `*Ticket* from <@${ref.authorId}> in <#${ref.helpChannel}> – <${ref.permalink}|open the thread>`
 				: `*Ticket* from <@${ref.authorId}> in <#${ref.helpChannel}>`,
+			type: "mrkdwn",
 		},
+		type: "section",
 	}
 }
 
@@ -130,21 +130,21 @@ export function ticketHistory(authorId: string, priorTickets: number): SlackBloc
 	const prior =
 		priorTickets === 0 ? "first ticket" : `${priorTickets} previous ${priorTickets === 1 ? "ticket" : "tickets"}`
 	return {
+		elements: [{ text: `${prior} from <@${authorId}>`, type: "mrkdwn" }],
 		type: "context",
-		elements: [{ type: "mrkdwn", text: `${prior} from <@${authorId}>` }],
 	}
 }
 
 export function resolvedContext(byUserId: string, note?: string): SlackBlock {
 	return {
-		type: "context",
 		block_id: RESOLVED_CONTEXT_BLOCK_ID,
 		elements: [
 			{
-				type: "mrkdwn",
 				text: `✅ helped by <@${byUserId}>${note ? ` – ${note}` : ""}`,
+				type: "mrkdwn",
 			},
 		],
+		type: "context",
 	}
 }
 
@@ -156,11 +156,11 @@ export function resolveBlocks(
 	ref?: TicketRef & { ticketsChannel: string },
 ): SlackBlock[] {
 	const kept = (blocks ?? []).filter(
-		(block) =>
-			block.block_id !== TICKET_ACTIONS_BLOCK_ID &&
-			block.block_id !== SELF_RESOLVE_ACTIONS_BLOCK_ID &&
-			block.block_id !== REOPEN_ACTIONS_BLOCK_ID &&
-			block.block_id !== RESOLVED_CONTEXT_BLOCK_ID,
+		block =>
+			block.block_id !== TICKET_ACTIONS_BLOCK_ID
+			&& block.block_id !== SELF_RESOLVE_ACTIONS_BLOCK_ID
+			&& block.block_id !== REOPEN_ACTIONS_BLOCK_ID
+			&& block.block_id !== RESOLVED_CONTEXT_BLOCK_ID,
 	)
 	kept.push(resolvedContext(byUserId, note))
 	if (ref) kept.push(reopenActions(ref))
@@ -173,7 +173,7 @@ export function reopenBlocks(
 	ref: TicketRef & { ticketsChannel: string; ticketsTs?: string },
 ): SlackBlock[] {
 	const kept = (blocks ?? []).filter(
-		(block) => block.block_id !== REOPEN_ACTIONS_BLOCK_ID && block.block_id !== RESOLVED_CONTEXT_BLOCK_ID,
+		block => block.block_id !== REOPEN_ACTIONS_BLOCK_ID && block.block_id !== RESOLVED_CONTEXT_BLOCK_ID,
 	)
 	kept.push(threadResolveActions(ref))
 	return kept

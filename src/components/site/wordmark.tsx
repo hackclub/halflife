@@ -52,21 +52,21 @@ export default function Wordmark({
 				{/* `mx-auto` so the box still centres when a caller hands the tag a
             full-width class: the artwork is narrower than the tag now, and a
             block child does not answer to the plate's `text-center`. */}
-				<span className="relative mx-auto block" style={{ width: artWidth, aspectRatio: String(LOGO_ASPECT) }}>
+				<span className="relative mx-auto block" style={{ aspectRatio: String(LOGO_ASPECT), width: artWidth }}>
 					{/* Contain, not cover. Cover was there to trim transparent air off a
               file that had some; with the box now cut from the file's own
               proportions the two agree, so neither fits differently – and
               contain is the safe one of the pair, because a file that ever
               disagrees again is letterboxed rather than cut into. */}
 					<Image
-						src={LOGO_SRC}
 						alt=""
+						className="object-contain"
 						fill
 						priority
-						sizes={sizes}
 						// The old src was an `.svg`, which next/image serves unoptimized – no srcset, no quality, `sizes` declared for the `fill` contract and nothing else. A png goes through the optimizer, so both now matter: 90 to match the rest of the page's artwork, since 75 on a flat two-colour wordmark is where banding shows first.
 						quality={90}
-						className="object-contain"
+						sizes={sizes}
+						src={LOGO_SRC}
 					/>
 				</span>
 			</Tag>

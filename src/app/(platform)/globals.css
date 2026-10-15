@@ -75,8 +75,8 @@
 }
 
 :root {
-	color-scheme: light;
 	--hl-radius: 16px;
+	color-scheme: light;
 }
 
 @layer base {
@@ -130,12 +130,12 @@
 }
 
 body {
-	background-color: var(--color-cream);
-	color: var(--color-navy);
-	font-family: var(--font-display);
-	font-synthesis-weight: none;
-	-webkit-font-smoothing: antialiased;
 	overscroll-behavior-y: none;
+	font-family: var(--font-display);
+	-webkit-font-smoothing: antialiased;
+	font-synthesis-weight: none;
+	color: var(--color-navy);
+	background-color: var(--color-cream);
 }
 
 /* Faint scattered doodles so the cream reads as paper, not as white dimmed.
@@ -145,13 +145,12 @@ body {
    one-shot pages keep a plain cream ground instead of the tooth. No vertical
    mask: the doodles stay as present at the bottom of the page as at the top. */
 .shell-backdrop::before {
-	content: "";
 	position: fixed;
 	inset: 0;
 	z-index: -1;
 	pointer-events: none;
+	content: "";
 	background-image: url("/platform/doodle-sheet.png");
-	background-size: 768px 768px;
 	/* Parallax: the backdrop drifts at a fraction of the page scroll, written to
 	   --shell-parallax by AppShell. Offset via background-position rather than a
 	   transform so the seamless tile can never run out of vertical room on a
@@ -159,6 +158,7 @@ body {
 	   the foot once the offset passed its own height). Defaults to 0 – the old
 	   static backdrop – with JS disabled or under prefers-reduced-motion. */
 	background-position: 0 var(--shell-parallax, 0px);
+	background-size: 768px 768px;
 	opacity: 0.06;
 	/* A soft vertical fade – full at the top, 45% at the bottom – so the page
 	   still reads top-lit without the old mask swallowing the lower half. */
@@ -166,8 +166,8 @@ body {
 }
 
 ::selection {
-	background: var(--color-mint);
 	color: var(--color-navy);
+	background: var(--color-mint);
 }
 
 :where(a, button, input, textarea, select, [tabindex]):focus-visible {
@@ -186,11 +186,11 @@ body {
 
 	.label {
 		font-family: var(--font-hand);
+		font-size: 0.78rem;
+		font-weight: 700;
+		line-height: 1.25;
 		text-transform: uppercase;
 		letter-spacing: 0.11em;
-		font-weight: 700;
-		font-size: 0.78rem;
-		line-height: 1.25;
 	}
 
 	/* ============================================================
@@ -203,13 +203,13 @@ body {
 	}
 
 	.sketch::before {
-		content: "";
 		position: absolute;
 		inset: 0;
+		pointer-events: none;
+		content: "";
 		border: 2px solid var(--sk-color, var(--color-line));
 		border-radius: var(--sk-radius, var(--hl-radius));
 		filter: url(#hl-wobble);
-		pointer-events: none;
 	}
 
 	.sketch-2::before {
@@ -246,22 +246,22 @@ body {
 		place-items: center;
 		width: 100%;
 		aspect-ratio: 1 / 0.92;
-		border: 0;
 		padding: 0;
-		background: transparent;
 		cursor: pointer;
+		background: transparent;
+		border: 0;
 		transition: transform 0.22s var(--ease-spring);
 	}
 
 	.puck::after {
-		content: "";
 		position: absolute;
 		inset: 0;
-		border-radius: 50%;
+		content: "";
 		background: var(--puck-rim);
-		transform: translateY(var(--puck-lift));
+		border-radius: 50%;
 		box-shadow: 0 10px 18px -6px rgba(28, 26, 89, 0.34);
 		filter: url(#hl-tear-soft);
+		transform: translateY(var(--puck-lift));
 	}
 
 	.puck-face {
@@ -277,16 +277,16 @@ body {
 	/* The torn face is a layer under the icon – the same split the headers use –
 	   so the tear crinkles the sticker, never the glyph on top of it. */
 	.puck-face::before {
-		content: "";
 		position: absolute;
 		inset: 0;
 		z-index: -1;
-		border-radius: 50%;
+		content: "";
+		background: var(--puck-face);
 		/* A real outline around the puck's circle: thicker than the light fringe
 		   the tear used to leave, and coloured halfway between the rim and the
 		   face. */
 		border: 5px solid color-mix(in oklab, var(--puck-face) 50%, var(--puck-rim) 50%);
-		background: var(--puck-face);
+		border-radius: 50%;
 		box-shadow: inset 0 -3px 0 rgba(255, 255, 255, 0.2);
 		filter: url(#hl-tear-soft);
 	}
@@ -440,17 +440,17 @@ body {
 		   animated thing on the page, which is the entire point of the media query.
 		   Without the override the site's own keyframes and the .puck press win on
 		   specificity, and a reader who asked for reduced motion still gets motion. */
+		transition-duration: 0.001ms !important;
 		animation-duration: 0.001ms !important;
 		animation-iteration-count: 1 !important;
-		transition-duration: 0.001ms !important;
 		/* biome-ignore-end lint/complexity/noImportantStyles: as above */
 	}
 }
 
 /* ---------- scrollbars ---------- */
 .thin-scroll {
-	scrollbar-width: thin;
 	scrollbar-color: var(--color-line) transparent;
+	scrollbar-width: thin;
 }
 
 .thin-scroll::-webkit-scrollbar {

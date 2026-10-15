@@ -42,23 +42,23 @@ export const GET = withRoute(async (req: NextRequest, { params }: Params) => {
 	if (query.error) return query.error
 
 	const project = await prisma.themeProject.findFirst({
-		where: { id, userId: gate.user.id, deletedAt: null },
 		select: { id: true },
+		where: { deletedAt: null, id, userId: gate.user.id },
 	})
 	if (!project) return fail("NOT_FOUND", "Project not found")
 
 	const rows = await prisma.workSession.findMany({
-		where: { themeProjectId: id, deletedAt: null },
 		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+		where: { deletedAt: null, themeProjectId: id },
 		...cursorArgs(query.data.cursor, query.data.limit),
 		include: { media: true, timelapses: true },
 	})
 
 	const page = pageResult(rows, query.data.limit)
 	return ok({
-		items: page.items.map((s) => ({
+		items: page.items.map(s => ({
 			...s,
-			media: s.media.map((m) => ({ ...m, url: publicUrlFor(m.objectKey) })),
+			media: s.media.map(m => ({ ...m, url: publicUrlFor(m.objectKey) })),
 		})),
 		nextCursor: page.nextCursor,
 	})
@@ -74,7 +74,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	const data = parsed.data
 
 	const project = await prisma.themeProject.findFirst({
-		where: { id, userId: gate.user.id, deletedAt: null },
+		where: { deletedAt: null, id, userId: gate.user.id },
 	})
 	if (!project) return fail("NOT_FOUND", "Project not found")
 
@@ -101,40 +101,40 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	// Evidence has to be the claimant's own. Keys are not secrets – the feed hands out a full video URL for every reel – so without this someone could attach a stranger's timelapse as proof of hours they did not work, which is the one thing the timelapse rule exists to make hard.
 	//
 	// Rejected rather than quietly dropped: a participant who thinks they attached a clip and finds it missing at review has been failed silently.
-	const foreign = data.media.map((m) => m.objectKey).filter((key) => !isOwnedKey(gate.user.id, key))
+	const foreign = data.media.map(m => m.objectKey).filter(key => !isOwnedKey(gate.user.id, key))
 	if (foreign.length > 0) return fail("VALIDATION_FAILED", "Those uploads are not yours")
 
 	// Timelapses are the same rule asked of Lapse: each must be the caller's own, published, and done processing. And one recording backs one session – otherwise the same footage could be offered as proof twice. That check is read-then-create, so it happens inside the transaction under a lock on the recording; two parallel submits of the same clip otherwise both pass it.
-	const lapseIds = [...new Set(data.timelapses.map((t) => t.lapseId))]
+	const lapseIds = [...new Set(data.timelapses.map(t => t.lapseId))]
 	const timelapses = await verifyOwnTimelapses(gate.user.id, lapseIds)
 
 	const timing = await stampSessionTiming(new Date())
 
 	// One transaction: a session and the streak it feeds have to land together, or a rolled-back write leaves an inflated streak with nothing behind it.
-	const session = await prisma.$transaction(async (tx) => {
+	const session = await prisma.$transaction(async tx => {
 		if (lapseIds.length > 0) {
 			// Sorted so two requests naming the same recordings cannot deadlock on each other's locks.
 			for (const lapseId of [...lapseIds].sort()) {
 				await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`lapse:${lapseId}`}, 0))`
 			}
 			const taken = await tx.sessionTimelapse.findFirst({
+				select: { externalId: true },
 				where: {
-					provider: "lapse",
 					externalId: { in: lapseIds },
+					provider: "lapse",
 					workSession: { deletedAt: null, themeProject: { deletedAt: null } },
 				},
-				select: { externalId: true },
 			})
 			if (taken) {
-				const title = timelapses.find((t) => t.id === taken.externalId)?.title ?? "That timelapse"
+				const title = timelapses.find(t => t.id === taken.externalId)?.title ?? "That timelapse"
 				throw new HttpError("CONFLICT", `"${title}" already backs another journal entry`)
 			}
 		}
 
 		// The gates above are the fast fail; the phase and the week are re-read on the transaction client immediately before the write so a submit or a week that closes in between cannot file an entry into a frozen phase or a passed week.
 		const current = await tx.themeProject.findUnique({
+			select: { buildStatus: true, designStatus: true, submissionExtensionUntil: true },
 			where: { id },
-			select: { designStatus: true, buildStatus: true, submissionExtensionUntil: true },
 		})
 		const currentStatus = data.phase === "DESIGN" ? current?.designStatus : current?.buildStatus
 		if (currentStatus === PhaseStatus.in_review)
@@ -142,8 +142,8 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		if (currentStatus && isPhaseDecided(currentStatus))
 			throw new HttpError("PHASE_LOCKED", "This phase has been submitted and decided, so new entries cannot be added")
 		const weekUser = await tx.user.findUnique({
-			where: { id: gate.user.id },
 			select: { submissionExtensionUntil: true },
+			where: { id: gate.user.id },
 		})
 		const settings = await getProgramSettings()
 		const closesAt = effectiveWeekClose(
@@ -155,36 +155,36 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 
 		const created = await tx.workSession.create({
 			data: {
-				themeProjectId: id,
-				phase: data.phase,
-				title: sanitize(data.title),
 				content: data.content ? sanitizeHtml(data.content) : null,
+				effectiveDate: timing.effectiveDate,
 				hoursClaimed: data.hoursClaimed,
 				hoursSource: data.hoursSource,
-				effectiveDate: timing.effectiveDate,
-				weekNumber: timing.weekNumber,
 				media: {
 					create: data.media.map((m, i) => ({
-						type: m.type,
-						objectKey: m.objectKey,
-						contentType: m.contentType ?? null,
 						byteSize: m.byteSize ?? null,
+						contentType: m.contentType ?? null,
+						objectKey: m.objectKey,
 						sortOrder: i,
+						type: m.type,
 					})),
 				},
+				phase: data.phase,
+				themeProjectId: id,
 				timelapses: {
-					create: timelapses.map((t) => ({
-						provider: "lapse",
-						externalId: t.id,
-						playbackUrl: t.playbackUrl,
-						thumbnailUrl: t.thumbnailUrl,
+					create: timelapses.map(t => ({
 						// Lapse's duration is wall-clock time recorded, which is exactly what coverage is measured in.
 						coveredSeconds: t.durationSeconds,
+						externalId: t.id,
+						hackatimeProject: t.hackatimeProject,
+						playbackUrl: t.playbackUrl,
+						provider: "lapse",
 						// When it was recorded, and what Lapse saw on Hackatime while it ran. Together these are what stops one sitting being counted by this entry and again by the linked project.
 						recordedAt: new Date(t.createdAt),
-						hackatimeProject: t.hackatimeProject,
+						thumbnailUrl: t.thumbnailUrl,
 					})),
 				},
+				title: sanitize(data.title),
+				weekNumber: timing.weekNumber,
 			},
 			include: { media: true, timelapses: true },
 		})
@@ -194,16 +194,16 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 
 	await logAudit({
 		action: AuditAction.USER_CREATE_SESSION,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "WorkSession",
-		targetId: session.id,
+		actorId: gate.user.id,
 		metadata: {
-			themeProjectId: id,
-			phase: data.phase,
 			hoursClaimed: data.hoursClaimed,
 			hoursSource: data.hoursSource,
+			phase: data.phase,
+			themeProjectId: id,
 		},
+		targetId: session.id,
+		targetType: "WorkSession",
 	})
 
 	await recomputeWeek(gate.user.id, session.weekNumber)

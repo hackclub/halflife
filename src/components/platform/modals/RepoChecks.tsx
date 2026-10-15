@@ -41,7 +41,7 @@ export function RepoChecks({
 			const res = await fetch(`/api/projects/${project.id}/repo-sync`, { cache: "no-store" })
 			if (!res.ok) return
 			const body = (await res.json()) as { repo?: string | null; syncRepoDiffers?: boolean }
-			setSyncRepo(body.repo && body.syncRepoDiffers ? { repo: body.repo, differs: true } : null)
+			setSyncRepo(body.repo && body.syncRepoDiffers ? { differs: true, repo: body.repo } : null)
 		} catch {
 			// Best effort: the shortcut is a convenience, not the check itself.
 		}
@@ -85,7 +85,7 @@ export function RepoChecks({
 		run()
 	}, [run])
 
-	const blocking = data?.checks.filter((c) => c.blocking && c.status === "fail").length ?? 0
+	const blocking = data?.checks.filter(c => c.blocking && c.status === "fail").length ?? 0
 
 	return (
 		<section
@@ -94,17 +94,17 @@ export function RepoChecks({
 			style={{ "--sk-radius": "16px" } as React.CSSProperties}
 		>
 			<div className="flex flex-wrap items-center justify-between gap-2">
-				<h3 id="repo-checks-title" className="label text-violet-deep">
+				<h3 className="label text-violet-deep" id="repo-checks-title">
 					Repo checks
 				</h3>
-				<Button variant="ghost" size="sm" onClick={() => run()} disabled={loading}>
+				<Button disabled={loading} onClick={() => run()} size="sm" variant="ghost">
 					{loading ? "Checking…" : "Check again"}
 				</Button>
 			</div>
 			{/* Where the link can be changed, it sits here with its editor. Where it
           cannot – the project page – it is already in the page's heading, and
           saying it twice a few lines apart only makes the reader compare them. */}
-			{editable && <RepoEditor project={project} className="mt-1" />}
+			{editable && <RepoEditor className="mt-1" project={project} />}
 
 			{/* The sync can be pointed at a repo the project link never got, which is
           exactly the state the checks below fail in. One press copies it over,
@@ -116,23 +116,23 @@ export function RepoChecks({
 						Your repo sync is writing to <span className="font-semibold">{displayRepo(syncRepo.repo)}</span>. Link this
 						project to it?
 					</span>
-					<Button variant="outline" size="sm" disabled={linking} onClick={() => linkProject()}>
+					<Button disabled={linking} onClick={() => linkProject()} size="sm" variant="outline">
 						{linking ? "Linking…" : "Link this repo"}
 					</Button>
 				</p>
 			)}
 
 			{loading && !data ? (
-				<p className="hand mt-2 text-[0.84rem] text-navy-soft" aria-live="polite">
+				<p aria-live="polite" className="hand mt-2 text-[0.84rem] text-navy-soft">
 					reading your repo on GitHub…
 				</p>
 			) : error ? (
-				<p role="alert" className="mt-2 text-[0.85rem] font-semibold text-coral-deep">
+				<p className="mt-2 text-[0.85rem] font-semibold text-coral-deep" role="alert">
 					{error}
 				</p>
 			) : data ? (
 				<>
-					<p className="mt-1 text-[0.9rem] leading-snug text-navy-soft" aria-live="polite">
+					<p aria-live="polite" className="mt-1 text-[0.9rem] leading-snug text-navy-soft">
 						{blocking > 0
 							? `${blocking} ${blocking === 1 ? "thing needs" : "things need"} fixing before you can submit.`
 							: data.unavailable
@@ -140,8 +140,8 @@ export function RepoChecks({
 								: "Everything this week needs is in the repo."}
 					</p>
 					<ul className={cx("mt-3 grid gap-1.5", loading && "opacity-60")}>
-						{data.checks.map((c) => (
-							<CheckRow key={c.key} check={c} />
+						{data.checks.map(c => (
+							<CheckRow check={c} key={c.key} />
 						))}
 					</ul>
 				</>
@@ -156,12 +156,12 @@ function CheckRow({ check }: { check: RepoCheck }) {
 	return (
 		<li className="flex items-start gap-2.5">
 			<span
+				aria-hidden="true"
 				className={cx(
 					"mt-0.5 grid size-5 shrink-0 place-items-center rounded-full",
 					check.status === "pass" ? "bg-mint" : check.status === "fail" ? "bg-coral/15" : "bg-gold-pale",
 					tone,
 				)}
-				aria-hidden="true"
 			>
 				{check.status === "pass" ? (
 					<IconCheck className="text-[0.7rem]" strokeWidth={3.4} />

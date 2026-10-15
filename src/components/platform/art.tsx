@@ -30,26 +30,26 @@ import gatoSchematic from "../../../public/brand/gato/schematic.png"
  * ------------------------------------------------------------------ */
 export function SketchDefs() {
 	return (
-		<svg aria-hidden="true" focusable="false" style={{ position: "absolute", width: 0, height: 0, overflow: "hidden" }}>
+		<svg aria-hidden="true" focusable="false" style={{ height: 0, overflow: "hidden", position: "absolute", width: 0 }}>
 			<defs>
-				<filter id="hl-wobble" x="-12%" y="-12%" width="124%" height="124%">
-					<feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="3" seed="7" result="n" />
+				<filter height="124%" id="hl-wobble" width="124%" x="-12%" y="-12%">
+					<feTurbulence baseFrequency="0.018" numOctaves="3" result="n" seed="7" type="fractalNoise" />
 					<feDisplacementMap in="SourceGraphic" in2="n" scale="4.2" xChannelSelector="R" yChannelSelector="G" />
 				</filter>
-				<filter id="hl-wobble-2" x="-12%" y="-12%" width="124%" height="124%">
-					<feTurbulence type="fractalNoise" baseFrequency="0.022" numOctaves="3" seed="21" result="n" />
+				<filter height="124%" id="hl-wobble-2" width="124%" x="-12%" y="-12%">
+					<feTurbulence baseFrequency="0.022" numOctaves="3" result="n" seed="21" type="fractalNoise" />
 					<feDisplacementMap in="SourceGraphic" in2="n" scale="5" xChannelSelector="R" yChannelSelector="G" />
 				</filter>
-				<filter id="hl-wobble-3" x="-14%" y="-14%" width="128%" height="128%">
-					<feTurbulence type="fractalNoise" baseFrequency="0.034" numOctaves="2" seed="43" result="n" />
+				<filter height="128%" id="hl-wobble-3" width="128%" x="-14%" y="-14%">
+					<feTurbulence baseFrequency="0.034" numOctaves="2" result="n" seed="43" type="fractalNoise" />
 					<feDisplacementMap in="SourceGraphic" in2="n" scale="3.4" xChannelSelector="R" yChannelSelector="G" />
 				</filter>
-				<filter id="hl-tear" x="-10%" y="-25%" width="120%" height="150%">
-					<feTurbulence type="fractalNoise" baseFrequency="0.02 0.11" numOctaves="3" seed="11" result="n" />
+				<filter height="150%" id="hl-tear" width="120%" x="-10%" y="-25%">
+					<feTurbulence baseFrequency="0.02 0.11" numOctaves="3" result="n" seed="11" type="fractalNoise" />
 					<feDisplacementMap in="SourceGraphic" in2="n" scale="9" xChannelSelector="R" yChannelSelector="G" />
 				</filter>
-				<filter id="hl-tear-soft" x="-10%" y="-20%" width="120%" height="140%">
-					<feTurbulence type="fractalNoise" baseFrequency="0.03 0.09" numOctaves="2" seed="31" result="n" />
+				<filter height="140%" id="hl-tear-soft" width="120%" x="-10%" y="-20%">
+					<feTurbulence baseFrequency="0.03 0.09" numOctaves="2" result="n" seed="31" type="fractalNoise" />
 					<feDisplacementMap in="SourceGraphic" in2="n" scale="5" xChannelSelector="R" yChannelSelector="G" />
 				</filter>
 			</defs>
@@ -62,9 +62,9 @@ export function SketchDefs() {
  * ------------------------------------------------------------------ */
 
 const GATO: Record<"head" | "box" | "confused" | "schematic", StaticImageData> = {
-	head: gatoHead,
 	box: gatoBox,
 	confused: gatoConfused,
+	head: gatoHead,
 	schematic: gatoSchematic,
 }
 
@@ -85,7 +85,7 @@ export function Gato({
 	sizes: string
 	alt?: string
 }) {
-	return <Image src={GATO[pose]} alt={alt} sizes={sizes} className={`object-contain ${className ?? ""}`} />
+	return <Image alt={alt} className={`object-contain ${className ?? ""}`} sizes={sizes} src={GATO[pose]} />
 }
 
 /* ------------------------------------------------------------------ *
@@ -96,11 +96,11 @@ export function Gato({
  * The programme's own painted stickers, one per theme, from `public/art/weeks` – the same files the landing page's "how does it work?" plate shows. Each source is a 3000px square of 2-4 MB, which is why this goes through `next/image` and names the size it is shown at. A theme with no painting shows nothing rather than a stand-in.
  */
 const WEEK_PAINTINGS: Partial<Record<string, StaticImageData>> = {
-	PCB: pcbPainting,
-	CAD: cadPainting,
-	Music: musicPainting,
-	Displays: displayPainting,
 	"Breadboard computer": breadboardPainting,
+	CAD: cadPainting,
+	Displays: displayPainting,
+	Music: musicPainting,
+	PCB: pcbPainting,
 	// The warm-up has no theme to paint. It is "your own idea", which is the Gato that stands for that on onboarding's custom-project card.
 	"Warm Up": gatoSchematic,
 }
@@ -121,7 +121,7 @@ export function WeekPainting({
 	if (!painting) return null
 	return (
 		<span className={`relative block ${className ?? ""}`}>
-			<Image src={painting} alt={alt} fill sizes={sizes} className="object-contain" />
+			<Image alt={alt} className="object-contain" fill sizes={sizes} src={painting} />
 		</span>
 	)
 }
@@ -136,14 +136,14 @@ export function WeekPainting({
  * Each file is the maker's shot trimmed to the machine and set on white at 560px square, the machine standing on a common floor so a row of them lines up. That is the largest place one is shown – the onboarding prize, at 280px – at twice the pixels, and `next/image` cuts it down for the small tiles.
  */
 const PRINTER_PHOTOS: Partial<Record<string, StaticImageData>> = {
-	"ender-3-v3-se": ender3V3SePhoto,
+	"bambu-a1": bambuA1Photo,
 	"bambu-a1-mini": bambuA1MiniPhoto,
+	"bambu-p1s": bambuP1sPhoto,
+	"elegoo-centauri-2": centauri2Photo,
 	"elegoo-mars-4": mars5Photo,
 	"elegoo-neptune-4": neptune4Photo,
+	"ender-3-v3-se": ender3V3SePhoto,
 	"monoprice-cnc": monopriceCncPhoto,
-	"elegoo-centauri-2": centauri2Photo,
-	"bambu-a1": bambuA1Photo,
-	"bambu-p1s": bambuP1sPhoto,
 }
 
 /**
@@ -166,7 +166,7 @@ export function PrinterPhoto({
 	const photo = PRINTER_PHOTOS[id]
 	return (
 		<span className={`relative block overflow-hidden bg-white ${className ?? ""}`}>
-			{photo && <Image src={photo} alt={alt} fill sizes={sizes} className="object-contain" />}
+			{photo && <Image alt={alt} className="object-contain" fill sizes={sizes} src={photo} />}
 		</span>
 	)
 }
@@ -179,8 +179,8 @@ export function PrinterPhoto({
  * Each starter project's own render, from its repo's `Renders` folder, trimmed to the board with its transparency kept. Keyed by starter id; a starter with no render shows nothing.
  */
 const STARTER_RENDERS: Partial<Record<string, StaticImageData>> = {
-	starbie: starbieRender,
 	merbl: merblRender,
+	starbie: starbieRender,
 }
 
 export function StarterRender({
@@ -199,7 +199,7 @@ export function StarterRender({
 	if (!render) return null
 	return (
 		<span className={`relative block ${className ?? ""}`}>
-			<Image src={render} alt={alt} fill sizes={sizes} className="object-contain" />
+			<Image alt={alt} className="object-contain" fill sizes={sizes} src={render} />
 		</span>
 	)
 }

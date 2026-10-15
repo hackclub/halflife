@@ -65,22 +65,22 @@ export function pauseReels() {
  */
 export function sendLike(reel: FeedItem, next: boolean, onPatch?: (id: string, patch: Partial<FeedItem>) => void) {
 	if (reel.likedByMe === next) return
-	onPatch?.(reel.id, { likedByMe: next, likeCount: reel.likeCount + (next ? 1 : -1) })
+	onPatch?.(reel.id, { likeCount: reel.likeCount + (next ? 1 : -1), likedByMe: next })
 	fetch(`/api/posts/${reel.id}/like`, {
-		method: "PUT",
-		headers: { "content-type": "application/json" },
 		body: JSON.stringify({ liked: next }),
+		headers: { "content-type": "application/json" },
+		method: "PUT",
 	})
-		.then(async (res) => {
+		.then(async res => {
 			if (!res.ok) {
 				// Refused: put it back as it was.
-				onPatch?.(reel.id, { likedByMe: reel.likedByMe, likeCount: reel.likeCount })
+				onPatch?.(reel.id, { likeCount: reel.likeCount, likedByMe: reel.likedByMe })
 				return
 			}
 			const payload = (await res.json()) as { likeCount?: number }
 			if (typeof payload.likeCount === "number") onPatch?.(reel.id, { likeCount: payload.likeCount })
 		})
-		.catch(() => onPatch?.(reel.id, { likedByMe: reel.likedByMe, likeCount: reel.likeCount }))
+		.catch(() => onPatch?.(reel.id, { likeCount: reel.likeCount, likedByMe: reel.likedByMe }))
 }
 
 /**
@@ -91,8 +91,8 @@ const ARRIVE: Keyframe[] = [
 	{ opacity: 1, transform: "none" },
 ]
 const ARRIVE_TIMING: KeyframeAnimationOptions = {
-	duration: 420,
 	delay: 90,
+	duration: 420,
 	easing: "cubic-bezier(0.16, 1, 0.3, 1)",
 	fill: "backwards",
 }
@@ -196,7 +196,7 @@ export function ReelCard({
 	}
 
 	return (
-		<article ref={card} className={cx("relative w-full overflow-hidden rounded-xl", className)}>
+		<article className={cx("relative w-full overflow-hidden rounded-xl", className)} ref={card}>
 			{/* Nothing generates thumbnails yet, so most reels have no poster, and
           with `preload="none"` that left a blank box with a play button on
           it. Without a poster the card fetches only the metadata and asks for
@@ -205,23 +205,23 @@ export function ReelCard({
 			{reel.videoUrl ? (
 				// biome-ignore lint/a11y/useMediaCaption: a participant upload, and there is no caption file to point a track at. An empty track is announced as an empty caption, which is worse than none.
 				<video
-					ref={video}
-					src={reel.thumbnailUrl ? reel.videoUrl : `${reel.videoUrl}#t=0.1`}
-					poster={reel.thumbnailUrl ?? undefined}
-					playsInline
+					className="absolute inset-0 size-full bg-navy object-cover"
 					loop
-					preload={reel.thumbnailUrl ? "none" : "metadata"}
-					// The element is the truth about whether it is playing: it can be paused by the observer, by another card starting, or by the browser refusing autoplay, none of which pass through the button.
-					onPlay={(e) => {
-						notePlaying(e.currentTarget)
-						setPlaying(true)
-					}}
-					onPause={(e) => {
+					onPause={e => {
 						noteStopped(e.currentTarget)
 						setPlaying(false)
 					}}
+					// The element is the truth about whether it is playing: it can be paused by the observer, by another card starting, or by the browser refusing autoplay, none of which pass through the button.
+					onPlay={e => {
+						notePlaying(e.currentTarget)
+						setPlaying(true)
+					}}
 					onTimeUpdate={countView}
-					className="absolute inset-0 size-full bg-navy object-cover"
+					playsInline
+					poster={reel.thumbnailUrl ?? undefined}
+					preload={reel.thumbnailUrl ? "none" : "metadata"}
+					ref={video}
+					src={reel.thumbnailUrl ? reel.videoUrl : `${reel.videoUrl}#t=0.1`}
 				/>
 			) : (
 				// No URL is a deployment without a public bucket URL, not a reel without a video. Saying so beats standing an illustration in for somebody's footage.
@@ -235,7 +235,7 @@ export function ReelCard({
 
 			{announcement ? (
 				<span className="label absolute top-3 left-3 z-10 flex items-center gap-1.5 rounded-2xl bg-coral px-2.5 py-1 text-white">
-					<Gato sizes="28px" className="h-auto w-4" />
+					<Gato className="h-auto w-4" sizes="28px" />
 					From HQ
 				</span>
 			) : (
@@ -245,9 +245,6 @@ export function ReelCard({
 			)}
 
 			<button
-				type="button"
-				onClick={toggle}
-				disabled={!reel.videoUrl}
 				aria-label={
 					reel.videoUrl
 						? `${playing ? "Pause" : "Play"} reel by ${reel.author.name ?? "a maker"}`
@@ -258,6 +255,9 @@ export function ReelCard({
 					reel.videoUrl && "hover:scale-105",
 					playing && "opacity-0 focus-visible:opacity-100",
 				)}
+				disabled={!reel.videoUrl}
+				onClick={toggle}
+				type="button"
 			>
 				{!playing && (
 					<span className="grid size-14 place-items-center rounded-full bg-black/35 backdrop-blur-sm">
@@ -267,11 +267,11 @@ export function ReelCard({
 			</button>
 
 			<div className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/80 via-black/45 to-transparent px-3.5 pt-10 pb-3.5">
-				<div ref={meta} className="flex items-end gap-3">
+				<div className="flex items-end gap-3" ref={meta}>
 					<div className="min-w-0 flex-1">
 						<Link
-							href={`/u/${reel.author.id}`}
 							className="block truncate text-[0.86rem] leading-tight font-extrabold text-white [text-shadow:0_1px_3px_rgba(0,0,0,.6)] transition-colors hover:text-sky-pale hover:underline hover:decoration-dashed hover:underline-offset-4"
+							href={`/u/${reel.author.id}`}
 						>
 							{reel.author.name ?? "A maker"}
 						</Link>
@@ -279,11 +279,11 @@ export function ReelCard({
 					</div>
 					<div className="flex shrink-0 flex-col items-center gap-2.5 pb-0.5">
 						<button
-							type="button"
-							onClick={like}
-							aria-pressed={reel.likedByMe}
 							aria-label={reel.likedByMe ? "Unlike" : "Like"}
+							aria-pressed={reel.likedByMe}
 							className="flex flex-col items-center gap-0.5 text-white transition-transform duration-150 hover:scale-110 active:scale-95"
+							onClick={like}
+							type="button"
 						>
 							<IconHeart
 								className={cx("text-[1.35rem]", reel.likedByMe && "text-coral")}
@@ -295,10 +295,10 @@ export function ReelCard({
 						</button>
 						{onComments ? (
 							<button
-								type="button"
-								onClick={() => onComments(reel)}
 								aria-label={`Comments (${reel.commentCount})`}
 								className="flex flex-col items-center gap-0.5 text-white transition-transform duration-150 hover:scale-110 active:scale-95"
+								onClick={() => onComments(reel)}
+								type="button"
 							>
 								<IconComment className="text-[1.3rem]" />
 								<span className="hand text-[0.72rem] font-semibold tabular-nums [text-shadow:0_1px_3px_rgba(0,0,0,.6)]">
@@ -307,11 +307,11 @@ export function ReelCard({
 							</button>
 						) : (
 							<Link
+								aria-label={`Comments (${reel.commentCount})`}
+								className="flex flex-col items-center gap-0.5 text-white transition-transform duration-150 hover:scale-110 active:scale-95"
 								href={`/doomscroller?reel=${reel.id}&comments=1`}
 								// Every card carries a different deep link, so the rail's dozen would each prefetch their own page; a press is a deliberate one-off, not something to speculate on.
 								prefetch={false}
-								aria-label={`Comments (${reel.commentCount})`}
-								className="flex flex-col items-center gap-0.5 text-white transition-transform duration-150 hover:scale-110 active:scale-95"
 							>
 								<IconComment className="text-[1.3rem]" />
 								<span className="hand text-[0.72rem] font-semibold tabular-nums [text-shadow:0_1px_3px_rgba(0,0,0,.6)]">
@@ -329,9 +329,9 @@ export function ReelCard({
 						    so showing one would only ever end in an error. */}
 						{reel.author.id !== viewer.id && (
 							<ReportButton
-								target={{ type: "REEL", id: reel.id }}
-								title="Report this reel"
 								context={reel.caption || undefined}
+								target={{ id: reel.id, type: "REEL" }}
+								title="Report this reel"
 								tone="inverse"
 							/>
 						)}

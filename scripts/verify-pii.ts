@@ -31,29 +31,29 @@ function check(label: string, ok: boolean, detail = "") {
 }
 
 const S = {
-	viewerEmail: "viewer-SENTINELEMAIL@example.test",
-	otherEmail: "other-SENTINELEMAIL@example.test",
-	viewerSlack: "USENTINELSLACKA",
-	otherSlack: "USENTINELSLACKB",
 	address: "SENTINELSTREET",
-	phone: "SENTINELPHONE",
 	birthday: "SENTINELBIRTHDAY",
+	otherEmail: "other-SENTINELEMAIL@example.test",
+	otherSlack: "USENTINELSLACKB",
+	phone: "SENTINELPHONE",
 	probeEmail: "authz-SENTINEL@example.test",
+	viewerEmail: "viewer-SENTINELEMAIL@example.test",
+	viewerSlack: "USENTINELSLACKA",
 }
 
 async function makeUser(email: string, name: string, slackId: string) {
 	return prisma.user.create({
 		data: {
 			email,
+			encryptedAddressCity: S.address,
+			encryptedAddressStreet: S.address,
+			encryptedBirthday: S.birthday,
+			encryptedPhone: S.phone,
+			joinedProgramAt: new Date(),
 			name,
+			onboardingCompletedAt: new Date(),
 			slackId,
 			verificationStatus: "verified",
-			joinedProgramAt: new Date(),
-			onboardingCompletedAt: new Date(),
-			encryptedAddressStreet: S.address,
-			encryptedAddressCity: S.address,
-			encryptedPhone: S.phone,
-			encryptedBirthday: S.birthday,
 		},
 	})
 }
@@ -62,10 +62,10 @@ async function cookieFor(userId: string): Promise<string> {
 	const token = randomBytes(32).toString("hex")
 	await prisma.session.create({
 		data: {
+			expiresAt: new Date(Date.now() + 864e5),
 			id: randomBytes(16).toString("hex"),
 			token,
 			userId,
-			expiresAt: new Date(Date.now() + 864e5),
 		},
 	})
 	const sig = createHmac("sha256", process.env.BETTER_AUTH_SECRET ?? "")
@@ -110,32 +110,32 @@ async function main() {
 
 	// The other participant needs work, or they appear on none of these pages and the whole exercise passes by having nothing to leak.
 	const project = await prisma.themeProject.findFirstOrThrow({
-		where: { userId: other.id, theme: Theme.PCB },
+		where: { theme: Theme.PCB, userId: other.id },
 	})
 	await prisma.themeProject.update({
+		data: { description: "Theirs.", requestedTier: 1, title: "Other's board" },
 		where: { id: project.id },
-		data: { title: "Other's board", description: "Theirs.", requestedTier: 1 },
 	})
 	await prisma.workSession.create({
 		data: {
-			themeProjectId: project.id,
-			phase: Phase.DESIGN,
-			title: "Their session",
 			content: "Their journal entry, long enough to render.",
-			hoursClaimed: 4,
 			effectiveDate: new Date().toISOString().slice(0, 10),
+			hoursClaimed: 4,
+			phase: Phase.DESIGN,
+			themeProjectId: project.id,
+			title: "Their session",
 		},
 	})
 	await prisma.post.create({
 		data: {
-			userId: other.id,
-			themeProjectId: project.id,
-			kind: PostKind.PROGRESS,
 			caption: "their reel",
-			objectKey: `posts/${other.id}/x.mp4`,
 			checkpointKey: "w1-reel-1",
-			status: PostStatus.PUBLISHED,
+			kind: PostKind.PROGRESS,
+			objectKey: `posts/${other.id}/x.mp4`,
 			publishedAt: new Date(),
+			status: PostStatus.PUBLISHED,
+			themeProjectId: project.id,
+			userId: other.id,
 		},
 	})
 
@@ -169,17 +169,17 @@ async function main() {
 	const nobody = await prisma.user.create({
 		data: {
 			email: S.probeEmail,
+			joinedProgramAt: new Date(),
 			name: "Ordinary",
 			verificationStatus: "verified",
-			joinedProgramAt: new Date(),
 		},
 	})
 	const theirCookie = await cookieFor(nobody.id)
 
 	for (const [method, path] of STAFF_SURFACES) {
 		const res = await fetch(`${BASE}${path}`, {
+			headers: { "content-type": "application/json", cookie: theirCookie },
 			method,
-			headers: { cookie: theirCookie, "content-type": "application/json" },
 			...(method === "POST" ? { body: "{}" } : {}),
 			redirect: "manual",
 		})
@@ -190,7 +190,7 @@ async function main() {
 	}
 
 	// A sanity check on the checker: ADMIN must actually get in, or every line above passes for the boring reason that nothing works.
-	await prisma.userRole.create({ data: { userId: nobody.id, role: Role.ADMIN } })
+	await prisma.userRole.create({ data: { role: Role.ADMIN, userId: nobody.id } })
 	const asAdmin = await fetch(`${BASE}/api/admin/users`, { headers: { cookie: theirCookie } })
 	check("and lets an ADMIN through", asAdmin.status === 200, `got ${asAdmin.status}`)
 
@@ -203,7 +203,7 @@ async function main() {
 }
 
 main()
-	.catch((err) => {
+	.catch(err => {
 		console.error(err)
 		process.exitCode = 1
 	})

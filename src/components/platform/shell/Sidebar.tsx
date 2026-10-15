@@ -28,7 +28,7 @@ export const NAV = [
 /**
  * The phone tab bar divides into equal cells, six at most: six 60px cells is what a 360px screen holds with the uppercase labels still readable. The Doomscroller gets in through the header link below lg instead of taking one.
  */
-export const TAB_NAV = NAV.filter((item) => item.href !== "/doomscroller")
+export const TAB_NAV = NAV.filter(item => item.href !== "/doomscroller")
 
 export function Sidebar({ className }: { className?: string }) {
 	const pathname = usePathname()
@@ -43,34 +43,34 @@ export function Sidebar({ className }: { className?: string }) {
           the file is drawn large, and priority because it is above the fold on
           every page. */}
 			<Link
-				href={PLATFORM_HOME}
 				aria-label="Half Life home"
 				className="block w-[176px] shrink-0 transition-transform duration-150 hover:-translate-y-0.5 active:translate-y-px xl:w-[200px]"
+				href={PLATFORM_HOME}
 			>
 				<Image
-					src={logoArt}
 					alt=""
+					className="h-auto w-full drop-shadow-[0_3px_6px_rgb(28_26_89/0.18)]"
 					priority
 					sizes="200px"
-					className="h-auto w-full drop-shadow-[0_3px_6px_rgb(28_26_89/0.18)]"
+					src={logoArt}
 				/>
 			</Link>
 
-			<Panel tone="line" radius={18} className="relative bg-cream/60 pt-7 pb-5">
+			<Panel className="relative bg-cream/60 pt-7 pb-5" radius={18} tone="line">
 				<span aria-hidden="true" className="torn-soft absolute -top-3.5 left-8 h-8 w-20 rounded-t-lg bg-coral" />
 				<nav className="relative px-5">
 					<ul>
-						{NAV.map((item) => {
+						{NAV.map(item => {
 							const active = item.href === PLATFORM_HOME ? pathname === PLATFORM_HOME : pathname.startsWith(item.href)
 							return (
-								<li key={item.href} data-tour={item.tourId} className="relative">
+								<li className="relative" data-tour={item.tourId} key={item.href}>
 									<Link
-										href={item.href}
 										aria-current={active ? "page" : undefined}
 										className={cx(
 											"group flex items-center justify-between gap-2 border-b border-dashed border-line py-3 text-[1.02rem] transition-[color,transform] duration-150 active:translate-y-px",
 											active ? "font-extrabold text-navy" : "font-semibold text-navy-soft hover:text-navy",
 										)}
+										href={item.href}
 									>
 										<span className="truncate">{item.label}</span>
 										{active && <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-coral" />}
@@ -90,23 +90,23 @@ export function Sidebar({ className }: { className?: string }) {
 			{/* The one number that only grows, kept above the account card. */}
 			<TimeLogged />
 
-			<Panel tone="line" radius={18} className="flex items-center gap-3.5 bg-cream/60 p-3.5">
+			<Panel className="flex items-center gap-3.5 bg-cream/60 p-3.5" radius={18} tone="line">
 				<Link
-					href={`/u/${viewer.id}`}
 					aria-label={`${viewer.name}'s profile`}
 					className="shrink-0 rounded-lg transition-transform hover:-translate-y-0.5 active:translate-y-px"
+					href={`/u/${viewer.id}`}
 				>
-					<Avatar name={viewer.name} image={viewer.image} shape="tile" className="size-[66px] text-[1.6rem]" />
+					<Avatar className="size-[66px] text-[1.6rem]" image={viewer.image} name={viewer.name} shape="tile" />
 				</Link>
 				<div className="min-w-0">
 					<Link
-						href={`/u/${viewer.id}`}
 						className="block truncate text-[1rem] leading-tight font-extrabold text-navy transition-colors hover:text-violet-deep hover:underline hover:decoration-dashed hover:underline-offset-4"
+						href={`/u/${viewer.id}`}
 					>
 						{viewer.name}
 					</Link>
 					<button
-						type="button"
+						className="label mt-2 inline-flex items-center gap-1.5 text-sky-ink transition-colors hover:text-coral-deep"
 						disabled={signingOut}
 						onClick={async () => {
 							setSigningOut(true)
@@ -118,7 +118,7 @@ export function Sidebar({ className }: { className?: string }) {
 								setSigningOut(false)
 							}
 						}}
-						className="label mt-2 inline-flex items-center gap-1.5 text-sky-ink transition-colors hover:text-coral-deep"
+						type="button"
 					>
 						{signingOut ? "Signing out…" : "Log out"} <IconLogout className="text-[0.95rem]" />
 					</button>
@@ -126,9 +126,9 @@ export function Sidebar({ className }: { className?: string }) {
 			</Panel>
 
 			<button
-				type="button"
-				onClick={reset}
 				className="hand -mt-1 self-start text-[0.76rem] text-navy-faint underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
+				onClick={reset}
+				type="button"
 			>
 				Replay the intro
 			</button>
@@ -149,7 +149,7 @@ function TimeLogged() {
 	if (totalHours <= 0) return null
 
 	return (
-		<Panel tone="line" radius={18} className="bg-cream/60 px-5 py-4">
+		<Panel className="bg-cream/60 px-5 py-4" radius={18} tone="line">
 			<p className="label text-violet-deep">Time logged</p>
 			<p className="mt-2 flex items-baseline gap-2">
 				<IconClock className="translate-y-0.5 text-[1.15rem] text-teal-ink" />
@@ -170,13 +170,13 @@ function BypassLocks() {
 
 	return (
 		<button
-			type="button"
 			aria-pressed={bypassLocks}
-			onClick={() => setBypassLocks(!bypassLocks)}
 			className={cx(
 				"hand -mt-3 self-start text-[0.76rem] underline decoration-dashed underline-offset-4 transition-colors",
 				bypassLocks ? "font-semibold text-coral-dark hover:text-navy" : "text-navy-faint hover:text-navy",
 			)}
+			onClick={() => setBypassLocks(!bypassLocks)}
+			type="button"
 		>
 			{bypassLocks ? "Relock checkpoints" : "Bypass checkpoint locks"}{" "}
 			<span className="label ml-1 text-[0.6rem] no-underline">admin</span>
@@ -199,9 +199,9 @@ function RedoOnboarding() {
 	if (!asking) {
 		return (
 			<button
-				type="button"
-				onClick={() => setAsking(true)}
 				className={cx(link, "-mt-3 self-start text-navy-faint hover:text-navy")}
+				onClick={() => setAsking(true)}
+				type="button"
 			>
 				Redo onboarding <span className="label ml-1 text-[0.6rem] no-underline">admin</span>
 			</button>
@@ -215,13 +215,13 @@ function RedoOnboarding() {
 				stay.
 			</p>
 			{error && (
-				<p role="alert" className="mt-2 text-[0.78rem] font-semibold text-coral-dark">
+				<p className="mt-2 text-[0.78rem] font-semibold text-coral-dark" role="alert">
 					{error}
 				</p>
 			)}
 			<div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1.5">
 				<button
-					type="button"
+					className={cx(link, "font-semibold text-coral-dark hover:text-navy")}
 					disabled={busy}
 					onClick={async () => {
 						setBusy(true)
@@ -231,18 +231,18 @@ function RedoOnboarding() {
 						if (failed) setError(failed)
 						else setAsking(false)
 					}}
-					className={cx(link, "font-semibold text-coral-dark hover:text-navy")}
+					type="button"
 				>
 					{busy ? "Resetting…" : "Yes, redo it"}
 				</button>
 				<button
-					type="button"
+					className={cx(link, "text-navy-faint hover:text-navy")}
 					disabled={busy}
 					onClick={() => {
 						setAsking(false)
 						setError(null)
 					}}
-					className={cx(link, "text-navy-faint hover:text-navy")}
+					type="button"
 				>
 					Cancel
 				</button>

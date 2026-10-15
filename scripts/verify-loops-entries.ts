@@ -35,7 +35,7 @@ async function main() {
 	// Every Signups row carrying a timestamp, plus the keys the join needs.
 	const withTimestamp: AirtableRecord[] = []
 	const want = [LOOPS_FIELDS.email, LOOPS_FIELDS.userId, LOOPS_FIELDS.lastEntryAt]
-	const fieldsQs = want.map((f) => `fields%5B%5D=${encodeURIComponent(f)}`).join("&")
+	const fieldsQs = want.map(f => `fields%5B%5D=${encodeURIComponent(f)}`).join("&")
 	let offset: string | undefined
 	do {
 		const page = await withRateLimitRetry("listSignups", () =>
@@ -51,6 +51,7 @@ async function main() {
 
 	// The people who genuinely have an entry: a written devlog or a timelapse.
 	const qualifiers = await prisma.user.findMany({
+		select: { email: true, id: true },
 		where: {
 			themeProjects: {
 				some: {
@@ -64,15 +65,14 @@ async function main() {
 				},
 			},
 		},
-		select: { id: true, email: true },
 	})
-	const qualifiedIds = new Set(qualifiers.map((u) => u.id))
-	const qualifiedEmails = new Map(qualifiers.map((u) => [u.email.trim().toLowerCase(), u.id]))
+	const qualifiedIds = new Set(qualifiers.map(u => u.id))
+	const qualifiedEmails = new Map(qualifiers.map(u => [u.email.trim().toLowerCase(), u.id]))
 
 	// The join keys the sync would use: the row's own user id column, the RSVP
 	// drain's record id, and email.
 	const buffers = await prisma.rsvpBuffer.findMany({
-		select: { email: true, userId: true, airtableRecordId: true },
+		select: { airtableRecordId: true, email: true, userId: true },
 	})
 	const bufferByRecord = new Map<string, string>()
 	const bufferByEmail = new Map<string, string>()
@@ -83,7 +83,7 @@ async function main() {
 			bufferByEmail.set(b.email.trim().toLowerCase(), b.userId)
 	}
 	const usersByEmail = new Map<string, string>()
-	for (const u of await prisma.user.findMany({ select: { id: true, email: true } }))
+	for (const u of await prisma.user.findMany({ select: { email: true, id: true } }))
 		usersByEmail.set(u.email.trim().toLowerCase(), u.id)
 
 	const matchedStale: AirtableRecord[] = []
@@ -93,18 +93,18 @@ async function main() {
 		const rowUserId = r.fields[LOOPS_FIELDS.userId]
 		const rowEmail = r.fields[LOOPS_FIELDS.email]
 		const userId =
-			(typeof rowUserId === "string" && rowUserId) ||
-			bufferByRecord.get(r.id) ||
-			(typeof rowEmail === "string" &&
-				(bufferByEmail.get(rowEmail.trim().toLowerCase()) ?? usersByEmail.get(rowEmail.trim().toLowerCase()))) ||
-			null
+			(typeof rowUserId === "string" && rowUserId)
+			|| bufferByRecord.get(r.id)
+			|| (typeof rowEmail === "string"
+				&& (bufferByEmail.get(rowEmail.trim().toLowerCase()) ?? usersByEmail.get(rowEmail.trim().toLowerCase())))
+			|| null
 		if (!userId) {
 			unmatched.push(r)
 			continue
 		}
 		if (
-			qualifiedIds.has(userId) ||
-			qualifiedEmails.has(typeof rowEmail === "string" ? rowEmail.trim().toLowerCase() : "")
+			qualifiedIds.has(userId)
+			|| qualifiedEmails.has(typeof rowEmail === "string" ? rowEmail.trim().toLowerCase() : "")
 		)
 			fine++
 		else matchedStale.push(r)
@@ -129,11 +129,11 @@ async function main() {
 		const batch = matchedStale.slice(i, i + 10)
 		await withRateLimitRetry("clearLastEntryAt", () =>
 			airtableFetch(config, encodeURIComponent(RSVP_TABLE_ID), {
-				method: "PATCH",
 				body: JSON.stringify({
-					records: batch.map((r) => ({ id: r.id, fields: { [LOOPS_FIELDS.lastEntryAt]: null } })),
+					records: batch.map(r => ({ fields: { [LOOPS_FIELDS.lastEntryAt]: null }, id: r.id })),
 					typecast: false,
 				}),
+				method: "PATCH",
 			}),
 		)
 	}
@@ -141,7 +141,7 @@ async function main() {
 }
 
 main()
-	.catch((err) => {
+	.catch(err => {
 		console.error(err)
 		process.exitCode = 1
 	})

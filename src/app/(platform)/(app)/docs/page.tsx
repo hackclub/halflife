@@ -6,27 +6,27 @@ import { Panel } from "@/components/platform/ui"
 import { DOCS } from "@/lib/data"
 
 export const metadata: Metadata = {
-	title: "Half Life Docs",
 	description: "How the program works, how hours are counted, and what reviewers look for.",
+	title: "Half Life Docs",
 }
 
 export default function DocsIndex() {
-	const sections = Array.from(new Set(DOCS.map((d) => d.section)))
+	const sections = Array.from(new Set(DOCS.map(d => d.section)))
 
 	return (
 		<div className="mx-auto w-full max-w-[800px] px-4 pt-2 sm:px-8">
-			<PageSign label="DOCS" color="var(--color-teal)" ink="#ffffff" sub="Confused? Start here!" />
+			<PageSign color="var(--color-teal)" ink="#ffffff" label="DOCS" sub="Confused? Start here!" />
 
 			<div className="grid gap-9">
-				{sections.map((section) => (
+				{sections.map(section => (
 					<section key={section}>
 						<h2 className="label mb-3 text-navy-faint">{section}</h2>
 						<ul className="grid gap-3">
-							{DOCS.filter((d) => d.section === section).map((doc) => (
-								<Panel key={doc.slug} as="li" tone="line" radius={18} className="bg-paper">
+							{DOCS.filter(d => d.section === section).map(doc => (
+								<Panel as="li" className="bg-paper" key={doc.slug} radius={18} tone="line">
 									<ArticleLink
-										href={`/docs/${doc.slug}`}
 										className="group flex items-center gap-4 px-5 py-4 sm:px-6 sm:py-5"
+										href={`/docs/${doc.slug}`}
 									>
 										<span className="min-w-0 flex-1">
 											<span className="block text-[1.1rem] leading-tight font-extrabold text-navy transition-colors group-hover:text-teal-ink">

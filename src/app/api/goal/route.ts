@@ -26,26 +26,26 @@ export const PATCH = withRoute(async (req: Request) => {
 
 	let printer: string | null = null
 	if (goal === ParticipantGoal.PRINTER) {
-		const found = printerGoalId ? PRINTERS.find((p) => p.id === printerGoalId) : null
+		const found = printerGoalId ? PRINTERS.find(p => p.id === printerGoalId) : null
 		if (!found) return fail("VALIDATION_FAILED", "Pick a printer to go with that goal")
 		printer = found.id
 	}
 
 	const before = await prisma.user.findUnique({
-		where: { id: gate.user.id },
 		select: { participantGoal: true, printerGoalId: true },
+		where: { id: gate.user.id },
 	})
 
 	await prisma.user.update({
-		where: { id: gate.user.id },
 		data: { participantGoal: goal, ...(printer ? { printerGoalId: printer } : {}) },
+		where: { id: gate.user.id },
 	})
 
 	const who = {
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "User",
+		actorId: gate.user.id,
 		targetId: gate.user.id,
+		targetType: "User",
 	}
 
 	// The machine has its own audit trail because it is the part that moves money: every design approval from here on mints against it.
@@ -57,7 +57,7 @@ export const PATCH = withRoute(async (req: Request) => {
 	await logAudit({
 		action: AuditAction.USER_SET_PARTICIPANT_GOAL,
 		...who,
-		metadata: { from: before?.participantGoal ?? null, to: goal, printerGoalId: printer },
+		metadata: { from: before?.participantGoal ?? null, printerGoalId: printer, to: goal },
 	})
 
 	return ok({ participantGoal: goal, printerGoalId: printer })

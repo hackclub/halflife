@@ -14,11 +14,8 @@ const objectKey = z
 
 export const createPostSchema = z
 	.object({
-		kind: z.enum(PostKind).default(PostKind.FREEFORM),
+		byteSize: z.number().int().min(0).nullish(),
 		caption: boundedText(2000),
-		objectKey,
-		thumbnailKey: objectKey.nullish(),
-		themeProjectId: cuid.nullish(),
 		/**
 		 * The trail node this reel answers, e.g. "w3-reel-2". Bounded and pattern- matched rather than free text: it is written straight into a column the trail reads back by key, so anything that is not a checkpoint id is a row nothing will ever find again.
 		 */
@@ -30,15 +27,18 @@ export const createPostSchema = z
 			)
 			.nullish(),
 		contentType: boundedText(100).nullish(),
-		byteSize: z.number().int().min(0).nullish(),
 		durationSeconds: z
 			.number()
 			.int()
 			.min(0)
 			.max(24 * 3600)
 			.nullish(),
-		width: z.number().int().min(0).max(20000).nullish(),
 		height: z.number().int().min(0).max(20000).nullish(),
+		kind: z.enum(PostKind).default(PostKind.FREEFORM),
+		objectKey,
+		themeProjectId: cuid.nullish(),
+		thumbnailKey: objectKey.nullish(),
+		width: z.number().int().min(0).max(20000).nullish(),
 	})
 	.strict()
 
@@ -60,7 +60,7 @@ export const publicReelLinksSchema = z
 			)
 			.min(1, "Add at least one link")
 			.max(4)
-			.refine((links) => new Set(links.map((l) => l.platform)).size === links.length, {
+			.refine(links => new Set(links.map(l => l.platform)).size === links.length, {
 				message: "One link per platform",
 			}),
 	})

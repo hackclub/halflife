@@ -6,9 +6,9 @@ import { getShopItemsFor } from "@/lib/shop"
 import { ShopGrid } from "./ShopGrid"
 
 export const metadata: Metadata = {
-	title: "Half Life Shop",
 	description:
 		"Spend the coins you earned – 5 per approved hour, once the funding for your tier has been achieved – on grants, tools, parts and swag.",
+	title: "Half Life Shop",
 }
 
 export const dynamic = "force-dynamic"
@@ -20,16 +20,16 @@ export default async function ShopPage() {
 	return (
 		<div className="mx-auto w-full max-w-[1040px] px-4 pt-2 sm:px-8">
 			<PageSign
-				label="SHOP"
 				color="var(--color-orange)"
+				label="SHOP"
 				sub={
 					<>
 						Don&rsquo;t see what you&rsquo;re looking for? Suggest it on the{" "}
 						<a
-							href="https://hackclub.enterprise.slack.com/docs/T0266FRGM/F0C4MAYPK4H"
-							target="_blank"
-							rel="noopener noreferrer"
 							className="font-semibold text-navy underline decoration-dashed underline-offset-4 hover:text-coral-deep"
+							href="https://hackclub.enterprise.slack.com/docs/T0266FRGM/F0C4MAYPK4H"
+							rel="noopener noreferrer"
+							target="_blank"
 						>
 							shop items canvas on Slack
 						</a>
@@ -46,7 +46,7 @@ export default async function ShopPage() {
 					<p className="text-[0.88rem] leading-relaxed text-navy-soft">{PRINTER_GRANT_NOTICE}</p>
 				</div>
 			) : null}
-			<ShopGrid items={items} regions={regions} regionId={regionId} />
+			<ShopGrid items={items} regionId={regionId} regions={regions} />
 		</div>
 	)
 }

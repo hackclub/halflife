@@ -41,9 +41,9 @@ export function useFeed(limit = 12): {
 				if (!res.ok) throw new Error(`The feed did not load (${res.status})`)
 				const page = (await res.json()) as FeedPage
 				if (!after) setLeading(page.leading)
-				setItems((prev) => {
-					const seen = new Set(prev.map((i) => i.id))
-					const fresh = [...page.leading, ...page.items].filter((i) => !seen.has(i.id))
+				setItems(prev => {
+					const seen = new Set(prev.map(i => i.id))
+					const fresh = [...page.leading, ...page.items].filter(i => !seen.has(i.id))
 					return [...prev, ...fresh]
 				})
 				setCursor(page.nextCursor)
@@ -66,11 +66,11 @@ export function useFeed(limit = 12): {
 	}, [load])
 
 	return {
+		done,
+		error,
 		items,
 		leading,
 		loading,
-		error,
-		done,
 		// `load` never raises the loading flag itself: everything it sets happens after an await, which is what keeps the mount effect free of the synchronous setState that cascades renders. Asking for more is a click, so it can flip the flag here.
 		more: useCallback(() => {
 			setLoading(true)
@@ -78,7 +78,7 @@ export function useFeed(limit = 12): {
 		}, [load, cursor]),
 		/** Replace one row in place, for a like that has already been sent. */
 		patch: useCallback((id: string, next: Partial<FeedItem>) => {
-			setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...next } : i)))
+			setItems(prev => prev.map(i => (i.id === id ? { ...i, ...next } : i)))
 		}, []),
 	}
 }

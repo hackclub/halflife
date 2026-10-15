@@ -33,11 +33,11 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 
 	await logAudit({
 		action: AuditAction.USER_COMMENT_POST,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "PostComment",
-		targetId: comment.id,
+		actorId: gate.user.id,
 		metadata: { postId: id },
+		targetId: comment.id,
+		targetType: "PostComment",
 	})
 
 	return ok({ comment }, { status: 201 })

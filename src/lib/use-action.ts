@@ -33,21 +33,21 @@ export async function sendJson<T = unknown>(url: string, options: SendOptions = 
 	let res: Response
 	try {
 		res = await fetch(url, {
-			method,
-			headers: body === undefined ? undefined : { "Content-Type": "application/json" },
 			body: body === undefined ? undefined : JSON.stringify(body),
+			headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+			method,
 		})
 	} catch {
-		return { ok: false, message: "Could not reach the server" }
+		return { message: "Could not reach the server", ok: false }
 	}
 
 	// A proxy or a crash can answer with HTML or nothing, so the body is allowed to be unparseable rather than treated as a bug here.
 	const payload = (await res.json().catch(() => null)) as ({ error?: { message?: string } } & T) | null
 
 	if (!res.ok) {
-		return { ok: false, message: payload?.error?.message ?? `Request failed (${res.status})` }
+		return { message: payload?.error?.message ?? `Request failed (${res.status})`, ok: false }
 	}
-	return { ok: true, data: (payload ?? {}) as T }
+	return { data: (payload ?? {}) as T, ok: true }
 }
 
 /**
@@ -91,5 +91,5 @@ export function useAction(): {
 	/** Let a form refuse a request itself – a value that has not been typed yet, say – and say why. */
 	const refuse = useCallback((message: string) => setError(message), [])
 
-	return { busy, error, run, refuse, setError }
+	return { busy, error, refuse, run, setError }
 }

@@ -19,8 +19,8 @@ export const GET = withRoute(async (_req: Request, { params }: Params) => {
 	const { id } = await params
 
 	const project = await prisma.themeProject.findFirst({
-		where: { id, userId: gate.user.id, deletedAt: null },
 		select: { githubRepo: true, theme: true },
+		where: { deletedAt: null, id, userId: gate.user.id },
 	})
 	if (!project) return fail("NOT_FOUND", "Project not found")
 

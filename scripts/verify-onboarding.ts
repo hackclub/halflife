@@ -61,13 +61,13 @@ async function main() {
 
 	// Skipping ahead must fail: without this, a client could post the last step first and land on the dashboard having answered nothing.
 	await refused("cannot answer a step it has not reached", () =>
-		submitStep(user.id, { step: "tracking", dismissed: true }),
+		submitStep(user.id, { dismissed: true, step: "tracking" }),
 	)
 
 	// ── 1. Experience ──────────────────────────────────────────────────────────
 	const afterExperience = await submitStep(user.id, {
-		step: "experience",
 		experience: HardwareExperience.FIRST_TIME,
+		step: "experience",
 	})
 	check("experience recorded", afterExperience.state.experience, HardwareExperience.FIRST_TIME)
 	check("beginner is suggested Tier 1", afterExperience.state.suggestedTier, 1)
@@ -80,10 +80,10 @@ async function main() {
 	check("a first-timer is offered the starter", afterExperience.state.starterProjects[0]?.id, starter.id)
 
 	await refused("rejects a starter id that does not exist", () =>
-		submitStep(user.id, { step: "week", starterProjectId: "not-a-real-starter" }),
+		submitStep(user.id, { starterProjectId: "not-a-real-starter", step: "week" }),
 	)
 
-	const afterStarter = await submitStep(user.id, { step: "week", starterProjectId: starter.id })
+	const afterStarter = await submitStep(user.id, { starterProjectId: starter.id, step: "week" })
 	check("starter names the project", afterStarter.state.project.title, starter.title)
 	check("starter locks the tier", afterStarter.state.project.tierLocked, true)
 	check("starter requests Tier 1", afterStarter.state.project.requestedTier, 1)
@@ -91,54 +91,54 @@ async function main() {
 
 	// The tier step was skipped, not unlocked: still refused if posted.
 	await refused("a locked project cannot request another tier", () =>
-		submitStep(user.id, { step: "tier", requestedTier: 3 }),
+		submitStep(user.id, { requestedTier: 3, step: "tier" }),
 	)
 
 	// ── 2 again, and 3: their own project instead ────────────────────────────── Going back to make their own project has to release the lock, or someone who tried the starter is stuck at Tier 1 forever.
-	const afterCustom = await submitStep(user.id, { step: "week", starterProjectId: null })
+	const afterCustom = await submitStep(user.id, { starterProjectId: null, step: "week" })
 	check("choosing their own releases the lock", afterCustom.state.project.tierLocked, false)
 	check("progress is not rewound by going back", afterCustom.state.reached, 5)
 
 	const afterProject = await submitStep(user.id, {
+		description: "A board that measures humidity in a grow bag.",
 		step: "project",
 		title: "Mycelium sensor board",
-		description: "A board that measures humidity in a grow bag.",
 	})
 	check("project title saved", afterProject.state.project.title, "Mycelium sensor board")
 	check("tier is not locked by an own idea", afterProject.state.project.tierLocked, false)
 
-	const afterTier = await submitStep(user.id, { step: "tier", requestedTier: 3 })
+	const afterTier = await submitStep(user.id, { requestedTier: 3, step: "tier" })
 	check("unlocked project can request Tier 3", afterTier.state.project.requestedTier, 3)
 
 	await refused("a made-up tier is rejected", () =>
 		// Past the schema, which the route applies first; this is the state machine's own guard.
-		submitStep(user.id, { step: "tier", requestedTier: 9 }),
+		submitStep(user.id, { requestedTier: 9, step: "tier" }),
 	)
 
 	// The invariant this whole split exists for.
 	const project = await prisma.themeProject.findFirstOrThrow({
-		where: { userId: user.id, theme: Theme.PCB },
-		select: { tier: true, grantUsd: true, requestedTier: true },
+		select: { grantUsd: true, requestedTier: true, tier: true },
+		where: { theme: Theme.PCB, userId: user.id },
 	})
 	check("onboarding never set the reviewer's tier", project.tier, null)
 	check("onboarding never set a grant", project.grantUsd, null)
 	check("the request is recorded separately", project.requestedTier, 3)
 
 	// ── 6. Tracking, and completion ────────────────────────────────────────────
-	const done = await submitStep(user.id, { step: "tracking", dismissed: true })
+	const done = await submitStep(user.id, { dismissed: true, step: "tracking" })
 	check("completing reports completion", done.completed, true)
 	check("state says completed", done.state.completed, true)
 	check("no longer needs onboarding", await needsOnboarding(user.id), false)
 
 	const finished = await prisma.user.findUniqueOrThrow({
+		select: { onboardingCompletedAt: true, trackingTutorialDismissedAt: true },
 		where: { id: user.id },
-		select: { trackingTutorialDismissedAt: true, onboardingCompletedAt: true },
 	})
 	check("dismissal recorded", finished.trackingTutorialDismissedAt !== null, true)
 	check("completion stamped", finished.onboardingCompletedAt !== null, true)
 
 	await refused("a finished checkpoint refuses further answers", () =>
-		submitStep(user.id, { step: "experience", experience: HardwareExperience.ITS_LIFE }),
+		submitStep(user.id, { experience: HardwareExperience.ITS_LIFE, step: "experience" }),
 	)
 
 	// ── Someone experienced: no starter, and naming a project skips "Stuck?" ───
@@ -146,18 +146,18 @@ async function main() {
 		data: { email: `maker-${stamp}@example.test`, name: "Maker" },
 	})
 	const makerStart = await submitStep(maker.id, {
-		step: "experience",
 		experience: HardwareExperience.A_GOOD_AMOUNT,
+		step: "experience",
 	})
 	check("an experienced maker is offered no starter", makerStart.state.starterProjects.length, 0)
 	await refused("and cannot take one by posting its id", () =>
-		submitStep(maker.id, { step: "week", starterProjectId: starter.id }),
+		submitStep(maker.id, { starterProjectId: starter.id, step: "week" }),
 	)
 	await submitStep(maker.id, { step: "week" })
 	const makerProject = await submitStep(maker.id, {
+		description: "Two halves, one cable.",
 		step: "project",
 		title: "Split keyboard",
-		description: "Two halves, one cable.",
 	})
 	check("naming a project goes on to the tier, past the idea step", makerProject.state.current?.id, "tier")
 
@@ -166,15 +166,15 @@ async function main() {
 		data: { email: `veteran-${stamp}@example.test`, name: "Veteran" },
 	})
 	const veteranProject = await prisma.themeProject.create({
-		data: { userId: veteran.id, theme: Theme.CAD, title: "Already going" },
+		data: { theme: Theme.CAD, title: "Already going", userId: veteran.id },
 	})
 	await prisma.workSession.create({
 		data: {
-			themeProjectId: veteranProject.id,
-			phase: "DESIGN",
-			title: "Modelling",
-			hoursClaimed: 3,
 			effectiveDate: "2026-09-10",
+			hoursClaimed: 3,
+			phase: "DESIGN",
+			themeProjectId: veteranProject.id,
+			title: "Modelling",
 		},
 	})
 	check("an existing participant is not sent through onboarding", await needsOnboarding(veteran.id), false)
@@ -199,17 +199,17 @@ async function main() {
 	)
 
 	// Answering it is a plain write, and the gate opens the moment it lands.
-	await prisma.user.update({ where: { id: asked.id }, data: { participantGoal: "FULL_FUNDING" } })
+	await prisma.user.update({ data: { participantGoal: "FULL_FUNDING" }, where: { id: asked.id } })
 	const answered = await getStoreSnapshot(asked.id)
 	check("answering closes the gate", answered.onboardingDone && answered.participantGoal === null, false)
 
 	// A participant on the printer branch keeps their machine across a change of heart; nulling it here would hand them the default instead of their own.
-	await prisma.user.update({ where: { id: asked.id }, data: { printerGoalId: "bambu-a1-mini" } })
-	await prisma.user.update({ where: { id: asked.id }, data: { participantGoal: "PARTIAL_FUNDING" } })
-	await prisma.user.update({ where: { id: asked.id }, data: { participantGoal: "PRINTER" } })
+	await prisma.user.update({ data: { printerGoalId: "bambu-a1-mini" }, where: { id: asked.id } })
+	await prisma.user.update({ data: { participantGoal: "PARTIAL_FUNDING" }, where: { id: asked.id } })
+	await prisma.user.update({ data: { participantGoal: "PRINTER" }, where: { id: asked.id } })
 	const returned = await prisma.user.findUniqueOrThrow({
-		where: { id: asked.id },
 		select: { printerGoalId: true },
+		where: { id: asked.id },
 	})
 	check("their own machine is still theirs after switching back", returned.printerGoalId, "bambu-a1-mini")
 
@@ -221,7 +221,7 @@ async function main() {
 	process.exit(failures === 0 ? 0 : 1)
 }
 
-main().catch(async (err) => {
+main().catch(async err => {
 	console.error(err)
 	await prisma.$disconnect()
 	process.exit(1)

@@ -61,7 +61,7 @@ export function ProjectDetails({
 	}
 
 	if (editing) {
-		return <DetailsForm project={project} hours={hours} tierLocked={tierLocked} onDone={() => setEditing(false)} />
+		return <DetailsForm hours={hours} onDone={() => setEditing(false)} project={project} tierLocked={tierLocked} />
 	}
 
 	return (
@@ -75,50 +75,50 @@ export function ProjectDetails({
             right underneath, instead of at the foot of the block. */}
 				<div className="mt-1 flex shrink-0 flex-col items-end gap-1">
 					<Button
-						variant="outline"
-						size="sm"
-						onClick={() => setEditing(true)}
-						disabled={!!locked}
 						aria-describedby={locked ? lockedId : undefined}
+						disabled={!!locked}
+						onClick={() => setEditing(true)}
+						size="sm"
 						title={locked ?? undefined}
+						variant="outline"
 					>
 						<IconPencil className="text-sm" /> Edit details
 					</Button>
 					{locked && (
-						<p id={lockedId} className="hand max-w-[14rem] text-right text-[0.78rem] leading-snug text-navy-soft">
+						<p className="hand max-w-[14rem] text-right text-[0.78rem] leading-snug text-navy-soft" id={lockedId}>
 							{locked}.
 						</p>
 					)}
-					{unsubmit &&
-						(confirming ? (
+					{unsubmit
+						&& (confirming ? (
 							<div className="flex max-w-[16rem] flex-col items-end gap-1.5 text-right">
 								<p className="text-[0.82rem] leading-snug text-navy">
 									Take {unsubmit.label} out of review? You can submit it again when you&apos;re done.
 								</p>
 								<div className="flex gap-1.5">
-									<Button variant="ghost" size="sm" onClick={() => setConfirming(false)} disabled={unsubmitting}>
+									<Button disabled={unsubmitting} onClick={() => setConfirming(false)} size="sm" variant="ghost">
 										Keep it in
 									</Button>
-									<Button variant="solid" size="sm" onClick={() => takeBack()} disabled={unsubmitting}>
+									<Button disabled={unsubmitting} onClick={() => takeBack()} size="sm" variant="solid">
 										{unsubmitting ? "Unsubmitting…" : "Unsubmit"}
 									</Button>
 								</div>
 							</div>
 						) : (
 							<Button
-								variant="ghost"
-								size="sm"
+								className="-mr-3.5"
 								onClick={() => {
 									setUnsubmitError(null)
 									setConfirming(true)
 								}}
-								className="-mr-3.5"
+								size="sm"
+								variant="ghost"
 							>
 								Unsubmit {unsubmit.label}
 							</Button>
 						))}
 					{unsubmitError && (
-						<p role="alert" className="hand max-w-[16rem] text-right text-[0.78rem] leading-snug text-coral-deep">
+						<p className="hand max-w-[16rem] text-right text-[0.78rem] leading-snug text-coral-deep" role="alert">
 							{unsubmitError}
 						</p>
 					)}
@@ -177,7 +177,7 @@ function DetailsForm({
 
 	// The printer goal every hour is paced against, and only when the person is actually saving toward one: "funding for all/some weeks" goals have no machine to pace to, so nothing should warn against their tier or their starter.
 	const goal = printerById(goalId)
-	const selectedTier = TIERS.find((t) => t.id === tier)
+	const selectedTier = TIERS.find(t => t.id === tier)
 	const readyToSubmit = selectedTier !== undefined && hours >= submitFloorFor(selectedTier.fundingHours)
 	const pacingToPrinter = participantGoal === null || participantGoal === ParticipantGoal.PRINTER
 	const hotGoal = pacingToPrinter && goal.hoursPerWeek > MIN_HOURS_PER_WEEK
@@ -219,63 +219,63 @@ function DetailsForm({
 		<form
 			aria-label="Edit project details"
 			className="grid gap-4"
-			onSubmit={(e) => {
+			onKeyDown={e => {
+				if (e.key === "Escape" && !saving) onDone()
+			}}
+			onSubmit={e => {
 				e.preventDefault()
 				save()
 			}}
-			onKeyDown={(e) => {
-				if (e.key === "Escape" && !saving) onDone()
-			}}
 		>
 			<div className="grid gap-1.5">
-				<label htmlFor={`${id}-name`} className="label text-violet-deep">
+				<label className="label text-violet-deep" htmlFor={`${id}-name`}>
 					Project name
 				</label>
 				<input
+					aria-invalid={error?.field === "name" || undefined}
+					className={cx(field, "text-[1.05rem] font-extrabold")}
 					id={`${id}-name`}
-					value={name}
-					onChange={(e) => {
+					maxLength={120}
+					onChange={e => {
 						setName(e.target.value)
 						if (error) setError(null)
 					}}
-					maxLength={120}
-					aria-invalid={error?.field === "name" || undefined}
-					className={cx(field, "text-[1.05rem] font-extrabold")}
+					value={name}
 				/>
 			</div>
 
 			<div className="grid gap-1.5">
-				<label htmlFor={`${id}-desc`} className="label text-violet-deep">
+				<label className="label text-violet-deep" htmlFor={`${id}-desc`}>
 					Description
 				</label>
 				<textarea
-					id={`${id}-desc`}
-					value={description}
-					onChange={(e) => setDescription(e.target.value)}
-					rows={4}
-					maxLength={4000}
-					placeholder="What it is, and what it will do when it works."
 					className={cx(field, "resize-y text-[0.92rem] leading-relaxed")}
+					id={`${id}-desc`}
+					maxLength={4000}
+					onChange={e => setDescription(e.target.value)}
+					placeholder="What it is, and what it will do when it works."
+					rows={4}
+					value={description}
 				/>
 			</div>
 
 			<div className="grid gap-1.5">
-				<label htmlFor={`${id}-repo`} className="label text-violet-deep">
+				<label className="label text-violet-deep" htmlFor={`${id}-repo`}>
 					Repo link
 				</label>
 				<input
+					aria-invalid={error?.field === "repo" || undefined}
+					autoComplete="url"
+					className={cx(field, "text-[0.9rem]")}
 					id={`${id}-repo`}
-					value={repo}
-					onChange={(e) => {
+					inputMode="url"
+					onChange={e => {
 						setRepo(e.target.value)
 						if (error) setError(null)
 					}}
-					inputMode="url"
-					autoComplete="url"
-					spellCheck={false}
 					placeholder="github.com/you/your-project"
-					aria-invalid={error?.field === "repo" || undefined}
-					className={cx(field, "text-[0.9rem]")}
+					spellCheck={false}
+					value={repo}
 				/>
 			</div>
 
@@ -288,19 +288,16 @@ function DetailsForm({
 							: "Building from a starter, or your own idea? Picked the wrong one by accident – change it here."}
 					</p>
 					{takingStarter && hotGoal && (
-						<p role="status" className="hand text-[0.82rem] leading-snug text-coral-deep">
+						<p className="hand text-[0.82rem] leading-snug text-coral-deep" role="status">
 							Heads up: starter projects are meant to take about {fmtHours(submitFloorFor(ENTRY_TIER.fundingHours))} of
 							work, no more. Your {goal.name} needs roughly {Math.round(goal.paceHours * 5)} coins a design week on top
 							of its parts-funding to stay on pace.
 						</p>
 					)}
-					{starters.map((s) => {
+					{starters.map(s => {
 						const chosen = starterId === s.id
 						return (
 							<StarterProjectCard
-								key={s.id}
-								starter={s}
-								chosen={chosen}
 								action={
 									chosen ? (
 										<span className="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -308,23 +305,26 @@ function DetailsForm({
 												<IconCheck className="text-[0.9rem]" /> Building {s.title}
 											</Chip>
 											<button
-												type="button"
+												className="hand text-[0.82rem] text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
 												onClick={() => {
 													setStarterId(null)
 													// Back to the tier it had: taking the starter forced tier 1, and dropping it should not bank a tier change nobody asked for.
 													setTier(project.tier)
 												}}
-												className="hand text-[0.82rem] text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
+												type="button"
 											>
 												Use my own idea instead
 											</button>
 										</span>
 									) : (
-										<Button variant="outline" size="sm" type="button" onClick={() => takeStarter(s.id)}>
+										<Button onClick={() => takeStarter(s.id)} size="sm" type="button" variant="outline">
 											Build {s.title}
 										</Button>
 									)
 								}
+								chosen={chosen}
+								key={s.id}
+								starter={s}
 							/>
 						)
 					})}
@@ -333,23 +333,23 @@ function DetailsForm({
 					    no starters are offered anymore. */}
 					{starters.length > 0 ? (
 						<OptionRow
-							selected={starterId === null}
 							onClick={() => {
 								setStarterId(null)
 								setTier(project.tier)
 							}}
+							selected={starterId === null}
 						>
 							<span className="text-[0.95rem] font-bold text-navy">My own idea</span>
 						</OptionRow>
 					) : (
 						project.starterProjectId != null && (
 							<OptionRow
-								selected={false}
+								hint={`Leave the ${getStarterProject(project.starterProjectId)?.title ?? "starter project"} starter.`}
 								onClick={() => {
 									setStarterId(null)
 									setTier(project.tier)
 								}}
-								hint={`Leave the ${getStarterProject(project.starterProjectId)?.title ?? "starter project"} starter.`}
+								selected={false}
 							>
 								<span className="text-[0.95rem] font-bold text-navy">My own idea</span>
 							</OptionRow>
@@ -369,11 +369,11 @@ function DetailsForm({
 							<span className="font-bold text-navy tabular-nums">{fmtHours(hours)}</span>{" "}
 							{project.weekId === WARMUP_WEEK_ID ? "on this project." : `in week ${project.weekId}.`}
 						</p>
-						{TIERS.map((t) => {
+						{TIERS.map(t => {
 							const floor = submitFloorFor(t.fundingHours)
 							const short = Math.max(0, floor - hours)
 							return (
-								<OptionRow key={t.id} selected={tier === t.id} onClick={() => setTier(t.id)}>
+								<OptionRow key={t.id} onClick={() => setTier(t.id)} selected={tier === t.id}>
 									<span className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
 										<span className="text-[0.98rem] font-extrabold text-navy">Tier {t.id}</span>
 										<span className="hand text-[0.86rem] text-teal-ink">${t.grantUsd} for parts</span>
@@ -421,16 +421,16 @@ function DetailsForm({
 			</fieldset>
 
 			{error && (
-				<p role="alert" className="text-[0.84rem] font-semibold text-coral-deep">
+				<p className="text-[0.84rem] font-semibold text-coral-deep" role="alert">
 					{error.message}
 				</p>
 			)}
 
 			<div className="flex flex-wrap gap-2">
-				<Button type="submit" variant="solid" size="sm" disabled={saving}>
+				<Button disabled={saving} size="sm" type="submit" variant="solid">
 					{saving ? "Saving…" : "Save details"}
 				</Button>
-				<Button type="button" variant="ghost" size="sm" disabled={saving} onClick={onDone}>
+				<Button disabled={saving} onClick={onDone} size="sm" type="button" variant="ghost">
 					Cancel
 				</Button>
 			</div>

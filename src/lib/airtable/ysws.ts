@@ -33,13 +33,13 @@ function rejectedFields(err: AirtableError, fields: Record<string, unknown>): st
 	} catch {
 		// Not JSON; search the raw text.
 	}
-	const byName = Object.keys(fields).filter((k) => message.includes(`"${k}"`))
+	const byName = Object.keys(fields).filter(k => message.includes(`"${k}"`))
 	if (byName.length > 0) return byName
-	return Object.keys(fields).filter((k) => {
+	return Object.keys(fields).filter(k => {
 		const v = fields[k]
 		return (
-			(typeof v === "string" && v.length > 0 && message.includes(v)) ||
-			(typeof v === "number" && message.includes(`"${v}"`))
+			(typeof v === "string" && v.length > 0 && message.includes(v))
+			|| (typeof v === "number" && message.includes(`"${v}"`))
 		)
 	})
 }
@@ -57,12 +57,12 @@ async function findExistingRow(
 	const projectName = fields[fieldKey(YSWS_SUBMISSION.fields.projectName)]
 	const stage = fields[fieldKey(YSWS_SUBMISSION.fields.stage)]
 	if (
-		typeof email !== "string" ||
-		email.length === 0 ||
-		typeof projectName !== "string" ||
-		projectName.length === 0 ||
-		typeof stage !== "string" ||
-		stage.length === 0
+		typeof email !== "string"
+		|| email.length === 0
+		|| typeof projectName !== "string"
+		|| projectName.length === 0
+		|| typeof stage !== "string"
+		|| stage.length === 0
 	) {
 		return null
 	}
@@ -103,8 +103,8 @@ export async function writeYswsRecord(
 			id ? "updateYswsSubmission" : "createYswsSubmission",
 			() =>
 				airtableFetch<{ records: AirtableRecord[] }>(config, YSWS_SUBMISSION.tableId, {
+					body: JSON.stringify({ records: [id ? { fields: f, id } : { fields: f }], typecast: false }),
 					method: id ? "PATCH" : "POST",
-					body: JSON.stringify({ records: [id ? { id, fields: f } : { fields: f }], typecast: false }),
 				}),
 			// A create is not idempotent: retrying a 5xx whose row was actually written duplicates it. The hourly retry job re-runs the whole sync instead, and finds the row (or adopts it) before posting again.
 			{ retryServerErrors: id !== null },
@@ -127,7 +127,7 @@ export async function writeYswsRecord(
 			const result = await send(current, id)
 			const record = result.records[0]
 			if (!record) throw new Error("Airtable write returned no record")
-			return { recordId: record.id, dropped }
+			return { dropped, recordId: record.id }
 		} catch (err) {
 			if (!(err instanceof AirtableError)) throw err
 			// The row was deleted in the base since we wrote it: start a new one.
@@ -139,7 +139,7 @@ export async function writeYswsRecord(
 			const bad = err.status === 422 ? rejectedFields(err, current) : []
 			if (bad.length === 0 || dropped.length + bad.length > MAX_DROPPED_FIELDS) throw err
 			console.warn(
-				`[airtable] YSWS refused ${bad.map((b) => `"${b}"`).join(", ")}; writing without: ${err.body.slice(0, 200)}`,
+				`[airtable] YSWS refused ${bad.map(b => `"${b}"`).join(", ")}; writing without: ${err.body.slice(0, 200)}`,
 			)
 			for (const b of bad) delete current[b]
 			dropped.push(...bad)
@@ -164,8 +164,8 @@ export async function updateYswsRecord(
 	try {
 		await withRateLimitRetry("updateYswsSubmission", () =>
 			airtableFetch<{ records: AirtableRecord[] }>(config, YSWS_SUBMISSION.tableId, {
+				body: JSON.stringify({ records: [{ fields, id: recordId }], typecast: false }),
 				method: "PATCH",
-				body: JSON.stringify({ records: [{ id: recordId, fields }], typecast: false }),
 			}),
 		)
 		return { ok: true }
@@ -186,7 +186,7 @@ export async function deleteYswsRecord(
 	recordId: string,
 ): Promise<{ deleted: boolean; unifiedRecordId: string | null; skipped?: string }> {
 	const config = getAirtableConfig()
-	if (!config) return { deleted: false, unifiedRecordId: null, skipped: "not_configured" }
+	if (!config) return { deleted: false, skipped: "not_configured", unifiedRecordId: null }
 	try {
 		const row = await withRateLimitRetry("readYswsSubmission", () =>
 			airtableFetch<AirtableRecord>(config, `${YSWS_SUBMISSION.tableId}/${encodeURIComponent(recordId)}`),
@@ -200,11 +200,11 @@ export async function deleteYswsRecord(
 		return { deleted: true, unifiedRecordId: typeof twin === "string" && twin ? twin : null }
 	} catch (err) {
 		if (err instanceof AirtableError && (err.status === 404 || err.body.includes("ROW_DOES_NOT_EXIST"))) {
-			return { deleted: false, unifiedRecordId: null, skipped: "already_gone" }
+			return { deleted: false, skipped: "already_gone", unifiedRecordId: null }
 		}
 		// A missing write grant is an ops problem, not a reason to fail the participant's unsubmit.
 		if (err instanceof AirtableError && err.isPermission) {
-			return { deleted: false, unifiedRecordId: null, skipped: "no_write_access" }
+			return { deleted: false, skipped: "no_write_access", unifiedRecordId: null }
 		}
 		throw err
 	}
@@ -220,15 +220,15 @@ export async function deleteUnifiedRecords(
 	const table = process.env.AIRTABLE_UNIFIED_APPROVED_TABLE
 	if (!apiKey || !baseId || !table) return { deleted: [], skipped: "not_configured" }
 
-	const query = recordIds.map((id) => `records[]=${encodeURIComponent(id)}`).join("&")
+	const query = recordIds.map(id => `records[]=${encodeURIComponent(id)}`).join("&")
 	try {
 		const result = await withRateLimitRetry("deleteUnifiedRecords", () =>
 			airtableFetch<{ records: { id: string }[] }>({ apiKey, baseId }, `${table}?${query}`, { method: "DELETE" }),
 		)
-		return { deleted: result.records.map((r) => r.id) }
+		return { deleted: result.records.map(r => r.id) }
 	} catch (err) {
 		if (err instanceof AirtableError && err.isPermission) {
-			return { deleted: [], skipped: "no_write_access", error: err.message }
+			return { deleted: [], error: err.message, skipped: "no_write_access" }
 		}
 		throw err
 	}

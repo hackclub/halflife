@@ -48,9 +48,9 @@ export function CsvProjectsImport() {
 		setSummary(null)
 		try {
 			const res = await fetch("/api/admin/program/import-projects-csv", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ csv: await file.text() }),
+				headers: { "Content-Type": "application/json" },
+				method: "POST",
 			})
 			const payload = (await res.json().catch(() => ({}))) as {
 				read?: number
@@ -66,11 +66,11 @@ export function CsvProjectsImport() {
 				return
 			}
 			setSummary({
-				read: payload.read ?? 0,
-				imported: payload.imported ?? 0,
 				alreadyImported: payload.alreadyImported ?? 0,
 				failed: payload.failed ?? 0,
+				imported: payload.imported ?? 0,
 				outcomes: payload.outcomes ?? [],
+				read: payload.read ?? 0,
 			})
 			setFile(null)
 			router.refresh()
@@ -81,7 +81,7 @@ export function CsvProjectsImport() {
 		}
 	}
 
-	const failures = summary?.outcomes.filter((o) => o.status === "failed") ?? []
+	const failures = summary?.outcomes.filter(o => o.status === "failed") ?? []
 
 	return (
 		<div className="hl-stack hl-stack--tight">
@@ -90,8 +90,8 @@ export function CsvProjectsImport() {
 			{problems.length > 0 ? (
 				<Callout>
 					<ul className="hl-stack hl-stack--tight" style={{ marginTop: "0.5rem", paddingLeft: "1rem" }}>
-						{problems.map((p) => (
-							<li key={`${p.line}-${p.message}`} className="hl-hint">
+						{problems.map(p => (
+							<li className="hl-hint" key={`${p.line}-${p.message}`}>
 								Line {p.line}: {p.message}
 							</li>
 						))}
@@ -107,8 +107,8 @@ export function CsvProjectsImport() {
 					</p>
 					{failures.length > 0 ? (
 						<ul className="hl-stack hl-stack--tight" style={{ marginTop: "0.5rem", paddingLeft: "1rem" }}>
-							{failures.map((o) => (
-								<li key={o.projectId} className="hl-hint">
+							{failures.map(o => (
+								<li className="hl-hint" key={o.projectId}>
 									<span className="hl-mono">{o.projectId}</span> · {o.email} · failed
 									{o.reason ? ` – ${o.reason}` : ""}
 								</li>
@@ -120,18 +120,18 @@ export function CsvProjectsImport() {
 
 			<div className="hl-stack hl-stack--tight">
 				<input
-					ref={picker}
-					type="file"
 					accept=".csv,text/csv,text/plain"
 					className="block text-[0.85rem]"
-					onChange={(e) => {
+					onChange={e => {
 						setFile(e.target.files?.[0] ?? null)
 						setSummary(null)
 						setError(null)
 						setProblems([])
 					}}
+					ref={picker}
+					type="file"
 				/>
-				<Button variant="primary" disabled={busy || !file} onClick={() => run()}>
+				<Button disabled={busy || !file} onClick={() => run()} variant="primary">
 					{busy ? "Importing… (this can take a while)" : "Import projects from CSV"}
 				</Button>
 			</div>

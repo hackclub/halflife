@@ -20,8 +20,8 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 	const { id } = await params
 
 	const post = await prisma.post.findFirst({
-		where: { id, userId: gate.user.id, deletedAt: null },
 		select: { checkpointKey: true, themeProjectId: true },
+		where: { deletedAt: null, id, userId: gate.user.id },
 	})
 	if (!post) return fail("NOT_FOUND", "Post not found")
 	if (post.checkpointKey) {
@@ -33,11 +33,11 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 
 	await logAudit({
 		action: AuditAction.USER_DELETE_POST,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "Post",
-		targetId: id,
+		actorId: gate.user.id,
 		metadata: { checkpointKey: post.checkpointKey },
+		targetId: id,
+		targetType: "Post",
 	})
 
 	return ok({ deleted: true })

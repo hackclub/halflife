@@ -6,8 +6,8 @@
 
 /** One row of a ranked board. */
 export interface Ranked<K extends string> {
-	key: K
 	count: number
+	key: K
 }
 
 /**
@@ -29,6 +29,6 @@ export function tallyBoard<T, K extends string>(
 	}
 
 	return [...counts]
-		.map(([key, count]) => ({ key, count }))
+		.map(([key, count]) => ({ count, key }))
 		.sort((a, b) => b.count - a.count || a.key.localeCompare(b.key))
 }

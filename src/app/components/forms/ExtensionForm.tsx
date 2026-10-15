@@ -38,7 +38,7 @@ export function ExtensionForm({
 	function save(until: Date | null) {
 		void run(
 			"save",
-			() => sendJson(url, { method: "PATCH", body: { submissionExtensionUntil: until?.toISOString() ?? null } }),
+			() => sendJson(url, { body: { submissionExtensionUntil: until?.toISOString() ?? null }, method: "PATCH" }),
 			() => setValue(until ? toLocalInput(until) : ""),
 		)
 	}
@@ -59,30 +59,30 @@ export function ExtensionForm({
 			</p>
 			<form
 				className="hl-row"
-				onSubmit={(e) => {
+				onSubmit={e => {
 					e.preventDefault()
 					if (value) save(new Date(value))
 				}}
 			>
 				<input
+					aria-label="Extend until"
 					className="hl-input"
+					onChange={e => setValue(e.target.value)}
+					style={{ maxWidth: "14rem" }}
 					type="datetime-local"
 					value={value}
-					onChange={(e) => setValue(e.target.value)}
-					aria-label="Extend until"
-					style={{ maxWidth: "14rem" }}
 				/>
-				<Button type="submit" disabled={busy !== null || !value}>
+				<Button disabled={busy !== null || !value} type="submit">
 					Set
 				</Button>
-				<Button type="button" disabled={busy !== null} onClick={() => extendBy(1)}>
+				<Button disabled={busy !== null} onClick={() => extendBy(1)} type="button">
 					+1 day
 				</Button>
-				<Button type="button" disabled={busy !== null} onClick={() => extendBy(3)}>
+				<Button disabled={busy !== null} onClick={() => extendBy(3)} type="button">
 					+3 days
 				</Button>
 				{current ? (
-					<Button type="button" variant="danger" disabled={busy !== null} onClick={() => save(null)}>
+					<Button disabled={busy !== null} onClick={() => save(null)} type="button" variant="danger">
 						Clear
 					</Button>
 				) : null}

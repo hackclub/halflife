@@ -14,8 +14,8 @@ import { PLATFORM_HOME } from "@/lib/routes"
 import { ProfileReels } from "./ProfileReels"
 
 export const metadata: Metadata = {
-	title: "Half Life Profile",
 	description: "A maker's projects and the reels they have posted.",
+	title: "Half Life Profile",
 }
 
 export const dynamic = "force-dynamic"
@@ -36,16 +36,16 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
 	return (
 		<div className="mx-auto w-full max-w-[960px] px-4 pt-6 pb-10 sm:px-8">
 			<Link
-				href={profile.isViewer ? PLATFORM_HOME : "/doomscroller"}
 				className="label inline-flex items-center gap-1.5 text-navy-soft transition-colors hover:text-navy"
+				href={profile.isViewer ? PLATFORM_HOME : "/doomscroller"}
 			>
 				<IconChevronLeft className="text-base" /> {profile.isViewer ? "Your trail" : "Doomscroller"}
 			</Link>
 
 			{/* ---------- who ---------- */}
-			<Panel tone="line" radius={22} className="mt-5 bg-paper px-5 py-5 sm:px-7 sm:py-6">
+			<Panel className="mt-5 bg-paper px-5 py-5 sm:px-7 sm:py-6" radius={22} tone="line">
 				<div className="flex flex-wrap items-center gap-4 sm:gap-5">
-					<Avatar name={profile.name} image={profile.image} shape="tile" className="size-20 text-[2rem]" />
+					<Avatar className="size-20 text-[2rem]" image={profile.image} name={profile.name} shape="tile" />
 					<div className="min-w-0 flex-1">
 						<h1 className="text-[1.5rem] leading-tight font-extrabold tracking-[-0.02em] [overflow-wrap:anywhere] text-navy sm:text-[1.9rem]">
 							{profile.name}
@@ -65,9 +65,9 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
 							{profile.joinedAt > 0 && <span>building since {fmtDate(profile.joinedAt)}</span>}
 							{!profile.isViewer && (
 								<ReportButton
-									target={{ type: "USER", id: profile.id }}
-									title={`Report ${profile.name}`}
 									context={`${profile.name}'s profile`}
+									target={{ id: profile.id, type: "USER" }}
+									title={`Report ${profile.name}`}
 								/>
 							)}
 						</p>
@@ -78,28 +78,28 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
 			{/* ---------- what they have built ---------- */}
 			{profile.projects.length > 0 && (
 				<section aria-labelledby="profile-projects" className="mt-8">
-					<h2 id="profile-projects" className="label mb-3 text-violet-deep">
+					<h2 className="label mb-3 text-violet-deep" id="profile-projects">
 						Projects
 					</h2>
 					<ul className="grid gap-4 sm:grid-cols-2">
-						{profile.projects.map((project) => (
-							<Panel key={project.id} as="li" tone="line" radius={20} className="overflow-hidden bg-paper">
-								<Link href={`/projects/${project.id}`} className="group flex h-full flex-col">
+						{profile.projects.map(project => (
+							<Panel as="li" className="overflow-hidden bg-paper" key={project.id} radius={20} tone="line">
+								<Link className="group flex h-full flex-col" href={`/projects/${project.id}`}>
 									<span
 										className="relative grid aspect-[16/9] place-items-center overflow-hidden"
 										style={{ background: project.thumbnail ? "var(--color-navy)" : project.accent }}
 									>
 										{project.thumbnail ? (
 											<ProjectThumb
-												thumb={project.thumbnail}
 												className="h-full w-full transition-transform duration-300 group-hover:scale-[1.04]"
+												thumb={project.thumbnail}
 											/>
 										) : (
 											<WeekPainting
-												theme={project.painting}
 												alt=""
-												sizes="(min-width: 640px) 420px, 90vw"
 												className="sticker-shadow aspect-square h-full transition-transform duration-300 group-hover:scale-[1.04]"
+												sizes="(min-width: 640px) 420px, 90vw"
+												theme={project.painting}
 											/>
 										)}
 										<span className="label absolute top-2.5 left-2.5 rounded-full bg-white/90 px-2.5 py-1 text-navy">
@@ -130,7 +130,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
 			{profile.reels.length > 0 && (
 				<section aria-labelledby="profile-reels" className="mt-8">
 					<div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-						<h2 id="profile-reels" className="label text-violet-deep">
+						<h2 className="label text-violet-deep" id="profile-reels">
 							Reels
 						</h2>
 						{profile.reelCount > profile.reels.length && (
@@ -144,7 +144,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
 			)}
 
 			{!hasWork && (
-				<Panel tone="line" radius={20} className="mt-8 bg-paper px-6 py-12 text-center">
+				<Panel className="mt-8 bg-paper px-6 py-12 text-center" radius={20} tone="line">
 					<p className="text-[1.05rem] font-extrabold text-navy">Nothing here yet</p>
 					<p className="hand mx-auto mt-2 max-w-[44ch] text-[0.9rem] leading-relaxed text-navy-soft">
 						{profile.isViewer
@@ -153,8 +153,8 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
 					</p>
 					{profile.isViewer && (
 						<Link
-							href={PLATFORM_HOME}
 							className="label mt-6 inline-flex items-center gap-1.5 rounded-full border-2 border-line px-4 py-2 text-navy-soft transition-[color,border-color,transform] duration-150 hover:border-navy hover:text-navy active:translate-y-px"
+							href={PLATFORM_HOME}
 						>
 							Go to the trail
 						</Link>

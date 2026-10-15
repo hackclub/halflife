@@ -38,25 +38,23 @@ export async function trackSideEffect<T>(
 					: undefined
 			await logAudit({
 				action: AuditAction.AIRTABLE_SYNC_SUCCESS,
-				actorId: ctx.actorId,
 				actorEmail: ctx.actorEmail,
-				targetType: ctx.targetType,
-				targetId: ctx.targetId,
+				actorId: ctx.actorId,
 				metadata: {
 					...(typeof ctx.metadata === "object" && ctx.metadata !== null && !Array.isArray(ctx.metadata)
 						? ctx.metadata
 						: {}),
 					...(recordId ? { recordId } : {}),
 				},
+				targetId: ctx.targetId,
+				targetType: ctx.targetType,
 			})
 		} else if (kind === "ari" && !skipped) {
 			// The send itself records the Ari submission id on the row; this is the operational trace that it happened.
 			await logAudit({
 				action: AuditAction.ARI_SYNC_SUCCESS,
-				actorId: ctx.actorId,
 				actorEmail: ctx.actorEmail,
-				targetType: ctx.targetType,
-				targetId: ctx.targetId,
+				actorId: ctx.actorId,
 				metadata: {
 					...(typeof ctx.metadata === "object" && ctx.metadata !== null && !Array.isArray(ctx.metadata)
 						? ctx.metadata
@@ -65,6 +63,8 @@ export async function trackSideEffect<T>(
 						? { ariSubmissionId: result.id }
 						: {}),
 				},
+				targetId: ctx.targetId,
+				targetType: ctx.targetType,
 			})
 		}
 		return result
@@ -78,11 +78,11 @@ export async function trackSideEffect<T>(
 					: kind === "ari"
 						? AuditAction.ARI_SYNC_FAILURE
 						: AuditAction.NOTIFICATION_FAILURE,
-			actorId: ctx.actorId,
 			actorEmail: ctx.actorEmail,
-			targetType: ctx.targetType,
-			targetId: ctx.targetId,
+			actorId: ctx.actorId,
 			metadata: { ...(typeof ctx.metadata === "object" ? ctx.metadata : {}), error: message },
+			targetId: ctx.targetId,
+			targetType: ctx.targetType,
 		})
 		if (opts.rethrow) throw err
 		return null

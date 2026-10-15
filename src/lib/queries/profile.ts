@@ -58,45 +58,45 @@ export const PROFILE_REELS = 24
 export async function getProfile(userId: string, viewerId: string): Promise<ProfileData | null> {
 	const [user, projects, reels, reelCount, settings] = await Promise.all([
 		prisma.user.findUnique({
-			where: { id: userId },
 			select: {
-				id: true,
-				name: true,
-				displayName: true,
-				image: true,
-				slackId: true,
-				currentStreak: true,
-				lastStreakDate: true,
-				joinedProgramAt: true,
 				createdAt: true,
+				currentStreak: true,
+				displayName: true,
+				id: true,
+				image: true,
+				joinedProgramAt: true,
+				lastStreakDate: true,
+				name: true,
+				slackId: true,
 			},
+			where: { id: userId },
 		}),
 		prisma.themeProject.findMany({
-			// A project nobody has named is a placeholder made at sign-up, not one to show, the same rule the project page applies.
-			where: { userId, deletedAt: null, namedAt: { not: null }, title: { not: "" } },
 			select: {
-				id: true,
-				title: true,
-				theme: true,
 				coverImageKey: true,
+				id: true,
+				posts: {
+					select: { createdAt: true, objectKey: true, thumbnailKey: true },
+					where: { deletedAt: null, status: PostStatus.PUBLISHED },
+				},
+				theme: true,
+				title: true,
 				workSessions: {
-					where: { deletedAt: null },
 					select: {
 						content: true,
-						hoursClaimed: true,
-						hoursApproved: true,
-						hoursSource: true,
 						createdAt: true,
+						hoursApproved: true,
+						hoursClaimed: true,
+						hoursSource: true,
 					},
-				},
-				posts: {
-					where: { deletedAt: null, status: PostStatus.PUBLISHED },
-					select: { createdAt: true, thumbnailKey: true, objectKey: true },
+					where: { deletedAt: null },
 				},
 			},
+			// A project nobody has named is a placeholder made at sign-up, not one to show, the same rule the project page applies.
+			where: { deletedAt: null, namedAt: { not: null }, title: { not: "" }, userId },
 		}),
 		getCreatorReels(userId, viewerId, PROFILE_REELS),
-		prisma.post.count({ where: { userId, deletedAt: null, status: PostStatus.PUBLISHED } }),
+		prisma.post.count({ where: { deletedAt: null, status: PostStatus.PUBLISHED, userId } }),
 		getProgramSettings(),
 	])
 	if (!user) return null
@@ -110,44 +110,44 @@ export async function getProfile(userId: string, viewerId: string): Promise<Prof
 		return da - db
 	})
 
-	const shaped: ProfileProject[] = ordered.map((p) => {
+	const shaped: ProfileProject[] = ordered.map(p => {
 		const def = getThemeDef(p.theme)
 		const warmup = p.theme === Theme.WARMUP
-		const week = WEEK_META.find((w) => w.id === def.designWeek)
+		const week = WEEK_META.find(w => w.id === def.designWeek)
 		// A tracked entry's time arrives through its Hackatime link, so it adds nothing to the journalled number here either.
-		const journal = p.workSessions.filter((s) => s.hoursSource !== "HACKATIME_TRACKED")
+		const journal = p.workSessions.filter(s => s.hoursSource !== "HACKATIME_TRACKED")
 		const hours = journal.reduce((n, s) => n + (s.hoursApproved ?? s.hoursClaimed), 0)
 		return {
-			id: p.id,
-			title: p.title,
-			themeLabel: def.label,
-			painting: warmup ? "Warm Up" : (week?.theme ?? "PCB"),
 			accent: warmup ? "var(--color-violet-pale)" : (week?.accent ?? "var(--color-violet-pale)"),
-			warmup,
+			entries: p.workSessions.length,
+			hours: Math.round(hours * 100) / 100,
+			id: p.id,
+			painting: warmup ? "Warm Up" : (week?.theme ?? "PCB"),
+			themeLabel: def.label,
 			thumbnail: projectThumbnail(
 				publicUrlFor(p.coverImageKey),
-				p.workSessions.map((s) => ({ createdAt: s.createdAt, content: s.content })),
-				p.posts.map((post) => ({
+				p.workSessions.map(s => ({ content: s.content, createdAt: s.createdAt })),
+				p.posts.map(post => ({
 					createdAt: post.createdAt,
 					thumbnailUrl: publicUrlFor(post.thumbnailKey),
 					videoUrl: publicUrlFor(post.objectKey),
 				})),
 			),
-			hours: Math.round(hours * 100) / 100,
-			entries: p.workSessions.length,
+			title: p.title,
+			warmup,
 		}
 	})
 
 	return {
 		id: user.id,
-		name: displayName(user, "A maker"),
 		image: avatarUrl(user),
+		isViewer: user.id === viewerId,
+		joinedAt: (user.joinedProgramAt ?? user.createdAt).getTime(),
+		name: displayName(user, "A maker"),
+		projects: shaped,
+		reelCount,
+		reels,
 		// Expired against today, so a run that ended weeks ago reads 0 rather than the number it reached before it broke.
 		streak: streakAsOf(user, today),
-		joinedAt: (user.joinedProgramAt ?? user.createdAt).getTime(),
-		isViewer: user.id === viewerId,
-		projects: shaped,
-		reels,
-		reelCount,
 	}
 }

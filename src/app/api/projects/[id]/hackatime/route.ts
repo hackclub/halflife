@@ -19,20 +19,20 @@ export const GET = withRoute(async (_req: Request, { params }: Params) => {
 	const { id } = await params
 
 	const project = await prisma.themeProject.findFirst({
-		where: { id, userId: gate.user.id, deletedAt: null },
 		include: { hackatimeLinks: true, user: { select: { hackatimeUserId: true } } },
+		where: { deletedAt: null, id, userId: gate.user.id },
 	})
 	if (!project) return fail("NOT_FOUND", "Project not found")
 
 	return ok({
-		links: project.hackatimeLinks.map((l) => ({
-			id: l.id,
+		links: project.hackatimeLinks.map(l => ({
+			cachedAt: l.cachedAt,
 			hackatimeProject: l.hackatimeProject,
-			phase: l.phase,
 			hours: l.hoursApproved ?? (l.cachedSeconds ?? 0) / 3600,
 			hoursApproved: l.hoursApproved,
-			cachedAt: l.cachedAt,
+			id: l.id,
 			lastFetchError: l.lastFetchError,
+			phase: l.phase,
 		})),
 	})
 })
@@ -46,8 +46,8 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	if (parsed.error) return parsed.error
 
 	const project = await prisma.themeProject.findFirst({
-		where: { id, userId: gate.user.id, deletedAt: null },
 		include: { user: { select: { hackatimeUserId: true } } },
+		where: { deletedAt: null, id, userId: gate.user.id },
 	})
 	if (!project) return fail("NOT_FOUND", "Project not found")
 
@@ -70,8 +70,8 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	const existing = await prisma.hackatimeLink.findUnique({
 		where: {
 			themeProjectId_hackatimeProject: {
-				themeProjectId: id,
 				hackatimeProject: parsed.data.hackatimeProject,
+				themeProjectId: id,
 			},
 		},
 	})
@@ -98,11 +98,11 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		)
 	}
 
-	const link = await prisma.$transaction(async (tx) => {
+	const link = await prisma.$transaction(async tx => {
 		// Re-read the phase on the transaction client immediately before the link lands: a submit that commits between the checks above and this create would otherwise attach hours to a phase the decision has already frozen.
 		const current = await tx.themeProject.findUnique({
+			select: { buildStatus: true, designStatus: true },
 			where: { id },
-			select: { designStatus: true, buildStatus: true },
 		})
 		const currentStatus = parsed.data.phase === "DESIGN" ? current?.designStatus : current?.buildStatus
 		if (currentStatus === PhaseStatus.in_review)
@@ -112,23 +112,23 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 
 		return tx.hackatimeLink.create({
 			data: {
-				themeProjectId: id,
-				hackatimeProject: parsed.data.hackatimeProject,
-				phase: parsed.data.phase,
-				cachedSeconds: fetched.stale ? null : fetched.seconds,
 				cachedAt: fetched.stale ? null : new Date(),
+				cachedSeconds: fetched.stale ? null : fetched.seconds,
+				hackatimeProject: parsed.data.hackatimeProject,
 				lastFetchError: fetched.error ?? null,
+				phase: parsed.data.phase,
+				themeProjectId: id,
 			},
 		})
 	})
 
 	await logAudit({
 		action: AuditAction.USER_LINK_HACKATIME,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "HackatimeLink",
+		actorId: gate.user.id,
+		metadata: { hackatimeProject: parsed.data.hackatimeProject, themeProjectId: id },
 		targetId: link.id,
-		metadata: { themeProjectId: id, hackatimeProject: parsed.data.hackatimeProject },
+		targetType: "HackatimeLink",
 	})
 
 	// The tracked intervals, warmed as the link lands rather than left to the next scheduled run. Linking is the moment a phase starts showing Hackatime hours, and for up to a quarter of an hour after it the phase would show the link's whole total with no recording overlap taken off – the same inflated figure this whole path exists to prevent, arriving at exactly the moment someone is looking at it. Off the response path, and swallowed: a failed warm is the cold cache the sync will retry.

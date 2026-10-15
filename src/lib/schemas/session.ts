@@ -3,10 +3,10 @@ import { HoursSource, MediaType } from "@/app/generated/prisma/enums"
 import { boundedText, phaseSchema } from "@/lib/schemas/common"
 
 const mediaSchema = z.object({
-	type: z.enum(MediaType),
-	objectKey: z.string().min(1).max(500),
-	contentType: z.string().max(120).optional(),
 	byteSize: z.number().int().positive().optional(),
+	contentType: z.string().max(120).optional(),
+	objectKey: z.string().min(1).max(500),
+	type: z.enum(MediaType),
 })
 
 /**
@@ -46,8 +46,6 @@ export const DEFAULT_SESSION_TITLE = "Work session"
 
 export const sessionCreateSchema = z
 	.object({
-		phase: phaseSchema,
-		title: boundedText(200, 1),
 		content: boundedText(MAX_SESSION_CONTENT).optional(),
 		// A sanity bound, not a policy.
 		hoursClaimed: z.number().min(0).max(MAX_SESSION_HOURS),
@@ -56,10 +54,12 @@ export const sessionCreateSchema = z
 		 */
 		hoursSource: z.enum(HoursSource).default("MANUAL"),
 		media: z.array(mediaSchema).max(10).default([]),
+		phase: phaseSchema,
 		/**
 		 * Uncapped, because the picker does not cap: it lists every timelapse the maker has, and a cap the sheet does not enforce is a save refused after the clips were chosen. The work it does is bounded anyway – one verified clip per row written, against rows this account owns.
 		 */
 		timelapses: z.array(timelapseSchema).default([]),
+		title: boundedText(200, 1),
 	})
 	.strict()
 

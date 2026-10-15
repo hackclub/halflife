@@ -14,11 +14,11 @@ export const GET = withRoute(async () => {
 		items: await prisma.shopRegion.findMany({
 			orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
 			select: {
+				_count: { select: { prices: true } },
+				active: true,
 				id: true,
 				name: true,
-				active: true,
 				sortOrder: true,
-				_count: { select: { prices: true } },
 			},
 		}),
 	})
@@ -39,11 +39,11 @@ export const POST = withRoute(async (req: Request) => {
 
 	await logAudit({
 		action: AuditAction.ADMIN_CREATE_SHOP_REGION,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "ShopRegion",
-		targetId: region.id,
+		actorId: gate.user.id,
 		metadata: { after: { name: region.name } },
+		targetId: region.id,
+		targetType: "ShopRegion",
 	})
 
 	return ok({ region }, { status: 201 })

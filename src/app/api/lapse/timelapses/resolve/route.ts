@@ -21,27 +21,27 @@ export const GET = withRoute(async (req: NextRequest) => {
 	const params = req.nextUrl.searchParams
 	const ids = (params.get("ids") ?? "")
 		.split(",")
-		.map((s) => s.trim())
+		.map(s => s.trim())
 		.filter(Boolean)
 		// How many this reads, not how many an entry may hold: each one costs a round trip to Lapse, so the number is bounded even though the session schema no longer is. The sheet keeps whatever is left over pinned by id rather than dropping it, so stopping here costs a row in the picker, not a clip.
 		.slice(0, 25)
 	if (ids.length === 0) return fail("VALIDATION_FAILED", "Name the timelapses to resolve")
-	if (ids.some((id) => id.length > MAX_CLIP_REF_LENGTH))
+	if (ids.some(id => id.length > MAX_CLIP_REF_LENGTH))
 		return fail("VALIDATION_FAILED", "Those timelapses could not be read")
 
 	const forSession = params.get("forSession") ?? undefined
 	let ownExternalIds = new Set<string>()
 	if (forSession) {
 		const session = await prisma.workSession.findFirst({
-			where: { id: forSession, deletedAt: null, themeProject: { userId: gate.user.id, deletedAt: null } },
 			select: { id: true },
+			where: { deletedAt: null, id: forSession, themeProject: { deletedAt: null, userId: gate.user.id } },
 		})
 		if (!session) return fail("NOT_FOUND", "Session not found")
 		const rows = await prisma.sessionTimelapse.findMany({
-			where: { workSessionId: forSession, provider: "lapse", externalId: { in: ids } },
 			select: { externalId: true },
+			where: { externalId: { in: ids }, provider: "lapse", workSessionId: forSession },
 		})
-		ownExternalIds = new Set(rows.flatMap((r) => (r.externalId ? [r.externalId] : [])))
+		ownExternalIds = new Set(rows.flatMap(r => (r.externalId ? [r.externalId] : [])))
 	}
 
 	const resolved: {
@@ -71,21 +71,21 @@ export const GET = withRoute(async (req: NextRequest) => {
 				continue
 			}
 			resolved.push({
-				id: t.id,
-				title: t.title,
-				durationSeconds: t.durationSeconds,
-				visibility: t.visibility,
-				createdAt: t.createdAt,
-				thumbnailUrl: t.thumbnailUrl,
-				hackatimeProject: t.hackatimeProject,
-				processing: t.playbackUrl === null,
 				// About to be selected, which is what unblocks a picked row – the flag only ever stops somebody else's clip.
 				attached: false,
+				createdAt: t.createdAt,
+				durationSeconds: t.durationSeconds,
+				hackatimeProject: t.hackatimeProject,
+				id: t.id,
+				processing: t.playbackUrl === null,
+				thumbnailUrl: t.thumbnailUrl,
+				title: t.title,
+				visibility: t.visibility,
 			})
 		} catch {
 			pinned.push(id)
 		}
 	}
 
-	return ok({ resolved, pinned, legacy })
+	return ok({ legacy, pinned, resolved })
 })

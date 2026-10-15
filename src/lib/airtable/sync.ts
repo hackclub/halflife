@@ -31,10 +31,10 @@ const ymd = (d: Date) => d.toISOString().slice(0, 10)
  */
 async function lastRecordId(themeProjectId: string, phase: Phase): Promise<string | null> {
 	const rows = await prisma.auditLog.findMany({
-		where: { action: "AIRTABLE_SYNC_SUCCESS", targetId: themeProjectId },
 		orderBy: { createdAt: "desc" },
 		select: { metadata: true },
 		take: 50,
+		where: { action: "AIRTABLE_SYNC_SUCCESS", targetId: themeProjectId },
 	})
 	for (const row of rows) {
 		const meta = row.metadata as { phase?: string; recordId?: string; removed?: boolean } | null
@@ -73,17 +73,17 @@ export function reviewStatusForResult(result: ReviewResult): string {
 /** The fields for this submission, exactly as the table names them. */
 async function fieldsFor(themeProjectId: string, phase: Phase) {
 	const project = await prisma.themeProject.findUnique({
-		where: { id: themeProjectId },
 		include: {
 			bomItems: { select: { quantity: true, unitCostUsd: true } },
+			hackatimeLinks: { select: { hackatimeProject: true }, where: { phase } },
 			workSessions: {
-				where: { phase, deletedAt: null },
 				select: {
-					timelapses: { select: { provider: true, externalId: true, playbackUrl: true, objectKey: true } },
+					timelapses: { select: { externalId: true, objectKey: true, playbackUrl: true, provider: true } },
 				},
+				where: { deletedAt: null, phase },
 			},
-			hackatimeLinks: { where: { phase }, select: { hackatimeProject: true } },
 		},
+		where: { id: themeProjectId },
 	})
 	if (!project) return null
 
@@ -105,27 +105,27 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 	let playableUrl = project.githubRepo ?? ""
 	if (phase === Phase.BUILD) {
 		const demo = await prisma.post.findFirst({
-			where: {
-				userId: project.userId,
-				checkpointKey: `w${week}-reel-submission`,
-				deletedAt: null,
-			},
 			orderBy: { createdAt: "desc" },
 			select: { objectKey: true },
+			where: {
+				checkpointKey: `w${week}-reel-submission`,
+				deletedAt: null,
+				userId: project.userId,
+			},
 		})
 		playableUrl = publicUrlFor(demo?.objectKey ?? null) ?? playableUrl
 	}
 
 	const lapseLinks = project.workSessions
-		.flatMap((s) => s.timelapses)
-		.map((t) =>
+		.flatMap(s => s.timelapses)
+		.map(t =>
 			t.provider === "lapse" && t.externalId
 				? lapseTimelapseUrl(t.externalId)
 				: (t.playbackUrl ?? publicUrlFor(t.objectKey)),
 		)
 		.filter((u): u is string => !!u)
 
-	const hackatime = project.hackatimeLinks.map((l) => `${l.hackatimeProject} (${ymd(weekStart)} to ${ymd(weekEnd)})`)
+	const hackatime = project.hackatimeLinks.map(l => `${l.hackatimeProject} (${ymd(weekStart)} to ${ymd(weekEnd)})`)
 
 	const [firstName, ...rest] = (user.name ?? "").trim().split(/\s+/)
 	const tier = project.tier ?? project.requestedTier
@@ -134,37 +134,37 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 
 	const fields = toFields(YSWS_SUBMISSION.fields, {
 		codeUrl: project.githubRepo ?? "",
+		email: user.email,
 		firstName: firstName ?? "",
 		lastName: rest.join(" "),
-		email: user.email,
 		...(pii.birthday ? { birthday: pii.birthday } : {}),
-		slackId: user.slackId ?? "",
-		stage: phase === Phase.DESIGN ? "Design" : "Build",
-		// The parts are funded once, at design. A build asks for no new money, so its row says $0 rather than repeating the design's request.
-		requestedFunding: phase === Phase.DESIGN ? bomTotal : 0,
-		hoursSelfReported: round2(breakdown.journalHoursClaimed + breakdown.hackatimeHours),
-		playableUrl,
+		addressLine1: pii.line1 ?? "",
+		addressLine2: pii.line2 ?? "",
+		city: pii.city ?? "",
+		country: pii.country ?? "",
 		description: project.description ?? "",
-		journalUrl: journalUrl ?? "",
-		lapseLinks: lapseLinks.join(", "),
 		// A GitHub-only field: for a repo on another forge there is no GitHub username to send, and the repo URL is carried in its own column anyway.
 		githubUsername: (() => {
 			const ref = repoRefFromLink(project.githubRepo)
 			return ref?.forge.id === "github" ? ref.ownerPath : ""
 		})(),
-		addressLine1: pii.line1 ?? "",
-		addressLine2: pii.line2 ?? "",
-		city: pii.city ?? "",
-		zip: pii.zip ?? "",
-		state: pii.state ?? "",
-		country: pii.country ?? "",
-		hackatimeProjects: hackatime.join(", "),
 		hackatimeId: user.hackatimeUserId ?? "",
+		hackatimeProjects: hackatime.join(", "),
+		hoursSelfReported: round2(breakdown.journalHoursClaimed + breakdown.hackatimeHours),
+		journalUrl: journalUrl ?? "",
+		lapseLinks: lapseLinks.join(", "),
+		playableUrl,
 		projectName: project.title,
+		// The parts are funded once, at design. A build asks for no new money, so its row says $0 rather than repeating the design's request.
+		requestedFunding: phase === Phase.DESIGN ? bomTotal : 0,
 		reviewStatus: reviewStatusFor(phase === Phase.DESIGN ? project.designStatus : project.buildStatus),
-		tier: tier ? `Tier ${tier}` : "",
+		slackId: user.slackId ?? "",
+		stage: phase === Phase.DESIGN ? "Design" : "Build",
 		// `starterProjectId` is the one place the choice is kept: set when a starter is taken and cleared when the idea is written over with their own (see lib/onboarding). So the checkbox is `!== null`, derived rather than stored, and a project that left the starter behind reads as `false` here like any other.
 		starterProject: project.starterProjectId !== null,
+		state: pii.state ?? "",
+		tier: tier ? `Tier ${tier}` : "",
+		zip: pii.zip ?? "",
 	})
 	// An attachment is written as a URL Airtable fetches, so the bytes stay in R2 and the base only references them.
 	if (cover) fields[fieldKey(YSWS_SUBMISSION.fields.screenshot)] = [{ url: cover }]
@@ -182,11 +182,11 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
  */
 async function withYswsWriteLock<T>(themeProjectId: string, phase: Phase, fn: () => Promise<T>): Promise<T> {
 	return prisma.$transaction(
-		async (tx) => {
+		async tx => {
 			await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`ysws:${themeProjectId}:${phase}`}, 0))`
 			return fn()
 		},
-		{ timeout: 120_000, maxWait: 30_000 },
+		{ maxWait: 30_000, timeout: 120_000 },
 	)
 }
 
@@ -222,18 +222,18 @@ export async function syncReviewDecisionToYsws(
 	note: string | null,
 ): Promise<{ updated: boolean; reason?: string; noteFailed?: string }> {
 	const settings = await getProgramSettings()
-	if (!settings.airtableSyncEnabled) return { updated: false, reason: "sync_disabled" }
+	if (!settings.airtableSyncEnabled) return { reason: "sync_disabled", updated: false }
 	// The id lives in the audit row each successful write left (see lastRecordId), not in a column of ours.
 	const recordId = await lastRecordId(themeProjectId, phase)
-	if (!recordId) return { updated: false, reason: "no_row" }
+	if (!recordId) return { reason: "no_row", updated: false }
 
 	const { reviewStatus, reviewerNotes } = YSWS_SUBMISSION.fields
 	const moved = await updateYswsRecord(recordId, { [fieldKey(reviewStatus)]: status })
-	if (!moved.ok) return { updated: false, reason: moved.reason }
+	if (!moved.ok) return { reason: moved.reason, updated: false }
 
 	// `null` clears the column: a decision with no note must not leave the previous decision's words on the row for an email to quote back. A refusal here is reported separately, so the status is still counted as moved.
 	const noted = await updateYswsRecord(recordId, { [fieldKey(reviewerNotes)]: note ?? "" })
-	return noted.ok ? { updated: true } : { updated: true, noteFailed: noted.reason }
+	return noted.ok ? { updated: true } : { noteFailed: noted.reason, updated: true }
 }
 
 /**
@@ -267,11 +267,11 @@ export async function removeSubmissionFromYsws(
 	phase: Phase,
 ): Promise<{ deleted: boolean; unifiedDeleted: string[]; skipped?: string }> {
 	const recordId = await lastRecordId(themeProjectId, phase)
-	if (!recordId) return { deleted: false, unifiedDeleted: [], skipped: "no_row" }
+	if (!recordId) return { deleted: false, skipped: "no_row", unifiedDeleted: [] }
 	const local = await deleteYswsRecord(recordId)
-	if (!local.unifiedRecordId) return { deleted: local.deleted, unifiedDeleted: [], skipped: local.skipped }
+	if (!local.unifiedRecordId) return { deleted: local.deleted, skipped: local.skipped, unifiedDeleted: [] }
 	const unified = await deleteUnifiedRecords([local.unifiedRecordId])
-	return { deleted: local.deleted, unifiedDeleted: unified.deleted, skipped: unified.skipped }
+	return { deleted: local.deleted, skipped: unified.skipped, unifiedDeleted: unified.deleted }
 }
 
 /**
@@ -279,22 +279,22 @@ export async function removeSubmissionFromYsws(
  */
 export async function findUnsyncedSubmissions(): Promise<{ themeProjectId: string; phase: Phase }[]> {
 	const pending = await prisma.themeProject.findMany({
+		select: {
+			buildStatus: true,
+			designStatus: true,
+			id: true,
+			submissions: { orderBy: { createdAt: "desc" }, select: { createdAt: true, phase: true } },
+		},
 		where: {
 			deletedAt: null,
 			OR: [{ designStatus: PhaseStatus.in_review }, { buildStatus: PhaseStatus.in_review }],
-		},
-		select: {
-			id: true,
-			designStatus: true,
-			buildStatus: true,
-			submissions: { orderBy: { createdAt: "desc" }, select: { phase: true, createdAt: true } },
 		},
 	})
 	if (pending.length === 0) return []
 
 	const synced = await prisma.auditLog.findMany({
-		where: { action: "AIRTABLE_SYNC_SUCCESS", targetId: { in: pending.map((p) => p.id) } },
-		select: { targetId: true, createdAt: true, metadata: true },
+		select: { createdAt: true, metadata: true, targetId: true },
+		where: { action: "AIRTABLE_SYNC_SUCCESS", targetId: { in: pending.map(p => p.id) } },
 	})
 
 	const out: { themeProjectId: string; phase: Phase }[] = []
@@ -302,18 +302,18 @@ export async function findUnsyncedSubmissions(): Promise<{ themeProjectId: strin
 		for (const phase of [Phase.DESIGN, Phase.BUILD] as const) {
 			const status = phase === Phase.DESIGN ? p.designStatus : p.buildStatus
 			if (status !== PhaseStatus.in_review) continue
-			const submittedAt = p.submissions.find((s) => s.phase === phase)?.createdAt
+			const submittedAt = p.submissions.find(s => s.phase === phase)?.createdAt
 			// Written since the latest hand-in counts; an older write was for a submission that has since been taken back and handed in again.
-			const written = synced.some((s) => {
+			const written = synced.some(s => {
 				const meta = s.metadata as { phase?: string; recordId?: string } | null
 				return (
-					s.targetId === p.id &&
-					meta?.phase === phase &&
-					typeof meta.recordId === "string" &&
-					(!submittedAt || s.createdAt >= submittedAt)
+					s.targetId === p.id
+					&& meta?.phase === phase
+					&& typeof meta.recordId === "string"
+					&& (!submittedAt || s.createdAt >= submittedAt)
 				)
 			})
-			if (!written) out.push({ themeProjectId: p.id, phase })
+			if (!written) out.push({ phase, themeProjectId: p.id })
 		}
 	}
 	return out

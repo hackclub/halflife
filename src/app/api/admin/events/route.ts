@@ -40,11 +40,11 @@ export const POST = withRoute(async (req: Request) => {
 			prisma.programEvent.create({
 				data: {
 					...fields,
+					createdById: gate.user.id,
 					description: fields.description ?? null,
 					endsAt: fields.endsAt ? addWeeks(fields.endsAt, week, programTimezone) : null,
-					startsAt: addWeeks(fields.startsAt, week, programTimezone),
 					seriesId,
-					createdById: gate.user.id,
+					startsAt: addWeeks(fields.startsAt, week, programTimezone),
 				},
 				select: { id: true, startsAt: true },
 			}),
@@ -53,23 +53,23 @@ export const POST = withRoute(async (req: Request) => {
 
 	await logAudit({
 		action: AuditAction.ADMIN_CREATE_PROGRAM_EVENT,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "ProgramEvent",
+		actorId: gate.user.id,
+		metadata: {
+			after: {
+				colour: fields.colour,
+				endsAt: fields.endsAt?.toISOString() ?? null,
+				occurrences: repeatWeeks,
+				published: fields.published,
+				seriesId,
+				startsAt: fields.startsAt.toISOString(),
+				title: fields.title,
+			},
+		},
 		// The series is the unit that was meant, so the audit row points at the run
 		// rather than at whichever occurrence happened to be first.
 		targetId: seriesId ?? events[0]?.id ?? null,
-		metadata: {
-			after: {
-				title: fields.title,
-				colour: fields.colour,
-				startsAt: fields.startsAt.toISOString(),
-				endsAt: fields.endsAt?.toISOString() ?? null,
-				published: fields.published,
-				occurrences: repeatWeeks,
-				seriesId,
-			},
-		},
+		targetType: "ProgramEvent",
 	})
 
 	return ok({ events, seriesId }, { status: 201 })
@@ -100,16 +100,16 @@ function addWeeks(at: Date, weeks: number, timeZone: string): Date {
 /** A moment's calendar fields in `timeZone`, ordered for `Date.UTC`. */
 function wallFields(at: Date, timeZone: string): [number, number, number, number, number, number] {
 	const parts = new Intl.DateTimeFormat("en-US", {
-		timeZone,
-		hourCycle: "h23",
-		year: "numeric",
-		month: "numeric",
 		day: "numeric",
 		hour: "numeric",
+		hourCycle: "h23",
 		minute: "numeric",
+		month: "numeric",
 		second: "numeric",
+		timeZone,
+		year: "numeric",
 	}).formatToParts(at)
-	const value = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find((p) => p.type === type)?.value ?? 0)
+	const value = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find(p => p.type === type)?.value ?? 0)
 	return [value("year"), value("month") - 1, value("day"), value("hour"), value("minute"), value("second")]
 }
 
@@ -129,11 +129,11 @@ export const DELETE = withRoute(async (_req: Request) => {
 
 	await logAudit({
 		action: AuditAction.ADMIN_DELETE_PROGRAM_EVENT,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "ProgramEvent",
+		actorId: gate.user.id,
+		metadata: { threshold: threshold.toISOString(), upcomingCleared: count },
 		targetId: null,
-		metadata: { upcomingCleared: count, threshold: threshold.toISOString() },
+		targetType: "ProgramEvent",
 	})
 
 	return ok({ deleted: count })

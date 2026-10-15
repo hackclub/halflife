@@ -17,7 +17,6 @@ export default async function AdminEventsPage() {
 	return (
 		<div className="hl-stack">
 			<PageHeader
-				title="Events"
 				subtitle={
 					upcoming
 						? `Next: ${upcoming.title}. ${events.length} on the calendar.`
@@ -25,6 +24,7 @@ export default async function AdminEventsPage() {
 							? "Nothing upcoming. Everything on the calendar has finished."
 							: "Nothing scheduled yet."
 				}
+				title="Events"
 			/>
 
 			<EventScheduleNote />

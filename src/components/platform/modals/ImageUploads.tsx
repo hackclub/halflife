@@ -52,24 +52,24 @@ export function ImageUploads({
 		if (chosen.length > taken.length)
 			problems.push(`Only ${max} screenshots fit, so ${chosen.length - taken.length} were left out.`)
 		setErrors(problems)
-		const batch = taken.map((file) => ({ file, id: crypto.randomUUID() }))
-		setPending((p) => [...p, ...batch.map(({ file, id }) => ({ id, name: file.name, progress: null }))])
+		const batch = taken.map(file => ({ file, id: crypto.randomUUID() }))
+		setPending(p => [...p, ...batch.map(({ file, id }) => ({ id, name: file.name, progress: null }))])
 
 		await Promise.all(
 			batch.map(async ({ file, id }) => {
 				try {
-					const { objectKey } = await uploadFile(file, folder, (progress) =>
-						setPending((p) => p.map((row) => (row.id === id ? { ...row, progress } : row))),
+					const { objectKey } = await uploadFile(file, folder, progress =>
+						setPending(p => p.map(row => (row.id === id ? { ...row, progress } : row))),
 					)
 					// Uploads are named after their bytes, so re-picking a picture already on the list hands back the key it already has. Adding it again would put two thumbnails on one object and make removing either remove both.
-					if (latest.current.some((img) => img.objectKey === objectKey)) return
+					if (latest.current.some(img => img.objectKey === objectKey)) return
 					const next = [...latest.current, { objectKey, previewUrl: URL.createObjectURL(file) }]
 					latest.current = next
 					onChange(next)
 				} catch (err) {
-					setErrors((e) => [...e, `${file.name}: ${err instanceof Error ? err.message : "did not upload"}`])
+					setErrors(e => [...e, `${file.name}: ${err instanceof Error ? err.message : "did not upload"}`])
 				} finally {
-					setPending((p) => p.filter((row) => row.id !== id))
+					setPending(p => p.filter(row => row.id !== id))
 				}
 			}),
 		)
@@ -77,28 +77,28 @@ export function ImageUploads({
 	}
 
 	function remove(key: string) {
-		const target = images.find((i) => i.objectKey === key)
+		const target = images.find(i => i.objectKey === key)
 		if (target) URL.revokeObjectURL(target.previewUrl)
-		onChange(images.filter((i) => i.objectKey !== key))
+		onChange(images.filter(i => i.objectKey !== key))
 	}
 
 	return (
 		<div className="grid gap-3">
 			{images.length > 0 && (
-				<ul className="flex flex-wrap gap-2.5" aria-label={`${label}s`}>
+				<ul aria-label={`${label}s`} className="flex flex-wrap gap-2.5">
 					{images.map((img, i) => (
-						<li key={img.objectKey} className="relative">
+						<li className="relative" key={img.objectKey}>
 							{/* eslint-disable-next-line @next/next/no-img-element -- a local blob preview */}
 							<img
-								src={img.previewUrl}
 								alt={`${label} ${i + 1}`}
 								className="size-24 rounded-xl border-2 border-line bg-white object-cover"
+								src={img.previewUrl}
 							/>
 							<button
-								type="button"
-								onClick={() => remove(img.objectKey)}
 								aria-label={`Remove ${label.toLowerCase()} ${i + 1}`}
 								className="absolute -top-2 -right-2 grid size-7 place-items-center rounded-full border-2 border-line bg-white text-navy-soft shadow-[0_2px_6px_rgb(0_0_0/0.15)] transition-colors hover:border-coral hover:text-coral-deep"
+								onClick={() => remove(img.objectKey)}
+								type="button"
 							>
 								<IconX className="text-[0.75rem]" />
 							</button>
@@ -108,8 +108,8 @@ export function ImageUploads({
 			)}
 
 			{pending.length > 0 && (
-				<ul className="grid max-w-[420px] gap-2.5" aria-label="Uploading">
-					{pending.map((row) => (
+				<ul aria-label="Uploading" className="grid max-w-[420px] gap-2.5">
+					{pending.map(row => (
 						<li key={row.id}>
 							<UploadProgress name={row.name} progress={row.progress} />
 						</li>
@@ -118,7 +118,7 @@ export function ImageUploads({
 			)}
 
 			<div className="flex flex-wrap items-center gap-3">
-				<Button variant="outline" disabled={busy > 0 || room <= 0} onClick={() => input.current?.click()}>
+				<Button disabled={busy > 0 || room <= 0} onClick={() => input.current?.click()} variant="outline">
 					<IconUpload className="text-base" />
 					{busy > 0 ? "Uploading…" : images.length > 0 ? "Add more files" : "Select files"}
 				</Button>
@@ -128,18 +128,18 @@ export function ImageUploads({
 			</div>
 
 			<input
-				ref={input}
-				type="file"
 				accept={IMAGE_ACCEPT}
-				multiple
-				className="sr-only"
-				tabIndex={-1}
 				aria-hidden="true"
-				onChange={(e) => pick(e.target.files)}
+				className="sr-only"
+				multiple
+				onChange={e => pick(e.target.files)}
+				ref={input}
+				tabIndex={-1}
+				type="file"
 			/>
 
-			{errors.map((e) => (
-				<p key={e} role="alert" className="text-[0.84rem] font-semibold text-coral-deep">
+			{errors.map(e => (
+				<p className="text-[0.84rem] font-semibold text-coral-deep" key={e} role="alert">
 					{e}
 				</p>
 			))}

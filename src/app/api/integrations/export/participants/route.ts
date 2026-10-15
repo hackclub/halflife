@@ -24,43 +24,43 @@ export const GET = withRoute(async (req: NextRequest) => {
 	if (parsed.error) return parsed.error
 
 	const rows = await prisma.user.findMany({
-		where: parsed.data.updatedSince ? { updatedAt: { gte: parsed.data.updatedSince } } : undefined,
 		orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+		where: parsed.data.updatedSince ? { updatedAt: { gte: parsed.data.updatedSince } } : undefined,
 		...cursorArgs(parsed.data.cursor, parsed.data.limit),
 		select: {
-			id: true,
+			createdAt: true,
 			email: true,
+			id: true,
 			name: true,
 			slackId: true,
-			verificationStatus: true,
-			createdAt: true,
-			updatedAt: true,
 			themeProjects: {
-				where: { deletedAt: null },
 				select: {
-					theme: true,
-					title: true,
-					githubRepo: true,
-					designStatus: true,
-					buildStatus: true,
-					tier: true,
-					grantUsd: true,
 					approvedHours: true,
+					buildStatus: true,
+					designStatus: true,
+					githubRepo: true,
+					grantUsd: true,
+					theme: true,
+					tier: true,
+					title: true,
 				},
+				where: { deletedAt: null },
 			},
+			updatedAt: true,
+			verificationStatus: true,
 		},
 	})
 
 	const page = pageResult(rows, parsed.data.limit)
 	return ok({
-		items: page.items.map((u) => ({
+		items: page.items.map(u => ({
+			createdAt: u.createdAt,
 			id: u.id,
 			name: u.name,
-			verificationStatus: u.verificationStatus,
-			createdAt: u.createdAt,
 			updatedAt: u.updatedAt,
+			verificationStatus: u.verificationStatus,
 			...(internal ? { email: u.email, slackId: u.slackId } : {}),
-			themeProjects: u.themeProjects.map((p) => ({
+			themeProjects: u.themeProjects.map(p => ({
 				...p,
 				themeLabel: getThemeDef(p.theme).label,
 			})),

@@ -11,7 +11,7 @@ export function ArticleLink({ href, className, children }: { href: string; class
 	const { setDoomscroller } = useStore()
 
 	return (
-		<Link href={href} className={className} onClick={() => setDoomscroller(false)}>
+		<Link className={className} href={href} onClick={() => setDoomscroller(false)}>
 			{children}
 		</Link>
 	)

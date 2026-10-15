@@ -39,26 +39,26 @@ export async function partsFundingFor(
 	const capUsd = getTier(project.tier ?? project.requestedTier ?? ENTRY_TIER.id)?.grantUsd ?? ENTRY_TIER.grantUsd
 	if (phase !== Phase.DESIGN) return partsFunding(0, capUsd)
 	const items = await prisma.bomItem.findMany({
-		where: { themeProjectId: project.id },
 		select: { quantity: true, unitCostUsd: true },
+		where: { themeProjectId: project.id },
 	})
 	return partsFunding(bomTotalUsd(items, project.bomTaxShippingUsd), capUsd)
 }
 
 export function listBom(themeProjectId: string): Promise<BomLine[]> {
 	return prisma.bomItem.findMany({
-		where: { themeProjectId },
 		orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
 		select: {
 			id: true,
+			link: true,
 			name: true,
 			purpose: true,
 			quantity: true,
 			unitCostUsd: true,
-			vendor: true,
-			link: true,
 			updatedAt: true,
+			vendor: true,
 		},
+		where: { themeProjectId },
 	})
 }
 

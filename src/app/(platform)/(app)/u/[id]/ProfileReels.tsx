@@ -17,10 +17,10 @@ export function ProfileReels({ initial }: { initial: FeedItem[] }) {
 	const [items, setItems] = useState(initial)
 	const [commentsId, setCommentsId] = useState<string | null>(null)
 	const patch = (id: string, next: Partial<FeedItem>) =>
-		setItems((prev) => prev.map((r) => (r.id === id ? { ...r, ...next } : r)))
+		setItems(prev => prev.map(r => (r.id === id ? { ...r, ...next } : r)))
 
 	// Read live, so a comment posted in the dialog moves the card's count.
-	const active = commentsId ? (items.find((r) => r.id === commentsId) ?? null) : null
+	const active = commentsId ? (items.find(r => r.id === commentsId) ?? null) : null
 
 	function openComments(reel: FeedItem) {
 		pauseReels()
@@ -34,27 +34,27 @@ export function ProfileReels({ initial }: { initial: FeedItem[] }) {
 	return (
 		<>
 			<ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-				{items.map((reel) => (
-					<li key={reel.id} className="min-w-0">
-						<ReelCard reel={reel} onPatch={patch} onComments={openComments} className="aspect-[9/16]" />
+				{items.map(reel => (
+					<li className="min-w-0" key={reel.id}>
+						<ReelCard className="aspect-[9/16]" onComments={openComments} onPatch={patch} reel={reel} />
 					</li>
 				))}
 			</ul>
 
 			{active && (
 				<Modal
-					open
-					onClose={closeComments}
-					eyebrow={`Comments · reel by ${active.author.name ?? "a maker"}`}
 					accent="var(--color-violet)"
+					eyebrow={`Comments · reel by ${active.author.name ?? "a maker"}`}
+					onClose={closeComments}
+					open
 					size="md"
 				>
 					<ReelComments
-						reel={active}
-						viewer={{ name: viewer.name, image: viewer.image }}
-						onPatch={patch}
-						onClose={closeComments}
 						className="h-[min(70dvh,36rem)]"
+						onClose={closeComments}
+						onPatch={patch}
+						reel={active}
+						viewer={{ image: viewer.image, name: viewer.name }}
 					/>
 				</Modal>
 			)}

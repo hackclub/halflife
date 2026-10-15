@@ -14,16 +14,16 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 	const result = await syncLoopsProperties({ dryRun })
 	if (!dryRun && "updated" in result) {
 		await recordSyncRun("airtable_loops", {
-			users: result.users,
-			matched: result.matched,
-			matchedById: result.matchedById,
-			matchedByRecord: result.matchedByRecord,
-			matchedByEmail: result.matchedByEmail,
-			unmatched: result.unmatched,
-			relinked: result.relinked,
-			updated: result.updated,
 			// Logged rather than assumed, so the sync-run history says "wrote nothing" instead of showing a healthy row for a broken join.
 			degraded: result.degraded,
+			matched: result.matched,
+			matchedByEmail: result.matchedByEmail,
+			matchedById: result.matchedById,
+			matchedByRecord: result.matchedByRecord,
+			relinked: result.relinked,
+			unmatched: result.unmatched,
+			updated: result.updated,
+			users: result.users,
 		})
 	}
 	return ok(result)

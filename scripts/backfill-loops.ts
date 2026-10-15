@@ -64,11 +64,11 @@ async function main() {
 	const { byEmail: recordByEmail, total } = await listSignupEmails(config)
 	console.log(`Signups rows: ${total} (${recordByEmail.size} with an email)`)
 
-	const users = await prisma.user.findMany({ select: { id: true, email: true } })
+	const users = await prisma.user.findMany({ select: { email: true, id: true } })
 	const buffers = await prisma.rsvpBuffer.findMany({
-		select: { email: true, userId: true, airtableRecordId: true, syncedToAirtable: true },
+		select: { airtableRecordId: true, email: true, syncedToAirtable: true, userId: true },
 	})
-	const bufferByEmail = new Map(buffers.map((b) => [b.email.trim().toLowerCase(), b]))
+	const bufferByEmail = new Map(buffers.map(b => [b.email.trim().toLowerCase(), b]))
 	console.log(`Users: ${users.length}, buffer rows: ${buffers.length}`)
 
 	let alreadyLinked = 0
@@ -87,7 +87,7 @@ async function main() {
 			alreadyLinked++
 			continue
 		}
-		pending.push({ email: key, userId: u.id, recordId, hasRow: !!buf })
+		pending.push({ email: key, hasRow: !!buf, recordId, userId: u.id })
 	}
 
 	if (!commit) {
@@ -98,23 +98,23 @@ async function main() {
 		for (const p of pending) {
 			if (p.hasRow) {
 				await prisma.rsvpBuffer.update({
-					where: { email: p.email },
 					data: {
-						userId: p.userId,
 						airtableRecordId: p.recordId,
 						finishedAccountCreation: true,
-						syncedToAirtable: false,
 						syncAttempts: 0,
+						syncedToAirtable: false,
+						userId: p.userId,
 					},
+					where: { email: p.email },
 				})
 			} else {
 				await prisma.rsvpBuffer.create({
 					data: {
-						email: p.email,
-						userId: p.userId,
 						airtableRecordId: p.recordId,
+						email: p.email,
 						finishedAccountCreation: true,
 						syncedToAirtable: false,
+						userId: p.userId,
 					},
 				})
 			}
@@ -134,9 +134,9 @@ async function main() {
 		console.log(`loops sync skipped: ${result.skipped}`)
 	} else {
 		console.log(
-			`loops sync (${result.dryRun ? "dry run" : "commit"}): users=${result.users} matched=${result.matched} ` +
-				`(by id=${result.matchedById}, by record=${result.matchedByRecord}, by email=${result.matchedByEmail}) ` +
-				`relinked=${result.relinked} unmatched=${result.unmatched} updated=${result.updated} unchanged=${result.unchanged} degraded=${result.degraded}`,
+			`loops sync (${result.dryRun ? "dry run" : "commit"}): users=${result.users} matched=${result.matched} `
+				+ `(by id=${result.matchedById}, by record=${result.matchedByRecord}, by email=${result.matchedByEmail}) `
+				+ `relinked=${result.relinked} unmatched=${result.unmatched} updated=${result.updated} unchanged=${result.unchanged} degraded=${result.degraded}`,
 		)
 		if (result.preview?.length) console.log("preview:", JSON.stringify(result.preview, null, 1))
 		if (!commit) console.log("Pass --commit to link buffer rows and write the Loops columns.")
@@ -144,7 +144,7 @@ async function main() {
 }
 
 main()
-	.catch((err) => {
+	.catch(err => {
 		console.error(err)
 		process.exitCode = 1
 	})

@@ -29,8 +29,8 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 
 	// A row is a submission, so only a phase that has been handed in gets one – never a draft, which is how an empty 0-hour row would otherwise appear.
 	const project = await prisma.themeProject.findUnique({
+		select: { buildStatus: true, designStatus: true },
 		where: { id },
-		select: { designStatus: true, buildStatus: true },
 	})
 	if (!project) return fail("NOT_FOUND", "Project not found")
 	const status = parsed.data.phase === "DESIGN" ? project.designStatus : project.buildStatus
@@ -40,11 +40,11 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	const result = await trackSideEffect(
 		"airtable",
 		{
-			actorId: gate.user.id,
 			actorEmail: gate.user.email,
-			targetType: "ThemeProject",
+			actorId: gate.user.id,
+			metadata: { manual: true, phase: parsed.data.phase },
 			targetId: id,
-			metadata: { phase: parsed.data.phase, manual: true },
+			targetType: "ThemeProject",
 		},
 		() => syncSubmissionToYsws(id, parsed.data.phase),
 	)

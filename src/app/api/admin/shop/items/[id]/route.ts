@@ -22,48 +22,48 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 	if (!before) return fail("NOT_FOUND", "Item not found")
 
 	const item = await prisma.shopItem.update({
-		where: { id },
 		data: {
 			...data,
 			...(data.name !== undefined ? { name: sanitize(data.name) } : {}),
 			...(data.description !== undefined ? { description: sanitize(data.description) } : {}),
 			...(data.costUsd !== undefined ? { costUsd: dollars(data.costUsd) } : {}),
 		},
+		where: { id },
 	})
 
 	await logAudit({
 		action: AuditAction.ADMIN_UPDATE_SHOP_ITEM,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "ShopItem",
-		targetId: id,
+		actorId: gate.user.id,
 		// Everything the edit form can change. Category and gating decide who can buy an item and with which coins, so a change to them has to be traceable.
 		metadata: {
-			before: {
-				name: before.name,
-				category: before.category,
-				priceCredits: before.priceCredits,
-				costUsd: before.costUsd,
-				maxPerUser: before.maxPerUser,
-				stock: before.stock,
-				requiresPrinterQualified: before.requiresPrinterQualified,
-				imageUrl: before.imageUrl,
-				sortOrder: before.sortOrder,
-				active: before.active,
-			},
 			after: {
-				name: item.name,
-				category: item.category,
-				priceCredits: item.priceCredits,
-				costUsd: item.costUsd,
-				maxPerUser: item.maxPerUser,
-				stock: item.stock,
-				requiresPrinterQualified: item.requiresPrinterQualified,
-				imageUrl: item.imageUrl,
-				sortOrder: item.sortOrder,
 				active: item.active,
+				category: item.category,
+				costUsd: item.costUsd,
+				imageUrl: item.imageUrl,
+				maxPerUser: item.maxPerUser,
+				name: item.name,
+				priceCredits: item.priceCredits,
+				requiresPrinterQualified: item.requiresPrinterQualified,
+				sortOrder: item.sortOrder,
+				stock: item.stock,
+			},
+			before: {
+				active: before.active,
+				category: before.category,
+				costUsd: before.costUsd,
+				imageUrl: before.imageUrl,
+				maxPerUser: before.maxPerUser,
+				name: before.name,
+				priceCredits: before.priceCredits,
+				requiresPrinterQualified: before.requiresPrinterQualified,
+				sortOrder: before.sortOrder,
+				stock: before.stock,
 			},
 		},
+		targetId: id,
+		targetType: "ShopItem",
 	})
 
 	return ok({ item })
@@ -80,15 +80,15 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 	const before = await prisma.shopItem.findUnique({ where: { id } })
 	if (!before) return fail("NOT_FOUND", "Item not found")
 
-	const item = await prisma.shopItem.update({ where: { id }, data: { active: false } })
+	const item = await prisma.shopItem.update({ data: { active: false }, where: { id } })
 
 	await logAudit({
 		action: AuditAction.ADMIN_RETIRE_SHOP_ITEM,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "ShopItem",
+		actorId: gate.user.id,
+		metadata: { after: { active: false }, before: { active: before.active } },
 		targetId: id,
-		metadata: { before: { active: before.active }, after: { active: false } },
+		targetType: "ShopItem",
 	})
 
 	return ok({ item })

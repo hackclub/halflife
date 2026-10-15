@@ -18,10 +18,11 @@ jobs:
         runs-on: ubuntu-latest
         timeout-minutes: 15
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v5
+            # No bun-version: setup-bun reads packageManager (bun@1.4.3), which
+            # hits the runner tool cache instead of downloading `latest` every
+            # run, and keeps CI on the same toolchain as local dev.
             - uses: oven-sh/setup-bun@v2
-              with:
-                  bun-version: latest
 
             - uses: actions/cache@v4
               with:
@@ -29,6 +30,17 @@ jobs:
                   key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
                   restore-keys: |
                       bun-${{ runner.os }}-
+
+            # Next.js incremental build cache. Keyed on sources for an exact hit
+            # when nothing changed, falling back to the lockfile prefix otherwise;
+            # Next invalidates stale entries itself.
+            - uses: actions/cache@v4
+              with:
+                  path: .next/cache
+                  key: nextjs-${{ runner.os }}-${{ hashFiles('bun.lock') }}-${{ hashFiles('src/**', 'prisma/**', 'next.config.ts', 'tsconfig.json', 'package.json') }}
+                  restore-keys: |
+                      nextjs-${{ runner.os }}-${{ hashFiles('bun.lock') }}-
+                      nextjs-${{ runner.os }}-
 
             - run: bun install --frozen-lockfile
 
@@ -43,8 +55,18 @@ jobs:
             - run: bunx next typegen
 
             # `bun check` rather than `bun run typecheck`: it is the built-in, reads the same tsconfig (paths, strict flags, the generated/ exclude) and enforces .next/types, so the `next typegen` step above still earns its place.
-            - run: bun check
-            - run: bun run lint
+            # Typecheck and ESLint touch disjoint inputs, so run them concurrently
+            # rather than sequentially. The `||` guards keep `set -e` from
+            # exiting on the first `wait` before the other status is collected.
+            - name: Check and lint
+              run: |
+                  CHECK_STATUS=0
+                  LINT_STATUS=0
+                  bun check & CHECK_PID=$!
+                  bun run lint & LINT_PID=$!
+                  wait $CHECK_PID || CHECK_STATUS=$?
+                  wait $LINT_PID || LINT_STATUS=$?
+                  exit $(( CHECK_STATUS || LINT_STATUS ))
 
             - name: Build
               env:
@@ -65,16 +87,20 @@ jobs:
                     POSTGRES_PASSWORD: postgres
                     POSTGRES_DB: halflife_ci
                 ports: ["5432:5432"]
+                # 1s health polling (was 5s) so the job starts as soon as Postgres
+                # is ready, and a tmpfs data dir so migrations and the seed run
+                # in RAM instead of on the runner's disk.
                 options: >-
-                    --health-cmd pg_isready --health-interval 5s
-                    --health-timeout 5s --health-retries 10
+                    --health-cmd pg_isready --health-interval 1s
+                    --health-timeout 2s --health-retries 15
+                    --tmpfs /var/lib/postgresql/data
         env:
             DATABASE_URL: postgresql://postgres:postgres@localhost:5432/halflife_ci
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v5
+            # Same pinned-toolchain reasoning as the verify job: omit bun-version
+            # so setup-bun reads packageManager and hits the tool cache.
             - uses: oven-sh/setup-bun@v2
-              with:
-                  bun-version: latest
 
             - uses: actions/cache@v4
               with:
@@ -107,5 +133,5 @@ jobs:
                     --to-schema prisma/schema.prisma \
                     --exit-code
 
-            # tsx runs on the runner's preinstalled Node – no setup-node needed.
+            # The seed runs under Bun (`bun prisma/seed.ts`), so no setup-node needed.
             - run: bun run db:seed

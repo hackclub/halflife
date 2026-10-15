@@ -16,10 +16,10 @@ export const GET = withRoute(async (req: NextRequest) => {
 
 	return ok(
 		await getReviewQueue({
-			reviewerId: gate.user.id,
-			phase: query.data.phase,
 			cursor: query.data.cursor,
 			limit: query.data.limit,
+			phase: query.data.phase,
+			reviewerId: gate.user.id,
 		}),
 	)
 })

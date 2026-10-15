@@ -22,11 +22,11 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 
 	await logAudit({
 		action: AuditAction.USER_UNSUBMIT_PHASE,
-		actorId: gate.user.id,
 		actorEmail: gate.user.email,
-		targetType: "ThemeProject",
-		targetId: id,
+		actorId: gate.user.id,
 		metadata: { phase: parsed.data.phase },
+		targetId: id,
+		targetType: "ThemeProject",
 	})
 
 	// Taken back before review, so its row goes too – otherwise reviewers on ari would see a hand-in that no longer exists. `removed` marks the row gone, so the next submission of this phase writes a fresh one.
@@ -34,11 +34,11 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		await trackSideEffect(
 			"airtable",
 			{
-				actorId: gate.user.id,
 				actorEmail: gate.user.email,
-				targetType: "ThemeProject",
-				targetId: id,
+				actorId: gate.user.id,
 				metadata: { phase: parsed.data.phase, removed: true },
+				targetId: id,
+				targetType: "ThemeProject",
 			},
 			() => removeSubmissionFromYsws(id, parsed.data.phase),
 		)
@@ -50,11 +50,11 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 			await trackSideEffect(
 				"ari",
 				{
-					actorId: gate.user.id,
 					actorEmail: gate.user.email,
-					targetType: "ThemeProject",
-					targetId: id,
+					actorId: gate.user.id,
 					metadata: { phase: parsed.data.phase, withdrawn: true },
+					targetId: id,
+					targetType: "ThemeProject",
 				},
 				() => withdrawSubmissionFromAri(id, parsed.data.phase),
 			)

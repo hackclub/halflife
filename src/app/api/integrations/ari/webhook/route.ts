@@ -24,10 +24,10 @@ export async function POST(request: Request): Promise<Response> {
 		return NextResponse.json({ error: "Ari is not configured on this deployment" }, { status: 503 })
 	}
 	handler ??= createWebhookHandler({
-		secret,
 		async on_event(event, context) {
 			await applyAriWebhook(event, context.delivery_id)
 		},
+		secret,
 	})
 	return handler(request)
 }

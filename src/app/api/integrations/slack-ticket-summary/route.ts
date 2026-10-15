@@ -30,9 +30,9 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 	await postSlackOrThrow(channel, await buildTicketSummary(stats))
 
 	await recordSyncRun("help_ticket_summary", {
-		opened: stats.opened,
 		closed: stats.closed,
 		helpers: stats.leaderboard.length,
+		opened: stats.opened,
 	})
-	return ok({ posted: true, channel, opened: stats.opened, closed: stats.closed })
+	return ok({ channel, closed: stats.closed, opened: stats.opened, posted: true })
 })

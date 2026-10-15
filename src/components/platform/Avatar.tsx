@@ -24,7 +24,7 @@ export function Avatar({
 	const radius = shape === "tile" ? "rounded-lg" : "rounded-full"
 	return image ? (
 		// eslint-disable-next-line @next/next/no-img-element -- avatars come from the identity provider's CDN
-		<img src={image} alt="" className={cx("shrink-0 bg-sky-pale object-cover", radius, className)} />
+		<img alt="" className={cx("shrink-0 bg-sky-pale object-cover", radius, className)} src={image} />
 	) : (
 		<span
 			aria-hidden="true"

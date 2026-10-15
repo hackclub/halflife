@@ -46,7 +46,7 @@ function records(text: string): { line: number; fields: string[] }[] {
 		} else if (c === "\n" || c === "\r") {
 			if (c === "\r" && src[i + 1] === "\n") i += 1
 			fields.push(field)
-			out.push({ line: start, fields })
+			out.push({ fields, line: start })
 			fields = []
 			field = ""
 			line += 1
@@ -55,9 +55,9 @@ function records(text: string): { line: number; fields: string[] }[] {
 	}
 	if (field !== "" || fields.length > 0) {
 		fields.push(field)
-		out.push({ line: start, fields })
+		out.push({ fields, line: start })
 	}
-	return out.filter((r) => r.fields.some((f) => f.trim() !== ""))
+	return out.filter(r => r.fields.some(f => f.trim() !== ""))
 }
 
 // Only ever read through `typeof` below, to derive the `Column` union that keeps HEADER_ALIASES honest - every alias has to name a real column. That is a type-position use, which this rule cannot see (the config is not type-aware), hence the disable.
@@ -86,41 +86,41 @@ type Column = (typeof COLUMNS)[number]
 
 /** Spreadsheet headings people actually type, folded onto the columns. */
 const HEADER_ALIASES: Record<string, Column> = {
-	projectid: "project_id",
+	author: "author_email",
+	authoremail: "author_email",
+	authorhackatimeprojects: "author_hackatime_projects",
+	authorsemail: "author_email",
+	collaboratoremails: "collaborator_emails",
+	collaboratorhackatimeprojects: "collaborator_hackatime_projects",
+	collaborators: "collaborator_emails",
+	count: "journal_count",
+	created: "created_at",
+	createdat: "created_at",
+	demo: "demo_url",
+	demourl: "demo_url",
+	description: "project_description",
+	email: "author_email",
+	hours: "journal_hours_total",
 	id: "project_id",
-	projecttitle: "project_title",
-	title: "project_title",
+	journalcount: "journal_count",
+	journalhourstotal: "journal_hours_total",
+	journals: "journals",
+	macondo: "macondo_url",
+	macondourl: "macondo_url",
 	name: "project_title",
 	projectdescription: "project_description",
-	description: "project_description",
-	journals: "journals",
-	journalcount: "journal_count",
-	count: "journal_count",
-	journalhourstotal: "journal_hours_total",
-	hours: "journal_hours_total",
-	demourl: "demo_url",
-	demo: "demo_url",
-	repositoryurl: "repository_url",
+	projectid: "project_id",
+	projecttitle: "project_title",
 	repo: "repository_url",
+	repositoryurl: "repository_url",
 	repourl: "repository_url",
-	thumbnailurl: "thumbnail_url",
-	thumbnail: "thumbnail_url",
-	authorsemail: "author_email",
-	authoremail: "author_email",
-	author: "author_email",
-	email: "author_email",
-	collaboratoremails: "collaborator_emails",
-	collaborators: "collaborator_emails",
-	collaboratorhackatimeprojects: "collaborator_hackatime_projects",
-	tier: "tier",
-	authorhackatimeprojects: "author_hackatime_projects",
-	createdat: "created_at",
-	created: "created_at",
-	submittedat: "submitted_at",
 	submitted: "submitted_at",
+	submittedat: "submitted_at",
+	thumbnail: "thumbnail_url",
+	thumbnailurl: "thumbnail_url",
+	tier: "tier",
+	title: "project_title",
 	transferredat: "transferred_at",
-	macondourl: "macondo_url",
-	macondo: "macondo_url",
 }
 
 export type MacondoJournal = {
@@ -170,11 +170,11 @@ function parseJournals(raw: string): MacondoJournal[] {
 		const e = entry as Record<string, unknown>
 		const hours = Number(e.hours)
 		out.push({
-			title: typeof e.title === "string" ? e.title : null,
 			content: typeof e.content === "string" ? e.content : null,
 			createdAt:
 				typeof e.created_at === "string" && !Number.isNaN(Date.parse(e.created_at)) ? new Date(e.created_at) : null,
 			hours: Number.isFinite(hours) && hours > 0 ? hours : 0,
+			title: typeof e.title === "string" ? e.title : null,
 		})
 	}
 	return out
@@ -190,10 +190,10 @@ function date(raw: string): Date | null {
 export function parseProjectsCsv(text: string): { rows: MacondoRow[]; problems: CsvProblem[] } {
 	const lines = records(text)
 	const head = lines.shift()
-	if (!head) return { rows: [], problems: [{ line: 0, message: "The file is empty." }] }
+	if (!head) return { problems: [{ line: 0, message: "The file is empty." }], rows: [] }
 
 	const columns = head.fields.map(
-		(h) =>
+		h =>
 			HEADER_ALIASES[
 				h
 					.trim()
@@ -207,14 +207,14 @@ export function parseProjectsCsv(text: string): { rows: MacondoRow[]; problems: 
 		if (!columns.includes(required)) missing.push(required)
 	if (missing.length > 0)
 		problems.push({ line: 1, message: `Missing column${missing.length > 1 ? "s" : ""}: ${missing.join(", ")}.` })
-	if (problems.length > 0) return { rows: [], problems }
+	if (problems.length > 0) return { problems, rows: [] }
 
 	if (lines.length === 0)
-		return { rows: [], problems: [{ line: 0, message: "The file has a header but no projects." }] }
+		return { problems: [{ line: 0, message: "The file has a header but no projects." }], rows: [] }
 	if (lines.length > MAX_ROWS)
 		return {
-			rows: [],
 			problems: [{ line: 0, message: `At most ${MAX_ROWS} projects per import; this file has ${lines.length}.` }],
+			rows: [],
 		}
 
 	const rows: MacondoRow[] = []
@@ -251,23 +251,23 @@ export function parseProjectsCsv(text: string): { rows: MacondoRow[]; problems: 
 		const hoursTotalRaw = cell("journal_hours_total")
 		const hoursTotal = hoursTotalRaw ? Number(hoursTotalRaw) : null
 		rows.push({
-			projectId,
-			title,
+			createdAt: date(cell("created_at")),
+			demoUrl: cell("demo_url") || null,
 			description: cell("project_description") || null,
 			email,
 			hoursTotal: hoursTotal !== null && Number.isFinite(hoursTotal) ? hoursTotal : null,
-			demoUrl: cell("demo_url") || null,
+			journals: parseJournals(cell("journals")),
+			macondoUrl: cell("macondo_url") || null,
+			projectId,
 			repoUrl: cell("repository_url") || null,
+			submittedAt: date(cell("submitted_at")),
 			thumbnailUrl: cell("thumbnail_url") || null,
 			tier,
-			createdAt: date(cell("created_at")),
-			submittedAt: date(cell("submitted_at")),
-			macondoUrl: cell("macondo_url") || null,
-			journals: parseJournals(cell("journals")),
+			title,
 		})
 	}
 
-	return problems.length > 0 ? { rows: [], problems } : { rows, problems }
+	return problems.length > 0 ? { problems, rows: [] } : { problems, rows }
 }
 
 export type CsvImportOutcome = {
@@ -283,8 +283,8 @@ export type CsvImportOutcome = {
  */
 async function importedProjectIds(): Promise<Set<string>> {
 	const rows = await prisma.auditLog.findMany({
-		where: { action: AuditAction.ADMIN_IMPORT_AIRTABLE_PROJECT },
 		select: { metadata: true },
+		where: { action: AuditAction.ADMIN_IMPORT_AIRTABLE_PROJECT },
 	})
 	const out = new Set<string>()
 	for (const row of rows) {
@@ -327,11 +327,11 @@ export async function importMacondoProjects(actor: ImportActor, csv: string): Pr
 		if (done.has(row.projectId)) {
 			alreadyImported += 1
 			outcomes.push({
-				projectId: row.projectId,
 				email: row.email,
-				title: row.title,
-				status: "already_imported",
+				projectId: row.projectId,
 				reason: null,
+				status: "already_imported",
+				title: row.title,
 			})
 			continue
 		}
@@ -341,10 +341,10 @@ export async function importMacondoProjects(actor: ImportActor, csv: string): Pr
 
 			const user =
 				(await prisma.user.findFirst({
-					where: { email: { equals: row.email, mode: "insensitive" } },
 					select: { id: true },
-				})) ??
-				(await prisma.user.create({
+					where: { email: { equals: row.email, mode: "insensitive" } },
+				}))
+				?? (await prisma.user.create({
 					data: {
 						email: row.email,
 						emailVerified: false,
@@ -355,17 +355,6 @@ export async function importMacondoProjects(actor: ImportActor, csv: string): Pr
 
 			const project = await prisma.themeProject.create({
 				data: {
-					userId: user.id,
-					theme: Theme.WARMUP,
-					title: row.title,
-					description: row.description,
-					// The cell is free text from a sheet, so it is run through the same rule the repo field uses; an address that will not parse becomes null rather than a link nothing can open.
-					githubRepo: normalizeRepo(row.repoUrl ?? "").url,
-					requestedTier: row.tier ?? 1,
-					warmupPhase: Phase.BUILD,
-					namedAt: createdAt,
-					createdAt,
-					buildStatus: PhaseStatus.in_review,
 					artifactLinks:
 						row.demoUrl || row.macondoUrl
 							? [
@@ -373,6 +362,17 @@ export async function importMacondoProjects(actor: ImportActor, csv: string): Pr
 									...(row.macondoUrl ? [{ label: "Macondo", url: row.macondoUrl }] : []),
 								]
 							: undefined,
+					buildStatus: PhaseStatus.in_review,
+					createdAt,
+					description: row.description,
+					// The cell is free text from a sheet, so it is run through the same rule the repo field uses; an address that will not parse becomes null rather than a link nothing can open.
+					githubRepo: normalizeRepo(row.repoUrl ?? "").url,
+					namedAt: createdAt,
+					requestedTier: row.tier ?? 1,
+					theme: Theme.WARMUP,
+					title: row.title,
+					userId: user.id,
+					warmupPhase: Phase.BUILD,
 				},
 				select: { id: true },
 			})
@@ -380,27 +380,27 @@ export async function importMacondoProjects(actor: ImportActor, csv: string): Pr
 			for (const journal of row.journals) {
 				await prisma.workSession.create({
 					data: {
-						themeProjectId: project.id,
-						phase: Phase.BUILD,
-						title: journal.title ?? "Devlog",
 						content: journal.content,
+						createdAt: journal.createdAt ?? createdAt,
+						effectiveDate: effectiveDateFor(journal.createdAt ?? createdAt, settings.programTimezone),
 						hoursClaimed: journal.hours,
 						hoursSource: HoursSource.MANUAL,
+						phase: Phase.BUILD,
+						themeProjectId: project.id,
+						title: journal.title ?? "Devlog",
 						weekNumber: 0,
-						effectiveDate: effectiveDateFor(journal.createdAt ?? createdAt, settings.programTimezone),
-						createdAt: journal.createdAt ?? createdAt,
 					},
 				})
 			}
 
 			await prisma.phaseSubmission.create({
 				data: {
-					themeProjectId: project.id,
-					phase: Phase.BUILD,
-					submittedInWeek: 0,
-					scheduledWeek: 0,
-					onTime: false,
 					createdAt: row.submittedAt ?? createdAt,
+					onTime: false,
+					phase: Phase.BUILD,
+					scheduledWeek: 0,
+					submittedInWeek: 0,
+					themeProjectId: project.id,
 				},
 			})
 
@@ -408,43 +408,43 @@ export async function importMacondoProjects(actor: ImportActor, csv: string): Pr
 			if (row.thumbnailUrl) {
 				const key = await rehostScreenshot(user.id, row.thumbnailUrl)
 				if (key) {
-					await prisma.themeProject.update({ where: { id: project.id }, data: { coverImageKey: key } })
+					await prisma.themeProject.update({ data: { coverImageKey: key }, where: { id: project.id } })
 					coverImported = true
 				}
 			}
 
-			await prisma.$transaction(async (tx) => {
+			await prisma.$transaction(async tx => {
 				await logAuditTx(tx, {
 					action: AuditAction.ADMIN_IMPORT_AIRTABLE_PROJECT,
-					actorId: actor.id,
 					actorEmail: actor.email,
-					targetType: "ThemeProject",
-					targetId: project.id,
+					actorId: actor.id,
 					metadata: {
-						source: "macondo-csv",
-						macondoProjectId: row.projectId,
-						email: row.email,
-						title: row.title,
-						devlogCount: row.journals.length,
 						coverImported,
+						devlogCount: row.journals.length,
+						email: row.email,
+						macondoProjectId: row.projectId,
+						source: "macondo-csv",
+						title: row.title,
 					},
+					targetId: project.id,
+					targetType: "ThemeProject",
 				})
 			})
 
 			imported += 1
 			done.add(row.projectId)
-			outcomes.push({ projectId: row.projectId, email: row.email, title: row.title, status: "imported", reason: null })
+			outcomes.push({ email: row.email, projectId: row.projectId, reason: null, status: "imported", title: row.title })
 		} catch (err) {
 			failed += 1
 			outcomes.push({
-				projectId: row.projectId,
 				email: row.email,
-				title: row.title,
-				status: "failed",
+				projectId: row.projectId,
 				reason: err instanceof Error ? err.message : String(err),
+				status: "failed",
+				title: row.title,
 			})
 		}
 	}
 
-	return { read: parsed.rows.length, imported, alreadyImported, failed, outcomes }
+	return { alreadyImported, failed, imported, outcomes, read: parsed.rows.length }
 }

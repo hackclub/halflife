@@ -22,29 +22,29 @@ export const GET = withRoute(async () => {
 
 	const [user, balances, earned, printer] = await Promise.all([
 		prisma.user.findUnique({
-			where: { id: gate.user.id },
 			select: {
-				id: true,
-				name: true,
 				email: true,
-				image: true,
-				slackId: true,
-				verificationStatus: true,
-				hackatimeUserId: true,
 				fraudFlagged: true,
+				hackatimeUserId: true,
+				id: true,
+				image: true,
+				name: true,
+				slackId: true,
 				submissionExtensionUntil: true,
+				verificationStatus: true,
 			},
+			where: { id: gate.user.id },
 		}),
-		prisma.$transaction((tx) => getBalances(tx, gate.user.id)),
-		prisma.$transaction((tx) => getEarnedCredit(tx, gate.user.id)),
+		prisma.$transaction(tx => getBalances(tx, gate.user.id)),
+		prisma.$transaction(tx => getEarnedCredit(tx, gate.user.id)),
 		getPrinterQualification(gate.user.id),
 	])
 
 	return ok({
-		user: { ...user, image: avatarUrl(user), hackatimeLinked: !!user?.hackatimeUserId },
-		roles: gate.roles,
-		permissions: permissionsFor(gate.roles),
 		credit: { ...balances, earned },
+		permissions: permissionsFor(gate.roles),
 		printer,
+		roles: gate.roles,
+		user: { ...user, hackatimeLinked: !!user?.hackatimeUserId, image: avatarUrl(user) },
 	})
 })

@@ -10,8 +10,8 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-	themeColor: "#31222c",
 	colorScheme: "dark",
+	themeColor: "#31222c",
 }
 
 export default function GlobalNotFound() {

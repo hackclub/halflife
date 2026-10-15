@@ -18,7 +18,7 @@ export function box(
 	w: number,
 	h: number,
 ): { readonly left: string; readonly top: string; readonly width: string; readonly height: string } {
-	return { left: u(x), top: u(y), width: u(w), height: u(h) } as const
+	return { height: u(h), left: u(x), top: u(y), width: u(w) } as const
 }
 
 /** Absolute origin only – lets content size itself. */
@@ -69,11 +69,11 @@ export function band(
 	const h = r(dy)
 
 	return {
+		d: `M${r(topLeft - left)} 0H${r(topRight - left)}` + `L${r(botRight - left)} ${h}H${r(botLeft - left)}Z`,
+		h,
+		w: r(Math.max(topRight, botRight) - left),
 		x: r(left),
 		y: y0,
-		w: r(Math.max(topRight, botRight) - left),
-		h,
-		d: `M${r(topLeft - left)} 0H${r(topRight - left)}` + `L${r(botRight - left)} ${h}H${r(botLeft - left)}Z`,
 	}
 }
 
@@ -82,7 +82,7 @@ export type Plate = { x: number; y: number; w: number; h: number }
 
 /** Declare a plate. `box(...spread)` draws it; `weld` joins it to another. */
 export function plate(x: number, y: number, w: number, h: number): Plate {
-	return { x, y, w, h }
+	return { h, w, x, y }
 }
 
 /**
@@ -111,7 +111,7 @@ export function weld(
  */
 const STACK_MEAN_EDGE = 85
 const STACK_ANCHORS = [70, 135] as const
-export const STACK_VIEW = { w: 200, h: 120 } as const
+export const STACK_VIEW = { h: 120, w: 200 } as const
 
 export function stackWeld(lean: "left" | "right"): string {
 	const [near, far] = lean === "right" ? STACK_ANCHORS : [STACK_ANCHORS[1], STACK_ANCHORS[0]]

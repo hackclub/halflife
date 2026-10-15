@@ -39,44 +39,44 @@ export function formulaRef(field: FieldDef): string {
  * Every row is written by Half Life at submit time, as "Pending Review"; review itself happens on ari.hackclub.com, which moves the row on from there. The `Automation - …` columns belong to the pipeline and are never written here – `Automation - Submit to Unified YSWS` in particular is what sends a row onward, and that is a reviewer's call, not a submitter's.
  */
 export const YSWS_SUBMISSION = {
-	tableId: process.env.AIRTABLE_YSWS_TABLE_ID ?? "YSWS Project Submission",
 	fields: {
-		codeUrl: f<string>("fldYswsCodeUrl", "Code URL"),
-		firstName: f<string>("fldYswsFirstName", "First Name"),
-		lastName: f<string>("fldYswsLastName", "Last Name"),
-		email: f<string>("fldYswsEmail", "Email"),
-		birthday: f<string>("fldYswsBirthday", "Birthday"),
-		slackId: f<string>("fldYswsSlackId", "Slack ID"),
-		stage: f<"Design" | "Build">("fldYswsStage", "Design or build"),
-		requestedFunding: f<number>("fldYswsRequestedFunding", "Requested funding"),
-		hoursSelfReported: f<number>("fldYswsHoursSelfReported", "Hours spent (self reported)"),
-		playableUrl: f<string>("fldYswsPlayableUrl", "Playable URL"),
-		description: f<string>("fldYswsDescription", "Description"),
-		screenshot: f<{ url: string }[]>("fldYswsScreenshot", "Screenshot"),
-		journalUrl: f<string>("fldYswsJournalUrl", "Link to JOURNAL.md"),
-		lapseLinks: f<string>("fldYswsLapseLinks", "Justification - Lapse Links, comma-separated"),
-		githubUsername: f<string>("fldYswsGithubUsername", "GitHub Username"),
 		addressLine1: f<string>("fldYswsAddress1", "Address (Line 1)"),
 		addressLine2: f<string>("fldYswsAddress2", "Address (Line 2)"),
+		birthday: f<string>("fldYswsBirthday", "Birthday"),
 		city: f<string>("fldYswsCity", "City"),
-		zip: f<string>("fldYswsZip", "ZIP / Postal Code"),
-		state: f<string>("fldYswsState", "State / Province"),
+		codeUrl: f<string>("fldYswsCodeUrl", "Code URL"),
 		country: f<string>("fldYswsCountry", "Country"),
+		description: f<string>("fldYswsDescription", "Description"),
+		email: f<string>("fldYswsEmail", "Email"),
+		firstName: f<string>("fldYswsFirstName", "First Name"),
+		githubUsername: f<string>("fldYswsGithubUsername", "GitHub Username"),
+		hackatimeId: f<string>("fldYswsHackatimeId", "Justification - Submitter Hackatime ID"),
 		hackatimeProjects: f<string>(
 			"fldYswsHackatimeProjects",
 			"Justification - Hackatime Project Name(s) + Date Range(s)",
 		),
-		hackatimeId: f<string>("fldYswsHackatimeId", "Justification - Submitter Hackatime ID"),
+		hoursSelfReported: f<number>("fldYswsHoursSelfReported", "Hours spent (self reported)"),
+		journalUrl: f<string>("fldYswsJournalUrl", "Link to JOURNAL.md"),
+		lapseLinks: f<string>("fldYswsLapseLinks", "Justification - Lapse Links, comma-separated"),
+		lastName: f<string>("fldYswsLastName", "Last Name"),
+		playableUrl: f<string>("fldYswsPlayableUrl", "Playable URL"),
 		projectName: f<string>("fldYswsProjectName", "Project name"),
-		reviewStatus: f<string>("fldYswsReviewStatus", "Loops - halfLifeReviewStatus"),
+		requestedFunding: f<number>("fldYswsRequestedFunding", "Requested funding"),
 		// The reviewer's own words on that decision, beside the status and in the same Loops family. Written by the same mirror the status is (see `syncReviewDecisionToYsws` in lib/airtable/sync), because a decision on ari.hackclub.com reaches the base only through it.
 		reviewerNotes: f<string>("fldYswsReviewerNotes", "Loops - halfLifeReviewerNotes"),
-		tier: f<string>("fldYswsTier", "Tier"),
+		reviewStatus: f<string>("fldYswsReviewStatus", "Loops - halfLifeReviewStatus"),
+		screenshot: f<{ url: string }[]>("fldYswsScreenshot", "Screenshot"),
+		slackId: f<string>("fldYswsSlackId", "Slack ID"),
+		stage: f<"Design" | "Build">("fldYswsStage", "Design or build"),
 		// A plain checkbox, true when the maker took one of the week's starter projects rather than bringing their own idea (see `starterProjectId` on ThemeProject). Written for the reviewer, who judges a starter by whether it was made the maker's own rather than as a finished build (see STARTER_MODIFICATION_NOTE in lib/config/onboarding); the base needs the fact, not which starter it was.
 		starterProject: f<boolean>("fldYswsStarterProject", "Starter project"),
+		state: f<string>("fldYswsState", "State / Province"),
+		tier: f<string>("fldYswsTier", "Tier"),
 		// Written by the pipeline's automation, read by us: it identifies the row's twin in the unified base, which is the only safe way to remove it.
 		unifiedRecordId: f<string>("fldYswsUnifiedRecordId", "Automation - YSWS Record ID"),
+		zip: f<string>("fldYswsZip", "ZIP / Postal Code"),
 	},
+	tableId: process.env.AIRTABLE_YSWS_TABLE_ID ?? "YSWS Project Submission",
 } as const
 
 /** What a row says while its phase is in review; a decision moves it on (see YSWS_REVIEW_STATUS). */
@@ -90,9 +90,9 @@ export const YSWS_PENDING_REVIEW = "Pending Review"
  * Written with `typecast: false`, so each string has to already be an option in the base: a new word here is a 422 the update reports, not an option invented in the base (see the note on typecast in lib/airtable/ysws).
  */
 export const YSWS_REVIEW_STATUS = {
-	pending: YSWS_PENDING_REVIEW,
 	approved: "Approved",
 	changesRequested: "Changes Requested",
+	pending: YSWS_PENDING_REVIEW,
 	rejected: "Rejected",
 } as const
 
@@ -102,23 +102,23 @@ export const YSWS_REVIEW_STATUS = {
 export const RSVP_TABLE_ID = process.env.AIRTABLE_RSVP_TABLE_ID ?? "Signups"
 
 export const RSVP = {
-	tableId: RSVP_TABLE_ID,
 	fields: {
 		// Lowercase in the live table. Airtable field names are case-sensitive, and `fields[]=Email` is a 422 that kills the whole list request – which is how the Loops sync never ran (see lib/airtable/loops).
 		email: f<string>("fldRsvpEmail", "email"),
-		firstName: f<string>("fldRsvpFirstName", "First Name"),
-		lastName: f<string>("fldRsvpLastName", "Last Name"),
-		pronouns: f<string>("fldRsvpPronouns", "Pronouns"),
-		// Lowercase too, and this map said `IP` for as long as it has existed: the probe could never find it, so every row that went through the drain lost its address while the landing's own direct write (lib/site/signups) kept it. The base has the column; only the spelling was wrong.
-		ip: f<string>("fldRsvpIp", "ip"),
-		// The landing's spellings, because the landing writes them itself: `utm_source` and `referred_by`, not `UTM Source` and `Referred By`. Same failure as `ip` and a worse one – referral attribution is the thing this list exists for, and it was being dropped on every buffered row (see lib/site/referrals, which had to bypass this map to read it).
-		utmSource: f<string>("fldRsvpUtmSource", "utm_source"),
-		referredBy: f<string>("fldRsvpReferredBy", "referred_by"),
 		// `signupPage` used to sit here as `Loops - halfLifeSignUpPage`. Pruned: the base has no such column and never did, and the `Loops - …` family in it is Loops-owned and date-shaped (`halfLifeSignUpAt`, `halfLifeLastLoginAt`, `halfLifeReferralNumber`), so this was a column that was planned and never created rather than one whose spelling had drifted. Left in the map, it cost a probe per deploy to keep learning that.
 		finishedAccountCreation: f<boolean>("fldRsvpFinished", "Finished Account Creation"),
+		firstName: f<string>("fldRsvpFirstName", "First Name"),
+		// Lowercase too, and this map said `IP` for as long as it has existed: the probe could never find it, so every row that went through the drain lost its address while the landing's own direct write (lib/site/signups) kept it. The base has the column; only the spelling was wrong.
+		ip: f<string>("fldRsvpIp", "ip"),
+		lastName: f<string>("fldRsvpLastName", "Last Name"),
+		pronouns: f<string>("fldRsvpPronouns", "Pronouns"),
+		referredBy: f<string>("fldRsvpReferredBy", "referred_by"),
 		// Stasis joins RSVPs to users on email alone, which breaks when someone RSVPs with a personal address and signs in through HCA with a school one.
 		userId: f<string>("fldRsvpUserId", "Half-Life User ID"),
+		// The landing's spellings, because the landing writes them itself: `utm_source` and `referred_by`, not `UTM Source` and `Referred By`. Same failure as `ip` and a worse one – referral attribution is the thing this list exists for, and it was being dropped on every buffered row (see lib/site/referrals, which had to bypass this map to read it).
+		utmSource: f<string>("fldRsvpUtmSource", "utm_source"),
 	},
+	tableId: RSVP_TABLE_ID,
 } as const
 
 type FieldMap = Record<string, FieldDef>

@@ -50,11 +50,11 @@ export const POST = withRoute(async (req: Request) => {
 	after(() =>
 		logAudit({
 			action: result.completed ? AuditAction.USER_COMPLETE_ONBOARDING : AuditAction.USER_ADVANCE_ONBOARDING,
-			actorId: gate.user.id,
 			actorEmail: gate.user.email,
-			targetType: "User",
+			actorId: gate.user.id,
+			metadata: { reached: result.state.reached, step: parsed.data.step },
 			targetId: gate.user.id,
-			metadata: { step: parsed.data.step, reached: result.state.reached },
+			targetType: "User",
 		}),
 	)
 

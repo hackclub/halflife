@@ -52,8 +52,8 @@ async function main() {
 	}
 
 	const projects = await prisma.themeProject.findMany({
-		where: { starterProjectId: { not: null } },
 		select: { id: true, title: true },
+		where: { starterProjectId: { not: null } },
 	})
 	if (projects.length === 0) {
 		console.log("No starter projects; nothing to backfill.")
@@ -61,9 +61,9 @@ async function main() {
 	}
 
 	const events = await prisma.auditLog.findMany({
-		where: { action: AuditAction.AIRTABLE_SYNC_SUCCESS, targetId: { in: projects.map((p) => p.id) } },
 		orderBy: { createdAt: "desc" },
-		select: { targetId: true, metadata: true },
+		select: { metadata: true, targetId: true },
+		where: { action: AuditAction.AIRTABLE_SYNC_SUCCESS, targetId: { in: projects.map(p => p.id) } },
 	})
 	const records = latestRecordIds(events)
 
@@ -72,7 +72,7 @@ async function main() {
 	for (const project of projects) {
 		for (const phase of [Phase.DESIGN, Phase.BUILD] as const) {
 			const recordId = records.get(`${project.id}:${phase}`)
-			if (recordId) targets.push({ title: project.title, phase, recordId })
+			if (recordId) targets.push({ phase, recordId, title: project.title })
 			else withoutRow++
 		}
 	}
@@ -105,7 +105,7 @@ async function main() {
 }
 
 main()
-	.catch((err) => {
+	.catch(err => {
 		console.error(err)
 		process.exitCode = 1
 	})

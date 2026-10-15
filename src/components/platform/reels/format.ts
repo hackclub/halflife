@@ -33,8 +33,8 @@ export function ago(when: Date | string | null | undefined, now = Date.now()): s
 	const date = new Date(t)
 	const sameYear = date.getFullYear() === new Date(now).getFullYear()
 	return date.toLocaleDateString("en-US", {
-		month: "short",
 		day: "numeric",
+		month: "short",
 		...(sameYear ? {} : { year: "numeric" }),
 	})
 }

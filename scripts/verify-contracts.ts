@@ -29,7 +29,7 @@ function check(label: string, ok: boolean, detail = "") {
 /* ── 1. Methods ──────────────────────────────────────────────────────────── */
 
 function walk(dir: string): string[] {
-	return readdirSync(dir).flatMap((entry) => {
+	return readdirSync(dir).flatMap(entry => {
 		const full = join(dir, entry)
 		return statSync(full).isDirectory() ? walk(full) : full.endsWith(".ts") || full.endsWith(".tsx") ? [full] : []
 	})
@@ -48,11 +48,11 @@ function routeTable(): Map<string, Set<string>> {
 			if (new RegExp(`export (const|async function) ${method}\\b`).test(source)) found.add(method)
 		}
 		const url =
-			"/" +
+			"/"
 			// Either separator: `relative` hands back backslashes on Windows.
-			relative("src/app", file.replace(/[\\/]route\.ts$/, ""))
+			+ relative("src/app", file.replace(/[\\/]route\.ts$/, ""))
 				.split(/[\\/]/)
-				.filter((segment) => !segment.startsWith("("))
+				.filter(segment => !segment.startsWith("("))
 				.join("/")
 		table.set(url, found)
 	}
@@ -70,9 +70,9 @@ function clientCalls(): { file: string; path: string; methods: string[] }[] {
 			if (!path.startsWith("/api")) continue
 			// A method can be a literal or a ternary; collect every literal offered.
 			const methods = [...(match[2] ?? "").matchAll(/method:\s*(?:\w+\s*\?\s*)?"(\w+)"(?:\s*:\s*"(\w+)")?/g)]
-				.flatMap((m) => [m[1], m[2]])
+				.flatMap(m => [m[1], m[2]])
 				.filter((m): m is string => Boolean(m))
-			calls.push({ file, path, methods: methods.length ? methods : ["GET"] })
+			calls.push({ file, methods: methods.length ? methods : ["GET"], path })
 		}
 	}
 	return calls
@@ -81,17 +81,17 @@ function clientCalls(): { file: string; path: string; methods: string[] }[] {
 /** The store posts through a helper rather than calling fetch directly. */
 // The `${…}` below are the shape of a path, written out by hand on purpose: the point of the table is to state what the client is believed to send, and interpolating a real value would check the wrong thing.
 const STORE_CALLS: { path: string; methods: string[] }[] = [
-	{ path: "/api/onboarding", methods: ["POST"] },
+	{ methods: ["POST"], path: "/api/onboarding" },
 	// biome-ignore lint/suspicious/noTemplateCurlyInString: a path shape, written out by hand
-	{ path: "/api/projects/${id}", methods: ["PATCH"] },
+	{ methods: ["PATCH"], path: "/api/projects/${id}" },
 	// biome-ignore lint/suspicious/noTemplateCurlyInString: a path shape, written out by hand
-	{ path: "/api/projects/${id}/sessions", methods: ["POST"] },
+	{ methods: ["POST"], path: "/api/projects/${id}/sessions" },
 	// biome-ignore lint/suspicious/noTemplateCurlyInString: a path shape, written out by hand
-	{ path: "/api/projects/${id}/submit", methods: ["POST"] },
+	{ methods: ["POST"], path: "/api/projects/${id}/submit" },
 	// biome-ignore lint/suspicious/noTemplateCurlyInString: a path shape, written out by hand
-	{ path: "/api/projects/${id}/link-sync-repo", methods: ["POST"] },
-	{ path: "/api/posts", methods: ["POST"] },
-	{ path: "/api/goal", methods: ["PATCH"] },
+	{ methods: ["POST"], path: "/api/projects/${id}/link-sync-repo" },
+	{ methods: ["POST"], path: "/api/posts" },
+	{ methods: ["PATCH"], path: "/api/goal" },
 ]
 
 /**
@@ -99,7 +99,7 @@ const STORE_CALLS: { path: string; methods: string[] }[] = [
  */
 const COMPONENT_CALLS: { path: string; methods: string[] }[] = [
 	// biome-ignore lint/suspicious/noTemplateCurlyInString: a path shape, written out by hand
-	{ path: "/api/projects/${projectId}/repo-sync", methods: ["GET", "POST", "PUT"] },
+	{ methods: ["GET", "POST", "PUT"], path: "/api/projects/${projectId}/repo-sync" },
 ]
 
 const routes = routeTable()
@@ -111,15 +111,15 @@ function routeFor(path: string): Set<string> | null {
 	for (const [url, methods] of routes) {
 		if (!new RegExp(`^${url.replace(/\[[^\]]+\]/g, "[^/]+")}$`).test(clean)) continue
 		const dynamic = (url.match(/\[/g) ?? []).length
-		if (!best || dynamic < best.dynamic) best = { methods, dynamic }
+		if (!best || dynamic < best.dynamic) best = { dynamic, methods }
 	}
 	return best?.methods ?? null
 }
 
 for (const call of [
 	...clientCalls(),
-	...STORE_CALLS.map((c) => ({ ...c, file: "src/lib/store.tsx" })),
-	...COMPONENT_CALLS.map((c) => ({ ...c, file: "src/components/platform/RepoSyncSettings.tsx" })),
+	...STORE_CALLS.map(c => ({ ...c, file: "src/lib/store.tsx" })),
+	...COMPONENT_CALLS.map(c => ({ ...c, file: "src/components/platform/RepoSyncSettings.tsx" })),
 ]) {
 	const exported = routeFor(call.path)
 	const label = `${call.path} [${call.methods.join("/")}]`
@@ -127,7 +127,7 @@ for (const call of [
 		check(label, false, "no route handles this path")
 		continue
 	}
-	const missing = call.methods.filter((m) => !exported.has(m))
+	const missing = call.methods.filter(m => !exported.has(m))
 	check(label, missing.length === 0, `route exports ${[...exported].sort().join("/") || "nothing"}`)
 }
 
@@ -149,40 +149,40 @@ async function bodies() {
 	const journal = "x".repeat(200)
 
 	const cases: [string, z.ZodType, unknown][] = [
-		["onboarding · experience", onboardingStepSchema, { step: "experience", experience: "A_LITTLE" }],
+		["onboarding · experience", onboardingStepSchema, { experience: "A_LITTLE", step: "experience" }],
 		["onboarding · week", onboardingStepSchema, { step: "week" }],
-		["onboarding · project", onboardingStepSchema, { step: "project", title: "Macropad", description: "Three keys." }],
-		["onboarding · idea", onboardingStepSchema, { step: "idea", starterProjectId: null }],
-		["onboarding · tier", onboardingStepSchema, { step: "tier", requestedTier: 2 }],
-		["onboarding · tracking", onboardingStepSchema, { step: "tracking", dismissed: false }],
-		["addProject", projectUpdateSchema, { title: "Macropad", description: "Three keys.", requestedTier: 1 }],
+		["onboarding · project", onboardingStepSchema, { description: "Three keys.", step: "project", title: "Macropad" }],
+		["onboarding · idea", onboardingStepSchema, { starterProjectId: null, step: "idea" }],
+		["onboarding · tier", onboardingStepSchema, { requestedTier: 2, step: "tier" }],
+		["onboarding · tracking", onboardingStepSchema, { dismissed: false, step: "tracking" }],
+		["addProject", projectUpdateSchema, { description: "Three keys.", requestedTier: 1, title: "Macropad" }],
 		["setProjectTier", projectUpdateSchema, { requestedTier: 3 }],
-		["takeStarter", projectUpdateSchema, { starterProjectId: "starbie", requestedTier: 1 }],
+		["takeStarter", projectUpdateSchema, { requestedTier: 1, starterProjectId: "starbie" }],
 		["dropStarter", projectUpdateSchema, { starterProjectId: null }],
 		[
 			"logSession",
 			sessionCreateSchema,
 			{
-				phase: "DESIGN",
-				title: "Routed it",
 				content: journal,
 				hoursClaimed: 1.5,
+				phase: "DESIGN",
 				timelapses: [{ lapseId: "cm1lapse0000timelapse" }],
+				title: "Routed it",
 			},
 		],
 		[
 			"logSession · no clips",
 			sessionCreateSchema,
-			{ phase: "BUILD", title: "Soldered", content: journal, hoursClaimed: 2, timelapses: [] },
+			{ content: journal, hoursClaimed: 2, phase: "BUILD", timelapses: [], title: "Soldered" },
 		],
 		[
 			"postReel · idea",
 			createPostSchema,
 			{
-				kind: "IDEA",
 				caption: "hello there",
-				objectKey: "posts/u/a.mp4",
 				checkpointKey: "w1-reel-idea",
+				kind: "IDEA",
+				objectKey: "posts/u/a.mp4",
 				themeProjectId: "cmxxxxxxxxxxxxxxxxxxxxxxx",
 			},
 		],
@@ -190,10 +190,10 @@ async function bodies() {
 			"postReel · progress",
 			createPostSchema,
 			{
-				kind: "PROGRESS",
 				caption: "ten hours in",
-				objectKey: "posts/u/a.mp4",
 				checkpointKey: "w3-reel-2",
+				kind: "PROGRESS",
+				objectKey: "posts/u/a.mp4",
 				themeProjectId: null,
 			},
 		],
@@ -201,33 +201,33 @@ async function bodies() {
 			"postReel · closing",
 			createPostSchema,
 			{
-				kind: "SUBMISSION",
 				caption: "week done",
-				objectKey: "posts/u/a.mp4",
 				checkpointKey: "w10-reel-submission",
+				kind: "SUBMISSION",
+				objectKey: "posts/u/a.mp4",
 				themeProjectId: null,
 			},
 		],
-		["submitPhase", submitSchema, { phase: "DESIGN", notes: "it works", attachmentKeys: ["sessions/u/cart.png"] }],
-		["submitPhase · no notes", submitSchema, { phase: "BUILD", attachmentKeys: [] }],
+		["submitPhase", submitSchema, { attachmentKeys: ["sessions/u/cart.png"], notes: "it works", phase: "DESIGN" }],
+		["submitPhase · no notes", submitSchema, { attachmentKeys: [], phase: "BUILD" }],
 		// Declining is a plain flag like the partial agreement: absent means false, and strict mode still refuses unknown keys.
-		["submitPhase · declined funding", submitSchema, { phase: "DESIGN", fundingDeclined: true }],
+		["submitPhase · declined funding", submitSchema, { fundingDeclined: true, phase: "DESIGN" }],
 		// The printer branch carries a machine and the two funding branches must not. The store sends `{ goal }` alone for those, so a schema that grew a required printer would break every one of them at once.
 		["setGoal · printer", setGoalSchema, { goal: "PRINTER", printerGoalId: "bambu-a1-mini" }],
 		["setGoal · funding all weeks", setGoalSchema, { goal: "FULL_FUNDING" }],
 		["setGoal · funding some weeks", setGoalSchema, { goal: "PARTIAL_FUNDING" }],
 		["like", likeSchema, { liked: true }],
 		["shopRegion", shopRegionSchema, { id: "eu", name: "Europe" }],
-		["itemRegionPrice", itemRegionPriceSchema, { regionId: "eu", priceCredits: 40 }],
-		["itemRegionPrice · clear", itemRegionPriceSchema, { regionId: "eu", priceCredits: null }],
+		["itemRegionPrice", itemRegionPriceSchema, { priceCredits: 40, regionId: "eu" }],
+		["itemRegionPrice · clear", itemRegionPriceSchema, { priceCredits: null, regionId: "eu" }],
 		["shopRegionPreference", shopRegionPreferenceSchema, { regionId: "eu" }],
 		["shopRegionPreference · default", shopRegionPreferenceSchema, { regionId: null }],
 		[
 			"report",
 			createReportSchema,
-			{ target: "REEL", targetId: "cmxxxxxxxxxxxxxxxxxxxxxxx", reason: "SPAM", details: "same clip five times" },
+			{ details: "same clip five times", reason: "SPAM", target: "REEL", targetId: "cmxxxxxxxxxxxxxxxxxxxxxxx" },
 		],
-		["buy", purchaseSchema, { shopItemId: "printer-ender-3-v3-se", quantity: 1 }],
+		["buy", purchaseSchema, { quantity: 1, shopItemId: "printer-ender-3-v3-se" }],
 		["repoSync · on", repoSyncSettingsSchema, { enabled: true, repo: "https://github.com/maker/hackpad" }],
 		["repoSync · off", repoSyncSettingsSchema, { enabled: false }],
 		// The import body is optional in full: an empty POST is the preview, which is the harmless act, and the client only says `apply` when it means it.
@@ -236,24 +236,24 @@ async function bodies() {
 		[
 			"onboarding · repo step",
 			onboardingStepSchema,
-			{ step: "repo", enabled: true, repo: "https://github.com/maker/hackpad" },
+			{ enabled: true, repo: "https://github.com/maker/hackpad", step: "repo" },
 		],
-		["onboarding · repo skipped", onboardingStepSchema, { step: "repo", enabled: false }],
+		["onboarding · repo skipped", onboardingStepSchema, { enabled: false, step: "repo" }],
 		[
 			"programEvent · create",
 			programEventCreateSchema,
 			{
-				title: "Weekly office hours",
 				colour: "CORAL",
 				description: "Bring whatever is stuck.",
-				startsAt: "2026-10-13T19:00:00.000Z",
 				endsAt: "2026-10-13T20:00:00.000Z",
 				published: true,
 				repeatWeeks: 4,
+				startsAt: "2026-10-13T19:00:00.000Z",
+				title: "Weekly office hours",
 			},
 		],
 		// The whole series is a create-only field: an edit moves one occurrence.
-		["programEvent · edit", programEventUpdateSchema, { title: "Moved to 8", colour: "SKY", endsAt: null }],
+		["programEvent · edit", programEventUpdateSchema, { colour: "SKY", endsAt: null, title: "Moved to 8" }],
 	]
 
 	// The sync target is a repo URL the picker offered, and only that: a bare `owner/name` cannot say which forge it means, and a host-less slug is not something a picker produces.
@@ -336,7 +336,7 @@ async function bodies() {
 
 				// A body larger than the cap is refused rather than buffered whole.
 				globalThis.fetch = (async () =>
-					new Response("x", { status: 200, headers: { "content-length": String(8 * 1024 * 1024) } })) as typeof fetch
+					new Response("x", { headers: { "content-length": String(8 * 1024 * 1024) }, status: 200 })) as typeof fetch
 				let oversizeThrew = false
 				try {
 					await fetchWithRetry("https://example.test/e", { retries: 0 })
@@ -375,7 +375,7 @@ async function bodies() {
 	/* ── 4. Video container signatures ─────────────────────────────────────── */
 	//
 	// A MIME type and an extension are only claims; the bytes decide. The `ftyp` box is shared with HEIC/AVIF/JPEG-2000 images, so the brand has to be a video one – otherwise a still image renamed `.mp4` becomes a reel.
-	const asciiBytes = (s: string) => [...s].map((c) => c.charCodeAt(0))
+	const asciiBytes = (s: string) => [...s].map(c => c.charCodeAt(0))
 	const isoFile = (major: string, compatible: string[] = []) => {
 		const body = [
 			0,
@@ -434,16 +434,16 @@ async function bodies() {
 	const { PhaseStatus } = await import("../src/app/generated/prisma/enums")
 	const at = (minutes: number) => new Date(Date.UTC(2026, 0, 1, 0, minutes))
 	const projects = [
-		{ id: "p1", designStatus: PhaseStatus.in_review, buildStatus: PhaseStatus.draft },
-		{ id: "p2", designStatus: PhaseStatus.approved, buildStatus: PhaseStatus.in_review },
-		{ id: "p3", designStatus: PhaseStatus.draft, buildStatus: PhaseStatus.draft },
+		{ buildStatus: PhaseStatus.draft, designStatus: PhaseStatus.in_review, id: "p1" },
+		{ buildStatus: PhaseStatus.in_review, designStatus: PhaseStatus.approved, id: "p2" },
+		{ buildStatus: PhaseStatus.draft, designStatus: PhaseStatus.draft, id: "p3" },
 	]
 	{
 		const pending = selectPendingShips(projects, [
-			{ themeProjectId: "p1", phase: Phase.DESIGN, ariSubmissionId: null, createdAt: at(0) },
+			{ ariSubmissionId: null, createdAt: at(0), phase: Phase.DESIGN, themeProjectId: "p1" },
 			// Already shipped, and p3 has no open submission at all.
-			{ themeProjectId: "p2", phase: Phase.BUILD, ariSubmissionId: "ship_1", createdAt: at(1) },
-			{ themeProjectId: "p3", phase: Phase.DESIGN, ariSubmissionId: null, createdAt: at(2) },
+			{ ariSubmissionId: "ship_1", createdAt: at(1), phase: Phase.BUILD, themeProjectId: "p2" },
+			{ ariSubmissionId: null, createdAt: at(2), phase: Phase.DESIGN, themeProjectId: "p3" },
 		])
 		check(
 			"ari · pending: only unsent in-review hand-ins",
@@ -454,15 +454,15 @@ async function bodies() {
 	{
 		// A resubmission replaces the old row: the newest one decides.
 		const pending = selectPendingShips(projects, [
-			{ themeProjectId: "p1", phase: Phase.DESIGN, ariSubmissionId: null, createdAt: at(0) },
-			{ themeProjectId: "p1", phase: Phase.DESIGN, ariSubmissionId: "ship_2", createdAt: at(5) },
+			{ ariSubmissionId: null, createdAt: at(0), phase: Phase.DESIGN, themeProjectId: "p1" },
+			{ ariSubmissionId: "ship_2", createdAt: at(5), phase: Phase.DESIGN, themeProjectId: "p1" },
 		])
 		check("ari · pending: newest sent submission suppresses the phase", pending.length === 0)
 	}
 	{
 		const pending = selectPendingShips(projects, [
-			{ themeProjectId: "p1", phase: Phase.DESIGN, ariSubmissionId: "ship_1", createdAt: at(0) },
-			{ themeProjectId: "p1", phase: Phase.DESIGN, ariSubmissionId: null, createdAt: at(5) },
+			{ ariSubmissionId: "ship_1", createdAt: at(0), phase: Phase.DESIGN, themeProjectId: "p1" },
+			{ ariSubmissionId: null, createdAt: at(5), phase: Phase.DESIGN, themeProjectId: "p1" },
 		])
 		check(
 			"ari · pending: newest unsent submission is listed",
@@ -478,10 +478,10 @@ async function bodies() {
 	const { reconcileDisbursement } = await import("../src/lib/hcb")
 	const attemptedAt = new Date(Date.UTC(2026, 0, 1, 0, 0))
 	const row = (amountCents: number, createdAt: string | null) => ({
-		transactionId: null,
 		amountCents,
-		memo: null,
 		createdAt,
+		memo: null,
+		transactionId: null,
 	})
 	const listed = (...rows: ReturnType<typeof row>[]) => ({ kind: "listed" as const, rows })
 	check(
@@ -555,7 +555,7 @@ async function bodies() {
 	} = await import("../src/lib/hours-overlap")
 
 	const spanList = (...spans: { start_time: number; end_time: number }[]) => ({ spans })
-	const read = spansFrom(spanList({ start_time: 1000, end_time: 1600 }, { start_time: 1700, end_time: 2000 }))
+	const read = spansFrom(spanList({ end_time: 1600, start_time: 1000 }, { end_time: 2000, start_time: 1700 }))
 	check(
 		"hackatime spans · two spans are read",
 		read.stale === false && read.spans.length === 2 && read.spans[0]?.start === 1000,
@@ -572,14 +572,14 @@ async function bodies() {
 	check("hackatime spans · a null body is stale", nullSpans.stale === true)
 
 	// One malformed row costs that row, not the participant's hours.
-	const mixed = spansFrom(spanList({ start_time: 1000, end_time: 1600 }, { start_time: null, end_time: 5 } as never))
+	const mixed = spansFrom(spanList({ end_time: 1600, start_time: 1000 }, { end_time: 5, start_time: null } as never))
 	check(
 		"hackatime spans · a malformed row is dropped, the rest survive",
 		mixed.stale === false && mixed.spans.length === 1,
 	)
 
 	// A backwards span is not time anybody spent.
-	const backwards = spansFrom(spanList({ start_time: 1600, end_time: 1000 }))
+	const backwards = spansFrom(spanList({ end_time: 1000, start_time: 1600 }))
 	check("hackatime spans · a backwards span is dropped", backwards.spans.length === 0)
 
 	// The headline case: a two-hour recording, entirely inside two hours of tracked time on the linked project. All of it is double-counted. Every case below needs a window, so an absent one would make the checks vacuously true. Asserted once here rather than in each.
@@ -591,17 +591,17 @@ async function bodies() {
 	const { HoursSource: Source, Phase: ReviewPhase } = await import("../src/app/generated/prisma/enums")
 	const oneEntry = [
 		{
-			hoursClaimed: 2,
 			hoursApproved: null,
+			hoursClaimed: 2,
 			hoursSource: Source.MANUAL,
-			timelapses: [{ recordedAt: new Date(1_700_000_000_000), coveredSeconds: 7200 }],
+			timelapses: [{ coveredSeconds: 7200, recordedAt: new Date(1_700_000_000_000) }],
 		},
 	]
 	const twoHoursTracked = [
 		{
-			hoursApproved: null,
 			cachedSeconds: 7200,
-			cachedSpans: { from: 1_699_000_000, to: 1_701_000_000, spans: [{ start: 1_700_000_000, end: 1_700_007_200 }] },
+			cachedSpans: { from: 1_699_000_000, spans: [{ end: 1_700_007_200, start: 1_700_000_000 }], to: 1_701_000_000 },
+			hoursApproved: null,
 		},
 	]
 
@@ -614,7 +614,7 @@ async function bodies() {
 	check("rollup · the subtracted overlap is reported", deduped.hackatimeOverlapSeconds === 7200)
 
 	// Genuinely different work on the same project stays additive: an hour of building that was never recorded, plus an hour recorded and tracked.
-	const distinct = rollUpHours(oneEntry, [{ hoursApproved: null, cachedSeconds: 3600, cachedSpans: null }], null)
+	const distinct = rollUpHours(oneEntry, [{ cachedSeconds: 3600, cachedSpans: null, hoursApproved: null }], null)
 	check(
 		"rollup · untracked hours still add to a journal entry",
 		distinct.computedTotal === 3,
@@ -626,9 +626,9 @@ async function bodies() {
 		oneEntry,
 		[
 			{
-				hoursApproved: null,
 				cachedSeconds: 7200,
-				cachedSpans: { from: 1_600_000_000, to: 1_601_000_000, spans: [{ start: 1_600_000_000, end: 1_600_007_200 }] },
+				cachedSpans: { from: 1_600_000_000, spans: [{ end: 1_600_007_200, start: 1_600_000_000 }], to: 1_601_000_000 },
+				hoursApproved: null,
 			},
 		],
 		null,
@@ -640,7 +640,7 @@ async function bodies() {
 	)
 
 	// A reviewer override is a decision, not a computed value, and stands.
-	const overridden = rollUpHours(oneEntry, [{ hoursApproved: 5, cachedSeconds: 7200, cachedSpans: null }], null)
+	const overridden = rollUpHours(oneEntry, [{ cachedSeconds: 7200, cachedSpans: null, hoursApproved: 5 }], null)
 	check(
 		"rollup · a reviewer override is not deduplicated",
 		overridden.hackatimeHours === 5 && overridden.computedTotal === 7,
@@ -648,7 +648,7 @@ async function bodies() {
 	)
 
 	// The common case: nobody records anything, so there is nothing to compare and the two tools add up as they always did.
-	const noTimelapses = [{ hoursClaimed: 3, hoursApproved: null, hoursSource: Source.MANUAL }]
+	const noTimelapses = [{ hoursApproved: null, hoursClaimed: 3, hoursSource: Source.MANUAL }]
 	check(
 		"rollup · an unrecorded project is unchanged",
 		rollUpHours(noTimelapses, twoHoursTracked, null).computedTotal === 5,
@@ -658,10 +658,10 @@ async function bodies() {
 		rollUpHours(
 			[
 				{
-					hoursClaimed: 2,
 					hoursApproved: null,
+					hoursClaimed: 2,
 					hoursSource: Source.HACKATIME_TRACKED,
-					timelapses: [{ recordedAt: new Date(1_700_000_000_000), coveredSeconds: 7200 }],
+					timelapses: [{ coveredSeconds: 7200, recordedAt: new Date(1_700_000_000_000) }],
 				},
 			],
 			twoHoursTracked,
@@ -679,7 +679,7 @@ async function bodies() {
 	check("rollup · the phase enum is the one the schema defines", ReviewPhase.DESIGN === "DESIGN")
 
 	// A cold span cache is the complaint this whole check exists for: the same sitting, the same link, and the total silently doubles because the subtraction could not run. The number is now flagged, so a screen showing it can say the check never happened rather than presenting an inflated total as fact.
-	const coldCache = rollUpHours(oneEntry, [{ hoursApproved: null, cachedSeconds: 7200, cachedSpans: null }], null)
+	const coldCache = rollUpHours(oneEntry, [{ cachedSeconds: 7200, cachedSpans: null, hoursApproved: null }], null)
 	check(
 		"rollup · a cold span cache is reported as unchecked",
 		coldCache.hackatimeOverlapUnknown === true && coldCache.hackatimeOverlapSeconds === 0,
@@ -693,14 +693,14 @@ async function bodies() {
 	check("rollup · a warm cache reports the overlap as checked", deduped.hackatimeOverlapUnknown === false)
 	check(
 		"rollup · a phase with no recording has nothing to check",
-		rollUpHours(noTimelapses, [{ hoursApproved: null, cachedSeconds: 3600, cachedSpans: null }], null)
+		rollUpHours(noTimelapses, [{ cachedSeconds: 3600, cachedSpans: null, hoursApproved: null }], null)
 			.hackatimeOverlapUnknown === false,
 	)
 	// A reviewer override is a decision, not a computed value: it must not be reported as an unchecked overlap either, or every decided phase would carry a warning it cannot act on.
 	check(
 		"rollup · an overridden link is never an unchecked overlap",
-		rollUpHours(oneEntry, [{ hoursApproved: 5, cachedSeconds: 7200, cachedSpans: null }], null)
-			.hackatimeOverlapUnknown === false,
+		rollUpHours(oneEntry, [{ cachedSeconds: 7200, cachedSpans: null, hoursApproved: 5 }], null).hackatimeOverlapUnknown
+			=== false,
 	)
 
 	// A caller that narrows its Prisma select hands over `undefined` where a number was expected, and `undefined !== null` used to read as an override and add NaN to the total. NaN is the worst shape of wrong here: it renders as "NaNh" in one place and leaves the rest of the phase looking fine.
@@ -724,43 +724,43 @@ async function bodies() {
 	// The headline case: a two-hour recording, entirely inside the two hours of tracked time on the linked project. All of it is double-counted.
 	check(
 		"overlap · a recording fully inside tracked time is all overlap",
-		recording !== null && overlapSeconds([recording], [{ start: 1_700_000_000, end: 1_700_007_200 }]) === 7200,
+		recording !== null && overlapSeconds([recording], [{ end: 1_700_007_200, start: 1_700_000_000 }]) === 7200,
 	)
 
 	// A recording that overruns the tracked time gives up only what tracked.
 	check(
 		"overlap · only the tracked part of a recording is overlap",
-		recording !== null && overlapSeconds([recording], [{ start: 1_700_000_000, end: 1_700_001_800 }]) === 1800,
+		recording !== null && overlapSeconds([recording], [{ end: 1_700_001_800, start: 1_700_000_000 }]) === 1800,
 	)
 
 	// Two recordings either side of a break: neither overlaps, and the gap between them is not counted as anything.
 	const twoRecordings = [timelapseWindow(1_700_000_000_000, 600), timelapseWindow(1_700_003_000_000, 600)].filter(
-		(w) => w !== null,
+		w => w !== null,
 	)
 	check(
 		"overlap · a tracked span between two recordings overlaps neither",
-		overlapSeconds(twoRecordings, [{ start: 1_700_001_000, end: 1_700_002_000 }]) === 0,
+		overlapSeconds(twoRecordings, [{ end: 1_700_002_000, start: 1_700_001_000 }]) === 0,
 	)
 
 	// Recording A runs into recording B: the shared minutes are claimed twice by the journal, and must be counted once before being subtracted.
 	const overlapping = [timelapseWindow(1_700_000_000_000, 3600), timelapseWindow(1_700_001_800_000, 3600)].filter(
-		(w) => w !== null,
+		w => w !== null,
 	)
 	check(
 		"overlap · a minute inside two recordings is counted once",
-		overlapSeconds(overlapping, [{ start: 1_700_003_000, end: 1_700_003_600 }]) === 600,
+		overlapSeconds(overlapping, [{ end: 1_700_003_600, start: 1_700_003_000 }]) === 600,
 	)
 
 	// Two spans either side of a gap, both inside one recording: the gap between them is not tracked time and must not be charged to Hackatime.
 	const hourRecording = timelapseWindow(1_700_000_000_000, 3600)
 	check(
 		"overlap · an untracked gap inside a recording is not overlap",
-		hourRecording !== null &&
-			overlapSeconds(
+		hourRecording !== null
+			&& overlapSeconds(
 				[hourRecording],
 				[
-					{ start: 1_700_000_000, end: 1_700_000_600 },
-					{ start: 1_700_003_000, end: 1_700_003_600 },
+					{ end: 1_700_000_600, start: 1_700_000_000 },
+					{ end: 1_700_003_600, start: 1_700_003_000 },
 				],
 			) === 1200,
 	)
@@ -769,12 +769,12 @@ async function bodies() {
 	check("overlap · no tracked time is no overlap", overlapSeconds(twoRecordings, []) === 0)
 	check(
 		"overlap · two spans touching at a point share no time",
-		hourRecording !== null &&
-			overlapSeconds(
+		hourRecording !== null
+			&& overlapSeconds(
 				[hourRecording],
 				[
-					{ start: 1_699_999_400, end: 1_700_000_000 },
-					{ start: 1_700_000_000, end: 1_700_003_600 },
+					{ end: 1_700_000_000, start: 1_699_999_400 },
+					{ end: 1_700_003_600, start: 1_700_000_000 },
 				],
 			) === 3600,
 	)
@@ -792,31 +792,31 @@ async function bodies() {
 	check(
 		"overlap · overlapping windows merge into one",
 		mergeIntervals([
-			{ start: 0, end: 100 },
-			{ start: 50, end: 150 },
-		]).length === 1 &&
-			mergeIntervals([
-				{ start: 0, end: 100 },
-				{ start: 50, end: 150 },
+			{ end: 100, start: 0 },
+			{ end: 150, start: 50 },
+		]).length === 1
+			&& mergeIntervals([
+				{ end: 100, start: 0 },
+				{ end: 150, start: 50 },
 			])[0]?.end === 150,
 	)
 	check(
 		"overlap · touching windows merge into one",
 		mergeIntervals([
-			{ start: 0, end: 100 },
-			{ start: 100, end: 200 },
+			{ end: 100, start: 0 },
+			{ end: 200, start: 100 },
 		]).length === 1,
 	)
 	check(
 		"overlap · disjoint windows stay apart",
 		mergeIntervals([
-			{ start: 0, end: 100 },
-			{ start: 200, end: 300 },
+			{ end: 100, start: 0 },
+			{ end: 300, start: 200 },
 		]).length === 2,
 	)
 
 	// Cached spans carry the window they were fetched for. A cached answer to a narrower question is not an answer, and must force a refetch rather than conclude "no overlap" about minutes it never covered.
-	const cache = parseCachedSpans({ from: 100, to: 200, spans: [{ start: 100, end: 200 }] })
+	const cache = parseCachedSpans({ from: 100, spans: [{ end: 200, start: 100 }], to: 200 })
 	check("overlap · cached spans are read back", cache !== null && cache.spans.length === 1)
 	check("overlap · a cache covering the window is used", cache !== null && cachedSpansCover(cache, 120, 180) === true)
 	check(
@@ -824,19 +824,19 @@ async function bodies() {
 		cache !== null && cachedSpansCover(cache, 50, 180) === false && cachedSpansCover(cache, 120, 250) === false,
 	)
 	// A shape this did not write is no cache at all: one refetch, not a wrong answer.
-	check("overlap · an unrecognised cache shape is ignored", parseCachedSpans([{ start: 1, end: 2 }]) === null)
+	check("overlap · an unrecognised cache shape is ignored", parseCachedSpans([{ end: 2, start: 1 }]) === null)
 	check("overlap · a null cache is ignored", parseCachedSpans(null) === null)
 
 	// The fetch window covers every recording, with slack for clock drift.
 	const fetchWindow = spanWindowFor([
-		{ start: 1_700_000_000, end: 1_700_003_600 },
-		{ start: 1_700_010_000, end: 1_700_010_600 },
+		{ end: 1_700_003_600, start: 1_700_000_000 },
+		{ end: 1_700_010_600, start: 1_700_010_000 },
 	])
 	check(
 		"overlap · the fetch window spans every recording plus an hour",
-		fetchWindow !== null &&
-			fetchWindow.fromSeconds === 1_700_000_000 - 3600 &&
-			fetchWindow.toSeconds === 1_700_010_600 + 3600,
+		fetchWindow !== null
+			&& fetchWindow.fromSeconds === 1_700_000_000 - 3600
+			&& fetchWindow.toSeconds === 1_700_010_600 + 3600,
 	)
 	check("overlap · no recordings means no window to fetch", spanWindowFor([]) === null)
 
@@ -877,30 +877,30 @@ async function bodies() {
 	const { projectUrl } = await import("../src/lib/app-url")
 	{
 		const project = {
-			id: "p1",
-			title: "Hackpad",
 			description: "A macropad.",
-			weekId: 1,
+			id: "p1",
 			isWarmup: false,
+			repoUrl: "https://github.com/maker/hackpad",
 			themeLabel: "PCBs",
 			tier: 1,
-			repoUrl: "https://github.com/maker/hackpad",
+			title: "Hackpad",
+			weekId: 1,
 		}
 		const entry = (over: Partial<import("../src/lib/repo-sync-files").JournalEntry> = {}) => ({
+			content: "<p>Wired <strong>everything</strong> up.</p>",
+			createdAt: new Date("2026-10-06T12:00:00Z"),
+			effectiveDate: "2026-10-06",
+			hoursApproved: null,
+			hoursClaimed: 2,
 			id: "s1",
 			phase: "DESIGN" as const,
-			title: "Routed it",
-			content: "<p>Wired <strong>everything</strong> up.</p>",
-			hoursClaimed: 2,
-			hoursApproved: null,
-			effectiveDate: "2026-10-06",
-			createdAt: new Date("2026-10-06T12:00:00Z"),
 			timelapses: [],
+			title: "Routed it",
 			...over,
 		})
 
 		const journal = renderJournal(project, [
-			entry({ id: "s2", title: "Later", effectiveDate: "2026-10-08", createdAt: new Date("2026-10-08T12:00:00Z") }),
+			entry({ createdAt: new Date("2026-10-08T12:00:00Z"), effectiveDate: "2026-10-08", id: "s2", title: "Later" }),
 			entry({ id: "s1" }),
 		])
 		check("repo-files · journal path", journal.path === "JOURNAL.md")
@@ -920,7 +920,7 @@ async function bodies() {
 		check("repo-files · the project link is absolute", /^https?:\/\/[^/]+\/projects\/p1$/.test(projectUrl(project.id)))
 
 		// A reviewer's adjustment is the number written, not the claim. The claim is still mentioned, but only as the parenthetical annotation beside it.
-		const adjusted = renderJournal(project, [entry({ hoursClaimed: 4, hoursApproved: 2 })])
+		const adjusted = renderJournal(project, [entry({ hoursApproved: 2, hoursClaimed: 4 })])
 		check(
 			"repo-files · an approved adjustment wins",
 			adjusted.content.includes("**2h** _(4h logged, adjusted by a reviewer)_") && !adjusted.content.includes("**4h**"),
@@ -933,22 +933,22 @@ async function bodies() {
 		const bom = renderBom(
 			[
 				{
+					link: "https://lcsc.com/x",
 					name: "ESP32-C3",
 					purpose: "Main loop",
 					quantity: 2,
 					unitCostUsd: 3,
-					vendor: "LCSC",
-					link: "https://lcsc.com/x",
 					updatedAt: new Date("2026-10-06T09:00:00Z"),
+					vendor: "LCSC",
 				},
 				{
+					link: null,
 					name: "OLED",
 					purpose: "Screen",
 					quantity: 1,
 					unitCostUsd: 4,
-					vendor: "AliExpress",
-					link: null,
 					updatedAt: new Date("2026-10-05T09:00:00Z"),
+					vendor: "AliExpress",
 				},
 			],
 			3,
@@ -965,13 +965,13 @@ async function bodies() {
 		const comma = renderBom(
 			[
 				{
+					link: "https://example.com/?a=1,b=2",
 					name: "Comma part",
 					purpose: null,
 					quantity: 1,
 					unitCostUsd: 1,
-					vendor: null,
-					link: "https://example.com/?a=1,b=2",
 					updatedAt: new Date("2026-10-06T09:00:00Z"),
+					vendor: null,
 				},
 			],
 			0,
@@ -1033,7 +1033,7 @@ async function bodies() {
 		check("bom-csv · the header is found", parsed.header?.[0] === "Item")
 		check(
 			"bom-csv · the shipping line is not a part",
-			parsed.skipped.some((s) => s.name === "Shipping (Guesstimate)"),
+			parsed.skipped.some(s => s.name === "Shipping (Guesstimate)"),
 		)
 		check("bom-csv · a dollar amount is read out of a rupee price", parsed.lines[0]?.unitCostUsd === 15)
 		check("bom-csv · a count in words becomes a number", parsed.lines[0]?.quantity === 1)
@@ -1062,7 +1062,7 @@ async function bodies() {
 		const capped = parseBomCsv(kicad, { limit: 1 })
 		check(
 			"bom-csv · the limit is reported rather than silently dropped",
-			capped.lines.length === 1 && capped.skipped.some((s) => s.reason === "beyond the parts-list limit"),
+			capped.lines.length === 1 && capped.skipped.some(s => s.reason === "beyond the parts-list limit"),
 		)
 	}
 
@@ -1077,8 +1077,8 @@ async function bodies() {
 
 		check(
 			"countdown · a full span splits into its units",
-			JSON.stringify(countdownParts(3 * DAY + 9 * HOUR + 37 * MIN + 11 * 1000)) ===
-				JSON.stringify({ days: 3, hours: 9, minutes: 37, seconds: 11 }),
+			JSON.stringify(countdownParts(3 * DAY + 9 * HOUR + 37 * MIN + 11 * 1000))
+				=== JSON.stringify({ days: 3, hours: 9, minutes: 37, seconds: 11 }),
 		)
 		check(
 			"countdown · minutes carry into hours",
@@ -1153,23 +1153,23 @@ async function bodies() {
 	const tickets = await import("../src/lib/site/tickets")
 	{
 		const ref = {
+			authorId: "U1",
 			helpChannel: "C1",
 			helpTs: "111.222",
-			authorId: "U1",
 			permalink: null,
 			ticketsChannel: "C2",
 			ticketsTs: "333.444",
 		}
 		const actions = tickets.threadResolveActions(ref)
 		const elements = (actions.elements ?? []) as { action_id: string; value?: string }[]
-		const buttons = elements.filter((el) => typeof el.action_id === "string")
+		const buttons = elements.filter(el => typeof el.action_id === "string")
 		check(
 			"tickets · resolve actions carry both buttons",
 			actions.block_id === "self_resolve_actions" && buttons.length === 2,
 		)
 		check(
 			"tickets · button values round-trip the ref",
-			buttons.every((b) => {
+			buttons.every(b => {
 				try {
 					const parsed = JSON.parse(b.value ?? "")
 					return parsed.helpTs === ref.helpTs && parsed.ticketsTs === ref.ticketsTs
@@ -1179,36 +1179,36 @@ async function bodies() {
 			}),
 		)
 
-		const open = [{ type: "section", text: { type: "mrkdwn", text: "reminders" } }, actions]
+		const open = [{ text: { text: "reminders", type: "mrkdwn" }, type: "section" }, actions]
 		const atResolve = { ...ref, ticketsTs: "555.666" }
 		const resolved = tickets.resolveBlocks(open, "U9", undefined, atResolve)
-		const resolvedIds = resolved.map((b) => b.block_id)
+		const resolvedIds = resolved.map(b => b.block_id)
 		check(
 			"tickets · resolving swaps actions for note plus reopen",
-			!resolvedIds.includes("self_resolve_actions") &&
-				resolvedIds.includes("ticket_resolved") &&
-				resolvedIds.includes("reopen_actions"),
+			!resolvedIds.includes("self_resolve_actions")
+				&& resolvedIds.includes("ticket_resolved")
+				&& resolvedIds.includes("reopen_actions"),
 		)
 		check(
 			"tickets · reminders survive resolving",
-			resolved.some((b) => b.type === "section"),
+			resolved.some(b => b.type === "section"),
 		)
 
 		const atReopen = { ...ref, ticketsTs: "777.888" }
 		const reopened = tickets.reopenBlocks(resolved, atReopen)
-		const reopenedIds = reopened.map((b) => b.block_id)
+		const reopenedIds = reopened.map(b => b.block_id)
 		check(
 			"tickets · reopening restores resolve buttons with the fresh mirror",
-			reopenedIds.includes("self_resolve_actions") &&
-				!reopenedIds.includes("reopen_actions") &&
-				!reopenedIds.includes("ticket_resolved"),
+			reopenedIds.includes("self_resolve_actions")
+				&& !reopenedIds.includes("reopen_actions")
+				&& !reopenedIds.includes("ticket_resolved"),
 		)
-		const restored = reopened.find((b) => b.block_id === "self_resolve_actions")
+		const restored = reopened.find(b => b.block_id === "self_resolve_actions")
 		const restoredElements = (restored?.elements ?? []) as { value?: string }[]
-		const restoredValues = restoredElements.map((el) => String(el.value ?? ""))
+		const restoredValues = restoredElements.map(el => String(el.value ?? ""))
 		check(
 			"tickets · restored buttons point at the new mirror",
-			restoredValues.length === 2 && restoredValues.every((v) => v.includes("777.888")),
+			restoredValues.length === 2 && restoredValues.every(v => v.includes("777.888")),
 		)
 	}
 
@@ -1217,7 +1217,7 @@ async function bodies() {
 		check(
 			`body · ${name}`,
 			parsed.success,
-			parsed.success ? "" : parsed.error.issues.map((i) => `${i.path.join(".") || "(root)"} ${i.message}`).join("; "),
+			parsed.success ? "" : parsed.error.issues.map(i => `${i.path.join(".") || "(root)"} ${i.message}`).join("; "),
 		)
 	}
 }
@@ -1227,7 +1227,7 @@ bodies()
 		console.log(failures === 0 ? "\nAll contract checks passed." : `\n${failures} check(s) failed.`)
 		process.exitCode = failures === 0 ? 0 : 1
 	})
-	.catch((err) => {
+	.catch(err => {
 		console.error(err)
 		process.exitCode = 1
 	})

@@ -15,7 +15,7 @@ export function postForm(
 		xhr.open("POST", url)
 		xhr.responseType = "text"
 		if (onProgress) {
-			xhr.upload.onprogress = (e) => {
+			xhr.upload.onprogress = e => {
 				if (e.lengthComputable && e.total > 0) onProgress(Math.min(1, e.loaded / e.total))
 			}
 			xhr.upload.onload = () => onProgress(1)
@@ -27,7 +27,7 @@ export function postForm(
 			} catch {
 				json = null
 			}
-			resolve({ ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status, json })
+			resolve({ json, ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status })
 		}
 		xhr.onerror = () => reject(new Error("The upload did not get through. Check your connection and try again."))
 		xhr.onabort = () => reject(new Error("The upload was cancelled."))

@@ -7,10 +7,10 @@ import { sendJson, useAction } from "@/lib/use-action"
 import { uploadFile } from "@/lib/use-handoff"
 
 const CATEGORIES: { value: ShopItemCategory; label: string }[] = [
-	{ value: "PRINTER", label: "Printer – not listed in the shop" },
-	{ value: "PRINTER_UPGRADE", label: "Printer upgrade" },
-	{ value: "CONSUMABLE", label: "Consumable" },
-	{ value: "MISC", label: "Misc" },
+	{ label: "Printer – not listed in the shop", value: "PRINTER" },
+	{ label: "Printer upgrade", value: "PRINTER_UPGRADE" },
+	{ label: "Consumable", value: "CONSUMABLE" },
+	{ label: "Misc", value: "MISC" },
 ]
 
 /** The fields an existing item is edited from. */
@@ -26,13 +26,13 @@ export type ShopItemInitial = {
 }
 
 const blank = {
-	id: "",
-	name: "",
-	description: "",
-	imageUrl: "",
 	category: "PRINTER_UPGRADE" as ShopItemCategory,
-	priceCredits: "50",
 	costUsd: "",
+	description: "",
+	id: "",
+	imageUrl: "",
+	name: "",
+	priceCredits: "50",
 	requiresPrinterQualified: true,
 }
 
@@ -47,7 +47,7 @@ function previewImageUrl(value: string): string | null {
 	try {
 		const url = new URL(value.trim())
 		if (url.protocol !== "https:") return null
-		return url.href.replace(/[<>"']/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)
+		return url.href.replace(/[<>"']/g, c => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)
 	} catch {
 		return null
 	}
@@ -61,13 +61,13 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 	const [form, setForm] = useState(
 		item
 			? {
-					id: item.id,
-					name: item.name,
-					description: item.description,
-					imageUrl: item.imageUrl ?? "",
 					category: item.category,
-					priceCredits: String(item.priceCredits),
 					costUsd: item.costUsd === null ? "" : String(item.costUsd),
+					description: item.description,
+					id: item.id,
+					imageUrl: item.imageUrl ?? "",
+					name: item.name,
+					priceCredits: String(item.priceCredits),
 					requiresPrinterQualified: item.requiresPrinterQualified,
 				}
 			: blank,
@@ -84,7 +84,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 		try {
 			const { url } = await uploadFile(file, "shop")
 			if (!url) throw new Error("Uploads have no public URL on this deployment (S3_PUBLIC_URL)")
-			setForm((f) => ({ ...f, imageUrl: url }))
+			setForm(f => ({ ...f, imageUrl: url }))
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "The image did not upload")
 		} finally {
@@ -96,20 +96,20 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 		e.preventDefault()
 		setSaved(false)
 		const fields = {
-			name: form.name,
+			category: form.category,
+			costUsd: form.costUsd === "" ? null : Number(form.costUsd),
 			description: form.description,
 			imageUrl: form.imageUrl.trim() === "" ? null : form.imageUrl.trim(),
-			category: form.category,
+			name: form.name,
 			priceCredits: Number(form.priceCredits),
-			costUsd: form.costUsd === "" ? null : Number(form.costUsd),
 			requiresPrinterQualified: form.requiresPrinterQualified,
 		}
 		void run(
 			"submit",
 			() =>
 				sendJson(editing ? `/api/admin/shop/items/${item.id}` : "/api/admin/shop/items", {
-					method: editing ? "PATCH" : "POST",
 					body: editing ? fields : { id: form.id, ...fields },
+					method: editing ? "PATCH" : "POST",
 				}),
 			() => {
 				// An edit stays on the page; a create clears for the next one.
@@ -122,118 +122,118 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 	const previewUrl = previewImageUrl(form.imageUrl)
 
 	return (
-		<form onSubmit={submit} className="hl-stack hl-stack--tight">
+		<form className="hl-stack hl-stack--tight" onSubmit={submit}>
 			{error ? <Callout tone="danger">{error}</Callout> : null}
 			{saved ? <Callout>Saved.</Callout> : null}
 			<Field
-				label="Slug"
 				hint={
 					editing
 						? "Fixed once the item exists: orders and analytics refer to it."
 						: "Lowercase, hyphens. Appears in analytics, so it should not change."
 				}
+				label="Slug"
 			>
 				<input
 					className="hl-input hl-mono"
-					value={form.id}
-					required
-					readOnly={editing}
+					onChange={e => setForm({ ...form, id: e.target.value })}
 					pattern="[a-z0-9][a-z0-9-]*"
-					onChange={(e) => setForm({ ...form, id: e.target.value })}
+					readOnly={editing}
+					required
+					value={form.id}
 				/>
 			</Field>
 			<Field label="Name">
 				<input
 					className="hl-input"
-					value={form.name}
+					onChange={e => setForm({ ...form, name: e.target.value })}
 					required
-					onChange={(e) => setForm({ ...form, name: e.target.value })}
+					value={form.name}
 				/>
 			</Field>
 			<Field label="Description">
 				<textarea
 					className="hl-textarea"
-					value={form.description}
+					onChange={e => setForm({ ...form, description: e.target.value })}
 					required
-					onChange={(e) => setForm({ ...form, description: e.target.value })}
+					value={form.description}
 				/>
 			</Field>
-			<Field label="Category" hint="Printers are not listed in the shop; everything else is paid for in coins.">
+			<Field hint="Printers are not listed in the shop; everything else is paid for in coins." label="Category">
 				<select
 					className="hl-select"
+					onChange={e => setForm({ ...form, category: e.target.value as ShopItemCategory })}
 					value={form.category}
-					onChange={(e) => setForm({ ...form, category: e.target.value as ShopItemCategory })}
 				>
-					{CATEGORIES.map((c) => (
+					{CATEGORIES.map(c => (
 						<option key={c.value} value={c.value}>
 							{c.label}
 						</option>
 					))}
 				</select>
 			</Field>
-			<Field label="Image" hint="Paste an https link, or upload one. Blank for no picture.">
-				<div className="hl-row" style={{ gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+			<Field hint="Paste an https link, or upload one. Blank for no picture." label="Image">
+				<div className="hl-row" style={{ alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
 					<input
 						className="hl-input"
-						type="url"
+						onChange={e => setForm({ ...form, imageUrl: e.target.value })}
 						placeholder="https://…"
-						value={form.imageUrl}
 						style={{ flex: "1 1 16rem" }}
-						onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
+						type="url"
+						value={form.imageUrl}
 					/>
-					<Button type="button" disabled={uploading} onClick={() => picker.current?.click()}>
+					<Button disabled={uploading} onClick={() => picker.current?.click()} type="button">
 						{uploading ? "Uploading…" : "Upload"}
 					</Button>
 					<input
-						ref={picker}
-						type="file"
 						accept={IMAGE_ACCEPT}
 						hidden
-						onChange={(e) => {
+						onChange={e => {
 							const file = e.target.files?.[0]
 							e.target.value = ""
 							uploadImage(file)
 						}}
+						ref={picker}
+						type="file"
 					/>
 				</div>
 				{previewUrl ? (
 					// A plain img, as the shop itself shows it: next/image refuses any host not listed in next.config, and a pasted link can be anywhere. eslint-disable-next-line @next/next/no-img-element -- staff paste any host into the item's image field
 					<img
-						src={previewUrl}
 						alt=""
-						style={{ width: "7rem", height: "7rem", objectFit: "contain", marginTop: "0.5rem" }}
+						src={previewUrl}
+						style={{ height: "7rem", marginTop: "0.5rem", objectFit: "contain", width: "7rem" }}
 					/>
 				) : null}
 			</Field>
 			<Field label="Price (coins)">
 				<input
 					className="hl-input"
-					type="number"
 					min="0"
+					onChange={e => setForm({ ...form, priceCredits: e.target.value })}
+					type="number"
 					value={form.priceCredits}
-					onChange={(e) => setForm({ ...form, priceCredits: e.target.value })}
 				/>
 			</Field>
-			<Field label="Cost to us (USD)" hint="Per unit, tax and shipping included. Shown on the fulfillment sheet.">
+			<Field hint="Per unit, tax and shipping included. Shown on the fulfillment sheet." label="Cost to us (USD)">
 				<input
 					className="hl-input"
-					type="number"
 					min="0"
+					onChange={e => setForm({ ...form, costUsd: e.target.value })}
 					step="0.01"
+					type="number"
 					value={form.costUsd}
-					onChange={(e) => setForm({ ...form, costUsd: e.target.value })}
 				/>
 			</Field>
 			<label className="hl-row" style={{ gap: "0.5rem" }}>
 				<input
-					type="checkbox"
 					checked={form.requiresPrinterQualified}
-					onChange={(e) => setForm({ ...form, requiresPrinterQualified: e.target.checked })}
+					onChange={e => setForm({ ...form, requiresPrinterQualified: e.target.checked })}
+					type="checkbox"
 				/>
 				<span>Requires all five themes shipped</span>
 			</label>
 			<div>
-				<Button type="submit" variant="primary" disabled={busy !== null || uploading}>
+				<Button disabled={busy !== null || uploading} type="submit" variant="primary">
 					{busy ? (editing ? "Saving…" : "Creating…") : editing ? "Save changes" : "Create item"}
 				</Button>
 			</div>

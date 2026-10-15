@@ -24,59 +24,59 @@ import { Spotlight } from "./Spotlight"
  */
 const TOUR = [
 	{
+		body: "Here's the main map, where you can log time for your projects, post reels to the Doomscroller, and submit your projects.",
 		selector: '[data-tour="nav-home"]',
 		title: "Home",
-		body: "Here's the main map, where you can log time for your projects, post reels to the Doomscroller, and submit your projects.",
 	},
 	{
-		selector: '[data-tour="nav-doomscroller"], [data-tour="doomscroller-button"]',
 		also: '[data-tour="doomscroller"]',
-		title: "The Doomscroller",
 		body: "Every teenager working on Half Life will be posting short videos about their projects to the platform! Now you can doomscroll forever (technically productive).",
+		selector: '[data-tour="nav-doomscroller"], [data-tour="doomscroller-button"]',
+		title: "The Doomscroller",
 	},
 	{
+		body: "Here's where you manage your projects and edit their details. You can also view your journal entries, lapses, and reels in chronological order.",
 		selector: '[data-tour="nav-projects"]',
 		title: "Projects",
-		body: "Here's where you manage your projects and edit their details. You can also view your journal entries, lapses, and reels in chronological order.",
 	},
 	{
+		body: "Manage all the reels you've posted to the platform! If you post them online, add your sharable links here so you can get coins if you go viral!",
 		selector: '[data-tour="nav-reels"]',
 		title: "Reels",
-		body: "Manage all the reels you've posted to the platform! If you post them online, add your sharable links here so you can get coins if you go viral!",
 	},
 	{
+		body: "A feed of all the journal entries teenagers are making around the world.",
 		selector: '[data-tour="nav-explore"]',
 		title: "Explore",
-		body: "A feed of all the journal entries teenagers are making around the world.",
 	},
 	{
+		body: "See what you can buy with your coins!",
 		selector: '[data-tour="nav-shop"]',
 		title: "Shop",
-		body: "See what you can buy with your coins!",
 	},
 	{
+		body: "Confused? Learn how tiers work, what counts as a session, and the checklist reviewers actually use when they read your submission.",
 		selector: '[data-tour="nav-docs"]',
 		title: "Docs",
-		body: "Confused? Learn how tiers work, what counts as a session, and the checklist reviewers actually use when they read your submission.",
 	},
 ]
 
 function CheckpointModal({ id }: { id: string }) {
 	const { allCheckpoints, weekOfCheckpoint, statusOf, sharePost, setSharePost, setOpenCheckpoint } = useStore()
-	const cp = allCheckpoints.find((c) => c.id === id)
+	const cp = allCheckpoints.find(c => c.id === id)
 	if (!cp) return null
 	// A hand-in that posted its closing reel celebrates first. The hand-in's refresh flips the week to in_review underneath, and without this branch the unsubmit sheet below would take the modal a frame after the celebration lands.
 	if (sharePost && sharePost.checkpointId === id) {
 		return (
 			<PublicReelModal
-				postId={sharePost.postId}
-				eyebrow={sharePost.eyebrow}
-				videoUrl={sharePost.videoUrl}
 				celebration={sharePost.celebration}
+				eyebrow={sharePost.eyebrow}
 				onClose={() => {
 					setSharePost(null)
 					setOpenCheckpoint(null)
 				}}
+				postId={sharePost.postId}
+				videoUrl={sharePost.videoUrl}
 			/>
 		)
 	}
@@ -169,33 +169,28 @@ export function Overlays() {
 			 * the tour is the thing this most often lands on top of, since answering
 			 * the goal hands you straight into it.
 			 */}
-			{needsGoal && !openCheckpoint && <GoalModal open dismissible={false} onClose={() => {}} />}
+			{needsGoal && !openCheckpoint && <GoalModal dismissible={false} onClose={() => {}} open />}
 
 			{phase === "aim" && !openCheckpoint && !needsGoal && pathname === PLATFORM_HOME && (
 				<Spotlight
-					selector='[data-tour="first-checkpoint"]'
-					title="Start here"
 					body="The yellow checkpoint is your setup: six quick questions and your first project exists at the end of them."
 					cta="Open it"
-					pad={14}
-					radius={999}
 					onNext={() => {
 						setPhase("checkpoint")
 						setOpenCheckpoint(currentCheckpointId)
 					}}
 					onSkip={() => setPhase("done")}
+					pad={14}
+					radius={999}
+					selector='[data-tour="first-checkpoint"]'
+					title="Start here"
 				/>
 			)}
 
 			{phase === "tour" && !openCheckpoint && !needsGoal && (
 				<Spotlight
-					// Deliberately not keyed on the step: one instance living across all seven is what lets the window travel down the rail instead of blinking out and back. The two-target sequence resets on its own, off the second target appearing rather than off a remount.
-					selector={TOUR[tourStep]?.selector ?? ""}
 					also={TOUR[tourStep]?.also}
-					title={TOUR[tourStep]?.title ?? ""}
 					body={TOUR[tourStep]?.body ?? ""}
-					step={tourStep + 1}
-					total={TOUR.length}
 					clickAnywhere
 					cta={tourStep === TOUR.length - 1 ? (weekStarted(1) ? "Start week 1" : "Start warm-up") : "Next"}
 					onNext={() => {
@@ -203,6 +198,11 @@ export function Overlays() {
 						else setTourStep(tourStep + 1)
 					}}
 					onSkip={endTour}
+					// Deliberately not keyed on the step: one instance living across all seven is what lets the window travel down the rail instead of blinking out and back. The two-target sequence resets on its own, off the second target appearing rather than off a remount.
+					selector={TOUR[tourStep]?.selector ?? ""}
+					step={tourStep + 1}
+					title={TOUR[tourStep]?.title ?? ""}
+					total={TOUR.length}
 				/>
 			)}
 		</>
