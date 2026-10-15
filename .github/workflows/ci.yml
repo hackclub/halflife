@@ -77,6 +77,11 @@ jobs:
             # verify-forge-write pins the write path's retry/classification with a
             # scripted fetch. All hermetic: no database, no network, no secrets.
             - name: Static regression checks
+              env:
+                  # Never dialed: these are hermetic, but they transitively import
+                  # `@/lib/prisma`, whose module-level client initialisation
+                  # requires the variable present (same as the build below).
+                  DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
               run: |
                   bun run verify:loops
                   bun run verify:contracts
