@@ -69,6 +69,8 @@ export const YSWS_SUBMISSION = {
 		hackatimeId: f<string>("fldYswsHackatimeId", "Justification - Submitter Hackatime ID"),
 		projectName: f<string>("fldYswsProjectName", "Project name"),
 		reviewStatus: f<string>("fldYswsReviewStatus", "Loops - halfLifeReviewStatus"),
+		// The reviewer's own words on that decision, beside the status and in the same Loops family. A decision that lands on ari.hackclub.com is written straight to the row there, so this column is read from Loops' side rather than written here.
+		reviewerNotes: f<string>("fldYswsReviewerNotes", "Loops - halfLifeReviewerNotes"),
 		tier: f<string>("fldYswsTier", "Tier"),
 		// Written by the pipeline's automation, read by us: it identifies the row's twin in the unified base, which is the only safe way to remove it.
 		unifiedRecordId: f<string>("fldYswsUnifiedRecordId", "Automation - YSWS Record ID"),
