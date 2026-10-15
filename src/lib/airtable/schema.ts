@@ -68,7 +68,7 @@ export const YSWS_SUBMISSION = {
 		),
 		hackatimeId: f<string>("fldYswsHackatimeId", "Justification - Submitter Hackatime ID"),
 		projectName: f<string>("fldYswsProjectName", "Project name"),
-		reviewStatus: f<string>("fldYswsReviewStatus", "Review Status"),
+		reviewStatus: f<string>("fldYswsReviewStatus", "Loops - halfLifeReviewStatus"),
 		tier: f<string>("fldYswsTier", "Tier"),
 		// Written by the pipeline's automation, read by us: it identifies the row's twin in the unified base, which is the only safe way to remove it.
 		unifiedRecordId: f<string>("fldYswsUnifiedRecordId", "Automation - YSWS Record ID"),
