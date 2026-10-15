@@ -222,9 +222,8 @@ function ReelRow({ reel, onAdd, onChanged }: { reel: MyReel; onAdd: () => void; 
 					{/* A disabled control stays where it lives and says why. */}
 					{reel.deleteLocked && <p className="hand pl-0.5 text-[0.84rem] text-navy-soft">{reel.deleteLocked}</p>}
 
-					{confirming
-					// biome-ignore lint/a11y/useSemanticElements: a confirmation box, not a form.
-					&& (
+					{confirming ? (
+						// biome-ignore lint/a11y/useSemanticElements: a confirmation box, not a form.
 						<div
 							role="group"
 							aria-labelledby={`delete-${reel.id}`}
@@ -247,7 +246,7 @@ function ReelRow({ reel, onAdd, onChanged }: { reel: MyReel; onAdd: () => void; 
 								</Button>
 							</div>
 						</div>
-					)}
+					) : null}
 				</div>
 			</div>
 		</Panel>
