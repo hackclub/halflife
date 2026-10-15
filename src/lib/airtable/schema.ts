@@ -72,6 +72,8 @@ export const YSWS_SUBMISSION = {
 		// The reviewer's own words on that decision, beside the status and in the same Loops family. Written by the same mirror the status is (see `syncReviewDecisionToYsws` in lib/airtable/sync), because a decision on ari.hackclub.com reaches the base only through it.
 		reviewerNotes: f<string>("fldYswsReviewerNotes", "Loops - halfLifeReviewerNotes"),
 		tier: f<string>("fldYswsTier", "Tier"),
+		// A plain checkbox, true when the maker took one of the week's starter projects rather than bringing their own idea (see `starterProjectId` on ThemeProject). Written for the reviewer, who judges a starter by whether it was made the maker's own rather than as a finished build (see STARTER_MODIFICATION_NOTE in lib/config/onboarding); the base needs the fact, not which starter it was.
+		starterProject: f<boolean>("fldYswsStarterProject", "Starter project"),
 		// Written by the pipeline's automation, read by us: it identifies the row's twin in the unified base, which is the only safe way to remove it.
 		unifiedRecordId: f<string>("fldYswsUnifiedRecordId", "Automation - YSWS Record ID"),
 	},

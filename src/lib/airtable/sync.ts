@@ -163,6 +163,8 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 		projectName: project.title,
 		reviewStatus: reviewStatusFor(phase === Phase.DESIGN ? project.designStatus : project.buildStatus),
 		tier: tier ? `Tier ${tier}` : "",
+		// `starterProjectId` is the one place the choice is kept: set when a starter is taken and cleared when the idea is written over with their own (see lib/onboarding). So the checkbox is `!== null`, derived rather than stored, and a project that left the starter behind reads as `false` here like any other.
+		starterProject: project.starterProjectId !== null,
 	})
 	// An attachment is written as a URL Airtable fetches, so the bytes stay in R2 and the base only references them.
 	if (cover) fields[fieldKey(YSWS_SUBMISSION.fields.screenshot)] = [{ url: cover }]
