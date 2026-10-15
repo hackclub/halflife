@@ -10,7 +10,8 @@
 			"source": {
 				"noDuplicateClasses": "on",
 				"organizeImports": "on",
-				"useSortedAttributes": "on"
+				"useSortedAttributes": "on",
+				"useSortedEnumMembers": "on"
 			}
 		},
 		"enabled": true

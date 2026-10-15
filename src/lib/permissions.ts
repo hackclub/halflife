@@ -5,28 +5,28 @@ import prisma from "@/lib/prisma"
 export { Role }
 
 export enum Permission {
-	/** Claim and decide design/build submissions. */
-	REVIEW_SUBMISSIONS = "REVIEW_SUBMISSIONS",
-	/** Approve or override journal-session and Hackatime hours. */
-	REVIEW_HOURS = "REVIEW_HOURS",
-	/** Un-approve or reopen a decided phase. Deliberately narrower than reviewing. */
-	OVERRIDE_DECISIONS = "OVERRIDE_DECISIONS",
-	VIEW_USERS = "VIEW_USERS",
-	MANAGE_USERS = "MANAGE_USERS",
-	MANAGE_ROLES = "MANAGE_ROLES",
-	MANAGE_CREDIT = "MANAGE_CREDIT",
-	MANAGE_SHOP = "MANAGE_SHOP",
 	FULFILL_ORDERS = "FULFILL_ORDERS",
-	MANAGE_PROGRAM = "MANAGE_PROGRAM",
-	VIEW_AUDIT_LOG = "VIEW_AUDIT_LOG",
-	/** Read the upload bucket index; no mutation permission is implied. */
-	VIEW_UPLOADS = "VIEW_UPLOADS",
+	MANAGE_CREDIT = "MANAGE_CREDIT",
 	/**
 	 * Post announcements to the feed, and hide reels or comments.
 	 *
 	 * Deliberately not given to REVIEWER, the volume role: moderating what a 13-18 audience sees is a different kind of trust from deciding whether a PCB was designed well, and the roles below are sized for the second.
 	 */
 	MANAGE_FEED = "MANAGE_FEED",
+	MANAGE_PROGRAM = "MANAGE_PROGRAM",
+	MANAGE_ROLES = "MANAGE_ROLES",
+	MANAGE_SHOP = "MANAGE_SHOP",
+	MANAGE_USERS = "MANAGE_USERS",
+	/** Un-approve or reopen a decided phase. Deliberately narrower than reviewing. */
+	OVERRIDE_DECISIONS = "OVERRIDE_DECISIONS",
+	/** Approve or override journal-session and Hackatime hours. */
+	REVIEW_HOURS = "REVIEW_HOURS",
+	/** Claim and decide design/build submissions. */
+	REVIEW_SUBMISSIONS = "REVIEW_SUBMISSIONS",
+	VIEW_AUDIT_LOG = "VIEW_AUDIT_LOG",
+	/** Read the upload bucket index; no mutation permission is implied. */
+	VIEW_UPLOADS = "VIEW_UPLOADS",
+	VIEW_USERS = "VIEW_USERS",
 }
 
 /**
