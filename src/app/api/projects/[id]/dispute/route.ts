@@ -1,9 +1,11 @@
 import { fail, ok, parseBody, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { projectDisplayTitle } from "@/lib/config/program"
+import { HttpError } from "@/lib/errors"
 import { requireSession } from "@/lib/guards"
 import { notifyStaffDispute } from "@/lib/notifications"
 import prisma from "@/lib/prisma"
+import { sanitize } from "@/lib/sanitize"
 import { disputeSchema } from "@/lib/schemas/project"
 
 type Params = { params: Promise<{ id: string }> }
@@ -20,33 +22,46 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 
 	const parsed = await parseBody(req, disputeSchema)
 	if (parsed.error) return parsed.error
-	const { phase, note } = parsed.data
+	const { phase } = parsed.data
+	// Stored as plain text elsewhere, so it is stripped of markup on the way in too.
+	const note = sanitize(parsed.data.note)
 
 	const project = await prisma.themeProject.findFirst({
 		where: { id, userId: gate.user.id, deletedAt: null },
-		select: { id: true, title: true, theme: true, designStatus: true, buildStatus: true },
+		select: { id: true, title: true, theme: true },
 	})
 	if (!project) return fail("NOT_FOUND", "Project not found")
 
-	const status = phase === "DESIGN" ? project.designStatus : project.buildStatus
-	if (status !== "update_requested" && status !== "rejected")
-		return fail("CONFLICT", "Only a review that asked for changes or rejected the work can be disputed")
-
-	const submission = await prisma.phaseSubmission.findFirst({
-		where: { themeProjectId: id, phase, resolvedAt: { not: null } },
-		orderBy: { resolvedAt: "desc" },
-		select: { id: true },
-	})
-	if (!submission) return fail("NOT_FOUND", "There is no decided submission to dispute")
-
-	try {
-		await prisma.reviewDispute.create({
-			data: { submissionId: submission.id, userId: gate.user.id, note },
+	// Wrap the status check, submission selection and dispute creation in one transaction so a dispute cannot attach to a submission that has since been resolved superseded or a phase that has since moved.
+	const submissionId = await prisma.$transaction(async (tx) => {
+		const fresh = await tx.themeProject.findFirst({
+			where: { id, userId: gate.user.id, deletedAt: null },
+			select: { designStatus: true, buildStatus: true },
 		})
-	} catch {
-		// The unique submissionId is the guard: one second look per decision.
-		return fail("CONFLICT", "You have already asked for a second look at this review")
-	}
+		if (!fresh) throw new HttpError("NOT_FOUND", "Project not found")
+
+		const status = phase === "DESIGN" ? fresh.designStatus : fresh.buildStatus
+		if (status !== "update_requested" && status !== "rejected")
+			throw new HttpError("CONFLICT", "Only a review that asked for changes or rejected the work can be disputed")
+
+		const submission = await tx.phaseSubmission.findFirst({
+			where: { themeProjectId: id, phase, resolvedAt: { not: null } },
+			orderBy: { resolvedAt: "desc" },
+			select: { id: true },
+		})
+		if (!submission) throw new HttpError("NOT_FOUND", "There is no decided submission to dispute")
+
+		try {
+			await tx.reviewDispute.create({
+				data: { submissionId: submission.id, userId: gate.user.id, note },
+			})
+		} catch {
+			// The unique submissionId is the guard: one second look per decision.
+			throw new HttpError("CONFLICT", "You have already asked for a second look at this review")
+		}
+
+		return submission.id
+	})
 
 	await logAudit({
 		action: AuditAction.USER_DISPUTE_REVIEW,
@@ -54,7 +69,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		actorEmail: gate.user.email,
 		targetType: "ThemeProject",
 		targetId: id,
-		metadata: { phase, submissionId: submission.id },
+		metadata: { phase, submissionId },
 	})
 
 	await notifyStaffDispute({

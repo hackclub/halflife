@@ -3,6 +3,7 @@ import { PhaseStatus } from "@/app/generated/prisma/enums"
 import { fail, ok, parseBody, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { scheduledWeekFor } from "@/lib/config/program"
+import { HttpError } from "@/lib/errors"
 import { requireSession } from "@/lib/guards"
 import { fetchProjectSeconds } from "@/lib/hackatime"
 import { warmLinkSpans } from "@/lib/hours"
@@ -97,15 +98,28 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		)
 	}
 
-	const link = await prisma.hackatimeLink.create({
-		data: {
-			themeProjectId: id,
-			hackatimeProject: parsed.data.hackatimeProject,
-			phase: parsed.data.phase,
-			cachedSeconds: fetched.stale ? null : fetched.seconds,
-			cachedAt: fetched.stale ? null : new Date(),
-			lastFetchError: fetched.error ?? null,
-		},
+	const link = await prisma.$transaction(async (tx) => {
+		// Re-read the phase on the transaction client immediately before the link lands: a submit that commits between the checks above and this create would otherwise attach hours to a phase the decision has already frozen.
+		const current = await tx.themeProject.findUnique({
+			where: { id },
+			select: { designStatus: true, buildStatus: true },
+		})
+		const currentStatus = parsed.data.phase === "DESIGN" ? current?.designStatus : current?.buildStatus
+		if (currentStatus === PhaseStatus.in_review)
+			throw new HttpError("PHASE_LOCKED", "This phase is in review – unsubmit it before linking more hours")
+		if (currentStatus && isPhaseDecided(currentStatus))
+			throw new HttpError("PHASE_LOCKED", "This phase has been submitted and decided, so no more hours can be linked")
+
+		return tx.hackatimeLink.create({
+			data: {
+				themeProjectId: id,
+				hackatimeProject: parsed.data.hackatimeProject,
+				phase: parsed.data.phase,
+				cachedSeconds: fetched.stale ? null : fetched.seconds,
+				cachedAt: fetched.stale ? null : new Date(),
+				lastFetchError: fetched.error ?? null,
+			},
+		})
 	})
 
 	await logAudit({

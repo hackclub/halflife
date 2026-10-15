@@ -285,7 +285,7 @@ export type OrderDirectoryRow = Prisma.ShopOrderGetPayload<{ select: typeof orde
 
 const orderDirectorySelect = {
 	...shopOrderStaffSelect,
-	user: { select: { id: true, name: true, displayName: true, email: true } },
+	user: { select: { id: true, name: true, displayName: true } },
 	shopItem: { select: { id: true, name: true } },
 } satisfies Prisma.ShopOrderSelect
 
@@ -352,7 +352,7 @@ export type FulfillmentOrderRow = {
 	placedAt: Date
 	totalUsd: number | null
 	country: string | null
-	user: { id: string; name: string | null; email: string }
+	user: { id: string; name: string | null }
 }
 
 export async function listFulfillmentOrders(
@@ -404,7 +404,7 @@ export async function listFulfillmentOrders(
 			placedAt: true,
 			shopItem: { select: { costUsd: true } },
 			user: {
-				select: { id: true, name: true, displayName: true, email: true, encryptedAddressCountry: true },
+				select: { id: true, name: true, displayName: true, encryptedAddressCountry: true },
 			},
 		},
 	})
@@ -420,7 +420,7 @@ export async function listFulfillmentOrders(
 			fulfillmentStage: fulfillmentStageOf(order),
 			totalUsd: unit === null ? null : unit * order.quantity,
 			country: safeDecrypt(user.encryptedAddressCountry),
-			user: { id: user.id, name: displayName(user), email: user.email },
+			user: { id: user.id, name: displayName(user) },
 		}
 	})
 	return { items, nextCursor: hasMore && last ? last.id : null }
@@ -474,7 +474,7 @@ const printerAwardSelect = {
 	deliveredAt: true,
 	revokedAt: true,
 	revokedReason: true,
-	user: { select: { id: true, name: true, displayName: true, email: true } },
+	user: { select: { id: true, name: true, displayName: true } },
 } satisfies Prisma.PrinterAwardSelect
 
 export async function listPrinterAwards(limit = 100): Promise<PrinterAwardRow[]> {
@@ -1671,6 +1671,8 @@ function ariToResult(decision: string | null): ReviewResult | null {
 	if (decision === "approved") return ReviewResult.APPROVED
 	if (decision === "changes") return ReviewResult.RETURNED
 	if (decision === "rejected") return ReviewResult.REJECTED
+	// Ari is an external system, so a decision string we do not know is a vocabulary drift, not corrupt local data: log it rather than let the submission vanish from the chart silently.
+	if (decision !== null) console.warn(`[admin] unrecognised Ari decision "${decision}"; counted nowhere`)
 	return null
 }
 

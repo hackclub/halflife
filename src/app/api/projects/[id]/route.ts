@@ -4,6 +4,7 @@ import { fail, ok, parseBody, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { starterProjectsFor } from "@/lib/config/onboarding"
 import { getThemeDef } from "@/lib/config/program"
+import { HttpError } from "@/lib/errors"
 import { requireSession } from "@/lib/guards"
 import { getHoursBreakdown } from "@/lib/hours"
 import prisma from "@/lib/prisma"
@@ -169,6 +170,15 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 	})
 
 	const deleted = await prisma.$transaction(async (tx) => {
+		// Re-read the project and its block status inside the transaction, so a grant, top-up, or dispute committing in the window is caught before the soft delete rather than after.
+		const fresh = await tx.themeProject.findFirst({
+			where: { id, userId: gate.user.id, deletedAt: null },
+			select: { id: true, designStatus: true, buildStatus: true, grantEmittedAt: true },
+		})
+		if (!fresh) throw new HttpError("NOT_FOUND", "Project not found")
+		const blocked = await deleteBlockReason(fresh, tx)
+		if (blocked) throw new HttpError("PHASE_LOCKED", blocked)
+
 		// Conditional on the statuses just checked, so a submit that lands between the check and here is not deleted out from under its reviewer.
 		const now = new Date()
 		const { count } = await tx.themeProject.updateMany({

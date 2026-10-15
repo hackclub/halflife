@@ -19,6 +19,7 @@ import { effectiveDateFor, getProgramSettings } from "@/lib/program"
 import { normalizeRepo } from "@/lib/repo"
 import { trackSideEffect } from "@/lib/side-effects"
 import { buildObjectKey, isUploadConfigured, MAX_UPLOAD_BYTES, putObject } from "@/lib/uploads/r2"
+import { fetchRemoteImage } from "@/lib/uploads/remote"
 
 /**
  * Bring the warm-up weeks' projects into Half Life.
@@ -249,28 +250,18 @@ async function halfLifeWrittenRecordIds(): Promise<Set<string>> {
 
 // ─── Cover re-hosting ────────────────────────────────────────────────────────
 
-const IMAGE_EXT: Record<string, string> = {
-	"image/png": "png",
-	"image/jpeg": "jpg",
-	"image/webp": "webp",
-	"image/gif": "gif",
-}
-
 /**
  * Airtable attachment URLs are signed and expire in about two hours, so a cover has to be copied into R2 to outlive the import. Best-effort: a missing cover is cosmetic and must not fail the project.
+ *
+ * The URL is whatever the imported row held, so it is fetched through the guarded remote-image path (SSRF blocklist, redirect cap, DNS pinning) and its bytes sniffed, rather than a bare fetch that trusts the remote Content-Type.
  */
 export async function rehostScreenshot(userId: string, url: string): Promise<string | null> {
 	if (!isUploadConfigured()) return null
 	try {
-		const res = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(20_000) })
-		if (!res.ok) return null
-		const contentType = (res.headers.get("content-type") ?? "").split(";")[0]?.trim().toLowerCase() ?? ""
-		const ext = IMAGE_EXT[contentType]
-		if (!ext) return null
-		const body = Buffer.from(await res.arrayBuffer())
-		if (body.byteLength === 0 || body.byteLength > MAX_UPLOAD_BYTES) return null
+		const { bytes, ext, contentType } = await fetchRemoteImage(url, MAX_UPLOAD_BYTES)
+		if (bytes.byteLength === 0 || bytes.byteLength > MAX_UPLOAD_BYTES) return null
 		const key = buildObjectKey(userId, "covers", ext)
-		await putObject(key, body, contentType)
+		await putObject(key, bytes, contentType)
 		return key
 	} catch (err) {
 		console.warn("[airtable] could not re-host a warm-up screenshot:", err)

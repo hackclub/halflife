@@ -114,6 +114,9 @@ export async function parseUploadForm(request: Request, maxFileBytes: number): P
  */
 const limiterHits = new Map<string, number[]>()
 
+/** How many distinct buckets a single process will hold before the oldest are evicted. */
+const LIMITER_MAX_KEYS = 10_000
+
 export function rateLimitedInMemory(key: string, max = 10, windowMs = 60_000): boolean {
 	const now = Date.now()
 	const recent = (limiterHits.get(key) ?? []).filter((at) => now - at < windowMs)
@@ -123,7 +126,12 @@ export function rateLimitedInMemory(key: string, max = 10, windowMs = 60_000): b
 	}
 	recent.push(now)
 	limiterHits.set(key, recent)
-	if (limiterHits.size > 10_000) limiterHits.clear()
+	// Evict the oldest buckets one at a time rather than clearing the map: a wholesale clear drops live buckets such as `upload:<userId>` along with the stale ones, which would hand a throttled caller a fresh budget.
+	if (limiterHits.size > LIMITER_MAX_KEYS)
+		for (const oldest of limiterHits.keys()) {
+			if (limiterHits.size <= LIMITER_MAX_KEYS) break
+			if (oldest !== key) limiterHits.delete(oldest)
+		}
 	return false
 }
 

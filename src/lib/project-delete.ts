@@ -1,4 +1,5 @@
 import "server-only"
+import type { Prisma } from "@/app/generated/prisma/client"
 import { PhaseStatus } from "@/app/generated/prisma/enums"
 import prisma from "@/lib/prisma"
 
@@ -15,22 +16,26 @@ import prisma from "@/lib/prisma"
  *
  * Shared by the DELETE handler and the project page, so the page only offers what the server will do.
  */
-export async function deleteBlockReason(project: {
-	id: string
-	designStatus: PhaseStatus
-	buildStatus: PhaseStatus
-	grantEmittedAt: Date | null
-}): Promise<string | null> {
+export async function deleteBlockReason(
+	project: {
+		id: string
+		designStatus: PhaseStatus
+		buildStatus: PhaseStatus
+		grantEmittedAt: Date | null
+	},
+	client?: Prisma.TransactionClient,
+): Promise<string | null> {
 	if (project.designStatus === PhaseStatus.in_review || project.buildStatus === PhaseStatus.in_review)
 		return "Unsubmit before deleting – a phase is in review"
 	if (project.designStatus === PhaseStatus.approved || project.buildStatus === PhaseStatus.approved)
 		return "An approved project can't be deleted"
 	if (project.grantEmittedAt) return "A funded project can't be deleted"
 
+	const db = client ?? prisma
 	const [ledger, topUps, disputes] = await Promise.all([
-		prisma.ledgerEntry.count({ where: { themeProjectId: project.id } }),
-		prisma.hcbGrantTopUp.count({ where: { themeProjectId: project.id } }),
-		prisma.reviewDispute.count({ where: { submission: { themeProjectId: project.id }, resolvedAt: null } }),
+		db.ledgerEntry.count({ where: { themeProjectId: project.id } }),
+		db.hcbGrantTopUp.count({ where: { themeProjectId: project.id } }),
+		db.reviewDispute.count({ where: { submission: { themeProjectId: project.id }, resolvedAt: null } }),
 	])
 	if (ledger > 0 || topUps > 0) return "This project has earned coins or funding, so it can't be deleted"
 	if (disputes > 0) return "A reviewer is still taking a second look, so it can't be deleted yet"

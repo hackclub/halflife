@@ -1,9 +1,10 @@
 import { after } from "next/server"
-import { type Phase, PhaseStatus, type Theme } from "@/app/generated/prisma/enums"
+import { Phase, PhaseStatus, type Theme } from "@/app/generated/prisma/enums"
 import { recomputeActiveDays, recomputeWeek } from "@/lib/analytics"
 import { fail, ok, parseBody, withRoute } from "@/lib/api"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { scheduledWeekFor } from "@/lib/config/program"
+import { HttpError } from "@/lib/errors"
 import { requireSession } from "@/lib/guards"
 import { refreshOverlapSpans } from "@/lib/hours"
 import { verifyOwnTimelapses } from "@/lib/lapse"
@@ -22,6 +23,9 @@ import { reconcileSessionTimelapses } from "@/lib/session-timelapses"
 import { recomputeStreak } from "@/lib/streak"
 
 type Params = { params: Promise<{ id: string; sessionId: string }> }
+
+/** Statuses in which a phase's entries may still be edited or deleted: a draft, or one an admin or reviewer sent back for changes. */
+const EDITABLE_PHASE_STATUSES = [PhaseStatus.draft, PhaseStatus.update_requested]
 
 async function loadOwned(userId: string, projectId: string, sessionId: string) {
 	return prisma.workSession.findFirst({
@@ -92,8 +96,18 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 
 	const updated = await prisma.$transaction(async (tx) => {
 		if (want !== null) await reconcileSessionTimelapses(tx, sessionId, want, fresh)
-		return tx.workSession.update({
-			where: { id: sessionId },
+		// Conditional on the phase still being editable and the entry still unreviewed: a submit or a decision that commits between the checks above and this write makes it match nothing, and the edit is refused rather than landing on a frozen week.
+		const changed = await tx.workSession.updateMany({
+			where: {
+				id: sessionId,
+				themeProjectId: id,
+				deletedAt: null,
+				hoursApproved: null,
+				OR: [
+					{ phase: Phase.DESIGN, themeProject: { designStatus: { in: EDITABLE_PHASE_STATUSES } } },
+					{ phase: Phase.BUILD, themeProject: { buildStatus: { in: EDITABLE_PHASE_STATUSES } } },
+				],
+			},
 			data: {
 				...(data.title !== undefined ? { title: sanitize(data.title) } : {}),
 				...(data.content !== undefined ? { content: data.content ? sanitizeHtml(data.content) : null } : {}),
@@ -101,6 +115,8 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 				...(data.hoursSource !== undefined ? { hoursSource: data.hoursSource } : {}),
 			},
 		})
+		if (changed.count !== 1) throw new HttpError("PHASE_LOCKED", "This week moved while its entry was being edited")
+		return tx.workSession.findUniqueOrThrow({ where: { id: sessionId } })
 	})
 
 	await logAudit({
@@ -151,10 +167,21 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 
 	// Deleting the only session on a day removes that day from the run, so the streak has to be recomputed with it. PATCH does not, because it cannot change `effectiveDate` – the set of journalled days is the same after it.
 	await prisma.$transaction(async (tx) => {
-		await tx.workSession.update({
-			where: { id: sessionId },
+		// Conditional on the phase still being editable and the entry still unreviewed: a submit or a review that commits between the checks above and this write makes it match nothing, and the entry stays.
+		const deleted = await tx.workSession.updateMany({
+			where: {
+				id: sessionId,
+				themeProjectId: id,
+				deletedAt: null,
+				hoursApproved: null,
+				OR: [
+					{ phase: Phase.DESIGN, themeProject: { designStatus: { in: EDITABLE_PHASE_STATUSES } } },
+					{ phase: Phase.BUILD, themeProject: { buildStatus: { in: EDITABLE_PHASE_STATUSES } } },
+				],
+			},
 			data: { deletedAt: new Date() },
 		})
+		if (deleted.count !== 1) throw new HttpError("PHASE_LOCKED", "This week moved while its entry was being deleted")
 		await recomputeStreak(tx, gate.user.id)
 	})
 

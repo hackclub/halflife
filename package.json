@@ -28,6 +28,7 @@
     "import:dump": "bun import/dump.ts",
     "verify:ledger": "bun --conditions=react-server scripts/verify-ledger.ts",
     "dump-airtable-schema": "bun --conditions=react-server scripts/dump-airtable-schema.ts",
+    "airtable:backfill-starters": "bun --conditions=react-server scripts/backfill-airtable-starters.ts",
     "verify:onboarding": "bun --conditions=react-server scripts/verify-onboarding.ts",
     "verify:loops": "bun --conditions=react-server scripts/verify-loops.ts",
     "verify:loops-entries": "bun --conditions=react-server scripts/verify-loops-entries.ts",
@@ -36,6 +37,7 @@
     "verify:handoff": "bun --conditions=react-server scripts/verify-handoff.ts",
     "verify:store": "bun --conditions=react-server scripts/verify-store.ts",
     "verify:contracts": "bun --conditions=react-server scripts/verify-contracts.ts",
+    "verify:forge-write": "bun --conditions=react-server scripts/verify-forge-write.ts",
     "verify:pii": "bun --conditions=react-server scripts/verify-pii.ts"
   },
   "dependencies": {

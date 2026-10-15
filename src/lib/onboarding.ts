@@ -257,15 +257,11 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 	// The step this answer lands on: normally the next one, further when the answer settles the steps in between (see above).
 	const tookStarter = answer.step === "week" && typeof answer.starterProjectId === "string"
 	const next = tookStarter ? stepIndexOf("tracking") : answer.step === "project" ? stepIndexOf("idea") + 1 : index + 1
-	// Only ever forward: re-answering step 3 from step 5 must not rewind anyone.
-	const reached = Math.max(before.reached, next)
-	const finishing = reached >= ONBOARDING_STEP_COUNT
-
+	// Only ever forward: re-answering step 3 from step 5 must not rewind anyone. The transaction re-reads the marker and takes the max against its own fresh value.
 	const userWrite = {
 		where: { id: userId },
 		data: {
 			...userData,
-			...(finishing ? { onboardingCompletedAt: new Date() } : {}),
 			// Keeps the statement non-empty for an informational answer (the PCB week has no fields of its own) without writing the marker here; the guarded update below owns it.
 			onboardingStep: { increment: 0 },
 		},
@@ -281,30 +277,62 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 	// Turning the sync on is a GitHub round trip that can fail, so it is not done here: this returns the request and the route performs it after the response has gone. That way a repo the token cannot push to refuses the *sync*, not the finishing of the setup flow.
 	const repoRequest = answer.step === "repo" && answer.enabled && answer.repo ? { repo: answer.repo } : null
 
-	const { projectAfter, userAfter } = await prisma.$transaction(async (tx) => {
+	const {
+		projectAfter,
+		userAfter,
+		reached: reachedAfter,
+	} = await prisma.$transaction(async (tx) => {
+		// Re-read on the transaction client, so a concurrent step/project change cannot land a write against a stale snapshot.
+		const txUser = await tx.user.findUniqueOrThrow({
+			where: { id: userId },
+			select: {
+				hardwareExperience: true,
+				onboardingStep: true,
+				onboardingCompletedAt: true,
+				trackingTutorialDismissedAt: true,
+			},
+		})
+		const txProject = await tx.themeProject.findFirst({
+			where: { userId, theme: ONBOARDING_THEME, deletedAt: null },
+			select: PROJECT_SELECT,
+		})
+		const freshReached = clampStep(txUser.onboardingStep)
+		if (index > freshReached) throw new HttpError("VALIDATION_FAILED", "Finish the earlier steps first")
+
+		const reachedNow = Math.max(freshReached, next)
+
+		const targetProjectId = txProject?.id ?? before.project.id
+
 		const projectAfter = touchesProject
 			? await tx.themeProject.update({
-					where: { id: before.project.id },
+					where: { id: targetProjectId },
 					data: projectData,
 					select: PROJECT_SELECT,
 				})
-			: before.project
-		const userAfter = await tx.user.update(userWrite)
+			: (txProject ?? before.project)
+		const userAfter = await tx.user.update({
+			...userWrite,
+			data: {
+				...userWrite.data,
+				...(reachedNow >= ONBOARDING_STEP_COUNT ? { onboardingCompletedAt: new Date() } : {}),
+				onboardingStep: { increment: 0 },
+			},
+		})
 
 		// Raise the furthest-reached marker, never lower it: two answers in flight read the same snapshot, and the slower one must not rewind the faster one.
 		await tx.user.updateMany({
-			where: { id: userId, onboardingStep: { lt: reached } },
-			data: { onboardingStep: reached },
+			where: { id: userId, onboardingStep: { lt: reachedNow } },
+			data: { onboardingStep: reachedNow },
 		})
 
-		return { projectAfter, userAfter }
+		return { projectAfter, userAfter, reached: reachedNow }
 	})
 
 	const state: OnboardingState = {
 		...before,
 		completed: userAfter.onboardingCompletedAt !== null,
-		reached,
-		current: stepAt(reached) ?? null,
+		reached: reachedAfter,
+		current: stepAt(reachedAfter) ?? null,
 		experience: userAfter.hardwareExperience,
 		suggestedTier: suggestedTierFor(userAfter.hardwareExperience),
 		project: {
@@ -316,7 +344,7 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 		trackingDismissed: userAfter.trackingTutorialDismissedAt !== null,
 	}
 
-	return { state, completed: finishing, touchedProject: touchesProject, repoRequest }
+	return { state, completed: userAfter.onboardingCompletedAt !== null, touchedProject: touchesProject, repoRequest }
 }
 
 /**

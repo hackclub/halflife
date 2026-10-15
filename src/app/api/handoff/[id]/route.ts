@@ -24,6 +24,7 @@ export const POST = withRoute(async (_req: Request, { params }: Params) => {
 	if (gate.error) return gate.error
 	const { id } = await params
 
-	await claimHandoff(id, gate.user.id)
+	const claimed = await claimHandoff(id, gate.user.id)
+	if (!claimed) return fail("NOT_FOUND", "No such handoff")
 	return ok({ claimed: true })
 })

@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { Gato } from "@/components/platform/art"
 import { IconCheck, IconCoin } from "@/components/platform/icons"
 import { Panel } from "@/components/platform/ui"
@@ -35,6 +35,8 @@ export function ShopGrid({
 	const [busy, setBusy] = useState<string | null>(null)
 	const [error, setError] = useState<string | null>(null)
 	const [savingRegion, setSavingRegion] = useState(false)
+	// One key per item until it sells, so a retry replays the same purchase instead of minting a second order.
+	const keys = useRef(new Map<string, string>())
 
 	const items = useMemo(() => {
 		const shelf = CATEGORIES.find((c) => c.label === cat)
@@ -51,10 +53,12 @@ export function ShopGrid({
 		setBusy(item.id)
 		setError(null)
 		try {
+			const key = keys.current.get(item.id) ?? crypto.randomUUID()
+			keys.current.set(item.id, key)
 			const res = await fetch("/api/shop/orders", {
 				method: "POST",
 				headers: { "content-type": "application/json" },
-				body: JSON.stringify({ shopItemId: item.id, quantity: 1, idempotencyKey: crypto.randomUUID() }),
+				body: JSON.stringify({ shopItemId: item.id, quantity: 1, idempotencyKey: key }),
 			})
 			if (!res.ok) {
 				const payload = (await res.json().catch(() => ({}))) as {
@@ -63,6 +67,7 @@ export function ShopGrid({
 				setError(payload.error?.message ?? `That did not go through (${res.status})`)
 				return
 			}
+			keys.current.delete(item.id)
 			router.refresh()
 		} catch {
 			setError("That did not go through")

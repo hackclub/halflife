@@ -51,7 +51,7 @@ export const POST = withRoute(async (req: Request) => {
 	if (!check.ok) return fail("VALIDATION_FAILED", check.reason)
 
 	const bytes = Buffer.from(await file.arrayBuffer())
-	if (folder === "posts" && !isVideoBytes(bytes))
+	if (file.type.startsWith("video/") && !isVideoBytes(bytes))
 		return fail("VALIDATION_FAILED", "That file does not look like a video")
 
 	// The extension/MIME check above trusts what the client *claimed*. For images, verify the bytes too – the from-url path already does – so an HTML file renamed to .png cannot land in the bucket as image/png.

@@ -206,10 +206,8 @@ export function RepoSyncSettings({
 						className="flex items-start gap-2 rounded-xl bg-coral/10 px-3.5 py-2.5 text-[0.85rem] font-semibold text-coral-deep"
 					>
 						<IconWarning className="mt-0.5 shrink-0" />
-						<span>
-							The last sync did not land: {state.error} Reconnect {state.forge === "gitlab" ? "GitLab" : "GitHub"} and
-							try again.
-						</span>
+						{/* The server's message is now complete for its own status – rate limit, outage, permissions, a moved repo – so nothing forge-specific is appended here. The "Reconnect" buttons below are the standing offer. */}
+						<span>The last sync did not land: {state.error}</span>
 					</p>
 				)}
 				{error && (

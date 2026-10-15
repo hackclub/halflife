@@ -1,5 +1,5 @@
 import QRCode from "qrcode"
-import { ok, withRoute } from "@/lib/api"
+import { fail, ok, rateLimitedInMemory, withRoute } from "@/lib/api"
 import { requireSession } from "@/lib/guards"
 import { createHandoff, HANDOFF_TTL_MINUTES } from "@/lib/handoff"
 
@@ -26,6 +26,10 @@ function publicOrigin(req: Request): string {
 export const POST = withRoute(async (req: Request) => {
 	const gate = await requireSession()
 	if (gate.error) return gate.error
+
+	// Each call inserts an UploadHandoff row, so cap how many one account can mint in a window.
+	if (rateLimitedInMemory(`handoff-mint:${gate.user.id}`))
+		return fail("RATE_LIMITED", "Too many handoff codes at once – wait a minute and try again")
 
 	const handoff = await createHandoff(gate.user.id)
 	const url = `${publicOrigin(req)}/r/${handoff.token}`
