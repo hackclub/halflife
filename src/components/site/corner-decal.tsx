@@ -126,12 +126,12 @@ export default function CornerDecal({
 
 	return (
 		<Image
-			aria-hidden
-			src={src}
 			alt=""
+			aria-hidden
+			className="pointer-events-none absolute select-none"
 			// The widest any decal is ever drawn: 19% of step 1's 975-unit plate at the stage's 1728 cap. The flow layout's plates top out at `max-w-2xl`, well under that, so one value covers both.
 			sizes="190px"
-			className="pointer-events-none absolute select-none"
+			src={src}
 			style={{
 				opacity: PRINT,
 				// Under the plate's content but over its background. The plates carry `isolate` so this cannot escape into the page behind them.

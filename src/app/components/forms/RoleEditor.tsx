@@ -24,10 +24,10 @@ export function RoleEditor({ userId, current }: Readonly<{ userId: string; curre
 					const held = current.includes(role)
 					return (
 						<Button
-							key={role}
-							variant={held ? "danger" : "default"}
 							disabled={busy !== null}
+							key={role}
 							onClick={() => toggle(role, held)}
+							variant={held ? "danger" : "default"}
 						>
 							{held ? `Remove ${role.toLowerCase()}` : `Grant ${role.toLowerCase()}`}
 						</Button>

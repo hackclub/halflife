@@ -98,7 +98,7 @@ export function AirtableImportForm({
 					{problems.length > 0 ? (
 						<ul className="hl-stack hl-stack--tight" style={{ marginTop: "0.5rem", paddingLeft: "1rem" }}>
 							{problems.map(outcome => (
-								<li key={outcome.recordId} className="hl-hint">
+								<li className="hl-hint" key={outcome.recordId}>
 									<span className="hl-mono">{outcome.recordId}</span>
 									{outcome.email ? ` · ${outcome.email}` : ""} · {STATUS_LABEL[outcome.status]}
 									{outcome.reason ? ` – ${outcome.reason}` : ""}
@@ -111,7 +111,7 @@ export function AirtableImportForm({
 			) : null}
 
 			<div>
-				<Button variant="primary" disabled={busy} onClick={() => run()}>
+				<Button disabled={busy} onClick={() => run()} variant="primary">
 					{busy ? "Importing… (this can take a few minutes)" : "Import projects from Airtable"}
 				</Button>
 			</div>

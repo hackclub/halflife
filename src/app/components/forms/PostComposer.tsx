@@ -118,7 +118,7 @@ export function PostComposer({
 	}
 
 	return (
-		<form onSubmit={submit} className="hl-stack hl-stack--tight">
+		<form className="hl-stack hl-stack--tight" onSubmit={submit}>
 			{error ? <Callout tone="danger">{error}</Callout> : null}
 
 			<Panel title="Record on your phone">
@@ -128,28 +128,28 @@ export function PostComposer({
 			{handoffKey ? (
 				<Callout>
 					Using the video from your phone.{" "}
-					<button type="button" className="hl-btn" onClick={() => setHandoffKey(null)}>
+					<button className="hl-btn" onClick={() => setHandoffKey(null)} type="button">
 						Use a file instead
 					</button>
 				</Callout>
 			) : (
-				<Field label="Video" hint="mp4, webm or mov. Or record on your phone above.">
-					<input ref={fileRef} className="hl-input" type="file" accept="video/*" disabled={busy} />
+				<Field hint="mp4, webm or mov. Or record on your phone above." label="Video">
+					<input accept="video/*" className="hl-input" disabled={busy} ref={fileRef} type="file" />
 				</Field>
 			)}
 
 			<Field label="Caption">
 				<textarea
 					className="hl-textarea"
-					value={caption}
-					maxLength={2000}
 					disabled={busy}
+					maxLength={2000}
 					onChange={e => setCaption(e.target.value)}
+					value={caption}
 				/>
 			</Field>
 
 			<Field label="What kind of reel is this?">
-				<select className="hl-select" value={kind} disabled={busy} onChange={e => setKind(e.target.value)}>
+				<select className="hl-select" disabled={busy} onChange={e => setKind(e.target.value)} value={kind}>
 					{KIND_OPTIONS.map(option => (
 						<option key={option.value} value={option.value}>
 							{option.label}
@@ -159,8 +159,8 @@ export function PostComposer({
 				</select>
 			</Field>
 
-			<Field label="About a project?" hint="Optional. Idea and progress reels usually are.">
-				<select className="hl-select" value={projectId} disabled={busy} onChange={e => setProjectId(e.target.value)}>
+			<Field hint="Optional. Idea and progress reels usually are." label="About a project?">
+				<select className="hl-select" disabled={busy} onChange={e => setProjectId(e.target.value)} value={projectId}>
 					<option value="">Not about a project</option>
 					{projects.map(project => (
 						<option key={project.id} value={project.id}>
@@ -173,17 +173,17 @@ export function PostComposer({
 			{stage === "uploading" ? (
 				<div>
 					<progress
-						max={1}
-						value={progress < 1 ? progress : undefined}
 						aria-label="Uploading the video"
+						max={1}
 						style={{ width: "100%", height: "0.6rem" }}
+						value={progress < 1 ? progress : undefined}
 					/>
 					<p className="hl-hint">{progress < 1 ? `Uploading… ${Math.round(progress * 100)}%` : "Sent. Storing it…"}</p>
 				</div>
 			) : null}
 
 			<div>
-				<Button type="submit" variant="primary" disabled={busy}>
+				<Button disabled={busy} type="submit" variant="primary">
 					{stage === "uploading" ? "Uploading…" : stage === "posting" ? "Posting…" : "Post reel"}
 				</Button>
 			</div>

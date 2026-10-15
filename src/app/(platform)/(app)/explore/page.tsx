@@ -47,10 +47,10 @@ function Entry({ entry, viewerId }: { entry: JournalRow; viewerId: string }) {
 	return (
 		// `min-w-0` and `overflow-wrap: anywhere` on the card itself, so nothing in it – the entry, a project or author name – can be wider than the column: a grid item is otherwise as wide as its longest unbroken word, and one pasted URL carried the card, and then the page, off the right edge.
 		<Panel
-			tone="line"
-			radius={20}
 			as="article"
 			className="min-w-0 bg-paper px-5 py-5 [overflow-wrap:anywhere] sm:px-7 sm:py-6"
+			radius={20}
+			tone="line"
 		>
 			{/* A grid rather than a wrapping flex row. A phone cannot hold the avatar,
           the byline, the date and the report on one line, and letting the flex row
@@ -59,22 +59,22 @@ function Entry({ entry, viewerId }: { entry: JournalRow; viewerId: string }) {
           from sm, where there is room for all four. */}
 			<header className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3.5 gap-y-2 sm:grid-cols-[auto_minmax(0,1fr)_auto]">
 				<Link
-					href={`/u/${entry.authorId}`}
 					aria-label={`${entry.author}'s profile`}
 					className="shrink-0 rounded-lg transition-transform hover:-translate-y-0.5 active:translate-y-px"
+					href={`/u/${entry.authorId}`}
 				>
-					<Avatar name={entry.author} image={entry.authorImage} shape="tile" className="size-11 text-[1.15rem]" />
+					<Avatar className="size-11 text-[1.15rem]" image={entry.authorImage} name={entry.author} shape="tile" />
 				</Link>
 				<div className="min-w-0">
 					<p className="text-[1.02rem] leading-tight font-extrabold text-navy [overflow-wrap:anywhere]">
 						<Link
-							href={`/u/${entry.authorId}`}
 							className="hover:underline hover:decoration-dashed hover:underline-offset-4"
+							href={`/u/${entry.authorId}`}
 						>
 							{entry.author}
 						</Link>{" "}
 						<span className="font-semibold text-navy-soft">on</span>{" "}
-						<Link href={href} className="text-navy hover:underline hover:decoration-2 hover:underline-offset-4">
+						<Link className="text-navy hover:underline hover:decoration-2 hover:underline-offset-4" href={href}>
 							{entry.project}
 						</Link>
 					</p>
@@ -88,14 +88,14 @@ function Entry({ entry, viewerId }: { entry: JournalRow; viewerId: string }) {
 					</p>
 				</div>
 				<div className="col-start-2 flex shrink-0 items-center justify-between gap-3 sm:col-start-3 sm:row-start-1 sm:justify-end sm:pt-1">
-					<time dateTime={entry.when} className="label text-navy-faint">
+					<time className="label text-navy-faint" dateTime={entry.when}>
 						{fmtDay(entry.day)}
 					</time>
 					{entry.authorId !== viewerId && (
 						<ReportButton
+							context={text.slice(0, 280)}
 							target={{ type: "DEVLOG", id: entry.id }}
 							title="Report this journal entry"
-							context={text.slice(0, 280)}
 						/>
 					)}
 				</div>
@@ -107,13 +107,13 @@ function Entry({ entry, viewerId }: { entry: JournalRow; viewerId: string }) {
           underneath. Only its opening, though: the feed is for finding work,
           and the whole entry is on the project's page. */}
 			<Markdown
-				source={text}
 				className="mt-4 grid max-w-[68ch] gap-3 text-[0.95rem] leading-relaxed text-navy [overflow-wrap:anywhere]"
+				source={text}
 			/>
 			{cut && (
 				<Link
-					href={href}
 					className="hand mt-2 inline-flex items-center gap-1 text-[0.86rem] text-sky-ink underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
+					href={href}
 				>
 					See more <IconArrowRight className="text-sm" />
 				</Link>
@@ -133,8 +133,8 @@ export default async function ExplorePage() {
 	return (
 		<div className="mx-auto w-full max-w-[780px] px-4 pt-2 sm:px-8">
 			<PageSign
-				label="EXPLORE"
 				color="var(--color-sky)"
+				label="EXPLORE"
 				sub="See what other teenagers around the world are building for Half Life!"
 			/>
 
@@ -143,14 +143,14 @@ export default async function ExplorePage() {
 					const items = entries.filter(e => groupFor(e.day, today, yesterday) === group)
 					if (items.length === 0) return null
 					return (
-						<section key={group} className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5">
+						<section className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5" key={group}>
 							<div className="flex items-center gap-4">
 								<span className="h-px flex-1 bg-line" />
 								<h2 className="label text-navy-faint">{group}</h2>
 								<span className="h-px flex-1 bg-line" />
 							</div>
 							{items.map(e => (
-								<Entry key={e.id} entry={e} viewerId={user.id} />
+								<Entry entry={e} key={e.id} viewerId={user.id} />
 							))}
 						</section>
 					)

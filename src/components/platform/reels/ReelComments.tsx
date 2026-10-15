@@ -182,17 +182,17 @@ export function ReelComments({
 	return (
 		<section aria-labelledby={`${uid}-title`} className={cx("flex min-h-0 flex-col text-navy", className)}>
 			<header className="flex shrink-0 items-center gap-2 border-b border-dashed border-line px-5 py-3.5">
-				<h2 id={`${uid}-title`} className="label text-violet-deep">
+				<h2 className="label text-violet-deep" id={`${uid}-title`}>
 					Comments
 				</h2>
 				<span className="label rounded-full bg-violet-pale px-2 py-0.5 text-violet-deep tabular-nums">
 					{compact(count)}
 				</span>
 				<button
-					type="button"
-					onClick={onClose}
 					aria-label="Close comments"
 					className="ml-auto grid size-8 place-items-center rounded-full text-navy-faint transition-colors hover:bg-black/5 hover:text-navy"
+					onClick={onClose}
+					type="button"
 				>
 					<IconX className="text-base" />
 				</button>
@@ -202,7 +202,7 @@ export function ReelComments({
 				{!reel ? null : !thread || (thread.status === "loading" && thread.items.length === 0) ? (
 					<ul aria-label="Loading comments" className="grid gap-5">
 						{[0, 1, 2].map(i => (
-							<li key={i} className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-3 motion-safe:animate-pulse">
+							<li className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-3 motion-safe:animate-pulse" key={i}>
 								<span className="size-9 rounded-full bg-black/[.06]" />
 								<span className="grid content-start gap-2 pt-1">
 									<span className="h-3 w-24 rounded-full bg-black/[.06]" />
@@ -215,9 +215,9 @@ export function ReelComments({
 					<div className="grid justify-items-center gap-3 py-10 text-center">
 						<p className="hand text-[0.9rem] text-coral-deep">the comments did not load.</p>
 						<button
-							type="button"
-							onClick={() => fetchAgain(reel.id, null)}
 							className="label rounded-full border-2 border-line px-4 py-2 text-navy-soft transition-colors hover:border-navy hover:text-navy"
+							onClick={() => fetchAgain(reel.id, null)}
+							type="button"
 						>
 							Try again
 						</button>
@@ -229,15 +229,15 @@ export function ReelComments({
 					</div>
 				) : (
 					<>
-						<ol ref={list} className="grid gap-5">
+						<ol className="grid gap-5" ref={list}>
 							{thread.items.map(c => (
-								<li key={c.id} className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-3">
-									<Avatar name={c.author.name} image={c.author.image} className="size-9 text-[0.88rem]" />
+								<li className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-3" key={c.id}>
+									<Avatar className="size-9 text-[0.88rem]" image={c.author.image} name={c.author.name} />
 									<div className="min-w-0">
 										<p className="flex min-w-0 items-baseline gap-2">
 											<Link
-												href={`/u/${c.author.id}`}
 												className="truncate text-[0.84rem] font-extrabold text-navy transition-colors hover:text-violet-deep hover:underline hover:decoration-dashed hover:underline-offset-4"
+												href={`/u/${c.author.id}`}
 											>
 												{c.author.name ?? "A maker"}
 											</Link>
@@ -250,19 +250,19 @@ export function ReelComments({
 											<time dateTime={c.createdAt}>{ago(c.createdAt)}</time>
 											{c.mine && (
 												<button
-													type="button"
-													onClick={() => remove(c)}
 													className="underline decoration-dashed underline-offset-4 transition-colors hover:text-coral-deep"
+													onClick={() => remove(c)}
+													type="button"
 												>
 													delete
 												</button>
 											)}
 											{!c.mine && (
 												<ReportButton
+													className="text-[0.76rem]"
+													context={c.body}
 													target={{ type: "REEL_COMMENT", id: c.id }}
 													title="Report this comment"
-													context={c.body}
-													className="text-[0.76rem]"
 												/>
 											)}
 										</p>
@@ -272,10 +272,10 @@ export function ReelComments({
 						</ol>
 						{thread.nextCursor && (
 							<button
-								type="button"
+								className="hand mt-5 text-[0.84rem] text-violet-deep underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
 								disabled={thread.status === "loading"}
 								onClick={() => fetchAgain(reel.id, thread.nextCursor)}
-								className="hand mt-5 text-[0.84rem] text-violet-deep underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
+								type="button"
 							>
 								{thread.status === "loading" ? "loading…" : "show older comments"}
 							</button>
@@ -285,36 +285,36 @@ export function ReelComments({
 			</div>
 
 			<form
-				onSubmit={send}
 				className="shrink-0 border-t border-dashed border-line px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+				onSubmit={send}
 			>
 				<div className="flex items-center gap-2.5">
-					<Avatar name={viewer.name} image={viewer.image} className="size-9 text-[0.88rem]" />
-					<label htmlFor={`${uid}-comment`} className="sr-only">
+					<Avatar className="size-9 text-[0.88rem]" image={viewer.image} name={viewer.name} />
+					<label className="sr-only" htmlFor={`${uid}-comment`}>
 						Add a comment
 					</label>
 					<input
-						id={`${uid}-comment`}
-						value={draft}
-						onChange={e => setDraft(e.target.value)}
-						maxLength={MAX_LENGTH}
-						disabled={!reel}
 						autoComplete="off"
-						placeholder="Add a comment…"
 						className="sketch h-11 min-w-0 flex-1 rounded-xl bg-white px-4 text-[0.9rem] text-navy outline-none placeholder:text-navy-faint"
+						disabled={!reel}
+						id={`${uid}-comment`}
+						maxLength={MAX_LENGTH}
+						onChange={e => setDraft(e.target.value)}
+						placeholder="Add a comment…"
 						style={{ "--sk-color": "var(--color-line-strong)", "--sk-radius": "12px" } as React.CSSProperties}
+						value={draft}
 					/>
 					<button
-						type="submit"
-						disabled={!draft.trim() || sending || !reel}
 						aria-label="Post comment"
 						className="grid size-11 shrink-0 place-items-center rounded-xl border-2 border-violet-deep bg-violet text-white transition-[background-color,transform] duration-150 hover:bg-violet-deep active:translate-y-px disabled:cursor-not-allowed disabled:border-line-strong disabled:bg-line disabled:text-white"
+						disabled={!draft.trim() || sending || !reel}
+						type="submit"
 					>
 						<IconSend className="text-[1.1rem]" />
 					</button>
 				</div>
 				{sendError && (
-					<p role="alert" className="hand mt-2 pl-12 text-[0.78rem] text-coral-deep">
+					<p className="hand mt-2 pl-12 text-[0.78rem] text-coral-deep" role="alert">
 						{sendError}
 					</p>
 				)}

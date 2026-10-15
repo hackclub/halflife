@@ -39,13 +39,13 @@ function StepActions({
 	return (
 		<div className="flex items-center justify-between gap-3 border-t border-dashed border-line/80 pt-5">
 			{onBack ? (
-				<Button type="button" variant="outline" onClick={onBack} disabled={busy}>
+				<Button disabled={busy} onClick={onBack} type="button" variant="outline">
 					Back
 				</Button>
 			) : (
 				<span />
 			)}
-			<Button type={onSubmit ? "button" : "submit"} variant="gold" onClick={onSubmit} disabled={busy || !canSubmit}>
+			<Button disabled={busy || !canSubmit} onClick={onSubmit} type={onSubmit ? "button" : "submit"} variant="gold">
 				{busy ? "Saving…" : label}
 			</Button>
 		</div>
@@ -66,11 +66,11 @@ function SelectButton({
 }) {
 	return (
 		<Button
-			type="button"
-			variant={selected ? "teal" : "outline"}
 			aria-pressed={selected}
 			disabled={disabled}
 			onClick={onClick}
+			type="button"
+			variant={selected ? "teal" : "outline"}
 		>
 			{label}
 			{selected ? <IconCheck className="text-base" /> : null}
@@ -192,7 +192,7 @@ export function OnboardingFlow({
 			</div>
 
 			{error ? (
-				<p role="alert" className="mb-5 rounded-xl bg-coral/10 px-4 py-3 text-[0.86rem] font-semibold text-coral-dark">
+				<p className="mb-5 rounded-xl bg-coral/10 px-4 py-3 text-[0.86rem] font-semibold text-coral-dark" role="alert">
 					{error}
 				</p>
 			) : null}
@@ -203,12 +203,12 @@ export function OnboardingFlow({
 						<div className="space-y-3">
 							{view.experienceOptions.map(option => (
 								<OptionRow
-									key={option.value}
-									tone="gold"
-									selected={experience === option.value}
 									disabled={busy}
 									hint={option.hint}
+									key={option.value}
 									onClick={() => setExperience(option.value)}
+									selected={experience === option.value}
+									tone="gold"
 								>
 									<span className="text-[0.95rem] font-extrabold text-navy">{option.label}</span>
 								</OptionRow>
@@ -216,8 +216,8 @@ export function OnboardingFlow({
 						</div>
 						<StepActions
 							busy={busy}
-							onBack={back}
 							canSubmit={experience !== null}
+							onBack={back}
 							onSubmit={() => send({ step: "experience", experience })}
 						/>
 					</div>
@@ -228,10 +228,10 @@ export function OnboardingFlow({
 						{/* What the week is: its painting, then the words. */}
 						<div className="flex items-start gap-4 sm:gap-6">
 							<WeekPainting
-								theme={view.weekIntro.painting}
 								alt=""
-								sizes="(min-width: 640px) 120px, 84px"
 								className="sticker-shadow size-[84px] shrink-0 sm:size-[120px]"
+								sizes="(min-width: 640px) 120px, 84px"
+								theme={view.weekIntro.painting}
 							/>
 							<div className="min-w-0 flex-1 space-y-2">
 								{view.beginner ? (
@@ -262,36 +262,36 @@ export function OnboardingFlow({
 											const chosen = start === starter.id
 											return (
 												<StarterProjectCard
-													key={starter.id}
-													starter={starter}
-													chosen={chosen}
-													stacked
 													action={
 														<SelectButton
-															selected={chosen}
 															disabled={busy}
-															onClick={() => setStart(starter.id)}
 															label={`Build ${starter.title}`}
+															onClick={() => setStart(starter.id)}
+															selected={chosen}
 														/>
 													}
+													chosen={chosen}
+													key={starter.id}
+													stacked
+													starter={starter}
 												/>
 											)
 										})}
 										<ProjectChoiceCard
-											stacked
-											chosen={start === null}
-											tileClassName="bg-violet-pale"
-											art={<Gato pose="schematic" sizes="260px" className="h-[140px] w-auto" />}
-											label="Custom project"
-											title="Your own idea"
 											action={
 												<SelectButton
-													selected={start === null}
 													disabled={busy}
-													onClick={() => setStart(null)}
 													label="Make a custom project"
+													onClick={() => setStart(null)}
+													selected={start === null}
 												/>
 											}
+											art={<Gato className="h-[140px] w-auto" pose="schematic" sizes="260px" />}
+											chosen={start === null}
+											label="Custom project"
+											stacked
+											tileClassName="bg-violet-pale"
+											title="Your own idea"
 										>
 											<p className="mt-1.5 text-[0.88rem] leading-relaxed text-navy-soft">
 												Make your own project! It can be anything you want.
@@ -303,8 +303,8 @@ export function OnboardingFlow({
 								</div>
 								<StepActions
 									busy={busy}
-									onBack={back}
 									canSubmit={start !== undefined}
+									onBack={back}
 									onSubmit={() => {
 										if (start !== undefined) chooseStart(start)
 									}}
@@ -327,22 +327,22 @@ export function OnboardingFlow({
 						<p className="text-[0.9rem] leading-relaxed text-navy-soft">
 							Tell us about your project! You can always edit this later.
 						</p>
-						<Field id="onboarding-project-name" label="Project name" hint="Give it a cool name!">
+						<Field hint="Give it a cool name!" id="onboarding-project-name" label="Project name">
 							<input
-								id="onboarding-project-name"
 								className={projectInputClass}
-								value={title}
+								id="onboarding-project-name"
 								maxLength={120}
 								onChange={event => setTitle(event.target.value)}
+								value={title}
 							/>
 						</Field>
 						<Field id="onboarding-project-description" label="Project description">
 							<textarea
-								id="onboarding-project-description"
 								className={`${projectInputClass} min-h-28 resize-y`}
-								value={description}
+								id="onboarding-project-description"
 								maxLength={5000}
 								onChange={event => setDescription(event.target.value)}
+								value={description}
 							/>
 						</Field>
 						<StepActions busy={busy} onBack={back} />
@@ -360,17 +360,17 @@ export function OnboardingFlow({
 								const chosen = idea === starter.id
 								return (
 									<StarterProjectCard
-										key={starter.id}
-										starter={starter}
-										chosen={chosen}
 										action={
 											<SelectButton
-												selected={chosen}
 												disabled={busy}
-												onClick={() => setIdea(chosen ? null : starter.id)}
 												label={`Build ${starter.title}`}
+												onClick={() => setIdea(chosen ? null : starter.id)}
+												selected={chosen}
 											/>
 										}
+										chosen={chosen}
+										key={starter.id}
+										starter={starter}
 									/>
 								)
 							})}
@@ -379,8 +379,8 @@ export function OnboardingFlow({
 						{idea !== null ? <Note>{STARTER_MODIFICATION_NOTE}</Note> : null}
 						<StepActions
 							busy={busy}
-							onBack={back}
 							label={idea ? "Next" : "Stick with my own idea"}
+							onBack={back}
 							onSubmit={() => send({ step: "idea", starterProjectId: idea })}
 						/>
 					</div>
@@ -411,31 +411,31 @@ export function OnboardingFlow({
 								const headingId = `onboarding-tier-${tier.id}`
 								return (
 									<label
-										key={tier.id}
 										className={cx(
 											"block rounded-2xl has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-violet has-[input:focus-visible]:ring-offset-2",
 											locked ? "cursor-default" : "group cursor-pointer",
 										)}
+										key={tier.id}
 									>
 										<Panel
-											tone={chosen ? "gold" : "line"}
-											radius={16}
 											className={cx(
 												"px-4 py-3.5 transition-colors sm:px-5 sm:py-4",
 												chosen ? "bg-gold-pale/40" : "bg-white group-hover:bg-black/[.015]",
 											)}
+											radius={16}
+											tone={chosen ? "gold" : "line"}
 										>
 											<div className="flex items-center justify-between gap-3">
 												<input
-													type="radio"
-													name="onboarding-tier"
-													className="sr-only"
-													checked={chosen}
-													disabled={locked}
 													aria-labelledby={headingId}
+													checked={chosen}
+													className="sr-only"
+													disabled={locked}
+													name="onboarding-tier"
 													onChange={() => setPickedTier(tier.id)}
+													type="radio"
 												/>
-												<h3 id={headingId} className="text-[1.2rem] leading-tight font-extrabold text-navy">
+												<h3 className="text-[1.2rem] leading-tight font-extrabold text-navy" id={headingId}>
 													{tier.name} – ${tier.grantUsd}{" "}
 													<span className="font-semibold text-navy-soft">({tier.estimate})</span>
 												</h3>
@@ -451,25 +451,25 @@ export function OnboardingFlow({
 												// The tier line leads; the examples are its footnote, a strip of small thumbnails with their names beside them. Three columns on every tier, so the strips align down the list whatever their length, and fold to a stacked list on a phone.
 												<ul className="mt-3 grid gap-x-4 gap-y-2 border-t border-dashed border-line/80 pt-3 sm:grid-cols-3">
 													{tier.showcase.map(project => (
-														<li key={project.href} className="min-w-0">
+														<li className="min-w-0" key={project.href}>
 															<a
+																className="group/example -m-1 flex items-center gap-2.5 rounded-lg p-1 outline-none focus-visible:ring-2 focus-visible:ring-violet"
 																href={project.href}
-																target="_blank"
-																rel="noopener noreferrer"
 																// Following the link is not a vote for the tier.
 																onClick={event => event.stopPropagation()}
-																className="group/example -m-1 flex items-center gap-2.5 rounded-lg p-1 outline-none focus-visible:ring-2 focus-visible:ring-violet"
+																rel="noopener noreferrer"
+																target="_blank"
 															>
 																{/* Cropped to one frame: at this size a uniform
                                     row reads better than slivers and posts, and
                                     the repo has the whole board. */}
 																<span className="relative block h-11 w-14 shrink-0 overflow-hidden rounded-md bg-white shadow-[0_1px_2px_rgb(28_26_89/0.12)] ring-1 ring-line/70">
 																	<Image
-																		src={project.image}
 																		alt=""
+																		className="object-cover transition-transform duration-300 ease-out group-hover/example:scale-[1.08]"
 																		fill
 																		sizes="112px"
-																		className="object-cover transition-transform duration-300 ease-out group-hover/example:scale-[1.08]"
+																		src={project.image}
 																	/>
 																</span>
 																<span className="min-w-0 text-[0.8rem] leading-snug text-navy-soft decoration-dashed underline-offset-[3px] group-hover/example:text-navy group-hover/example:underline">
@@ -489,8 +489,8 @@ export function OnboardingFlow({
 						{/* A starter's tier is already set, so its Next carries no tier. */}
 						<StepActions
 							busy={busy}
-							onBack={back}
 							canSubmit={view.project.tierLocked || pickedTier !== null}
+							onBack={back}
 							onSubmit={() => send({ step: "tier", requestedTier: view.project.tierLocked ? null : pickedTier })}
 						/>
 					</div>
@@ -502,10 +502,10 @@ export function OnboardingFlow({
 							Tracking progress of your project is mandatory, and you log it in two ways. A{" "}
 							<strong className="text-navy">journal</strong> entry is a detailed writeup of what you did in a session (
 							<a
-								href={EXAMPLE_JOURNAL_URL}
-								target="_blank"
-								rel="noopener noreferrer"
 								className="font-semibold text-sky-ink underline decoration-dashed underline-offset-4 hover:text-navy"
+								href={EXAMPLE_JOURNAL_URL}
+								rel="noopener noreferrer"
+								target="_blank"
 							>
 								here&rsquo;s an example
 							</a>
@@ -520,7 +520,7 @@ export function OnboardingFlow({
 								["Journal", "Write what you did, what broke, and what is next after each session."],
 								["Keep it daily", "Logging on the day is worth doing: your streak counts days you journalled."],
 							].map(([heading, body]) => (
-								<Panel key={heading} as="li" tone="line" radius={16} className="bg-white p-4">
+								<Panel as="li" className="bg-white p-4" key={heading} radius={16} tone="line">
 									<h3 className="text-[0.92rem] font-extrabold text-navy">{heading}</h3>
 									<p className="mt-2 text-[0.8rem] leading-relaxed text-navy-soft">{body}</p>
 								</Panel>
@@ -532,8 +532,8 @@ export function OnboardingFlow({
 						</p>
 						<StepActions
 							busy={busy}
-							onBack={back}
 							label="Next"
+							onBack={back}
 							onSubmit={() => send({ step: "tracking", dismissed: true })}
 						/>
 					</div>
@@ -547,14 +547,14 @@ export function OnboardingFlow({
 							to date in it as you work. You can turn it on later from the project page, so this is optional.
 						</p>
 						<RepoSyncSettings
-							projectId={view.projectId}
 							compact
 							onEnabled={() => send({ step: "repo", enabled: true })}
+							projectId={view.projectId}
 						/>
 						<StepActions
 							busy={busy}
-							onBack={back}
 							label="Finish"
+							onBack={back}
 							onSubmit={() => send({ step: "repo", enabled: false })}
 						/>
 					</div>

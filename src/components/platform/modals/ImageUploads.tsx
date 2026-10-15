@@ -85,20 +85,20 @@ export function ImageUploads({
 	return (
 		<div className="grid gap-3">
 			{images.length > 0 && (
-				<ul className="flex flex-wrap gap-2.5" aria-label={`${label}s`}>
+				<ul aria-label={`${label}s`} className="flex flex-wrap gap-2.5">
 					{images.map((img, i) => (
-						<li key={img.objectKey} className="relative">
+						<li className="relative" key={img.objectKey}>
 							{/* eslint-disable-next-line @next/next/no-img-element -- a local blob preview */}
 							<img
-								src={img.previewUrl}
 								alt={`${label} ${i + 1}`}
 								className="size-24 rounded-xl border-2 border-line bg-white object-cover"
+								src={img.previewUrl}
 							/>
 							<button
-								type="button"
-								onClick={() => remove(img.objectKey)}
 								aria-label={`Remove ${label.toLowerCase()} ${i + 1}`}
 								className="absolute -top-2 -right-2 grid size-7 place-items-center rounded-full border-2 border-line bg-white text-navy-soft shadow-[0_2px_6px_rgb(0_0_0/0.15)] transition-colors hover:border-coral hover:text-coral-deep"
+								onClick={() => remove(img.objectKey)}
+								type="button"
 							>
 								<IconX className="text-[0.75rem]" />
 							</button>
@@ -108,7 +108,7 @@ export function ImageUploads({
 			)}
 
 			{pending.length > 0 && (
-				<ul className="grid max-w-[420px] gap-2.5" aria-label="Uploading">
+				<ul aria-label="Uploading" className="grid max-w-[420px] gap-2.5">
 					{pending.map(row => (
 						<li key={row.id}>
 							<UploadProgress name={row.name} progress={row.progress} />
@@ -118,7 +118,7 @@ export function ImageUploads({
 			)}
 
 			<div className="flex flex-wrap items-center gap-3">
-				<Button variant="outline" disabled={busy > 0 || room <= 0} onClick={() => input.current?.click()}>
+				<Button disabled={busy > 0 || room <= 0} onClick={() => input.current?.click()} variant="outline">
 					<IconUpload className="text-base" />
 					{busy > 0 ? "Uploading…" : images.length > 0 ? "Add more files" : "Select files"}
 				</Button>
@@ -128,18 +128,18 @@ export function ImageUploads({
 			</div>
 
 			<input
-				ref={input}
-				type="file"
 				accept={IMAGE_ACCEPT}
-				multiple
-				className="sr-only"
-				tabIndex={-1}
 				aria-hidden="true"
+				className="sr-only"
+				multiple
 				onChange={e => pick(e.target.files)}
+				ref={input}
+				tabIndex={-1}
+				type="file"
 			/>
 
 			{errors.map(e => (
-				<p key={e} role="alert" className="text-[0.84rem] font-semibold text-coral-deep">
+				<p className="text-[0.84rem] font-semibold text-coral-deep" key={e} role="alert">
 					{e}
 				</p>
 			))}

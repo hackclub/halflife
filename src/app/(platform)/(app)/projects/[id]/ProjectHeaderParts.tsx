@@ -82,13 +82,13 @@ export function CoverImage({
 				style={{ background: shown ? "var(--color-navy)" : accent }}
 			>
 				{shown ? (
-					<ProjectThumb thumb={shown} className="h-full w-full" />
+					<ProjectThumb className="h-full w-full" thumb={shown} />
 				) : (
 					<WeekPainting
-						theme={theme}
 						alt=""
-						sizes="(min-width: 768px) 360px, 50vw"
 						className="sticker-shadow aspect-square h-[82%] max-w-full"
+						sizes="(min-width: 768px) 360px, 50vw"
+						theme={theme}
 					/>
 				)}
 				{!url && fallback && (
@@ -103,7 +103,7 @@ export function CoverImage({
 				{uploading && (
 					<div className="absolute inset-0 grid items-end bg-navy/45 p-3">
 						<div className="rounded-xl bg-white/95 px-3 py-2">
-							<UploadProgress progress={progress} name="New cover image" />
+							<UploadProgress name="New cover image" progress={progress} />
 						</div>
 					</div>
 				)}
@@ -117,23 +117,23 @@ export function CoverImage({
 			{!locked && (
 				<div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
 					<input
-						ref={input}
-						type="file"
 						accept={IMAGE_ACCEPT}
-						className="sr-only"
-						tabIndex={-1}
 						aria-hidden="true"
+						className="sr-only"
 						onChange={e => pick(e.target.files?.[0])}
+						ref={input}
+						tabIndex={-1}
+						type="file"
 					/>
-					<Button variant="ghost" size="sm" disabled={busy} onClick={() => input.current?.click()} className="-ml-3.5">
+					<Button className="-ml-3.5" disabled={busy} onClick={() => input.current?.click()} size="sm" variant="ghost">
 						<IconCamera className="text-base" /> {url ? "Change cover image" : "Add a cover image"}
 					</Button>
 					{url && (
 						<button
-							type="button"
+							className="hand text-[0.8rem] text-navy-soft underline decoration-dashed underline-offset-4 hover:text-coral-deep"
 							disabled={busy}
 							onClick={() => clear()}
-							className="hand text-[0.8rem] text-navy-soft underline decoration-dashed underline-offset-4 hover:text-coral-deep"
+							type="button"
 						>
 							remove
 						</button>
@@ -147,7 +147,7 @@ export function CoverImage({
 				</p>
 			)}
 			{error && (
-				<p role="alert" className="mt-1 text-[0.8rem] font-semibold text-coral-deep">
+				<p className="mt-1 text-[0.8rem] font-semibold text-coral-deep" role="alert">
 					{error}
 				</p>
 			)}

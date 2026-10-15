@@ -71,10 +71,10 @@ export default async function AdminReportsPage({
 				<div className="hl-row">
 					{FILTERS.map(f => (
 						<Link
-							key={f.id}
-							href={f.id === "open" ? "/admin/reports" : `/admin/reports?status=${f.id}`}
 							aria-current={f.id === filter || undefined}
 							className="hl-hint"
+							href={f.id === "open" ? "/admin/reports" : `/admin/reports?status=${f.id}`}
+							key={f.id}
 							style={f.id === filter ? { color: "var(--color-ink-strong)", fontWeight: 700 } : undefined}
 						>
 							{f.label} ({f.status === "ALL" ? counts.OPEN + counts.RESOLVED + counts.DISMISSED : counts[f.status]})
@@ -153,34 +153,34 @@ function ReportRow({ report }: { report: ContentReportRow }) {
 						&& (subject.hidden ? (
 							subject.restoreUrl ? (
 								<ActionButton
-									url={subject.restoreUrl}
-									method="DELETE"
-									label="Restore"
 									confirm="Put this reel back in the feed?"
+									label="Restore"
+									method="DELETE"
+									url={subject.restoreUrl}
 								/>
 							) : (
 								<span className="hl-hint">hidden</span>
 							)
 						) : subject.hideUrl ? (
 							<ActionButton
-								url={subject.hideUrl}
-								label={subject.hideLabel}
-								variant="danger"
 								confirm={`${subject.hideLabel} this ${subject.kind}?`}
+								label={subject.hideLabel}
 								reasonPrompt={`Why is this ${subject.kind} being hidden?`}
+								url={subject.hideUrl}
+								variant="danger"
 							/>
 						) : null)}
 					{report.status === "OPEN" && (
 						<>
 							<ActionButton
-								url={`/api/admin/reports/${report.id}/resolve`}
-								label="Resolve"
 								confirm="Close this report as reviewed?"
+								label="Resolve"
+								url={`/api/admin/reports/${report.id}/resolve`}
 							/>
 							<ActionButton
-								url={`/api/admin/reports/${report.id}/dismiss`}
-								label="Dismiss"
 								confirm="Close this report as no violation?"
+								label="Dismiss"
+								url={`/api/admin/reports/${report.id}/dismiss`}
 							/>
 						</>
 					)}

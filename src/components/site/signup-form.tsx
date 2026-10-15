@@ -156,13 +156,13 @@ export default function SignupForm({
                 so stretching it to a box that runs 6.8:1 in the stage and 3:1
                 on a phone costs nothing but the angle of the two tapers. */}
 						<Image
-							src={brushstroke}
 							alt=""
 							aria-hidden
-							fill
-							sizes="(min-width: 1180px) 1110px, 100vw"
-							quality={90}
 							className="-z-10 object-fill"
+							fill
+							quality={90}
+							sizes="(min-width: 1180px) 1110px, 100vw"
+							src={brushstroke}
 						/>
 						{/* The 0.7em that separates the promise from the field. It was
                 `mb-[0.7em]` and generated no rule at all, so the two were flush:
@@ -176,8 +176,8 @@ export default function SignupForm({
             the plate is exactly the field's footprint and nothing below it ever
             moves. overflow-hidden keeps the wipe's cut edge crisp. */}
 				<div className="relative overflow-hidden">
-					<form onSubmit={onSubmit} noValidate className="flex w-full">
-						<label htmlFor={id} className="sr-only">
+					<form className="flex w-full" noValidate onSubmit={onSubmit}>
+						<label className="sr-only" htmlFor={id}>
 							email address
 						</label>
 						{/* The field is a slot cut into the hero plate, not a control
@@ -197,26 +197,26 @@ export default function SignupForm({
 							style={{ height: "2.1667em" }}
 						>
 							<input
-								ref={inputRef}
-								id={id}
-								name="email"
-								type="email"
-								autoComplete="email"
-								inputMode="email"
-								required
-								disabled={pending}
-								placeholder="email address"
 								// Always described by the line below: the eligibility note when there is nothing wrong, the error when there is. Pointing at it only on error meant the note was on screen but not in the accessibility tree.
 								aria-describedby={`${id}-msg`}
 								aria-invalid={status === "error" || undefined}
+								autoComplete="email"
+								// Display face, not the body one it inherited. The control is one object – a slot cut into the plate and the word beside it – and "sign up/log in" is set in the display face, so the field's own type belongs to the same voice. Set on the input rather than scoped to `::placeholder`, so the address someone types does not change face out from under them mid-word.
+								className="h-full w-full bg-transparent px-[0.667em] font-display text-hl-paper caret-hl-cyan outline-none placeholder:text-hl-paper-soft"
+								disabled={pending}
+								id={id}
+								inputMode="email"
+								name="email"
 								onChange={() => {
 									if (status === "error") {
 										setStatus("idle")
 										setMessage("")
 									}
 								}}
-								// Display face, not the body one it inherited. The control is one object – a slot cut into the plate and the word beside it – and "sign up/log in" is set in the display face, so the field's own type belongs to the same voice. Set on the input rather than scoped to `::placeholder`, so the address someone types does not change face out from under them mid-word.
-								className="h-full w-full bg-transparent px-[0.667em] font-display text-hl-paper caret-hl-cyan outline-none placeholder:text-hl-paper-soft"
+								placeholder="email address"
+								ref={inputRef}
+								required
+								type="email"
 							/>
 
 							{/* Edge at 55% rather than the slot component's 45%: on ink that
@@ -253,10 +253,10 @@ export default function SignupForm({
                 are 1.82em of the button's 2.1667, so the row keeps its height
                 and the field gets back the second half's width. */}
 						<button
-							type="submit"
-							disabled={pending}
 							className="grid shrink-0 place-items-center bg-hl-cyan px-[0.6em] text-hl-ink transition-colors hover:bg-white focus-visible:bg-white active:brightness-95 disabled:cursor-progress disabled:bg-hl-blue min-[520px]:px-[0.9em]"
+							disabled={pending}
 							style={{ height: "2.1667em" }}
+							type="submit"
 						>
 							<span
 								className={`[grid-area:1/1] flex flex-col items-center gap-[0.12em] font-display font-bold leading-none min-[520px]:flex-row min-[520px]:gap-0 ${
@@ -292,8 +292,8 @@ export default function SignupForm({
           there, where paper holds 5.28:1. Regular weight against the error's
           semibold, so the two read apart at a glance as well as by colour. */}
 			<p
-				id={`${id}-msg`}
 				className={`mt-[0.45em] ${status === "error" ? "font-semibold text-hl-cyan" : "text-hl-paper"}`}
+				id={`${id}-msg`}
 				style={{ fontSize: "0.6em", minHeight: "1.4em" }}
 			>
 				{status === "error" ? message : BRAND.eligibility}
@@ -302,7 +302,7 @@ export default function SignupForm({
 			{/* One persistent live region does all the announcing – "taking you to
           Hack Club", or what went wrong. It is always in the tree, so every
           status change is a change to it, and it carries no layout. */}
-			<p role="status" aria-live="polite" className="sr-only">
+			<p aria-live="polite" className="sr-only" role="status">
 				{message}
 			</p>
 		</div>
@@ -311,9 +311,9 @@ export default function SignupForm({
 
 function Spinner({ className }: { className?: string }) {
 	return (
-		<svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>
-			<circle cx={12} cy={12} r={9} stroke="currentColor" strokeWidth={3} strokeOpacity={0.3} />
-			<path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth={3} strokeLinecap="square" />
+		<svg aria-hidden className={className} fill="none" viewBox="0 0 24 24">
+			<circle cx={12} cy={12} r={9} stroke="currentColor" strokeOpacity={0.3} strokeWidth={3} />
+			<path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeLinecap="square" strokeWidth={3} />
 		</svg>
 	)
 }

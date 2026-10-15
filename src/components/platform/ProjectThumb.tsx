@@ -10,17 +10,17 @@ export function ProjectThumb({ thumb, className }: { thumb: ProjectThumbnail; cl
 	if (thumb.kind === "video") {
 		return (
 			<video
-				src={`${thumb.url}#t=0.1`}
+				aria-hidden
 				className={cx("object-cover", className)}
 				muted
 				playsInline
 				preload="metadata"
-				aria-hidden
+				src={`${thumb.url}#t=0.1`}
 			/>
 		)
 	}
 	return (
 		// eslint-disable-next-line @next/next/no-img-element -- R2, or a URL the maker pasted into a journal
-		<img src={thumb.url} alt="" loading="lazy" className={cx("object-cover", className)} />
+		<img alt="" className={cx("object-cover", className)} loading="lazy" src={thumb.url} />
 	)
 }

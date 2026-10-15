@@ -27,7 +27,7 @@ export function LinkButton({
 	children,
 }: Readonly<{ href: string; variant?: Variant; children: ReactNode }>) {
 	return (
-		<Link href={href} className={variantClass[variant]}>
+		<Link className={variantClass[variant]} href={href}>
 			{children}
 		</Link>
 	)
@@ -75,7 +75,7 @@ export function PageHeader({
 	return (
 		<header>
 			<div className="hl-sign">
-				<div className="hl-sign-straps" aria-hidden="true">
+				<div aria-hidden="true" className="hl-sign-straps">
 					<span className="hl-sign-strap" />
 					<span className="hl-sign-strap" />
 				</div>
@@ -125,12 +125,12 @@ export function Avatar({
 	const className = `hl-avatar${large ? " hl-avatar--lg" : ""}`
 	if (src) {
 		// eslint-disable-next-line @next/next/no-img-element
-		return <img className={className} src={src} alt={alt} />
+		return <img alt={alt} className={className} src={src} />
 	}
 	return (
-		<span className={`${className} hl-avatar--fallback`} role="img" aria-label={alt || "No picture set"}>
+		<span aria-label={alt || "No picture set"} className={`${className} hl-avatar--fallback`} role="img">
 			{/* eslint-disable-next-line @next/next/no-img-element */}
-			<img src="/brand/gato/schematic.png" alt="" />
+			<img alt="" src="/brand/gato/schematic.png" />
 		</span>
 	)
 }

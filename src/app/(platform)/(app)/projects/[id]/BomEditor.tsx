@@ -307,7 +307,7 @@ export function BomEditor({
 			<p className="mb-4 text-[0.88rem] leading-snug text-navy-soft">
 				Parts only – don&apos;t list tools here. Enter all prices in US dollars (USD). Soldering irons, multimeters,
 				cutters and the like are bought in the{" "}
-				<Link href="/shop" className="underline decoration-dashed underline-offset-4 hover:text-navy">
+				<Link className="underline decoration-dashed underline-offset-4 hover:text-navy" href="/shop">
 					programme shop
 				</Link>{" "}
 				after your project is approved.
@@ -317,12 +317,12 @@ export function BomEditor({
 					<thead>
 						<tr className="border-b border-dashed border-line">
 							{["Part", "Qty", "Unit", "Total", "Vendor"].map(h => (
-								<th key={h} scope="col" className="label px-3 py-2 text-navy-soft first:pl-0">
+								<th className="label px-3 py-2 text-navy-soft first:pl-0" key={h} scope="col">
 									{h}
 								</th>
 							))}
 							{!locked && (
-								<th scope="col" className="w-0 px-0 py-2">
+								<th className="w-0 px-0 py-2" scope="col">
 									<span className="sr-only">Actions</span>
 								</th>
 							)}
@@ -331,18 +331,18 @@ export function BomEditor({
 					<tbody>
 						{items.length === 0 && (
 							<tr className="border-b border-dashed border-line/60">
-								<td colSpan={locked ? 5 : 6} className="hand py-4 text-[0.88rem] text-navy-soft">
+								<td className="hand py-4 text-[0.88rem] text-navy-soft" colSpan={locked ? 5 : 6}>
 									no parts listed yet. Add what the build needs, with a real vendor and price.
 								</td>
 							</tr>
 						)}
 						{items.map(l => (
 							<tr
-								key={l.id}
 								className={cx(
 									"border-b border-dashed border-line/60 align-top",
 									editing === l.id && "bg-violet-pale/50",
 								)}
+								key={l.id}
 							>
 								<td className="py-2.5 pr-3">
 									<span className="block font-semibold [overflow-wrap:anywhere] text-navy">{l.name}</span>
@@ -354,10 +354,10 @@ export function BomEditor({
 								<td className="hand px-3 py-2.5 text-navy-soft">
 									{l.link ? (
 										<a
-											href={l.link}
-											target="_blank"
-											rel="noopener noreferrer"
 											className="underline decoration-line-strong underline-offset-4 hover:text-navy hover:decoration-violet"
+											href={l.link}
+											rel="noopener noreferrer"
+											target="_blank"
 										>
 											{l.vendor || "link"}
 										</a>
@@ -368,20 +368,20 @@ export function BomEditor({
 								{!locked && (
 									<td className="py-1.5 pl-2 whitespace-nowrap">
 										<button
-											type="button"
-											onClick={() => open(l)}
-											disabled={saving}
 											aria-label={`Edit ${l.name}`}
 											className="inline-grid size-8 place-items-center rounded-full text-navy-soft transition-colors hover:bg-black/5 hover:text-navy"
+											disabled={saving}
+											onClick={() => open(l)}
+											type="button"
 										>
 											<IconPencil className="text-sm" />
 										</button>
 										<button
-											type="button"
-											onClick={() => remove(l)}
-											disabled={saving}
 											aria-label={`Remove ${l.name}`}
 											className="inline-grid size-8 place-items-center rounded-full text-navy-soft transition-colors hover:bg-coral/10 hover:text-coral-deep"
+											disabled={saving}
+											onClick={() => remove(l)}
+											type="button"
 										>
 											<IconX className="text-sm" />
 										</button>
@@ -392,12 +392,12 @@ export function BomEditor({
 					</tbody>
 					<tfoot>
 						<ExtraRow
-							label="Tax & shipping"
-							hint="for the whole order"
-							value={taxShipping}
-							locked={locked}
 							disabled={saving}
+							hint="for the whole order"
+							label="Tax & shipping"
+							locked={locked}
 							onSave={saveTaxShipping}
+							value={taxShipping}
 						/>
 					</tfoot>
 				</table>
@@ -420,10 +420,10 @@ export function BomEditor({
 				</p>
 				{!locked && editing === null && (
 					<div className="flex flex-wrap gap-2">
-						<Button variant="outline" size="sm" onClick={() => open("new")}>
+						<Button onClick={() => open("new")} size="sm" variant="outline">
 							<IconPlus className="text-base" /> Add a part
 						</Button>
-						<Button variant="ghost" size="sm" disabled={saving || importLoading} onClick={() => openImport()}>
+						<Button disabled={saving || importLoading} onClick={() => openImport()} size="sm" variant="ghost">
 							<IconArrowDown className="text-base" /> Import from repo
 						</Button>
 					</div>
@@ -434,14 +434,14 @@ export function BomEditor({
 
 			{!locked && editing !== null && (
 				<form
-					noValidate
 					className="mt-4 grid gap-3 rounded-2xl bg-black/[.03] p-4"
+					noValidate
+					onKeyDown={e => {
+						if (e.key === "Escape") setEditing(null)
+					}}
 					onSubmit={e => {
 						e.preventDefault()
 						save()
-					}}
-					onKeyDown={e => {
-						if (e.key === "Escape") setEditing(null)
 					}}
 				>
 					<p className="text-[0.9rem] font-extrabold text-navy">
@@ -454,11 +454,11 @@ export function BomEditor({
 					<div className="grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
 						<label className="grid gap-1">
 							<span className="label text-violet-deep">Part</span>
-							<input {...field("name")} ref={nameInput} placeholder="ESP32-C3 SuperMini" maxLength={120} />
+							<input {...field("name")} maxLength={120} placeholder="ESP32-C3 SuperMini" ref={nameInput} />
 						</label>
 						<label className="grid gap-1">
 							<span className="label text-violet-deep">What it&apos;s for</span>
-							<input {...field("purpose")} placeholder="Wi-Fi and the main loop" maxLength={200} />
+							<input {...field("purpose")} maxLength={200} placeholder="Wi-Fi and the main loop" />
 						</label>
 					</div>
 					<div className="grid grid-cols-2 gap-3 sm:grid-cols-[5rem_7rem_minmax(0,1fr)_minmax(0,1.5fr)]">
@@ -472,52 +472,49 @@ export function BomEditor({
 						</label>
 						<label className="grid gap-1">
 							<span className="label text-violet-deep">Vendor</span>
-							<input {...field("vendor")} placeholder="LCSC" maxLength={80} />
+							<input {...field("vendor")} maxLength={80} placeholder="LCSC" />
 						</label>
 						<label className="grid gap-1">
 							<span className="label text-violet-deep">Link</span>
-							<input {...field("link")} inputMode="url" spellCheck={false} placeholder="lcsc.com/product-detail/…" />
+							<input {...field("link")} inputMode="url" placeholder="lcsc.com/product-detail/…" spellCheck={false} />
 						</label>
 					</div>
 					{error && (
-						<p role="alert" className="text-[0.82rem] font-semibold text-coral-deep">
+						<p className="text-[0.82rem] font-semibold text-coral-deep" role="alert">
 							{error}
 						</p>
 					)}
 					<div className="flex flex-wrap gap-2">
-						<Button type="submit" variant="solid" size="sm" disabled={saving}>
+						<Button disabled={saving} size="sm" type="submit" variant="solid">
 							{saving ? "Saving…" : editing === "new" ? "Add part" : "Save"}
 						</Button>
-						<Button type="button" variant="ghost" size="sm" disabled={saving} onClick={() => setEditing(null)}>
+						<Button disabled={saving} onClick={() => setEditing(null)} size="sm" type="button" variant="ghost">
 							{editing === "new" ? "Done" : "Cancel"}
 						</Button>
 					</div>
 				</form>
 			)}
 			{error && editing === null && (
-				<p role="alert" className="mt-2 text-[0.82rem] font-semibold text-coral-deep">
+				<p className="mt-2 text-[0.82rem] font-semibold text-coral-deep" role="alert">
 					{error}
 				</p>
 			)}
 
 			<Modal
-				open={importOpen}
-				onClose={() => setImportOpen(false)}
-				eyebrow="Bill of materials"
-				size="lg"
 				dismissible={!importing}
+				eyebrow="Bill of materials"
 				footer={
 					preview && preview.lines.length > 0 ? (
 						<>
-							<Button variant="ghost" size="sm" disabled={importing} onClick={() => setImportOpen(false)}>
+							<Button disabled={importing} onClick={() => setImportOpen(false)} size="sm" variant="ghost">
 								Cancel
 							</Button>
 							{preview.existing > 0 && (
-								<Button variant="outline" size="sm" disabled={importing} onClick={() => applyImport(false)}>
+								<Button disabled={importing} onClick={() => applyImport(false)} size="sm" variant="outline">
 									{importing ? "Adding…" : `Add ${preview.lines.length} to my list`}
 								</Button>
 							)}
-							<Button variant="solid" size="sm" disabled={importing} onClick={() => applyImport(true)}>
+							<Button disabled={importing} onClick={() => applyImport(true)} size="sm" variant="solid">
 								{importing
 									? "Importing…"
 									: preview.existing > 0
@@ -526,22 +523,25 @@ export function BomEditor({
 							</Button>
 						</>
 					) : (
-						<Button variant="ghost" size="sm" disabled={importing} onClick={() => setImportOpen(false)}>
+						<Button disabled={importing} onClick={() => setImportOpen(false)} size="sm" variant="ghost">
 							Close
 						</Button>
 					)
 				}
+				onClose={() => setImportOpen(false)}
+				open={importOpen}
+				size="lg"
 			>
 				<ModalTitle sub="Read from the bom*.csv in your project's repo, so parts you have listed once are not typed in again.">
 					Import parts from your repo
 				</ModalTitle>
 
 				{importLoading ? (
-					<p className="hand text-[0.9rem] text-navy-soft" aria-live="polite">
+					<p aria-live="polite" className="hand text-[0.9rem] text-navy-soft">
 						reading your repo…
 					</p>
 				) : importError ? (
-					<p role="alert" className="text-[0.88rem] font-semibold text-coral-deep">
+					<p className="text-[0.88rem] font-semibold text-coral-deep" role="alert">
 						{importError}
 					</p>
 				) : preview ? (
@@ -567,7 +567,7 @@ export function BomEditor({
 										<thead>
 											<tr className="border-b border-dashed border-line">
 												{["Part", "Qty", "Unit", "Vendor"].map(h => (
-													<th key={h} scope="col" className="label px-3 py-2 text-navy-soft first:pl-0">
+													<th className="label px-3 py-2 text-navy-soft first:pl-0" key={h} scope="col">
 														{h}
 													</th>
 												))}
@@ -575,7 +575,7 @@ export function BomEditor({
 										</thead>
 										<tbody>
 											{preview.lines.map((l, i) => (
-												<tr key={`${l.name}-${i}`} className="border-b border-dashed border-line/60 align-top">
+												<tr className="border-b border-dashed border-line/60 align-top" key={`${l.name}-${i}`}>
 													<td className="py-2 pr-3">
 														<span className="block font-semibold [overflow-wrap:anywhere] text-navy">{l.name}</span>
 													</td>
@@ -597,7 +597,7 @@ export function BomEditor({
 								<p className="label text-violet-deep">Skipped {preview.skipped.length}</p>
 								<ul className="mt-1.5 grid gap-1">
 									{preview.skipped.map(s => (
-										<li key={s.row} className="text-[0.82rem] leading-snug text-navy-soft">
+										<li className="text-[0.82rem] leading-snug text-navy-soft" key={s.row}>
 											<span className="font-semibold text-navy">{s.name || `line ${s.row}`}</span> – {s.reason}
 										</li>
 									))}
@@ -647,7 +647,7 @@ function ExtraRow({
 	return (
 		<tr className="border-b border-dashed border-line/60 align-middle last:border-0">
 			<td className="py-2.5 pr-3">
-				<label htmlFor={id} className="block font-semibold text-navy">
+				<label className="block font-semibold text-navy" htmlFor={id}>
 					{label}
 				</label>
 				<span className="block text-[0.8rem] leading-snug text-navy-soft">{hint}</span>
@@ -661,33 +661,33 @@ function ExtraRow({
 					<span className="inline-flex items-center gap-1">
 						<span aria-hidden="true">$</span>
 						<input
-							id={id}
-							value={draft}
-							inputMode="decimal"
-							placeholder="0.00"
-							disabled={disabled}
-							aria-invalid={invalid || undefined}
 							aria-describedby={invalid ? `${id}-error` : undefined}
-							onChange={e => {
-								setDraft(e.target.value)
-								if (invalid) setInvalid(false)
-							}}
-							onBlur={() => commit()}
-							onKeyDown={e => {
-								if (e.key === "Enter") {
-									e.preventDefault()
-									e.currentTarget.blur()
-								}
-							}}
+							aria-invalid={invalid || undefined}
 							// Its own look rather than inputClass: a white field on the white panel reads as a printed number, not one you can change.
 							className={cx(
 								"block w-24 rounded-lg border-2 border-field bg-black/[.03] px-2.5 py-1.5 text-[0.86rem] text-navy tabular-nums outline-none placeholder:text-navy-faint",
 								"transition-colors hover:border-navy-soft focus:border-violet focus:bg-white",
 								invalid && "border-coral-deep! text-coral-deep",
 							)}
+							disabled={disabled}
+							id={id}
+							inputMode="decimal"
+							onBlur={() => commit()}
+							onChange={e => {
+								setDraft(e.target.value)
+								if (invalid) setInvalid(false)
+							}}
+							onKeyDown={e => {
+								if (e.key === "Enter") {
+									e.preventDefault()
+									e.currentTarget.blur()
+								}
+							}}
+							placeholder="0.00"
+							value={draft}
 						/>
 						{invalid && (
-							<p id={`${id}-error`} role="alert" className="hand mt-1 text-[0.76rem] text-coral-deep">
+							<p className="hand mt-1 text-[0.76rem] text-coral-deep" id={`${id}-error`} role="alert">
 								Enter 0 or more, e.g. 12.50.
 							</p>
 						)}

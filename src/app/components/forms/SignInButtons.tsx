@@ -22,7 +22,7 @@ export function SignInButtons({ hasSession }: Readonly<{ hasSession: boolean }>)
 	return (
 		<div className="hl-stack hl-stack--tight">
 			{error ? <Callout tone="danger">{error}</Callout> : null}
-			<Button variant="primary" disabled={busy !== null} onClick={() => run("hca", () => signInWith("hca"))}>
+			<Button disabled={busy !== null} onClick={() => run("hca", () => signInWith("hca"))} variant="primary">
 				{busy === "hca" ? "Redirecting…" : "Continue with Hack Club"}
 			</Button>
 			{hasSession ? (

@@ -5,6 +5,16 @@
 		"indentWidth": 2,
 		"lineWidth": 120
 	},
+	"assist": {
+		"actions": {
+			"source": {
+				"noDuplicateClasses": "on",
+				"organizeImports": "on",
+				"useSortedAttributes": "on"
+			}
+		},
+		"enabled": true
+	},
 	"linter": {
 		"rules": {
 			"correctness": {

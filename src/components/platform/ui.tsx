@@ -116,7 +116,6 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
 
 	return (
 		<button
-			ref={ref}
 			className={cx(
 				"label inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border-2 whitespace-nowrap",
 				"transition-[background-color,color,transform,filter] duration-150",
@@ -126,6 +125,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
 				full && "w-full",
 				className,
 			)}
+			ref={ref}
 			{...rest}
 		>
 			{children}
@@ -194,14 +194,13 @@ export function OptionRow({
 
 	return (
 		<button
-			type="button"
-			onClick={onClick}
-			disabled={disabled}
 			aria-pressed={selected}
 			className={cx(
 				"sketch group relative block w-full rounded-2xl px-5 py-3.5 text-left transition-colors duration-150",
 				disabled ? "cursor-not-allowed opacity-55" : "hover:bg-white",
 			)}
+			disabled={disabled}
+			onClick={onClick}
 			style={
 				{
 					"--sk-color": ring,
@@ -209,6 +208,7 @@ export function OptionRow({
 					background: selected ? fill : "var(--color-paper)",
 				} as React.CSSProperties
 			}
+			type="button"
 		>
 			<span className="flex items-center gap-3">
 				<span
@@ -249,13 +249,13 @@ export function Meter({
 	const track = { teal: "var(--color-mint)", gold: "var(--color-gold-pale)", sky: "var(--color-sky-pale)" }[tone]
 	return (
 		<div
-			className={cx("relative h-5 w-full overflow-hidden rounded-full", className)}
-			style={{ background: track }}
-			role="progressbar"
-			aria-valuenow={value}
-			aria-valuemin={0}
-			aria-valuemax={max}
 			aria-label={label ?? "Progress"}
+			aria-valuemax={max}
+			aria-valuemin={0}
+			aria-valuenow={value}
+			className={cx("relative h-5 w-full overflow-hidden rounded-full", className)}
+			role="progressbar"
+			style={{ background: track }}
 		>
 			<div
 				className="h-full rounded-full transition-[width] duration-700 ease-out"
@@ -313,7 +313,7 @@ export function Field({
 }) {
 	return (
 		<div>
-			<label htmlFor={id} className="label block text-violet-deep">
+			<label className="label block text-violet-deep" htmlFor={id}>
 				{label}
 			</label>
 			{hint && <p className="mt-0.5 text-[0.78rem] text-navy-soft">{hint}</p>}

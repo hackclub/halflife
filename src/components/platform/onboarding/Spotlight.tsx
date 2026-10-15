@@ -242,10 +242,10 @@ export function Spotlight({
 		<div className="pointer-events-none fixed inset-0 z-[80]">
 			{clickAnywhere && (
 				<button
-					type="button"
 					aria-label="Next"
-					onClick={onNext}
 					className="pointer-events-auto absolute inset-0 cursor-pointer"
+					onClick={onNext}
+					type="button"
 				/>
 			)}
 
@@ -256,92 +256,91 @@ export function Spotlight({
 			>
 				<defs>
 					<mask id={`${uid}-holes`}>
-						<rect x={0} y={0} width="100%" height="100%" fill="white" />
+						<rect fill="white" height="100%" width="100%" x={0} y={0} />
 						{rect && (
 							<rect
+								fill="black"
+								height={rect.height}
+								rx={radius}
+								style={{ transform: `translate(${rect.left}px, ${rect.top}px)`, transition: travel }}
+								width={rect.width}
 								x={0}
 								y={0}
-								rx={radius}
-								width={rect.width}
-								height={rect.height}
-								fill="black"
-								style={{ transform: `translate(${rect.left}px, ${rect.top}px)`, transition: travel }}
 							/>
 						)}
 						{alsoRect && (
-							<rect x={0} y={0} rx={radius} fill="black" style={{ ...opening(alsoRect), transition: open }} />
+							<rect fill="black" rx={radius} style={{ ...opening(alsoRect), transition: open }} x={0} y={0} />
 						)}
 					</mask>
 
 					{wipe && (
 						<mask id={`${uid}-wipe`}>
 							<rect
-								x={0}
-								y={wipe.y}
-								height={wipe.h}
-								width={revealed ? wipe.w : 0}
 								fill="white"
+								height={wipe.h}
 								style={{
 									transform: `translate(${revealed ? wipe.x : wipe.startX}px, 0)`,
 									transition: `transform 620ms 220ms ${EASE}, width 620ms 220ms ${EASE}`,
 								}}
+								width={revealed ? wipe.w : 0}
+								x={0}
+								y={wipe.y}
 							/>
 						</mask>
 					)}
 				</defs>
 
 				<rect
+					fill="rgba(19,17,62,.62)"
+					height="100%"
+					mask={rect ? `url(#${uid}-holes)` : undefined}
+					width="100%"
 					x={0}
 					y={0}
-					width="100%"
-					height="100%"
-					fill="rgba(19,17,62,.62)"
-					mask={rect ? `url(#${uid}-holes)` : undefined}
 				/>
 
 				{line && (
 					<path
 						d={line.d}
 						fill="none"
-						stroke="rgba(255,255,255,.78)"
-						strokeWidth={2.5}
-						strokeLinecap="round"
-						strokeDasharray="7 6"
 						mask={`url(#${uid}-wipe)`}
+						stroke="rgba(255,255,255,.78)"
+						strokeDasharray="7 6"
+						strokeLinecap="round"
+						strokeWidth={2.5}
 					/>
 				)}
 
 				{rect && (
 					<rect
+						fill="none"
+						height={rect.height}
+						rx={radius}
+						stroke="rgba(255,255,255,.9)"
+						strokeDasharray="9 7"
+						strokeWidth={3}
+						style={{ transform: `translate(${rect.left}px, ${rect.top}px)`, transition: travel }}
+						width={rect.width}
 						x={0}
 						y={0}
-						rx={radius}
-						width={rect.width}
-						height={rect.height}
-						fill="none"
-						stroke="rgba(255,255,255,.9)"
-						strokeWidth={3}
-						strokeDasharray="9 7"
-						style={{ transform: `translate(${rect.left}px, ${rect.top}px)`, transition: travel }}
 					/>
 				)}
 
 				{alsoRect && (
 					<rect
+						fill="none"
+						rx={radius}
+						stroke="rgba(255,255,255,.9)"
+						strokeDasharray="9 7"
+						strokeWidth={3}
+						style={{ ...opening(alsoRect), transition: open }}
 						x={0}
 						y={0}
-						rx={radius}
-						fill="none"
-						stroke="rgba(255,255,255,.9)"
-						strokeWidth={3}
-						strokeDasharray="9 7"
-						style={{ ...opening(alsoRect), transition: open }}
 					/>
 				)}
 			</svg>
 
 			<div
-				role="dialog"
 				aria-label={title}
 				className={cx(
 					"sketch sketch-2 pointer-events-auto absolute rounded-2xl bg-cream p-4 lift-shadow",
@@ -349,6 +348,7 @@ export function Spotlight({
 						? "transition-[top,left,width] duration-[520ms] ease-[cubic-bezier(.16,1,.3,1)]"
 						: "motion-safe:animate-[hl-pop_.36s_cubic-bezier(.16,1,.3,1)]",
 				)}
+				role="dialog"
 				style={
 					{
 						top: cardTop,
@@ -359,7 +359,7 @@ export function Spotlight({
 					} as React.CSSProperties
 				}
 			>
-				<div key={title} className="motion-safe:animate-[hl-rise_.4s_.12s_cubic-bezier(.16,1,.3,1)_both]">
+				<div className="motion-safe:animate-[hl-rise_.4s_.12s_cubic-bezier(.16,1,.3,1)_both]" key={title}>
 					{typeof step === "number" && typeof total === "number" && (
 						<p className="label mb-1.5 text-gold-ink">
 							Tour {step}/{total}
@@ -369,14 +369,14 @@ export function Spotlight({
 					<p className="mt-1.5 text-[0.86rem] leading-snug text-navy-soft">{body}</p>
 				</div>
 				<div className="mt-3.5 flex items-center gap-2">
-					<Button size="sm" variant="gold" onClick={onNext}>
+					<Button onClick={onNext} size="sm" variant="gold">
 						{cta ?? "Got it"} <IconArrowRight className="text-sm" />
 					</Button>
 					{onSkip && (
 						<button
-							type="button"
-							onClick={onSkip}
 							className="hand text-[0.78rem] text-navy-soft underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
+							onClick={onSkip}
+							type="button"
 						>
 							Skip tour
 						</button>

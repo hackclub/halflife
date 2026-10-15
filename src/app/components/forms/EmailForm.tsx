@@ -46,21 +46,21 @@ export function EmailForm({
 				delete their account and no longer receive mail there.
 			</p>
 			<Field
-				label="New email"
 				hint="Their own address, not a forwarding one. Stored exactly as typed, and checked against every other user regardless of capitalisation."
+				label="New email"
 			>
 				<input
 					className="hl-input"
+					maxLength={320}
+					onChange={e => setValue(e.target.value)}
+					placeholder="participant@example.com"
+					style={{ maxWidth: "24rem" }}
 					type="email"
 					value={value}
-					maxLength={320}
-					placeholder="participant@example.com"
-					onChange={e => setValue(e.target.value)}
-					style={{ maxWidth: "24rem" }}
 				/>
 			</Field>
 			<div>
-				<Button type="submit" variant="danger" disabled={busy !== null || !canSave}>
+				<Button disabled={busy !== null || !canSave} type="submit" variant="danger">
 					{busy ? "Saving…" : "Change email"}
 				</Button>
 			</div>

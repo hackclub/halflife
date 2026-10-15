@@ -24,30 +24,30 @@ export function NotFoundScene() {
 	return (
 		<main className={`${styles.scene} ${siteFontVariables}`}>
 			<div className={styles.column}>
-				<Link href="/" className={styles.wordmark}>
+				<Link className={styles.wordmark} href="/">
 					{BRAND.name.toLowerCase()}
 				</Link>
 
 				<div className={styles.head}>
 					<h1 className={styles.plate}>this page isn&rsquo;t on the map</h1>
 					<svg
-						viewBox={`0 0 ${STACK_VIEW.w} ${STACK_VIEW.h}`}
-						preserveAspectRatio="none"
-						fill="none"
 						aria-hidden="true"
-						focusable="false"
 						className={styles.weld}
+						fill="none"
+						focusable="false"
+						preserveAspectRatio="none"
+						viewBox={`0 0 ${STACK_VIEW.w} ${STACK_VIEW.h}`}
 					>
 						<defs>
 							<clipPath id="hl-404-shear">
 								<path d={SHEAR} />
 							</clipPath>
 						</defs>
-						<path d={stackWeld("right")} fill="var(--color-hl-lavender-pale, #e6e5fc)" clipPath="url(#hl-404-shear)" />
+						<path clipPath="url(#hl-404-shear)" d={stackWeld("right")} fill="var(--color-hl-lavender-pale, #e6e5fc)" />
 					</svg>
 				</div>
 
-				<section className={styles.slot} aria-labelledby="hl-404-label">
+				<section aria-labelledby="hl-404-label" className={styles.slot}>
 					<span aria-hidden="true" className={styles.grid} />
 					<span aria-hidden="true" className={styles.edge} />
 					<span aria-hidden="true" className={`${styles.tick} ${styles.tl}`} />
@@ -56,7 +56,7 @@ export function NotFoundScene() {
 					<span aria-hidden="true" className={`${styles.tick} ${styles.br}`} />
 
 					<div className={styles.body}>
-						<h2 id="hl-404-label" className={styles.label}>
+						<h2 className={styles.label} id="hl-404-label">
 							station 404
 						</h2>
 						<MissingPath className={styles.path} />
@@ -66,11 +66,11 @@ export function NotFoundScene() {
 					</div>
 				</section>
 
-				<nav className={styles.actions} aria-label="Ways back">
-					<Link href={PLATFORM_HOME} className={styles.primary}>
+				<nav aria-label="Ways back" className={styles.actions}>
+					<Link className={styles.primary} href={PLATFORM_HOME}>
 						back to your map
 					</Link>
-					<Link href="/" className={styles.secondary}>
+					<Link className={styles.secondary} href="/">
 						{BRAND.name.toLowerCase()} home
 					</Link>
 				</nav>

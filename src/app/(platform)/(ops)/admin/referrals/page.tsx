@@ -14,8 +14,8 @@ export default async function AdminReferralsPage() {
 	return (
 		<div className="hl-stack">
 			<PageHeader
-				title="Referrals"
 				subtitle="Ranked by the sign-ups each ?ref= link has brought in, from the landing page sign-up list."
+				title="Referrals"
 			/>
 
 			{board === null ? (
@@ -32,12 +32,12 @@ export default async function AdminReferralsPage() {
 					</div>
 
 					<Panel
-						title="Top referral links"
 						actions={
 							<span className="hl-hint" style={{ fontSize: "0.78rem" }}>
 								cached for a minute
 							</span>
 						}
+						title="Top referral links"
 					>
 						{board.rows.length === 0 ? (
 							<EmptyState>No sign-up has come through a referral link yet.</EmptyState>
@@ -48,7 +48,7 @@ export default async function AdminReferralsPage() {
 										<td className="hl-hint hl-mono">{index + 1}</td>
 										<td>
 											{row.email ? (
-												<Link href={`/admin/users?q=${encodeURIComponent(row.email)}`} className="hl-mono">
+												<Link className="hl-mono" href={`/admin/users?q=${encodeURIComponent(row.email)}`}>
 													{row.email}
 												</Link>
 											) : (

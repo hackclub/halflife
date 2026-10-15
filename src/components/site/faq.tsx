@@ -35,11 +35,11 @@ const FIELD = {
 
 export default function Faq() {
 	return (
-		<section id="faq" aria-labelledby="faq-heading" className="hl-ground-hatch bg-hl-blue text-hl-ink">
+		<section aria-labelledby="faq-heading" className="hl-ground-hatch bg-hl-blue text-hl-ink" id="faq">
 			<div className="mx-auto max-w-[1615px] px-4 py-20 sm:px-8 min-[1180px]:px-[3.4vw] min-[1180px]:py-28">
 				<h2
-					id="faq-heading"
 					className="text-center font-display font-bold tracking-[-0.025em]"
+					id="faq-heading"
 					style={{ fontSize: "clamp(2.25rem, 5.8vw, 6rem)", lineHeight: 1 }}
 				>
 					Frequently Asked Questions
@@ -56,8 +56,8 @@ export default function Faq() {
 				>
 					{FAQS.map(faq => (
 						<div
-							key={faq.q}
 							className="flex flex-col bg-hl-ink text-hl-blue rounded-md"
+							key={faq.q}
 							style={{ padding: FIELD.padding }}
 						>
 							<dt className="font-display font-bold" style={{ fontSize: FIELD.question, lineHeight: 1.1 }}>

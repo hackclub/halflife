@@ -613,11 +613,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 	return (
 		<Modal
-			open
-			onClose={() => setOpenCheckpoint(null)}
 			accent="var(--color-violet)"
-			size="lg"
-			scrollKey={tab}
 			eyebrow={`${weekName(week)} · ${checkpoint.title}`}
 			footer={
 				<>
@@ -668,12 +664,16 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						</p>
 					</div>
 
-					<Button variant="solid" onClick={() => save()} disabled={!ok || saving || uploading > 0}>
+					<Button disabled={!ok || saving || uploading > 0} onClick={() => save()} variant="solid">
 						{saving ? "Saving…" : editing ? "Save changes" : "Finish"}{" "}
 						{editing ? <IconCheck className="text-base" /> : <IconArrowRight className="text-base" />}
 					</Button>
 				</>
 			}
+			onClose={() => setOpenCheckpoint(null)}
+			open
+			scrollKey={tab}
+			size="lg"
 		>
 			{/* An edit re-opens both tabs: the picker comes back with this entry's
 			    clips selected, ready to swap. */}
@@ -684,14 +684,14 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				>
 					{(["journal", "timelapse"] as const).map(t => (
 						<button
-							key={t}
-							type="button"
-							onClick={() => setTab(t)}
 							aria-pressed={tab === t}
 							className={cx(
 								"label rounded-full px-4 py-1.5 transition-colors",
 								tab === t ? "bg-navy text-white" : "text-navy-soft hover:text-navy",
 							)}
+							key={t}
+							onClick={() => setTab(t)}
+							type="button"
 						>
 							{t}
 						</button>
@@ -708,9 +708,9 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						<>
 							{attachedCount === 1 ? "1 timelapse" : `${attachedCount} timelapses`} attached –{" "}
 							<button
-								type="button"
-								onClick={() => setTab("timelapse")}
 								className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
+								onClick={() => setTab("timelapse")}
+								type="button"
 							>
 								change them on the timelapse tab
 							</button>
@@ -719,9 +719,9 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						<>
 							Writing, filming, or both –{" "}
 							<button
-								type="button"
-								onClick={() => setTab("timelapse")}
 								className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
+								onClick={() => setTab("timelapse")}
+								type="button"
 							>
 								attach a timelapse too
 							</button>{" "}
@@ -741,13 +741,13 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						dragDepth.current += 1
 						setDragging(true)
 					}}
-					onDragOver={e => {
-						if (mightBeImage(e)) e.preventDefault()
-					}}
 					onDragLeave={e => {
 						if (!mightBeImage(e)) return
 						dragDepth.current = Math.max(0, dragDepth.current - 1)
 						if (dragDepth.current === 0) setDragging(false)
+					}}
+					onDragOver={e => {
+						if (mightBeImage(e)) e.preventDefault()
 					}}
 					onDrop={e => {
 						dragDepth.current = 0
@@ -765,8 +765,8 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					) : (
 						// `subWide`: the modal is the large size and the editor below runs its full width, so a subtitle held to 62ch stopped two-thirds of the way across and wrapped into a ragged column.
 						<ModalTitle
-							subWide
 							sub="Write about the progress you made this work session, complete with pictures/screenshots. Be detailed! Markdown works, images included."
+							subWide
 						>
 							What did you do this session?
 						</ModalTitle>
@@ -774,22 +774,22 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 					<div className="mb-4 max-w-[220px]">
 						<Field
-							label={picked.length > 0 ? "Additional hours" : "Hours this session"}
 							hint={
 								picked.length > 0
 									? "On top of your timelapses – 0 if the recording covers it all."
 									: "(9.5 is 9 and a half hours)"
 							}
 							id="journal-hours"
+							label={picked.length > 0 ? "Additional hours" : "Hours this session"}
 						>
 							<input
-								id="journal-hours"
-								value={hoursText}
-								onChange={e => setHoursText(e.target.value.replace(/[^\d.]/g, ""))}
-								inputMode="decimal"
-								placeholder="0"
 								aria-invalid={overCap || undefined}
 								className={cx(borderedInputClass, "tabular-nums")}
+								id="journal-hours"
+								inputMode="decimal"
+								onChange={e => setHoursText(e.target.value.replace(/[^\d.]/g, ""))}
+								placeholder="0"
+								value={hoursText}
 							/>
 						</Field>
 						{/* The claim as the server will log it: what was typed plus what
@@ -801,7 +801,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							</p>
 						)}
 						{editing && legacyBump && (
-							<p role="note" className="hand mt-1.5 text-[0.76rem] leading-snug text-coral-deep">
+							<p className="hand mt-1.5 text-[0.76rem] leading-snug text-coral-deep" role="note">
 								This entry was logged as {fmtH(legacyBump.from)} before timelapses added hours on top – with its{" "}
 								{fmtH(legacyBump.lapse)} of recording it now totals {fmtH(claimed)}. Unpick timelapses on the Timelapse
 								tab to bring it back down.
@@ -816,14 +816,14 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						</span>
 						<span className="hand ml-auto flex flex-wrap gap-x-3 text-[0.78rem] text-navy-soft">
 							<a
-								href={EXAMPLE_JOURNAL_URL}
-								target="_blank"
-								rel="noopener noreferrer"
 								className="underline decoration-dashed underline-offset-4 hover:text-navy"
+								href={EXAMPLE_JOURNAL_URL}
+								rel="noopener noreferrer"
+								target="_blank"
 							>
 								See an example journal
 							</a>
-							<Link href="/docs/journalling" className="underline decoration-dashed underline-offset-4 hover:text-navy">
+							<Link className="underline decoration-dashed underline-offset-4 hover:text-navy" href="/docs/journalling">
 								Unsure? Read our docs
 							</Link>
 						</span>
@@ -845,16 +845,14 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						<span className="flex items-center gap-2">
 							{hasUnsavedWork && (
 								<button
-									type="button"
-									onClick={discardDraft}
 									className="label rounded-full px-3 py-1.5 text-navy-soft underline decoration-dashed underline-offset-4 hover:text-coral-deep"
+									onClick={discardDraft}
+									type="button"
 								>
 									Discard draft
 								</button>
 							)}
 							<button
-								type="button"
-								onClick={() => setPreview(v => !v)}
 								aria-pressed={preview}
 								className={cx(
 									"label inline-flex items-center gap-1.5 rounded-full border-2 px-3 py-1.5 transition-colors",
@@ -862,6 +860,8 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 										? "border-violet bg-violet-pale text-violet-deep"
 										: "border-line text-navy-soft hover:border-violet hover:text-navy",
 								)}
+								onClick={() => setPreview(v => !v)}
+								type="button"
 							>
 								<IconEye className="text-base" /> {preview ? "Hide preview" : "Preview"}
 							</button>
@@ -874,12 +874,18 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
                 the column and the preview beside it scrolled sideways. */}
 						<div className={cx("relative min-w-0", preview && "hidden md:block")}>
 							<Gato
-								sizes="160px"
 								className="pointer-events-none absolute top-1/2 left-1/2 h-auto w-40 -translate-x-1/2 -translate-y-1/2 opacity-[0.07]"
+								sizes="160px"
 							/>
 							<textarea
-								ref={entry}
-								value={body}
+								aria-label="Journal entry"
+								className={cx(
+									borderedInputClass,
+									"relative h-full resize-none",
+									dragging && "border-violet! bg-violet-pale/60",
+								)}
+								// The server refuses a longer entry, so the box stops at the same number rather than letting the writing be done and the save refused afterwards.
+								maxLength={MAX_SESSION_CONTENT}
 								onChange={e => setBody(e.target.value)}
 								onPaste={e => {
 									// A screenshot on the clipboard goes up like a dropped one; pasted text is left to the textarea.
@@ -888,16 +894,10 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									e.preventDefault()
 									addJournalImages(pasted)
 								}}
-								rows={9}
-								// The server refuses a longer entry, so the box stops at the same number rather than letting the writing be done and the save refused afterwards.
-								maxLength={MAX_SESSION_CONTENT}
 								placeholder="Start typing… What did you work on? What worked and what didn't? &#10;&#10; Markdown styling enabled! Drag, drop or paste images straight in."
-								aria-label="Journal entry"
-								className={cx(
-									borderedInputClass,
-									"relative h-full resize-none",
-									dragging && "border-violet! bg-violet-pale/60",
-								)}
+								ref={entry}
+								rows={9}
+								value={body}
 							/>
 							{dragging && (
 								<p className="hand pointer-events-none absolute inset-0 grid place-items-center text-[0.95rem] text-violet-deep">
@@ -912,7 +912,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								style={{ "--sk-color": "var(--color-violet)", "--sk-radius": "12px" } as React.CSSProperties}
 							>
 								{body.trim() ? (
-									<Markdown source={body} className="grid gap-2.5 text-[0.9rem] leading-relaxed text-navy" />
+									<Markdown className="grid gap-2.5 text-[0.9rem] leading-relaxed text-navy" source={body} />
 								) : (
 									<p className="hand text-[0.85rem] text-navy-soft">
 										nothing to preview yet. headings, **bold**, lists, `code` and ![images](url) all work.
@@ -936,36 +936,36 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							{shots} / {needPhotos} images
 						</p>
 						<Button
-							variant="outline"
-							size="sm"
+							aria-label="Add images to your journal entry"
 							disabled={uploading > 0}
 							onClick={() => imageInput.current?.click()}
-							aria-label="Add images to your journal entry"
+							size="sm"
+							variant="outline"
 						>
 							<IconUpload className="text-base" />
 							{uploading > 0 ? "Uploading…" : "Add images"}
 						</Button>
 						<input
-							ref={imageInput}
-							type="file"
 							accept={IMAGE_ACCEPT}
-							multiple
-							className="sr-only"
-							tabIndex={-1}
 							aria-hidden="true"
+							className="sr-only"
+							multiple
 							onChange={event => {
 								// Copied out first: clearing the input empties the live list.
 								const files = Array.from(event.target.files ?? [])
 								event.target.value = ""
 								addJournalImages(files)
 							}}
+							ref={imageInput}
+							tabIndex={-1}
+							type="file"
 						/>
 						<p className={cx("hand text-[0.76rem] tabular-nums", longEnough ? "text-teal-ink" : "text-navy-soft")}>
 							{written} / 200 characters
 						</p>
 					</div>
 					{imageError ? (
-						<p role="alert" className="mt-2 text-right text-[0.8rem] font-semibold text-coral-deep">
+						<p className="mt-2 text-right text-[0.8rem] font-semibold text-coral-deep" role="alert">
 							{imageError}
 						</p>
 					) : null}
@@ -973,8 +973,8 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			) : (
 				<div>
 					<ModalTitle
-						subWide
 						sub="Record timelapse(s) on Lapse, publish as unlisted or public, then select it here. It won't show up if the timelapses are listed as private. Make sure you're pausing your timelapse when you're not working on your project! Timelapses can back the entry on their own, or together with a written entry – pick here, write on the journal tab."
+						subWide
 					>
 						Select your timelapses
 					</ModalTitle>
@@ -985,17 +985,17 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							    can still be taken off, rather than stuck on forever. */}
 							{pinned.map(id => (
 								<p
-									key={id}
 									className="hand flex flex-wrap items-center justify-center gap-x-2 text-center text-[0.78rem] text-navy-soft"
+									key={id}
 								>
 									<span>Kept from the original entry.</span>
 									<button
-										type="button"
+										className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
 										onClick={() => {
 											clipsTouchedRef.current = true
 											setPinned(prev => prev.filter(x => x !== id))
 										}}
-										className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
+										type="button"
 									>
 										Remove
 									</button>
@@ -1010,13 +1010,13 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						</div>
 					)}
 					<LapsePicker
-						picked={picked}
-						onSignIn={signInWithLapse}
 						forSession={editing ? existing?.id : undefined}
+						onSignIn={signInWithLapse}
 						onToggle={t => {
 							clipsTouchedRef.current = true
 							setPicked(p => (p.some(x => x.id === t.id) ? p.filter(x => x.id !== t.id) : [...p, t]))
 						}}
+						picked={picked}
 					/>
 
 					<p className="mt-4 text-center text-[0.82rem] text-navy-soft tabular-nums">
@@ -1179,22 +1179,22 @@ export function PublicReelModal({
 	if (step === "ask") {
 		return (
 			<Modal
-				open
-				onClose={onClose}
 				accent="var(--color-violet)"
-				size="md"
-				labelledBy={titleId}
 				eyebrow={eyebrow}
 				footer={
 					<>
-						<Button variant="outline" onClick={onClose}>
+						<Button onClick={onClose} variant="outline">
 							Not now
 						</Button>
-						<Button variant="solid" onClick={() => setStep("links")}>
+						<Button onClick={() => setStep("links")} variant="solid">
 							Yes, post it online <IconArrowRight className="text-base" />
 						</Button>
 					</>
 				}
+				labelledBy={titleId}
+				onClose={onClose}
+				open
+				size="md"
 			>
 				{celebration && (
 					<div
@@ -1233,17 +1233,17 @@ export function PublicReelModal({
 	if (step === "saved") {
 		return (
 			<Modal
-				open
-				onClose={onClose}
 				accent="var(--color-teal)"
-				size="md"
-				labelledBy={titleId}
 				eyebrow={eyebrow}
 				footer={
-					<Button variant="solid" onClick={onClose}>
+					<Button onClick={onClose} variant="solid">
 						Done <IconCheck className="text-base" />
 					</Button>
 				}
+				labelledBy={titleId}
+				onClose={onClose}
+				open
+				size="md"
 			>
 				<ModalTitle
 					id={titleId}
@@ -1259,31 +1259,31 @@ export function PublicReelModal({
 
 	return (
 		<Modal
-			open
-			onClose={onClose}
 			accent="var(--color-violet)"
-			size="lg"
-			labelledBy={titleId}
 			eyebrow={eyebrow}
 			footer={
 				<>
 					<p
-						role={saveError ? "alert" : undefined}
 						className={cx(
 							"hand mr-auto min-w-0 flex-1 text-[0.84rem] leading-snug",
 							saveError ? "text-coral-deep" : "text-navy-soft",
 						)}
+						role={saveError ? "alert" : undefined}
 					>
 						{saveError ?? (filled.length === 0 ? "Paste at least one link to save." : " ")}
 					</p>
-					<Button variant="outline" onClick={onClose} disabled={saving}>
+					<Button disabled={saving} onClick={onClose} variant="outline">
 						Skip
 					</Button>
-					<Button variant="solid" onClick={() => save()} disabled={filled.length === 0 || saving}>
+					<Button disabled={filled.length === 0 || saving} onClick={() => save()} variant="solid">
 						{saving ? "Saving…" : "Save links"}
 					</Button>
 				</>
 			}
+			labelledBy={titleId}
+			onClose={onClose}
+			open
+			size="lg"
 		>
 			{/* First, because it has to be in the caption before the post goes up. */}
 			<div
@@ -1297,7 +1297,7 @@ export function PublicReelModal({
 				</p>
 				<div className="mt-3 flex flex-wrap items-center gap-2">
 					{referral.state === "loading" ? (
-						<p className="hand text-[0.84rem] text-navy-soft" aria-live="polite">
+						<p aria-live="polite" className="hand text-[0.84rem] text-navy-soft">
 							getting your referral link…
 						</p>
 					) : referral.state === "error" ? (
@@ -1310,19 +1310,19 @@ export function PublicReelModal({
 						</code>
 					)}
 					{referral.state === "ready" && (
-						<Button variant="outline" size="sm" onClick={() => copy(referral.link, "link")}>
+						<Button onClick={() => copy(referral.link, "link")} size="sm" variant="outline">
 							{copied === "link" ? "Copied!" : "Copy link"}
 						</Button>
 					)}
-					<Button variant="outline" size="sm" onClick={() => copy(captionLine, "caption")}>
+					<Button onClick={() => copy(captionLine, "caption")} size="sm" variant="outline">
 						{copied === "caption" ? "Copied!" : referral.state === "ready" ? "Copy link + hashtag" : "Copy hashtag"}
 					</Button>
 				</div>
 				{videoUrl && (
 					<a
-						href={attrUrl(videoUrl)}
-						download="half-life-reel.mp4"
 						className="hand mt-3 inline-block text-[0.84rem] text-sky-ink underline decoration-dashed underline-offset-4 hover:text-navy"
+						download="half-life-reel.mp4"
+						href={attrUrl(videoUrl)}
 					>
 						save your reel to upload it
 					</a>
@@ -1342,31 +1342,31 @@ export function PublicReelModal({
 					const fieldId = `${titleId}-${p}`
 					const error = errors[p]
 					return (
-						<div key={p} className="grid gap-1.5">
-							<label htmlFor={fieldId} className="label text-violet-deep">
+						<div className="grid gap-1.5" key={p}>
+							<label className="label text-violet-deep" htmlFor={fieldId}>
 								{info.label}
 							</label>
 							<input
+								aria-describedby={error ? `${fieldId}-error` : undefined}
+								aria-invalid={error ? true : undefined}
+								autoComplete="off"
+								className={cx(
+									"block w-full rounded-xl border-2 bg-black/[.02] px-4 py-2.5 text-[0.9rem] text-navy outline-none transition-colors placeholder:text-navy-faint hover:border-line-strong focus:border-violet focus:bg-white",
+									error ? "border-coral-deep bg-coral/5" : "border-line",
+								)}
 								id={fieldId}
-								value={values[p]}
+								inputMode="url"
 								onChange={e => {
 									const v = e.target.value
 									setValues(prev => ({ ...prev, [p]: v }))
 									if (errors[p]) setErrors(({ [p]: _, ...rest }) => rest)
 								}}
-								inputMode="url"
-								autoComplete="off"
-								spellCheck={false}
 								placeholder={info.example}
-								aria-invalid={error ? true : undefined}
-								aria-describedby={error ? `${fieldId}-error` : undefined}
-								className={cx(
-									"block w-full rounded-xl border-2 bg-black/[.02] px-4 py-2.5 text-[0.9rem] text-navy outline-none transition-colors placeholder:text-navy-faint hover:border-line-strong focus:border-violet focus:bg-white",
-									error ? "border-coral-deep bg-coral/5" : "border-line",
-								)}
+								spellCheck={false}
+								value={values[p]}
 							/>
 							{error && (
-								<p id={`${fieldId}-error`} className="text-[0.8rem] leading-snug font-semibold text-coral-deep">
+								<p className="text-[0.8rem] leading-snug font-semibold text-coral-deep" id={`${fieldId}-error`}>
 									{error}
 								</p>
 							)}
@@ -1448,10 +1448,10 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	if (postedId) {
 		return (
 			<PublicReelModal
-				postId={postedId}
 				eyebrow={`${weekName(week)} · ${checkpoint.title}`}
-				videoUrl={previewUrl}
 				onClose={() => setOpenCheckpoint(null)}
+				postId={postedId}
+				videoUrl={previewUrl}
 			/>
 		)
 	}
@@ -1459,22 +1459,22 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	if (!again) {
 		return (
 			<Modal
-				open
-				onClose={() => setOpenCheckpoint(null)}
 				accent="var(--color-teal)"
-				size="md"
-				labelledBy={titleId}
 				eyebrow={`${weekName(week)} · ${checkpoint.title}`}
 				footer={
 					<>
-						<Button variant="outline" onClick={() => setOpenCheckpoint(null)}>
+						<Button onClick={() => setOpenCheckpoint(null)} variant="outline">
 							Not now
 						</Button>
-						<Button variant="solid" onClick={() => setAgain(true)}>
+						<Button onClick={() => setAgain(true)} variant="solid">
 							Post another reel <IconFilm className="text-base" />
 						</Button>
 					</>
 				}
+				labelledBy={titleId}
+				onClose={() => setOpenCheckpoint(null)}
+				open
+				size="md"
 			>
 				<ModalTitle
 					id={titleId}
@@ -1488,22 +1488,19 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 	return (
 		<Modal
-			open
-			onClose={() => setOpenCheckpoint(null)}
 			accent="var(--color-violet)"
-			size="lg"
 			eyebrow={`${weekName(week)} · ${checkpoint.title}`}
 			footer={
 				<>
 					{postError ? (
-						<p role="alert" className="hand mr-auto min-w-0 flex-1 text-[0.84rem] leading-snug text-coral-deep">
+						<p className="hand mr-auto min-w-0 flex-1 text-[0.84rem] leading-snug text-coral-deep" role="alert">
 							{postError}
 						</p>
 					) : postBlocker ? (
 						<p
+							className="hand mr-auto min-w-0 flex-1 text-[0.84rem] leading-snug text-coral-deep"
 							id="reel-caption-blocker"
 							role="status"
-							className="hand mr-auto min-w-0 flex-1 text-[0.84rem] leading-snug text-coral-deep"
 						>
 							{postBlocker}
 						</p>
@@ -1513,21 +1510,24 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						</p>
 					)}
 					<Button
-						variant="outline"
 						onClick={() => {
 							writeReelDraft(checkpoint.id, clip || caption.trim() ? { clip: clip ?? "", url: clipUrl, caption } : null)
 							setOpenCheckpoint(null)
 						}}
+						variant="outline"
 					>
 						{/* On a finished checkpoint with nothing started there is no
                 draft to keep – it is just the answer to "another one?" */}
 						{done && !clip && !caption.trim() ? "Not now" : "Save draft"}
 					</Button>
-					<Button variant="solid" disabled={Boolean(postBlocker) || posting} onClick={() => post()}>
+					<Button disabled={Boolean(postBlocker) || posting} onClick={() => post()} variant="solid">
 						{posting ? "Posting…" : done ? "Post another reel" : "Post reel"} <IconFilm className="text-base" />
 					</Button>
 				</>
 			}
+			onClose={() => setOpenCheckpoint(null)}
+			open
+			size="lg"
 		>
 			{/* Past the question: this is an extra reel, not the checkpoint's own. */}
 			{done ? (
@@ -1559,18 +1559,18 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					</div>
 
 					<Field
-						label="Caption"
 						hint={captionReady ? "One line. Say what changed." : `At least 8 characters (${captionLength}/8).`}
 						id="reel-caption"
+						label="Caption"
 					>
 						<input
-							id="reel-caption"
-							value={caption}
 							aria-describedby={postBlocker ? "reel-caption-blocker" : undefined}
 							aria-invalid={!captionReady || undefined}
+							className={inputClass}
+							id="reel-caption"
 							onChange={e => setCaption(e.target.value)}
 							placeholder="routed the whole board without a single ratline left"
-							className={inputClass}
+							value={caption}
 						/>
 					</Field>
 				</div>
@@ -1587,22 +1587,22 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								{previewUrl ? (
 									<>
 										<video
-											ref={previewVideo}
-											key={previewUrl}
-											src={attrUrl(previewUrl)}
-											autoPlay
-											muted
-											loop
-											playsInline
 											aria-label="Preview of your reel"
+											autoPlay
 											className="absolute inset-0 size-full bg-navy object-cover"
+											key={previewUrl}
+											loop
+											muted
+											playsInline
+											ref={previewVideo}
+											src={attrUrl(previewUrl)}
 										/>
 										<button
-											type="button"
-											onClick={() => setMuted(m => !m)}
-											aria-pressed={!muted}
 											aria-label={muted ? "Unmute the preview" : "Mute the preview"}
+											aria-pressed={!muted}
 											className="absolute top-2 right-2 z-10 grid size-9 place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm transition-colors hover:bg-black/75"
+											onClick={() => setMuted(m => !m)}
+											type="button"
 										>
 											{muted ? <IconVolumeOff className="text-lg" /> : <IconVolume className="text-lg" />}
 										</button>
@@ -1685,26 +1685,22 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 	return (
 		<Modal
-			open
-			onClose={() => setOpenCheckpoint(null)}
 			accent={week.accent}
-			size="lg"
 			eyebrow={`Week ${week.id} · ${week.fullName}`}
 			footer={
 				<>
 					{stage === "details" && starters.length > 0 && (
-						<Button type="button" variant="outline" className="mr-auto" onClick={() => setStage("choose")}>
+						<Button className="mr-auto" onClick={() => setStage("choose")} type="button" variant="outline">
 							Back
 						</Button>
 					)}
 					{stage === "choose" && starters.length > 0 && (
-						<Button variant="solid" disabled={pick === undefined} onClick={advance}>
+						<Button disabled={pick === undefined} onClick={advance} variant="solid">
 							Next <IconArrowRight className="text-base" />
 						</Button>
 					)}
 					{stage === "details" && (
 						<Button
-							variant="solid"
 							disabled={!ok}
 							onClick={() => {
 								addProject({
@@ -1721,12 +1717,16 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								complete(checkpoint.id, { artefacts: 1 })
 								setOpenCheckpoint(null)
 							}}
+							variant="solid"
 						>
 							Create project <IconArrowRight className="text-base" />
 						</Button>
 					)}
 				</>
 			}
+			onClose={() => setOpenCheckpoint(null)}
+			open
+			size="lg"
 		>
 			<ModalTitle sub={week.summary}>{week.headline}</ModalTitle>
 
@@ -1757,43 +1757,43 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					{starters.length > 0 && <p className="col-span-full label mb-2 text-left text-violet-deep">Step 1 / 2</p>}
 					{starters.map(s => (
 						<StarterProjectCard
-							key={s.id}
-							starter={s}
-							stacked
-							chosen={pick === s.id}
 							action={
 								<Button
-									type="button"
-									variant={pick === s.id ? "teal" : "outline"}
-									size="sm"
 									aria-pressed={pick === s.id}
 									onClick={() => takeStarter(s)}
+									size="sm"
+									type="button"
+									variant={pick === s.id ? "teal" : "outline"}
 								>
 									Build {s.title}
 									{pick === s.id ? <IconCheck className="text-base" /> : null}
 								</Button>
 							}
+							chosen={pick === s.id}
+							key={s.id}
+							stacked
+							starter={s}
 						/>
 					))}
 					<ProjectChoiceCard
-						stacked
-						chosen={pick === null}
-						tileClassName="bg-violet-pale"
-						art={<Gato pose="schematic" sizes="260px" className="h-[140px] w-auto" />}
-						label="Custom project"
-						title="Your own idea"
 						action={
 							<Button
-								type="button"
-								variant={pick === null ? "teal" : "outline"}
-								size="sm"
 								aria-pressed={pick === null}
 								onClick={chooseCustom}
+								size="sm"
+								type="button"
+								variant={pick === null ? "teal" : "outline"}
 							>
 								Make a custom project
 								{pick === null ? <IconCheck className="text-base" /> : null}
 							</Button>
 						}
+						art={<Gato className="h-[140px] w-auto" pose="schematic" sizes="260px" />}
+						chosen={pick === null}
+						label="Custom project"
+						stacked
+						tileClassName="bg-violet-pale"
+						title="Your own idea"
 					>
 						<p className="mt-1.5 text-[0.88rem] leading-relaxed text-navy-soft">
 							Make your own project! It can be anything you want.
@@ -1820,39 +1820,39 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									{starters.find(s => s.id === starterId)?.title ?? "starter"}
 								</Chip>
 								<button
-									type="button"
-									onClick={() => setStage("choose")}
 									className="hand text-[0.82rem] text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
+									onClick={() => setStage("choose")}
+									type="button"
 								>
 									Choose a different starting point
 								</button>
 							</div>
 						)}
-						<Field label="Project name" hint="Give it a cool name." id="np-name">
+						<Field hint="Give it a cool name." id="np-name" label="Project name">
 							<input
+								className={inputClass}
 								id="np-name"
-								value={name}
 								onChange={e => setName(e.target.value)}
 								placeholder={`My ${week.theme.toLowerCase()} project`}
-								className={inputClass}
+								value={name}
 							/>
 						</Field>
-						<Field label="Project description" hint="What it does, and what makes it yours." id="np-desc">
+						<Field hint="What it does, and what makes it yours." id="np-desc" label="Project description">
 							<textarea
-								id="np-desc"
-								value={desc}
-								onChange={e => setDesc(e.target.value)}
-								rows={3}
-								placeholder={week.examples[0]}
 								className={cx(inputClass, "resize-none")}
+								id="np-desc"
+								onChange={e => setDesc(e.target.value)}
+								placeholder={week.examples[0]}
+								rows={3}
+								value={desc}
 							/>
 						</Field>
-						<RepoInput id="np-repo" value={repo} onChange={setRepo} />
+						<RepoInput id="np-repo" onChange={setRepo} value={repo} />
 
 						<button
-							type="button"
-							onClick={() => setShowExamples(v => !v)}
 							className="hand self-start text-[0.82rem] text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
+							onClick={() => setShowExamples(v => !v)}
+							type="button"
 						>
 							{showExamples ? "Hide examples" : "Stuck? See what other people are making"}
 						</button>
@@ -1861,10 +1861,10 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								{week.examples.map(e => (
 									<li key={e}>
 										<button
-											type="button"
-											onClick={() => setDesc(e)}
 											className="sketch w-full rounded-xl bg-white px-4 py-2.5 text-left text-[0.9rem] leading-snug text-navy transition-colors hover:bg-violet-pale/60"
+											onClick={() => setDesc(e)}
 											style={{ "--sk-radius": "12px" } as React.CSSProperties}
+											type="button"
 										>
 											{e}
 										</button>
@@ -1886,10 +1886,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							<div className="grid gap-2.5">
 								{TIERS.map(t => (
 									<OptionRow
-										key={t.id}
-										selected={tier === t.id}
 										disabled={starterId !== null && t.id !== STARTER_PROJECT_TIER}
-										onClick={() => setTier(t.id)}
 										hint={
 											<>
 												{t.detail}
@@ -1900,6 +1897,9 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 												</span>
 											</>
 										}
+										key={t.id}
+										onClick={() => setTier(t.id)}
+										selected={tier === t.id}
 									>
 										<span className="flex flex-wrap items-baseline gap-x-2.5">
 											<span className="text-[0.98rem] font-extrabold text-navy">Tier {t.id}</span>
@@ -1917,9 +1917,9 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					<div className="order-first lg:order-none">
 						<div className="overflow-hidden rounded-2xl p-4" style={{ background: week.accent }}>
 							<WeekPainting
-								theme={week.theme}
-								sizes="(min-width: 1024px) 198px, 220px"
 								className="sticker-shadow mx-auto aspect-square w-full max-w-[220px]"
+								sizes="(min-width: 1024px) 198px, 220px"
+								theme={week.theme}
 							/>
 						</div>
 						<p className="mt-3 text-[0.86rem] leading-snug text-navy-soft">{week.primer.split(". ")[0]}.</p>
@@ -1957,27 +1957,27 @@ export function UnsubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 	return (
 		<Modal
-			open
-			onClose={() => setOpenCheckpoint(null)}
 			accent="var(--color-violet)"
-			size="md"
-			labelledBy={titleId}
 			eyebrow={`${weekName(week)} · ${checkpoint.title}`}
 			footer={
 				<>
 					{error && (
-						<p role="alert" className="hand mr-auto min-w-0 flex-1 text-[0.84rem] leading-snug text-coral-deep">
+						<p className="hand mr-auto min-w-0 flex-1 text-[0.84rem] leading-snug text-coral-deep" role="alert">
 							{error}
 						</p>
 					)}
-					<Button variant="outline" onClick={() => setOpenCheckpoint(null)} disabled={busy}>
+					<Button disabled={busy} onClick={() => setOpenCheckpoint(null)} variant="outline">
 						Keep it in review
 					</Button>
-					<Button variant="solid" onClick={() => unsubmit()} disabled={busy}>
+					<Button disabled={busy} onClick={() => unsubmit()} variant="solid">
 						{busy ? "Unsubmitting…" : week.id === WARMUP_WEEK_ID ? "Unsubmit your warm-up" : `Unsubmit week ${week.id}`}
 					</Button>
 				</>
 			}
+			labelledBy={titleId}
+			onClose={() => setOpenCheckpoint(null)}
+			open
+			size="md"
 		>
 			<ModalTitle
 				id={titleId}
@@ -2199,19 +2199,15 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 	return (
 		<Modal
-			open
-			onClose={() => setOpenCheckpoint(null)}
 			accent="var(--color-magenta)"
-			size="lg"
-			scrollKey={step}
 			eyebrow={`Submit ${week.id === WARMUP_WEEK_ID ? "your warm-up" : `week ${week.id}`} · ${step}/${total}`}
 			footer={
 				<>
-					<Button variant="outline" onClick={() => (step === 1 ? setOpenCheckpoint(null) : setStep(s => s - 1))}>
+					<Button onClick={() => (step === 1 ? setOpenCheckpoint(null) : setStep(s => s - 1))} variant="outline">
 						{step === 1 ? "Not yet" : "Back"}
 					</Button>
 					{submitError && (
-						<p role="alert" className="hand mr-auto min-w-0 flex-1 text-[0.78rem] leading-snug text-coral-deep">
+						<p className="hand mr-auto min-w-0 flex-1 text-[0.78rem] leading-snug text-coral-deep" role="alert">
 							{submitError}
 						</p>
 					)}
@@ -2221,21 +2217,21 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						</p>
 					)}
 					{step === 1 && !submitError && !repoReady && repoResult === null && (
-						<p role="status" className="hand mr-auto min-w-0 flex-1 text-[0.78rem] leading-snug text-navy-soft">
+						<p className="hand mr-auto min-w-0 flex-1 text-[0.78rem] leading-snug text-navy-soft" role="status">
 							Checking your repo…
 						</p>
 					)}
 					{step > 1 && !submitError && nextBlocker() && (
-						<p role="alert" className="hand mr-auto min-w-0 flex-1 text-[0.78rem] leading-snug text-coral-deep">
+						<p className="hand mr-auto min-w-0 flex-1 text-[0.78rem] leading-snug text-coral-deep" role="alert">
 							{nextBlocker()}
 						</p>
 					)}
 					{step < total ? (
-						<Button variant="solid" disabled={!canAdvance} onClick={() => setStep(s => s + 1)}>
+						<Button disabled={!canAdvance} onClick={() => setStep(s => s + 1)} variant="solid">
 							Next <IconArrowRight className="text-base" />
 						</Button>
 					) : (
-						<Button variant="coral" disabled={!canAdvance || submitting} onClick={() => submit()}>
+						<Button disabled={!canAdvance || submitting} onClick={() => submit()} variant="coral">
 							{submitting
 								? "Submitting…"
 								: owed > 0
@@ -2248,6 +2244,10 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					)}
 				</>
 			}
+			onClose={() => setOpenCheckpoint(null)}
+			open
+			scrollKey={step}
+			size="lg"
 		>
 			{/* On every step, not just the last one: a maker who is short on hours
           should find that out before working through the checklist, not after.
@@ -2268,9 +2268,9 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							per project, so a cover uploaded elsewhere does not count.{" "}
 							{project && (
 								<Link
+									className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
 									href={`/projects/${project.id}`}
 									onClick={() => setOpenCheckpoint(null)}
-									className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
 								>
 									Go to project page
 								</Link>
@@ -2311,7 +2311,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					>
 						Check all files are included
 					</ModalTitle>
-					{project && <RepoChecks project={project} onResult={setRepoResult} />}
+					{project && <RepoChecks onResult={setRepoResult} project={project} />}
 				</div>
 			)}
 
@@ -2330,13 +2330,13 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 					{/* Declined funding hides the parts list and its edit note – there is nothing to check. */}
 					{!fundingDeclined && (
 						<>
-							<Panel tone="line" radius={18} className="overflow-hidden bg-white">
+							<Panel className="overflow-hidden bg-white" radius={18} tone="line">
 								{bomError ? (
-									<p role="alert" className="px-4 py-5 text-[0.86rem] font-semibold text-coral-deep">
+									<p className="px-4 py-5 text-[0.86rem] font-semibold text-coral-deep" role="alert">
 										{bomError}
 									</p>
 								) : !bom ? (
-									<p className="hand px-4 py-5 text-[0.88rem] text-navy-soft" aria-live="polite">
+									<p aria-live="polite" className="hand px-4 py-5 text-[0.88rem] text-navy-soft">
 										reading your parts list…
 									</p>
 								) : (
@@ -2345,7 +2345,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 											<thead>
 												<tr className="border-b border-dashed border-line">
 													{["Part", "Qty", "Unit", "Total", "Vendor"].map(h => (
-														<th key={h} scope="col" className="label px-4 py-2.5 text-navy-soft">
+														<th className="label px-4 py-2.5 text-navy-soft" key={h} scope="col">
 															{h}
 														</th>
 													))}
@@ -2354,14 +2354,14 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 											<tbody>
 												{bom.items.length === 0 && (
 													<tr className="border-b border-dashed border-line/60">
-														<td colSpan={5} className="hand px-4 py-3.5 text-[0.88rem] text-coral-deep">
+														<td className="hand px-4 py-3.5 text-[0.88rem] text-coral-deep" colSpan={5}>
 															no parts listed yet. Add them on the project page – or decline funding below – before you
 															submit this.
 														</td>
 													</tr>
 												)}
 												{bom.items.map(l => (
-													<tr key={l.id} className="border-b border-dashed border-line/60 align-top">
+													<tr className="border-b border-dashed border-line/60 align-top" key={l.id}>
 														<td className="px-4 py-2.5">
 															<span className="block font-semibold [overflow-wrap:anywhere] text-navy">{l.name}</span>
 															{l.purpose && (
@@ -2376,10 +2376,10 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 														<td className="hand px-4 py-2.5 text-navy-soft">
 															{l.link ? (
 																<a
-																	href={l.link}
-																	target="_blank"
-																	rel="noopener noreferrer"
 																	className="underline decoration-line-strong underline-offset-4 hover:text-navy"
+																	href={l.link}
+																	rel="noopener noreferrer"
+																	target="_blank"
 																>
 																	{l.vendor || "link"}
 																</a>
@@ -2416,9 +2416,9 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								<p className="hand mt-2 text-[0.82rem] text-navy-soft">
 									Something wrong?{" "}
 									<Link
+										className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
 										href={`/projects/${project.id}#bom-title`}
 										onClick={() => setOpenCheckpoint(null)}
-										className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
 									>
 										Edit the parts list on the project page
 									</Link>
@@ -2441,7 +2441,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								} as React.CSSProperties
 							}
 						>
-							<input type="checkbox" className="sr-only" checked={declinedFunding} onChange={toggleDeclinedFunding} />
+							<input checked={declinedFunding} className="sr-only" onChange={toggleDeclinedFunding} type="checkbox" />
 							<span
 								aria-hidden="true"
 								className={cx(
@@ -2474,7 +2474,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								<p className="text-[0.88rem] leading-snug text-navy-soft">
 									The checkout page with the total visible. Any vendor – add one per cart if the order is split.
 								</p>
-								<ImageUploads images={carts} onChange={setCarts} folder="sessions" max={10} label="Cart screenshot" />
+								<ImageUploads folder="sessions" images={carts} label="Cart screenshot" max={10} onChange={setCarts} />
 								{/* The gate below is `carts.length > 0`, and until now nothing on screen said so: the Next button simply stayed grey. Named here, next to the box that clears it. */}
 								{carts.length === 0 && (
 									<p className="mt-1 flex items-start gap-1.5 text-[0.84rem] leading-snug text-coral-deep">
@@ -2503,12 +2503,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								const short = tierShort(t.fundingHours)
 								return (
 									<button
-										key={t.id}
-										type="button"
-										onClick={() => setTier(t.id)}
 										aria-pressed={on}
-										// A tier you have not worked the hours for is not an option, so it does not behave like one.
-										disabled={short > 0}
 										className={cx(
 											"sketch rounded-2xl px-4 py-3 text-left transition-colors",
 											short > 0
@@ -2517,12 +2512,17 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 													? "bg-violet-pale"
 													: "bg-white hover:bg-black/[.03]",
 										)}
+										// A tier you have not worked the hours for is not an option, so it does not behave like one.
+										disabled={short > 0}
+										key={t.id}
+										onClick={() => setTier(t.id)}
 										style={
 											{
 												"--sk-color": on ? "var(--color-violet)" : "var(--color-line)",
 												"--sk-radius": "16px",
 											} as React.CSSProperties
 										}
+										type="button"
 									>
 										<span
 											className={cx("block text-[0.95rem] font-extrabold", short > 0 ? "text-navy-soft" : "text-navy")}
@@ -2573,13 +2573,13 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								}
 							>
 								<input
-									type="checkbox"
-									className="sr-only"
 									checked={partialFunding}
+									className="sr-only"
 									onChange={e => {
 										setAcceptsPartialFunding(e.target.checked)
 										if (e.target.checked) setDeclinedFunding(false)
 									}}
+									type="checkbox"
 								/>
 								<span
 									aria-hidden="true"
@@ -2642,10 +2642,10 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						<div className="mt-6">
 							<p className="label mb-2 text-magenta">Does it work?</p>
 							<div className="grid gap-2.5 sm:grid-cols-2">
-								<OptionRow selected={works === "yes"} onClick={() => setWorks("yes")}>
+								<OptionRow onClick={() => setWorks("yes")} selected={works === "yes"}>
 									<span className="text-[0.95rem] font-bold text-navy">Yes – it does the thing</span>
 								</OptionRow>
-								<OptionRow selected={works === "no"} onClick={() => setWorks("no")}>
+								<OptionRow onClick={() => setWorks("no")} selected={works === "no"}>
 									<span className="text-[0.95rem] font-bold text-navy">Not yet</span>
 								</OptionRow>
 							</div>
@@ -2653,17 +2653,17 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							{works === "no" && (
 								<div className="mt-4">
 									<Field
-										label="What needs to change"
 										hint="Reviewers pass honest failures and fail silent ones. Say what you would do next."
 										id="writeup"
+										label="What needs to change"
 									>
 										<textarea
+											className={cx(inputClass, "resize-none")}
 											id="writeup"
-											rows={5}
-											value={writeup}
 											onChange={e => setWriteup(e.target.value)}
 											placeholder="The display initialises but stays blank. I think the reset pin is floating – next revision ties it through a 10k to 3V3 and I will bodge it in the meantime."
-											className={cx(inputClass, "resize-none")}
+											rows={5}
+											value={writeup}
 										/>
 									</Field>
 									<p

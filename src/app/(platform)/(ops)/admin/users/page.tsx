@@ -21,11 +21,11 @@ export default async function AdminUsersPage({ searchParams }: Props) {
 			<PageHeader title="Users" />
 
 			<Panel>
-				<form method="get" className="hl-row">
+				<form className="hl-row" method="get">
 					<input
 						className="hl-input"
-						name="q"
 						defaultValue={q ?? ""}
+						name="q"
 						placeholder="Search by name, email or Slack ID"
 						style={{ maxWidth: "24rem" }}
 					/>

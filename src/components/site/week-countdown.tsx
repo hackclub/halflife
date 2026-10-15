@@ -68,8 +68,8 @@ export default function WeekCountdown() {
 	return (
 		<div className="pointer-events-none absolute top-10 left-1/2 z-20 -translate-x-1/2 min-[830px]:top-12">
 			<div
-				className="inline-block max-w-[92vw] rounded-lg bg-hl-cyan px-4 py-1.5 text-center text-hl-ink shadow-[0_2px_0_var(--color-hl-teal-deep)]"
 				aria-live="polite"
+				className="inline-block max-w-[92vw] rounded-lg bg-hl-cyan px-4 py-1.5 text-center text-hl-ink shadow-[0_2px_0_var(--color-hl-teal-deep)]"
 			>
 				<p className="font-display text-[0.66rem] font-bold uppercase tracking-[0.18em]">{label}</p>
 				{counting ? (
@@ -78,7 +78,7 @@ export default function WeekCountdown() {
 						style={{ fontSize: "clamp(1.5rem, 6vw, 2.25rem)", lineHeight: 1 }}
 					>
 						{COUNTDOWN_UNITS.map(unit => (
-							<span key={unit.key} className="inline-flex flex-col items-center" style={{ lineHeight: 1 }}>
+							<span className="inline-flex flex-col items-center" key={unit.key} style={{ lineHeight: 1 }}>
 								<span style={{ fontSize: "1em" }}>
 									{parts === null ? "--" : unit.key === "days" ? parts.days : pad2(parts[unit.key])}
 								</span>

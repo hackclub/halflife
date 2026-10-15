@@ -80,13 +80,13 @@ export function ShopGrid({
 		<>
 			{regions.length > 0 && (
 				<div className="mb-5 flex flex-wrap items-center justify-center gap-2">
-					<label htmlFor="shop-region" className="label text-navy-soft">
+					<label className="label text-navy-soft" htmlFor="shop-region">
 						Prices for
 					</label>
 					<select
-						id="shop-region"
-						value={regionId ?? ""}
+						className="label rounded-full border-2 border-line bg-paper px-4 py-1.5 text-navy outline-none transition-colors hover:border-navy focus:border-navy disabled:opacity-60"
 						disabled={savingRegion}
+						id="shop-region"
 						onChange={e => {
 							const next = e.target.value === "" ? null : e.target.value
 							setSavingRegion(true)
@@ -109,7 +109,7 @@ export function ShopGrid({
 								.catch(() => setError("That region did not save"))
 								.finally(() => setSavingRegion(false))
 						}}
-						className="label rounded-full border-2 border-line bg-paper px-4 py-1.5 text-navy outline-none transition-colors hover:border-navy focus:border-navy disabled:opacity-60"
+						value={regionId ?? ""}
 					>
 						<option value="">Default pricing</option>
 						{regions.map(r => (
@@ -123,9 +123,6 @@ export function ShopGrid({
 			<div className="mb-6 flex flex-wrap items-center justify-center gap-2">
 				{CATEGORIES.map(({ label: c }) => (
 					<button
-						key={c}
-						type="button"
-						onClick={() => setCat(c)}
 						aria-pressed={cat === c}
 						className={cx(
 							"label rounded-full border-2 px-4 py-1.5 transition-colors",
@@ -133,6 +130,9 @@ export function ShopGrid({
 								? "border-navy bg-navy text-white"
 								: "border-line text-navy-soft hover:border-navy hover:text-navy",
 						)}
+						key={c}
+						onClick={() => setCat(c)}
+						type="button"
 					>
 						{c}
 					</button>
@@ -141,8 +141,8 @@ export function ShopGrid({
 
 			{error && (
 				<p
-					role="alert"
 					className="mb-5 rounded-xl border-2 border-coral bg-cream px-4 py-3 text-[0.9rem] font-semibold text-coral-deep"
+					role="alert"
 				>
 					{error}
 				</p>
@@ -156,11 +156,11 @@ export function ShopGrid({
 					const afford = printerFund >= item.priceCredits
 					return (
 						<Panel
-							key={item.id}
 							as="li"
-							tone="line"
-							radius={20}
 							className="group flex flex-col overflow-hidden bg-paper"
+							key={item.id}
+							radius={20}
+							tone="line"
 						>
 							{/* The action lives under the photo on a phone and lifts onto it
                   from sm, where a hover reveals it. A phone has no hover, so an
@@ -172,9 +172,9 @@ export function ShopGrid({
                       minding a box of parts, so the shelf never shows a hole. */}
 									{item.imageUrl ? (
 										// eslint-disable-next-line @next/next/no-img-element -- staff paste any host into the item's image field
-										<img src={item.imageUrl} alt="" loading="lazy" className="h-full w-full object-contain" />
+										<img alt="" className="h-full w-full object-contain" loading="lazy" src={item.imageUrl} />
 									) : (
-										<Gato pose="box" sizes="200px" className="sticker-shadow h-full w-auto max-w-full" />
+										<Gato className="sticker-shadow h-full w-auto max-w-full" pose="box" sizes="200px" />
 									)}
 									{item.stock !== null && item.stock > 0 && item.stock <= 3 && (
 										<span className="label absolute top-2.5 left-2.5 rounded-full bg-coral px-2.5 py-1 text-white">
@@ -188,9 +188,6 @@ export function ShopGrid({
 									)}
 								</div>
 								<button
-									type="button"
-									disabled={out || item.locked || !afford || busy !== null}
-									onClick={() => buy(item)}
 									className={cx(
 										"label flex w-full items-center justify-center gap-1.5 border-t-2 px-3.5 py-2.5 transition-all duration-150",
 										"sm:absolute sm:bottom-3 sm:left-3 sm:w-auto sm:justify-start sm:rounded-xl sm:border-2 sm:py-2",
@@ -201,6 +198,9 @@ export function ShopGrid({
 												? "cursor-not-allowed border-line bg-cream text-navy-soft"
 												: "border-teal-deep bg-teal-mid text-navy hover:bg-teal hover:text-white",
 									)}
+									disabled={out || item.locked || !afford || busy !== null}
+									onClick={() => buy(item)}
+									type="button"
 								>
 									{busy === item.id ? (
 										"Ordering…"

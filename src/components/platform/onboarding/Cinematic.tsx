@@ -177,11 +177,11 @@ function Stage({ goal }: { goal: PrinterGoal }) {
 				<MiniPanel className="px-5 py-4">
 					{["Home", "Projects", "Reels", "Explore", "Shop"].map((l, i) => (
 						<p
-							key={l}
 							className={cx(
 								"border-b border-dashed border-line py-2.5 text-[1.05rem] last:border-0",
 								i === 0 ? "font-extrabold text-navy" : "font-semibold text-navy-soft",
 							)}
+							key={l}
 						>
 							{l}
 						</p>
@@ -190,9 +190,9 @@ function Stage({ goal }: { goal: PrinterGoal }) {
 				<MiniPanel className="relative overflow-hidden px-5 py-4">
 					{/* as on the real goal card: the photo on its tile, inside the corner */}
 					<PrinterPhoto
+						className="absolute top-3 right-3 size-16 rounded-xl border border-line/80"
 						id={goal.id}
 						sizes="128px"
-						className="absolute top-3 right-3 size-16 rounded-xl border border-line/80"
 					/>
 					<p className="max-w-[60%] text-[0.95rem] leading-snug font-semibold text-navy">
 						You are on track to get a <span className="text-teal-ink">{goal.name}</span>
@@ -202,7 +202,7 @@ function Stage({ goal }: { goal: PrinterGoal }) {
 					</div>
 				</MiniPanel>
 				<MiniPanel className="flex items-center gap-3 p-3">
-					<Avatar name="John Cena" image={null} shape="tile" className="size-[60px] text-[1.5rem]" />
+					<Avatar className="size-[60px] text-[1.5rem]" image={null} name="John Cena" shape="tile" />
 					<div>
 						<p className="text-[1rem] font-extrabold text-navy">John Cena</p>
 						<p className="hand text-[0.82rem] text-navy-soft">@johncena</p>
@@ -218,11 +218,11 @@ function Stage({ goal }: { goal: PrinterGoal }) {
 					<div className="flex flex-col gap-3">
 						{MOCK_REELS.map(r => (
 							<div
-								key={r.who}
 								className="relative overflow-hidden rounded-xl bg-navy"
+								key={r.who}
 								style={{ aspectRatio: "9 / 13" }}
 							>
-								<Image src={r.shot} alt="" fill sizes="552px" className="object-cover" />
+								<Image alt="" className="object-cover" fill sizes="552px" src={r.shot} />
 								<div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent p-2.5 pt-8">
 									<p className="text-[0.72rem] font-bold text-white">{r.who}</p>
 								</div>
@@ -245,8 +245,8 @@ function Stage({ goal }: { goal: PrinterGoal }) {
 							const Icon = done ? IconCheck : live ? KIND_ICON[cp.kind] : IconLock
 							return (
 								<div
-									key={cp.id}
 									className="absolute"
+									key={cp.id}
 									style={{ top: b.trailTop + i * STEP, left: nodeX(i) - PUCK / 2, width: PUCK }}
 								>
 									<div
@@ -268,8 +268,8 @@ function Stage({ goal }: { goal: PrinterGoal }) {
 						{week.checkpoints.slice(0, -1).map((_, i) =>
 							[0.35, 0.65].map(f => (
 								<span
-									key={`${i}-${f}`}
 									className="absolute size-[6px] rounded-full bg-line-strong/45"
+									key={`${i}-${f}`}
 									style={{
 										top: b.trailTop + (i + f) * STEP + PUCK / 2 - 3,
 										left: nodeX(i + f) - 3,
@@ -286,7 +286,7 @@ function Stage({ goal }: { goal: PrinterGoal }) {
 				className="absolute flex flex-col items-center rounded-3xl border-[3px] border-gold-deep bg-gold-pale px-12 py-8"
 				style={{ top: PRIZE_TOP, left: COL_X - 300, width: 600, height: PRIZE_H }}
 			>
-				<PrinterPhoto id={goal.id} sizes="560px" className="mt-3 size-[280px] rounded-2xl border border-gold-deep/40" />
+				<PrinterPhoto className="mt-3 size-[280px] rounded-2xl border border-gold-deep/40" id={goal.id} sizes="560px" />
 				<p className="mt-3 text-[2rem] leading-none font-extrabold tracking-[-0.03em] text-navy">{goal.name}</p>
 				<p className="hand mt-2 text-[1rem] text-navy-soft">finish all ten weeks!</p>
 			</div>
@@ -302,11 +302,11 @@ function WeekBanners({ refs }: { refs: React.RefObject<(HTMLDivElement | null)[]
 		<div aria-hidden="true" className="pointer-events-none absolute inset-0 z-10 overflow-hidden">
 			{WEEKS.map((week, i) => (
 				<div
+					className="absolute top-0 left-1/2"
 					key={week.id}
 					ref={el => {
 						refs.current[i] = el
 					}}
-					className="absolute top-0 left-1/2"
 					style={{
 						width: 760,
 						height: BANNER_H,
@@ -331,7 +331,7 @@ function WeekBanners({ refs }: { refs: React.RefObject<(HTMLDivElement | null)[]
 								{week.headline}
 							</p>
 						</div>
-						<WeekPainting theme={week.theme} alt="" sizes="112px" className="sticker-shadow size-14 shrink-0" />
+						<WeekPainting alt="" className="sticker-shadow size-14 shrink-0" sizes="112px" theme={week.theme} />
 					</div>
 				</div>
 			))}
@@ -481,8 +481,8 @@ export function Cinematic() {
 		<div className="fixed inset-0 z-[90] overflow-hidden bg-cream">
 			<div aria-hidden="true" className="absolute inset-0 z-0 overflow-hidden">
 				<div
-					ref={camera}
 					className="absolute top-1/2 left-1/2 will-change-transform"
+					ref={camera}
 					style={{ width: STAGE_W, height: STAGE_H }}
 				>
 					{stage}
@@ -495,13 +495,13 @@ export function Cinematic() {
 			    leaves the frame the way the weeks do, by the camera falling away
 			    from it. */}
 			<div
-				ref={title}
 				className="pointer-events-none absolute inset-x-0 top-0 z-20 px-6 text-center"
+				ref={title}
 				style={{ transform: "translateY(50vh)" }}
 			>
 				<div className="-translate-y-1/2">
 					<div className="motion-safe:animate-[hl-rise_.6s_cubic-bezier(.16,1,.3,1)_both]">
-						<Gato sizes="300px" className="mx-auto h-auto w-[clamp(84px,13vw,132px)]" />
+						<Gato className="mx-auto h-auto w-[clamp(84px,13vw,132px)]" sizes="300px" />
 						<h1 className="mt-5 text-[clamp(3rem,12vw,6rem)] leading-[0.86] font-extrabold tracking-[-0.04em] text-navy">
 							HALF LIFE
 						</h1>
@@ -516,8 +516,8 @@ export function Cinematic() {
 			{line && !ended && (
 				<div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center px-5 pb-20 sm:pb-12">
 					<p
-						key={beat}
 						className="sketch sketch-2 max-w-[40rem] rounded-2xl bg-cream px-6 py-4 text-center text-[clamp(1.05rem,2.4vw,1.35rem)] leading-snug font-extrabold tracking-[-0.02em] text-balance text-navy lift-shadow motion-safe:animate-[hl-rise_.4s_cubic-bezier(.16,1,.3,1)_both]"
+						key={beat}
 						style={{ "--sk-color": "var(--color-navy)", "--sk-radius": "18px" } as React.CSSProperties}
 					>
 						{line.line(GOAL.name)}
@@ -536,7 +536,7 @@ export function Cinematic() {
 						<h2 className="mt-1.5 text-[clamp(1.2rem,3.2vw,1.6rem)] leading-tight font-extrabold tracking-[-0.03em] text-navy">
 							Become an expert in 10 weeks, get a 3D printer
 						</h2>
-						<Button variant="gold" size="lg" full className="mt-4" onClick={() => setPhase("aim")}>
+						<Button className="mt-4" full onClick={() => setPhase("aim")} size="lg" variant="gold">
 							Get started
 						</Button>
 					</div>
@@ -545,9 +545,9 @@ export function Cinematic() {
 
 			{!ended && (
 				<button
-					type="button"
-					onClick={skip}
 					className="label absolute top-5 right-5 z-30 rounded-full border-2 border-line bg-cream/80 px-4 py-2 text-navy-soft backdrop-blur-sm transition-colors hover:border-navy hover:text-navy"
+					onClick={skip}
+					type="button"
 				>
 					Skip intro
 				</button>

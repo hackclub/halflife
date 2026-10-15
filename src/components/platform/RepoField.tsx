@@ -20,25 +20,25 @@ export function RepoInput({ value, onChange, id }: { value: string; onChange: (v
 	const { error } = normalizeRepo(value)
 	return (
 		<Field
-			label="Repo link"
 			hint="Where the code, schematics and CAD live. Optional, and you can add or change it later on the project page."
 			id={id}
+			label="Repo link"
 		>
 			<input
-				id={id}
-				value={value}
-				onChange={e => onChange(e.target.value)}
-				onBlur={() => setTouched(true)}
-				inputMode="url"
-				autoComplete="url"
-				spellCheck={false}
-				placeholder="github.com/you/your-project"
-				aria-invalid={(touched && !!error) || undefined}
 				aria-describedby={touched && error ? `${id}-err` : undefined}
+				aria-invalid={(touched && !!error) || undefined}
+				autoComplete="url"
 				className={inputClass}
+				id={id}
+				inputMode="url"
+				onBlur={() => setTouched(true)}
+				onChange={e => onChange(e.target.value)}
+				placeholder="github.com/you/your-project"
+				spellCheck={false}
+				value={value}
 			/>
 			{touched && error && (
-				<p id={`${id}-err`} className="mt-1.5 text-[0.8rem] font-semibold text-coral-deep">
+				<p className="mt-1.5 text-[0.8rem] font-semibold text-coral-deep" id={`${id}-err`}>
 					{error}
 				</p>
 			)}
@@ -90,36 +90,36 @@ export function RepoEditor({ project, className }: { project: Project; className
 				{current ? (
 					<>
 						<a
-							href={current}
-							target="_blank"
-							rel="noopener noreferrer"
 							className="min-w-0 truncate text-[0.85rem] font-semibold text-navy underline decoration-line-strong decoration-2 underline-offset-4 transition-colors hover:decoration-violet"
+							href={current}
+							rel="noopener noreferrer"
+							target="_blank"
 							title={current}
 						>
 							{displayRepo(current)}
 						</a>
 						<button
-							type="button"
+							aria-label="Change the repo link"
+							className="grid size-7 shrink-0 place-items-center rounded-full text-navy-soft transition-colors hover:bg-black/5 hover:text-navy"
 							onClick={() => {
 								setDraft(current)
 								setError(null)
 								setEditing(true)
 							}}
-							aria-label="Change the repo link"
-							className="grid size-7 shrink-0 place-items-center rounded-full text-navy-soft transition-colors hover:bg-black/5 hover:text-navy"
+							type="button"
 						>
 							<IconPencil className="text-sm" />
 						</button>
 					</>
 				) : (
 					<button
-						type="button"
+						className="hand text-[0.82rem] text-violet-deep underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
 						onClick={() => {
 							setDraft("")
 							setError(null)
 							setEditing(true)
 						}}
-						className="hand text-[0.82rem] text-violet-deep underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
+						type="button"
 					>
 						add a repo link
 					</button>
@@ -136,12 +136,16 @@ export function RepoEditor({ project, className }: { project: Project; className
 				save()
 			}}
 		>
-			<label htmlFor={id} className="sr-only">
+			<label className="sr-only" htmlFor={id}>
 				Repo link
 			</label>
 			<input
+				aria-describedby={error ? `${id}-err` : undefined}
+				aria-invalid={!!error || undefined}
+				autoComplete="url"
+				className={cx(inputClass, "py-2 text-[0.88rem]")}
 				id={id}
-				value={draft}
+				inputMode="url"
 				onChange={e => {
 					setDraft(e.target.value)
 					if (error) setError(null)
@@ -149,33 +153,26 @@ export function RepoEditor({ project, className }: { project: Project; className
 				onKeyDown={e => {
 					if (e.key === "Escape") setEditing(false)
 				}}
-				inputMode="url"
-				autoComplete="url"
-				spellCheck={false}
 				placeholder="github.com/you/your-project"
-				aria-invalid={!!error || undefined}
-				aria-describedby={error ? `${id}-err` : undefined}
-				className={cx(inputClass, "py-2 text-[0.88rem]")}
+				spellCheck={false}
+				value={draft}
 			/>
 			{error && (
-				<p id={`${id}-err`} role="alert" className="text-[0.8rem] font-semibold text-coral-deep">
+				<p className="text-[0.8rem] font-semibold text-coral-deep" id={`${id}-err`} role="alert">
 					{error}
 				</p>
 			)}
 			<div className="flex flex-wrap gap-2">
-				<Button type="submit" variant="solid" size="sm" disabled={saving}>
+				<Button disabled={saving} size="sm" type="submit" variant="solid">
 					{saving ? "Saving…" : "Save"}
 				</Button>
-				<Button type="button" variant="ghost" size="sm" disabled={saving} onClick={() => setEditing(false)}>
+				<Button disabled={saving} onClick={() => setEditing(false)} size="sm" type="button" variant="ghost">
 					Cancel
 				</Button>
 				{current && (
 					<Button
-						type="button"
-						variant="ghost"
-						size="sm"
-						disabled={saving}
 						className="ml-auto"
+						disabled={saving}
 						onClick={() => {
 							setDraft("")
 							void (async () => {
@@ -186,6 +183,9 @@ export function RepoEditor({ project, className }: { project: Project; className
 								else setEditing(false)
 							})()
 						}}
+						size="sm"
+						type="button"
+						variant="ghost"
 					>
 						Remove
 					</Button>

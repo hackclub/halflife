@@ -82,19 +82,19 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 
 	return (
 		<div className="hl-stack">
-			<PageHeader title="Fulfillment" subtitle="Every order that was not rejected, including cancelled ones." />
+			<PageHeader subtitle="Every order that was not rejected, including cancelled ones." title="Fulfillment" />
 
 			<Panel>
-				<form method="get" className="hl-row" style={{ flexWrap: "wrap", alignItems: "flex-end" }}>
+				<form className="hl-row" method="get" style={{ flexWrap: "wrap", alignItems: "flex-end" }}>
 					<label className="hl-stack hl-stack--tight" style={{ gap: "0.25rem" }}>
 						<span className="hl-label-text">Placed from</span>
-						<input className="hl-input" type="date" name="from" defaultValue={search.from ?? ""} />
+						<input className="hl-input" defaultValue={search.from ?? ""} name="from" type="date" />
 					</label>
 					<label className="hl-stack hl-stack--tight" style={{ gap: "0.25rem" }}>
 						<span className="hl-label-text">Placed to</span>
-						<input className="hl-input" type="date" name="to" defaultValue={search.to ?? ""} />
+						<input className="hl-input" defaultValue={search.to ?? ""} name="to" type="date" />
 					</label>
-					<select className="hl-input" name="method" defaultValue={filters.method ?? ""} style={{ maxWidth: "14rem" }}>
+					<select className="hl-input" defaultValue={filters.method ?? ""} name="method" style={{ maxWidth: "14rem" }}>
 						<option value="">Any method</option>
 						<option value="NONE">Method not chosen</option>
 						{Object.entries(METHOD_LABELS).map(([value, label]) => (
@@ -103,7 +103,7 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 							</option>
 						))}
 					</select>
-					<select className="hl-input" name="stage" defaultValue={filters.stage ?? ""} style={{ maxWidth: "14rem" }}>
+					<select className="hl-input" defaultValue={filters.stage ?? ""} name="stage" style={{ maxWidth: "14rem" }}>
 						<option value="">Any stage</option>
 						{Object.entries(STAGE_LABELS).map(([value, label]) => (
 							<option key={value} value={value}>
@@ -114,7 +114,7 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 					<button className="hl-btn" type="submit">
 						Filter
 					</button>
-					<Link href="/admin/fulfillment" className="hl-hint">
+					<Link className="hl-hint" href="/admin/fulfillment">
 						Reset
 					</Link>
 				</form>
@@ -152,10 +152,10 @@ export default async function AdminFulfillmentPage({ searchParams }: Props) {
 								<td className="hl-mono">{placedFormat.format(order.placedAt)}</td>
 								<td>
 									<OrderFulfillment
-										orderId={order.id}
-										method={order.fulfillmentMethod}
-										stage={order.fulfillmentStage}
 										cancelled={order.status === "CANCELLED"}
+										method={order.fulfillmentMethod}
+										orderId={order.id}
+										stage={order.fulfillmentStage}
 									/>
 								</td>
 								<td>

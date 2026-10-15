@@ -16,21 +16,21 @@ export default async function AdminAuditPage({ searchParams }: Props) {
 
 	return (
 		<div className="hl-stack">
-			<PageHeader title="Audit log" subtitle="Every mutation, with what it changed from and to." />
+			<PageHeader subtitle="Every mutation, with what it changed from and to." title="Audit log" />
 
 			<Panel>
-				<form method="get" className="hl-row">
+				<form className="hl-row" method="get">
 					<input
 						className="hl-input"
-						name="action"
 						defaultValue={action ?? ""}
+						name="action"
 						placeholder="Action, e.g. REVIEW_APPROVE"
 						style={{ maxWidth: "20rem" }}
 					/>
 					<input
 						className="hl-input"
-						name="targetId"
 						defaultValue={targetId ?? ""}
+						name="targetId"
 						placeholder="Target id"
 						style={{ maxWidth: "20rem" }}
 					/>

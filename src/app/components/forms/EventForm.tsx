@@ -101,40 +101,40 @@ export function EventForm({
 	const missing = !title.trim() || !startsAt
 
 	return (
-		<form onSubmit={submit} className="hl-stack hl-stack--tight">
+		<form className="hl-stack hl-stack--tight" onSubmit={submit}>
 			{error ? <Callout tone="danger">{error}</Callout> : null}
 
 			<div className="hl-row" style={{ alignItems: "flex-end" }}>
-				<Field label="What is it" hint="What participants would call it in Slack.">
+				<Field hint="What participants would call it in Slack." label="What is it">
 					<input
 						className="hl-input"
-						value={title}
+						maxLength={120}
 						onChange={e => setTitle(e.target.value)}
 						placeholder="Weekly office hours"
-						maxLength={120}
 						required
+						value={title}
 					/>
 				</Field>
 				{/* Outside `Field`, which renders a `<label>`: a radio group is not its
             control, and nesting the two would make the label's own name ambiguous. */}
 				<div className="hl-stack hl-stack--tight" style={{ gap: "0.25rem" }}>
 					<span className="hl-label-text">Colour</span>
-					<span role="radiogroup" aria-label="Colour" className="hl-row" style={{ gap: "0.4rem", minHeight: "2.5rem" }}>
+					<span aria-label="Colour" className="hl-row" role="radiogroup" style={{ gap: "0.4rem", minHeight: "2.5rem" }}>
 						{EVENT_COLOURS.map(option => (
 							// biome-ignore lint/a11y/useSemanticElements: a radio option drawn as a swatch.
 							<button
-								key={option.id}
-								type="button"
-								role="radio"
 								aria-checked={option.id === colour}
 								aria-label={option.label}
-								title={option.label}
-								onClick={() => setColour(option.id)}
 								className={cx(
 									"size-8 rounded-full border-2 transition-transform",
 									option.id === colour ? "border-navy" : "border-line hover:scale-110",
 								)}
+								key={option.id}
+								onClick={() => setColour(option.id)}
+								role="radio"
 								style={{ background: option.accent }}
+								title={option.label}
+								type="button"
 							/>
 						))}
 					</span>
@@ -143,48 +143,48 @@ export function EventForm({
 			</div>
 
 			<div className="hl-row" style={{ alignItems: "flex-end" }}>
-				<Field label="Starts" hint="Your own timezone. Stored as an instant.">
+				<Field hint="Your own timezone. Stored as an instant." label="Starts">
 					<input
 						className="hl-input"
-						type="datetime-local"
-						value={startsAt}
 						onChange={e => setStartsAt(e.target.value)}
 						required
+						type="datetime-local"
+						value={startsAt}
 					/>
 				</Field>
-				<Field label="Ends" hint="Optional. Leave blank for an open call.">
+				<Field hint="Optional. Leave blank for an open call." label="Ends">
 					<input
 						className="hl-input"
+						min={startsAt || undefined}
+						onChange={e => setEndsAt(e.target.value)}
 						type="datetime-local"
 						value={endsAt}
-						onChange={e => setEndsAt(e.target.value)}
-						min={startsAt || undefined}
 					/>
 				</Field>
 			</div>
 
-			<Field label="Description" hint="Optional. An agenda, or what to bring.">
+			<Field hint="Optional. An agenda, or what to bring." label="Description">
 				<textarea
 					className="hl-textarea"
-					value={description}
+					maxLength={2000}
 					onChange={e => setDescription(e.target.value)}
 					rows={3}
-					maxLength={2000}
+					value={description}
 				/>
 			</Field>
 
 			{editing ? (
 				<label className="hl-row" style={{ gap: "0.5rem" }}>
-					<input type="checkbox" checked={published} onChange={e => setPublished(e.target.checked)} />
+					<input checked={published} onChange={e => setPublished(e.target.checked)} type="checkbox" />
 					<span>{published ? "Published" : "Draft (hidden from participants)"}</span>
 					{series ? <span className="hl-hint">{series}</span> : null}
 				</label>
 			) : (
 				<Field
-					label="Repeat weekly"
 					hint="A standing weekly call is one row here, not ten. Each week is still its own occurrence, so one can be moved later."
+					label="Repeat weekly"
 				>
-					<select className="hl-select" value={repeatWeeks} onChange={e => setRepeatWeeks(Number(e.target.value))}>
+					<select className="hl-select" onChange={e => setRepeatWeeks(Number(e.target.value))} value={repeatWeeks}>
 						<option value={1}>Just this once</option>
 						<option value={2}>Every week for 2 weeks</option>
 						<option value={4}>Every week for 4 weeks</option>
@@ -196,15 +196,15 @@ export function EventForm({
 			)}
 
 			<div className="hl-row">
-				<Button type="submit" variant="primary" disabled={busy || missing}>
+				<Button disabled={busy || missing} type="submit" variant="primary">
 					{busy ? "Saving…" : editing ? "Save this event" : "Add to the calendar"}
 				</Button>
-				<Button type="button" onClick={onDone} disabled={busy}>
+				<Button disabled={busy} onClick={onDone} type="button">
 					{editing ? "Cancel" : "Clear"}
 				</Button>
 				<span className="hl-hint" style={{ margin: 0 }}>
 					{eventColour(colour).label} · every event joins the{" "}
-					<a href={HUDDLE_URL} target="_blank" rel="noreferrer">
+					<a href={HUDDLE_URL} rel="noreferrer" target="_blank">
 						Slack huddle
 					</a>
 				</span>

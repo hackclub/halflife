@@ -56,8 +56,8 @@ export default async function AdminShopItemPage({ params }: { params: Promise<{ 
 					Coin prices per sales region. Base price is {item.priceCredits}; orders keep the price they were charged.
 				</p>
 				<ItemRegionPrices
-					itemId={item.id}
 					basePrice={item.priceCredits}
+					itemId={item.id}
 					regions={regions.map(r => ({ id: r.id, name: r.name, price: overrides.get(r.id) ?? null }))}
 				/>
 			</Panel>

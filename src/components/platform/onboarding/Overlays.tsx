@@ -69,14 +69,14 @@ function CheckpointModal({ id }: { id: string }) {
 	if (sharePost && sharePost.checkpointId === id) {
 		return (
 			<PublicReelModal
-				postId={sharePost.postId}
-				eyebrow={sharePost.eyebrow}
-				videoUrl={sharePost.videoUrl}
 				celebration={sharePost.celebration}
+				eyebrow={sharePost.eyebrow}
 				onClose={() => {
 					setSharePost(null)
 					setOpenCheckpoint(null)
 				}}
+				postId={sharePost.postId}
+				videoUrl={sharePost.videoUrl}
 			/>
 		)
 	}
@@ -169,33 +169,28 @@ export function Overlays() {
 			 * the tour is the thing this most often lands on top of, since answering
 			 * the goal hands you straight into it.
 			 */}
-			{needsGoal && !openCheckpoint && <GoalModal open dismissible={false} onClose={() => {}} />}
+			{needsGoal && !openCheckpoint && <GoalModal dismissible={false} onClose={() => {}} open />}
 
 			{phase === "aim" && !openCheckpoint && !needsGoal && pathname === PLATFORM_HOME && (
 				<Spotlight
-					selector='[data-tour="first-checkpoint"]'
-					title="Start here"
 					body="The yellow checkpoint is your setup: six quick questions and your first project exists at the end of them."
 					cta="Open it"
-					pad={14}
-					radius={999}
 					onNext={() => {
 						setPhase("checkpoint")
 						setOpenCheckpoint(currentCheckpointId)
 					}}
 					onSkip={() => setPhase("done")}
+					pad={14}
+					radius={999}
+					selector='[data-tour="first-checkpoint"]'
+					title="Start here"
 				/>
 			)}
 
 			{phase === "tour" && !openCheckpoint && !needsGoal && (
 				<Spotlight
-					// Deliberately not keyed on the step: one instance living across all seven is what lets the window travel down the rail instead of blinking out and back. The two-target sequence resets on its own, off the second target appearing rather than off a remount.
-					selector={TOUR[tourStep]?.selector ?? ""}
 					also={TOUR[tourStep]?.also}
-					title={TOUR[tourStep]?.title ?? ""}
 					body={TOUR[tourStep]?.body ?? ""}
-					step={tourStep + 1}
-					total={TOUR.length}
 					clickAnywhere
 					cta={tourStep === TOUR.length - 1 ? (weekStarted(1) ? "Start week 1" : "Start warm-up") : "Next"}
 					onNext={() => {
@@ -203,6 +198,11 @@ export function Overlays() {
 						else setTourStep(tourStep + 1)
 					}}
 					onSkip={endTour}
+					// Deliberately not keyed on the step: one instance living across all seven is what lets the window travel down the rail instead of blinking out and back. The two-target sequence resets on its own, off the second target appearing rather than off a remount.
+					selector={TOUR[tourStep]?.selector ?? ""}
+					step={tourStep + 1}
+					title={TOUR[tourStep]?.title ?? ""}
+					total={TOUR.length}
 				/>
 			)}
 		</>

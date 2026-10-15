@@ -20,5 +20,5 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
 		const shared = await getPublicProjectPage(id)
 		if (shared) return <PublicProjectDetail data={shared} />
 	}
-	return <ProjectDetail id={id} data={data} />
+	return <ProjectDetail data={data} id={id} />
 }

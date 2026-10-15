@@ -61,8 +61,8 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 				<>
 					<div />
 					<div
-						role="note"
 						aria-label={`${s.retainPct}% continued and ${s.dropOffPct}% stopped between ${prevLabel} and ${s.label}`}
+						role="note"
 						style={{
 							textAlign: "center",
 							fontSize: "0.78rem",
@@ -93,8 +93,8 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 
 			<div
 				aria-hidden="true"
-				title={`${s.label}: ${s.count} people · ${s.hint}`}
 				style={{ position: "relative", height: "2.75rem" }}
+				title={`${s.label}: ${s.count} people · ${s.hint}`}
 			>
 				<div
 					style={{

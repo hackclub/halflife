@@ -20,9 +20,9 @@ export function OrderDecision({ orderId }: Readonly<{ orderId: string }>) {
 	}
 
 	return (
-		<form onSubmit={submit} className="hl-stack hl-stack--tight">
+		<form className="hl-stack hl-stack--tight" onSubmit={submit}>
 			{error ? <Callout tone="danger">{error}</Callout> : null}
-			<select className="hl-select" value={action} onChange={e => setAction(e.target.value as typeof action)}>
+			<select className="hl-select" onChange={e => setAction(e.target.value as typeof action)} value={action}>
 				<option value="FULFILL">Fulfil</option>
 				<option value="REJECT">Reject and refund</option>
 				<option value="HOLD">Put on hold</option>
@@ -30,19 +30,19 @@ export function OrderDecision({ orderId }: Readonly<{ orderId: string }>) {
 			{action === "FULFILL" ? (
 				<>
 					<Field label="Carrier">
-						<input className="hl-input" value={carrier} onChange={e => setCarrier(e.target.value)} />
+						<input className="hl-input" onChange={e => setCarrier(e.target.value)} value={carrier} />
 					</Field>
 					<Field label="Tracking number">
-						<input className="hl-input" value={tracking} onChange={e => setTracking(e.target.value)} />
+						<input className="hl-input" onChange={e => setTracking(e.target.value)} value={tracking} />
 					</Field>
 				</>
 			) : (
-				<Field label="Reason" hint="Shown to the participant.">
-					<input className="hl-input" value={reason} required onChange={e => setReason(e.target.value)} />
+				<Field hint="Shown to the participant." label="Reason">
+					<input className="hl-input" onChange={e => setReason(e.target.value)} required value={reason} />
 				</Field>
 			)}
 			<div>
-				<Button type="submit" disabled={busy !== null}>
+				<Button disabled={busy !== null} type="submit">
 					{busy ? "Working…" : "Apply"}
 				</Button>
 			</div>

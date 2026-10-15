@@ -266,17 +266,17 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 			{/* A horizontal scroller. The journey is now as long as the funnel's, so the drawing is wider than the panel on every screen and is read by scrolling rather than by shrinking. `overscroll-behavior-x: contain` keeps a sideways trackpad flick at the end of the diagram from turning into a browser back/forward gesture. */}
 			<div style={{ overflowX: "auto", overscrollBehaviorX: "contain", paddingBottom: "0.25rem" }}>
 				<svg
-					viewBox={`0 0 ${W} ${H + HEADER_H + FOOT_H}`}
-					role="img"
 					aria-label={`Participant journey as a Sankey diagram across ${stages.length} stages. ${summary}`}
+					role="img"
 					style={{ display: "block", width: `${W}px`, height: "auto", margin: "0 auto" }}
+					viewBox={`0 0 ${W} ${H + HEADER_H + FOOT_H}`}
 				>
 					<defs>
 						{painted.map((r, i) => (
 							<linearGradient
-								key={r.source.id + r.target.id}
-								id={`sankey-grad-${i}`}
 								gradientUnits="userSpaceOnUse"
+								id={`sankey-grad-${i}`}
+								key={r.source.id + r.target.id}
 								x1="0"
 								x2={W}
 							>
@@ -288,7 +288,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 
 					<g transform={`translate(0 ${HEADER_H})`}>
 						{painted.map((r, i) => (
-							<path key={r.source.id + r.target.id} d={ribbonPath(r)} fill={`url(#sankey-grad-${i})`}>
+							<path d={ribbonPath(r)} fill={`url(#sankey-grad-${i})`} key={r.source.id + r.target.id}>
 								<title>{`${fmt(r.value)} people: ${r.source.label} → ${r.target.label}`}</title>
 							</path>
 						))}
@@ -300,11 +300,11 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 							return (
 								<line
 									key={`lead-${node.id}`}
-									x1={xOf(node.stage) + NODE_W}
-									y1={slot.home}
-									x2={xOf(node.stage) + NODE_W + labelGap - 2}
-									y2={slot.y}
 									style={{ stroke: "var(--color-ink-muted)", strokeWidth: 0.75, opacity: 0.55 }}
+									x1={xOf(node.stage) + NODE_W}
+									x2={xOf(node.stage) + NODE_W + labelGap - 2}
+									y1={slot.home}
+									y2={slot.y}
 								/>
 							)
 						})}
@@ -315,13 +315,11 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 							const slot = labelRows.get(node.id)
 							return (
 								<g key={node.id}>
-									<rect x={x} y={node.y0} width={NODE_W} height={h} rx={2} style={{ fill: node.color }}>
+									<rect height={h} rx={2} style={{ fill: node.color }} width={NODE_W} x={x} y={node.y0}>
 										<title>{`${node.label}: ${fmt(node.value)} ${node.value === 1 ? "person" : "people"}`}</title>
 									</rect>
 									{slot && (
 										<text
-											x={x + NODE_W + labelGap}
-											y={slot.y}
 											dominantBaseline="middle"
 											style={{
 												fontSize: `${font}px`,
@@ -332,6 +330,8 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 												strokeLinejoin: "round",
 												fill: "var(--color-ink-strong)",
 											}}
+											x={x + NODE_W + labelGap}
+											y={slot.y}
 										>
 											{fmt(node.value)}
 											{showNames ? (
@@ -349,10 +349,10 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 					{stages.map((stage, i) => (
 						<text
 							key={stage.label}
+							style={{ fontSize: `${font * 0.92}px`, fontWeight: 700, fill: "var(--color-ink-muted)" }}
+							textAnchor="start"
 							x={xOf(i)}
 							y={HEADER_H - 12}
-							textAnchor="start"
-							style={{ fontSize: `${font * 0.92}px`, fontWeight: 700, fill: "var(--color-ink-muted)" }}
 						>
 							{stage.label}
 						</text>

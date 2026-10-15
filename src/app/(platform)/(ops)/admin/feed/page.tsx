@@ -56,7 +56,7 @@ export default async function AdminFeedPage() {
 				Announcements are pinned above every other reel and are only visible to accounts that can manage the feed.
 				Everything else lands in the Doomscroller in the ordinary order.
 			</p>
-			<PostComposer projects={options} canAnnounce={hasPermission(roles, Permission.MANAGE_FEED)} />
+			<PostComposer canAnnounce={hasPermission(roles, Permission.MANAGE_FEED)} projects={options} />
 
 			<Panel title="Recent reels">
 				{posts.length === 0 ? (
@@ -81,18 +81,18 @@ export default async function AdminFeedPage() {
 								<td>
 									{post.hiddenAt ? (
 										<ActionButton
-											url={`/api/admin/posts/${post.id}/moderate`}
-											method="DELETE"
-											label="Restore"
 											confirm="Put this reel back in the feed?"
+											label="Restore"
+											method="DELETE"
+											url={`/api/admin/posts/${post.id}/moderate`}
 										/>
 									) : (
 										<ActionButton
-											url={`/api/admin/posts/${post.id}/moderate`}
-											label="Hide"
-											variant="danger"
 											confirm="Hide this reel from every feed?"
+											label="Hide"
 											reasonPrompt="Why is this reel being hidden?"
+											url={`/api/admin/posts/${post.id}/moderate`}
+											variant="danger"
 										/>
 									)}
 								</td>
@@ -126,11 +126,11 @@ export default async function AdminFeedPage() {
 										<span className="hl-hint">hidden</span>
 									) : (
 										<ActionButton
-											url={`/api/admin/comments/${comment.id}/moderate`}
-											label="Hide"
-											variant="danger"
 											confirm="Hide this comment from every feed?"
+											label="Hide"
 											reasonPrompt="Why is this comment being hidden?"
+											url={`/api/admin/comments/${comment.id}/moderate`}
+											variant="danger"
 										/>
 									)}
 								</td>
@@ -152,7 +152,7 @@ export default async function AdminFeedPage() {
 									<Link href={`/admin/users/${reel.user.id}`}>{displayName(reel.user) ?? reel.email}</Link>
 								</td>
 								<td>
-									<a href={reel.url} target="_blank" rel="noreferrer" className="hl-hint">
+									<a className="hl-hint" href={reel.url} rel="noreferrer" target="_blank">
 										{reel.url}
 									</a>
 								</td>

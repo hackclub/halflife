@@ -26,11 +26,11 @@ export function OrderFulfillment({
 	return (
 		<div className="hl-stack hl-stack--tight" style={{ gap: "0.4rem" }}>
 			<select
-				className="hl-select"
 				aria-label="Shipping method"
-				value={method ?? ""}
+				className="hl-select"
 				disabled={busy !== null}
 				onChange={e => save({ method: e.target.value === "" ? null : (e.target.value as ShopFulfillmentMethod) })}
+				value={method ?? ""}
 			>
 				<option value="">Method not chosen</option>
 				{Object.entries(METHOD_LABELS).map(([value, label]) => (
@@ -40,11 +40,11 @@ export function OrderFulfillment({
 				))}
 			</select>
 			<select
-				className="hl-select"
 				aria-label="Fulfilment stage"
-				value={stage}
+				className="hl-select"
 				disabled={busy !== null || cancelled}
 				onChange={e => save({ stage: e.target.value as ShopFulfillmentStage })}
+				value={stage}
 			>
 				{Object.entries(STAGE_LABELS).map(([value, label]) => (
 					<option key={value} value={value}>

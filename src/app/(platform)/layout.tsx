@@ -37,7 +37,7 @@ export const viewport: Viewport = {
 
 export default function PlatformLayout({ children }: { children: React.ReactNode }) {
 	return (
-		<html lang="en" className={`${jakarta.variable} ${hand.variable}`}>
+		<html className={`${jakarta.variable} ${hand.variable}`} lang="en">
 			<head>
 				<PlausibleAnalytics />
 			</head>

@@ -34,24 +34,24 @@ function HoursApprovalFormInner({ kind, id, approved }: Readonly<{ kind: Kind; i
 	return (
 		<form
 			className="hl-stack hl-stack--tight"
-			style={{ gap: "0.3rem", minWidth: "6rem" }}
 			onSubmit={e => {
 				e.preventDefault()
 				save()
 			}}
+			style={{ gap: "0.3rem", minWidth: "6rem" }}
 		>
 			<input
-				className="hl-input"
-				type="number"
-				min={0}
-				max={kind === "session" ? 24 : 2000}
-				step={0.25}
 				aria-label="Approved hours"
-				value={value}
+				className="hl-input"
 				disabled={busy !== null}
+				max={kind === "session" ? 24 : 2000}
+				min={0}
 				onChange={e => setValue(e.target.value)}
+				step={0.25}
+				type="number"
+				value={value}
 			/>
-			<button className="hl-btn" type="submit" disabled={busy !== null}>
+			<button className="hl-btn" disabled={busy !== null} type="submit">
 				Save
 			</button>
 			{error ? <Callout tone="danger">{error}</Callout> : null}

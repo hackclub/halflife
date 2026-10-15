@@ -186,11 +186,11 @@ export default function BuildCarousel() {
 
 	return (
 		<section
-			ref={sectionRef}
-			id="what-can-i-build"
 			aria-labelledby="build-heading"
 			// The comp gives this section no ground of its own: it runs between the process band above and the FAQ band below on the page's own ink, and the belt carries no colour either. The cards are the whole event.
 			className="hl-ground-hex relative bg-hl-paper text-hl-blue"
+			id="what-can-i-build"
+			ref={sectionRef}
 			style={{
 				containerType: "inline-size",
 				paddingBottom: "clamp(3rem, 9.028cqw, 156px)",
@@ -204,8 +204,8 @@ export default function BuildCarousel() {
 				}}
 			>
 				<h2
-					id="build-heading"
 					className="text-center font-display font-bold tracking-[-0.02em] text-hl-blue-deep"
+					id="build-heading"
 					style={{ fontSize: "clamp(2rem, 3.472cqw, 3.75rem)" }}
 				>
 					What have others built?
@@ -213,28 +213,32 @@ export default function BuildCarousel() {
 			</div>
 
 			<div
+				onBlurCapture={() => start("focus")}
+				onFocusCapture={() => stop("focus")}
+				onPointerCancel={() => start("hover")}
 				onPointerEnter={() => stop("hover")}
 				onPointerLeave={() => start("hover")}
-				onPointerCancel={() => start("hover")}
-				onFocusCapture={() => stop("focus")}
-				onBlurCapture={() => start("focus")}
 			>
 				<ul
+					aria-label="Projects Half Life teenagers have built"
+					aria-roledescription="carousel"
+					className="rail flex overflow-x-auto"
 					ref={railRef}
+					style={{ gap: GAP, paddingInline: INSET }}
 					// With no buttons, the scroller itself is the control: tabbable everywhere rather than only in browsers that focus overflow containers on their own, and the belt halts as focus lands.
 					// biome-ignore lint/a11y/noNoninteractiveTabindex: the scroller is the only control this rail has; focus is what lets a keyboard scroll it.
 					tabIndex={0}
-					className="rail flex overflow-x-auto"
-					style={{ gap: GAP, paddingInline: INSET }}
-					aria-roledescription="carousel"
-					aria-label="Projects Half Life teenagers have built"
 				>
 					{Array.from({ length: COPIES }).flatMap((_, copy) =>
 						BUILD_CARDS.map((card, index) => (
 							<li
-								key={`${copy}-${card.id}`}
+								aria-hidden={copy === 0 ? undefined : true}
+								aria-label={copy === 0 ? `${index + 1} of ${BUILD_CARDS.length}` : undefined}
+								aria-roledescription={copy === 0 ? "slide" : undefined}
 								// `group relative` is what lets the repo link stretch to the whole card: `relative` gives the overlay its containing block, `group` lets the mark answer a hover anywhere on it.
 								className="group relative shrink-0 overflow-hidden bg-hl-blue"
+								key={`${copy}-${card.id}`}
+								role={copy === 0 ? "group" : undefined}
 								style={
 									{
 										width: CARD_W,
@@ -245,10 +249,6 @@ export default function BuildCarousel() {
 										"--hl-card-frame": CARD_BORDER,
 									} as CSSProperties
 								}
-								role={copy === 0 ? "group" : undefined}
-								aria-roledescription={copy === 0 ? "slide" : undefined}
-								aria-label={copy === 0 ? `${index + 1} of ${BUILD_CARDS.length}` : undefined}
-								aria-hidden={copy === 0 ? undefined : true}
 							>
 								<div className="flex h-full w-full flex-col">
 									{/* Contained, never cropped: a build is the thing on show,
@@ -263,19 +263,19 @@ export default function BuildCarousel() {
 									<div className="hl-ground-mesh relative min-h-0 flex-1">
 										{card.photo ? (
 											<Image
-												src={card.photo}
 												// The label under the picture names the project, so a description here would only be read out twice.
 												alt=""
-												fill
-												sizes={PHOTO_SIZES}
-												quality={90}
 												className="object-contain p-2"
+												fill
+												quality={90}
+												sizes={PHOTO_SIZES}
+												src={card.photo}
 											/>
 										) : (
 											<ImageSlot
+												className="h-full w-full"
 												label={card.slot.label}
 												ratio={card.slot.ratio}
-												className="h-full w-full"
 												scale={1.1}
 											/>
 										)}
@@ -294,15 +294,15 @@ export default function BuildCarousel() {
 
 											{card.repo ? (
 												<a
-													href={card.repo}
-													target="_blank"
-													rel="noopener noreferrer"
-													// Only the live set is on the tab path. The three copies behind it stay `aria-hidden`, and a link that is not tabbable is allowed inside that; what they no longer are is unclickable.
-													tabIndex={copy === 0 ? undefined : -1}
 													// The mark is 1.7em of a 0.7-1.06rem credit line, so its own box is a 19-29px target -- under the 24px floor at most sizes and nowhere near 44. Rather than grow the mark until it outweighs the credit beside it, `::after` stretches the link over the whole card and the frame around it, which is both a 208-386px target and the "click the card" the mark was always standing for.
 													//
 													// Inverts to ink on hover and focus, and now on a hover anywhere on the card, so the card says what it does before it is clicked. The focus ring stays on the mark rather than the overlay: it goes ink too, the page's cyan being 1.4:1 on this pale yellow, where it would read as a disabled control.
 													className="grid h-[1.7em] w-[1.7em] shrink-0 place-items-center rounded-full text-hl-ink transition-colors after:absolute after:[inset:calc(-1*var(--hl-card-frame))] group-hover:bg-hl-ink group-hover:text-hl-yellow-pale focus-visible:bg-hl-ink focus-visible:text-hl-yellow-pale focus-visible:outline-hl-ink"
+													href={card.repo}
+													rel="noopener noreferrer"
+													// Only the live set is on the tab path. The three copies behind it stay `aria-hidden`, and a link that is not tabbable is allowed inside that; what they no longer are is unclickable.
+													tabIndex={copy === 0 ? undefined : -1}
+													target="_blank"
 												>
 													<span className="sr-only">{`${card.label} on GitHub (opens in a new tab)`}</span>
 													<GithubMark className="h-[1.15em] w-[1.15em]" />
@@ -329,10 +329,10 @@ export default function BuildCarousel() {
  */
 function GithubMark({ className }: { className?: string }) {
 	return (
-		<svg viewBox="0 0 24 24" aria-hidden className={className}>
+		<svg aria-hidden className={className} viewBox="0 0 24 24">
 			<path
-				fill="currentColor"
 				d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5c.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34c-.46-1.16-1.11-1.47-1.11-1.47c-.91-.62.07-.6.07-.6c1 .07 1.53 1.03 1.53 1.03c.87 1.52 2.34 1.07 2.91.83c.09-.65.35-1.09.63-1.34c-2.22-.25-4.55-1.11-4.55-4.92c0-1.11.38-2 1.03-2.71c-.1-.25-.45-1.29.1-2.64c0 0 .84-.27 2.75 1.02c.79-.22 1.65-.33 2.5-.33s1.71.11 2.5.33c1.91-1.29 2.75-1.02 2.75-1.02c.55 1.35.2 2.39.1 2.64c.65.71 1.03 1.6 1.03 2.71c0 3.82-2.34 4.66-4.57 4.91c.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2"
+				fill="currentColor"
 			/>
 		</svg>
 	)

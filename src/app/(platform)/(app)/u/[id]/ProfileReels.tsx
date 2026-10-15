@@ -35,26 +35,26 @@ export function ProfileReels({ initial }: { initial: FeedItem[] }) {
 		<>
 			<ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
 				{items.map(reel => (
-					<li key={reel.id} className="min-w-0">
-						<ReelCard reel={reel} onPatch={patch} onComments={openComments} className="aspect-[9/16]" />
+					<li className="min-w-0" key={reel.id}>
+						<ReelCard className="aspect-[9/16]" onComments={openComments} onPatch={patch} reel={reel} />
 					</li>
 				))}
 			</ul>
 
 			{active && (
 				<Modal
-					open
-					onClose={closeComments}
-					eyebrow={`Comments · reel by ${active.author.name ?? "a maker"}`}
 					accent="var(--color-violet)"
+					eyebrow={`Comments · reel by ${active.author.name ?? "a maker"}`}
+					onClose={closeComments}
+					open
 					size="md"
 				>
 					<ReelComments
+						className="h-[min(70dvh,36rem)]"
+						onClose={closeComments}
+						onPatch={patch}
 						reel={active}
 						viewer={{ name: viewer.name, image: viewer.image }}
-						onPatch={patch}
-						onClose={closeComments}
-						className="h-[min(70dvh,36rem)]"
 					/>
 				</Modal>
 			)}

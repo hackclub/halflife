@@ -32,24 +32,24 @@ export function SketchDefs() {
 	return (
 		<svg aria-hidden="true" focusable="false" style={{ position: "absolute", width: 0, height: 0, overflow: "hidden" }}>
 			<defs>
-				<filter id="hl-wobble" x="-12%" y="-12%" width="124%" height="124%">
-					<feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="3" seed="7" result="n" />
+				<filter height="124%" id="hl-wobble" width="124%" x="-12%" y="-12%">
+					<feTurbulence baseFrequency="0.018" numOctaves="3" result="n" seed="7" type="fractalNoise" />
 					<feDisplacementMap in="SourceGraphic" in2="n" scale="4.2" xChannelSelector="R" yChannelSelector="G" />
 				</filter>
-				<filter id="hl-wobble-2" x="-12%" y="-12%" width="124%" height="124%">
-					<feTurbulence type="fractalNoise" baseFrequency="0.022" numOctaves="3" seed="21" result="n" />
+				<filter height="124%" id="hl-wobble-2" width="124%" x="-12%" y="-12%">
+					<feTurbulence baseFrequency="0.022" numOctaves="3" result="n" seed="21" type="fractalNoise" />
 					<feDisplacementMap in="SourceGraphic" in2="n" scale="5" xChannelSelector="R" yChannelSelector="G" />
 				</filter>
-				<filter id="hl-wobble-3" x="-14%" y="-14%" width="128%" height="128%">
-					<feTurbulence type="fractalNoise" baseFrequency="0.034" numOctaves="2" seed="43" result="n" />
+				<filter height="128%" id="hl-wobble-3" width="128%" x="-14%" y="-14%">
+					<feTurbulence baseFrequency="0.034" numOctaves="2" result="n" seed="43" type="fractalNoise" />
 					<feDisplacementMap in="SourceGraphic" in2="n" scale="3.4" xChannelSelector="R" yChannelSelector="G" />
 				</filter>
-				<filter id="hl-tear" x="-10%" y="-25%" width="120%" height="150%">
-					<feTurbulence type="fractalNoise" baseFrequency="0.02 0.11" numOctaves="3" seed="11" result="n" />
+				<filter height="150%" id="hl-tear" width="120%" x="-10%" y="-25%">
+					<feTurbulence baseFrequency="0.02 0.11" numOctaves="3" result="n" seed="11" type="fractalNoise" />
 					<feDisplacementMap in="SourceGraphic" in2="n" scale="9" xChannelSelector="R" yChannelSelector="G" />
 				</filter>
-				<filter id="hl-tear-soft" x="-10%" y="-20%" width="120%" height="140%">
-					<feTurbulence type="fractalNoise" baseFrequency="0.03 0.09" numOctaves="2" seed="31" result="n" />
+				<filter height="140%" id="hl-tear-soft" width="120%" x="-10%" y="-20%">
+					<feTurbulence baseFrequency="0.03 0.09" numOctaves="2" result="n" seed="31" type="fractalNoise" />
 					<feDisplacementMap in="SourceGraphic" in2="n" scale="5" xChannelSelector="R" yChannelSelector="G" />
 				</filter>
 			</defs>
@@ -85,7 +85,7 @@ export function Gato({
 	sizes: string
 	alt?: string
 }) {
-	return <Image src={GATO[pose]} alt={alt} sizes={sizes} className={`object-contain ${className ?? ""}`} />
+	return <Image alt={alt} className={`object-contain ${className ?? ""}`} sizes={sizes} src={GATO[pose]} />
 }
 
 /* ------------------------------------------------------------------ *
@@ -121,7 +121,7 @@ export function WeekPainting({
 	if (!painting) return null
 	return (
 		<span className={`relative block ${className ?? ""}`}>
-			<Image src={painting} alt={alt} fill sizes={sizes} className="object-contain" />
+			<Image alt={alt} className="object-contain" fill sizes={sizes} src={painting} />
 		</span>
 	)
 }
@@ -166,7 +166,7 @@ export function PrinterPhoto({
 	const photo = PRINTER_PHOTOS[id]
 	return (
 		<span className={`relative block overflow-hidden bg-white ${className ?? ""}`}>
-			{photo && <Image src={photo} alt={alt} fill sizes={sizes} className="object-contain" />}
+			{photo && <Image alt={alt} className="object-contain" fill sizes={sizes} src={photo} />}
 		</span>
 	)
 }
@@ -199,7 +199,7 @@ export function StarterRender({
 	if (!render) return null
 	return (
 		<span className={`relative block ${className ?? ""}`}>
-			<Image src={render} alt={alt} fill sizes={sizes} className="object-contain" />
+			<Image alt={alt} className="object-contain" fill sizes={sizes} src={render} />
 		</span>
 	)
 }

@@ -65,7 +65,6 @@ export default async function AdminProgramPage() {
 	return (
 		<div className="hl-stack">
 			<PageHeader
-				title="Program settings"
 				subtitle={
 					week < 1
 						? "The program has not started yet."
@@ -73,6 +72,7 @@ export default async function AdminProgramPage() {
 							? "The program is over."
 							: `Currently week ${week} of ${TOTAL_WEEKS}.`
 				}
+				title="Program settings"
 			/>
 
 			<Panel title="Program start">
@@ -159,9 +159,9 @@ export default async function AdminProgramPage() {
 								<td>{item.phase.toLowerCase()}</td>
 								<td>
 									<ActionButton
-										url={`/api/admin/theme-projects/${item.themeProjectId}/sync-to-airtable`}
 										body={{ phase: item.phase }}
 										label="Retry"
+										url={`/api/admin/theme-projects/${item.themeProjectId}/sync-to-airtable`}
 									/>
 								</td>
 							</tr>
@@ -184,9 +184,9 @@ export default async function AdminProgramPage() {
 								<td className="hand">{item.reason ?? "Not attempted yet – the retry job will pick it up."}</td>
 								<td>
 									<ActionButton
-										url={`/api/admin/theme-projects/${item.themeProjectId}/sync-to-ari`}
 										body={{ phase: item.phase }}
 										label="Retry"
+										url={`/api/admin/theme-projects/${item.themeProjectId}/sync-to-ari`}
 									/>
 								</td>
 							</tr>
@@ -214,10 +214,10 @@ export default async function AdminProgramPage() {
 								<td className="hl-row">
 									<Link href={`/review/${d.submissionId}`}>Read</Link>
 									<ActionButton
-										url={`/api/admin/disputes/${d.id}/resolve`}
 										body={{}}
-										label="Resolve"
 										confirm="Mark this dispute as looked at? The decision itself does not change."
+										label="Resolve"
+										url={`/api/admin/disputes/${d.id}/resolve`}
 									/>
 								</td>
 							</tr>

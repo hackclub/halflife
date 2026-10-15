@@ -75,7 +75,7 @@ export function ReportDialog({
 	}
 
 	return (
-		<Modal open={open} onClose={close} eyebrow="Report to staff" accent="var(--color-coral)" size="md">
+		<Modal accent="var(--color-coral)" eyebrow="Report to staff" onClose={close} open={open} size="md">
 			{done ? (
 				<>
 					<ModalTitle sub="Nothing changes right away – a report puts it in front of staff, it never takes anything down by itself.">
@@ -83,7 +83,7 @@ export function ReportDialog({
 					</ModalTitle>
 					<p className="hand text-[0.9rem] text-navy">{done}</p>
 					<div className="mt-5 flex justify-end">
-						<Button variant="solid" onClick={close}>
+						<Button onClick={close} variant="solid">
 							Done
 						</Button>
 					</div>
@@ -98,24 +98,24 @@ export function ReportDialog({
 					)}
 
 					{/* biome-ignore lint/a11y/useSemanticElements: a group of choices, not a form. */}
-					<div className="grid gap-2.5" role="group" aria-label="Reason">
+					<div aria-label="Reason" className="grid gap-2.5" role="group">
 						{REPORT_REASONS.map(r => (
-							<OptionRow key={r.id} selected={reason === r.id} onClick={() => setReason(r.id)}>
+							<OptionRow key={r.id} onClick={() => setReason(r.id)} selected={reason === r.id}>
 								<span className="text-[0.95rem] font-bold text-navy">{r.label}</span>
 							</OptionRow>
 						))}
 					</div>
 
 					<div className="mt-4">
-						<Field label="Anything to add? (optional)" id="report-details">
+						<Field id="report-details" label="Anything to add? (optional)">
 							<textarea
-								id="report-details"
-								value={details}
-								onChange={e => setDetails(e.target.value)}
-								rows={3}
-								maxLength={2000}
-								placeholder="What should staff look at?"
 								className={cx(borderedInputClass, "resize-none")}
+								id="report-details"
+								maxLength={2000}
+								onChange={e => setDetails(e.target.value)}
+								placeholder="What should staff look at?"
+								rows={3}
+								value={details}
 							/>
 						</Field>
 						<p className="hand mt-1.5 text-right text-[0.76rem] text-navy-soft tabular-nums">
@@ -124,16 +124,16 @@ export function ReportDialog({
 					</div>
 
 					{error && (
-						<p role="alert" className="mt-2 text-[0.85rem] font-semibold text-coral-deep">
+						<p className="mt-2 text-[0.85rem] font-semibold text-coral-deep" role="alert">
 							{error}
 						</p>
 					)}
 
 					<div className="mt-4 flex flex-wrap justify-end gap-2">
-						<Button variant="ghost" onClick={close} disabled={sending}>
+						<Button disabled={sending} onClick={close} variant="ghost">
 							Cancel
 						</Button>
-						<Button variant="solid" onClick={() => send()} disabled={!reason || sending}>
+						<Button disabled={!reason || sending} onClick={() => send()} variant="solid">
 							{sending ? "Sending…" : "Send report"}
 						</Button>
 					</div>

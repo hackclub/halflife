@@ -43,7 +43,7 @@ export function ItemRegionPrices({
 			) : (
 				<ul className="hl-stack hl-stack--tight" style={{ listStyle: "none", padding: 0, margin: 0 }}>
 					{regions.map(region => (
-						<li key={region.id} className="hl-row" style={{ alignItems: "end" }}>
+						<li className="hl-row" key={region.id} style={{ alignItems: "end" }}>
 							<span style={{ minWidth: "10rem" }}>
 								<span className="hl-label-text">{region.name}</span>
 								<span className="hl-hint" style={{ display: "block" }}>
@@ -51,17 +51,17 @@ export function ItemRegionPrices({
 								</span>
 							</span>
 							<input
-								className="hl-input"
-								type="number"
-								min="0"
-								step="1"
-								placeholder={String(basePrice)}
 								aria-label={`Price in coins for ${region.name}`}
-								value={values[region.id] ?? ""}
+								className="hl-input"
+								min="0"
 								onChange={e => setValues(v => ({ ...v, [region.id]: e.target.value }))}
+								placeholder={String(basePrice)}
+								step="1"
 								style={{ maxWidth: "9rem" }}
+								type="number"
+								value={values[region.id] ?? ""}
 							/>
-							<Button type="button" disabled={busy !== null} onClick={() => save(region.id)}>
+							<Button disabled={busy !== null} onClick={() => save(region.id)} type="button">
 								{busy === region.id ? "Saving…" : "Save"}
 							</Button>
 						</li>

@@ -48,9 +48,9 @@ export function ProjectChoiceCard({
 }) {
 	return (
 		<Panel
-			tone={chosen ? "teal" : "line"}
-			radius={18}
 			className={cx("@container bg-white", stacked && "flex h-full flex-col", className)}
+			radius={18}
+			tone={chosen ? "teal" : "line"}
 		>
 			<div
 				className={cx(
@@ -100,39 +100,39 @@ export function StarterProjectCard({
 }) {
 	return (
 		<ProjectChoiceCard
-			// A dark ground, because the board is gold and the renders are cut out: on paper or cream the edges of the star wash away. Merbl's render is a photo on its own white ground, so it takes a white tile with no padding instead rather than sitting in a navy frame.
-			tileClassName={starter.id === "merbl" ? "bg-white" : "bg-navy"}
-			flush={starter.id === "merbl"}
+			action={action}
 			art={
 				<StarterRender
-					id={starter.id}
-					sizes="220px"
 					// Stacked beside another choice, the tile is a fixed height so the two line up whatever shape each picture is.
 					className={stacked ? "h-[140px] w-full" : "aspect-[720/589] w-full max-w-[220px]"}
+					id={starter.id}
+					sizes="220px"
 				/>
 			}
-			label="Starter project"
-			title={starter.title}
-			action={action}
 			chosen={chosen}
-			stacked={stacked}
 			className={className}
+			flush={starter.id === "merbl"}
+			label="Starter project"
+			stacked={stacked}
+			// A dark ground, because the board is gold and the renders are cut out: on paper or cream the edges of the star wash away. Merbl's render is a photo on its own white ground, so it takes a white tile with no padding instead rather than sitting in a navy frame.
+			tileClassName={starter.id === "merbl" ? "bg-white" : "bg-navy"}
+			title={starter.title}
 		>
 			<p className="mt-1.5 text-[0.88rem] leading-relaxed text-navy-soft">{starter.description}</p>
 
 			<ul aria-label="On the board" className="mt-3 flex flex-wrap gap-1.5">
 				{starter.parts.map(part => (
-					<li key={part} className="rounded-full bg-cream px-2.5 py-1 text-[0.74rem] font-semibold text-navy-soft">
+					<li className="rounded-full bg-cream px-2.5 py-1 text-[0.74rem] font-semibold text-navy-soft" key={part}>
 						{part}
 					</li>
 				))}
 			</ul>
 
 			<p className="mt-3.5 flex flex-wrap gap-x-5 gap-y-2 text-[0.86rem]">
-				<a href={starter.guideUrl} target="_blank" rel="noopener noreferrer" className={LINK}>
+				<a className={LINK} href={starter.guideUrl} rel="noopener noreferrer" target="_blank">
 					<IconBook className="text-[1rem]" /> Read the guide
 				</a>
-				<a href={starter.repoUrl} target="_blank" rel="noopener noreferrer" className={LINK}>
+				<a className={LINK} href={starter.repoUrl} rel="noopener noreferrer" target="_blank">
 					<IconFile className="text-[1rem]" /> Project files on GitHub
 				</a>
 			</p>

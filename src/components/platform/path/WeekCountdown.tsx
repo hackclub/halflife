@@ -61,7 +61,7 @@ export function WeekCountdown({ week }: { week: Week }) {
 				/>
 				<div className="relative">
 					<p className="label flex items-center justify-center gap-1.5">
-						<IconClock className="text-[0.95rem]" aria-hidden="true" />
+						<IconClock aria-hidden="true" className="text-[0.95rem]" />
 						Week {week.id} closes in
 					</p>
 					<div
@@ -69,7 +69,7 @@ export function WeekCountdown({ week }: { week: Week }) {
 						className="mt-1.5 flex items-start justify-center gap-2 font-extrabold tabular-nums sm:gap-4"
 					>
 						{COUNTDOWN_UNITS.map(unit => (
-							<span key={unit.key} className="flex min-w-0 flex-col items-center">
+							<span className="flex min-w-0 flex-col items-center" key={unit.key}>
 								<span className="text-[1.9rem] leading-none tracking-[-0.03em] sm:text-[2.7rem]">
 									{parts === null ? "--" : unit.key === "days" ? parts.days : pad2(parts[unit.key])}
 								</span>

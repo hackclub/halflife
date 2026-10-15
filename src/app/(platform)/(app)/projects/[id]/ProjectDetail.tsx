@@ -27,8 +27,8 @@ import { Timeline } from "./Timeline"
 function BackLink() {
 	return (
 		<Link
-			href="/projects"
 			className="label inline-flex items-center gap-1.5 text-navy-soft transition-colors hover:text-navy"
+			href="/projects"
 		>
 			<IconChevronLeft className="text-base" /> All projects
 		</Link>
@@ -50,7 +50,7 @@ function Section({
 	return (
 		<section aria-labelledby={id} className="mt-8">
 			<div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-				<h2 id={id} className="label text-violet-deep">
+				<h2 className="label text-violet-deep" id={id}>
 					{title}
 				</h2>
 				{aside}
@@ -108,35 +108,35 @@ function DisputeForm({
 
 	return (
 		<div className="grid gap-2.5 rounded-xl border-2 border-line bg-cream/60 p-3.5">
-			<label htmlFor={`dispute-${phase}`} className="label text-violet-deep">
+			<label className="label text-violet-deep" htmlFor={`dispute-${phase}`}>
 				What looks wrong?{" "}
 				<span className="hand font-normal normal-case text-navy-soft">(a sentence is enough, 10+ characters)</span>
 			</label>
 			<textarea
+				className="block w-full rounded-xl border-2 border-field bg-white px-3.5 py-2.5 text-[0.9rem] text-navy outline-none placeholder:text-navy-faint transition-colors hover:border-navy-soft focus:border-violet"
 				id={`dispute-${phase}`}
-				value={note}
+				maxLength={2000}
 				onChange={e => {
 					setNote(e.target.value)
 					if (error) setError(null)
 				}}
-				rows={3}
-				maxLength={2000}
 				placeholder="The build works – the video runs at 1:20."
-				className="block w-full rounded-xl border-2 border-field bg-white px-3.5 py-2.5 text-[0.9rem] text-navy outline-none placeholder:text-navy-faint transition-colors hover:border-navy-soft focus:border-violet"
+				rows={3}
+				value={note}
 			/>
-			<p className="hand text-right text-[0.76rem] text-navy-soft tabular-nums" aria-live="polite">
+			<p aria-live="polite" className="hand text-right text-[0.76rem] text-navy-soft tabular-nums">
 				{note.trim().length}/10 minimum
 			</p>
 			{error && (
-				<p role="alert" className="text-[0.82rem] font-semibold text-coral-deep">
+				<p className="text-[0.82rem] font-semibold text-coral-deep" role="alert">
 					{error}
 				</p>
 			)}
 			<div className="flex flex-wrap gap-2">
-				<Button variant="solid" size="sm" disabled={saving} onClick={() => submit()}>
+				<Button disabled={saving} onClick={() => submit()} size="sm" variant="solid">
 					{saving ? "Sending…" : "Ask for a second look"}
 				</Button>
-				<Button variant="ghost" size="sm" disabled={saving} onClick={onClose}>
+				<Button disabled={saving} onClick={onClose} size="sm" variant="ghost">
 					Cancel
 				</Button>
 			</div>
@@ -177,7 +177,7 @@ function DeleteProject({ projectId, name, blocked }: { projectId: string; name: 
 	}
 
 	return (
-		<Panel tone="line" radius={20} className="bg-paper px-5 py-5 sm:px-6">
+		<Panel className="bg-paper px-5 py-5 sm:px-6" radius={20} tone="line">
 			<p className="text-[0.9rem] leading-snug text-navy-soft">
 				Takes it off your trail and your projects. Its journal entries stop counting toward your hours and streak. Reels
 				you posted stay in the feed.
@@ -188,21 +188,21 @@ function DeleteProject({ projectId, name, blocked }: { projectId: string; name: 
 				<div className="mt-3.5 grid gap-2.5">
 					<p className="text-[0.9rem] font-extrabold text-navy">Delete {name}? You can&apos;t undo this yourself.</p>
 					<div className="flex flex-wrap gap-2">
-						<Button variant="coral" size="sm" disabled={deleting} onClick={() => remove()}>
+						<Button disabled={deleting} onClick={() => remove()} size="sm" variant="coral">
 							{deleting ? "Deleting…" : "Yes, delete it"}
 						</Button>
-						<Button variant="ghost" size="sm" disabled={deleting} onClick={() => setConfirming(false)}>
+						<Button disabled={deleting} onClick={() => setConfirming(false)} size="sm" variant="ghost">
 							Cancel
 						</Button>
 					</div>
 				</div>
 			) : (
-				<Button variant="outline" size="sm" className="mt-3.5" onClick={() => setConfirming(true)}>
+				<Button className="mt-3.5" onClick={() => setConfirming(true)} size="sm" variant="outline">
 					Delete project
 				</Button>
 			)}
 			{error && (
-				<p role="alert" className="mt-2.5 text-[0.82rem] font-semibold text-coral-deep">
+				<p className="mt-2.5 text-[0.82rem] font-semibold text-coral-deep" role="alert">
 					{error}
 				</p>
 			)}
@@ -239,7 +239,7 @@ function WarmupWork({ projectId }: { projectId: string }) {
 
 	return (
 		<Section id="warmup-title" title="Warm-up">
-			<Panel tone="line" radius={20} className="bg-paper px-5 py-5 sm:px-6">
+			<Panel className="bg-paper px-5 py-5 sm:px-6" radius={20} tone="line">
 				<div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
 					<p className="text-[0.95rem] font-extrabold text-navy tabular-nums">
 						{fmtHours(hours)} logged
@@ -263,15 +263,15 @@ function WarmupWork({ projectId }: { projectId: string }) {
 					<>
 						<div className="mt-4 flex flex-wrap items-center gap-2.5">
 							{next && !passed && (
-								<Button variant="gold" onClick={() => setOpenCheckpoint(next.id)}>
+								<Button onClick={() => setOpenCheckpoint(next.id)} variant="gold">
 									Log a session
 								</Button>
 							)}
 							<Button
-								variant="solid"
-								disabled={!canActuallySubmit}
 								aria-describedby={canSubmit && !hasCover ? "warmup-cover-hint" : undefined}
+								disabled={!canActuallySubmit}
 								onClick={() => setOpenCheckpoint(submitId)}
+								variant="solid"
 							>
 								{build ? "Submit your build" : "Submit your design"}
 							</Button>
@@ -281,7 +281,7 @@ function WarmupWork({ projectId }: { projectId: string }) {
 								</span>
 							)}
 							{canSubmit && !hasCover && (
-								<span id="warmup-cover-hint" className="hand text-[0.84rem] text-coral-deep">
+								<span className="hand text-[0.84rem] text-coral-deep" id="warmup-cover-hint">
 									Upload a photo or screenshot of the project to submit
 								</span>
 							)}
@@ -296,10 +296,10 @@ function WarmupWork({ projectId }: { projectId: string }) {
 								<span>Edit an entry:</span>
 								{written.map(c => (
 									<button
-										key={c.id}
-										type="button"
-										onClick={() => setOpenCheckpoint(c.id)}
 										className="font-semibold text-sky-ink underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
+										key={c.id}
+										onClick={() => setOpenCheckpoint(c.id)}
+										type="button"
 									>
 										{c.title}
 									</button>
@@ -330,14 +330,14 @@ function ReviewState({
 	const [disputing, setDisputing] = useState<"DESIGN" | "BUILD" | null>(null)
 
 	return (
-		<Panel tone="line" radius={20} className="bg-paper px-5 py-5 sm:px-6">
+		<Panel className="bg-paper px-5 py-5 sm:px-6" radius={20} tone="line">
 			<ul className="grid gap-5">
 				{phases.map(p => {
 					const negative = p.status === "update_requested" || p.status === "rejected"
 					return (
-						<li key={p.phase} className="grid gap-2.5">
+						<li className="grid gap-2.5" key={p.phase}>
 							<div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-								<span className={cx("size-2.5 shrink-0 rounded-full", REVIEW_STATUS_DOT[p.status])} aria-hidden />
+								<span aria-hidden className={cx("size-2.5 shrink-0 rounded-full", REVIEW_STATUS_DOT[p.status])} />
 								<span className="text-[0.95rem] font-extrabold text-navy">
 									{p.phase === "DESIGN" ? "Design" : "Build"}
 								</span>
@@ -373,23 +373,23 @@ function ReviewState({
 								<div className="flex flex-wrap items-center gap-2">
 									{p.status === "update_requested" && (
 										<Button
-											variant="solid"
-											size="sm"
 											onClick={() =>
 												setOpenCheckpoint(warmup ? `wu-${projectId}-submit` : `w${weekFor(p.phase)}-submit`)
 											}
+											size="sm"
+											variant="solid"
 										>
 											I&apos;ve made these changes – resubmit
 										</Button>
 									)}
-									<Button variant="outline" size="sm" onClick={() => setDisputing(p.phase)}>
+									<Button onClick={() => setDisputing(p.phase)} size="sm" variant="outline">
 										This review is incorrect
 									</Button>
 								</div>
 							) : null}
 
 							{disputing === p.phase && (
-								<DisputeForm projectId={projectId} phase={p.phase} onClose={() => setDisputing(null)} />
+								<DisputeForm onClose={() => setDisputing(null)} phase={p.phase} projectId={projectId} />
 							)}
 						</li>
 					)
@@ -409,7 +409,7 @@ function StarterGuide({ project }: { project: Project }) {
 	if (!starter) return null
 
 	return (
-		<Panel tone="gold" radius={20} className="mt-6 bg-gold-pale/70 px-5 py-4 sm:px-6">
+		<Panel className="mt-6 bg-gold-pale/70 px-5 py-4 sm:px-6" radius={20} tone="gold">
 			<div className="flex flex-wrap items-center gap-x-6 gap-y-3">
 				<div className="min-w-0 flex-1">
 					<p className="label text-gold-ink">Starter project</p>
@@ -419,10 +419,10 @@ function StarterGuide({ project }: { project: Project }) {
 					</p>
 				</div>
 				<a
-					href={starter.guideUrl}
-					target="_blank"
-					rel="noopener noreferrer"
 					className="inline-flex shrink-0 items-center gap-1.5 font-semibold text-sky-ink underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
+					href={starter.guideUrl}
+					rel="noopener noreferrer"
+					target="_blank"
 				>
 					<IconBook className="text-[1rem]" /> Read the guide
 				</a>
@@ -451,7 +451,7 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 		return (
 			<div className="mx-auto w-full max-w-[960px] px-4 pt-6 sm:px-8">
 				<BackLink />
-				<Panel tone="line" radius={20} className="mt-6 bg-paper px-6 py-14 text-center">
+				<Panel className="mt-6 bg-paper px-6 py-14 text-center" radius={20} tone="line">
 					<p className="text-[1.05rem] font-extrabold text-navy">{missing ? "No such project" : "Loading…"}</p>
 					{missing && (
 						<p className="hand mx-auto mt-2 max-w-[40ch] text-[0.9rem] text-navy-soft">
@@ -494,35 +494,21 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
           only has room for two columns once it is wide enough for both. Below
           that the thumbnail leads as a banner, and it is first in the DOM so
           focus order agrees with what is seen. */}
-			<Panel tone="line" radius={22} className="@container mt-5 bg-paper px-5 py-5 sm:px-7 sm:py-6">
+			<Panel className="@container mt-5 bg-paper px-5 py-5 sm:px-7 sm:py-6" radius={22} tone="line">
 				<div className="grid gap-5 @3xl:grid-cols-[minmax(0,1fr)_260px] @3xl:gap-8">
 					<CoverImage
-						projectId={project.id}
-						url={data.coverImageUrl}
-						fallback={data.fallbackThumbnail}
-						theme={week.theme}
 						accent={week.accent}
+						fallback={data.fallbackThumbnail}
 						locked={data.editLocked}
+						projectId={project.id}
+						theme={week.theme}
+						url={data.coverImageUrl}
 					/>
 					<div className="min-w-0 @3xl:col-start-1 @3xl:row-start-1">
 						<ProjectDetails
-							project={project}
 							// A warm-up project's hours live in its imported session, not in a trail week, so its tier hint reads the timeline total.
 							hours={warmup ? hours : weekHours(project.weekId)}
-							tierLocked={submitted}
 							locked={data.editLocked}
-							unsubmit={
-								inReview
-									? {
-											label: warmup ? "this warm-up project" : `week ${weekFor(inReview)}`,
-											// A warm-up project has no checkpoint of its own to address it by (several share week 0), so it names itself; a season week resolves through its checkpoint.
-											run: () =>
-												unsubmitPhase(
-													warmup ? { projectId: project.id, phase: inReview } : `w${weekFor(inReview)}-submit`,
-												),
-										}
-									: undefined
-							}
 							// Two lines, one voice: how far it has got, then what it is. Everything else the page knows about it is further down, where it can be acted on.
 							meta={
 								<div className="hand mt-4 grid gap-1 text-[0.84rem] text-navy-soft">
@@ -554,11 +540,11 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 											<>
 												<Dot />
 												<a
-													href={project.githubRepo}
-													target="_blank"
-													rel="noopener noreferrer"
-													title={project.githubRepo}
 													className="min-w-0 truncate text-navy underline decoration-line-strong decoration-dashed underline-offset-4 transition-colors hover:decoration-violet"
+													href={project.githubRepo}
+													rel="noopener noreferrer"
+													target="_blank"
+													title={project.githubRepo}
 												>
 													{displayRepo(project.githubRepo)}
 												</a>
@@ -566,6 +552,20 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 										)}
 									</p>
 								</div>
+							}
+							project={project}
+							tierLocked={submitted}
+							unsubmit={
+								inReview
+									? {
+											label: warmup ? "this warm-up project" : `week ${weekFor(inReview)}`,
+											// A warm-up project has no checkpoint of its own to address it by (several share week 0), so it names itself; a season week resolves through its checkpoint.
+											run: () =>
+												unsubmitPhase(
+													warmup ? { projectId: project.id, phase: inReview } : `w${weekFor(inReview)}-submit`,
+												),
+										}
+									: undefined
 							}
 						/>
 					</div>
@@ -577,7 +577,7 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 
 			{/* A total that may still be counting one sitting twice has to say so here, where the number is read. Only the review screen carried this, so a participant whose tracked intervals could not be read saw the doubled figure presented as fact – which is the report this answers. */}
 			{overlapUnchecked && (
-				<Panel tone="line" radius={18} className="mt-5 bg-paper px-5 py-4">
+				<Panel className="mt-5 bg-paper px-5 py-4" radius={18} tone="line">
 					<p className="flex items-start gap-2 text-[0.88rem] leading-snug text-navy">
 						<IconWarning className="mt-0.5 shrink-0 text-base text-gold-ink" />
 						<span>
@@ -596,41 +596,41 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 			{/* ---------- where review stands ---------- */}
 			{data.phases.length > 0 && (
 				<Section id="review-title" title="Review">
-					<ReviewState projectId={project.id} phases={data.phases} weekFor={weekFor} warmup={warmup} />
+					<ReviewState phases={data.phases} projectId={project.id} warmup={warmup} weekFor={weekFor} />
 				</Section>
 			)}
 
 			{/* ---------- what the repo has ---------- */}
 			<div className="mt-6">
-				<RepoChecks project={project} onResult={noop} editable={false} />
+				<RepoChecks editable={false} onResult={noop} project={project} />
 			</div>
 
 			{/* ---------- keeping the repo in step ---------- */}
 			<Section id="repo-sync-title" title="Sync your repo">
-				<Panel tone="line" radius={20} className="bg-paper px-5 py-5 sm:px-6">
+				<Panel className="bg-paper px-5 py-5 sm:px-6" radius={20} tone="line">
 					<RepoSyncSettings projectId={project.id} />
 				</Panel>
 			</Section>
 
-			<HackatimeLinks projectId={project.id} phase={week.phase} />
+			<HackatimeLinks phase={week.phase} projectId={project.id} />
 
 			{/* ---------- the parts ---------- */}
 			<Section id="bom-title" title="Bill of materials">
-				<Panel tone="line" radius={20} className="bg-paper px-5 py-5 sm:px-6">
+				<Panel className="bg-paper px-5 py-5 sm:px-6" radius={20} tone="line">
 					<BomEditor
-						projectId={project.id}
-						items={data.bom}
-						taxShippingUsd={data.bomTaxShippingUsd}
-						locked={data.bomLocked}
-						tier={project.tier}
 						grantUsd={grantUsd}
+						items={data.bom}
+						locked={data.bomLocked}
+						projectId={project.id}
+						taxShippingUsd={data.bomTaxShippingUsd}
+						tier={project.tier}
 					/>
 				</Panel>
 			</Section>
 
 			{/* ---------- what happened, newest first ---------- */}
 			<Section id="timeline-title" title="Timeline">
-				<Panel tone="line" radius={20} className="bg-paper px-5 py-6 sm:px-6">
+				<Panel className="bg-paper px-5 py-6 sm:px-6" radius={20} tone="line">
 					{data.timeline.length === 0 ? (
 						<p className="hand py-8 text-center text-[0.9rem] text-navy-soft">
 							nothing on the record yet. Journal entries, timelapses and reels land here as you log them.
@@ -643,7 +643,7 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 
 			{/* ---------- last, and out of the way ---------- */}
 			<Section id="delete-title" title="Delete project">
-				<DeleteProject projectId={project.id} name={project.name} blocked={data.deleteBlocked} />
+				<DeleteProject blocked={data.deleteBlocked} name={project.name} projectId={project.id} />
 			</Section>
 		</div>
 	)

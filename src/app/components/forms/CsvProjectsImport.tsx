@@ -91,7 +91,7 @@ export function CsvProjectsImport() {
 				<Callout>
 					<ul className="hl-stack hl-stack--tight" style={{ marginTop: "0.5rem", paddingLeft: "1rem" }}>
 						{problems.map(p => (
-							<li key={`${p.line}-${p.message}`} className="hl-hint">
+							<li className="hl-hint" key={`${p.line}-${p.message}`}>
 								Line {p.line}: {p.message}
 							</li>
 						))}
@@ -108,7 +108,7 @@ export function CsvProjectsImport() {
 					{failures.length > 0 ? (
 						<ul className="hl-stack hl-stack--tight" style={{ marginTop: "0.5rem", paddingLeft: "1rem" }}>
 							{failures.map(o => (
-								<li key={o.projectId} className="hl-hint">
+								<li className="hl-hint" key={o.projectId}>
 									<span className="hl-mono">{o.projectId}</span> · {o.email} · failed
 									{o.reason ? ` – ${o.reason}` : ""}
 								</li>
@@ -120,8 +120,6 @@ export function CsvProjectsImport() {
 
 			<div className="hl-stack hl-stack--tight">
 				<input
-					ref={picker}
-					type="file"
 					accept=".csv,text/csv,text/plain"
 					className="block text-[0.85rem]"
 					onChange={e => {
@@ -130,8 +128,10 @@ export function CsvProjectsImport() {
 						setError(null)
 						setProblems([])
 					}}
+					ref={picker}
+					type="file"
 				/>
-				<Button variant="primary" disabled={busy || !file} onClick={() => run()}>
+				<Button disabled={busy || !file} onClick={() => run()} variant="primary">
 					{busy ? "Importing… (this can take a while)" : "Import projects from CSV"}
 				</Button>
 			</div>

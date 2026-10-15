@@ -53,21 +53,21 @@ export function ProgramStartForm({
 			{saved ? <Callout>Saved. The schedule below is the new one.</Callout> : null}
 
 			<Field
-				label="Week 1 starts (PCB design)"
 				hint={`Each week closes at 11:59 PM on its seventh day, ${timezone} time.`}
+				label="Week 1 starts (PCB design)"
 			>
 				<div className="hl-row">
 					<input
 						className="hl-input"
-						type="date"
-						value={date}
 						onChange={e => {
 							setDate(e.target.value)
 							setSaved(false)
 						}}
 						style={{ maxWidth: "12rem" }}
+						type="date"
+						value={date}
 					/>
-					<Button variant="primary" disabled={busy !== null || !valid || !changed} onClick={save}>
+					<Button disabled={busy !== null || !valid || !changed} onClick={save} variant="primary">
 						{busy ? "Saving…" : "Save start date"}
 					</Button>
 					{changed ? (

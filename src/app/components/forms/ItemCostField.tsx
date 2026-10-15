@@ -20,20 +20,20 @@ export function ItemCostField({ itemId, costUsd }: Readonly<{ itemId: string; co
 	}
 
 	return (
-		<form onSubmit={submit} className="hl-row" style={{ gap: "0.4rem", flexWrap: "nowrap" }}>
+		<form className="hl-row" onSubmit={submit} style={{ gap: "0.4rem", flexWrap: "nowrap" }}>
 			<input
-				className="hl-input"
-				type="number"
-				min="0"
-				step="0.01"
 				aria-label="Cost in USD"
-				placeholder="not set"
-				value={value}
+				className="hl-input"
+				min="0"
 				onChange={e => setValue(e.target.value)}
+				placeholder="not set"
+				step="0.01"
 				style={{ width: "7rem" }}
+				type="number"
+				value={value}
 			/>
 			{dirty ? (
-				<Button type="submit" disabled={busy !== null}>
+				<Button disabled={busy !== null} type="submit">
 					{busy ? "Saving…" : "Save"}
 				</Button>
 			) : null}

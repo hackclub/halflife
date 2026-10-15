@@ -178,7 +178,7 @@ function StepArt({
 
 	if (!step.art) {
 		return (
-			<ImageSlot label={step.slot.label} ratio={step.slot.ratio} className={className} style={style} scale={scale} />
+			<ImageSlot className={className} label={step.slot.label} ratio={step.slot.ratio} scale={scale} style={style} />
 		)
 	}
 
@@ -193,7 +193,7 @@ function StepArt({
           footprint label. If either picture turns out to carry information the
           heading does not – an order-flow diagram would – it wants real alt
           text rather than this. */}
-			<Image src={step.art} alt="" fill sizes={sizes} quality={90} className="object-cover" />
+			<Image alt="" className="object-cover" fill quality={90} sizes={sizes} src={step.art} />
 		</div>
 	)
 }
@@ -245,7 +245,7 @@ export default function Process() {
 	const [viral, community] = ASIDES
 
 	return (
-		<section id="how-it-works" aria-label="How Half Life works" className="relative z-0 isolate min-[1180px]:pb-[10vh]">
+		<section aria-label="How Half Life works" className="relative z-0 isolate min-[1180px]:pb-[10vh]" id="how-it-works">
 			{/* ── Comp reproduction, 1180px and up ───────────────────────────── */}
 			{/* Every child here is absolutely positioned, so the stage has no
           intrinsic height and has to be told one – as a ratio of its own
@@ -305,12 +305,12 @@ export default function Process() {
             resized past one of them the plate wins the overlap. */}
 				{EXTRAS.map(extra => (
 					<div
-						key={extra.src.src}
 						aria-hidden
 						className="absolute"
+						key={extra.src.src}
 						style={box(extra.x, extra.y + SHIFT, extra.w, extra.h)}
 					>
-						<Image src={extra.src} alt="" fill sizes={EXTRA_SIZES} quality={90} className="object-contain" />
+						<Image alt="" className="object-contain" fill quality={90} sizes={EXTRA_SIZES} src={extra.src} />
 					</div>
 				))}
 
@@ -362,7 +362,7 @@ export default function Process() {
 					</h3>
 					{design.art ? (
 						<div className="absolute" style={box(0, 92, 975, 548)}>
-							<Image src={design.art} alt="" fill sizes={STEP_ART_SIZES.weeks} quality={90} className="object-cover" />
+							<Image alt="" className="object-cover" fill quality={90} sizes={STEP_ART_SIZES.weeks} src={design.art} />
 						</div>
 					) : null}
 					<WeekList />
@@ -383,10 +383,10 @@ export default function Process() {
 						{funding.title}
 					</h3>
 					<StepArt
-						step={funding}
-						style={{ ...box(53, 109, 736, 235), position: "absolute" }}
 						scale={1.05}
 						sizes={STEP_ART_SIZES.stage}
+						step={funding}
+						style={{ ...box(53, 109, 736, 235), position: "absolute" }}
 					/>
 					<p
 						className="absolute whitespace-nowrap font-semibold opacity-60"
@@ -412,10 +412,10 @@ export default function Process() {
 						{build.title}
 					</h3>
 					<StepArt
-						step={build}
-						style={{ ...box(111, 158, 736, 328), position: "absolute" }}
 						scale={1.35}
 						sizes={STEP_ART_SIZES.stage}
+						step={build}
+						style={{ ...box(111, 158, 736, 328), position: "absolute" }}
 					/>
 					{/* Parked: corner decals, to be placed later. <CornerDecal decal="topLeft2" /> */}
 				</div>
@@ -434,10 +434,10 @@ export default function Process() {
 						{printer.title}
 					</h3>
 					<StepArt
-						step={printer}
-						style={{ ...box(106, 140, 736, 257), position: "absolute" }}
 						scale={1.35}
 						sizes={STEP_ART_SIZES.stage}
+						step={printer}
+						style={{ ...box(106, 140, 736, 257), position: "absolute" }}
 					/>
 					{/* Parked: corner decals, to be placed later. <CornerDecal decal="bottomLeft" /> */}
 				</div>
@@ -452,13 +452,13 @@ export default function Process() {
 					const b = weld(w.exit, w.entry, w.mean)
 					return (
 						<svg
-							key={w.id}
+							aria-hidden
 							className="absolute"
+							fill="none"
+							key={w.id}
+							preserveAspectRatio="none"
 							style={box(b.x, b.y, b.w, b.h)}
 							viewBox={`0 0 ${b.w} ${b.h}`}
-							preserveAspectRatio="none"
-							fill="none"
-							aria-hidden
 						>
 							{/* The bands are the plates' own material, not a rule drawn
                   between them – they ride over the plates they join, so a band
@@ -502,7 +502,7 @@ export default function Process() {
 						>
 							{HOW_LABEL}
 						</h2>
-						<StackWeld lean="right" anchor />
+						<StackWeld anchor lean="right" />
 					</div>
 
 					<ol className="flex flex-col">
@@ -518,12 +518,12 @@ export default function Process() {
 								{design.art ? (
 									<div className="relative mt-6 aspect-[1920/1080] w-full overflow-hidden">
 										<Image
-											src={design.art}
 											alt=""
-											fill
-											sizes={STEP_ART_SIZES.stacked}
-											quality={90}
 											className="object-cover"
+											fill
+											quality={90}
+											sizes={STEP_ART_SIZES.stacked}
+											src={design.art}
 										/>
 									</div>
 								) : null}
@@ -536,7 +536,7 @@ export default function Process() {
 						<li>
 							<Plate>
 								<h3 className="font-display text-2xl font-bold sm:text-3xl">{funding.title}</h3>
-								<StepArt step={funding} className="mt-6 aspect-[11876/3790] w-full" sizes={STEP_ART_SIZES.stacked} />
+								<StepArt className="mt-6 aspect-[11876/3790] w-full" sizes={STEP_ART_SIZES.stacked} step={funding} />
 								<p className="mt-4 font-semibold opacity-40">{funding.caption}</p>
 							</Plate>
 						</li>
@@ -546,7 +546,7 @@ export default function Process() {
 						<li>
 							<Plate>
 								<h3 className="font-display text-2xl font-bold sm:text-3xl">{build.title}</h3>
-								<StepArt step={build} className="mt-6 aspect-[9673/4315] w-full" sizes={STEP_ART_SIZES.stacked} />
+								<StepArt className="mt-6 aspect-[9673/4315] w-full" sizes={STEP_ART_SIZES.stacked} step={build} />
 							</Plate>
 						</li>
 
@@ -555,7 +555,7 @@ export default function Process() {
 						<li>
 							<Plate>
 								<h3 className="font-display text-2xl font-bold sm:text-3xl">{printer.title}</h3>
-								<StepArt step={printer} className="mt-6 aspect-[8439/2948] w-full" sizes={STEP_ART_SIZES.stacked} />
+								<StepArt className="mt-6 aspect-[8439/2948] w-full" sizes={STEP_ART_SIZES.stacked} step={printer} />
 							</Plate>
 						</li>
 					</ol>
@@ -611,18 +611,18 @@ function StackWeld({
 }) {
 	const Tag = anchor ? "div" : "li"
 	return (
-		<Tag role="presentation" aria-hidden className={anchor ? "flex" : "flex justify-center"}>
+		<Tag aria-hidden className={anchor ? "flex" : "flex justify-center"} role="presentation">
 			<svg
 				aria-hidden
-				viewBox={`0 0 ${STACK_VIEW.w} ${STACK_VIEW.h}`}
-				preserveAspectRatio="none"
-				fill="none"
 				className={`h-16 w-40 sm:h-24 sm:w-56${
 					// 41.78% is the fraction of its plate the stage's own header weld leaves at, so the margin puts this box's left edge there and the translate walks it back by the 35% of its own width that the run's exit sits at – landing the exit itself on 41.78%.
 					//
 					// The translate is what makes this one pair of values rather than one per breakpoint: it is a share of whatever width the box currently has, so `w-40` and `sm:w-56` both come out anchored with nothing to keep in step. The `calc()` this replaces needed the box's width spelled out, and Tailwind generated the base rule but not the `sm:` one, so the weld would have jumped off the plate at 640px.
 					anchor ? " ml-[41.78%] -translate-x-[35%]" : ""
 				}`}
+				fill="none"
+				preserveAspectRatio="none"
+				viewBox={`0 0 ${STACK_VIEW.w} ${STACK_VIEW.h}`}
 			>
 				<path d={stackWeld(lean)} fill="var(--color-hl-lavender-pale)" />
 			</svg>

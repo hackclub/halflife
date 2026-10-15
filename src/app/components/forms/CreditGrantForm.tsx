@@ -21,22 +21,22 @@ export function CreditGrantForm({ userId }: Readonly<{ userId: string }>) {
 	}
 
 	return (
-		<form onSubmit={submit} className="hl-stack hl-stack--tight">
+		<form className="hl-stack hl-stack--tight" onSubmit={submit}>
 			{error ? <Callout tone="danger">{error}</Callout> : null}
-			<Field label="Amount" hint="Negative to claw back.">
-				<input className="hl-input" type="number" value={amount} required onChange={e => setAmount(e.target.value)} />
+			<Field hint="Negative to claw back." label="Amount">
+				<input className="hl-input" onChange={e => setAmount(e.target.value)} required type="number" value={amount} />
 			</Field>
-			<Field label="Reason" hint="Recorded in the ledger and the audit log.">
+			<Field hint="Recorded in the ledger and the audit log." label="Reason">
 				<input
 					className="hl-input"
-					value={reason}
-					required
 					maxLength={1000}
 					onChange={e => setReason(e.target.value)}
+					required
+					value={reason}
 				/>
 			</Field>
 			<div>
-				<Button type="submit" disabled={busy !== null || !amount || !reason}>
+				<Button disabled={busy !== null || !amount || !reason} type="submit">
 					{busy ? "Applying…" : "Apply adjustment"}
 				</Button>
 			</div>

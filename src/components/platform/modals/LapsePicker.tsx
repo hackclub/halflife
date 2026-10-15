@@ -121,7 +121,7 @@ export function LapsePicker({
 
 	if (load.state === "loading") {
 		return (
-			<p className="hand py-10 text-center text-[0.9rem] text-navy-soft" aria-live="polite">
+			<p aria-live="polite" className="hand py-10 text-center text-[0.9rem] text-navy-soft">
 				looking for your timelapses on Lapse…
 			</p>
 		)
@@ -137,7 +137,7 @@ export function LapsePicker({
 					<IconFilm className="text-xl" />
 				</span>
 				{signInError ? (
-					<p role="alert" className="max-w-[46ch] text-[0.84rem] font-semibold text-coral-deep">
+					<p className="max-w-[46ch] text-[0.84rem] font-semibold text-coral-deep" role="alert">
 						{signInError}
 					</p>
 				) : null}
@@ -145,7 +145,7 @@ export function LapsePicker({
 					Timelapses are recorded on Lapse. Sign in once and every timelapse you publish there shows up here to pick
 					from.
 				</p>
-				<Button variant="solid" disabled={leaving} onClick={() => startSignIn()}>
+				<Button disabled={leaving} onClick={() => startSignIn()} variant="solid">
 					{leaving ? "Opening Lapse…" : "Sign in with Lapse"} <IconArrowRight className="text-base" />
 				</Button>
 				<p className="hand text-[0.78rem] text-navy-soft">
@@ -158,10 +158,10 @@ export function LapsePicker({
 	if (load.state === "error") {
 		return (
 			<div className="grid justify-items-center gap-3 py-8 text-center">
-				<p role="alert" className="flex items-start gap-2 text-[0.88rem] font-semibold text-coral-deep">
+				<p className="flex items-start gap-2 text-[0.88rem] font-semibold text-coral-deep" role="alert">
 					<IconWarning className="mt-0.5 shrink-0 text-base" /> {load.message}
 				</p>
-				<Button variant="outline" size="sm" onClick={() => refresh()}>
+				<Button onClick={() => refresh()} size="sm" variant="outline">
 					Try again
 				</Button>
 			</div>
@@ -174,14 +174,14 @@ export function LapsePicker({
 		<div>
 			<div className="mb-3 flex flex-wrap items-center justify-between gap-2">
 				<a
-					href={`${LAPSE_URL}/timelapse/create`}
-					target="_blank"
-					rel="noreferrer"
 					className="hand text-[0.82rem] text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
+					href={`${LAPSE_URL}/timelapse/create`}
+					rel="noreferrer"
+					target="_blank"
 				>
 					record a new one on Lapse
 				</a>
-				<Button variant="ghost" size="sm" onClick={() => refresh()}>
+				<Button onClick={() => refresh()} size="sm" variant="ghost">
 					Refresh
 				</Button>
 			</div>
@@ -209,28 +209,28 @@ export function LapsePicker({
 									? "still processing on Lapse"
 									: null
 						return (
-							<li key={t.id} className="flex flex-col">
+							<li className="flex flex-col" key={t.id}>
 								<button
-									type="button"
-									onClick={() => onToggle(t)}
-									disabled={blocked}
 									aria-pressed={selected}
 									className={cx(
 										"sketch group flex w-full flex-1 items-center gap-3 rounded-2xl p-2.5 text-left transition-[background-color,transform] duration-150",
 										selected ? "bg-violet-pale" : "bg-white hover:bg-cream",
 										blocked ? "cursor-not-allowed opacity-60" : "active:translate-y-px",
 									)}
+									disabled={blocked}
+									onClick={() => onToggle(t)}
 									style={
 										{
 											"--sk-color": selected ? "var(--color-violet)" : undefined,
 											"--sk-radius": "16px",
 										} as React.CSSProperties
 									}
+									type="button"
 								>
 									<span className="relative grid aspect-video w-24 shrink-0 place-items-center overflow-hidden rounded-lg bg-navy/10">
 										{t.thumbnailUrl ? (
 											// Lapse's CDN, sized by the box; next/image would need every Lapse host allow-listed for no gain at 96px. eslint-disable-next-line @next/next/no-img-element
-											<img src={t.thumbnailUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
+											<img alt="" className="h-full w-full object-cover" loading="lazy" src={t.thumbnailUrl} />
 										) : (
 											<IconFilm className="text-lg text-navy-soft" />
 										)}
@@ -256,7 +256,7 @@ export function LapsePicker({
 										{why ? (
 											<span className="hand mt-0.5 block text-[0.74rem] text-coral-deep">{why}</span>
 										) : t.hackatimeProject ? (
-											<Chip tone="muted" className="mt-1 max-w-full truncate">
+											<Chip className="mt-1 max-w-full truncate" tone="muted">
 												{t.hackatimeProject}
 											</Chip>
 										) : null}
@@ -270,7 +270,7 @@ export function LapsePicker({
 
 			{load.nextCursor && (
 				<div className="mt-3 flex justify-center">
-					<Button variant="outline" size="sm" onClick={() => loadMore()} disabled={more}>
+					<Button disabled={more} onClick={() => loadMore()} size="sm" variant="outline">
 						{more ? "Loading…" : "Show older timelapses"}
 					</Button>
 				</div>

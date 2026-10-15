@@ -171,12 +171,12 @@ export function EventCalendar({
 
 	return (
 		<Modal
-			open={open}
-			onClose={onClose}
 			accent="var(--color-violet)"
-			size="xl"
 			eyebrow="Programme calendar"
+			onClose={onClose}
+			open={open}
 			scrollKey={`${anchor}-${selected ?? ""}`}
+			size="xl"
 		>
 			<ModalTitle sub="Everything scheduled for the programme, shown in your timezone.">{weekLabel(days)}</ModalTitle>
 
@@ -189,21 +189,21 @@ export function EventCalendar({
 						<IconChevronRight className="text-base" />
 					</GridButton>
 					<button
-						type="button"
+						className="label ml-1 rounded-full border-2 border-line px-3 py-1 text-navy-soft transition-colors hover:border-sky hover:text-navy"
 						onClick={() => {
 							setAnchor(today)
 							setSelected(null)
 						}}
-						className="label ml-1 rounded-full border-2 border-line px-3 py-1 text-navy-soft transition-colors hover:border-sky hover:text-navy"
+						type="button"
 					>
 						Today
 					</button>
 				</div>
 				{selected ? (
 					<button
-						type="button"
-						onClick={() => setSelected(null)}
 						className="label rounded-full border-2 border-line px-3 py-1 text-navy-soft transition-colors hover:border-sky hover:text-navy"
+						onClick={() => setSelected(null)}
+						type="button"
 					>
 						Show what&apos;s next
 					</button>
@@ -223,15 +223,15 @@ export function EventCalendar({
 							const isSelected = day === selected
 							return (
 								<button
-									key={day}
-									type="button"
-									onClick={() => setSelected(isSelected ? null : day)}
-									aria-pressed={isSelected}
 									aria-label={`${dayShort(day)}${(segments.get(day) ?? []).length === 0 ? ", nothing scheduled" : ""}`}
+									aria-pressed={isSelected}
 									className={cx(
 										"flex flex-col items-center gap-0.5 rounded-t-lg px-1 pt-1.5 pb-2 transition-colors",
 										isSelected ? "bg-violet-pale/60" : "hover:bg-cream",
 									)}
+									key={day}
+									onClick={() => setSelected(isSelected ? null : day)}
+									type="button"
 								>
 									<span
 										className={cx(
@@ -259,11 +259,11 @@ export function EventCalendar({
 					</div>
 
 					<div className="grid" style={{ gridTemplateColumns: "2.75rem repeat(7, minmax(0, 1fr))" }}>
-						<div className="relative mt-3" style={{ height: gridHeight }} aria-hidden="true">
+						<div aria-hidden="true" className="relative mt-3" style={{ height: gridHeight }}>
 							{hours.map(hour => (
 								<span
-									key={hour}
 									className="label absolute right-1 text-[0.6rem] text-navy-faint"
+									key={hour}
 									style={{ top: (hour - startHour) * HOUR_PX, transform: "translateY(-50%)" }}
 								>
 									{hourLabel(hour)}
@@ -275,34 +275,34 @@ export function EventCalendar({
 							const isSelected = day === selected
 							return (
 								<div
-									key={day}
 									className={cx("relative mt-3 rounded-b-lg", isSelected && "bg-violet-pale/60")}
+									key={day}
 									style={{ height: gridHeight }}
 								>
 									{hours.map(hour => (
 										<span
-											key={hour}
 											aria-hidden="true"
 											className={cx(
 												"absolute inset-x-0 border-t",
 												hour === startHour ? "border-line" : "border-dashed border-line/70",
 											)}
+											key={hour}
 											style={{ top: (hour - startHour) * HOUR_PX }}
 										/>
 									))}
 									{(segments.get(day) ?? []).map(segment => (
 										<EventBlock
-											key={segment.event.id}
-											segment={segment}
 											day={day}
-											startHour={startHour}
 											gridHeight={gridHeight}
-											timeZone={timeZone}
 											isLive={eventIsLive(segment.event, new Date())}
+											key={segment.event.id}
 											onSelect={() => setSelected(day)}
+											segment={segment}
+											startHour={startHour}
+											timeZone={timeZone}
 										/>
 									))}
-									{isToday && <TodayLine startHour={startHour} gridHeight={gridHeight} timeZone={timeZone} />}
+									{isToday && <TodayLine gridHeight={gridHeight} startHour={startHour} timeZone={timeZone} />}
 								</div>
 							)
 						})}
@@ -361,17 +361,17 @@ function EventBlock({
 	const tallEnough = height >= 44
 	return (
 		<button
-			type="button"
-			onClick={onSelect}
 			aria-label={`${event.title}, ${range}, ${dayShort(day)}`}
-			title={`${event.title} · ${range}`}
 			className="absolute"
+			onClick={onSelect}
 			style={{
 				top,
 				height,
 				left: `${(lane / lanes) * 100}%`,
 				width: `${100 / lanes}%`,
 			}}
+			title={`${event.title} · ${range}`}
+			type="button"
 		>
 			<span
 				className={cx(
@@ -433,10 +433,10 @@ function EventRow({ event, timeZone }: { event: CalendarEvent; timeZone: string 
 				<p className="mt-1.5 text-[0.83rem] text-navy-soft">
 					Every call happens in the{" "}
 					<a
-						href={HUDDLE_URL}
-						target="_blank"
-						rel="noreferrer"
 						className="font-semibold text-sky-ink underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
+						href={HUDDLE_URL}
+						rel="noreferrer"
+						target="_blank"
 					>
 						Half Life huddle
 					</a>
@@ -449,11 +449,11 @@ function EventRow({ event, timeZone }: { event: CalendarEvent; timeZone: string 
 function GridButton({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
 	return (
 		<button
-			type="button"
-			onClick={onClick}
 			aria-label={label}
-			title={label}
 			className="grid size-8 place-items-center rounded-full border-2 border-line bg-paper text-navy-soft transition-colors hover:border-violet hover:text-navy"
+			onClick={onClick}
+			title={label}
+			type="button"
 		>
 			{children}
 		</button>

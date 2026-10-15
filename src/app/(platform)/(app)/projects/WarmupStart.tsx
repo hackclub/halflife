@@ -17,14 +17,14 @@ export function WarmupStart() {
 
 	if (!hydrated || weekStarted(1)) return null
 	const opensOn = weekOpensOn(1)
-	const modal = open && <WarmupModal onClose={() => setOpen(false)} closesOn={warmupDeadline} />
+	const modal = open && <WarmupModal closesOn={warmupDeadline} onClose={() => setOpen(false)} />
 
 	if (projects.some(p => p.weekId === WARMUP_WEEK_ID)) {
 		return (
 			<>
 				<div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
 					<p className="hand text-[0.86rem] text-navy-soft">warm-ups close {warmupDeadline}.</p>
-					<Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+					<Button onClick={() => setOpen(true)} size="sm" variant="outline">
 						Start another warm-up project <IconArrowRight className="text-base" />
 					</Button>
 				</div>
@@ -35,7 +35,7 @@ export function WarmupStart() {
 
 	return (
 		<>
-			<Panel tone="violet" radius={22} className="@container mb-6 overflow-hidden bg-paper">
+			<Panel className="@container mb-6 overflow-hidden bg-paper" radius={22} tone="violet">
 				<div className="grid @2xl:grid-cols-[minmax(0,1fr)_240px]">
 					<div className="px-6 py-6 sm:px-8 sm:py-7">
 						<h2 className="text-[1.9rem] leading-[1.15] font-extrabold tracking-[-0.03em] text-balance text-navy">
@@ -47,7 +47,7 @@ export function WarmupStart() {
 							as a build.
 						</p>
 						<div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3">
-							<Button variant="solid" onClick={() => setOpen(true)}>
+							<Button onClick={() => setOpen(true)} variant="solid">
 								Start warm-up project <IconArrowRight className="text-base" />
 							</Button>
 							<span className="hand text-[0.84rem] text-navy-soft">warm-ups close {warmupDeadline}.</span>
@@ -55,10 +55,10 @@ export function WarmupStart() {
 					</div>
 					<div className="order-first grid place-items-center bg-violet-pale px-6 py-5 @2xl:order-none">
 						<WeekPainting
-							theme={WARMUP_THEME.label}
 							alt=""
-							sizes="(min-width: 768px) 190px, 150px"
 							className="aspect-square w-[150px] @2xl:w-[190px]"
+							sizes="(min-width: 768px) 190px, 150px"
+							theme={WARMUP_THEME.label}
 						/>
 					</div>
 				</div>

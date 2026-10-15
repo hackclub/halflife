@@ -18,7 +18,7 @@ import { useStore } from "@/lib/store"
 function PhaseChip({ phase, status }: { phase: string; status: PhaseStatus }) {
 	return (
 		<span className="inline-flex items-center gap-1.5 rounded-full border border-line px-2 py-0.5 text-[0.72rem] font-semibold text-navy-soft">
-			<span className={cx("size-2 shrink-0 rounded-full", REVIEW_STATUS_DOT[status])} aria-hidden />
+			<span aria-hidden className={cx("size-2 shrink-0 rounded-full", REVIEW_STATUS_DOT[status])} />
 			{phase} {REVIEW_STATUS_TEXT[status]}
 		</span>
 	)
@@ -27,7 +27,7 @@ function PhaseChip({ phase, status }: { phase: string; status: PhaseStatus }) {
 function Legend({ className, label }: { className: string; label: string }) {
 	return (
 		<span className="inline-flex items-center gap-1.5">
-			<span className={cx("size-2.5 rounded-full", className)} aria-hidden />
+			<span aria-hidden className={cx("size-2.5 rounded-full", className)} />
 			{label}
 		</span>
 	)
@@ -41,15 +41,15 @@ export function ProjectsGrid() {
 
 	if (projects.length === 0) {
 		return (
-			<Panel tone="line" radius={20} className="bg-paper px-6 py-14 text-center">
-				<Gato pose="confused" sizes="180px" className="mx-auto h-auto w-[90px]" />
+			<Panel className="bg-paper px-6 py-14 text-center" radius={20} tone="line">
+				<Gato className="mx-auto h-auto w-[90px]" pose="confused" sizes="180px" />
 				<p className="mt-5 text-[1.05rem] font-extrabold text-navy">Nothing here yet</p>
 				<p className="hand mx-auto mt-2 max-w-[44ch] text-[0.9rem] leading-relaxed text-navy-soft">
 					your first project gets made at the yellow checkpoint. everything you log against it collects here.
 				</p>
 				<Link
-					href={PLATFORM_HOME}
 					className="label mt-6 inline-flex items-center gap-1.5 rounded-full border-2 border-line px-4 py-2 text-navy-soft transition-[color,border-color,transform] duration-150 hover:border-navy hover:text-navy active:translate-y-px"
+					href={PLATFORM_HOME}
 				>
 					Go to the trail <IconArrowRight className="text-base" />
 				</Link>
@@ -82,8 +82,8 @@ export function ProjectsGrid() {
 					const tone = reviewTone(project.designStatus, project.buildStatus)
 
 					return (
-						<Panel key={project.id} as="li" tone={tone} radius={20} className="flex flex-col overflow-hidden bg-paper">
-							<Link href={`/projects/${project.id}`} className="group flex flex-1 flex-col">
+						<Panel as="li" className="flex flex-col overflow-hidden bg-paper" key={project.id} radius={20} tone={tone}>
+							<Link className="group flex flex-1 flex-col" href={`/projects/${project.id}`}>
 								<span
 									className={cx(
 										"relative grid aspect-[16/9] place-items-center overflow-hidden",
@@ -93,15 +93,15 @@ export function ProjectsGrid() {
 								>
 									{project.thumbnail ? (
 										<ProjectThumb
-											thumb={project.thumbnail}
 											className="h-full w-full transition-transform duration-300 group-hover:scale-[1.04]"
+											thumb={project.thumbnail}
 										/>
 									) : (
 										<WeekPainting
-											theme={week.theme}
 											alt=""
-											sizes="(min-width: 1280px) 150px, (min-width: 768px) 190px, 60vw"
 											className="sticker-shadow aspect-square h-full transition-transform duration-300 group-hover:scale-[1.04]"
+											sizes="(min-width: 1280px) 150px, (min-width: 768px) 190px, 60vw"
+											theme={week.theme}
 										/>
 									)}
 									<span className="label absolute top-2.5 left-2.5 rounded-full bg-white/90 px-2.5 py-1 text-navy">
@@ -154,7 +154,7 @@ export function ProjectsGrid() {
 							{/* Outside the card's link, so editing the repo is not a click
                   through to the project page and the link inside it is not a
                   link nested in a link. */}
-							<RepoEditor project={project} className="border-t border-line/70 px-4 py-2.5" />
+							<RepoEditor className="border-t border-line/70 px-4 py-2.5" project={project} />
 						</Panel>
 					)
 				})}

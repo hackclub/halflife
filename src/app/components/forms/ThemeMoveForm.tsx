@@ -28,11 +28,11 @@ export function ThemeMoveForm({ projectId, current }: Readonly<{ projectId: stri
 		<div className="hl-stack hl-stack--tight">
 			<div className="hl-row">
 				<select
-					className="hl-input"
-					value={value}
-					onChange={e => setValue(e.target.value as Theme)}
 					aria-label="Move project to theme"
+					className="hl-input"
+					onChange={e => setValue(e.target.value as Theme)}
 					style={{ maxWidth: "12rem" }}
+					value={value}
 				>
 					{OPTIONS.map(t => (
 						<option key={t.id} value={t.id}>
@@ -40,7 +40,7 @@ export function ThemeMoveForm({ projectId, current }: Readonly<{ projectId: stri
 						</option>
 					))}
 				</select>
-				<Button type="button" disabled={busy !== null || value === current} onClick={save}>
+				<Button disabled={busy !== null || value === current} onClick={save} type="button">
 					{busy ? "Moving…" : "Move"}
 				</Button>
 			</div>

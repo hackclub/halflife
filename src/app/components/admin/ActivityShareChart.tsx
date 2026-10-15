@@ -42,28 +42,28 @@ export function ActivityShareChart({ share }: { share: ActivityShare }) {
 		<div>
 			<div style={{ overflowX: "auto" }}>
 				<svg
-					viewBox={`0 0 ${W} ${H}`}
-					role="img"
 					aria-label={`Share of the ${fmtInt(share.total)} makers who finished onboarding who did each activity: ${summary}`}
+					role="img"
 					style={{ display: "block", width: "100%", minWidth: "380px", height: "auto" }}
+					viewBox={`0 0 ${W} ${H}`}
 				>
 					{[0, 0.25, 0.5, 0.75, 1].map(t => (
 						<g key={t}>
 							<line
+								stroke="var(--color-line-soft)"
+								strokeWidth="1"
 								x1={PAD_L}
 								x2={W - PAD_R}
 								y1={yOf(t)}
 								y2={yOf(t)}
-								stroke="var(--color-line-soft)"
-								strokeWidth="1"
 								{...(t === 0 ? {} : { strokeDasharray: "2 3" })}
 							/>
 							<text
-								x={PAD_L - 6}
-								y={yOf(t)}
-								textAnchor="end"
 								dominantBaseline="middle"
 								style={{ fontSize: "10px", fill: "var(--color-ink-muted)", fontVariantNumeric: "tabular-nums" }}
+								textAnchor="end"
+								x={PAD_L - 6}
+								y={yOf(t)}
 							>
 								{`${t * 100}%`}
 							</text>
@@ -74,33 +74,33 @@ export function ActivityShareChart({ share }: { share: ActivityShare }) {
 						return (
 							<g key={a.key}>
 								<rect
-									x={xOf(i)}
-									y={yOf(a.share)}
-									width={colW}
 									height={h}
 									rx={3}
 									style={{ fill: COLUMN_COLORS[a.key] ?? "var(--color-accent)" }}
+									width={colW}
+									x={xOf(i)}
+									y={yOf(a.share)}
 								>
 									<title>{`${a.label}: ${fmtInt(a.users)} of ${fmtInt(share.total)} finishers (${(a.share * 100).toFixed(1)}%)`}</title>
 								</rect>
 								<text
-									x={xOf(i) + colW / 2}
-									y={yOf(a.share) - 7}
-									textAnchor="middle"
 									style={{
 										fontSize: "11px",
 										fontWeight: 700,
 										fill: "var(--color-ink-strong)",
 										fontVariantNumeric: "tabular-nums",
 									}}
+									textAnchor="middle"
+									x={xOf(i) + colW / 2}
+									y={yOf(a.share) - 7}
 								>
 									{(a.share * 100).toFixed(1)}%
 								</text>
 								<text
+									style={{ fontSize: "11px", fill: "var(--color-ink-muted)" }}
+									textAnchor="middle"
 									x={xOf(i) + colW / 2}
 									y={H - PAD_B + 18}
-									textAnchor="middle"
-									style={{ fontSize: "11px", fill: "var(--color-ink-muted)" }}
 								>
 									{a.base}
 								</text>

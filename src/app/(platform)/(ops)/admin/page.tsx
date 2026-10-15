@@ -113,12 +113,12 @@ export default async function AdminOverviewPage() {
 			</div>
 
 			<Panel
-				title="Reviewer activity"
 				actions={
 					<span className="hl-hint" style={{ fontSize: "0.78rem" }}>
 						the headline counts hand-ins, the outcome rows count projects
 					</span>
 				}
+				title="Reviewer activity"
 			>
 				<div
 					style={{
@@ -130,10 +130,10 @@ export default async function AdminOverviewPage() {
 					}}
 				>
 					<ShareDonut
-						measure="Project review status"
-						empty="No projects with a review state yet."
-						rows={projectReviewStatuses.map(s => ({ label: s.label, value: s.value }))}
 						colors={["var(--color-teal)", "var(--color-coin)", "var(--color-flame)", "var(--color-accent)"]}
+						empty="No projects with a review state yet."
+						measure="Project review status"
+						rows={projectReviewStatuses.map(s => ({ label: s.label, value: s.value }))}
 					/>
 					<div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
 						<Stat label="Reviewed today" value={reviewer.reviewedToday} />
@@ -166,7 +166,7 @@ export default async function AdminOverviewPage() {
 				</p>
 			</Panel>
 
-			<UserFlowDiagram steps={flow} sankey={sankeyData.diagram} />
+			<UserFlowDiagram sankey={sankeyData.diagram} steps={flow} />
 
 			<Panel title="Activities after onboarding">
 				<ActivityShareChart share={sankeyData.activityShare} />
@@ -181,8 +181,8 @@ export default async function AdminOverviewPage() {
 						alignItems: "start",
 					}}
 				>
-					<MetricPie title="Users" rows={areas} pick={r => r.users} format={fmtInt} />
-					<MetricPie title="Hours" rows={areas} pick={r => r.hours} format={fmtHours} />
+					<MetricPie format={fmtInt} pick={r => r.users} rows={areas} title="Users" />
+					<MetricPie format={fmtHours} pick={r => r.hours} rows={areas} title="Hours" />
 				</div>
 				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
 					Continents group each account&apos;s timezone; Unknown has none on file. Hours count journal devlogs
@@ -200,16 +200,16 @@ export default async function AdminOverviewPage() {
 					}}
 				>
 					<MetricPie
-						title="Users"
-						rows={countries.map(c => ({ label: c.country, users: c.users, hours: c.hours }))}
-						pick={r => r.users}
 						format={fmtInt}
+						pick={r => r.users}
+						rows={countries.map(c => ({ label: c.country, users: c.users, hours: c.hours }))}
+						title="Users"
 					/>
 					<MetricPie
-						title="Hours"
-						rows={countries.map(c => ({ label: c.country, users: c.users, hours: c.hours }))}
-						pick={r => r.hours}
 						format={fmtHours}
+						pick={r => r.hours}
+						rows={countries.map(c => ({ label: c.country, users: c.users, hours: c.hours }))}
+						title="Hours"
 					/>
 				</div>
 				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
@@ -219,8 +219,8 @@ export default async function AdminOverviewPage() {
 
 			<Panel title="First project choice">
 				<ShareDonut
-					measure="First project choice"
 					empty="No finished setups yet."
+					measure="First project choice"
 					rows={firstProjects.map(s => ({ label: s.label, value: s.users }))}
 				/>
 				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
@@ -231,8 +231,8 @@ export default async function AdminOverviewPage() {
 
 			<Panel title="Identity verification">
 				<ShareDonut
-					measure="Identity status"
 					empty="No accounts yet."
+					measure="Identity status"
 					rows={verification.map(s => ({ label: s.label, value: s.users }))}
 				/>
 				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
@@ -293,8 +293,8 @@ export default async function AdminOverviewPage() {
 			</Panel>
 
 			<Panel
-				title="Scheduled jobs"
 				actions={<Link href="/admin/audit?action=AIRTABLE_SYNC_FAILURE">Sync failures</Link>}
+				title="Scheduled jobs"
 			>
 				{syncs.length === 0 ? (
 					<EmptyState>No job has completed yet. Run them by hand from Orchard to check the wiring.</EmptyState>
@@ -392,15 +392,15 @@ function MetricPie({
 			</figcaption>
 			<div style={{ display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap" }}>
 				<svg
-					viewBox="0 0 200 200"
-					role="img"
 					aria-label={`${title} by share: ${summary}${colored.length > 3 ? ", and more" : ""}`}
+					role="img"
 					style={{ width: "11rem", height: "11rem", flexShrink: 0 }}
+					viewBox="0 0 200 200"
 				>
 					{only ? (
 						<>
 							<circle cx={CX} cy={CY} r={R} style={{ fill: only.color }} />
-							<circle cx={CX} cy={CY} r={HOLE} fill="#fff" />
+							<circle cx={CX} cy={CY} fill="#fff" r={HOLE} />
 						</>
 					) : (
 						wedges.map(w => {
@@ -412,8 +412,8 @@ function MetricPie({
 							const large = w.sweep > 180 ? 1 : 0
 							return (
 								<path
-									key={w.label}
 									d={`M ${outerFrom.x} ${outerFrom.y} A ${R} ${R} 0 ${large} 1 ${outerTo.x} ${outerTo.y} L ${innerTo.x} ${innerTo.y} A ${HOLE} ${HOLE} 0 ${large} 0 ${innerFrom.x} ${innerFrom.y} Z`}
+									key={w.label}
 									style={{ fill: w.color, stroke: "#fff", strokeWidth: 2 }}
 								>
 									<title>{`${w.label}: ${format(w.value)} (${w.pct.toFixed(1)}%)`}</title>
@@ -422,14 +422,14 @@ function MetricPie({
 						})
 					)}
 					<text
+						style={{ fontSize: "1.35rem", fontWeight: 800, fill: "var(--color-ink-strong)" }}
+						textAnchor="middle"
 						x={CX}
 						y={CY - 2}
-						textAnchor="middle"
-						style={{ fontSize: "1.35rem", fontWeight: 800, fill: "var(--color-ink-strong)" }}
 					>
 						{format(total)}
 					</text>
-					<text x={CX} y={CY + 20} textAnchor="middle" style={{ fontSize: "0.8rem", fill: "var(--color-ink-muted)" }}>
+					<text style={{ fontSize: "0.8rem", fill: "var(--color-ink-muted)" }} textAnchor="middle" x={CX} y={CY + 20}>
 						total {title.toLowerCase()}
 					</text>
 				</svg>
@@ -617,8 +617,8 @@ function ActivityStrip({ days, perUser = false }: { days: DayActivity[]; perUser
 				<div style={{ position: "relative", width: "3.1rem", height: `${CHART_H}px` }}>
 					{hoursTicks.map((t, i) => (
 						<span
-							key={`hl${i}`}
 							aria-hidden="true"
+							key={`hl${i}`}
 							style={{
 								position: "absolute",
 								right: 6,
@@ -651,75 +651,75 @@ function ActivityStrip({ days, perUser = false }: { days: DayActivity[]; perUser
 
 				<div>
 					<svg
-						width="100%"
-						height={CHART_H}
-						role="img"
 						aria-label={`Hours logged ${what}per day from ${first} to ${last}, peaking at ${fmtHours(
 							maxHours,
 						)}, and devlogs written ${what}per day over the same period, peaking at ${fmtCount(maxDevlogs)}`}
+						height={CHART_H}
+						role="img"
 						style={{ display: "block" }}
+						width="100%"
 					>
 						{hoursTicks.map((t, i) => (
 							<line
 								key={`hg${i}`}
+								stroke="var(--color-line-soft)"
+								strokeWidth="1"
 								x1={pct(EDGE)}
 								x2={pct(1 - EDGE)}
 								y1={yFor(t, maxHours)}
 								y2={yFor(t, maxHours)}
-								stroke="var(--color-line-soft)"
-								strokeWidth="1"
 							/>
 						))}
 						{devlogTicks.map((t, i) => (
 							<line
 								key={`dg${i}`}
+								stroke="var(--color-line-soft)"
+								strokeDasharray="2 3"
+								strokeWidth="1"
 								x1={pct(EDGE)}
 								x2={pct(1 - EDGE)}
 								y1={yFor(t, maxDevlogs)}
 								y2={yFor(t, maxDevlogs)}
-								stroke="var(--color-line-soft)"
-								strokeWidth="1"
-								strokeDasharray="2 3"
 							/>
 						))}
 						{areaBars.map((bar, i) => (
 							<rect
+								fill="var(--color-accent)"
+								height={PAD_T + plotH - bar.y}
 								key={`a${i}`}
+								opacity="0.1"
+								width={pct(bar.width)}
 								x={pct(bar.x)}
 								y={bar.y}
-								width={pct(bar.width)}
-								height={PAD_T + plotH - bar.y}
-								fill="var(--color-accent)"
-								opacity="0.1"
 							/>
 						))}
 						{hoursSegments.map((segment, i) => (
 							<line
 								key={`h${i}`}
-								x1={pct(segment.x1)}
-								y1={segment.y1}
-								x2={pct(segment.x2)}
-								y2={segment.y2}
 								stroke="var(--color-accent)"
-								strokeWidth="1.75"
 								strokeLinecap="round"
+								strokeWidth="1.75"
+								x1={pct(segment.x1)}
+								x2={pct(segment.x2)}
+								y1={segment.y1}
+								y2={segment.y2}
 							/>
 						))}
 						{devlogsSegments.map((segment, i) => (
 							<line
 								key={`d${i}`}
-								x1={pct(segment.x1)}
-								y1={segment.y1}
-								x2={pct(segment.x2)}
-								y2={segment.y2}
 								stroke="var(--color-magenta)"
-								strokeWidth="1.25"
-								strokeLinecap="round"
 								strokeDasharray="4 2"
+								strokeLinecap="round"
+								strokeWidth="1.25"
+								x1={pct(segment.x1)}
+								x2={pct(segment.x2)}
+								y1={segment.y1}
+								y2={segment.y2}
 							/>
 						))}
 						{days.map((d, i) => (
-							<circle key={d.day} cx={pct(xOf(i))} cy={yFor(hoursOf(d), maxHours)} r="1.6" fill="var(--color-accent)">
+							<circle cx={pct(xOf(i))} cy={yFor(hoursOf(d), maxHours)} fill="var(--color-accent)" key={d.day} r="1.6">
 								<title>
 									{perUser
 										? `${d.day}: ${fmtHours(hoursOf(d))} and ${fmtCount(devlogsOf(d))} devlogs per user, across ${fmtInt(d.users)} ${d.users === 1 ? "person" : "people"}`
@@ -764,8 +764,8 @@ function ActivityStrip({ days, perUser = false }: { days: DayActivity[]; perUser
 				<div style={{ position: "relative", width: "3.4rem", height: `${CHART_H}px` }}>
 					{devlogTicks.map((t, i) => (
 						<span
-							key={`dl${i}`}
 							aria-hidden="true"
+							key={`dl${i}`}
 							style={{
 								position: "absolute",
 								left: 6,
@@ -864,8 +864,8 @@ function DauChart({ days }: { days: ActiveDay[] }) {
 				<div style={{ position: "relative", width: "2.6rem", height: `${CHART_H}px` }}>
 					{ticks.map((t, i) => (
 						<span
-							key={`t${i}`}
 							aria-hidden="true"
+							key={`t${i}`}
 							style={{
 								position: "absolute",
 								right: 6,
@@ -896,48 +896,48 @@ function DauChart({ days }: { days: ActiveDay[] }) {
 
 				<div>
 					<svg
-						width="100%"
+						aria-label={`Daily active users from ${first} to ${last}: averaging ${fmtInt(Math.round(mean))} a day and peaking at ${fmtInt(peak)}`}
 						height={CHART_H}
 						role="img"
-						aria-label={`Daily active users from ${first} to ${last}: averaging ${fmtInt(Math.round(mean))} a day and peaking at ${fmtInt(peak)}`}
 						style={{ display: "block" }}
+						width="100%"
 					>
 						{ticks.map((t, i) => (
 							<line
 								key={`g${i}`}
+								stroke="var(--color-line-soft)"
+								strokeWidth="1"
 								x1={pct(EDGE)}
 								x2={pct(1 - EDGE)}
 								y1={yFor(t)}
 								y2={yFor(t)}
-								stroke="var(--color-line-soft)"
-								strokeWidth="1"
 							/>
 						))}
 						{areaBars.map((bar, i) => (
 							<rect
+								fill="var(--color-teal)"
+								height={PAD_T + plotH - bar.y}
 								key={`a${i}`}
+								opacity="0.1"
+								width={pct(bar.width)}
 								x={pct(bar.x)}
 								y={bar.y}
-								width={pct(bar.width)}
-								height={PAD_T + plotH - bar.y}
-								fill="var(--color-teal)"
-								opacity="0.1"
 							/>
 						))}
 						{segments.map((segment, i) => (
 							<line
 								key={`l${i}`}
-								x1={pct(segment.x1)}
-								y1={segment.y1}
-								x2={pct(segment.x2)}
-								y2={segment.y2}
 								stroke="var(--color-teal)"
-								strokeWidth="1.75"
 								strokeLinecap="round"
+								strokeWidth="1.75"
+								x1={pct(segment.x1)}
+								x2={pct(segment.x2)}
+								y1={segment.y1}
+								y2={segment.y2}
 							/>
 						))}
 						{days.map((d, i) => (
-							<circle key={d.day} cx={pct(xOf(i))} cy={yFor(d.users)} r="1.6" fill="var(--color-teal)">
+							<circle cx={pct(xOf(i))} cy={yFor(d.users)} fill="var(--color-teal)" key={d.day} r="1.6">
 								<title>{`${d.day}: ${fmtInt(d.users)} active ${d.users === 1 ? "person" : "people"}`}</title>
 							</circle>
 						))}
@@ -1061,8 +1061,8 @@ function GoalHoursChart({ days }: { days: GoalDayActivity[] }) {
 				<div style={{ position: "relative", width: "3.1rem", height: `${CHART_H}px` }}>
 					{ticks.map((t, i) => (
 						<span
-							key={`g${i}`}
 							aria-hidden="true"
+							key={`g${i}`}
 							style={{
 								position: "absolute",
 								right: 6,
@@ -1093,47 +1093,47 @@ function GoalHoursChart({ days }: { days: GoalDayActivity[] }) {
 
 				<div>
 					<svg
-						width="100%"
-						height={CHART_H}
-						role="img"
 						aria-label={`Hours per active user per day from ${first} to ${last}, one line per goal: ${lines
 							.map(l => `${l.label} peaking at ${fmtHours(Math.max(...l.values))}`)
 							.join("; ")}`}
+						height={CHART_H}
+						role="img"
 						style={{ display: "block" }}
+						width="100%"
 					>
 						{ticks.map((t, i) => (
 							<line
 								key={`gg${i}`}
+								stroke="var(--color-line-soft)"
+								strokeWidth="1"
 								x1={pct(EDGE)}
 								x2={pct(1 - EDGE)}
 								y1={yFor(t)}
 								y2={yFor(t)}
-								stroke="var(--color-line-soft)"
-								strokeWidth="1"
 							/>
 						))}
 						{lines.map(line =>
 							segments(line.values).map((segment, i) => (
 								<line
 									key={`${line.label}-${i}`}
-									x1={pct(segment.x1)}
-									y1={segment.y1}
-									x2={pct(segment.x2)}
-									y2={segment.y2}
 									stroke={line.colour}
-									strokeWidth="1.75"
 									strokeLinecap="round"
+									strokeWidth="1.75"
+									x1={pct(segment.x1)}
+									x2={pct(segment.x2)}
+									y1={segment.y1}
+									y2={segment.y2}
 								/>
 							)),
 						)}
 						{days.map((d, i) =>
 							lines.map(line => (
 								<circle
-									key={`${d.day}-${line.label}`}
 									cx={pct(xOf(i))}
 									cy={yFor(line.values[i] ?? 0)}
-									r="1.6"
 									fill={line.colour}
+									key={`${d.day}-${line.label}`}
+									r="1.6"
 								>
 									<title>{title(d)}</title>
 								</circle>
@@ -1327,8 +1327,8 @@ function ProjectsByWeekChart({ weeks }: { weeks: WeekProjectCluster[] }) {
 				<div style={{ position: "relative", width: "3.1rem", height: `${CHART_H}px` }}>
 					{ticks.map((t, i) => (
 						<span
-							key={`p${i}`}
 							aria-hidden="true"
+							key={`p${i}`}
 							style={{
 								position: "absolute",
 								right: 6,
@@ -1359,23 +1359,23 @@ function ProjectsByWeekChart({ weeks }: { weeks: WeekProjectCluster[] }) {
 
 				<div>
 					<svg
-						width="100%"
-						height={CHART_H}
-						role="img"
 						aria-label={`Projects being built for each week: ${weeks
 							.map((week, i) => `${weekNameOf(week)} ${fmtInt(totals[i] ?? 0)}`)
 							.join(", ")}`}
+						height={CHART_H}
+						role="img"
 						style={{ display: "block" }}
+						width="100%"
 					>
 						{ticks.map((t, i) => (
 							<line
 								key={`pg${i}`}
+								stroke="var(--color-line-soft)"
+								strokeWidth="1"
 								x1={pct(EDGE)}
 								x2={pct(1 - EDGE)}
 								y1={yFor(t)}
 								y2={yFor(t)}
-								stroke="var(--color-line-soft)"
-								strokeWidth="1"
 							/>
 						))}
 						{weeks.map((week, i) =>
@@ -1385,12 +1385,12 @@ function ProjectsByWeekChart({ weeks }: { weeks: WeekProjectCluster[] }) {
 								const top = yFor(count)
 								return (
 									<rect
+										fill={kind.colour}
+										height={PAD_T + plotH - top}
 										key={`${week.week}-${kind.key}`}
+										width={pct(barW)}
 										x={pct(centreOf(i) - clusterW / 2 + k * (barW + BAR_GAP))}
 										y={top}
-										width={pct(barW)}
-										height={PAD_T + plotH - top}
-										fill={kind.colour}
 									>
 										<title>{`${weekNameOf(week)} · ${kind.label}: ${fmtInt(count)}`}</title>
 									</rect>
@@ -1452,8 +1452,8 @@ function HoursByWeekChart({ weeks }: { weeks: WeekHoursCluster[] }) {
 				<div style={{ position: "relative", width: "3.1rem", height: `${CHART_H}px` }}>
 					{ticks.map((t, i) => (
 						<span
-							key={`h${i}`}
 							aria-hidden="true"
+							key={`h${i}`}
 							style={{
 								position: "absolute",
 								right: 6,
@@ -1484,23 +1484,23 @@ function HoursByWeekChart({ weeks }: { weeks: WeekHoursCluster[] }) {
 
 				<div>
 					<svg
-						width="100%"
-						height={CHART_H}
-						role="img"
 						aria-label={`Hours logged for each week: ${weeks
 							.map((week, i) => `${weekNameOf(week)} ${fmtHours(totals[i] ?? 0)}`)
 							.join(", ")}`}
+						height={CHART_H}
+						role="img"
 						style={{ display: "block" }}
+						width="100%"
 					>
 						{ticks.map((t, i) => (
 							<line
 								key={`hg${i}`}
+								stroke="var(--color-line-soft)"
+								strokeWidth="1"
 								x1={pct(EDGE)}
 								x2={pct(1 - EDGE)}
 								y1={yFor(t)}
 								y2={yFor(t)}
-								stroke="var(--color-line-soft)"
-								strokeWidth="1"
 							/>
 						))}
 						{weeks.map((week, i) => {
@@ -1514,12 +1514,12 @@ function HoursByWeekChart({ weeks }: { weeks: WeekHoursCluster[] }) {
 								const top = yFor(stacked)
 								return (
 									<rect
+										fill={kind.colour}
+										height={bottom - top}
 										key={`${week.week}-${kind.key}`}
+										width={pct(barW)}
 										x={pct(centreOf(i) - barW / 2)}
 										y={top}
-										width={pct(barW)}
-										height={bottom - top}
-										fill={kind.colour}
 									>
 										<title>{`${weekNameOf(week)} · ${kind.label}: ${fmtHours(value)}`}</title>
 									</rect>
@@ -1532,13 +1532,13 @@ function HoursByWeekChart({ weeks }: { weeks: WeekHoursCluster[] }) {
 							if (total === 0) return null
 							return (
 								<text
+									fill="var(--color-ink-muted)"
+									fontSize="0.6rem"
 									key={`hlab-${week.week}`}
+									style={{ fontVariantNumeric: "tabular-nums" }}
+									textAnchor="middle"
 									x={pct(centreOf(i))}
 									y={yFor(total) - 4}
-									textAnchor="middle"
-									fontSize="0.6rem"
-									style={{ fontVariantNumeric: "tabular-nums" }}
-									fill="var(--color-ink-muted)"
 								>
 									{fmtHours(total)}
 								</text>
@@ -1632,8 +1632,8 @@ function HoursHistogram({ data }: { data: HoursDistribution }) {
 				    percentage bar has nothing to resolve against inside an auto-height parent, and `align-items: end`
 				    would stop the column growing into one – which is how this chart rendered no bars at all. */}
 				<div
-					role="img"
 					aria-label={`Participants and hours by hours logged: ${summary}`}
+					role="img"
 					style={{
 						display: "grid",
 						gridTemplateColumns: `repeat(${data.buckets.length}, 1fr)`,
@@ -1651,10 +1651,10 @@ function HoursHistogram({ data }: { data: HoursDistribution }) {
 							// in it, bars included, reaches the one tooltip.
 							<div
 								key={b.label}
+								style={{ display: "flex", flexDirection: "column", minWidth: 0 }}
 								title={`${b.label}h: ${fmtInt(b.participants)} participants · ${fmtPct(
 									share.byAccounts,
 								)} of accounts with hours · ${fmtHours(b.hours)}, ${fmtPct(share.byHours)} of all hours`}
-								style={{ display: "flex", flexDirection: "column", minWidth: 0 }}
 							>
 								<span
 									aria-hidden="true"
@@ -1715,7 +1715,6 @@ function HoursHistogram({ data }: { data: HoursDistribution }) {
 					{data.buckets.map(b => (
 						<span
 							key={b.label}
-							title={b.label}
 							style={{
 								fontSize: "0.6rem",
 								color: "var(--color-ink-muted)",
@@ -1724,6 +1723,7 @@ function HoursHistogram({ data }: { data: HoursDistribution }) {
 								textOverflow: "ellipsis",
 								whiteSpace: "nowrap",
 							}}
+							title={b.label}
 						>
 							{b.label}
 						</span>
@@ -1801,25 +1801,25 @@ function ShareDonut({
 			}}
 		>
 			<svg
-				role="img"
 				aria-label={`${measure}: ${summary}`}
-				viewBox="0 0 42 42"
+				role="img"
 				style={{ width: "11rem", height: "11rem", flexShrink: 0 }}
+				viewBox="0 0 42 42"
 			>
-				<circle cx="21" cy="21" r={R} fill="none" stroke="var(--color-surface-sunken)" strokeWidth="7" />
+				<circle cx="21" cy="21" fill="none" r={R} stroke="var(--color-surface-sunken)" strokeWidth="7" />
 				{/* The ring starts at 3 o'clock; rotate it so it starts at the top. */}
 				<g transform="rotate(-90 21 21)">
 					{segments.map((seg, i) => (
 						<circle
-							key={seg.label}
 							cx="21"
 							cy="21"
-							r={R}
 							fill="none"
+							key={seg.label}
+							r={R}
 							stroke={colors?.[i] ?? palette[i % palette.length]}
-							strokeWidth="7"
 							strokeDasharray={`${Math.max(seg.share - 0.6, 0)} 100`}
 							strokeDashoffset={seg.start}
+							strokeWidth="7"
 						/>
 					))}
 				</g>

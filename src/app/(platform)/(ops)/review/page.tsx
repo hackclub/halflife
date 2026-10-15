@@ -24,7 +24,7 @@ export default async function ReviewQueuePage({ searchParams }: Props) {
 
 	return (
 		<div className="hl-stack">
-			<PageHeader title="Review queue" subtitle="Oldest submissions first." />
+			<PageHeader subtitle="Oldest submissions first." title="Review queue" />
 
 			<div className="hl-row">
 				<Stat label="Design waiting" value={queue.counts.design} />
@@ -32,13 +32,13 @@ export default async function ReviewQueuePage({ searchParams }: Props) {
 			</div>
 
 			<div className="hl-row">
-				<Link href="/review" className="hl-btn">
+				<Link className="hl-btn" href="/review">
 					All
 				</Link>
-				<Link href="/review?phase=DESIGN" className="hl-btn">
+				<Link className="hl-btn" href="/review?phase=DESIGN">
 					Design
 				</Link>
-				<Link href="/review?phase=BUILD" className="hl-btn">
+				<Link className="hl-btn" href="/review?phase=BUILD">
 					Build
 				</Link>
 			</div>

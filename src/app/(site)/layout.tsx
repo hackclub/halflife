@@ -21,7 +21,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
 	return (
-		<html lang="en" className={`${siteFontVariables} h-full antialiased`}>
+		<html className={`${siteFontVariables} h-full antialiased`} lang="en">
 			<head>
 				<PlausibleAnalytics />
 			</head>

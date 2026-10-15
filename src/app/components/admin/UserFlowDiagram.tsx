@@ -50,35 +50,35 @@ export function UserFlowDiagram({ steps, sankey }: { steps: FlowStep[]; sankey: 
 
 	return (
 		<Panel
-			title="User flow"
 			actions={
 				<span className="hl-hint" style={{ fontSize: "0.78rem" }}>
 					each step includes everyone who completed every step above it
 				</span>
 			}
+			title="User flow"
 			wide={wide}
 		>
 			<div
-				role="tablist"
 				aria-label="User flow diagram"
 				onKeyDown={onKeyDown}
+				role="tablist"
 				style={{ display: "flex", gap: "0.5rem", justifyContent: "center" }}
 			>
 				{TABS.map(tab => {
 					const selected = tab.id === active
 					return (
 						<button
-							key={tab.id}
-							id={`user-flow-tab-${tab.id}`}
-							type="button"
-							role="tab"
-							aria-selected={selected}
 							aria-controls={`user-flow-panel-${tab.id}`}
+							aria-selected={selected}
+							className={selected ? "hl-btn hl-btn--primary" : "hl-btn"}
+							id={`user-flow-tab-${tab.id}`}
+							key={tab.id}
+							onClick={() => setActive(tab.id)}
+							role="tab"
+							style={{ cursor: "pointer" }}
 							// The roving tabindex: only the selected tab is reachable by Tab.
 							tabIndex={selected ? 0 : -1}
-							className={selected ? "hl-btn hl-btn--primary" : "hl-btn"}
-							onClick={() => setActive(tab.id)}
-							style={{ cursor: "pointer" }}
+							type="button"
 						>
 							{tab.label}
 							{tab.id === "funnel" ? <span className="hl-hint">top to bottom</span> : null}
@@ -87,7 +87,7 @@ export function UserFlowDiagram({ steps, sankey }: { steps: FlowStep[]; sankey: 
 				})}
 			</div>
 
-			<div id={`user-flow-panel-${active}`} role="tabpanel" aria-labelledby={`user-flow-tab-${active}`}>
+			<div aria-labelledby={`user-flow-tab-${active}`} id={`user-flow-panel-${active}`} role="tabpanel">
 				{active === "funnel" ? <UserFlowFunnel steps={steps} /> : <UserFlowSankey diagram={sankey} />}
 			</div>
 

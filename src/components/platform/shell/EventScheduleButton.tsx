@@ -58,21 +58,21 @@ export function EventScheduleButton({
 	return (
 		<>
 			<button
-				type="button"
-				onClick={() => setOpen(true)}
-				aria-haspopup="dialog"
 				aria-expanded={open}
-				title={
-					next
-						? `${next.title} · ${eventRangeLabel(next.startsAt, next.endsAt, viewerZone)}`
-						: "Open the event calendar"
-				}
+				aria-haspopup="dialog"
 				className={cx(
 					"label inline-flex shrink-0 items-center gap-1.5 rounded-full border-2 bg-paper px-2 py-1.5 transition-colors sm:gap-2 sm:px-3",
 					next === null
 						? "border-line text-navy-faint"
 						: "border-line text-navy-soft hover:border-violet hover:text-navy",
 				)}
+				onClick={() => setOpen(true)}
+				title={
+					next
+						? `${next.title} · ${eventRangeLabel(next.startsAt, next.endsAt, viewerZone)}`
+						: "Open the event calendar"
+				}
+				type="button"
 			>
 				<IconClock className={cx("text-base", live && "text-coral")} />
 				{/* Visually hidden on a phone, where the row has no room for it, but
@@ -103,7 +103,7 @@ export function EventScheduleButton({
 				</span>
 			</button>
 
-			<EventCalendar open={open} onClose={() => setOpen(false)} events={events} timeZone={viewerZone} />
+			<EventCalendar events={events} onClose={() => setOpen(false)} open={open} timeZone={viewerZone} />
 		</>
 	)
 }

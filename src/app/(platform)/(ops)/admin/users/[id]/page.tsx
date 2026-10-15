@@ -38,9 +38,9 @@ export default async function AdminUserPage({ params }: Props) {
 	return (
 		<div className="hl-stack">
 			<PageHeader
-				title={displayName(user, user.email)}
-				subtitle={user.email}
 				actions={user.fraudFlagged ? <Badge tone="danger">flagged</Badge> : null}
+				subtitle={user.email}
+				title={displayName(user, user.email)}
 			/>
 
 			{/* The nickname is what every surface shows; this is the one place staff
@@ -56,7 +56,7 @@ export default async function AdminUserPage({ params }: Props) {
 
 			{canManageUsers ? (
 				<Panel title="Email">
-					<EmailForm url={`/api/admin/users/${id}`} current={user.email} />
+					<EmailForm current={user.email} url={`/api/admin/users/${id}`} />
 				</Panel>
 			) : null}
 
@@ -64,14 +64,14 @@ export default async function AdminUserPage({ params }: Props) {
 				<Panel title="Moderation">
 					<div className="hl-row">
 						<ActionButton
-							url={`/api/admin/users/${id}`}
-							method="PATCH"
 							body={{ fraudFlagged: !user.fraudFlagged }}
-							label={user.fraudFlagged ? "Clear the flag" : "Flag this account"}
-							variant={user.fraudFlagged ? "default" : "danger"}
 							confirm={
 								user.fraudFlagged ? "Let this account submit again?" : "Flagging blocks all submissions. Continue?"
 							}
+							label={user.fraudFlagged ? "Clear the flag" : "Flag this account"}
+							method="PATCH"
+							url={`/api/admin/users/${id}`}
+							variant={user.fraudFlagged ? "default" : "danger"}
 						/>
 					</div>
 				</Panel>
@@ -84,15 +84,15 @@ export default async function AdminUserPage({ params }: Props) {
 						global close. For one project only, use its row below.
 					</p>
 					<ExtensionForm
-						url={`/api/admin/users/${id}`}
 						current={user.submissionExtensionUntil?.toISOString() ?? null}
+						url={`/api/admin/users/${id}`}
 					/>
 				</Panel>
 			) : null}
 
 			{canManageRoles ? (
 				<Panel title="Roles">
-					<RoleEditor userId={id} current={user.roles.map(r => r.role)} />
+					<RoleEditor current={user.roles.map(r => r.role)} userId={id} />
 				</Panel>
 			) : null}
 
@@ -118,7 +118,7 @@ export default async function AdminUserPage({ params }: Props) {
 					].filter(Boolean)}
 				>
 					{user.themeProjects.map(project => (
-						<tr key={project.id} id={`project-${project.id}`}>
+						<tr id={`project-${project.id}`} key={project.id}>
 							<td>
 								{getThemeDef(project.theme).label}
 								<div className="hl-hint">{project.title}</div>
@@ -136,9 +136,9 @@ export default async function AdminUserPage({ params }: Props) {
 								<td style={{ minWidth: "14rem" }}>
 									{project.designStatus === "approved" && project.grantUsd ? (
 										<GrantForm
-											projectId={project.id}
-											amountUsd={project.grantUsd}
 											alreadySent={project.hcbGrantTopUps.length > 0}
+											amountUsd={project.grantUsd}
+											projectId={project.id}
 										/>
 									) : (
 										<span className="hl-hint">–</span>
@@ -147,14 +147,14 @@ export default async function AdminUserPage({ params }: Props) {
 							) : null}
 							{canMoveTheme ? (
 								<td style={{ minWidth: "12rem" }}>
-									<ThemeMoveForm projectId={project.id} current={project.theme} />
+									<ThemeMoveForm current={project.theme} projectId={project.id} />
 								</td>
 							) : null}
 							{canManageUsers ? (
 								<td style={{ minWidth: "18rem" }}>
 									<ExtensionForm
-										url={`/api/admin/theme-projects/${project.id}`}
 										current={project.submissionExtensionUntil?.toISOString() ?? null}
+										url={`/api/admin/theme-projects/${project.id}`}
 									/>
 								</td>
 							) : null}
@@ -162,26 +162,26 @@ export default async function AdminUserPage({ params }: Props) {
 								<td>
 									{project.designStatus === "approved" ? (
 										<ActionButton
-											url={`/api/admin/theme-projects/${project.id}/override`}
 											body={{
 												action: "unapprove",
 												phase: "DESIGN",
 												reason: "Un-approved by an admin",
 											}}
-											label="Un-approve design"
 											confirm="Un-approve the design? This clears the tier and grant."
+											label="Un-approve design"
+											url={`/api/admin/theme-projects/${project.id}/override`}
 										/>
 									) : null}
 									{project.buildStatus === "approved" ? (
 										<ActionButton
-											url={`/api/admin/theme-projects/${project.id}/override`}
 											body={{
 												action: "unapprove",
 												phase: "BUILD",
 												reason: "Un-approved by an admin",
 											}}
-											label="Un-approve build"
 											confirm={`Un-approve the build? This reconciles their ${CREDIT_NAME_PLURAL} back down.`}
+											label="Un-approve build"
+											url={`/api/admin/theme-projects/${project.id}/override`}
 										/>
 									) : null}
 								</td>

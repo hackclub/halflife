@@ -86,9 +86,9 @@ export default function ImageSlot({
 				] as const
 			).map(([pos, edges]) => (
 				<span
-					key={pos}
 					aria-hidden
 					className={`pointer-events-none absolute ${pos} ${edges} ${t.tick}`}
+					key={pos}
 					style={{ width: tick, height: tick }}
 				/>
 			))}

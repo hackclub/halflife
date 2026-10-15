@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default function ProjectsPage() {
 	return (
 		<div className="mx-auto w-full max-w-[1120px] px-4 pt-2 sm:px-8">
-			<PageSign label="PROJECTS" color="var(--color-violet)" />
+			<PageSign color="var(--color-violet)" label="PROJECTS" />
 			<WarmupStart />
 			<ProjectsGrid />
 		</div>
