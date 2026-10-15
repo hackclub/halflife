@@ -11,7 +11,8 @@
 				"noDuplicateClasses": "on",
 				"organizeImports": "on",
 				"useSortedAttributes": "on",
-				"useSortedEnumMembers": "on"
+				"useSortedEnumMembers": "on",
+				"useSortedInterfaceMembers": "on"
 			}
 		},
 		"enabled": true

@@ -51,11 +51,11 @@ const PALETTE = [
 ]
 
 interface Placed extends SankeyNode {
+	/** Index into PALETTE, so each activity branch keeps its colour wherever its box sits. */
+	color: string
 	stage: number
 	y0: number
 	y1: number
-	/** Index into PALETTE, so each activity branch keeps its colour wherever its box sits. */
-	color: string
 }
 
 type Ribbon = {

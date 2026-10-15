@@ -6,8 +6,8 @@
 
 /** One row of a ranked board. */
 export interface Ranked<K extends string> {
-	key: K
 	count: number
+	key: K
 }
 
 /**
