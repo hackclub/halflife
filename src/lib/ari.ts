@@ -2,8 +2,7 @@ import "server-only"
 import { Ari, AriApiError, AriInputError, type AriReview, type AriShipInput, type AriWebhookEvent } from "@hackclub/ari"
 import type { Prisma } from "@/app/generated/prisma/client"
 import { HoursSource, Phase, PhaseStatus, ReviewResult, Theme } from "@/app/generated/prisma/enums"
-import { YSWS_REVIEW_STATUS } from "@/lib/airtable/schema"
-import { reviewStatusFor, syncReviewDecisionToYsws } from "@/lib/airtable/sync"
+import { mirrorReviewDecision, reviewStatusFor, reviewStatusForResult } from "@/lib/airtable/sync"
 import { ariExternalId, parseAriExternalId } from "@/lib/ari-id"
 import { selectPendingShips } from "@/lib/ari-pending"
 import { AuditAction, logAudit } from "@/lib/audit"
@@ -363,38 +362,6 @@ function defaultFeedback(result: ReviewResult): string {
 	if (result === ReviewResult.APPROVED) return "Approved by Ari."
 	if (result === ReviewResult.RETURNED) return "Ari asked for changes before this can be approved."
 	return "Ari rejected this submission."
-}
-
-/** The Loops status for a decision Ari just reached. */
-function reviewStatusForResult(result: ReviewResult): string {
-	if (result === ReviewResult.APPROVED) return YSWS_REVIEW_STATUS.approved
-	if (result === ReviewResult.RETURNED) return YSWS_REVIEW_STATUS.changesRequested
-	return YSWS_REVIEW_STATUS.rejected
-}
-
-/**
- * Put a decision on the submission's Airtable row, for Loops.
- *
- * `Loops - halfLifeReviewStatus` and `Loops - halfLifeReviewerNotes` are what Loops reads to tell a maker their work was decided and to quote the reviewer. Nothing writes them when a decision arrives – the row is submitted as "Pending Review" with no note and, without this, stays that way. The caller passes the state the phase is in now and the reviewer's own words, so the row never says something the project is not.
- *
- * Never throws. The review is already committed by the time this runs, so a failure here is logged rather than raised – throwing would make Ari redeliver a decision that has already been applied, and these columns are not worth that.
- */
-async function mirrorReviewDecision(
-	themeProjectId: string,
-	phase: Phase,
-	status: string,
-	note: string | null,
-): Promise<void> {
-	const mirrored = await syncReviewDecisionToYsws(themeProjectId, phase, status, note)
-	// Not failures: no row was ever written (or it was taken back), and a switched-off sync means the base is deliberately not the one to update.
-	if (!mirrored.updated && mirrored.reason !== "no_row" && mirrored.reason !== "sync_disabled")
-		console.error(
-			`[airtable] could not set the review status for ${themeProjectId} (${phase}) to "${status}": ${mirrored.reason}`,
-		)
-	else if (mirrored.noteFailed)
-		console.error(
-			`[airtable] moved the review status for ${themeProjectId} (${phase}) but could not write the reviewer's note: ${mirrored.noteFailed}`,
-		)
 }
 
 async function ignored(event: AriWebhookEvent, reason: string, externalId: string | null): Promise<void> {

@@ -1,5 +1,5 @@
 import "server-only"
-import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
+import { Phase, PhaseStatus, ReviewResult } from "@/app/generated/prisma/enums"
 import { fieldKey, toFields, YSWS_REVIEW_STATUS, YSWS_SUBMISSION } from "@/lib/airtable/schema"
 import { deleteUnifiedRecords, deleteYswsRecord, updateYswsRecord, writeYswsRecord } from "@/lib/airtable/ysws"
 import { bomTotalUsd } from "@/lib/bom-policy"
@@ -55,6 +55,19 @@ export function reviewStatusFor(status: PhaseStatus): string {
 	if (status === PhaseStatus.rejected) return YSWS_REVIEW_STATUS.rejected
 	if (status === PhaseStatus.update_requested) return YSWS_REVIEW_STATUS.changesRequested
 	return YSWS_REVIEW_STATUS.pending
+}
+
+/**
+ * The Loops status for a decision, read off the phase state it lands on rather than a second mapping: an approval moves the phase to `approved`, changes to `update_requested`, a rejection to `rejected` (see `finalizeReview`). One table, so a status can never disagree with the state it mirrors.
+ */
+export function reviewStatusForResult(result: ReviewResult): string {
+	const after =
+		result === ReviewResult.APPROVED
+			? PhaseStatus.approved
+			: result === ReviewResult.RETURNED
+				? PhaseStatus.update_requested
+				: PhaseStatus.rejected
+	return reviewStatusFor(after)
 }
 
 /** The fields for this submission, exactly as the table names them. */
@@ -219,6 +232,31 @@ export async function syncReviewDecisionToYsws(
 	// `null` clears the column: a decision with no note must not leave the previous decision's words on the row for an email to quote back. A refusal here is reported separately, so the status is still counted as moved.
 	const noted = await updateYswsRecord(recordId, { [fieldKey(reviewerNotes)]: note ?? "" })
 	return noted.ok ? { updated: true } : { updated: true, noteFailed: noted.reason }
+}
+
+/**
+ * Put a decision on the submission's Airtable row, for Loops, and log whatever did not land.
+ *
+ * Every decision path calls this once its own change has committed – the Ari webhook, the review console, and an admin's un-approve or reopen – so the row cannot be moved by one path and left behind by another. `status` is the state the phase is now in and `note` is the reviewer's own words, or null to clear the column.
+ *
+ * Never throws: the review is already committed when this runs, so a failure is logged rather than raised. On the Ari path that is load-bearing – a throw becomes a 5xx and a redelivery of a decision that has already been applied.
+ */
+export async function mirrorReviewDecision(
+	themeProjectId: string,
+	phase: Phase,
+	status: string,
+	note: string | null,
+): Promise<void> {
+	const mirrored = await syncReviewDecisionToYsws(themeProjectId, phase, status, note)
+	// Not failures: no row was ever written (or it was taken back), and a switched-off sync means the base is deliberately not the one to update.
+	if (!mirrored.updated && mirrored.reason !== "no_row" && mirrored.reason !== "sync_disabled")
+		console.error(
+			`[airtable] could not set the review status for ${themeProjectId} (${phase}) to "${status}": ${mirrored.reason}`,
+		)
+	else if (mirrored.noteFailed)
+		console.error(
+			`[airtable] moved the review status for ${themeProjectId} (${phase}) but could not write the reviewer's note: ${mirrored.noteFailed}`,
+		)
 }
 
 /** Remove a submission's row, and its unified-base twin, when it is taken back. */
