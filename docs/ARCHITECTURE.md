@@ -177,6 +177,12 @@ paid with no review and no record. Every review freezes the numbers it used onto
 - Failures write an `AIRTABLE_SYNC_FAILURE` audit row and are replayable from
   `/admin/program` and by the hourly retry job, because approval and the row
   reaching Airtable are separate steps and only the first one is transactional.
+- The one write made after the row exists is `Loops - halfLifeReviewStatus`,
+  set from each Ari decision and to the phase's new state on a revert or requeue
+  (`syncReviewStatusToYsws`, `reviewStatusFor`). It is best-effort and never
+  throws: the review is committed in Postgres first, and a base that is briefly
+  unreachable must not make Ari redeliver a decision that has already been
+  applied.
 
 ## RSVP is write-behind
 

@@ -77,8 +77,22 @@ export const YSWS_SUBMISSION = {
 	},
 } as const
 
-/** What every row says when Half Life writes it; ari.hackclub.com takes it from there. */
+/** What a row says while its phase is in review; a decision moves it on (see YSWS_REVIEW_STATUS). */
 export const YSWS_PENDING_REVIEW = "Pending Review"
+
+/**
+ * The rest of what `Loops - halfLifeReviewStatus` can say, one per decision Ari reaches.
+ *
+ * The column is Loops': it is how a maker hears their work was decided, and a decision on ari.hackclub.com writes nothing to the base on its own – the status is put on the row when the decision arrives (see `syncReviewStatusToYsws` in lib/airtable/sync). A later rewrite of the row derives the status from the phase state rather than resetting it, so the two cannot disagree.
+ *
+ * Written with `typecast: false`, so each string has to already be an option in the base: a new word here is a 422 the update reports, not an option invented in the base (see the note on typecast in lib/airtable/ysws).
+ */
+export const YSWS_REVIEW_STATUS = {
+	pending: YSWS_PENDING_REVIEW,
+	approved: "Approved",
+	changesRequested: "Changes Requested",
+	rejected: "Rejected",
+} as const
 
 /**
  * The landing page's sign-up list, in its own base. The RSVP buffer drains into it and the Loops sync reads/writes its Loops columns, so both name it from here – the two modules used to default to different tables ("RSVPs" vs "Signups"), which silently split the funnel from the emails.

@@ -2,6 +2,8 @@ import "server-only"
 import { Ari, AriApiError, AriInputError, type AriReview, type AriShipInput, type AriWebhookEvent } from "@hackclub/ari"
 import type { Prisma } from "@/app/generated/prisma/client"
 import { HoursSource, Phase, PhaseStatus, ReviewResult, Theme } from "@/app/generated/prisma/enums"
+import { YSWS_REVIEW_STATUS } from "@/lib/airtable/schema"
+import { reviewStatusFor, syncReviewStatusToYsws } from "@/lib/airtable/sync"
 import { ariExternalId, parseAriExternalId } from "@/lib/ari-id"
 import { selectPendingShips } from "@/lib/ari-pending"
 import { AuditAction, logAudit } from "@/lib/audit"
@@ -21,7 +23,7 @@ import { publicUrlFor } from "@/lib/uploads/r2"
  *
  * Half Life sends each submitted (project, phase) as an Ari "ship" and receives its decisions back as signed webhooks. The decision is applied through the same `finalizeReview` a human console reviewer calls, so the trail, the ledger and the grant all move exactly once, whether a person or Ari decided. The only difference is attribution: an Ari decision has no Half Life user, so `SubmissionReview.reviewerId` is null and the audit row names Ari instead.
  *
- * Ari owns the YSWS/Airtable row status once a submission is written there, so this integration does not write to Airtable – it mirrors Ari's decision into the participant-facing side of Half Life (status, hours, coins, printer qualification).
+ * Ari owns the decision, and it is mirrored into the participant-facing side of Half Life (status, hours, coins, printer qualification). The one thing written back to Airtable is `Loops - halfLifeReviewStatus`: a decision writes nothing to the base on its own, so it is put on the row here for Loops to read (see `mirrorReviewStatus`).
  *
  * Everything here no-ops when the three ARI_* secrets are unset, so local dev and any deployment that has not been onboarded to Ari behave as before.
  */
@@ -363,6 +365,29 @@ function defaultFeedback(result: ReviewResult): string {
 	return "Ari rejected this submission."
 }
 
+/** The Loops status for a decision Ari just reached. */
+function reviewStatusForResult(result: ReviewResult): string {
+	if (result === ReviewResult.APPROVED) return YSWS_REVIEW_STATUS.approved
+	if (result === ReviewResult.RETURNED) return YSWS_REVIEW_STATUS.changesRequested
+	return YSWS_REVIEW_STATUS.rejected
+}
+
+/**
+ * Put a status on the submission's Airtable row, for Loops.
+ *
+ * `Loops - halfLifeReviewStatus` is read by Loops to tell a maker their work was decided, and nothing writes it when a decision arrives: the row is submitted as "Pending Review" and, without this, stays there. The caller passes the state the phase is in now, so the column never says something the project is not.
+ *
+ * Never throws. The review is already committed by the time this runs, so a failure here is logged rather than raised – throwing would make Ari redeliver a decision that has already been applied, and the column is not worth that.
+ */
+async function mirrorReviewStatus(themeProjectId: string, phase: Phase, status: string): Promise<void> {
+	const mirrored = await syncReviewStatusToYsws(themeProjectId, phase, status)
+	// Not failures: no row was ever written (or it was taken back), and a switched-off sync means the base is deliberately not the one to update.
+	if (!mirrored.updated && mirrored.reason !== "no_row" && mirrored.reason !== "sync_disabled")
+		console.error(
+			`[airtable] could not set the review status for ${themeProjectId} (${phase}) to "${status}": ${mirrored.reason}`,
+		)
+}
+
 async function ignored(event: AriWebhookEvent, reason: string, externalId: string | null): Promise<void> {
 	await logAudit({
 		action: AuditAction.ARI_WEBHOOK_IGNORED,
@@ -485,6 +510,9 @@ async function applyDecision(event: DecisionEvent): Promise<void> {
 		},
 	})
 
+	// The row carries the decision too, for Loops. Best-effort like the notice below: the review is already committed, and a decided submission must not be redelivered over a base that is briefly unreachable.
+	await mirrorReviewStatus(themeProjectId, phase, reviewStatusForResult(result))
+
 	// The decision is committed and recorded; now tell the maker. Best-effort – a Slack or mail outage must not make Ari retry a decided submission, and the project page is the source of truth if a message is missed.
 	await notifyReviewOutcome({
 		themeProjectId,
@@ -560,6 +588,11 @@ async function applyReset(event: ResetEvent): Promise<void> {
 		targetId: themeProjectId,
 		metadata: { event: event.event, phase, undone: status },
 	})
+
+	// The phase is back with the maker – unapproving and reopening both land on `update_requested`, and a phase already in front of reviewers stays there – so the row follows the state rather than being reset to "Pending Review", which the project would not be in.
+	const after =
+		status === PhaseStatus.approved || status === PhaseStatus.rejected ? PhaseStatus.update_requested : status
+	await mirrorReviewStatus(themeProjectId, phase, reviewStatusFor(after))
 }
 
 /** An optional post-approval fraud check. A failure flags the maker. */
