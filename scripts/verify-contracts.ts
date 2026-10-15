@@ -254,7 +254,11 @@ async function bodies() {
 			createReportSchema,
 			{ details: "same clip five times", reason: "SPAM", target: "REEL", targetId: "cmxxxxxxxxxxxxxxxxxxxxxxx" },
 		],
-		["buy", purchaseSchema, { idempotencyKey: "01234567-89ab-cdef-0123-456789abcdef", quantity: 1, shopItemId: "printer-ender-3-v3-se" }],
+		[
+			"buy",
+			purchaseSchema,
+			{ idempotencyKey: "01234567-89ab-cdef-0123-456789abcdef", quantity: 1, shopItemId: "printer-ender-3-v3-se" },
+		],
 		["repoSync · on", repoSyncSettingsSchema, { enabled: true, repo: "https://github.com/maker/hackpad" }],
 		["repoSync · off", repoSyncSettingsSchema, { enabled: false }],
 		// The import body is optional in full: an empty POST is the preview, which is the harmless act, and the client only says `apply` when it means it.
