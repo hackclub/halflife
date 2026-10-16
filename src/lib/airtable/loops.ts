@@ -1,15 +1,21 @@
 import "server-only"
 import { HoursSource, Phase } from "@/app/generated/prisma/enums"
-import { type AirtableRecord, airtableFetch, getAirtableConfig, withRateLimitRetry } from "@/lib/airtable/client"
-import { existingColumns } from "@/lib/airtable/field-probe"
+import {
+	type AirtableRecord,
+	airtableFetch,
+	escapeAirtableValue,
+	getAirtableConfig,
+	withRateLimitRetry,
+} from "@/lib/airtable/client"
+import { columnExists, existingColumns } from "@/lib/airtable/field-probe"
 import { fieldKey, RSVP, RSVP_TABLE_ID } from "@/lib/airtable/schema"
-import { THEMES } from "@/lib/config/program"
+import { scheduledWeekFor, THEMES } from "@/lib/config/program"
 import prisma from "@/lib/prisma"
 
 /**
  * The Loops properties on the `Signups` table: what Loops emails people from.
  *
- * Twelve columns, all Half Life's to write: when someone was last seen on the site, when they last logged a journal entry, and one checkbox per program week for whether they have completed that week's first checkpoint. Everything else Half Life tracks stays in Postgres (lib/analytics) – Loops needs these, not the rest.
+ * Twenty-two columns, all Half Life's to write: when someone was last seen on the site, when they last logged a journal entry, one checkbox per program week for whether they have completed that week's first checkpoint, and one checkbox per program week for whether they have submitted that week's project. Everything else Half Life tracks stays in Postgres (lib/analytics) – Loops needs these, not the rest.
  *
  * "Last login" is last site access, from `lastActiveAt` (the page-view heartbeat, lib/analytics), falling back to `lastLoginAt` for someone who has signed in but not been seen since. Loops keys its re-engagement email off that, so a visit counts, not just a fresh session.
  *
@@ -27,6 +33,8 @@ export const LOOPS_FIELDS = {
 	email: fieldKey(RSVP.fields.email),
 	lastEntryAt: "Loops - halfLifeLastEntryAt",
 	lastLoginAt: "Loops - halfLifeLastLoginAt",
+	// Ticked when the week's project has been submitted (any PhaseSubmission filed for that scheduled week). Written immediately on submit (see syncLoopsWeekSubmitted) and healed hourly by this sync, so Loops can trigger off a hand-in without waiting for the next run.
+	submitted: (n: number) => `Loops - halfLifeWeek${n}ProjectSubmitted`,
 	// The join key, when the base has it. See the note above.
 	userId: fieldKey(RSVP.fields.userId),
 	week: (n: number) => `Loops - halfLifeWeek${n}Project`,
@@ -43,6 +51,8 @@ type LoopsValues = {
 	lastEntryAt: Date | null
 	/** Week number → completed that week's first checkpoint. */
 	weeks: Record<number, boolean>
+	/** Week number → submitted that week's project. */
+	weeksSubmitted: Record<number, boolean>
 }
 
 /**
@@ -64,6 +74,7 @@ async function loopsValues(): Promise<LoopsValues[]> {
 			themeProjects: {
 				select: {
 					namedAt: true,
+					submissions: { select: { phase: true, scheduledWeek: true } },
 					theme: true,
 					workSessions: {
 						orderBy: { createdAt: "desc" },
@@ -83,6 +94,16 @@ async function loopsValues(): Promise<LoopsValues[]> {
 			weeks[def.designWeek] = def.designWeek === 1 ? u.onboardingCompletedAt !== null : project?.namedAt != null
 			weeks[def.buildWeek] = project?.workSessions.some(s => s.phase === Phase.BUILD) ?? false
 		}
+		// Submitted means a hand-in exists for that scheduled week, in any state – in review, approved, or sent back. Rows from before `scheduledWeek` was recorded fall back to the theme and phase's own week, and the warm-up's week 0 is not a program week. Unsubmitting deletes the open row, so a week taken back with no other hand-in reads as unsubmitted again.
+		const submittedWeeks = new Set<number>()
+		for (const p of u.themeProjects) {
+			for (const s of p.submissions) {
+				const w = s.scheduledWeek ?? scheduledWeekFor(p.theme, s.phase)
+				if (w >= 1 && w <= 10) submittedWeeks.add(w)
+			}
+		}
+		const weeksSubmitted: Record<number, boolean> = {}
+		for (const n of WEEKS) weeksSubmitted[n] = submittedWeeks.has(n)
 		// Last entry means evidence of an actual entry: a manually written session, or a session carrying a timelapse. A HACKATIME_TRACKED row only says a Hackatime project was linked and contributes nothing on its own – someone who has only linked Hackatime gets no timestamp, and a previously stamped one is cleared below.
 		const lastEntryAt = u.themeProjects
 			.flatMap(p => p.workSessions)
@@ -91,7 +112,7 @@ async function loopsValues(): Promise<LoopsValues[]> {
 			.reduce<Date | null>((a, b) => (a && a > b ? a : b), null)
 		// "Last login" means last time we saw them, so a page view wins over the sign-in that started the session; a sign-in with no view since still counts, so take whichever is newer.
 		const lastLoginAt = newest(u.lastLoginAt, u.lastActiveAt)
-		return { email: u.email, id: u.id, lastEntryAt, lastLoginAt, weeks }
+		return { email: u.email, id: u.id, lastEntryAt, lastLoginAt, weeks, weeksSubmitted }
 	})
 }
 
@@ -110,6 +131,7 @@ function fieldsFor(v: LoopsValues): Record<string, unknown> {
 		[LOOPS_FIELDS.lastEntryAt]: v.lastEntryAt?.toISOString() ?? null,
 	}
 	for (const n of WEEKS) fields[LOOPS_FIELDS.week(n)] = v.weeks[n] ?? false
+	for (const n of WEEKS) fields[LOOPS_FIELDS.submitted(n)] = v.weeksSubmitted[n] ?? false
 	return fields
 }
 
@@ -241,6 +263,7 @@ async function signupRows(config: NonNullable<ReturnType<typeof getAirtableConfi
 		LOOPS_FIELDS.lastLoginAt,
 		LOOPS_FIELDS.lastEntryAt,
 		...WEEKS.map(LOOPS_FIELDS.week),
+		...WEEKS.map(LOOPS_FIELDS.submitted),
 	]
 	const writable = await existingColumns(config, TABLE, all)
 	const want = all.filter(c => writable.has(c))
@@ -374,4 +397,93 @@ export async function syncLoopsProperties(
 		)
 	}
 	return result
+}
+
+/**
+ * Tick (or untick) one week's `ProjectSubmitted` box for one person, immediately.
+ *
+ * The hourly `loops-sync` heals these columns eventually, but Loops triggers off a hand-in – waiting up to an hour to say "week 3 is submitted" is waiting too long. So the submit route calls this in its `after` hook, and the unsubmit route calls it too: the value is recomputed from Postgres rather than forced true, so a week taken back with no other hand-in is cleared rather than left ticked.
+ *
+ * Best-effort by design: a missing column, a missing row, or no Airtable config is a skip, not a throw, so a slow or half-built base never fails a hand-in. A real Airtable fault throws, and the caller logs it – the hourly sync replays the same value later.
+ */
+export async function syncLoopsWeekSubmitted(
+	userId: string,
+	week: number,
+): Promise<{ updated: boolean } | { skipped: string }> {
+	if (!Number.isInteger(week) || week < 1 || week > 10) return { skipped: "not_a_program_week" }
+	const config = getAirtableConfig()
+	if (!config) return { skipped: "not_configured" }
+	const column = LOOPS_FIELDS.submitted(week)
+	if (!(await columnExists(config, TABLE, column))) return { skipped: "no_column" }
+
+	const user = await prisma.user.findUnique({ select: { email: true }, where: { id: userId } })
+	if (!user) return { skipped: "no_user" }
+
+	// Recomputed, not forced: submit lands with the row present (true), unsubmit lands with it deleted (false unless another hand-in for the same week stands).
+	const projects = await prisma.themeProject.findMany({
+		select: { submissions: { select: { phase: true, scheduledWeek: true } }, theme: true },
+		where: { userId },
+	})
+	let want = false
+	for (const p of projects) {
+		for (const s of p.submissions) {
+			if ((s.scheduledWeek ?? scheduledWeekFor(p.theme, s.phase)) === week) {
+				want = true
+				break
+			}
+		}
+		if (want) break
+	}
+
+	// The drained record id addresses the row without a table scan. Otherwise fall back to the same filtered lookups the bulk sync resolves with.
+	const buf = await prisma.rsvpBuffer.findFirst({
+		select: { airtableRecordId: true },
+		where: { userId },
+	})
+	const fieldsQs = `fields%5B%5D=${encodeURIComponent(column)}`
+	const getById = (id: string) =>
+		withRateLimitRetry("readSignup", () =>
+			airtableFetch<AirtableRecord>(config, `${encodeURIComponent(TABLE)}/${encodeURIComponent(id)}?${fieldsQs}`),
+		).catch(() => null)
+	const findByFormula = (formula: string) =>
+		withRateLimitRetry("findSignup", () =>
+			airtableFetch<{ records: AirtableRecord[] }>(
+				config,
+				`${encodeURIComponent(TABLE)}?maxRecords=1&filterByFormula=${encodeURIComponent(formula)}&${fieldsQs}`,
+			),
+		)
+
+	if (buf?.airtableRecordId) {
+		const row = await getById(buf.airtableRecordId)
+		if (row && (row.fields[column] === true) === want) return { skipped: "already_set" }
+		if (row) {
+			await withRateLimitRetry("updateSignupSubmitted", () =>
+				airtableFetch(config, encodeURIComponent(TABLE), {
+					body: JSON.stringify({ records: [{ fields: { [column]: want }, id: row.id }], typecast: false }),
+					method: "PATCH",
+				}),
+			)
+			return { updated: true }
+		}
+		// The recorded row is gone from the base; fall through to the filtered lookups rather than giving up.
+	}
+
+	// filterByFormula names columns by name, never by id – so these use the schema names, not the probed keys.
+	const byUserId = await findByFormula(`{${RSVP.fields.userId.name}}='${escapeAirtableValue(userId)}'`)
+	let row = byUserId.records[0]
+	if (!row) {
+		const byEmail = await findByFormula(
+			`LOWER({${RSVP.fields.email.name}})='${escapeAirtableValue(user.email.trim().toLowerCase())}'`,
+		)
+		row = byEmail.records[0]
+	}
+	if (!row) return { skipped: "no_row" }
+	if ((row.fields[column] === true) === want) return { skipped: "already_set" }
+	await withRateLimitRetry("updateSignupSubmitted", () =>
+		airtableFetch(config, encodeURIComponent(TABLE), {
+			body: JSON.stringify({ records: [{ fields: { [column]: want }, id: row.id }], typecast: false }),
+			method: "PATCH",
+		}),
+	)
+	return { updated: true }
 }
