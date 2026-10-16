@@ -47,7 +47,7 @@ const THEMES: ThemeSeed[] = [
 		buildHeadline: "PRINT YOUR PART",
 		designHeadline: "MODEL YOUR PART",
 		examples: [
-			"An enclosure for the PCB you designed in week 1",
+			// "An enclosure for the PCB you designed in week 1", // cant do this one
 			"A desk arm that clamps a phone at eye height",
 			"A parametric spool holder that fits any spool width",
 			"A mechanical keyboard case with a gasket mount",
