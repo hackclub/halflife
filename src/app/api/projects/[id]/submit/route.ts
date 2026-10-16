@@ -1,4 +1,5 @@
 import { after } from "next/server"
+import { syncLoopsWeekSubmitted } from "@/lib/airtable/loops"
 import { syncSubmissionToYsws } from "@/lib/airtable/sync"
 import { markSubmission } from "@/lib/analytics"
 import { ok, parseBody, withRoute } from "@/lib/api"
@@ -64,6 +65,16 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 			},
 			() => syncSubmissionToYsws(id, parsed.data.phase),
 		)
+	})
+
+	// Tick the week's `ProjectSubmitted` box on the maker's Signups row, so Loops can trigger off the hand-in without waiting for the hourly sync. Best-effort: a skip or a fault only delays the tick until `loops-sync` heals it, so it must never fail the hand-in.
+	after(async () => {
+		try {
+			if (submission.scheduledWeek != null)
+				await syncLoopsWeekSubmitted(gate.user.id, submission.scheduledWeek)
+		} catch (err) {
+			console.error("[submit] loops submitted tick failed:", err)
+		}
 	})
 
 	// And into Ari, which reviews it through the SDK and reports back by webhook. Only scheduled when configured, so a deployment without Ari secrets logs no noise; a failure lands in the audit log and /api/integrations/ari-retry.

@@ -1,9 +1,12 @@
 import { after } from "next/server"
+import { syncLoopsWeekSubmitted } from "@/lib/airtable/loops"
 import { removeSubmissionFromYsws } from "@/lib/airtable/sync"
 import { ok, parseBody, withRoute } from "@/lib/api"
 import { isAriConfigured, withdrawSubmissionFromAri } from "@/lib/ari"
 import { AuditAction, logAudit } from "@/lib/audit"
+import { scheduledWeekFor } from "@/lib/config/program"
 import { requireSession } from "@/lib/guards"
+import prisma from "@/lib/prisma"
 import { unsubmitSchema } from "@/lib/schemas/project"
 import { trackSideEffect } from "@/lib/side-effects"
 import { unsubmitPhase } from "@/lib/submissions"
@@ -42,6 +45,16 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 			},
 			() => removeSubmissionFromYsws(id, parsed.data.phase),
 		)
+	})
+
+	// The week's box is recomputed, not just cleared: withdrawing the only hand-in for a week unticks `ProjectSubmitted`, while an older hand-in standing behind it keeps it ticked. Best-effort like the submit tick – the hourly sync heals whatever this misses.
+	after(async () => {
+		try {
+			const project = await prisma.themeProject.findUnique({ select: { theme: true }, where: { id } })
+			if (project) await syncLoopsWeekSubmitted(gate.user.id, scheduledWeekFor(project.theme, parsed.data.phase))
+		} catch (err) {
+			console.error("[unsubmit] loops submitted tick failed:", err)
+		}
 	})
 
 	// Withdraw it from Ari too, or its queue keeps a hand-in that no longer exists in Half Life.
