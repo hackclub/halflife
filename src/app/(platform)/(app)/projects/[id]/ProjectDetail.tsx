@@ -434,13 +434,13 @@ function StarterGuide({ project }: { project: Project }) {
 export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData | null }) {
 	const {
 		projects,
-		stateOf,
 		weekOf,
 		warmupWeekOf,
 		weekHours,
 		hoursOf,
 		hydrated,
 		unsubmitPhase,
+		statusOf,
 		overlapUnchecked: overlapUncheckedWeek,
 	} = useStore()
 	const project = projects.find(p => p.id === id)
@@ -475,9 +475,8 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 	const hours = warmup ? hoursOf(week) : weekHours(project.weekId) + weekHours(buildWeekId)
 	const started = data.timeline.at(-1)?.at ?? 0
 
-	// The tier stops being editable the moment the design week is handed in – that submission is what claimed it, and the build week only inherits it. A warm-up's one submit claims it the same way.
-	const submit = week.checkpoints.find(c => c.kind === "submit")
-	const submitted = submit ? stateOf(submit.id).done : false
+	// The tier is final once the design decision is approved, not the moment it is handed in: a phase returned for changes is still the maker's to revise, and the week a return reopens is exactly when they would. The build week inherits the design's tier, and a warm-up's one submit claims it the same way.
+	const tierLocked = statusOf(week) === "approved"
 	const grantUsd = TIERS.find(t => t.id === project.tier)?.grantUsd ?? 0
 	// Kept in a local so the phase survives into the unsubmit handler below.
 	const inReview = data.inReview
@@ -554,7 +553,7 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 								</div>
 							}
 							project={project}
-							tierLocked={submitted}
+							tierLocked={tierLocked}
 							unsubmit={
 								inReview
 									? {
