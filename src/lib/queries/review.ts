@@ -118,7 +118,14 @@ export type SubmissionDetailView = {
 
 const submissionDetailInclude = {
 	claim: { include: { reviewer: { select: { displayName: true, id: true, name: true } } } },
-	dispute: true,
+	dispute: {
+		include: {
+			messages: {
+				include: { author: { select: { displayName: true, id: true, name: true } } },
+				orderBy: { createdAt: "asc" },
+			},
+		},
+	},
 	reviews: {
 		include: { reviewer: { select: { displayName: true, id: true, name: true } } },
 		orderBy: { createdAt: "desc" },
@@ -223,6 +230,8 @@ export type OpenDispute = {
 	projectTitle: string
 	themeLabel: string
 	participant: string
+	/** Replies so far, so the panel can say whether a reviewer has answered. */
+	messageCount: number
 }
 
 /**
@@ -234,6 +243,7 @@ export async function getOpenDisputes(): Promise<OpenDispute[]> {
 	const rows = await prisma.reviewDispute.findMany({
 		orderBy: { createdAt: "asc" },
 		select: {
+			_count: { select: { messages: true } },
 			createdAt: true,
 			id: true,
 			note: true,
@@ -258,6 +268,7 @@ export async function getOpenDisputes(): Promise<OpenDispute[]> {
 	return rows.map(d => ({
 		createdAt: d.createdAt,
 		id: d.id,
+		messageCount: d._count.messages,
 		note: d.note,
 		participant: displayName(d.submission.themeProject.user, d.submission.themeProject.user.email),
 		phase: d.submission.phase,

@@ -62,6 +62,30 @@ export type TimelineItem =
 			comments: string | null
 	  }
 
+/** One message in a dispute thread, from the maker who raised it or a reviewer answering. */
+export type DisputeMessage = {
+	id: string
+	/** A reviewer wrote it, as opposed to the maker who raised the dispute. */
+	fromReviewer: boolean
+	body: string
+	/** Epoch ms. */
+	at: number
+}
+
+/** A maker's dispute on a phase's latest decision, with the thread under it. */
+export type PhaseDispute = {
+	id: string
+	/** The maker's opening words. */
+	note: string
+	/** Epoch ms. */
+	at: number
+	/** How a reviewer ended it, or null while it is still open. */
+	outcome: "upheld" | "stood" | null
+	/** Epoch ms, or null while open. */
+	resolvedAt: number | null
+	messages: DisputeMessage[]
+}
+
 /** One phase's review state, for the block above the repo checks. */
 export type PhaseReview = {
 	phase: Phase
@@ -72,10 +96,8 @@ export type PhaseReview = {
 	submittedAt: number | null
 	/** When it was decided, epoch ms. */
 	reviewedAt: number | null
-	/** When the maker asked for a second look, if they have. */
-	disputedAt: number | null
-	/** Whether staff have closed that dispute. */
-	disputeResolved: boolean
+	/** The maker's dispute on the latest decision, with its thread, if they raised one. */
+	dispute: PhaseDispute | null
 	/** Why the maker's open hand-in never reached Ari, when it did not. Null once it has, or when there is no open hand-in. */
 	shipError: string | null
 }
@@ -190,7 +212,19 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 				select: {
 					ariShipError: true,
 					createdAt: true,
-					dispute: { select: { createdAt: true, resolvedAt: true } },
+					dispute: {
+						select: {
+							createdAt: true,
+							id: true,
+							messages: {
+								orderBy: { createdAt: "asc" },
+								select: { body: true, createdAt: true, fromReviewer: true, id: true },
+							},
+							note: true,
+							outcome: true,
+							resolvedAt: true,
+						},
+					},
 					id: true,
 					phase: true,
 					resolvedAt: true,
@@ -246,15 +280,28 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
 				.reduce<Date | null>((at, s) => (!at || s.createdAt > at ? s.createdAt : at), null)
 			const disputed = project.submissions
 				.filter(s => s.phase === phase && s.dispute)
-				.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
+				.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]?.dispute
 			// Only an open hand-in can be stuck: one that was decided had its marker cleared by the send that succeeded, and one that was withdrawn was deleted outright.
 			const openShip = project.submissions
 				.filter(s => s.phase === phase && s.resolvedAt === null)
 				.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
 			return {
 				comments: isDesign ? project.designReviewComments : project.buildReviewComments,
-				disputedAt: disputed?.dispute?.createdAt.getTime() ?? null,
-				disputeResolved: Boolean(disputed?.dispute?.resolvedAt),
+				dispute: disputed
+					? {
+							at: disputed.createdAt.getTime(),
+							id: disputed.id,
+							messages: disputed.messages.map(m => ({
+								at: m.createdAt.getTime(),
+								body: m.body,
+								fromReviewer: m.fromReviewer,
+								id: m.id,
+							})),
+							note: disputed.note,
+							outcome: disputed.outcome,
+							resolvedAt: disputed.resolvedAt?.getTime() ?? null,
+						}
+					: null,
 				phase,
 				reviewedAt: (isDesign ? project.designReviewedAt : project.buildReviewedAt)?.getTime() ?? null,
 				shipError: openShip?.ariShipError ?? null,

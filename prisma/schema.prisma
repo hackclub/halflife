@@ -455,6 +455,7 @@ model User {
   reviewsGiven   SubmissionReview[] @relation("SubmissionReviewer")
   reviewClaims   ReviewClaim[]      @relation("ReviewClaimant")
   reviewDisputes ReviewDispute[]    @relation("ReviewDisputeAuthor")
+  disputeMessages ReviewDisputeMessage[] @relation("ReviewDisputeMessageAuthor")
   reportsMade    ContentReport[]    @relation("ReportReporter")
   reportsAgainst ContentReport[]    @relation("ReportSubject")
   hcbGrantTopUps HcbGrantTopUp[]    @relation("HcbGrantTopUpUser")
@@ -984,9 +985,15 @@ model SubmissionReview {
   @@map("submission_review")
 }
 
-/// A maker's disagreement with a decided submission.
+/// What a reviewer decided about a dispute: sent back for a fresh review, or looked at again with the decision left standing.
+enum ReviewDisputeOutcome {
+  upheld
+  stood
+}
+
+/// A maker's disagreement with a decided submission, and the thread it opens.
 ///
-/// It deliberately changes no state: a returned or rejected phase stays that way, and no button silently overrides a reviewer. What it does is put the submission in front of staff for a second look, with the maker's own words on it. One per submission (`submissionId` is unique), so the queue cannot be flooded by the same decision.
+/// Raising it changes no state: a returned or rejected phase stays that way, and no button silently overrides a reviewer. What it does is put the submission in front of staff, with the maker's own words on it, and open a thread the maker and reviewers both add to (`ReviewDisputeMessage`). One per submission (`submissionId` is unique), so the queue cannot be flooded by the same decision. A reviewer then either closes it (`stood`, the decision stands) or sends it back for a fresh review (`upheld`), which is the one place a dispute changes state and is gated on `OVERRIDE_DECISIONS`.
 model ReviewDispute {
   id           String          @id @default(cuid())
   submissionId String          @unique
@@ -996,13 +1003,29 @@ model ReviewDispute {
 
   note String @db.Text
 
-  createdAt      DateTime  @default(now())
-  resolvedAt     DateTime?
-  resolvedById   String?
-  resolutionNote String?   @db.Text
+  createdAt    DateTime              @default(now())
+  resolvedAt   DateTime?
+  resolvedById String?
+  outcome      ReviewDisputeOutcome?
+  messages     ReviewDisputeMessage[]
 
   @@index([resolvedAt])
   @@map("review_dispute")
+}
+
+/// One message in a dispute thread, from the maker who raised it or a reviewer answering.
+model ReviewDisputeMessage {
+  id           String        @id @default(cuid())
+  disputeId    String
+  dispute      ReviewDispute @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+  authorId     String
+  author       User          @relation("ReviewDisputeMessageAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  fromReviewer Boolean
+  body         String        @db.Text
+  createdAt    DateTime      @default(now())
+
+  @@index([disputeId, createdAt])
+  @@map("review_dispute_message")
 }
 
 /// A participant flagging user-generated content for staff: a reel, a reel comment, a project, a user, or a devlog entry.

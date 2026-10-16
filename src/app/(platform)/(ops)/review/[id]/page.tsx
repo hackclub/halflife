@@ -2,6 +2,7 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { DecisionPanel } from "@/app/components/forms/DecisionPanel"
+import { DisputeThread } from "@/app/components/forms/DisputeThread"
 import { HoursApprovalForm } from "@/app/components/forms/HoursApprovalForm"
 import {
 	Badge,
@@ -68,24 +69,30 @@ export default async function ReviewDetailPage({ params }: Props) {
 				</Callout>
 			) : null}
 
-			{submission.dispute && !submission.dispute.resolvedAt ? (
-				<Callout tone="warning">
-					<strong>The maker disputes this decision.</strong> {submission.dispute.note}
-					<div style={{ marginTop: "0.5rem" }}>
-						<ActionButton
-							body={{}}
-							confirm="Close this dispute? The decision itself does not change."
-							label="Mark as looked at"
-							url={`/api/admin/disputes/${submission.dispute.id}/resolve`}
-						/>
-					</div>
-				</Callout>
-			) : null}
-			{submission.dispute?.resolvedAt ? (
-				<Callout>
-					The maker disputed this decision; a reviewer marked it looked at{" "}
-					{submission.dispute.resolvedAt.toDateString()}.
-				</Callout>
+			{submission.dispute ? (
+				<DisputeThread
+					closeUrl={`/api/admin/disputes/${submission.dispute.id}/close`}
+					dispute={{
+						at: submission.dispute.createdAt.getTime(),
+						id: submission.dispute.id,
+						messages: submission.dispute.messages.map(m => ({
+							at: m.createdAt.getTime(),
+							body: m.body,
+							fromReviewer: m.fromReviewer,
+							id: m.id,
+						})),
+						note: submission.dispute.note,
+						outcome: submission.dispute.outcome,
+						resolvedAt: submission.dispute.resolvedAt?.getTime() ?? null,
+					}}
+					replyUrl={`/api/admin/disputes/${submission.dispute.id}/messages`}
+					sendBackUrl={
+						hasPermission(roles, Permission.OVERRIDE_DECISIONS)
+							? `/api/admin/disputes/${submission.dispute.id}/send-back`
+							: undefined
+					}
+					viewer="reviewer"
+				/>
 			) : null}
 
 			<Panel
@@ -279,22 +286,29 @@ export default async function ReviewDetailPage({ params }: Props) {
 				</Panel>
 			) : null}
 
-			<Panel title="Decision">
-				<DecisionPanel
-					claimedByMe={claimedByMe}
-					computedHours={breakdown.computedTotal}
-					currentTier={project.tier}
-					phase={submission.phase}
-					submissionId={id}
-					tiers={TIERS.map(t => ({
-						fundingHours: t.fundingHours,
-						grantUsd: t.grantUsd,
-						id: t.id,
-						name: t.name,
-						submitFloorHours: submitFloorFor(t.fundingHours),
-					}))}
-				/>
-			</Panel>
+			{submission.resolvedAt ? (
+				<Callout>
+					This hand-in has already been decided, so there is nothing left to decide here. Undoing a decision is the
+					override path.
+				</Callout>
+			) : (
+				<Panel title="Decision">
+					<DecisionPanel
+						claimedByMe={claimedByMe}
+						computedHours={breakdown.computedTotal}
+						currentTier={project.tier}
+						phase={submission.phase}
+						submissionId={id}
+						tiers={TIERS.map(t => ({
+							fundingHours: t.fundingHours,
+							grantUsd: t.grantUsd,
+							id: t.id,
+							name: t.name,
+							submitFloorHours: submitFloorFor(t.fundingHours),
+						}))}
+					/>
+				</Panel>
+			)}
 
 			<p>
 				<Link href="/review">Back to the queue</Link>
