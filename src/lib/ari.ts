@@ -464,6 +464,7 @@ async function applyDecision(event: DecisionEvent, opts: { announce?: boolean } 
 	try {
 		await finalizeReview({
 			feedback,
+			grantExtension: opts.announce !== false,
 			grantUsdOverride: null,
 			hoursOverride: approvedHoursFrom(event.review),
 			reason: event.review.audit_note ?? null,

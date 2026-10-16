@@ -133,6 +133,15 @@ settings toggle plus per-user and per-project `submissionExtensionUntil`
 columns, which stasis added after doing manual database surgery for every
 extension request.
 
+A **return grants its own extension**: a phase sent back as `update_requested`
+writes a week onto the project's `submissionExtensionUntil`, so a maker asked to
+fix late work can actually resubmit it, and an admin's un-approve or reopen does
+the same. It is the project that carries it rather than the account, so only
+that project's weeks reopen. Ari's transient revert skips it: it lands on
+`update_requested` on its way back to `in_review`, which asks the maker for
+nothing. So does a backlog replay of old Ari decisions, which would otherwise
+reopen weeks months after they closed.
+
 ## Build may be submitted before design is approved
 
 With five concurrent themes sharing one review queue, gating submission on

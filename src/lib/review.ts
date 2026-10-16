@@ -85,6 +85,18 @@ export async function sweepExpiredClaims(): Promise<number> {
 
 // ─── Decisions ───────────────────────────────────────────────────────────────
 
+/**
+ * How long a maker is given to act on a return: a week, not the three days an admin grants by hand.
+ *
+ * A returned phase is a request for changes, so its maker has to open the project again, fix it and hand it in – and by the time a review lands late in a week that work may no longer fit before the close. The window is measured from the return rather than the week's own close, so an extension only bites when the scheduled close is sooner, and it never shortens a longer extension an admin already put on record.
+ */
+export const RETURN_EXTENSION_MS = 7 * 24 * 60 * 60 * 1000
+
+/** A returned phase's extension: at least a week from now, kept at whichever is later than what is already on record. */
+export function returnExtensionUntil(current: Date | null | undefined, now: Date = new Date()): Date {
+	return new Date(Math.max(now.getTime() + RETURN_EXTENSION_MS, current?.getTime() ?? 0))
+}
+
 export type FinalizeInput = {
 	submissionId: string
 	/** Null when the decision was made by Ari, not by a Half Life user. */
@@ -101,6 +113,10 @@ export type FinalizeInput = {
 	/** Replaces the computed hours total outright. */
 	hoursOverride?: number | null
 	grantUsdOverride?: number | null
+	/**
+	 * Whether a return grants its maker a week to act on it. Left on for a live decision; turned off by a backlog replay (`reconcileAriDecisions`), which applies a months-old return now and must not reopen weeks long after the fact.
+	 */
+	grantExtension?: boolean
 }
 
 export type FinalizeOutcome = {
@@ -281,8 +297,8 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 			where: { id: input.submissionId },
 		})
 
-		const projectUpdate: Prisma.ThemeProjectUpdateInput =
-			phase === Phase.DESIGN
+		const projectUpdate: Prisma.ThemeProjectUpdateInput = {
+			...(phase === Phase.DESIGN
 				? {
 						designReviewComments: input.feedback,
 						designReviewedAt: new Date(),
@@ -313,7 +329,12 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 									buildCoins: coins?.spendable ?? null,
 								}
 							: {}),
-					}
+					}),
+			// A return is the one state a maker is expected to act on, so it carries the time to act: a week from the return, on the project rather than the account, so only this project's week reopens. A backlog replay turns this off with the notice it also skips.
+			...(input.result === ReviewResult.RETURNED && input.grantExtension !== false
+				? { submissionExtensionUntil: returnExtensionUntil(project.submissionExtensionUntil) }
+				: {}),
+		}
 
 		await tx.themeProject.update({ data: projectUpdate, where: { id: project.id } })
 
@@ -427,6 +448,8 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
  * Reverse an approval.
  *
  * Because credit is reconciled to a target, undoing is the same call with `target: 0` – there is no separate reversal code path, so there is no separate reversal code path to get wrong.
+ *
+ * `grantExtension` is opt-in because the admin reversal it serves asks the maker to act (the override route notifies them), whereas Ari's own revert calls this on its way back to `in_review` – a state the maker never holds, and one where re-opening their week would be time nobody asked for.
  */
 export async function unapprovePhase(
 	themeProjectId: string,
@@ -434,6 +457,7 @@ export async function unapprovePhase(
 	adminId: string | null,
 	adminEmail: string | null,
 	reason: string,
+	options: { grantExtension?: boolean } = {},
 ): Promise<void> {
 	const project = await prisma.themeProject.findUnique({ where: { id: themeProjectId } })
 	if (!project) throw new HttpError("NOT_FOUND", "Project not found")
@@ -479,8 +503,8 @@ export async function unapprovePhase(
 		})
 
 		await tx.themeProject.update({
-			data:
-				phase === Phase.DESIGN
+			data: {
+				...(phase === Phase.DESIGN
 					? {
 							designApprovedHours: null,
 							designApprovedHoursAt: null,
@@ -498,7 +522,11 @@ export async function unapprovePhase(
 							buildCoins: null,
 							buildReviewComments: reason,
 							buildStatus: PhaseStatus.update_requested,
-						},
+						}),
+				...(options.grantExtension
+					? { submissionExtensionUntil: returnExtensionUntil(project.submissionExtensionUntil) }
+					: {}),
+			},
 			where: { id: themeProjectId },
 		})
 
@@ -563,13 +591,14 @@ export async function unapprovePhase(
 	})
 }
 
-/** Bring a rejected phase back into play. Rejection is not terminal forever. */
+/** Bring a rejected phase back into play. Rejection is not terminal forever. `grantExtension` is opt-in for the same reason as `unapprovePhase`: Ari's revert is transient and does not ask the maker for anything. */
 export async function reopenPhase(
 	themeProjectId: string,
 	phase: Phase,
 	adminId: string | null,
 	adminEmail: string | null,
 	reason: string,
+	options: { grantExtension?: boolean } = {},
 ): Promise<void> {
 	const project = await prisma.themeProject.findUnique({ where: { id: themeProjectId } })
 	if (!project) throw new HttpError("NOT_FOUND", "Project not found")
@@ -579,10 +608,14 @@ export async function reopenPhase(
 
 	// Conditional on the status that was read: an admin double-click, or a reopen racing a resubmission, must not overwrite a newer state.
 	const reopened = await prisma.themeProject.updateMany({
-		data:
-			phase === Phase.DESIGN
+		data: {
+			...(phase === Phase.DESIGN
 				? { designReviewComments: reason, designStatus: PhaseStatus.update_requested }
-				: { buildReviewComments: reason, buildStatus: PhaseStatus.update_requested },
+				: { buildReviewComments: reason, buildStatus: PhaseStatus.update_requested }),
+			...(options.grantExtension
+				? { submissionExtensionUntil: returnExtensionUntil(project.submissionExtensionUntil) }
+				: {}),
+		},
 		where: {
 			id: themeProjectId,
 			...(phase === Phase.DESIGN ? { designStatus: PhaseStatus.rejected } : { buildStatus: PhaseStatus.rejected }),
