@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
+import { DisputeThread } from "@/app/components/forms/DisputeThread"
 import { IconBook, IconChevronLeft, IconClock, IconWarning } from "@/components/platform/icons"
 import { RepoChecks } from "@/components/platform/modals/RepoChecks"
 import { RepoSyncSettings } from "@/components/platform/RepoSyncSettings"
@@ -363,13 +364,15 @@ function ReviewState({
 								</div>
 							)}
 
-							{p.disputedAt !== null ? (
-								<p className="hand text-[0.84rem] text-navy-soft">
-									{p.disputeResolved
-										? `a second look was taken on ${fmtDate(p.disputedAt)}.`
-										: `you asked for a second look on ${fmtDate(p.disputedAt)}; a reviewer will read it again.`}
-								</p>
-							) : negative ? (
+							{p.dispute ? (
+								<DisputeThread
+									dispute={p.dispute}
+									replyUrl={`/api/projects/${projectId}/dispute/${p.dispute.id}/messages`}
+									viewer="maker"
+								/>
+							) : null}
+
+							{negative && (
 								<div className="flex flex-wrap items-center gap-2">
 									{p.status === "update_requested" && (
 										<Button
@@ -382,11 +385,13 @@ function ReviewState({
 											I&apos;ve made these changes – resubmit
 										</Button>
 									)}
-									<Button onClick={() => setDisputing(p.phase)} size="sm" variant="outline">
-										This review is incorrect
-									</Button>
+									{!p.dispute && (
+										<Button onClick={() => setDisputing(p.phase)} size="sm" variant="outline">
+											This review is incorrect
+										</Button>
+									)}
 								</div>
-							) : null}
+							)}
 
 							{disputing === p.phase && (
 								<DisputeForm onClose={() => setDisputing(null)} phase={p.phase} projectId={projectId} />

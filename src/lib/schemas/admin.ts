@@ -36,8 +36,8 @@ export const projectExtensionSchema = z
 	.strict()
 	.refine(b => b.submissionExtensionUntil !== undefined || b.theme !== undefined, "Nothing to change")
 
-/** Closing a maker's dispute. The note is optional; it is for the record. */
-export const resolveDisputeSchema = z.object({ note: boundedText(2000).optional() }).strict()
+/** A reply in a dispute thread. Required and non-empty: a blank reply answers nothing. */
+export const disputeMessageSchema = z.object({ body: boundedText(2000, 1) }).strict()
 
 /** Sending a design's parts grant to a maker's HCB card grant. */
 export const grantSchema = z

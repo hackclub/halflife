@@ -307,3 +307,38 @@ export async function notifyStaffDispute(input: {
 		() => postMessage(channel, text),
 	)
 }
+
+/**
+ * Tell the maker a reviewer has answered their dispute.
+ *
+ * Slack only, and best-effort: the thread on the project page is the record, the DM is the nudge, and there is no Airtable column for a dispute (Loops carries decisions, not conversations). Quiet in the same way as a review notice: a failure becomes a `NOTIFICATION_FAILURE` row rather than an error, because a reply that has already been written must not fail over a Slack outage.
+ */
+export async function notifyDisputeReply(input: { body: string; phase: Phase; themeProjectId: string }): Promise<void> {
+	try {
+		const project = await prisma.themeProject.findUnique({
+			select: { theme: true, title: true, user: { select: { slackId: true } } },
+			where: { id: input.themeProjectId },
+		})
+		if (!project) return
+
+		const phase = input.phase === Phase.DESIGN ? "design" : "build"
+		await deliverToMaker({
+			kind: "dispute_reply",
+			meta: { phase: input.phase },
+			note: input.body,
+			phase: input.phase,
+			prose: [`A reviewer replied to your dispute on the ${phase} for ${projectDisplayTitle(project)}.`],
+			slackId: project.user.slackId,
+			themeProjectId: input.themeProjectId,
+		})
+	} catch (err) {
+		const message = err instanceof Error ? err.message : String(err)
+		console.error(`[notifications] dispute reply notice failed for ${input.themeProjectId}:`, err)
+		await logAudit({
+			action: AuditAction.NOTIFICATION_FAILURE,
+			metadata: { error: message, kind: "dispute_reply", phase: input.phase, stage: "before_channels" },
+			targetId: input.themeProjectId,
+			targetType: "ThemeProject",
+		}).catch(() => undefined)
+	}
+}

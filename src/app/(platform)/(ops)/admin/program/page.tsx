@@ -204,21 +204,16 @@ export default async function AdminProgramPage() {
 				{disputes.length === 0 ? (
 					<EmptyState>No maker is waiting on a second look.</EmptyState>
 				) : (
-					<Table head={["Project", "Phase", "Maker", "Asked", ""]}>
+					<Table head={["Project", "Phase", "Maker", "Replies", "Asked", ""]}>
 						{disputes.map(d => (
 							<tr key={d.id}>
 								<td>{d.projectTitle}</td>
 								<td>{d.phase.toLowerCase()}</td>
 								<td>{d.participant}</td>
+								<td className="hl-mono">{d.messageCount}</td>
 								<td className="hl-mono">{d.createdAt.toDateString()}</td>
 								<td className="hl-row">
-									<Link href={`/review/${d.submissionId}`}>Read</Link>
-									<ActionButton
-										body={{}}
-										confirm="Mark this dispute as looked at? The decision itself does not change."
-										label="Resolve"
-										url={`/api/admin/disputes/${d.id}/resolve`}
-									/>
+									<Link href={`/review/${d.submissionId}`}>Open thread</Link>
 								</td>
 							</tr>
 						))}
