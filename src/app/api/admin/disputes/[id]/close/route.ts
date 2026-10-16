@@ -3,7 +3,9 @@ import { closeDispute } from "@/lib/disputes"
 import { requirePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
 /**
  * Leave the disputed decision standing and close the dispute.

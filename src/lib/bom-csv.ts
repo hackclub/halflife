@@ -7,7 +7,8 @@
  */
 
 /** One line read out of a CSV, in the shape the parts table stores. */
-export type ImportedBomLine = {
+export interface ImportedBomLine {
+	link: string | null
 	name: string
 	/** Never mapped from a CSV unless the file names a purpose column. */
 	purpose: string | null
@@ -15,19 +16,18 @@ export type ImportedBomLine = {
 	/** Zero when the file carried no price the parser could read. */
 	unitCostUsd: number
 	vendor: string | null
-	link: string | null
 }
 
 /** A data row the parser chose not to import, and why. */
-export type SkippedRow = {
-	/** 1-based line in the file, header included, so the maker can find it. */
-	row: number
+export interface SkippedRow {
 	/** The part name as the file spelled it, for saying it back. */
 	name: string
 	reason: string
+	/** 1-based line in the file, header included, so the maker can find it. */
+	row: number
 }
 
-export type ParsedBom = {
+export interface ParsedBom {
 	/** The header cells, or null when no header row could be found. */
 	header: string[] | null
 	lines: ImportedBomLine[]

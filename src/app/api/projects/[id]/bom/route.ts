@@ -10,7 +10,9 @@ import { bomExtrasSchema, bomItemSchema } from "@/lib/schemas/project"
 
 export const dynamic = "force-dynamic"
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
 async function ownProject(userId: string, id: string) {
 	return prisma.themeProject.findFirst({

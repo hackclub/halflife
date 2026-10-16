@@ -78,7 +78,12 @@ export function band(
 }
 
 /** A plate on the comp grid, in comp pixels. */
-export type Plate = { x: number; y: number; w: number; h: number }
+export interface Plate {
+	h: number
+	w: number
+	x: number
+	y: number
+}
 
 /** Declare a plate. `box(...spread)` draws it; `weld` joins it to another. */
 export function plate(x: number, y: number, w: number, h: number): Plate {

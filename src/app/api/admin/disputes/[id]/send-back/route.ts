@@ -3,7 +3,9 @@ import { sendDisputedPhaseBack } from "@/lib/disputes"
 import { requirePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
 /**
  * Agree with a dispute and send the hand-in back for a fresh review.

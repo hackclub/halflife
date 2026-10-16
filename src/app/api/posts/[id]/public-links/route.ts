@@ -6,7 +6,9 @@ import { publicReelLinksSchema } from "@/lib/schemas/feed"
 
 export const dynamic = "force-dynamic"
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
 /**
  * Record where a Half Life reel was also posted publicly – one Public Reels row per link – so a post that goes viral can be found and paid for.

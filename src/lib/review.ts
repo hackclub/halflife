@@ -97,38 +97,38 @@ export function returnExtensionUntil(current: Date | null | undefined, now: Date
 	return new Date(Math.max(now.getTime() + RETURN_EXTENSION_MS, current?.getTime() ?? 0))
 }
 
-export type FinalizeInput = {
-	submissionId: string
-	/** Null when the decision was made by Ari, not by a Half Life user. */
-	reviewerId: string | null
-	reviewerName: string | null
-	reviewerEmail: string | null
-	result: ReviewResult
+export interface FinalizeInput {
 	/** Shown to the participant. */
 	feedback: string
-	/** Internal note, never shown to the submitter; kept on the review and in the audit row. */
-	reason?: string | null
-	/** Required on a design approval. */
-	tier?: number | null
-	/** Replaces the computed hours total outright. */
-	hoursOverride?: number | null
-	grantUsdOverride?: number | null
 	/**
 	 * Whether a return grants its maker a week to act on it. Left on for a live decision; turned off by a backlog replay (`reconcileAriDecisions`), which applies a months-old return now and must not reopen weeks long after the fact.
 	 */
 	grantExtension?: boolean
+	grantUsdOverride?: number | null
+	/** Replaces the computed hours total outright. */
+	hoursOverride?: number | null
+	/** Internal note, never shown to the submitter; kept on the review and in the audit row. */
+	reason?: string | null
+	result: ReviewResult
+	reviewerEmail: string | null
+	/** Null when the decision was made by Ari, not by a Half Life user. */
+	reviewerId: string | null
+	reviewerName: string | null
+	submissionId: string
+	/** Required on a design approval. */
+	tier?: number | null
 }
 
-export type FinalizeOutcome = {
-	themeProjectId: string
-	phase: Phase
-	result: ReviewResult
+export interface FinalizeOutcome {
 	approvedHours: number | null
-	tier: number | null
-	grantUsd: number | null
 	/** Coins this decision minted, by pot. Null when not approving. */
 	coins: CoinSplit | null
+	grantUsd: number | null
+	phase: Phase
 	printerQualified: boolean
+	result: ReviewResult
+	themeProjectId: string
+	tier: number | null
 }
 
 /**

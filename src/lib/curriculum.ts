@@ -11,16 +11,16 @@ export { TIERS } from "./config/tiers"
  * Ten weeks: five design weeks, then the same five themes built for real. A design week opens by settling what is being made – the yellow onboarding checkpoint in week 1, the project form after that – and then pitches it in the idea reel before a single hour is logged against it. Week 1 is the exception: the reel is optional there, offered side by side with the first devlog entry instead of gating it. Build weeks skip both and end on a working-demo video.
  */
 
-type ThemeSeed = {
-	theme: string
-	designHeadline: string
-	buildHeadline: string
-	fullName: string
-	summary: string
-	primer: string
-	examples: string[]
+interface ThemeSeed {
 	accent: string
 	accentDeep: string
+	buildHeadline: string
+	designHeadline: string
+	examples: string[]
+	fullName: string
+	primer: string
+	summary: string
+	theme: string
 }
 
 const THEMES: ThemeSeed[] = [

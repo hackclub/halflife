@@ -4,7 +4,9 @@ import { Permission } from "@/lib/permissions"
 import { updatePrinterAwardStatus } from "@/lib/printer"
 import { printerAwardUpdateSchema } from "@/lib/schemas/admin"
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
 /**
  * Move one printer award along its fulfilment path, or revoke it.

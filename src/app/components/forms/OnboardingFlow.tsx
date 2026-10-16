@@ -15,9 +15,9 @@ import { EXAMPLE_JOURNAL_URL } from "@/lib/routes"
 const projectInputClass =
 	"block w-full rounded-xl border-2 border-field bg-black/[.02] px-4 py-2.5 text-[0.9rem] text-navy outline-none transition-colors placeholder:text-navy-faint hover:border-navy-soft focus:border-violet focus:bg-white"
 
-type OnboardingResponse = {
-	onboarding?: OnboardingView
+interface OnboardingResponse {
 	error?: { message?: string }
+	onboarding?: OnboardingView
 }
 
 /**

@@ -52,7 +52,10 @@ const PHOTO_SIZES = "(min-width: 1728px) 346px, 20vw"
  * The card itself is the `Plugin icon - 1` frame (301:56): a 30-radius block with a 20 border in pale yellow, yellow inside, and a pale-yellow caption band filling the bottom 105 of its 328 of content. The photograph sits on the yellow above it.
  */
 
-type Metrics = { cycle: number; speed: number }
+interface Metrics {
+	cycle: number
+	speed: number
+}
 
 /**
  * Position within one set.

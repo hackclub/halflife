@@ -10,7 +10,9 @@ import { reopenPhase, unapprovePhase } from "@/lib/review"
 import { sanitize } from "@/lib/sanitize"
 import { overrideSchema } from "@/lib/schemas/review"
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
 const bodySchema = overrideSchema.extend({
 	action: z.enum(["unapprove", "reopen"]),

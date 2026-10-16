@@ -5,7 +5,9 @@ import { likeSchema } from "@/lib/schemas/feed"
 
 export const dynamic = "force-dynamic"
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
 export const PUT = withRoute(async (req: Request, { params }: Params) => {
 	const gate = await requireSession()

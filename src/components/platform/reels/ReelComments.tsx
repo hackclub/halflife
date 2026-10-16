@@ -9,15 +9,15 @@ import { cx } from "@/lib/cx"
 import type { FeedItem } from "@/lib/feed"
 import { ago, compact } from "./format"
 
-type Comment = {
-	id: string
+interface Comment {
+	author: { id: string; name: string | null; image: string | null }
 	body: string
 	createdAt: string
-	author: { id: string; name: string | null; image: string | null }
+	id: string
 	mine: boolean
 }
 
-type Thread = {
+interface Thread {
 	items: Comment[]
 	nextCursor: string | null
 	status: "loading" | "ready" | "error"

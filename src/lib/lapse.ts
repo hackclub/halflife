@@ -21,30 +21,30 @@ export function lapseTimelapseUrl(id: string): string {
 
 const TIMEOUT_MS = 10_000
 
-export type LapseTimelapse = {
-	id: string
-	title: string
+export interface LapseTimelapse {
+	createdAt: number
 	/** Wall-clock seconds recorded – Lapse derives it from the snapshots. */
 	durationSeconds: number
-	visibility: "PUBLIC" | "UNLISTED" | "FAILED_PROCESSING"
-	createdAt: number
+	hackatimeProject: string | null
+	id: string
+	ownerId: string
 	/** Null while Lapse is still processing the video. */
 	playbackUrl: string | null
 	thumbnailUrl: string | null
-	hackatimeProject: string | null
-	ownerId: string
+	title: string
+	visibility: "PUBLIC" | "UNLISTED" | "FAILED_PROCESSING"
 }
 
-type RawTimelapse = {
+interface RawTimelapse {
+	createdAt: number
+	duration: number
 	id: string
 	name: string
-	duration: number
-	visibility: LapseTimelapse["visibility"]
-	createdAt: number
-	playbackUrl: string | null
-	thumbnailUrl: string | null
 	owner: { id: string }
+	playbackUrl: string | null
 	private?: { hackatimeProject?: string | null } | null
+	thumbnailUrl: string | null
+	visibility: LapseTimelapse["visibility"]
 }
 
 function toTimelapse(t: RawTimelapse): LapseTimelapse {

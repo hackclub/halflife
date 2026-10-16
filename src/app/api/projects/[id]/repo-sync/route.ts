@@ -11,7 +11,9 @@ import { repoSyncSettingsSchema } from "@/lib/schemas/project"
 
 export const dynamic = "force-dynamic"
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
 /**
  * The repo sync for one of the caller's projects.

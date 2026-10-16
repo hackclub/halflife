@@ -4,7 +4,9 @@ import { requireSession } from "@/lib/guards"
 
 export const dynamic = "force-dynamic"
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
 /**
  * Deliberately not audit-logged: this fires once per viewer per reel and would bury every other action in the log.

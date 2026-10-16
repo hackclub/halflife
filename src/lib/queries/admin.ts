@@ -34,16 +34,16 @@ import { countryOfTimezone, REGIONS, type RegionId, regionOfTimezone } from "@/l
 import { shopOrderStaffSelect } from "@/lib/shop"
 
 /** One row of the admin user directory, with contact and risk fields blanked unless the caller may see PII. */
-export type DirectoryUser = {
-	id: string
-	name: string | null
+export interface DirectoryUser {
+	createdAt: Date
 	displayName: string | null
 	email: string
+	fraudFlagged: boolean
+	id: string
+	name: string | null
+	roles: { role: Role }[]
 	slackId: string | null
 	verificationStatus: string | null
-	fraudFlagged: boolean
-	createdAt: Date
-	roles: { role: Role }[]
 }
 
 export async function listUsers(
@@ -86,15 +86,15 @@ export async function listUsers(
 	return { items, nextCursor: hasMore && last ? last.id : null }
 }
 
-export type ProjectFilters = {
+export interface ProjectFilters {
+	buildStatus?: PhaseStatus
+	designStatus?: PhaseStatus
+	/** Only projects, or owners, with an extension still running. */
+	extended?: boolean
 	/** Matches the project's title, description or repo, or its owner's name, email or Slack ID. */
 	q?: string
 	theme?: Theme
-	designStatus?: PhaseStatus
-	buildStatus?: PhaseStatus
 	tier?: number
-	/** Only projects, or owners, with an extension still running. */
-	extended?: boolean
 	/**
 	 * Include rows nobody has started. Every theme's row is made at sign-up, so without this the list is five placeholders per participant.
 	 */
@@ -326,13 +326,13 @@ export const fulfillmentStageOf = (order: {
 }): ShopFulfillmentStage =>
 	order.status === ShopOrderStatus.CANCELLED ? ShopFulfillmentStage.CANCELLED : order.fulfillmentStage
 
-export type FulfillmentFilters = {
-	/** Inclusive, from the start of this instant. */
-	placedFrom?: Date
-	/** Exclusive. */
-	placedBefore?: Date
+export interface FulfillmentFilters {
 	/** `"NONE"` is an order nobody has chosen a method for yet. */
 	method?: ShopFulfillmentMethod | "NONE"
+	/** Exclusive. */
+	placedBefore?: Date
+	/** Inclusive, from the start of this instant. */
+	placedFrom?: Date
 	stage?: ShopFulfillmentStage
 }
 
@@ -342,17 +342,17 @@ export type FulfillmentFilters = {
  * The country is the one on their HCA profile now, not at order time: it is what the parcel will actually be addressed to. It is decrypted here and only the plain country leaves this function – never the ciphertext.
  */
 /** One row of the fulfilment sheet: the order with its resolved stage, dollar total and buyer. */
-export type FulfillmentOrderRow = {
-	id: string
-	orderNumber: number
-	quantity: number
-	itemNameSnapshot: string
-	status: ShopOrderStatus
+export interface FulfillmentOrderRow {
+	country: string | null
 	fulfillmentMethod: ShopFulfillmentMethod | null
 	fulfillmentStage: ShopFulfillmentStage
+	id: string
+	itemNameSnapshot: string
+	orderNumber: number
 	placedAt: Date
+	quantity: number
+	status: ShopOrderStatus
 	totalUsd: number | null
-	country: string | null
 	user: { id: string; name: string | null }
 }
 
@@ -458,10 +458,10 @@ export async function listAuditLog(opts: {
  * Awards to ship, newest qualification first. `encryptedAddress` is read only to answer "is an address locked on file"; the ciphertext never leaves the server.
  */
 /** Printer awards with the ciphertext folded into an on-file flag. */
-export type PrinterAwardRow = Omit<
-	Prisma.PrinterAwardGetPayload<{ select: typeof printerAwardSelect }>,
-	"encryptedAddress"
-> & { addressOnFile: boolean }
+export interface PrinterAwardRow
+	extends Omit<Prisma.PrinterAwardGetPayload<{ select: typeof printerAwardSelect }>, "encryptedAddress"> {
+	addressOnFile: boolean
+}
 
 const printerAwardSelect = {
 	addressLockedAt: true,
@@ -594,17 +594,17 @@ export async function getAdminCounters(): Promise<{
 	return { participants, pendingOrders, pendingReviews, pendingReviewsUnsent, shipped }
 }
 
-export type FlowStep = {
-	id: string
-	label: string
-	hint: string
+export interface FlowStep {
 	count: number
-	/** Share of the previous step that made it down to this one. */
-	retainPct: number
 	/** Share of the previous step that stopped here. */
 	dropOffPct: number
+	hint: string
+	id: string
+	label: string
 	/** Share of everyone who signed up that got this far. */
 	ofSignupsPct: number
+	/** Share of the previous step that made it down to this one. */
+	retainPct: number
 }
 
 /**
@@ -848,23 +848,23 @@ export async function countContentReports(): Promise<Record<ReportStatus, number
 	return counts
 }
 
-export type AreaStat = {
-	id: RegionId
-	label: string
-	/** Accounts whose timezone maps here. */
-	users: number
+export interface AreaStat {
 	/**
 	 * Hours logged by those accounts: journal sessions (reviewer-adjusted where set) plus linked Hackatime time, with a sitting that was both journalled and tracked counted once rather than twice. A HACKATIME_TRACKED session contributes nothing on its own, exactly as the ledger reads it.
 	 */
 	hours: number
-}
-
-export type CountryStat = {
-	country: string
+	id: RegionId
+	label: string
 	/** Accounts whose timezone maps here. */
 	users: number
+}
+
+export interface CountryStat {
+	country: string
 	/** Hours logged by those accounts, as above. */
 	hours: number
+	/** Accounts whose timezone maps here. */
+	users: number
 }
 
 /**
@@ -908,13 +908,13 @@ async function loadRegionInputs() {
 type RegionInputs = Awaited<ReturnType<typeof loadRegionInputs>>
 
 /** One (project, phase) worth of hours, ready to roll up. */
-type HoursByPhase = {
-	userId: string
-	sessions: SessionRow[]
+interface HoursByPhase {
 	links: LinkRow[]
+	sessions: SessionRow[]
+	userId: string
 }
 
-export type HoursByUser = {
+export interface HoursByUser {
 	/** Total hours per account. An account with nothing logged is absent rather than present at zero. */
 	hours: Map<string, number>
 	/**
@@ -1020,7 +1020,7 @@ export async function getCountryStats(): Promise<CountryStat[]> {
 		.sort((a, b) => rankLast(b.country, b.users) - rankLast(a.country, a.users))
 }
 
-export type DayActivity = {
+export interface DayActivity {
 	/** YYYY-MM-DD in the program timezone, as the journal stamped it. */
 	day: string
 	devlogs: number
@@ -1081,7 +1081,7 @@ export async function getDailyActivity(): Promise<DayActivity[]> {
 	return out
 }
 
-export type ActiveDay = {
+export interface ActiveDay {
 	/** YYYY-MM-DD in the program timezone. */
 	day: string
 	/** People whose tracked time that day reached 15 minutes. */
@@ -1145,11 +1145,11 @@ export async function getDailyActiveUsers(): Promise<{ days: ActiveDay[]; today:
 	return { days, today: activeToday }
 }
 
-export type GoalDayActivity = {
-	/** YYYY-MM-DD in the program timezone, as the journal stamped it. */
-	day: string
+export interface GoalDayActivity {
 	/** Journal hours and the people behind them, one entry per answer to the goal prompt, in `GOAL_OPTIONS` order. */
 	byGoal: { goal: ParticipantGoal; hours: number; users: number }[]
+	/** YYYY-MM-DD in the program timezone, as the journal stamped it. */
+	day: string
 }
 
 /**
@@ -1211,29 +1211,29 @@ export async function getDailyActivityByGoal(): Promise<GoalDayActivity[]> {
 	return out
 }
 
-export type HoursBucket = {
+export interface HoursBucket {
+	/** Hours summed across the bucket. */
+	hours: number
 	/** The bucket as it reads on the axis, e.g. "10-20". */
 	label: string
 	/** Accounts whose total lands in this bucket. */
 	participants: number
-	/** Hours summed across the bucket. */
-	hours: number
 }
 
-export type HoursDistribution = {
+export interface HoursDistribution {
 	buckets: HoursBucket[]
-	/** Accounts with any hours at all – the histogram's denominator. */
-	withHours: number
-	/** Accounts with none. Most of them: everyone who signed up and never logged a devlog. */
-	withoutHours: number
 	median: number | null
-	totalHours: number
 	/**
 	 * Phases whose Hackatime overlap could not be measured, so their hours are counted on both sides and every total here is an over-count.
 	 *
 	 * Non-zero is a cache that has not caught up, not a calculation that went wrong – `hackatime-sync` warms the tracked intervals every 15 minutes. Surfaced rather than silently reported as deduplicated, because a total that looks like it has been deduplicated and has not is the harder error to catch later.
 	 */
 	overlapUnknownPhases: number
+	totalHours: number
+	/** Accounts with any hours at all – the histogram's denominator. */
+	withHours: number
+	/** Accounts with none. Most of them: everyone who signed up and never logged a devlog. */
+	withoutHours: number
 }
 
 /**
@@ -1296,7 +1296,7 @@ export async function getHoursDistribution(): Promise<HoursDistribution> {
 	}
 }
 
-export type FirstProjectStat = {
+export interface FirstProjectStat {
 	/** Starter title, or "Custom project" for a self-named idea. */
 	label: string
 	starter: boolean
@@ -1336,9 +1336,7 @@ export async function getFirstProjectStats(): Promise<FirstProjectStat[]> {
 }
 
 /** The four columns each week's cluster is split into. */
-export type WeekProjectCluster = {
-	/** 0 for the warm-up import, then the ten program weeks in order. */
-	week: number
+export interface WeekProjectCluster {
 	/** What the axis prints: the theme, or the warm-up track. */
 	label: string
 	/** Which half of the season this week is, or null for the warm-up import, which is not scheduled at all. */
@@ -1348,6 +1346,8 @@ export type WeekProjectCluster = {
 	tier1: number
 	tier2: number
 	tier3: number
+	/** 0 for the warm-up import, then the ten program weeks in order. */
+	week: number
 }
 
 /**
@@ -1370,10 +1370,10 @@ function projectColumn(project: {
 }
 
 /** One column of the season, before any measure is put in it. */
-type WeekSlot = {
-	week: number
+interface WeekSlot {
 	label: string
 	phase: Phase | null
+	week: number
 }
 
 /**
@@ -1433,9 +1433,7 @@ export async function getProjectsByWeek(): Promise<WeekProjectCluster[]> {
 	return [...clusters.values()].sort((a, b) => a.week - b.week)
 }
 
-export type WeekHoursCluster = {
-	/** 0 for the warm-up import, then the ten program weeks in order. */
-	week: number
+export interface WeekHoursCluster {
 	/** What the axis prints: the theme, or the warm-up track. */
 	label: string
 	/** Which half of the season this week is, or null for the warm-up import, which is not scheduled at all. */
@@ -1445,6 +1443,8 @@ export type WeekHoursCluster = {
 	tier1: number
 	tier2: number
 	tier3: number
+	/** 0 for the warm-up import, then the ten program weeks in order. */
+	week: number
 }
 
 /**
@@ -1546,7 +1546,7 @@ export async function getHoursByWeek(): Promise<WeekHoursCluster[]> {
 	return [...clusters.values()].sort((a, b) => a.week - b.week)
 }
 
-export type VerificationStat = {
+export interface VerificationStat {
 	label: string
 	users: number
 }
@@ -1582,7 +1582,7 @@ const VERIFICATION_STATUS_LABELS: Record<string, string> = {
 	verified: "Verified",
 }
 
-export type ReviewerResultStat = {
+export interface ReviewerResultStat {
 	result: ReviewResult
 	/** Distinct projects whose most recent live review is this one, written today. */
 	today: number
@@ -1590,13 +1590,13 @@ export type ReviewerResultStat = {
 	total: number
 }
 
-export type ReviewerStats = {
+export interface ReviewerStats {
+	/** One row per outcome, so the rows add up to the two figures above them. */
+	byResult: ReviewerResultStat[]
 	/** Distinct projects with a live review written today, program-timezone day. */
 	reviewedToday: number
 	/** Distinct projects carrying at least one live review. */
 	reviewedTotal: number
-	/** One row per outcome, so the rows add up to the two figures above them. */
-	byResult: ReviewerResultStat[]
 }
 
 /**
@@ -1642,7 +1642,7 @@ export async function getReviewerStats(): Promise<ReviewerStats> {
 	}
 }
 
-export type ProjectReviewStatusStat = {
+export interface ProjectReviewStatusStat {
 	label: string
 	value: number
 }
@@ -1718,7 +1718,7 @@ function ariToResult(decision: string | null): ReviewResult | null {
 // ─── User-flow Sankey ─────────────────────────────────────────────────────────
 
 /** One box in the Sankey: a group of users at one stage, with the people who will leave or join it. */
-export type SankeyNode = {
+export interface SankeyNode {
 	id: string
 	label: string
 	/** Users in this box. The sum over a stage is that stage's headcount, not the program total. */
@@ -1726,38 +1726,38 @@ export type SankeyNode = {
 }
 
 /** A ribbon: the users who go from one box to the next box they reach. */
-export type SankeyLink = {
-	source: string
-	target: string
-	value: number
+export interface SankeyLink {
 	/**
 	 * Which edge fans: "out" nests at the source (one person repeated across every activity they reached), "in" nests at the target (the same people arriving through several activities). Chain ribbons carry disjoint users and stack on both edges.
 	 *
 	 * A pair of boxes always fans the same way: fan links touch exactly one activity box, so the direction is fixed by which end it is on.
 	 */
 	fan: "out" | "in" | null
+	source: string
+	target: string
+	value: number
 }
 
-export type SankeyStage = {
+export interface SankeyStage {
 	/** Column heading. */
 	label: string
 	/** Node ids in this column, top to bottom. The order is deliberate, not by size. */
 	nodes: string[]
 }
 
-export type SankeyDiagram = {
-	stages: SankeyStage[]
-	nodes: SankeyNode[]
+export interface SankeyDiagram {
 	links: SankeyLink[]
+	nodes: SankeyNode[]
+	stages: SankeyStage[]
 	/** Everyone who signed up: the width every ribbon is drawn against. */
 	total: number
 }
 
 /** What share of onboarded finishers did each tracked activity: one maker counts in every column they reached. */
-export type ActivityShare = {
+export interface ActivityShare {
+	activities: { key: string; label: string; base: string; users: number; share: number }[]
 	/** Makers who finished onboarding: the denominator every column reads against. */
 	total: number
-	activities: { key: string; label: string; base: string; users: number; share: number }[]
 }
 
 /**

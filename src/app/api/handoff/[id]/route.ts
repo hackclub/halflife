@@ -4,7 +4,9 @@ import { claimHandoff, getHandoffStatus } from "@/lib/handoff"
 
 export const dynamic = "force-dynamic"
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
 /** Polled by the desktop while it waits for the phone. */
 export const GET = withRoute(async (_req: Request, { params }: Params) => {

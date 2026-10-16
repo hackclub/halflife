@@ -58,18 +58,18 @@ interface Placed extends SankeyNode {
 	y1: number
 }
 
-type Ribbon = {
-	source: Placed
-	target: Placed
-	value: number
+interface Ribbon {
 	/** Which edge fans, if either: shared users overlap there instead of adding up. */
 	fan: "out" | "in" | null
+	source: Placed
 	/** Source-side span. */
 	sy0: number
 	sy1: number
+	target: Placed
 	/** Target-side span. */
 	ty0: number
 	ty1: number
+	value: number
 }
 
 export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {

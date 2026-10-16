@@ -20,32 +20,32 @@ const ME_URL = process.env.HCA_ME_URL ?? "https://auth.hackclub.com/api/v1/me"
 
 const TIMEOUT_MS = 10_000
 
-export type HcaAddress = {
+export interface HcaAddress {
+	city: string | null
+	country: string | null
 	line1: string | null
 	line2: string | null
-	city: string | null
 	state: string | null
 	zip: string | null
-	country: string | null
 }
 
 /** One HCA identity, whichever endpoint each field came from. */
-export type HcaIdentity = {
-	/** The OIDC subject – what the account row is keyed on. */
-	sub: string | null
+export interface HcaIdentity {
+	address: HcaAddress | null
+	birthdate: string | null
 	email: string | null
 	emailVerified: boolean
+	image: string | null
 	/** "first last" – the string the sinks that need a whole person keep. */
 	name: string | null
 	/**
 	 * HCA's `nickname` claim under `profile`: what they go by. This is the name the site shows; see lib/display-name for the rule and its fallback.
 	 */
 	nickname: string | null
-	image: string | null
 	slackId: string | null
+	/** The OIDC subject – what the account row is keyed on. */
+	sub: string | null
 	verificationStatus: string | null
-	address: HcaAddress | null
-	birthdate: string | null
 }
 
 /**
@@ -55,14 +55,14 @@ export type HcaIdentity = {
  *
  * So the document is wanted but never depended on. When it answers, it is used; when it does not, the endpoints fall back to HCA's published, stable routes – the same paths its `auth` app mounts (`/oauth/authorize`, `/oauth/token` from Doorkeeper, `/oauth/userinfo` and `/oauth/discovery/keys` from doorkeeper-openid_connect). These are what the discovery document returns, so the fallback is not a guess about a different service; it is the same answer with the network taken out of the path. `userinfo_endpoint` and `issuer` default to the base, and `HCA_*` env overrides win if a deployment needs a different host.
  */
-export type HcaEndpoints = {
+export interface HcaEndpoints {
 	authorizationUrl: string
-	tokenUrl: string
-	userinfoUrl: string
-	jwksUrl: string
-	issuer: string
 	/** Whether discovery answered; false means the static fallback was used. */
 	discovered: boolean
+	issuer: string
+	jwksUrl: string
+	tokenUrl: string
+	userinfoUrl: string
 }
 
 let endpointsPromise: Promise<HcaEndpoints> | null = null

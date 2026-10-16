@@ -6,16 +6,16 @@ import prisma from "@/lib/prisma"
 
 export { AuditAction }
 
-export type AuditInput = {
+export interface AuditInput {
 	action: AuditAction
-	actorId?: string | null
 	actorEmail?: string | null
-	targetType?: string | null
-	targetId?: string | null
+	actorId?: string | null
 	/**
 	 * Record what changed, not just that something changed: `{ before: { tier: null }, after: { tier: 2 } }`. Six weeks later the question is always "why does this person have 340 credits", and only a before/after answers it.
 	 */
 	metadata?: Prisma.InputJsonValue
+	targetId?: string | null
+	targetType?: string | null
 }
 
 async function requestInfo(): Promise<{ ip: string | null; userAgent: string | null }> {

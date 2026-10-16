@@ -7,7 +7,9 @@ import prisma from "@/lib/prisma"
 import { sanitize } from "@/lib/sanitize"
 import { shopItemUpdateSchema } from "@/lib/schemas/admin"
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
 export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 	const gate = await requirePermission(Permission.MANAGE_SHOP)

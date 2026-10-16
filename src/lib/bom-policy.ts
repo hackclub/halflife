@@ -9,7 +9,7 @@
 import { round2 } from "@/lib/money"
 
 /** A BOM line as far as the money is concerned – what both the database rows and the API's own type satisfy. */
-export type PricedLine = {
+export interface PricedLine {
 	quantity: number
 	unitCostUsd: number
 }
@@ -28,17 +28,17 @@ export function bomTotalUsd(items: readonly PricedLine[], taxShippingUsd: number
  */
 export const BOM_MARGIN_USD = 3
 
-export type PartsFunding = {
-	/** What the parts list costs. */
-	totalUsd: number
+export interface PartsFunding {
 	/** What the tier funds. This is the whole grant, not a share of one. */
 	capUsd: number
-	/** What the maker pays out of their own pocket. Zero unless the list is over. */
-	shortfallUsd: number
 	/**
 	 * Past the margin, so submitting it means accepting a grant that covers only part of the cart. Handing one in without agreeing to that is refused, because "I will cover the rest myself" is something the maker has to say rather than something we assume.
 	 */
 	needsAgreement: boolean
+	/** What the maker pays out of their own pocket. Zero unless the list is over. */
+	shortfallUsd: number
+	/** What the parts list costs. */
+	totalUsd: number
 }
 
 /** The rule, in one place: a cart against a tier's grant. */

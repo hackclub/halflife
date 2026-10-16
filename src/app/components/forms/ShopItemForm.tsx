@@ -14,14 +14,14 @@ const CATEGORIES: { value: ShopItemCategory; label: string }[] = [
 ]
 
 /** The fields an existing item is edited from. */
-export type ShopItemInitial = {
-	id: string
-	name: string
-	description: string
-	imageUrl: string | null
+export interface ShopItemInitial {
 	category: ShopItemCategory
-	priceCredits: number
 	costUsd: number | null
+	description: string
+	id: string
+	imageUrl: string | null
+	name: string
+	priceCredits: number
 	requiresPrinterQualified: boolean
 }
 

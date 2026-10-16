@@ -15,12 +15,7 @@ const LOGO_SRC: StaticImageData | null = logoArt
  */
 const LOGO_ASPECT = LOGO_SRC ? LOGO_SRC.width / LOGO_SRC.height : 1
 
-type Props = {
-	/** Renders as the page's h1 in the hero, plain text elsewhere. */
-	as?: "h1" | "p" | "span"
-	className?: string
-	/** Font size for the live-type fallback, as a CSS length. */
-	fontSize?: string
+interface Props {
 	/**
 	 * Renders `LOGO_SRC` instead of live type. The hero opts in; the footer does not, because it recolours its wordmark to cyan with `text-hl-cyan!` and a traced SVG carries its fills baked in – cream at 88% opacity across 664 of its 853 paths – so no `color` can reach them. Live Masterpiece stays the only wordmark that can take a colour.
 	 */
@@ -31,6 +26,11 @@ type Props = {
 	 * Width is the dimension a caller actually reasons in – the mark reads as "this much of the screen across". What a caller cannot see from here is how much height that buys: the ink is 1125 x 787, so every unit of width brings 0.7 of height with it, and the callers say where that lands.
 	 */
 	artWidth?: string
+	/** Renders as the page's h1 in the hero, plain text elsewhere. */
+	as?: "h1" | "p" | "span"
+	className?: string
+	/** Font size for the live-type fallback, as a CSS length. */
+	fontSize?: string
 	/** The artwork's `sizes`, for a caller that runs it at another width. */
 	sizes?: string
 }

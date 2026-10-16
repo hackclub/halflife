@@ -66,20 +66,20 @@ async function memoOrReport(
 	}
 }
 
-export type SendGrantInput = {
-	themeProjectId: string
-	phase: Phase
+export interface SendGrantInput {
+	adminEmail: string | null
+	adminId: string
 	/** The HCB grant link (or bare hashid) an admin pasted. */
 	grantUrl: string
-	adminId: string
-	adminEmail: string | null
+	phase: Phase
+	themeProjectId: string
 }
 
-export type SendGrantResult = {
-	amountCents: number
-	transactionId: string | null
+export interface SendGrantResult {
 	/** True when a grant had already been sent for this project and phase. */
 	alreadySent: boolean
+	amountCents: number
+	transactionId: string | null
 }
 
 export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult> {

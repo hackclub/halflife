@@ -49,7 +49,7 @@ const CATEGORY_ALIASES: Record<string, ShopItemCategory> = {
 
 export type ShopCsvItem = z.output<typeof shopItemSchema>
 
-export type ShopCsvProblem = {
+export interface ShopCsvProblem {
 	/** 1-based line in the file, the header being line 1. 0 for the file as a whole. */
 	line: number
 	message: string

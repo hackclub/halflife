@@ -5,7 +5,9 @@ import { Permission } from "@/lib/permissions"
 import prisma from "@/lib/prisma"
 import { programEventUpdateSchema } from "@/lib/schemas/admin"
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
 /**
  * Move, retitle or cancel one occurrence.

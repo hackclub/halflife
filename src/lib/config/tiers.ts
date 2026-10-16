@@ -13,30 +13,30 @@ import { Theme } from "@/app/generated/prisma/enums"
  *
  * This is why there is no `bankHours` here any more. It used to be a tier property (2/5/10), which quietly made the expensive machines unreachable from Tier 1 and the cheap ones over-funded from Tier 3.
  */
-export type Tier = {
-	readonly id: 1 | 2 | 3
-	readonly name: string
-	/** Grant paid through the YSWS pipeline, in whole USD. */
-	readonly grantUsd: number
-	/** Hours the grant covers. These buy parts, not coins. */
-	readonly fundingHours: number
+export interface Tier {
 	readonly blurb: string
 	readonly detail: string
-	readonly examples: readonly string[]
 	/** The time a tier's build takes, as onboarding shows it beside the grant. */
 	readonly estimate: string
+	readonly examples: readonly string[]
+	/** Hours the grant covers. These buy parts, not coins. */
+	readonly fundingHours: number
+	/** Grant paid through the YSWS pipeline, in whole USD. */
+	readonly grantUsd: number
+	readonly id: 1 | 2 | 3
+	readonly name: string
 	/**
 	 * Real projects built at this tier, shown when choosing one. Keyed by theme, because a tier is shared by every week but what fits in it is not.
 	 */
 	readonly showcase: Partial<Record<Theme, readonly TierShowcaseProject[]>>
 }
 
-export type TierShowcaseProject = {
-	readonly title: string
-	/** A picture of the finished board. Remote hosts must be in next.config's remotePatterns. */
-	readonly image: string
+export interface TierShowcaseProject {
 	/** The project's repo. */
 	readonly href: string
+	/** A picture of the finished board. Remote hosts must be in next.config's remotePatterns. */
+	readonly image: string
+	readonly title: string
 }
 
 // Numbers are the program designer's, and match the tier cards in the platform comp. Changing them is this file and nothing else – every review freezes the numbers it actually used onto SubmissionReview, so editing these does not rewrite anyone's history.

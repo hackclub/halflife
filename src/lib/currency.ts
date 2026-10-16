@@ -35,13 +35,13 @@ async function sumFor(tx: Tx, where: Prisma.LedgerEntryWhereInput): Promise<numb
 }
 
 /** A single spendable pot, plus its legacy split. Every balance read should go through this. */
-export type Balances = {
-	/** Every coin. Buys anything in the shop, printers included. */
-	spendable: number
+export interface Balances {
 	/**
 	 * The legacy locked printer fund. New mints never land here – everything is spendable now – but old rows keep their bucket until they are converted, so this drains to zero rather than vanishing.
 	 */
 	banked: number
+	/** Every coin. Buys anything in the shop, printers included. */
+	spendable: number
 	/** spendable + banked. The number every purchase and progress display reads. */
 	total: number
 }
@@ -69,16 +69,16 @@ export async function getEarnedCredit(tx: Tx, userId: string): Promise<number> {
 	return sumFor(tx, { kind: { in: EARNING_KINDS }, userId })
 }
 
-export type LedgerEntryParams = {
-	userId: string
-	kind: LedgerKind
+export interface LedgerEntryParams {
+	amount: number
 	/** Which pot to move. Defaults to SPENDABLE; only the forced savings differ. */
 	bucket?: CoinBucket
-	amount: number
-	note?: string | null
-	themeProjectId?: string | null
-	shopOrderId?: string | null
 	createdById?: string | null
+	kind: LedgerKind
+	note?: string | null
+	shopOrderId?: string | null
+	themeProjectId?: string | null
+	userId: string
 }
 
 /**
@@ -106,18 +106,18 @@ export async function appendLedgerEntry(tx: Tx, params: LedgerEntryParams): Prom
 	})
 }
 
-export type ReconcileParams = {
-	userId: string
-	themeProjectId: string
-	kind: LedgerKind
+export interface ReconcileParams {
 	/**
 	 * The pot this kind pays into. New mints always land in SPENDABLE; the BANKED kinds below only ever reconcile the legacy locked rows toward zero, so passing anything else here would split one grant across two pots and make the reconcile sum converge on a target it can never reach.
 	 */
 	bucket?: CoinBucket
+	createdById?: string | null
+	kind: LedgerKind
+	note: string
 	/** What the total for this (user, project, kind) should now be. */
 	target: number
-	note: string
-	createdById?: string | null
+	themeProjectId: string
+	userId: string
 }
 
 /**

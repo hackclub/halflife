@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { API_ERROR_STATUS, type ApiErrorCode, HttpError } from "@/lib/errors"
 
-export type ApiErrorBody = {
+export interface ApiErrorBody {
 	error: { code: ApiErrorCode; message: string; details?: unknown }
 }
 

@@ -236,7 +236,10 @@ let botUserId: string | null = null
  *
  * `error` is set when the member list itself was unreadable – `missing_scope` because the manifest's `groups:read` was added but never re-imported and reinstalled, or `channel_not_found`/`not_in_channel` because the bot was never invited into the private channel. Callers use it to tell "you're not on the team" apart from "the check itself is broken, tell an admin", since only the first is the clicker's problem.
  */
-export type ChannelMembership = { member: boolean; error?: string }
+export interface ChannelMembership {
+	error?: string
+	member: boolean
+}
 
 export async function checkChannelMembership(channel: string, user: string): Promise<ChannelMembership> {
 	let cursor: string | undefined
@@ -266,18 +269,20 @@ export async function isChannelMember(channel: string, user: string): Promise<bo
 
 /** A message as `conversations.history` returns it, trimmed to the fields that
  * decide whether it opened a ticket. */
-export type SlackHistoryMessage = {
-	type?: string
-	subtype?: string
+export interface SlackHistoryMessage {
 	bot_id?: string
-	user?: string
-	ts?: string
+	subtype?: string
 	thread_ts?: string
+	ts?: string
+	type?: string
+	user?: string
 }
 
 /** A message as `conversations.replies` returns it, carrying the blocks a
  * caller needs to rewrite one. */
-export type SlackThreadMessage = SlackHistoryMessage & { blocks?: SlackBlock[] }
+export interface SlackThreadMessage extends SlackHistoryMessage {
+	blocks?: SlackBlock[]
+}
 
 /**
  * Every message in one thread, oldest first – the parent question and its replies.

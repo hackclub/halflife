@@ -7,7 +7,7 @@ import { Button } from "@/components/platform/ui"
 import { IMAGE_ACCEPT } from "@/lib/uploads/image-accept"
 import { uploadFile } from "@/lib/use-handoff"
 
-export type UploadedImage = {
+export interface UploadedImage {
 	objectKey: string
 	/** A local preview, so the thumbnail shows before the bucket serves it. */
 	previewUrl: string

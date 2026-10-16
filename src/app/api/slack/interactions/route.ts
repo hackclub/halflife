@@ -29,20 +29,20 @@ import {
 
 export const runtime = "nodejs"
 
-type BlockAction = {
+interface BlockAction {
 	action_id: string
 	value?: string
 }
 
-type InteractionPayload = {
-	type: string
+interface InteractionPayload {
+	actions?: BlockAction[]
 	/** Present only on the `url_verification` challenge Slack sends first. */
 	challenge?: string
-	user: { id: string }
 	channel?: { id: string }
 	message?: { ts: string; blocks?: SlackBlock[] }
-	actions?: BlockAction[]
 	response_url?: string
+	type: string
+	user: { id: string }
 }
 
 /** The only origin Slack sets `response_url` to. */

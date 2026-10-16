@@ -31,15 +31,11 @@ import { sanitize, sanitizeHtml } from "@/lib/sanitize"
 /** The theme the first checkpoint runs against. The comp: "This is PCB week!" */
 export const ONBOARDING_THEME: Theme = Theme.PCB
 
-export type OnboardingState = {
+export interface OnboardingState {
 	completed: boolean
-	/** Furthest step reached, 0-based. */
-	reached: number
 	/** The step to show now. */
 	current: OnboardingStep | null
-	stepCount: number
 	experience: HardwareExperience | null
-	suggestedTier: TierId
 	project: {
 		id: string
 		title: string
@@ -49,7 +45,11 @@ export type OnboardingState = {
 		/** Starter projects are Tier 1 work, so the choice is not the user's. */
 		tierLocked: boolean
 	}
+	/** Furthest step reached, 0-based. */
+	reached: number
 	starterProjects: readonly StarterProject[]
+	stepCount: number
+	suggestedTier: TierId
 	trackingDismissed: boolean
 }
 
@@ -135,17 +135,17 @@ export type OnboardingAnswer =
 	| { step: "tracking"; dismissed: boolean }
 	| { step: "repo"; enabled: boolean; repo?: string | null }
 
-export type AdvanceResult = {
-	state: OnboardingState
+export interface AdvanceResult {
 	completed: boolean
-	/**
-	 * Whether the answer wrote the project row. The caller then runs `markProjectCreated` for the analytics stamp: in the API route after the response has gone, since nobody is waiting on it; here it cannot, because `after` only works inside a request and the verify scripts call this too.
-	 */
-	touchedProject: boolean
 	/**
 	 * A request to mirror the project into a repo, made on the setup flow's repo step. The route runs this after the response has gone, because it is a GitHub round trip that can fail and the flow finishing must not depend on it. Null when the step was skipped or the sync was declined.
 	 */
 	repoRequest: { repo: string } | null
+	state: OnboardingState
+	/**
+	 * Whether the answer wrote the project row. The caller then runs `markProjectCreated` for the analytics stamp: in the API route after the response has gone, since nobody is waiting on it; here it cannot, because `after` only works inside a request and the verify scripts call this too.
+	 */
+	touchedProject: boolean
 }
 
 /**

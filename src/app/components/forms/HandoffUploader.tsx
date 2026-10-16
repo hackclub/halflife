@@ -3,7 +3,7 @@ import { useRef, useState } from "react"
 import { Button, Callout, Field } from "@/app/components/ui"
 import { postForm } from "@/lib/upload-progress"
 
-type ApiError = {
+interface ApiError {
 	error?: { message?: string }
 }
 

@@ -82,7 +82,7 @@ export interface ShopItemView extends ShopItemPublic {
 }
 
 /** Regions staff sell to, for the shop's price picker. Active only. */
-export type ShopRegionOption = {
+export interface ShopRegionOption {
 	id: string
 	name: string
 }

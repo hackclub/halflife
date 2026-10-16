@@ -309,24 +309,24 @@ export async function backfillAnalytics(): Promise<Record<string, number>> {
 }
 
 /** Everything tracked about one person, flattened for an export row. */
-export type UserAnalyticsRow = {
-	userId: string
+export interface UserAnalyticsRow {
+	activeDays: number
+	bankedCoins: number
+	coins: number
+	currentStreak: number
 	email: string
-	signedUpAt: Date
-	onboardedAt: Date | null
+	firstChecksPassedAt: Date | null
 	firstProjectAt: Date | null
 	firstReelAt: Date | null
 	firstSubmissionAt: Date | null
-	lastSubmissionAt: Date | null
-	firstChecksPassedAt: Date | null
-	lastLoginAt: Date | null
 	lastActiveAt: Date | null
-	activeDays: number
-	totalHours: number
-	coins: number
-	bankedCoins: number
-	currentStreak: number
+	lastLoginAt: Date | null
+	lastSubmissionAt: Date | null
 	longestStreak: number
+	onboardedAt: Date | null
+	signedUpAt: Date
+	totalHours: number
+	userId: string
 	weeks: {
 		week: number
 		hours: number

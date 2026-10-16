@@ -9,13 +9,13 @@ import { cx } from "@/lib/cx"
 import { fmtHours } from "@/lib/projects"
 import type { Phase } from "@/lib/types"
 
-type Link = {
-	id: string
+interface Link {
 	hackatimeProject: string
-	phase: "DESIGN" | "BUILD"
 	hours: number
 	hoursApproved: number | null
+	id: string
 	lastFetchError: string | null
+	phase: "DESIGN" | "BUILD"
 }
 
 type Account =

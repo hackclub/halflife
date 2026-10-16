@@ -25,15 +25,15 @@ import {
 // Signature verification needs Node's crypto, not the edge runtime.
 export const runtime = "nodejs"
 
-type SlackEvent = {
-	type: string
-	channel?: string
-	user?: string
-	text?: string
-	ts?: string
-	thread_ts?: string
-	subtype?: string
+interface SlackEvent {
 	bot_id?: string
+	channel?: string
+	subtype?: string
+	text?: string
+	thread_ts?: string
+	ts?: string
+	type: string
+	user?: string
 }
 
 /** New top-level message in #half-life-help – post it to the private

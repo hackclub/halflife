@@ -651,6 +651,8 @@ const ASIDE = {
 
 /**
  * Stacked takes no origin and the stage plate cannot do without one, so the two are separate shapes rather than one with everything optional.
+ *
+ * A type alias rather than an interface on purpose: an interface can only extend an object type, and the arms here are a union. The correlation between `stacked` and `origin` is what the union buys, and an interface would flatten it back into one shape with everything optional.
  */
 type AsideProps = { aside: (typeof ASIDES)[number] } & (
 	| { stacked: true; origin?: never }

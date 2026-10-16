@@ -19,18 +19,18 @@ import { postMessage, sendDM } from "@/lib/slack"
  * Called after the decision transaction has committed, from both decision paths (the console route and the Ari webhook), so the two cannot drift.
  */
 
-export type ReviewOutcomeNotice = {
-	themeProjectId: string
-	phase: Phase
-	result: ReviewResult
+export interface ReviewOutcomeNotice {
+	/** Which surface decided it, so the message can say who is asking. */
+	decidedBy: "ari" | "console"
 	/**
 	 * The reviewer's note to the maker, or null when there was none.
 	 *
 	 * Null is ordinary rather than exceptional: Ari decides without a note often enough that substituting its generic fallback would put "Reviewer's note: Ari asked for changes before this can be approved." into a maker's DM – a line that says the same thing twice and tells them nothing they can act on. The project page keeps whatever the review itself recorded; this is only what goes in the message.
 	 */
 	note: string | null
-	/** Which surface decided it, so the message can say who is asking. */
-	decidedBy: "ari" | "console"
+	phase: Phase
+	result: ReviewResult
+	themeProjectId: string
 }
 
 /**
@@ -69,15 +69,15 @@ function headline(
 	}
 }
 
-export type ReviewOutcomeMessage = {
-	/** Our words, in order. The reviewer's note is deliberately not among them. */
-	prose: string[]
+export interface ReviewOutcomeMessage {
 	/**
 	 * The reviewer's own words, or null.
 	 *
 	 * Kept as its own field rather than a paragraph among the rest, because it is the one part a human typed and the only part with line breaks worth keeping: a channel that folds it into a sentence loses where one request ended and the next began.
 	 */
 	note: string | null
+	/** Our words, in order. The reviewer's note is deliberately not among them. */
+	prose: string[]
 }
 
 /**

@@ -22,14 +22,14 @@ export type SignupResult =
 	| { ok: true; duplicate: boolean; referralCode: string }
 	| { ok: false; error: string; status: number }
 
-export type SignupMeta = {
-	source?: string
+export interface SignupMeta {
 	ref?: string | null
-	utmSource?: string | null
-	utmMedium?: string | null
-	utmCampaign?: string | null
+	source?: string
 	/** When the caller knows whose address this is (the signed-in referral path), link the buffer row so the drain stamps it. */
 	userId?: string | null
+	utmCampaign?: string | null
+	utmMedium?: string | null
+	utmSource?: string | null
 }
 
 export function normalizeEmail(raw: unknown): string | null {

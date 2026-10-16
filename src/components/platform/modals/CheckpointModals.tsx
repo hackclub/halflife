@@ -82,15 +82,15 @@ function fmtH(h: number) {
 	return `${to2(h)}h`
 }
 
-type JournalDraft = {
-	tab: "journal" | "timelapse"
+interface JournalDraft {
 	body: string
 	hoursText: string
+	/** Older non-Lapse clips, preserved untouched. */
+	legacy?: string[]
 	picked: LapseTimelapse[]
 	/** Lapse clips kept from the original entry that Lapse would not re-verify. */
 	pinned?: string[]
-	/** Older non-Lapse clips, preserved untouched. */
-	legacy?: string[]
+	tab: "journal" | "timelapse"
 }
 
 const draftKey = (checkpointId: string) => `halflife.journal-draft.${checkpointId}`
@@ -1036,11 +1036,11 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 /* ================================================================== *
  * Reel
  * ================================================================== */
-type ReelDraft = {
+interface ReelDraft {
+	caption: string
 	clip: string
 	/** The bucket's URL for the clip, never a blob URL: those die with the page. */
 	url: string | null
-	caption: string
 }
 
 const reelDraftKey = (checkpointId: string) => `halflife.reel-draft.${checkpointId}`

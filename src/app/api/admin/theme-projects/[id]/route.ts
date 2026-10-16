@@ -6,7 +6,9 @@ import { Permission } from "@/lib/permissions"
 import prisma from "@/lib/prisma"
 import { projectExtensionSchema } from "@/lib/schemas/admin"
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
 /**
  * One project's extension and/or theme. The extension reopens that project alone – its passed weeks take journal entries again, and it can be submitted past a global close – where the user-level one on /api/admin/users/[id] covers everything they own. The theme move re-files a project (warm-up to week 1, say) without touching its review state.

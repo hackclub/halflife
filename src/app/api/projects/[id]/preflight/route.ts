@@ -6,7 +6,9 @@ import { checkRepo } from "@/lib/repo-checks"
 
 export const dynamic = "force-dynamic"
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
 /**
  * The repo checks for one of the caller's projects, for the submit sheet.

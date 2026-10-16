@@ -15,10 +15,10 @@ import { type Dispatch, type SetStateAction, useCallback, useState } from "react
  * A failed `fetch` throws a TypeError whose message is "Failed to fetch", which is a browser's internal wording rather than anything a maker can act on. Forms were split between showing that and showing nothing at all, so this settles on one sentence that means something: the request never arrived.
  */
 
-type SendOptions = {
-	method?: "POST" | "PATCH" | "PUT" | "DELETE"
+interface SendOptions {
 	/** Serialised as JSON. Omit for a request with no body. */
 	body?: unknown
+	method?: "POST" | "PATCH" | "PUT" | "DELETE"
 }
 
 export type SendResult<T> = { ok: true; data: T } | { ok: false; message: string }

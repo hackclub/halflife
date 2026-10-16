@@ -3,24 +3,24 @@ import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { Button, Callout } from "@/app/components/ui"
 
-type ImportOutcome = {
-	recordId: string
-	email: string | null
-	status: "imported" | "already_imported" | "skipped" | "failed"
-	reason: string | null
-	themeProjectId: string | null
+interface ImportOutcome {
 	ari: "sent" | "failed" | "not_configured" | "not_attempted"
+	email: string | null
+	reason: string | null
+	recordId: string
+	status: "imported" | "already_imported" | "skipped" | "failed"
+	themeProjectId: string | null
 }
 
-type ImportSummary = {
-	table: string
+interface ImportSummary {
+	alreadyImported: number
+	ariSent: number
+	failed: number
 	fetched: number
 	imported: number
-	alreadyImported: number
-	skipped: number
-	failed: number
-	ariSent: number
 	outcomes: ImportOutcome[]
+	skipped: number
+	table: string
 }
 
 const STATUS_LABEL: Record<ImportOutcome["status"], string> = {

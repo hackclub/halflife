@@ -13,22 +13,22 @@ import { type RepoRef, repoRefFromLink } from "@/lib/repo-ref"
  * A forge we do not speak is still a repo a maker may hand in: `checkRepo` warns rather than blocks, exactly as it did for a GitLab link before GitLab was understood. That path stays, because Codeberg and a self-hosted Gitea are still real answers to "where is your project".
  */
 
-export type RepoCheck = {
+export interface RepoCheck {
+	/** A failed blocking check stops the hand-in. */
+	blocking?: boolean
+	detail?: string
 	key: string
 	label: string
 	status: "pass" | "fail" | "warn"
-	detail?: string
-	/** A failed blocking check stops the hand-in. */
-	blocking?: boolean
 }
 
-export type RepoCheckResult = {
-	repo: string | null
-	checks: RepoCheck[]
+export interface RepoCheckResult {
 	canSubmit: boolean
+	checkedAt: string
+	checks: RepoCheck[]
+	repo: string | null
 	/** The forge could not be asked; nothing was concluded about the repo. */
 	unavailable: boolean
-	checkedAt: string
 }
 
 /** What a forge said about a repo – everything the checks are built from. */

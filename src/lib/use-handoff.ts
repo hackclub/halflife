@@ -16,12 +16,12 @@ import { postForm } from "@/lib/upload-progress"
  * A successful response from this API is the payload itself. There is no `data` envelope – `ok()` in lib/api.ts calls `NextResponse.json(body)` directly, and only `fail()` wraps, in `{ error: { code, message } }`. Reading `payload.data` here is how this feature spent its whole life throwing "cannot read properties of undefined".
  */
 
-export type MintedHandoff = {
+export interface MintedHandoff {
+	expiresAt: string
 	id: string
 	/** Rendered SVG, produced server-side. The token never leaves this origin. */
 	qrSvg: string
 	url: string
-	expiresAt: string
 }
 
 export type HandoffStatus = "idle" | "minting" | "waiting" | "ready" | "expired"

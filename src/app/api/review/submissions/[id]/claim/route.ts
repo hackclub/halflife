@@ -4,7 +4,9 @@ import { requirePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import { claimSubmission, releaseClaim } from "@/lib/review"
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
 export const POST = withRoute(async (_req: Request, { params }: Params) => {
 	const gate = await requirePermission(Permission.REVIEW_SUBMISSIONS)

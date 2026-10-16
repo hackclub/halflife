@@ -8,7 +8,9 @@ import prisma from "@/lib/prisma"
 import { sanitize } from "@/lib/sanitize"
 import { disputeSchema } from "@/lib/schemas/project"
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
 /**
  * A maker asking for a second look at a review.

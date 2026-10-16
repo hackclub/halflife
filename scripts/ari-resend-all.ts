@@ -27,7 +27,7 @@ const MAX_BACKOFF_MS = 30_000
 const DEFAULT_CONCURRENCY = 5
 const DEFAULT_MAX_ATTEMPTS = 5
 
-type Options = {
+interface Options {
 	commit: boolean
 	concurrency: number
 	cookie: string
@@ -38,7 +38,10 @@ type Options = {
 }
 
 /** Shared across workers: a 429 parks every one of them, not just the caller. */
-type Limiter = { cooldownUntil: number; streak: number }
+interface Limiter {
+	cooldownUntil: number
+	streak: number
+}
 
 type SendOutcome = "refused" | "resent" | "retry"
 type TaskOutcome = "failed" | "refused" | "resent"

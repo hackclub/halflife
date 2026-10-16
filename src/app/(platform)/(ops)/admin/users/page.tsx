@@ -7,7 +7,9 @@ import { listUsers } from "@/lib/queries/admin"
 
 export const dynamic = "force-dynamic"
 
-type Props = { searchParams: Promise<{ q?: string; cursor?: string }> }
+interface Props {
+	searchParams: Promise<{ q?: string; cursor?: string }>
+}
 
 export default async function AdminUsersPage({ searchParams }: Props) {
 	const { roles } = await requirePermissionPage(Permission.VIEW_USERS)

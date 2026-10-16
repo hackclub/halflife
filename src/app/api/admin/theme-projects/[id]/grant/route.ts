@@ -4,7 +4,9 @@ import { requirePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import { grantSchema } from "@/lib/schemas/admin"
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
 export const maxDuration = 60
 

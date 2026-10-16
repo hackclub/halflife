@@ -5,7 +5,9 @@ import { decideReport } from "@/lib/report-decisions"
 
 export const dynamic = "force-dynamic"
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
 /** Close a report as no violation. */
 export const POST = withRoute(async (_req: Request, { params }: Params) => {

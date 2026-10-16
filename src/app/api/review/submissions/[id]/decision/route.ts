@@ -8,7 +8,9 @@ import { finalizeReview } from "@/lib/review"
 import { sanitize, sanitizeOptional } from "@/lib/sanitize"
 import { decisionSchema } from "@/lib/schemas/review"
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
 export const maxDuration = 60
 

@@ -7,12 +7,12 @@ import type { Project, SessionLog, Week } from "./types"
  */
 
 /** What the timeline needs to read out of a checkpoint. Structural on purpose: * the store owns this shape, and this file has no business importing it. */
-export type CheckpointRead = {
-	done: boolean
+export interface CheckpointRead {
 	at?: number
 	caption?: string
-	minutes: number
+	done: boolean
 	log: SessionLog[]
+	minutes: number
 }
 
 export type ProjectEvent =

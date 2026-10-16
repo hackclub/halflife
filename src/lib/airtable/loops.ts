@@ -43,12 +43,12 @@ export const LOOPS_FIELDS = {
 const WEEKS = Array.from({ length: 10 }, (_, i) => i + 1)
 
 /** What Loops should hold for one person. */
-type LoopsValues = {
-	id: string
+interface LoopsValues {
 	email: string
+	id: string
+	lastEntryAt: Date | null
 	/** Airtable's "last login": last site access, or the sign-in before it. */
 	lastLoginAt: Date | null
-	lastEntryAt: Date | null
 	/** Week number → completed that week's first checkpoint. */
 	weeks: Record<number, boolean>
 	/** Week number → submitted that week's project. */
@@ -289,28 +289,28 @@ async function signupRows(config: NonNullable<ReturnType<typeof getAirtableConfi
 	return { byEmail, byUserId, writable }
 }
 
-export type LoopsSyncResult = {
-	users: number
-	matched: number
-	/** Rows found by `Half-Life User ID`. */
-	matchedById: number
-	/** Rows found by the Airtable record id the RSVP drain recorded. */
-	matchedByRecord: number
-	/** Rows found only by email, because the row had no user id on it. */
-	matchedByEmail: number
-	/** Half Life users with no row in Signups. */
-	unmatched: number
-	/** Buffer rows newly linked to their Signups row this run (0 on a dry run). */
-	relinked: number
-	updated: number
-	unchanged: number
-	dryRun: boolean
+export interface LoopsSyncResult {
 	/**
 	 * True when the join matched so little that this run should not be believed. Set rather than merely logged, because the way this failed for months was a run that reported success having written nothing.
 	 */
 	degraded: boolean
+	dryRun: boolean
+	matched: number
+	/** Rows found only by email, because the row had no user id on it. */
+	matchedByEmail: number
+	/** Rows found by `Half-Life User ID`. */
+	matchedById: number
+	/** Rows found by the Airtable record id the RSVP drain recorded. */
+	matchedByRecord: number
 	/** In a dry run, the first few updates that would be sent. */
 	preview?: { email: string; fields: Record<string, unknown> }[]
+	/** Buffer rows newly linked to their Signups row this run (0 on a dry run). */
+	relinked: number
+	unchanged: number
+	/** Half Life users with no row in Signups. */
+	unmatched: number
+	updated: number
+	users: number
 }
 
 /**

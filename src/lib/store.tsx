@@ -34,18 +34,18 @@ export type IntroPhase =
 	| "tour" // spotlight each tab in turn
 	| "done"
 
-export type CheckpointState = {
-	done: boolean
+export interface CheckpointState {
+	/** Reel / submit checkpoints record how many artefacts were attached. */
+	artefacts: number
 	/** When it was completed, epoch ms. Undefined on saves written before this. */
 	at?: number
 	/** A reel's caption, kept so the project timeline can show what was posted. */
 	caption?: string
-	/** Journal checkpoints accumulate minutes toward their target. */
-	minutes: number
-	/** Reel / submit checkpoints record how many artefacts were attached. */
-	artefacts: number
+	done: boolean
 	/** Every saved journal session in this checkpoint, newest last. */
 	log: SessionLog[]
+	/** Journal checkpoints accumulate minutes toward their target. */
+	minutes: number
 }
 
 /**
@@ -53,10 +53,9 @@ export type CheckpointState = {
  *
  * Kept apart from the facts deliberately. If any of this lived on the server, signing in on a second device would drop you into the middle of a tab tour you had already finished, and a schema migration would be needed to change the order of the intro.
  */
-type Ceremony = {
-	version: 4
-	phase: IntroPhase
+interface Ceremony {
 	doomscrollerOpen: boolean
+	phase: IntroPhase
 	/**
 	 * Set by "Replay the intro". Without it the server's word that onboarding is done forces the phase straight back to "done", so the replay cleared the ceremony and then showed nothing. Optional so saves written before it existed read as false.
 	 */
@@ -67,6 +66,7 @@ type Ceremony = {
 	 * checkpoint, so it meets that checkpoint later, and finishing it must not walk the tour a second time. Optional so older saves read as not toured.
 	 */
 	toured?: boolean
+	version: 4
 }
 
 const KEY = "halflife.ceremony.v4"
@@ -142,96 +142,155 @@ function seededCeremony(): Ceremony {
 }
 
 /** The details a maker can change on their own project, all optional. */
-export type ProjectPatch = {
-	name?: string
-	description?: string
+export interface ProjectPatch {
 	coverImageKey?: string | null
+	description?: string
 	githubRepo?: string | null
-	tier?: 1 | 2 | 3
+	name?: string
 	/** Which starter it is built from, or null for their own idea. */
 	starterProjectId?: string | null
+	tier?: 1 | 2 | 3
 }
 
 /**
  * The closing reel's share prompt after a hand-in: what to celebrate, and how. Kept in the store rather than in the submit sheet's own state because the hand-in's refresh flips the week to in_review underneath – a local flag renders the celebration for one frame and then the unsubmit sheet takes the modal.
  */
-export type SharePost = {
-	checkpointId: string
-	postId: string
-	eyebrow: string
-	videoUrl: string | null
+export interface SharePost {
 	celebration?: { extraHours: number }
+	checkpointId: string
+	eyebrow: string
+	postId: string
+	videoUrl: string | null
 }
 
 /** What posting a reel produced: the post's id, or the sentence to show the maker. */
 export type PostReelResult = { postId: string; error?: undefined } | { postId?: undefined; error: string }
 
-type Ctx = {
-	/** Who is signed in. Display fields only. */
-	viewer: StoreSnapshot["viewer"]
-	phase: IntroPhase
-	doomscrollerOpen: boolean
-	experience: Experience | null
-	projects: Project[]
-	progress: Record<string, CheckpointState>
-	/** Spendable coins – what the shop will take for anything. */
-	coins: number
+interface Ctx {
+	addProject: (p: Omit<Project, "id">) => void
+	allCheckpoints: Checkpoint[]
 	/** Legacy locked coins. Drains to zero; kept so old rows still add up. */
 	bankedCoins: number
-	/** The whole balance. Every coin counts toward the printer goal. */
-	printerFund: number
 	/**
-	 * Coins the logged hours of weeks 1..weekId will earn once reviewed, that are not in `printerFund` yet. Coins are minted at approval, so the fund alone says a week nobody has reviewed earned nothing; pacing reads both.
+	 * Admins only: every checkpoint on the trail opens, whatever its order, hours or dates say. Always false for anyone else.
 	 */
-	pendingCoins: (weekId: number) => number
-	streak: number
+	bypassLocks: boolean
+	/** Spendable coins – what the shop will take for anything. */
+	coins: number
+	complete: (id: string, patch?: Partial<CheckpointState>) => void
+	currentCheckpointId: string | null
+	/** When a week stops taking entries, a warm-up's included. */
+	deadlineOf: (week: Week) => string | null
+	doomscrollerOpen: boolean
+	/**
+	 * Correct a finished entry's words, hours, and timelapses. Null once saved, or why it was refused. The clips are the full desired set of Lapse attachments; the server keeps, adds, and releases the difference.
+	 */
+	editSession: (
+		id: string,
+		minutes: number,
+		body: string,
+		evidence?: Pick<SessionLog, "clips">,
+	) => Promise<string | null>
+	/**
+	 * Make the project row for a design week, if there is none yet, and resolve to its id (null if the server refused). Called when a "create a project" checkpoint is opened, which is the only moment a project row is made.
+	 */
+	ensureProject: (weekId: number) => Promise<string | null>
+	experience: Experience | null
+	/**
+	 * Mark the first checkpoint done, on the API's say-so. Patched rather than awaited so the goal prompt can take over from the onboarding modal without a frame of the tab tour in between.
+	 */
+	finishOnboarding: () => void
+	/** End the tab tour, finished or skipped, and remember it was seen. */
+	finishTour: () => void
 	/** The printer your earnings are paced against. See config/printers. */
 	goalId: string
+	/** What a week is worth, a warm-up's included. See `weekHours`. */
+	hoursOf: (week: Week) => number
+	hydrated: boolean
+	/** Whether a checkpoint is held until a deleted reel is re-recorded. */
+	isHeld: (id: string) => boolean
+	/** Whether a checkpoint is shut because its week's time ran out. */
+	isPassed: (id: string) => boolean
+	isUnlocked: (id: string) => boolean
+	/**
+	 * Point a project's repo link at the repo its sync writes to, when the two drifted apart because the sync's repo was picked after the project's was set. Resolves to null once saved, or the server's reason for refusing; the link is the sync target already, so no URL is taken from the client.
+	 */
+	linkSyncRepoToProject: (id: string) => Promise<string | null>
+	/** Why a locked checkpoint is locked, phrased for the trail. Null if open. */
+	lockReason: (id: string) => string | null
+	/**
+	 * Resolves to null once the entry is saved, or to the server's reason for refusing it – Lapse may say a timelapse is not yours, is still processing, or already backs another entry, and the sheet has to stay open to say so.
+	 */
+	logSession: (
+		id: string,
+		minutes: number,
+		body: string,
+		evidence?: Pick<SessionLog, "clips">,
+	) => Promise<string | null>
 	/** Whether the first checkpoint has been completed. */
 	onboardingDone: boolean
+	/** id of the checkpoint whose modal is open, if any */
+	openCheckpoint: string | null
+	/**
+	 * Whether this week's hours may still count one sitting twice, because the overlap between a Lapse recording and Hackatime could not be checked.
+	 *
+	 * True means the number is unchecked, not wrong: the deduplication needs a Hackatime answer and there was not one. Anything showing a week total reads this so it can say which totals are provisional.
+	 */
+	overlapUnchecked: (weekId: number) => boolean
 	/**
 	 * What this participant is here for, or null if they have not been asked yet. See config/goal.
 	 *
 	 * Null is a gate, not a default: it is what keeps the mandatory prompt open after the first checkpoint, and because it comes from the server it reappears on every sign-in rather than on every visit to this browser.
 	 */
 	participantGoal: ParticipantGoal | null
-	hydrated: boolean
-	/** id of the checkpoint whose modal is open, if any */
-	openCheckpoint: string | null
-	/** The share prompt waiting after a hand-in, if any. Cleared when it closes. */
-	sharePost: SharePost | null
-	/** Show the share prompt after a hand-in, or clear it. */
-	setSharePost: (share: SharePost | null) => void
-	tourStep: number
-	reducedMotion: boolean
-
-	setPhase: (p: IntroPhase) => void
-	/** End the tab tour, finished or skipped, and remember it was seen. */
-	finishTour: () => void
-	setTourStep: (n: number) => void
-	addProject: (p: Omit<Project, "id">) => void
+	/** Whether a week's journal has closed, a warm-up's included. */
+	passedOf: (week: Week) => boolean
 	/**
-	 * Make the project row for a design week, if there is none yet, and resolve to its id (null if the server refused). Called when a "create a project" checkpoint is opened, which is the only moment a project row is made.
+	 * Coins the logged hours of weeks 1..weekId will earn once reviewed, that are not in `printerFund` yet. Coins are minted at approval, so the fund alone says a week nobody has reviewed earned nothing; pacing reads both.
 	 */
-	ensureProject: (weekId: number) => Promise<string | null>
-	setProjectTier: (id: string, tier: 1 | 2 | 3) => void
-	/**
-	 * Set or clear a project's repo link. Resolves to null once saved, or to the server's reason for refusing (a phase in review, say), so an inline editor can say so instead of quietly reverting.
-	 */
-	setProjectRepo: (id: string, url: string | null) => Promise<string | null>
-	/**
-	 * Point a project's repo link at the repo its sync writes to, when the two drifted apart because the sync's repo was picked after the project's was set. Resolves to null once saved, or the server's reason for refusing; the link is the sync target already, so no URL is taken from the client.
-	 */
-	linkSyncRepoToProject: (id: string) => Promise<string | null>
-	/** Change any of a project's own details in one save. Null once saved, or why it was refused. */
-	updateProject: (id: string, patch: ProjectPatch) => Promise<string | null>
-	complete: (id: string, patch?: Partial<CheckpointState>) => void
+	pendingCoins: (weekId: number) => number
+	phase: IntroPhase
+	/** Where a week stands with review. "draft" when nothing is recorded. */
+	phaseStatusOf: (weekId: number) => string
 	/**
 	 * Post the reel a checkpoint is asking for. The video is already uploaded.
 	 *
 	 * Resolves to the new post's id, or to the reason it did not land. The reason is the server's own rather than a guess: a maker held up by an owed reel, or by an upload the server will not accept, used to be told their connection had failed, with no way to work out why.
 	 */
 	postReel: (id: string, caption: string, objectKey: string) => Promise<PostReelResult>
+	/** The whole balance. Every coin counts toward the printer goal. */
+	printerFund: number
+	progress: Record<string, CheckpointState>
+	projects: Project[]
+	/**
+	 * Admins only: wipe your own setup answers and run the whole first run again, setup checkpoint included. Resolves to an error message, or null.
+	 */
+	redoOnboarding: () => Promise<string | null>
+	reducedMotion: boolean
+	reset: () => void
+	setBypassLocks: (on: boolean) => void
+	setDoomscroller: (open: boolean) => void
+	setOpenCheckpoint: (id: string | null) => void
+	/**
+	 * Record what this participant is here for, with the printer if the answer is a printer. Resolves to null once saved, or to the server's reason for refusing – the prompt that calls it is uncloseable, so a silent failure would strand somebody.
+	 */
+	setParticipantGoal: (goal: ParticipantGoal, printerGoalId?: string) => Promise<string | null>
+
+	setPhase: (p: IntroPhase) => void
+	/**
+	 * Set or clear a project's repo link. Resolves to null once saved, or to the server's reason for refusing (a phase in review, say), so an inline editor can say so instead of quietly reverting.
+	 */
+	setProjectRepo: (id: string, url: string | null) => Promise<string | null>
+	setProjectTier: (id: string, tier: 1 | 2 | 3) => void
+	/** Show the share prompt after a hand-in, or clear it. */
+	setSharePost: (share: SharePost | null) => void
+	setTourStep: (n: number) => void
+	/** The share prompt waiting after a hand-in, if any. Cleared when it closes. */
+	sharePost: SharePost | null
+	stateOf: (id: string) => CheckpointState
+	/** Where a week stands with review, a warm-up's included. */
+	statusOf: (week: Week) => string
+	streak: number
 	/** Hand a week in, with its notes and whatever evidence it collected. */
 	/** Resolves to null once submitted, or the server's reason for refusing. */
 	submitPhase: (
@@ -244,108 +303,49 @@ type Ctx = {
 		},
 	) => Promise<string | null>
 	/**
-	 * Resolves to null once the entry is saved, or to the server's reason for refusing it – Lapse may say a timelapse is not yours, is still processing, or already backs another entry, and the sheet has to stay open to say so.
+	 * Every hour on the record – journalled in entries and tracked some other way (Hackatime, a reviewer's adjustment) – summed across the season's weeks and every warm-up. Zero until the first session lands.
 	 */
-	logSession: (
-		id: string,
-		minutes: number,
-		body: string,
-		evidence?: Pick<SessionLog, "clips">,
-	) => Promise<string | null>
-	/**
-	 * Correct a finished entry's words, hours, and timelapses. Null once saved, or why it was refused. The clips are the full desired set of Lapse attachments; the server keeps, adds, and releases the difference.
-	 */
-	editSession: (
-		id: string,
-		minutes: number,
-		body: string,
-		evidence?: Pick<SessionLog, "clips">,
-	) => Promise<string | null>
-	stateOf: (id: string) => CheckpointState
-	isUnlocked: (id: string) => boolean
-	/** Whether a checkpoint is shut because its week's time ran out. */
-	isPassed: (id: string) => boolean
-	/** Whether a checkpoint is held until a deleted reel is re-recorded. */
-	isHeld: (id: string) => boolean
-	/** Whether a week's 11:59 PM Sunday close (or its extension) is behind us. */
-	weekPassed: (weekId: number) => boolean
-	/** Whether a week's Monday-midnight open is behind us. Nothing on it opens before. */
-	weekStarted: (weekId: number) => boolean
-	/** The day a week opens, e.g. "Monday, October 5", in the program's timezone. */
-	weekOpensOn: (weekId: number) => string | null
-	/** When a week stops taking work, e.g. "Sunday, October 5 at 11:59 PM", its extension included. */
-	weekDeadline: (weekId: number) => string | null
-	/**
-	 * The same close as a moment rather than a phrase, epoch ms, its extension included. `weekDeadline` is for writing it down; a countdown has to count to it, and there is no arithmetic to do on a formatted date.
-	 */
-	weekClosesAtMs: (weekId: number) => number | null
-	/**
-	 * Whose extension a week's countdown is racing, when it is racing one: `"project"` for the week's own project's, `"account"` for the participant's own – which covers every week at once – or null when the week closes on its own.
-	 */
-	weekExtension: (weekId: number) => "account" | "project" | null
-	/** When warm-ups stop taking work: 11:59 PM the night before week 1 opens. */
-	warmupDeadline: string
-	/** Whether a week is handed in – in review, approved or rejected – so its entries are final. */
-	weekSubmitted: (weekId: number) => boolean
-	/** Where a week stands with review. "draft" when nothing is recorded. */
-	phaseStatusOf: (weekId: number) => string
+	totalHours: number
+	tourStep: number
 	/**
 	 * Take a phase in review back out of it. Null once done, or the server's reason. A trail submit passes its checkpoint id; a project with no checkpoint to address it by (a warm-up project) passes itself directly.
 	 */
 	unsubmitPhase: (target: string | { projectId: string; phase: "DESIGN" | "BUILD" }) => Promise<string | null>
-	/** Why a locked checkpoint is locked, phrased for the trail. Null if open. */
-	lockReason: (id: string) => string | null
-	currentCheckpointId: string | null
-	/** The trail, cut to the tier of each week's project. */
-	weeks: Week[]
+	/** Change any of a project's own details in one save. Null once saved, or why it was refused. */
+	updateProject: (id: string, patch: ProjectPatch) => Promise<string | null>
+	/** Who is signed in. Display fields only. */
+	viewer: StoreSnapshot["viewer"]
+	/** When warm-ups stop taking work: 11:59 PM the night before week 1 opens. */
+	warmupDeadline: string
 	/**
 	 * A warm-up project's own week, or null. Never drawn on the trail, but its entries and its one submit are real checkpoints (`wu-<id>-…`), so the season's journal and submit sheets serve it from its project page. A maker may hold several, which is why these are found by project, not number.
 	 */
 	warmupWeekOf: (projectId: string) => Week | null
-	/** The week a checkpoint belongs to: a season week, or a warm-up's own. */
-	weekOfCheckpoint: (checkpoint: Checkpoint) => Week
-	/** What a week is worth, a warm-up's included. See `weekHours`. */
-	hoursOf: (week: Week) => number
-	/** Whether a week's journal has closed, a warm-up's included. */
-	passedOf: (week: Week) => boolean
-	/** Where a week stands with review, a warm-up's included. */
-	statusOf: (week: Week) => string
-	/** When a week stops taking entries, a warm-up's included. */
-	deadlineOf: (week: Week) => string | null
-	allCheckpoints: Checkpoint[]
-	weekOf: (weekId: number) => Week
+	/**
+	 * The same close as a moment rather than a phrase, epoch ms, its extension included. `weekDeadline` is for writing it down; a countdown has to count to it, and there is no arithmetic to do on a formatted date.
+	 */
+	weekClosesAtMs: (weekId: number) => number | null
+	/** When a week stops taking work, e.g. "Sunday, October 5 at 11:59 PM", its extension included. */
+	weekDeadline: (weekId: number) => string | null
+	/**
+	 * Whose extension a week's countdown is racing, when it is racing one: `"project"` for the week's own project's, `"account"` for the participant's own – which covers every week at once – or null when the week closes on its own.
+	 */
+	weekExtension: (weekId: number) => "account" | "project" | null
 	/** Hours logged across every session checkpoint in a week. */
 	weekHours: (weekId: number) => number
-	/**
-	 * Whether this week's hours may still count one sitting twice, because the overlap between a Lapse recording and Hackatime could not be checked.
-	 *
-	 * True means the number is unchecked, not wrong: the deduplication needs a Hackatime answer and there was not one. Anything showing a week total reads this so it can say which totals are provisional.
-	 */
-	overlapUnchecked: (weekId: number) => boolean
-	/**
-	 * Every hour on the record – journalled in entries and tracked some other way (Hackatime, a reviewer's adjustment) – summed across the season's weeks and every warm-up. Zero until the first session lands.
-	 */
-	totalHours: number
-	setOpenCheckpoint: (id: string | null) => void
-	setDoomscroller: (open: boolean) => void
-	/**
-	 * Record what this participant is here for, with the printer if the answer is a printer. Resolves to null once saved, or to the server's reason for refusing – the prompt that calls it is uncloseable, so a silent failure would strand somebody.
-	 */
-	setParticipantGoal: (goal: ParticipantGoal, printerGoalId?: string) => Promise<string | null>
-	/**
-	 * Mark the first checkpoint done, on the API's say-so. Patched rather than awaited so the goal prompt can take over from the onboarding modal without a frame of the tab tour in between.
-	 */
-	finishOnboarding: () => void
-	reset: () => void
-	/**
-	 * Admins only: wipe your own setup answers and run the whole first run again, setup checkpoint included. Resolves to an error message, or null.
-	 */
-	redoOnboarding: () => Promise<string | null>
-	/**
-	 * Admins only: every checkpoint on the trail opens, whatever its order, hours or dates say. Always false for anyone else.
-	 */
-	bypassLocks: boolean
-	setBypassLocks: (on: boolean) => void
+	weekOf: (weekId: number) => Week
+	/** The week a checkpoint belongs to: a season week, or a warm-up's own. */
+	weekOfCheckpoint: (checkpoint: Checkpoint) => Week
+	/** The day a week opens, e.g. "Monday, October 5", in the program's timezone. */
+	weekOpensOn: (weekId: number) => string | null
+	/** Whether a week's 11:59 PM Sunday close (or its extension) is behind us. */
+	weekPassed: (weekId: number) => boolean
+	/** Whether a week's Monday-midnight open is behind us. Nothing on it opens before. */
+	weekStarted: (weekId: number) => boolean
+	/** Whether a week is handed in – in review, approved or rejected – so its entries are final. */
+	weekSubmitted: (weekId: number) => boolean
+	/** The trail, cut to the tier of each week's project. */
+	weeks: Week[]
 }
 
 const StoreContext = createContext<Ctx | null>(null)
@@ -1546,15 +1546,15 @@ export function useStore(): Ctx {
 	return ctx
 }
 
-export type PrinterPace = {
-	/** The machine being saved for. Null when this participant is here for the grant, where there is no pace to miss. */
-	printer: PrinterGoal | null
-	/** Coins a design week has to earn to stay on that machine's pace. */
-	perWeekCoins: number
+export interface PrinterPace {
 	/**
 	 * Weeks before this one that closed without an approval, most recent first. Coins only come from an approved week, so these are coins nobody can earn back – which is the whole of the printer's fine print, and what both surfaces below need to say.
 	 */
 	missedWeeks: number[]
+	/** Coins a design week has to earn to stay on that machine's pace. */
+	perWeekCoins: number
+	/** The machine being saved for. Null when this participant is here for the grant, where there is no pace to miss. */
+	printer: PrinterGoal | null
 }
 
 /**

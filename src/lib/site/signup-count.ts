@@ -28,7 +28,7 @@ const FAILED_TTL_MS = 15_000
 /** Airtable's page size. Also the walk's memory bound: one page of addresses. */
 const PAGE_SIZE = 100
 
-type Cached = {
+interface Cached {
 	at: number
 	ttl: number
 	value: Promise<number | null>

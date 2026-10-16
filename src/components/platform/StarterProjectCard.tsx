@@ -4,13 +4,13 @@ import { IconBook, IconFile } from "@/components/platform/icons"
 import { Panel } from "@/components/platform/ui"
 import { cx } from "@/lib/cx"
 
-export type StarterProjectCardData = {
-	id: string
-	title: string
+export interface StarterProjectCardData {
 	description: string
+	guideUrl: string
+	id: string
 	parts: readonly string[]
 	repoUrl: string
-	guideUrl: string
+	title: string
 }
 
 const LINK =

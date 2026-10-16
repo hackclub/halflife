@@ -5,14 +5,14 @@ import { IconCheck, IconFilm } from "@/components/platform/icons"
 import { cx } from "@/lib/cx"
 
 /** One closing reel the maker already posted for this hand-in. */
-export type SubmissionReel = {
-	id: string
+export interface SubmissionReel {
 	caption: string
-	objectKey: string
-	videoUrl: string | null
-	thumbnailUrl: string | null
-	durationSeconds: number | null
 	createdAt: string
+	durationSeconds: number | null
+	id: string
+	objectKey: string
+	thumbnailUrl: string | null
+	videoUrl: string | null
 }
 
 /**

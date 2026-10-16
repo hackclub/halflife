@@ -11,7 +11,9 @@ import prisma from "@/lib/prisma"
 import { assertWeekStarted, getSubmissionAccess, isPhaseDecided, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
 import { hackatimeLinkSchema } from "@/lib/schemas/project"
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
 export const GET = withRoute(async (_req: Request, { params }: Params) => {
 	const gate = await requireSession()

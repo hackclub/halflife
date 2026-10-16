@@ -5,11 +5,11 @@ import { type ApiErrorBody, fail } from "@/lib/api"
 import { auth } from "@/lib/auth"
 import { getUserRolesIfExists, hasPermission, hasRole, type Permission, type Role } from "@/lib/permissions"
 
-export type SessionUser = {
-	id: string
+export interface SessionUser {
 	email: string
-	name: string | null
+	id: string
 	image: string | null
+	name: string | null
 	/** The IANA zone on file, so the shell only sends the browser's own when it differs. Null until one is captured (see app/api/me/timezone). */
 	timezone: string | null
 }

@@ -50,39 +50,32 @@ import { warmupPhaseOf } from "@/lib/warmup"
  */
 
 /** One checkpoint's state, in the shape the client store keeps them. */
-export type CheckpointSnapshot = {
-	done: boolean
+export interface CheckpointSnapshot {
+	artefacts: number
 	at?: number
 	caption?: string
-	minutes: number
-	artefacts: number
+	done: boolean
 	log: SessionLog[]
+	minutes: number
 }
 
-export type StoreSnapshot = {
-	/** What the participant is here for, or null if not yet answered. */
-	participantGoal: ParticipantGoal | null
-	/**
-	 * Who is signed in. Display fields only, never an email or a Slack id. `isAdmin` decides whether admin-only tools (redo onboarding) are offered; the routes behind them check the role themselves.
-	 */
-	viewer: { id: string; name: string; image: string | null; isAdmin: boolean }
+export interface StoreSnapshot {
+	/** The printer fund. Spendable on a printer and nothing else. */
+	bankedCoins: number
+	/** Ordinary coins. */
+	coins: number
 	experience: Experience | null
-	/** Whether the first checkpoint has been completed. */
-	onboardingDone: boolean
-	projects: Project[]
-	/**
-	 * Every theme project's id, by the design week it belongs to – including the ones not named yet.
-	 *
-	 * A row is made when its week's "create a project" checkpoint is opened (lib/provisioning), so a week that has not started has no id here; the client asks for one (ensureProject) when that checkpoint opens. `projects` leaves the unnamed ones out, or the trail would claim credit for a week that has only been looked at.
-	 */
-	projectIdByWeek: Record<number, string>
-	progress: Record<string, CheckpointSnapshot>
+	goalId: string
+	/** The server's clock when this was read, so the first paint agrees with it. */
+	now: number
 	/**
 	 * Hours a week has that did NOT come from its journal entries – Hackatime link time, and reviewer adjustments to it.
 	 *
 	 * Kept apart from the entries rather than folded into them because the two are used for different things. Reels are placed where the JOURNAL crossed a reel's mark, so that placement has to follow entries and nothing else; the gates ask what the week is really worth, which is everything. Folding Hackatime into an entry would move a reel to a node the participant never wrote.
 	 */
 	offBookHours: Record<number, number>
+	/** Whether the first checkpoint has been completed. */
+	onboardingDone: boolean
 	/**
 	 * Trail weeks whose phase has a recording and links whose tracked intervals could not be read, so the overlap between the two could not be subtracted and the week's hours may still count one sitting twice.
 	 *
@@ -90,11 +83,38 @@ export type StoreSnapshot = {
 	 */
 	overlapUncheckedWeeks: number[]
 	/**
+	 * Reel checkpoints whose reel was deleted and not yet re-recorded. While any are owed, they are the only checkpoints that open (lib/reel-gate).
+	 */
+	owedReels: string[]
+	/** What the participant is here for, or null if not yet answered. */
+	participantGoal: ParticipantGoal | null
+	/**
 	 * Where each week's phase stands with review, by trail week.
 	 *
 	 * Coins are minted when a reviewer approves a phase, not when hours are logged, so the balance below trails the work by a review. Anything that asks "is this week on pace" has to add back what the unreviewed weeks will bank – and to know which weeks those are, it needs this.
 	 */
 	phaseStatusByWeek: Record<number, PhaseStatus>
+	/** The program's IANA timezone, so the trail can name the day a week opens. */
+	programTimezone: string
+	progress: Record<string, CheckpointSnapshot>
+	/**
+	 * Every theme project's id, by the design week it belongs to – including the ones not named yet.
+	 *
+	 * A row is made when its week's "create a project" checkpoint is opened (lib/provisioning), so a week that has not started has no id here; the client asks for one (ensureProject) when that checkpoint opens. `projects` leaves the unnamed ones out, or the trail would claim credit for a week that has only been looked at.
+	 */
+	projectIdByWeek: Record<number, string>
+	projects: Project[]
+	streak: number
+	/**
+	 * Who is signed in. Display fields only, never an email or a Slack id. `isAdmin` decides whether admin-only tools (redo onboarding) are offered; the routes behind them check the role themselves.
+	 */
+	viewer: { id: string; name: string; image: string | null; isAdmin: boolean }
+	/**
+	 * Every warm-up project, by id: the one phase it is handed in as, the hours it has from somewhere other than its entries (Hackatime, reviewer adjustments), and when its journal closes. A maker may hold several, so each is addressed by its id – its entries and submit are `wu-<id>-…` keys in `progress` – never by a week number.
+	 */
+	warmups: Record<string, { phase: "design" | "build"; offBookHours: number; closesAt: number }>
+	/** When warm-ups stop taking work, epoch ms: 11:59 PM the night before week 1 opens. */
+	warmupsCloseAt: number
 	/**
 	 * When each trail week stops taking work, epoch ms: 11:59 PM on its Sunday in the program timezone, pushed later by any extension on the participant or on that week's project. The server refuses journal writes past it, so the trail greys the week out at the same moment.
 	 */
@@ -107,26 +127,6 @@ export type StoreSnapshot = {
 	 * When each trail week starts taking work, epoch ms: midnight at the start of its Monday in the program timezone. Nothing on a week opens before it, the first checkpoint included, and the server refuses the same writes.
 	 */
 	weekOpensAt: Record<number, number>
-	/** When warm-ups stop taking work, epoch ms: 11:59 PM the night before week 1 opens. */
-	warmupsCloseAt: number
-	/**
-	 * Every warm-up project, by id: the one phase it is handed in as, the hours it has from somewhere other than its entries (Hackatime, reviewer adjustments), and when its journal closes. A maker may hold several, so each is addressed by its id – its entries and submit are `wu-<id>-…` keys in `progress` – never by a week number.
-	 */
-	warmups: Record<string, { phase: "design" | "build"; offBookHours: number; closesAt: number }>
-	/** The program's IANA timezone, so the trail can name the day a week opens. */
-	programTimezone: string
-	/** The server's clock when this was read, so the first paint agrees with it. */
-	now: number
-	/** Ordinary coins. */
-	coins: number
-	/** The printer fund. Spendable on a printer and nothing else. */
-	bankedCoins: number
-	streak: number
-	goalId: string
-	/**
-	 * Reel checkpoints whose reel was deleted and not yet re-recorded. While any are owed, they are the only checkpoints that open (lib/reel-gate).
-	 */
-	owedReels: string[]
 }
 
 const EXPERIENCE: Record<HardwareExperience, Experience> = {
@@ -473,9 +473,9 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 	}
 }
 
-type SessionRow = {
-	hoursClaimed: number
+interface SessionRow {
 	hoursApproved: number | null
+	hoursClaimed: number
 }
 
 /** What a reviewer accepted, falling back to what was claimed. */

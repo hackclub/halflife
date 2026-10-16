@@ -36,32 +36,32 @@ import { fetchRemoteImage } from "@/lib/uploads/remote"
 
 const IMPORT_ACTION = AuditAction.ADMIN_IMPORT_AIRTABLE_PROJECT
 
-export type WarmupImportOutcome = {
-	recordId: string
-	email: string | null
-	status: "imported" | "already_imported" | "skipped" | "failed"
-	/** Why it was skipped or failed, in an operator's terms. */
-	reason: string | null
-	userId: string | null
-	themeProjectId: string | null
+export interface WarmupImportOutcome {
 	/** What the Ari send did, when the row got as far as one. */
 	ari: "sent" | "failed" | "not_configured" | "not_attempted"
+	email: string | null
+	/** Why it was skipped or failed, in an operator's terms. */
+	reason: string | null
+	recordId: string
+	status: "imported" | "already_imported" | "skipped" | "failed"
+	themeProjectId: string | null
+	userId: string | null
 }
 
-export type WarmupImportSummary = {
-	table: string
+export interface WarmupImportSummary {
+	alreadyImported: number
+	ariSent: number
+	failed: number
 	fetched: number
 	imported: number
-	alreadyImported: number
-	skipped: number
-	failed: number
-	ariSent: number
 	outcomes: WarmupImportOutcome[]
+	skipped: number
+	table: string
 }
 
-type ImportActor = {
-	id: string
+interface ImportActor {
 	email: string | null
+	id: string
 }
 
 // ─── Reading rows ────────────────────────────────────────────────────────────
@@ -129,22 +129,7 @@ function tierForRequestedFunding(usd: number | null): number {
 	return TIERS[TIERS.length - 1]?.id ?? 3
 }
 
-type ParsedWarmupRow = {
-	email: string
-	name: string | null
-	slackId: string | null
-	hackatimeId: string | null
-	title: string
-	description: string | null
-	repoUrl: string | null
-	journalUrl: string | null
-	playableUrl: string | null
-	lapseLinks: string | null
-	screenshotUrl: string | null
-	phase: Phase
-	hours: number | null
-	requestedFunding: number | null
-	createdAt: Date
+interface ParsedWarmupRow {
 	address: {
 		line1: string | null
 		line2: string | null
@@ -154,6 +139,21 @@ type ParsedWarmupRow = {
 		country: string | null
 		birthday: string | null
 	}
+	createdAt: Date
+	description: string | null
+	email: string
+	hackatimeId: string | null
+	hours: number | null
+	journalUrl: string | null
+	lapseLinks: string | null
+	name: string | null
+	phase: Phase
+	playableUrl: string | null
+	repoUrl: string | null
+	requestedFunding: number | null
+	screenshotUrl: string | null
+	slackId: string | null
+	title: string
 }
 
 function parseRow(record: AirtableRecord): { ok: true; row: ParsedWarmupRow } | { ok: false; reason: string } {

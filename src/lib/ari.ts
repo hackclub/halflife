@@ -98,7 +98,7 @@ async function buildDemoUrl(userId: string, buildWeek: number): Promise<string |
 	return publicUrlFor(reel?.objectKey ?? null)
 }
 
-type ShipBundle = {
+interface ShipBundle {
 	input: AriShipInput
 	submissionId: string | null
 }
@@ -749,7 +749,7 @@ export async function applyAriWebhook(event: AriWebhookEvent, deliveryId: string
 // ─── Reconciliation ──────────────────────────────────────────────────────────
 
 /** What a reconciliation pass did. The job and the manual backfill report the same shape. */
-export type ReconcileSummary = {
+export interface ReconcileSummary {
 	/** Hand-ins whose standing decision was applied. */
 	applied: number
 	/** Open hand-ins examined at Ari. */
@@ -771,7 +771,7 @@ export type ReconcileSummary = {
  *
  * `AriShipStatus` describes only the decision, which is why a reconciled decision used to reach the maker with no note to show (see `decisionEventFromStatus`). Ari's status response includes the review that carried the decision – its `note_to_maker` and `reviewer` – so the shape is declared here and read defensively: a response that omits `review` still applies the decision with the generic note it always did. Drop this and read `AriShipStatus.review` once `@hackclub/ari`'s own type carries it.
  */
-type AriShipStatusWithReview = AriShipStatus & {
+interface AriShipStatusWithReview extends AriShipStatus {
 	review?: {
 		audit_note?: string | null
 		note_to_maker?: string
@@ -922,19 +922,19 @@ export async function reconcileAriDecisions(
 // ─── Repairing a decision the status pass rebuilt ────────────────────────────
 
 /** What a repair pass did. */
-export type RepairSummary = {
+export interface RepairSummary {
 	/** Placeholder reviews examined. */
 	checked: number
-	/** Placeholders Ari still answers for with the same final decision. */
-	standing: number
-	/** Standing decisions Ari has no note for – the fallback is genuinely all there is. */
-	quiet: number
-	/** Placeholders whose ship has moved on or is not the one this review decided. */
-	skipped: number
 	/** Status reads that errored; retried on a later run. */
 	failed: number
+	/** Standing decisions Ari has no note for – the fallback is genuinely all there is. */
+	quiet: number
 	/** Placeholders rewritten with the reviewer's words (`commit` only). */
 	repaired: number
+	/** Placeholders whose ship has moved on or is not the one this review decided. */
+	skipped: number
+	/** Placeholders Ari still answers for with the same final decision. */
+	standing: number
 }
 
 /** The decision a stored result names, in Ari's vocabulary. */

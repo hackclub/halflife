@@ -7,7 +7,9 @@ import { getReviewQueue } from "@/lib/queries/review"
 
 export const dynamic = "force-dynamic"
 
-type Props = { searchParams: Promise<{ phase?: string; cursor?: string }> }
+interface Props {
+	searchParams: Promise<{ phase?: string; cursor?: string }>
+}
 
 export default async function ReviewQueuePage({ searchParams }: Props) {
 	const { user } = await requirePermissionPage(Permission.REVIEW_SUBMISSIONS)

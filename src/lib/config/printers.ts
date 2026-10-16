@@ -14,29 +14,29 @@ import { ENTRY_TIER } from "./tiers"
 
 export type PrinterKind = "bedslinger" | "corexy" | "resin" | "cnc"
 
-export type PrinterGoal = {
-	id: string
-	name: string
-	/** Sticker price, before anyone ships anything. */
-	price: number
-	/** What it actually costs us – shipping and tax included. */
-	shopPrice: number
+export interface PrinterGoal {
+	/** How the maker describes it on the product page `link` points at. */
+	blurb: string
 	/** What it costs in the shop. One coin is one dollar. */
 	coins: number
-	/** Hours a design week asks on tier 1 to land this by the end of the season. */
-	hoursPerWeek: number
-	/** Of those hours, the ones past the parts funding – the weekly earn pace. */
-	paceHours: number
 	/**
 	 * Coins a design week earns at that pace – pace hours at $5 each. A build week does not use this; it earns BUILD_WEEK_COINS / BUILD_WEEKS flat.
 	 */
 	coinsPerWeek: number
+	/** Hours a design week asks on tier 1 to land this by the end of the season. */
+	hoursPerWeek: number
+	id: string
 	kind: PrinterKind
 	link: string
+	name: string
 	/** Short flag for anything that is not a plain FDM printer. */
 	note?: string
-	/** How the maker describes it on the product page `link` points at. */
-	blurb: string
+	/** Of those hours, the ones past the parts funding – the weekly earn pace. */
+	paceHours: number
+	/** Sticker price, before anyone ships anything. */
+	price: number
+	/** What it actually costs us – shipping and tax included. */
+	shopPrice: number
 }
 
 /**
