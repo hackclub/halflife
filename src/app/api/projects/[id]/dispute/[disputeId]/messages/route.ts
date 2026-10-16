@@ -27,7 +27,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	const dispute = await prisma.reviewDispute.findFirst({
 		select: {
 			resolvedAt: true,
-			submission: { select: { phase: true, themeProject: { select: { theme: true, title: true } } } },
+			submission: { select: { id: true, phase: true, themeProject: { select: { theme: true, title: true } } } },
 		},
 		where: { id: disputeId, submission: { themeProject: { deletedAt: null, id, userId: gate.user.id } } },
 	})
@@ -43,6 +43,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 			note: message.body,
 			participant: gate.user.name ?? gate.user.email,
 			phase: dispute.submission.phase,
+			submissionId: dispute.submission.id,
 			themeProjectId: id,
 			title: projectDisplayTitle(dispute.submission.themeProject),
 		}),

@@ -78,6 +78,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		note,
 		participant: gate.user.name ?? gate.user.email,
 		phase,
+		submissionId,
 		themeProjectId: id,
 		title: projectDisplayTitle(project),
 	})
