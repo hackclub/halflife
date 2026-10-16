@@ -172,6 +172,51 @@ async function main() {
 	check("at the tier that was asked for", onboarded.projects[0]?.tier, 2)
 	check("the experience answer stuck", onboarded.experience, "little")
 
+	// ── Deduplication across projects ─────────────────────────────────────────
+	//
+	// A maker can journal and record a sitting in one week and link the tracked time on another. The recording and the link live on different rows, so nothing used to compare them and the sitting was paid for on both sides. The recording's own Hackatime project is what pairs them.
+	const crossT = 1_700_000_000_000
+	await prisma.hackatimeLink.updateMany({
+		data: {
+			cachedSpans: {
+				from: crossT / 1000 - 3600,
+				spans: [{ end: crossT / 1000 + 7200, start: crossT / 1000 }],
+				to: crossT / 1000 + 7200 + 3600,
+			},
+		},
+		where: { themeProjectId: pcb.id },
+	})
+	const cad = await prisma.themeProject.findFirstOrThrow({ where: { theme: Theme.CAD, userId: user.id } })
+	await prisma.workSession.create({
+		data: {
+			content: "Another week's sitting.",
+			effectiveDate: "2026-09-11",
+			hoursClaimed: 2,
+			phase: Phase.BUILD,
+			themeProjectId: cad.id,
+			timelapses: {
+				create: [
+					{
+						coveredSeconds: 7200,
+						hackatimeProject: "macropad",
+						provider: "lapse",
+						recordedAt: new Date(crossT),
+					},
+				],
+			},
+			title: "Sitting",
+		},
+	})
+
+	const crossSnap = await getStoreSnapshot(user.id)
+	check("a recording on another project deduplicates the link it names", crossSnap.offBookHours[1], 0)
+	check("and the overlap is not flagged as unchecked", crossSnap.overlapUncheckedWeeks.includes(1), false)
+
+	const { getHoursBreakdown } = await import("../src/lib/hours")
+	const crossBreakdown = await getHoursBreakdown(pcb.id, Phase.DESIGN, { live: false })
+	check("the ledger agrees: the link's overlap comes off", crossBreakdown.hackatimeHours, 0)
+	check("and the subtracted overlap is reported", crossBreakdown.hackatimeOverlapSeconds, 7200)
+
 	await prisma.user.delete({ where: { id: fresh.id } })
 	await prisma.user.delete({ where: { id: user.id } })
 

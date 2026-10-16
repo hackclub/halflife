@@ -132,7 +132,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	})
 
 	// The tracked intervals, warmed as the link lands rather than left to the next scheduled run. Linking is the moment a phase starts showing Hackatime hours, and for up to a quarter of an hour after it the phase would show the link's whole total with no recording overlap taken off – the same inflated figure this whole path exists to prevent, arriving at exactly the moment someone is looking at it. Off the response path, and swallowed: a failed warm is the cold cache the sync will retry.
-	after(() => warmLinkSpans([{ ...link, cachedSpans: null }]))
+	after(() => warmLinkSpans([{ ...link, cachedSpans: null, userId: project.userId }]))
 
 	return ok({ link }, { status: 201 })
 })
