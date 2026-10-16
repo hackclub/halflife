@@ -24,6 +24,7 @@
     "hours:backfill-overlap": "bun --conditions=react-server scripts/backfill-timelapse-overlap.ts",
     "reviews:backfill-identities": "bun --conditions=react-server scripts/backfill-review-identities.ts",
     "reviews:backfill-ari": "bun --conditions=react-server scripts/backfill-ari-reviews.ts",
+    "reviews:repair-ari": "bun --conditions=react-server scripts/repair-ari-decisions.ts",
     "import:stasis": "bun import/stasis.ts",
     "import:check": "bun import/check.ts",
     "import:dump": "bun import/dump.ts",

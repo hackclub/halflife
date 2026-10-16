@@ -743,14 +743,29 @@ export type ReconcileSummary = {
 }
 
 /**
+ * A ship's status, plus the final review the endpoint carries.
+ *
+ * `AriShipStatus` describes only the decision, which is why a reconciled decision used to reach the maker with no note to show (see `decisionEventFromStatus`). Ari's status response includes the review that carried the decision – its `note_to_maker` and `reviewer` – so the shape is declared here and read defensively: a response that omits `review` still applies the decision with the generic note it always did. Drop this and read `AriShipStatus.review` once `@hackclub/ari`'s own type carries it.
+ */
+type AriShipStatusWithReview = AriShipStatus & {
+	review?: {
+		audit_note?: string | null
+		note_to_maker?: string
+		reviewer?: { email?: string | null } | null
+	} | null
+}
+
+/**
  * A decision as the webhook names it, built from a ship's standing state.
  *
- * `ari.ships.status` reports only the decision, not the review that carried it: no note, no approved hours, no reviewer. So the review is stubbed with the fields the decision path ignores, and `finalizeReview` supplies the fallbacks it always does – the maker-facing note reads as Ari's generic sentence and an approval's hours come from the local hours roll-up. Everything the status endpoint does not carry is therefore reconstructed rather than replayed, which is why this is a recovery path for a delivery that never arrived, not the normal one.
+ * `ari.ships.status` reports the decision and the review's own words, but not the approved hours: an approval's hours come from the local hours roll-up, so a replayed approval is paid on Half Life's figure rather than Ari's. The note and the reviewer are read off the status when it carries them, so a decision applied here reaches the maker with the same sentence the webhook would have delivered instead of Ari's generic fallback; a response without a review still falls back to that sentence. This remains a recovery path for a delivery that never arrived, not the normal one.
  */
-function decisionEventFromStatus(status: AriShipStatus, standing: StandingDecision): DecisionEvent {
+function decisionEventFromStatus(status: AriShipStatusWithReview, standing: StandingDecision): DecisionEvent {
 	// The union discriminates on the decision, so each arm is built whole rather than spread from a common base – a spread would widen `event` and `decision` into independent unions the type no longer correlates.
 	const maker = { email: "", name: "", slack_id: null }
-	const review = { note_to_maker: "", reviewer: null }
+	const note = status.review?.note_to_maker?.trim() ?? ""
+	const reviewerEmail = status.review?.reviewer?.email ?? null
+	const review = { note_to_maker: note, reviewer: reviewerEmail ? { email: reviewerEmail, slack_id: null } : null }
 	const ship = {
 		authors: [],
 		demo_url: null,
@@ -837,7 +852,7 @@ export async function reconcileAriDecisions(
 	for (const submission of open) {
 		summary.checked += 1
 
-		let status: AriShipStatus
+		let status: AriShipStatusWithReview
 		try {
 			status = await ari().ships.status({ external_id: ariExternalId(submission.themeProjectId, submission.phase) })
 		} catch (err) {
@@ -875,6 +890,148 @@ export async function reconcileAriDecisions(
 				err,
 			)
 		}
+	}
+
+	return summary
+}
+
+// ─── Repairing a decision the status pass rebuilt ────────────────────────────
+
+/** What a repair pass did. */
+export type RepairSummary = {
+	/** Placeholder reviews examined. */
+	checked: number
+	/** Placeholders Ari still answers for with the same final decision. */
+	standing: number
+	/** Standing decisions Ari has no note for – the fallback is genuinely all there is. */
+	quiet: number
+	/** Placeholders whose ship has moved on or is not the one this review decided. */
+	skipped: number
+	/** Status reads that errored; retried on a later run. */
+	failed: number
+	/** Placeholders rewritten with the reviewer's words (`commit` only). */
+	repaired: number
+}
+
+/** The decision a stored result names, in Ari's vocabulary. */
+function decisionForResult(result: ReviewResult): StandingDecision["decision"] {
+	if (result === ReviewResult.APPROVED) return "approved"
+	if (result === ReviewResult.REJECTED) return "rejected"
+	return "changes"
+}
+
+/**
+ * Write a decision's own words back over the sentence the status pass left there.
+ *
+ * The review row is the record of the decision, so it is rewritten regardless of what came after; the project's standing comment is replaced only while it still shows the fallback, so a newer decision's words are never overwritten by a repair of an older one.
+ */
+async function writeStatusReviewNote(input: {
+	auditNote: string | null
+	note: string
+	phase: Phase
+	result: ReviewResult
+	reviewId: string
+	reviewerEmail: string | null
+	themeProjectId: string
+}): Promise<void> {
+	await prisma.$transaction(async tx => {
+		await tx.submissionReview.update({
+			data: {
+				feedback: input.note,
+				...(input.auditNote ? { reason: input.auditNote } : {}),
+				reviewerEmail: input.reviewerEmail,
+				// Ari names a decision by the reviewer's address, so the label follows the address exactly as the webhook path does (see `ariReviewerLabel`).
+				reviewerName: input.reviewerEmail ?? "Ari",
+			},
+			where: { id: input.reviewId },
+		})
+
+		const project = await tx.themeProject.findUnique({
+			select: { buildReviewComments: true, designReviewComments: true },
+			where: { id: input.themeProjectId },
+		})
+		const current = input.phase === Phase.DESIGN ? project?.designReviewComments : project?.buildReviewComments
+		if (current !== defaultFeedback(input.result)) return
+
+		await tx.themeProject.update({
+			data: input.phase === Phase.DESIGN ? { designReviewComments: input.note } : { buildReviewComments: input.note },
+			where: { id: input.themeProjectId },
+		})
+	})
+}
+
+/**
+ * Give a decision the status pass rebuilt the reviewer's words it should have had.
+ *
+ * `reconcileAriDecisions` applies a decision from `ari.ships.status`, and a response that carried only the decision left the review row and the project page showing `defaultFeedback` in place of the note. Ari's status response carries the review now, so a decision already applied can be repaired: the review's `feedback` (and the audit `reason`) and the project's standing comment are replaced with Ari's own words, and the reviewer is named.
+ *
+ * Only a review the status pass rebuilt is touched – `reviewerId` and `reviewerEmail` are both null and the feedback is exactly `defaultFeedback` of its result, which is a shape no person and no delivered webhook ever produces. A placeholder whose ship no longer answers with the same final decision, or whose newest ship is not the one this review decided, is left alone rather than rewritten from another state.
+ *
+ * Read-only unless `commit`, so a run reports what it would repair. This is a one-off for the decisions applied before the status response carried a review; `reconcileAriDecisions` keeps new ones correct on its own.
+ */
+export async function repairStatusDecisions(opts: { commit?: boolean; limit?: number } = {}): Promise<RepairSummary> {
+	const summary: RepairSummary = { checked: 0, failed: 0, quiet: 0, repaired: 0, skipped: 0, standing: 0 }
+	if (!isAriConfigured()) return summary
+
+	const placeholders = (
+		await prisma.submissionReview.findMany({
+			orderBy: { createdAt: "asc" },
+			select: {
+				feedback: true,
+				id: true,
+				result: true,
+				submission: { select: { ariSubmissionId: true, phase: true, themeProjectId: true } },
+			},
+			where: {
+				invalidated: false,
+				reviewerEmail: null,
+				reviewerId: null,
+				// Without a ship id there is nothing to ask Ari about, and the decision never came from it.
+				submission: { ariSubmissionId: { not: null } },
+			},
+		})
+	).filter(review => review.feedback === defaultFeedback(review.result))
+
+	const stubs = placeholders.slice(0, opts.limit ?? placeholders.length)
+	summary.checked = stubs.length
+
+	for (const review of stubs) {
+		const { ariSubmissionId, phase, themeProjectId } = review.submission
+
+		let status: AriShipStatusWithReview
+		try {
+			status = await ari().ships.status({ external_id: ariExternalId(themeProjectId, phase) })
+		} catch (err) {
+			summary.failed += 1
+			console.error(`[ari] repair: status failed for ${themeProjectId}:${phase}`, err)
+			continue
+		}
+
+		// The misread cases: a ship Ari no longer holds final, a decision that changed since, or the newest ship not being the one this review decided. The record is left as it stands rather than rewritten from a ship it never judged.
+		const standing = standingDecision(status)
+		if (!standing || standing.decision !== decisionForResult(review.result) || ariSubmissionId !== status.id) {
+			summary.skipped += 1
+			continue
+		}
+		summary.standing += 1
+
+		const note = status.review?.note_to_maker?.trim() ?? ""
+		if (!note) {
+			summary.quiet += 1
+			continue
+		}
+		if (!opts.commit) continue
+
+		await writeStatusReviewNote({
+			auditNote: status.review?.audit_note?.trim() || null,
+			note,
+			phase,
+			result: review.result,
+			reviewerEmail: status.review?.reviewer?.email ?? null,
+			reviewId: review.id,
+			themeProjectId,
+		})
+		summary.repaired += 1
 	}
 
 	return summary

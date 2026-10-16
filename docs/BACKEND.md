@@ -140,11 +140,19 @@ and it refuses an already-resolved submission.
   hand-in and applies any standing decision through the same `finalizeReview`
   the webhook calls. `ari-retry` runs a bounded pass every hour, and
   `pnpm reviews:backfill-ari` (dry run; `--commit` writes) drains a backlog in
-  one go. `status` carries the decision but not the note, hours or reviewer, so
-  a replayed approval is paid on Half Life's own hours roll-up; check the few
-  approvals rather than trusting them blind. Makers are not notified by a bulk
-  replay by default (`--announce` opts in) – mirror the row afterwards with
-  `airtable:backfill-review`.
+  one go. `status` carries the decision and the review's note and reviewer, so a
+  replayed decision reaches the maker with Ari's own words rather than its
+  generic sentence; the approved hours are still reconstructed from Half Life's
+  own roll-up, so check the few approvals rather than trusting them blind.
+  Makers are not notified by a bulk replay by default (`--announce` opts in) –
+  mirror the row afterwards with `airtable:backfill-review`.
+- **A decision pulled before `status` carried a review is repaired in place.**
+  Those decisions were recorded with the generic sentence in place of the note,
+  so `pnpm reviews:repair-ari` (dry run; `--commit` writes) reads each back from
+  Ari and rewrites the review row, the audit reason, the reviewer and the
+  project's standing comment. Only a placeholder the status pass left behind is
+  touched; `reconcileAriDecisions` keeps new decisions correct on its own, so
+  this is a one-off.
 
 ---
 
