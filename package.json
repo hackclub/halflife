@@ -35,6 +35,7 @@
     "dump-airtable-schema": "bun --conditions=react-server scripts/dump-airtable-schema.ts",
     "airtable:backfill-starters": "bun --conditions=react-server scripts/backfill-airtable-starters.ts",
     "airtable:backfill-review": "bun --conditions=react-server scripts/backfill-airtable-review.ts",
+    "airtable:backfill-project-week": "bun --conditions=react-server scripts/backfill-airtable-project-week.ts",
     "verify:onboarding": "bun --conditions=react-server scripts/verify-onboarding.ts",
     "verify:loops": "bun --conditions=react-server scripts/verify-loops.ts",
     "verify:loops-entries": "bun --conditions=react-server scripts/verify-loops-entries.ts",

@@ -90,9 +90,17 @@ export function reviewStatusForResult(result: ReviewResult): string {
 	return reviewStatusFor(after)
 }
 
+/**
+ * The `Loops - halfLifeProjectWeek` label for a scheduled week.
+ *
+ * A single select written with `typecast: false`, so the string has to already be an option in the base – and there is no option for a week that was never scheduled. The warm-up's week 0 therefore reads as null (left blank), not as a made-up label a write would then have to shed.
+ */
+export function projectWeekLabel(week: number): string | null {
+	return week >= 1 && week <= 10 ? `Week ${week}` : null
+}
+
 /** The fields for this submission, exactly as the table names them. */
-async function fieldsFor(themeProjectId: string, phase: Phase) {
-	const project = await prisma.themeProject.findUnique({
+async function fieldsFor(themeProjectId: string, phase: Phase) {	const project = await prisma.themeProject.findUnique({
 		include: {
 			bomItems: { select: { quantity: true, unitCostUsd: true } },
 			hackatimeLinks: { select: { hackatimeProject: true }, where: { phase } },
@@ -175,6 +183,7 @@ async function fieldsFor(themeProjectId: string, phase: Phase) {
 		lapseLinks: lapseLinks.join(", "),
 		playableUrl,
 		projectName: project.title,
+		projectWeek: projectWeekLabel(week) ?? undefined,
 		// The parts are funded once, at design. A build asks for no new money, so its row says $0 rather than repeating the design's request.
 		requestedFunding: phase === Phase.DESIGN ? bomTotal : 0,
 		reviewStatus: reviewStatusFor(phase === Phase.DESIGN ? project.designStatus : project.buildStatus),
