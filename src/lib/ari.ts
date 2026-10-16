@@ -743,14 +743,28 @@ export type ReconcileSummary = {
 }
 
 /**
+ * A ship's status, plus the final review the endpoint carries.
+ *
+ * `AriShipStatus` describes only the decision, which is why a reconciled decision used to reach the maker with no note to show (see `decisionEventFromStatus`). Ari's status response includes the review that carried the decision – its `note_to_maker` and `reviewer` – so the shape is declared here and read defensively: a response that omits `review` still applies the decision with the generic note it always did. Drop this and read `AriShipStatus.review` once `@hackclub/ari`'s own type carries it.
+ */
+type AriShipStatusWithReview = AriShipStatus & {
+	review?: {
+		note_to_maker?: string
+		reviewer?: { email?: string | null } | null
+	} | null
+}
+
+/**
  * A decision as the webhook names it, built from a ship's standing state.
  *
- * `ari.ships.status` reports only the decision, not the review that carried it: no note, no approved hours, no reviewer. So the review is stubbed with the fields the decision path ignores, and `finalizeReview` supplies the fallbacks it always does – the maker-facing note reads as Ari's generic sentence and an approval's hours come from the local hours roll-up. Everything the status endpoint does not carry is therefore reconstructed rather than replayed, which is why this is a recovery path for a delivery that never arrived, not the normal one.
+ * `ari.ships.status` reports the decision and the review's own words, but not the approved hours: an approval's hours come from the local hours roll-up, so a replayed approval is paid on Half Life's figure rather than Ari's. The note and the reviewer are read off the status when it carries them, so a decision applied here reaches the maker with the same sentence the webhook would have delivered instead of Ari's generic fallback; a response without a review still falls back to that sentence. This remains a recovery path for a delivery that never arrived, not the normal one.
  */
-function decisionEventFromStatus(status: AriShipStatus, standing: StandingDecision): DecisionEvent {
+function decisionEventFromStatus(status: AriShipStatusWithReview, standing: StandingDecision): DecisionEvent {
 	// The union discriminates on the decision, so each arm is built whole rather than spread from a common base – a spread would widen `event` and `decision` into independent unions the type no longer correlates.
 	const maker = { email: "", name: "", slack_id: null }
-	const review = { note_to_maker: "", reviewer: null }
+	const note = status.review?.note_to_maker?.trim() ?? ""
+	const reviewerEmail = status.review?.reviewer?.email ?? null
+	const review = { note_to_maker: note, reviewer: reviewerEmail ? { email: reviewerEmail, slack_id: null } : null }
 	const ship = {
 		authors: [],
 		demo_url: null,
@@ -837,7 +851,7 @@ export async function reconcileAriDecisions(
 	for (const submission of open) {
 		summary.checked += 1
 
-		let status: AriShipStatus
+		let status: AriShipStatusWithReview
 		try {
 			status = await ari().ships.status({ external_id: ariExternalId(submission.themeProjectId, submission.phase) })
 		} catch (err) {

@@ -11,7 +11,7 @@ import prisma from "../src/lib/prisma"
  *
  * Two limits to know before committing:
  *
- * - `ari.ships.status` carries the decision but not the note, the approved hours or the reviewer, so a replayed approval is paid on Half Life's own hours roll-up rather than Ari's figure, and its review row reads as Ari's generic sentence. Check the handful of approvals (`--commit` reports them) rather than trusting them blind.
+ * - `ari.ships.status` carries the decision and the review's note and reviewer, so a replayed decision reaches the maker with Ari's own words rather than its generic sentence. It does not carry the approved hours, though, so a replayed approval is paid on Half Life's own hours roll-up rather than Ari's figure. Check the handful of approvals (`--commit` reports them) rather than trusting them blind.
  * - Makers are not told by default. A backlog replay can decide hundreds of hand-ins at once and the live webhook already told the maker weeks ago; announcing a bulk run would be a flood. The Airtable mirror the notice depends on is `airtable:backfill-review`'s job. Pass `--announce` only for a small, deliberate run.
  *
  * Read-only unless `--commit`. Run with
