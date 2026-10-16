@@ -23,8 +23,15 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 	const links = await prisma.hackatimeLink.findMany({
 		// Least-recently refreshed first (never-refreshed before those), so a run that hits the batch bound still advances through the whole set instead of restarting at the same head of the list every 15 minutes.
 		orderBy: { cachedAt: { nulls: "first", sort: "asc" } },
-		// cachedSpans rides along so the warm below can tell a link that already answers from one whose cache was never written or was fetched for a narrower window.
-		select: { cachedSpans: true, hackatimeProject: true, id: true, phase: true, themeProjectId: true },
+		// cachedSpans rides along so the warm below can tell a link that already answers from one whose cache was never written or was fetched for a narrower window, and the owner's id so a recording attached under another project can be found and warmed for.
+		select: {
+			cachedSpans: true,
+			hackatimeProject: true,
+			id: true,
+			phase: true,
+			themeProject: { select: { userId: true } },
+			themeProjectId: true,
+		},
 		take: BATCH_SIZE,
 		where: { hoursApproved: null },
 	})
@@ -42,7 +49,16 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 	}
 
 	// The tracked intervals the deduplication depends on, warmed here rather than only when a recording is attached or a reviewer approves. Without this the seconds above are fresh while the spans stay cold, and every screen that reads the cache in between reports the same sitting twice – which is the complaint this run exists to end.
-	const spans = await warmLinkSpans(links)
+	const spans = await warmLinkSpans(
+		links.map(l => ({
+			cachedSpans: l.cachedSpans,
+			hackatimeProject: l.hackatimeProject,
+			id: l.id,
+			phase: l.phase,
+			themeProjectId: l.themeProjectId,
+			userId: l.themeProject.userId,
+		})),
+	)
 
 	const summary = {
 		durationMs: Date.now() - started,

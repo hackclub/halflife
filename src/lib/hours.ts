@@ -10,8 +10,10 @@ import {
 	type Interval,
 	overlapSeconds,
 	parseCachedSpans,
+	type RecordedWindow,
 	spanWindowFor,
 	timelapseWindow,
+	windowsForLink,
 } from "@/lib/hours-overlap"
 import { round2 } from "@/lib/money"
 import prisma from "@/lib/prisma"
@@ -68,6 +70,7 @@ export async function getHoursBreakdown(
 				approvedHours: true,
 				designApprovedHours: true,
 				user: { select: { hackatimeUserId: true } },
+				userId: true,
 			},
 			where: { id: themeProjectId },
 		}),
@@ -115,11 +118,9 @@ export async function getHoursBreakdown(
 	let hackatimeOverlapSeconds = 0
 	let hackatimeOverlapUnknown = false
 	const hackatimeUserId = project?.user.hackatimeUserId ?? null
-	// Only a phase that tracks BOTH tools can have anything to deduplicate, and when it cannot there is nothing to fetch – the spans of a link nobody's timelapse could overlap are a request nobody needs.
-	const dedupePossible = journalWindows.length > 0 && links.length > 0
-	const spanWindow = spanWindowFor(journalWindows)
-	const fromSeconds = spanWindow?.fromSeconds ?? 0
-	const toSeconds = spanWindow?.toSeconds ?? 0
+	// This maker's recordings on their OTHER projects and phases, fetched only when there is a link to deduplicate against – the only time they can matter. A clip attached in one week carries tracked time that may have been linked on another week's project, and the recording's own `hackatimeProject` is what pairs the two.
+	const elsewhere =
+		links.length === 0 || !project ? [] : await elsewhereRecordings(project.userId, themeProjectId, phase)
 
 	for (const link of links) {
 		// A reviewer override replaces the live value permanently, so there is nothing to fetch and nothing that can go stale. It is also a human decision made against a breakdown that already showed the overlap, so it stands untouched: the subtraction is for computed values.
@@ -145,9 +146,16 @@ export async function getHoursBreakdown(
 			linkSeconds = link.cachedSeconds ?? 0
 		}
 
-		// Subtract the minutes this link counted that a journal entry with a recording already claimed. Without this the same sitting is paid twice.
-		if (dedupePossible) {
-			const spans = await resolveSpans(link, { fromSeconds, hackatimeUserId, live, toSeconds })
+		// Subtract the minutes this link counted that a journal entry with a recording already claimed. Without this the same sitting is paid twice. A phase with no recording at all – beside the link or elsewhere under its name – has nothing to compare, and no request to make.
+		const linkWindows = windowsForLink(journalWindows, elsewhere, link.hackatimeProject)
+		const linkSpanWindow = spanWindowFor(linkWindows)
+		if (linkSpanWindow) {
+			const spans = await resolveSpans(link, {
+				fromSeconds: linkSpanWindow.fromSeconds,
+				hackatimeUserId,
+				live,
+				toSeconds: linkSpanWindow.toSeconds,
+			})
 			if (spans.stale) {
 				// Unknown, not zero: the honest answer here is that the overlap may exist. Nothing is subtracted, so the risk is the status quo double-count rather than an underpayment.
 				hackatimeOverlapUnknown = true
@@ -159,7 +167,7 @@ export async function getHoursBreakdown(
 					})
 				}
 			} else {
-				const overlap = capSubtraction(linkSeconds, overlapSeconds(journalWindows, spans.spans))
+				const overlap = capSubtraction(linkSeconds, overlapSeconds(linkWindows, spans.spans))
 				if (overlap > 0) {
 					hackatimeOverlapSeconds += overlap
 					linkSeconds -= overlap
@@ -168,7 +176,11 @@ export async function getHoursBreakdown(
 				if (spans.fetched) {
 					await prisma.hackatimeLink.update({
 						data: {
-							cachedSpans: { from: fromSeconds, spans: spans.spans, to: toSeconds },
+							cachedSpans: {
+								from: linkSpanWindow.fromSeconds,
+								spans: spans.spans,
+								to: linkSpanWindow.toSeconds,
+							},
 							spansFetchError: null,
 							spansFetchedAt: new Date(),
 						},
@@ -231,6 +243,35 @@ async function resolveSpans(
 }
 
 /**
+ * A maker's recordings on every project and phase except the one given, each with the Hackatime project it named.
+ *
+ * These are the windows that let a link find a recording made somewhere other than beside it. The exclusion is only an optimisation – `windowsForLink` would ignore the own-phase ones anyway once they are already in its own set – but it keeps this query to the rows that can actually add a window.
+ */
+async function elsewhereRecordings(
+	userId: string,
+	notThemeProjectId: string,
+	notPhase: Phase,
+): Promise<RecordedWindow[]> {
+	const rows = await prisma.sessionTimelapse.findMany({
+		select: { coveredSeconds: true, hackatimeProject: true, recordedAt: true },
+		where: {
+			workSession: {
+				deletedAt: null,
+				hoursSource: { not: HoursSource.HACKATIME_TRACKED },
+				NOT: { phase: notPhase, themeProjectId: notThemeProjectId },
+				themeProject: { deletedAt: null, userId },
+			},
+		},
+	})
+	const windows: RecordedWindow[] = []
+	for (const t of rows) {
+		const window = timelapseWindow(t.recordedAt, t.coveredSeconds)
+		if (window) windows.push({ hackatimeProject: t.hackatimeProject, window })
+	}
+	return windows
+}
+
+/**
  * Warm the cached spans for a phase's links, best effort.
  *
  * Called when a timelapse is attached, off the response path. Without it the deduplicated number only appears once something forces a live fetch – which today means the approval itself, so a reviewer would open a submission, read one Hackatime total, and watch a different one get approved underneath them. Warming the cache when the window it depends on actually changes keeps the review screen and the decision showing the same number.
@@ -241,7 +282,7 @@ export async function refreshOverlapSpans(themeProjectId: string, phase: Phase):
 	try {
 		const [project, sessions, links] = await Promise.all([
 			prisma.themeProject.findUnique({
-				select: { user: { select: { hackatimeUserId: true } } },
+				select: { user: { select: { hackatimeUserId: true } }, userId: true },
 				where: { id: themeProjectId },
 			}),
 			prisma.workSession.findMany({
@@ -254,18 +295,20 @@ export async function refreshOverlapSpans(themeProjectId: string, phase: Phase):
 			}),
 		])
 		const hackatimeUserId = project?.user.hackatimeUserId
-		if (!hackatimeUserId || links.length === 0) return
+		if (!hackatimeUserId || !project || links.length === 0) return
 
-		const windows = sessions.flatMap(s =>
+		const ownWindows = sessions.flatMap(s =>
 			s.timelapses.flatMap(t => {
 				const window = timelapseWindow(t.recordedAt, t.coveredSeconds)
 				return window ? [window] : []
 			}),
 		)
-		const spanWindow = spanWindowFor(windows)
-		if (!spanWindow) return
+		// The recordings on this maker's other projects and phases, so a link whose time was journalled in another week is warmed for the window that actually matters to it. Fetched once for the phase rather than once per link.
+		const elsewhere = await elsewhereRecordings(project.userId, themeProjectId, phase)
 
 		for (const link of links) {
+			const spanWindow = spanWindowFor(windowsForLink(ownWindows, elsewhere, link.hackatimeProject))
+			if (!spanWindow) continue
 			const result = await fetchProjectSpans(hackatimeUserId, link.hackatimeProject, spanWindow)
 			await prisma.hackatimeLink.update({
 				data: result.stale
@@ -289,6 +332,8 @@ export type SpansWarmTarget = {
 	themeProjectId: string
 	phase: Phase
 	hackatimeProject: string
+	/** The maker who owns the link, so a recording made under this project but attached elsewhere can be found and warmed for. */
+	userId: string
 	cachedSpans?: unknown
 }
 
@@ -297,25 +342,27 @@ export type SpansWarmTarget = {
  *
  * The deduplication rests entirely on cached spans, and until now only two moments ever wrote them: attaching a recording, and an approval that reads live. Every screen in between – the trail, the project page, the project cards – reads the cache, and finding it cold reports the same sitting twice with nothing on the page to say the check never ran. A participant who recorded while Lapse or Hackatime was briefly unreachable never got a warm cache at all, so their project showed the doubled total until they happened to be approved.
  *
- * Batched, because the sync walks every link every fifteen minutes and cannot afford a query each. The recording windows come back in one read for all the phases involved, and a Hackatime request is made only for a link that would otherwise answer from a cold cache or from one fetched for a narrower window than the one now being asked about.
+ * Batched, because the sync walks every link every fifteen minutes and cannot afford a query each. The recording windows come back in one read per maker rather than one per phase, because a recording attached in one week can be the window a link in another is measured against – so the query is by owner, not by (project, phase). A Hackatime request is made only for a link that would otherwise answer from a cold cache or from one fetched for a narrower window than the one now being asked about.
  */
 export async function warmLinkSpans(targets: readonly SpansWarmTarget[]): Promise<{ warmed: number; failed: number }> {
 	if (targets.length === 0) return { failed: 0, warmed: 0 }
 	const key = (projectId: string, phase: Phase) => `${projectId}/${phase}`
 	const projectIds = [...new Set(targets.map(t => t.themeProjectId))]
+	const userIds = [...new Set(targets.map(t => t.userId))]
 
 	const [sessions, projects] = await Promise.all([
 		prisma.workSession.findMany({
 			select: {
 				phase: true,
+				themeProject: { select: { userId: true } },
 				themeProjectId: true,
-				timelapses: { select: { coveredSeconds: true, recordedAt: true } },
+				timelapses: { select: { coveredSeconds: true, hackatimeProject: true, recordedAt: true } },
 			},
 			where: {
 				deletedAt: null,
 				// A HACKATIME_TRACKED entry claims nothing, so its recording is not one of the windows a link's time has to be measured against.
 				hoursSource: { not: HoursSource.HACKATIME_TRACKED },
-				OR: [...new Set(targets.map(t => ({ phase: t.phase, themeProjectId: t.themeProjectId })))],
+				themeProject: { deletedAt: null, userId: { in: userIds } },
 			},
 		}),
 		prisma.themeProject.findMany({
@@ -325,22 +372,33 @@ export async function warmLinkSpans(targets: readonly SpansWarmTarget[]): Promis
 	])
 
 	const windowsByPhase = new Map<string, Interval[]>()
+	const recordingsByUser = new Map<string, RecordedWindow[]>()
 	for (const s of sessions) {
 		const k = key(s.themeProjectId, s.phase)
 		const list = windowsByPhase.get(k) ?? []
+		const made = recordingsByUser.get(s.themeProject.userId) ?? []
 		for (const t of s.timelapses) {
 			const window = timelapseWindow(t.recordedAt, t.coveredSeconds)
-			if (window) list.push(window)
+			if (!window) continue
+			list.push(window)
+			made.push({ hackatimeProject: t.hackatimeProject, window })
 		}
 		windowsByPhase.set(k, list)
+		recordingsByUser.set(s.themeProject.userId, made)
 	}
 	const userByProject = new Map(projects.map(p => [p.id, p.user.hackatimeUserId]))
 
 	let warmed = 0
 	let failed = 0
 	for (const target of targets) {
-		const spanWindow = spanWindowFor(windowsByPhase.get(key(target.themeProjectId, target.phase)) ?? [])
-		// No recording in this phase means nothing to deduplicate, and no request worth making.
+		// The recordings beside the link, plus this maker's recordings elsewhere that name its project – the same union `getHoursBreakdown` deduplicates against, so a warmed cache answers the question that will actually be asked.
+		const windows = windowsForLink(
+			windowsByPhase.get(key(target.themeProjectId, target.phase)) ?? [],
+			recordingsByUser.get(target.userId) ?? [],
+			target.hackatimeProject,
+		)
+		const spanWindow = spanWindowFor(windows)
+		// No recording that could overlap this link means nothing to deduplicate, and no request worth making.
 		if (!spanWindow) continue
 		const cached = parseCachedSpans(target.cachedSpans)
 		// Already answers the question being asked: a cache fetched for a narrower window is not an answer, so only this exact case is skipped.
@@ -384,12 +442,14 @@ export type SessionRow = {
 	/**
 	 * The recording windows behind this entry, when it has any. A HACKATIME_TRACKED entry is ignored entirely – it claims nothing – so its timelapses are not read either.
 	 */
-	timelapses?: { recordedAt: Date | null; coveredSeconds: number | null }[]
+	timelapses?: { hackatimeProject?: string | null; recordedAt: Date | null; coveredSeconds: number | null }[]
 }
 
 export type LinkRow = {
 	hoursApproved: number | null
 	cachedSeconds: number | null
+	/** The Hackatime project's name, which is how a recording made elsewhere is paired with this link. */
+	hackatimeProject?: string
 	/** The link's tracked intervals, as cached on the row. See parseCachedSpans. */
 	cachedSpans?: unknown
 }
@@ -412,6 +472,10 @@ export function rollUpHours(
 	sessions: readonly SessionRow[],
 	links: readonly LinkRow[],
 	frozenTotal: number | null,
+	/**
+	 * This maker's recordings on their other projects and phases, each with the Hackatime project it named. Without it a sitting journalled in one week and tracked against a link in another is counted on both sides – the recording and the link never meet. Callers that load a whole user's rows in bulk already have these; a caller that does not can pass none, which is the old same-phase-only behaviour.
+	 */
+	elsewhere: readonly RecordedWindow[] = [],
 ): {
 	journalHours: number
 	hackatimeHours: number
@@ -446,12 +510,14 @@ export function rollUpHours(
 		}
 		let seconds = storedHours(link.cachedSeconds)
 		const cached = parseCachedSpans(link.cachedSpans)
-		if (journalWindows.length > 0) {
+		// The recordings beside the link and the ones elsewhere under its name. Empty means nothing to compare, and nothing to warn about.
+		const windows = windowsForLink(journalWindows, elsewhere, link.hackatimeProject ?? "")
+		if (windows.length > 0) {
 			// Unknown, not zero. The link may well carry the same minutes the recording already claimed; nothing here can say, and reporting a deduplicated-looking total either way would be a lie.
 			if (!cached) {
 				hackatimeOverlapUnknown = true
 			} else {
-				const overlap = capSubtraction(seconds, overlapSeconds(journalWindows, cached.spans))
+				const overlap = capSubtraction(seconds, overlapSeconds(windows, cached.spans))
 				hackatimeOverlapSeconds += overlap
 				seconds -= overlap
 			}

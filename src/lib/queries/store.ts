@@ -21,6 +21,7 @@ import {
 import { getBalances } from "@/lib/currency"
 import { displayName } from "@/lib/display-name"
 import { rollUpHours } from "@/lib/hours"
+import { type RecordedWindow, timelapseWindow } from "@/lib/hours-overlap"
 import { round2 } from "@/lib/money"
 import { getUserRoles, hasRole } from "@/lib/permissions"
 import prisma from "@/lib/prisma"
@@ -193,7 +194,13 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 					phase: true,
 					themeProjectId: true,
 					timelapses: {
-						select: { coveredSeconds: true, externalId: true, objectKey: true, recordedAt: true },
+						select: {
+							coveredSeconds: true,
+							externalId: true,
+							hackatimeProject: true,
+							objectKey: true,
+							recordedAt: true,
+						},
 					},
 					title: true,
 				},
@@ -204,6 +211,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 				select: {
 					cachedSeconds: true,
 					cachedSpans: true,
+					hackatimeProject: true,
 					hoursApproved: true,
 					phase: true,
 					themeProjectId: true,
@@ -234,6 +242,16 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 			getOwedReelKeys(userId),
 			getUserRoles(userId),
 		],
+	)
+
+	// Every recording this maker has, whatever project or phase it was attached to, each with the Hackatime project it named. A link finds the ones made under its own project by that name (`windowsForLink`), which is how a clip journalled in one week is deduplicated against a link in another.
+	const recordings: RecordedWindow[] = sessions.flatMap(s =>
+		s.hoursSource === HoursSource.HACKATIME_TRACKED
+			? []
+			: s.timelapses.flatMap(t => {
+					const window = timelapseWindow(t.recordedAt, t.coveredSeconds)
+					return window ? [{ hackatimeProject: t.hackatimeProject, window }] : []
+				}),
 	)
 
 	const byTheme = new Map(projects.map(p => [p.theme, p]))
@@ -323,7 +341,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 
 			// What the phase is worth, minus what its entries already account for. `rollUpHours` is the function the ledger uses, so the trail's gates and the reviewer's totals cannot answer this differently.
 			const frozen = phase === Phase.DESIGN ? project.designApprovedHours : project.approvedHours
-			const { effectiveHours, hackatimeOverlapUnknown } = rollUpHours(phaseSessions, phaseLinks, frozen)
+			const { effectiveHours, hackatimeOverlapUnknown } = rollUpHours(phaseSessions, phaseLinks, frozen, recordings)
 			// A HACKATIME_TRACKED entry contributes zero to `effectiveHours`, so it must contribute zero here too, or the subtraction double-counts it.
 			const entryHours = phaseSessions.reduce(
 				(n, s) => n + (s.hoursSource === HoursSource.HACKATIME_TRACKED ? 0 : minutesOf(s) / 60),

@@ -613,6 +613,7 @@ async function bodies() {
 		parseCachedSpans,
 		spanWindowFor,
 		timelapseWindow,
+		windowsForLink,
 	} = await import("../src/lib/hours-overlap")
 
 	const spanList = (...spans: { start_time: number; end_time: number }[]) => ({ spans })
@@ -762,6 +763,57 @@ async function bodies() {
 		"rollup · an overridden link is never an unchecked overlap",
 		rollUpHours(oneEntry, [{ cachedSeconds: 7200, cachedSpans: null, hoursApproved: 5 }], null).hackatimeOverlapUnknown
 			=== false,
+	)
+
+	// The reported case: a maker journals and records a sitting in one project and links the tracked time on another. The recording and the link live on different rows, so nothing compared them and the sitting was paid for on both sides. The recording's own Hackatime project is what pairs them.
+	const crossLink = {
+		cachedSeconds: 7200,
+		cachedSpans: { from: 1_699_000_000, spans: [{ end: 1_700_007_200, start: 1_700_000_000 }], to: 1_701_000_000 },
+		hackatimeProject: "firmware",
+		hoursApproved: null,
+	}
+	const crossWindow = { hackatimeProject: "firmware", window: { end: 1_700_007_200, start: 1_700_000_000 } }
+
+	const crossProject = rollUpHours([], [crossLink], null, [crossWindow])
+	check(
+		"rollup · a recording on another week's project subtracts from the link it names",
+		crossProject.hackatimeHours === 0 && crossProject.hackatimeOverlapSeconds === 7200,
+		`got hackatime ${crossProject.hackatimeHours}, overlap ${crossProject.hackatimeOverlapSeconds}`,
+	)
+
+	// A recording that names a DIFFERENT project is not this link's to subtract. It may still intersect by coincidence, but the maker told us what was tracked while it ran.
+	const crossOther = rollUpHours([], [crossLink], null, [
+		{ hackatimeProject: "breadboard-computer", window: crossWindow.window },
+	])
+	check(
+		"rollup · a recording naming a different project does not subtract",
+		crossOther.hackatimeHours === 2 && crossOther.hackatimeOverlapSeconds === 0,
+		`got hackatime ${crossOther.hackatimeHours}`,
+	)
+
+	// Cold cache, across projects: the overlap cannot be measured, so it is flagged rather than silently left in or silently removed.
+	const crossCold = rollUpHours([], [{ ...crossLink, cachedSpans: null }], null, [crossWindow])
+	check(
+		"rollup · a cross-week recording with a cold cache is reported as unchecked",
+		crossCold.hackatimeOverlapUnknown === true && crossCold.computedTotal === 2,
+		`unknown=${crossCold.hackatimeOverlapUnknown}, total=${crossCold.computedTotal}`,
+	)
+
+	// The window selection itself: the own phase's recordings always count, and a recording elsewhere counts only under this link's name.
+	const ownWindow = { end: 100, start: 0 }
+	const namedElsewhere = { hackatimeProject: "firmware", window: { end: 200, start: 150 } }
+	const otherElsewhere = { hackatimeProject: "macropad", window: { end: 400, start: 350 } }
+	check(
+		"overlap · a link always takes its own phase's recordings",
+		windowsForLink([ownWindow], [], "firmware").length === 1,
+	)
+	check(
+		"overlap · a recording elsewhere counts only under the link's own project name",
+		windowsForLink([], [namedElsewhere, otherElsewhere], "firmware").length === 1,
+	)
+	check(
+		"overlap · a recording elsewhere under another name is left out",
+		windowsForLink([], [otherElsewhere], "firmware").length === 0,
 	)
 
 	// A caller that narrows its Prisma select hands over `undefined` where a number was expected, and `undefined !== null` used to read as an override and add NaN to the total. NaN is the worst shape of wrong here: it renders as "NaNh" in one place and leaves the rest of the phase looking fine.
