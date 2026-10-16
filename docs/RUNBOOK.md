@@ -44,7 +44,11 @@ Coolify.
    down) leaves hand-ins decided in Ari and still pending here. `ari-retry`
    reconciles that every run, and
    `bun --conditions=react-server scripts/backfill-ari-reviews.ts [--commit]`
-   drains it in one pass. See [BACKEND.md](./BACKEND.md) → Reviewing with Ari.
+   drains it in one pass. Decisions applied before `status` carried the review
+   were recorded with Ari's generic sentence instead of the reviewer's; repair
+   those in place with
+   `bun --conditions=react-server scripts/repair-ari-decisions.ts [--commit]`.
+   See [BACKEND.md](./BACKEND.md) → Reviewing with Ari.
 
 3. **Create the project and database.**
 

@@ -146,6 +146,13 @@ and it refuses an already-resolved submission.
   own roll-up, so check the few approvals rather than trusting them blind.
   Makers are not notified by a bulk replay by default (`--announce` opts in) –
   mirror the row afterwards with `airtable:backfill-review`.
+- **A decision pulled before `status` carried a review is repaired in place.**
+  Those decisions were recorded with the generic sentence in place of the note,
+  so `pnpm reviews:repair-ari` (dry run; `--commit` writes) reads each back from
+  Ari and rewrites the review row, the audit reason, the reviewer and the
+  project's standing comment. Only a placeholder the status pass left behind is
+  touched; `reconcileAriDecisions` keeps new decisions correct on its own, so
+  this is a one-off.
 
 ---
 
