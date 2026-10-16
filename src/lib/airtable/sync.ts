@@ -100,7 +100,8 @@ export function projectWeekLabel(week: number): string | null {
 }
 
 /** The fields for this submission, exactly as the table names them. */
-async function fieldsFor(themeProjectId: string, phase: Phase) {	const project = await prisma.themeProject.findUnique({
+async function fieldsFor(themeProjectId: string, phase: Phase) {
+	const project = await prisma.themeProject.findUnique({
 		include: {
 			bomItems: { select: { quantity: true, unitCostUsd: true } },
 			hackatimeLinks: { select: { hackatimeProject: true }, where: { phase } },
