@@ -33,11 +33,11 @@ export const LOOPS_FIELDS = {
 	email: fieldKey(RSVP.fields.email),
 	lastEntryAt: "Loops - halfLifeLastEntryAt",
 	lastLoginAt: "Loops - halfLifeLastLoginAt",
+	// Ticked when the week's project has been submitted (any PhaseSubmission filed for that scheduled week). Written immediately on submit (see syncLoopsWeekSubmitted) and healed hourly by this sync, so Loops can trigger off a hand-in without waiting for the next run.
+	submitted: (n: number) => `Loops - halfLifeWeek${n}ProjectSubmitted`,
 	// The join key, when the base has it. See the note above.
 	userId: fieldKey(RSVP.fields.userId),
 	week: (n: number) => `Loops - halfLifeWeek${n}Project`,
-	// Ticked when the week's project has been submitted (any PhaseSubmission filed for that scheduled week). Written immediately on submit (see syncLoopsWeekSubmitted) and healed hourly by this sync, so Loops can trigger off a hand-in without waiting for the next run.
-	submitted: (n: number) => `Loops - halfLifeWeek${n}ProjectSubmitted`,
 } as const
 
 const WEEKS = Array.from({ length: 10 }, (_, i) => i + 1)

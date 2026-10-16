@@ -134,7 +134,9 @@ async function main() {
 		}
 	}
 
-	console.log(`matched: ${matched}, unmatched (no Signups row): ${unmatched}, aligned: ${aligned}, to update: ${updates.size}`)
+	console.log(
+		`matched: ${matched}, unmatched (no Signups row): ${unmatched}, aligned: ${aligned}, to update: ${updates.size}`,
+	)
 	for (const [id, fields] of [...updates].slice(0, 10)) console.log(`  ${id}  →  ${JSON.stringify(fields)}`)
 	if (updates.size > 10) console.log(`  …and ${updates.size - 10} more`)
 
