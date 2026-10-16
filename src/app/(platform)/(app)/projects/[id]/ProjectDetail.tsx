@@ -405,6 +405,66 @@ function ReviewState({
 }
 
 /**
+ * What a returned phase needs, before anything else on the page.
+ *
+ * A return is the one review state a maker is expected to act on, but its note used to live only in the Review block below the project's own details – far enough down that "Design needs changes" on the projects page read as a change the project page never explained. This puts the same note and the resubmit action at the very top, so opening a project answers the question its card raised.
+ *
+ * Only phases returned for changes: an approved phase has nothing left to do and a rejected one cannot be resubmitted, so both keep their reason in the Review block below.
+ */
+function ChangesNeeded({
+	phases,
+	projectId,
+	warmup,
+	weekFor,
+}: {
+	phases: ProjectPageData["phases"]
+	projectId: string
+	/** A warm-up project's submit sheet lives on week 0, whichever its phase. */
+	warmup: boolean
+	weekFor: (phase: "DESIGN" | "BUILD") => number
+}) {
+	const { setOpenCheckpoint } = useStore()
+	const returned = phases.filter(p => p.status === "update_requested")
+	if (returned.length === 0) return null
+
+	return (
+		<Panel className="mt-5 bg-gold-pale/70 px-5 py-5 sm:px-6" radius={20} tone="gold">
+			<div className="flex items-start gap-2.5">
+				<IconWarning className="mt-0.5 shrink-0 text-[1.15rem] text-gold-ink" />
+				<div className="grid min-w-0 flex-1 gap-5">
+					{returned.map(p => (
+						<div className="min-w-0" key={p.phase}>
+							<p className="text-[1.05rem] leading-tight font-extrabold text-navy">
+								{p.phase === "DESIGN" ? "Design" : "Build"} needs changes
+							</p>
+							{p.comments ? (
+								// Pre-lined, so a reviewer's own line breaks survive: their note is often a list, and reflowing it into one paragraph loses which request ended and the next began.
+								<p className="mt-1.5 text-[0.92rem] leading-relaxed whitespace-pre-line [overflow-wrap:anywhere] text-navy">
+									{p.comments}
+								</p>
+							) : (
+								<p className="hand mt-1.5 text-[0.9rem] leading-relaxed text-navy-soft">
+									no reason was recorded with this decision. If that looks wrong, dispute it from the Review section
+									below.
+								</p>
+							)}
+							<Button
+								className="mt-3"
+								onClick={() => setOpenCheckpoint(warmup ? `wu-${projectId}-submit` : `w${weekFor(p.phase)}-submit`)}
+								size="sm"
+								variant="solid"
+							>
+								I&apos;ve made these changes – resubmit
+							</Button>
+						</div>
+					))}
+				</div>
+			</div>
+		</Panel>
+	)
+}
+
+/**
  * The guide a starter project is built from. Choosing a starter happens once, on the step that names the project, and the card carrying its guide is gone the moment that step is left – but the guide is what the whole build is worked from, so the project page keeps the door to it open.
  *
  * Only a starter whose id is still in the config has one: the imported starters predate the config and carry no guide URL, so they show nothing rather than a dead link.
@@ -491,6 +551,9 @@ export function ProjectDetail({ id, data }: { id: string; data: ProjectPageData 
 	return (
 		<div className="mx-auto w-full max-w-[960px] px-4 pt-6 pb-10 sm:px-8">
 			<BackLink />
+
+			{/* ---------- what a return asks for, first ---------- */}
+			<ChangesNeeded phases={data.phases} projectId={project.id} warmup={warmup} weekFor={weekFor} />
 
 			{/* ---------- the project itself ---------- */}
 			{/* Sized by its own width, not the viewport's: the rails either side of
