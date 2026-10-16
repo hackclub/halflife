@@ -18,12 +18,15 @@ import type { Week } from "@/lib/types"
  *
  * - **No hydration mismatch.** The server render and the browser's first paint have to agree, and the server's clock is not the browser's, so the figures are placeholders until an effect has run. `--` holds the width a real figure takes, so nothing on the trail jumps when the count lands.
  * - **Ends cleanly.** At zero the store's own week timer flips `weekPassed` (store.tsx re-arms its clock for the next boundary), the gate above closes and the plate goes away – rather than counting up into negative days, which is what a tab left open overnight would otherwise show.
+ * - **Says whose deadline it is.** A week can be open past its own Sunday because of an extension, and the extension's target week is not always the week the plate sits under: an account-wide extension reaches every week, so a later week's plate would otherwise name a day that is not its own Sunday. When the deadline is an extension the plate says so – the week's own project's by name, the account's as "your extension" – rather than claiming the week closes then.
  *
  * The figures are split into units rather than printed as one string so each is its own column with its label beneath, the figure-leads/words-follow shape the site's countdown uses. They are hidden from a screen reader, which gets the same count in words plus the deadline itself rather than four numbers changing every second.
  */
 export function WeekCountdown({ week }: { week: Week }) {
-	const { weekStarted, weekPassed, weekClosesAtMs, weekDeadline } = useStore()
+	const { weekStarted, weekPassed, weekClosesAtMs, weekDeadline, weekExtension } = useStore()
 	const closesAt = weekClosesAtMs(week.id)
+	// Whether this deadline is the week's own Sunday or an extension of it, and whose: the week's own project's, or the account's (which reaches every week, so a later week's plate would otherwise read as that week closing on a day that is not its Sunday).
+	const extension = weekExtension(week.id)
 	const ongoing = weekStarted(week.id) && !weekPassed(week.id) && closesAt !== null
 
 	// Null until mounted, then the ms to the close, refreshed on the tick.
@@ -42,6 +45,13 @@ export function WeekCountdown({ week }: { week: Week }) {
 	const parts = remaining === null ? null : countdownParts(remaining)
 	const deadline = weekDeadline(week.id)
 	const { text, pill } = onAccent(week.accent)
+
+	const label =
+		extension === "project"
+			? `Week ${week.id} extension ends in`
+			: extension === "account"
+				? "Your extension ends in"
+				: `Week ${week.id} closes in`
 
 	return (
 		<div className="mt-8 flex justify-center px-1">
@@ -62,7 +72,7 @@ export function WeekCountdown({ week }: { week: Week }) {
 				<div className="relative">
 					<p className="label flex items-center justify-center gap-1.5">
 						<IconClock aria-hidden="true" className="text-[0.95rem]" />
-						Week {week.id} closes in
+						{label}
 					</p>
 					<div
 						aria-hidden="true"
@@ -85,13 +95,17 @@ export function WeekCountdown({ week }: { week: Week }) {
 					{/* The count in words, and the moment it is counting to: a screen
               reader gets both, and neither is four changing figures. */}
 					<p className="sr-only">
-						{parts === null
-							? `Week ${week.id} closes ${deadline ?? "this week"}.`
-							: `${parts.days} days and ${parts.hours} hours left in week ${week.id}, which closes ${deadline ?? "this week"}.`}
+						{extension === null
+							? parts === null
+								? `Week ${week.id} closes ${deadline ?? "this week"}.`
+								: `${parts.days} days and ${parts.hours} hours left in week ${week.id}, which closes ${deadline ?? "this week"}.`
+							: parts === null
+								? `${extension === "project" ? `Week ${week.id}'s` : "Your"} extension ends ${deadline ?? "this week"}.`
+								: `${parts.days} days and ${parts.hours} hours left on ${extension === "project" ? `week ${week.id}'s` : "your"} extension, which ends ${deadline ?? "this week"}.`}
 					</p>
 					{deadline && (
 						<p className="label mt-2" style={{ background: pill, borderRadius: 999, padding: "0.3rem 0.9rem" }}>
-							closes {deadline}
+							{extension === null ? "closes" : "extension ends"} {deadline}
 						</p>
 					)}
 				</div>

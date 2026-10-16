@@ -279,6 +279,10 @@ type Ctx = {
 	 * The same close as a moment rather than a phrase, epoch ms, its extension included. `weekDeadline` is for writing it down; a countdown has to count to it, and there is no arithmetic to do on a formatted date.
 	 */
 	weekClosesAtMs: (weekId: number) => number | null
+	/**
+	 * Whose extension a week's countdown is racing, when it is racing one: `"project"` for the week's own project's, `"account"` for the participant's own – which covers every week at once – or null when the week closes on its own.
+	 */
+	weekExtension: (weekId: number) => "account" | "project" | null
 	/** When warm-ups stop taking work: 11:59 PM the night before week 1 opens. */
 	warmupDeadline: string
 	/** Whether a week is handed in – in review, approved or rejected – so its entries are final. */
@@ -439,6 +443,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		},
 		[facts.weekClosesAt],
 	)
+	const weekExtension = useCallback((weekId: number) => facts.weekExtensions[weekId] ?? null, [facts.weekExtensions])
 	const warmupDeadline = formatDeadline(facts.warmupsCloseAt, facts.programTimezone)
 
 	/** Where a week stands with review: draft, in_review, update_requested, approved or rejected. */
@@ -1521,6 +1526,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		warmupWeekOf,
 		weekClosesAtMs,
 		weekDeadline,
+		weekExtension,
 		weekHours,
 		weekOf,
 		weekOfCheckpoint,

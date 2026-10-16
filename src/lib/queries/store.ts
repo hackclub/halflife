@@ -99,6 +99,10 @@ export type StoreSnapshot = {
 	 */
 	weekClosesAt: Record<number, number>
 	/**
+	 * Which weeks are racing an extension rather than their own Sunday, and whose: `"project"` when that week's own project carries it, `"account"` when the participant's own extension covers it – and that one reaches every week at once, which is exactly what makes a countdown on a later week look like it names the wrong day. Weeks that close on their own are absent.
+	 */
+	weekExtensions: Record<number, "account" | "project">
+	/**
 	 * When each trail week starts taking work, epoch ms: midnight at the start of its Monday in the program timezone. Nothing on a week opens before it, the first checkpoint included, and the server refuses the same writes.
 	 */
 	weekOpensAt: Record<number, number>
@@ -369,15 +373,22 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 
 	const closes: Record<number, number> = {}
 	const opens: Record<number, number> = {}
+	// Which of those closes an extension pushed out, and whose it is. A project extension only reaches its own week; the account's reaches every week, so a later week's countdown would otherwise read as that week's own close.
+	const weekExtensions: Record<number, "account" | "project"> = {}
 	for (let week = 1; week <= TOTAL_WEEKS; week += 1) {
 		opens[week] = weekOpensAt(settings, week).getTime()
 		const theme = scheduleForWeek(week)?.theme.id
 		const project = theme ? byTheme.get(theme) : undefined
-		closes[week] = effectiveWeekClose(
-			weekClosesAt(settings, week),
+		const scheduled = weekClosesAt(settings, week).getTime()
+		const projectExtension = project?.submissionExtensionUntil?.getTime() ?? null
+		const close = effectiveWeekClose(
+			new Date(scheduled),
 			user.submissionExtensionUntil,
 			project?.submissionExtensionUntil,
 		).getTime()
+		closes[week] = close
+		if (close > scheduled)
+			weekExtensions[week] = projectExtension !== null && projectExtension === close ? "project" : "account"
 	}
 
 	return {
@@ -439,6 +450,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 		warmups,
 		warmupsCloseAt: weekClosesAt(settings, WARMUP_WEEK_ID).getTime(),
 		weekClosesAt: closes,
+		weekExtensions,
 		weekOpensAt: opens,
 	}
 }
