@@ -5,9 +5,11 @@ import prisma from "../src/lib/prisma"
 /**
  * Give decisions the status pass rebuilt the reviewer's words they should have had.
  *
- * A decision the webhook never delivered is applied from `ari.ships.status` by `reconcileAriDecisions` (`ari-retry`) or by `reviews:backfill-ari`. An older status response carried only the decision, so those decisions were recorded with `defaultFeedback` in place of the note and the maker read "Ari asked for changes before this can be approved." where the reviewer's own words belonged. The status response carries the review now, and this walks the placeholder decisions already in the database and replaces the fallback with what the reviewer actually wrote – the review row, the audit reason, the reviewer's address, and the project's standing comment.
+ * A decision the webhook never delivered is applied from `ari.ships.status` by `reconcileAriDecisions` (`ari-retry`) or by `reviews:backfill-ari`. A status response that carries only the decision leaves those decisions recorded with `defaultFeedback` in place of the note, so the maker reads "Ari asked for changes before this can be approved." where the reviewer's own words belonged. This walks the placeholder decisions already in the database and, when the status response includes the final review, replaces the fallback with what the reviewer wrote – the review row, the audit reason, the reviewer's address, and the project's standing comment.
  *
- * Only a decision the status pass rebuilt is touched, matched by the exact placeholder it left behind (see `repairStatusDecisions`). A decision a person or a delivered webhook made is never rewritten, and a placeholder whose ship has since moved on, changed its decision or been superseded by a newer ship is left alone. `reconcileAriDecisions` keeps decisions applied from now on correct on its own, so this is a one-off for the ones already applied.
+ * Ari's status response does not carry the review today, so this reports every placeholder as `quiet` and repairs nothing until either the endpoint is extended or the decision is resent. A resend from Ari's review screen arrives as an ordinary delivery and repairs the placeholder on its own, via `adoptStatusPlaceholder` in `lib/ari.ts`.
+ *
+ * Only a decision the status pass rebuilt is touched, matched by the exact placeholder it left behind (see `repairStatusDecisions`). A decision a person or a delivered webhook made is never rewritten, and a placeholder whose ship has since moved on, changed its decision or been superseded by a newer ship is left alone. `reconcileAriDecisions` keeps decisions applied from now on correct on its own.
  *
  * Read-only unless `--commit` is passed, so a run reports what it would repair. Run with
  * `bun --conditions=react-server scripts/repair-ari-decisions.ts [--commit] [--limit=N]`.
@@ -34,6 +36,11 @@ async function main() {
 	console.log(
 		`checked ${summary.checked} placeholder decision(s): ${summary.standing} still final at Ari, ${summary.quiet} with no note to show, ${summary.skipped} skipped, ${summary.failed} failed to read`,
 	)
+	if (summary.standing > 0 && summary.quiet === summary.standing) {
+		console.log(
+			"Ari's /status carries no review yet, so there is no note to read. A resend of each decision from Ari's review screen repairs it as the delivery arrives (see lib/ari.ts).",
+		)
+	}
 	if (!commit) {
 		console.log(
 			`Dry run. Pass --commit to rewrite the ${summary.standing - summary.quiet} placeholder(s) that have a note.`,
