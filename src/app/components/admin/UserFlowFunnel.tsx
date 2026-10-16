@@ -35,10 +35,9 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 	// Clamp a drop-off share to a 0-100 blend weight.
 	const weightOf = (dropOffPct: number) => Math.min(100, Math.max(0, dropOffPct))
 
-	// Heat of a stage, as a background from flow-through blue to total-loss red. Mixed in oklch so the middle stays vivid rather than washing out through grey the way an srgb blend does. `backgroundColor` first so browsers without color-mix still get the cold end rather than nothing.
+	// Heat of a stage, as a background from flow-through blue to total-loss red. Mixed in oklch so the middle stays vivid rather than washing out through grey the way an srgb blend does. One property, `backgroundColor`, so there is no fallback to be written in an order React could undo; a browser with no color-mix leaves the band unfilled, where the headcount pill and the captions still read the stage – the same stance `heatInk` takes with the connector text.
 	const heat = (dropOffPct: number): CSSProperties => ({
-		background: `color-mix(in oklch, var(--color-danger) ${weightOf(dropOffPct)}%, var(--color-accent))`,
-		backgroundColor: "var(--color-accent)",
+		backgroundColor: `color-mix(in oklch, var(--color-danger) ${weightOf(dropOffPct)}%, var(--color-accent))`,
 	})
 
 	// The same heat for text: muted where nothing was lost, danger-ink where everything was. An unsupported color-mix just inherits body text, which still reads.

@@ -148,6 +148,38 @@ export function cachedSpansCover(cached: CachedSpans, from: number, to: number):
 }
 
 /**
+ * A recording window together with the Hackatime project Lapse saw while it ran.
+ *
+ * The window alone cannot say which link it belongs to. A clip attached to a journal entry in one week can carry tracked time that was linked on another week's project, and the projection that pairs the two is the recording's own `hackatimeProject` – stored at attach time for exactly this.
+ */
+export type RecordedWindow = {
+	hackatimeProject: string | null
+	window: Interval
+}
+
+/**
+ * Every recording window a link's tracked time is deduplicated against.
+ *
+ * Two sets, and both are needed:
+ *
+ * - The recordings beside the link in its own (project, phase), taken whatever Hackatime project they name: the span intersection below decides whether they overlap, exactly as it always has, and legacy rows carry no project name to match on.
+ * - This maker's recordings ELSEWHERE that name this project. Without this set a sitting journalled in one week and tracked against a link in another was paid for on both sides: the recording was never compared to the link it was made under, because the two live on different rows.
+ *
+ * A recording that names a different project is deliberately left out of the second set. It may still intersect this link's spans by coincidence, but the maker told us which project was being tracked while it ran, and subtracting against the wrong one is an underpayment dressed up as deduplication.
+ */
+export function windowsForLink(
+	ownPhase: readonly Interval[],
+	elsewhere: readonly RecordedWindow[],
+	hackatimeProject: string,
+): Interval[] {
+	const windows: Interval[] = [...ownPhase]
+	for (const recording of elsewhere) {
+		if (recording.hackatimeProject === hackatimeProject) windows.push(recording.window)
+	}
+	return windows
+}
+
+/**
  * The window worth asking Hackatime about: the span of every recording window, with an hour of slack either side for clock disagreement between a laptop and Hackatime's servers. Anything outside this cannot overlap anything the journal claims, so it is not worth the response.
  */
 export function spanWindowFor(windows: readonly Interval[]): { fromSeconds: number; toSeconds: number } | null {

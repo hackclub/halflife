@@ -24,6 +24,7 @@ import { isTierId, TIERS } from "@/lib/config/tiers"
 import { type Balances, getBalances } from "@/lib/currency"
 import { displayName } from "@/lib/display-name"
 import { type LinkRow, rollUpHours, type SessionRow } from "@/lib/hours"
+import { type RecordedWindow, timelapseWindow } from "@/lib/hours-overlap"
 import { pctOf, round1 } from "@/lib/numbers"
 import { safeDecrypt } from "@/lib/pii"
 import { getPrinterQualification, type PrinterQualification } from "@/lib/printer"
@@ -884,7 +885,7 @@ async function loadRegionInputs() {
 				phase: true,
 				themeProject: { select: { userId: true } },
 				themeProjectId: true,
-				timelapses: { select: { coveredSeconds: true, recordedAt: true } },
+				timelapses: { select: { coveredSeconds: true, hackatimeProject: true, recordedAt: true } },
 			},
 			where: { deletedAt: null, themeProject: { deletedAt: null } },
 		}),
@@ -892,6 +893,7 @@ async function loadRegionInputs() {
 			select: {
 				cachedSeconds: true,
 				cachedSpans: true,
+				hackatimeProject: true,
 				hoursApproved: true,
 				phase: true,
 				themeProject: { select: { userId: true } },
@@ -930,13 +932,14 @@ export type HoursByUser = {
  *
  * Reviewer-approved hours replace the claimed figure wherever set; a tracked entry's hours arrive through its link, so the journal row itself contributes nothing. And the minutes a link counted that a timelapse recording of the same sitting already claimed are subtracted, because that is the same subtraction `rollUpHours` makes when a reviewer approves the phase – this used to add both sides of that overlap, so a recorded session that was also tracked was reported twice. Going through `rollUpHours` rather than repeating its arithmetic is the point: the rules here decide what people are paid, and a second copy that drifts is a second answer to "how many hours is this".
  *
- * Grouped by project *and* phase, which is the only level at which an overlap can be measured: a link double-counts the journal entries beside it in the same phase, and pooling a design's recording against a build's tracked time would subtract minutes that were never the same sitting.
+ * Grouped by project *and* phase for the journal/link arithmetic, but the recordings a link is deduplicated against are not confined to that group: a clip attached in one week can carry tracked time that was linked on another week's project, and the recording's own Hackatime project is what pairs the two (see `windowsForLink`). Passing the maker's whole set of recordings through is what stops that sitting being counted on both sides.
  *
  * `frozenTotal` is deliberately not passed. These are the hours people logged, not the hours they were credited – the reviewer's frozen total is one number per (project, phase) and belongs on the project page, where a participant is reading their own.
  */
 function hoursByUser(inputs: RegionInputs): HoursByUser {
 	const phaseKey = (themeProjectId: string, phase: Phase) => `${themeProjectId}:${phase}`
 	const phases = new Map<string, HoursByPhase>()
+	const recordingsByUser = new Map<string, RecordedWindow[]>()
 	const forPhase = (themeProjectId: string, phase: Phase, userId: string): HoursByPhase => {
 		const key = phaseKey(themeProjectId, phase)
 		let held = phases.get(key)
@@ -947,13 +950,27 @@ function hoursByUser(inputs: RegionInputs): HoursByUser {
 		return held
 	}
 
-	for (const s of inputs.sessions) forPhase(s.themeProjectId, s.phase, s.themeProject.userId).sessions.push(s)
+	for (const s of inputs.sessions) {
+		forPhase(s.themeProjectId, s.phase, s.themeProject.userId).sessions.push(s)
+		if (s.hoursSource === HoursSource.HACKATIME_TRACKED) continue
+		const made = recordingsByUser.get(s.themeProject.userId) ?? []
+		for (const t of s.timelapses) {
+			const window = timelapseWindow(t.recordedAt, t.coveredSeconds)
+			if (window) made.push({ hackatimeProject: t.hackatimeProject, window })
+		}
+		recordingsByUser.set(s.themeProject.userId, made)
+	}
 	for (const l of inputs.links) forPhase(l.themeProjectId, l.phase, l.themeProject.userId).links.push(l)
 
 	const hours = new Map<string, number>()
 	let overlapUnknownPhases = 0
 	for (const held of phases.values()) {
-		const { computedTotal, hackatimeOverlapUnknown } = rollUpHours(held.sessions, held.links, null)
+		const { computedTotal, hackatimeOverlapUnknown } = rollUpHours(
+			held.sessions,
+			held.links,
+			null,
+			recordingsByUser.get(held.userId) ?? [],
+		)
 		if (hackatimeOverlapUnknown) overlapUnknownPhases += 1
 		hours.set(held.userId, (hours.get(held.userId) ?? 0) + computedTotal)
 	}
@@ -1454,19 +1471,26 @@ export async function getHoursByWeek(): Promise<WeekHoursCluster[]> {
 	const projects = await prisma.themeProject.findMany({
 		select: {
 			hackatimeLinks: {
-				select: { cachedSeconds: true, cachedSpans: true, hoursApproved: true, phase: true },
+				select: {
+					cachedSeconds: true,
+					cachedSpans: true,
+					hackatimeProject: true,
+					hoursApproved: true,
+					phase: true,
+				},
 			},
 			requestedTier: true,
 			starterProjectId: true,
 			theme: true,
 			tier: true,
+			userId: true,
 			workSessions: {
 				select: {
 					hoursApproved: true,
 					hoursClaimed: true,
 					hoursSource: true,
 					phase: true,
-					timelapses: { select: { coveredSeconds: true, recordedAt: true } },
+					timelapses: { select: { coveredSeconds: true, hackatimeProject: true, recordedAt: true } },
 				},
 				where: { deletedAt: null },
 			},
@@ -1479,16 +1503,31 @@ export async function getHoursByWeek(): Promise<WeekHoursCluster[]> {
 		clusters.set(slot.week, { ...slot, starter: 0, tier1: 0, tier2: 0, tier3: 0 })
 	}
 
+	// Each maker's recordings, whatever project or phase they were attached to, so a link is measured against the ones that name its project even when they live on another week's project.
+	const recordingsByUser = new Map<string, RecordedWindow[]>()
+	for (const project of projects) {
+		const made = recordingsByUser.get(project.userId) ?? []
+		for (const s of project.workSessions) {
+			if (s.hoursSource === HoursSource.HACKATIME_TRACKED) continue
+			for (const t of s.timelapses) {
+				const window = timelapseWindow(t.recordedAt, t.coveredSeconds)
+				if (window) made.push({ hackatimeProject: t.hackatimeProject, window })
+			}
+		}
+		recordingsByUser.set(project.userId, made)
+	}
+
 	for (const project of projects) {
 		const column = projectColumn(project)
+		const recordings = recordingsByUser.get(project.userId) ?? []
 
-		// Grouped by phase, because `rollUpHours` can only subtract a link's overlap against the recordings beside it in the same phase.
+		// Grouped by phase for the journal/link arithmetic, but the recordings a link is deduplicated against cross phases and projects by project name (see `windowsForLink`).
 		for (const phase of [Phase.DESIGN, Phase.BUILD]) {
 			const sessions = project.workSessions.filter(s => s.phase === phase)
 			const links = project.hackatimeLinks.filter(l => l.phase === phase)
 			if (sessions.length === 0 && links.length === 0) continue
 
-			const { computedTotal } = rollUpHours(sessions, links, null)
+			const { computedTotal } = rollUpHours(sessions, links, null, recordings)
 			const cluster = clusters.get(weekOfPhase(project.theme, phase))
 			// A theme scheduled outside the season draws nowhere rather than inventing a column for itself.
 			if (!cluster) continue
