@@ -3,7 +3,7 @@
  *
  * Ari has no bulk resend API. The dashboard's Resend button is a `fetch` from `submitAction` (`$lib/actions.ts`) to `?/resend` on the Reviewed page, with `x-sveltekit-action: true` and a `FormData` body of `id=<submissionId>`, which runs `redispatchLastReview` on the server and queues a fresh webhook delivery. This walks every Reviewed page, reads the submission ids out of the row links (`/p/<program>/review/<id>`) and sends that same request once per ship.
  *
- * The cookie is what authenticates it, so this is a local operator tool rather than a job: sign in to ari.hackclub.com, open DevTools → Network, click any request to the site and copy the whole `Cookie:` request header value into `ARI_COOKIE` (or `--cookie`). The account needs `OVERRIDE_DECISIONS`.
+ * The session cookie is what authenticates it, so this is a local operator tool rather than a job: sign in to ari.hackclub.com, copy the value of its `ari_session` cookie (DevTools → Application → Cookies, or the same-named value on any request), and put it in `ARI_COOKIE` (or `--cookie`). The account needs `OVERRIDE_DECISIONS`.
  *
  * Read-only unless `--commit`, which lists what it would send. Resends are safe to repeat: Ari deliveries are idempotent per delivery id, and half-life records a resent decision for an already-decided ship without crediting anything twice or notifying the maker again.
  *
@@ -13,6 +13,8 @@
 const BASE = process.env.ARI_BASE ?? "https://ari.hackclub.com"
 /** Half Life's program id, so a run against it needs no argument. */
 const DEFAULT_PROGRAM = "cmtkgvs59016w01ny164gthi9"
+/** Ari's session cookie (`sessionCookie` in `src/lib/server/auth.ts`). */
+const COOKIE_NAME = "ari_session"
 
 type Options = {
 	commit: boolean
@@ -33,14 +35,22 @@ function flagValue(args: string[], name: string): string | null {
 	return null
 }
 
+/** The `ari_session` token from the input, tolerating a pasted `ari_session=…` pair or a whole Cookie header. */
+function sessionToken(raw: string): string {
+	let value = raw.trim().replace(/^"(.*)"$/, "$1")
+	if (value.startsWith(`${COOKIE_NAME}=`)) value = value.slice(COOKIE_NAME.length + 1)
+	// a cookie value cannot contain `;`, so anything after one is another cookie the caller pasted in.
+	return value.split(";")[0]?.trim() ?? ""
+}
+
 function readOptions(args: string[]): Options {
 	const program = flagValue(args, "program") ?? process.env.ARI_PROGRAM ?? DEFAULT_PROGRAM
-	const cookie = flagValue(args, "cookie") ?? process.env.ARI_COOKIE ?? ""
+	const cookie = sessionToken(flagValue(args, "cookie") ?? process.env.ARI_COOKIE ?? "")
 	const delay = Number(flagValue(args, "delay") ?? process.env.ARI_DELAY ?? "0.3")
 	const limitRaw = flagValue(args, "limit")
 	const limit = limitRaw === null ? null : Number(limitRaw)
 
-	if (!cookie) throw new Error("Set ARI_COOKIE (or --cookie) to your ari.hackclub.com Cookie header value.")
+	if (!cookie) throw new Error("Set ARI_COOKIE (or --cookie) to the value of your ari_session cookie.")
 	if (!Number.isFinite(delay) || delay < 0) throw new Error(`--delay must be a non-negative number, got ${delay}`)
 	if (limit !== null && (!Number.isInteger(limit) || limit <= 0))
 		throw new Error(`--limit must be a positive integer, got ${limitRaw}`)
@@ -60,7 +70,9 @@ function idsIn(program: string, html: string): string[] {
 }
 
 async function getPage(program: string, cookie: string, page: number): Promise<string> {
-	const response = await fetch(`${BASE}/p/${program}/reviewed?page=${page}`, { headers: { Cookie: cookie } })
+	const response = await fetch(`${BASE}/p/${program}/reviewed?page=${page}`, {
+		headers: { Cookie: `${COOKIE_NAME}=${cookie}` },
+	})
 	return response.text()
 }
 
@@ -102,7 +114,7 @@ async function resend(program: string, cookie: string, id: string): Promise<{ bo
 		body: form,
 		headers: {
 			Accept: "application/json",
-			Cookie: cookie,
+			Cookie: `${COOKIE_NAME}=${cookie}`,
 			// SvelteKit's form-action CSRF check, and the header that makes the server answer with the action result JSON.
 			Origin: BASE,
 			Referer: `${BASE}/p/${program}/reviewed`,
