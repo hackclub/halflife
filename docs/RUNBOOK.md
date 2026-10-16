@@ -356,6 +356,8 @@ every such project (dry run) and `--commit` gives each the same week,
 project with an extension already running and is safe to re-run. Run it where
 `DATABASE_URL` points at the real database.
 
+**A project was auto-returned for a maker who had not verified their identity** – Ari's *Identity screening* answers a ship from an unverified maker with an automated request-changes, which lands the phase on "needs changes". Turning that screen off is forward-only: the projects already returned that way are still waiting on a return that should not have been made. `bun --conditions=react-server scripts/repair-identity-returns.ts` reports every such phase (dry run) and `--commit` puts each back in review and clears its Ari ship id, so `ari-retry` sends a fresh ship for a real review on the next hourly run. It only touches phases whose standing decision is the identity return, so a real return is left alone, and re-running is safe. Run it where `DATABASE_URL` points at the real database.
+
 **Import the pre-season warm-up projects** – `/admin/program` → *Warm-up
 projects from Airtable* pulls the rows the Fillout form wrote into the `YSWS
 Project Submission` table (`AIRTABLE_YSWS_TABLE_ID`) into Half Life. It creates
