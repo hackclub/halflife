@@ -21,7 +21,7 @@ const bodySchema = overrideSchema.extend({
  *
  * Un-approving reconciles the project's credit to zero rather than writing a compensating "reversal" kind, so the balance lands exactly where it started and re-approving later cannot double-pay.
  *
- * Both actions leave the phase on "needs changes", which is the one state a maker is expected to go and act on, so both tell them. The notification is here rather than inside `unapprovePhase`/`reopenPhase` because Ari's own revert calls them on its way back to "in review" – a transient state the maker never holds – and one message per real change is the whole point.
+ * Both actions leave the phase on "needs changes", which is the one state a maker is expected to go and act on, so both tell them and both grant them a week to act with (`grantExtension`). The notification and the extension are here rather than inside `unapprovePhase`/`reopenPhase` because Ari's own revert calls them on its way back to "in review" – a transient state the maker never holds – and one message, and one week, per real change is the whole point.
  */
 export const POST = withRoute(async (req: Request, { params }: Params) => {
 	const gate = await requirePermission(Permission.OVERRIDE_DECISIONS)
@@ -34,9 +34,9 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 
 	const note = sanitize(reason)
 	if (action === "unapprove") {
-		await unapprovePhase(id, phase, gate.user.id, gate.user.email, note)
+		await unapprovePhase(id, phase, gate.user.id, gate.user.email, note, { grantExtension: true })
 	} else {
-		await reopenPhase(id, phase, gate.user.id, gate.user.email, note)
+		await reopenPhase(id, phase, gate.user.id, gate.user.email, note, { grantExtension: true })
 	}
 
 	// After the response: the reversal has already committed, and a Slack or Airtable outage must not fail an admin's action.

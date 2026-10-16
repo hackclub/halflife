@@ -346,6 +346,16 @@ Reviews and the shop stay up.
 retry button, and `/admin/audit?action=AIRTABLE_SYNC_FAILURE` has the errors.
 The `airtable-retry` job does the same sweep hourly.
 
+**A project was returned before the return-extension existed** – a return now
+writes a week onto the returned project's `submissionExtensionUntil`, but only
+on the decision itself, so a project already sitting on "needs changes" from
+before keeps the old window and its maker may be unable to hand the fix in.
+`bun --conditions=react-server scripts/backfill-return-extensions.ts` reports
+every such project (dry run) and `--commit` gives each the same week,
+`reviews:backfill-return-extensions` being the same thing by name. It skips any
+project with an extension already running and is safe to re-run. Run it where
+`DATABASE_URL` points at the real database.
+
 **Import the pre-season warm-up projects** – `/admin/program` → *Warm-up
 projects from Airtable* pulls the rows the Fillout form wrote into the `YSWS
 Project Submission` table (`AIRTABLE_YSWS_TABLE_ID`) into Half Life. It creates

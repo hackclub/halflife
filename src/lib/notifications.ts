@@ -5,6 +5,7 @@ import { projectUrl } from "@/lib/app-url"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { projectDisplayTitle } from "@/lib/config/program"
 import prisma from "@/lib/prisma"
+import { formatProgramDate, getProgramSettings } from "@/lib/program"
 import { trackSideEffect } from "@/lib/side-effects"
 import { postMessage, sendDM } from "@/lib/slack"
 
@@ -47,6 +48,7 @@ function headline(
 	phase: string,
 	title: string,
 	decidedBy: "ari" | "console",
+	resubmitBy: string | null,
 ): { body: string; next?: string } {
 	const what = `${phase} for ${title}`
 	switch (result) {
@@ -55,8 +57,10 @@ function headline(
 		case ReviewResult.RETURNED:
 			return {
 				body: `${asker(decidedBy)} asked for changes on your ${what}.`,
-				// The half that makes it actionable. What the status now permits is more work rather than less, and without this line the message reads as a verdict while the trail's own wording does the explaining somewhere a maker may never look.
-				next: "Fix it and hand it in again from the project page – your week still takes submissions until it closes.",
+				// The half that makes it actionable. What the status now permits is more work rather than less, and without this line the message reads as a verdict while the trail's own wording does the explaining somewhere a maker may never look. A return has just granted a week, so the date is worth more than "until it closes": it is the one thing the maker will come back to.
+				next: resubmitBy
+					? `Fix it and hand it in again from the project page – you have until ${resubmitBy} to resubmit.`
+					: "Fix it and hand it in again from the project page – your week still takes submissions until it closes.",
 			}
 		case ReviewResult.REJECTED:
 			return { body: `Your ${what} was not approved.` }
@@ -83,10 +87,16 @@ export type ReviewOutcomeMessage = {
  */
 export function reviewOutcomeMessage(
 	notice: Pick<ReviewOutcomeNotice, "result" | "decidedBy" | "note">,
-	context: { phase: Phase; title: string },
+	context: { phase: Phase; title: string; resubmitBy?: string | null },
 ): ReviewOutcomeMessage {
 	const phaseLabel = context.phase === Phase.DESIGN ? "design" : "build"
-	const { body, next } = headline(notice.result, phaseLabel, context.title, notice.decidedBy)
+	const { body, next } = headline(
+		notice.result,
+		phaseLabel,
+		context.title,
+		notice.decidedBy,
+		context.resubmitBy ?? null,
+	)
 	const note = notice.note?.trim() || ""
 	return { note: note || null, prose: [body, ...(next ? [next] : [])] }
 }
@@ -188,6 +198,7 @@ export async function notifyReviewOutcome(notice: ReviewOutcomeNotice): Promise<
 async function deliverReviewOutcome(notice: ReviewOutcomeNotice): Promise<void> {
 	const project = await prisma.themeProject.findUnique({
 		select: {
+			submissionExtensionUntil: true,
 			theme: true,
 			title: true,
 			user: { select: { slackId: true } },
@@ -197,7 +208,12 @@ async function deliverReviewOutcome(notice: ReviewOutcomeNotice): Promise<void> 
 	if (!project) return
 
 	const title = projectDisplayTitle(project)
-	const message = reviewOutcomeMessage(notice, { phase: notice.phase, title })
+	// A return grants the project a week, so its message can name the day the maker can resubmit through. Formatted in the program's timezone, the same one the dashboard's own deadlines use, rather than the server's.
+	const resubmitBy =
+		notice.result === ReviewResult.RETURNED && project.submissionExtensionUntil
+			? formatProgramDate(project.submissionExtensionUntil, (await getProgramSettings()).programTimezone)
+			: null
+	const message = reviewOutcomeMessage(notice, { phase: notice.phase, resubmitBy, title })
 
 	await deliverToMaker({
 		kind: "review_outcome",
