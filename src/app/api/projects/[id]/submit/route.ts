@@ -70,8 +70,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	// Tick the week's `ProjectSubmitted` box on the maker's Signups row, so Loops can trigger off the hand-in without waiting for the hourly sync. Best-effort: a skip or a fault only delays the tick until `loops-sync` heals it, so it must never fail the hand-in.
 	after(async () => {
 		try {
-			if (submission.scheduledWeek != null)
-				await syncLoopsWeekSubmitted(gate.user.id, submission.scheduledWeek)
+			if (submission.scheduledWeek != null) await syncLoopsWeekSubmitted(gate.user.id, submission.scheduledWeek)
 		} catch (err) {
 			console.error("[submit] loops submitted tick failed:", err)
 		}
