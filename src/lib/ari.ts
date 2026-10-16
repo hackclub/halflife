@@ -326,7 +326,7 @@ export async function findUnsyncedAriSubmissions(): Promise<
 			if (failure.targetId !== themeProjectId) return false
 			const data =
 				typeof failure.metadata === "object" && failure.metadata !== null && !Array.isArray(failure.metadata)
-					? (failure.metadata as Record<string, unknown>)
+					? (failure.metadata as { [_: string]: unknown })
 					: null
 			if (!data || "withdrawn" in data || data.phase !== phase) return false
 			return true

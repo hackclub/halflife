@@ -197,7 +197,7 @@ async function call(creds: ForgeCredentials, path: string, init: RequestInit): P
 	const forge = creds.forge
 	const url = forge.id === "gitlab" ? `https://gitlab.com/api/v4/${path}` : `https://api.github.com/${path}`
 
-	const headers: Record<string, string> =
+	const headers: { [_: string]: string } =
 		forge.id === "gitlab"
 			? { Accept: "application/json", Authorization: `Bearer ${creds.accessToken}` }
 			: {

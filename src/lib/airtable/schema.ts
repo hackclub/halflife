@@ -123,15 +123,17 @@ export const RSVP = {
 	tableId: RSVP_TABLE_ID,
 } as const
 
-type FieldMap = Record<string, FieldDef>
+interface FieldMap {
+	[_: string]: FieldDef
+}
 
 type ValuesFor<S extends FieldMap> = Partial<{
 	[K in keyof S]: S[K] extends FieldDef<infer T> ? T : never
 }>
 
 /** Build an Airtable `fields` payload, keyed however FIELD_MODE says. */
-export function toFields<S extends FieldMap>(schema: S, values: ValuesFor<S>): Record<string, unknown> {
-	const out: Record<string, unknown> = {}
+export function toFields<S extends FieldMap>(schema: S, values: ValuesFor<S>): { [_: string]: unknown } {
+	const out: { [_: string]: unknown } = {}
 	for (const [key, value] of Object.entries(values)) {
 		if (value === undefined) continue
 		const field = schema[key]

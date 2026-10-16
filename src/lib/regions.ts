@@ -60,7 +60,7 @@ export function regionOfTimezone(timezone: string | null | undefined): RegionId 
 /**
  * IANA zone to country, for the country breakdown. Covers every timezone on file plus the common aliases browsers report (e.g. both Kathmandu spellings); anything else falls to Unknown so a new zone shows up as unplaced rather than mislabeled – extend the map when it does.
  */
-const ZONE_COUNTRY: Record<string, string> = {
+const ZONE_COUNTRY: { [_: string]: string } = {
 	"Africa/Accra": "Ghana",
 	"Africa/Addis_Ababa": "Ethiopia",
 	"Africa/Algiers": "Algeria",

@@ -73,7 +73,7 @@ export interface StoreSnapshot {
 	 *
 	 * Kept apart from the entries rather than folded into them because the two are used for different things. Reels are placed where the JOURNAL crossed a reel's mark, so that placement has to follow entries and nothing else; the gates ask what the week is really worth, which is everything. Folding Hackatime into an entry would move a reel to a node the participant never wrote.
 	 */
-	offBookHours: Record<number, number>
+	offBookHours: { [_: number]: number }
 	/** Whether the first checkpoint has been completed. */
 	onboardingDone: boolean
 	/**
@@ -93,16 +93,16 @@ export interface StoreSnapshot {
 	 *
 	 * Coins are minted when a reviewer approves a phase, not when hours are logged, so the balance below trails the work by a review. Anything that asks "is this week on pace" has to add back what the unreviewed weeks will bank – and to know which weeks those are, it needs this.
 	 */
-	phaseStatusByWeek: Record<number, PhaseStatus>
+	phaseStatusByWeek: { [_: number]: PhaseStatus }
 	/** The program's IANA timezone, so the trail can name the day a week opens. */
 	programTimezone: string
-	progress: Record<string, CheckpointSnapshot>
+	progress: { [_: string]: CheckpointSnapshot }
 	/**
 	 * Every theme project's id, by the design week it belongs to – including the ones not named yet.
 	 *
 	 * A row is made when its week's "create a project" checkpoint is opened (lib/provisioning), so a week that has not started has no id here; the client asks for one (ensureProject) when that checkpoint opens. `projects` leaves the unnamed ones out, or the trail would claim credit for a week that has only been looked at.
 	 */
-	projectIdByWeek: Record<number, string>
+	projectIdByWeek: { [_: number]: string }
 	projects: Project[]
 	streak: number
 	/**
@@ -112,21 +112,21 @@ export interface StoreSnapshot {
 	/**
 	 * Every warm-up project, by id: the one phase it is handed in as, the hours it has from somewhere other than its entries (Hackatime, reviewer adjustments), and when its journal closes. A maker may hold several, so each is addressed by its id – its entries and submit are `wu-<id>-…` keys in `progress` – never by a week number.
 	 */
-	warmups: Record<string, { phase: "design" | "build"; offBookHours: number; closesAt: number }>
+	warmups: { [_: string]: { phase: "design" | "build"; offBookHours: number; closesAt: number } }
 	/** When warm-ups stop taking work, epoch ms: 11:59 PM the night before week 1 opens. */
 	warmupsCloseAt: number
 	/**
 	 * When each trail week stops taking work, epoch ms: 11:59 PM on its Sunday in the program timezone, pushed later by any extension on the participant or on that week's project. The server refuses journal writes past it, so the trail greys the week out at the same moment.
 	 */
-	weekClosesAt: Record<number, number>
+	weekClosesAt: { [_: number]: number }
 	/**
 	 * Which weeks are racing an extension rather than their own Sunday, and whose: `"project"` when that week's own project carries it, `"account"` when the participant's own extension covers it – and that one reaches every week at once, which is exactly what makes a countdown on a later week look like it names the wrong day. Weeks that close on their own are absent.
 	 */
-	weekExtensions: Record<number, "account" | "project">
+	weekExtensions: { [_: number]: "account" | "project" }
 	/**
 	 * When each trail week starts taking work, epoch ms: midnight at the start of its Monday in the program timezone. Nothing on a week opens before it, the first checkpoint included, and the server refuses the same writes.
 	 */
-	weekOpensAt: Record<number, number>
+	weekOpensAt: { [_: number]: number }
 }
 
 const EXPERIENCE: Record<HardwareExperience, Experience> = {
@@ -255,10 +255,10 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 	)
 
 	const byTheme = new Map(projects.map(p => [p.theme, p]))
-	const progress: Record<string, CheckpointSnapshot> = {}
-	const offBookHours: Record<number, number> = {}
+	const progress: { [_: string]: CheckpointSnapshot } = {}
+	const offBookHours: { [_: number]: number } = {}
 	const overlapUncheckedWeeks: number[] = []
-	const phaseStatusByWeek: Record<number, PhaseStatus> = {}
+	const phaseStatusByWeek: { [_: number]: PhaseStatus } = {}
 
 	// A reel posted twice for the same node keeps the newest caption; the rows are ordered oldest-first, so the last write through this loop is the newest. The node keeps the FIRST post's date, though, as the client's own patch does: posting another reel adds to the timeline, it does not move the checkpoint up it.
 	for (const post of posts) {
@@ -381,7 +381,7 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 		}
 	}
 
-	const projectIdByWeek: Record<number, string> = {}
+	const projectIdByWeek: { [_: number]: string } = {}
 	for (const project of projects) {
 		// A warm-up project has no curriculum week to be addressed by, and a maker may hold several of them, so week 0 would have to pick one of them arbitrarily. They are reached through the projects list instead.
 		if (project.theme === Theme.WARMUP) continue
@@ -389,10 +389,10 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 		if (themeIndex !== -1) projectIdByWeek[weekOf(themeIndex, Phase.DESIGN)] = project.id
 	}
 
-	const closes: Record<number, number> = {}
-	const opens: Record<number, number> = {}
+	const closes: { [_: number]: number } = {}
+	const opens: { [_: number]: number } = {}
 	// Which of those closes an extension pushed out, and whose it is. A project extension only reaches its own week; the account's reaches every week, so a later week's countdown would otherwise read as that week's own close.
-	const weekExtensions: Record<number, "account" | "project"> = {}
+	const weekExtensions: { [_: number]: "account" | "project" } = {}
 	for (let week = 1; week <= TOTAL_WEEKS; week += 1) {
 		opens[week] = weekOpensAt(settings, week).getTime()
 		const theme = scheduleForWeek(week)?.theme.id

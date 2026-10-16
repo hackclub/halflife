@@ -27,11 +27,11 @@ async function main() {
       const def = c.column_default ? ` default=${c.column_default.replace(/\s+/g, " ").slice(0, 40)}` : ""
       console.log(`  ${c.column_name.padEnd(34)} ${c.data_type}${c.is_nullable === "NO" ? " NOT NULL" : ""}${def}`)
     }
-    const rows = await source.$queryRawUnsafe<Record<string, unknown>[]>(
+    const rows = await source.$queryRawUnsafe<{ [_: string]: unknown }[]>(
       `SELECT * FROM "${table}" LIMIT 1`,
     )
     if (rows[0]) {
-      const sample: Record<string, unknown> = {}
+      const sample: { [_: string]: unknown } = {}
       for (const [k, v] of Object.entries(rows[0])) {
         sample[k] = v instanceof Date ? v.toISOString() : v
       }

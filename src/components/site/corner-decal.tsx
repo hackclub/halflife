@@ -48,15 +48,14 @@ const DECALS = {
 		pad: { bottom: 0.19, left: 0.17, right: 0.185, top: 0.195 },
 		src: topLeft2,
 	},
-} as const satisfies Record<
-	string,
-	{
+} as const satisfies {
+	[_: string]: {
 		src: StaticImageData
 		corner: "top-left" | "bottom-left" | "bottom-right"
 		pad: { left: number; top: number; right: number; bottom: number }
 		inkW: number
 	}
->
+}
 
 export type DecalName = keyof typeof DECALS
 

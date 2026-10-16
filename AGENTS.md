@@ -47,6 +47,7 @@ None of this should conflict with the formatting or linting rules of Biome.
 - Avoid `any` types
 - Prefer union types over enums
 - Prefer `interface` over `type` for object types
+- Always use object types with indexers over Record types, for example prefer `{ [_: string]: string }` over `Record<string, string>`
 
 ## CSS
 

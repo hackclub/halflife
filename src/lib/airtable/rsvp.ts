@@ -104,7 +104,7 @@ export async function recordDirectSignup(input: {
 			})
 			return
 		}
-		const data: Record<string, unknown> = {}
+		const data: { [_: string]: unknown } = {}
 		if (!existing.airtableRecordId) data.airtableRecordId = input.recordId
 		if (input.userId && !existing.userId) {
 			data.userId = input.userId
@@ -182,7 +182,7 @@ export async function drainRsvpBuffer(limit = 50, opts: { dryRun?: boolean } = {
 				utmSource: row.utmSource ?? undefined,
 			}
 			// Only the columns this table actually has, so one absent column cannot cost the row the seven that are present.
-			const fields: Record<string, unknown> = {}
+			const fields: { [_: string]: unknown } = {}
 			for (const [key, value] of Object.entries(values)) {
 				if (value === undefined) continue
 				const field = RSVP.fields[key as keyof typeof RSVP.fields]

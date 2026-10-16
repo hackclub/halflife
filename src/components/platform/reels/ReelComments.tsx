@@ -48,7 +48,7 @@ export function ReelComments({
 }) {
 	// Two ReelComments can be mounted at once (the side panel and the narrow sheet), so fixed ids would collide; useId scopes them to this instance.
 	const uid = useId()
-	const [threads, setThreads] = useState<Record<string, Thread>>({})
+	const [threads, setThreads] = useState<{ [_: string]: Thread }>({})
 	const [draft, setDraft] = useState("")
 	const [sending, setSending] = useState(false)
 	const [sendError, setSendError] = useState<string | null>(null)

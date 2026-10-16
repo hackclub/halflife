@@ -78,7 +78,7 @@ function isRateLimited(forge: Forge, res: Response) {
 }
 
 /** The transport a forge's read calls take, and how they are addressed. */
-function request(route: Route, path: string): { url: string; headers: Record<string, string> } {
+function request(route: Route, path: string): { url: string; headers: { [_: string]: string } } {
 	if (route === "proxy") {
 		const apiKey = process.env.GH_PROXY_API_KEY
 		if (!apiKey) throw new Error("GH_PROXY_API_KEY is not set on this deployment")

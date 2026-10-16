@@ -85,7 +85,7 @@ const COLUMNS = [
 type Column = (typeof COLUMNS)[number]
 
 /** Spreadsheet headings people actually type, folded onto the columns. */
-const HEADER_ALIASES: Record<string, Column> = {
+const HEADER_ALIASES: { [_: string]: Column } = {
 	author: "author_email",
 	authoremail: "author_email",
 	authorhackatimeprojects: "author_hackatime_projects",
@@ -167,7 +167,7 @@ function parseJournals(raw: string): MacondoJournal[] {
 	const out: MacondoJournal[] = []
 	for (const entry of data) {
 		if (!entry || typeof entry !== "object") continue
-		const e = entry as Record<string, unknown>
+		const e = entry as { [_: string]: unknown }
 		const hours = Number(e.hours)
 		out.push({
 			content: typeof e.content === "string" ? e.content : null,

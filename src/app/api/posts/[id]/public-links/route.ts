@@ -30,7 +30,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	if (!post) return fail("NOT_FOUND", "Reel not found")
 
 	const links: { platform: keyof typeof PLATFORM_INFO; url: string }[] = []
-	const errors: Record<string, string> = {}
+	const errors: { [_: string]: string } = {}
 	for (const link of parsed.data.links) {
 		const read = readPublicReelLink(link.platform, link.url)
 		if ("error" in read) errors[link.platform] = read.error

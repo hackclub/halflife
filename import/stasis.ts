@@ -240,7 +240,7 @@ interface SourceShopOrder {
   lastActorId: string | null
 }
 
-const LEDGER_KIND: Record<string, LedgerKind> = {
+const LEDGER_KIND: { [_: string]: LedgerKind } = {
   PROJECT_APPROVED: LedgerKind.BUILD_HOURS,
   PROJECT_APPROVED_REVERSED: LedgerKind.BUILD_HOURS,
   DESIGN_APPROVED: LedgerKind.DESIGN_EXCESS_HOURS,
@@ -253,7 +253,7 @@ const LEDGER_KIND: Record<string, LedgerKind> = {
   SHOP_REFUND_REVERSED: LedgerKind.SHOP_REFUND,
 }
 
-const ROLE_MAP: Record<string, Role> = {
+const ROLE_MAP: { [_: string]: Role } = {
   ADMIN: Role.ADMIN,
   REVIEWER: Role.REVIEWER,
   AUDITOR: Role.AUDITOR,

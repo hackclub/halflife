@@ -83,7 +83,7 @@ export function forgeByHostname(hostname: string): Forge | null {
 
 /** The forge with this id, or null. Narrowing helper for stored values. */
 export function forgeById(id: string): Forge | null {
-	return (FORGES as Record<string, Forge | undefined>)[id] ?? null
+	return (FORGES as { [_: string]: Forge | undefined })[id] ?? null
 }
 
 /**

@@ -26,7 +26,7 @@ const ref = { fullName: "owner/repo" } as RepoRef
 
 interface Step {
 	body?: unknown
-	headers?: Record<string, string>
+	headers?: { [_: string]: string }
 	status: number
 	throw?: boolean
 }

@@ -113,7 +113,7 @@ async function userinfoUrl(): Promise<string> {
 	return (await hcaEndpoints()).userinfoUrl
 }
 
-async function getJson(url: string, accessToken: string): Promise<Record<string, unknown> | null> {
+async function getJson(url: string, accessToken: string): Promise<{ [_: string]: unknown } | null> {
 	try {
 		// Retried, like the forges' identity calls (lib/fetch-retry). A dropped packet here used to abort the OAuth callback with a raw TimeoutError.
 		const res = await fetchWithRetry(url, {
@@ -125,7 +125,7 @@ async function getJson(url: string, accessToken: string): Promise<Record<string,
 			console.warn(`[hca] ${url} returned ${res.status}`)
 			return null
 		}
-		return (await res.json()) as Record<string, unknown>
+		return (await res.json()) as { [_: string]: unknown }
 	} catch (err) {
 		console.warn(`[hca] ${url} failed:`, err)
 		return null
@@ -135,8 +135,11 @@ async function getJson(url: string, accessToken: string): Promise<Record<string,
 const str = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v.trim() : null)
 
 /** The address to ship to: the one marked primary, else the first. */
-function addressFrom(me: Record<string, unknown> | null, userinfo: Record<string, unknown> | null): HcaAddress | null {
-	const list = Array.isArray(me?.addresses) ? (me.addresses as Record<string, unknown>[]) : []
+function addressFrom(
+	me: { [_: string]: unknown } | null,
+	userinfo: { [_: string]: unknown } | null,
+): HcaAddress | null {
+	const list = Array.isArray(me?.addresses) ? (me.addresses as { [_: string]: unknown }[]) : []
 	const a = list.find(x => x?.primary === true) ?? list[0]
 	if (a) {
 		return {
@@ -149,7 +152,7 @@ function addressFrom(me: Record<string, unknown> | null, userinfo: Record<string
 		}
 	}
 	// The standard OIDC claim, when the `address` scope puts it there instead.
-	const o = userinfo?.address as Record<string, unknown> | undefined
+	const o = userinfo?.address as { [_: string]: unknown } | undefined
 	if (o && typeof o === "object") {
 		const [line1, ...more] = (str(o.street_address) ?? "").split(/\r?\n/)
 		return {
@@ -170,7 +173,7 @@ export async function fetchHcaIdentity(accessToken: string): Promise<HcaIdentity
 		getJson(await userinfoUrl(), accessToken),
 		getJson(ME_URL, accessToken),
 	])
-	const me = (meBody?.identity as Record<string, unknown> | undefined) ?? meBody
+	const me = (meBody?.identity as { [_: string]: unknown } | undefined) ?? meBody
 
 	const email = str(userinfo?.email) ?? str(me?.primary_email)
 	const name =
@@ -193,9 +196,9 @@ export async function fetchHcaIdentity(accessToken: string): Promise<HcaIdentity
 }
 
 /** The PII fields, encrypted, when this deployment is set up to keep them. */
-export function encryptedFieldsFrom(identity: HcaIdentity): Record<string, string> {
+export function encryptedFieldsFrom(identity: HcaIdentity): { [_: string]: string } {
 	if (!PULL_PII) return {}
-	const out: Record<string, string> = {}
+	const out: { [_: string]: string } = {}
 	const a = identity.address
 	if (a?.line1) out.encryptedAddressStreet = encryptPII(a.line1)
 	if (a?.line2) out.encryptedAddressLine2 = encryptPII(a.line2)

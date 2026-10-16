@@ -74,7 +74,7 @@ async function walkSignups(config: NonNullable<ReturnType<typeof getAirtableConf
 				offset ? `&offset=${encodeURIComponent(offset)}` : ""
 			}`
 			const page = await withRateLimitRetry("countSignups", () =>
-				airtableFetch<{ records: { fields: Record<string, unknown> }[]; offset?: string }>(
+				airtableFetch<{ records: { fields: { [_: string]: unknown } }[]; offset?: string }>(
 					config,
 					`${encodeURIComponent(RSVP_TABLE_ID)}?${query}`,
 				),

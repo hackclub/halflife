@@ -239,7 +239,7 @@ function parseLink(value: string | undefined): string | null {
 /**
  * Common suppliers, so `lcsc.com` reads as LCSC rather than Lcsc. Anything not here still gets the registrable label, title-cased, which is close enough to edit and better than a blank next to a link the maker already has.
  */
-const KNOWN_VENDORS: Record<string, string> = {
+const KNOWN_VENDORS: { [_: string]: string } = {
 	"adafruit.com": "Adafruit",
 	"aliexpress.com": "AliExpress",
 	"amazon.com": "Amazon",

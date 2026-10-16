@@ -260,7 +260,7 @@ interface Ctx {
 	postReel: (id: string, caption: string, objectKey: string) => Promise<PostReelResult>
 	/** The whole balance. Every coin counts toward the printer goal. */
 	printerFund: number
-	progress: Record<string, CheckpointState>
+	progress: { [_: string]: CheckpointState }
 	projects: Project[]
 	/**
 	 * Admins only: wipe your own setup answers and run the whole first run again, setup checkpoint included. Resolves to an error message, or null.

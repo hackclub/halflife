@@ -115,7 +115,7 @@ export async function airtableFetch<T>(config: AirtableConfig, path: string, ini
 
 export interface AirtableRecord {
 	createdTime?: string
-	fields: Record<string, unknown>
+	fields: { [_: string]: unknown }
 	id: string
 }
 

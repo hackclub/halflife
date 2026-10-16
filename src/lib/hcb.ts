@@ -157,7 +157,7 @@ export async function listCardGrantDisbursements(grantHashid: string): Promise<G
 	const rows: GrantDisbursement[] = []
 	for (const entry of raw) {
 		if (typeof entry !== "object" || entry === null) return { kind: "unreadable" }
-		const d = entry as Record<string, unknown>
+		const d = entry as { [_: string]: unknown }
 		if (typeof d.amount_cents !== "number" || !Number.isFinite(d.amount_cents)) return { kind: "unreadable" }
 		rows.push({
 			amountCents: d.amount_cents,

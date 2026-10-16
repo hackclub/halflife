@@ -106,7 +106,7 @@ function stashJournalDraft(checkpointId: string, draft: JournalDraft) {
 
 function isJournalDraft(value: unknown): value is JournalDraft {
 	if (typeof value !== "object" || value === null) return false
-	const v = value as Record<string, unknown>
+	const v = value as { [_: string]: unknown }
 	return (
 		(v.tab === "journal" || v.tab === "timelapse")
 		&& typeof v.body === "string"

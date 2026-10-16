@@ -55,7 +55,7 @@ export function Panel({
 /* ------------------------------------------------------------------ *
  * Accent text
  * ------------------------------------------------------------------ */
-const ACCENT_TEXT: Record<string, string> = {
+const ACCENT_TEXT: { [_: string]: string } = {
 	"var(--color-coral)": "var(--color-coral-deep)",
 	"var(--color-gold)": "var(--color-gold-ink)",
 	"var(--color-orange)": "var(--color-orange-ink)",

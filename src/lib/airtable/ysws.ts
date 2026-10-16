@@ -26,7 +26,7 @@ const MAX_DROPPED_FIELDS = 6
 /**
  * The fields Airtable says it cannot take, from its error message: a column that does not exist, a value a column rejects, or a select option that is not defined. Airtable names the column in the first two and only the value in the third, so both are looked for.
  */
-function rejectedFields(err: AirtableError, fields: Record<string, unknown>): string[] {
+function rejectedFields(err: AirtableError, fields: { [_: string]: unknown }): string[] {
 	let message = err.body
 	try {
 		message = (JSON.parse(err.body) as { error?: { message?: string } }).error?.message ?? err.body
@@ -51,7 +51,7 @@ function rejectedFields(err: AirtableError, fields: Record<string, unknown>): st
  */
 async function findExistingRow(
 	config: AirtableConfig,
-	fields: Record<string, unknown>,
+	fields: { [_: string]: unknown },
 ): Promise<{ id: string } | "ambiguous" | null> {
 	const email = fields[fieldKey(YSWS_SUBMISSION.fields.email)]
 	const projectName = fields[fieldKey(YSWS_SUBMISSION.fields.projectName)]
@@ -89,7 +89,7 @@ async function findExistingRow(
  * If Airtable refuses a column, the row is written without it and the column is logged: a submission reaching the table with one blank field is recoverable, and one that never arrives is not. Resolves to the record id, and the columns that had to be left out.
  */
 export async function writeYswsRecord(
-	fields: Record<string, unknown>,
+	fields: { [_: string]: unknown },
 	recordId: string | null,
 ): Promise<{ recordId: string; dropped: string[] } | { skipped: "not_configured" }> {
 	const config = getAirtableConfig()
@@ -98,7 +98,7 @@ export async function writeYswsRecord(
 		return { skipped: "not_configured" }
 	}
 
-	const send = (f: Record<string, unknown>, id: string | null) =>
+	const send = (f: { [_: string]: unknown }, id: string | null) =>
 		withRateLimitRetry(
 			id ? "updateYswsSubmission" : "createYswsSubmission",
 			() =>
@@ -157,7 +157,7 @@ export async function writeYswsRecord(
  */
 export async function updateYswsRecord(
 	recordId: string,
-	fields: Record<string, unknown>,
+	fields: { [_: string]: unknown },
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
 	const config = getAirtableConfig()
 	if (!config) return { ok: false, reason: "not_configured" }

@@ -65,7 +65,7 @@ export function EventForm({
 		setBusy(true)
 		setError(null)
 
-		const body: Record<string, unknown> = {
+		const body: { [_: string]: unknown } = {
 			colour,
 			description: description || null,
 			endsAt: endsAt ? new Date(endsAt).toISOString() : null,

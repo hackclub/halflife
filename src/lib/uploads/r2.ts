@@ -16,7 +16,7 @@ function parseMaxBytes(raw: string | undefined): number {
 
 export const MAX_UPLOAD_BYTES = parseMaxBytes(process.env.UPLOAD_MAX_BYTES)
 
-const EXTENSION_MIME: Record<string, string[]> = {
+const EXTENSION_MIME: { [_: string]: string[] } = {
 	gif: ["image/gif"],
 	jpeg: ["image/jpeg"],
 	jpg: ["image/jpeg"],

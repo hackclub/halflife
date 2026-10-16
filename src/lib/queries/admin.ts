@@ -1575,7 +1575,7 @@ export async function getVerificationStats(): Promise<VerificationStat[]> {
 /**
  * HCA's own words for the states it reports. An unknown one is shown verbatim rather than dropped, so a status HCA adds later still shows up instead of vanishing into a hole in the ring.
  */
-const VERIFICATION_STATUS_LABELS: Record<string, string> = {
+const VERIFICATION_STATUS_LABELS: { [_: string]: string } = {
 	ineligible: "Ineligible",
 	needs_submission: "Needs submission",
 	pending: "Pending",
@@ -2090,7 +2090,7 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 		{ label: "Outcome", nodes: SANKEY_OUTCOME.map(o => o.node) },
 	]
 
-	const labels: Record<string, string> = {
+	const labels: { [_: string]: string } = {
 		awaitingHandIn: "Awaiting hand-in",
 		checksPassed: "Checks passed",
 		checksStalled: "Checks not passed",

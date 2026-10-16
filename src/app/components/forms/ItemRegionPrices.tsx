@@ -15,7 +15,7 @@ export function ItemRegionPrices({
 	basePrice: number
 	regions: { id: string; name: string; price: number | null }[]
 }) {
-	const [values, setValues] = useState<Record<string, string>>(() =>
+	const [values, setValues] = useState<{ [_: string]: string }>(() =>
 		Object.fromEntries(regions.map(r => [r.id, r.price === null ? "" : String(r.price)])),
 	)
 	const { busy, error, run, refuse } = useAction()

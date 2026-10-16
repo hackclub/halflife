@@ -17,7 +17,7 @@ function check(label: string, actual: unknown, expected: unknown) {
 	)
 }
 
-const row = (id: string, fields: Record<string, unknown> = {}) => ({ fields, id })
+const row = (id: string, fields: { [_: string]: unknown } = {}) => ({ fields, id })
 const person = (id: string, email: string) => ({ email, id })
 
 /** A table where the row's email is NOT the account's – the normal case. */
@@ -48,7 +48,7 @@ function main() {
 	// A row the drain has not stamped yet still gets found by email.
 	const unstamped = {
 		byEmail: new Map([["fresh@example.test", row("recB")]]),
-		byUserId: new Map<string, { id: string; fields: Record<string, unknown> }>(),
+		byUserId: new Map<string, { id: string; fields: { [_: string]: unknown } }>(),
 	}
 	check(
 		"email is the fallback for an unstamped row",
@@ -66,7 +66,7 @@ function main() {
 	// Case: the email fallback has to be case-insensitive, or every row whose address was typed in a different case silently stops matching.
 	const mixedCase = {
 		byEmail: new Map([["typed@example.test", row("recC")]]),
-		byUserId: new Map<string, { id: string; fields: Record<string, unknown> }>(),
+		byUserId: new Map<string, { id: string; fields: { [_: string]: unknown } }>(),
 	}
 	check(
 		"email match ignores case",
@@ -77,7 +77,7 @@ function main() {
 	// The failure that produced the bug report, asserted directly: email-only indexing against a table of rows that share no address with the users.
 	const emailOnly = {
 		byEmail: new Map([["landed@example.test", row("recD")]]),
-		byUserId: new Map<string, { id: string; fields: Record<string, unknown> }>(),
+		byUserId: new Map<string, { id: string; fields: { [_: string]: unknown } }>(),
 	}
 	check(
 		"a user whose sign-up address differs is still reachable by id",
@@ -90,9 +90,9 @@ function main() {
 
 	// The join that works on the live base. The `Half-Life User ID` column it was designed around is not in the base, so the only key that needs no change to Airtable is the record id the RSVP drain already wrote down – and that is the case the Loops columns being empty actually came down to.
 	const byRecordOnly = {
-		byEmail: new Map<string, { id: string; fields: Record<string, unknown> }>(),
+		byEmail: new Map<string, { id: string; fields: { [_: string]: unknown } }>(),
 		byRecordId: new Map([["cmdrained", row("recDrained")]]),
-		byUserId: new Map<string, { id: string; fields: Record<string, unknown> }>(),
+		byUserId: new Map<string, { id: string; fields: { [_: string]: unknown } }>(),
 	}
 	check(
 		"a drained record id matches with no user-id column and no email match",

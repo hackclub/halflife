@@ -78,7 +78,7 @@ export async function lapseCredentials(userId: string): Promise<{ lapseUserId: s
 /**
  * One call into Lapse's REST API, unwrapped from its `{ ok, data }` envelope. A 401 means the token died early (revoked, or Lapse rotated its keys) and is reported as not-linked so the UI offers the same way back in.
  */
-async function call<T>(accessToken: string, path: string, query?: Record<string, string>) {
+async function call<T>(accessToken: string, path: string, query?: { [_: string]: string }) {
 	const url = new URL(`${LAPSE_API_BASE}${path}`)
 	for (const [k, v] of Object.entries(query ?? {})) url.searchParams.set(k, v)
 
