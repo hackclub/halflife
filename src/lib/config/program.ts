@@ -53,15 +53,15 @@ export const ONBOARDING_CHECKPOINT_ID = "w1-onboard"
  */
 export const STREAK_GRACE_DAYS = 1
 
-export type ThemeDef = {
-	readonly id: Theme
-	readonly slug: string
-	readonly label: string
+export interface ThemeDef {
 	readonly blurb: string
-	/** Program week this theme's design phase is scheduled for. */
-	readonly designWeek: number
 	/** Program week its build phase is scheduled for. */
 	readonly buildWeek: number
+	/** Program week this theme's design phase is scheduled for. */
+	readonly designWeek: number
+	readonly id: Theme
+	readonly label: string
+	readonly slug: string
 }
 
 // designWeek/buildWeek are written out rather than derived from array index. `index + 1` / `index + 6` is exactly the implicit coupling that breaks the day someone inserts a pilot week zero.

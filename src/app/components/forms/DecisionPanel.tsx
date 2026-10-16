@@ -4,11 +4,11 @@ import { useState } from "react"
 import { Button, Callout, Field } from "@/app/components/ui"
 import { sendJson, useAction } from "@/lib/use-action"
 
-type TierOption = {
+interface TierOption {
+	fundingHours: number
+	grantUsd: number
 	id: number
 	name: string
-	grantUsd: number
-	fundingHours: number
 	/** Funded hours: the parts money, and the submit floor. */
 	submitFloorHours: number
 }

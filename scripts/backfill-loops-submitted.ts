@@ -106,7 +106,7 @@ async function main() {
 			byRecordId.set(row.userId, { fields: {}, id: row.airtableRecordId })
 	}
 
-	const updates = new Map<string, Record<string, boolean>>()
+	const updates = new Map<string, { [_: string]: boolean }>()
 	let matched = 0
 	let unmatched = 0
 	let aligned = 0
@@ -121,7 +121,7 @@ async function main() {
 		}
 		matched++
 		// A drained placeholder carries no fields to compare against, so its want-state is written blind – checkbox writes are idempotent, and the hourly sync converges anything this over-writes.
-		const fields: Record<string, boolean> = {}
+		const fields: { [_: string]: boolean } = {}
 		for (const c of columns) {
 			const n = Number(c.match(/Week(\d+)ProjectSubmitted/)?.[1])
 			const value = want.has(n)

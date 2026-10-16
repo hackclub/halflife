@@ -35,19 +35,19 @@ const BANNER = (what: string, projectId: string, generatedAt: Date, link: string
 	+ `> [!NOTE]\n> This ${what} is mirrored from [Half Life](https://halflife.hackclub.com) – [open the project](${link}). `
 	+ `Editing it here will not change the platform's copy, and the next sync overwrites this file.\n`
 
-export type JournalEntry = {
-	id: string
-	phase: Phase
-	title: string
+export interface JournalEntry {
 	/** Rich text off a journal entry; tags are stripped before it lands here. */
 	content: string | null
-	hoursClaimed: number
-	hoursApproved: number | null
+	createdAt: Date
 	/** YYYY-MM-DD in the program timezone, as the journal stamped it. */
 	effectiveDate: string | null
-	createdAt: Date
+	hoursApproved: number | null
+	hoursClaimed: number
+	id: string
+	phase: Phase
 	/** Playback links for the entry's timelapses, in order. */
 	timelapses: { url: string | null }[]
+	title: string
 }
 
 /**
@@ -162,22 +162,22 @@ function newestOf(dates: Date[]): Date {
 /**
  * What a renderer returns: a file to write, never a deletion. Deletions only enter the sync's file set as explicit entries (see `legacyBomDeletion`), so narrowing here keeps every `.content` read below null-safe without assertions.
  */
-export type RenderedFile = {
-	path: string
+export interface RenderedFile {
 	content: string
+	path: string
 }
 
-export type ProjectMeta = {
-	id: string
-	title: string
+export interface ProjectMeta {
 	description: string | null
-	/** The program week the project's DESIGN phase runs in, or 0 for a warm-up. */
-	weekId: number
+	id: string
 	isWarmup: boolean
-	themeLabel: string
-	tier: number
 	/** The link the maker gave for the repo itself, written into the header. */
 	repoUrl: string | null
+	themeLabel: string
+	tier: number
+	title: string
+	/** The program week the project's DESIGN phase runs in, or 0 for a warm-up. */
+	weekId: number
 }
 
 /**
@@ -238,15 +238,15 @@ export function renderJournal(project: ProjectMeta, entries: JournalEntry[]): Re
 	return { content: lines.join("\n"), path: JOURNAL_PATH }
 }
 
-export type BomLineForFile = {
+export interface BomLineForFile {
+	link: string | null
 	name: string
 	purpose: string | null
 	quantity: number
 	unitCostUsd: number
-	vendor: string | null
-	link: string | null
 	/** When the line last changed; dates the file, so a parts edit moves it. */
 	updatedAt: Date
+	vendor: string | null
 }
 
 /**

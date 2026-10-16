@@ -22,14 +22,14 @@ export type SignupResult =
 	| { ok: true; duplicate: boolean; referralCode: string }
 	| { ok: false; error: string; status: number }
 
-export type SignupMeta = {
-	source?: string
+export interface SignupMeta {
 	ref?: string | null
-	utmSource?: string | null
-	utmMedium?: string | null
-	utmCampaign?: string | null
+	source?: string
 	/** When the caller knows whose address this is (the signed-in referral path), link the buffer row so the drain stamps it. */
 	userId?: string | null
+	utmCampaign?: string | null
+	utmMedium?: string | null
+	utmSource?: string | null
 }
 
 export function normalizeEmail(raw: unknown): string | null {
@@ -43,7 +43,7 @@ export function normalizeEmail(raw: unknown): string | null {
 /**
  * Fetches every record's `referral_code` isn't an option at scale, but counting record ids is cheap – request just the `email` field (Airtable rejects an empty field name outright) so each page carries almost nothing else. The count is a snapshot, not a lock, so two signups landing in the same instant can in principle claim the same ordinal; acceptable here given the existing rate limit and the low stakes of a referral number colliding.
  */
-async function countAirtableRecords(url: string, headers: Record<string, string>): Promise<number> {
+async function countAirtableRecords(url: string, headers: { [_: string]: string }): Promise<number> {
 	let count = 0
 	let offset: string | undefined
 	do {
@@ -115,7 +115,7 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 		}
 
 		const found = (await lookup.json()) as {
-			records?: Array<{ id?: string; fields?: Record<string, unknown> }>
+			records?: Array<{ id?: string; fields?: { [_: string]: unknown } }>
 		}
 		if ((found.records?.length ?? 0) > 0) {
 			// The row already exists upstream, so remember its id: the direct path bypasses the drain, and without this the buffer – and the Loops sync's record-id join – never learns this row exists.

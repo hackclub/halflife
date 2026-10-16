@@ -62,10 +62,10 @@ const STICK = 18
 
 const nodeX = (i: number) => COL_X + AMP * Math.sin(i * 1.02)
 
-type Block = {
+interface Block {
+	height: number
 	top: number
 	trailTop: number
-	height: number
 }
 
 const BLOCKS: Block[] = []

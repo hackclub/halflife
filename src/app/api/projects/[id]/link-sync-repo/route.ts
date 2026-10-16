@@ -8,7 +8,9 @@ import { getRepoSyncState, scheduleRepoSync } from "@/lib/repo-sync"
 
 export const dynamic = "force-dynamic"
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
 /**
  * Point a project's repo link at the repo its sync writes to.

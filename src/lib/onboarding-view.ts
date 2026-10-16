@@ -5,21 +5,18 @@ import { TIERS } from "@/lib/config/tiers"
 import { WEEK_META } from "@/lib/curriculum"
 
 /** A starter project as the client shows it: everything but which weeks it belongs to. */
-export type StarterProjectView = {
-	id: string
-	title: string
+export interface StarterProjectView {
 	description: string
+	guideUrl: string
+	id: string
 	parts: readonly string[]
 	repoUrl: string
-	guideUrl: string
+	title: string
 }
 
-export type OnboardingStateData = {
-	reached: number
-	stepCount: number
+export interface OnboardingStateData {
 	completed: boolean
 	experience: HardwareExperience | null
-	suggestedTier: number
 	project: {
 		id: string
 		title: string
@@ -28,21 +25,39 @@ export type OnboardingStateData = {
 		starterProjectId: string | null
 		tierLocked: boolean
 	}
+	reached: number
 	starterProjects: readonly StarterProjectView[]
+	stepCount: number
+	suggestedTier: number
 	trackingDismissed: boolean
 }
 
-export type OnboardingView = {
-	reached: number
-	stepCount: number
+export interface OnboardingView {
+	beginner: boolean
 	completed: boolean
 	experience: HardwareExperience | null
-	suggestedTier: number
-	beginner: boolean
+	experienceOptions: readonly { value: HardwareExperience; label: string; hint: string }[]
+	project: {
+		title: string
+		description: string
+		requestedTier: number | null
+		starterProjectId: string | null
+		tierLocked: boolean
+	}
 	/** The week-one project row, for the repo-sync step at the end of the flow. */
 	projectId: string
+	reached: number
+	starterProjects: readonly StarterProjectView[]
+	stepCount: number
 	steps: readonly { id: string; number: number; heading: string; skippable: boolean }[]
-	experienceOptions: readonly { value: HardwareExperience; label: string; hint: string }[]
+	suggestedTier: number
+	tiers: readonly {
+		id: number
+		name: string
+		grantUsd: number
+		estimate: string
+		showcase: readonly { title: string; image: string; href: string }[]
+	}[]
 	weekIntro: {
 		/** The curriculum's name for the theme, which is what names its painting. */
 		painting: string
@@ -51,21 +66,6 @@ export type OnboardingView = {
 		primer: string
 		examples: readonly string[]
 	} | null
-	project: {
-		title: string
-		description: string
-		requestedTier: number | null
-		starterProjectId: string | null
-		tierLocked: boolean
-	}
-	starterProjects: readonly StarterProjectView[]
-	tiers: readonly {
-		id: number
-		name: string
-		grantUsd: number
-		estimate: string
-		showcase: readonly { title: string; image: string; href: string }[]
-	}[]
 }
 
 /**

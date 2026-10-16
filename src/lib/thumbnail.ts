@@ -1,11 +1,11 @@
 import { imageSources } from "@/components/platform/Markdown"
 
-type EntryImages = {
-	createdAt: Date
+interface EntryImages {
 	content: string | null
+	createdAt: Date
 }
 
-type ReelFrames = {
+interface ReelFrames {
 	createdAt: Date
 	/** The frame the pipeline made, when one exists. */
 	thumbnailUrl: string | null

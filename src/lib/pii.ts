@@ -48,15 +48,15 @@ export function safeDecrypt(payload: string | null | undefined): string | null {
 	}
 }
 
-export type DecryptedAddress = {
+export interface DecryptedAddress {
+	birthday: string | null
+	city: string | null
+	country: string | null
 	line1: string | null
 	line2: string | null
-	city: string | null
+	phone: string | null
 	state: string | null
 	zip: string | null
-	country: string | null
-	birthday: string | null
-	phone: string | null
 }
 
 export function decryptUserPII(user: {

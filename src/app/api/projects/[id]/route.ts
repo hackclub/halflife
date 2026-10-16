@@ -15,7 +15,9 @@ import { projectUpdateSchema } from "@/lib/schemas/project"
 import { recomputeStreak } from "@/lib/streak"
 import { isOwnedKey, publicUrlFor } from "@/lib/uploads/r2"
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
 export const GET = withRoute(async (_req: Request, { params }: Params) => {
 	const gate = await requireSession()

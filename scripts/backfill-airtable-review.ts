@@ -30,7 +30,7 @@ import prisma from "../src/lib/prisma"
 const commit = process.argv.includes("--commit")
 
 /** The decision that still holds for a phase, as far as the note reconstruction needs it. */
-type StandingReview = {
+interface StandingReview {
 	feedback: string
 	result: ReviewResult
 	reviewerId: string | null

@@ -25,7 +25,9 @@ import { getSubmissionDetail } from "@/lib/queries/review"
 
 export const dynamic = "force-dynamic"
 
-type Props = { params: Promise<{ id: string }> }
+interface Props {
+	params: Promise<{ id: string }>
+}
 
 export default async function ReviewDetailPage({ params }: Props) {
 	const { user, roles } = await requirePermissionPage(Permission.REVIEW_SUBMISSIONS)

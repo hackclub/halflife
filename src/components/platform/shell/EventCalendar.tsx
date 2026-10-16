@@ -29,12 +29,12 @@ const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const
 const HOUR_PX = 32
 
 /** An event's clipped slice of one day, with its overlap lane for side-by-side blocks. */
-type PlacedSegment = {
-	event: CalendarEvent
-	startMin: number
+interface PlacedSegment {
 	endMin: number
+	event: CalendarEvent
 	lane: number
 	lanes: number
+	startMin: number
 }
 
 /** "7 PM" – the gutter's hour marks. */

@@ -16,26 +16,26 @@ import "server-only"
 /** The two forges configured today. A Codeberg/Gitea entry would join them. */
 export type ForgeId = "github" | "gitlab"
 
-export type Forge = {
-	id: ForgeId
-	/** What the maker sees: "GitHub", "GitLab". */
-	label: string
-	/** The canonical web host. */
-	hostname: string
+export interface Forge {
 	/** Hosts that mean the same forge, e.g. GitHub's `www.` prefix. */
 	aliases: readonly string[]
 	/** One extra web path segment between the repo and `blob`, e.g. GitLab's `-`. */
 	blobSegment: string
+	/** The canonical web host. */
+	hostname: string
+	id: ForgeId
+	/** What the maker sees: "GitHub", "GitLab". */
+	label: string
 	/**
 	 * Whether a repo path may carry nested groups (`group/sub/repo`), which GitLab allows and GitHub does not. The repo parser uses this to decide how many segments are a repo and how many are the path to it.
 	 */
 	nestedGroups: boolean
+	/** Where the forge's OAuth app is created, for the "make one" link. */
+	newAppUrl: string
 	/**
 	 * The OAuth scopes this forge needs to read private repos and push to one. GitHub has one broad `repo` scope; GitLab splits read from write and grants API access separately.
 	 */
 	scopes: readonly string[]
-	/** Where the forge's OAuth app is created, for the "make one" link. */
-	newAppUrl: string
 }
 
 export const FORGES: Record<ForgeId, Forge> = {
@@ -83,7 +83,7 @@ export function forgeByHostname(hostname: string): Forge | null {
 
 /** The forge with this id, or null. Narrowing helper for stored values. */
 export function forgeById(id: string): Forge | null {
-	return (FORGES as Record<string, Forge | undefined>)[id] ?? null
+	return (FORGES as { [_: string]: Forge | undefined })[id] ?? null
 }
 
 /**

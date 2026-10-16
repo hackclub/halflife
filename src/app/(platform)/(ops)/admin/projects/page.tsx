@@ -11,17 +11,19 @@ import { listProjects, type ProjectFilters } from "@/lib/queries/admin"
 
 export const dynamic = "force-dynamic"
 
-type Search = {
+interface Search {
+	build?: string
+	cursor?: string
+	design?: string
+	extended?: string
 	q?: string
 	theme?: string
-	design?: string
-	build?: string
 	tier?: string
-	extended?: string
 	unstarted?: string
-	cursor?: string
 }
-type Props = { searchParams: Promise<Search> }
+interface Props {
+	searchParams: Promise<Search>
+}
 
 const STATUSES = Object.values(PhaseStatus)
 

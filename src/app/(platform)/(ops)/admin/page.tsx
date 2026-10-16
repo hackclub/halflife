@@ -1190,7 +1190,11 @@ const PROJECT_KIND = [
 ] as const
 
 /** A week of the season as either per-week chart draws it. */
-type WeekColumn = { week: number; label: string; phase: Phase | null }
+interface WeekColumn {
+	label: string
+	phase: Phase | null
+	week: number
+}
 
 /** What a week is called in a tooltip – the theme alone does not say whether it is the design half or the build half. */
 const weekNameOf = (week: WeekColumn) =>

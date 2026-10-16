@@ -7,7 +7,9 @@ import { itemRegionPriceSchema } from "@/lib/schemas/admin"
 
 export const dynamic = "force-dynamic"
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
 /**
  * Set (or clear, with null) one region's coin price for one shop item. Absent means base pricing, so clearing restores the base price rather than deleting history – orders snapshot the price they were charged.

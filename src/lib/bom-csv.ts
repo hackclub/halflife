@@ -7,7 +7,8 @@
  */
 
 /** One line read out of a CSV, in the shape the parts table stores. */
-export type ImportedBomLine = {
+export interface ImportedBomLine {
+	link: string | null
 	name: string
 	/** Never mapped from a CSV unless the file names a purpose column. */
 	purpose: string | null
@@ -15,19 +16,18 @@ export type ImportedBomLine = {
 	/** Zero when the file carried no price the parser could read. */
 	unitCostUsd: number
 	vendor: string | null
-	link: string | null
 }
 
 /** A data row the parser chose not to import, and why. */
-export type SkippedRow = {
-	/** 1-based line in the file, header included, so the maker can find it. */
-	row: number
+export interface SkippedRow {
 	/** The part name as the file spelled it, for saying it back. */
 	name: string
 	reason: string
+	/** 1-based line in the file, header included, so the maker can find it. */
+	row: number
 }
 
-export type ParsedBom = {
+export interface ParsedBom {
 	/** The header cells, or null when no header row could be found. */
 	header: string[] | null
 	lines: ImportedBomLine[]
@@ -239,7 +239,7 @@ function parseLink(value: string | undefined): string | null {
 /**
  * Common suppliers, so `lcsc.com` reads as LCSC rather than Lcsc. Anything not here still gets the registrable label, title-cased, which is close enough to edit and better than a blank next to a link the maker already has.
  */
-const KNOWN_VENDORS: Record<string, string> = {
+const KNOWN_VENDORS: { [_: string]: string } = {
 	"adafruit.com": "Adafruit",
 	"aliexpress.com": "AliExpress",
 	"amazon.com": "Amazon",

@@ -7,22 +7,22 @@ import { getHoursBreakdown, type HoursBreakdown } from "@/lib/hours"
 import prisma from "@/lib/prisma"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
-export type QueueItem = {
-	id: string
-	themeProjectId: string
-	phase: Phase
-	themeLabel: string
-	projectTitle: string
-	// Display name only – the queue is open to every REVIEWER, so maker emails must not be scrapable page by page (M6).
-	participant: { id: string; name: string | null }
-	submittedAt: Date
-	submittedInWeek: number | null
-	onTime: boolean
-	claimedBy: { id: string; name: string | null } | null
+export interface QueueItem {
 	claimExpiresAt: Date | null
+	claimedBy: { id: string; name: string | null } | null
 	/** Whether the claim is still in force. Computed here rather than in a
 	 *  component, so rendering stays a pure function of its inputs. */
 	claimLive: boolean
+	id: string
+	onTime: boolean
+	// Display name only – the queue is open to every REVIEWER, so maker emails must not be scrapable page by page (M6).
+	participant: { id: string; name: string | null }
+	phase: Phase
+	projectTitle: string
+	submittedAt: Date
+	submittedInWeek: number | null
+	themeLabel: string
+	themeProjectId: string
 	tier: number | null
 }
 
@@ -94,10 +94,10 @@ export async function getReviewQueue(opts: {
 export type SubmissionDetail = Prisma.PhaseSubmissionGetPayload<{ include: typeof submissionDetailInclude }>
 
 /** A devlog session with its evidence resolved to URLs for the review page. */
-export type ReviewSession = Omit<
-	Prisma.WorkSessionGetPayload<{ include: { media: true; timelapses: true } }>,
-	"media"
-> & { media: (SessionMedia & { url: string | null })[] }
+export interface ReviewSession
+	extends Omit<Prisma.WorkSessionGetPayload<{ include: { media: true; timelapses: true } }>, "media"> {
+	media: (SessionMedia & { url: string | null })[]
+}
 
 /** A prior decision on any of the project's submissions: who wrote it and which phase it decided. */
 export type PriorReview = Prisma.SubmissionReviewGetPayload<{
@@ -105,15 +105,15 @@ export type PriorReview = Prisma.SubmissionReviewGetPayload<{
 }>
 
 /** Everything the review page renders for one submission. */
-export type SubmissionDetailView = {
-	submission: SubmissionDetail
-	claimLive: boolean
-	themeLabel: string
-	coverImageUrl: string | null
+export interface SubmissionDetailView {
 	breakdown: HoursBreakdown
-	sessions: ReviewSession[]
+	claimLive: boolean
+	coverImageUrl: string | null
 	links: HackatimeLink[]
 	priorReviews: PriorReview[]
+	sessions: ReviewSession[]
+	submission: SubmissionDetail
+	themeLabel: string
 }
 
 const submissionDetailInclude = {
@@ -220,18 +220,18 @@ export async function getSubmissionDetail(
 	}
 }
 
-export type OpenDispute = {
-	id: string
-	note: string
+export interface OpenDispute {
 	createdAt: Date
-	phase: Phase
-	submissionId: string
-	themeProjectId: string
-	projectTitle: string
-	themeLabel: string
-	participant: string
+	id: string
 	/** Replies so far, so the panel can say whether a reviewer has answered. */
 	messageCount: number
+	note: string
+	participant: string
+	phase: Phase
+	projectTitle: string
+	submissionId: string
+	themeLabel: string
+	themeProjectId: string
 }
 
 /**

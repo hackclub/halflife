@@ -7,7 +7,9 @@ import { moderatePostSchema } from "@/lib/schemas/feed"
 
 export const dynamic = "force-dynamic"
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
 /** Hide a reel. */
 export const POST = withRoute(async (req: Request, { params }: Params) => {

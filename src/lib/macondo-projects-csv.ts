@@ -85,7 +85,7 @@ const COLUMNS = [
 type Column = (typeof COLUMNS)[number]
 
 /** Spreadsheet headings people actually type, folded onto the columns. */
-const HEADER_ALIASES: Record<string, Column> = {
+const HEADER_ALIASES: { [_: string]: Column } = {
 	author: "author_email",
 	authoremail: "author_email",
 	authorhackatimeprojects: "author_hackatime_projects",
@@ -123,30 +123,30 @@ const HEADER_ALIASES: Record<string, Column> = {
 	transferredat: "transferred_at",
 }
 
-export type MacondoJournal = {
-	title: string | null
+export interface MacondoJournal {
 	content: string | null
 	createdAt: Date | null
 	hours: number
+	title: string | null
 }
 
-export type MacondoRow = {
-	projectId: string
-	title: string
+export interface MacondoRow {
+	createdAt: Date | null
+	demoUrl: string | null
 	description: string | null
 	email: string
 	hoursTotal: number | null
-	demoUrl: string | null
+	journals: MacondoJournal[]
+	macondoUrl: string | null
+	projectId: string
 	repoUrl: string | null
+	submittedAt: Date | null
 	thumbnailUrl: string | null
 	tier: number | null
-	createdAt: Date | null
-	submittedAt: Date | null
-	macondoUrl: string | null
-	journals: MacondoJournal[]
+	title: string
 }
 
-export type CsvProblem = {
+export interface CsvProblem {
 	line: number
 	message: string
 }
@@ -167,7 +167,7 @@ function parseJournals(raw: string): MacondoJournal[] {
 	const out: MacondoJournal[] = []
 	for (const entry of data) {
 		if (!entry || typeof entry !== "object") continue
-		const e = entry as Record<string, unknown>
+		const e = entry as { [_: string]: unknown }
 		const hours = Number(e.hours)
 		out.push({
 			content: typeof e.content === "string" ? e.content : null,
@@ -270,12 +270,12 @@ export function parseProjectsCsv(text: string): { rows: MacondoRow[]; problems: 
 	return problems.length > 0 ? { problems, rows: [] } : { problems, rows }
 }
 
-export type CsvImportOutcome = {
-	projectId: string
+export interface CsvImportOutcome {
 	email: string
-	title: string
-	status: "imported" | "already_imported" | "failed"
+	projectId: string
 	reason: string | null
+	status: "imported" | "already_imported" | "failed"
+	title: string
 }
 
 /**
@@ -294,17 +294,17 @@ async function importedProjectIds(): Promise<Set<string>> {
 	return out
 }
 
-export type CsvImportSummary = {
-	read: number
-	imported: number
+export interface CsvImportSummary {
 	alreadyImported: number
 	failed: number
+	imported: number
 	outcomes: CsvImportOutcome[]
+	read: number
 }
 
-type ImportActor = {
-	id: string
+interface ImportActor {
 	email: string | null
+	id: string
 }
 
 export async function importMacondoProjects(actor: ImportActor, csv: string): Promise<CsvImportSummary> {

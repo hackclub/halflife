@@ -23,31 +23,31 @@ import { isOwnedKey, publicUrlFor } from "@/lib/uploads/r2"
 /** Where reel uploads live in the bucket. Keys are validated against this. */
 export const POST_UPLOAD_FOLDER = "posts"
 
-export type FeedAuthor = {
+export interface FeedAuthor {
 	id: string
-	name: string | null
 	image: string | null
+	name: string | null
 	streak: number
 }
 
-export type FeedItem = {
+export interface FeedItem {
+	author: FeedAuthor
+	caption: string
+	commentCount: number
+	durationSeconds: number | null
+	height: number | null
 	id: string
 	kind: PostKind
-	caption: string
-	videoUrl: string | null
-	thumbnailUrl: string | null
-	durationSeconds: number | null
-	width: number | null
-	height: number | null
-	publishedAt: Date | null
-	pinned: boolean
-	author: FeedAuthor
-	project: { id: string; theme: string; title: string } | null
-	viewCount: number
 	likeCount: number
-	commentCount: number
 	/** Whether the person asking has already liked it. */
 	likedByMe: boolean
+	pinned: boolean
+	project: { id: string; theme: string; title: string } | null
+	publishedAt: Date | null
+	thumbnailUrl: string | null
+	videoUrl: string | null
+	viewCount: number
+	width: number | null
 }
 
 const feedInclude = {
@@ -104,13 +104,13 @@ const visible: Prisma.PostWhereInput = {
 	status: PostStatus.PUBLISHED,
 }
 
-export type FeedPage = {
+export interface FeedPage {
 	items: FeedItem[]
-	nextCursor: string | null
 	/**
 	 * What goes above the paged rows, on the first page only: any reel an admin posted today in the viewer's timezone, newest first.
 	 */
 	leading: FeedItem[]
+	nextCursor: string | null
 }
 
 /**
@@ -192,22 +192,22 @@ export async function getCreatorReels(creatorId: string, viewerId: string, limit
 	return rows.map(p => toFeedItem(p, likedIds))
 }
 
-export type CreatePostInput = {
-	userId: string
-	kind: PostKind
+export interface CreatePostInput {
+	byteSize?: number | null
+	/** True when the author holds MANAGE_FEED. Only they may announce. */
+	canManageFeed: boolean
 	caption: string
-	objectKey: string
-	thumbnailKey?: string | null
-	themeProjectId?: string | null
 	/** The trail node this reel answers, e.g. "w3-reel-2". Null off the trail. */
 	checkpointKey?: string | null
 	contentType?: string | null
-	byteSize?: number | null
 	durationSeconds?: number | null
-	width?: number | null
 	height?: number | null
-	/** True when the author holds MANAGE_FEED. Only they may announce. */
-	canManageFeed: boolean
+	kind: PostKind
+	objectKey: string
+	themeProjectId?: string | null
+	thumbnailKey?: string | null
+	userId: string
+	width?: number | null
 }
 
 /**
@@ -340,11 +340,11 @@ export async function setLike(
 	})
 }
 
-export type CommentView = {
-	id: string
+export interface CommentView {
+	author: { id: string; name: string | null; image: string | null }
 	body: string
 	createdAt: Date
-	author: { id: string; name: string | null; image: string | null }
+	id: string
 	mine: boolean
 }
 

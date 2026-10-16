@@ -43,16 +43,16 @@ export const LOOPS_FIELDS = {
 const WEEKS = Array.from({ length: 10 }, (_, i) => i + 1)
 
 /** What Loops should hold for one person. */
-type LoopsValues = {
-	id: string
+interface LoopsValues {
 	email: string
+	id: string
+	lastEntryAt: Date | null
 	/** Airtable's "last login": last site access, or the sign-in before it. */
 	lastLoginAt: Date | null
-	lastEntryAt: Date | null
 	/** Week number → completed that week's first checkpoint. */
-	weeks: Record<number, boolean>
+	weeks: { [_: number]: boolean }
 	/** Week number → submitted that week's project. */
-	weeksSubmitted: Record<number, boolean>
+	weeksSubmitted: { [_: number]: boolean }
 }
 
 /**
@@ -88,7 +88,7 @@ async function loopsValues(): Promise<LoopsValues[]> {
 	})
 
 	return users.map(u => {
-		const weeks: Record<number, boolean> = {}
+		const weeks: { [_: number]: boolean } = {}
 		for (const def of THEMES) {
 			const project = u.themeProjects.find(p => p.theme === def.id)
 			weeks[def.designWeek] = def.designWeek === 1 ? u.onboardingCompletedAt !== null : project?.namedAt != null
@@ -102,7 +102,7 @@ async function loopsValues(): Promise<LoopsValues[]> {
 				if (w >= 1 && w <= 10) submittedWeeks.add(w)
 			}
 		}
-		const weeksSubmitted: Record<number, boolean> = {}
+		const weeksSubmitted: { [_: number]: boolean } = {}
 		for (const n of WEEKS) weeksSubmitted[n] = submittedWeeks.has(n)
 		// Last entry means evidence of an actual entry: a manually written session, or a session carrying a timelapse. A HACKATIME_TRACKED row only says a Hackatime project was linked and contributes nothing on its own – someone who has only linked Hackatime gets no timestamp, and a previously stamped one is cleared below.
 		const lastEntryAt = u.themeProjects
@@ -124,8 +124,8 @@ function newest(a: Date | null, b: Date | null): Date | null {
 }
 
 /** The Airtable fields for one person, exactly as the table names them. */
-function fieldsFor(v: LoopsValues): Record<string, unknown> {
-	const fields: Record<string, unknown> = {
+function fieldsFor(v: LoopsValues): { [_: string]: unknown } {
+	const fields: { [_: string]: unknown } = {
 		// null clears a date that no longer applies.
 		[LOOPS_FIELDS.lastLoginAt]: v.lastLoginAt?.toISOString() ?? null,
 		[LOOPS_FIELDS.lastEntryAt]: v.lastEntryAt?.toISOString() ?? null,
@@ -136,7 +136,7 @@ function fieldsFor(v: LoopsValues): Record<string, unknown> {
 }
 
 /** Whether a row already holds these values, so an unchanged row is not rewritten. */
-function unchanged(row: AirtableRecord, fields: Record<string, unknown>): boolean {
+function unchanged(row: AirtableRecord, fields: { [_: string]: unknown }): boolean {
 	return Object.entries(fields).every(([k, want]) => {
 		const have = row.fields[k]
 		if (typeof want === "boolean") return (have === true) === want
@@ -289,28 +289,28 @@ async function signupRows(config: NonNullable<ReturnType<typeof getAirtableConfi
 	return { byEmail, byUserId, writable }
 }
 
-export type LoopsSyncResult = {
-	users: number
-	matched: number
-	/** Rows found by `Half-Life User ID`. */
-	matchedById: number
-	/** Rows found by the Airtable record id the RSVP drain recorded. */
-	matchedByRecord: number
-	/** Rows found only by email, because the row had no user id on it. */
-	matchedByEmail: number
-	/** Half Life users with no row in Signups. */
-	unmatched: number
-	/** Buffer rows newly linked to their Signups row this run (0 on a dry run). */
-	relinked: number
-	updated: number
-	unchanged: number
-	dryRun: boolean
+export interface LoopsSyncResult {
 	/**
 	 * True when the join matched so little that this run should not be believed. Set rather than merely logged, because the way this failed for months was a run that reported success having written nothing.
 	 */
 	degraded: boolean
+	dryRun: boolean
+	matched: number
+	/** Rows found only by email, because the row had no user id on it. */
+	matchedByEmail: number
+	/** Rows found by `Half-Life User ID`. */
+	matchedById: number
+	/** Rows found by the Airtable record id the RSVP drain recorded. */
+	matchedByRecord: number
 	/** In a dry run, the first few updates that would be sent. */
-	preview?: { email: string; fields: Record<string, unknown> }[]
+	preview?: { email: string; fields: { [_: string]: unknown } }[]
+	/** Buffer rows newly linked to their Signups row this run (0 on a dry run). */
+	relinked: number
+	unchanged: number
+	/** Half Life users with no row in Signups. */
+	unmatched: number
+	updated: number
+	users: number
 }
 
 /**
@@ -327,7 +327,7 @@ export async function syncLoopsProperties(
 	const rows = { ...listed, byRecordId }
 	// A dry run promises no writes, so it must not persist links either – it reports the match as-is.
 	const relinked = opts.dryRun ? 0 : await persistRecordLinks(values, listed.byEmail, byRecordId)
-	const updates: { id: string; email: string; fields: Record<string, unknown> }[] = []
+	const updates: { id: string; email: string; fields: { [_: string]: unknown } }[] = []
 	let matched = 0
 	let matchedById = 0
 	let matchedByRecord = 0

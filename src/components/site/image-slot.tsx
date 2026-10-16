@@ -1,21 +1,21 @@
 import type { CSSProperties } from "react"
 
-type Props = {
-	label: string
-	/** Native size of the artwork the comp expects, e.g. "736 × 269". */
-	ratio: string
-	className?: string
-	style?: CSSProperties
-	/** Scales the interior fittings so a small card and a wide banner match. */
-	scale?: number
-	/**
-	 * Ground the slot sits on. `ink` is the default dark plate; `light` is for slots that land on paper and carry the page's own ink text over them.
-	 */
-	tone?: "ink" | "light"
+interface Props {
 	/**
 	 * A backdrop sits *behind* content rather than standing in for it. It drops the centred caption, which would collide with whatever is set over it, and leaves the accessibility tree, because a background image is decorative. `label` and `ratio` still record, in source, what artwork belongs here.
 	 */
 	backdrop?: boolean
+	className?: string
+	label: string
+	/** Native size of the artwork the comp expects, e.g. "736 × 269". */
+	ratio: string
+	/** Scales the interior fittings so a small card and a wide banner match. */
+	scale?: number
+	style?: CSSProperties
+	/**
+	 * Ground the slot sits on. `ink` is the default dark plate; `light` is for slots that land on paper and carry the page's own ink text over them.
+	 */
+	tone?: "ink" | "light"
 }
 
 const TONES = {

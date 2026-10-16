@@ -13,8 +13,9 @@ import { cx } from "@/lib/cx"
 const usd = (n: number) => `$${n.toFixed(2)}`
 
 /** What the import route reports after reading the repo's CSV. */
-type ImportPreview = {
-	path: string
+interface ImportPreview {
+	/** Lines already on the page, so the copy can offer add vs replace. */
+	existing: number
 	lines: {
 		name: string
 		purpose: string | null
@@ -23,18 +24,17 @@ type ImportPreview = {
 		vendor: string | null
 		link: string | null
 	}[]
+	path: string
 	skipped: { row: number; name: string; reason: string }[]
-	/** Lines already on the page, so the copy can offer add vs replace. */
-	existing: number
 }
 
-type Draft = {
+interface Draft {
+	link: string
 	name: string
 	purpose: string
 	quantity: string
 	unitCostUsd: string
 	vendor: string
-	link: string
 }
 
 const FIELD_NAMES: Record<keyof Draft, string> = {

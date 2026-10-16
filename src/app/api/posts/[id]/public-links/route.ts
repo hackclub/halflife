@@ -6,7 +6,9 @@ import { publicReelLinksSchema } from "@/lib/schemas/feed"
 
 export const dynamic = "force-dynamic"
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
 /**
  * Record where a Half Life reel was also posted publicly – one Public Reels row per link – so a post that goes viral can be found and paid for.
@@ -28,7 +30,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	if (!post) return fail("NOT_FOUND", "Reel not found")
 
 	const links: { platform: keyof typeof PLATFORM_INFO; url: string }[] = []
-	const errors: Record<string, string> = {}
+	const errors: { [_: string]: string } = {}
 	for (const link of parsed.data.links) {
 		const read = readPublicReelLink(link.platform, link.url)
 		if ("error" in read) errors[link.platform] = read.error

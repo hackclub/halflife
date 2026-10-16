@@ -24,15 +24,15 @@ export const BRAND = {
 	tagline: "become a hardware expert in 10 weeks, get a 3D printer",
 } as const
 
-export type DesignWeek = {
-	subject: string
-	week: string
+export interface DesignWeek {
 	/**
 	 * The artwork behind this pairing, as a path under `public/`. Optional on the same terms as a `BuildCard`'s photo: a week without one falls back to the drawn slot, so the five fill in one week at a time. Both layouts read it from here, so a new picture lands on the stage and in the stacked column from one edit.
 	 *
 	 * Week 3 has none yet – `public/art/weeks` ships PCB, cad, display and breadboard, and nothing for music.
 	 */
 	art?: string
+	subject: string
+	week: string
 }
 
 /** Week 1 leads at display scale; weeks 2-5 sit beneath it. */
@@ -50,18 +50,18 @@ export const DESIGN_WEEKS: { lead: DesignWeek; rest: DesignWeek[] } = {
 	],
 }
 
-export type Step = {
-	id: string
-	title: string
+export interface Step {
 	/**
 	 * The step's artwork, on the same terms as a `DesignWeek`'s `art` and a `BuildCard`'s `photo`: an optional path, with `slot` drawn as the fallback
 	 * while a step is still waiting for its picture. `slot` stays on a step that
 	 * has its art – it is the in-source record of the footprint the comp drew.
 	 */
 	art?: StaticImageData
+	caption?: string
+	id: string
 	/** Slot the user drops a real photo into. */
 	slot?: { label: string; ratio: string }
-	caption?: string
+	title: string
 }
 
 /** Exactly four, in comp order: design, funding, build, printer. The
@@ -94,7 +94,11 @@ export const STEPS: [Step, Step, Step, Step] = [
 	},
 ]
 
-export type Aside = { id: string; title: string; body: string }
+export interface Aside {
+	body: string
+	id: string
+	title: string
+}
 
 /** Exactly two; each is placed at its own offset on the process band. */
 export const ASIDES: [Aside, Aside] = [
@@ -110,11 +114,11 @@ export const ASIDES: [Aside, Aside] = [
 	},
 ]
 
-export type BuildCard = {
+export interface BuildCard {
+	credit: string
 	id: string
 	/** Names the project. Not drawn -- it is the photograph's alt text. */
 	label: string
-	credit: string
 	/**
 	 * The project photograph, as a path under `public/`. Optional on purpose: a card without one falls back to the drawn slot, so the belt fills up one project at a time instead of needing the whole set before it renders.
 	 */
@@ -170,7 +174,10 @@ export const BUILD_CARDS: BuildCard[] = [
 	},
 ]
 
-export type Faq = { q: string; a: string }
+export interface Faq {
+	a: string
+	q: string
+}
 
 export const FAQS: Faq[] = [
 	{

@@ -55,7 +55,7 @@ export function Panel({
 /* ------------------------------------------------------------------ *
  * Accent text
  * ------------------------------------------------------------------ */
-const ACCENT_TEXT: Record<string, string> = {
+const ACCENT_TEXT: { [_: string]: string } = {
 	"var(--color-coral)": "var(--color-coral-deep)",
 	"var(--color-gold)": "var(--color-gold-ink)",
 	"var(--color-orange)": "var(--color-orange-ink)",
@@ -85,10 +85,10 @@ export function onAccent(accent: string): { text: string; pill: string } {
 /* ------------------------------------------------------------------ *
  * Button
  * ------------------------------------------------------------------ */
-type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-	variant?: "solid" | "outline" | "ghost" | "gold" | "teal" | "coral"
-	size?: "sm" | "md" | "lg"
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 	full?: boolean
+	size?: "sm" | "md" | "lg"
+	variant?: "solid" | "outline" | "ghost" | "gold" | "teal" | "coral"
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(

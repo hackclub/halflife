@@ -19,37 +19,37 @@ import { publicUrlFor } from "@/lib/uploads/r2"
  * It is not the trail's store: that only holds the viewer's own projects, so everything on a profile comes from this one read.
  */
 
-export type ProfileProject = {
-	id: string
-	title: string
-	/** The theme's name, "Warm Up" for a warm-up project. */
-	themeLabel: string
-	/** The key `WeekPainting` knows the scene by, e.g. "PCB", "Breadboard computer". */
-	painting: string
+export interface ProfileProject {
 	/** The scene colour behind a project that has no picture of its own. */
 	accent: string
-	/** Warm-ups are not a week of the season; the card labels them differently. */
-	warmup: boolean
-	thumbnail: ProjectThumbnail | null
+	entries: number
 	/** Journalled hours – tracked entries contribute zero, as they do everywhere. */
 	hours: number
-	entries: number
+	id: string
+	/** The key `WeekPainting` knows the scene by, e.g. "PCB", "Breadboard computer". */
+	painting: string
+	/** The theme's name, "Warm Up" for a warm-up project. */
+	themeLabel: string
+	thumbnail: ProjectThumbnail | null
+	title: string
+	/** Warm-ups are not a week of the season; the card labels them differently. */
+	warmup: boolean
 }
 
-export type ProfileData = {
+export interface ProfileData {
 	id: string
-	name: string
 	image: string | null
-	streak: number
-	/** When they joined the program, epoch ms. */
-	joinedAt: number
 	/** Whether the viewer is looking at their own profile. */
 	isViewer: boolean
+	/** When they joined the program, epoch ms. */
+	joinedAt: number
+	name: string
 	projects: ProfileProject[]
-	/** Published reels, newest first, capped at `PROFILE_REELS`. */
-	reels: FeedItem[]
 	/** How many published reels they have in total, for the header. */
 	reelCount: number
+	/** Published reels, newest first, capped at `PROFILE_REELS`. */
+	reels: FeedItem[]
+	streak: number
 }
 
 /** How many reels a profile shows. Enough to be a body of work, not the whole archive. */

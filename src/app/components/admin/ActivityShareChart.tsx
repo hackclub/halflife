@@ -5,7 +5,7 @@ import type { ActivityShare } from "@/lib/queries/admin"
 /**
  * One stable colour per activity, plus grey for the finishers who did none of them. The Sankey assigns its colours by box order, so these do not promise to match it – the axis names are this chart's legend.
  */
-const COLUMN_COLORS: Record<string, string> = {
+const COLUMN_COLORS: { [_: string]: string } = {
 	devlog: "var(--color-accent)",
 	hackatime: "var(--color-flame)",
 	none: "var(--color-ink-muted)",

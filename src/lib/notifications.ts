@@ -2,6 +2,7 @@ import "server-only"
 import type { Prisma } from "@/app/generated/prisma/client"
 import { Phase, ReviewResult } from "@/app/generated/prisma/enums"
 import { projectUrl } from "@/lib/app-url"
+import { ariReviewUrl } from "@/lib/ari-url"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { projectDisplayTitle } from "@/lib/config/program"
 import prisma from "@/lib/prisma"
@@ -19,18 +20,18 @@ import { postMessage, sendDM } from "@/lib/slack"
  * Called after the decision transaction has committed, from both decision paths (the console route and the Ari webhook), so the two cannot drift.
  */
 
-export type ReviewOutcomeNotice = {
-	themeProjectId: string
-	phase: Phase
-	result: ReviewResult
+export interface ReviewOutcomeNotice {
+	/** Which surface decided it, so the message can say who is asking. */
+	decidedBy: "ari" | "console"
 	/**
 	 * The reviewer's note to the maker, or null when there was none.
 	 *
 	 * Null is ordinary rather than exceptional: Ari decides without a note often enough that substituting its generic fallback would put "Reviewer's note: Ari asked for changes before this can be approved." into a maker's DM – a line that says the same thing twice and tells them nothing they can act on. The project page keeps whatever the review itself recorded; this is only what goes in the message.
 	 */
 	note: string | null
-	/** Which surface decided it, so the message can say who is asking. */
-	decidedBy: "ari" | "console"
+	phase: Phase
+	result: ReviewResult
+	themeProjectId: string
 }
 
 /**
@@ -69,15 +70,15 @@ function headline(
 	}
 }
 
-export type ReviewOutcomeMessage = {
-	/** Our words, in order. The reviewer's note is deliberately not among them. */
-	prose: string[]
+export interface ReviewOutcomeMessage {
 	/**
 	 * The reviewer's own words, or null.
 	 *
 	 * Kept as its own field rather than a paragraph among the rest, because it is the one part a human typed and the only part with line breaks worth keeping: a channel that folds it into a sentence loses where one request ended and the next began.
 	 */
 	note: string | null
+	/** Our words, in order. The reviewer's note is deliberately not among them. */
+	prose: string[]
 }
 
 /**
@@ -277,11 +278,53 @@ function escapeSlackText(value: string): string {
 }
 
 /**
+ * Who decided the submission a dispute is about, and where its review lives on Ari.
+ *
+ * A console decision carries the reviewer's own account, so the id is one join away. An Ari decision has no account link by design (see `finalizeReview`), so the address Ari reported is matched to an account instead – the same resolution the daily review summary makes – and a reviewer with no account here pings nobody rather than the wrong person.
+ *
+ * The link names the ship rather than the local row: Ari's path takes its own eight-character ship id, which is exactly what `ariSubmissionId` holds.
+ */
+async function disputeContext(submissionId: string): Promise<{ reviewUrl: string | null; slackId: string | null }> {
+	const submission = await prisma.phaseSubmission.findUnique({
+		select: {
+			ariSubmissionId: true,
+			reviews: {
+				orderBy: { createdAt: "desc" },
+				select: { reviewer: { select: { slackId: true } }, reviewerEmail: true },
+				take: 1,
+				where: { invalidated: false },
+			},
+		},
+		where: { id: submissionId },
+	})
+
+	const review = submission?.reviews[0]
+	let slackId = review?.reviewer?.slackId ?? null
+	const email = review?.reviewerEmail?.trim()
+	if (!slackId && email) {
+		const account = await prisma.user.findFirst({
+			select: { slackId: true },
+			where: { email: { equals: email, mode: "insensitive" } },
+		})
+		slackId = account?.slackId ?? null
+	}
+
+	return {
+		reviewUrl: submission?.ariSubmissionId ? ariReviewUrl(submission.ariSubmissionId) : null,
+		slackId,
+	}
+}
+
+/**
  * Ask staff to look again at a decision a maker has disputed.
  *
  * Posted to `SLACK_REVIEW_CHANNEL_ID` when it is set. A deployment without it still has the dispute in the console and the audit log, so nothing is lost.
+ *
+ * The reviewer who made the disputed decision is pinged and given a link straight to the hand-in on Ari, where the decision can be re-read and made again. Both are additions to the same channel post rather than a DM: the point is that whoever picks it up has the reviewer named and the review a click away. A reviewer with no account on this deployment, or a hand-in that never reached Ari, simply drops its half.
  */
 export async function notifyStaffDispute(input: {
+	/** The decided submission the dispute is against, so the reviewer and the Ari link can be found. */
+	submissionId: string
 	themeProjectId: string
 	title: string
 	phase: Phase
@@ -291,15 +334,21 @@ export async function notifyStaffDispute(input: {
 	const channel = process.env.SLACK_REVIEW_CHANNEL_ID
 	if (!channel) return
 	const phase = input.phase === Phase.DESIGN ? "design" : "build"
-	const url = projectUrl(input.themeProjectId)
-	// A participant's words land in staff's channel, where `<@U…>` and `<!channel>` are live mentions and `<url|text>` is a link; quoting does not neutralise them, so the three characters Slack mrkdwn gives meaning to are escaped.
+
+	const { reviewUrl, slackId } = await disputeContext(input.submissionId)
+	const disputeUrl = projectUrl(input.themeProjectId)
+	// A participant's words land in staff's channel, where `<@U…>` and `<!channel>` are live mentions and `<url|text>` is a link; quoting does not neutralise them, so the three characters Slack mrkdwn gives meaning to are escaped. The reviewer ping and our own links are ours, so they stay outside the escaping.
 	const quoted = escapeSlackText(input.note)
 		.trim()
 		.split("\n")
 		.map(line => `> ${line}`)
 		.join("\n")
-	const text = `Review dispute on *${escapeSlackText(input.title)}* (${phase}) by ${escapeSlackText(input.participant)}:\n\n${quoted}${
-		url ? `\n\n<${url}|Open the project>` : ""
+	const links = [
+		disputeUrl ? `<${disputeUrl}|Open the project>` : null,
+		reviewUrl ? `<${reviewUrl}|Open the review on Ari>` : null,
+	].filter(link => link !== null)
+	const text = `${slackId ? `<@${slackId}> ` : ""}Review dispute on *${escapeSlackText(input.title)}* (${phase}) by ${escapeSlackText(input.participant)}:\n\n${quoted}${
+		links.length > 0 ? `\n\n${links.join("\n")}` : ""
 	}`
 	await trackSideEffect(
 		"slack",

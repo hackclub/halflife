@@ -8,9 +8,9 @@
  * Deliberately pure (no server-only) so both the server queries and a renderer can name it. Same rule as lib/avatar.ts.
  */
 
-type Person = {
-	name?: string | null
+interface Person {
 	displayName?: string | null
+	name?: string | null
 }
 
 export function displayName(person: Person | null | undefined, fallback: string): string

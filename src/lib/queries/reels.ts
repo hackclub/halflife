@@ -13,32 +13,32 @@ import { warmupPhaseOf } from "@/lib/warmup"
  * Their own reels only, and including ones a moderator took out of the feed – the author still sees those, as the feed's own rule has it. A removed reel is gone for them too.
  */
 
-export type MyPublicLink = {
+export interface MyPublicLink {
 	id: string
 	platform: PublicReelPlatform
-	url: string
 	postedAt: number
+	url: string
 }
 
-export type MyReel = {
-	id: string
-	/** What the reel was for, in the trail's words: "Idea reel", "2.5h progress reel". */
-	title: string
-	caption: string
+export interface MyReel {
 	at: number
-	videoUrl: string | null
-	thumbnailUrl: string | null
-	status: PostStatus
-	links: MyPublicLink[]
+	caption: string
 	/** Why this reel cannot be deleted – its week is in review, decided or over. Null when it can. */
 	deleteLocked: string | null
+	id: string
+	links: MyPublicLink[]
 	/**
 	 * Whether deleting it reopens its checkpoint: the last reel on an idea or progress checkpoint. The map then holds everything else until it is back.
 	 */
 	reopensCheckpoint: boolean
+	status: PostStatus
+	thumbnailUrl: string | null
+	/** What the reel was for, in the trail's words: "Idea reel", "2.5h progress reel". */
+	title: string
+	videoUrl: string | null
 }
 
-export type MyReelGroup = {
+export interface MyReelGroup {
 	/** Null for reels posted outside any project. */
 	project: { id: string; title: string; theme: string } | null
 	reels: MyReel[]

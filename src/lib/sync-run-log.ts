@@ -32,11 +32,11 @@ export async function recordSyncRun(
 	}
 }
 
-export type LatestSyncRun = {
-	syncKey: string
+export interface LatestSyncRun {
+	actor: { id: string; name: string | null; email: string } | null
 	lastRunAt: Date
 	result: unknown
-	actor: { id: string; name: string | null; email: string } | null
+	syncKey: string
 }
 
 export async function getLatestSyncRuns(keys: SyncKey[]): Promise<LatestSyncRun[]> {

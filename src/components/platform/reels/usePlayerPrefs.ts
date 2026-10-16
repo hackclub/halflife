@@ -6,11 +6,11 @@ import { useCallback, useEffect, useState } from "react"
  *
  * Per browser, in localStorage, the way the rest of the ceremony is kept: nobody else ever needs to read it, and a new laptop starting from the defaults is no loss. Every read and write is guarded – a private window or blocked storage just means the defaults, every visit.
  */
-export type PlayerPrefs = {
-	muted: boolean
-	rate: number
+export interface PlayerPrefs {
 	autoScroll: boolean
 	comments: boolean
+	muted: boolean
+	rate: number
 }
 
 const KEY = "halflife.player.v1"

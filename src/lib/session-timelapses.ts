@@ -4,20 +4,20 @@ import { HttpError } from "@/lib/errors"
 
 type Tx = Prisma.TransactionClient
 
-export type FreshTimelapse = {
-	id: string
-	title: string
-	playbackUrl: string | null
-	thumbnailUrl: string | null
+export interface FreshTimelapse {
 	durationSeconds: number
+	/** The Hackatime project Lapse had synced when this was recorded, if any. */
+	hackatimeProject: string | null
+	id: string
+	playbackUrl: string | null
 	/**
 	 * When the recording STARTED, Lapse's createdAt (epoch ms).
 	 *
 	 * Stored because without it a timelapse is a duration with no date, and a duration cannot be compared against Hackatime's tracked intervals – which is the whole basis for not paying twice for the same sitting. Read back from Lapse at attach time rather than later, because Lapse answers on the caller's own OAuth token and that token expires.
 	 */
 	recordedAt: number | null
-	/** The Hackatime project Lapse had synced when this was recorded, if any. */
-	hackatimeProject: string | null
+	thumbnailUrl: string | null
+	title: string
 }
 
 /**

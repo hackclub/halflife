@@ -6,11 +6,13 @@ import { isUploadConfigured, listUploadedObjects, UPLOAD_FOLDERS, type UploadFol
 
 export const dynamic = "force-dynamic"
 
-type Search = {
-	folder?: string
+interface Search {
 	cursor?: string
+	folder?: string
 }
-type Props = { searchParams: Promise<Search> }
+interface Props {
+	searchParams: Promise<Search>
+}
 
 const FOLDER_LABELS: Record<UploadFolder, string> = {
 	covers: "Cover images",

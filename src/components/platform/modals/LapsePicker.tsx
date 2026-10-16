@@ -5,16 +5,16 @@ import { IconArrowRight, IconCheck, IconClock, IconFilm, IconWarning } from "@/c
 import { Button, Chip } from "@/components/platform/ui"
 import { cx } from "@/lib/cx"
 
-export type LapseTimelapse = {
-	id: string
-	title: string
-	durationSeconds: number
-	visibility: "PUBLIC" | "UNLISTED" | "FAILED_PROCESSING"
-	createdAt: number
-	thumbnailUrl: string | null
-	hackatimeProject: string | null
-	processing: boolean
+export interface LapseTimelapse {
 	attached: boolean
+	createdAt: number
+	durationSeconds: number
+	hackatimeProject: string | null
+	id: string
+	processing: boolean
+	thumbnailUrl: string | null
+	title: string
+	visibility: "PUBLIC" | "UNLISTED" | "FAILED_PROCESSING"
 }
 
 type Load =

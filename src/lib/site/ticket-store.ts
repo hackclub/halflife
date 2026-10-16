@@ -59,19 +59,19 @@ export async function reopenHelpTicket(input: { helpChannel: string; helpTs: str
 	return count > 0
 }
 
-export type HelpTicketStats = {
-	/** Tickets opened since `since`, by `createdAt`. */
-	opened: number
+export interface HelpTicketStats {
 	/** Tickets resolved since `since`, by `resolvedAt`, whoever resolved them. */
 	closed: number
-	/**
-	 * Who closed what, busiest first. Self-resolutions are left out: the leaderboard is the helpers' competition, and an asker clicking "I'm all set" on their own ticket would read as a helper. Ties break by id so the order is stable between runs.
-	 */
-	leaderboard: { resolvedBy: string; closed: number }[]
 	/**
 	 * The same board over every ticket on file rather than the last day. Read separately instead of by folding daily runs together: the leaderboard's ranking changes as names resolve and a run that has not fired yet would leave a gap, whereas one query over the table is whatever has actually been closed.
 	 */
 	globalLeaderboard: { resolvedBy: string; closed: number }[]
+	/**
+	 * Who closed what, busiest first. Self-resolutions are left out: the leaderboard is the helpers' competition, and an asker clicking "I'm all set" on their own ticket would read as a helper. Ties break by id so the order is stable between runs.
+	 */
+	leaderboard: { resolvedBy: string; closed: number }[]
+	/** Tickets opened since `since`, by `createdAt`. */
+	opened: number
 }
 
 /** Closers only: the helpers' competition, with self-resolutions left out. */

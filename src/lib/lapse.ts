@@ -21,30 +21,30 @@ export function lapseTimelapseUrl(id: string): string {
 
 const TIMEOUT_MS = 10_000
 
-export type LapseTimelapse = {
-	id: string
-	title: string
+export interface LapseTimelapse {
+	createdAt: number
 	/** Wall-clock seconds recorded – Lapse derives it from the snapshots. */
 	durationSeconds: number
-	visibility: "PUBLIC" | "UNLISTED" | "FAILED_PROCESSING"
-	createdAt: number
+	hackatimeProject: string | null
+	id: string
+	ownerId: string
 	/** Null while Lapse is still processing the video. */
 	playbackUrl: string | null
 	thumbnailUrl: string | null
-	hackatimeProject: string | null
-	ownerId: string
+	title: string
+	visibility: "PUBLIC" | "UNLISTED" | "FAILED_PROCESSING"
 }
 
-type RawTimelapse = {
+interface RawTimelapse {
+	createdAt: number
+	duration: number
 	id: string
 	name: string
-	duration: number
-	visibility: LapseTimelapse["visibility"]
-	createdAt: number
-	playbackUrl: string | null
-	thumbnailUrl: string | null
 	owner: { id: string }
+	playbackUrl: string | null
 	private?: { hackatimeProject?: string | null } | null
+	thumbnailUrl: string | null
+	visibility: LapseTimelapse["visibility"]
 }
 
 function toTimelapse(t: RawTimelapse): LapseTimelapse {
@@ -78,7 +78,7 @@ export async function lapseCredentials(userId: string): Promise<{ lapseUserId: s
 /**
  * One call into Lapse's REST API, unwrapped from its `{ ok, data }` envelope. A 401 means the token died early (revoked, or Lapse rotated its keys) and is reported as not-linked so the UI offers the same way back in.
  */
-async function call<T>(accessToken: string, path: string, query?: Record<string, string>) {
+async function call<T>(accessToken: string, path: string, query?: { [_: string]: string }) {
 	const url = new URL(`${LAPSE_API_BASE}${path}`)
 	for (const [k, v] of Object.entries(query ?? {})) url.searchParams.set(k, v)
 

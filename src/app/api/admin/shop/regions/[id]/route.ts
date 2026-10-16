@@ -7,7 +7,9 @@ import { shopRegionUpdateSchema } from "@/lib/schemas/admin"
 
 export const dynamic = "force-dynamic"
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
 export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 	const gate = await requirePermission(Permission.MANAGE_SHOP)

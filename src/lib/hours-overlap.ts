@@ -115,10 +115,10 @@ export function timelapseWindow(recordedAtMs: number | Date | null, coveredSecon
  *
  * The bounds are stored with the data because a bare list of spans cannot say what period it covers – and a cached answer to a NARROWER question than the one being asked is not an answer at all. Asked to check an overlap outside the window it was fetched for, the caller must refetch rather than conclude "no overlap" from spans that simply never covered those minutes.
  */
-export type CachedSpans = {
+export interface CachedSpans {
 	from: number
-	to: number
 	spans: Interval[]
+	to: number
 }
 
 /**
@@ -152,7 +152,7 @@ export function cachedSpansCover(cached: CachedSpans, from: number, to: number):
  *
  * The window alone cannot say which link it belongs to. A clip attached to a journal entry in one week can carry tracked time that was linked on another week's project, and the projection that pairs the two is the recording's own `hackatimeProject` – stored at attach time for exactly this.
  */
-export type RecordedWindow = {
+export interface RecordedWindow {
 	hackatimeProject: string | null
 	window: Interval
 }

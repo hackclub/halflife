@@ -19,7 +19,7 @@ export const SHOP_CSV_MAX_ROWS = 500
 type Column = (typeof SHOP_CSV_COLUMNS)[number]
 
 /** Spreadsheet headings people actually type, folded onto the columns. */
-const HEADER_ALIASES: Record<string, Column> = {
+const HEADER_ALIASES: { [_: string]: Column } = {
 	category: "category",
 	coins: "price",
 	cost: "cost",
@@ -38,7 +38,7 @@ const HEADER_ALIASES: Record<string, Column> = {
 
 const REQUIRED: Column[] = ["slug", "name", "description", "price"]
 
-const CATEGORY_ALIASES: Record<string, ShopItemCategory> = {
+const CATEGORY_ALIASES: { [_: string]: ShopItemCategory } = {
 	CONSUMABLE: ShopItemCategory.CONSUMABLE,
 	EVERYTHING_ELSE: ShopItemCategory.MISC,
 	MISC: ShopItemCategory.MISC,
@@ -49,7 +49,7 @@ const CATEGORY_ALIASES: Record<string, ShopItemCategory> = {
 
 export type ShopCsvItem = z.output<typeof shopItemSchema>
 
-export type ShopCsvProblem = {
+export interface ShopCsvProblem {
 	/** 1-based line in the file, the header being line 1. 0 for the file as a whole. */
 	line: number
 	message: string

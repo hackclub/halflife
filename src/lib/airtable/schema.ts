@@ -9,10 +9,10 @@
  * The `fld…` ids are filled in once, from `GET https://api.airtable.com/v0/meta/bases/{baseId}/tables`, by running `yarn tsx scripts/dump-airtable-schema.ts` against the created base. Until then the writer falls back to names – see FIELD_MODE below.
  */
 
-export type FieldDef<T = unknown> = {
+export interface FieldDef<T = unknown> {
+	readonly __type?: T
 	readonly id: string
 	readonly name: string
-	readonly __type?: T
 }
 
 const f = <T>(id: string, name: string): FieldDef<T> => ({ id, name })
@@ -123,15 +123,17 @@ export const RSVP = {
 	tableId: RSVP_TABLE_ID,
 } as const
 
-type FieldMap = Record<string, FieldDef>
+interface FieldMap {
+	[_: string]: FieldDef
+}
 
 type ValuesFor<S extends FieldMap> = Partial<{
 	[K in keyof S]: S[K] extends FieldDef<infer T> ? T : never
 }>
 
 /** Build an Airtable `fields` payload, keyed however FIELD_MODE says. */
-export function toFields<S extends FieldMap>(schema: S, values: ValuesFor<S>): Record<string, unknown> {
-	const out: Record<string, unknown> = {}
+export function toFields<S extends FieldMap>(schema: S, values: ValuesFor<S>): { [_: string]: unknown } {
+	const out: { [_: string]: unknown } = {}
 	for (const [key, value] of Object.entries(values)) {
 		if (value === undefined) continue
 		const field = schema[key]

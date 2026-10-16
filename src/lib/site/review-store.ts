@@ -7,30 +7,30 @@ import prisma from "@/lib/prisma"
 import { currentWeekNumber } from "@/lib/program"
 import { tallyBoard } from "./leaderboard"
 
-export type ProjectReviewStats = {
-	/** Phase submissions handed in since `since`, by `createdAt`. */
-	submitted: number
-	/** Submissions decided since `since`, by the moment they were decided, whoever decided them – including Ari. */
-	reviewed: number
+export interface ProjectReviewStats {
 	/**
-	 * Who reviewed what, busiest first, keyed by lower-cased email. Email rather than account because Ari's reviewers hold no Half Life account; `"ari"` is Ari's anonymous decisions, which have no address at all. Ties break by key so the order is stable between runs.
+	 * Review progress per started design week, oldest first: how many of the week's named projects have at least one live review. Weeks that have not started yet are omitted, so the section grows with the programme.
 	 */
-	leaderboard: BoardEntry[]
+	byWeek: WeekReviewProgress[]
 	/**
 	 * The same board over every review on file rather than the last day, so the all-time ranking cannot disagree with the table by whatever the daily runs happened to have fired.
 	 */
 	globalLeaderboard: BoardEntry[]
 	/**
-	 * Review progress per started design week, oldest first: how many of the week's named projects have at least one live review. Weeks that have not started yet are omitted, so the section grows with the programme.
+	 * Who reviewed what, busiest first, keyed by lower-cased email. Email rather than account because Ari's reviewers hold no Half Life account; `"ari"` is Ari's anonymous decisions, which have no address at all. Ties break by key so the order is stable between runs.
 	 */
-	byWeek: WeekReviewProgress[]
+	leaderboard: BoardEntry[]
+	/** Submissions decided since `since`, by the moment they were decided, whoever decided them – including Ari. */
+	reviewed: number
+	/** Phase submissions handed in since `since`, by `createdAt`. */
+	submitted: number
 }
 
 /** One row of either board: who (by email), how many, and the name recorded beside the address for display when no account matches it. */
-export type BoardEntry = {
+export interface BoardEntry {
 	email: string
-	reviewed: number
 	name: string | null
+	reviewed: number
 }
 
 /** The board key for Ari's anonymous decisions: no address, so no email to group by. Named on the board rather than dropped. */
@@ -67,15 +67,15 @@ function reviewerBoard(
 }
 
 /** One design week's review progress: named projects, and how many have at least one live review. */
-export type WeekReviewProgress = {
-	/** The design week number, 1-5. */
-	week: number
+export interface WeekReviewProgress {
 	/** The theme's own label, e.g. PCBs. */
 	label: string
 	/** Distinct named projects with at least one live FINAL review, on either phase. */
 	reviewed: number
 	/** Distinct named projects. A row nobody named is a slot, not a project – the same rule the admin projects-by-week chart uses. */
 	total: number
+	/** The design week number, 1-5. */
+	week: number
 }
 
 /**

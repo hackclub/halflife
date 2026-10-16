@@ -190,15 +190,15 @@ function ReportRow({ report }: { report: ContentReportRow }) {
 	)
 }
 
-type Subject = {
-	preview: string
-	href: string
+interface Subject {
 	author: string
 	gone: boolean
-	kind: string
 	hidden: boolean
-	hideUrl: string | null
 	hideLabel: string
+	hideUrl: string | null
+	href: string
+	kind: string
+	preview: string
 	restoreUrl: string | null
 }
 

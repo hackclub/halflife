@@ -3,10 +3,10 @@ import { deleteMessage, type SlackBlock } from "./slack"
 /**
  * Everything either button (the staff-facing one in the tickets channel, or the self-resolve one in the #half-life-help thread) needs to act – carried in the button's own `value` since there's no ticket database to look it up from.
  */
-export type TicketRef = {
+export interface TicketRef {
+	authorId: string
 	helpChannel: string
 	helpTs: string
-	authorId: string
 	/** null when the permalink lookup failed – the ticket still posts, just
 	 * without a jump link. */
 	permalink: string | null

@@ -44,11 +44,11 @@ const MAX_RATE_LIMIT_WAIT_MS = 30_000
 /**
  * The caller's forge identity and a token, or null when they have not linked that forge. A revoked or expired token reads the same as never having linked: the UI offers the forge again rather than showing an error nobody can act on.
  */
-export type ForgeCredentials = {
+export interface ForgeCredentials {
+	accessToken: string
 	forge: Forge
 	/** The account's login on that forge, from the account row. */
 	login: string
-	accessToken: string
 }
 
 export class ForgeWriteUnavailable extends Error {}
@@ -197,7 +197,7 @@ async function call(creds: ForgeCredentials, path: string, init: RequestInit): P
 	const forge = creds.forge
 	const url = forge.id === "gitlab" ? `https://gitlab.com/api/v4/${path}` : `https://api.github.com/${path}`
 
-	const headers: Record<string, string> =
+	const headers: { [_: string]: string } =
 		forge.id === "gitlab"
 			? { Accept: "application/json", Authorization: `Bearer ${creds.accessToken}` }
 			: {
@@ -268,17 +268,17 @@ async function call(creds: ForgeCredentials, path: string, init: RequestInit): P
 }
 
 /** A repo the caller can push to, as the picker shows it. */
-export type WritableRepo = {
+export interface WritableRepo {
+	defaultBranch: string
 	/** `owner/name`, or `group/subgroup/name` on GitLab. */
 	fullName: string
 	name: string
 	/** The whole path to the repo, which may be more than one segment. */
 	ownerPath: string
+	private: boolean
+	pushedAt: string | null
 	/** The repo's forge web URL – what the sync stores as its pinned target. */
 	url: string
-	private: boolean
-	defaultBranch: string
-	pushedAt: string | null
 }
 
 /**
@@ -315,13 +315,13 @@ export async function listWritableRepos(userId: string, forge: Forge): Promise<W
 }
 
 /** One repo as GitHub's `GET /user/repos` returns it. */
-type GitHubRepo = {
+interface GitHubRepo {
+	default_branch: string
 	full_name: string
 	name: string
 	owner: { login: string }
-	private: boolean
-	default_branch: string
 	permissions?: { push?: boolean; admin?: boolean; maintain?: boolean }
+	private: boolean
 	pushed_at: string | null
 }
 
@@ -362,14 +362,14 @@ async function listGitHubRepos(creds: ForgeCredentials): Promise<WritableRepo[]>
 }
 
 /** One project as GitLab's `GET /projects` returns it. */
-type GitLabProject = {
-	path_with_namespace: string
-	name: string
-	path: string
-	namespace: { full_path: string }
-	visibility: string
+interface GitLabProject {
 	default_branch: string | null
 	last_activity_at: string | null
+	name: string
+	namespace: { full_path: string }
+	path: string
+	path_with_namespace: string
+	visibility: string
 }
 
 async function listGitLabRepos(creds: ForgeCredentials): Promise<WritableRepo[]> {
@@ -409,21 +409,21 @@ async function listGitLabRepos(creds: ForgeCredentials): Promise<WritableRepo[]>
 	)
 }
 
-export type FileUpdate = {
-	path: string
+export interface FileUpdate {
 	/**
 	 * The file's new bytes, or null to delete the path.
 	 *
 	 * Null is how a renamed sync output removes what it used to own: the BOM moved from BOM.md to BOM.csv, and repos synced before the move carry the old file until something deletes it. A delete for a path that is not there is a no-op, so sending it on every sync is idempotent rather than a migration with state to track.
 	 */
 	content: string | null
+	path: string
 }
 
-export type WrittenFile = {
+export interface WrittenFile {
+	bytes: number
 	path: string
 	/** The blob sha the forge answered with, for the run history. */
 	sha: string
-	bytes: number
 	/** True when the write was a no-op because the file already held this. */
 	unchanged: boolean
 }

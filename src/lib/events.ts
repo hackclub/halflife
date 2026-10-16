@@ -8,16 +8,16 @@ import type { EventColour } from "@/app/generated/prisma/client"
  * and the participant's calendar render the same shape from the same projection,
  * so a field cannot be present on one and missing on the other.
  */
-export type CalendarEvent = {
-	id: string
-	title: string
+export interface CalendarEvent {
 	colour: EventColour
 	description: string | null
-	startsAt: Date
 	endsAt: Date | null
+	id: string
 	published: boolean
 	/** Set on every occurrence written together; null for a one-off. */
 	seriesId: string | null
+	startsAt: Date
+	title: string
 }
 
 /** Every event joins the same huddle, so the link is a constant rather than a per-event field. */
@@ -66,10 +66,10 @@ export const EVENT_COLOURS = [
 	SLATE_COLOUR,
 ] as const satisfies readonly EventColourDef[]
 
-export type EventColourDef = {
+export interface EventColourDef {
+	readonly accent: string
 	readonly id: EventColour
 	readonly label: string
-	readonly accent: string
 }
 
 /**

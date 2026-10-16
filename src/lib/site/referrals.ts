@@ -27,23 +27,23 @@ const CACHE_TTL_MS = 60_000
 /** A failure is held briefly so a blip does not pin an empty table for a minute. */
 const FAILED_TTL_MS = 15_000
 
-export type ReferralLeaderRow = {
+export interface ReferralLeaderRow {
 	code: string
 	/** The code owner's address, when their own sign-up row is still present. */
 	email: string | null
 	signups: number
 }
 
-export type ReferralLeaderboard = {
-	/** Highest-signup links first. */
-	rows: ReferralLeaderRow[]
-	/** Distinct people attributed to any referral link. */
-	referred: number
+export interface ReferralLeaderboard {
 	/** Codes that brought at least one person in. */
 	activeCodes: number
+	/** Distinct people attributed to any referral link. */
+	referred: number
+	/** Highest-signup links first. */
+	rows: ReferralLeaderRow[]
 }
 
-type Cached = {
+interface Cached {
 	at: number
 	ttl: number
 	value: Promise<ReferralLeaderboard | null>
@@ -94,7 +94,7 @@ async function walkReferrals(
 	try {
 		do {
 			const page = await withRateLimitRetry("referralLeaderboard", () =>
-				airtableFetch<{ records: { fields: Record<string, unknown> }[]; offset?: string }>(
+				airtableFetch<{ records: { fields: { [_: string]: unknown } }[]; offset?: string }>(
 					config,
 					`${encodeURIComponent(RSVP_TABLE_ID)}?pageSize=${PAGE_SIZE}&${want}${
 						offset ? `&offset=${encodeURIComponent(offset)}` : ""

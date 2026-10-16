@@ -193,7 +193,7 @@ export function recomputeWeek(userId: string, week: number | null, at = new Date
  *
  * Approximations, said plainly: a project's naming time is taken from the first audit entry that touched it, else when it was last updated; a week's milestones are stamped at the time of the session that crossed them, in order. Past page views were never recorded, so `lastActiveAt` is filled from the last sign-in, session, post or submission.
  */
-export async function backfillAnalytics(): Promise<Record<string, number>> {
+export async function backfillAnalytics(): Promise<{ [_: string]: number }> {
 	const { programTimezone } = await getProgramSettings()
 	const users = await prisma.user.findMany({ select: { id: true } })
 	const counts = { days: 0, projects: 0, users: users.length, weeks: 0 }
@@ -309,24 +309,24 @@ export async function backfillAnalytics(): Promise<Record<string, number>> {
 }
 
 /** Everything tracked about one person, flattened for an export row. */
-export type UserAnalyticsRow = {
-	userId: string
+export interface UserAnalyticsRow {
+	activeDays: number
+	bankedCoins: number
+	coins: number
+	currentStreak: number
 	email: string
-	signedUpAt: Date
-	onboardedAt: Date | null
+	firstChecksPassedAt: Date | null
 	firstProjectAt: Date | null
 	firstReelAt: Date | null
 	firstSubmissionAt: Date | null
-	lastSubmissionAt: Date | null
-	firstChecksPassedAt: Date | null
-	lastLoginAt: Date | null
 	lastActiveAt: Date | null
-	activeDays: number
-	totalHours: number
-	coins: number
-	bankedCoins: number
-	currentStreak: number
+	lastLoginAt: Date | null
+	lastSubmissionAt: Date | null
 	longestStreak: number
+	onboardedAt: Date | null
+	signedUpAt: Date
+	totalHours: number
+	userId: string
 	weeks: {
 		week: number
 		hours: number

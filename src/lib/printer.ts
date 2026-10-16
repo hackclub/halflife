@@ -8,18 +8,18 @@ import { decryptUserPII, encryptPII, isPiiConfigured } from "@/lib/pii"
 import { canMovePrinterAward, PRINTER_AWARD_LABELS } from "@/lib/printer-award"
 import prisma from "@/lib/prisma"
 
-export type ThemeProgress = {
-	theme: Theme
-	design: boolean
+export interface ThemeProgress {
 	build: boolean
+	design: boolean
 	shipped: boolean
+	theme: Theme
 }
 
-export type PrinterQualification = {
-	qualified: boolean
-	shippedCount: number
-	required: number
+export interface PrinterQualification {
 	progress: ThemeProgress[]
+	qualified: boolean
+	required: number
+	shippedCount: number
 }
 
 /**
@@ -103,12 +103,12 @@ export async function findPrinterAwardMismatches(): Promise<{ userId: string; em
 	return mismatches
 }
 
-export type PrinterAwardUpdate = {
-	status: PrinterAwardStatus
-	trackingNumber?: string | null
-	trackingCarrier?: string | null
+export interface PrinterAwardUpdate {
 	/** Recorded on the audit row; mandatory for a revoke. */
 	note: string
+	status: PrinterAwardStatus
+	trackingCarrier?: string | null
+	trackingNumber?: string | null
 }
 
 /**

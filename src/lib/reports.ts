@@ -5,9 +5,9 @@ export type { ReportReason, ReportStatus, ReportTarget }
 /**
  * What a report points at. The `id` is the row's own id: a post id for a reel, a comment id for a comment, a project id, a user id, or a work session id for a devlog.
  */
-export type ReportTargetInput = {
-	type: ReportTarget
+export interface ReportTargetInput {
 	id: string
+	type: ReportTarget
 }
 
 /** The reasons a report can give, in the order the dialog offers them. */

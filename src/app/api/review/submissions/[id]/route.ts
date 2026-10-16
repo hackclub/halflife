@@ -3,7 +3,9 @@ import { requirePermission } from "@/lib/guards"
 import { hasPermission, hasRole, Permission, Role } from "@/lib/permissions"
 import { getSubmissionDetail } from "@/lib/queries/review"
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
 export const dynamic = "force-dynamic"
 

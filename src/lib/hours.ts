@@ -18,16 +18,15 @@ import {
 import { round2 } from "@/lib/money"
 import prisma from "@/lib/prisma"
 
-export type HoursBreakdown = {
-	/** Sum over MANUAL sessions of (hoursApproved ?? hoursClaimed). */
-	journalHours: number
-	/** The same sum of hoursClaimed only, so the UI can show reviewer deflation. */
-	journalHoursClaimed: number
-	journalEntryCount: number
+export interface HoursBreakdown {
+	/** journalHours + hackatimeHours. The reviewer's default. */
+	computedTotal: number
+	/** frozenTotal ?? computedTotal. The number every caller should use. */
+	effectiveHours: number
+	/** This phase's frozen hours on ThemeProject, once its review has landed. */
+	frozenTotal: number | null
 
 	hackatimeHours: number
-	/** True when any link fell back to its cache. Blocks finalisation. */
-	hackatimeStale: boolean
 	/**
 	 * Seconds taken back off Hackatime because a journal entry with a timelapse already claimed those same minutes. Reported so the number on the review page is explainable rather than just smaller than Hackatime says.
 	 */
@@ -36,18 +35,18 @@ export type HoursBreakdown = {
 	 * True when an overlap may exist but could not be checked – the spans fetch failed, or failed because the participant has Hackatime's public stats off. Deliberately NOT folded into `hackatimeStale`: that one blocks an approval outright, and a participant who turned public stats off must not become permanently unapprovable. It surfaces as a warning to be weighed.
 	 */
 	hackatimeOverlapUnknown: boolean
-
-	/** Evidence only. Never part of any total. */
-	timelapseSeconds: number
+	/** True when any link fell back to its cache. Blocks finalisation. */
+	hackatimeStale: boolean
+	journalEntryCount: number
+	/** Sum over MANUAL sessions of (hoursApproved ?? hoursClaimed). */
+	journalHours: number
+	/** The same sum of hoursClaimed only, so the UI can show reviewer deflation. */
+	journalHoursClaimed: number
 	/** timelapseSeconds / claimed seconds, clamped to [0, 1]. */
 	timelapseCoverage: number
 
-	/** journalHours + hackatimeHours. The reviewer's default. */
-	computedTotal: number
-	/** This phase's frozen hours on ThemeProject, once its review has landed. */
-	frozenTotal: number | null
-	/** frozenTotal ?? computedTotal. The number every caller should use. */
-	effectiveHours: number
+	/** Evidence only. Never part of any total. */
+	timelapseSeconds: number
 }
 
 /**
@@ -327,14 +326,14 @@ export async function refreshOverlapSpans(themeProjectId: string, phase: Phase):
 }
 
 /** One link's identity for warming: enough to ask Hackatime again and to decide whether it needs asking. */
-export type SpansWarmTarget = {
-	id: string
-	themeProjectId: string
-	phase: Phase
+export interface SpansWarmTarget {
+	cachedSpans?: unknown
 	hackatimeProject: string
+	id: string
+	phase: Phase
+	themeProjectId: string
 	/** The maker who owns the link, so a recording made under this project but attached elsewhere can be found and warmed for. */
 	userId: string
-	cachedSpans?: unknown
 }
 
 /**
@@ -435,9 +434,9 @@ export async function warmLinkSpans(targets: readonly SpansWarmTarget[]): Promis
  *
  * Extracted rather than reimplemented: these rules decide what people are paid, and a second copy that drifts is a second answer to "how many hours is this".
  */
-export type SessionRow = {
-	hoursClaimed: number
+export interface SessionRow {
 	hoursApproved: number | null
+	hoursClaimed: number
 	hoursSource: HoursSource
 	/**
 	 * The recording windows behind this entry, when it has any. A HACKATIME_TRACKED entry is ignored entirely – it claims nothing – so its timelapses are not read either.
@@ -445,13 +444,13 @@ export type SessionRow = {
 	timelapses?: { hackatimeProject?: string | null; recordedAt: Date | null; coveredSeconds: number | null }[]
 }
 
-export type LinkRow = {
-	hoursApproved: number | null
+export interface LinkRow {
 	cachedSeconds: number | null
-	/** The Hackatime project's name, which is how a recording made elsewhere is paired with this link. */
-	hackatimeProject?: string
 	/** The link's tracked intervals, as cached on the row. See parseCachedSpans. */
 	cachedSpans?: unknown
+	/** The Hackatime project's name, which is how a recording made elsewhere is paired with this link. */
+	hackatimeProject?: string
+	hoursApproved: number | null
 }
 
 /**

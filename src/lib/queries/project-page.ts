@@ -17,12 +17,12 @@ import { publicUrlFor } from "@/lib/uploads/r2"
  * The store knows a session happened and how long it was, which is all the trail needs. The project page is the full record – the timelapses behind each entry, the reels themselves, when each week was handed in and what the reviewer said – so it reads the rows directly rather than widening a snapshot every other page has to download.
  */
 
-export type TimelineLapse = {
-	id: string
-	thumbnailUrl: string | null
+export interface TimelineLapse {
+	coveredSeconds: number | null
 	/** Where to watch it: Lapse's own page, or the uploaded file. */
 	href: string | null
-	coveredSeconds: number | null
+	id: string
+	thumbnailUrl: string | null
 }
 
 export type TimelineItem =
@@ -63,66 +63,66 @@ export type TimelineItem =
 	  }
 
 /** One message in a dispute thread, from the maker who raised it or a reviewer answering. */
-export type DisputeMessage = {
-	id: string
-	/** A reviewer wrote it, as opposed to the maker who raised the dispute. */
-	fromReviewer: boolean
-	body: string
+export interface DisputeMessage {
 	/** Epoch ms. */
 	at: number
+	body: string
+	/** A reviewer wrote it, as opposed to the maker who raised the dispute. */
+	fromReviewer: boolean
+	id: string
 }
 
 /** A maker's dispute on a phase's latest decision, with the thread under it. */
-export type PhaseDispute = {
-	id: string
-	/** The maker's opening words. */
-	note: string
+export interface PhaseDispute {
 	/** Epoch ms. */
 	at: number
+	id: string
+	messages: DisputeMessage[]
+	/** The maker's opening words. */
+	note: string
 	/** How a reviewer ended it, or null while it is still open. */
 	outcome: "upheld" | "stood" | null
 	/** Epoch ms, or null while open. */
 	resolvedAt: number | null
-	messages: DisputeMessage[]
 }
 
 /** One phase's review state, for the block above the repo checks. */
-export type PhaseReview = {
-	phase: Phase
-	status: PhaseStatus
+export interface PhaseReview {
 	/** The reviewer's note on the latest decision, if any. */
 	comments: string | null
-	/** When the latest submission for this phase was handed in, epoch ms. */
-	submittedAt: number | null
-	/** When it was decided, epoch ms. */
-	reviewedAt: number | null
 	/** The maker's dispute on the latest decision, with its thread, if they raised one. */
 	dispute: PhaseDispute | null
+	phase: Phase
+	/** When it was decided, epoch ms. */
+	reviewedAt: number | null
 	/** Why the maker's open hand-in never reached Ari, when it did not. Null once it has, or when there is no open hand-in. */
 	shipError: string | null
+	status: PhaseStatus
+	/** When the latest submission for this phase was handed in, epoch ms. */
+	submittedAt: number | null
 }
 
-export type ProjectPageData = {
-	/** The thumbnail the maker chose, if any. */
-	coverImageUrl: string | null
-	/** What stands in until they choose one: a journal image, then a reel frame. */
-	fallbackThumbnail: ProjectThumbnail | null
-	timeline: TimelineItem[]
+export interface ProjectPageData {
 	bom: BomLine[]
-	/** The order's tax and shipping total – a fixed line of the BOM, zero until set. */
-	bomTaxShippingUsd: number
 	/** Why the parts list cannot change, or null when it can. */
 	bomLocked: string | null
-	/** Why the project's own fields cannot change, or null when they can. */
-	editLocked: string | null
-	/** The phase handed in and waiting for a reviewer, which can be taken back. */
-	inReview: Phase | null
+	/** The order's tax and shipping total – a fixed line of the BOM, zero until set. */
+	bomTaxShippingUsd: number
+	/** The thumbnail the maker chose, if any. */
+	coverImageUrl: string | null
 	/** Why the project cannot be deleted, or null when it can. */
 	deleteBlocked: string | null
+	/** Why the project's own fields cannot change, or null when they can. */
+	editLocked: string | null
+	/** What stands in until they choose one: a journal image, then a reel frame. */
+	fallbackThumbnail: ProjectThumbnail | null
+	/** The phase handed in and waiting for a reviewer, which can be taken back. */
+	inReview: Phase | null
 	/** The phases that have left draft, for the review-state block. */
 	phases: PhaseReview[]
 	/** Whether devlogs and the parts list are mirrored into the repo, and where. */
 	repoSync: RepoSyncState
+	timeline: TimelineItem[]
 }
 
 const SESSION_SELECT = {
@@ -339,17 +339,17 @@ export async function getProjectPage(userId: string, id: string): Promise<Projec
  *
  * Only what is already public elsewhere: the entries Explore shows, the reels the Doomscroller shows (published ones – a hidden or processing reel is nobody's business but its author's), and the project's name and picture. No parts list, no repo checks, no review comments, no submissions: those are between the maker and their reviewer. Author by display name only, as lib/queries/community has it.
  */
-export type PublicProjectData = {
-	id: string
-	title: string
-	description: string
+export interface PublicProjectData {
 	author: string
 	/** The author's user id, so their name can open their profile. */
 	authorId: string
-	/** 1-based design week the theme runs in, or 0 for a warm-up project. */
-	weekId: number
+	description: string
+	id: string
 	thumbnail: ProjectThumbnail | null
 	timeline: TimelineItem[]
+	title: string
+	/** 1-based design week the theme runs in, or 0 for a warm-up project. */
+	weekId: number
 }
 
 export async function getPublicProjectPage(id: string): Promise<PublicProjectData | null> {

@@ -13,7 +13,9 @@ import { submitSchema } from "@/lib/schemas/project"
 import { trackSideEffect } from "@/lib/side-effects"
 import { submitPhase } from "@/lib/submissions"
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
 export const POST = withRoute(async (req: Request, { params }: Params) => {
 	const gate = await requireSession()

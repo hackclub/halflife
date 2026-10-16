@@ -95,7 +95,7 @@ export function Gato({
 /**
  * The programme's own painted stickers, one per theme, from `public/art/weeks` – the same files the landing page's "how does it work?" plate shows. Each source is a 3000px square of 2-4 MB, which is why this goes through `next/image` and names the size it is shown at. A theme with no painting shows nothing rather than a stand-in.
  */
-const WEEK_PAINTINGS: Partial<Record<string, StaticImageData>> = {
+const WEEK_PAINTINGS: Partial<{ [_: string]: StaticImageData }> = {
 	"Breadboard computer": breadboardPainting,
 	CAD: cadPainting,
 	Displays: displayPainting,
@@ -135,7 +135,7 @@ export function WeekPainting({
  *
  * Each file is the maker's shot trimmed to the machine and set on white at 560px square, the machine standing on a common floor so a row of them lines up. That is the largest place one is shown – the onboarding prize, at 280px – at twice the pixels, and `next/image` cuts it down for the small tiles.
  */
-const PRINTER_PHOTOS: Partial<Record<string, StaticImageData>> = {
+const PRINTER_PHOTOS: Partial<{ [_: string]: StaticImageData }> = {
 	"bambu-a1": bambuA1Photo,
 	"bambu-a1-mini": bambuA1MiniPhoto,
 	"bambu-p1s": bambuP1sPhoto,
@@ -178,7 +178,7 @@ export function PrinterPhoto({
 /**
  * Each starter project's own render, from its repo's `Renders` folder, trimmed to the board with its transparency kept. Keyed by starter id; a starter with no render shows nothing.
  */
-const STARTER_RENDERS: Partial<Record<string, StaticImageData>> = {
+const STARTER_RENDERS: Partial<{ [_: string]: StaticImageData }> = {
 	merbl: merblRender,
 	starbie: starbieRender,
 }

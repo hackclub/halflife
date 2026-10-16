@@ -21,18 +21,18 @@ import { streakAsOf } from "@/lib/streak"
  * Empty entries are left out as well. A session whose writer left the entry blank is stored with the fallback title and no content, and it would otherwise render as a card carrying a byline and a title and nothing else. An entry that genuinely opens with that line has a body behind it, so it survives.
  */
 
-export type JournalRow = {
-	id: string
+export interface JournalRow {
 	author: string
 	authorId: string
 	authorImage: string | null
-	streak: number
-	projectId: string
-	project: string
 	body: string
-	minutes: number
 	/** YYYY-MM-DD in the program timezone – what the day grouping reads. */
 	day: string
+	id: string
+	minutes: number
+	project: string
+	projectId: string
+	streak: number
 	when: string
 }
 

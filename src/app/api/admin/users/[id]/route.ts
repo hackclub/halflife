@@ -6,7 +6,9 @@ import prisma from "@/lib/prisma"
 import { getUserDetail } from "@/lib/queries/admin"
 import { userFlagsSchema } from "@/lib/schemas/admin"
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
 export const dynamic = "force-dynamic"
 

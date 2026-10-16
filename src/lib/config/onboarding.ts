@@ -13,11 +13,11 @@ import type { TierId } from "@/lib/config/tiers"
 
 export type OnboardingStepId = "experience" | "week" | "project" | "idea" | "tier" | "tracking" | "repo"
 
-export type OnboardingStep = {
+export interface OnboardingStep {
+	readonly heading: string
 	readonly id: OnboardingStepId
 	/** 1-based, and what renders as the "n/6" counter. */
 	readonly number: number
-	readonly heading: string
 	/** True when the participant may move past it without answering. */
 	readonly skippable: boolean
 }
@@ -88,16 +88,16 @@ export const EXPERIENCE_OPTIONS = [
  *
  * Taking one locks the tier request to 1, so these have to be genuinely Tier 1 in scope. Each week is meant to get its own; until those repos exist, Starbie, week one's, stands in for every theme without one.
  */
-export type StarterProject = {
-	readonly id: string
-	/** The weeks it is offered in. */
-	readonly themes: readonly Theme[]
-	readonly title: string
+export interface StarterProject {
 	readonly description: string
+	readonly guideUrl: string
+	readonly id: string
 	/** What goes on the board, for the card's parts line. */
 	readonly parts: readonly string[]
 	readonly repoUrl: string
-	readonly guideUrl: string
+	/** The weeks it is offered in. */
+	readonly themes: readonly Theme[]
+	readonly title: string
 }
 
 export const STARTER_PROJECTS = [
@@ -157,14 +157,14 @@ export const STARTER_MODIFICATION_NOTE =
  *
  * The comp branches this on the answer to question one – "If beginner: information about PCBs, else: example projects" – so both halves are here and the step picks one.
  */
-export type WeekIntro = {
-	readonly theme: Theme
-	readonly kicker: string
-	readonly headline: string
-	/** Shown to FIRST_TIME and A_LITTLE. */
-	readonly primer: string
+export interface WeekIntro {
 	/** Shown to everyone else, in place of the primer. */
 	readonly examples: readonly string[]
+	readonly headline: string
+	readonly kicker: string
+	/** Shown to FIRST_TIME and A_LITTLE. */
+	readonly primer: string
+	readonly theme: Theme
 }
 
 export const WEEK_INTROS = [

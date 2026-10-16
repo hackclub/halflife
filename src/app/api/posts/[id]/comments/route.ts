@@ -8,7 +8,9 @@ import { commentSchema } from "@/lib/schemas/feed"
 
 export const dynamic = "force-dynamic"
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
 export const GET = withRoute(async (req: NextRequest, { params }: Params) => {
 	const gate = await requireSession()

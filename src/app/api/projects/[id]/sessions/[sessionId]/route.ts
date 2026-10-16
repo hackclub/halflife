@@ -22,7 +22,9 @@ import { sessionUpdateSchema } from "@/lib/schemas/session"
 import { reconcileSessionTimelapses } from "@/lib/session-timelapses"
 import { recomputeStreak } from "@/lib/streak"
 
-type Params = { params: Promise<{ id: string; sessionId: string }> }
+interface Params {
+	params: Promise<{ id: string; sessionId: string }>
+}
 
 /** Statuses in which a phase's entries may still be edited or deleted: a draft, or one an admin or reviewer sent back for changes. */
 const EDITABLE_PHASE_STATUSES = [PhaseStatus.draft, PhaseStatus.update_requested]

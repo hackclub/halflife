@@ -6,7 +6,9 @@ import { Permission, Role } from "@/lib/permissions"
 import prisma from "@/lib/prisma"
 import { roleChangeSchema } from "@/lib/schemas/admin"
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
 export const POST = withRoute(async (req: Request, { params }: Params) => {
 	const gate = await requirePermission(Permission.MANAGE_ROLES)

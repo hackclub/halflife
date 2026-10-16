@@ -5,11 +5,11 @@ import { IconArrowRight } from "@/components/platform/icons"
 import { Button } from "@/components/platform/ui"
 import { cx } from "@/lib/cx"
 
-export type Rect = {
-	top: number
-	left: number
-	width: number
+export interface Rect {
 	height: number
+	left: number
+	top: number
+	width: number
 }
 
 function firstVisible(selector: string): HTMLElement | null {

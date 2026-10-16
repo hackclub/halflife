@@ -52,6 +52,7 @@ import { ImageUploads, type UploadedImage } from "./ImageUploads"
 import { fmtDuration, LapsePicker, type LapseTimelapse } from "./LapsePicker"
 import { Modal, ModalTitle } from "./Modal"
 import { RepoChecks } from "./RepoChecks"
+import { type SubmissionReel, SubmissionReelPicker } from "./SubmissionReelPicker"
 
 /* ================================================================== *
  * Journal + timelapse
@@ -81,15 +82,15 @@ function fmtH(h: number) {
 	return `${to2(h)}h`
 }
 
-type JournalDraft = {
-	tab: "journal" | "timelapse"
+interface JournalDraft {
 	body: string
 	hoursText: string
+	/** Older non-Lapse clips, preserved untouched. */
+	legacy?: string[]
 	picked: LapseTimelapse[]
 	/** Lapse clips kept from the original entry that Lapse would not re-verify. */
 	pinned?: string[]
-	/** Older non-Lapse clips, preserved untouched. */
-	legacy?: string[]
+	tab: "journal" | "timelapse"
 }
 
 const draftKey = (checkpointId: string) => `halflife.journal-draft.${checkpointId}`
@@ -105,7 +106,7 @@ function stashJournalDraft(checkpointId: string, draft: JournalDraft) {
 
 function isJournalDraft(value: unknown): value is JournalDraft {
 	if (typeof value !== "object" || value === null) return false
-	const v = value as Record<string, unknown>
+	const v = value as { [_: string]: unknown }
 	return (
 		(v.tab === "journal" || v.tab === "timelapse")
 		&& typeof v.body === "string"
@@ -1035,11 +1036,11 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 /* ================================================================== *
  * Reel
  * ================================================================== */
-type ReelDraft = {
+interface ReelDraft {
+	caption: string
 	clip: string
 	/** The bucket's URL for the clip, never a blob URL: those die with the page. */
 	url: string | null
-	caption: string
 }
 
 const reelDraftKey = (checkpointId: string) => `halflife.reel-draft.${checkpointId}`
@@ -2035,6 +2036,17 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	}, [clipUrl])
 	// The closing reel once it is posted. A hand-in that fails after the reel went up reuses it on the retry rather than posting the same clip twice; a new clip clears it.
 	const [closingPostId, setClosingPostId] = useState<string | null>(null)
+
+	/**
+	 * Stand in a closing reel from an earlier hand-in of this same week, picked back rather than filmed again.
+	 *
+	 * It fills the clip slot so the sheet's own gate is satisfied, and `closingPostId` is what keeps `submit` from posting it a second time – the reel the reviewer already has is the one this hand-in closes with.
+	 */
+	function reuseClosingReel(reel: SubmissionReel | null) {
+		setClip(reel?.objectKey ?? null)
+		setClipUrl(reel?.videoUrl ?? null)
+		setClosingPostId(reel?.id ?? null)
+	}
 	// Handed in: the reel that closed the week is offered for posting online.
 	const [works, setWorks] = useState<"yes" | "no" | null>(null)
 	const [writeup, setWriteup] = useState("")
@@ -2637,6 +2649,12 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 							}}
 						/>
 					</div>
+
+					<SubmissionReelPicker
+						checkpointKey={reelCheckpointId}
+						onSelect={reuseClosingReel}
+						selectedId={closingPostId}
+					/>
 
 					{isBuild && (
 						<div className="mt-6">

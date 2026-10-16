@@ -379,22 +379,22 @@ export async function disableRepoSync(themeProjectId: string, userId: string): P
 }
 
 /** What the project page and settings need to render the control. */
-export type RepoSyncState = {
+export interface RepoSyncState {
 	enabled: boolean
-	/** The repo the sync writes to, or null when it is off. */
-	repo: string | null
-	/** The forge that repo is on, when one is pinned. */
-	forge: string | null
-	/** When the last successful run finished, epoch ms. */
-	syncedAt: number | null
 	/** Why the last attempt failed, or null. */
 	error: string | null
+	/** The forge that repo is on, when one is pinned. */
+	forge: string | null
 	/** Which forges the caller has linked, by id – a maker may link both. */
 	linkedForges: string[]
 	/**
 	 * The project's own repo link, as the alternative the sync target is measured against. Null when the project has none.
 	 */
 	projectRepo: string | null
+	/** The repo the sync writes to, or null when it is off. */
+	repo: string | null
+	/** When the last successful run finished, epoch ms. */
+	syncedAt: number | null
 	/**
 	 * Whether the project's link should be moved to the sync target, so the UI can offer to do it in one press. True when the project has no link, or has one that names a different repo; false when they already agree, or when the target is not a repo Half Life can read (a bare slug, a Codeberg URL).
 	 */

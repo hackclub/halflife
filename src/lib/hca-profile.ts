@@ -20,32 +20,32 @@ const ME_URL = process.env.HCA_ME_URL ?? "https://auth.hackclub.com/api/v1/me"
 
 const TIMEOUT_MS = 10_000
 
-export type HcaAddress = {
+export interface HcaAddress {
+	city: string | null
+	country: string | null
 	line1: string | null
 	line2: string | null
-	city: string | null
 	state: string | null
 	zip: string | null
-	country: string | null
 }
 
 /** One HCA identity, whichever endpoint each field came from. */
-export type HcaIdentity = {
-	/** The OIDC subject – what the account row is keyed on. */
-	sub: string | null
+export interface HcaIdentity {
+	address: HcaAddress | null
+	birthdate: string | null
 	email: string | null
 	emailVerified: boolean
+	image: string | null
 	/** "first last" – the string the sinks that need a whole person keep. */
 	name: string | null
 	/**
 	 * HCA's `nickname` claim under `profile`: what they go by. This is the name the site shows; see lib/display-name for the rule and its fallback.
 	 */
 	nickname: string | null
-	image: string | null
 	slackId: string | null
+	/** The OIDC subject – what the account row is keyed on. */
+	sub: string | null
 	verificationStatus: string | null
-	address: HcaAddress | null
-	birthdate: string | null
 }
 
 /**
@@ -55,14 +55,14 @@ export type HcaIdentity = {
  *
  * So the document is wanted but never depended on. When it answers, it is used; when it does not, the endpoints fall back to HCA's published, stable routes – the same paths its `auth` app mounts (`/oauth/authorize`, `/oauth/token` from Doorkeeper, `/oauth/userinfo` and `/oauth/discovery/keys` from doorkeeper-openid_connect). These are what the discovery document returns, so the fallback is not a guess about a different service; it is the same answer with the network taken out of the path. `userinfo_endpoint` and `issuer` default to the base, and `HCA_*` env overrides win if a deployment needs a different host.
  */
-export type HcaEndpoints = {
+export interface HcaEndpoints {
 	authorizationUrl: string
-	tokenUrl: string
-	userinfoUrl: string
-	jwksUrl: string
-	issuer: string
 	/** Whether discovery answered; false means the static fallback was used. */
 	discovered: boolean
+	issuer: string
+	jwksUrl: string
+	tokenUrl: string
+	userinfoUrl: string
 }
 
 let endpointsPromise: Promise<HcaEndpoints> | null = null
@@ -113,7 +113,7 @@ async function userinfoUrl(): Promise<string> {
 	return (await hcaEndpoints()).userinfoUrl
 }
 
-async function getJson(url: string, accessToken: string): Promise<Record<string, unknown> | null> {
+async function getJson(url: string, accessToken: string): Promise<{ [_: string]: unknown } | null> {
 	try {
 		// Retried, like the forges' identity calls (lib/fetch-retry). A dropped packet here used to abort the OAuth callback with a raw TimeoutError.
 		const res = await fetchWithRetry(url, {
@@ -125,7 +125,7 @@ async function getJson(url: string, accessToken: string): Promise<Record<string,
 			console.warn(`[hca] ${url} returned ${res.status}`)
 			return null
 		}
-		return (await res.json()) as Record<string, unknown>
+		return (await res.json()) as { [_: string]: unknown }
 	} catch (err) {
 		console.warn(`[hca] ${url} failed:`, err)
 		return null
@@ -135,8 +135,11 @@ async function getJson(url: string, accessToken: string): Promise<Record<string,
 const str = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v.trim() : null)
 
 /** The address to ship to: the one marked primary, else the first. */
-function addressFrom(me: Record<string, unknown> | null, userinfo: Record<string, unknown> | null): HcaAddress | null {
-	const list = Array.isArray(me?.addresses) ? (me.addresses as Record<string, unknown>[]) : []
+function addressFrom(
+	me: { [_: string]: unknown } | null,
+	userinfo: { [_: string]: unknown } | null,
+): HcaAddress | null {
+	const list = Array.isArray(me?.addresses) ? (me.addresses as { [_: string]: unknown }[]) : []
 	const a = list.find(x => x?.primary === true) ?? list[0]
 	if (a) {
 		return {
@@ -149,7 +152,7 @@ function addressFrom(me: Record<string, unknown> | null, userinfo: Record<string
 		}
 	}
 	// The standard OIDC claim, when the `address` scope puts it there instead.
-	const o = userinfo?.address as Record<string, unknown> | undefined
+	const o = userinfo?.address as { [_: string]: unknown } | undefined
 	if (o && typeof o === "object") {
 		const [line1, ...more] = (str(o.street_address) ?? "").split(/\r?\n/)
 		return {
@@ -170,7 +173,7 @@ export async function fetchHcaIdentity(accessToken: string): Promise<HcaIdentity
 		getJson(await userinfoUrl(), accessToken),
 		getJson(ME_URL, accessToken),
 	])
-	const me = (meBody?.identity as Record<string, unknown> | undefined) ?? meBody
+	const me = (meBody?.identity as { [_: string]: unknown } | undefined) ?? meBody
 
 	const email = str(userinfo?.email) ?? str(me?.primary_email)
 	const name =
@@ -193,9 +196,9 @@ export async function fetchHcaIdentity(accessToken: string): Promise<HcaIdentity
 }
 
 /** The PII fields, encrypted, when this deployment is set up to keep them. */
-export function encryptedFieldsFrom(identity: HcaIdentity): Record<string, string> {
+export function encryptedFieldsFrom(identity: HcaIdentity): { [_: string]: string } {
 	if (!PULL_PII) return {}
-	const out: Record<string, string> = {}
+	const out: { [_: string]: string } = {}
 	const a = identity.address
 	if (a?.line1) out.encryptedAddressStreet = encryptPII(a.line1)
 	if (a?.line2) out.encryptedAddressLine2 = encryptPII(a.line2)

@@ -5,7 +5,9 @@ import { requireSession } from "@/lib/guards"
 
 export const dynamic = "force-dynamic"
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
 export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 	const gate = await requireSession()

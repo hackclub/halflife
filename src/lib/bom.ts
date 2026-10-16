@@ -14,15 +14,15 @@ import type { BomItemInput } from "@/lib/schemas/project"
 /** Plenty for a hand-built board, and a ceiling on a runaway script. */
 export const MAX_BOM_ITEMS = 80
 
-export type BomLine = {
+export interface BomLine {
 	id: string
+	link: string | null
 	name: string
 	purpose: string | null
 	quantity: number
 	unitCostUsd: number
-	vendor: string | null
-	link: string | null
 	updatedAt: Date
+	vendor: string | null
 }
 
 /**

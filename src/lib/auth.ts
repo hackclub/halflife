@@ -213,7 +213,7 @@ export const auth = betterAuth({
 						}
 					},
 					// Core fields only. The verification status, Slack id and PII are `input: false`, and better-auth drops those from a provider profile – so they are written by syncHcaProfile at sign-in instead. Mapping them here did nothing, which is how every user ended up unverified.
-					mapProfileToUser: (profile: Record<string, unknown>) => ({
+					mapProfileToUser: (profile: { [_: string]: unknown }) => ({
 						email: profile.email as string,
 						image: profile.image as string | undefined,
 						name: profile.name as string | undefined,

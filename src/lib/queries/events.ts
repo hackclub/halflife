@@ -21,7 +21,7 @@ const SELECT = {
 	seriesId: true,
 	startsAt: true,
 	title: true,
-} satisfies Record<string, boolean>
+} satisfies { [_: string]: boolean }
 
 /**
  * Published events from `from` onward, soonest first.

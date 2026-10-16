@@ -7,7 +7,9 @@ import prisma from "@/lib/prisma"
 import { sanitize } from "@/lib/sanitize"
 import { disputeMessageSchema } from "@/lib/schemas/admin"
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
 /**
  * A reviewer's reply in a dispute thread.

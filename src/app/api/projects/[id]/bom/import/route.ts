@@ -25,9 +25,15 @@ export const dynamic = "force-dynamic"
  * The CSV is re-read on apply rather than trusting what the preview returned. The preview is not a contract – the file may have moved on, and a client is free to send whatever it likes – so the bytes that are parsed are always the ones in the repo at the moment of the write.
  */
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
-type RepoBom = { path: string; lines: ImportedBomLine[]; skipped: SkippedRow[] }
+interface RepoBom {
+	lines: ImportedBomLine[]
+	path: string
+	skipped: SkippedRow[]
+}
 
 /**
  * The repo's BOM CSV, found, read and parsed – or a sentence saying why not.

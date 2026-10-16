@@ -14,14 +14,16 @@ import { type FulfillmentFilters, listFulfillmentOrders, listPrinterAwards } fro
 
 export const dynamic = "force-dynamic"
 
-type Search = {
+interface Search {
+	cursor?: string
 	from?: string
-	to?: string
 	method?: string
 	stage?: string
-	cursor?: string
+	to?: string
 }
-type Props = { searchParams: Promise<Search> }
+interface Props {
+	searchParams: Promise<Search>
+}
 
 const DAY_MS = 24 * 60 * 60 * 1000
 

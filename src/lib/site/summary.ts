@@ -86,12 +86,12 @@ export function rankedShareBoard(title: string, items: { name: string; count: nu
 }
 
 /** One leaderboard as it appears in a post, before the names in it have been resolved. */
-export type SummaryBoard = {
+export interface SummaryBoard {
+	/** Already-rendered rows; empty means the board falls back to the "no one yet" line. */
+	lines: readonly string[]
 	title: string
 	/** The board's real length, for the overflow note. */
 	total: number
-	/** Already-rendered rows; empty means the board falls back to the "no one yet" line. */
-	lines: readonly string[]
 }
 
 /** The finished post: opener, the day's numbers, then each board separated by a blank line. */

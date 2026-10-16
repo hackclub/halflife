@@ -7,7 +7,9 @@ import { reelLockReason } from "@/lib/reel-gate"
 
 export const dynamic = "force-dynamic"
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
 /**
  * Delete one of your own posts.

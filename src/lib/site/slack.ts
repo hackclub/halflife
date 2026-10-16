@@ -6,7 +6,9 @@ import crypto from "node:crypto"
  * Auth is a single bot token (`SLACK_BOT_TOKEN`) with `chat:write`, `channels:read`, `groups:read`, `channels:write.invites`, `channels:history`, `im:write`, `users:read`, and `reactions:write` scopes – see `slack-app-manifest.yml` at the repo root for the exact manifest to paste into api.slack.com when creating the app, which annotates what each one is for. chat.getPermalink and auth.test need none of them; posting into the private tickets channel needs `chat:write` plus membership, but reading its member list (isChannelMember) needs `groups:read`, since `channels:read` covers only public channels.
  */
 
-export type SlackBlock = Record<string, unknown>
+export interface SlackBlock {
+	[_: string]: unknown
+}
 
 /** Slack answers `missing_scope` with the scope it wanted (`needed`) and the
  * ones the token actually carries (`provided`). Folding them into the logged detail turns a bare "missing_scope" into a line that names the scope to add,
@@ -21,13 +23,13 @@ function slackErrorDetail(data: { error?: string; needed?: string; provided?: st
 }
 
 /** What every Slack Web API call answers: the method's own fields plus the envelope. Named once so the wrappers below can state their returns without re-spelling it. */
-export type SlackResult<T extends Record<string, unknown>> = Promise<
+export type SlackResult<T extends { [_: string]: unknown }> = Promise<
 	T & { ok: boolean; error?: string; needed?: string; provided?: string }
 >
 
-async function callSlackApi<T extends Record<string, unknown>>(
+async function callSlackApi<T extends { [_: string]: unknown }>(
 	method: string,
-	params: Record<string, unknown>,
+	params: { [_: string]: unknown },
 	/** Slack errors that are expected outcomes rather than faults. Matches are
 	 * logged at `log` level so a normal path doesn't fill the error logs. */
 	expectedErrors: string[] = [],
@@ -84,7 +86,7 @@ export async function updateMessage(
 	ts: string,
 	text: string,
 	blocks?: SlackBlock[],
-): SlackResult<Record<string, unknown>> {
+): SlackResult<{ [_: string]: unknown }> {
 	return callSlackApi("chat.update", { blocks, channel, text, ts })
 }
 
@@ -95,7 +97,7 @@ export async function addReaction(
 	channel: string,
 	timestamp: string,
 	name: string,
-): SlackResult<Record<string, unknown>> {
+): SlackResult<{ [_: string]: unknown }> {
 	return callSlackApi("reactions.add", { channel, name, timestamp }, ["already_reacted"])
 }
 
@@ -106,14 +108,14 @@ export async function removeReaction(
 	channel: string,
 	timestamp: string,
 	name: string,
-): SlackResult<Record<string, unknown>> {
+): SlackResult<{ [_: string]: unknown }> {
 	return callSlackApi("reactions.remove", { channel, name, timestamp }, ["no_reaction"])
 }
 
 /** A bot token may delete only messages that bot posted, which is the whole
  * point here – every tickets-channel mirror is one we posted ourselves, so this needs `chat:write` and nothing more. `message_not_found` is marked expected: two people can resolve the same ticket from different places, and whoever gets there second is told the message is already gone, which is the
  * outcome we wanted rather than a fault. */
-export async function deleteMessage(channel: string, ts: string): SlackResult<Record<string, unknown>> {
+export async function deleteMessage(channel: string, ts: string): SlackResult<{ [_: string]: unknown }> {
 	return callSlackApi("chat.delete", { channel, ts }, ["message_not_found"])
 }
 
@@ -148,9 +150,9 @@ export async function getPermalink(channel: string, messageTs: string): Promise<
 /** Slack's GET-family methods (`chat.getPermalink` among them) read their
  * arguments from the query string – POSTing them as a JSON body gets an `invalid_arguments` back, since Slack sees no `channel`/`message_ts` at
  * all. Those methods go through here instead of `callSlackApi`. */
-async function callSlackApiGet<T extends Record<string, unknown>>(
+async function callSlackApiGet<T extends { [_: string]: unknown }>(
 	method: string,
-	params: Record<string, string>,
+	params: { [_: string]: string },
 ): SlackResult<T> {
 	const token = process.env.SLACK_BOT_TOKEN
 	if (!token) throw new Error("SLACK_BOT_TOKEN is not set")
@@ -236,7 +238,10 @@ let botUserId: string | null = null
  *
  * `error` is set when the member list itself was unreadable – `missing_scope` because the manifest's `groups:read` was added but never re-imported and reinstalled, or `channel_not_found`/`not_in_channel` because the bot was never invited into the private channel. Callers use it to tell "you're not on the team" apart from "the check itself is broken, tell an admin", since only the first is the clicker's problem.
  */
-export type ChannelMembership = { member: boolean; error?: string }
+export interface ChannelMembership {
+	error?: string
+	member: boolean
+}
 
 export async function checkChannelMembership(channel: string, user: string): Promise<ChannelMembership> {
 	let cursor: string | undefined
@@ -266,18 +271,20 @@ export async function isChannelMember(channel: string, user: string): Promise<bo
 
 /** A message as `conversations.history` returns it, trimmed to the fields that
  * decide whether it opened a ticket. */
-export type SlackHistoryMessage = {
-	type?: string
-	subtype?: string
+export interface SlackHistoryMessage {
 	bot_id?: string
-	user?: string
-	ts?: string
+	subtype?: string
 	thread_ts?: string
+	ts?: string
+	type?: string
+	user?: string
 }
 
 /** A message as `conversations.replies` returns it, carrying the blocks a
  * caller needs to rewrite one. */
-export type SlackThreadMessage = SlackHistoryMessage & { blocks?: SlackBlock[] }
+export interface SlackThreadMessage extends SlackHistoryMessage {
+	blocks?: SlackBlock[]
+}
 
 /**
  * Every message in one thread, oldest first – the parent question and its replies.

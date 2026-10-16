@@ -24,7 +24,12 @@ const forge = FORGES.github
 const creds = { accessToken: "token", forge, login: "maker" }
 const ref = { fullName: "owner/repo" } as RepoRef
 
-type Step = { status: number; body?: unknown; headers?: Record<string, string>; throw?: boolean }
+interface Step {
+	body?: unknown
+	headers?: { [_: string]: string }
+	status: number
+	throw?: boolean
+}
 let script: Step[] = []
 let calls = 0
 
@@ -176,7 +181,12 @@ async function main() {
 
 	// A whole commit, with BOM.md still in the repo so the legacy deletion is sent. Every tree entry needs a mode and a type, the null-sha deletion included: omitting them made GitHub answer "Must supply a valid tree.mode".
 	{
-		type TreeEntry = { mode?: string; path: string; sha: string | null; type?: string }
+		interface TreeEntry {
+			mode?: string
+			path: string
+			sha: string | null
+			type?: string
+		}
 		// A holder rather than a `let`: the tree body is captured inside the fetch closure, and a plain `let` would be narrowed to null across it.
 		const captured: { tree: TreeEntry[] | null } = { tree: null }
 		let blobs = 0

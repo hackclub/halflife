@@ -9,15 +9,15 @@ import { cx } from "@/lib/cx"
 import type { FeedItem } from "@/lib/feed"
 import { ago, compact } from "./format"
 
-type Comment = {
-	id: string
+interface Comment {
+	author: { id: string; name: string | null; image: string | null }
 	body: string
 	createdAt: string
-	author: { id: string; name: string | null; image: string | null }
+	id: string
 	mine: boolean
 }
 
-type Thread = {
+interface Thread {
 	items: Comment[]
 	nextCursor: string | null
 	status: "loading" | "ready" | "error"
@@ -48,7 +48,7 @@ export function ReelComments({
 }) {
 	// Two ReelComments can be mounted at once (the side panel and the narrow sheet), so fixed ids would collide; useId scopes them to this instance.
 	const uid = useId()
-	const [threads, setThreads] = useState<Record<string, Thread>>({})
+	const [threads, setThreads] = useState<{ [_: string]: Thread }>({})
 	const [draft, setDraft] = useState("")
 	const [sending, setSending] = useState(false)
 	const [sendError, setSendError] = useState<string | null>(null)

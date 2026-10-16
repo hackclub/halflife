@@ -9,14 +9,14 @@ import { type Forge, forgeFromRepoUrlOrNull } from "@/lib/forge"
  * - **Nested groups.** GitLab allows `gitlab.com/group/subgroup/repo`, so a repo is not always two path segments and "owner" is not always one. The path to the repo is kept whole as `ownerPath`; `owner` is only the last segment, for the places (a display name, a fallback label) that want one.
  * - **Bare slugs.** The sync's pinned target was once `owner/name` with no host. Those still parse – against a named forge, since a host-less slug cannot say which one it means – and the caller supplies the forge it must have come from. See `parseRepoRef(value, { forge })`.
  */
-export type RepoRef = {
+export interface RepoRef {
 	forge: Forge
+	/** The repo without its `ownerPath`: what the API and the UI address it by. */
+	fullName: string
 	/** The path to the repo, whole: `owner` or `group/subgroup`. */
 	ownerPath: string
 	/** The repo's own name, the last segment. */
 	repo: string
-	/** The repo without its `ownerPath`: what the API and the UI address it by. */
-	fullName: string
 }
 
 // A path segment only ever contains these. Checking them here is the one chokepoint that stops a crafted URL (`github.com/a/..%2f..%2fadmin`) adding path segments to an API URL built from this – Stasis's rule, kept as is.

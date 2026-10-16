@@ -18,7 +18,7 @@ const DOUBLE_TAP_PX = 44
 const HEART_SVG =
 	'<svg viewBox="0 0 24 24" width="100%" height="100%" aria-hidden="true"><path d="M12 21s-8.6-5-8.6-10.6A4.8 4.8 0 0 1 12 7.8a4.8 4.8 0 0 1 8.6 2.6C20.6 16 12 21 12 21Z" fill="currentColor" stroke="#ffffff" stroke-width="1.4" stroke-linejoin="round"/></svg>'
 
-export type SlideHandle = {
+export interface SlideHandle {
 	toggle: () => void
 }
 

@@ -31,11 +31,11 @@ function hashToken(token: string): string {
 	return createHash("sha256").update(token).digest("hex")
 }
 
-export type NewHandoff = {
+export interface NewHandoff {
+	expiresAt: Date
 	id: string
 	/** The only time the plaintext token exists. Never stored, never logged. */
 	token: string
-	expiresAt: Date
 }
 
 /**
@@ -63,10 +63,10 @@ export async function createHandoff(userId: string): Promise<NewHandoff> {
 	return { expiresAt: handoff.expiresAt, id: handoff.id, token }
 }
 
-export type HandoffTarget = {
+export interface HandoffTarget {
+	expiresAt: Date
 	id: string
 	userId: string
-	expiresAt: Date
 }
 
 /**
@@ -94,7 +94,7 @@ export async function resolveHandoff(token: string): Promise<HandoffTarget | nul
 	return { expiresAt: row.expiresAt, id: row.id, userId: row.userId }
 }
 
-export type HandoffUploadResult = {
+export interface HandoffUploadResult {
 	objectKey: string
 }
 

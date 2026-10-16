@@ -5,7 +5,9 @@ import { requireSession } from "@/lib/guards"
 import prisma from "@/lib/prisma"
 import { getSubmissionAccess, isPhaseDecided, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
 
-type Params = { params: Promise<{ id: string; linkId: string }> }
+interface Params {
+	params: Promise<{ id: string; linkId: string }>
+}
 
 /** Statuses in which a phase's links may still be removed: a draft, or one an admin or reviewer sent back for changes. */
 const EDITABLE_PHASE_STATUSES = [PhaseStatus.draft, PhaseStatus.update_requested]

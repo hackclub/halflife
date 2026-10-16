@@ -8,7 +8,9 @@ import { sanitize } from "@/lib/sanitize"
 import { orderDecisionSchema } from "@/lib/schemas/admin"
 import { fulfillOrder, rejectOrder, shopOrderStaffSelect } from "@/lib/shop"
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
 export const POST = withRoute(async (req: Request, { params }: Params) => {
 	const gate = await requirePermission(Permission.FULFILL_ORDERS)

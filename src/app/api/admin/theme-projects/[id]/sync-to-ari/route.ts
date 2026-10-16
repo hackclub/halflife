@@ -9,7 +9,9 @@ import prisma from "@/lib/prisma"
 import { phaseSchema } from "@/lib/schemas/common"
 import { trackSideEffect } from "@/lib/side-effects"
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
 export const maxDuration = 60
 

@@ -7,7 +7,9 @@ import prisma from "@/lib/prisma"
 import { FULFILLMENT_ORDER_STATUSES, fulfillmentStageOf } from "@/lib/queries/admin"
 import { orderFulfillmentSchema } from "@/lib/schemas/admin"
 
-type Params = { params: Promise<{ id: string }> }
+interface Params {
+	params: Promise<{ id: string }>
+}
 
 /**
  * Mark how an order ships and how far it has got. Bookkeeping only: it moves no coins and does not touch the order's approve/reject status.

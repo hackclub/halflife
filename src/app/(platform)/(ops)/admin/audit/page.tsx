@@ -6,7 +6,9 @@ import { listAuditLog } from "@/lib/queries/admin"
 
 export const dynamic = "force-dynamic"
 
-type Props = { searchParams: Promise<{ action?: string; targetId?: string; cursor?: string }> }
+interface Props {
+	searchParams: Promise<{ action?: string; targetId?: string; cursor?: string }>
+}
 
 export default async function AdminAuditPage({ searchParams }: Props) {
 	await requirePermissionPage(Permission.VIEW_AUDIT_LOG)
