@@ -34,7 +34,7 @@ export function ProjectDetails({
 	project: Project
 	/** Hours logged in the design week, for what each tier would ask. */
 	hours: number
-	/** The design week is handed in, so the tier is final. */
+	/** The design decision is approved, so the tier is final. */
 	tierLocked: boolean
 	/** Why nothing here can change right now, or null when it can. */
 	locked: string | null
@@ -413,8 +413,8 @@ function DetailsForm({
 							{takingStarter
 								? "starter projects are fixed to tier 1."
 								: project.weekId === WARMUP_WEEK_ID
-									? "the project is submitted, so the tier is final."
-									: `week ${project.weekId} is submitted, so the tier is final.`}
+									? "the project is approved, so the tier is final."
+									: `week ${project.weekId} is approved, so the tier is final.`}
 						</span>
 					</p>
 				)}
