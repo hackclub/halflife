@@ -475,6 +475,29 @@ async function applyDecision(event: DecisionEvent, opts: { announce?: boolean } 
 			tier,
 		})
 	} catch (err) {
+		// A decision that lands after a status pass already applied it, carrying the reviewer's own words the pass never had: replace the placeholder instead of discarding the delivery. Ari's review screen resends a decision exactly this way, and the resent delivery is the only thing that ever carries the note.
+		if (err instanceof HttpError && err.code === "ALREADY_RESOLVED" && makerNote) {
+			const adopted = await adoptStatusPlaceholder({
+				auditNote: event.review.audit_note?.trim() || null,
+				note: makerNote,
+				phase,
+				result,
+				reviewerEmail: event.review.reviewer?.email ?? null,
+				submissionId: submission.id,
+				themeProjectId,
+			})
+			if (adopted) {
+				await logAudit({
+					action: AuditAction.ARI_WEBHOOK_APPLIED,
+					metadata: { event: event.event, late: true, phase },
+					targetId: themeProjectId,
+					targetType: "ThemeProject",
+				})
+				// Quiet, like the status pass that applied the decision: a backlog of resends must not become a flood of late DMs, and the maker was already sent the page's state when the decision landed. The review row, the review trail and the project page now carry the reviewer's words; `airtable:backfill-review` pushes them on to the row.
+				return
+			}
+		}
+
 		// These mean the decision cannot or need not be applied, and retrying will not change that: the submission is already decided or was withdrawn. A build that arrived before its design is NOT in this list – that one is deferred by state and is rethrown so its delivery stays unrecorded. Anything else (including a claim that reappeared in the tiny window after we cleared it) is rethrown so Ari retries.
 		if (err instanceof HttpError && (err.code === "ALREADY_RESOLVED" || err.code === "NOT_SUBMITTED")) {
 			await ignored(event, err.code.toLowerCase(), event.external_id)
@@ -920,6 +943,47 @@ function decisionForResult(result: ReviewResult): StandingDecision["decision"] {
 	return "changes"
 }
 
+/** Whether a stored review is the placeholder a status pass leaves: no reviewer, and the generic sentence for its result. */
+function isStatusPlaceholder(
+	review: { feedback: string; reviewerEmail: string | null; reviewerId: string | null },
+	result: ReviewResult,
+): boolean {
+	return review.reviewerId === null && review.reviewerEmail === null && review.feedback === defaultFeedback(result)
+}
+
+/**
+ * Replace the sentence a status pass left with the reviewer's own words, when a real delivery arrives after it.
+ *
+ * A status pass has no note to record (see `decisionEventFromStatus`), so a decision applied that way is stored with `defaultFeedback` and no reviewer. Ari's review screen resends the decision as an ordinary delivery, and that delivery is the only thing carrying the note; without this it would be turned away as already-decided and the words thrown away. Only a placeholder is rewritten – a review with its own feedback, or one attributed to a console reviewer, is the record of a real decision and stays as it is. Returns whether anything was written.
+ */
+async function adoptStatusPlaceholder(input: {
+	auditNote: string | null
+	note: string
+	phase: Phase
+	result: ReviewResult
+	reviewerEmail: string | null
+	submissionId: string
+	themeProjectId: string
+}): Promise<boolean> {
+	const review = await prisma.submissionReview.findFirst({
+		orderBy: { createdAt: "desc" },
+		select: { feedback: true, id: true, reviewerEmail: true, reviewerId: true },
+		where: { invalidated: false, result: input.result, submissionId: input.submissionId },
+	})
+	if (!review || !isStatusPlaceholder(review, input.result)) return false
+
+	await writeStatusReviewNote({
+		auditNote: input.auditNote,
+		note: input.note,
+		phase: input.phase,
+		result: input.result,
+		reviewerEmail: input.reviewerEmail,
+		reviewId: review.id,
+		themeProjectId: input.themeProjectId,
+	})
+	return true
+}
+
 /**
  * Write a decision's own words back over the sentence the status pass left there.
  *
@@ -963,7 +1027,9 @@ async function writeStatusReviewNote(input: {
 /**
  * Give a decision the status pass rebuilt the reviewer's words it should have had.
  *
- * `reconcileAriDecisions` applies a decision from `ari.ships.status`, and a response that carried only the decision left the review row and the project page showing `defaultFeedback` in place of the note. Ari's status response carries the review now, so a decision already applied can be repaired: the review's `feedback` (and the audit `reason`) and the project's standing comment are replaced with Ari's own words, and the reviewer is named.
+ * `reconcileAriDecisions` applies a decision from `ari.ships.status`, and a response that carries only the decision leaves the review row and the project page showing `defaultFeedback` in place of the note. When the status response includes the final review, a decision already applied can be repaired here: the review's `feedback` (and the audit `reason`) and the project's standing comment are replaced with Ari's own words, and the reviewer is named.
+ *
+ * Ari's status response does not carry the review today (see the [webhooks docs](https://ari.hackclub.com/docs/webhooks#status): `id`, `external_id`, `version`, `phase` and `decision` only), so a pass over current decisions reports every placeholder as `quiet` – there is no note to read. Until the endpoint is extended, the same repair happens as a side effect of a resend: Ari's review screen resends the decision as an ordinary delivery, and `adoptStatusPlaceholder` rewrites the placeholder from the webhook the moment it arrives.
  *
  * Only a review the status pass rebuilt is touched – `reviewerId` and `reviewerEmail` are both null and the feedback is exactly `defaultFeedback` of its result, which is a shape no person and no delivered webhook ever produces. A placeholder whose ship no longer answers with the same final decision, or whose newest ship is not the one this review decided, is left alone rather than rewritten from another state.
  *
@@ -980,6 +1046,8 @@ export async function repairStatusDecisions(opts: { commit?: boolean; limit?: nu
 				feedback: true,
 				id: true,
 				result: true,
+				reviewerEmail: true,
+				reviewerId: true,
 				submission: { select: { ariSubmissionId: true, phase: true, themeProjectId: true } },
 			},
 			where: {
@@ -990,7 +1058,7 @@ export async function repairStatusDecisions(opts: { commit?: boolean; limit?: nu
 				submission: { ariSubmissionId: { not: null } },
 			},
 		})
-	).filter(review => review.feedback === defaultFeedback(review.result))
+	).filter(review => isStatusPlaceholder(review, review.result))
 
 	const stubs = placeholders.slice(0, opts.limit ?? placeholders.length)
 	summary.checked = stubs.length
