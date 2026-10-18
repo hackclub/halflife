@@ -182,9 +182,7 @@ export const DOCS: DocArticle[] = [
 					"Copied designs, stolen project files, and more will result in a rejection and potential ban from Half life and Hack Club as a whole",
 					"Projects should be original, with most parts being designed by you. That means depending on the week, you cannot for example buy a kit, or use only premade modules for a project",
 				],
-				paragraphs: [
-					"Failure to meet the below expectations may result in your project rejected",
-				],
+				paragraphs: ["Failure to meet the below expectations may result in your project rejected"],
 			},
 			{
 				heading: "Your repo",
