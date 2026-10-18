@@ -109,7 +109,7 @@ export const STARTER_PROJECTS = [
 		parts: ["XIAO ESP32-C3", "OLED screen", "MPU6050 motion sensor", "DHT11 sensor"],
 		repoUrl: "https://github.com/SharKingStudios/Starbie",
 		// Week one's starter, in every week until each has its own repo.
-		themes: [Theme.PCB, Theme.SYNTH, Theme.DISPLAYS, Theme.BREADBOARD_COMPUTER],
+		themes: [Theme.PCB, Theme.DISPLAYS, Theme.BREADBOARD_COMPUTER],
 		title: "Starbie",
 	},
 	{
@@ -122,6 +122,17 @@ export const STARTER_PROJECTS = [
 		repoUrl: "https://github.com/karnxx/merbl",
 		themes: [Theme.CAD],
 		title: "Merbl run",
+	},
+	{
+		// The repo's own description; the README is the guide.
+		description:
+			"Learn PCB design by creating your own custom MIDI keypad with switches, sliders, rotary encoders, neopixels and capacitive touch!",
+		guideUrl: "https://github.com/KaiPereira/MIDI-Keypad/blob/master/README.md",
+		id: "midi",
+		parts: ["ESP32-S3-Zero", "Kailh Choc switches", "Slide potentiometers", "EC11 rotary encoder", "SK6812 neopixels"],
+		repoUrl: "https://github.com/KaiPereira/MIDI-Keypad",
+		themes: [Theme.SYNTH],
+		title: "Midi Keyboard",
 	},
 ] as const satisfies readonly StarterProject[]
 
