@@ -1,7 +1,7 @@
 import "server-only"
 
 import type { Prisma } from "@/app/generated/prisma/client"
-import { ReviewPass, type Theme } from "@/app/generated/prisma/enums"
+import { PhaseStatus, ReviewPass, type Theme } from "@/app/generated/prisma/enums"
 import { THEMES } from "@/lib/config/program"
 import prisma from "@/lib/prisma"
 import { currentWeekNumber } from "@/lib/program"
@@ -9,7 +9,7 @@ import { tallyBoard } from "./leaderboard"
 
 export interface ProjectReviewStats {
 	/**
-	 * Review progress per started design week, oldest first: how many of the week's named projects have at least one live review. Weeks that have not started yet are omitted, so the section grows with the programme.
+	 * Review progress per started design week, oldest first: how many of the week's submitted projects have at least one live review. Weeks that have not started yet are omitted, so the section grows with the programme.
 	 */
 	byWeek: WeekReviewProgress[]
 	/**
@@ -36,6 +36,11 @@ export interface BoardEntry {
 /** The board key for Ari's anonymous decisions: no address, so no email to group by. Named on the board rather than dropped. */
 export const ANONYMOUS_ARI = "ari"
 
+/**
+ * Ari attributes its automated decisions to this address. It is not a person, so it never takes a place on a board: ranked under its own email it outranked every human reviewer with work nobody did, which is what pushed `system@ari` to the top of the all-time leaderboard.
+ */
+export const SYSTEM_ARI = "system@ari"
+
 /** Lower-cased and trimmed, so `Name@X.com` and `name@x.com` are one reviewer. Null when there is nothing to key on. */
 function emailKey(email: string | null | undefined): string | null {
 	const key = email?.trim().toLowerCase()
@@ -45,7 +50,7 @@ function emailKey(email: string | null | undefined): string | null {
 /**
  * Who reviewed what, busiest first.
  *
- * Email is the key, not the account: `reviewerId` is null for every Ari decision, so grouping by it dropped them all – which is how both boards printed empty once Ari took over reviewing. A console review carries both; prefer the account's canonical email so one person is one row even if the address recorded at decision time differs in case. Rows with no address at all are counted under Ari rather than dropped.
+ * Email is the key, not the account: `reviewerId` is null for every Ari decision, so grouping by it dropped them all – which is how both boards printed empty once Ari took over reviewing. A console review carries both; prefer the account's canonical email so one person is one row even if the address recorded at decision time differs in case. Rows with no address at all are counted under Ari rather than dropped; rows under Ari's automated address are not counted at all, since a sentinel is not a reviewer.
  */
 function reviewerBoard(
 	rows: { reviewerId: string | null; reviewerEmail: string | null; reviewerName: string | null }[],
@@ -59,7 +64,7 @@ function reviewerBoard(
 	})
 	const anonymous = keyed.filter(key => key === null).length
 	const board: ProjectReviewStats["leaderboard"] = tallyBoard(
-		keyed.filter(key => key !== null),
+		keyed.filter(key => key !== null && key !== SYSTEM_ARI),
 		key => key,
 	).map(({ key: email, count: reviewed }) => ({ email, name: names.get(email) ?? null, reviewed }))
 	if (anonymous > 0) board.push({ email: ANONYMOUS_ARI, name: "Ari", reviewed: anonymous })
@@ -72,7 +77,7 @@ export interface WeekReviewProgress {
 	label: string
 	/** Distinct named projects with at least one live FINAL review, on either phase. */
 	reviewed: number
-	/** Distinct named projects. A row nobody named is a slot, not a project – the same rule the admin projects-by-week chart uses. */
+	/** Distinct named projects that have been submitted – a phase has left draft – the same rule the admin projects-by-week chart uses. A row nobody named is a slot, not a project. */
 	total: number
 	/** The design week number, 1-5. */
 	week: number
@@ -81,7 +86,7 @@ export interface WeekReviewProgress {
 /**
  * Per-week review progress for every design week that has started.
  *
- * "Reviewed" is deliberately looser than a decision: a project counts once it has had any live FINAL review, on design or build, because the bar answers how far reviewing has got through the week's pile rather than what it decided. Un-started weeks are omitted outright rather than shown empty, so a week-one post is one bar, not five with four zeroes.
+ * "Reviewed" is deliberately looser than a decision: a project counts once it has had any live FINAL review, on design or build, because the bar answers how far reviewing has got through the week's pile rather than what it decided. `total` is only the projects that have joined that pile – a named project whose phases are all still drafts has not been handed in and is not waiting on a reviewer, so counting it made every bar read as a fraction of sign-ups rather than progress through submitted work. Un-started weeks are omitted outright rather than shown empty, so a week-one post is one bar, not five with four zeroes.
  */
 async function getWeekReviewProgress(): Promise<WeekReviewProgress[]> {
 	const now = await currentWeekNumber()
@@ -89,19 +94,22 @@ async function getWeekReviewProgress(): Promise<WeekReviewProgress[]> {
 	if (started.length === 0) return []
 	const themes = started.map(t => t.id)
 
+	// The same threshold the admin projects-by-week chart uses: a phase enters a week's pile the first time it is submitted and stops being a draft.
+	const submittedProjects: Prisma.ThemeProjectWhereInput = {
+		deletedAt: null,
+		namedAt: { not: null },
+		OR: [{ designStatus: { not: PhaseStatus.draft } }, { buildStatus: { not: PhaseStatus.draft } }],
+		theme: { in: themes },
+	}
+
 	const [projects, reviews] = await Promise.all([
-		prisma.themeProject.findMany({
-			select: { theme: true },
-			where: { deletedAt: null, namedAt: { not: null }, theme: { in: themes } },
-		}),
+		prisma.themeProject.findMany({ select: { theme: true }, where: submittedProjects }),
 		prisma.submissionReview.findMany({
 			select: { submission: { select: { themeProject: { select: { theme: true } }, themeProjectId: true } } },
 			where: {
 				invalidated: false,
 				pass: ReviewPass.FINAL,
-				submission: {
-					themeProject: { deletedAt: null, namedAt: { not: null }, theme: { in: themes } },
-				},
+				submission: { themeProject: submittedProjects },
 			},
 		}),
 	])
