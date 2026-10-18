@@ -76,7 +76,7 @@ function weekProgressSection(byWeek: WeekReviewProgress[]): SummaryBoard | null 
 	const labelWidth = Math.max(...byWeek.map(row => `week ${row.week} · ${row.label}`.length))
 	const countWidth = Math.max(...byWeek.map(row => `${row.reviewed}/${row.total}`.length))
 	const lines = ["```", ...byWeek.map(row => weekBarLine(row, labelWidth, countWidth)), "```"]
-	return { lines, title: ":bar-chart: reviewed by week", total: byWeek.length }
+	return { lines, title: ":bar_chart: reviewed by week", total: byWeek.length }
 }
 
 export async function buildReviewSummary(stats: ProjectReviewStats): Promise<string> {
