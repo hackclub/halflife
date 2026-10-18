@@ -15,6 +15,7 @@ import neptune4Photo from "../../../public/art/printers/elegoo-neptune-4.webp"
 import ender3V3SePhoto from "../../../public/art/printers/ender-3-v3-se.webp"
 import monopriceCncPhoto from "../../../public/art/printers/monoprice-cnc.webp"
 import merblRender from "../../../public/art/starters/merbl.png"
+import midiRender from "../../../public/art/starters/midi.png"
 import starbieRender from "../../../public/art/starters/starbie.webp"
 import breadboardPainting from "../../../public/art/weeks/breadboard.png"
 import cadPainting from "../../../public/art/weeks/cad.png"
@@ -180,6 +181,7 @@ export function PrinterPhoto({
  */
 const STARTER_RENDERS: Partial<{ [_: string]: StaticImageData }> = {
 	merbl: merblRender,
+	midi: midiRender,
 	starbie: starbieRender,
 }
 
