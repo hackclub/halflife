@@ -173,6 +173,20 @@ export const DOCS: DocArticle[] = [
 				],
 			},
 			{
+				heading: "AI Usage, Project Quality, and Originality",
+				list: [
+					"You may not use AI to generate any graphics used in the final github repo.",
+					"You may use AI to help with coding, up to ~30% of code can be generated, the majority should still be your own work.",
+					"Journals and your README cannot be written with the help of AI.",
+					"Your project should be polished, something you'd be proud to show to others, and something that you can potentially sell as a product!",
+					"Copied designs, stolen project files, and more will result in a rejection and potential ban from Half life and Hack Club as a whole",
+					"Projects should be original, with most parts being designed by you. That means depending on the week, you cannot for example buy a kit, or use only premade modules for a project",
+				],
+				paragraphs: [
+					"Failure to meet the below expectations may result in your project rejected",
+				],
+			},
+			{
 				heading: "Your repo",
 				list: [
 					"Every week: a public repo, with a README that has photos in it.",
@@ -236,7 +250,6 @@ export const DOCS: DocArticle[] = [
 					"Source files are missing, or only exports are there.",
 					"The journal does not back the hours claimed.",
 					"The BOM does not match the cart, or has no real prices.",
-					"Work that is not yours: copied designs, or a README or journal written by AI.",
 				],
 				paragraphs: [
 					"Reviewers can approve a week, send it back with changes to make, or reject it. A week sent back can be fixed and submitted again. The usual reasons:",
