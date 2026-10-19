@@ -1,13 +1,12 @@
 import Link from "next/link"
-import { ExtensionForm } from "@/app/components/forms/ExtensionForm"
-import { ThemeMoveForm } from "@/app/components/forms/ThemeMoveForm"
-import { Badge, EmptyState, PageHeader, Panel, statusLabel, statusTone, Table } from "@/app/components/ui"
+import { EmptyState, PageHeader, Panel, statusLabel, Table } from "@/app/components/ui"
 import { PhaseStatus, Theme } from "@/app/generated/prisma/enums"
 import { getThemeDef, THEMES } from "@/lib/config/program"
 import { displayName } from "@/lib/display-name"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { hasPermission, Permission } from "@/lib/permissions"
 import { listProjects, type ProjectFilters } from "@/lib/queries/admin"
+import { ProjectRow } from "./ProjectRow"
 
 export const dynamic = "force-dynamic"
 
@@ -48,7 +47,6 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 	const filters = filtersFrom(search)
 	const canExtend = hasPermission(roles, Permission.MANAGE_USERS)
 	const canMoveTheme = hasPermission(roles, Permission.MANAGE_PROGRAM)
-
 	const { items, nextCursor } = await listProjects({ ...filters, cursor: search.cursor, limit: 50 })
 
 	// The next page keeps every filter; only the cursor moves.
@@ -142,65 +140,39 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 				{items.length === 0 ? (
 					<EmptyState>No projects match.</EmptyState>
 				) : (
-					<Table className="hl-table--roomy" head={["Project", "Owner", "Theme", "Design", "Build", "Tier", "Actions"]}>
+					<Table
+						className="hl-table--roomy"
+						head={["Project", "Owner", "Theme", "Tier", "Review", canExtend || canMoveTheme ? "Actions" : "Extension"]}
+					>
 						{items.map(project => {
-							const userExt =
+							const userExtension =
 								project.user.submissionExtensionUntil && project.user.submissionExtensionUntil > now
-									? project.user.submissionExtensionUntil
+									? project.user.submissionExtensionUntil.toLocaleString()
 									: null
 							return (
-								<tr key={project.id}>
-									<td style={{ minWidth: "16rem", overflowWrap: "anywhere" }}>
-										{/* The participant's project page opens for its owner only, so
-                        this goes to the owner's admin page, where it is listed. */}
-										<Link href={`/admin/users/${project.user.id}#project-${project.id}`}>
-											{project.title || "Untitled"}
-										</Link>
-										<div className="hl-hint hl-mono">{project.id}</div>
-										{project.githubRepo ? (
-											<div className="hl-hint hl-mono">
-												{project.githubRepo.replace(/^https:\/\/github\.com\//, "")}
-											</div>
-										) : null}
-									</td>
-									<td style={{ minWidth: "13rem", overflowWrap: "anywhere" }}>
-										<Link href={`/admin/users/${project.user.id}`}>
-											{displayName(project.user, project.user.email)}
-										</Link>
-										<div className="hl-hint hl-mono">{project.user.slackId ?? project.user.email}</div>
-									</td>
-									<td style={{ minWidth: "9rem" }}>{getThemeDef(project.theme).label}</td>
-									<td>
-										<Badge tone={statusTone(project.designStatus)}>{statusLabel(project.designStatus)}</Badge>
-									</td>
-									<td>
-										<Badge tone={statusTone(project.buildStatus)}>{statusLabel(project.buildStatus)}</Badge>
-									</td>
-									<td>{project.tier ?? (project.requestedTier ? `${project.requestedTier} (asked)` : "—")}</td>
-									<td style={{ minWidth: "26rem" }}>
-										<div className="hl-stack hl-stack--tight">
-											{canMoveTheme ? (
-												<div>
-													<p className="hl-hint" style={{ margin: 0 }}>
-														Move to theme
-													</p>
-													<ThemeMoveForm current={project.theme} projectId={project.id} />
-												</div>
-											) : null}
-											{canExtend ? (
-												<ExtensionForm
-													current={project.submissionExtensionUntil?.toISOString() ?? null}
-													url={`/api/admin/theme-projects/${project.id}`}
-												/>
-											) : project.submissionExtensionUntil ? (
-												<span className="hl-mono">{project.submissionExtensionUntil.toLocaleString()}</span>
-											) : (
-												<span className="hl-muted">No extension</span>
-											)}
-											{userExt ? <div className="hl-hint">Owner extended until {userExt.toLocaleString()}</div> : null}
-										</div>
-									</td>
-								</tr>
+								<ProjectRow
+									canExtend={canExtend}
+									canMoveTheme={canMoveTheme}
+									data={{
+										buildStatus: project.buildStatus,
+										designStatus: project.designStatus,
+										extension: project.submissionExtensionUntil?.toISOString() ?? null,
+										extensionLabel: project.submissionExtensionUntil?.toLocaleString() ?? null,
+										githubRepo: project.githubRepo,
+										id: project.id,
+										ownerEmail: project.user.email,
+										ownerId: project.user.id,
+										ownerName: displayName(project.user, project.user.email),
+										ownerSlackId: project.user.slackId,
+										requestedTier: project.requestedTier,
+										theme: project.theme,
+										themeLabel: getThemeDef(project.theme).label,
+										tier: project.tier,
+										title: project.title,
+										userExtension,
+									}}
+									key={project.id}
+								/>
 							)
 						})}
 					</Table>

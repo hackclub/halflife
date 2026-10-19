@@ -890,6 +890,76 @@ h4 {
 		padding-block: 0.85rem;
 		vertical-align: top;
 	}
+	.hl-entity-name {
+		font-weight: 700;
+		color: var(--color-ink-strong);
+	}
+	/* The two views of the same thing sit together, so an admin never has to guess which one a name goes to. */
+	.hl-entity-links {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.2rem 0.7rem;
+		margin-top: 0.2rem;
+	}
+	.hl-entity-links a {
+		font-size: 0.72rem;
+		font-weight: 700;
+		color: var(--color-accent-ink);
+		text-decoration: underline;
+		text-decoration-style: dashed;
+		text-underline-offset: 2px;
+	}
+	.hl-entity-links a:hover {
+		text-decoration-style: solid;
+	}
+	/* Design and build are named, not just coloured: the icon and word carry the stage when the badge's colour does not. */
+	.hl-review-stages {
+		display: grid;
+		gap: 0.35rem;
+		padding: 0;
+		margin: 0;
+		list-style: none;
+	}
+	.hl-review-stages li {
+		display: flex;
+		gap: 0.4rem;
+		align-items: center;
+	}
+	.hl-review-stages svg {
+		flex: none;
+		width: 0.95rem;
+		height: 0.95rem;
+		color: var(--color-ink-muted);
+	}
+	.hl-review-stages__name {
+		min-width: 3.1rem;
+		font-size: 0.78rem;
+		font-weight: 700;
+		color: var(--color-ink-strong);
+	}
+	.hl-manage-row > td {
+		padding: 0;
+		background: var(--color-surface-sunken);
+	}
+	.hl-manage-panel {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+		gap: 1.5rem;
+		padding: 1rem 1.1rem;
+	}
+	.hl-manage-panel h3 {
+		margin: 0 0 0.45rem;
+		font-size: 0.82rem;
+		color: var(--color-ink-strong);
+	}
+	.hl-manage-chevron {
+		width: 1rem;
+		height: 1rem;
+		transition: transform 150ms;
+	}
+	.hl-manage-chevron--open {
+		transform: rotate(180deg);
+	}
 
 	/* ── Day separator ─────────────────────────────────────────────────────── */
 	.hl-daymark {
