@@ -110,7 +110,7 @@ export async function writeYswsRecord(
 			{ retryServerErrors: id !== null },
 		)
 
-	let current = { ...fields }
+	const current = { ...fields }
 	let id = recordId
 	if (!id) {
 		const existing = await findExistingRow(config, fields)
@@ -143,7 +143,6 @@ export async function writeYswsRecord(
 			)
 			for (const b of bad) delete current[b]
 			dropped.push(...bad)
-			current = { ...current }
 		}
 	}
 }
