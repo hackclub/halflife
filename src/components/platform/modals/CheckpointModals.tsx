@@ -1683,6 +1683,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	}
 
 	const ok = name.trim().length > 1 && desc.trim().length > 4 && repoIsValid(repo)
+	const selectedStarter = starterId === null ? undefined : starters.find(s => s.id === starterId)
 
 	return (
 		<Modal
@@ -1817,8 +1818,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						{starterId !== null && (
 							<div className="flex flex-wrap items-center gap-x-4 gap-y-2">
 								<Chip tone="teal">
-									<IconCheck className="text-[0.9rem]" /> Building{" "}
-									{starters.find(s => s.id === starterId)?.title ?? "starter"}
+									<IconCheck className="text-[0.9rem]" /> Building {selectedStarter?.title ?? "starter"}
 								</Chip>
 								<button
 									className="hand text-[0.82rem] text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
@@ -1843,35 +1843,42 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								className={cx(inputClass, "resize-none")}
 								id="np-desc"
 								onChange={e => setDesc(e.target.value)}
-								placeholder={week.examples[0]}
+								placeholder={
+									selectedStarter ? `How will you make ${selectedStarter.title} your own?` : week.examples[0]
+								}
 								rows={3}
 								value={desc}
 							/>
 						</Field>
 						<RepoInput id="np-repo" onChange={setRepo} value={repo} />
 
-						<button
-							className="hand self-start text-[0.82rem] text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
-							onClick={() => setShowExamples(v => !v)}
-							type="button"
-						>
-							{showExamples ? "Hide examples" : "Stuck? See what other people are making"}
-						</button>
-						{showExamples && (
-							<ul className="grid gap-2">
-								{week.examples.map(e => (
-									<li key={e}>
-										<button
-											className="sketch w-full rounded-xl bg-white px-4 py-2.5 text-left text-[0.9rem] leading-snug text-navy transition-colors hover:bg-violet-pale/60"
-											onClick={() => setDesc(e)}
-											style={{ "--sk-radius": "12px" } as React.CSSProperties}
-											type="button"
-										>
-											{e}
-										</button>
-									</li>
-								))}
-							</ul>
+						{/* The week's examples are ideas for a project of your own. A starter is already the idea, so they would be a second, unrelated choice under a form that is about the starter. */}
+						{!selectedStarter && (
+							<>
+								<button
+									className="hand self-start text-[0.82rem] text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
+									onClick={() => setShowExamples(v => !v)}
+									type="button"
+								>
+									{showExamples ? "Hide examples" : "Stuck? See what other people are making"}
+								</button>
+								{showExamples && (
+									<ul className="grid gap-2">
+										{week.examples.map(e => (
+											<li key={e}>
+												<button
+													className="sketch w-full rounded-xl bg-white px-4 py-2.5 text-left text-[0.9rem] leading-snug text-navy transition-colors hover:bg-violet-pale/60"
+													onClick={() => setDesc(e)}
+													style={{ "--sk-radius": "12px" } as React.CSSProperties}
+													type="button"
+												>
+													{e}
+												</button>
+											</li>
+										))}
+									</ul>
+								)}
+							</>
 						)}
 
 						<div className="mt-2">
