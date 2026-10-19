@@ -1,4 +1,4 @@
-import { EXAMPLE_JOURNAL_URL } from "./routes"
+import { EXAMPLE_JOURNAL_URL, README_GUIDE_URL } from "./routes"
 import type { DocArticle } from "./types"
 
 /**
@@ -200,6 +200,7 @@ export const DOCS: DocArticle[] = [
 			},
 			{
 				heading: "A README worth reading",
+				link: { href: README_GUIDE_URL, label: "How to write the README" },
 				list: [
 					"What it is, and why you made it.",
 					"How it works: how the parts fit together.",
