@@ -193,8 +193,7 @@ async function main() {
 		globalThis.fetch = (async (url: string, init: RequestInit = {}) => {
 			const method = init.method ?? "GET"
 			const u = String(url)
-			const json = (body: unknown, status = 200) =>
-				new Response(JSON.stringify(body), { headers: { "content-type": "application/json" }, status })
+			const json = (body: unknown, status = 200) => Response.json(body, { status })
 			if (method === "GET" && u.includes("/git/ref/heads/")) return json({ object: { sha: "parent" } })
 			if (method === "GET" && u.includes("/git/commits/parent")) return json({ tree: { sha: "tree0" } })
 			// The old BOM.md is still present, which is what makes the sync send a deletion for it.
