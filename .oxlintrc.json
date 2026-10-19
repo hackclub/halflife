@@ -101,7 +101,6 @@
 		"react/jsx-props-no-spreading": "off",
 		"react/memo-dependencies": "off",
 		"react/no-array-index-key": "off",
-		"react/no-object-type-as-default-prop": "off",
 		"react/no-unescaped-entities": "warn",
 		"react/purity": "off",
 		"react/react-in-jsx-scope": "off",
