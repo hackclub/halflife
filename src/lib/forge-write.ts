@@ -438,7 +438,7 @@ export interface WrittenFile {
  *
  * A file whose contents already match is left alone rather than rewritten, so the common case – a journal entry that changed nothing about BOM.csv, or a retried sync – produces no commit at all. Both implementations honour that, and both make the whole set land atomically or not at all.
  */
-export async function commitFiles(
+export function commitFiles(
 	creds: ForgeCredentials,
 	ref: RepoRef,
 	branch: string,

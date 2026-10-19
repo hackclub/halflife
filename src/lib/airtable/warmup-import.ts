@@ -294,7 +294,7 @@ function encryptedPiiFields(row: ParsedWarmupRow): Partial<Prisma.UserCreateInpu
  *
  * The advisory lock is keyed on the email, so two rows for the same maker, or an admin double-clicking the button, serialize instead of racing each other into a duplicate account. Every row that gets here is a project of its own: the form may have been filled in more than once, and warm-up projects deliberately do not hold a unique slot. Idempotency per Airtable row is re-checked under that lock, because the caller's "not imported yet" read happened before the transaction and a second run can hold the same snapshot. Everything after the transaction – the cover copy and the Ari send – is external and idempotent enough not to belong inside it.
  */
-async function importRow(
+function importRow(
 	record: AirtableRecord,
 	row: ParsedWarmupRow,
 	actor: ImportActor,

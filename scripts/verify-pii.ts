@@ -41,7 +41,7 @@ const S = {
 	viewerSlack: "USENTINELSLACKA",
 }
 
-async function makeUser(email: string, name: string, slackId: string) {
+function makeUser(email: string, name: string, slackId: string) {
 	return prisma.user.create({
 		data: {
 			email,

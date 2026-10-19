@@ -87,7 +87,7 @@ export interface ShopRegionOption {
 	name: string
 }
 
-export async function listActiveShopRegions(): Promise<ShopRegionOption[]> {
+export function listActiveShopRegions(): Promise<ShopRegionOption[]> {
 	return prisma.shopRegion.findMany({
 		orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
 		select: { id: true, name: true },

@@ -21,7 +21,7 @@ const nextConfig: NextConfig = {
 	 * routes. The proxy sets the same set for the pages it handles; duplicates
 	 * are harmless and this is the one that covers the gaps.
 	 */
-	async headers() {
+	headers() {
 		return [
 			{
 				headers: [

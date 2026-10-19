@@ -504,7 +504,7 @@ const moderatedPostSelect = {
 	user: { select: { displayName: true, email: true, id: true, name: true } },
 } satisfies Prisma.PostSelect
 
-export async function listRecentPostsForModeration(limit = 25): Promise<ModeratedPost[]> {
+export function listRecentPostsForModeration(limit = 25): Promise<ModeratedPost[]> {
 	return prisma.post.findMany({
 		orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
 		select: moderatedPostSelect,
@@ -529,7 +529,7 @@ const moderatedCommentSelect = {
 	user: { select: { displayName: true, email: true, id: true, name: true } },
 } satisfies Prisma.PostCommentSelect
 
-export async function listRecentCommentsForModeration(limit = 25): Promise<ModeratedComment[]> {
+export function listRecentCommentsForModeration(limit = 25): Promise<ModeratedComment[]> {
 	return prisma.postComment.findMany({
 		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
 		select: moderatedCommentSelect,
@@ -553,7 +553,7 @@ const publicReelSelect = {
 	user: { select: { displayName: true, id: true, name: true } },
 } satisfies Prisma.PublicReelSelect
 
-export async function listRecentPublicReels(limit = 100): Promise<PublicReelRow[]> {
+export function listRecentPublicReels(limit = 100): Promise<PublicReelRow[]> {
 	return prisma.publicReel.findMany({
 		orderBy: [{ postedAt: "desc" }, { id: "desc" }],
 		select: publicReelSelect,

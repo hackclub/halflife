@@ -320,39 +320,39 @@ async function bodies() {
 			try {
 				// A transport error twice, then success: two failures, one answer.
 				let attempts = 0
-				globalThis.fetch = (async () => {
+				globalThis.fetch = (() => {
 					attempts++
 					if (attempts < 3) {
 						const err = new Error("aborted") as Error & { name: string }
 						err.name = "TimeoutError"
 						throw err
 					}
-					return new Response('{"ok":true}', { status: 200 })
+					return Promise.resolve(new Response('{"ok":true}', { status: 200 }))
 				}) as typeof fetch
 				const res = await fetchWithRetry("https://example.test/a", { retries: 2 })
 				check("fetch-retry · a timeout is retried until it lands", attempts === 3 && res.status === 200)
 
 				// A 4xx is a real answer, not a blip.
 				let seen = 0
-				globalThis.fetch = (async () => {
+				globalThis.fetch = (() => {
 					seen++
-					return new Response("nope", { status: 401 })
+					return Promise.resolve(new Response("nope", { status: 401 }))
 				}) as typeof fetch
 				const unauthorized = await fetchWithRetry("https://example.test/b", { retries: 2 })
 				check("fetch-retry · a 4xx is not retried", seen === 1 && unauthorized.status === 401)
 
 				// A 5xx is worth another go.
 				let fives = 0
-				globalThis.fetch = (async () => {
+				globalThis.fetch = (() => {
 					fives++
-					return new Response("bad", { status: 503 })
+					return Promise.resolve(new Response("bad", { status: 503 }))
 				}) as typeof fetch
 				const down = await fetchWithRetry("https://example.test/c", { retries: 2 })
 				check("fetch-retry · a 5xx is retried then returned", fives === 3 && down.status === 503)
 
 				// Exhausting the retries throws rather than returning nothing.
 				let threw = false
-				globalThis.fetch = (async () => {
+				globalThis.fetch = (() => {
 					const err = new Error("nope") as Error & { name: string }
 					err.name = "TimeoutError"
 					throw err
@@ -365,8 +365,10 @@ async function bodies() {
 				check("fetch-retry · a persistent failure throws", threw)
 
 				// A body larger than the cap is refused rather than buffered whole.
-				globalThis.fetch = (async () =>
-					new Response("x", { headers: { "content-length": String(8 * 1024 * 1024) }, status: 200 })) as typeof fetch
+				globalThis.fetch = (() =>
+					Promise.resolve(
+						new Response("x", { headers: { "content-length": String(8 * 1024 * 1024) }, status: 200 }),
+					)) as typeof fetch
 				let oversizeThrew = false
 				try {
 					await fetchWithRetry("https://example.test/e", { retries: 0 })

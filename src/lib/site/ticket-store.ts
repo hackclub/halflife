@@ -9,7 +9,7 @@ import { listChannelHistory, type SlackHistoryMessage } from "./slack"
  *
  * The Slack flow keeps no state of its own, so this table is what lets the tickets-channel mirror tell a first-time asker from a repeat one.
  */
-export async function countPriorHelpTickets(authorSlackId: string): Promise<number> {
+export function countPriorHelpTickets(authorSlackId: string): Promise<number> {
 	return prisma.helpTicket.count({ where: { authorSlackId } })
 }
 

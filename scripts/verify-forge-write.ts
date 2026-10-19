@@ -33,16 +33,18 @@ interface Step {
 let script: Step[] = []
 let calls = 0
 
-globalThis.fetch = (async () => {
+globalThis.fetch = (() => {
 	// Once the script is spent, the last step repeats, so an exhausted retry can be observed.
 	const step = script[calls] ?? script.at(-1)
 	calls++
 	if (!step) throw new Error("fetch called with no scripted step")
 	if (step.throw) throw new TypeError("fetch failed")
-	return new Response(step.body === undefined ? null : JSON.stringify(step.body), {
-		headers: { "content-type": "application/json", ...step.headers },
-		status: step.status,
-	})
+	return Promise.resolve(
+		new Response(step.body === undefined ? null : JSON.stringify(step.body), {
+			headers: { "content-type": "application/json", ...step.headers },
+			status: step.status,
+		}),
+	)
 }) as typeof fetch
 
 async function run(steps: Step[]): Promise<{ ok: true; value: string } | { ok: false; err: unknown }> {
@@ -190,10 +192,10 @@ async function main() {
 		// A holder rather than a `let`: the tree body is captured inside the fetch closure, and a plain `let` would be narrowed to null across it.
 		const captured: { tree: TreeEntry[] | null } = { tree: null }
 		let blobs = 0
-		globalThis.fetch = (async (url: string, init: RequestInit = {}) => {
+		globalThis.fetch = ((url: string, init: RequestInit = {}) => {
 			const method = init.method ?? "GET"
 			const u = String(url)
-			const json = (body: unknown, status = 200) => Response.json(body, { status })
+			const json = (body: unknown, status = 200) => Promise.resolve(Response.json(body, { status }))
 			if (method === "GET" && u.includes("/git/ref/heads/")) return json({ object: { sha: "parent" } })
 			if (method === "GET" && u.includes("/git/commits/parent")) return json({ tree: { sha: "tree0" } })
 			// The old BOM.md is still present, which is what makes the sync send a deletion for it.

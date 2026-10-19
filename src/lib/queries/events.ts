@@ -31,7 +31,7 @@ const SELECT = {
  * now, and dropping it would leave the header counting to the one after it while
  * the current one is still happening. `take` is the caller's ceiling.
  */
-export async function listUpcomingEvents(from: Date, take: number): Promise<CalendarEvent[]> {
+export function listUpcomingEvents(from: Date, take: number): Promise<CalendarEvent[]> {
 	return prisma.programEvent.findMany({
 		orderBy: { startsAt: "asc" },
 		select: SELECT,
@@ -47,7 +47,7 @@ export async function listUpcomingEvents(from: Date, take: number): Promise<Cale
  * bounded by the programme's ten weeks, not by anyone's patience, and a cursor
  * here would put a "next page" link on a list of at most a hundred rows.
  */
-export async function listAllEvents(): Promise<CalendarEvent[]> {
+export function listAllEvents(): Promise<CalendarEvent[]> {
 	return prisma.programEvent.findMany({
 		orderBy: { startsAt: "asc" },
 		select: SELECT,

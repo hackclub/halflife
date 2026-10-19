@@ -63,7 +63,7 @@ async function callSlackApi<T extends { [_: string]: unknown }>(
 	return data
 }
 
-export async function postMessage(
+export function postMessage(
 	channel: string,
 	text: string,
 	opts: { blocks?: SlackBlock[]; threadTs?: string; unfurlLinks?: boolean } = {},
@@ -78,7 +78,7 @@ export async function postMessage(
 	})
 }
 
-export async function updateMessage(
+export function updateMessage(
 	channel: string,
 	ts: string,
 	text: string,
@@ -90,18 +90,14 @@ export async function updateMessage(
 /** Drops a reaction on a message: the pending one when a #half-life-help
  * question opens its ticket, the resolved one when any of the three buttons closes it. `already_reacted` is marked expected: a ticket can be resolved from the tickets channel or the help thread, so a second resolution finds the bot's own reaction already in place, which is the outcome we wanted rather than a fault. `invalid_name` – the custom emoji not existing in the workspace – is logged by the API layer since there's no runtime fix for it;
  * see `slack-app-manifest.yml` for the `reactions:write` scope this needs. */
-export async function addReaction(
-	channel: string,
-	timestamp: string,
-	name: string,
-): SlackResult<{ [_: string]: unknown }> {
+export function addReaction(channel: string, timestamp: string, name: string): SlackResult<{ [_: string]: unknown }> {
 	return callSlackApi("reactions.add", { channel, name, timestamp }, ["already_reacted"])
 }
 
 /** Takes a reaction back off a message, the other half of swapping a
  * #half-life-help question from pending to resolved. `no_reaction` is marked expected for the mirror of `already_reacted` above: two people can resolve the same ticket from different places, or a Slack redelivery can rerun the handler, and whoever gets there second finds the emoji already gone – the
  * outcome we wanted rather than a fault. Same `reactions:write` scope. */
-export async function removeReaction(
+export function removeReaction(
 	channel: string,
 	timestamp: string,
 	name: string,
@@ -112,7 +108,7 @@ export async function removeReaction(
 /** A bot token may delete only messages that bot posted, which is the whole
  * point here – every tickets-channel mirror is one we posted ourselves, so this needs `chat:write` and nothing more. `message_not_found` is marked expected: two people can resolve the same ticket from different places, and whoever gets there second is told the message is already gone, which is the
  * outcome we wanted rather than a fault. */
-export async function deleteMessage(channel: string, ts: string): SlackResult<{ [_: string]: unknown }> {
+export function deleteMessage(channel: string, ts: string): SlackResult<{ [_: string]: unknown }> {
 	return callSlackApi("chat.delete", { channel, ts }, ["message_not_found"])
 }
 
@@ -178,9 +174,9 @@ const slackUserNamePending = new Map<string, Promise<string>>()
  *
  * A `<@id>` mention would be simpler, but it notifies the person every single day, which is a poor trade for a stats post. Falls back to the mention only when the lookup fails, so the name is never the reason a summary breaks. Cached for the life of the instance: the summary asks once per closer, and a display name does not change mid-process.
  */
-export async function getSlackUserName(userId: string): Promise<string> {
+export function getSlackUserName(userId: string): Promise<string> {
 	const cached = slackUserNameCache.get(userId)
-	if (cached) return cached
+	if (cached) return Promise.resolve(cached)
 
 	const pending = slackUserNamePending.get(userId)
 	if (pending) return pending

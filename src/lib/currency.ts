@@ -65,7 +65,7 @@ export function spendableFor(balances: Balances, _category: ShopItemCategory): n
 }
 
 /** Lifetime earnings, ignoring spending. For progress displays. */
-export async function getEarnedCredit(tx: Tx, userId: string): Promise<number> {
+export function getEarnedCredit(tx: Tx, userId: string): Promise<number> {
 	return sumFor(tx, { kind: { in: EARNING_KINDS }, userId })
 }
 

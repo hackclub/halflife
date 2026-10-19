@@ -18,9 +18,9 @@ export function withIntegrationRoute<A extends unknown[]>(
 	handler: (...args: A) => Promise<NextResponse>,
 ): (...args: A) => Promise<NextResponse> {
 	const routed = withRoute(handler)
-	return async (...args: A) => {
+	return (...args: A) => {
 		const denied = requireIntegrationAuth(args[0] as NextRequest)
-		if (denied) return denied
+		if (denied) return Promise.resolve(denied)
 		return routed(...args)
 	}
 }

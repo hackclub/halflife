@@ -29,7 +29,7 @@ interface Params {
 /** Statuses in which a phase's entries may still be edited or deleted: a draft, or one an admin or reviewer sent back for changes. */
 const EDITABLE_PHASE_STATUSES = [PhaseStatus.draft, PhaseStatus.update_requested]
 
-async function loadOwned(userId: string, projectId: string, sessionId: string) {
+function loadOwned(userId: string, projectId: string, sessionId: string) {
 	return prisma.workSession.findFirst({
 		include: { themeProject: { select: { buildStatus: true, designStatus: true, theme: true } } },
 		where: {

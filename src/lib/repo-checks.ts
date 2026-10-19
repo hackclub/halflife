@@ -543,9 +543,9 @@ export async function findRepoFilePath(repoLink: string | null, test: RegExp): P
  *
  * The two forges speak differently here – GitHub's contents API answers with base64, GitLab's raw endpoint with the bytes – so this is the one place that difference lives. It reads the file at HEAD, the default branch, and treats a missing, binary or oversized file as simply unreadable: the caller has picked a path it matched in the same file list, so "not there" is a race, not an error worth a different message.
  */
-export async function readRepoFile(repoLink: string | null, path: string): Promise<string | null> {
+export function readRepoFile(repoLink: string | null, path: string): Promise<string | null> {
 	const ref = repoRefFromLink(repoLink)
-	if (!ref) return null
+	if (!ref) return Promise.resolve(null)
 	return readRepoFileAt(ref, path)
 }
 

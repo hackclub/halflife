@@ -237,7 +237,7 @@ export async function drainRsvpBuffer(limit = 50, opts: { dryRun?: boolean } = {
 }
 
 /** Total RSVPs, for the landing page counter. */
-export async function getRsvpCount(): Promise<number> {
+export function getRsvpCount(): Promise<number> {
 	return prisma.rsvpBuffer.count()
 }
 
