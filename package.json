@@ -29,6 +29,7 @@
     "reviews:repair-identity-returns": "bun --conditions=react-server scripts/repair-identity-returns.ts",
     "reviews:backfill-return-extensions": "bun --conditions=react-server scripts/backfill-return-extensions.ts",
     "ari:resend-all": "bun scripts/ari-resend-all.ts",
+    "ari:backfill-timelapses": "bun --conditions=react-server scripts/backfill-ari-timelapses.ts",
     "import:stasis": "bun import/stasis.ts",
     "import:check": "bun import/check.ts",
     "import:dump": "bun import/dump.ts",
