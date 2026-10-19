@@ -52,6 +52,7 @@ export function reviewChipTone(status: PhaseStatus): "sky" | "teal" | "gold" | "
 			return "gold"
 		case "rejected":
 			return "coral"
+		case "draft":
 		default:
 			return "muted"
 	}

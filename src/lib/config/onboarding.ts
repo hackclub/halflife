@@ -55,7 +55,9 @@ export function suggestedTierFor(experience: HardwareExperience | null): TierId 
 			return 3
 		case HardwareExperience.A_GOOD_AMOUNT:
 			return 2
-		default:
+		case HardwareExperience.A_LITTLE:
+		case HardwareExperience.FIRST_TIME:
+		case null:
 			return 1
 	}
 }
