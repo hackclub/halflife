@@ -194,7 +194,7 @@ async function main() {
 		let blobs = 0
 		globalThis.fetch = ((url: string, init: RequestInit = {}) => {
 			const method = init.method ?? "GET"
-			const u = String(url)
+			const u = url
 			const json = (body: unknown, status = 200) => Promise.resolve(Response.json(body, { status }))
 			if (method === "GET" && u.includes("/git/ref/heads/")) return json({ object: { sha: "parent" } })
 			if (method === "GET" && u.includes("/git/commits/parent")) return json({ tree: { sha: "tree0" } })
