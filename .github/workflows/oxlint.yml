@@ -1,0 +1,51 @@
+name: Oxlint
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+
+# Shared with the Biome workflow: both rewrite files, and running them at the same time lets one push race the other. Queuing instead of cancelling means a fix run always sees the latest commit.
+concurrency:
+    group: lint-fixes-${{ github.ref }}
+    cancel-in-progress: false
+
+# This workflow rewrites files and commits the fixes, so it needs write access to repository contents.
+permissions:
+    contents: write
+
+jobs:
+    oxlint:
+        # The fixup push below would otherwise trigger another run that finds nothing to do.
+        if: github.actor != 'github-actions[bot]'
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  ref: ${{ github.head_ref || github.ref_name }}
+                  token: ${{ secrets.GITHUB_TOKEN }}
+            # Oxlint is a devDependency, so it has to come from the lockfile rather than a floating `bunx oxlint` download.
+            - uses: oven-sh/setup-bun@v2
+
+            - uses: actions/cache@v4
+              with:
+                  path: ~/.bun/install/cache
+                  key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+                  restore-keys: |
+                      bun-${{ runner.os }}-
+
+            - run: bun install --frozen-lockfile
+
+            # `--fix` applies Oxlint's safe fixes only. Suggestions are left alone because they can change behaviour.
+            - name: Apply Oxlint fixes
+              run: bunx oxlint --fix
+            - name: Commit fixes
+              run: |
+                  git config user.name "github-actions[bot]"
+                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                  git add -A
+                  if ! git diff --cached --quiet; then
+                    git commit -m "Apply Oxlint fixes"
+                    git push
+                  fi
