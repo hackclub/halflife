@@ -1324,6 +1324,139 @@ async function bodies() {
 		)
 	}
 
+	/* ── 6d. The Airtable justification columns ─────────────────────────────── */
+	//
+	// The `Justification - …` columns on a submission row are the evidence a grant reviewer reads, and the pipeline merges them into one blob on the row. Two things about them are pinned here, because both fail silently: a column we have nothing for must be left OUT of the payload rather than written blank (a blank erases the only record of evidence the base holds – the Lapse links on the pre-season rows came from the form and were never given to Postgres), and the technical-features text must not repeat the description it already quotes.
+	const { justificationValues, specificTechnicalFeatures, timelapseLinks } = await import(
+		"../src/lib/airtable/justification"
+	)
+	const { Phase: JustPhase, Theme: JustTheme } = await import("../src/app/generated/prisma/enums")
+	{
+		const description = "A moonboard case, 3D printed in PLA."
+		const source = {
+			bomItems: [{ name: "PLA filament", purpose: "the case itself", quantity: 2 }],
+			description,
+			hackatimeProjects: ["firmware"],
+			hackatimeUserId: "8539",
+			lapseLinks: ["https://lapse.hackclub.com/timelapse/abc"],
+			workSessions: [
+				{
+					content: "Modelled it and printed a test fit.",
+					createdAt: new Date("2026-10-06T10:00:00Z"),
+					effectiveDate: "2026-10-06",
+					hoursClaimed: 3,
+					title: "Modelling",
+				},
+			],
+		}
+
+		const features = specificTechnicalFeatures(source, JustPhase.DESIGN)
+		check("justification · the description is the first thing said", features.startsWith(description))
+		check("justification · a part carries its purpose", features.includes("- PLA filament – the case itself (×2)"))
+		check("justification · the work log is in it", features.includes("- Modelling – 3h (2026-10-06)"))
+		check("justification · the log is headed for the phase", features.includes("Design log:"))
+
+		// A warm-up row's one session holds the description and the links that came with it, so quoting it would only repeat the description above it.
+		const warmup = {
+			...source,
+			workSessions: [
+				{
+					content: `${description}\n\nJournal: https://example.test/j.md\n\nPlayable: https://example.test/p\n\nTimelapse: https://lapse.hackclub.com/timelapse/abc`,
+					createdAt: new Date("2026-09-28T10:00:00Z"),
+					effectiveDate: "2026-09-28",
+					hoursClaimed: 15,
+					title: "Moonboard case – warm-up submission",
+				},
+			],
+		}
+		const warmupFeatures = specificTechnicalFeatures(warmup, JustPhase.BUILD)
+		check(
+			"justification · a warm-up session does not repeat the description",
+			warmupFeatures.split(description).length === 2,
+			"the description appears twice",
+		)
+		check("justification · a warm-up session still names the work", warmupFeatures.includes("warm-up submission"))
+		check("justification · a build's log is headed for the phase", warmupFeatures.includes("Build log:"))
+
+		// A maker's own entry that opens with "Journal:" is their words, not one of the import's link lines.
+		const journalish = specificTechnicalFeatures(
+			{
+				...source,
+				workSessions: [
+					{
+						content: "Journal: the flux finally took.",
+						createdAt: new Date("2026-10-06T10:00:00Z"),
+						effectiveDate: "2026-10-06",
+						hoursClaimed: 1,
+						title: "Soldering",
+					},
+				],
+			},
+			JustPhase.DESIGN,
+		)
+		check("justification · a maker's own journal line is quoted", journalish.includes("the flux finally took."))
+
+		// Nothing at all is nothing, not a heading with nothing under it.
+		check(
+			"justification · an empty project says nothing",
+			specificTechnicalFeatures(
+				{
+					bomItems: [],
+					description: null,
+					hackatimeProjects: [],
+					hackatimeUserId: null,
+					lapseLinks: [],
+					workSessions: [],
+				},
+				JustPhase.BUILD,
+			) === "",
+		)
+
+		const values = justificationValues(source, {
+			eventStart: new Date("2026-10-05T00:00:00.000Z"),
+			phase: JustPhase.DESIGN,
+			theme: JustTheme.PCB,
+		})
+		check("justification · the Hackatime account is written", values.hackatimeId === "8539")
+		check(
+			"justification · a Hackatime project carries the week it was tracked in",
+			values.hackatimeProjects === "firmware (2026-10-05 to 2026-10-11)",
+			values.hackatimeProjects,
+		)
+		check("justification · the Lapse links are written", values.lapseLinks === source.lapseLinks[0])
+		check("justification · the technical features are written", values.specificTechnicalFeatures === features)
+
+		// The rule that keeps a re-sync from destroying evidence: a column we have nothing for is left out of the payload, not written as an empty string. Airtable treats an empty string as "clear this cell".
+		const bare = justificationValues(
+			{
+				bomItems: [],
+				description: null,
+				hackatimeProjects: [],
+				hackatimeUserId: null,
+				lapseLinks: [],
+				workSessions: [],
+			},
+			{ eventStart: new Date("2026-10-05T00:00:00.000Z"), phase: JustPhase.BUILD, theme: JustTheme.PCB },
+		)
+		check("justification · an empty column is omitted, not blanked", Object.keys(bare).length === 0)
+		check(
+			"justification · a column with nothing in it is not an empty string",
+			Object.values(bare).every(value => value !== ""),
+		)
+
+		// A Lapse recording is watched on Lapse by its own id; an older upload is watched where it was put.
+		check(
+			"justification · a Lapse timelapse is watched on Lapse",
+			timelapseLinks([{ externalId: "abc", objectKey: null, playbackUrl: null, provider: "lapse" }])[0]
+				=== "https://lapse.hackclub.com/timelapse/abc",
+		)
+		check(
+			"justification · an older timelapse is watched where it was put",
+			timelapseLinks([{ externalId: null, objectKey: null, playbackUrl: "https://cdn.test/a.mp4", provider: "r2" }])[0]
+				=== "https://cdn.test/a.mp4",
+		)
+	}
+
 	for (const [name, schema, body] of cases) {
 		const parsed = schema.safeParse(body)
 		check(

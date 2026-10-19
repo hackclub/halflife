@@ -69,6 +69,11 @@ export const YSWS_SUBMISSION = {
 		reviewStatus: f<string>("fldYswsReviewStatus", "Loops - halfLifeReviewStatus"),
 		screenshot: f<{ url: string }[]>("fldYswsScreenshot", "Screenshot"),
 		slackId: f<string>("fldYswsSlackId", "Slack ID"),
+		// The maker's own account of what they built: the description they wrote, the parts they listed, the work they logged. The pipeline merges it with the other `Justification - …` columns into one blob (see lib/airtable/justification), and an empty column here is an empty blob there.
+		specificTechnicalFeatures: f<string>(
+			"fldYswsSpecificTechnicalFeatures",
+			"Justification - Specific Technical Features",
+		),
 		stage: f<"Design" | "Build">("fldYswsStage", "Design or build"),
 		// A plain checkbox, true when the maker took one of the week's starter projects rather than bringing their own idea (see `starterProjectId` on ThemeProject). Written for the reviewer, who judges a starter by whether it was made the maker's own rather than as a finished build (see STARTER_MODIFICATION_NOTE in lib/config/onboarding); the base needs the fact, not which starter it was.
 		starterProject: f<boolean>("fldYswsStarterProject", "Starter project"),
