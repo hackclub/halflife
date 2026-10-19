@@ -122,7 +122,7 @@ async function main() {
 		// A drained placeholder carries no fields to compare against, so its want-state is written blind – checkbox writes are idempotent, and the hourly sync converges anything this over-writes.
 		const fields: { [_: string]: boolean } = {}
 		for (const c of columns) {
-			const n = Number(c.match(/Week(\d+)ProjectSubmitted/)?.[1])
+			const n = Number(/Week(\d+)ProjectSubmitted/.exec(c)?.[1])
 			const value = want.has(n)
 			if (Object.keys(hit.row.fields).length === 0 || (hit.row.fields[c] === true) !== value) fields[c] = value
 		}

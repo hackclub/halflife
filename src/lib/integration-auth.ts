@@ -20,7 +20,7 @@ export function requireBearerAuth(request: NextRequest, envVars: string[]): Next
 	if (expected.length === 0) return fail("NOT_CONFIGURED", `Set one of ${envVars.join(", ")} to enable this endpoint`)
 
 	const header = request.headers.get("authorization") ?? ""
-	const match = header.match(/^Bearer\s+(.+)$/i)
+	const match = /^Bearer\s+(.+)$/i.exec(header)
 	if (!match?.[1]) return fail("UNAUTHENTICATED", "Missing bearer token")
 
 	const presented = match[1].trim()
@@ -47,7 +47,7 @@ export function requireExportAuth(
 		return { denied: fail("NOT_CONFIGURED", "Set EXPORT_API_KEY or INTEGRATION_API_KEY to enable this endpoint") }
 
 	const header = request.headers.get("authorization") ?? ""
-	const match = header.match(/^Bearer\s+(.+)$/i)
+	const match = /^Bearer\s+(.+)$/i.exec(header)
 	if (!match?.[1]) return { denied: fail("UNAUTHENTICATED", "Missing bearer token") }
 
 	const presented = match[1].trim()

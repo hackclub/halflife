@@ -192,7 +192,7 @@ function cleanName(value: string): string {
 
 /** `"100pc"`, `"1 set"`, `"2"` -> a whole number of parts. */
 function parseQuantity(value: string | undefined): number {
-	const match = (value ?? "").replaceAll(",", "").match(/\d+/)
+	const match = /\d+/.exec((value ?? "").replaceAll(",", ""))
 	if (!match) return 1
 	const n = Number(match[0])
 	if (!Number.isFinite(n) || n < 1) return 1
@@ -207,7 +207,9 @@ function parseQuantity(value: string | undefined): number {
 function parseUsd(value: string | undefined): number | null {
 	const v = (value ?? "").trim()
 	if (!v) return null
-	const raw = v.match(/\$\s*([0-9][0-9,]*(?:\.[0-9]+)?)/)?.[1] ?? v.match(/^\s*([0-9][0-9,]*(?:\.[0-9]+)?)\s*$/)?.[1]
+	const raw =
+		/\$\s*([0-9][0-9,]*(?:\.[0-9]+)?)/.exec(v)?.[1] ??
+		/^\s*([0-9][0-9,]*(?:\.[0-9]+)?)\s*$/.exec(v)?.[1]
 	if (!raw) return null
 	const n = Number(raw.replaceAll(",", ""))
 	if (!Number.isFinite(n) || n < 0) return null
@@ -222,7 +224,7 @@ function parseUsd(value: string | undefined): number | null {
 function parseLink(value: string | undefined): string | null {
 	let v = (value ?? "").trim()
 	if (!v || /^[-––]+$/.test(v) || /^(n\/?a|none)$/i.test(v)) return null
-	const markdown = v.match(/\]\(\s*([^)]+?)\s*\)/)
+	const markdown = /\]\(\s*([^)]+?)\s*\)/.exec(v)
 	if (markdown) v = markdown[1] ?? v
 	if (!/^https?:\/\//i.test(v)) v = `https://${v}`
 	if (v.length > 1000) return null

@@ -1122,7 +1122,7 @@ async function bodies() {
 		check(
 			"repo-files · the banner date is not the current instant",
 			(() => {
-				const stamped = a.content.match(/<!-- Generated: (.+?) -->/)?.[1]
+				const stamped = /<!-- Generated: (.+?) -->/.exec(a.content)?.[1]
 				if (!stamped) return false
 				// The fixture's newest entry is 2026-10-06T12:00Z. If the banner ever carries "now", it drifts forward on every run and this stays true.
 				return Math.abs(Date.now() - new Date(stamped).getTime()) > 60_000
