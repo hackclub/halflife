@@ -1294,12 +1294,12 @@ async function bodies() {
 		const open = [{ text: { text: "reminders", type: "mrkdwn" }, type: "section" }, actions]
 		const atResolve = { ...ref, ticketsTs: "555.666" }
 		const resolved = tickets.resolveBlocks(open, "U9", undefined, atResolve)
-		const resolvedIds = resolved.map(b => b.block_id)
+		const resolvedIds = new Set(resolved.map(b => b.block_id))
 		check(
 			"tickets · resolving swaps actions for note plus reopen",
-			!resolvedIds.includes("self_resolve_actions")
-				&& resolvedIds.includes("ticket_resolved")
-				&& resolvedIds.includes("reopen_actions"),
+			!resolvedIds.has("self_resolve_actions")
+				&& resolvedIds.has("ticket_resolved")
+				&& resolvedIds.has("reopen_actions"),
 		)
 		check(
 			"tickets · reminders survive resolving",
@@ -1308,12 +1308,12 @@ async function bodies() {
 
 		const atReopen = { ...ref, ticketsTs: "777.888" }
 		const reopened = tickets.reopenBlocks(resolved, atReopen)
-		const reopenedIds = reopened.map(b => b.block_id)
+		const reopenedIds = new Set(reopened.map(b => b.block_id))
 		check(
 			"tickets · reopening restores resolve buttons with the fresh mirror",
-			reopenedIds.includes("self_resolve_actions")
-				&& !reopenedIds.includes("reopen_actions")
-				&& !reopenedIds.includes("ticket_resolved"),
+			reopenedIds.has("self_resolve_actions")
+				&& !reopenedIds.has("reopen_actions")
+				&& !reopenedIds.has("ticket_resolved"),
 		)
 		const restored = reopened.find(b => b.block_id === "self_resolve_actions")
 		const restoredElements = (restored?.elements ?? []) as { value?: string }[]
