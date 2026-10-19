@@ -2,7 +2,7 @@ import "server-only"
 import type { Theme } from "@/app/generated/prisma/enums"
 import { DESIGN_JSON, REPO_FILE_KINDS, type RepoFileKind, THEME_REPO_REQUIREMENTS } from "@/lib/config/repo-checks"
 import { type Forge, fileUrl, forgeByHostname, hostnameOf } from "@/lib/forge"
-import { ForgeUnavailable, forgeGet } from "@/lib/github"
+import { ForgeUnavailableError, forgeGet } from "@/lib/github"
 import { type RepoRef, repoRefFromLink } from "@/lib/repo-ref"
 import { README_GUIDE_URL } from "@/lib/routes"
 
@@ -188,7 +188,7 @@ async function fetchGitHubSnapshot(ref: RepoRef): Promise<Snapshot> {
 	} catch (err) {
 		return {
 			kind: "unavailable",
-			why: err instanceof ForgeUnavailable ? err.message : `${forge.label} did not answer.`,
+			why: err instanceof ForgeUnavailableError ? err.message : `${forge.label} did not answer.`,
 		}
 	}
 
@@ -234,7 +234,7 @@ async function fetchGitLabSnapshot(ref: RepoRef): Promise<Snapshot> {
 	} catch (err) {
 		return {
 			kind: "unavailable",
-			why: err instanceof ForgeUnavailable ? err.message : `${forge.label} did not answer.`,
+			why: err instanceof ForgeUnavailableError ? err.message : `${forge.label} did not answer.`,
 		}
 	}
 	if (first.status === 404) return { kind: "not-found" }
@@ -273,12 +273,12 @@ async function fetchGitLabSnapshot(ref: RepoRef): Promise<Snapshot> {
  *
  * GitHub has a `/readme` endpoint that finds it whatever it is called; GitLab does not, so the name is taken from the file list. A repo with several spellings (`README.md`, `readme.rst`) is read from the first that sorts, and only the common names are tried – this is a "has a README" check, not a search for any file that might be prose.
  */
-const README_NAMES = ["readme.md", "readme.markdown", "readme.rst", "readme.txt", "readme"]
+const README_NAMES = new Set(["readme.md", "readme.markdown", "readme.rst", "readme.txt", "readme"])
 
 async function fetchGitLabReadme(forge: Forge, project: string, files: readonly string[]): Promise<string | null> {
 	// Root-level names first, then anything nested, so a docs/README does not shadow the project's own.
 	const candidates = files
-		.filter(f => README_NAMES.includes((f.split("/").pop() ?? "").toLowerCase()))
+		.filter(f => README_NAMES.has((f.split("/").pop() ?? "").toLowerCase()))
 		.toSorted((a, b) => a.split("/").length - b.split("/").length)
 	const name = candidates[0]
 	if (!name) return null

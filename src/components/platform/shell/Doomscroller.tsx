@@ -40,7 +40,7 @@ export function DoomscrollerFeed({ onClose, className }: { onClose?(): void; cla
 						autoplay={watching}
 						className="snap-item h-full min-h-[380px] shrink-0"
 						key={r.id}
-						onPatch={feed.patch}
+						onPatch={feed.handlePatch}
 						onPlayPress={() => setWatching(true)}
 						reel={r}
 					/>
@@ -55,7 +55,7 @@ export function DoomscrollerFeed({ onClose, className }: { onClose?(): void; cla
 					<button
 						className="label shrink-0 rounded-full border-2 border-line py-2 text-navy-soft transition-colors hover:border-navy hover:text-navy"
 						disabled={feed.loading}
-						onClick={feed.more}
+						onClick={feed.handleMore}
 						type="button"
 					>
 						{feed.loading ? "Loading…" : "More"}

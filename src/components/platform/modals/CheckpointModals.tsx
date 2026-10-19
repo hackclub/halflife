@@ -341,14 +341,14 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			try {
 				const query = new URLSearchParams({ forSession: existing.id, ids: existing.clips.join(",") })
 				const res = await fetch(`/api/lapse/timelapses/resolve?${query}`, { cache: "no-store" })
-				const body = (await res.json().catch(() => null)) as {
+				const payload = (await res.json().catch(() => null)) as {
 					resolved?: LapseTimelapse[]
 					pinned?: string[]
 					legacy?: string[]
 				} | null
-				if (!res.ok || !body) throw new Error("unresolvable")
-				seed = { picked: body.resolved ?? [], pinned: body.pinned ?? [] }
-				legacy = body.legacy ?? []
+				if (!res.ok || !payload) throw new Error("unresolvable")
+				seed = { picked: payload.resolved ?? [], pinned: payload.pinned ?? [] }
+				legacy = payload.legacy ?? []
 				// Anything the resolve did not account for stays attached by id. Without this a clip the endpoint declined to read – it reads a bounded number – would fall out of the working set, and saving the edit would take it off the entry for good.
 				const accounted = new Set([...seed.picked.map(t => t.id), ...seed.pinned, ...legacy])
 				for (const id of existing.clips) if (!accounted.has(id)) seed.pinned.push(id)
@@ -410,13 +410,12 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			setPicked(clipSeed.picked)
 			setPinned(clipSeed.pinned)
 			clipsTouchedRef.current = false
-			setTab("journal")
 		} else {
 			setBody("")
 			setHoursText("")
 			setPicked([])
-			setTab("journal")
 		}
+		setTab("journal")
 		writeJournalAutosave(checkpoint.id, null)
 	}
 

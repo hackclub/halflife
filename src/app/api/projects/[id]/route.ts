@@ -178,8 +178,8 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
 			where: { deletedAt: null, id, userId: gate.user.id },
 		})
 		if (!fresh) throw new HttpError("NOT_FOUND", "Project not found")
-		const blocked = await deleteBlockReason(fresh, tx)
-		if (blocked) throw new HttpError("PHASE_LOCKED", blocked)
+		const stillBlocked = await deleteBlockReason(fresh, tx)
+		if (stillBlocked) throw new HttpError("PHASE_LOCKED", stillBlocked)
 
 		// Conditional on the statuses just checked, so a submit that lands between the check and here is not deleted out from under its reviewer.
 		const now = new Date()

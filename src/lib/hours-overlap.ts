@@ -60,9 +60,9 @@ export function mergeIntervals(intervals: readonly Interval[]): Interval[] {
  *
  * Both sides are merged first, so the answer is the size of the intersection of the two unions, counted once however many windows happened to describe it. Zero is the honest answer for "these two sets never touch", which is the common case: most people track with one tool or the other.
  */
-export function overlapSeconds(a: readonly Interval[], b: readonly Interval[]): number {
-	const left = mergeIntervals(a)
-	const right = mergeIntervals(b)
+export function overlapSeconds(first: readonly Interval[], second: readonly Interval[]): number {
+	const left = mergeIntervals(first)
+	const right = mergeIntervals(second)
 	if (left.length === 0 || right.length === 0) return 0
 
 	let total = 0

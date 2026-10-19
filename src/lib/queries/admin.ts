@@ -2126,13 +2126,13 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 	const activityShare: ActivityShare = {
 		activities: [
 			...SANKEY_ACTIVITY.map(a => {
-				const users = reachedCount(a.key)
+				const reached = reachedCount(a.key)
 				return {
 					base: a.base,
 					key: a.key,
 					label: a.label,
-					share: finishers.length === 0 ? 0 : users / finishers.length,
-					users,
+					share: finishers.length === 0 ? 0 : reached / finishers.length,
+					users: reached,
 				}
 			}),
 			{
@@ -2160,7 +2160,7 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 					const [source, target] = key.split("\u0000")
 					return { fan: entry.fan, source: source as string, target: target as string, value: entry.value }
 				})
-				.filter(link => live.has(link.source) && live.has(link.target)),
+				.filter(edge => live.has(edge.source) && live.has(edge.target)),
 			nodes,
 			stages,
 			total: users.length,

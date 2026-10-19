@@ -33,6 +33,7 @@ function records(text: string): { line: number; fields: string[] }[] {
 			} else if (c === '"') {
 				quoted = false
 			} else if (c === "\r" && src[i + 1] === "\n") {
+				// A CRLF inside a quoted field: the \r goes and the \n is the next character, so nothing is added here.
 			} else {
 				if (c === "\n") line += 1
 				field += c
@@ -220,7 +221,7 @@ export function parseProjectsCsv(text: string): { rows: MacondoRow[]; problems: 
 	for (const row of lines) {
 		const cell = (c: Column) => {
 			const i = columns.indexOf(c)
-			return i < 0 ? "" : (row.fields[i] ?? "").trim()
+			return i === -1 ? "" : (row.fields[i] ?? "").trim()
 		}
 		const say = (message: string) => problems.push({ line: row.line, message })
 

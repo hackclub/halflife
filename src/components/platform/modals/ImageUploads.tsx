@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { IconUpload, IconX } from "@/components/platform/icons"
 import { UploadProgress } from "@/components/platform/UploadProgress"
 import { Button } from "@/components/platform/ui"
@@ -38,9 +38,11 @@ export function ImageUploads({
 	const [pending, setPending] = useState<{ id: string; name: string; progress: number | null }[]>([])
 	const busy = pending.length
 	const [errors, setErrors] = useState<string[]>([])
-	// The newest list, for uploads that finish after another has changed it.
+	// The newest list, for uploads that finish after another has changed it. Kept in step in an effect rather than written during render, which is not a pure render: a ref written there can hold a value no render ever produced.
 	const latest = useRef(images)
-	latest.current = images
+	useEffect(() => {
+		latest.current = images
+	}, [images])
 
 	const room = max - images.length
 
