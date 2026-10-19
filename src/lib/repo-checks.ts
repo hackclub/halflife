@@ -409,9 +409,8 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 		? await snap.designs()
 		: []
 
-	const checks: RepoCheck[] = [{ detail: name, key: "repo", label: `Public ${forge.label} repo`, status: "pass" }]
-
-	checks.push(
+	const checks: RepoCheck[] = [
+		{ detail: name, key: "repo", label: `Public ${forge.label} repo`, status: "pass" },
 		readme !== null
 			? { key: "readme", label: "README", status: "pass" }
 			: {
@@ -422,7 +421,7 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 					link: { href: README_GUIDE_URL, label: "What goes in a README" },
 					status: "fail",
 				},
-	)
+	]
 	const readmeChars = readme === null ? 0 : readmeText(readme).length
 	const imageCount = readme === null ? 0 : readmeImageCount(readme)
 

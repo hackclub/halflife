@@ -389,21 +389,23 @@ async function handleReopen(payload: InteractionPayload, action: BlockAction) {
 			helpTs: ref.helpTs,
 			permalink: ref.permalink ?? null,
 		}
-		const mirrorBlocks: SlackBlock[] = [ticketSection(threadRef)]
-		mirrorBlocks.push(ticketHistory(ref.authorId, priorTickets))
-		mirrorBlocks.push({
-			block_id: TICKET_ACTIONS_BLOCK_ID,
-			elements: [
-				{
-					action_id: "mark_helped",
-					style: "primary",
-					text: { emoji: true, text: MARK_HELPED_BUTTON, type: "plain_text" },
-					type: "button",
-					value: JSON.stringify(threadRef),
-				},
-			],
-			type: "actions",
-		})
+		const mirrorBlocks: SlackBlock[] = [
+			ticketSection(threadRef),
+			ticketHistory(ref.authorId, priorTickets),
+			{
+				block_id: TICKET_ACTIONS_BLOCK_ID,
+				elements: [
+					{
+						action_id: "mark_helped",
+						style: "primary",
+						text: { emoji: true, text: MARK_HELPED_BUTTON, type: "plain_text" },
+						type: "button",
+						value: JSON.stringify(threadRef),
+					},
+				],
+				type: "actions",
+			},
+		]
 		const mirror = await postMessage(
 			ticketsChannel,
 			threadRef.permalink
