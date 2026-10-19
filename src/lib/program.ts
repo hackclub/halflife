@@ -126,7 +126,8 @@ export async function assertWeekStarted(week: number): Promise<void> {
 /** Whether `timeZone` is an IANA name this runtime knows, e.g. "Asia/Kolkata". */
 export function isTimeZone(timeZone: string): boolean {
 	try {
-		new Intl.DateTimeFormat("en-US", { timeZone })
+		// Formatted to prove the zone works: an unknown one is a RangeError from the formatter, and that is what says the name is not one this runtime knows.
+		new Intl.DateTimeFormat("en-US", { timeZone }).format()
 		return true
 	} catch {
 		return false
