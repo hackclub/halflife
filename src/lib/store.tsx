@@ -1090,12 +1090,8 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	 * Note what this does NOT do any more: credit coins. Hours are paid for when a reviewer approves the phase, not when they are claimed – otherwise the currency is self-issued, and a week could be spent in the shop before anyone had looked at it. The trail still moves immediately, because the node is the entry rather than the payment.
 	 */
 	const logSession = useCallback(
-		async (
-			id: string,
-			minutes: number,
-			body: string,
-			evidence: Pick<SessionLog, "clips"> = { clips: [] },
-		): Promise<string | null> => {
+		async (id: string, minutes: number, body: string, evidence?: Pick<SessionLog, "clips">): Promise<string | null> => {
+			const clips = evidence?.clips ?? []
 			// Server first, unlike the other writes here. An entry's timelapses are checked against Lapse, and a refusal is something the maker has to fix in the sheet – patching the trail first would show a node done for an entry that was never saved.
 			const route = routeOf(id)
 			if (route) {
@@ -1106,7 +1102,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 							content: body,
 							hoursClaimed: Math.round((minutes / 60) * 100) / 100,
 							phase: route.phase,
-							timelapses: evidence.clips.map(lapseId => ({ lapseId })),
+							timelapses: clips.map(lapseId => ({ lapseId })),
 							// The journal's first line stands in for a title. The form asks for one piece of writing, and inventing a second field to satisfy the column would put a box on screen that exists only because of the schema.
 							title: body.trim().split("\n")[0]?.slice(0, 200) || DEFAULT_SESSION_TITLE,
 						}),
@@ -1127,9 +1123,9 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				const entry: SessionLog = {
 					at: Date.now(),
 					body,
+					clips,
 					id: `${id}-s${prev.log.length + 1}`,
 					minutes,
-					...evidence,
 				}
 				return {
 					...f,
@@ -1157,12 +1153,8 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 	 * Server first, like logSession: the server can refuse (an entry a reviewer has already put hours on, a week in review or passed, a timelapse that is not yours or already backs another entry), and an edit shown as saved that quietly reverts on the next refresh is worse than a sheet that says why it did not take.
 	 */
 	const editSession = useCallback(
-		async (
-			id: string,
-			minutes: number,
-			body: string,
-			evidence: Pick<SessionLog, "clips"> = { clips: [] },
-		): Promise<string | null> => {
+		async (id: string, minutes: number, body: string, evidence?: Pick<SessionLog, "clips">): Promise<string | null> => {
+			const clips = evidence?.clips ?? []
 			const route = routeOf(id)
 			const entry = facts.progress[id]?.log[0]
 			if (!route || !entry) return "That entry could not be found. Refresh and try again."
@@ -1172,7 +1164,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 					body: JSON.stringify({
 						content: body,
 						hoursClaimed: Math.round((minutes / 60) * 100) / 100,
-						timelapses: evidence.clips.map(lapseId => ({ lapseId })),
+						timelapses: clips.map(lapseId => ({ lapseId })),
 						title: body.trim().split("\n")[0]?.slice(0, 200) || DEFAULT_SESSION_TITLE,
 					}),
 					headers: { "content-type": "application/json" },
@@ -1193,9 +1185,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 						...f.progress,
 						[id]: {
 							...prev,
-							log: prev.log.map((l, i) =>
-								i === 0 ? Object.assign({}, l, { body, clips: evidence.clips, minutes }) : l,
-							),
+							log: prev.log.map((l, i) => (i === 0 ? Object.assign({}, l, { body, clips, minutes }) : l)),
 							minutes,
 						},
 					},
