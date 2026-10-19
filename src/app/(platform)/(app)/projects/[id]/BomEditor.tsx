@@ -634,7 +634,7 @@ function ExtraRow({
 	const [invalid, setInvalid] = useState(false)
 
 	async function commit() {
-		const n = draft.trim() === "" ? 0 : Number.parseFloat(draft)
+		const n = draft.trim() === "" ? 0 : Number(draft)
 		if (!Number.isFinite(n) || n < 0) {
 			setInvalid(true)
 			return
