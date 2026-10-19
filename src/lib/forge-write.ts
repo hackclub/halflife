@@ -51,7 +51,12 @@ export interface ForgeCredentials {
 	login: string
 }
 
-export class ForgeWriteUnavailable extends Error {}
+export class ForgeWriteUnavailableError extends Error {
+	constructor(message: string) {
+		super(message)
+		this.name = "ForgeWriteUnavailableError"
+	}
+}
 
 /**
  * The token for one forge, refreshed when it has expired.
@@ -183,7 +188,7 @@ async function errorMessage(forge: Forge, res: Response): Promise<string> {
  * Read the answer and throw the maker-facing error for it. Typed `never`, so a call site reads as the end of its branch and the compiler agrees it cannot fall through to the `res.ok` path.
  */
 async function throwForgeError(forge: Forge, res: Response): Promise<never> {
-	throw new ForgeWriteUnavailable(await errorMessage(forge, res))
+	throw new ForgeWriteUnavailableError(await errorMessage(forge, res))
 }
 
 /**
@@ -264,7 +269,7 @@ async function call(creds: ForgeCredentials, path: string, init: RequestInit): P
 		return res
 	}
 
-	throw new ForgeWriteUnavailable(why)
+	throw new ForgeWriteUnavailableError(why)
 }
 
 /** A repo the caller can push to, as the picker shows it. */

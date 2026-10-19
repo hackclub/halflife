@@ -2,7 +2,7 @@ import "server-only"
 import type { Theme } from "@/app/generated/prisma/enums"
 import { DESIGN_JSON, REPO_FILE_KINDS, type RepoFileKind, THEME_REPO_REQUIREMENTS } from "@/lib/config/repo-checks"
 import { type Forge, fileUrl, forgeByHostname, hostnameOf } from "@/lib/forge"
-import { ForgeUnavailable, forgeGet } from "@/lib/github"
+import { ForgeUnavailableError, forgeGet } from "@/lib/github"
 import { type RepoRef, repoRefFromLink } from "@/lib/repo-ref"
 import { README_GUIDE_URL } from "@/lib/routes"
 
@@ -188,7 +188,7 @@ async function fetchGitHubSnapshot(ref: RepoRef): Promise<Snapshot> {
 	} catch (err) {
 		return {
 			kind: "unavailable",
-			why: err instanceof ForgeUnavailable ? err.message : `${forge.label} did not answer.`,
+			why: err instanceof ForgeUnavailableError ? err.message : `${forge.label} did not answer.`,
 		}
 	}
 
@@ -234,7 +234,7 @@ async function fetchGitLabSnapshot(ref: RepoRef): Promise<Snapshot> {
 	} catch (err) {
 		return {
 			kind: "unavailable",
-			why: err instanceof ForgeUnavailable ? err.message : `${forge.label} did not answer.`,
+			why: err instanceof ForgeUnavailableError ? err.message : `${forge.label} did not answer.`,
 		}
 	}
 	if (first.status === 404) return { kind: "not-found" }
