@@ -1673,10 +1673,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		} else {
 			const s = starters.find(x => x.id === pick)
 			setStarterId(pick)
-			if (s) {
-				setName(s.title)
-				setDesc(s.description)
-			}
+			if (s) setName(s.title)
 			setTier(STARTER_PROJECT_TIER)
 		}
 		setStage("details")
@@ -1843,9 +1840,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								className={cx(inputClass, "resize-none")}
 								id="np-desc"
 								onChange={e => setDesc(e.target.value)}
-								placeholder={
-									selectedStarter ? `How will you make ${selectedStarter.title} your own?` : week.examples[0]
-								}
+								placeholder={selectedStarter ? selectedStarter.description : week.examples[0]}
 								rows={3}
 								value={desc}
 							/>
