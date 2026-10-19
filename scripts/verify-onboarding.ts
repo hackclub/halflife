@@ -56,7 +56,7 @@ async function main() {
 	check("starts at step 0", start.reached, 0)
 	check("first step is the experience question", start.current?.id, "experience")
 	check("seven steps", start.stepCount, 7)
-	check("provisioned the PCB project", typeof start.project.id, "string")
+	check("provisioned the onboarding project", typeof start.project.id, "string")
 	check("needs onboarding", await needsOnboarding(user.id), true)
 
 	// Skipping ahead must fail: without this, a client could post the last step first and land on the dashboard having answered nothing.
@@ -74,9 +74,9 @@ async function main() {
 	check("advanced to the week step", afterExperience.state.current?.id, "week")
 
 	// ── 2. Week intro: a beginner's fork, taking the starter ───────────────────
-	const starters = starterProjectsFor(Theme.PCB)
+	const starters = starterProjectsFor(afterExperience.state.theme)
 	const starter = starters[0]
-	if (!starter) throw new Error("no PCB starter projects configured")
+	if (!starter) throw new Error("no starter projects configured for the onboarding theme")
 	check("a first-timer is offered the starter", afterExperience.state.starterProjects[0]?.id, starter.id)
 
 	await refused("rejects a starter id that does not exist", () =>
@@ -118,7 +118,7 @@ async function main() {
 	// The invariant this whole split exists for.
 	const project = await prisma.themeProject.findFirstOrThrow({
 		select: { grantUsd: true, requestedTier: true, tier: true },
-		where: { theme: Theme.PCB, userId: user.id },
+		where: { theme: start.theme, userId: user.id },
 	})
 	check("onboarding never set the reviewer's tier", project.tier, null)
 	check("onboarding never set a grant", project.grantUsd, null)

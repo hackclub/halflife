@@ -7,7 +7,7 @@ import { StarterProjectCard } from "@/components/platform/StarterProjectCard"
 import { Button, Chip, OptionRow } from "@/components/platform/ui"
 import { getStarterProject, STARTER_PROJECT_TIER, starterProjectsFor } from "@/lib/config/onboarding"
 import { MIN_HOURS_PER_WEEK, printerById, submitFloorFor } from "@/lib/config/printers"
-import { DESIGN_WEEKS, THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
+import { DESIGN_WEEKS, MIN_PROJECT_DESCRIPTION_CHARS, THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { ENTRY_TIER } from "@/lib/config/tiers"
 import { TIERS } from "@/lib/curriculum"
 import { cx } from "@/lib/cx"
@@ -175,6 +175,8 @@ function DetailsForm({
 
 	const takingStarter = starterId !== null
 	const tierEditable = !takingStarter && !tierLocked
+	// A longer starter (the MIDI keyboard) is deliberately past the usual Tier 1 pace, so the "about N hours, no more" warning below would be wrong for it.
+	const selectedStarter = starterId === null ? undefined : getStarterProject(starterId)
 
 	// The printer goal every hour is paced against, and only when the person is actually saving toward one: "funding for all/some weeks" goals have no machine to pace to, so nothing should warn against their tier or their starter.
 	const goal = printerById(goalId)
@@ -258,6 +260,15 @@ function DetailsForm({
 					rows={4}
 					value={description}
 				/>
+				<p
+					className={cx(
+						"hand text-[0.78rem] leading-snug",
+						description.trim().length < MIN_PROJECT_DESCRIPTION_CHARS ? "text-coral-deep" : "text-navy-soft",
+					)}
+				>
+					{description.trim().length}/{MIN_PROJECT_DESCRIPTION_CHARS} characters – a week needs at least{" "}
+					{MIN_PROJECT_DESCRIPTION_CHARS} to submit.
+				</p>
 			</div>
 
 			<div className="grid gap-1.5">
@@ -300,7 +311,7 @@ function DetailsForm({
 							? "Starter projects are Tier 1. Switch to your own idea to choose a different tier."
 							: "Building from a starter, or your own idea? Picked the wrong one by accident – change it here."}
 					</p>
-					{takingStarter && hotGoal && (
+					{takingStarter && hotGoal && !selectedStarter?.longerBuild && (
 						<p className="hand text-[0.82rem] leading-snug text-coral-deep" role="status">
 							Heads up: starter projects are meant to take about {fmtHours(submitFloorFor(ENTRY_TIER.fundingHours))} of
 							work, no more. Your {goal.name} needs roughly {Math.round(goal.paceHours * 5)} coins a design week on top

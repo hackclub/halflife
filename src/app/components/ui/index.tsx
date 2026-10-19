@@ -95,10 +95,18 @@ export function PageHeader({
 	)
 }
 
-type BadgeTone = "success" | "warning" | "danger" | "muted"
+type BadgeTone = "success" | "warning" | "danger" | "muted" | "access"
 
-export function Badge({ tone = "muted", children }: Readonly<{ tone?: BadgeTone; children: ReactNode }>) {
-	return <span className={`hl-badge hl-badge--${tone}`}>{children}</span>
+export function Badge({
+	tone = "muted",
+	title,
+	children,
+}: Readonly<{ tone?: BadgeTone; title?: string; children: ReactNode }>) {
+	return (
+		<span className={`hl-badge hl-badge--${tone}`} title={title}>
+			{children}
+		</span>
+	)
 }
 
 export function Callout({ tone, children }: Readonly<{ tone?: "danger" | "warning" | "info"; children: ReactNode }>) {
@@ -163,10 +171,14 @@ export function Field({ label, hint, children }: Readonly<{ label: string; hint?
 	)
 }
 
-export function Table({ head, children }: Readonly<{ head: ReactNode[]; children: ReactNode }>) {
+export function Table({
+	head,
+	children,
+	className,
+}: Readonly<{ head: ReactNode[]; children: ReactNode; className?: string }>) {
 	return (
 		<div className="hl-scroll">
-			<table className="hl-table">
+			<table className={className ? `hl-table ${className}` : "hl-table"}>
 				<thead>
 					<tr>
 						{head.map((h, i) => (

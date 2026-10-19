@@ -11,7 +11,7 @@ import { CREDIT_NAME_PLURAL, getThemeDef } from "@/lib/config/program"
 import { displayName } from "@/lib/display-name"
 import { isHcbConfigured } from "@/lib/hcb"
 import { requirePermissionPage } from "@/lib/page-guards"
-import { hasPermission, hasRole, Permission, Role } from "@/lib/permissions"
+import { hasPermission, hasRole, Permission, permissionSummary, Role, readablePermission } from "@/lib/permissions"
 import { getUserDetail } from "@/lib/queries/admin"
 
 export const dynamic = "force-dynamic"
@@ -30,6 +30,7 @@ export default async function AdminUserPage({ params }: Props) {
 	if (!detail) notFound()
 
 	const { user, balances, ledger, orders, printer } = detail
+	const summary = permissionSummary(user.roles.map(r => r.role))
 	const canManageRoles = hasPermission(roles, Permission.MANAGE_ROLES)
 	const canManageCredit = hasPermission(roles, Permission.MANAGE_CREDIT)
 	const canManageUsers = hasPermission(roles, Permission.MANAGE_USERS)
@@ -97,6 +98,15 @@ export default async function AdminUserPage({ params }: Props) {
 					<RoleEditor current={user.roles.map(r => r.role)} userId={id} />
 				</Panel>
 			) : null}
+
+			{/* What the roles above actually amount to, which is the question a person granting one is really asking. A seat is a name; the level is the reach. */}
+			<Panel title="Access">
+				<p className="hl-hint" style={{ marginTop: 0 }}>
+					{summary.permissions.length > 0
+						? `Can ${summary.permissions.map(readablePermission).join(", ")}.`
+						: "Holds no staff permissions, so this account cannot reach the staff console."}
+				</p>
+			</Panel>
 
 			<Panel title="Themed projects">
 				{canSendGrant && (
