@@ -352,6 +352,27 @@ export interface PublicProjectData {
 	weekId: number
 }
 
+/** A dispute still waiting on a reviewer, as the public project page offers the way back to it. */
+export interface ProjectOpenDispute {
+	phase: Phase
+	/** The review console page that carries the thread. */
+	submissionId: string
+}
+
+/**
+ * The open disputes on a project, if there are any.
+ *
+ * Read only for a reviewer looking at someone else's project: the review console is where a dispute is answered, so the project page needs each submission id to open it. The maker's own page already carries the threads themselves and never calls this.
+ */
+export async function getOpenDisputesForProject(projectId: string): Promise<ProjectOpenDispute[]> {
+	const submissions = await prisma.phaseSubmission.findMany({
+		orderBy: { createdAt: "asc" },
+		select: { id: true, phase: true },
+		where: { dispute: { is: { resolvedAt: null } }, themeProjectId: projectId },
+	})
+	return submissions.map(submission => ({ phase: submission.phase, submissionId: submission.id }))
+}
+
 export async function getPublicProjectPage(id: string): Promise<PublicProjectData | null> {
 	const project = await prisma.themeProject.findFirst({
 		select: {
