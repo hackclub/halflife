@@ -510,10 +510,10 @@ export function rollUpHours(
 		// The recordings beside the link and the ones elsewhere under its name. Empty means nothing to compare, and nothing to warn about.
 		const windows = windowsForLink(journalWindows, elsewhere, link.hackatimeProject ?? "")
 		if (windows.length > 0)
-			if (!cached) {
+			if (!cached)
 				// Unknown, not zero. The link may well carry the same minutes the recording already claimed; nothing here can say, and reporting a deduplicated-looking total either way would be a lie.
 				hackatimeOverlapUnknown = true
-			} else {
+			else {
 				const overlap = capSubtraction(seconds, overlapSeconds(windows, cached.spans))
 				hackatimeOverlapSeconds += overlap
 				seconds -= overlap

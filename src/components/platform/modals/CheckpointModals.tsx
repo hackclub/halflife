@@ -2114,7 +2114,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
 	const repoReady = repoResult?.canSubmit ?? false
 
-	const hasCover = !!project?.coverImageKey
+	const hasCover = Boolean(project?.coverImageKey)
 	const descriptionLength = project?.description.trim().length ?? 0
 	const descriptionReady = descriptionLength >= MIN_PROJECT_DESCRIPTION_CHARS
 	const descriptionBlocker = `Write at least ${MIN_PROJECT_DESCRIPTION_CHARS} characters about your project before submitting – you have ${descriptionLength}.`

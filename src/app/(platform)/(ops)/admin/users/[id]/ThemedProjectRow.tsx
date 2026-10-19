@@ -55,7 +55,7 @@ export function ThemedProjectRow({
 }>) {
 	const [open, setOpen] = useState(false)
 	const panelId = `manage-${data.id}`
-	const grantAction = canSendGrant && data.designStatus === "approved" && !!data.grantUsd && !data.grantSent
+	const grantAction = canSendGrant && data.designStatus === "approved" && Boolean(data.grantUsd) && !data.grantSent
 	const designOverride = canOverride && data.designStatus === "approved"
 	const buildOverride = canOverride && data.buildStatus === "approved"
 	const hasActions = canExtend || canMoveTheme || grantAction || designOverride || buildOverride

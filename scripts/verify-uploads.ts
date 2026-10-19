@@ -28,13 +28,13 @@ async function main() {
 
 	// ── Configuration ──────────────────────────────────────────────────────────
 	const required = ["S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY", "S3_BUCKET_NAME", "S3_ENDPOINT"] as const
-	for (const name of required) check(`${name} is set`, !!process.env[name])
+	for (const name of required) check(`${name} is set`, Boolean(process.env[name]))
 	check("isUploadConfigured()", isUploadConfigured())
 
 	const publicBase = process.env.S3_PUBLIC_URL
 	check(
 		"S3_PUBLIC_URL is set",
-		!!publicBase,
+		Boolean(publicBase),
 		publicBase ? "" : "without it every stored key mints a null URL and no video ever plays",
 	)
 
@@ -47,7 +47,7 @@ async function main() {
 			check("S3_PUBLIC_URL parses as a URL", false, "check for a missing https://")
 		}
 		const declaredHost = process.env.NEXT_PUBLIC_UPLOAD_HOST
-		check("NEXT_PUBLIC_UPLOAD_HOST is set", !!declaredHost)
+		check("NEXT_PUBLIC_UPLOAD_HOST is set", Boolean(declaredHost))
 		if (publicHost && declaredHost)
 			check(
 				"NEXT_PUBLIC_UPLOAD_HOST matches S3_PUBLIC_URL's host",
@@ -97,7 +97,7 @@ async function main() {
 	}
 
 	const url = publicUrlFor(key)
-	check("publicUrlFor() minted a URL", !!url)
+	check("publicUrlFor() minted a URL", Boolean(url))
 
 	if (url)
 		try {

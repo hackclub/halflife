@@ -99,7 +99,7 @@ export function timelapseLinks(timelapses: readonly JustificationTimelapse[]): s
 				? lapseTimelapseUrl(t.externalId)
 				: (t.playbackUrl ?? publicUrlFor(t.objectKey)),
 		)
-		.filter((url): url is string => !!url)
+		.filter((url): url is string => Boolean(url))
 }
 
 /**
@@ -121,7 +121,7 @@ export function specificTechnicalFeatures(source: JustificationSource, phase: Ph
 			parts.length > 0 ? `Parts:\n${parts.join("\n")}` : null,
 			log.length > 0 ? `${heading}:\n${log.join("\n")}` : null,
 		]
-			.filter((section): section is string => !!section)
+			.filter((section): section is string => Boolean(section))
 			.join("\n\n")
 
 	// The log goes first when the text is too long: the description and the parts are the answer, and a shortened log still says what was worked on.

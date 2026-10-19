@@ -238,12 +238,11 @@ async function handleSelfResolve(payload: InteractionPayload, action: BlockActio
 
 	if (ref.ticketsChannel && ref.ticketsTs && ref.helpChannel)
 		try {
-			if (!(await deleteTicketMessage(ref.ticketsChannel, ref.ticketsTs))) {
+			if (!(await deleteTicketMessage(ref.ticketsChannel, ref.ticketsTs)))
 				await updateMessage(ref.ticketsChannel, ref.ticketsTs, `Ticket resolved by <@${payload.user.id}>`, [
 					ticketSection(ref as TicketRef),
 					...resolveBlocks(undefined, payload.user.id, "marked it themselves"),
 				])
-			}
 		} catch (err) {
 			console.error(`Failed to clear the tickets-channel message: ${err}`)
 		}
@@ -309,12 +308,11 @@ async function handleThreadMarkHelped(payload: InteractionPayload, action: Block
 
 	if (ref.ticketsChannel && ref.ticketsTs && ref.helpChannel)
 		try {
-			if (!(await deleteTicketMessage(ref.ticketsChannel, ref.ticketsTs))) {
+			if (!(await deleteTicketMessage(ref.ticketsChannel, ref.ticketsTs)))
 				await updateMessage(ref.ticketsChannel, ref.ticketsTs, `Ticket resolved by <@${payload.user.id}>`, [
 					ticketSection(ref as TicketRef),
 					...resolveBlocks(undefined, payload.user.id),
 				])
-			}
 		} catch (err) {
 			console.error(`Failed to clear the tickets-channel message: ${err}`)
 		}

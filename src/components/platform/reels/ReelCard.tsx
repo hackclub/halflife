@@ -147,7 +147,7 @@ export function ReelCard({
 		if (!box || !el) return
 		const io = new IntersectionObserver(
 			([entry]) => {
-				const now = !!entry?.isIntersecting && entry.intersectionRatio >= CURRENT
+				const now = Boolean(entry?.isIntersecting) && entry.intersectionRatio >= CURRENT
 				if (now === current.current) return
 				current.current = now
 				if (!now) {

@@ -163,12 +163,15 @@ export async function updatePrinterAwardStatus(
 
 	if (input.status === "ADDRESS_LOCKED") {
 		const pii = isPiiConfigured() ? decryptUserPII(award.user) : null
-		const street = [pii?.line1, pii?.line2].filter((part): part is string => !!part?.trim()).join("\n")
-		const cityLine = [[pii?.city, pii?.state].filter((part): part is string => !!part?.trim()).join(", "), pii?.zip]
-			.filter((part): part is string => !!part?.trim())
+		const street = [pii?.line1, pii?.line2].filter((part): part is string => Boolean(part?.trim())).join("\n")
+		const cityLine = [
+			[pii?.city, pii?.state].filter((part): part is string => Boolean(part?.trim())).join(", "),
+			pii?.zip,
+		]
+			.filter((part): part is string => Boolean(part?.trim()))
 			.join(" ")
 		const address = [street, cityLine, pii?.country?.trim()]
-			.filter((part): part is string => !!part?.trim())
+			.filter((part): part is string => Boolean(part?.trim()))
 			.join("\n")
 			.trim()
 		if (!address)

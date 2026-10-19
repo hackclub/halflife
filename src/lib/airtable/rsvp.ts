@@ -92,7 +92,7 @@ export async function recordDirectSignup(input: {
 				data: {
 					airtableRecordId: input.recordId,
 					email,
-					finishedAccountCreation: !!input.userId,
+					finishedAccountCreation: Boolean(input.userId),
 					ip: input.ip ?? null,
 					referredBy: input.referredBy ?? null,
 					syncedAt: input.userId ? null : new Date(),

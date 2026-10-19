@@ -423,7 +423,7 @@ function WeekTrail({ week, currentId, phase }: { week: Week; currentId: string |
 		// Into a fork the run splits and each arm is drawn straight to its node; down the chain the dots keep sampling the sine, so the curve they have always traced is untouched. A ghost row is one slot wide, like the single node it stands between.
 		const slots = next.row.length > 0 ? next.row : [undefined]
 		for (const [j] of slots.entries())
-			for (const f of [0.3, 0.5, 0.7]) {
+			for (const f of [0.3, 0.5, 0.7])
 				dots.push(
 					<span
 						aria-hidden="true"
@@ -439,7 +439,6 @@ function WeekTrail({ week, currentId, phase }: { week: Week; currentId: string |
 						}}
 					/>,
 				)
-			}
 	}
 
 	return (

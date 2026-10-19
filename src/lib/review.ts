@@ -401,7 +401,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 			coins,
 			grantUsd,
 			phase,
-			printerQualified: !!award,
+			printerQualified: Boolean(award),
 			result: input.result,
 			themeProjectId: project.id,
 			tier,

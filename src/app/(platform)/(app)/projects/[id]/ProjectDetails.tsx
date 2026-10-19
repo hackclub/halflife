@@ -76,7 +76,7 @@ export function ProjectDetails({
 				<div className="mt-1 flex shrink-0 flex-col items-end gap-1">
 					<Button
 						aria-describedby={locked ? lockedId : undefined}
-						disabled={!!locked}
+						disabled={Boolean(locked)}
 						onClick={() => setEditing(true)}
 						size="sm"
 						title={locked ?? undefined}

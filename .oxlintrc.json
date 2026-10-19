@@ -36,7 +36,7 @@
 		"eslint/no-await-in-loop": "off",
 		"eslint/no-continue": "off",
 		"eslint/no-else-return": "error",
-		"eslint/no-implicit-coercion": "off",
+		"eslint/no-implicit-coercion": "error",
 		"eslint/no-inline-comments": "off",
 		"eslint/no-loop-func": "off",
 		"eslint/no-magic-numbers": "off",

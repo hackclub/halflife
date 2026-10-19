@@ -116,7 +116,7 @@ export function recomputeActiveDays(userId: string): Promise<void> {
  * Whether a project has actually been started. Not its title: every row is made at sign-up already titled with its theme's name. The app counts a project once it has a description and a tier – that is what completes the trail's "project" node (lib/queries/store) – so this does too.
  */
 function isCreated(p: { description: string | null; tier: number | null; requestedTier: number | null }) {
-	return !!p.description?.trim() && (p.tier ?? p.requestedTier) != null
+	return Boolean(p.description?.trim()) && (p.tier ?? p.requestedTier) != null
 }
 
 /**

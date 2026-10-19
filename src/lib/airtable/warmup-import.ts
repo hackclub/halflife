@@ -308,7 +308,7 @@ async function importRow(
 		row.journalUrl ? `Journal: ${row.journalUrl}` : null,
 		row.playableUrl ? `Playable: ${row.playableUrl}` : null,
 		row.lapseLinks ? `Timelapse: ${row.lapseLinks}` : null,
-	].filter((part): part is string => !!part)
+	].filter((part): part is string => Boolean(part))
 
 	return prisma.$transaction(
 		async tx => {

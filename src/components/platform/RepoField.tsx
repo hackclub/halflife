@@ -27,7 +27,7 @@ export function RepoInput({ value, onChange, id }: { value: string; onChange(val
 		>
 			<input
 				aria-describedby={touched && error ? `${id}-err` : undefined}
-				aria-invalid={(touched && !!error) || undefined}
+				aria-invalid={(touched && Boolean(error)) || undefined}
 				autoComplete="url"
 				className={inputClass}
 				id={id}
@@ -155,7 +155,7 @@ export function RepoEditor({ project, className }: { project: Project; className
 			</label>
 			<input
 				aria-describedby={error ? `${id}-err` : undefined}
-				aria-invalid={!!error || undefined}
+				aria-invalid={Boolean(error) || undefined}
 				autoComplete="url"
 				className={cx(inputClass, "py-2 text-[0.88rem]")}
 				id={id}

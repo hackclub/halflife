@@ -227,7 +227,7 @@ function WarmupWork({ projectId }: { projectId: string }) {
 	// Once the journal has closed, what there is can still be handed in, as a season week that has passed can.
 	const canSubmit = !handedIn && (hours >= need || (passed && hours > 0))
 	const short = Math.max(0, need - hours)
-	const hasCover = !!project?.coverImageKey
+	const hasCover = Boolean(project?.coverImageKey)
 	const canActuallySubmit = canSubmit && hasCover
 
 	return (

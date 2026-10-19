@@ -270,8 +270,8 @@ async function importUsers(): Promise<{
 	const existing = await target.user.findMany({
 		select: { email: true, hackatimeUserId: true, id: true, slackId: true },
 	})
-	const takenSlack = new Set(existing.map(u => u.slackId).filter((v): v is string => !!v))
-	const takenHackatime = new Set(existing.map(u => u.hackatimeUserId).filter((v): v is string => !!v))
+	const takenSlack = new Set(existing.map(u => u.slackId).filter((v): v is string => Boolean(v)))
+	const takenHackatime = new Set(existing.map(u => u.hackatimeUserId).filter((v): v is string => Boolean(v)))
 
 	const users = await read<SourceUser>(`SELECT * FROM "user" ORDER BY "createdAt"`)
 	const limited = users.slice(0, LIMIT)

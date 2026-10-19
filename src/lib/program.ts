@@ -319,7 +319,7 @@ export async function getShopAccess(userId: string): Promise<ShopAccess> {
 	if (awaitingReview > 0) return { closesAt, graceUntil: null, open: true, reason: "PENDING_REVIEW" }
 
 	const reviewedAt = [lastReview._max.designReviewedAt, lastReview._max.buildReviewedAt]
-		.filter((d): d is Date => !!d)
+		.filter((d): d is Date => Boolean(d))
 		.toSorted((a, b) => b.getTime() - a.getTime())[0]
 
 	if (reviewedAt) {

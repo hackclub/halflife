@@ -186,9 +186,8 @@ async function drainedRecordRows(): Promise<Map<string, AirtableRecord>> {
 	})
 	// The row id in the listing and the one the drain recorded are the same thing, so this needs no second request: a placeholder is enough for the join, and the write below addresses the real record by that id.
 	for (const row of rows)
-		if (row.userId && row.airtableRecordId && !byRecordId.has(row.userId)) {
+		if (row.userId && row.airtableRecordId && !byRecordId.has(row.userId))
 			byRecordId.set(row.userId, { fields: {}, id: row.airtableRecordId })
-		}
 
 	return byRecordId
 }
@@ -355,7 +354,7 @@ export async function syncLoopsProperties(
 	const degraded = values.length >= 50 && matched * 2 < values.length
 	const result: LoopsSyncResult = {
 		degraded,
-		dryRun: !!opts.dryRun,
+		dryRun: Boolean(opts.dryRun),
 		matched,
 		matchedByEmail,
 		matchedById,

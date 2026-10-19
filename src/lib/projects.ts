@@ -54,8 +54,8 @@ export function projectEvents(project: Project, weeks: Week[], read: (id: string
 		for (const cp of week.checkpoints) {
 			const state = read(cp.id)
 
-			if (cp.kind === "journal") {
-				for (const entry of state.log) {
+			if (cp.kind === "journal")
+				for (const entry of state.log)
 					out.push({
 						// Sessions written before entries were dated carry no time. Zero rather than undefined, or the subtraction below goes NaN and takes the whole ordering with it.
 						at: entry.at ?? 0,
@@ -66,8 +66,7 @@ export function projectEvents(project: Project, weeks: Week[], read: (id: string
 						minutes: entry.minutes,
 						weekId: week.id,
 					})
-				}
-			} else if (cp.kind === "reel" && state.done) {
+			else if (cp.kind === "reel" && state.done)
 				out.push({
 					// Saves written before completions were dated have no time on them. Nothing sensible orders them, so they sort to the bottom rather than claiming the top with a zero.
 					at: state.at ?? 0,
@@ -78,7 +77,6 @@ export function projectEvents(project: Project, weeks: Week[], read: (id: string
 					title: cp.title,
 					weekId: week.id,
 				})
-			}
 		}
 
 	return out.toSorted((a, b) => b.at - a.at || b.id.localeCompare(a.id))

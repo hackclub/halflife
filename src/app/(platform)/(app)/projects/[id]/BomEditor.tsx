@@ -163,7 +163,7 @@ export function BomEditor({
 		if (link && !/^https?:\/\//i.test(link)) link = `https://${link}`
 		let linkOk = false
 		try {
-			linkOk = !!link && new URL(link).hostname.includes(".")
+			linkOk = Boolean(link) && new URL(link).hostname.includes(".")
 		} catch {
 			linkOk = false
 		}

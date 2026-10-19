@@ -87,7 +87,7 @@ async function main() {
 			alreadyLinked++
 			continue
 		}
-		pending.push({ email: key, hasRow: !!buf, recordId, userId: u.id })
+		pending.push({ email: key, hasRow: Boolean(buf), recordId, userId: u.id })
 	}
 
 	if (!commit)
