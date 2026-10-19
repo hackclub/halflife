@@ -40,7 +40,7 @@ export const HUDDLE_URL = "https://app.slack.com/huddle/T0266FRGM/C0BTE0WN23S"
  *   elapsed milliseconds puts the late evening of a Sunday in the next column.
  */
 
-export type { EventColour }
+export type { EventColour } from "@/app/generated/prisma/client"
 
 /**
  * The display name and swatch for every colour.

@@ -1,10 +1,10 @@
 import "server-only"
 import { headers } from "next/headers"
 import type { Prisma } from "@/app/generated/prisma/client"
-import { AuditAction } from "@/app/generated/prisma/enums"
+import type { AuditAction } from "@/app/generated/prisma/enums"
 import prisma from "@/lib/prisma"
 
-export { AuditAction }
+export { AuditAction } from "@/app/generated/prisma/enums"
 
 export interface AuditInput {
 	action: AuditAction

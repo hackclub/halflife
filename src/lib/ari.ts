@@ -72,7 +72,7 @@ function ari(): Ari {
 }
 
 // Re-exported so callers can treat the Ari integration as one module.
-export { ariExternalId, parseAriExternalId }
+export { ariExternalId, parseAriExternalId } from "@/lib/ari-id"
 
 // ─── Building the ship ───────────────────────────────────────────────────────
 

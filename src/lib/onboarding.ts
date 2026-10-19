@@ -2,9 +2,7 @@ import "server-only"
 import { type HardwareExperience, PhaseStatus, Theme } from "@/app/generated/prisma/enums"
 import {
 	ONBOARDING_STEP_COUNT,
-	ONBOARDING_STEPS,
 	type OnboardingStep,
-	type OnboardingStepId,
 	STARTER_PROJECT_TIER,
 	type StarterProject,
 	seesStarterProjects,
@@ -432,5 +430,5 @@ export async function needsOnboarding(userId: string): Promise<boolean> {
 	return started === 0
 }
 
-export type { OnboardingStepId }
-export { ONBOARDING_STEPS }
+export type { OnboardingStepId } from "@/lib/config/onboarding"
+export { ONBOARDING_STEPS } from "@/lib/config/onboarding"

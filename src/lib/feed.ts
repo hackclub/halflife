@@ -476,4 +476,4 @@ export async function hideComment(commentId: string, moderatorId: string, reason
 	})
 }
 
-export { PostKind, PostStatus }
+export { PostKind, PostStatus } from "@/app/generated/prisma/enums"

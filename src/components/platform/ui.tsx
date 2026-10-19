@@ -3,7 +3,7 @@
 import { type ButtonHTMLAttributes, forwardRef, type ReactNode } from "react"
 import { cx } from "@/lib/cx"
 
-export { cx }
+export { cx } from "@/lib/cx"
 
 /* ------------------------------------------------------------------ *
  * Panel – the cream card with a wobbling marker outline

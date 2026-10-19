@@ -1,6 +1,6 @@
 import type { ReportReason, ReportStatus, ReportTarget } from "@/app/generated/prisma/enums"
 
-export type { ReportReason, ReportStatus, ReportTarget }
+export type { ReportReason, ReportStatus, ReportTarget } from "@/app/generated/prisma/enums"
 
 /**
  * What a report points at. The `id` is the row's own id: a post id for a reel, a comment id for a comment, a project id, a user id, or a work session id for a devlog.

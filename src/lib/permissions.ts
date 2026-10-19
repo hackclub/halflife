@@ -2,7 +2,7 @@ import "server-only"
 import { Role } from "@/app/generated/prisma/enums"
 import prisma from "@/lib/prisma"
 
-export { Role }
+export { Role } from "@/app/generated/prisma/enums"
 
 export enum Permission {
 	FULFILL_ORDERS = "FULFILL_ORDERS",

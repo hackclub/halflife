@@ -166,4 +166,4 @@ export async function getLedgerPage(
 	return { items, nextCursor: hasMore && last ? last.id : null }
 }
 
-export { CoinBucket, LedgerKind }
+export { CoinBucket, LedgerKind } from "@/app/generated/prisma/enums"
