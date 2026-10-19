@@ -1635,7 +1635,7 @@ export function usePrinterPace(): PrinterPace {
  * The weeks a maker has behind them, as they would say it: "Week 2", "Weeks 2 and 4", "Weeks 1, 2 and 4". Newest first, because the most recent miss is the one they remember.
  */
 export function weekListPhrase(weeks: readonly number[]): string {
-	const parts = weeks.map(w => String(w))
+	const parts = weeks.map(String)
 	if (parts.length === 0) return "No weeks"
 	if (parts.length === 1) return `Week ${parts[0]}`
 	return `Weeks ${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`
