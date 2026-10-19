@@ -2,9 +2,10 @@
 
 import Link from "next/link"
 import { useState } from "react"
+import { ReviewStages } from "@/app/components/admin/ReviewStages"
 import { ExtensionForm } from "@/app/components/forms/ExtensionForm"
 import { ThemeMoveForm } from "@/app/components/forms/ThemeMoveForm"
-import { Badge, Button, statusLabel, statusTone } from "@/app/components/ui"
+import { Button } from "@/app/components/ui"
 import type { Theme } from "@/app/generated/prisma/enums"
 
 /** One project row, with the controls folded into a panel under it. */
@@ -30,43 +31,7 @@ export interface ProjectRowData {
 	userExtension: string | null
 }
 
-/** Design is drawn as a pencil and build as a hammer: the stage survives a colour-blind read and a monochrome print. */
-function DesignIcon() {
-	return (
-		<svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
-			<path
-				d="m4 20 1.1-4.2L16.4 4.5a2.1 2.1 0 0 1 3 3L8.1 18.9 4 20Z"
-				stroke="currentColor"
-				strokeLinecap="round"
-				strokeLinejoin="round"
-				strokeWidth="1.8"
-			/>
-			<path d="m14.6 6.3 3.1 3.1" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
-		</svg>
-	)
-}
-
-function BuildIcon() {
-	return (
-		<svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
-			<path
-				d="m13.6 5.2 5.2 5.2-2.1 2.1-5.2-5.2 2.1-2.1Z"
-				stroke="currentColor"
-				strokeLinecap="round"
-				strokeLinejoin="round"
-				strokeWidth="1.8"
-			/>
-			<path
-				d="M12.7 8.1 4 17v3h3l8.9-8.7"
-				stroke="currentColor"
-				strokeLinecap="round"
-				strokeLinejoin="round"
-				strokeWidth="1.8"
-			/>
-		</svg>
-	)
-}
-
+/** The open/closed marker on the Manage button. */
 function Chevron({ open }: { open: boolean }) {
 	return (
 		<svg
@@ -116,18 +81,7 @@ export function ProjectRow({
 				<td style={{ minWidth: "9rem" }}>{data.themeLabel}</td>
 				<td>{tier}</td>
 				<td style={{ minWidth: "14rem" }}>
-					<ul className="hl-review-stages">
-						<li>
-							<DesignIcon />
-							<span className="hl-review-stages__name">Design</span>
-							<Badge tone={statusTone(data.designStatus)}>{statusLabel(data.designStatus)}</Badge>
-						</li>
-						<li>
-							<BuildIcon />
-							<span className="hl-review-stages__name">Build</span>
-							<Badge tone={statusTone(data.buildStatus)}>{statusLabel(data.buildStatus)}</Badge>
-						</li>
-					</ul>
+					<ReviewStages buildStatus={data.buildStatus} designStatus={data.designStatus} />
 				</td>
 				<td style={{ minWidth: "13rem" }}>
 					{canManage ? (
