@@ -99,25 +99,8 @@ async function buildDemoUrl(userId: string, buildWeek: number): Promise<string |
 	return publicUrlFor(reel?.objectKey ?? null)
 }
 
-/**
- * A recording attached to a journal entry, sent in the ship's `clips` array.
- *
- * Ari pulls Lapse recordings itself per Hackatime project, which misses a clip with no project (or one Lapse never named). This array puts it in the Lapses tile regardless. The published SDK does not type the field yet; it is part of Ari's inbound webhook contract.
- */
-interface AriShipClipInput {
-	at: string
-	hackatime_project?: string
-	note: string
-	seconds: number
-	thumbnail_url?: string
-	url?: string
-}
-
-// A union, so this cannot be an interface; the SDK type is a union of track shapes.
-type AriShipInputWithClips = AriShipInput & { clips?: AriShipClipInput[] }
-
 interface ShipBundle {
-	input: AriShipInputWithClips
+	input: AriShipInput
 	submissionId: string | null
 }
 
@@ -139,15 +122,11 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
 					hoursSource: true,
 					timelapses: {
 						select: {
-							coveredSeconds: true,
 							externalId: true,
 							hackatimeProject: true,
 							objectKey: true,
 							playbackUrl: true,
 							provider: true,
-							recordedAt: true,
-							runtimeSeconds: true,
-							thumbnailUrl: true,
 						},
 					},
 					title: true,
@@ -180,39 +159,15 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
 
 	const def = getThemeDef(project.theme)
 
-	const timelapseUrl = (timelapse: {
-		externalId: string | null
-		objectKey: string | null
-		playbackUrl: string | null
-		provider: string
-	}): string | null =>
-		timelapse.provider === "lapse" && timelapse.externalId
-			? lapseTimelapseUrl(timelapse.externalId)
-			: (timelapse.playbackUrl ?? publicUrlFor(timelapse.objectKey))
-
-	// Recordings for Ari's Lapses tile. Sent beside the journals rather than only
-	// linked in their markdown because Ari pulls Lapse itself per Hackatime
-	// project, which misses a clip with no project or one Lapse never named.
-	const clips: AriShipClipInput[] = []
 	const journals = project.workSessions.slice(-200).map(session => {
 		const body = sanitize(session.content ?? session.title) || session.title || "Journal entry"
-		const linkUrls = session.timelapses.flatMap(t => {
-			const url = timelapseUrl(t)
+		const clips = session.timelapses.flatMap(t => {
+			const url =
+				t.provider === "lapse" && t.externalId
+					? lapseTimelapseUrl(t.externalId)
+					: (t.playbackUrl ?? publicUrlFor(t.objectKey))
 			return url ? [url] : []
 		})
-		for (const timelapse of session.timelapses) {
-			const seconds = Math.round(timelapse.coveredSeconds ?? timelapse.runtimeSeconds ?? 0)
-			if (seconds <= 0) continue
-			const url = timelapseUrl(timelapse)
-			clips.push({
-				at: (timelapse.recordedAt ?? session.createdAt).toISOString(),
-				...(timelapse.hackatimeProject ? { hackatime_project: timelapse.hackatimeProject } : {}),
-				note: session.title || "Timelapse",
-				seconds,
-				...(timelapse.thumbnailUrl ? { thumbnail_url: timelapse.thumbnailUrl } : {}),
-				...(url ? { url } : {}),
-			})
-		}
 		return Object.assign(
 			{
 				at: session.createdAt,
@@ -223,14 +178,12 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
 						: Math.min(1440, Math.max(0, Math.round(session.hoursClaimed * 60))),
 				text: body,
 			},
-			// The Lapses tile only shows a recording it can pull or that arrives in `clips`. Linking each one in the entry keeps it attached to the journal it backs, so a reviewer never opens an entry with no evidence in it.
-			linkUrls.length > 0
+			// Ari has no field for a journal's own attachments: its Lapse tile pulls clips per Hackatime project. Linking each recording in the entry keeps it attached to the journal it backs even when that pull has nothing to match (no Hackatime id, or a project Lapse never named), so a reviewer never opens an entry with no evidence in it.
+			clips.length > 0
 				? {
 						markdown: [
 							body,
-							...linkUrls.map(
-								(url, index) => `[Timelapse${linkUrls.length > 1 ? ` ${index + 1}` : ""}](${url})`,
-							),
+							...clips.map((url, index) => `[Timelapse${clips.length > 1 ? ` ${index + 1}` : ""}](${url})`),
 						].join("\n\n"),
 					}
 				: {},
@@ -271,7 +224,6 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
 		evidence: hasTimelapse ? ["commits", "devlog", "elapsed"] : ["commits", "devlog"],
 		...(hackatimeProjects.length > 0 ? { hackatime_projects: hackatimeProjects } : {}),
 		...(journals.length > 0 ? { journals } : {}),
-		...(clips.length > 0 ? { clips } : {}),
 		meta: {
 			phase: phase === Phase.DESIGN ? "design" : "build",
 			program: "half-life",
