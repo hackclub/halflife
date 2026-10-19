@@ -7,8 +7,8 @@ const databaseUrl = process.env.DATABASE_URL
 if (!databaseUrl) throw new Error("DATABASE_URL missing")
 const db = new PrismaClient({ adapter: new PrismaPg({ connectionString: databaseUrl }) })
 
-async function q<T extends { [_: string]: unknown }>(label: string, sql: string) {
-	const rows = await db.$queryRawUnsafe<T[]>(sql)
+async function q(label: string, sql: string) {
+	const rows = await db.$queryRawUnsafe<{ [_: string]: unknown }[]>(sql)
 	console.log(`\n${label}`)
 	for (const r of rows) console.log(`  ${JSON.stringify(r, (_k, v) => (typeof v === "bigint" ? Number(v) : v))}`)
 }

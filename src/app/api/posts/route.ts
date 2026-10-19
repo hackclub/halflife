@@ -13,11 +13,14 @@ export const POST = withRoute(async (req: Request) => {
 	const gate = await requireSession()
 	if (gate.error) return gate.error
 
-	// A refusal is recorded before it is thrown. `withRoute` turns an HttpError into a response and keeps it to itself, so before this a maker blocked by an owed reel, or by an upload-ownership check, left no row anywhere: the client was told why and the server forgot. This is the only place the number of people stuck this way can be seen.
-	try {
-		const parsed = await parseBody(req, createPostSchema)
-		if (parsed.error) throw parsed.error
+	// A refusal is recorded before it is returned. `withRoute` turns an HttpError into a response and keeps it to itself, so before this a maker blocked by an owed reel, or by an upload-ownership check, left no row anywhere: the client was told why and the server forgot. This is the only place the number of people stuck this way can be seen.
+	const parsed = await parseBody(req, createPostSchema)
+	if (parsed.error) {
+		await logPostRefusal(gate.user.id, gate.user.email, req, parsed.error)
+		return parsed.error
+	}
 
+	try {
 		// A checkpoint reel is checkpoint work, so a deleted reel that is still owed holds it – unless this is that reel coming back. Freeform posts are not a checkpoint and are never held.
 		if (parsed.data.checkpointKey) await assertNoOwedReel(gate.user.id, parsed.data.checkpointKey)
 

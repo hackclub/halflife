@@ -1,7 +1,7 @@
 import "server-only"
 import { HoursSource, Phase } from "@/app/generated/prisma/enums"
 import { COINS_PER_HOUR, MAX_COINS_PER_PROJECT } from "@/lib/config/program"
-import { getTierOrThrow, type TierId } from "@/lib/config/tiers"
+import { getTierOrThrow } from "@/lib/config/tiers"
 import { fetchProjectSeconds, fetchProjectSpans } from "@/lib/hackatime"
 import {
 	cachedSpansCover,
@@ -562,7 +562,7 @@ export type CoinSplit = {
  *
  * Minted coins are capped, because `approvedHours` can come from a reviewer typing into a box and a fat-fingered 1000 should not mint five thousand coins.
  */
-export function designCoinsFor(tierId: TierId | number, approvedHours: number): CoinSplit {
+export function designCoinsFor(tierId: number, approvedHours: number): CoinSplit {
 	const tier = getTierOrThrow(tierId)
 	const beyondFunding = Math.max(0, approvedHours - tier.fundingHours)
 	const spendable = earnCoins(beyondFunding)

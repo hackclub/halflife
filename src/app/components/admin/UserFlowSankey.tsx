@@ -254,7 +254,7 @@ export function UserFlowSankey({ diagram }: { diagram: SankeyDiagram }) {
 		return `M ${x0} ${r.sy0} C ${xm} ${r.sy0} ${xm} ${r.ty0} ${x1} ${r.ty0} L ${x1} ${r.ty1} C ${xm} ${r.ty1} ${xm} ${r.sy1} ${x0} ${r.sy1} Z`
 	}
 
-	const biggest = ribbons.reduce((a, b) => (b.value > (a?.value ?? 0) ? b : a), undefined as Ribbon | undefined)
+	const biggest = ribbons.reduce<Ribbon | undefined>((a, b) => (b.value > (a?.value ?? 0) ? b : a), undefined)
 	// Fan ribbons paint first: they are the shared-user wash underneath, and chain ribbons – real divergences sharing an edge – stay readable on top of it. Stable, so order within each group is untouched.
 	const painted = [...ribbons].toSorted((a, b) => Number(b.fan !== null) - Number(a.fan !== null))
 	const summary = biggest
