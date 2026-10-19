@@ -436,8 +436,6 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 					link: { href: README_GUIDE_URL, label: "What goes in a README" },
 					status: "fail",
 				},
-	)
-	checks.push(
 		readme !== null && imageCount >= README_MIN_IMAGES
 			? { detail: `${imageCount} images`, key: "readme_photo", label: "Photos in the README", status: "pass" }
 			: {

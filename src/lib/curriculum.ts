@@ -286,8 +286,7 @@ export function checkpointsFor(
 				for (let n = 2; n <= live; n += 1) pushEntry(n)
 			}
 		} else {
-			out.push(newProject)
-			out.push(ideaReel)
+			out.push(newProject, ideaReel)
 			for (let n = 1; n <= live; n += 1) pushEntry(n)
 		}
 	} else {
