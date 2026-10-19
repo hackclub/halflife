@@ -138,6 +138,24 @@ async function main() {
 	// The build half of the same theme is week 6 and must stay untouched: one project, two weeks, and a design submission is not a build submission.
 	check("but not the build week's", submitted.progress["w6-submit"], undefined)
 
+	// A phase sent back for changes is open again: the maker has to be able to log the work the reviewer asked for, and the trail cannot keep calling the week handed in.
+	await prisma.themeProject.update({
+		data: { designStatus: PhaseStatus.update_requested },
+		where: { id: pcb.id },
+	})
+	const returned = await getStoreSnapshot(user.id)
+	check("a returned week unticks the submit node", returned.progress["w1-submit"], undefined)
+	check("while keeping its existing entries", returned.progress["w1-entry-3"]?.done, true)
+	const { checkpointsFor, WEEK_META } = await import("../src/lib/curriculum")
+	const firstWeek = WEEK_META[0]
+	if (!firstWeek) throw new Error("the curriculum has no week 1")
+	const returnedNodes = checkpointsFor(firstWeek, [90, 120, 180], id => returned.progress[id]?.done ?? false, 0, false)
+	check(
+		"and the trail offers the next journal entry",
+		returnedNodes.some(c => c.id === "w1-entry-4"),
+		true,
+	)
+
 	// ── The first checkpoint ──────────────────────────────────────────────────
 	//
 	// The store replays the modal's seven answers through the onboarding state machine one request at a time, because the machine refuses a step ahead of the furthest one reached. That refusal is what stops anyone arriving at a funded project without being asked what they are building – and it also means the store's sequence has to be exactly right, or onboarding never completes and the modal reappears forever with nothing in the log to say why. This replays that sequence in the order the store sends it.
