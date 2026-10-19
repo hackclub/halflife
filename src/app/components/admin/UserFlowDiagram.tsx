@@ -42,7 +42,7 @@ export function UserFlowDiagram({ steps, sankey }: { steps: FlowStep[]; sankey: 
 		const target = TABS[next]
 		if (!target) return
 		setActive(target.id)
-		document.getElementById(`user-flow-tab-${target.id}`)?.focus()
+		document.querySelector<HTMLElement>(`#user-flow-tab-${target.id}`)?.focus()
 	}
 
 	// The Sankey is far wider than the page's reading column, so the panel goes full-bleed while it is up. The funnel is a narrow top-to-bottom shape and stays in the column, where it reads better. The tabs and the diagram live inside this panel rather than beside it, because the tab choice is what changes the panel's width – a page-level panel could not know which tab is selected.
