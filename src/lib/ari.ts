@@ -18,6 +18,7 @@ import { AuditAction, logAudit } from "@/lib/audit"
 import { getThemeDef, WARMUP_THEME } from "@/lib/config/program"
 import { isTierId } from "@/lib/config/tiers"
 import { HttpError } from "@/lib/errors"
+import { lapseTimelapseUrl } from "@/lib/lapse"
 import { round2 } from "@/lib/money"
 import { notifyReviewOutcome, notifyShipFailed } from "@/lib/notifications"
 import prisma from "@/lib/prisma"
@@ -119,7 +120,15 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
 					createdAt: true,
 					hoursClaimed: true,
 					hoursSource: true,
-					timelapses: { select: { id: true } },
+					timelapses: {
+						select: {
+							externalId: true,
+							hackatimeProject: true,
+							objectKey: true,
+							playbackUrl: true,
+							provider: true,
+						},
+					},
 					title: true,
 				},
 				where: { deletedAt: null, phase },
@@ -150,21 +159,47 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
 
 	const def = getThemeDef(project.theme)
 
-	const journals = project.workSessions.slice(-200).map(session => ({
-		at: session.createdAt,
-		// A HACKATIME_TRACKED entry contributes no time here – its minutes arrive through hackatime_projects – but it is still evidence Ari should see.
-		minutes:
-			session.hoursSource === HoursSource.HACKATIME_TRACKED
-				? 0
-				: Math.min(1440, Math.max(0, Math.round(session.hoursClaimed * 60))),
-		text: sanitize(session.content ?? session.title) || session.title || "Journal entry",
-	}))
+	const journals = project.workSessions.slice(-200).map(session => {
+		const body = sanitize(session.content ?? session.title) || session.title || "Journal entry"
+		const clips = session.timelapses.flatMap(t => {
+			const url =
+				t.provider === "lapse" && t.externalId
+					? lapseTimelapseUrl(t.externalId)
+					: (t.playbackUrl ?? publicUrlFor(t.objectKey))
+			return url ? [url] : []
+		})
+		return {
+			at: session.createdAt,
+			// A HACKATIME_TRACKED entry contributes no time here – its minutes arrive through hackatime_projects – but it is still evidence Ari should see.
+			minutes:
+				session.hoursSource === HoursSource.HACKATIME_TRACKED
+					? 0
+					: Math.min(1440, Math.max(0, Math.round(session.hoursClaimed * 60))),
+			text: body,
+			// Ari has no field for a journal's own attachments: its Lapse tile pulls clips per Hackatime project. Linking each recording in the entry keeps it attached to the journal it backs even when that pull has nothing to match (no Hackatime id, or a project Lapse never named), so a reviewer never opens an entry with no evidence in it.
+			...(clips.length > 0
+				? {
+						markdown: [
+							body,
+							...clips.map((url, index) => `[Timelapse${clips.length > 1 ? ` ${index + 1}` : ""}](${url})`),
+						].join("\n\n"),
+					}
+				: {}),
+		}
+	})
 
 	const phaseSubmissions = project.submissions.filter(s => s.phase === phase)
 	const openSubmission = phaseSubmissions.find(s => s.resolvedAt === null) ?? phaseSubmissions[0] ?? null
 	const isUpdate = phaseSubmissions.some(s => s.resolvedAt !== null)
 	const demoUrl = phase === Phase.BUILD ? await buildDemoUrl(project.userId, def.buildWeek) : null
 	const hasTimelapse = project.workSessions.some(s => s.timelapses.length > 0)
+	// Ari fetches Lapse clips per Hackatime project key, so a recording's own project has to be named even when the maker never linked it to this phase. Linked projects first, then the ones only a timelapse names, deduped and capped at Ari's limit.
+	const hackatimeProjects = [
+		...new Set([
+			...project.hackatimeLinks.map(l => l.hackatimeProject),
+			...project.workSessions.flatMap(s => s.timelapses.flatMap(t => (t.hackatimeProject ? [t.hackatimeProject] : []))),
+		]),
+	].slice(0, 50)
 
 	const input: AriShipInput = {
 		// Ari rejects an empty description. Week one's onboarding allows one, and submissions made before that was enforced would otherwise fail every retry, so fall back to the title rather than throw: the title is always present and is a truer description than a placeholder would be.
@@ -185,9 +220,7 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
 		...(demoUrl ? { demo_url: demoUrl } : {}),
 		// Only ask Ari to check elapsed-time evidence when there is a timelapse.
 		evidence: hasTimelapse ? ["commits", "devlog", "elapsed"] : ["commits", "devlog"],
-		...(project.hackatimeLinks.length > 0
-			? { hackatime_projects: project.hackatimeLinks.map(l => l.hackatimeProject) }
-			: {}),
+		...(hackatimeProjects.length > 0 ? { hackatime_projects: hackatimeProjects } : {}),
 		...(journals.length > 0 ? { journals } : {}),
 		meta: {
 			phase: phase === Phase.DESIGN ? "design" : "build",
