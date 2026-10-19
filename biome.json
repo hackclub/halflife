@@ -30,6 +30,7 @@
 			"src/**",
 			".impeccable/**",
 			".github/**",
+			"prisma/**",
 			"import/**",
 			"!src/**/*.svg",
 			"*.config.mjs",
