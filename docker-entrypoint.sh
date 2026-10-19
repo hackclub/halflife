@@ -13,4 +13,5 @@ echo "[boot] starting server"
 if [ "$#" -gt 0 ]; then
   exec "$@"
 fi
-exec bun server.js
+# `--trace-warnings` prints a stack for every process warning, so a warning in a pod's logs says where it came from instead of only what it said.
+exec bun --trace-warnings server.js
