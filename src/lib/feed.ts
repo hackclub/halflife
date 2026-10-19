@@ -154,12 +154,13 @@ export async function getFeed(
 	const all = [...leading, ...pageItems]
 
 	// One query for the viewer's likes across the whole page, rather than a correlated exists() per row.
-	const liked = all.length > 0
-		? await prisma.postLike.findMany({
-				select: { postId: true },
-				where: { postId: { in: all.map(p => p.id) }, userId: viewerId },
-			})
-		: []
+	const liked =
+		all.length > 0
+			? await prisma.postLike.findMany({
+					select: { postId: true },
+					where: { postId: { in: all.map(p => p.id) }, userId: viewerId },
+				})
+			: []
 	const likedIds = new Set(liked.map(l => l.postId))
 
 	return {
