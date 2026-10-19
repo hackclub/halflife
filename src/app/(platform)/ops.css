@@ -634,6 +634,14 @@ h4 {
 	.hl-badge--muted {
 		color: var(--color-ink-muted);
 	}
+	/* Access, not status. The staff console's other three badge colours all mean
+	   something about the world – verified, pending, gone – and a privilege level
+	   means none of those things. The navy is the console's own primary ink, so an
+	   account that can hand out every other permission is the one that reads as
+	   loud, and the seats below it stay quiet. */
+	.hl-badge--access {
+		color: var(--color-accent-ink);
+	}
 
 	.hl-callout {
 		padding: 0.85rem 1rem;
