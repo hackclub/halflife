@@ -94,7 +94,8 @@ const T_FALL = 6800
 const T_END = T_HOLD + T_FALL
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
-const clamp01 = (t: number) => (t < 0 ? 0 : t > 1 ? 1 : t)
+const clamp01 = (t: number) => Math.min(Math.max(t, 0), 1)
+
 
 /**
  * What the captions say, keyed to where the camera is rather than to the clock: each line appears as the weeks it describes come into frame, so a slow machine never has a caption naming weeks that are not on screen yet. The banners already name each week, so a caption says only what they don't.
