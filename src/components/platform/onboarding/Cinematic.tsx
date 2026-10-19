@@ -127,14 +127,14 @@ const SCRIPT: { fromWeek: number; fromDepth: number; line(goal: string): string 
  * The fall's speed profile: it eases off the title like something starting to drop, runs fastest through the middle weeks, and spends its last stretch braking onto the prize. Asymmetric on purpose – a symmetric ease reads as a glide, and this is an arrival.
  */
 function cubicBezier(x1: number, y1: number, x2: number, y2: number) {
-	const cx = 3 * x1
-	const bx = 3 * (x2 - x1) - cx
-	const ax = 1 - cx - bx
-	const cy = 3 * y1
-	const by = 3 * (y2 - y1) - cy
-	const ay = 1 - cy - by
-	const sampleX = (t: number) => ((ax * t + bx) * t + cx) * t
-	const slopeX = (t: number) => (3 * ax * t + 2 * bx) * t + cx
+	const cpx = 3 * x1
+	const bpx = 3 * (x2 - x1) - cpx
+	const apx = 1 - cpx - bpx
+	const cpy = 3 * y1
+	const bpy = 3 * (y2 - y1) - cpy
+	const apy = 1 - cpy - bpy
+	const sampleX = (t: number) => ((apx * t + bpx) * t + cpx) * t
+	const slopeX = (t: number) => (3 * apx * t + 2 * bpx) * t + cpx
 	return (x: number) => {
 		let t = x
 		for (let i = 0; i < 6; i += 1) {
@@ -143,7 +143,7 @@ function cubicBezier(x1: number, y1: number, x2: number, y2: number) {
 			t -= (sampleX(t) - x) / slope
 		}
 		t = clamp01(t)
-		return ((ay * t + by) * t + cy) * t
+		return ((apy * t + bpy) * t + cpy) * t
 	}
 }
 const fall = cubicBezier(0.5, 0, 0.12, 1)

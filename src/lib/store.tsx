@@ -533,10 +533,10 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		(next: IntroPhase) =>
 			setCeremony(c => {
 				// The tour plays once. Someone who took it while week 1 was shut finishes Get started straight onto the trail, not into it again.
-				const phase = next === "tour" && c.toured && !c.replaying ? "done" : next
+				const nextPhase = next === "tour" && c.toured && !c.replaying ? "done" : next
 				return {
 					...c,
-					phase,
+					phase: nextPhase,
 					// Finishing or skipping ends the replay, so a later sign-in does not start it again.
 					replaying: phase === "done" ? false : c.replaying,
 				}

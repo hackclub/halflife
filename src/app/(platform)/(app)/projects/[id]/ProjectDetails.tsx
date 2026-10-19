@@ -185,8 +185,8 @@ function DetailsForm({
 	const pacingToPrinter = participantGoal === null || participantGoal === ParticipantGoal.PRINTER
 	const hotGoal = pacingToPrinter && goal.hoursPerWeek > MIN_HOURS_PER_WEEK
 
-	function takeStarter(id: string) {
-		setStarterId(id)
+	function takeStarter(starterId: string) {
+		setStarterId(starterId)
 		// A starter is scoped to tier 1 from the start, so taking one carries the tier with it – the server holds the same rule.
 		setTier(STARTER_PROJECT_TIER)
 	}

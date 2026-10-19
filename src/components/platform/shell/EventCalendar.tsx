@@ -116,10 +116,10 @@ export function EventCalendar({
 			// Crowds overlap transitively, so the running maximum end is the test: sorted by start, anything starting before it belongs to the crowd. Back-to-back events touch but never overlap, so each keeps the full width.
 			const crowds: { slices: typeof slices; end: number }[] = []
 			for (const slice of slices) {
-				const open = crowds.at(-1)
-				if (open && slice.seg.startMin < open.end) {
-					open.slices.push(slice)
-					open.end = Math.max(open.end, slice.seg.endMin)
+				const crowd = crowds.at(-1)
+				if (crowd && slice.seg.startMin < crowd.end) {
+					crowd.slices.push(slice)
+					crowd.end = Math.max(crowd.end, slice.seg.endMin)
 				} else {
 					crowds.push({ end: slice.seg.endMin, slices: [slice] })
 				}

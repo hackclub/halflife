@@ -20,14 +20,14 @@ export function PrinterAwardForm({ awardId, status }: Readonly<{ awardId: string
 
 	function save() {
 		if (!next) return
-		const status = next
+		const nextStatus = next
 		void run(
 			"save",
 			() =>
 				sendJson(`/api/admin/printer-awards/${awardId}`, {
 					body: {
-						status,
-						...(status === "SHIPPED" || status === "DELIVERED" ? { trackingCarrier, trackingNumber } : {}),
+						status: nextStatus,
+						...(nextStatus === "SHIPPED" || nextStatus === "DELIVERED" ? { trackingCarrier, trackingNumber } : {}),
 						note,
 					},
 					method: "PATCH",

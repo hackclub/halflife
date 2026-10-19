@@ -328,14 +328,14 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 
 		const targetProjectId = txProject?.id ?? before.project.id
 
-		const projectAfter = touchesProject
+		const updatedProject = touchesProject
 			? await tx.themeProject.update({
 					data: projectData,
 					select: PROJECT_SELECT,
 					where: { id: targetProjectId },
 				})
 			: (txProject ?? before.project)
-		const userAfter = await tx.user.update({
+		const updatedUser = await tx.user.update({
 			...userWrite,
 			data: {
 				...userWrite.data,
@@ -350,7 +350,7 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 			where: { id: userId, onboardingStep: { lt: reachedNow } },
 		})
 
-		return { projectAfter, reached: reachedNow, userAfter }
+		return { projectAfter: updatedProject, reached: reachedNow, userAfter: updatedUser }
 	})
 
 	const state: OnboardingState = {
