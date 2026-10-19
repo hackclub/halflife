@@ -30,7 +30,8 @@
 			"src/**",
 			"!src/**/*.svg",
 			"*.config.mjs",
-			"*.config.ts"
+			"*.config.ts",
+			"*.json"
 		]
 	},
 	"formatter": {
