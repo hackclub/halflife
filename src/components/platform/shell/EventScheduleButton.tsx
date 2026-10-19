@@ -89,7 +89,7 @@ export function EventScheduleButton({
 						"—"
 					) : now === null ? (
 						<>
-							{"--:--"}
+							--:--
 							<span className="hidden sm:inline">:--</span>
 						</>
 					) : live ? (
