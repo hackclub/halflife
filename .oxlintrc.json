@@ -67,7 +67,6 @@
 		"eslint/sort-keys": "off",
 		"import/consistent-type-specifier-style": "off",
 		"import/exports-last": "off",
-		"import/first": "off",
 		"import/group-exports": "off",
 		"import/max-dependencies": "off",
 		"import/no-duplicates": "error",

@@ -1,10 +1,9 @@
 "use client"
 
 import { type ButtonHTMLAttributes, forwardRef, type ReactNode } from "react"
-
-export { cx } from "@/lib/cx"
-
 import { cx } from "@/lib/cx"
+
+export { cx }
 
 /* ------------------------------------------------------------------ *
  * Panel – the cream card with a wobbling marker outline
