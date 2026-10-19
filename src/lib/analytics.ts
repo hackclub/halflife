@@ -464,6 +464,6 @@ export async function getAnalyticsSummary(days = 30): Promise<{
 	return {
 		dau: dau.map(d => ({ day: d.day, users: d._count._all })),
 		funnel,
-		weeklyMilestones: [...byWeek.values()].sort((a, b) => a.week - b.week),
+		weeklyMilestones: [...byWeek.values()].toSorted((a, b) => a.week - b.week),
 	}
 }

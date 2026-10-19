@@ -1007,7 +1007,7 @@ export async function getAreaStats(): Promise<AreaStat[]> {
 		id,
 		label,
 		users: totals.get(id)?.users ?? 0,
-	})).sort((a, b) => rankLast(b.label, b.users) - rankLast(a.label, a.users))
+	})).toSorted((a, b) => rankLast(b.label, b.users) - rankLast(a.label, a.users))
 }
 
 /** Users and hours per country, from each account's timezone. Ranked by users. */
@@ -1017,7 +1017,7 @@ export async function getCountryStats(): Promise<CountryStat[]> {
 	return [...totals]
 		.filter(([, t]) => t.users > 0 || t.hours > 0)
 		.map(([country, t]) => ({ country, hours: round1(t.hours), users: t.users }))
-		.sort((a, b) => rankLast(b.country, b.users) - rankLast(a.country, a.users))
+		.toSorted((a, b) => rankLast(b.country, b.users) - rankLast(a.country, a.users))
 }
 
 export interface DayActivity {
@@ -1064,7 +1064,7 @@ export async function getDailyActivity(): Promise<DayActivity[]> {
 		if (s.hoursSource !== HoursSource.HACKATIME_TRACKED) row.hours += s.hoursApproved ?? s.hoursClaimed
 	}
 
-	const days = [...byDay.keys()].sort()
+	const days = [...byDay.keys()].toSorted()
 	if (days.length === 0) return []
 	const out: DayActivity[] = []
 	const [first, last] = [days[0] as string, days[days.length - 1] as string]
@@ -1192,7 +1192,7 @@ export async function getDailyActivityByGoal(): Promise<GoalDayActivity[]> {
 		if (s.hoursSource !== HoursSource.HACKATIME_TRACKED) row.hours += s.hoursApproved ?? s.hoursClaimed
 	}
 
-	const days = [...byDay.keys()].sort()
+	const days = [...byDay.keys()].toSorted()
 	if (days.length === 0) return []
 	const out: GoalDayActivity[] = []
 	const [first, last] = [days[0] as string, days[days.length - 1] as string]
@@ -1259,7 +1259,7 @@ export const HOUR_EDGES = [1, 2, 3, 5, 7, 10, 15, 20, 30, 40, 60, 80, 120, 160, 
 export async function getHoursDistribution(): Promise<HoursDistribution> {
 	const inputs = await loadRegionInputs()
 	const byUser = hoursByUser(inputs)
-	const perUser = [...byUser.hours.values()].filter(h => h > 0).sort((a, b) => a - b)
+	const perUser = [...byUser.hours.values()].filter(h => h > 0).toSorted((a, b) => a - b)
 
 	// One bucket per edge, so the trailing Infinity edge becomes the "160+" bar and catches the long tail.
 	const last = HOUR_EDGES.length - 1
@@ -1332,7 +1332,7 @@ export async function getFirstProjectStats(): Promise<FirstProjectStat[]> {
 			starter: starterId !== null,
 			users,
 		}))
-		.sort((a, b) => b.users - a.users)
+		.toSorted((a, b) => b.users - a.users)
 }
 
 /** The four columns each week's cluster is split into. */
@@ -1430,7 +1430,7 @@ export async function getProjectsByWeek(): Promise<WeekProjectCluster[]> {
 		}
 	}
 
-	return [...clusters.values()].sort((a, b) => a.week - b.week)
+	return [...clusters.values()].toSorted((a, b) => a.week - b.week)
 }
 
 export interface WeekHoursCluster {
@@ -1543,7 +1543,7 @@ export async function getHoursByWeek(): Promise<WeekHoursCluster[]> {
 		cluster.tier3 = round1(cluster.tier3)
 	}
 
-	return [...clusters.values()].sort((a, b) => a.week - b.week)
+	return [...clusters.values()].toSorted((a, b) => a.week - b.week)
 }
 
 export interface VerificationStat {
@@ -1569,7 +1569,7 @@ export async function getVerificationStats(): Promise<VerificationStat[]> {
 					: (VERIFICATION_STATUS_LABELS[row.verificationStatus] ?? row.verificationStatus),
 			users: row._count._all,
 		}))
-		.sort((a, b) => b.users - a.users)
+		.toSorted((a, b) => b.users - a.users)
 }
 
 /**
@@ -2144,7 +2144,7 @@ export async function getUserFlowSankey(): Promise<{ diagram: SankeyDiagram; act
 				share: finishers.length === 0 ? 0 : reachedCount("none") / finishers.length,
 				users: reachedCount("none"),
 			},
-		].sort((a, b) => b.users - a.users),
+		].toSorted((a, b) => b.users - a.users),
 		total: finishers.length,
 	}
 

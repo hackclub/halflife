@@ -533,7 +533,7 @@ async function commitGitHub(
 
 	if (entries.length === 0) {
 		// Every file already held this content. No tree, no commit, no ref update.
-		return written.sort((a, b) => a.path.localeCompare(b.path))
+		return written.toSorted((a, b) => a.path.localeCompare(b.path))
 	}
 
 	const treeRes = await call(creds, `${base}/git/trees`, {
@@ -566,7 +566,7 @@ async function commitGitHub(
 		throw new HttpError("CONFLICT", "The repo moved while syncing. Nothing was written; try again.")
 	if (!updateRes.ok) await throwForgeError(creds.forge, updateRes)
 
-	return written.sort((a, b) => a.path.localeCompare(b.path))
+	return written.toSorted((a, b) => a.path.localeCompare(b.path))
 }
 
 /**
@@ -717,7 +717,7 @@ async function commitGitLab(
 		}),
 	)
 
-	if (actions.length === 0) return written.sort((a, b) => a.path.localeCompare(b.path))
+	if (actions.length === 0) return written.toSorted((a, b) => a.path.localeCompare(b.path))
 
 	const commitRes = await call(creds, `projects/${project}/repository/commits`, {
 		body: JSON.stringify({ actions, branch, commit_message: message }),
@@ -731,5 +731,7 @@ async function commitGitLab(
 	const commit = (await commitRes.json()) as { id: string }
 
 	// GitLab's commit response carries the commit sha, not per-file shas, so the run history records that per file. It is what a maker would look up anyway.
-	return written.map(w => ({ ...w, sha: w.unchanged ? w.sha : commit.id })).sort((a, b) => a.path.localeCompare(b.path))
+	return written
+		.map(w => ({ ...w, sha: w.unchanged ? w.sha : commit.id }))
+		.toSorted((a, b) => a.path.localeCompare(b.path))
 }

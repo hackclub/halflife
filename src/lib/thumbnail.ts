@@ -40,7 +40,7 @@ export function projectThumbnail(
  * The newest reel frame. A real thumbnail wins even on an older reel; the video is the last resort, and only ever the newest one.
  */
 export function latestReelFrame(reels: ReelFrames[]): ProjectThumbnail | null {
-	const newest = [...reels].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+	const newest = [...reels].toSorted((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
 	let video: ProjectThumbnail | null = null
 	for (const reel of newest) {
 		if (reel.thumbnailUrl) return { kind: "image", url: reel.thumbnailUrl }
@@ -50,7 +50,7 @@ export function latestReelFrame(reels: ReelFrames[]): ProjectThumbnail | null {
 }
 
 export function latestJournalImage(entries: EntryImages[]): string | null {
-	const newest = [...entries].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+	const newest = [...entries].toSorted((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
 	for (const entry of newest) {
 		const found = imageSources(entry.content ?? "")
 		const last = found[found.length - 1]

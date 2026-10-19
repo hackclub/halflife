@@ -37,7 +37,7 @@ export function mergeIntervals(intervals: readonly Interval[]): Interval[] {
 	const clean: Interval[] = intervals
 		.filter(i => Number.isFinite(i?.start) && Number.isFinite(i?.end) && (i?.end ?? 0) > (i?.start ?? 0))
 		.map(i => ({ end: i.end, start: i.start }))
-		.sort((a, b) => a.start - b.start)
+		.toSorted((a, b) => a.start - b.start)
 	const first = clean[0]
 	if (!first) return []
 

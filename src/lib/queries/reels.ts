@@ -143,5 +143,5 @@ export async function getMyReels(userId: string): Promise<MyReelGroup[]> {
 		const i = THEMES.findIndex(t => t.label === g.project?.theme)
 		return i === -1 ? THEMES.length : i
 	}
-	return [...groups.values()].sort((a, b) => order(a) - order(b))
+	return [...groups.values()].toSorted((a, b) => order(a) - order(b))
 }

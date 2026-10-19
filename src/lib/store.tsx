@@ -390,7 +390,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			...Object.values(facts.warmups).map(w => w.closesAt),
 		]
 			.filter(at => at > now)
-			.sort((a, b) => a - b)[0]
+			.toSorted((a, b) => a - b)[0]
 		if (next === undefined) return
 		const t = window.setTimeout(() => setNow(Date.now()), Math.min(next - now, 2 ** 31 - 1))
 		return () => window.clearTimeout(t)

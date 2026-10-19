@@ -253,7 +253,8 @@ export function eventsOnDay<T extends CalendarEvent>(events: readonly T[], day: 
 /** The soonest event that has not finished, or null when the programme is clear. */
 export function nextEvent<T extends CalendarEvent>(events: readonly T[], now: Date): T | null {
 	return (
-		[...events].sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime()).find(event => eventIsUpcoming(event, now))
-		?? null
+		[...events]
+			.toSorted((a, b) => a.startsAt.getTime() - b.startsAt.getTime())
+			.find(event => eventIsUpcoming(event, now)) ?? null
 	)
 }

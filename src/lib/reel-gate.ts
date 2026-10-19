@@ -91,7 +91,7 @@ export async function getOwedReelKeys(userId: string): Promise<string[]> {
 		// Only a reel that can still be re-recorded holds anything up.
 		if (projectId && (await reelLockReason(userId, projectId, key)) === null) owed.push(key)
 	}
-	return owed.sort()
+	return owed.toSorted()
 }
 
 /**

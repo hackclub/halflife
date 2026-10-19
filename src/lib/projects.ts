@@ -82,7 +82,7 @@ export function projectEvents(project: Project, weeks: Week[], read: (id: string
 		}
 	}
 
-	return out.sort((a, b) => b.at - a.at || b.id.localeCompare(a.id))
+	return out.toSorted((a, b) => b.at - a.at || b.id.localeCompare(a.id))
 }
 
 /** The running totals a project card and its header both want. */

@@ -209,7 +209,7 @@ export function renderJournal(project: ProjectMeta, entries: JournalEntry[]): Re
 	}
 
 	// Oldest first: a devlog is read forward.
-	const ordered = [...entries].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+	const ordered = [...entries].toSorted((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
 
 	// A contents list, because a build week can be dozens of entries and GitHub's rendering has no sidebar.
 	lines.push("## Contents", "")

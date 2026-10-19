@@ -386,8 +386,8 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			|| pinned.length > 0
 			|| (!editing && tab !== "journal")
 		// Clips compare as sets against the seed: reordering a pick is not a change.
-		const workingIds = [...picked.map(t => t.id), ...pinned].sort()
-		const seedIds = [...clipSeed.picked.map(t => t.id), ...clipSeed.pinned].sort()
+		const workingIds = [...picked.map(t => t.id), ...pinned].toSorted()
+		const seedIds = [...clipSeed.picked.map(t => t.id), ...clipSeed.pinned].toSorted()
 		const clipsMatch = workingIds.length === seedIds.length && workingIds.every((id, i) => seedIds[i] === id)
 		const matchesSaved = editing && cleanBody === baselineBody && hoursText === baselineHours && clipsMatch
 		if (!hasContent || matchesSaved) {

@@ -254,7 +254,7 @@ export async function purchase(
 			if (!inGrace) {
 				const reviewedAt = [lastReview._max.designReviewedAt, lastReview._max.buildReviewedAt]
 					.filter((d): d is Date => !!d)
-					.sort((a, b) => b.getTime() - a.getTime())[0]
+					.toSorted((a, b) => b.getTime() - a.getTime())[0]
 				inGrace = !!reviewedAt && reviewedAt.getTime() + settings.shopGraceDays * 86_400_000 > Date.now()
 			}
 			if (!inGrace) throw new HttpError("SHOP_CLOSED", SHOP_CLOSED_MESSAGE)

@@ -154,7 +154,7 @@ for (const call of [
 		continue
 	}
 	const missing = call.methods.filter(m => !exported.has(m))
-	check(label, missing.length === 0, `route exports ${[...exported].sort().join("/") || "nothing"}`)
+	check(label, missing.length === 0, `route exports ${[...exported].toSorted().join("/") || "nothing"}`)
 }
 
 /* ── 2. Bodies ───────────────────────────────────────────────────────────── */

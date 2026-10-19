@@ -325,7 +325,7 @@ export async function getShopAccess(userId: string): Promise<ShopAccess> {
 
 	const reviewedAt = [lastReview._max.designReviewedAt, lastReview._max.buildReviewedAt]
 		.filter((d): d is Date => !!d)
-		.sort((a, b) => b.getTime() - a.getTime())[0]
+		.toSorted((a, b) => b.getTime() - a.getTime())[0]
 
 	if (reviewedAt) {
 		const graceUntil = new Date(reviewedAt.getTime() + settings.shopGraceDays * DAY_MS)

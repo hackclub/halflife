@@ -112,7 +112,7 @@ export function EventCalendar({
 				.filter(
 					(slice): slice is { event: CalendarEvent; seg: { startMin: number; endMin: number } } => slice.seg !== null,
 				)
-				.sort((a, b) => a.seg.startMin - b.seg.startMin || a.seg.endMin - b.seg.endMin)
+				.toSorted((a, b) => a.seg.startMin - b.seg.startMin || a.seg.endMin - b.seg.endMin)
 			// Crowds overlap transitively, so the running maximum end is the test: sorted by start, anything starting before it belongs to the crowd. Back-to-back events touch but never overlap, so each keeps the full width.
 			const crowds: { slices: typeof slices; end: number }[] = []
 			for (const slice of slices) {

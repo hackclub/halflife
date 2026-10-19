@@ -136,7 +136,7 @@ function designFinder(ref: RepoRef, files: readonly string[]): () => Promise<str
 async function findDesignJson(ref: RepoRef, files: readonly string[]): Promise<string[]> {
 	const candidates = files
 		.filter(p => p.toLowerCase().endsWith(DESIGN_JSON.extension) && !DESIGN_JSON_SKIP.test(p))
-		.sort((a, b) => a.split("/").length - b.split("/").length || a.length - b.length)
+		.toSorted((a, b) => a.split("/").length - b.split("/").length || a.length - b.length)
 		.slice(0, DESIGN_JSON_MAX)
 	if (candidates.length === 0) return []
 
@@ -279,7 +279,7 @@ async function fetchGitLabReadme(forge: Forge, project: string, files: readonly 
 	// Root-level names first, then anything nested, so a docs/README does not shadow the project's own.
 	const candidates = files
 		.filter(f => README_NAMES.includes((f.split("/").pop() ?? "").toLowerCase()))
-		.sort((a, b) => a.split("/").length - b.split("/").length)
+		.toSorted((a, b) => a.split("/").length - b.split("/").length)
 	const name = candidates[0]
 	if (!name) return null
 
@@ -541,7 +541,7 @@ export async function findRepoFilePath(repoLink: string | null, test: RegExp): P
 	if (!ref) return null
 	const snap = await snapshot(ref)
 	if (snap.kind !== "ok") return null
-	const hits = snap.files.filter(f => test.test(f)).sort((a, b) => a.split("/").length - b.split("/").length)
+	const hits = snap.files.filter(f => test.test(f)).toSorted((a, b) => a.split("/").length - b.split("/").length)
 	return hits[0] ?? null
 }
 

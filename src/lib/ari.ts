@@ -902,7 +902,7 @@ export async function reconcileAriDecisions(
 	// Shuffled rather than ordered: see the header. Sort keys are only for the shuffle and carry no meaning.
 	const open = candidates
 		.map(value => ({ order: Math.random(), value }))
-		.sort((a, b) => a.order - b.order)
+		.toSorted((a, b) => a.order - b.order)
 		.slice(0, opts.limit ?? 2000)
 		.map(entry => entry.value)
 

@@ -331,7 +331,7 @@ function MetricPie({
 	const ranked = rows
 		.map(r => ({ label: r.label, value: pick(r) }))
 		.filter(s => s.value > 0)
-		.sort((a, b) => b.value - a.value)
+		.toSorted((a, b) => b.value - a.value)
 	const total = ranked.reduce((n, s) => n + s.value, 0)
 	if (total === 0) return <EmptyState>No data yet.</EmptyState>
 
