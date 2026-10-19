@@ -169,7 +169,7 @@ export function StageSlide({
 		heart.className = "absolute size-24 text-coral drop-shadow-[0_6px_12px_rgb(28_26_89/0.35)]"
 		heart.style.left = `${clientX - box.left}px`
 		heart.style.top = `${clientY - box.top}px`
-		host.appendChild(heart)
+		host.append(heart)
 		const at = (lift: number, scale: number) =>
 			`translate(-50%, calc(-50% - ${lift}px)) rotate(${tilt}deg) scale(${scale})`
 		heart

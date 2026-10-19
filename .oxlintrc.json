@@ -135,7 +135,6 @@
 		"unicorn/prefer-add-event-listener": "off",
 		"unicorn/prefer-code-point": "warn",
 		"unicorn/prefer-date-now": "warn",
-		"unicorn/prefer-dom-node-append": "off",
 		"unicorn/prefer-global-this": "off",
 		"unicorn/prefer-includes": "warn",
 		"unicorn/prefer-logical-operator-over-ternary": "off",
