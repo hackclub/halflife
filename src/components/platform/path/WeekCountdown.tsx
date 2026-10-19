@@ -33,7 +33,7 @@ export function WeekCountdown({ week }: { week: Week }) {
 	const [remaining, setRemaining] = useState<number | null>(null)
 	useEffect(() => {
 		if (!ongoing) return
-		const closes = closesAt as number
+		const closes = closesAt
 		const tick = () => setRemaining(closes - Date.now())
 		tick()
 		const timer = setInterval(tick, 1000)

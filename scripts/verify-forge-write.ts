@@ -33,7 +33,7 @@ interface Step {
 let script: Step[] = []
 let calls = 0
 
-globalThis.fetch = (() => {
+globalThis.fetch = () => {
 	// Once the script is spent, the last step repeats, so an exhausted retry can be observed.
 	const step = script[calls] ?? script.at(-1)
 	calls++
@@ -45,7 +45,7 @@ globalThis.fetch = (() => {
 			status: step.status,
 		}),
 	)
-}) as typeof fetch
+}
 
 async function run(steps: Step[]): Promise<{ ok: true; value: string } | { ok: false; err: unknown }> {
 	script = steps

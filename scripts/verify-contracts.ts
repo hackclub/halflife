@@ -299,7 +299,7 @@ async function bodies() {
 	const importDefaults = bomImportSchema.safeParse({})
 	check(
 		"body · bomImport defaults to a preview, not a write",
-		importDefaults.success && importDefaults.data.apply! && importDefaults.data.replace!,
+		importDefaults.success && importDefaults.data.apply && importDefaults.data.replace,
 	)
 	check("body · bomImport rejects an unknown field", !bomImportSchema.safeParse({ write: true }).success)
 
@@ -320,7 +320,7 @@ async function bodies() {
 			try {
 				// A transport error twice, then success: two failures, one answer.
 				let attempts = 0
-				globalThis.fetch = (() => {
+				globalThis.fetch = () => {
 					attempts++
 					if (attempts < 3) {
 						const err = new Error("aborted") as Error & { name: string }
@@ -328,35 +328,35 @@ async function bodies() {
 						throw err
 					}
 					return Promise.resolve(new Response('{"ok":true}', { status: 200 }))
-				}) as typeof fetch
+				}
 				const res = await fetchWithRetry("https://example.test/a", { retries: 2 })
 				check("fetch-retry · a timeout is retried until it lands", attempts === 3 && res.status === 200)
 
 				// A 4xx is a real answer, not a blip.
 				let seen = 0
-				globalThis.fetch = (() => {
+				globalThis.fetch = () => {
 					seen++
 					return Promise.resolve(new Response("nope", { status: 401 }))
-				}) as typeof fetch
+				}
 				const unauthorized = await fetchWithRetry("https://example.test/b", { retries: 2 })
 				check("fetch-retry · a 4xx is not retried", seen === 1 && unauthorized.status === 401)
 
 				// A 5xx is worth another go.
 				let fives = 0
-				globalThis.fetch = (() => {
+				globalThis.fetch = () => {
 					fives++
 					return Promise.resolve(new Response("bad", { status: 503 }))
-				}) as typeof fetch
+				}
 				const down = await fetchWithRetry("https://example.test/c", { retries: 2 })
 				check("fetch-retry · a 5xx is retried then returned", fives === 3 && down.status === 503)
 
 				// Exhausting the retries throws rather than returning nothing.
 				let threw = false
-				globalThis.fetch = (() => {
+				globalThis.fetch = () => {
 					const err = new Error("nope") as Error & { name: string }
 					err.name = "TimeoutError"
 					throw err
-				}) as typeof fetch
+				}
 				try {
 					await fetchWithRetry("https://example.test/d", { retries: 1 })
 				} catch {
@@ -365,10 +365,8 @@ async function bodies() {
 				check("fetch-retry · a persistent failure throws", threw)
 
 				// A body larger than the cap is refused rather than buffered whole.
-				globalThis.fetch = (() =>
-					Promise.resolve(
-						new Response("x", { headers: { "content-length": String(8 * 1024 * 1024) }, status: 200 }),
-					)) as typeof fetch
+				globalThis.fetch = () =>
+					Promise.resolve(new Response("x", { headers: { "content-length": String(8 * 1024 * 1024) }, status: 200 }))
 				let oversizeThrew = false
 				try {
 					await fetchWithRetry("https://example.test/e", { retries: 0 })
@@ -579,10 +577,10 @@ async function bodies() {
 	const stats = (...items: { name: string; total_seconds: number }[]) => ({ data: { projects: items } })
 
 	const presentZero = projectSecondsFrom(stats({ name: "firmware", total_seconds: 0 }), "firmware")
-	check("hackatime · present with 0s is a live zero", presentZero.stale! && presentZero.seconds === 0)
+	check("hackatime · present with 0s is a live zero", presentZero.stale && presentZero.seconds === 0)
 
 	const presentSeconds = projectSecondsFrom(stats({ name: "firmware", total_seconds: 4321 }), "firmware")
-	check("hackatime · present seconds are read", presentSeconds.stale! && presentSeconds.seconds === 4321)
+	check("hackatime · present seconds are read", presentSeconds.stale && presentSeconds.seconds === 4321)
 
 	const renamed = projectSecondsFrom(stats({ name: "firmware-v2", total_seconds: 4321 }), "firmware")
 	check("hackatime · a renamed project is stale, not zero", renamed.stale && renamed.notFound && renamed.seconds === 0)
@@ -613,11 +611,11 @@ async function bodies() {
 
 	const spanList = (...spans: { start_time: number; end_time: number }[]) => ({ spans })
 	const read = spansFrom(spanList({ end_time: 1600, start_time: 1000 }, { end_time: 2000, start_time: 1700 }))
-	check("hackatime spans · two spans are read", read.stale! && read.spans.length === 2 && read.spans[0]?.start === 1000)
+	check("hackatime spans · two spans are read", read.stale && read.spans.length === 2 && read.spans[0]?.start === 1000)
 
 	// An empty list is a real answer: the project was tracked at no time in the window. A missing list is not, and must never read as "no overlap".
 	const emptyList = spansFrom(spanList())
-	check("hackatime spans · an empty list is a finding", emptyList.stale! && emptyList.spans.length === 0)
+	check("hackatime spans · an empty list is a finding", emptyList.stale && emptyList.spans.length === 0)
 
 	const noSpans = spansFrom({ data: {} })
 	check("hackatime spans · a response with no spans is stale", noSpans.stale && noSpans.spans.length === 0)
@@ -627,7 +625,7 @@ async function bodies() {
 
 	// One malformed row costs that row, not the participant's hours.
 	const mixed = spansFrom(spanList({ end_time: 1600, start_time: 1000 }, { end_time: 5, start_time: null } as never))
-	check("hackatime spans · a malformed row is dropped, the rest survive", mixed.stale! && mixed.spans.length === 1)
+	check("hackatime spans · a malformed row is dropped, the rest survive", mixed.stale && mixed.spans.length === 1)
 
 	// A backwards span is not time anybody spent.
 	const backwards = spansFrom(spanList({ end_time: 1000, start_time: 1600 }))
@@ -741,7 +739,7 @@ async function bodies() {
 		coldCache.computedTotal === 4,
 		`got ${coldCache.computedTotal}`,
 	)
-	check("rollup · a warm cache reports the overlap as checked", deduped.hackatimeOverlapUnknown!)
+	check("rollup · a warm cache reports the overlap as checked", deduped.hackatimeOverlapUnknown)
 	check(
 		"rollup · a phase with no recording has nothing to check",
 		!rollUpHours(noTimelapses, [{ cachedSeconds: 3600, cachedSpans: null, hoursApproved: null }], null)
@@ -923,7 +921,7 @@ async function bodies() {
 	check("overlap · a cache covering the window is used", cache !== null && cachedSpansCover(cache, 120, 180))
 	check(
 		"overlap · a cache narrower than the window is not used",
-		cache !== null && cachedSpansCover(cache, 50, 180)! && cachedSpansCover(cache, 120, 250)!,
+		cache !== null && cachedSpansCover(cache, 50, 180) && cachedSpansCover(cache, 120, 250),
 	)
 	// A shape this did not write is no cache at all: one refetch, not a wrong answer.
 	check("overlap · an unrecognised cache shape is ignored", parseCachedSpans([{ end: 2, start: 1 }]) === null)

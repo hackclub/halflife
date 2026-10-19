@@ -69,7 +69,7 @@ function safeLookup(
 ): void {
 	dnsLookup(hostname, { ...options, all: true }, (err, addresses) => {
 		if (err) return callback(err, "")
-		const list = addresses as LookupAddress[]
+		const list = addresses
 		const first = list[0]
 		if (!first || list.some(a => isBlocked(a.address, a.family)))
 			return callback(Object.assign(new Error(`Refused to connect to ${hostname}`), { code: "EBLOCKED" }), "")

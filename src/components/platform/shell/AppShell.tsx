@@ -314,7 +314,7 @@ export function AppShell({
 			>
 				<ul className="mx-auto flex max-w-lg">
 					{TAB_NAV.map(item => {
-						const Icon = MOBILE_ICONS[item.href as keyof typeof MOBILE_ICONS]
+						const Icon = MOBILE_ICONS[item.href]
 						const active = item.href === PLATFORM_HOME ? pathname === PLATFORM_HOME : pathname.startsWith(item.href)
 						return (
 							<li className="min-w-0 flex-1" data-tour={item.tourId} key={item.href}>
