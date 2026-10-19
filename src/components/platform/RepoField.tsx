@@ -45,7 +45,8 @@ export function RepoInput({ value, onChange, id }: { value: string; onChange: (v
 			)}
 			{/* The repo is asked for before there is anything in it, so this is the first and often only moment to say what the repo has to end up holding. The README is the part a reviewer opens first and the part nothing else on this form explains. */}
 			<p className="mt-1.5 text-[0.78rem] leading-snug text-navy-soft">
-				Your repo needs a README that says what the project is, how it works, and shows photos of it –{" "}
+				Your repo needs a README that says what the project is, how it works, and shows at least two photos of it – at
+				least 200 characters of text, once images are removed –{" "}
 				<a
 					className="font-semibold text-sky-ink underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
 					href={README_GUIDE_URL}

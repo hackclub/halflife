@@ -288,8 +288,20 @@ async function fetchGitLabReadme(forge: Forge, project: string, files: readonly 
 	return res.text()
 }
 
-/** Stasis's image test: markdown or HTML images, or an image file named in it. */
-const README_IMAGE = /!\[.*?\]\(.*?\)|<img\s+[^>]*src\s*=|\.png|\.jpe?g|\.gif|\.webp|\.svg/i
+/** Markdown or HTML images. Global so the README can be counted as well as tested. */
+const README_IMAGE = /!\[[^\]]*\]\([^)]*\)|!\[[^\]]*\]\[[^\]]*\]|<img\b[^>]*>/gi
+const README_MIN_CHARS = 200
+const README_MIN_IMAGES = 2
+
+/** How many images the README embeds. */
+function readmeImageCount(readme: string): number {
+	return [...readme.matchAll(README_IMAGE)].length
+}
+
+/** The README's prose, with images and the whitespace they leave behind removed. */
+function readmeText(readme: string): string {
+	return readme.replace(README_IMAGE, " ").replace(/\s+/g, " ").trim()
+}
 
 /** The paths in the repo that satisfy a file kind by name. */
 function namedMatches(kind: RepoFileKind, snap: RepoSnapshot): string[] {
@@ -411,14 +423,29 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 					status: "fail",
 				},
 	)
+	const readmeChars = readme === null ? 0 : readmeText(readme).length
+	const imageCount = readme === null ? 0 : readmeImageCount(readme)
+
 	checks.push(
-		readme !== null && README_IMAGE.test(readme)
-			? { key: "readme_photo", label: "Photos in the README", status: "pass" }
+		readme !== null && readmeChars >= README_MIN_CHARS
+			? { detail: `${readmeChars} characters`, key: "readme_length", label: "README length", status: "pass" }
 			: {
 					blocking: true,
-					detail: "Add at least one image of the project – a render, a screenshot of the board, or a photo.",
+					detail: `Add at least ${README_MIN_CHARS} characters about what the project is and how it works. The README has ${readmeChars} once images are removed.`,
+					key: "readme_length",
+					label: "README too short",
+					link: { href: README_GUIDE_URL, label: "What goes in a README" },
+					status: "fail",
+				},
+	)
+	checks.push(
+		readme !== null && imageCount >= README_MIN_IMAGES
+			? { detail: `${imageCount} images`, key: "readme_photo", label: "Photos in the README", status: "pass" }
+			: {
+					blocking: true,
+					detail: `Add at least ${README_MIN_IMAGES} images of the project – renders, screenshots of the board, or photos. The README has ${imageCount}.`,
 					key: "readme_photo",
-					label: "No photos in the README",
+					label: imageCount === 0 ? "No photos in the README" : "Not enough photos in the README",
 					link: { href: README_GUIDE_URL, label: "What goes in a README" },
 					status: "fail",
 				},
