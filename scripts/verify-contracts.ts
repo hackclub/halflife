@@ -299,7 +299,7 @@ async function bodies() {
 	const importDefaults = bomImportSchema.safeParse({})
 	check(
 		"body · bomImport defaults to a preview, not a write",
-		importDefaults.success && importDefaults.data.apply === false && importDefaults.data.replace === false,
+		importDefaults.success && importDefaults.data.apply! && importDefaults.data.replace!,
 	)
 	check("body · bomImport rejects an unknown field", !bomImportSchema.safeParse({ write: true }).success)
 
@@ -579,28 +579,22 @@ async function bodies() {
 	const stats = (...items: { name: string; total_seconds: number }[]) => ({ data: { projects: items } })
 
 	const presentZero = projectSecondsFrom(stats({ name: "firmware", total_seconds: 0 }), "firmware")
-	check("hackatime · present with 0s is a live zero", presentZero.stale === false && presentZero.seconds === 0)
+	check("hackatime · present with 0s is a live zero", presentZero.stale! && presentZero.seconds === 0)
 
 	const presentSeconds = projectSecondsFrom(stats({ name: "firmware", total_seconds: 4321 }), "firmware")
-	check("hackatime · present seconds are read", presentSeconds.stale === false && presentSeconds.seconds === 4321)
+	check("hackatime · present seconds are read", presentSeconds.stale! && presentSeconds.seconds === 4321)
 
 	const renamed = projectSecondsFrom(stats({ name: "firmware-v2", total_seconds: 4321 }), "firmware")
-	check(
-		"hackatime · a renamed project is stale, not zero",
-		renamed.stale === true && renamed.notFound === true && renamed.seconds === 0,
-	)
+	check("hackatime · a renamed project is stale, not zero", renamed.stale && renamed.notFound && renamed.seconds === 0)
 
 	const missingFromEmpty = projectSecondsFrom(stats(), "firmware")
-	check(
-		"hackatime · a name missing from an empty list is stale",
-		missingFromEmpty.stale === true && missingFromEmpty.notFound === true,
-	)
+	check("hackatime · a name missing from an empty list is stale", missingFromEmpty.stale && missingFromEmpty.notFound)
 
 	const noList = projectSecondsFrom({ data: {} }, "firmware")
-	check("hackatime · a response with no list is stale", noList.stale === true && !noList.notFound)
+	check("hackatime · a response with no list is stale", noList.stale && !noList.notFound)
 
 	const nullBody = projectSecondsFrom(null, "firmware")
-	check("hackatime · a null body is stale", nullBody.stale === true && !nullBody.notFound)
+	check("hackatime · a null body is stale", nullBody.stale && !nullBody.notFound)
 
 	/* ── 5d-ii. Hackatime spans, and the overlap arithmetic ────────────────── */
 	//
@@ -619,27 +613,21 @@ async function bodies() {
 
 	const spanList = (...spans: { start_time: number; end_time: number }[]) => ({ spans })
 	const read = spansFrom(spanList({ end_time: 1600, start_time: 1000 }, { end_time: 2000, start_time: 1700 }))
-	check(
-		"hackatime spans · two spans are read",
-		read.stale === false && read.spans.length === 2 && read.spans[0]?.start === 1000,
-	)
+	check("hackatime spans · two spans are read", read.stale! && read.spans.length === 2 && read.spans[0]?.start === 1000)
 
 	// An empty list is a real answer: the project was tracked at no time in the window. A missing list is not, and must never read as "no overlap".
 	const emptyList = spansFrom(spanList())
-	check("hackatime spans · an empty list is a finding", emptyList.stale === false && emptyList.spans.length === 0)
+	check("hackatime spans · an empty list is a finding", emptyList.stale! && emptyList.spans.length === 0)
 
 	const noSpans = spansFrom({ data: {} })
-	check("hackatime spans · a response with no spans is stale", noSpans.stale === true && noSpans.spans.length === 0)
+	check("hackatime spans · a response with no spans is stale", noSpans.stale && noSpans.spans.length === 0)
 
 	const nullSpans = spansFrom(null)
-	check("hackatime spans · a null body is stale", nullSpans.stale === true)
+	check("hackatime spans · a null body is stale", nullSpans.stale)
 
 	// One malformed row costs that row, not the participant's hours.
 	const mixed = spansFrom(spanList({ end_time: 1600, start_time: 1000 }, { end_time: 5, start_time: null } as never))
-	check(
-		"hackatime spans · a malformed row is dropped, the rest survive",
-		mixed.stale === false && mixed.spans.length === 1,
-	)
+	check("hackatime spans · a malformed row is dropped, the rest survive", mixed.stale! && mixed.spans.length === 1)
 
 	// A backwards span is not time anybody spent.
 	const backwards = spansFrom(spanList({ end_time: 1000, start_time: 1600 }))
@@ -745,7 +733,7 @@ async function bodies() {
 	const coldCache = rollUpHours(oneEntry, [{ cachedSeconds: 7200, cachedSpans: null, hoursApproved: null }], null)
 	check(
 		"rollup · a cold span cache is reported as unchecked",
-		coldCache.hackatimeOverlapUnknown === true && coldCache.hackatimeOverlapSeconds === 0,
+		coldCache.hackatimeOverlapUnknown && coldCache.hackatimeOverlapSeconds === 0,
 		`unknown=${coldCache.hackatimeOverlapUnknown} overlap=${coldCache.hackatimeOverlapSeconds}`,
 	)
 	check(
@@ -753,17 +741,17 @@ async function bodies() {
 		coldCache.computedTotal === 4,
 		`got ${coldCache.computedTotal}`,
 	)
-	check("rollup · a warm cache reports the overlap as checked", deduped.hackatimeOverlapUnknown === false)
+	check("rollup · a warm cache reports the overlap as checked", deduped.hackatimeOverlapUnknown!)
 	check(
 		"rollup · a phase with no recording has nothing to check",
-		rollUpHours(noTimelapses, [{ cachedSeconds: 3600, cachedSpans: null, hoursApproved: null }], null)
-			.hackatimeOverlapUnknown === false,
+		!rollUpHours(noTimelapses, [{ cachedSeconds: 3600, cachedSpans: null, hoursApproved: null }], null)
+			.hackatimeOverlapUnknown,
 	)
 	// A reviewer override is a decision, not a computed value: it must not be reported as an unchecked overlap either, or every decided phase would carry a warning it cannot act on.
 	check(
 		"rollup · an overridden link is never an unchecked overlap",
-		rollUpHours(oneEntry, [{ cachedSeconds: 7200, cachedSpans: null, hoursApproved: 5 }], null).hackatimeOverlapUnknown
-			=== false,
+		!rollUpHours(oneEntry, [{ cachedSeconds: 7200, cachedSpans: null, hoursApproved: 5 }], null)
+			.hackatimeOverlapUnknown,
 	)
 
 	// The reported case: a maker journals and records a sitting in one project and links the tracked time on another. The recording and the link live on different rows, so nothing compared them and the sitting was paid for on both sides. The recording's own Hackatime project is what pairs them.
@@ -796,7 +784,7 @@ async function bodies() {
 	const crossCold = rollUpHours([], [{ ...crossLink, cachedSpans: null }], null, [crossWindow])
 	check(
 		"rollup · a cross-week recording with a cold cache is reported as unchecked",
-		crossCold.hackatimeOverlapUnknown === true && crossCold.computedTotal === 2,
+		crossCold.hackatimeOverlapUnknown && crossCold.computedTotal === 2,
 		`unknown=${crossCold.hackatimeOverlapUnknown}, total=${crossCold.computedTotal}`,
 	)
 
@@ -932,10 +920,10 @@ async function bodies() {
 	// Cached spans carry the window they were fetched for. A cached answer to a narrower question is not an answer, and must force a refetch rather than conclude "no overlap" about minutes it never covered.
 	const cache = parseCachedSpans({ from: 100, spans: [{ end: 200, start: 100 }], to: 200 })
 	check("overlap · cached spans are read back", cache !== null && cache.spans.length === 1)
-	check("overlap · a cache covering the window is used", cache !== null && cachedSpansCover(cache, 120, 180) === true)
+	check("overlap · a cache covering the window is used", cache !== null && cachedSpansCover(cache, 120, 180))
 	check(
 		"overlap · a cache narrower than the window is not used",
-		cache !== null && cachedSpansCover(cache, 50, 180) === false && cachedSpansCover(cache, 120, 250) === false,
+		cache !== null && cachedSpansCover(cache, 50, 180)! && cachedSpansCover(cache, 120, 250)!,
 	)
 	// A shape this did not write is no cache at all: one refetch, not a wrong answer.
 	check("overlap · an unrecognised cache shape is ignored", parseCachedSpans([{ end: 2, start: 1 }]) === null)
