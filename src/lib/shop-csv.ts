@@ -160,7 +160,7 @@ export function parseShopCsv(text: string): { items: ShopCsvItem[]; problems: Sh
 	for (const row of rows) {
 		const cell = (c: Column) => {
 			const i = columns.indexOf(c)
-			return i < 0 ? "" : (row.fields[i] ?? "")
+			return i === -1 ? "" : (row.fields[i] ?? "")
 		}
 		const say = (message: string) => problems.push({ line: row.line, message })
 
