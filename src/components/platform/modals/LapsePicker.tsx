@@ -85,7 +85,7 @@ export function LapsePicker({
 	}, [forSession])
 
 	useEffect(() => {
-		// eslint-disable-next-line react-hooks/set-state-in-effect -- fetching on mount
+		// fetching on mount
 		refresh()
 	}, [refresh])
 
@@ -229,7 +229,7 @@ export function LapsePicker({
 								>
 									<span className="relative grid aspect-video w-24 shrink-0 place-items-center overflow-hidden rounded-lg bg-navy/10">
 										{t.thumbnailUrl ? (
-											// Lapse's CDN, sized by the box; next/image would need every Lapse host allow-listed for no gain at 96px. eslint-disable-next-line @next/next/no-img-element
+											// Lapse's CDN, sized by the box; next/image would need every Lapse host allow-listed for no gain at 96px.
 											<img alt="" className="h-full w-full object-cover" loading="lazy" src={t.thumbnailUrl} />
 										) : (
 											<IconFilm className="text-lg text-navy-soft" />

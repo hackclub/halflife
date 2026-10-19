@@ -93,7 +93,7 @@ export function RepoSyncSettings({
 	}, [projectId])
 
 	useEffect(() => {
-		// eslint-disable-next-line react-hooks/set-state-in-effect -- fetching on mount and on a new project
+		// fetching on mount and on a new project
 		load()
 	}, [load])
 

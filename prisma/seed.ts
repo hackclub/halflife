@@ -116,8 +116,7 @@ async function main() {
   })
 
   console.log(
-    `shop items: ${items.length} present` +
-      (retired.count > 0 ? `, ${retired.count} off-catalogue printer(s) retired` : ""),
+    `shop items: ${items.length} present${retired.count > 0 ? `, ${retired.count} off-catalogue printer(s) retired` : ""}`,
   )
 }
 

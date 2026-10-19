@@ -495,7 +495,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 		} catch {
 			/* storage unavailable – the trail stays locked */
 		}
-		// eslint-disable-next-line react-hooks/set-state-in-effect -- hydrating from localStorage
+		// hydrating from localStorage
 		if (next) setCeremony(next)
 		if (bypass) setBypassing(true)
 		setHydrated(true)

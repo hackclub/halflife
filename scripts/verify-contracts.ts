@@ -2,6 +2,7 @@ import "dotenv/config"
 import { readdirSync, readFileSync, statSync } from "node:fs"
 import { join, relative } from "node:path"
 import type { z } from "zod"
+import type { JournalEntry } from "../src/lib/repo-sync-files"
 
 /**
  * The contract between the browser and the API.
@@ -47,13 +48,11 @@ function routeTable(): Map<string, Set<string>> {
 			// Both forms are in use: `export const POST = withRoute(...)` and `export async function POST(...)`.
 			if (new RegExp(`export (const|async function) ${method}\\b`).test(source)) found.add(method)
 		}
-		const url =
-			"/"
-			// Either separator: `relative` hands back backslashes on Windows.
-			+ relative("src/app", file.replace(/[\\/]route\.ts$/, ""))
-				.split(/[\\/]/)
-				.filter(segment => !segment.startsWith("("))
-				.join("/")
+		// Either separator: `relative` hands back backslashes on Windows.
+		const url = `/${relative("src/app", file.replace(/[\\/]route\.ts$/, ""))
+			.split(/[\\/]/)
+			.filter(segment => !segment.startsWith("("))
+			.join("/")}`
 		table.set(url, found)
 	}
 	return table
@@ -406,7 +405,7 @@ async function bodies() {
 	/* ── 4. Video container signatures ─────────────────────────────────────── */
 	//
 	// A MIME type and an extension are only claims; the bytes decide. The `ftyp` box is shared with HEIC/AVIF/JPEG-2000 images, so the brand has to be a video one – otherwise a still image renamed `.mp4` becomes a reel.
-	const asciiBytes = (s: string) => [...s].map(c => c.charCodeAt(0))
+	const asciiBytes = (s: string) => [...s].map(c => c.codePointAt(0) ?? 0)
 	const isoFile = (major: string, compatible: string[] = []) => {
 		const body = [
 			0,
@@ -999,7 +998,7 @@ async function bodies() {
 			title: "Hackpad",
 			weekId: 1,
 		}
-		const entry = (over: Partial<import("../src/lib/repo-sync-files").JournalEntry> = {}) => ({
+		const entry = (over: Partial<JournalEntry> = {}) => ({
 			content: "<p>Wired <strong>everything</strong> up.</p>",
 			createdAt: new Date("2026-10-06T12:00:00Z"),
 			effectiveDate: "2026-10-06",

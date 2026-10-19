@@ -1,8 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import type { CSSProperties } from "react"
-import { useCallback, useEffect, useRef } from "react"
+import { type CSSProperties, useCallback, useEffect, useRef } from "react"
 import ImageSlot from "@/components/site/image-slot"
 import { BUILD_CARDS } from "@/lib/site/content"
 

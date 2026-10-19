@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from "react"
 import { IconChevronLeft, IconChevronRight } from "@/components/platform/icons"
 import { Modal, ModalTitle } from "@/components/platform/modals/Modal"
 import { cx } from "@/lib/cx"
-import type { CalendarEvent } from "@/lib/events"
 import {
+	type CalendarEvent,
 	calendarDay,
 	dayLabel,
 	daySegment,

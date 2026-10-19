@@ -87,7 +87,6 @@ export function SubmissionReelPicker({
 								<span className="relative grid aspect-video w-24 shrink-0 place-items-center overflow-hidden rounded-lg bg-navy/10">
 									{reel.thumbnailUrl ? (
 										// Same origin as the feed's own <video> poster; next/image would need the bucket host allow-listed for a 96px tile.
-										// eslint-disable-next-line @next/next/no-img-element
 										<img alt="" className="h-full w-full object-cover" loading="lazy" src={reel.thumbnailUrl} />
 									) : (
 										<IconFilm className="text-lg text-navy-soft" />

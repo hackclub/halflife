@@ -271,7 +271,7 @@ function Lapses({ lapses }: { lapses: TimelineLapse[] }) {
 					<>
 						<span className="relative block aspect-video w-40 overflow-hidden rounded-xl bg-navy/90">
 							{l.thumbnailUrl ? (
-								// eslint-disable-next-line @next/next/no-img-element -- Lapse's own CDN, not ours to optimise
+								// Lapse's own CDN, not ours to optimise
 								<img alt="" className="h-full w-full object-cover" loading="lazy" src={l.thumbnailUrl} />
 							) : null}
 							<span className="absolute inset-0 grid place-items-center">

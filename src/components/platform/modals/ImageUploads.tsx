@@ -88,7 +88,7 @@ export function ImageUploads({
 				<ul aria-label={`${label}s`} className="flex flex-wrap gap-2.5">
 					{images.map((img, i) => (
 						<li className="relative" key={img.objectKey}>
-							{/* eslint-disable-next-line @next/next/no-img-element -- a local blob preview */}
+							{/* a local blob preview */}
 							<img
 								alt={`${label} ${i + 1}`}
 								className="size-24 rounded-xl border-2 border-line bg-white object-cover"

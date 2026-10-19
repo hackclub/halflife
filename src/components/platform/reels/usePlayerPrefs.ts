@@ -27,7 +27,7 @@ export function usePlayerPrefs(): readonly [PlayerPrefs, (patch: Partial<PlayerP
 			const raw = window.localStorage.getItem(KEY)
 			if (!raw) return
 			const saved = JSON.parse(raw) as Partial<PlayerPrefs>
-			// eslint-disable-next-line react-hooks/set-state-in-effect -- hydrating from localStorage
+			// hydrating from localStorage
 			setPrefs({
 				autoScroll: typeof saved.autoScroll === "boolean" ? saved.autoScroll : DEFAULTS.autoScroll,
 				comments: typeof saved.comments === "boolean" ? saved.comments : DEFAULTS.comments,

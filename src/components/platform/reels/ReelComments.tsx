@@ -105,7 +105,7 @@ export function ReelComments({
 	const asked = thread !== undefined
 	useEffect(() => {
 		if (!reelId || asked) return
-		// eslint-disable-next-line react-hooks/set-state-in-effect -- every update in `load` lands after its await
+		// every update in `load` lands after its await
 		load(reelId, null)
 	}, [reelId, asked, load])
 

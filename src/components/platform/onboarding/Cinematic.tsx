@@ -6,8 +6,10 @@ import { Avatar } from "@/components/platform/Avatar"
 import { Gato, PrinterPhoto, WeekPainting } from "@/components/platform/art"
 import { IconCheck, IconClock, IconCoin, IconFilm, IconLock, IconPlay, IconUpload } from "@/components/platform/icons"
 import { Button, onAccent } from "@/components/platform/ui"
-import { MIN_HOURS_PER_WEEK } from "@/lib/config/printers"
+import { MIN_HOURS_PER_WEEK, type PrinterGoal, printerById } from "@/lib/config/printers"
 import { BUILD_HOURS, checkpointsFor, WEEK_META } from "@/lib/curriculum"
+import { cx } from "@/lib/cx"
+import { useStore } from "@/lib/store"
 import flightControllerShot from "../../../../public/projects/flightcontroller.png"
 import hexapodShot from "../../../../public/projects/hexapod.png"
 import macropadShot from "../../../../public/projects/macropad.png"
@@ -26,10 +28,6 @@ const WEEKS = WEEK_META.map(meta => ({
 	...meta,
 	checkpoints: checkpointsFor(meta, [], () => false, meta.phase === "build" ? BUILD_HOURS : MIN_HOURS_PER_WEEK),
 }))
-
-import { type PrinterGoal, printerById } from "@/lib/config/printers"
-import { cx } from "@/lib/cx"
-import { useStore } from "@/lib/store"
 
 /**
  * Always the Ender 3 V3 SE, never the picked goal, even if the default goal moves: it is the printer every finisher can reach, as on the trail's grand prize.

@@ -17,14 +17,14 @@ import {
   CoinBucket,
   HoursSource,
   LedgerKind,
-  MediaType,
+  type MediaType,
   Phase,
-  PhaseStatus,
+  type PhaseStatus,
   ReviewPass,
-  ReviewResult,
+  type ReviewResult,
   Role,
   ShopItemCategory,
-  ShopOrderStatus,
+  type ShopOrderStatus,
   Theme,
 } from "@/app/generated/prisma/enums"
 import { PrismaClient, type Prisma } from "@/app/generated/prisma/client"
@@ -38,6 +38,8 @@ const SOURCE_URL = process.env.DB_URL
 const TARGET_URL = process.env.DATABASE_URL
 if (!SOURCE_URL) throw new Error("DB_URL missing from import/.env")
 if (!TARGET_URL) throw new Error("DATABASE_URL missing – copy .env.example to .env")
+const sourceUrl: string = SOURCE_URL
+const targetUrl: string = TARGET_URL
 
 const args = process.argv.slice(2)
 const has = (f: string) => args.includes(`--${f}`)
@@ -45,8 +47,8 @@ const LIMIT = Number(args.find((a) => a.startsWith("--limit="))?.split("=")[1] ?
 const KEEP_EMAILS = has("keep-emails")
 const DRY = has("dry-run")
 
-const source = new PrismaClient({ adapter: new PrismaPg({ connectionString: SOURCE_URL }) })
-const target = new PrismaClient({ adapter: new PrismaPg({ connectionString: TARGET_URL }) })
+const source = new PrismaClient({ adapter: new PrismaPg({ connectionString: sourceUrl }) })
+const target = new PrismaClient({ adapter: new PrismaPg({ connectionString: targetUrl }) })
 
 const BATCH = 1000
 const THEME_ORDER = [Theme.PCB, Theme.CAD, Theme.SYNTH, Theme.DISPLAYS, Theme.BREADBOARD_COMPUTER]
@@ -345,7 +347,8 @@ async function importProjects(userIds: Set<string>): Promise<{
 
   for (const [userId, list] of byUser) {
     for (const [i, p] of list.slice(0, 5).entries()) {
-      const theme = THEME_ORDER[i]!
+      const theme = THEME_ORDER[i]
+      if (!theme) continue
       const tier = p.tier && p.tier >= 1 && p.tier <= 3 ? p.tier : null
       ids.add(p.id)
       userIdOf.set(p.id, userId)
@@ -396,7 +399,8 @@ async function importSessions(
   const sessions = all.filter((s) => projectIds.has(s.projectId))
 
   const rows: Prisma.WorkSessionCreateManyInput[] = sessions.map((s) => {
-    const theme = themeOf.get(s.projectId)!
+    const theme = themeOf.get(s.projectId)
+    if (!theme) throw new Error(`No imported theme for project ${s.projectId}`)
     const week = scheduledWeekFor(theme, s.stage)
     return {
       id: s.id,
@@ -507,7 +511,9 @@ async function importSubmissions(
   const rows: Prisma.PhaseSubmissionCreateManyInput[] = all
     .filter((s) => projectIds.has(s.projectId))
     .map((s) => {
-      const week = scheduledWeekFor(themeOf.get(s.projectId)!, s.stage)
+      const theme = themeOf.get(s.projectId)
+      if (!theme) throw new Error(`No imported theme for project ${s.projectId}`)
+      const week = scheduledWeekFor(theme, s.stage)
       return {
         id: s.id,
         themeProjectId: s.projectId,
@@ -659,8 +665,8 @@ async function importShop(userIds: Set<string>): Promise<void> {
 
 async function main() {
   const started = Date.now()
-  console.log(`Source: ${SOURCE_URL!.replace(/:[^:@/]+@/, ":***@")}`)
-  console.log(`Target: ${TARGET_URL!.replace(/:[^:@/]+@/, ":***@")}`)
+  console.log(`Source: ${sourceUrl.replace(/:[^:@/]+@/, ":***@")}`)
+  console.log(`Target: ${targetUrl.replace(/:[^:@/]+@/, ":***@")}`)
   if (DRY) console.log("DRY RUN – nothing will be written")
   if (KEEP_EMAILS) console.log("Keeping real email addresses")
 

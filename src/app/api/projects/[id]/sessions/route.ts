@@ -1,5 +1,4 @@
-import type { NextRequest } from "next/server"
-import { after } from "next/server"
+import { after, type NextRequest } from "next/server"
 import { PhaseStatus, Theme } from "@/app/generated/prisma/enums"
 import { recomputeActiveDays, recomputeWeek } from "@/lib/analytics"
 import { fail, ok, parseBody, parseQuery, withRoute } from "@/lib/api"

@@ -3,12 +3,14 @@ import { PrismaPg } from "@prisma/adapter-pg"
 import { PrismaClient } from "@/app/generated/prisma/client"
 
 config()
-const db = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }) })
+const databaseUrl = process.env.DATABASE_URL
+if (!databaseUrl) throw new Error("DATABASE_URL missing")
+const db = new PrismaClient({ adapter: new PrismaPg({ connectionString: databaseUrl }) })
 
 async function q<T extends { [_: string]: unknown }>(label: string, sql: string) {
   const rows = await db.$queryRawUnsafe<T[]>(sql)
   console.log(`\n${label}`)
-  for (const r of rows) console.log("  " + JSON.stringify(r, (_k, v) => (typeof v === "bigint" ? Number(v) : v)))
+  for (const r of rows) console.log(`  ${JSON.stringify(r, (_k, v) => (typeof v === "bigint" ? Number(v) : v))}`)
 }
 
 async function main() {

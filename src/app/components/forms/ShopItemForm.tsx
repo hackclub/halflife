@@ -47,7 +47,7 @@ function previewImageUrl(value: string): string | null {
 	try {
 		const url = new URL(value.trim())
 		if (url.protocol !== "https:") return null
-		return url.href.replace(/[<>"']/g, c => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)
+		return url.href.replace(/[<>"']/g, c => `%${(c.codePointAt(0) ?? 0).toString(16).toUpperCase()}`)
 	} catch {
 		return null
 	}

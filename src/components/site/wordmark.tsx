@@ -1,6 +1,4 @@
-import type { StaticImageData } from "next/image"
-
-import Image from "next/image"
+import Image, { type StaticImageData } from "next/image"
 import { BRAND } from "@/lib/site/content"
 import logoArt from "../../../public/art/logo.png"
 

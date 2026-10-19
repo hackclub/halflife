@@ -65,7 +65,7 @@ const VIDEO_FTYP_BRANDS = new Set([
 /** Four ASCII bytes at `offset`, or fewer/`\0` when the buffer is short. */
 function brandAt(bytes: Uint8Array, offset: number): string {
 	let brand = ""
-	for (let i = 0; i < 4; i += 1) brand += String.fromCharCode(bytes[offset + i] ?? 0)
+	for (let i = 0; i < 4; i += 1) brand += String.fromCodePoint(bytes[offset + i] ?? 0)
 	return brand
 }
 

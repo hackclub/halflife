@@ -2087,7 +2087,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		return () => {
 			live = false
 		}
-	}, [isBuild, project?.id]) // eslint-disable-line react-hooks/exhaustive-deps -- the id is the input
+	}, [isBuild, project?.id]) // the id is the input
 	// The same arithmetic the submit gate reads (lib/bom-policy), so the total on screen is the total being held to.
 	const bomTotal = useMemo(() => bomTotalUsd(bom?.items ?? [], bom?.taxShippingUsd), [bom])
 

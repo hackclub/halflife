@@ -89,7 +89,7 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 	}, [load])
 
 	useEffect(() => {
-		// eslint-disable-next-line react-hooks/set-state-in-effect -- fetching on mount
+		// fetching on mount
 		load()
 	}, [load])
 

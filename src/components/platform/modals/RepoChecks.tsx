@@ -48,7 +48,7 @@ export function RepoChecks({
 	}, [project.id])
 
 	useEffect(() => {
-		// eslint-disable-next-line react-hooks/set-state-in-effect -- fetching on mount and a new project
+		// fetching on mount and a new project
 		loadSync()
 	}, [loadSync])
 
@@ -77,11 +77,11 @@ export function RepoChecks({
 		} finally {
 			setLoading(false)
 		}
-		// The link is the input: a new one means a fresh check. eslint-disable-next-line react-hooks/exhaustive-deps
+		// The link is the input: a new one means a fresh check.
 	}, [project.id, project.githubRepo])
 
 	useEffect(() => {
-		// eslint-disable-next-line react-hooks/set-state-in-effect -- fetching on mount and on a new link
+		// fetching on mount and on a new link
 		run()
 	}, [run])
 

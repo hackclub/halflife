@@ -61,7 +61,6 @@ function records(text: string): { line: number; fields: string[] }[] {
 }
 
 // Only ever read through `typeof` below, to derive the `Column` union that keeps HEADER_ALIASES honest - every alias has to name a real column. That is a type-position use, which this rule cannot see (the config is not type-aware), hence the disable.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const COLUMNS = [
 	"project_id",
 	"project_title",

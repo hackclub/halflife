@@ -240,7 +240,7 @@ export function ReelViewer() {
 		const id = params.get("reel")
 		if (id) {
 			deepLink.current = { comments: params.get("comments") === "1", id }
-			// eslint-disable-next-line react-hooks/set-state-in-effect -- reading the URL after mount
+			// reading the URL after mount
 			setResume({ id, leadIds: [] })
 			return
 		}
@@ -276,7 +276,7 @@ export function ReelViewer() {
 		if (!pendingComments || restoring) return
 		if (wide) setPrefs({ comments: true })
 		else {
-			// eslint-disable-next-line react-hooks/set-state-in-effect -- a deep link asks for the comments once
+			// a deep link asks for the comments once
 			setSheetShown(true)
 			setSheetOpen(true)
 		}

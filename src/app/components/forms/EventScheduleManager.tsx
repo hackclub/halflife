@@ -4,8 +4,7 @@ import { useState } from "react"
 import { ActionButton } from "@/app/components/forms/ActionButton"
 import { EventForm } from "@/app/components/forms/EventForm"
 import { Badge, Callout, EmptyState, Panel } from "@/app/components/ui"
-import type { CalendarEvent } from "@/lib/events"
-import { calendarDay, dayLabel, eventColour, eventRangeLabel } from "@/lib/events"
+import { type CalendarEvent, calendarDay, dayLabel, eventColour, eventRangeLabel } from "@/lib/events"
 
 /**
  * The admin half of the calendar: the form, and the list it writes.

@@ -8,5 +8,5 @@
  * Note `encodeURI` is deliberately not used, though it is also recognised: it re-encodes `%`, turning an already-encoded `%20` into `%2520` and breaking the URL. This only touches the four characters below.
  */
 export function attrUrl(url: string): string {
-	return url.replace(/[<>"']/g, c => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)
+	return url.replace(/[<>"']/g, c => `%${(c.codePointAt(0) ?? 0).toString(16).toUpperCase()}`)
 }

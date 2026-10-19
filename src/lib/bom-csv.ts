@@ -112,7 +112,7 @@ function normalize(cell: string): string {
  */
 function parseRows(input: string): string[][] {
 	// A UTF-8 BOM is invisible and would otherwise become part of the first header cell, so the name column is never found.
-	const text = input.charCodeAt(0) === 0xfeff ? input.slice(1) : input
+	const text = input.codePointAt(0) === 0xfeff ? input.slice(1) : input
 	const rows: string[][] = []
 	let row: string[] = []
 	let field = ""

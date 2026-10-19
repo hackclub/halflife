@@ -148,7 +148,7 @@ function inline(text: string, key: string): ReactNode[] {
 			const src = safeSrc(m[2])
 			out.push(
 				src ? (
-					// eslint-disable-next-line @next/next/no-img-element -- arbitrary remote source typed by the maker
+					// arbitrary remote source typed by the maker
 					<img
 						alt={m[1]}
 						className="my-1 block max-w-full rounded-xl border-2 border-line"

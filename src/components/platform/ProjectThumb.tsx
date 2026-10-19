@@ -20,7 +20,7 @@ export function ProjectThumb({ thumb, className }: { thumb: ProjectThumbnail; cl
 		)
 	}
 	return (
-		// eslint-disable-next-line @next/next/no-img-element -- R2, or a URL the maker pasted into a journal
+		// R2, or a URL the maker pasted into a journal
 		<img alt="" className={cx("object-cover", className)} loading="lazy" src={thumb.url} />
 	)
 }
