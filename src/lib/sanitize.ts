@@ -1,4 +1,4 @@
-import DOMPurify from "isomorphic-dompurify"
+import { sanitize as domPurifySanitize } from "isomorphic-dompurify"
 
 /**
  * Zod validates shape; these validate content. They are not substitutes for each other, and both run on every free-text field before it is persisted.
@@ -6,12 +6,12 @@ import DOMPurify from "isomorphic-dompurify"
 
 /** Strips all markup. For anything stored and rendered as plain text. */
 export function sanitize(input: string): string {
-	return DOMPurify.sanitize(input, { ALLOWED_ATTR: [], ALLOWED_TAGS: [] }).trim()
+	return domPurifySanitize(input, { ALLOWED_ATTR: [], ALLOWED_TAGS: [] }).trim()
 }
 
 /** Allows safe markup. Only for journal content, which renders as rich text. */
 export function sanitizeHtml(input: string): string {
-	return DOMPurify.sanitize(input, {
+	return domPurifySanitize(input, {
 		ALLOW_DATA_ATTR: false,
 		ALLOWED_ATTR: ["href", "title", "target", "rel"],
 		ALLOWED_TAGS: ["b", "i", "em", "strong", "a", "p", "br", "ul", "ol", "li", "blockquote", "code", "pre"],
