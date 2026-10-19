@@ -115,7 +115,7 @@
 		"typescript/method-signature-style": ["error", "method"],
 		"typescript/no-explicit-any": "error",
 		"typescript/no-non-null-assertion": "error",
-		"typescript/parameter-properties": "off",
+		"typescript/parameter-properties": ["error", { "prefer": "parameter-property" }],
 		"typescript/prefer-includes": "warn",
 		"typescript/prefer-nullish-coalescing": "warn",
 		"typescript/prefer-ts-expect-error": "warn",
