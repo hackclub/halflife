@@ -210,6 +210,12 @@ h4 {
 		margin-left: calc(50% - 50vw + 1rem);
 	}
 
+	/* A page that needs more room than the reading column, rather than one card inside it. Same breakout as a wide panel, with the shell's own side inset so its edge lines up with the nav. */
+	.hl-page-wide {
+		width: calc(100vw - 2.5rem);
+		margin-left: calc(50% - 50vw + 1.25rem);
+	}
+
 	/* ── Sidebar ───────────────────────────────────────────────────────────── */
 	.hl-sidebar {
 		position: sticky;
@@ -878,6 +884,11 @@ h4 {
 	.hl-table th {
 		font-weight: 700;
 		color: var(--color-ink-strong);
+	}
+	/* Rows whose cells carry controls rather than one line of text: every cell starts at the top, so the project's own details line up with the first action instead of floating halfway down a tall row. */
+	.hl-table--roomy td {
+		padding-block: 0.85rem;
+		vertical-align: top;
 	}
 
 	/* ── Day separator ─────────────────────────────────────────────────────── */

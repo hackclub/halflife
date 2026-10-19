@@ -60,7 +60,7 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 	const now = new Date()
 
 	return (
-		<div className="hl-stack">
+		<div className="hl-stack hl-page-wide">
 			<PageHeader
 				subtitle="Search by title, description, repo, project ID, or the owner's name, email or Slack ID."
 				title="Projects"
@@ -142,7 +142,7 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 				{items.length === 0 ? (
 					<EmptyState>No projects match.</EmptyState>
 				) : (
-					<Table head={["Project", "Owner", "Theme", "Design", "Build", "Tier", "Extension"]}>
+					<Table className="hl-table--roomy" head={["Project", "Owner", "Theme", "Design", "Build", "Tier", "Actions"]}>
 						{items.map(project => {
 							const userExt =
 								project.user.submissionExtensionUntil && project.user.submissionExtensionUntil > now
@@ -150,7 +150,7 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 									: null
 							return (
 								<tr key={project.id}>
-									<td>
+									<td style={{ minWidth: "16rem", overflowWrap: "anywhere" }}>
 										{/* The participant's project page opens for its owner only, so
                         this goes to the owner's admin page, where it is listed. */}
 										<Link href={`/admin/users/${project.user.id}#project-${project.id}`}>
@@ -163,20 +163,13 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 											</div>
 										) : null}
 									</td>
-									<td>
+									<td style={{ minWidth: "13rem", overflowWrap: "anywhere" }}>
 										<Link href={`/admin/users/${project.user.id}`}>
 											{displayName(project.user, project.user.email)}
 										</Link>
 										<div className="hl-hint hl-mono">{project.user.slackId ?? project.user.email}</div>
 									</td>
-									<td>
-										{getThemeDef(project.theme).label}
-										{canMoveTheme ? (
-											<div style={{ marginTop: "0.5rem" }}>
-												<ThemeMoveForm current={project.theme} projectId={project.id} />
-											</div>
-										) : null}
-									</td>
+									<td style={{ minWidth: "9rem" }}>{getThemeDef(project.theme).label}</td>
 									<td>
 										<Badge tone={statusTone(project.designStatus)}>{statusLabel(project.designStatus)}</Badge>
 									</td>
@@ -184,18 +177,28 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 										<Badge tone={statusTone(project.buildStatus)}>{statusLabel(project.buildStatus)}</Badge>
 									</td>
 									<td>{project.tier ?? (project.requestedTier ? `${project.requestedTier} (asked)` : "—")}</td>
-									<td style={{ minWidth: "18rem" }}>
-										{canExtend ? (
-											<ExtensionForm
-												current={project.submissionExtensionUntil?.toISOString() ?? null}
-												url={`/api/admin/theme-projects/${project.id}`}
-											/>
-										) : project.submissionExtensionUntil ? (
-											<span className="hl-mono">{project.submissionExtensionUntil.toLocaleString()}</span>
-										) : (
-											"—"
-										)}
-										{userExt ? <div className="hl-hint">Owner extended until {userExt.toLocaleString()}</div> : null}
+									<td style={{ minWidth: "26rem" }}>
+										<div className="hl-stack hl-stack--tight">
+											{canMoveTheme ? (
+												<div>
+													<p className="hl-hint" style={{ margin: 0 }}>
+														Move to theme
+													</p>
+													<ThemeMoveForm current={project.theme} projectId={project.id} />
+												</div>
+											) : null}
+											{canExtend ? (
+												<ExtensionForm
+													current={project.submissionExtensionUntil?.toISOString() ?? null}
+													url={`/api/admin/theme-projects/${project.id}`}
+												/>
+											) : project.submissionExtensionUntil ? (
+												<span className="hl-mono">{project.submissionExtensionUntil.toLocaleString()}</span>
+											) : (
+												<span className="hl-muted">No extension</span>
+											)}
+											{userExt ? <div className="hl-hint">Owner extended until {userExt.toLocaleString()}</div> : null}
+										</div>
 									</td>
 								</tr>
 							)

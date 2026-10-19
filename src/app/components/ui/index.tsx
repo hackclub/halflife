@@ -171,10 +171,14 @@ export function Field({ label, hint, children }: Readonly<{ label: string; hint?
 	)
 }
 
-export function Table({ head, children }: Readonly<{ head: ReactNode[]; children: ReactNode }>) {
+export function Table({
+	head,
+	children,
+	className,
+}: Readonly<{ head: ReactNode[]; children: ReactNode; className?: string }>) {
 	return (
 		<div className="hl-scroll">
-			<table className="hl-table">
+			<table className={className ? `hl-table ${className}` : "hl-table"}>
 				<thead>
 					<tr>
 						{head.map((h, i) => (
