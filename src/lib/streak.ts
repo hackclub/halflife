@@ -94,7 +94,7 @@ async function activeDaysDesc(tx: Tx, userId: string): Promise<string[]> {
 	for (const p of posts) days.add(effectiveDateFor(p.publishedAt ?? p.createdAt, programTimezone))
 
 	// YYYY-MM-DD sorts lexicographically, so sort-then-reverse is newest-first without parsing a single date.
-	return [...days].toSorted().reverse()
+	return [...days].toSorted().toReversed()
 }
 
 /**

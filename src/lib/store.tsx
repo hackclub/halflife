@@ -1571,7 +1571,7 @@ export function usePrinterPace(): PrinterPace {
 	const missedWeeks = weeks
 		.filter(w => weekPassed(w.id) && (statusOf(w) === "draft" || statusOf(w) === "rejected"))
 		.map(w => w.id)
-		.reverse()
+		.toReversed()
 	return { missedWeeks, perWeekCoins: printer ? Math.round(printer.paceHours * COINS_PER_HOUR) : 0, printer }
 }
 
