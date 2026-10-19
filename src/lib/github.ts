@@ -46,7 +46,7 @@ let inFlight = 0
 const waiting: (() => void)[] = []
 
 async function slot(): Promise<() => void> {
-	if (inFlight >= MAX_IN_FLIGHT) await new Promise<void>(go => waiting.push(go))
+	if (inFlight >= MAX_IN_FLIGHT) await new Promise<void>(resolve => waiting.push(resolve))
 	inFlight++
 	return () => {
 		inFlight--
@@ -54,7 +54,7 @@ async function slot(): Promise<() => void> {
 	}
 }
 
-const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
 /** How long a rate-limited answer asks us to wait, in ms, if it says. */
 function backoffFrom(res: Response): number | null {

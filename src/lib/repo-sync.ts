@@ -134,8 +134,9 @@ async function claimQueued(themeProjectId: string): Promise<Date | null> {
 
 async function waitForFree(themeProjectId: string): Promise<void> {
 	const deadline = Date.now() + QUEUE_MAX_WAIT_MS
-	await new Promise(r => setTimeout(r, SYNC_DEBOUNCE_MS))
-	while (inFlight.has(themeProjectId) && Date.now() < deadline) await new Promise(r => setTimeout(r, QUEUE_POLL_MS))
+	await new Promise(resolve => setTimeout(resolve, SYNC_DEBOUNCE_MS))
+	while (inFlight.has(themeProjectId) && Date.now() < deadline)
+		await new Promise(resolve => setTimeout(resolve, QUEUE_POLL_MS))
 }
 
 /** One commit: read the project, render its files, write them. */

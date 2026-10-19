@@ -87,7 +87,7 @@ let inFlightCalls = 0
 const waiting: (() => void)[] = []
 
 async function slot(): Promise<() => void> {
-	if (inFlightCalls >= MAX_IN_FLIGHT) await new Promise<void>(go => waiting.push(go))
+	if (inFlightCalls >= MAX_IN_FLIGHT) await new Promise<void>(resolve => waiting.push(resolve))
 	inFlightCalls++
 	return () => {
 		inFlightCalls--
@@ -95,7 +95,7 @@ async function slot(): Promise<() => void> {
 	}
 }
 
-const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
 /**
  * How long an answer asks us to wait, in ms, when it is a rate limit that says so.
