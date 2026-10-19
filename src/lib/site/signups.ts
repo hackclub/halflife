@@ -271,8 +271,7 @@ export function clientIp(h: { get(name: string): string | null }): string {
 	const last = forwarded
 		?.split(",")
 		.map(part => part.trim())
-		.filter(Boolean)
-		.at(-1)
+		.findLast(Boolean)
 	return last || h.get("x-real-ip")?.trim() || "unknown"
 }
 

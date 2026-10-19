@@ -332,8 +332,8 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 				}
 			}
 
-			// The newest hand-in dates the node; the status says whether it stands. A week taken back out of review (or reopened by an admin) is `update_requested`, with its old submission rows still there, and it has to read as not handed in, or the trail would hide the live entry and the Submit it needs again. Decided phases and one still in review stay handed in.
-			const submission = submissions.filter(s => s.themeProjectId === project.id && s.phase === phase).at(-1)
+			// The newest hand-in dates the node; the status says whether it stands. A week taken back out of review (or reopened by an admin) is `update_requested`, with its old submission rows still there, and it has to read as not handed in, or the trail would hide the live entry and the Submit it needs again. Decided phases and one still in review stay handed in. `findLast` and not `find`, because the rows come back oldest first and the newest hand-in is the one that counts.
+			const submission = submissions.findLast(s => s.themeProjectId === project.id && s.phase === phase)
 			const status = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
 			if (week !== undefined) phaseStatusByWeek[week] = status
 			if (status === PhaseStatus.in_review || isPhaseDecided(status)) {
