@@ -17,7 +17,8 @@
 	"ignorePatterns": [".next/**", "node_modules/**", "public/**", "src/app/generated/**"],
 	"options": {
 		"denyWarnings": true,
-		"reportUnusedDisableDirectives": "warn"
+		"reportUnusedDisableDirectives": "warn",
+		"typeAware": true
 	},
 	"plugins": ["eslint", "import", "jsx-a11y", "nextjs", "node", "oxc", "promise", "react", "typescript", "unicorn"],
 	"rules": {
