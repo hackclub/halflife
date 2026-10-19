@@ -410,13 +410,12 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			setPicked(clipSeed.picked)
 			setPinned(clipSeed.pinned)
 			clipsTouchedRef.current = false
-			setTab("journal")
 		} else {
 			setBody("")
 			setHoursText("")
 			setPicked([])
-			setTab("journal")
 		}
+		setTab("journal")
 		writeJournalAutosave(checkpoint.id, null)
 	}
 
