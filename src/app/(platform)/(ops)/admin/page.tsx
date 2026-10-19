@@ -1301,8 +1301,7 @@ function WeekAxisLabels({ weeks }: { weeks: WeekColumn[] }) {
  */
 function ProjectsByWeekChart({ weeks }: { weeks: WeekProjectCluster[] }) {
 	const totals = weeks.map(week => PROJECT_KIND.reduce((n, kind) => n + week[kind.key], 0))
-	if (totals.length === 0 || totals.every(t => t === 0))
-		return <EmptyState>No project has been started yet.</EmptyState>
+	if (totals.every(t => t === 0)) return <EmptyState>No project has been started yet.</EmptyState>
 
 	const plotH = CHART_H - PAD_T - PAD_B
 	// Four bars to a cluster, sized as shares of the stride so the labels – one grid cell per cluster – still land
@@ -1436,7 +1435,7 @@ function niceHoursMax(max: number): number {
  */
 function HoursByWeekChart({ weeks }: { weeks: WeekHoursCluster[] }) {
 	const totals = weeks.map(week => PROJECT_KIND.reduce((n, kind) => n + week[kind.key], 0))
-	if (totals.length === 0 || totals.every(t => t === 0)) return <EmptyState>No hours have been logged yet.</EmptyState>
+	if (totals.every(t => t === 0)) return <EmptyState>No hours have been logged yet.</EmptyState>
 
 	const plotH = CHART_H - PAD_T - PAD_B
 	// One bar per week rather than four: the stack is one column, so it takes most of the stride and the rest is the gutter between weeks.

@@ -12,7 +12,7 @@ const TRUSTED_HOSTS = new Set(["halflife.hackclub.com"])
 
 function isLoopbackHost(host: string): boolean {
 	const bare = host.split(":")[0]?.toLowerCase() ?? ""
-	return bare === "localhost" || bare.endsWith(".localhost") || bare === "[::1]" || /^127\./.test(bare)
+	return bare === "localhost" || bare.endsWith(".localhost") || bare === "[::1]" || bare.startsWith("127.")
 }
 
 function trustedForwardedHost(value: string | null): string | null {

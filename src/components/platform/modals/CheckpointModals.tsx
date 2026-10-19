@@ -1361,7 +1361,12 @@ export function PublicReelModal({
 								onChange={e => {
 									const v = e.target.value
 									setValues(prev => ({ ...prev, [p]: v }))
-									if (errors[p]) setErrors(({ [p]: _, ...rest }) => rest)
+									if (errors[p])
+										setErrors(prev => {
+											const next = { ...prev }
+											delete next[p]
+											return next
+										})
 								}}
 								placeholder={info.example}
 								spellCheck={false}

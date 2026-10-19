@@ -23,13 +23,12 @@ export function getAirtableConfig(): AirtableConfig | null {
  * Strip control characters, then escape backslashes, then quotes – in that order. Escaping quotes first would double-escape the backslashes you just inserted. Every formula interpolation goes through this: siege's duplicate check interpolates a URL raw, which is a formula-injection hole, and stasis has one call site that hand-rolls the replace and misses the control characters.
  */
 export function escapeAirtableValue(value: string): string {
-	return (
-		value
-			// biome-ignore lint/suspicious/noControlCharactersInRegex: removing them is the job
-			.replace(/[\x00-\x1F\x7F]/g, "")
-			.replace(/\\/g, "\\\\")
-			.replace(/'/g, "\\'")
-	)
+	// Strip control characters by code point rather than with a regex: the rule that reads patterns cannot see that removing them is the job.
+	const clean = [...value].filter(char => {
+		const code = char.charCodeAt(0)
+		return code > 31 && code !== 127
+	})
+	return clean.join("").replace(/\\/g, "\\\\").replace(/'/g, "\\'")
 }
 
 export class AirtableError extends Error {

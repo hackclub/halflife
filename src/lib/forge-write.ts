@@ -217,7 +217,7 @@ async function call(creds: ForgeCredentials, path: string, init: RequestInit): P
 			res = await fetch(url, {
 				...init,
 				cache: "no-store",
-				headers: { ...headers, ...(init.headers ?? {}) },
+				headers: { ...headers, ...init.headers },
 				signal: AbortSignal.timeout(TIMEOUT_MS),
 			})
 		} catch (err) {

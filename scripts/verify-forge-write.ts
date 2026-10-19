@@ -40,7 +40,7 @@ globalThis.fetch = (async () => {
 	if (!step) throw new Error("fetch called with no scripted step")
 	if (step.throw) throw new TypeError("fetch failed")
 	return new Response(step.body === undefined ? null : JSON.stringify(step.body), {
-		headers: { "content-type": "application/json", ...(step.headers ?? {}) },
+		headers: { "content-type": "application/json", ...step.headers },
 		status: step.status,
 	})
 }) as typeof fetch

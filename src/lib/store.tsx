@@ -355,7 +355,7 @@ const StoreContext = createContext<Ctx | null>(null)
  *
  * Errors are swallowed on purpose. Every caller has already patched local state optimistically, and the `router.refresh()` in the `finally` reloads the server's version either way – so a failed write corrects itself on screen instead of leaving the trail showing something that did not happen.
  */
-async function send(path: string, body: unknown, method = "POST"): Promise<boolean> {
+async function send(path: string, body: unknown, method: "DELETE" | "PATCH" | "POST" = "POST"): Promise<boolean> {
 	try {
 		const res = await fetch(path, {
 			body: JSON.stringify(body),
@@ -776,7 +776,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			patchCheckpoint(id, patch)
 
 			const route = routeOf(id)
-			if (route && /-submit$/.test(id)) {
+			if (route && id.endsWith("-submit")) {
 				send(`/api/projects/${route.projectId}/submit`, { phase: route.phase }).finally(() => router.refresh())
 				return
 			}
