@@ -90,47 +90,46 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 	variant?: "solid" | "outline" | "ghost" | "gold" | "teal" | "coral"
 }
 
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-	{ variant = "solid", size = "md", full, className, children, ...rest },
-	ref,
-) {
-	const sizes = {
-		lg: "h-13 px-7 text-[0.95rem]",
-		md: "h-11 px-5 text-[0.85rem]",
-		sm: "h-9 px-3.5 text-[0.76rem]",
-	}[size]
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+	({ variant = "solid", size = "md", full, className, children, ...rest }, ref) => {
+		const sizes = {
+			lg: "h-13 px-7 text-[0.95rem]",
+			md: "h-11 px-5 text-[0.85rem]",
+			sm: "h-9 px-3.5 text-[0.76rem]",
+		}[size]
 
-	const variants = {
-		coral:
-			"bg-coral-deep text-white border-coral-dark hover:bg-coral-dark active:translate-y-px disabled:bg-line disabled:border-line-strong",
-		ghost: "bg-transparent text-navy-soft border-transparent hover:text-navy hover:bg-black/5 active:translate-y-px",
-		gold: "bg-gold text-navy border-gold-deep hover:brightness-105 active:translate-y-px disabled:bg-line disabled:border-line-strong disabled:text-navy-soft",
-		outline:
-			"bg-transparent text-navy border-violet hover:bg-violet-pale active:translate-y-px disabled:text-navy-soft disabled:border-line",
-		// Each solid fill is the deep tone, rimmed and hovered one darker: a white label on the plain violet, teal and coral read 3.37, 2.80 and 3.33:1.
-		solid:
-			"bg-violet-deep text-white border-violet-dark hover:bg-violet-dark active:translate-y-px disabled:bg-line disabled:border-line-strong",
-		teal: "bg-teal-deep text-white border-teal-dark hover:bg-teal-dark active:translate-y-px disabled:bg-line disabled:border-line-strong",
-	}[variant]
+		const variants = {
+			coral:
+				"bg-coral-deep text-white border-coral-dark hover:bg-coral-dark active:translate-y-px disabled:bg-line disabled:border-line-strong",
+			ghost: "bg-transparent text-navy-soft border-transparent hover:text-navy hover:bg-black/5 active:translate-y-px",
+			gold: "bg-gold text-navy border-gold-deep hover:brightness-105 active:translate-y-px disabled:bg-line disabled:border-line-strong disabled:text-navy-soft",
+			outline:
+				"bg-transparent text-navy border-violet hover:bg-violet-pale active:translate-y-px disabled:text-navy-soft disabled:border-line",
+			// Each solid fill is the deep tone, rimmed and hovered one darker: a white label on the plain violet, teal and coral read 3.37, 2.80 and 3.33:1.
+			solid:
+				"bg-violet-deep text-white border-violet-dark hover:bg-violet-dark active:translate-y-px disabled:bg-line disabled:border-line-strong",
+			teal: "bg-teal-deep text-white border-teal-dark hover:bg-teal-dark active:translate-y-px disabled:bg-line disabled:border-line-strong",
+		}[variant]
 
-	return (
-		<button
-			className={cx(
-				"label inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border-2 whitespace-nowrap",
-				"transition-[background-color,color,transform,filter] duration-150",
-				"disabled:cursor-not-allowed disabled:opacity-70",
-				sizes,
-				variants,
-				full && "w-full",
-				className,
-			)}
-			ref={ref}
-			{...rest}
-		>
-			{children}
-		</button>
-	)
-})
+		return (
+			<button
+				className={cx(
+					"label inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border-2 whitespace-nowrap",
+					"transition-[background-color,color,transform,filter] duration-150",
+					"disabled:cursor-not-allowed disabled:opacity-70",
+					sizes,
+					variants,
+					full && "w-full",
+					className,
+				)}
+				ref={ref}
+				{...rest}
+			>
+				{children}
+			</button>
+		)
+	},
+)
 
 /* ------------------------------------------------------------------ *
  * Torn tape – the week banner / page signs
