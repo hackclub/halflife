@@ -56,19 +56,10 @@ jobs:
             # both without a full build.
             - run: bunx next typegen
 
+            # Typecheck only. Linting is owned by the two workflows beside this one, and they run on the same triggers: Biome formats, organises imports and lints, and Oxlint lints with the curated rule set in `.oxlintrc.json`. The code reaching this job has already been through both, so a third linter over the same files here repeated all of it – and repeated it with a different rule set, which is how a rule the project deliberately turns off in `.oxlintrc.json` ended up gating the build anyway.
             # `bun check` rather than `bun run typecheck`: it is the built-in, reads the same tsconfig (paths, strict flags, the generated/ exclude) and enforces .next/types, so the `next typegen` step above still earns its place.
-            # Typecheck and ESLint touch disjoint inputs, so run them concurrently
-            # rather than sequentially. The `||` guards keep `set -e` from
-            # exiting on the first `wait` before the other status is collected.
-            - name: Check and lint
-              run: |
-                  CHECK_STATUS=0
-                  LINT_STATUS=0
-                  bun check & CHECK_PID=$!
-                  bun run lint & LINT_PID=$!
-                  wait $CHECK_PID || CHECK_STATUS=$?
-                  wait $LINT_PID || LINT_STATUS=$?
-                  exit $(( CHECK_STATUS || LINT_STATUS ))
+            - name: Typecheck
+              run: bun check
 
             # Static regression checks: no database, no network, no secrets.
             # verify-loops pins the Signups join (id over email, skip-not-throw);
