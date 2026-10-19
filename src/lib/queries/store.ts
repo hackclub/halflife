@@ -25,7 +25,14 @@ import { type RecordedWindow, timelapseWindow } from "@/lib/hours-overlap"
 import { round2 } from "@/lib/money"
 import { getUserRoles, hasRole } from "@/lib/permissions"
 import prisma from "@/lib/prisma"
-import { effectiveDateFor, effectiveWeekClose, getProgramSettings, weekClosesAt, weekOpensAt } from "@/lib/program"
+import {
+	effectiveDateFor,
+	effectiveWeekClose,
+	getProgramSettings,
+	isPhaseDecided,
+	weekClosesAt,
+	weekOpensAt,
+} from "@/lib/program"
 import { getOwedReelKeys } from "@/lib/reel-gate"
 import { streakAsOf } from "@/lib/streak"
 import { projectThumbnail } from "@/lib/thumbnail"
@@ -325,11 +332,11 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
 				}
 			}
 
-			// The newest hand-in dates the node; the status says whether it stands. A week taken back out of review (or reopened by an admin) is draft again with its old submission rows still there, and it has to read as not handed in, or the trail would hide the Submit it needs again.
+			// The newest hand-in dates the node; the status says whether it stands. A week taken back out of review (or reopened by an admin) is `update_requested`, with its old submission rows still there, and it has to read as not handed in, or the trail would hide the live entry and the Submit it needs again. Decided phases and one still in review stay handed in.
 			const submission = submissions.filter(s => s.themeProjectId === project.id && s.phase === phase).at(-1)
 			const status = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
 			if (week !== undefined) phaseStatusByWeek[week] = status
-			if (status !== PhaseStatus.draft) {
+			if (status === PhaseStatus.in_review || isPhaseDecided(status)) {
 				progress[id("submit")] = {
 					artefacts: 0,
 					at: submission?.createdAt.getTime(),
