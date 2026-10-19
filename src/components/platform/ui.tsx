@@ -130,6 +130,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 		)
 	},
 )
+// A forwardRef is an object rather than a function, so React DevTools has no name to show for it and the component reads as "ForwardRef" in a stack trace. Told one, it is "Button" in both.
+Button.displayName = "Button"
 
 /* ------------------------------------------------------------------ *
  * Torn tape – the week banner / page signs
