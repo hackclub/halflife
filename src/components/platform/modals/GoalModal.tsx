@@ -30,7 +30,7 @@ export function GoalModal({
 	dismissible = true,
 }: {
 	open: boolean
-	onClose: () => void
+	onClose(): void
 	dismissible?: boolean
 }) {
 	const { goalId, participantGoal, printerFund, setParticipantGoal } = useStore()
@@ -258,7 +258,7 @@ function GoalCard({
 	goal: PrinterGoal
 	selected: boolean
 	current: boolean
-	onSelect: () => void
+	onSelect(): void
 }) {
 	const load = Math.round((goal.paceHours / Math.max(...PRINTERS.map(p => p.paceHours))) * 100)
 

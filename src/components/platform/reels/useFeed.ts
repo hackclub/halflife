@@ -15,8 +15,8 @@ export function useFeed(limit = 12): {
 	loading: boolean
 	error: string | null
 	done: boolean
-	more: () => void
-	patch: (id: string, next: Partial<FeedItem>) => void
+	more(): void
+	patch(id: string, next: Partial<FeedItem>): void
 } {
 	const [items, setItems] = useState<FeedItem[]>([])
 	// Today's admin reels, as the first page put them in front of the rest.

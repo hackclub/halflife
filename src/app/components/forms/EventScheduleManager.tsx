@@ -91,7 +91,7 @@ function RowTable({
 	events: CalendarEvent[]
 	timeZone: string
 	seriesCount: Map<string, number>
-	onEdit: (event: CalendarEvent) => void
+	onEdit(event: CalendarEvent): void
 }) {
 	return (
 		<div className="hl-scroll">

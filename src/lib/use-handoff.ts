@@ -32,8 +32,8 @@ export function useHandoff(onReady: (objectKey: string, url: string | null) => v
 	minted: MintedHandoff | null
 	status: HandoffStatus
 	error: string | null
-	mint: () => Promise<void>
-	cancel: () => void
+	mint(): Promise<void>
+	cancel(): void
 } {
 	const [minted, setMinted] = useState<MintedHandoff | null>(null)
 	const [status, setStatus] = useState<HandoffStatus>("idle")

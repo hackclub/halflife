@@ -62,7 +62,7 @@ export function RepoSyncSettings({
 	compact = false,
 }: {
 	projectId: string
-	onEnabled?: () => void
+	onEnabled?(): void
 	compact?: boolean
 }) {
 	const { linkSyncRepoToProject } = useStore()
@@ -343,7 +343,7 @@ function LinkProjectButton({
 	repo: string | null
 	existing: string | null
 	busy: boolean
-	onClick: () => void
+	onClick(): void
 }) {
 	const to = repo ? displayRepo(repo) : "the repo"
 	return (

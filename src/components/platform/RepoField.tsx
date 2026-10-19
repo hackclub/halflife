@@ -16,7 +16,7 @@ import type { Project } from "@/lib/types"
  * while it is still being typed. The form reads the same check back through
  * `repoIsValid` to hold its own submit button.
  */
-export function RepoInput({ value, onChange, id }: { value: string; onChange: (value: string) => void; id: string }) {
+export function RepoInput({ value, onChange, id }: { value: string; onChange(value: string): void; id: string }) {
 	const [touched, setTouched] = useState(false)
 	const { error } = normalizeRepo(value)
 	return (

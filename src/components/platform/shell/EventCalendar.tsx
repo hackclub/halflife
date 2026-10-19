@@ -66,7 +66,7 @@ export function EventCalendar({
 	timeZone,
 }: {
 	open: boolean
-	onClose: () => void
+	onClose(): void
 	events: CalendarEvent[]
 	timeZone: string
 }) {
@@ -350,7 +350,7 @@ function EventBlock({
 	gridHeight: number
 	timeZone: string
 	isLive: boolean
-	onSelect: () => void
+	onSelect(): void
 }) {
 	const { event, startMin, endMin, lane, lanes } = segment
 	const colour = eventColour(event.colour)
@@ -446,7 +446,7 @@ function EventRow({ event, timeZone }: { event: CalendarEvent; timeZone: string 
 	)
 }
 
-function GridButton({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
+function GridButton({ label, onClick, children }: { label: string; onClick(): void; children: React.ReactNode }) {
 	return (
 		<button
 			aria-label={label}

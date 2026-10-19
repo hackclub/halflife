@@ -32,7 +32,7 @@ export function SubmissionReelPicker({
 	/** The already-posted reel currently standing in, if any. */
 	selectedId: string | null
 	/** Picks a reel, or clears the pick when handed null. */
-	onSelect: (reel: SubmissionReel | null) => void
+	onSelect(reel: SubmissionReel | null): void
 }) {
 	const [reels, setReels] = useState<SubmissionReel[] | null>(null)
 

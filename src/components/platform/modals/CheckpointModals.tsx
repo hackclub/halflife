@@ -1085,7 +1085,7 @@ export function PublicReelModal({
 	eyebrow: string
 	/** The clip, so it can be saved and uploaded elsewhere. */
 	videoUrl: string | null
-	onClose: () => void
+	onClose(): void
 	/**
 	 * "links" skips the question – for the Reels page, where pressing "Add where you posted it" has already answered it.
 	 */

@@ -105,7 +105,7 @@ export interface HandoffUploadResult {
  */
 export async function completeHandoff(
 	token: string,
-	file: { name: string; type: string; size: number; bytes: () => Promise<Buffer> },
+	file: { name: string; type: string; size: number; bytes(): Promise<Buffer> },
 ): Promise<HandoffUploadResult> {
 	const target = await resolveHandoff(token)
 	if (!target) throw new HttpError("NOT_FOUND", "This link has expired or has already been used")

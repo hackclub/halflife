@@ -19,7 +19,7 @@ const HEART_SVG =
 	'<svg viewBox="0 0 24 24" width="100%" height="100%" aria-hidden="true"><path d="M12 21s-8.6-5-8.6-10.6A4.8 4.8 0 0 1 12 7.8a4.8 4.8 0 0 1 8.6 2.6C20.6 16 12 21 12 21Z" fill="currentColor" stroke="#ffffff" stroke-width="1.4" stroke-linejoin="round"/></svg>'
 
 export interface SlideHandle {
-	toggle: () => void
+	toggle(): void
 }
 
 /**
@@ -49,15 +49,15 @@ export function StageSlide({
 	rate: number
 	autoScroll: boolean
 	/** The browser refused sound; the slide went on muted. */
-	onAutoMuted: () => void
-	onToggleMute: () => void
-	onCycleRate: () => void
-	onToggleAutoScroll: () => void
+	onAutoMuted(): void
+	onToggleMute(): void
+	onCycleRate(): void
+	onToggleAutoScroll(): void
 	/** Reached the end with auto scroll on. */
-	onEnded: () => void
-	onPatch: (id: string, next: Partial<FeedItem>) => void
+	onEnded(): void
+	onPatch(id: string, next: Partial<FeedItem>): void
 	/** Hands the page this slide's controls while it is the current one. */
-	register: (handle: SlideHandle | null) => void
+	register(handle: SlideHandle | null): void
 }) {
 	const video = useRef<HTMLVideoElement>(null)
 	const fill = useRef<HTMLDivElement>(null)
@@ -447,7 +447,7 @@ function RoundControl({
 	children,
 }: {
 	label: string
-	onClick: () => void
+	onClick(): void
 	disabled?: boolean
 	pressed?: boolean
 	children: React.ReactNode

@@ -45,7 +45,7 @@ export function Modal({
 	scrollKey,
 }: {
 	open: boolean
-	onClose: () => void
+	onClose(): void
 	/** Step counter or section name, rendered in the accent colour. */
 	eyebrow?: ReactNode
 	accent?: string

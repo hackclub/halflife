@@ -19,7 +19,7 @@ export function ReportDialog({
 	context,
 }: {
 	open: boolean
-	onClose: () => void
+	onClose(): void
 	target: ReportTargetInput
 	/** What is being reported, e.g. "Report this reel". */
 	title: string

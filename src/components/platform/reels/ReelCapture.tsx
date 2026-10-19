@@ -25,7 +25,7 @@ export function ReelCapture({
 	label = "Your reel",
 }: {
 	objectKey: string | null
-	onCaptured: (objectKey: string | null, previewUrl?: string | null) => void
+	onCaptured(objectKey: string | null, previewUrl?: string | null): void
 	folder?: string
 	label?: string
 }) {

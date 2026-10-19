@@ -42,8 +42,8 @@ export function ReelComments({
 }: {
 	reel: FeedItem | null
 	viewer: { name: string; image: string | null }
-	onPatch: (id: string, next: Partial<FeedItem>) => void
-	onClose: () => void
+	onPatch(id: string, next: Partial<FeedItem>): void
+	onClose(): void
 	className?: string
 }) {
 	// Two ReelComments can be mounted at once (the side panel and the narrow sheet), so fixed ids would collide; useId scopes them to this instance.

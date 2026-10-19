@@ -112,7 +112,7 @@
 		"typescript/consistent-indexed-object-style": "off",
 		"typescript/consistent-type-definitions": "off",
 		"typescript/consistent-type-imports": "warn",
-		"typescript/method-signature-style": "off",
+		"typescript/method-signature-style": ["error", "method"],
 		"typescript/no-explicit-any": "error",
 		"typescript/no-non-null-assertion": "error",
 		"typescript/parameter-properties": "off",

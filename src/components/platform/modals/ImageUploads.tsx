@@ -26,7 +26,7 @@ export function ImageUploads({
 	label,
 }: {
 	images: UploadedImage[]
-	onChange: (next: UploadedImage[]) => void
+	onChange(next: UploadedImage[]): void
 	folder: string
 	/** The server takes at most this many attachments with a submission. */
 	max: number

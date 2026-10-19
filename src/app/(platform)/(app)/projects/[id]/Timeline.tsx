@@ -21,7 +21,7 @@ export function Timeline({
 }: {
 	items: TimelineItem[]
 	/** The trail week a phase of this project ran in, for the "Week 3" labels. */
-	weekFor: (phase: "DESIGN" | "BUILD") => number
+	weekFor(phase: "DESIGN" | "BUILD"): number
 	/**
 	 * Whether journal entries and reels carry a report button. On for someone else's project, off on your own – reporting your own work is noise.
 	 */

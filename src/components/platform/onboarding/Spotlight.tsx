@@ -62,8 +62,8 @@ export function Spotlight({
 	title: string
 	body: string
 	cta?: string
-	onNext: () => void
-	onSkip?: () => void
+	onNext(): void
+	onSkip?(): void
 	step?: number
 	total?: number
 	clickAnywhere?: boolean

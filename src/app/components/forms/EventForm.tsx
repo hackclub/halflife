@@ -47,7 +47,7 @@ export function EventForm({
 	events: CalendarEvent[]
 	/** The occurrence being edited, or null to add a new one. */
 	editing: CalendarEvent | null
-	onDone: () => void
+	onDone(): void
 }) {
 	const router = useRouter()
 	const [title, setTitle] = useState(editing?.title ?? "")

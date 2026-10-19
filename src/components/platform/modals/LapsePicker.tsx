@@ -60,9 +60,9 @@ export function LapsePicker({
 	forSession,
 }: {
 	picked: LapseTimelapse[]
-	onToggle: (t: LapseTimelapse) => void
+	onToggle(t: LapseTimelapse): void
 	/** Leaves the page for Lapse; the caller stashes the draft first. */
-	onSignIn: () => void | Promise<void>
+	onSignIn(): void | Promise<void>
 	/**
 	 * The entry being edited, so its own clips read as free: taking one off and putting it back on stays pickable instead of reading as claimed.
 	 */

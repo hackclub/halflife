@@ -52,7 +52,7 @@ type Snapshot =
 			 *
 			 * A function rather than a list, because reading costs a request per file and only a kind that has found nothing by name ever asks – most repos never do, and a repo that does asks once and the answer is held for as long as the snapshot is.
 			 */
-			designs: () => Promise<string[]>
+			designs(): Promise<string[]>
 	  }
 	| { kind: "not-found" }
 	| { kind: "unavailable"; why: string }

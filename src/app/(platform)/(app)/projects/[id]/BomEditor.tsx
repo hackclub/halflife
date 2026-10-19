@@ -627,7 +627,7 @@ function ExtraRow({
 	value: number
 	locked: string | null
 	disabled: boolean
-	onSave: (value: number) => Promise<boolean>
+	onSave(value: number): Promise<boolean>
 }) {
 	const id = useId()
 	const [draft, setDraft] = useState(value ? value.toFixed(2) : "")

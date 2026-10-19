@@ -600,7 +600,7 @@ function NavButton({
 	children,
 }: {
 	label: string
-	onClick: () => void
+	onClick(): void
 	disabled: boolean
 	children: React.ReactNode
 }) {
@@ -645,7 +645,7 @@ function Action({
 	count: number
 	pressed?: boolean
 	tone?: "coral" | "violet"
-	onClick?: () => void
+	onClick?(): void
 	/** Plays the acknowledgement when this turns true – a like landing. */
 	pop?: boolean
 	/** Which reel it belongs to, so arriving on an already-liked reel does not play it. */

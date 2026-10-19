@@ -30,8 +30,8 @@ function StepActions({
 	canSubmit = true,
 	busy,
 }: {
-	onBack?: () => void
-	onSubmit?: () => void
+	onBack?(): void
+	onSubmit?(): void
 	label?: string
 	canSubmit?: boolean
 	busy: boolean
@@ -61,7 +61,7 @@ function SelectButton({
 }: {
 	selected: boolean
 	disabled: boolean
-	onClick: () => void
+	onClick(): void
 	label: string
 }) {
 	return (
@@ -89,10 +89,7 @@ function Note({ children }: { children: ReactNode }) {
 /**
  * The one onboarding interaction. It is rendered by the dashboard's Get started modal; the server owns the state machine and every response returns the next canonical view.
  */
-export function OnboardingFlow({
-	initial,
-	onComplete,
-}: Readonly<{ initial: OnboardingView; onComplete?: () => void }>) {
+export function OnboardingFlow({ initial, onComplete }: Readonly<{ initial: OnboardingView; onComplete?(): void }>) {
 	const [view, setView] = useState(initial)
 	const [viewing, setViewing] = useState(Math.min(initial.reached, initial.steps.length - 1))
 	const [busy, setBusy] = useState(false)

@@ -42,7 +42,7 @@ export function ProjectDetails({
 	/** The facts under the description while reading: progress, then what it is. */
 	meta: React.ReactNode
 	/** Take the phase in review back out of it, when one is. */
-	unsubmit?: { label: string; run: () => Promise<string | null> }
+	unsubmit?: { label: string; run(): Promise<string | null> }
 }) {
 	const [editing, setEditing] = useState(false)
 	const lockedId = useId()
@@ -155,7 +155,7 @@ function DetailsForm({
 	project: Project
 	hours: number
 	tierLocked: boolean
-	onDone: () => void
+	onDone(): void
 }) {
 	const { updateProject, goalId, participantGoal } = useStore()
 	const id = useId()

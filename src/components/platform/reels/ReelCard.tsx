@@ -113,15 +113,15 @@ export function ReelCard({
 	reel: FeedItem
 	className?: string
 	/** Apply a change to this row after the server has taken it. */
-	onPatch?: (id: string, next: Partial<FeedItem>) => void
+	onPatch?(id: string, next: Partial<FeedItem>): void
 	/** Start playing when this card becomes the current reel. */
 	autoplay?: boolean
 	/** The reader pressed play themselves. */
-	onPlayPress?: () => void
+	onPlayPress?(): void
 	/**
 	 * The reader asked for this reel's comments. When given, the comment button calls back instead of deep-linking to the Doomscroller, so a host (like a profile) can show the conversation in place.
 	 */
-	onComments?: (reel: FeedItem) => void
+	onComments?(reel: FeedItem): void
 }) {
 	const { viewer } = useStore()
 	const card = useRef<HTMLElement>(null)

@@ -325,8 +325,8 @@ function MetricPie({
 }: {
 	title: string
 	rows: { label: string; users: number; hours: number }[]
-	pick: (row: { label: string; users: number; hours: number }) => number
-	format: (n: number) => string
+	pick(row: { label: string; users: number; hours: number }): number
+	format(n: number): string
 }) {
 	const ranked = rows
 		.map(r => ({ label: r.label, value: pick(r) }))

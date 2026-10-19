@@ -68,15 +68,7 @@ function Section({
  */
 
 /** Ask a reviewer to read a decision again. Changes no state. */
-function DisputeForm({
-	projectId,
-	phase,
-	onClose,
-}: {
-	projectId: string
-	phase: "DESIGN" | "BUILD"
-	onClose: () => void
-}) {
+function DisputeForm({ projectId, phase, onClose }: { projectId: string; phase: "DESIGN" | "BUILD"; onClose(): void }) {
 	const router = useRouter()
 	const [note, setNote] = useState("")
 	const [saving, setSaving] = useState(false)
@@ -323,7 +315,7 @@ function ReviewState({
 }: {
 	projectId: string
 	phases: ProjectPageData["phases"]
-	weekFor: (phase: "DESIGN" | "BUILD") => number
+	weekFor(phase: "DESIGN" | "BUILD"): number
 	/** A warm-up project's submit sheet lives on week 0, whichever its phase. */
 	warmup: boolean
 }) {
@@ -421,7 +413,7 @@ function ChangesNeeded({
 	projectId: string
 	/** A warm-up project's submit sheet lives on week 0, whichever its phase. */
 	warmup: boolean
-	weekFor: (phase: "DESIGN" | "BUILD") => number
+	weekFor(phase: "DESIGN" | "BUILD"): number
 }) {
 	const { setOpenCheckpoint } = useStore()
 	const returned = phases.filter(p => p.status === "update_requested")

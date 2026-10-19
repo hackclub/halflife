@@ -60,8 +60,8 @@ export async function sendJson<T = unknown>(url: string, options: SendOptions = 
 export function useAction(): {
 	busy: string | null
 	error: string | null
-	run: <T = unknown>(key: string, send: () => Promise<SendResult<T>>, after?: (data: T) => void) => Promise<void>
-	refuse: (message: string) => void
+	run<T = unknown>(key: string, send: () => Promise<SendResult<T>>, after?: (data: T) => void): Promise<void>
+	refuse(message: string): void
 	setError: Dispatch<SetStateAction<string | null>>
 } {
 	const router = useRouter()

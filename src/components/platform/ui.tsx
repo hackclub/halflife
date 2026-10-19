@@ -176,7 +176,7 @@ export function OptionRow({
 }: {
 	children: ReactNode
 	selected?: boolean
-	onClick?: () => void
+	onClick?(): void
 	disabled?: boolean
 	tone?: "violet" | "gold" | "sky"
 	hint?: ReactNode

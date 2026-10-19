@@ -21,7 +21,7 @@ export function RepoChecks({
 	editable = true,
 }: {
 	project: Project
-	onResult: (result: RepoCheckResult | null) => void
+	onResult(result: RepoCheckResult | null): void
 	/**
 	 * Whether the link can be changed from here. The submit sheet says yes, so a wrong link is fixed without leaving it; the project page says no, because its own details editor already owns the link.
 	 */

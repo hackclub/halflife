@@ -88,7 +88,7 @@ export function ReelsList({ groups }: { groups: MyReelGroup[] }) {
 	)
 }
 
-function ReelRow({ reel, onAdd, onChanged }: { reel: MyReel; onAdd: () => void; onChanged: () => void }) {
+function ReelRow({ reel, onAdd, onChanged }: { reel: MyReel; onAdd(): void; onChanged(): void }) {
 	const [removing, setRemoving] = useState<string | null>(null)
 	const [error, setError] = useState<string | null>(null)
 	const [confirming, setConfirming] = useState(false)
