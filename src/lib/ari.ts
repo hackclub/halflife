@@ -228,9 +228,7 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
 				? {
 						markdown: [
 							body,
-							...linkUrls.map(
-								(url, index) => `[Timelapse${linkUrls.length > 1 ? ` ${index + 1}` : ""}](${url})`,
-							),
+							...linkUrls.map((url, index) => `[Timelapse${linkUrls.length > 1 ? ` ${index + 1}` : ""}](${url})`),
 						].join("\n\n"),
 					}
 				: {},
