@@ -14,10 +14,10 @@ export type ReviewTone = "line" | "sky" | "teal" | "orange" | "coral"
  * Attention wins: something rejected or sent back is what the maker needs to see first, then a phase under review. Otherwise it follows the current phase – the build once it has started, the design until then – so a design that passed while the build has not begun still reads as approved. The per-phase chips carry the detail this single colour cannot.
  */
 export function reviewTone(design: PhaseStatus, build: PhaseStatus): ReviewTone {
-	const phases = [design, build]
-	if (phases.includes("rejected")) return "coral"
-	if (phases.includes("update_requested")) return "orange"
-	if (phases.includes("in_review")) return "sky"
+	const phases = new Set([design, build])
+	if (phases.has("rejected")) return "coral"
+	if (phases.has("update_requested")) return "orange"
+	if (phases.has("in_review")) return "sky"
 	const current = build !== "draft" ? build : design
 	if (current === "approved") return "teal"
 	return "line"

@@ -62,7 +62,11 @@ export const PERMISSION_COUNT = Object.values(Permission).length
  *
  * A list rather than a rule, so that a permission added later is reported as `write` until someone says otherwise. Over-reporting what an account can do is the safe direction to be wrong in: the alternative is reading a new read-only permission as an ability to change things, and the display is the thing a staff member trusts about it.
  */
-const READ_ONLY_PERMISSIONS: Permission[] = [Permission.VIEW_AUDIT_LOG, Permission.VIEW_UPLOADS, Permission.VIEW_USERS]
+const READ_ONLY_PERMISSIONS = new Set<Permission>([
+	Permission.VIEW_AUDIT_LOG,
+	Permission.VIEW_UPLOADS,
+	Permission.VIEW_USERS,
+])
 
 /**
  * What the roles add up to.
@@ -97,7 +101,7 @@ export function permissionSummary(roles: Role[]): PermissionSummary {
 			? "none"
 			: permissions.includes(Permission.MANAGE_ROLES)
 				? "full"
-				: permissions.every(p => READ_ONLY_PERMISSIONS.includes(p))
+				: permissions.every(p => READ_ONLY_PERMISSIONS.has(p))
 					? "read"
 					: "write"
 	return { level, permissions }

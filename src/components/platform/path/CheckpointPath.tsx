@@ -89,7 +89,7 @@ const fmtH = (h: number) => `${Math.round(h * 100) / 100}h`
 /**
  * Checkpoints that bring something into existence rather than record it. Going through onboarding or the project form a second time would mint a second project for a week that already has one, and every lookup in the app finds a week's project with `.find` – so the duplicate would not replace the first, it would sit behind it, unreachable and counting for nothing.
  */
-const ONE_TIME: Checkpoint["kind"][] = ["onboarding", "project"]
+const ONE_TIME = new Set<Checkpoint["kind"]>(["onboarding", "project"])
 
 function nodeTone(kind: Checkpoint["kind"], done: boolean, unlocked: boolean, passed: boolean, held: boolean) {
 	// Held behind a deleted reel: greyed like a passed node, done or not, so the one owed reel is the only colour left on the map.
@@ -129,7 +129,7 @@ function CheckpointNode({
 	const handIn = checkpoint.kind === "submit" || checkpoint.kind === "demo"
 	const reviewStatus = handIn && st.done ? phaseStatusOf(checkpoint.weekId) : null
 	const decided = reviewStatus === "approved" || reviewStatus === "rejected"
-	const settled = (st.done && ONE_TIME.includes(checkpoint.kind)) || final || decided
+	const settled = (st.done && ONE_TIME.has(checkpoint.kind)) || final || decided
 	const doneNote =
 		checkpoint.kind === "reel"
 			? "click to post another reel."
