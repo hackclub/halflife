@@ -109,7 +109,6 @@
 		"react/refs": "off",
 		"react/set-state-in-effect": "off",
 		"typescript/consistent-indexed-object-style": "off",
-		"typescript/consistent-type-definitions": "off",
 		"typescript/consistent-type-imports": "warn",
 		"typescript/method-signature-style": ["error", "method"],
 		"typescript/no-explicit-any": "error",

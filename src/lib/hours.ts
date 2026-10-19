@@ -542,6 +542,7 @@ export function rollUpHours(
  *
  * A type alias rather than an interface on purpose: this gets written into the audit row's JSON payload, and Prisma's `InputJsonValue` only accepts types with an implicit index signature, which interfaces do not have.
  */
+// oxlint-disable-next-line typescript/consistent-type-definitions
 export type CoinSplit = {
 	/** Legacy locked half. Always zero on new mints. */
 	banked: number

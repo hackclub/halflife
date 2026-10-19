@@ -18,6 +18,7 @@
  *
  * A type alias rather than an interface on purpose, for the same reason `CoinSplit` is one in hours.ts: these get written into Prisma's JSON columns, and `InputJsonValue` only accepts types with an implicit index signature, which interfaces do not have.
  */
+// oxlint-disable-next-line typescript/consistent-type-definitions
 export type Interval = {
 	start: number
 	end: number
