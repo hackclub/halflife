@@ -68,7 +68,7 @@ const read = <T>(sql: string) => source.$queryRawUnsafe<T[]>(sql)
 
 /** YYYY-MM-DD in a timezone, matching lib/program.effectiveDateFor. */
 function effectiveDateFor(date: Date, timeZone: string): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(date)
+  return new Intl.DateTimeFormat("en-CA", { day: "2-digit", month: "2-digit", timeZone, year: "numeric" }).format(date)
 }
 
 interface SourceUser {
@@ -243,12 +243,12 @@ interface SourceShopOrder {
 }
 
 const LEDGER_KIND: { [_: string]: LedgerKind } = {
-  PROJECT_APPROVED: LedgerKind.BUILD_HOURS,
-  PROJECT_APPROVED_REVERSED: LedgerKind.BUILD_HOURS,
+  ADMIN_DEDUCTION: LedgerKind.ADMIN_ADJUSTMENT,
+  ADMIN_GRANT: LedgerKind.ADMIN_ADJUSTMENT,
   DESIGN_APPROVED: LedgerKind.DESIGN_EXCESS_HOURS,
   DESIGN_APPROVED_REVERSED: LedgerKind.DESIGN_EXCESS_HOURS,
-  ADMIN_GRANT: LedgerKind.ADMIN_ADJUSTMENT,
-  ADMIN_DEDUCTION: LedgerKind.ADMIN_ADJUSTMENT,
+  PROJECT_APPROVED: LedgerKind.BUILD_HOURS,
+  PROJECT_APPROVED_REVERSED: LedgerKind.BUILD_HOURS,
   REVIEWER_PAYMENT: LedgerKind.REVIEWER_PAYMENT,
   SHOP_PURCHASE: LedgerKind.SHOP_PURCHASE,
   SHOP_REFUND: LedgerKind.SHOP_REFUND,
@@ -257,8 +257,8 @@ const LEDGER_KIND: { [_: string]: LedgerKind } = {
 
 const ROLE_MAP: { [_: string]: Role } = {
   ADMIN: Role.ADMIN,
-  REVIEWER: Role.REVIEWER,
   AUDITOR: Role.AUDITOR,
+  REVIEWER: Role.REVIEWER,
   SIDEKICK: Role.REVIEWER,
 }
 
@@ -267,7 +267,7 @@ async function importUsers(): Promise<{
   reviewerIds: Set<string>
 }> {
   const existing = await target.user.findMany({
-    select: { id: true, email: true, slackId: true, hackatimeUserId: true },
+    select: { email: true, hackatimeUserId: true, id: true, slackId: true },
   })
   const takenSlack = new Set(existing.map((u) => u.slackId).filter((v): v is string => !!v))
   const takenHackatime = new Set(existing.map((u) => u.hackatimeUserId).filter((v): v is string => !!v))
@@ -285,23 +285,23 @@ async function importUsers(): Promise<{
       u.hackatimeUserId && !takenHackatime.has(u.hackatimeUserId) ? u.hackatimeUserId : null
     if (hackatimeUserId) takenHackatime.add(hackatimeUserId)
     rows.push({
-      id: u.id,
-      email: KEEP_EMAILS ? u.email : `imported+${u.id.toLowerCase()}@halflife.test`,
-      name: u.name,
-      image: u.image,
-      emailVerified: u.emailVerified,
-      slackId,
-      slackDisplayName: u.slackDisplayName,
-      hackatimeUserId,
-      verificationStatus: u.verificationStatus ?? "verified",
       bio: u.bio,
-      pronouns: u.pronouns,
-      timezone: u.timezone,
-      fraudFlagged: u.fraudConvicted,
-      joinedProgramAt: u.createdAt,
-      onboardingCompletedAt: u.createdAt,
-      submissionExtensionUntil: u.submissionExtensionUntil,
       createdAt: u.createdAt,
+      email: KEEP_EMAILS ? u.email : `imported+${u.id.toLowerCase()}@halflife.test`,
+      emailVerified: u.emailVerified,
+      fraudFlagged: u.fraudConvicted,
+      hackatimeUserId,
+      id: u.id,
+      image: u.image,
+      joinedProgramAt: u.createdAt,
+      name: u.name,
+      onboardingCompletedAt: u.createdAt,
+      pronouns: u.pronouns,
+      slackDisplayName: u.slackDisplayName,
+      slackId,
+      submissionExtensionUntil: u.submissionExtensionUntil,
+      timezone: u.timezone,
+      verificationStatus: u.verificationStatus ?? "verified",
     })
   }
 
@@ -315,7 +315,7 @@ async function importUsers(): Promise<{
   for (const r of sourceRoles) {
     const role = ROLE_MAP[r.role]
     if (!role || !ids.has(r.userId)) continue
-    roleRows.push({ id: r.id, userId: r.userId, role, grantedAt: r.grantedAt, grantedBy: r.grantedBy })
+    roleRows.push({ grantedAt: r.grantedAt, grantedBy: r.grantedBy, id: r.id, role, userId: r.userId })
   }
   await insert("user roles", roleRows, (b) =>
     target.userRole.createMany({ data: b, skipDuplicates: true }).then((r) => r.count),
@@ -354,31 +354,31 @@ async function importProjects(userIds: Set<string>): Promise<{
       userIdOf.set(p.id, userId)
       themeOf.set(p.id, theme)
       rows.push({
-        id: p.id,
-        userId,
-        theme,
-        title: p.title,
-        description: p.description,
-        coverImageKey: p.coverImage,
-        githubRepo: p.githubRepo,
-        designStatus: p.designStatus,
-        designReviewComments: p.designReviewComments,
-        designReviewedAt: p.designReviewedAt,
-        designReviewedById: p.designReviewedBy,
-        buildStatus: p.buildStatus,
+        bomTaxShippingUsd: (p.bomShipping ?? 0) + (p.bomTax ?? 0) || null,
         buildReviewComments: p.buildReviewComments,
         buildReviewedAt: p.buildReviewedAt,
         buildReviewedById: p.buildReviewedBy,
-        tier,
-        grantUsd: tier ? getTierOrThrow(tier).grantUsd : null,
-        requestedTier: tier,
-        starterProjectId: p.starterProjectId,
-        bomTaxShippingUsd: (p.bomShipping ?? 0) + (p.bomTax ?? 0) || null,
-        namedAt: p.createdAt,
-        submissionExtensionUntil: p.submissionExtensionUntil,
+        buildStatus: p.buildStatus,
+        coverImageKey: p.coverImage,
         createdAt: p.createdAt,
         deletedAt: p.deletedAt,
         deletedById: p.deletedById,
+        description: p.description,
+        designReviewComments: p.designReviewComments,
+        designReviewedAt: p.designReviewedAt,
+        designReviewedById: p.designReviewedBy,
+        designStatus: p.designStatus,
+        githubRepo: p.githubRepo,
+        grantUsd: tier ? getTierOrThrow(tier).grantUsd : null,
+        id: p.id,
+        namedAt: p.createdAt,
+        requestedTier: tier,
+        starterProjectId: p.starterProjectId,
+        submissionExtensionUntil: p.submissionExtensionUntil,
+        theme,
+        tier,
+        title: p.title,
+        userId,
       })
     }
     dropped += Math.max(0, list.length - 5)
@@ -388,7 +388,7 @@ async function importProjects(userIds: Set<string>): Promise<{
   await insert("projects", rows, (b) =>
     target.themeProject.createMany({ data: b, skipDuplicates: true }).then((r) => r.count),
   )
-  return { ids, userIdOf, themeOf }
+  return { ids, themeOf, userIdOf }
 }
 
 async function importSessions(
@@ -403,20 +403,20 @@ async function importSessions(
     if (!theme) throw new Error(`No imported theme for project ${s.projectId}`)
     const week = scheduledWeekFor(theme, s.stage)
     return {
-      id: s.id,
-      themeProjectId: s.projectId,
-      phase: s.stage,
-      title: s.title,
       content: s.content,
-      hoursClaimed: s.hoursClaimed ?? 0,
-      hoursApproved: s.hoursApproved,
-      hoursSource: HoursSource.MANUAL,
-      weekNumber: week,
+      createdAt: s.createdAt,
       effectiveDate: s.effectiveDate ?? effectiveDateFor(s.createdAt, DEFAULT_PROGRAM_TIMEZONE),
+      hoursApproved: s.hoursApproved,
+      hoursClaimed: s.hoursClaimed ?? 0,
+      hoursSource: HoursSource.MANUAL,
+      id: s.id,
+      phase: s.stage,
       reviewComments: null,
       reviewedAt: s.reviewedAt,
       reviewedById: s.reviewedBy,
-      createdAt: s.createdAt,
+      themeProjectId: s.projectId,
+      title: s.title,
+      weekNumber: week,
     }
   })
 
@@ -448,13 +448,13 @@ async function importTimelapses(sessionIds: Set<string>): Promise<void> {
   const rows: Prisma.SessionTimelapseCreateManyInput[] = all
     .filter((t) => sessionIds.has(t.workSessionId))
     .map((t) => ({
-      id: t.id,
-      workSessionId: t.workSessionId,
-      provider: "lapse",
-      externalId: t.timelapseId,
-      playbackUrl: t.playbackUrl,
-      thumbnailUrl: t.thumbnailUrl,
       coveredSeconds: t.duration,
+      externalId: t.timelapseId,
+      id: t.id,
+      playbackUrl: t.playbackUrl,
+      provider: "lapse",
+      thumbnailUrl: t.thumbnailUrl,
+      workSessionId: t.workSessionId,
     }))
   await insert("session timelapses", rows, (b) =>
     target.sessionTimelapse.createMany({ data: b, skipDuplicates: true }).then((r) => r.count),
@@ -467,16 +467,16 @@ async function importBom(projectIds: Set<string>): Promise<void> {
   const rows: Prisma.BomItemCreateManyInput[] = all
     .filter((b) => projectIds.has(b.projectId))
     .map((b) => ({
+      createdAt: b.createdAt,
       id: b.id,
-      themeProjectId: b.projectId,
+      link: b.link,
       name: b.name,
       purpose: b.purpose,
       quantity: b.quantity ?? 1,
+      sortOrder: sort++,
+      themeProjectId: b.projectId,
       unitCostUsd: b.costPerItem ?? 0,
       vendor: b.distributor,
-      link: b.link,
-      sortOrder: sort++,
-      createdAt: b.createdAt,
     }))
   await insert("bom items", rows, (b) =>
     target.bomItem.createMany({ data: b, skipDuplicates: true }).then((r) => r.count),
@@ -488,14 +488,14 @@ async function importHackatime(projectIds: Set<string>): Promise<void> {
   const rows: Prisma.HackatimeLinkCreateManyInput[] = all
     .filter((h) => projectIds.has(h.projectId))
     .map((h) => ({
-      id: h.id,
-      themeProjectId: h.projectId,
+      createdAt: h.createdAt,
       hackatimeProject: h.hackatimeProject,
-      phase: Phase.BUILD,
       hoursApproved: h.hoursApproved,
+      id: h.id,
+      phase: Phase.BUILD,
       reviewedAt: h.reviewedAt,
       reviewedById: h.reviewedBy,
-      createdAt: h.createdAt,
+      themeProjectId: h.projectId,
     }))
   await insert("hackatime links", rows, (b) =>
     target.hackatimeLink.createMany({ data: b, skipDuplicates: true }).then((r) => r.count),
@@ -534,7 +534,7 @@ async function importSubmissions(
   return new Map(
     all
       .filter((s) => projectIds.has(s.projectId))
-      .map((s) => [s.id, { phase: s.stage, createdAt: s.createdAt }] as const),
+      .map((s) => [s.id, { createdAt: s.createdAt, phase: s.stage }] as const),
   )
 }
 
@@ -579,8 +579,8 @@ async function importReviews(
     let n = 0
     for (const [submissionId, v] of resolved) {
       const res = await target.phaseSubmission.updateMany({
-        where: { id: submissionId, resolvedAt: null },
         data: { resolvedAt: v.at, resolvedResult: v.result },
+        where: { id: submissionId, resolvedAt: null },
       })
       n += res.count
     }
@@ -593,17 +593,17 @@ async function importLedger(userIds: Set<string>, projectIds: Set<string>): Prom
   const rows: Prisma.LedgerEntryCreateManyInput[] = all
     .filter((t) => userIds.has(t.userId))
     .map((t) => ({
-      id: t.id,
-      userId: t.userId,
-      kind: LEDGER_KIND[t.type] ?? LedgerKind.ADMIN_ADJUSTMENT,
-      bucket: CoinBucket.SPENDABLE,
       amount: t.amount,
+      balanceAfter: t.balanceAfter,
+      balanceBefore: t.balanceBefore,
+      bucket: CoinBucket.SPENDABLE,
+      createdAt: t.createdAt,
+      createdById: t.createdBy && userIds.has(t.createdBy) ? t.createdBy : null,
+      id: t.id,
+      kind: LEDGER_KIND[t.type] ?? LedgerKind.ADMIN_ADJUSTMENT,
       note: t.note,
       themeProjectId: t.projectId && projectIds.has(t.projectId) ? t.projectId : null,
-      createdById: t.createdBy && userIds.has(t.createdBy) ? t.createdBy : null,
-      balanceBefore: t.balanceBefore,
-      balanceAfter: t.balanceAfter,
-      createdAt: t.createdAt,
+      userId: t.userId,
     }))
   await insert("ledger entries", rows, (b) =>
     target.ledgerEntry.createMany({ data: b, skipDuplicates: true }).then((r) => r.count),
@@ -634,24 +634,24 @@ async function importShop(userIds: Set<string>): Promise<void> {
   const orderRows: Prisma.ShopOrderCreateManyInput[] = orders
     .filter((o) => userIds.has(o.userId) && itemIds.has(o.shopItemId))
     .map((o) => ({
-      id: o.id,
-      userId: o.userId,
-      shopItemId: o.shopItemId,
-      quantity: o.quantity,
-      unitCredits: o.unitBitsCost,
-      totalCredits: o.totalBitsCost,
-      itemNameSnapshot: items.find((i) => i.id === o.shopItemId)?.name ?? "Item",
-      unitCostUsd: o.quantity > 0 ? o.estimatedUsdCents / 100 / o.quantity : null,
-      status: o.status,
-      holdReason: o.holdReason,
-      rejectionReason: o.rejectionReason,
-      trackingNumber: o.trackingNumber,
-      trackingCarrier: o.trackingCarrier,
-      placedAt: o.placedAt,
-      heldAt: o.heldAt,
-      rejectedAt: o.rejectedAt,
       fulfilledAt: o.fulfilledAt,
+      heldAt: o.heldAt,
+      holdReason: o.holdReason,
+      id: o.id,
+      itemNameSnapshot: items.find((i) => i.id === o.shopItemId)?.name ?? "Item",
       lastActorId: o.lastActorId,
+      placedAt: o.placedAt,
+      quantity: o.quantity,
+      rejectedAt: o.rejectedAt,
+      rejectionReason: o.rejectionReason,
+      shopItemId: o.shopItemId,
+      status: o.status,
+      totalCredits: o.totalBitsCost,
+      trackingCarrier: o.trackingCarrier,
+      trackingNumber: o.trackingNumber,
+      unitCostUsd: o.quantity > 0 ? o.estimatedUsdCents / 100 / o.quantity : null,
+      unitCredits: o.unitBitsCost,
+      userId: o.userId,
     }))
   await insert("shop orders", orderRows, (b) =>
     target.shopOrder.createMany({ data: b, skipDuplicates: true }).then((r) => r.count),

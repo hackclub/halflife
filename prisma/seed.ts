@@ -18,8 +18,8 @@ async function main() {
   const settings = await prisma.programSettings.upsert({
     where: { id: "singleton" },
     create: {
-      id: "singleton",
       eventStartDate: new Date(`${startDate}T00:00:00.000Z`),
+      id: "singleton",
       programTimezone: process.env.PROGRAM_TIMEZONE ?? "America/New_York",
     },
     // Never clobber settings an admin has already changed.
@@ -39,47 +39,47 @@ async function main() {
     // earned, and every week's submit floor is sized so the cheapest one stays
     // reachable. Upgrades are the things gated on finishing.
     ...PRINTERS.map((printer, index) => ({
+      category: ShopItemCategory.PRINTER,
+      description: printer.blurb,
       id: `printer-${printer.id}`,
       name: printer.name,
-      description: printer.blurb,
       priceCredits: printer.coins,
-      category: ShopItemCategory.PRINTER,
       requiresPrinterQualified: false,
       sortOrder: index + 1,
     })),
 
     // ── Upgrades and consumables ─────────────────────────────────────────────
     {
+      category: ShopItemCategory.PRINTER_UPGRADE,
+      description: "Keeps the heat in and the noise down. Fits the stock frame.",
       id: "printer-enclosure",
       name: "Printer enclosure",
-      description: "Keeps the heat in and the noise down. Fits the stock frame.",
       priceCredits: 120,
-      category: ShopItemCategory.PRINTER_UPGRADE,
       sortOrder: 10,
     },
     {
+      category: ShopItemCategory.PRINTER_UPGRADE,
+      description: "For abrasive filaments — carbon fibre, glow-in-the-dark, wood fill.",
       id: "hardened-nozzle",
       name: "Hardened steel nozzle",
-      description: "For abrasive filaments — carbon fibre, glow-in-the-dark, wood fill.",
       priceCredits: 40,
-      category: ShopItemCategory.PRINTER_UPGRADE,
       sortOrder: 20,
     },
     {
-      id: "filament-bundle",
-      name: "Filament bundle",
-      description: "Three 1kg spools in colours of your choosing.",
-      priceCredits: 60,
-      maxPerUser: 3,
       category: ShopItemCategory.CONSUMABLE,
+      description: "Three 1kg spools in colours of your choosing.",
+      id: "filament-bundle",
+      maxPerUser: 3,
+      name: "Filament bundle",
+      priceCredits: 60,
       sortOrder: 30,
     },
     {
+      category: ShopItemCategory.PRINTER_UPGRADE,
+      description: "A spare plate so a failed print does not stop the next one.",
       id: "build-plate",
       name: "Textured PEI build plate",
-      description: "A spare plate so a failed print does not stop the next one.",
       priceCredits: 35,
-      category: ShopItemCategory.PRINTER_UPGRADE,
       sortOrder: 40,
     },
   ]
@@ -89,7 +89,7 @@ async function main() {
       where: { id: item.id },
       create: item,
       // Price and stock are edited from the admin UI; do not overwrite them.
-      update: { name: item.name, description: item.description, sortOrder: item.sortOrder },
+      update: { description: item.description, name: item.name, sortOrder: item.sortOrder },
     })
   }
 
@@ -107,12 +107,12 @@ async function main() {
    */
   const live = new Set(items.map((item) => item.id))
   const retired = await prisma.shopItem.updateMany({
+    data: { active: false },
     where: {
       active: true,
       category: ShopItemCategory.PRINTER,
       id: { notIn: [...live] },
     },
-    data: { active: false },
   })
 
   console.log(
