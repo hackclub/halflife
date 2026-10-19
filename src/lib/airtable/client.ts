@@ -28,7 +28,7 @@ export function escapeAirtableValue(value: string): string {
 		const code = char.codePointAt(0) ?? 0
 		return code > 31 && code !== 127
 	})
-	return clean.join("").replace(/\\/g, "\\\\").replace(/'/g, "\\'")
+	return clean.join("").replace(/\\/g, String.raw`\\`).replace(/'/g, String.raw`\'`)
 }
 
 export class AirtableError extends Error {
