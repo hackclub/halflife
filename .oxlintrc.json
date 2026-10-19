@@ -21,7 +21,6 @@
 	},
 	"plugins": ["eslint", "import", "jsx-a11y", "nextjs", "node", "oxc", "promise", "react", "typescript", "unicorn"],
 	"rules": {
-		"eslint/arrow-body-style": "off",
 		"eslint/capitalized-comments": "off",
 		"eslint/curly": "off",
 		"eslint/eqeqeq": ["error", "smart"],

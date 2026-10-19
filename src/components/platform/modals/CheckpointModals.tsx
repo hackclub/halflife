@@ -1409,11 +1409,11 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	}, [previewUrl, muted])
 
 	// A blob URL holds the whole video in memory until it is revoked.
-	useEffect(() => {
-		return () => {
+	useEffect(() => 
+		() => {
 			if (previewUrl?.startsWith("blob:")) URL.revokeObjectURL(previewUrl)
 		}
-	}, [previewUrl])
+	, [previewUrl])
 
 	function capture(key: string | null, url?: string | null) {
 		setClip(key)
@@ -2037,11 +2037,11 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	// The bucket URL of the closing clip, when there is one, so it can be saved and posted elsewhere afterwards.
 	const [clipUrl, setClipUrl] = useState<string | null>(null)
 	// A blob URL for a locally picked clip holds the whole video in memory until it is revoked – the preview is replaced or the sheet closes, not before.
-	useEffect(() => {
-		return () => {
+	useEffect(() => 
+		() => {
 			if (clipUrl?.startsWith("blob:")) URL.revokeObjectURL(clipUrl)
 		}
-	}, [clipUrl])
+	, [clipUrl])
 	// The closing reel once it is posted. A hand-in that fails after the reel went up reuses it on the retry rather than posting the same clip twice; a new clip clears it.
 	const [closingPostId, setClosingPostId] = useState<string | null>(null)
 
