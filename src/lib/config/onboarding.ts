@@ -92,6 +92,10 @@ export interface StarterProject {
 	readonly description: string
 	readonly guideUrl: string
 	readonly id: string
+	/**
+	 * A starter that asks more than the usual Tier 1 design week, so the "about N hours, no more" pace warning does not apply to it.
+	 */
+	readonly longerBuild?: boolean
 	/** What goes on the board, for the card's parts line. */
 	readonly parts: readonly string[]
 	readonly repoUrl: string
@@ -129,6 +133,7 @@ export const STARTER_PROJECTS = [
 			"Learn PCB design by creating your own custom MIDI keypad with switches, sliders, rotary encoders, neopixels and capacitive touch!",
 		guideUrl: "https://github.com/KaiPereira/MIDI-Keypad/blob/master/README.md",
 		id: "midi",
+		longerBuild: true,
 		parts: ["ESP32-S3-Zero", "Kailh Choc switches", "Slide potentiometers", "EC11 rotary encoder", "SK6812 neopixels"],
 		repoUrl: "https://github.com/KaiPereira/MIDI-Keypad",
 		themes: [Theme.SYNTH],

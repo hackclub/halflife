@@ -91,8 +91,8 @@ local patch first so a click does not wait on a round trip to Postgres.
    motion parks on the prize.
 2. **Spotlight** on the yellow first checkpoint.
 3. **Setup** (`components/platform/modals/FirstCheckpoint.tsx`) – six steps:
-   hardware experience → the week themes → PCB week → project creation with
-   starter ideas → funding tier → time tracking.
+   hardware experience → the week themes → the current week's theme → project
+   creation with starter ideas → funding tier → time tracking.
    **Changed by the merge.** Finishing replays all six answers through the
    server's onboarding state machine in order. The machine refuses a step ahead
    of the furthest one reached, which is what stops anyone arriving at a funded

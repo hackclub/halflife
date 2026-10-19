@@ -175,6 +175,8 @@ function DetailsForm({
 
 	const takingStarter = starterId !== null
 	const tierEditable = !takingStarter && !tierLocked
+	// A longer starter (the MIDI keyboard) is deliberately past the usual Tier 1 pace, so the "about N hours, no more" warning below would be wrong for it.
+	const selectedStarter = starterId === null ? undefined : getStarterProject(starterId)
 
 	// The printer goal every hour is paced against, and only when the person is actually saving toward one: "funding for all/some weeks" goals have no machine to pace to, so nothing should warn against their tier or their starter.
 	const goal = printerById(goalId)
@@ -309,7 +311,7 @@ function DetailsForm({
 							? "Starter projects are Tier 1. Switch to your own idea to choose a different tier."
 							: "Building from a starter, or your own idea? Picked the wrong one by accident – change it here."}
 					</p>
-					{takingStarter && hotGoal && (
+					{takingStarter && hotGoal && !selectedStarter?.longerBuild && (
 						<p className="hand text-[0.82rem] leading-snug text-coral-deep" role="status">
 							Heads up: starter projects are meant to take about {fmtHours(submitFloorFor(ENTRY_TIER.fundingHours))} of
 							work, no more. Your {goal.name} needs roughly {Math.round(goal.paceHours * 5)} coins a design week on top
