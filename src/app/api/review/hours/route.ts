@@ -26,7 +26,7 @@ export const POST = withRoute(async (req: Request) => {
 
 	const applied = await prisma.$transaction(async tx => {
 		const [sessions, links] = await Promise.all([
-			sessionIds.length
+			sessionIds.length > 0
 				? tx.workSession.findMany({
 						select: {
 							id: true,
@@ -37,7 +37,7 @@ export const POST = withRoute(async (req: Request) => {
 						where: { deletedAt: null, id: { in: sessionIds } },
 					})
 				: [],
-			linkIds.length
+			linkIds.length > 0
 				? tx.hackatimeLink.findMany({
 						select: {
 							id: true,

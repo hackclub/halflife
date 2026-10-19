@@ -276,7 +276,7 @@ export function checkpointsFor(
 			if (needsProject) out.push(newProject)
 			// The fork: the idea reel, or straight to the first devlog. The entry arm is entry 1 itself, so skipping is just starting the work – no extra "skip" node to settle. A submitted week with no entries logged them nowhere (Hackatime-only), so there is no live entry to offer; the reel stands alone as it always has.
 			out.push(ideaReel)
-			if (!submitted || entryMinutes.length >= 1) {
+			if (!submitted || entryMinutes.length > 0) {
 				out.push(entry(1, "skip"))
 				hours += (entryMinutes[0] ?? 0) / 60
 				while (hours >= progressReelHours(meta.phase, reels + 1)) {

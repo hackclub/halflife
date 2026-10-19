@@ -76,7 +76,7 @@ function clientCalls(): { file: string; path: string; methods: string[] }[] {
 			const methods = [...options.matchAll(/method:\s*(?:\w+\s*\?\s*)?"(\w+)"(?:\s*:\s*"(\w+)")?/g)]
 				.flatMap(m => [m[1], m[2]])
 				.filter((m): m is string => Boolean(m))
-			calls.push({ file, methods: methods.length ? methods : ["GET"], path })
+			calls.push({ file, methods: methods.length > 0 ? methods : ["GET"], path })
 		}
 	}
 	return calls
