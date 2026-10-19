@@ -270,6 +270,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const week = weekOfCheckpoint(checkpoint)
 
 	// Every journal node is one entry: write it and it is done. The week's clock is what decides whether wrapping up is on the table yet. Opened again once it is done, the same sheet is that entry, to correct – not a new one.
+	// oxlint-disable-next-line react/hook-use-state
 	const [existing] = useState(() => {
 		const saved = stateOf(checkpoint.id)
 		return saved.done ? saved.log[0] : undefined
@@ -277,6 +278,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const editing = existing !== undefined
 
 	// A Lapse sign-in leaves the page and comes back: that trip's draft is restored once. Anything else typed is autosaved to this browser and restored next time the sheet opens, so clicking out cannot lose it. A saved entry clears it. Peeked (not taken) during render so StrictMode's double-invoked initializer cannot consume it before state is set.
+	// oxlint-disable-next-line react/hook-use-state
 	const [draft] = useState(() => peekJournalTrip(checkpoint.id) ?? readJournalAutosave(checkpoint.id))
 	const draftRestored = draft != null
 
@@ -1389,6 +1391,8 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const { setOpenCheckpoint, postReel, stateOf, weekOf } = useStore()
 	const week = weekOf(checkpoint.weekId)
 	const done = stateOf(checkpoint.id).done
+	// A reel draft is restored once, when the sheet opens, and never changes while it is open – so it is a value to read, not one to set.
+	// oxlint-disable-next-line react/hook-use-state
 	const [draft] = useState(() => readReelDraft(checkpoint.id))
 	const [clip, setClip] = useState<string | null>(draft?.clip ?? null)
 	// What the preview plays: a blob URL for a file picked on this machine, the bucket's URL for one filmed on the phone or restored from a draft.
