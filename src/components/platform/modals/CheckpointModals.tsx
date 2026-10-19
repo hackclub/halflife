@@ -13,6 +13,7 @@ import {
 	IconEye,
 	IconFilm,
 	IconMic,
+	IconPencil,
 	IconUpload,
 	IconVolume,
 	IconVolumeOff,
@@ -29,7 +30,7 @@ import type { BomLine } from "@/lib/bom"
 import { BOM_MARGIN_USD, bomTotalUsd, partsFunding } from "@/lib/bom-policy"
 import { STARTER_MODIFICATION_NOTE, STARTER_PROJECT_TIER, starterProjectsFor } from "@/lib/config/onboarding"
 import { COINS_PER_HOUR, paceTarget, printerById, submitFloorFor } from "@/lib/config/printers"
-import { THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
+import { MIN_PROJECT_DESCRIPTION_CHARS, THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { photosRequired, TIERS } from "@/lib/curriculum"
 import { cx } from "@/lib/cx"
 import { formatShortDate } from "@/lib/deadline"
@@ -2110,16 +2111,19 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const repoReady = repoResult?.canSubmit ?? false
 
 	const hasCover = !!project?.coverImageKey
+	const descriptionLength = project?.description.trim().length ?? 0
+	const descriptionReady = descriptionLength >= MIN_PROJECT_DESCRIPTION_CHARS
+	const descriptionBlocker = `Write at least ${MIN_PROJECT_DESCRIPTION_CHARS} characters about your project before submitting – you have ${descriptionLength}.`
 
 	const canAdvance =
 		step === 1
 			? repoReady
 			: isBuild
-				? clip && (works === "yes" || (works === "no" && writeup.trim().length >= 40))
+				? clip && descriptionReady && (works === "yes" || (works === "no" && writeup.trim().length >= 40))
 				: step === 2
 					? // No funding, no order, no carts to screenshot: a declined empty BOM carries no cart evidence.
 						(carts.length > 0 || fundingDeclined) && !tierBlocked && fundingOk
-					: clip && !tierBlocked && fundingOk && hasCover
+					: clip && !tierBlocked && fundingOk && hasCover && descriptionReady
 
 	/**
 	 * Why the button at the foot is greyed, in the maker's terms, or null when it is live.
@@ -2139,11 +2143,14 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				? "Record your demo video to carry on."
 				: works === "no" && writeup.trim().length < 40
 					? "Say what needs to change – a sentence or two."
-					: null
+					: !descriptionReady
+						? descriptionBlocker
+						: null
 		if (step === 2)
 			return carts.length === 0 && !fundingDeclined ? "Add a screenshot of your cart above to carry on." : null
 		if (!clip) return "Record your closing reel to carry on."
 		if (!hasCover) return "Add a cover image to your project before you can submit."
+		if (!descriptionReady) return descriptionBlocker
 		return null
 	}
 
@@ -2287,6 +2294,33 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									onClick={() => setOpenCheckpoint(null)}
 								>
 									Go to project page
+								</Link>
+							)}
+						</p>
+					</div>
+				</div>
+			)}
+
+			{!descriptionReady && (
+				<div
+					className="sketch mb-5 flex items-start gap-3 rounded-2xl bg-coral/10 px-5 py-4"
+					style={{ "--sk-color": "var(--color-coral)", "--sk-radius": "16px" } as React.CSSProperties}
+				>
+					<IconPencil className="mt-0.5 shrink-0 text-xl text-coral-deep" />
+					<div className="min-w-0">
+						<p className="text-[0.95rem] leading-snug font-extrabold text-coral-dark">
+							{project ? `${project.name} needs a longer description.` : "Your project needs a longer description."}
+						</p>
+						<p className="mt-1 text-[0.85rem] leading-snug text-navy-soft">
+							A reviewer decides from the description, so it needs at least {MIN_PROJECT_DESCRIPTION_CHARS} characters –
+							you have {descriptionLength}.{" "}
+							{project && (
+								<Link
+									className="text-violet-deep underline decoration-dashed underline-offset-4 hover:text-navy"
+									href={`/projects/${project.id}`}
+									onClick={() => setOpenCheckpoint(null)}
+								>
+									Edit the description
 								</Link>
 							)}
 						</p>

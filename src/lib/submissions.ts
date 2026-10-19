@@ -2,7 +2,7 @@ import "server-only"
 import type { PhaseSubmission, ProgramSettings, ThemeProject } from "@/app/generated/prisma/client"
 import { Phase, PhaseStatus, Theme } from "@/app/generated/prisma/enums"
 import { partsFundingFor } from "@/lib/bom"
-import { scheduledWeekFor } from "@/lib/config/program"
+import { MIN_PROJECT_DESCRIPTION_CHARS, scheduledWeekFor } from "@/lib/config/program"
 import { lockUserCredit } from "@/lib/currency"
 import { HttpError } from "@/lib/errors"
 import { getHoursBreakdown } from "@/lib/hours"
@@ -108,8 +108,14 @@ export async function submitPhase(
 	if (!eligible.ok) throw new HttpError(eligible.code, eligible.message)
 
 	// The Ari SDK refuses a ship without a description. Week one's onboarding lets the maker leave it blank (the project form for other weeks does not), so a blank description used to pass submit and then fail the Ari send silently in the `after` hook – the maker saw success and no reviewer ever saw the project. Enforce it here, beside the hours check, so the refusal reaches the person who can fix it. `buildShipInput` keeps a fallback too, so hand-ins already stuck in this state can still be replayed by `ari-retry`.
-	if (!project.description?.trim())
-		throw new HttpError("UNPROCESSABLE", "Add a project description before submitting this phase")
+	//
+	// The floor is the same 100 characters the project page and submit sheet show: a description that only repeats the title gives a reviewer nothing to decide against.
+	const descriptionLength = project.description?.trim().length ?? 0
+	if (descriptionLength < MIN_PROJECT_DESCRIPTION_CHARS)
+		throw new HttpError(
+			"UNPROCESSABLE",
+			`Write at least ${MIN_PROJECT_DESCRIPTION_CHARS} characters about your project before submitting this phase (you have ${descriptionLength})`,
+		)
 
 	if (!project.coverImageKey)
 		throw new HttpError(

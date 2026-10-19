@@ -238,7 +238,7 @@ export const DOCS: DocArticle[] = [
 			{
 				heading: "Before your first submit",
 				paragraphs: [
-					"You need at least one logged session for the week, and a cover image on the project. The cover is what your project's card and the review queue show, so it has to be a photo or screenshot of the project itself – not a logo or a stock photo.",
+					"You need at least one logged session for the week, a project description of at least 100 characters, and a cover image on the project. The cover is what your project's card and the review queue show, so it has to be a photo or screenshot of the project itself – not a logo or a stock photo.",
 					"Your Hack Club identity has to be verified at identity.hackclub.com before you can buy anything in the shop – you can explore, journal and submit without it.",
 				],
 			},

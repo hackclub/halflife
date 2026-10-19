@@ -45,6 +45,13 @@ export const DESIGN_WEEKS = 5
 export const ONBOARDING_CHECKPOINT_ID = "w1-onboard"
 
 /**
+ * How much a project has to say about itself before a week can be handed in.
+ *
+ * A name and one line is not enough for a reviewer to judge what they are looking at, so the submit gate asks for a real description. It is enforced at submit rather than while the project is still being written, so a half-formed idea can be saved and come back to.
+ */
+export const MIN_PROJECT_DESCRIPTION_CHARS = 100
+
+/**
  * Streaks.
  *
  * A day counts when the participant logs a work session with that day as its `effectiveDate` in the program timezone – the same stamp the journal already writes, so the streak is derived from work rather than from logging in.

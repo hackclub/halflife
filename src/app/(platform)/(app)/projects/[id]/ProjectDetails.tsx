@@ -7,7 +7,7 @@ import { StarterProjectCard } from "@/components/platform/StarterProjectCard"
 import { Button, Chip, OptionRow } from "@/components/platform/ui"
 import { getStarterProject, STARTER_PROJECT_TIER, starterProjectsFor } from "@/lib/config/onboarding"
 import { MIN_HOURS_PER_WEEK, printerById, submitFloorFor } from "@/lib/config/printers"
-import { DESIGN_WEEKS, THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
+import { DESIGN_WEEKS, MIN_PROJECT_DESCRIPTION_CHARS, THEMES, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { ENTRY_TIER } from "@/lib/config/tiers"
 import { TIERS } from "@/lib/curriculum"
 import { cx } from "@/lib/cx"
@@ -258,6 +258,15 @@ function DetailsForm({
 					rows={4}
 					value={description}
 				/>
+				<p
+					className={cx(
+						"hand text-[0.78rem] leading-snug",
+						description.trim().length < MIN_PROJECT_DESCRIPTION_CHARS ? "text-coral-deep" : "text-navy-soft",
+					)}
+				>
+					{description.trim().length}/{MIN_PROJECT_DESCRIPTION_CHARS} characters – a week needs at least{" "}
+					{MIN_PROJECT_DESCRIPTION_CHARS} to submit.
+				</p>
 			</div>
 
 			<div className="grid gap-1.5">
