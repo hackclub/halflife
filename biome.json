@@ -28,6 +28,8 @@
 			"!public/**/*.svg",
 			"scripts/**",
 			"src/**",
+			".impeccable/**",
+			".github/**",
 			"import/**",
 			"!src/**/*.svg",
 			"*.config.mjs",

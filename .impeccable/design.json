@@ -1,487 +1,487 @@
 {
-  "schemaVersion": 2,
-  "generatedAt": "2026-09-24T19:56:34.309Z",
-  "title": "Design System: Half Life",
-  "extensions": {
-    "colorMeta": {
-      "hl-ink": {
-        "role": "neutral",
-        "displayName": "Workshop Ink",
-        "canonical": "#31222c",
-        "tonalRamp": ["#2d1f29", "#4e3646", "#6f4d64", "#916482", "#ab879f", "#c5abbc", "#decfd9", "#f5f0f3"]
-      },
-      "hl-paper": {
-        "role": "neutral",
-        "displayName": "Plate Paper",
-        "canonical": "#ededed",
-        "tonalRamp": ["#292323", "#483d3d", "#665757", "#847171", "#a19191", "#bdb2b2", "#d9d3d3", "#f3f1f1"]
-      },
-      "hl-cyan": {
-        "role": "primary",
-        "displayName": "Programme Cyan",
-        "canonical": "#8ed3dc",
-        "tonalRamp": ["#12363a", "#1f5d65", "#2d8590", "#3aacbb", "#63c2cf", "#92d5dd", "#c1e7ec", "#ecf7f9"]
-      },
-      "hl-blue-deep": {
-        "role": "secondary",
-        "displayName": "Hero Blue",
-        "canonical": "#0E86B9",
-        "tonalRamp": ["#053447", "#09597b", "#0d7faf", "#11a5e4", "#41bcf1", "#7ad0f5", "#b3e4f9", "#e7f7fd"]
-      },
-      "hl-periwinkle": {
-        "role": "tertiary",
-        "displayName": "Band Periwinkle",
-        "canonical": "#a39bd6",
-        "tonalRamp": ["#1b1636", "#2e275e", "#423786", "#5547ae", "#7a6ec4", "#a29ad5", "#cac5e7", "#eeedf8"]
-      },
-      "hl-lavender": {
-        "role": "tertiary",
-        "displayName": "Aside Lavender",
-        "canonical": "#c9c7ec",
-        "tonalRamp": ["#151339", "#252263", "#35308d", "#453eb7", "#6c67cb", "#9894db", "#c4c2ea", "#edecf9"]
-      },
-      "hl-indigo": {
-        "role": "secondary",
-        "displayName": "Aside Indigo",
-        "canonical": "#34316c",
-        "tonalRamp": ["#191835", "#2c295b", "#3e3b82", "#514ca8", "#7773bf", "#9f9dd2", "#c8c7e6", "#eeedf7"]
-      },
-      "hl-yellow": {
-        "role": "tertiary",
-        "displayName": "Carousel Blue (misnamed yellow)",
-        "canonical": "#A2C4DA",
-        "tonalRamp": ["#162a37", "#26485f", "#366787", "#4686af", "#6da2c5", "#99bed6", "#c5dae8", "#edf3f8"]
-      },
-      "hl-yellow-pale": {
-        "role": "tertiary",
-        "displayName": "Carousel Blue Pale (misnamed yellow)",
-        "canonical": "#EBF7FF",
-        "tonalRamp": ["#002e4d", "#005085", "#0071bd", "#0093f5", "#33adff", "#70c6ff", "#addeff", "#e5f5ff"]
-      },
-      "cream": {
-        "role": "neutral",
-        "displayName": "Warm Paper Ground",
-        "canonical": "#fcf7f7",
-        "tonalRamp": ["#381515", "#602424", "#893333", "#b24343", "#c76b6b", "#d89797", "#e9c4c4", "#f8ecec"]
-      },
-      "paper": {
-        "role": "neutral",
-        "displayName": "Panel White",
-        "canonical": "#ffffff",
-        "tonalRamp": ["#292323", "#483d3d", "#665757", "#847171", "#a19191", "#bdb2b2", "#d9d3d3", "#f3f1f1"]
-      },
-      "navy": {
-        "role": "secondary",
-        "displayName": "Deep Ink Navy",
-        "canonical": "#1c1a59",
-        "tonalRamp": ["#13113b", "#201e67", "#2e2b92", "#3c37bd", "#6561d1", "#9390df", "#c1c0ed", "#ecebf9"]
-      },
-      "navy-soft": {
-        "role": "neutral",
-        "displayName": "Second Voice Navy",
-        "canonical": "#4a4785",
-        "tonalRamp": ["#1c1b32", "#302e56", "#44427b", "#5955a0", "#7d7ab8", "#a4a2cd", "#cbcae3", "#efeef6"]
-      },
-      "line": {
-        "role": "neutral",
-        "displayName": "Drawn Line",
-        "canonical": "#c8c3d6",
-        "tonalRamp": ["#231f2d", "#3c364f", "#564d70", "#6f6391", "#9086ac", "#b1aac5", "#d3cfde", "#f1f0f5"]
-      },
-      "line-strong": {
-        "role": "neutral",
-        "displayName": "Control Outline",
-        "canonical": "#9a94b4",
-        "tonalRamp": ["#22202d", "#3b374e", "#544e6f", "#6d6590", "#8e87ab", "#b0abc4", "#d2cfdd", "#f1f0f4"]
-      },
-      "violet": {
-        "role": "primary",
-        "displayName": "Action Violet",
-        "canonical": "#a47cc0",
-        "tonalRamp": ["#291934", "#462b5a", "#643d7f", "#824fa5", "#9f75bd", "#bc9fd1", "#d9c8e5", "#f3eef7"]
-      },
-      "sky": {
-        "role": "primary",
-        "displayName": "Open Sky",
-        "canonical": "#52b4d5",
-        "tonalRamp": ["#0f323e", "#1a566b", "#257b98", "#309fc5", "#5bb8d7", "#8ccde3", "#bde3ef", "#eaf6fa"]
-      },
-      "teal": {
-        "role": "secondary",
-        "displayName": "Programme Teal",
-        "canonical": "#06ae97",
-        "tonalRamp": ["#034a40", "#04806f", "#06b69e", "#08edcd", "#3af8de", "#75fae8", "#b0fcf2", "#e6fefb"]
-      },
-      "mint": {
-        "role": "secondary",
-        "displayName": "Track Mint",
-        "canonical": "#aef2dd",
-        "tonalRamp": ["#0b4231", "#127255", "#1aa378", "#22d39c", "#4fe3b5", "#84ebcb", "#b9f4e1", "#e9fbf6"]
-      },
-      "magenta": {
-        "role": "secondary",
-        "displayName": "Hand-in Magenta",
-        "canonical": "#b21b9b",
-        "tonalRamp": ["#420a3a", "#731164", "#a4198f", "#d520b9", "#e44ecd", "#ec83dc", "#f4b8eb", "#fce9f9"]
-      },
-      "coral": {
-        "role": "tertiary",
-        "displayName": "Streak Coral",
-        "canonical": "#f35757",
-        "tonalRamp": ["#470505", "#7c0909", "#b00d0d", "#e41010", "#f14141", "#f57a7a", "#fab3b3", "#fde7e7"]
-      },
-      "orange": {
-        "role": "tertiary",
-        "displayName": "Coin Orange",
-        "canonical": "#fba62f",
-        "tonalRamp": ["#4b2c01", "#824d03", "#b96d04", "#f08e05", "#fba937", "#fcc373", "#fdddaf", "#fff4e6"]
-      },
-      "gold": {
-        "role": "tertiary",
-        "displayName": "Setup Gold",
-        "canonical": "#f6c63f",
-        "tonalRamp": ["#493703", "#7f5f06", "#b48708", "#eaaf0b", "#f6c53c", "#f9d777", "#fbe8b1", "#fef8e7"]
-      },
-      "sand": {
-        "role": "tertiary",
-        "displayName": "Locked Sand",
-        "canonical": "#f4dfc6",
-        "tonalRamp": ["#40280c", "#6f4615", "#9e641f", "#cd8228", "#de9f54", "#e8bc87", "#f2d9bb", "#fbf3ea"]
-      },
-      "teal-grey": {
-        "role": "tertiary",
-        "displayName": "Passed Teal Grey",
-        "canonical": "#b3c7c3",
-        "tonalRamp": ["#202c2a", "#384c48", "#506d67", "#688d86", "#8aa8a2", "#adc2be", "#d0dcda", "#f0f4f3"]
-      },
-      "ops-accent-bright": {
-        "role": "primary",
-        "displayName": "Sign Blue (staff console)",
-        "canonical": "#61cdf1",
-        "tonalRamp": ["#063646", "#0b5e7a", "#0f86ad", "#14aee1", "#44c4ee", "#7cd5f3", "#b4e7f8", "#e8f8fd"]
-      }
-    },
-    "typographyMeta": {
-      "site-display": {
-        "displayName": "Landing Display",
-        "purpose": "Every landing header: section titles, step titles, FAQ questions. Ubuntu."
-      },
-      "site-body": {
-        "displayName": "Landing Body",
-        "purpose": "Landing paragraphs, captions, form fields."
-      },
-      "site-hand": {
-        "displayName": "Brush",
-        "purpose": "Identity only: the wordmark. Never bold."
-      },
-      "site-tagline": {
-        "displayName": "Tagline",
-        "purpose": "The landing's tagline lines."
-      },
-      "app-display": {
-        "displayName": "Platform Display",
-        "purpose": "The page title on its hanging sign. One per screen."
-      },
-      "app-headline": {
-        "displayName": "Platform Headline",
-        "purpose": "The week banner headline; a project's name on its page."
-      },
-      "app-title": {
-        "displayName": "Platform Title",
-        "purpose": "Timeline headlines, reel authors, card names."
-      },
-      "app-body": {
-        "displayName": "Platform Body",
-        "purpose": "Descriptions, journal entries, comments. 68ch measure for entries."
-      },
-      "app-hand": {
-        "displayName": "Margin Hand",
-        "purpose": "Asides, timestamps, hours logged. Never a requirement someone must read."
-      },
-      "app-label": {
-        "displayName": "Label",
-        "purpose": "Section headings, chips, button text. Uppercase."
-      }
-    },
-    "shadows": [
-      {
-        "name": "stack",
-        "value": "0 2px 4px rgba(28,26,89,.06), 0 10px 26px -12px rgba(28,26,89,.28)",
-        "purpose": "The lowest lift."
-      },
-      {
-        "name": "lift",
-        "value": "0 3px 6px rgba(28,26,89,.08), 0 18px 40px -16px rgba(28,26,89,.38)",
-        "purpose": "Reel cards: a video is an object on the desk."
-      },
-      {
-        "name": "tape",
-        "value": "0 3px 6px rgba(28,26,89,.1), 0 14px 30px -14px rgba(28,26,89,.4)",
-        "purpose": "Torn week banners and page signs."
-      },
-      {
-        "name": "sticker",
-        "value": "drop-shadow(0 3px 2px rgba(28,26,89,.16)) drop-shadow(0 9px 13px rgba(28,26,89,.13))",
-        "purpose": "Die-cut art."
-      },
-      {
-        "name": "puck",
-        "value": "0 10px 18px -6px rgba(28,26,89,.34)",
-        "purpose": "Under a checkpoint's rim disc, which itself sits 9px below the face (7px locked or passed, 11px for setup)."
-      }
-    ],
-    "motion": [
-      {
-        "name": "ease-out-expo",
-        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
-        "purpose": "Arrivals: rail folds, sheets, bubbles, switches."
-      },
-      {
-        "name": "ease-spring",
-        "value": "cubic-bezier(0.22, 1.18, 0.36, 1)",
-        "purpose": "Small pops."
-      },
-      {
-        "name": "reel-glide",
-        "value": "360ms, 1-(1-t)^4",
-        "purpose": "One flick moves one reel on the Doomscroller; an instant cut under reduced motion."
-      },
-      {
-        "name": "puck-press",
-        "value": "transform 0.16s ease-out-expo",
-        "purpose": "The face lifts 3px on hover and sinks onto its rim on press."
-      },
-      {
-        "name": "callout-bob",
-        "value": "hl-bob 2.4s ease-in-out infinite",
-        "purpose": "The navy 'Start here' callout above the next checkpoint. Motion-safe only."
-      }
-    ],
-    "breakpoints": [
-      {
-        "name": "md",
-        "value": "768px"
-      },
-      {
-        "name": "lg (sidebar appears)",
-        "value": "1024px"
-      },
-      {
-        "name": "xl (status rail, comments beside reel)",
-        "value": "1280px"
-      },
-      {
-        "name": "2xl",
-        "value": "1536px"
-      },
-      {
-        "name": "site-stage",
-        "value": "1180px"
-      }
-    ],
-    "wobble": {
-      "platform": "hl-wobble: feTurbulence baseFrequency 0.018, numOctaves 3, seed 7; feDisplacementMap scale 4.2. hl-wobble-2 (0.022, seed 21, scale 5) and hl-wobble-3 (0.034, 2 octaves, seed 43, scale 3.4) vary neighbours.",
-      "tear": "hl-tear: baseFrequency 0.02 0.11, seed 11, scale 9 (week banners, signs). hl-tear-soft: 0.03 0.09, seed 31, scale 5.",
-      "staffConsole": "WobbleBorder: baseFrequency 0.05, 3 octaves, seed 7, scale 2.5; rules 0.06 / scale 1.8 in userSpaceOnUse (a zero-height box needs a user-space filter region)."
-    }
-  },
-  "components": [
-    {
-      "name": "Solid Button",
-      "kind": "button",
-      "refersTo": "button-solid",
-      "description": "The committing action on a platform screen. White on violet is 3.37:1 — a known failure awaiting a brand decision.",
-      "html": "<button class=\"ds-btn ds-btn-solid\">Save entry</button>",
-      "css": ".ds-btn{font:700 .85rem/1 'Shantell Sans','Plus Jakarta Sans',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.11em;display:inline-flex;align-items:center;justify-content:center;gap:.5rem;height:2.75rem;padding:0 1.25rem;border-radius:12px;border:2px solid;cursor:pointer;transition:background-color .15s,color .15s,transform .15s}.ds-btn:active{transform:translateY(1px)}.ds-btn:focus-visible{outline:3px solid #b21b9b;outline-offset:3px}.ds-btn-solid{background:#a47cc0;color:#fff;border-color:#7b519b}.ds-btn-solid:hover{background:#7b519b}"
-    },
-    {
-      "name": "Outline Button",
-      "kind": "button",
-      "refersTo": "button-outline",
-      "description": "Secondary actions.",
-      "html": "<button class=\"ds-btn ds-btn-outline\">Edit details</button>",
-      "css": ".ds-btn{font:700 .85rem/1 'Shantell Sans','Plus Jakarta Sans',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.11em;display:inline-flex;align-items:center;justify-content:center;gap:.5rem;height:2.75rem;padding:0 1.25rem;border-radius:12px;border:2px solid;cursor:pointer;transition:background-color .15s,color .15s,transform .15s}.ds-btn:active{transform:translateY(1px)}.ds-btn:focus-visible{outline:3px solid #b21b9b;outline-offset:3px}.ds-btn-outline{background:transparent;color:#1c1a59;border-color:#a47cc0}.ds-btn-outline:hover{background:#ece2f2}"
-    },
-    {
-      "name": "Ghost Button",
-      "kind": "button",
-      "refersTo": "button-ghost",
-      "description": "Tertiary actions and dismissals.",
-      "html": "<button class=\"ds-btn ds-btn-ghost\">Cancel</button>",
-      "css": ".ds-btn{font:700 .85rem/1 'Shantell Sans','Plus Jakarta Sans',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.11em;display:inline-flex;align-items:center;justify-content:center;gap:.5rem;height:2.75rem;padding:0 1.25rem;border-radius:12px;border:2px solid;cursor:pointer;transition:background-color .15s,color .15s,transform .15s}.ds-btn:active{transform:translateY(1px)}.ds-btn:focus-visible{outline:3px solid #b21b9b;outline-offset:3px}.ds-btn-ghost{background:transparent;color:#4a4785;border-color:transparent}.ds-btn-ghost:hover{color:#1c1a59;background:rgba(0,0,0,.05)}"
-    },
-    {
-      "name": "Chips",
-      "kind": "chip",
-      "refersTo": "chip-violet",
-      "description": "A fact about the thing it sits on. Two per header at most.",
-      "html": "<span class=\"ds-chips\"><span class=\"ds-chip ds-chip-muted\">PCB</span><span class=\"ds-chip ds-chip-violet\">Tier 2</span></span>",
-      "css": ".ds-chips{display:inline-flex;gap:.5rem}.ds-chip{font:700 .78rem/1.25 'Shantell Sans','Plus Jakarta Sans',sans-serif;text-transform:uppercase;letter-spacing:.11em;border-radius:999px;padding:.25rem .625rem}.ds-chip-violet{background:#ece2f2;color:#7b519b}.ds-chip-muted{background:rgba(0,0,0,.05);color:#4a4785}"
-    },
-    {
-      "name": "Text Field",
-      "kind": "input",
-      "refersTo": "input",
-      "description": "A real 2px border: .sketch cannot draw on a form control.",
-      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Project name</span><input class=\"ds-input\" placeholder=\"Give it a name\"></label>",
-      "css": ".ds-field{display:grid;gap:.375rem;max-width:22rem;font-family:'Plus Jakarta Sans',system-ui,sans-serif}.ds-field-label{font:700 .78rem/1.25 'Shantell Sans','Plus Jakarta Sans',sans-serif;text-transform:uppercase;letter-spacing:.11em;color:#7b519b}.ds-input{font:400 .95rem 'Plus Jakarta Sans',system-ui,sans-serif;color:#1c1a59;background:rgba(0,0,0,.02);border:2px solid #c8c3d6;border-radius:12px;padding:.75rem 1rem;outline:none;transition:border-color .15s,background-color .15s}.ds-input::placeholder{color:#8b87a8}.ds-input:hover{border-color:#9a94b4}.ds-input:focus{border-color:#a47cc0;background:#fff}"
-    },
-    {
-      "name": "Drawn Panel",
-      "kind": "card",
-      "refersTo": "panel-sketch",
-      "description": "The platform's container: white, outlined by a displaced stroke on a pseudo-element. Never shadowed, never nested.",
-      "html": "<svg width=\"0\" height=\"0\" style=\"position:absolute\" aria-hidden=\"true\"><filter id=\"dsWob\" x=\"-12%\" y=\"-12%\" width=\"124%\" height=\"124%\"><feTurbulence type=\"fractalNoise\" baseFrequency=\"0.018\" numOctaves=\"3\" seed=\"7\" result=\"n\"/><feDisplacementMap in=\"SourceGraphic\" in2=\"n\" scale=\"4.2\" xChannelSelector=\"R\" yChannelSelector=\"G\"/></filter></svg><div class=\"ds-panel\"><p class=\"ds-panel-label\">Timeline</p><p class=\"ds-panel-body\">Soldered the USB-C port today. The first board shorted, the second one lit up.</p></div>",
-      "css": ".ds-panel{position:relative}.ds-panel::before{content:\"\";position:absolute;inset:0;border:2px solid #c8c3d6;border-radius:16px;filter:url(#dsWob);pointer-events:none}.ds-panel{background:#fff;border-radius:16px;padding:1.25rem 1.5rem;max-width:22rem;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#1c1a59}.ds-panel-label{margin:0 0 .5rem;font:700 .78rem/1.25 'Shantell Sans','Plus Jakarta Sans',sans-serif;text-transform:uppercase;letter-spacing:.11em;color:#7b519b}.ds-panel-body{margin:0;font-size:.9rem;line-height:1.5}"
-    },
-    {
-      "name": "Sidebar Nav",
-      "kind": "nav",
-      "refersTo": "nav",
-      "description": "The current page is extra-bold navy with a coral dot; the rest semibold navy-soft; dashed dividers.",
-      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-item ds-nav-current\" href=\"#\" aria-current=\"page\"><span>Home</span><span class=\"ds-dot\" aria-hidden=\"true\"></span></a><a class=\"ds-nav-item\" href=\"#\"><span>Projects</span></a><a class=\"ds-nav-item\" href=\"#\"><span>Explore</span></a></nav>",
-      "css": ".ds-nav{display:flex;flex-direction:column;max-width:14rem;font-family:'Plus Jakarta Sans',system-ui,sans-serif}.ds-nav-item{display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.75rem 0;border-bottom:1px dashed #c8c3d6;font-size:1.02rem;font-weight:600;color:#4a4785;text-decoration:none;transition:color .15s}.ds-nav-item:hover{color:#1c1a59}.ds-nav-current{font-weight:800;color:#1c1a59}.ds-dot{width:8px;height:8px;border-radius:50%;background:#f35757}.ds-nav-item:focus-visible{outline:3px solid #b21b9b;outline-offset:3px;border-radius:6px}"
-    },
-    {
-      "name": "Checkpoint — open",
-      "kind": "custom",
-      "refersTo": "puck-open",
-      "description": "A checkpoint you can open: sky face on a sky-deep rim.",
-      "html": "<button class=\"ds-puck ds-open\" aria-label=\"Checkpoint\"><span class=\"ds-puck-face\"><svg viewBox=\"0 0 24 24\" width=\"30\" height=\"30\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"8.6\"/><path d=\"M12 7v5.4l3.4 2\"/></svg></span></button>",
-      "css": ".ds-puck{position:relative;display:grid;place-items:center;width:84px;aspect-ratio:1;border:0;background:none;padding:0;cursor:pointer;transition:transform .16s cubic-bezier(.16,1,.3,1)}.ds-puck::after{content:\"\";position:absolute;inset:0;border-radius:50%;background:#2e8cae;transform:translateY(9px);box-shadow:0 10px 18px -6px rgba(28,26,89,.34)}.ds-puck-face{position:relative;z-index:1;display:grid;place-items:center;width:100%;height:100%;border-radius:50%;background:#52b4d5;box-shadow:inset 0 -3px 0 rgba(255,255,255,.2)}.ds-puck:hover{transform:translateY(-3px)}.ds-puck:focus-visible{outline:3px solid #b21b9b;outline-offset:3px;border-radius:50%}"
-    },
-    {
-      "name": "Checkpoint — done",
-      "kind": "custom",
-      "refersTo": "puck-done",
-      "description": "Finished: teal face with a check.",
-      "html": "<button class=\"ds-puck ds-done\" aria-label=\"Checkpoint\"><span class=\"ds-puck-face\"><svg viewBox=\"0 0 24 24\" width=\"30\" height=\"30\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12.5l4.5 4.5L19 7.5\"/></svg></span></button>",
-      "css": ".ds-puck{position:relative;display:grid;place-items:center;width:84px;aspect-ratio:1;border:0;background:none;padding:0;cursor:pointer;transition:transform .16s cubic-bezier(.16,1,.3,1)}.ds-puck::after{content:\"\";position:absolute;inset:0;border-radius:50%;background:#048372;transform:translateY(9px);box-shadow:0 10px 18px -6px rgba(28,26,89,.34)}.ds-puck-face{position:relative;z-index:1;display:grid;place-items:center;width:100%;height:100%;border-radius:50%;background:#06ae97;box-shadow:inset 0 -3px 0 rgba(255,255,255,.2)}.ds-puck:hover{transform:translateY(-3px)}.ds-puck:focus-visible{outline:3px solid #b21b9b;outline-offset:3px;border-radius:50%}"
-    },
-    {
-      "name": "Checkpoint — locked",
-      "kind": "custom",
-      "refersTo": "puck-locked",
-      "description": "Not reachable yet: sand, padlock, sunk to a 7px rim. The hover bubble names the one thing in the way.",
-      "html": "<button class=\"ds-puck ds-locked\" aria-label=\"Checkpoint\"><span class=\"ds-puck-face\"><svg viewBox=\"0 0 24 24\" width=\"30\" height=\"30\" fill=\"none\" stroke=\"#cdae8a\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"5.5\" y=\"10.5\" width=\"13\" height=\"9.5\" rx=\"2\"/><path d=\"M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5\"/></svg></span></button>",
-      "css": ".ds-puck{position:relative;display:grid;place-items:center;width:84px;aspect-ratio:1;border:0;background:none;padding:0;cursor:pointer;transition:transform .16s cubic-bezier(.16,1,.3,1)}.ds-puck::after{content:\"\";position:absolute;inset:0;border-radius:50%;background:#cdae8a;transform:translateY(7px);box-shadow:0 10px 18px -6px rgba(28,26,89,.34)}.ds-puck-face{position:relative;z-index:1;display:grid;place-items:center;width:100%;height:100%;border-radius:50%;background:#f4dfc6;box-shadow:inset 0 -3px 0 rgba(255,255,255,.2)}.ds-puck:hover{transform:translateY(-3px)}.ds-puck:focus-visible{outline:3px solid #b21b9b;outline-offset:3px;border-radius:50%}"
-    },
-    {
-      "name": "Checkpoint — passed",
-      "kind": "custom",
-      "refersTo": "puck-passed",
-      "description": "Its week's Sunday has gone: teal grey, sunk to a 7px rim. 'This week has passed!'",
-      "html": "<button class=\"ds-puck ds-passed\" aria-label=\"Checkpoint\"><span class=\"ds-puck-face\"><svg viewBox=\"0 0 24 24\" width=\"30\" height=\"30\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12.5l4.5 4.5L19 7.5\"/></svg></span></button>",
-      "css": ".ds-puck{position:relative;display:grid;place-items:center;width:84px;aspect-ratio:1;border:0;background:none;padding:0;cursor:pointer;transition:transform .16s cubic-bezier(.16,1,.3,1)}.ds-puck::after{content:\"\";position:absolute;inset:0;border-radius:50%;background:#86a09b;transform:translateY(7px);box-shadow:0 10px 18px -6px rgba(28,26,89,.34)}.ds-puck-face{position:relative;z-index:1;display:grid;place-items:center;width:100%;height:100%;border-radius:50%;background:#b3c7c3;box-shadow:inset 0 -3px 0 rgba(255,255,255,.2)}.ds-puck:hover{transform:translateY(-3px)}.ds-puck:focus-visible{outline:3px solid #b21b9b;outline-offset:3px;border-radius:50%}"
-    },
-    {
-      "name": "Hover Bubble — done",
-      "kind": "custom",
-      "refersTo": "bubble-done",
-      "description": "The mint bubble over a finished checkpoint. Same shape as the navy 'Start here' callout and the sand lock bubble.",
-      "html": "<svg width=\"0\" height=\"0\" style=\"position:absolute\" aria-hidden=\"true\"><filter id=\"dsWob\" x=\"-12%\" y=\"-12%\" width=\"124%\" height=\"124%\"><feTurbulence type=\"fractalNoise\" baseFrequency=\"0.018\" numOctaves=\"3\" seed=\"7\" result=\"n\"/><feDisplacementMap in=\"SourceGraphic\" in2=\"n\" scale=\"4.2\" xChannelSelector=\"R\" yChannelSelector=\"G\"/></filter></svg><div class=\"ds-bubble\"><p class=\"ds-bubble-main\"><svg viewBox=\"0 0 24 24\" width=\"13\" height=\"13\" fill=\"none\" stroke=\"#048372\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12.5l4.5 4.5L19 7.5\"/></svg>You've already completed this checkpoint!</p><p class=\"ds-bubble-note\">click to edit your entry.</p><span class=\"ds-bubble-tail\" aria-hidden=\"true\"></span></div>",
-      "css": ".ds-bubble{position:relative}.ds-bubble::before{content:\"\";position:absolute;inset:0;border:2px solid #048372;border-radius:14px;filter:url(#dsWob);pointer-events:none}.ds-bubble{background:#aef2dd;border-radius:14px;padding:.625rem .875rem;max-width:13rem;font-family:'Plus Jakarta Sans',system-ui,sans-serif}.ds-bubble-main{display:flex;gap:.375rem;align-items:flex-start;margin:0;font-size:.74rem;font-weight:600;line-height:1.35;color:#1c1a59}.ds-bubble-note{margin:.25rem 0 0;padding-left:1.25rem;font:500 .72rem/1.35 'Shantell Sans','Plus Jakarta Sans',sans-serif;letter-spacing:.04em;color:#4a4785}.ds-bubble-tail{position:absolute;top:100%;left:50%;margin-left:-8px;border:8px solid transparent;border-top:9px solid #aef2dd;border-bottom:0}"
-    }
-  ],
-  "narrative": {
-    "northStar": "Two worlds: \"The Production Line\" (landing) and \"The Field Notebook\" (platform)",
-    "overview": "Half Life runs two visual worlds on purpose. The marketing site sells a ten-week hardware programme to teenagers who have never soldered anything; the platform is where those teenagers then work, for ten weeks, most days. The landing page is a production line drawn as the line itself: flat plates, square-cut bands, no shadows, an ink ground, and a thick band welding each stage to the next. The platform is a field notebook: every outline a drawn ink stroke, the week arriving as torn painted paper, structure expressed as a path you walk rather than a page you read. Even the Doomscroller's reel player is drawn in the notebook's hand rather than as a dark cinema.",
-    "keyCharacteristics": [
-      "Two grounds, never mixed: #31222c ink for the landing, #fcf7f7 warm paper for the platform, with a faint 28px graph-paper tooth so the cream reads as paper rather than dimmed white.",
-      "The landing is flat and mostly square; the platform has drawn edges, pucks that sit on a rim, and a few stickers lifted off the page.",
-      "The platform's borders are drawn, not declared: .sketch puts a wobbling marker outline on a pseudo-element so the line never touches the content it frames, and .torn applies the same displacement to a filled shape.",
-      "Its checkpoint token is the .puck: a rim disc offset beneath a face disc, an ambient shadow under both, and a press that sinks the face onto the rim.",
-      "The platform's primary structure is a progress path, not a dashboard of cards.",
-      "Illustration is the programme's own: a cast of fox and gato characters and five theme paintings, all die-cut stickers with a pale outline.",
-      "Text is navy and navy-soft, never neutral grey; the hand face writes the asides in the margin."
-    ],
-    "rules": [
-      {
-        "name": "The Two Worlds Rule",
-        "body": "A token from one world never appears in the other. If a platform screen needs an accent, it is sky, not hl-cyan. The two palettes do not share a single value, and a screen that mixes them belongs to neither.",
-        "section": "colors"
-      },
-      {
-        "name": "The Tinted Secondary Rule",
-        "body": "Secondary text is tinted from its own surface, never neutral grey. The landing derives hl-ink-soft as ink at 80% over paper and hl-paper-soft as paper at 78% over ink. The platform's secondary text is navy-soft, the navy hue lifted until it reads as a second voice.",
-        "section": "colors"
-      },
-      {
-        "name": "The State Colour Rule",
-        "body": "On the trail a puck's colour is its state, and each state owns one hue: sky open, teal done, magenta hand-in, gold setup, sand locked, teal-grey passed. Don't reuse these hues on a puck for anything else.",
-        "section": "colors"
-      },
-      {
-        "name": "The Misnamed Yellow Rule",
-        "body": "--color-hl-yellow (#A2C4DA) and --color-hl-yellow-pale (#EBF7FF) are blue. The landing was recoloured after those variables were named and the names were never updated. Trust the value, not the name — and rename them before adding anything new that uses them.",
-        "section": "colors"
-      },
-      {
-        "name": "The One Size Per Role Rule",
-        "body": "Each role above has one size on a screen. Five near-identical hand sizes (12.2, 12.8, 13.1, 13.4, 13.8px) read as untidiness, not hierarchy; asides are 0.84rem, body 0.9rem, timeline titles 0.95rem.",
-        "section": "typography"
-      },
-      {
-        "name": "The Hand Is Not Body Rule",
-        "body": "The platform's hand-lettered face sets labels, asides and nothing longer — never a requirement or an instruction someone has to read to finish a task. Shantell Sans stands in for the comp's COMICO, reached everywhere through --font-hand.",
-        "section": "typography"
-      },
-      {
-        "name": "The Brush Bookends Rule",
-        "body": "On the landing, Masterpiece is identity, never voice. It sets the wordmark and nothing else, and it is never bold: font-synthesis-weight: none is set for that reason.",
-        "section": "typography"
-      },
-      {
-        "name": "The Metric Drift Rule",
-        "body": "Ubuntu is not a drop-in for Open Sans: it sets about 3% smaller at the same font-size, and its declared ink box is 1.0984em against Open Sans's 1.2951em. Size the two independently.",
-        "section": "typography"
-      },
-      {
-        "name": "The Outline-Not-Shadow Rule",
-        "body": "A panel, card, button or field is separated by a drawn outline and the page ground showing through, never by a shadow. If something needs separating, give it a border and a gap.",
-        "section": "elevation"
-      },
-      {
-        "name": "The Paper-On-Paper Rule",
-        "body": "A shadow means an object sitting on the notebook — a puck, a sticker, a strip of tape, a reel. If it isn't something you could pick up, it doesn't get one.",
-        "section": "elevation"
-      },
-      {
-        "name": "The Drawn Edge Rule",
-        "body": "A platform border is drawn, not stroked. Use .sketch (or .sketch-2 / .sketch-3, which carry different seeds) rather than a CSS border, and vary which one between adjacent cards. In the staff console the equivalent is .hl-wobbly plus <WobbleBorder/> with a seed prop.",
-        "section": "shapes"
-      },
-      {
-        "name": "The Filter Applies To The Edge Rule",
-        "body": "The displacement filter goes on the border element only, never on a container. Filtering an element that holds text drags the text through the same displacement and turns it to mush.",
-        "section": "shapes"
-      },
-      {
-        "name": "The No Sketch On Fields Rule",
-        "body": ".sketch draws on a pseudo-element, and <input>, <select> and <textarea> cannot hold one — the outline silently never renders and the field is a white box on a white panel. Fields take a real 2px border instead.",
-        "section": "shapes"
-      }
-    ],
-    "dos": [
-      "Do pick the world first. A platform screen uses the platform palette, Plus Jakarta, drawn edges and 16px panels; a landing section uses ink, Ubuntu, Open Sans and square plates.",
-      "Do draw platform borders with .sketch / .sketch-2 / .sketch-3 and vary them between neighbouring panels.",
-      "Do keep a disabled control in place and say why next to it; never hide a control because it can't be used right now.",
-      "Do let a puck's colour say its state, and say the rest in the bubble that hangs above it.",
-      "Do give every focusable surface the ring: magenta, 3px, 3px offset on the platform; accent, 3px, 2px offset in the staff console.",
-      "Do keep one size per text role on a screen: asides 0.84rem, body 0.9rem, timeline titles 0.95rem.",
-      "Do put the content first when the platform collapses; below lg the chrome moves to a header and a bottom tab bar."
-    ],
-    "donts": [
-      "Don't mix the two palettes, or put a platform component on a landing page.",
-      "Don't shadow a panel, card, button or field. Shadows belong to things sitting on the paper — pucks, stickers, tape, reels.",
-      "Don't set text a participant must read in line-strong, teal, gold-deep, orange-deep, coral or sky-deep on cream, or white on sky, teal, orange or teal-grey — all below 4.5:1 (see Measured contrast).",
-      "Don't put .sketch on an <input>, <select> or <textarea>; it cannot render there.",
-      "Don't trust --color-hl-yellow*: those variables hold blues.",
-      "Don't set Masterpiece in bold, or use it for anything but the wordmark.",
-      "Don't apply the wobble filter to anything containing text.",
-      "Don't nest panels, and don't reach for a panel when the content is a path, a feed or a form.",
-      "Don't stack chips as a page's structure; a fact that needs no emphasis goes in the quiet hand-text line.",
-      "Don't use a Unicode glyph as an icon. Icons are drawn SVG on a 24px grid at a 1.8px round stroke."
-    ]
-  }
+	"components": [
+		{
+			"css": ".ds-btn{font:700 .85rem/1 'Shantell Sans','Plus Jakarta Sans',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.11em;display:inline-flex;align-items:center;justify-content:center;gap:.5rem;height:2.75rem;padding:0 1.25rem;border-radius:12px;border:2px solid;cursor:pointer;transition:background-color .15s,color .15s,transform .15s}.ds-btn:active{transform:translateY(1px)}.ds-btn:focus-visible{outline:3px solid #b21b9b;outline-offset:3px}.ds-btn-solid{background:#a47cc0;color:#fff;border-color:#7b519b}.ds-btn-solid:hover{background:#7b519b}",
+			"description": "The committing action on a platform screen. White on violet is 3.37:1 — a known failure awaiting a brand decision.",
+			"html": "<button class=\"ds-btn ds-btn-solid\">Save entry</button>",
+			"kind": "button",
+			"name": "Solid Button",
+			"refersTo": "button-solid"
+		},
+		{
+			"css": ".ds-btn{font:700 .85rem/1 'Shantell Sans','Plus Jakarta Sans',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.11em;display:inline-flex;align-items:center;justify-content:center;gap:.5rem;height:2.75rem;padding:0 1.25rem;border-radius:12px;border:2px solid;cursor:pointer;transition:background-color .15s,color .15s,transform .15s}.ds-btn:active{transform:translateY(1px)}.ds-btn:focus-visible{outline:3px solid #b21b9b;outline-offset:3px}.ds-btn-outline{background:transparent;color:#1c1a59;border-color:#a47cc0}.ds-btn-outline:hover{background:#ece2f2}",
+			"description": "Secondary actions.",
+			"html": "<button class=\"ds-btn ds-btn-outline\">Edit details</button>",
+			"kind": "button",
+			"name": "Outline Button",
+			"refersTo": "button-outline"
+		},
+		{
+			"css": ".ds-btn{font:700 .85rem/1 'Shantell Sans','Plus Jakarta Sans',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.11em;display:inline-flex;align-items:center;justify-content:center;gap:.5rem;height:2.75rem;padding:0 1.25rem;border-radius:12px;border:2px solid;cursor:pointer;transition:background-color .15s,color .15s,transform .15s}.ds-btn:active{transform:translateY(1px)}.ds-btn:focus-visible{outline:3px solid #b21b9b;outline-offset:3px}.ds-btn-ghost{background:transparent;color:#4a4785;border-color:transparent}.ds-btn-ghost:hover{color:#1c1a59;background:rgba(0,0,0,.05)}",
+			"description": "Tertiary actions and dismissals.",
+			"html": "<button class=\"ds-btn ds-btn-ghost\">Cancel</button>",
+			"kind": "button",
+			"name": "Ghost Button",
+			"refersTo": "button-ghost"
+		},
+		{
+			"css": ".ds-chips{display:inline-flex;gap:.5rem}.ds-chip{font:700 .78rem/1.25 'Shantell Sans','Plus Jakarta Sans',sans-serif;text-transform:uppercase;letter-spacing:.11em;border-radius:999px;padding:.25rem .625rem}.ds-chip-violet{background:#ece2f2;color:#7b519b}.ds-chip-muted{background:rgba(0,0,0,.05);color:#4a4785}",
+			"description": "A fact about the thing it sits on. Two per header at most.",
+			"html": "<span class=\"ds-chips\"><span class=\"ds-chip ds-chip-muted\">PCB</span><span class=\"ds-chip ds-chip-violet\">Tier 2</span></span>",
+			"kind": "chip",
+			"name": "Chips",
+			"refersTo": "chip-violet"
+		},
+		{
+			"css": ".ds-field{display:grid;gap:.375rem;max-width:22rem;font-family:'Plus Jakarta Sans',system-ui,sans-serif}.ds-field-label{font:700 .78rem/1.25 'Shantell Sans','Plus Jakarta Sans',sans-serif;text-transform:uppercase;letter-spacing:.11em;color:#7b519b}.ds-input{font:400 .95rem 'Plus Jakarta Sans',system-ui,sans-serif;color:#1c1a59;background:rgba(0,0,0,.02);border:2px solid #c8c3d6;border-radius:12px;padding:.75rem 1rem;outline:none;transition:border-color .15s,background-color .15s}.ds-input::placeholder{color:#8b87a8}.ds-input:hover{border-color:#9a94b4}.ds-input:focus{border-color:#a47cc0;background:#fff}",
+			"description": "A real 2px border: .sketch cannot draw on a form control.",
+			"html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Project name</span><input class=\"ds-input\" placeholder=\"Give it a name\"></label>",
+			"kind": "input",
+			"name": "Text Field",
+			"refersTo": "input"
+		},
+		{
+			"css": ".ds-panel{position:relative}.ds-panel::before{content:\"\";position:absolute;inset:0;border:2px solid #c8c3d6;border-radius:16px;filter:url(#dsWob);pointer-events:none}.ds-panel{background:#fff;border-radius:16px;padding:1.25rem 1.5rem;max-width:22rem;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#1c1a59}.ds-panel-label{margin:0 0 .5rem;font:700 .78rem/1.25 'Shantell Sans','Plus Jakarta Sans',sans-serif;text-transform:uppercase;letter-spacing:.11em;color:#7b519b}.ds-panel-body{margin:0;font-size:.9rem;line-height:1.5}",
+			"description": "The platform's container: white, outlined by a displaced stroke on a pseudo-element. Never shadowed, never nested.",
+			"html": "<svg width=\"0\" height=\"0\" style=\"position:absolute\" aria-hidden=\"true\"><filter id=\"dsWob\" x=\"-12%\" y=\"-12%\" width=\"124%\" height=\"124%\"><feTurbulence type=\"fractalNoise\" baseFrequency=\"0.018\" numOctaves=\"3\" seed=\"7\" result=\"n\"/><feDisplacementMap in=\"SourceGraphic\" in2=\"n\" scale=\"4.2\" xChannelSelector=\"R\" yChannelSelector=\"G\"/></filter></svg><div class=\"ds-panel\"><p class=\"ds-panel-label\">Timeline</p><p class=\"ds-panel-body\">Soldered the USB-C port today. The first board shorted, the second one lit up.</p></div>",
+			"kind": "card",
+			"name": "Drawn Panel",
+			"refersTo": "panel-sketch"
+		},
+		{
+			"css": ".ds-nav{display:flex;flex-direction:column;max-width:14rem;font-family:'Plus Jakarta Sans',system-ui,sans-serif}.ds-nav-item{display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.75rem 0;border-bottom:1px dashed #c8c3d6;font-size:1.02rem;font-weight:600;color:#4a4785;text-decoration:none;transition:color .15s}.ds-nav-item:hover{color:#1c1a59}.ds-nav-current{font-weight:800;color:#1c1a59}.ds-dot{width:8px;height:8px;border-radius:50%;background:#f35757}.ds-nav-item:focus-visible{outline:3px solid #b21b9b;outline-offset:3px;border-radius:6px}",
+			"description": "The current page is extra-bold navy with a coral dot; the rest semibold navy-soft; dashed dividers.",
+			"html": "<nav class=\"ds-nav\"><a class=\"ds-nav-item ds-nav-current\" href=\"#\" aria-current=\"page\"><span>Home</span><span class=\"ds-dot\" aria-hidden=\"true\"></span></a><a class=\"ds-nav-item\" href=\"#\"><span>Projects</span></a><a class=\"ds-nav-item\" href=\"#\"><span>Explore</span></a></nav>",
+			"kind": "nav",
+			"name": "Sidebar Nav",
+			"refersTo": "nav"
+		},
+		{
+			"css": ".ds-puck{position:relative;display:grid;place-items:center;width:84px;aspect-ratio:1;border:0;background:none;padding:0;cursor:pointer;transition:transform .16s cubic-bezier(.16,1,.3,1)}.ds-puck::after{content:\"\";position:absolute;inset:0;border-radius:50%;background:#2e8cae;transform:translateY(9px);box-shadow:0 10px 18px -6px rgba(28,26,89,.34)}.ds-puck-face{position:relative;z-index:1;display:grid;place-items:center;width:100%;height:100%;border-radius:50%;background:#52b4d5;box-shadow:inset 0 -3px 0 rgba(255,255,255,.2)}.ds-puck:hover{transform:translateY(-3px)}.ds-puck:focus-visible{outline:3px solid #b21b9b;outline-offset:3px;border-radius:50%}",
+			"description": "A checkpoint you can open: sky face on a sky-deep rim.",
+			"html": "<button class=\"ds-puck ds-open\" aria-label=\"Checkpoint\"><span class=\"ds-puck-face\"><svg viewBox=\"0 0 24 24\" width=\"30\" height=\"30\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"8.6\"/><path d=\"M12 7v5.4l3.4 2\"/></svg></span></button>",
+			"kind": "custom",
+			"name": "Checkpoint — open",
+			"refersTo": "puck-open"
+		},
+		{
+			"css": ".ds-puck{position:relative;display:grid;place-items:center;width:84px;aspect-ratio:1;border:0;background:none;padding:0;cursor:pointer;transition:transform .16s cubic-bezier(.16,1,.3,1)}.ds-puck::after{content:\"\";position:absolute;inset:0;border-radius:50%;background:#048372;transform:translateY(9px);box-shadow:0 10px 18px -6px rgba(28,26,89,.34)}.ds-puck-face{position:relative;z-index:1;display:grid;place-items:center;width:100%;height:100%;border-radius:50%;background:#06ae97;box-shadow:inset 0 -3px 0 rgba(255,255,255,.2)}.ds-puck:hover{transform:translateY(-3px)}.ds-puck:focus-visible{outline:3px solid #b21b9b;outline-offset:3px;border-radius:50%}",
+			"description": "Finished: teal face with a check.",
+			"html": "<button class=\"ds-puck ds-done\" aria-label=\"Checkpoint\"><span class=\"ds-puck-face\"><svg viewBox=\"0 0 24 24\" width=\"30\" height=\"30\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12.5l4.5 4.5L19 7.5\"/></svg></span></button>",
+			"kind": "custom",
+			"name": "Checkpoint — done",
+			"refersTo": "puck-done"
+		},
+		{
+			"css": ".ds-puck{position:relative;display:grid;place-items:center;width:84px;aspect-ratio:1;border:0;background:none;padding:0;cursor:pointer;transition:transform .16s cubic-bezier(.16,1,.3,1)}.ds-puck::after{content:\"\";position:absolute;inset:0;border-radius:50%;background:#cdae8a;transform:translateY(7px);box-shadow:0 10px 18px -6px rgba(28,26,89,.34)}.ds-puck-face{position:relative;z-index:1;display:grid;place-items:center;width:100%;height:100%;border-radius:50%;background:#f4dfc6;box-shadow:inset 0 -3px 0 rgba(255,255,255,.2)}.ds-puck:hover{transform:translateY(-3px)}.ds-puck:focus-visible{outline:3px solid #b21b9b;outline-offset:3px;border-radius:50%}",
+			"description": "Not reachable yet: sand, padlock, sunk to a 7px rim. The hover bubble names the one thing in the way.",
+			"html": "<button class=\"ds-puck ds-locked\" aria-label=\"Checkpoint\"><span class=\"ds-puck-face\"><svg viewBox=\"0 0 24 24\" width=\"30\" height=\"30\" fill=\"none\" stroke=\"#cdae8a\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"5.5\" y=\"10.5\" width=\"13\" height=\"9.5\" rx=\"2\"/><path d=\"M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5\"/></svg></span></button>",
+			"kind": "custom",
+			"name": "Checkpoint — locked",
+			"refersTo": "puck-locked"
+		},
+		{
+			"css": ".ds-puck{position:relative;display:grid;place-items:center;width:84px;aspect-ratio:1;border:0;background:none;padding:0;cursor:pointer;transition:transform .16s cubic-bezier(.16,1,.3,1)}.ds-puck::after{content:\"\";position:absolute;inset:0;border-radius:50%;background:#86a09b;transform:translateY(7px);box-shadow:0 10px 18px -6px rgba(28,26,89,.34)}.ds-puck-face{position:relative;z-index:1;display:grid;place-items:center;width:100%;height:100%;border-radius:50%;background:#b3c7c3;box-shadow:inset 0 -3px 0 rgba(255,255,255,.2)}.ds-puck:hover{transform:translateY(-3px)}.ds-puck:focus-visible{outline:3px solid #b21b9b;outline-offset:3px;border-radius:50%}",
+			"description": "Its week's Sunday has gone: teal grey, sunk to a 7px rim. 'This week has passed!'",
+			"html": "<button class=\"ds-puck ds-passed\" aria-label=\"Checkpoint\"><span class=\"ds-puck-face\"><svg viewBox=\"0 0 24 24\" width=\"30\" height=\"30\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12.5l4.5 4.5L19 7.5\"/></svg></span></button>",
+			"kind": "custom",
+			"name": "Checkpoint — passed",
+			"refersTo": "puck-passed"
+		},
+		{
+			"css": ".ds-bubble{position:relative}.ds-bubble::before{content:\"\";position:absolute;inset:0;border:2px solid #048372;border-radius:14px;filter:url(#dsWob);pointer-events:none}.ds-bubble{background:#aef2dd;border-radius:14px;padding:.625rem .875rem;max-width:13rem;font-family:'Plus Jakarta Sans',system-ui,sans-serif}.ds-bubble-main{display:flex;gap:.375rem;align-items:flex-start;margin:0;font-size:.74rem;font-weight:600;line-height:1.35;color:#1c1a59}.ds-bubble-note{margin:.25rem 0 0;padding-left:1.25rem;font:500 .72rem/1.35 'Shantell Sans','Plus Jakarta Sans',sans-serif;letter-spacing:.04em;color:#4a4785}.ds-bubble-tail{position:absolute;top:100%;left:50%;margin-left:-8px;border:8px solid transparent;border-top:9px solid #aef2dd;border-bottom:0}",
+			"description": "The mint bubble over a finished checkpoint. Same shape as the navy 'Start here' callout and the sand lock bubble.",
+			"html": "<svg width=\"0\" height=\"0\" style=\"position:absolute\" aria-hidden=\"true\"><filter id=\"dsWob\" x=\"-12%\" y=\"-12%\" width=\"124%\" height=\"124%\"><feTurbulence type=\"fractalNoise\" baseFrequency=\"0.018\" numOctaves=\"3\" seed=\"7\" result=\"n\"/><feDisplacementMap in=\"SourceGraphic\" in2=\"n\" scale=\"4.2\" xChannelSelector=\"R\" yChannelSelector=\"G\"/></filter></svg><div class=\"ds-bubble\"><p class=\"ds-bubble-main\"><svg viewBox=\"0 0 24 24\" width=\"13\" height=\"13\" fill=\"none\" stroke=\"#048372\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12.5l4.5 4.5L19 7.5\"/></svg>You've already completed this checkpoint!</p><p class=\"ds-bubble-note\">click to edit your entry.</p><span class=\"ds-bubble-tail\" aria-hidden=\"true\"></span></div>",
+			"kind": "custom",
+			"name": "Hover Bubble — done",
+			"refersTo": "bubble-done"
+		}
+	],
+	"extensions": {
+		"breakpoints": [
+			{
+				"name": "md",
+				"value": "768px"
+			},
+			{
+				"name": "lg (sidebar appears)",
+				"value": "1024px"
+			},
+			{
+				"name": "xl (status rail, comments beside reel)",
+				"value": "1280px"
+			},
+			{
+				"name": "2xl",
+				"value": "1536px"
+			},
+			{
+				"name": "site-stage",
+				"value": "1180px"
+			}
+		],
+		"colorMeta": {
+			"coral": {
+				"canonical": "#f35757",
+				"displayName": "Streak Coral",
+				"role": "tertiary",
+				"tonalRamp": ["#470505", "#7c0909", "#b00d0d", "#e41010", "#f14141", "#f57a7a", "#fab3b3", "#fde7e7"]
+			},
+			"cream": {
+				"canonical": "#fcf7f7",
+				"displayName": "Warm Paper Ground",
+				"role": "neutral",
+				"tonalRamp": ["#381515", "#602424", "#893333", "#b24343", "#c76b6b", "#d89797", "#e9c4c4", "#f8ecec"]
+			},
+			"gold": {
+				"canonical": "#f6c63f",
+				"displayName": "Setup Gold",
+				"role": "tertiary",
+				"tonalRamp": ["#493703", "#7f5f06", "#b48708", "#eaaf0b", "#f6c53c", "#f9d777", "#fbe8b1", "#fef8e7"]
+			},
+			"hl-blue-deep": {
+				"canonical": "#0E86B9",
+				"displayName": "Hero Blue",
+				"role": "secondary",
+				"tonalRamp": ["#053447", "#09597b", "#0d7faf", "#11a5e4", "#41bcf1", "#7ad0f5", "#b3e4f9", "#e7f7fd"]
+			},
+			"hl-cyan": {
+				"canonical": "#8ed3dc",
+				"displayName": "Programme Cyan",
+				"role": "primary",
+				"tonalRamp": ["#12363a", "#1f5d65", "#2d8590", "#3aacbb", "#63c2cf", "#92d5dd", "#c1e7ec", "#ecf7f9"]
+			},
+			"hl-indigo": {
+				"canonical": "#34316c",
+				"displayName": "Aside Indigo",
+				"role": "secondary",
+				"tonalRamp": ["#191835", "#2c295b", "#3e3b82", "#514ca8", "#7773bf", "#9f9dd2", "#c8c7e6", "#eeedf7"]
+			},
+			"hl-ink": {
+				"canonical": "#31222c",
+				"displayName": "Workshop Ink",
+				"role": "neutral",
+				"tonalRamp": ["#2d1f29", "#4e3646", "#6f4d64", "#916482", "#ab879f", "#c5abbc", "#decfd9", "#f5f0f3"]
+			},
+			"hl-lavender": {
+				"canonical": "#c9c7ec",
+				"displayName": "Aside Lavender",
+				"role": "tertiary",
+				"tonalRamp": ["#151339", "#252263", "#35308d", "#453eb7", "#6c67cb", "#9894db", "#c4c2ea", "#edecf9"]
+			},
+			"hl-paper": {
+				"canonical": "#ededed",
+				"displayName": "Plate Paper",
+				"role": "neutral",
+				"tonalRamp": ["#292323", "#483d3d", "#665757", "#847171", "#a19191", "#bdb2b2", "#d9d3d3", "#f3f1f1"]
+			},
+			"hl-periwinkle": {
+				"canonical": "#a39bd6",
+				"displayName": "Band Periwinkle",
+				"role": "tertiary",
+				"tonalRamp": ["#1b1636", "#2e275e", "#423786", "#5547ae", "#7a6ec4", "#a29ad5", "#cac5e7", "#eeedf8"]
+			},
+			"hl-yellow": {
+				"canonical": "#A2C4DA",
+				"displayName": "Carousel Blue (misnamed yellow)",
+				"role": "tertiary",
+				"tonalRamp": ["#162a37", "#26485f", "#366787", "#4686af", "#6da2c5", "#99bed6", "#c5dae8", "#edf3f8"]
+			},
+			"hl-yellow-pale": {
+				"canonical": "#EBF7FF",
+				"displayName": "Carousel Blue Pale (misnamed yellow)",
+				"role": "tertiary",
+				"tonalRamp": ["#002e4d", "#005085", "#0071bd", "#0093f5", "#33adff", "#70c6ff", "#addeff", "#e5f5ff"]
+			},
+			"line": {
+				"canonical": "#c8c3d6",
+				"displayName": "Drawn Line",
+				"role": "neutral",
+				"tonalRamp": ["#231f2d", "#3c364f", "#564d70", "#6f6391", "#9086ac", "#b1aac5", "#d3cfde", "#f1f0f5"]
+			},
+			"line-strong": {
+				"canonical": "#9a94b4",
+				"displayName": "Control Outline",
+				"role": "neutral",
+				"tonalRamp": ["#22202d", "#3b374e", "#544e6f", "#6d6590", "#8e87ab", "#b0abc4", "#d2cfdd", "#f1f0f4"]
+			},
+			"magenta": {
+				"canonical": "#b21b9b",
+				"displayName": "Hand-in Magenta",
+				"role": "secondary",
+				"tonalRamp": ["#420a3a", "#731164", "#a4198f", "#d520b9", "#e44ecd", "#ec83dc", "#f4b8eb", "#fce9f9"]
+			},
+			"mint": {
+				"canonical": "#aef2dd",
+				"displayName": "Track Mint",
+				"role": "secondary",
+				"tonalRamp": ["#0b4231", "#127255", "#1aa378", "#22d39c", "#4fe3b5", "#84ebcb", "#b9f4e1", "#e9fbf6"]
+			},
+			"navy": {
+				"canonical": "#1c1a59",
+				"displayName": "Deep Ink Navy",
+				"role": "secondary",
+				"tonalRamp": ["#13113b", "#201e67", "#2e2b92", "#3c37bd", "#6561d1", "#9390df", "#c1c0ed", "#ecebf9"]
+			},
+			"navy-soft": {
+				"canonical": "#4a4785",
+				"displayName": "Second Voice Navy",
+				"role": "neutral",
+				"tonalRamp": ["#1c1b32", "#302e56", "#44427b", "#5955a0", "#7d7ab8", "#a4a2cd", "#cbcae3", "#efeef6"]
+			},
+			"ops-accent-bright": {
+				"canonical": "#61cdf1",
+				"displayName": "Sign Blue (staff console)",
+				"role": "primary",
+				"tonalRamp": ["#063646", "#0b5e7a", "#0f86ad", "#14aee1", "#44c4ee", "#7cd5f3", "#b4e7f8", "#e8f8fd"]
+			},
+			"orange": {
+				"canonical": "#fba62f",
+				"displayName": "Coin Orange",
+				"role": "tertiary",
+				"tonalRamp": ["#4b2c01", "#824d03", "#b96d04", "#f08e05", "#fba937", "#fcc373", "#fdddaf", "#fff4e6"]
+			},
+			"paper": {
+				"canonical": "#ffffff",
+				"displayName": "Panel White",
+				"role": "neutral",
+				"tonalRamp": ["#292323", "#483d3d", "#665757", "#847171", "#a19191", "#bdb2b2", "#d9d3d3", "#f3f1f1"]
+			},
+			"sand": {
+				"canonical": "#f4dfc6",
+				"displayName": "Locked Sand",
+				"role": "tertiary",
+				"tonalRamp": ["#40280c", "#6f4615", "#9e641f", "#cd8228", "#de9f54", "#e8bc87", "#f2d9bb", "#fbf3ea"]
+			},
+			"sky": {
+				"canonical": "#52b4d5",
+				"displayName": "Open Sky",
+				"role": "primary",
+				"tonalRamp": ["#0f323e", "#1a566b", "#257b98", "#309fc5", "#5bb8d7", "#8ccde3", "#bde3ef", "#eaf6fa"]
+			},
+			"teal": {
+				"canonical": "#06ae97",
+				"displayName": "Programme Teal",
+				"role": "secondary",
+				"tonalRamp": ["#034a40", "#04806f", "#06b69e", "#08edcd", "#3af8de", "#75fae8", "#b0fcf2", "#e6fefb"]
+			},
+			"teal-grey": {
+				"canonical": "#b3c7c3",
+				"displayName": "Passed Teal Grey",
+				"role": "tertiary",
+				"tonalRamp": ["#202c2a", "#384c48", "#506d67", "#688d86", "#8aa8a2", "#adc2be", "#d0dcda", "#f0f4f3"]
+			},
+			"violet": {
+				"canonical": "#a47cc0",
+				"displayName": "Action Violet",
+				"role": "primary",
+				"tonalRamp": ["#291934", "#462b5a", "#643d7f", "#824fa5", "#9f75bd", "#bc9fd1", "#d9c8e5", "#f3eef7"]
+			}
+		},
+		"motion": [
+			{
+				"name": "ease-out-expo",
+				"purpose": "Arrivals: rail folds, sheets, bubbles, switches.",
+				"value": "cubic-bezier(0.16, 1, 0.3, 1)"
+			},
+			{
+				"name": "ease-spring",
+				"purpose": "Small pops.",
+				"value": "cubic-bezier(0.22, 1.18, 0.36, 1)"
+			},
+			{
+				"name": "reel-glide",
+				"purpose": "One flick moves one reel on the Doomscroller; an instant cut under reduced motion.",
+				"value": "360ms, 1-(1-t)^4"
+			},
+			{
+				"name": "puck-press",
+				"purpose": "The face lifts 3px on hover and sinks onto its rim on press.",
+				"value": "transform 0.16s ease-out-expo"
+			},
+			{
+				"name": "callout-bob",
+				"purpose": "The navy 'Start here' callout above the next checkpoint. Motion-safe only.",
+				"value": "hl-bob 2.4s ease-in-out infinite"
+			}
+		],
+		"shadows": [
+			{
+				"name": "stack",
+				"purpose": "The lowest lift.",
+				"value": "0 2px 4px rgba(28,26,89,.06), 0 10px 26px -12px rgba(28,26,89,.28)"
+			},
+			{
+				"name": "lift",
+				"purpose": "Reel cards: a video is an object on the desk.",
+				"value": "0 3px 6px rgba(28,26,89,.08), 0 18px 40px -16px rgba(28,26,89,.38)"
+			},
+			{
+				"name": "tape",
+				"purpose": "Torn week banners and page signs.",
+				"value": "0 3px 6px rgba(28,26,89,.1), 0 14px 30px -14px rgba(28,26,89,.4)"
+			},
+			{
+				"name": "sticker",
+				"purpose": "Die-cut art.",
+				"value": "drop-shadow(0 3px 2px rgba(28,26,89,.16)) drop-shadow(0 9px 13px rgba(28,26,89,.13))"
+			},
+			{
+				"name": "puck",
+				"purpose": "Under a checkpoint's rim disc, which itself sits 9px below the face (7px locked or passed, 11px for setup).",
+				"value": "0 10px 18px -6px rgba(28,26,89,.34)"
+			}
+		],
+		"typographyMeta": {
+			"app-body": {
+				"displayName": "Platform Body",
+				"purpose": "Descriptions, journal entries, comments. 68ch measure for entries."
+			},
+			"app-display": {
+				"displayName": "Platform Display",
+				"purpose": "The page title on its hanging sign. One per screen."
+			},
+			"app-hand": {
+				"displayName": "Margin Hand",
+				"purpose": "Asides, timestamps, hours logged. Never a requirement someone must read."
+			},
+			"app-headline": {
+				"displayName": "Platform Headline",
+				"purpose": "The week banner headline; a project's name on its page."
+			},
+			"app-label": {
+				"displayName": "Label",
+				"purpose": "Section headings, chips, button text. Uppercase."
+			},
+			"app-title": {
+				"displayName": "Platform Title",
+				"purpose": "Timeline headlines, reel authors, card names."
+			},
+			"site-body": {
+				"displayName": "Landing Body",
+				"purpose": "Landing paragraphs, captions, form fields."
+			},
+			"site-display": {
+				"displayName": "Landing Display",
+				"purpose": "Every landing header: section titles, step titles, FAQ questions. Ubuntu."
+			},
+			"site-hand": {
+				"displayName": "Brush",
+				"purpose": "Identity only: the wordmark. Never bold."
+			},
+			"site-tagline": {
+				"displayName": "Tagline",
+				"purpose": "The landing's tagline lines."
+			}
+		},
+		"wobble": {
+			"platform": "hl-wobble: feTurbulence baseFrequency 0.018, numOctaves 3, seed 7; feDisplacementMap scale 4.2. hl-wobble-2 (0.022, seed 21, scale 5) and hl-wobble-3 (0.034, 2 octaves, seed 43, scale 3.4) vary neighbours.",
+			"staffConsole": "WobbleBorder: baseFrequency 0.05, 3 octaves, seed 7, scale 2.5; rules 0.06 / scale 1.8 in userSpaceOnUse (a zero-height box needs a user-space filter region).",
+			"tear": "hl-tear: baseFrequency 0.02 0.11, seed 11, scale 9 (week banners, signs). hl-tear-soft: 0.03 0.09, seed 31, scale 5."
+		}
+	},
+	"generatedAt": "2026-09-24T19:56:34.309Z",
+	"narrative": {
+		"donts": [
+			"Don't mix the two palettes, or put a platform component on a landing page.",
+			"Don't shadow a panel, card, button or field. Shadows belong to things sitting on the paper — pucks, stickers, tape, reels.",
+			"Don't set text a participant must read in line-strong, teal, gold-deep, orange-deep, coral or sky-deep on cream, or white on sky, teal, orange or teal-grey — all below 4.5:1 (see Measured contrast).",
+			"Don't put .sketch on an <input>, <select> or <textarea>; it cannot render there.",
+			"Don't trust --color-hl-yellow*: those variables hold blues.",
+			"Don't set Masterpiece in bold, or use it for anything but the wordmark.",
+			"Don't apply the wobble filter to anything containing text.",
+			"Don't nest panels, and don't reach for a panel when the content is a path, a feed or a form.",
+			"Don't stack chips as a page's structure; a fact that needs no emphasis goes in the quiet hand-text line.",
+			"Don't use a Unicode glyph as an icon. Icons are drawn SVG on a 24px grid at a 1.8px round stroke."
+		],
+		"dos": [
+			"Do pick the world first. A platform screen uses the platform palette, Plus Jakarta, drawn edges and 16px panels; a landing section uses ink, Ubuntu, Open Sans and square plates.",
+			"Do draw platform borders with .sketch / .sketch-2 / .sketch-3 and vary them between neighbouring panels.",
+			"Do keep a disabled control in place and say why next to it; never hide a control because it can't be used right now.",
+			"Do let a puck's colour say its state, and say the rest in the bubble that hangs above it.",
+			"Do give every focusable surface the ring: magenta, 3px, 3px offset on the platform; accent, 3px, 2px offset in the staff console.",
+			"Do keep one size per text role on a screen: asides 0.84rem, body 0.9rem, timeline titles 0.95rem.",
+			"Do put the content first when the platform collapses; below lg the chrome moves to a header and a bottom tab bar."
+		],
+		"keyCharacteristics": [
+			"Two grounds, never mixed: #31222c ink for the landing, #fcf7f7 warm paper for the platform, with a faint 28px graph-paper tooth so the cream reads as paper rather than dimmed white.",
+			"The landing is flat and mostly square; the platform has drawn edges, pucks that sit on a rim, and a few stickers lifted off the page.",
+			"The platform's borders are drawn, not declared: .sketch puts a wobbling marker outline on a pseudo-element so the line never touches the content it frames, and .torn applies the same displacement to a filled shape.",
+			"Its checkpoint token is the .puck: a rim disc offset beneath a face disc, an ambient shadow under both, and a press that sinks the face onto the rim.",
+			"The platform's primary structure is a progress path, not a dashboard of cards.",
+			"Illustration is the programme's own: a cast of fox and gato characters and five theme paintings, all die-cut stickers with a pale outline.",
+			"Text is navy and navy-soft, never neutral grey; the hand face writes the asides in the margin."
+		],
+		"northStar": "Two worlds: \"The Production Line\" (landing) and \"The Field Notebook\" (platform)",
+		"overview": "Half Life runs two visual worlds on purpose. The marketing site sells a ten-week hardware programme to teenagers who have never soldered anything; the platform is where those teenagers then work, for ten weeks, most days. The landing page is a production line drawn as the line itself: flat plates, square-cut bands, no shadows, an ink ground, and a thick band welding each stage to the next. The platform is a field notebook: every outline a drawn ink stroke, the week arriving as torn painted paper, structure expressed as a path you walk rather than a page you read. Even the Doomscroller's reel player is drawn in the notebook's hand rather than as a dark cinema.",
+		"rules": [
+			{
+				"body": "A token from one world never appears in the other. If a platform screen needs an accent, it is sky, not hl-cyan. The two palettes do not share a single value, and a screen that mixes them belongs to neither.",
+				"name": "The Two Worlds Rule",
+				"section": "colors"
+			},
+			{
+				"body": "Secondary text is tinted from its own surface, never neutral grey. The landing derives hl-ink-soft as ink at 80% over paper and hl-paper-soft as paper at 78% over ink. The platform's secondary text is navy-soft, the navy hue lifted until it reads as a second voice.",
+				"name": "The Tinted Secondary Rule",
+				"section": "colors"
+			},
+			{
+				"body": "On the trail a puck's colour is its state, and each state owns one hue: sky open, teal done, magenta hand-in, gold setup, sand locked, teal-grey passed. Don't reuse these hues on a puck for anything else.",
+				"name": "The State Colour Rule",
+				"section": "colors"
+			},
+			{
+				"body": "--color-hl-yellow (#A2C4DA) and --color-hl-yellow-pale (#EBF7FF) are blue. The landing was recoloured after those variables were named and the names were never updated. Trust the value, not the name — and rename them before adding anything new that uses them.",
+				"name": "The Misnamed Yellow Rule",
+				"section": "colors"
+			},
+			{
+				"body": "Each role above has one size on a screen. Five near-identical hand sizes (12.2, 12.8, 13.1, 13.4, 13.8px) read as untidiness, not hierarchy; asides are 0.84rem, body 0.9rem, timeline titles 0.95rem.",
+				"name": "The One Size Per Role Rule",
+				"section": "typography"
+			},
+			{
+				"body": "The platform's hand-lettered face sets labels, asides and nothing longer — never a requirement or an instruction someone has to read to finish a task. Shantell Sans stands in for the comp's COMICO, reached everywhere through --font-hand.",
+				"name": "The Hand Is Not Body Rule",
+				"section": "typography"
+			},
+			{
+				"body": "On the landing, Masterpiece is identity, never voice. It sets the wordmark and nothing else, and it is never bold: font-synthesis-weight: none is set for that reason.",
+				"name": "The Brush Bookends Rule",
+				"section": "typography"
+			},
+			{
+				"body": "Ubuntu is not a drop-in for Open Sans: it sets about 3% smaller at the same font-size, and its declared ink box is 1.0984em against Open Sans's 1.2951em. Size the two independently.",
+				"name": "The Metric Drift Rule",
+				"section": "typography"
+			},
+			{
+				"body": "A panel, card, button or field is separated by a drawn outline and the page ground showing through, never by a shadow. If something needs separating, give it a border and a gap.",
+				"name": "The Outline-Not-Shadow Rule",
+				"section": "elevation"
+			},
+			{
+				"body": "A shadow means an object sitting on the notebook — a puck, a sticker, a strip of tape, a reel. If it isn't something you could pick up, it doesn't get one.",
+				"name": "The Paper-On-Paper Rule",
+				"section": "elevation"
+			},
+			{
+				"body": "A platform border is drawn, not stroked. Use .sketch (or .sketch-2 / .sketch-3, which carry different seeds) rather than a CSS border, and vary which one between adjacent cards. In the staff console the equivalent is .hl-wobbly plus <WobbleBorder/> with a seed prop.",
+				"name": "The Drawn Edge Rule",
+				"section": "shapes"
+			},
+			{
+				"body": "The displacement filter goes on the border element only, never on a container. Filtering an element that holds text drags the text through the same displacement and turns it to mush.",
+				"name": "The Filter Applies To The Edge Rule",
+				"section": "shapes"
+			},
+			{
+				"body": ".sketch draws on a pseudo-element, and <input>, <select> and <textarea> cannot hold one — the outline silently never renders and the field is a white box on a white panel. Fields take a real 2px border instead.",
+				"name": "The No Sketch On Fields Rule",
+				"section": "shapes"
+			}
+		]
+	},
+	"schemaVersion": 2,
+	"title": "Design System: Half Life"
 }
