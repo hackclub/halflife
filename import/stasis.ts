@@ -27,7 +27,7 @@ import {
   type ShopOrderStatus,
   Theme,
 } from "@/app/generated/prisma/enums"
-import { PrismaClient, type Prisma } from "@/app/generated/prisma/client"
+import { type Prisma, PrismaClient } from "@/app/generated/prisma/client"
 import { DEFAULT_PROGRAM_TIMEZONE, scheduledWeekFor } from "@/lib/config/program"
 import { getTierOrThrow } from "@/lib/config/tiers"
 
