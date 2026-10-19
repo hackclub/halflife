@@ -135,7 +135,7 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 			return {
 				duplicate: true,
 				ok: true,
-				referralCode: existing == null ? "" : String(existing),
+				referralCode: typeof existing === "string" || typeof existing === "number" ? String(existing) : "",
 			}
 		}
 

@@ -203,7 +203,8 @@ async function main() {
 				return json({ tree: [{ mode: "100644", path: "BOM.md", sha: "old", type: "blob" }] })
 			if (method === "POST" && u.endsWith("/git/blobs")) return json({ sha: `blob${blobs++}` })
 			if (method === "POST" && u.endsWith("/git/trees")) {
-				captured.tree = (JSON.parse(String(init.body)) as { tree: TreeEntry[] }).tree
+				if (typeof init.body !== "string") throw new Error("expected a JSON string body")
+				captured.tree = (JSON.parse(init.body) as { tree: TreeEntry[] }).tree
 				return json({ sha: "tree1" })
 			}
 			if (method === "POST" && u.endsWith("/git/commits")) return json({ sha: "commit1" })

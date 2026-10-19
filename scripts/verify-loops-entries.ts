@@ -115,7 +115,7 @@ async function main() {
 	console.log(`unmatched rows (no join to any user): ${unmatched.length}`)
 	for (const r of unmatched.slice(0, 20))
 		console.log(
-			`  unmatched ${r.id} email=${String(r.fields[LOOPS_FIELDS.email] ?? "?")} value=${String(r.fields[LOOPS_FIELDS.lastEntryAt])}`,
+			`  unmatched ${r.id} email=${(r.fields[LOOPS_FIELDS.email] as string | undefined) ?? "?"} value=${String(r.fields[LOOPS_FIELDS.lastEntryAt] as string | undefined)}`,
 		)
 	if (unmatched.length > 20) console.log(`  …and ${unmatched.length - 20} more`)
 
