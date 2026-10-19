@@ -156,43 +156,48 @@ export async function getShopItemsFor(userId: string): Promise<{
 
 	const owned = new Map(orders.map(o => [o.shopItemId, o._sum.quantity ?? 0]))
 
+	const view = items.map(item => {
+		const ownedCount = owned.get(item.id) ?? 0
+		let locked = false
+		let lockReason: string | null = null
+
+		if (item.requiresPrinterQualified && !qualification.qualified) {
+			locked = true
+			lockReason = `Ship all ${qualification.required} themes to unlock (${qualification.shippedCount} so far)`
+		} else if (item.maxPerUser > 0 && ownedCount >= item.maxPerUser) {
+			locked = true
+			lockReason = "You already have this"
+		} else if (item.stock !== null && item.stock <= 0) {
+			locked = true
+			lockReason = "Out of stock"
+		}
+
+		// A regional override replaces the base price wherever this participant is concerned – display and purchase read the same number, so the shelf can never advertise a price the till refuses.
+		const { regionPrices, ...base } = item
+		const priceCredits =
+			context.regionId !== null
+				? (regionPrices.find(r => r.regionId === context.regionId)?.priceCredits ?? item.priceCredits)
+				: item.priceCredits
+
+		// Every coin is spendable on anything, so affordability compares the whole balance against the price – display and purchase read the same number, so the shelf can never advertise a price the till refuses.
+		const payableFrom = spendableFor(balances, item.category)
+		return {
+			...base,
+			affordable: payableFrom >= priceCredits,
+			locked,
+			lockReason,
+			ownedCount,
+			priceCredits,
+		}
+	})
+
+	// The sticker sheet is the one item pinned above the shelf order: it is the cheap add-on people put in alongside a real order, and an admin's sort order should not bury it.
+	const stickerSheet = (item: (typeof view)[number]) => `${item.id} ${item.name}`.toLowerCase().includes("sticker")
+
 	return {
 		balances,
 		country: context.country,
-		items: items.map(item => {
-			const ownedCount = owned.get(item.id) ?? 0
-			let locked = false
-			let lockReason: string | null = null
-
-			if (item.requiresPrinterQualified && !qualification.qualified) {
-				locked = true
-				lockReason = `Ship all ${qualification.required} themes to unlock (${qualification.shippedCount} so far)`
-			} else if (item.maxPerUser > 0 && ownedCount >= item.maxPerUser) {
-				locked = true
-				lockReason = "You already have this"
-			} else if (item.stock !== null && item.stock <= 0) {
-				locked = true
-				lockReason = "Out of stock"
-			}
-
-			// A regional override replaces the base price wherever this participant is concerned – display and purchase read the same number, so the shelf can never advertise a price the till refuses.
-			const { regionPrices, ...base } = item
-			const priceCredits =
-				context.regionId !== null
-					? (regionPrices.find(r => r.regionId === context.regionId)?.priceCredits ?? item.priceCredits)
-					: item.priceCredits
-
-			// Every coin is spendable on anything, so affordability compares the whole balance against the price – display and purchase read the same number, so the shelf can never advertise a price the till refuses.
-			const payableFrom = spendableFor(balances, item.category)
-			return {
-				...base,
-				affordable: payableFrom >= priceCredits,
-				locked,
-				lockReason,
-				ownedCount,
-				priceCredits,
-			}
-		}),
+		items: [...view.filter(stickerSheet), ...view.filter(item => !stickerSheet(item))],
 		regionId: context.regionId,
 		regions,
 	}
