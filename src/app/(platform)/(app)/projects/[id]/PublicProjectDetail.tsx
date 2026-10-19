@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { WeekPainting } from "@/components/platform/art"
-import { IconChevronLeft, IconClock } from "@/components/platform/icons"
+import { IconArrowRight, IconChevronLeft, IconClock } from "@/components/platform/icons"
 import { ProjectThumb } from "@/components/platform/ProjectThumb"
 import { ReportButton } from "@/components/platform/report/ReportButton"
 import { Chip, Panel } from "@/components/platform/ui"
@@ -10,13 +10,21 @@ import { DESIGN_WEEKS } from "@/lib/config/printers"
 import { WARMUP_THEME, WARMUP_WEEK_ID } from "@/lib/config/program"
 import { WEEK_META } from "@/lib/curriculum"
 import { fmtHours } from "@/lib/projects"
-import type { PublicProjectData } from "@/lib/queries/project-page"
+import type { ProjectOpenDispute, PublicProjectData } from "@/lib/queries/project-page"
 import { Timeline } from "./Timeline"
 
 /**
  * Someone else's project: what it is, and the story of it, and nothing to edit. The owner's page reads the trail's store for its name and weeks; this one cannot – the store only holds the viewer's own projects – so everything on it comes from the server in `data`.
+ *
+ * A reviewer gets one addition: when a dispute is open, a way back to the console page where its thread is answered. The page cannot carry the thread itself, and a reviewer arrives here from the dispute notice to read the project before replying.
  */
-export function PublicProjectDetail({ data }: { data: PublicProjectData }) {
+export function PublicProjectDetail({
+	data,
+	openDisputes = [],
+}: {
+	data: PublicProjectData
+	openDisputes?: ProjectOpenDispute[]
+}) {
 	const warmup = data.weekId === WARMUP_WEEK_ID
 	const week = WEEK_META.find(w => w.id === data.weekId) ?? WEEK_META[0]
 	const buildWeekId = data.weekId + DESIGN_WEEKS
@@ -34,6 +42,30 @@ export function PublicProjectDetail({ data }: { data: PublicProjectData }) {
 			>
 				<IconChevronLeft className="text-base" /> Explore
 			</Link>
+
+			{openDisputes.length > 0 ? (
+				<Panel className="mt-5 bg-gold-pale/70 px-5 py-4 sm:px-6" radius={20} tone="gold">
+					<p className="label text-gold-ink">
+						Reviewers · {openDisputes.length === 1 ? "open dispute" : "open disputes"}
+					</p>
+					<ul className="mt-2 grid gap-3">
+						{openDisputes.map(dispute => (
+							<li className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3" key={dispute.submissionId}>
+								<p className="min-w-0 text-[0.92rem] leading-relaxed text-navy">
+									The maker asked for a second look at the {dispute.phase === "DESIGN" ? "design" : "build"} decision.
+									Open its review thread to answer.
+								</p>
+								<Link
+									className="label inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl border-2 border-violet-dark bg-violet-deep px-5 text-[0.85rem] whitespace-nowrap text-white transition-[background-color,color,transform] duration-150 hover:bg-violet-dark active:translate-y-px"
+									href={`/review/${dispute.submissionId}`}
+								>
+									Open the review thread <IconArrowRight className="text-base" />
+								</Link>
+							</li>
+						))}
+					</ul>
+				</Panel>
+			) : null}
 
 			<Panel className="@container mt-5 bg-paper px-5 py-5 sm:px-7 sm:py-6" radius={22} tone="line">
 				<div className="grid gap-5 @3xl:grid-cols-[minmax(0,1fr)_260px] @3xl:gap-8">

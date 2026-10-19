@@ -5,6 +5,7 @@ import { IconPencil } from "@/components/platform/icons"
 import { Button, Field, inputClass } from "@/components/platform/ui"
 import { cx } from "@/lib/cx"
 import { displayRepo, normalizeRepo } from "@/lib/repo"
+import { README_GUIDE_URL } from "@/lib/routes"
 import { useStore } from "@/lib/store"
 import type { Project } from "@/lib/types"
 
@@ -42,6 +43,19 @@ export function RepoInput({ value, onChange, id }: { value: string; onChange: (v
 					{error}
 				</p>
 			)}
+			{/* The repo is asked for before there is anything in it, so this is the first and often only moment to say what the repo has to end up holding. The README is the part a reviewer opens first and the part nothing else on this form explains. */}
+			<p className="mt-1.5 text-[0.78rem] leading-snug text-navy-soft">
+				Your repo needs a README that says what the project is, how it works, and shows photos of it –{" "}
+				<a
+					className="font-semibold text-sky-ink underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
+					href={README_GUIDE_URL}
+					rel="noopener noreferrer"
+					target="_blank"
+				>
+					see how to write one
+				</a>
+				.
+			</p>
 		</Field>
 	)
 }

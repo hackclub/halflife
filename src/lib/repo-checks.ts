@@ -4,6 +4,7 @@ import { DESIGN_JSON, REPO_FILE_KINDS, type RepoFileKind, THEME_REPO_REQUIREMENT
 import { type Forge, fileUrl, forgeByHostname, hostnameOf } from "@/lib/forge"
 import { ForgeUnavailable, forgeGet } from "@/lib/github"
 import { type RepoRef, repoRefFromLink } from "@/lib/repo-ref"
+import { README_GUIDE_URL } from "@/lib/routes"
 
 /**
  * Pre-submission repo checks, ported from Hack Club Stasis (lib/github-checks) and now forge-aware.
@@ -19,6 +20,8 @@ export interface RepoCheck {
 	detail?: string
 	key: string
 	label: string
+	/** Where to read what to do about it, when a doc explains it better than the one-line detail can. */
+	link?: { href: string; label: string }
 	status: "pass" | "fail" | "warn"
 }
 
@@ -401,9 +404,10 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 			? { key: "readme", label: "README", status: "pass" }
 			: {
 					blocking: true,
-					detail: "Add a README.md saying what the project is and how it works.",
+					detail: "Add a README.md saying what the project is, how it works, and why you made it.",
 					key: "readme",
 					label: "README missing",
+					link: { href: README_GUIDE_URL, label: "What goes in a README" },
 					status: "fail",
 				},
 	)
@@ -415,6 +419,7 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 					detail: "Add at least one image of the project – a render, a screenshot of the board, or a photo.",
 					key: "readme_photo",
 					label: "No photos in the README",
+					link: { href: README_GUIDE_URL, label: "What goes in a README" },
 					status: "fail",
 				},
 	)

@@ -29,3 +29,12 @@ export function appBaseUrl(): string {
 export function projectUrl(id: string): string {
 	return `${appBaseUrl()}/projects/${id}`
 }
+
+/**
+ * A hand-in's page in the review console.
+ *
+ * The id is the submission's, not the project's: one project has a design and a build hand-in, each reviewed on its own page, and that page is also where a dispute thread is answered.
+ */
+export function reviewUrl(id: string): string {
+	return `${appBaseUrl()}/review/${id}`
+}

@@ -13,6 +13,7 @@ import { TIERS } from "@/lib/curriculum"
 import { cx } from "@/lib/cx"
 import { fmtHours } from "@/lib/projects"
 import { normalizeRepo } from "@/lib/repo"
+import { README_GUIDE_URL } from "@/lib/routes"
 import { useStore } from "@/lib/store"
 import type { Project } from "@/lib/types"
 
@@ -277,6 +278,18 @@ function DetailsForm({
 					spellCheck={false}
 					value={repo}
 				/>
+				<p className="text-[0.78rem] leading-snug text-navy-soft">
+					Your repo needs a README that says what the project is, how it works, and shows photos of it –{" "}
+					<a
+						className="font-semibold text-sky-ink underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
+						href={README_GUIDE_URL}
+						rel="noopener noreferrer"
+						target="_blank"
+					>
+						see how to write one
+					</a>
+					.
+				</p>
 			</div>
 
 			{showStarterPicker && (

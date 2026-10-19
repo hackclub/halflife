@@ -181,6 +181,16 @@ function CheckRow({ check }: { check: RepoCheck }) {
 						{check.detail}
 					</span>
 				)}
+				{check.link && (
+					<a
+						className="mt-1 inline-flex items-center gap-1 text-[0.8rem] font-semibold text-sky-ink underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
+						href={check.link.href}
+						rel="noopener noreferrer"
+						target="_blank"
+					>
+						{check.link.label}
+					</a>
+				)}
 			</span>
 		</li>
 	)
