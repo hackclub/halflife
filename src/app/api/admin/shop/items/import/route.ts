@@ -40,13 +40,14 @@ export const POST = withRoute(async (req: Request) => {
 		})
 	}
 
-	const data = items.map(item => ({
-		...item,
-		costUsd: dollars(item.costUsd ?? null),
-		description: sanitize(item.description),
-		imageUrl: item.imageUrl ?? null,
-		name: sanitize(item.name),
-	}))
+	const data = items.map(item =>
+		Object.assign({}, item, {
+			costUsd: dollars(item.costUsd ?? null),
+			description: sanitize(item.description),
+			imageUrl: item.imageUrl ?? null,
+			name: sanitize(item.name),
+		}),
+	)
 	// createMany is one statement, so a slug added in the meantime fails the whole batch rather than leaving half of it behind.
 	await prisma.shopItem.createMany({ data })
 

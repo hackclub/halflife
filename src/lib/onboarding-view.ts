@@ -111,7 +111,7 @@ export function toOnboardingView(state: OnboardingStateData): OnboardingView {
 			title: p.title,
 		})),
 		stepCount: state.stepCount,
-		steps: ONBOARDING_STEPS.map(step => ({ ...step })),
+		steps: ONBOARDING_STEPS.map(step => Object.assign({}, step)),
 		suggestedTier: state.suggestedTier,
 		tiers: TIERS.map(tier => ({
 			estimate: tier.estimate,

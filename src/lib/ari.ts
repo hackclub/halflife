@@ -168,24 +168,26 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
 					: (t.playbackUrl ?? publicUrlFor(t.objectKey))
 			return url ? [url] : []
 		})
-		return {
-			at: session.createdAt,
-			// A HACKATIME_TRACKED entry contributes no time here – its minutes arrive through hackatime_projects – but it is still evidence Ari should see.
-			minutes:
-				session.hoursSource === HoursSource.HACKATIME_TRACKED
-					? 0
-					: Math.min(1440, Math.max(0, Math.round(session.hoursClaimed * 60))),
-			text: body,
+		return Object.assign(
+			{
+				at: session.createdAt,
+				// A HACKATIME_TRACKED entry contributes no time here – its minutes arrive through hackatime_projects – but it is still evidence Ari should see.
+				minutes:
+					session.hoursSource === HoursSource.HACKATIME_TRACKED
+						? 0
+						: Math.min(1440, Math.max(0, Math.round(session.hoursClaimed * 60))),
+				text: body,
+			},
 			// Ari has no field for a journal's own attachments: its Lapse tile pulls clips per Hackatime project. Linking each recording in the entry keeps it attached to the journal it backs even when that pull has nothing to match (no Hackatime id, or a project Lapse never named), so a reviewer never opens an entry with no evidence in it.
-			...(clips.length > 0
+			clips.length > 0
 				? {
 						markdown: [
 							body,
 							...clips.map((url, index) => `[Timelapse${clips.length > 1 ? ` ${index + 1}` : ""}](${url})`),
 						].join("\n\n"),
 					}
-				: {}),
-		}
+				: {},
+		)
 	})
 
 	const phaseSubmissions = project.submissions.filter(s => s.phase === phase)
@@ -366,7 +368,7 @@ export async function findUnsyncedAriSubmissions(): Promise<
 		})?.metadata as { error?: unknown } | null
 		return typeof meta?.error === "string" ? meta.error : null
 	}
-	return pending.map(item => ({ ...item, reason: reasonOf(item.themeProjectId, item.phase) }))
+	return pending.map(item => Object.assign({}, item, { reason: reasonOf(item.themeProjectId, item.phase) }))
 }
 
 // ─── Inbound ─────────────────────────────────────────────────────────────────

@@ -80,7 +80,9 @@ export async function listUsers(
 	const hasMore = rows.length > opts.limit
 	// Contact + risk fields only leave the server for ADMIN/AUDITOR. REVIEWER/FULFILLER get the directory (names + roles) with no emails, Slack ids or fraud flags to scrape. Callers pass includePii explicitly; the default is stripped.
 	const items = (hasMore ? rows.slice(0, opts.limit) : rows).map(row =>
-		includePii ? row : { ...row, email: "", fraudFlagged: false, slackId: null, verificationStatus: null },
+		includePii
+			? row
+			: Object.assign({}, row, { email: "", fraudFlagged: false, slackId: null, verificationStatus: null }),
 	)
 	const last = items[items.length - 1]
 	return { items, nextCursor: hasMore && last ? last.id : null }
@@ -416,13 +418,12 @@ export async function listFulfillmentOrders(
 	const items = page.map(({ shopItem, user, unitCostUsd, ...order }) => {
 		// Orders from before the item had a cost fall back to today's.
 		const unit = unitCostUsd ?? shopItem.costUsd
-		return {
-			...order,
+		return Object.assign(order, {
 			country: safeDecrypt(user.encryptedAddressCountry),
 			fulfillmentStage: fulfillmentStageOf(order),
 			totalUsd: unit === null ? null : unit * order.quantity,
 			user: { id: user.id, name: displayName(user) },
-		}
+		})
 	})
 	return { items, nextCursor: hasMore && last ? last.id : null }
 }
@@ -484,10 +485,7 @@ export async function listPrinterAwards(limit = 100): Promise<PrinterAwardRow[]>
 		select: printerAwardSelect,
 		take: limit,
 	})
-	return rows.map(({ encryptedAddress, ...award }) => ({
-		...award,
-		addressOnFile: encryptedAddress !== "",
-	}))
+	return rows.map(({ encryptedAddress, ...award }) => Object.assign(award, { addressOnFile: encryptedAddress !== "" }))
 }
 
 /** Recent live reels, newest first, for the moderation panel. */

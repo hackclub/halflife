@@ -24,10 +24,11 @@ const MOCK_REELS = [
 /**
  * The fly-through plays before anyone has picked a tier, so it previews the tier-1 shape. The bonus node is earned, not given, so it stays off.
  */
-const WEEKS = WEEK_META.map(meta => ({
-	...meta,
-	checkpoints: checkpointsFor(meta, [], () => false, meta.phase === "build" ? BUILD_HOURS : MIN_HOURS_PER_WEEK),
-}))
+const WEEKS = WEEK_META.map(meta =>
+	Object.assign({}, meta, {
+		checkpoints: checkpointsFor(meta, [], () => false, meta.phase === "build" ? BUILD_HOURS : MIN_HOURS_PER_WEEK),
+	}),
+)
 
 /**
  * Always the Ender 3 V3 SE, never the picked goal, even if the default goal moves: it is the printer every finisher can reach, as on the trail's grand prize.

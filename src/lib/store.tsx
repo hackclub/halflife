@@ -1052,8 +1052,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				const target = build ? BUILD_HOURS : weekAsk(goal.hoursPerWeek, tier.fundingHours)
 				// The same ask at the cheapest machine's pace: the least a week can be worth and still leave a printer at the end of the season.
 				const submitHours = build ? BUILD_HOURS : submitFloorFor(tier.fundingHours)
-				return {
-					...meta,
+				return Object.assign({}, meta, {
 					checkpoints: checkpointsFor(
 						meta,
 						// The trail is as long as the work was: every finished entry is a node, and one more waits at the end for the entry about to be written. The minutes come along because reels are placed where the clock crossed.
@@ -1071,7 +1070,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 					submitHours,
 					targetHours: target,
 					tier: tierId,
-				}
+				})
 			}),
 		[tierForWeek, goal, writtenMinutes, save.progress, save.projects],
 	)
@@ -1204,7 +1203,9 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 						...f.progress,
 						[id]: {
 							...prev,
-							log: prev.log.map((l, i) => (i === 0 ? { ...l, body, clips: evidence.clips, minutes } : l)),
+							log: prev.log.map((l, i) =>
+								i === 0 ? Object.assign({}, l, { body, clips: evidence.clips, minutes }) : l,
+							),
 							minutes,
 						},
 					},

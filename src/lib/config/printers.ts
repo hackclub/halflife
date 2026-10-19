@@ -193,11 +193,12 @@ export const BUILD_WEEK_COINS = BUILD_HOURS * COINS_PER_HOUR * BUILD_WEEKS
 /**
  * Column 4 is the economy and is left exactly as the sheet has it – every tier earns the same hours for the same machine. The ten-hour floor only touches the tier-1 hours figure the goal picker shows; it must never reach the pace hours, or the sheet's arithmetic stops landing on the price.
  */
-export const PRINTERS: PrinterGoal[] = SHEET.map(p => ({
-	...p,
-	coinsPerWeek: p.paceHours * COINS_PER_HOUR,
-	hoursPerWeek: Math.max(TIER1_MIN_HOURS, p.hoursPerWeek),
-}))
+export const PRINTERS: PrinterGoal[] = SHEET.map(p =>
+	Object.assign({}, p, {
+		coinsPerWeek: p.paceHours * COINS_PER_HOUR,
+		hoursPerWeek: Math.max(TIER1_MIN_HOURS, p.hoursPerWeek),
+	}),
+)
 
 export const DEFAULT_GOAL_ID = "ender-3-v3-se"
 

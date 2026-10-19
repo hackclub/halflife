@@ -181,14 +181,13 @@ export async function getShopItemsFor(userId: string): Promise<{
 
 		// Every coin is spendable on anything, so affordability compares the whole balance against the price – display and purchase read the same number, so the shelf can never advertise a price the till refuses.
 		const payableFrom = spendableFor(balances, item.category)
-		return {
-			...base,
+		return Object.assign(base, {
 			affordable: payableFrom >= priceCredits,
 			locked,
 			lockReason,
 			ownedCount,
 			priceCredits,
-		}
+		})
 	})
 
 	// The sticker sheet is the one item pinned above the shelf order: it is the cheap add-on people put in alongside a real order, and an admin's sort order should not bury it.

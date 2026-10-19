@@ -144,8 +144,8 @@ function routeFor(path: string): Set<string> | null {
 
 for (const call of [
 	...clientCalls(),
-	...STORE_CALLS.map(c => ({ ...c, file: "src/lib/store.tsx" })),
-	...COMPONENT_CALLS.map(c => ({ ...c, file: "src/components/platform/RepoSyncSettings.tsx" })),
+	...STORE_CALLS.map(c => Object.assign({}, c, { file: "src/lib/store.tsx" })),
+	...COMPONENT_CALLS.map(c => Object.assign({}, c, { file: "src/components/platform/RepoSyncSettings.tsx" })),
 ]) {
 	const exported = routeFor(call.path)
 	const label = `${call.path} [${call.methods.join("/")}]`

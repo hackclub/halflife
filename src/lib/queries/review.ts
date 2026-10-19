@@ -211,10 +211,11 @@ export async function getSubmissionDetail(
 		coverImageUrl: publicUrlFor(submission.themeProject.coverImageKey),
 		links,
 		priorReviews,
-		sessions: sessions.map(s => ({
-			...s,
-			media: s.media.map(m => ({ ...m, url: publicUrlFor(m.objectKey) })),
-		})),
+		sessions: sessions.map(s =>
+			Object.assign({}, s, {
+				media: s.media.map(m => Object.assign({}, m, { url: publicUrlFor(m.objectKey) })),
+			}),
+		),
 		submission,
 		themeLabel: getThemeDef(submission.themeProject.theme).label,
 	}

@@ -353,14 +353,15 @@ function MetricPie({
 		"var(--color-ink-strong)",
 		"var(--color-field-edge)",
 	]
-	const colored = slices.map((s, i) => ({
-		...s,
-		// Other is always the grey tail, whatever landed in the last slot.
-		color: s.label.startsWith("Other (")
-			? "var(--color-field-edge)"
-			: (COLORS[i % COLORS.length] ?? "var(--color-accent)"),
-		pct: (s.value / total) * 100,
-	}))
+	const colored = slices.map((s, i) =>
+		Object.assign({}, s, {
+			// Other is always the grey tail, whatever landed in the last slot.
+			color: s.label.startsWith("Other (")
+				? "var(--color-field-edge)"
+				: (COLORS[i % COLORS.length] ?? "var(--color-accent)"),
+			pct: (s.value / total) * 100,
+		}),
+	)
 	const only = colored.length === 1 ? colored[0] : undefined
 
 	const R = 88
@@ -1215,11 +1216,12 @@ function seasonBands(weeks: WeekColumn[]) {
 		{ phase: Phase.DESIGN, text: "design · weeks 1-5" },
 		{ phase: Phase.BUILD, text: "build · weeks 6-10" },
 	]
-		.map(band => ({
-			...band,
-			at: weeks.findIndex(week => week.phase === band.phase),
-			span: weeks.filter(week => week.phase === band.phase).length,
-		}))
+		.map(band =>
+			Object.assign({}, band, {
+				at: weeks.findIndex(week => week.phase === band.phase),
+				span: weeks.filter(week => week.phase === band.phase).length,
+			}),
+		)
 		.filter(band => band.span > 0)
 }
 
