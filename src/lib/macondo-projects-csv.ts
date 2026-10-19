@@ -33,6 +33,7 @@ function records(text: string): { line: number; fields: string[] }[] {
 			} else if (c === '"') {
 				quoted = false
 			} else if (c === "\r" && src[i + 1] === "\n") {
+				// A CRLF inside a quoted field: the \r goes and the \n is the next character, so nothing is added here.
 			} else {
 				if (c === "\n") line += 1
 				field += c
