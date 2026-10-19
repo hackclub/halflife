@@ -115,7 +115,7 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 		}
 
 		const found = (await lookup.json()) as {
-			records?: Array<{ id?: string; fields?: { [_: string]: unknown } }>
+			records?: { id?: string; fields?: { [_: string]: unknown } }[]
 		}
 		if ((found.records?.length ?? 0) > 0) {
 			// The row already exists upstream, so remember its id: the direct path bypasses the drain, and without this the buffer – and the Loops sync's record-id join – never learns this row exists.

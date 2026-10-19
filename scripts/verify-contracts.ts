@@ -1223,7 +1223,7 @@ async function bodies() {
 	const { FORGES } = await import("../src/lib/forge")
 	{
 		// [label, input, expected fullName, forge the result must carry]
-		const okCases: Array<[string, string, string, string]> = [
+		const okCases: [string, string, string, string][] = [
 			["a bare owner/name", "Heliodex/coputer", "Heliodex/coputer", "github"],
 			["a full https URL", "https://github.com/hackclub/halflife", "hackclub/halflife", "github"],
 			["a scheme-less host URL", "github.com/hackclub/halflife", "hackclub/halflife", "github"],
@@ -1246,7 +1246,7 @@ async function bodies() {
 		// A bare slug with no forge named is genuinely ambiguous and must be refused rather than guessed at.
 		check("repo-ref · a bare slug without a named forge is refused", parseRepoRef("Heliodex/coputer") === null)
 
-		const rejectCases: Array<[string, string]> = [
+		const rejectCases: [string, string][] = [
 			["an unknown host", "https://codeberg.org/a/b"],
 			["a single segment", "Heliodex"],
 			["three GitHub segments", "a/b/c"],
