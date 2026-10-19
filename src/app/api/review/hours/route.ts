@@ -82,7 +82,7 @@ export const POST = withRoute(async (req: Request) => {
 
 		const changes: { kind: string; id: string; before: number | null; after: number }[] = []
 
-		for (const decision of parsed.data.decisions) {
+		for (const decision of parsed.data.decisions)
 			if (decision.kind === "session") {
 				const before = await tx.workSession.findUnique({
 					select: { hoursApproved: true },
@@ -140,7 +140,7 @@ export const POST = withRoute(async (req: Request) => {
 					kind: "hackatime",
 				})
 			}
-		}
+
 		return changes
 	})
 

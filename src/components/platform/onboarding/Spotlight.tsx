@@ -162,9 +162,8 @@ export function Spotlight({
 			if (
 				target instanceof HTMLElement
 				&& target.closest("a, button, input, textarea, select, [contenteditable='true']")
-			) {
+			)
 				return
-			}
 
 			if ((e.key === "Enter" || e.key === " ") && clickAnywhere) {
 				e.preventDefault()

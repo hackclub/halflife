@@ -63,9 +63,8 @@ async function findExistingRow(
 		|| projectName.length === 0
 		|| typeof stage !== "string"
 		|| stage.length === 0
-	) {
+	)
 		return null
-	}
 
 	const formula = `AND(${formulaRef(YSWS_SUBMISSION.fields.email)}='${escapeAirtableValue(email)}',${formulaRef(
 		YSWS_SUBMISSION.fields.projectName,
@@ -122,7 +121,7 @@ export async function writeYswsRecord(
 		}
 	}
 	const dropped: string[] = []
-	for (;;) {
+	for (;;)
 		try {
 			const result = await send(current, id)
 			const record = result.records[0]
@@ -144,7 +143,6 @@ export async function writeYswsRecord(
 			for (const b of bad) delete current[b]
 			dropped.push(...bad)
 		}
-	}
 }
 
 /**
@@ -198,13 +196,13 @@ export async function deleteYswsRecord(
 		)
 		return { deleted: true, unifiedRecordId: typeof twin === "string" && twin ? twin : null }
 	} catch (err) {
-		if (err instanceof AirtableError && (err.status === 404 || err.body.includes("ROW_DOES_NOT_EXIST"))) {
+		if (err instanceof AirtableError && (err.status === 404 || err.body.includes("ROW_DOES_NOT_EXIST")))
 			return { deleted: false, skipped: "already_gone", unifiedRecordId: null }
-		}
+
 		// A missing write grant is an ops problem, not a reason to fail the participant's unsubmit.
-		if (err instanceof AirtableError && err.isPermission) {
+		if (err instanceof AirtableError && err.isPermission)
 			return { deleted: false, skipped: "no_write_access", unifiedRecordId: null }
-		}
+
 		throw err
 	}
 }
@@ -226,9 +224,9 @@ export async function deleteUnifiedRecords(
 		)
 		return { deleted: result.records.map(r => r.id) }
 	} catch (err) {
-		if (err instanceof AirtableError && err.isPermission) {
+		if (err instanceof AirtableError && err.isPermission)
 			return { deleted: [], error: err.message, skipped: "no_write_access" }
-		}
+
 		throw err
 	}
 }

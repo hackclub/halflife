@@ -292,13 +292,13 @@ export async function sendSubmissionToAri(
 		const { input, submissionId } = await buildShipInput(themeProjectId, phase)
 		const result = await ari().ships.create(input)
 
-		if (submissionId) {
+		if (submissionId)
 			await prisma.phaseSubmission.update({
 				// The error is cleared with the send: a hand-in that reached Ari is not stuck, and the marker is only ever about the current attempt.
 				data: { ariShipError: null, ariSubmissionId: result.id, ariSyncedAt: new Date() },
 				where: { id: submissionId },
 			})
-		}
+
 		return { id: result.id, status: result.status }
 	} catch (err) {
 		const reason = terminalShipFailure(err)
@@ -385,20 +385,16 @@ function ariReviewerLabel(review: AriReview): string {
 
 /** Ari's approved time is authoritative; fall back to its minutes breakdown. */
 function approvedHoursFrom(review: AriReview): number | null {
-	if (
-		typeof review.approved_hours === "number"
-		&& Number.isFinite(review.approved_hours)
-		&& review.approved_hours >= 0
-	) {
+	if (typeof review.approved_hours === "number" && Number.isFinite(review.approved_hours) && review.approved_hours >= 0)
 		return round2(review.approved_hours)
-	}
+
 	if (
 		typeof review.approved_minutes === "number"
 		&& Number.isFinite(review.approved_minutes)
 		&& review.approved_minutes >= 0
-	) {
+	)
 		return round2(review.approved_minutes / 60)
-	}
+
 	return null
 }
 
@@ -481,12 +477,11 @@ async function applyDecision(event: DecisionEvent, opts: { announce?: boolean } 
 			where: { id: themeProjectId },
 		})
 		// A warm-up project's only phase is the one the form collected, so there is no design approval to wait for.
-		if (project?.theme !== Theme.WARMUP && project?.designStatus !== PhaseStatus.approved) {
+		if (project?.theme !== Theme.WARMUP && project?.designStatus !== PhaseStatus.approved)
 			throw new HttpError(
 				"DESIGN_NOT_APPROVED",
 				"Waiting for the design approval before this build approval can be applied",
 			)
-		}
 	}
 
 	// Ari owns the decision, so a human claim must not block it.
@@ -564,12 +559,11 @@ async function applyDecision(event: DecisionEvent, opts: { announce?: boolean } 
 	// The row carries the decision too, for Loops. Best-effort like the notice below: the review is already committed, and a decided submission must not be redelivered over a base that is briefly unreachable.
 	//
 	// A reconciliation that replays a backlog skips both this and the notice below: the maker is told once, by the live webhook, and a run that decided hundreds of old hand-ins at once must not turn into hundreds of late messages. The Airtable backfill mirrors the state afterwards instead.
-	if (opts.announce !== false) {
+	if (opts.announce !== false)
 		await mirrorReviewDecision(themeProjectId, phase, reviewStatusForResult(result), makerNote)
-	}
 
 	// The decision is committed and recorded; now tell the maker. Best-effort – a Slack outage must not make Ari retry a decided submission, and the project page is the source of truth if a message is missed.
-	if (opts.announce !== false) {
+	if (opts.announce !== false)
 		await notifyReviewOutcome({
 			decidedBy: "ari",
 			// Ari's own note, not the fallback: `feedback` above has already been defaulted so the review row and the project page always have something to show, and quoting that back to the maker as "the reviewer's note" says the headline twice and tells them nothing they can act on.
@@ -578,7 +572,6 @@ async function applyDecision(event: DecisionEvent, opts: { announce?: boolean } 
 			result,
 			themeProjectId,
 		})
-	}
 }
 
 /**
@@ -618,11 +611,8 @@ async function applyReset(event: ResetEvent): Promise<void> {
 
 	const status = phase === Phase.DESIGN ? project.designStatus : project.buildStatus
 	const reason = `Ari ${event.event === "review.requeued" ? "requeued" : "reverted"} the review`
-	if (status === PhaseStatus.approved) {
-		await unapprovePhase(themeProjectId, phase, null, null, reason)
-	} else if (status === PhaseStatus.rejected) {
-		await reopenPhase(themeProjectId, phase, null, null, reason)
-	}
+	if (status === PhaseStatus.approved) await unapprovePhase(themeProjectId, phase, null, null, reason)
+	else if (status === PhaseStatus.rejected) await reopenPhase(themeProjectId, phase, null, null, reason)
 
 	await prisma.$transaction(async tx => {
 		await tx.submissionReview.updateMany({
@@ -664,9 +654,8 @@ async function applyFraud(event: FraudEvent): Promise<void> {
 		userId = project?.userId ?? null
 	}
 
-	if (event.fraud.verdict === "failed" && userId) {
+	if (event.fraud.verdict === "failed" && userId)
 		await prisma.user.update({ data: { fraudFlagged: true }, where: { id: userId } })
-	}
 
 	await logAudit({
 		action: AuditAction.ARI_WEBHOOK_APPLIED,

@@ -9,12 +9,11 @@ export function normalizeRepo(input: string): { url: string | null; error: strin
 	const withScheme = /^[a-z][a-z\d+.-]*:\/\//i.test(raw) ? raw : `https://${raw}`
 	try {
 		const parsed = new URL(withScheme)
-		if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+		if (parsed.protocol !== "https:" && parsed.protocol !== "http:")
 			return { error: "That needs to be a web link.", url: null }
-		}
-		if (!parsed.hostname.includes(".")) {
-			return { error: "That does not look like a repo link.", url: null }
-		}
+
+		if (!parsed.hostname.includes(".")) return { error: "That does not look like a repo link.", url: null }
+
 		return { error: null, url: parsed.toString().replace(/\/$/, "") }
 	} catch {
 		return { error: "That does not look like a repo link.", url: null }

@@ -289,9 +289,7 @@ export function checkpointsFor(
 			out.push(newProject, ideaReel)
 			for (let n = 1; n <= live; n += 1) pushEntry(n)
 		}
-	} else {
-		for (let n = 1; n <= live; n += 1) pushEntry(n)
-	}
+	} else for (let n = 1; n <= live; n += 1) pushEntry(n)
 
 	// The next one on the clock, so the cadence is visible before you get there. Two weeks have no use for it. A submitted week has already shipped its closing reel inside Submit, so an unearned one trailing the chain would be a node nobody can ever take. And a forked week ends in a question: a locked node standing between the last of the work and that question reads as a step you have to clear first, when in truth it gates nothing and only belongs to one of the two answers. It comes back the moment the hours earn it.
 	if (!submitted && !forked) out.push(milestoneReel(reels + 1))

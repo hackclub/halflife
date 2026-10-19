@@ -161,9 +161,8 @@ function endpointIncludesBucket(): boolean {
 
 function listingClient(): S3Client {
 	const endpoint = process.env.S3_ENDPOINT
-	if (!endpoint || !endpointIncludesBucket()) {
+	if (!endpoint || !endpointIncludesBucket())
 		return new S3Client({ credentials: credentials(), endpoint, region: "auto" })
-	}
 
 	const root = new URL(endpoint)
 	root.pathname = root.pathname.replace(/\/[^/]+$/, "")
@@ -223,15 +222,13 @@ export function validateUpload(
 	contentType: string,
 	size: number,
 ): { ok: true; ext: string } | { ok: false; reason: string } {
-	if (size > MAX_UPLOAD_BYTES) {
-		return { ok: false, reason: `File is larger than ${MAX_UPLOAD_BYTES} bytes` }
-	}
+	if (size > MAX_UPLOAD_BYTES) return { ok: false, reason: `File is larger than ${MAX_UPLOAD_BYTES} bytes` }
+
 	const ext = filename.split(".").pop()?.toLowerCase() ?? ""
 	const allowed = EXTENSION_MIME[ext]
 	if (!allowed) return { ok: false, reason: `Unsupported file type: .${ext}` }
-	if (!allowed.includes(contentType)) {
-		return { ok: false, reason: `Content type ${contentType} does not match .${ext}` }
-	}
+	if (!allowed.includes(contentType)) return { ok: false, reason: `Content type ${contentType} does not match .${ext}` }
+
 	return { ext, ok: true }
 }
 

@@ -213,9 +213,9 @@ export function renderJournal(project: ProjectMeta, entries: JournalEntry[]): Re
 
 	// A contents list, because a build week can be dozens of entries and GitHub's rendering has no sidebar.
 	lines.push("## Contents", "")
-	for (const [i, entry] of ordered.entries()) {
+	for (const [i, entry] of ordered.entries())
 		lines.push(`${i + 1}. [${dateOf(entry)} – ${entry.title}](#${slug(`${dateOf(entry)} ${entry.title}`)})`)
-	}
+
 	lines.push("")
 
 	let lastPhase: Phase | null = null
@@ -261,7 +261,7 @@ export interface BomLineForFile {
  */
 export function renderBom(items: BomLineForFile[], taxShippingUsd: number): RenderedFile {
 	const csv: string[] = [csvRow(["Item", "Qty", "Supplier", "Cost/item", "Total Cost", "link"])]
-	for (const item of items) {
+	for (const item of items)
 		csv.push(
 			csvRow([
 				item.name,
@@ -273,7 +273,7 @@ export function renderBom(items: BomLineForFile[], taxShippingUsd: number): Rend
 				item.link ?? "",
 			]),
 		)
-	}
+
 	csv.push(csvRow(["Estimated total shipping", 1, "", "", usd(taxShippingUsd), ""]))
 	return { content: `${csv.join("\n")}\n`, path: BOM_PATH }
 }

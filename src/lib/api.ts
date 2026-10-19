@@ -41,22 +41,22 @@ export async function parseBody<S extends z.ZodType>(request: Request, schema: S
 	}
 
 	const result = schema.safeParse(raw)
-	if (!result.success) {
+	if (!result.success)
 		return {
 			error: fail("VALIDATION_FAILED", "Invalid request", z.treeifyError(result.error)),
 		}
-	}
+
 	return { data: result.data }
 }
 
 export function parseQuery<S extends z.ZodType>(request: NextRequest, schema: S): Parsed<z.output<S>> {
 	const raw = Object.fromEntries(request.nextUrl.searchParams.entries())
 	const result = schema.safeParse(raw)
-	if (!result.success) {
+	if (!result.success)
 		return {
 			error: fail("INVALID_QUERY", "Invalid query parameters", z.treeifyError(result.error)),
 		}
-	}
+
 	return { data: result.data }
 }
 

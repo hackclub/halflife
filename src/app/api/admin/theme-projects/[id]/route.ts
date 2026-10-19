@@ -57,7 +57,7 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 		return fail("CONFLICT", "That maker already has a live project on the target theme")
 	}
 
-	if (data.submissionExtensionUntil !== undefined) {
+	if (data.submissionExtensionUntil !== undefined)
 		await logAudit({
 			action: AuditAction.ADMIN_GRANT_EXTENSION,
 			actorEmail: gate.user.email,
@@ -69,9 +69,8 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 			targetId: id,
 			targetType: "ThemeProject",
 		})
-	}
 
-	if (data.theme !== undefined) {
+	if (data.theme !== undefined)
 		await logAudit({
 			action: AuditAction.ADMIN_MOVE_PROJECT,
 			actorEmail: gate.user.email,
@@ -80,7 +79,6 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 			targetId: id,
 			targetType: "ThemeProject",
 		})
-	}
 
 	return ok({ project: updated })
 })

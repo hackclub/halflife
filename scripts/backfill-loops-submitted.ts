@@ -84,12 +84,12 @@ async function main() {
 	const wantByUser = new Map<string, Set<number>>()
 	for (const u of users) {
 		const weeks = new Set<number>()
-		for (const p of u.themeProjects) {
+		for (const p of u.themeProjects)
 			for (const s of p.submissions) {
 				const w = s.scheduledWeek ?? scheduledWeekFor(p.theme, s.phase)
 				if (w >= 1 && w <= 10) weeks.add(w)
 			}
-		}
+
 		wantByUser.set(u.id, weeks)
 	}
 	const submitters = users.filter(u => (wantByUser.get(u.id)?.size ?? 0) > 0)
@@ -101,10 +101,9 @@ async function main() {
 		where: { airtableRecordId: { not: null }, userId: { not: null } },
 	})
 	const byRecordId = new Map<string, AirtableRecord>()
-	for (const row of drained) {
+	for (const row of drained)
 		if (row.userId && row.airtableRecordId && !byRecordId.has(row.userId))
 			byRecordId.set(row.userId, { fields: {}, id: row.airtableRecordId })
-	}
 
 	const updates = new Map<string, { [_: string]: boolean }>()
 	let matched = 0

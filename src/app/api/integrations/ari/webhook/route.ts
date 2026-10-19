@@ -20,9 +20,9 @@ let handler: Handler | null = null
 
 export async function POST(request: Request): Promise<Response> {
 	const secret = process.env.ARI_WEBHOOK_SECRET
-	if (!isAriWebhookConfigured() || !secret) {
+	if (!isAriWebhookConfigured() || !secret)
 		return NextResponse.json({ error: "Ari is not configured on this deployment" }, { status: 503 })
-	}
+
 	handler ??= createWebhookHandler({
 		async on_event(event, context) {
 			await applyAriWebhook(event, context.delivery_id)

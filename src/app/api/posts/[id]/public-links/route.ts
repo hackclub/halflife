@@ -46,13 +46,12 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 		if (link && row.userId !== gate.user.id)
 			errors[link.platform] = `That ${PLATFORM_INFO[link.platform].label} post has already been added by someone else.`
 	}
-	if (Object.keys(errors).length > 0) {
+	if (Object.keys(errors).length > 0)
 		return fail("VALIDATION_FAILED", Object.values(errors)[0] ?? "Check your links", { fields: errors })
-	}
 
 	const mine = new Set(taken.map(t => t.url))
 	const fresh = links.filter(l => !mine.has(l.url))
-	if (fresh.length > 0) {
+	if (fresh.length > 0)
 		await prisma.publicReel.createMany({
 			data: fresh.map(l => ({
 				email: gate.user.email,
@@ -65,7 +64,6 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 			// Two tabs sending the same link at once: the unique url settles it.
 			skipDuplicates: true,
 		})
-	}
 
 	return ok({ saved: links.length }, { status: 201 })
 })

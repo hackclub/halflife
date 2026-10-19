@@ -26,11 +26,11 @@ type Account =
 
 async function read<T>(res: Response): Promise<T> {
 	const body = await res.json().catch(() => null)
-	if (!res.ok) {
+	if (!res.ok)
 		throw Object.assign(new Error(body?.error?.message ?? "Something went wrong"), {
 			code: body?.error?.code as string | undefined,
 		})
-	}
+
 	return body as T
 }
 

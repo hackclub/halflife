@@ -153,7 +153,7 @@ export async function getHandoffStatus(id: string, userId: string): Promise<Hand
 	})
 	if (!row) return null
 
-	if (row.objectKey) {
+	if (row.objectKey)
 		// The URL comes along so the desktop can play what the phone filmed before it is posted; it is minted here, at read time, like every other one.
 		return {
 			contentType: row.contentType,
@@ -161,7 +161,7 @@ export async function getHandoffStatus(id: string, userId: string): Promise<Hand
 			state: "ready",
 			url: publicUrlFor(row.objectKey),
 		}
-	}
+
 	// Expiry only ends the wait while nothing has been uploaded; a video that landed a second before the deadline is still the user's.
 	if (row.expiresAt <= new Date()) return { state: "expired" }
 	return { expiresAt: row.expiresAt, state: "waiting" }

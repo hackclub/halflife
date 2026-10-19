@@ -72,15 +72,15 @@ async function main() {
 		process.exit(1)
 	}
 
-	for (const field of Object.values(COLUMNS)) {
-		// Probed by name, because `columnExists` reads Airtable's `UNKNOWN_FIELD_NAME` refusal; written by `fieldKey`, which is the id once the base is written by id.
+	// Probed by name, because `columnExists` reads Airtable's `UNKNOWN_FIELD_NAME` refusal; written by `fieldKey`, which is the id once the base is written by id.
+	for (const field of Object.values(COLUMNS))
 		if (!(await columnExists(config, YSWS_SUBMISSION.tableId, field.name))) {
 			console.error(
 				`The \`${field.name}\` column is not on ${YSWS_SUBMISSION.tableId}; create it in Airtable before backfilling.`,
 			)
 			process.exit(1)
 		}
-	}
+
 	const keys = new Map<string, string>()
 	for (const [key, field] of Object.entries(COLUMNS)) keys.set(key, fieldKey(field))
 
@@ -123,7 +123,7 @@ async function main() {
 
 	const targets: { phase: Phase; recordId: string; title: string; values: JustificationValues }[] = []
 	let withoutRow = 0
-	for (const project of projects) {
+	for (const project of projects)
 		for (const phase of [Phase.DESIGN, Phase.BUILD] as const) {
 			const recordId = records.get(`${project.id}:${phase}`)
 			if (!recordId) {
@@ -144,7 +144,6 @@ async function main() {
 			)
 			targets.push({ phase, recordId, title: project.title, values })
 		}
-	}
 
 	// Only the cells the base is missing are written: a cell that already holds something is left as it is.
 	const current = await currentColumns(config, keys)

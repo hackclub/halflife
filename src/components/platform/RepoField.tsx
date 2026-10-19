@@ -99,7 +99,7 @@ export function RepoEditor({ project, className }: { project: Project; className
 		else setEditing(false)
 	}
 
-	if (!editing) {
+	if (!editing)
 		return (
 			<div className={cx("flex min-w-0 items-center gap-2", className)}>
 				{current ? (
@@ -141,7 +141,6 @@ export function RepoEditor({ project, className }: { project: Project; className
 				)}
 			</div>
 		)
-	}
 
 	return (
 		<form

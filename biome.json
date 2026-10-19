@@ -28,6 +28,7 @@
 			"!public/**/*.svg",
 			"scripts/**",
 			"src/**",
+			"import/**",
 			"!src/**/*.svg",
 			"*.config.mjs",
 			"*.config.ts",

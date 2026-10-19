@@ -35,15 +35,13 @@ export const PUT = withRoute(async (req: Request, { params }: Params) => {
 		where: { shopItemId_regionId: { regionId, shopItemId: id } },
 	})
 
-	if (priceCredits === null) {
-		await prisma.shopItemRegionPrice.deleteMany({ where: { regionId, shopItemId: id } })
-	} else {
+	if (priceCredits === null) await prisma.shopItemRegionPrice.deleteMany({ where: { regionId, shopItemId: id } })
+	else
 		await prisma.shopItemRegionPrice.upsert({
 			create: { priceCredits, regionId, shopItemId: id },
 			update: { priceCredits },
 			where: { shopItemId_regionId: { regionId, shopItemId: id } },
 		})
-	}
 
 	await logAudit({
 		action: AuditAction.ADMIN_SET_REGION_PRICE,

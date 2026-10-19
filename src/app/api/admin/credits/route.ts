@@ -25,12 +25,12 @@ export const POST = withRoute(async (req: Request) => {
 			// Guard the pot being moved, not the combined total: a clawback that the total can absorb may still take the spendable pot negative, and banked coins are not available to cover it.
 			const balance = bucket === "BANKED" ? balances.banked : balances.spendable
 			// A negative balance is not a state the shop or any display knows how to render, so refuse rather than create one.
-			if (balance + amount < 0) {
+			if (balance + amount < 0)
 				throw Object.assign(new Error("Would drive the balance negative"), {
 					__insufficient: true,
 					balance,
 				})
-			}
+
 			return appendLedgerEntry(tx, {
 				amount,
 				bucket: bucket === "BANKED" ? CoinBucket.BANKED : CoinBucket.SPENDABLE,

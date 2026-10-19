@@ -45,7 +45,7 @@ export function FirstCheckpoint() {
 
 	const close = () => setOpenCheckpoint(null)
 
-	if (error) {
+	if (error)
 		return (
 			<Modal accent="var(--color-gold-deep)" eyebrow="Getting started" onClose={close} open>
 				<ModalTitle sub={error}>Something went wrong</ModalTitle>
@@ -54,9 +54,8 @@ export function FirstCheckpoint() {
 				</Button>
 			</Modal>
 		)
-	}
 
-	if (!view) {
+	if (!view)
 		return (
 			<Modal accent="var(--color-gold-deep)" eyebrow="Getting started" onClose={close} open>
 				<p className="hand text-navy-soft" role="status">
@@ -64,7 +63,6 @@ export function FirstCheckpoint() {
 				</p>
 			</Modal>
 		)
-	}
 
 	return (
 		<Modal

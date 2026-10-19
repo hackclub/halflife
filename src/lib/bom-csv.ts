@@ -131,12 +131,12 @@ function parseRows(input: string): string[][] {
 	for (let i = 0; i < text.length; i++) {
 		const ch = text[i]
 		if (quoted) {
-			if (ch === '"') {
+			if (ch === '"')
 				if (text[i + 1] === '"') {
 					field += '"'
 					i++
 				} else quoted = false
-			} else field += ch
+			else field += ch
 			continue
 		}
 		if (ch === '"') quoted = true

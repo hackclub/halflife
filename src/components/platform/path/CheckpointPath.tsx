@@ -401,11 +401,12 @@ function WeekTrail({ week, currentId, phase }: { week: Week; currentId: string |
 	let full = 0
 	let beats = 0
 	for (const [i, { row, ghost }] of lined.entries()) {
-		if (i > 0) {
-			// The stride belongs to the row we are stepping off, not this one.
-			if (placed[i - 1]?.beat) beats += 1
+		if (i > 0)
+			if (placed[i - 1]?.beat)
+				// The stride belongs to the row we are stepping off, not this one.
+				beats += 1
 			else full += 1
-		}
+
 		placed.push({ beat: ghost || row.every(isBeat), beats, full, ghost, row })
 	}
 
@@ -421,7 +422,7 @@ function WeekTrail({ week, currentId, phase }: { week: Week; currentId: string |
 		const size = here.beat ? "var(--node-sm)" : "var(--node)"
 		// Into a fork the run splits and each arm is drawn straight to its node; down the chain the dots keep sampling the sine, so the curve they have always traced is untouched. A ghost row is one slot wide, like the single node it stands between.
 		const slots = next.row.length > 0 ? next.row : [undefined]
-		for (const [j] of slots.entries()) {
+		for (const [j] of slots.entries())
 			for (const f of [0.3, 0.5, 0.7]) {
 				dots.push(
 					<span
@@ -439,7 +440,6 @@ function WeekTrail({ week, currentId, phase }: { week: Week; currentId: string |
 					/>,
 				)
 			}
-		}
 	}
 
 	return (

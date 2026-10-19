@@ -84,14 +84,14 @@ async function main() {
     },
   ]
 
-  for (const item of items) {
+  for (const item of items) 
     await prisma.shopItem.upsert({
       where: { id: item.id },
       create: item,
       // Price and stock are edited from the admin UI; do not overwrite them.
       update: { description: item.description, name: item.name, sortOrder: item.sortOrder },
     })
-  }
+  
 
   /**
    * Retire printers that have left the catalogue.

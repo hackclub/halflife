@@ -92,13 +92,12 @@ export async function findPrinterAwardMismatches(): Promise<{ userId: string; em
 	const mismatches: { userId: string; email: string; shippedCount: number }[] = []
 	for (const award of awards) {
 		const q = await getPrinterQualification(award.userId)
-		if (!q.qualified) {
+		if (!q.qualified)
 			mismatches.push({
 				email: award.user.email,
 				shippedCount: q.shippedCount,
 				userId: award.userId,
 			})
-		}
 	}
 	return mismatches
 }
@@ -140,12 +139,12 @@ export async function updatePrinterAwardStatus(
 	})
 	if (!award) throw new HttpError("NOT_FOUND", "Printer award not found")
 
-	if (!canMovePrinterAward(award.status, input.status)) {
+	if (!canMovePrinterAward(award.status, input.status))
 		throw new HttpError(
 			"CONFLICT",
 			`A ${PRINTER_AWARD_LABELS[award.status]} award cannot move to ${PRINTER_AWARD_LABELS[input.status]}`,
 		)
-	}
+
 	if (input.status === "REVOKED" && !input.note.trim())
 		throw new HttpError("VALIDATION_FAILED", "Say why the award is being revoked")
 
@@ -172,12 +171,12 @@ export async function updatePrinterAwardStatus(
 			.filter((part): part is string => !!part?.trim())
 			.join("\n")
 			.trim()
-		if (!address) {
+		if (!address)
 			throw new HttpError(
 				"VALIDATION_FAILED",
 				"No shipping address is on file for this participant – pull it from HCA (PULL_HCA_PII) or ask them for it before locking.",
 			)
-		}
+
 		data.encryptedAddress = encryptPII(address)
 		if (pii?.phone?.trim()) data.encryptedPhone = encryptPII(pii.phone.trim())
 		data.addressLockedAt = new Date()

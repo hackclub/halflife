@@ -22,7 +22,7 @@
 	"plugins": ["eslint", "import", "jsx-a11y", "nextjs", "node", "oxc", "promise", "react", "typescript", "unicorn"],
 	"rules": {
 		"eslint/capitalized-comments": "off",
-		"eslint/curly": "off",
+		"eslint/curly": ["error", "multi"],
 		"eslint/eqeqeq": ["error", "smart"],
 		"eslint/func-style": "off",
 		"eslint/id-length": "off",
@@ -111,7 +111,7 @@
 		"typescript/return-await": "warn",
 		"unicorn/catch-error-name": "off",
 		"unicorn/consistent-function-scoping": "off",
-		"unicorn/empty-brace-spaces": "off",
+		"unicorn/empty-brace-spaces": "error",
 		"unicorn/filename-case": "off",
 		"unicorn/max-nested-calls": "off",
 		"unicorn/no-array-callback-reference": "off",

@@ -43,9 +43,8 @@ export function requireExportAuth(
 ): { denied: NextResponse<ApiErrorBody> } | { scope: ExportScope } {
 	const internal = process.env.INTEGRATION_API_KEY
 	const partner = process.env.EXPORT_API_KEY
-	if (!internal && !partner) {
+	if (!internal && !partner)
 		return { denied: fail("NOT_CONFIGURED", "Set EXPORT_API_KEY or INTEGRATION_API_KEY to enable this endpoint") }
-	}
 
 	const header = request.headers.get("authorization") ?? ""
 	const match = header.match(/^Bearer\s+(.+)$/i)

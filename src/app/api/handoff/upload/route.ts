@@ -41,7 +41,7 @@ export const POST = withRoute(async (req: Request) => {
 		type: file.type,
 	})
 
-	if (target) {
+	if (target)
 		await logAudit({
 			action: AuditAction.USER_HANDOFF_UPLOAD,
 			actorEmail: null,
@@ -50,7 +50,6 @@ export const POST = withRoute(async (req: Request) => {
 			targetId: target.id,
 			targetType: "UploadHandoff",
 		})
-	}
 
 	return ok({ uploaded: true }, { status: 201 })
 })

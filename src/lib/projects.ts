@@ -50,7 +50,7 @@ export function projectWeeks(project: Project, weeks: Week[]): Week[] {
 export function projectEvents(project: Project, weeks: Week[], read: (id: string) => CheckpointRead): ProjectEvent[] {
 	const out: ProjectEvent[] = []
 
-	for (const week of projectWeeks(project, weeks)) {
+	for (const week of projectWeeks(project, weeks))
 		for (const cp of week.checkpoints) {
 			const state = read(cp.id)
 
@@ -80,7 +80,6 @@ export function projectEvents(project: Project, weeks: Week[], read: (id: string
 				})
 			}
 		}
-	}
 
 	return out.toSorted((a, b) => b.at - a.at || b.id.localeCompare(a.id))
 }

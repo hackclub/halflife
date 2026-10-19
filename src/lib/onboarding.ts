@@ -259,12 +259,12 @@ export async function submitStep(userId: string, answer: OnboardingAnswer): Prom
 				if (!before.project.tierLocked) throw new HttpError("VALIDATION_FAILED", "Pick one of the three tiers")
 				break
 			}
-			if (before.project.tierLocked) {
+			if (before.project.tierLocked)
 				throw new HttpError(
 					"VALIDATION_FAILED",
 					"Starter projects are Tier 1. Write your own project idea to choose a different tier.",
 				)
-			}
+
 			if (!isTierId(answer.requestedTier)) throw new HttpError("VALIDATION_FAILED", "Pick one of the three tiers")
 			projectData.requestedTier = answer.requestedTier
 			break

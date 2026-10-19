@@ -133,23 +133,22 @@ export function RepoSyncSettings({
 		else setLinked(true)
 	}
 
-	if (loading && !state) {
+	if (loading && !state)
 		return (
 			<p aria-live="polite" className="hand text-[0.84rem] text-navy-soft">
 				checking your repos…
 			</p>
 		)
-	}
-	if (!state) {
+
+	if (!state)
 		return (
 			<p className="text-[0.85rem] font-semibold text-coral-deep" role="alert">
 				{error ?? "Could not load the sync settings"}
 			</p>
 		)
-	}
 
 	// No forge linked: the whole feature is gated on it, so the prompt is the panel. A maker picks whichever service their project already lives on.
-	if (state.linkedForges.length === 0) {
+	if (state.linkedForges.length === 0)
 		return (
 			<div className="grid gap-3">
 				<p className="text-[0.9rem] leading-relaxed text-navy-soft">
@@ -175,9 +174,8 @@ export function RepoSyncSettings({
 				</div>
 			</div>
 		)
-	}
 
-	if (state.enabled) {
+	if (state.enabled)
 		return (
 			<div className="grid gap-3">
 				<p className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
@@ -240,7 +238,6 @@ export function RepoSyncSettings({
 				</div>
 			</div>
 		)
-	}
 
 	// Linked, off: pick a repo and switch it on.
 	return (

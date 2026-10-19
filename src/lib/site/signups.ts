@@ -120,7 +120,7 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 		if ((found.records?.length ?? 0) > 0) {
 			// The row already exists upstream, so remember its id: the direct path bypasses the drain, and without this the buffer – and the Loops sync's record-id join – never learns this row exists.
 			const duplicateId = found.records?.[0]?.id
-			if (duplicateId) {
+			if (duplicateId)
 				await recordDirectSignup({
 					email,
 					ip,
@@ -129,7 +129,7 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 					...(utmSource ? { utmSource } : {}),
 					...(userId ? { userId } : {}),
 				})
-			}
+
 			// The column the number is written to below; there is no `referral_code`, so reading that handed returning people a blank.
 			const existing = found.records?.[0]?.fields?.["Loops - halfLifeReferralNumber"]
 			return {
@@ -170,7 +170,7 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 		// Remember the row the direct path just made, for the same reason as above: no buffer entry means no record-id join for the Loops sync.
 		try {
 			const created = (await response.json()) as { id?: string }
-			if (created.id) {
+			if (created.id)
 				await recordDirectSignup({
 					email,
 					ip,
@@ -179,7 +179,6 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 					...(utmSource ? { utmSource } : {}),
 					...(userId ? { userId } : {}),
 				})
-			}
 		} catch (err) {
 			console.error("[signup] remembering the direct-write row failed:", err)
 		}
@@ -210,13 +209,13 @@ export async function recordSignup(email: string, ip = "unknown", meta: SignupMe
 			method: "POST",
 		})
 
-		if (!response.ok) {
+		if (!response.ok)
 			return {
 				error: "We couldn't reach the signup list. Try again in a moment.",
 				ok: false,
 				status: 502,
 			}
-		}
+
 		return { duplicate: false, ok: true, referralCode }
 	}
 

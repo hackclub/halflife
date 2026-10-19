@@ -131,9 +131,8 @@ export function Avatar({
 	alt = "",
 }: Readonly<{ src?: string | null; large?: boolean; alt?: string }>) {
 	const className = `hl-avatar${large ? " hl-avatar--lg" : ""}`
-	if (src) {
-		return <img alt={alt} className={className} src={src} />
-	}
+	if (src) return <img alt={alt} className={className} src={src} />
+
 	return (
 		<span aria-label={alt || "No picture set"} className={`${className} hl-avatar--fallback`} role="img">
 			<img alt="" src="/brand/gato/schematic.png" />

@@ -536,10 +536,9 @@ async function commitGitHub(
 		}),
 	)
 
-	if (entries.length === 0) {
+	if (entries.length === 0)
 		// Every file already held this content. No tree, no commit, no ref update.
 		return written.toSorted((a, b) => a.path.localeCompare(b.path))
-	}
 
 	const treeRes = await call(creds, `${base}/git/trees`, {
 		body: JSON.stringify({

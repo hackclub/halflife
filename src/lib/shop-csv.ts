@@ -73,9 +73,8 @@ function records(text: string): { line: number; fields: string[] }[] {
 			if (c === '"' && src[i + 1] === '"') {
 				field += '"'
 				i += 1
-			} else if (c === '"') {
-				quoted = false
-			} else if (c === "\r" && src[i + 1] === "\n") {
+			} else if (c === '"') quoted = false
+			else if (c === "\r" && src[i + 1] === "\n") {
 				// A Windows line break inside a cell is still one break.
 			} else {
 				if (c === "\n") line += 1
@@ -136,23 +135,22 @@ export function parseShopCsv(text: string): { items: ShopCsvItem[]; problems: Sh
 					.replaceAll(/[^a-z]/g, "")
 			],
 	)
-	for (const [i, h] of head.fields.entries()) {
+	for (const [i, h] of head.fields.entries())
 		if (!columns[i] && h.trim() !== "") {
 			problems.push({ line: 1, message: `Unknown column "${h.trim()}". Columns are: ${SHOP_CSV_COLUMNS.join(", ")}.` })
 		}
-	}
+
 	const missing = REQUIRED.filter(c => !columns.includes(c))
 	if (missing.length > 0)
 		problems.push({ line: 1, message: `Missing column${missing.length > 1 ? "s" : ""}: ${missing.join(", ")}.` })
 	if (problems.length > 0) return { items: [], problems }
 
 	if (rows.length === 0) return { items: [], problems: [{ line: 0, message: "The file has a header but no items." }] }
-	if (rows.length > SHOP_CSV_MAX_ROWS) {
+	if (rows.length > SHOP_CSV_MAX_ROWS)
 		return {
 			items: [],
 			problems: [{ line: 0, message: `At most ${SHOP_CSV_MAX_ROWS} items per import; this file has ${rows.length}.` }],
 		}
-	}
 
 	const items: ShopCsvItem[] = []
 	const seen = new Map<string, number>()

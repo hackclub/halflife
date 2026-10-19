@@ -448,12 +448,12 @@ export function Cinematic() {
 			const week = place(fy, scale)
 
 			let idx = -1
-			if (t >= T_HOLD) {
+			if (t >= T_HOLD)
 				for (let i = 0; i < SCRIPT.length; i += 1) {
 					const s = SCRIPT[i]
 					if (s && week >= s.fromWeek && depth >= s.fromDepth) idx = i
 				}
-			}
+
 			setBeat(b => (b === idx ? b : idx))
 
 			if (t >= T_END) {

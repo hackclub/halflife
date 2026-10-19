@@ -44,10 +44,10 @@ function routeTable(): Map<string, Set<string>> {
 		if (!file.endsWith("route.ts")) continue
 		const source = readFileSync(file, "utf8")
 		const found = new Set<string>()
-		for (const method of METHODS) {
-			// Both forms are in use: `export const POST = withRoute(...)` and `export async function POST(...)`.
+		// Both forms are in use: `export const POST = withRoute(...)` and `export async function POST(...)`.
+		for (const method of METHODS)
 			if (new RegExp(`export (const|async function) ${method}\\b`).test(source)) found.add(method)
-		}
+
 		// Either separator: `relative` hands back backslashes on Windows.
 		const url = `/${relative("src/app", file.replace(/[\\/]route\.ts$/, ""))
 			.split(/[\\/]/)
@@ -1254,9 +1254,8 @@ async function bodies() {
 			["a dot segment", "https://gitlab.com/a/../b"],
 			["an empty string", ""],
 		]
-		for (const [label, input] of rejectCases) {
+		for (const [label, input] of rejectCases)
 			check(`repo-ref · ${label} is refused`, parseRepoRef(input, { forge: FORGES.github }) === null)
-		}
 	}
 
 	/* ── 6d. Ticket message buttons, resolve and reopen ─────────────────────── */

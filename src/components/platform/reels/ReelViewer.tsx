@@ -265,10 +265,9 @@ export function ReelViewer() {
 		} else if (!unseenLead && !done && !error && resumePages.current < RESUME_MAX_PAGES) {
 			resumePages.current += 1
 			handleMore()
-		} else {
-			// Deleted, hidden, or further back than it is worth walking: the top.
-			setResume(null)
 		}
+		// Deleted, hidden, or further back than it is worth walking: the top.
+		else setResume(null)
 	}, [resume, loading, items, leading, done, error, handleMore])
 
 	// A card's comments link opens the conversation once its reel has landed. Wide, that is the panel beside the reel; below it, the sheet over it.

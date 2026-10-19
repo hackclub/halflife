@@ -30,9 +30,8 @@ function records(text: string): { line: number; fields: string[] }[] {
 			if (c === '"' && src[i + 1] === '"') {
 				field += '"'
 				i += 1
-			} else if (c === '"') {
-				quoted = false
-			} else if (c === "\r" && src[i + 1] === "\n") {
+			} else if (c === '"') quoted = false
+			else if (c === "\r" && src[i + 1] === "\n") {
 				// A CRLF inside a quoted field: the \r goes and the \n is the next character, so nothing is added here.
 			} else {
 				if (c === "\n") line += 1
@@ -243,10 +242,9 @@ export function parseProjectsCsv(text: string): { rows: MacondoRow[]; problems: 
 
 		const rawTier = cell("tier")
 		let tier = rawTier ? Number(rawTier) : null
-		if (tier !== null && (!Number.isFinite(tier) || tier < 1 || tier > 3)) {
+		if (tier !== null && (!Number.isFinite(tier) || tier < 1 || tier > 3))
 			// Macondo tiers sometimes go past 3; clamp rather than fail so the import works.
 			tier = tier === null ? null : Math.min(3, Math.max(1, Math.round(tier)))
-		}
 
 		const hoursTotalRaw = cell("journal_hours_total")
 		const hoursTotal = hoursTotalRaw ? Number(hoursTotalRaw) : null
@@ -309,11 +307,10 @@ interface ImportActor {
 
 export async function importMacondoProjects(actor: ImportActor, csv: string): Promise<CsvImportSummary> {
 	const parsed = parseProjectsCsv(csv)
-	if (parsed.problems.length > 0) {
+	if (parsed.problems.length > 0)
 		throw new HttpError("VALIDATION_FAILED", "Nothing was imported. Fix these and try again.", {
 			problems: parsed.problems,
 		})
-	}
 
 	const done = await importedProjectIds()
 	const settings = await getProgramSettings()
@@ -377,7 +374,7 @@ export async function importMacondoProjects(actor: ImportActor, csv: string): Pr
 				select: { id: true },
 			})
 
-			for (const journal of row.journals) {
+			for (const journal of row.journals)
 				await prisma.workSession.create({
 					data: {
 						content: journal.content,
@@ -391,7 +388,6 @@ export async function importMacondoProjects(actor: ImportActor, csv: string): Pr
 						weekNumber: 0,
 					},
 				})
-			}
 
 			await prisma.phaseSubmission.create({
 				data: {

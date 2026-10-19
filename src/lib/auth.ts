@@ -100,14 +100,13 @@ export const auth = betterAuth({
 			create: {
 				after: async account => {
 					// Denormalise the Hackatime id onto User so hour lookups are one query.
-					if (account.providerId === "hackatime") {
+					if (account.providerId === "hackatime")
 						await prisma.user
 							.update({
 								data: { hackatimeUserId: account.accountId },
 								where: { id: account.userId },
 							})
 							.catch(err => console.error("[auth] hackatime id copy failed:", err))
-					}
 				},
 			},
 		},
@@ -128,11 +127,10 @@ export const auth = betterAuth({
 					await prisma.user.update({ data: { joinedProgramAt: new Date() }, where: { id: user.id } }).catch(() => {})
 
 					// Buffered, never a synchronous Airtable call: a signup must not fail because a third party is rate-limiting us.
-					if (user.email) {
+					if (user.email)
 						await bufferRsvpForUser(user.id, user.email, user.name ?? null).catch(err =>
 							console.error("[auth] bufferRsvpForUser failed:", err),
 						)
-					}
 
 					// The only way to get a first admin into a fresh database without shell access to production.
 					//
@@ -141,7 +139,7 @@ export const auth = betterAuth({
 						.split(",")
 						.map(s => s.trim().toLowerCase())
 						.filter(Boolean)
-					if (user.emailVerified && user.email && superadmins.includes(user.email.toLowerCase())) {
+					if (user.emailVerified && user.email && superadmins.includes(user.email.toLowerCase()))
 						await prisma.userRole
 							.upsert({
 								create: { grantedBy: "SUPERADMIN_EMAILS", role: Role.ADMIN, userId: user.id },
@@ -149,7 +147,6 @@ export const auth = betterAuth({
 								where: { userId_role: { role: Role.ADMIN, userId: user.id } },
 							})
 							.catch(err => console.error("[auth] superadmin grant failed:", err))
-					}
 				},
 			},
 		},

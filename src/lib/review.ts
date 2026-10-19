@@ -166,9 +166,8 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 		&& phase === Phase.BUILD
 		&& project.theme !== Theme.WARMUP
 		&& project.designStatus !== PhaseStatus.approved
-	) {
+	)
 		throw new HttpError("DESIGN_NOT_APPROVED", "Approve the design phase for this theme before approving the build")
-	}
 
 	let tier = project.tier
 	if (approving && phase === Phase.DESIGN) {
@@ -182,13 +181,12 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 	const snapshotAt = new Date()
 	const breakdown = await getHoursBreakdown(project.id, phase, { live: approving })
 	// A reviewer (human or Ari) who supplied the hours explicitly has already covered the underpayment risk that a stale Hackatime reading creates, so staleness must not block a decision that does not depend on the live value.
-	if (approving && input.hoursOverride == null && breakdown.hackatimeStale) {
+	if (approving && input.hoursOverride == null && breakdown.hackatimeStale)
 		// Refusing here is the point: stasis's client returns 0 on a Hackatime timeout and that zero flows into the grant row, silently underpaying someone with no trace.
 		throw new HttpError(
 			"HACKATIME_STALE",
 			"Hackatime data could not be refreshed. Retry, or set an explicit hours override.",
 		)
-	}
 
 	const approvedHours = approving ? (input.hoursOverride ?? breakdown.computedTotal) : null
 
@@ -247,7 +245,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 				throw new HttpError("DESIGN_NOT_APPROVED", "Approve the design phase for this theme before approving the build")
 		}
 
-		if (approving) {
+		if (approving)
 			// Accept every unreviewed session at its claimed hours, so the per-session numbers stay consistent with the frozen total.
 			// Only sessions in the snapshot: one created after it was never counted in the frozen total.
 			await tx.workSession.updateMany({
@@ -260,7 +258,6 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 					themeProjectId: project.id,
 				},
 			})
-		}
 
 		await tx.submissionReview.create({
 			data: {
@@ -489,12 +486,11 @@ export async function unapprovePhase(
 					userId: project.userId,
 				},
 			})
-			if (inFlight) {
+			if (inFlight)
 				throw new HttpError(
 					"CONFLICT",
 					"A grant send is in flight for this design – wait for it to finish before un-approving",
 				)
-			}
 		}
 
 		await tx.submissionReview.updateMany({

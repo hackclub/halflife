@@ -90,10 +90,10 @@ function readNumber(record: AirtableRecord, field: FieldDef): number | null {
 function readAttachmentUrl(record: AirtableRecord, field: FieldDef): string | null {
 	const value = rawField(record, field)
 	if (!Array.isArray(value)) return null
-	for (const entry of value) {
+	for (const entry of value)
 		if (entry && typeof entry === "object" && "url" in entry && typeof entry.url === "string" && entry.url)
 			return entry.url
-	}
+
 	return null
 }
 
@@ -319,14 +319,13 @@ async function importRow(
 				select: { targetId: true },
 				where: { action: IMPORT_ACTION, metadata: { equals: record.id, path: ["airtableRecordId"] } },
 			})
-			if (raced?.targetId) {
+			if (raced?.targetId)
 				return {
 					reason: "another import run filed this row first",
 					status: "skipped" as const,
 					themeProjectId: raced.targetId,
 					userId: null,
 				}
-			}
 
 			let user = await tx.user.findFirst({
 				select: { id: true },
@@ -372,7 +371,7 @@ async function importRow(
 				select: { id: true },
 			})
 
-			if (journalParts.length > 0 || row.hours !== null) {
+			if (journalParts.length > 0 || row.hours !== null)
 				await tx.workSession.create({
 					data: {
 						content: journalParts.length > 0 ? journalParts.join("\n\n") : null,
@@ -386,7 +385,6 @@ async function importRow(
 						weekNumber: 0,
 					},
 				})
-			}
 
 			await tx.phaseSubmission.create({
 				data: {
@@ -512,9 +510,8 @@ export async function importWarmupProjects(actor: ImportActor): Promise<WarmupIm
 			if (result.status === "imported") {
 				if (parsed.row.screenshotUrl) {
 					const key = await rehostScreenshot(result.userId, parsed.row.screenshotUrl)
-					if (key) {
+					if (key)
 						await prisma.themeProject.update({ data: { coverImageKey: key }, where: { id: result.themeProjectId } })
-					}
 				}
 				outcome.ari = await sendToAri(result.themeProjectId, parsed.row.phase, actor)
 			}

@@ -20,7 +20,7 @@ export function ReelsList({ groups }: { groups: MyReelGroup[] }) {
 	const router = useRouter()
 	const [adding, setAdding] = useState<MyReel | null>(null)
 
-	if (groups.length === 0) {
+	if (groups.length === 0)
 		return (
 			<Panel className="bg-paper px-6 py-14 text-center" radius={20} tone="line">
 				<p className="text-[1.05rem] font-extrabold text-navy">No reels yet</p>
@@ -36,7 +36,6 @@ export function ReelsList({ groups }: { groups: MyReelGroup[] }) {
 				</Link>
 			</Panel>
 		)
-	}
 
 	return (
 		<>

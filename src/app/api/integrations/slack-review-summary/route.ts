@@ -17,15 +17,12 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 	const since = summarySince()
 	const stats = await getProjectReviewStats(since)
 
-	if (wantsDryRun(req)) {
-		return ok({ dryRun: true, since, ...stats, message: await buildReviewSummary(stats) })
-	}
+	if (wantsDryRun(req)) return ok({ dryRun: true, since, ...stats, message: await buildReviewSummary(stats) })
 
 	const channel = process.env.SLACK_REVIEW_CHANNEL_ID
-	if (!channel) {
+	if (!channel)
 		// A missing channel is a misconfiguration, not a quiet no-op: the job's `curl -f` should go red rather than stay green having posted nothing.
 		return fail("NOT_CONFIGURED", "Set SLACK_REVIEW_CHANNEL_ID to post the project review summary")
-	}
 
 	await postSlackOrThrow(channel, await buildReviewSummary(stats))
 

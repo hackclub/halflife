@@ -9,7 +9,7 @@ export default async function HandoffPage({ params }: { params: Promise<{ token:
 	const { token } = await params
 	const target = await resolveHandoff(token)
 
-	if (!target) {
+	if (!target)
 		return (
 			<div className="hl-stack">
 				<PageHeader title="This link has expired" />
@@ -18,7 +18,6 @@ export default async function HandoffPage({ params }: { params: Promise<{ token:
 				</Callout>
 			</div>
 		)
-	}
 
 	return (
 		<div className="hl-stack">

@@ -34,9 +34,8 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 		before.status === ShopOrderStatus.CANCELLED
 		&& body.stage !== undefined
 		&& body.stage !== ShopFulfillmentStage.CANCELLED
-	) {
+	)
 		return fail("CONFLICT", "The participant cancelled this order")
-	}
 
 	// Conditional on the status that was just read: an order rejected between that read and this write must not be marked as on its way out.
 	const updated = await prisma.shopOrder.updateMany({

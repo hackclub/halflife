@@ -84,14 +84,14 @@ async function main() {
 	const statusField = YSWS_SUBMISSION.fields.reviewStatus
 	const notesField = YSWS_SUBMISSION.fields.reviewerNotes
 	// Probed by name, because `columnExists` reads Airtable's `UNKNOWN_FIELD_NAME` refusal; written by `fieldKey`, which is the id once the base is written by id.
-	for (const field of [statusField, notesField]) {
+	for (const field of [statusField, notesField])
 		if (!(await columnExists(config, YSWS_SUBMISSION.tableId, field.name))) {
 			console.error(
 				`The \`${field.name}\` column is not on ${YSWS_SUBMISSION.tableId}; create it in Airtable before backfilling.`,
 			)
 			process.exit(1)
 		}
-	}
+
 	const statusKey = fieldKey(statusField)
 	const notesKey = fieldKey(notesField)
 
@@ -140,7 +140,7 @@ async function main() {
 
 	const targets: { note: string; phase: Phase; recordId: string; status: string; title: string }[] = []
 	let withoutRow = 0
-	for (const project of projects) {
+	for (const project of projects)
 		for (const phase of [Phase.DESIGN, Phase.BUILD] as const) {
 			const recordId = records.get(`${project.id}:${phase}`)
 			if (!recordId) {
@@ -161,7 +161,6 @@ async function main() {
 				title: project.title,
 			})
 		}
-	}
 
 	// Only rows the base disagrees with are written: a decided row that already carries both columns is left untouched.
 	const current = await currentColumns(config, statusKey, notesKey)

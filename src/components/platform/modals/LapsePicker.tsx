@@ -119,15 +119,14 @@ export function LapsePicker({
 		}
 	}
 
-	if (load.state === "loading") {
+	if (load.state === "loading")
 		return (
 			<p aria-live="polite" className="hand py-10 text-center text-[0.9rem] text-navy-soft">
 				looking for your timelapses on Lapse…
 			</p>
 		)
-	}
 
-	if (load.state === "unlinked") {
+	if (load.state === "unlinked")
 		return (
 			<div
 				className="sketch grid justify-items-center gap-3 rounded-2xl bg-violet-pale px-6 py-8 text-center"
@@ -153,9 +152,8 @@ export function LapsePicker({
 				</p>
 			</div>
 		)
-	}
 
-	if (load.state === "error") {
+	if (load.state === "error")
 		return (
 			<div className="grid justify-items-center gap-3 py-8 text-center">
 				<p className="flex items-start gap-2 text-[0.88rem] font-semibold text-coral-deep" role="alert">
@@ -166,7 +164,6 @@ export function LapsePicker({
 				</Button>
 			</div>
 		)
-	}
 
 	const pickedIds = new Set(picked.map(p => p.id))
 

@@ -25,9 +25,8 @@ async function slackCall<T>(method: string, body: { [_: string]: unknown }): Pro
 		signal: AbortSignal.timeout(10_000),
 	})
 	const data = (await res.json()) as { ok: boolean; error?: string }
-	if (!res.ok || !data.ok) {
-		throw new Error(`Slack ${method} failed: ${data.error ?? `HTTP ${res.status}`}`)
-	}
+	if (!res.ok || !data.ok) throw new Error(`Slack ${method} failed: ${data.error ?? `HTTP ${res.status}`}`)
+
 	return data as T
 }
 

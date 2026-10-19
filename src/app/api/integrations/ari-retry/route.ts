@@ -114,7 +114,7 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 			take: 25,
 			where: { appliedAt: null, payload: { not: Prisma.DbNull } },
 		})
-		for (const row of waiting) {
+		for (const row of waiting)
 			try {
 				await applyStoredEvent(row.payload as unknown as AriWebhookEvent)
 				await prisma.ariWebhookDelivery.update({ data: { appliedAt: new Date() }, where: { id: row.id } })
@@ -124,7 +124,6 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 				if (err instanceof HttpError && err.code === "DESIGN_NOT_APPROVED") continue
 				deferredFailed++
 			}
-		}
 	}
 
 	// Missed decisions: a delivery the webhook never received leaves a hand-in open here while Ari has decided it. Bounded and shuffled, so the job stays inside its timeout, no hand-in is starved, and a backlog clears over a few runs. Quiet – the maker was told by the webhook in the normal case, and a catch-up must not become a flood.

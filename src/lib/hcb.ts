@@ -59,10 +59,10 @@ async function accessToken(force = false): Promise<string> {
 	// Default an hour when HCB does not say; either way the token is now bounded rather than cached for the life of the process.
 	const lifetimeMs = (typeof data.expires_in === "number" && data.expires_in > 0 ? data.expires_in : 3600) * 1000
 	cachedToken = { expiresAt: Date.now() + lifetimeMs, token: data.access_token }
-	if (data.refresh_token && data.refresh_token !== refresh) {
+	if (data.refresh_token && data.refresh_token !== refresh)
 		// HCB rotates refresh tokens, and an env var cannot be rewritten. This token is used for the life of the process; persisting the new one (see docs) is what keeps the next process able to refresh.
 		console.warn("[hcb] refresh token rotated; persist the new value or the next refresh will fail")
-	}
+
 	return cachedToken.token
 }
 

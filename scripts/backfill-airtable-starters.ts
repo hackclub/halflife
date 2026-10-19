@@ -54,13 +54,12 @@ async function main() {
 
 	const targets: { title: string; phase: Phase; recordId: string }[] = []
 	let withoutRow = 0
-	for (const project of projects) {
+	for (const project of projects)
 		for (const phase of [Phase.DESIGN, Phase.BUILD] as const) {
 			const recordId = records.get(`${project.id}:${phase}`)
 			if (recordId) targets.push({ phase, recordId, title: project.title })
 			else withoutRow++
 		}
-	}
 
 	console.log(
 		`Starter projects: ${projects.length}; Airtable rows to tick: ${targets.length} (${withoutRow} phase(s) never written)`,

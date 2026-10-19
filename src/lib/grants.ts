@@ -115,9 +115,8 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 	} catch {
 		const existing = await prisma.hcbGrantTopUp.findUnique({ where: { userId_themeProjectId_phase: key } })
 		if (!existing) throw new HttpError("CONFLICT", "Could not start the grant")
-		if (existing.sentAt) {
+		if (existing.sentAt)
 			return { alreadySent: true, amountCents: existing.amountCents, transactionId: existing.transactionId }
-		}
 
 		// A row with no error normally means a request is running right now, and two of those must not both send. A crash strands a row the same way, so only a row old enough to be abandoned gets past this.
 		const ageMs = Date.now() - existing.createdAt.getTime()
@@ -128,12 +127,12 @@ export async function sendGrant(input: SendGrantInput): Promise<SendGrantResult>
 		const disbursements = await listCardGrantDisbursements(existing.grantHashid)
 		const reconciled = reconcileDisbursement(disbursements, existing.amountCents, existing.createdAt)
 
-		if (reconciled.kind === "ambiguous") {
+		if (reconciled.kind === "ambiguous")
 			throw new HttpError(
 				"CONFLICT",
 				"Half Life cannot tell whether the previous attempt paid. Check the grant on HCB, then retry once it is clear.",
 			)
-		}
+
 		if (reconciled.kind === "landed") {
 			await prisma.hcbGrantTopUp.update({
 				data: { error: null, sentAt: new Date(), transactionId: reconciled.transactionId },

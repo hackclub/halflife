@@ -888,13 +888,12 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			}
 			if (fromCheckpoint) {
 				const weekId = Number(/^w(\d+)-/.exec(target)?.[1])
-				if (Number.isInteger(weekId)) {
+				if (Number.isInteger(weekId))
 					setFacts(f => ({
 						...f,
 						phaseStatusByWeek: { ...f.phaseStatusByWeek, [weekId]: "draft" },
 						progress: { ...f.progress, [target]: { ...EMPTY, ...f.progress[target], done: false } },
 					}))
-				}
 			}
 			router.refresh()
 			return null
@@ -929,9 +928,8 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 					headers: { "content-type": "application/json" },
 					method: "PATCH",
 				})
-				if (res.ok) {
-					setFacts(f => ({ ...f, goalId: printerGoalId ?? f.goalId, participantGoal: goal }))
-				} else {
+				if (res.ok) setFacts(f => ({ ...f, goalId: printerGoalId ?? f.goalId, participantGoal: goal }))
+				else {
 					const err = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
 					refusal = err?.error?.message ?? "That did not save. Try again."
 				}

@@ -208,13 +208,13 @@ function droppedImages(transfer: DataTransfer): ImageSource[] {
 /** Alt text for an image: what the page called it, else its file name. */
 function altFor(source: ImageSource): string {
 	let name = source instanceof File ? source.name : source.alt
-	if (!name && !(source instanceof File) && !source.url.startsWith("data:")) {
+	if (!name && !(source instanceof File) && !source.url.startsWith("data:"))
 		try {
 			name = decodeURIComponent(new URL(source.url).pathname.split("/").pop() ?? "")
 		} catch {
 			name = ""
 		}
-	}
+
 	return (
 		name
 			.replace(/\.[^.]+$/, "")
@@ -554,7 +554,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 		})
 
 		setUploading(n => n + items.length)
-		for (const item of items) {
+		for (const item of items)
 			try {
 				const { url } = await storeImage(item.source)
 				if (!url) throw new Error("Image uploads need a public URL before they can be added here")
@@ -572,7 +572,6 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 			} finally {
 				setUploading(n => n - 1)
 			}
-		}
 	}
 
 	/**
@@ -1179,7 +1178,7 @@ export function PublicReelModal({
 		}
 	}
 
-	if (step === "ask") {
+	if (step === "ask")
 		return (
 			<Modal
 				accent="var(--color-violet)"
@@ -1231,9 +1230,8 @@ export function PublicReelModal({
 				</p>
 			</Modal>
 		)
-	}
 
-	if (step === "saved") {
+	if (step === "saved")
 		return (
 			<Modal
 				accent="var(--color-teal)"
@@ -1256,7 +1254,6 @@ export function PublicReelModal({
 				</ModalTitle>
 			</Modal>
 		)
-	}
 
 	const captionLine = referral.state === "ready" ? `${referral.link} ${PUBLIC_REEL_HASHTAG}` : PUBLIC_REEL_HASHTAG
 
@@ -1456,7 +1453,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const postBlocker = !clip ? "Add a clip before posting this reel." : captionBlocker
 
 	// Posted: the same sheet now asks whether it is going anywhere else. The clip's URL comes along so it can be saved and uploaded there.
-	if (postedId) {
+	if (postedId)
 		return (
 			<PublicReelModal
 				eyebrow={`${weekName(week)} · ${checkpoint.title}`}
@@ -1465,9 +1462,8 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				videoUrl={previewUrl}
 			/>
 		)
-	}
 
-	if (!again) {
+	if (!again)
 		return (
 			<Modal
 				accent="var(--color-teal)"
@@ -1495,7 +1491,6 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
 				</ModalTitle>
 			</Modal>
 		)
-	}
 
 	return (
 		<Modal
@@ -1678,9 +1673,8 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	}
 	const advance = () => {
 		if (pick === undefined) return
-		if (pick === null) {
-			setStarterId(null)
-		} else {
+		if (pick === null) setStarterId(null)
+		else {
 			const s = starters.find(x => x.id === pick)
 			setStarterId(pick)
 			if (s) setName(s.title)

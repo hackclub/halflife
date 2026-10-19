@@ -74,7 +74,7 @@ async function findCandidates(): Promise<Candidate[]> {
 	})
 
 	const candidates: Candidate[] = []
-	for (const project of projects) {
+	for (const project of projects)
 		for (const phase of [Phase.DESIGN, Phase.BUILD] as const) {
 			if ((phase === Phase.DESIGN ? project.designStatus : project.buildStatus) !== PhaseStatus.update_requested)
 				continue
@@ -94,7 +94,7 @@ async function findCandidates(): Promise<Candidate[]> {
 				title: project.title,
 			})
 		}
-	}
+
 	return candidates
 }
 
@@ -145,11 +145,10 @@ async function main() {
 	console.log(`phases auto-returned for a missing Hack Club identity: ${candidates.length}`)
 	console.log(`this run: ${chosen.length}`)
 
-	for (const candidate of chosen) {
+	for (const candidate of chosen)
 		console.log(
 			`${commit ? "reopen" : "would reopen"} ${candidate.theme}/${candidate.title ?? candidate.themeProjectId} (${candidate.email}): ${candidate.phase.toLowerCase()} -> in review, re-queued to Ari`,
 		)
-	}
 
 	if (chosen.length === 0) return
 	if (!commit) {

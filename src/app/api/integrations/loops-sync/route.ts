@@ -12,7 +12,7 @@ export const maxDuration = 300
 export const POST = withIntegrationRoute(async (req: NextRequest) => {
 	const dryRun = wantsDryRun(req)
 	const result = await syncLoopsProperties({ dryRun })
-	if (!dryRun && "updated" in result) {
+	if (!dryRun && "updated" in result)
 		await recordSyncRun("airtable_loops", {
 			// Logged rather than assumed, so the sync-run history says "wrote nothing" instead of showing a healthy row for a broken join.
 			degraded: result.degraded,
@@ -25,6 +25,6 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 			updated: result.updated,
 			users: result.users,
 		})
-	}
+
 	return ok(result)
 })

@@ -61,9 +61,8 @@ export function ProjectDetails({
 		else setConfirming(false)
 	}
 
-	if (editing) {
+	if (editing)
 		return <DetailsForm hours={hours} onDone={() => setEditing(false)} project={project} tierLocked={tierLocked} />
-	}
 
 	return (
 		<div>

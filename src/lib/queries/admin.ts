@@ -738,12 +738,12 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 		let count = 0
 		for (const f of flags) {
 			let ok = true
-			for (let k = 0; k <= n; k += 1) {
+			for (let k = 0; k <= n; k += 1)
 				if (!f[k]) {
 					ok = false
 					break
 				}
-			}
+
 			if (ok) count += 1
 		}
 		const prev = n === 0 ? total : (steps[n - 1]?.count ?? total)
@@ -1411,9 +1411,7 @@ export async function getProjectsByWeek(): Promise<WeekProjectCluster[]> {
 	})
 
 	const clusters = new Map<number, WeekProjectCluster>()
-	for (const slot of weekSlots()) {
-		clusters.set(slot.week, { ...slot, starter: 0, tier1: 0, tier2: 0, tier3: 0 })
-	}
+	for (const slot of weekSlots()) clusters.set(slot.week, { ...slot, starter: 0, tier1: 0, tier2: 0, tier3: 0 })
 
 	for (const project of projects) {
 		const column = projectColumn(project)
@@ -1497,9 +1495,7 @@ export async function getHoursByWeek(): Promise<WeekHoursCluster[]> {
 	})
 
 	const clusters = new Map<number, WeekHoursCluster>()
-	for (const slot of weekSlots()) {
-		clusters.set(slot.week, { ...slot, starter: 0, tier1: 0, tier2: 0, tier3: 0 })
-	}
+	for (const slot of weekSlots()) clusters.set(slot.week, { ...slot, starter: 0, tier1: 0, tier2: 0, tier3: 0 })
 
 	// Each maker's recordings, whatever project or phase they were attached to, so a link is measured against the ones that name its project even when they live on another week's project.
 	const recordingsByUser = new Map<string, RecordedWindow[]>()

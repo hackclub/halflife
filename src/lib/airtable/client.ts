@@ -76,7 +76,7 @@ export async function withRateLimitRetry<T>(
 	const baseSleepMs = opts.baseSleepMs ?? 1000
 	const retryServerErrors = opts.retryServerErrors ?? true
 
-	for (let attempt = 1; ; attempt++) {
+	for (let attempt = 1; ; attempt++)
 		try {
 			await throttle()
 			return await fn()
@@ -91,7 +91,6 @@ export async function withRateLimitRetry<T>(
 			)
 			await new Promise(resolve => setTimeout(resolve, wait))
 		}
-	}
 }
 
 export async function airtableFetch<T>(config: AirtableConfig, path: string, init: RequestInit = {}): Promise<T> {

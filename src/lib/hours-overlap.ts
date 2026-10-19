@@ -48,9 +48,7 @@ export function mergeIntervals(intervals: readonly Interval[]): Interval[] {
 		if (!last) continue
 		if (next.start <= last.end) {
 			if (next.end > last.end) last.end = next.end
-		} else {
-			merged.push(next)
-		}
+		} else merged.push(next)
 	}
 	return merged
 }
@@ -174,9 +172,8 @@ export function windowsForLink(
 	hackatimeProject: string,
 ): Interval[] {
 	const windows: Interval[] = [...ownPhase]
-	for (const recording of elsewhere) {
-		if (recording.hackatimeProject === hackatimeProject) windows.push(recording.window)
-	}
+	for (const recording of elsewhere) if (recording.hackatimeProject === hackatimeProject) windows.push(recording.window)
+
 	return windows
 }
 

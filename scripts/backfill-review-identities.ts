@@ -61,9 +61,7 @@ async function main() {
 						where: { id: review.id },
 					})
 					filled += 1
-				} else {
-					stillBlank += 1
-				}
+				} else stillBlank += 1
 			}),
 		)
 		console.log(
@@ -71,11 +69,10 @@ async function main() {
 		)
 	}
 	console.log(`done: filled ${filled}, still blank ${stillBlank}`)
-	if (stillBlank > 0) {
+	if (stillBlank > 0)
 		console.log(
 			"Blank rows have no decision audit to read – pre-audit decisions, or anonymous Ari calls. The board counts them under Ari.",
 		)
-	}
 }
 
 main()

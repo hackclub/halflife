@@ -57,9 +57,9 @@ export function AirtableImportForm({
 			!window.confirm(
 				"Import warm-up projects from Airtable? This creates an account for any submitter who has none, files each project on the Warm Up track, and sends each one to Ari for review.",
 			)
-		) {
+		)
 			return
-		}
+
 		setBusy(true)
 		setError(null)
 		setSummary(null)

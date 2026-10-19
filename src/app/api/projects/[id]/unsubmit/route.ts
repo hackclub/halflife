@@ -60,7 +60,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 	})
 
 	// Withdraw it from Ari too, or its queue keeps a hand-in that no longer exists in Half Life.
-	if (isAriConfigured()) {
+	if (isAriConfigured())
 		after(async () => {
 			await trackSideEffect(
 				"ari",
@@ -74,7 +74,6 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 				() => withdrawSubmissionFromAri(id, parsed.data.phase),
 			)
 		})
-	}
 
 	return ok({ ok: true })
 })

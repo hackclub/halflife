@@ -139,9 +139,8 @@ export function BomEditor({
 				if (payload?.error?.code === "VALIDATION_FAILED" && fields.length > 0) {
 					setInvalid(new Set(fields))
 					setError(requiredMessage(fields))
-				} else {
-					setError(payload?.error?.message ?? "That did not save. Try again.")
-				}
+				} else setError(payload?.error?.message ?? "That did not save. Try again.")
+
 				return false
 			}
 			setItems(payload.items as BomLine[])
@@ -191,13 +190,12 @@ export function BomEditor({
 			editing === "new"
 				? await send("POST", `/api/projects/${projectId}/bom`, body)
 				: await send("PATCH", `/api/projects/${projectId}/bom/${editing}`, body)
-		if (done) {
-			// Adding is usually several parts in a row, so the form stays open and the cursor goes back to the first field.
+		if (done)
 			if (editing === "new") {
+				// Adding is usually several parts in a row, so the form stays open and the cursor goes back to the first field.
 				setDraft(EMPTY)
 				nameInput.current?.focus()
 			} else setEditing(null)
-		}
 	}
 
 	async function remove(line: BomLine) {
@@ -290,13 +288,12 @@ export function BomEditor({
 		onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
 			setDraft(d => ({ ...d, [key]: e.target.value }))
 			if (error) setError(null)
-			if (invalid.has(key)) {
+			if (invalid.has(key))
 				setInvalid(s => {
 					const next = new Set(s)
 					next.delete(key)
 					return next
 				})
-			}
 		},
 		required: true,
 		value: draft[key],

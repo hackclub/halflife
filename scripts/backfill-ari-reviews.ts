@@ -50,9 +50,8 @@ async function main() {
 	console.log(
 		`applied ${summary.applied}, deferred ${summary.deferred} (builds waiting on their design), ${summary.skipped} skipped, ${summary.failed} failed`,
 	)
-	if (summary.decided > summary.applied + summary.deferred + summary.skipped + summary.failed) {
+	if (summary.decided > summary.applied + summary.deferred + summary.skipped + summary.failed)
 		console.log("Some decided hand-ins were not applied; run again to pick up the rest.")
-	}
 }
 
 main()

@@ -104,11 +104,10 @@ export async function runProjectSync(themeProjectId: string, manual: boolean, fo
 	}
 
 	// A write can land between the last queue read and the delete above: it stamps the flag, finds the project still in flight, and returns, so nobody would ever claim it. Claiming here closes that window – and if this run loses the claim to another process, that process is doing the work instead.
-	if (await claimQueued(themeProjectId)) {
+	if (await claimQueued(themeProjectId))
 		runProjectSync(themeProjectId, false).catch(err =>
 			console.error(`[repo-sync] straggler sync failed for ${themeProjectId}:`, err),
 		)
-	}
 
 	return written
 }
@@ -260,7 +259,7 @@ async function syncOnce(themeProjectId: string, manual: boolean, force = false):
 			}),
 		])
 		// A run that changed nothing is not a sync worth recording: a retry, or a rebuild with identical content, should not look like activity in the audit log.
-		if (changed.length > 0) {
+		if (changed.length > 0)
 			await logAudit({
 				action: AuditAction.REPO_SYNC_SUCCESS,
 				actorId: null,
@@ -272,7 +271,7 @@ async function syncOnce(themeProjectId: string, manual: boolean, force = false):
 				targetId: project.id,
 				targetType: "ThemeProject",
 			})
-		}
+
 		return written
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err)

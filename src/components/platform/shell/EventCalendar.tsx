@@ -120,9 +120,7 @@ export function EventCalendar({
 				if (crowd && slice.seg.startMin < crowd.end) {
 					crowd.slices.push(slice)
 					crowd.end = Math.max(crowd.end, slice.seg.endMin)
-				} else {
-					crowds.push({ end: slice.seg.endMin, slices: [slice] })
-				}
+				} else crowds.push({ end: slice.seg.endMin, slices: [slice] })
 			}
 			const dayPlaced: PlacedSegment[] = []
 			for (const crowd of crowds) {
@@ -132,9 +130,8 @@ export function EventCalendar({
 					if (lane === -1) {
 						lane = laneEnds.length
 						laneEnds.push(seg.endMin)
-					} else {
-						laneEnds[lane] = seg.endMin
-					}
+					} else laneEnds[lane] = seg.endMin
+
 					earliest = Math.min(earliest, seg.startMin)
 					latest = Math.max(latest, seg.endMin)
 					dayPlaced.push({ event, ...seg, lane, lanes: Math.max(1, laneEnds.length) })

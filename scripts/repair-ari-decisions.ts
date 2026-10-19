@@ -36,11 +36,11 @@ async function main() {
 	console.log(
 		`checked ${summary.checked} placeholder decision(s): ${summary.standing} still final at Ari, ${summary.quiet} with no note to show, ${summary.skipped} skipped, ${summary.failed} failed to read`,
 	)
-	if (summary.standing > 0 && summary.quiet === summary.standing) {
+	if (summary.standing > 0 && summary.quiet === summary.standing)
 		console.log(
 			"Ari's /status carries no review yet, so there is no note to read. A resend of each decision from Ari's review screen repairs it as the delivery arrives (see lib/ari.ts).",
 		)
-	}
+
 	if (!commit) {
 		console.log(
 			`Dry run. Pass --commit to rewrite the ${summary.standing - summary.quiet} placeholder(s) that have a note.`,

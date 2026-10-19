@@ -40,17 +40,16 @@ export async function requireSession(): Promise<Guard> {
 export async function requirePermission(permission: Permission): Promise<Guard> {
 	const ctx = await resolve()
 	if (!ctx) return { error: fail("UNAUTHENTICATED", "Sign in to continue") }
-	if (!hasPermission(ctx.roles, permission)) {
+	if (!hasPermission(ctx.roles, permission))
 		return { error: fail("FORBIDDEN", `Requires the ${permission} permission`) }
-	}
+
 	return ctx
 }
 
 export async function requireRole(role: Role): Promise<Guard> {
 	const ctx = await resolve()
 	if (!ctx) return { error: fail("UNAUTHENTICATED", "Sign in to continue") }
-	if (!hasRole(ctx.roles, role)) {
-		return { error: fail("FORBIDDEN", `Requires the ${role} role`) }
-	}
+	if (!hasRole(ctx.roles, role)) return { error: fail("FORBIDDEN", `Requires the ${role} role`) }
+
 	return ctx
 }

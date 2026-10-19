@@ -194,13 +194,12 @@ async function fetchGitHubSnapshot(ref: RepoRef): Promise<Snapshot> {
 
 	if (treeRes.status === 404) return { kind: "not-found" }
 	// 409 is an empty repo: no commits, so no tree. That is a real finding.
-	if (!treeRes.ok && treeRes.status !== 409) {
+	if (!treeRes.ok && treeRes.status !== 409)
 		return { kind: "unavailable", why: `${forge.label} returned an error (${treeRes.status}).` }
-	}
+
 	// 404 is the only answer that means there is no README. Anything else is the forge failing to say, and blocking on that would tell the maker to add a README they already have.
-	if (!readmeRes.ok && readmeRes.status !== 404) {
+	if (!readmeRes.ok && readmeRes.status !== 404)
 		return { kind: "unavailable", why: `${forge.label} returned an error (${readmeRes.status}).` }
-	}
 
 	const body = treeRes.ok
 		? ((await treeRes.json()) as { tree?: { path: string; type: string }[]; truncated?: boolean })
@@ -238,9 +237,7 @@ async function fetchGitLabSnapshot(ref: RepoRef): Promise<Snapshot> {
 		}
 	}
 	if (first.status === 404) return { kind: "not-found" }
-	if (!first.ok) {
-		return { kind: "unavailable", why: `${forge.label} returned an error (${first.status}).` }
-	}
+	if (!first.ok) return { kind: "unavailable", why: `${forge.label} returned an error (${first.status}).` }
 
 	const files: string[] = []
 	// A generous ceiling: 100 pages of 100 is 10,000 files, which no hardware project is, and it stops a pathological repo looping here forever.
@@ -341,7 +338,7 @@ function result(repo: string | null, checks: RepoCheck[], unavailable = false): 
 }
 
 export async function checkRepo(repoLink: string | null, theme: Theme): Promise<RepoCheckResult> {
-	if (!repoLink) {
+	if (!repoLink)
 		return result(null, [
 			{
 				blocking: true,
@@ -351,7 +348,6 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 				status: "fail",
 			},
 		])
-	}
 
 	const ref = repoRefFromLink(repoLink)
 	if (!ref) {
@@ -388,7 +384,7 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 
 	const snap = await snapshot(ref)
 	if (snap.kind === "unavailable") return unavailable(snap.why)
-	if (snap.kind === "not-found") {
+	if (snap.kind === "not-found")
 		return result(repoLink, [
 			{
 				blocking: true,
@@ -398,7 +394,7 @@ export async function checkRepo(repoLink: string | null, theme: Theme): Promise<
 				status: "fail",
 			},
 		])
-	}
+
 	const { readme, truncated } = snap
 
 	const { required, recommended } = THEME_REPO_REQUIREMENTS[theme]

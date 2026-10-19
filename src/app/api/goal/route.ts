@@ -49,9 +49,8 @@ export const PATCH = withRoute(async (req: Request) => {
 	}
 
 	// The machine has its own audit trail because it is the part that moves money: every design approval from here on mints against it.
-	if (printer && before?.printerGoalId !== printer) {
+	if (printer && before?.printerGoalId !== printer)
 		await logAudit({ action: AuditAction.USER_SET_PRINTER_GOAL, ...who, metadata: { printerGoalId: printer } })
-	}
 
 	// The only interesting fact about a change is what it changed from, and for the two funding answers it is also the count the program reports on.
 	await logAudit({

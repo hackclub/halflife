@@ -99,9 +99,7 @@ async function main() {
 	const { ensureThemeProject } = await import("../src/lib/provisioning")
 	const { THEMES } = await import("../src/lib/config/program")
 
-	for (const email of [S.viewerEmail, S.otherEmail, S.probeEmail]) {
-		await prisma.user.deleteMany({ where: { email } })
-	}
+	for (const email of [S.viewerEmail, S.otherEmail, S.probeEmail]) await prisma.user.deleteMany({ where: { email } })
 
 	const viewer = await makeUser(S.viewerEmail, "Viewer Person", S.viewerSlack)
 	const other = await makeUser(S.otherEmail, "Other Person", S.otherSlack)

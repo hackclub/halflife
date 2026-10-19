@@ -15,8 +15,8 @@ export const dynamic = "force-dynamic"
  * It answers `{ count }` rather than a bare number, so the shape can grow (a delta, an updated-at) without the client having to tell one response kind from another by inspecting the body. A 429 is the one exception: it carries the same shape, so the client's `typeof body.count === "number"` check already ignores it.
  */
 export const GET = withRoute(async (req: NextRequest) => {
-	if (rateLimitedInMemory(`signup-count:${clientIp(req.headers)}`, 30, 60_000)) {
+	if (rateLimitedInMemory(`signup-count:${clientIp(req.headers)}`, 30, 60_000))
 		return ok({ count: null }, { status: 429 })
-	}
+
 	return ok({ count: await countSignups() })
 })

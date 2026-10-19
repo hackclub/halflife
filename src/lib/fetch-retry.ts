@@ -35,9 +35,9 @@ function unreachable(err: unknown): boolean {
 		|| code === "EAI_AGAIN"
 		|| code === "UND_ERR_CONNECT_TIMEOUT"
 		|| code === "UND_ERR_SOCKET"
-	) {
+	)
 		return true
-	}
+
 	return err.name === "TimeoutError" || err.name === "AbortError" || err.name === "FetchError"
 }
 

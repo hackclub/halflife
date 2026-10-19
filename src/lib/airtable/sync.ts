@@ -330,7 +330,7 @@ export async function findUnsyncedSubmissions(): Promise<{ themeProjectId: strin
 	})
 
 	const out: { themeProjectId: string; phase: Phase }[] = []
-	for (const p of pending) {
+	for (const p of pending)
 		for (const phase of [Phase.DESIGN, Phase.BUILD] as const) {
 			const status = phase === Phase.DESIGN ? p.designStatus : p.buildStatus
 			if (status !== PhaseStatus.in_review) continue
@@ -347,6 +347,6 @@ export async function findUnsyncedSubmissions(): Promise<{ themeProjectId: strin
 			})
 			if (!written) out.push({ phase, themeProjectId: p.id })
 		}
-	}
+
 	return out
 }

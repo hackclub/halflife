@@ -191,9 +191,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 		request.headers.get("x-slack-request-timestamp"),
 		request.headers.get("x-slack-signature"),
 	)
-	if (!verified) {
-		return NextResponse.json({ ok: false }, { status: 401 })
-	}
+	if (!verified) return NextResponse.json({ ok: false }, { status: 401 })
 
 	let body: { type?: string; challenge?: string; event?: SlackEvent }
 	try {
@@ -202,25 +200,19 @@ export async function POST(request: Request): Promise<NextResponse> {
 		return NextResponse.json({ ok: false }, { status: 400 })
 	}
 
-	if (body.type === "url_verification") {
-		return NextResponse.json({ challenge: body.challenge })
-	}
+	if (body.type === "url_verification") return NextResponse.json({ challenge: body.challenge })
 
 	// Slack retries delivery if it doesn't get a 200 within 3s. Reprocessing a retry would double-invite members and double-post tickets, so only the original delivery is handled – Slack has already gotten the point across.
-	if (request.headers.get("x-slack-retry-num")) {
-		return NextResponse.json({ ok: true })
-	}
+	if (request.headers.get("x-slack-retry-num")) return NextResponse.json({ ok: true })
 
 	if (body.type === "event_callback" && body.event) {
 		const event = body.event
 		// Ack first, work second. Slack abandons a delivery it hasn't seen a 200 for within 3s and retries, and the guard above drops every retry – so if a slow Slack call held the response open past that window, the retry carrying the same work would be discarded and the invite lost with nothing in the logs. `after` keeps the response instant so the retry path stays a genuine safety net rather than a silent failure.
 		after(async () => {
 			try {
-				if (event.type === "member_joined_channel") {
-					await handleMainChannelJoin(event)
-				} else if (event.type === "message" && event.channel === process.env.SLACK_HELP_CHANNEL_ID) {
+				if (event.type === "member_joined_channel") await handleMainChannelJoin(event)
+				else if (event.type === "message" && event.channel === process.env.SLACK_HELP_CHANNEL_ID)
 					await handleHelpMessage(event)
-				}
 			} catch (err) {
 				// Nothing above this frame can observe a failure – the response is already sent and Slack has its 200 – so the log is the only trace.
 				console.error("[slack] event handler threw:", err)

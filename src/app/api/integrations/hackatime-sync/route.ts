@@ -36,9 +36,7 @@ export const POST = withIntegrationRoute(async (req: NextRequest) => {
 		where: { hoursApproved: null },
 	})
 
-	if (dryRun) {
-		return ok({ dryRun: true, failed: 0, scanned: links.length, updated: 0 })
-	}
+	if (dryRun) return ok({ dryRun: true, failed: 0, scanned: links.length, updated: 0 })
 
 	let updated = 0
 	let failed = 0

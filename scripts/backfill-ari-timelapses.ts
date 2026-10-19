@@ -75,7 +75,7 @@ async function loadTargets(phase: Phase | null, projectId: string | null): Promi
 	})
 
 	const targets: AriBackfillTarget[] = []
-	for (const project of projects) {
+	for (const project of projects)
 		for (const candidate of [Phase.DESIGN, Phase.BUILD] as const) {
 			if (phase && candidate !== phase) continue
 			const status = candidate === Phase.DESIGN ? project.designStatus : project.buildStatus
@@ -93,7 +93,7 @@ async function loadTargets(phase: Phase | null, projectId: string | null): Promi
 				title: project.title,
 			})
 		}
-	}
+
 	return targets
 }
 
@@ -173,7 +173,7 @@ async function main() {
 	let notQueued = 0
 	let replaced = 0
 	let sent = 0
-	for (const target of run) {
+	for (const target of run)
 		try {
 			const outcome = await refresh(target)
 			if (outcome === "replaced") replaced++
@@ -186,7 +186,6 @@ async function main() {
 			failed++
 			console.error(`  ${target.phase} ${target.title} (${target.themeProjectId}) failed:`, err)
 		}
-	}
 
 	console.log(`replaced: ${replaced}, sent: ${sent}, not queued: ${notQueued}, failed: ${failed}`)
 	if (failed > 0) process.exitCode = 1

@@ -14,11 +14,11 @@ export interface SlackBlock {
  * ones the token actually carries (`provided`). Folding them into the logged detail turns a bare "missing_scope" into a line that names the scope to add,
  * instead of leaving it to a manual trip through the app's OAuth settings. */
 function slackErrorDetail(data: { error?: string; needed?: string; provided?: string }, status: number): string {
-	if (data.error === "missing_scope" && data.needed) {
+	if (data.error === "missing_scope" && data.needed)
 		return data.provided
 			? `${data.error} (needed ${data.needed}; token has ${data.provided})`
 			: `${data.error} (needed ${data.needed})`
-	}
+
 	return data.error ?? String(status)
 }
 
@@ -57,11 +57,8 @@ async function callSlackApi<T extends { [_: string]: unknown }>(
 		// A silent error is an anticipated outcome noisy enough to omit entirely (e.g. inviting someone already in the channel on every join event). A matched expected error is still anticipated, but worth a normal log line rather than an error.
 		if (data.error && silentErrors.includes(data.error)) {
 			// Intentionally unlogged.
-		} else if (data.error && expectedErrors.includes(data.error)) {
-			console.log(`Slack API ${method} failed: ${detail}`)
-		} else {
-			console.error(`Slack API ${method} failed: ${detail}`)
-		}
+		} else if (data.error && expectedErrors.includes(data.error)) console.log(`Slack API ${method} failed: ${detail}`)
+		else console.error(`Slack API ${method} failed: ${detail}`)
 	}
 	return data
 }
@@ -132,11 +129,9 @@ export async function inviteToChannel(channel: string, user: string): Promise<vo
 		[],
 		["already_in_channel"],
 	)
-	if (result.ok) {
-		console.log(`Invited ${user} to ${channel}`)
-	} else if (result.error !== "already_in_channel") {
+	if (result.ok) console.log(`Invited ${user} to ${channel}`)
+	else if (result.error !== "already_in_channel")
 		console.error(`Failed to invite ${user} to ${channel}: ${result.error}`)
-	}
 }
 
 /** A Slack permalink, dropped into a message's text, auto-unfurls into a

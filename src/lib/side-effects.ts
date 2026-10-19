@@ -49,7 +49,7 @@ export async function trackSideEffect<T>(
 				targetId: ctx.targetId,
 				targetType: ctx.targetType,
 			})
-		} else if (kind === "ari" && !skipped) {
+		} else if (kind === "ari" && !skipped)
 			// The send itself records the Ari submission id on the row; this is the operational trace that it happened.
 			await logAudit({
 				action: AuditAction.ARI_SYNC_SUCCESS,
@@ -66,7 +66,7 @@ export async function trackSideEffect<T>(
 				targetId: ctx.targetId,
 				targetType: ctx.targetType,
 			})
-		}
+
 		return result
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err)

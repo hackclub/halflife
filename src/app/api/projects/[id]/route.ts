@@ -104,9 +104,8 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 	if (
 		data.coverImageKey
 		&& (!isOwnedKey(gate.user.id, data.coverImageKey) || !data.coverImageKey.startsWith("covers/"))
-	) {
+	)
 		return fail("VALIDATION_FAILED", "Upload the cover image first")
-	}
 
 	const updated = await prisma.themeProject.update({
 		data: {

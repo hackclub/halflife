@@ -162,21 +162,20 @@ function inline(text: string, key: string): ReactNode[] {
 					</span>
 				),
 			)
-		} else if (m[3] !== undefined) {
+		} else if (m[3] !== undefined)
 			out.push(
 				<code className="rounded bg-violet-pale px-1 py-0.5 font-mono text-[0.88em] text-violet-deep" key={k}>
 					{m[3]}
 				</code>,
 			)
-		} else if (m[4] !== undefined || m[5] !== undefined) {
+		else if (m[4] !== undefined || m[5] !== undefined)
 			out.push(
 				<strong className="font-extrabold text-navy" key={k}>
 					{m[4] ?? m[5]}
 				</strong>,
 			)
-		} else if (m[6] !== undefined || m[7] !== undefined) {
-			out.push(<em key={k}>{m[6] ?? m[7]}</em>)
-		} else {
+		else if (m[6] !== undefined || m[7] !== undefined) out.push(<em key={k}>{m[6] ?? m[7]}</em>)
+		else {
 			const href = safeHref(m[9] ?? "")
 			out.push(
 				href ? (

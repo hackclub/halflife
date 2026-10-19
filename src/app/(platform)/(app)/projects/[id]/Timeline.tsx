@@ -100,7 +100,7 @@ function When({ at }: { at: number }) {
 const PHASE = { BUILD: "build", DESIGN: "design" } as const
 
 function Body({ item, allowReport }: { item: TimelineItem; allowReport: boolean }) {
-	if (item.kind === "session") {
+	if (item.kind === "session")
 		return (
 			<article>
 				<header className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
@@ -125,9 +125,8 @@ function Body({ item, allowReport }: { item: TimelineItem; allowReport: boolean 
 				{item.lapses.length > 0 && <Lapses lapses={item.lapses} />}
 			</article>
 		)
-	}
 
-	if (item.kind === "reel") {
+	if (item.kind === "reel")
 		return (
 			<article>
 				<header className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
@@ -164,9 +163,8 @@ function Body({ item, allowReport }: { item: TimelineItem; allowReport: boolean 
 				) : null}
 			</article>
 		)
-	}
 
-	if (item.kind === "submitted") {
+	if (item.kind === "submitted")
 		return (
 			<p className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
 				<span className="text-[0.95rem] font-extrabold text-navy">
@@ -175,7 +173,6 @@ function Body({ item, allowReport }: { item: TimelineItem; allowReport: boolean 
 				<When at={item.at} />
 			</p>
 		)
-	}
 
 	const verdict = {
 		APPROVED: { text: "approved", tone: "text-teal-ink" },

@@ -48,13 +48,12 @@ async function main() {
 		}
 		const declaredHost = process.env.NEXT_PUBLIC_UPLOAD_HOST
 		check("NEXT_PUBLIC_UPLOAD_HOST is set", !!declaredHost)
-		if (publicHost && declaredHost) {
+		if (publicHost && declaredHost)
 			check(
 				"NEXT_PUBLIC_UPLOAD_HOST matches S3_PUBLIC_URL's host",
 				declaredHost === publicHost,
 				declaredHost === publicHost ? "" : `env says "${declaredHost}", URL host is "${publicHost}"`,
 			)
-		}
 	}
 
 	const endpoint = process.env.S3_ENDPOINT ?? ""
@@ -100,7 +99,7 @@ async function main() {
 	const url = publicUrlFor(key)
 	check("publicUrlFor() minted a URL", !!url)
 
-	if (url) {
+	if (url)
 		try {
 			const res = await fetch(url, { cache: "no-store" })
 			check(
@@ -122,7 +121,6 @@ async function main() {
 		} catch (err) {
 			check("fetching the public URL", false, err instanceof Error ? err.message : String(err))
 		}
-	}
 
 	// ── Clean up ───────────────────────────────────────────────────────────────
 	try {
