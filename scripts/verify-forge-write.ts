@@ -35,7 +35,7 @@ let calls = 0
 
 globalThis.fetch = (async () => {
 	// Once the script is spent, the last step repeats, so an exhausted retry can be observed.
-	const step = script[calls] ?? script[script.length - 1]
+	const step = script[calls] ?? script.at(-1)
 	calls++
 	if (!step) throw new Error("fetch called with no scripted step")
 	if (step.throw) throw new TypeError("fetch failed")

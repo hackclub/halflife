@@ -94,7 +94,7 @@ export function Modal({
 				el => el.offsetParent !== null || el === document.activeElement,
 			)
 			const firstEl = items[0]
-			const lastEl = items[items.length - 1]
+			const lastEl = items.at(-1)
 			if (!firstEl || !lastEl) return
 			if (e.shiftKey && document.activeElement === firstEl) {
 				e.preventDefault()

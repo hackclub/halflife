@@ -261,7 +261,7 @@ function vendorFromLink(link: string | null): string | null {
 		const known = KNOWN_VENDORS[host]
 		if (known) return known.slice(0, MAX_IMPORT_VENDOR)
 		const labels = host.split(".")
-		const label = labels.length >= 2 ? labels[labels.length - 2] : labels[0]
+		const label = labels.length >= 2 ? labels.at(-2) : labels[0]
 		if (!label) return null
 		const named = label.length <= 4 ? label.toUpperCase() : label.charAt(0).toUpperCase() + label.slice(1)
 		return named.slice(0, MAX_IMPORT_VENDOR)

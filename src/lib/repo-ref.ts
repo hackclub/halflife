@@ -74,7 +74,7 @@ function fromSegments(forge: Forge, segments: string[]): RepoRef | null {
 	if (segments.length < 2) return null
 	if (!forge.nestedGroups && segments.length !== 2) return null
 
-	const repo = stripGit(segments[segments.length - 1] ?? "")
+	const repo = stripGit(segments.at(-1) ?? "")
 	const ownerSegments = segments.slice(0, -1)
 
 	if (!repo || ownerSegments.length === 0) return null

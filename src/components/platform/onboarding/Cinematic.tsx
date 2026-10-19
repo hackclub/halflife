@@ -79,7 +79,7 @@ const BLOCKS: Block[] = []
 }
 
 // BLOCKS is built above, one entry per week, so it is never empty; the fallback keeps that a compile-time fact rather than an assertion.
-const LAST = BLOCKS[BLOCKS.length - 1] ?? { height: 0, top: 0, trailTop: 0 }
+const LAST = BLOCKS.at(-1) ?? { height: 0, top: 0, trailTop: 0 }
 const PRIZE_TOP = LAST.top + LAST.height + 40
 const PRIZE_CENTRE = PRIZE_TOP + PRIZE_H / 2
 const STAGE_H = PRIZE_TOP + PRIZE_H + 140

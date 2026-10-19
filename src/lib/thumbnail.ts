@@ -53,7 +53,7 @@ export function latestJournalImage(entries: EntryImages[]): string | null {
 	const newest = [...entries].toSorted((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
 	for (const entry of newest) {
 		const found = imageSources(entry.content ?? "")
-		const last = found[found.length - 1]
+		const last = found.at(-1)
 		if (last) return last
 	}
 	return null

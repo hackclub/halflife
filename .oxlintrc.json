@@ -139,7 +139,6 @@
 		"unicorn/number-literal-case": "off",
 		"unicorn/numeric-separators-style": "off",
 		"unicorn/prefer-add-event-listener": "off",
-		"unicorn/prefer-at": "off",
 		"unicorn/prefer-code-point": "warn",
 		"unicorn/prefer-date-now": "warn",
 		"unicorn/prefer-dom-node-append": "off",

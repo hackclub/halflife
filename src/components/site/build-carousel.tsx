@@ -162,7 +162,7 @@ export default function BuildCarousel() {
 		// A decorative loop has no business running off-screen.
 		const observer = new IntersectionObserver(
 			entries => {
-				const entry = entries[entries.length - 1]
+				const entry = entries.at(-1)
 				if (!entry) return
 				onscreenRef.current = entry.isIntersecting
 				wake()

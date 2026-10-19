@@ -126,7 +126,7 @@ function phaseForStage(stage: string | null): Phase {
 function tierForRequestedFunding(usd: number | null): number {
 	if (usd === null || usd <= 0) return TIERS[0].id
 	for (const tier of TIERS) if (usd <= tier.grantUsd) return tier.id
-	return TIERS[TIERS.length - 1]?.id ?? 3
+	return TIERS.at(-1)?.id ?? 3
 }
 
 interface ParsedWarmupRow {

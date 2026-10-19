@@ -66,7 +66,7 @@ export async function getReviewQueue(opts: {
 
 	const hasMore = rows.length > opts.limit
 	const page = hasMore ? rows.slice(0, opts.limit) : rows
-	const last = page[page.length - 1]
+	const last = page.at(-1)
 	const now = Date.now()
 
 	return {

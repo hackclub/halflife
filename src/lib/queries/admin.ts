@@ -84,7 +84,7 @@ export async function listUsers(
 			? row
 			: Object.assign({}, row, { email: "", fraudFlagged: false, slackId: null, verificationStatus: null }),
 	)
-	const last = items[items.length - 1]
+	const last = items.at(-1)
 	return { items, nextCursor: hasMore && last ? last.id : null }
 }
 
@@ -173,7 +173,7 @@ export async function listProjects(
 	})
 	const hasMore = rows.length > opts.limit
 	const items = hasMore ? rows.slice(0, opts.limit) : rows
-	const last = items[items.length - 1]
+	const last = items.at(-1)
 	return { items, nextCursor: hasMore && last ? last.id : null }
 }
 
@@ -307,7 +307,7 @@ export async function listOrders(opts: {
 	})
 	const hasMore = rows.length > opts.limit
 	const items = hasMore ? rows.slice(0, opts.limit) : rows
-	const last = items[items.length - 1]
+	const last = items.at(-1)
 	return { items, nextCursor: hasMore && last ? last.id : null }
 }
 
@@ -413,7 +413,7 @@ export async function listFulfillmentOrders(
 	})
 	const hasMore = rows.length > opts.limit
 	const page = hasMore ? rows.slice(0, opts.limit) : rows
-	const last = page[page.length - 1]
+	const last = page.at(-1)
 
 	const items = page.map(({ shopItem, user, unitCostUsd, ...order }) => {
 		// Orders from before the item had a cost fall back to today's.
@@ -451,7 +451,7 @@ export async function listAuditLog(opts: {
 	})
 	const hasMore = rows.length > opts.limit
 	const items = hasMore ? rows.slice(0, opts.limit) : rows
-	const last = items[items.length - 1]
+	const last = items.at(-1)
 	return { items, nextCursor: hasMore && last ? last.id : null }
 }
 
@@ -835,7 +835,7 @@ export async function listContentReports(
 	})
 	const hasMore = rows.length > limit
 	const items = hasMore ? rows.slice(0, limit) : rows
-	const last = items[items.length - 1]
+	const last = items.at(-1)
 	return { items, nextCursor: hasMore && last ? last.id : null }
 }
 
@@ -1065,7 +1065,7 @@ export async function getDailyActivity(): Promise<DayActivity[]> {
 	const days = [...byDay.keys()].toSorted()
 	if (days.length === 0) return []
 	const out: DayActivity[] = []
-	const [first, last] = [days[0] as string, days[days.length - 1] as string]
+	const [first, last] = [days[0] as string, days.at(-1) as string]
 	for (let at = Date.parse(`${first}T00:00:00Z`); at <= Date.parse(`${last}T00:00:00Z`); at += 86_400_000) {
 		const day = new Date(at).toISOString().slice(0, 10)
 		const row = byDay.get(day)
@@ -1193,7 +1193,7 @@ export async function getDailyActivityByGoal(): Promise<GoalDayActivity[]> {
 	const days = [...byDay.keys()].toSorted()
 	if (days.length === 0) return []
 	const out: GoalDayActivity[] = []
-	const [first, last] = [days[0] as string, days[days.length - 1] as string]
+	const [first, last] = [days[0] as string, days.at(-1) as string]
 	for (let at = Date.parse(`${first}T00:00:00Z`); at <= Date.parse(`${last}T00:00:00Z`); at += 86_400_000) {
 		const day = new Date(at).toISOString().slice(0, 10)
 		const goals = byDay.get(day)

@@ -577,7 +577,7 @@ function ActivityStrip({ days, perUser = false }: { days: DayActivity[]; perUser
 
 	const labelEvery = Math.max(1, Math.ceil(days.length / 14))
 	const first = days[0]?.day
-	const last = days[days.length - 1]?.day
+	const last = days.at(-1)?.day
 	const what = perUser ? "per active user " : ""
 	const note = perUser
 		? " Each line is divided by the people who logged something that day, so a quiet day with one contributor reads tall."
@@ -842,7 +842,7 @@ function DauChart({ days }: { days: ActiveDay[] }) {
 	const ticks = Array.from({ length: 5 }, (_, i) => Math.round((max / 4) * i))
 	const labelEvery = Math.max(1, Math.ceil(days.length / 14))
 	const first = days[0]?.day
-	const last = days[days.length - 1]?.day
+	const last = days.at(-1)?.day
 
 	return (
 		<div>
@@ -1031,7 +1031,7 @@ function GoalHoursChart({ days }: { days: GoalDayActivity[] }) {
 	const roundTick = (n: number) => (n >= 10 ? Math.round(n) : Math.round(n * 10) / 10)
 	const labelEvery = Math.max(1, Math.ceil(days.length / 14))
 	const first = days[0]?.day
-	const last = days[days.length - 1]?.day
+	const last = days.at(-1)?.day
 	// One title per day on every line's dot, so hovering any of the three gives the whole day rather than a third of it.
 	const title = (d: GoalDayActivity) =>
 		`${d.day}: ${d.byGoal

@@ -1010,7 +1010,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 			const designWeek = weekId > 5 ? weekId - 5 : weekId
 			const own = save.projects.find(p => p.weekId === designWeek)
 			if (own) return own.tier
-			return save.projects[save.projects.length - 1]?.tier ?? recommendedTier(save.experience)
+			return save.projects.at(-1)?.tier ?? recommendedTier(save.experience)
 		},
 		[save.projects, save.experience],
 	)
@@ -1583,7 +1583,7 @@ export function weekListPhrase(weeks: readonly number[]): string {
 	const parts = weeks.map(w => String(w))
 	if (parts.length === 0) return "No weeks"
 	if (parts.length === 1) return `Week ${parts[0]}`
-	return `Weeks ${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`
+	return `Weeks ${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`
 }
 
 /** Recommended tier from the onboarding experience answer. */

@@ -43,7 +43,7 @@ export function mergeIntervals(intervals: readonly Interval[]): Interval[] {
 
 	const merged: Interval[] = [first]
 	for (const next of clean.slice(1)) {
-		const last = merged[merged.length - 1]
+		const last = merged.at(-1)
 		if (!last) continue
 		if (next.start <= last.end) {
 			if (next.end > last.end) last.end = next.end

@@ -40,7 +40,7 @@ const offsetAt = (i: number, phase: number) => Number((50 + AMP * Math.sin((phas
 const trailRows = (week: Week, done: (id: string) => boolean, passed: (id: string) => boolean): number => {
 	const rows: Checkpoint[][] = []
 	for (const cp of week.checkpoints) {
-		const last = rows[rows.length - 1]
+		const last = rows.at(-1)
 		if (cp.branch && last?.[0]?.branch) last.push(cp)
 		else rows.push([cp])
 	}
@@ -385,7 +385,7 @@ function WeekTrail({ week, currentId, phase }: { week: Week; currentId: string |
 	// Group into rows: singles all the way down, each fork as one row of two – the opening idea/skip fork in week 1, the keep/submit fork at a week's end.
 	const rows: Checkpoint[][] = []
 	for (const cp of week.checkpoints) {
-		const last = rows[rows.length - 1]
+		const last = rows.at(-1)
 		if (cp.branch && last?.[0]?.branch) last.push(cp)
 		else rows.push([cp])
 	}
