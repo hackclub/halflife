@@ -101,7 +101,7 @@ const NOT_A_PART = /^(shipping|postage|delivery|handling|tax|vat|gst|discount|su
 function normalize(cell: string): string {
 	return cell
 		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, " ")
+		.replaceAll(/[^a-z0-9]+/g, " ")
 		.trim()
 }
 
@@ -184,15 +184,15 @@ function findHeader(rows: readonly string[][]): { index: number; map: Partial<Re
 /** Markdown links keep their label; other markup is stripped by the route. */
 function cleanName(value: string): string {
 	return value
-		.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
-		.replace(/\s+/g, " ")
+		.replaceAll(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+		.replaceAll(/\s+/g, " ")
 		.trim()
 		.slice(0, MAX_IMPORT_NAME)
 }
 
 /** `"100pc"`, `"1 set"`, `"2"` -> a whole number of parts. */
 function parseQuantity(value: string | undefined): number {
-	const match = (value ?? "").replace(/,/g, "").match(/\d+/)
+	const match = (value ?? "").replaceAll(",", "").match(/\d+/)
 	if (!match) return 1
 	const n = Number(match[0])
 	if (!Number.isFinite(n) || n < 1) return 1
@@ -209,7 +209,7 @@ function parseUsd(value: string | undefined): number | null {
 	if (!v) return null
 	const raw = v.match(/\$\s*([0-9][0-9,]*(?:\.[0-9]+)?)/)?.[1] ?? v.match(/^\s*([0-9][0-9,]*(?:\.[0-9]+)?)\s*$/)?.[1]
 	if (!raw) return null
-	const n = Number(raw.replace(/,/g, ""))
+	const n = Number(raw.replaceAll(",", ""))
 	if (!Number.isFinite(n) || n < 0) return null
 	return n
 }
@@ -272,7 +272,7 @@ function vendorFromLink(link: string | null): string | null {
 
 /** Trim, collapse whitespace, cap – the same treatment every other maker text gets. */
 function clean(value: string | undefined, max: number): string | null {
-	const v = (value ?? "").replace(/\s+/g, " ").trim()
+	const v = (value ?? "").replaceAll(/\s+/g, " ").trim()
 	return v ? v.slice(0, max) : null
 }
 

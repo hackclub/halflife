@@ -197,7 +197,7 @@ export function parseProjectsCsv(text: string): { rows: MacondoRow[]; problems: 
 				h
 					.trim()
 					.toLowerCase()
-					.replace(/[^a-z]/g, "")
+					.replaceAll(/[^a-z]/g, "")
 			],
 	)
 	const problems: CsvProblem[] = []

@@ -274,7 +274,7 @@ export async function notifyShipFailed(input: { themeProjectId: string; phase: P
 
 /** Escapes the three characters Slack mrkdwn gives meaning to, so interpolated text cannot become a mention or a link. */
 function escapeSlackText(value: string): string {
-	return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+	return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
 }
 
 /**

@@ -85,7 +85,7 @@ function assertFetchable(url: URL): void {
 	if (url.port && url.port !== "443" && url.port !== "80") throw refused()
 	if (url.username || url.password) throw refused()
 	// An IP literal never reaches the lookup, so it is checked here.
-	const host = url.hostname.replace(/^\[|\]$/g, "")
+	const host = url.hostname.replaceAll(/^\[|\]$/g, "")
 	const family = isIP(host)
 	if (family !== 0 && isBlocked(host, family)) throw refused()
 }

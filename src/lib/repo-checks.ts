@@ -300,7 +300,7 @@ function readmeImageCount(readme: string): number {
 
 /** The README's prose, with images and the whitespace they leave behind removed. */
 function readmeText(readme: string): string {
-	return readme.replace(README_IMAGE, " ").replace(/\s+/g, " ").trim()
+	return readme.replaceAll(README_IMAGE, " ").replaceAll(/\s+/g, " ").trim()
 }
 
 /** The paths in the repo that satisfy a file kind by name. */

@@ -82,7 +82,7 @@ export interface PermissionSummary {
  * The audit log shows its own enum names raw, but that is a log being looked up; this is somebody being told what an account may do.
  */
 export function readablePermission(permission: Permission): string {
-	return permission.toLowerCase().replace(/_/g, " ")
+	return permission.toLowerCase().replaceAll("_", " ")
 }
 
 /**

@@ -131,11 +131,11 @@ const COMPONENT_CALLS: { path: string; methods: string[] }[] = [
 const routes = routeTable()
 
 function routeFor(path: string): Set<string> | null {
-	const clean = (path.split("?")[0] ?? "").replace(/\$\{[^}]*\}/g, "X").replace(/\/$/, "")
+	const clean = (path.split("?")[0] ?? "").replaceAll(/\$\{[^}]*\}/g, "X").replace(/\/$/, "")
 	// A static segment beats the variable one it shares a slot with – `bom/import` is its own route, not `bom/[itemId]` – and Next resolves it that way, so a client calling `bom/import` must be checked against the import route. The fewest variables is that rule spelled out; without it the walker could hand back `[itemId]` and report a POST as a 405 that Next would never send.
 	let best: { methods: Set<string>; dynamic: number } | null = null
 	for (const [url, methods] of routes) {
-		if (!new RegExp(`^${url.replace(/\[[^\]]+\]/g, "[^/]+")}$`).test(clean)) continue
+		if (!new RegExp(`^${url.replaceAll(/\[[^\]]+\]/g, "[^/]+")}$`).test(clean)) continue
 		const dynamic = (url.match(/\[/g) ?? []).length
 		if (!best || dynamic < best.dynamic) best = { dynamic, methods }
 	}

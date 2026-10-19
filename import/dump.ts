@@ -24,7 +24,7 @@ async function main() {
     )
     console.log(`\n=== ${table} (${columns.length} columns) ===`)
     for (const c of columns) {
-      const def = c.column_default ? ` default=${c.column_default.replace(/\s+/g, " ").slice(0, 40)}` : ""
+      const def = c.column_default ? ` default=${c.column_default.replaceAll(/\s+/g, " ").slice(0, 40)}` : ""
       console.log(`  ${c.column_name.padEnd(34)} ${c.data_type}${c.is_nullable === "NO" ? " NOT NULL" : ""}${def}`)
     }
     const rows = await source.$queryRawUnsafe<{ [_: string]: unknown }[]>(

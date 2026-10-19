@@ -68,7 +68,7 @@ export function imageSources(source: string): string[] {
  * Cut as Markdown rather than as a string: slicing through `![a](url)` or `**bold**` would leave a half-token that renders as literal syntax, so tokens are kept whole and the cut falls on a word boundary between them. Images cost nothing against the limit, but only the first one is kept – an excerpt that is mostly photographs is not an excerpt.
  */
 export function excerpt(source: string, limit: number): { text: string; cut: boolean } {
-	const text = source.replace(/\r\n/g, "\n")
+	const text = source.replaceAll("\r\n", "\n")
 	let used = 0
 	let images = 0
 	let last = 0
@@ -123,7 +123,7 @@ export function excerpt(source: string, limit: number): { text: string; cut: boo
  * Images are the evidence half of an entry and are counted by `countImages`; counting their markdown here too would let a pasted CDN URL – often a hundred characters on its own – write most of the minimum. So every image, alt text included, comes out before the length is taken: alt text is not prose, and leaving it in would only move the padding into the brackets.
  */
 export function proseLength(source: string): number {
-	return source.replace(/!\[[^\]]*\]\([^)]*\)/g, "").trim().length
+	return source.replaceAll(/!\[[^\]]*\]\([^)]*\)/g, "").trim().length
 }
 
 /**
@@ -203,7 +203,7 @@ function inline(text: string, key: string): ReactNode[] {
 const HEADING = ["text-[1.15rem]", "text-[1.05rem]", "text-[0.98rem]"]
 
 export function Markdown({ source, className }: { source: string; className?: string }) {
-	const lines = source.replace(/\r\n/g, "\n").split("\n")
+	const lines = source.replaceAll("\r\n", "\n").split("\n")
 	// Every loop below is already bounded by `lines.length`; this states that invariant in a form the compiler can use rather than asserting past it.
 	const at = (n: number): string => lines[n] ?? ""
 	const out: ReactNode[] = []

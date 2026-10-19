@@ -69,9 +69,9 @@ function dateOf(entry: JournalEntry): string {
 function slug(text: string): string {
 	return text
 		.toLowerCase()
-		.replace(/[^a-z0-9\s-]/g, "")
+		.replaceAll(/[^a-z0-9\s-]/g, "")
 		.trim()
-		.replace(/\s+/g, "-")
+		.replaceAll(/\s+/g, "-")
 		.slice(0, 60)
 }
 
@@ -83,46 +83,46 @@ function slug(text: string): string {
 function htmlToMarkdown(html: string): string {
 	const mapped = html
 		// Block ends become line breaks first, so a <p>a</p><p>b</p> does not run the two together.
-		.replace(/<\/(p|div|h[1-6]|li|blockquote)>/gi, "\n\n")
-		.replace(/<br\s*\/?>/gi, "\n")
+		.replaceAll(/<\/(p|div|h[1-6]|li|blockquote)>/gi, "\n\n")
+		.replaceAll(/<br\s*\/?>/gi, "\n")
 		// Headings: GitHub renders `###` and is indifferent to which level was stored, so the entry's own hierarchy is kept.
-		.replace(
+		.replaceAll(
 			/<h([1-6])[^>]*>(.*?)<\/h\1>/gis,
 			(_m, level: string, inner: string) => `${"#".repeat(Number(level))} ${inner.trim()}\n\n`,
 		)
 		// Images before links: an <a> wrapping an <img> would otherwise swallow it.
-		.replace(/<img[^>]*?src=["']([^"']+)["'][^>]*?alt=["']([^"']*)["'][^>]*>/gi, "![$2]($1)")
-		.replace(/<img[^>]*?alt=["']([^"']*)["'][^>]*?src=["']([^"']+)["'][^>]*>/gi, "![$1]($2)")
-		.replace(/<img[^>]*?src=["']([^"']+)["'][^>]*>/gi, "![]($1)")
-		.replace(/<a[^>]*?href=["']([^"']+)["'][^>]*>(.*?)<\/a>/gis, "[$2]($1)")
-		.replace(/<(strong|b)>(.*?)<\/\1>/gis, "**$2**")
-		.replace(/<(em|i)>(.*?)<\/\1>/gis, "_$2_")
-		.replace(/<code>(.*?)<\/code>/gis, "`$1`")
-		.replace(/<li[^>]*>/gi, "- ")
+		.replaceAll(/<img[^>]*?src=["']([^"']+)["'][^>]*?alt=["']([^"']*)["'][^>]*>/gi, "![$2]($1)")
+		.replaceAll(/<img[^>]*?alt=["']([^"']*)["'][^>]*?src=["']([^"']+)["'][^>]*>/gi, "![$1]($2)")
+		.replaceAll(/<img[^>]*?src=["']([^"']+)["'][^>]*>/gi, "![]($1)")
+		.replaceAll(/<a[^>]*?href=["']([^"']+)["'][^>]*>(.*?)<\/a>/gis, "[$2]($1)")
+		.replaceAll(/<(strong|b)>(.*?)<\/\1>/gis, "**$2**")
+		.replaceAll(/<(em|i)>(.*?)<\/\1>/gis, "_$2_")
+		.replaceAll(/<code>(.*?)<\/code>/gis, "`$1`")
+		.replaceAll(/<li[^>]*>/gi, "- ")
 
 	// Tags left over by the mappings above are stripped to a fixed point: deleting one match can, in general, make the text on either side join into a new tag, so a single pass is not a complete sanitizer (`js/incomplete-multi-character-sanitization`). Repeat until the string stops changing; each pass that does anything removes at least `<x>`, so it always terminates.
 	let text = mapped
 	let previous = ""
 	do {
 		previous = text
-		text = text.replace(/<[^>]+>/g, "")
+		text = text.replaceAll(/<[^>]+>/g, "")
 	} while (text !== previous)
 
 	return decodeEntities(text)
-		.replace(/[ \t]+\n/g, "\n")
-		.replace(/\n{3,}/g, "\n\n")
+		.replaceAll(/[ \t]+\n/g, "\n")
+		.replaceAll(/\n{3,}/g, "\n\n")
 		.trim()
 }
 
 function decodeEntities(text: string): string {
 	// `&amp;` is unescaped LAST. Decoding it first would turn the literal text `&amp;lt;` into `&lt;` and then into `<` in the same pass – unescaping twice, so text the author escaped once came out as live markup. Every other entity above must also run before this one for the same reason.
 	return text
-		.replace(/&nbsp;/g, " ")
-		.replace(/&lt;/g, "<")
-		.replace(/&gt;/g, ">")
-		.replace(/&quot;/g, '"')
-		.replace(/&#0?39;/g, "'")
-		.replace(/&amp;/g, "&")
+		.replaceAll("&nbsp;", " ")
+		.replaceAll("&lt;", "<")
+		.replaceAll("&gt;", ">")
+		.replaceAll("&quot;", '"')
+		.replaceAll(/&#0?39;/g, "'")
+		.replaceAll("&amp;", "&")
 }
 
 /** A table row, keeping empty cells rather than dropping the column. */
@@ -137,7 +137,7 @@ function row(...cells: (string | number | null | undefined)[]): string {
  */
 function cell(value: string | number): string {
 	const text = String(value)
-	if (/[",\r\n]/.test(text)) return `"${text.replace(/"/g, '""')}"`
+	if (/[",\r\n]/.test(text)) return `"${text.replaceAll('"', '""')}"`
 	return text
 }
 
@@ -190,7 +190,7 @@ export function renderJournal(project: ProjectMeta, entries: JournalEntry[]): Re
 		BANNER("devlog", project.id, newestOf(entries.map(e => e.createdAt)), projectUrl(project.id)).trimEnd(),
 		"",
 	]
-	if (project.description) lines.push(`> ${project.description.replace(/\n+/g, " ")}`, "")
+	if (project.description) lines.push(`> ${project.description.replaceAll(/\n+/g, " ")}`, "")
 	lines.push(
 		row("Week", "Tier", "Hours logged", "Entries"),
 		"| --- | --- | --- | --- |",

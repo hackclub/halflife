@@ -81,7 +81,7 @@ function readNumber(record: AirtableRecord, field: FieldDef): number | null {
 	const value = rawField(record, field)
 	if (typeof value === "number" && Number.isFinite(value)) return value
 	if (typeof value === "string") {
-		const parsed = Number(value.replace(/[$,\s]/g, ""))
+		const parsed = Number(value.replaceAll(/[$,\s]/g, ""))
 		return Number.isFinite(parsed) ? parsed : null
 	}
 	return null

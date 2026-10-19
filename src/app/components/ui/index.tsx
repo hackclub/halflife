@@ -207,5 +207,5 @@ export function statusTone(status: string): BadgeTone {
 }
 
 export function statusLabel(status: string): string {
-	return status.replace(/_/g, " ")
+	return status.replaceAll("_", " ")
 }

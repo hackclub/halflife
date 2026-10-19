@@ -115,7 +115,7 @@ function bool(raw: string): boolean | undefined | "bad" {
 
 /** A number as a spreadsheet writes it: `$1,250.00` is 1250. */
 function num(raw: string): number {
-	return Number(raw.trim().replace(/[$,\s]/g, ""))
+	return Number(raw.trim().replaceAll(/[$,\s]/g, ""))
 }
 
 /**
@@ -133,7 +133,7 @@ export function parseShopCsv(text: string): { items: ShopCsvItem[]; problems: Sh
 				h
 					.trim()
 					.toLowerCase()
-					.replace(/[^a-z]/g, "")
+					.replaceAll(/[^a-z]/g, "")
 			],
 	)
 	for (const [i, h] of head.fields.entries()) {
@@ -171,7 +171,8 @@ export function parseShopCsv(text: string): { items: ShopCsvItem[]; problems: Sh
 		}
 
 		const category = cell("category").trim()
-		const categoryValue = category === "" ? undefined : CATEGORY_ALIASES[category.toUpperCase().replace(/[\s-]+/g, "_")]
+		const categoryValue =
+			category === "" ? undefined : CATEGORY_ALIASES[category.toUpperCase().replaceAll(/[\s-]+/g, "_")]
 		if (category !== "" && !categoryValue)
 			say(`Category "${category}" is not one of: upgrade, consumable, misc, printer.`)
 

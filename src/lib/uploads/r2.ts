@@ -152,7 +152,7 @@ function endpointIncludesBucket(): boolean {
 	const bucket = process.env.S3_BUCKET_NAME
 	if (!endpoint || !bucket) return false
 	try {
-		const path = new URL(endpoint).pathname.replace(/^\/+|\/+$/g, "")
+		const path = new URL(endpoint).pathname.replaceAll(/^\/+|\/+$/g, "")
 		return path === bucket
 	} catch {
 		return false

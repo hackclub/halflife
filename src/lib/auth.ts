@@ -30,7 +30,7 @@ const gitlabScopes = [...FORGES.gitlab.scopes]
  * The email a link-only provider reports: unique per identity, and on the reserved .invalid TLD, so it can never equal a real user's address. See `trustedProviders` for why that matters.
  */
 function linkOnlyEmail(provider: "hackatime" | "lapse" | "github" | "gitlab", id: string): string {
-	return `${provider}-${id.replace(/[^A-Za-z0-9_-]/g, "")}@link.invalid`
+	return `${provider}-${id.replaceAll(/[^A-Za-z0-9_-]/g, "")}@link.invalid`
 }
 
 /**

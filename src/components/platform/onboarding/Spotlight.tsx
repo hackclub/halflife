@@ -77,7 +77,7 @@ export function Spotlight({
 	const raf = useRef(0)
 	const until = useRef(0)
 	const placed = useRef(false)
-	const uid = useId().replace(/:/g, "")
+	const uid = useId().replaceAll(":", "")
 
 	const measure = useCallback(() => {
 		const el = firstVisible(selector)

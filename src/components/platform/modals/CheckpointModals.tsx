@@ -136,7 +136,7 @@ const autosaveKey = (checkpointId: string) => `halflife.journal-autosave.${check
 const UPLOADING_PLACEHOLDER = /!\[Uploading .*?\]\(uploading:\d+\)/g
 
 function cleanBodyForAutosave(body: string): string {
-	return body.replace(UPLOADING_PLACEHOLDER, "").replace(/\n{3,}/g, "\n\n")
+	return body.replaceAll(UPLOADING_PLACEHOLDER, "").replaceAll(/\n{3,}/g, "\n\n")
 }
 
 /**
@@ -218,7 +218,7 @@ function altFor(source: ImageSource): string {
 	return (
 		name
 			.replace(/\.[^.]+$/, "")
-			.replace(/[[\]()]/g, "")
+			.replaceAll(/[[\]()]/g, "")
 			.trim()
 			.slice(0, 80) || "Journal image"
 	)
@@ -789,7 +789,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								className={cx(borderedInputClass, "tabular-nums")}
 								id="journal-hours"
 								inputMode="decimal"
-								onChange={e => setHoursText(e.target.value.replace(/[^\d.]/g, ""))}
+								onChange={e => setHoursText(e.target.value.replaceAll(/[^\d.]/g, ""))}
 								placeholder="0"
 								value={hoursText}
 							/>

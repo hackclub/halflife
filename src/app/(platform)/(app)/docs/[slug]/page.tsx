@@ -64,7 +64,7 @@ export default async function DocPage({ params }: { params: Promise<{ slug: stri
 
 					<div className="mt-9 grid gap-9">
 						{doc.body.map(block => (
-							<section id={block.heading.toLowerCase().replace(/\s+/g, "-")} key={block.heading}>
+							<section id={block.heading.toLowerCase().replaceAll(/\s+/g, "-")} key={block.heading}>
 								<h2 className="text-[1.4rem] leading-tight font-extrabold tracking-[-0.025em] text-navy">
 									{block.heading}
 								</h2>
@@ -121,7 +121,7 @@ export default async function DocPage({ params }: { params: Promise<{ slug: stri
 							<li key={b.heading}>
 								<a
 									className="block text-[0.86rem] leading-snug text-navy-soft transition-colors hover:text-navy"
-									href={`#${b.heading.toLowerCase().replace(/\s+/g, "-")}`}
+									href={`#${b.heading.toLowerCase().replaceAll(/\s+/g, "-")}`}
 								>
 									{b.heading}
 								</a>

@@ -148,7 +148,7 @@ async function apiDetail(res: Response): Promise<string | null> {
 		// Not JSON: a proxy page or a plain-text error, where the text itself is the only detail there is.
 	}
 
-	message = message.replace(/\s+/g, " ").trim()
+	message = message.replaceAll(/\s+/g, " ").trim()
 	// An HTML page has no sentence to quote, and reading a regex tag out of one helps nobody.
 	if (!message || /<[a-z!/]/i.test(message)) return null
 	return message.length > 200 ? `${message.slice(0, 199)}…` : message
