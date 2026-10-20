@@ -1659,6 +1659,27 @@ model HelpTicket {
   @@map("help_ticket")
 }
 
+/// One row per Slack event delivery, for idempotency.
+///
+/// Slack redelivers an event - the same `event_id` - until it gets a 2xx, and a captured signed request can be replayed inside the five-minute replay window. Either way the work behind the delivery must happen once: double-inviting a member and double-posting a ticket are both visible to participants.
+///
+/// The row is claimed before the work runs (see `claimDelivery` in app/api/slack/events/route.ts), so a delivery that failed is logged rather than run again - Slack's own retry is already dropped, and a replay of a half-finished delivery would post the ticket twice.
+model SlackEventDelivery {
+  id String @id @default(cuid())
+
+  /// Slack's own id for the delivery. Unique, so a replay cannot claim the same delivery twice.
+  eventId String @unique
+  /// The event's type (`message`, `member_joined_channel`, ...), so a row can be read without the payload.
+  event String
+  /// The workspace the event came from, for when more than one is connected.
+  teamId String?
+
+  receivedAt DateTime @default(now())
+
+  @@index([receivedAt])
+  @@map("slack_event_delivery")
+}
+
 /// One dated thing on the programme calendar: the weekly call, a lock-in huddle, a show & tell, a soldering workshop.
 ///
 /// A row per occurrence rather than a recurring rule, deliberately. A standing weekly call is ten rows sharing a `seriesId`, and each can then be moved, retitled or cancelled on its own - which is what actually happens, when the week one call lands on a bank holiday. A rule would turn every cancellation into a migration.
