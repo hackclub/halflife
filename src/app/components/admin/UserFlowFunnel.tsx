@@ -1,5 +1,6 @@
 "use client"
-import { type CSSProperties, Fragment } from "react"
+import { Fragment } from "react"
+import { flowHeat, flowHeatInk, flowHeatWeight } from "@/app/components/admin/flow-heat"
 import { EmptyState } from "@/app/components/ui"
 import { pctOf } from "@/lib/numbers"
 import type { FlowStep } from "@/lib/queries/admin"
@@ -32,22 +33,6 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 	const widthOf = (n: number) => (n === 0 ? 0 : Math.max(share(n), MIN_W))
 	const widths = rows.map(s => widthOf(s.count))
 
-	// Clamp a drop-off share to a 0-100 blend weight.
-	const weightOf = (dropOffPct: number) => Math.min(100, Math.max(0, dropOffPct))
-
-	// Heat of a stage, as a background from flow-through blue to total-loss red. Mixed in oklch so the middle stays vivid rather than washing out through grey the way an srgb blend does. One property, `backgroundColor`, so there is no fallback to be written in an order React could undo; a browser with no color-mix leaves the band unfilled, where the headcount pill and the captions still read the stage – the same stance `heatInk` takes with the connector text.
-	const heat = (dropOffPct: number): CSSProperties => ({
-		backgroundColor: `color-mix(in oklch, var(--color-danger) ${weightOf(dropOffPct)}%, var(--color-accent))`,
-	})
-
-	// The same heat for text: muted where nothing was lost, danger-ink where everything was. An unsupported color-mix just inherits body text, which still reads.
-	const heatInk = (dropOffPct: number): CSSProperties => ({
-		color: `color-mix(in oklch, var(--color-danger-ink) ${weightOf(dropOffPct)}%, var(--color-ink-muted))`,
-	})
-
-	// 400 where nothing was lost, 800 where everything was.
-	const heatWeight = (dropOffPct: number) => 400 + Math.round(weightOf(dropOffPct) / 25) * 100
-
 	const row = (
 		s: FlowStep,
 		prevWidth: number,
@@ -65,9 +50,9 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 						style={{
 							fontSize: "0.78rem",
 							fontVariantNumeric: "tabular-nums",
-							fontWeight: heatWeight(s.dropOffPct),
+							fontWeight: flowHeatWeight(s.dropOffPct),
 							textAlign: "center",
-							...heatInk(s.dropOffPct),
+							...flowHeatInk(s.dropOffPct),
 						}}
 					>
 						↓ {s.retainPct}% through · {s.dropOffPct}% stopped
@@ -99,7 +84,7 @@ export function UserFlowFunnel({ steps }: { steps: FlowStep[] }) {
 					style={{
 						inset: 0,
 						position: "absolute",
-						...heat(s.dropOffPct),
+						...flowHeat(s.dropOffPct),
 						clipPath: `polygon(${(100 - prevWidth) / 2}% 0, ${(100 + prevWidth) / 2}% 0, ${(100 + bottomWidth) / 2}% 100%, ${(100 - bottomWidth) / 2}% 100%)`,
 					}}
 				/>
