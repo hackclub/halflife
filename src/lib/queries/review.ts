@@ -74,7 +74,7 @@ export async function getReviewQueue(opts: {
 		items: page.map(row => ({
 			claimExpiresAt: row.claim?.expiresAt ?? null,
 			claimedBy: row.claim ? { id: row.claim.reviewer.id, name: displayName(row.claim.reviewer) } : null,
-			claimLive: Boolean(row.claim) && row.claim.expiresAt.getTime() > now,
+			claimLive: row.claim !== null && row.claim.expiresAt.getTime() > now,
 			id: row.id,
 			onTime: row.onTime,
 			participant: { ...row.themeProject.user, name: displayName(row.themeProject.user) },
@@ -207,7 +207,7 @@ export async function getSubmissionDetail(
 
 	return {
 		breakdown,
-		claimLive: Boolean(submission.claim) && submission.claim.expiresAt.getTime() > Date.now(),
+		claimLive: submission.claim !== null && submission.claim.expiresAt.getTime() > Date.now(),
 		coverImageUrl: publicUrlFor(submission.themeProject.coverImageKey),
 		links,
 		priorReviews,

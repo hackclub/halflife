@@ -20,7 +20,7 @@ function firstVisible(selector: string): HTMLElement | null {
 
 const same = (a: Rect | null, b: Rect | null) =>
 	a === b
-	|| (Boolean(a) && Boolean(b) && a.top === b.top && a.left === b.left && a.width === b.width && a.height === b.height)
+	|| (a !== null && b !== null && a.top === b.top && a.left === b.left && a.width === b.width && a.height === b.height)
 
 /**
  * The line drawn between a step's two targets, from the near edge of one to the near edge of the other. It leaves and arrives horizontally whichever way it is going, so the curve reads as a route across the screen rather than a diagonal someone forgot to straighten.

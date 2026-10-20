@@ -129,7 +129,7 @@ export async function getMyReels(userId: string): Promise<MyReelGroup[]> {
 				url: l.url,
 			})),
 			reopensCheckpoint:
-				Boolean(p.checkpointKey) && /-reel-(idea|\d{1,2})$/.test(p.checkpointKey) && perKey.get(p.checkpointKey) === 1,
+				p.checkpointKey !== null && /-reel-(idea|\d{1,2})$/.test(p.checkpointKey) && perKey.get(p.checkpointKey) === 1,
 			status: p.status,
 			thumbnailUrl: publicUrlFor(p.thumbnailKey),
 			title: titleFor(p.checkpointKey, p.kind, p.themeProject),
