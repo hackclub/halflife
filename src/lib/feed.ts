@@ -53,7 +53,8 @@ export interface FeedItem {
 const feedInclude = {
 	themeProject: { select: { deletedAt: true, id: true, theme: true, title: true } },
 	user: {
-		select: { currentStreak: true, displayName: true, id: true, image: true, name: true, slackId: true },
+		// No Slack id: nothing here renders it, and a selected column rides along in the RSC payload to every browser that opens the feed.
+		select: { currentStreak: true, displayName: true, id: true, image: true, name: true },
 	},
 } satisfies Prisma.PostInclude
 
@@ -71,7 +72,8 @@ const FEED_ORDER = {
 } as const satisfies CursorOrderOf<PostWithAuthor, Prisma.PostOrderByWithRelationInput>
 
 const commentInclude = {
-	user: { select: { displayName: true, id: true, image: true, name: true, slackId: true } },
+	// No Slack id, for the same reason as the feed's author above.
+	user: { select: { displayName: true, id: true, image: true, name: true } },
 } satisfies Prisma.PostCommentInclude
 
 type CommentWithAuthor = Prisma.PostCommentGetPayload<{ include: typeof commentInclude }>

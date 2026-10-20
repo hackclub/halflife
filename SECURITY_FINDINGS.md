@@ -133,6 +133,14 @@ self-contained.
   the audit row records that nobody checked.
 - The public origin is now one resolver, and the list of hosts the deployment
   answers on is configuration (`APP_PUBLIC_HOSTS`).
+- The feed, the comments feed, the profile page and the community list
+  selected every post author's Slack id, and a selected column rides along in
+  the RSC payload to every browser that opens the page - so every participant's
+  Slack id was handed to every reader. Nothing rendered it. The columns are
+  gone. (The repo's own `verify:pii` script asserts this; it was failing on
+  `main` and now passes for other people's ids. The one remaining check is the
+  VIEWER'S OWN Slack id, inside their own avatar URL - the avatar service is
+  keyed by it, so there is no URL that does not contain it.)
 
 ---
 

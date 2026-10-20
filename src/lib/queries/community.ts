@@ -64,7 +64,6 @@ export async function getJournalFeed(): Promise<JournalRow[]> {
 								image: true,
 								lastStreakDate: true,
 								name: true,
-								slackId: true,
 							},
 						},
 					},
