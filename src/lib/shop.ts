@@ -9,6 +9,7 @@ import { getPrinterQualification } from "@/lib/printer"
 import prisma from "@/lib/prisma"
 import { getShopAccess, SHOP_CLOSED_MESSAGE } from "@/lib/program"
 import { countryOfTimezone } from "@/lib/regions"
+import { sanitize } from "@/lib/sanitize"
 
 /**
  * The catalogue row as a participant sees it.
@@ -56,6 +57,11 @@ export const shopOrderStaffSelect = {
 	holdReason: true,
 	id: true,
 	itemNameSnapshot: true,
+	/**
+	 * What the buyer wrote about the order. Staff are the ones who fulfil it, so it is theirs to read; the
+	 * buyer's own view below leaves it out, because it is a note to staff rather than part of the order's state.
+	 */
+	notes: { select: { authorId: true, body: true, createdAt: true } },
 	orderNumber: true,
 	placedAt: true,
 	quantity: true,
@@ -206,12 +212,15 @@ export async function getShopItemsFor(userId: string): Promise<{
  * Buy something.
  *
  * The whole thing runs under a per-user advisory lock. The ledger's `@@unique([shopOrderId, kind, bucket])` only stops one order being charged twice – two concurrent purchases mint two different order ids and collide with nothing, so without the lock ten parallel requests all read the same balance and all succeed.
+ *
+ * `note` is the buyer's own words for the staff who fulfil the order. It is written inside the transaction, against the order, with the buyer as its author – so a note that is accepted is a note that is kept, rather than one that is silently dropped on the floor.
  */
 export async function purchase(
 	userId: string,
 	shopItemId: string,
 	quantity: number,
 	idempotencyKey?: string,
+	note?: string | null,
 ): Promise<ShopOrderPublic> {
 	const access = await getShopAccess(userId)
 	if (!access.open) throw new HttpError("SHOP_CLOSED", SHOP_CLOSED_MESSAGE)
@@ -225,6 +234,10 @@ export async function purchase(
 
 	const item = await prisma.shopItem.findUnique({ where: { id: shopItemId } })
 	if (!item?.active) throw new HttpError("NOT_FOUND", "Item not found")
+
+	// The note is read as plain text, so its markup is stripped before anything is stored – outside the
+	// transaction, because it is work that has nothing to do with the rows.
+	const body = note ? sanitize(note) : null
 
 	if (item.requiresPrinterQualified) {
 		const qualification = await getPrinterQualification(userId)
@@ -344,6 +357,14 @@ export async function purchase(
 			// Only the buyer's fields come back; `unitCostUsd` is stored for fulfillment but must not leave the server.
 			select: shopOrderPublicSelect,
 		})
+
+		// The buyer's note, kept against the order with the buyer as its author. Written here, inside the
+		// transaction, so it lands with the order it belongs to: a note that is accepted but not kept is
+		// worse than no note at all, because the staff reading the order would have no way to know one was sent.
+		if (body)
+			await tx.shopOrderNote.create({
+				data: { authorId: userId, body, orderId: order.id },
+			})
 
 		// Every coin is spendable on anything, so a purchase is paid out of the whole balance – but the whole
 		// balance is not in one pot. The debit follows the coins: the spendable pot first, then the legacy

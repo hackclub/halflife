@@ -105,8 +105,35 @@ export function parseGrantHashid(input: string): string | null {
 	return /\/grants\/([A-Za-z0-9]{4,32})/.exec(url.pathname)?.[1] ?? null
 }
 
+/**
+ * Whether a grant's card is checked against the maker before it is paid.
+ *
+ * On by default, and it should stay on: the top-up moves the money as it answers, so a card that belongs to somebody else cannot be recalled afterwards.
+ *
+ * HCB only renders another account's email to a token that may read it, so a deployment whose token cannot would refuse every grant. `HCB_VERIFY_GRANT_OWNER=false` is the escape hatch for such a deployment - and the trail records that nobody checked.
+ */
+export function verifiesGrantOwner(): boolean {
+	return (process.env.HCB_VERIFY_GRANT_OWNER ?? "true").trim().toLowerCase() !== "false"
+}
+
 export interface TopUpResult {
+	/**
+	 * The email of the account that owns the card grant, as HCB reported it. Null when HCB did not render one.
+	 */
+	ownerEmail: string | null
 	transactionId: string | null
+}
+
+/**
+ * The email of the account that owns a card grant, lower-cased, or null when HCB did not render one.
+ *
+ * HCB only renders another account's email to a token that may read it, so a null here means "HCB would not say", not "this grant has no owner". That distinction is the whole point of the function: the caller has to be able to tell an unreadable owner from a wrong one.
+ */
+function readOwnerEmail(user: { email?: string | null } | null | undefined): string | null {
+	const email = user?.email
+	if (typeof email !== "string") return null
+	const trimmed = email.trim().toLowerCase()
+	return trimmed.length > 0 ? trimmed : null
 }
 
 export async function topUpCardGrant(grantHashid: string, amountCents: number): Promise<TopUpResult> {
@@ -120,8 +147,34 @@ export async function topUpCardGrant(grantHashid: string, amountCents: number): 
 		const body = await res.text().catch(() => "")
 		throw new HttpError("INTERNAL", `HCB refused the top-up (${res.status})`, { detail: body.slice(0, 300) })
 	}
-	const data = (await res.json()) as { disbursements?: { transaction_id?: string }[] }
-	return { transactionId: data.disbursements?.[0]?.transaction_id ?? null }
+	const data = (await res.json()) as {
+		disbursements?: { transaction_id?: string }[]
+		user?: { email?: string | null } | null
+	}
+	return {
+		ownerEmail: readOwnerEmail(data.user),
+		transactionId: data.disbursements?.[0]?.transaction_id ?? null,
+	}
+}
+
+/**
+ * Who owns a card grant.
+ *
+ * Read before a payment rather than after: the top-up moves the money as it answers, so a grant that belongs to somebody else has to be caught before it is paid, not noticed once it has been.
+ */
+export interface CardGrantOwner {
+	/** The owner's email, or null when HCB would not render one. */
+	email: string | null
+}
+
+export async function readCardGrantOwner(grantHashid: string): Promise<CardGrantOwner> {
+	const res = await hcbFetch(`/api/v4/card_grants/${encodeURIComponent(grantHashid)}?expand=user`)
+	if (!res.ok) {
+		const body = await res.text().catch(() => "")
+		throw new HttpError("INTERNAL", `HCB refused to read the grant (${res.status})`, { detail: body.slice(0, 300) })
+	}
+	const data = (await res.json().catch(() => null)) as { user?: { email?: string | null } | null } | null
+	return { email: readOwnerEmail(data?.user) }
 }
 
 export interface GrantDisbursement {

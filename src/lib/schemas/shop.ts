@@ -7,6 +7,9 @@ export const purchaseSchema = z
 		 * One per purchase intent, reused across retries so a retried request resolves to the order it already made instead of charging twice.
 		 */
 		idempotencyKey: z.string().trim().min(8).max(64),
+		/**
+		 * The buyer's own words for the staff who fulfil the order. Kept against the order, with the buyer as its author.
+		 */
 		note: boundedText(1000).optional(),
 		quantity: z.number().int().min(1).max(5).default(1),
 		shopItemId: z.string().min(1).max(64),

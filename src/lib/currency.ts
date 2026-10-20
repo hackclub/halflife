@@ -122,32 +122,65 @@ export interface ReconcileParams {
 }
 
 /**
- * Append a single delta row so that SUM(amount) over (userId, themeProjectId, kind) equals `target`. Returns null when nothing needed to change.
+ * What a reconcile did.
+ */
+export interface ReconcileResult {
+	/** The row it wrote, or null when the total was already where it had to be. */
+	entry: LedgerEntry | null
+	/**
+	 * Coins the maker had already spent, so the reversal could not take them back.
+	 */
+	unrecovered: number
+}
+
+/**
+ * Append a single delta row so that SUM(amount) over (userId, themeProjectId, kind) equals `target`. Writes nothing when the total is already there.
  *
  * This is what makes re-review idempotent: approving the same project five times converges on one balance instead of compounding, and un-approving is the same call with `target: 0` rather than a separate reversal code path – so there is no separate reversal code path to get wrong.
+ *
+ * A delta that takes coins back only takes what the maker still has. The sum it reconciles against is the grant's own rows, which say nothing about what has since been spent: a grant of 100 coins that has been spent down to 70 would take 100 back and leave the pot at −30. A negative balance is a state the shop and every display refuse to render, so the reversal stops at zero, says in the row's note how much it could not take, and reports it here. The maker keeps what they spent and the programme carries the difference; the alternative – refusing the un-approval – would leave a wrongly approved design standing, which is the thing the un-approval exists to fix.
  *
  * Stasis instead pairs every kind with a *_REVERSED twin and cancels by hand, which means every aggregate over the ledger has to remember to include the twin. Its lib/currency.ts carries a long comment about the query that forgot and overcounted forever.
  *
  * Must run inside a transaction, for the same reason as appendLedgerEntry.
  */
-export async function reconcileGrant(tx: Tx, params: ReconcileParams): Promise<LedgerEntry | null> {
+export async function reconcileGrant(tx: Tx, params: ReconcileParams): Promise<ReconcileResult> {
 	const current = await sumFor(tx, {
 		kind: params.kind,
 		themeProjectId: params.themeProjectId,
 		userId: params.userId,
 	})
 	const delta = params.target - current
-	if (delta === 0) return null
+	if (delta === 0) return { entry: null, unrecovered: 0 }
 
-	return appendLedgerEntry(tx, {
-		amount: delta,
-		bucket: params.bucket ?? CoinBucket.SPENDABLE,
+	const bucket = params.bucket ?? CoinBucket.SPENDABLE
+	let amount = delta
+	let unrecovered = 0
+	if (delta < 0) {
+		// The pot being moved, not the combined balance: banked coins are not available to cover a spendable shortfall, exactly as the admin adjustment route guards it.
+		const balance = await sumFor(tx, { bucket, userId: params.userId })
+		const take = Math.min(-delta, Math.max(balance, 0))
+		amount = -take
+		unrecovered = -delta - take
+	}
+
+	// The note carries the shortfall, so the row is the whole story: a "-70" on its own would hide that 30 coins of the grant are still out there.
+	const note =
+		unrecovered > 0
+			? `${params.note} – ${unrecovered} could not be taken back: the maker had already spent them`
+			: params.note
+
+	const entry = await appendLedgerEntry(tx, {
+		amount,
+		bucket,
 		createdById: params.createdById ?? null,
 		kind: params.kind,
-		note: params.note,
+		note,
 		themeProjectId: params.themeProjectId,
 		userId: params.userId,
 	})
+
+	return { entry, unrecovered }
 }
 
 /**

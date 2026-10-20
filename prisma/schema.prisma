@@ -416,7 +416,7 @@ model User {
   firstReelAt              DateTime?
   firstSubmissionAt        DateTime?
   lastSubmissionAt         DateTime?
-  /// When the repo file checks first passed for this person (a preflight whose `canSubmit` came back true). Set once, never moved - see lib/analytics.ts.
+  /// When the repo file checks first passed for this person (the checks that gate a submission came back green). Set once, never moved - see lib/analytics.ts.
   firstChecksPassedAt      DateTime?
   /// The last sign-in - a new session, not a page view.
   lastLoginAt              DateTime?
@@ -1086,6 +1086,8 @@ model ContentReport {
 /// One HCB card-grant top-up Half Life has sent.
 ///
 /// Keyed on (user, project, phase) so a grant is paid once: a double-click or a retried request cannot pay twice. The row is written before HCB is called and marked `sentAt` after, so a call that failed is recorded (and can be retried) while one that succeeded short-circuits the next attempt.
+///
+/// Also unique on the grant hashid, because the hashid is what identifies the card on HCB's side and the project key says nothing about it: two projects (or two people) pointing at the same card would otherwise each pay it, and each carry their own row. One card, one payment.
 model HcbGrantTopUp {
   id             String       @id @default(cuid())
   userId         String
@@ -1107,6 +1109,7 @@ model HcbGrantTopUp {
   createdById String?
 
   @@unique([userId, themeProjectId, phase])
+  @@unique([grantHashid])
   @@map("hcb_grant_topup")
 }
 
@@ -1274,6 +1277,8 @@ model PostView {
 /// Append-only credit ledger. Rows are never updated or deleted.
 ///
 /// Invariant: for a given (userId, themeProjectId, kind) the SUM of amounts equals the current target for that grant. Re-review appends a delta row rather than a second full grant, which is what makes approving the same project five times converge instead of compound. See lib/currency.ts.
+///
+/// The one exception is a reversal the maker's balance cannot absorb: coins they had already spent cannot be taken back, so the sum settles above the target and the row's own note says by how much. A negative balance is a state nothing else in the app is willing to create.
 model LedgerEntry {
   id     String @id @default(cuid())
   userId String

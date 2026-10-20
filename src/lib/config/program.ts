@@ -19,6 +19,15 @@ export const COINS_PER_HOUR = 5
  */
 export const MAX_COINS_PER_PROJECT = 250
 
+/**
+ * The most hours one phase may be approved for.
+ *
+ * An hour count can come from a person typing into a box or from a machine posting a number, and either can be wrong by three orders of magnitude. A figure that can be typed must not be able to mint an absurd amount of money, so the bound lives here rather than in each place that reads hours: the console's override, the per-entry hours decisions and the machine path all answer to this one number.
+ *
+ * A week of full-time hours is the ceiling. Nothing in the programme legitimately approves more than that for one phase, and the console path has always refused to.
+ */
+export const MAX_APPROVED_HOURS = 168
+
 /** Flat award for shipping a theme (design and build both approved). */
 export const THEME_COMPLETION_BONUS = 25
 
@@ -137,6 +146,15 @@ export const WARMUP_THEME: ThemeDef = {
  * Warm-up projects have no scheduled week, but a client `Project` carries one (it addresses the project detail route and picks the card's scene), so they borrow week 0 – a value no curriculum week can take.
  */
 export const WARMUP_WEEK_ID = 0
+
+/**
+ * How many warm-up projects one maker may have.
+ *
+ * This caps the grant budget, not the ideas. Warm-up rows are deliberately exempt from the one-per-theme index so a maker can try more than one thing, and none of them takes a season slot – but a warm-up handed in as a design is approved like any other and carries a real parts grant at the tier's amount, so an uncapped number of them is an uncapped number of grants.
+ *
+ * Three is generous enough for a maker to try a few ideas before week one opens, and it bounds the pre-season parts money at three grants per maker. It leaves the season's own five themes exactly as they were: the cap is on the warm-up rows only.
+ */
+export const MAX_WARMUP_PROJECTS = 3
 
 export function getThemeDef(theme: Theme): ThemeDef {
 	const def = theme === Theme.WARMUP ? WARMUP_THEME : THEMES.find(t => t.id === theme)

@@ -1,7 +1,8 @@
 import "server-only"
-import type { ThemeProject } from "@/app/generated/prisma/client"
-import type { Theme } from "@/app/generated/prisma/enums"
-import { THEMES } from "@/lib/config/program"
+import type { Prisma, ThemeProject } from "@/app/generated/prisma/client"
+import { type Phase, Theme } from "@/app/generated/prisma/enums"
+import { MAX_WARMUP_PROJECTS, THEMES } from "@/lib/config/program"
+import { HttpError } from "@/lib/errors"
 import prisma from "@/lib/prisma"
 
 /**
@@ -33,4 +34,58 @@ export async function ensureThemeProject(userId: string, theme: Theme): Promise<
 /** The theme a design week belongs to, or null for a week that is not one. */
 export function themeForDesignWeek(weekId: number): Theme | null {
 	return THEMES.find(t => t.designWeek === weekId)?.id ?? null
+}
+
+/**
+ * Serialize warm-up creation for one maker.
+ *
+ * The cap is a count, and a count read before the create is a race: two requests at once both read a count under the cap and both create, so the cap would be a suggestion rather than a cap. The lock is the same per-maker advisory lock the money paths take (see `lockUserCredit` in lib/currency.ts), in its own namespace so it cannot collide with a credit mutation, and it is the first statement in the transaction so the count cannot be read before the other request has finished creating.
+ */
+async function lockWarmupProjects(tx: Prisma.TransactionClient, userId: string): Promise<void> {
+	// hashtextextended gives a stable bigint for the key; the constant is just a namespace so this lock cannot collide with an unrelated advisory lock. $executeRaw rather than $queryRaw: pg_advisory_xact_lock returns void, and the driver adapter cannot deserialize that as a result row.
+	await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`warmup:${userId}`}, 0))`
+}
+
+export interface WarmupProjectInput {
+	description: string | null
+	githubRepo: string | null
+	requestedTier: number
+	title: string
+	userId: string
+	warmupPhase: Phase
+}
+
+/**
+ * Start a warm-up project, if this maker is under the cap.
+ *
+ * Warm-up rows are exempt from the one-per-theme index on purpose – a maker may try more than one idea, and none of them takes a season slot – but each one that is handed in as a design and approved carries a real parts grant. So the number of warm-up rows a maker may hold is capped, and the cap is on the grant budget rather than on the ideas (see MAX_WARMUP_PROJECTS).
+ *
+ * The count and the create are one transaction under a per-maker lock, so two requests at once cannot both slip past the cap.
+ */
+export function createWarmupProject(input: WarmupProjectInput): Promise<ThemeProject> {
+	return prisma.$transaction(async tx => {
+		await lockWarmupProjects(tx, input.userId)
+
+		// Only the rows that still exist count. A warm-up that has been approved, funded or earned a coin cannot be deleted at all (see `deleteBlockReason`), so a project that could carry a grant is always in this count: deleting a draft never buys another one.
+		const existing = await tx.themeProject.count({
+			where: { deletedAt: null, theme: Theme.WARMUP, userId: input.userId },
+		})
+		if (existing >= MAX_WARMUP_PROJECTS)
+			throw new HttpError(
+				"CONFLICT",
+				`You already have ${MAX_WARMUP_PROJECTS} warm-up projects. Delete one to start another.`,
+			)
+
+		return tx.themeProject.create({
+			data: {
+				description: input.description,
+				githubRepo: input.githubRepo,
+				requestedTier: input.requestedTier,
+				theme: Theme.WARMUP,
+				title: input.title,
+				userId: input.userId,
+				warmupPhase: input.warmupPhase,
+			},
+		})
+	})
 }
