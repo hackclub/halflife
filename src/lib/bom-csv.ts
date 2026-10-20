@@ -207,9 +207,7 @@ function parseQuantity(value: string | undefined): number {
 function parseUsd(value: string | undefined): number | null {
 	const v = (value ?? "").trim()
 	if (!v) return null
-	const raw =
-		/\$\s*([0-9][0-9,]*(?:\.[0-9]+)?)/.exec(v)?.[1] ??
-		/^\s*([0-9][0-9,]*(?:\.[0-9]+)?)\s*$/.exec(v)?.[1]
+	const raw = /\$\s*([0-9][0-9,]*(?:\.[0-9]+)?)/.exec(v)?.[1] ?? /^\s*([0-9][0-9,]*(?:\.[0-9]+)?)\s*$/.exec(v)?.[1]
 	if (!raw) return null
 	const n = Number(raw.replaceAll(",", ""))
 	if (!Number.isFinite(n) || n < 0) return null
