@@ -25,6 +25,7 @@ import prisma from "@/lib/prisma"
 import { normalizeRepo } from "@/lib/repo"
 import { finalizeReview, reopenPhase, unapprovePhase } from "@/lib/review"
 import { sanitize } from "@/lib/sanitize"
+import { DEFAULT_SESSION_TITLE } from "@/lib/schemas/session"
 import { publicUrlFor } from "@/lib/uploads/r2"
 
 /**
@@ -99,6 +100,24 @@ async function buildDemoUrl(userId: string, buildWeek: number): Promise<string |
 	return publicUrlFor(reel?.objectKey ?? null)
 }
 
+/**
+ * What a journal that is only recordings says to a reviewer.
+ *
+ * The journal form asks for words or timelapses, and an entry with only the latter used to reach Ari titled "Work session" with no text at all – indistinguishable from an entry where the maker forgot to write anything. Naming the situation and its clip count lets the reviewer judge the footage on its own instead of reading silence as a gap.
+ */
+const emptyTimelapseSession = (timelapses: number): string =>
+	`[This is an empty work session with ${timelapses} timelapse${timelapses === 1 ? "" : "s"} attached.]`
+
+/**
+ * Whether an entry carries no words of its own, leaving only the title column's "Work session" placeholder.
+ *
+ * Exported for the backfill that replaces ships already in Ari: a ship cannot be updated in place, so the script finds the entries whose text this rule rewrites.
+ */
+export function isWordlessJournal(content: string | null, title: string): boolean {
+	const storedTitle = sanitize(title)
+	return !sanitize(content ?? "") && (!storedTitle || storedTitle === DEFAULT_SESSION_TITLE)
+}
+
 interface ShipBundle {
 	input: AriShipInput
 	submissionId: string | null
@@ -160,7 +179,6 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
 	const def = getThemeDef(project.theme)
 
 	const journals = project.workSessions.slice(-200).map(session => {
-		const body = sanitize(session.content ?? session.title) || session.title || "Journal entry"
 		const clips = session.timelapses.flatMap(t => {
 			const url =
 				t.provider === "lapse" && t.externalId
@@ -168,6 +186,12 @@ async function buildShipInput(themeProjectId: string, phase: Phase): Promise<Shi
 					: (t.playbackUrl ?? publicUrlFor(t.objectKey))
 			return url ? [url] : []
 		})
+		// An entry can be a recording and nothing else: the maker attached a timelapse and logged the time without writing a word, so the stored title is the "Work session" placeholder. Sent as-is that reads as a blank entry to Ari, as if the work were missing rather than recorded, so say what the entry actually is – the clip links below are its evidence.
+		const written = sanitize(session.content ?? "")
+		const body =
+			isWordlessJournal(session.content, session.title) && clips.length > 0
+				? emptyTimelapseSession(clips.length)
+				: written || sanitize(session.title) || "Journal entry"
 		return Object.assign(
 			{
 				at: session.createdAt,
@@ -280,7 +304,22 @@ async function noteShipFailure(themeProjectId: string, phase: Phase, reason: str
 }
 
 /**
+ * The id of the open ship Ari says a create collided with, from a 409 `already_queued`.
+ *
+ * Ari never replaces an open ship: a create for an `external_id` that already has one is refused, and the refusal names the ship it found. That is the answer to a send whose own response was lost – the ship is there, Half Life just never wrote down its id – so the id is what lets the hand-in be adopted instead of retried forever.
+ */
+function alreadyQueuedShipId(err: unknown): string | null {
+	if (!(err instanceof AriApiError) || err.code !== "already_queued") return null
+	const details = err.details
+	if (typeof details !== "object" || details === null) return null
+	const id = (details as { id?: unknown }).id
+	return typeof id === "string" && id.length > 0 ? id : null
+}
+
+/**
  * Send a hand-in to Ari. Throws on failure so `trackSideEffect` records an ARI_SYNC_FAILURE an operator can replay; the submission keeps a null `ariSubmissionId`, which is what the retry job looks for.
+ *
+ * A 409 `already_queued` is not a failure to send: it is Ari telling us the ship is already there. The id in that response is recorded as this hand-in's ship, exactly as a duplicate create's id is, so a response the network dropped on the way back stops being an hourly retry that can never succeed and the ship stops being invisible to every local count. It is only adopted when no other hand-in already claims it – two rows pointing at one ship would count it twice and let either decision resolve both.
  */
 export async function sendSubmissionToAri(
 	themeProjectId: string,
@@ -290,16 +329,40 @@ export async function sendSubmissionToAri(
 
 	try {
 		const { input, submissionId } = await buildShipInput(themeProjectId, phase)
-		const result = await ari().ships.create(input)
+
+		let id: string
+		let status: "accepted" | "duplicate"
+		try {
+			const result = await ari().ships.create(input)
+			id = result.id
+			status = result.status
+		} catch (err) {
+			const queuedId = alreadyQueuedShipId(err)
+			if (!queuedId || !submissionId) throw err
+
+			const owner = await prisma.phaseSubmission.findFirst({
+				select: { id: true },
+				where: { ariSubmissionId: queuedId },
+			})
+			if (owner && owner.id !== submissionId) {
+				// Bound elsewhere already: adopting it would give one ship two local rows. Leave the retry to a human, who can see which hand-in really owns it.
+				console.error(
+					`[ari] ${themeProjectId}:${phase} collided with ${queuedId}, already recorded on ${owner.id}; not adopting`,
+				)
+				throw err
+			}
+			id = queuedId
+			status = "duplicate"
+		}
 
 		if (submissionId)
 			await prisma.phaseSubmission.update({
 				// The error is cleared with the send: a hand-in that reached Ari is not stuck, and the marker is only ever about the current attempt.
-				data: { ariShipError: null, ariSubmissionId: result.id, ariSyncedAt: new Date() },
+				data: { ariShipError: null, ariSubmissionId: id, ariSyncedAt: new Date() },
 				where: { id: submissionId },
 			})
 
-		return { id: result.id, status: result.status }
+		return { id, status }
 	} catch (err) {
 		const reason = terminalShipFailure(err)
 		if (reason) await noteShipFailure(themeProjectId, phase, reason)
@@ -374,7 +437,6 @@ export async function findUnsyncedAriSubmissions(): Promise<
 // ─── Inbound ─────────────────────────────────────────────────────────────────
 
 type DecisionEvent = Extract<AriWebhookEvent, { event: "review.approved" | "review.changes" | "review.rejected" }>
-type ResetEvent = Extract<AriWebhookEvent, { event: "review.reverted" | "review.requeued" }>
 type FraudEvent = Extract<AriWebhookEvent, { event: "review.fraud" }>
 type UpdatedEvent = Extract<AriWebhookEvent, { event: "ship.updated" }>
 type UnknownEvent = Extract<AriWebhookEvent, { event: "unknown" }>
@@ -419,7 +481,7 @@ export function defaultFeedback(result: ReviewResult): string {
 	return "Ari rejected this submission."
 }
 
-async function ignored(event: AriWebhookEvent, reason: string, externalId: string | null): Promise<void> {
+async function ignored(event: { event: string }, reason: string, externalId: string | null): Promise<void> {
 	await logAudit({
 		action: AuditAction.ARI_WEBHOOK_IGNORED,
 		metadata: { event: event.event, externalId, reason },
@@ -598,10 +660,19 @@ async function applyDecision(event: DecisionEvent, opts: { announce?: boolean } 
 		})
 }
 
+/** The two fields a reset needs; a full webhook event and a status lookup both satisfy it. */
+interface ResetInput {
+	event: "review.reverted" | "review.requeued"
+	external_id: string
+	id: string
+}
+
 /**
- * Undo a result Ari removed. Reverses local status and credit, marks the reviews invalid, and puts the phase back in front of reviewers so it can be decided again. Safe to run more than once.
+ * Undo a result Ari removed. Reverses local status and credit and marks the reviews invalid, so nothing keeps paying for a decision that no longer stands. Safe to run more than once.
+ *
+ * The two events leave the phase in different places, and treating them alike is what left reverted ships sitting in the queue. A requeue returns the same ship to Ari's queue, so the phase goes back to `in_review` and no resubmission is needed. A revert is terminal at Ari – the ship is unshipped and the project may ship again – so the phase goes to `update_requested` and waits for the maker's next hand-in. Leaving it `in_review` made a ship Ari no longer held count as pending here forever, and the maker could not resubmit a phase the site still thought was with reviewers.
  */
-async function applyReset(event: ResetEvent): Promise<void> {
+async function applyReset(event: ResetInput): Promise<void> {
 	const parsed = parseAriExternalId(event.external_id)
 	if (!parsed) {
 		await ignored(event, "unparseable external_id", event.external_id)
@@ -638,17 +709,23 @@ async function applyReset(event: ResetEvent): Promise<void> {
 	if (status === PhaseStatus.approved) await unapprovePhase(themeProjectId, phase, null, null, reason)
 	else if (status === PhaseStatus.rejected) await reopenPhase(themeProjectId, phase, null, null, reason)
 
+	const nextStatus = event.event === "review.reverted" ? PhaseStatus.update_requested : PhaseStatus.in_review
 	await prisma.$transaction(async tx => {
 		await tx.submissionReview.updateMany({
 			data: { invalidated: true, invalidatedAt: new Date() },
 			where: { invalidated: false, submission: { phase, themeProjectId } },
 		})
 		await tx.phaseSubmission.update({
-			data: { ariDecision: null, ariStatus: "review", resolvedAt: null, resolvedResult: null },
+			data: {
+				ariDecision: null,
+				ariStatus: event.event === "review.reverted" ? "reverted" : "review",
+				resolvedAt: null,
+				resolvedResult: null,
+			},
 			where: { id: latest.id },
 		})
 		await tx.themeProject.update({
-			data: phase === Phase.DESIGN ? { designStatus: PhaseStatus.in_review } : { buildStatus: PhaseStatus.in_review },
+			data: phase === Phase.DESIGN ? { designStatus: nextStatus } : { buildStatus: nextStatus },
 			where: { id: themeProjectId },
 		})
 	})
@@ -660,10 +737,8 @@ async function applyReset(event: ResetEvent): Promise<void> {
 		targetType: "ThemeProject",
 	})
 
-	// The phase is back with the maker – unapproving and reopening both land on `update_requested`, and a phase already in front of reviewers stays there – so the row follows the state rather than being reset to "Pending Review", which the project would not be in. The note goes with the decision it belonged to: it is cleared, so an email for whatever comes next cannot quote words that no longer stand.
-	const after =
-		status === PhaseStatus.approved || status === PhaseStatus.rejected ? PhaseStatus.update_requested : status
-	await mirrorReviewDecision(themeProjectId, phase, reviewStatusFor(after), null)
+	// The row follows the phase rather than being reset to "Pending Review" regardless: a requeue is back in the queue, a revert is back with the maker. The note goes with the decision it belonged to – it is cleared, so an email for whatever comes next cannot quote words that no longer stand.
+	await mirrorReviewDecision(themeProjectId, phase, reviewStatusFor(nextStatus), null)
 }
 
 /** An optional post-approval fraud check. A failure flags the maker. */
@@ -810,6 +885,8 @@ export interface ReconcileSummary {
 	failed: number
 	/** Hand-ins Ari still holds open. */
 	pending: number
+	/** Open-hand-ins Ari reports as reverted – terminal ships the local reset would otherwise leave in the queue. */
+	reverted: number
 	/** Decided ships whose newest ship is not this hand-in (withdrawn and resubmitted). */
 	skipped: number
 }
@@ -898,6 +975,7 @@ export async function reconcileAriDecisions(
 		deferred: 0,
 		failed: 0,
 		pending: 0,
+		reverted: 0,
 		skipped: 0,
 	}
 	if (!isAriConfigured()) return summary
@@ -935,6 +1013,27 @@ export async function reconcileAriDecisions(
 
 		const standing = standingDecision(status)
 		if (!standing) {
+			// A reverted ship is terminal at Ari, not still in its queue. If the webhook that said so was lost, the local phase is still `in_review` and would count as pending forever, with no way for the maker to resubmit; apply the reset from the status instead.
+			if (status.phase === "reverted") {
+				summary.reverted += 1
+				// The reset reopens the newest local row, so it may only run when that row is the ship Ari reverted. A newer unsent hand-in has no ship to reset.
+				if (submission.ariSubmissionId !== status.id) {
+					summary.skipped += 1
+					continue
+				}
+				if (!opts.commit) continue
+				try {
+					await applyReset({ event: "review.reverted", external_id: status.external_id, id: status.id })
+					summary.applied += 1
+				} catch (err) {
+					summary.failed += 1
+					console.error(
+						`[ari] reconcile: could not apply the revert for ${submission.themeProjectId}:${submission.phase}`,
+						err,
+					)
+				}
+				continue
+			}
 			summary.pending += 1
 			continue
 		}

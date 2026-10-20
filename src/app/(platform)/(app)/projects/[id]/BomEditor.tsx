@@ -60,6 +60,14 @@ function requiredMessage(fields: (keyof Draft)[]) {
 
 const EMPTY: Draft = { link: "", name: "", purpose: "", quantity: "1", unitCostUsd: "", vendor: "" }
 
+/**
+ * Pasted prices often carry a `$` (`$12.50`) or commas (`1,299.99`), which `Number` would reject. Strip them so pasting just works.
+ */
+function parsePrice(value: string): number {
+	const cleaned = value.replaceAll("$", "").replaceAll(",", "").trim()
+	return cleaned ? Number(cleaned) : Number.NaN
+}
+
 function draftOf(line: BomLine): Draft {
 	return {
 		link: line.link ?? "",
@@ -165,7 +173,7 @@ export function BomEditor({
 		if (saving) return
 		// Every field, because a reviewer prices the tier from this list: a line without a vendor, a link or a price is one they cannot check.
 		const quantity = /^\d+$/.test(draft.quantity.trim()) ? Number(draft.quantity) : Number.NaN
-		const unitCostUsd = draft.unitCostUsd.trim() ? Number(draft.unitCostUsd) : Number.NaN
+		const unitCostUsd = parsePrice(draft.unitCostUsd)
 		let link = draft.link.trim()
 		if (link && !/^https?:\/\//i.test(link)) link = `https://${link}`
 		let linkOk = false
@@ -293,7 +301,9 @@ export function BomEditor({
 		className: cx(inputClass, "py-2 text-[0.88rem]", invalid.has(key) && "border-coral-deep! bg-coral/5"),
 		id: `${id}-${key}`,
 		onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
-			setDraft(d => ({ ...d, [key]: e.target.value }))
+			// Strip a pasted `$` straight off the price field, so what the maker sees is what saves.
+			const next = key === "unitCostUsd" ? e.target.value.replaceAll("$", "") : e.target.value
+			setDraft(d => ({ ...d, [key]: next }))
 			if (error) setError(null)
 			if (invalid.has(key))
 				setInvalid(s => {
@@ -638,7 +648,8 @@ function ExtraRow({
 	const [invalid, setInvalid] = useState(false)
 
 	async function commit() {
-		const n = draft.trim() === "" ? 0 : Number(draft)
+		const cleaned = draft.replaceAll("$", "").replaceAll(",", "").trim()
+		const n = cleaned === "" ? 0 : Number(cleaned)
 		if (!Number.isFinite(n) || n < 0) {
 			setInvalid(true)
 			return
@@ -678,7 +689,7 @@ function ExtraRow({
 							inputMode="decimal"
 							onBlur={() => commit()}
 							onChange={e => {
-								setDraft(e.target.value)
+								setDraft(e.target.value.replaceAll("$", ""))
 								if (invalid) setInvalid(false)
 							}}
 							onKeyDown={e => {

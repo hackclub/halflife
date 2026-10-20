@@ -17,9 +17,17 @@ import {
 	Theme,
 } from "@/app/generated/prisma/enums"
 import { isActiveDay } from "@/lib/analytics"
+import { countAriShips } from "@/lib/ari-counts"
 import { GOAL_OPTIONS } from "@/lib/config/goal"
 import { getStarterProject, STARTER_PROJECT_TIER, stepIndexOf } from "@/lib/config/onboarding"
-import { getThemeDef, scheduleForWeek, TOTAL_WEEKS, WARMUP_THEME, WARMUP_WEEK_ID } from "@/lib/config/program"
+import {
+	getThemeDef,
+	scheduledWeekFor,
+	scheduleForWeek,
+	TOTAL_WEEKS,
+	WARMUP_THEME,
+	WARMUP_WEEK_ID,
+} from "@/lib/config/program"
 import { isTierId, TIERS } from "@/lib/config/tiers"
 import { type Balances, getBalances } from "@/lib/currency"
 import { displayName } from "@/lib/display-name"
@@ -30,7 +38,7 @@ import { type CursorOrderOf, cursorWhere, orderByFor, pageResult, positionWhere,
 import { safeDecrypt } from "@/lib/pii"
 import { getPrinterQualification, type PrinterQualification } from "@/lib/printer"
 import prisma from "@/lib/prisma"
-import { effectiveDateFor, getProgramSettings, startOfDay } from "@/lib/program"
+import { effectiveDateFor, getProgramSettings, startOfDay, weekNumberForDate } from "@/lib/program"
 import { countryOfTimezone, REGIONS, type RegionId, regionOfTimezone } from "@/lib/regions"
 import { shopOrderStaffSelect } from "@/lib/shop"
 
@@ -668,27 +676,41 @@ export async function getAdminCounters(): Promise<{
 	participants: number
 	shipped: number
 }> {
-	// A live hand-in: an open submission on a phase that is actually in review, on a project that still exists. The phase check matters on its own – counting every unresolved row also sweeps up submissions whose phase has moved on without the row resolving.
-	const liveHandIn: Prisma.PhaseSubmissionWhereInput = {
-		OR: [
-			{ phase: Phase.DESIGN, themeProject: { designStatus: PhaseStatus.in_review } },
-			{ phase: Phase.BUILD, themeProject: { buildStatus: PhaseStatus.in_review } },
-		],
-		resolvedAt: null,
-		themeProject: { deletedAt: null },
-	}
+	// The open hand-ins, each phase's newest only: an older unresolved row is a ship Ari no longer holds, and counting it would put a hand-in in the queue that no reviewer can open. The same rule as the reviewer-activity ring, so the two figures on the page cannot disagree.
+	const open = await prisma.phaseSubmission.findMany({
+		select: {
+			ariSubmissionId: true,
+			createdAt: true,
+			id: true,
+			phase: true,
+			themeProject: { select: { buildStatus: true, designStatus: true } },
+			themeProjectId: true,
+		},
+		where: { resolvedAt: null },
+	})
+	const ships = countAriShips(
+		open.map(submission => ({
+			ariSubmissionId: submission.ariSubmissionId,
+			createdAt: submission.createdAt,
+			id: submission.id,
+			phase: submission.phase,
+			phaseStatus:
+				submission.phase === Phase.DESIGN ? submission.themeProject.designStatus : submission.themeProject.buildStatus,
+			resolvedAt: null,
+			result: null,
+			themeProjectId: submission.themeProjectId,
+		})),
+	)
 
-	const [pendingReviews, pendingReviewsUnsent, pendingOrders, participants, shipped] = await Promise.all([
-		// Sent, and Ari holds it. This is the number that answers "how much is in the review queue", and the only one comparable to Ari's own pending count.
-		//
-		// `ariSubmissionId` is the marker rather than `ariStatus`, which only a decision or a reset ever writes and so says nothing about a ship nobody has opened yet.
-		prisma.phaseSubmission.count({ where: { ...liveHandIn, ariSubmissionId: { not: null } } }),
-		// Never reached Ari: the send failed and the retry has not got it through yet. Counted apart because folding it in is how this panel's "awaiting review" drifted hundreds above the queue reviewers actually had – a hand-in Ari has never seen is not waiting for review, it is waiting for us.
-		prisma.phaseSubmission.count({ where: { ...liveHandIn, ariSubmissionId: null } }),
+	const [pendingOrders, participants, shipped] = await Promise.all([
 		prisma.shopOrder.count({ where: { status: ShopOrderStatus.PENDING } }),
 		prisma.user.count(),
 		prisma.printerAward.count({ where: { revokedAt: null } }),
 	])
+	// Sent, and Ari holds it: the figure comparable to Ari's own pending count. `ariSubmissionId` is the marker rather than `ariStatus`, which only a decision or a reset ever writes and so says nothing about a ship nobody has opened yet.
+	const pendingReviews = ships.pending
+	// Never reached Ari: the send failed and the retry has not got it through yet. Counted apart because folding it in is how this panel's "awaiting review" drifted hundreds above the queue reviewers actually had – a hand-in Ari has never seen is not waiting for review, it is waiting for us.
+	const pendingReviewsUnsent = ships.unreached
 	return { participants, pendingOrders, pendingReviews, pendingReviewsUnsent, shipped }
 }
 
@@ -856,6 +878,75 @@ export async function getUserFlowFunnel(): Promise<FlowStep[]> {
 		})
 	}
 	return steps
+}
+
+export interface WeekFlowStep {
+	/** Distinct people who handed in a project for this week. */
+	count: number
+	/** What the week's project is, e.g. "PCBs · design week". */
+	hint: string
+	label: string
+	/** Share of everyone signed up who handed in this week's project. */
+	ofSignupsPct: number
+	week: number
+}
+
+/**
+ * The season week by week: how many people handed in each week's project, for the weeks that have opened.
+ *
+ * "This week's project" is the theme and phase the schedule puts in that week, not the week a hand-in happened to land in – a maker who hands week 2's design in during week 4 still belongs to week 2, which is the week the work was for. Any hand-in counts, in review, approved or sent back, because all three say the maker put the work in; a week taken back has had its open row deleted, so it stops counting. Rows from before `scheduledWeek` was recorded fall back to the theme and phase's own week, the same rule the Loops sync resolves a submission by.
+ *
+ * Only weeks that have opened are returned. A week still in the future has no submitters because nobody could hand in yet, which is not the same finding as a week nobody handed in for, and drawing it as a zero would read as the latter.
+ *
+ * The count is people, not hand-ins: a maker who handed in both the design and the build for a week is one person on that week's row.
+ */
+export async function getUserFlowWeekly(): Promise<WeekFlowStep[]> {
+	const settings = await getProgramSettings()
+	const openWeeks = Math.min(
+		TOTAL_WEEKS,
+		weekNumberForDate(settings.eventStartDate, new Date(), settings.programTimezone),
+	)
+	if (openWeeks < 1) return []
+
+	const [signups, submissions] = await Promise.all([
+		prisma.user.count(),
+		prisma.phaseSubmission.findMany({
+			select: {
+				phase: true,
+				scheduledWeek: true,
+				themeProject: { select: { theme: true, userId: true } },
+			},
+			// Null rows are kept because a hand-in from before `scheduledWeek` was recorded only finds its week through its theme and phase below.
+			where: {
+				OR: [{ scheduledWeek: { gte: 1, lte: openWeeks } }, { scheduledWeek: null }],
+				themeProject: { deletedAt: null },
+			},
+		}),
+	])
+
+	const submitters = new Map<number, Set<string>>()
+	for (const submission of submissions) {
+		const week = submission.scheduledWeek ?? scheduledWeekFor(submission.themeProject.theme, submission.phase)
+		if (week < 1 || week > openWeeks) continue
+		const seen = submitters.get(week) ?? new Set<string>()
+		seen.add(submission.themeProject.userId)
+		submitters.set(week, seen)
+	}
+
+	return Array.from({ length: openWeeks }, (_, i) => {
+		const week = i + 1
+		const scheduled = scheduleForWeek(week)
+		const count = submitters.get(week)?.size ?? 0
+		return {
+			count,
+			hint: scheduled
+				? `${scheduled.theme.label} · ${scheduled.phase === Phase.DESIGN ? "design" : "build"} week`
+				: "No theme scheduled",
+			label: `Week ${week}`,
+			ofSignupsPct: pctOf(count, signups),
+			week,
+		}
+	})
 }
 
 export type ReportStatusFilter = ReportStatus | "ALL"
@@ -1710,7 +1801,7 @@ export interface ReviewerStats {
  *
  * Counted over live decisions only. A review an admin un-approved or Ari reverted is marked `invalidated`, and a row that no longer stands is not a decision the project still has – counting it would make the total only ever grow and leave it disagreeing with Ari after a revert. Only FINAL passes count: a FIRST-pass row is advisory and moves no status and no money (see the ReviewPass enum), so including it would credit a reviewer with a decision they did not make.
  *
- * A project counts once however many of its phases were reviewed. A project is reviewed at most twice, design then build, and the question here is how much has had attention rather than how many hand-ins landed; `getAdminCounters`'s "awaiting review" remains the submission-level figure. Neither is meant to equal a total in Ari's own UI, which counts ships rather than projects, so a reader comparing the two is comparing two different questions. The breakdown attributes each project to its most recent live review so the three outcome rows always add up to the headline above them: a project whose design was approved and whose build came back for changes reads as changes requested, which is where it actually stands.
+ * A project counts once however many of its phases were reviewed. A project is reviewed at most twice, design then build, and the question here is how much has had attention rather than how many hand-ins landed; `getProjectReviewStatuses` is the ship-level ring that mirrors Ari's own board, and `getAdminCounters`'s "awaiting review" is its pending slice. This figure is deliberately a different question, so it will not equal either of them. The breakdown attributes each project to its most recent live review so the three outcome rows always add up to the headline above them: a project whose design was approved and whose build came back for changes reads as changes requested, which is where it actually stands.
  *
  * "Today" is the program timezone's day, the same boundary the activity strip and streaks use, so a review that landed at 11pm New York counts the day the dashboard is on rather than the server's.
  *
@@ -1754,19 +1845,22 @@ export interface ProjectReviewStatusStat {
 }
 
 /**
- * The review board as Ari shows it: one row per ship, by the decision standing on it now.
+ * The review board as Ari shows it: one slice per ship Half Life sent, counted the way Ari counts its own.
  *
- * Ari counts ships, not projects – a (project, phase) hand-in – so this counts the latest submission per phase rather than reading the project's status columns. The columns answer a different question: they follow the phase's *current* step, so a design approved long ago reads as pending once its build is handed in, and a sent-back design reads as pending the moment it is resubmitted. That is why the old version showed everything as pending while Ari showed hundreds of standing decisions.
+ * Ari keeps a row per ship, not per project or per phase. A design sent back for changes and handed in again leaves the first ship on Ari's board as "changes" and adds a second as "pending"; the phase has one current ship but two decisions behind it. Counting only the newest submission per phase is what made this ring read hundreds of change requests short and a handful of rejections missing: those ships were real, and they are still in Ari's totals.
  *
- * Each phase contributes at most one slice, decided by its newest submission: an unresolved hand-in Ari holds is pending; a decided one reads from its live FINAL review, falling back to the submission's own recorded result. An un-approval invalidates the review without reopening the submission, so a decided submission with no live review left keeps its recorded result rather than vanishing. A hand-in Ari never received (`ariSubmissionId` null) is counted nowhere – it is not on Ari's board either, and the reviewer-activity panel already counts it apart.
+ * So every resolved submission that reached Ari contributes its decision, however many times its phase has since been resubmitted. Only the pending slice is per phase: a phase can have one open ship, and the newest submission decides whether that is the one Ari holds. That also keeps a stale row from a reverted or superseded ship out of the queue count. A hand-in Ari never received (`ariSubmissionId` null) is counted nowhere – it is not on Ari's board either, and the panel counts it apart.
+ *
+ * Deleted projects are included: Ari keeps their ships, and dropping them here would make the mirror disagree with the board it is meant to mirror. A project can only be deleted once neither phase is in review or approved, so this can only affect decided history.
  */
 export async function getProjectReviewStatuses(): Promise<ProjectReviewStatusStat[]> {
 	const submissions = await prisma.phaseSubmission.findMany({
-		// Newest first, so the first row seen for a phase is that phase's current ship.
 		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
 		select: {
 			ariDecision: true,
 			ariSubmissionId: true,
+			createdAt: true,
+			id: true,
 			phase: true,
 			resolvedAt: true,
 			resolvedResult: true,
@@ -1776,38 +1870,31 @@ export async function getProjectReviewStatuses(): Promise<ProjectReviewStatusSta
 				take: 1,
 				where: { invalidated: false, pass: ReviewPass.FINAL },
 			},
+			themeProject: { select: { buildStatus: true, designStatus: true } },
 			themeProjectId: true,
 		},
-		where: { themeProject: { deletedAt: null } },
 	})
 
-	const latest = new Map<string, (typeof submissions)[number]>()
-	for (const submission of submissions) {
-		const key = `${submission.themeProjectId}:${submission.phase}`
-		if (!latest.has(key)) latest.set(key, submission)
-	}
-
-	let pending = 0
-	let needsChanges = 0
-	let rejected = 0
-	let approved = 0
-	for (const submission of latest.values()) {
-		if (submission.resolvedAt === null) {
-			if (submission.ariSubmissionId !== null) pending += 1
-			continue
-		}
-		const result = submission.reviews[0]?.result ?? submission.resolvedResult ?? ariToResult(submission.ariDecision)
-		if (result === ReviewResult.APPROVED) approved += 1
-		else if (result === ReviewResult.RETURNED) needsChanges += 1
-		else if (result === ReviewResult.REJECTED) rejected += 1
-		// A resolved submission with no recorded outcome at all is corrupt data, not a slice: counted nowhere rather than misfiled.
-	}
+	const counts = countAriShips(
+		submissions.map(submission => ({
+			ariSubmissionId: submission.ariSubmissionId,
+			createdAt: submission.createdAt,
+			id: submission.id,
+			phase: submission.phase,
+			phaseStatus:
+				submission.phase === Phase.DESIGN ? submission.themeProject.designStatus : submission.themeProject.buildStatus,
+			resolvedAt: submission.resolvedAt,
+			// The live review is the record of a decision; an un-approval invalidates it without reopening the submission, so the submission's own result is the fallback that keeps a decided ship on the board.
+			result: submission.reviews[0]?.result ?? submission.resolvedResult ?? ariToResult(submission.ariDecision),
+			themeProjectId: submission.themeProjectId,
+		})),
+	)
 
 	return [
-		{ label: "Approved", value: approved },
-		{ label: "Needs changes", value: needsChanges },
-		{ label: "Rejected", value: rejected },
-		{ label: "Pending", value: pending },
+		{ label: "Approved", value: counts.approved },
+		{ label: "Needs changes", value: counts.changes },
+		{ label: "Rejected", value: counts.rejected },
+		{ label: "Pending", value: counts.pending },
 	]
 }
 

@@ -2,6 +2,7 @@ import "dotenv/config"
 import { readdirSync, readFileSync, statSync } from "node:fs"
 import { join, relative } from "node:path"
 import type { z } from "zod"
+import type { ReviewResult as AriReviewResult } from "../src/app/generated/prisma/enums"
 import type { JournalEntry } from "../src/lib/repo-sync-files"
 
 /**
@@ -506,6 +507,70 @@ async function bodies() {
 	}
 	check("ari · pending: no submissions means nothing pending", selectPendingShips(projects, []).length === 0)
 	check("ari · pending: no projects means nothing pending", selectPendingShips([], []).length === 0)
+
+	/* ── 5b-iii. The reviewer-activity ring, counted as Ari counts ─────────── */
+	//
+	// Ari keeps every ship version on its board, so a resubmission adds a row without removing the changes ship before it. Counting only the newest per phase is the regression this pins: it read hundreds of change requests short and put reverted ships in the pending queue.
+	const { countAriShips } = await import("../src/lib/ari-counts")
+	const { ReviewResult } = await import("../src/app/generated/prisma/enums")
+	const ship = (over: Partial<Parameters<typeof countAriShips>[0][number]> = {}) => ({
+		ariSubmissionId: "ship_1",
+		createdAt: at(0),
+		id: "sub_1",
+		phase: Phase.DESIGN,
+		phaseStatus: PhaseStatus.in_review,
+		resolvedAt: null as Date | null,
+		result: null as AriReviewResult | null,
+		themeProjectId: "p1",
+		...over,
+	})
+	{
+		// A design sent back and handed in again: the changes ship stays on Ari's board beside the new pending one.
+		const counts = countAriShips([
+			ship({ id: "old", resolvedAt: at(1), result: ReviewResult.RETURNED }),
+			ship({ ariSubmissionId: "ship_2", createdAt: at(5), id: "new" }),
+		])
+		check(
+			"ari · counts: a resubmission keeps the earlier changes ship",
+			counts.changes === 1 && counts.pending === 1,
+			JSON.stringify(counts),
+		)
+	}
+	{
+		// A reverted ship is terminal at Ari: the phase waits for a new hand-in, and the old ship is not pending.
+		const counts = countAriShips([ship({ phaseStatus: PhaseStatus.update_requested })])
+		check("ari · counts: a reverted ship is not pending", counts.pending === 0, JSON.stringify(counts))
+	}
+	{
+		// Two open rows for one phase is a stale reset left behind; only the newest can be Ari's open ship.
+		const counts = countAriShips([
+			ship({ id: "old" }),
+			ship({ ariSubmissionId: "ship_2", createdAt: at(5), id: "new" }),
+		])
+		check("ari · counts: only the newest open row per phase is pending", counts.pending === 1, JSON.stringify(counts))
+	}
+	{
+		// The newest hand-in never reached Ari, so the phase is waiting on us and the older ship must not stand in for it.
+		const counts = countAriShips([ship({ id: "old" }), ship({ ariSubmissionId: null, createdAt: at(5), id: "new" })])
+		check(
+			"ari · counts: an unsent newest hand-in is counted apart",
+			counts.pending === 0 && counts.unreached === 1,
+			JSON.stringify(counts),
+		)
+	}
+	{
+		// A console decision on a hand-in Ari never received is not a ship on its board.
+		const counts = countAriShips([ship({ ariSubmissionId: null, resolvedAt: at(1), result: ReviewResult.APPROVED })])
+		check("ari · counts: a decided hand-in Ari never saw is not a ship", counts.approved === 0, JSON.stringify(counts))
+	}
+	{
+		// The same ship recorded on two rows through a data fault is still one ship at Ari.
+		const counts = countAriShips([
+			ship({ id: "a", resolvedAt: at(1), result: ReviewResult.REJECTED }),
+			ship({ id: "b", resolvedAt: at(2), result: ReviewResult.REJECTED }),
+		])
+		check("ari · counts: one ship id counts once", counts.rejected === 1, JSON.stringify(counts))
+	}
 
 	/* ── 5b-ii. The decision standing on a ship ────────────────────────────── */
 	//

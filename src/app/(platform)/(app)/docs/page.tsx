@@ -23,18 +23,23 @@ export default function DocsIndex() {
 						<h2 className="label mb-3 text-navy-faint">{section}</h2>
 						<ul className="grid gap-3">
 							{DOCS.filter(d => d.section === section).map(doc => (
-								<Panel as="li" className="bg-paper" key={doc.slug} radius={18} tone="line">
-									<ArticleLink
-										className="group flex items-center gap-4 px-5 py-4 sm:px-6 sm:py-5"
-										href={`/docs/${doc.slug}`}
-									>
+								<Panel
+									as="li"
+									className="group bg-paper transition-[background-color,transform] duration-150 hover:-translate-y-0.5 hover:bg-mint/15 hover:before:border-teal-deep focus-within:before:border-teal-deep active:translate-y-px active:bg-mint/25 active:before:border-teal-dark before:transition-colors before:duration-150"
+									key={doc.slug}
+									radius={18}
+									tone="line"
+								>
+									<ArticleLink className="flex items-center gap-4 px-5 py-4 sm:px-6 sm:py-5" href={`/docs/${doc.slug}`}>
 										<span className="min-w-0 flex-1">
-											<span className="block text-[1.1rem] leading-tight font-extrabold text-navy transition-colors group-hover:text-teal-ink">
+											<span className="block text-[1.1rem] leading-tight font-extrabold text-navy transition-colors group-hover:text-teal-ink group-hover:underline group-hover:decoration-2 group-hover:underline-offset-4">
 												{doc.title}
 											</span>
-											<span className="mt-1 block text-[0.88rem] leading-snug text-navy-soft">{doc.summary}</span>
+											<span className="mt-1 block text-[0.88rem] leading-snug text-navy-soft transition-colors group-hover:text-navy">
+												{doc.summary}
+											</span>
 										</span>
-										<IconArrowRight className="shrink-0 text-xl text-navy-faint transition-transform duration-200 group-hover:translate-x-1 group-hover:text-teal-ink" />
+										<IconArrowRight className="shrink-0 text-xl text-navy-faint transition-[color,transform] duration-200 group-hover:translate-x-1 group-hover:text-teal-ink group-active:translate-x-1.5 group-active:text-teal-dark" />
 									</ArticleLink>
 								</Panel>
 							))}

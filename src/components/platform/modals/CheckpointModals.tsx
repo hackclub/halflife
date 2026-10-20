@@ -805,8 +805,8 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						    the timelapses recorded. */}
 						{lapseHours > 0 && (
 							<p className="hand mt-1.5 text-[0.76rem] tabular-nums text-navy-soft" role="status">
-								{fmtH(lapseHours)} from timelapses{typed > 0 ? ` + ${fmtH(typed)} declared` : ""} = {fmtH(claimed)}{" "}
-								logged
+								{fmtDuration(coveredSeconds)} from timelapses
+								{typed > 0 ? ` + ${fmtDuration(typed * 3600)} declared` : ""} = {fmtDuration(claimed * 3600)} logged
 							</p>
 						)}
 						{editing && legacyBump && (

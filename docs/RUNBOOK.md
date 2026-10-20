@@ -52,6 +52,15 @@ Coolify.
    rewrites them in one pass. See [BACKEND.md](./BACKEND.md) → Reviewing with
    Ari.
 
+   **When the review ring disagrees with Ari's board.**
+   `bun --conditions=react-server scripts/ari-review-counts.ts --ari` prints the
+   local ship counts beside the phase Ari reports for every recorded ship id,
+   including the states Ari's four slices omit, and names any ship whose local
+   state disagrees. Run it with the production `DATABASE_URL` and the program's
+   `ARI_*` secrets. A 409 `already_queued` that `ari-retry` used to retry forever
+   is now adopted as the ship's id, so one run of the hourly job also links any
+   hand-in whose original send response was lost.
+
 3. **Create the project and database.**
 
    ```

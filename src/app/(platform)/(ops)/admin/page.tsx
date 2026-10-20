@@ -25,6 +25,7 @@ import {
 	getReviewerStats,
 	getUserFlowFunnel,
 	getUserFlowSankey,
+	getUserFlowWeekly,
 	getVerificationStats,
 	type HoursDistribution,
 	type WeekHoursCluster,
@@ -60,6 +61,7 @@ export default async function AdminOverviewPage() {
 		syncs,
 		flow,
 		sankeyData,
+		weeklyFlow,
 		areas,
 		countries,
 		activity,
@@ -87,6 +89,7 @@ export default async function AdminOverviewPage() {
 		]),
 		getUserFlowFunnel(),
 		getUserFlowSankey(),
+		getUserFlowWeekly(),
 		getAreaStats(),
 		getCountryStats(),
 		getDailyActivity(),
@@ -115,7 +118,7 @@ export default async function AdminOverviewPage() {
 			<Panel
 				actions={
 					<span className="hl-hint" style={{ fontSize: "0.78rem" }}>
-						the headline counts hand-ins, the outcome rows count projects
+						counted like Ari: every ship, including resubmissions
 					</span>
 				}
 				title="Reviewer activity"
@@ -157,16 +160,16 @@ export default async function AdminOverviewPage() {
 					))}
 				</Table>
 				<p className="hl-hint" style={{ fontSize: "0.78rem", marginTop: "0.75rem" }}>
-					The ring counts ships the way Ari does – one slice per (project, phase) hand-in, by the decision standing on
-					it now. A design approved long ago still reads as approved even once its build is handed in, and a sent-back
-					design only leaves changes requested when it is resubmitted. Pending is unresolved hand-ins Ari holds;
+					The ring counts ships the way Ari does – every version of every (project, phase) hand-in, not just the newest.
+					A design sent back and resubmitted therefore keeps its old changes ship alongside the new pending one, which
+					is why this total matches Ari&apos;s board. Pending is the newest hand-in of each phase that Ari still holds;
 					anything Ari never received is counted apart above, because a hand-in Ari has never seen is not on its board.
-					Console decisions are included. A review an admin later undid still reads by the submission it decided, since
-					the hand-in itself stays resolved.
+					Console decisions are included. A ship an admin or Ari undid no longer counts, and a reverted ship leaves the
+					queue rather than lingering as pending.
 				</p>
 			</Panel>
 
-			<UserFlowDiagram sankey={sankeyData.diagram} steps={flow} />
+			<UserFlowDiagram sankey={sankeyData.diagram} steps={flow} weeks={weeklyFlow} />
 
 			<Panel title="Activities after onboarding">
 				<ActivityShareChart share={sankeyData.activityShare} />
