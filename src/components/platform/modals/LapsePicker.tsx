@@ -217,8 +217,9 @@ export function LapsePicker({
 									aria-pressed={selected}
 									className={cx(
 										"sketch group flex w-full flex-1 items-center gap-3 rounded-2xl p-2.5 text-left transition-[background-color,transform] duration-150",
-										selected ? "bg-violet-pale" : "bg-white hover:bg-cream",
+										selected ? "bg-violet-pale" : "bg-white",
 										blocked ? "cursor-not-allowed opacity-60" : "active:translate-y-px",
+										!selected && !blocked && "hover:bg-cream",
 									)}
 									disabled={blocked}
 									onClick={() => onToggle(t)}
