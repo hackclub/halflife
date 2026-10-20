@@ -302,8 +302,8 @@ export function BomEditor({
 		id: `${id}-${key}`,
 		onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
 			// Strip a pasted `$` straight off the price field, so what the maker sees is what saves.
-			const next = key === "unitCostUsd" ? e.target.value.replaceAll("$", "") : e.target.value
-			setDraft(d => ({ ...d, [key]: next }))
+			const value = key === "unitCostUsd" ? e.target.value.replaceAll("$", "") : e.target.value
+			setDraft(d => ({ ...d, [key]: value }))
 			if (error) setError(null)
 			if (invalid.has(key))
 				setInvalid(s => {
