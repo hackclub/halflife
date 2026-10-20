@@ -81,7 +81,7 @@ async function respondEphemeral(responseUrl: string, text: string) {
 			signal: AbortSignal.timeout(10_000),
 		})
 	} catch (err) {
-		console.error(`Failed to post ephemeral response: ${err}`)
+		console.error(`Failed to post ephemeral response: ${String(err)}`)
 	}
 }
 
@@ -95,12 +95,12 @@ async function reactResolved(ref: Partial<TicketRef>) {
 	try {
 		await removeReaction(ref.helpChannel, ref.helpTs, PENDING_REACTION)
 	} catch (err) {
-		console.error(`Failed to clear the pending reaction: ${err}`)
+		console.error(`Failed to clear the pending reaction: ${String(err)}`)
 	}
 	try {
 		await addReaction(ref.helpChannel, ref.helpTs, RESOLVED_REACTION)
 	} catch (err) {
-		console.error(`Failed to add resolved reaction: ${err}`)
+		console.error(`Failed to add resolved reaction: ${String(err)}`)
 	}
 }
 
@@ -173,14 +173,14 @@ async function handleMarkHelped(payload: InteractionPayload, action: BlockAction
 				)
 			} else console.error(`mark_helped found no reminder to mark helped in thread ${ref.helpTs}`)
 		} catch (err) {
-			console.error(`Failed to mark help thread ${ref.helpTs} as helped: ${err}`)
+			console.error(`Failed to mark help thread ${ref.helpTs} as helped: ${String(err)}`)
 		}
 
 		// Best-effort: a database hiccup must not sink the resolution.
 		try {
 			await resolveHelpTicket({ helpChannel: ref.helpChannel, helpTs: ref.helpTs, resolvedBy: payload.user.id })
 		} catch (err) {
-			console.error(`Failed to record ticket resolution for ${ref.helpTs}: ${err}`)
+			console.error(`Failed to record ticket resolution for ${ref.helpTs}: ${String(err)}`)
 		}
 	}
 
@@ -192,7 +192,7 @@ async function handleMarkHelped(payload: InteractionPayload, action: BlockAction
 				...resolveBlocks(undefined, payload.user.id),
 			])
 	} catch (err) {
-		console.error(`Failed to clear the tickets-channel message: ${err}`)
+		console.error(`Failed to clear the tickets-channel message: ${String(err)}`)
 	}
 
 	await reactResolved(ref)
@@ -233,7 +233,7 @@ async function handleSelfResolve(payload: InteractionPayload, action: BlockActio
 		try {
 			await resolveHelpTicket({ helpChannel: ref.helpChannel, helpTs: ref.helpTs, resolvedBy: payload.user.id })
 		} catch (err) {
-			console.error(`Failed to record ticket resolution for ${ref.helpTs}: ${err}`)
+			console.error(`Failed to record ticket resolution for ${ref.helpTs}: ${String(err)}`)
 		}
 
 	if (ref.ticketsChannel && ref.ticketsTs && ref.helpChannel)
@@ -244,7 +244,7 @@ async function handleSelfResolve(payload: InteractionPayload, action: BlockActio
 					...resolveBlocks(undefined, payload.user.id, "marked it themselves"),
 				])
 		} catch (err) {
-			console.error(`Failed to clear the tickets-channel message: ${err}`)
+			console.error(`Failed to clear the tickets-channel message: ${String(err)}`)
 		}
 
 	await reactResolved(ref)
@@ -303,7 +303,7 @@ async function handleThreadMarkHelped(payload: InteractionPayload, action: Block
 		try {
 			await resolveHelpTicket({ helpChannel: ref.helpChannel, helpTs: ref.helpTs, resolvedBy: payload.user.id })
 		} catch (err) {
-			console.error(`Failed to record ticket resolution for ${ref.helpTs}: ${err}`)
+			console.error(`Failed to record ticket resolution for ${ref.helpTs}: ${String(err)}`)
 		}
 
 	if (ref.ticketsChannel && ref.ticketsTs && ref.helpChannel)
@@ -314,7 +314,7 @@ async function handleThreadMarkHelped(payload: InteractionPayload, action: Block
 					...resolveBlocks(undefined, payload.user.id),
 				])
 		} catch (err) {
-			console.error(`Failed to clear the tickets-channel message: ${err}`)
+			console.error(`Failed to clear the tickets-channel message: ${String(err)}`)
 		}
 
 	await reactResolved(ref)
@@ -365,7 +365,7 @@ async function handleReopen(payload: InteractionPayload, action: BlockAction) {
 	try {
 		reopened = await reopenHelpTicket({ helpChannel: ref.helpChannel, helpTs: ref.helpTs })
 	} catch (err) {
-		console.error(`Failed to reopen ticket ${ref.helpTs}: ${err}`)
+		console.error(`Failed to reopen ticket ${ref.helpTs}: ${String(err)}`)
 	}
 	if (!reopened) return
 
@@ -410,7 +410,7 @@ async function handleReopen(payload: InteractionPayload, action: BlockAction) {
 				`[slack] reopened ticket mirror post to ${ticketsChannel} failed (${mirror.error ?? "no message ts"})`,
 			)
 	} catch (err) {
-		console.error(`[slack] failed to re-queue reopened ticket ${ref.helpTs}: ${err}`)
+		console.error(`[slack] failed to re-queue reopened ticket ${ref.helpTs}: ${String(err)}`)
 	}
 
 	// The thread goes back to exactly the open state: reminders-era buttons rebuilt with the fresh mirror reference, reopen button and resolved note stripped.
@@ -430,7 +430,7 @@ async function handleReopen(payload: InteractionPayload, action: BlockAction) {
 			reopenBlocks(payload.message.blocks, threadRef),
 		)
 	} catch (err) {
-		console.error(`Failed to rewrite reopened thread message ${ref.helpTs}: ${err}`)
+		console.error(`Failed to rewrite reopened thread message ${ref.helpTs}: ${String(err)}`)
 	}
 
 	// Reactions swap back: done off, waiting on.
@@ -438,12 +438,12 @@ async function handleReopen(payload: InteractionPayload, action: BlockAction) {
 		try {
 			await removeReaction(ref.helpChannel, ref.helpTs, RESOLVED_REACTION)
 		} catch (err) {
-			console.error(`Failed to clear the resolved reaction: ${err}`)
+			console.error(`Failed to clear the resolved reaction: ${String(err)}`)
 		}
 		try {
 			await addReaction(ref.helpChannel, ref.helpTs, PENDING_REACTION)
 		} catch (err) {
-			console.error(`Failed to re-add the pending reaction: ${err}`)
+			console.error(`Failed to re-add the pending reaction: ${String(err)}`)
 		}
 	}
 }

@@ -163,7 +163,7 @@ async function main() {
 			if (updated % 100 === 0) console.log(`updated ${updated}/${entries.length}…`)
 		} catch (err) {
 			failed += batch.length
-			console.error(`  batch failed: ${err instanceof Error ? err.message : err}`)
+			console.error(`  batch failed: ${err instanceof Error ? err.message : String(err)}`)
 		}
 	}
 	console.log(`updated: ${updated}, failed: ${failed}`)
