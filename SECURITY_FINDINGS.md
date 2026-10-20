@@ -1,5 +1,143 @@
 # Security & Bug Audit — halflife
 
+## Audit of 2026-10-20 (branch `fix/security-bug-audit`)
+
+A second, wider pass over the whole tree: every route handler, the money
+paths, the data layer, the deployment, and the client-facing reads. Method:
+read every file in scope, then verify the high-severity candidates against a
+scratch Postgres (all migrations applied, `migrate diff` clean, the
+DB-backed verifiers run) and against Bun, the production runtime.
+
+Everything below is fixed. The commits are in order, and each one is
+self-contained.
+
+### High
+
+- **The tier's funding-hours floor was a client-only rule.** `submitFloorFor`
+  is what the submit sheet promises – a tier's funded block is the least a
+  week can be handed in on – but nothing on the server checked it. A
+  participant could request Tier 3 (twenty funded hours, a hundred dollars of
+  parts), hand a design in on an hour of work, and have it approved at that
+  tier by the automatic reviewer, which takes the tier from the request.
+  The floor is now checked when a design is handed in, and a decision cannot
+  pay a grant on fewer approved hours than the tier funds. The automatic
+  reviewer steps the tier down to the one the approved hours earned rather
+  than refusing the decision, so it never lands as an error it would keep
+  redelivering. (`dbd576c6`)
+- **A decided phase was not frozen.** Only a phase *in review* refused an
+  edit, so an approved design – one already paid for – could have its title,
+  description, repo link, cover and artifact links rewritten under the
+  reviewer who had judged them. The parts list and the tier were already
+  final at that point, so the project's own details now are too. (`5e3ea9b0`)
+- **The database guard against duplicate content reports had been dropped.**
+  Five partial unique indexes enforcing one open report per reporter per
+  target were created by `20261007120000_report_open_uniqueness` and dropped
+  by an unrelated migration a fortnight later, and the schema never said so,
+  so `migrate dev` never brought them back. The route's `P2002` catch had
+  been dead code: two presses in flight filed the same complaint twice. The
+  indexes are back, declared in the schema this time. (`139d7877`)
+- **The public origin fell back to the caller's `Host` header.** Three
+  modules resolved the site's own address three different ways, and one of
+  them used the request's host – which is the `Host` header. A redirect built
+  from it answers `307 Location: https://<whatever the caller asked for>/`,
+  on `/`, on `/signed-out` and on the auth callback. There is now one
+  resolver, and it never uses an arbitrary host. (`2dd3ad7b`)
+
+### Medium
+
+- **A grant was keyed on the project, not on the card.** The hashid that
+  identifies the card on HCB's side was unconstrained, so two projects – or
+  two makers – could point at the same card and each pay it, and nothing
+  checked whose card it was. The hashid is unique now, the card is checked
+  against the maker before the money moves, and the trail records whose card
+  it was. (`2a3c69ce`)
+- **Un-approving a design could leave a balance negative.** The reversal
+  reconciled the grant to zero by writing a delta against the grant's own
+  rows, which say nothing about what the maker has since spent, so a maker
+  who had spent 30 of a 100-coin grant was left at −30 – a state the shop
+  and every display refuse to create. The reversal now takes what the maker
+  still has, stops at zero, and says in the row's note and the audit row how
+  much could not be taken back. (`2a3c69ce`)
+- **The decision froze a total it had read before taking the lock.** A batch
+  approving hours in between could change the rows after the number was read.
+  The hours are read under the lock now; the live Hackatime fetch stays
+  outside the transaction, because it is network I/O with a ten second
+  timeout and two retries. (`2a3c69ce`)
+- **The staff console leaked contact details to the lower-trust roles.** The
+  project directory returned every participant's email and Slack id to
+  REVIEWER and FULFILLER, the user detail route returned the printer
+  award's encrypted address and phone plus the parcel tracking number to
+  anybody holding `VIEW_USERS`, and the directory's search box matched email
+  and Slack id whatever the caller's role – so it answered "is this person
+  registered here" for any address. The same `includePii` rule the user
+  directory already used now applies to all three. (`e2a8cffe`)
+- **A purchase could leave the SPENDABLE balance negative.** Affordability
+  was measured against the combined balance and the debit was written
+  against SPENDABLE, so coins sitting in the legacy BANKED pot drove it
+  negative. The debit now follows the coins, pot by pot. (`e2a8cffe`)
+- **Cursor pagination dropped and repeated rows.** A cursor was a bare row
+  id over a compound order, and a cuid says nothing about the timestamp it
+  sits next to, so a page boundary between two rows written in the same
+  millisecond dropped one and repeated another – and a cursor pointing at a
+  deleted row returned an empty page. The cursor is the position in the
+  order now. The feed, the comments feed, the review queue, the participant
+  export, the session list, the order list, the staff console's lists and
+  the ledger all page on that. (`139d7877`, `2dd3ad7b`)
+- **The unauthenticated handoff upload route could exhaust memory.** Its
+  body size was the caller's choice and was held in memory three or four
+  times over while it was parsed. It has its own budget now, and the process
+  has a byte budget of its own, taken before the body is read and waited on
+  rather than refused. (`b69a9188`)
+- **Warm-up projects were uncounted,** and each approved warm-up design
+  carries a parts grant, so an uncapped number of them was an uncapped number
+  of grants. Three per maker, counted and created under a lock. The number is
+  a product decision; it is a constant in `lib/config/program.ts`. (`2a3c69ce`)
+- **The program's timezone was typed as free text.** Every week boundary ran
+  it through `Intl`, so one admin typo took down every trail snapshot, every
+  session write and the streak recompute at once. It is checked as an IANA
+  zone where it is typed. (`5e3ea9b0`)
+- **Two queries ran concurrently on one transaction client,** which is one
+  connection, so they interleaved on it. The active-days rebuild also
+  deleted and re-inserted without a lock, so two concurrent rebuilds
+  collided on the primary key. (`139d7877`)
+
+### Low
+
+- A grant's audit row was written after the money moved, with the variant
+  that swallows failures (`2a3c69ce`); Ari's approved hours were unbounded
+  where the console's are capped (`2a3c69ce`); a buyer's note was accepted
+  and thrown away (`2a3c69ce`); a Slack delivery was only guarded by Slack's
+  own retry header, so a captured signed request replayed inside the
+  five-minute window invited members twice and posted tickets twice
+  (`b69a9188`); the rate limiters dropped the bucket a throttled caller
+  owned when their map filled up (`b69a9188`); redacting an email from a log
+  line took eight seconds on a two hundred thousand character string
+  (`b69a9188`); two background jobs sorted their whole table
+  (`139d7877`); the analytics export opened a transaction per participant
+  (`139d7877`); two GET routes wrote to the database, which a cross-site
+  navigation could reach (`3e4bb9bf`); a repeated query parameter reached
+  Prisma as an array and 500ed (`3e4bb9bf`); the build context did not
+  exclude the credential files the repository does (`2dd3ad7b`); the shipped
+  template set the public URL to localhost (`2dd3ad7b`); the trusted host
+  list was a wildcard over a domain many unrelated projects share
+  (`2dd3ad7b`); the loopback test matched any host starting with `127.`
+  (`2dd3ad7b`).
+
+### Notes for the maintainer
+
+- `MAX_WARMUP_PROJECTS` (3) and the hour ceiling (168) are product numbers.
+  Both are constants in `lib/config/program.ts`.
+- The HCB card-owner check needs a token that may read the maker's email
+  (`pii`, or an admin in their org). A token that cannot will refuse every
+  grant; `HCB_VERIFY_GRANT_OWNER=false` is the documented escape hatch, and
+  the audit row records that nobody checked.
+- The public origin is now one resolver, and the list of hosts the deployment
+  answers on is configuration (`APP_PUBLIC_HOSTS`).
+
+---
+
+## Audit of 2026-10-06
+
 Date: 2026-10-06
 Scope: `src/`, `prisma/`, `scripts/`, `next.config.ts`, `Dockerfile`, `docker-entrypoint.sh`, `slack-app-manifest.yml`, `.env.example`
 Method: manual code scan + targeted verification of high-severity candidates. No dynamic testing.
