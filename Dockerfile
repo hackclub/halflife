@@ -112,6 +112,20 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 
+# The public origin, carried into the runtime.
+#
+# Not a secret: the value is in the browser bundle already. It is here so the runtime
+# and the build agree. `NEXT_PUBLIC_*` is inlined into the bundle when it is built, so
+# the builder's ARG is what the app itself uses; this ENV is what the parts of the
+# image that are NOT bundled read – the seed, the backfill scripts, anything run with
+# `bun` inside the container. The operator sets the same value as the build arg and as
+# a runtime env var, so the app, the scripts and the browser all name one origin.
+#
+# The ARG is repeated because an ARG is scoped to the stage that declares it, and the
+# runner is `FROM base` rather than `FROM prepared` (see the builder stages above).
+ARG NEXT_PUBLIC_APP_URL
+ENV NEXT_PUBLIC_APP_URL="${NEXT_PUBLIC_APP_URL}"
+
 RUN apk add --no-cache curl \
  && addgroup --system --gid 1001 nodejs \
  && adduser --system --uid 1001 nextjs

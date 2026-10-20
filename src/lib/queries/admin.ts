@@ -26,6 +26,7 @@ import { displayName } from "@/lib/display-name"
 import { type LinkRow, rollUpHours, type SessionRow } from "@/lib/hours"
 import { type RecordedWindow, timelapseWindow } from "@/lib/hours-overlap"
 import { pctOf, round1 } from "@/lib/numbers"
+import { type CursorOrderOf, cursorWhere, orderByFor, pageResult, positionWhere, readCursor } from "@/lib/pagination"
 import { safeDecrypt } from "@/lib/pii"
 import { getPrinterQualification, type PrinterQualification } from "@/lib/printer"
 import prisma from "@/lib/prisma"
@@ -46,30 +47,45 @@ export interface DirectoryUser {
 	verificationStatus: string | null
 }
 
+/**
+ * The directory's order: newest first, with the id as the tiebreaker.
+ *
+ * The cursor carries both halves of that position, so a page boundary never drops an account or hands one out twice.
+ */
+const USERS_ORDER = {
+	at: (row: DirectoryUser) => row.createdAt,
+	column: "createdAt",
+	direction: "desc",
+} as const satisfies CursorOrderOf<DirectoryUser, Prisma.UserOrderByWithRelationInput>
+
 export async function listUsers(
 	opts: { q?: string; cursor?: string; limit: number },
 	flags?: { includePii?: boolean },
 ): Promise<{ items: DirectoryUser[]; nextCursor: string | null }> {
 	const includePii = flags?.includePii ?? false
 	// Without PII the search box matches names only. Matching an address or a Slack id would turn the directory into a registration oracle: anybody holding VIEW_USERS could confirm whether a given person has an account here.
+	//
+	// The search sits inside an AND array rather than at the top level. The cursor's own filter is a top-level OR, and two ORs in one where cancel each other out rather than both applying: a page of search results that ignored the search would be a worse answer than no page at all.
+	const base: Prisma.UserWhereInput = opts.q
+		? {
+				AND: [
+					{
+						OR: [
+							{ name: { contains: opts.q, mode: "insensitive" } },
+							{ displayName: { contains: opts.q, mode: "insensitive" } },
+							...(includePii
+								? ([
+										{ email: { contains: opts.q, mode: "insensitive" } },
+										{ slackId: { contains: opts.q, mode: "insensitive" } },
+									] satisfies Prisma.UserWhereInput[])
+								: []),
+						],
+					},
+				],
+			}
+		: {}
 	const rows = await prisma.user.findMany({
-		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-		take: opts.limit + 1,
-		where: opts.q
-			? {
-					OR: [
-						{ name: { contains: opts.q, mode: "insensitive" } },
-						{ displayName: { contains: opts.q, mode: "insensitive" } },
-						...(includePii
-							? ([
-									{ email: { contains: opts.q, mode: "insensitive" } },
-									{ slackId: { contains: opts.q, mode: "insensitive" } },
-								] satisfies Prisma.UserWhereInput[])
-							: []),
-					],
-				}
-			: undefined,
-		...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
+		orderBy: orderByFor(USERS_ORDER),
 		select: {
 			createdAt: true,
 			displayName: true,
@@ -81,16 +97,18 @@ export async function listUsers(
 			slackId: true,
 			verificationStatus: true,
 		},
+		take: opts.limit + 1,
+		// The directory is rendered as a page as well as served as an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
+		where: positionWhere<Prisma.UserWhereInput>(readCursor(opts.cursor), USERS_ORDER, base),
 	})
-	const hasMore = rows.length > opts.limit
+	const page = pageResult(rows, opts.limit, USERS_ORDER)
 	// Contact + risk fields only leave the server for ADMIN/AUDITOR. REVIEWER/FULFILLER get the directory (names + roles) with no emails, Slack ids or fraud flags to scrape. Callers pass includePii explicitly; the default is stripped.
-	const items = (hasMore ? rows.slice(0, opts.limit) : rows).map(row =>
+	const items = page.items.map(row =>
 		includePii
 			? row
 			: Object.assign({}, row, { email: "", fraudFlagged: false, slackId: null, verificationStatus: null }),
 	)
-	const last = items.at(-1)
-	return { items, nextCursor: hasMore && last ? last.id : null }
+	return { items, nextCursor: page.nextCursor }
 }
 
 export interface ProjectFilters {
@@ -134,6 +152,17 @@ const projectDirectorySelect = {
 	},
 } satisfies Prisma.ThemeProjectSelect
 
+/**
+ * The project directory's order: most recently touched first, with the id as the tiebreaker.
+ *
+ * The cursor carries both halves of that position, so a page boundary never drops a project or hands one out twice.
+ */
+const PROJECTS_ORDER = {
+	at: (row: ProjectDirectoryRow) => row.updatedAt,
+	column: "updatedAt",
+	direction: "desc",
+} as const satisfies CursorOrderOf<ProjectDirectoryRow, Prisma.ThemeProjectOrderByWithRelationInput>
+
 export async function listProjects(
 	opts: ProjectFilters & { cursor?: string; limit: number },
 	flags?: { includePii?: boolean },
@@ -142,13 +171,14 @@ export async function listProjects(
 	const now = new Date()
 	const q = opts.q?.trim()
 	// The owner's email and Slack id are contact details, so they are matched only for a caller who may see them. A REVIEWER searching for an address gets the same answer whether or not it is registered here.
+	//
+	// Every filter that is itself an OR lives in the AND array, never at the top level: the cursor's own filter is a top-level OR, and two ORs in one where cancel each other out rather than both applying.
 	const where: Prisma.ThemeProjectWhereInput = {
 		deletedAt: null,
 		...(opts.unstarted ? {} : { namedAt: { not: null } }),
 		...(opts.theme ? { theme: opts.theme } : {}),
 		...(opts.designStatus ? { designStatus: opts.designStatus } : {}),
 		...(opts.buildStatus ? { buildStatus: opts.buildStatus } : {}),
-		...(opts.tier ? { OR: [{ tier: opts.tier }, { requestedTier: opts.tier, tier: null }] } : {}),
 		AND: [
 			q
 				? {
@@ -173,24 +203,23 @@ export async function listProjects(
 						OR: [{ submissionExtensionUntil: { gt: now } }, { user: { submissionExtensionUntil: { gt: now } } }],
 					}
 				: {},
+			opts.tier ? { OR: [{ tier: opts.tier }, { requestedTier: opts.tier, tier: null }] } : {},
 		],
 	}
 
 	const rows = await prisma.themeProject.findMany({
-		orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
-		take: opts.limit + 1,
-		where,
-		...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
+		orderBy: orderByFor(PROJECTS_ORDER),
 		select: projectDirectorySelect,
+		take: opts.limit + 1,
+		// The directory is a page rather than an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
+		where: positionWhere<Prisma.ThemeProjectWhereInput>(readCursor(opts.cursor), PROJECTS_ORDER, where),
 	})
-	const hasMore = rows.length > opts.limit
-	const page = hasMore ? rows.slice(0, opts.limit) : rows
+	const page = pageResult(rows, opts.limit, PROJECTS_ORDER)
 	// The same rule as the user directory: the owner's contact details leave the server for ADMIN/AUDITOR only. A REVIEWER/FULFILLER gets names and roles, with no email or Slack id to scrape.
-	const items = page.map(row =>
+	const items = page.items.map(row =>
 		includePii ? row : Object.assign({}, row, { user: Object.assign({}, row.user, { email: "", slackId: null }) }),
 	)
-	const last = items.at(-1)
-	return { items, nextCursor: hasMore && last ? last.id : null }
+	return { items, nextCursor: page.nextCursor }
 }
 
 const userDetailSelect = {
@@ -322,23 +351,35 @@ const orderDirectorySelect = {
 	user: { select: { displayName: true, id: true, name: true } },
 } satisfies Prisma.ShopOrderSelect
 
+/**
+ * The order directory's order: newest first, with the id as the tiebreaker.
+ *
+ * The cursor carries both halves of that position, so a page boundary never drops an order or hands one out twice.
+ */
+const ORDERS_ORDER = {
+	at: (row: OrderDirectoryRow) => row.placedAt,
+	column: "placedAt",
+	direction: "desc",
+} as const satisfies CursorOrderOf<OrderDirectoryRow, Prisma.ShopOrderOrderByWithRelationInput>
+
 export async function listOrders(opts: {
 	status?: ShopOrderStatus
 	cursor?: string
 	limit: number
 }): Promise<{ items: OrderDirectoryRow[]; nextCursor: string | null }> {
 	const rows = await prisma.shopOrder.findMany({
-		orderBy: [{ placedAt: "desc" }, { id: "desc" }],
-		take: opts.limit + 1,
-		where: opts.status ? { status: opts.status } : undefined,
-		...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
+		orderBy: orderByFor(ORDERS_ORDER),
 		// Explicit select, not `include`: a whole-row response carries the encrypted address/phone and `lastActorId` this API has no use for.
 		select: orderDirectorySelect,
+		take: opts.limit + 1,
+		// Only the API reads this list, so a cursor that is not one of ours is a bad request rather than a page to fall back to.
+		where: cursorWhere<Prisma.ShopOrderWhereInput>(
+			opts.cursor,
+			ORDERS_ORDER,
+			opts.status ? { status: opts.status } : {},
+		),
 	})
-	const hasMore = rows.length > opts.limit
-	const items = hasMore ? rows.slice(0, opts.limit) : rows
-	const last = items.at(-1)
-	return { items, nextCursor: hasMore && last ? last.id : null }
+	return pageResult(rows, opts.limit, ORDERS_ORDER)
 }
 
 /**
@@ -388,10 +429,42 @@ export interface FulfillmentOrderRow {
 	user: { id: string; name: string | null }
 }
 
+/** The columns the fulfilment sheet reads, and the order they are read in. */
+const fulfillmentOrderSelect = {
+	fulfillmentMethod: true,
+	fulfillmentStage: true,
+	id: true,
+	itemNameSnapshot: true,
+	orderNumber: true,
+	placedAt: true,
+	quantity: true,
+	shopItem: { select: { costUsd: true } },
+	status: true,
+	unitCostUsd: true,
+	user: {
+		select: { displayName: true, encryptedAddressCountry: true, id: true, name: true },
+	},
+} satisfies Prisma.ShopOrderSelect
+
+/** One row as it comes out of the database, before the sheet's own arithmetic. */
+type FulfillmentOrderModel = Prisma.ShopOrderGetPayload<{ select: typeof fulfillmentOrderSelect }>
+
+/**
+ * The fulfilment sheet's order: newest first, with the id as the tiebreaker.
+ *
+ * The cursor carries both halves of that position, so a page boundary never drops an order or hands one out twice.
+ */
+const FULFILLMENT_ORDERS_ORDER = {
+	at: (row: FulfillmentOrderModel) => row.placedAt,
+	column: "placedAt",
+	direction: "desc",
+} as const satisfies CursorOrderOf<FulfillmentOrderModel, Prisma.ShopOrderOrderByWithRelationInput>
+
 export async function listFulfillmentOrders(
 	filters: FulfillmentFilters,
 	opts: { cursor?: string; limit: number },
 ): Promise<{ items: FulfillmentOrderRow[]; nextCursor: string | null }> {
+	// The stage filter lives in the AND array rather than at the top level: the cursor's own filter is a top-level OR, and two ORs in one where cancel each other out rather than both applying.
 	const where: Prisma.ShopOrderWhereInput = {
 		status: { in: FULFILLMENT_ORDER_STATUSES },
 		...(filters.placedFrom || filters.placedBefore
@@ -407,45 +480,33 @@ export async function listFulfillmentOrders(
 			: filters.method
 				? { fulfillmentMethod: filters.method }
 				: {}),
-		...(filters.stage === ShopFulfillmentStage.CANCELLED
+		...(filters.stage
 			? {
-					OR: [{ status: ShopOrderStatus.CANCELLED }, { fulfillmentStage: ShopFulfillmentStage.CANCELLED }],
+					AND: [
+						filters.stage === ShopFulfillmentStage.CANCELLED
+							? {
+									OR: [{ status: ShopOrderStatus.CANCELLED }, { fulfillmentStage: ShopFulfillmentStage.CANCELLED }],
+								}
+							: {
+									// A cancelled order shows as cancelled, so it matches no other stage.
+									fulfillmentStage: filters.stage,
+									status: { not: ShopOrderStatus.CANCELLED },
+								},
+					],
 				}
-			: filters.stage
-				? {
-						// A cancelled order shows as cancelled, so it matches no other stage.
-						AND: [{ status: { not: ShopOrderStatus.CANCELLED } }],
-						fulfillmentStage: filters.stage,
-					}
-				: {}),
+			: {}),
 	}
 
 	const rows = await prisma.shopOrder.findMany({
-		orderBy: [{ placedAt: "desc" }, { id: "desc" }],
+		orderBy: orderByFor(FULFILLMENT_ORDERS_ORDER),
+		select: fulfillmentOrderSelect,
 		take: opts.limit + 1,
-		where,
-		...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
-		select: {
-			fulfillmentMethod: true,
-			fulfillmentStage: true,
-			id: true,
-			itemNameSnapshot: true,
-			orderNumber: true,
-			placedAt: true,
-			quantity: true,
-			shopItem: { select: { costUsd: true } },
-			status: true,
-			unitCostUsd: true,
-			user: {
-				select: { displayName: true, encryptedAddressCountry: true, id: true, name: true },
-			},
-		},
+		// The sheet is a page rather than an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
+		where: positionWhere<Prisma.ShopOrderWhereInput>(readCursor(opts.cursor), FULFILLMENT_ORDERS_ORDER, where),
 	})
-	const hasMore = rows.length > opts.limit
-	const page = hasMore ? rows.slice(0, opts.limit) : rows
-	const last = page.at(-1)
+	const page = pageResult(rows, opts.limit, FULFILLMENT_ORDERS_ORDER)
 
-	const items = page.map(({ shopItem, user, unitCostUsd, ...order }) => {
+	const items = page.items.map(({ shopItem, user, unitCostUsd, ...order }) => {
 		// Orders from before the item had a cost fall back to today's.
 		const unit = unitCostUsd ?? shopItem.costUsd
 		return Object.assign(order, {
@@ -455,7 +516,7 @@ export async function listFulfillmentOrders(
 			user: { id: user.id, name: displayName(user) },
 		})
 	})
-	return { items, nextCursor: hasMore && last ? last.id : null }
+	return { items, nextCursor: page.nextCursor }
 }
 
 /** True for one of the recorded action names. Guards the audit-log filter. */
@@ -463,26 +524,35 @@ export function isAuditAction(value: string): value is AuditAction {
 	return (Object.values(AuditAction) as string[]).includes(value)
 }
 
+/**
+ * The audit log's order: newest first, with the id as the tiebreaker.
+ *
+ * The cursor carries both halves of that position, so a page boundary never drops an entry or hands one out twice.
+ */
+const AUDIT_LOG_ORDER = {
+	at: (row: AuditLog) => row.createdAt,
+	column: "createdAt",
+	direction: "desc",
+} as const satisfies CursorOrderOf<AuditLog, Prisma.AuditLogOrderByWithRelationInput>
+
 export async function listAuditLog(opts: {
 	action?: string
 	targetId?: string
 	cursor?: string
 	limit: number
 }): Promise<{ items: AuditLog[]; nextCursor: string | null }> {
+	const base: Prisma.AuditLogWhereInput = {
+		// The page's filter box takes free text, so an unrecognised action is treated as no filter rather than a Prisma enum error; the API route rejects it properly with a 400.
+		...(opts.action && isAuditAction(opts.action) ? { action: opts.action } : {}),
+		...(opts.targetId ? { targetId: opts.targetId } : {}),
+	}
 	const rows = await prisma.auditLog.findMany({
-		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+		orderBy: orderByFor(AUDIT_LOG_ORDER),
 		take: opts.limit + 1,
-		where: {
-			// The page's filter box takes free text, so an unrecognised action is treated as no filter rather than a Prisma enum error; the API route rejects it properly with a 400.
-			...(opts.action && isAuditAction(opts.action) ? { action: opts.action } : {}),
-			...(opts.targetId ? { targetId: opts.targetId } : {}),
-		},
-		...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
+		// The log is rendered as a page as well as served as an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
+		where: positionWhere<Prisma.AuditLogWhereInput>(readCursor(opts.cursor), AUDIT_LOG_ORDER, base),
 	})
-	const hasMore = rows.length > opts.limit
-	const items = hasMore ? rows.slice(0, opts.limit) : rows
-	const last = items.at(-1)
-	return { items, nextCursor: hasMore && last ? last.id : null }
+	return pageResult(rows, opts.limit, AUDIT_LOG_ORDER)
 }
 
 /**
@@ -851,22 +921,34 @@ const contentReportSelect = {
 /** One row of the content-report directory, with every reportable target attached. */
 export type ContentReportRow = Prisma.ContentReportGetPayload<{ select: typeof contentReportSelect }>
 
+/**
+ * The reports' order: newest first, with the id as the tiebreaker.
+ *
+ * The cursor carries both halves of that position, so a page boundary never drops a report or hands one out twice.
+ */
+const CONTENT_REPORTS_ORDER = {
+	at: (row: ContentReportRow) => row.createdAt,
+	column: "createdAt",
+	direction: "desc",
+} as const satisfies CursorOrderOf<ContentReportRow, Prisma.ContentReportOrderByWithRelationInput>
+
 export async function listContentReports(
 	status: ReportStatusFilter = "OPEN",
 	opts: { cursor?: string; limit?: number } = {},
 ): Promise<{ items: ContentReportRow[]; nextCursor: string | null }> {
 	const limit = opts.limit ?? 50
 	const rows = await prisma.contentReport.findMany({
-		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-		take: limit + 1,
-		where: status === "ALL" ? undefined : { status },
-		...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
+		orderBy: orderByFor(CONTENT_REPORTS_ORDER),
 		select: contentReportSelect,
+		take: limit + 1,
+		// The queue is a page rather than an API, so a cursor that has been hand-edited starts the list again rather than failing: a mistyped link is not a server error.
+		where: positionWhere<Prisma.ContentReportWhereInput>(
+			readCursor(opts.cursor),
+			CONTENT_REPORTS_ORDER,
+			status === "ALL" ? {} : { status },
+		),
 	})
-	const hasMore = rows.length > limit
-	const items = hasMore ? rows.slice(0, limit) : rows
-	const last = items.at(-1)
-	return { items, nextCursor: hasMore && last ? last.id : null }
+	return pageResult(rows, limit, CONTENT_REPORTS_ORDER)
 }
 
 export async function countContentReports(): Promise<Record<ReportStatus, number>> {

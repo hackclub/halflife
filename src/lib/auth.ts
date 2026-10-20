@@ -9,6 +9,7 @@ import { fetchWithRetry } from "@/lib/fetch-retry"
 import { FORGES } from "@/lib/forge"
 import { adoptHcaVerifiedEmail, fetchHcaIdentity, PULL_PII, syncHcaProfile } from "@/lib/hca-profile"
 import { LAPSE_API_BASE } from "@/lib/lapse"
+import { isLoopbackHostname, publicHosts as publicHostList } from "@/lib/origin"
 import prisma from "@/lib/prisma"
 import { redactForLog } from "@/lib/redact"
 
@@ -34,9 +35,11 @@ function linkOnlyEmail(provider: "hackatime" | "lapse" | "github" | "gitlab", id
 }
 
 /**
- * The hosts that front a deployed instance. `halflife.hackclub.com` is the one users are sent to; the k.hackclub.dev wildcard covers the Orchard-generated names for this project (`swift-hazel-14` today, the `half-life` ingress in the runbook), so whichever one a request arrives on, it signs in against that host.
+ * The hosts that front a deployed instance. `halflife.hackclub.com` is the one users are sent to, and `half-life.k.hackclub.dev` is the Orchard ingress in the runbook – so whichever one a request arrives on, it signs in against that host.
+ *
+ * An exact list, never a wildcard over a shared domain. `*.k.hackclub.dev` is a wildcard many unrelated projects sit behind, so anyone who controls any subdomain there could name a host this deployment would then trust – and a trusted host is one a sign-in and a redirect may point at. `APP_PUBLIC_HOSTS` carries the list, so a deployment reached on another name is a configuration change rather than a code change, and lib/origin.ts reads the same list for the redirect resolver.
  */
-const publicHosts = ["halflife.hackclub.com", "*.k.hackclub.dev"]
+const publicHosts = publicHostList()
 const canonicalUrl = "https://halflife.hackclub.com"
 const devUrl = "http://localhost:3000"
 
@@ -45,9 +48,7 @@ function isLoopbackURL(url: string | undefined): boolean {
 	if (!url) return false
 	try {
 		const { hostname } = new URL(url)
-		return (
-			hostname === "localhost" || hostname.endsWith(".localhost") || hostname.startsWith("127.") || hostname === "[::1]"
-		)
+		return isLoopbackHostname(hostname)
 	} catch {
 		return false
 	}

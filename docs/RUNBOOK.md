@@ -92,8 +92,20 @@ Coolify.
    Watch `get_build_logs`. `next.config.ts` runs at build time, so
    `NEXT_PUBLIC_UPLOAD_HOST` only reaches the image's `next/image` allowlist if
    the builder passes it as a build arg; runtime env does not (the Dockerfile
-   declares it). `NEXT_PUBLIC_APP_URL` is optional – the browser falls back to
-   the page origin and server code to `BETTER_AUTH_URL`.
+   declares it).
+
+   **`NEXT_PUBLIC_APP_URL` is the public origin, and production needs it.** Set it
+   to `https://<the host people use>` – the same value as `BETTER_AUTH_URL`, and the
+   same value as the `NEXT_PUBLIC_APP_URL` build arg the builder passes. It is the
+   origin in every absolute link the app writes: the QR code a phone opens, the
+   project and review links in a notification, and the banner committed into a
+   maker's repository. `.env.example` leaves it blank on purpose, so a file copied
+   over verbatim leaves production pointing at `localhost`.
+
+   `APP_PUBLIC_HOSTS` names the hosts this deployment answers on (`halflife.hackclub.com`
+   and the `half-life.k.hackclub.dev` ingress by default). The redirect resolver and
+   better-auth's allowed hosts read the same list, so a deployment reached on another
+   name – a second ingress, a vanity domain – needs it here rather than a code change.
 
    Set `REQUIRE_BASICAUTH=true` plus
    `BASICAUTH_USERNAME`/`BASICAUTH_PASSWORD` until launch day – the gate now

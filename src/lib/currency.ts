@@ -1,6 +1,7 @@
 import "server-only"
 import type { LedgerEntry, Prisma } from "@/app/generated/prisma/client"
 import { CoinBucket, LedgerKind, type ShopItemCategory } from "@/app/generated/prisma/enums"
+import { type CursorOrderOf, cursorWhere, orderByFor, pageResult } from "@/lib/pagination"
 import prisma from "@/lib/prisma"
 
 type Tx = Prisma.TransactionClient
@@ -149,21 +150,29 @@ export async function reconcileGrant(tx: Tx, params: ReconcileParams): Promise<L
 	})
 }
 
+/**
+ * The ledger's order: newest first, with the id as the tiebreaker.
+ *
+ * The cursor carries both halves of that position, so a page boundary never drops an entry or hands one out twice.
+ */
+const LEDGER_ORDER = {
+	at: (row: LedgerEntry) => row.createdAt,
+	column: "createdAt",
+	direction: "desc",
+} as const satisfies CursorOrderOf<LedgerEntry, Prisma.LedgerEntryOrderByWithRelationInput>
+
 export async function getLedgerPage(
 	userId: string,
 	cursor: string | undefined,
 	limit: number,
 ): Promise<{ items: LedgerEntry[]; nextCursor: string | null }> {
 	const rows = await prisma.ledgerEntry.findMany({
-		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+		orderBy: orderByFor(LEDGER_ORDER),
 		take: limit + 1,
-		where: { userId },
-		...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+		// Only the API reads this list, so a cursor that is not one of ours is a bad request rather than a page to fall back to.
+		where: cursorWhere<Prisma.LedgerEntryWhereInput>(cursor, LEDGER_ORDER, { userId }),
 	})
-	const hasMore = rows.length > limit
-	const items = hasMore ? rows.slice(0, limit) : rows
-	const last = items.at(-1)
-	return { items, nextCursor: hasMore && last ? last.id : null }
+	return pageResult(rows, limit, LEDGER_ORDER)
 }
 
 export { CoinBucket, LedgerKind } from "@/app/generated/prisma/enums"
