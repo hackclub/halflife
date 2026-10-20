@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { ReviewResult } from "@/app/generated/prisma/enums"
+import { MAX_APPROVED_HOURS } from "@/lib/config/program"
 import { TIER_IDS } from "@/lib/config/tiers"
 import { paginationQuery } from "@/lib/pagination"
 import { boundedText, cuid, phaseSchema } from "@/lib/schemas/common"
@@ -20,7 +21,7 @@ export const decisionSchema = z.discriminatedUnion("result", [
 		.object({
 			feedback: boundedText(8000).default(""),
 			grantUsdOverride: z.number().int().min(0).max(500).optional(),
-			hoursOverride: z.number().min(0).max(168).optional(),
+			hoursOverride: z.number().min(0).max(MAX_APPROVED_HOURS).optional(),
 			reason: boundedText(8000).optional(),
 			result: z.literal(ReviewResult.APPROVED),
 			/** Required when approving a design; ignored on a build. */
@@ -59,7 +60,7 @@ export const hoursDecisionSchema = z
 					z
 						.object({
 							// Matches the decision override ceiling, so per-source approvals cannot exceed what a decision-level override allows.
-							hoursApproved: z.number().min(0).max(168),
+							hoursApproved: z.number().min(0).max(MAX_APPROVED_HOURS),
 							id: cuid,
 							kind: z.literal("hackatime"),
 						})

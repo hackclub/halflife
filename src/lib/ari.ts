@@ -15,8 +15,8 @@ import { ariExternalId, parseAriExternalId } from "@/lib/ari-id"
 import { selectPendingShips } from "@/lib/ari-pending"
 import { type StandingDecision, standingDecision } from "@/lib/ari-standing"
 import { AuditAction, logAudit } from "@/lib/audit"
-import { getThemeDef, WARMUP_THEME } from "@/lib/config/program"
-import { isTierId } from "@/lib/config/tiers"
+import { getThemeDef, MAX_APPROVED_HOURS, WARMUP_THEME } from "@/lib/config/program"
+import { isTierId, tierForHours } from "@/lib/config/tiers"
 import { HttpError } from "@/lib/errors"
 import { lapseTimelapseUrl } from "@/lib/lapse"
 import { round2 } from "@/lib/money"
@@ -445,15 +445,25 @@ function ariReviewerLabel(review: AriReview): string {
 	return review.reviewer?.email ?? "Ari"
 }
 
-/** Ari's approved time is authoritative; fall back to its minutes breakdown. */
+/**
+ * Ari's approved time is authoritative; fall back to its minutes breakdown.
+ *
+ * Bounded at MAX_APPROVED_HOURS, the same ceiling the console's hours override has. The number is not a display value: it is frozen onto the project and the review, and it is what the coins are minted from, so an hour count that can be posted by a machine must not be able to mint an absurd figure. A figure outside the bound is treated as no figure at all – the decision is then paid on the hours Half Life computed, rather than on a number nothing in the programme could have produced.
+ */
 function approvedHoursFrom(review: AriReview): number | null {
-	if (typeof review.approved_hours === "number" && Number.isFinite(review.approved_hours) && review.approved_hours >= 0)
+	if (
+		typeof review.approved_hours === "number"
+		&& Number.isFinite(review.approved_hours)
+		&& review.approved_hours >= 0
+		&& review.approved_hours <= MAX_APPROVED_HOURS
+	)
 		return round2(review.approved_hours)
 
 	if (
 		typeof review.approved_minutes === "number"
 		&& Number.isFinite(review.approved_minutes)
 		&& review.approved_minutes >= 0
+		&& review.approved_minutes <= MAX_APPROVED_HOURS * 60
 	)
 		return round2(review.approved_minutes / 60)
 
@@ -519,6 +529,7 @@ async function applyDecision(event: DecisionEvent, opts: { announce?: boolean } 
 
 	// A design approval is also the funding decision: it sets the tier and the parts grant. Ari reviews the work, not the money, so the tier is the one the maker asked for – never invented here.
 	let tier: number | null = null
+	let grantUsdOverride: number | null = null
 	if (result === ReviewResult.APPROVED && phase === Phase.DESIGN) {
 		const project = await prisma.themeProject.findUnique({
 			select: { requestedTier: true, tier: true },
@@ -530,6 +541,19 @@ async function applyDecision(event: DecisionEvent, opts: { announce?: boolean } 
 			return
 		}
 		tier = chosen
+
+		// A tier's grant buys its funded block of hours, so it is not paid on fewer hours than it funds. The submit
+		// gate refuses a hand-in below the floor, so this only bites when the reviewer approves less time than was
+		// logged: the tier then steps down to the one the approved hours earned, rather than the grant staying at a
+		// level the hours do not cover. Under every tier there is no parts grant at all. Clamped here rather than
+		// refused in finalizeReview, so an automatic decision never lands as an error Ari would keep redelivering.
+		const approved = approvedHoursFrom(event.review)
+		if (approved !== null) {
+			const affordable = tierForHours(approved)
+			if (affordable) {
+				if (affordable.id !== chosen) tier = affordable.id
+			} else grantUsdOverride = 0
+		}
 	}
 
 	// A build cannot be approved before its design is. Ari reviews each phase on its own clock – and Half Life deliberately lets a build be submitted before its design is approved, so a build approval arriving first is expected, not an error. It is a decision deferred by state, so throw: the delivery is not recorded and Ari redelivers it, which is what eventually applies it once the design is approved. Checked before the claim is cleared so a deferred redelivery does not keep deleting a human reviewer's claim.
@@ -557,7 +581,7 @@ async function applyDecision(event: DecisionEvent, opts: { announce?: boolean } 
 		await finalizeReview({
 			feedback,
 			grantExtension: opts.announce !== false,
-			grantUsdOverride: null,
+			grantUsdOverride,
 			hoursOverride: approvedHoursFrom(event.review),
 			reason: event.review.audit_note ?? null,
 			result,

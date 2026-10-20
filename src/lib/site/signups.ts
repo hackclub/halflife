@@ -279,14 +279,51 @@ export function clientIp(h: { get(name: string): string | null }): string {
    protection put Vercel BotID or the WAF in front of the route. */
 const WINDOW_MS = 60_000
 const MAX_PER_WINDOW = 8
-const hits = new Map<string, number[]>()
+/** How many distinct buckets a single process will hold before the oldest are evicted. */
+const MAX_BUCKETS = 5_000
+
+/**
+ * One caller's bucket: the hits inside the window, and when the bucket was last touched.
+ *
+ * The two are not the same thing. A throttled caller is refused, so no hit is recorded – but they are still asking, and their bucket is still in use. Without the separate timestamp the bucket's recency would be its last *accepted* hit, which for a throttled caller is the oldest in the map: exactly the bucket that gets flushed.
+ */
+interface SignupBucket {
+	hits: number[]
+	lastSeen: number
+}
+
+const hits = new Map<string, SignupBucket>()
+
+/**
+ * The bucket to drop when the map is over its cap.
+ *
+ * A Map keeps its keys in the order they were first seen, so "the oldest key" is the bucket that was created first – and the bucket that was created first is the one a throttled caller owns, because they were the first to ask and they are still asking. Evicting by when the bucket was last touched instead drops the one nobody has come back to, and the caller's own bucket is never a candidate: dropping it would hand a throttled caller a fresh budget.
+ */
+function evictionVictim(exclude: string): string | null {
+	let victim: string | null = null
+	let oldest = Number.POSITIVE_INFINITY
+	for (const [key, bucket] of hits) {
+		if (key === exclude) continue
+		if (bucket.lastSeen >= oldest) continue
+		oldest = bucket.lastSeen
+		victim = key
+	}
+	return victim
+}
 
 export function rateLimited(key: string): boolean {
 	const now = Date.now()
-	const recent = (hits.get(key) ?? []).filter(at => now - at < WINDOW_MS)
+	const bucket = hits.get(key)
+	const recent = (bucket?.hits ?? []).filter(at => now - at < WINDOW_MS)
 	recent.push(now)
-	hits.set(key, recent)
+	// The bucket is touched either way: a refused caller is still a caller, and their bucket is still live.
+	hits.set(key, { hits: recent, lastSeen: now })
 
-	if (hits.size > 5_000) hits.clear()
+	// Evict the buckets that have gone longest without a touch, one at a time, rather than clearing the map: a wholesale clear drops every live bucket along with the stale ones, which hands a throttled caller a fresh budget.
+	while (hits.size > MAX_BUCKETS) {
+		const victim = evictionVictim(key)
+		if (!victim) break
+		hits.delete(victim)
+	}
 	return recent.length > MAX_PER_WINDOW
 }

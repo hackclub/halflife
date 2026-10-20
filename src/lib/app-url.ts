@@ -1,7 +1,9 @@
+import { configuredOrigin } from "@/lib/origin"
+
 /**
  * Where the platform is reachable from outside itself.
  *
- * Two env vars answer this and the order matters: `NEXT_PUBLIC_APP_URL` is the deployment's own answer and wins, while `BETTER_AUTH_URL` is what a local checkout usually has set. Both are read at call time rather than module load, because the same build runs in more than one environment.
+ * One resolver, shared with the redirect path and the phone handoff: `NEXT_PUBLIC_APP_URL` is the deployment's own answer and wins, while `BETTER_AUTH_URL` is what a local checkout usually has set. Both are read at call time rather than module load, because the same build runs in more than one environment.
  *
  * The resolution was written out separately in three modules – the review notifications, the Ari webhook URL and the repo sync's generated files – which is three chances for one of them to point at the wrong origin. Only the failure modes differed: a notification link that goes nowhere, a webhook Ari cannot reach, or a link committed into somebody's repository.
  *
@@ -9,16 +11,12 @@
  */
 
 /**
- * The origin to use when the deployment names none.
+ * The public origin, without a trailing slash, or "" when the deployment names none.
  *
- * There is one Half Life, and an omitted variable is the likeliest reason for a deployment not to have an origin of its own – so the fallback is the real site rather than nothing. A URL that is absent is the worse failure: it silently drops a link out of a maker's journal or a reviewer's notification, and the reader never learns there was meant to be one.
+ * No fallback to the real site. There is one Half Life, and an omitted variable is the likeliest reason for a deployment not to have an origin of its own – but a staging deployment that fell back to production would put production links in a maker's journal and in a reviewer's notification, which is worse than a link that is not there at all. An empty origin is the honest answer, and every deployment that configures one gets it.
  */
-const DEFAULT_APP_ORIGIN = "https://halflife.hackclub.com"
-
-/** The public origin, without a trailing slash. */
 export function appBaseUrl(): string {
-	const base = process.env.NEXT_PUBLIC_APP_URL ?? process.env.BETTER_AUTH_URL
-	return base ? base.replace(/\/$/, "") : DEFAULT_APP_ORIGIN
+	return configuredOrigin() ?? ""
 }
 
 /**
@@ -27,7 +25,8 @@ export function appBaseUrl(): string {
  * The one place that knows the shape of a project URL, so a link written into an email, a repository or an audit row cannot disagree with the route the app actually serves.
  */
 export function projectUrl(id: string): string {
-	return `${appBaseUrl()}/projects/${id}`
+	const base = appBaseUrl()
+	return base ? `${base}/projects/${id}` : ""
 }
 
 /**
@@ -36,5 +35,6 @@ export function projectUrl(id: string): string {
  * The id is the submission's, not the project's: one project has a design and a build hand-in, each reviewed on its own page, and that page is also where a dispute thread is answered.
  */
 export function reviewUrl(id: string): string {
-	return `${appBaseUrl()}/review/${id}`
+	const base = appBaseUrl()
+	return base ? `${base}/review/${id}` : ""
 }

@@ -138,3 +138,16 @@ export function getTierOrThrow(id: number): Tier {
 export function isTierId(id: unknown): id is TierId {
 	return typeof id === "number" && TIER_IDS.includes(id as TierId)
 }
+
+/**
+ * The highest tier whose funded block the given hours cover.
+ *
+ * A tier's grant buys its funded block of hours, so hours below a tier's floor cannot pay that tier's grant. The
+ * submit gate refuses a hand-in below the floor (lib/submissions), so this only bites when a decision approves less
+ * time than was logged: the tier then steps down to the one the approved hours earned, rather than the grant staying
+ * at a level the hours do not cover. Null when even Tier 1 is out of reach, which is a design with no parts grant.
+ */
+export function tierForHours(hours: number): Tier | null {
+	const affordable = TIERS.filter(t => hours >= t.fundingHours)
+	return affordable.at(-1) ?? null
+}

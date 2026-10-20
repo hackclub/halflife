@@ -188,6 +188,11 @@ deliberately narrow:
 - only on an **approved design**, for the frozen `grantUsd`;
 - **once per (user, project, design)** – `HcbGrantTopUp` has a unique key and
   the row is claimed before HCB is called, so a double-click cannot pay twice;
+- **once per card** – the grant hashid is unique, so two projects (or two
+  makers) pointing at the same HCB card cannot each pay it;
+- **the card is checked against the maker before it is paid** – the top-up moves
+  the money as it answers, so a grant that belongs to somebody else cannot be
+  caught afterwards;
 - a failed attempt records its error and may be retried; one in flight may not;
 - it needs `MANAGE_CREDIT`, not `REVIEW_SUBMISSIONS`.
 
@@ -201,6 +206,13 @@ Two things to know before enabling it:
   refresh-token flow. HCB rotates the refresh token, and an env var cannot be
   rewritten, so the production path is to persist it (a credentials row or a
   secret store); with the env flow the token is good for the life of a process.
+- **The token has to be able to read the maker's email.** The owner check
+  compares the card's owner with the maker's address, and HCB only renders
+  another account's email to a token that may read it (`pii`, or an admin in
+  their org). A token that cannot will refuse every grant with "HCB would not
+  say who that grant belongs to". `HCB_VERIFY_GRANT_OWNER=false` turns the
+  check off for such a deployment; the payment then goes ahead and the audit
+  row records that nobody checked whose card it was.
 
 ---
 

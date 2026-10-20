@@ -447,6 +447,13 @@ async function listGitLabRepos(creds: ForgeCredentials): Promise<WritableRepo[]>
 	)
 }
 
+/**
+ * How many pages of a repository tree the write path will walk.
+ *
+ * The read path caps the same walk at 100 pages (lib/repo-checks.ts), and this one reads the same tree for a different reason – to tell a create from an update. Every page is a forge API call with its own retry and back-off, so an unbounded walk would keep a write in flight for a very long time on a pathological repo, or on a forge that keeps offering a next page.
+ */
+const MAX_TREE_PAGES = 100
+
 export interface FileUpdate {
 	/**
 	 * The file's new bytes, or null to delete the path.
@@ -689,7 +696,7 @@ async function commitGitLab(
 	// The listing is paginated; walk it so a repo with many files does not make an existing file look new (which would fail the commit with "file exists").
 	const existing = new Map<string, string>()
 	let page = 1
-	for (;;) {
+	for (let fetched = 0; fetched < MAX_TREE_PAGES; fetched++) {
 		const res =
 			page === 1
 				? treeRes
@@ -705,7 +712,10 @@ async function commitGitLab(
 		// GitLab signals another page with `x-next-page`; an empty one ends it.
 		const next = res.headers.get("x-next-page")
 		if (!next) break
-		page = Number(next)
+		const nextPage = Number(next)
+		// A header that is not a number, or that does not move forward, would walk the same page for ever. GitLab's own value is the page after this one.
+		if (!Number.isFinite(nextPage) || nextPage <= page) break
+		page = nextPage
 	}
 
 	const actions: (

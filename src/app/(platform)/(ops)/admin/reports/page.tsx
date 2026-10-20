@@ -12,6 +12,7 @@ import {
 	type ReportStatusFilter,
 } from "@/lib/queries/admin"
 import { REPORT_REASONS, REPORT_STATUS_LABELS, REPORT_TARGET_LABELS } from "@/lib/reports"
+import { firstValues, type SearchParamValue } from "@/lib/search-params"
 
 export const dynamic = "force-dynamic"
 
@@ -51,11 +52,12 @@ const FILTERS: { id: Filter; label: string; status: ReportStatusFilter }[] = [
 export default async function AdminReportsPage({
 	searchParams,
 }: {
-	searchParams: Promise<{ status?: string; cursor?: string }>
+	searchParams: Promise<{ cursor?: SearchParamValue; status?: SearchParamValue }>
 }) {
 	await requirePermissionPage(Permission.MANAGE_FEED)
 
-	const { status, cursor } = await searchParams
+	// The filter and the page cursor, each taken as the single value the URL named: a repeated parameter arrives as an array, and an array is not a value this page can read.
+	const { status, cursor } = firstValues(await searchParams)
 	const filter: Filter = filterFor(status)
 	const active = FILTERS.find(f => f.id === filter) ?? ({ id: "open", label: "Open", status: "OPEN" } as const)
 

@@ -3,6 +3,7 @@ import type { ThemeProject } from "@/app/generated/prisma/client"
 import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
 import { bomTotalUsd, type PartsFunding, partsFunding } from "@/lib/bom-policy"
 import { ENTRY_TIER, getTier } from "@/lib/config/tiers"
+import { round2 } from "@/lib/money"
 import prisma from "@/lib/prisma"
 import { sanitize, sanitizeOptional } from "@/lib/sanitize"
 import type { BomItemInput } from "@/lib/schemas/project"
@@ -87,7 +88,7 @@ export function bomData(input: Partial<BomItemInput>): {
 		...(input.name !== undefined ? { name: sanitize(input.name) } : {}),
 		...(input.purpose !== undefined ? { purpose: sanitizeOptional(input.purpose) } : {}),
 		...(input.quantity !== undefined ? { quantity: input.quantity } : {}),
-		...(input.unitCostUsd !== undefined ? { unitCostUsd: Math.round(input.unitCostUsd * 100) / 100 } : {}),
+		...(input.unitCostUsd !== undefined ? { unitCostUsd: round2(input.unitCostUsd) } : {}),
 		...(input.vendor !== undefined ? { vendor: sanitizeOptional(input.vendor) } : {}),
 		...(input.link !== undefined ? { link: input.link || null } : {}),
 	}

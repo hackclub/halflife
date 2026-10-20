@@ -37,10 +37,14 @@ function securityHeaders(res: NextResponse): NextResponse {
 }
 
 function unauthorized(): NextResponse {
-	return new NextResponse("Authentication required", {
-		headers: { "WWW-Authenticate": 'Basic realm="Half-Life"' },
-		status: 401,
-	})
+	// With the headers the rest of the proxy sends: an error response that leaves them
+	// off is the one response a browser is most likely to be shown.
+	return securityHeaders(
+		new NextResponse("Authentication required", {
+			headers: { "WWW-Authenticate": 'Basic realm="Half-Life"' },
+			status: 401,
+		}),
+	)
 }
 
 /**
@@ -70,9 +74,11 @@ export function proxy(request: NextRequest): NextResponse | undefined {
 		// through and serve the site, which is the exact opposite of what the
 		// operator who flipped the flag asked for.
 		if (!expectedUser || !expectedPass)
-			return new NextResponse("Basic auth is enabled but BASICAUTH_USERNAME/BASICAUTH_PASSWORD are not set", {
-				status: 503,
-			})
+			return securityHeaders(
+				new NextResponse("Basic auth is enabled but BASICAUTH_USERNAME/BASICAUTH_PASSWORD are not set", {
+					status: 503,
+				}),
+			)
 
 		const header = request.headers.get("authorization") ?? ""
 		const [scheme, encoded] = header.split(" ")

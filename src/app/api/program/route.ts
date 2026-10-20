@@ -38,6 +38,6 @@ export const GET = withRoute(async () => {
 		totalWeeks: TOTAL_WEEKS,
 		// Every week's opening instant, so a client can tell which week it is and count down to the next one without being asked again. The programme's calendar is worked out here, in its own timezone – a browser counting from `startDate` would get a week wrong by a few hours twice a year at a daylight-saving change, and once more for anyone not in the program's zone. Ten timestamps, and the browser never has to know how a week is drawn.
 		weekOpensAt: Array.from({ length: TOTAL_WEEKS }, (_, i) => weekOpensAt(settings, i + 1)),
-		weekRange: weekDateRange(settings.eventStartDate, currentWeek),
+		weekRange: weekDateRange(settings, currentWeek),
 	})
 })

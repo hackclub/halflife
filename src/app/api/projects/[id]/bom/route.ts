@@ -109,10 +109,25 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
 	const locked = bomLockReason(project)
 	if (locked) return fail("PHASE_LOCKED", locked)
 
-	const updated = await prisma.themeProject.update({
-		data: { bomTaxShippingUsd: cents(parsed.data.taxShippingUsd) },
-		select: { bomTaxShippingUsd: true },
-		where: { id },
+	const updated = await prisma.$transaction(async tx => {
+		// Re-read inside the transaction the write happens in, as POST /bom does: a design approval landing between the check above and the write would change a list that is supposed to be final.
+		const fresh = await tx.themeProject.findFirst({
+			select: { buildStatus: true, designStatus: true },
+			where: { deletedAt: null, id, userId: gate.user.id },
+		})
+		if (!fresh) throw new HttpError("NOT_FOUND", "Project not found")
+		const freshLock = bomLockReason(fresh)
+		if (freshLock) throw new HttpError("PHASE_LOCKED", freshLock)
+
+		const claimed = await tx.themeProject.updateMany({
+			data: { bomTaxShippingUsd: cents(parsed.data.taxShippingUsd) },
+			where: { deletedAt: null, id, userId: gate.user.id },
+		})
+		if (claimed.count !== 1) throw new HttpError("NOT_FOUND", "Project not found")
+
+		const row = await tx.themeProject.findUnique({ select: { bomTaxShippingUsd: true }, where: { id } })
+		if (!row) throw new HttpError("NOT_FOUND", "Project not found")
+		return row
 	})
 
 	after(() => scheduleRepoSync(id))

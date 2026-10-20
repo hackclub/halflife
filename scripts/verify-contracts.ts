@@ -22,6 +22,11 @@ import type { JournalEntry } from "../src/lib/repo-sync-files"
  * Run with `pnpm verify:contracts`.
  */
 
+// The project link is absolute only when the deployment names an origin, and this
+// script has to name one itself: CI runs it with no environment at all, and the
+// check below is about the rendering rather than about the deployment's config.
+process.env.NEXT_PUBLIC_APP_URL ??= "https://halflife.hackclub.com"
+
 let failures = 0
 function check(label: string, ok: boolean, detail = "") {
 	if (!ok) failures++
