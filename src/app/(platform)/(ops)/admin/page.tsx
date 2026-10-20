@@ -25,6 +25,7 @@ import {
 	getReviewerStats,
 	getUserFlowFunnel,
 	getUserFlowSankey,
+	getUserFlowWeekly,
 	getVerificationStats,
 	type HoursDistribution,
 	type WeekHoursCluster,
@@ -60,6 +61,7 @@ export default async function AdminOverviewPage() {
 		syncs,
 		flow,
 		sankeyData,
+		weeklyFlow,
 		areas,
 		countries,
 		activity,
@@ -87,6 +89,7 @@ export default async function AdminOverviewPage() {
 		]),
 		getUserFlowFunnel(),
 		getUserFlowSankey(),
+		getUserFlowWeekly(),
 		getAreaStats(),
 		getCountryStats(),
 		getDailyActivity(),
@@ -166,7 +169,7 @@ export default async function AdminOverviewPage() {
 				</p>
 			</Panel>
 
-			<UserFlowDiagram sankey={sankeyData.diagram} steps={flow} />
+			<UserFlowDiagram sankey={sankeyData.diagram} steps={flow} weeks={weeklyFlow} />
 
 			<Panel title="Activities after onboarding">
 				<ActivityShareChart share={sankeyData.activityShare} />
