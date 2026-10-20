@@ -1388,6 +1388,9 @@ model ShopOrder {
   /// ShopItem.costUsd at order time. Null when the item had no cost set yet.
   unitCostUsd      Float?
 
+  /// Whether this order took stock off the shelf. The catalogue's stock figure can change after the order is placed - an item that was unlimited can be given a figure - so the reject path cannot infer this from the item's stock now, and has to be told. Null on orders placed before this column existed, where it is not known.
+  stockDebited     Boolean?
+
   status          ShopOrderStatus @default(PENDING)
   holdReason      String?
   rejectionReason String?

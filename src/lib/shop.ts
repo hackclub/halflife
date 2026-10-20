@@ -289,7 +289,14 @@ export async function purchase(
 				select: shopOrderPublicSelect,
 				where: { idempotencyKey, userId },
 			})
-			if (existing) return existing
+			if (existing) {
+				// A key whose order was refused afterwards is not a success to hand back. The order was
+				// rejected and refunded, this request creates nothing, and returning it as a fresh purchase
+				// would tell the caller it owns a thing it never received.
+				if (existing.status === ShopOrderStatus.REJECTED || existing.status === ShopOrderStatus.CANCELLED)
+					throw new HttpError("CONFLICT", "That order has already been rejected or cancelled")
+				return existing
+			}
 		}
 
 		// Re-read stock inside the transaction; the catalogue page may be stale.
@@ -325,6 +332,10 @@ export async function purchase(
 				itemNameSnapshot: fresh.name,
 				quantity,
 				shopItemId,
+				// Whether this order takes stock off the shelf. The catalogue can change after the order is
+				// placed – an item that was unlimited can be given a stock figure – so the reject path cannot
+				// work it out from the item's stock later, and has to be told.
+				stockDebited: fresh.stock !== null,
 				totalCredits,
 				unitCostUsd: fresh.costUsd,
 				unitCredits: unitPrice,
@@ -334,17 +345,32 @@ export async function purchase(
 			select: shopOrderPublicSelect,
 		})
 
-		// Every coin is spendable on anything, so a purchase is paid out of the whole balance.
-		if (totalCredits > 0)
+		// Every coin is spendable on anything, so a purchase is paid out of the whole balance – but the whole
+		// balance is not in one pot. The debit follows the coins: the spendable pot first, then the legacy
+		// banked pot for whatever is left. Writing the whole debit against SPENDABLE would drive that pot
+		// negative whenever the coins happen to sit in BANKED, and a negative pot is a state nothing else in
+		// the app is willing to create. The refund path reads these rows back, so each pot is given back
+		// exactly what it paid.
+		let remaining = totalCredits
+		for (const bucket of [CoinBucket.SPENDABLE, CoinBucket.BANKED]) {
+			if (remaining <= 0) break
+			const available = bucket === CoinBucket.SPENDABLE ? balances.spendable : balances.banked
+			const amount = Math.min(Math.max(available, 0), remaining)
+			if (amount <= 0) continue
 			await appendLedgerEntry(tx, {
-				amount: -totalCredits,
-				bucket: CoinBucket.SPENDABLE,
+				amount: -amount,
+				bucket,
 				createdById: userId,
 				kind: LedgerKind.SHOP_PURCHASE,
 				note: `${quantity}× ${fresh.name}`,
 				shopOrderId: order.id,
 				userId,
 			})
+			remaining -= amount
+		}
+		// Only reachable when a pot is already negative, which the combined check above cannot see. The
+		// purchase is refused rather than deepening the hole.
+		if (remaining > 0) throw new HttpError("INSUFFICIENT_CREDIT", `You need ${remaining} more to buy this`)
 
 		if (fresh.stock !== null) {
 			// Conditional, so stock cannot go negative even if two people buy the last unit at once – the loser's update matches nothing and rolls back.
@@ -401,7 +427,12 @@ export async function rejectOrder(orderId: string, adminId: string, reason: stri
 			})
 		}
 
-		if (order.shopItemId)
+		// The stock goes back only if it was taken. The catalogue's stock figure can change after the
+		// order was placed – an item that was unlimited can be given a figure – so the order carries the
+		// answer rather than the item's stock now. Orders placed before that column existed do not carry
+		// it, and are treated as having taken stock, which is what this path always did.
+		const stockDebited = order.stockDebited ?? true
+		if (stockDebited && order.shopItemId)
 			await tx.shopItem.updateMany({
 				data: { stock: { increment: order.quantity } },
 				where: { id: order.shopItemId, stock: { not: null } },

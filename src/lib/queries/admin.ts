@@ -51,16 +51,21 @@ export async function listUsers(
 	flags?: { includePii?: boolean },
 ): Promise<{ items: DirectoryUser[]; nextCursor: string | null }> {
 	const includePii = flags?.includePii ?? false
+	// Without PII the search box matches names only. Matching an address or a Slack id would turn the directory into a registration oracle: anybody holding VIEW_USERS could confirm whether a given person has an account here.
 	const rows = await prisma.user.findMany({
 		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
 		take: opts.limit + 1,
 		where: opts.q
 			? {
 					OR: [
-						{ email: { contains: opts.q, mode: "insensitive" } },
 						{ name: { contains: opts.q, mode: "insensitive" } },
 						{ displayName: { contains: opts.q, mode: "insensitive" } },
-						{ slackId: { contains: opts.q, mode: "insensitive" } },
+						...(includePii
+							? ([
+									{ email: { contains: opts.q, mode: "insensitive" } },
+									{ slackId: { contains: opts.q, mode: "insensitive" } },
+								] satisfies Prisma.UserWhereInput[])
+							: []),
 					],
 				}
 			: undefined,
@@ -93,7 +98,7 @@ export interface ProjectFilters {
 	designStatus?: PhaseStatus
 	/** Only projects, or owners, with an extension still running. */
 	extended?: boolean
-	/** Matches the project's title, description or repo, or its owner's name, email or Slack ID. */
+	/** Matches the project's title, description or repo, or its owner's name. The owner's email and Slack ID are matched too, but only for a caller who may see PII. */
 	q?: string
 	theme?: Theme
 	tier?: number
@@ -131,9 +136,12 @@ const projectDirectorySelect = {
 
 export async function listProjects(
 	opts: ProjectFilters & { cursor?: string; limit: number },
+	flags?: { includePii?: boolean },
 ): Promise<{ items: ProjectDirectoryRow[]; nextCursor: string | null }> {
+	const includePii = flags?.includePii ?? false
 	const now = new Date()
 	const q = opts.q?.trim()
+	// The owner's email and Slack id are contact details, so they are matched only for a caller who may see them. A REVIEWER searching for an address gets the same answer whether or not it is registered here.
 	const where: Prisma.ThemeProjectWhereInput = {
 		deletedAt: null,
 		...(opts.unstarted ? {} : { namedAt: { not: null } }),
@@ -151,8 +159,12 @@ export async function listProjects(
 							{ githubRepo: { contains: q, mode: "insensitive" } },
 							{ user: { name: { contains: q, mode: "insensitive" } } },
 							{ user: { displayName: { contains: q, mode: "insensitive" } } },
-							{ user: { email: { contains: q, mode: "insensitive" } } },
-							{ user: { slackId: { contains: q, mode: "insensitive" } } },
+							...(includePii
+								? ([
+										{ user: { email: { contains: q, mode: "insensitive" } } },
+										{ user: { slackId: { contains: q, mode: "insensitive" } } },
+									] satisfies Prisma.ThemeProjectWhereInput[])
+								: []),
 						],
 					}
 				: {},
@@ -172,7 +184,11 @@ export async function listProjects(
 		select: projectDirectorySelect,
 	})
 	const hasMore = rows.length > opts.limit
-	const items = hasMore ? rows.slice(0, opts.limit) : rows
+	const page = hasMore ? rows.slice(0, opts.limit) : rows
+	// The same rule as the user directory: the owner's contact details leave the server for ADMIN/AUDITOR only. A REVIEWER/FULFILLER gets names and roles, with no email or Slack id to scrape.
+	const items = page.map(row =>
+		includePii ? row : Object.assign({}, row, { user: Object.assign({}, row.user, { email: "", slackId: null }) }),
+	)
 	const last = items.at(-1)
 	return { items, nextCursor: hasMore && last ? last.id : null }
 }
@@ -186,7 +202,21 @@ const userDetailSelect = {
 	id: true,
 	joinedProgramAt: true,
 	name: true,
-	printerAward: true,
+	// The award's fulfilment fields only. The locked address and phone are ciphertext and the snapshot is write-only, so none of them are part of a profile that anybody with VIEW_USERS may read.
+	printerAward: {
+		select: {
+			addressLockedAt: true,
+			deliveredAt: true,
+			id: true,
+			qualifiedAt: true,
+			revokedAt: true,
+			revokedReason: true,
+			shippedAt: true,
+			status: true,
+			trackingCarrier: true,
+			trackingNumber: true,
+		},
+	},
 	roles: { select: { grantedAt: true, grantedBy: true, role: true } },
 	slackDisplayName: true,
 	slackId: true,

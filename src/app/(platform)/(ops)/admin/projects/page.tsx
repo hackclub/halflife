@@ -4,7 +4,7 @@ import { PhaseStatus, Theme } from "@/app/generated/prisma/enums"
 import { getThemeDef, THEMES } from "@/lib/config/program"
 import { displayName } from "@/lib/display-name"
 import { requirePermissionPage } from "@/lib/page-guards"
-import { hasPermission, Permission } from "@/lib/permissions"
+import { hasPermission, hasRole, Permission, Role } from "@/lib/permissions"
 import { listProjects, type ProjectFilters } from "@/lib/queries/admin"
 import { ProjectRow } from "./ProjectRow"
 
@@ -47,7 +47,9 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 	const filters = filtersFrom(search)
 	const canExtend = hasPermission(roles, Permission.MANAGE_USERS)
 	const canMoveTheme = hasPermission(roles, Permission.MANAGE_PROGRAM)
-	const { items, nextCursor } = await listProjects({ ...filters, cursor: search.cursor, limit: 50 })
+	// The owner's email and Slack ID are contact details: they leave the server for ADMIN/AUDITOR only, exactly as the user directory does.
+	const includePii = hasRole(roles, Role.ADMIN) || hasRole(roles, Role.AUDITOR)
+	const { items, nextCursor } = await listProjects({ ...filters, cursor: search.cursor, limit: 50 }, { includePii })
 
 	// The next page keeps every filter; only the cursor moves.
 	const nextParams = new URLSearchParams(
@@ -60,7 +62,11 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 	return (
 		<div className="hl-stack hl-page-wide">
 			<PageHeader
-				subtitle="Search by title, description, repo, project ID, or the owner's name, email or Slack ID."
+				subtitle={
+					includePii
+						? "Search by title, description, repo, project ID, or the owner's name, email or Slack ID."
+						: "Search by title, description, repo, project ID, or the owner's name."
+				}
 				title="Projects"
 			/>
 
@@ -160,10 +166,8 @@ export default async function AdminProjectsPage({ searchParams }: Props) {
 										extensionLabel: project.submissionExtensionUntil?.toLocaleString() ?? null,
 										githubRepo: project.githubRepo,
 										id: project.id,
-										ownerEmail: project.user.email,
 										ownerId: project.user.id,
-										ownerName: displayName(project.user, project.user.email),
-										ownerSlackId: project.user.slackId,
+										ownerName: displayName(project.user) ?? "—",
 										requestedTier: project.requestedTier,
 										theme: project.theme,
 										themeLabel: getThemeDef(project.theme).label,

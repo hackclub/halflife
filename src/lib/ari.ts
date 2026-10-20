@@ -480,9 +480,7 @@ async function applyDecision(event: DecisionEvent, opts: { announce?: boolean } 
 			const affordable = tierForHours(approved)
 			if (affordable) {
 				if (affordable.id !== chosen) tier = affordable.id
-			} else {
-				grantUsdOverride = 0
-			}
+			} else grantUsdOverride = 0
 		}
 	}
 

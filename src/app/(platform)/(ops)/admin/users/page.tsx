@@ -51,7 +51,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
 						className="hl-input"
 						defaultValue={q ?? ""}
 						name="q"
-						placeholder="Search by name, email or Slack ID"
+						placeholder={includePii ? "Search by name, email or Slack ID" : "Search by name"}
 						style={{ maxWidth: "24rem" }}
 					/>
 					<button className="hl-btn" type="submit">
