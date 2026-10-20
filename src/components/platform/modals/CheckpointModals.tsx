@@ -759,7 +759,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 						// A link or some text is not an image: left to the textarea, which drops it in as text. Files are always caught, images or not, so a PDF let go over the sheet cannot open in the tab and take the unsaved entry with it.
 						if (found.length === 0 && files.length === 0) return
 						e.preventDefault()
-						addJournalImages(found.length > 0 ? found : files)
+						void addJournalImages(found.length > 0 ? found : files)
 					}}
 				>
 					{editing ? (
@@ -894,7 +894,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 									const pasted = Array.from(e.clipboardData.files).filter(f => f.type.startsWith("image/"))
 									if (pasted.length === 0) return
 									e.preventDefault()
-									addJournalImages(pasted)
+									void addJournalImages(pasted)
 								}}
 								placeholder="Start typing… What did you work on? What worked and what didn't? &#10;&#10; Markdown styling enabled! Drag, drop or paste images straight in."
 								ref={entry}
@@ -956,7 +956,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
 								// Copied out first: clearing the input empties the live list.
 								const files = Array.from(event.target.files ?? [])
 								event.target.value = ""
-								addJournalImages(files)
+								void addJournalImages(files)
 							}}
 							ref={imageInput}
 							tabIndex={-1}
@@ -1651,7 +1651,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
 	const pace = usePrinterPace()
 	// Opening "create a project" is what makes the week's project row – not signing up, when nobody knows yet whether they will get this far.
 	useEffect(() => {
-		ensureProject(checkpoint.weekId)
+		void ensureProject(checkpoint.weekId)
 	}, [checkpoint.weekId, ensureProject])
 	const [name, setName] = useState("")
 	const [desc, setDesc] = useState("")

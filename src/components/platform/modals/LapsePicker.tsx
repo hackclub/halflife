@@ -86,7 +86,7 @@ export function LapsePicker({
 
 	useEffect(() => {
 		// fetching on mount
-		refresh()
+		void refresh()
 	}, [refresh])
 
 	async function loadMore() {

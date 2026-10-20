@@ -94,7 +94,7 @@ export function RepoSyncSettings({
 
 	useEffect(() => {
 		// fetching on mount and on a new project
-		load()
+		void load()
 	}, [load])
 
 	async function send(method: "POST" | "PUT", body?: unknown) {

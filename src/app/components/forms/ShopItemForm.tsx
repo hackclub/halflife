@@ -190,7 +190,7 @@ export function ShopItemForm({ item }: { item?: ShopItemInitial }) {
 						onChange={e => {
 							const file = e.target.files?.[0]
 							e.target.value = ""
-							uploadImage(file)
+							void uploadImage(file)
 						}}
 						ref={picker}
 						type="file"

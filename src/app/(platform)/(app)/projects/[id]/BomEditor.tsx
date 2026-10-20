@@ -438,7 +438,7 @@ export function BomEditor({
 					}}
 					onSubmit={e => {
 						e.preventDefault()
-						save()
+						void save()
 					}}
 				>
 					<p className="text-[0.9rem] font-extrabold text-navy">

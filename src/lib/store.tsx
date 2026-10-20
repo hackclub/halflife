@@ -716,7 +716,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 				...f,
 				projects: f.projects.map(p => (p.id === id ? { ...p, tier } : p)),
 			}))
-			send(`/api/projects/${id}`, { requestedTier: tier }, "PATCH").finally(() => router.refresh())
+			void send(`/api/projects/${id}`, { requestedTier: tier }, "PATCH").finally(() => router.refresh())
 		},
 		[router],
 	)
@@ -767,7 +767,7 @@ export function StoreProvider({ snapshot, children }: { snapshot: StoreSnapshot;
 
 			const route = routeOf(id)
 			if (route && id.endsWith("-submit")) {
-				send(`/api/projects/${route.projectId}/submit`, { phase: route.phase }).finally(() => router.refresh())
+				void send(`/api/projects/${route.projectId}/submit`, { phase: route.phase }).finally(() => router.refresh())
 				return
 			}
 

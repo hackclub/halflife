@@ -226,7 +226,7 @@ function DetailsForm({
 			}}
 			onSubmit={e => {
 				e.preventDefault()
-				save()
+				void save()
 			}}
 		>
 			<div className="grid gap-1.5">

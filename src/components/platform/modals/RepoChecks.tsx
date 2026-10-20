@@ -49,7 +49,7 @@ export function RepoChecks({
 
 	useEffect(() => {
 		// fetching on mount and a new project
-		loadSync()
+		void loadSync()
 	}, [loadSync])
 
 	async function linkProject() {
@@ -82,7 +82,7 @@ export function RepoChecks({
 
 	useEffect(() => {
 		// fetching on mount and on a new link
-		run()
+		void run()
 	}, [run])
 
 	const blocking = data?.checks.filter(c => c.blocking && c.status === "fail").length ?? 0

@@ -109,7 +109,7 @@ export function ReelCapture({
 					disabled={busy || handoff.status === "minting"}
 					onClick={() => {
 						setShowQr(true)
-						handoff.mint()
+						void handoff.mint()
 					}}
 					variant="outline"
 				>

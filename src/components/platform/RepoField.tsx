@@ -147,7 +147,7 @@ export function RepoEditor({ project, className }: { project: Project; className
 			className={cx("grid gap-2", className)}
 			onSubmit={e => {
 				e.preventDefault()
-				save()
+				void save()
 			}}
 		>
 			<label className="sr-only" htmlFor={id}>

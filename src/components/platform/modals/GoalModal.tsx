@@ -73,7 +73,7 @@ export function GoalModal({
 	function advance() {
 		setError(null)
 		if (chosen === ParticipantGoal.PRINTER) setStep("printer")
-		else commit(chosen)
+		else void commit(chosen)
 	}
 
 	return (

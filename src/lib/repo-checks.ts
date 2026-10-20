@@ -101,7 +101,7 @@ function snapshot(ref: RepoRef): Promise<Snapshot> {
 	const entry = { at: now, ttl: SNAPSHOT_TTL_MS, value }
 	snapshots.set(key, entry)
 	// Settled, a failure is only kept briefly. Checked against the entry itself, so a newer fetch that has replaced it is left alone.
-	value.then(snap => {
+	void value.then(snap => {
 		if (snap.kind === "unavailable" && snapshots.get(key) === entry) entry.ttl = UNAVAILABLE_TTL_MS
 	})
 	return value

@@ -85,12 +85,12 @@ export function HackatimeLinks({ projectId, phase }: { projectId: string; phase:
 		setError(null)
 		setLinks(null)
 		setAccount({ state: "loading" })
-		load()
+		void load()
 	}, [load])
 
 	useEffect(() => {
 		// fetching on mount
-		load()
+		void load()
 	}, [load])
 
 	async function run(key: string, fn: () => Promise<void>) {

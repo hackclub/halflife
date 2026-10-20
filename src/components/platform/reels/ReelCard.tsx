@@ -157,7 +157,7 @@ export function ReelCard({
 				// Only in a feed being watched. The rail sits idle beside every page, and replaying an arrival on each navigation would be motion for its own sake.
 				if (!wantsAutoplay.current || prefersStill()) return
 				meta.current?.animate?.(ARRIVE, ARRIVE_TIMING)
-				start(el)
+				void start(el)
 			},
 			{ threshold: CURRENT },
 		)
@@ -177,7 +177,7 @@ export function ReelCard({
 			return
 		}
 		onPlayPress?.()
-		start(el)
+		void start(el)
 	}
 
 	// A view is a second of actual playback, not a press or an autoplay that a quick flick scrolled straight past. It is counted once per card, and the server counts it once per person by unique row – so neither a replay nor a retried request can inflate it.
@@ -188,7 +188,7 @@ export function ReelCard({
 		for (let i = 0; i < el.played.length; i++) watched += el.played.end(i) - el.played.start(i)
 		if (watched < 1) return
 		counted.current = true
-		fetch(`/api/posts/${reel.id}/view`, { method: "POST" })
+		void fetch(`/api/posts/${reel.id}/view`, { method: "POST" })
 	}
 
 	function like() {

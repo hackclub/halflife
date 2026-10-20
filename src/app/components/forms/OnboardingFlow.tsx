@@ -303,7 +303,7 @@ export function OnboardingFlow({ initial, onComplete }: Readonly<{ initial: Onbo
 									canSubmit={start !== undefined}
 									onBack={back}
 									onSubmit={() => {
-										if (start !== undefined) chooseStart(start)
+										if (start !== undefined) void chooseStart(start)
 									}}
 								/>
 							</>
@@ -318,7 +318,7 @@ export function OnboardingFlow({ initial, onComplete }: Readonly<{ initial: Onbo
 						className="space-y-5"
 						onSubmit={event => {
 							event.preventDefault()
-							sendProject()
+							void sendProject()
 						}}
 					>
 						<p className="text-[0.9rem] leading-relaxed text-navy-soft">

@@ -65,7 +65,7 @@ export function getReferralLeaderboard(): Promise<ReferralLeaderboard | null> {
 	const value = walkReferrals(config)
 	const entry: Cached = { at: now, ttl: CACHE_TTL_MS, value }
 	cached = entry
-	value.then(result => {
+	void value.then(result => {
 		if (result === null && cached === entry) entry.ttl = FAILED_TTL_MS
 	})
 	return value
